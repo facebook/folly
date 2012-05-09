@@ -359,7 +359,7 @@ void doNotOptimizeAway(T&& datum) {
  *
  * BENCHMARK_START_GROUP(insertVectorBegin, n) {
  *   vector<int> v;
- *   SUSPEND_BENCHMARK {
+ *   BENCHMARK_SUSPEND {
  *     v.reserve(n);
  *   }
  *   FOR_EACH_RANGE (i, 0, n) {
