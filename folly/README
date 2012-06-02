@@ -1,0 +1,73 @@
+Folly: Facebook Open-source LibrarY
+-----------------------------------
+
+Folly is an open-source C++ library developed and used at Facebook.
+
+Note to Facebook contributors:
+* Code in folly may ONLY depend on other code from folly,
+  external libraries from /home/engshare/externals and from
+  fbcode/external (preferably only the latter, eventually all deps
+  will be moved to external)
+* Code in folly goes in namespace folly.
+* Tests should go in tests directory.
+* Please keep Makefile.am's up to date.  fbconfig should warn if
+  it thinks something is missing.
+* NO EXCEPTIONS. This will eventually be enforced.
+* config.h is a generated file.  It is checked in so fbmake can run
+  without needing to run autotools.  To regenerate it, run
+  autoreconf
+  ./configure
+  You will probably also have to export the correct paths for your
+  enviroment (such as CC or CXX_INCLUDES) since we aren't using
+  the standard linux paths.
+
+Dependencies
+------------
+
+- double-conversion (http://code.google.com/p/double-conversion/)
+
+    By default, the build tooling for double-conversion does not build
+    any libraries, which folly requires.  To build the necessary libraries
+    copy folly/SConstruct.double-conversion to your double-conversion
+    source directory before building:
+
+      [double-conversion/] scons -f SConstruct.double-conversion
+
+    Then set CPPFLAGS/LDFLAGS so that folly can find your double-conversion
+    build:
+
+      [folly/] LDFLAGS=-L<double-conversion>/ CPPFLAGS=-I<double-conversion>/src/
+        configure ...
+
+- googletest (Google C++ Testing Framework)
+
+  Grab gtest 1.6.0 from:
+  http://googletest.googlecode.com/files/gtest-1.6.0.zip
+
+  Unzip it inside of the test/ subdirectory.
+
+- additional platform specific dependencies:
+
+  Ubuntu 12.04 64-bit
+    - g++
+    - automake
+    - autoconf
+    - libtool
+    - libboost1.46-all-dev
+    - libgoogle-glog-dev
+        This package has been removed from 12.04 -- use the one from 11.10
+    - gflags (packages need to be downloaded from below)
+        http://gflags.googlecode.com/files/libgflags-dev_2.0-1_amd64.deb
+        http://gflags.googlecode.com/files/libgflags0_2.0-1_amd64.deb
+    - scons (for double-conversion)
+
+  Fedora 17 64-bit
+    - gcc
+    - gcc-c++
+    - autoconf
+    - automake
+    - boost-devel
+    - libtool
+    - glog-devel
+    - gflags-devel
+    - scons (for double-conversion)
