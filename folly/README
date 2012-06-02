@@ -3,24 +3,6 @@ Folly: Facebook Open-source LibrarY
 
 Folly is an open-source C++ library developed and used at Facebook.
 
-Note to Facebook contributors:
-* Code in folly may ONLY depend on other code from folly,
-  external libraries from /home/engshare/externals and from
-  fbcode/external (preferably only the latter, eventually all deps
-  will be moved to external)
-* Code in folly goes in namespace folly.
-* Tests should go in tests directory.
-* Please keep Makefile.am's up to date.  fbconfig should warn if
-  it thinks something is missing.
-* NO EXCEPTIONS. This will eventually be enforced.
-* config.h is a generated file.  It is checked in so fbmake can run
-  without needing to run autotools.  To regenerate it, run
-  autoreconf
-  ./configure
-  You will probably also have to export the correct paths for your
-  enviroment (such as CC or CXX_INCLUDES) since we aren't using
-  the standard linux paths.
-
 Dependencies
 ------------
 
