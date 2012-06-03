@@ -232,6 +232,10 @@ class AtomicHashArray : boost::noncopyable {
     return cellKeyPtr(r)->load(std::memory_order_relaxed);
   }
 
+  static KeyT acquireLoadKey(const value_type& r) {
+    return cellKeyPtr(r)->load(std::memory_order_acquire);
+  }
+
   // Fun with thread local storage - atomic increment is expensive
   // (relatively), so we accumulate in the thread cache and periodically
   // flush to the actual variable, and walk through the unflushed counts when
@@ -259,7 +263,7 @@ class AtomicHashArray : boost::noncopyable {
   inline bool tryLockCell(value_type* const cell) {
     KeyT expect = kEmptyKey_;
     return cellKeyPtr(*cell)->compare_exchange_strong(expect, kLockedKey_,
-      std::memory_order_acquire);
+      std::memory_order_acq_rel);
   }
 
   inline size_t keyToAnchorIdx(const KeyT k) const {

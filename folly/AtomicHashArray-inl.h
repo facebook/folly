@@ -51,7 +51,7 @@ findInternal(const KeyT key_in) {
   for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
        ;
        idx = probeNext(idx, numProbes)) {
-    const KeyT key = relaxedLoadKey(cells_[idx]);
+    const KeyT key = acquireLoadKey(cells_[idx]);
     if (LIKELY(key == key_in)) {
       return SimpleRetT(idx, true);
     }
@@ -87,9 +87,10 @@ insertInternal(const value_type& record) {
   CHECK_NE(key_in, kEmptyKey_);
   CHECK_NE(key_in, kLockedKey_);
   CHECK_NE(key_in, kErasedKey_);
-  for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
-       ;
-       idx = probeNext(idx, numProbes)) {
+
+  size_t idx = keyToAnchorIdx(key_in);
+  size_t numProbes = 0;
+  for (;;) {
     DCHECK_LT(idx, capacity_);
     value_type* cell = &cells_[idx];
     if (relaxedLoadKey(*cell) == kEmptyKey_) {
@@ -133,6 +134,8 @@ insertInternal(const value_type& record) {
             new (&cell->second) ValueT(record.second);
             unlockCell(cell, key_in); // Sets the new key
           } catch (...) {
+            // Transition back to empty key---requires handling
+            // locked->empty below.
             unlockCell(cell, kEmptyKey_);
             --numPendingEntries_;
             throw;
@@ -149,23 +152,31 @@ insertInternal(const value_type& record) {
       }
     }
     DCHECK(relaxedLoadKey(*cell) != kEmptyKey_);
-    if (kLockedKey_ == cellKeyPtr(*cell)->load(std::memory_order_acquire)) {
+    if (kLockedKey_ == acquireLoadKey(*cell)) {
       FOLLY_SPIN_WAIT(
-        kLockedKey_ == cellKeyPtr(*cell)->load(std::memory_order_acquire)
+        kLockedKey_ == acquireLoadKey(*cell)
       );
     }
-    DCHECK(relaxedLoadKey(*cell) != kEmptyKey_);
-    DCHECK(relaxedLoadKey(*cell) != kLockedKey_);
-    if (key_in == relaxedLoadKey(*cell)) {
+
+    const KeyT thisKey = acquireLoadKey(*cell);
+    if (thisKey == key_in) {
       // Found an existing entry for our key, but we don't overwrite the
       // previous value.
       return SimpleRetT(idx, false);
+    } else if (thisKey == kEmptyKey_ || thisKey == kLockedKey_) {
+      // We need to try again (i.e., don't increment numProbes or
+      // advance idx): this case can happen if the constructor for
+      // ValueT threw for this very cell (the rethrow block above).
+      continue;
     }
+
     ++numProbes;
     if (UNLIKELY(numProbes >= capacity_)) {
       // probed every cell...fail
       return SimpleRetT(capacity_, false);
     }
+
+    idx = probeNext(idx, numProbes);
   }
 }
 
@@ -191,13 +202,13 @@ erase(KeyT key_in) {
        idx = probeNext(idx, numProbes)) {
     DCHECK_LT(idx, capacity_);
     value_type* cell = &cells_[idx];
-    if (relaxedLoadKey(*cell) == kEmptyKey_ ||
-        relaxedLoadKey(*cell) == kLockedKey_) {
+    KeyT currentKey = acquireLoadKey(*cell);
+    if (currentKey == kEmptyKey_ || currentKey == kLockedKey_) {
       // If we hit an empty (or locked) element, this key does not exist. This
       // is similar to how it's handled in find().
       return 0;
     }
-    if (key_in == relaxedLoadKey(*cell)) {
+    if (key_in == currentKey) {
       // Found an existing entry for our key, attempt to mark it erased.
       // Some other thread may have erased our key, but this is ok.
       KeyT expect = key_in;
@@ -350,7 +361,7 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn>::aha_iterator
   }
 
   bool isValid() const {
-    KeyT key = relaxedLoadKey(aha_->cells_[offset_]);
+    KeyT key = acquireLoadKey(aha_->cells_[offset_]);
     return key != aha_->kEmptyKey_  &&
       key != aha_->kLockedKey_ &&
       key != aha_->kErasedKey_;
