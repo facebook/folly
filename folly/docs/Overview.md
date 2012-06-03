@@ -5,7 +5,7 @@
 
 Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++11 components designed with practicality and efficiency
-in mind. It complements (as opposed to competing against) offerings
+in mind. It complements (as opposed to competes against) offerings
 such as Boost and of course `std`. In fact, we embark on defining our
 own component only when something we need is either not available, or
 does not meet the needed performance profile.
@@ -77,11 +77,8 @@ output with timing information.
 
 #### `Bits.h`
 
-Various bit manipulation utilities optimized for speed.
-
-#### `Bits.h`
-
-Bit-twiddling functions that wrap the
+Various bit manipulation utilities optimized for speed; includes functions
+that wrap the
 [ffsl(l)](http://linux.die.net/man/3/ffsll) primitives in a uniform
 interface.
 
@@ -214,7 +211,7 @@ Very small spin locks (1 byte and 1 bit).
 
 ####`small_vector.h`
 
-Vector with the small buffer optimization and an ptional embedded
+Vector with the small buffer optimization and an optional embedded
 `PicoSpinLock`.
 
 ####`sorted_vector_types.h`
