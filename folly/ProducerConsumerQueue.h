@@ -86,6 +86,7 @@ struct ProducerConsumerQueue : private boost::noncopyable {
     return false;
   }
 
+  // move (or copy) the value at the front of the queue to given variable
   bool read(T& record) {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
     if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
@@ -101,6 +102,35 @@ struct ProducerConsumerQueue : private boost::noncopyable {
     records_[currentRead].~T();
     readIndex_.store(nextRecord, std::memory_order_release);
     return true;
+  }
+
+  // pointer to the value at the front of the queue (for use in-place) or
+  // nullptr if empty.
+  T* frontPtr() {
+    auto const currentRead = readIndex_.load(std::memory_order_relaxed);
+    if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
+      // queue is empty
+      return nullptr;
+    }
+    return &records_[currentRead];
+  }
+
+  // queue must not be empty
+  void popFront() {
+    auto const currentRead = readIndex_.load(std::memory_order_relaxed);
+    assert(currentRead != writeIndex_.load(std::memory_order_acquire));
+
+    auto nextRecord = currentRead + 1;
+    if (nextRecord == size_) {
+      nextRecord = 0;
+    }
+    records_[currentRead].~T();
+    readIndex_.store(nextRecord, std::memory_order_release);
+  }
+
+  bool isEmpty() const {
+   return readIndex_.load(std::memory_order_consume) !=
+         writeIndex_.load(std::memory_order_consume);
   }
 
   bool isFull() const {

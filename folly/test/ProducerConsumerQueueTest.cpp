@@ -34,11 +34,11 @@ template<class T> struct TestTraits {
 };
 
 template<> struct TestTraits<std::string> {
-  int limit() const { return 1 << 21; }
+  int limit() const { return 1 << 22; }
   std::string generate() const { return std::string(12, ' '); }
 };
 
-template<class QueueType, size_t Size>
+template<class QueueType, size_t Size, bool Pop = false>
 struct PerfTest {
   typedef typename QueueType::value_type T;
 
@@ -68,9 +68,17 @@ struct PerfTest {
   }
 
   void consumer() {
-    while (!done_) {
-      T data;
-      queue_.read(data);
+    /*static*/ if (Pop) {
+      while (!done_) {
+        if (queue_.frontPtr()) {
+          queue_.popFront();
+        }
+      }
+    } else {
+      while (!done_) {
+        T data;
+        queue_.read(data);
+      }
     }
   }
 
@@ -85,15 +93,16 @@ template<class TestType> void doTest(const char* name) {
   (*t)();
 }
 
-template<class T> void perfTestType(const char* type) {
+template<class T, bool Pop = false>
+void perfTestType(const char* type) {
   const size_t size = 0xfffe;
 
   LOG(INFO) << "Type: " << type;
-  doTest<PerfTest<folly::ProducerConsumerQueue<T>,size> >(
+  doTest<PerfTest<folly::ProducerConsumerQueue<T>,size,Pop> >(
     "ProducerConsumerQueue");
 }
 
-template<class QueueType, size_t Size>
+template<class QueueType, size_t Size, bool Pop>
 struct CorrectnessTest {
   typedef typename QueueType::value_type T;
 
@@ -125,7 +134,39 @@ struct CorrectnessTest {
   }
 
   void consumer() {
-    for (auto& expect : testData_) {
+    if (Pop) {
+      consumerPop();
+    } else {
+      consumerRead();
+    }
+  }
+
+  void consumerPop() {
+    for (auto expect : testData_) {
+    again:
+      T* data;
+      if (!(data = queue_.frontPtr())) {
+        if (done_) {
+          // Try one more read; unless there's a bug in the queue class
+          // there should still be more data sitting in the queue even
+          // though the producer thread exited.
+          if (!(data = queue_.frontPtr())) {
+            EXPECT_TRUE(0 && "Finished too early ...");
+            return;
+          }
+        } else {
+          goto again;
+        }
+      } else {
+        queue_.popFront();
+      }
+
+      EXPECT_EQ(*data, expect);
+    }
+  }
+
+  void consumerRead() {
+    for (auto expect : testData_) {
     again:
       T data;
       if (!queue_.read(data)) {
@@ -151,9 +192,10 @@ struct CorrectnessTest {
   std::atomic<bool> done_;
 };
 
-template<class T> void correctnessTestType(const std::string& type) {
+template<class T, bool Pop = false>
+void correctnessTestType(const std::string& type) {
   LOG(INFO) << "Type: " << type;
-  doTest<CorrectnessTest<folly::ProducerConsumerQueue<T>,0xfffe> >(
+  doTest<CorrectnessTest<folly::ProducerConsumerQueue<T>,0xfffe,Pop> >(
     "ProducerConsumerQueue");
 }
 
@@ -171,12 +213,14 @@ int DtorChecker::numInstances = 0;
 //////////////////////////////////////////////////////////////////////
 
 TEST(PCQ, QueueCorrectness) {
+  correctnessTestType<std::string,true>("string (front+pop)");
   correctnessTestType<std::string>("string");
   correctnessTestType<int>("int");
   correctnessTestType<unsigned long long>("unsigned long long");
 }
 
 TEST(PCQ, PerfTest) {
+  perfTestType<std::string,true>("string (front+pop)");
   perfTestType<std::string>("string");
   perfTestType<int>("int");
   perfTestType<unsigned long long>("unsigned long long");
