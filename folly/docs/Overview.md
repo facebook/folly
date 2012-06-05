@@ -5,7 +5,7 @@
 
 Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++11 components designed with practicality and efficiency
-in mind. It complements (as opposed to competing against) offerings
+in mind. It complements (as opposed to competes against) offerings
 such as Boost and of course `std`. In fact, we embark on defining our
 own component only when something we need is either not available, or
 does not meet the needed performance profile.
