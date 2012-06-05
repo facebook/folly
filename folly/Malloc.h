@@ -32,6 +32,9 @@ namespace folly {
   using std::jemallocMinInPlaceExpandable;
   using std::usingJEMalloc;
   using std::smartRealloc;
+  using std::checkedMalloc;
+  using std::checkedCalloc;
+  using std::checkedRealloc;
 }
 
 #else // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)
@@ -56,6 +59,8 @@ namespace folly {
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+
+#include <new>
 
 /**
  * Declare rallocm() and malloc_usable_size() as weak symbols.  It
