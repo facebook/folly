@@ -266,3 +266,19 @@ TEST(PCQ, Destructor) {
   }
   EXPECT_EQ(DtorChecker::numInstances, 0);
 }
+
+TEST(PCQ, EmptyFull) {
+  folly::ProducerConsumerQueue<int> queue(3);
+  EXPECT_TRUE(queue.isEmpty());
+  EXPECT_FALSE(queue.isFull());
+
+  EXPECT_TRUE(queue.write(1));
+  EXPECT_FALSE(queue.isEmpty());
+  EXPECT_FALSE(queue.isFull());
+
+  EXPECT_TRUE(queue.write(2));
+  EXPECT_FALSE(queue.isEmpty());
+  EXPECT_TRUE(queue.isFull());  // Tricky: full after 2 writes, not 3.
+
+  EXPECT_FALSE(queue.write(3));
+}

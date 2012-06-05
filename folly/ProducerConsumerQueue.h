@@ -38,7 +38,11 @@ template<class T>
 struct ProducerConsumerQueue : private boost::noncopyable {
   typedef T value_type;
 
-  // size must be >= 2
+  // size must be >= 2.
+  //
+  // Also, note that the number of usable slots in the queue at any
+  // given time is actually (size-1), so if you start with an empty queue,
+  // isFull() will return true after size-1 insertions.
   explicit ProducerConsumerQueue(uint32_t size)
     : size_(size)
     , records_(static_cast<T*>(std::malloc(sizeof(T) * size)))
@@ -129,7 +133,7 @@ struct ProducerConsumerQueue : private boost::noncopyable {
   }
 
   bool isEmpty() const {
-   return readIndex_.load(std::memory_order_consume) !=
+   return readIndex_.load(std::memory_order_consume) ==
          writeIndex_.load(std::memory_order_consume);
   }
 
