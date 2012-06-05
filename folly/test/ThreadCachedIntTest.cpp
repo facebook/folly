@@ -155,7 +155,7 @@ std::atomic<int32_t> globalInt32Baseline(0);
 __thread int64_t global__thread64;
 __thread int32_t global__thread32;
 
-// Alternate lock-free implementation.  Acheives about the same performance,
+// Alternate lock-free implementation.  Achieves about the same performance,
 // but uses about 20x more memory than ThreadCachedInt with 24 threads.
 struct ShardedAtomicInt {
   static const int64_t kBuckets_ = 2048;

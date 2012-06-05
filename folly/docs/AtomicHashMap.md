@@ -26,7 +26,7 @@ compare-and-swap'ed.
 the approximate number of elements you'll be inserting into the map, you
 probably shouldn't use this class.
 
-* Must manage syncronization externally in order to modify values in the map
+* Must manage synchronization externally in order to modify values in the map
 after insertion.  Lock pools are a common way to do this, or you may
 consider using `folly::PackedSyncPtr<T>` as your `ValueT`.
 

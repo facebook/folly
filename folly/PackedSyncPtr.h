@@ -105,7 +105,7 @@ public:
   reference operator*() const { return *get(); }
   reference operator[](std::ptrdiff_t i) const { return get()[i]; }
 
-  // Syncronization (logically const, even though this mutates our
+  // Synchronization (logically const, even though this mutates our
   // locked state: you can lock a const PackedSyncPtr<T> to read it).
   void lock() const { data_.lock(); }
   void unlock() const { data_.unlock(); }

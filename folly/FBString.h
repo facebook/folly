@@ -1484,7 +1484,7 @@ public:
   }
 
   // Replaces at most n1 chars of *this, starting with pos, with n2
-  // occurences of c
+  // occurrences of c
   //
   // consolidated with
   //
@@ -2224,7 +2224,7 @@ basic_fbstring<E1, T, A, S>::npos =
               static_cast<typename basic_fbstring<E1, T, A, S>::size_type>(-1);
 
 #ifndef _LIBSTDCXX_FBSTRING
-// basic_string compatiblity routines
+// basic_string compatibility routines
 
 template <typename E, class T, class A, class S>
 inline

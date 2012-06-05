@@ -111,7 +111,7 @@ TEST(PackedSyncPtr, Application) {
   }
 
   for (auto& kv : map) {
-    // Make sure every thread succesfully inserted it's ID into every vec
+    // Make sure every thread successfully inserted it's ID into every vec
     std::set<intptr_t> idsFound;
     for (auto& elem : kv.second) {
       EXPECT_TRUE(idsFound.insert(elem).second);  // check for dups

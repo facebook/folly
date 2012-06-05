@@ -252,7 +252,7 @@ create(size_t maxSize, const Config& c) {
    * constructor.)  This is in order to avoid needing to default
    * construct a bunch of value_type when we first start up: if you
    * have an expensive default constructor for the value type this can
-   * noticably speed construction time for an AHA.
+   * noticeably speed construction time for an AHA.
    */
   FOR_EACH_RANGE(i, 0, map->capacity_) {
     cellKeyPtr(map->cells_[i])->store(map->kEmptyKey_,

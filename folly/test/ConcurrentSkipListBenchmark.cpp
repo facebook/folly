@@ -579,7 +579,7 @@ BENCHMARK_PARAM(BM_CSLMergeLookup,       1000000);
 BENCHMARK_DRAW_LINE();
 
 
-// multi-thread benchmarking
+// multithreaded benchmarking
 
 BENCHMARK_PARAM(BM_ContentionStdSet, 1024);
 BENCHMARK_PARAM(BM_ContentionCSL,    1024);
