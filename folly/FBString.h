@@ -301,7 +301,7 @@ public:
       // one extra Char for the null terminator.
       auto const allocSize =
            goodMallocSize((1 + rhs.ml_.size_) * sizeof(Char));
-      ml_.data_ = static_cast<Char*>(malloc(allocSize));
+      ml_.data_ = static_cast<Char*>(checkedMalloc(allocSize));
       fbstring_detail::pod_copy(rhs.ml_.data_,
                                 // 1 for terminator
                                 rhs.ml_.data_ + rhs.ml_.size_ + 1,
@@ -364,7 +364,7 @@ public:
       // Medium strings are allocated normally. Don't forget to
       // allocate one extra Char for the terminating null.
       auto const allocSize = goodMallocSize((1 + size) * sizeof(Char));
-      ml_.data_ = static_cast<Char*>(malloc(allocSize));
+      ml_.data_ = static_cast<Char*>(checkedMalloc(allocSize));
       fbstring_detail::pod_copy(data, data + size, ml_.data_);
       ml_.size_ = size;
       ml_.capacity_ = (allocSize / sizeof(Char) - 1) | isMedium;
@@ -586,7 +586,7 @@ public:
         // Don't forget to allocate one extra Char for the terminating null
         auto const allocSizeBytes =
           goodMallocSize((1 + minCapacity) * sizeof(Char));
-        auto const data = static_cast<Char*>(malloc(allocSizeBytes));
+        auto const data = static_cast<Char*>(checkedMalloc(allocSizeBytes));
         auto const size = smallSize();
         fbstring_detail::pod_copy(small_, small_ + size + 1, data);
         // No need for writeTerminator(), we wrote it above with + 1.
@@ -742,7 +742,7 @@ private:
       // struct.
       const size_t allocSize = goodMallocSize(
         sizeof(RefCounted) + *size * sizeof(Char));
-      auto result = static_cast<RefCounted*>(malloc(allocSize));
+      auto result = static_cast<RefCounted*>(checkedMalloc(allocSize));
       result->refCount_.store(1, std::memory_order_release);
       *size = (allocSize - sizeof(RefCounted)) / sizeof(Char);
       return result;
@@ -2184,7 +2184,7 @@ getline(
   for (;;) {
     // This looks quadratic but it really depends on realloc
     auto const newSize = size + 128;
-    buf = static_cast<char*>(realloc(buf, newSize));
+    buf = static_cast<char*>(checkedRealloc(buf, newSize));
     is.getline(buf + size, newSize - size, delim);
     if (is.bad() || is.eof() || !is.fail()) {
       // done by either failure, end of file, or normal read

@@ -994,10 +994,7 @@ private:
       needBytes += kHeapifyCapacitySize;
     }
     auto const sizeBytes = goodMallocSize(needBytes);
-    void* newh = std::malloc(sizeBytes);
-    if (!newh) {
-      throw std::bad_alloc();
-    }
+    void* newh = checkedMalloc(sizeBytes);
     // We expect newh to be at least 2-aligned, because we want to
     // use its least significant bit as a flag.
     assert(!detail::pointerFlagGet(newh));

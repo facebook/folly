@@ -280,7 +280,7 @@ public:
     }
 
     auto const nBytes = goodMallocSize(n * sizeof(T));
-    b_ = static_cast<T*>(malloc(nBytes));
+    b_ = static_cast<T*>(checkedMalloc(nBytes));
     fbvector_detail::uninitializedFillDefaultOrFree(b_, n);
     e_ = b_ + n;
     z_ = b_ + nBytes / sizeof(T);
@@ -293,7 +293,7 @@ public:
     }
 
     auto const nBytes = goodMallocSize(n * sizeof(T));
-    b_ = static_cast<T*>(malloc(nBytes));
+    b_ = static_cast<T*>(checkedMalloc(nBytes));
     fbvector_detail::uninitializedFillOrFree(b_, n, value);
     e_ = b_ + n;
     z_ = b_ + nBytes / sizeof(T);
@@ -396,7 +396,7 @@ private:
 
       // Must reallocate - just do it on the side
       auto const nBytes = goodMallocSize(newSize * sizeof(T));
-      auto const b = static_cast<T*>(malloc(nBytes));
+      auto const b = static_cast<T*>(checkedMalloc(nBytes));
       std::uninitialized_copy(first, last, b);
       this->fbvector::~fbvector();
       b_ = b;
@@ -590,7 +590,7 @@ private:
     assert(crtCapacity < n); // reserve_in_place should have taken
                              // care of this
     auto const newCapacityBytes = goodMallocSize(n * sizeof(T));
-    auto b = static_cast<T*>(malloc(newCapacityBytes));
+    auto b = static_cast<T*>(checkedMalloc(newCapacityBytes));
     auto const oldSize = size();
     memcpy(b, b_, oldSize * sizeof(T));
     // Done with the old chunk. Free but don't call destructors!

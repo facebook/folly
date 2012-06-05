@@ -134,6 +134,28 @@ inline size_t goodMallocSize(size_t minSize) {
 static const size_t jemallocMinInPlaceExpandable = 4096;
 
 /**
+ * Trivial wrappers around malloc, calloc, realloc that check for allocation
+ * failure and throw std::bad_alloc in that case.
+ */
+inline void* checkedMalloc(size_t size) {
+  void* p = malloc(size);
+  if (!p) throw std::bad_alloc();
+  return p;
+}
+
+inline void* checkedCalloc(size_t n, size_t size) {
+  void* p = calloc(n, size);
+  if (!p) throw std::bad_alloc();
+  return p;
+}
+
+inline void* checkedRealloc(void* ptr, size_t size) {
+  void* p = realloc(ptr, size);
+  if (!p) throw std::bad_alloc();
+  return p;
+}
+
+/**
  * This function tries to reallocate a buffer of which only the first
  * currentSize bytes are used. The problem with using realloc is that
  * if currentSize is relatively small _and_ if realloc decides it
@@ -162,7 +184,7 @@ inline void* smartRealloc(void* p,
       return p;
     }
     // Cannot expand; must move
-    auto const result = malloc(newCapacity);
+    auto const result = checkedMalloc(newCapacity);
     std::memcpy(result, p, currentSize);
     free(p);
     return result;
@@ -172,13 +194,13 @@ inline void* smartRealloc(void* p,
   auto const slack = currentCapacity - currentSize;
   if (slack * 2 > currentSize) {
     // Too much slack, malloc-copy-free cycle:
-    auto const result = malloc(newCapacity);
+    auto const result = checkedMalloc(newCapacity);
     std::memcpy(result, p, currentSize);
     free(p);
     return result;
   }
   // If there's not too much slack, we realloc in hope of coalescing
-  return realloc(p, newCapacity);
+  return checkedRealloc(p, newCapacity);
 }
 
 #ifdef _LIBSTDCXX_FBSTRING

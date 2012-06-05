@@ -193,9 +193,7 @@ struct ArenaAllocatorTraits {
 class SysAlloc {
  public:
   void* allocate(size_t size) {
-    void* mem = malloc(size);
-    if (!mem) throw std::bad_alloc();
-    return mem;
+    return checkedMalloc(size);
   }
 
   void deallocate(void* p) {
