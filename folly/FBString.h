@@ -71,9 +71,7 @@
 #pragma GCC system_header
 
 // Handle the cases where the fbcode version (folly/Malloc.h) is included
-// either before or after this inclusion.  */home/engshare/third-party/src/
-// libgcc/libgcc-4.6.2/gcc-4.6.2-20111027/libstdc++-v3/include/bits/
-// basic_string.h* has a more detailed explanation of why this is necessary.
+// either before or after this inclusion.
 #ifdef FOLLY_MALLOC_H_
 #undef FOLLY_MALLOC_H_
 #include "basic_fbstring_malloc.h"
