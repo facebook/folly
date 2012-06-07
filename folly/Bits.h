@@ -513,6 +513,38 @@ BitIterator<BaseIter> findFirstSet(BitIterator<BaseIter> begin,
   return end;
 }
 
+
+namespace detail {
+
+template <class T, class Enable=void> struct Unaligned;
+
+template <class T>
+struct Unaligned<
+  T,
+  typename std::enable_if<std::is_pod<T>::value>::type> {
+  T value;
+} __attribute__((packed));
+
+}  // namespace detail
+
+/**
+ * Read an unaligned value of type T and return it.
+ */
+template <class T>
+inline T loadUnaligned(const void* p) {
+  static_assert(alignof(detail::Unaligned<T>) == 1, "Invalid alignment");
+  return static_cast<const detail::Unaligned<T>*>(p)->value;
+}
+
+/**
+ * Write an unaligned value of type T.
+ */
+template <class T>
+inline void storeUnaligned(void* p, T value) {
+  static_assert(alignof(detail::Unaligned<T>) == 1, "Invalid alignment");
+  static_cast<detail::Unaligned<T>*>(p)->value = value;
+}
+
 }  // namespace folly
 
 #endif /* FOLLY_BITS_H_ */

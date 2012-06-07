@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <limits>
 #include "folly/detail/GroupVarintDetail.h"
+#include "folly/Bits.h"
 #include "folly/Range.h"
 #include <glog/logging.h>
 
@@ -133,13 +134,13 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     uint8_t b2key = key(c);
     uint8_t b3key = key(d);
     *p++ = (b3key << 6) | (b2key << 4) | (b1key << 2) | b0key;
-    *reinterpret_cast<uint32_t*>(p) = a;
+    storeUnaligned(p, a);
     p += b0key+1;
-    *reinterpret_cast<uint32_t*>(p) = b;
+    storeUnaligned(p, b);
     p += b1key+1;
-    *reinterpret_cast<uint32_t*>(p) = c;
+    storeUnaligned(p, c);
     p += b2key+1;
-    *reinterpret_cast<uint32_t*>(p) = d;
+    storeUnaligned(p, d);
     p += b3key+1;
     return p;
   }
@@ -160,20 +161,20 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
    */
   static const char* decode_simple(const char* p, uint32_t* a, uint32_t* b,
                                    uint32_t* c, uint32_t* d) {
-    size_t k = *reinterpret_cast<const uint8_t*>(p);
+    size_t k = loadUnaligned<uint8_t>(p);
     const char* end = p + detail::groupVarintLengths[k];
     ++p;
     size_t k0 = b0key(k);
-    *a = *reinterpret_cast<const uint32_t*>(p) & kMask[k0];
+    *a = loadUnaligned<uint32_t>(p) & kMask[k0];
     p += k0+1;
     size_t k1 = b1key(k);
-    *b = *reinterpret_cast<const uint32_t*>(p) & kMask[k1];
+    *b = loadUnaligned<uint32_t>(p) & kMask[k1];
     p += k1+1;
     size_t k2 = b2key(k);
-    *c = *reinterpret_cast<const uint32_t*>(p) & kMask[k2];
+    *c = loadUnaligned<uint32_t>(p) & kMask[k2];
     p += k2+1;
     size_t k3 = b3key(k);
-    *d = *reinterpret_cast<const uint32_t*>(p) & kMask[k3];
+    *d = loadUnaligned<uint32_t>(p) & kMask[k3];
     p += k3+1;
     return end;
   }
@@ -294,7 +295,7 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    * buffer of size bytes.
    */
   static size_t partialCount(const char* p, size_t size) {
-    uint16_t v = *reinterpret_cast<const uint16_t*>(p);
+    uint16_t v = loadUnaligned<uint16_t>(p);
     size_t s = kHeaderSize;
     s += 1 + b0key(v);
     if (s > size) return 0;
@@ -314,7 +315,7 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    * return the number of bytes used by the encoding.
    */
   static size_t encodedSize(const char* p) {
-    uint16_t n = *reinterpret_cast<const uint16_t*>(p);
+    uint16_t n = loadUnaligned<uint16_t>(p);
     return (kHeaderSize + kGroupSize +
             b0key(n) + b1key(n) + b2key(n) + b3key(n) + b4key(n));
   }
@@ -331,18 +332,19 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
     uint8_t b2key = key(c);
     uint8_t b3key = key(d);
     uint8_t b4key = key(e);
-    *reinterpret_cast<uint16_t*>(p) =
-      (b4key << 12) | (b3key << 9) | (b2key << 6) | (b1key << 3) | b0key;
+    storeUnaligned<uint16_t>(
+        p,
+        (b4key << 12) | (b3key << 9) | (b2key << 6) | (b1key << 3) | b0key);
     p += 2;
-    *reinterpret_cast<uint64_t*>(p) = a;
+    storeUnaligned(p, a);
     p += b0key+1;
-    *reinterpret_cast<uint64_t*>(p) = b;
+    storeUnaligned(p, b);
     p += b1key+1;
-    *reinterpret_cast<uint64_t*>(p) = c;
+    storeUnaligned(p, c);
     p += b2key+1;
-    *reinterpret_cast<uint64_t*>(p) = d;
+    storeUnaligned(p, d);
     p += b3key+1;
-    *reinterpret_cast<uint64_t*>(p) = e;
+    storeUnaligned(p, e);
     p += b4key+1;
     return p;
   }
@@ -363,22 +365,22 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
    */
   static const char* decode(const char* p, uint64_t* a, uint64_t* b,
                             uint64_t* c, uint64_t* d, uint64_t* e) {
-    uint16_t k = *reinterpret_cast<const uint16_t*>(p);
+    uint16_t k = loadUnaligned<uint16_t>(p);
     p += 2;
     uint8_t k0 = b0key(k);
-    *a = *reinterpret_cast<const uint64_t*>(p) & kMask[k0];
+    *a = loadUnaligned<uint64_t>(p) & kMask[k0];
     p += k0+1;
     uint8_t k1 = b1key(k);
-    *b = *reinterpret_cast<const uint64_t*>(p) & kMask[k1];
+    *b = loadUnaligned<uint64_t>(p) & kMask[k1];
     p += k1+1;
     uint8_t k2 = b2key(k);
-    *c = *reinterpret_cast<const uint64_t*>(p) & kMask[k2];
+    *c = loadUnaligned<uint64_t>(p) & kMask[k2];
     p += k2+1;
     uint8_t k3 = b3key(k);
-    *d = *reinterpret_cast<const uint64_t*>(p) & kMask[k3];
+    *d = loadUnaligned<uint64_t>(p) & kMask[k3];
     p += k3+1;
     uint8_t k4 = b4key(k);
-    *e = *reinterpret_cast<const uint64_t*>(p) & kMask[k4];
+    *e = loadUnaligned<uint64_t>(p) & kMask[k4];
     p += k4+1;
     return p;
   }
