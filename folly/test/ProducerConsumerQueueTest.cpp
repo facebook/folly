@@ -281,4 +281,5 @@ TEST(PCQ, EmptyFull) {
   EXPECT_TRUE(queue.isFull());  // Tricky: full after 2 writes, not 3.
 
   EXPECT_FALSE(queue.write(3));
+  EXPECT_EQ(queue.sizeGuess(), 2);
 }

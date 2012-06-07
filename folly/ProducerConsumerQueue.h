@@ -149,6 +149,20 @@ struct ProducerConsumerQueue : private boost::noncopyable {
     return true;
   }
 
+  // * If called by consumer, then true size may be more (because producer may
+  //   be adding items concurrently).
+  // * If called by producer, then true size may be less (because consumer may
+  //   be removing items concurrently).
+  // * It is undefined to call this from any other thread.
+  size_t sizeGuess() const {
+    int ret = writeIndex_.load(std::memory_order_consume) -
+              readIndex_.load(std::memory_order_consume);
+    if (ret < 0) {
+      ret += size_;
+    }
+    return ret;
+  }
+
 private:
   const uint32_t size_;
   T* const records_;

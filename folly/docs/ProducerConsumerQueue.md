@@ -18,12 +18,17 @@ operations:
                empty).
  * `isEmpty`: Check if the queue is empty.
  * `isFull`: Check if the queue is full.
+ * `sizeGuess`: Returns the number of entries in the queue. Because of the
+                way we coordinate threads, this guess could be slightly wrong
+                when called by the producer/consumer thread, and it could be
+                wildly inaccurate if called from any other threads. Hence,
+                only call from producer/consumer threads!
 
 All of these operations are wait-free.  The read operations (including
 `frontPtr` and `popFront`) and write operations must only be called by the
-reader and writer thread, respectively. `isFull` and `isEmpty` may be called by
-either thread, but the return values from `read`, `write`, or `frontPtr` are
-sufficient for most cases.
+reader and writer thread, respectively. `isFull`, `isEmpty`, and `sizeGuess`
+may be called by either thread, but the return values from `read`, `write`, or
+`frontPtr` are sufficient for most cases.
 
 `write` may fail if the queue is full, and `read` may fail if the queue is
 empty, so in many situations it is important to choose the queue size such that
