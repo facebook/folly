@@ -68,6 +68,21 @@ class IOBufQueue {
   }
 
   /**
+   * Append a chain of IOBuf objects that point to consecutive regions
+   * within buf.
+   *
+   * Just like IOBuf::wrapBuffer, this should only be used when the caller
+   * knows ahead of time and can ensure that all IOBuf objects that will point
+   * to this buffer will be destroyed before the buffer itself is destroyed;
+   * all other caveats from wrapBuffer also apply.
+   *
+   * Every buffer except for the last will wrap exactly blockSize bytes.
+   * Importantly, this method may be used to wrap buffers larger than 4GB.
+   */
+  void wrapBuffer(const void* buf, size_t len,
+                  uint32_t blockSize=(1U << 31));  // default block size: 2GB
+
+  /**
    * Obtain a writable block of contiguous bytes at the end of this
    * queue, allocating more space if necessary.  The amount of space
    * reserved will be between min and max, inclusive; the IOBufQueue

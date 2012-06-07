@@ -118,6 +118,17 @@ IOBufQueue::append(const void* buf, size_t len) {
   }
 }
 
+void
+IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
+  auto src = static_cast<const uint8_t*>(buf);
+  while (len != 0) {
+    size_t n = std::min(len, size_t(blockSize));
+    append(IOBuf::wrapBuffer(src, n));
+    src += n;
+    len -= n;
+  }
+}
+
 pair<void*,uint32_t>
 IOBufQueue::preallocate(uint32_t min, uint32_t max) {
   if (head_ != NULL) {

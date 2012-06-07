@@ -15,6 +15,7 @@
  */
 
 #include "folly/experimental/io/IOBufQueue.h"
+#include "folly/Range.h"
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
@@ -25,6 +26,7 @@
 
 using folly::IOBuf;
 using folly::IOBufQueue;
+using folly::StringPiece;
 using std::pair;
 using std::string;
 using std::unique_ptr;
@@ -163,6 +165,20 @@ TEST(IOBufQueue, Preallocate) {
   checkConsistency(queue);
   EXPECT_LE(1024, writable.second);
   EXPECT_GE(4096, writable.second);
+}
+
+TEST(IOBufQueue, Wrap) {
+  IOBufQueue queue(clOptions);
+  const char* buf = "hello world goodbye";
+  size_t len = strlen(buf);
+  queue.wrapBuffer(buf, len, 6);
+  auto iob = queue.move();
+  EXPECT_EQ((len - 1) / 6 + 1, iob->countChainElements());
+  iob->unshare();
+  iob->coalesce();
+  EXPECT_EQ(StringPiece(buf),
+            StringPiece(reinterpret_cast<const char*>(iob->data()),
+                        iob->length()));
 }
 
 TEST(IOBufQueue, trim) {
