@@ -29,8 +29,8 @@ namespace folly {
 
 namespace detail {
 
-int futex(int* uaddr, int op, int val, const struct timespec* timeout,
-          int* uaddr2, int val3) noexcept {
+inline int futex(int* uaddr, int op, int val, const timespec* timeout,
+                 int* uaddr2, int val3) noexcept {
   return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
 }
 
