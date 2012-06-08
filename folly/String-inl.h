@@ -298,6 +298,126 @@ void splitTo(const Delim& delimiter,
     ignoreEmpty);
 }
 
+template <class String1, class String2>
+void backslashify(const String1& input, String2& output, bool hex_style) {
+  static const char hexValues[] = "0123456789abcdef";
+  output.clear();
+  output.reserve(3 * input.size());
+  for (unsigned char c : input) {
+    // less than space or greater than '~' are considered unprintable
+    if (c < 0x20 || c > 0x7e || c == '\\') {
+      bool hex_append = false;
+      output.push_back('\\');
+      if (hex_style) {
+        hex_append = true;
+      } else {
+        if (c == '\r') output += 'r';
+        else if (c == '\n') output += 'n';
+        else if (c == '\t') output += 't';
+        else if (c == '\a') output += 'a';
+        else if (c == '\b') output += 'b';
+        else if (c == '\0') output += '0';
+        else if (c == '\\') output += '\\';
+        else {
+          hex_append = true;
+        }
+      }
+      if (hex_append) {
+        output.push_back('x');
+        output.push_back(hexValues[(c >> 4) & 0xf]);
+        output.push_back(hexValues[c & 0xf]);
+      }
+    } else {
+      output += c;
+    }
+  }
+}
+
+template <class String1, class String2>
+void humanify(const String1& input, String2& output) {
+  int numUnprintable = 0;
+  int numPrintablePrefix = 0;
+  for (unsigned char c : input) {
+    if (c < 0x20 || c > 0x7e || c == '\\') {
+      ++numUnprintable;
+    }
+    if (numUnprintable == 0) {
+      ++numPrintablePrefix;
+    }
+  }
+
+  // hexlify doubles a string's size; backslashify can potentially
+  // explode it by 4x.  Now, the printable range of the ascii
+  // "spectrum" is around 95 out of 256 values, so a "random" binary
+  // string should be around 60% unprintable.  We use a 50% hueristic
+  // here, so if a string is 60% unprintable, then we just use hex
+  // output.  Otherwise we backslash.
+  //
+  // UTF8 is completely ignored; as a result, utf8 characters will
+  // likely be \x escaped (since most common glyphs fit in two bytes).
+  // This is a tradeoff of complexity/speed instead of a convenience
+  // that likely would rarely matter.  Moreover, this function is more
+  // about displaying underlying bytes, not about displaying glyphs
+  // from languages.
+  if (numUnprintable == 0) {
+    output = input;
+  } else if (5 * numUnprintable >= 3 * input.size()) {
+    // However!  If we have a "meaningful" prefix of printable
+    // characters, say 20% of the string, we backslashify under the
+    // assumption viewing the prefix as ascii is worth blowing the
+    // output size up a bit.
+    if (5 * numPrintablePrefix >= input.size()) {
+      backslashify(input, output);
+    } else {
+      output = "0x";
+      hexlify(input, output, true /* append output */);
+    }
+  } else {
+    backslashify(input, output);
+  }
+}
+
+template<class InputString, class OutputString>
+bool hexlify(const InputString& input, OutputString& output,
+             bool append_output=false) {
+  if (!append_output) output.clear();
+
+  static char hexValues[] = "0123456789abcdef";
+  int j = output.size();
+  output.resize(2 * input.size() + output.size());
+  for (int i = 0; i < input.size(); ++i) {
+    int ch = input[i];
+    output[j++] = hexValues[(ch >> 4) & 0xf];
+    output[j++] = hexValues[ch & 0xf];
+  }
+  return true;
+}
+
+template<class InputString, class OutputString>
+bool unhexlify(const InputString& input, OutputString& output) {
+  if (input.size() % 2 != 0) {
+    return false;
+  }
+  output.resize(input.size() / 2);
+  int j = 0;
+  auto unhex = [](char c) -> int {
+    return c >= '0' && c <= '9' ? c - '0' :
+           c >= 'A' && c <= 'F' ? c - 'A' + 10 :
+           c >= 'a' && c <= 'f' ? c - 'a' + 10 :
+           -1;
+  };
+
+  for (int i = 0; i < input.size(); i += 2) {
+    int highBits = unhex(input[i]);
+    int lowBits = unhex(input[i + 1]);
+    if (highBits < 0 || lowBits < 0) {
+      return false;
+    }
+    output[j++] = (highBits << 4) + lowBits;
+  }
+  return true;
+}
+
 namespace detail {
 /**
  * Hex-dump at most 16 bytes starting at offset from a memory area of size

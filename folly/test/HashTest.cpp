@@ -135,3 +135,7 @@ TEST(Hash, hasher) {
   m.insert(std::make_pair(4, 5));
   EXPECT_EQ(get_default(m, 4), 5);
 }
+
+TEST(Hash, hash_combine) {
+  EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
+}

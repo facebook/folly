@@ -17,15 +17,50 @@
 #ifndef FOLLY_BASE_HASH_H_
 #define FOLLY_BASE_HASH_H_
 
-#include <stdint.h>
 #include <cstring>
+#include <stdint.h>
 #include <string>
+#include <utility>
 
 /*
  * Various hashing functions.
  */
 
 namespace folly { namespace hash {
+
+// This is a general-purpose way to create a single hash from multiple
+// hashable objects. It relies on std::hash<T> being available for all
+// relevant types and combines those hashes in an order-dependent way
+// to yield a new hash.
+
+// Never used, but gcc demands it.
+inline size_t hash_combine() {
+  return 0;
+}
+
+// This is the Hash128to64 function from Google's cityhash (available
+// under the MIT License).  We use it to reduce multiple 64 bit hashes
+// into a single hash.
+inline size_t hash_128_to_64(const size_t upper, const size_t lower) {
+  // Murmur-inspired hashing.
+  const size_t kMul = 0x9ddfea08eb382d69ULL;
+  size_t a = (lower ^ upper) * kMul;
+  a ^= (a >> 47);
+  size_t b = (upper ^ a) * kMul;
+  b ^= (b >> 47);
+  b *= kMul;
+  return b;
+}
+
+template <typename T, typename... Ts>
+size_t hash_combine(const T& t, const Ts&... ts) {
+  size_t seed = std::hash<T>()(t);
+  if (sizeof...(ts) == 0) {
+    return seed;
+  }
+  size_t remainder = hash_combine(ts...);
+  return hash_128_to_64(seed, remainder);
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -239,5 +274,27 @@ template<> struct hasher<uint64_t> {
 };
 
 } // namespace folly
+
+// Custom hash functions.
+namespace std {
+  // Hash function for pairs. Requires default hash functions for both
+  // items in the pair.
+  template <typename T1, typename T2>
+  class hash<std::pair<T1, T2> > {
+  public:
+    size_t operator()(const std::pair<T1, T2>& x) const {
+      return folly::hash::hash_combine(x.first, x.second);
+    }
+  };
+
+  // Same as above, but for arbitrary tuples.
+  template <typename... Ts>
+  class hash<std::tuple<Ts...> > {
+  public:
+    size_t operator()(const Ts&... ts) const {
+      return folly::hash::hash_combine(ts...);
+    }
+  };
+} // namespace std
 
 #endif

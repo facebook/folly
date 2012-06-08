@@ -52,6 +52,7 @@ nobase_follyinclude_HEADERS = \
 	IntrusiveList.h \
 	json.h \
 	Likely.h \
+	Logging.h \
 	Malloc.h \
 	MapUtil.h \
 	PackedSyncPtr.h \

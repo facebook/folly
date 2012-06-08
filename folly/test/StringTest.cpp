@@ -604,6 +604,83 @@ TEST(Split, pieces_fbvector) {
   piecesTest<folly::fbvector>();
 }
 
+TEST(String, hexlify) {
+  string input1 = "0123";
+  string output1;
+  EXPECT_TRUE(hexlify(input1, output1));
+  EXPECT_EQ(output1, "30313233");
+
+  fbstring input2 = "abcdefg";
+  input2[1] = 0;
+  input2[3] = 0xff;
+  input2[5] = 0xb6;
+  fbstring output2;
+  EXPECT_TRUE(hexlify(input2, output2));
+  EXPECT_EQ(output2, "610063ff65b667");
+}
+
+TEST(String, unhexlify) {
+  string input1 = "30313233";
+  string output1;
+  EXPECT_TRUE(unhexlify(input1, output1));
+  EXPECT_EQ(output1, "0123");
+
+  fbstring input2 = "610063ff65b667";
+  fbstring output2;
+  EXPECT_TRUE(unhexlify(input2, output2));
+  EXPECT_EQ(output2.size(), 7);
+  EXPECT_EQ(output2[0], 'a');
+  EXPECT_EQ(output2[1], 0);
+  EXPECT_EQ(output2[2], 'c');
+  EXPECT_EQ(output2[3] & 0xff, 0xff);
+  EXPECT_EQ(output2[4], 'e');
+  EXPECT_EQ(output2[5] & 0xff, 0xb6);
+  EXPECT_EQ(output2[6], 'g');
+
+  string input3 = "x";
+  string output3;
+  EXPECT_FALSE(unhexlify(input3, output3));
+
+  string input4 = "xy";
+  string output4;
+  EXPECT_FALSE(unhexlify(input4, output4));
+}
+
+TEST(String, backslashify) {
+  EXPECT_EQ("abc", string("abc"));
+  EXPECT_EQ("abc", backslashify(string("abc")));
+  EXPECT_EQ("abc\\r", backslashify(string("abc\r")));
+  EXPECT_EQ("abc\\x0d", backslashify(string("abc\r"), true));
+  EXPECT_EQ("\\0\\0", backslashify(string(2, '\0')));
+}
+
+TEST(String, humanify) {
+  // Simple cases; output is obvious.
+  EXPECT_EQ("abc", humanify(string("abc")));
+  EXPECT_EQ("abc\\\\r", humanify(string("abc\\r")));
+  EXPECT_EQ("0xff", humanify(string("\xff")));
+  EXPECT_EQ("abc\\xff", humanify(string("abc\xff")));
+  EXPECT_EQ("abc\\b", humanify(string("abc\b")));
+  EXPECT_EQ("0x00", humanify(string(1, '\0')));
+  EXPECT_EQ("0x0000", humanify(string(2, '\0')));
+
+
+  // Mostly printable, so backslash!  80, 60, and 40% printable, respectively
+  EXPECT_EQ("aaaa\\xff", humanify(string("aaaa\xff")));
+  EXPECT_EQ("aaa\\xff\\xff", humanify(string("aaa\xff\xff")));
+  EXPECT_EQ("aa\\xff\\xff\\xff", humanify(string("aa\xff\xff\xff")));
+
+  // 20% printable, and the printable portion isn't the prefix; hexify!
+  EXPECT_EQ("0xff61ffffff", humanify(string("\xff" "a\xff\xff\xff")));
+
+  // Same as previous, except swap first two chars; prefix is
+  // printable and within the threshold, so backslashify.
+  EXPECT_EQ("a\\xff\\xff\\xff\\xff", humanify(string("a\xff\xff\xff\xff")));
+
+  // Just too much unprintable; hex, despite prefix.
+  EXPECT_EQ("0x61ffffffffff", humanify(string("a\xff\xff\xff\xff\xff")));
+}
+
 //////////////////////////////////////////////////////////////////////
 
 BENCHMARK(splitOnSingleChar, iters) {

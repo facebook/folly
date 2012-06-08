@@ -128,6 +128,74 @@ void stringPrintf(std::string* out, const char* fmt, ...)
 std::string& stringAppendf(std::string* output, const char* format, ...)
   __attribute__ ((format (printf, 2, 3)));
 
+/**
+ * Backslashify a string, that is, replace non-printable characters
+ * with C-style (but NOT C compliant) "\xHH" encoding.  If hex_style
+ * is false, then shorthand notations like "\0" will be used instead
+ * of "\x00" for the most common backslash cases.
+ *
+ * There are two forms, one returning the input string, and one
+ * creating output in the specified output string.
+ *
+ * This is mainly intended for printing to a terminal, so it is not
+ * particularly optimized.
+ *
+ * Do *not* use this in situations where you expect to be able to feed
+ * the string to a C or C++ compiler, as there are nuances with how C
+ * parses such strings that lead to failures.  This is for display
+ * purposed only.  If you want a string you can embed for use in C or
+ * C++, use cEscape instead.  This function is for display purposes
+ * only.
+ */
+template <class String1, class String2>
+void backslashify(const String1& input, String2& output, bool hex_style=false);
+
+template <class String>
+String backslashify(const String& input, bool hex_style=false) {
+  String output;
+  backslashify(input, output, hex_style);
+  return output;
+}
+
+/**
+ * Take a string and "humanify" it -- that is, make it look better.
+ * Since "better" is subjective, caveat emptor.  The basic approach is
+ * to count the number of unprintable characters.  If there are none,
+ * then the output is the input.  If there are relatively few, or if
+ * there is a long "enough" prefix of printable characters, use
+ * backslashify.  If it is mostly binary, then simply hex encode.
+ *
+ * This is an attempt to make a computer smart, and so likely is wrong
+ * most of the time.
+ */
+template <class String1, class String2>
+void humanify(const String1& input, String2& output);
+
+template <class String>
+String humanify(const String& input) {
+  String output;
+  humanify(input, output);
+  return output;
+}
+
+/**
+ * Same functionality as Python's binascii.hexlify.  Returns true
+ * on successful conversion.
+ *
+ * If append_output is true, append data to the output rather than
+ * replace it.
+ */
+template<class InputString, class OutputString>
+bool hexlify(const InputString& input, OutputString& output,
+             bool append=false);
+
+/**
+ * Same functionality as Python's binascii.unhexlify.  Returns true
+ * on successful conversion.
+ */
+template<class InputString, class OutputString>
+bool unhexlify(const InputString& input, OutputString& output);
+
 /*
  * A pretty-printer for numbers that appends suffixes of units of the
  * given type.  It prints 4 sig-figs of value with the most
