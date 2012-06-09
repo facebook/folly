@@ -116,7 +116,7 @@ Format specification:
 `[[fill] align] [sign] ["#"] ["0"] [width] [","] ["." precision] [type]`
 
 - `fill` (may only be specified if `align` is also specified): pad with this
-  character (' ' (space) or '`0`' (zero) might be useful; space is default)
+  character ('` `' (space) or '`0`' (zero) might be useful; space is default)
 - `align`: one of '`<`', '`>`', '`=`', '`^`':
     - '`<`': left-align (default for most objects)
     - '`>`': right-align (default for numbers)
@@ -126,7 +126,7 @@ Format specification:
 - `sign`: one of '`+`', '`-`', ' ' (space) (only valid for numbers)
     - '`+`': output '`+`' if positive or zero, '`-`' if negative
     - '`-`': output '`-`' if negative, nothing otherwise (default)
-    - ' ' (space): output ' ' (space) if positive or zero, '`-`' if negative
+    - '` `' (space): output '` `' (space) if positive or zero, '`-`' if negative
 - '`#`': output base prefix (`0` for octal, `0b` or `0B` for binary, `0x` or
   `0X` for hexadecimal; only valid for integers)
 - '`0`': 0-pad after sign, same as specifying "`0=`" as the `fill` and
@@ -163,8 +163,8 @@ Presentation formats:
 - Floating point (`float`, `double`; `long double` is not implemented):
     - '`e`': scientific notation using '`e`' as exponent character
     - '`E`': scientific notation using '`E`' as exponent character
-    - '`f'`: fixed point
-    - '`F'`: fixed point (same as '`f`')
+    - '`f`': fixed point
+    - '`F`': fixed point (same as '`f`')
     - '`g`': general; use either '`f`' or '`e`' depending on magnitude (default)
     - '`G`': general; use either '`f`' or '`E`' depending on magnitude
     - '`n`': locale-aware version of '`g`' (currently same as '`g`')
@@ -174,7 +174,7 @@ Presentation formats:
 ### Extension
 ***
 
-You can extend Formatter for your own class by providing a specialization for
+You can extend `format` for your own class by providing a specialization for
 `folly::FormatValue`.  See `folly/Format.h` and `folly/FormatArg.h` for
 details, and the existing specialization for `folly::dynamic` in
 `folly/dynamic-inl.h` for an implementation example.
