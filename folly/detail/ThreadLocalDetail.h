@@ -271,8 +271,8 @@ struct StaticMeta {
           prevSize < jemallocMinInPlaceExpandable ||
           (rallocm(
               static_cast<void**>(static_cast<void*>(&threadEntry_.elements)),
-              NULL, newSize, 0, ALLOCM_NO_MOVE | ALLOCM_ZERO) !=
-           ALLOCM_SUCCESS)) {
+              NULL, newSize * sizeof(ElementWrapper), 0,
+              ALLOCM_NO_MOVE | ALLOCM_ZERO) != ALLOCM_SUCCESS)) {
         // Sigh, must realloc, but we can't call realloc here, as elements is
         // still linked in meta, so another thread might access invalid memory
         // after realloc succeeds.  We'll copy by hand and update threadEntry_
