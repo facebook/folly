@@ -25,6 +25,7 @@
 #include <cstring>
 #include <memory>
 #include <limits>
+#include <type_traits>
 
 namespace folly {
 
@@ -175,6 +176,17 @@ namespace folly {
  * relatively fast, and the cost of allocating IOBuf objects on the heap and
  * cloning new IOBufs should be relatively cheap.
  */
+namespace detail {
+// Is T a unique_ptr<> to a standard-layout type?
+template <class T, class Enable=void> struct IsUniquePtrToSL
+  : public std::false_type { };
+template <class T, class D>
+struct IsUniquePtrToSL<
+  std::unique_ptr<T, D>,
+  typename std::enable_if<std::is_standard_layout<T>::value>::type>
+  : public std::true_type { };
+}  // namespace detail
+
 class IOBuf {
  public:
   typedef void (*FreeFunction)(void* buf, void* userData);
@@ -214,6 +226,32 @@ class IOBuf {
                                               FreeFunction freeFn = NULL,
                                               void* userData = NULL,
                                               bool freeOnError = true);
+
+  /**
+   * Create a new IOBuf pointing to an existing data buffer made up of
+   * count objects of a given standard-layout type.
+   *
+   * This is dangerous -- it is essentially equivalent to doing
+   * reinterpret_cast<unsigned char*> on your data -- but it's often useful
+   * for serialization / deserialization.
+   *
+   * The new IOBuffer will assume ownership of the buffer, and free it
+   * appropriately (by calling the UniquePtr's custom deleter, or by calling
+   * delete or delete[] appropriately if there is no custom deleter)
+   * when the buffer is destroyed.  The custom deleter, if any, must never
+   * throw exceptions.
+   *
+   * The IOBuf data pointer will initially point to the start of the buffer,
+   * and the length will be the full capacity of the buffer (count *
+   * sizeof(T)).
+   *
+   * On error, std::bad_alloc will be thrown, and the buffer will be freed
+   * before throwing the error.
+   */
+  template <class UniquePtr>
+  static typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
+                                 std::unique_ptr<IOBuf>>::type
+  takeOwnership(UniquePtr&& buf, size_t count=1);
 
   /**
    * Create a new IOBuf object that points to an existing user-owned buffer.
@@ -954,7 +992,48 @@ class IOBuf {
     ExternalBuf ext_;
     InternalBuf int_;
   };
+
+  struct DeleterBase {
+    virtual ~DeleterBase() { }
+    virtual void dispose(void* p) = 0;
+  };
+
+  template <class UniquePtr>
+  struct UniquePtrDeleter : public DeleterBase {
+    typedef typename UniquePtr::pointer Pointer;
+    typedef typename UniquePtr::deleter_type Deleter;
+
+    explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)){ }
+    void dispose(void* p) {
+      try {
+        deleter_(static_cast<Pointer>(p));
+        delete this;
+      } catch (...) {
+        abort();
+      }
+    }
+
+   private:
+    Deleter deleter_;
+  };
+
+  static void freeUniquePtrBuffer(void* ptr, void* userData) {
+    static_cast<DeleterBase*>(userData)->dispose(ptr);
+  }
 };
+
+template <class UniquePtr>
+typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
+                        std::unique_ptr<IOBuf>>::type
+IOBuf::takeOwnership(UniquePtr&& buf, size_t count) {
+  size_t size = count * sizeof(typename UniquePtr::element_type);
+  CHECK_LT(size, size_t(std::numeric_limits<uint32_t>::max()));
+  auto deleter = new UniquePtrDeleter<UniquePtr>(buf.get_deleter());
+  return takeOwnership(buf.release(),
+                       size,
+                       &IOBuf::freeUniquePtrBuffer,
+                       deleter);
+}
 
 inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
     const void* data, uint32_t size, uint32_t headroom,

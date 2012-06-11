@@ -517,6 +517,88 @@ TEST(IOBuf, copyBuffer) {
   EXPECT_LE(2, buf->tailroom());
 }
 
+namespace {
+
+int customDeleterCount = 0;
+int destructorCount = 0;
+struct OwnershipTestClass {
+  explicit OwnershipTestClass(int v = 0) : val(v) { }
+  ~OwnershipTestClass() {
+    ++destructorCount;
+  }
+  int val;
+};
+
+typedef std::function<void(OwnershipTestClass*)> CustomDeleter;
+
+void customDelete(OwnershipTestClass* p) {
+  ++customDeleterCount;
+  delete p;
+}
+
+void customDeleteArray(OwnershipTestClass* p) {
+  ++customDeleterCount;
+  delete[] p;
+}
+
+}  // namespace
+
+TEST(IOBuf, takeOwnershipUniquePtr) {
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass> p(new OwnershipTestClass());
+  }
+  EXPECT_EQ(1, destructorCount);
+
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass[]> p(new OwnershipTestClass[2]);
+  }
+  EXPECT_EQ(2, destructorCount);
+
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass> p(new OwnershipTestClass());
+    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(std::move(p)));
+    EXPECT_EQ(sizeof(OwnershipTestClass), buf->length());
+    EXPECT_EQ(0, destructorCount);
+  }
+  EXPECT_EQ(1, destructorCount);
+
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass[]> p(new OwnershipTestClass[2]);
+    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(std::move(p), 2));
+    EXPECT_EQ(2 * sizeof(OwnershipTestClass), buf->length());
+    EXPECT_EQ(0, destructorCount);
+  }
+  EXPECT_EQ(2, destructorCount);
+
+  customDeleterCount = 0;
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass, CustomDeleter>
+      p(new OwnershipTestClass(), customDelete);
+    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(std::move(p)));
+    EXPECT_EQ(sizeof(OwnershipTestClass), buf->length());
+    EXPECT_EQ(0, destructorCount);
+  }
+  EXPECT_EQ(1, destructorCount);
+  EXPECT_EQ(1, customDeleterCount);
+
+  customDeleterCount = 0;
+  destructorCount = 0;
+  {
+    std::unique_ptr<OwnershipTestClass[], CustomDeleter>
+      p(new OwnershipTestClass[2], customDeleteArray);
+    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(std::move(p), 2));
+    EXPECT_EQ(2 * sizeof(OwnershipTestClass), buf->length());
+    EXPECT_EQ(0, destructorCount);
+  }
+  EXPECT_EQ(2, destructorCount);
+  EXPECT_EQ(1, customDeleterCount);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
