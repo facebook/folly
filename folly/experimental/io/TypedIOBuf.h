@@ -17,6 +17,8 @@
 #ifndef FOLLY_IO_TYPEDIOBUF_H_
 #define FOLLY_IO_TYPEDIOBUF_H_
 
+#include <algorithm>
+#include <iterator>
 #include <type_traits>
 #include "folly/experimental/io/IOBuf.h"
 
@@ -104,6 +106,33 @@ class TypedIOBuf {
   }
   void reserve(uint32_t minHeadroom, uint32_t minTailroom) {
     buf_->reserve(smul(minHeadroom), smul(minTailroom));
+  }
+
+  /**
+   * Simple wrapper to make it easier to treat this TypedIOBuf as an array of
+   * T.
+   */
+  const T& operator[](ssize_t idx) const {
+    assert(idx >= 0 && idx < length());
+    return data()[idx];
+  }
+
+  /**
+   * Append one element.
+   */
+  void push(const T& data) {
+    push(&data, &data + 1);
+  }
+
+  /**
+   * Append multiple elements in a sequence; will call distance().
+   */
+  template <class IT>
+  void push(IT begin, IT end) {
+    auto n = std::distance(begin, end);
+    reserve(headroom(), n);
+    std::copy(begin, end, writableTail());
+    append(n);
   }
 
   // Movable

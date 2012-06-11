@@ -36,6 +36,16 @@ class IOBufQueue {
     bool cacheChainLength;
   };
 
+  /**
+   * Commonly used Options, currently the only possible value other than
+   * the default.
+   */
+  static Options cacheChainLength() {
+    Options options;
+    options.cacheChainLength = true;
+    return options;
+  }
+
   explicit IOBufQueue(const Options& options = Options());
 
   /**

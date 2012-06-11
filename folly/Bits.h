@@ -329,6 +329,20 @@ struct EndianInt : public detail::EndianIntBase<T> {
 
 class Endian {
  public:
+  enum class Order : uint8_t {
+    LITTLE,
+    BIG
+  };
+
+  static constexpr Order order =
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    Order::LITTLE;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    Order::BIG;
+#else
+# error Your machine uses a weird endianness!
+#endif  /* __BYTE_ORDER */
+
   template <class T> static T swap(T x) {
     return detail::EndianInt<T>::swap(x);
   }
