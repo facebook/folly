@@ -599,6 +599,21 @@ TEST(IOBuf, takeOwnershipUniquePtr) {
   EXPECT_EQ(1, customDeleterCount);
 }
 
+TEST(IOBuf, Alignment) {
+  // max_align_t doesn't exist in gcc 4.6.2
+  struct MaxAlign {
+    char c;
+  } __attribute__((aligned));
+  size_t alignment = alignof(MaxAlign);
+
+  std::vector<size_t> sizes {0, 1, 64, 256, 1024, 1 << 10};
+  for (size_t size : sizes) {
+    auto buf = IOBuf::create(size);
+    uintptr_t p = reinterpret_cast<uintptr_t>(buf->data());
+    EXPECT_EQ(0, p & (alignment - 1)) << "size=" << size;
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

@@ -919,7 +919,7 @@ class IOBuf {
   };
   struct InternalBuf {
     uint32_t capacity;
-    uint8_t buf[];
+    uint8_t buf[] __attribute__((aligned));
   };
 
   // The maximum size for an IOBuf object, including any internal data buffer
