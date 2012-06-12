@@ -14,9 +14,13 @@ TESTS= \
 	bits_test \
 	bit_iterator_test
 
-lib_LTLIBRARIES = libgtestmain.la
+lib_LTLIBRARIES = libgtestmain.la libgtest.la
+
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
+
+libgtest_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
+libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
 
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
 		 FBVectorTestBenchmarks.cpp.h
@@ -109,23 +113,56 @@ endian_test_SOURCES = EndianTest.cpp
 endian_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += endian_test
 
-# needs externals/glog to use third-party glog
-# rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
-# rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
-# TESTS += rw_spinlock_test
+rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
+rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
+TESTS += rw_spinlock_test
 
 synchronized_test_SOURCES = SynchronizedTest.cpp
 synchronized_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += synchronized_test
 
-# needs externals/glog to use third-party glog
-# concurrent_skiplist_test_SOURCES = ConcurrentSkipListTest.cpp
-# concurrent_skiplist_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
-# TESTS += concurrent_skiplist_test
+concurrent_skiplist_test_SOURCES = ConcurrentSkipListTest.cpp
+concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
+TESTS += concurrent_skiplist_test
 
-# needs externals/glog to use third-party glog
-# concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
-# concurrent_skiplist_benchmark_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
-# noinst_PROGRAMS += concurrent_skiplist_benchmark
+concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
+concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
+noinst_PROGRAMS += concurrent_skiplist_benchmark
+
+histogram_test_SOURCES = HistogramTest.cpp
+histogram_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += histogram_test
+
+group_varint_test_SOURCES = GroupVarintTest.cpp
+group_varint_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += group_varint_test
+
+map_util_test_SOURCES = MapUtilTest.cpp
+map_util_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += map_util_test
+
+string_test_SOURCES = StringTest.cpp
+string_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+TESTS += string_test
+
+producer_consumer_queue_test_SOURCES = ProducerConsumerQueueTest.cpp
+producer_consumer_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += producer_consumer_queue_test
+
+atomic_hash_array_test_SOURCES = AtomicHashArrayTest.cpp
+atomic_hash_array_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += atomic_hash_array_test
+
+atomic_hash_map_test_SOURCES = AtomicHashMapTest.cpp
+atomic_hash_map_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+TESTS += atomic_hash_map_test
+
+format_test_SOURCES = FormatTest.cpp
+format_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+TESTS += format_test
+
+fingerprint_test_SOURCES = FingerprintTest.cpp
+fingerprint_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollyfingerprint.la $(top_builddir)/libfollybenchmark.la
+TESTS += fingerprint_test
 
 check_PROGRAMS= $(TESTS)

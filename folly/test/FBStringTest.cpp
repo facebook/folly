@@ -19,6 +19,8 @@
 
 #include "folly/FBString.h"
 
+#include <cstdlib>
+
 #include <list>
 #include <fstream>
 #include <boost/algorithm/string.hpp>
@@ -879,8 +881,11 @@ massa, ut accumsan magna. Donec imperdiet tempor nisi et \n\
 laoreet. Phasellus lectus quam, ultricies ut tincidunt in, dignissim \n\
 id eros. Mauris vulputate tortor nec neque pellentesque sagittis quis \n\
 sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
-  const char* f = "/tmp/fbstring_testing";
-  {
+  char f[] = "/tmp/fbstring_testing.XXXXXX";
+  int fd = mkstemp(f);
+  EXPECT_TRUE(fd > 0);
+  if (fd > 0) {
+    close(fd);  // Yeah
     std::ofstream out(f);
     if (!(out << s1)) {
       EXPECT_TRUE(0) << "Couldn't write to temp file.";
@@ -889,12 +894,15 @@ sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
   }
   vector<fbstring> v;
   boost::split(v, s1, boost::is_any_of("\n"));
-  ifstream input(f);
-  fbstring line;
-  FOR_EACH (i, v) {
-    EXPECT_TRUE(getline(input, line));
-    EXPECT_EQ(line, *i);
+  {
+    ifstream input(f);
+    fbstring line;
+    FOR_EACH (i, v) {
+      EXPECT_TRUE(getline(input, line));
+      EXPECT_EQ(line, *i);
+    }
   }
+  unlink(f);
 }
 
 TEST(FBString, testMoveCtor) {

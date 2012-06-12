@@ -2,83 +2,117 @@ SUBDIRS = . test
 
 ACLOCAL_AMFLAGS = -I m4
 
+noinst_PROGRAMS = generate_fingerprint_tables
+generate_fingerprint_tables_SOURCES = build/GenerateFingerprintTables.cpp
+generate_fingerprint_tables_LDADD = libfolly.la
+
 lib_LTLIBRARIES = \
 	libfolly.la \
 	libfollybenchmark.la \
-	libfollytimeout_queue.la
+	libfollytimeout_queue.la \
+	libfollyfingerprint.la
 
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
-	FBVector.h \
-	detail/ThreadLocalDetail.h \
-	detail/DiscriminatedPtrDetail.h \
+	Arena.h \
+	Arena-inl.h \
+	AtomicHashArray.h \
+	AtomicHashArray-inl.h \
+	AtomicHashMap.h \
+	AtomicHashMap-inl.h \
+	Benchmark.h \
+	Bits.h \
+	ConcurrentSkipList.h \
+	ConcurrentSkipList-inl.h \
+	Conv.h \
 	detail/AtomicHashUtils.h \
 	detail/BitIteratorDetail.h \
+	detail/DiscriminatedPtrDetail.h \
+	detail/FingerprintPolynomial.h \
 	detail/GroupVarintDetail.h \
-	IntrusiveList.h \
-	TimeoutQueue.h \
-	String.h \
-	PackedSyncPtr.h \
-	Conv.h \
-	ThreadLocal.h \
-	ProducerConsumerQueue.h \
-	Histogram-inl.h \
-	ThreadCachedInt.h \
-	ConcurrentSkipList.h \
-	json.h \
-	folly-config.h \
-	FBString.h \
-	Unicode.h \
-	test/function_benchmark/test_functions.h \
-	test/function_benchmark/benchmark_impl.h \
-	test/FBStringTestBenchmarks.cpp.h \
-	test/SynchronizedTestLib.h \
-	test/FBVectorTestBenchmarks.cpp.h \
-	test/SynchronizedTestLib-inl.h \
-	Synchronized.h \
-	Malloc.h \
-	dynamic.h \
-	AtomicHashArray.h \
-	dynamic-inl.h \
-	Bits.h \
-	sorted_vector_types.h \
-	Hash.h \
+	detail/SlowFingerprint.h \
+	detail/ThreadLocalDetail.h \
 	DiscriminatedPtr.h \
-	ConcurrentSkipList-inl.h \
-	Random.h \
-	GroupVarint.h \
-	Range.h \
-	Benchmark.h \
-	Likely.h \
-	Histogram.h \
-	AtomicHashMap.h \
-	Portability.h \
-	AtomicHashArray-inl.h \
+	dynamic.h \
+	dynamic-inl.h \
 	eventfd.h \
-	SmallLocks.h \
-	ScopeGuard.h \
-	Traits.h \
-	RWSpinLock.h \
-	small_vector.h \
+	FBString.h \
+	FBVector.h \
+	Fingerprint.h \
+	folly-config.h \
 	Foreach.h \
-	AtomicHashMap-inl.h \
-	MapUtil.h
+	FormatArg.h \
+	Format.h \
+	Format-inl.h \
+	GroupVarint.h \
+	Hash.h \
+	Histogram.h \
+	Histogram-inl.h \
+	IntrusiveList.h \
+	json.h \
+	Likely.h \
+	Malloc.h \
+	MapUtil.h \
+	PackedSyncPtr.h \
+	Portability.h \
+	Preprocessor.h \
+	ProducerConsumerQueue.h \
+	Random.h \
+	Range.h \
+	RWSpinLock.h \
+	ScopeGuard.h \
+	SmallLocks.h \
+	small_vector.h \
+	sorted_vector_types.h \
+	StlAllocator.h \
+	String.h \
+	String-inl.h \
+	Synchronized.h \
+	test/FBStringTestBenchmarks.cpp.h \
+	test/FBVectorTestBenchmarks.cpp.h \
+	test/function_benchmark/benchmark_impl.h \
+	test/function_benchmark/test_functions.h \
+	test/SynchronizedTestLib.h \
+	test/SynchronizedTestLib-inl.h \
+	ThreadCachedArena.h \
+	ThreadCachedInt.h \
+	ThreadLocal.h \
+	TimeoutQueue.h \
+	Traits.h \
+	Unicode.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
+
+EscapeTables.cpp: build/generate_escape_tables.py
+	build/generate_escape_tables.py
+
+GroupVarintTables.cpp: build/generate_varint_tables.py
+	build/generate_varint_tables.py
 
 libfolly_la_SOURCES = \
 	Random.cpp \
 	Range.cpp \
 	Unicode.cpp \
 	Conv.cpp \
-	Format.cpp \
-	FormatTables.cpp \
-	String.cpp \
 	json.cpp \
 	dynamic.cpp \
+	GroupVarint.cpp \
+	GroupVarintTables.cpp \
+	EscapeTables.cpp \
+	ThreadCachedArena.cpp \
+	Format.cpp \
+	FormatTables.cpp \
+	String.cpp
+
 libfolly_la_LIBADD = $(BOOST_THREAD_LIBS) -lpthread
+
+FingerprintTables.cpp: generate_fingerprint_tables
+	./generate_fingerprint_tables
+
+libfollyfingerprint_la_SOURCES = \
+	FingerprintTables.cpp
 
 libfollybenchmark_la_SOURCES = Benchmark.cpp
 libfollybenchmark_la_LIBADD = -lboost_regex -lpthread -lrt

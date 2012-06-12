@@ -18,7 +18,7 @@
 
 #include <set>
 #include <vector>
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
@@ -208,10 +208,10 @@ TEST(ConcurrentSkipList, SequentialAccess) {
 void testConcurrentAdd(int numThreads) {
   auto skipList(SkipListType::create(kHeadHeight));
 
-  vector<boost::thread> threads;
+  vector<std::thread> threads;
   vector<SetType> verifiers(numThreads);
   for (int i = 0; i < numThreads; ++i) {
-    threads.push_back(boost::thread(
+    threads.push_back(std::thread(
           &randomAdding, 100, skipList, &verifiers[i], kMaxValue));
   }
   for (int i = 0; i < threads.size(); ++i) {
@@ -238,10 +238,10 @@ void testConcurrentRemoval(int numThreads, int maxValue) {
     skipList.add(i);
   }
 
-  vector<boost::thread> threads;
+  vector<std::thread> threads;
   vector<SetType > verifiers(numThreads);
   for (int i = 0; i < numThreads; ++i) {
-    threads.push_back(boost::thread(
+    threads.push_back(std::thread(
           &randomRemoval, 100, skipList, &verifiers[i], maxValue));
   }
   FOR_EACH(t, threads) {
@@ -284,24 +284,24 @@ static void testConcurrentAccess(
     std::sort(skipValues[i].begin(), skipValues[i].end());
   }
 
-  vector<boost::thread> threads;
+  vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
     switch (i % 8) {
       case 0:
       case 1:
-        threads.push_back(boost::thread(
+        threads.push_back(std::thread(
               randomAdding, numInsertions, skipList, &verifiers[i], maxValue));
         break;
       case 2:
-        threads.push_back(boost::thread(
+        threads.push_back(std::thread(
               randomRemoval, numDeletions, skipList, &verifiers[i], maxValue));
         break;
       case 3:
-        threads.push_back(boost::thread(
+        threads.push_back(std::thread(
               concurrentSkip, &skipValues[i], skipList));
         break;
       default:
-        threads.push_back(boost::thread(sumAllValues, skipList, &sums[i]));
+        threads.push_back(std::thread(sumAllValues, skipList, &sums[i]));
         break;
     }
   }

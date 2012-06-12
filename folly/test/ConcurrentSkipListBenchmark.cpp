@@ -18,9 +18,9 @@
 
 #include <map>
 #include <set>
+#include <thread>
 
 #include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -77,7 +77,7 @@ void BM_IterateOverSet(int iters, int size) {
     if (iter == a_set.end()) iter = a_set.begin();
   }
   BENCHMARK_SUSPEND {
-    VLOG(20) << "sum = " << sum;
+    // VLOG(20) << "sum = " << sum;
   }
 }
 
@@ -98,7 +98,7 @@ void BM_IterateSkipList(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << "sum = " << sum;
+    // VLOG(20) << "sum = " << sum;
   }
 }
 
@@ -119,7 +119,7 @@ void BM_SetMerge(int iters, int size) {
     if (b_set.find(*it) != b_set.end()) mergedSum += *it;
   }
   BENCHMARK_SUSPEND {
-    VLOG(20) << mergedSum;
+    // VLOG(20) << mergedSum;
   }
 }
 
@@ -143,7 +143,7 @@ void BM_CSLMergeLookup(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << mergedSum;
+    // VLOG(20) << mergedSum;
   }
 }
 
@@ -180,7 +180,7 @@ void BM_CSLMergeIntersection(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << mergedSum;
+    // VLOG(20) << mergedSum;
   }
 }
 
@@ -199,7 +199,7 @@ void BM_SetContainsNotFound(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 }
 
@@ -224,7 +224,7 @@ void BM_SetContainsFound(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 }
 
@@ -248,7 +248,7 @@ void BM_CSLContainsFound(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 }
 
@@ -268,7 +268,7 @@ void BM_CSLContainsNotFound(int iters, int size) {
   }
 
   BENCHMARK_SUSPEND {
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 }
 
@@ -410,7 +410,7 @@ class ConcurrentAccessData {
     for (int i = 0; i < iters; ++i) {
       sum += accessSkipList(id, i);
     }
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 
   void runSet(int id, int iters) {
@@ -418,7 +418,7 @@ class ConcurrentAccessData {
     for (int i = 0; i < iters; ++i) {
       sum += accessSet(id, i);
     }
-    VLOG(20) << sum;
+    // VLOG(20) << sum;
   }
 
   bool accessSkipList(int64_t id, int t) {
@@ -484,11 +484,11 @@ static ConcurrentAccessData *mayInitTestData(int size) {
 void BM_ContentionCSL(int iters, int size) {
   BenchmarkSuspender susp;
   auto data = mayInitTestData(size);
-  std::vector<boost::thread> threads;
+  std::vector<std::thread> threads;
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(boost::thread(
+    threads.push_back(std::thread(
           &ConcurrentAccessData::runSkipList, data, i, iters));
   }
   FOR_EACH(t, threads) {
@@ -499,11 +499,11 @@ void BM_ContentionCSL(int iters, int size) {
 void BM_ContentionStdSet(int iters, int size) {
   BenchmarkSuspender susp;
   auto data = mayInitTestData(size);
-  std::vector<boost::thread> threads;
+  std::vector<std::thread> threads;
   susp.dismiss();
 
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(boost::thread(
+    threads.push_back(std::thread(
           &ConcurrentAccessData::runSet, data, i, iters));
   }
   FOR_EACH(t, threads) {

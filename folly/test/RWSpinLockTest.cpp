@@ -21,8 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <vector>
-
-#include <boost/thread.hpp>
+#include <thread>
 
 #include "gtest/gtest.h"
 #include <gflags/gflags.h>
@@ -66,7 +65,7 @@ static void run(RWSpinLockType* lock) {
       ++reads;
     }
   }
-  VLOG(0) << "total reads: " << reads << "; total writes: " << writes;
+  // VLOG(0) << "total reads: " << reads << "; total writes: " << writes;
 }
 
 
@@ -152,9 +151,9 @@ TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
   RWSpinLockType l;
   srand(time(NULL));
 
-  std::vector<boost::thread> threads;
+  std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(boost::thread(&run<RWSpinLockType>, &l));
+    threads.push_back(std::thread(&run<RWSpinLockType>, &l));
   }
 
   sleep(1);
@@ -223,9 +222,9 @@ TEST(RWSpinLock, concurrent_holder_test) {
     }
   };
 
-  std::vector<boost::thread> threads;
+  std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(boost::thread(go));
+    threads.push_back(std::thread(go));
   }
 
   sleep(5);
