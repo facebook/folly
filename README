@@ -40,6 +40,7 @@ Dependencies
     - g++
     - automake
     - autoconf
+    - autoconf-archive
     - libtool
     - libboost1.46-all-dev
     - libgoogle-glog-dev
@@ -53,6 +54,7 @@ Dependencies
     - gcc
     - gcc-c++
     - autoconf
+    - autoconf-archive
     - automake
     - boost-devel
     - libtool
