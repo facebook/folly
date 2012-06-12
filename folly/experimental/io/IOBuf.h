@@ -405,7 +405,7 @@ class IOBuf {
   const uint8_t* bufferEnd() const {
     return (flags_ & kFlagExt) ?
       ext_.buf + ext_.capacity :
-      int_.buf + int_.capacity;
+      int_.buf + kMaxInternalDataSize;
   }
 
   /**
@@ -415,7 +415,7 @@ class IOBuf {
    * method to get the length of the actual valid data in this IOBuf.
    */
   uint32_t capacity() const {
-    return (flags_ & kFlagExt) ?  ext_.capacity : int_.capacity;
+    return (flags_ & kFlagExt) ?  ext_.capacity : kMaxInternalDataSize;
   }
 
   /**
@@ -918,7 +918,6 @@ class IOBuf {
     SharedInfo* sharedInfo;
   };
   struct InternalBuf {
-    uint32_t capacity;
     uint8_t buf[] __attribute__((aligned));
   };
 

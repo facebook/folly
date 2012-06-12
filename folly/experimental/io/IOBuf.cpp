@@ -92,7 +92,7 @@ unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
       throw std::bad_alloc();
     }
 
-    uint8_t* bufEnd = static_cast<uint8_t*>(buf) +kMaxIOBufSize;
+    uint8_t* bufEnd = static_cast<uint8_t*>(buf) + kMaxIOBufSize;
     unique_ptr<IOBuf> iobuf(new(buf) IOBuf(bufEnd));
     assert(iobuf->capacity() >= capacity);
     return iobuf;
@@ -164,8 +164,8 @@ IOBuf::IOBuf(uint8_t* end)
     data_(int_.buf),
     length_(0),
     flags_(0) {
-  int_.capacity = end - int_.buf;
-  assert(int_.capacity <= kMaxInternalDataSize);
+  assert(end - int_.buf == kMaxInternalDataSize);
+  assert(end - reinterpret_cast<uint8_t*>(this) == kMaxIOBufSize);
 }
 
 IOBuf::IOBuf(ExtBufTypeEnum type,
@@ -274,7 +274,7 @@ unique_ptr<IOBuf> IOBuf::cloneOne() const {
   } else {
     // We have an internal data buffer that cannot be shared
     // Allocate a new IOBuf and copy the data into it.
-    unique_ptr<IOBuf> iobuf(IOBuf::create(int_.capacity));
+    unique_ptr<IOBuf> iobuf(IOBuf::create(kMaxInternalDataSize));
     assert((iobuf->flags_ & kFlagExt) == 0);
     iobuf->data_ += headroom();
     memcpy(iobuf->data_, data_, length_);
