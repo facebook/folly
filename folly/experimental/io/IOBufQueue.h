@@ -115,6 +115,16 @@ class IOBufQueue {
   void postallocate(uint32_t n);
 
   /**
+   * Obtain a writable block of n contiguous bytes, allocating more space
+   * if necessary, and mark it as used.  The caller can fill it later.
+   */
+  void* allocate(uint32_t n) {
+    void* p = preallocate(n, n).first;
+    postallocate(n);
+    return p;
+  }
+
+  /**
    * Split off the first n bytes of the queue into a separate IOBuf chain,
    * and transfer ownership of the new chain to the caller.  The IOBufQueue
    * retains ownership of everything after the split point.
