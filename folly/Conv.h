@@ -407,6 +407,135 @@ namespace detail {
     static const char*const value;
   };
 
+
+/*
+ * Lookup tables that converts from a decimal character value to an integral
+ * binary value, shifted by a decimal "shift" multiplier.
+ * For all character values in the range '0'..'9', the table at those
+ * index locations returns the actual decimal value shifted by the multiplier.
+ * For all other values, the lookup table returns an invalid OOR value.
+ */
+// Out-of-range flag value, larger than the largest value that can fit in
+// four decimal bytes (9999), but four of these added up together should
+// still not overflow uint16_t.
+constexpr int32_t OOR = 10000;
+
+__attribute__((aligned(16))) constexpr uint16_t shift1[] = {
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
+  1, 2, 3, 4, 5, 6, 7, 8, 9, OOR, OOR,
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
+  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+};
+
+__attribute__((aligned(16))) constexpr uint16_t shift10[] = {
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
+  10, 20, 30, 40, 50, 60, 70, 80, 90, OOR, OOR,
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
+  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+};
+
+__attribute__((aligned(16))) constexpr uint16_t shift100[] = {
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
+  100, 200, 300, 400, 500, 600, 700, 800, 900, OOR, OOR,
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
+  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+};
+
+__attribute__((aligned(16))) constexpr uint16_t shift1000[] = {
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  30
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, 0,         //  40
+  1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, OOR, OOR,
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  60
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  70
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  80
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  90
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 100
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 110
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 120
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 130
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 140
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 150
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 160
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 170
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 180
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 190
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 200
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 210
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 220
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 230
+  OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
+  OOR, OOR, OOR, OOR, OOR, OOR                       // 250
+};
+
 /**
  * String represented as a pair of pointers to char to unsigned
  * integrals. Assumes NO whitespace before or after, and also that the
@@ -441,80 +570,47 @@ namespace detail {
     // Here we know that the number won't overflow when
     // converted. Proceed without checks.
 
-    static const Tgt power10[20] = {
-      static_cast<Tgt>(10000000000000000000UL),
-      static_cast<Tgt>(1000000000000000000UL),
-      static_cast<Tgt>(100000000000000000UL),
-      static_cast<Tgt>(10000000000000000UL),
-      static_cast<Tgt>(1000000000000000UL),
-      static_cast<Tgt>(100000000000000UL),
-      static_cast<Tgt>(10000000000000UL),
-      static_cast<Tgt>(1000000000000UL),
-      static_cast<Tgt>(100000000000UL),
-      static_cast<Tgt>(10000000000UL),
-      static_cast<Tgt>(1000000000UL),
-      static_cast<Tgt>(100000000UL),
-      static_cast<Tgt>(10000000UL),
-      static_cast<Tgt>(1000000UL),
-      static_cast<Tgt>(100000UL),
-      static_cast<Tgt>(10000UL),
-      static_cast<Tgt>(1000UL),
-      static_cast<Tgt>(100UL),
-      static_cast<Tgt>(10UL),
-      static_cast<Tgt>(1UL),
-    };
-
-    size_t powIdx = sizeof(power10) / sizeof(*power10) - size;
     Tgt result = 0;
 
-    for (; e - b >= 4; b += 4, powIdx += 4) {
-      const auto c0 = static_cast<unsigned>(*b) - '0';
-      if (c0 >= 10) goto failure;
-      const auto r0 = power10[powIdx] * c0;
-      const auto c1 = static_cast<unsigned>(b[1]) - '0';
-      if (c1 >= 10) goto failure;
-      const auto r1 = power10[powIdx + 1] * c1;
-      const auto c2 = static_cast<unsigned>(b[2]) - '0';
-      if (c2 >= 10) goto failure;
-      const auto r2 = power10[powIdx + 2] * c2;
-      const auto c3 = static_cast<unsigned>(b[3]) - '0';
-      if (c3 >= 10) goto failure;
-      const auto r3 = power10[powIdx + 3] * c3;
-      result += r0 + r1 + r2 + r3;
+    for (; e - b >= 4; b += 4) {
+      result *= 10000;
+      const int32_t r0 = shift1000[static_cast<size_t>(b[0])];
+      const int32_t r1 = shift100[static_cast<size_t>(b[1])];
+      const int32_t r2 = shift10[static_cast<size_t>(b[2])];
+      const int32_t r3 = shift1[static_cast<size_t>(b[3])];
+      const auto sum = r0 + r1 + r2 + r3;
+      assert(sum < OOR && "Assumption: string only has digits");
+      result += sum;
     }
 
     switch (e - b) {
       case 3: {
-        const auto c0 = static_cast<unsigned>(*b) - '0';
-        if (c0 >= 10) goto failure;
-        const auto c1 = static_cast<unsigned>(b[1]) - '0';
-        if (c1 >= 10) goto failure;
-        const auto c2 = static_cast<unsigned>(b[2]) - '0';
-        if (c2 >= 10) goto failure;
-        return result + 100 * c0 + 10 * c1 + c2;
+        const int32_t r0 = shift100[static_cast<size_t>(b[0])];
+        const int32_t r1 = shift10[static_cast<size_t>(b[1])];
+        const int32_t r2 = shift1[static_cast<size_t>(b[2])];
+        const auto sum = r0 + r1 + r2;
+        assert(sum < OOR && "Assumption: string only has digits");
+        return result * 1000 + sum;
       }
       case 2: {
-        const auto c0 = static_cast<unsigned>(*b) - '0';
-        if (c0 >= 10) goto failure;
-        const auto c1 = static_cast<unsigned>(b[1]) - '0';
-        if (c1 >= 10) goto failure;
-        return result + 10 * c0 + c1;
+        const int32_t r0 = shift10[static_cast<size_t>(b[0])];
+        const int32_t r1 = shift1[static_cast<size_t>(b[1])];
+        const auto sum = r0 + r1;
+        assert(sum < OOR && "Assumption: string only has digits");
+        return result * 100 + sum;
       }
       case 1: {
-        const auto c0 = static_cast<unsigned>(*b) - '0';
-        if (c0 >= 10) goto failure;
-        return result + c0;
+        const int32_t sum = shift1[static_cast<size_t>(b[0])];
+        assert(sum < OOR && "Assumption: string only has digits");
+        return result * 10 + sum;
       }
     }
 
     assert(b == e);
     FOLLY_RANGE_CHECK(size > 0, "Found no digits to convert in input");
     return result;
-
-    failure:
-    throw std::range_error("Cannot convert string " +
-                           std::string(e - size, e) + " to integral.");
   }
+
 
   bool str_to_bool(StringPiece * src);
 
