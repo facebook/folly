@@ -19,11 +19,13 @@
 #include <set>
 #include <vector>
 #include <thread>
+#include <system_error>
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include "folly/ConcurrentSkipList.h"
 #include "folly/Foreach.h"
+#include "folly/String.h"
 #include "gtest/gtest.h"
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
@@ -210,9 +212,16 @@ void testConcurrentAdd(int numThreads) {
 
   vector<std::thread> threads;
   vector<SetType> verifiers(numThreads);
-  for (int i = 0; i < numThreads; ++i) {
-    threads.push_back(std::thread(
-          &randomAdding, 100, skipList, &verifiers[i], kMaxValue));
+  try {
+    for (int i = 0; i < numThreads; ++i) {
+      threads.push_back(std::thread(
+            &randomAdding, 100, skipList, &verifiers[i], kMaxValue));
+    }
+  } catch (const std::system_error& e) {
+    LOG(WARNING)
+      << "Caught " << exceptionStr(e)
+      << ": could only create " << threads.size() << " threads out of "
+      << numThreads;
   }
   for (int i = 0; i < threads.size(); ++i) {
     threads[i].join();
@@ -240,9 +249,16 @@ void testConcurrentRemoval(int numThreads, int maxValue) {
 
   vector<std::thread> threads;
   vector<SetType > verifiers(numThreads);
-  for (int i = 0; i < numThreads; ++i) {
-    threads.push_back(std::thread(
-          &randomRemoval, 100, skipList, &verifiers[i], maxValue));
+  try {
+    for (int i = 0; i < numThreads; ++i) {
+      threads.push_back(std::thread(
+            &randomRemoval, 100, skipList, &verifiers[i], maxValue));
+    }
+  } catch (const std::system_error& e) {
+    LOG(WARNING)
+      << "Caught " << exceptionStr(e)
+      << ": could only create " << threads.size() << " threads out of "
+      << numThreads;
   }
   FOR_EACH(t, threads) {
     (*t).join();
