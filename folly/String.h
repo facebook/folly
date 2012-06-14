@@ -283,13 +283,14 @@ inline fbstring exceptionStr(const std::exception& e) {
  * The split interface here supports different output types, selected
  * at compile time: StringPiece, fbstring, or std::string.  If you are
  * using a vector to hold the output, it detects the type based on
- * what your vector contains.
+ * what your vector contains.  If the output vector is not empty, split
+ * will append to the end of the vector.
  *
  * You can also use splitTo() to write the output to an arbitrary
  * OutputIterator (e.g. std::inserter() on a std::set<>), in which
  * case you have to tell the function the type.  (Rationale:
  * OutputIterators don't have a value_type, so we can't detect the
- * type in split without being told.)
+ * type in splitTo without being told.)
  *
  * Examples:
  *
@@ -300,9 +301,9 @@ inline fbstring exceptionStr(const std::exception& e) {
  *   folly::splitTo<StringPiece>(":", "asd:bsd:asd:csd",
  *    std::inserter(s, s.begin()));
  *
- * Split also takes a flag (ignoreEmpty) that indicates whether
- * adjacent tokens should be treated as one separator or not.  Note
- * that unlikely strtok() the default is to treat them as separators.
+ * Split also takes a flag (ignoreEmpty) that indicates whether adjacent
+ * delimiters should be treated as one single separator (ignoring empty tokens)
+ * or not (generating empty tokens).
  */
 
 template<class Delim, class String, class OutputType>
