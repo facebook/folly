@@ -114,8 +114,11 @@ FingerprintTables.cpp: generate_fingerprint_tables
 
 libfollyfingerprint_la_SOURCES = \
 	FingerprintTables.cpp
+libfollyfingerprint_la_LIBADD = libfolly.la
 
 libfollybenchmark_la_SOURCES = Benchmark.cpp
-libfollybenchmark_la_LIBADD = -lboost_regex -lpthread -lrt
+libfollybenchmark_la_LIBADD = -lrt libfolly.la
 
 libfollytimeout_queue_la_SOURCES = TimeoutQueue.cpp
+libfollytimeout_queue_la_LIBADD = libfolly.la
+
