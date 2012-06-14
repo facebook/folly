@@ -73,7 +73,8 @@ def generate(f):
             # 0xff: set corresponding byte in result to 0
             for k in range(d, 4):
                 vals[j] |= 0xff << (8 * k)
-        f.write("  {{0x{1:08x}{0:08x}LL, 0x{3:08x}{2:08x}LL}},\n".format(*vals))
+        f.write("  {{static_cast<int64_t>(0x{1:08x}{0:08x}), "
+            "static_cast<int64_t>(0x{3:08x}{2:08x})}},\n".format(*vals))
 
     f.write("};\n"
             "\n"
