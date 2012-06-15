@@ -15,6 +15,7 @@
  */
 
 #include "folly/experimental/io/IOBuf.h"
+#include "folly/experimental/io/TypedIOBuf.h"
 
 #include <gflags/gflags.h>
 #include <boost/random.hpp>
@@ -24,6 +25,7 @@
 #include "folly/Range.h"
 
 using folly::IOBuf;
+using folly::TypedIOBuf;
 using folly::StringPiece;
 using std::unique_ptr;
 
@@ -611,6 +613,22 @@ TEST(IOBuf, Alignment) {
     auto buf = IOBuf::create(size);
     uintptr_t p = reinterpret_cast<uintptr_t>(buf->data());
     EXPECT_EQ(0, p & (alignment - 1)) << "size=" << size;
+  }
+}
+
+TEST(TypedIOBuf, Simple) {
+  auto buf = IOBuf::create(0);
+  TypedIOBuf<uint64_t> typed(buf.get());
+  const uint64_t n = 10000;
+  typed.reserve(0, n);
+  EXPECT_LE(n, typed.capacity());
+  for (uint64_t i = 0; i < n; i++) {
+    *typed.writableTail() = i;
+    typed.append(1);
+  }
+  EXPECT_EQ(n, typed.length());
+  for (uint64_t i = 0; i < n; i++) {
+    EXPECT_EQ(i, typed.data()[i]);
   }
 }
 
