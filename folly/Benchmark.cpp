@@ -18,6 +18,7 @@
 
 #include "Benchmark.h"
 #include "Foreach.h"
+#include "json.h"
 #include "String.h"
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,7 @@
 using namespace std;
 
 DEFINE_bool(benchmark, false, "Run benchmarks.");
+DEFINE_bool(json, false, "Output in JSON format.");
 
 namespace folly {
 
@@ -296,7 +298,7 @@ static string humanReadable(double n, unsigned int decimals) {
   return stringPrintf("%*.*f%c", decimals + 3 + 1, decimals, n, suffix);
 }
 
-static void printBenchmarkResults(
+static void printBenchmarkResultsAsTable(
   const vector<tuple<const char*, const char*, double> >& data) {
   // Width available
   static const uint columns = 76;
@@ -364,6 +366,26 @@ static void printBenchmarkResults(
     }
   }
   separator('=');
+}
+
+static void printBenchmarkResultsAsJson(
+  const vector<tuple<const char*, const char*, double> >& data) {
+  dynamic d = dynamic::object;
+  for (auto& datum: data) {
+    d[std::get<1>(datum)] = std::get<2>(datum) * 1000.;
+  }
+
+  printf("%s\n", toPrettyJson(d).c_str());
+}
+
+static void printBenchmarkResults(
+  const vector<tuple<const char*, const char*, double> >& data) {
+
+  if (FLAGS_json) {
+    printBenchmarkResultsAsJson(data);
+  } else {
+    printBenchmarkResultsAsTable(data);
+  }
 }
 
 void runBenchmarks() {
