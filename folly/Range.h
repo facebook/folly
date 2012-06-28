@@ -160,6 +160,13 @@ public:
     b_ = str.data() + startFrom;
     e_ = b_ + size;
   }
+  Range(const Range<Iter>& str,
+        size_t startFrom,
+        size_t size) {
+    CHECK_LE(startFrom + size, str.size());
+    b_ = str.b_ + startFrom;
+    e_ = b_ + size;
+  }
   // Works only for Range<const char*>
   /* implicit */ Range(const fbstring& str)
     : b_(str.data()), e_(b_ + str.size()) { }
