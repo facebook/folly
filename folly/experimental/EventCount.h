@@ -17,6 +17,7 @@
 #ifndef FOLLY_EXPERIMENTAL_EVENTCOUNT_H_
 #define FOLLY_EXPERIMENTAL_EVENTCOUNT_H_
 
+#include <unistd.h>
 #include <syscall.h>
 #include <linux/futex.h>
 #include <sys/time.h>
