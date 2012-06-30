@@ -20,7 +20,9 @@
 #include "Foreach.h"
 #include "json.h"
 #include "String.h"
+
 #include <algorithm>
+#include <boost/regex.hpp>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -31,6 +33,16 @@ using namespace std;
 
 DEFINE_bool(benchmark, false, "Run benchmarks.");
 DEFINE_bool(json, false, "Output in JSON format.");
+
+DEFINE_string(bm_regex, "",
+              "Only benchmarks whose names match this regex will be run.");
+
+DEFINE_int64(bm_min_usec, 100,
+             "Minimum # of microseconds we'll accept for each benchmark.");
+
+DEFINE_int32(bm_max_secs, 1,
+             "Maximum # of seconds we'll spend on each benchmark.");
+
 
 namespace folly {
 
@@ -191,17 +203,18 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
     CHECK_EQ(1, ts.tv_nsec) << "Clock too coarse, upgrade your kernel.";
     resolutionInNs = ts.tv_nsec;
   }
-  // Whe choose a minimum minimum (sic) of 10,000 nanoseconds, but if
+  // We choose a minimum minimum (sic) of 100,000 nanoseconds, but if
   // the clock resolution is worse than that, it will be larger. In
   // essence we're aiming at making the quantization noise 0.01%.
-  static const auto minNanoseconds = min(resolutionInNs * 100000, 1000000000UL);
+  static const auto minNanoseconds =
+    max(FLAGS_bm_min_usec * 1000UL, min(resolutionInNs * 100000, 1000000000UL));
 
   // We do measurements in several epochs and take the minimum, to
   // account for jitter.
   static const unsigned int epochs = 1000;
   // We establish a total time budget as we don't want a measurement
   // to take too long. This will curtail the number of actual epochs.
-  static const uint64_t timeBudgetInNs = 1000000000;
+  const uint64_t timeBudgetInNs = FLAGS_bm_max_secs * 1000000000;
   timespec global;
   CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &global));
 
@@ -209,7 +222,7 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   size_t actualEpochs = 0;
 
   for (; actualEpochs < epochs; ++actualEpochs) {
-    for (unsigned int n = 1; n < (1U << 30); n *= 2) {
+    for (unsigned int n = 1; n < (1UL << 30); n *= 2) {
       auto const nsecs = fun(n);
       if (nsecs < minNanoseconds) {
         continue;
@@ -394,15 +407,24 @@ void runBenchmarks() {
   vector<tuple<const char*, const char*, double>> results;
   results.reserve(benchmarks.size() - 1);
 
+  std::unique_ptr<boost::regex> bmRegex;
+  if (!FLAGS_bm_regex.empty()) {
+    bmRegex.reset(new boost::regex(FLAGS_bm_regex));
+  }
+
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
   auto const globalBaseline = runBenchmarkGetNSPerIteration(
     get<2>(benchmarks.front()), 0);
   FOR_EACH_RANGE (i, 1, benchmarks.size()) {
-    auto elapsed = strcmp(get<1>(benchmarks[i]), "-") == 0
-      ? 0.0 // skip the separators
-      : runBenchmarkGetNSPerIteration(get<2>(benchmarks[i]),
-                                      globalBaseline);
+    double elapsed = 0.0;
+    if (!strcmp(get<1>(benchmarks[i]), "-") == 0) { // skip separators
+      if (bmRegex && !boost::regex_search(get<1>(benchmarks[i]), *bmRegex)) {
+        continue;
+      }
+      elapsed = runBenchmarkGetNSPerIteration(get<2>(benchmarks[i]),
+                                              globalBaseline);
+    }
     results.emplace_back(get<0>(benchmarks[i]),
                          get<1>(benchmarks[i]), elapsed);
   }
