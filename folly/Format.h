@@ -134,7 +134,6 @@ class Formatter {
     return doFormatFrom<0>(i, arg, cb);
   }
 
-  bool containerMode_;
   StringPiece str_;
   ValueTuple values_;
 };
