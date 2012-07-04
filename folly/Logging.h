@@ -22,7 +22,7 @@
 
 #ifndef FB_LOG_EVERY_MS
 /**
- * Issues a LOG(severity) no more often that every
+ * Issues a LOG(severity) no more often than every
  * milliseconds. Example:
  *
  * FB_LOG_EVERY_MS(INFO, 10000) << "At least ten seconds passed"
