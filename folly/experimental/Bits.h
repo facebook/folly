@@ -96,11 +96,33 @@ struct Bits {
   static bool test(const T* p, size_t bit);
 
   /**
+   * Set count contiguous bits starting at bitStart to the values
+   * from the least significant count bits of value; little endian.
+   * (value & 1 becomes the bit at bitStart, etc)
+   * Precondition: count <= sizeof(T) * 8
+   */
+  static void set(T* p, size_t bitStart, size_t count, T value);
+
+  /**
+   * Get count contiguous bits starting at bitStart.
+   * Precondition: count <= sizeof(T) * 8
+   */
+  static T get(const T* p, size_t bitStart, size_t count);
+
+  /**
    * Count the number of bits set in a range of blocks.
    */
   static size_t count(const T* begin, const T* end);
 
  private:
+  // Same as set, assumes all bits are in the same block.
+  // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
+  static void innerSet(T* p, size_t bitStart, size_t count, T value);
+
+  // Same as get, assumes all bits are in the same block.
+  // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
+  static T innerGet(const T* p, size_t bitStart, size_t count);
+
   static constexpr T one = T(1);
 };
 
@@ -117,6 +139,51 @@ inline void Bits<T>::clear(T* p, size_t bit) {
 template <class T>
 inline bool Bits<T>::test(const T* p, size_t bit) {
   return p[blockIndex(bit)] & (one << bitOffset(bit));
+}
+
+template <class T>
+inline void Bits<T>::set(T* p, size_t bitStart, size_t count, T value) {
+  assert(count <= sizeof(T) * 8);
+  assert(count == sizeof(T) ||
+         (value & ~((one << count) - 1)) == 0);
+  size_t idx = blockIndex(bitStart);
+  size_t offset = bitOffset(bitStart);
+  if (offset + count <= bitsPerBlock) {
+    innerSet(p + idx, offset, count, value);
+  } else {
+    size_t countInThisBlock = bitsPerBlock - offset;
+    size_t countInNextBlock = count - countInThisBlock;
+    innerSet(p + idx, offset, countInThisBlock,
+             value & ((one << countInThisBlock) - 1));
+    innerSet(p + idx + 1, 0, countInNextBlock, value >> countInThisBlock);
+  }
+}
+
+template <class T>
+inline T Bits<T>::get(const T* p, size_t bitStart, size_t count) {
+  assert(count <= sizeof(T) * 8);
+  size_t idx = blockIndex(bitStart);
+  size_t offset = bitOffset(bitStart);
+  if (offset + count <= bitsPerBlock) {
+    return innerGet(p + idx, offset, count);
+  } else {
+    size_t countInThisBlock = bitsPerBlock - offset;
+    size_t countInNextBlock = count - countInThisBlock;
+    T thisBlockValue = innerGet(p + idx, offset, countInThisBlock);
+    T nextBlockValue = innerGet(p + idx + 1, 0, countInNextBlock);
+    return (nextBlockValue << countInThisBlock) | thisBlockValue;
+  }
+}
+
+template <class T>
+inline void Bits<T>::innerSet(T* p, size_t offset, size_t count, T value) {
+  // Mask out bits and set new value
+  *p = (*p & ~(((one << count) - 1) << offset)) | (value << offset);
+}
+
+template <class T>
+inline T Bits<T>::innerGet(const T* p, size_t offset, size_t count) {
+  return (*p >> offset) & ((one << count) - 1);
 }
 
 template <class T>

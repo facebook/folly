@@ -51,6 +51,32 @@ TEST(Bits, Simple) {
   EXPECT_EQ(2, Bits<uint8_t>::count(buf, buf + 256));
 }
 
+TEST(Bits, MultiBit) {
+  uint8_t buf[] = {0x12, 0x34, 0x56, 0x78};
+
+  EXPECT_EQ(0x02, Bits<uint8_t>::get(buf, 0, 4));
+  EXPECT_EQ(0x1a, Bits<uint8_t>::get(buf, 9, 5));
+  EXPECT_EQ(0xb1, Bits<uint8_t>::get(buf, 13, 8));
+
+  Bits<uint8_t>::set(buf, 0, 4, 0x0b);
+  EXPECT_EQ(0x1b, buf[0]);
+  EXPECT_EQ(0x34, buf[1]);
+  EXPECT_EQ(0x56, buf[2]);
+  EXPECT_EQ(0x78, buf[3]);
+
+  Bits<uint8_t>::set(buf, 9, 5, 0x0e);
+  EXPECT_EQ(0x1b, buf[0]);
+  EXPECT_EQ(0x1c, buf[1]);
+  EXPECT_EQ(0x56, buf[2]);
+  EXPECT_EQ(0x78, buf[3]);
+
+  Bits<uint8_t>::set(buf, 13, 8, 0xaa);
+  EXPECT_EQ(0x1b, buf[0]);
+  EXPECT_EQ(0x5c, buf[1]);
+  EXPECT_EQ(0x55, buf[2]);
+  EXPECT_EQ(0x78, buf[3]);
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
