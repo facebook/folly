@@ -528,8 +528,6 @@ BitIterator<BaseIter> findFirstSet(BitIterator<BaseIter> begin,
 }
 
 
-namespace detail {
-
 template <class T, class Enable=void> struct Unaligned;
 
 template <class T>
@@ -539,15 +537,13 @@ struct Unaligned<
   T value;
 } __attribute__((packed));
 
-}  // namespace detail
-
 /**
  * Read an unaligned value of type T and return it.
  */
 template <class T>
 inline T loadUnaligned(const void* p) {
-  static_assert(alignof(detail::Unaligned<T>) == 1, "Invalid alignment");
-  return static_cast<const detail::Unaligned<T>*>(p)->value;
+  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  return static_cast<const Unaligned<T>*>(p)->value;
 }
 
 /**
@@ -555,8 +551,8 @@ inline T loadUnaligned(const void* p) {
  */
 template <class T>
 inline void storeUnaligned(void* p, T value) {
-  static_assert(alignof(detail::Unaligned<T>) == 1, "Invalid alignment");
-  static_cast<detail::Unaligned<T>*>(p)->value = value;
+  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  static_cast<Unaligned<T>*>(p)->value = value;
 }
 
 }  // namespace folly
