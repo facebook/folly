@@ -28,6 +28,9 @@ namespace folly {
  * An IOBufQueue encapsulates a chain of IOBufs and provides
  * convenience functions to append data to the back of the chain
  * and remove data from the front.
+ *
+ * You may also prepend data into the headroom of the first buffer in the
+ * chain, if any.
  */
 class IOBufQueue {
  public:
@@ -47,6 +50,22 @@ class IOBufQueue {
   }
 
   explicit IOBufQueue(const Options& options = Options());
+
+  /**
+   * Return a space to prepend bytes and the amount of headroom available.
+   */
+  std::pair<void*, uint32_t> headroom();
+
+  /**
+   * Indicate that n bytes from the headroom have been used.
+   */
+  void markPrepended(uint32_t n);
+
+  /**
+   * Prepend an existing range; throws std::overflow_error if not enough
+   * room.
+   */
+  void prepend(const void* buf, uint32_t n);
 
   /**
    * Add a buffer or buffer chain to the end of this queue. The

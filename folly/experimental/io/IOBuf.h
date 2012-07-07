@@ -497,6 +497,7 @@ class IOBuf {
   void prepend(uint32_t amount) {
     CHECK(amount <= headroom());
     data_ -= amount;
+    length_ += amount;
   }
 
   /**

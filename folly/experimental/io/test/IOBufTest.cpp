@@ -35,6 +35,12 @@ void append(std::unique_ptr<IOBuf>& buf, StringPiece str) {
   buf->append(str.size());
 }
 
+void prepend(std::unique_ptr<IOBuf>& buf, StringPiece str) {
+  EXPECT_LE(str.size(), buf->headroom());
+  memcpy(buf->writableData() - str.size(), str.data(), str.size());
+  buf->prepend(str.size());
+}
+
 TEST(IOBuf, Simple) {
   unique_ptr<IOBuf> buf(IOBuf::create(100));
   uint32_t cap = buf->capacity();
@@ -43,13 +49,19 @@ TEST(IOBuf, Simple) {
   EXPECT_EQ(0, buf->length());
   EXPECT_EQ(cap, buf->tailroom());
 
-  append(buf, "hello");
+  append(buf, "world");
   buf->advance(10);
   EXPECT_EQ(10, buf->headroom());
   EXPECT_EQ(5, buf->length());
   EXPECT_EQ(cap - 15, buf->tailroom());
+
+  prepend(buf, "hello ");
+  EXPECT_EQ(4, buf->headroom());
+  EXPECT_EQ(11, buf->length());
+  EXPECT_EQ(cap - 15, buf->tailroom());
+
   const char* p = reinterpret_cast<const char*>(buf->data());
-  EXPECT_EQ("hello", std::string(p, buf->length()));
+  EXPECT_EQ("hello world", std::string(p, buf->length()));
 
   buf->clear();
   EXPECT_EQ(0, buf->headroom());

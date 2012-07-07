@@ -239,6 +239,25 @@ TEST(IOBufQueue, trim) {
   checkConsistency(queue);
 }
 
+TEST(IOBufQueue, Prepend) {
+  folly::IOBufQueue queue;
+
+  auto buf = folly::IOBuf::create(10);
+  buf->advance(5);
+  queue.append(std::move(buf));
+
+  queue.append(SCL(" World"));
+  queue.prepend(SCL("Hello"));
+
+  EXPECT_THROW(queue.prepend(SCL("x")), std::overflow_error);
+
+  auto out = queue.move();
+  out->coalesce();
+  EXPECT_EQ("Hello World",
+            StringPiece(reinterpret_cast<const char*>(out->data()),
+                        out->length()));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

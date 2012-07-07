@@ -69,6 +69,37 @@ IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) {
   return *this;
 }
 
+std::pair<void*, uint32_t>
+IOBufQueue::headroom() {
+  if (head_) {
+    return std::make_pair(head_->writableBuffer(), head_->headroom());
+  } else {
+    return std::make_pair(nullptr, 0);
+  }
+}
+
+void
+IOBufQueue::markPrepended(uint32_t n) {
+  if (n == 0) {
+    return;
+  }
+  assert(head_);
+  head_->prepend(n);
+  if (options_.cacheChainLength) {
+    chainLength_ += n;
+  }
+}
+
+void
+IOBufQueue::prepend(const void* buf, uint32_t n) {
+  auto p = headroom();
+  if (n > p.second) {
+    throw std::overflow_error("Not enough room to prepend");
+  }
+  memcpy(static_cast<char*>(p.first) + p.second - n, buf, n);
+  markPrepended(n);
+}
+
 void
 IOBufQueue::append(unique_ptr<IOBuf>&& buf) {
   if (!buf) {
