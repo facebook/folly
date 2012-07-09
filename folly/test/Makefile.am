@@ -114,7 +114,7 @@ endian_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += endian_test
 
 rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
-rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
+rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIB)
 TESTS += rw_spinlock_test
 
 synchronized_test_SOURCES = SynchronizedTest.cpp
@@ -126,7 +126,7 @@ concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
 TESTS += concurrent_skiplist_test
 
 concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
-concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIBS)
+concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 noinst_PROGRAMS += concurrent_skiplist_benchmark
 
 histogram_test_SOURCES = HistogramTest.cpp

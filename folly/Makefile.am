@@ -107,7 +107,7 @@ libfolly_la_SOURCES = \
 	FormatTables.cpp \
 	String.cpp
 
-libfolly_la_LIBADD = $(BOOST_THREAD_LIBS) -lpthread
+libfolly_la_LIBADD = $(BOOST_THREAD_LIB) -lpthread
 
 FingerprintTables.cpp: generate_fingerprint_tables
 	./generate_fingerprint_tables
@@ -117,7 +117,7 @@ libfollyfingerprint_la_SOURCES = \
 libfollyfingerprint_la_LIBADD = libfolly.la
 
 libfollybenchmark_la_SOURCES = Benchmark.cpp
-libfollybenchmark_la_LIBADD = -lrt libfolly.la
+libfollybenchmark_la_LIBADD = $(BOOST_REGEX_LIB) -lrt libfolly.la
 
 libfollytimeout_queue_la_SOURCES = TimeoutQueue.cpp
 libfollytimeout_queue_la_LIBADD = libfolly.la
