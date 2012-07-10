@@ -116,41 +116,63 @@ typename std::tuple_element<
   return getLastElement(vs...);
 }
 
+} // namespace detail
+
 /*******************************************************************************
  * Conversions from integral types to string types.
  ******************************************************************************/
 
-// Returns the offset of the formatted string from the start of
-// the supplied buffer. The new string will be at range
-// [buf+begin,buf+bufLen). Uint will be either uint32_t or uint64_t.
-template <class Uint>
-size_t uintToBuffer(char*const buffer, size_t bufLen, Uint v) {
-  extern const char digit1[101], digit2[101];
+/**
+ * Returns the number of digits in the base 10 representation of an
+ * uint64_t. Useful for preallocating buffers and such. It's also used
+ * internally, see below. Measurements suggest that defining a
+ * separate overload for 32-bit integers is not worthwhile.
+ */
+
+inline uint32_t digits10(uint64_t v) {
+  uint32_t result = 1;
   for (;;) {
-    if (v < 100) {
-      if (v < 10) {
-        buffer[--bufLen] = static_cast<char>(v + '0');
-      } else {
-        size_t r = static_cast<size_t>(v);
-        bufLen -= 2;
-        buffer[bufLen] = digit1[r];
-        buffer[bufLen + 1] = digit2[r];
-      }
-      break;
-    }
-    Uint t = v;
-    v /= 100;
-    size_t r = static_cast<size_t> (t - v * 100);
-    bufLen -= 2;
-    buffer[bufLen] = digit1[r];
-    buffer[bufLen + 1] = digit2[r];
+    if (LIKELY(v < 10)) return result;
+    if (LIKELY(v < 100)) return result + 1;
+    if (LIKELY(v < 1000)) return result + 2;
+    if (LIKELY(v < 10000)) return result + 3;
+    // Skip ahead by 4 orders of magnitude
+    v /= 10000U;
+    result += 4;
   }
-  return bufLen;
 }
 
-const size_t kMaxInt64BufLen = 21;// 19 + 1 for possible '-' sign + 1 for \0
+/**
+ * Copies the ASCII base 10 representation of v into buffer and
+ * returns the number of bytes written. Does NOT append a \0. Assumes
+ * the buffer points to digits10(v) bytes of valid memory. Note that
+ * uint64 needs at most 20 bytes, uint32_t needs at most 10 bytes,
+ * uint16_t needs at most 5 bytes, and so on. Measurements suggest
+ * that defining a separate overload for 32-bit integers is not
+ * worthwhile.
+ *
+ * This primitive is unsafe because it makes the size assumption and
+ * because it does not add a terminating \0.
+ */
 
-}                                 // namespace detail
+inline uint32_t uint64ToBufferUnsafe(uint64_t v, char *const buffer) {
+  auto const result = digits10(v);
+  // WARNING: using size_t or pointer arithmetic for pos slows down
+  // the loop below 20x. This is because several 32-bit ops can be
+  // done in parallel, but only fewer 64-bit ones.
+  uint32_t pos = result - 1;
+  while (v >= 10) {
+    // Keep these together so a peephole optimization "sees" them and
+    // computes them in one shot.
+    auto const q = v / 10;
+    auto const r = static_cast<uint32_t>(v % 10);
+    buffer[pos--] = '0' + r;
+    v = q;
+  }
+  // Last digit is trivial to handle
+  buffer[pos] = static_cast<uint32_t>(v) + '0';
+  return result;
+}
 
 /**
  * A single char gets appended.
@@ -222,18 +244,13 @@ typename std::enable_if<
   && detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
   typedef typename std::make_unsigned<Src>::type Usrc;
-  char buffer[detail::kMaxInt64BufLen];
-  size_t begin;
+  char buffer[20];
   if (value < 0) {
-    begin = detail::uintToBuffer(buffer, sizeof(buffer),
-                                 static_cast<Usrc>(-value));
-    DCHECK_GE(begin, 1);
-    buffer[--begin] = '-';
+    result->push_back('-');
+    result->append(buffer, uint64ToBufferUnsafe(-uint64_t(value), buffer));
   } else {
-    begin = detail::uintToBuffer(buffer, sizeof(buffer),
-                                 static_cast<Usrc>(value));
+    result->append(buffer, uint64ToBufferUnsafe(value, buffer));
   }
-  result->append(buffer + begin, buffer + sizeof(buffer));
 }
 
 /**
@@ -244,9 +261,8 @@ typename std::enable_if<
   std::is_integral<Src>::value && !std::is_signed<Src>::value
   && detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
-  char buffer[detail::kMaxInt64BufLen];
-  const size_t begin = detail::uintToBuffer(buffer, sizeof(buffer), value);
-  result->append(buffer + begin, buffer + sizeof(buffer));
+  char buffer[20];
+  result->append(buffer, buffer + uint64ToBufferUnsafe(value, buffer));
 }
 
 /**

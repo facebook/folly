@@ -429,9 +429,8 @@ class FormatValue<
         useSprintf("%'ju");
       } else {
         // Use uintToBuffer, faster than sprintf
-        valBufEnd = valBuf + valBufSize - 1;
-        valBufBegin = valBuf + detail::uintToBuffer(valBuf, valBufSize - 1,
-                                                    uval);
+        valBufBegin = valBuf + 3;
+        valBufEnd = valBufBegin + uint64ToBufferUnsafe(uval, valBufBegin);
       }
       break;
     case 'c':

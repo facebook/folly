@@ -190,10 +190,13 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
     timespec start, end;
 
     // CORE MEASUREMENT STARTS
-    CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &start));
+    auto const r1 = clock_gettime(detail::DEFAULT_CLOCK_ID, &start);
     lambda(times);
-    CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &end));
+    auto const r2 = clock_gettime(detail::DEFAULT_CLOCK_ID, &end);
     // CORE MEASUREMENT ENDS
+
+    CHECK_EQ(0, r1);
+    CHECK_EQ(0, r2);
 
     return detail::timespecDiff(end, start) - BenchmarkSuspender::nsSpent;
   };

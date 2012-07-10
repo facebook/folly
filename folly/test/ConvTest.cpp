@@ -570,6 +570,44 @@ TEST(Conv, StringToBool) {
   EXPECT_EQ(buf5, sp5.begin());
 }
 
+TEST(Conv, NewUint64ToString) {
+  char buf[21];
+
+#define THE_GREAT_EXPECTATIONS(n, len)                  \
+  do {                                                  \
+    EXPECT_EQ((len), uint64ToBufferUnsafe((n), buf));   \
+    buf[(len)] = 0;                                     \
+    auto s = string(#n);                                \
+    s = s.substr(0, s.size() - 2);                      \
+    EXPECT_EQ(s, buf);                                  \
+  } while (0)
+
+  THE_GREAT_EXPECTATIONS(0UL, 1);
+  THE_GREAT_EXPECTATIONS(1UL, 1);
+  THE_GREAT_EXPECTATIONS(12UL, 2);
+  THE_GREAT_EXPECTATIONS(123UL, 3);
+  THE_GREAT_EXPECTATIONS(1234UL, 4);
+  THE_GREAT_EXPECTATIONS(12345UL, 5);
+  THE_GREAT_EXPECTATIONS(123456UL, 6);
+  THE_GREAT_EXPECTATIONS(1234567UL, 7);
+  THE_GREAT_EXPECTATIONS(12345678UL, 8);
+  THE_GREAT_EXPECTATIONS(123456789UL, 9);
+  THE_GREAT_EXPECTATIONS(1234567890UL, 10);
+  THE_GREAT_EXPECTATIONS(12345678901UL, 11);
+  THE_GREAT_EXPECTATIONS(123456789012UL, 12);
+  THE_GREAT_EXPECTATIONS(1234567890123UL, 13);
+  THE_GREAT_EXPECTATIONS(12345678901234UL, 14);
+  THE_GREAT_EXPECTATIONS(123456789012345UL, 15);
+  THE_GREAT_EXPECTATIONS(1234567890123456UL, 16);
+  THE_GREAT_EXPECTATIONS(12345678901234567UL, 17);
+  THE_GREAT_EXPECTATIONS(123456789012345678UL, 18);
+  THE_GREAT_EXPECTATIONS(1234567890123456789UL, 19);
+  THE_GREAT_EXPECTATIONS(18446744073709551614UL, 20);
+  THE_GREAT_EXPECTATIONS(18446744073709551615UL, 20);
+
+#undef THE_GREAT_EXPECTATIONS
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Benchmarks for ASCII to int conversion
 ////////////////////////////////////////////////////////////////////////////////
@@ -653,11 +691,144 @@ void lexicalCastMeasure(uint n, uint digits) {
   }
 }
 
+// Benchmarks for unsigned to string conversion, raw
+
+unsigned u64ToAsciiTable(uint64_t value, char* dst) {
+  static const char digits[201] =
+    "00010203040506070809"
+    "10111213141516171819"
+    "20212223242526272829"
+    "30313233343536373839"
+    "40414243444546474849"
+    "50515253545556575859"
+    "60616263646566676869"
+    "70717273747576777879"
+    "80818283848586878889"
+    "90919293949596979899";
+
+  uint32_t const length = digits10(value);
+  uint32_t next = length - 1;
+  while (value >= 100) {
+    auto const i = (value % 100) * 2;
+    value /= 100;
+    dst[next] = digits[i + 1];
+    dst[next - 1] = digits[i];
+    next -= 2;
+  }
+  // Handle last 1-2 digits
+  if (value < 10) {
+    dst[next] = '0' + uint32_t(value);
+  } else {
+    auto i = uint32_t(value) * 2;
+    dst[next] = digits[i + 1];
+    dst[next - 1] = digits[i];
+  }
+  return length;
+}
+
+void u64ToAsciiTableBM(uint n, uint64_t value) {
+  // This is too fast, need to do 10 times per iteration
+  char buf[20];
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(u64ToAsciiTable(value + n, buf));
+  }
+}
+
+unsigned u64ToAsciiClassic(uint64_t value, char* dst) {
+  // Write backwards.
+  char* next = (char*)dst;
+  char* start = next;
+  do {
+    *next++ = '0' + (value % 10);
+    value /= 10;
+  } while (value != 0);
+  unsigned length = next - start;
+
+  // Reverse in-place.
+  next--;
+  while (next > start) {
+    char swap = *next;
+    *next = *start;
+    *start = swap;
+    next--;
+    start++;
+  }
+  return length;
+}
+
+void u64ToAsciiClassicBM(uint n, uint64_t value) {
+  // This is too fast, need to do 10 times per iteration
+  char buf[20];
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(u64ToAsciiClassic(value + n, buf));
+  }
+}
+
+void u64ToAsciiFollyBM(uint n, uint64_t value) {
+  // This is too fast, need to do 10 times per iteration
+  char buf[20];
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(uint64ToBufferUnsafe(value + n, buf));
+  }
+}
+
+// Benchmark uitoa with string append
+
+void u2aAppendClassicBM(uint n, uint64_t value) {
+  string s;
+  FOR_EACH_RANGE (i, 0, n) {
+    // auto buf = &s.back() + 1;
+    char buffer[20];
+    s.append(buffer, u64ToAsciiClassic(value, buffer));
+    doNotOptimizeAway(s.size());
+  }
+}
+
+void u2aAppendFollyBM(uint n, uint64_t value) {
+  string s;
+  FOR_EACH_RANGE (i, 0, n) {
+    // auto buf = &s.back() + 1;
+    char buffer[20];
+    s.append(buffer, uint64ToBufferUnsafe(value, buffer));
+    doNotOptimizeAway(s.size());
+  }
+}
+
+#define DEFINE_BENCHMARK_GROUP(n)                       \
+  BENCHMARK_PARAM(u64ToAsciiClassicBM, n);              \
+  BENCHMARK_RELATIVE_PARAM(u64ToAsciiTableBM, n);       \
+  BENCHMARK_RELATIVE_PARAM(u64ToAsciiFollyBM, n);       \
+  BENCHMARK_DRAW_LINE();
+
+DEFINE_BENCHMARK_GROUP(1);
+DEFINE_BENCHMARK_GROUP(12);
+DEFINE_BENCHMARK_GROUP(123);
+DEFINE_BENCHMARK_GROUP(1234);
+DEFINE_BENCHMARK_GROUP(12345);
+DEFINE_BENCHMARK_GROUP(123456);
+DEFINE_BENCHMARK_GROUP(1234567);
+DEFINE_BENCHMARK_GROUP(12345678);
+DEFINE_BENCHMARK_GROUP(123456789);
+DEFINE_BENCHMARK_GROUP(1234567890);
+DEFINE_BENCHMARK_GROUP(12345678901);
+DEFINE_BENCHMARK_GROUP(123456789012);
+DEFINE_BENCHMARK_GROUP(1234567890123);
+DEFINE_BENCHMARK_GROUP(12345678901234);
+DEFINE_BENCHMARK_GROUP(123456789012345);
+DEFINE_BENCHMARK_GROUP(1234567890123456);
+DEFINE_BENCHMARK_GROUP(12345678901234567);
+DEFINE_BENCHMARK_GROUP(123456789012345678);
+DEFINE_BENCHMARK_GROUP(1234567890123456789);
+DEFINE_BENCHMARK_GROUP(12345678901234567890U);
+
+#undef DEFINE_BENCHMARK_GROUP
+
 #define DEFINE_BENCHMARK_GROUP(n)                       \
   BENCHMARK_PARAM(clibAtoiMeasure, n);                  \
   BENCHMARK_RELATIVE_PARAM(lexicalCastMeasure, n);      \
   BENCHMARK_RELATIVE_PARAM(handwrittenAtoiMeasure, n);  \
-  BENCHMARK_RELATIVE_PARAM(follyAtoiMeasure, n);
+  BENCHMARK_RELATIVE_PARAM(follyAtoiMeasure, n);        \
+  BENCHMARK_DRAW_LINE();
 
 DEFINE_BENCHMARK_GROUP(1);
 DEFINE_BENCHMARK_GROUP(2);
