@@ -24,7 +24,7 @@
  * findLastSet(x)
  *    find last (most significant) bit set in a value of an integral type,
  *    1-based.  0 = no bits are set (x == 0)
- *    for x != 0, findFirstSet(x) == 1 + floor(log2(x))
+ *    for x != 0, findLastSet(x) == 1 + floor(log2(x))
  *
  * nextPowTwo(x)
  *    Finds the next power of two >= x.
