@@ -163,7 +163,7 @@ findInternal(const KeyT k) const {
   int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
   FOR_EACH_RANGE(i, 1, numMaps) {
     // Check each map successively.  If one succeeds, we're done!
-    SubMap* thisMap = subMaps_[i].load(std::memory_order_release);
+    SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
     ret = thisMap->findInternal(k);
     if (LIKELY(ret.idx != thisMap->capacity_)) {
       return SimpleRetT(i, ret.idx, ret.success);
