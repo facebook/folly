@@ -21,9 +21,14 @@
 #include <type_traits>
 #include <limits>
 
+#include "folly/Bits.h"
 #include "folly/Range.h"
 
 namespace folly {
+
+// As a general rule, bit operations work on unsigned values only;
+// right-shift is arithmetic for signed values, and that can lead to
+// unpleasant bugs.
 
 /**
  * Population count (number of bits set), using __builtin_popcount or
@@ -50,14 +55,51 @@ inline typename std::enable_if<
   return __builtin_popcountll(x);
 }
 
-template <class T>
-struct Bits {
-  static_assert(std::is_integral<T>::value &&
-                std::is_unsigned<T>::value,
-                "Unsigned integral type required");
+namespace detail {
 
+/**
+ * Helper class to make Bits<T> (below) work with both aligned values
+ * (T, where T is an unsigned integral type) or unaligned values
+ * (Unaligned<T>, where T is an unsigned integral type)
+ */
+template <class T, class Enable=void> struct BitsTraits;
+
+// Partial specialization for Unaligned<T>, where T is unsigned integral
+template <class T>
+struct BitsTraits<Unaligned<T>, typename std::enable_if<
+    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+  typedef T UnderlyingType;
+  static T load(const Unaligned<T>& x) { return x.value; }
+  static void store(Unaligned<T>& x, T v) { x.value = v; }
+};
+
+// Partial specialization for T, where T is unsigned integral
+template <class T>
+struct BitsTraits<T, typename std::enable_if<
+    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+  typedef T UnderlyingType;
+  static T load(const T& x) { return x; }
+  static void store(T& x, T v) { x = v; }
+};
+}  // namespace detail
+
+/**
+ * Wrapper class with static methods for various bit-level operations,
+ * treating an array of T as an array of bits (in little-endian order).
+ * (T is either an unsigned integral type or Unaligned<X>, where X is
+ * an unsigned integral type)
+ */
+template <class T, class Traits=detail::BitsTraits<T>>
+struct Bits {
+  typedef typename Traits::UnderlyingType UnderlyingType;
   typedef T type;
-  static constexpr size_t bitsPerBlock = std::numeric_limits<T>::digits;
+  static_assert(sizeof(T) == sizeof(UnderlyingType), "Size mismatch");
+
+  /**
+   * Number of bits in a block.
+   */
+  static constexpr size_t bitsPerBlock =
+    std::numeric_limits<UnderlyingType>::digits;
 
   /**
    * Byte index of the given bit.
@@ -101,13 +143,13 @@ struct Bits {
    * (value & 1 becomes the bit at bitStart, etc)
    * Precondition: count <= sizeof(T) * 8
    */
-  static void set(T* p, size_t bitStart, size_t count, T value);
+  static void set(T* p, size_t bitStart, size_t count, UnderlyingType value);
 
   /**
    * Get count contiguous bits starting at bitStart.
    * Precondition: count <= sizeof(T) * 8
    */
-  static T get(const T* p, size_t bitStart, size_t count);
+  static UnderlyingType get(const T* p, size_t bitStart, size_t count);
 
   /**
    * Count the number of bits set in a range of blocks.
@@ -117,34 +159,38 @@ struct Bits {
  private:
   // Same as set, assumes all bits are in the same block.
   // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
-  static void innerSet(T* p, size_t bitStart, size_t count, T value);
+  static void innerSet(T* p, size_t bitStart, size_t count,
+                       UnderlyingType value);
 
   // Same as get, assumes all bits are in the same block.
   // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
-  static T innerGet(const T* p, size_t bitStart, size_t count);
+  static UnderlyingType innerGet(const T* p, size_t bitStart, size_t count);
 
-  static constexpr T one = T(1);
+  static constexpr UnderlyingType one = UnderlyingType(1);
 };
 
-template <class T>
-inline void Bits<T>::set(T* p, size_t bit) {
-  p[blockIndex(bit)] |= (one << bitOffset(bit));
+template <class T, class Traits>
+inline void Bits<T, Traits>::set(T* p, size_t bit) {
+  T& block = p[blockIndex(bit)];
+  Traits::store(block, Traits::load(block) | (one << bitOffset(bit)));
 }
 
-template <class T>
-inline void Bits<T>::clear(T* p, size_t bit) {
-  p[blockIndex(bit)] &= ~(one << bitOffset(bit));
+template <class T, class Traits>
+inline void Bits<T, Traits>::clear(T* p, size_t bit) {
+  T& block = p[blockIndex(bit)];
+  Traits::store(block, Traits::load(block) & ~(one << bitOffset(bit)));
 }
 
-template <class T>
-inline bool Bits<T>::test(const T* p, size_t bit) {
-  return p[blockIndex(bit)] & (one << bitOffset(bit));
+template <class T, class Traits>
+inline bool Bits<T, Traits>::test(const T* p, size_t bit) {
+  return Traits::load(p[blockIndex(bit)]) & (one << bitOffset(bit));
 }
 
-template <class T>
-inline void Bits<T>::set(T* p, size_t bitStart, size_t count, T value) {
-  assert(count <= sizeof(T) * 8);
-  assert(count == sizeof(T) ||
+template <class T, class Traits>
+inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
+                                 UnderlyingType value) {
+  assert(count <= sizeof(UnderlyingType) * 8);
+  assert(count == sizeof(UnderlyingType) ||
          (value & ~((one << count) - 1)) == 0);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
@@ -159,9 +205,10 @@ inline void Bits<T>::set(T* p, size_t bitStart, size_t count, T value) {
   }
 }
 
-template <class T>
-inline T Bits<T>::get(const T* p, size_t bitStart, size_t count) {
-  assert(count <= sizeof(T) * 8);
+template <class T, class Traits>
+inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
+  -> UnderlyingType {
+  assert(count <= sizeof(UnderlyingType) * 8);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
   if (offset + count <= bitsPerBlock) {
@@ -169,28 +216,33 @@ inline T Bits<T>::get(const T* p, size_t bitStart, size_t count) {
   } else {
     size_t countInThisBlock = bitsPerBlock - offset;
     size_t countInNextBlock = count - countInThisBlock;
-    T thisBlockValue = innerGet(p + idx, offset, countInThisBlock);
-    T nextBlockValue = innerGet(p + idx + 1, 0, countInNextBlock);
+    UnderlyingType thisBlockValue = innerGet(p + idx, offset, countInThisBlock);
+    UnderlyingType nextBlockValue = innerGet(p + idx + 1, 0, countInNextBlock);
     return (nextBlockValue << countInThisBlock) | thisBlockValue;
   }
 }
 
-template <class T>
-inline void Bits<T>::innerSet(T* p, size_t offset, size_t count, T value) {
+template <class T, class Traits>
+inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
+                                      UnderlyingType value) {
   // Mask out bits and set new value
-  *p = (*p & ~(((one << count) - 1) << offset)) | (value << offset);
+  UnderlyingType v = Traits::load(*p);
+  v &= ~(((one << count) - 1) << offset);
+  v |= (value << offset);
+  Traits::store(*p, v);
 }
 
-template <class T>
-inline T Bits<T>::innerGet(const T* p, size_t offset, size_t count) {
-  return (*p >> offset) & ((one << count) - 1);
+template <class T, class Traits>
+inline auto Bits<T, Traits>::innerGet(const T* p, size_t offset, size_t count)
+  -> UnderlyingType {
+  return (Traits::load(*p) >> offset) & ((one << count) - 1);
 }
 
-template <class T>
-inline size_t Bits<T>::count(const T* begin, const T* end) {
+template <class T, class Traits>
+inline size_t Bits<T, Traits>::count(const T* begin, const T* end) {
   size_t n = 0;
   for (; begin != end; ++begin) {
-    n += popcount(*begin);
+    n += popcount(Traits::load(*begin));
   }
   return n;
 }

@@ -530,10 +530,15 @@ BitIterator<BaseIter> findFirstSet(BitIterator<BaseIter> begin,
 
 template <class T, class Enable=void> struct Unaligned;
 
+/**
+ * Representation of an unaligned value of a POD type.
+ */
 template <class T>
 struct Unaligned<
-  T,
-  typename std::enable_if<std::is_pod<T>::value>::type> {
+    T,
+    typename std::enable_if<std::is_pod<T>::value>::type> {
+  Unaligned() { }  // uninitialized
+  /* implicit */ Unaligned(T v) : value(v) { }
   T value;
 } __attribute__((packed));
 
@@ -542,6 +547,7 @@ struct Unaligned<
  */
 template <class T>
 inline T loadUnaligned(const void* p) {
+  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
   return static_cast<const Unaligned<T>*>(p)->value;
 }
@@ -551,8 +557,9 @@ inline T loadUnaligned(const void* p) {
  */
 template <class T>
 inline void storeUnaligned(void* p, T value) {
+  static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  static_cast<Unaligned<T>*>(p)->value = value;
+  new (p) Unaligned<T>(value);
 }
 
 }  // namespace folly
