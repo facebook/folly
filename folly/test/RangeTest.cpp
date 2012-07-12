@@ -138,3 +138,12 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s, s2);
   EXPECT_EQ(s2, s);
 }
+
+TEST(StringPiece, ToByteRange) {
+  StringPiece a("hello");
+  ByteRange b(a);
+  EXPECT_EQ(static_cast<const void*>(a.begin()),
+            static_cast<const void*>(b.begin()));
+  EXPECT_EQ(static_cast<const void*>(a.end()),
+            static_cast<const void*>(b.end()));
+}

@@ -25,6 +25,7 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <type_traits>
 #include <boost/operators.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits.hpp>
@@ -182,6 +183,16 @@ public:
     CHECK_LE(startFrom + size, str.size());
     b_ = str.data() + startFrom;
     e_ = b_ + size;
+  }
+
+  // Allow implicit conversion from Range<const char*> (aka StringPiece) to
+  // Range<const unsigned char*> (aka ByteRange), as they're both frequently
+  // used to represent ranges of bytes.
+  template <typename std::enable_if<
+      (std::is_same<Iter, const unsigned char*>::value), int>::type = 0>
+  /* implicit */ Range(const Range<const char*>& other)
+    : b_(reinterpret_cast<const unsigned char*>(other.begin())),
+      e_(reinterpret_cast<const unsigned char*>(other.end())) {
   }
 
   void clear() {
@@ -373,6 +384,7 @@ Range<Iter> makeRange(Iter first, Iter last) {
 }
 
 typedef Range<const char*> StringPiece;
+typedef Range<const unsigned char*> ByteRange;
 
 std::ostream& operator<<(std::ostream& os, const StringPiece& piece);
 
