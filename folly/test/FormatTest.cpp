@@ -17,6 +17,7 @@
 #include "folly/Format.h"
 
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include "folly/FBVector.h"
