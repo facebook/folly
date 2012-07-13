@@ -277,12 +277,18 @@ struct StaticMeta {
         // still linked in meta, so another thread might access invalid memory
         // after realloc succeeds.  We'll copy by hand and update threadEntry_
         // under the lock.
+        //
+        // Note that we're using calloc instead of malloc in order to zero
+        // the entire region.  rallocm (ALLOCM_ZERO) will only zero newly
+        // allocated memory, so if a previous allocation allocated more than
+        // we requested, it's our responsibility to guarantee that the tail
+        // is zeroed.  calloc() is simpler than malloc() followed by memset(),
+        // and potentially faster when dealing with a lot of memory, as
+        // it can get already-zeroed pages from the kernel.
         if ((ptr = static_cast<ElementWrapper*>(
-              malloc(sizeof(ElementWrapper) * newSize))) != NULL) {
+              calloc(newSize, sizeof(ElementWrapper)))) != NULL) {
           memcpy(ptr, threadEntry_.elements,
                  sizeof(ElementWrapper) * prevSize);
-          memset(ptr + prevSize, 0,
-                 (newSize - prevSize) * sizeof(ElementWrapper));
         } else {
           throw std::bad_alloc();
         }
