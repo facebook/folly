@@ -188,9 +188,10 @@ public:
   // Allow implicit conversion from Range<const char*> (aka StringPiece) to
   // Range<const unsigned char*> (aka ByteRange), as they're both frequently
   // used to represent ranges of bytes.
-  template <typename std::enable_if<
-      (std::is_same<Iter, const unsigned char*>::value), int>::type = 0>
-  /* implicit */ Range(const Range<const char*>& other)
+  template <class OtherIter, typename std::enable_if<
+      (std::is_same<Iter, const unsigned char*>::value &&
+       std::is_same<OtherIter, const char*>::value), int>::type = 0>
+  /* implicit */ Range(const Range<OtherIter>& other)
     : b_(reinterpret_cast<const unsigned char*>(other.begin())),
       e_(reinterpret_cast<const unsigned char*>(other.end())) {
   }
