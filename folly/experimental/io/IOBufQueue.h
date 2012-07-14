@@ -182,7 +182,7 @@ class IOBufQueue {
   /**
    * Transfer ownership of the queue's entire IOBuf chain to the caller.
    */
-  std::unique_ptr<folly::IOBuf>&& move() {
+  std::unique_ptr<folly::IOBuf> move() {
     chainLength_ = 0;
     return std::move(head_);
   }
