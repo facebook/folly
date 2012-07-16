@@ -26,5 +26,27 @@
  #endif
 #endif
 
+// Define macro wrappers for C++11's "final" and "override" keywords, which
+// are supported in gcc 4.7 but not gcc 4.6.
+//
+// TODO(tudorb/agallagher): Autotoolize this.
+#undef FOLLY_FINAL
+#undef FOLLY_OVERRIDE
+
+#ifdef __GNUC__
+# if __GNUC_PREREQ(4,7)
+#  define FOLLY_FINAL final
+#  define FOLLY_OVERRIDE override
+# endif
+#endif
+
+#ifndef FOLLY_FINAL
+# define FOLLY_FINAL
+#endif
+
+#ifndef FOLLY_OVERRIDE
+# define FOLLY_OVERRIDE
+#endif
+
 
 #endif // FOLLY_PORTABILITY_H_
