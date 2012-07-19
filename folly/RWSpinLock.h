@@ -564,9 +564,16 @@ class RWTicketSpinLockT : boost::noncopyable {
    * turns.
    */
   void writeLockAggressive() {
+    // sched_yield() is needed here to avoid a pathology if the number
+    // of threads attempting concurrent writes is >= the number of real
+    // cores allocated to this process. This is less likely than the
+    // corresponding situation in lock_shared(), but we still want to
+    // avoid it
+    int count = 0;
     QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
     while (val != load_acquire(&ticket.write)) {
       asm volatile("pause");
+      if (UNLIKELY(++count > 1000)) sched_yield();
     }
   }
 
@@ -578,6 +585,9 @@ class RWTicketSpinLockT : boost::noncopyable {
     // writers, so the writer has less chance to get the lock when
     // there are a lot of competing readers.  The aggressive spinning
     // can help to avoid starving writers.
+    //
+    // We don't worry about sched_yield() here because the caller
+    // has already explicitly abandoned fairness.
     while (!try_lock()) {}
   }
 
@@ -606,8 +616,13 @@ class RWTicketSpinLockT : boost::noncopyable {
   }
 
   void lock_shared() {
+    // sched_yield() is important here because we can't grab the
+    // shared lock if there is a pending writeLockAggressive, so we
+    // need to let threads that already have a shared lock complete
+    int count = 0;
     while (!LIKELY(try_lock_shared())) {
       asm volatile("pause");
+      if (UNLIKELY((++count & 1023) == 0)) sched_yield();
     }
   }
 
