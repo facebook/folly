@@ -206,19 +206,27 @@ bool unhexlify(const InputString& input, OutputString& output);
  *
  * Current types are:
  *   PRETTY_TIME         - s, ms, us, ns, etc.
- *   PRETTY_BYTES        - kb, MB, GB, etc (goes up by 2^10 = 1024 each time)
- *   PRETTY_BYTES_METRIC - kb, MB, GB, etc (goes up by 10^3 = 1000 each time)
+ *   PRETTY_BYTES_METRIC - kB, MB, GB, etc (goes up by 10^3 = 1000 each time)
+ *   PRETTY_BYTES        - kB, MB, GB, etc (goes up by 2^10 = 1024 each time)
+ *   PRETTY_BYTES_IEC    - KiB, MiB, GiB, etc
  *   PRETTY_UNITS_METRIC - k, M, G, etc (goes up by 10^3 = 1000 each time)
  *   PRETTY_UNITS_BINARY - k, M, G, etc (goes up by 2^10 = 1024 each time)
+ *   PRETTY_UNITS_BINARY_IEC - Ki, Mi, Gi, etc
  *
  * @author Mark Rabkin <mrabkin@fb.com>
  */
 enum PrettyType {
   PRETTY_TIME,
-  PRETTY_BYTES,
+
   PRETTY_BYTES_METRIC,
+  PRETTY_BYTES_BINARY,
+  PRETTY_BYTES = PRETTY_BYTES_BINARY,
+  PRETTY_BYTES_BINARY_IEC,
+  PRETTY_BYTES_IEC = PRETTY_BYTES_BINARY_IEC,
+
   PRETTY_UNITS_METRIC,
   PRETTY_UNITS_BINARY,
+  PRETTY_UNITS_BINARY_IEC,
 
   PRETTY_NUM_TYPES
 };

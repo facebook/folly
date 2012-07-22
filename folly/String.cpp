@@ -132,7 +132,16 @@ const PrettySuffix kPrettyTimeSuffixes[] = {
   { 0, 0 },
 };
 
-const PrettySuffix kPrettyBytesSuffixes[] = {
+const PrettySuffix kPrettyBytesMetricSuffixes[] = {
+  { "TB", 1e12L },
+  { "GB", 1e9L },
+  { "MB", 1e6L },
+  { "kB", 1e3L },
+  { "B ", 0L },
+  { 0, 0 },
+};
+
+const PrettySuffix kPrettyBytesBinarySuffixes[] = {
   { "TB", int64_t(1) << 40 },
   { "GB", int64_t(1) << 30 },
   { "MB", int64_t(1) << 20 },
@@ -141,12 +150,12 @@ const PrettySuffix kPrettyBytesSuffixes[] = {
   { 0, 0 },
 };
 
-const PrettySuffix kPrettyBytesMetricSuffixes[] = {
-  { "TB", 1e12L },
-  { "GB", 1e9L },
-  { "MB", 1e6L },
-  { "kB", 1e3L },
-  { "B ", 0L },
+const PrettySuffix kPrettyBytesBinaryIECSuffixes[] = {
+  { "TiB", int64_t(1) << 40 },
+  { "GiB", int64_t(1) << 30 },
+  { "MiB", int64_t(1) << 20 },
+  { "KiB", int64_t(1) << 10 },
+  { "B  ", 0L },
   { 0, 0 },
 };
 
@@ -168,12 +177,23 @@ const PrettySuffix kPrettyUnitsBinarySuffixes[] = {
   { 0, 0 },
 };
 
+const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
+  { "Ti", int64_t(1) << 40 },
+  { "Gi", int64_t(1) << 30 },
+  { "Mi", int64_t(1) << 20 },
+  { "Ki", int64_t(1) << 10 },
+  { "  ", 0 },
+  { 0, 0 },
+};
+
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettyTimeSuffixes,
-  kPrettyBytesSuffixes,
   kPrettyBytesMetricSuffixes,
+  kPrettyBytesBinarySuffixes,
+  kPrettyBytesBinaryIECSuffixes,
   kPrettyUnitsMetricSuffixes,
   kPrettyUnitsBinarySuffixes,
+  kPrettyUnitsBinaryIECSuffixes,
 };
 
 }  // namespace

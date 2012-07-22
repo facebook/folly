@@ -221,6 +221,20 @@ TEST(PrettyPrint, Basic) {
   EXPECT_EQ(string("1 GB"), prettyPrint(pow2(30), PRETTY_BYTES));
   EXPECT_EQ(string("1 TB"), prettyPrint(pow2(40), PRETTY_BYTES));
 
+  EXPECT_EQ(string("853 B  "), prettyPrint(853., PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("833 KiB"), prettyPrint(853.e3, PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("813.5 MiB"), prettyPrint(853.e6, PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("7.944 GiB"), prettyPrint(8.53e9, PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("794.4 GiB"), prettyPrint(853.e9, PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("775.8 TiB"), prettyPrint(853.e12, PRETTY_BYTES_IEC));
+
+  EXPECT_EQ(string("0 B  "), prettyPrint(0, PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("1 B  "), prettyPrint(pow2(0), PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("1 KiB"), prettyPrint(pow2(10), PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("1 MiB"), prettyPrint(pow2(20), PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("1 GiB"), prettyPrint(pow2(30), PRETTY_BYTES_IEC));
+  EXPECT_EQ(string("1 TiB"), prettyPrint(pow2(40), PRETTY_BYTES_IEC));
+
   // check bytes metric printing
   EXPECT_EQ(string("853 B "), prettyPrint(853., PRETTY_BYTES_METRIC));
   EXPECT_EQ(string("853 kB"), prettyPrint(853.e3, PRETTY_BYTES_METRIC));
@@ -261,6 +275,22 @@ TEST(PrettyPrint, Basic) {
       prettyPrint(pow2(30) - 1, PRETTY_UNITS_BINARY));
   EXPECT_EQ(string("1024 G"),
       prettyPrint(pow2(40) - 1, PRETTY_UNITS_BINARY));
+
+  EXPECT_EQ(string("0   "), prettyPrint(0, PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1   "), prettyPrint(pow2(0), PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1 Ki"), prettyPrint(pow2(10), PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1 Mi"), prettyPrint(pow2(20), PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1 Gi"), prettyPrint(pow2(30), PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1 Ti"), prettyPrint(pow2(40), PRETTY_UNITS_BINARY_IEC));
+
+  EXPECT_EQ(string("1023   "),
+      prettyPrint(pow2(10) - 1, PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1024 Ki"),
+      prettyPrint(pow2(20) - 1, PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1024 Mi"),
+      prettyPrint(pow2(30) - 1, PRETTY_UNITS_BINARY_IEC));
+  EXPECT_EQ(string("1024 Gi"),
+      prettyPrint(pow2(40) - 1, PRETTY_UNITS_BINARY_IEC));
 
   // check that negative values work
   EXPECT_EQ(string("-85.3 s "), prettyPrint(-85.3, PRETTY_TIME));
