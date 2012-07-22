@@ -295,12 +295,38 @@ void doNotOptimizeAway(T&& datum) {
  * 1000000 for initialSize, and the iteration count for n.
  */
 #define BENCHMARK_PARAM(name, param)                                    \
+  BENCHMARK_NAMED_PARAM(name, param, param)
+
+/*
+ * Like BENCHMARK_PARAM(), but allows a custom name to be specified for each
+ * parameter, rather than using the parameter value.
+ *
+ * Useful when the parameter value is not a valid token for string pasting,
+ * of when you want to specify multiple parameter arguments.
+ *
+ * For example:
+ *
+ * void addValue(uint n, int64_t bucketSize, int64_t min, int64_t max) {
+ *   Histogram<int64_t> hist(bucketSize, min, max);
+ *   int64_t num = min;
+ *   FOR_EACH_RANGE (i, 0, n) {
+ *     hist.addValue(num);
+ *     ++num;
+ *     if (num > max) { num = min; }
+ *   }
+ * }
+ *
+ * BENCHMARK_NAMED_PARAM(addValue, 0_to_100, 1, 0, 100)
+ * BENCHMARK_NAMED_PARAM(addValue, 0_to_1000, 10, 0, 1000)
+ * BENCHMARK_NAMED_PARAM(addValue, 5k_to_20k, 250, 5000, 20000)
+ */
+#define BENCHMARK_NAMED_PARAM(name, param_name, ...)                    \
   BENCHMARK_IMPL(                                                       \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param)),                   \
-      FB_STRINGIZE(name) "(" FB_STRINGIZE(param) ")",                   \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),              \
+      FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")",              \
       unsigned,                                                         \
       iters) {                                                          \
-    name(iters, param);                                                 \
+    name(iters, ## __VA_ARGS__);                                        \
   }
 
 /**
@@ -338,12 +364,18 @@ void doNotOptimizeAway(T&& datum) {
  * A combination of BENCHMARK_RELATIVE and BENCHMARK_PARAM.
  */
 #define BENCHMARK_RELATIVE_PARAM(name, param)                           \
+  BENCHMARK_RELATIVE_NAMED_PARAM(name, param, param)
+
+/**
+ * A combination of BENCHMARK_RELATIVE and BENCHMARK_NAMED_PARAM.
+ */
+#define BENCHMARK_RELATIVE_NAMED_PARAM(name, param_name, ...)           \
   BENCHMARK_IMPL(                                                       \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param)),                   \
-      "%" FB_STRINGIZE(name) "(" FB_STRINGIZE(param) ")",               \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),              \
+      "%" FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")",          \
       unsigned,                                                         \
       iters) {                                                          \
-    name(iters, param);                                                 \
+    name(iters, ## __VA_ARGS__);                                        \
   }
 
 /**

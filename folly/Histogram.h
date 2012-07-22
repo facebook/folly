@@ -18,11 +18,12 @@
 #define FOLLY_HISTOGRAM_H_
 
 #include <cstddef>
-#include <cstdint>
 #include <limits>
 #include <string>
 #include <vector>
 #include <stdexcept>
+
+#include "folly/detail/Stats.h"
 
 namespace folly {
 
@@ -223,36 +224,7 @@ template <typename T>
 class Histogram {
  public:
   typedef T ValueType;
-
-  struct Bucket {
-    Bucket()
-      : sum(0),
-        count(0) {}
-
-    void clear() {
-      sum = 0;
-      count = 0;
-    }
-
-    Bucket& merge(const Bucket &bucket) {
-      if (this != &bucket) {
-        sum += bucket.sum;
-        count += bucket.count;
-      }
-      return *this;
-    }
-
-    Bucket& operator=(const Bucket& bucket) {
-      if (this != &bucket) {
-        sum = bucket.sum;
-        count = bucket.count;
-      }
-      return *this;
-    }
-
-    ValueType sum;
-    uint64_t count;
-  };
+  typedef detail::Bucket<T> Bucket;
 
   Histogram(ValueType bucketSize, ValueType min, ValueType max)
     : buckets_(bucketSize, min, max, Bucket()) {}
@@ -298,7 +270,7 @@ class Histogram {
     }
 
     for (int i = 0; i < buckets_.getNumBuckets(); i++) {
-      buckets_.getByIndex(i).merge(hist.buckets_.getByIndex(i));
+      buckets_.getByIndex(i) += hist.buckets_.getByIndex(i);
     }
   }
 
