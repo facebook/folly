@@ -78,12 +78,12 @@ findInternal(const KeyT key_in) {
  *   default.
  */
 template <class KeyT, class ValueT, class HashFcn>
+template <class T>
 typename AtomicHashArray<KeyT, ValueT, HashFcn>::SimpleRetT
 AtomicHashArray<KeyT, ValueT, HashFcn>::
-insertInternal(const value_type& record) {
+insertInternal(KeyT key_in, T&& value) {
   const short NO_NEW_INSERTS = 1;
   const short NO_PENDING_INSERTS = 2;
-  const KeyT key_in = record.first;
   CHECK_NE(key_in, kEmptyKey_);
   CHECK_NE(key_in, kLockedKey_);
   CHECK_NE(key_in, kErasedKey_);
@@ -131,7 +131,7 @@ insertInternal(const value_type& record) {
              * constructed a lhs to use an assignment operator on when
              * values are being set.
              */
-            new (&cell->second) ValueT(record.second);
+            new (&cell->second) ValueT(std::forward<T>(value));
             unlockCell(cell, key_in); // Sets the new key
           } catch (...) {
             // Transition back to empty key---requires handling

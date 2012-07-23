@@ -75,17 +75,35 @@ void testMap() {
   }
 }
 
+template<class KeyT, class ValueT>
+void testNoncopyableMap() {
+  typedef AtomicHashArray<KeyT, std::unique_ptr<ValueT>>  MyArr;
+  auto arr = MyArr::create(150);
+  for (int i = 0; i < 100; i++) {
+    arr->insert(make_pair(i,std::unique_ptr<ValueT>(new ValueT(i))));
+  }
+  for (int i = 0; i < 100; i++) {
+    auto ret = arr->find(i);
+    EXPECT_EQ(*(ret->second), i);
+  }
+}
+
+
 TEST(Aha, InsertErase_i32_i32) {
   testMap<int32_t,int32_t>();
+  testNoncopyableMap<int32_t,int32_t>();
 }
 TEST(Aha, InsertErase_i64_i32) {
   testMap<int64_t,int32_t>();
+  testNoncopyableMap<int64_t,int32_t>();
 }
 TEST(Aha, InsertErase_i64_i64) {
   testMap<int64_t,int64_t>();
+  testNoncopyableMap<int64_t,int64_t>();
 }
 TEST(Aha, InsertErase_i32_i64) {
   testMap<int32_t,int64_t>();
+  testNoncopyableMap<int32_t,int64_t>();
 }
 TEST(Aha, InsertErase_i32_str) {
   testMap<int32_t,string>();

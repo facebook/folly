@@ -225,10 +225,14 @@ class AtomicHashMap : boost::noncopyable {
    *   all sub maps are full, no element is inserted, and
    *   AtomicHashMapFullError is thrown.
    */
-  std::pair<iterator,bool> insert(const value_type& r);
-  std::pair<iterator,bool> insert(key_type k, const mapped_type& v) {
-    return insert(value_type(k, v));
+  std::pair<iterator,bool> insert(const value_type& r) {
+    return insert(r.first, r.second);
   }
+  std::pair<iterator,bool> insert(key_type k, const mapped_type& v);
+  std::pair<iterator,bool> insert(value_type&& r) {
+    return insert(r.first, std::move(r.second));
+  }
+  std::pair<iterator,bool> insert(key_type k, mapped_type&& v);
 
   /*
    * find --
@@ -336,7 +340,26 @@ class AtomicHashMap : boost::noncopyable {
   /* Advanced functions for direct access: */
 
   inline uint32_t recToIdx(const value_type& r, bool mayInsert = true) {
-    SimpleRetT ret = mayInsert ? insertInternal(r) : findInternal(r.first);
+    SimpleRetT ret = mayInsert ?
+      insertInternal(r.first, r.second) : findInternal(r.first);
+    return encodeIndex(ret.i, ret.j);
+  }
+
+  inline uint32_t recToIdx(value_type&& r, bool mayInsert = true) {
+    SimpleRetT ret = mayInsert ?
+      insertInternal(r.first, std::move(r.second)) : findInternal(r.first);
+    return encodeIndex(ret.i, ret.j);
+  }
+
+  inline uint32_t recToIdx(key_type k, const mapped_type& v,
+    bool mayInsert = true) {
+    SimpleRetT ret = mayInsert ? insertInternal(k, v) : findInternal(k);
+    return encodeIndex(ret.i, ret.j);
+  }
+
+  inline uint32_t recToIdx(key_type k, mapped_type&& v, bool mayInsert = true) {
+    SimpleRetT ret = mayInsert ?
+      insertInternal(k, std::move(v)) : findInternal(k);
     return encodeIndex(ret.i, ret.j);
   }
 
@@ -367,7 +390,8 @@ class AtomicHashMap : boost::noncopyable {
     SimpleRetT() {}
   };
 
-  SimpleRetT insertInternal(const value_type& r);
+  template <class T>
+  SimpleRetT insertInternal(KeyT key, T&& value);
 
   SimpleRetT findInternal(const KeyT k) const;
 

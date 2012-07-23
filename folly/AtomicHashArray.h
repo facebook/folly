@@ -150,7 +150,11 @@ class AtomicHashArray : boost::noncopyable {
    *   iterator is set to the existing entry.
    */
   std::pair<iterator,bool> insert(const value_type& r) {
-    SimpleRetT ret = insertInternal(r);
+    SimpleRetT ret = insertInternal(r.first, r.second);
+    return std::make_pair(iterator(this, ret.idx), ret.success);
+  }
+  std::pair<iterator,bool> insert(value_type&& r) {
+    SimpleRetT ret = insertInternal(r.first, std::move(r.second));
     return std::make_pair(iterator(this, ret.idx), ret.success);
   }
 
@@ -213,7 +217,8 @@ class AtomicHashArray : boost::noncopyable {
     SimpleRetT() {}
   };
 
-  SimpleRetT insertInternal(const value_type& record);
+  template <class T>
+  SimpleRetT insertInternal(KeyT key, T&& value);
 
   SimpleRetT findInternal(const KeyT key);
 

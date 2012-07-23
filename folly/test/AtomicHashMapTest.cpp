@@ -21,7 +21,7 @@
 #include <sys/time.h>
 #include <thread>
 #include <atomic>
-
+#include <memory>
 #include "folly/Benchmark.h"
 #include "folly/Conv.h"
 
@@ -64,6 +64,29 @@ TEST(Ahm, BasicStrings) {
   myMap.find(999)->second = "C";
   EXPECT_EQ(myMap.find(999)->second, "C");
   EXPECT_EQ(myMap.find(999)->first, 999);
+}
+
+
+TEST(Ahm, BasicNoncopyable) {
+  typedef AtomicHashMap<int64_t,std::unique_ptr<int>> AHM;
+  AHM myMap(1024);
+  EXPECT_TRUE(myMap.begin() == myMap.end());
+
+  for (int i = 0; i < 50; ++i) {
+    myMap.insert(make_pair(i, std::unique_ptr<int>(new int(i))));
+  }
+  for (int i = 50; i < 100; ++i) {
+    myMap.insert(i, std::unique_ptr<int>(new int (i)));
+  }
+  for (int i = 0; i < 100; ++i) {
+    EXPECT_EQ(*(myMap.find(i)->second), i);
+  }
+  for (int i = 0; i < 100; i+=4) {
+    myMap.erase(i);
+  }
+  for (int i = 0; i < 100; i+=4) {
+    EXPECT_EQ(myMap.find(i), myMap.end());
+  }
 }
 
 typedef int32_t     KeyT;
@@ -168,9 +191,9 @@ TEST(Ahm, iterator) {
 
 class Counters {
 private:
-  // NOTE: Unfortunately can't currently put a std::atomic<int64_t> in
-  // the value in ahm since it doesn't support non-copyable but
-  // move-constructible value types yet.
+  // Note: Unfortunately can't currently put a std::atomic<int64_t> in
+  // the value in ahm since it doesn't support types that are both non-copy
+  // and non-move constructible yet.
   AtomicHashMap<int64_t,int64_t> ahm;
 
 public:

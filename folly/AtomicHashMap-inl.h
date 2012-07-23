@@ -46,8 +46,18 @@ AtomicHashMap(size_t size, const Config& config)
 template <typename KeyT, typename ValueT, typename HashFcn>
 std::pair<typename AtomicHashMap<KeyT,ValueT,HashFcn>::iterator,bool>
 AtomicHashMap<KeyT, ValueT, HashFcn>::
-insert(const value_type& r) {
-  SimpleRetT ret = insertInternal(r);
+insert(key_type k, const mapped_type& v) {
+  SimpleRetT ret = insertInternal(k,v);
+  SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
+  return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
+                        ret.success);
+}
+
+template <typename KeyT, typename ValueT, typename HashFcn>
+std::pair<typename AtomicHashMap<KeyT,ValueT,HashFcn>::iterator,bool>
+AtomicHashMap<KeyT, ValueT, HashFcn>::
+insert(key_type k, mapped_type&& v) {
+  SimpleRetT ret = insertInternal(k, std::move(v));
   SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
   return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
                         ret.success);
@@ -55,9 +65,10 @@ insert(const value_type& r) {
 
 // insertInternal -- Allocates new sub maps as existing ones fill up.
 template <typename KeyT, typename ValueT, typename HashFcn>
+template <class T>
 typename AtomicHashMap<KeyT, ValueT, HashFcn>::SimpleRetT
 AtomicHashMap<KeyT, ValueT, HashFcn>::
-insertInternal(const value_type& r) {
+insertInternal(key_type key, T&& value) {
  beginInsertInternal:
   int nextMapIdx = // this maintains our state
     numMapsAllocated_.load(std::memory_order_acquire);
@@ -66,7 +77,7 @@ insertInternal(const value_type& r) {
   FOR_EACH_RANGE(i, 0, nextMapIdx) {
     // insert in each map successively.  If one succeeds, we're done!
     SubMap* subMap = subMaps_[i].load(std::memory_order_relaxed);
-    ret = subMap->insertInternal(r);
+    ret = subMap->insertInternal(key, std::forward<T>(value));
     if (ret.idx == subMap->capacity_) {
       continue;  //map is full, so try the next one
     }
@@ -121,7 +132,7 @@ insertInternal(const value_type& r) {
   // just did a spin wait with an acquire load on numMapsAllocated_.
   SubMap* loadedMap = subMaps_[nextMapIdx].load(std::memory_order_relaxed);
   DCHECK(loadedMap && loadedMap != (SubMap*)kLockedPtr_);
-  ret = loadedMap->insertInternal(r);
+  ret = loadedMap->insertInternal(key, std::forward<T>(value));
   if (ret.idx != loadedMap->capacity_) {
     return SimpleRetT(nextMapIdx, ret.idx, ret.success);
   }
