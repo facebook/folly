@@ -21,7 +21,6 @@
 #include "folly/Random.h"
 #include "folly/FBString.h"
 #include "folly/FBVector.h"
-#include "folly/Benchmark.h"
 
 #include <gflags/gflags.h>
 
@@ -57,7 +56,6 @@ void randomString(String* toFill, unsigned int maxSize = 1000) {
 template <class String, class Integral>
 void Num2String(String& str, Integral n) {
   str.resize(10, '\0');
-//    ultoa((unsigned long)n, &str[0], 10);
   sprintf(&str[0], "%ul", 10);
   str.resize(strlen(str.c_str()));
 }
@@ -225,35 +223,8 @@ TEST(FBVector, task858056) {
   EXPECT_EQ("Cycle detected: [baz] [bar] [foo] ", message);
 }
 
-#define CONCAT(A, B) CONCAT_HELPER(A, B)
-#define CONCAT_HELPER(A, B) A##B
-#define BENCHFUN(F) CONCAT(CONCAT(BM_, F), CONCAT(_, VECTOR))
-#define TESTFUN(F) TEST(fbvector, CONCAT(F, VECTOR))
-
-typedef vector<int> IntVector;
-typedef fbvector<int> IntFBVector;
-typedef vector<folly::fbstring> FBStringVector;
-typedef fbvector<folly::fbstring> FBStringFBVector;
-
-#define VECTOR IntVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
-#undef VECTOR
-#define VECTOR IntFBVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
-#undef VECTOR
-#define VECTOR FBStringVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
-#undef VECTOR
-#define VECTOR FBStringFBVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
-#undef VECTOR
-
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  if (!ret && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return ret;
+  return RUN_ALL_TESTS();
 }
