@@ -120,6 +120,23 @@ TEST(IOBuf, TakeOwnership) {
   EXPECT_EQ(0, deleteCount);
   iobuf2.reset();
   EXPECT_EQ(1, deleteCount);
+
+  deleteCount = 0;
+  uint32_t size3 = 3456;
+  uint8_t *buf3 = new uint8_t[size3];
+  uint32_t length3 = 48;
+  unique_ptr<IOBuf> iobuf3(IOBuf::takeOwnership(buf3, size3, length3,
+                                                deleteArrayBuffer,
+                                                &deleteCount));
+  EXPECT_EQ(buf3, iobuf3->data());
+  EXPECT_EQ(length3, iobuf3->length());
+  EXPECT_EQ(buf3, iobuf3->buffer());
+  EXPECT_EQ(size3, iobuf3->capacity());
+  EXPECT_EQ(0, deleteCount);
+  iobuf3.reset();
+  EXPECT_EQ(1, deleteCount);
+
+
 }
 
 TEST(IOBuf, WrapBuffer) {

@@ -117,6 +117,7 @@ unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
 }
 
 unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
+                                       uint32_t length,
                                        FreeFunction freeFn,
                                        void* userData,
                                        bool freeOnError) {
@@ -127,7 +128,7 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
     uint8_t* bufPtr = static_cast<uint8_t*>(buf);
     return unique_ptr<IOBuf>(new IOBuf(kExtUserSupplied, kFlagFreeSharedInfo,
                                        bufPtr, capacity,
-                                       bufPtr, capacity,
+                                       bufPtr, length,
                                        sharedInfo));
   } catch (...) {
     delete sharedInfo;

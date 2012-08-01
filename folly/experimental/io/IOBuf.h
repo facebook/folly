@@ -217,12 +217,26 @@ class IOBuf {
    * If no FreeFunction is specified, the buffer will be freed using free().
    *
    * The IOBuf data pointer will initially point to the start of the buffer,
-   * and the length will be the full capacity of the buffer.
+   *
+   * In the first version of this function, the length of data is unspecified
+   * and is initialized to the capacity of the buffer
+   *
+   * In the second version, the user specifies the valid length of data
+   * in the buffer
    *
    * On error, std::bad_alloc will be thrown.  If freeOnError is true (the
    * default) the buffer will be freed before throwing the error.
    */
   static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
+                                              FreeFunction freeFn = NULL,
+                                              void* userData = NULL,
+                                              bool freeOnError = true) {
+    return takeOwnership(buf, capacity, capacity, freeFn,
+                         userData, freeOnError);
+  }
+
+  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
+                                              uint32_t length,
                                               FreeFunction freeFn = NULL,
                                               void* userData = NULL,
                                               bool freeOnError = true);
