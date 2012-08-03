@@ -102,11 +102,29 @@ TEST(Hash, Hsieh32) {
 TEST(Hash, TWang_Mix64) {
   uint64_t i1 = 0x78a87873e2d31dafULL;
   uint64_t i1_res = 3389151152926383528ULL;
-  EXPECT_EQ(twang_mix64(i1), i1_res);
+  EXPECT_EQ(i1_res, twang_mix64(i1));
+  EXPECT_EQ(i1, twang_unmix64(i1_res));
 
   uint64_t i2 = 0x0123456789abcdefULL;
   uint64_t i2_res = 3061460455458984563ull;
-  EXPECT_EQ(twang_mix64(i2), i2_res);
+  EXPECT_EQ(i2_res, twang_mix64(i2));
+  EXPECT_EQ(i2, twang_unmix64(i2_res));
+}
+
+namespace {
+void checkTWang(uint64_t r) {
+  uint64_t result = twang_mix64(r);
+  EXPECT_EQ(r, twang_unmix64(result));
+}
+}  // namespace
+
+TEST(Hash, TWang_Unmix64) {
+  // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
+  for (int i = 1; i < 64; i++) {
+    checkTWang((1U << i) - 1);
+    checkTWang(1U << i);
+    checkTWang((1U << i) + 1);
+  }
 }
 
 TEST(Hash, TWang_32From64) {
@@ -122,11 +140,29 @@ TEST(Hash, TWang_32From64) {
 TEST(Hash, Jenkins_Rev_Mix32) {
   uint32_t i1 = 3805486511ul;
   uint32_t i1_res = 381808021ul;
-  EXPECT_EQ(jenkins_rev_mix32(i1), i1_res);
+  EXPECT_EQ(i1_res, jenkins_rev_mix32(i1));
+  EXPECT_EQ(i1, jenkins_rev_unmix32(i1_res));
 
   uint32_t i2 = 2309737967ul;
   uint32_t i2_res = 1834777923ul;
-  EXPECT_EQ(jenkins_rev_mix32(i2), i2_res);
+  EXPECT_EQ(i2_res, jenkins_rev_mix32(i2));
+  EXPECT_EQ(i2, jenkins_rev_unmix32(i2_res));
+}
+
+namespace {
+void checkJenkins(uint32_t r) {
+  uint32_t result = jenkins_rev_mix32(r);
+  EXPECT_EQ(r, jenkins_rev_unmix32(result));
+}
+}  // namespace
+
+TEST(Hash, Jenkins_Rev_Unmix32) {
+  // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
+  for (int i = 1; i < 32; i++) {
+    checkJenkins((1U << i) - 1);
+    checkJenkins(1U << i);
+    checkJenkins((1U << i) + 1);
+  }
 }
 
 TEST(Hash, hasher) {

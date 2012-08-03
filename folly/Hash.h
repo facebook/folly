@@ -69,13 +69,32 @@ size_t hash_combine(const T& t, const Ts&... ts) {
  */
 
 inline uint64_t twang_mix64(uint64_t key) {
-  key = (~key) + (key << 21);
+  key = (~key) + (key << 21);  // key *= (1 << 21) - 1; key -= 1;
   key = key ^ (key >> 24);
-  key = (key + (key << 3)) + (key << 8);
+  key = key + (key << 3) + (key << 8);  // key *= 1 + (1 << 3) + (1 << 8)
   key = key ^ (key >> 14);
-  key = (key + (key << 2)) + (key << 4);
+  key = key + (key << 2) + (key << 4);  // key *= 1 + (1 << 2) + (1 << 4)
   key = key ^ (key >> 28);
-  key = key + (key << 31);
+  key = key + (key << 31);  // key *= 1 + (1 << 31)
+  return key;
+}
+
+/*
+ * Inverse of twang_mix64
+ *
+ * Note that twang_unmix64 is significantly slower than twang_mix64.
+ */
+
+inline uint64_t twang_unmix64(uint64_t key) {
+  // See the comments in jenkins_rev_unmix32 for an explanation as to how this
+  // was generated
+  key *= 4611686016279904257U;
+  key ^= (key >> 28) ^ (key >> 56);
+  key *= 14933078535860113213U;
+  key ^= (key >> 14) ^ (key >> 28) ^ (key >> 42) ^ (key >> 56);
+  key *= 15244667743933553977U;
+  key ^= (key >> 24) ^ (key >> 48);
+  key = (key + 1) * 9223367638806167551U;
   return key;
 }
 
@@ -98,14 +117,47 @@ inline uint32_t twang_32from64(uint64_t key) {
  */
 
 inline uint32_t jenkins_rev_mix32(uint32_t key) {
-  key += (key << 12);
+  key += (key << 12);  // key *= (1 + (1 << 12))
   key ^= (key >> 22);
-  key += (key << 4);
+  key += (key << 4);   // key *= (1 + (1 << 4))
   key ^= (key >> 9);
-  key += (key << 10);
+  key += (key << 10);  // key *= (1 + (1 << 10))
   key ^= (key >> 2);
+  // key *= (1 + (1 << 7)) * (1 + (1 << 12))
   key += (key << 7);
   key += (key << 12);
+  return key;
+}
+
+/*
+ * Inverse of jenkins_rev_mix32
+ *
+ * Note that jenkinks_rev_unmix32 is significantly slower than
+ * jenkins_rev_mix32.
+ */
+
+inline uint32_t jenkins_rev_unmix32(uint32_t key) {
+  // These are the modular multiplicative inverses (in Z_2^32) of the
+  // multiplication factors in jenkins_rev_mix32, in reverse order.  They were
+  // computed using the Extended Euclidean algorithm, see
+  // http://en.wikipedia.org/wiki/Modular_multiplicative_inverse
+  key *= 2364026753U;
+
+  // The inverse of a ^= (a >> n) is
+  // b = a
+  // for (int i = n; i < 32; i += n) {
+  //   b ^= (a >> i);
+  // }
+  key ^=
+    (key >> 2) ^ (key >> 4) ^ (key >> 6) ^ (key >> 8) ^
+    (key >> 10) ^ (key >> 12) ^ (key >> 14) ^ (key >> 16) ^
+    (key >> 18) ^ (key >> 20) ^ (key >> 22) ^ (key >> 24) ^
+    (key >> 26) ^ (key >> 28) ^ (key >> 30);
+  key *= 3222273025U;
+  key ^= (key >> 9) ^ (key >> 18) ^ (key >> 27);
+  key *= 4042322161U;
+  key ^= (key >> 22);
+  key *= 16773121U;
   return key;
 }
 
