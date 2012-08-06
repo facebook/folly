@@ -85,7 +85,6 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/type_traits/is_convertible.hpp>
-#include <glog/logging.h>
 
 #include <stdexcept>
 #include <functional>
