@@ -22,6 +22,7 @@
 #include <limits>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 namespace folly {
 
@@ -233,6 +234,22 @@ class Histogram {
       count = 0;
     }
 
+    Bucket& merge(const Bucket &bucket) {
+      if (this != &bucket) {
+        sum += bucket.sum;
+        count += bucket.count;
+      }
+      return *this;
+    }
+
+    Bucket& operator=(const Bucket& bucket) {
+      if (this != &bucket) {
+        sum = bucket.sum;
+        count = bucket.count;
+      }
+      return *this;
+    }
+
     ValueType sum;
     uint64_t count;
   };
@@ -266,6 +283,37 @@ class Histogram {
   void clear() {
     for (int i = 0; i < buckets_.getNumBuckets(); i++) {
       buckets_.getByIndex(i).clear();
+    }
+  }
+
+  /* Merge two histogram data together */
+  void merge(Histogram &hist) {
+    // the two histogram bucket definitions must match to support
+    // a merge.
+    if (getBucketSize() != hist.getBucketSize() ||
+        getMin() != hist.getMin() ||
+        getMax() != hist.getMax() ||
+        getNumBuckets() != hist.getNumBuckets() ) {
+      throw std::invalid_argument("Cannot merge from input histogram.");
+    }
+
+    for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+      buckets_.getByIndex(i).merge(hist.buckets_.getByIndex(i));
+    }
+  }
+
+  /* Copy bucket values from another histogram */
+  void copy(Histogram &hist) {
+    // the two histogram bucket definition must match
+    if (getBucketSize() != hist.getBucketSize() ||
+        getMin() != hist.getMin() ||
+        getMax() != hist.getMax() ||
+        getNumBuckets() != hist.getNumBuckets() ) {
+      throw std::invalid_argument("Cannot copy from input histogram.");
+    }
+
+    for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+      buckets_.getByIndex(i) = hist.buckets_.getByIndex(i);
     }
   }
 
