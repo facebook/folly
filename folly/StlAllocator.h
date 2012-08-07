@@ -116,6 +116,14 @@ class StlAllocator {
     typedef StlAllocator<Alloc, U> other;
   };
 
+  bool operator!=(const StlAllocator<Alloc, T>& other) const {
+    return alloc_ != other.alloc_;
+  }
+
+  bool operator==(const StlAllocator<Alloc, T>& other) const {
+    return alloc_ == other.alloc_;
+  }
+
  private:
   Alloc* alloc_;
 };
