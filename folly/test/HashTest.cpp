@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <stdint.h>
 #include <unordered_map>
+#include <utility>
 
 using namespace folly::hash;
 
@@ -170,6 +171,16 @@ TEST(Hash, hasher) {
   std::unordered_map<int32_t,int32_t,folly::hasher<int32_t>> m;
   m.insert(std::make_pair(4, 5));
   EXPECT_EQ(get_default(m, 4), 5);
+}
+
+TEST(Hash, pair) {
+  auto a = std::make_pair(1, 2);
+  auto b = std::make_pair(3, 4);
+  auto c = std::make_pair(1, 2);
+  EXPECT_EQ(hash_combine(a),
+            hash_combine(c));
+  EXPECT_NE(hash_combine(b),
+            hash_combine(c));
 }
 
 TEST(Hash, hash_combine) {

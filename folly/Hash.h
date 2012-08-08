@@ -338,15 +338,6 @@ namespace std {
       return folly::hash::hash_combine(x.first, x.second);
     }
   };
-
-  // Same as above, but for arbitrary tuples.
-  template <typename... Ts>
-  class hash<std::tuple<Ts...> > {
-  public:
-    size_t operator()(const Ts&... ts) const {
-      return folly::hash::hash_combine(ts...);
-    }
-  };
 } // namespace std
 
 #endif
