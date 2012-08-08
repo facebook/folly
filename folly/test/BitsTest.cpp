@@ -38,12 +38,6 @@ void testFFS() {
 }
 
 template <class INT>
-unsigned int findLastSetPortable(INT x) {
-  return detail::findLastSetPortable(
-      static_cast<typename std::make_unsigned<INT>::type>(x));
-}
-
-template <class INT>
 void testFLS() {
   typedef typename std::make_unsigned<INT>::type UINT;
   EXPECT_EQ(0, findLastSet(static_cast<INT>(0)));
@@ -51,11 +45,9 @@ void testFLS() {
   for (size_t i = 0; i < bits; i++) {
     INT v1 = static_cast<UINT>(1) << i;
     EXPECT_EQ(i + 1, findLastSet(v1));
-    EXPECT_EQ(i + 1, findLastSetPortable(v1));
 
     INT v2 = (static_cast<UINT>(1) << i) - 1;
     EXPECT_EQ(i, findLastSet(v2));
-    EXPECT_EQ(i, findLastSetPortable(v2));
   }
 }
 
@@ -113,8 +105,6 @@ TEST(Bits, FindLastSet) {
 }
 
 
-#ifdef __GNUC__
-
 TEST(Bits, nextPowTwoClz) {
   testPowTwo(nextPowTwo);
 }
@@ -124,17 +114,12 @@ BENCHMARK(nextPowTwoClz, iters) {
   x = folly::nextPowTwo(iters);
 }
 
-#endif
-
-TEST(Bits, nextPowTwoPortable) {
-  testPowTwo(detail::nextPowTwoPortable);
+TEST(Bits, popcount) {
+  EXPECT_EQ(0, popcount(0U));
+  EXPECT_EQ(1, popcount(1U));
+  EXPECT_EQ(32, popcount(uint32_t(-1)));
+  EXPECT_EQ(64, popcount(uint64_t(-1)));
 }
-
-BENCHMARK(nextPowTwoPortable, iters) {
-  x = detail::nextPowTwoPortable(iters);
-}
-
-BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
@@ -153,5 +138,4 @@ Benchmarks run on dual Xeon X5650's @ 2.67GHz w/hyperthreading enabled
 Benchmark                               Iters   Total t    t/iter iter/sec
 ------------------------------------------------------------------------------
 *       nextPowTwoClz                 1000000  1.659 ms  1.659 ns  574.8 M
- +66.8% nextPowTwoPortable            1000000  2.767 ms  2.767 ns  344.7 M
 */

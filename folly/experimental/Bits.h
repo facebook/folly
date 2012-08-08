@@ -30,31 +30,6 @@ namespace folly {
 // right-shift is arithmetic for signed values, and that can lead to
 // unpleasant bugs.
 
-/**
- * Population count (number of bits set), using __builtin_popcount or
- * __builtin_popcountll, depending on size.
- */
-template <class T>
-inline typename std::enable_if<
-  (std::is_integral<T>::value &&
-   std::is_unsigned<T>::value &&
-   sizeof(T) <= sizeof(unsigned int)),
-  size_t>::type
-  popcount(T x) {
-  return __builtin_popcount(x);
-}
-
-template <class T>
-inline typename std::enable_if<
-  (std::is_integral<T>::value &&
-   std::is_unsigned<T>::value &&
-   sizeof(T) > sizeof(unsigned int) &&
-   sizeof(T) <= sizeof(unsigned long long)),
-  size_t>::type
-  popcount(T x) {
-  return __builtin_popcountll(x);
-}
-
 namespace detail {
 
 /**

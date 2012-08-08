@@ -26,6 +26,9 @@
  *    1-based.  0 = no bits are set (x == 0)
  *    for x != 0, findLastSet(x) == 1 + floor(log2(x))
  *
+ * popcount(x)
+ *    return the number of 1 bits in x
+ *
  * nextPowTwo(x)
  *    Finds the next power of two >= x.
  *
@@ -55,6 +58,11 @@
 #define _GNU_SOURCE 1
 #endif
 
+#ifndef __GNUC__
+#error GCC required
+#endif
+
+#include "folly/detail/BitsDetail.h"
 #include "folly/detail/BitIteratorDetail.h"
 #include "folly/Likely.h"
 
@@ -125,21 +133,6 @@ typename std::enable_if<
   return findFirstSet(static_cast<typename std::make_signed<T>::type>(x));
 }
 
-namespace detail {
-
-// Portable, but likely slow...
-inline unsigned int findLastSetPortable(uint64_t x) {
-  unsigned int r = (x != 0);  // 1-based index, except for x==0
-  while (x >>= 1) {
-    ++r;
-  }
-  return r;
-}
-
-}  // namespace detail
-
-#ifdef __GNUC__
-
 // findLastSet: return the 1-based index of the highest bit set
 // for x > 0, findLastSet(x) == 1 + floor(log2(x))
 template <class T>
@@ -179,19 +172,6 @@ typename std::enable_if<
   return x ? 8 * sizeof(unsigned long long) - __builtin_clzll(x) : 0;
 }
 
-#else  /* !__GNUC__ */
-
-template <class T>
-typename std::enable_if<
-  (std::is_integral<T>::value &&
-   std::is_unsigned<T>::value),
-  unsigned int>::type
-  findLastSet(T x) {
-  return detail:findLastSetPortable(x);
-}
-
-#endif
-
 template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
@@ -200,36 +180,6 @@ typename std::enable_if<
   findLastSet(T x) {
   return findLastSet(static_cast<typename std::make_unsigned<T>::type>(x));
 }
-
-namespace detail {
-
-template <class T>
-inline
-typename std::enable_if<
-  std::is_integral<T>::value && std::is_unsigned<T>::value,
-  T>::type
-nextPowTwoPortable(T v) {
-  if (UNLIKELY(v == 0)) {
-    return 1;
-  }
-
-  --v;
-  for (uint32_t i = 1; i < sizeof(T) * 8; i <<= 8) {
-    v |= (v >> i);
-    v |= (v >> (i << 1));
-    v |= (v >> (i << 2));
-    v |= (v >> (i << 3));
-    v |= (v >> (i << 4));
-    v |= (v >> (i << 5));
-    v |= (v >> (i << 6));
-    v |= (v >> (i << 7));
-  }
-  return v + 1;
-}
-
-}  // namespace detail
-
-#ifdef __GNUC__
 
 template <class T>
 inline
@@ -243,20 +193,29 @@ nextPowTwo(T v) {
   return 1ul << findLastSet(v - 1);
 }
 
-#else /* __GNUC__ */
-
+/**
+ * Population count
+ */
 template <class T>
-inline
-typename std::enable_if<
-  std::is_integral<T>::value && std::is_unsigned<T>::value,
-  T>::type
-nextPowTwo(T v) {
-  return detail::nextPowTwoPortable(v);
+inline typename std::enable_if<
+  (std::is_integral<T>::value &&
+   std::is_unsigned<T>::value &&
+   sizeof(T) <= sizeof(unsigned int)),
+  size_t>::type
+  popcount(T x) {
+  return detail::popcount(x);
 }
 
-#endif /* __GNUC__ */
-
-
+template <class T>
+inline typename std::enable_if<
+  (std::is_integral<T>::value &&
+   std::is_unsigned<T>::value &&
+   sizeof(T) > sizeof(unsigned int) &&
+   sizeof(T) <= sizeof(unsigned long long)),
+  size_t>::type
+  popcount(T x) {
+  return detail::popcountll(x);
+}
 
 /**
  * Endianness detection and manipulation primitives.
