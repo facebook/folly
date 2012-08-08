@@ -25,8 +25,9 @@
 namespace {
 
 int popcount_inst(unsigned int x) {
-  asm ("popcntl %0, %0" : "=r" (x) : "0" (x));
-  return x;
+  int n;
+  asm ("popcntl %1, %0" : "=r" (n) : "r" (x));
+  return n;
 }
 
 int popcount_builtin(unsigned int x) {
@@ -34,8 +35,9 @@ int popcount_builtin(unsigned int x) {
 }
 
 int popcountll_inst(unsigned long long x) {
-  asm ("popcntq %0, %0" : "=r" (x) : "0" (x));
-  return x;
+  unsigned long long n;
+  asm ("popcntq %1, %0" : "=r" (n) : "r" (x));
+  return n;
 }
 
 int popcountll_builtin(unsigned long long x) {
