@@ -105,7 +105,8 @@ libfolly_la_SOURCES = \
 	ThreadCachedArena.cpp \
 	Format.cpp \
 	FormatTables.cpp \
-	String.cpp
+	String.cpp \
+	Bits.cpp
 
 libfolly_la_LIBADD = $(BOOST_THREAD_LIB) -lpthread
 
