@@ -61,7 +61,6 @@ AC_CHECK_FUNCS([getdelim \
                 pow \
                 strerror \
                 pthread_yield \
-                ffsll \
                 rallocm \
                 malloc_size \
                 malloc_usable_size])

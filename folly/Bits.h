@@ -69,7 +69,6 @@
 #include <byteswap.h>
 #include <cassert>
 #include <cinttypes>
-#include <cstring>  // for ffs, ffsl, ffsll
 #include <endian.h>
 #include <iterator>
 #include <limits>
@@ -80,57 +79,53 @@
 namespace folly {
 
 // Generate overloads for findFirstSet as wrappers around
-// appropriate ffs, ffsl, ffsll functions from glibc.
-// We first define these overloads for signed types (because ffs, ffsl, ffsll
-// take int, long, and long long as arguments, respectively) and then
-// define an overload for unsigned that forwards to the overload for the
-// corresponding signed type.
+// appropriate ffs, ffsl, ffsll gcc builtins
 template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
-   std::is_signed<T>::value &&
-   (std::numeric_limits<T>::digits <= std::numeric_limits<int>::digits)),
+   std::is_unsigned<T>::value &&
+   (std::numeric_limits<T>::digits <=
+    std::numeric_limits<unsigned int>::digits)),
   unsigned int>::type
   findFirstSet(T x) {
-  return ::ffs(static_cast<int>(x));
+  return __builtin_ffs(x);
 }
 
 template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
-   std::is_signed<T>::value &&
-   (std::numeric_limits<T>::digits > std::numeric_limits<int>::digits) &&
-   (std::numeric_limits<T>::digits <= std::numeric_limits<long>::digits)),
+   std::is_unsigned<T>::value &&
+   (std::numeric_limits<T>::digits >
+    std::numeric_limits<unsigned int>::digits) &&
+   (std::numeric_limits<T>::digits <=
+    std::numeric_limits<unsigned long>::digits)),
   unsigned int>::type
   findFirstSet(T x) {
-  return ::ffsl(static_cast<long>(x));
+  return __builtin_ffsl(x);
 }
-
-#ifdef FOLLY_HAVE_FFSLL
 
 template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
-   std::is_signed<T>::value &&
-   (std::numeric_limits<T>::digits > std::numeric_limits<long>::digits) &&
-   (std::numeric_limits<T>::digits <= std::numeric_limits<long long>::digits)),
+   std::is_unsigned<T>::value &&
+   (std::numeric_limits<T>::digits >
+    std::numeric_limits<unsigned long>::digits) &&
+   (std::numeric_limits<T>::digits <=
+    std::numeric_limits<unsigned long long>::digits)),
   unsigned int>::type
   findFirstSet(T x) {
-  return ::ffsll(static_cast<long long>(x));
+  return __builtin_ffsll(x);
 }
-
-#endif
 
 template <class T>
 typename std::enable_if<
-  (std::is_integral<T>::value &&
-   !std::is_signed<T>::value),
+  (std::is_integral<T>::value && std::is_signed<T>::value),
   unsigned int>::type
   findFirstSet(T x) {
-  // Note that conversion from an unsigned type to the corresponding signed
+  // Note that conversion from a signed type to the corresponding unsigned
   // type is technically implementation-defined, but will likely work
   // on any impementation that uses two's complement.
-  return findFirstSet(static_cast<typename std::make_signed<T>::type>(x));
+  return findFirstSet(static_cast<typename std::make_unsigned<T>::type>(x));
 }
 
 // findLastSet: return the 1-based index of the highest bit set
