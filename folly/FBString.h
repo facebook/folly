@@ -237,6 +237,13 @@ private:
 */
 
 /**
+ * gcc-4.7 throws what appears to be some false positive uninitialized
+ * warnings for the members of the MediumLarge struct.  So, mute them here.
+ */
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+
+/**
  * This is the core of the string. The code should work on 32- and
  * 64-bit architectures and with any Char size. Porting to big endian
  * architectures would require some changes.
@@ -814,6 +821,8 @@ private:
     small_[maxSmallSize] = maxSmallSize - s;
   }
 };
+
+# pragma GCC diagnostic pop
 
 #ifndef _LIBSTDCXX_FBSTRING
 /**
