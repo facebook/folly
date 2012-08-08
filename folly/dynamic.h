@@ -70,11 +70,11 @@
 #include <ostream>
 #include <type_traits>
 #include <initializer_list>
+#include <vector>
 #include <cstdint>
 #include <boost/operators.hpp>
 
 #include "folly/Traits.h"
-#include "folly/FBVector.h"
 #include "folly/FBString.h"
 
 namespace folly {
@@ -83,7 +83,6 @@ namespace folly {
 
 struct dynamic;
 struct TypeError;
-template<> FOLLY_ASSUME_RELOCATABLE(dynamic);
 
 //////////////////////////////////////////////////////////////////////
 
@@ -108,7 +107,7 @@ struct dynamic : private boost::operators<dynamic> {
    * Object item iterators dereference as pairs of (key, value).
    */
 private:
-  typedef fbvector<dynamic> Array;
+  typedef std::vector<dynamic> Array;
 public:
   typedef Array::const_iterator const_iterator;
   struct const_key_iterator;

@@ -586,12 +586,16 @@ inline std::size_t dynamic::erase(dynamic const& key) {
 }
 
 inline dynamic::const_iterator dynamic::erase(const_iterator it) {
-  return get<Array>().erase(it);
+  auto& arr = get<Array>();
+  return get<Array>().erase(arr.begin() + (it - arr.begin()));
 }
 
 inline dynamic::const_iterator
 dynamic::erase(const_iterator first, const_iterator last) {
-  return get<Array>().erase(first, last);
+  auto& arr = get<Array>();
+  return get<Array>().erase(
+    arr.begin() + (first - arr.begin()),
+    arr.begin() + (last - arr.begin()));
 }
 
 inline dynamic::const_key_iterator dynamic::erase(const_key_iterator it) {
