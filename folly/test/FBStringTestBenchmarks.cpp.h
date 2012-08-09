@@ -222,3 +222,14 @@ BENCHMARK_PARAM(BENCHFUN(push_back), 1);
 BENCHMARK_PARAM(BENCHFUN(push_back), 23);
 BENCHMARK_PARAM(BENCHFUN(push_back), 127);
 BENCHMARK_PARAM(BENCHFUN(push_back), 1024);
+
+void BENCHFUN(short_append)(int iters, int arg) {
+  FOR_EACH_RANGE (i, 0, iters) {
+    STRING s;
+    FOR_EACH_RANGE (j, 0, arg) {
+      s += "012";
+    }
+  }
+}
+BENCHMARK_PARAM(BENCHFUN(short_append), 23);
+BENCHMARK_PARAM(BENCHFUN(short_append), 1024);
