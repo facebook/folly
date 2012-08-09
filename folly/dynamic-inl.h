@@ -587,6 +587,9 @@ inline std::size_t dynamic::erase(dynamic const& key) {
 
 inline dynamic::const_iterator dynamic::erase(const_iterator it) {
   auto& arr = get<Array>();
+  // std::vector doesn't have an erase method that works on const iterators,
+  // even though the standard says it should, so this hack converts to a
+  // non-const iterator before calling erase.
   return get<Array>().erase(arr.begin() + (it - arr.begin()));
 }
 
