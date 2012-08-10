@@ -87,6 +87,7 @@
 #include <cassert>
 
 #include "folly/Traits.h"
+#include "folly/Likely.h"
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
 
@@ -143,15 +144,17 @@ inline void pod_fill(Pod* b, Pod* e, T c) {
 
 /*
  * Lightly structured memcpy, simplifies copying PODs and introduces
- * some asserts
+ * some asserts. Unfortunately using this function may cause
+ * measurable overhead (presumably because it adjusts from a begin/end
+ * convention to a pointer/size convention, so it does some extra
+ * arithmetic even though the caller might have done the inverse
+ * adaptation outside).
  */
 template <class Pod>
-inline Pod* pod_copy(const Pod* b, const Pod* e, Pod* d) {
+inline void pod_copy(const Pod* b, const Pod* e, Pod* d) {
   assert(e >= b);
   assert(d >= e || d + (e - b) <= b);
-  const size_t s = e - b;
-  std::memcpy(d, b, s * sizeof(*b));
-  return d + s;
+  memcpy(d, b, (e - b) * sizeof(Pod));
 }
 
 /*
@@ -210,9 +213,10 @@ public:
   void shrink(size_t delta);
   // Expands the string by delta characters (i.e. after this call
   // size() will report the old size() plus delta) but without
-  // initializing the expanded region. The caller is expected to fill
-  // the expanded area appropriately.
-  void expand_noinit(size_t delta);
+  // initializing the expanded region. Returns a pointer to the memory
+  // to be initialized (the beginning of the expanded portion). The
+  // caller is expected to fill the expanded area appropriately.
+  Char* expand_noinit(size_t delta);
   // Expands the string by one character and sets the last character
   // to c.
   void push_back(Char c);
@@ -606,31 +610,33 @@ public:
     assert(capacity() >= minCapacity);
   }
 
-  void expand_noinit(const size_t delta) {
+  Char * expand_noinit(const size_t delta) {
     // Strategy is simple: make room, then change size
     assert(capacity() >= size());
-    size_t sz, newSz, cp;
+    size_t sz, newSz;
     if (category() == isSmall) {
       sz = smallSize();
       newSz = sz + delta;
       if (newSz <= maxSmallSize) {
         setSmallSize(newSz);
         writeTerminator();
-        return;
+        return small_ + sz;
       }
-      cp = maxSmallSize;
+      reserve(newSz);
     } else {
       sz = ml_.size_;
-      newSz = sz + delta;
-      cp = capacity();
+      newSz = ml_.size_ + delta;
+      if (newSz > ml_.capacity()) {
+        reserve(newSz);
+      }
     }
-    if (newSz > cp) reserve(newSz);
     assert(capacity() >= newSz);
     // Category can't be small - we took care of that above
     assert(category() == isMedium || category() == isLarge);
     ml_.size_ = newSz;
     writeTerminator();
     assert(size() == newSz);
+    return ml_.data_ + sz;
   }
 
   void push_back(Char c) {
@@ -644,7 +650,7 @@ public:
         writeTerminator();
         return;
       }
-      reserve(maxSmallSize * 3 / 2);
+      reserve(maxSmallSize * 2);
     } else {
       sz = ml_.size_;
       cp = ml_.capacity();
@@ -854,8 +860,10 @@ public:
     assert(delta <= size());
     backend_.resize(size() - delta);
   }
-  void expand_noinit(size_t delta) {
+  Char * expand_noinit(size_t delta) {
+    auto const sz = size();
     backend_.resize(size() + delta);
+    return backend_.data() + sz;
   }
   void push_back(Char c) {
     backend_.push_back(c);
@@ -1001,8 +1009,7 @@ public:
   }
 
   basic_fbstring(size_type n, value_type c, const A& a = A()) {
-    store_.expand_noinit(n);
-    auto const data = store_.mutable_data();
+    auto const data = store_.expand_noinit(n);
     fbstring_detail::pod_fill(data, data + n, c);
     store_.writeTerminator();
   }
@@ -1235,23 +1242,39 @@ public:
     return append(str.data() + pos, n);
   }
 
-  basic_fbstring& append(const value_type* s, const size_type n) {
+  basic_fbstring& append(const value_type* s, size_type n) {
 #ifndef NDEBUG
-    auto oldSize = size();
-#endif
     Invariant checker(*this);
     (void) checker;
-    static std::less_equal<const value_type*> le;
-    if (le(data(), s) && !le(data() + size(), s)) {// aliasing
-      assert(le(s + n, data() + size()));
-      const size_type offset = s - data();
-      store_.reserve(size() + n);
+#endif
+    if (UNLIKELY(!n)) {
+      // Unlikely but must be done
+      return *this;
+    }
+    auto const oldSize = size();
+    auto const oldData = data();
+    // Check for aliasing (rare). We could use "<=" here but in theory
+    // those do not work for pointers unless the pointers point to
+    // elements in the same array. For that reason we use
+    // std::less_equal, which is guaranteed to offer a total order
+    // over pointers. See discussion at http://goo.gl/Cy2ya for more
+    // info.
+    static const std::less_equal<const value_type*> le;
+    if (UNLIKELY(le(oldData, s) && !le(oldData + oldSize, s))) {
+      assert(le(s + n, oldData + oldSize));
+      const size_type offset = s - oldData;
+      store_.reserve(oldSize + n);
       // Restore the source
       s = data() + offset;
     }
-    store_.expand_noinit(n);
-    fbstring_detail::pod_copy(s, s + n, end() - n);
-    store_.writeTerminator();
+    // Warning! Repeated appends with short strings may actually incur
+    // practically quadratic performance. Avoid that by pushing back
+    // the first character (which ensures exponential growth) and then
+    // appending the rest normally. Worst case the append may incur a
+    // second allocation but that will be rare.
+    push_back(*s++);
+    --n;
+    memcpy(store_.expand_noinit(n), s, n * sizeof(value_type));
     assert(size() == oldSize + n);
     return *this;
   }
