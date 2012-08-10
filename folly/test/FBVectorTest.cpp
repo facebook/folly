@@ -223,6 +223,28 @@ TEST(FBVector, task858056) {
   EXPECT_EQ("Cycle detected: [baz] [bar] [foo] ", message);
 }
 
+TEST(FBVector, move_iterator) {
+  fbvector<int> base = { 0, 1, 2 };
+
+  auto cp1 = base;
+  fbvector<int> fbvi1(std::make_move_iterator(cp1.begin()),
+                      std::make_move_iterator(cp1.end()));
+  EXPECT_EQ(fbvi1, base);
+
+  auto cp2 = base;
+  fbvector<int> fbvi2;
+  fbvi2.assign(std::make_move_iterator(cp2.begin()),
+               std::make_move_iterator(cp2.end()));
+  EXPECT_EQ(fbvi2, base);
+
+  auto cp3 = base;
+  fbvector<int> fbvi3;
+  fbvi3.insert(fbvi3.end(),
+               std::make_move_iterator(cp3.begin()),
+               std::make_move_iterator(cp3.end()));
+  EXPECT_EQ(fbvi3, base);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

@@ -376,13 +376,6 @@ private:
   void assignImpl(InputIterator first, InputIterator last, boost::false_type) {
     // Pair of iterators
     if (fbvector_detail::isForwardIterator<InputIterator>::value) {
-      if (b_ <= &*first && &*first < e_) {
-        // Aliased assign, work on the side
-        fbvector result(first, last);
-        result.swap(*this);
-        return;
-      }
-
       auto const oldSize = size();
       auto const newSize = std::distance(first, last);
 
@@ -802,10 +795,6 @@ private:
       // Can compute distance
       auto const n = std::distance(first, last);
       if (e_ + n >= z_) {
-        if (b_ <= &*first && &*first < e_) {
-          // Ew, aliased insert
-          goto conservative;
-        }
         auto const m = position - b_;
         reserve(size() + n);
         position = b_ + m;
@@ -828,7 +817,6 @@ private:
     } else {
       // Cannot compute distance, crappy approach
       // TODO: OPTIMIZE
-      conservative:
       fbvector result(cbegin(), position);
       auto const offset = result.size();
       FOR_EACH_RANGE (i, first, last) {
