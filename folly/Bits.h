@@ -84,8 +84,7 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned int>::digits)),
+   sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findFirstSet(T x) {
   return __builtin_ffs(x);
@@ -95,10 +94,8 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits >
-    std::numeric_limits<unsigned int>::digits) &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned long>::digits)),
+   sizeof(T) > sizeof(unsigned int) &&
+   sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findFirstSet(T x) {
   return __builtin_ffsl(x);
@@ -108,10 +105,8 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits >
-    std::numeric_limits<unsigned long>::digits) &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned long long>::digits)),
+   sizeof(T) > sizeof(unsigned long) &&
+   sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findFirstSet(T x) {
   return __builtin_ffsll(x);
@@ -134,8 +129,7 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned int>::digits)),
+   sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findLastSet(T x) {
   return x ? 8 * sizeof(unsigned int) - __builtin_clz(x) : 0;
@@ -145,10 +139,8 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits >
-    std::numeric_limits<unsigned int>::digits) &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned long>::digits)),
+   sizeof(T) > sizeof(unsigned int) &&
+   sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findLastSet(T x) {
   return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;
@@ -158,10 +150,8 @@ template <class T>
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
-   (std::numeric_limits<T>::digits >
-    std::numeric_limits<unsigned long>::digits) &&
-   (std::numeric_limits<T>::digits <=
-    std::numeric_limits<unsigned long long>::digits)),
+   sizeof(T) > sizeof(unsigned long) &&
+   sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findLastSet(T x) {
   return x ? 8 * sizeof(unsigned long long) - __builtin_clzll(x) : 0;
