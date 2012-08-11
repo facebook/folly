@@ -1275,7 +1275,7 @@ public:
     push_back(*s++);
     --n;
     memcpy(store_.expand_noinit(n), s, n * sizeof(value_type));
-    assert(size() == oldSize + n);
+    assert(size() == oldSize + n + 1);
     return *this;
   }
 
