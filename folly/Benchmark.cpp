@@ -247,68 +247,69 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   return max(0.0, estimateTime(epochResults, epochResults + actualEpochs));
 }
 
-static string humanReadable(double n, unsigned int decimals) {
-  auto a = fabs(n);
-  char suffix = ' ';
+struct ScaleInfo {
+  double boundary;
+  const char* suffix;
+};
 
-  if (a >= 1E21) {
-    // Too big to be comprehended by the puny human brain
-    suffix = '!';
-    n /= 1E21;
-  } else if (a >= 1E18) {
-    // "EXA" written with suffix 'X' so as to not create confusion
-    // with scientific notation.
-    suffix = 'X';
-    n /= 1E18;
-  } else if (a >= 1E15) {
-    // "PETA"
-    suffix = 'P';
-    n /= 1E15;
-  } else if (a >= 1E12) {
-    // "TERA"
-    suffix = 'T';
-    n /= 1E12;
-  } else if (a >= 1E9) {
-    // "GIGA"
-    suffix = 'G';
-    n /= 1E9;
-  } else if (a >= 1E6) {
-    // "MEGA"
-    suffix = 'M';
-    n /= 1E6;
-  } else if (a >= 1E3) {
-    // "KILO"
-    suffix = 'K';
-    n /= 1E3;
-  } else if (a == 0.0) {
-    suffix = ' ';
-  } else if (a < 1E-15) {
-    // too small
-    suffix = '?';
-    n *= 1E18;
-  } else if (a < 1E-12) {
-    // "femto"
-    suffix = 'f';
-    n *= 1E15;
-  } else if (a < 1E-9) {
-    // "pico"
-    suffix = 'p';
-    n *= 1E12;
-  } else if (a < 1E-6) {
-    // "nano"
-    suffix = 'n';
-    n *= 1E9;
-  } else if (a < 1E-3) {
-    // "micro"
-    suffix = 'u';
-    n *= 1E6;
-  } else if (a < 1) {
-    // "mili"
-    suffix = 'm';
-    n *= 1E3;
+static const ScaleInfo kTimeSuffixes[] {
+  { 365.25 * 24 * 3600, "years" },
+  { 24 * 3600, "days" },
+  { 3600, "hr" },
+  { 60, "min" },
+  { 1, "s" },
+  { 1E-3, "ms" },
+  { 1E-6, "us" },
+  { 1E-9, "ns" },
+  { 1E-12, "ps" },
+  { 1E-15, "fs" },
+  { 0, NULL },
+};
+
+static const ScaleInfo kMetricSuffixes[] {
+  { 1E24, "Y" },  // yotta
+  { 1E21, "Z" },  // zetta
+  { 1E18, "X" },  // "exa" written with suffix 'X' so as to not create
+                  //   confusion with scientific notation
+  { 1E15, "P" },  // peta
+  { 1E12, "T" },  // terra
+  { 1E9, "G" },   // giga
+  { 1E6, "M" },   // mega
+  { 1E3, "K" },   // kilo
+  { 1, "" },
+  { 1E-3, "m" },  // milli
+  { 1E-6, "u" },  // micro
+  { 1E-9, "n" },  // nano
+  { 1E-12, "p" }, // pico
+  { 1E-15, "f" }, // femto
+  { 1E-18, "a" }, // atto
+  { 1E-21, "z" }, // zepto
+  { 1E-24, "y" }, // yocto
+  { 0, NULL },
+};
+
+static string humanReadable(double n, unsigned int decimals,
+                            const ScaleInfo* scales) {
+  if (std::isinf(n) || std::isnan(n)) {
+    return folly::to<string>(n);
   }
 
-  return stringPrintf("%*.*f%c", decimals + 3 + 1, decimals, n, suffix);
+  const double absValue = fabs(n);
+  const ScaleInfo* scale = scales;
+  while (absValue < scale[0].boundary && scale[1].suffix != NULL) {
+    ++scale;
+  }
+
+  const double scaledValue = n / scale->boundary;
+  return stringPrintf("%.*f%s", decimals, scaledValue, scale->suffix);
+}
+
+static string readableTime(double n, unsigned int decimals) {
+  return humanReadable(n, decimals, kTimeSuffixes);
+}
+
+static string metricReadable(double n, unsigned int decimals) {
+  return humanReadable(n, decimals, kMetricSuffixes);
 }
 
 static void printBenchmarkResultsAsTable(
@@ -330,8 +331,8 @@ static void printBenchmarkResultsAsTable(
   // Print header for a file
   auto header = [&](const char* file) {
     separator('=');
-    printf("%-*srelative  ns/iter  iters/s\n",
-           columns - 26, file);
+    printf("%-*srelative  time/iter  iters/s\n",
+           columns - 28, file);
     separator('=');
   };
 
@@ -359,23 +360,24 @@ static void printBenchmarkResultsAsTable(
       baselineNsPerIter = get<2>(datum);
       useBaseline = false;
     }
-    s.resize(columns - 27, ' ');
+    s.resize(columns - 29, ' ');
     auto nsPerIter = get<2>(datum);
-    auto itersPerSec = 1E9 / nsPerIter;
+    auto secPerIter = nsPerIter / 1E9;
+    auto itersPerSec = 1 / secPerIter;
     if (!useBaseline) {
       // Print without baseline
-      printf("%*s           %s  %s\n",
+      printf("%*s           %9s  %7s\n",
              static_cast<int>(s.size()), s.c_str(),
-             humanReadable(nsPerIter, 2).c_str(),
-             humanReadable(itersPerSec, 2).c_str());
+             readableTime(secPerIter, 2).c_str(),
+             metricReadable(itersPerSec, 2).c_str());
     } else {
       // Print with baseline
       auto rel = baselineNsPerIter / nsPerIter * 100.0;
-      printf("%*s %7.2f%%  %s  %s\n",
+      printf("%*s %7.2f%%  %9s  %7s\n",
              static_cast<int>(s.size()), s.c_str(),
              rel,
-             humanReadable(nsPerIter, 2).c_str(),
-             humanReadable(itersPerSec, 2).c_str());
+             readableTime(secPerIter, 2).c_str(),
+             metricReadable(itersPerSec, 2).c_str());
     }
   }
   separator('=');
