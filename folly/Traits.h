@@ -41,7 +41,7 @@ namespace folly {
  * }
  *
  * void move2(T * from, T * to) {
- *   memcpy(from, to, sizeof(T));
+ *   memcpy(to, from, sizeof(T));
  * }
  *
  * Most C++ types are relocatable; the ones that aren't would include
@@ -73,7 +73,7 @@ template <class T> struct IsRelocatable : boost::mpl::not_<boost::is_class<T> >
  * When using it with a template type, use it like this:
  *
  * // Make sure you're at namespace ::folly scope
- * template<class T, class T2>
+ * template<class T1, class T2>
  * FOLLY_ASSUME_RELOCATABLE(MyType<T1, T2>)
  */
 #define FOLLY_ASSUME_RELOCATABLE(...) \
@@ -89,7 +89,7 @@ template <class T> struct IsRelocatable : boost::mpl::not_<boost::is_class<T> >
  * When using it with a template type, use it like this:
  *
  * // Make sure you're at namespace ::boost scope
- * template<class T, class T2>
+ * template<class T1, class T2>
  * FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(MyType<T1, T2>)
  */
 #define FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(...) \
