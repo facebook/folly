@@ -73,6 +73,8 @@ Explicit type conversions can be requested for some of the basic types:
                                             // since it can't fit in a double
 ```
 
+For more complicated conversions, see [DynamicConverter](DynamicConverter.md).
+
 ### Iteration and Lookup
 ***
 
