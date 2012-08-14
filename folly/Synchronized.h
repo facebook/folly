@@ -186,8 +186,8 @@ struct Synchronized {
    * constructor.
    */
   Synchronized() = default;
-
   /**
+
    * Copy constructor copies the data (with locking the source and
    * all) but does NOT copy the mutex. Doing so would result in
    * deadlocks.
