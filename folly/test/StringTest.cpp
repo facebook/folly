@@ -644,9 +644,13 @@ TEST(String, join) {
   std::vector<std::string> input1 = { "1", "23", "456", "" };
   join(':', input1, output);
   EXPECT_EQ(output, "1:23:456:");
+  output = join(':', input1);
+  EXPECT_EQ(output, "1:23:456:");
 
   auto input2 = { 1, 23, 456 };
   join("-*-", input2, output);
+  EXPECT_EQ(output, "1-*-23-*-456");
+  output = join("-*-", input2);
   EXPECT_EQ(output, "1-*-23-*-456");
 
   auto input3 = { 'f', 'a', 'c', 'e', 'b', 'o', 'o', 'k' };

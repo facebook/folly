@@ -353,6 +353,14 @@ void join(const Delim& delimiter,
   join(delimiter, container.begin(), container.end(), output);
 }
 
+template <class Delim, class Container>
+std::string join(const Delim& delimiter,
+                 const Container& container) {
+  std::string output;
+  join(delimiter, container.begin(), container.end(), output);
+  return output;
+}
+
 } // namespace folly
 
 // Hash functions for string and fbstring usable with e.g. hash_map
