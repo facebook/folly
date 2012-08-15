@@ -634,6 +634,26 @@ TEST(Split, pieces_fbvector) {
   piecesTest<folly::fbvector>();
 }
 
+TEST(String, join) {
+  string output;
+
+  std::vector<int> empty = { };
+  join(":", empty, output);
+  EXPECT_TRUE(output.empty());
+
+  std::vector<std::string> input1 = { "1", "23", "456", "" };
+  join(':', input1, output);
+  EXPECT_EQ(output, "1:23:456:");
+
+  auto input2 = { 1, 23, 456 };
+  join("-*-", input2, output);
+  EXPECT_EQ(output, "1-*-23-*-456");
+
+  auto input3 = { 'f', 'a', 'c', 'e', 'b', 'o', 'o', 'k' };
+  join("", input3, output);
+  EXPECT_EQ(output, "facebook");
+}
+
 TEST(String, hexlify) {
   string input1 = "0123";
   string output1;
@@ -714,7 +734,7 @@ TEST(String, humanify) {
 //////////////////////////////////////////////////////////////////////
 
 BENCHMARK(splitOnSingleChar, iters) {
-  const std::string line = "one:two:three:four";
+  static const std::string line = "one:two:three:four";
   for (int i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split(':', line, pieces);
@@ -722,7 +742,7 @@ BENCHMARK(splitOnSingleChar, iters) {
 }
 
 BENCHMARK(splitStr, iters) {
-  const std::string line = "one-*-two-*-three-*-four";
+  static const std::string line = "one-*-two-*-three-*-four";
   for (int i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split("-*-", line, pieces);
@@ -730,10 +750,28 @@ BENCHMARK(splitStr, iters) {
 }
 
 BENCHMARK(boost_splitOnSingleChar, iters) {
-  std::string line = "one:two:three:four";
+  static const std::string line = "one:two:three:four";
   for (int i = 0; i < iters << 4; ++i) {
-    std::vector<boost::iterator_range<std::string::iterator>> pieces;
+    std::vector<boost::iterator_range<std::string::const_iterator> > pieces;
     boost::split(pieces, line, [] (char c) { return c == ':'; });
+  }
+}
+
+BENCHMARK(joinStr, iters) {
+  static const std::vector<std::string> input = {
+    "one", "two", "three", "four", "five", "six", "seven" };
+  for (int i = 0; i < iters << 4; ++i) {
+    std::string output;
+    folly::join(":", input, output);
+  }
+}
+
+BENCHMARK(joinInt, iters) {
+  static const auto input = {
+    123, 456, 78910, 1112, 1314, 151, 61718 };
+  for (int i = 0; i < iters << 4; ++i) {
+    std::string output;
+    folly::join(":", input, output);
   }
 }
 

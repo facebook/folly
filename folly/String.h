@@ -333,6 +333,26 @@ void splitTo(const Delim& delimiter,
              OutputIterator out,
              bool ignoreEmpty = false);
 
+/*
+ * Join list of tokens.
+ *
+ * Stores a string representation of tokens in the same order with
+ * deliminer between each element.
+ */
+
+template <class Delim, class Iterator, class String>
+void join(const Delim& delimiter,
+          Iterator begin,
+          Iterator end,
+          String& output);
+
+template <class Delim, class Container, class String>
+void join(const Delim& delimiter,
+          const Container& container,
+          String& output) {
+  join(delimiter, container.begin(), container.end(), output);
+}
+
 } // namespace folly
 
 // Hash functions for string and fbstring usable with e.g. hash_map

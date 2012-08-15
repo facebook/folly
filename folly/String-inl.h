@@ -18,6 +18,7 @@
 #define FOLLY_STRING_INL_H_
 
 #include <stdexcept>
+#include <iterator>
 
 #ifndef FOLLY_BASE_STRING_H_
 #error This file may only be included from String.h
@@ -296,6 +297,72 @@ void splitTo(const Delim& delimiter,
     StringPiece(input),
     out,
     ignoreEmpty);
+}
+
+namespace detail {
+
+template <class Iterator>
+struct IsStringContainerIterator :
+  IsSomeString<typename std::iterator_traits<Iterator>::value_type> {
+};
+
+template <class Delim, class Iterator, class String>
+void internalJoinAppend(Delim delimiter,
+                        Iterator begin,
+                        Iterator end,
+                        String& output) {
+  assert(begin != end);
+  toAppend(*begin, &output);
+  while (++begin != end) {
+    toAppend(delimiter, *begin, &output);
+  }
+}
+
+template <class Delim, class Iterator, class String>
+typename std::enable_if<IsStringContainerIterator<Iterator>::value>::type
+internalJoin(Delim delimiter,
+             Iterator begin,
+             Iterator end,
+             String& output) {
+  output.clear();
+  if (begin == end) {
+    return;
+  }
+  const size_t dsize = delimSize(delimiter);
+  Iterator it = begin;
+  size_t size = it->size();
+  while (++it != end) {
+    size += dsize + it->size();
+  }
+  output.reserve(size);
+  internalJoinAppend(delimiter, begin, end, output);
+}
+
+template <class Delim, class Iterator, class String>
+typename std::enable_if<!IsStringContainerIterator<Iterator>::value>::type
+internalJoin(Delim delimiter,
+             Iterator begin,
+             Iterator end,
+             String& output) {
+  output.clear();
+  if (begin == end) {
+    return;
+  }
+  internalJoinAppend(delimiter, begin, end, output);
+}
+
+}  // namespace detail
+
+template <class Delim, class Iterator, class String>
+void join(const Delim& delimiter,
+          Iterator begin,
+          Iterator end,
+          String& output) {
+  detail::internalJoin(
+    detail::prepareDelim(delimiter),
+    begin,
+    end,
+    output);
 }
 
 template <class String1, class String2>
