@@ -165,4 +165,16 @@ fingerprint_test_SOURCES = FingerprintTest.cpp
 fingerprint_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollyfingerprint.la $(top_builddir)/libfollybenchmark.la
 TESTS += fingerprint_test
 
+portability_test_SOURCES = PortabilityTest.cpp
+portability_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += portability_test
+
+cpuid_test_SOURCES = CpuIdTest.cpp
+cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += cpuid_test
+
+spooky_hash_test_SOURCES = SpookyHashTest.cpp
+spooky_hash_test_LDADD = $(top_builddir)/libfolly.la
+TESTS += spooky_hash_test
+
 check_PROGRAMS= $(TESTS)

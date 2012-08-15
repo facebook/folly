@@ -66,6 +66,7 @@ nobase_follyinclude_HEADERS = \
 	SmallLocks.h \
 	small_vector.h \
 	sorted_vector_types.h \
+	SpookyHash.h \
 	StlAllocator.h \
 	String.h \
 	String-inl.h \
@@ -106,7 +107,8 @@ libfolly_la_SOURCES = \
 	Format.cpp \
 	FormatTables.cpp \
 	String.cpp \
-	Bits.cpp
+	Bits.cpp \
+	SpookyHash.cpp
 
 libfolly_la_LIBADD = $(BOOST_THREAD_LIB) -lpthread
 

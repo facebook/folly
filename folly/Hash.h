@@ -22,6 +22,8 @@
 #include <string>
 #include <utility>
 
+#include "folly/SpookyHash.h"
+
 /*
  * Various hashing functions.
  */
