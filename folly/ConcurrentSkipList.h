@@ -145,11 +145,11 @@ class ConcurrentSkipList {
   // being treated as a scalar in the compiler).
   static_assert(MAX_HEIGHT >= 2 && MAX_HEIGHT < 64,
       "MAX_HEIGHT can only be in the range of [2, 64)");
-  typedef detail::SkipListNode<T> NodeType;
   typedef std::unique_lock<folly::MicroSpinLock> ScopedLocker;
   typedef ConcurrentSkipList<T, Comp, MAX_HEIGHT> SkipListType;
 
  public:
+  typedef detail::SkipListNode<T> NodeType;
   typedef T value_type;
   typedef T key_type;
 
@@ -169,6 +169,12 @@ class ConcurrentSkipList {
   static boost::shared_ptr<SkipListType> createInstance(int height=1) {
     return boost::shared_ptr<SkipListType>(new SkipListType(height));
   }
+
+  // create a unique_ptr skiplist object with initial head height.
+  static std::unique_ptr<SkipListType> createRawInstance(int height=1) {
+    return std::unique_ptr<SkipListType>(new SkipListType(height));
+  }
+
 
   //===================================================================
   // Below are implementation details.
