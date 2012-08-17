@@ -109,9 +109,42 @@ TEST(Bits, nextPowTwoClz) {
   testPowTwo(nextPowTwo);
 }
 
-int x; // prevent the loop from getting optimized away
 BENCHMARK(nextPowTwoClz, iters) {
-  x = folly::nextPowTwo(iters);
+  for (unsigned long i = 0; i < iters; ++i) {
+    auto x = folly::nextPowTwo(iters);
+    folly::doNotOptimizeAway(x);
+  }
+}
+
+TEST(Bits, isPowTwo) {
+  EXPECT_FALSE(isPowTwo(0u));
+  EXPECT_TRUE(isPowTwo(1ul));
+  EXPECT_TRUE(isPowTwo(2ull));
+  EXPECT_FALSE(isPowTwo(3ul));
+  EXPECT_TRUE(isPowTwo(4ul));
+  EXPECT_FALSE(isPowTwo(5ul));
+  EXPECT_TRUE(isPowTwo(8ul));
+  EXPECT_FALSE(isPowTwo(15u));
+  EXPECT_TRUE(isPowTwo(16u));
+  EXPECT_FALSE(isPowTwo(17u));
+  EXPECT_FALSE(isPowTwo(511ul));
+  EXPECT_TRUE(isPowTwo(512ul));
+  EXPECT_FALSE(isPowTwo(513ul));
+  EXPECT_FALSE(isPowTwo((1ul<<31) - 1));
+  EXPECT_TRUE(isPowTwo(1ul<<31));
+  EXPECT_FALSE(isPowTwo((1ul<<31) + 1));
+  EXPECT_FALSE(isPowTwo((1ull<<63) - 1));
+  EXPECT_TRUE(isPowTwo(1ull<<63));
+  EXPECT_FALSE(isPowTwo((1ull<<63) + 1));
+}
+
+BENCHMARK_DRAW_LINE();
+BENCHMARK(isPowTwo, iters) {
+  bool b;
+  for (unsigned long i = 0; i < iters; ++i) {
+    b = folly::isPowTwo(i);
+    folly::doNotOptimizeAway(b);
+  }
 }
 
 TEST(Bits, popcount) {

@@ -32,6 +32,9 @@
  * nextPowTwo(x)
  *    Finds the next power of two >= x.
  *
+ * isPowTwo(x)
+ *    return true iff x is a power of two
+ *
  * Endian
  *    convert between native, big, and little endian representation
  *    Endian::big(x)      big <-> native
@@ -176,6 +179,15 @@ nextPowTwo(T v) {
     return 1;
   }
   return 1ul << findLastSet(v - 1);
+}
+
+template <class T>
+inline
+typename std::enable_if<
+  std::is_integral<T>::value && std::is_unsigned<T>::value,
+  bool>::type
+isPowTwo(T v) {
+  return ((v != 0) && !(v & (v-1)));   // yes, this is endian-agnostic
 }
 
 /**
