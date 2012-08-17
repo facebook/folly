@@ -312,6 +312,11 @@ void internalJoinAppend(Delim delimiter,
                         Iterator end,
                         String& output) {
   assert(begin != end);
+  if (std::is_same<Delim, StringPiece>::value &&
+      delimSize(delimiter) == 1) {
+    internalJoinAppend(delimFront(delimiter), begin, end, output);
+    return;
+  }
   toAppend(*begin, &output);
   while (++begin != end) {
     toAppend(delimiter, *begin, &output);

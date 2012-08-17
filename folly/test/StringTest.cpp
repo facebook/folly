@@ -761,7 +761,16 @@ BENCHMARK(boost_splitOnSingleChar, iters) {
   }
 }
 
-BENCHMARK(joinStr, iters) {
+BENCHMARK(joinCharStr, iters) {
+  static const std::vector<std::string> input = {
+    "one", "two", "three", "four", "five", "six", "seven" };
+  for (int i = 0; i < iters << 4; ++i) {
+    std::string output;
+    folly::join(':', input, output);
+  }
+}
+
+BENCHMARK(joinStrStr, iters) {
   static const std::vector<std::string> input = {
     "one", "two", "three", "four", "five", "six", "seven" };
   for (int i = 0; i < iters << 4; ++i) {
