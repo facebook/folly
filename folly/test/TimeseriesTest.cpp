@@ -19,6 +19,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "folly/Foreach.h"
+
 using std::chrono::seconds;
 using std::string;
 using std::vector;
@@ -317,6 +319,116 @@ TEST(BucketedTimeSeries, rate) {
   EXPECT_NEAR(299.5, ts.rate(), 0.01);
   EXPECT_EQ(299, ts.rate<int>());
   EXPECT_NEAR(1.5, ts.countRate(), 0.005);
+}
+
+TEST(BucketedTimeSeries, avgTypeConversion) {
+  // The average code has many different code paths to decide what type of
+  // division to perform (floating point, signed integer, unsigned integer).
+  // Test the various code paths.
+
+  {
+    // Simple sanity tests for small positive integer values
+    BucketedTimeSeries<int64_t> ts(60, seconds(600));
+    ts.addValue(seconds(0), 4, 100);
+    ts.addValue(seconds(0), 10, 200);
+    ts.addValue(seconds(0), 16, 100);
+
+    EXPECT_DOUBLE_EQ(ts.avg(), 10.0);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), 10.0);
+    EXPECT_EQ(ts.avg<uint64_t>(), 10);
+    EXPECT_EQ(ts.avg<int64_t>(), 10);
+    EXPECT_EQ(ts.avg<int32_t>(), 10);
+    EXPECT_EQ(ts.avg<int16_t>(), 10);
+    EXPECT_EQ(ts.avg<int8_t>(), 10);
+    EXPECT_EQ(ts.avg<uint8_t>(), 10);
+  }
+
+  {
+    // Test signed integer types with negative values
+    BucketedTimeSeries<int64_t> ts(60, seconds(600));
+    ts.addValue(seconds(0), -100);
+    ts.addValue(seconds(0), -200);
+    ts.addValue(seconds(0), -300);
+    ts.addValue(seconds(0), -200, 65535);
+
+    EXPECT_DOUBLE_EQ(ts.avg(), -200.0);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), -200.0);
+    EXPECT_EQ(ts.avg<int64_t>(), -200);
+    EXPECT_EQ(ts.avg<int32_t>(), -200);
+    EXPECT_EQ(ts.avg<int16_t>(), -200);
+  }
+
+  {
+    // Test uint64_t values that would overflow int64_t
+    BucketedTimeSeries<uint64_t> ts(60, seconds(600));
+    ts.addValueAggregated(seconds(0),
+                          std::numeric_limits<uint64_t>::max(),
+                          std::numeric_limits<uint64_t>::max());
+
+    EXPECT_DOUBLE_EQ(ts.avg(), 1.0);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), 1.0);
+    EXPECT_EQ(ts.avg<uint64_t>(), 1);
+    EXPECT_EQ(ts.avg<int64_t>(), 1);
+    EXPECT_EQ(ts.avg<int8_t>(), 1);
+  }
+
+  {
+    // Test doubles with small-ish values that will fit in integer types
+    BucketedTimeSeries<double> ts(60, seconds(600));
+    ts.addValue(seconds(0), 4.0, 100);
+    ts.addValue(seconds(0), 10.0, 200);
+    ts.addValue(seconds(0), 16.0, 100);
+
+    EXPECT_DOUBLE_EQ(ts.avg(), 10.0);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), 10.0);
+    EXPECT_EQ(ts.avg<uint64_t>(), 10);
+    EXPECT_EQ(ts.avg<int64_t>(), 10);
+    EXPECT_EQ(ts.avg<int32_t>(), 10);
+    EXPECT_EQ(ts.avg<int16_t>(), 10);
+    EXPECT_EQ(ts.avg<int8_t>(), 10);
+    EXPECT_EQ(ts.avg<uint8_t>(), 10);
+  }
+
+  {
+    // Test doubles with huge values
+    BucketedTimeSeries<double> ts(60, seconds(600));
+    ts.addValue(seconds(0), 1e19, 100);
+    ts.addValue(seconds(0), 2e19, 200);
+    ts.addValue(seconds(0), 3e19, 100);
+
+    EXPECT_DOUBLE_EQ(ts.avg(), 2e19);
+    EXPECT_NEAR(ts.avg<float>(), 2e19, 1e11);
+  }
+
+  {
+    // Test doubles where the sum adds up larger than a uint64_t,
+    // but the average fits in an int64_t
+    BucketedTimeSeries<double> ts(60, seconds(600));
+    uint64_t value = 0x3fffffffffffffff;
+    FOR_EACH_RANGE(i, 0, 16) {
+      ts.addValue(seconds(0), value);
+    }
+
+    EXPECT_DOUBLE_EQ(ts.avg(), value);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), value);
+    EXPECT_DOUBLE_EQ(ts.avg<uint64_t>(), value);
+    EXPECT_DOUBLE_EQ(ts.avg<int64_t>(), value);
+  }
+
+  {
+    // Test BucketedTimeSeries with a smaller integer type
+    BucketedTimeSeries<int16_t> ts(60, seconds(600));
+    FOR_EACH_RANGE(i, 0, 101) {
+      ts.addValue(seconds(0), i);
+    }
+
+    EXPECT_DOUBLE_EQ(ts.avg(), 50.0);
+    EXPECT_DOUBLE_EQ(ts.avg<float>(), 50.0);
+    EXPECT_DOUBLE_EQ(ts.avg<uint64_t>(), 50);
+    EXPECT_DOUBLE_EQ(ts.avg<int64_t>(), 50);
+    EXPECT_DOUBLE_EQ(ts.avg<int16_t>(), 50);
+    EXPECT_DOUBLE_EQ(ts.avg<int8_t>(), 50);
+  }
 }
 
 TEST(BucketedTimeSeries, forEachBucket) {

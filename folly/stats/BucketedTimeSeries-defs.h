@@ -233,7 +233,7 @@ ReturnType BucketedTimeSeries<VT, TT>::avg(TimeType start, TimeType end) const {
     return ReturnType(0);
   }
 
-  return static_cast<ReturnType>(sum) / count;
+  return detail::avgHelper<ReturnType>(sum, count);
 }
 
 /*
