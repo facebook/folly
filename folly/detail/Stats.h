@@ -18,53 +18,35 @@
 #define FOLLY_DETAIL_STATS_H_
 
 #include <cstdint>
+#include <type_traits>
 
 namespace folly { namespace detail {
 
 /*
- * Helper functions for how to perform division based on the desired
+ * Helper function to compute the average, given a specified input type and
  * return type.
  */
 
-// For floating point input types, do floating point division
-template <typename ReturnType, typename ValueType>
-typename std::enable_if<std::is_floating_point<ValueType>::value,
-                        ReturnType>::type
-avgHelper(ValueType sum, uint64_t count) {
+// If the input is long double, divide using long double to avoid losing
+// precision.
+template <typename ReturnType>
+ReturnType avgHelper(long double sum, uint64_t count) {
   if (count == 0) { return ReturnType(0); }
-  return static_cast<ReturnType>(sum / count);
+  const long double countf = count;
+  return static_cast<ReturnType>(sum / countf);
 }
 
-// For floating point return types, do floating point division
+// In all other cases divide using double precision.
+// This should be relatively fast, and accurate enough for most use cases.
 template <typename ReturnType, typename ValueType>
-typename std::enable_if<std::is_floating_point<ReturnType>::value &&
-                        !std::is_floating_point<ValueType>::value,
+typename std::enable_if<!std::is_same<typename std::remove_cv<ValueType>::type,
+                                      long double>::value,
                         ReturnType>::type
 avgHelper(ValueType sum, uint64_t count) {
   if (count == 0) { return ReturnType(0); }
-  return static_cast<ReturnType>(sum) / count;
-}
-
-// For signed integer input types, do signed division
-template <typename ReturnType, typename ValueType>
-typename std::enable_if<!std::is_floating_point<ReturnType>::value &&
-                        !std::is_floating_point<ValueType>::value &&
-                        std::is_signed<ValueType>::value,
-                        ReturnType>::type
-avgHelper(ValueType sum, uint64_t count) {
-  if (count == 0) { return ReturnType(0); }
-  return sum / static_cast<int64_t>(count);
-}
-
-// For unsigned integer input types, do unsigned division
-template <typename ReturnType, typename ValueType>
-typename std::enable_if<!std::is_floating_point<ReturnType>::value &&
-                        !std::is_floating_point<ValueType>::value &&
-                        std::is_unsigned<ValueType>::value,
-                        ReturnType>::type
-avgHelper(ValueType sum, uint64_t count) {
-  if (count == 0) { return ReturnType(0); }
-  return sum / count;
+  const double sumf = sum;
+  const double countf = count;
+  return static_cast<ReturnType>(sumf / countf);
 }
 
 

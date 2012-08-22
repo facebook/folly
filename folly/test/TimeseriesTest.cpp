@@ -322,9 +322,8 @@ TEST(BucketedTimeSeries, rate) {
 }
 
 TEST(BucketedTimeSeries, avgTypeConversion) {
-  // The average code has many different code paths to decide what type of
-  // division to perform (floating point, signed integer, unsigned integer).
-  // Test the various code paths.
+  // Make sure the computed average values are accurate regardless
+  // of the input type and return type.
 
   {
     // Simple sanity tests for small positive integer values
@@ -333,14 +332,14 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     ts.addValue(seconds(0), 10, 200);
     ts.addValue(seconds(0), 16, 100);
 
-    EXPECT_DOUBLE_EQ(ts.avg(), 10.0);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), 10.0);
-    EXPECT_EQ(ts.avg<uint64_t>(), 10);
-    EXPECT_EQ(ts.avg<int64_t>(), 10);
-    EXPECT_EQ(ts.avg<int32_t>(), 10);
-    EXPECT_EQ(ts.avg<int16_t>(), 10);
-    EXPECT_EQ(ts.avg<int8_t>(), 10);
-    EXPECT_EQ(ts.avg<uint8_t>(), 10);
+    EXPECT_DOUBLE_EQ(10.0, ts.avg());
+    EXPECT_DOUBLE_EQ(10.0, ts.avg<float>());
+    EXPECT_EQ(10, ts.avg<uint64_t>());
+    EXPECT_EQ(10, ts.avg<int64_t>());
+    EXPECT_EQ(10, ts.avg<int32_t>());
+    EXPECT_EQ(10, ts.avg<int16_t>());
+    EXPECT_EQ(10, ts.avg<int8_t>());
+    EXPECT_EQ(10, ts.avg<uint8_t>());
   }
 
   {
@@ -351,11 +350,11 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     ts.addValue(seconds(0), -300);
     ts.addValue(seconds(0), -200, 65535);
 
-    EXPECT_DOUBLE_EQ(ts.avg(), -200.0);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), -200.0);
-    EXPECT_EQ(ts.avg<int64_t>(), -200);
-    EXPECT_EQ(ts.avg<int32_t>(), -200);
-    EXPECT_EQ(ts.avg<int16_t>(), -200);
+    EXPECT_DOUBLE_EQ(-200.0, ts.avg());
+    EXPECT_DOUBLE_EQ(-200.0, ts.avg<float>());
+    EXPECT_EQ(-200, ts.avg<int64_t>());
+    EXPECT_EQ(-200, ts.avg<int32_t>());
+    EXPECT_EQ(-200, ts.avg<int16_t>());
   }
 
   {
@@ -365,11 +364,11 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
                           std::numeric_limits<uint64_t>::max(),
                           std::numeric_limits<uint64_t>::max());
 
-    EXPECT_DOUBLE_EQ(ts.avg(), 1.0);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), 1.0);
-    EXPECT_EQ(ts.avg<uint64_t>(), 1);
-    EXPECT_EQ(ts.avg<int64_t>(), 1);
-    EXPECT_EQ(ts.avg<int8_t>(), 1);
+    EXPECT_DOUBLE_EQ(1.0, ts.avg());
+    EXPECT_DOUBLE_EQ(1.0, ts.avg<float>());
+    EXPECT_EQ(1, ts.avg<uint64_t>());
+    EXPECT_EQ(1, ts.avg<int64_t>());
+    EXPECT_EQ(1, ts.avg<int8_t>());
   }
 
   {
@@ -379,14 +378,14 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
     ts.addValue(seconds(0), 10.0, 200);
     ts.addValue(seconds(0), 16.0, 100);
 
-    EXPECT_DOUBLE_EQ(ts.avg(), 10.0);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), 10.0);
-    EXPECT_EQ(ts.avg<uint64_t>(), 10);
-    EXPECT_EQ(ts.avg<int64_t>(), 10);
-    EXPECT_EQ(ts.avg<int32_t>(), 10);
-    EXPECT_EQ(ts.avg<int16_t>(), 10);
-    EXPECT_EQ(ts.avg<int8_t>(), 10);
-    EXPECT_EQ(ts.avg<uint8_t>(), 10);
+    EXPECT_DOUBLE_EQ(10.0, ts.avg());
+    EXPECT_DOUBLE_EQ(10.0, ts.avg<float>());
+    EXPECT_EQ(10, ts.avg<uint64_t>());
+    EXPECT_EQ(10, ts.avg<int64_t>());
+    EXPECT_EQ(10, ts.avg<int32_t>());
+    EXPECT_EQ(10, ts.avg<int16_t>());
+    EXPECT_EQ(10, ts.avg<int8_t>());
+    EXPECT_EQ(10, ts.avg<uint8_t>());
   }
 
   {
@@ -409,10 +408,12 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
       ts.addValue(seconds(0), value);
     }
 
-    EXPECT_DOUBLE_EQ(ts.avg(), value);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), value);
-    EXPECT_DOUBLE_EQ(ts.avg<uint64_t>(), value);
-    EXPECT_DOUBLE_EQ(ts.avg<int64_t>(), value);
+    EXPECT_DOUBLE_EQ(value, ts.avg());
+    EXPECT_DOUBLE_EQ(value, ts.avg<float>());
+    // Some precision is lost here due to the huge sum, so the
+    // integer average returned is off by one.
+    EXPECT_NEAR(value, ts.avg<uint64_t>(), 1);
+    EXPECT_NEAR(value, ts.avg<int64_t>(), 1);
   }
 
   {
@@ -422,12 +423,39 @@ TEST(BucketedTimeSeries, avgTypeConversion) {
       ts.addValue(seconds(0), i);
     }
 
-    EXPECT_DOUBLE_EQ(ts.avg(), 50.0);
-    EXPECT_DOUBLE_EQ(ts.avg<float>(), 50.0);
-    EXPECT_DOUBLE_EQ(ts.avg<uint64_t>(), 50);
-    EXPECT_DOUBLE_EQ(ts.avg<int64_t>(), 50);
-    EXPECT_DOUBLE_EQ(ts.avg<int16_t>(), 50);
-    EXPECT_DOUBLE_EQ(ts.avg<int8_t>(), 50);
+    EXPECT_DOUBLE_EQ(50.0, ts.avg());
+    EXPECT_DOUBLE_EQ(50.0, ts.avg<float>());
+    EXPECT_EQ(50, ts.avg<uint64_t>());
+    EXPECT_EQ(50, ts.avg<int64_t>());
+    EXPECT_EQ(50, ts.avg<int16_t>());
+    EXPECT_EQ(50, ts.avg<int8_t>());
+  }
+
+  {
+    // Test BucketedTimeSeries with long double input
+    BucketedTimeSeries<long double> ts(60, seconds(600));
+    ts.addValueAggregated(seconds(0), 1000.0L, 7);
+
+    long double expected = 1000.0L / 7.0L;
+    EXPECT_DOUBLE_EQ(static_cast<double>(expected), ts.avg());
+    EXPECT_DOUBLE_EQ(static_cast<float>(expected), ts.avg<float>());
+    EXPECT_DOUBLE_EQ(expected, ts.avg<long double>());
+    EXPECT_EQ(static_cast<uint64_t>(expected), ts.avg<uint64_t>());
+    EXPECT_EQ(static_cast<int64_t>(expected), ts.avg<int64_t>());
+  }
+
+  {
+    // Test BucketedTimeSeries with int64_t values,
+    // but using an average that requires a fair amount of precision.
+    BucketedTimeSeries<int64_t> ts(60, seconds(600));
+    ts.addValueAggregated(seconds(0), 1000, 7);
+
+    long double expected = 1000.0L / 7.0L;
+    EXPECT_DOUBLE_EQ(static_cast<double>(expected), ts.avg());
+    EXPECT_DOUBLE_EQ(static_cast<float>(expected), ts.avg<float>());
+    EXPECT_DOUBLE_EQ(expected, ts.avg<long double>());
+    EXPECT_EQ(static_cast<uint64_t>(expected), ts.avg<uint64_t>());
+    EXPECT_EQ(static_cast<int64_t>(expected), ts.avg<int64_t>());
   }
 }
 
