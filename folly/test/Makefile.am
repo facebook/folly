@@ -174,7 +174,7 @@ cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += cpuid_test
 
 spooky_hash_test_SOURCES = SpookyHashTest.cpp
-spooky_hash_test_LDADD = $(top_builddir)/libfolly.la
+spooky_hash_test_LDADD = -lrt $(top_builddir)/libfolly.la
 TESTS += spooky_hash_test
 
 check_PROGRAMS= $(TESTS)
