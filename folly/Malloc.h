@@ -84,7 +84,6 @@ __attribute__((weak));
 
 #define ALLOCM_ZERO    64
 #define ALLOCM_NO_MOVE 128
-#define ALLOCM_LG_ALIGN(la) (la)
 #endif
 
 #ifdef _LIBSTDCXX_FBSTRING
