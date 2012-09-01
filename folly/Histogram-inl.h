@@ -242,13 +242,26 @@ std::string Histogram<T>::debugString() const {
       ", bucketSize: ", buckets_.getBucketSize(),
       ", min: ", buckets_.getMin(), ", max: ", buckets_.getMax(), "\n");
 
-  for (unsigned int n = 0; n < buckets_.getNumBuckets(); ++n) {
-    folly::toAppend("  ", buckets_.getBucketMin(n), ": ",
-                    buckets_.getByIndex(n).count, "\n",
+  for (unsigned int i = 0; i < buckets_.getNumBuckets(); ++i) {
+    folly::toAppend("  ", buckets_.getBucketMin(i), ": ",
+                    buckets_.getByIndex(i).count, "\n",
                     &ret);
   }
 
   return ret;
+}
+
+template <typename T>
+void Histogram<T>::toTSV(std::ostream& out, bool skipEmptyBuckets) const {
+  for (unsigned int i = 0; i < buckets_.getNumBuckets(); ++i) {
+    // Do not output empty buckets in order to reduce data file size.
+    if (skipEmptyBuckets && getBucketByIndex(i).count == 0) {
+      continue;
+    }
+    const auto& bucket = getBucketByIndex(i);
+    out << getBucketMin(i) << '\t' << getBucketMax(i) << '\t'
+        << bucket.count << '\t' << bucket.sum << '\n';
+  }
 }
 
 } // folly

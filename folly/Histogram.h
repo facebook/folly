@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <ostream>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -366,6 +367,12 @@ class Histogram {
    * Get a human-readable string describing the histogram contents
    */
   std::string debugString() const;
+
+  /*
+   * Write the histogram contents in tab-separated values (TSV) format.
+   * Format is "min max count sum".
+   */
+  void toTSV(std::ostream& out, bool skipEmptyBuckets = true) const;
 
  private:
   struct CountFromBucket {
