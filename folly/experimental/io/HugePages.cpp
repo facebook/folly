@@ -17,6 +17,9 @@
 #include "folly/experimental/io/HugePages.h"
 
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include <cctype>
 #include <cstring>
@@ -25,7 +28,6 @@
 #include <stdexcept>
 #include <system_error>
 
-#include <boost/filesystem.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/regex.hpp>
 
@@ -37,8 +39,6 @@
 #include "folly/ScopeGuard.h"
 #include "folly/String.h"
 #include "folly/experimental/io/Stream.h"
-
-namespace fs = ::boost::filesystem;
 
 namespace folly {
 
@@ -70,7 +70,7 @@ HugePageSizeVec getRawHugePageSizes() {
     std::string filename(it->path().filename().native());
     if (boost::regex_match(filename, match, regex)) {
       StringPiece numStr(filename.data() + match.position(1), match.length(1));
-      vec.emplace_back(to<size_t>(numStr) * 1024, "");
+      vec.emplace_back(to<size_t>(numStr) * 1024);
     }
   }
   return vec;
@@ -113,11 +113,11 @@ HugePageSizeVec getHugePageSizes() {
   size_t defaultHugePageSize = getDefaultHugePageSize();
 
   struct PageSizeLess {
-    bool operator()(const std::pair<size_t, std::string>& a, size_t b) const {
-      return a.first < b;
+    bool operator()(const HugePageSize& a, size_t b) const {
+      return a.size < b;
     }
-    bool operator()(size_t a, const std::pair<size_t, std::string>& b) const {
-      return a < b.first;
+    bool operator()(size_t a, const HugePageSize& b) const {
+      return a < b.size;
     }
   };
 
@@ -156,12 +156,13 @@ HugePageSizeVec getHugePageSizes() {
 
     auto pos = std::lower_bound(sizeVec.begin(), sizeVec.end(), pageSize,
                                 PageSizeLess());
-    if (pos == sizeVec.end() || pos->first != pageSize) {
+    if (pos == sizeVec.end() || pos->size != pageSize) {
       throw std::runtime_error("Mount page size not found");
     }
-    if (pos->second.empty()) {
+    if (pos->mountPoint.empty()) {
       // Store mount point
-      pos->second.assign(parts[1].data(), parts[1].size());
+      pos->mountPoint = fs::canonical(fs::path(parts[1].begin(),
+                                               parts[1].end()));
     }
   }
 
@@ -204,7 +205,7 @@ class ScopedFd : private boost::noncopyable {
 // RAII wrapper that deletes a file upon destruction unless you call release()
 class ScopedDeleter : private boost::noncopyable {
  public:
-  explicit ScopedDeleter(std::string name) : name_(std::move(name)) { }
+  explicit ScopedDeleter(fs::path name) : name_(std::move(name)) { }
   void release() {
     name_.clear();
   }
@@ -219,7 +220,7 @@ class ScopedDeleter : private boost::noncopyable {
     }
   }
  private:
-  std::string name_;
+  fs::path name_;
 };
 
 // RAII wrapper around a mmap mapping, munmaps upon destruction unless you
@@ -262,63 +263,78 @@ class ScopedMmap : private boost::noncopyable {
 
 HugePages::HugePages() : sizes_(getHugePageSizes()) { }
 
+const HugePageSize& HugePages::getSize(size_t hugePageSize) const {
+  // Linear search is just fine.
+  for (auto& p : sizes_) {
+    if (p.mountPoint.empty()) {
+      continue;  // not mounted
+    }
+    if (hugePageSize == 0 || hugePageSize == p.size) {
+      return p;
+    }
+  }
+  throw std::runtime_error("Huge page not supported / not mounted");
+}
+
 HugePages::File HugePages::create(ByteRange data,
-                                  StringPiece baseName,
-                                  size_t hugePageSize,
-                                  mode_t mode) const {
-  // Pick an appropriate size.
-  StringPiece mountPath;
-  if (hugePageSize == 0) {
-    for (auto& p : sizes_) {
-      if (p.second.empty()) {
-        continue;  // not mounted
-      }
-      hugePageSize = p.first;
-      mountPath = StringPiece(p.second);
-      break;
-    }
-    if (hugePageSize == 0) {
-      throw std::runtime_error("No huge page filesystem mounted");
-    }
-  } else {
-    // Linear search is just fine
-    for (auto& p : sizes_) {
-      if (p.first == hugePageSize) {
-        if (p.second.empty()) {
-          throw std::runtime_error(
-              "No huge page filesystem mounted with requested page size");
-        }
-        mountPath = StringPiece(p.second);
-      }
-    }
-    if (mountPath.empty()) {
-      throw std::runtime_error("Requested huge page size not found");
-    }
+                                  const fs::path& path,
+                                  HugePageSize hugePageSize) const {
+  namespace bsys = ::boost::system;
+  if (hugePageSize.size == 0) {
+    hugePageSize = getSize();
   }
 
   // Round size up
   File file;
-  file.size = data.size() / hugePageSize * hugePageSize;
+  file.size = data.size() / hugePageSize.size * hugePageSize.size;
   if (file.size != data.size()) {
-    file.size += hugePageSize;
+    file.size += hugePageSize.size;
   }
 
-  file.path = folly::format("{}/{}", mountPath, baseName).str();
-  ScopedFd fd(open(file.path.c_str(), O_RDWR | O_CREAT | O_TRUNC, mode));
+  {
+    file.path = fs::canonical_parent(path, hugePageSize.mountPoint);
+    if (!fs::starts_with(file.path, hugePageSize.mountPoint)) {
+      throw fs::filesystem_error(
+          "HugePages::create: path not rooted at mount point",
+          file.path, hugePageSize.mountPoint,
+          bsys::errc::make_error_code(bsys::errc::invalid_argument));
+    }
+  }
+  ScopedFd fd(open(file.path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666));
   if (fd.fd() == -1) {
     throw std::system_error(errno, std::system_category(), "open failed");
   }
 
   ScopedDeleter deleter(file.path);
 
-  ScopedMmap map(mmap(nullptr, file.size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                      fd.fd(), 0),
+  ScopedMmap map(mmap(nullptr, file.size, PROT_READ | PROT_WRITE,
+                      MAP_SHARED | MAP_POPULATE, fd.fd(), 0),
                  file.size);
   if (map.start() == MAP_FAILED) {
     throw std::system_error(errno, std::system_category(), "mmap failed");
   }
 
-  memcpy(map.start(), data.data(), data.size());
+  // Ignore madvise return code
+  madvise(const_cast<unsigned char*>(data.data()), data.size(),
+          MADV_SEQUENTIAL);
+  // Why is this not memcpy, you ask?
+  // The SSSE3-optimized memcpy in glibc likes to copy memory backwards,
+  // rendering any prefetching from madvise useless (even harmful).
+  const unsigned char* src = data.data();
+  size_t size = data.size();
+  unsigned char* dest = reinterpret_cast<unsigned char*>(map.start());
+  if (reinterpret_cast<uintptr_t>(src) % 8 == 0) {
+    const uint64_t* src8 = reinterpret_cast<const uint64_t*>(src);
+    size_t size8 = size / 8;
+    uint64_t* dest8 = reinterpret_cast<uint64_t*>(dest);
+    while (size8--) {
+      *dest8++ = *src8++;
+    }
+    src = reinterpret_cast<const unsigned char*>(src8);
+    dest = reinterpret_cast<unsigned char*>(dest8);
+    size %= 8;
+  }
+  memcpy(dest, src, size);
 
   map.munmap();
   deleter.release();

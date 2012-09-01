@@ -82,7 +82,7 @@ void copy(const char* srcFile, const char* destPrefix) {
 void list() {
   HugePages hp;
   for (auto& p : hp.sizes()) {
-    std::cout << p.first << " " << p.second << "\n";
+    std::cout << p.size << " " << p.mountPoint << "\n";
   }
 }
 
