@@ -34,7 +34,7 @@ InputByteStreamSplitter<Stream>::InputByteStreamSplitter(
 
 template <class Stream>
 bool InputByteStreamSplitter<Stream>::operator()(ByteRange& chunk) {
-  DCHECK_EQ(buffer_->length(), 0);
+  DCHECK(!buffer_ || buffer_->length() == 0);
   chunk.clear();
   if (rest_.empty()) {
     if (done_) {
