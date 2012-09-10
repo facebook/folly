@@ -836,6 +836,16 @@ to(StringPiece *const src) {
     return std::numeric_limits<Tgt>::quiet_NaN();
   }
 
+  // "-nan"?
+  if (src->size() >= 4 &&
+      toupper((*src)[0]) == '-' &&
+      toupper((*src)[1]) == 'N' &&
+      toupper((*src)[2]) == 'A' &&
+      toupper((*src)[3]) == 'N') {
+    src->advance(4);
+    return -std::numeric_limits<Tgt>::quiet_NaN();
+  }
+
   // All bets are off
   throw std::range_error("Unable to convert \"" + src->toString()
                          + "\" to a floating point value.");
