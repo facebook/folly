@@ -44,18 +44,27 @@ namespace exception_tracer {
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
   out << "Exception type: ";
   if (info.type) {
-    out << folly::demangle(*info.type) << "\n";
+    out << folly::demangle(*info.type);
   } else {
-    out << "(unknown type)\n";
+    out << "(unknown type)";
   }
-  Symbolizer symbolizer;
-  folly::StringPiece symbolName;
-  Dwarf::LocationInfo location;
-  for (auto ip : info.frames) {
-    // Symbolize the previous address because the IP might be in the
-    // next function, per glog/src/signalhandler.cc
-    symbolizer.symbolize(ip-1, symbolName, location);
-    Symbolizer::write(out, ip, symbolName, location);
+  out << " (" << info.frames.size()
+      << (info.frames.size() == 1 ? " frame" : " frames")
+      << ")\n";
+  try {
+    Symbolizer symbolizer;
+    folly::StringPiece symbolName;
+    Dwarf::LocationInfo location;
+    for (auto ip : info.frames) {
+      // Symbolize the previous address because the IP might be in the
+      // next function, per glog/src/signalhandler.cc
+      symbolizer.symbolize(ip-1, symbolName, location);
+      Symbolizer::write(out, ip, symbolName, location);
+    }
+  } catch (const std::exception& e) {
+    out << "\n !! caught " << folly::exceptionStr(e) << "\n";
+  } catch (...) {
+    out << "\n !!! caught unexpected exception\n";
   }
   return out;
 }
@@ -159,10 +168,11 @@ void dumpExceptionStack(const char* prefix) {
   if (exceptions.empty()) {
     return;
   }
-  LOG(ERROR) << prefix << ", exception stack follows\n";
+  LOG(ERROR) << prefix << ", exception stack follows";
   for (auto& exc : exceptions) {
     LOG(ERROR) << exc << "\n";
   }
+  LOG(ERROR) << "exception stack complete";
 }
 
 void terminateHandler() {
