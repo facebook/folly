@@ -59,7 +59,7 @@ namespace detail {
    * spinning, and falls back to sleeping for small quantums.
    */
   class Sleeper {
-    static const int32_t kMaxActiveSpin = 4000;
+    static const uint32_t kMaxActiveSpin = 4000;
 
     uint32_t spinCount;
 
