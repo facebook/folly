@@ -646,6 +646,11 @@ inline void dynamic::push_back(dynamic&& v) {
   array.push_back(std::move(v));
 }
 
+inline void dynamic::pop_back() {
+  auto& array = get<Array>();
+  array.pop_back();
+}
+
 inline std::size_t dynamic::hash() const {
   switch (type()) {
   case OBJECT:

@@ -416,6 +416,14 @@ public:
   void push_back(dynamic&&);
 
   /*
+   * Remove an element from the back of an array.  If this is not an array,
+   * throws TypeError.
+   *
+   * Does not invalidate iterators.
+   */
+  void pop_back();
+
+  /*
    * Get a hash code.  This function is called by a std::hash<>
    * specialization, also.
    *
