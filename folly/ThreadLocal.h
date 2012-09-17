@@ -79,7 +79,7 @@ class ThreadLocal {
 
   T* get() const {
     T* ptr = tlp_.get();
-    if (UNLIKELY(ptr == NULL)) {
+    if (UNLIKELY(ptr == nullptr)) {
       ptr = new T();
       tlp_.reset(ptr);
     }
@@ -94,7 +94,7 @@ class ThreadLocal {
     return *get();
   }
 
-  void reset(T* newPtr = NULL) {
+  void reset(T* newPtr = nullptr) {
     tlp_.reset(newPtr);
   }
 
@@ -168,13 +168,17 @@ class ThreadLocalPtr {
     return *get();
   }
 
-  void reset(T* newPtr) {
+  void reset(T* newPtr = nullptr) {
     threadlocal_detail::ElementWrapper& w =
       threadlocal_detail::StaticMeta<Tag>::get(id_);
     if (w.ptr != newPtr) {
       w.dispose(TLPDestructionMode::THIS_THREAD);
       w.set(newPtr);
     }
+  }
+
+  explicit operator bool() const {
+    return get() != nullptr;
   }
 
   /**
@@ -277,7 +281,7 @@ class ThreadLocalPtr {
         lock_(other.lock_),
         id_(other.id_) {
       other.id_ = 0;
-      other.lock_ = NULL;
+      other.lock_ = nullptr;
     }
 
     Accessor& operator=(Accessor&& other) FOLLY_NOEXCEPT {
@@ -288,7 +292,7 @@ class ThreadLocalPtr {
       // which is impossible, which leaves only one possible scenario --
       // *this is empty.  Assert it.
       assert(&meta_ == &other.meta_);
-      assert(lock_ == NULL);
+      assert(lock_ == nullptr);
       using std::swap;
       swap(lock_, other.lock_);
       swap(id_, other.id_);
@@ -296,7 +300,7 @@ class ThreadLocalPtr {
 
     Accessor()
       : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
-        lock_(NULL),
+        lock_(nullptr),
         id_(0) {
     }
 
@@ -312,7 +316,7 @@ class ThreadLocalPtr {
       if (lock_) {
         lock_->unlock();
         id_ = 0;
-        lock_ = NULL;
+        lock_ = nullptr;
       }
     }
   };

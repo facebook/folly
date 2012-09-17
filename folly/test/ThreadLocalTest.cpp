@@ -68,6 +68,16 @@ TEST(ThreadLocalPtr, CustomDeleter1) {
   EXPECT_EQ(10, Widget::totalVal_);
 }
 
+TEST(ThreadLocalPtr, resetNull) {
+  ThreadLocalPtr<int> tl;
+  EXPECT_FALSE(tl);
+  tl.reset(new int(4));
+  EXPECT_TRUE(static_cast<bool>(tl));
+  EXPECT_EQ(*tl.get(), 4);
+  tl.reset();
+  EXPECT_FALSE(tl);
+}
+
 // Test deleting the ThreadLocalPtr object
 TEST(ThreadLocalPtr, CustomDeleter2) {
   Widget::totalVal_ = 0;
