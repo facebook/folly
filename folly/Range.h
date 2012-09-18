@@ -22,6 +22,8 @@
 
 #include "folly/FBString.h"
 #include <glog/logging.h>
+#include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <stdexcept>
@@ -37,23 +39,32 @@ namespace folly {
 template <class T> class Range;
 
 /**
-Finds the first occurrence of needle in haystack. The algorithm is on
-average faster than O(haystack.size() * needle.size()) but not as fast
-as Boyer-Moore. On the upside, it does not do any upfront
-preprocessing and does not allocate memory.
+ * Finds the first occurrence of needle in haystack. The algorithm is on
+ * average faster than O(haystack.size() * needle.size()) but not as fast
+ * as Boyer-Moore. On the upside, it does not do any upfront
+ * preprocessing and does not allocate memory.
  */
 template <class T>
 inline size_t qfind(const Range<T> & haystack,
                     const Range<T> & needle);
 
 /**
-Finds the first occurrence of needle in haystack. The result is the
-offset reported to the beginning of haystack, or string::npos if
-needle wasn't found.
+ * Finds the first occurrence of needle in haystack. The result is the
+ * offset reported to the beginning of haystack, or string::npos if
+ * needle wasn't found.
  */
 template <class T>
 size_t qfind(const Range<T> & haystack,
              const typename Range<T>::value_type& needle);
+
+
+/**
+ * Finds the first occurrence of any element of needle in
+ * haystack. The algorithm is O(haystack.size() * needle.size()).
+ */
+template <class T>
+inline size_t qfind_first_of(const Range<T> & haystack,
+                             const Range<T> & needle);
 
 /**
  * Small internal helper - returns the value just before an iterator.
@@ -109,7 +120,7 @@ public:
   typedef typename std::iterator_traits<Iter>::reference reference;
   typedef std::char_traits<value_type> traits_type;
 
-  static const size_type npos = -1;
+  static const size_type npos = std::string::npos;
 
   // Works for all iterators
   Range() : b_(), e_() {
@@ -348,10 +359,12 @@ public:
     return ret == npos ? ret : ret + pos;
   }
 
+  // Works only for Range<const (unsigned) char*> which have Range(Iter) ctor
   size_type find(const Iter s) const {
     return qfind(*this, Range(s));
   }
 
+  // Works only for Range<const (unsigned) char*> which have Range(Iter) ctor
   size_type find(const Iter s, size_t pos) const {
     if (pos > size()) return std::string::npos;
     size_type ret = qfind(subpiece(pos), Range(s));
@@ -366,6 +379,38 @@ public:
     if (pos > size()) return std::string::npos;
     size_type ret = qfind(subpiece(pos), c);
     return ret == npos ? ret : ret + pos;
+  }
+
+  size_type find_first_of(Range needles) const {
+    return qfind_first_of(*this, needles);
+  }
+
+  size_type find_first_of(Range needles, size_t pos) const {
+    if (pos > size()) return std::string::npos;
+    size_type ret = qfind_first_of(pos ? subpiece(pos) : *this, needles);
+    return ret == npos ? ret : ret + pos;
+  }
+
+  // Works only for Range<const (unsigned) char*> which have Range(Iter) ctor
+  size_type find_first_of(Iter needles) const {
+    return find_first_of(Range(needles));
+  }
+
+  // Works only for Range<const (unsigned) char*> which have Range(Iter) ctor
+  size_type find_first_of(Iter needles, size_t pos) const {
+    return find_first_of(Range(needles), pos);
+  }
+
+  size_type find_first_of(Iter needles, size_t pos, size_t n) const {
+    return find_first_of(Range(needles, n), pos);
+  }
+
+  size_type find_first_of(value_type c) const {
+    return find(c);
+  }
+
+  size_type find_first_of(value_type c, size_t pos) const {
+    return find(c, pos);
   }
 
   void swap(Range& rhs) {
@@ -547,6 +592,16 @@ size_t qfind(const Range<T>& haystack,
   return std::string::npos;
 }
 
+template <class T, class Comp>
+size_t qfind_first_of(const Range<T> & haystack,
+                      const Range<T> & needle,
+                      Comp eq) {
+  auto ret = std::find_first_of(haystack.begin(), haystack.end(),
+                                needle.begin(), needle.end(),
+                                eq);
+  return ret == haystack.end() ? std::string::npos : ret - haystack.begin();
+}
+
 struct AsciiCaseSensitive {
   bool operator()(char lhs, char rhs) const {
     return lhs == rhs;
@@ -571,7 +626,31 @@ size_t qfind(const Range<T>& haystack,
 template <class T>
 size_t qfind(const Range<T>& haystack,
              const typename Range<T>::value_type& needle) {
-  return qfind(haystack, makeRange(&needle, &needle + 1));
+  auto pos = std::find(haystack.begin(), haystack.end(), needle);
+  return pos == haystack.end() ? std::string::npos : pos - haystack.data();
+}
+
+// specialization for StringPiece
+template <>
+inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
+  auto pos = static_cast<const char*>(
+    ::memchr(haystack.data(), needle, haystack.size()));
+  return pos == nullptr ? std::string::npos : pos - haystack.data();
+}
+
+// specialization for ByteRange
+template <>
+inline size_t qfind(const Range<const unsigned char*>& haystack,
+                    const unsigned char& needle) {
+  auto pos = static_cast<const unsigned char*>(
+    ::memchr(haystack.data(), needle, haystack.size()));
+  return pos == nullptr ? std::string::npos : pos - haystack.data();
+}
+
+template <class T>
+size_t qfind_first_of(const Range<T>& haystack,
+                      const Range<T>& needle) {
+  return qfind_first_of(haystack, needle, asciiCaseSensitive);
 }
 
 }  // !namespace folly

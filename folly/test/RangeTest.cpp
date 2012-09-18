@@ -86,6 +86,59 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s.toString().find("notfound", 55), StringPiece::npos);
   EXPECT_EQ(s.find("z", s.size()), StringPiece::npos);
   EXPECT_EQ(s.find("z", 55), StringPiece::npos);
+  // empty needle
+  EXPECT_EQ(s.find(""), std::string().find(""));
+  EXPECT_EQ(s.find(""), 0);
+
+  // single char finds
+  EXPECT_EQ(s.find('b'), 3);
+  EXPECT_EQ(s.find('b', 3), 3);
+  EXPECT_EQ(s.find('b', 4), 6);
+  EXPECT_EQ(s.find('o', 2), 2);
+  EXPECT_EQ(s.find('y'), StringPiece::npos);
+  EXPECT_EQ(s.find('y', 1), StringPiece::npos);
+  EXPECT_EQ(s.find('o', 4), StringPiece::npos);  // starting position too far
+  // starting pos that is obviously past the end -- This works for std::string
+  EXPECT_EQ(s.toString().find('y', 55), StringPiece::npos);
+  EXPECT_EQ(s.find('z', s.size()), StringPiece::npos);
+  EXPECT_EQ(s.find('z', 55), StringPiece::npos);
+  // null char
+  EXPECT_EQ(s.find('\0'), std::string().find('\0'));
+  EXPECT_EQ(s.find('\0'), StringPiece::npos);
+
+  // find_first_of
+  s.reset(foobarbaz, strlen(foobarbaz));
+  EXPECT_EQ(s.find_first_of("bar"), 3);
+  EXPECT_EQ(s.find_first_of("ba", 3), 3);
+  EXPECT_EQ(s.find_first_of("ba", 4), 4);
+  EXPECT_EQ(s.find_first_of("xyxy"), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of("xyxy", 1), StringPiece::npos);
+  // starting position too far
+  EXPECT_EQ(s.find_first_of("foo", 4), StringPiece::npos);
+  // starting pos that is obviously past the end -- This works for std::string
+  EXPECT_EQ(s.toString().find_first_of("xyxy", 55), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of("z", s.size()), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of("z", 55), StringPiece::npos);
+  // empty needle. Note that this returns npos, while find() returns 0!
+  EXPECT_EQ(s.find_first_of(""), std::string().find_first_of(""));
+  EXPECT_EQ(s.find_first_of(""), StringPiece::npos);
+
+  // single char find_first_ofs
+  EXPECT_EQ(s.find_first_of('b'), 3);
+  EXPECT_EQ(s.find_first_of('b', 3), 3);
+  EXPECT_EQ(s.find_first_of('b', 4), 6);
+  EXPECT_EQ(s.find_first_of('o', 2), 2);
+  EXPECT_EQ(s.find_first_of('y'), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of('y', 1), StringPiece::npos);
+  // starting position too far
+  EXPECT_EQ(s.find_first_of('o', 4), StringPiece::npos);
+  // starting pos that is obviously past the end -- This works for std::string
+  EXPECT_EQ(s.toString().find_first_of('y', 55), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of('z', s.size()), StringPiece::npos);
+  EXPECT_EQ(s.find_first_of('z', 55), StringPiece::npos);
+  // null char
+  EXPECT_EQ(s.find_first_of('\0'), std::string().find_first_of('\0'));
+  EXPECT_EQ(s.find_first_of('\0'), StringPiece::npos);
 
   // just "barbaz"
   s.reset(foobarbaz + 3, strlen(foobarbaz + 3));
