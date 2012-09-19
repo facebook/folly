@@ -63,6 +63,7 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
   }
 
   assert(p.second >= size);
+  totalAllocatedSize_ += p.second + sizeof(Block);
   return start;
 }
 
@@ -71,6 +72,8 @@ void Arena<Alloc>::merge(Arena<Alloc>&& other) {
   blocks_.splice_after(blocks_.before_begin(), other.blocks_);
   other.blocks_.clear();
   other.ptr_ = other.end_ = nullptr;
+  totalAllocatedSize_ += other.totalAllocatedSize_;
+  other.totalAllocatedSize_ = 0;
 }
 
 template <class Alloc>

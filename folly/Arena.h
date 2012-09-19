@@ -63,7 +63,8 @@ class Arena {
                  size_t minBlockSize = kDefaultMinBlockSize)
     : allocAndSize_(alloc, minBlockSize),
       ptr_(nullptr),
-      end_(nullptr) {
+      end_(nullptr),
+      totalAllocatedSize_(0) {
   }
 
   ~Arena();
@@ -91,6 +92,11 @@ class Arena {
 
   // Transfer ownership of all memory allocated from "other" to "this".
   void merge(Arena&& other);
+
+  // Gets the total memory used by the arena
+  size_t totalSize() const {
+    return totalAllocatedSize_ + sizeof(Arena);
+  }
 
  private:
   // not copyable
@@ -174,6 +180,7 @@ class Arena {
   BlockList blocks_;
   char* ptr_;
   char* end_;
+  size_t totalAllocatedSize_;
 };
 
 /**
