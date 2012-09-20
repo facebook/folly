@@ -981,6 +981,18 @@ TEST(FBString, testFixedBugs) {
       cp.push_back('?');
     }
   }
+  { // D580267
+    {
+      fbstring str(1337, 'f');
+      fbstring cp = str;
+      cp.push_back('f');
+    }
+    {
+      fbstring str(1337, 'f');
+      fbstring cp = str;
+      cp += "bb";
+    }
+  }
 }
 
 int main(int argc, char** argv) {

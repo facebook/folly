@@ -626,7 +626,7 @@ public:
     } else {
       sz = ml_.size_;
       newSz = ml_.size_ + delta;
-      if (newSz > ml_.capacity()) {
+      if (newSz > capacity()) {
         reserve(newSz);
       }
     }
@@ -653,7 +653,7 @@ public:
       reserve(maxSmallSize * 2);
     } else {
       sz = ml_.size_;
-      cp = ml_.capacity();
+      cp = capacity();  // != ml_.capacity() for isShared()
       if (sz == cp) reserve(cp * 3 / 2);
     }
     assert(capacity() >= sz + 1);
