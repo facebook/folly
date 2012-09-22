@@ -130,6 +130,15 @@ BENCHMARK(std_bind_create_invoke, iters) {
   }
 }
 
+// Using std::bind directly to invoke a member function
+BENCHMARK(std_bind_direct_invoke, iters) {
+  TestClass tc;
+  for (int n = 0; n < iters; ++n) {
+    auto fn = std::bind(&TestClass::doNothing, &tc);
+    fn();
+  }
+}
+
 // Using ScopeGuard to invoke a std::function
 BENCHMARK(scope_guard_std_function, iters) {
   std::function<void()> fn(doNothing);
