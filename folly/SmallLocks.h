@@ -34,6 +34,7 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
+#include <array>
 #include <cinttypes>
 #include <type_traits>
 #include <ctime>
@@ -172,7 +173,7 @@ struct PicoSpinLock {
                   sizeof(IntType) == 8,
                 "PicoSpinLock can't work on integers smaller than 2 bytes");
 
-public:
+ public:
   static const UIntType kLockBitMask_ = UIntType(1) << Bit;
   UIntType lock_;
 
@@ -272,6 +273,51 @@ public:
 #undef FB_DOBTR
   }
 };
+
+//////////////////////////////////////////////////////////////////////
+
+/**
+ * Array of spinlocks where each one is padded to prevent false sharing.
+ * Useful for shard-based locking implementations in environments where
+ * contention is unlikely.
+ */
+
+// TODO: generate it from configure (`getconf LEVEL1_DCACHE_LINESIZE`)
+#define FOLLY_CACHE_LINE_SIZE 64
+
+template <class T, size_t N>
+struct SpinLockArray {
+  T& operator[](size_t i) {
+    return data_[i].lock;
+  }
+
+  const T& operator[](size_t i) const {
+    return data_[i].lock;
+  }
+
+  constexpr size_t size() const { return N; }
+
+ private:
+  struct PaddedSpinLock {
+    PaddedSpinLock() : lock() { }
+    T lock;
+    char padding[FOLLY_CACHE_LINE_SIZE - sizeof(T)];
+  };
+  static_assert(sizeof(PaddedSpinLock) == FOLLY_CACHE_LINE_SIZE,
+                "Invalid size of PaddedSpinLock");
+
+  // Check if T can theoretically cross a cache line.
+  // NOTE: It should be alignof(std::max_align_t), but max_align_t
+  // isn't supported by gcc 4.6.2.
+  struct MaxAlign { char c; } __attribute__((aligned));
+  static_assert(alignof(MaxAlign) > 0 &&
+                FOLLY_CACHE_LINE_SIZE % alignof(MaxAlign) == 0 &&
+                sizeof(T) <= alignof(MaxAlign),
+                "T can cross cache line boundaries");
+
+  char padding_[FOLLY_CACHE_LINE_SIZE];
+  std::array<PaddedSpinLock, N> data_;
+} __attribute__((aligned));
 
 //////////////////////////////////////////////////////////////////////
 
