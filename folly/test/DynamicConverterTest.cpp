@@ -141,6 +141,18 @@ TEST(DynamicConverter, simple_map) {
   EXPECT_EQ(i2, i2b);
 }
 
+TEST(DynamicConverter, map_keyed_by_string) {
+  dynamic d1 = dynamic::object("1", "one")("2", "two");
+  auto i1 = convertTo<std::map<std::string, std::string>>(d1);
+  decltype(i1) i1b = { { "1", "one" }, { "2", "two" } };
+  EXPECT_EQ(i1, i1b);
+
+  dynamic d2 = { { "3", "three" }, { "4", "four" } };
+  auto i2 = convertTo<std::unordered_map<std::string, std::string>>(d2);
+  decltype(i2) i2b = { { "3", "three" }, { "4", "four" } };
+  EXPECT_EQ(i2, i2b);
+}
+
 TEST(DynamicConverter, nested_containers) {
   dynamic d1 = { { 1 }, { }, { 2, 3 } };
   auto i1 = convertTo<folly::fbvector<std::vector<uint8_t>>>(d1);
@@ -225,6 +237,30 @@ TEST(DynamicConverter, crazy) {
           std::set<std::string>>>>>(df1); // yes, that is 5 close-chevrons
 
   EXPECT_EQ(f1, i);
+}
+
+TEST(DynamicConverter, consts) {
+  dynamic d1 = 7.5;
+  auto i1 = convertTo<const double>(d1);
+  EXPECT_EQ(7.5, i1);
+
+  dynamic d2 = "Hello";
+  auto i2 = convertTo<const std::string>(d2);
+  decltype(i2) i2b = "Hello";
+  EXPECT_EQ(i2b, i2);
+
+  dynamic d3 = true;
+  auto i3 = convertTo<const bool>(d3);
+  EXPECT_EQ(true, i3);
+
+  dynamic d4 = "true";
+  auto i4 = convertTo<const bool>(d4);
+  EXPECT_EQ(true, i4);
+
+  dynamic d5 = { 1, 2 };
+  auto i5 = convertTo<const std::pair<const int, const int>>(d5);
+  decltype(i5) i5b = { 1, 2 };
+  EXPECT_EQ(i5b, i5);
 }
 
 struct Token {

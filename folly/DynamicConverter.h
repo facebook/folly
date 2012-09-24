@@ -268,7 +268,7 @@ struct DynamicConverter<C,
 
 template <typename T>
 T convertTo(const dynamic& d) {
-  return DynamicConverter<T>::convert(d);
+  return DynamicConverter<typename std::remove_cv<T>::type>::convert(d);
 }
 
 } // namespace folly
