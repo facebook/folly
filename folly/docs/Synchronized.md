@@ -265,8 +265,8 @@ iteration a la:
 is a crime punishable by long debugging nights.
 
 If the `Synchronized<T>` object involved is `const`-qualified,
-then you'll only be able to call `const` methods through `operator-
->`. So, for example, `vec->push_back("xyz")` won't work if `vec`
+then you'll only be able to call `const` methods through `operator->`. 
+So, for example, `vec->push_back("xyz")` won't work if `vec`
 were `const`-qualified. The locking mechanism capitalizes on the
 assumption that `const` methods don't modify their underlying
 data and only acquires a read lock (as opposed to a read and
