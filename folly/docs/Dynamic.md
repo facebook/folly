@@ -186,6 +186,17 @@ also be surprising if `dynamic d` left `d.isArray()` as true. The
 solution was just to disallow uninitialized dynamics: every
 dynamic must start out being assigned to some value (or nullptr).
 
+**Q. Why doesn't a dynamic string support begin(), end(), and operator[]?**
+
+The value_type of a dynamic iterator is `dynamic`, and `operator[]`
+(or the `at()` function) has to return a reference to a dynamic.  If
+we wanted this to work for strings, this would mean we'd have to
+support dynamics with a character type, and moreover that the internal
+representation of strings would be such that we can hand out
+references to dynamic as accessors on individual characters.  There
+are a lot of potential efficiency drawbacks with this, and it seems
+like a feature that is not needed too often in practice.
+
 **Q. Isn't this just a poor imitation of the C# language feature?**
 
 Pretty much.
