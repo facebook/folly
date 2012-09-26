@@ -173,6 +173,13 @@ TEST(Json, Produce) {
   EXPECT_TRUE(caught);
 }
 
+TEST(Json, JsonEscape) {
+  folly::json::serialization_opts opts;
+  EXPECT_EQ(
+    folly::json::serialize("\b\f\n\r\x01\t\\\"/\v\a", opts),
+    R"("\b\f\n\r\u0001\t\\\"/\u000b\u0007")");
+}
+
 TEST(Json, JsonNonAsciiEncoding) {
   folly::json::serialization_opts opts;
   opts.encode_non_ascii = true;

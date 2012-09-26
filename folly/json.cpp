@@ -145,23 +145,27 @@ void escapeString(StringPiece input,
       out.push_back(hexDigit((v >> 8) & 0x0f));
       out.push_back(hexDigit((v >> 4) & 0x0f));
       out.push_back(hexDigit(v & 0x0f));
-      continue;
-    }
-    if (*p == '\\' || *p == '\"') {
+    } else if (*p == '\\' || *p == '\"') {
       out.push_back('\\');
       out.push_back(*p++);
-      continue;
+    } else if (*p <= 0x1f) {
+      switch (*p) {
+      case '\b': out.append("\\b"); p++; break;
+      case '\f': out.append("\\f"); p++; break;
+      case '\n': out.append("\\n"); p++; break;
+      case '\r': out.append("\\r"); p++; break;
+      case '\t': out.append("\\t"); p++; break;
+      default:
+        // note that this if condition captures both control characters
+        // and extended ascii characters
+        out.append("\\u00");
+        out.push_back(hexDigit((*p & 0xf0) >> 4));
+        out.push_back(hexDigit(*p & 0xf));
+        p++;
+      }
+    } else {
+      out.push_back(*p++);
     }
-    if (*p <= 0x1f) {
-      // note that this if condition captures both control characters
-      // and extended ascii characters
-      out.append("\\u00");
-      out.push_back(hexDigit((*p & 0xf0) >> 4));
-      out.push_back(hexDigit(*p & 0xf));
-      p++;
-      continue;
-    }
-    out.push_back(*p++);
   }
 
   out.push_back('\"');
