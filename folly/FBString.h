@@ -2304,7 +2304,7 @@ namespace std {
 template <>
 struct hash< ::folly::fbstring> {
   size_t operator()(const ::folly::fbstring& s) const {
-    return ::folly::hash::fnv32(s.c_str());
+    return ::folly::hash::fnv32_buf(s.data(), s.size());
   }
 };
 }

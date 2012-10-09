@@ -995,6 +995,18 @@ TEST(FBString, testFixedBugs) {
   }
 }
 
+
+TEST(FBString, testHash) {
+  fbstring a;
+  fbstring b;
+  a.push_back(0);
+  a.push_back(1);
+  b.push_back(0);
+  b.push_back(2);
+  std::hash<fbstring> hashfunc;
+  EXPECT_NE(hashfunc(a), hashfunc(b));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
