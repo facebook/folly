@@ -33,7 +33,11 @@
 #undef FOLLY_FINAL
 #undef FOLLY_OVERRIDE
 
-#ifdef __GNUC__
+#if defined(__clang__)
+#  define FOLLY_FINAL final
+#  define FOLLY_OVERRIDE override
+#elif defined(__GNUC__)
+# #include <features.h>
 # if __GNUC_PREREQ(4,7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
