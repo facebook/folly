@@ -205,7 +205,7 @@ namespace detail {
   void populateMemForward(T* mem, std::size_t n, Function const& op) {
     std::size_t idx = 0;
     try {
-      for (int i = 0; i < n; ++i) {
+      for (size_t i = 0; i < n; ++i) {
         op(&mem[idx]);
         ++idx;
       }
