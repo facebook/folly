@@ -414,7 +414,7 @@ namespace detail {
   }
   template <class T>
   T* pointerFlagClear(T* p) {
-    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) & ~1);
+    return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) & ~1ull);
   }
   inline void* shiftPointer(void* p, size_t sizeBytes) {
     return static_cast<char*>(p) + sizeBytes;
