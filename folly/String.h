@@ -17,6 +17,7 @@
 #ifndef FOLLY_BASE_STRING_H_
 #define FOLLY_BASE_STRING_H_
 
+#include <exception>
 #include <string>
 #include <boost/type_traits.hpp>
 
@@ -283,6 +284,16 @@ inline fbstring demangle(const std::type_info& type) {
  */
 inline fbstring exceptionStr(const std::exception& e) {
   return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
+}
+
+inline fbstring exceptionStr(std::exception_ptr ep) {
+  try {
+    std::rethrow_exception(ep);
+  } catch (const std::exception& e) {
+    return exceptionStr(e);
+  } catch (...) {
+    return "<unknown exception>";
+  }
 }
 
 /*
