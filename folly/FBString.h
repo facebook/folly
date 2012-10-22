@@ -1131,14 +1131,24 @@ public:
     return const_reverse_iterator(begin());
   }
 
-  // Non-standard functions. They intentionally return by value to
-  // reduce pressure on the reference counting mechanism.
-  value_type front() const { return *begin(); }
-  value_type back() const {
+  // Added by C++11
+  // C++11 21.4.5, element access:
+  const value_type& front() const { return *begin(); }
+  const value_type& back() const {
     assert(!empty());
-    return begin()[size() - 1];
+    // Should be begin()[size() - 1], but that branches twice
+    return *(end() - 1);
   }
-  void pop_back() { assert(!empty()); store_.shrink(1); }
+  value_type& front() { return *begin(); }
+  value_type& back() {
+    assert(!empty());
+    // Should be begin()[size() - 1], but that branches twice
+    return *(end() - 1);
+  }
+  void pop_back() {
+    assert(!empty());
+    store_.shrink(1);
+  }
 
   // 21.3.3 capacity:
   size_type size() const { return store_.size(); }

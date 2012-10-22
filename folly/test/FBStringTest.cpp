@@ -1007,6 +1007,17 @@ TEST(FBString, testHash) {
   EXPECT_NE(hashfunc(a), hashfunc(b));
 }
 
+TEST(FBString, testFrontBack) {
+  fbstring str("hello");
+  EXPECT_EQ(str.front(), 'h');
+  EXPECT_EQ(str.back(), 'o');
+  str.front() = 'H';
+  EXPECT_EQ(str.front(), 'H');
+  str.back() = 'O';
+  EXPECT_EQ(str.back(), 'O');
+  EXPECT_EQ(str, "HellO");
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
