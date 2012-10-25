@@ -95,6 +95,15 @@ TEST(Optional, Simple) {
   EXPECT_FALSE(opt);
 }
 
+TEST(Optional, EmptyConstruct) {
+  Optional<int> opt;
+  EXPECT_FALSE(opt);
+  Optional<int> test1(opt);
+  EXPECT_FALSE(test1);
+  Optional<int> test2(std::move(opt));
+  EXPECT_FALSE(test2);
+}
+
 TEST(Optional, Unique) {
   Optional<unique_ptr<int>> opt;
 

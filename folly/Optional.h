@@ -90,12 +90,20 @@ class Optional : boost::totally_ordered<Optional<Value>,
   }
 
   Optional(const Optional& src) {
-    construct(src.value());
+    if (src.hasValue()) {
+      construct(src.value());
+    } else {
+      hasValue_ = false;
+    }
   }
 
   Optional(Optional&& src) {
-    construct(std::move(src.value()));
-    src.clear();
+    if (src.hasValue()) {
+      construct(std::move(src.value()));
+      src.clear();
+    } else {
+      hasValue_ = false;
+    }
   }
 
   /* implicit */ Optional(const None& empty)
@@ -192,7 +200,7 @@ class Optional : boost::totally_ordered<Optional<Value>,
   void clear() {
     if (hasValue()) {
       hasValue_ = false;
-      value().~Value();
+      value_.~Value();
     }
   }
 
