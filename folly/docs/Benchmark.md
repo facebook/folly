@@ -184,12 +184,12 @@ measurements in any way.
 Sometimes benchmarking code must to some preparation work that is
 physically inside the benchmark function, but should not take part to
 its time budget. To temporarily suspend the benchmark, use the
-pseudo-statement `SUSPEND_BENCHMARK` as follows:
+pseudo-statement `BENCHMARK_SUSPEND` as follows:
 
 ``` Cpp
     BENCHMARK(insertBackVector, n) {
       vector<int> v;
-      SUSPEND_BENCHMARK {
+      BENCHMARK_SUSPEND {
         v.reserve(n);
       }
       FOR_EACH_RANGE (i, 0, n) {
@@ -201,11 +201,11 @@ pseudo-statement `SUSPEND_BENCHMARK` as follows:
 The preallocation effected with `v.reserve(n)` will not count toward
 the total run time of the benchmark.
 
-Only the main thread should call `SUSPEND_BENCHMARK` (and of course it
+Only the main thread should call `BENCHMARK_SUSPEND` (and of course it
 should not call it while other threads are doing actual work). This is
 because the timer is application-global.
 
-If the scope introduced by `SUSPEND_BENCHMARK` is not desired, you may
+If the scope introduced by `BENCHMARK_SUSPEND` is not desired, you may
 want to "manually" use the `BenchmarkSuspender` type. Constructing
 such an object suspends time measurement, and destroying it resumes
 the measurement. If you want to resume time measurement before the
