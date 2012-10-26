@@ -16,6 +16,7 @@
 
 // @author: Xin Liu <xliux@fb.com>
 
+#include <memory>
 #include <set>
 #include <vector>
 #include <thread>
@@ -205,6 +206,55 @@ TEST(ConcurrentSkipList, SequentialAccess) {
     }
   }
 
+}
+
+static std::string makeRandomeString(int len) {
+  std::string s;
+  for (int j = 0; j < len; j++) {
+    s.push_back((rand() % 26) + 'A');
+  }
+  return s;
+}
+
+TEST(ConcurrentSkipList, TestStringType) {
+  typedef folly::ConcurrentSkipList<std::string> SkipListT;
+  boost::shared_ptr<SkipListT> skip = SkipListT::createInstance();
+  SkipListT::Accessor accessor(skip);
+  {
+    for (int i = 0; i < 100000; i++) {
+      std::string s = makeRandomeString(7);
+      accessor.insert(s);
+    }
+  }
+  EXPECT_TRUE(std::is_sorted(accessor.begin(), accessor.end()));
+}
+
+struct UniquePtrComp {
+  bool operator ()(
+      const std::unique_ptr<int> &x, const std::unique_ptr<int> &y) const {
+    if (!x) return false;
+    if (!y) return true;
+    return *x < *y;
+  }
+};
+
+TEST(ConcurrentSkipList, TestMovableData) {
+  typedef folly::ConcurrentSkipList<std::unique_ptr<int>, UniquePtrComp>
+    SkipListT;
+  auto sl = SkipListT::createInstance() ;
+  SkipListT::Accessor accessor(sl);
+
+  static const int N = 10;
+  for (int i = 0; i < N; ++i) {
+    accessor.insert(std::unique_ptr<int>(new int(i)));
+  }
+
+  for (int i = 0; i < N; ++i) {
+    EXPECT_TRUE(accessor.find(std::unique_ptr<int>(new int(i))) !=
+        accessor.end());
+  }
+  EXPECT_TRUE(accessor.find(std::unique_ptr<int>(new int(N))) ==
+      accessor.end());
 }
 
 void testConcurrentAdd(int numThreads) {

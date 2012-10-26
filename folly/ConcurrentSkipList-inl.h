@@ -42,40 +42,28 @@ class SkipListNode : boost::noncopyable {
  public:
   typedef T value_type;
 
-  static SkipListNode* create(int height,
-      const value_type& data, bool isHead = false) {
+  template<typename U,
+    typename=typename std::enable_if<std::is_convertible<U, T>::value>::type>
+  static SkipListNode* create(int height, U&& data, bool isHead = false) {
     DCHECK(height >= 1 && height < 64) << height;
 
-    size_t size = sizeof(SkipListNode) + height * sizeof(SkipListNode*);
+    size_t size = sizeof(SkipListNode) +
+      height * sizeof(std::atomic<SkipListNode*>);
     auto* node = static_cast<SkipListNode*>(malloc(size));
-    new (node) SkipListNode(height);
-
-    node->spinLock_.init();
-    node->setFlags(0);
-
-    if (isHead) {
-      node->setIsHeadNode();
-    } else {
-      new (&(node->data_)) value_type(data);
-    }
+    // do placement new
+    new (node) SkipListNode(height, std::forward<U>(data), isHead);
     return node;
   }
 
   static void destroy(SkipListNode* node) {
-    if (!node->isHeadNode()) {
-      node->data_.~value_type();
-    }
     node->~SkipListNode();
     free(node);
   }
 
-  // assuming lock acquired
-  SkipListNode* promoteFrom(const SkipListNode* node) {
+  // copy the head node to a new head node assuming lock acquired
+  SkipListNode* copyHead(SkipListNode* node) {
     DCHECK(node != nullptr && height_ > node->height_);
     setFlags(node->getFlags());
-    if (!isHeadNode()) {
-      new (&(data_)) value_type(node->data());
-    }
     for (int i = 0; i < node->height_; ++i) {
       setSkip(i, node->skip(i));
     }
@@ -125,14 +113,22 @@ class SkipListNode : boost::noncopyable {
   }
 
  private:
+  // Note! this can only be called from create() as a placement new.
+  template<typename U>
+  SkipListNode(uint8_t height, U&& data, bool isHead) :
+      height_(height), data_(std::forward<U>(data)) {
+    spinLock_.init();
+    setFlags(0);
+    if (isHead) setIsHeadNode();
+    // need to explicitly init the dynamic atomic pointer array
+    for (uint8_t i = 0; i < height_; ++i) {
+      new (&skip_[i]) std::atomic<SkipListNode*>(nullptr);
+    }
+  }
+
   ~SkipListNode() {
     for (uint8_t i = 0; i < height_; ++i) {
       skip_[i].~atomic();
-    }
-  }
-  explicit SkipListNode(uint8_t height) : height_(height) {
-    for (uint8_t i = 0; i < height_; ++i) {
-      new (&skip_[i]) std::atomic<SkipListNode*>(nullptr);
     }
   }
 

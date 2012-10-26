@@ -358,7 +358,8 @@ class ConcurrentSkipList {
   //     list with the same key.
   //   pair.second stores whether the data is added successfully:
   //     0 means not added, otherwise reutrns the new size.
-  std::pair<NodeType*, size_t> addOrGetData(const value_type &data) {
+  template<typename U>
+  std::pair<NodeType*, size_t> addOrGetData(U &&data) {
     NodeType *preds[MAX_HEIGHT], *succs[MAX_HEIGHT];
     NodeType *newNode;
     size_t newSize;
@@ -387,7 +388,7 @@ class ConcurrentSkipList {
       }
 
       // locks acquired and all valid, need to modify the links under the locks.
-      newNode = NodeType::create(nodeHeight, data);
+      newNode = NodeType::create(nodeHeight, std::forward<U>(data));
       for (int layer = 0; layer < nodeHeight; ++layer) {
         newNode->setSkip(layer, succs[layer]);
         preds[layer]->setSkip(layer, newNode);
@@ -553,7 +554,7 @@ class ConcurrentSkipList {
     { // need to guard the head node in case others are adding/removing
       // nodes linked to the head.
       ScopedLocker g = oldHead->acquireGuard();
-      newHead->promoteFrom(oldHead);
+      newHead->copyHead(oldHead);
       NodeType* expected = oldHead;
       if (!head_.compare_exchange_strong(expected, newHead,
           std::memory_order_release)) {
@@ -650,8 +651,10 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Accessor {
   const_iterator cbegin() const { return begin(); }
   const_iterator cend() const { return end(); }
 
-  std::pair<iterator, bool> insert(const key_type &data) {
-    auto ret = sl_->addOrGetData(data);
+  template<typename U,
+    typename=typename std::enable_if<std::is_convertible<U, T>::value>::type>
+  std::pair<iterator, bool> insert(U&& data) {
+    auto ret = sl_->addOrGetData(std::forward<U>(data));
     return std::make_pair(iterator(ret.first), ret.second);
   }
   size_t erase(const key_type &data) { return remove(data); }
