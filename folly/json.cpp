@@ -30,7 +30,7 @@ namespace folly {
 namespace json {
 namespace {
 
-char32_t decodeUtf8(const char*& p, const char* const e) {
+char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
   /* The following encodings are valid, except for the 5 and 6 byte
    * combinations:
    * 0xxxxxxx
@@ -115,9 +115,9 @@ void escapeString(StringPiece input,
   out.reserve(out.size() + input.size() + 2);
   out.push_back('\"');
 
-  const char* p = input.begin();
-  const char* q = input.begin();
-  const char* const e = input.end();
+  auto* p = reinterpret_cast<const unsigned char*>(input.begin());
+  auto* q = reinterpret_cast<const unsigned char*>(input.begin());
+  auto* e = reinterpret_cast<const unsigned char*>(input.end());
 
   while (p < e) {
     // Since non-ascii encoding inherently does utf8 validation
@@ -139,6 +139,8 @@ void escapeString(StringPiece input,
     }
 
     if (opts.encode_non_ascii && (*p & 0x80)) {
+      // note that this if condition captures utf8 chars
+      // with value > 127, so size > 1 byte
       char32_t v = decodeUtf8(p, e);
       out.append("\\u");
       out.push_back(hexDigit(v >> 12));
@@ -156,8 +158,8 @@ void escapeString(StringPiece input,
       case '\r': out.append("\\r"); p++; break;
       case '\t': out.append("\\t"); p++; break;
       default:
-        // note that this if condition captures both control characters
-        // and extended ascii characters
+        // note that this if condition captures non readable chars
+        // with value < 32, so size = 1 byte (e.g control chars).
         out.append("\\u00");
         out.push_back(hexDigit((*p & 0xf0) >> 4));
         out.push_back(hexDigit(*p & 0xf));

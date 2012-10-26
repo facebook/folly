@@ -246,20 +246,70 @@ TEST(Json, JsonNonAsciiEncoding) {
   EXPECT_ANY_THROW(folly::json::serialize("\xed\xaf\xbf\xed\xbf\xbf", opts));
 }
 
+TEST(Json, UTF8Retention) {
+
+  // test retention with valid utf8 strings
+  folly::fbstring input = "\u2665";
+  folly::fbstring jsonInput = folly::toJson(input);
+  folly::fbstring output = folly::parseJson(jsonInput).asString();
+  folly::fbstring jsonOutput = folly::toJson(output);
+
+  LOG(INFO) << "input: " << input
+            <<" => json: " << jsonInput;
+  LOG(INFO) << "output: " << output
+            <<" => json: " << jsonOutput;
+
+  EXPECT_EQ(input, output);
+  EXPECT_EQ(jsonInput, jsonOutput);
+
+  // test retention with invalid utf8 - note that non-ascii chars are retained
+  // as is, and no unicode encoding is attempted so no exception is thrown.
+  EXPECT_EQ(
+    folly::toJson("a\xe0\xa0\x80z\xc0\x80"),
+    "\"a\xe0\xa0\x80z\xc0\x80\""
+  );
+}
+
+TEST(Json, UTF8EncodeNonAsciiRetention) {
+
+  folly::json::serialization_opts opts;
+  opts.encode_non_ascii = true;
+
+  // test encode_non_ascii valid utf8 strings
+  folly::fbstring input = "\u2665";
+  folly::fbstring jsonInput = folly::json::serialize(input, opts);
+  folly::fbstring output = folly::parseJson(jsonInput).asString();
+  folly::fbstring jsonOutput = folly::json::serialize(output, opts);
+
+  LOG(INFO) << "input: " << input
+            <<" => json: " << jsonInput;
+  LOG(INFO) << "output: " << output
+            <<" => json: " << jsonOutput;
+
+  EXPECT_EQ(input, output);
+  EXPECT_EQ(jsonInput, jsonOutput);
+
+  // test encode_non_ascii with invalid utf8 - note that an attempt to encode
+  // non-ascii to unicode will result is a utf8 validation and throw exceptions.
+  EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts));
+  EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
+}
+
 TEST(Json, UTF8Validation) {
   folly::json::serialization_opts opts;
   opts.validate_utf8 = true;
 
-  // valid utf8 strings
-  EXPECT_EQ(folly::json::serialize("a\xc2\x80z", opts), R"("a\u00c2\u0080z")");
+  // test validate_utf8 valid utf8 strings - note that we only validate the
+  // for utf8 but don't encode non-ascii to unicode so they are retained as is.
+  EXPECT_EQ(folly::json::serialize("a\xc2\x80z", opts), "\"a\xc2\x80z\"");
   EXPECT_EQ(
     folly::json::serialize("a\xe0\xa0\x80z", opts),
-    R"("a\u00e0\u00a0\u0080z")");
+    "\"a\xe0\xa0\x80z\"");
   EXPECT_EQ(
     folly::json::serialize("a\xe0\xa0\x80m\xc2\x80z", opts),
-    R"("a\u00e0\u00a0\u0080m\u00c2\u0080z")");
+    "\"a\xe0\xa0\x80m\xc2\x80z\"");
 
-  // test with invalid utf8
+  // test validate_utf8 with invalid utf8
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts));
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
 }
