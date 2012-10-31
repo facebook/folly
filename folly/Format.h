@@ -152,7 +152,7 @@ std::ostream& operator<<(std::ostream& out,
 /**
  * Create a formatter object.
  *
- * std::string formatted = format("{} {}", 23, 42);
+ * std::string formatted = format("{} {}", 23, 42).str();
  * LOG(INFO) << format("{} {}", 23, 42);
  */
 template <class... Args>
