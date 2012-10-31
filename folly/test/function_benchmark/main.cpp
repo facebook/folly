@@ -197,6 +197,69 @@ BENCHMARK(scope_guard_lambda_local_var, iters) {
   CHECK_EQ(iters / 2, count);
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(throw_exception, iters) {
+  for (int n = 0; n < iters; ++n) {
+    try {
+      throwException();
+    } catch (const std::exception& ex) {
+    }
+  }
+}
+
+BENCHMARK(catch_no_exception, iters) {
+  for (int n = 0; n < iters; ++n) {
+    try {
+      doNothing();
+    } catch (const std::exception& ex) {
+    }
+  }
+}
+
+BENCHMARK(return_exc_ptr, iters) {
+  for (int n = 0; n < iters; ++n) {
+    returnExceptionPtr();
+  }
+}
+
+BENCHMARK(exc_ptr_param_return, iters) {
+  for (int n = 0; n < iters; ++n) {
+    std::exception_ptr ex;
+    exceptionPtrReturnParam(&ex);
+  }
+}
+
+BENCHMARK(exc_ptr_param_return_null, iters) {
+  for (int n = 0; n < iters; ++n) {
+    exceptionPtrReturnParam(nullptr);
+  }
+}
+
+BENCHMARK(return_string, iters) {
+  for (int n = 0; n < iters; ++n) {
+    returnString();
+  }
+}
+
+BENCHMARK(return_string_noexcept, iters) {
+  for (int n = 0; n < iters; ++n) {
+    returnStringNoExcept();
+  }
+}
+
+BENCHMARK(return_code, iters) {
+  for (int n = 0; n < iters; ++n) {
+    returnCode(false);
+  }
+}
+
+BENCHMARK(return_code_noexcept, iters) {
+  for (int n = 0; n < iters; ++n) {
+    returnCodeNoExcept(false);
+  }
+}
+
 // main()
 
 int main(int argc, char** argv) {
