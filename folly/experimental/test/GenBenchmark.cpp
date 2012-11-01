@@ -128,7 +128,6 @@ BENCHMARK(Fib_Sum_NoGen, iters) {
     };
     for (auto& v : fib(testSize.load())) {
       s += v;
-      v = s;
     }
   }
   folly::doNotOptimizeAway(s);
@@ -166,7 +165,7 @@ BENCHMARK_RELATIVE(Fib_Sum_Gen_Static, iters) {
   int s = 0;
   while (iters--) {
     auto fib = generator<int>(FibYielder());
-    s += fib | take(30) | sum;
+    s += fib | take(testSize.load()) | sum;
   }
   folly::doNotOptimizeAway(s);
 }
@@ -239,31 +238,64 @@ BENCHMARK_RELATIVE(Concat_Gen, iters) {
   folly::doNotOptimizeAway(s);
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(Composed_NoGen, iters) {
+  int s = 0;
+  while (iters--) {
+    for (auto& i : testVector) {
+      s += i * i;
+    }
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Composed_Gen, iters) {
+  int s = 0;
+  auto sumSq = map(square) | sum;
+  while (iters--) {
+    s += from(testVector) | sumSq;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
+  int s = 0;
+  while (iters--) {
+    s += from(testVector) | map(square) | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
 // Results from a dual core Xeon L5520 @ 2.27GHz:
 //
 // ============================================================================
 // folly/experimental/test/GenBenchmark.cpp        relative  time/iter  iters/s
 // ============================================================================
 // Sum_Basic_NoGen                                            301.60ns    3.32M
-// Sum_Basic_Gen                                    103.20%   292.24ns    3.42M
+// Sum_Basic_Gen                                    104.27%   289.24ns    3.46M
 // ----------------------------------------------------------------------------
 // Sum_Vector_NoGen                                           200.33ns    4.99M
-// Sum_Vector_Gen                                    99.44%   201.45ns    4.96M
+// Sum_Vector_Gen                                    99.81%   200.70ns    4.98M
 // ----------------------------------------------------------------------------
-// Count_Vector_NoGen                                          19.07fs   52.43T
-// Count_Vector_Gen                                 166.67%    11.44fs   87.38T
+// Count_Vector_NoGen                                          12.37us   80.84K
+// Count_Vector_Gen                                 103.09%    12.00us   83.33K
 // ----------------------------------------------------------------------------
-// Fib_Sum_NoGen                                                4.15us  241.21K
-// Fib_Sum_Gen                                       48.75%     8.50us  117.58K
-// Fib_Sum_Gen_Static                               113.24%     3.66us  273.16K
+// Fib_Sum_NoGen                                                3.66us  273.21K
+// Fib_Sum_Gen                                       43.06%     8.50us  117.65K
+// Fib_Sum_Gen_Static                                87.81%     4.17us  239.89K
 // ----------------------------------------------------------------------------
-// VirtualGen_0Virtual                                         10.05us   99.48K
-// VirtualGen_1Virtual                               29.63%    33.93us   29.47K
-// VirtualGen_2Virtual                               20.47%    49.09us   20.37K
-// VirtualGen_3Virtual                               15.30%    65.68us   15.23K
+// VirtualGen_0Virtual                                         10.04us   99.61K
+// VirtualGen_1Virtual                               29.59%    33.93us   29.47K
+// VirtualGen_2Virtual                               20.45%    49.10us   20.37K
+// VirtualGen_3Virtual                               15.49%    64.82us   15.43K
 // ----------------------------------------------------------------------------
-// Concat_NoGen                                                 2.34us  427.15K
-// Concat_Gen                                        90.04%     2.60us  384.59K
+// Concat_NoGen                                                 2.50us  400.37K
+// Concat_Gen                                       102.50%     2.44us  410.37K
+// ----------------------------------------------------------------------------
+// Composed_NoGen                                             549.54ns    1.82M
+// Composed_Gen                                     101.39%   542.00ns    1.85M
+// Composed_GenRegular                               99.66%   551.40ns    1.81M
 // ============================================================================
 
 int main(int argc, char *argv[]) {

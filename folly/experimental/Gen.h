@@ -194,6 +194,8 @@ class Skip;
 template<class Selector, class Comparer = Less>
 class Order;
 
+template<class First, class Second>
+class Composed;
 
 /*
  * Sinks

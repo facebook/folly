@@ -166,6 +166,19 @@ TEST(Gen, Until) {
   EXPECT_EQ(31, gen | count);
 }
 
+TEST(Gen, Composed) {
+  // Operator, Operator
+  auto valuesOf =
+      filter([](Optional<int>& o) { return o.hasValue(); })
+    | map([](Optional<int>& o) -> int& { return o.value(); });
+  std::vector<Optional<int>> opts {
+    none, 4, none, 6, none
+  };
+  EXPECT_EQ(4 * 4 + 6 * 6, from(opts) | valuesOf | map(square) | sum);
+  // Operator, Sink
+  auto sumOpt = valuesOf | sum;
+  EXPECT_EQ(10, from(opts) | sumOpt);
+}
 
 TEST(Gen, Chain) {
   std::vector<int> nums {2, 3, 5, 7};

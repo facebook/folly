@@ -92,6 +92,16 @@ class Operator : public FBounded<Self> {
            class Value,
            class ResultGen = void>
   ResultGen compose(const GenImpl<Value, Source>& source) const;
+
+  /**
+   * operator|() - For composing two operators without binding it to a
+   * particular generator.
+   */
+  template<class Next,
+           class Composed = detail::Composed<Self, Next>>
+  Composed operator|(const Operator<Next>& op) const {
+    return Composed(this->self(), op.self());
+  }
  protected:
   Operator() = default;
   Operator(const Operator&) = default;
@@ -776,6 +786,39 @@ class Order : public Operator<Order<Selector, Comparer>> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_, comparer_);
+  }
+};
+
+/**
+ * Composed - For building up a pipeline of operations to perform, absent any
+ * particular source generator. Useful for building up custom pipelines.
+ *
+ * This type is usually used by just piping two operators together:
+ *
+ * auto valuesOf = filter([](Optional<int>& o) { return o.hasValue(); })
+ *               | map([](Optional<int>& o) -> int& { return o.value(); });
+ *
+ *  auto valuesIncluded = from(optionals) | valuesOf | as<vector>();
+ */
+template<class First,
+         class Second>
+class Composed : public Operator<Composed<First, Second>> {
+  const First first_;
+  const Second second_;
+  public:
+    Composed() {}
+    Composed(const First& first, const Second& second)
+      : first_(first)
+      , second_(second) {}
+
+  template<class Source,
+           class Value,
+           class FirstRet = decltype(std::declval<First>()
+                                     .compose(std::declval<Source>())),
+           class SecondRet = decltype(std::declval<Second>()
+                                      .compose(std::declval<FirstRet>()))>
+  SecondRet compose(const GenImpl<Value, Source>& source) const {
+    return second_.compose(first_.compose(source.self()));
   }
 };
 
