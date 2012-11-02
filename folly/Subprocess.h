@@ -322,9 +322,9 @@ class Subprocess : private boost::noncopyable {
    * set errno to EAGAIN (in which case you should return false).
    *
    * NOTE that you MUST consume all data passed to readCallback (or return
-   * false, which will close the pipe, possibly sending SIGPIPE to the child or
+   * true, which will close the pipe, possibly sending SIGPIPE to the child or
    * making its writes fail with EPIPE), and you MUST write to a writable pipe
-   * (or return false, which will close the pipe).  To do otherwise is an
+   * (or return true, which will close the pipe).  To do otherwise is an
    * error.  You must do this even for pipes you are not interested in.
    *
    * Note that communicate() returns when all pipes to/from the child are
@@ -341,9 +341,6 @@ class Subprocess : private boost::noncopyable {
    * or has already been wait()ed upon.
    */
   pid_t pid() const;
-
-  static const int RV_RUNNING = ProcessReturnCode::RV_RUNNING;
-  static const int RV_NOT_STARTED = ProcessReturnCode::RV_NOT_STARTED;
 
   /**
    * Return the child's status (as per wait()) if the process has already
@@ -371,7 +368,7 @@ class Subprocess : private boost::noncopyable {
 
   /**
    * Wait for the process to terminate and return its status.
-   * Similarly to poll, it is illegal to call poll after the process
+   * Similarly to poll, it is illegal to call wait after the process
    * has already been reaped or if the process has not successfully started.
    */
   ProcessReturnCode wait();
@@ -413,6 +410,9 @@ class Subprocess : private boost::noncopyable {
   void kill() { sendSignal(SIGKILL); }
 
  private:
+  static const int RV_RUNNING = ProcessReturnCode::RV_RUNNING;
+  static const int RV_NOT_STARTED = ProcessReturnCode::RV_NOT_STARTED;
+
   void spawn(
       std::unique_ptr<const char*[]> argv,
       const char* executable,
