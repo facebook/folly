@@ -42,8 +42,6 @@ static_assert(sizeof(unsigned long) >= 4,
               " please update.");
 template <> const char *const MaxString<unsigned long long>::value =
   "18446744073709551615";
-template <> const char *const MaxString<unsigned __int128>::value =
-  "340282366920938463463374607431768211455";
 static_assert(sizeof(unsigned long long) >= 8,
               "Wrong value for MaxString<unsigned long long>::value"
               ", please update.");
