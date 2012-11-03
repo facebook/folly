@@ -128,6 +128,11 @@ void checkUnixError(ssize_t ret, const char* msg) {
     throwSystemError(msg);
   }
 }
+void checkUnixError(ssize_t ret, int savedErrno, const char* msg) {
+  if (ret == -1) {
+    throwSystemError(savedErrno, msg);
+  }
+}
 
 // Check a wait() status, throw on non-successful
 void checkStatus(ProcessReturnCode returnCode) {
@@ -288,15 +293,53 @@ void Subprocess::spawn(
     envVec = environ;
   }
 
+  // Block all signals around vfork; see http://ewontfix.com/7/.
+  //
+  // As the child may run in the same address space as the parent until
+  // the actual execve() system call, any (custom) signal handlers that
+  // the parent has might alter parent's memory if invoked in the child,
+  // with undefined results.  So we block all signals in the parent before
+  // vfork(), which will cause them to be blocked in the child as well (we
+  // rely on the fact that Linux, just like all sane implementations, only
+  // clones the calling thread).  Then, in the child, we reset all signals
+  // to their default dispositions (while still blocked), and unblock them
+  // (so the exec()ed process inherits the parent's signal mask)
+  //
+  // The parent also unblocks all signals as soon as vfork() returns.
+  sigset_t allBlocked;
+  int r = ::sigfillset(&allBlocked);
+  checkUnixError(r, "sigfillset");
+  sigset_t oldSignals;
+  r = pthread_sigmask(SIG_SETMASK, &allBlocked, &oldSignals);
+  checkPosixError(r, "pthread_sigmask");
+
   pid_t pid = vfork();
   if (pid == 0) {
+    // While all signals are blocked, we must reset their
+    // dispositions to default.
+    for (int sig = 1; sig < NSIG; ++sig) {
+      ::signal(sig, SIG_DFL);
+    }
+    // Unblock signals; restore signal mask.
+    int r = pthread_sigmask(SIG_SETMASK, &oldSignals, nullptr);
+    if (r != 0) abort();
+
     runChild(executable, argVec, envVec, options);
     // This should never return, but there's nothing else we can do here.
     abort();
   }
+  // In parent.  We want to restore the signal mask even if vfork fails,
+  // so we'll save errno here, restore the signal mask, and only then
+  // throw.
+  int savedErrno = errno;
 
-  // In parent
-  checkUnixError(pid, "vfork");
+  // Restore signal mask; do this even if vfork fails!
+  // We only check for errors from pthread_sigmask after we recorded state
+  // that the child is alive, so we know to reap it.
+  r = pthread_sigmask(SIG_SETMASK, &oldSignals, nullptr);
+  checkUnixError(pid, savedErrno, "vfork");
+
+  // Child is alive
   pid_ = pid;
   returnCode_ = ProcessReturnCode(RV_RUNNING);
 
@@ -304,6 +347,8 @@ void Subprocess::spawn(
   for (int f : childFds) {
     closeChecked(f);
   }
+
+  checkPosixError(r, "pthread_sigmask");
 }
 
 namespace {
@@ -389,8 +434,12 @@ ProcessReturnCode Subprocess::wait() {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   DCHECK_GT(pid_, 0);
   int status;
-  pid_t found = ::waitpid(pid_, &status, 0);
+  pid_t found;
+  do {
+    found = ::waitpid(pid_, &status, 0);
+  } while (found == -1 && errno == EINTR);
   checkUnixError(found, "waitpid");
+  DCHECK_EQ(found, pid_);
   returnCode_ = ProcessReturnCode(status);
   return returnCode_;
 }
