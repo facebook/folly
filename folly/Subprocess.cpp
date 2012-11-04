@@ -196,22 +196,8 @@ Subprocess::Subprocess(
 }
 
 Subprocess::~Subprocess() {
-  if (returnCode_.state() == ProcessReturnCode::RUNNING) {
-    LOG(ERROR) << "Subprocess destroyed without reaping; killing child.";
-    try {
-      kill();
-      wait();
-    } catch (...) {
-      LOG(FATAL) << "Killing child failed, terminating: "
-                 << exceptionStr(std::current_exception());
-    }
-  }
-  try {
-    closeAll();
-  } catch (...) {
-    LOG(FATAL) << "close failed, terminating: "
-               << exceptionStr(std::current_exception());
-  }
+  CHECK_NE(returnCode_.state(), ProcessReturnCode::RUNNING)
+    << "Subprocess destroyed without reaping child";
 }
 
 namespace {
@@ -531,7 +517,7 @@ bool discardRead(int fd) {
 }  // namespace
 
 std::pair<std::string, std::string> Subprocess::communicate(
-    int flags,
+    const CommunicateFlags& flags,
     StringPiece data) {
   IOBufQueue dataQueue;
   dataQueue.wrapBuffer(data.data(), data.size());
@@ -554,14 +540,14 @@ std::pair<std::string, std::string> Subprocess::communicate(
 }
 
 std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
-    int flags,
+    const CommunicateFlags& flags,
     IOBufQueue data) {
   std::pair<IOBufQueue, IOBufQueue> out;
 
-  auto readCallback = [&, flags] (int pfd, int cfd) {
-    if (cfd == 1 && (flags & READ_STDOUT)) {
+  auto readCallback = [&] (int pfd, int cfd) {
+    if (cfd == 1 && flags.readStdout_) {
       return handleRead(pfd, out.first);
-    } else if (cfd == 2 && (flags & READ_STDERR)) {
+    } else if (cfd == 2 && flags.readStderr_) {
       return handleRead(pfd, out.second);
     } else {
       // Don't close the file descriptor, the child might not like SIGPIPE,
@@ -570,8 +556,8 @@ std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
     }
   };
 
-  auto writeCallback = [&, flags] (int pfd, int cfd) {
-    if (cfd == 0 && (flags & WRITE_STDIN)) {
+  auto writeCallback = [&] (int pfd, int cfd) {
+    if (cfd == 0 && flags.writeStdin_) {
       return handleWrite(pfd, data);
     } else {
       // If we don't want to write to this fd, just close it.

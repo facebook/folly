@@ -33,12 +33,12 @@
  * to complete, returning the exit status.
  *
  * A thread-safe version of popen() (type="r", to read from the child):
- *    Subprocess proc(cmd, Subprocess::Options().stdout(Subprocess::PIPE));
+ *    Subprocess proc(cmd, Subprocess::pipeStdout());
  *    // read from proc.stdout()
  *    proc.wait();
  *
  * A thread-safe version of popen() (type="w", to write from the child):
- *    Subprocess proc(cmd, Subprocess::Options().stdin(Subprocess::PIPE));
+ *    Subprocess proc(cmd, Subprocess::pipeStdin());
  *    // write to proc.stdin()
  *    proc.wait();
  *
@@ -176,7 +176,7 @@ class Subprocess : private boost::noncopyable {
    * the close-on-exec flag is set (fcntl FD_CLOEXEC) and inherited
    * otherwise.
    */
-  class Options {
+  class Options : private boost::orable<Options> {
     friend class Subprocess;
    public:
     Options() : closeOtherFds_(false), usePath_(false) { }
@@ -232,12 +232,22 @@ class Subprocess : private boost::noncopyable {
      * Use the search path ($PATH) when searching for the executable.
      */
     Options& usePath() { usePath_ = true; return *this; }
+
+    /**
+     * Helpful way to combine Options.
+     */
+    Options& operator|=(const Options& other);
+
    private:
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
     bool closeOtherFds_;
     bool usePath_;
   };
+
+  static Options pipeStdin() { return Options().stdin(PIPE); }
+  static Options pipeStdout() { return Options().stdout(PIPE); }
+  static Options pipeStderr() { return Options().stderr(PIPE); }
 
   /**
    * Create a subprocess from the given arguments.  argv[0] must be listed.
@@ -270,14 +280,14 @@ class Subprocess : private boost::noncopyable {
    * Append all data, close the stdin (to-child) fd, and read all data,
    * except that this is done in a safe manner to prevent deadlocking.
    *
-   * If WRITE_STDIN is given in flags, the process must have been opened with
+   * If writeStdin() is given in flags, the process must have been opened with
    * stdinFd=PIPE.
    *
-   * If READ_STDOUT is given in flags, the first returned value will be the
+   * If readStdout() is given in flags, the first returned value will be the
    * value read from the child's stdout; the child must have been opened with
    * stdoutFd=PIPE.
    *
-   * If READ_STDERR is given in flags, the second returned value will be the
+   * If readStderr() is given in flags, the second returned value will be the
    * value read from the child's stderr; the child must have been opened with
    * stderrFd=PIPE.
    *
@@ -288,17 +298,38 @@ class Subprocess : private boost::noncopyable {
    * that it won't try to allocate all data at once).  communicate
    * uses strings for simplicity.
    */
-  enum {
-    WRITE_STDIN = 1 << 0,
-    READ_STDOUT = 1 << 1,
-    READ_STDERR = 1 << 2,
+  class CommunicateFlags : private boost::orable<CommunicateFlags> {
+    friend class Subprocess;
+   public:
+    CommunicateFlags()
+      : writeStdin_(false), readStdout_(false), readStderr_(false) { }
+    CommunicateFlags& writeStdin() { writeStdin_ = true; return *this; }
+    CommunicateFlags& readStdout() { readStdout_ = true; return *this; }
+    CommunicateFlags& readStderr() { readStderr_ = true; return *this; }
+
+    CommunicateFlags& operator|=(const CommunicateFlags& other);
+   private:
+    bool writeStdin_;
+    bool readStdout_;
+    bool readStderr_;
   };
+
+  static CommunicateFlags writeStdin() {
+    return CommunicateFlags().writeStdin();
+  }
+  static CommunicateFlags readStdout() {
+    return CommunicateFlags().readStdout();
+  }
+  static CommunicateFlags readStderr() {
+    return CommunicateFlags().readStderr();
+  }
+
   std::pair<IOBufQueue, IOBufQueue> communicateIOBuf(
-      int flags = READ_STDOUT,
+      const CommunicateFlags& flags = readStdout(),
       IOBufQueue data = IOBufQueue());
 
   std::pair<std::string, std::string> communicate(
-      int flags = READ_STDOUT,
+      const CommunicateFlags& flags = readStdout(),
       StringPiece data = StringPiece());
 
   /**
@@ -451,6 +482,27 @@ class Subprocess : private boost::noncopyable {
   };
   std::vector<PipeInfo> pipes_;
 };
+
+inline Subprocess::Options& Subprocess::Options::operator|=(
+    const Subprocess::Options& other) {
+  if (this == &other) return *this;
+  // Replace
+  for (auto& p : other.fdActions_) {
+    fdActions_[p.first] = p.second;
+  }
+  closeOtherFds_ |= other.closeOtherFds_;
+  usePath_ |= other.usePath_;
+  return *this;
+}
+
+inline Subprocess::CommunicateFlags& Subprocess::CommunicateFlags::operator|=(
+    const Subprocess::CommunicateFlags& other) {
+  if (this == &other) return *this;
+  writeStdin_ |= other.writeStdin_;
+  readStdout_ |= other.readStdout_;
+  readStderr_ |= other.readStderr_;
+  return *this;
+}
 
 }  // namespace folly
 

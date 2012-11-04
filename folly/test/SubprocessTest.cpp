@@ -55,7 +55,7 @@ TEST(SimpleSubprocessTest, ShellExitsWithError) {
 }
 
 TEST(PopenSubprocessTest, PopenRead) {
-  Subprocess proc("ls /", Subprocess::Options().stdout(Subprocess::PIPE));
+  Subprocess proc("ls /", Subprocess::pipeStdout());
   int found = 0;
   for (auto bline : byLine(proc.stdout())) {
     StringPiece line(bline);
@@ -69,7 +69,7 @@ TEST(PopenSubprocessTest, PopenRead) {
 
 TEST(CommunicateSubprocessTest, SimpleRead) {
   Subprocess proc(std::vector<std::string>{ "/bin/echo", "-n", "foo", "bar"},
-                  Subprocess::Options().stdout(Subprocess::PIPE));
+                  Subprocess::pipeStdout());
   auto p = proc.communicate();
   EXPECT_EQ("foo bar", p.first);
   proc.waitChecked();
@@ -84,11 +84,8 @@ TEST(CommunicateSubprocessTest, BigWrite) {
     data.append(line);
   }
 
-  Subprocess::Options options;
-  options.stdin(Subprocess::PIPE).stdout(Subprocess::PIPE);
-
-  Subprocess proc("wc -l", options);
-  auto p = proc.communicate(Subprocess::WRITE_STDIN | Subprocess::READ_STDOUT,
+  Subprocess proc("wc -l", Subprocess::pipeStdin() | Subprocess::pipeStdout());
+  auto p = proc.communicate(Subprocess::writeStdin() | Subprocess::readStdout(),
                             data);
   EXPECT_EQ(folly::format("{}\n", numLines).str(), p.first);
   proc.waitChecked();
@@ -100,11 +97,9 @@ TEST(CommunicateSubprocessTest, Duplex) {
   const int bytes = 10 << 20;
   std::string line(bytes, 'x');
 
-  Subprocess::Options options;
-  options.stdin(Subprocess::PIPE).stdout(Subprocess::PIPE);
-
-  Subprocess proc("tr a-z A-Z", options);
-  auto p = proc.communicate(Subprocess::WRITE_STDIN | Subprocess::READ_STDOUT,
+  Subprocess proc("tr a-z A-Z",
+                  Subprocess::pipeStdin() | Subprocess::pipeStdout());
+  auto p = proc.communicate(Subprocess::writeStdin() | Subprocess::readStdout(),
                             line);
   EXPECT_EQ(bytes, p.first.size());
   EXPECT_EQ(std::string::npos, p.first.find_first_not_of('X'));
