@@ -353,6 +353,15 @@ void IOBuf::coalesceSlow(size_t maxLength) {
 
   uint64_t newHeadroom = headroom();
   uint64_t newTailroom = end->prev_->tailroom();
+  coalesceAndReallocate(newHeadroom, newLength, end, newTailroom);
+  // We should be only element left in the chain now
+  assert(length_ >= maxLength || !isChained());
+}
+
+void IOBuf::coalesceAndReallocate(size_t newHeadroom,
+                                  size_t newLength,
+                                  IOBuf* end,
+                                  size_t newTailroom) {
   uint64_t newCapacity = newLength + newHeadroom + newTailroom;
   if (newCapacity > UINT32_MAX) {
     throw std::overflow_error("IOBuf chain too large to coalesce");
@@ -370,11 +379,15 @@ void IOBuf::coalesceSlow(size_t maxLength) {
   uint8_t* newData = newBuf + newHeadroom;
   uint8_t* p = newData;
   IOBuf* current = this;
+  size_t remaining = newLength;
   do {
+    assert(current->length_ <= remaining);
+    remaining -= current->length_;
     memcpy(p, current->data_, current->length_);
     p += current->length_;
     current = current->next_;
   } while (current != end);
+  assert(remaining == 0);
 
   // Point at the new buffer
   if (flags_ & kFlagExt) {
@@ -395,10 +408,9 @@ void IOBuf::coalesceSlow(size_t maxLength) {
   // Separate from the rest of our chain.
   // Since we don't store the unique_ptr returned by separateChain(),
   // this will immediately delete the returned subchain.
-  (void)separateChain(next_, end->prev_);
-
-  // We should be only element left in the chain now
-  assert(length_ >= maxLength || !isChained());
+  if (isChained()) {
+    (void)separateChain(next_, current->prev_);
+  }
 }
 
 void IOBuf::decrementRefcount() {
@@ -596,6 +608,31 @@ void IOBuf::initExtBuffer(uint8_t* buf, size_t mallocSize,
   }
 
   *infoReturn = sharedInfo;
+}
+
+fbstring IOBuf::moveToFbString() {
+  // Externally allocated buffers (malloc) are just fine, everything else needs
+  // to be turned into one.
+  if (flags_ != kFlagExt ||  // not malloc()-ed
+      headroom() != 0 ||     // malloc()-ed block doesn't start at beginning
+      tailroom() == 0 ||     // no room for NUL terminator
+      isShared() ||          // shared
+      isChained()) {         // chained
+    // We might as well get rid of all head and tailroom if we're going
+    // to reallocate; we need 1 byte for NUL terminator.
+    coalesceAndReallocate(0, computeChainDataLength(), this, 1);
+  }
+
+  // Ensure NUL terminated
+  *writableTail() = 0;
+  fbstring str(reinterpret_cast<char*>(writableData()),
+               length(),  capacity(),
+               AcquireMallocatedString());
+
+  // Reset to internal buffer.
+  flags_ = 0;
+  clear();
+  return str;
 }
 
 } // folly

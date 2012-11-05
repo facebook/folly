@@ -17,6 +17,9 @@
 #include "folly/experimental/io/IOBuf.h"
 #include "folly/experimental/io/TypedIOBuf.h"
 
+// googletest requires std::tr1::tuple, not std::tuple
+#include <tr1/tuple>
+
 #include <gflags/gflags.h>
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
@@ -24,6 +27,7 @@
 #include "folly/Malloc.h"
 #include "folly/Range.h"
 
+using folly::fbstring;
 using folly::IOBuf;
 using folly::TypedIOBuf;
 using folly::StringPiece;
@@ -660,6 +664,64 @@ TEST(TypedIOBuf, Simple) {
     EXPECT_EQ(i, typed.data()[i]);
   }
 }
+
+// chain element size, number of elements in chain, shared
+class MoveToFbStringTest
+  : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool>> {
+ protected:
+  void SetUp() {
+    std::tr1::tie(elementSize_, elementCount_, shared_) = GetParam();
+    buf_ = makeBuf();
+    for (int i = 0; i < elementCount_ - 1; ++i) {
+      buf_->prependChain(makeBuf());
+    }
+    EXPECT_EQ(elementCount_, buf_->countChainElements());
+    EXPECT_EQ(elementCount_ * elementSize_, buf_->computeChainDataLength());
+    if (shared_) {
+      buf2_ = buf_->clone();
+      EXPECT_EQ(elementCount_, buf2_->countChainElements());
+      EXPECT_EQ(elementCount_ * elementSize_, buf2_->computeChainDataLength());
+    }
+  }
+
+  std::unique_ptr<IOBuf> makeBuf() {
+    auto buf = IOBuf::create(elementSize_);
+    memset(buf->writableTail(), 'x', elementSize_);
+    buf->append(elementSize_);
+    return buf;
+  }
+
+  void check(std::unique_ptr<IOBuf>& buf) {
+    fbstring str = buf->moveToFbString();
+    EXPECT_EQ(elementCount_ * elementSize_, str.size());
+    EXPECT_EQ(elementCount_ * elementSize_, strspn(str.c_str(), "x"));
+    EXPECT_EQ(0, buf->length());
+    EXPECT_EQ(1, buf->countChainElements());
+    EXPECT_EQ(0, buf->computeChainDataLength());
+    EXPECT_FALSE(buf->isChained());
+  }
+
+  int elementSize_;
+  int elementCount_;
+  bool shared_;
+  std::unique_ptr<IOBuf> buf_;
+  std::unique_ptr<IOBuf> buf2_;
+};
+
+TEST_P(MoveToFbStringTest, Simple) {
+  check(buf_);
+  if (shared_) {
+    check(buf2_);
+  }
+}
+
+INSTANTIATE_TEST_CASE_P(
+    MoveToFbString,
+    MoveToFbStringTest,
+    ::testing::Combine(
+        ::testing::Values(0, 1, 24, 256, 1 << 10, 1 << 20),  // element size
+        ::testing::Values(1, 2, 10),                         // element count
+        ::testing::Bool()));                                 // shared
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

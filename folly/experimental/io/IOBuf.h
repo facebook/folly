@@ -27,6 +27,8 @@
 #include <limits>
 #include <type_traits>
 
+#include "folly/FBString.h"
+
 namespace folly {
 
 /**
@@ -896,6 +898,13 @@ class IOBuf {
   void* operator new(size_t size, void* ptr);
   void operator delete(void* ptr);
 
+  /**
+   * Destructively convert this IOBuf to a fbstring efficiently.
+   * We rely on fbstring's AcquireMallocatedString constructor to
+   * transfer memory.
+   */
+  fbstring moveToFbString();
+
  private:
   enum FlagsEnum {
     kFlagExt = 0x1,
@@ -966,6 +975,13 @@ class IOBuf {
   void unshareOneSlow();
   void unshareChained();
   void coalesceSlow(size_t maxLength=std::numeric_limits<size_t>::max());
+  // newLength must be the entire length of the buffers between this and
+  // end (no truncation)
+  void coalesceAndReallocate(
+      size_t newHeadroom,
+      size_t newLength,
+      IOBuf* end,
+      size_t newTailroom);
   void decrementRefcount();
   void reserveSlow(uint32_t minHeadroom, uint32_t minTailroom);
 
