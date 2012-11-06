@@ -37,6 +37,7 @@ namespace folly {
 
 
 #include <type_traits>
+#include <iterator>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/mpl/has_xxx.hpp>
 #include "folly/Likely.h"
@@ -59,10 +60,10 @@ template <typename T> struct map_container_has_correct_types
                  typename T::value_type> {};
 
 template <typename T> struct class_is_container {
-  struct dummy {};
+  typedef std::reverse_iterator<T*> some_iterator;
   enum { value = has_value_type<T>::value &&
                  has_iterator<T>::value &&
-                 std::is_constructible<T, dummy, dummy>::value };
+              std::is_constructible<T, some_iterator, some_iterator>::value };
 };
 
 template <typename T> struct container_is_map
