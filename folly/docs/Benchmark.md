@@ -178,6 +178,20 @@ group or for whatever reason), use `BENCHMARK_DRAW_LINE()`. The line
 fulfills a purely aesthetic role; it doesn't interact with
 measurements in any way.
 
+``` Cpp
+    BENCHMARK(foo) {
+      Foo foo;
+      foo.doSomething();
+    }
+
+    BENCHMARK_DRAW_LINE();
+
+    BENCHMARK(bar) {
+      Bar bar;
+      bar.doSomething();
+    }
+```
+
 ### Suspending a benchmark
 ***
 
