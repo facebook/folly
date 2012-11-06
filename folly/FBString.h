@@ -1269,7 +1269,7 @@ public:
     // std::less_equal, which is guaranteed to offer a total order
     // over pointers. See discussion at http://goo.gl/Cy2ya for more
     // info.
-    static const std::less_equal<const value_type*> le;
+    std::less_equal<const value_type*> le;
     if (UNLIKELY(le(oldData, s) && !le(oldData + oldSize, s))) {
       assert(le(s + n, oldData + oldSize));
       const size_type offset = s - oldData;

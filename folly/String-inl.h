@@ -278,7 +278,7 @@ template<class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            fbvector<OutputType>& out,
-           bool ignoreEmpty = false) {
+           bool ignoreEmpty) {
   detail::internalSplit<OutputType>(
     detail::prepareDelim(delimiter),
     StringPiece(input),
@@ -451,7 +451,7 @@ void humanify(const String1& input, String2& output) {
 
 template<class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
-             bool append_output=false) {
+             bool append_output) {
   if (!append_output) output.clear();
 
   static char hexValues[] = "0123456789abcdef";
