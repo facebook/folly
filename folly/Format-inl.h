@@ -1063,6 +1063,21 @@ class FormatValue<std::tuple<Args...>> {
   const Tuple& val_;
 };
 
+// Partial specialization of FormatValue for nested Formatters
+template <bool containerMode, class... Args>
+class FormatValue<Formatter<containerMode, Args...>, void> {
+  typedef Formatter<containerMode, Args...> FormatterValue;
+ public:
+  explicit FormatValue(const FormatterValue& f) : f_(f) { }
+
+  template <class FormatCallback>
+  void format(FormatArg& arg, FormatCallback& cb) const {
+    format_value::formatFormatter(f_, arg, cb);
+  }
+ private:
+  const FormatterValue& f_;
+};
+
 /**
  * Formatter objects can be appended to strings, and therefore they're
  * compatible with folly::toAppend and folly::to.

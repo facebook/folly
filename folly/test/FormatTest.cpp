@@ -281,6 +281,14 @@ TEST(Format, Custom) {
   EXPECT_EQ("XX<key=hello, value=42>", fstr("{:X>23}", kv));
 }
 
+TEST(Format, Nested) {
+  EXPECT_EQ("1 2 3 4", fstr("{} {} {}", 1, 2, format("{} {}", 3, 4)));
+  //
+  // not copyable, must hold temporary in scope instead.
+  auto&& saved = format("{} {}", 3, 4);
+  EXPECT_EQ("1 2 3 4", fstr("{} {} {}", 1, 2, saved));
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

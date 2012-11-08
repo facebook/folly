@@ -123,6 +123,44 @@ BENCHMARK_RELATIVE(bigFormat_format, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(format_nested_strings, iters) {
+  while (iters--) {
+    fbstring out;
+    for (int i = 0; i < 1000; ++i) {
+      out.clear();
+      format(&out, "{} {}",
+             format("{} {}", i, i + 1).str(),
+             format("{} {}", -i, -i - 1).str());
+    }
+  }
+}
+
+BENCHMARK_RELATIVE(format_nested_fbstrings, iters) {
+  while (iters--) {
+    fbstring out;
+    for (int i = 0; i < 1000; ++i) {
+      out.clear();
+      format(&out, "{} {}",
+             format("{} {}", i, i + 1).fbstr(),
+             format("{} {}", -i, -i - 1).fbstr());
+    }
+  }
+}
+
+BENCHMARK_RELATIVE(format_nested_direct, iters) {
+  while (iters--) {
+    fbstring out;
+    for (int i = 0; i < 1000; ++i) {
+      out.clear();
+      format(&out, "{} {}",
+             format("{} {}", i, i + 1),
+             format("{} {}", -i, -i - 1));
+    }
+  }
+}
+
 // Benchmark results on my dev server (dual-CPU Xeon L5520 @ 2.7GHz)
 //
 // ============================================================================
