@@ -787,6 +787,28 @@ class FormatValue<
   T* val_;
 };
 
+template <class T, class = void>
+class TryFormatValue {
+ public:
+  template <class FormatCallback>
+  static void formatOrFail(T& value, FormatArg& arg, FormatCallback& cb) {
+    arg.error("No formatter available for this type");
+  }
+};
+
+template <class T>
+class TryFormatValue<
+  T,
+  typename std::enable_if<
+      0 < sizeof(FormatValue<typename std::decay<T>::type>)>::type>
+  {
+ public:
+  template <class FormatCallback>
+  static void formatOrFail(T& value, FormatArg& arg, FormatCallback& cb) {
+    FormatValue<typename std::decay<T>::type>(value).format(arg, cb);
+  }
+};
+
 // Partial specialization of FormatValue for other pointers
 template <class T>
 class FormatValue<
@@ -803,8 +825,7 @@ class FormatValue<
     if (arg.keyEmpty()) {
       FormatValue<void*>((void*)val_).format(arg, cb);
     } else {
-      FormatValue<typename std::decay<T>::type>(
-          val_[arg.splitIntKey()]).format(arg, cb);
+      TryFormatValue<T>::formatOrFail(val_[arg.splitIntKey()], arg, cb);
     }
   }
  private:

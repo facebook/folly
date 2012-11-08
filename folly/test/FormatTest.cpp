@@ -131,6 +131,7 @@ TEST(Format, Simple) {
   EXPECT_EQ("0020", vstr("{1:04}", p));
   EXPECT_EQ("0020", fstr("{0[1]:04}", q));
   EXPECT_EQ("0020", vstr("{1:04}", q));
+  EXPECT_NE("", fstr("{}", q));
 
   EXPECT_EQ("0x", fstr("{}", p).substr(0, 2));
   EXPECT_EQ("10", vstr("{}", p));
@@ -279,6 +280,22 @@ TEST(Format, Custom) {
   EXPECT_EQ("<key=hello", fstr("{:.10}", kv));
   EXPECT_EQ("<key=hello, value=42>XX", fstr("{:X<23}", kv));
   EXPECT_EQ("XX<key=hello, value=42>", fstr("{:X>23}", kv));
+  EXPECT_EQ("<key=hello, value=42>", fstr("{0[0]}", &kv));
+  EXPECT_NE("", fstr("{}", &kv));
+}
+
+namespace {
+
+struct Opaque {
+  int k;
+};
+
+} // namespace
+
+TEST(Format, Unformatted) {
+  Opaque o;
+  EXPECT_NE("", fstr("{}", &o));
+  EXPECT_THROW(fstr("{0[0]}", &o), std::invalid_argument);
 }
 
 TEST(Format, Nested) {
