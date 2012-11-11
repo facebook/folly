@@ -17,23 +17,23 @@
 /**
  * Various low-level, bit-manipulation routines.
  *
- * findFirstSet(x)
+ * findFirstSet(x)  [constexpr]
  *    find first (least significant) bit set in a value of an integral type,
  *    1-based (like ffs()).  0 = no bits are set (x == 0)
  *
- * findLastSet(x)
+ * findLastSet(x)  [constexpr]
  *    find last (most significant) bit set in a value of an integral type,
  *    1-based.  0 = no bits are set (x == 0)
  *    for x != 0, findLastSet(x) == 1 + floor(log2(x))
  *
- * popcount(x)
- *    return the number of 1 bits in x
- *
- * nextPowTwo(x)
+ * nextPowTwo(x)  [constexpr]
  *    Finds the next power of two >= x.
  *
- * isPowTwo(x)
+ * isPowTwo(x)  [constexpr]
  *    return true iff x is a power of two
+ *
+ * popcount(x)
+ *    return the number of 1 bits in x
  *
  * Endian
  *    convert between native, big, and little endian representation
@@ -84,6 +84,7 @@ namespace folly {
 // Generate overloads for findFirstSet as wrappers around
 // appropriate ffs, ffsl, ffsll gcc builtins
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -94,6 +95,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -105,6 +107,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -116,6 +119,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value && std::is_signed<T>::value),
   unsigned int>::type
@@ -129,6 +133,7 @@ typename std::enable_if<
 // findLastSet: return the 1-based index of the highest bit set
 // for x > 0, findLastSet(x) == 1 + floor(log2(x))
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -139,6 +144,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -150,6 +156,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -161,6 +168,7 @@ typename std::enable_if<
 }
 
 template <class T>
+inline constexpr
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_signed<T>::value),
@@ -170,24 +178,21 @@ typename std::enable_if<
 }
 
 template <class T>
-inline
+inline constexpr
 typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   T>::type
 nextPowTwo(T v) {
-  if (UNLIKELY(v == 0)) {
-    return 1;
-  }
-  return 1ul << findLastSet(v - 1);
+  return v ? (1ul << findLastSet(v - 1)) : 1;
 }
 
 template <class T>
-inline
+inline constexpr
 typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   bool>::type
 isPowTwo(T v) {
-  return ((v != 0) && !(v & (v-1)));   // yes, this is endian-agnostic
+  return (v != 0) && !(v & (v - 1));
 }
 
 /**
