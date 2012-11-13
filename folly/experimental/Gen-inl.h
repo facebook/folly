@@ -1307,7 +1307,7 @@ public:
 };
 
 /**
- * RangeConcat - For flattening generators of generators.
+ * RangeConcat - For flattening generators of iterables.
  *
  * This type is usually used through the 'rconcat' static value, like:
  *
@@ -1370,16 +1370,7 @@ public:
 } //::detail
 
 /**
- * Gen<T> - For wrapping template types in simple polymorphic wrapper.
- *
- * This type is usually used through the 'rconcat' static value, like:
- *
- *   map<int, vector<int>> adjacency;
- *   auto sinks =
- *       from(adjacency)
- *     | get<1>()
- *     | rconcat()
- *     | as<std::set>();
+ * VirtualGen<T> - For wrapping template types in simple polymorphic wrapper.
  **/
 template<class Value>
 class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
