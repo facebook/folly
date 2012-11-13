@@ -17,6 +17,7 @@
 #include "folly/experimental/Gen.h"
 #include "folly/experimental/StringGen.h"
 #include "folly/experimental/FileGen.h"
+#include "folly/String.h"
 
 #include <atomic>
 #include <thread>
@@ -318,6 +319,73 @@ BENCHMARK_RELATIVE(StringResplitter_Small, iters) {
 
 BENCHMARK_DRAW_LINE()
 
+BENCHMARK(StringSplit_Old, iters) {
+  size_t s = 0;
+  std::string line(kLine);
+  while (iters--) {
+    std::vector<StringPiece> parts;
+    split(' ', line, parts);
+    s += parts.size();
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+
+BENCHMARK_RELATIVE(StringSplit_Gen_Vector, iters) {
+  size_t s = 0;
+  StringPiece line(kLine);
+  while (iters--) {
+    s += (split(line, ' ') | as<vector>()).size();
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(StringSplit_Old_ReuseVector, iters) {
+  size_t s = 0;
+  std::string line(kLine);
+  std::vector<StringPiece> parts;
+  while (iters--) {
+    parts.clear();
+    split(' ', line, parts);
+    s += parts.size();
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(StringSplit_Gen_ReuseVector, iters) {
+  size_t s = 0;
+  StringPiece line(kLine);
+  std::vector<StringPiece> parts;
+  while (iters--) {
+    parts.clear();
+    split(line, ' ') | appendTo(parts);
+    s += parts.size();
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(StringSplit_Gen, iters) {
+  size_t s = 0;
+  StringPiece line(kLine);
+  while (iters--) {
+    s += split(line, ' ') | count;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(StringSplit_Gen_Take, iters) {
+  size_t s = 0;
+  StringPiece line(kLine);
+  while (iters--) {
+    s += split(line, ' ') | take(10) | count;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_DRAW_LINE()
+
 BENCHMARK(ByLine_Pipes, iters) {
   std::thread thread;
   int rfd;
@@ -356,30 +424,43 @@ BENCHMARK(ByLine_Pipes, iters) {
 // ============================================================================
 // folly/experimental/test/GenBenchmark.cpp        relative  time/iter  iters/s
 // ============================================================================
-// Sum_Basic_NoGen                                            301.60ns    3.32M
-// Sum_Basic_Gen                                    104.27%   289.24ns    3.46M
+// Sum_Basic_NoGen                                            293.77ns    3.40M
+// Sum_Basic_Gen                                    100.24%   293.08ns    3.41M
 // ----------------------------------------------------------------------------
-// Sum_Vector_NoGen                                           200.33ns    4.99M
-// Sum_Vector_Gen                                    99.81%   200.70ns    4.98M
+// Sum_Vector_NoGen                                           199.09ns    5.02M
+// Sum_Vector_Gen                                    98.57%   201.98ns    4.95M
 // ----------------------------------------------------------------------------
-// Count_Vector_NoGen                                          12.37us   80.84K
-// Count_Vector_Gen                                 103.09%    12.00us   83.33K
+// Count_Vector_NoGen                                          12.40us   80.66K
+// Count_Vector_Gen                                 103.07%    12.03us   83.13K
 // ----------------------------------------------------------------------------
-// Fib_Sum_NoGen                                                3.66us  273.21K
-// Fib_Sum_Gen                                       43.06%     8.50us  117.65K
-// Fib_Sum_Gen_Static                                87.81%     4.17us  239.89K
+// Fib_Sum_NoGen                                                3.65us  274.29K
+// Fib_Sum_Gen                                       41.95%     8.69us  115.06K
+// Fib_Sum_Gen_Static                                86.10%     4.23us  236.15K
 // ----------------------------------------------------------------------------
-// VirtualGen_0Virtual                                         10.04us   99.61K
-// VirtualGen_1Virtual                               29.59%    33.93us   29.47K
-// VirtualGen_2Virtual                               20.45%    49.10us   20.37K
-// VirtualGen_3Virtual                               15.49%    64.82us   15.43K
+// VirtualGen_0Virtual                                         10.10us   99.03K
+// VirtualGen_1Virtual                               29.67%    34.04us   29.38K
+// VirtualGen_2Virtual                               20.53%    49.19us   20.33K
+// VirtualGen_3Virtual                               15.22%    66.36us   15.07K
 // ----------------------------------------------------------------------------
-// Concat_NoGen                                                 2.50us  400.37K
-// Concat_Gen                                       102.50%     2.44us  410.37K
+// Concat_NoGen                                                 2.33us  428.35K
+// Concat_Gen                                        85.36%     2.74us  365.62K
 // ----------------------------------------------------------------------------
-// Composed_NoGen                                             549.54ns    1.82M
-// Composed_Gen                                     101.39%   542.00ns    1.85M
-// Composed_GenRegular                               99.66%   551.40ns    1.81M
+// Composed_NoGen                                             552.78ns    1.81M
+// Composed_Gen                                     100.48%   550.14ns    1.82M
+// Composed_GenRegular                              100.60%   549.50ns    1.82M
+// ----------------------------------------------------------------------------
+// StringResplitter_Big                                       118.40us    8.45K
+// StringResplitter_Small                            12.96%   913.23us    1.10K
+// ----------------------------------------------------------------------------
+// StringSplit_Old                                            567.61ns    1.76M
+// StringSplit_Gen_Vector                           146.52%   387.41ns    2.58M
+// ----------------------------------------------------------------------------
+// StringSplit_Old_ReuseVector                                 74.90ns   13.35M
+// StringSplit_Gen_ReuseVector                      112.29%    66.71ns   14.99M
+// StringSplit_Gen                                  122.42%    61.18ns   16.34M
+// StringSplit_Gen_Take                             134.49%    55.70ns   17.95M
+// ----------------------------------------------------------------------------
+// ByLine_Pipes                                               131.18ns    7.62M
 // ============================================================================
 
 int main(int argc, char *argv[]) {

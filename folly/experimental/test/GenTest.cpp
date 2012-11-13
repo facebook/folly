@@ -598,6 +598,65 @@ TEST(Gen, Dynamic) {
 TEST(StringGen, EmptySplit) {
   auto collect = eachTo<std::string>() | as<vector>();
   {
+    auto pieces = split("", ',') | collect;
+    EXPECT_EQ(0, pieces.size());
+  }
+
+  // The last delimiter is eaten, just like std::getline
+  {
+    auto pieces = split(",", ',') | collect;
+    EXPECT_EQ(1, pieces.size());
+    EXPECT_EQ("", pieces[0]);
+  }
+
+  {
+    auto pieces = split(",,", ',') | collect;
+    EXPECT_EQ(2, pieces.size());
+    EXPECT_EQ("", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+  }
+
+  {
+    auto pieces = split(",,", ',') | take(1) | collect;
+    EXPECT_EQ(1, pieces.size());
+    EXPECT_EQ("", pieces[1]);
+  }
+}
+
+TEST(StringGen, Split) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
+    auto pieces = split("hello,, world, goodbye, meow", ',') | collect;
+    EXPECT_EQ(5, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+    EXPECT_EQ(" goodbye", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
+  }
+
+  {
+    auto pieces = split("hello,, world, goodbye, meow", ',')
+                | take(3) | collect;
+    EXPECT_EQ(3, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+  }
+
+  {
+    auto pieces = split("hello,, world, goodbye, meow", ',')
+                | take(5) | collect;
+    EXPECT_EQ(5, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+  }
+}
+
+TEST(StringGen, EmptyResplit) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
     auto pieces = from({""}) | resplit(',') | collect;
     EXPECT_EQ(0, pieces.size());
   }
@@ -617,7 +676,7 @@ TEST(StringGen, EmptySplit) {
   }
 }
 
-TEST(StringGen, Split) {
+TEST(StringGen, Resplit) {
   auto collect = eachTo<std::string>() | as<vector>();
   {
     auto pieces = from({"hello,, world, goodbye, meow"}) |

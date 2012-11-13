@@ -124,6 +124,34 @@ class StringResplitter : public Operator<StringResplitter> {
   }
 };
 
+class SplitStringSource : public GenImpl<StringPiece, SplitStringSource> {
+  StringPiece source_;
+  char delimiter_;
+ public:
+  SplitStringSource(const StringPiece& source,
+                    char delimiter)
+    : source_(source)
+    , delimiter_(delimiter) { }
+
+  template <class Body>
+  bool apply(Body&& body) const {
+    StringPiece rest(source_);
+    StringPiece prefix;
+    while (splitPrefix(rest, prefix, this->delimiter_)) {
+      if (!body(prefix)) {
+        return false;
+      }
+    }
+    if (!rest.empty()) {
+      if (!body(rest)) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+
 }  // namespace detail
 }  // namespace gen
 }  // namespace folly

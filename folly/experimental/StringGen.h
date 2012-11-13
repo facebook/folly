@@ -24,6 +24,7 @@ namespace gen {
 
 namespace detail {
 class StringResplitter;
+class SplitStringSource;
 }  // namespace detail
 
 /**
@@ -38,6 +39,11 @@ class StringResplitter;
 template <class S=detail::StringResplitter>
 S resplit(char delimiter) {
   return S(delimiter);
+}
+
+template <class S=detail::SplitStringSource>
+S split(const StringPiece& source, char delimiter) {
+  return S(source, delimiter);
 }
 
 }  // namespace gen
