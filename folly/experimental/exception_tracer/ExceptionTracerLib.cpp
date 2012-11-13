@@ -173,7 +173,7 @@ namespace {
 struct Initializer {
   Initializer() {
     try {
-      exception_tracer::installHandlers();
+      ::folly::exception_tracer::installHandlers();
     } catch (...) {
     }
   }

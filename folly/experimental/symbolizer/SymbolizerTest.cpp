@@ -18,16 +18,15 @@
 
 #include "folly/experimental/symbolizer/Symbolizer.h"
 
-#include "common/init/Init.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 
-using namespace facebook;
-using namespace facebook::symbolizer;
+using namespace folly;
+using namespace folly::symbolizer;
 
 int main(int argc, char *argv[]) {
-  facebook::initFacebook(&argc, &argv);
+  google::InitGoogleLogging(argv[0]);
   Symbolizer s;
-  folly::StringPiece name;
+  StringPiece name;
   Dwarf::LocationInfo location;
   CHECK(s.symbolize(reinterpret_cast<uintptr_t>(main), name, location));
   LOG(INFO) << name << " " << location.file << " " << location.line << " ("

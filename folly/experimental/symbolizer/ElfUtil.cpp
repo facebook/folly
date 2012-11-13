@@ -22,8 +22,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-using namespace facebook;
-using namespace facebook::symbolizer;
+using namespace folly;
+using namespace folly::symbolizer;
 
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);

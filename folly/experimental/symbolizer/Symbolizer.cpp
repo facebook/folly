@@ -18,26 +18,28 @@
 #include "folly/experimental/symbolizer/Symbolizer.h"
 
 #include <boost/regex.hpp>
+#include <glog/logging.h>
 
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
-#include "glog/logging.h"
 #include "folly/Range.h"
 #include "folly/FBString.h"
 #include "folly/String.h"
-#include "folly/experimental/io/Stream.h"
+#include "folly/experimental/Gen.h"
+#include "folly/experimental/FileGen.h"
+#include "folly/experimental/StringGen.h"
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 namespace {
-folly::StringPiece sp(const boost::csub_match& m) {
-  return folly::StringPiece(m.first, m.second);
+StringPiece sp(const boost::csub_match& m) {
+  return StringPiece(m.first, m.second);
 }
 
-uint64_t fromHex(folly::StringPiece s) {
+uint64_t fromHex(StringPiece s) {
   // Make a copy; we need a null-terminated string for strtoull
-  folly::fbstring str(s.data(), s.size());
+  fbstring str(s.data(), s.size());
   const char* p = str.c_str();
   char* end;
   uint64_t val = strtoull(p, &end, 16);
@@ -53,7 +55,7 @@ struct MappedFile {
 
 }  // namespace
 
-bool Symbolizer::symbolize(uintptr_t address, folly::StringPiece& symbolName,
+bool Symbolizer::symbolize(uintptr_t address, StringPiece& symbolName,
                            Dwarf::LocationInfo& location) {
   symbolName.clear();
   location = Dwarf::LocationInfo();
@@ -75,27 +77,27 @@ bool Symbolizer::symbolize(uintptr_t address, folly::StringPiece& symbolName,
   boost::cmatch match;
 
   MappedFile foundFile;
-  bool found = false;
-  for (auto& byteLine : folly::byLine("/proc/self/maps")) {
-    folly::StringPiece line(byteLine);
-    CHECK(boost::regex_match(line.begin(), line.end(), match, mapLineRegex));
-    uint64_t begin = fromHex(sp(match[1]));
-    uint64_t end = fromHex(sp(match[2]));
-    uint64_t fileOffset = fromHex(sp(match[3]));
-    if (fileOffset != 0) {
-      continue;  // main mapping starts at 0
-    }
+  bool error = gen::byLine("/proc/self/maps") | gen::eachAs<StringPiece>() |
+    [&] (StringPiece line) -> bool {
+      CHECK(boost::regex_match(line.begin(), line.end(), match, mapLineRegex));
+      uint64_t begin = fromHex(sp(match[1]));
+      uint64_t end = fromHex(sp(match[2]));
+      uint64_t fileOffset = fromHex(sp(match[3]));
+      if (fileOffset != 0) {
+        return true;  // main mapping starts at 0
+      }
 
-    if (begin <= address && address < end) {
-      found = true;
-      foundFile.begin = begin;
-      foundFile.end = end;
-      foundFile.name.assign(match[4].first, match[4].second);
-      break;
-    }
-  }
+      if (begin <= address && address < end) {
+        foundFile.begin = begin;
+        foundFile.end = end;
+        foundFile.name.assign(match[4].first, match[4].second);
+        return false;
+      }
 
-  if (!found) {
+      return true;
+    };
+
+  if (error) {
     return false;
   }
 
@@ -128,14 +130,14 @@ ElfFile& Symbolizer::getFile(const std::string& name) {
 }
 
 void Symbolizer::write(std::ostream& out, uintptr_t address,
-                       folly::StringPiece symbolName,
+                       StringPiece symbolName,
                        const Dwarf::LocationInfo& location) {
   char buf[20];
   sprintf(buf, "%#18jx", address);
   out << "    @ " << buf;
 
   if (!symbolName.empty()) {
-    out << " " << folly::demangle(symbolName.toString().c_str());
+    out << " " << demangle(symbolName.toString().c_str());
 
     std::string file;
     if (location.hasFileAndLine) {
@@ -158,4 +160,4 @@ void Symbolizer::write(std::ostream& out, uintptr_t address,
 }
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly

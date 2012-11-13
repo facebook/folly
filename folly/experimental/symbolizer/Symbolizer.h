@@ -26,7 +26,7 @@
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 /**
@@ -55,7 +55,7 @@ class Symbolizer {
 };
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_ */
 

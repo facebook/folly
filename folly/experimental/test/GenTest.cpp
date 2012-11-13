@@ -619,7 +619,7 @@ TEST(StringGen, EmptySplit) {
   {
     auto pieces = split(",,", ',') | take(1) | collect;
     EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ("", pieces[0]);
   }
 }
 

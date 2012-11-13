@@ -247,9 +247,9 @@ template<class Value,
          class Gen,
          class Handler>
 typename std::enable_if<
-  IsCompatibleSignature<Handler, bool(Value)>::value>::type
+  IsCompatibleSignature<Handler, bool(Value)>::value, bool>::type
 operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
-  gen.self().apply(std::forward<Handler>(handler));
+  return gen.self().apply(std::forward<Handler>(handler));
 }
 
 /**

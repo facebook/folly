@@ -21,7 +21,7 @@
 
 #include <dwarf.h>
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 Dwarf::Dwarf(const ElfFile* elf) : elf_(elf) {
@@ -815,5 +815,5 @@ bool Dwarf::LineNumberVM::findAddress(uintptr_t target, Path& file,
 }
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly
 

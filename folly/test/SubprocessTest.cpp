@@ -20,7 +20,9 @@
 #include <gtest/gtest.h>
 
 #include "folly/Format.h"
-#include "folly/experimental/io/Stream.h"
+#include "folly/experimental/Gen.h"
+#include "folly/experimental/FileGen.h"
+#include "folly/experimental/StringGen.h"
 
 using namespace folly;
 
@@ -57,12 +59,12 @@ TEST(SimpleSubprocessTest, ShellExitsWithError) {
 TEST(PopenSubprocessTest, PopenRead) {
   Subprocess proc("ls /", Subprocess::pipeStdout());
   int found = 0;
-  for (auto bline : byLine(proc.stdout())) {
-    StringPiece line(bline);
-    if (line == "etc" || line == "bin" || line == "usr") {
-      ++found;
-    }
-  }
+  gen::byLine(proc.stdout()) | gen::eachAs<StringPiece>() |
+    [&] (StringPiece line) {
+      if (line == "etc" || line == "bin" || line == "usr") {
+        ++found;
+      }
+    };
   EXPECT_EQ(3, found);
   proc.waitChecked();
 }

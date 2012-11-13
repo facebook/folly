@@ -19,7 +19,7 @@
 # error This file must be included from Elf.h
 #endif
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 template <class Fn>
@@ -61,5 +61,5 @@ const char* ElfFile::iterateStrings(const ElfW(Shdr)& stringTable, Fn fn)
 
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly
 

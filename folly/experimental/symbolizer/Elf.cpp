@@ -29,7 +29,7 @@
 
 #include "folly/Conv.h"
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 ElfFile::ElfFile()
@@ -287,5 +287,5 @@ const char* ElfFile::getSymbolName(Symbol symbol) const {
 }
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly
 

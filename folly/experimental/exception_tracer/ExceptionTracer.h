@@ -23,6 +23,7 @@
 #include <vector>
 #include <iostream>
 
+namespace folly {
 namespace exception_tracer {
 
 struct ExceptionInfo {
@@ -47,6 +48,7 @@ std::vector<ExceptionInfo> getCurrentExceptions();
 void installHandlers();
 
 }  // namespace exception_tracer
+}  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_ */
 

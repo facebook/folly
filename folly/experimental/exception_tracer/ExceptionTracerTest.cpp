@@ -25,7 +25,7 @@ void bar() {
 
 void dumpExceptions(const char* prefix) {
   std::cerr << "--- " << prefix << "\n";
-  auto exceptions = exception_tracer::getCurrentExceptions();
+  auto exceptions = ::folly::exception_tracer::getCurrentExceptions();
   for (auto& exc : exceptions) {
     std::cerr << exc << "\n";
   }

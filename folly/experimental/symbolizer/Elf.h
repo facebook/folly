@@ -30,7 +30,7 @@
 #include "folly/Range.h"
 #include "folly/Conv.h"
 
-namespace facebook {
+namespace folly {
 namespace symbolizer {
 
 /**
@@ -151,7 +151,7 @@ inline void enforce(bool v, Args... args) {
 }
 
 }  // namespace symbolizer
-}  // namespace facebook
+}  // namespace folly
 
 #include "folly/experimental/symbolizer/Elf-inl.h"
 

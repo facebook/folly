@@ -36,9 +36,10 @@ GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
 
 }  // namespace
 
-using namespace ::facebook::symbolizer;
+using namespace ::folly::symbolizer;
 using namespace __cxxabiv1;
 
+namespace folly {
 namespace exception_tracer {
 
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
@@ -198,4 +199,5 @@ void installHandlers() {
 }
 
 }  // namespace exception_tracer
+}  // namespace folly
 
