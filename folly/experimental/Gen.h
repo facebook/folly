@@ -24,6 +24,7 @@
 
 #include "folly/Range.h"
 #include "folly/Optional.h"
+#include "folly/Conv.h"
 
 /**
  * Generator-based Sequence Comprehensions in C++, akin to C#'s LINQ
@@ -132,6 +133,24 @@ public:
   auto operator()(Value&& value) const ->
   decltype(std::forward<Value>(value)) {
     return std::forward<Value>(value);
+  }
+};
+
+template <class Dest>
+class Cast {
+ public:
+  template <class Value>
+  Dest operator()(Value&& value) const {
+    return Dest(std::forward<Value>(value));
+  }
+};
+
+template <class Dest>
+class To {
+ public:
+  template <class Value>
+  Dest operator()(Value&& value) const {
+    return ::folly::to<Dest>(std::forward<Value>(value));
   }
 };
 
@@ -341,6 +360,20 @@ template<int n,
          class Get = detail::Map<Get<n>>>
 Get get() {
   return Get();
+}
+
+// construct Dest from each value
+template <class Dest,
+          class Cast = detail::Map<Cast<Dest>>>
+Cast eachAs() {
+  return Cast();
+}
+
+// call folly::to on each value
+template <class Dest,
+          class To = detail::Map<To<Dest>>>
+To eachTo() {
+  return To();
 }
 
 /*

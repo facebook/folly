@@ -261,7 +261,7 @@ template<class Value,
          class Gen,
          class Op>
 auto operator|(const GenImpl<Value, Gen>& gen, const Operator<Op>& op) ->
-decltype(op.self().compose(gen)) {
+decltype(op.self().compose(gen.self())) {
   return op.self().compose(gen.self());
 }
 
@@ -291,7 +291,7 @@ template<class Container,
          class Value>
 class ReferencedSource :
     public GenImpl<Value, ReferencedSource<Container, Value>> {
-  Container* const container_;
+  Container* container_;
 public:
   explicit ReferencedSource(Container* container)
     : container_(container) {}
@@ -344,7 +344,7 @@ class CopiedSource :
   static_assert(
     !std::is_reference<Container>::value,
     "Can't copy into a reference");
-  const std::shared_ptr<const Container> copy_;
+  std::shared_ptr<const Container> copy_;
 public:
   typedef Container ContainerType;
 
@@ -451,8 +451,8 @@ public:
 template<class Value, class First, class Second>
 class Chain : public GenImpl<Value,
                              Chain<Value, First, Second>> {
-  const First first_;
-  const Second second_;
+  First first_;
+  Second second_;
 public:
   explicit Chain(First first, Second second)
       : first_(std::move(first))
@@ -477,7 +477,7 @@ public:
  **/
 template<class Value, class Source>
 class Yield : public GenImpl<Value, Yield<Value, Source>> {
-  const Source source_;
+  Source source_;
  public:
   explicit Yield(Source source)
     : source_(std::move(source)) {
@@ -520,7 +520,7 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
  */
 template<class Predicate>
 class Map : public Operator<Map<Predicate>> {
-  const Predicate predicate_;
+  Predicate predicate_;
  public:
   explicit Map(const Predicate& predicate = Predicate())
     : predicate_(predicate)
@@ -533,8 +533,8 @@ class Map : public Operator<Map<Predicate>> {
                           >::type>
   class Generator :
       public GenImpl<Result, Generator<Value, Source, Result>> {
-    const Source source_;
-    const Predicate pred_;
+    Source source_;
+    Predicate pred_;
   public:
     explicit Generator(Source source, const Predicate& pred)
       : source_(std::move(source)), pred_(pred) {}
@@ -582,7 +582,7 @@ class Map : public Operator<Map<Predicate>> {
  */
 template<class Predicate>
 class Filter : public Operator<Filter<Predicate>> {
-  const Predicate predicate_;
+  Predicate predicate_;
  public:
   explicit Filter(const Predicate& predicate)
     : predicate_(predicate)
@@ -591,8 +591,8 @@ class Filter : public Operator<Filter<Predicate>> {
   template<class Value,
            class Source>
   class Generator : public GenImpl<Value, Generator<Value, Source>> {
-    const Source source_;
-    const Predicate pred_;
+    Source source_;
+    Predicate pred_;
   public:
     explicit Generator(Source source, const Predicate& pred)
       : source_(std::move(source)), pred_(pred) {}
@@ -643,7 +643,7 @@ class Filter : public Operator<Filter<Predicate>> {
  */
 template<class Predicate>
 class Until : public Operator<Until<Predicate>> {
-  const Predicate predicate_;
+  Predicate predicate_;
  public:
   explicit Until(const Predicate& predicate)
     : predicate_(predicate)
@@ -654,8 +654,8 @@ class Until : public Operator<Until<Predicate>> {
            class Result = typename std::result_of<Predicate(Value)>::type>
   class Generator :
       public GenImpl<Result, Generator<Value, Source, Result>> {
-    const Source source_;
-    const Predicate pred_;
+    Source source_;
+    Predicate pred_;
   public:
     explicit Generator(Source source, const Predicate& pred)
       : source_(std::move(source)), pred_(pred) {}
@@ -694,7 +694,7 @@ class Until : public Operator<Until<Predicate>> {
  *             | take(10);
  */
 class Take : public Operator<Take> {
-  const size_t count_;
+  size_t count_;
 public:
   explicit Take(size_t count)
     : count_(count) {}
@@ -703,8 +703,8 @@ public:
            class Source>
   class Generator :
       public GenImpl<Value, Generator<Value, Source>> {
-    const Source source_;
-    const size_t count_;
+    Source source_;
+    size_t count_;
   public:
     explicit Generator(Source source, size_t count)
       : source_(std::move(source)) , count_(count) {}
@@ -747,7 +747,7 @@ public:
  *             | take(10);
  */
 class Skip : public Operator<Skip> {
-  const size_t count_;
+  size_t count_;
 public:
   explicit Skip(size_t count)
     : count_(count) {}
@@ -756,8 +756,8 @@ public:
            class Source>
   class Generator :
       public GenImpl<Value, Generator<Value, Source>> {
-    const Source source_;
-    const size_t count_;
+    Source source_;
+    size_t count_;
   public:
     explicit Generator(Source source, size_t count)
       : source_(std::move(source)) , count_(count) {}
@@ -824,8 +824,8 @@ public:
  */
 template<class Selector, class Comparer>
 class Order : public Operator<Order<Selector, Comparer>> {
-  const Selector selector_;
-  const Comparer comparer_;
+  Selector selector_;
+  Comparer comparer_;
  public:
   Order(const Selector& selector = Selector(),
         const Comparer& comparer = Comparer())
@@ -838,9 +838,9 @@ class Order : public Operator<Order<Selector, Comparer>> {
   class Generator :
     public GenImpl<StorageType&&,
                    Generator<Value, Source, StorageType, Result>> {
-    const Source source_;
-    const Selector selector_;
-    const Comparer comparer_;
+    Source source_;
+    Selector selector_;
+    Comparer comparer_;
 
     typedef std::vector<StorageType> VectorType;
 
@@ -923,8 +923,8 @@ class Order : public Operator<Order<Selector, Comparer>> {
 template<class First,
          class Second>
 class Composed : public Operator<Composed<First, Second>> {
-  const First first_;
-  const Second second_;
+  First first_;
+  Second second_;
   public:
     Composed() {}
     Composed(First first, Second second)
@@ -971,8 +971,8 @@ class Composed : public Operator<Composed<First, Second>> {
 template<class Seed,
          class Fold>
 class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
-  const Seed seed_;
-  const Fold fold_;
+  Seed seed_;
+  Fold fold_;
  public:
   FoldLeft(const Seed& seed, const Fold& fold)
     : seed_(seed)
@@ -1052,7 +1052,7 @@ class Any : public Operator<Any> {
  */
 template<class Reducer>
 class Reduce : public Operator<Reduce<Reducer>> {
-  const Reducer reducer_;
+  Reducer reducer_;
  public:
   Reduce(const Reducer& reducer)
     : reducer_(reducer)
@@ -1175,7 +1175,7 @@ class Min : public Operator<Min<Selector, Comparer>> {
  */
 template<class Collection>
 class Append : public Operator<Append<Collection>> {
-  Collection* const collection_;
+  Collection* collection_;
  public:
   explicit Append(Collection* collection)
     : collection_(collection)
@@ -1271,7 +1271,7 @@ public:
            class InnerValue = typename std::decay<Inner>::type::ValueType>
   class Generator :
       public GenImpl<InnerValue, Generator<Inner, Source, InnerValue>> {
-    const Source source_;
+    Source source_;
   public:
     explicit Generator(Source source)
       : source_(std::move(source)) {}
@@ -1325,7 +1325,7 @@ public:
            class InnerValue = typename ValueTypeOfRange<Range>::RefType>
   class Generator
     : public GenImpl<InnerValue, Generator<Source, Range, InnerValue>> {
-    const Source source_;
+    Source source_;
    public:
     explicit Generator(Source source)
       : source_(std::move(source)) {}
@@ -1393,7 +1393,7 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
 
   template<class Wrapped>
   class WrapperImpl : public WrapperBase {
-    const Wrapped wrapped_;
+    Wrapped wrapped_;
    public:
     explicit WrapperImpl(Wrapped wrapped)
      : wrapped_(std::move(wrapped)) {

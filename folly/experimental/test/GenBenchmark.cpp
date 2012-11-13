@@ -15,9 +15,13 @@
  */
 
 #include "folly/experimental/Gen.h"
+#include "folly/experimental/StringGen.h"
+#include "folly/experimental/FileGen.h"
+
+#include <atomic>
+#include <thread>
 
 #include <glog/logging.h>
-#include <atomic>
 
 #include "folly/Benchmark.h"
 
@@ -267,6 +271,86 @@ BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
   folly::doNotOptimizeAway(s);
 }
 
+BENCHMARK_DRAW_LINE()
+
+namespace {
+
+const char* const kLine = "The quick brown fox jumped over the lazy dog.\n";
+const size_t kLineCount = 10000;
+std::string bigLines;
+const size_t kSmallLineSize = 17;
+std::vector<std::string> smallLines;
+
+void initStringResplitterBenchmark() {
+  bigLines.reserve(kLineCount * strlen(kLine));
+  for (size_t i = 0; i < kLineCount; ++i) {
+    bigLines += kLine;
+  }
+  size_t remaining = bigLines.size();
+  size_t pos = 0;
+  while (remaining) {
+    size_t n = std::min(kSmallLineSize, remaining);
+    smallLines.push_back(bigLines.substr(pos, n));
+    pos += n;
+    remaining -= n;
+  }
+}
+
+size_t len(folly::StringPiece s) { return s.size(); }
+
+}  // namespace
+
+BENCHMARK(StringResplitter_Big, iters) {
+  size_t s = 0;
+  while (iters--) {
+    s += from({bigLines}) | resplit('\n') | map(&len) | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(StringResplitter_Small, iters) {
+  size_t s = 0;
+  while (iters--) {
+    s += from(smallLines) | resplit('\n') | map(&len) | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(ByLine_Pipes, iters) {
+  std::thread thread;
+  int rfd;
+  int wfd;
+  BENCHMARK_SUSPEND {
+    int p[2];
+    CHECK_ERR(::pipe(p));
+    rfd = p[0];
+    wfd = p[1];
+    thread = std::thread([wfd, iters] {
+      char x = 'x';
+      PCHECK(::write(wfd, &x, 1) == 1);  // signal startup
+      FILE* f = fdopen(wfd, "w");
+      PCHECK(f);
+      for (int i = 1; i <= iters; ++i) {
+        fprintf(f, "%d\n", i);
+      }
+      fclose(f);
+    });
+    char buf;
+    PCHECK(::read(rfd, &buf, 1) == 1);  // wait for startup
+  }
+
+  auto s = byLine(rfd) | eachTo<int64_t>() | sum;
+  folly::doNotOptimizeAway(s);
+
+  BENCHMARK_SUSPEND {
+    ::close(rfd);
+    CHECK_EQ(s, int64_t(iters) * (iters + 1) / 2);
+    thread.join();
+  }
+}
+
 // Results from a dual core Xeon L5520 @ 2.27GHz:
 //
 // ============================================================================
@@ -300,6 +384,7 @@ BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
 
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
+  initStringResplitterBenchmark();
   runBenchmarks();
   return 0;
 }

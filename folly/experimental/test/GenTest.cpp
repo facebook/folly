@@ -20,7 +20,11 @@
 #include <set>
 #include <vector>
 #include "folly/experimental/Gen.h"
+#include "folly/experimental/StringGen.h"
+#include "folly/experimental/FileGen.h"
+#include "folly/experimental/TestUtil.h"
 #include "folly/FBVector.h"
+#include "folly/Format.h"
 #include "folly/dynamic.h"
 
 using namespace folly::gen;
@@ -30,6 +34,7 @@ using std::pair;
 using std::set;
 using std::unique_ptr;
 using std::vector;
+using std::string;
 using std::tuple;
 using std::make_tuple;
 //using std::unordered_map;
@@ -480,6 +485,34 @@ TEST(Gen, NoNeedlessCopies) {
   EXPECT_EQ(6, gen | take(3) | sum);
 }
 
+namespace {
+class TestIntSeq : public GenImpl<int, TestIntSeq> {
+ public:
+  TestIntSeq() { }
+
+  template <class Body>
+  bool apply(Body&& body) const {
+    for (int i = 1; i < 6; ++i) {
+      if (!body(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  TestIntSeq(TestIntSeq&&) = default;
+  TestIntSeq& operator=(TestIntSeq&&) = default;
+  TestIntSeq(const TestIntSeq&) = delete;
+  TestIntSeq& operator=(const TestIntSeq&) = delete;
+};
+}  // namespace
+
+TEST(Gen, NoGeneratorCopies) {
+  EXPECT_EQ(15, TestIntSeq() | sum);
+  auto x = TestIntSeq() | take(3);
+  EXPECT_EQ(6, std::move(x) | sum);
+}
+
 TEST(Gen, FromArray) {
   int source[] = {2, 3, 5, 7};
   auto gen = from(source);
@@ -561,6 +594,98 @@ TEST(Gen, Dynamic) {
   dynamic array3 = {{{1}}, {{1}, {1, 2}}};
   EXPECT_EQ(dynamic(5), from(array3) | rconcat | rconcat | sum);
 }
+
+TEST(StringGen, EmptySplit) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
+    auto pieces = from({""}) | resplit(',') | collect;
+    EXPECT_EQ(0, pieces.size());
+  }
+
+  // The last delimiter is eaten, just like std::getline
+  {
+    auto pieces = from({","}) | resplit(',') | collect;
+    EXPECT_EQ(1, pieces.size());
+    EXPECT_EQ("", pieces[0]);
+  }
+
+  {
+    auto pieces = from({",,"}) | resplit(',') | collect;
+    EXPECT_EQ(2, pieces.size());
+    EXPECT_EQ("", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+  }
+}
+
+TEST(StringGen, Split) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
+    auto pieces = from({"hello,, world, goodbye, meow"}) |
+      resplit(',') | collect;
+    EXPECT_EQ(5, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+    EXPECT_EQ(" goodbye", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
+  }
+  {
+    auto pieces = from({"hel", "lo,", ", world", ", goodbye, m", "eow"}) |
+      resplit(',') | collect;
+    EXPECT_EQ(5, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+    EXPECT_EQ(" goodbye", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
+  }
+}
+
+TEST(FileGen, ByLine) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  test::TemporaryFile file("ByLine");
+  static const std::string lines(
+      "Hello world\n"
+      "This is the second line\n"
+      "\n"
+      "\n"
+      "a few empty lines above\n"
+      "incomplete last line");
+  EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
+
+  auto expected = from({lines}) | resplit('\n') | collect;
+  auto found = byLine(file.path().c_str()) | collect;
+
+  EXPECT_TRUE(expected == found);
+}
+
+class FileGenBufferedTest : public ::testing::TestWithParam<int> { };
+
+TEST_P(FileGenBufferedTest, FileWriter) {
+  size_t bufferSize = GetParam();
+  test::TemporaryFile file("FileWriter");
+
+  static const std::string lines(
+      "Hello world\n"
+      "This is the second line\n"
+      "\n"
+      "\n"
+      "a few empty lines above\n");
+
+  auto src = from({lines, lines, lines, lines, lines, lines, lines, lines});
+  auto collect = eachTo<std::string>() | as<vector>();
+  auto expected = src | resplit('\n') | collect;
+
+  src | eachAs<StringPiece>() | toFile(file.fd(), bufferSize);
+  auto found = byLine(file.path().c_str()) | collect;
+
+  EXPECT_TRUE(expected == found);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    DifferentBufferSizes,
+    FileGenBufferedTest,
+    ::testing::Values(0, 1, 2, 4, 8, 64, 4096));
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
