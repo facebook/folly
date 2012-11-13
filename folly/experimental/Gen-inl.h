@@ -93,20 +93,47 @@ class Operator : public FBounded<Self> {
            class ResultGen = void>
   ResultGen compose(const GenImpl<Value, Source>& source) const;
 
-  /**
-   * operator|() - For composing two operators without binding it to a
-   * particular generator.
-   */
-  template<class Next,
-           class Composed = detail::Composed<Self, Next>>
-  Composed operator|(const Operator<Next>& op) const {
-    return Composed(this->self(), op.self());
-  }
  protected:
   Operator() = default;
   Operator(const Operator&) = default;
   Operator(Operator&&) = default;
 };
+
+/**
+ * operator|() - For composing two operators without binding it to a
+ * particular generator.
+ */
+template<class Left,
+         class Right,
+         class Composed = detail::Composed<Left, Right>>
+Composed operator|(const Operator<Left>& left,
+                   const Operator<Right>& right) {
+  return Composed(left.self(), right.self());
+}
+
+template<class Left,
+         class Right,
+         class Composed = detail::Composed<Left, Right>>
+Composed operator|(const Operator<Left>& left,
+                   Operator<Right>&& right) {
+  return Composed(left.self(), std::move(right.self()));
+}
+
+template<class Left,
+         class Right,
+         class Composed = detail::Composed<Left, Right>>
+Composed operator|(Operator<Left>&& left,
+                   const Operator<Right>& right) {
+  return Composed(std::move(left.self()), right.self());
+}
+
+template<class Left,
+         class Right,
+         class Composed = detail::Composed<Left, Right>>
+Composed operator|(Operator<Left>&& left,
+                   Operator<Right>&& right) {
+  return Composed(std::move(left.self()), std::move(right.self()));
+}
 
 /**
  * GenImpl - Core abstraction of a generator, an object which produces values by
@@ -145,17 +172,59 @@ class GenImpl : public FBounded<Self> {
         return true;
       });
   }
-
-  template<class Next,
-           class Chain = detail::Chain<Value, Self, Next>,
-           class ValueNext>
-  Chain operator+(const GenImpl<ValueNext, Next>& next) const {
-    static_assert(
-      std::is_same<Value, ValueNext>::value,
-      "Generators may ony be combined if Values are the exact same type.");
-    return Chain(*this, next);
-  }
 };
+
+template<class LeftValue,
+         class Left,
+         class RightValue,
+         class Right,
+         class Chain = detail::Chain<LeftValue, Left, Right>>
+Chain operator+(const GenImpl<LeftValue, Left>& left,
+                const GenImpl<RightValue, Right>& right) {
+  static_assert(
+    std::is_same<LeftValue, RightValue>::value,
+    "Generators may ony be combined if Values are the exact same type.");
+  return Chain(left.self(), right.self());
+}
+
+template<class LeftValue,
+         class Left,
+         class RightValue,
+         class Right,
+         class Chain = detail::Chain<LeftValue, Left, Right>>
+Chain operator+(const GenImpl<LeftValue, Left>& left,
+                GenImpl<RightValue, Right>&& right) {
+  static_assert(
+    std::is_same<LeftValue, RightValue>::value,
+    "Generators may ony be combined if Values are the exact same type.");
+  return Chain(left.self(), std::move(right.self()));
+}
+
+template<class LeftValue,
+         class Left,
+         class RightValue,
+         class Right,
+         class Chain = detail::Chain<LeftValue, Left, Right>>
+Chain operator+(GenImpl<LeftValue, Left>&& left,
+                const GenImpl<RightValue, Right>& right) {
+  static_assert(
+    std::is_same<LeftValue, RightValue>::value,
+    "Generators may ony be combined if Values are the exact same type.");
+  return Chain(std::move(left.self()), right.self());
+}
+
+template<class LeftValue,
+         class Left,
+         class RightValue,
+         class Right,
+         class Chain = detail::Chain<LeftValue, Left, Right>>
+Chain operator+(GenImpl<LeftValue, Left>&& left,
+                GenImpl<RightValue, Right>&& right) {
+  static_assert(
+    std::is_same<LeftValue, RightValue>::value,
+    "Generators may ony be combined if Values are the exact same type.");
+  return Chain(std::move(left.self()), std::move(right.self()));
+}
 
 /**
  * operator|() which enables foreach-like usage:
@@ -193,7 +262,15 @@ template<class Value,
          class Op>
 auto operator|(const GenImpl<Value, Gen>& gen, const Operator<Op>& op) ->
 decltype(op.self().compose(gen)) {
-  return op.self().compose(gen);
+  return op.self().compose(gen.self());
+}
+
+template<class Value,
+         class Gen,
+         class Op>
+auto operator|(GenImpl<Value, Gen>&& gen, const Operator<Op>& op) ->
+decltype(op.self().compose(std::move(gen.self()))) {
+  return op.self().compose(std::move(gen.self()));
 }
 
 namespace detail {
@@ -377,10 +454,9 @@ class Chain : public GenImpl<Value,
   const First first_;
   const Second second_;
 public:
-  explicit Chain(const GenImpl<Value, First>& first,
-                 const GenImpl<Value, Second>& second)
-      : first_(first.self())
-      , second_(second.self()) {}
+  explicit Chain(First first, Second second)
+      : first_(std::move(first))
+      , second_(std::move(second)) {}
 
   template<class Handler>
   bool apply(Handler&& handler) const {
@@ -403,8 +479,8 @@ template<class Value, class Source>
 class Yield : public GenImpl<Value, Yield<Value, Source>> {
   const Source source_;
  public:
-  explicit Yield(const Source& source)
-    : source_(source) {
+  explicit Yield(Source source)
+    : source_(std::move(source)) {
   }
 
   template<class Handler>
@@ -460,8 +536,8 @@ class Map : public Operator<Map<Predicate>> {
     const Source source_;
     const Predicate pred_;
   public:
-    explicit Generator(const Source& source, const Predicate& pred)
-      : source_(source), pred_(pred) {}
+    explicit Generator(Source source, const Predicate& pred)
+      : source_(std::move(source)), pred_(pred) {}
 
     template<class Body>
     void foreach(Body&& body) const {
@@ -477,6 +553,13 @@ class Map : public Operator<Map<Predicate>> {
       });
     }
   };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), predicate_);
+  }
 
   template<class Source,
            class Value,
@@ -511,8 +594,8 @@ class Filter : public Operator<Filter<Predicate>> {
     const Source source_;
     const Predicate pred_;
   public:
-    explicit Generator(const Source& source, const Predicate& pred)
-      : source_(source), pred_(pred) {}
+    explicit Generator(Source source, const Predicate& pred)
+      : source_(std::move(source)), pred_(pred) {}
 
     template<class Body>
     void foreach(Body&& body) const {
@@ -533,6 +616,13 @@ class Filter : public Operator<Filter<Predicate>> {
       });
     }
   };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), predicate_);
+  }
 
   template<class Source,
            class Value,
@@ -567,8 +657,8 @@ class Until : public Operator<Until<Predicate>> {
     const Source source_;
     const Predicate pred_;
   public:
-    explicit Generator(const Source& source, const Predicate& pred)
-      : source_(source), pred_(pred) {}
+    explicit Generator(Source source, const Predicate& pred)
+      : source_(std::move(source)), pred_(pred) {}
 
     template<class Handler>
     bool apply(Handler&& handler) const {
@@ -578,6 +668,13 @@ class Until : public Operator<Until<Predicate>> {
       });
     }
   };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), predicate_);
+  }
 
   template<class Source,
            class Value,
@@ -609,8 +706,8 @@ public:
     const Source source_;
     const size_t count_;
   public:
-    explicit Generator(const Source& source, size_t count)
-      : source_(source) , count_(count) {}
+    explicit Generator(Source source, size_t count)
+      : source_(std::move(source)) , count_(count) {}
 
     template<class Handler>
     bool apply(Handler&& handler) const {
@@ -624,6 +721,13 @@ public:
         });
     }
   };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), count_);
+  }
 
   template<class Source,
            class Value,
@@ -655,8 +759,8 @@ public:
     const Source source_;
     const size_t count_;
   public:
-    explicit Generator(const Source& source, size_t count)
-      : source_(source) , count_(count) {}
+    explicit Generator(Source source, size_t count)
+      : source_(std::move(source)) , count_(count) {}
 
     template<class Body>
     void foreach(Body&& body) const {
@@ -689,6 +793,13 @@ public:
         });
     }
   };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), count_);
+  }
 
   template<class Source,
            class Value,
@@ -742,10 +853,12 @@ class Order : public Operator<Order<Selector, Comparer>> {
       return std::move(vals);
     }
    public:
-    Generator(const Source& source,
+    Generator(Source source,
               const Selector& selector,
               const Comparer& comparer)
-      : source_(source) , selector_(selector) , comparer_(comparer) {}
+      : source_(std::move(source)),
+        selector_(selector),
+        comparer_(comparer) {}
 
     VectorType operator|(const Collect<VectorType>&) const {
       return asVector();
@@ -784,6 +897,13 @@ class Order : public Operator<Order<Selector, Comparer>> {
   template<class Source,
            class Value,
            class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), selector_, comparer_);
+  }
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_, comparer_);
   }
@@ -807,9 +927,9 @@ class Composed : public Operator<Composed<First, Second>> {
   const Second second_;
   public:
     Composed() {}
-    Composed(const First& first, const Second& second)
-      : first_(first)
-      , second_(second) {}
+    Composed(First first, Second second)
+      : first_(std::move(first))
+      , second_(std::move(second)) {}
 
   template<class Source,
            class Value,
@@ -819,6 +939,16 @@ class Composed : public Operator<Composed<First, Second>> {
                                       .compose(std::declval<FirstRet>()))>
   SecondRet compose(const GenImpl<Value, Source>& source) const {
     return second_.compose(first_.compose(source.self()));
+  }
+
+  template<class Source,
+           class Value,
+           class FirstRet = decltype(std::declval<First>()
+                                     .compose(std::declval<Source>())),
+           class SecondRet = decltype(std::declval<Second>()
+                                      .compose(std::declval<FirstRet>()))>
+  SecondRet compose(GenImpl<Value, Source>&& source) const {
+    return second_.compose(first_.compose(std::move(source.self())));
   }
 };
 
@@ -1143,8 +1273,8 @@ public:
       public GenImpl<InnerValue, Generator<Inner, Source, InnerValue>> {
     const Source source_;
   public:
-    explicit Generator(const Source& source)
-      : source_(source) {}
+    explicit Generator(Source source)
+      : source_(std::move(source)) {}
 
     template<class Handler>
     bool apply(Handler&& handler) const {
@@ -1160,6 +1290,13 @@ public:
         });
     }
   };
+
+  template<class Value,
+           class Source,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()));
+  }
 
   template<class Value,
            class Source,
@@ -1190,8 +1327,8 @@ public:
     : public GenImpl<InnerValue, Generator<Source, Range, InnerValue>> {
     const Source source_;
    public:
-    Generator(const Source& source)
-      : source_(source) {}
+    explicit Generator(Source source)
+      : source_(std::move(source)) {}
 
     template<class Body>
     void foreach(Body&& body) const {
@@ -1214,6 +1351,13 @@ public:
         });
     }
   };
+
+  template<class Value,
+           class Source,
+           class Gen = Generator<Source, Value>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()));
+  }
 
   template<class Value,
            class Source,
@@ -1251,8 +1395,8 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
   class WrapperImpl : public WrapperBase {
     const Wrapped wrapped_;
    public:
-    WrapperImpl(const Wrapped& wrapped)
-     : wrapped_(wrapped) {
+    explicit WrapperImpl(Wrapped wrapped)
+     : wrapped_(std::move(wrapped)) {
     }
 
     virtual bool apply(const std::function<bool(Value)>& handler) const {
@@ -1271,10 +1415,9 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
   std::unique_ptr<const WrapperBase> wrapper_;
 
  public:
-  template<class SourceValue,
-           class Self>
-  /* implicit */ VirtualGen(const GenImpl<SourceValue, Self>& source)
-   : wrapper_(new WrapperImpl<Self>(source.self()))
+  template<class Self>
+  /* implicit */ VirtualGen(Self source)
+   : wrapper_(new WrapperImpl<Self>(std::move(source)))
   { }
 
   VirtualGen(VirtualGen&& source)
