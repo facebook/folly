@@ -24,7 +24,7 @@ namespace folly {
 namespace gen {
 namespace detail {
 
-bool splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
+inline bool splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
   auto p = static_cast<const char*>(memchr(in.data(), delimiter, in.size()));
   if (p) {
     prefix.assign(in.data(), p);
