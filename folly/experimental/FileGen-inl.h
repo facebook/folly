@@ -37,8 +37,10 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
   template <class Body>
   bool apply(Body&& body) const {
     for (;;) {
-      ssize_t n = ::read(file_.fd(), buffer_->writableTail(),
-                         buffer_->capacity());
+      ssize_t n;
+      do {
+        n = ::read(file_.fd(), buffer_->writableTail(), buffer_->capacity());
+      } while (n == -1 && errno == EINTR);
       if (n == -1) {
         throw std::system_error(errno, std::system_category(), "read failed");
       }
@@ -91,11 +93,10 @@ class FileWriter : public Operator<FileWriter> {
   void write(ByteRange v) const {
     ssize_t n;
     while (!v.empty()) {
-      n = ::write(file_.fd(), v.data(), v.size());
+      do {
+        n = ::write(file_.fd(), v.data(), v.size());
+      } while (n == -1 && errno == EINTR);
       if (n == -1) {
-        if (errno == EINTR) {
-          continue;
-        }
         throw std::system_error(errno, std::system_category(),
                                 "write() failed");
       }

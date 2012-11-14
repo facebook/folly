@@ -37,7 +37,6 @@ void File::close() {
 }
 
 bool File::closeNoThrow() {
-  DCHECK(fd_ != -1);
   int r = ownsFd_ ? ::close(fd_) : 0;
   release();
   return r == 0;
