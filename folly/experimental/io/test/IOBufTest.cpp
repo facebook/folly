@@ -550,6 +550,34 @@ TEST(IOBuf, copyBuffer) {
   EXPECT_EQ(s, std::string(reinterpret_cast<const char*>(buf->data()),
                            buf->length()));
   EXPECT_LE(2, buf->tailroom());
+
+  buf = IOBuf::copyBuffer(s, 5, 7);
+  EXPECT_EQ(5, buf->headroom());
+  EXPECT_EQ(s, std::string(reinterpret_cast<const char*>(buf->data()),
+                           buf->length()));
+  EXPECT_LE(7, buf->tailroom());
+
+  std::string empty;
+  buf = IOBuf::copyBuffer(empty, 3, 6);
+  EXPECT_EQ(3, buf->headroom());
+  EXPECT_EQ(0, buf->length());
+  EXPECT_LE(6, buf->tailroom());
+}
+
+TEST(IOBuf, maybeCopyBuffer) {
+  std::string s("this is a test");
+  auto buf = IOBuf::maybeCopyBuffer(s, 1, 2);
+  EXPECT_EQ(1, buf->headroom());
+  EXPECT_EQ(s, std::string(reinterpret_cast<const char*>(buf->data()),
+                           buf->length()));
+  EXPECT_LE(2, buf->tailroom());
+
+  std::string empty;
+  buf = IOBuf::maybeCopyBuffer("", 5, 7);
+  EXPECT_EQ(nullptr, buf.get());
+
+  buf = IOBuf::maybeCopyBuffer("");
+  EXPECT_EQ(nullptr, buf.get());
 }
 
 namespace {

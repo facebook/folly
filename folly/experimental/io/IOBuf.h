@@ -300,6 +300,29 @@ class IOBuf {
                                            uint32_t minTailroom=0);
 
   /**
+   * Convenience function to create a new IOBuf object that copies data from a
+   * user-supplied string, optionally allocating a given amount of
+   * headroom and tailroom.
+   *
+   * Beware when attempting to invoke this function with a constant string
+   * literal and a headroom argument: you will likely end up invoking the
+   * version of copyBuffer() above.  IOBuf::copyBuffer("hello", 3) will treat
+   * the first argument as a const void*, and will invoke the version of
+   * copyBuffer() above, with the size argument of 3.
+   */
+  static std::unique_ptr<IOBuf> copyBuffer(const std::string& buf,
+                                           uint32_t headroom=0,
+                                           uint32_t minTailroom=0);
+
+  /**
+   * A version of copyBuffer() that returns a null pointer if the input string
+   * is empty.
+   */
+  static std::unique_ptr<IOBuf> maybeCopyBuffer(const std::string& buf,
+                                                uint32_t headroom=0,
+                                                uint32_t minTailroom=0);
+
+  /**
    * Convenience function to free a chain of IOBufs held by a unique_ptr.
    */
   static void destroy(std::unique_ptr<IOBuf>&& data) {
@@ -1074,6 +1097,21 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
   memcpy(buf->writableData(), data, size);
   buf->append(size);
   return buf;
+}
+
+inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(const std::string& buf,
+                                                uint32_t headroom,
+                                                uint32_t minTailroom) {
+  return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
+}
+
+inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(const std::string& buf,
+                                                     uint32_t headroom,
+                                                     uint32_t minTailroom) {
+  if (buf.empty()) {
+    return nullptr;
+  }
+  return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
 } // folly
