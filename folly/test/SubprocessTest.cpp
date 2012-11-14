@@ -59,7 +59,7 @@ TEST(SimpleSubprocessTest, ShellExitsWithError) {
 TEST(PopenSubprocessTest, PopenRead) {
   Subprocess proc("ls /", Subprocess::pipeStdout());
   int found = 0;
-  gen::byLine(proc.stdout()) | gen::eachAs<StringPiece>() |
+  gen::byLine(proc.stdout()) |
     [&] (StringPiece line) {
       if (line == "etc" || line == "bin" || line == "usr") {
         ++found;

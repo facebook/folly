@@ -77,7 +77,7 @@ bool Symbolizer::symbolize(uintptr_t address, StringPiece& symbolName,
   boost::cmatch match;
 
   MappedFile foundFile;
-  bool error = gen::byLine("/proc/self/maps") | gen::eachAs<StringPiece>() |
+  bool error = gen::byLine("/proc/self/maps") |
     [&] (StringPiece line) -> bool {
       CHECK(boost::regex_match(line.begin(), line.end(), match, mapLineRegex));
       uint64_t begin = fromHex(sp(match[1]));

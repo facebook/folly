@@ -54,7 +54,7 @@ size_t getDefaultHugePageSize() {
   size_t pageSize = 0;
   boost::cmatch match;
 
-  bool error = gen::byLine("/proc/meminfo") | gen::eachAs<StringPiece>() |
+  bool error = gen::byLine("/proc/meminfo") |
     [&] (StringPiece line) -> bool {
       if (boost::regex_match(line.begin(), line.end(), match, regex)) {
         StringPiece numStr(line.begin() + match.position(1), match.length(1));
