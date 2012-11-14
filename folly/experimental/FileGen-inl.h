@@ -117,7 +117,7 @@ class FileWriter : public Operator<FileWriter> {
 
 }  // namespace detail
 
-auto byLine(File file, char delim='\n') ->
+inline auto byLine(File file, char delim='\n') ->
 decltype(fromFile(std::move(file)) | eachAs<StringPiece>() | resplit(delim)) {
   return fromFile(std::move(file)) | eachAs<StringPiece>() | resplit(delim);
 }
