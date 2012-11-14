@@ -48,7 +48,6 @@ class StringResplitter : public Operator<StringResplitter> {
   class Generator : public GenImpl<StringPiece, Generator<Source>> {
     Source source_;
     char delimiter_;
-    static constexpr size_t kDefaultLineSize = 256;
    public:
     Generator(Source source, char delimiter)
       : source_(std::move(source)), delimiter_(delimiter) { }
@@ -85,6 +84,7 @@ class StringResplitter : public Operator<StringResplitter> {
           if (!buffer) {
             // Arbitrarily assume that we have half a line and get enough
             // room for twice that.
+            constexpr size_t kDefaultLineSize = 256;
             buffer = IOBuf::create(std::max(kDefaultLineSize, 2 * in.size()));
           }
           buffer->reserve(0, in.size());
