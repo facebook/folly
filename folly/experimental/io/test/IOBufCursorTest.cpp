@@ -236,6 +236,79 @@ TEST(IOBuf, PullAndPeek) {
   }
 }
 
+TEST(IOBuf, cloneAndInsert) {
+  std::unique_ptr<IOBuf> iobuf1(IOBuf::create(10));
+  append(iobuf1, "he");
+  std::unique_ptr<IOBuf> iobuf2(IOBuf::create(10));
+  append(iobuf2, "llo ");
+  std::unique_ptr<IOBuf> iobuf3(IOBuf::create(10));
+  append(iobuf3, "world");
+  iobuf1->prependChain(std::move(iobuf2));
+  iobuf1->prependChain(std::move(iobuf3));
+  EXPECT_EQ(3, iobuf1->countChainElements());
+  EXPECT_EQ(11, iobuf1->computeChainDataLength());
+
+  std::unique_ptr<IOBuf> cloned;
+
+  Cursor(iobuf1.get()).clone(cloned, 3);
+  EXPECT_EQ(2, cloned->countChainElements());
+  EXPECT_EQ(3, cloned->computeChainDataLength());
+
+
+  EXPECT_EQ(11, Cursor(iobuf1.get()).cloneAtMost(cloned, 20));
+  EXPECT_EQ(3, cloned->countChainElements());
+  EXPECT_EQ(11, cloned->computeChainDataLength());
+
+
+  EXPECT_THROW({Cursor(iobuf1.get()).clone(cloned, 20);},
+               std::out_of_range);
+
+  {
+    // Check that inserting in the middle of an iobuf splits
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 3);
+    EXPECT_EQ(2, cloned->countChainElements());
+    EXPECT_EQ(3, cloned->computeChainDataLength());
+
+    cursor.skip(1);
+
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(6, iobuf1->countChainElements());
+    EXPECT_EQ(14, iobuf1->computeChainDataLength());
+    // Check that nextBuf got set correctly
+    cursor.read<uint8_t>();
+  }
+
+  {
+    // Check that inserting at the end doesn't create empty buf
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 1);
+    EXPECT_EQ(1, cloned->countChainElements());
+    EXPECT_EQ(1, cloned->computeChainDataLength());
+
+    cursor.skip(1);
+
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(7, iobuf1->countChainElements());
+    EXPECT_EQ(15, iobuf1->computeChainDataLength());
+    // Check that nextBuf got set correctly
+    cursor.read<uint8_t>();
+  }
+  {
+    // Check that inserting at the beginning doesn't create empty buf
+    RWPrivateCursor cursor(iobuf1.get());
+    Cursor(iobuf1.get()).clone(cloned, 1);
+    EXPECT_EQ(1, cloned->countChainElements());
+    EXPECT_EQ(1, cloned->computeChainDataLength());
+
+    cursor.insert(std::move(cloned));
+    EXPECT_EQ(8, iobuf1->countChainElements());
+    EXPECT_EQ(16, iobuf1->computeChainDataLength());
+    // Check that nextBuf got set correctly
+    cursor.read<uint8_t>();
+  }
+}
+
 TEST(IOBuf, Appender) {
   std::unique_ptr<IOBuf> head(IOBuf::create(10));
   append(head, "hello");

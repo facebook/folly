@@ -127,6 +127,12 @@ class CursorBase {
     }
   }
 
+  void clone(std::unique_ptr<folly::IOBuf>& buf, size_t length) {
+    if (UNLIKELY(cloneAtMost(buf, length) != length)) {
+      throw std::out_of_range("underflow");
+    }
+  }
+
   void skip(size_t length) {
     if (UNLIKELY(skipAtMost(length) != length)) {
       throw std::out_of_range("underflow");
@@ -151,6 +157,43 @@ class CursorBase {
         return copied;
       }
       p += available;
+      len -= available;
+    }
+  }
+
+  size_t cloneAtMost(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
+    buf.reset(nullptr);
+
+    std::unique_ptr<folly::IOBuf> tmp;
+    size_t copied = 0;
+    for (;;) {
+      // Fast path: it all fits in one buffer.
+      size_t available = length();
+      if (LIKELY(available >= len)) {
+        tmp = crtBuf_->cloneOne();
+        tmp->trimStart(offset_);
+        tmp->trimEnd(tmp->length() - len);
+        offset_ += len;
+        if (!buf) {
+          buf = std::move(tmp);
+        } else {
+          buf->prependChain(std::move(tmp));
+        }
+        return copied + len;
+      }
+
+      tmp = crtBuf_->cloneOne();
+      tmp->trimStart(offset_);
+      if (!buf) {
+        buf = std::move(tmp);
+      } else {
+        buf->prependChain(std::move(tmp));
+      }
+
+      copied += available;
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        return copied;
+      }
       len -= available;
     }
   }
@@ -291,6 +334,32 @@ class RWCursor
       buf += available;
       len -= available;
     }
+  }
+
+  void insert(std::unique_ptr<folly::IOBuf> buf) {
+    folly::IOBuf* nextBuf;
+    if (this->offset_ == 0) {
+      // Can just prepend
+      nextBuf = buf.get();
+      this->crtBuf_->prependChain(std::move(buf));
+    } else {
+      std::unique_ptr<folly::IOBuf> remaining;
+      if (this->crtBuf_->length() - this->offset_ > 0) {
+        // Need to split current IOBuf in two.
+        remaining = this->crtBuf_->cloneOne();
+        remaining->trimStart(this->offset_);
+        nextBuf = remaining.get();
+        buf->prependChain(std::move(remaining));
+      } else {
+        // Can just append
+        nextBuf = this->crtBuf_->next();
+      }
+      this->crtBuf_->trimEnd(this->length());
+      this->crtBuf_->appendChain(std::move(buf));
+    }
+    // Jump past the new links
+    this->offset_ = 0;
+    this->crtBuf_ = nextBuf;
   }
 
   uint8_t* writableData() {
