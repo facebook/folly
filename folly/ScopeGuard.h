@@ -27,7 +27,7 @@
 namespace folly {
 
 /**
- * ScopeGuard is a general implementation of the "Initilization is
+ * ScopeGuard is a general implementation of the "Initialization is
  * Resource Acquisition" idiom.  Basically, it guarantees that a function
  * is executed upon leaving the currrent scope unless otherwise told.
  *
