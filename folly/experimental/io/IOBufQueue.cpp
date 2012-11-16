@@ -161,24 +161,23 @@ IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
 }
 
 pair<void*,uint32_t>
-IOBufQueue::preallocate(uint32_t min, uint32_t max) {
+IOBufQueue::preallocate(uint32_t min, uint32_t maxHint) {
   if (head_ != NULL) {
     // If there's enough space left over at the end of the queue, use that.
     IOBuf* last = head_->prev();
     if (!last->isSharedOne()) {
       uint32_t avail = last->tailroom();
       if (avail >= min) {
-        return make_pair(
-            last->writableTail(), std::min(max, avail));
+        return make_pair(last->writableTail(), avail);
       }
     }
   }
   // Allocate a new buffer of the requested max size.
-  unique_ptr<IOBuf> newBuf(IOBuf::create(max));
+  unique_ptr<IOBuf> newBuf(IOBuf::create(std::max(min, maxHint)));
   appendToChain(head_, std::move(newBuf));
   IOBuf* last = head_->prev();
   return make_pair(last->writableTail(),
-      std::min(max, last->tailroom()));
+                   last->tailroom() /* may exceed maxHint */);
 }
 
 void

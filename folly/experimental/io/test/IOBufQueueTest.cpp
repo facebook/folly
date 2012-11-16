@@ -153,7 +153,6 @@ TEST(IOBufQueue, Preallocate) {
   checkConsistency(queue);
   EXPECT_NE((void*)NULL, writable.first);
   EXPECT_LE(2, writable.second);
-  EXPECT_GE(64, writable.second);
   memcpy(writable.first, SCL(", "));
   queue.postallocate(2);
   checkConsistency(queue);
@@ -164,7 +163,12 @@ TEST(IOBufQueue, Preallocate) {
   writable = queue.preallocate(1024, 4096);
   checkConsistency(queue);
   EXPECT_LE(1024, writable.second);
-  EXPECT_GE(4096, writable.second);
+  queue.postallocate(writable.second);
+  // queue has no empty space, make sure we allocate at least min, even if
+  // maxHint < min
+  writable = queue.preallocate(1024, 1);
+  checkConsistency(queue);
+  EXPECT_LE(1024, writable.second);
 }
 
 TEST(IOBufQueue, Wrap) {
