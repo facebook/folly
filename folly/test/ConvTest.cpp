@@ -495,7 +495,7 @@ TEST(Conv, EnumToString) {
 TEST(Conv, IntToEnum) {
   enum A { x = 42, y = 420 };
   auto i = to<A>(42);
-  EXPECT_EQ(i, A::x);
+  EXPECT_EQ(i, x);
   auto j = to<A>(100);
   EXPECT_EQ(j, 100);
   try {
@@ -505,6 +505,53 @@ TEST(Conv, IntToEnum) {
     //LOG(INFO) << e.what();
   }
 }
+
+TEST(Conv, UnsignedEnum) {
+  enum E : uint32_t { x = 3000000000U };
+  auto u = to<uint32_t>(x);
+  EXPECT_EQ(u, 3000000000U);
+  auto s = to<string>(x);
+  EXPECT_EQ("3000000000", s);
+  auto e = to<E>(3000000000U);
+  EXPECT_EQ(e, x);
+  try {
+    auto i = to<int32_t>(x);
+    LOG(ERROR) << to<uint32_t>(x);
+    EXPECT_TRUE(false);
+  } catch (std::range_error& e) {
+  }
+}
+
+#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+// to<enum class> and to(enum class) only supported in gcc 4.7 onwards
+
+TEST(Conv, UnsignedEnumClass) {
+  enum class E : uint32_t { x = 3000000000U };
+  auto u = to<uint32_t>(E::x);
+  EXPECT_GT(u, 0);
+  EXPECT_EQ(u, 3000000000U);
+  auto s = to<string>(E::x);
+  EXPECT_EQ("3000000000", s);
+  auto e = to<E>(3000000000U);
+  EXPECT_EQ(e, E::x);
+  try {
+    auto i = to<int32_t>(E::x);
+    LOG(ERROR) << to<uint32_t>(E::x);
+    EXPECT_TRUE(false);
+  } catch (std::range_error& e) {
+  }
+}
+
+// Multi-argument to<string> uses toAppend, a different code path than
+// to<string>(enum).
+TEST(Conv, EnumClassToString) {
+  enum class A { x = 4, y = 420, z = 65 };
+  EXPECT_EQ("foo.4", to<string>("foo.", A::x));
+  EXPECT_EQ("foo.420", to<string>("foo.", A::y));
+  EXPECT_EQ("foo.65", to<string>("foo.", A::z));
+}
+
+#endif // gcc 4.7 onwards
 
 template<typename Src>
 void testStr2Bool() {

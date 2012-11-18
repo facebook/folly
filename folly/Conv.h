@@ -280,6 +280,22 @@ toAppend(Src value, Tgt * result) {
   toAppend<Tgt>(static_cast<Intermediate>(value), result);
 }
 
+#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+// std::underlying_type became available by gcc 4.7.0
+
+/**
+ * Enumerated values get appended as integers.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<
+  std::is_enum<Src>::value && detail::IsSomeString<Tgt>::value>::type
+toAppend(Src value, Tgt * result) {
+  toAppend(
+      static_cast<typename std::underlying_type<Src>::type>(value), result);
+}
+
+#else
+
 /**
  * Enumerated values get appended as integers.
  */
@@ -301,6 +317,8 @@ toAppend(Src value, Tgt * result) {
     }
   }
 }
+
+#endif // gcc 4.7 onwards
 
 /*******************************************************************************
  * Conversions from floating-point types to string types.
@@ -912,12 +930,26 @@ to(const Src & value) {
  * Enum to anything and back
  ******************************************************************************/
 
+#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+// std::underlying_type became available by gcc 4.7.0
+
 template <class Tgt, class Src>
 typename std::enable_if<std::is_enum<Src>::value, Tgt>::type
 to(const Src & value) {
-  // TODO: uncomment this when underlying_type is available
-  // return to<Tgt>(static_cast<typename std::underlying_type<Src>::type>(
-  //    value));
+  return to<Tgt>(static_cast<typename std::underlying_type<Src>::type>(value));
+}
+
+template <class Tgt, class Src>
+typename std::enable_if<std::is_enum<Tgt>::value, Tgt>::type
+to(const Src & value) {
+  return static_cast<Tgt>(to<typename std::underlying_type<Tgt>::type>(value));
+}
+
+#else
+
+template <class Tgt, class Src>
+typename std::enable_if<std::is_enum<Src>::value, Tgt>::type
+to(const Src & value) {
   /* static */ if (Src(-1) < 0) {
     /* static */ if (sizeof(Src) <= sizeof(int)) {
       return to<Tgt>(static_cast<int>(value));
@@ -936,9 +968,6 @@ to(const Src & value) {
 template <class Tgt, class Src>
 typename std::enable_if<std::is_enum<Tgt>::value, Tgt>::type
 to(const Src & value) {
-  // TODO: uncomment this when underlying_type is available
-  // return static_cast<Tgt>(
-  //    to<typename std::underlying_type<Tgt>::type>(value));
   /* static */ if (Tgt(-1) < 0) {
     /* static */ if (sizeof(Tgt) <= sizeof(int)) {
       return static_cast<Tgt>(to<int>(value));
@@ -953,6 +982,8 @@ to(const Src & value) {
     }
   }
 }
+
+#endif // gcc 4.7 onwards
 
 } // namespace folly
 
