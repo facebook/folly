@@ -115,9 +115,10 @@ class IOBufQueue {
    * Obtain a writable block of contiguous bytes at the end of this
    * queue, allocating more space if necessary.  The amount of space
    * reserved will be at least min.  If min contiguous space is not
-   * available at the end of the queue, and IOBuf with size maxHint is
-   * appended to the chain and returned.  The actual available space
-   * may be larger than maxHint.
+   * available at the end of the queue, and IOBuf with size newAllocationSize
+   * is appended to the chain and returned.  The actual available space
+   * may be larger than newAllocationSize, but will be truncated to max,
+   * if specified.
    *
    * If the caller subsequently writes anything into the returned space,
    * it must call the postallocate() method.
@@ -130,7 +131,9 @@ class IOBufQueue {
    *       callback, tell the application how much of the buffer they've
    *       filled with data.
    */
-  std::pair<void*,uint32_t> preallocate(uint32_t min, uint32_t maxHint);
+  std::pair<void*,uint32_t> preallocate(
+    uint32_t min, uint32_t newAllocationSize,
+    uint32_t max = std::numeric_limits<uint32_t>::max());
 
   /**
    * Tell the queue that the caller has written data into the first n

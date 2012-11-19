@@ -149,10 +149,11 @@ TEST(IOBufQueue, Split) {
 TEST(IOBufQueue, Preallocate) {
   IOBufQueue queue(clOptions);
   queue.append(string("Hello"));
-  pair<void*,uint32_t> writable = queue.preallocate(2, 64);
+  pair<void*,uint32_t> writable = queue.preallocate(2, 64, 64);
   checkConsistency(queue);
   EXPECT_NE((void*)NULL, writable.first);
   EXPECT_LE(2, writable.second);
+  EXPECT_GE(64, writable.second);
   memcpy(writable.first, SCL(", "));
   queue.postallocate(2);
   checkConsistency(queue);
@@ -160,15 +161,18 @@ TEST(IOBufQueue, Preallocate) {
   queue.append(SCL("World"));
   checkConsistency(queue);
   EXPECT_EQ(12, queue.front()->computeChainDataLength());
-  writable = queue.preallocate(1024, 4096);
+  // There are not 2048 bytes available, this will alloc a new buf
+  writable = queue.preallocate(2048, 4096);
   checkConsistency(queue);
-  EXPECT_LE(1024, writable.second);
+  EXPECT_LE(2048, writable.second);
+  // IOBuf allocates more than newAllocationSize, and we didn't cap it
+  EXPECT_GE(writable.second, 4096);
   queue.postallocate(writable.second);
   // queue has no empty space, make sure we allocate at least min, even if
-  // maxHint < min
-  writable = queue.preallocate(1024, 1);
+  // newAllocationSize < min
+  writable = queue.preallocate(1024, 1, 1024);
   checkConsistency(queue);
-  EXPECT_LE(1024, writable.second);
+  EXPECT_EQ(1024, writable.second);
 }
 
 TEST(IOBufQueue, Wrap) {
