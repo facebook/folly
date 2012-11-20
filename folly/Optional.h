@@ -75,6 +75,8 @@ const None none = nullptr;
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
 template<class Value>
 class Optional : boost::totally_ordered<Optional<Value>,
