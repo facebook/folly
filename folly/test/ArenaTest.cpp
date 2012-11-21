@@ -84,6 +84,46 @@ TEST(Arena, SizeSanity) {
           << maximum_size;
 }
 
+TEST(Arena, BytesUsedSanity) {
+  static const size_t smallChunkSize = 1024;
+  static const size_t blockSize = goodMallocSize(16 * smallChunkSize);
+  const size_t bigChunkSize = blockSize - 4 * smallChunkSize;
+
+  size_t bytesUsed = 0;
+
+  SysArena arena(blockSize);
+  EXPECT_EQ(arena.bytesUsed(), bytesUsed);
+
+  // Insert 2 small chunks
+  arena.allocate(smallChunkSize);
+  arena.allocate(smallChunkSize);
+  bytesUsed += 2 * smallChunkSize;
+  EXPECT_EQ(arena.bytesUsed(), bytesUsed);
+  EXPECT_TRUE(arena.totalSize() >= blockSize);
+  EXPECT_TRUE(arena.totalSize() <= 2 * blockSize);
+
+  // Insert big chunk, should still fit in one block
+  arena.allocate(bigChunkSize);
+  bytesUsed += bigChunkSize;
+  EXPECT_EQ(arena.bytesUsed(), bytesUsed);
+  EXPECT_TRUE(arena.totalSize() >= blockSize);
+  EXPECT_TRUE(arena.totalSize() <= 2 * blockSize);
+
+  // Insert big chunk once more, should trigger new block allocation
+  arena.allocate(bigChunkSize);
+  bytesUsed += bigChunkSize;
+  EXPECT_EQ(arena.bytesUsed(), bytesUsed);
+  EXPECT_TRUE(arena.totalSize() >= 2 * blockSize);
+  EXPECT_TRUE(arena.totalSize() <= 3 * blockSize);
+
+  // Test that bytesUsed() accounts for alignment
+  static const size_t tinyChunkSize = 7;
+  arena.allocate(tinyChunkSize);
+  EXPECT_TRUE(arena.bytesUsed() >= bytesUsed + tinyChunkSize);
+  size_t delta = arena.bytesUsed() - bytesUsed;
+  EXPECT_EQ(delta & (delta - 1), 0);
+}
+
 TEST(Arena, Vector) {
   static const size_t requestedBlockSize = 64;
   SysArena arena(requestedBlockSize);

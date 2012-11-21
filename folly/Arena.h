@@ -61,16 +61,18 @@ class Arena {
  public:
   explicit Arena(const Alloc& alloc,
                  size_t minBlockSize = kDefaultMinBlockSize)
-    : allocAndSize_(alloc, minBlockSize),
-      ptr_(nullptr),
-      end_(nullptr),
-      totalAllocatedSize_(0) {
+    : allocAndSize_(alloc, minBlockSize)
+    , ptr_(nullptr)
+    , end_(nullptr)
+    , totalAllocatedSize_(0)
+    , bytesUsed_(0) {
   }
 
   ~Arena();
 
   void* allocate(size_t size) {
     size = roundUp(size);
+    bytesUsed_ += size;
 
     if (LIKELY(end_ - ptr_ >= size)) {
       // Fast path: there's enough room in the current block
@@ -96,6 +98,14 @@ class Arena {
   // Gets the total memory used by the arena
   size_t totalSize() const {
     return totalAllocatedSize_ + sizeof(Arena);
+  }
+
+  // Gets the total number of "used" bytes, i.e. bytes that the arena users
+  // allocated via the calls to `allocate`. Doesn't include fragmentation, e.g.
+  // if block size is 4KB and you allocate 2 objects of 3KB in size,
+  // `bytesUsed()` will be 6KB, while `totalSize()` will be 8KB+.
+  size_t bytesUsed() const {
+    return bytesUsed_;
   }
 
  private:
@@ -181,6 +191,7 @@ class Arena {
   char* ptr_;
   char* end_;
   size_t totalAllocatedSize_;
+  size_t bytesUsed_;
 };
 
 /**
