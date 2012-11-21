@@ -37,6 +37,8 @@
 #include <stdexcept>
 #include <typeinfo>
 
+#include <limits.h>
+
 #include "double-conversion.h"   // V8 JavaScript implementation
 
 #define FOLLY_RANGE_CHECK(condition, message)                           \
@@ -121,6 +123,46 @@ typename std::tuple_element<
 /*******************************************************************************
  * Conversions from integral types to string types.
  ******************************************************************************/
+
+#if FOLLY_HAVE_INT128_T
+namespace detail {
+
+template <typename IntegerType>
+constexpr unsigned int
+digitsEnough() {
+  return ceil((double(sizeof(IntegerType) * CHAR_BIT) * M_LN2) / M_LN10);
+}
+
+inline unsigned int
+unsafeTelescope128(char * buffer, unsigned int room, unsigned __int128 x) {
+  typedef unsigned __int128 Usrc;
+  unsigned int p = room - 1;
+
+  while (x >= (Usrc(1) << 64)) { // Using 128-bit division while needed
+    const auto y = x / 10;
+    const auto digit = x % 10;
+
+    buffer[p--] = '0' + digit;
+    x = y;
+  }
+
+  uint64_t xx = x; // Moving to faster 64-bit division thereafter
+
+  while (xx >= 10) {
+    const auto y = xx / 10ULL;
+    const auto digit = xx % 10ULL;
+
+    buffer[p--] = '0' + digit;
+    xx = y;
+  }
+
+  buffer[p] = '0' + xx;
+
+  return p;
+}
+
+}
+#endif
 
 /**
  * Returns the number of digits in the base 10 representation of an
@@ -229,19 +271,53 @@ toAppend(const fbstring& value, Tgt * result) {
   result->append(value.data(), value.size());
 }
 
+#if FOLLY_HAVE_INT128_T
+/**
+ * Special handling for 128 bit integers.
+ */
+
+template <class Tgt>
+void
+toAppend(__int128 value, Tgt * result) {
+  typedef unsigned __int128 Usrc;
+  char buffer[detail::digitsEnough<unsigned __int128>() + 1];
+  unsigned int p;
+
+  if (value < 0) {
+    p = detail::unsafeTelescope128(buffer, sizeof(buffer), Usrc(-value));
+    buffer[--p] = '-';
+  } else {
+    p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);
+  }
+
+  result->append(buffer + p, buffer + sizeof(buffer));
+}
+
+template <class Tgt>
+void
+toAppend(unsigned __int128 value, Tgt * result) {
+  char buffer[detail::digitsEnough<unsigned __int128>()];
+  unsigned int p;
+
+  p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);
+
+  result->append(buffer + p, buffer + sizeof(buffer));
+}
+
+#endif
+
 /**
  * int32_t and int64_t to string (by appending) go through here. The
  * result is APPENDED to a preexisting string passed as the second
- * parameter. For convenience, the function also returns a reference
- * to *result. This should be efficient with fbstring because fbstring
+ * parameter. This should be efficient with fbstring because fbstring
  * incurs no dynamic allocation below 23 bytes and no number has more
  * than 22 bytes in its textual representation (20 for digits, one for
  * sign, one for the terminating 0).
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && std::is_signed<Src>::value
-  && detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+  std::is_integral<Src>::value && std::is_signed<Src>::value &&
+  detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
   typedef typename std::make_unsigned<Src>::type Usrc;
   char buffer[20];

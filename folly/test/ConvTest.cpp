@@ -97,9 +97,58 @@ void testIntegral2String() {
   testIntegral2String<String, Ints...>();
 }
 
+#if FOLLY_HAVE_INT128_T
+template <class String>
+void test128Bit2String() {
+  typedef unsigned __int128 Uint;
+  typedef __int128 Sint;
+
+  EXPECT_EQ(detail::digitsEnough<unsigned __int128>(), 39);
+
+  Uint value = 123;
+  EXPECT_EQ(to<String>(value), "123");
+  Sint svalue = 123;
+  EXPECT_EQ(to<String>(svalue), "123");
+  svalue = -123;
+  EXPECT_EQ(to<String>(svalue), "-123");
+
+  value = __int128(1) << 64;
+  EXPECT_EQ(to<String>(value), "18446744073709551616");
+
+  svalue =  -(__int128(1) << 64);
+  EXPECT_EQ(to<String>(svalue), "-18446744073709551616");
+
+  value = 0;
+  EXPECT_EQ(to<String>(value), "0");
+
+  svalue = 0;
+  EXPECT_EQ(to<String>(svalue), "0");
+
+  // TODO: the following do not compile to<__int128> ...
+
+#if 0
+  value = numeric_limits<Uint>::min();
+  EXPECT_EQ(to<Uint>(to<String>(value)), value);
+  value = numeric_limits<Uint>::max();
+  EXPECT_EQ(to<Uint>(to<String>(value)), value);
+
+  svalue = numeric_limits<Sint>::min();
+  EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
+  value = numeric_limits<Sint>::max();
+  EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
+#endif
+}
+
+#endif
+
 TEST(Conv, Integral2String) {
   testIntegral2String<std::string, char, short, int, long>();
   testIntegral2String<fbstring, char, short, int, long>();
+
+#if FOLLY_HAVE_INT128_T
+  test128Bit2String<std::string>();
+  test128Bit2String<fbstring>();
+#endif
 }
 
 template <class String>
