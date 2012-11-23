@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -592,12 +592,17 @@ size_t qfind(const Range<T>& haystack,
   return std::string::npos;
 }
 
+namespace detail {
+size_t qfind_first_byte_of(const StringPiece& haystack,
+                           const StringPiece& needles);
+} // namespace detail
+
 template <class T, class Comp>
 size_t qfind_first_of(const Range<T> & haystack,
-                      const Range<T> & needle,
+                      const Range<T> & needles,
                       Comp eq) {
   auto ret = std::find_first_of(haystack.begin(), haystack.end(),
-                                needle.begin(), needle.end(),
+                                needles.begin(), needles.end(),
                                 eq);
   return ret == haystack.end() ? std::string::npos : ret - haystack.begin();
 }
@@ -649,10 +654,24 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
 
 template <class T>
 size_t qfind_first_of(const Range<T>& haystack,
-                      const Range<T>& needle) {
-  return qfind_first_of(haystack, needle, asciiCaseSensitive);
+                      const Range<T>& needles) {
+  return qfind_first_of(haystack, needles, asciiCaseSensitive);
 }
 
+// specialization for StringPiece
+template <>
+inline size_t qfind_first_of(const Range<const char*>& haystack,
+                             const Range<const char*>& needles) {
+  return detail::qfind_first_byte_of(haystack, needles);
+}
+
+// specialization for ByteRange
+template <>
+inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
+                             const Range<const unsigned char*>& needles) {
+  return detail::qfind_first_byte_of(StringPiece(haystack),
+                                     StringPiece(needles));
+}
 }  // !namespace folly
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range);

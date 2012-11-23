@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,23 @@
 // @author Kristina Holst (kholst@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
+#include <limits>
+#include <string>
 #include <boost/range/concepts.hpp>
 #include <gtest/gtest.h>
 #include "folly/Range.h"
+
+namespace folly { namespace detail {
+// declaration of functions in Range.cpp
+size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
+                                  const StringPiece& needles);
+
+size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
+                                   const StringPiece& needles);
+
+size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
+                                 const StringPiece& needles);
+}}
 
 using namespace folly;
 using namespace std;
@@ -199,4 +213,128 @@ TEST(StringPiece, ToByteRange) {
             static_cast<const void*>(b.begin()));
   EXPECT_EQ(static_cast<const void*>(a.end()),
             static_cast<const void*>(b.end()));
+
+  // and convert back again
+  StringPiece c(b);
+  EXPECT_EQ(a.begin(), c.begin());
+  EXPECT_EQ(a.end(), c.end());
+}
+
+template <typename NeedleFinder>
+class NeedleFinderTest : public ::testing::Test {
+ public:
+  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
+    return NeedleFinder::find_first_byte_of(haystack, needles);
+  }
+};
+
+struct SseNeedleFinder {
+  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
+    // This will only use the SSE version if it is supported on this CPU
+    // (selected using ifunc).
+    return detail::qfind_first_byte_of(haystack, needles);
+  }
+};
+
+struct NoSseNeedleFinder {
+  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
+    return detail::qfind_first_byte_of_nosse(haystack, needles);
+  }
+};
+
+struct MemchrNeedleFinder {
+  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
+    return detail::qfind_first_byte_of_memchr(haystack, needles);
+  }
+};
+
+struct ByteSetNeedleFinder {
+  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
+    return detail::qfind_first_byte_of_byteset(haystack, needles);
+  }
+};
+
+typedef ::testing::Types<SseNeedleFinder, NoSseNeedleFinder, MemchrNeedleFinder,
+                         ByteSetNeedleFinder> NeedleFinders;
+TYPED_TEST_CASE(NeedleFinderTest, NeedleFinders);
+
+TYPED_TEST(NeedleFinderTest, Null) {
+  { // null characters in the string
+    string s(10, char(0));
+    s[5] = 'b';
+    string delims("abc");
+    EXPECT_EQ(5, this->find_first_byte_of(s, delims));
+  }
+  { // null characters in delim
+    string s("abc");
+    string delims(10, char(0));
+    delims[3] = 'c';
+    delims[7] = 'b';
+    EXPECT_EQ(1, this->find_first_byte_of(s, delims));
+  }
+  { // range not terminated by null character
+    string buf = "abcdefghijklmnopqrstuvwxyz";
+    StringPiece s(buf.data() + 5, 3);
+    StringPiece delims("z");
+    EXPECT_EQ(string::npos, this->find_first_byte_of(s, delims));
+  }
+}
+
+TYPED_TEST(NeedleFinderTest, DelimDuplicates) {
+  string delims(1000, 'b');
+  EXPECT_EQ(1, this->find_first_byte_of("abc", delims));
+  EXPECT_EQ(string::npos, this->find_first_byte_of("ac", delims));
+}
+
+TYPED_TEST(NeedleFinderTest, Empty) {
+  string a = "abc";
+  string b = "";
+  EXPECT_EQ(string::npos, this->find_first_byte_of(a, b));
+  EXPECT_EQ(string::npos, this->find_first_byte_of(b, a));
+  EXPECT_EQ(string::npos, this->find_first_byte_of(b, b));
+}
+
+TYPED_TEST(NeedleFinderTest, Unaligned) {
+  // works correctly even if input buffers are not 16-byte aligned
+  string s = "0123456789ABCDEFGH";
+  for (int i = 0; i < s.size(); ++i) {
+    StringPiece a(s.c_str() + i);
+    for (int j = 0; j < s.size(); ++j) {
+      StringPiece b(s.c_str() + j);
+      EXPECT_EQ((i > j) ? 0 : j - i, this->find_first_byte_of(a, b));
+    }
+  }
+}
+
+// for some algorithms (specifically those that create a set of needles),
+// we check for the edge-case of _all_ possible needles being sought.
+TYPED_TEST(NeedleFinderTest, Needles256) {
+  string needles;
+  const auto minValue = std::numeric_limits<StringPiece::value_type>::min();
+  const auto maxValue = std::numeric_limits<StringPiece::value_type>::max();
+  // make the size ~big to avoid any edge-case branches for tiny haystacks
+  const int haystackSize = 50;
+  for (int i = minValue; i <= maxValue; i++) {  // <=
+    needles.push_back(i);
+  }
+  EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
+  for (int i = minValue; i <= maxValue; i++) {
+    EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
+  }
+
+  needles.append("these are redundant characters");
+  EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
+  for (int i = minValue; i <= maxValue; i++) {
+    EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
+  }
+}
+
+TYPED_TEST(NeedleFinderTest, Base) {
+  for (int i = 0; i < 32; ++i) {
+    for (int j = 0; j < 32; ++j) {
+      string s = string(i, 'X') + "abca" + string(i, 'X');
+      string delims = string(j, 'Y') + "a" + string(j, 'Y');
+      EXPECT_EQ(i, this->find_first_byte_of(s, delims));
+    }
+  }
 }
