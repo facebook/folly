@@ -58,6 +58,22 @@ struct hash< ::folly::dynamic> {
 
 namespace folly {
 
+struct TypeError : std::runtime_error {
+  explicit TypeError(const std::string& expected, dynamic::Type actual)
+    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
+        "type `", expected, '\'', ", but had type `",
+        dynamic::typeName(actual), '\''))
+  {}
+  explicit TypeError(const std::string& expected,
+      dynamic::Type actual1, dynamic::Type actual2)
+    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
+        "types `", expected, '\'', ", but had types `",
+        dynamic::typeName(actual1), "' and `", dynamic::typeName(actual2),
+        '\''))
+  {}
+};
+
+
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
@@ -127,21 +143,6 @@ namespace detail {
 }
 
 //////////////////////////////////////////////////////////////////////
-
-struct TypeError : std::runtime_error {
-  explicit TypeError(const std::string& expected, dynamic::Type actual)
-    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
-        "type `", expected, '\'', ", but had type `",
-        dynamic::typeName(actual), '\''))
-  {}
-  explicit TypeError(const std::string& expected,
-      dynamic::Type actual1, dynamic::Type actual2)
-    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
-        "types `", expected, '\'', ", but had types `",
-        dynamic::typeName(actual1), "' and `", dynamic::typeName(actual2),
-        '\''))
-  {}
-};
 
 /*
  * We're doing this instead of a simple member typedef to avoid the
