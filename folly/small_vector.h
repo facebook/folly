@@ -846,14 +846,14 @@ public:
 
   reference at(size_type i) {
     if (i >= size()) {
-      throw std::out_of_range();
+      throw std::out_of_range("index out of range");
     }
     return (*this)[i];
   }
 
   const_reference at(size_type i) const {
     if (i >= size()) {
-      throw std::out_of_range();
+      throw std::out_of_range("index out of range");
     }
     return (*this)[i];
   }
