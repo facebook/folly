@@ -203,7 +203,7 @@ class BucketedTimeSeries {
    */
   template <typename ReturnType=double>
   ReturnType avg() const {
-    return total_.avg<ReturnType>();
+    return total_.template avg<ReturnType>();
   }
 
   /*
