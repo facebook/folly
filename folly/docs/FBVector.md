@@ -170,6 +170,7 @@ Only a tiny minority of objects are genuinely non-relocatable:
     public:
       Ew() : pointerInsideBuffer(buffer) {}
       ...
+    }
 
 * Objects that need to update "observers" that store pointers to them.
 
