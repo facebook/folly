@@ -8,10 +8,20 @@ common coding patterns. The improvements are always non-negative,
 almost always measurable, frequently significant, sometimes
 dramatic, and occasionally spectacular.
 
+### Sample
+***
+
+    folly::fbvector<int> numbers({0, 1, 2, 3});
+    numbers.reserve(10);
+    for (int i = 4; i < 10; i++) {
+      numbers.push_back(i * 2);
+    }
+    assert(numbers[6] == 12);
+
 ### Motivation
 ***
 
-std::vector is the stalwart abstraction many use for
+`std::vector` is the stalwart abstraction many use for
 dynamically-allocated arrays in C++. It is also the best known
 and most used of all containers. It may therefore seem a
 surprise that `std::vector` leaves important - and sometimes
@@ -51,17 +61,13 @@ Continuing this process we'll then have a chunk of size k * k * C
 to the right and so on. That leads to a series of the form (using
 ^^ for power):
 
-```
     C, C*k,  C*k^^2, C*k^^3, ...
-```
 
 If we choose k = 2 we know that every element in the series will
 be strictly larger than the sum of all previous ones because of
 the remarkable equality:
 
-```
     1 + 2^^1 + 2^^2 + 2^^3... + 2^^n = 2^^(n+1) - 1
-```
 
 What that really means is that the new request for a chunk will
 be never satisfiable by coalescing all previously-used chunks.
@@ -73,9 +79,7 @@ chunks. Any number smaller than 2 guarantees that you'll be able
 at some point to reuse the previous chunks. Going through the
 math reveals the equation:
 
-```
     k^^n <= 1 + k + k^^2 + ... + k^^(n-2)
-```
 
 If some number n satisfies that equation, it means you can reuse
 memory after n reallocations. The graphical solver below reveals
@@ -160,15 +164,12 @@ Only a tiny minority of objects are genuinely non-relocatable:
 
 * Objects that use internal pointers, e.g.:
 
-``` Cpp
     class Ew {
       char buffer[1024];
       char * pointerInsideBuffer;
     public:
       Ew() : pointerInsideBuffer(buffer) {}
       ...
-    };
-```
 
 * Objects that need to update "observers" that store pointers to them.
 
@@ -194,12 +195,10 @@ trait `folly::IsRelocatable` defined in `"folly/Traits.h"`. By default,
 you know that your type `Widget` is in fact relocatable, go right
 after `Widget`'s definition and write this:
 
-``` Cpp
     // at global namespace level
     namespace folly {
-    struct IsRelocatable<Widget> : boost::true_type {};
+      struct IsRelocatable<Widget> : boost::true_type {};
     }
-```
 
 If you don't do this, `fbvector<Widget>` will fail to compile
 with a `BOOST_STATIC_ASSERT`.
@@ -215,11 +214,9 @@ already present in the C++ standard (well, currently in Boost).
 To summarize, in order to work with `fbvector`, a type `Widget`
 must pass:
 
-``` Cpp
     BOOST_STATIC_ASSERT(
       IsRelocatable<Widget>::value &&
       (boost::has_trivial_assign<T>::value || boost::has_nothrow_constructor<T>::value));
-```
 
 These traits go hand in hand; for example, it would be very
 difficult to design a class that satisfies one branch of the
@@ -240,3 +237,5 @@ directions may be in improving raw memory copying (`memcpy` is
 not an intrinsic in gcc and does not work terribly well for
 large chunks) and in furthering the collaboration with
 jemalloc. Have fun!
+
+
