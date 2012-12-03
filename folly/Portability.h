@@ -49,4 +49,11 @@
 #endif
 
 
+// MaxAlign: max_align_t isn't supported by gcc
+#ifdef __GNUC__
+struct MaxAlign { char c; } __attribute__((aligned));
+#else /* !__GNUC__ */
+# error Cannot define MaxAlign on this platform
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

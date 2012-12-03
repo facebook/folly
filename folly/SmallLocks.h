@@ -49,6 +49,8 @@
 # error "SmallLocks.h is currently x64-only."
 #endif
 
+#include "folly/Portability.h"
+
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
@@ -309,7 +311,6 @@ struct SpinLockArray {
   // Check if T can theoretically cross a cache line.
   // NOTE: It should be alignof(std::max_align_t), but max_align_t
   // isn't supported by gcc 4.6.2.
-  struct MaxAlign { char c; } __attribute__((aligned));
   static_assert(alignof(MaxAlign) > 0 &&
                 FOLLY_CACHE_LINE_SIZE % alignof(MaxAlign) == 0 &&
                 sizeof(T) <= alignof(MaxAlign),
