@@ -641,7 +641,7 @@ public:
 
   void push_back(Char c) {
     assert(capacity() >= size());
-    size_t sz, cp;
+    size_t sz;
     if (category() == isSmall) {
       sz = smallSize();
       if (sz < maxSmallSize) {
@@ -653,14 +653,16 @@ public:
       reserve(maxSmallSize * 2);
     } else {
       sz = ml_.size_;
-      cp = capacity();  // != ml_.capacity() for isShared()
-      if (sz == cp) reserve(cp * 3 / 2);
+      if (sz == capacity()) {  // always true for isShared()
+        reserve(sz * 3 / 2);  // ensures not shared
+      }
     }
+    assert(!isShared());
     assert(capacity() >= sz + 1);
     // Category can't be small - we took care of that above
     assert(category() == isMedium || category() == isLarge);
     ml_.size_ = sz + 1;
-    mutable_data()[sz] = c;
+    ml_.data_[sz] = c;
     writeTerminator();
   }
 
