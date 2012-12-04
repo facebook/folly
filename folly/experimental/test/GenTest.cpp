@@ -403,7 +403,7 @@ TEST(Gen, Any) {
 }
 
 TEST(Gen, Yielders) {
-  auto gen = GENERATOR(int, {
+  auto gen = GENERATOR(int) {
     for (int i = 1; i <= 5; ++i) {
       yield(i);
     }
@@ -411,7 +411,7 @@ TEST(Gen, Yielders) {
     for (int i = 3; ; ++i) {
       yield(i * i);
     }
-  });
+  };
   vector<int> expected {
     1, 2, 3, 4, 5, 7, 9, 16, 25
   };
@@ -419,30 +419,30 @@ TEST(Gen, Yielders) {
 }
 
 TEST(Gen, NestedYield) {
-  auto nums = GENERATOR(int, {
+  auto nums = GENERATOR(int) {
     for (int i = 1; ; ++i) {
       yield(i);
     }
-  });
-  auto gen = GENERATOR(int, {
+  };
+  auto gen = GENERATOR(int) {
     nums | take(10) | yield;
     seq(1, 5) | [&](int i) {
       yield(i);
     };
-  });
+  };
   EXPECT_EQ(70, gen | sum);
 }
 
 TEST(Gen, MapYielders) {
   auto gen = seq(1, 5)
            | map([](int n) {
-               return GENERATOR(int, {
+               return GENERATOR(int) {
                  int i;
                  for (i = 1; i < n; ++i)
                    yield(i);
                  for (; i >= 1; --i)
                    yield(i);
-               });
+               };
              })
            | concat;
   vector<int> expected {

@@ -135,6 +135,14 @@ Composed operator|(Operator<Left>&& left,
   return Composed(std::move(left.self()), std::move(right.self()));
 }
 
+template<class Value,
+         class Source,
+         class Yield = detail::Yield<Value, Source>>
+Yield operator+(const detail::GeneratorBuilder<Value>&,
+                Source&& source) {
+  return Yield(std::forward<Source>(source));
+}
+
 /**
  * GenImpl - Core abstraction of a generator, an object which produces values by
  * passing them to a given handler lambda. All generator implementations must

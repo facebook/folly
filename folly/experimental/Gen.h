@@ -242,6 +242,9 @@ class CollectTemplate;
 template<class Collection>
 class Append;
 
+template<class Value>
+class GeneratorBuilder {};
+
 }
 
 /**
@@ -310,10 +313,14 @@ Yield generator(Source&& source) {
   return Yield(std::forward<Source>(source));
 }
 
-#define GENERATOR(type, body)                   \
-  ::folly::gen::generator<type>(                \
-    [=](const std::function<void(type)>& yield) \
-    { body })
+/*
+ * Create inline generator, used like:
+ *
+ * auto gen = GENERATOR(int) { yield(1); yield(2); };
+ */
+#define GENERATOR(TYPE)                            \
+  ::folly::gen::detail::GeneratorBuilder<TYPE>() + \
+   [=](const std::function<void(TYPE)>& yield)
 
 /*
  * Operator Factories
