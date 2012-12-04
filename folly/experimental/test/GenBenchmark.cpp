@@ -141,14 +141,14 @@ BENCHMARK(Fib_Sum_NoGen, iters) {
 BENCHMARK_RELATIVE(Fib_Sum_Gen, iters) {
   int s = 0;
   while (iters--) {
-    auto fib = GENERATOR(int, {
+    auto fib = GENERATOR(int) {
       int a = 0;
       int b = 1;
       for (;;) {
         yield(a += b);
         yield(b += a);
       }
-    });
+    };
     s += fib | take(testSize.load()) | sum;
   }
   folly::doNotOptimizeAway(s);
