@@ -507,16 +507,18 @@ class GroupVarintDecoder {
 
   explicit GroupVarintDecoder(StringPiece data,
                               size_t maxCount = (size_t)-1)
-    : p_(data.data()),
-      end_(data.data() + data.size()),
+    : rrest_(data.end()),
+      p_(data.data()),
+      end_(data.end()),
       pos_(0),
       count_(0),
       remaining_(maxCount) {
   }
 
   void reset(StringPiece data, size_t maxCount=(size_t)-1) {
+    rrest_ = data.end();
     p_ = data.data();
-    end_ = data.data() + data.size();
+    end_ = data.end();
     pos_ = 0;
     count_ = 0;
     remaining_ = maxCount;
@@ -580,10 +582,14 @@ class GroupVarintDecoder {
   StringPiece rest() const {
     // This is only valid after next() returned false
     CHECK(pos_ == count_ && (p_ == end_ || remaining_ == 0));
-    return StringPiece(p_, end_ - p_);
+    // p_ may point to the internal buffer (tmp_), but we want
+    // to return subpiece of the original data
+    size_t size = end_ - p_;
+    return StringPiece(rrest_ - size, rrest_);
   }
 
  private:
+  const char* rrest_;
   const char* p_;
   const char* end_;
   char tmp_[Base::kMaxSize];
