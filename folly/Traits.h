@@ -19,11 +19,15 @@
 #ifndef FOLLY_BASE_TRAITS_H_
 #define FOLLY_BASE_TRAITS_H_
 
+#include <memory>
+#include <type_traits>
+
+#include <bits/c++config.h>
+
 #include <boost/type_traits.hpp>
 #include <boost/mpl/and.hpp>
+#include <boost/mpl/has_xxx.hpp>
 #include <boost/mpl/not.hpp>
-#include <memory>
-#include <bits/c++config.h>
 
 namespace folly {
 
@@ -57,9 +61,64 @@ namespace folly {
  * types. You may want to add your own specializations. Do so in
  * namespace folly and make sure you keep the specialization of
  * IsRelocatable<SomeStruct> in the same header as SomeStruct.
+ *
+ * You may also declare a type to be relocatable by including
+ *    `typedef std::true_type IsRelocatable;`
+ * in the class header.
+ *
+ * It may be unset in a base class by overriding the typedef to false_type.
  */
-template <class T> struct IsRelocatable : boost::mpl::not_<boost::is_class<T> >
-{};
+/*
+ * IsTriviallyCopyable describes the value semantics property. C++11 contains
+ * the type trait is_trivially_copyable; however, it is not yet implemented
+ * in gcc (as of 4.7.1), and the user may wish to specify otherwise.
+ */
+/*
+ * IsZeroInitializable describes the property that default construction is the
+ * same as memset(dst, 0, sizeof(T)).
+ */
+
+namespace traits_detail {
+
+#define FOLLY_HAS_TRUE_XXX(name)                          \
+  BOOST_MPL_HAS_XXX_TRAIT_DEF(name);                      \
+  template <class T> struct name ## _is_true              \
+    : std::is_same<typename T::name, std::true_type> {};  \
+  template <class T> struct has_true_ ## name             \
+    : std::conditional<                                   \
+        has_ ## name <T>::value,                          \
+        name ## _is_true<T>,                              \
+        std::false_type                                   \
+      >:: type {};
+
+FOLLY_HAS_TRUE_XXX(IsRelocatable)
+FOLLY_HAS_TRUE_XXX(IsZeroInitializable)
+FOLLY_HAS_TRUE_XXX(IsTriviallyCopyable)
+
+#undef FOLLY_HAS_TRUE_XXX
+}
+
+template <class T> struct IsTriviallyCopyable
+  : std::integral_constant<bool,
+      !std::is_class<T>::value ||
+      // TODO: add alternate clause is_trivially_copyable, when available
+      traits_detail::has_true_IsTriviallyCopyable<T>::value
+    > {};
+
+template <class T> struct IsRelocatable
+  : std::integral_constant<bool,
+      !std::is_class<T>::value ||
+      // TODO add this line (and some tests for it) when we upgrade to gcc 4.7
+      //std::is_trivially_move_constructible<T>::value ||
+      IsTriviallyCopyable<T>::value ||
+      traits_detail::has_true_IsRelocatable<T>::value
+    > {};
+
+template <class T> struct IsZeroInitializable
+  : std::integral_constant<bool,
+      !std::is_class<T>::value ||
+      traits_detail::has_true_IsZeroInitializable<T>::value
+    > {};
 
 } // namespace folly
 
@@ -77,7 +136,7 @@ template <class T> struct IsRelocatable : boost::mpl::not_<boost::is_class<T> >
  * FOLLY_ASSUME_RELOCATABLE(MyType<T1, T2>)
  */
 #define FOLLY_ASSUME_RELOCATABLE(...) \
-  struct IsRelocatable<  __VA_ARGS__ > : ::boost::true_type {};
+  struct IsRelocatable<  __VA_ARGS__ > : std::true_type {};
 
 /**
  * Use this macro ONLY inside namespace boost. When using it with a
