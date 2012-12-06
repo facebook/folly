@@ -225,7 +225,7 @@ template <class T> struct IsZeroInitializable
 namespace std {
 
 template <class T, class U>
-  class pair;
+  struct pair;
 #ifndef _GLIBCXX_USE_FB
 template <class T, class R, class A>
   class basic_string;

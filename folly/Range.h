@@ -120,7 +120,7 @@ public:
   typedef typename std::iterator_traits<Iter>::reference reference;
   typedef std::char_traits<value_type> traits_type;
 
-  static const size_type npos = std::string::npos;
+  static const size_type npos;
 
   // Works for all iterators
   Range() : b_(), e_() {
@@ -423,7 +423,7 @@ private:
 };
 
 template <class Iter>
-const typename Range<Iter>::size_type Range<Iter>::npos;
+const typename Range<Iter>::size_type Range<Iter>::npos = std::string::npos;
 
 template <class T>
 void swap(Range<T>& lhs, Range<T>& rhs) {

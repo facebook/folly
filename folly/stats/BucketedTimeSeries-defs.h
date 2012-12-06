@@ -191,7 +191,7 @@ VT BucketedTimeSeries<VT, TT>::sum(TimeType start, TimeType end) const {
   ValueType sum = ValueType();
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
-                                TimeType nextBucketStart) {
+                                TimeType nextBucketStart) -> bool {
     sum += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                              bucket.sum);
     return true;
@@ -205,7 +205,7 @@ uint64_t BucketedTimeSeries<VT, TT>::count(TimeType start, TimeType end) const {
   uint64_t count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
-                                TimeType nextBucketStart) {
+                                TimeType nextBucketStart) -> bool {
     count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                                bucket.count);
     return true;
@@ -221,7 +221,7 @@ ReturnType BucketedTimeSeries<VT, TT>::avg(TimeType start, TimeType end) const {
   uint64_t count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
-                                TimeType nextBucketStart) {
+                                TimeType nextBucketStart) -> bool {
     sum += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                              bucket.sum);
     count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
@@ -396,7 +396,7 @@ template <typename Function>
 void BucketedTimeSeries<VT, TT>::forEachBucket(TimeType start, TimeType end,
                                                Function fn) const {
   forEachBucket([&start, &end, &fn] (const Bucket& bucket, TimeType bucketStart,
-                                     TimeType nextBucketStart) {
+                                     TimeType nextBucketStart) -> bool {
     if (start >= nextBucketStart) {
       return true;
     }

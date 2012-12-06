@@ -542,7 +542,7 @@ fbstring decodeUnicodeEscape(Input& in) {
            (in.error("invalid hex digit"), 0);
   };
 
-  auto readHex = [&] {
+  auto readHex = [&]() -> uint16_t {
     if (in.size() < 4) {
       in.error("expected 4 hex digits");
     }

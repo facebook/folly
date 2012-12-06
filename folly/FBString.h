@@ -729,7 +729,7 @@ private:
       return static_cast<RefCounted*>(
         static_cast<void*>(
           static_cast<unsigned char*>(static_cast<void*>(p))
-          - offsetof(RefCounted, data_)));
+          - sizeof(refCount_)));
     }
 
     static size_t refs(Char * p) {
