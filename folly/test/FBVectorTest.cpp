@@ -245,6 +245,21 @@ TEST(FBVector, move_iterator) {
   EXPECT_EQ(fbvi3, base);
 }
 
+TEST(fbvector, assign_bug_no_reallocation) {
+  fbvector<int> v;
+  v.assign(10, 20);
+  v.assign(10, 10);
+  EXPECT_EQ(v.size(), 10);
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, 10);
+  }
+  v.assign(5, 5);
+  EXPECT_EQ(v.size(), 5);
+  FOR_EACH (i, v) {
+    EXPECT_EQ(*i, 5);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

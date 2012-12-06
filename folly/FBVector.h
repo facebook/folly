@@ -441,6 +441,7 @@ public:
       // No reallocation, nice
       auto const newEnd = b_ + newSize;
       fbvector_detail::destroyRange(newEnd, e_);
+      std::fill(b_, newEnd, value);
       e_ = newEnd;
       return;
     }
