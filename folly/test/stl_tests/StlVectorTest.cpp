@@ -2732,8 +2732,17 @@ int main(int argc, char** argv) {
 
 #else // GCC 4.7 guard
 
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+// do nothing
+TEST(placeholder, gccversion) {}
+
 int main(int argc, char** argv) {
-  return 0;
+  testing::InitGoogleTest(&argc, argv);
+  google::ParseCommandLineFlags(&argc, &argv, true);
+
+  return RUN_ALL_TESTS();
 }
 
 #endif // GCC 4.7 guard
