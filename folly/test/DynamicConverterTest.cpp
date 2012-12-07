@@ -41,19 +41,6 @@ TEST(DynamicConverter, template_metaprogramming) {
   EXPECT_EQ(c1t, true);
   EXPECT_EQ(c2t, true);
   EXPECT_EQ(c3t, true);
-
-  bool m1f = is_map_container<int>::value;
-  bool m2f = is_map_container<std::vector<int>>::value;
-  bool m3f = is_map_container<std::set<int>>::value;
-
-  bool m1t = is_map_container<std::map<int, int>>::value;
-  bool m2t = is_map_container<std::unordered_map<int, int>>::value;
-
-  EXPECT_EQ(m1f, false);
-  EXPECT_EQ(m2f, false);
-  EXPECT_EQ(m3f, false);
-  EXPECT_EQ(m1t, true);
-  EXPECT_EQ(m2t, true);
 }
 
 TEST(DynamicConverter, arithmetic_types) {
@@ -151,6 +138,13 @@ TEST(DynamicConverter, map_keyed_by_string) {
   auto i2 = convertTo<std::unordered_map<std::string, std::string>>(d2);
   decltype(i2) i2b = { { "3", "three" }, { "4", "four" } };
   EXPECT_EQ(i2, i2b);
+}
+
+TEST(DynamicConverter, map_to_vector_of_pairs) {
+  dynamic d1 = dynamic::object("1", "one")("2", "two");
+  auto i1 = convertTo<std::vector<std::pair<std::string, std::string>>>(d1);
+  decltype(i1) i1b = { { "1", "one" }, { "2", "two" } };
+  EXPECT_EQ(i1, i1b);
 }
 
 TEST(DynamicConverter, nested_containers) {

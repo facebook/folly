@@ -50,14 +50,7 @@ namespace folly {
 namespace dynamicconverter_detail {
 
 BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(key_type);
-BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
-
-template <typename T> struct map_container_has_correct_types
-  : std::is_same<std::pair<typename std::add_const<typename T::key_type>::type,
-                           typename T::mapped_type>,
-                 typename T::value_type> {};
 
 template <typename T> struct class_is_container {
   typedef std::reverse_iterator<T*> some_iterator;
@@ -66,24 +59,10 @@ template <typename T> struct class_is_container {
               std::is_constructible<T, some_iterator, some_iterator>::value };
 };
 
-template <typename T> struct container_is_map
-  : std::conditional<
-      has_key_type<T>::value && has_mapped_type<T>::value,
-      map_container_has_correct_types<T>,
-      std::false_type
-    >::type {};
-
 template <typename T> struct is_container
   : std::conditional<
       std::is_class<T>::value,
       class_is_container<T>,
-      std::false_type
-    >::type {};
-
-template <typename T> struct is_map_container
-  : std::conditional<
-      is_container<T>::value,
-      container_is_map<T>,
       std::false_type
     >::type {};
 
@@ -106,16 +85,33 @@ template <typename T> struct is_map_container
 
 namespace dynamicconverter_detail {
 
-template <typename F, typename S>
-inline void
-derefToCache(std::pair<F, S>* mem, const dynamic::const_item_iterator& it) {
-  new (mem) std::pair<F, S>(convertTo<F>(it->first), convertTo<S>(it->second));
-}
+template<typename T>
+struct Dereferencer {
+  static inline void
+  derefToCache(T* mem, const dynamic::const_item_iterator& it) {
+    throw TypeError("array", dynamic::Type::OBJECT);
+  }
 
-template <typename T>
-inline void derefToCache(T* mem, const dynamic::const_iterator& it) {
-  new (mem) T(convertTo<T>(*it));
-}
+  static inline void derefToCache(T* mem, const dynamic::const_iterator& it) {
+    new (mem) T(convertTo<T>(*it));
+  }
+};
+
+template<typename F, typename S>
+struct Dereferencer<std::pair<F, S>> {
+  static inline void
+  derefToCache(std::pair<F, S>* mem, const dynamic::const_item_iterator& it) {
+    new (mem) std::pair<F, S>(
+        convertTo<F>(it->first), convertTo<S>(it->second)
+    );
+  }
+
+  // Intentional duplication of the code in Dereferencer
+  template <typename T>
+  static inline void derefToCache(T* mem, const dynamic::const_iterator& it) {
+    new (mem) T(convertTo<T>(*it));
+  }
+};
 
 template <typename T, typename It>
 class Transformer : public boost::iterator_adaptor<
@@ -138,7 +134,7 @@ class Transformer : public boost::iterator_adaptor<
   ttype& dereference() const {
     if (LIKELY(!valid_)) {
       cache_.~ttype();
-      derefToCache(&cache_, this->base_reference());
+      Dereferencer<ttype>::derefToCache(&cache_, this->base_reference());
       valid_ = true;
     }
     return cache_;
@@ -226,40 +222,22 @@ struct DynamicConverter<std::pair<F,S>> {
   }
 };
 
-// map containers
+// containers
 template <typename C>
 struct DynamicConverter<C,
     typename std::enable_if<
-      dynamicconverter_detail::is_map_container<C>::value>::type> {
+      dynamicconverter_detail::is_container<C>::value>::type> {
   static C convert(const dynamic& d) {
-    if (LIKELY(d.isObject())) {
+    if (d.isArray()) {
+      return C(dynamicconverter_detail::conversionIterator<C>(d.begin()),
+               dynamicconverter_detail::conversionIterator<C>(d.end()));
+    } else if (d.isObject()) {
       return C(dynamicconverter_detail::conversionIterator<C>
                  (d.items().begin()),
                dynamicconverter_detail::conversionIterator<C>
                  (d.items().end()));
-    } else if (d.isArray()) {
-      return C(dynamicconverter_detail::conversionIterator<C>(d.begin()),
-               dynamicconverter_detail::conversionIterator<C>(d.end()));
     } else {
       throw TypeError("object or array", d.type());
-    }
-  }
-};
-
-// non-map containers
-template <typename C>
-struct DynamicConverter<C,
-      typename std::enable_if<
-          dynamicconverter_detail::is_container<C>::value &&
-          !dynamicconverter_detail::is_map_container<C>::value
-        >::type
-    > {
-  static C convert(const dynamic& d) {
-    if (LIKELY(d.isArray())) {
-      return C(dynamicconverter_detail::conversionIterator<C>(d.begin()),
-               dynamicconverter_detail::conversionIterator<C>(d.end()));
-    } else {
-      throw TypeError("array", d.type());
     }
   }
 };
