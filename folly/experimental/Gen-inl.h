@@ -1011,7 +1011,6 @@ class First : public Operator<First> {
            class Value,
            class StorageType = typename std::decay<Value>::type>
   StorageType compose(const GenImpl<Value, Source>& source) const {
-    static_assert(std::is_same<StorageType, int>::value, "wtf");
     Optional<StorageType> accum;
     source | [&](Value v) -> bool {
       accum = std::forward<Value>(v);
