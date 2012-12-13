@@ -40,12 +40,21 @@ namespace detail {
 template <class T, class Enable=void> struct BitsTraits;
 
 // Partial specialization for Unaligned<T>, where T is unsigned integral
+// loadRMW is the same as load, but it indicates that it loads for a
+// read-modify-write operation (we write back the bits we won't change);
+// silence the GCC warning in that case.
 template <class T>
 struct BitsTraits<Unaligned<T>, typename std::enable_if<
     (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
   typedef T UnderlyingType;
   static T load(const Unaligned<T>& x) { return x.value; }
   static void store(Unaligned<T>& x, T v) { x.value = v; }
+  static T loadRMW(const Unaligned<T>& x) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+    return x.value;
+#pragma GCC diagnostic pop
+  }
 };
 
 // Partial specialization for T, where T is unsigned integral
@@ -55,6 +64,12 @@ struct BitsTraits<T, typename std::enable_if<
   typedef T UnderlyingType;
   static T load(const T& x) { return x; }
   static void store(T& x, T v) { x = v; }
+  static T loadRMW(const T& x) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+    return x;
+#pragma GCC diagnostic pop
+  }
 };
 }  // namespace detail
 
@@ -147,13 +162,13 @@ struct Bits {
 template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bit) {
   T& block = p[blockIndex(bit)];
-  Traits::store(block, Traits::load(block) | (one << bitOffset(bit)));
+  Traits::store(block, Traits::loadRMW(block) | (one << bitOffset(bit)));
 }
 
 template <class T, class Traits>
 inline void Bits<T, Traits>::clear(T* p, size_t bit) {
   T& block = p[blockIndex(bit)];
-  Traits::store(block, Traits::load(block) & ~(one << bitOffset(bit)));
+  Traits::store(block, Traits::loadRMW(block) & ~(one << bitOffset(bit)));
 }
 
 template <class T, class Traits>
@@ -201,7 +216,7 @@ template <class T, class Traits>
 inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
                                       UnderlyingType value) {
   // Mask out bits and set new value
-  UnderlyingType v = Traits::load(*p);
+  UnderlyingType v = Traits::loadRMW(*p);
   v &= ~(((one << count) - 1) << offset);
   v |= (value << offset);
   Traits::store(*p, v);

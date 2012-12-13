@@ -498,7 +498,7 @@ template <class T>
 struct Unaligned<
     T,
     typename std::enable_if<std::is_pod<T>::value>::type> {
-  Unaligned() { }  // uninitialized
+  Unaligned() = default;  // uninitialized
   /* implicit */ Unaligned(T v) : value(v) { }
   T value;
 } __attribute__((packed));
