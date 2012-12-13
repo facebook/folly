@@ -148,6 +148,7 @@ void runMultiBitTest64() {
   auto load = detail::BitsTraits<T>::load;
   T buf[] = {0x123456789abcdef0, 0x13579bdf2468ace0};
 
+  EXPECT_EQ(0x123456789abcdef0, load(Bits<T>::get(buf, 0, 64)));
   EXPECT_EQ(0xf0, load(Bits<T>::get(buf, 0, 8)));
   EXPECT_EQ(0x89abcdef, load(Bits<T>::get(buf, 4, 32)));
   EXPECT_EQ(0x189abcdef, load(Bits<T>::get(buf, 4, 33)));
@@ -156,6 +157,9 @@ void runMultiBitTest64() {
   EXPECT_EQ(0xd5555555, load(Bits<T>::get(buf, 4, 32)));
   EXPECT_EQ(0x1d5555555, load(Bits<T>::get(buf, 4, 33)));
   EXPECT_EQ(0xd55555550, load(Bits<T>::get(buf, 0, 36)));
+
+  Bits<T>::set(buf, 0, 64, 0x23456789abcdef01);
+  EXPECT_EQ(0x23456789abcdef01, load(Bits<T>::get(buf, 0, 64)));
 }
 
 TEST(Bits, MultiBit64) {

@@ -156,7 +156,12 @@ struct Bits {
   // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
   static UnderlyingType innerGet(const T* p, size_t bitStart, size_t count);
 
+  static constexpr UnderlyingType zero = UnderlyingType(0);
   static constexpr UnderlyingType one = UnderlyingType(1);
+
+  static constexpr UnderlyingType ones(size_t count) {
+    return count < bitsPerBlock ? (one << count) - 1 : ~zero;
+  }
 };
 
 template <class T, class Traits>
@@ -180,8 +185,6 @@ template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
                                  UnderlyingType value) {
   assert(count <= sizeof(UnderlyingType) * 8);
-  assert(count == sizeof(UnderlyingType) ||
-         (value & ~((one << count) - 1)) == 0);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
   if (offset + count <= bitsPerBlock) {
@@ -217,7 +220,7 @@ inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
                                       UnderlyingType value) {
   // Mask out bits and set new value
   UnderlyingType v = Traits::loadRMW(*p);
-  v &= ~(((one << count) - 1) << offset);
+  v &= ~(ones(count) << offset);
   v |= (value << offset);
   Traits::store(*p, v);
 }
@@ -225,7 +228,7 @@ inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
 template <class T, class Traits>
 inline auto Bits<T, Traits>::innerGet(const T* p, size_t offset, size_t count)
   -> UnderlyingType {
-  return (Traits::load(*p) >> offset) & ((one << count) - 1);
+  return (Traits::load(*p) >> offset) & ones(count);
 }
 
 template <class T, class Traits>
