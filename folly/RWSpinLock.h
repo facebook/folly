@@ -203,11 +203,6 @@ class RWSpinLock : boost::noncopyable {
     bits_.fetch_add(READER - UPGRADED, std::memory_order_acq_rel);
   }
 
-  void unlock_shared_and_lock_upgrade() {
-    lock_upgrade();
-    unlock_shared();
-  }
-
   // write unlock and upgrade lock atomically
   void unlock_and_lock_upgrade() {
     // need to do it in two steps here -- as the UPGRADED bit might be OR-ed at
@@ -225,12 +220,16 @@ class RWSpinLock : boost::noncopyable {
   }
 
   // Try to get reader permission on the lock. This can fail if we
-  // find out someone is a writer.
+  // find out someone is a writer or upgrader.
+  // Setting the UPGRADED bit would allow a writer-to-be to indicate
+  // its intention to write and block any new readers while waiting
+  // for existing readers to finish and release their read locks. This
+  // helps avoid starving writers (promoted from upgraders).
   bool try_lock_shared() {
     // fetch_add is considerably (100%) faster than compare_exchange,
     // so here we are optimizing for the common (lock success) case.
     int32_t value = bits_.fetch_add(READER, std::memory_order_acquire);
-    if (UNLIKELY(value & WRITER)) {
+    if (UNLIKELY(value & (WRITER|UPGRADED))) {
       bits_.fetch_add(-READER, std::memory_order_release);
       return false;
     }
@@ -323,12 +322,6 @@ class RWSpinLock : boost::noncopyable {
 
     explicit UpgradedHolder(RWSpinLock& lock) : lock_(&lock) {
       lock_->lock_upgrade();
-    }
-
-    explicit UpgradedHolder(ReadHolder&& reader) {
-      lock_ = reader.lock_;
-      reader.lock_ = nullptr;
-      if (lock_) lock_->unlock_shared_and_lock_upgrade();
     }
 
     explicit UpgradedHolder(WriteHolder&& writer) {

@@ -169,10 +169,11 @@ TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
 TEST(RWSpinLock, lock_unlock_tests) {
   folly::RWSpinLock lock;
   EXPECT_TRUE(lock.try_lock_upgrade());
-  EXPECT_TRUE(lock.try_lock_shared());
+  EXPECT_FALSE(lock.try_lock_shared());
   EXPECT_FALSE(lock.try_lock());
   EXPECT_FALSE(lock.try_lock_upgrade());
   lock.unlock_upgrade();
+  lock.lock_shared();
   EXPECT_FALSE(lock.try_lock());
   EXPECT_TRUE(lock.try_lock_upgrade());
   lock.unlock_upgrade();
@@ -180,8 +181,7 @@ TEST(RWSpinLock, lock_unlock_tests) {
   EXPECT_TRUE(lock.try_lock());
   EXPECT_FALSE(lock.try_lock_upgrade());
   lock.unlock_and_lock_upgrade();
-  EXPECT_TRUE(lock.try_lock_shared());
-  lock.unlock_shared();
+  EXPECT_FALSE(lock.try_lock_shared());
   lock.unlock_upgrade_and_lock_shared();
   lock.unlock_shared();
   EXPECT_EQ(0, lock.bits());
