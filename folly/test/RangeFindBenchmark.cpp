@@ -48,11 +48,34 @@ BENCHMARK(FindSingleCharMemchr, n) {
 }
 
 BENCHMARK_RELATIVE(FindSingleCharRange, n) {
-  char c = 'b';
+  const char c = 'b';
   StringPiece haystack(str);
   folly::StringPiece needle(&c, &c + 1);
   FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(haystack.find(needle));
+    char x = haystack[0];
+    doNotOptimizeAway(&x);
+  }
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(FindFirstOfRange, n) {
+  StringPiece haystack(str);
+  folly::StringPiece needle("ab");
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(haystack.find_first_of(needle));
+    char x = haystack[0];
+    doNotOptimizeAway(&x);
+  }
+}
+
+BENCHMARK(FindFirstOfOffsetRange, n) {
+  StringPiece haystack(str);
+  folly::StringPiece needle("ab");
+  FOR_EACH_RANGE (i, 0, n) {
+    size_t pos = i / 2; // not a constant to prevent optimization
+    doNotOptimizeAway(haystack.find_first_of(needle, pos));
     char x = haystack[0];
     doNotOptimizeAway(&x);
   }

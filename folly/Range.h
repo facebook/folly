@@ -387,7 +387,7 @@ public:
 
   size_type find_first_of(Range needles, size_t pos) const {
     if (pos > size()) return std::string::npos;
-    size_type ret = qfind_first_of(pos ? subpiece(pos) : *this, needles);
+    size_type ret = qfind_first_of(subpiece(pos), needles);
     return ret == npos ? ret : ret + pos;
   }
 
