@@ -52,8 +52,8 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_C_VOLATILE
 AC_CHECK_TYPE([__int128],
-  [AC_DEFINE([HAVE_INT128_T], [1])],
-  [AC_DEFINE([HAVE_INT128_T], [0])])
+  [AC_DEFINE([HAVE_INT128_T], [1], [Define if __int128 exists])],
+  [AC_DEFINE([HAVE_INT128_T], [0], [Define if __int128 does not exist])])
 AC_CHECK_TYPES([ptrdiff_t])
 
 # Checks for library functions.
