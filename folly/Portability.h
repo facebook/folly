@@ -37,7 +37,7 @@
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
 #elif defined(__GNUC__)
-# #include <features.h>
+# include <features.h>
 # if __GNUC_PREREQ(4,7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
