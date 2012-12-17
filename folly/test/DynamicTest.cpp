@@ -263,6 +263,14 @@ TEST(Dynamic, GetSetDefaultTest) {
   EXPECT_ANY_THROW(d4.setDefault("foo", "bar"));
 }
 
+TEST(Dynamic, ObjectForwarding) {
+  // Make sure dynamic::object can be constructed the same way as any
+  // dynamic.
+  dynamic d = dynamic::object("asd", {"foo", "bar"});
+  dynamic d2 = dynamic::object("key2", {"value", "words"})
+                              ("key", "value1");
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

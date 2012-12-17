@@ -133,7 +133,11 @@ private:
   struct ObjectMaker;
 
 public:
-  template<class... Args> static ObjectMaker object(Args&&...);
+  static ObjectMaker object();
+  static ObjectMaker object(dynamic&&, dynamic&&);
+  static ObjectMaker object(dynamic const&, dynamic&&);
+  static ObjectMaker object(dynamic&&, dynamic const&);
+  static ObjectMaker object(dynamic const&, dynamic const&);
 
   /*
    * String compatibility constructors.

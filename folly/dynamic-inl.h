@@ -197,9 +197,22 @@ private:
   dynamic val_;
 };
 
-template<class... Args>
-inline dynamic::ObjectMaker dynamic::object(Args&&... args) {
-  return dynamic::ObjectMaker(std::forward<Args>(args)...);
+// This looks like a case for perfect forwarding, but our use of
+// std::initializer_list for constructing dynamic arrays makes it less
+// functional than doing this manually.
+inline dynamic::ObjectMaker dynamic::object() { return ObjectMaker(); }
+inline dynamic::ObjectMaker dynamic::object(dynamic&& a, dynamic&& b) {
+  return ObjectMaker(std::move(a), std::move(b));
+}
+inline dynamic::ObjectMaker dynamic::object(dynamic const& a, dynamic&& b) {
+  return ObjectMaker(a, std::move(b));
+}
+inline dynamic::ObjectMaker dynamic::object(dynamic&& a, dynamic const& b) {
+  return ObjectMaker(std::move(a), b);
+}
+inline dynamic::ObjectMaker
+dynamic::object(dynamic const& a, dynamic const& b) {
+  return ObjectMaker(a, b);
 }
 
 //////////////////////////////////////////////////////////////////////
