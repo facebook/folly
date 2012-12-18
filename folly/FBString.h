@@ -274,7 +274,7 @@ public:
   fbstring_core() {
     // Only initialize the tag, will set the MSBs (i.e. the small
     // string size) to zero too
-    ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - 1));
+    ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
     // or: setSmallSize(0);
     writeTerminator();
     assert(category() == isSmall && size() == 0);

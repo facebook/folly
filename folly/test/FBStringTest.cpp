@@ -993,6 +993,11 @@ TEST(FBString, testFixedBugs) {
       cp += "bb";
     }
   }
+  {
+    // D661622
+    basic_fbstring<wchar_t> s;
+    EXPECT_EQ(0, s.size());
+  }
 }
 
 
