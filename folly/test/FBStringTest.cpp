@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 
 #include "folly/Foreach.h"
 #include "folly/Random.h"
+#include "folly/Conv.h"
 
 using namespace std;
 using namespace folly;
@@ -58,9 +59,9 @@ void randomString(String* toFill, unsigned int maxSize = 1000) {
 
 template <class String, class Integral>
 void Num2String(String& str, Integral n) {
-  str.resize(30, '\0');
-  sprintf(&str[0], "%lu", static_cast<unsigned long>(n));
-  str.resize(strlen(str.c_str()));
+
+  std::string tmp = folly::to<std::string>(n);
+  str = String(tmp.begin(), tmp.end());
 }
 
 std::list<char> RandomList(unsigned int maxSize) {
@@ -91,9 +92,9 @@ template <class String> void clause_21_3_1_c(String & test) {
   const size_t
     pos = random(0, test.size()),
     n = random(0, test.size() - pos);
-  std::string before(test.data(), test.size());
+  String before(test.data(), test.size());
   String s(test.c_str() + pos, n);
-  std::string after(test.data(), test.size());
+  String after(test.data(), test.size());
   EXPECT_EQ(before, after);
 
   // Constructor from char*, char*
@@ -118,7 +119,7 @@ template <class String> void clause_21_3_1_c(String & test) {
   wchar_t t[20];
   t[0] = 'a';
   t[1] = 'b';
-  String s5(t, t + 2);;
+  fbstring s5(t, t + 2);;
   EXPECT_EQ("ab", s5);
 
   test = s;
@@ -175,8 +176,10 @@ template <class String> void clause_21_3_3(String & test) {
   EXPECT_LE(test.capacity(), test.max_size());
   EXPECT_LE(test.size(), test.capacity());
   // exercise empty
-  if (test.empty()) test = "empty";
-  else test = "not empty";
+  string empty("empty");
+  string notempty("not empty");
+  if (test.empty()) test = String(empty.begin(), empty.end());
+  else test = String(notempty.begin(), notempty.end());
 }
 
 template <class String> void clause_21_3_4(String & test) {
@@ -192,7 +195,8 @@ template <class String> void clause_21_3_5_a(String & test) {
   // 21.3.5 modifiers (+=)
   String test1;
   randomString(&test1);
-  assert(test1.size() == strlen(test1.c_str()));
+  assert(test1.size() == char_traits
+      <typename String::value_type>::length(test1.c_str()));
   auto len = test.size();
   test += test1;
   EXPECT_EQ(test.size(), test1.size() + len);
@@ -206,20 +210,24 @@ template <class String> void clause_21_3_5_a(String & test) {
   len = test.size();
   EXPECT_EQ(memcmp(sz, dt, len), 0);
   String copy(test.data(), test.size());
-  EXPECT_EQ(strlen(test.c_str()), len);
+  EXPECT_EQ(char_traits
+      <typename String::value_type>::length(test.c_str()), len);
   test += test;
   //test.append(test);
   EXPECT_EQ(test.size(), 2 * len);
-  EXPECT_EQ(strlen(test.c_str()), 2 * len);
+  EXPECT_EQ(char_traits
+      <typename String::value_type>::length(test.c_str()), 2 * len);
   FOR_EACH_RANGE (i, 0, len) {
     EXPECT_EQ(test[i], copy[i]);
     EXPECT_EQ(test[i], test[len + i]);
   }
   len = test.size();
-  EXPECT_EQ(strlen(test.c_str()), len);
+  EXPECT_EQ(char_traits
+      <typename String::value_type>::length(test.c_str()), len);
   // more aliasing
   auto const pos = random(0, test.size());
-  EXPECT_EQ(strlen(test.c_str() + pos), len - pos);
+  EXPECT_EQ(char_traits
+      <typename String::value_type>::length(test.c_str() + pos), len - pos);
   if (avoidAliasing) {
     String addMe(test.c_str() + pos);
     EXPECT_EQ(addMe.size(), len - pos);
@@ -757,10 +765,10 @@ template <class String> void clause_21_3_7_k(String & test) {
 
 // Numbering here is from C++11
 template <class String> void clause_21_4_8_9_a(String & test) {
-  stringstream s("asd asdfjhuhdf    asdfasdf\tasdsdf");
+  basic_stringstream<typename String::value_type> stst(test.c_str());
   String str;
-  while (s) {
-    s >> str;
+  while (stst) {
+    stst >> str;
     test += str + test;
   }
 }
@@ -768,13 +776,17 @@ template <class String> void clause_21_4_8_9_a(String & test) {
 TEST(FBString, testAllClauses) {
   EXPECT_TRUE(1) << "Starting with seed: " << seed;
   std::string r;
+  std::wstring wr;
   folly::fbstring c;
+  folly::basic_fbstring<wchar_t> wc;
 #define TEST_CLAUSE(x)                                              \
   do {                                                              \
       if (1) {} else EXPECT_TRUE(1) << "Testing clause " << #x;     \
       randomString(&r);                                             \
       c = r;                                                        \
       EXPECT_EQ(c, r);                                              \
+      wr = std::wstring(r.begin(), r.end());                        \
+      wc = folly::basic_fbstring<wchar_t>(wr.c_str());              \
       auto localSeed = seed + count;                                \
       rng = RandomT(localSeed);                                     \
       clause_##x(r);                                                \
@@ -784,6 +796,16 @@ TEST(FBString, testAllClauses) {
         << "Lengths: " << r.size() << " vs. " << c.size()           \
         << "\nReference: '" << r << "'"                             \
         << "\nActual:    '" << c.data()[0] << "'";                  \
+      rng = RandomT(localSeed);                                     \
+      clause_##x(wc);                                               \
+      int wret = wcslen(wc.c_str());                                \
+      char mb[wret+1];                                              \
+      int ret = wcstombs(mb, wc.c_str(), sizeof(mb));               \
+      if (ret == wret) mb[wret] = '\0';                             \
+      const char *mc = c.c_str();                                   \
+      std::string one(mb);                                          \
+      std::string two(mc);                                          \
+      EXPECT_EQ(one, two);                                          \
     } while (++count % 100 != 0)
 
   int count = 0;
@@ -995,7 +1017,7 @@ TEST(FBString, testFixedBugs) {
   }
   {
     // D661622
-    basic_fbstring<wchar_t> s;
+    folly::basic_fbstring<wchar_t> s;
     EXPECT_EQ(0, s.size());
   }
 }
