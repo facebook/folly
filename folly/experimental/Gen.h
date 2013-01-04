@@ -81,7 +81,7 @@ class GenImpl;
 template<class Self>
 class Operator;
 
-class EmptySequence : std::exception {
+class EmptySequence : public std::exception {
 public:
   virtual const char* what() const noexcept {
     return "This operation cannot be called on an empty sequence";
