@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,9 +62,10 @@ BENCHMARK_DRAW_LINE();
 
 BENCHMARK(FindFirstOfRange, n) {
   StringPiece haystack(str);
-  folly::StringPiece needle("ab");
+  folly::StringPiece needles("bc");
+  DCHECK_EQ(haystack.size() - 1, haystack.find_first_of(needles)); // it works!
   FOR_EACH_RANGE (i, 0, n) {
-    doNotOptimizeAway(haystack.find_first_of(needle));
+    doNotOptimizeAway(haystack.find_first_of(needles));
     char x = haystack[0];
     doNotOptimizeAway(&x);
   }
@@ -72,10 +73,11 @@ BENCHMARK(FindFirstOfRange, n) {
 
 BENCHMARK(FindFirstOfOffsetRange, n) {
   StringPiece haystack(str);
-  folly::StringPiece needle("ab");
+  folly::StringPiece needles("bc");
+  DCHECK_EQ(haystack.size() - 1, haystack.find_first_of(needles, 1)); // works!
   FOR_EACH_RANGE (i, 0, n) {
-    size_t pos = i / 2; // not a constant to prevent optimization
-    doNotOptimizeAway(haystack.find_first_of(needle, pos));
+    size_t pos = i % 2; // not a constant to prevent optimization
+    doNotOptimizeAway(haystack.find_first_of(needles, pos));
     char x = haystack[0];
     doNotOptimizeAway(&x);
   }
@@ -84,7 +86,7 @@ BENCHMARK(FindFirstOfOffsetRange, n) {
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  for (int len : {10, 256, 10*1024, 10*1024*1024}) {
+  for (int len : {1, 10, 256, 10*1024, 10*1024*1024}) {
     initStr(len);
     runBenchmarks();
   }
