@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,22 @@
 #ifndef FOLLY_STLALLOCATOR_H_
 #define FOLLY_STLALLOCATOR_H_
 
+#include "folly/Traits.h"
+
 #include <memory>
+#include <limits>
+#include <utility>
+#include <exception>
+#include <stdexcept>
+
+#include <cstddef>
 
 namespace folly {
 
 /**
- * Wrap a simple allocator into a STL-compliant allocator.
+ * Wrap a SimpleAllocator into a STL-compliant allocator.
  *
- * The simple allocator must provide two methods:
+ * The SimpleAllocator must provide two methods:
  *    void* allocate(size_t size);
  *    void deallocate(void* ptr, size_t size);
  * which, respectively, allocate a block of size bytes (aligned to the maximum
@@ -45,6 +53,8 @@ namespace folly {
  *     free(p);
  *   }
  * };
+ *
+ * author: Tudor Bosman <tudorb@fb.com>
  */
 
 // This would be so much simpler with std::allocator_traits, but gcc 4.6.2
@@ -128,7 +138,126 @@ class StlAllocator {
   Alloc* alloc_;
 };
 
+/*
+ * Helper classes/functions for creating a unique_ptr using a custom allocator
+ *
+ * @author: Marcelo Juchem <marcelo@fb.com>
+ */
+
+// A deleter implementation based on std::default_delete,
+// which uses a custom allocator to free memory
+template <typename Allocator>
+class allocator_delete {
+  typedef typename std::remove_reference<Allocator>::type allocator_type;
+
+public:
+  allocator_delete() = default;
+
+  explicit allocator_delete(const allocator_type& allocator):
+    allocator_(allocator)
+  {}
+
+  explicit allocator_delete(allocator_type&& allocator):
+    allocator_(std::move(allocator))
+  {}
+
+  template <typename U>
+  allocator_delete(const allocator_delete<U>& other):
+    allocator_(other.get_allocator())
+  {}
+
+  allocator_type& get_allocator() const {
+    return allocator_;
+  }
+
+  void operator()(typename allocator_type::pointer p) const {
+    if (!p) {
+      return;
+    }
+
+    allocator_.destroy(p);
+    allocator_.deallocate(p, 1);
+  }
+
+private:
+  mutable allocator_type allocator_;
+};
+
+template <typename T, typename Allocator>
+class is_simple_allocator {
+  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(has_destroy, destroy);
+
+  typedef typename std::remove_const<
+    typename std::remove_reference<Allocator>::type
+  >::type allocator;
+  typedef T value_type;
+  typedef value_type* pointer;
+
+public:
+  constexpr static bool value = !has_destroy<allocator, void(pointer)>::value
+    && !has_destroy<allocator, void(void*)>::value;
+};
+
+template <typename T, typename Allocator>
+typename std::enable_if<
+  is_simple_allocator<T, Allocator>::value,
+  folly::StlAllocator<typename std::remove_reference<Allocator>::type, T>
+>::type make_stl_allocator(Allocator&& allocator) {
+  return folly::StlAllocator<
+    typename std::remove_reference<Allocator>::type, T
+  >(&allocator);
+}
+
+template <typename T, typename Allocator>
+typename std::enable_if<
+  !is_simple_allocator<T, Allocator>::value,
+  typename std::remove_reference<Allocator>::type
+>::type make_stl_allocator(Allocator&& allocator) {
+  return std::move(allocator);
+}
+
+template <typename T, typename Allocator>
+struct AllocatorUniquePtr {
+  typedef std::unique_ptr<T,
+    folly::allocator_delete<
+      typename std::conditional<
+        is_simple_allocator<T, Allocator>::value,
+        folly::StlAllocator<typename std::remove_reference<Allocator>::type, T>,
+        typename std::remove_reference<Allocator>::type
+      >::type
+    >
+  > type;
+};
+
+template <typename T, typename Allocator, typename ...Args>
+typename AllocatorUniquePtr<T, Allocator>::type allocate_unique(
+  Allocator&& allocator, Args&&... args
+) {
+  auto stlAllocator = folly::make_stl_allocator<T>(
+    std::forward<Allocator>(allocator)
+  );
+  auto p = stlAllocator.allocate(1);
+
+  try {
+    stlAllocator.construct(p, std::forward<Args>(args)...);
+
+    return {p,
+      folly::allocator_delete<decltype(stlAllocator)>(std::move(stlAllocator))
+    };
+  } catch (...) {
+    stlAllocator.deallocate(p, 1);
+    throw;
+  }
+}
+
+template <typename T, typename Allocator, typename ...Args>
+std::shared_ptr<T> allocate_shared(Allocator&& allocator, Args&&... args) {
+  return std::allocate_shared<T>(
+    folly::make_stl_allocator<T>(std::forward<Allocator>(allocator)),
+    std::forward<Args>(args)...
+  );
+}
+
 }  // namespace folly
 
 #endif /* FOLLY_STLALLOCATOR_H_ */
-
