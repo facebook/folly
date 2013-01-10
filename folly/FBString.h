@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,11 +87,15 @@
 #include <cassert>
 
 #include "folly/Traits.h"
-#include "folly/Likely.h"
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
 
 #endif
+
+// We defined these here rather than including Likely.h to avoid
+// redefinition errors when fbstring is imported into libstdc++.
+#define FBSTRING_LIKELY(x)   (__builtin_expect((x), 1))
+#define FBSTRING_UNLIKELY(x) (__builtin_expect((x), 0))
 
 #include <atomic>
 #include <limits>
@@ -1259,7 +1263,7 @@ public:
     Invariant checker(*this);
     (void) checker;
 #endif
-    if (UNLIKELY(!n)) {
+    if (FBSTRING_UNLIKELY(!n)) {
       // Unlikely but must be done
       return *this;
     }
@@ -1272,7 +1276,7 @@ public:
     // over pointers. See discussion at http://goo.gl/Cy2ya for more
     // info.
     std::less_equal<const value_type*> le;
-    if (UNLIKELY(le(oldData, s) && !le(oldData + oldSize, s))) {
+    if (FBSTRING_UNLIKELY(le(oldData, s) && !le(oldData + oldSize, s))) {
       assert(le(s + n, oldData + oldSize));
       const size_type offset = s - oldData;
       store_.reserve(oldSize + n);
@@ -2322,5 +2326,8 @@ struct hash< ::folly::fbstring> {
 }
 
 #endif // _LIBSTDCXX_FBSTRING
+
+#undef FBSTRING_LIKELY
+#undef FBSTRING_UNLIKELY
 
 #endif // FOLLY_BASE_FBSTRING_H_
