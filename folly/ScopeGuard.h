@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 #include <cstddef>
 #include <functional>
 #include <new>
-#include <glog/logging.h>
 
 #include "folly/Preprocessor.h"
 
@@ -108,16 +107,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 private:
   void* operator new(size_t) = delete;
 
-  void execute() noexcept {
-    try {
-      function_();
-    } catch (const std::exception& ex) {
-      LOG(FATAL) << "ScopeGuard cleanup function threw a " <<
-        typeid(ex).name() << "exception: " << ex.what();
-    } catch (...) {
-      LOG(FATAL) << "ScopeGuard cleanup function threw a non-exception object";
-    }
-  }
+  void execute() noexcept { function_(); }
 
   FunctionType function_;
 };

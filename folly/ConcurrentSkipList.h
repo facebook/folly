@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -182,9 +182,7 @@ class ConcurrentSkipList {
   //===================================================================
 
   ~ConcurrentSkipList() {
-    LOG_IF(FATAL, recycler_.refs() > 0)
-      << "number of accessors is not 0, " << recycler_.refs() << " instead!"
-      << " This shouldn't have happened!";
+    CHECK_EQ(recycler_.refs(), 0);
     while (NodeType* current = head_.load(std::memory_order_relaxed)) {
       NodeType* tmp = current->skip(0);
       NodeType::destroy(current);
