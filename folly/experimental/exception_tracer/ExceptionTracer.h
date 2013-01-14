@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,9 @@
 #ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
 #define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
 
-#include <vector>
 #include <iostream>
+#include <typeinfo>
+#include <vector>
 
 namespace folly {
 namespace exception_tracer {

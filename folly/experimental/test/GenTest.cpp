@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -251,8 +251,8 @@ TEST(Gen, OrderTake) {
 
 TEST(Gen, MinBy) {
   EXPECT_EQ(7, seq(1, 10)
-             | minBy([](int i) {
-                 auto d = i - 6.8;
+             | minBy([](int i) -> double {
+                 double d = i - 6.8;
                  return d * d;
                }));
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 // @author Nicholas Ormrod <njormrod@fb.com>
 
 #include "folly/DynamicConverter.h"
+
+#include <algorithm>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include "folly/Benchmark.h"
@@ -143,6 +145,7 @@ TEST(DynamicConverter, map_keyed_by_string) {
 TEST(DynamicConverter, map_to_vector_of_pairs) {
   dynamic d1 = dynamic::object("1", "one")("2", "two");
   auto i1 = convertTo<std::vector<std::pair<std::string, std::string>>>(d1);
+  std::sort(i1.begin(), i1.end());
   decltype(i1) i1b = { { "1", "one" }, { "2", "two" } };
   EXPECT_EQ(i1, i1b);
 }

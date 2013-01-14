@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 #include <dlfcn.h>
 #include <pthread.h>
@@ -45,19 +44,22 @@ __thread StackTraceStack* caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
-typedef void (*CxaThrowType)(void*, std::type_info*, void (*)(void));
+typedef void (*CxaThrowType)(void*, std::type_info*, void (*)(void))
+  __attribute__((noreturn));
 typedef void* (*CxaBeginCatchType)(void*);
-typedef void (*CxaRethrowType)(void);
+typedef void (*CxaRethrowType)(void)
+  __attribute__((noreturn));
 typedef void (*CxaEndCatchType)(void);
 
-CxaThrowType orig_cxa_throw __attribute__((noreturn));
+CxaThrowType orig_cxa_throw;
 CxaBeginCatchType orig_cxa_begin_catch;
-CxaRethrowType orig_cxa_rethrow __attribute__((noreturn));
+CxaRethrowType orig_cxa_rethrow;
 CxaEndCatchType orig_cxa_end_catch;
 }  // extern "C"
 
-typedef void (*RethrowExceptionType)(std::exception_ptr);
-RethrowExceptionType orig_rethrow_exception __attribute__((noreturn));
+typedef void (*RethrowExceptionType)(std::exception_ptr)
+  __attribute__((noreturn));
+RethrowExceptionType orig_rethrow_exception;
 
 void initialize() {
   orig_cxa_throw = (CxaThrowType)dlsym(RTLD_NEXT, "__cxa_throw");

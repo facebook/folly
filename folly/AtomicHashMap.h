@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -394,7 +394,7 @@ class AtomicHashMap : boost::noncopyable {
 
   SimpleRetT findInternal(const KeyT k) const;
 
-  SimpleRetT findAtInternal(const uint32_t idx) const;
+  SimpleRetT findAtInternal(uint32_t idx) const;
 
   std::atomic<SubMap*> subMaps_[kNumSubMaps_];
   std::atomic<uint32_t> numMapsAllocated_;
