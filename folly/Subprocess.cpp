@@ -442,12 +442,6 @@ void Subprocess::sendSignal(int signal) {
 }
 
 namespace {
-void setNonBlocking(int fd) {
-  int flags = ::fcntl(fd, F_GETFL);
-  checkUnixError(flags, "fcntl");
-  int r = ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-  checkUnixError(r, "fcntl");
-}
 
 std::pair<const uint8_t*, size_t> queueFront(const IOBufQueue& queue) {
   auto* p = queue.front();
@@ -544,7 +538,7 @@ std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
     IOBufQueue data) {
   std::pair<IOBufQueue, IOBufQueue> out;
 
-  auto readCallback = [&] (int pfd, int cfd) {
+  auto readCallback = [&] (int pfd, int cfd) -> bool {
     if (cfd == 1 && flags.readStdout_) {
       return handleRead(pfd, out.first);
     } else if (cfd == 2 && flags.readStderr_) {
@@ -556,7 +550,7 @@ std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
     }
   };
 
-  auto writeCallback = [&] (int pfd, int cfd) {
+  auto writeCallback = [&] (int pfd, int cfd) -> bool {
     if (cfd == 0 && flags.writeStdin_) {
       return handleWrite(pfd, data);
     } else {

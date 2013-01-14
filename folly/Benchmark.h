@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,7 +185,7 @@ typename std::enable_if<
   == 2
 >::type
 addBenchmark(const char* file, const char* name, Lambda&& lambda) {
-  auto execute = [=](unsigned int times) {
+  auto execute = [=](unsigned int times) -> uint64_t {
     BenchmarkSuspender::nsSpent = 0;
     timespec start, end;
 

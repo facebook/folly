@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "folly/stats/BucketedTimeSeries.h"
 #include "folly/stats/BucketedTimeSeries-defs.h"
 
@@ -475,7 +476,7 @@ TEST(BucketedTimeSeries, forEachBucket) {
 
     vector<BucketInfo> info;
     auto fn = [&](const Bucket& bucket, seconds bucketStart,
-                  seconds bucketEnd) {
+                  seconds bucketEnd) -> bool {
       info.emplace_back(&bucket, bucketStart, bucketEnd);
       return true;
     };

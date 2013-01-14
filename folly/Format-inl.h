@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,9 @@ const size_t kMaxBinaryLength = 8 * sizeof(uintmax_t);
 template <class Uint>
 size_t uintToHex(char* buffer, size_t bufLen, Uint v,
                  const char (&repr)[256][2]) {
-  for (; v >= 256; v >>= 8) {
+  // 'v >>= 7, v >>= 1' is no more than a work around to get rid of shift size
+  // warning when Uint = uint8_t (it's false as v >= 256 implies sizeof(v) > 1).
+  for (; v >= 256; v >>= 7, v >>= 1) {
     auto b = v & 0xff;
     bufLen -= 2;
     buffer[bufLen] = repr[b][0];
@@ -85,7 +87,9 @@ inline size_t uintToHexUpper(char* buffer, size_t bufLen, Uint v) {
 template <class Uint>
 size_t uintToOctal(char* buffer, size_t bufLen, Uint v) {
   auto& repr = formatOctal;
-  for (; v >= 512; v >>= 9) {
+  // 'v >>= 7, v >>= 2' is no more than a work around to get rid of shift size
+  // warning when Uint = uint8_t (it's false as v >= 512 implies sizeof(v) > 1).
+  for (; v >= 512; v >>= 7, v >>= 2) {
     auto b = v & 0x1ff;
     bufLen -= 3;
     buffer[bufLen] = repr[b][0];
@@ -117,7 +121,7 @@ size_t uintToBinary(char* buffer, size_t bufLen, Uint v) {
     buffer[--bufLen] = '0';
     return bufLen;
   }
-  for (; v; v >>= 8) {
+  for (; v; v >>= 7, v >>= 1) {
     auto b = v & 0xff;
     bufLen -= 8;
     memcpy(buffer + bufLen, &(repr[b][0]), 8);

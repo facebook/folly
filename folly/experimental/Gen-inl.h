@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -175,7 +175,7 @@ class GenImpl : public FBounded<Self> {
    */
   template<class Body>
   void foreach(Body&& body) const {
-    this->self().apply([&](Value value) {
+    this->self().apply([&](Value value) -> bool {
         body(std::forward<Value>(value));
         return true;
       });
@@ -664,7 +664,7 @@ class Until : public Operator<Until<Predicate>> {
       public GenImpl<Result, Generator<Value, Source, Result>> {
     Source source_;
     Predicate pred_;
-  public:
+   public:
     explicit Generator(Source source, const Predicate& pred)
       : source_(std::move(source)), pred_(pred) {}
 
@@ -703,7 +703,7 @@ class Until : public Operator<Until<Predicate>> {
  */
 class Take : public Operator<Take> {
   size_t count_;
-public:
+ public:
   explicit Take(size_t count)
     : count_(count) {}
 
@@ -756,7 +756,7 @@ public:
  */
 class Skip : public Operator<Skip> {
   size_t count_;
-public:
+ public:
   explicit Skip(size_t count)
     : count_(count) {}
 
@@ -766,7 +766,7 @@ public:
       public GenImpl<Value, Generator<Value, Source>> {
     Source source_;
     size_t count_;
-  public:
+   public:
     explicit Generator(Source source, size_t count)
       : source_(std::move(source)) , count_(count) {}
 
@@ -835,8 +835,8 @@ class Order : public Operator<Order<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  Order(const Selector& selector = Selector(),
-        const Comparer& comparer = Comparer())
+  explicit Order(const Selector& selector = Selector(),
+                 const Comparer& comparer = Comparer())
     : selector_(selector) , comparer_(comparer) {}
 
   template<class Value,
@@ -933,11 +933,11 @@ template<class First,
 class Composed : public Operator<Composed<First, Second>> {
   First first_;
   Second second_;
-  public:
-    Composed() {}
-    Composed(First first, Second second)
-      : first_(std::move(first))
-      , second_(std::move(second)) {}
+ public:
+  Composed() {}
+  Composed(First first, Second second)
+    : first_(std::move(first))
+    , second_(std::move(second)) {}
 
   template<class Source,
            class Value,
@@ -1007,6 +1007,8 @@ class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
  */
 class First : public Operator<First> {
  public:
+  First() { }
+
   template<class Source,
            class Value,
            class StorageType = typename std::decay<Value>::type>
@@ -1033,6 +1035,8 @@ class First : public Operator<First> {
  */
 class Any : public Operator<Any> {
  public:
+  Any() { }
+
   template<class Source,
            class Value>
   bool compose(const GenImpl<Value, Source>& source) const {
@@ -1061,7 +1065,7 @@ template<class Reducer>
 class Reduce : public Operator<Reduce<Reducer>> {
   Reducer reducer_;
  public:
-  Reduce(const Reducer& reducer)
+  explicit Reduce(const Reducer& reducer)
     : reducer_(reducer)
   {}
 
@@ -1093,6 +1097,8 @@ class Reduce : public Operator<Reduce<Reducer>> {
  */
 class Count : public Operator<Count> {
  public:
+  Count() { }
+
   template<class Source,
            class Value>
   size_t compose(const GenImpl<Value, Source>& source) const {
@@ -1112,6 +1118,8 @@ class Count : public Operator<Count> {
  */
 class Sum : public Operator<Sum> {
  public:
+  Sum() { }
+
   template<class Source,
            class Value,
            class StorageType = typename std::decay<Value>::type>
@@ -1141,8 +1149,8 @@ class Min : public Operator<Min<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  Min(const Selector& selector = Selector(),
-      const Comparer& comparer = Comparer())
+  explicit Min(const Selector& selector = Selector(),
+               const Comparer& comparer = Comparer())
     : selector_(selector)
     , comparer_(comparer)
   {}
@@ -1211,6 +1219,8 @@ class Append : public Operator<Append<Collection>> {
 template<class Collection>
 class Collect : public Operator<Collect<Collection>> {
  public:
+  Collect() { }
+
   template<class Value,
            class Source,
            class StorageType = typename std::decay<Value>::type>
@@ -1243,6 +1253,8 @@ template<template<class, class> class Container,
          template<class> class Allocator>
 class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
  public:
+  CollectTemplate() { }
+
   template<class Value,
            class Source,
            class StorageType = typename std::decay<Value>::type,
@@ -1255,6 +1267,7 @@ class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
     return collection;
   }
 };
+
 /**
  * Concat - For flattening generators of generators.
  *
@@ -1272,14 +1285,16 @@ class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
  *     | as<std::set>();
  */
 class Concat : public Operator<Concat> {
-public:
+ public:
+  Concat() { }
+
   template<class Inner,
            class Source,
            class InnerValue = typename std::decay<Inner>::type::ValueType>
   class Generator :
       public GenImpl<InnerValue, Generator<Inner, Source, InnerValue>> {
     Source source_;
-  public:
+   public:
     explicit Generator(Source source)
       : source_(std::move(source)) {}
 
@@ -1326,7 +1341,9 @@ public:
  *     | as<std::set>();
  */
 class RangeConcat : public Operator<RangeConcat> {
-public:
+ public:
+  RangeConcat() { }
+
   template<class Source,
            class Range,
            class InnerValue = typename ValueTypeOfRange<Range>::RefType>
@@ -1348,7 +1365,7 @@ public:
 
     template<class Handler>
     bool apply(Handler&& handler) const {
-      return source_.apply([&](Range range) {
+      return source_.apply([&](Range range) -> bool {
           for (auto& value : range) {
             if (!handler(value)) {
               return false;
