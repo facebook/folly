@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #error This file may only be included from folly/experimental/StringGen.h
 #endif
 
-#include "folly/experimental/io/IOBuf.h"
+#include "folly/io/IOBuf.h"
 
 namespace folly {
 namespace gen {

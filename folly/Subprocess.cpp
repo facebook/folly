@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@
 #include "folly/Conv.h"
 #include "folly/ScopeGuard.h"
 #include "folly/String.h"
-#include "folly/experimental/io/Cursor.h"
+#include "folly/io/Cursor.h"
 
 extern char** environ;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@
 #include <boost/operators.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "folly/experimental/io/IOBufQueue.h"
+#include "folly/io/IOBufQueue.h"
 #include "folly/MapUtil.h"
 #include "folly/Portability.h"
 #include "folly/Range.h"
