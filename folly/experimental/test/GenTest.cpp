@@ -144,6 +144,25 @@ TEST(Gen, Filter) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, Contains) {
+  {
+    auto gen =
+        seq(1, 9)
+      | map(square);
+    EXPECT_TRUE(gen | contains(49));
+    EXPECT_FALSE(gen | contains(50));
+  }
+  {
+    auto gen =
+        seq(1) // infinite, to prove laziness
+      | map(square)
+      | eachTo<std::string>();
+
+    // std::string gen, const char* needle
+    EXPECT_TRUE(gen | contains("49"));
+  }
+}
+
 TEST(Gen, Take) {
   auto expected = vector<int>{1, 4, 9, 16};
   auto actual =

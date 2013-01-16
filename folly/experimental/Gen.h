@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -245,6 +245,9 @@ class Append;
 template<class Value>
 class GeneratorBuilder {};
 
+template<class Needle>
+class Contains;
+
 }
 
 /**
@@ -428,6 +431,12 @@ template<class Collection,
          class Append = detail::Append<Collection>>
 Append appendTo(Collection& collection) {
   return Append(&collection);
+}
+
+template<class Needle,
+         class Contains = detail::Contains<typename std::decay<Needle>::type>>
+Contains contains(Needle&& needle) {
+  return Contains(std::forward<Needle>(needle));
 }
 
 }} // folly::gen

@@ -1132,6 +1132,32 @@ class Sum : public Operator<Sum> {
 };
 
 /**
+ * Contains - For testing whether a value matching the given value is contained
+ * in a sequence.
+ *
+ * This type should be used through the 'contains' helper method, like:
+ *
+ *   bool contained = seq(1, 10) | map(square) | contains(49);
+ */
+template<class Needle>
+class Contains : public Operator<Contains<Needle>> {
+  Needle needle_;
+ public:
+  explicit Contains(Needle needle)
+    : needle_(std::move(needle))
+  {}
+
+  template<class Source,
+           class Value,
+           class StorageType = typename std::decay<Value>::type>
+  bool compose(const GenImpl<Value, Source>& source) const {
+    return !(source | [this](Value value) {
+        return !(needle_ == std::forward<Value>(value));
+      });
+  }
+};
+
+/**
  * Min - For a value which minimizes a key, where the key is determined by a
  * given selector, and compared by given comparer.
  *
