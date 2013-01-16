@@ -427,6 +427,7 @@ ProcessReturnCode Subprocess::wait() {
   checkUnixError(found, "waitpid");
   DCHECK_EQ(found, pid_);
   returnCode_ = ProcessReturnCode(status);
+  pid_ = -1;
   return returnCode_;
 }
 
@@ -439,6 +440,10 @@ void Subprocess::sendSignal(int signal) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   int r = ::kill(pid_, signal);
   checkUnixError(r, "kill");
+}
+
+pid_t Subprocess::pid() const {
+  return pid_;
 }
 
 namespace {
