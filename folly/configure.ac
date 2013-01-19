@@ -33,6 +33,7 @@ AC_CHECK_LIB([gflags],[getenv],[],[AC_MSG_ERROR(
 AX_BOOST_BASE
 AX_BOOST_THREAD
 AX_BOOST_REGEX
+AX_BOOST_SYSTEM
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -52,8 +53,8 @@ AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_C_VOLATILE
 AC_CHECK_TYPE([__int128],
-  [AC_DEFINE([HAVE_INT128_T], [1])],
-  [AC_DEFINE([HAVE_INT128_T], [0])])
+  [AC_DEFINE([HAVE_INT128_T], [1], [Define if __int128 exists])],
+  [AC_DEFINE([HAVE_INT128_T], [0], [Define if __int128 does not exist])])
 AC_CHECK_TYPES([ptrdiff_t])
 
 # Checks for library functions.
@@ -82,7 +83,7 @@ if test "$ac_cv_cxx_compile_cxx0x_gxx" = yes; then
 fi
 
 AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" -lstdc++ $CXX_FLAGS $BOOST_CPPFLAGS")
-AC_SUBST(AM_CXXFLAGS, "$BOOST_THREAD_LIB")
+AC_SUBST(AM_CXXFLAGS, "$BOOST_THREAD_LIB $BOOST_SYSTEM_LIB")
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
