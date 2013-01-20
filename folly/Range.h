@@ -127,26 +127,9 @@ public:
   Range() : b_(), e_() {
   }
 
-private:
-  static bool reachable(Iter b, Iter e, std::forward_iterator_tag) {
-    for (; b != e; ++b) {
-      LOG_EVERY_N(INFO, 100000) << __FILE__ ":" << __LINE__
-                                << " running reachability test ("
-                                << google::COUNTER << " iterations)...";
-    }
-    return true;
-  }
-
-  static bool reachable(Iter b, Iter e, std::random_access_iterator_tag) {
-    return b <= e;
-  }
-
 public:
   // Works for all iterators
-  Range(Iter start, Iter end)
-      : b_(start), e_(end) {
-    assert(reachable(b_, e_,
-                     typename std::iterator_traits<Iter>::iterator_category()));
+  Range(Iter start, Iter end) : b_(start), e_(end) {
   }
 
   // Works only for random-access iterators
