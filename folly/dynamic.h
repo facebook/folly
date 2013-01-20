@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -306,8 +306,8 @@ public:
    * AssociativeContainer-style find interface for objects.  Throws if
    * this is not an object.
    *
-   * Returns: end() if the key is not present, or an iterator pointing
-   * to the item.
+   * Returns: items().end() if the key is not present, or a
+   * const_item_iterator pointing to the item.
    */
   const_item_iterator find(dynamic const&) const;
 
