@@ -27,7 +27,7 @@
 namespace folly {
 
 /**
-Predicates that can be used with qfind and startsWith
+ * Predicates that can be used with qfind and startsWith
  */
 const AsciiCaseSensitive asciiCaseSensitive = AsciiCaseSensitive();
 const AsciiCaseInsensitive asciiCaseInsensitive = AsciiCaseInsensitive();
@@ -38,6 +38,7 @@ std::ostream& operator<<(std::ostream& os, const StringPiece& piece) {
 }
 
 namespace detail {
+
 size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
                                   const StringPiece& needles) {
   size_t best = haystack.size();
@@ -53,13 +54,15 @@ size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
   }
   return best;
 }
+
 }  // namespace detail
 
 namespace {
+
 // build sse4.2-optimized version even if -msse4.2 is not passed to GCC
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
                                      const StringPiece& needles)
-  __attribute__ ((__target__("sse4.2")));
+  __attribute__ ((__target__("sse4.2"), noinline));
 
 // helper method for case where needles.size() <= 16
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
@@ -85,7 +88,7 @@ size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
 
 size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
                                  const StringPiece& needles)
-  __attribute__ ((__target__("sse4.2")));
+  __attribute__ ((__target__("sse4.2"), noinline));
 
 size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
                                  const StringPiece& needles) {
@@ -141,9 +144,11 @@ class FastByteSet {
   uint8_t sparse_[256];
   uint8_t dense_[256];
 };
+
 }  // namespace
 
 namespace detail {
+
 size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
                                    const StringPiece& needles) {
   FastByteSet s;
@@ -178,15 +183,14 @@ size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
   return qfind_first_byte_of_memchr(haystack, needles);
 }
 
-// This function is called on startup to resolve folly::qfind_first_byte_of
-extern "C" Type_qfind_first_byte_of* qfind_first_byte_of_ifunc() {
-  return folly::CpuId().sse42() ? qfind_first_byte_of_sse42 :
-    qfind_first_byte_of_nosse;
-}
+auto const qfind_first_byte_of_fn =
+  folly::CpuId().sse42() ? qfind_first_byte_of_sse42
+                         : qfind_first_byte_of_nosse;
 
 size_t qfind_first_byte_of(const StringPiece& haystack,
-                           const StringPiece& needles)
-  __attribute__((ifunc("qfind_first_byte_of_ifunc")));
+                           const StringPiece& needles) {
+  return qfind_first_byte_of_fn(haystack, needles);
+}
 
 }  // namespace detail
 }  // namespace folly
