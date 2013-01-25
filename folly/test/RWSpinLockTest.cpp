@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,11 +200,10 @@ TEST(RWSpinLock, concurrent_holder_test) {
     while (!stop.load(std::memory_order_acquire)) {
       auto r = (uint32_t)(rand()) % 10;
       if (r < 3) {          // starts from write lock
-        RWSpinLock::ReadHolder rg(
-            RWSpinLock::UpgradedHolder ug(
-              RWSpinLock::WriteHolder(&lock)));
+        RWSpinLock::ReadHolder rg{
+          RWSpinLock::UpgradedHolder{
+            RWSpinLock::WriteHolder{&lock}}};
         writes.fetch_add(1, std::memory_order_acq_rel);;
-
       } else if (r < 6) {   // starts from upgrade lock
         RWSpinLock::UpgradedHolder ug(&lock);
         if (r < 4) {
@@ -214,9 +213,7 @@ TEST(RWSpinLock, concurrent_holder_test) {
         }
         upgrades.fetch_add(1, std::memory_order_acq_rel);;
       } else {
-        RWSpinLock::UpgradedHolder ug(
-            RWSpinLock::WriteHolder(
-              RWSpinLock::ReadHolder(&lock)));
+        RWSpinLock::ReadHolder rg{&lock};
         reads.fetch_add(1, std::memory_order_acq_rel);
       }
     }
