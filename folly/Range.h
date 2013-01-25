@@ -32,6 +32,7 @@
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits.hpp>
 #include <bits/c++config.h>
+#include "folly/CpuId.h"
 #include "folly/Traits.h"
 
 namespace folly {
@@ -593,8 +594,21 @@ size_t qfind(const Range<T>& haystack,
 }
 
 namespace detail {
-size_t qfind_first_byte_of(const StringPiece& haystack,
-                           const StringPiece& needles);
+
+size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
+                                 const StringPiece& needles);
+
+size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
+                                 const StringPiece& needles);
+
+inline size_t qfind_first_byte_of(const StringPiece& haystack,
+                                  const StringPiece& needles) {
+  static auto const qfind_first_byte_of_fn =
+    folly::CpuId().sse42() ? qfind_first_byte_of_sse42
+                           : qfind_first_byte_of_nosse;
+  return qfind_first_byte_of_fn(haystack, needles);
+}
+
 } // namespace detail
 
 template <class T, class Comp>

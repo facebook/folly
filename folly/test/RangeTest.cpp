@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-//
 // @author Kristina Holst (kholst@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
@@ -25,6 +24,7 @@
 #include "folly/Range.h"
 
 namespace folly { namespace detail {
+
 // declaration of functions in Range.cpp
 size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
                                   const StringPiece& needles);
@@ -32,9 +32,7 @@ size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
 size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
                                    const StringPiece& needles);
 
-size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
-                                 const StringPiece& needles);
-}}
+}}  // namespaces
 
 using namespace folly;
 using namespace std;

@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-//
 // @author Mark Rabkin (mrabkin@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
-//
 
 #include "folly/Range.h"
 
-#include "folly/CpuId.h"
 #include "folly/Likely.h"
 
 namespace folly {
@@ -86,39 +83,6 @@ size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
   return StringPiece::npos;
 }
 
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
-                                 const StringPiece& needles)
-  __attribute__ ((__target__("sse4.2"), noinline));
-
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
-                                 const StringPiece& needles) {
-  if (UNLIKELY(needles.empty() || haystack.empty())) {
-    return StringPiece::npos;
-  } else if (needles.size() <= 16) {
-    // we can save some unnecessary load instructions by optimizing for
-    // the common case of needles.size() <= 16
-    return qfind_first_byte_of_needles16(haystack, needles);
-  }
-
-  size_t index = haystack.size();
-  for (size_t i = 0; i < haystack.size(); i += 16) {
-    size_t b = 16;
-    auto arr1 = __builtin_ia32_loaddqu(haystack.data() + i);
-    for (size_t j = 0; j < needles.size(); j += 16) {
-      auto arr2 = __builtin_ia32_loaddqu(needles.data() + j);
-      auto index = __builtin_ia32_pcmpestri128(arr2, needles.size() - j,
-                                               arr1, haystack.size() - i, 0);
-      b = std::min<size_t>(index, b);
-    }
-    if (b < 16) {
-      return i + b;
-    }
-  };
-  return StringPiece::npos;
-}
-
-typedef decltype(qfind_first_byte_of_sse42) Type_qfind_first_byte_of;
-
 // Aho, Hopcroft, and Ullman refer to this trick in "The Design and Analysis
 // of Computer Algorithms" (1974), but the best description is here:
 // http://research.swtch.com/sparse
@@ -163,6 +127,37 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
   return StringPiece::npos;
 }
 
+size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
+                                 const StringPiece& needles)
+  __attribute__ ((__target__("sse4.2"), noinline));
+
+size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
+                                 const StringPiece& needles) {
+  if (UNLIKELY(needles.empty() || haystack.empty())) {
+    return StringPiece::npos;
+  } else if (needles.size() <= 16) {
+    // we can save some unnecessary load instructions by optimizing for
+    // the common case of needles.size() <= 16
+    return qfind_first_byte_of_needles16(haystack, needles);
+  }
+
+  size_t index = haystack.size();
+  for (size_t i = 0; i < haystack.size(); i += 16) {
+    size_t b = 16;
+    auto arr1 = __builtin_ia32_loaddqu(haystack.data() + i);
+    for (size_t j = 0; j < needles.size(); j += 16) {
+      auto arr2 = __builtin_ia32_loaddqu(needles.data() + j);
+      auto index = __builtin_ia32_pcmpestri128(arr2, needles.size() - j,
+                                               arr1, haystack.size() - i, 0);
+      b = std::min<size_t>(index, b);
+    }
+    if (b < 16) {
+      return i + b;
+    }
+  };
+  return StringPiece::npos;
+}
+
 size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
                                  const StringPiece& needles) {
   if (UNLIKELY(needles.empty() || haystack.empty())) {
@@ -181,15 +176,6 @@ size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
   }
 
   return qfind_first_byte_of_memchr(haystack, needles);
-}
-
-auto const qfind_first_byte_of_fn =
-  folly::CpuId().sse42() ? qfind_first_byte_of_sse42
-                         : qfind_first_byte_of_nosse;
-
-size_t qfind_first_byte_of(const StringPiece& haystack,
-                           const StringPiece& needles) {
-  return qfind_first_byte_of_fn(haystack, needles);
 }
 
 }  // namespace detail
