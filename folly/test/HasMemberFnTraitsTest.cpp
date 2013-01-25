@@ -65,10 +65,12 @@ struct CV {
   void test() const volatile;
 };
 
-#define LOG_VALUE(x) []() { \
-  LOG(INFO) << #x << ": " << boolalpha << (x); \
-  return x; \
-}()
+bool log_value(const char* what, bool result) {
+  LOG(INFO) << what << ": " << boolalpha << result;
+  return result;
+}
+
+#define LOG_VALUE(x) log_value(#x, x)
 
 TEST(HasMemberFnTraits, DirectMembers) {
   EXPECT_TRUE(LOG_VALUE((has_test<Foo, int()>::value)));

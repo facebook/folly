@@ -377,7 +377,7 @@ class FormatValue<
     UT uval;
     char sign;
     if (std::is_signed<T>::value) {
-      if (val_ < 0) {
+      if (folly::is_negative(val_)) {
         uval = static_cast<UT>(-val_);
         sign = '-';
       } else {

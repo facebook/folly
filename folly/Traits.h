@@ -277,6 +277,31 @@ struct IsOneOf<T, T1, Ts...> {
   enum { value = std::is_same<T, T1>::value || IsOneOf<T, Ts...>::value };
 };
 
+/*
+ * Complementary type traits to check for a negative value.
+ *
+ * if(x < 0) yields an error in clang for unsigned types when -Werror is used
+ */
+
+namespace detail {
+
+template <typename T, bool>
+struct is_negative_impl {
+  constexpr static bool check(T x) { return x < 0; }
+};
+
+template <typename T>
+struct is_negative_impl<T, false> {
+  constexpr static bool check(T x) { return false; }
+};
+
+} // namespace detail {
+
+template <typename T>
+constexpr bool is_negative(T x) {
+  return folly::detail::is_negative_impl<T, std::is_signed<T>::value>::check(x);
+}
+
 } // namespace folly
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string);

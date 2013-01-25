@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,10 +73,12 @@ const None none = nullptr;
  * gcc-4.7 warns about use of uninitialized memory around the use of storage_
  * even though this is explicitly initialized at each point.
  */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wpragmas"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif // __GNUC__
 
 template<class Value>
 class Optional : boost::totally_ordered<Optional<Value>,
