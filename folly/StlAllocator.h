@@ -190,7 +190,7 @@ class is_simple_allocator {
   typedef typename std::remove_const<
     typename std::remove_reference<Allocator>::type
   >::type allocator;
-  typedef T value_type;
+  typedef typename std::remove_reference<T>::type value_type;
   typedef value_type* pointer;
 
 public:
@@ -201,10 +201,14 @@ public:
 template <typename T, typename Allocator>
 typename std::enable_if<
   is_simple_allocator<T, Allocator>::value,
-  folly::StlAllocator<typename std::remove_reference<Allocator>::type, T>
+  folly::StlAllocator<
+    typename std::remove_reference<Allocator>::type,
+    typename std::remove_reference<T>::type
+  >
 >::type make_stl_allocator(Allocator&& allocator) {
   return folly::StlAllocator<
-    typename std::remove_reference<Allocator>::type, T
+    typename std::remove_reference<Allocator>::type,
+    typename std::remove_reference<T>::type
   >(&allocator);
 }
 
