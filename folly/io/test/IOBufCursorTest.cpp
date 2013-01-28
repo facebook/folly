@@ -326,6 +326,63 @@ TEST(IOBuf, Appender) {
   EXPECT_EQ("hello world", toString(*head));
 }
 
+TEST(IOBuf, CursorOperators) {
+  // Test operators on a single-item chain
+  {
+    std::unique_ptr<IOBuf> chain1(IOBuf::create(20));
+    chain1->append(10);
+
+    Cursor curs1(chain1.get());
+    EXPECT_EQ(0, curs1 - chain1.get());
+    curs1.skip(3);
+    EXPECT_EQ(3, curs1 - chain1.get());
+    curs1.skip(7);
+    EXPECT_EQ(10, curs1 - chain1.get());
+
+    Cursor curs2(chain1.get());
+    EXPECT_EQ(0, curs2 - chain1.get());
+    EXPECT_EQ(10, curs1 - curs2);
+    EXPECT_THROW(curs2 - curs1, std::out_of_range);
+  }
+
+  // Test cross-chain operations
+  {
+    std::unique_ptr<IOBuf> chain1(IOBuf::create(20));
+    chain1->append(10);
+    std::unique_ptr<IOBuf> chain2 = chain1->clone();
+
+    Cursor curs1(chain1.get());
+    Cursor curs2(chain2.get());
+    EXPECT_THROW(curs1 - curs2, std::out_of_range);
+    EXPECT_THROW(curs1 - chain2.get(), std::out_of_range);
+  }
+
+  // Test operations on multi-item chains
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(20));
+    chain->append(10);
+    chain->appendChain(chain->clone());
+    EXPECT_EQ(20, chain->computeChainDataLength());
+
+    Cursor curs1(chain.get());
+    curs1.skip(5);
+    Cursor curs2(chain.get());
+    curs2.skip(3);
+    EXPECT_EQ(2, curs1 - curs2);
+    EXPECT_EQ(5, curs1 - chain.get());
+    EXPECT_THROW(curs2 - curs1, std::out_of_range);
+
+    curs1.skip(7);
+    EXPECT_EQ(9, curs1 - curs2);
+    EXPECT_EQ(12, curs1 - chain.get());
+    EXPECT_THROW(curs2 - curs1, std::out_of_range);
+
+    curs2.skip(7);
+    EXPECT_EQ(2, curs1 - curs2);
+    EXPECT_THROW(curs2 - curs1, std::out_of_range);
+  }
+}
+
 int benchmark_size = 1000;
 unique_ptr<IOBuf> iobuf_benchmark;
 

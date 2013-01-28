@@ -216,6 +216,57 @@ class CursorBase {
     }
   }
 
+  /**
+   * Return the distance between two cursors.
+   */
+  size_t operator-(const CursorBase& other) const {
+    BufType *otherBuf = other.crtBuf_;
+    size_t len = 0;
+
+    if (otherBuf != crtBuf_) {
+      len += otherBuf->length() - other.offset_;
+
+      for (otherBuf = otherBuf->next();
+           otherBuf != crtBuf_ && otherBuf != other.buffer_;
+           otherBuf = otherBuf->next()) {
+        len += otherBuf->length();
+      }
+
+      if (otherBuf == other.buffer_) {
+        throw std::out_of_range("wrap-around");
+      }
+
+      len += offset_;
+    } else {
+      if (offset_ < other.offset_) {
+        throw std::out_of_range("underflow");
+      }
+
+      len += offset_ - other.offset_;
+    }
+
+    return len;
+  }
+
+  /**
+   * Return the distance from the given IOBuf to the this cursor.
+   */
+  size_t operator-(const BufType* buf) const {
+    size_t len = 0;
+
+    BufType *curBuf = buf;
+    while (curBuf != crtBuf_) {
+      len += curBuf->length();
+      curBuf = curBuf->next();
+      if (curBuf == buf || curBuf == buffer_) {
+        throw std::out_of_range("wrap-around");
+      }
+    }
+
+    len += offset_;
+    return len;
+  }
+
  protected:
   BufType* crtBuf_;
   size_t offset_;
