@@ -149,7 +149,7 @@ TYPED_TEST(RWSpinLockTest, Write_Holders) {
 TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
   typedef typename TestFixture::RWSpinLockType RWSpinLockType;
   RWSpinLockType l;
-  srand(time(NULL));
+  srand(time(nullptr));
 
   std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
@@ -188,7 +188,7 @@ TEST(RWSpinLock, lock_unlock_tests) {
 }
 
 TEST(RWSpinLock, concurrent_holder_test) {
-  srand(time(NULL));
+  srand(time(nullptr));
 
   folly::RWSpinLock lock;
   std::atomic<int64_t> reads(0);
