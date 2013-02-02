@@ -1042,8 +1042,8 @@ public:
   ~basic_fbstring() {
   }
 
-  basic_fbstring& operator=(const basic_fbstring & lhs) {
-    if (&lhs == this) {
+  basic_fbstring& operator=(const basic_fbstring& lhs) {
+    if (FBSTRING_UNLIKELY(&lhs == this)) {
       return *this;
     }
     auto const oldSize = size();
@@ -1066,6 +1066,8 @@ public:
 
   // Move assignment
   basic_fbstring& operator=(basic_fbstring&& goner) {
+    // Self move assignment is illegal, see 17.6.4.9 for the explanation
+    assert(&goner != this);
     // No need of this anymore
     this->~basic_fbstring();
     // Move the goner into this
