@@ -56,7 +56,7 @@
  * As an example, the 'lengths' generator (above) won't actually invoke the
  * provided lambda until values are needed:
  *
- *   auto lengthVector = lengths | asVector();
+ *   auto lengthVector = lengths | as<std::vector>();
  *   auto totalLength = lengths | sum;
  *
  * 'auto' is useful in here because the actual types of the generators objects
