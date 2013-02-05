@@ -32,9 +32,7 @@ AsyncIO::AsyncIO(size_t capacity, PollMode pollMode)
     pending_(0),
     capacity_(capacity),
     pollFd_(-1) {
-  if (UNLIKELY(capacity_ == 0)) {
-    throw std::out_of_range("AsyncIO: capacity must not be 0");
-  }
+  CHECK_GT(capacity_, 0);
   completed_.reserve(capacity_);
   if (pollMode == POLLABLE) {
     pollFd_ = eventfd(0, EFD_NONBLOCK);
@@ -100,12 +98,8 @@ void AsyncIO::initializeContext() {
 }
 
 void AsyncIO::submit(Op* op, iocb* cb) {
-  if (UNLIKELY(pending_ >= capacity_)) {
-    throw std::out_of_range("AsyncIO: too many pending requests");
-  }
-  if (UNLIKELY(op->state() != Op::UNINITIALIZED)) {
-    throw std::logic_error("AsyncIO: Invalid Op state in submit");
-  }
+  CHECK_EQ(op->state(), Op::UNINITIALIZED);
+  CHECK_LT(pending_, capacity_) << "too many pending requests";
   initializeContext();  // on demand
   cb->data = op;
   if (pollFd_ != -1) {
@@ -119,23 +113,14 @@ void AsyncIO::submit(Op* op, iocb* cb) {
 }
 
 Range<AsyncIO::Op**> AsyncIO::wait(size_t minRequests) {
-  if (UNLIKELY(!ctx_)) {
-    throw std::logic_error("AsyncIO: wait called with no requests");
-  }
-  if (UNLIKELY(pollFd_ != -1)) {
-    throw std::logic_error("AsyncIO: wait not allowed on pollable object");
-  }
+  CHECK(ctx_);
+  CHECK_EQ(pollFd_, -1) << "wait() only allowed on non-pollable object";
   return doWait(minRequests, pending_);
 }
 
 Range<AsyncIO::Op**> AsyncIO::pollCompleted() {
-  if (UNLIKELY(!ctx_)) {
-    throw std::logic_error("AsyncIO: pollCompleted called with no requests");
-  }
-  if (UNLIKELY(pollFd_ == -1)) {
-    throw std::logic_error(
-        "AsyncIO: pollCompleted not allowed on non-pollable object");
-  }
+  CHECK(ctx_);
+  CHECK_NE(pollFd_, -1) << "pollCompleted() only allowed on pollable object";
   uint64_t numEvents;
   // This sets the eventFd counter to 0, see
   // http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html
@@ -189,9 +174,7 @@ AsyncIO::Op::Op()
 }
 
 void AsyncIO::Op::reset() {
-  if (UNLIKELY(state_ == PENDING)) {
-    throw std::logic_error("AsyncIO: invalid state for reset");
-  }
+  CHECK_NE(state_, PENDING);
   state_ = UNINITIALIZED;
   result_ = -EINVAL;
 }
@@ -215,9 +198,7 @@ void AsyncIO::Op::complete(ssize_t result) {
 void AsyncIO::Op::onCompleted() { }  // default: do nothing
 
 ssize_t AsyncIO::Op::result() const {
-  if (UNLIKELY(state_ != COMPLETED)) {
-    throw std::logic_error("AsyncIO: Invalid Op state in result");
-  }
+  CHECK_EQ(state_, COMPLETED);
   return result_;
 }
 
