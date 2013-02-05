@@ -719,6 +719,41 @@ TEST(StringGen, Resplit) {
   }
 }
 
+template<typename F>
+void runUnsplitSuite(F fn) {
+  fn("hello, world");
+  fn("hello,world,goodbye");
+  fn(" ");
+  fn("");
+  fn(", ");
+  fn(", a, b,c");
+}
+
+TEST(StringGen, Unsplit) {
+
+  auto basicFn = [](const StringPiece& s) {
+    EXPECT_EQ(split(s, ',') | unsplit(','), s);
+  };
+
+  auto existingBuffer = [](const StringPiece& s) {
+    folly::fbstring buffer("asdf");
+    split(s, ',') | unsplit(',', &buffer);
+    auto expected = folly::to<folly::fbstring>(
+        "asdf", s.empty() ? "" : ",", s);
+    EXPECT_EQ(buffer, expected);
+  };
+
+  auto emptyBuffer = [](const StringPiece& s) {
+    std::string buffer;
+    split(s, ',') | unsplit(',', &buffer);
+    EXPECT_EQ(buffer, s);
+  };
+
+  runUnsplitSuite(basicFn);
+  runUnsplitSuite(existingBuffer);
+  runUnsplitSuite(emptyBuffer);
+}
+
 TEST(FileGen, ByLine) {
   auto collect = eachTo<std::string>() | as<vector>();
   test::TemporaryFile file("ByLine");

@@ -18,6 +18,8 @@
 #error This file may only be included from folly/experimental/StringGen.h
 #endif
 
+#include "folly/Conv.h"
+#include "folly/String.h"
 #include "folly/io/IOBuf.h"
 
 namespace folly {
@@ -151,8 +153,67 @@ class SplitStringSource : public GenImpl<StringPiece, SplitStringSource> {
   }
 };
 
+/**
+ * Unsplit - For joining tokens from a generator into a string.  This is
+ * the inverse of `split` above.
+ *
+ * This type is primarily used through the 'unsplit' function.
+ */
+template<class Delimiter,
+         class Output>
+class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
+  Delimiter delimiter_;
+ public:
+  Unsplit(const Delimiter& delimiter)
+    : delimiter_(delimiter) {
+  }
+
+  template<class Source,
+           class Value>
+  Output compose(const GenImpl<Value, Source>& source) const {
+    Output outputBuffer;
+    UnsplitBuffer<Delimiter, Output> unsplitter(delimiter_, &outputBuffer);
+    unsplitter.compose(source);
+    return outputBuffer;
+  }
+};
+
+/**
+ * UnsplitBuffer - For joining tokens from a generator into a string,
+ * and inserting them into a custom buffer.
+ *
+ * This type is primarily used through the 'unsplit' function.
+ */
+template<class Delimiter,
+         class OutputBuffer>
+class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
+  Delimiter delimiter_;
+  OutputBuffer* outputBuffer_;
+ public:
+  UnsplitBuffer(const Delimiter& delimiter, OutputBuffer* outputBuffer)
+    : delimiter_(delimiter)
+    , outputBuffer_(outputBuffer) {
+    CHECK(outputBuffer);
+  }
+
+  template<class Source,
+           class Value>
+  void compose(const GenImpl<Value, Source>& source) const {
+    // If the output buffer is empty, we skip inserting the delimiter for the
+    // first element.
+    bool skipDelim = outputBuffer_->empty();
+    source | [&](Value v) {
+      if (skipDelim) {
+        skipDelim = false;
+        toAppend(std::forward<Value>(v), outputBuffer_);
+      } else {
+        toAppend(delimiter_, std::forward<Value>(v), outputBuffer_);
+      }
+    };
+  }
+};
+
 
 }  // namespace detail
 }  // namespace gen
 }  // namespace folly
-
