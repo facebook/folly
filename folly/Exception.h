@@ -54,7 +54,7 @@ inline void checkKernelError(ssize_t ret, const char* msg) {
   }
 }
 
-// Check a traditional Uinx return code (-1 and sets errno on error), throw
+// Check a traditional Unix return code (-1 and sets errno on error), throw
 // on error.
 inline void checkUnixError(ssize_t ret, const char* msg) {
   if (UNLIKELY(ret == -1)) {

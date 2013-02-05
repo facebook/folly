@@ -114,13 +114,13 @@ TemporaryFile::~TemporaryFile() {
   }
 }
 
-TemporaryFile thisBinary(6 << 20);  // 6MiB
+TemporaryFile tempFile(6 << 20);  // 6MiB
 
 void testReadsSerially(const std::vector<TestSpec>& specs,
                        AsyncIO::PollMode pollMode) {
   AsyncIO aioReader(1, pollMode);
   AsyncIO::Op op;
-  int fd = ::open(thisBinary.path().c_str(), O_DIRECT | O_RDONLY);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   PCHECK(fd != -1);
   SCOPE_EXIT {
     ::close(fd);
@@ -147,7 +147,7 @@ void testReadsParallel(const std::vector<TestSpec>& specs,
   std::unique_ptr<AsyncIO::Op[]> ops(new AsyncIO::Op[specs.size()]);
   std::vector<std::unique_ptr<char[]>> bufs(specs.size());
 
-  int fd = ::open(thisBinary.path().c_str(), O_DIRECT | O_RDONLY);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   PCHECK(fd != -1);
   SCOPE_EXIT {
     ::close(fd);
@@ -269,7 +269,7 @@ TEST(AsyncIO, ManyAsyncDataPollable) {
 TEST(AsyncIO, NonBlockingWait) {
   AsyncIO aioReader(1, AsyncIO::NOT_POLLABLE);
   AsyncIO::Op op;
-  int fd = ::open(thisBinary.path().c_str(), O_DIRECT | O_RDONLY);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   PCHECK(fd != -1);
   SCOPE_EXIT {
     ::close(fd);

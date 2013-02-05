@@ -44,7 +44,7 @@ class AsyncIO : private boost::noncopyable {
   };
 
   /**
-   * Create an AsyncIO context capacble of holding at most 'capacity' pending
+   * Create an AsyncIO context capable of holding at most 'capacity' pending
    * requests at the same time.  As requests complete, others can be scheduled,
    * as long as this limit is not exceeded.
    *
@@ -53,7 +53,7 @@ class AsyncIO : private boost::noncopyable {
    *
    * If pollMode is POLLABLE, pollFd() will return a file descriptor that
    * can be passed to poll / epoll / select and will become readable when
-   * any IOs on this AioReader have completed.  If you do this, you must use
+   * any IOs on this AsyncIO have completed.  If you do this, you must use
    * pollCompleted() instead of wait() -- do not read from the pollFd()
    * file descriptor directly.
    */
