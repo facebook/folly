@@ -31,6 +31,7 @@
 #include <glog/logging.h>
 
 #include "folly/Conv.h"
+#include "folly/Exception.h"
 #include "folly/ScopeGuard.h"
 #include "folly/String.h"
 #include "folly/io/Cursor.h"
@@ -99,39 +100,6 @@ std::unique_ptr<const char*[]> cloneStrings(const std::vector<std::string>& s) {
   }
   d[s.size()] = nullptr;
   return d;
-}
-
-// Helper to throw std::system_error
-void throwSystemError(int err, const char* msg) __attribute__((noreturn));
-void throwSystemError(int err, const char* msg) {
-  throw std::system_error(err, std::system_category(), msg);
-}
-
-// Helper to throw std::system_error from errno
-void throwSystemError(const char* msg) __attribute__((noreturn));
-void throwSystemError(const char* msg) {
-  throwSystemError(errno, msg);
-}
-
-// Check a Posix return code (0 on success, error number on error), throw
-// on error.
-void checkPosixError(int err, const char* msg) {
-  if (err != 0) {
-    throwSystemError(err, msg);
-  }
-}
-
-// Check a traditional Uinx return code (-1 and sets errno on error), throw
-// on error.
-void checkUnixError(ssize_t ret, const char* msg) {
-  if (ret == -1) {
-    throwSystemError(msg);
-  }
-}
-void checkUnixError(ssize_t ret, int savedErrno, const char* msg) {
-  if (ret == -1) {
-    throwSystemError(savedErrno, msg);
-  }
 }
 
 // Check a wait() status, throw on non-successful
