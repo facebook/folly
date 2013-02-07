@@ -528,10 +528,10 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
  */
 template<class Predicate>
 class Map : public Operator<Map<Predicate>> {
-  Predicate predicate_;
+  Predicate pred_;
  public:
-  explicit Map(const Predicate& predicate = Predicate())
-    : predicate_(predicate)
+  explicit Map(const Predicate& pred = Predicate())
+    : pred_(pred)
   { }
 
   template<class Value,
@@ -566,14 +566,14 @@ class Map : public Operator<Map<Predicate>> {
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), predicate_);
+    return Gen(std::move(source.self()), pred_);
   }
 
   template<class Source,
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), predicate_);
+    return Gen(source.self(), pred_);
   }
 };
 
@@ -590,10 +590,10 @@ class Map : public Operator<Map<Predicate>> {
  */
 template<class Predicate>
 class Filter : public Operator<Filter<Predicate>> {
-  Predicate predicate_;
+  Predicate pred_;
  public:
-  explicit Filter(const Predicate& predicate)
-    : predicate_(predicate)
+  explicit Filter(const Predicate& pred = Predicate())
+    : pred_(pred)
   { }
 
   template<class Value,
@@ -629,14 +629,14 @@ class Filter : public Operator<Filter<Predicate>> {
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), predicate_);
+    return Gen(std::move(source.self()), pred_);
   }
 
   template<class Source,
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), predicate_);
+    return Gen(source.self(), pred_);
   }
 };
 
@@ -651,10 +651,10 @@ class Filter : public Operator<Filter<Predicate>> {
  */
 template<class Predicate>
 class Until : public Operator<Until<Predicate>> {
-  Predicate predicate_;
+  Predicate pred_;
  public:
-  explicit Until(const Predicate& predicate)
-    : predicate_(predicate)
+  explicit Until(const Predicate& pred = Predicate())
+    : pred_(pred)
   { }
 
   template<class Value,
@@ -681,14 +681,14 @@ class Until : public Operator<Until<Predicate>> {
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
-    return Gen(std::move(source.self()), predicate_);
+    return Gen(std::move(source.self()), pred_);
   }
 
   template<class Source,
            class Value,
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
-    return Gen(source.self(), predicate_);
+    return Gen(source.self(), pred_);
   }
 };
 
@@ -935,6 +935,7 @@ class Composed : public Operator<Composed<First, Second>> {
   Second second_;
  public:
   Composed() {}
+
   Composed(First first, Second second)
     : first_(std::move(first))
     , second_(std::move(second)) {}
@@ -1027,11 +1028,16 @@ class First : public Operator<First> {
 
 
 /**
- * Any - For determining whether any values are contained in a sequence.
+ * Any - For determining whether any values in a sequence satisfy a predicate.
  *
  * This type is primarily used through the 'any' static value, like:
  *
  *   bool any20xPrimes = seq(200, 210) | filter(isPrime) | any;
+ *
+ * Note that it may also be used like so:
+ *
+ *   bool any20xPrimes = seq(200, 210) | any(isPrime);
+ *
  */
 class Any : public Operator<Any> {
  public:
@@ -1046,6 +1052,50 @@ class Any : public Operator<Any> {
       return false;
     };
     return any;
+  }
+
+  /**
+   * Convenience function for use like:
+   *
+   *  bool found = gen | any([](int i) { return i * i > 100; });
+   */
+  template<class Predicate,
+           class Filter = Filter<Predicate>,
+           class Composed = Composed<Filter, Any>>
+  Composed operator()(Predicate pred) const {
+    return Composed(Filter(std::move(pred)), Any());
+  }
+};
+
+/**
+ * All - For determining whether all values in a sequence satisfy a predicate.
+ *
+ * This type is primarily used through the 'any' static value, like:
+ *
+ *   bool valid = from(input) | all(validate);
+ *
+ * Note: Passing an empty sequence through 'all()' will always return true.
+ */
+template<class Predicate>
+class All : public Operator<All<Predicate>> {
+  Predicate pred_;
+ public:
+  explicit All(const Predicate& pred = Predicate())
+    : pred_(pred)
+  { }
+
+  template<class Source,
+           class Value>
+  bool compose(const GenImpl<Value, Source>& source) const {
+    bool all = true;
+    source | [&](Value v) -> bool {
+      if (!pred_(std::forward<Value>(v))) {
+        all = false;
+        return false;
+      }
+      return true;
+    };
+    return all;
   }
 };
 

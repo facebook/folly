@@ -223,6 +223,13 @@ template<class Seed,
          class Fold>
 class FoldLeft;
 
+class First;
+
+class Any;
+
+template<class Predicate>
+class All;
+
 template<class Reducer>
 class Reduce;
 
@@ -342,21 +349,27 @@ Map map(const Predicate& pred = Predicate()) {
 
 template<class Predicate,
          class Filter = detail::Filter<Predicate>>
-Filter filter(const Predicate& pred = Predicate()) {
-  return Filter(pred);
+Filter filter(Predicate pred = Predicate()) {
+  return Filter(std::move(pred));
+}
+
+template<class Predicate,
+         class All = detail::All<Predicate>>
+All all(Predicate pred = Predicate()) {
+  return All(std::move(pred));
 }
 
 template<class Predicate,
          class Until = detail::Until<Predicate>>
-Until until(const Predicate& pred = Predicate()) {
-  return Until(pred);
+Until until(Predicate pred = Predicate()) {
+  return Until(std::move(pred));
 }
 
 template<class Selector,
          class Comparer = Less,
          class Order = detail::Order<Selector, Comparer>>
 Order orderBy(const Selector& selector,
-                const Comparer& comparer = Comparer()) {
+              const Comparer& comparer = Comparer()) {
   return Order(selector, comparer);
 }
 

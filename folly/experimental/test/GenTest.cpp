@@ -416,9 +416,22 @@ TEST(Gen, Get) {
 TEST(Gen, Any) {
   EXPECT_TRUE(seq(0) | any);
   EXPECT_TRUE(seq(0, 1) | any);
+  EXPECT_TRUE(seq(0, 10) | any([](int i) { return i == 7; }));
+  EXPECT_FALSE(seq(0, 10) | any([](int i) { return i == 11; }));
+
   EXPECT_TRUE(from({1}) | any);
   EXPECT_FALSE(range(0, 0) | any);
   EXPECT_FALSE(from({1}) | take(0) | any);
+}
+
+TEST(Gen, All) {
+  EXPECT_TRUE(seq(0, 10) | all([](int i) { return i < 11; }));
+  EXPECT_FALSE(seq(0, 10) | all([](int i) { return i < 5; }));
+  EXPECT_FALSE(seq(0) | all([](int i) { return i < 10; }));
+
+  // empty lists satisfies all
+  EXPECT_TRUE(seq(0) | take(0) | all([](int i) { return i < 50; }));
+  EXPECT_TRUE(seq(0) | take(0) | all([](int i) { return i > 50; }));
 }
 
 TEST(Gen, Yielders) {
