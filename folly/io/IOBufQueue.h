@@ -70,16 +70,22 @@ class IOBufQueue {
   /**
    * Add a buffer or buffer chain to the end of this queue. The
    * queue takes ownership of buf.
+   *
+   * If pack is true, we try to reduce wastage at the end of this queue
+   * by copying some data from the first buffers in the buf chain (and
+   * releasing the buffers), if possible.  If pack is false, we leave
+   * the chain topology unchanged.
    */
-  void append(std::unique_ptr<folly::IOBuf>&& buf);
+  void append(std::unique_ptr<folly::IOBuf>&& buf,
+              bool pack=false);
 
   /**
    * Add a queue to the end of this queue. The queue takes ownership of
    * all buffers from the other queue.
    */
-  void append(IOBufQueue& other);
-  void append(IOBufQueue&& other) {
-    append(other);  // call lvalue reference overload, above
+  void append(IOBufQueue& other, bool pack=false);
+  void append(IOBufQueue&& other, bool pack=false) {
+    append(other, pack);  // call lvalue reference overload, above
   }
 
   /**

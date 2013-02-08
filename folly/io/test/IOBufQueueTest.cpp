@@ -189,7 +189,7 @@ TEST(IOBufQueue, Wrap) {
                         iob->length()));
 }
 
-TEST(IOBufQueue, trim) {
+TEST(IOBufQueue, Trim) {
   IOBufQueue queue(clOptions);
   unique_ptr<IOBuf> a = IOBuf::create(4);
   a->append(4);
@@ -229,6 +229,64 @@ TEST(IOBufQueue, trim) {
   EXPECT_EQ(3, queue.front()->countChainElements());
   EXPECT_EQ(21, queue.front()->computeChainDataLength());
   EXPECT_EQ(9, queue.front()->prev()->length());
+
+  queue.trimEnd(20);
+  checkConsistency(queue);
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ(1, queue.front()->computeChainDataLength());
+  EXPECT_EQ(1, queue.front()->prev()->length());
+
+  queue.trimEnd(1);
+  checkConsistency(queue);
+  EXPECT_EQ(NULL, queue.front());
+
+  EXPECT_THROW(queue.trimStart(2), std::underflow_error);
+  checkConsistency(queue);
+
+  EXPECT_THROW(queue.trimEnd(30), std::underflow_error);
+  checkConsistency(queue);
+}
+
+TEST(IOBufQueue, TrimPack) {
+  IOBufQueue queue(clOptions);
+  unique_ptr<IOBuf> a = IOBuf::create(64);
+  a->append(4);
+  queue.append(std::move(a), true);
+  checkConsistency(queue);
+  a = IOBuf::create(6);
+  a->append(6);
+  queue.append(std::move(a), true);
+  checkConsistency(queue);
+  a = IOBuf::create(8);
+  a->append(8);
+  queue.append(std::move(a), true);
+  checkConsistency(queue);
+  a = IOBuf::create(10);
+  a->append(10);
+  queue.append(std::move(a), true);
+  checkConsistency(queue);
+
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ(28, queue.front()->computeChainDataLength());
+  EXPECT_EQ(28, queue.front()->length());
+
+  queue.trimStart(1);
+  checkConsistency(queue);
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ(27, queue.front()->computeChainDataLength());
+  EXPECT_EQ(27, queue.front()->length());
+
+  queue.trimStart(5);
+  checkConsistency(queue);
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ(22, queue.front()->computeChainDataLength());
+  EXPECT_EQ(22, queue.front()->length());
+
+  queue.trimEnd(1);
+  checkConsistency(queue);
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ(21, queue.front()->computeChainDataLength());
+  EXPECT_EQ(21, queue.front()->prev()->length());
 
   queue.trimEnd(20);
   checkConsistency(queue);
