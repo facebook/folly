@@ -167,7 +167,7 @@ class AsyncIO : private boost::noncopyable {
 
   io_context_t ctx_;
   size_t pending_;
-  size_t capacity_;
+  const size_t capacity_;
   int pollFd_;
   std::vector<Op*> completed_;
 };
