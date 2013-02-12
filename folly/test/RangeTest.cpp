@@ -17,11 +17,14 @@
 // @author Kristina Holst (kholst@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
+#include "folly/Range.h"
+
 #include <limits>
+#include <stdlib.h>
 #include <string>
+#include <sys/mman.h>
 #include <boost/range/concepts.hpp>
 #include <gtest/gtest.h>
-#include "folly/Range.h"
 
 namespace folly { namespace detail {
 
@@ -333,6 +336,63 @@ TYPED_TEST(NeedleFinderTest, Base) {
       string s = string(i, 'X') + "abca" + string(i, 'X');
       string delims = string(j, 'Y') + "a" + string(j, 'Y');
       EXPECT_EQ(i, this->find_first_byte_of(s, delims));
+    }
+  }
+}
+
+const size_t kPageSize = 4096;
+// Updates contents so that any read accesses past the last byte will
+// cause a SIGSEGV.  It accomplishes this by changing access to the page that
+// begins immediately after the end of the contents (as allocators and mmap()
+// all operate on page boundaries, this is a reasonable assumption).
+// This function will also initialize buf, which caller must free().
+void createProtectedBuf(StringPiece& contents, char** buf) {
+  ASSERT_LE(contents.size(), kPageSize);
+  const size_t kSuccess = 0;
+  char* tmp;
+  if (kSuccess != posix_memalign((void**)buf, kPageSize, 2 * kPageSize)) {
+    ASSERT_FALSE(true);
+  }
+  mprotect(*buf + kPageSize, kPageSize, PROT_NONE);
+  size_t newBegin = kPageSize - contents.size();
+  memcpy(*buf + newBegin, contents.data(), contents.size());
+  contents.reset(*buf + newBegin, contents.size());
+}
+
+TYPED_TEST(NeedleFinderTest, NoSegFault) {
+  const string base = string(32, 'a') + string("b");
+  const string delims = string(32, 'c') + string("b");
+  for (int i = 0; i <= 32; i++) {
+    for (int j = 0; j <= 33; j++) {
+      for (int shouldFind = 0; shouldFind <= 1; ++shouldFind) {
+        StringPiece s1(base);
+        s1.advance(i);
+        ASSERT_TRUE(!s1.empty());
+        if (!shouldFind) {
+          s1.pop_back();
+        }
+        StringPiece s2(delims);
+        s2.advance(j);
+        char* buf1;
+        char* buf2;
+        createProtectedBuf(s1, &buf1);
+        createProtectedBuf(s2, &buf2);
+        // printf("s1: '%s' (%ld) \ts2: '%s' (%ld)\n",
+        //        string(s1.data(), s1.size()).c_str(), s1.size(),
+        //        string(s2.data(), s2.size()).c_str(), s2.size());
+        auto r1 = this->find_first_byte_of(s1, s2);
+        auto f1 = std::find_first_of(s1.begin(), s1.end(),
+                                     s2.begin(), s2.end());
+        auto e1 = (f1 == s1.end()) ? StringPiece::npos : f1 - s1.begin();
+        EXPECT_EQ(r1, e1);
+        auto r2 = this->find_first_byte_of(s2, s1);
+        auto f2 = std::find_first_of(s2.begin(), s2.end(),
+                                     s1.begin(), s1.end());
+        auto e2 = (f2 == s2.end()) ? StringPiece::npos : f2 - s2.begin();
+        EXPECT_EQ(r2, e2);
+        free(buf1);
+        free(buf2);
+      }
     }
   }
 }
