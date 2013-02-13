@@ -69,6 +69,17 @@ typedef int detail::NoneHelper::*None;
 
 const None none = nullptr;
 
+/**
+ * gcc-4.7 warns about use of uninitialized memory around the use of storage_
+ * even though this is explicitly initialized at each point.
+ */
+#ifdef __GNUC__
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wuninitialized"
+# pragma GCC diagnostic ignored "-Wpragmas"
+# pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif // __GNUC__
+
 template<class Value>
 class Optional : boost::totally_ordered<Optional<Value>,
                  boost::totally_ordered<Optional<Value>, Value>> {
@@ -233,6 +244,8 @@ class Optional : boost::totally_ordered<Optional<Value>,
   union { Value value_; };
   bool hasValue_;
 };
+
+#pragma GCC diagnostic pop
 
 template<class T>
 const T* get_pointer(const Optional<T>& opt) {
