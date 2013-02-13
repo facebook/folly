@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,18 +73,22 @@ extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
 __attribute__((weak));
 
 /**
- * Define the ALLOCM_SUCCESS, ALLOCM_ZERO, and ALLOCM_NO_MOVE constants
- * normally provided by jemalloc.  We define them so that we don't have to
- * include jemalloc.h, in case the program is built without jemalloc support.
+ * Define various ALLOCM_* macros normally provided by jemalloc.  We define
+ * them so that we don't have to include jemalloc.h, in case the program is
+ * built without jemalloc support.
  */
 #ifndef ALLOCM_SUCCESS
+
 #define ALLOCM_SUCCESS 0
 #define ALLOCM_ERR_OOM 1
 #define ALLOCM_ERR_NOT_MOVED 2
 
 #define ALLOCM_ZERO    64
 #define ALLOCM_NO_MOVE 128
-#endif
+
+#define ALLOCM_LG_ALIGN(la) (la)
+
+#endif /* !ALLOCM_SUCCESS */
 
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
