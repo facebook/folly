@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,12 +65,22 @@ namespace detail {
 // Call folly_popcount_ifunc on startup to resolve to either popcount_inst
 // or popcount_builtin
 int popcount(unsigned int x)
+// Clang does not support ifuncs, so we call directly for now
+#ifdef __clang__
+{  return popcount_builtin(x); }
+#else
   __attribute__((ifunc("folly_popcount_ifunc")));
+#endif
 
 // Call folly_popcount_ifunc on startup to resolve to either popcountll_inst
 // or popcountll_builtin
 int popcountll(unsigned long long x)
+// Clang does not support ifuncs, so we call directly for now
+#ifdef __clang__
+{  return popcount_builtin(x); }
+#else
   __attribute__((ifunc("folly_popcountll_ifunc")));
+#endif
 
 }  // namespace detail
 }  // namespace folly

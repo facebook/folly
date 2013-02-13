@@ -37,7 +37,7 @@ const size_t MAX_PACK_COPY = 4096;
  */
 void
 appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
-  if (dst == NULL) {
+  if (dst == nullptr) {
     dst = std::move(src);
   } else {
     IOBuf* tail = dst->prev();
@@ -150,7 +150,7 @@ void
 IOBufQueue::append(const void* buf, size_t len) {
   auto src = static_cast<const uint8_t*>(buf);
   while (len != 0) {
-    if ((head_ == NULL) || head_->prev()->isSharedOne() ||
+    if ((head_ == nullptr) || head_->prev()->isSharedOne() ||
         (head_->prev()->tailroom() == 0)) {
       appendToChain(head_, std::move(
           IOBuf::create(std::max(MIN_ALLOC_SIZE,
@@ -183,7 +183,7 @@ IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
 pair<void*,uint32_t>
 IOBufQueue::preallocate(uint32_t min, uint32_t newAllocationSize,
                         uint32_t max) {
-  if (head_ != NULL) {
+  if (head_ != nullptr) {
     // If there's enough space left over at the end of the queue, use that.
     IOBuf* last = head_->prev();
     if (!last->isSharedOne()) {
@@ -213,7 +213,7 @@ unique_ptr<IOBuf>
 IOBufQueue::split(size_t n) {
   unique_ptr<IOBuf> result;
   while (n != 0) {
-    if (head_ == NULL) {
+    if (head_ == nullptr) {
       throw std::underflow_error(
           "Attempt to remove more bytes than are present in IOBufQueue");
     } else if (head_->length() <= n) {
