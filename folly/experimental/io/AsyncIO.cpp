@@ -18,6 +18,7 @@
 
 #include <cerrno>
 
+#include <boost/intrusive/parent_from_member.hpp>
 #include <glog/logging.h>
 
 #include "folly/Exception.h"
@@ -26,6 +27,77 @@
 #include "folly/eventfd.h"
 
 namespace folly {
+
+AsyncIOOp::AsyncIOOp(NotificationCallback cb)
+  : cb_(std::move(cb)),
+    state_(UNINITIALIZED),
+    result_(-EINVAL) {
+  memset(&iocb_, 0, sizeof(iocb_));
+}
+
+void AsyncIOOp::reset(NotificationCallback cb) {
+  CHECK_NE(state_, PENDING);
+  cb_ = std::move(cb);
+  state_ = UNINITIALIZED;
+  result_ = -EINVAL;
+  memset(&iocb_, 0, sizeof(iocb_));
+}
+
+AsyncIOOp::~AsyncIOOp() {
+  CHECK_NE(state_, PENDING);
+}
+
+void AsyncIOOp::start() {
+  DCHECK_EQ(state_, INITIALIZED);
+  state_ = PENDING;
+}
+
+void AsyncIOOp::complete(ssize_t result) {
+  DCHECK_EQ(state_, PENDING);
+  state_ = COMPLETED;
+  result_ = result;
+  if (cb_) {
+    cb_(this);
+  }
+}
+
+ssize_t AsyncIOOp::result() const {
+  CHECK_EQ(state_, COMPLETED);
+  return result_;
+}
+
+void AsyncIOOp::pread(int fd, void* buf, size_t size, off_t start) {
+  init();
+  io_prep_pread(&iocb_, fd, buf, size, start);
+}
+
+void AsyncIOOp::pread(int fd, Range<unsigned char*> range, off_t start) {
+  pread(fd, range.begin(), range.size(), start);
+}
+
+void AsyncIOOp::preadv(int fd, const iovec* iov, int iovcnt, off_t start) {
+  init();
+  io_prep_preadv(&iocb_, fd, iov, iovcnt, start);
+}
+
+void AsyncIOOp::pwrite(int fd, const void* buf, size_t size, off_t start) {
+  init();
+  io_prep_pwrite(&iocb_, fd, const_cast<void*>(buf), size, start);
+}
+
+void AsyncIOOp::pwrite(int fd, Range<const unsigned char*> range, off_t start) {
+  pwrite(fd, range.begin(), range.size(), start);
+}
+
+void AsyncIOOp::pwritev(int fd, const iovec* iov, int iovcnt, off_t start) {
+  init();
+  io_prep_pwritev(&iocb_, fd, iov, iovcnt, start);
+}
+
+void AsyncIOOp::init() {
+  CHECK_EQ(state_, UNINITIALIZED);
+  state_ = INITIALIZED;
+}
 
 AsyncIO::AsyncIO(size_t capacity, PollMode pollMode)
   : ctx_(0),
@@ -51,43 +123,6 @@ AsyncIO::~AsyncIO() {
   }
 }
 
-void AsyncIO::pread(Op* op, int fd, void* buf, size_t size, off_t start) {
-  iocb cb;
-  io_prep_pread(&cb, fd, buf, size, start);
-  submit(op, &cb);
-}
-
-void AsyncIO::pread(Op* op, int fd, Range<unsigned char*> range,
-                    off_t start) {
-  pread(op, fd, range.begin(), range.size(), start);
-}
-
-void AsyncIO::preadv(Op* op, int fd, const iovec* iov, int iovcnt,
-                     off_t start) {
-  iocb cb;
-  io_prep_preadv(&cb, fd, iov, iovcnt, start);
-  submit(op, &cb);
-}
-
-void AsyncIO::pwrite(Op* op, int fd, const void* buf, size_t size,
-                     off_t start) {
-  iocb cb;
-  io_prep_pwrite(&cb, fd, const_cast<void*>(buf), size, start);
-  submit(op, &cb);
-}
-
-void AsyncIO::pwrite(Op* op, int fd, Range<const unsigned char*> range,
-                     off_t start) {
-  pwrite(op, fd, range.begin(), range.size(), start);
-}
-
-void AsyncIO::pwritev(Op* op, int fd, const iovec* iov, int iovcnt,
-                      off_t start) {
-  iocb cb;
-  io_prep_pwritev(&cb, fd, iov, iovcnt, start);
-  submit(op, &cb);
-}
-
 void AsyncIO::initializeContext() {
   if (!ctx_) {
     int rc = io_queue_init(capacity_, &ctx_);
@@ -97,11 +132,12 @@ void AsyncIO::initializeContext() {
   }
 }
 
-void AsyncIO::submit(Op* op, iocb* cb) {
-  CHECK_EQ(op->state(), Op::UNINITIALIZED);
+void AsyncIO::submit(Op* op) {
+  CHECK_EQ(op->state(), Op::INITIALIZED);
   CHECK_LT(pending_, capacity_) << "too many pending requests";
   initializeContext();  // on demand
-  cb->data = op;
+  iocb* cb = &op->iocb_;
+  cb->data = nullptr;  // unused
   if (pollFd_ != -1) {
     io_set_eventfd(cb, pollFd_);
   }
@@ -158,62 +194,53 @@ Range<AsyncIO::Op**> AsyncIO::doWait(size_t minRequests, size_t maxRequests) {
   }
 
   for (size_t i = 0; i < count; ++i) {
-    Op* op = static_cast<Op*>(events[i].data);
-    DCHECK(op);
+    DCHECK(events[i].obj);
+    Op* op = boost::intrusive::get_parent_from_member(
+        events[i].obj, &AsyncIOOp::iocb_);
+    --pending_;
     op->complete(events[i].res);
     completed_.push_back(op);
   }
-  pending_ -= count;
 
   return folly::Range<Op**>(&completed_.front(), count);
 }
 
-AsyncIO::Op::Op()
-  : state_(UNINITIALIZED),
-    result_(-EINVAL) {
+AsyncIOQueue::AsyncIOQueue(AsyncIO* asyncIO)
+  : asyncIO_(asyncIO) {
 }
 
-void AsyncIO::Op::reset() {
-  CHECK_NE(state_, PENDING);
-  state_ = UNINITIALIZED;
-  result_ = -EINVAL;
+AsyncIOQueue::~AsyncIOQueue() {
+  CHECK_EQ(asyncIO_->pending(), 0);
 }
 
-AsyncIO::Op::~Op() {
-  CHECK_NE(state_, PENDING);
+void AsyncIOQueue::submit(AsyncIOOp* op) {
+  submit([op]() { return op; });
 }
 
-void AsyncIO::Op::start() {
-  DCHECK_EQ(state_, UNINITIALIZED);
-  state_ = PENDING;
+void AsyncIOQueue::submit(OpFactory op) {
+  queue_.push_back(op);
+  maybeDequeue();
 }
 
-void AsyncIO::Op::complete(ssize_t result) {
-  DCHECK_EQ(state_, PENDING);
-  state_ = COMPLETED;
-  result_ = result;
-  onCompleted();
+void AsyncIOQueue::onCompleted(AsyncIOOp* op) {
+  maybeDequeue();
 }
 
-void AsyncIO::Op::onCompleted() { }  // default: do nothing
+void AsyncIOQueue::maybeDequeue() {
+  while (!queue_.empty() && asyncIO_->pending() < asyncIO_->capacity()) {
+    auto& opFactory = queue_.front();
+    auto op = opFactory();
+    queue_.pop_front();
 
-ssize_t AsyncIO::Op::result() const {
-  CHECK_EQ(state_, COMPLETED);
-  return result_;
-}
+    // Interpose our completion callback
+    auto& nextCb = op->notificationCallback();
+    op->setNotificationCallback([this, nextCb](AsyncIOOp* op) {
+      this->onCompleted(op);
+      if (nextCb) nextCb(op);
+    });
 
-CallbackOp::CallbackOp(Callback&& callback) : callback_(std::move(callback)) { }
-
-CallbackOp::~CallbackOp() { }
-
-CallbackOp* CallbackOp::make(Callback&& callback) {
-  // Ensure created on the heap
-  return new CallbackOp(std::move(callback));
-}
-
-void CallbackOp::onCompleted() {
-  callback_(result());
-  delete this;
+    asyncIO_->submit(op);
+  }
 }
 
 }  // namespace folly

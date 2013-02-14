@@ -36,6 +36,7 @@
 
 namespace fs = folly::fs;
 using folly::AsyncIO;
+using folly::AsyncIOQueue;
 
 namespace {
 
@@ -116,6 +117,14 @@ TemporaryFile::~TemporaryFile() {
 
 TemporaryFile tempFile(6 << 20);  // 6MiB
 
+typedef std::unique_ptr<char, void(*)(void*)> ManagedBuffer;
+ManagedBuffer allocateAligned(size_t size) {
+  void* buf;
+  int rc = posix_memalign(&buf, 512, size);
+  CHECK_EQ(rc, 0) << strerror(rc);
+  return ManagedBuffer(reinterpret_cast<char*>(buf), free);
+}
+
 void testReadsSerially(const std::vector<TestSpec>& specs,
                        AsyncIO::PollMode pollMode) {
   AsyncIO aioReader(1, pollMode);
@@ -127,8 +136,9 @@ void testReadsSerially(const std::vector<TestSpec>& specs,
   };
 
   for (int i = 0; i < specs.size(); i++) {
-    std::unique_ptr<char[]> buf(new char[specs[i].size]);
-    aioReader.pread(&op, fd, buf.get(), specs[i].size, specs[i].start);
+    auto buf = allocateAligned(specs[i].size);
+    op.pread(fd, buf.get(), specs[i].size, specs[i].start);
+    aioReader.submit(&op);
     EXPECT_EQ(aioReader.pending(), 1);
     auto ops = readerWait(&aioReader);
     EXPECT_EQ(1, ops.size());
@@ -145,7 +155,7 @@ void testReadsParallel(const std::vector<TestSpec>& specs,
                        AsyncIO::PollMode pollMode) {
   AsyncIO aioReader(specs.size(), pollMode);
   std::unique_ptr<AsyncIO::Op[]> ops(new AsyncIO::Op[specs.size()]);
-  std::vector<std::unique_ptr<char[]>> bufs(specs.size());
+  std::vector<ManagedBuffer> bufs;
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   PCHECK(fd != -1);
@@ -153,9 +163,9 @@ void testReadsParallel(const std::vector<TestSpec>& specs,
     ::close(fd);
   };
   for (int i = 0; i < specs.size(); i++) {
-    bufs[i].reset(new char[specs[i].size]);
-    aioReader.pread(&ops[i], fd, bufs[i].get(), specs[i].size,
-                    specs[i].start);
+    bufs.push_back(allocateAligned(specs[i].size));
+    ops[i].pread(fd, bufs[i].get(), specs[i].size, specs[i].start);
+    aioReader.submit(&ops[i]);
   }
   std::vector<bool> pending(specs.size(), true);
 
@@ -184,10 +194,63 @@ void testReadsParallel(const std::vector<TestSpec>& specs,
   }
 }
 
+void testReadsQueued(const std::vector<TestSpec>& specs,
+                     AsyncIO::PollMode pollMode) {
+  size_t readerCapacity = std::max(specs.size() / 2, size_t(1));
+  AsyncIO aioReader(readerCapacity, pollMode);
+  AsyncIOQueue aioQueue(&aioReader);
+  std::unique_ptr<AsyncIO::Op[]> ops(new AsyncIO::Op[specs.size()]);
+  std::vector<ManagedBuffer> bufs;
+
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
+  PCHECK(fd != -1);
+  SCOPE_EXIT {
+    ::close(fd);
+  };
+  for (int i = 0; i < specs.size(); i++) {
+    bufs.push_back(allocateAligned(specs[i].size));
+    ops[i].pread(fd, bufs[i].get(), specs[i].size, specs[i].start);
+    aioQueue.submit(&ops[i]);
+  }
+  std::vector<bool> pending(specs.size(), true);
+
+  size_t remaining = specs.size();
+  while (remaining != 0) {
+    if (remaining >= readerCapacity) {
+      EXPECT_EQ(readerCapacity, aioReader.pending());
+      EXPECT_EQ(remaining - readerCapacity, aioQueue.queued());
+    } else {
+      EXPECT_EQ(remaining, aioReader.pending());
+      EXPECT_EQ(0, aioQueue.queued());
+    }
+    auto completed = readerWait(&aioReader);
+    size_t nrRead = completed.size();
+    EXPECT_NE(nrRead, 0);
+    remaining -= nrRead;
+
+    for (int i = 0; i < nrRead; i++) {
+      int id = completed[i] - ops.get();
+      EXPECT_GE(id, 0);
+      EXPECT_LT(id, specs.size());
+      EXPECT_TRUE(pending[id]);
+      pending[id] = false;
+      ssize_t res = ops[id].result();
+      EXPECT_LE(0, res) << folly::errnoStr(-res);
+      EXPECT_EQ(specs[id].size, res);
+    }
+  }
+  EXPECT_EQ(aioReader.pending(), 0);
+  EXPECT_EQ(aioQueue.queued(), 0);
+  for (int i = 0; i < pending.size(); i++) {
+    EXPECT_FALSE(pending[i]);
+  }
+}
+
 void testReads(const std::vector<TestSpec>& specs,
                AsyncIO::PollMode pollMode) {
   testReadsSerially(specs, pollMode);
   testReadsParallel(specs, pollMode);
+  testReadsQueued(specs, pollMode);
 }
 
 }  // anonymous namespace
@@ -275,8 +338,9 @@ TEST(AsyncIO, NonBlockingWait) {
     ::close(fd);
   };
   size_t size = 1024;
-  std::unique_ptr<char[]> buf(new char[size]);
-  aioReader.pread(&op, fd, buf.get(), size, 0);
+  auto buf = allocateAligned(size);
+  op.pread(fd, buf.get(), size, 0);
+  aioReader.submit(&op);
   EXPECT_EQ(aioReader.pending(), 1);
 
   folly::Range<AsyncIO::Op**> completed;
@@ -292,4 +356,5 @@ TEST(AsyncIO, NonBlockingWait) {
   EXPECT_EQ(size, res);
   EXPECT_EQ(aioReader.pending(), 0);
 }
+
 
