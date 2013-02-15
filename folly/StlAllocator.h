@@ -34,7 +34,7 @@ namespace folly {
  *
  * The SimpleAllocator must provide two methods:
  *    void* allocate(size_t size);
- *    void deallocate(void* ptr, size_t size);
+ *    void deallocate(void* ptr);
  * which, respectively, allocate a block of size bytes (aligned to the maximum
  * alignment required on your system), throwing std::bad_alloc if the
  * allocation can't be satisfied, and free a previously allocated block.
