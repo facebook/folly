@@ -22,16 +22,36 @@
 // popcnt
 #ifndef __POPCNT__
 
+// Clang doesn't support ifuncs. This also allows ifunc support to be explicitly
+// passed in as a compile flag.
+#ifndef FOLLY_HAVE_IFUNC
+#  ifdef __clang__
+#    define FOLLY_HAVE_IFUNC 0
+#  else
+#    define FOLLY_HAVE_IFUNC 1
+#  endif
+#endif
+
 namespace {
 
+int popcount_builtin(unsigned int x) {
+  return __builtin_popcount(x);
+}
+
+int popcountll_builtin(unsigned long long x) {
+  return __builtin_popcountll(x);
+}
+
+
+#if FOLLY_HAVE_IFUNC
+
+// Strictly speaking, these versions of popcount are usable without ifunc
+// support. However, we would have to check, via CpuId, if the processor
+// implements the popcnt instruction first, which is what we use ifunc for.
 int popcount_inst(unsigned int x) {
   int n;
   asm ("popcntl %1, %0" : "=r" (n) : "r" (x));
   return n;
-}
-
-int popcount_builtin(unsigned int x) {
-  return __builtin_popcount(x);
 }
 
 int popcountll_inst(unsigned long long x) {
@@ -40,14 +60,8 @@ int popcountll_inst(unsigned long long x) {
   return n;
 }
 
-int popcountll_builtin(unsigned long long x) {
-  return __builtin_popcountll(x);
-}
-
 typedef decltype(popcount_builtin) Type_popcount;
 typedef decltype(popcountll_builtin) Type_popcountll;
-
-}  // namespace
 
 // This function is called on startup to resolve folly::detail::popcount
 extern "C" Type_popcount* folly_popcount_ifunc() {
@@ -59,27 +73,29 @@ extern "C" Type_popcountll* folly_popcountll_ifunc() {
   return folly::CpuId().popcnt() ?  popcountll_inst : popcountll_builtin;
 }
 
+#endif // FOLLY_HAVE_IFUNC
+
+}  // namespace
+
 namespace folly {
 namespace detail {
 
 // Call folly_popcount_ifunc on startup to resolve to either popcount_inst
 // or popcount_builtin
 int popcount(unsigned int x)
-// Clang does not support ifuncs, so we call directly for now
-#ifdef __clang__
-{  return popcount_builtin(x); }
-#else
+#if FOLLY_HAVE_IFUNC
   __attribute__((ifunc("folly_popcount_ifunc")));
+#else
+{  return popcount_builtin(x); }
 #endif
 
 // Call folly_popcount_ifunc on startup to resolve to either popcountll_inst
 // or popcountll_builtin
 int popcountll(unsigned long long x)
-// Clang does not support ifuncs, so we call directly for now
-#ifdef __clang__
-{  return popcount_builtin(x); }
-#else
+#if FOLLY_HAVE_IFUNC
   __attribute__((ifunc("folly_popcountll_ifunc")));
+#else
+{  return popcountll_builtin(x); }
 #endif
 
 }  // namespace detail

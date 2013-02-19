@@ -56,6 +56,12 @@ AC_CHECK_TYPE([__int128],
   [AC_DEFINE([HAVE_INT128_T], [1], [Define if __int128 exists])],
   [AC_DEFINE([HAVE_INT128_T], [0], [Define if __int128 does not exist])])
 AC_CHECK_TYPES([ptrdiff_t])
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[extern "C" void (*test_ifunc(void))() { return 0; }
+                  void func() __attribute__((ifunc("test_ifunc")));]],
+  [AC_DEFINE([HAVE_IFUNC], [1], [Define to 1 if the compiler supports ifunc])],
+  [AC_DEFINE([HAVE_IFUNC], [0], [Define to 0 if the compiler doesn't support ifunc])]
+)
 
 # Checks for library functions.
 AC_CHECK_FUNCS([getdelim \
