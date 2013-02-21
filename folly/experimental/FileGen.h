@@ -17,7 +17,7 @@
 #ifndef FOLLY_FILEGEN_H_
 #define FOLLY_FILEGEN_H_
 
-#include "folly/experimental/File.h"
+#include "folly/File.h"
 #include "folly/experimental/Gen.h"
 #include "folly/io/IOBuf.h"
 
