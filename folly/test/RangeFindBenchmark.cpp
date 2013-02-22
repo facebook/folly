@@ -40,6 +40,9 @@ using namespace std;
 namespace {
 
 std::string str;
+constexpr int kVstrSize = 16;
+std::vector<std::string> vstr;
+std::vector<StringPiece> vstrp;
 
 void initStr(int len) {
   cout << "string length " << len << ':' << endl;
@@ -47,6 +50,23 @@ void initStr(int len) {
   str.reserve(len + 1);
   str.append(len, 'a');
   str.append(1, 'b');
+
+  // create 16 copies of str, each with a different 16byte alignment.
+  // Useful because some implementations of find_first_of have different
+  // behaviors based on byte alignment.
+  for (int i = 0; i < kVstrSize; ++i) {
+    string s(i, '$');
+    s += str;
+    if (i % 2) {
+      // some find_first_of implementations have special (page-safe) logic
+      // for handling the end of a string.  Flex that logic only sometimes.
+      s += string(32, '$');
+    }
+    vstr.push_back(s);
+    StringPiece sp(vstr.back());
+    sp.advance(i);
+    vstrp.push_back(sp);
+  }
 }
 
 std::mt19937 rnd;
@@ -118,8 +138,8 @@ inline size_t qfind_first_byte_of_std(const StringPiece& haystack,
 
 template <class Func>
 void findFirstOfRange(StringPiece needles, Func func, size_t n) {
-  StringPiece haystack(str);
   FOR_EACH_RANGE (i, 0, n) {
+    const StringPiece& haystack = vstr[i % kVstrSize];
     doNotOptimizeAway(func(haystack, needles));
     char x = haystack[0];
     doNotOptimizeAway(&x);
