@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <ostream>
 #include <utility>
 #include <vector>
 
@@ -42,6 +43,7 @@ namespace folly {
  */
 class AsyncIOOp : private boost::noncopyable {
   friend class AsyncIO;
+  friend std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& o);
  public:
   typedef std::function<void(AsyncIOOp*)> NotificationCallback;
 
@@ -51,7 +53,7 @@ class AsyncIOOp : private boost::noncopyable {
   // There would be a cancel() method here if Linux AIO actually implemented
   // it.  But let's not get your hopes up.
 
-  enum State {
+  enum class State {
     UNINITIALIZED,
     INITIALIZED,
     PENDING,
@@ -107,6 +109,9 @@ class AsyncIOOp : private boost::noncopyable {
   State state_;
   ssize_t result_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& o);
+std::ostream& operator<<(std::ostream& stream, AsyncIOOp::State state);
 
 /**
  * C++ interface around Linux Async IO.

@@ -16,12 +16,15 @@
 
 #include "folly/experimental/io/AsyncIO.h"
 
+#include <unistd.h>
 #include <cerrno>
+#include <string>
 
 #include <boost/intrusive/parent_from_member.hpp>
 #include <glog/logging.h>
 
 #include "folly/Exception.h"
+#include "folly/Format.h"
 #include "folly/Likely.h"
 #include "folly/String.h"
 #include "folly/eventfd.h"
@@ -30,31 +33,31 @@ namespace folly {
 
 AsyncIOOp::AsyncIOOp(NotificationCallback cb)
   : cb_(std::move(cb)),
-    state_(UNINITIALIZED),
+    state_(State::UNINITIALIZED),
     result_(-EINVAL) {
   memset(&iocb_, 0, sizeof(iocb_));
 }
 
 void AsyncIOOp::reset(NotificationCallback cb) {
-  CHECK_NE(state_, PENDING);
+  CHECK_NE(state_, State::PENDING);
   cb_ = std::move(cb);
-  state_ = UNINITIALIZED;
+  state_ = State::UNINITIALIZED;
   result_ = -EINVAL;
   memset(&iocb_, 0, sizeof(iocb_));
 }
 
 AsyncIOOp::~AsyncIOOp() {
-  CHECK_NE(state_, PENDING);
+  CHECK_NE(state_, State::PENDING);
 }
 
 void AsyncIOOp::start() {
-  DCHECK_EQ(state_, INITIALIZED);
-  state_ = PENDING;
+  DCHECK_EQ(state_, State::INITIALIZED);
+  state_ = State::PENDING;
 }
 
 void AsyncIOOp::complete(ssize_t result) {
-  DCHECK_EQ(state_, PENDING);
-  state_ = COMPLETED;
+  DCHECK_EQ(state_, State::PENDING);
+  state_ = State::COMPLETED;
   result_ = result;
   if (cb_) {
     cb_(this);
@@ -62,7 +65,7 @@ void AsyncIOOp::complete(ssize_t result) {
 }
 
 ssize_t AsyncIOOp::result() const {
-  CHECK_EQ(state_, COMPLETED);
+  CHECK_EQ(state_, State::COMPLETED);
   return result_;
 }
 
@@ -95,8 +98,8 @@ void AsyncIOOp::pwritev(int fd, const iovec* iov, int iovcnt, off_t start) {
 }
 
 void AsyncIOOp::init() {
-  CHECK_EQ(state_, UNINITIALIZED);
-  state_ = INITIALIZED;
+  CHECK_EQ(state_, State::UNINITIALIZED);
+  state_ = State::INITIALIZED;
 }
 
 AsyncIO::AsyncIO(size_t capacity, PollMode pollMode)
@@ -133,7 +136,7 @@ void AsyncIO::initializeContext() {
 }
 
 void AsyncIO::submit(Op* op) {
-  CHECK_EQ(op->state(), Op::INITIALIZED);
+  CHECK_EQ(op->state(), Op::State::INITIALIZED);
   CHECK_LT(pending_, capacity_) << "too many pending requests";
   initializeContext();  // on demand
   iocb* cb = &op->iocb_;
@@ -241,6 +244,86 @@ void AsyncIOQueue::maybeDequeue() {
 
     asyncIO_->submit(op);
   }
+}
+
+// debugging helpers:
+
+namespace {
+
+#define X(c) case c: return #c
+
+const char* asyncIoOpStateToString(AsyncIOOp::State state) {
+  switch (state) {
+    X(AsyncIOOp::State::UNINITIALIZED);
+    X(AsyncIOOp::State::INITIALIZED);
+    X(AsyncIOOp::State::PENDING);
+    X(AsyncIOOp::State::COMPLETED);
+  }
+  return "<INVALID AsyncIOOp::State>";
+}
+
+const char* iocbCmdToString(short int cmd_short) {
+  io_iocb_cmd cmd = static_cast<io_iocb_cmd>(cmd_short);
+  switch (cmd) {
+    X(IO_CMD_PREAD);
+    X(IO_CMD_PWRITE);
+    X(IO_CMD_FSYNC);
+    X(IO_CMD_FDSYNC);
+    X(IO_CMD_POLL);
+    X(IO_CMD_NOOP);
+    X(IO_CMD_PREADV);
+    X(IO_CMD_PWRITEV);
+  };
+  return "<INVALID io_iocb_cmd>";
+}
+
+#undef X
+
+std::string fd2name(int fd) {
+  std::string path = folly::to<std::string>("/proc/self/fd/", fd);
+  char link[PATH_MAX];
+  const ssize_t length =
+    std::max<ssize_t>(readlink(path.c_str(), link, PATH_MAX), 0);
+  return path.assign(link, length);
+}
+
+std::ostream& operator<<(std::ostream& os, const iocb& cb) {
+  os << folly::format(
+    "data={}, key={}, opcode={}, reqprio={}, fd={}, f={}, ",
+    cb.data, cb.key, iocbCmdToString(cb.aio_lio_opcode),
+    cb.aio_reqprio, cb.aio_fildes, fd2name(cb.aio_fildes));
+
+  switch (cb.aio_lio_opcode) {
+    case IO_CMD_PREAD:
+    case IO_CMD_PWRITE:
+      os << folly::format("buf={}, off={}, size={}, ",
+                          cb.u.c.buf, cb.u.c.nbytes, cb.u.c.offset);
+    default:
+      os << "[TODO: write debug string for "
+         << iocbCmdToString(cb.aio_lio_opcode) << "] ";
+  }
+
+  return os;
+}
+
+}  // anonymous namespace
+
+std::ostream& operator<<(std::ostream& os, const AsyncIOOp& op) {
+  os << "{" << op.state_ << ", ";
+
+  if (op.state_ != AsyncIOOp::State::UNINITIALIZED) {
+    os << op.iocb_;
+  }
+
+  if (op.state_ == AsyncIOOp::State::COMPLETED) {
+    os << "result=" << op.result_ << ", ";
+  }
+
+  return os << "}";
+}
+
+std::ostream& operator<<(std::ostream& os, AsyncIOOp::State state) {
+  return os << asyncIoOpStateToString(state);
 }
 
 }  // namespace folly
