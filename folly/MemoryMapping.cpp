@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <system_error>
 
-DEFINE_int64(mlock_max_size_at_once, 1 << 20,  // 1MB
+DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
              "Maximum bytes to mlock/munlock/munmap at once "
              "(will be rounded up to PAGESIZE)");
 
@@ -100,11 +100,11 @@ namespace {
 
 off_t memOpChunkSize(off_t length) {
   off_t chunkSize = length;
-  if (FLAGS_mlock_max_size_at_once <= 0) {
+  if (FLAGS_mlock_chunk_size <= 0) {
     return chunkSize;
   }
 
-  chunkSize = FLAGS_mlock_max_size_at_once;
+  chunkSize = FLAGS_mlock_chunk_size;
   off_t pageSize = sysconf(_SC_PAGESIZE);
   off_t r = chunkSize % pageSize;
   if (r) {
