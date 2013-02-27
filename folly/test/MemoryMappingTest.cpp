@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include "folly/MemoryMapping.h"
 
@@ -52,6 +53,75 @@ TEST(MemoryMapping, DoublyMapped) {
   EXPECT_EQ(*dr, 42 * M_PI);
   *dw = 43 * M_PI;
   EXPECT_EQ(*dr, 43 * M_PI);
+}
+
+namespace {
+
+void writeStringToFileOrDie(const std::string& str, int fd) {
+  const char* b = str.c_str();
+  size_t count = str.size();
+  ssize_t total_bytes = 0;
+  ssize_t r;
+  do {
+    r = write(fd, b, count);
+    if (r == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
+      PCHECK(r) << "write";
+    }
+
+    total_bytes += r;
+    b += r;
+    count -= r;
+  } while (r != 0 && count);
+}
+
+}  // anonymous namespace
+
+TEST(MemoryMapping, Simple) {
+  File f = File::temporary();
+  writeStringToFileOrDie("hello", f.fd());
+
+  {
+    MemoryMapping m(f.fd());
+    EXPECT_EQ("hello", m.data());
+  }
+  {
+    MemoryMapping m(f.fd(), 1, 2);
+    EXPECT_EQ("el", m.data());
+  }
+}
+
+TEST(MemoryMapping, LargeFile) {
+  std::string fileData;
+  size_t fileSize = sysconf(_SC_PAGESIZE) * 3 + 10;
+  fileData.reserve(fileSize);
+  for (size_t i = 0; i < fileSize; i++) {
+    fileData.push_back(0xff & random());
+  }
+
+  File f = File::temporary();
+  writeStringToFileOrDie(fileData, f.fd());
+
+  {
+    MemoryMapping m(f.fd());
+    EXPECT_EQ(fileData, m.data());
+  }
+  {
+    size_t size = sysconf(_SC_PAGESIZE) * 2;
+    StringPiece s(fileData.data() + 9, size - 9);
+    MemoryMapping m(f.fd(), 9, size - 9);
+    EXPECT_EQ(s.toString(), m.data());
+  }
+}
+
+TEST(MemoryMapping, ZeroLength) {
+  File f = File::temporary();
+  MemoryMapping m(f.fd());
+  EXPECT_TRUE(m.mlock(MemoryMapping::LockMode::MUST_LOCK));
+  EXPECT_TRUE(m.mlocked());
+  EXPECT_EQ(0, m.data().size());
 }
 
 } // namespace folly

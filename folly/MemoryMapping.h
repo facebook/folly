@@ -87,7 +87,6 @@ class MemoryMapping : boost::noncopyable {
    */
   template<class T>
   Range<const T*> asRange() const {
-    CHECK(mapStart_);
     size_t count = data_.size() / sizeof(T);
     return Range<const T*>(static_cast<const T*>(
                              static_cast<const void*>(data_.data())),
@@ -104,13 +103,15 @@ class MemoryMapping : boost::noncopyable {
   /**
    * Return the memory area where the file was mapped.
    */
-  ByteRange data() const {
-    return range();
+  StringPiece data() const {
+    return asRange<const char>();
   }
 
   bool mlocked() const {
     return locked_;
   }
+
+  int fd() const { return file_.fd(); }
 
  protected:
   MemoryMapping();
@@ -143,7 +144,6 @@ class WritableMemoryMapping : public MemoryMapping {
    */
   template<class T>
   Range<T*> asWritableRange() const {
-    CHECK(mapStart_);
     size_t count = data_.size() / sizeof(T);
     return Range<T*>(static_cast<T*>(
                        static_cast<void*>(data_.data())),
