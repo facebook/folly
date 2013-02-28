@@ -268,6 +268,12 @@ void swap(Optional<T>& a, Optional<T>& b) {
   }
 }
 
-}// namespace folly
+template<class T,
+         class Opt = Optional<typename std::decay<T>::type>>
+Opt make_optional(T&& v) {
+  return Opt(std::forward<T>(v));
+}
+
+} // namespace folly
 
 #endif//FOLLY_OPTIONAL_H_

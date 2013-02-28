@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -273,4 +273,39 @@ TEST(Optional, Pointee) {
   EXPECT_TRUE(x == 2);
   x = none;
   EXPECT_FALSE(get_pointer(x));
+}
+
+TEST(Optional, MakeOptional) {
+  // const L-value version
+  const std::string s("abc");
+  auto optStr = make_optional(s);
+  ASSERT_TRUE(optStr.hasValue());
+  EXPECT_EQ(*optStr, "abc");
+  *optStr = "cde";
+  EXPECT_EQ(s, "abc");
+  EXPECT_EQ(*optStr, "cde");
+
+  // L-value version
+  std::string s2("abc");
+  auto optStr2 = make_optional(s2);
+  ASSERT_TRUE(optStr2.hasValue());
+  EXPECT_EQ(*optStr2, "abc");
+  *optStr2 = "cde";
+  // it's vital to check that s2 wasn't clobbered
+  EXPECT_EQ(s2, "abc");
+
+  // L-value reference version
+  std::string& s3(s2);
+  auto optStr3 = make_optional(s3);
+  ASSERT_TRUE(optStr3.hasValue());
+  EXPECT_EQ(*optStr3, "abc");
+  *optStr3 = "cde";
+  EXPECT_EQ(s3, "abc");
+
+  // R-value ref version
+  unique_ptr<int> pInt(new int(3));
+  auto optIntPtr = make_optional(std::move(pInt));
+  EXPECT_TRUE(pInt.get() == nullptr);
+  ASSERT_TRUE(optIntPtr.hasValue());
+  EXPECT_EQ(**optIntPtr, 3);
 }
