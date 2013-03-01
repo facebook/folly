@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,9 @@ DEFINE_string(bm_regex, "",
 
 DEFINE_int64(bm_min_usec, 100,
              "Minimum # of microseconds we'll accept for each benchmark.");
+
+DEFINE_int64(bm_min_iters, 1,
+             "Minimum # of iterations we'll try for each benchmark.");
 
 DEFINE_int32(bm_max_secs, 1,
              "Maximum # of seconds we'll spend on each benchmark.");
@@ -222,7 +225,7 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   size_t actualEpochs = 0;
 
   for (; actualEpochs < epochs; ++actualEpochs) {
-    for (unsigned int n = 1; n < (1UL << 30); n *= 2) {
+    for (unsigned int n = FLAGS_bm_min_iters; n < (1UL << 30); n *= 2) {
       auto const nsecs = fun(n);
       if (nsecs < minNanoseconds) {
         continue;
