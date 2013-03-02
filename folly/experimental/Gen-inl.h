@@ -1828,4 +1828,4 @@ inline detail::Skip skip(size_t count) {
   return detail::Skip(count);
 }
 
-}} //folly::gen::detail
+}} //folly::gen
