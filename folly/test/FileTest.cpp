@@ -84,3 +84,15 @@ TEST(File, OwnsFd) {
   ::close(p[0]);
 }
 
+#define EXPECT_CONTAINS(haystack, needle) \
+  EXPECT_NE(::std::string::npos, ::folly::StringPiece(haystack).find(needle)) \
+    << "Haystack: '" << haystack << "'\nNeedle: '" << needle << "'";
+
+TEST(File, UsefulError) {
+  try {
+    File("does_not_exist.txt", 0, 0666);
+  } catch (const std::runtime_error& e) {
+    EXPECT_CONTAINS(e.what(), "does_not_exist.txt");
+    EXPECT_CONTAINS(e.what(), "0666");
+  }
+}

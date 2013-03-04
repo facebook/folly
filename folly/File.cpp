@@ -15,6 +15,7 @@
  */
 
 #include "folly/File.h"
+#include "folly/Format.h"
 #include "folly/ScopeGuard.h"
 
 #include <system_error>
@@ -38,7 +39,9 @@ File::File(const char* name, int flags, mode_t mode)
   , ownsFd_(false) {
 
   if (fd_ < 0) {
-    throw std::system_error(errno, std::system_category(), "open() failed");
+    throw std::system_error(errno, std::system_category(),
+                            folly::format("open(\"{}\", {:#o}, 0{:#o}) failed",
+                                          name, flags, mode).str());
   }
   ownsFd_ = true;
 }
