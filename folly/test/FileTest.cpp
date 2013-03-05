@@ -96,3 +96,29 @@ TEST(File, UsefulError) {
     EXPECT_CONTAINS(e.what(), "0666");
   }
 }
+
+TEST(File, Truthy) {
+  File temp = File::temporary();
+
+  EXPECT_TRUE(bool(temp));
+
+  if (temp) {
+    ;
+  } else {
+    EXPECT_FALSE(true);
+  }
+
+  if (File file = File::temporary()) {
+    ;
+  } else {
+    EXPECT_FALSE(true);
+  }
+
+  EXPECT_FALSE(bool(File()));
+  if (File()) {
+    EXPECT_TRUE(false);
+  }
+  if (File notOpened = File()) {
+    EXPECT_TRUE(false);
+  }
+}

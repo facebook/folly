@@ -60,6 +60,13 @@ class File {
   int fd() const { return fd_; }
 
   /**
+   * Returns 'true' iff the file was successfully opened.
+   */
+  explicit operator bool() const {
+    return fd_ >= 0;
+  }
+
+  /**
    * If we own the file descriptor, close the file and throw on error.
    * Otherwise, do nothing.
    */
