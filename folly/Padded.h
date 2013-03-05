@@ -343,6 +343,11 @@ class Adaptor {
     : c_(std::move(c)),
       lastCount_(lastCount) {
   }
+  explicit Adaptor(size_t n, const value_type& value = value_type())
+    : c_(Node::nodeCount(n), fullNode(value)),
+      lastCount_(n % Node::kElementCount ?: Node::kElementCount) {
+  }
+
   Adaptor(const Adaptor&) = default;
   Adaptor& operator=(const Adaptor&) = default;
   Adaptor(Adaptor&& other)
@@ -444,6 +449,7 @@ class Adaptor {
     assert(n >= 0);
     c_.reserve(Node::nodeCount(n));
   }
+
   size_type capacity() const {
     return c_.capacity() * Node::kElementCount;
   }
@@ -475,12 +481,20 @@ class Adaptor {
   }
 
   void padToFullNode(const value_type& padValue) {
-    while (lastCount_ != Node::kElementCount) {
-      push_back(padValue);
+    // the if is necessary because c_ may be empty so we can't call c_.back()
+    if (lastCount_ != Node::kElementCount) {
+      auto last = c_.back().data();
+      std::fill(last + lastCount_, last + Node::kElementCount, padValue);
+      lastCount_ = Node::kElementCount;
     }
   }
 
  private:
+  static Node fullNode(const value_type& value) {
+    Node n;
+    std::fill(n.data(), n.data() + kElementsPerNode, value);
+    return n;
+  }
   Container c_;  // container of Nodes
   size_t lastCount_;  // number of elements in last Node
 };

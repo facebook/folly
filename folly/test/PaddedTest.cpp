@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,9 @@
 #include <gtest/gtest.h>
 
 using namespace folly;
-namespace ps = ::folly::padded;
 
 TEST(NodeTest, Padding) {
-  typedef ps::Node<int32_t, 64> IntNode;
+  typedef padded::Node<int32_t, 64> IntNode;
   EXPECT_EQ(16, IntNode::kElementCount);
   EXPECT_EQ(0, IntNode::kPaddingBytes);
   EXPECT_EQ(alignof(int32_t), alignof(IntNode));
@@ -50,7 +49,7 @@ TEST(NodeTest, Padding) {
     char c[7];
   };
   EXPECT_EQ(1, alignof(SevenBytes));
-  typedef ps::Node<SevenBytes, 64> SevenByteNode;
+  typedef padded::Node<SevenBytes, 64> SevenByteNode;
   EXPECT_EQ(9, SevenByteNode::kElementCount);  // 64 / 7
   EXPECT_EQ(1, SevenByteNode::kPaddingBytes);  // 64 % 7
   EXPECT_EQ(1, alignof(SevenByteNode));
@@ -77,7 +76,7 @@ TEST(NodeTest, Padding) {
 
 class IntPaddedTestBase : public ::testing::Test {
  protected:
-  typedef ps::Node<uint32_t, 64> IntNode;
+  typedef padded::Node<uint32_t, 64> IntNode;
   typedef std::vector<IntNode> IntNodeVec;
   IntNodeVec v_;
   int n_;
@@ -98,16 +97,16 @@ class IntPaddedConstTest : public IntPaddedTestBase {
 
 TEST_F(IntPaddedConstTest, Iteration) {
   int k = 0;
-  for (auto it = ps::cbegin(v_); it != ps::cend(v_); ++it, ++k) {
+  for (auto it = padded::cbegin(v_); it != padded::cend(v_); ++it, ++k) {
     EXPECT_EQ(k, *it);
   }
   EXPECT_EQ(n_, k);
 }
 
 TEST_F(IntPaddedConstTest, Arithmetic) {
-  EXPECT_EQ(64, ps::cend(v_) - ps::cbegin(v_));
+  EXPECT_EQ(64, padded::cend(v_) - padded::cbegin(v_));
   // Play around block boundaries
-  auto it = ps::cbegin(v_);
+  auto it = padded::cbegin(v_);
   EXPECT_EQ(0, *it);
   {
     auto i2 = it;
@@ -154,7 +153,7 @@ TEST_F(IntPaddedNonConstTest, Iteration) {
   n_ = 64;
 
   int k = 0;
-  for (auto it = ps::begin(v_); it != ps::end(v_); ++it, ++k) {
+  for (auto it = padded::begin(v_); it != padded::end(v_); ++it, ++k) {
     *it = k;
   }
   EXPECT_EQ(n_, k);
@@ -174,7 +173,7 @@ class StructPaddedTestBase : public ::testing::Test {
     uint8_t y;
     uint8_t z;
   };
-  typedef ps::Node<Point, 64> PointNode;
+  typedef padded::Node<Point, 64> PointNode;
   typedef std::vector<PointNode> PointNodeVec;
   PointNodeVec v_;
   int n_;
@@ -198,7 +197,7 @@ class StructPaddedConstTest : public StructPaddedTestBase {
 
 TEST_F(StructPaddedConstTest, Iteration) {
   int k = 0;
-  for (auto it = ps::cbegin(v_); it != ps::cend(v_); ++it, ++k) {
+  for (auto it = padded::cbegin(v_); it != padded::cend(v_); ++it, ++k) {
     EXPECT_EQ(k, it->x);
     EXPECT_EQ(k + 1, it->y);
     EXPECT_EQ(k + 2, it->z);
@@ -208,7 +207,7 @@ TEST_F(StructPaddedConstTest, Iteration) {
 
 class IntAdaptorTest : public IntPaddedConstTest {
  protected:
-  typedef ps::Adaptor<IntNodeVec> IntAdaptor;
+  typedef padded::Adaptor<IntNodeVec> IntAdaptor;
   IntAdaptor a_;
 };
 
@@ -232,3 +231,12 @@ TEST_F(IntAdaptorTest, Simple) {
   EXPECT_EQ(16, p.second);
   EXPECT_TRUE(v_ == p.first);
 }
+
+TEST_F(IntAdaptorTest, ResizeConstructor) {
+  IntAdaptor a(n_, 42);
+  EXPECT_EQ(n_, a.size());
+  for (int i = 0; i < n_; ++i) {
+    EXPECT_EQ(42, a[i]);
+  }
+}
+
