@@ -122,3 +122,8 @@ TEST(File, Truthy) {
     EXPECT_TRUE(false);
   }
 }
+
+TEST(File, TryOpen) {
+  EXPECT_FALSE(!!File::tryOpen("does_not_exist.txt"));
+  EXPECT_TRUE(!!File::tryOpen("/etc/fstab"));
+}
