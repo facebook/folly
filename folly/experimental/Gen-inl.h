@@ -168,10 +168,16 @@ class GenImpl : public FBounded<Self> {
   template<class Body>
   void foreach(Body&& body) const {
     this->self().apply([&](Value value) -> bool {
+        static_assert(!infinite, "Cannot call foreach on infinite GenImpl");
         body(std::forward<Value>(value));
         return true;
       });
   }
+
+  // Child classes should override if the sequence generated is *definitely*
+  // infinite. 'infinite' may be false_type for some infinite sequences
+  // (due the the Halting Problem).
+  static constexpr bool infinite = false;
 };
 
 template<class LeftValue,
@@ -236,6 +242,8 @@ template<class Value,
 typename std::enable_if<
   IsCompatibleSignature<Handler, void(Value)>::value>::type
 operator|(const GenImpl<Value, Gen>& gen, Handler&& handler) {
+  static_assert(!Gen::infinite,
+                "Cannot pull all values from an infinite sequence.");
   gen.self().foreach(std::forward<Handler>(handler));
 }
 
@@ -439,6 +447,8 @@ public:
       body(arg);
     }
   }
+
+  static constexpr bool infinite = endless;
 };
 
 /**
@@ -470,6 +480,8 @@ public:
     first_.foreach(std::forward<Body>(body));
     second_.foreach(std::forward<Body>(body));
   }
+
+  static constexpr bool infinite = First::infinite || Second::infinite;
 };
 
 /**
@@ -567,6 +579,8 @@ class Map : public Operator<Map<Predicate>> {
         return handler(pred_(std::forward<Value>(value)));
       });
     }
+
+    static constexpr bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -631,6 +645,8 @@ class Filter : public Operator<Filter<Predicate>> {
         return true;
       });
     }
+
+    static constexpr bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -699,6 +715,9 @@ class Until : public Operator<Until<Predicate>> {
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), pred_);
   }
+
+  // Theoretically an 'until' might stop an infinite
+  static constexpr bool infinite = false;
 };
 
 /**
@@ -809,6 +828,8 @@ class Skip : public Operator<Skip> {
           return handler(std::forward<Value>(value));
         });
     }
+
+    static constexpr bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -863,6 +884,7 @@ class Order : public Operator<Order<Selector, Comparer>> {
   class Generator :
     public GenImpl<StorageType&&,
                    Generator<Value, Source, StorageType, Result>> {
+    static_assert(!Source::infinite, "Cannot sort infinite source!");
     Source source_;
     Selector selector_;
     Comparer comparer_;
@@ -1010,6 +1032,7 @@ class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
   template<class Source,
            class Value>
   Seed compose(const GenImpl<Value, Source>& source) const {
+    static_assert(!Source::infinite, "Cannot foldl infinite source");
     Seed accum = seed_;
     source | [&](Value v) {
       accum = fold_(std::move(accum), std::forward<Value>(v));
@@ -1107,6 +1130,7 @@ class All : public Operator<All<Predicate>> {
   template<class Source,
            class Value>
   bool compose(const GenImpl<Value, Source>& source) const {
+    static_assert(!Source::infinite, "Cannot call 'all' on infinite source");
     bool all = true;
     source | [&](Value v) -> bool {
       if (!pred_(std::forward<Value>(v))) {
@@ -1173,6 +1197,7 @@ class Count : public Operator<Count> {
   template<class Source,
            class Value>
   size_t compose(const GenImpl<Value, Source>& source) const {
+    static_assert(!Source::infinite, "Cannot count infinite source");
     return foldl(size_t(0),
                  [](size_t accum, Value v) {
                    return accum + 1;
@@ -1189,12 +1214,11 @@ class Count : public Operator<Count> {
  */
 class Sum : public Operator<Sum> {
  public:
-  Sum() { }
-
   template<class Source,
            class Value,
            class StorageType = typename std::decay<Value>::type>
   StorageType compose(const GenImpl<Value, Source>& source) const {
+    static_assert(!Source::infinite, "Cannot sum infinite source");
     return foldl(StorageType(0),
                  [](StorageType&& accum, Value v) {
                    return std::move(accum) + std::forward<Value>(v);
@@ -1222,6 +1246,9 @@ class Contains : public Operator<Contains<Needle>> {
            class Value,
            class StorageType = typename std::decay<Value>::type>
   bool compose(const GenImpl<Value, Source>& source) const {
+    static_assert(!Source::infinite,
+                  "Calling contains on an infinite source might cause "
+                  "an infinite loop.");
     return !(source | [this](Value value) {
         return !(needle_ == std::forward<Value>(value));
       });
@@ -1414,6 +1441,8 @@ class Concat : public Operator<Concat> {
           inner.foreach(std::forward<Body>(body));
         });
     }
+
+    static constexpr bool infinite = Source::infinite;
   };
 
   template<class Value,

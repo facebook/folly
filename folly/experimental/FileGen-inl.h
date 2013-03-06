@@ -52,6 +52,11 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
       }
     }
   }
+
+  // Technically, there could be infinite files (e.g. /dev/random), but people
+  // who open those can do so at their own risk.
+  static constexpr bool infinite = false;
+
  private:
   File file_;
   std::unique_ptr<IOBuf> buffer_;

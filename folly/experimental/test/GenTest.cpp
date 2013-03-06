@@ -159,7 +159,7 @@ TEST(Gen, Contains) {
       | eachTo<std::string>();
 
     // std::string gen, const char* needle
-    EXPECT_TRUE(gen | contains("49"));
+    EXPECT_TRUE(gen | take(9999) | contains("49"));
   }
 }
 
@@ -427,7 +427,7 @@ TEST(Gen, Any) {
 TEST(Gen, All) {
   EXPECT_TRUE(seq(0, 10) | all([](int i) { return i < 11; }));
   EXPECT_FALSE(seq(0, 10) | all([](int i) { return i < 5; }));
-  EXPECT_FALSE(seq(0) | all([](int i) { return i < 10; }));
+  EXPECT_FALSE(seq(0) | take(9999) | all([](int i) { return i < 10; }));
 
   // empty lists satisfies all
   EXPECT_TRUE(seq(0) | take(0) | all([](int i) { return i < 50; }));

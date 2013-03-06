@@ -109,6 +109,8 @@ class StringResplitter : public Operator<StringResplitter> {
       }
       return true;
     }
+
+    static constexpr bool infinite = Source::infinite;
   };
 
   template<class Source,
