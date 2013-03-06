@@ -55,14 +55,6 @@ class File {
   static File temporary();
 
   /**
-   * Attempts to open the file at the given path.  Returns an 'closed` File
-   * instance on failure, which will evaluate to false.
-   */
-  static File tryOpen(const char* name,
-                      int flags = O_RDONLY,
-                      mode_t mode = 0644);
-
-  /**
    * Return the file descriptor, or -1 if the file was closed.
    */
   int fd() const { return fd_; }

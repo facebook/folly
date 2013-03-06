@@ -79,16 +79,6 @@ File::~File() {
   return File(fd, true);
 }
 
-/* static */ File File::tryOpen(const char* name,
-                                int flags,
-                                mode_t mode) {
-  try {
-    return File(name, flags, mode);
-  } catch (const std::system_error&) {
-    return File();
-  }
-}
-
 void File::release() {
   fd_ = -1;
   ownsFd_ = false;
