@@ -154,6 +154,7 @@ void AsyncIO::submit(Op* op) {
 Range<AsyncIO::Op**> AsyncIO::wait(size_t minRequests) {
   CHECK(ctx_);
   CHECK_EQ(pollFd_, -1) << "wait() only allowed on non-pollable object";
+  CHECK_LE(minRequests, pending_);
   return doWait(minRequests, pending_);
 }
 
