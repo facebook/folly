@@ -250,7 +250,7 @@ template<class Collection>
 class Append;
 
 template<class Value>
-class GeneratorBuilder {};
+class GeneratorBuilder;
 
 template<class Needle>
 class Contains;
@@ -337,14 +337,14 @@ Yield generator(Source&& source) {
  */
 template<class Predicate,
          class Map = detail::Map<Predicate>>
-Map mapped(const Predicate& pred = Predicate()) {
-  return Map(pred);
+Map mapped(Predicate pred = Predicate()) {
+  return Map(std::move(pred));
 }
 
 template<class Predicate,
          class Map = detail::Map<Predicate>>
-Map map(const Predicate& pred = Predicate()) {
-  return Map(pred);
+Map map(Predicate pred = Predicate()) {
+  return Map(std::move(pred));
 }
 
 template<class Predicate,
@@ -368,15 +368,16 @@ Until until(Predicate pred = Predicate()) {
 template<class Selector,
          class Comparer = Less,
          class Order = detail::Order<Selector, Comparer>>
-Order orderBy(const Selector& selector,
-              const Comparer& comparer = Comparer()) {
-  return Order(selector, comparer);
+Order orderBy(Selector selector = Identity(),
+              Comparer comparer = Comparer()) {
+  return Order(std::move(selector),
+               std::move(comparer));
 }
 
 template<class Selector,
          class Order = detail::Order<Selector, Greater>>
-Order orderByDescending(const Selector& selector) {
-  return Order(selector);
+Order orderByDescending(Selector selector = Identity()) {
+  return Order(std::move(selector));
 }
 
 template<int n,
@@ -405,26 +406,28 @@ To eachTo() {
 template<class Seed,
          class Fold,
          class FoldLeft = detail::FoldLeft<Seed, Fold>>
-FoldLeft foldl(const Seed& seed, const Fold& fold) {
-  return FoldLeft(seed, fold);
+FoldLeft foldl(Seed seed = Seed(),
+               Fold fold = Fold()) {
+  return FoldLeft(std::move(seed),
+                  std::move(fold));
 }
 
 template<class Reducer,
          class Reduce = detail::Reduce<Reducer>>
-Reduce reduce(const Reducer& reducer) {
-  return Reduce(reducer);
+Reduce reduce(Reducer reducer = Reducer()) {
+  return Reduce(std::move(reducer));
 }
 
-template<class Selector,
+template<class Selector = Identity,
          class Min = detail::Min<Selector, Less>>
-Min minBy(const Selector& selector = Selector()) {
-  return Min(selector);
+Min minBy(Selector selector = Selector()) {
+  return Min(std::move(selector));
 }
 
 template<class Selector,
          class MaxBy = detail::Min<Selector, Greater>>
-MaxBy maxBy(const Selector& selector = Selector()) {
-  return MaxBy(selector);
+MaxBy maxBy(Selector selector = Selector()) {
+  return MaxBy(std::move(selector));
 }
 
 template<class Collection,

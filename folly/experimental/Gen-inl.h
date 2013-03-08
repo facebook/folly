@@ -135,14 +135,6 @@ Composed operator|(Operator<Left>&& left,
   return Composed(std::move(left.self()), std::move(right.self()));
 }
 
-template<class Value,
-         class Source,
-         class Yield = detail::Yield<Value, Source>>
-Yield operator+(const detail::GeneratorBuilder<Value>&,
-                Source&& source) {
-  return Yield(std::forward<Source>(source));
-}
-
 /**
  * GenImpl - Core abstraction of a generator, an object which produces values by
  * passing them to a given handler lambda. All generator implementations must
@@ -408,13 +400,14 @@ class Sequence : public GenImpl<const Value&,
                 !std::is_const<Value>::value, "Value mustn't be const or ref.");
   Value bounds_[endless ? 1 : 2];
 public:
-  explicit Sequence(const Value& begin)
-      : bounds_{begin} {
+  explicit Sequence(Value begin)
+      : bounds_{std::move(begin)} {
     static_assert(endless, "Must supply 'end'");
   }
 
-  explicit Sequence(const Value& begin, const Value& end)
-    : bounds_{begin, end} {}
+  Sequence(Value begin,
+           Value end)
+    : bounds_{std::move(begin), std::move(end)} {}
 
   template<class Handler>
   bool apply(Handler&& handler) const {
@@ -480,6 +473,18 @@ public:
 };
 
 /**
+ * GenratorBuilder - Helper for GENERTATOR macro.
+ **/
+template<class Value>
+struct GeneratorBuilder {
+  template<class Source,
+           class Yield = detail::Yield<Value, Source>>
+  Yield operator+(Source&& source) {
+    return Yield(std::forward<Source>(source));
+  }
+};
+
+/**
  * Yield - For producing values from a user-defined generator by way of a
  * 'yield' function.
  **/
@@ -530,8 +535,10 @@ template<class Predicate>
 class Map : public Operator<Map<Predicate>> {
   Predicate pred_;
  public:
-  explicit Map(const Predicate& pred = Predicate())
-    : pred_(pred)
+  Map() {}
+
+  explicit Map(Predicate pred)
+    : pred_(std::move(pred))
   { }
 
   template<class Value,
@@ -592,8 +599,9 @@ template<class Predicate>
 class Filter : public Operator<Filter<Predicate>> {
   Predicate pred_;
  public:
-  explicit Filter(const Predicate& pred = Predicate())
-    : pred_(pred)
+  Filter() {}
+  explicit Filter(Predicate pred)
+    : pred_(std::move(pred))
   { }
 
   template<class Value,
@@ -653,9 +661,10 @@ template<class Predicate>
 class Until : public Operator<Until<Predicate>> {
   Predicate pred_;
  public:
-  explicit Until(const Predicate& pred = Predicate())
-    : pred_(pred)
-  { }
+  Until() {}
+  explicit Until(Predicate pred)
+    : pred_(std::move(pred))
+  {}
 
   template<class Value,
            class Source,
@@ -835,9 +844,17 @@ class Order : public Operator<Order<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  explicit Order(const Selector& selector = Selector(),
-                 const Comparer& comparer = Comparer())
-    : selector_(selector) , comparer_(comparer) {}
+  Order() {}
+
+  explicit Order(Selector selector)
+    : selector_(std::move(selector))
+  {}
+
+  Order(Selector selector,
+        Comparer comparer)
+    : selector_(std::move(selector))
+    , comparer_(std::move(comparer))
+  {}
 
   template<class Value,
            class Source,
@@ -983,9 +1000,11 @@ class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
   Seed seed_;
   Fold fold_;
  public:
-  FoldLeft(const Seed& seed, const Fold& fold)
-    : seed_(seed)
-    , fold_(fold)
+  FoldLeft() {}
+  FoldLeft(Seed seed,
+           Fold fold)
+    : seed_(std::move(seed))
+    , fold_(std::move(fold))
   {}
 
   template<class Source,
@@ -1080,8 +1099,9 @@ template<class Predicate>
 class All : public Operator<All<Predicate>> {
   Predicate pred_;
  public:
-  explicit All(const Predicate& pred = Predicate())
-    : pred_(pred)
+  All() {}
+  explicit All(Predicate pred)
+    : pred_(std::move(pred))
   { }
 
   template<class Source,
@@ -1115,8 +1135,9 @@ template<class Reducer>
 class Reduce : public Operator<Reduce<Reducer>> {
   Reducer reducer_;
  public:
-  explicit Reduce(const Reducer& reducer)
-    : reducer_(reducer)
+  Reduce() {}
+  explicit Reduce(Reducer reducer)
+    : reducer_(std::move(reducer))
   {}
 
   template<class Source,
@@ -1225,10 +1246,16 @@ class Min : public Operator<Min<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  explicit Min(const Selector& selector = Selector(),
-               const Comparer& comparer = Comparer())
-    : selector_(selector)
-    , comparer_(comparer)
+  Min() {}
+
+  explicit Min(Selector selector)
+    : selector_(std::move(selector))
+  {}
+
+  Min(Selector selector,
+        Comparer comparer)
+    : selector_(std::move(selector))
+    , comparer_(std::move(comparer))
   {}
 
   template<class Value,
