@@ -324,6 +324,45 @@ TEST(IOBufQueue, Prepend) {
                         out->length()));
 }
 
+TEST(IOBufQueue, PopFirst) {
+  IOBufQueue queue(IOBufQueue::cacheChainLength());
+  const char * strings[] = {
+    "Hello",
+    ",",
+    " ",
+    "",
+    "World"
+  };
+
+  const size_t numStrings=sizeof(strings)/sizeof(*strings);
+  size_t chainLength = 0;
+  for(ssize_t i=0; i<numStrings; ++i) {
+    queue.append(stringToIOBuf(strings[i], strlen(strings[i])));
+    checkConsistency(queue);
+    chainLength += strlen(strings[i]);
+  }
+
+  unique_ptr<IOBuf> first;
+  for(ssize_t i=0; i<numStrings; ++i) {
+    checkConsistency(queue);
+    EXPECT_EQ(chainLength, queue.front()->computeChainDataLength());
+    EXPECT_EQ(chainLength, queue.chainLength());
+    first = queue.pop_front();
+    chainLength-=strlen(strings[i]);
+    EXPECT_EQ(strlen(strings[i]), first->computeChainDataLength());
+  }
+  checkConsistency(queue);
+  EXPECT_EQ(chainLength, queue.chainLength());
+
+  EXPECT_EQ((IOBuf*)NULL, queue.front());
+  first = queue.pop_front();
+  EXPECT_EQ((IOBuf*)NULL, first.get());
+
+  checkConsistency(queue);
+  EXPECT_EQ((IOBuf*)NULL, queue.front());
+  EXPECT_EQ(0, queue.chainLength());
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

@@ -285,4 +285,16 @@ void IOBufQueue::trimEnd(size_t amount) {
   }
 }
 
+std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {
+  if (!head_) {
+    return nullptr;
+  }
+  if (options_.cacheChainLength) {
+    chainLength_ -= head_->length();
+  }
+  std::unique_ptr<folly::IOBuf> retBuf = std::move(head_);
+  head_ = retBuf->pop();
+  return retBuf;
+}
+
 } // folly

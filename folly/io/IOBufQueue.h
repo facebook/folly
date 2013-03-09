@@ -205,6 +205,13 @@ class IOBufQueue {
   }
 
   /**
+   * returns the first IOBuf in the chain and removes it from the chain
+   *
+   * @return first IOBuf in the chain or nullptr if none.
+   */
+  std::unique_ptr<folly::IOBuf> pop_front();
+
+  /**
    * Total chain length, only valid if cacheLength was specified in the
    * constructor.
    */
