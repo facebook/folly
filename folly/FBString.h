@@ -248,8 +248,10 @@ private:
  * gcc-4.7 throws what appears to be some false positive uninitialized
  * warnings for the members of the MediumLarge struct.  So, mute them here.
  */
+#if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wuninitialized"
+#endif
 
 /**
  * This is the core of the string. The code should work on 32- and
@@ -834,7 +836,9 @@ private:
   }
 };
 
+#if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic pop
+#endif
 
 #ifndef _LIBSTDCXX_FBSTRING
 /**

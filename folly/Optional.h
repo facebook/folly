@@ -73,7 +73,7 @@ const None none = nullptr;
  * gcc-4.7 warns about use of uninitialized memory around the use of storage_
  * even though this is explicitly initialized at each point.
  */
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wuninitialized"
 # pragma GCC diagnostic ignored "-Wpragmas"
@@ -245,7 +245,9 @@ class Optional : boost::totally_ordered<Optional<Value>,
   bool hasValue_;
 };
 
+#if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop
+#endif
 
 template<class T>
 const T* get_pointer(const Optional<T>& opt) {
