@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,14 +32,11 @@
 namespace folly { namespace hash {
 
 // This is a general-purpose way to create a single hash from multiple
-// hashable objects. It relies on std::hash<T> being available for all
-// relevant types and combines those hashes in an order-dependent way
-// to yield a new hash.
+// hashable objects. hash_combine_generic takes a class Hasher implementing
+// hash<T>; hash_combine uses a default hasher StdHasher that uses std::hash.
+// hash_combine_generic hashes each argument and combines those hashes in
+// an order-dependent way to yield a new hash.
 
-// Never used, but gcc demands it.
-inline size_t hash_combine() {
-  return 0;
-}
 
 // This is the Hash128to64 function from Google's cityhash (available
 // under the MIT License).  We use it to reduce multiple 64 bit hashes
@@ -55,14 +52,37 @@ inline size_t hash_128_to_64(const size_t upper, const size_t lower) {
   return b;
 }
 
-template <typename T, typename... Ts>
-size_t hash_combine(const T& t, const Ts&... ts) {
-  size_t seed = std::hash<T>()(t);
+// Never used, but gcc demands it.
+template <class Hasher>
+inline size_t hash_combine_generic() {
+  return 0;
+}
+
+template <class Hasher, typename T, typename... Ts>
+size_t hash_combine_generic(const T& t, const Ts&... ts) {
+  size_t seed = Hasher::hash(t);
   if (sizeof...(ts) == 0) {
     return seed;
   }
-  size_t remainder = hash_combine(ts...);
+  size_t remainder = hash_combine_generic<Hasher>(ts...);
   return hash_128_to_64(seed, remainder);
+}
+
+// Simply uses std::hash to hash.  Note that std::hash is not guaranteed
+// to be a very good hash function; provided std::hash doesn't collide on
+// the individual inputs, you are fine, but that won't be true for, say,
+// strings or pairs
+class StdHasher {
+ public:
+  template <typename T>
+  static size_t hash(const T& t) {
+    return std::hash<T>()(t);
+  }
+};
+
+template <typename T, typename... Ts>
+size_t hash_combine(const T& t, const Ts&... ts) {
+  return hash_combine_generic<StdHasher>(t, ts...);
 }
 
 //////////////////////////////////////////////////////////////////////
