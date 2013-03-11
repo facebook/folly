@@ -309,3 +309,47 @@ TEST(Optional, MakeOptional) {
   ASSERT_TRUE(optIntPtr.hasValue());
   EXPECT_EQ(**optIntPtr, 3);
 }
+
+class ContainsOptional {
+ public:
+  ContainsOptional() { }
+  explicit ContainsOptional(int x) : opt_(x) { }
+  bool hasValue() const { return opt_.hasValue(); }
+  int value() const { return opt_.value(); }
+
+  ContainsOptional(const ContainsOptional &other) = default;
+  ContainsOptional& operator=(const ContainsOptional &other) = default;
+  ContainsOptional(ContainsOptional &&other) = default;
+  ContainsOptional& operator=(ContainsOptional &&other) = default;
+
+ private:
+  Optional<int> opt_;
+};
+
+/**
+ * Test that a class containing an Optional can be copy and move assigned.
+ * This was broken under gcc 4.7 until assignment operators were explicitly
+ * defined.
+ */
+TEST(Optional, AssignmentContained) {
+  {
+    ContainsOptional source(5), target;
+    target = source;
+    EXPECT_TRUE(target.hasValue());
+    EXPECT_EQ(5, target.value());
+  }
+
+  {
+    ContainsOptional source(5), target;
+    target = std::move(source);
+    EXPECT_TRUE(target.hasValue());
+    EXPECT_EQ(5, target.value());
+    EXPECT_FALSE(source.hasValue());
+  }
+
+  {
+    ContainsOptional opt_uninit, target(10);
+    target = opt_uninit;
+    EXPECT_FALSE(target.hasValue());
+  }
+}

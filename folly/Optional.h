@@ -169,6 +169,16 @@ class Optional : boost::totally_ordered<Optional<Value>,
     return *this;
   }
 
+  Optional& operator=(Optional &&other) {
+    assign(std::move(other));
+    return *this;
+  }
+
+  Optional& operator=(const Optional &other) {
+    assign(other);
+    return *this;
+  }
+
   bool operator<(const Optional& other) const {
     if (hasValue() != other.hasValue()) {
       return hasValue() < other.hasValue();
