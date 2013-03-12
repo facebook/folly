@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,6 +80,20 @@ TEST(Traits, bitAndInit) {
   EXPECT_FALSE(IsTriviallyCopyable<vector<int>>::value);
   EXPECT_TRUE (IsZeroInitializable<int>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
+}
+
+TEST(Traits, is_negative) {
+  EXPECT_TRUE(folly::is_negative(-1));
+  EXPECT_FALSE(folly::is_negative(0));
+  EXPECT_FALSE(folly::is_negative(1));
+  EXPECT_FALSE(folly::is_negative(0u));
+  EXPECT_FALSE(folly::is_negative(1u));
+
+  EXPECT_TRUE(folly::is_non_positive(-1));
+  EXPECT_TRUE(folly::is_non_positive(0));
+  EXPECT_FALSE(folly::is_non_positive(1));
+  EXPECT_TRUE(folly::is_non_positive(0u));
+  EXPECT_FALSE(folly::is_non_positive(1u));
 }
 
 int main(int argc, char ** argv) {

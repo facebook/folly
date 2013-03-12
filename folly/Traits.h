@@ -278,9 +278,9 @@ struct IsOneOf<T, T1, Ts...> {
 };
 
 /*
- * Complementary type traits to check for a negative value.
+ * Complementary type traits to check for a negative/non-positive value.
  *
- * if(x < 0) yields an error in clang for unsigned types when -Werror is used
+ * `if(x < 0)` yields an error in clang for unsigned types when -Werror is used
  */
 
 namespace detail {
@@ -297,10 +297,15 @@ struct is_negative_impl<T, false> {
 
 } // namespace detail {
 
+// same as `x < 0`
 template <typename T>
 constexpr bool is_negative(T x) {
   return folly::detail::is_negative_impl<T, std::is_signed<T>::value>::check(x);
 }
+
+// same as `x <= 0`
+template <typename T>
+constexpr bool is_non_positive(T x) { return !x || folly::is_negative(x); }
 
 } // namespace folly
 
