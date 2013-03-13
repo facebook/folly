@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -189,6 +189,23 @@ expect to get a call for an interview.";
   }
 }
 BENCHMARK_PARAM(BENCHFUN(findUnsuccessful), 524288);
+
+void BENCHFUN(equality)(int iters, int arg) {
+  std::vector<STRING> haystack(arg);
+
+  BENCHMARK_SUSPEND {
+    for (auto& hay : haystack) {
+      randomBinaryString(&hay, 1024);
+    }
+  }
+
+  FOR_EACH_RANGE (i, 0, iters) {
+    STRING needle;
+    randomBinaryString(&needle, 1024);
+    doNotOptimizeAway(std::find(haystack.begin(), haystack.end(), needle));
+  }
+}
+BENCHMARK_PARAM(BENCHFUN(equality), 65536);
 
 void BENCHFUN(replace)(int iters, int arg) {
   STRING s;

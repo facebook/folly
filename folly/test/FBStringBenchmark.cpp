@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,15 @@ void randomString(String* toFill, unsigned int maxSize = 1000) {
   toFill->resize(random(0, maxSize));
   FOR_EACH (i, *toFill) {
     *i = random('a', 'z');
+  }
+}
+
+template <class String>
+void randomBinaryString(String* toFill, unsigned int maxSize = 1000) {
+  assert(toFill);
+  toFill->resize(random(0, maxSize));
+  FOR_EACH (i, *toFill) {
+    *i = random('0', '1');
   }
 }
 

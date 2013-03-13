@@ -2053,7 +2053,7 @@ template <typename E, class T, class A, class S>
 inline
 bool operator==(const basic_fbstring<E, T, A, S>& lhs,
                 const basic_fbstring<E, T, A, S>& rhs) {
-  return lhs.compare(rhs) == 0; }
+  return lhs.size() == rhs.size() && lhs.compare(rhs) == 0; }
 
 template <typename E, class T, class A, class S>
 inline
