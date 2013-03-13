@@ -753,18 +753,27 @@ TEST(StringGen, Unsplit) {
     split(s, ',') | unsplit(',', &buffer);
     auto expected = folly::to<folly::fbstring>(
         "asdf", s.empty() ? "" : ",", s);
-    EXPECT_EQ(buffer, expected);
+    EXPECT_EQ(expected, buffer);
   };
 
   auto emptyBuffer = [](const StringPiece& s) {
     std::string buffer;
     split(s, ',') | unsplit(',', &buffer);
+    EXPECT_EQ(s, buffer);
+  };
+
+  auto stringDelim = [](const StringPiece& s) {
+    EXPECT_EQ(s, split(s, ',') | unsplit(","));
+    std::string buffer;
+    split(s, ',') | unsplit(",", &buffer);
     EXPECT_EQ(buffer, s);
   };
 
   runUnsplitSuite(basicFn);
   runUnsplitSuite(existingBuffer);
   runUnsplitSuite(emptyBuffer);
+  runUnsplitSuite(stringDelim);
+  EXPECT_EQ("1, 2, 3", seq(1, 3) | unsplit(", "));
 }
 
 TEST(FileGen, ByLine) {

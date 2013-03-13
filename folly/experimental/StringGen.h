@@ -73,6 +73,12 @@ Unsplit unsplit(const Delimiter& delimiter) {
   return Unsplit(delimiter);
 }
 
+template<class Output = folly::fbstring,
+         class Unsplit = detail::Unsplit<fbstring, Output>>
+Unsplit unsplit(const char* delimiter) {
+  return Unsplit(delimiter);
+}
+
 /*
  * Joins a sequence of tokens into a string, appending them to the output
  * buffer.  If the output buffer is empty, an initial delimiter will not be
@@ -91,6 +97,12 @@ template<class Delimiter,
          class OutputBuffer,
          class UnsplitBuffer = detail::UnsplitBuffer<Delimiter, OutputBuffer>>
 UnsplitBuffer unsplit(const Delimiter& delimiter, OutputBuffer* outputBuffer) {
+  return UnsplitBuffer(delimiter, outputBuffer);
+}
+
+template<class OutputBuffer,
+         class UnsplitBuffer = detail::UnsplitBuffer<fbstring, OutputBuffer>>
+UnsplitBuffer unsplit(const char* delimiter, OutputBuffer* outputBuffer) {
   return UnsplitBuffer(delimiter, outputBuffer);
 }
 
