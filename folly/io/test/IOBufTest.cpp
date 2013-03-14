@@ -28,6 +28,7 @@
 #include "folly/Range.h"
 
 using folly::fbstring;
+using folly::fbvector;
 using folly::IOBuf;
 using folly::TypedIOBuf;
 using folly::StringPiece;
@@ -763,6 +764,51 @@ INSTANTIATE_TEST_CASE_P(
         ::testing::Values(0, 1, 24, 256, 1 << 10, 1 << 20),  // element size
         ::testing::Values(1, 2, 10),                         // element count
         ::testing::Bool()));                                 // shared
+
+TEST(IOBuf, getIov) {
+  uint32_t fillSeed = 0xdeadbeef;
+  boost::mt19937 gen(fillSeed);
+
+  size_t len = 4096;
+  size_t count = 32;
+  auto buf = IOBuf::create(len + 1);
+  buf->append(rand() % len + 1);
+  fillBuf(buf.get(), gen);
+
+  for (size_t i = 0; i < count - 1; i++) {
+    auto buf2 = IOBuf::create(len + 1);
+    buf2->append(rand() % len + 1);
+    fillBuf(buf2.get(), gen);
+    buf->prependChain(std::move(buf2));
+  }
+  EXPECT_EQ(count, buf->countChainElements());
+
+  auto iov = buf->getIov();
+  EXPECT_EQ(count, iov.size());
+
+  IOBuf const* p = buf.get();
+  for (size_t i = 0; i < count; i++, p = p->next()) {
+    EXPECT_EQ(p->data(), iov[i].iov_base);
+    EXPECT_EQ(p->length(), iov[i].iov_len);
+  }
+
+  // an empty buf should be skipped in the iov.
+  buf->next()->clear();
+  iov = buf->getIov();
+  EXPECT_EQ(count - 1, iov.size());
+  EXPECT_EQ(buf->next()->next()->data(), iov[1].iov_base);
+
+  // same for the first one being empty
+  buf->clear();
+  iov = buf->getIov();
+  EXPECT_EQ(count - 2, iov.size());
+  EXPECT_EQ(buf->next()->next()->data(), iov[0].iov_base);
+
+  // and the last one
+  buf->prev()->clear();
+  iov = buf->getIov();
+  EXPECT_EQ(count - 3, iov.size());
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

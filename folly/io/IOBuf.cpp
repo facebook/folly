@@ -643,4 +643,18 @@ IOBuf::Iterator IOBuf::cend() const {
   return Iterator(nullptr, nullptr);
 }
 
+folly::fbvector<struct iovec> IOBuf::getIov() const {
+  folly::fbvector<struct iovec> iov;
+  iov.reserve(countChainElements());
+  IOBuf const* p = this;
+  do {
+    // some code can get confused by empty iovs, so skip them
+    if (p->length() > 0) {
+      iov.push_back({(void*)p->data(), p->length()});
+    }
+    p = p->next();
+  } while (p != this);
+  return iov;
+}
+
 } // folly

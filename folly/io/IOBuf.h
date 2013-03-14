@@ -25,12 +25,14 @@
 #include <cstring>
 #include <memory>
 #include <limits>
+#include <sys/uio.h>
 #include <type_traits>
 
 #include <boost/iterator/iterator_facade.hpp>
 
 #include "folly/FBString.h"
 #include "folly/Range.h"
+#include "folly/FBVector.h"
 
 namespace folly {
 
@@ -921,6 +923,17 @@ class IOBuf {
    * part of a larger chain).
    */
   std::unique_ptr<IOBuf> cloneOne() const;
+
+  /**
+   * Return an iovector suitable for e.g. writev()
+   *
+   *   auto iov = buf->getIov();
+   *   auto xfer = writev(fd, iov.data(), iov.size());
+   *
+   * Naturally, the returned iovector is invalid if you modify the buffer
+   * chain.
+   */
+  folly::fbvector<struct iovec> getIov() const;
 
   // Overridden operator new and delete.
   // These directly use malloc() and free() to allocate the space for IOBuf
