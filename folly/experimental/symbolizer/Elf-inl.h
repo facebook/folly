@@ -59,6 +59,34 @@ const char* ElfFile::iterateStrings(const ElfW(Shdr)& stringTable, Fn fn)
   return ptr != end ? ptr : nullptr;
 }
 
+template <class Fn>
+const ElfW(Sym)* ElfFile::iterateSymbols(const ElfW(Shdr)& section, Fn fn)
+  const {
+  enforce(section.sh_entsize == sizeof(ElfW(Sym)),
+          "invalid entry size in symbol table");
+
+  const ElfW(Sym)* sym = &at<ElfW(Sym)>(section.sh_offset);
+  const ElfW(Sym)* end = sym + (section.sh_size / section.sh_entsize);
+
+  while (sym < end) {
+    if (fn(*sym)) {
+      return sym;
+    }
+
+    ++sym;
+  }
+
+  return nullptr;
+}
+
+template <class Fn>
+const ElfW(Sym)* ElfFile::iterateSymbolsWithType(const ElfW(Shdr)& section,
+                                                 uint32_t type, Fn fn) const {
+  // N.B. st_info has the same representation on 32- and 64-bit platforms
+  return iterateSymbols(section, [&](const ElfW(Sym)& sym) -> bool {
+    return ELF32_ST_TYPE(sym.st_info) == type && fn(sym);
+  });
+}
 
 }  // namespace symbolizer
 }  // namespace folly

@@ -33,6 +33,13 @@
 namespace folly {
 namespace symbolizer {
 
+template <class... Args>
+inline void enforce(bool v, Args... args) {
+  if (UNLIKELY(!v)) {
+    throw std::runtime_error(folly::to<std::string>(args...));
+  }
+}
+
 /**
  * ELF file parser.
  *
@@ -102,6 +109,18 @@ class ElfFile {
   const ElfW(Shdr)* iterateSectionsWithType(uint32_t type, Fn fn) const;
 
   /**
+   * Iterate over all symbols witin a given section.
+   *
+   * Returns a pointer to the current ("found") symbol when fn returned true,
+   * or nullptr if fn returned false for all symbols.
+   */
+  template <class Fn>
+  const ElfW(Sym)* iterateSymbols(const ElfW(Shdr)& section, Fn fn) const;
+  template <class Fn>
+  const ElfW(Sym)* iterateSymbolsWithType(const ElfW(Shdr)& section,
+                                          uint32_t type, Fn fn) const;
+
+  /**
    * Find symbol definition by address.
    * Note that this is the file virtual address, so you need to undo
    * any relocation that might have happened.
@@ -110,9 +129,50 @@ class ElfFile {
   Symbol getDefinitionByAddress(uintptr_t address) const;
 
   /**
+   * Find symbol definition by name.
+   *
+   * If a symbol with this name cannot be found, a <nullptr, nullptr> Symbol
+   * will be returned. This is O(N) in the number of symbols in the file.
+   */
+  Symbol getSymbolByName(const char* name) const;
+
+  /**
+   * Get the value of a symbol.
+   */
+  template <class T>
+  const T& getSymbolValue(const ElfW(Sym)* symbol) const {
+    const ElfW(Shdr)* section = getSectionByIndex(symbol->st_shndx);
+    enforce(section, "Symbol's section index is invalid");
+
+    return valueAt<T>(*section, symbol->st_value);
+  }
+
+  /**
+   * Get the value of the object stored at the given address.
+   *
+   * This is the function that you want to use in conjunction with
+   * getSymbolValue() to follow pointers. For example, to get the value of
+   * a char* symbol, you'd do something like this:
+   *
+   *  auto sym = getSymbolByName("someGlobalValue");
+   *  auto addr = getSymbolValue<ElfW(Addr)>(sym.second);
+   *  const char* str = &getSymbolValue<const char>(addr);
+   */
+  template <class T>
+  const T& getAddressValue(const ElfW(Addr) addr) const {
+    const ElfW(Shdr)* section = getSectionContainingAddress(addr);
+    enforce(section, "Address does not refer to existing section");
+
+    return valueAt<T>(*section, addr);
+  }
+
+  /**
    * Retrieve symbol name.
    */
   const char* getSymbolName(Symbol symbol) const;
+
+  /** Find the section containing the given address */
+  const ElfW(Shdr)* getSectionContainingAddress(ElfW(Addr) addr) const;
 
  private:
   void init();
@@ -124,8 +184,31 @@ class ElfFile {
 
   template <class T>
   const typename std::enable_if<std::is_pod<T>::value, T>::type&
-  at(off_t offset) const {
+  at(ElfW(Off) offset) const {
+    enforce(offset + sizeof(T) <= length_,
+            "Offset is not contained within our mmapped file");
+
     return *reinterpret_cast<T*>(file_ + offset);
+  }
+
+  template <class T>
+  const T& valueAt(const ElfW(Shdr)& section, const ElfW(Addr) addr) const {
+    // For exectuables and shared objects, st_value holds a virtual address
+    // that refers to the memory owned by sections. Since we didn't map the
+    // sections into the addresses that they're expecting (sh_addr), but
+    // instead just mmapped the entire file directly, we need to translate
+    // between addresses and offsets into the file.
+    //
+    // TODO: For other file types, st_value holds a file offset directly. Since
+    //       I don't have a use-case for that right now, just assert that
+    //       nobody wants this. We can always add it later.
+    enforce(elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN,
+            "Only exectuables and shared objects are supported");
+    enforce(addr >= section.sh_addr &&
+            (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
+            "Address is not contained within the provided segment");
+
+    return at<T>(section.sh_offset + (addr - section.sh_addr));
   }
 
   int fd_;
@@ -134,13 +217,6 @@ class ElfFile {
 
   uintptr_t baseAddress_;
 };
-
-template <class... Args>
-inline void enforce(bool v, Args... args) {
-  if (UNLIKELY(!v)) {
-    throw std::runtime_error(folly::to<std::string>(args...));
-  }
-}
 
 }  // namespace symbolizer
 }  // namespace folly
