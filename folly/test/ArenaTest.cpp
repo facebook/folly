@@ -15,7 +15,7 @@
  */
 
 #include "folly/Arena.h"
-#include "folly/StlAllocator.h"
+#include "folly/Memory.h"
 
 #include <set>
 #include <vector>

@@ -18,7 +18,7 @@
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
 
-#include "folly/StlAllocator.h"
+#include "folly/Memory.h"
 #include "folly/Arena.h"
 
 #include <gtest/gtest.h>

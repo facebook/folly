@@ -15,7 +15,7 @@
  */
 
 #include "folly/ThreadCachedArena.h"
-#include "folly/StlAllocator.h"
+#include "folly/Memory.h"
 
 #include <mutex>
 #include <thread>
