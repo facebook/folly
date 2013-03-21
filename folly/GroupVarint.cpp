@@ -16,6 +16,7 @@
 
 #include "folly/GroupVarint.h"
 
+#if HAVE_GROUP_VARINT
 namespace folly {
 
 const uint32_t GroupVarint32::kMask[] = {
@@ -29,4 +30,4 @@ const uint64_t GroupVarint64::kMask[] = {
 };
 
 }  // namespace folly
-
+#endif

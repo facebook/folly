@@ -51,13 +51,16 @@ from optparse import OptionParser
 OUTPUT_FILE = "GroupVarintTables.cpp"
 
 def generate(f):
-    f.write("#include <stdint.h>\n"
-            "#include <x86intrin.h>\n"
-            "\n"
-            "namespace folly {\n"
-            "namespace detail {\n"
-            "\n"
-            "extern const __m128i groupVarintSSEMasks[] = {\n")
+    f.write("""
+#if defined(__x86_64__) || defined(__i386__)
+#include <stdint.h>
+#include <x86intrin.h>
+
+namespace folly {
+namespace detail {
+
+extern const __m128i groupVarintSSEMasks[] = {
+""")
 
     # Compute SSE masks
     for i in range(0, 256):
@@ -88,10 +91,13 @@ def generate(f):
             offset += d
         f.write("  {0},\n".format(offset))
 
-    f.write("};\n"
-            "\n"
-            "}  // namespace detail\n"
-            "}  // namespace folly\n")
+    f.write("""
+};
+
+}  // namespace detail
+}  // namespace folly
+#endif /* defined(__x86_64__) || defined(__i386__) */
+""")
 
 def main():
     parser = OptionParser()
