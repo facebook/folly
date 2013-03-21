@@ -37,7 +37,7 @@ AX_BOOST_SYSTEM
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h features.h malloc.h])
+AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h features.h malloc.h emmintrin.h])
 
 AC_CHECK_HEADER(double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \

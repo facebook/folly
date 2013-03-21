@@ -578,10 +578,11 @@ size_t qfind(const Range<T>& haystack,
 
 namespace detail {
 
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
+size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
                                  const StringPiece& needles);
 
-size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
+#if FOLLY_HAVE_EMMINTRIN_H
+size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
                                  const StringPiece& needles);
 
 inline size_t qfind_first_byte_of(const StringPiece& haystack,
@@ -591,6 +592,13 @@ inline size_t qfind_first_byte_of(const StringPiece& haystack,
                            : qfind_first_byte_of_nosse;
   return qfind_first_byte_of_fn(haystack, needles);
 }
+
+#else
+inline size_t qfind_first_byte_of(const StringPiece& haystack,
+                                  const StringPiece& needles) {
+  return qfind_first_byte_of_nosse(haystack, needles);
+}
+#endif // FOLLY_HAVE_EMMINTRIN_H
 
 } // namespace detail
 

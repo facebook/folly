@@ -72,6 +72,7 @@ inline size_t nextAlignedIndex(const char* arr) {
     - firstPossible;
 }
 
+#if FOLLY_HAVE_EMMINTRIN_H
 // build sse4.2-optimized version even if -msse4.2 is not passed to GCC
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
                                      const StringPiece& needles)
@@ -116,6 +117,7 @@ size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
   }
   return StringPiece::npos;
 }
+#endif // FOLLY_HAVE_EMMINTRIN_H
 
 // Aho, Hopcroft, and Ullman refer to this trick in "The Design and Analysis
 // of Computer Algorithms" (1974), but the best description is here:
@@ -160,6 +162,8 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
   }
   return StringPiece::npos;
 }
+
+#if FOLLY_HAVE_EMMINTRIN_H
 
 template <bool HAYSTACK_ALIGNED>
 inline size_t scanHaystackBlock(const StringPiece& haystack,
@@ -248,6 +252,7 @@ size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
 
   return StringPiece::npos;
 }
+#endif // FOLLY_HAVE_EMMINTRIN_H
 
 size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
                                  const StringPiece& needles) {
