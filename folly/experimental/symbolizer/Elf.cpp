@@ -28,6 +28,7 @@
 #include <glog/logging.h>
 
 #include "folly/Conv.h"
+#include "folly/Exception.h"
 
 namespace folly {
 namespace symbolizer {
@@ -45,20 +46,20 @@ ElfFile::ElfFile(const char* name)
     length_(0),
     baseAddress_(0) {
   if (fd_ == -1) {
-    systemError("open ", name);
+    folly::throwSystemError("open ", name);
   }
 
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
-    systemError("fstat");
+    folly::throwSystemError("fstat");
   }
 
   length_ = st.st_size;
   file_ = static_cast<char*>(
       mmap(nullptr, length_, PROT_READ, MAP_SHARED, fd_, 0));
   if (file_ == MAP_FAILED) {
-    systemError("mmap");
+    folly::throwSystemError("mmap");
   }
   init();
 }

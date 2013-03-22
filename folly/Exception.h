@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <system_error>
 
+#include "folly/Conv.h"
 #include "folly/Likely.h"
 
 namespace folly {
@@ -36,6 +37,14 @@ inline void throwSystemError(int err, const char* msg) {
 void throwSystemError(const char* msg) __attribute__((noreturn));
 inline void throwSystemError(const char* msg) {
   throwSystemError(errno, msg);
+}
+
+// Helper to throw std::system_error from errno and components of a string
+template <class... Args>
+void throwSystemError(Args... args) __attribute__((noreturn));
+template <class... Args>
+inline void throwSystemError(Args... args) {
+  throwSystemError(errno, folly::to<std::string>(args...));
 }
 
 // Check a Posix return code (0 on success, error number on error), throw

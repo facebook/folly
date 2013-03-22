@@ -135,15 +135,6 @@ class ElfFile {
 };
 
 template <class... Args>
-void systemError(Args... args) __attribute__((noreturn));
-
-template <class... Args>
-void systemError(Args... args) {
-  throw std::system_error(errno, std::system_category(),
-                          folly::to<std::string>(args...));
-}
-
-template <class... Args>
 inline void enforce(bool v, Args... args) {
   if (UNLIKELY(!v)) {
     throw std::runtime_error(folly::to<std::string>(args...));
