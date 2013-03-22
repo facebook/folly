@@ -123,7 +123,8 @@ class ElfFile {
   void validateStringTable(const ElfW(Shdr)& stringTable) const;
 
   template <class T>
-  const T& at(off_t offset) const {
+  const typename std::enable_if<std::is_pod<T>::value, T>::type&
+  at(off_t offset) const {
     return *reinterpret_cast<T*>(file_ + offset);
   }
 
