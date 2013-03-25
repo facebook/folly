@@ -245,6 +245,17 @@ TEST(FBVector, move_iterator) {
   EXPECT_EQ(fbvi3, base);
 }
 
+TEST(FBVector, reserve_consistency) {
+  struct S { int64_t a, b, c, d; };
+
+  fbvector<S> fb1;
+  for (size_t i = 0; i < 1000; ++i) {
+    fb1.reserve(1);
+    EXPECT_EQ(fb1.size(), 0);
+    fb1.shrink_to_fit();
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
