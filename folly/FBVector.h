@@ -1095,7 +1095,7 @@ public:
     if (impl_.b_)
       M_deallocate(impl_.b_, impl_.z_ - impl_.b_);
     impl_.z_ = newB + newCap;
-    impl_.e_ += newB - impl_.b_; // speed hax
+    impl_.e_ = newB + (impl_.e_ - impl_.b_);
     impl_.b_ = newB;
   }
 
@@ -1128,7 +1128,7 @@ public:
       if (impl_.b_)
         M_deallocate(impl_.b_, impl_.z_ - impl_.b_);
       impl_.z_ = newB + newCap;
-      impl_.e_ += newB - impl_.b_; // speed hax
+      impl_.e_ = newB + (impl_.e_ - impl_.b_);
       impl_.b_ = newB;
     }
   }
