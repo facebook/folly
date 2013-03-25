@@ -50,7 +50,7 @@ inline void enforce(bool v, Args... args) {
 class ElfFile {
  public:
   ElfFile();
-  explicit ElfFile(const char* name);
+  explicit ElfFile(const char* name, bool readOnly=true);
   ~ElfFile();
 
   ElfFile(ElfFile&& other);

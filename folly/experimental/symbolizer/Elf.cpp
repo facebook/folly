@@ -40,8 +40,8 @@ ElfFile::ElfFile()
     baseAddress_(0) {
 }
 
-ElfFile::ElfFile(const char* name)
-  : fd_(open(name, O_RDONLY)),
+ElfFile::ElfFile(const char* name, bool readOnly)
+  : fd_(open(name, (readOnly) ? O_RDONLY : O_RDWR)),
     file_(static_cast<char*>(MAP_FAILED)),
     length_(0),
     baseAddress_(0) {
@@ -56,8 +56,11 @@ ElfFile::ElfFile(const char* name)
   }
 
   length_ = st.st_size;
-  file_ = static_cast<char*>(
-      mmap(nullptr, length_, PROT_READ, MAP_SHARED, fd_, 0));
+  int prot = PROT_READ;
+  if (!readOnly) {
+    prot |= PROT_WRITE;
+  }
+  file_ = static_cast<char*>(mmap(nullptr, length_, prot, MAP_SHARED, fd_, 0));
   if (file_ == MAP_FAILED) {
     folly::throwSystemError("mmap");
   }
