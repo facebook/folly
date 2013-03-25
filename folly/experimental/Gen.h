@@ -250,7 +250,7 @@ template<class Collection>
 class Append;
 
 template<class Value>
-class GeneratorBuilder;
+struct GeneratorBuilder;
 
 template<class Needle>
 class Contains;

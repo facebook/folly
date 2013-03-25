@@ -1214,6 +1214,8 @@ class Count : public Operator<Count> {
  */
 class Sum : public Operator<Sum> {
  public:
+  Sum() : Operator<Sum>() {}
+
   template<class Source,
            class Value,
            class StorageType = typename std::decay<Value>::type>
