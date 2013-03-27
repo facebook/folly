@@ -93,8 +93,8 @@ TEST(TimeoutQueue, RunOnceRepeating) {
 TEST(TimeoutQueue, RunOnceReschedule) {
   int count = 0;
   TimeoutQueue q;
-  TimeoutQueue::Callback cb =
-    [&count, &q, &cb](TimeoutQueue::Id id, int64_t now) {
+  TimeoutQueue::Callback cb;
+  cb = [&count, &q, &cb](TimeoutQueue::Id id, int64_t now) {
       if (++count < 100) {
         EXPECT_LT(id, q.add(now, 0, cb));
       }
