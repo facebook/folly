@@ -562,8 +562,6 @@ class FormatValue<double> {
       arg.precision = 6;
     }
 
-    bool done = false;
-
     // 2+: for null terminator and optional sign shenanigans.
     char buf[2 + std::max({
         (2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
