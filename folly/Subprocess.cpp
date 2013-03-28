@@ -16,6 +16,7 @@
 
 #include "folly/Subprocess.h"
 
+#include <sys/prctl.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
@@ -348,6 +349,14 @@ void Subprocess::runChild(const char* executable,
       if (options.fdActions_.count(fd) == 0) {
         ::close(fd);
       }
+    }
+  }
+
+  // Opt to receive signal on parent death, if requested
+  if (options.parentDeathSignal_ != 0) {
+    int r = prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0);
+    if (r == -1) {
+      abort();
     }
   }
 

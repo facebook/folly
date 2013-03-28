@@ -179,7 +179,11 @@ class Subprocess : private boost::noncopyable {
   class Options : private boost::orable<Options> {
     friend class Subprocess;
    public:
-    Options() : closeOtherFds_(false), usePath_(false) { }
+    Options()
+      : closeOtherFds_(false),
+        usePath_(false),
+        parentDeathSignal_(0) {
+    }
 
     /**
      * Change action for file descriptor fd.
@@ -234,6 +238,14 @@ class Subprocess : private boost::noncopyable {
     Options& usePath() { usePath_ = true; return *this; }
 
     /**
+     * Child will receive a signal when the parent exits.
+     */
+    Options& parentDeathSignal(int sig) {
+      parentDeathSignal_ = sig;
+      return *this;
+    }
+
+    /**
      * Helpful way to combine Options.
      */
     Options& operator|=(const Options& other);
@@ -243,6 +255,7 @@ class Subprocess : private boost::noncopyable {
     FdMap fdActions_;
     bool closeOtherFds_;
     bool usePath_;
+    int parentDeathSignal_;
   };
 
   static Options pipeStdin() { return Options().stdin(PIPE); }

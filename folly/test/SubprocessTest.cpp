@@ -16,6 +16,8 @@
 
 #include "folly/Subprocess.h"
 
+#include <unistd.h>
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -23,6 +25,7 @@
 #include "folly/experimental/Gen.h"
 #include "folly/experimental/FileGen.h"
 #include "folly/experimental/StringGen.h"
+#include "folly/experimental/io/FsUtil.h"
 
 using namespace folly;
 
@@ -54,6 +57,35 @@ TEST(SimpleSubprocessTest, ShellExitsSuccesssfully) {
 TEST(SimpleSubprocessTest, ShellExitsWithError) {
   Subprocess proc("false");
   EXPECT_EQ(1, proc.wait().exitStatus());
+}
+
+TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
+  // Find out where we are.
+  static constexpr size_t pathLength = 2048;
+  char buf[pathLength];
+  int r = readlink("/proc/self/exe", buf, pathLength);
+  CHECK_ERR(r >= 0);
+  buf[r] = '\0';
+
+  fs::path helper(buf);
+  helper.remove_filename();
+  helper /= "subprocess_test_parent_death_helper";
+
+  fs::path tempFile(fs::temp_directory_path() / fs::unique_path());
+
+  std::vector<std::string> args {helper.string(), tempFile.string()};
+  Subprocess proc(args);
+  // The helper gets killed by its child, see details in
+  // SubprocessTestParentDeathHelper.cpp
+  ASSERT_EQ(SIGKILL, proc.wait().killSignal());
+
+  // Now wait for the file to be created, see details in
+  // SubprocessTestParentDeathHelper.cpp
+  while (!fs::exists(tempFile)) {
+    usleep(20000);  // 20ms
+  }
+
+  fs::remove(tempFile);
 }
 
 TEST(PopenSubprocessTest, PopenRead) {
