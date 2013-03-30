@@ -64,13 +64,17 @@ typename std::enable_if<
 to(const Src & value) {
   /* static */ if (std::numeric_limits<Tgt>::max()
                    < std::numeric_limits<Src>::max()) {
-    FOLLY_RANGE_CHECK(value <= std::numeric_limits<Tgt>::max(),
-                      "Overflow");
+    FOLLY_RANGE_CHECK(
+      (!greater_than<Tgt, std::numeric_limits<Tgt>::max()>(value)),
+      "Overflow"
+    );
   }
   /* static */ if (std::is_signed<Src>::value &&
                    (!std::is_signed<Tgt>::value || sizeof(Src) > sizeof(Tgt))) {
-    FOLLY_RANGE_CHECK(value >= std::numeric_limits<Tgt>::min(),
-                      "Negative overflow");
+    FOLLY_RANGE_CHECK(
+      (!less_than<Tgt, std::numeric_limits<Tgt>::min()>(value)),
+      "Negative overflow"
+    );
   }
   return static_cast<Tgt>(value);
 }

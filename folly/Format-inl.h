@@ -18,6 +18,8 @@
 #error This file may only be included from Format.h.
 #endif
 
+#include "folly/Traits.h"
+
 namespace folly {
 
 namespace detail {
@@ -45,7 +47,7 @@ size_t uintToHex(char* buffer, size_t bufLen, Uint v,
                  const char (&repr)[256][2]) {
   // 'v >>= 7, v >>= 1' is no more than a work around to get rid of shift size
   // warning when Uint = uint8_t (it's false as v >= 256 implies sizeof(v) > 1).
-  for (; v >= 256; v >>= 7, v >>= 1) {
+  for (; !less_than<unsigned, 256>(v); v >>= 7, v >>= 1) {
     auto b = v & 0xff;
     bufLen -= 2;
     buffer[bufLen] = repr[b][0];
@@ -89,7 +91,7 @@ size_t uintToOctal(char* buffer, size_t bufLen, Uint v) {
   auto& repr = formatOctal;
   // 'v >>= 7, v >>= 2' is no more than a work around to get rid of shift size
   // warning when Uint = uint8_t (it's false as v >= 512 implies sizeof(v) > 1).
-  for (; v >= 512; v >>= 7, v >>= 2) {
+  for (; !less_than<unsigned, 512>(v); v >>= 7, v >>= 2) {
     auto b = v & 0x1ff;
     bufLen -= 3;
     buffer[bufLen] = repr[b][0];

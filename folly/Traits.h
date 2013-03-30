@@ -20,6 +20,7 @@
 #define FOLLY_BASE_TRAITS_H_
 
 #include <memory>
+#include <limits>
 #include <type_traits>
 
 #include <bits/c++config.h>
@@ -306,9 +307,13 @@ public:
 };
 
 /*
- * Complementary type traits to check for a negative/non-positive value.
+ * Complementary type traits for integral comparisons.
  *
- * `if(x < 0)` yields an error in clang for unsigned types when -Werror is used
+ * For instance, `if(x < 0)` yields an error in clang for unsigned types
+ *  when -Werror is used due to -Wtautological-compare
+ *
+ *
+ * @author: Marcelo Juchem <marcelo@fb.com>
  */
 
 namespace detail {
@@ -323,6 +328,68 @@ struct is_negative_impl<T, false> {
   constexpr static bool check(T x) { return false; }
 };
 
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than_impl(
+  typename std::enable_if<
+    (rhs <= std::numeric_limits<LHS>::max()
+      && rhs >= std::numeric_limits<LHS>::min()),
+    LHS
+  >::type const lhs
+) {
+  return lhs < rhs;
+}
+
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than_impl(
+  typename std::enable_if<
+    (rhs > std::numeric_limits<LHS>::max()),
+    LHS
+  >::type const
+) {
+  return true;
+}
+
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than_impl(
+  typename std::enable_if<
+    (rhs < std::numeric_limits<LHS>::min()),
+    LHS
+  >::type const
+) {
+  return false;
+}
+
+template <typename LHS, LHS lhs, typename RHS>
+bool greater_than_impl(
+  typename std::enable_if<
+    (lhs <= std::numeric_limits<RHS>::max()
+      && lhs >= std::numeric_limits<RHS>::min()),
+    RHS
+  >::type const rhs
+) {
+  return lhs < rhs;
+}
+
+template <typename LHS, LHS lhs, typename RHS>
+bool greater_than_impl(
+  typename std::enable_if<
+    (lhs > std::numeric_limits<RHS>::max()),
+    RHS
+  >::type const
+) {
+  return false;
+}
+
+template <typename LHS, LHS lhs, typename RHS>
+bool greater_than_impl(
+  typename std::enable_if<
+    (lhs < std::numeric_limits<RHS>::min()),
+    RHS
+  >::type const
+) {
+  return true;
+}
+
 } // namespace detail {
 
 // same as `x < 0`
@@ -334,6 +401,20 @@ constexpr bool is_negative(T x) {
 // same as `x <= 0`
 template <typename T>
 constexpr bool is_non_positive(T x) { return !x || folly::is_negative(x); }
+
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than(LHS const lhs) {
+  return detail::less_than_impl<
+    RHS, rhs, typename std::remove_reference<LHS>::type
+  >(lhs);
+}
+
+template <typename LHS, LHS lhs, typename RHS>
+bool greater_than(RHS const rhs) {
+  return detail::greater_than_impl<
+    LHS, lhs, typename std::remove_reference<RHS>::type
+  >(rhs);
+}
 
 } // namespace folly
 
@@ -410,6 +491,8 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
  *   cout << "Does class Bar have a member double test(const string&, long)? "
  *     << boolalpha << has_test_traits<Bar, double(const string&, long)>::value;
  * }
+ *
+ * @author: Marcelo Juchem <marcelo@fb.com>
  */
 #define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(classname, func_name) \
   template <typename, typename> class classname; \
