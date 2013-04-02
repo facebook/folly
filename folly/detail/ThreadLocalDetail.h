@@ -145,6 +145,7 @@ struct StaticMeta {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
     static bool constructed = (inst = new StaticMeta<Tag>());
+    (void)constructed; // suppress unused warning
     return *inst;
   }
 
