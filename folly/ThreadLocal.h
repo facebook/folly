@@ -79,11 +79,12 @@ class ThreadLocal {
 
   T* get() const {
     T* ptr = tlp_.get();
-    if (UNLIKELY(ptr == nullptr)) {
-      ptr = new T();
-      tlp_.reset(ptr);
+    if (LIKELY(ptr != nullptr)) {
+      return ptr;
     }
-    return ptr;
+
+    // separated new item creation out to speed up the fast path.
+    return makeTlp();
   }
 
   T* operator->() const {
@@ -111,6 +112,12 @@ class ThreadLocal {
   // non-copyable
   ThreadLocal(const ThreadLocal&) = delete;
   ThreadLocal& operator=(const ThreadLocal&) = delete;
+
+  T* makeTlp() const {
+    T* ptr = new T();
+    tlp_.reset(ptr);
+    return ptr;
+  }
 
   mutable ThreadLocalPtr<T,Tag> tlp_;
 };
