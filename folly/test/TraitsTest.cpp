@@ -96,6 +96,14 @@ TEST(Traits, is_negative) {
   EXPECT_FALSE(folly::is_non_positive(1u));
 }
 
+struct CompleteType {};
+struct IncompleteType;
+TEST(Traits, is_complete) {
+  EXPECT_TRUE((folly::is_complete<int>::value));
+  EXPECT_TRUE((folly::is_complete<CompleteType>::value));
+  EXPECT_FALSE((folly::is_complete<IncompleteType>::value));
+}
+
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
