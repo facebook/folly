@@ -260,59 +260,66 @@ struct StaticMeta {
     }
   }
 
-  static ElementWrapper& get(int id) {
+  /**
+   * Reserve enough space in the threadEntry_.elements for the item
+   * @id to fit in.
+   */
+  static void reserve(int id) {
     size_t prevSize = threadEntry_.elementsCapacity;
-    if (prevSize <= id) {
-      size_t newSize = static_cast<size_t>((id + 5) * 1.7);
-      auto & meta = instance();
-      ElementWrapper* ptr = NULL;
-      // Rely on jemalloc to zero the memory if possible -- maybe it knows
-      // it's already zeroed and saves us some work.
-      if (!usingJEMalloc() ||
-          prevSize < jemallocMinInPlaceExpandable ||
-          (rallocm(
-              static_cast<void**>(static_cast<void*>(&threadEntry_.elements)),
-              NULL, newSize * sizeof(ElementWrapper), 0,
-              ALLOCM_NO_MOVE | ALLOCM_ZERO) != ALLOCM_SUCCESS)) {
-        // Sigh, must realloc, but we can't call realloc here, as elements is
-        // still linked in meta, so another thread might access invalid memory
-        // after realloc succeeds.  We'll copy by hand and update threadEntry_
-        // under the lock.
-        //
-        // Note that we're using calloc instead of malloc in order to zero
-        // the entire region.  rallocm (ALLOCM_ZERO) will only zero newly
-        // allocated memory, so if a previous allocation allocated more than
-        // we requested, it's our responsibility to guarantee that the tail
-        // is zeroed.  calloc() is simpler than malloc() followed by memset(),
-        // and potentially faster when dealing with a lot of memory, as
-        // it can get already-zeroed pages from the kernel.
-        if ((ptr = static_cast<ElementWrapper*>(
-              calloc(newSize, sizeof(ElementWrapper)))) != NULL) {
-          memcpy(ptr, threadEntry_.elements,
-                 sizeof(ElementWrapper) * prevSize);
-        } else {
-          throw std::bad_alloc();
-        }
+    size_t newSize = static_cast<size_t>((id + 5) * 1.7);
+    auto& meta = instance();
+    ElementWrapper* ptr = nullptr;
+    // Rely on jemalloc to zero the memory if possible -- maybe it knows
+    // it's already zeroed and saves us some work.
+    if (!usingJEMalloc() ||
+        prevSize < jemallocMinInPlaceExpandable ||
+        (rallocm(
+          static_cast<void**>(static_cast<void*>(&threadEntry_.elements)),
+          NULL, newSize * sizeof(ElementWrapper), 0,
+          ALLOCM_NO_MOVE | ALLOCM_ZERO) != ALLOCM_SUCCESS)) {
+      // Sigh, must realloc, but we can't call realloc here, as elements is
+      // still linked in meta, so another thread might access invalid memory
+      // after realloc succeeds.  We'll copy by hand and update threadEntry_
+      // under the lock.
+      //
+      // Note that we're using calloc instead of malloc in order to zero
+      // the entire region.  rallocm (ALLOCM_ZERO) will only zero newly
+      // allocated memory, so if a previous allocation allocated more than
+      // we requested, it's our responsibility to guarantee that the tail
+      // is zeroed.  calloc() is simpler than malloc() followed by memset(),
+      // and potentially faster when dealing with a lot of memory, as
+      // it can get already-zeroed pages from the kernel.
+      if ((ptr = static_cast<ElementWrapper*>(
+             calloc(newSize, sizeof(ElementWrapper)))) != nullptr) {
+        memcpy(ptr, threadEntry_.elements, sizeof(ElementWrapper) * prevSize);
+      } else {
+        throw std::bad_alloc();
       }
+    }
 
-      // Success, update the entry
-      {
-        boost::lock_guard<boost::mutex> g(meta.lock_);
-        if (prevSize == 0) {
-          meta.push_back(&threadEntry_);
-        }
-        if (ptr) {
-          using std::swap;
-          swap(ptr, threadEntry_.elements);
-        }
-        threadEntry_.elementsCapacity = newSize;
-      }
-
-      free(ptr);
-
+    // Success, update the entry
+    {
+      boost::lock_guard<boost::mutex> g(meta.lock_);
       if (prevSize == 0) {
-        pthread_setspecific(meta.pthreadKey_, &meta);
+        meta.push_back(&threadEntry_);
       }
+      if (ptr) {
+        using std::swap;
+        swap(ptr, threadEntry_.elements);
+      }
+      threadEntry_.elementsCapacity = newSize;
+    }
+
+    free(ptr);
+
+    if (prevSize == 0) {
+      pthread_setspecific(meta.pthreadKey_, &meta);
+    }
+  }
+
+  static ElementWrapper& get(int id) {
+    if (UNLIKELY(threadEntry_.elementsCapacity <= id)) {
+      reserve(id);
     }
     return threadEntry_.elements[id];
   }
