@@ -45,6 +45,13 @@ template <class Alloc>
 void* Arena<Alloc>::allocateSlow(size_t size) {
   std::pair<Block*, size_t> p;
   char* start;
+
+
+  size_t allocSize = std::max(size, minBlockSize()) + sizeof(Block);
+  if(sizeLimit_ && allocSize > sizeLimit_ - totalAllocatedSize_) {
+    throw std::bad_alloc();
+  }
+
   if (size > minBlockSize()) {
     // Allocate a large block for this chunk only, put it at the back of the
     // list so it doesn't get used for small allocations; don't change ptr_

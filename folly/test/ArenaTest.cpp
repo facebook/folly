@@ -142,6 +142,17 @@ TEST(Arena, Vector) {
   }
 }
 
+TEST(Arena, SizeLimit) {
+  static const size_t requestedBlockSize = sizeof(size_t);
+  static const size_t maxSize = 10 * requestedBlockSize;
+
+  SysArena arena(requestedBlockSize, maxSize);
+
+  void* a = arena.allocate(sizeof(size_t));
+  EXPECT_TRUE(a != nullptr);
+  EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

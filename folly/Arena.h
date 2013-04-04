@@ -60,12 +60,14 @@ template <class Alloc>
 class Arena {
  public:
   explicit Arena(const Alloc& alloc,
-                 size_t minBlockSize = kDefaultMinBlockSize)
+                 size_t minBlockSize = kDefaultMinBlockSize,
+                 size_t sizeLimit = 0)
     : allocAndSize_(alloc, minBlockSize)
     , ptr_(nullptr)
     , end_(nullptr)
     , totalAllocatedSize_(0)
-    , bytesUsed_(0) {
+    , bytesUsed_(0)
+    , sizeLimit_(sizeLimit) {
   }
 
   ~Arena();
@@ -192,6 +194,7 @@ class Arena {
   char* end_;
   size_t totalAllocatedSize_;
   size_t bytesUsed_;
+  size_t sizeLimit_;
 };
 
 /**
@@ -231,8 +234,10 @@ struct ArenaAllocatorTraits<SysAlloc> {
  */
 class SysArena : public Arena<SysAlloc> {
  public:
-  explicit SysArena(size_t minBlockSize = kDefaultMinBlockSize)
-    : Arena<SysAlloc>(SysAlloc(), minBlockSize) {
+  explicit SysArena(
+    size_t minBlockSize = kDefaultMinBlockSize,
+    size_t sizeLimit = 0)
+      : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit) {
   }
 };
 
