@@ -169,6 +169,18 @@ class StlAllocator {
   Alloc* alloc_;
 };
 
+/**
+ * Helper function to obtain rebound allocators
+ *
+ * @author: Marcelo Juchem <marcelo@fb.com>
+ */
+template <typename T, typename Allocator>
+typename Allocator::template rebind<T>::other rebind_allocator(
+  Allocator const &allocator
+) {
+  return typename Allocator::template rebind<T>::other(allocator);
+}
+
 /*
  * Helper classes/functions for creating a unique_ptr using a custom allocator
  *

@@ -58,6 +58,34 @@ TEST(StlAllocator, void_allocator) {
   ASSERT_EQ(nullptr, i.get());
 }
 
+TEST(rebind_allocator, sanity_check) {
+  std::allocator<long> alloc;
+
+  auto i = std::allocate_shared<int>(
+    rebind_allocator<int, decltype(alloc)>(alloc), 10
+  );
+  ASSERT_NE(nullptr, i.get());
+  EXPECT_EQ(10, *i);
+  i.reset();
+  ASSERT_EQ(nullptr, i.get());
+
+  auto d = std::allocate_shared<double>(
+    rebind_allocator<double>(alloc), 5.6
+  );
+  ASSERT_NE(nullptr, d.get());
+  EXPECT_EQ(5.6, *d);
+  d.reset();
+  ASSERT_EQ(nullptr, d.get());
+
+  auto s = std::allocate_shared<std::string>(
+    rebind_allocator<std::string>(alloc), "HELLO, WORLD"
+  );
+  ASSERT_NE(nullptr, s.get());
+  EXPECT_EQ("HELLO, WORLD", *s);
+  s.reset();
+  ASSERT_EQ(nullptr, s.get());
+}
+
 int main(int argc, char **argv) {
   FLAGS_logtostderr = true;
   google::InitGoogleLogging(argv[0]);
