@@ -78,9 +78,28 @@ template <class Alloc> class StlAllocator<Alloc, void> {
   typedef void value_type;
   typedef void* pointer;
   typedef const void* const_pointer;
+
+  StlAllocator() : alloc_(nullptr) { }
+  explicit StlAllocator(Alloc* alloc) : alloc_(alloc) { }
+
+  Alloc* alloc() const {
+    return alloc_;
+  }
+
   template <class U> struct rebind {
     typedef StlAllocator<Alloc, U> other;
   };
+
+  bool operator!=(const StlAllocator<Alloc, void>& other) const {
+    return alloc_ != other.alloc_;
+  }
+
+  bool operator==(const StlAllocator<Alloc, void>& other) const {
+    return alloc_ == other.alloc_;
+  }
+
+ private:
+  Alloc* alloc_;
 };
 
 template <class Alloc, class T>

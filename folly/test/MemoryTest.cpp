@@ -43,6 +43,21 @@ TEST(as_stl_allocator, sanity_check) {
   >::value));
 }
 
+TEST(StlAllocator, void_allocator) {
+  typedef StlAllocator<SysArena, void> void_allocator;
+  SysArena arena;
+  void_allocator valloc(&arena);
+
+  typedef void_allocator::rebind<int>::other int_allocator;
+  int_allocator ialloc(valloc);
+
+  auto i = std::allocate_shared<int>(ialloc, 10);
+  ASSERT_NE(nullptr, i.get());
+  EXPECT_EQ(10, *i);
+  i.reset();
+  ASSERT_EQ(nullptr, i.get());
+}
+
 int main(int argc, char **argv) {
   FLAGS_logtostderr = true;
   google::InitGoogleLogging(argv[0]);
