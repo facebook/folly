@@ -131,25 +131,117 @@ TEST(Escape, cUnescape) {
                std::invalid_argument);
 }
 
+TEST(Escape, uriEscape) {
+  EXPECT_EQ("hello%2c%20%2fworld", uriEscape<std::string>("hello, /world"));
+  EXPECT_EQ("hello%2c%20/world", uriEscape<std::string>("hello, /world",
+                                                        UriEscapeMode::PATH));
+  EXPECT_EQ("hello%2c+%2fworld", uriEscape<std::string>("hello, /world",
+                                                        UriEscapeMode::QUERY));
+}
+
+TEST(Escape, uriUnescape) {
+  EXPECT_EQ("hello, /world", uriUnescape<std::string>("hello, /world"));
+  EXPECT_EQ("hello, /world", uriUnescape<std::string>("hello%2c%20%2fworld"));
+  EXPECT_EQ("hello,+/world", uriUnescape<std::string>("hello%2c+%2fworld"));
+  EXPECT_EQ("hello, /world", uriUnescape<std::string>("hello%2c+%2fworld",
+                                                      UriEscapeMode::QUERY));
+  EXPECT_EQ("hello/", uriUnescape<std::string>("hello%2f"));
+  EXPECT_EQ("hello/", uriUnescape<std::string>("hello%2F"));
+  EXPECT_THROW({uriUnescape<std::string>("hello%");},
+               std::invalid_argument);
+  EXPECT_THROW({uriUnescape<std::string>("hello%2");},
+               std::invalid_argument);
+  EXPECT_THROW({uriUnescape<std::string>("hello%2g");},
+               std::invalid_argument);
+}
+
 namespace {
-fbstring bmString;
-fbstring bmEscapedString;
-fbstring escapedString;
-fbstring unescapedString;
-const size_t kBmStringLength = 64 << 10;
-const uint32_t kPrintablePercentage = 90;
+void expectPrintable(StringPiece s) {
+  for (char c : s) {
+    EXPECT_LE(32, c);
+    EXPECT_GE(127, c);
+  }
+}
+}  // namespace
+
+TEST(Escape, uriEscapeAllCombinations) {
+  char c[3];
+  c[2] = '\0';
+  StringPiece in(c, 2);
+  fbstring tmp;
+  fbstring out;
+  for (int i = 0; i < 256; ++i) {
+    c[0] = i;
+    for (int j = 0; j < 256; ++j) {
+      c[1] = j;
+      tmp.clear();
+      out.clear();
+      uriEscape(in, tmp);
+      expectPrintable(tmp);
+      uriUnescape(tmp, out);
+      EXPECT_EQ(in, out);
+    }
+  }
+}
+
+namespace {
+bool isHex(int v) {
+  return ((v >= '0' && v <= '9') ||
+          (v >= 'A' && v <= 'F') ||
+          (v >= 'a' && v <= 'f'));
+}
+}  // namespace
+
+TEST(Escape, uriUnescapePercentDecoding) {
+  char c[4] = {'%', '\0', '\0', '\0'};
+  StringPiece in(c, 3);
+  fbstring out;
+  unsigned int expected = 0;
+  for (int i = 0; i < 256; ++i) {
+    c[1] = i;
+    for (int j = 0; j < 256; ++j) {
+      c[2] = j;
+      if (isHex(i) && isHex(j)) {
+        out.clear();
+        uriUnescape(in, out);
+        EXPECT_EQ(1, out.size());
+        EXPECT_EQ(1, sscanf(c + 1, "%x", &expected));
+        unsigned char v = out[0];
+        EXPECT_EQ(expected, v);
+      } else {
+        EXPECT_THROW({uriUnescape(in, out);}, std::invalid_argument);
+      }
+    }
+  }
+}
+
+namespace {
+fbstring cbmString;
+fbstring cbmEscapedString;
+fbstring cEscapedString;
+fbstring cUnescapedString;
+const size_t kCBmStringLength = 64 << 10;
+const uint32_t kCPrintablePercentage = 90;
+
+fbstring uribmString;
+fbstring uribmEscapedString;
+fbstring uriEscapedString;
+fbstring uriUnescapedString;
+const size_t kURIBmStringLength = 256;
+const uint32_t kURIPassThroughPercentage = 50;
 
 void initBenchmark() {
-  bmString.reserve(kBmStringLength);
-
   std::mt19937 rnd;
+
+  // C escape
   std::uniform_int_distribution<uint32_t> printable(32, 126);
   std::uniform_int_distribution<uint32_t> nonPrintable(0, 160);
   std::uniform_int_distribution<uint32_t> percentage(0, 99);
 
-  for (size_t i = 0; i < kBmStringLength; ++i) {
+  cbmString.reserve(kCBmStringLength);
+  for (size_t i = 0; i < kCBmStringLength; ++i) {
     unsigned char c;
-    if (percentage(rnd) < kPrintablePercentage) {
+    if (percentage(rnd) < kCPrintablePercentage) {
       c = printable(rnd);
     } else {
       c = nonPrintable(rnd);
@@ -159,23 +251,55 @@ void initBenchmark() {
         c += (126 - 32) + 1;
       }
     }
-    bmString.push_back(c);
+    cbmString.push_back(c);
   }
 
-  bmEscapedString = cEscape<fbstring>(bmString);
+  cbmEscapedString = cEscape<fbstring>(cbmString);
+
+  // URI escape
+  std::uniform_int_distribution<uint32_t> passthrough('a', 'z');
+  std::string encodeChars = " ?!\"',+[]";
+  std::uniform_int_distribution<uint32_t> encode(0, encodeChars.size() - 1);
+
+  uribmString.reserve(kURIBmStringLength);
+  for (size_t i = 0; i < kURIBmStringLength; ++i) {
+    unsigned char c;
+    if (percentage(rnd) < kURIPassThroughPercentage) {
+      c = passthrough(rnd);
+    } else {
+      c = encodeChars[encode(rnd)];
+    }
+    uribmString.push_back(c);
+  }
+
+  uribmEscapedString = uriEscape<fbstring>(uribmString);
 }
 
 BENCHMARK(BM_cEscape, iters) {
   while (iters--) {
-    escapedString = cEscape<fbstring>(bmString);
-    doNotOptimizeAway(escapedString.size());
+    cEscapedString = cEscape<fbstring>(cbmString);
+    doNotOptimizeAway(cEscapedString.size());
   }
 }
 
 BENCHMARK(BM_cUnescape, iters) {
   while (iters--) {
-    unescapedString = cUnescape<fbstring>(bmEscapedString);
-    doNotOptimizeAway(unescapedString.size());
+    cUnescapedString = cUnescape<fbstring>(cbmEscapedString);
+    doNotOptimizeAway(cUnescapedString.size());
+  }
+}
+
+BENCHMARK(BM_uriEscape, iters) {
+  while (iters--) {
+    uriEscapedString = uriEscape<fbstring>(uribmString);
+    doNotOptimizeAway(uriEscapedString.size());
+  }
+}
+
+BENCHMARK(BM_uriUnescape, iters) {
+  while (iters--) {
+    uriUnescapedString = uriUnescape<fbstring>(uribmEscapedString);
+    doNotOptimizeAway(uriUnescapedString.size());
   }
 }
 
