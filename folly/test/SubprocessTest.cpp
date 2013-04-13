@@ -49,6 +49,11 @@ TEST(SimpleSubprocessTest, ExitsWithErrorChecked) {
   EXPECT_THROW(proc.waitChecked(), CalledProcessError);
 }
 
+TEST(SimpleSubprocessTest, ExecFails) {
+  Subprocess proc(std::vector<std::string>{ "/no/such/file" });
+  EXPECT_EQ(127, proc.wait().exitStatus());
+}
+
 TEST(SimpleSubprocessTest, ShellExitsSuccesssfully) {
   Subprocess proc("true");
   EXPECT_EQ(0, proc.wait().exitStatus());
@@ -64,7 +69,7 @@ TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   static constexpr size_t pathLength = 2048;
   char buf[pathLength];
   int r = readlink("/proc/self/exe", buf, pathLength);
-  CHECK_ERR(r >= 0);
+  CHECK_ERR(r);
   buf[r] = '\0';
 
   fs::path helper(buf);

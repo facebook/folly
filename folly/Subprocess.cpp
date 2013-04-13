@@ -39,6 +39,9 @@
 
 extern char** environ;
 
+constexpr int kExecFailure = 127;
+constexpr int kChildFailure = 126;
+
 namespace folly {
 
 ProcessReturnCode::State ProcessReturnCode::state() const {
@@ -207,6 +210,18 @@ void Subprocess::spawn(
 
   // Parent work, pre-fork: create pipes
   std::vector<int> childFds;
+
+  // If we throw, don't leak file descriptors
+  auto guard = makeGuard([&] {
+    // These are only pipes, closing them shouldn't fail
+    for (int cfd : childFds) {
+      CHECK_ERR(::close(cfd));
+    }
+    for (auto& p : this->pipes_) {
+      CHECK_ERR(::close(p.parentFd));
+    }
+  });
+
   for (auto& p : options.fdActions_) {
     if (p.second == PIPE_IN || p.second == PIPE_OUT) {
       int fds[2];
@@ -277,11 +292,11 @@ void Subprocess::spawn(
     }
     // Unblock signals; restore signal mask.
     int r = pthread_sigmask(SIG_SETMASK, &oldSignals, nullptr);
-    if (r != 0) abort();
+    if (r != 0) _exit(kChildFailure);
 
     runChild(executable, argVec, envVec, options);
     // This should never return, but there's nothing else we can do here.
-    abort();
+    _exit(kExecFailure);
   }
   // In parent.  We want to restore the signal mask even if vfork fails,
   // so we'll save errno here, restore the signal mask, and only then
@@ -289,35 +304,35 @@ void Subprocess::spawn(
   int savedErrno = errno;
 
   // Restore signal mask; do this even if vfork fails!
-  // We only check for errors from pthread_sigmask after we recorded state
-  // that the child is alive, so we know to reap it.
   r = pthread_sigmask(SIG_SETMASK, &oldSignals, nullptr);
+  CHECK_EQ(r, 0) << "pthread_sigmask: " << errnoStr(r);  // shouldn't fail
   checkUnixError(pid, savedErrno, "vfork");
 
-  // Child is alive
+  // Child is alive.  We can't throw any more, as we can't figure out
+  // what to do with the child.
+  guard.dismiss();
   pid_ = pid;
   returnCode_ = ProcessReturnCode(RV_RUNNING);
 
-  // Parent work, post-fork: close child's ends of pipes
+  // Parent work, post-fork: close child's ends of pipes; closing them
+  // shouldn't fail.
   for (int f : childFds) {
-    closeChecked(f);
+    CHECK_ERR(::close(f));
   }
-
-  checkPosixError(r, "pthread_sigmask");
 }
 
 namespace {
 
-// Checked version of close() to use in the child: abort() on error
+// Checked version of close() to use in the child: _exit(126) on error
 void childClose(int fd) {
   int r = ::close(fd);
-  if (r == -1) abort();
+  if (r == -1) _exit(kChildFailure);
 }
 
-// Checked version of dup2() to use in the child: abort() on error
+// Checked version of dup2() to use in the child: _exit(126) on error
 void childDup2(int oldfd, int newfd) {
   int r = ::dup2(oldfd, newfd);
-  if (r == -1) abort();
+  if (r == -1) _exit(kChildFailure);
 }
 
 }  // namespace
@@ -356,7 +371,7 @@ void Subprocess::runChild(const char* executable,
   if (options.parentDeathSignal_ != 0) {
     int r = prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0);
     if (r == -1) {
-      abort();
+      _exit(kChildFailure);
     }
   }
 
@@ -367,9 +382,6 @@ void Subprocess::runChild(const char* executable,
   } else {
     ::execve(executable, argv, env);
   }
-
-  // If we're here, something's wrong.
-  abort();
 }
 
 ProcessReturnCode Subprocess::poll() {
