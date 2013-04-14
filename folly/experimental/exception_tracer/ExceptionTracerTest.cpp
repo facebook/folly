@@ -15,6 +15,7 @@
  */
 
 
+#include <iostream>
 #include <stdexcept>
 
 #include "folly/experimental/exception_tracer/ExceptionTracer.h"

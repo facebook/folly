@@ -19,6 +19,7 @@
 
 #include <dlfcn.h>
 #include <exception>
+#include <iostream>
 #include <glog/logging.h>
 
 #include "folly/experimental/exception_tracer/ExceptionAbi.h"

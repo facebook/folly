@@ -25,13 +25,11 @@
 #include <glog/logging.h>
 #include <algorithm>
 #include <cstring>
-#include <iostream>
+#include <iosfwd>
 #include <string>
 #include <stdexcept>
 #include <type_traits>
 #include <boost/operators.hpp>
-#include <boost/utility/enable_if.hpp>
-#include <boost/type_traits.hpp>
 #include <bits/c++config.h>
 #include "folly/CpuId.h"
 #include "folly/Traits.h"
@@ -77,9 +75,9 @@ namespace detail {
  * For random-access iterators, the value before is simply i[-1].
  */
 template <class Iter>
-typename boost::enable_if_c<
-  boost::is_same<typename std::iterator_traits<Iter>::iterator_category,
-                 std::random_access_iterator_tag>::value,
+typename std::enable_if<
+  std::is_same<typename std::iterator_traits<Iter>::iterator_category,
+               std::random_access_iterator_tag>::value,
   typename std::iterator_traits<Iter>::reference>::type
 value_before(Iter i) {
   return i[-1];
@@ -89,9 +87,9 @@ value_before(Iter i) {
  * For all other iterators, we need to use the decrement operator.
  */
 template <class Iter>
-typename boost::enable_if_c<
-  !boost::is_same<typename std::iterator_traits<Iter>::iterator_category,
-                  std::random_access_iterator_tag>::value,
+typename std::enable_if<
+  !std::is_same<typename std::iterator_traits<Iter>::iterator_category,
+                std::random_access_iterator_tag>::value,
   typename std::iterator_traits<Iter>::reference>::type
 value_before(Iter i) {
   return *--i;
@@ -116,7 +114,7 @@ public:
   typedef std::size_t size_type;
   typedef Iter iterator;
   typedef Iter const_iterator;
-  typedef typename boost::remove_reference<
+  typedef typename std::remove_reference<
     typename std::iterator_traits<Iter>::reference>::type
   value_type;
   typedef typename std::iterator_traits<Iter>::reference reference;
@@ -452,11 +450,11 @@ template <class A, class B>
 struct ComparableAsStringPiece {
   enum {
     value =
-    (boost::is_convertible<A, StringPiece>::value
-     && boost::is_same<B, StringPiece>::value)
+    (std::is_convertible<A, StringPiece>::value
+     && std::is_same<B, StringPiece>::value)
     ||
-    (boost::is_convertible<B, StringPiece>::value
-     && boost::is_same<A, StringPiece>::value)
+    (std::is_convertible<B, StringPiece>::value
+     && std::is_same<A, StringPiece>::value)
   };
 };
 
@@ -467,7 +465,7 @@ struct ComparableAsStringPiece {
  */
 template <class T, class U>
 typename
-boost::enable_if_c<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
 operator==(const T& lhs, const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
 }
@@ -477,7 +475,7 @@ operator==(const T& lhs, const U& rhs) {
  */
 template <class T, class U>
 typename
-boost::enable_if_c<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
 operator<(const T& lhs, const U& rhs) {
   return StringPiece(lhs) < StringPiece(rhs);
 }
@@ -487,7 +485,7 @@ operator<(const T& lhs, const U& rhs) {
  */
 template <class T, class U>
 typename
-boost::enable_if_c<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
 operator>(const T& lhs, const U& rhs) {
   return StringPiece(lhs) > StringPiece(rhs);
 }
@@ -497,7 +495,7 @@ operator>(const T& lhs, const U& rhs) {
  */
 template <class T, class U>
 typename
-boost::enable_if_c<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
 operator<=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) <= StringPiece(rhs);
 }
@@ -507,7 +505,7 @@ operator<=(const T& lhs, const U& rhs) {
  */
 template <class T, class U>
 typename
-boost::enable_if_c<detail::ComparableAsStringPiece<T, U>::value, bool>::type
+std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>::type
 operator>=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }

@@ -20,7 +20,8 @@
 #ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
 #define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
 
-#include <iostream>
+#include <cstdint>
+#include <iosfwd>
 #include <typeinfo>
 #include <vector>
 
