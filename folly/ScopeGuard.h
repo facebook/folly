@@ -104,7 +104,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     }
   }
 
-private:
+ private:
   void* operator new(size_t) = delete;
 
   void execute() noexcept { function_(); }
