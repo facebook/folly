@@ -16,6 +16,13 @@
 
 #include "folly/experimental/TestUtil.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+
+#include <system_error>
+
+#include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -28,7 +35,7 @@ TEST(TemporaryFile, Simple) {
   {
     TemporaryFile f;
     EXPECT_FALSE(f.path().empty());
-    EXPECT_EQ('/', f.path()[0]);
+    EXPECT_TRUE(f.path().is_absolute());
     fd = f.fd();
     EXPECT_LE(0, fd);
     ssize_t r = write(fd, &c, 1);
@@ -42,6 +49,55 @@ TEST(TemporaryFile, Simple) {
   int savedErrno = errno;
   EXPECT_EQ(-1, r);
   EXPECT_EQ(EBADF, savedErrno);
+}
+
+TEST(TemporaryFile, Prefix) {
+  TemporaryFile f("Foo");
+  EXPECT_TRUE(f.path().is_absolute());
+  EXPECT_TRUE(boost::algorithm::starts_with(f.path().filename().native(),
+                                            "Foo"));
+}
+
+TEST(TemporaryFile, PathPrefix) {
+  TemporaryFile f("Foo", ".");
+  EXPECT_EQ(fs::path("."), f.path().parent_path());
+  EXPECT_TRUE(boost::algorithm::starts_with(f.path().filename().native(),
+                                            "Foo"));
+}
+
+TEST(TemporaryFile, NoSuchPath) {
+  EXPECT_THROW({TemporaryFile f("", "/no/such/path");},
+               std::system_error);
+}
+
+void testTemporaryDirectory(TemporaryDirectory::Scope scope) {
+  fs::path path;
+  {
+    TemporaryDirectory d("", "", scope);
+    path = d.path();
+    EXPECT_FALSE(path.empty());
+    EXPECT_TRUE(path.is_absolute());
+    EXPECT_TRUE(fs::exists(path));
+    EXPECT_TRUE(fs::is_directory(path));
+
+    fs::path fp = path / "bar";
+    int fd = open(fp.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
+    EXPECT_NE(fd, -1);
+    close(fd);
+
+    TemporaryFile f("Foo", d.path());
+    EXPECT_EQ(d.path(), f.path().parent_path());
+  }
+  bool exists = (scope == TemporaryDirectory::Scope::PERMANENT);
+  EXPECT_EQ(exists, fs::exists(path));
+}
+
+TEST(TemporaryDirectory, Permanent) {
+  testTemporaryDirectory(TemporaryDirectory::Scope::PERMANENT);
+}
+
+TEST(TemporaryDirectory, DeleteOnDestruction) {
+  testTemporaryDirectory(TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION);
 }
 
 int main(int argc, char *argv[]) {

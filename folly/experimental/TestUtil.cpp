@@ -16,62 +16,56 @@
 
 #include "folly/experimental/TestUtil.h"
 
-#include <stdlib.h>
-#include <errno.h>
-#include <stdexcept>
-#include <system_error>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#include "folly/Format.h"
+#include "folly/Conv.h"
+#include "folly/Exception.h"
 
 namespace folly {
 namespace test {
 
-TemporaryFile::TemporaryFile(const char* prefix, Scope scope,
+namespace {
+
+fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
+  if (path.empty()) {
+    path = fs::temp_directory_path();
+  }
+  if (namePrefix.empty()) {
+    path /= fs::unique_path();
+  } else {
+    path /= fs::unique_path(
+        to<std::string>(namePrefix, ".%%%%-%%%%-%%%%-%%%%"));
+  }
+  return path;
+}
+
+}  // namespce
+
+TemporaryFile::TemporaryFile(StringPiece namePrefix,
+                             fs::path dir,
+                             Scope scope,
                              bool closeOnDestruction)
   : scope_(scope),
-    closeOnDestruction_(closeOnDestruction) {
-  static const char* suffix = ".XXXXXX";  // per mkstemp(3)
-  if (!prefix || prefix[0] == '\0') {
-    prefix = "temp";
-  }
-  const char* dir = nullptr;
-  if (!strchr(prefix, '/')) {
-    // Not a full path, try getenv("TMPDIR") or "/tmp"
-    dir = getenv("TMPDIR");
-    if (!dir) {
-      dir = "/tmp";
-    }
-    // The "!" is a placeholder to ensure that &(path[0]) is null-terminated.
-    // This is the only standard-compliant way to get at a null-terminated
-    // non-const char string inside a std::string: put the null-terminator
-    // yourself.
-    path_ = format("{}/{}{}!", dir, prefix, suffix).str();
-  } else {
-    path_ = format("{}{}!", prefix, suffix).str();
-  }
-
-  // Replace the '!' with a null terminator, we'll get rid of it later
-  path_[path_.size() - 1] = '\0';
-
-  fd_ = mkstemp(&(path_[0]));
-  if (fd_ == -1) {
-    throw std::system_error(errno, std::system_category(),
-                            format("mkstemp failed: {}", path_).str().c_str());
-  }
-
-  DCHECK_EQ(path_[path_.size() - 1], '\0');
-  path_.erase(path_.size() - 1);
+    closeOnDestruction_(closeOnDestruction),
+    fd_(-1),
+    path_(generateUniquePath(std::move(dir), namePrefix)) {
+  fd_ = open(path_.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
+  checkUnixError(fd_, "open failed");
 
   if (scope_ == Scope::UNLINK_IMMEDIATELY) {
-    if (unlink(path_.c_str()) == -1) {
-      throw std::system_error(errno, std::system_category(),
-                              format("unlink failed: {}", path_).str().c_str());
+    boost::system::error_code ec;
+    fs::remove(path_, ec);
+    if (ec) {
+      LOG(WARNING) << "unlink on construction failed: " << ec;
+    } else {
+      path_.clear();
     }
-    path_.clear();  // path no longer available or meaningful
   }
 }
 
-const std::string& TemporaryFile::path() const {
+const fs::path& TemporaryFile::path() const {
   CHECK(scope_ != Scope::UNLINK_IMMEDIATELY);
   DCHECK(!path_.empty());
   return path_;
@@ -87,8 +81,28 @@ TemporaryFile::~TemporaryFile() {
   // If we previously failed to unlink() (UNLINK_IMMEDIATELY), we'll
   // try again here.
   if (scope_ != Scope::PERMANENT && !path_.empty()) {
-    if (unlink(path_.c_str()) == -1) {
-      PLOG(ERROR) << "unlink(" << path_ << ") failed";
+    boost::system::error_code ec;
+    fs::remove(path_, ec);
+    if (ec) {
+      LOG(WARNING) << "unlink on destruction failed: " << ec;
+    }
+  }
+}
+
+TemporaryDirectory::TemporaryDirectory(StringPiece namePrefix,
+                                       fs::path dir,
+                                       Scope scope)
+  : scope_(scope),
+    path_(generateUniquePath(std::move(dir), namePrefix)) {
+  fs::create_directory(path_);
+}
+
+TemporaryDirectory::~TemporaryDirectory() {
+  if (scope_ == Scope::DELETE_ON_DESTRUCTION) {
+    boost::system::error_code ec;
+    fs::remove_all(path_, ec);
+    if (ec) {
+      LOG(WARNING) << "recursive delete on destruction failed: " << ec;
     }
   }
 }
