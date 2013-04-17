@@ -17,6 +17,7 @@
 #ifndef FOLLY_DETAIL_STATS_H_
 #define FOLLY_DETAIL_STATS_H_
 
+#include <chrono>
 #include <cstdint>
 #include <type_traits>
 
@@ -47,6 +48,36 @@ avgHelper(ValueType sum, uint64_t count) {
   const double sumf = sum;
   const double countf = count;
   return static_cast<ReturnType>(sumf / countf);
+}
+
+/*
+ * Helper function to compute the rate per Interval,
+ * given the specified count recorded over the elapsed time period.
+ */
+template <typename ReturnType=double,
+          typename TimeType=std::chrono::seconds,
+          typename Interval=TimeType>
+ReturnType rateHelper(ReturnType count, TimeType elapsed) {
+  if (elapsed == TimeType(0)) {
+    return 0;
+  }
+
+  // Use std::chrono::duration_cast to convert between the native
+  // duration and the desired interval.  However, convert the rates,
+  // rather than just converting the elapsed duration.  Converting the
+  // elapsed time first may collapse it down to 0 if the elapsed interval
+  // is less than the desired interval, which will incorrectly result in
+  // an infinite rate.
+  typedef std::chrono::duration<
+      ReturnType, std::ratio<TimeType::period::den,
+                             TimeType::period::num>> NativeRate;
+  typedef std::chrono::duration<
+      ReturnType, std::ratio<Interval::period::den,
+                             Interval::period::num>> DesiredRate;
+
+  NativeRate native(count / elapsed.count());
+  DesiredRate desired = std::chrono::duration_cast<DesiredRate>(native);
+  return desired.count();
 }
 
 
