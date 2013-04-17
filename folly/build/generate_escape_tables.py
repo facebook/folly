@@ -14,6 +14,7 @@ def generate(f):
     f.write("namespace folly {\n"
             "namespace detail {\n"
             "\n")
+
     f.write("extern const char cEscapeTable[] =\n")
     escapes = dict((
         ('"', '\\"'),
@@ -36,8 +37,7 @@ def generate(f):
         else:
             c = 'P'  # printable
         f.write(c)
-    f.write("\";\n"
-            "\n")
+    f.write("\";\n\n")
 
     f.write("extern const char cUnescapeTable[] =\n")
     for i in range(0, 256):
@@ -56,10 +56,9 @@ def generate(f):
             f.write("X")  # hex
         else:
             f.write("I")  # invalid
-    f.write("\";\n"
-            "\n"
-            "extern const unsigned char hexTable[] = {")
+    f.write("\";\n\n")
 
+    f.write("extern const unsigned char hexTable[] = {")
     for i in range(0, 256):
         if i % 16 == 0:
             f.write("\n  ")
@@ -71,8 +70,31 @@ def generate(f):
             f.write("{0:2d}, ".format(i - ord('A') + 10))
         else:
             f.write("16, ")
-    f.write("\n};\n"
-            "\n")
+    f.write("\n};\n\n")
+
+    # 0 = passthrough
+    # 1 = unused
+    # 2 = safe in path (/)
+    # 3 = space (replace with '+' in query)
+    # 4 = always percent-encode
+    f.write("extern const unsigned char uriEscapeTable[] = {")
+    passthrough = (
+        range(ord('0'), ord('9')) +
+        range(ord('A'), ord('Z')) +
+        range(ord('a'), ord('z')) +
+        map(ord, '-_.~'))
+    for i in range(0, 256):
+        if i % 16 == 0:
+            f.write("\n  ")
+        if i in passthrough:
+            f.write("0, ")
+        elif i == ord('/'):
+            f.write("2, ")
+        elif i == ord(' '):
+            f.write("3, ")
+        else:
+            f.write("4, ")
+    f.write("\n};\n\n")
 
     f.write("}  // namespace detail\n"
             "}  // namespace folly\n")
