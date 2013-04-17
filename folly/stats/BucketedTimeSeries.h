@@ -104,10 +104,28 @@ class BucketedTimeSeries {
 
   /*
    * Get the latest time that has ever been passed to update() or addValue().
+   *
+   * If no data has ever been added to this timeseries, 0 will be returned.
    */
   TimeType getLatestTime() const {
     return latestTime_;
   }
+
+  /*
+   * Get the time of the earliest data point stored in this timeseries.
+   *
+   * If no data has ever been added to this timeseries, 0 will be returned.
+   *
+   * If isAllTime() is true, this is simply the time when the first data point
+   * was recorded.
+   *
+   * For non-all-time data, the timestamp reflects the first data point still
+   * remembered.  As new data points are added, old data will be expired.
+   * getEarliestTime() returns the timestamp of the oldest bucket still present
+   * in the timeseries.  This will never be older than (getLatestTime() -
+   * duration()).
+   */
+  TimeType getEarliestTime() const;
 
   /*
    * Return the number of buckets.
@@ -169,6 +187,16 @@ class BucketedTimeSeries {
    * make sure you are not reading stale data.
    */
   TimeType elapsed() const;
+
+  /*
+   * Get the amount of time tracked by this timeseries, between the specified
+   * start and end times.
+   *
+   * If the timeseries contains data for the entire time range specified, this
+   * simply returns (end - start).  However, if start is earlier than
+   * getEarliestTime(), this returns (end - getEarliestTime()).
+   */
+  TimeType elapsed(TimeType start, TimeType end) const;
 
   /*
    * Return the sum of all the data points currently tracked by this
@@ -243,8 +271,8 @@ class BucketedTimeSeries {
    *
    * Note that data outside of the timeseries duration will no longer be
    * available for use in the estimation.  Specifying a start time earlier than
-   * (getLatestTime() - elapsed()) will not have much effect, since only data
-   * points after that point in time will be counted.
+   * getEarliestTime() will not have much effect, since only data points after
+   * that point in time will be counted.
    *
    * Note that the value returned is an estimate, and may not be precise.
    */
@@ -277,7 +305,8 @@ class BucketedTimeSeries {
   template <typename ReturnType=double, typename Interval=TimeType>
   ReturnType rate(TimeType start, TimeType end) const {
     ValueType intervalSum = sum(start, end);
-    return rateHelper<ReturnType, Interval>(intervalSum, end - start);
+    TimeType interval = elapsed(start, end);
+    return rateHelper<ReturnType, Interval>(intervalSum, interval);
   }
 
   /*
@@ -290,7 +319,8 @@ class BucketedTimeSeries {
   template <typename ReturnType=double, typename Interval=TimeType>
   ReturnType countRate(TimeType start, TimeType end) const {
     uint64_t intervalCount = count(start, end);
-    return rateHelper<ReturnType, Interval>(intervalCount, end - start);
+    TimeType interval = elapsed(start, end);
+    return rateHelper<ReturnType, Interval>(intervalCount, interval);
   }
 
   /*

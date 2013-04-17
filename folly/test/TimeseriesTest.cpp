@@ -600,6 +600,7 @@ TEST(BucketedTimeSeries, queryByInterval) {
   for (unsigned int i = kDuration; i < kDuration + 3; ++i) {
     b.addValue(seconds(i), i);
   }
+  EXPECT_EQ(seconds(4), b.getEarliestTime());
 
   // Current bucket state:
   // 0: time=[6,  8): values=(6, 7), sum=13, count=2
@@ -644,10 +645,69 @@ TEST(BucketedTimeSeries, queryByInterval) {
         "i=" << i << ", j=" << j <<
         ", interval=[" << start.count() << ", " << end.count() << ")";
 
-      double expectedRate = j ? expectedSum / j : 0;
+      seconds dataStart = std::max(start, b.getEarliestTime());
+      seconds dataEnd = std::max(end, dataStart);
+      seconds expectedInterval = dataEnd - dataStart;
+      EXPECT_EQ(expectedInterval, b.elapsed(start, end)) <<
+        "i=" << i << ", j=" << j <<
+        ", interval=[" << start.count() << ", " << end.count() << ")";
+
+      double expectedRate = expectedInterval.count() ?
+        expectedSum / expectedInterval.count() : 0;
       EXPECT_EQ(expectedRate, b.rate(start, end)) <<
         "i=" << i << ", j=" << j <<
         ", interval=[" << start.count() << ", " << end.count() << ")";
     }
   }
+}
+
+TEST(BucketedTimeSeries, rateByInterval) {
+  const int kNumBuckets = 5;
+  const seconds kDuration(10);
+  BucketedTimeSeries<double> b(kNumBuckets, kDuration);
+
+  // Add data points at a constant rate of 10 per second.
+  // Start adding data points at kDuration, and fill half of the buckets for
+  // now.
+  seconds start = kDuration;
+  seconds end = kDuration + (kDuration / 2);
+  const double kFixedRate = 10.0;
+  for (seconds i = start; i < end; ++i) {
+    b.addValue(i, kFixedRate);
+  }
+
+  // Querying the rate should yield kFixedRate.
+  EXPECT_EQ(kFixedRate, b.rate());
+  EXPECT_EQ(kFixedRate, b.rate(start, end));
+  EXPECT_EQ(kFixedRate, b.rate(start, start + kDuration));
+  EXPECT_EQ(kFixedRate, b.rate(end - kDuration, end));
+  EXPECT_EQ(kFixedRate, b.rate(end - seconds(1), end));
+  // We have been adding 1 data point per second, so countRate()
+  // should be 1.
+  EXPECT_EQ(1.0, b.countRate());
+  EXPECT_EQ(1.0, b.countRate(start, end));
+  EXPECT_EQ(1.0, b.countRate(start, start + kDuration));
+  EXPECT_EQ(1.0, b.countRate(end - kDuration, end));
+  EXPECT_EQ(1.0, b.countRate(end - seconds(1), end));
+
+  // We haven't added anything before time kDuration.
+  // Querying data earlier than this should result in a rate of 0.
+  EXPECT_EQ(0.0, b.rate(seconds(0), seconds(1)));
+  EXPECT_EQ(0.0, b.countRate(seconds(0), seconds(1)));
+
+  // Fill the remainder of the timeseries from kDuration to kDuration*2
+  start = end;
+  end = kDuration * 2;
+  for (seconds i = start; i < end; ++i) {
+    b.addValue(i, kFixedRate);
+  }
+
+  EXPECT_EQ(kFixedRate, b.rate());
+  EXPECT_EQ(kFixedRate, b.rate(kDuration, kDuration * 2));
+  EXPECT_EQ(kFixedRate, b.rate(seconds(0), kDuration * 2));
+  EXPECT_EQ(kFixedRate, b.rate(seconds(0), kDuration * 10));
+  EXPECT_EQ(1.0, b.countRate());
+  EXPECT_EQ(1.0, b.countRate(kDuration, kDuration * 2));
+  EXPECT_EQ(1.0, b.countRate(seconds(0), kDuration * 2));
+  EXPECT_EQ(1.0, b.countRate(seconds(0), kDuration * 10));
 }

@@ -161,13 +161,12 @@ void BucketedTimeSeries<VT, TT>::clear() {
 
 
 template <typename VT, typename TT>
-TT BucketedTimeSeries<VT, TT>::elapsed() const {
+TT BucketedTimeSeries<VT, TT>::getEarliestTime() const {
   if (empty()) {
     return TimeType(0);
   }
-
   if (isAllTime()) {
-    return latestTime_ - firstTime_ + TimeType(1);
+    return firstTime_;
   }
 
   size_t currentBucket;
@@ -183,7 +182,28 @@ TT BucketedTimeSeries<VT, TT>::elapsed() const {
   // We're never tracking data before firstTime_
   earliestTime = std::max(earliestTime, firstTime_);
 
-  return latestTime_ - earliestTime + TimeType(1);
+  return earliestTime;
+}
+
+template <typename VT, typename TT>
+TT BucketedTimeSeries<VT, TT>::elapsed() const {
+  if (empty()) {
+    return TimeType(0);
+  }
+
+  // Add 1 since [latestTime_, earliestTime] is an inclusive interval.
+  return latestTime_ - getEarliestTime() + TimeType(1);
+}
+
+template <typename VT, typename TT>
+TT BucketedTimeSeries<VT, TT>::elapsed(TimeType start, TimeType end) const {
+  if (empty()) {
+    return TimeType(0);
+  }
+  start = std::max(start, getEarliestTime());
+  end = std::min(end, latestTime_ + TimeType(1));
+  end = std::max(start, end);
+  return end - start;
 }
 
 template <typename VT, typename TT>
