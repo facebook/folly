@@ -18,9 +18,10 @@
 #define FOLLY_FORMATARG_H_
 
 #include <stdexcept>
-#include "folly/Range.h"
-#include "folly/Likely.h"
 #include "folly/Conv.h"
+#include "folly/Likely.h"
+#include "folly/Portability.h"
+#include "folly/Range.h"
 
 namespace folly {
 
@@ -71,7 +72,7 @@ struct FormatArg {
   }
 
   template <typename... Args>
-  void error(Args&&... args) const __attribute__((noreturn));
+  void error(Args&&... args) const FOLLY_NORETURN;
   /**
    * Full argument string, as passed in to the constructor.
    */

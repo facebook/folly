@@ -60,4 +60,10 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # error Cannot define MaxAlign on this platform
 #endif
 
+#if defined(__clang__) || defined(__GNUC__)
+# define FOLLY_NORETURN __attribute__((noreturn))
+#else
+# define FOLLY_NORETURN
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

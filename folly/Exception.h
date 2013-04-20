@@ -24,24 +24,25 @@
 
 #include "folly/Conv.h"
 #include "folly/Likely.h"
+#include "folly/Portability.h"
 
 namespace folly {
 
 // Helper to throw std::system_error
-void throwSystemError(int err, const char* msg) __attribute__((noreturn));
+void throwSystemError(int err, const char* msg) FOLLY_NORETURN;
 inline void throwSystemError(int err, const char* msg) {
   throw std::system_error(err, std::system_category(), msg);
 }
 
 // Helper to throw std::system_error from errno
-void throwSystemError(const char* msg) __attribute__((noreturn));
+void throwSystemError(const char* msg) FOLLY_NORETURN;
 inline void throwSystemError(const char* msg) {
   throwSystemError(errno, msg);
 }
 
 // Helper to throw std::system_error from errno and components of a string
 template <class... Args>
-void throwSystemError(Args... args) __attribute__((noreturn));
+void throwSystemError(Args... args) FOLLY_NORETURN;
 template <class... Args>
 inline void throwSystemError(Args... args) {
   throwSystemError(errno, folly::to<std::string>(args...));

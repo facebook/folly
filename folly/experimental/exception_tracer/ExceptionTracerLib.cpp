@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include "folly/Portability.h"
 #include "folly/experimental/exception_tracer/StackTrace.h"
 #include "folly/experimental/exception_tracer/ExceptionAbi.h"
 #include "folly/experimental/exception_tracer/ExceptionTracer.h"
@@ -28,9 +29,9 @@ namespace __cxxabiv1 {
 
 extern "C" {
 void __cxa_throw(void* thrownException, std::type_info* type,
-                 void (*destructor)(void)) __attribute__((noreturn));
+                 void (*destructor)(void)) FOLLY_NORETURN;
 void* __cxa_begin_catch(void* excObj);
-void __cxa_rethrow(void) __attribute__((noreturn));
+void __cxa_rethrow(void) FOLLY_NORETURN;
 void __cxa_end_catch(void);
 }
 
@@ -45,10 +46,10 @@ pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
 typedef void (*CxaThrowType)(void*, std::type_info*, void (*)(void))
-  __attribute__((noreturn));
+  FOLLY_NORETURN;
 typedef void* (*CxaBeginCatchType)(void*);
 typedef void (*CxaRethrowType)(void)
-  __attribute__((noreturn));
+  FOLLY_NORETURN;
 typedef void (*CxaEndCatchType)(void);
 
 CxaThrowType orig_cxa_throw;
@@ -58,7 +59,7 @@ CxaEndCatchType orig_cxa_end_catch;
 }  // extern "C"
 
 typedef void (*RethrowExceptionType)(std::exception_ptr)
-  __attribute__((noreturn));
+  FOLLY_NORETURN;
 RethrowExceptionType orig_rethrow_exception;
 
 void initialize() {

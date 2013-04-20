@@ -27,10 +27,11 @@
 
 #include <gflags/gflags.h>
 
-#include "folly/experimental/io/HugePages.h"
 #include "folly/Format.h"
+#include "folly/Portability.h"
 #include "folly/Range.h"
 #include "folly/ScopeGuard.h"
+#include "folly/experimental/io/HugePages.h"
 
 DEFINE_bool(cp, false, "Copy file");
 
@@ -38,7 +39,7 @@ using namespace folly;
 
 namespace {
 
-void usage(const char* name) __attribute__((noreturn));
+void usage(const char* name) FOLLY_NORETURN;
 
 void usage(const char* name) {
   std::cerr << folly::format(
