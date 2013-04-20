@@ -403,6 +403,22 @@ void testVariadicTo() {
   EXPECT_EQ(s, "Lorem ipsum 1234 dolor amet 567.89.");
 }
 
+template <class String>
+void testVariadicToDelim() {
+  String s;
+  toAppendDelim(":", &s);
+  toAppendDelim(
+      ":", "Lorem ipsum ", 1234, String(" dolor amet "), 567.89, '!', &s);
+  EXPECT_EQ(s, "Lorem ipsum :1234: dolor amet :567.89:!");
+
+  s = toDelim<String>(':');
+  EXPECT_TRUE(s.empty());
+
+  s = toDelim<String>(
+      ":", "Lorem ipsum ", nullptr, 1234, " dolor amet ", 567.89, '.');
+  EXPECT_EQ(s, "Lorem ipsum ::1234: dolor amet :567.89:.");
+}
+
 TEST(Conv, NullString) {
   string s1 = to<string>((char *) NULL);
   EXPECT_TRUE(s1.empty());
@@ -413,6 +429,11 @@ TEST(Conv, NullString) {
 TEST(Conv, VariadicTo) {
   testVariadicTo<string>();
   testVariadicTo<fbstring>();
+}
+
+TEST(Conv, VariadicToDelim) {
+  testVariadicToDelim<string>();
+  testVariadicToDelim<fbstring>();
 }
 
 template <class String>
