@@ -26,9 +26,20 @@
 #include <gtest/gtest.h>
 #include <boost/optional.hpp>
 
-using namespace folly;
 using std::unique_ptr;
 using std::shared_ptr;
+
+namespace folly {
+
+template<class V>
+std::ostream& operator<<(std::ostream& os, const Optional<V>& v) {
+  if (v) {
+    os << "Optional(" << v.value() << ')';
+  } else {
+    os << "None";
+  }
+  return os;
+}
 
 struct NoDefault {
   NoDefault(int, int) {}
@@ -47,7 +58,7 @@ TEST(Optional, NoDefault) {
   Optional<NoDefault> x;
   EXPECT_FALSE(x);
   x.emplace(4, 5);
-  EXPECT_TRUE(x);
+  EXPECT_TRUE(bool(x));
   x.clear();
   EXPECT_FALSE(x);
 }
@@ -56,62 +67,62 @@ TEST(Optional, String) {
   Optional<std::string> maybeString;
   EXPECT_FALSE(maybeString);
   maybeString = "hello";
-  EXPECT_TRUE(maybeString);
+  EXPECT_TRUE(bool(maybeString));
 }
 
 TEST(Optional, Const) {
   { // default construct
     Optional<const int> opt;
-    EXPECT_FALSE(opt);
+    EXPECT_FALSE(bool(opt));
     opt.emplace(4);
-    EXPECT_EQ(opt, 4);
+    EXPECT_EQ(*opt, 4);
     opt.emplace(5);
-    EXPECT_EQ(opt, 5);
+    EXPECT_EQ(*opt, 5);
     opt.clear();
-    EXPECT_FALSE(opt);
+    EXPECT_FALSE(bool(opt));
   }
   { // copy-constructed
     const int x = 6;
     Optional<const int> opt(x);
-    EXPECT_EQ(opt, 6);
+    EXPECT_EQ(*opt, 6);
   }
   { // move-constructed
     const int x = 7;
     Optional<const int> opt(std::move(x));
-    EXPECT_EQ(opt, 7);
+    EXPECT_EQ(*opt, 7);
   }
   // no assignment allowed
 }
 
 TEST(Optional, Simple) {
   Optional<int> opt;
-  EXPECT_FALSE(opt);
+  EXPECT_FALSE(bool(opt));
   opt = 4;
-  EXPECT_TRUE(opt);
+  EXPECT_TRUE(bool(opt));
   EXPECT_EQ(4, *opt);
   opt = 5;
   EXPECT_EQ(5, *opt);
   opt.clear();
-  EXPECT_FALSE(opt);
+  EXPECT_FALSE(bool(opt));
 }
 
 TEST(Optional, EmptyConstruct) {
   Optional<int> opt;
-  EXPECT_FALSE(opt);
+  EXPECT_FALSE(bool(opt));
   Optional<int> test1(opt);
-  EXPECT_FALSE(test1);
+  EXPECT_FALSE(bool(test1));
   Optional<int> test2(std::move(opt));
-  EXPECT_FALSE(test2);
+  EXPECT_FALSE(bool(test2));
 }
 
 TEST(Optional, Unique) {
   Optional<unique_ptr<int>> opt;
 
   opt.clear();
-  EXPECT_FALSE(opt);
+  EXPECT_FALSE(bool(opt));
   // empty->emplaced
   opt.emplace(new int(5));
-  EXPECT_TRUE(opt);
+  EXPECT_TRUE(bool(opt));
   EXPECT_EQ(5, **opt);
 
   opt.clear();
@@ -124,24 +135,24 @@ TEST(Optional, Unique) {
 
   // move it out by move construct
   Optional<unique_ptr<int>> moved(std::move(opt));
-  EXPECT_TRUE(moved);
-  EXPECT_FALSE(opt);
+  EXPECT_TRUE(bool(moved));
+  EXPECT_FALSE(bool(opt));
   EXPECT_EQ(7, **moved);
 
-  EXPECT_TRUE(moved);
+  EXPECT_TRUE(bool(moved));
   opt = std::move(moved); // move it back by move assign
-  EXPECT_FALSE(moved);
-  EXPECT_TRUE(opt);
+  EXPECT_FALSE(bool(moved));
+  EXPECT_TRUE(bool(opt));
   EXPECT_EQ(7, **opt);
 }
 
 TEST(Optional, Shared) {
   shared_ptr<int> ptr;
   Optional<shared_ptr<int>> opt;
-  EXPECT_FALSE(opt);
+  EXPECT_FALSE(bool(opt));
   // empty->emplaced
   opt.emplace(new int(5));
-  EXPECT_TRUE(opt);
+  EXPECT_TRUE(bool(opt));
   ptr = opt.value();
   EXPECT_EQ(ptr.get(), opt->get());
   EXPECT_EQ(2, ptr.use_count());
@@ -185,7 +196,7 @@ TEST(Optional, Order) {
     { 3 },
   };
   std::sort(vect.begin(), vect.end());
-  EXPECT_TRUE(vect == expected);
+  EXPECT_EQ(vect, expected);
 }
 
 TEST(Optional, Swap) {
@@ -218,14 +229,9 @@ TEST(Optional, Comparisons) {
   Optional<int> o1(1);
   Optional<int> o2(2);
 
-  EXPECT_TRUE(o_ < 1);
-  EXPECT_TRUE(o_ <= 1);
   EXPECT_TRUE(o_ <= o_);
   EXPECT_TRUE(o_ == o_);
-  EXPECT_TRUE(o_ != 1);
   EXPECT_TRUE(o_ >= o_);
-  EXPECT_TRUE(1 >= o_);
-  EXPECT_TRUE(1 > o_);
 
   EXPECT_TRUE(o1 < o2);
   EXPECT_TRUE(o1 <= o2);
@@ -245,6 +251,7 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(o1 >= o2);
   EXPECT_FALSE(o1 > o2);
 
+  /* folly::Optional explicitly doesn't support comparisons with contained value
   EXPECT_TRUE(1 < o2);
   EXPECT_TRUE(1 <= o2);
   EXPECT_TRUE(1 <= o1);
@@ -262,6 +269,68 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(o1 >= 2);
   EXPECT_FALSE(o1 >= 2);
   EXPECT_FALSE(o1 > 2);
+  */
+
+  // boost::optional does support comparison with contained value, which can
+  // lead to confusion when a bool is contained
+  boost::optional<int> boi(3);
+  EXPECT_TRUE(boi < 5);
+  EXPECT_TRUE(boi <= 4);
+  EXPECT_TRUE(boi == 3);
+  EXPECT_TRUE(boi != 2);
+  EXPECT_TRUE(boi >= 1);
+  EXPECT_TRUE(boi > 0);
+  EXPECT_TRUE(1 <  boi);
+  EXPECT_TRUE(2 <= boi);
+  EXPECT_TRUE(3 == boi);
+  EXPECT_TRUE(4 != boi);
+  EXPECT_TRUE(5 >= boi);
+  EXPECT_TRUE(6 >  boi);
+
+  boost::optional<bool> bob(false);
+  EXPECT_TRUE(bob);
+  EXPECT_TRUE(bob == false); // well that was confusing
+  EXPECT_FALSE(bob != false);
+}
+
+TEST(Optional, Conversions) {
+  Optional<bool> mbool;
+  Optional<short> mshort;
+  Optional<char*> mstr;
+  Optional<int> mint;
+
+  //These don't compile
+  //bool b = mbool;
+  //short s = mshort;
+  //char* c = mstr;
+  //int x = mint;
+  //char* c(mstr);
+  //short s(mshort);
+  //int x(mint);
+
+  // intended explicit operator bool, for if (opt).
+  bool b(mbool);
+
+  // Truthy tests work and are not ambiguous
+  if (mbool && mshort && mstr && mint) { // only checks not-empty
+    if (*mbool && *mshort && *mstr && *mint) { // only checks value
+      ;
+    }
+  }
+
+  mbool = false;
+  EXPECT_TRUE(bool(mbool));
+  EXPECT_FALSE(*mbool);
+
+  mbool = true;
+  EXPECT_TRUE(bool(mbool));
+  EXPECT_TRUE(*mbool);
+
+  mbool = none;
+  EXPECT_FALSE(bool(mbool));
+
+  // No conversion allowed; does not compile
+  // EXPECT_TRUE(mbool == false);
 }
 
 TEST(Optional, Pointee) {
@@ -270,7 +339,7 @@ TEST(Optional, Pointee) {
   x = 1;
   EXPECT_TRUE(get_pointer(x));
   *get_pointer(x) = 2;
-  EXPECT_TRUE(x == 2);
+  EXPECT_TRUE(*x == 2);
   x = none;
   EXPECT_FALSE(get_pointer(x));
 }
@@ -352,4 +421,6 @@ TEST(Optional, AssignmentContained) {
     target = opt_uninit;
     EXPECT_FALSE(target.hasValue());
   }
+}
+
 }
