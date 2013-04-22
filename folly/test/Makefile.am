@@ -18,6 +18,7 @@ lib_LTLIBRARIES = libgtestmain.la libgtest.la
 
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
+libgtestmain_la_LIBADD = -lpthread
 
 libgtest_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
