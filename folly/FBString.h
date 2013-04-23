@@ -1070,8 +1070,11 @@ public:
 
   // Move assignment
   basic_fbstring& operator=(basic_fbstring&& goner) {
-    // Self move assignment is illegal, see 17.6.4.9 for the explanation
-    assert(&goner != this);
+    if (FBSTRING_UNLIKELY(&goner == this)) {
+      // Compatibility with std::basic_string<>,
+      // 21.4.2 [string.cons] / 23 requires self-move-assignment support.
+      return *this;
+    }
     // No need of this anymore
     this->~basic_fbstring();
     // Move the goner into this

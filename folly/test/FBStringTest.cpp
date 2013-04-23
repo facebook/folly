@@ -1015,10 +1015,14 @@ TEST(FBString, testFixedBugs) {
       cp += "bb";
     }
   }
-  {
-    // D661622
+  { // D661622
     folly::basic_fbstring<wchar_t> s;
     EXPECT_EQ(0, s.size());
+  }
+  { // D785057
+    fbstring str(1337, 'f');
+    std::swap(str, str);
+    EXPECT_EQ(1337, str.size());
   }
 }
 
