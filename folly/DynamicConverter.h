@@ -22,6 +22,7 @@
 #include "folly/dynamic.h"
 namespace folly {
   template <typename T> T convertTo(const dynamic&);
+  template <typename T> dynamic toDynamic(const T&);
 }
 
 /**
@@ -51,6 +52,7 @@ namespace dynamicconverter_detail {
 
 BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
+BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
 
 template <typename T> struct class_is_container {
   typedef std::reverse_iterator<T*> some_iterator;
@@ -59,12 +61,31 @@ template <typename T> struct class_is_container {
               std::is_constructible<T, some_iterator, some_iterator>::value };
 };
 
+template <typename T> struct class_is_range {
+  enum { value = has_value_type<T>::value &&
+                 has_iterator<T>::value };
+};
+
+
 template <typename T> struct is_container
   : std::conditional<
       std::is_class<T>::value,
       class_is_container<T>,
       std::false_type
     >::type {};
+
+template <typename T> struct is_range
+  : std::conditional<
+      std::is_class<T>::value,
+      class_is_range<T>,
+      std::false_type
+    >::type {};
+
+template <typename T> struct is_associative_container
+  : std::integral_constant<
+      bool,
+      is_range<T>::value && has_mapped_type<T>::value
+    > {};
 
 } // namespace dynamicconverter_detail
 
@@ -240,6 +261,52 @@ struct DynamicConverter<C,
       throw TypeError("object or array", d.type());
     }
   }
+
+};
+
+template <typename C, typename Enable = void>
+struct DynamicConstructor {
+  static dynamic construct(const C& x) {
+    return dynamic(x);
+  }
+};
+
+template<typename C>
+struct DynamicConstructor<C,
+    typename std::enable_if<
+      dynamicconverter_detail::is_associative_container<C>::value>::type> {
+  static dynamic construct(const C& x) {
+    dynamic d = dynamic::object;
+    for (auto& pair : x) {
+      d.insert(toDynamic(pair.first), toDynamic(pair.second));
+    }
+    return d;
+  }
+};
+
+template<typename C>
+struct DynamicConstructor<C,
+    typename std::enable_if<
+      !dynamicconverter_detail::is_associative_container<C>::value &&
+      !std::is_constructible<StringPiece, const C&>::value &&
+      dynamicconverter_detail::is_range<C>::value>::type> {
+  static dynamic construct(const C& x) {
+    dynamic d = {};
+    for (auto& item : x) {
+      d.push_back(toDynamic(item));
+    }
+    return d;
+  }
+};
+
+template<typename A, typename B>
+struct DynamicConstructor<std::pair<A, B>, void> {
+  static dynamic construct(const std::pair<A, B>& x) {
+    dynamic d = {};
+    d.push_back(toDynamic(x.first));
+    d.push_back(toDynamic(x.second));
+    return d;
+  }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -248,6 +315,11 @@ struct DynamicConverter<C,
 template <typename T>
 T convertTo(const dynamic& d) {
   return DynamicConverter<typename std::remove_cv<T>::type>::convert(d);
+}
+
+template<typename T>
+dynamic toDynamic(const T& x) {
+  return DynamicConstructor<typename std::remove_cv<T>::type>::construct(x);
 }
 
 } // namespace folly

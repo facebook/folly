@@ -19,8 +19,11 @@
 #include "folly/DynamicConverter.h"
 
 #include <algorithm>
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
+#include <gtest/gtest.h>
+#include <map>
+#include <vector>
+
 #include "folly/Benchmark.h"
 
 using namespace folly;
@@ -267,6 +270,7 @@ struct Token {
   explicit Token(int kind, const fbstring& lexeme)
     : kind_(kind), lexeme_(lexeme) {}
 };
+
 namespace folly {
 template <> struct DynamicConverter<Token> {
   static Token convert(const dynamic& d) {
@@ -276,11 +280,56 @@ template <> struct DynamicConverter<Token> {
   }
 };
 }
+
 TEST(DynamicConverter, example) {
   dynamic d1 = dynamic::object("KIND", 2)("LEXEME", "a token");
   auto i1 = convertTo<Token>(d1);
   EXPECT_EQ(i1.kind_, 2);
   EXPECT_EQ(i1.lexeme_, "a token");
+}
+
+TEST(DynamicConverter, construct) {
+  using std::vector;
+  using std::map;
+  using std::pair;
+  using std::string;
+  {
+    vector<int> c { 1, 2, 3 };
+    dynamic d = { 1, 2, 3 };
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    map<int, int> c { { 2, 4 }, { 3, 9 } };
+    dynamic d = dynamic::object(2, 4)(3, 9);
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    map<string, string> c { { "a", "b" } };
+    dynamic d = dynamic::object("a", "b");
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    map<string, pair<string, int>> c { { "a", { "b", 3 } } };
+    dynamic d = dynamic::object("a", dynamic { "b", 3 });
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    map<string, pair<string, int>> c { { "a", { "b", 3 } } };
+    dynamic d = dynamic::object("a", dynamic { "b", 3 });
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
+    vector<int> vi { 2, 3, 4, 5 };
+    auto c = std::make_pair(makeRange(vi.begin(), vi.begin() + 3),
+                            makeRange(vi.begin() + 1, vi.begin() + 4));
+    dynamic d = { { 2, 3, 4 }, { 3, 4, 5 } };
+    EXPECT_EQ(d, toDynamic(c));
+  }
 }
 
 int main(int argc, char ** argv) {
