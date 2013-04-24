@@ -40,7 +40,7 @@ using folly::AsyncIOQueue;
 
 namespace {
 
-constexpr size_t kAlignment = 512;  // align reads to 512 B (for O_DIRECT)
+constexpr size_t kAlign = 4096;  // align reads to 4096 B (for O_DIRECT)
 
 struct TestSpec {
   off_t start;
@@ -120,7 +120,7 @@ TemporaryFile tempFile(6 << 20);  // 6MiB
 typedef std::unique_ptr<char, void(*)(void*)> ManagedBuffer;
 ManagedBuffer allocateAligned(size_t size) {
   void* buf;
-  int rc = posix_memalign(&buf, 512, size);
+  int rc = posix_memalign(&buf, kAlign, size);
   CHECK_EQ(rc, 0) << strerror(rc);
   return ManagedBuffer(reinterpret_cast<char*>(buf), free);
 }
@@ -264,56 +264,64 @@ TEST(AsyncIO, ZeroAsyncDataPollable) {
 }
 
 TEST(AsyncIO, SingleAsyncDataNotPollable) {
-  testReads({{0, 512}}, AsyncIO::NOT_POLLABLE);
-  testReads({{0, 512}}, AsyncIO::NOT_POLLABLE);
+  testReads({{0, kAlign}}, AsyncIO::NOT_POLLABLE);
+  testReads({{0, kAlign}}, AsyncIO::NOT_POLLABLE);
 }
 
 TEST(AsyncIO, SingleAsyncDataPollable) {
-  testReads({{0, 512}}, AsyncIO::POLLABLE);
-  testReads({{0, 512}}, AsyncIO::POLLABLE);
+  testReads({{0, kAlign}}, AsyncIO::POLLABLE);
+  testReads({{0, kAlign}}, AsyncIO::POLLABLE);
 }
 
 TEST(AsyncIO, MultipleAsyncDataNotPollable) {
-  testReads({{512, 1024}, {512, 1024}, {512, 2048}}, AsyncIO::NOT_POLLABLE);
-  testReads({{512, 1024}, {512, 1024}, {512, 2048}}, AsyncIO::NOT_POLLABLE);
+  testReads(
+      {{kAlign, 2*kAlign}, {kAlign, 2*kAlign}, {kAlign, 4*kAlign}},
+      AsyncIO::NOT_POLLABLE);
+  testReads(
+      {{kAlign, 2*kAlign}, {kAlign, 2*kAlign}, {kAlign, 4*kAlign}},
+      AsyncIO::NOT_POLLABLE);
 
   testReads({
     {0, 5*1024*1024},
-    {512, 5*1024*1024},
+    {kAlign, 5*1024*1024}
   }, AsyncIO::NOT_POLLABLE);
 
   testReads({
-    {512, 0},
-    {512, 512},
-    {512, 1024},
-    {512, 10*1024},
-    {512, 1024*1024},
+    {kAlign, 0},
+    {kAlign, kAlign},
+    {kAlign, 2*kAlign},
+    {kAlign, 20*kAlign},
+    {kAlign, 1024*1024},
   }, AsyncIO::NOT_POLLABLE);
 }
 
 TEST(AsyncIO, MultipleAsyncDataPollable) {
-  testReads({{512, 1024}, {512, 1024}, {512, 2048}}, AsyncIO::POLLABLE);
-  testReads({{512, 1024}, {512, 1024}, {512, 2048}}, AsyncIO::POLLABLE);
+  testReads(
+      {{kAlign, 2*kAlign}, {kAlign, 2*kAlign}, {kAlign, 4*kAlign}},
+      AsyncIO::POLLABLE);
+  testReads(
+      {{kAlign, 2*kAlign}, {kAlign, 2*kAlign}, {kAlign, 4*kAlign}},
+      AsyncIO::POLLABLE);
 
   testReads({
     {0, 5*1024*1024},
-    {512, 5*1024*1024},
-  }, AsyncIO::POLLABLE);
+    {kAlign, 5*1024*1024}
+  }, AsyncIO::NOT_POLLABLE);
 
   testReads({
-    {512, 0},
-    {512, 512},
-    {512, 1024},
-    {512, 10*1024},
-    {512, 1024*1024},
-  }, AsyncIO::POLLABLE);
+    {kAlign, 0},
+    {kAlign, kAlign},
+    {kAlign, 2*kAlign},
+    {kAlign, 20*kAlign},
+    {kAlign, 1024*1024},
+  }, AsyncIO::NOT_POLLABLE);
 }
 
 TEST(AsyncIO, ManyAsyncDataNotPollable) {
   {
     std::vector<TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({512 * i, 512});
+      v.push_back({kAlign * i, kAlign});
     }
     testReads(v, AsyncIO::NOT_POLLABLE);
   }
@@ -323,7 +331,7 @@ TEST(AsyncIO, ManyAsyncDataPollable) {
   {
     std::vector<TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({512 * i, 512});
+      v.push_back({kAlign * i, kAlign});
     }
     testReads(v, AsyncIO::POLLABLE);
   }
@@ -337,7 +345,7 @@ TEST(AsyncIO, NonBlockingWait) {
   SCOPE_EXIT {
     ::close(fd);
   };
-  size_t size = 1024;
+  size_t size = 2*kAlign;
   auto buf = allocateAligned(size);
   op.pread(fd, buf.get(), size, 0);
   aioReader.submit(&op);
