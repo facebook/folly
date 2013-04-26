@@ -901,11 +901,11 @@ class Order : public Operator<Order<Selector, Comparer>> {
     }
    public:
     Generator(Source source,
-              const Selector& selector,
-              const Comparer& comparer)
+              Selector selector,
+              Comparer comparer)
       : source_(std::move(source)),
-        selector_(selector),
-        comparer_(comparer) {}
+        selector_(std::move(selector)),
+        comparer_(std::move(comparer)) {}
 
     VectorType operator|(const Collect<VectorType>&) const {
       return asVector();
@@ -953,6 +953,86 @@ class Order : public Operator<Order<Selector, Comparer>> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_, comparer_);
+  }
+};
+
+/**
+ * Distinct - For filtering duplicates out of a sequence. A selector may be
+ * provided to generate a key to uniquify for each value.
+ *
+ * This type is usually used through the 'distinct' helper function, like:
+ *
+ *   auto closest = from(results)
+ *                | distinctBy([](Item& i) {
+ *                    return i.target;
+ *                  })
+ *                | take(10);
+ */
+template<class Selector>
+class Distinct : public Operator<Distinct<Selector>> {
+  Selector selector_;
+ public:
+  Distinct() {}
+
+  explicit Distinct(Selector selector)
+    : selector_(std::move(selector))
+  {}
+
+  template<class Value,
+           class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
+    Source source_;
+    Selector selector_;
+
+    typedef typename std::decay<Value>::type StorageType;
+
+    // selector_ cannot be passed an rvalue or it would end up passing the husk
+    // of a value to the downstream operators.
+    typedef const StorageType& ParamType;
+
+    typedef typename std::result_of<Selector(ParamType)>::type KeyType;
+    typedef typename std::decay<KeyType>::type KeyStorageType;
+
+   public:
+    Generator(Source source,
+              Selector selector)
+      : source_(std::move(source)),
+        selector_(std::move(selector)) {}
+
+    template<class Body>
+    void foreach(Body&& body) const {
+      std::unordered_set<KeyStorageType> keysSeen;
+      source_.foreach([&](Value value) {
+        if (keysSeen.insert(selector_(ParamType(value))).second) {
+          body(std::forward<Value>(value));
+        }
+      });
+    }
+
+    template<class Handler>
+    bool apply(Handler&& handler) const {
+      std::unordered_set<KeyStorageType> keysSeen;
+      return source_.apply([&](Value value) -> bool {
+        if (keysSeen.insert(selector_(ParamType(value))).second) {
+          return handler(std::forward<Value>(value));
+        }
+        return true;
+      });
+    }
+  };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), selector_);
+  }
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), selector_);
   }
 };
 
@@ -1613,6 +1693,8 @@ static const detail::Min<Identity, Less> min;
 static const detail::Min<Identity, Greater> max;
 
 static const detail::Order<Identity> order;
+
+static const detail::Distinct<Identity> distinct;
 
 static const detail::Map<Move> move;
 

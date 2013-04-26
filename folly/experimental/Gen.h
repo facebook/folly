@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <utility>
 #include <algorithm>
+#include <vector>
+#include <unordered_set>
 
 #include "folly/Range.h"
 #include "folly/Optional.h"
@@ -213,6 +215,9 @@ class Skip;
 template<class Selector, class Comparer = Less>
 class Order;
 
+template<class Selector>
+class Distinct;
+
 template<class First, class Second>
 class Composed;
 
@@ -378,6 +383,12 @@ template<class Selector,
          class Order = detail::Order<Selector, Greater>>
 Order orderByDescending(Selector selector = Identity()) {
   return Order(std::move(selector));
+}
+
+template<class Selector,
+         class Distinct = detail::Distinct<Selector>>
+Distinct distinctBy(Selector selector = Identity()) {
+  return Distinct(std::move(selector));
 }
 
 template<int n,

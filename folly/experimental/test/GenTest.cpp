@@ -268,6 +268,43 @@ TEST(Gen, OrderTake) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, Distinct) {
+  auto expected = vector<int>{3, 1, 2};
+  auto actual =
+      from({3, 1, 3, 2, 1, 2, 3})
+    | distinct
+    | as<vector>();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(Gen, DistinctBy) {   //  0  1  4  9  6  5  6  9  4  1  0
+  auto expected = vector<int>{0, 1, 2, 3, 4, 5};
+  auto actual =
+      seq(0, 100)
+    | distinctBy([](int i) { return i * i % 10; })
+    | as<vector>();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(Gen, DistinctMove) {   //  0  1  4  9  6  5  6  9  4  1  0
+  auto expected = vector<int>{0, 1, 2, 3, 4, 5};
+  auto actual =
+      seq(0, 100)
+    | mapped([](int i) { return std::unique_ptr<int>(new int(i)); })
+      // see comment below about selector parameters for Distinct
+    | distinctBy([](const std::unique_ptr<int>& pi) { return *pi * *pi % 10; })
+    | mapped([](std::unique_ptr<int> pi) { return *pi; })
+    | as<vector>();
+
+  // NOTE(tjackson): the following line intentionally doesn't work:
+  //  | distinctBy([](std::unique_ptr<int> pi) { return *pi * *pi % 10; })
+  // This is because distinctBy because the selector intentionally requires a
+  // const reference.  If it required a move-reference, the value might get
+  // gutted by the selector before said value could be passed to downstream
+  // operators.
+  EXPECT_EQ(expected, actual);
+}
+
 TEST(Gen, MinBy) {
   EXPECT_EQ(7, seq(1, 10)
              | minBy([](int i) -> double {
