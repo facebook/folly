@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 namespace folly {
 
@@ -92,7 +93,26 @@ class File {
   File(File&&);
   File& operator=(File&&);
 
+  // FLOCK (INTERPROCESS) LOCKS
+  //
+  // NOTE THAT THESE LOCKS ARE flock() LOCKS.  That is, they may only be used
+  // for inter-process synchronization -- an attempt to acquire a second lock
+  // on the same file descriptor from the same process may succeed.  Attempting
+  // to acquire a second lock on a different file descriptor for the same file
+  // should fail, but some systems might implement flock() using fcntl() locks,
+  // in which case it will succeed.
+  void lock();
+  bool try_lock();
+  void unlock();
+
+  void lock_shared();
+  bool try_lock_shared();
+  void unlock_shared();
+
  private:
+  void doLock(int op);
+  bool doTryLock(int op);
+
   // unique
   File(const File&) = delete;
   File& operator=(const File&) = delete;
@@ -102,6 +122,7 @@ class File {
 };
 
 void swap(File& a, File& b);
+
 
 }  // namespace folly
 

@@ -67,7 +67,7 @@ TEST(SimpleSubprocessTest, ShellExitsWithError) {
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   // Find out where we are.
   static constexpr size_t pathLength = 2048;
-  char buf[pathLength];
+  char buf[pathLength + 1];
   int r = readlink("/proc/self/exe", buf, pathLength);
   CHECK_ERR(r);
   buf[r] = '\0';
