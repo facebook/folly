@@ -321,7 +321,7 @@ TEST(AsyncIO, ManyAsyncDataNotPollable) {
   {
     std::vector<TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({kAlign * i, kAlign});
+      v.push_back({off_t(kAlign * i), kAlign});
     }
     testReads(v, AsyncIO::NOT_POLLABLE);
   }
@@ -331,7 +331,7 @@ TEST(AsyncIO, ManyAsyncDataPollable) {
   {
     std::vector<TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({kAlign * i, kAlign});
+      v.push_back({off_t(kAlign * i), kAlign});
     }
     testReads(v, AsyncIO::POLLABLE);
   }
