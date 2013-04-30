@@ -299,7 +299,7 @@ From from(std::initializer_list<Value> source) {
 
 template<class Container,
          class From = detail::CopiedSource<typename Container::value_type,
-                                         Container>>
+                                           Container>>
 From from(Container&& source) {
   return From(std::move(source));
 }

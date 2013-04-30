@@ -664,6 +664,14 @@ TEST(Gen, Dynamic) {
   EXPECT_EQ(dynamic(5), from(array3) | rconcat | rconcat | sum);
 }
 
+TEST(Gen, DynamicObject) {
+  const dynamic obj = dynamic::object(1, 2)(3, 4);
+  EXPECT_EQ(dynamic(4), from(obj.keys()) | sum);
+  EXPECT_EQ(dynamic(6), from(obj.values()) | sum);
+  EXPECT_EQ(dynamic(4), from(obj.items()) | get<0>() | sum);
+  EXPECT_EQ(dynamic(6), from(obj.items()) | get<1>() | sum);
+}
+
 TEST(StringGen, EmptySplit) {
   auto collect = eachTo<std::string>() | as<vector>();
   {
