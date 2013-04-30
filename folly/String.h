@@ -395,6 +395,35 @@ void splitTo(const Delim& delimiter,
              bool ignoreEmpty = false);
 
 /*
+ * Split a string into a fixed number of pieces by delimiter. Returns 'true' if
+ * the fields were all successfully populated.
+ *
+ * Example:
+ *
+ *  folly::StringPiece name, key, value;
+ *  if (folly::split('\t', line, name, key, value))
+ *    ...
+ *
+ * The 'exact' template paremeter specifies how the function behaves when too
+ * many fields are present in the input string. When 'exact' is set to its
+ * default value of 'true', a call to split will fail if the number of fields in
+ * the input string does not exactly match the number of output parameters
+ * passed. If 'exact' is overridden to 'false', all remaining fields will be
+ * stored, unsplit, in the last field, as shown below:
+ *
+ *  folly::StringPiece x, y.
+ *  if (folly::split<false>(':', "a:b:c", x, y))
+ *    assert(x == "a" && y == "b:c");
+ */
+template<bool exact = true,
+         class Delim,
+         class... StringPieces>
+bool split(const Delim& delimiter,
+           StringPiece input,
+           StringPiece& outHead,
+           StringPieces&... outTail);
+
+/*
  * Join list of tokens.
  *
  * Stores a string representation of tokens in the same order with

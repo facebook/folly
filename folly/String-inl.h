@@ -347,6 +347,39 @@ template<class String> StringPiece prepareDelim(const String& s) {
 }
 inline char prepareDelim(char c) { return c; }
 
+template<bool exact,
+         class Delim>
+bool splitFixed(const Delim& delimiter,
+                StringPiece input,
+                StringPiece& out) {
+  if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
+    return false;
+  }
+  out = input;
+  return true;
+}
+
+template<bool exact,
+         class Delim,
+         class... StringPieces>
+bool splitFixed(const Delim& delimiter,
+                StringPiece input,
+                StringPiece& outHead,
+                StringPieces&... outTail) {
+  size_t cut = input.find(delimiter);
+  if (UNLIKELY(cut == std::string::npos)) {
+    return false;
+  }
+  StringPiece head(input.begin(), input.begin() + cut);
+  StringPiece tail(input.begin() + cut + detail::delimSize(delimiter),
+                   input.end());
+  if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
+    outHead = head;
+    return true;
+  }
+  return false;
+}
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -386,6 +419,20 @@ void splitTo(const Delim& delimiter,
     StringPiece(input),
     out,
     ignoreEmpty);
+}
+
+template<bool exact,
+         class Delim,
+         class... StringPieces>
+bool split(const Delim& delimiter,
+           StringPiece input,
+           StringPiece& outHead,
+           StringPieces&... outTail) {
+  return detail::splitFixed<exact>(
+    detail::prepareDelim(delimiter),
+    input,
+    outHead,
+    outTail...);
 }
 
 namespace detail {

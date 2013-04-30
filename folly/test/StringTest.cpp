@@ -758,6 +758,49 @@ TEST(Split, pieces_fbvector) {
   piecesTest<folly::fbvector>();
 }
 
+TEST(Split, fixed) {
+  StringPiece a, b, c, d;
+
+  EXPECT_TRUE(folly::split<false>('.', "a.b.c.d", a, b, c, d));
+  EXPECT_TRUE(folly::split<false>('.', "a.b.c", a, b, c));
+  EXPECT_TRUE(folly::split<false>('.', "a.b", a, b));
+  EXPECT_TRUE(folly::split<false>('.', "a", a));
+
+  EXPECT_TRUE(folly::split('.', "a.b.c.d", a, b, c, d));
+  EXPECT_TRUE(folly::split('.', "a.b.c", a, b, c));
+  EXPECT_TRUE(folly::split('.', "a.b", a, b));
+  EXPECT_TRUE(folly::split('.', "a", a));
+
+  EXPECT_TRUE(folly::split<false>('.', "a.b.c", a, b, c));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ("b", b);
+  EXPECT_EQ("c", c);
+  EXPECT_FALSE(folly::split<false>('.', "a.b", a, b, c));
+  EXPECT_TRUE(folly::split<false>('.', "a.b.c", a, b));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ("b.c", b);
+
+  EXPECT_TRUE(folly::split('.', "a.b.c", a, b, c));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ("b", b);
+  EXPECT_EQ("c", c);
+  EXPECT_FALSE(folly::split('.', "a.b.c", a, b));
+  EXPECT_FALSE(folly::split('.', "a.b", a, b, c));
+
+  EXPECT_TRUE(folly::split<false>('.', "a.b", a, b));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ("b", b);
+  EXPECT_FALSE(folly::split<false>('.', "a", a, b));
+  EXPECT_TRUE(folly::split<false>('.', "a.b", a));
+  EXPECT_EQ("a.b", a);
+
+  EXPECT_TRUE(folly::split('.', "a.b", a, b));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ("b", b);
+  EXPECT_FALSE(folly::split('.', "a", a, b));
+  EXPECT_FALSE(folly::split('.', "a.b", a));
+}
+
 TEST(String, join) {
   string output;
 
@@ -869,11 +912,35 @@ BENCHMARK(splitOnSingleChar, iters) {
   }
 }
 
+BENCHMARK(splitOnSingleCharFixed, iters) {
+  static const std::string line = "one:two:three:four";
+  for (int i = 0; i < iters << 4; ++i) {
+    StringPiece a, b, c, d;
+    folly::split(':', line, a, b, c, d);
+  }
+}
+
+BENCHMARK(splitOnSingleCharFixedAllowExtra, iters) {
+  static const std::string line = "one:two:three:four";
+  for (int i = 0; i < iters << 4; ++i) {
+    StringPiece a, b, c, d;
+    folly::split<false>(':', line, a, b, c, d);
+  }
+}
+
 BENCHMARK(splitStr, iters) {
   static const std::string line = "one-*-two-*-three-*-four";
   for (int i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split("-*-", line, pieces);
+  }
+}
+
+BENCHMARK(splitStrFixed, iters) {
+  static const std::string line = "one-*-two-*-three-*-four";
+  for (int i = 0; i < iters << 4; ++i) {
+    StringPiece a, b, c, d;
+    folly::split("-*-", line, a, b, c, d);
   }
 }
 
