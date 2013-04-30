@@ -30,7 +30,8 @@ AC_CHECK_LIB([gflags],[getenv],[],[AC_MSG_ERROR(
              [Please install google-gflags library])])
 
 # check for boost libs
-AX_BOOST_BASE
+AX_BOOST_BASE([1.20.0], [], [AC_MSG_ERROR(
+              [Please install boost >= 1.20.0 (thread, regex, and system)])])
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
