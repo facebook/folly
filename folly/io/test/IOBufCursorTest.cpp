@@ -383,6 +383,93 @@ TEST(IOBuf, CursorOperators) {
   }
 }
 
+TEST(IOBuf, StringOperations) {
+  // Test a single buffer with two null-terminated strings and an extra uint8_t
+  // at the end
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(16));
+    Appender app(chain.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello\0world\0\x01"), 13);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello", curs.readTerminatedString().c_str());
+    EXPECT_STREQ("world", curs.readTerminatedString().c_str());
+    EXPECT_EQ(1, curs.read<uint8_t>());
+  }
+
+  // Test multiple buffers with a single null-terminated string spanning them
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(IOBuf::create(8));
+    Appender app(chain.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello world", curs.readTerminatedString().c_str());
+  }
+
+  // Test a reading a null-terminated string that's longer than the maximum
+  // allowable length
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(16));
+    Appender app(chain.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
+
+    Cursor curs(chain.get());
+    EXPECT_THROW(curs.readTerminatedString('\0', 5), std::length_error);
+  }
+
+  // Test reading a null-termianted string from a chain with an empty buffer at
+  // the front
+  {
+    std::unique_ptr<IOBuf> buf(IOBuf::create(8));
+    Appender app(buf.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello\0"), 6);
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(std::move(buf));
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello", curs.readTerminatedString().c_str());
+  }
+
+  // Test reading a two fixed-length strings from a single buffer with an extra
+  // uint8_t at the end
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(16));
+    Appender app(chain.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("helloworld\x01"), 11);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello", curs.readFixedString(5).c_str());
+    EXPECT_STREQ("world", curs.readFixedString(5).c_str());
+    EXPECT_EQ(1, curs.read<uint8_t>());
+  }
+
+  // Test multiple buffers with a single fixed-length string spanning them
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(IOBuf::create(8));
+    Appender app(chain.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world"), 11);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello world", curs.readFixedString(11).c_str());
+  }
+
+  // Test reading a fixed-length string from a chain with an empty buffer at
+  // the front
+  {
+    std::unique_ptr<IOBuf> buf(IOBuf::create(8));
+    Appender app(buf.get(), 0);
+    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello"), 5);
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(std::move(buf));
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello", curs.readFixedString(5).c_str());
+  }
+}
+
 int benchmark_size = 1000;
 unique_ptr<IOBuf> iobuf_benchmark;
 

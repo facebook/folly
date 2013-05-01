@@ -84,6 +84,76 @@ class CursorBase {
     return Endian::little(read<T>());
   }
 
+  /**
+   * Read a fixed-length string.
+   *
+   * The std::string-based APIs should probably be avoided unless you
+   * ultimately want the data to live in an std::string. You're better off
+   * using the pull() APIs to copy into a raw buffer otherwise.
+   */
+  std::string readFixedString(size_t len) {
+    std::string str;
+
+    str.reserve(len);
+    for (;;) {
+      // Fast path: it all fits in one buffer.
+      size_t available = length();
+      if (LIKELY(available >= len)) {
+        str.append(reinterpret_cast<const char*>(data()), len);
+        offset_ += len;
+        return str;
+      }
+
+      str.append(reinterpret_cast<const char*>(data()), available);
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        throw std::out_of_range("string underflow");
+      }
+      len -= available;
+    }
+  }
+
+  /**
+   * Read a string consisting of bytes until the given terminator character is
+   * seen. Raises an std::length_error if maxLength bytes have been processed
+   * before the terminator is seen.
+   *
+   * See comments in readFixedString() about when it's appropriate to use this
+   * vs. using pull().
+   */
+  std::string readTerminatedString(
+    char termChar = '\0',
+    size_t maxLength = std::numeric_limits<size_t>::max()) {
+    std::string str;
+
+    for (;;) {
+      const uint8_t* buf = data();
+      size_t buflen = length();
+
+      size_t i = 0;
+      while (i < buflen && buf[i] != termChar) {
+        ++i;
+
+        // Do this check after incrementing 'i', as even though we start at the
+        // 0 byte, it still represents a single character
+        if (str.length() + i >= maxLength) {
+          throw std::length_error("string overflow");
+        }
+      }
+
+      str.append(reinterpret_cast<const char*>(buf), i);
+      if (i < buflen) {
+        skip(i + 1);
+        return str;
+      }
+
+      skip(i);
+
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        throw std::out_of_range("string underflow");
+      }
+    }
+  }
+
   explicit CursorBase(BufType* buf)
     : crtBuf_(buf)
     , offset_(0)
