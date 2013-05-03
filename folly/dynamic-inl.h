@@ -544,8 +544,7 @@ inline dynamic& dynamic::at(dynamic const& idx) {
     return (*parray)[idx.asInt()];
   }
 
-  auto* pobj = get_nothrow<ObjectImpl>();
-  assert(pobj);
+  assert(get_nothrow<ObjectImpl>());
   auto it = find(idx);
   if (it == items().end()) {
     throw std::out_of_range(to<std::string>(
