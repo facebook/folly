@@ -26,32 +26,6 @@
  #endif
 #endif
 
-// Define macro wrappers for C++11's "final" and "override" keywords, which
-// are supported in gcc 4.7 but not gcc 4.6.
-//
-// TODO(tudorb/agallagher): Autotoolize this.
-#undef FOLLY_FINAL
-#undef FOLLY_OVERRIDE
-
-#if defined(__clang__)
-#  define FOLLY_FINAL final
-#  define FOLLY_OVERRIDE override
-#elif defined(__GNUC__)
-# include <features.h>
-# if __GNUC_PREREQ(4,7)
-#  define FOLLY_FINAL final
-#  define FOLLY_OVERRIDE override
-# endif
-#endif
-
-#ifndef FOLLY_FINAL
-# define FOLLY_FINAL
-#endif
-
-#ifndef FOLLY_OVERRIDE
-# define FOLLY_OVERRIDE
-#endif
-
 
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__

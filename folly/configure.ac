@@ -38,7 +38,7 @@ AX_BOOST_SYSTEM
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h features.h malloc.h emmintrin.h])
+AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h emmintrin.h])
 
 AC_CHECK_HEADER(double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \
@@ -62,6 +62,18 @@ AC_COMPILE_IFELSE(
                   void func() __attribute__((ifunc("test_ifunc")));]],
   [AC_DEFINE([HAVE_IFUNC], [1], [Define to 1 if the compiler supports ifunc])],
   [AC_DEFINE([HAVE_IFUNC], [0], [Define to 0 if the compiler doesn't support ifunc])]
+)
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[class C { virtual void f() final {} virtual void g() {} };
+                  class D : public C { virtual void g() override {} };]],
+  [AC_DEFINE([FINAL], [final],
+             [Define to "final" if the compiler supports C++11 "final"]),
+   AC_DEFINE([OVERRIDE], [override],
+             [Define to "override" if the compiler supports C++11 "override"])],
+  [AC_DEFINE([FINAL], [],
+             [Define to "final" if the compiler supports C++11 "final"]),
+   AC_DEFINE([OVERRIDE], [],
+             [Define to "override" if the compiler supports C++11 "override"])]
 )
 
 # Checks for library functions.
