@@ -30,7 +30,7 @@ TEST(Endian, Basic) {
   uint64_t v64 = 0x123456789abcdef0ULL;
   uint64_t v64s = 0xf0debc9a78563412ULL;
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 #define GEN1(sz) \
   EXPECT_EQ(v##sz, Endian::little(v##sz)); \
@@ -38,7 +38,7 @@ TEST(Endian, Basic) {
   EXPECT_EQ(v##sz##s, Endian::big(v##sz)); \
   EXPECT_EQ(v##sz##s, Endian::big##sz(v##sz));
 
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 
 #define GEN1(sz) \
   EXPECT_EQ(v##sz##s, Endian::little(v##sz)); \
@@ -48,7 +48,7 @@ TEST(Endian, Basic) {
 
 #else
 # error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER */
+#endif  /* __BYTE_ORDER__ */
 
 #define GEN(sz) \
   EXPECT_EQ(v##sz##s, Endian::swap(v##sz)); \

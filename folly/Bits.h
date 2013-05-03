@@ -76,7 +76,6 @@
 
 #include <cassert>
 #include <cinttypes>
-#include <endian.h>
 #include <iterator>
 #include <limits>
 #include <type_traits>
@@ -268,7 +267,7 @@ FB_GEN(uint16_t, our_bswap16)
 
 #undef FB_GEN
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 template <class T>
 struct EndianInt : public detail::EndianIntBase<T> {
@@ -277,7 +276,7 @@ struct EndianInt : public detail::EndianIntBase<T> {
   static T little(T x) { return x; }
 };
 
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 
 template <class T>
 struct EndianInt : public detail::EndianIntBase<T> {
@@ -288,7 +287,7 @@ struct EndianInt : public detail::EndianIntBase<T> {
 
 #else
 # error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER */
+#endif  /* __BYTE_ORDER__ */
 
 }  // namespace detail
 
@@ -318,13 +317,13 @@ class Endian {
   };
 
   static constexpr Order order =
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     Order::LITTLE;
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     Order::BIG;
 #else
 # error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER */
+#endif  /* __BYTE_ORDER__ */
 
   template <class T> static T swap(T x) {
     return detail::EndianInt<T>::swap(x);

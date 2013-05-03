@@ -20,7 +20,6 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <endian.h>
 #include <fcntl.h>
 
 #include <string>
@@ -130,9 +129,9 @@ void ElfFile::init() {
 #undef EXPECTED_CLASS
 
   // Validate ELF data encoding (LSB/MSB)
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 # define EXPECTED_ENCODING ELFDATA2LSB
-#elif __BYTE_ORDER == __BIG_ENDIAN
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 # define EXPECTED_ENCODING ELFDATA2MSB
 #else
 # error Unsupported byte order
