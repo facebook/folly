@@ -22,13 +22,13 @@ using namespace folly;
 
 TEST(Endian, Basic) {
   uint8_t v8 = 0x12;
-  uint8_t v8s = v8;
+  uint8_t v8s = 0x12;
   uint16_t v16 = 0x1234;
-  uint16_t v16s = bswap_16(v16);
+  uint16_t v16s = 0x3412;
   uint32_t v32 = 0x12345678;
-  uint32_t v32s = bswap_32(v32);
+  uint32_t v32s = 0x78563412;
   uint64_t v64 = 0x123456789abcdef0ULL;
-  uint64_t v64s = bswap_64(v64);
+  uint64_t v64s = 0xf0debc9a78563412ULL;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
