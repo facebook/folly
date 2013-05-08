@@ -21,9 +21,11 @@
 #include <sys/uio.h>
 #include <libaio.h>
 
+#include <atomic>
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <mutex>
 #include <ostream>
 #include <utility>
 #include <vector>
@@ -138,6 +140,12 @@ class AsyncIO : private boost::noncopyable {
    * any IOs on this AsyncIO have completed.  If you do this, you must use
    * pollCompleted() instead of wait() -- do not read from the pollFd()
    * file descriptor directly.
+   *
+   * You may use the same AsyncIO object from multiple threads, as long as
+   * there is only one concurrent caller of wait() / pollCompleted() (perhaps
+   * by always calling it from the same thread, or by providing appropriate
+   * mutual exclusion)  In this case, pending() returns a snapshot
+   * of the current number of pending requests.
    */
   explicit AsyncIO(size_t capacity, PollMode pollMode=NOT_POLLABLE);
   ~AsyncIO();
@@ -180,12 +188,17 @@ class AsyncIO : private boost::noncopyable {
   void submit(Op* op);
 
  private:
+  void decrementPending();
   void initializeContext();
+
   Range<Op**> doWait(size_t minRequests, size_t maxRequests);
 
   io_context_t ctx_;
-  size_t pending_;
-  const size_t capacity_;
+  std::atomic<bool> ctxSet_;
+  std::mutex initMutex_;
+
+  std::atomic<ssize_t> pending_;
+  const ssize_t capacity_;
   int pollFd_;
   std::vector<Op*> completed_;
 };
