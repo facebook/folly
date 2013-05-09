@@ -192,9 +192,11 @@ IovecBuffers::IovecBuffers(std::initializer_list<size_t> sizes) {
   iov_.reserve(sizes.size());
   for (auto& s : sizes) {
     buffers_.push_back(std::string(s, '\0'));
+  }
+  for (auto& b : buffers_) {
     iovec iov;
-    iov.iov_base = &(buffers_.back()[0]);
-    iov.iov_len = s;
+    iov.iov_base = &b[0];
+    iov.iov_len = b.size();
     iov_.push_back(iov);
   }
 }
