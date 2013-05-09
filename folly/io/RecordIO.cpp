@@ -50,17 +50,14 @@ void RecordIOWriter::write(std::unique_ptr<IOBuf> buf) {
     return;  // nothing to do
   }
 
-  // TODO(tudorb): Maybe use pwritev, but for now we're copying everything in
-  // one place.
-  buf->unshare();
-  buf->coalesce();
-  DCHECK_EQ(buf->length(), totalLength);
+  DCHECK_EQ(buf->computeChainDataLength(), totalLength);
+  auto iov = buf->getIov();
 
   // We're going to write.  Reserve space for ourselves.
-  off_t pos = filePos_.fetch_add(buf->length());
-  ssize_t bytes = pwriteFull(file_.fd(), buf->data(), buf->length(), pos);
+  off_t pos = filePos_.fetch_add(totalLength);
+  ssize_t bytes = pwritevFull(file_.fd(), iov.data(), iov.size(), pos);
   checkUnixError(bytes, "pwrite() failed");
-  DCHECK_EQ(bytes, buf->length());
+  DCHECK_EQ(bytes, totalLength);
 }
 
 RecordIOReader::RecordIOReader(File file, uint32_t fileId)
