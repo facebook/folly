@@ -22,6 +22,7 @@
 #include "folly/Exception.h"
 #include "folly/FileUtil.h"
 #include "folly/Memory.h"
+#include "folly/Portability.h"
 #include "folly/ScopeGuard.h"
 #include "folly/String.h"
 
@@ -51,11 +52,19 @@ void RecordIOWriter::write(std::unique_ptr<IOBuf> buf) {
   }
 
   DCHECK_EQ(buf->computeChainDataLength(), totalLength);
-  auto iov = buf->getIov();
 
   // We're going to write.  Reserve space for ourselves.
   off_t pos = filePos_.fetch_add(totalLength);
+
+#ifdef FOLLY_HAVE_PWRITEV
+  auto iov = buf->getIov();
   ssize_t bytes = pwritevFull(file_.fd(), iov.data(), iov.size(), pos);
+#else
+  buf->unshare();
+  buf->coalesce();
+  ssize_t bytes = pwriteFull(file_.fd(), buf->data(), buf->length(), pos);
+#endif
+
   checkUnixError(bytes, "pwrite() failed");
   DCHECK_EQ(bytes, totalLength);
 }

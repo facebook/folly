@@ -43,7 +43,7 @@ namespace folly {
 #pragma GCC system_header
 #define FOLLY_HAVE_MALLOC_H 1
 #else
-#include "folly-config.h"
+#include "folly/Portability.h"
 #endif
 
 // for malloc_usable_size

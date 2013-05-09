@@ -20,7 +20,7 @@
 #ifndef FOLLY_RANGE_H_
 #define FOLLY_RANGE_H_
 
-#include "folly/folly-config.h"
+#include "folly/Portability.h"
 #include "folly/FBString.h"
 #include <glog/logging.h>
 #include <algorithm>
