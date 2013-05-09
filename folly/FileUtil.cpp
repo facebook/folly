@@ -18,7 +18,11 @@
 
 #include <cerrno>
 
+#include "folly/detail/FileUtilDetail.h"
+
 namespace folly {
+
+using namespace fileutil_detail;
 
 int closeNoInt(int fd) {
   int r = close(fd);
@@ -37,20 +41,6 @@ int closeNoInt(int fd) {
   return r;
 }
 
-namespace {
-
-// Wrap call to f(args) in loop to retry on EINTR
-template<typename F, typename... Args>
-ssize_t wrapNoInt(F f, Args... args) {
-  ssize_t r;
-  do {
-    r = f(args...);
-  } while (r == -1 && errno == EINTR);
-  return r;
-}
-
-}  // namespace
-
 ssize_t readNoInt(int fd, void* buf, size_t count) {
   return wrapNoInt(read, fd, buf, count);
 }
@@ -59,7 +49,7 @@ ssize_t preadNoInt(int fd, void* buf, size_t count, off_t offset) {
   return wrapNoInt(pread, fd, buf, count, offset);
 }
 
-ssize_t readvNoInt(int fd, const struct iovec* iov, int count) {
+ssize_t readvNoInt(int fd, const iovec* iov, int count) {
   return wrapNoInt(writev, fd, iov, count);
 }
 
@@ -71,94 +61,40 @@ ssize_t pwriteNoInt(int fd, const void* buf, size_t count, off_t offset) {
   return wrapNoInt(pwrite, fd, buf, count, offset);
 }
 
-ssize_t writevNoInt(int fd, const struct iovec* iov, int count) {
+ssize_t writevNoInt(int fd, const iovec* iov, int count) {
   return wrapNoInt(writev, fd, iov, count);
 }
 
 ssize_t readFull(int fd, void* buf, size_t count) {
-  char* b = static_cast<char*>(buf);
-  ssize_t totalBytes = 0;
-  ssize_t r;
-  do {
-    r = read(fd, b, count);
-    if (r == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return r;
-    }
-
-    totalBytes += r;
-    b += r;
-    count -= r;
-  } while (r != 0 && count);  // 0 means EOF
-
-  return totalBytes;
+  return wrapFull(read, fd, buf, count);
 }
 
 ssize_t preadFull(int fd, void* buf, size_t count, off_t offset) {
-  char* b = static_cast<char*>(buf);
-  ssize_t totalBytes = 0;
-  ssize_t r;
-  do {
-    r = pread(fd, b, count, offset);
-    if (r == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return r;
-    }
-
-    totalBytes += r;
-    b += r;
-    offset += r;
-    count -= r;
-  } while (r != 0 && count);  // 0 means EOF
-
-  return totalBytes;
+  return wrapFull(pread, fd, buf, count, offset);
 }
 
 ssize_t writeFull(int fd, const void* buf, size_t count) {
-  const char* b = static_cast<const char*>(buf);
-  ssize_t totalBytes = 0;
-  ssize_t r;
-  do {
-    r = write(fd, b, count);
-    if (r == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return r;
-    }
-
-    totalBytes += r;
-    b += r;
-    count -= r;
-  } while (r != 0 && count);  // 0 means EOF
-
-  return totalBytes;
+  return wrapFull(write, fd, const_cast<void*>(buf), count);
 }
 
 ssize_t pwriteFull(int fd, const void* buf, size_t count, off_t offset) {
-  const char* b = static_cast<const char*>(buf);
-  ssize_t totalBytes = 0;
-  ssize_t r;
-  do {
-    r = pwrite(fd, b, count, offset);
-    if (r == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      return r;
-    }
+  return wrapFull(pwrite, fd, const_cast<void*>(buf), count, offset);
+}
 
-    totalBytes += r;
-    b += r;
-    offset += r;
-    count -= r;
-  } while (r != 0 && count);  // 0 means EOF
+ssize_t readvFull(int fd, iovec* iov, int count) {
+  return wrapvFull(readv, fd, iov, count);
+}
 
-  return totalBytes;
+ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset) {
+  return wrapvFull(preadv, fd, iov, count, offset);
+}
+
+ssize_t writevFull(int fd, iovec* iov, int count) {
+  return wrapvFull(writev, fd, iov, count);
+}
+
+ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
+  return wrapvFull(pwritev, fd, iov, count, offset);
 }
 
 }  // namespaces
