@@ -143,10 +143,6 @@ namespace folly {
  * - We don't take the Hash function object as an instance in the
  *   constructor.
  *
- * - We don't take a Compare template parameter (since our keys must
- *   be integers, and the underlying hash array here uses atomic
- *   compare-and-swap instructions, we only allow normal integer
- *   comparisons).
  */
 
 // Thrown when insertion fails due to running out of space for
@@ -157,16 +153,16 @@ struct AtomicHashMapFullError : std::runtime_error {
   {}
 };
 
-template<class KeyT, class ValueT, class HashFcn>
+template<class KeyT, class ValueT, class HashFcn, class EqualFcn>
 class AtomicHashMap : boost::noncopyable {
-  typedef AtomicHashArray<KeyT, ValueT, HashFcn> SubMap;
+  typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn> SubMap;
 
  public:
   typedef KeyT                key_type;
   typedef ValueT              mapped_type;
   typedef std::pair<const KeyT, ValueT> value_type;
   typedef HashFcn             hasher;
-  typedef std::equal_to<KeyT> key_equal;
+  typedef EqualFcn            key_equal;
   typedef value_type*         pointer;
   typedef value_type&         reference;
   typedef const value_type&   const_reference;
@@ -204,7 +200,7 @@ class AtomicHashMap : boost::noncopyable {
     }
   }
 
-  key_equal key_eq() const { return key_eq(); }
+  key_equal key_eq() const { return key_equal(); }
   hasher hash_function() const { return hasher(); }
 
   // TODO: emplace() support would be nice.
