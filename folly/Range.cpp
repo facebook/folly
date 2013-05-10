@@ -21,7 +21,6 @@
 
 #include <emmintrin.h>  // __v16qi
 #include <iostream>
-#include "folly/Likely.h"
 
 namespace folly {
 

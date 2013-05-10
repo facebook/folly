@@ -221,6 +221,24 @@ TEST(StringPiece, ToByteRange) {
   EXPECT_EQ(a.end(), c.end());
 }
 
+TEST(StringPiece, InvalidRange) {
+  StringPiece a("hello");
+  EXPECT_EQ(a, a.subpiece(0, 10));
+  EXPECT_EQ(StringPiece("ello"), a.subpiece(1));
+  EXPECT_EQ(StringPiece("ello"), a.subpiece(1, std::string::npos));
+  EXPECT_EQ(StringPiece("ell"), a.subpiece(1, 3));
+  EXPECT_THROW(a.subpiece(6, 7), std::out_of_range);
+  EXPECT_THROW(a.subpiece(6), std::out_of_range);
+
+  std::string b("hello");
+  EXPECT_EQ(a, StringPiece(b, 0, 10));
+  EXPECT_EQ("ello", a.subpiece(1));
+  EXPECT_EQ("ello", a.subpiece(1, std::string::npos));
+  EXPECT_EQ("ell", a.subpiece(1, 3));
+  EXPECT_THROW(a.subpiece(6, 7), std::out_of_range);
+  EXPECT_THROW(a.subpiece(6), std::out_of_range);
+}
+
 template <typename NeedleFinder>
 class NeedleFinderTest : public ::testing::Test {
  public:
