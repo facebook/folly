@@ -41,6 +41,14 @@ int closeNoInt(int fd) {
   return r;
 }
 
+int fsyncNoInt(int fd) {
+  return wrapNoInt(fsync, fd);
+}
+
+int fdatasyncNoInt(int fd) {
+  return wrapNoInt(fdatasync, fd);
+}
+
 ssize_t readNoInt(int fd, void* buf, size_t count) {
   return wrapNoInt(read, fd, buf, count);
 }

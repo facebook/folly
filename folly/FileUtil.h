@@ -31,6 +31,8 @@ namespace folly {
  * semantics of underlying system calls.
  */
 int closeNoInt(int fd);
+int fsyncNoInt(int fd);
+int fdatasyncNoInt(int fd);
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);
