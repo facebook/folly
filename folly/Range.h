@@ -322,14 +322,14 @@ public:
   }
 
   void advance(size_type n) {
-    if (n > size()) {
+    if (UNLIKELY(n > size())) {
       throw std::out_of_range("index out of range");
     }
     b_ += n;
   }
 
   void subtract(size_type n) {
-    if (n > size()) {
+    if (UNLIKELY(n > size())) {
       throw std::out_of_range("index out of range");
     }
     e_ -= n;
@@ -347,7 +347,7 @@ public:
 
   Range subpiece(size_type first,
                  size_type length = std::string::npos) const {
-    if (first > size()) {
+    if (UNLIKELY(first > size())) {
       throw std::out_of_range("index out of range");
     }
     return Range(b_ + first,
