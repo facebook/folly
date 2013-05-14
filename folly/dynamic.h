@@ -254,6 +254,11 @@ public:
   Type type() const;
 
   /*
+   * Returns the type of this dynamic as a printable string.
+   */
+  const char* typeName() const;
+
+  /*
    * Extract a value while trying to convert to the specified type.
    * Throws exceptions if we cannot convert from the real type to the
    * requested type.
