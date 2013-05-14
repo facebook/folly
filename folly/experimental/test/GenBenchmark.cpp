@@ -280,6 +280,17 @@ BENCHMARK_RELATIVE(Composed_GenRegular, iters) {
 
 BENCHMARK_DRAW_LINE()
 
+BENCHMARK(Sample, iters) {
+  size_t s = 0;
+  while (iters--) {
+    auto sampler = seq(1, 10 * 1000 * 1000) | sample(1000);
+    s += (sampler | sum);
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_DRAW_LINE()
+
 namespace {
 
 const char* const kLine = "The quick brown fox jumped over the lazy dog.\n";

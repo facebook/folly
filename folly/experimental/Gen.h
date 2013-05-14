@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 #include <algorithm>
+#include <random>
 #include <vector>
 #include <unordered_set>
 
@@ -209,6 +210,9 @@ template<class Predicate>
 class Until;
 
 class Take;
+
+template<class Rand>
+class Sample;
 
 class Skip;
 

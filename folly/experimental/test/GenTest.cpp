@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <iostream>
+#include <random>
 #include <set>
 #include <vector>
 #include "folly/experimental/Gen.h"
@@ -171,6 +172,40 @@ TEST(Gen, Take) {
     | take(4)
     | as<vector<int>>();
   EXPECT_EQ(expected, actual);
+}
+
+TEST(Gen, Sample) {
+  std::mt19937 rnd(42);
+
+  auto sampler =
+      seq(1, 100)
+    | sample(50, rnd);
+  std::unordered_map<int,int> hits;
+  const int kNumIters = 80;
+  for (int i = 0; i < kNumIters; i++) {
+    auto vec = sampler | as<vector<int>>();
+    EXPECT_EQ(vec.size(), 50);
+    auto uniq = fromConst(vec) | as<set<int>>();
+    EXPECT_EQ(uniq.size(), vec.size());  // sampling without replacement
+    for (auto v: vec) {
+      ++hits[v];
+    }
+  }
+
+  // In 80 separate samples of our range, we should have seen every value
+  // at least once and no value all 80 times. (The odds of either of those
+  // events is 1/2^80).
+  EXPECT_EQ(hits.size(), 100);
+  for (auto hit: hits) {
+    EXPECT_GT(hit.second, 0);
+    EXPECT_LT(hit.second, kNumIters);
+  }
+
+  auto small =
+      seq(1, 5)
+    | sample(10);
+  EXPECT_EQ((small | sum), 15);
+  EXPECT_EQ((small | take(3) | count), 3);
 }
 
 TEST(Gen, Skip) {
@@ -670,6 +705,11 @@ TEST(Gen, DynamicObject) {
   EXPECT_EQ(dynamic(6), from(obj.values()) | sum);
   EXPECT_EQ(dynamic(4), from(obj.items()) | get<0>() | sum);
   EXPECT_EQ(dynamic(6), from(obj.items()) | get<1>() | sum);
+}
+
+TEST(Gen, Collect) {
+  auto s = from({7, 6, 5, 4, 3}) | as<set<int>>();
+  EXPECT_EQ(s.size(), 5);
 }
 
 TEST(StringGen, EmptySplit) {
