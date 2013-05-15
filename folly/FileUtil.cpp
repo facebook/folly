@@ -24,6 +24,10 @@ namespace folly {
 
 using namespace fileutil_detail;
 
+int openNoInt(const char* name, int flags, mode_t mode) {
+  return wrapNoInt(open, name, flags, mode);
+}
+
 int closeNoInt(int fd) {
   int r = close(fd);
   // Ignore EINTR.  On Linux, close() may only return EINTR after the file
@@ -47,6 +51,14 @@ int fsyncNoInt(int fd) {
 
 int fdatasyncNoInt(int fd) {
   return wrapNoInt(fdatasync, fd);
+}
+
+int ftruncateNoInt(int fd, off_t len) {
+  return wrapNoInt(ftruncate, fd, len);
+}
+
+int truncateNoInt(const char* path, off_t len) {
+  return wrapNoInt(truncate, path, len);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {

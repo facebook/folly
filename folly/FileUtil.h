@@ -19,7 +19,10 @@
 
 #include "folly/Portability.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/uio.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 namespace folly {
@@ -30,9 +33,12 @@ namespace folly {
  * until all data is written.  Note that *Full wrappers weaken the thread
  * semantics of underlying system calls.
  */
+int openNoInt(const char* name, int flags, mode_t mode=0644);
 int closeNoInt(int fd);
 int fsyncNoInt(int fd);
 int fdatasyncNoInt(int fd);
+int ftruncateNoInt(int fd, off_t len);
+int truncateNoInt(const char* path, off_t len);
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);
