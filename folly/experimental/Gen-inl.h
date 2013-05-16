@@ -156,10 +156,10 @@ class GenImpl : public FBounded<Self> {
 
   /**
    * apply() - Send all values produced by this generator to given
-   * handler until the handler returns false. Returns true until the handler
-   * returns false. GOTCHA: It should return true even if it completes (without
-   * the handler returning false), as 'Chain' uses the return value of apply
-   * to determine if it should process the second object in its chain.
+   * handler until the handler returns false. Returns false if and only if the
+   * handler returns false. Note: It should return true even if it completes
+   * (without the handler returning false), as 'Chain' uses the return value of
+   * apply to determine if it should process the second object in its chain.
    */
   template<class Handler>
   bool apply(Handler&& handler) const;
