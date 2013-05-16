@@ -222,6 +222,13 @@ class IOBufQueue {
     return chainLength_;
   }
 
+  /**
+   * Returns true iff the IOBuf chain length is 0.
+   */
+  bool empty() const {
+    return !head_ || head_->empty();
+  }
+
   const Options& options() const {
     return options_;
   }

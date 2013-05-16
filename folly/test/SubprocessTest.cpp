@@ -26,6 +26,7 @@
 
 #include "folly/Exception.h"
 #include "folly/Format.h"
+#include "folly/String.h"
 #include "folly/experimental/Gen.h"
 #include "folly/experimental/FileGen.h"
 #include "folly/experimental/StringGen.h"
@@ -126,8 +127,7 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   checkFdLeak([] {
     Subprocess proc("echo foo; echo bar >&2",
                     Subprocess::pipeStdout() | Subprocess::pipeStderr());
-    auto p = proc.communicate(Subprocess::readStdout() |
-                              Subprocess::readStderr());
+    auto p = proc.communicate();
     EXPECT_EQ("foo\n", p.first);
     EXPECT_EQ("bar\n", p.second);
     proc.waitChecked();
@@ -209,8 +209,7 @@ TEST(CommunicateSubprocessTest, BigWrite) {
   }
 
   Subprocess proc("wc -l", Subprocess::pipeStdin() | Subprocess::pipeStdout());
-  auto p = proc.communicate(Subprocess::writeStdin() | Subprocess::readStdout(),
-                            data);
+  auto p = proc.communicate(data);
   EXPECT_EQ(folly::format("{}\n", numLines).str(), p.first);
   proc.waitChecked();
 }
@@ -223,9 +222,73 @@ TEST(CommunicateSubprocessTest, Duplex) {
 
   Subprocess proc("tr a-z A-Z",
                   Subprocess::pipeStdin() | Subprocess::pipeStdout());
-  auto p = proc.communicate(Subprocess::writeStdin() | Subprocess::readStdout(),
-                            line);
+  auto p = proc.communicate(line);
   EXPECT_EQ(bytes, p.first.size());
   EXPECT_EQ(std::string::npos, p.first.find_first_not_of('X'));
   proc.waitChecked();
+}
+
+TEST(CommunicateSubprocessTest, Duplex2) {
+  checkFdLeak([] {
+    // Pipe 200,000 lines through sed
+    const size_t numCopies = 100000;
+    auto iobuf = IOBuf::copyBuffer("this is a test\nanother line\n");
+    IOBufQueue input;
+    for (int n = 0; n < numCopies; ++n) {
+      input.append(iobuf->clone());
+    }
+
+    std::vector<std::string> cmd({
+      "sed", "-u",
+      "-e", "s/a test/a successful test/",
+      "-e", "/^another line/w/dev/stderr",
+    });
+    auto options = Subprocess::pipeStdin().pipeStdout().pipeStderr().usePath();
+    Subprocess proc(cmd, options);
+    auto out = proc.communicateIOBuf(std::move(input));
+    proc.waitChecked();
+
+    // Convert stdout and stderr to strings so we can call split() on them.
+    fbstring stdoutStr;
+    if (out.first.front()) {
+      stdoutStr = out.first.move()->moveToFbString();
+    }
+    fbstring stderrStr;
+    if (out.second.front()) {
+      stderrStr = out.second.move()->moveToFbString();
+    }
+
+    // stdout should be a copy of stdin, with "a test" replaced by
+    // "a successful test"
+    std::vector<StringPiece> stdoutLines;
+    split('\n', stdoutStr, stdoutLines);
+    EXPECT_EQ(numCopies * 2 + 1, stdoutLines.size());
+    // Strip off the trailing empty line
+    if (!stdoutLines.empty()) {
+      EXPECT_EQ("", stdoutLines.back());
+      stdoutLines.pop_back();
+    }
+    size_t linenum = 0;
+    for (const auto& line : stdoutLines) {
+      if ((linenum & 1) == 0) {
+        EXPECT_EQ("this is a successful test", line);
+      } else {
+        EXPECT_EQ("another line", line);
+      }
+      ++linenum;
+    }
+
+    // stderr should only contain the lines containing "another line"
+    std::vector<StringPiece> stderrLines;
+    split('\n', stderrStr, stderrLines);
+    EXPECT_EQ(numCopies + 1, stderrLines.size());
+    // Strip off the trailing empty line
+    if (!stderrLines.empty()) {
+      EXPECT_EQ("", stderrLines.back());
+      stderrLines.pop_back();
+    }
+    for (const auto& line : stderrLines) {
+      EXPECT_EQ("another line", line);
+    }
+  });
 }

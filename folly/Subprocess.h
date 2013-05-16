@@ -224,19 +224,23 @@ class Subprocess : private boost::noncopyable {
     /**
      * Shortcut to change the action for standard input.
      */
-    Options& stdin(int action) { return fd(0, action); }
+    Options& stdin(int action) { return fd(STDIN_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard output.
      */
-    Options& stdout(int action) { return fd(1, action); }
+    Options& stdout(int action) { return fd(STDOUT_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard error.
      * Note that stderr(1) will redirect the standard error to the same
      * file descriptor as standard output; the equivalent of bash's "2>&1"
      */
-    Options& stderr(int action) { return fd(2, action); }
+    Options& stderr(int action) { return fd(STDERR_FILENO, action); }
+
+    Options& pipeStdin() { return fd(STDIN_FILENO, PIPE_IN); }
+    Options& pipeStdout() { return fd(STDOUT_FILENO, PIPE_OUT); }
+    Options& pipeStderr() { return fd(STDERR_FILENO, PIPE_OUT); }
 
     /**
      * Close all other fds (other than standard input, output, error,
@@ -310,19 +314,19 @@ class Subprocess : private boost::noncopyable {
       const std::vector<std::string>* env = nullptr);
 
   /**
-   * Append all data, close the stdin (to-child) fd, and read all data,
-   * except that this is done in a safe manner to prevent deadlocking.
+   * Communicate with the child until all pipes to/from the child are closed.
    *
-   * If writeStdin() is given in flags, the process must have been opened with
-   * stdinFd=PIPE.
+   * The input buffer is written to the process' stdin pipe, and data is read
+   * from the stdout and stderr pipes.  Non-blocking I/O is performed on all
+   * pipes simultaneously to avoid deadlocks.
    *
-   * If readStdout() is given in flags, the first returned value will be the
-   * value read from the child's stdout; the child must have been opened with
-   * stdoutFd=PIPE.
+   * The stdin pipe will be closed after the full input buffer has been written.
+   * An error will be thrown if a non-empty input buffer is supplied but stdin
+   * was not configured as a pipe.
    *
-   * If readStderr() is given in flags, the second returned value will be the
-   * value read from the child's stderr; the child must have been opened with
-   * stderrFd=PIPE.
+   * Returns a pair of buffers containing the data read from stdout and stderr.
+   * If stdout or stderr is not a pipe, an empty IOBuf queue will be returned
+   * for the respective buffer.
    *
    * Note that communicate() returns when all pipes to/from the child are
    * closed; the child might stay alive after that, so you must still wait().
@@ -331,39 +335,11 @@ class Subprocess : private boost::noncopyable {
    * that it won't try to allocate all data at once).  communicate
    * uses strings for simplicity.
    */
-  class CommunicateFlags : private boost::orable<CommunicateFlags> {
-    friend class Subprocess;
-   public:
-    CommunicateFlags()
-      : writeStdin_(false), readStdout_(false), readStderr_(false) { }
-    CommunicateFlags& writeStdin() { writeStdin_ = true; return *this; }
-    CommunicateFlags& readStdout() { readStdout_ = true; return *this; }
-    CommunicateFlags& readStderr() { readStderr_ = true; return *this; }
-
-    CommunicateFlags& operator|=(const CommunicateFlags& other);
-   private:
-    bool writeStdin_;
-    bool readStdout_;
-    bool readStderr_;
-  };
-
-  static CommunicateFlags writeStdin() {
-    return CommunicateFlags().writeStdin();
-  }
-  static CommunicateFlags readStdout() {
-    return CommunicateFlags().readStdout();
-  }
-  static CommunicateFlags readStderr() {
-    return CommunicateFlags().readStderr();
-  }
-
   std::pair<IOBufQueue, IOBufQueue> communicateIOBuf(
-      const CommunicateFlags& flags = readStdout(),
-      IOBufQueue data = IOBufQueue());
+      IOBufQueue input = IOBufQueue());
 
   std::pair<std::string, std::string> communicate(
-      const CommunicateFlags& flags = readStdout(),
-      StringPiece data = StringPiece());
+      StringPiece input = StringPiece());
 
   /**
    * Communicate with the child until all pipes to/from the child are closed.
@@ -543,15 +519,6 @@ inline Subprocess::Options& Subprocess::Options::operator|=(
   }
   closeOtherFds_ |= other.closeOtherFds_;
   usePath_ |= other.usePath_;
-  return *this;
-}
-
-inline Subprocess::CommunicateFlags& Subprocess::CommunicateFlags::operator|=(
-    const Subprocess::CommunicateFlags& other) {
-  if (this == &other) return *this;
-  writeStdin_ |= other.writeStdin_;
-  readStdout_ |= other.readStdout_;
-  readStderr_ |= other.readStderr_;
   return *this;
 }
 

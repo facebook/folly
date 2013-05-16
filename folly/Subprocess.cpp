@@ -617,12 +617,11 @@ bool discardRead(int fd) {
 }  // namespace
 
 std::pair<std::string, std::string> Subprocess::communicate(
-    const CommunicateFlags& flags,
-    StringPiece data) {
-  IOBufQueue dataQueue;
-  dataQueue.wrapBuffer(data.data(), data.size());
+    StringPiece input) {
+  IOBufQueue inputQueue;
+  inputQueue.wrapBuffer(input.data(), input.size());
 
-  auto outQueues = communicateIOBuf(flags, std::move(dataQueue));
+  auto outQueues = communicateIOBuf(std::move(inputQueue));
   auto outBufs = std::make_pair(outQueues.first.move(),
                                 outQueues.second.move());
   std::pair<std::string, std::string> out;
@@ -640,14 +639,21 @@ std::pair<std::string, std::string> Subprocess::communicate(
 }
 
 std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
-    const CommunicateFlags& flags,
-    IOBufQueue data) {
+    IOBufQueue input) {
+  // If the user supplied a non-empty input buffer, make sure
+  // that stdin is a pipe so we can write the data.
+  if (!input.empty()) {
+    // findByChildFd() will throw std::invalid_argument if no pipe for
+    // STDIN_FILENO exists
+    findByChildFd(STDIN_FILENO);
+  }
+
   std::pair<IOBufQueue, IOBufQueue> out;
 
   auto readCallback = [&] (int pfd, int cfd) -> bool {
-    if (cfd == 1 && flags.readStdout_) {
+    if (cfd == STDOUT_FILENO) {
       return handleRead(pfd, out.first);
-    } else if (cfd == 2 && flags.readStderr_) {
+    } else if (cfd == STDERR_FILENO) {
       return handleRead(pfd, out.second);
     } else {
       // Don't close the file descriptor, the child might not like SIGPIPE,
@@ -657,11 +663,11 @@ std::pair<IOBufQueue, IOBufQueue> Subprocess::communicateIOBuf(
   };
 
   auto writeCallback = [&] (int pfd, int cfd) -> bool {
-    if (cfd == 0 && flags.writeStdin_) {
-      return handleWrite(pfd, data);
+    if (cfd == STDIN_FILENO) {
+      return handleWrite(pfd, input);
     } else {
       // If we don't want to write to this fd, just close it.
-      return false;
+      return true;
     }
   };
 
