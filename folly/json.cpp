@@ -104,75 +104,6 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
   throw std::runtime_error("folly::decodeUtf8 encoding length maxed out");
 }
 
-// Escape a string so that it is legal to print it in JSON text.
-void escapeString(StringPiece input,
-                  fbstring& out,
-                  const serialization_opts& opts) {
-  auto hexDigit = [] (int c) -> char {
-    return c < 10 ? c + '0' : c - 10 + 'a';
-  };
-
-  out.reserve(out.size() + input.size() + 2);
-  out.push_back('\"');
-
-  auto* p = reinterpret_cast<const unsigned char*>(input.begin());
-  auto* q = reinterpret_cast<const unsigned char*>(input.begin());
-  auto* e = reinterpret_cast<const unsigned char*>(input.end());
-
-  while (p < e) {
-    // Since non-ascii encoding inherently does utf8 validation
-    // we explicitly validate utf8 only if non-ascii encoding is disabled.
-    if (opts.validate_utf8 && !opts.encode_non_ascii) {
-      // to achieve better spatial and temporal coherence
-      // we do utf8 validation progressively along with the
-      // string-escaping instead of two separate passes
-
-      // as the encoding progresses, q will stay at or ahead of p
-      CHECK(q >= p);
-
-      // as p catches up with q, move q forward
-      if (q == p) {
-        // calling utf8_decode has the side effect of
-        // checking that utf8 encodings are valid
-        decodeUtf8(q, e);
-      }
-    }
-
-    if (opts.encode_non_ascii && (*p & 0x80)) {
-      // note that this if condition captures utf8 chars
-      // with value > 127, so size > 1 byte
-      char32_t v = decodeUtf8(p, e);
-      out.append("\\u");
-      out.push_back(hexDigit(v >> 12));
-      out.push_back(hexDigit((v >> 8) & 0x0f));
-      out.push_back(hexDigit((v >> 4) & 0x0f));
-      out.push_back(hexDigit(v & 0x0f));
-    } else if (*p == '\\' || *p == '\"') {
-      out.push_back('\\');
-      out.push_back(*p++);
-    } else if (*p <= 0x1f) {
-      switch (*p) {
-      case '\b': out.append("\\b"); p++; break;
-      case '\f': out.append("\\f"); p++; break;
-      case '\n': out.append("\\n"); p++; break;
-      case '\r': out.append("\\r"); p++; break;
-      case '\t': out.append("\\t"); p++; break;
-      default:
-        // note that this if condition captures non readable chars
-        // with value < 32, so size = 1 byte (e.g control chars).
-        out.append("\\u00");
-        out.push_back(hexDigit((*p & 0xf0) >> 4));
-        out.push_back(hexDigit(*p & 0xf));
-        p++;
-      }
-    } else {
-      out.push_back(*p++);
-    }
-  }
-
-  out.push_back('\"');
-}
-
 struct Printer {
   explicit Printer(fbstring& out,
                    unsigned* indentLevel,
@@ -659,6 +590,74 @@ fbstring serialize(dynamic const& dyn, serialization_opts const& opts) {
   Printer p(ret, opts.pretty_formatting ? &indentLevel : nullptr, &opts);
   p(dyn);
   return ret;
+}
+
+// Escape a string so that it is legal to print it in JSON text.
+void escapeString(StringPiece input,
+                  fbstring& out,
+                  const serialization_opts& opts) {
+  auto hexDigit = [] (int c) -> char {
+    return c < 10 ? c + '0' : c - 10 + 'a';
+  };
+
+  out.reserve(out.size() + input.size() + 2);
+  out.push_back('\"');
+
+  auto* p = reinterpret_cast<const unsigned char*>(input.begin());
+  auto* q = reinterpret_cast<const unsigned char*>(input.begin());
+  auto* e = reinterpret_cast<const unsigned char*>(input.end());
+
+  while (p < e) {
+    // Since non-ascii encoding inherently does utf8 validation
+    // we explicitly validate utf8 only if non-ascii encoding is disabled.
+    if (opts.validate_utf8 && !opts.encode_non_ascii) {
+      // to achieve better spatial and temporal coherence
+      // we do utf8 validation progressively along with the
+      // string-escaping instead of two separate passes
+
+      // as the encoding progresses, q will stay at or ahead of p
+      CHECK(q >= p);
+
+      // as p catches up with q, move q forward
+      if (q == p) {
+        // calling utf8_decode has the side effect of
+        // checking that utf8 encodings are valid
+        decodeUtf8(q, e);
+      }
+    }
+    if (opts.encode_non_ascii && (*p & 0x80)) {
+      // note that this if condition captures utf8 chars
+      // with value > 127, so size > 1 byte
+      char32_t v = decodeUtf8(p, e);
+      out.append("\\u");
+      out.push_back(hexDigit(v >> 12));
+      out.push_back(hexDigit((v >> 8) & 0x0f));
+      out.push_back(hexDigit((v >> 4) & 0x0f));
+      out.push_back(hexDigit(v & 0x0f));
+    } else if (*p == '\\' || *p == '\"') {
+      out.push_back('\\');
+      out.push_back(*p++);
+    } else if (*p <= 0x1f) {
+      switch (*p) {
+        case '\b': out.append("\\b"); p++; break;
+        case '\f': out.append("\\f"); p++; break;
+        case '\n': out.append("\\n"); p++; break;
+        case '\r': out.append("\\r"); p++; break;
+        case '\t': out.append("\\t"); p++; break;
+        default:
+          // note that this if condition captures non readable chars
+          // with value < 32, so size = 1 byte (e.g control chars).
+          out.append("\\u00");
+          out.push_back(hexDigit((*p & 0xf0) >> 4));
+          out.push_back(hexDigit(*p & 0xf));
+          p++;
+      }
+    } else {
+      out.push_back(*p++);
+    }
+  }
+
+  out.push_back('\"');
 }
 
 }

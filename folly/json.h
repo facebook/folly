@@ -90,6 +90,14 @@ namespace json {
    */
   fbstring serialize(dynamic const&, serialization_opts const&);
 
+  /*
+   * Escape a string so that it is legal to print it in JSON text and
+   * append the result to out.
+   */
+
+  void escapeString(StringPiece input,
+                    fbstring& out,
+                    const serialization_opts& opts);
 }
 
 //////////////////////////////////////////////////////////////////////
