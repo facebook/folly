@@ -131,7 +131,6 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   // operations of their own.
 
   size_t chunkSize = memOpChunkSize(bufSize);
-  size_t chunkCount = bufSize / chunkSize;
 
   char* addr = static_cast<char*>(mem);
   amountSucceeded = 0;
