@@ -219,6 +219,13 @@ class IOBuf {
   static std::unique_ptr<IOBuf> create(uint32_t capacity);
 
   /**
+   * Allocate a new IOBuf chain with the requested total capacity, allocating
+   * no more than maxBufCapacity to each buffer.
+   */
+  static std::unique_ptr<IOBuf> createChain(
+      size_t totalCapacity, uint32_t maxBufCapacity);
+
+  /**
    * Create a new IOBuf pointing to an existing data buffer.
    *
    * The new IOBuffer will assume ownership of the buffer, and free it by

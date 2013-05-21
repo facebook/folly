@@ -25,6 +25,7 @@
 
 #include "folly/Bits.h"
 #include "folly/io/IOBuf.h"
+#include "folly/io/IOBufQueue.h"
 #include "folly/Likely.h"
 
 /**
@@ -594,6 +595,98 @@ class Appender : public detail::Writable<Appender> {
   IOBuf* buffer_;
   IOBuf* crtBuf_;
   uint32_t growth_;
+};
+
+class QueueAppender : public detail::Writable<QueueAppender> {
+ public:
+  /**
+   * Create an Appender that writes to a IOBufQueue.  When we allocate
+   * space in the queue, we grow no more than growth bytes at once
+   * (unless you call ensure() with a bigger value yourself).
+   * Throw if we ever need to allocate more than maxTotalGrowth.
+   */
+  QueueAppender(IOBufQueue* queue,
+                uint32_t growth,
+                size_t maxTotalGrowth = std::numeric_limits<size_t>::max()) {
+    reset(queue, growth, maxTotalGrowth);
+  }
+
+  void reset(IOBufQueue* queue,
+             uint32_t growth,
+             size_t maxTotalGrowth = std::numeric_limits<size_t>::max()) {
+    queue_ = queue;
+    growth_ = growth;
+    remainingGrowth_ = maxTotalGrowth;
+    next_ = nullptr;
+    available_ = 0;
+  }
+
+  uint8_t* writableData() { return next_; }
+
+  size_t length() const { return available_; }
+
+  void append(size_t n) {
+    assert(n <= available_);
+    assert(n <= remainingGrowth_);
+    queue_->postallocate(n);
+    next_ += n;
+    available_ -= n;
+    remainingGrowth_ -= n;
+  }
+
+  // Ensure at least n contiguous; can go above growth_, throws if
+  // not enough room.
+  void ensure(uint32_t n) {
+    if (UNLIKELY(n > remainingGrowth_)) {
+      throw std::out_of_range("overflow");
+    }
+
+    if (LIKELY(length() >= n)) {
+      return;
+    }
+
+    size_t desired = std::min(growth_, remainingGrowth_ - n);
+
+    // Grab some more.
+    auto p = queue_->preallocate(n, desired);
+
+    next_ = static_cast<uint8_t*>(p.first);
+    available_ = p.second;
+  }
+
+  size_t pushAtMost(const uint8_t* buf, size_t len) {
+    if (UNLIKELY(len > remainingGrowth_)) {
+      len = remainingGrowth_;
+    }
+
+    size_t remaining = len;
+    while (remaining != 0) {
+      ensure(std::min(remaining, growth_));
+      size_t n = std::min(remaining, available_);
+      memcpy(next_, buf, n);
+      buf += n;
+      remaining -= n;
+      append(n);
+    }
+
+    return len;
+  }
+
+  // insert doesn't count towards maxTotalGrowth
+  void insert(std::unique_ptr<folly::IOBuf> buf) {
+    if (buf) {
+      queue_->append(std::move(buf), true);
+      next_ = nullptr;
+      available_ = 0;
+    }
+  }
+
+ private:
+  folly::IOBufQueue* queue_;
+  size_t growth_;
+  size_t remainingGrowth_;
+  uint8_t* next_;
+  size_t available_;
 };
 
 }}  // folly::io

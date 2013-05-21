@@ -116,6 +116,22 @@ unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
   }
 }
 
+unique_ptr<IOBuf> IOBuf::createChain(
+    size_t totalCapacity, uint32_t maxBufCapacity) {
+  unique_ptr<IOBuf> out = create(
+      std::min(totalCapacity, size_t(maxBufCapacity)));
+  size_t allocatedCapacity = out->capacity();
+
+  while (allocatedCapacity < totalCapacity) {
+    unique_ptr<IOBuf> newBuf = create(
+        std::min(totalCapacity - allocatedCapacity, size_t(maxBufCapacity)));
+    allocatedCapacity += newBuf->capacity();
+    out->prependChain(std::move(newBuf));
+  }
+
+  return out;
+}
+
 unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
                                        uint32_t length,
                                        FreeFunction freeFn,

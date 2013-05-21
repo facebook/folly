@@ -226,6 +226,13 @@ class IOBufQueue {
     return options_;
   }
 
+  /**
+   * Clear the queue.  Note that this does not release the buffers, it
+   * just sets their length to zero; useful if you want to reuse the
+   * same queue without reallocating.
+   */
+  void clear();
+
   /** Movable */
   IOBufQueue(IOBufQueue&&);
   IOBufQueue& operator=(IOBufQueue&&);

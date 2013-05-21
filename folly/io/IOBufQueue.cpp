@@ -297,4 +297,18 @@ std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {
   return retBuf;
 }
 
+void IOBufQueue::clear() {
+  if (!head_) {
+    return;
+  }
+  IOBuf* buf = head_.get();
+  do {
+    buf->clear();
+    buf = buf->next();
+  } while (buf != head_.get());
+  if (options_.cacheChainLength) {
+    chainLength_ = 0;
+  }
+}
+
 } // folly

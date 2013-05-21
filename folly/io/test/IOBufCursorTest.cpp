@@ -326,6 +326,34 @@ TEST(IOBuf, Appender) {
   EXPECT_EQ("hello world", toString(*head));
 }
 
+TEST(IOBuf, QueueAppender) {
+  folly::IOBufQueue queue;
+
+  // Allocate 100 bytes at once, but don't grow past 1024
+  QueueAppender app(&queue, 100, 1024);
+  size_t n = 1024 / sizeof(uint32_t);
+  for (uint32_t i = 0; i < n; ++i) {
+    app.writeBE(i);
+  }
+
+  EXPECT_THROW({app.writeBE(0);}, std::out_of_range);
+
+  // There must be a goodMallocSize between 100 and 1024...
+  EXPECT_LT(1, queue.front()->countChainElements());
+  const IOBuf* buf = queue.front();
+  do {
+    EXPECT_LE(100, buf->capacity());
+    buf = buf->next();
+  } while (buf != queue.front());
+
+  Cursor cursor(queue.front());
+  for (uint32_t i = 0; i < n; ++i) {
+    EXPECT_EQ(i, cursor.readBE<uint32_t>());
+  }
+
+  EXPECT_THROW({cursor.readBE<uint32_t>();}, std::out_of_range);
+}
+
 TEST(IOBuf, CursorOperators) {
   // Test operators on a single-item chain
   {
