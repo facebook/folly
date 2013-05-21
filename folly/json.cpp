@@ -251,9 +251,10 @@ struct ParseError : std::runtime_error {
 
 // Wraps our input buffer with some helper functions.
 struct Input {
-  explicit Input(StringPiece range)
-    : range_(range)
-    , lineNum_(0)
+  explicit Input(StringPiece range, json::serialization_opts const* opts)
+      : range_(range)
+      , opts_(*opts)
+      , lineNum_(0)
   {
     storeCurrent();
   }
@@ -351,6 +352,10 @@ struct Input {
     throw ParseError(lineNum_, context(), what);
   }
 
+  json::serialization_opts const& getOpts() {
+    return opts_;
+  }
+
 private:
   void storeCurrent() {
     current_ = range_.empty() ? EOF : range_.front();
@@ -358,12 +363,14 @@ private:
 
 private:
   StringPiece range_;
+  json::serialization_opts const& opts_;
   unsigned lineNum_;
   int current_;
 };
 
 dynamic parseValue(Input& in);
 fbstring parseString(Input& in);
+dynamic parseNumber(Input& in);
 
 dynamic parseObject(Input& in) {
   assert(*in == '{');
@@ -378,14 +385,22 @@ dynamic parseObject(Input& in) {
   }
 
   for (;;) {
-    if (*in != '\"') {
+    if (*in == '\"') { // string
+      auto key = parseString(in);
+      in.skipWhitespace();
+      in.expect(':');
+      in.skipWhitespace();
+      ret.insert(std::move(key), parseValue(in));
+    } else if (!in.getOpts().allow_non_string_keys) {
       in.error("expected string for object key name");
+    } else {
+      auto key = parseValue(in);
+      in.skipWhitespace();
+      in.expect(':');
+      in.skipWhitespace();
+      ret.insert(std::move(key), parseValue(in));
     }
-    auto key = parseString(in);
-    in.skipWhitespace();
-    in.expect(':');
-    in.skipWhitespace();
-    ret.insert(std::move(key), parseValue(in));
+
     in.skipWhitespace();
     if (*in != ',') {
       break;
@@ -665,11 +680,18 @@ void escapeString(StringPiece input,
 //////////////////////////////////////////////////////////////////////
 
 dynamic parseJson(StringPiece range) {
-  json::Input in(range);
+  return parseJson(range, json::serialization_opts());
+}
+
+dynamic parseJson(
+    StringPiece range,
+    json::serialization_opts const& opts) {
+
+  json::Input in(range, &opts);
 
   auto ret = parseValue(in);
   in.skipWhitespace();
-  if (*in != '\0' && in.size()) {
+  if (in.size() && *in != '\0') {
     in.error("parsing didn't consume all input");
   }
   return ret;

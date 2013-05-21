@@ -314,6 +314,33 @@ TEST(Json, UTF8Validation) {
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
 }
 
+
+TEST(Json, ParseNonStringKeys) {
+  // test string keys
+  EXPECT_EQ("a", parseJson("{\"a\":[]}").items().begin().first.asString());
+
+  // check that we don't allow non-string keys as this violates the
+  // strict JSON spec (though it is emitted by the output of
+  // folly::dynamic with operator <<).
+  EXPECT_THROW(parseJson("{1:[]}"), std::runtime_error);
+
+  // check that we can parse colloquial JSON if the option is set
+  folly::json::serialization_opts opts;
+  opts.allow_non_string_keys = true;
+
+  auto val = parseJson("{1:[]}", opts);
+  EXPECT_EQ(1, val.items().begin().first.asInteger());
+
+
+  // test we can still read in strings
+  auto sval = parseJson("{\"a\":[]}", opts);
+  EXPECT_EQ("a", sval.items().begin().first.asString());
+
+  // test we can read in doubles
+  auto dval = parseJson("{1.5:[]}", opts);
+  EXPECT_EQ(1.5, dval.items().begin().first.asDouble());
+}
+
 BENCHMARK(jsonSerialize, iters) {
   folly::json::serialization_opts opts;
   for (int i = 0; i < iters; ++i) {

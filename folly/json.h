@@ -106,6 +106,7 @@ namespace json {
  * Parse a json blob out of a range and produce a dynamic representing
  * it.
  */
+dynamic parseJson(StringPiece, json::serialization_opts const&);
 dynamic parseJson(StringPiece);
 
 /*
