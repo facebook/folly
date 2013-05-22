@@ -35,8 +35,8 @@ namespace folly {
  * The value is created using folly::lazy, usually with a lambda, and
  * its value is requested using operator().
  *
- * Note that the value is not safe for current accesses by multiple
- * threads, even if you declare it const.
+ * Note that the value is not safe for concurrent accesses by multiple
+ * threads, even if you declare it const.  See note below.
  *
  *
  * Example Usage:
@@ -70,6 +70,16 @@ namespace folly {
  *      value unnecessarily.  Sharing with mutable lazies would also
  *      leave them with non-value semantics despite looking
  *      value-like.
+ *
+ *    - Not thread safe for const accesses.  Many use cases for lazy
+ *      values are local variables on the stack, where multiple
+ *      threads shouldn't even be able to reach the value.  It still
+ *      is useful to indicate/check that the value doesn't change with
+ *      const, particularly when it is captured by a large family of
+ *      lambdas.  Adding internal synchronization seems like it would
+ *      pessimize the most common use case in favor of less likely use
+ *      cases.
+ *
  */
 
 //////////////////////////////////////////////////////////////////////
