@@ -121,6 +121,69 @@ public:
   }
 };
 
+template<class Class,
+         class Result>
+class MemberFunction {
+ public:
+  typedef Result (Class::*MemberPtr)();
+ private:
+  MemberPtr member_;
+ public:
+  explicit MemberFunction(MemberPtr member)
+    : member_(member)
+  {}
+
+  Result operator()(Class&& x) const {
+    return (x.*member_)();
+  }
+
+  Result operator()(Class& x) const {
+    return (x.*member_)();
+  }
+};
+
+template<class Class,
+         class Result>
+class ConstMemberFunction{
+ public:
+  typedef Result (Class::*MemberPtr)() const;
+ private:
+  MemberPtr member_;
+ public:
+  explicit ConstMemberFunction(MemberPtr member)
+    : member_(member)
+  {}
+
+  Result operator()(const Class& x) const {
+    return (x.*member_)();
+  }
+};
+
+template<class Class,
+         class FieldType>
+class Field {
+ public:
+  typedef FieldType (Class::*FieldPtr);
+ private:
+  FieldPtr field_;
+ public:
+  explicit Field(FieldPtr field)
+    : field_(field)
+  {}
+
+  const FieldType& operator()(const Class& x) const {
+    return x.*field_;
+  }
+
+  FieldType& operator()(Class& x) const {
+    return x.*field_;
+  }
+
+  FieldType&& operator()(Class&& x) const {
+    return std::move(x.*field_);
+  }
+};
+
 class Move {
 public:
   template<class Value>
@@ -197,6 +260,10 @@ class Chain;
 template<class Value, class Source>
 class Yield;
 
+template<class Value>
+class Empty;
+
+
 /*
  * Operators
  */
@@ -224,6 +291,9 @@ class Distinct;
 
 template<class First, class Second>
 class Composed;
+
+template<class Expected>
+class TypeAssertion;
 
 /*
  * Sinks
@@ -335,11 +405,19 @@ Yield generator(Source&& source) {
 /*
  * Create inline generator, used like:
  *
- * auto gen = GENERATOR(int) { yield(1); yield(2); };
+ *  auto gen = GENERATOR(int) { yield(1); yield(2); };
  */
 #define GENERATOR(TYPE)                            \
   ::folly::gen::detail::GeneratorBuilder<TYPE>() + \
    [=](const std::function<void(TYPE)>& yield)
+
+/*
+ * empty() - for producing empty sequences.
+ */
+template<class Value>
+detail::Empty<Value> empty() {
+  return {};
+}
 
 /*
  * Operator Factories
@@ -354,6 +432,66 @@ template<class Predicate,
          class Map = detail::Map<Predicate>>
 Map map(Predicate pred = Predicate()) {
   return Map(std::move(pred));
+}
+
+/*
+ * member(...) - For extracting a member from each value.
+ *
+ *  vector<string> strings = ...;
+ *  auto sizes = from(strings) | member(&string::size);
+ *
+ * If a member is const overridden (like 'front()'), pass template parameter
+ * 'Const' to select the const version, or 'Mutable' to select the non-const
+ * version:
+ *
+ *  auto heads = from(strings) | member<Const>(&string::front);
+ */
+enum MemberType {
+  Const,
+  Mutable
+};
+
+template<MemberType Constness = Const,
+         class Class,
+         class Return,
+         class Mem = ConstMemberFunction<Class, Return>,
+         class Map = detail::Map<Mem>>
+typename std::enable_if<Constness == Const, Map>::type
+member(Return (Class::*member)() const) {
+  return Map(Mem(member));
+}
+
+template<MemberType Constness = Mutable,
+         class Class,
+         class Return,
+         class Mem = MemberFunction<Class, Return>,
+         class Map = detail::Map<Mem>>
+typename std::enable_if<Constness == Mutable, Map>::type
+member(Return (Class::*member)()) {
+  return Map(Mem(member));
+}
+
+/*
+ * field(...) - For extracting a field from each value.
+ *
+ *  vector<Item> items = ...;
+ *  auto names = from(items) | field(&Item::name);
+ *
+ * Note that if the values of the generator are rvalues, any non-reference
+ * fields will be rvalues as well. As an example, the code below does not copy
+ * any strings, only moves them:
+ *
+ *  auto namesVector = from(items)
+ *                   | move
+ *                   | field(&Item::name)
+ *                   | as<vector>();
+ */
+template<class Class,
+         class FieldType,
+         class Field = Field<Class, FieldType>,
+         class Map = detail::Map<Field>>
+Map field(FieldType Class::*field) {
+  return Map(Field(field));
 }
 
 template<class Predicate,
@@ -413,6 +551,11 @@ template <class Dest,
           class To = detail::Map<To<Dest>>>
 To eachTo() {
   return To();
+}
+
+template<class Value>
+detail::TypeAssertion<Value> assert_type() {
+  return {};
 }
 
 /*

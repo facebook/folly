@@ -51,6 +51,10 @@ static vector<vector<int>> testVectorVector =
       return seq(1, i) | as<vector>();
     })
   | as<vector>();
+static vector<fbstring> strings =
+    from(testVector)
+  | eachTo<fbstring>()
+  | as<vector>();
 
 auto square = [](int x) { return x * x; };
 auto add = [](int a, int b) { return a + b; };
@@ -92,6 +96,28 @@ BENCHMARK_RELATIVE(Sum_Vector_Gen, iters) {
   int s = 0;
   while (iters--) {
     s += from(testVector) | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(Member, iters) {
+  int s = 0;
+  while(iters--) {
+    s += from(strings)
+       | member(&fbstring::size)
+       | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(MapMember, iters) {
+  int s = 0;
+  while(iters--) {
+    s += from(strings)
+       | map([](const fbstring& x) { return x.size(); })
+       | sum;
   }
   folly::doNotOptimizeAway(s);
 }

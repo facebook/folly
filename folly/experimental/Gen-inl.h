@@ -532,6 +532,12 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
   }
 };
 
+template<class Value>
+class Empty : public GenImpl<Value, Empty<Value>> {
+ public:
+  template<class Handler>
+  bool apply(Handler&&) const { return true; }
+};
 
 /*
  * Operators
@@ -1033,6 +1039,33 @@ class Order : public Operator<Order<Selector, Comparer>> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_, comparer_);
+  }
+};
+
+/*
+ * TypeAssertion - For verifying the exact type of the value produced by a
+ * generator. Useful for testing and debugging, and acts as a no-op at runtime.
+ * Pass-through at runtime. Used through the 'assert_type<>()' factory method
+ * like so:
+ *
+ *   auto c =  from(vector) | assert_type<int&>() | sum;
+ *
+ */
+template<class Expected>
+class TypeAssertion : public Operator<TypeAssertion<Expected>> {
+ public:
+  template<class Source, class Value>
+  const Source& compose(const GenImpl<Value, Source>& source) const {
+    static_assert(std::is_same<Expected, Value>::value,
+                  "assert_type() check failed");
+    return source.self();
+  }
+
+  template<class Source, class Value>
+  Source&& compose(GenImpl<Value, Source>&& source) const {
+    static_assert(std::is_same<Expected, Value>::value,
+                  "assert_type() check failed");
+    return std::move(source.self());
   }
 };
 

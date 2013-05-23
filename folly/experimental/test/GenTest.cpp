@@ -104,6 +104,81 @@ TEST(Gen, Map) {
   EXPECT_EQ((vector<int>{4, 9}), gen | take(2) | as<vector>());
 }
 
+TEST(Gen, Member) {
+  struct Counter {
+    Counter(int start = 0)
+      : c(start)
+    {}
+
+    int count() const { return c; }
+    int incr() { return ++c; }
+
+    int& ref() { return c; }
+    const int& ref() const { return c; }
+   private:
+    int c;
+  };
+  auto counters = seq(1, 10) | eachAs<Counter>() | as<vector>();
+  EXPECT_EQ(10 * (1 + 10) / 2,
+            from(counters)
+          | member(&Counter::count)
+          | sum);
+  EXPECT_EQ(10 * (2 + 11) / 2,
+            from(counters)
+          | member(&Counter::incr)
+          | sum);
+  EXPECT_EQ(10 * (2 + 11) / 2,
+            from(counters)
+          | member(&Counter::count)
+          | sum);
+
+  // type-verifications
+  auto m = empty<Counter&>();
+  auto c = empty<const Counter&>();
+  m | member(&Counter::incr) | assert_type<int&&>();
+  m | member(&Counter::count) | assert_type<int&&>();
+  m | member(&Counter::count) | assert_type<int&&>();
+  m | member<Const>(&Counter::ref) | assert_type<const int&>();
+  m | member<Mutable>(&Counter::ref) | assert_type<int&>();
+  c | member<Const>(&Counter::ref) | assert_type<const int&>();
+}
+
+TEST(Gen, Field) {
+  struct X {
+    X() : a(2), b(3), c(4), d(b) {}
+
+    const int a;
+    int b;
+    mutable int c;
+    int& d; // can't access this with a field pointer.
+  };
+
+  std::vector<X> xs(1);
+  EXPECT_EQ(2, from(xs)
+             | field(&X::a)
+             | first);
+  EXPECT_EQ(3, from(xs)
+             | field(&X::b)
+             | first);
+  EXPECT_EQ(4, from(xs)
+             | field(&X::c)
+             | first);
+  // type-verification
+  empty<X&>() | field(&X::a) | assert_type<const int&>();
+  empty<X&>() | field(&X::b) | assert_type<int&>();
+  empty<X&>() | field(&X::c) | assert_type<int&>();
+  empty<X&&>() | field(&X::a) | assert_type<const int&&>();
+  empty<X&&>() | field(&X::b) | assert_type<int&&>();
+  empty<X&&>() | field(&X::c) | assert_type<int&&>();
+  // references don't imply ownership so they're not moved
+  empty<const X&>() | field(&X::a) | assert_type<const int&>();
+  empty<const X&>() | field(&X::b) | assert_type<const int&>();
+  // 'mutable' has no effect on field pointers, by C++ spec
+  empty<const X&>() | field(&X::c) | assert_type<const int&>();
+
+  // can't form pointer-to-reference field: empty<X&>() | field(&X::d)
+}
+
 TEST(Gen, Seq) {
   // cover the fenceposts of the loop unrolling
   for (int n = 1; n < 100; ++n) {
@@ -590,6 +665,7 @@ TEST(Gen, NoNeedlessCopies) {
 }
 
 namespace {
+
 class TestIntSeq : public GenImpl<int, TestIntSeq> {
  public:
   TestIntSeq() { }
@@ -609,6 +685,7 @@ class TestIntSeq : public GenImpl<int, TestIntSeq> {
   TestIntSeq(const TestIntSeq&) = delete;
   TestIntSeq& operator=(const TestIntSeq&) = delete;
 };
+
 }  // namespace
 
 TEST(Gen, NoGeneratorCopies) {
