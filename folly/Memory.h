@@ -34,11 +34,12 @@ namespace folly {
  * we have std::make_unique().
  *
  * @author Louis Brandy (ldbrandy@fb.com)
+ * @author Xu Ning (xning@fb.com)
  */
 
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+template<typename T, typename Dp = std::default_delete<T>, typename... Args>
+std::unique_ptr<T, Dp> make_unique(Args&&... args) {
+  return std::unique_ptr<T, Dp>(new T(std::forward<Args>(args)...));
 }
 
 /**
