@@ -317,7 +317,7 @@ TEST(Json, UTF8Validation) {
 
 TEST(Json, ParseNonStringKeys) {
   // test string keys
-  EXPECT_EQ("a", parseJson("{\"a\":[]}").items().begin().first.asString());
+  EXPECT_EQ("a", parseJson("{\"a\":[]}").items().begin()->first.asString());
 
   // check that we don't allow non-string keys as this violates the
   // strict JSON spec (though it is emitted by the output of
@@ -329,16 +329,16 @@ TEST(Json, ParseNonStringKeys) {
   opts.allow_non_string_keys = true;
 
   auto val = parseJson("{1:[]}", opts);
-  EXPECT_EQ(1, val.items().begin().first.asInteger());
+  EXPECT_EQ(1, val.items().begin()->first.asInt());
 
 
   // test we can still read in strings
   auto sval = parseJson("{\"a\":[]}", opts);
-  EXPECT_EQ("a", sval.items().begin().first.asString());
+  EXPECT_EQ("a", sval.items().begin()->first.asString());
 
   // test we can read in doubles
   auto dval = parseJson("{1.5:[]}", opts);
-  EXPECT_EQ(1.5, dval.items().begin().first.asDouble());
+  EXPECT_EQ(1.5, dval.items().begin()->first.asDouble());
 }
 
 BENCHMARK(jsonSerialize, iters) {
