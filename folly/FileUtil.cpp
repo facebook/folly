@@ -17,6 +17,9 @@
 #include "folly/FileUtil.h"
 
 #include <cerrno>
+#ifdef __APPLE__
+#include <fcntl.h>
+#endif
 
 #include "folly/detail/FileUtilDetail.h"
 
@@ -50,7 +53,11 @@ int fsyncNoInt(int fd) {
 }
 
 int fdatasyncNoInt(int fd) {
+#ifndef __APPLE__
   return wrapNoInt(fdatasync, fd);
+#else
+  return wrapNoInt(fcntl, fd, F_FULLFSYNC);
+#endif
 }
 
 int ftruncateNoInt(int fd, off_t len) {

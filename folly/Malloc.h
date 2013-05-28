@@ -65,14 +65,6 @@ namespace folly {
 #include <bits/functexcept.h>
 
 /**
- * Declare rallocm() and malloc_usable_size() as weak symbols.  It
- * will be provided by jemalloc if we are using jemalloc, or it will
- * be NULL if we are using another malloc implementation.
- */
-extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
-__attribute__((weak));
-
-/**
  * Define various ALLOCM_* macros normally provided by jemalloc.  We define
  * them so that we don't have to include jemalloc.h, in case the program is
  * built without jemalloc support.
@@ -88,7 +80,19 @@ __attribute__((weak));
 
 #define ALLOCM_LG_ALIGN(la) (la)
 
-#endif /* !ALLOCM_SUCCESS */
+#if defined(JEMALLOC_MANGLE) && defined(JEMALLOC_EXPERIMENTAL)
+#define rallocm je_rallocm
+#endif
+
+#endif /* ALLOCM_SUCCESS */
+
+/**
+ * Declare rallocm() and malloc_usable_size() as weak symbols.  It
+ * will be provided by jemalloc if we are using jemalloc, or it will
+ * be NULL if we are using another malloc implementation.
+ */
+extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
+__attribute__((weak));
 
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {

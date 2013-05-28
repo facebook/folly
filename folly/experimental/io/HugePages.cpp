@@ -43,6 +43,10 @@
 #include "folly/experimental/FileGen.h"
 #include "folly/experimental/StringGen.h"
 
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0
+#endif
+
 namespace folly {
 
 namespace {
