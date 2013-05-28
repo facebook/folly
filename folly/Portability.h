@@ -50,12 +50,20 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #endif
 
 
+// portable version check
+#ifndef __GNUC_PREREQ
+# if defined __GNUC__ && defined __GNUC_MINOR__
+#  define __GNUC_PREREQ(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= ((maj) << 16) + (min))
+# else
+#  define __GNUC_PREREQ(maj, min) 0
+# endif
+#endif
+
+
 /* Define macro wrappers for C++11's "final" and "override" keywords, which
  * are supported in gcc 4.7 but not gcc 4.6. */
 #if !defined(FOLLY_FINAL) && !defined(FOLLY_OVERRIDE)
-# if defined(__clang__) || \
-     (defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-      ((__GNUC__ << 16) + __GNUC_MINOR__) >= ((4 << 16) + 7))
+# if defined(__clang__) || __GNUC_PREREQ(4, 7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
 # else
