@@ -17,7 +17,9 @@
 #ifndef FOLLY_PORTABILITY_H_
 #define FOLLY_PORTABILITY_H_
 
+#ifndef FOLLY_NO_CONFIG
 #include "folly-config.h"
+#endif
 
 #ifdef FOLLY_HAVE_FEATURES_H
 #include <features.h>
