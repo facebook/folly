@@ -75,9 +75,11 @@ struct MaxAlign { char c; } __attribute__((aligned));
 
 // Define to 1 if you have the `preadv' and `pwritev' functions, respectively
 #if !defined(FOLLY_HAVE_PREADV) && !defined(FOLLY_HAVE_PWRITEV)
-# if defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2, 10)
-#  define FOLLY_HAVE_PREADV 1
-#  define FOLLY_HAVE_PWRITEV 1
+# if defined(__GLIBC_PREREQ)
+#  if __GLIBC_PREREQ(2, 10)
+#   define FOLLY_HAVE_PREADV 1
+#   define FOLLY_HAVE_PWRITEV 1
+#  endif
 # endif
 #endif
 
