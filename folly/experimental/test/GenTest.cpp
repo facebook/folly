@@ -1001,6 +1001,105 @@ TEST(StringGen, EmptyResplit) {
   }
 }
 
+TEST(StringGen, EachToTuple) {
+  {
+    auto lines = "2:1.414:yo 3:1.732:hi";
+    auto actual
+      = split(lines, ' ')
+      | eachToTuple<int, double, std::string>(':')
+      | as<vector>();
+    vector<tuple<int, double, std::string>> expected {
+      make_tuple(2, 1.414, "yo"),
+      make_tuple(3, 1.732, "hi"),
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    auto lines = "2 3";
+    auto actual
+      = split(lines, ' ')
+      | eachToTuple<int>(',')
+      | as<vector>();
+    vector<tuple<int>> expected {
+      make_tuple(2),
+      make_tuple(3),
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // StringPiece target
+    auto lines = "1:cat 2:dog";
+    auto actual
+      = split(lines, ' ')
+      | eachToTuple<int, StringPiece>(':')
+      | as<vector>();
+    vector<tuple<int, StringPiece>> expected {
+      make_tuple(1, "cat"),
+      make_tuple(2, "dog"),
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // Empty field
+    auto lines = "2:tjackson:4 3::5";
+    auto actual
+      = split(lines, ' ')
+      | eachToTuple<int, fbstring, int>(':')
+      | as<vector>();
+    vector<tuple<int, fbstring, int>> expected {
+      make_tuple(2, "tjackson", 4),
+      make_tuple(3, "", 5),
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // Excess fields
+    auto lines = "1:2 3:4:5";
+    EXPECT_THROW((split(lines, ' ')
+                    | eachToTuple<int, int>(':')
+                    | as<vector>()),
+                 std::runtime_error);
+  }
+  {
+    // Missing fields
+    auto lines = "1:2:3 4:5";
+    EXPECT_THROW((split(lines, ' ')
+                    | eachToTuple<int, int, int>(':')
+                    | as<vector>()),
+                 std::runtime_error);
+  }
+}
+
+TEST(StringGen, EachToPair) {
+  {
+    // char delimiters
+    auto lines = "2:1.414 3:1.732";
+    auto actual
+      = split(lines, ' ')
+      | eachToPair<int, double>(':')
+      | as<std::map<int, double>>();
+    std::map<int, double> expected {
+      { 3, 1.732 },
+      { 2, 1.414 },
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // string delimiters
+    auto lines = "ab=>cd ef=>gh";
+    auto actual
+      = split(lines, ' ')
+      | eachToPair<string, string>("=>")
+      | as<std::map<string, string>>();
+    std::map<string, string> expected {
+      { "ab", "cd" },
+      { "ef", "gh" },
+    };
+    EXPECT_EQ(expected, actual);
+  }
+}
+
+
 TEST(StringGen, Resplit) {
   auto collect = eachTo<std::string>() | as<vector>();
   {

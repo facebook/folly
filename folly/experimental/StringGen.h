@@ -18,6 +18,7 @@
 #define FOLLY_STRINGGEN_H_
 
 #include "folly/Range.h"
+#include "folly/experimental/Gen.h"
 
 namespace folly {
 namespace gen {
@@ -31,6 +32,12 @@ class Unsplit;
 
 template<class Delimiter, class OutputBuffer>
 class UnsplitBuffer;
+
+template<class TargetContainer,
+         class Delimiter,
+         class... Targets>
+class SplitTo;
+
 }  // namespace detail
 
 /**
@@ -96,7 +103,7 @@ Unsplit unsplit(const char* delimiter) {
 template<class Delimiter,
          class OutputBuffer,
          class UnsplitBuffer = detail::UnsplitBuffer<Delimiter, OutputBuffer>>
-UnsplitBuffer unsplit(const Delimiter& delimiter, OutputBuffer* outputBuffer) {
+UnsplitBuffer unsplit(Delimiter delimiter, OutputBuffer* outputBuffer) {
   return UnsplitBuffer(delimiter, outputBuffer);
 }
 
@@ -104,6 +111,40 @@ template<class OutputBuffer,
          class UnsplitBuffer = detail::UnsplitBuffer<fbstring, OutputBuffer>>
 UnsplitBuffer unsplit(const char* delimiter, OutputBuffer* outputBuffer) {
   return UnsplitBuffer(delimiter, outputBuffer);
+}
+
+
+template<class... Targets>
+detail::Map<detail::SplitTo<std::tuple<Targets...>, char, Targets...>>
+eachToTuple(char delim) {
+  return detail::Map<
+    detail::SplitTo<std::tuple<Targets...>, char, Targets...>>(
+    detail::SplitTo<std::tuple<Targets...>, char, Targets...>(delim));
+}
+
+template<class... Targets>
+detail::Map<detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>
+eachToTuple(StringPiece delim) {
+  return detail::Map<
+    detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>(
+    detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(delim));
+}
+
+template<class First, class Second>
+detail::Map<detail::SplitTo<std::pair<First, Second>, char, First, Second>>
+eachToPair(char delim) {
+  return detail::Map<
+    detail::SplitTo<std::pair<First, Second>, char, First, Second>>(
+    detail::SplitTo<std::pair<First, Second>, char, First, Second>(delim));
+}
+
+template<class First, class Second>
+detail::Map<detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>
+eachToPair(StringPiece delim) {
+  return detail::Map<
+    detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>(
+    detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>(
+      to<fbstring>(delim)));
 }
 
 }  // namespace gen

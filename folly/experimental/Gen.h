@@ -220,6 +220,15 @@ class To {
   }
 };
 
+// Specialization to allow String->StringPiece conversion
+template <>
+class To<StringPiece> {
+ public:
+  StringPiece operator()(StringPiece src) const {
+    return src;
+  }
+};
+
 namespace detail {
 
 template<class Self>

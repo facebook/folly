@@ -216,6 +216,48 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
 };
 
 
+/**
+ * Hack for static for-like constructs
+ */
+template<class Target, class=void>
+inline Target passthrough(Target target) { return target; }
+
+/**
+ * ParseToTuple - For splitting a record and immediatlely converting it to a
+ * target tuple type. Primary used through the 'eachToTuple' helper, like so:
+ *
+ *  auto config
+ *    = split("1:a 2:b", ' ')
+ *    | eachToTuple<int, string>()
+ *    | as<vector<tuple<int, string>>>();
+ *
+ */
+template<class TargetContainer,
+         class Delimiter,
+         class... Targets>
+class SplitTo {
+  Delimiter delimiter_;
+ public:
+  explicit SplitTo(Delimiter delimiter)
+    : delimiter_(delimiter) {}
+
+  TargetContainer operator()(StringPiece line) const {
+    int i = 0;
+    StringPiece fields[sizeof...(Targets)];
+    // HACK(tjackson): Used for referencing fields[] corresponding to variadic
+    // template parameters.
+    auto eatField = [&]() -> StringPiece& { return fields[i++]; };
+    if (!split(delimiter_,
+               line,
+               detail::passthrough<StringPiece&, Targets>(eatField())...)) {
+      throw std::runtime_error("field count mismatch");
+    }
+    i = 0;
+    return TargetContainer(To<Targets>()(eatField())...);
+  }
+};
+
 }  // namespace detail
+
 }  // namespace gen
 }  // namespace folly

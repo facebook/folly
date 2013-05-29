@@ -490,12 +490,88 @@ void StringUnsplit_Gen(size_t iters, size_t joinSize) {
   folly::doNotOptimizeAway(s);
 }
 
-BENCHMARK_DRAW_LINE()
-
 BENCHMARK_PARAM(StringUnsplit_Gen, 1000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 2000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 4000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 8000)
+
+BENCHMARK_DRAW_LINE()
+
+fbstring records
+= seq<size_t>(1, 1000)
+  | mapped([](size_t i) {
+      return folly::to<fbstring>(i, ' ', i * i, ' ', i * i * i);
+    })
+  | unsplit('\n');
+
+BENCHMARK(Records_EachToTuple, iters) {
+  size_t s = 0;
+  for (size_t i = 0; i < iters; i += 1000) {
+    s += split(records, '\n')
+       | eachToTuple<int, size_t, StringPiece>(' ')
+       | get<1>()
+       | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Records_VectorStringPieceReused, iters) {
+  size_t s = 0;
+  std::vector<StringPiece> fields;
+  for (size_t i = 0; i < iters; i += 1000) {
+    s += split(records, '\n')
+       | mapped([&](StringPiece line) {
+           fields.clear();
+           folly::split(' ', line, fields);
+           CHECK(fields.size() == 3);
+           return std::make_tuple(
+             folly::to<int>(fields[0]),
+             folly::to<size_t>(fields[1]),
+             StringPiece(fields[2]));
+         })
+       | get<1>()
+       | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Records_VectorStringPiece, iters) {
+  size_t s = 0;
+  for (size_t i = 0; i < iters; i += 1000) {
+    s += split(records, '\n')
+       | mapped([](StringPiece line) {
+           std::vector<StringPiece> fields;
+           folly::split(' ', line, fields);
+           CHECK(fields.size() == 3);
+           return std::make_tuple(
+             folly::to<int>(fields[0]),
+             folly::to<size_t>(fields[1]),
+             StringPiece(fields[2]));
+         })
+       | get<1>()
+       | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_RELATIVE(Records_VectorString, iters) {
+  size_t s = 0;
+  for (size_t i = 0; i < iters; i += 1000) {
+    s += split(records, '\n')
+       | mapped([](StringPiece line) {
+           std::vector<std::string> fields;
+           folly::split(' ', line, fields);
+           CHECK(fields.size() == 3);
+           return std::make_tuple(
+             folly::to<int>(fields[0]),
+             folly::to<size_t>(fields[1]),
+             StringPiece(fields[2]));
+         })
+       | get<1>()
+       | sum;
+  }
+  folly::doNotOptimizeAway(s);
+}
 
 BENCHMARK_DRAW_LINE()
 
@@ -532,59 +608,66 @@ BENCHMARK(ByLine_Pipes, iters) {
   }
 }
 
-// Results from a dual core Xeon L5520 @ 2.27GHz:
-//
 // ============================================================================
 // folly/experimental/test/GenBenchmark.cpp        relative  time/iter  iters/s
 // ============================================================================
-// Sum_Basic_NoGen                                            354.70ns    2.82M
-// Sum_Basic_Gen                                     95.88%   369.92ns    2.70M
+// Sum_Basic_NoGen                                            374.39ns    2.67M
+// Sum_Basic_Gen                                    101.05%   370.48ns    2.70M
 // ----------------------------------------------------------------------------
-// Sum_Vector_NoGen                                           211.89ns    4.72M
-// Sum_Vector_Gen                                    97.49%   217.35ns    4.60M
+// Sum_Vector_NoGen                                           198.84ns    5.03M
+// Sum_Vector_Gen                                    98.14%   202.60ns    4.94M
 // ----------------------------------------------------------------------------
-// Count_Vector_NoGen                                          13.93us   71.78K
-// Count_Vector_Gen                                 106.38%    13.10us   76.36K
+// Member                                                       4.56us  219.11K
+// MapMember                                        400.21%     1.14us  876.89K
 // ----------------------------------------------------------------------------
-// Fib_Sum_NoGen                                                4.54us  220.07K
-// Fib_Sum_Gen                                       45.81%     9.92us  100.82K
-// Fib_Sum_Gen_Static                               100.00%     4.54us  220.05K
+// Count_Vector_NoGen                                          13.99us   71.47K
+// Count_Vector_Gen                                 106.73%    13.11us   76.28K
 // ----------------------------------------------------------------------------
-// VirtualGen_0Virtual                                         12.03us   83.14K
-// VirtualGen_1Virtual                               32.89%    36.57us   27.34K
-// VirtualGen_2Virtual                               24.98%    48.15us   20.77K
-// VirtualGen_3Virtual                               17.82%    67.49us   14.82K
+// Fib_Sum_NoGen                                                4.27us  234.07K
+// Fib_Sum_Gen                                       43.18%     9.90us  101.06K
+// Fib_Sum_Gen_Static                                92.08%     4.64us  215.53K
 // ----------------------------------------------------------------------------
-// Concat_NoGen                                                 1.92us  520.46K
-// Concat_Gen                                       102.79%     1.87us  534.97K
+// VirtualGen_0Virtual                                         12.07us   82.83K
+// VirtualGen_1Virtual                               32.46%    37.19us   26.89K
+// VirtualGen_2Virtual                               24.36%    49.55us   20.18K
+// VirtualGen_3Virtual                               18.16%    66.49us   15.04K
 // ----------------------------------------------------------------------------
-// Composed_NoGen                                             545.64ns    1.83M
-// Composed_Gen                                      99.65%   547.55ns    1.83M
-// Composed_GenRegular                               99.64%   547.62ns    1.83M
+// Concat_NoGen                                                 1.90us  527.40K
+// Concat_Gen                                        86.73%     2.19us  457.39K
 // ----------------------------------------------------------------------------
-// StringResplitter_Big                                       120.88us    8.27K
-// StringResplitter_Small                            14.39%   839.94us    1.19K
+// Composed_NoGen                                             546.18ns    1.83M
+// Composed_Gen                                     100.41%   543.93ns    1.84M
+// Composed_GenRegular                              100.42%   543.92ns    1.84M
 // ----------------------------------------------------------------------------
-// StringSplit_Old                                            421.09ns    2.37M
-// StringSplit_Gen_Vector                            97.73%   430.87ns    2.32M
+// Sample                                                     146.68ms     6.82
 // ----------------------------------------------------------------------------
-// StringSplit_Old_ReuseVector                                 80.25ns   12.46M
-// StringSplit_Gen_ReuseVector                       98.99%    81.07ns   12.34M
-// StringSplit_Gen                                  117.23%    68.45ns   14.61M
-// StringSplit_Gen_Take                             115.23%    69.64ns   14.36M
+// StringResplitter_Big                                       124.80us    8.01K
+// StringResplitter_Small                            15.11%   825.74us    1.21K
 // ----------------------------------------------------------------------------
-// StringUnsplit_Old                                           34.45us   29.02K
-// StringUnsplit_Old_ReusedBuffer                   100.37%    34.33us   29.13K
-// StringUnsplit_Gen                                106.27%    32.42us   30.84K
-// StringUnsplit_Gen_ReusedBuffer                   105.61%    32.62us   30.65K
+// StringSplit_Old                                            393.49ns    2.54M
+// StringSplit_Gen_Vector                           121.47%   323.93ns    3.09M
 // ----------------------------------------------------------------------------
+// StringSplit_Old_ReuseVector                                 80.77ns   12.38M
+// StringSplit_Gen_ReuseVector                      102.02%    79.17ns   12.63M
+// StringSplit_Gen                                  123.78%    65.25ns   15.32M
+// StringSplit_Gen_Take                             123.44%    65.43ns   15.28M
 // ----------------------------------------------------------------------------
-// StringUnsplit_Gen(1000)                                     32.20us   31.06K
-// StringUnsplit_Gen(2000)                           49.41%    65.17us   15.34K
-// StringUnsplit_Gen(4000)                           22.75%   141.52us    7.07K
-// StringUnsplit_Gen(8000)                           11.20%   287.53us    3.48K
+// StringUnsplit_Old                                           29.36us   34.06K
+// StringUnsplit_Old_ReusedBuffer                   100.25%    29.29us   34.14K
+// StringUnsplit_Gen                                103.38%    28.40us   35.21K
+// StringUnsplit_Gen_ReusedBuffer                   109.85%    26.73us   37.41K
 // ----------------------------------------------------------------------------
-// ByLine_Pipes                                               126.58ns    7.90M
+// StringUnsplit_Gen(1000)                                     32.30us   30.96K
+// StringUnsplit_Gen(2000)                           49.75%    64.93us   15.40K
+// StringUnsplit_Gen(4000)                           24.74%   130.60us    7.66K
+// StringUnsplit_Gen(8000)                           12.31%   262.35us    3.81K
+// ----------------------------------------------------------------------------
+// Records_EachToTuple                                         75.03ns   13.33M
+// Records_VectorStringPieceReused                   81.79%    91.74ns   10.90M
+// Records_VectorStringPiece                         36.47%   205.77ns    4.86M
+// Records_VectorString                              12.90%   581.70ns    1.72M
+// ----------------------------------------------------------------------------
+// ByLine_Pipes                                               121.68ns    8.22M
 // ============================================================================
 
 int main(int argc, char *argv[]) {
