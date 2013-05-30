@@ -1010,7 +1010,7 @@ private:
       try {
         new (&newp[pos]) value_type(std::move(*v));
       } catch (...) {
-        std::free(newh);
+        free(newh);
         throw;
       }
 
@@ -1019,7 +1019,7 @@ private:
         detail::moveToUninitialized(begin(), begin() + pos, newp);
       } catch (...) {
         newp[pos].~value_type();
-        std::free(newh);
+        free(newh);
         throw;
       }
 
@@ -1032,7 +1032,7 @@ private:
         for (size_type i = 0; i <= pos; ++i) {
           newp[i].~value_type();
         }
-        std::free(newh);
+        free(newh);
         throw;
       }
     } else {
@@ -1040,7 +1040,7 @@ private:
       try {
         detail::moveToUninitialized(begin(), end(), newp);
       } catch (...) {
-        std::free(newh);
+        free(newh);
         throw;
       }
     }
@@ -1161,7 +1161,7 @@ private:
 
     void freeHeap() {
       auto vp = detail::pointerFlagClear(pdata_.heap_);
-      std::free(vp);
+      free(vp);
     }
   } FB_PACKED u;
 } FB_PACKED;
