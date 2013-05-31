@@ -210,7 +210,8 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   // the clock resolution is worse than that, it will be larger. In
   // essence we're aiming at making the quantization noise 0.01%.
   static const auto minNanoseconds =
-    max(FLAGS_bm_min_usec * 1000UL, min(resolutionInNs * 100000, 1000000000UL));
+    max(FLAGS_bm_min_usec * 1000UL,
+        min<uint64_t>(resolutionInNs * 100000, 1000000000ULL));
 
   // We do measurements in several epochs and take the minimum, to
   // account for jitter.
