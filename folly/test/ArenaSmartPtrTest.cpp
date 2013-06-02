@@ -25,6 +25,11 @@
 
 using namespace folly;
 
+static_assert(
+  is_simple_allocator<int,SysArena>::value,
+  "SysArena should be a simple allocator"
+);
+
 struct global_counter {
   global_counter(): count_(0) {}
 
