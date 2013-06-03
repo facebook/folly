@@ -208,6 +208,8 @@ class allocator_delete
   typedef typename std::remove_reference<Allocator>::type allocator_type;
 
 public:
+  typedef typename Allocator::pointer pointer;
+
   allocator_delete() = default;
 
   explicit allocator_delete(const allocator_type& allocator)
@@ -223,9 +225,11 @@ public:
     : allocator_type(other.get_allocator())
   {}
 
-  allocator_type& get_allocator() const { return *this; }
+  allocator_type& get_allocator() const {
+    return *const_cast<allocator_delete*>(this);
+  }
 
-  void operator()(typename allocator_type::pointer p) const {
+  void operator()(pointer p) const {
     if (!p) return;
     const_cast<allocator_delete*>(this)->destroy(p);
     const_cast<allocator_delete*>(this)->deallocate(p, 1);
