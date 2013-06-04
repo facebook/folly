@@ -65,14 +65,15 @@ static_assert(kMinPageSize >= 16,
 #define PAGE_FOR(addr) \
   (reinterpret_cast<uintptr_t>(addr) / kMinPageSize)
 
-inline size_t nextAlignedIndex(const char* arr) {
-  auto firstPossible = reinterpret_cast<uintptr_t>(arr) + 1;
-  return 1 +                       // add 1 because the index starts at 'arr'
-    ((firstPossible + 15) & ~0xF)  // round up to next multiple of 16
-    - firstPossible;
-}
 
 #if FOLLY_HAVE_EMMINTRIN_H
+inline size_t nextAlignedIndex(const char* arr) {
+   auto firstPossible = reinterpret_cast<uintptr_t>(arr) + 1;
+   return 1 +                       // add 1 because the index starts at 'arr'
+     ((firstPossible + 15) & ~0xF)  // round up to next multiple of 16
+     - firstPossible;
+}
+
 // build sse4.2-optimized version even if -msse4.2 is not passed to GCC
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
                                      const StringPiece& needles)

@@ -22,16 +22,6 @@
 // popcnt
 #ifndef __POPCNT__
 
-// Clang doesn't support ifuncs. This also allows ifunc support to be explicitly
-// passed in as a compile flag.
-#ifndef FOLLY_HAVE_IFUNC
-#  ifdef __clang__
-#    define FOLLY_HAVE_IFUNC 0
-#  else
-#    define FOLLY_HAVE_IFUNC 1
-#  endif
-#endif
-
 namespace {
 
 int popcount_builtin(unsigned int x) {
@@ -102,4 +92,3 @@ int popcountll(unsigned long long x)
 }  // namespace folly
 
 #endif  /* !__POPCNT__ */
-
