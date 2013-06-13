@@ -101,6 +101,10 @@
 #include <limits>
 #include <type_traits>
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -2322,6 +2326,8 @@ _GLIBCXX_END_NAMESPACE_VERSION
 #endif
 
 } // namespace folly
+
+#pragma GCC diagnostic pop
 
 #ifndef _LIBSTDCXX_FBSTRING
 

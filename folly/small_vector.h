@@ -64,6 +64,10 @@
 # endif
 #endif
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
@@ -1179,6 +1183,8 @@ void swap(small_vector<T,MaxInline,A,B,C>& a,
 //////////////////////////////////////////////////////////////////////
 
 }
+
+#pragma GCC diagnostic pop
 
 #ifdef FB_PACKED
 # undef FB_PACKED

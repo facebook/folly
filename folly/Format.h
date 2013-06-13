@@ -36,6 +36,10 @@
 #include "folly/small_vector.h"
 #include "folly/FormatArg.h"
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 namespace folly {
 
 // forward declarations
@@ -268,5 +272,6 @@ void formatFormatter(const Formatter<containerMode, Args...>& formatter,
 
 #include "folly/Format-inl.h"
 
-#endif /* FOLLY_FORMAT_H_ */
+#pragma GCC diagnostic pop
 
+#endif /* FOLLY_FORMAT_H_ */

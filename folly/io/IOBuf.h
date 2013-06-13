@@ -34,6 +34,10 @@
 #include "folly/Range.h"
 #include "folly/FBVector.h"
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 namespace folly {
 
 /**
@@ -1213,5 +1217,7 @@ inline IOBuf::Iterator IOBuf::begin() const { return cbegin(); }
 inline IOBuf::Iterator IOBuf::end() const { return cend(); }
 
 } // folly
+
+#pragma GCC diagnostic pop
 
 #endif // FOLLY_IO_IOBUF_H_

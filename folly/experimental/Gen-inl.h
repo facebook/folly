@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 namespace folly { namespace gen {
 
 /**
@@ -1829,3 +1833,5 @@ inline detail::Skip skip(size_t count) {
 }
 
 }} //folly::gen
+
+#pragma GCC diagnostic pop
