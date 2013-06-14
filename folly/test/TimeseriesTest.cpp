@@ -16,6 +16,8 @@
 
 #include "folly/stats/BucketedTimeSeries.h"
 #include "folly/stats/BucketedTimeSeries-defs.h"
+#include "folly/stats/MultiLevelTimeSeries.h"
+#include "folly/stats/MultiLevelTimeSeries-defs.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -710,4 +712,200 @@ TEST(BucketedTimeSeries, rateByInterval) {
   EXPECT_EQ(1.0, b.countRate(kDuration, kDuration * 2));
   EXPECT_EQ(1.0, b.countRate(seconds(0), kDuration * 2));
   EXPECT_EQ(1.0, b.countRate(seconds(0), kDuration * 10));
+}
+
+namespace IntMHTS {
+  enum Levels {
+    MINUTE,
+    HOUR,
+    ALLTIME,
+    NUM_LEVELS,
+  };
+
+  const seconds kMinuteHourDurations[] = {
+    seconds(60), seconds(3600), seconds(0)
+  };
+};
+
+TEST(MinuteHourTimeSeries, Basic) {
+  folly::MultiLevelTimeSeries<int> mhts(60, IntMHTS::NUM_LEVELS,
+                                        IntMHTS::kMinuteHourDurations);
+  EXPECT_EQ(mhts.numLevels(), IntMHTS::NUM_LEVELS);
+  EXPECT_EQ(mhts.numLevels(), 3);
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 0);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 0);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 0);
+
+  EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 0);
+  EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 0);
+  EXPECT_EQ(mhts.avg(IntMHTS::ALLTIME), 0);
+
+  EXPECT_EQ(mhts.rate(IntMHTS::MINUTE), 0);
+  EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 0);
+  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 0);
+
+  EXPECT_EQ(mhts.getLevel(IntMHTS::MINUTE).elapsed().count(), 0);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::HOUR).elapsed().count(), 0);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 0);
+
+  seconds cur_time(0);
+
+  mhts.addValue(cur_time++, 10);
+  mhts.flush();
+
+  EXPECT_EQ(mhts.getLevel(IntMHTS::MINUTE).elapsed().count(), 1);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::HOUR).elapsed().count(), 1);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 1);
+
+  for (int i = 0; i < 299; ++i) {
+    mhts.addValue(cur_time++, 10);
+  }
+  mhts.flush();
+
+  EXPECT_EQ(mhts.getLevel(IntMHTS::MINUTE).elapsed().count(), 60);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::HOUR).elapsed().count(), 300);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 300);
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 600);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 300*10);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 300*10);
+
+  EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 10);
+  EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 10);
+  EXPECT_EQ(mhts.avg(IntMHTS::ALLTIME), 10);
+
+  EXPECT_EQ(mhts.rate(IntMHTS::MINUTE), 10);
+  EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 10);
+  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 10);
+
+  for (int i = 0; i < 3600*3 - 300; ++i) {
+    mhts.addValue(cur_time++, 10);
+  }
+  mhts.flush();
+
+  EXPECT_EQ(mhts.getLevel(IntMHTS::MINUTE).elapsed().count(), 60);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::HOUR).elapsed().count(), 3600);
+  EXPECT_EQ(mhts.getLevel(IntMHTS::ALLTIME).elapsed().count(), 3600*3);
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 600);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600*10);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 3600*3*10);
+
+  EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 10);
+  EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 10);
+  EXPECT_EQ(mhts.avg(IntMHTS::ALLTIME), 10);
+
+  EXPECT_EQ(mhts.rate(IntMHTS::MINUTE), 10);
+  EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 10);
+  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 10);
+
+  for (int i = 0; i < 3600; ++i) {
+    mhts.addValue(cur_time++, 100);
+  }
+  mhts.flush();
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*100);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR), 3600*100);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
+            3600*3*10 + 3600*100);
+
+  EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 100);
+  EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 100);
+  EXPECT_EQ(mhts.avg(IntMHTS::ALLTIME), 32.5);
+
+  EXPECT_EQ(mhts.rate(IntMHTS::MINUTE), 100);
+  EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 100);
+  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 32);
+
+  for (int i = 0; i < 1800; ++i) {
+    mhts.addValue(cur_time++, 120);
+  }
+  mhts.flush();
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*120);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR),
+            1800*100 + 1800*120);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
+            3600*3*10 + 3600*100 + 1800*120);
+
+  for (int i = 0; i < 60; ++i) {
+    mhts.addValue(cur_time++, 1000);
+  }
+  mhts.flush();
+
+  EXPECT_EQ(mhts.sum(IntMHTS::MINUTE), 60*1000);
+  EXPECT_EQ(mhts.sum(IntMHTS::HOUR),
+            1740*100 + 1800*120 + 60*1000);
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME),
+            3600*3*10 + 3600*100 + 1800*120 + 60*1000);
+
+  mhts.clear();
+  EXPECT_EQ(mhts.sum(IntMHTS::ALLTIME), 0);
+}
+
+TEST(MinuteHourTimeSeries, QueryByInterval) {
+  folly::MultiLevelTimeSeries<int> mhts(60, IntMHTS::NUM_LEVELS,
+                                        IntMHTS::kMinuteHourDurations);
+
+  seconds curTime(0);
+  for (curTime = seconds(0); curTime < seconds(7200); curTime++) {
+    mhts.addValue(curTime, 1);
+  }
+  for (curTime = seconds(7200); curTime < seconds(7200 + 3540); curTime++) {
+    mhts.addValue(curTime, 10);
+  }
+  for (curTime = seconds(7200 + 3540); curTime < seconds(7200 + 3600);
+       curTime++) {
+    mhts.addValue(curTime, 100);
+  }
+  mhts.flush();
+
+  struct TimeInterval {
+    seconds start;
+    seconds end;
+  };
+  TimeInterval intervals[12] = {
+    { curTime - seconds(60), curTime },
+    { curTime - seconds(3600), curTime },
+    { curTime - seconds(7200), curTime },
+    { curTime - seconds(3600), curTime - seconds(60) },
+    { curTime - seconds(7200), curTime - seconds(60) },
+    { curTime - seconds(7200), curTime - seconds(3600) },
+    { curTime - seconds(50), curTime - seconds(20) },
+    { curTime - seconds(3020), curTime - seconds(20) },
+    { curTime - seconds(7200), curTime - seconds(20) },
+    { curTime - seconds(3000), curTime - seconds(1000) },
+    { curTime - seconds(7200), curTime - seconds(1000) },
+    { curTime - seconds(7200), curTime - seconds(3600) },
+  };
+
+  int expectedSums[12] = {
+    6000, 41400, 32400, 35400, 32130, 16200, 3000, 33600, 32310, 20000, 27900,
+    16200
+  };
+
+  int expectedCounts[12] = {
+    60, 3600, 7200, 3540, 7140, 3600, 30, 3000, 7180, 2000, 6200, 3600
+  };
+
+  for (int i = 0; i < 12; ++i) {
+    TimeInterval interval = intervals[i];
+
+    int s = mhts.sum(interval.start, interval.end);
+    EXPECT_EQ(expectedSums[i], s);
+
+    int c = mhts.count(interval.start, interval.end);
+    EXPECT_EQ(expectedCounts[i], c);
+
+    int a = mhts.avg<int>(interval.start, interval.end);
+    EXPECT_EQ(expectedCounts[i] ?
+              (expectedSums[i] / expectedCounts[i]) : 0,
+              a);
+
+    int r = mhts.rate<int>(interval.start, interval.end);
+    int expectedRate =
+      expectedSums[i] / (interval.end - interval.start).count();
+    EXPECT_EQ(expectedRate, r);
+  }
 }
