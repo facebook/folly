@@ -359,32 +359,32 @@ bool less_than_impl(
   return false;
 }
 
-template <typename LHS, LHS lhs, typename RHS>
+template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (lhs <= std::numeric_limits<RHS>::max()
-      && lhs >= std::numeric_limits<RHS>::min()),
-    RHS
-  >::type const rhs
+    (rhs <= std::numeric_limits<LHS>::max()
+      && rhs >= std::numeric_limits<LHS>::min()),
+    LHS
+  >::type const lhs
 ) {
-  return lhs < rhs;
+  return lhs > rhs;
 }
 
-template <typename LHS, LHS lhs, typename RHS>
+template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (lhs > std::numeric_limits<RHS>::max()),
-    RHS
+    (rhs > std::numeric_limits<LHS>::max()),
+    LHS
   >::type const
 ) {
   return false;
 }
 
-template <typename LHS, LHS lhs, typename RHS>
+template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (lhs < std::numeric_limits<RHS>::min()),
-    RHS
+    (rhs < std::numeric_limits<LHS>::min()),
+    LHS
   >::type const
 ) {
   return true;
@@ -409,11 +409,11 @@ bool less_than(LHS const lhs) {
   >(lhs);
 }
 
-template <typename LHS, LHS lhs, typename RHS>
-bool greater_than(RHS const rhs) {
+template <typename RHS, RHS rhs, typename LHS>
+bool greater_than(LHS const lhs) {
   return detail::greater_than_impl<
-    LHS, lhs, typename std::remove_reference<RHS>::type
-  >(rhs);
+    RHS, rhs, typename std::remove_reference<LHS>::type
+  >(lhs);
 }
 
 } // namespace folly
