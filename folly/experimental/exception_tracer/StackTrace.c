@@ -18,8 +18,12 @@
 #include "folly/experimental/exception_tracer/StackTrace.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include "unwind.h"
+
+#define UNW_LOCAL_ONLY 1
+
+#include <libunwind.h>
 
 struct Context {
   StackTrace* trace;
@@ -27,43 +31,69 @@ struct Context {
   size_t capacity;
 };
 
-static _Unwind_Reason_Code addIP(struct _Unwind_Context* ctx, void* varg) {
-  struct Context* arg = (struct Context*)varg;
+static int checkError(const char* name, int err) {
+  if (err < 0) {
+    fprintf(stderr, "libunwind error: %s %d\n", name, err);
+    return -EINVAL;
+  }
+  return 0;
+}
 
-  if (arg->skip) {
-    --arg->skip;
-    return _URC_NO_REASON;
+static int addIP(struct Context* ctx, unw_cursor_t* cursor) {
+  if (ctx->skip) {
+    --ctx->skip;
+    return 0;
   }
 
-  if (arg->trace->frameCount == arg->capacity) {
-    size_t newCapacity = (arg->capacity < 8 ? 8 : arg->capacity * 1.5);
+  unw_word_t ip;
+  int r = unw_get_reg(cursor, UNW_REG_IP, &ip);
+  int err = checkError("unw_get_reg", r);
+  if (err) return err;
+
+  if (ctx->trace->frameCount == ctx->capacity) {
+    size_t newCapacity = (ctx->capacity < 8 ? 8 : ctx->capacity * 1.5);
     uintptr_t* newBlock =
-      realloc(arg->trace->frameIPs, newCapacity * sizeof(uintptr_t));
+      realloc(ctx->trace->frameIPs, newCapacity * sizeof(uintptr_t));
     if (!newBlock) {
-      return _URC_FATAL_PHASE1_ERROR;
+      return -ENOMEM;
     }
-    arg->trace->frameIPs = newBlock;
-    arg->capacity = newCapacity;
+    ctx->trace->frameIPs = newBlock;
+    ctx->capacity = newCapacity;
   }
 
-  arg->trace->frameIPs[arg->trace->frameCount++] = _Unwind_GetIP(ctx);
-  return _URC_NO_REASON;  /* success */
+  ctx->trace->frameIPs[ctx->trace->frameCount++] = ip;
+  return 0;  /* success */
 }
 
 int getCurrentStackTrace(size_t skip, StackTrace* trace) {
   trace->frameIPs = NULL;
   trace->frameCount = 0;
+
   struct Context ctx;
   ctx.trace = trace;
   ctx.skip = skip;
   ctx.capacity = 0;
 
-  if (_Unwind_Backtrace(addIP, &ctx) == _URC_END_OF_STACK) {
-    return 0;
-  }
+  unw_context_t uctx;
+  int r = unw_getcontext(&uctx);
+  int err = checkError("unw_get_context", r);
+  if (err) return err;
 
-  destroyStackTrace(trace);
-  return -ENOMEM;
+  unw_cursor_t cursor;
+  r = unw_init_local(&cursor, &uctx);
+  err = checkError("unw_init_local", r);
+  if (err) return err;
+
+  while ((r = unw_step(&cursor)) > 0) {
+    if ((err = addIP(&ctx, &cursor)) != 0) {
+      destroyStackTrace(trace);
+      return err;
+    }
+  }
+  err = checkError("unw_step", r);
+  if (err) return err;
+
+  return 0;
 }
 
 void destroyStackTrace(StackTrace* trace) {
