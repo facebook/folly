@@ -96,6 +96,21 @@ TEST(Traits, is_negative) {
   EXPECT_FALSE(folly::is_non_positive(1u));
 }
 
+TEST(Traits, relational) {
+  // We test, especially, the edge cases to make sure we don't
+  // trip -Wtautological-comparisons
+
+  EXPECT_FALSE((folly::less_than<uint8_t, 0u,   uint8_t>(0u)));
+  EXPECT_FALSE((folly::less_than<uint8_t, 0u,   uint8_t>(254u)));
+  EXPECT_FALSE((folly::less_than<uint8_t, 255u, uint8_t>(255u)));
+  EXPECT_TRUE( (folly::less_than<uint8_t, 255u, uint8_t>(254u)));
+
+  EXPECT_FALSE((folly::greater_than<uint8_t, 0u,   uint8_t>(0u)));
+  EXPECT_TRUE( (folly::greater_than<uint8_t, 0u,   uint8_t>(254u)));
+  EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(255u)));
+  EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
+}
+
 struct CompleteType {};
 struct IncompleteType;
 TEST(Traits, is_complete) {

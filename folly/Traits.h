@@ -332,7 +332,7 @@ template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
     (rhs <= std::numeric_limits<LHS>::max()
-      && rhs >= std::numeric_limits<LHS>::min()),
+      && rhs > std::numeric_limits<LHS>::min()),
     LHS
   >::type const lhs
 ) {
@@ -352,7 +352,7 @@ bool less_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
-    (rhs < std::numeric_limits<LHS>::min()),
+    (rhs <= std::numeric_limits<LHS>::min()),
     LHS
   >::type const
 ) {
