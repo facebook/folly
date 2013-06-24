@@ -207,6 +207,47 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s2, s);
 }
 
+template <class T>
+void expectLT(const T& a, const T& b) {
+  EXPECT_TRUE(a < b);
+  EXPECT_TRUE(a <= b);
+  EXPECT_FALSE(a == b);
+  EXPECT_FALSE(a >= b);
+  EXPECT_FALSE(a > b);
+
+  EXPECT_FALSE(b < a);
+  EXPECT_FALSE(b <= a);
+  EXPECT_TRUE(b >= a);
+  EXPECT_TRUE(b > a);
+}
+
+template <class T>
+void expectEQ(const T& a, const T& b) {
+  EXPECT_FALSE(a < b);
+  EXPECT_TRUE(a <= b);
+  EXPECT_TRUE(a == b);
+  EXPECT_TRUE(a >= b);
+  EXPECT_FALSE(a > b);
+}
+
+TEST(StringPiece, EightBitComparisons) {
+  char values[] = {'\x00', '\x20', '\x40', '\x7f', '\x80', '\xc0', '\xff'};
+  constexpr size_t count = sizeof(values) / sizeof(values[0]);
+  for (size_t i = 0; i < count; ++i) {
+    std::string a(1, values[i]);
+    // Defeat copy-on-write
+    std::string aCopy(a.data(), a.size());
+    expectEQ(a, aCopy);
+    expectEQ(StringPiece(a), StringPiece(aCopy));
+
+    for (size_t j = i + 1; j < count; ++j) {
+      std::string b(1, values[j]);
+      expectLT(a, b);
+      expectLT(StringPiece(a), StringPiece(b));
+    }
+  }
+}
+
 TEST(StringPiece, ToByteRange) {
   StringPiece a("hello");
   ByteRange b(a);

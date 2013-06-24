@@ -123,7 +123,8 @@ public:
     typename std::iterator_traits<Iter>::reference>::type
   value_type;
   typedef typename std::iterator_traits<Iter>::reference reference;
-  typedef std::char_traits<value_type> traits_type;
+  typedef std::char_traits<typename std::remove_const<value_type>::type>
+    traits_type;
 
   static const size_type npos;
 
