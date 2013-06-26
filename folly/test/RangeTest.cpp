@@ -121,6 +121,16 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s.find('\0'), std::string().find('\0'));
   EXPECT_EQ(s.find('\0'), StringPiece::npos);
 
+  // single char rfinds
+  EXPECT_EQ(s.rfind('b'), 6);
+  EXPECT_EQ(s.rfind('y'), StringPiece::npos);
+  EXPECT_EQ(s.str().rfind('y'), StringPiece::npos);
+  EXPECT_EQ(ByteRange(s).rfind('b'), 6);
+  EXPECT_EQ(ByteRange(s).rfind('y'), StringPiece::npos);
+  // null char
+  EXPECT_EQ(s.rfind('\0'), s.str().rfind('\0'));
+  EXPECT_EQ(s.rfind('\0'), StringPiece::npos);
+
   // find_first_of
   s.reset(foobarbaz, strlen(foobarbaz));
   EXPECT_EQ(s.find_first_of("bar"), 3);

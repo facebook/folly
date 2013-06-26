@@ -62,6 +62,15 @@ template <class T>
 size_t qfind(const Range<T> & haystack,
              const typename Range<T>::value_type& needle);
 
+/**
+ * Finds the last occurrence of needle in haystack. The result is the
+ * offset reported to the beginning of haystack, or string::npos if
+ * needle wasn't found.
+ */
+template <class T>
+size_t rfind(const Range<T> & haystack,
+             const typename Range<T>::value_type& needle);
+
 
 /**
  * Finds the first occurrence of any element of needle in
@@ -392,6 +401,10 @@ public:
     return qfind(*this, c);
   }
 
+  size_type rfind(value_type c) const {
+    return folly::rfind(*this, c);
+  }
+
   size_type find(value_type c, size_t pos) const {
     if (pos > size()) return std::string::npos;
     size_type ret = qfind(subpiece(pos), c);
@@ -673,11 +686,29 @@ size_t qfind(const Range<T>& haystack,
   return pos == haystack.end() ? std::string::npos : pos - haystack.data();
 }
 
+template <class T>
+size_t rfind(const Range<T>& haystack,
+             const typename Range<T>::value_type& needle) {
+  for (auto i = haystack.size(); i-- > 0; ) {
+    if (haystack[i] == needle) {
+      return i;
+    }
+  }
+  return std::string::npos;
+}
+
 // specialization for StringPiece
 template <>
 inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
   auto pos = static_cast<const char*>(
     ::memchr(haystack.data(), needle, haystack.size()));
+  return pos == nullptr ? std::string::npos : pos - haystack.data();
+}
+
+template <>
+inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
+  auto pos = static_cast<const char*>(
+    ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
@@ -687,6 +718,14 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
   auto pos = static_cast<const unsigned char*>(
     ::memchr(haystack.data(), needle, haystack.size()));
+  return pos == nullptr ? std::string::npos : pos - haystack.data();
+}
+
+template <>
+inline size_t rfind(const Range<const unsigned char*>& haystack,
+                    const unsigned char& needle) {
+  auto pos = static_cast<const unsigned char*>(
+    ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
