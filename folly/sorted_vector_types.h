@@ -515,7 +515,7 @@ public:
     return end();
   }
 
-  size_type count(const key_type& key) {
+  size_type count(const key_type& key) const {
     return find(key) == end() ? 0 : 1;
   }
 
