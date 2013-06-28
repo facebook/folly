@@ -985,7 +985,7 @@ private:
   }
 
 public:
-  // 21.3.1 construct/copy/destroy
+  // C++11 21.4.2 construct/copy/destroy
   explicit basic_fbstring(const A& a = A()) {
   }
 
@@ -1047,6 +1047,11 @@ public:
       : store_(s, n, c, a) {
   }
 
+  // Construction from initialization list
+  basic_fbstring(std::initializer_list<value_type> il) {
+    assign(il.begin(), il.end());
+  }
+
   ~basic_fbstring() {
   }
 
@@ -1076,7 +1081,7 @@ public:
   basic_fbstring& operator=(basic_fbstring&& goner) {
     if (FBSTRING_UNLIKELY(&goner == this)) {
       // Compatibility with std::basic_string<>,
-      // 21.4.2 [string.cons] / 23 requires self-move-assignment support.
+      // C++11 21.4.2 [string.cons] / 23 requires self-move-assignment support.
       return *this;
     }
     // No need of this anymore
@@ -1121,10 +1126,16 @@ public:
     return *this;
   }
 
-  // 21.3.2 iterators:
+  basic_fbstring& operator=(std::initializer_list<value_type> il) {
+    return assign(il.begin(), il.end());
+  }
+
+  // C++11 21.4.3 iterators:
   iterator begin() { return store_.mutable_data(); }
 
   const_iterator begin() const { return store_.data(); }
+
+  const_iterator cbegin() const { return begin(); }
 
   iterator end() {
     return store_.mutable_data() + store_.size();
@@ -1134,6 +1145,8 @@ public:
     return store_.data() + store_.size();
   }
 
+  const_iterator cend() const { return end(); }
+
   reverse_iterator rbegin() {
     return reverse_iterator(end());
   }
@@ -1142,6 +1155,8 @@ public:
     return const_reverse_iterator(end());
   }
 
+  const_reverse_iterator crbegin() const { return rbegin(); }
+
   reverse_iterator rend() {
     return reverse_iterator(begin());
   }
@@ -1149,6 +1164,8 @@ public:
   const_reverse_iterator rend() const {
     return const_reverse_iterator(begin());
   }
+
+  const_reverse_iterator crend() const { return rend(); }
 
   // Added by C++11
   // C++11 21.4.5, element access:
@@ -1169,7 +1186,7 @@ public:
     store_.shrink(1);
   }
 
-  // 21.3.3 capacity:
+  // C++11 21.4.4 capacity:
   size_type size() const { return store_.size(); }
 
   size_type length() const { return size(); }
@@ -1213,11 +1230,19 @@ public:
     store_.reserve(res_arg);
   }
 
+  void shrink_to_fit() {
+    // Shrink only if slack memory is sufficiently large
+    if (capacity() < size() * 3 / 2) {
+      return;
+    }
+    basic_fbstring(cbegin(), cend()).swap(*this);
+  }
+
   void clear() { resize(0); }
 
   bool empty() const { return size() == 0; }
 
-  // 21.3.4 element access:
+  // C++11 21.4.5 element access:
   const_reference operator[](size_type pos) const {
     return *(c_str() + pos);
   }
@@ -1240,7 +1265,7 @@ public:
     return (*this)[n];
   }
 
-  // 21.3.5 modifiers:
+  // C++11 21.4.6 modifiers:
   basic_fbstring& operator+=(const basic_fbstring& str) {
     return append(str);
   }
@@ -1251,6 +1276,11 @@ public:
 
   basic_fbstring& operator+=(const value_type c) {
     push_back(c);
+    return *this;
+  }
+
+  basic_fbstring& operator+=(std::initializer_list<value_type> il) {
+    append(il);
     return *this;
   }
 
@@ -1323,6 +1353,10 @@ public:
     return *this;
   }
 
+  basic_fbstring& append(std::initializer_list<value_type> il) {
+    return append(il.begin(), il.end());
+  }
+
   void push_back(const value_type c) {             // primitive
     store_.push_back(c);
   }
@@ -1330,6 +1364,10 @@ public:
   basic_fbstring& assign(const basic_fbstring& str) {
     if (&str == this) return *this;
     return assign(str.data(), str.size());
+  }
+
+  basic_fbstring& assign(basic_fbstring&& str) {
+    return *this = std::move(str);
   }
 
   basic_fbstring& assign(const basic_fbstring& str, const size_type pos,
@@ -1360,6 +1398,10 @@ public:
 
   basic_fbstring& assign(const value_type* s) {
     return assign(s, traits_type::length(s));
+  }
+
+  basic_fbstring& assign(std::initializer_list<value_type> il) {
+    return assign(il.begin(), il.end());
   }
 
   template <class ItOrLength, class ItOrChar>
@@ -1394,7 +1436,7 @@ public:
     return *this;
   }
 
-  iterator insert(const iterator p, const value_type c) {
+  iterator insert(const_iterator p, const value_type c) {
     const size_type pos = p - begin();
     insert(p, 1, c);
     return begin() + pos;
@@ -1403,10 +1445,11 @@ public:
 private:
   template <int i> class Selector {};
 
-  basic_fbstring& insertImplDiscr(iterator p,
-                                  size_type n, value_type c, Selector<1>) {
+  iterator insertImplDiscr(const_iterator p,
+                           size_type n, value_type c, Selector<1>) {
     Invariant checker(*this);
     (void) checker;
+    auto const pos = p - begin();
     assert(p >= begin() && p <= end());
     if (capacity() - size() < n) {
       const size_type sz = p - begin();
@@ -1414,33 +1457,33 @@ private:
       p = begin() + sz;
     }
     const iterator oldEnd = end();
-    if( n < size_type(oldEnd - p)) {
+    if (n < size_type(oldEnd - p)) {
       append(oldEnd - n, oldEnd);
       //std::copy(
       //    reverse_iterator(oldEnd - n),
       //    reverse_iterator(p),
       //    reverse_iterator(oldEnd));
-      fbstring_detail::pod_move(&*p, &*oldEnd - n, &*p + n);
-      std::fill(p, p + n, c);
+      fbstring_detail::pod_move(&*p, &*oldEnd - n,
+                                begin() + pos + n);
+      std::fill(begin() + pos, begin() + pos + n, c);
     } else {
       append(n - (end() - p), c);
-      append(p, oldEnd);
-      std::fill(p, oldEnd, c);
+      append(iterator(p), oldEnd);
+      std::fill(iterator(p), oldEnd, c);
     }
     store_.writeTerminator();
-    return *this;
+    return begin() + pos;
   }
 
   template<class InputIter>
-  basic_fbstring& insertImplDiscr(iterator i,
-                                  InputIter b, InputIter e, Selector<0>) {
-    insertImpl(i, b, e,
+  iterator insertImplDiscr(const_iterator i,
+                           InputIter b, InputIter e, Selector<0>) {
+    return insertImpl(i, b, e,
                typename std::iterator_traits<InputIter>::iterator_category());
-    return *this;
   }
 
   template <class FwdIterator>
-  void insertImpl(iterator i,
+  iterator insertImpl(const_iterator i,
                   FwdIterator s1, FwdIterator s2, std::forward_iterator_tag) {
     Invariant checker(*this);
     (void) checker;
@@ -1462,9 +1505,9 @@ private:
       const iterator tailBegin = end() - n2;
       store_.expand_noinit(n2);
       fbstring_detail::pod_copy(tailBegin, tailBegin + n2, end() - n2);
-      std::copy(reverse_iterator(tailBegin), reverse_iterator(i),
+      std::copy(const_reverse_iterator(tailBegin), const_reverse_iterator(i),
                 reverse_iterator(tailBegin + n2));
-      std::copy(s1, s2, i);
+      std::copy(s1, s2, begin() + pos);
     } else {
       FwdIterator t = s1;
       const size_type old_size = size();
@@ -1474,27 +1517,35 @@ private:
       std::copy(t, s2, begin() + old_size);
       fbstring_detail::pod_copy(data() + pos, data() + old_size,
                                  begin() + old_size + newElems);
-      std::copy(s1, t, i);
+      std::copy(s1, t, begin() + pos);
     }
     store_.writeTerminator();
+    return begin() + pos;
   }
 
   template <class InputIterator>
-  void insertImpl(iterator i,
-                  InputIterator b, InputIterator e, std::input_iterator_tag) {
+  iterator insertImpl(const_iterator i,
+                      InputIterator b, InputIterator e,
+                      std::input_iterator_tag) {
+    const auto pos = i - begin();
     basic_fbstring temp(begin(), i);
     for (; b != e; ++b) {
       temp.push_back(*b);
     }
     temp.append(i, end());
     swap(temp);
+    return begin() + pos;
   }
 
 public:
   template <class ItOrLength, class ItOrChar>
-  void insert(iterator p, ItOrLength first_or_n, ItOrChar last_or_c) {
+  iterator insert(const_iterator p, ItOrLength first_or_n, ItOrChar last_or_c) {
     Selector<std::numeric_limits<ItOrLength>::is_specialized> sel;
-    insertImplDiscr(p, first_or_n, last_or_c, sel);
+    return insertImplDiscr(p, first_or_n, last_or_c, sel);
+  }
+
+  iterator insert(const_iterator p, std::initializer_list<value_type> il) {
+    return insert(p, il.begin(), il.end());
   }
 
   basic_fbstring& erase(size_type pos = 0, size_type n = npos) {
@@ -1690,7 +1741,6 @@ public:
     store_.swap(rhs.store_);
   }
 
-  // 21.3.6 string operations:
   const value_type* c_str() const {
     return store_.c_str();
   }
@@ -2165,7 +2215,7 @@ bool operator>=(const typename basic_fbstring<E, T, A, S>::value_type* lhs,
  return !(lhs < rhs);
 }
 
-// subclause 21.3.7.8:
+// C++11 21.4.8.8
 template <typename E, class T, class A, class S>
 void swap(basic_fbstring<E, T, A, S>& lhs, basic_fbstring<E, T, A, S>& rhs) {
   lhs.swap(rhs);
