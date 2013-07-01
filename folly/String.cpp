@@ -241,12 +241,15 @@ fbstring errnoStr(int err) {
 
   fbstring result;
 
+  // https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/strerror_r.3.html
   // http://www.kernel.org/doc/man-pages/online/pages/man3/strerror.3.html
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE
+#if defined(__APPLE__) || defined(__FreeBSD__) || \
+    ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE)
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
 
-  if (r == -1) {
+  // OSX/FreeBSD use EINVAL and Linux uses -1 so just check for non-zero
+  if (r != 0) {
     result = to<fbstring>(
       "Unknown error ", err,
       " (strerror_r failed with error ", errno, ")");
