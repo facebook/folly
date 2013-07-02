@@ -385,6 +385,9 @@ dynamic parseObject(Input& in) {
   }
 
   for (;;) {
+    if (in.getOpts().allow_trailing_comma && *in == '}') {
+      break;
+    }
     if (*in == '\"') { // string
       auto key = parseString(in);
       in.skipWhitespace();
@@ -426,6 +429,9 @@ dynamic parseArray(Input& in) {
   }
 
   for (;;) {
+    if (in.getOpts().allow_trailing_comma && *in == ']') {
+      break;
+    }
     ret.push_back(parseValue(in));
     in.skipWhitespace();
     if (*in != ',') {

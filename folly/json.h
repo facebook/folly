@@ -58,6 +58,7 @@ namespace json {
       , pretty_formatting(false)
       , encode_non_ascii(false)
       , validate_utf8(false)
+      , allow_trailing_comma(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -81,6 +82,9 @@ namespace json {
 
     // Check that strings are valid utf8
     bool validate_utf8;
+
+    // Allow trailing comma in lists of values / items
+    bool allow_trailing_comma;
   };
 
   /*

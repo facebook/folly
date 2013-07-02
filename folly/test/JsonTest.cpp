@@ -75,6 +75,8 @@ TEST(Json, Parse) {
   EXPECT_EQ(-std::numeric_limits<double>::infinity(),
             parseJson("-Infinity").asDouble());
   EXPECT_TRUE(std::isnan(parseJson("NaN").asDouble()));
+
+  // case matters
   EXPECT_THROW(parseJson("infinity"), std::runtime_error);
   EXPECT_THROW(parseJson("inf"), std::runtime_error);
   EXPECT_THROW(parseJson("nan"), std::runtime_error);
@@ -86,32 +88,16 @@ TEST(Json, Parse) {
     EXPECT_EQ(boost::prior(array.end())->size(), 4);
   }
 
-  bool caught = false;
-  try {
-    parseJson("\n[12,\n\nnotvalidjson");
-  } catch (const std::exception& e) {
-    caught = true;
-  }
-  EXPECT_TRUE(caught);
+  EXPECT_THROW(parseJson("\n[12,\n\nnotvalidjson"),
+               std::runtime_error);
 
-  caught = false;
-  try {
-    parseJson("12e2e2");
-  } catch (const std::exception& e) {
-    caught = true;
-  }
-  EXPECT_TRUE(caught);
+  EXPECT_THROW(parseJson("12e2e2"),
+               std::runtime_error);
 
-  caught = false;
-  try {
-    parseJson("{\"foo\":12,\"bar\":42} \"something\"");
-  } catch (const std::exception& e) {
-    // incomplete parse
-    caught = true;
-  }
-  EXPECT_TRUE(caught);
+  EXPECT_THROW(parseJson("{\"foo\":12,\"bar\":42} \"something\""),
+               std::runtime_error);
 
-  dynamic anotherVal = dynamic::object
+  dynamic value = dynamic::object
     ("foo", "bar")
     ("junk", 12)
     ("another", 32.2)
@@ -128,17 +114,39 @@ TEST(Json, Parse) {
     ;
 
   // Print then parse and get the same thing, hopefully.
-  auto value = parseJson(toJson(anotherVal));
-  EXPECT_EQ(value, anotherVal);
+  EXPECT_EQ(value, parseJson(toJson(value)));
+
 
   // Test an object with non-string values.
-  dynamic something = folly::parseJson(
+  dynamic something = parseJson(
     "{\"old_value\":40,\"changed\":true,\"opened\":false}");
   dynamic expected = dynamic::object
     ("old_value", 40)
     ("changed", true)
     ("opened", false);
   EXPECT_EQ(something, expected);
+}
+
+TEST(Json, ParseTrailingComma) {
+  folly::json::serialization_opts on, off;
+  on.allow_trailing_comma = true;
+  off.allow_trailing_comma = false;
+
+  dynamic arr { 1, 2 };
+  EXPECT_EQ(arr, parseJson("[1, 2]", on));
+  EXPECT_EQ(arr, parseJson("[1, 2,]", on));
+  EXPECT_EQ(arr, parseJson("[1, 2, ]", on));
+  EXPECT_EQ(arr, parseJson("[1, 2 , ]", on));
+  EXPECT_EQ(arr, parseJson("[1, 2 ,]", on));
+  EXPECT_THROW(parseJson("[1, 2,]", off), std::runtime_error);
+
+  dynamic obj = dynamic::object("a", 1);
+  EXPECT_EQ(obj, parseJson("{\"a\": 1}", on));
+  EXPECT_EQ(obj, parseJson("{\"a\": 1,}", on));
+  EXPECT_EQ(obj, parseJson("{\"a\": 1, }", on));
+  EXPECT_EQ(obj, parseJson("{\"a\": 1 , }", on));
+  EXPECT_EQ(obj, parseJson("{\"a\": 1 ,}", on));
+  EXPECT_THROW(parseJson("{\"a\":1,}", off), std::runtime_error);
 }
 
 TEST(Json, JavascriptSafe) {
@@ -160,17 +168,9 @@ TEST(Json, Produce) {
   value = parseJson("\"Control code: \001 \002 \x1f\"");
   EXPECT_EQ(toJson(value), R"("Control code: \u0001 \u0002 \u001f")");
 
-  bool caught = false;
-  try {
-    dynamic d = dynamic::object;
-    d["abc"] = "xyz";
-    d[42.33] = "asd";
-    auto str = toJson(d);
-  } catch (std::exception const& e) {
-    // We're not allowed to have non-string keys in json.
-    caught = true;
-  }
-  EXPECT_TRUE(caught);
+  // We're not allowed to have non-string keys in json.
+  EXPECT_THROW(toJson(dynamic::object("abc", "xyz")(42.33, "asd")),
+               std::runtime_error);
 }
 
 TEST(Json, JsonEscape) {
