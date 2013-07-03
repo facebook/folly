@@ -705,12 +705,14 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
+#ifdef _GNU_SOURCE // memrchr is a GNU extension
 template <>
 inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
   auto pos = static_cast<const char*>(
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
+#endif
 
 // specialization for ByteRange
 template <>
@@ -721,6 +723,7 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
+#ifdef _GNU_SOURCE // memrchr is a GNU extension
 template <>
 inline size_t rfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
@@ -728,6 +731,7 @@ inline size_t rfind(const Range<const unsigned char*>& haystack,
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
+#endif
 
 template <class T>
 size_t qfind_first_of(const Range<T>& haystack,

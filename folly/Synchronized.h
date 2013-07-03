@@ -48,9 +48,11 @@ template <class T>
 struct HasLockUnlock {
   enum { value = IsOneOf<T,
          std::mutex, std::recursive_mutex,
-         std::timed_mutex, std::recursive_timed_mutex,
          boost::mutex, boost::recursive_mutex, boost::shared_mutex,
+#ifndef __APPLE__ // OSX doesn't have timed mutexes
+         std::timed_mutex, std::recursive_timed_mutex,
          boost::timed_mutex, boost::recursive_timed_mutex
+#endif
          >::value };
 };
 
@@ -95,6 +97,7 @@ acquireReadWrite(T& mutex) {
   mutex.lock();
 }
 
+#ifndef __APPLE__ // OSX doesn't have timed mutexes
 /**
  * Acquires a mutex for reading and writing with timeout by calling
  * .try_lock_for(). This applies to two of the std mutex classes as
@@ -121,6 +124,7 @@ acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
   return mutex.timed_lock(boost::posix_time::milliseconds(milliseconds));
 }
+#endif // __APPLE__
 
 /**
  * Releases a mutex previously acquired for reading by calling
