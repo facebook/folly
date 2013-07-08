@@ -1675,11 +1675,11 @@ class RangeConcat : public Operator<RangeConcat> {
  public:
   RangeConcat() { }
 
-  template<class Source,
-           class Range,
+  template<class Range,
+           class Source,
            class InnerValue = typename ValueTypeOfRange<Range>::RefType>
   class Generator
-    : public GenImpl<InnerValue, Generator<Source, Range, InnerValue>> {
+    : public GenImpl<InnerValue, Generator<Range, Source, InnerValue>> {
     Source source_;
    public:
     explicit Generator(Source source)
@@ -1709,19 +1709,91 @@ class RangeConcat : public Operator<RangeConcat> {
 
   template<class Value,
            class Source,
-           class Gen = Generator<Source, Value>>
+           class Gen = Generator<Value, Source>>
   Gen compose(GenImpl<Value, Source>&& source) const {
     return Gen(std::move(source.self()));
   }
 
   template<class Value,
            class Source,
-           class Gen = Generator<Source, Value>>
+           class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self());
   }
 };
 
+
+/**
+ * GuardImpl - For handling exceptions from downstream computation. Requires the
+ * type of exception to catch, and handler function to invoke in the event of
+ * the exception. Note that the handler may:
+ *   1) return true to continue processing the sequence
+ *   2) return false to end the sequence immediately
+ *   3) throw, to pass the exception to the next catch
+ * The handler must match the signature 'bool(Exception&, Value)'.
+ *
+ * This type is used through the `guard` helper, like so:
+ *
+ *  auto indexes
+ *    = byLine(STDIN_FILENO)
+ *    | guard<std::runtime_error>([](std::runtime_error& e,
+ *                                   StringPiece sp) {
+ *        LOG(ERROR) << sp << ": " << e.str();
+ *        return true; // continue processing subsequent lines
+ *      })
+ *    | eachTo<int>()
+ *    | as<vector>();
+ *
+ *  TODO(tjackson): Rename this back to Guard.
+ **/
+template<class Exception,
+         class ErrorHandler>
+class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
+  ErrorHandler handler_;
+ public:
+  GuardImpl(ErrorHandler handler)
+    : handler_(std::move(handler)) {}
+
+  template<class Value,
+           class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
+    Source source_;
+    ErrorHandler handler_;
+  public:
+    explicit Generator(Source source,
+                       ErrorHandler handler)
+      : source_(std::move(source)),
+        handler_(std::move(handler)) {}
+
+    template<class Handler>
+    bool apply(Handler&& handler) const {
+      return source_.apply([&](Value value) -> bool {
+        try {
+          handler(std::forward<Value>(value));
+          return true;
+        } catch (Exception& e) {
+          return handler_(e, std::forward<Value>(value));
+        }
+      });
+    }
+
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template<class Value,
+           class Source,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), handler_);
+  }
+
+  template<class Value,
+           class Source,
+           class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), handler_);
+  }
+};
 } //::detail
 
 /**
