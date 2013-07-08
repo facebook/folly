@@ -823,6 +823,9 @@ TEST(String, join) {
   auto input3 = { 'f', 'a', 'c', 'e', 'b', 'o', 'o', 'k' };
   join("", input3, output);
   EXPECT_EQ(output, "facebook");
+
+  join("_", { "", "f", "a", "c", "e", "b", "o", "o", "k", "" }, output);
+  EXPECT_EQ(output, "_f_a_c_e_b_o_o_k_");
 }
 
 TEST(String, hexlify) {

@@ -443,11 +443,26 @@ void join(const Delim& delimiter,
   join(delimiter, container.begin(), container.end(), output);
 }
 
+template <class Delim, class Value, class String>
+void join(const Delim& delimiter,
+          const std::initializer_list<Value>& values,
+          String& output) {
+  join(delimiter, values.begin(), values.end(), output);
+}
+
 template <class Delim, class Container>
 std::string join(const Delim& delimiter,
                  const Container& container) {
   std::string output;
   join(delimiter, container.begin(), container.end(), output);
+  return output;
+}
+
+template <class Delim, class Value>
+std::string join(const Delim& delimiter,
+                 const std::initializer_list<Value>& values) {
+  std::string output;
+  join(delimiter, values.begin(), values.end(), output);
   return output;
 }
 
