@@ -1214,38 +1214,6 @@ INSTANTIATE_TEST_CASE_P(
     FileGenBufferedTest,
     ::testing::Values(0, 1, 2, 4, 8, 64, 4096));
 
-TEST(Gen, Guard) {
-  using std::runtime_error;
-  EXPECT_THROW(from({"1", "a", "3"})
-               | eachTo<int>()
-               | sum,
-               runtime_error);
-  EXPECT_EQ(4,
-            from({"1", "a", "3"})
-            | guard<runtime_error>([](runtime_error&, const char*) {
-                return true; // continue
-              })
-            | eachTo<int>()
-            | sum);
-  EXPECT_EQ(1,
-            from({"1", "a", "3"})
-            | guard<runtime_error>([](runtime_error&, const char*) {
-                return false; // break
-              })
-            | eachTo<int>()
-            | sum);
-  EXPECT_THROW(from({"1", "a", "3"})
-                | guard<runtime_error>([](runtime_error&, const char* v) {
-                    if (v[0] == 'a') {
-                      throw;
-                    }
-                    return true;
-                  })
-               | eachTo<int>()
-               | sum,
-               runtime_error);
-}
-
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

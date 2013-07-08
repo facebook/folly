@@ -343,10 +343,6 @@ struct GeneratorBuilder;
 template<class Needle>
 class Contains;
 
-template<class Exception,
-         class ErrorHandler>
-class Guard;
-
 }
 
 /**
@@ -624,14 +620,6 @@ template<class Needle,
          class Contains = detail::Contains<typename std::decay<Needle>::type>>
 Contains contains(Needle&& needle) {
   return Contains(std::forward<Needle>(needle));
-}
-
-template<class Exception,
-         class ErrorHandler,
-         class Guard = detail::Guard<Exception,
-                                     typename std::decay<ErrorHandler>::type>>
-Guard guard(ErrorHandler&& handler) {
-  return Guard(std::forward<ErrorHandler>(handler));
 }
 
 }} // folly::gen
