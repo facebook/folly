@@ -447,6 +447,12 @@ template <class String> void clause11_21_4_6_4(String & test) {
   pos = random(0, test.size());
   // Uncomment below to see a bug in gcc
   /*res = */test.insert(test.begin() + pos, il);
+
+  // Test with actual input iterators
+  stringstream ss;
+  ss << "hello cruel world";
+  auto i = istream_iterator<char>(ss);
+  test.insert(test.begin(), i, istream_iterator<char>());
 }
 
 template <class String> void clause11_21_4_6_5(String & test) {
