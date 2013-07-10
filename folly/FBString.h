@@ -1532,7 +1532,7 @@ private:
     for (; b != e; ++b) {
       temp.push_back(*b);
     }
-    temp.append(i, end());
+    temp.append(i, cend());
     swap(temp);
     return begin() + pos;
   }
