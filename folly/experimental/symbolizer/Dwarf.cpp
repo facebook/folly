@@ -639,7 +639,7 @@ bool Dwarf::LineNumberVM::nextDefineFile(folly::StringPiece& program,
     auto length = readULEB(program);
     // the opcode itself should be included in the length, so length >= 1
     enforce(length != 0, "invalid extended opcode length");
-    auto extendedOpcode = read<uint8_t>(program);
+    read<uint8_t>(program); // extended opcode
     --length;
 
     if (opcode == DW_LNE_define_file) {

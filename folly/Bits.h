@@ -57,10 +57,6 @@
 
 #include "folly/Portability.h"
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
-
 #ifndef __GNUC__
 #error GCC required
 #endif

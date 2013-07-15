@@ -201,7 +201,6 @@ RecordInfo findRecord(ByteRange searchRange,
   static const uint32_t magic = Header::kMagic;
   static const ByteRange magicRange(reinterpret_cast<const uint8_t*>(&magic),
                                     sizeof(magic));
-  static constexpr size_t headerTail = sizeof(Header) - sizeof(magic);
 
   DCHECK_GE(searchRange.begin(), wholeRange.begin());
   DCHECK_LE(searchRange.end(), wholeRange.end());
