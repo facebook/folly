@@ -228,3 +228,12 @@ TEST(Hash, pair) {
 TEST(Hash, hash_combine) {
   EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
 }
+
+TEST(Hash, std_tuple) {
+  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  tuple3 t(42, "foo", 1);
+
+  std::unordered_map<tuple3, std::string> m;
+  m[t] = "bar";
+  EXPECT_EQ("bar", m[t]);
+}
