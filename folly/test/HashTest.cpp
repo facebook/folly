@@ -237,3 +237,15 @@ TEST(Hash, std_tuple) {
   m[t] = "bar";
   EXPECT_EQ("bar", m[t]);
 }
+
+TEST(Hash, std_tuple_different_hash) {
+  typedef std::tuple<int64_t, std::string, int32_t> tuple3;
+  tuple3 t1(42, "foo", 1);
+  tuple3 t2(9, "bar", 3);
+  tuple3 t3(42, "foo", 3);
+
+  EXPECT_NE(std::hash<tuple3>()(t1),
+            std::hash<tuple3>()(t2));
+  EXPECT_NE(std::hash<tuple3>()(t1),
+            std::hash<tuple3>()(t3));
+}
