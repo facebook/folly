@@ -37,6 +37,8 @@ namespace detail {
 template<typename T, template<typename> class Atom>
 class SingleElementQueue;
 
+template <typename T> class MPMCPipelineStageImpl;
+
 } // namespace detail
 
 /// MPMCQueue<T> is a high-performance bounded concurrent queue that
@@ -83,6 +85,7 @@ template<typename T,
              std::is_nothrow_constructible<T,T&&>::value ||
              folly::IsRelocatable<T>::value>::type>
 class MPMCQueue : boost::noncopyable {
+  friend class detail::MPMCPipelineStageImpl<T>;
  public:
   typedef T value_type;
 
