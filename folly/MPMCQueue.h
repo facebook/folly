@@ -196,7 +196,7 @@ class MPMCQueue : boost::noncopyable {
 
   /// Returns is a guess at size() for contexts that don't need a precise
   /// value, such as stats.
-  uint64_t sizeGuess() const noexcept {
+  ssize_t sizeGuess() const noexcept {
     return writeCount() - readCount();
   }
 
