@@ -53,10 +53,12 @@ int fsyncNoInt(int fd) {
 }
 
 int fdatasyncNoInt(int fd) {
-#ifndef __APPLE__
-  return wrapNoInt(fdatasync, fd);
-#else
+#if defined(__APPLE__)
   return wrapNoInt(fcntl, fd, F_FULLFSYNC);
+#elif defined(__FreeBSD__)
+  return wrapNoInt(fsync, fd);
+#else
+  return wrapNoInt(fdatasync, fd);
 #endif
 }
 
