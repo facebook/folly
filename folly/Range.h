@@ -705,7 +705,7 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
-#ifdef _GNU_SOURCE // memrchr is a GNU extension
+#if FOLLY_HAVE_MEMRCHR
 template <>
 inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
   auto pos = static_cast<const char*>(
@@ -723,7 +723,7 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
-#ifdef _GNU_SOURCE // memrchr is a GNU extension
+#if FOLLY_HAVE_MEMRCHR
 template <>
 inline size_t rfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
