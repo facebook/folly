@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 
+#include <boost/thread/lock_guard.hpp>
 #include <glog/logging.h>
 
 #include <folly/Foreach.h>
