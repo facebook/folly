@@ -49,9 +49,10 @@ template <class T> class Range;
  * as Boyer-Moore. On the upside, it does not do any upfront
  * preprocessing and does not allocate memory.
  */
-template <class T>
+template <class T, class Comp = std::equal_to<typename Range<T>::value_type>>
 inline size_t qfind(const Range<T> & haystack,
-                    const Range<T> & needle);
+                    const Range<T> & needle,
+                    Comp eq = Comp());
 
 /**
  * Finds the first occurrence of needle in haystack. The result is the
@@ -566,10 +567,10 @@ struct StringPieceHash {
 /**
  * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */
-template <class T, class Comp>
+template <class T, class Comp = std::equal_to<typename Range<T>::value_type>>
 size_t qfind(const Range<T>& haystack,
              const Range<T>& needle,
-             Comp eq) {
+             Comp eq = Comp()) {
   // Don't use std::search, use a Boyer-Moore-like trick by comparing
   // the last characters first
   auto const nsize = needle.size();
@@ -672,12 +673,6 @@ struct AsciiCaseInsensitive {
 
 extern const AsciiCaseSensitive asciiCaseSensitive;
 extern const AsciiCaseInsensitive asciiCaseInsensitive;
-
-template <class T>
-size_t qfind(const Range<T>& haystack,
-             const Range<T>& needle) {
-  return qfind(haystack, needle, asciiCaseSensitive);
-}
 
 template <class T>
 size_t qfind(const Range<T>& haystack,

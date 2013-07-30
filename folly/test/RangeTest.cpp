@@ -290,6 +290,19 @@ TEST(StringPiece, InvalidRange) {
   EXPECT_THROW(a.subpiece(6), std::out_of_range);
 }
 
+TEST(qfind, UInt32_Ranges) {
+  vector<uint32_t> a({1, 2, 3, 260, 5});
+  vector<uint32_t> b({2, 3, 4});
+
+  auto a_range = folly::Range<const uint32_t*>(&a[0], a.size());
+  auto b_range = folly::Range<const uint32_t*>(&b[0], b.size());
+
+  EXPECT_EQ(qfind(a_range, b_range), string::npos);
+
+  a[3] = 4;
+  EXPECT_EQ(qfind(a_range, b_range), 1);
+}
+
 template <typename NeedleFinder>
 class NeedleFinderTest : public ::testing::Test {
  public:
