@@ -567,10 +567,10 @@ struct StringPieceHash {
 /**
  * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */
-template <class T, class Comp = std::equal_to<typename Range<T>::value_type>>
+template <class T, class Comp>
 size_t qfind(const Range<T>& haystack,
              const Range<T>& needle,
-             Comp eq = Comp()) {
+             Comp eq) {
   // Don't use std::search, use a Boyer-Moore-like trick by comparing
   // the last characters first
   auto const nsize = needle.size();
