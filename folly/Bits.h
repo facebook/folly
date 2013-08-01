@@ -61,6 +61,13 @@
 #error GCC required
 #endif
 
+#ifndef __clang__
+#define FOLLY_INTRINSIC_CONSTEXPR constexpr
+#else
+// Unlike GCC, in Clang (as of 3.2) intrinsics aren't constexpr.
+#define FOLLY_INTRINSIC_CONSTEXPR const
+#endif
+
 #ifndef FOLLY_NO_CONFIG
 #include "folly/folly-config.h"
 #endif
@@ -86,7 +93,7 @@ namespace folly {
 // Generate overloads for findFirstSet as wrappers around
 // appropriate ffs, ffsl, ffsll gcc builtins
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -97,7 +104,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -109,7 +116,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -121,7 +128,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value && std::is_signed<T>::value),
   unsigned int>::type
@@ -135,7 +142,7 @@ typename std::enable_if<
 // findLastSet: return the 1-based index of the highest bit set
 // for x > 0, findLastSet(x) == 1 + floor(log2(x))
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -146,7 +153,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -158,7 +165,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_unsigned<T>::value &&
@@ -170,7 +177,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   (std::is_integral<T>::value &&
    std::is_signed<T>::value),
@@ -180,7 +187,7 @@ typename std::enable_if<
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_INTRINSIC_CONSTEXPR
 typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   T>::type

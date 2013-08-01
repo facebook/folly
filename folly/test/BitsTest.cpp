@@ -24,10 +24,12 @@
 using namespace folly;
 
 // Test constexpr-ness.
+#ifndef __clang__
 static_assert(findFirstSet(2u) == 2, "findFirstSet");
 static_assert(findLastSet(2u) == 2, "findLastSet");
 static_assert(nextPowTwo(2u) == 2, "nextPowTwo");
 static_assert(isPowTwo(2u), "isPowTwo");
+#endif  // __clang__
 
 namespace {
 
