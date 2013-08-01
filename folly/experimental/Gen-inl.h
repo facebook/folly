@@ -1794,6 +1794,81 @@ class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
     return Gen(source.self(), handler_);
   }
 };
+
+/**
+ * Cycle - For repeating a sequence forever.
+ *
+ * This type is usually used through the 'cycle' static value, like:
+ *
+ *   auto tests
+ *     = from(samples)
+ *     | cycle
+ *     | take(100);
+ */
+class Cycle : public Operator<Cycle> {
+  off_t limit_; // -1 for infinite
+ public:
+  Cycle()
+    : limit_(-1) { }
+
+  explicit Cycle(off_t limit)
+    : limit_(limit) { }
+
+  template<class Value,
+           class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
+    Source source_;
+    off_t limit_; // -1 for infinite
+  public:
+    explicit Generator(Source source, off_t limit)
+      : source_(std::move(source))
+      , limit_(limit) {}
+
+    template<class Handler>
+    bool apply(Handler&& handler) const {
+      bool cont;
+      auto handler2 = [&](Value value) {
+        cont = handler(std::forward<Value>(value));
+        return cont;
+      };
+      for (off_t count = 0; count != limit_; ++count) {
+        cont = false;
+        source_.apply(handler2);
+        if (!cont) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // not actually infinite, since an empty generator will end the cycles.
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), limit_);
+  }
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), limit_);
+  }
+
+  /**
+   * Convenience function for use like:
+   *
+   *  auto tripled = gen | cycle(3);
+   */
+  Cycle operator()(off_t limit) const {
+    return Cycle(limit);
+  }
+};
+
 } //::detail
 
 /**
@@ -1875,6 +1950,13 @@ static const detail::Count count;
 
 static const detail::First first;
 
+/**
+ * Use directly for detecting any values, or as a function to detect values
+ * which pass a predicate:
+ *
+ *  auto nonempty = g | any;
+ *  auto evens = g | any(even);
+ */
 static const detail::Any any;
 
 static const detail::Min<Identity, Less> min;
@@ -1890,6 +1972,14 @@ static const detail::Map<Move> move;
 static const detail::Concat concat;
 
 static const detail::RangeConcat rconcat;
+
+/**
+ * Use directly for infinite sequences, or as a function to limit cycle count.
+ *
+ *  auto forever = g | cycle;
+ *  auto thrice = g | cycle(3);
+ */
+static const detail::Cycle cycle;
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);

@@ -948,6 +948,44 @@ TEST(StringGen, EmptySplit) {
   }
 }
 
+TEST(Gen, Cycle) {
+  {
+    auto s = from({1, 2});
+    EXPECT_EQ((vector<int> { 1, 2, 1, 2, 1 }),
+              s | cycle | take(5) | as<vector>());
+  }
+  {
+    auto s = from({1, 2});
+    EXPECT_EQ((vector<int> { 1, 2, 1, 2 }),
+              s | cycle(2) | as<vector>());
+  }
+  {
+    auto s = from({1, 2, 3});
+    EXPECT_EQ((vector<int> { 1, 2, 1, 2, 1 }),
+              s | take(2) | cycle | take(5) | as<vector>());
+  }
+  {
+    auto s = empty<int>();
+    EXPECT_EQ((vector<int> { }),
+              s | cycle | take(4) | as<vector>());
+  }
+  {
+    int count = 3;
+    int* pcount = &count;
+    auto countdown = GENERATOR(int) {
+      ASSERT_GE(*pcount, 0)
+        << "Cycle should have stopped when it didnt' get values!";
+      for (int i = 1; i <= *pcount; ++i) {
+        yield(i);
+      }
+      --*pcount;
+    };
+    auto s = countdown;
+    EXPECT_EQ((vector<int> { 1, 2, 3, 1, 2, 1}),
+              s | cycle | as<vector>());
+  }
+}
+
 TEST(StringGen, Split) {
   auto collect = eachTo<std::string>() | as<vector>();
   {
@@ -1098,7 +1136,6 @@ TEST(StringGen, EachToPair) {
     EXPECT_EQ(expected, actual);
   }
 }
-
 
 TEST(StringGen, Resplit) {
   auto collect = eachTo<std::string>() | as<vector>();
