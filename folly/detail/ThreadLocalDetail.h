@@ -29,6 +29,7 @@
 
 #include <glog/logging.h>
 
+#include "folly/Exception.h"
 #include "folly/Foreach.h"
 #include "folly/Malloc.h"
 
@@ -146,9 +147,9 @@ struct StaticMeta {
   static StaticMeta<Tag>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
-    static bool constructed = (inst = new StaticMeta<Tag>());
+    static bool constructed = (inst_ = new StaticMeta<Tag>());
     (void)constructed; // suppress unused warning
-    return *inst;
+    return *inst_;
   }
 
   int nextId_;
@@ -171,31 +172,34 @@ struct StaticMeta {
   }
 
   static __thread ThreadEntry threadEntry_;
-  static StaticMeta<Tag>* inst;
+  static StaticMeta<Tag>* inst_;
 
   StaticMeta() : nextId_(1) {
     head_.next = head_.prev = &head_;
     int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
-    if (ret != 0) {
-      std::string msg;
-      switch (ret) {
-        case EAGAIN:
-          char buf[100];
-          snprintf(buf, sizeof(buf), "PTHREAD_KEYS_MAX (%d) is exceeded",
-                   PTHREAD_KEYS_MAX);
-          msg = buf;
-          break;
-        case ENOMEM:
-          msg = "Out-of-memory";
-          break;
-        default:
-          msg = "(unknown error)";
-      }
-      throw std::runtime_error("pthread_key_create failed: " + msg);
-    }
+    checkPosixError(ret, "pthread_key_create failed");
+
+    ret = pthread_atfork(/*prepare*/ &StaticMeta::preFork,
+                         /*parent*/ &StaticMeta::onForkParent,
+                         /*child*/ &StaticMeta::onForkChild);
+    checkPosixError(ret, "pthread_atfork failed");
   }
   ~StaticMeta() {
     LOG(FATAL) << "StaticMeta lives forever!";
+  }
+
+  static void preFork(void) {
+    instance().lock_.lock();  // Make sure it's created
+  }
+
+  static void onForkParent(void) {
+    inst_->lock_.unlock();
+  }
+
+  static void onForkChild(void) {
+    inst_->head_.next = inst_->head_.prev = &inst_->head_;
+    inst_->push_back(&threadEntry_);  // only the current thread survives
+    inst_->lock_.unlock();
   }
 
   static void onThreadExit(void* ptr) {
@@ -328,7 +332,7 @@ struct StaticMeta {
 };
 
 template <class Tag> __thread ThreadEntry StaticMeta<Tag>::threadEntry_ = {0};
-template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst = nullptr;
+template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 
 }  // namespace threadlocal_detail
 }  // namespace folly

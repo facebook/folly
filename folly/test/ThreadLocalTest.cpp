@@ -16,6 +16,8 @@
 
 #include "folly/ThreadLocal.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <map>
 #include <unordered_map>
 #include <set>
@@ -23,6 +25,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <thread>
+#include <unistd.h>
 #include <boost/thread/tss.hpp>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
@@ -293,6 +296,103 @@ TEST(ThreadLocal, Movable2) {
 
   // Make sure that we have 4 different instances of *tl
   EXPECT_EQ(4, tls.size());
+}
+
+// Yes, threads and fork don't mix
+// (http://cppwisdom.quora.com/Why-threads-and-fork-dont-mix) but if you're
+// stupid or desperate enough to try, we shouldn't stand in your way.
+namespace {
+class HoldsOne {
+ public:
+  HoldsOne() : value_(1) { }
+  // Do an actual access to catch the buggy case where this == nullptr
+  int value() const { return value_; }
+ private:
+  int value_;
+};
+
+struct HoldsOneTag {};
+
+ThreadLocal<HoldsOne, HoldsOneTag> ptr;
+
+int totalValue() {
+  int value = 0;
+  for (auto& p : ptr.accessAllThreads()) {
+    value += p.value();
+  }
+  return value;
+}
+
+}  // namespace
+
+TEST(ThreadLocal, Fork) {
+  EXPECT_EQ(1, ptr->value());  // ensure created
+  EXPECT_EQ(1, totalValue());
+  // Spawn a new thread
+
+  std::mutex mutex;
+  bool started = false;
+  std::condition_variable startedCond;
+  bool stopped = false;
+  std::condition_variable stoppedCond;
+
+  std::thread t([&] () {
+    EXPECT_EQ(1, ptr->value());  // ensure created
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      started = true;
+      startedCond.notify_all();
+    }
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      while (!stopped) {
+        stoppedCond.wait(lock);
+      }
+    }
+  });
+
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    while (!started) {
+      startedCond.wait(lock);
+    }
+  }
+
+  EXPECT_EQ(2, totalValue());
+
+  pid_t pid = fork();
+  if (pid == 0) {
+    // in child
+    int v = totalValue();
+
+    // exit successfully if v == 1 (one thread)
+    // diagnostic error code otherwise :)
+    switch (v) {
+    case 1: _exit(0);
+    case 0: _exit(1);
+    }
+    _exit(2);
+  } else if (pid > 0) {
+    // in parent
+    int status;
+    EXPECT_EQ(pid, waitpid(pid, &status, 0));
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(0, WEXITSTATUS(status));
+  } else {
+    EXPECT_TRUE(false) << "fork failed";
+  }
+
+  EXPECT_EQ(2, totalValue());
+
+  {
+    std::unique_lock<std::mutex> lock(mutex);
+    stopped = true;
+    stoppedCond.notify_all();
+  }
+
+  t.join();
+
+  EXPECT_EQ(1, totalValue());
 }
 
 // Simple reference implementation using pthread_get_specific
