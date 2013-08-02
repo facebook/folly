@@ -159,11 +159,11 @@ class GenImpl : public FBounded<Self> {
   typedef typename std::decay<Value>::type StorageType;
 
   /**
-   * apply() - Send all values produced by this generator to given
-   * handler until the handler returns false. Returns false if and only if the
-   * handler returns false. Note: It should return true even if it completes
-   * (without the handler returning false), as 'Chain' uses the return value of
-   * apply to determine if it should process the second object in its chain.
+   * apply() - Send all values produced by this generator to given handler until
+   * the handler returns false. Returns false if and only if the handler passed
+   * in returns false. Note: It should return true even if it completes (without
+   * the handler returning false), as 'Chain' uses the return value of apply to
+   * determine if it should process the second object in its chain.
    */
   template<class Handler>
   bool apply(Handler&& handler) const;
@@ -695,10 +695,8 @@ class Until : public Operator<Until<Predicate>> {
   {}
 
   template<class Value,
-           class Source,
-           class Result = typename std::result_of<Predicate(Value)>::type>
-  class Generator :
-      public GenImpl<Result, Generator<Value, Source, Result>> {
+           class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
     Source source_;
     Predicate pred_;
    public:
@@ -707,10 +705,18 @@ class Until : public Operator<Until<Predicate>> {
 
     template<class Handler>
     bool apply(Handler&& handler) const {
-      return source_.apply([&](Value value) -> bool {
-        return !pred_(std::forward<Value>(value))
-            && handler(std::forward<Value>(value));
+      bool cancelled = false;
+      source_.apply([&](Value value) -> bool {
+        if (pred_(value)) { // un-forwarded to disable move
+          return false;
+        }
+        if (!handler(std::forward<Value>(value))) {
+          cancelled = true;
+          return false;
+        }
+        return true;
       });
+      return !cancelled;
     }
   };
 
@@ -761,12 +767,15 @@ class Take : public Operator<Take> {
     bool apply(Handler&& handler) const {
       if (count_ == 0) { return false; }
       size_t n = count_;
-      return source_.apply([&](Value value) -> bool {
-          if (!handler(std::forward<Value>(value))) {
-            return false;
-          }
-          return --n;
-        });
+      bool cancelled = false;
+      source_.apply([&](Value value) -> bool {
+        if (!handler(std::forward<Value>(value))) {
+          cancelled = true;
+          return false;
+        }
+        return --n;
+      });
+      return !cancelled;
     }
   };
 
@@ -907,7 +916,7 @@ class Skip : public Operator<Skip> {
     template<class Handler>
     bool apply(Handler&& handler) const {
       if (count_ == 0) {
-        return source_.apply(handler);
+        return source_.apply(std::forward<Handler>(handler));
       }
       size_t n = 0;
       return source_.apply([&](Value value) -> bool {

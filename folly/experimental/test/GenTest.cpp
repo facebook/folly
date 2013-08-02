@@ -241,13 +241,37 @@ TEST(Gen, Contains) {
 }
 
 TEST(Gen, Take) {
-  auto expected = vector<int>{1, 4, 9, 16};
-  auto actual =
+  {
+    auto expected = vector<int>{1, 4, 9, 16};
+    auto actual =
       seq(1, 1000)
-    | mapped([](int x) { return x * x; })
-    | take(4)
-    | as<vector<int>>();
-  EXPECT_EQ(expected, actual);
+      | mapped([](int x) { return x * x; })
+      | take(4)
+      | as<vector<int>>();
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto actual
+      = ((seq(0) | take(2)) +
+         (seq(4) | take(2)) +
+         (seq(8) | take(2)))
+      | take(5)
+      | as<vector>();
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto actual
+      = seq(0)
+      | mapped([](int i) {
+          return seq(i * 4) | take(2);
+        })
+      | concat
+      | take(5)
+      | as<vector>();
+    EXPECT_EQ(expected, actual);
+  }
 }
 
 TEST(Gen, Sample) {
@@ -294,11 +318,39 @@ TEST(Gen, Skip) {
 }
 
 TEST(Gen, Until) {
-  auto gen =
-      seq(1) //infinite
-    | mapped([](int x) { return x * x; })
-    | until([](int x) { return x >= 1000; });
-  EXPECT_EQ(31, gen | count);
+  {
+    auto expected = vector<int>{1, 4, 9, 16};
+    auto actual
+      = seq(1, 1000)
+      | mapped([](int x) { return x * x; })
+      | until([](int x) { return x > 20; })
+      | as<vector<int>>();
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    auto expected = vector<int>{ 0, 1, 4, 5, 8 };
+    auto actual
+      = ((seq(0) | until([](int i) { return i > 1; })) +
+         (seq(4) | until([](int i) { return i > 5; })) +
+         (seq(8) | until([](int i) { return i > 9; })))
+      | until([](int i) { return i > 8; })
+      | as<vector<int>>();
+    EXPECT_EQ(expected, actual);
+  }
+  /*
+  {
+    auto expected = vector<int>{ 0, 1, 5, 6, 10 };
+    auto actual
+      = seq(0)
+      | mapped([](int i) {
+          return seq(i * 5) | until([=](int j) { return j > i * 5 + 1; });
+        })
+      | concat
+      | until([](int i) { return i > 10; })
+      | as<vector<int>>();
+    EXPECT_EQ(expected, actual);
+  }
+  */
 }
 
 auto even = [](int i) -> bool { return i % 2 == 0; };
