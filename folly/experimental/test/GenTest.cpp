@@ -1283,6 +1283,32 @@ TEST(Gen, Guard) {
                runtime_error);
 }
 
+TEST(Gen, Batch) {
+  EXPECT_EQ((vector<vector<int>> { {1} }),
+            seq(1, 1) | batch(5) | as<vector>());
+  EXPECT_EQ((vector<vector<int>> { {1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11} }),
+            seq(1, 11) | batch(3) | as<vector>());
+  EXPECT_THROW(seq(1, 1) | batch(0) | as<vector>(),
+               std::invalid_argument);
+}
+
+TEST(Gen, BatchMove) {
+  auto expected = vector<vector<int>>{ {0, 1}, {2, 3}, {4} };
+  auto actual =
+      seq(0, 4)
+    | mapped([](int i) { return std::unique_ptr<int>(new int(i)); })
+    | batch(2)
+    | mapped([](std::vector<std::unique_ptr<int>>& pVector) {
+        std::vector<int> iVector;
+        for (const auto& p : pVector) {
+          iVector.push_back(*p);
+        };
+        return iVector;
+      })
+    | as<vector>();
+  EXPECT_EQ(expected, actual);
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

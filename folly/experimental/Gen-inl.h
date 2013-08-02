@@ -1154,6 +1154,83 @@ class Distinct : public Operator<Distinct<Selector>> {
 };
 
 /**
+ * Batch - For producing fixed-size batches of each value from a source.
+ *
+ * This type is usually used through the 'batch' helper function:
+ *
+ *   auto batchSums
+ *     = seq(1, 10)
+ *     | batch(3)
+ *     | map([](const std::vector<int>& batch) {
+ *         return from(batch) | sum;
+ *       })
+ *     | as<vector>();
+ */
+class Batch : public Operator<Batch> {
+  size_t batchSize_;
+ public:
+  explicit Batch(size_t batchSize)
+    : batchSize_(batchSize) {
+    if (batchSize_ == 0) {
+      throw std::invalid_argument("Batch size must be non-zero!");
+    }
+  }
+
+  template<class Value,
+           class Source,
+           class StorageType = typename std::decay<Value>::type,
+           class VectorType = std::vector<StorageType>>
+  class Generator :
+      public GenImpl<VectorType&,
+                     Generator<Value, Source, StorageType, VectorType>> {
+    Source source_;
+    size_t batchSize_;
+  public:
+    explicit Generator(Source source, size_t batchSize)
+      : source_(std::move(source))
+      , batchSize_(batchSize) {}
+
+    template<class Handler>
+    bool apply(Handler&& handler) const {
+      VectorType batch_;
+      batch_.reserve(batchSize_);
+      bool shouldContinue = source_.apply([&](Value value) -> bool {
+          batch_.push_back(std::forward<Value>(value));
+          if (batch_.size() == batchSize_) {
+            bool needMore = handler(batch_);
+            batch_.clear();
+            return needMore;
+          }
+          // Always need more if the handler is not called.
+          return true;
+        });
+      // Flush everything, if and only if `handler` hasn't returned false.
+      if (shouldContinue && !batch_.empty()) {
+        shouldContinue = handler(batch_);
+        batch_.clear();
+      }
+      return shouldContinue;
+    }
+
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), batchSize_);
+  }
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), batchSize_);
+  }
+};
+
+/**
  * Composed - For building up a pipeline of operations to perform, absent any
  * particular source generator. Useful for building up custom pipelines.
  *
@@ -1992,6 +2069,10 @@ inline detail::Sample<Random> sample(size_t count, Random rng = Random()) {
 
 inline detail::Skip skip(size_t count) {
   return detail::Skip(count);
+}
+
+inline detail::Batch batch(size_t batchSize) {
+  return detail::Batch(batchSize);
 }
 
 }} //folly::gen

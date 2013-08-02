@@ -310,6 +310,8 @@ class RangeConcat;
 
 class Cycle;
 
+class Batch;
+
 /*
  * Sinks
  */
