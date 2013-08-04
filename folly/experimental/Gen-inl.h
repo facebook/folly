@@ -1955,6 +1955,65 @@ class Cycle : public Operator<Cycle> {
   }
 };
 
+/**
+ * Dereference - For dereferencing a sequence of pointers while filtering out
+ * null pointers.
+ *
+ * This type is usually used through the 'dereference' static value, like:
+ *
+ *   auto refs = from(ptrs) | dereference;
+ */
+class Dereference : public Operator<Dereference> {
+ public:
+  Dereference() {}
+
+  template<class Value,
+           class Source,
+           class Result = decltype(*std::declval<Value>())>
+  class Generator : public GenImpl<Result, Generator<Value, Source, Result>> {
+    Source source_;
+  public:
+    explicit Generator(Source source)
+      : source_(std::move(source)) {}
+
+    template<class Body>
+    void foreach(Body&& body) const {
+      source_.foreach([&](Value value) {
+        if (value) {
+          return body(*value);
+        }
+      });
+    }
+
+    template<class Handler>
+    bool apply(Handler&& handler) const {
+      return source_.apply([&](Value value) -> bool {
+        if (value) {
+          return handler(*value);
+        }
+        return true;
+      });
+    }
+
+    // not actually infinite, since an empty generator will end the cycles.
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()));
+  }
+
+  template<class Source,
+           class Value,
+           class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self());
+  }
+};
+
 } //::detail
 
 /**
@@ -2066,6 +2125,8 @@ static const detail::RangeConcat rconcat;
  *  auto thrice = g | cycle(3);
  */
 static const detail::Cycle cycle;
+
+static const detail::Dereference dereference;
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);

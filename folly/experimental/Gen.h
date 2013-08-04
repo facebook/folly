@@ -312,6 +312,8 @@ class Cycle;
 
 class Batch;
 
+class Dereference;
+
 /*
  * Sinks
  */

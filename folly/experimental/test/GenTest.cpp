@@ -20,26 +20,29 @@
 #include <random>
 #include <set>
 #include <vector>
-#include "folly/experimental/Gen.h"
-#include "folly/experimental/StringGen.h"
-#include "folly/experimental/CombineGen.h"
-#include "folly/experimental/FileGen.h"
-#include "folly/experimental/TestUtil.h"
+
 #include "folly/FBString.h"
 #include "folly/FBVector.h"
 #include "folly/Format.h"
+#include "folly/MapUtil.h"
+#include "folly/Memory.h"
 #include "folly/dynamic.h"
+#include "folly/experimental/CombineGen.h"
+#include "folly/experimental/FileGen.h"
+#include "folly/experimental/Gen.h"
+#include "folly/experimental/StringGen.h"
+#include "folly/experimental/TestUtil.h"
 
 using namespace folly::gen;
 using namespace folly;
+using std::make_tuple;
 using std::ostream;
 using std::pair;
 using std::set;
-using std::unique_ptr;
-using std::vector;
 using std::string;
 using std::tuple;
-using std::make_tuple;
+using std::unique_ptr;
+using std::vector;
 
 #define EXPECT_SAME(A, B) \
   static_assert(std::is_same<A, B>::value, "Mismatched: " #A ", " #B)
@@ -1035,6 +1038,60 @@ TEST(Gen, Cycle) {
     auto s = countdown;
     EXPECT_EQ((vector<int> { 1, 2, 3, 1, 2, 1}),
               s | cycle | as<vector>());
+  }
+}
+
+TEST(Gen, Dereference) {
+  {
+    const int x = 4, y = 2;
+    auto s = from<const int*>({&x, nullptr, &y});
+    EXPECT_EQ(6, s | dereference | sum);
+  }
+  {
+    vector<int> a { 1, 2 };
+    vector<int> b { 3, 4 };
+    vector<vector<int>*> pv { &a, nullptr, &b };
+    from(pv)
+      | dereference
+      | [&](vector<int>& v) {
+          v.push_back(5);
+        };
+    EXPECT_EQ(3, a.size());
+    EXPECT_EQ(3, b.size());
+    EXPECT_EQ(5, a.back());
+    EXPECT_EQ(5, b.back());
+  }
+  {
+    vector<std::map<int, int>> maps {
+      {
+        { 2, 31 },
+        { 3, 41 },
+      },
+      {
+        { 3, 52 },
+        { 4, 62 },
+      },
+      {
+        { 4, 73 },
+        { 5, 83 },
+      },
+    };
+    EXPECT_EQ(
+      93,
+      from(maps)
+      | map([](std::map<int, int>& m) {
+          return get_ptr(m, 3);
+        })
+      | dereference
+      | sum);
+  }
+  {
+    vector<unique_ptr<int>> ups;
+    ups.emplace_back(new int(3));
+    ups.emplace_back();
+    ups.emplace_back(new int(7));
+    EXPECT_EQ(10, from(ups) | dereference | sum);
+    EXPECT_EQ(10, from(ups) | move | dereference | sum);
   }
 }
 
