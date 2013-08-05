@@ -44,6 +44,17 @@ namespace folly {
 template <class T> class Range;
 
 /**
+ * Finds the first occurrence of needle in haystack. The algorithm is on
+ * average faster than O(haystack.size() * needle.size()) but not as fast
+ * as Boyer-Moore. On the upside, it does not do any upfront
+ * preprocessing and does not allocate memory.
+ */
+template <class T, class Comp = std::equal_to<typename Range<T>::value_type>>
+inline size_t qfind(const Range<T> & haystack,
+                    const Range<T> & needle,
+                    Comp eq = Comp());
+
+/**
  * Finds the first occurrence of needle in haystack. The result is the
  * offset reported to the beginning of haystack, or string::npos if
  * needle wasn't found.
@@ -554,10 +565,7 @@ struct StringPieceHash {
 };
 
 /**
- * Finds the first occurrence of needle in haystack. The algorithm is on
- * average faster than O(haystack.size() * needle.size()) but not as fast
- * as Boyer-Moore. On the upside, it does not do any upfront
- * preprocessing and does not allocate memory.
+ * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */
 template <class T, class Comp>
 size_t qfind(const Range<T>& haystack,
