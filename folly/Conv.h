@@ -323,7 +323,6 @@ typename std::enable_if<
   std::is_integral<Src>::value && std::is_signed<Src>::value &&
   detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
-  typedef typename std::make_unsigned<Src>::type Usrc;
   char buffer[20];
   if (value < 0) {
     result->push_back('-');
