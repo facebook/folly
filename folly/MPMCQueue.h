@@ -335,7 +335,13 @@ class MPMCQueue : boost::noncopyable {
         (kFalseSharingRange - 1) / sizeof(detail::SingleElementQueue<T,Atom>)
   };
 
-#define FOLLY_ON_NEXT_CACHE_LINE __attribute__((aligned(kFalseSharingRange)))
+  static_assert(kFalseSharingRange == 64,
+                "FOLLY_ON_NEXT_CACHE_LINE must track kFalseSharingRange");
+
+// This literal "64' should be kFalseSharingRange,
+// but gcc-4.8.0 and 4.8.1 reject it.
+// FIXME: s/64/kFalseSharingRange/ if that ever changes.
+#define FOLLY_ON_NEXT_CACHE_LINE __attribute__((aligned(64)))
 
   /// The maximum number of items in the queue at once
   size_t capacity_ FOLLY_ON_NEXT_CACHE_LINE;
