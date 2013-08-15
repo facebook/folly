@@ -84,6 +84,14 @@ void generateRandomData() {
   }
 }
 
+TEST(CompressionTestNeedsUncompressedLength, Simple) {
+  EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
+  EXPECT_TRUE(getCodec(CodecType::LZ4)->needsUncompressedLength());
+  EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
+  EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
+  EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
+}
+
 class CompressionTest : public testing::TestWithParam<
     std::tr1::tuple<int, CodecType>> {
   protected:
@@ -123,7 +131,8 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(CodecType::NO_COMPRESSION,
                         CodecType::LZ4,
                         CodecType::SNAPPY,
-                        CodecType::ZLIB)));
+                        CodecType::ZLIB,
+                        CodecType::LZ4_VARINT_SIZE)));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:

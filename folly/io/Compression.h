@@ -31,30 +31,42 @@ namespace folly { namespace io {
 
 enum class CodecType {
   /**
+   * This codec type is not defined; getCodec() will throw an exception
+   * if used. Useful if deriving your own classes from Codec without
+   * going through the getCodec() interface.
+   */
+  USER_DEFINED = 0,
+
+  /**
    * Use no compression.
    * Levels supported: 0
    */
-  NO_COMPRESSION = 0,
+  NO_COMPRESSION = 1,
 
   /**
    * Use LZ4 compression.
    * Levels supported: 1 = fast, 2 = best; default = 1
    */
-  LZ4 = 1,
+  LZ4 = 2,
 
   /**
    * Use Snappy compression.
    * Levels supported: 1
    */
-  SNAPPY = 2,
+  SNAPPY = 3,
 
   /**
    * Use zlib compression.
    * Levels supported: 0 = no compression, 1 = fast, ..., 9 = best; default = 6
    */
-  ZLIB = 3,
+  ZLIB = 4,
 
-  NUM_CODEC_TYPES = 4,
+  /**
+   * Use LZ4 compression, prefixed with size (as Varint).
+   */
+  LZ4_VARINT_SIZE = 5,
+
+  NUM_CODEC_TYPES = 6,
 };
 
 class Codec {
@@ -71,7 +83,7 @@ class Codec {
   /**
    * Return the codec's type.
    */
-  CodecType type() const;
+  CodecType type() const { return type_; }
 
   /**
    * Does this codec need the exact uncompressed length on decompression?
@@ -106,15 +118,19 @@ class Codec {
       const IOBuf* data,
       uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH);
 
+ protected:
+  explicit Codec(CodecType type);
+
  private:
   // default: no limits (save for special value UNKNOWN_UNCOMPRESSED_LENGTH)
   virtual uint64_t doMaxUncompressedLength() const;
   // default: doesn't need uncompressed length
   virtual bool doNeedsUncompressedLength() const;
-  virtual CodecType doType() const = 0;
   virtual std::unique_ptr<IOBuf> doCompress(const folly::IOBuf* data) = 0;
   virtual std::unique_ptr<IOBuf> doUncompress(const folly::IOBuf* data,
                                               uint64_t uncompressedLength) = 0;
+
+  CodecType type_;
 };
 
 constexpr int COMPRESSION_LEVEL_FASTEST = -1;
@@ -132,6 +148,10 @@ constexpr int COMPRESSION_LEVEL_BEST = -3;
  *   FASTEST and BEST)
  * COMPRESSION_LEVEL_BEST is the best compression (uses most CPU / memory,
  *   best compression)
+ *
+ * When decompressing, the compression level is ignored. All codecs will
+ * decompress all data compressed with the a codec of the same type, regardless
+ * of compression level.
  */
 std::unique_ptr<Codec> getCodec(CodecType type,
                                 int level = COMPRESSION_LEVEL_DEFAULT);
