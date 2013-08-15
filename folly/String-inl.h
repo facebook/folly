@@ -300,7 +300,7 @@ template<> struct OutputConverter<StringPiece> {
 template<class OutStringT, class DelimT, class OutputIterator>
 void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
     bool ignoreEmpty) {
-  assert(sp.start() != nullptr);
+  assert(sp.empty() || sp.start() != nullptr);
 
   const char* s = sp.start();
   const size_t strSize = sp.size();
