@@ -129,7 +129,7 @@ Sample usage:
 #include <thread>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <glog/logging.h>
 #include "folly/ConcurrentSkipList-inl.h"
@@ -166,8 +166,8 @@ class ConcurrentSkipList {
   }
 
   // create a shared_ptr skiplist object with initial head height.
-  static boost::shared_ptr<SkipListType> createInstance(int height=1) {
-    return boost::shared_ptr<SkipListType>(new SkipListType(height));
+  static std::shared_ptr<SkipListType> createInstance(int height=1) {
+    return std::shared_ptr<SkipListType>(new SkipListType(height));
   }
 
   // create a unique_ptr skiplist object with initial head height.
@@ -593,7 +593,7 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Accessor {
   typedef typename SkipListType::const_iterator const_iterator;
   typedef typename SkipListType::Skipper Skipper;
 
-  explicit Accessor(boost::shared_ptr<ConcurrentSkipList> skip_list)
+  explicit Accessor(std::shared_ptr<ConcurrentSkipList> skip_list)
     : slHolder_(std::move(skip_list))
   {
     sl_ = slHolder_.get();
@@ -704,7 +704,7 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Accessor {
 
  private:
   SkipListType *sl_;
-  boost::shared_ptr<SkipListType> slHolder_;
+  std::shared_ptr<SkipListType> slHolder_;
 };
 
 // implements forward iterator concept.
@@ -756,7 +756,7 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Skipper {
   typedef T* pointer;
   typedef ptrdiff_t difference_type;
 
-  Skipper(const boost::shared_ptr<SkipListType>& skipList) :
+  Skipper(const std::shared_ptr<SkipListType>& skipList) :
     accessor_(skipList) {
     init();
   }

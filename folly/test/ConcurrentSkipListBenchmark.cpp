@@ -20,8 +20,6 @@
 #include <set>
 #include <thread>
 
-#include <boost/shared_ptr.hpp>
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "folly/Benchmark.h"
@@ -468,12 +466,12 @@ class ConcurrentAccessData {
   std::vector<ValueType> deleteValues_;
 };
 
-static std::map<int, boost::shared_ptr<ConcurrentAccessData> > g_data;
+static std::map<int, std::shared_ptr<ConcurrentAccessData> > g_data;
 
 static ConcurrentAccessData *mayInitTestData(int size) {
   auto it = g_data.find(size);
   if (it == g_data.end()) {
-    auto ptr = boost::shared_ptr<ConcurrentAccessData>(
+    auto ptr = std::shared_ptr<ConcurrentAccessData>(
         new ConcurrentAccessData(size));
     g_data[size] = ptr;
     return ptr.get();

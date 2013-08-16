@@ -218,7 +218,7 @@ static std::string makeRandomeString(int len) {
 
 TEST(ConcurrentSkipList, TestStringType) {
   typedef folly::ConcurrentSkipList<std::string> SkipListT;
-  boost::shared_ptr<SkipListT> skip = SkipListT::createInstance();
+  std::shared_ptr<SkipListT> skip = SkipListT::createInstance();
   SkipListT::Accessor accessor(skip);
   {
     for (int i = 0; i < 100000; i++) {
