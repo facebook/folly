@@ -16,12 +16,12 @@
 
 #include "folly/File.h"
 
-#include <sys/file.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "folly/Format.h"
 #include "folly/Exception.h"
+#include "folly/FileUtil.h"
+#include "folly/Format.h"
 #include "folly/ScopeGuard.h"
 
 #include <system_error>
@@ -112,11 +112,11 @@ void File::lock_shared() { doLock(LOCK_SH); }
 bool File::try_lock_shared() { return doTryLock(LOCK_SH); }
 
 void File::doLock(int op) {
-  checkUnixError(flock(fd_, op), "flock() failed (lock)");
+  checkUnixError(flockNoInt(fd_, op), "flock() failed (lock)");
 }
 
 bool File::doTryLock(int op) {
-  int r = flock(fd_, op | LOCK_NB);
+  int r = flockNoInt(fd_, op | LOCK_NB);
   // flock returns EWOULDBLOCK if already locked
   if (r == -1 && errno == EWOULDBLOCK) return false;
   checkUnixError(r, "flock() failed (try_lock)");
@@ -124,7 +124,7 @@ bool File::doTryLock(int op) {
 }
 
 void File::unlock() {
-  checkUnixError(flock(fd_, LOCK_UN), "flock() failed (unlock)");
+  checkUnixError(flockNoInt(fd_, LOCK_UN), "flock() failed (unlock)");
 }
 void File::unlock_shared() { unlock(); }
 

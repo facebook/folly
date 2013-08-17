@@ -39,6 +39,7 @@ int fsyncNoInt(int fd);
 int fdatasyncNoInt(int fd);
 int ftruncateNoInt(int fd, off_t len);
 int truncateNoInt(const char* path, off_t len);
+int flockNoInt(int fd, int operation);
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);

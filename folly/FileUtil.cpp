@@ -20,6 +20,7 @@
 #ifdef __APPLE__
 #include <fcntl.h>
 #endif
+#include <sys/file.h>
 
 #include "folly/detail/FileUtilDetail.h"
 
@@ -68,6 +69,10 @@ int ftruncateNoInt(int fd, off_t len) {
 
 int truncateNoInt(const char* path, off_t len) {
   return wrapNoInt(truncate, path, len);
+}
+
+int flockNoInt(int fd, int operation) {
+  return wrapNoInt(flock, fd, operation);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {
