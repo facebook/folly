@@ -54,9 +54,11 @@ ProcessReturnCode::State ProcessReturnCode::state() const {
       "Invalid ProcessReturnCode: ", rawStatus_));
 }
 
-void ProcessReturnCode::enforce(State s) const {
-  if (state() != s) {
-    throw std::logic_error(to<std::string>("Invalid state ", s));
+void ProcessReturnCode::enforce(State expected) const {
+  State s = state();
+  if (s != expected) {
+    throw std::logic_error(to<std::string>("Invalid state ", s,
+                                           " expected ", expected));
   }
 }
 
