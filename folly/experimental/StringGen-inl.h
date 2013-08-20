@@ -222,6 +222,12 @@ class UnsplitBuffer : public Operator<UnsplitBuffer<Delimiter, OutputBuffer>> {
 template<class Target, class=void>
 inline Target passthrough(Target target) { return target; }
 
+#pragma GCC diagnostic push
+#ifdef __clang__
+// Clang isn't happy with eatField() hack below.
+#pragma GCC diagnostic ignored "-Wreturn-stack-address"
+#endif  // __clang__
+
 /**
  * ParseToTuple - For splitting a record and immediatlely converting it to a
  * target tuple type. Primary used through the 'eachToTuple' helper, like so:
@@ -256,6 +262,8 @@ class SplitTo {
     return TargetContainer(To<Targets>()(eatField())...);
   }
 };
+
+#pragma GCC diagnostic pop
 
 }  // namespace detail
 
