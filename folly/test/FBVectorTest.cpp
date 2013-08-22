@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 #include <list>
+#include <map>
 #include <memory>
 #include <boost/random.hpp>
 
@@ -254,6 +255,23 @@ TEST(FBVector, reserve_consistency) {
     EXPECT_EQ(fb1.size(), 0);
     fb1.shrink_to_fit();
   }
+}
+
+TEST(FBVector, vector_of_maps) {
+  fbvector<std::map<std::string, std::string>> v;
+
+  v.push_back(std::map<std::string, std::string>());
+  v.push_back(std::map<std::string, std::string>());
+
+  EXPECT_EQ(2, v.size());
+
+  v[1]["hello"] = "world";
+  EXPECT_EQ(0, v[0].size());
+  EXPECT_EQ(1, v[1].size());
+
+  v[0]["foo"] = "bar";
+  EXPECT_EQ(1, v[0].size());
+  EXPECT_EQ(1, v[1].size());
 }
 
 int main(int argc, char** argv) {

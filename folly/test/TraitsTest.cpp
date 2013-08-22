@@ -50,7 +50,6 @@ TEST(Traits, containers) {
   EXPECT_TRUE  (IsRelocatable<vector<F1>>::value);
   EXPECT_FALSE((IsRelocatable<pair<F1, F1>>::value));
   EXPECT_TRUE ((IsRelocatable<pair<T1, T2>>::value));
-  EXPECT_TRUE  (IsRelocatable<set<F1>>::value);
 }
 
 TEST(Traits, original) {
