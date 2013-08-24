@@ -27,6 +27,7 @@
 #include <type_traits>
 #include <utility>
 #include <boost/noncopyable.hpp>
+#include <boost/type_traits.hpp>
 
 namespace folly {
 
