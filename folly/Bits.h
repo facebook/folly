@@ -385,11 +385,14 @@ class BitIterator
    * Construct a BitIterator that points at a given bit offset (default 0)
    * in iter.
    */
+  #pragma GCC diagnostic push // bitOffset shadows a member
+  #pragma GCC diagnostic ignored "-Wshadow"
   explicit BitIterator(const BaseIter& iter, size_t bitOffset=0)
     : bititerator_detail::BitIteratorBase<BaseIter>::type(iter),
       bitOffset_(bitOffset) {
     assert(bitOffset_ < bitsPerBlock());
   }
+  #pragma GCC diagnostic pop
 
   size_t bitOffset() const {
     return bitOffset_;
@@ -553,4 +556,3 @@ inline void storeUnaligned(void* p, T value) {
 }  // namespace folly
 
 #endif /* FOLLY_BITS_H_ */
-

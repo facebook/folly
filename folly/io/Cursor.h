@@ -192,20 +192,20 @@ class CursorBase {
     return std::make_pair(data(), available);
   }
 
-  void pull(void* buf, size_t length) {
-    if (UNLIKELY(pullAtMost(buf, length) != length)) {
+  void pull(void* buf, size_t len) {
+    if (UNLIKELY(pullAtMost(buf, len) != len)) {
       throw std::out_of_range("underflow");
     }
   }
 
-  void clone(std::unique_ptr<folly::IOBuf>& buf, size_t length) {
-    if (UNLIKELY(cloneAtMost(buf, length) != length)) {
+  void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
+    if (UNLIKELY(cloneAtMost(buf, len) != len)) {
       throw std::out_of_range("underflow");
     }
   }
 
-  void skip(size_t length) {
-    if (UNLIKELY(skipAtMost(length) != length)) {
+  void skip(size_t len) {
+    if (UNLIKELY(skipAtMost(len) != len)) {
       throw std::out_of_range("underflow");
     }
   }

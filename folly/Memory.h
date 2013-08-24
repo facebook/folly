@@ -91,7 +91,7 @@ template <class Alloc> class StlAllocator<Alloc, void> {
   typedef const void* const_pointer;
 
   StlAllocator() : alloc_(nullptr) { }
-  explicit StlAllocator(Alloc* alloc) : alloc_(alloc) { }
+  explicit StlAllocator(Alloc* a) : alloc_(a) { }
 
   Alloc* alloc() const {
     return alloc_;
@@ -126,7 +126,7 @@ class StlAllocator {
   typedef size_t size_type;
 
   StlAllocator() : alloc_(nullptr) { }
-  explicit StlAllocator(Alloc* alloc) : alloc_(alloc) { }
+  explicit StlAllocator(Alloc* a) : alloc_(a) { }
 
   template <class U> StlAllocator(const StlAllocator<Alloc, U>& other)
     : alloc_(other.alloc()) { }
