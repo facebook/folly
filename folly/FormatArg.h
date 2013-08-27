@@ -72,7 +72,10 @@ struct FormatArg {
   }
 
   template <typename... Args>
+  std::string errorStr(Args&&... args) const;
+  template <typename... Args>
   void error(Args&&... args) const FOLLY_NORETURN;
+
   /**
    * Full argument string, as passed in to the constructor.
    */
@@ -186,15 +189,20 @@ struct FormatArg {
 };
 
 template <typename... Args>
+inline std::string FormatArg::errorStr(Args&&... args) const {
+  return to<std::string>(
+    "invalid format argument {", fullArgString, "}: ",
+    std::forward<Args>(args)...);
+}
+
+template <typename... Args>
 inline void FormatArg::error(Args&&... args) const {
-  throw std::invalid_argument(to<std::string>(
-      "folly::format: invalid format argument {", fullArgString, "}: ",
-      std::forward<Args>(args)...));
+  throw std::invalid_argument(errorStr(std::forward<Args>(args)...));
 }
 
 template <bool emptyOk>
 inline StringPiece FormatArg::splitKey() {
-  enforce(nextKeyMode_ != NextKeyMode::INT, "integer key expected");
+  CHECK(nextKeyMode_ != NextKeyMode::INT) << errorStr("integer key expected");
   return doSplitKey<emptyOk>();
 }
 
@@ -202,16 +210,12 @@ template <bool emptyOk>
 inline StringPiece FormatArg::doSplitKey() {
   if (nextKeyMode_ == NextKeyMode::STRING) {
     nextKeyMode_ = NextKeyMode::NONE;
-    if (!emptyOk) {  // static
-      enforce(!nextKey_.empty(), "non-empty key required");
-    }
+    CHECK(emptyOk || !nextKey_.empty()) << errorStr("non-empty key required");
     return nextKey_;
   }
 
   if (key_.empty()) {
-    if (!emptyOk) {  // static
-      error("non-empty key required");
-    }
+    CHECK(emptyOk) << errorStr("non-empty key required");
     return StringPiece();
   }
 
@@ -221,7 +225,7 @@ inline StringPiece FormatArg::doSplitKey() {
   if (e[-1] == ']') {
     --e;
     p = static_cast<const char*>(memchr(b, '[', e - b));
-    enforce(p, "unmatched ']'");
+    CHECK(p) << errorStr("unmatched ']'");
   } else {
     p = static_cast<const char*>(memchr(b, '.', e - b));
   }
@@ -231,9 +235,8 @@ inline StringPiece FormatArg::doSplitKey() {
     p = e;
     key_.clear();
   }
-  if (!emptyOk) {  // static
-    enforce(b != p, "non-empty key required");
-  }
+  CHECK(emptyOk || b != p) << errorStr("non-empty key required");
+
   return StringPiece(b, p);
 }
 
@@ -245,7 +248,7 @@ inline int FormatArg::splitIntKey() {
   try {
     return to<int>(doSplitKey<true>());
   } catch (const std::out_of_range& e) {
-    error("integer key required");
+    LOG(FATAL) << errorStr("integer key required");
     return 0;  // unreached
   }
 }

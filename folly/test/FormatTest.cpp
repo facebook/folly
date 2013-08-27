@@ -275,26 +275,22 @@ TEST(Format, Custom) {
   EXPECT_NE("", fstr("{}", &kv));
 }
 
-namespace {
-
-struct Opaque {
-  int k;
-};
-
-} // namespace
-
-TEST(Format, Unformatted) {
-  Opaque o;
-  EXPECT_NE("", fstr("{}", &o));
-  EXPECT_THROW(fstr("{0[0]}", &o), std::invalid_argument);
-}
-
 TEST(Format, Nested) {
   EXPECT_EQ("1 2 3 4", fstr("{} {} {}", 1, 2, format("{} {}", 3, 4)));
   //
   // not copyable, must hold temporary in scope instead.
   auto&& saved = format("{} {}", 3, 4);
   EXPECT_EQ("1 2 3 4", fstr("{} {} {}", 1, 2, saved));
+}
+
+TEST(Format, OutOfBounds) {
+  std::vector<int> ints{1, 2, 3, 4, 5};
+  EXPECT_EQ("1 3 5", fstr("{0[0]} {0[2]} {0[4]}", ints));
+  EXPECT_THROW(fstr("{[5]}", ints), std::out_of_range);
+
+  std::map<std::string, int> map{{"hello", 0}, {"world", 1}};
+  EXPECT_EQ("hello = 0", fstr("hello = {[hello]}", map));
+  EXPECT_THROW(fstr("{[nope]}", map), std::out_of_range);
 }
 
 int main(int argc, char *argv[]) {

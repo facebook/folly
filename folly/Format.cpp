@@ -70,7 +70,7 @@ void FormatArg::initSlow() {
     }
 
     if (*p == '0') {
-      enforce(align == Align::DEFAULT, "alignment specified twice");
+      CHECK(align == Align::DEFAULT) << errorStr("alignment specified twice");
       fill = '0';
       align = Align::PAD_AFTER_SIGN;
       if (++p == end) return;
@@ -105,31 +105,31 @@ void FormatArg::initSlow() {
     if (++p == end) return;
   }
 
-  error("extra characters in format string");
+  LOG(FATAL) << "extra characters in format string";
 }
 
 void FormatArg::validate(Type type) const {
-  enforce(keyEmpty(), "index not allowed");
+  CHECK(keyEmpty()) << "index not allowed";
   switch (type) {
   case Type::INTEGER:
-    enforce(precision == kDefaultPrecision,
-            "precision not allowed on integers");
+    CHECK(precision == kDefaultPrecision)
+      << errorStr("precision not allowed on integers");
     break;
   case Type::FLOAT:
-    enforce(!basePrefix,
-            "base prefix ('#') specifier only allowed on integers");
-    enforce(!thousandsSeparator,
-            "thousands separator (',') only allowed on integers");
+    CHECK(!basePrefix)
+      << errorStr("base prefix ('#') specifier only allowed on integers");
+    CHECK(!thousandsSeparator)
+      << errorStr("thousands separator (',') only allowed on integers");
     break;
   case Type::OTHER:
-    enforce(align != Align::PAD_AFTER_SIGN,
-            "'='alignment only allowed on numbers");
-    enforce(sign == Sign::DEFAULT,
-            "sign specifier only allowed on numbers");
-    enforce(!basePrefix,
-            "base prefix ('#') specifier only allowed on integers");
-    enforce(!thousandsSeparator,
-            "thousands separator (',') only allowed on integers");
+    CHECK(align != Align::PAD_AFTER_SIGN)
+      << errorStr("'='alignment only allowed on numbers");
+    CHECK(sign == Sign::DEFAULT)
+      << errorStr("sign specifier only allowed on numbers");
+    CHECK(!basePrefix)
+      << errorStr("base prefix ('#') specifier only allowed on integers");
+    CHECK(!thousandsSeparator)
+      << errorStr("thousands separator (',') only allowed on integers");
     break;
   }
 }
