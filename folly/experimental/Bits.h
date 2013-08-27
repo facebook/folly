@@ -52,6 +52,7 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   static T loadRMW(const Unaligned<T>& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     return x.value;
 #pragma GCC diagnostic pop
   }
@@ -67,6 +68,7 @@ struct BitsTraits<T, typename std::enable_if<
   static T loadRMW(const T& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     return x;
 #pragma GCC diagnostic pop
   }
@@ -164,6 +166,13 @@ struct Bits {
   }
 };
 
+// gcc 4.8 needs more -Wmaybe-uninitialized tickling, as it propagates the
+// taint upstream from loadRMW
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bit) {
   T& block = p[blockIndex(bit)];
@@ -174,11 +183,6 @@ template <class T, class Traits>
 inline void Bits<T, Traits>::clear(T* p, size_t bit) {
   T& block = p[blockIndex(bit)];
   Traits::store(block, Traits::loadRMW(block) & ~(one << bitOffset(bit)));
-}
-
-template <class T, class Traits>
-inline bool Bits<T, Traits>::test(const T* p, size_t bit) {
-  return Traits::load(p[blockIndex(bit)]) & (one << bitOffset(bit));
 }
 
 template <class T, class Traits>
@@ -199,6 +203,23 @@ inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
 }
 
 template <class T, class Traits>
+inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
+                                      UnderlyingType value) {
+  // Mask out bits and set new value
+  UnderlyingType v = Traits::loadRMW(*p);
+  v &= ~(ones(count) << offset);
+  v |= (value << offset);
+  Traits::store(*p, v);
+}
+
+#pragma GCC diagnostic pop
+
+template <class T, class Traits>
+inline bool Bits<T, Traits>::test(const T* p, size_t bit) {
+  return Traits::load(p[blockIndex(bit)]) & (one << bitOffset(bit));
+}
+
+template <class T, class Traits>
 inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
   -> UnderlyingType {
   assert(count <= sizeof(UnderlyingType) * 8);
@@ -213,16 +234,6 @@ inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
     UnderlyingType nextBlockValue = innerGet(p + idx + 1, 0, countInNextBlock);
     return (nextBlockValue << countInThisBlock) | thisBlockValue;
   }
-}
-
-template <class T, class Traits>
-inline void Bits<T, Traits>::innerSet(T* p, size_t offset, size_t count,
-                                      UnderlyingType value) {
-  // Mask out bits and set new value
-  UnderlyingType v = Traits::loadRMW(*p);
-  v &= ~(ones(count) << offset);
-  v |= (value << offset);
-  Traits::store(*p, v);
 }
 
 template <class T, class Traits>
