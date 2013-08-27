@@ -22,6 +22,7 @@
 #include <limits>
 
 #include "folly/Bits.h"
+#include "folly/Portability.h"
 #include "folly/Range.h"
 
 namespace folly {
@@ -52,7 +53,10 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   static T loadRMW(const Unaligned<T>& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+// make sure we compile without warning on gcc 4.6 with -Wpragmas
+#if __GNUC_PREREQ(4, 7)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     return x.value;
 #pragma GCC diagnostic pop
   }
@@ -68,7 +72,9 @@ struct BitsTraits<T, typename std::enable_if<
   static T loadRMW(const T& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#if __GNUC_PREREQ(4, 7)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
     return x;
 #pragma GCC diagnostic pop
   }
@@ -171,7 +177,9 @@ struct Bits {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#if __GNUC_PREREQ(4, 7)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bit) {
