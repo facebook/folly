@@ -104,9 +104,7 @@ IOBufQueue::markPrepended(uint32_t n) {
   }
   assert(head_);
   head_->prepend(n);
-  if (options_.cacheChainLength) {
-    chainLength_ += n;
-  }
+  chainLength_ += n;
 }
 
 void
@@ -162,9 +160,7 @@ IOBufQueue::append(const void* buf, size_t len) {
     memcpy(last->writableTail(), src, copyLen);
     src += copyLen;
     last->append(copyLen);
-    if (options_.cacheChainLength) {
-      chainLength_ += copyLen;
-    }
+    chainLength_ += copyLen;
     len -= copyLen;
   }
 }
@@ -181,32 +177,14 @@ IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
 }
 
 pair<void*,uint32_t>
-IOBufQueue::preallocate(uint32_t min, uint32_t newAllocationSize,
-                        uint32_t max) {
-  if (head_ != nullptr) {
-    // If there's enough space left over at the end of the queue, use that.
-    IOBuf* last = head_->prev();
-    if (!last->isSharedOne()) {
-      uint32_t avail = last->tailroom();
-      if (avail >= min) {
-        return make_pair(last->writableTail(), std::min(max, avail));
-      }
-    }
-  }
+IOBufQueue::preallocateSlow(uint32_t min, uint32_t newAllocationSize,
+                            uint32_t max) {
   // Allocate a new buffer of the requested max size.
   unique_ptr<IOBuf> newBuf(IOBuf::create(std::max(min, newAllocationSize)));
   appendToChain(head_, std::move(newBuf), false);
   IOBuf* last = head_->prev();
   return make_pair(last->writableTail(),
                    std::min(max, last->tailroom()));
-}
-
-void
-IOBufQueue::postallocate(uint32_t n) {
-  head_->prev()->append(n);
-  if (options_.cacheChainLength) {
-    chainLength_ += n;
-  }
 }
 
 unique_ptr<IOBuf>
@@ -218,9 +196,7 @@ IOBufQueue::split(size_t n) {
           "Attempt to remove more bytes than are present in IOBufQueue");
     } else if (head_->length() <= n) {
       n -= head_->length();
-      if (options_.cacheChainLength) {
-        chainLength_ -= head_->length();
-      }
+      chainLength_ -= head_->length();
       unique_ptr<IOBuf> remainder = head_->pop();
       appendToChain(result, std::move(head_), false);
       head_ = std::move(remainder);
@@ -229,9 +205,7 @@ IOBufQueue::split(size_t n) {
       clone->trimEnd(clone->length() - n);
       appendToChain(result, std::move(clone), false);
       head_->trimStart(n);
-      if (options_.cacheChainLength) {
-        chainLength_ -= n;
-      }
+      chainLength_ -= n;
       break;
     }
   }
@@ -246,15 +220,11 @@ void IOBufQueue::trimStart(size_t amount) {
     }
     if (head_->length() > amount) {
       head_->trimStart(amount);
-      if (options_.cacheChainLength) {
-        chainLength_ -= amount;
-      }
+      chainLength_ -= amount;
       break;
     }
     amount -= head_->length();
-    if (options_.cacheChainLength) {
-      chainLength_ -= head_->length();
-    }
+    chainLength_ -= head_->length();
     head_ = head_->pop();
   }
 }
@@ -267,15 +237,11 @@ void IOBufQueue::trimEnd(size_t amount) {
     }
     if (head_->prev()->length() > amount) {
       head_->prev()->trimEnd(amount);
-      if (options_.cacheChainLength) {
-        chainLength_ -= amount;
-      }
+      chainLength_ -= amount;
       break;
     }
     amount -= head_->prev()->length();
-    if (options_.cacheChainLength) {
-      chainLength_ -= head_->prev()->length();
-    }
+    chainLength_ -= head_->prev()->length();
 
     if (head_->isChained()) {
       head_->prev()->unlink();
@@ -289,9 +255,7 @@ std::unique_ptr<folly::IOBuf> IOBufQueue::pop_front() {
   if (!head_) {
     return nullptr;
   }
-  if (options_.cacheChainLength) {
-    chainLength_ -= head_->length();
-  }
+  chainLength_ -= head_->length();
   std::unique_ptr<folly::IOBuf> retBuf = std::move(head_);
   head_ = retBuf->pop();
   return retBuf;
@@ -306,9 +270,7 @@ void IOBufQueue::clear() {
     buf->clear();
     buf = buf->next();
   } while (buf != head_.get());
-  if (options_.cacheChainLength) {
-    chainLength_ = 0;
-  }
+  chainLength_ = 0;
 }
 
 } // folly

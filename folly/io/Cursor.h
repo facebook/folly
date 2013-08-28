@@ -371,17 +371,20 @@ class Writable {
   typename std::enable_if<std::is_integral<T>::value>::type
   write(T value) {
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
+    Derived* d = static_cast<Derived*>(this);
     push(u8, sizeof(T));
   }
 
   template <class T>
   void writeBE(T value) {
-    write(Endian::big(value));
+    Derived* d = static_cast<Derived*>(this);
+    d->write(Endian::big(value));
   }
 
   template <class T>
   void writeLE(T value) {
-    write(Endian::little(value));
+    Derived* d = static_cast<Derived*>(this);
+    d->write(Endian::little(value));
   }
 
   void push(const uint8_t* buf, size_t len) {
@@ -603,90 +606,62 @@ class QueueAppender : public detail::Writable<QueueAppender> {
    * Create an Appender that writes to a IOBufQueue.  When we allocate
    * space in the queue, we grow no more than growth bytes at once
    * (unless you call ensure() with a bigger value yourself).
-   * Throw if we ever need to allocate more than maxTotalGrowth.
    */
-  QueueAppender(IOBufQueue* queue,
-                uint32_t growth,
-                size_t maxTotalGrowth = std::numeric_limits<size_t>::max()) {
-    reset(queue, growth, maxTotalGrowth);
+  QueueAppender(IOBufQueue* queue, uint32_t growth) {
+    reset(queue, growth);
   }
 
-  void reset(IOBufQueue* queue,
-             uint32_t growth,
-             size_t maxTotalGrowth = std::numeric_limits<size_t>::max()) {
+  void reset(IOBufQueue* queue, uint32_t growth) {
     queue_ = queue;
     growth_ = growth;
-    remainingGrowth_ = maxTotalGrowth;
-    next_ = nullptr;
-    available_ = 0;
   }
 
-  uint8_t* writableData() { return next_; }
-
-  size_t length() const { return available_; }
-
-  void append(size_t n) {
-    assert(n <= available_);
-    assert(n <= remainingGrowth_);
-    queue_->postallocate(n);
-    next_ += n;
-    available_ -= n;
-    remainingGrowth_ -= n;
+  uint8_t* writableData() {
+    return static_cast<uint8_t*>(queue_->writableTail());
   }
+
+  size_t length() const { return queue_->tailroom(); }
+
+  void append(size_t n) { queue_->postallocate(n); }
 
   // Ensure at least n contiguous; can go above growth_, throws if
   // not enough room.
-  void ensure(uint32_t n) {
-    if (UNLIKELY(n > remainingGrowth_)) {
-      throw std::out_of_range("overflow");
-    }
+  void ensure(uint32_t n) { queue_->preallocate(n, growth_); }
 
-    if (LIKELY(length() >= n)) {
-      return;
-    }
-
-    size_t desired = std::min(growth_, remainingGrowth_ - n);
-
-    // Grab some more.
-    auto p = queue_->preallocate(n, desired);
-
-    next_ = static_cast<uint8_t*>(p.first);
-    available_ = p.second;
+  template <class T>
+  typename std::enable_if<std::is_integral<T>::value>::type
+  write(T value) {
+    // We can't fail.
+    auto p = queue_->preallocate(sizeof(T), growth_);
+    storeUnaligned(p.first, value);
+    queue_->postallocate(sizeof(T));
   }
 
-  size_t pushAtMost(const uint8_t* buf, size_t len) {
-    if (UNLIKELY(len > remainingGrowth_)) {
-      len = remainingGrowth_;
-    }
 
+  size_t pushAtMost(const uint8_t* buf, size_t len) {
     size_t remaining = len;
     while (remaining != 0) {
-      ensure(std::min(remaining, growth_));
-      size_t n = std::min(remaining, available_);
-      memcpy(next_, buf, n);
-      buf += n;
-      remaining -= n;
-      append(n);
+      auto p = queue_->preallocate(std::min(remaining, growth_),
+                                   growth_,
+                                   remaining);
+      memcpy(p.first, buf, p.second);
+      queue_->postallocate(p.second);
+      buf += p.second;
+      remaining -= p.second;
     }
 
     return len;
   }
 
-  // insert doesn't count towards maxTotalGrowth
   void insert(std::unique_ptr<folly::IOBuf> buf) {
     if (buf) {
       queue_->append(std::move(buf), true);
-      next_ = nullptr;
-      available_ = 0;
     }
   }
 
  private:
   folly::IOBufQueue* queue_;
   size_t growth_;
-  size_t remainingGrowth_;
-  uint8_t* next_;
-  size_t available_;
 };
 
 }}  // folly::io

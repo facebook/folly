@@ -139,7 +139,15 @@ class IOBufQueue {
    */
   std::pair<void*,uint32_t> preallocate(
     uint32_t min, uint32_t newAllocationSize,
-    uint32_t max = std::numeric_limits<uint32_t>::max());
+    uint32_t max = std::numeric_limits<uint32_t>::max()) {
+    auto buf = tailBuf();
+    if (LIKELY(buf && buf->tailroom() >= min)) {
+      return std::make_pair(buf->writableTail(),
+                            std::min(max, buf->tailroom()));
+    }
+
+    return preallocateSlow(min, newAllocationSize, max);
+  }
 
   /**
    * Tell the queue that the caller has written data into the first n
@@ -151,7 +159,10 @@ class IOBufQueue {
    *       invoke any other non-const methods on this IOBufQueue between
    *       the call to preallocate and the call to postallocate().
    */
-  void postallocate(uint32_t n);
+  void postallocate(uint32_t n) {
+    head_->prev()->append(n);
+    chainLength_ += n;
+  }
 
   /**
    * Obtain a writable block of n contiguous bytes, allocating more space
@@ -161,6 +172,16 @@ class IOBufQueue {
     void* p = preallocate(n, n).first;
     postallocate(n);
     return p;
+  }
+
+  void* writableTail() const {
+    auto buf = tailBuf();
+    return buf ? buf->writableTail() : nullptr;
+  }
+
+  size_t tailroom() const {
+    auto buf = tailBuf();
+    return buf ? buf->tailroom() : 0;
   }
 
   /**
@@ -216,7 +237,7 @@ class IOBufQueue {
    * constructor.
    */
   size_t chainLength() const {
-    if (!options_.cacheChainLength) {
+    if (UNLIKELY(!options_.cacheChainLength)) {
       throw std::invalid_argument("IOBufQueue: chain length not cached");
     }
     return chainLength_;
@@ -245,12 +266,24 @@ class IOBufQueue {
   IOBufQueue& operator=(IOBufQueue&&);
 
  private:
+  IOBuf* tailBuf() const {
+    if (UNLIKELY(!head_)) return nullptr;
+    IOBuf* buf = head_->prev();
+    return LIKELY(!buf->isSharedOne()) ? buf : nullptr;
+  }
+  std::pair<void*,uint32_t> preallocateSlow(
+    uint32_t min, uint32_t newAllocationSize, uint32_t max);
+
   static const size_t kChainLengthNotCached = (size_t)-1;
   /** Not copyable */
   IOBufQueue(const IOBufQueue&) = delete;
   IOBufQueue& operator=(const IOBufQueue&) = delete;
 
   Options options_;
+
+  // NOTE that chainLength_ is still updated even if !options_.cacheChainLength
+  // because doing it unchecked in postallocate() is faster (no (mis)predicted
+  // branch)
   size_t chainLength_;
   /** Everything that has been appended but not yet discarded or moved out */
   std::unique_ptr<folly::IOBuf> head_;

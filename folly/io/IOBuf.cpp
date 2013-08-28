@@ -280,6 +280,9 @@ unique_ptr<IOBuf> IOBuf::clone() const {
 
 unique_ptr<IOBuf> IOBuf::cloneOne() const {
   if (flags_ & kFlagExt) {
+    if (ext_.sharedInfo) {
+      flags_ |= kFlagMaybeShared;
+    }
     unique_ptr<IOBuf> iobuf(new IOBuf(static_cast<ExtBufTypeEnum>(ext_.type),
                                       flags_, ext_.buf, ext_.capacity,
                                       data_, length_,
@@ -480,7 +483,7 @@ void IOBuf::decrementRefcount() {
 
 void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
   size_t newCapacity = (size_t)length_ + minHeadroom + minTailroom;
-  CHECK_LT(newCapacity, UINT32_MAX);
+  DCHECK_LT(newCapacity, UINT32_MAX);
 
   // We'll need to reallocate the buffer.
   // There are a few options.

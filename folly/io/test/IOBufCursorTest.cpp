@@ -330,13 +330,11 @@ TEST(IOBuf, QueueAppender) {
   folly::IOBufQueue queue;
 
   // Allocate 100 bytes at once, but don't grow past 1024
-  QueueAppender app(&queue, 100, 1024);
+  QueueAppender app(&queue, 100);
   size_t n = 1024 / sizeof(uint32_t);
   for (uint32_t i = 0; i < n; ++i) {
     app.writeBE(i);
   }
-
-  EXPECT_THROW({app.writeBE(0);}, std::out_of_range);
 
   // There must be a goodMallocSize between 100 and 1024...
   EXPECT_LT(1, queue.front()->countChainElements());
