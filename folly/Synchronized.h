@@ -48,9 +48,9 @@ template <class T>
 struct HasLockUnlock {
   enum { value = IsOneOf<T,
          std::mutex, std::recursive_mutex,
-         boost::mutex, boost::recursive_mutex, boost::shared_mutex,
+         boost::mutex, boost::recursive_mutex, boost::shared_mutex
 #ifndef __APPLE__ // OSX doesn't have timed mutexes
-         std::timed_mutex, std::recursive_timed_mutex,
+        ,std::timed_mutex, std::recursive_timed_mutex,
          boost::timed_mutex, boost::recursive_timed_mutex
 #endif
          >::value };
