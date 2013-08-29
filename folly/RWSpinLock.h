@@ -106,8 +106,9 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 
 */
 
-#if defined(__GNUC__) && (defined(__i386) || defined(__x86_64__) || \
-    defined(ARCH_K8))
+#if defined(__GNUC__) && !defined(__clang__) && \
+  (defined(__i386) || defined(__x86_64__) || \
+   defined(ARCH_K8))
 #define RW_SPINLOCK_USE_X86_INTRINSIC_
 #include <x86intrin.h>
 #else
