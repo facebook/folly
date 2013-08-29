@@ -372,7 +372,7 @@ class Writable {
   write(T value) {
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
-    push(u8, sizeof(T));
+    d->push(u8, sizeof(T));
   }
 
   template <class T>
