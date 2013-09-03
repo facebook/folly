@@ -84,4 +84,23 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # endif
 #endif
 
+/* Define attribute wrapper for function attribute used to disable
+ * address sanitizer instrumentation */
+#if defined(__clang__)
+# if __has_attribute(__no_address_safety_analysis__)
+#  define FOLLY_DISABLE_ADDRESS_SANITIZER \
+     __attribute__((__no_address_safety_analysis__))
+# elif __has_attribute(__no_sanitize_address__)
+#  define FOLLY_DISABLE_ADDRESS_SANITIZER \
+     __attribute__((__no_sanitize_address__))
+# else
+#  define FOLLY_DISABLE_ADDRESS_SANITIZER
+# endif
+#elif defined (__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)
+# define FOLLY_DISABLE_ADDRESS_SANITIZER \
+    __attribute__((__no_address_safety_analysis__))
+#else
+# define FOLLY_DISABLE_ADDRESS_SANITIZER
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

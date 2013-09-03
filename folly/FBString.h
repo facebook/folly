@@ -112,6 +112,25 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 namespace folly {
 #endif
 
+// Different versions of gcc/clang support different versions of
+// the address sanitizer attribute.
+#if defined(__clang__)
+# if __has_attribute(__no_address_safety_analysis__)
+#  define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+     __attribute__((__no_address_safety_analysis__))
+# elif __has_attribute(__no_sanitize_address__)
+#  define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+     __attribute__((__no_sanitize_address__))
+# else
+#  define FBSTRING_DISABLE_ADDRESS_SANITIZER
+# endif
+#elif defined (__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)
+# define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+    __attribute__((__no_address_safety_analysis__))
+#else
+# define FBSTRING_DISABLE_ADDRESS_SANITIZER
+#endif
+
 namespace fbstring_detail {
 
 template <class InIt, class OutIt>
@@ -347,7 +366,11 @@ public:
     }
   }
 
-  fbstring_core(const Char *const data, const size_t size) {
+  // NOTE(agallagher): The word-aligned copy path copies bytes which are
+  // outside the range of the string, and makes address sanitizer unhappy,
+  // so just disable it on this function.
+  fbstring_core(const Char *const data, const size_t size)
+      FBSTRING_DISABLE_ADDRESS_SANITIZER {
     // Simplest case first: small strings are bitblitted
     if (size <= maxSmallSize) {
       // Layout is: Char* data_, size_t size_, size_t capacity_
@@ -2392,6 +2415,7 @@ struct hash< ::folly::fbstring> {
 
 #endif // _LIBSTDCXX_FBSTRING
 
+#undef FBSTRING_DISABLE_ADDRESS_SANITIZER
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
 
