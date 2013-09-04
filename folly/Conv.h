@@ -861,10 +861,10 @@ to(StringPiece * src) {
     auto t = detail::digits_to<typename std::make_unsigned<Tgt>::type>(b, m);
     if (negative) {
       result = -t;
-      FOLLY_RANGE_CHECK(result <= 0, "Negative overflow");
+      FOLLY_RANGE_CHECK(is_non_positive(result), "Negative overflow");
     } else {
       result = t;
-      FOLLY_RANGE_CHECK(result >= 0, "Overflow");
+      FOLLY_RANGE_CHECK(is_non_negative(result), "Overflow");
     }
   }
   src->advance(m - src->data());

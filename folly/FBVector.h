@@ -1653,7 +1653,6 @@ void fbvector<T, Allocator>::emplace_back_aux(Args&&... args) {
     size_type lower = folly::goodMallocSize(sizeof(T) + size() * sizeof(T));
     size_type upper = byte_sz;
     size_type extra = upper - lower;
-    assert(extra >= 0);
 
     void* p = impl_.b_;
     size_t actual;

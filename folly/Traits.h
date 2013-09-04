@@ -402,6 +402,16 @@ constexpr bool is_negative(T x) {
 template <typename T>
 constexpr bool is_non_positive(T x) { return !x || folly::is_negative(x); }
 
+// same as `x > 0`
+template <typename T>
+constexpr bool is_positive(T x) { return !is_non_positive(x); }
+
+// same as `x >= 0`
+template <typename T>
+constexpr bool is_non_negative(T x) {
+  return !x || is_positive(x);
+}
+
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than(LHS const lhs) {
   return detail::less_than_impl<
