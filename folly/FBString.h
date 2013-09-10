@@ -113,21 +113,26 @@ namespace folly {
 #endif
 
 // Different versions of gcc/clang support different versions of
-// the address sanitizer attribute.
+// the address sanitizer attribute.  Unfortunately, this attribute
+// has issues when inlining is used, so disable that as well.
 #if defined(__clang__)
-# if __has_attribute(__no_address_safety_analysis__)
-#  define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-     __attribute__((__no_address_safety_analysis__))
-# elif __has_attribute(__no_sanitize_address__)
-#  define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-     __attribute__((__no_sanitize_address__))
-# else
-#  define FBSTRING_DISABLE_ADDRESS_SANITIZER
+# if __has_feature(address_sanitizer)
+#  if __has_attribute(__no_address_safety_analysis__)
+#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+      __attribute__((__no_address_safety_analysis__, __noinline__))
+#  elif __has_attribute(__no_sanitize_address__)
+#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+      __attribute__((__no_sanitize_address__, __noinline__))
+#  endif
 # endif
-#elif defined (__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)
+#elif defined (__GNUC__) && \
+      (__GNUC__ == 4) && \
+      (__GNUC_MINOR__ >= 8) && \
+      __SANITIZE_ADDRESS__
 # define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-    __attribute__((__no_address_safety_analysis__))
-#else
+    __attribute__((__no_address_safety_analysis__, __noinline__))
+#endif
+#ifndef FBSTRING_DISABLE_ADDRESS_SANITIZER
 # define FBSTRING_DISABLE_ADDRESS_SANITIZER
 #endif
 
