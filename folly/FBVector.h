@@ -316,7 +316,7 @@ public:
 private:
 
   typedef std::integral_constant<bool,
-      std::has_trivial_copy_constructor<T>::value &&
+      boost::has_trivial_copy_constructor<T>::value &&
       sizeof(T) <= 16 // don't force large structures to be passed by value
     > should_pass_by_value;
   typedef typename std::conditional<
