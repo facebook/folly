@@ -118,4 +118,15 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_DISABLE_ADDRESS_SANITIZER
 #endif
 
+// It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
+// the 'std' namespace; the latter uses inline namepsaces. Wrap this decision
+// up in a macro to make forward-declarations easier.
+#ifdef _LIBCPP_VERSION
+#define FOLLY_NAMESPACE_STD_BEGIN     _LIBCPP_BEGIN_NAMESPACE_STD
+#define FOLLY_NAMESPACE_STD_END       _LIBCPP_END_NAMESPACE_STD
+#else
+#define FOLLY_NAMESPACE_STD_BEGIN     namespace std {
+#define FOLLY_NAMESPACE_STD_END       }
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

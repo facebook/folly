@@ -23,6 +23,8 @@
 #include <limits>
 #include <type_traits>
 
+#include "folly/Portability.h"
+
 #include <bits/c++config.h>
 
 #include <boost/type_traits.hpp>
@@ -223,7 +225,7 @@ template <class T> struct IsZeroInitializable
  * although that is not guaranteed by the standard.
  */
 
-namespace std {
+FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
   struct pair;
@@ -247,7 +249,7 @@ template <class K, class V, class C, class A>
 template <class T>
   class shared_ptr;
 
-}
+FOLLY_NAMESPACE_STD_END
 
 namespace boost {
 
