@@ -132,12 +132,14 @@ struct EliasFanoCompressedList {
 
     // *** Lower bits.
     const size_t lowerSize = (numLowerBits * size + 7) / 8;
-    unsigned char* const lower =
-      static_cast<unsigned char*>(calloc(lowerSize + 7, 1));
-    const ValueType lowerMask = (ValueType(1) << numLowerBits) - 1;
-    for (size_t i = 0; i < size; ++i) {
-      const ValueType lowerBits = list[i] & lowerMask;
-      writeBits56(lower, i * numLowerBits, numLowerBits, lowerBits);
+    unsigned char* lower = nullptr;
+    if (lowerSize > 0) {  // numLowerBits != 0
+      lower = static_cast<unsigned char*>(calloc(lowerSize + 7, 1));
+      const ValueType lowerMask = (ValueType(1) << numLowerBits) - 1;
+      for (size_t i = 0; i < size; ++i) {
+        const ValueType lowerBits = list[i] & lowerMask;
+        writeBits56(lower, i * numLowerBits, numLowerBits, lowerBits);
+      }
     }
 
     // *** Upper bits.
