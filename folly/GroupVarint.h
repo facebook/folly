@@ -509,15 +509,17 @@ class GroupVarintDecoder {
     : rrest_(data.end()),
       p_(data.data()),
       end_(data.end()),
+      limit_(end_),
       pos_(0),
       count_(0),
       remaining_(maxCount) {
   }
 
-  void reset(StringPiece data, size_t maxCount=(size_t)-1) {
+  void reset(StringPiece data, size_t maxCount = (size_t)-1) {
     rrest_ = data.end();
     p_ = data.data();
     end_ = data.end();
+    limit_ = end_;
     pos_ = 0;
     count_ = 0;
     remaining_ = maxCount;
@@ -540,10 +542,11 @@ class GroupVarintDecoder {
       // The best way to ensure this is to ensure that data has at least
       // Base::kMaxSize - 1 bytes readable *after* the end, otherwise we'll copy
       // into a temporary buffer.
-      if (rem < Base::kMaxSize) {
+      if (limit_ - p_ < Base::kMaxSize) {
         memcpy(tmp_, p_, rem);
         p_ = tmp_;
         end_ = p_ + rem;
+        limit_ = tmp_ + sizeof(tmp_);
       }
       pos_ = 0;
       const char* n = Base::decode(p_, buf_);
@@ -591,7 +594,8 @@ class GroupVarintDecoder {
   const char* rrest_;
   const char* p_;
   const char* end_;
-  char tmp_[Base::kMaxSize];
+  const char* limit_;
+  char tmp_[2 * Base::kMaxSize];
   type buf_[Base::kGroupSize];
   size_t pos_;
   size_t count_;
