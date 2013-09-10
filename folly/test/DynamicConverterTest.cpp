@@ -46,6 +46,26 @@ TEST(DynamicConverter, template_metaprogramming) {
   EXPECT_EQ(c1t, true);
   EXPECT_EQ(c2t, true);
   EXPECT_EQ(c3t, true);
+
+
+  bool m1f = is_map<int>::value;
+  bool m2f = is_map<std::set<int>>::value;
+
+  bool m1t = is_map<std::map<int, int>>::value;
+
+  EXPECT_EQ(m1f, false);
+  EXPECT_EQ(m2f, false);
+  EXPECT_EQ(m1t, true);
+
+
+  bool r1f = is_range<int>::value;
+
+  bool r1t = is_range<std::set<int>>::value;
+  bool r2t = is_range<std::vector<int>>::value;
+
+  EXPECT_EQ(r1f, false);
+  EXPECT_EQ(r1t, true);
+  EXPECT_EQ(r2t, true);
 }
 
 TEST(DynamicConverter, arithmetic_types) {
@@ -56,10 +76,6 @@ TEST(DynamicConverter, arithmetic_types) {
   dynamic d2 = 123456789012345;
   auto i2 = convertTo<int64_t>(d2);
   EXPECT_EQ(i2, 123456789012345);
-
-  dynamic d3 = 123456789012345;
-  auto i3 = convertTo<uint8_t>(d3);
-  EXPECT_EQ(i3, 121);
 
   dynamic d4 = 3.141;
   auto i4 = convertTo<float>(d4);
@@ -330,6 +346,19 @@ TEST(DynamicConverter, construct) {
     dynamic d = { { 2, 3, 4 }, { 3, 4, 5 } };
     EXPECT_EQ(d, toDynamic(c));
   }
+}
+
+TEST(DynamicConverter, errors) {
+  const auto int32Over =
+    static_cast<int64_t>(std::numeric_limits<int32_t>().max()) + 1;
+  const auto floatOver =
+    static_cast<double>(std::numeric_limits<float>().max()) * 2;
+
+  dynamic d1 = int32Over;
+  EXPECT_THROW(convertTo<int32_t>(d1), std::range_error);
+
+  dynamic d2 = floatOver;
+  EXPECT_THROW(convertTo<float>(d2), std::range_error);
 }
 
 int main(int argc, char ** argv) {

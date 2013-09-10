@@ -81,7 +81,7 @@ template <typename T> struct is_range
       std::false_type
     >::type {};
 
-template <typename T> struct is_associative_container
+template <typename T> struct is_map
   : std::integral_constant<
       bool,
       is_range<T>::value && has_mapped_type<T>::value
@@ -178,12 +178,13 @@ conversionIterator(const It& it) {
 ///////////////////////////////////////////////////////////////////////////////
 // DynamicConverter specializations
 
-template <typename T, typename Enable = void> struct DynamicConverter;
-
 /**
  * Each specialization of DynamicConverter has the function
- *     'static T convert(const dynamic& d);'
+ *     'static T convert(const dynamic&);'
  */
+
+// default - intentionally unimplemented
+template <typename T, typename Enable = void> struct DynamicConverter;
 
 // boolean
 template <>
@@ -199,7 +200,7 @@ struct DynamicConverter<T,
     typename std::enable_if<std::is_integral<T>::value &&
                             !std::is_same<T, bool>::value>::type> {
   static T convert(const dynamic& d) {
-    return static_cast<T>(d.asInt());
+    return folly::to<T>(d.asInt());
   }
 };
 
@@ -208,7 +209,7 @@ template <typename T>
 struct DynamicConverter<T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
   static T convert(const dynamic& d) {
-    return static_cast<T>(d.asDouble());
+    return folly::to<T>(d.asDouble());
   }
 };
 
@@ -261,9 +262,17 @@ struct DynamicConverter<C,
       throw TypeError("object or array", d.type());
     }
   }
-
 };
 
+///////////////////////////////////////////////////////////////////////////////
+// DynamicConstructor specializations
+
+/**
+ * Each specialization of DynamicConstructor has the function
+ *     'static dynamic construct(const C&);'
+ */
+
+// default
 template <typename C, typename Enable = void>
 struct DynamicConstructor {
   static dynamic construct(const C& x) {
@@ -271,10 +280,11 @@ struct DynamicConstructor {
   }
 };
 
+// maps
 template<typename C>
 struct DynamicConstructor<C,
     typename std::enable_if<
-      dynamicconverter_detail::is_associative_container<C>::value>::type> {
+      dynamicconverter_detail::is_map<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::object;
     for (auto& pair : x) {
@@ -284,10 +294,11 @@ struct DynamicConstructor<C,
   }
 };
 
+// other ranges
 template<typename C>
 struct DynamicConstructor<C,
     typename std::enable_if<
-      !dynamicconverter_detail::is_associative_container<C>::value &&
+      !dynamicconverter_detail::is_map<C>::value &&
       !std::is_constructible<StringPiece, const C&>::value &&
       dynamicconverter_detail::is_range<C>::value>::type> {
   static dynamic construct(const C& x) {
@@ -299,6 +310,7 @@ struct DynamicConstructor<C,
   }
 };
 
+// pair
 template<typename A, typename B>
 struct DynamicConstructor<std::pair<A, B>, void> {
   static dynamic construct(const std::pair<A, B>& x) {
@@ -310,7 +322,7 @@ struct DynamicConstructor<std::pair<A, B>, void> {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// convertTo implementation
+// implementation
 
 template <typename T>
 T convertTo(const dynamic& d) {
