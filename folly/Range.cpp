@@ -77,7 +77,8 @@ inline size_t nextAlignedIndex(const char* arr) {
 // build sse4.2-optimized version even if -msse4.2 is not passed to GCC
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
                                      const StringPiece& needles)
-  __attribute__ ((__target__("sse4.2"), noinline));
+  __attribute__ ((__target__("sse4.2"), noinline))
+  FOLLY_DISABLE_ADDRESS_SANITIZER;
 
 // helper method for case where needles.size() <= 16
 size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
