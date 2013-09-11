@@ -222,6 +222,17 @@ TEST(Dynamic, Conversions) {
   EXPECT_EQ(12.0, num.asDouble());
 }
 
+TEST(Dynamic, StringPtrs) {
+  dynamic str = "12.0";
+  dynamic num = 12.0;
+
+  EXPECT_EQ(0, strcmp(str.c_str(), "12.0"));
+  EXPECT_EQ(0, strncmp(str.data(), "12.0", str.asString().length()));
+
+  EXPECT_ANY_THROW(num.c_str());
+  EXPECT_ANY_THROW(num.data());
+}
+
 TEST(Dynamic, FormattedIO) {
   std::ostringstream out;
   dynamic doubl = 123.33;

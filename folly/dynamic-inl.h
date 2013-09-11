@@ -374,6 +374,9 @@ inline double   dynamic::asDouble() const { return asImpl<double>(); }
 inline int64_t  dynamic::asInt()    const { return asImpl<int64_t>(); }
 inline bool     dynamic::asBool()   const { return asImpl<bool>(); }
 
+inline const char* dynamic::data()  const { return get<fbstring>().data();  }
+inline const char* dynamic::c_str() const { return get<fbstring>().c_str(); }
+
 template<class T>
 struct dynamic::CompareOp {
   static bool comp(T const& a, T const& b) { return a < b; }

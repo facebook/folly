@@ -273,6 +273,15 @@ public:
   bool     asBool() const;
 
   /*
+   * It is occasionally useful to access a string's internal pointer
+   * directly, without the type conversion of `asString()`.
+   *
+   * These will throw a TypeError if the dynamic is not a string.
+   */
+  const char* data()  const;
+  const char* c_str() const;
+
+  /*
    * Returns: true if this dynamic is null, an empty array, an empty
    * object, or an empty string.
    */
