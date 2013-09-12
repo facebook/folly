@@ -21,6 +21,7 @@
 #include <cerrno>
 #include <stdexcept>
 #include <string>
+#include <fstream>
 
 #include <boost/intrusive/parent_from_member.hpp>
 #include <glog/logging.h>
@@ -139,6 +140,22 @@ void AsyncIO::initializeContext() {
     if (!ctxSet_.load(std::memory_order_relaxed)) {
       int rc = io_queue_init(capacity_, &ctx_);
       // returns negative errno
+      if (rc == -EAGAIN) {
+        long aio_nr, aio_max;
+        std::unique_ptr<FILE, int(*)(FILE*)>
+          fp(fopen("/proc/sys/fs/aio-nr", "r"), fclose);
+        PCHECK(fp);
+        CHECK_EQ(fscanf(fp.get(), "%ld", &aio_nr), 1);
+
+        std::unique_ptr<FILE, int(*)(FILE*)>
+          aio_max_fp(fopen("/proc/sys/fs/aio-max-nr", "r"), fclose);
+        PCHECK(aio_max_fp);
+        CHECK_EQ(fscanf(aio_max_fp.get(), "%ld", &aio_max), 1);
+
+        LOG(ERROR) << "No resources for requested capacity of " << capacity_;
+        LOG(ERROR) << "aio_nr " << aio_nr << ", aio_max_nr " << aio_max;
+      }
+
       checkKernelError(rc, "AsyncIO: io_queue_init failed");
       DCHECK(ctx_);
       ctxSet_.store(true, std::memory_order_release);
