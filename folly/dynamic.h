@@ -264,7 +264,7 @@ public:
    * requested type.
    *
    * Note you can only use this to access integral types or strings,
-   * since arrays and objects are generally best delt with as a
+   * since arrays and objects are generally best dealt with as a
    * dynamic.
    */
   fbstring asString() const;
