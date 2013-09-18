@@ -254,11 +254,6 @@ TEST(Json, UTF8Retention) {
   folly::fbstring output = folly::parseJson(jsonInput).asString();
   folly::fbstring jsonOutput = folly::toJson(output);
 
-  LOG(INFO) << "input: " << input
-            <<" => json: " << jsonInput;
-  LOG(INFO) << "output: " << output
-            <<" => json: " << jsonOutput;
-
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
 
@@ -280,11 +275,6 @@ TEST(Json, UTF8EncodeNonAsciiRetention) {
   folly::fbstring jsonInput = folly::json::serialize(input, opts);
   folly::fbstring output = folly::parseJson(jsonInput).asString();
   folly::fbstring jsonOutput = folly::json::serialize(output, opts);
-
-  LOG(INFO) << "input: " << input
-            <<" => json: " << jsonInput;
-  LOG(INFO) << "output: " << output
-            <<" => json: " << jsonOutput;
 
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
