@@ -35,11 +35,14 @@ namespace folly {
  */
 int openNoInt(const char* name, int flags, mode_t mode=0644);
 int closeNoInt(int fd);
+int dupNoInt(int fd);
+int dup2NoInt(int oldfd, int newfd);
 int fsyncNoInt(int fd);
 int fdatasyncNoInt(int fd);
 int ftruncateNoInt(int fd, off_t len);
 int truncateNoInt(const char* path, off_t len);
 int flockNoInt(int fd, int operation);
+int shutdownNoInt(int fd, int how);
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);

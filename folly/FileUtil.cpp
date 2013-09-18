@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #endif
 #include <sys/file.h>
+#include <sys/socket.h>
 
 #include "folly/detail/FileUtilDetail.h"
 
@@ -53,6 +54,14 @@ int fsyncNoInt(int fd) {
   return wrapNoInt(fsync, fd);
 }
 
+int dupNoInt(int fd) {
+  return wrapNoInt(dup, fd);
+}
+
+int dup2NoInt(int oldfd, int newfd) {
+  return wrapNoInt(dup2, oldfd, newfd);
+}
+
 int fdatasyncNoInt(int fd) {
 #if defined(__APPLE__)
   return wrapNoInt(fcntl, fd, F_FULLFSYNC);
@@ -73,6 +82,10 @@ int truncateNoInt(const char* path, off_t len) {
 
 int flockNoInt(int fd, int operation) {
   return wrapNoInt(flock, fd, operation);
+}
+
+int shutdownNoInt(int fd, int how) {
+  return wrapNoInt(shutdown, fd, how);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {
