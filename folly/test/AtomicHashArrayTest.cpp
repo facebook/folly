@@ -14,13 +14,75 @@
  * limitations under the License.
  */
 
+#include <sys/mman.h>
+#include <cstddef>
+#include <stdexcept>
+
 #include "folly/AtomicHashArray.h"
 #include "folly/Hash.h"
 #include "folly/Conv.h"
+#include "folly/Memory.h"
 #include <gtest/gtest.h>
 
 using namespace std;
 using namespace folly;
+
+template <class T>
+class MmapAllocator {
+ public:
+  typedef T value_type;
+  typedef T* pointer;
+  typedef const T* const_pointer;
+  typedef T& reference;
+  typedef const T& const_reference;
+
+  typedef ptrdiff_t difference_type;
+  typedef size_t size_type;
+
+  T* address(T& x) const {
+    return std::addressof(x);
+  }
+
+  const T* address(const T& x) const {
+    return std::addressof(x);
+  }
+
+  size_t max_size() const {
+    return std::numeric_limits<size_t>::max();
+  }
+
+  template <class U> struct rebind {
+    typedef MmapAllocator<U> other;
+  };
+
+  bool operator!=(const MmapAllocator<T>& other) const {
+    return !(*this == other);
+  }
+
+  bool operator==(const MmapAllocator<T>& other) const {
+    return true;
+  }
+
+  template <class... Args>
+  void construct(T* p, Args&&... args) {
+    new (p) T(std::forward<Args>(args)...);
+  }
+
+  void destroy(T* p) {
+    p->~T();
+  }
+
+  T *allocate(size_t n) {
+    void *p = mmap(nullptr, n * sizeof(T), PROT_READ | PROT_WRITE,
+        MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (!p) throw std::bad_alloc();
+    return (T *)p;
+  }
+
+  void deallocate(T *p, size_t n) {
+    munmap(p, n * sizeof(T));
+  }
+};
 
 template<class KeyT, class ValueT>
 pair<KeyT,ValueT> createEntry(int i) {
@@ -28,9 +90,10 @@ pair<KeyT,ValueT> createEntry(int i) {
                            to<ValueT>(i + 3));
 }
 
-template<class KeyT, class ValueT>
+template<class KeyT, class ValueT, class Allocator = std::allocator<char>>
 void testMap() {
-  typedef AtomicHashArray<KeyT, ValueT>  MyArr;
+  typedef AtomicHashArray<KeyT, ValueT, std::hash<KeyT>,
+                          std::equal_to<KeyT>, Allocator> MyArr;
   auto arr = MyArr::create(150);
   map<KeyT, ValueT> ref;
   for (int i = 0; i < 100; ++i) {
@@ -75,9 +138,10 @@ void testMap() {
   }
 }
 
-template<class KeyT, class ValueT>
+template<class KeyT, class ValueT, class Allocator = std::allocator<char>>
 void testNoncopyableMap() {
-  typedef AtomicHashArray<KeyT, std::unique_ptr<ValueT>>  MyArr;
+  typedef AtomicHashArray<KeyT, std::unique_ptr<ValueT>, std::hash<KeyT>,
+                          std::equal_to<KeyT>, Allocator> MyArr;
   auto arr = MyArr::create(150);
   for (int i = 0; i < 100; i++) {
     arr->insert(make_pair(i,std::unique_ptr<ValueT>(new ValueT(i))));
@@ -90,24 +154,34 @@ void testNoncopyableMap() {
 
 
 TEST(Aha, InsertErase_i32_i32) {
-  testMap<int32_t,int32_t>();
-  testNoncopyableMap<int32_t,int32_t>();
+  testMap<int32_t, int32_t>();
+  testMap<int32_t, int32_t, MmapAllocator<char>>();
+  testNoncopyableMap<int32_t, int32_t>();
+  testNoncopyableMap<int32_t, int32_t, MmapAllocator<char>>();
 }
 TEST(Aha, InsertErase_i64_i32) {
-  testMap<int64_t,int32_t>();
-  testNoncopyableMap<int64_t,int32_t>();
+  testMap<int64_t, int32_t>();
+  testMap<int64_t, int32_t, MmapAllocator<char>>();
+  testNoncopyableMap<int64_t, int32_t>();
+  testNoncopyableMap<int64_t, int32_t, MmapAllocator<char>>();
 }
 TEST(Aha, InsertErase_i64_i64) {
-  testMap<int64_t,int64_t>();
-  testNoncopyableMap<int64_t,int64_t>();
+  testMap<int64_t, int64_t>();
+  testMap<int64_t, int64_t, MmapAllocator<char>>();
+  testNoncopyableMap<int64_t, int64_t>();
+  testNoncopyableMap<int64_t, int64_t, MmapAllocator<char>>();
 }
 TEST(Aha, InsertErase_i32_i64) {
-  testMap<int32_t,int64_t>();
-  testNoncopyableMap<int32_t,int64_t>();
+  testMap<int32_t, int64_t>();
+  testMap<int32_t, int64_t, MmapAllocator<char>>();
+  testNoncopyableMap<int32_t, int64_t>();
+  testNoncopyableMap<int32_t, int64_t, MmapAllocator<char>>();
 }
 TEST(Aha, InsertErase_i32_str) {
-  testMap<int32_t,string>();
+  testMap<int32_t, string>();
+  testMap<int32_t, string, MmapAllocator<char>>();
 }
 TEST(Aha, InsertErase_i64_str) {
-  testMap<int64_t,string>();
+  testMap<int64_t, string>();
+  testMap<int64_t, string, MmapAllocator<char>>();
 }

@@ -135,7 +135,9 @@ namespace folly {
  *   make_pair everywhere), and providing both can lead to some gross
  *   template error messages.
  *
- * - Not Allocator-aware.
+ * - The Allocator must not be stateful (a new instance will be spun up for
+ *   each allocation), and its allocate() method must take a raw number of
+ *   bytes.
  *
  * - KeyT must be a 32 bit or 64 bit atomic integer type, and you must
  *   define special 'locked' and 'empty' key values in the ctor
@@ -153,9 +155,10 @@ struct AtomicHashMapFullError : std::runtime_error {
   {}
 };
 
-template<class KeyT, class ValueT, class HashFcn, class EqualFcn>
+template<class KeyT, class ValueT,
+         class HashFcn, class EqualFcn, class Allocator>
 class AtomicHashMap : boost::noncopyable {
-  typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn> SubMap;
+  typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator> SubMap;
 
  public:
   typedef KeyT                key_type;

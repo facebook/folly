@@ -43,11 +43,15 @@
 namespace folly {
 
 template <class KeyT, class ValueT,
-          class HashFcn = std::hash<KeyT>, class EqualFcn = std::equal_to<KeyT>>
+          class HashFcn = std::hash<KeyT>,
+          class EqualFcn = std::equal_to<KeyT>,
+          class Allocator = std::allocator<char>>
 class AtomicHashMap;
 
 template <class KeyT, class ValueT,
-          class HashFcn = std::hash<KeyT>, class EqualFcn = std::equal_to<KeyT>>
+          class HashFcn = std::hash<KeyT>,
+          class EqualFcn = std::equal_to<KeyT>,
+          class Allocator = std::allocator<char>>
 class AtomicHashArray : boost::noncopyable {
   static_assert((std::is_convertible<KeyT,int32_t>::value ||
                  std::is_convertible<KeyT,int64_t>::value ||
@@ -215,7 +219,7 @@ class AtomicHashArray : boost::noncopyable {
   /* Private data and helper functions... */
 
  private:
-  friend class AtomicHashMap<KeyT,ValueT,HashFcn,EqualFcn>;
+  friend class AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>;
 
   struct SimpleRetT { size_t idx; bool success;
     SimpleRetT(size_t i, bool s) : idx(i), success(s) {}
