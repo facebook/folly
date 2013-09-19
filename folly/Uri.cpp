@@ -79,7 +79,7 @@ Uri::Uri(StringPiece str) : port_(0) {
 
     StringPiece port(authorityMatch[4].first, authorityMatch[4].second);
     if (!port.empty()) {
-      port_ = to<uint32_t>(port);
+      port_ = to<uint16_t>(port);
     }
 
     username_ = submatch(authorityMatch, 1);

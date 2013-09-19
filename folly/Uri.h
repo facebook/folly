@@ -48,7 +48,7 @@ class Uri {
   const fbstring& username() const { return username_; }
   const fbstring& password() const { return password_; }
   const fbstring& host() const { return host_; }
-  uint32_t port() const { return port_; }
+  uint16_t port() const { return port_; }
   const fbstring& path() const { return path_; }
   const fbstring& query() const { return query_; }
   const fbstring& fragment() const { return fragment_; }
@@ -64,7 +64,7 @@ class Uri {
   fbstring username_;
   fbstring password_;
   fbstring host_;
-  uint32_t port_;
+  uint16_t port_;
   fbstring path_;
   fbstring query_;
   fbstring fragment_;
