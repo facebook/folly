@@ -9,7 +9,7 @@ AC_CONFIG_HEADERS([config.h])
 AX_PREFIX_CONFIG_H([folly-config.h], [folly], [config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
-AM_INIT_AUTOMAKE([foreign dist-bzip2])
+AM_INIT_AUTOMAKE([foreign dist-bzip2 nostdinc])
 
 AC_CONFIG_MACRO_DIR([m4])
 
