@@ -19,7 +19,9 @@
 
 #include "folly/Range.h"
 
+#if FOLLY_HAVE_EMMINTRIN_H
 #include <emmintrin.h>  // __v16qi
+#endif
 #include <iostream>
 
 namespace folly {
@@ -66,7 +68,9 @@ static_assert(kMinPageSize >= 16,
   (reinterpret_cast<uintptr_t>(addr) / kMinPageSize)
 
 
-#if FOLLY_HAVE_EMMINTRIN_H
+// Earlier versions of GCC (for example, Clang on Mac OS X, which is based on
+// GCC 4.2) do not have a full compliment of SSE builtins.
+#if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
 inline size_t nextAlignedIndex(const char* arr) {
    auto firstPossible = reinterpret_cast<uintptr_t>(arr) + 1;
    return 1 +                       // add 1 because the index starts at 'arr'
@@ -119,7 +123,7 @@ size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
   }
   return StringPiece::npos;
 }
-#endif // FOLLY_HAVE_EMMINTRIN_H
+#endif // FOLLY_HAVE_EMMINTRIN_H && GCC 4.6+
 
 // Aho, Hopcroft, and Ullman refer to this trick in "The Design and Analysis
 // of Computer Algorithms" (1974), but the best description is here:
@@ -165,7 +169,7 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
   return StringPiece::npos;
 }
 
-#if FOLLY_HAVE_EMMINTRIN_H
+#if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
 
 template <bool HAYSTACK_ALIGNED>
 inline size_t scanHaystackBlock(const StringPiece& haystack,
@@ -254,7 +258,7 @@ size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
 
   return StringPiece::npos;
 }
-#endif // FOLLY_HAVE_EMMINTRIN_H
+#endif // FOLLY_HAVE_EMMINTRIN_H && GCC 4.6+
 
 size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
                                  const StringPiece& needles) {

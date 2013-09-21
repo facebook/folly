@@ -628,7 +628,7 @@ namespace detail {
 size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
                                  const StringPiece& needles);
 
-#if FOLLY_HAVE_EMMINTRIN_H
+#if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
 size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
                                  const StringPiece& needles);
 
