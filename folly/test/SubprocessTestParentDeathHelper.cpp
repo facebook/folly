@@ -40,30 +40,21 @@ DEFINE_bool(child, false, "");
 
 namespace {
 constexpr int kSignal = SIGUSR1;
-volatile bool caught = false;
-
-void signalHandler(int sig) {
-  if (sig != kSignal) {
-    abort();
-  }
-  caught = true;
-}
-
 }  // namespace
 
 void runChild(const char* file) {
-  struct sigaction sa;
-  sa.sa_handler = signalHandler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  CHECK_ERR(sigaction(kSignal, &sa, nullptr));
+  // Block SIGUSR1 so it's queued
+  sigset_t sigs;
+  CHECK_ERR(sigemptyset(&sigs));
+  CHECK_ERR(sigaddset(&sigs, kSignal));
+  CHECK_ERR(sigprocmask(SIG_BLOCK, &sigs, nullptr));
 
   // Kill the parent, wait for our signal.
   CHECK_ERR(kill(getppid(), SIGKILL));
 
-  while (!caught) {
-    pause();
-  }
+  int sig = 0;
+  CHECK_ERR(sigwait(&sigs, &sig));
+  CHECK_EQ(sig, kSignal);
 
   // Signal completion by creating the file
   CHECK_ERR(creat(file, 0600));
