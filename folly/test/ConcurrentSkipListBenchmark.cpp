@@ -350,6 +350,9 @@ class ConcurrentAccessData {
       if (i > 0) sets_[i] = sets_[0];
     }
 
+// This requires knowledge of the C++ library internals. Only use it if we're
+// using the GNU C++ library.
+#ifdef _GLIBCXX_SYMVER
     // memory usage
     int64_t setMemorySize = sets_[0].size() * sizeof(*sets_[0].begin()._M_node);
     int64_t cslMemorySize = 0;
@@ -360,6 +363,7 @@ class ConcurrentAccessData {
     LOG(INFO) << "size=" << sets_[0].size()
       << "; std::set memory size=" << setMemorySize
       << "; csl memory size=" << cslMemorySize;
+#endif
 
     readValues_.reserve(size);
     deleteValues_.reserve(size);
