@@ -129,4 +129,12 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #define FOLLY_NAMESPACE_STD_END       }
 #endif
 
+// Some platforms lack clock_gettime(2) and clock_getres(2). Inject our own
+// versions of these into the global namespace.
+#if FOLLY_HAVE_CLOCK_GETTIME
+#include <time.h>
+#else
+#include "folly/detail/Clock.h"
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

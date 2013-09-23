@@ -17,6 +17,7 @@
 #ifndef FOLLY_BENCHMARK_H_
 #define FOLLY_BENCHMARK_H_
 
+#include "folly/Portability.h"
 #include "folly/Preprocessor.h" // for FB_ANONYMOUS_VARIABLE
 #include <cassert>
 #include <ctime>
@@ -27,7 +28,6 @@
 #include <limits>
 
 DECLARE_bool(benchmark);
-
 
 namespace folly {
 

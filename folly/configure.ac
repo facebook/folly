@@ -79,6 +79,15 @@ AC_COMPILE_IFELSE(
              [Define to "override" if the compiler supports C++11 "override"])]
 )
 
+# Check for clock_gettime(2). This is not in an AC_CHECK_FUNCS() because we
+# want to link with librt if necessary.
+AC_SEARCH_LIBS([clock_gettime], [rt],
+  AC_DEFINE(
+    [HAVE_CLOCK_GETTIME],
+    [1],
+    [Define to 1 if we support clock_gettime(2).]),
+  [])
+
 # Checks for library functions.
 AC_CHECK_FUNCS([getdelim \
                 gettimeofday \
