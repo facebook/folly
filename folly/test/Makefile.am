@@ -127,7 +127,7 @@ concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
 TESTS += concurrent_skiplist_test
 
 concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
-concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la $(BOOST_SYSTEM_LIB)
 noinst_PROGRAMS += concurrent_skiplist_benchmark
 
 histogram_test_SOURCES = HistogramTest.cpp
