@@ -102,8 +102,8 @@ if test "$ac_cv_cxx_compile_cxx0x_gxx" = yes; then
    CXX_FLAGS="-std=gnu++0x"
 fi
 
-AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" -lstdc++ $CXX_FLAGS $BOOST_CPPFLAGS")
-AC_SUBST(AM_CXXFLAGS, "$BOOST_THREAD_LIB $BOOST_SYSTEM_LIB")
+AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" $CXX_FLAGS $BOOST_CPPFLAGS")
+AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread")
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])

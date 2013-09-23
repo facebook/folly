@@ -18,7 +18,6 @@ lib_LTLIBRARIES = libgtestmain.la libgtest.la
 
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
-libgtestmain_la_LIBADD = -lpthread
 
 libgtest_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
@@ -115,7 +114,7 @@ endian_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += endian_test
 
 rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
-rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIB)
+rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 TESTS += rw_spinlock_test
 
 synchronized_test_SOURCES = SynchronizedTest.cpp
@@ -127,7 +126,7 @@ concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
 TESTS += concurrent_skiplist_test
 
 concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
-concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la $(BOOST_SYSTEM_LIB)
+concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 noinst_PROGRAMS += concurrent_skiplist_benchmark
 
 histogram_test_SOURCES = HistogramTest.cpp
