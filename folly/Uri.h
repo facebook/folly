@@ -53,6 +53,8 @@ class Uri {
   const fbstring& query() const { return query_; }
   const fbstring& fragment() const { return fragment_; }
 
+  fbstring authority() const;
+
   template <class String>
   String toString() const;
 

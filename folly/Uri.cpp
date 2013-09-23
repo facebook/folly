@@ -92,4 +92,26 @@ Uri::Uri(StringPiece str) : port_(0) {
   fragment_ = submatch(match, 4);
 }
 
+fbstring
+Uri::authority() const
+{
+  fbstring result(host());
+
+  if (port() != 0) {
+    result += fbstring(":") + to<fbstring>(port());
+  }
+
+  if (!username().empty()) {
+    fbstring userInformation(username());
+
+    if (!password().empty()) {
+      userInformation += fbstring(":") + password();
+    }
+
+    result = userInformation + "@" + result;
+  }
+
+  return result;
+}
+
 }  // namespace folly
