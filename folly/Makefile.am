@@ -39,6 +39,7 @@ nobase_follyinclude_HEADERS = \
 	detail/FingerprintPolynomial.h \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
+	detail/Malloc.h \
 	detail/MPMCPipelineDetail.h \
 	detail/SlowFingerprint.h \
 	detail/Stats.h \
@@ -159,6 +160,10 @@ libfolly_la_SOURCES = \
 if !HAVE_LINUX
 nobase_follyinclude_HEADERS += detail/Clock.h
 libfolly_la_SOURCES += detail/Clock.cpp
+endif
+
+if !HAVE_WEAK_SYMBOLS
+libfolly_la_SOURCES += detail/Malloc.cpp
 endif
 
 FingerprintTables.cpp: generate_fingerprint_tables

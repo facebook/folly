@@ -127,6 +127,20 @@ AC_COMPILE_IFELSE(
              [Define to 1 if we have a usable std::is_trivially_copyable<T>
               implementation.])])
 
+# Figure out if we support weak symbols. If not, we will link in some null
+# stubs for functions that would otherwise be weak.
+AC_LINK_IFELSE(
+  [AC_LANG_SOURCE[
+    extern "C" void configure_link_extern_weak_test() __attribute__((weak));
+    int main(int argc, char** argv) {
+        return configure_link_extern_weak_test == nullptr;
+    }]
+  ],
+  [
+    ac_have_weak_symbols="yes"
+    AC_DEFINE([HAVE_WEAK_SYMBOLS], [1],
+              [Define to 1 if the linker supports weak symbols.])])
+
 # Check for clock_gettime(2). This is not in an AC_CHECK_FUNCS() because we
 # want to link with librt if necessary.
 AC_SEARCH_LIBS([clock_gettime], [rt],
@@ -160,6 +174,7 @@ AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
 AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
+AM_CONDITIONAL([HAVE_WEAK_SYMBOLS], [test "$ac_have_weak_symbols" = "yes"])
 
 # Output
 AC_CONFIG_FILES([Makefile

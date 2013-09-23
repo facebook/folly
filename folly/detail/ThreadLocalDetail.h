@@ -30,11 +30,6 @@
 #include "folly/Exception.h"
 #include "folly/Malloc.h"
 
-// TODO(tudorb): Remove this declaration after Malloc.h is pushed to
-// third-party.
-extern "C" int allocm(void**, size_t*, size_t, int)
-__attribute__((weak));
-
 namespace folly {
 namespace threadlocal_detail {
 

@@ -26,6 +26,8 @@
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
+#include "folly/detail/Malloc.h"
+
 #include <string>
 namespace folly {
   using std::goodMallocSize;
@@ -44,6 +46,7 @@ namespace folly {
 #include <bits/functexcept.h>
 #define FOLLY_HAVE_MALLOC_H 1
 #else
+#include "folly/detail/Malloc.h"
 #include "folly/Portability.h"
 #include <stdexcept>
 #endif
@@ -86,16 +89,6 @@ namespace folly {
 #endif
 
 #endif /* ALLOCM_SUCCESS */
-
-/**
- * Declare rallocm() and malloc_usable_size() as weak symbols.  It
- * will be provided by jemalloc if we are using jemalloc, or it will
- * be NULL if we are using another malloc implementation.
- */
-extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
-__attribute__((weak));
-extern "C" int allocm(void**, size_t*, size_t, int)
-__attribute__((weak));
 
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
