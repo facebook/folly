@@ -15,8 +15,15 @@
  */
 // SpookyHash: a 128-bit noncryptographic hash function
 // By Bob Jenkins, public domain
-#include "folly/SpookyHashV1.h"
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
+#include "folly/SpookyHashV1.h"
+#include "folly/Benchmark.h"
+
+#include <cinttypes>
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
@@ -271,7 +278,8 @@ void DoTimingBig(int seed)
         SpookyHashV1::Hash128(buf[i], BUFSIZE, &hash1, &hash2);
     }
     uint64_t z = GetTickCount();
-    printf("SpookyHashV1::Hash128, uncached: time is %4lu milliseconds\n", z-a);
+    printf("SpookyHashV1::Hash128, uncached: time is "
+           "%4" PRIu64 " milliseconds\n", z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF; ++i)
@@ -279,7 +287,8 @@ void DoTimingBig(int seed)
         Add(buf[i], BUFSIZE, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("Addition           , uncached: time is %4lu milliseconds\n", z-a);
+    printf("Addition           , uncached: time is "
+           "%4" PRIu64 " milliseconds\n", z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
@@ -287,7 +296,8 @@ void DoTimingBig(int seed)
         SpookyHashV1::Hash128(buf[0], 1024, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("SpookyHashV1::Hash128,   cached: time is %4lu milliseconds\n", z-a);
+    printf("SpookyHashV1::Hash128,   cached: time is "
+           "%4" PRIu64 " milliseconds\n", z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
@@ -295,7 +305,8 @@ void DoTimingBig(int seed)
         Add(buf[0], 1024, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("Addition           ,   cached: time is %4lu milliseconds\n", z-a);
+    printf("Addition           ,   cached: time is "
+           "%4" PRIu64 " milliseconds\n", z-a);
 
     for (int i=0; i<NUMBUF; ++i)
     {
@@ -311,8 +322,8 @@ void DoTimingBig(int seed)
 #define NUMITER 10000000
 void DoTimingSmall(int seed)
 {
-    printf("\ntesting timing of hashing up to %d cached aligned bytes %d times ...\n",
-           BUFSIZE, NUMITER);
+    printf("\ntesting timing of hashing up to %d cached aligned bytes %d "
+           "times ...\n", BUFSIZE, NUMITER);
 
     uint64_t buf[BUFSIZE/8];
     for (int i=0; i<BUFSIZE/8; ++i)
@@ -330,8 +341,8 @@ void DoTimingSmall(int seed)
             SpookyHashV1::Hash128((char *)buf, i, &hash1, &hash2);
         }
         uint64_t z = GetTickCount();
-        printf("%d bytes: hash is %.16lx %.16lx, time is %lu\n",
-               i, hash1, hash2, z-a);
+        printf("%d bytes: hash is %.16" PRIx64 " %.16" PRIx64 ", "
+               "time is %" PRIu64 "\n", i, hash1, hash2, z-a);
     }
 }
 #undef BUFSIZE
@@ -373,7 +384,8 @@ void TestAlignment()
 #define MEASURES 6
 void TestDeltas(int seed)
 {
-    printf("\nall 1 or 2 bit input deltas get %d tries to flip every output bit ...\n", TRIES);
+    printf("\nall 1 or 2 bit input deltas get %d tries to flip every output "
+           "bit ...\n", TRIES);
 
     Random random;
     random.Init((uint64_t)seed);
@@ -482,12 +494,12 @@ void TestPieces()
 
         if (a != c)
         {
-            printf("wrong a %d: %.16lx %.16lx\n", i, a,c);
+            printf("wrong a %d: %.16" PRIx64 " %.16" PRIx64 "\n", i, a,c);
             failed = true;
         }
         if (b != d)
         {
-            printf("wrong b %d: %.16lx %.16lx\n", i, b,d);
+            printf("wrong b %d: %.16" PRIx64 " %.16" PRIx64 "\n", i, b,d);
             failed = true;
         }
 
@@ -502,12 +514,14 @@ void TestPieces()
             state.Final(&c, &d);
             if (a != c)
             {
-                printf("wrong a %d %d: %.16lx %.16lx\n", j, i, a,c);
+                printf("wrong a %d %d: %.16" PRIx64 " %.16" PRIx64 "\n",
+                       j, i, a,c);
                 failed = true;
             }
             if (b != d)
             {
-                printf("wrong b %d %d: %.16lx %.16lx\n", j, i, b,d);
+                printf("wrong b %d %d: %.16" PRIx64 " %.16" PRIx64 "\n",
+                       j, i, b,d);
                 failed = true;
             }
         }

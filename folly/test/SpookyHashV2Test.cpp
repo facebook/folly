@@ -15,8 +15,15 @@
  */
 // SpookyHash: a 128-bit noncryptographic hash function
 // By Bob Jenkins, public domain
-#include "folly/SpookyHashV2.h"
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
+#include "folly/SpookyHashV2.h"
+#include "folly/Benchmark.h"
+
+#include <cinttypes>
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
@@ -167,7 +174,8 @@ void TestResults()
         saw[i] = SpookyHashV2::Hash32(buf, i, 0);
         if (saw[i] != expected[i])
         {
-  	    printf("%3d: saw 0x%.8x, expected 0x%.8lx\n", i, saw[i], expected[i]);
+            printf("%3d: saw 0x%.8x, expected 0x%.8" PRIx64 "\n", i, saw[i],
+                   expected[i]);
             failed = true;
         }
     }
@@ -193,34 +201,38 @@ void DoTimingBig(int seed)
     uint64_t hash2 = seed;
     for (uint64_t i=0; i<NUMBUF; ++i)
     {
-	SpookyHashV2::Hash128(buf[i], BUFSIZE, &hash1, &hash2);
+        SpookyHashV2::Hash128(buf[i], BUFSIZE, &hash1, &hash2);
     }
     uint64_t z = GetTickCount();
-    printf("SpookyHashV2::Hash128, uncached: time is %4ld milliseconds\n", z-a);
+    printf("SpookyHashV2::Hash128, uncached: time is "
+           "%4" PRId64 " milliseconds\n", z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF; ++i)
     {
-	Add(buf[i], BUFSIZE, &hash1, &hash2);
+        Add(buf[i], BUFSIZE, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("Addition           , uncached: time is %4ld milliseconds\n", z-a);
+    printf("Addition           , uncached: time is %4" PRId64 " milliseconds\n",
+           z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
     {
-	SpookyHashV2::Hash128(buf[0], 1024, &hash1, &hash2);
+        SpookyHashV2::Hash128(buf[0], 1024, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("SpookyHashV2::Hash128,   cached: time is %4ld milliseconds\n", z-a);
+    printf("SpookyHashV2::Hash128,   cached: time is "
+           "%4" PRId64 " milliseconds\n", z-a);
 
     a = GetTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
     {
-	Add(buf[0], 1024, &hash1, &hash2);
+        Add(buf[0], 1024, &hash1, &hash2);
     }
     z = GetTickCount();
-    printf("Addition           ,   cached: time is %4ld milliseconds\n", z-a);
+    printf("Addition           ,   cached: time is %4" PRId64 " milliseconds\n",
+           z-a);
 
     for (int i=0; i<NUMBUF; ++i)
     {
@@ -236,8 +248,8 @@ void DoTimingBig(int seed)
 #define NUMITER 10000000
 void DoTimingSmall(int seed)
 {
-    printf("\ntesting timing of hashing up to %d cached aligned bytes %d times ...\n",
-           BUFSIZE, NUMITER);
+    printf("\ntesting timing of hashing up to %d cached aligned bytes %d "
+           "times ...\n", BUFSIZE, NUMITER);
 
     uint64_t buf[BUFSIZE/8];
     for (int i=0; i<BUFSIZE/8; ++i)
@@ -255,8 +267,8 @@ void DoTimingSmall(int seed)
             SpookyHashV2::Hash128((char *)buf, i, &hash1, &hash2);
         }
         uint64_t z = GetTickCount();
-        printf("%d bytes: hash is %.16lx %.16lx, time is %ld\n",
-               i, hash1, hash2, z-a);
+        printf("%d bytes: hash is %.16" PRIx64 " %.16" PRIx64 ", "
+               "time is %" PRId64 "\n", i, hash1, hash2, z-a);
     }
 }
 #undef BUFSIZE
@@ -298,7 +310,8 @@ void TestAlignment()
 #define MEASURES 6
 void TestDeltas(int seed)
 {
-    printf("\nall 1 or 2 bit input deltas get %d tries to flip every output bit ...\n", TRIES);
+    printf("\nall 1 or 2 bit input deltas get %d tries to flip every output "
+           "bit ...\n", TRIES);
 
     Random random;
     random.Init((uint64_t)seed);
@@ -399,20 +412,20 @@ void TestPieces()
         SpookyHashV2::Hash128(buf, i, &a, &b);
 
         // all as one piece
-	c = 0xdeadbeefdeadbeef;
-	d = 0xbaceba11baceba11;
+        c = 0xdeadbeefdeadbeef;
+        d = 0xbaceba11baceba11;
         state.Init(seed1, seed2);
         state.Update(buf, i);
         state.Final(&c, &d);
 
         if (a != c)
         {
-            printf("wrong a %d: %.16lx %.16lx\n", i, a,c);
+            printf("wrong a %d: %.16" PRIx64 " %.16" PRIx64 "\n", i, a,c);
             failed = true;
         }
         if (b != d)
         {
-            printf("wrong b %d: %.16lx %.16lx\n", i, b,d);
+            printf("wrong b %d: %.16" PRIx64 " %.16" PRIx64 "\n", i, b,d);
             failed = true;
         }
 
@@ -427,12 +440,14 @@ void TestPieces()
             state.Final(&c, &d);
             if (a != c)
             {
-                printf("wrong a %d %d: %.16lx %.16lx\n", j, i, a,c);
+                printf("wrong a %d %d: %.16" PRIx64 " %.16" PRIx64 "\n",
+                       j, i, a,c);
                 failed = true;
             }
             if (b != d)
             {
-                printf("wrong b %d %d: %.16lx %.16lx\n", j, i, b,d);
+                printf("wrong b %d %d: %.16" PRIx64 " %.16" PRIx64 "\n",
+                       j, i, b,d);
                 failed = true;
             }
         }
