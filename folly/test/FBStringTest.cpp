@@ -30,6 +30,7 @@
 #include <gflags/gflags.h>
 
 #include "folly/Foreach.h"
+#include "folly/Portability.h"
 #include "folly/Random.h"
 #include "folly/Conv.h"
 
@@ -1160,6 +1161,19 @@ TEST(FBString, testFrontBack) {
   str.back() = 'O';
   EXPECT_EQ(str.back(), 'O');
   EXPECT_EQ(str, "HellO");
+}
+
+TEST(FBString, noexcept) {
+  EXPECT_TRUE(noexcept(fbstring()));
+  // std::move is not marked noexcept in gcc 4.6, sigh
+#if __GNUC_PREREQ(4, 7)
+  fbstring x;
+  EXPECT_FALSE(noexcept(fbstring(x)));
+  EXPECT_TRUE(noexcept(fbstring(std::move(x))));
+  fbstring y;
+  EXPECT_FALSE(noexcept(y = x));
+  EXPECT_TRUE(noexcept(y = std::move(x)));
+#endif
 }
 
 int main(int argc, char** argv) {

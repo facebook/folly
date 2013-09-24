@@ -305,7 +305,7 @@ private:
  */
 template <class Char> class fbstring_core {
 public:
-  fbstring_core() {
+  fbstring_core() noexcept {
     // Only initialize the tag, will set the MSBs (i.e. the small
     // string size) to zero too
     ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
@@ -359,7 +359,7 @@ public:
     assert(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
   }
 
-  fbstring_core(fbstring_core&& goner) {
+  fbstring_core(fbstring_core&& goner) noexcept {
     if (goner.category() == isSmall) {
       // Just copy, leave the goner in peace
       new(this) fbstring_core(goner.small_, goner.smallSize());
@@ -428,7 +428,7 @@ public:
     assert(memcmp(this->data(), data, size * sizeof(Char)) == 0);
   }
 
-  ~fbstring_core() {
+  ~fbstring_core() noexcept {
     auto const c = category();
     if (c == isSmall) {
       return;
@@ -1014,7 +1014,7 @@ private:
 
 public:
   // C++11 21.4.2 construct/copy/destroy
-  explicit basic_fbstring(const A& a = A()) {
+  explicit basic_fbstring(const A& a = A()) noexcept {
   }
 
   basic_fbstring(const basic_fbstring& str)
@@ -1022,7 +1022,8 @@ public:
   }
 
   // Move constructor
-  basic_fbstring(basic_fbstring&& goner) : store_(std::move(goner.store_)) {
+  basic_fbstring(basic_fbstring&& goner) noexcept
+      : store_(std::move(goner.store_)) {
   }
 
 #ifndef _LIBSTDCXX_FBSTRING
@@ -1080,7 +1081,7 @@ public:
     assign(il.begin(), il.end());
   }
 
-  ~basic_fbstring() {
+  ~basic_fbstring() noexcept {
   }
 
   basic_fbstring& operator=(const basic_fbstring& lhs) {
@@ -1106,7 +1107,7 @@ public:
   }
 
   // Move assignment
-  basic_fbstring& operator=(basic_fbstring&& goner) {
+  basic_fbstring& operator=(basic_fbstring&& goner) noexcept {
     if (FBSTRING_UNLIKELY(&goner == this)) {
       // Compatibility with std::basic_string<>,
       // C++11 21.4.2 [string.cons] / 23 requires self-move-assignment support.
