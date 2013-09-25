@@ -25,7 +25,16 @@
 
 #include "folly/Portability.h"
 
+// libc++ doesn't provide this header
+#if !FOLLY_USE_LIBCPP
+// This file appears in two locations: inside fbcode and in the
+// libstdc++ source code (when embedding fbstring as std::string).
+// To aid in this schizophrenic use, two macros are defined in
+// c++config.h:
+//   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
+//      gate use inside fbcode v. libstdc++
 #include <bits/c++config.h>
+#endif
 
 #include <boost/type_traits.hpp>
 #include <boost/mpl/and.hpp>

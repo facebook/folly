@@ -41,9 +41,11 @@ namespace folly {
 
 #ifdef _LIBSTDCXX_FBSTRING
 #pragma GCC system_header
+#include <bits/functexcept.h>
 #define FOLLY_HAVE_MALLOC_H 1
 #else
 #include "folly/Portability.h"
+#include <stdexcept>
 #endif
 
 // for malloc_usable_size
@@ -61,8 +63,6 @@ namespace folly {
 #include <cstring>
 
 #include <new>
-
-#include <bits/functexcept.h>
 
 /**
  * Define various ALLOCM_* macros normally provided by jemalloc.  We define
@@ -157,19 +157,31 @@ static const size_t jemallocMinInPlaceExpandable = 4096;
  */
 inline void* checkedMalloc(size_t size) {
   void* p = malloc(size);
+#ifdef _LIBSTDCXX_FBSTRING
   if (!p) std::__throw_bad_alloc();
+#else
+  if (!p) throw std::bad_alloc();
+#endif
   return p;
 }
 
 inline void* checkedCalloc(size_t n, size_t size) {
   void* p = calloc(n, size);
+#ifdef _LIBSTDCXX_FBSTRING
   if (!p) std::__throw_bad_alloc();
+#else
+  if (!p) throw std::bad_alloc();
+#endif
   return p;
 }
 
 inline void* checkedRealloc(void* ptr, size_t size) {
   void* p = realloc(ptr, size);
+#ifdef _LIBSTDCXX_FBSTRING
   if (!p) std::__throw_bad_alloc();
+#else
+  if (!p) throw std::bad_alloc();
+#endif
   return p;
 }
 
