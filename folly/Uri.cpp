@@ -92,23 +92,28 @@ Uri::Uri(StringPiece str) : port_(0) {
   fragment_ = submatch(match, 4);
 }
 
-fbstring
-Uri::authority() const
-{
-  fbstring result(host());
+fbstring Uri::authority() const {
+  fbstring result;
 
-  if (port() != 0) {
-    result += fbstring(":") + to<fbstring>(port());
-  }
+  // Port is 5 characters max and we have up to 3 delimiters.
+  result.reserve(host().size() + username().size() + password().size() + 8);
 
-  if (!username().empty()) {
-    fbstring userInformation(username());
+  if (!username().empty() || !password().empty()) {
+    result.append(username());
 
     if (!password().empty()) {
-      userInformation += fbstring(":") + password();
+      result.push_back(':');
+      result.append(password());
     }
 
-    result = userInformation + "@" + result;
+    result.push_back('@');
+  }
+
+  result.append(host());
+
+  if (port() != 0) {
+    result.push_back(':');
+    toAppend(port(), &result);
   }
 
   return result;

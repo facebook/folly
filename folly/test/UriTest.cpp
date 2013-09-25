@@ -34,6 +34,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("www.facebook.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("www.facebook.com", u.authority());
     EXPECT_EQ("/hello/world", u.path());
     EXPECT_EQ("query", u.query());
     EXPECT_EQ("fragment", u.fragment());
@@ -48,6 +49,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("www.facebook.com", u.host());
     EXPECT_EQ(8080, u.port());
+    EXPECT_EQ("www.facebook.com:8080", u.authority());
     EXPECT_EQ("/hello/world", u.path());
     EXPECT_EQ("query", u.query());
     EXPECT_EQ("fragment", u.fragment());
@@ -62,6 +64,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("127.0.0.1", u.host());
     EXPECT_EQ(8080, u.port());
+    EXPECT_EQ("127.0.0.1:8080", u.authority());
     EXPECT_EQ("/hello/world", u.path());
     EXPECT_EQ("query", u.query());
     EXPECT_EQ("fragment", u.fragment());
@@ -76,6 +79,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("[::1]", u.host());
     EXPECT_EQ(8080, u.port());
+    EXPECT_EQ("[::1]:8080", u.authority());
     EXPECT_EQ("/hello/world", u.path());
     EXPECT_EQ("query", u.query());
     EXPECT_EQ("fragment", u.fragment());
@@ -90,6 +94,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("pass", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("user:pass@host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -104,6 +109,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("user@host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -118,6 +124,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("user@host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -132,6 +139,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("pass", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ(":pass@host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -146,6 +154,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -160,6 +169,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("host.com", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("host.com", u.authority());
     EXPECT_EQ("/", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -174,6 +184,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("", u.authority());
     EXPECT_EQ("/etc/motd", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -188,6 +199,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("", u.authority());
     EXPECT_EQ("/etc/motd", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
@@ -202,6 +214,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.password());
     EXPECT_EQ("etc", u.host());
     EXPECT_EQ(0, u.port());
+    EXPECT_EQ("etc", u.authority());
     EXPECT_EQ("/motd", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
