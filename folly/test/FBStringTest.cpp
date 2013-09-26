@@ -1029,7 +1029,7 @@ sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
     ifstream input(f);
     fbstring line;
     FOR_EACH (i, v) {
-      EXPECT_TRUE(getline(input, line));
+      EXPECT_TRUE(!getline(input, line).fail());
       EXPECT_EQ(line, *i);
     }
   }
