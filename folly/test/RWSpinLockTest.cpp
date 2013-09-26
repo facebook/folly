@@ -23,7 +23,7 @@
 #include <vector>
 #include <thread>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "folly/RWSpinLock.h"
