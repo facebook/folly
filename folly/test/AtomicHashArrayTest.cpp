@@ -26,6 +26,10 @@
 #include "folly/Memory.h"
 #include <gtest/gtest.h>
 
+#if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
 using namespace std;
 using namespace folly;
 
