@@ -965,9 +965,10 @@ BENCHMARK(splitStrFixed, iters) {
 
 BENCHMARK(boost_splitOnSingleChar, iters) {
   static const std::string line = "one:two:three:four";
+  bool(*pred)(char) = [] (char c) -> bool { return c == ':'; };
   for (int i = 0; i < iters << 4; ++i) {
     std::vector<boost::iterator_range<std::string::const_iterator> > pieces;
-    boost::split(pieces, line, [] (char c) { return c == ':'; });
+    boost::split(pieces, line, pred);
   }
 }
 
