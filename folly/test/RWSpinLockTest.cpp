@@ -41,8 +41,7 @@ template<typename RWSpinLockT> struct RWSpinLockTest: public testing::Test {
 };
 
 typedef testing::Types<RWSpinLock
-#if defined(__GNUC__) && (defined(__i386) || defined(__x86_64__) || \
-    defined(ARCH_K8))
+#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
         , RWTicketSpinLockT<32, true>,
         RWTicketSpinLockT<32, false>,
         RWTicketSpinLockT<64, true>,
