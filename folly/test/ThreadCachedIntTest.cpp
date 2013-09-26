@@ -162,7 +162,8 @@ struct ShardedAtomicInt {
   std::atomic<int64_t> ints_[kBuckets_];
 
   inline void inc(int64_t val = 1) {
-    int bucket = hash::twang_mix64(pthread_self()) & (kBuckets_ - 1);
+    int bucket = hash::twang_mix64(
+      uint64_t(pthread_self())) & (kBuckets_ - 1);
     std::atomic_fetch_add(&ints_[bucket], val);
   }
 
@@ -193,8 +194,10 @@ REG_BASELINE(_thread64, global__thread64 += 1);
 REG_BASELINE(_thread32, global__thread32 += 1);
 REG_BASELINE(ThreadLocal64, *globalTL64Baseline += 1);
 REG_BASELINE(ThreadLocal32, *globalTL32Baseline += 1);
-REG_BASELINE(atomic_inc64, std::atomic_fetch_add(&globalInt64Baseline, 1L));
-REG_BASELINE(atomic_inc32, std::atomic_fetch_add(&globalInt32Baseline, 1));
+REG_BASELINE(atomic_inc64,
+             std::atomic_fetch_add(&globalInt64Baseline, int64_t(1)));
+REG_BASELINE(atomic_inc32,
+             std::atomic_fetch_add(&globalInt32Baseline, int32_t(1)));
 REG_BASELINE(ShardedAtm64, shd_int64.inc());
 
 BENCHMARK_PARAM(BM_mt_cache_size64, 0);
