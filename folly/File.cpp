@@ -73,7 +73,7 @@ File::~File() {
   checkFopenError(tmpFile, "tmpfile() failed");
   SCOPE_EXIT { fclose(tmpFile); };
 
-  int fd = dup(fileno(tmpFile));
+  int fd = ::dup(fileno(tmpFile));
   checkUnixError(fd, "dup() failed");
 
   return File(fd, true);
@@ -92,6 +92,17 @@ void File::swap(File& other) {
 
 void swap(File& a, File& b) {
   a.swap(b);
+}
+
+File File::dup() const {
+  if (fd_ >= 0) {
+    int fd = ::dup(fd_);
+    checkUnixError(fd, "dup() failed");
+
+    return File(fd, true);
+  }
+
+  return File();
 }
 
 void File::close() {

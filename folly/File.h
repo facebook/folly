@@ -68,6 +68,11 @@ class File {
   }
 
   /**
+   * Duplicate file descriptor and return File that owns it.
+   */
+  File dup() const;
+
+  /**
    * If we own the file descriptor, close the file and throw on error.
    * Otherwise, do nothing.
    */
