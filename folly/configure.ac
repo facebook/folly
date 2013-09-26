@@ -110,6 +110,7 @@ AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
 
 # Output
 AC_CONFIG_FILES([Makefile

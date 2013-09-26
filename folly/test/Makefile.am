@@ -61,8 +61,11 @@ fbstring_test_using_jemalloc_SOURCES = FBStringTest.cpp
 fbstring_test_using_jemalloc_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 TESTS += fbstring_test_using_jemalloc
 
+if HAVE_LINUX
 eventfd_test_SOURCES = EventFDTest.cpp
 eventfd_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+TESTS += eventfd_test
+endif
 
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
 thread_cached_int_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
@@ -70,7 +73,7 @@ thread_cached_int_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark
 thread_local_test_SOURCES = ThreadLocalTest.cpp
 thread_local_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 
-TESTS += eventfd_test thread_cached_int_test thread_local_test
+TESTS += thread_cached_int_test thread_local_test
 
 fbvector_test_SOURCES = FBVectorTest.cpp
 fbvector_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
