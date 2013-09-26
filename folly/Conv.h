@@ -122,6 +122,23 @@ typename std::tuple_element<
   return getLastElement(vs...);
 }
 
+// This class exists to specialize away std::tuple_element in the case where we
+// have 0 template arguments. Without this, Clang/libc++ will blow a
+// static_assert even if tuple_element is protected by an enable_if.
+template <class... Ts>
+struct last_element {
+  typedef typename std::enable_if<
+    sizeof...(Ts) >= 1,
+    typename std::tuple_element<
+      sizeof...(Ts) - 1, std::tuple<Ts...>
+    >::type>::type type;
+};
+
+template <>
+struct last_element<> {
+  typedef void type;
+};
+
 } // namespace detail
 
 /*******************************************************************************
@@ -459,9 +476,8 @@ template <class T, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 2
   && detail::IsSomeString<
   typename std::remove_pointer<
-    typename std::tuple_element<
-      sizeof...(Ts) - 1, std::tuple<Ts...>
-      >::type>::type>::value>::type
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
 toAppend(const T& v, const Ts&... vs) {
   toAppend(v, detail::getLastElement(vs...));
   toAppend(vs...);
@@ -499,9 +515,8 @@ template <class Delimiter, class T, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 2
   && detail::IsSomeString<
   typename std::remove_pointer<
-    typename std::tuple_element<
-      sizeof...(Ts) - 1, std::tuple<Ts...>
-      >::type>::type>::value>::type
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
 toAppendDelim(const Delimiter& delim, const T& v, const Ts&... vs) {
   toAppend(v, delim, detail::getLastElement(vs...));
   toAppendDelim(delim, vs...);
