@@ -82,6 +82,7 @@ namespace folly {
 
 #if defined(JEMALLOC_MANGLE) && defined(JEMALLOC_EXPERIMENTAL)
 #define rallocm je_rallocm
+#define allocm je_allocm
 #endif
 
 #endif /* ALLOCM_SUCCESS */
@@ -92,6 +93,8 @@ namespace folly {
  * be NULL if we are using another malloc implementation.
  */
 extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
+__attribute__((weak));
+extern "C" int allocm(void**, size_t*, size_t, int)
 __attribute__((weak));
 
 #ifdef _LIBSTDCXX_FBSTRING
