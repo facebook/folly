@@ -24,6 +24,9 @@
 #define FOLLY_THREADCACHEDINT_H
 
 #include <atomic>
+
+#include <boost/noncopyable.hpp>
+
 #include "folly/Likely.h"
 #include "folly/ThreadLocal.h"
 

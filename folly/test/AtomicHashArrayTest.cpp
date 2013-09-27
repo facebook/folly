@@ -15,7 +15,9 @@
  */
 
 #include <sys/mman.h>
+
 #include <cstddef>
+#include <map>
 #include <stdexcept>
 
 #include "folly/AtomicHashArray.h"

@@ -17,6 +17,7 @@
 #include "folly/ThreadCachedArena.h"
 #include "folly/Memory.h"
 
+#include <map>
 #include <mutex>
 #include <thread>
 #include <iterator>

@@ -196,7 +196,7 @@ class ThreadLocalPtr {
     friend class ThreadLocalPtr<T,Tag>;
 
     threadlocal_detail::StaticMeta<Tag>& meta_;
-    boost::mutex* lock_;
+    std::mutex* lock_;
     int id_;
 
    public:

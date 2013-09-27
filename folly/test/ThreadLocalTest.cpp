@@ -18,18 +18,23 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <map>
-#include <unordered_map>
-#include <set>
-#include <atomic>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
 #include <unistd.h>
+
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <map>
+#include <mutex>
+#include <set>
+#include <thread>
+#include <unordered_map>
+
 #include <boost/thread/tss.hpp>
-#include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
+
 #include "folly/Benchmark.h"
 
 using namespace folly;
@@ -296,6 +301,80 @@ TEST(ThreadLocal, Movable2) {
 
   // Make sure that we have 4 different instances of *tl
   EXPECT_EQ(4, tls.size());
+}
+
+namespace {
+
+constexpr size_t kFillObjectSize = 300;
+
+std::atomic<uint64_t> gDestroyed;
+
+/**
+ * Fill a chunk of memory with a unique-ish pattern that includes the thread id
+ * (so deleting one of these from another thread would cause a failure)
+ *
+ * Verify it explicitly and on destruction.
+ */
+class FillObject {
+ public:
+  explicit FillObject(uint64_t idx) : idx_(idx) {
+    uint64_t v = val();
+    for (size_t i = 0; i < kFillObjectSize; ++i) {
+      data_[i] = v;
+    }
+  }
+
+  void check() {
+    uint64_t v = val();
+    for (size_t i = 0; i < kFillObjectSize; ++i) {
+      CHECK_EQ(v, data_[i]);
+    }
+  }
+
+  ~FillObject() {
+    ++gDestroyed;
+  }
+
+ private:
+  uint64_t val() const {
+    return (idx_ << 40) | uint64_t(pthread_self());
+  }
+
+  uint64_t idx_;
+  uint64_t data_[kFillObjectSize];
+};
+
+}  // namespace
+
+TEST(ThreadLocal, Stress) {
+  constexpr size_t numFillObjects = 250;
+  std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;
+
+  constexpr size_t numThreads = 32;
+  constexpr size_t numReps = 20;
+
+  std::vector<std::thread> threads;
+  threads.reserve(numThreads);
+
+  for (size_t i = 0; i < numThreads; ++i) {
+    threads.emplace_back([&objects] {
+      for (size_t rep = 0; rep < numReps; ++rep) {
+        for (size_t i = 0; i < objects.size(); ++i) {
+          objects[i].reset(new FillObject(rep * objects.size() + i));
+          std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+        for (size_t i = 0; i < objects.size(); ++i) {
+          objects[i]->check();
+        }
+      }
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  EXPECT_EQ(numFillObjects * numThreads * numReps, gDestroyed);
 }
 
 // Yes, threads and fork don't mix
