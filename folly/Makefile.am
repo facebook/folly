@@ -15,30 +15,43 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
+	ApplyTuple.h \
 	Arena.h \
 	Arena-inl.h \
+	AtomicBitSet.h \
 	AtomicHashArray.h \
 	AtomicHashArray-inl.h \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
 	Benchmark.h \
 	Bits.h \
+	Chrono.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
 	Conv.h \
-	detail/AtomicHashUtils.h \
-	detail/BitIteratorDetail.h \
-	detail/DiscriminatedPtrDetail.h \
-	detail/FingerprintPolynomial.h \
+	CpuId.h \
 	detail/GroupVarintDetail.h \
-	detail/SlowFingerprint.h \
+	detail/AtomicHashUtils.h \
+	detail/FileUtilDetail.h \
+	detail/BitIteratorDetail.h \
+	detail/Futex.h \
+	detail/Stats.h \
+	detail/BitsDetail.h \
+	detail/MPMCPipelineDetail.h \
+	detail/DiscriminatedPtrDetail.h \
 	detail/ThreadLocalDetail.h \
+	detail/SlowFingerprint.h \
+	detail/FingerprintPolynomial.h \
 	DiscriminatedPtr.h \
+	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
 	eventfd.h \
+	Exception.h \
 	FBString.h \
 	FBVector.h \
+	File.h \
+	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
 	Foreach.h \
@@ -50,12 +63,26 @@ nobase_follyinclude_HEADERS = \
 	Histogram.h \
 	Histogram-inl.h \
 	IntrusiveList.h \
+	io/RecordIO-inl.h \
+	io/Cursor.h \
+	io/IOBuf.h \
+	io/IOBufQueue.h \
+	io/TypedIOBuf.h \
+	io/Compression.h \
+	io/RecordIO.h \
 	json.h \
+	Lazy.h \
 	Likely.h \
 	Logging.h \
 	Malloc.h \
 	MapUtil.h \
+	Memory.h \
+	MemoryMapping.h \
+	MPMCPipeline.h \
+	MPMCQueue.h \
+	Optional.h \
 	PackedSyncPtr.h \
+	Padded.h \
 	Portability.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
@@ -66,24 +93,37 @@ nobase_follyinclude_HEADERS = \
 	SmallLocks.h \
 	small_vector.h \
 	sorted_vector_types.h \
+	SpookyHash.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
+	stats/MultiLevelTimeSeries-defs.h \
+	stats/BucketedTimeSeries-defs.h \
+	stats/MultiLevelTimeSeries.h \
+	stats/Histogram-defs.h \
+	stats/Histogram.h \
+	stats/BucketedTimeSeries.h \
 	StlAllocator.h \
 	String.h \
 	String-inl.h \
+	Subprocess.h \
 	Synchronized.h \
-	test/FBStringTestBenchmarks.cpp.h \
-	test/FBVectorTestBenchmarks.cpp.h \
-	test/function_benchmark/benchmark_impl.h \
-	test/function_benchmark/test_functions.h \
 	test/SynchronizedTestLib.h \
 	test/SynchronizedTestLib-inl.h \
+	test/stl_tests/OFBVector.h \
+	test/DeterministicSchedule.h \
+	test/FBStringTestBenchmarks.cpp.h \
+	test/FBVectorTestBenchmarks.cpp.h \
+	test/function_benchmark/test_functions.h \
+	test/function_benchmark/benchmark_impl.h \
 	ThreadCachedArena.h \
 	ThreadCachedInt.h \
 	ThreadLocal.h \
 	TimeoutQueue.h \
 	Traits.h \
-	Unicode.h
+	Unicode.h \
+	Uri.h \
+	Uri-inl.h \
+	Varint.h 
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
