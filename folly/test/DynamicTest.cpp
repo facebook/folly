@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+#include <boost/next_prior.hpp>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+#include "folly/Benchmark.h"
 #include "folly/dynamic.h"
 #include "folly/json.h"
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
-#include <boost/next_prior.hpp>
-#include "folly/Benchmark.h"
 
 using folly::dynamic;
 
@@ -269,6 +270,24 @@ TEST(Dynamic, ObjectForwarding) {
   dynamic d = dynamic::object("asd", {"foo", "bar"});
   dynamic d2 = dynamic::object("key2", {"value", "words"})
                               ("key", "value1");
+}
+
+TEST(Dynamic, GetPtr) {
+  dynamic array = { 1, 2, "three" };
+  EXPECT_TRUE(array.get_ptr(0));
+  EXPECT_FALSE(array.get_ptr(3));
+  EXPECT_EQ(dynamic("three"), *array.get_ptr(2));
+  const dynamic& carray = array;
+  EXPECT_EQ(dynamic("three"), *carray.get_ptr(2));
+
+  dynamic object = dynamic::object("one", 1)("two", 2);
+  EXPECT_TRUE(object.get_ptr("one"));
+  EXPECT_FALSE(object.get_ptr("three"));
+  EXPECT_EQ(dynamic(2), *object.get_ptr("two"));
+  *object.get_ptr("one") = 11;
+  EXPECT_EQ(dynamic(11), *object.get_ptr("one"));
+  const dynamic& cobject = object;
+  EXPECT_EQ(dynamic(2), *cobject.get_ptr("two"));
 }
 
 int main(int argc, char** argv) {

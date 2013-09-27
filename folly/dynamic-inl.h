@@ -525,32 +525,53 @@ template<class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
                                    std::forward<V>(v))).first->second;
 }
 
-inline dynamic const& dynamic::at(dynamic const& idx) const {
-  return const_cast<dynamic*>(this)->at(idx);
+inline dynamic* dynamic::get_ptr(dynamic const& idx) {
+  return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
-inline dynamic& dynamic::at(dynamic const& idx) {
-  if (!isObject() && !isArray()) {
-    throw TypeError("object/array", type());
-  }
-
+inline const dynamic* dynamic::get_ptr(dynamic const& idx) const {
   if (auto* parray = get_nothrow<Array>()) {
-    if (idx >= parray->size()) {
-      throw std::out_of_range("out of range in dynamic array");
-    }
     if (!idx.isInt()) {
       throw TypeError("int64", idx.type());
     }
-    return (*parray)[idx.asInt()];
+    if (idx >= parray->size()) {
+      return nullptr;
+    }
+    return &(*parray)[idx.asInt()];
+  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
+    auto it = pobject->find(idx);
+    if (it == pobject->end()) {
+      return nullptr;
+    }
+    return &it->second;
+  } else {
+    throw TypeError("object/array", type());
   }
+}
 
-  assert(get_nothrow<ObjectImpl>());
-  auto it = find(idx);
-  if (it == items().end()) {
-    throw std::out_of_range(to<std::string>(
-        "couldn't find key ", idx.asString(), " in dynamic object"));
+inline dynamic& dynamic::at(dynamic const& idx) {
+  return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
+}
+
+inline dynamic const& dynamic::at(dynamic const& idx) const {
+  if (auto* parray = get_nothrow<Array>()) {
+    if (!idx.isInt()) {
+      throw TypeError("int64", idx.type());
+    }
+    if (idx >= parray->size()) {
+      throw std::out_of_range("out of range in dynamic array");
+    }
+    return (*parray)[idx.asInt()];
+  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
+    auto it = pobject->find(idx);
+    if (it == pobject->end()) {
+      throw std::out_of_range(to<std::string>(
+          "couldn't find key ", idx.asString(), " in dynamic object"));
+    }
+    return it->second;
+  } else {
+    throw TypeError("object/array", type());
   }
-  return const_cast<dynamic&>(it->second);
 }
 
 inline bool dynamic::empty() const {

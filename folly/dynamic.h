@@ -316,6 +316,7 @@ public:
    */
   const_item_iterator find(dynamic const&) const;
 
+
   /*
    * If this is an object, returns whether it contains a field with
    * the given name.  Otherwise throws TypeError.
@@ -332,6 +333,20 @@ public:
    */
   dynamic const& at(dynamic const&) const;
   dynamic&       at(dynamic const&);
+
+  /*
+   * Like 'at', above, except it returns either a pointer to the contained
+   * object or nullptr if it wasn't found. This allows a key to be tested for
+   * containment and retrieved in one operation. Example:
+   *
+   *   if (auto* found = d.get_ptr(key))
+   *     // use *found;
+   *
+   * Using these with dynamic objects that are not arrays or objects
+   * will throw a TypeError.
+   */
+  const dynamic* get_ptr(dynamic const&) const;
+  dynamic* get_ptr(dynamic const&);
 
   /*
    * This works for access to both objects and arrays.
