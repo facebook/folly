@@ -216,6 +216,10 @@ TEST(Dynamic, Conversions) {
   EXPECT_EQ(str.asInt(), 0);
   EXPECT_EQ(str.asDouble(), 0);
   EXPECT_EQ(str.asString(), "0");
+
+  dynamic num = 12;
+  EXPECT_EQ("12", num.asString());
+  EXPECT_EQ(12.0, num.asDouble());
 }
 
 TEST(Dynamic, FormattedIO) {
