@@ -213,6 +213,36 @@ TEST(SortedVectorTypes, Sizes) {
   EXPECT_EQ(sizeof(MapT), sizeof(std::vector<std::pair<int,int> >));
 }
 
+TEST(SortedVectorTypes, InitializerLists) {
+  sorted_vector_set<int> empty_initialized_set{};
+  EXPECT_TRUE(empty_initialized_set.empty());
+
+  sorted_vector_set<int> singleton_initialized_set{1};
+  EXPECT_EQ(1, singleton_initialized_set.size());
+  EXPECT_EQ(1, *singleton_initialized_set.begin());
+
+  sorted_vector_set<int> forward_initialized_set{1, 2};
+  sorted_vector_set<int> backward_initialized_set{2, 1};
+  EXPECT_EQ(2, forward_initialized_set.size());
+  EXPECT_EQ(1, *forward_initialized_set.begin());
+  EXPECT_EQ(2, *forward_initialized_set.rbegin());
+  EXPECT_TRUE(forward_initialized_set == backward_initialized_set);
+
+  sorted_vector_map<int,int> empty_initialized_map{};
+  EXPECT_TRUE(empty_initialized_map.empty());
+
+  sorted_vector_map<int,int> singleton_initialized_map{{1,10}};
+  EXPECT_EQ(1, singleton_initialized_map.size());
+  EXPECT_EQ(10, singleton_initialized_map[1]);
+
+  sorted_vector_map<int,int> forward_initialized_map{{1,10}, {2,20}};
+  sorted_vector_map<int,int> backward_initialized_map{{2,20}, {1,10}};
+  EXPECT_EQ(2, forward_initialized_map.size());
+  EXPECT_EQ(10, forward_initialized_map[1]);
+  EXPECT_EQ(20, forward_initialized_map[2]);
+  EXPECT_TRUE(forward_initialized_map == backward_initialized_map);
+}
+
 TEST(SortedVectorTypes, CustomCompare) {
   sorted_vector_set<int,less_invert<int> > s;
   for (int i = 0; i < 200; ++i)

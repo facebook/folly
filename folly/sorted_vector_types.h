@@ -60,10 +60,11 @@
 #ifndef FOLLY_SORTED_VECTOR_TYPES_H_
 #define FOLLY_SORTED_VECTOR_TYPES_H_
 
-#include <vector>
 #include <algorithm>
-#include <utility>
+#include <initializer_list>
 #include <iterator>
+#include <utility>
+#include <vector>
 #include <boost/operators.hpp>
 #include <boost/bind.hpp>
 #include <boost/type_traits/is_same.hpp>
@@ -212,6 +213,15 @@ public:
     // This is linear if [first, last) is already sorted (and if we
     // can figure out the distance between the two iterators).
     insert(first, last);
+  }
+
+  explicit sorted_vector_set(
+      std::initializer_list<value_type> list,
+      const Compare& comp = Compare(),
+      const Allocator& alloc = Allocator())
+    : m_(comp, alloc)
+  {
+    insert(list.begin(), list.end());
   }
 
   key_compare key_comp() const { return m_; }
@@ -438,6 +448,15 @@ public:
     : m_(value_compare(comp), alloc)
   {
     insert(first, last);
+  }
+
+  explicit sorted_vector_map(
+      std::initializer_list<value_type> list,
+      const Compare& comp = Compare(),
+      const Allocator& alloc = Allocator())
+    : m_(value_compare(comp), alloc)
+  {
+    insert(list.begin(), list.end());
   }
 
   key_compare key_comp() const { return m_; }
