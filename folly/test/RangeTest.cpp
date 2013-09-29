@@ -290,6 +290,16 @@ TEST(StringPiece, InvalidRange) {
   EXPECT_THROW(a.subpiece(6), std::out_of_range);
 }
 
+constexpr char helloArray[] = "hello";
+
+TEST(StringPiece, Constexpr) {
+  constexpr StringPiece hello1("hello");
+  EXPECT_EQ("hello", hello1);
+
+  constexpr StringPiece hello2(helloArray);
+  EXPECT_EQ("hello", hello2);
+}
+
 TEST(qfind, UInt32_Ranges) {
   vector<uint32_t> a({1, 2, 3, 260, 5});
   vector<uint32_t> b({2, 3, 4});

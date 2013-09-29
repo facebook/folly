@@ -152,8 +152,8 @@ public:
       : b_(start), e_(start + size) { }
 
   // Works only for Range<const char*>
-  /* implicit */ Range(Iter str)
-      : b_(str), e_(b_ + strlen(str)) {}
+  /* implicit */ constexpr Range(Iter str)
+      : b_(str), e_(str + strlen(str)) {}
   // Works only for Range<const char*>
   /* implicit */ Range(const std::string& str)
       : b_(str.data()), e_(b_ + str.size()) {}
