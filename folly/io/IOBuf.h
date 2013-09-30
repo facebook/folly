@@ -238,7 +238,9 @@ class IOBuf {
    * buffer as the first argument, and the supplied userData value as the
    * second argument.  The free function must never throw exceptions.
    *
-   * If no FreeFunction is specified, the buffer will be freed using free().
+   * If no FreeFunction is specified, the buffer will be freed using free()
+   * which will result in undefined behavior if the memory was allocated
+   * using 'new'.
    *
    * The IOBuf data pointer will initially point to the start of the buffer,
    *
