@@ -30,12 +30,12 @@ noinst_PROGRAMS=benchmark_test
 
 if HAVE_X86_64
 small_locks_test_SOURCES = SmallLocksTest.cpp
-small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += small_locks_test
 
 # Fails with WARNING: Logging before InitGoogleLogging() is written to STDERR
 packed_sync_ptr_test_SOURCES = PackedSyncPtrTest.cpp
-packed_sync_ptr_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+packed_sync_ptr_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += packed_sync_ptr_test
 
 small_vector_test_SOURCES = small_vector_test.cpp
@@ -66,10 +66,10 @@ eventfd_test_SOURCES = EventFDTest.cpp
 eventfd_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
 
 thread_cached_int_test_SOURCES = ThreadCachedIntTest.cpp
-thread_cached_int_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+thread_cached_int_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la -lpthread
 
 thread_local_test_SOURCES = ThreadLocalTest.cpp
-thread_local_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+thread_local_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la -lpthread
 
 TESTS += eventfd_test thread_cached_int_test thread_local_test
 
@@ -88,7 +88,7 @@ json_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_bui
 TESTS += json_test
 
 benchmark_test_SOURCES = BenchmarkTest.cpp
-benchmark_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+benchmark_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la -lpthread
 
 # fails due to destructor
 scope_guard_test_SOURCES = ScopeGuardTest.cpp
@@ -96,7 +96,7 @@ scope_guard_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += scope_guard_test
 
 timeout_queue_test_SOURCES = TimeoutQueueTest.cpp
-timeout_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfollytimeout_queue.la
+timeout_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfollytimeout_queue.la -lpthread
 
 conv_test_SOURCES = ConvTest.cpp
 conv_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
@@ -115,19 +115,19 @@ endian_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += endian_test
 
 rw_spinlock_test_SOURCES = RWSpinLockTest.cpp
-rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIB)
+rw_spinlock_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la  $(BOOST_THREAD_LIB) -lpthread
 TESTS += rw_spinlock_test
 
 synchronized_test_SOURCES = SynchronizedTest.cpp
-synchronized_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+synchronized_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += synchronized_test
 
 concurrent_skiplist_test_SOURCES = ConcurrentSkipListTest.cpp
-concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
+concurrent_skiplist_test_LDADD = libgtest.la $(top_builddir)/libfolly.la -lpthread
 TESTS += concurrent_skiplist_test
 
 concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
-concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la -lpthread
 noinst_PROGRAMS += concurrent_skiplist_benchmark
 
 histogram_test_SOURCES = HistogramTest.cpp
@@ -147,15 +147,15 @@ string_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libf
 TESTS += string_test
 
 producer_consumer_queue_test_SOURCES = ProducerConsumerQueueTest.cpp
-producer_consumer_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+producer_consumer_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += producer_consumer_queue_test
 
 atomic_hash_array_test_SOURCES = AtomicHashArrayTest.cpp
-atomic_hash_array_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+atomic_hash_array_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += atomic_hash_array_test
 
 atomic_hash_map_test_SOURCES = AtomicHashMapTest.cpp
-atomic_hash_map_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+atomic_hash_map_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la -lpthread
 TESTS += atomic_hash_map_test
 
 format_test_SOURCES = FormatTest.cpp
@@ -167,7 +167,7 @@ fingerprint_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)
 TESTS += fingerprint_test
 
 portability_test_SOURCES = PortabilityTest.cpp
-portability_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+portability_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la -lpthread
 TESTS += portability_test
 
 cpuid_test_SOURCES = CpuIdTest.cpp
