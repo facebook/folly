@@ -47,7 +47,7 @@ Uri::Uri(StringPiece str) : port_(0) {
 
   boost::cmatch match;
   if (UNLIKELY(!boost::regex_match(str.begin(), str.end(), match, uriRegex))) {
-    throw std::invalid_argument("invalid URI");
+    throw std::invalid_argument(to<std::string>("invalid URI ", str));
   }
 
   scheme_ = submatch(match, 1);
@@ -74,7 +74,9 @@ Uri::Uri(StringPiece str) : port_(0) {
                             authority.second,
                             authorityMatch,
                             authorityRegex)) {
-      throw std::invalid_argument("invalid URI authority");
+      throw std::invalid_argument(
+          to<std::string>("invalid URI authority ",
+                          StringPiece(authority.first, authority.second)));
     }
 
     StringPiece port(authorityMatch[4].first, authorityMatch[4].second);

@@ -16,6 +16,7 @@
 
 #include "folly/Uri.h"
 
+#include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -221,6 +222,25 @@ TEST(Uri, Simple) {
     EXPECT_EQ(s, u.fbstr());
   }
 
-  EXPECT_THROW({Uri("2http://www.facebook.com/");},
-               std::invalid_argument);
+  {
+    fbstring s("2http://www.facebook.com");
+
+    try {
+      Uri u(s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      EXPECT_TRUE(boost::algorithm::ends_with(ex.what(), s));
+    }
+  }
+
+  {
+    fbstring s("www[facebook]com");
+
+    try {
+      Uri u("http://" + s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      EXPECT_TRUE(boost::algorithm::ends_with(ex.what(), s));
+    }
+  }
 }
