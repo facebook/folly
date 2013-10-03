@@ -46,6 +46,12 @@ static_assert(sizeof(unsigned long long) >= 8,
               "Wrong value for MaxString<unsigned long long>::value"
               ", please update.");
 
+/* Test for GCC >= 3.6.0 */
+#if __GNUC__ > 3 || (__GNUC__ == 3 && (__GNUC_MINOR__ >= 6))
+template <> const char *const MaxString<__uint128_t>::value =
+  "340282366920938463463374607431768211455";
+#endif
+
 inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
   // Can't use strncasecmp, since we want to ensure that the full value matches
   const char* p = *b;
