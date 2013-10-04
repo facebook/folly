@@ -177,11 +177,11 @@ cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += cpuid_test
 
 spooky_hash_v1_test_SOURCES = SpookyHashV1Test.cpp
-spooky_hash_v1_test_LDADD = -lrt $(top_builddir)/libfolly.la
+spooky_hash_v1_test_LDADD = -lrt $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v1_test
 
 spooky_hash_v2_test_SOURCES = SpookyHashV2Test.cpp
-spooky_hash_v2_test_LDADD = -lrt $(top_builddir)/libfolly.la
+spooky_hash_v2_test_LDADD = -lrt $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v2_test
 
 check_PROGRAMS= $(TESTS)
