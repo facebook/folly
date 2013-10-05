@@ -121,7 +121,7 @@ class Formatter {
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
-    arg.error("argument index out of range, max=", i);
+    LOG(FATAL) << arg.errorStr("argument index out of range, max=", i);
   }
 
   template <size_t K, class Callback>
