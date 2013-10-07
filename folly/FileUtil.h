@@ -77,7 +77,7 @@ ssize_t writevNoInt(int fd, const iovec* iov, int count);
 ssize_t readFull(int fd, void* buf, size_t n);
 ssize_t preadFull(int fd, void* buf, size_t n, off_t offset);
 ssize_t readvFull(int fd, iovec* iov, int count);
-#ifdef FOLLY_HAVE_PREADV
+#if FOLLY_HAVE_PREADV
 ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
 #endif
 
@@ -98,7 +98,7 @@ ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
 ssize_t writeFull(int fd, const void* buf, size_t n);
 ssize_t pwriteFull(int fd, const void* buf, size_t n, off_t offset);
 ssize_t writevFull(int fd, iovec* iov, int count);
-#ifdef FOLLY_HAVE_PWRITEV
+#if FOLLY_HAVE_PWRITEV
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
 #endif
 

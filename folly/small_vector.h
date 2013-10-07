@@ -54,9 +54,9 @@
 # define FB_PACKED
 #endif
 
-#ifdef FOLLY_HAVE_MALLOC_SIZE
+#if FOLLY_HAVE_MALLOC_SIZE
   extern "C" std::size_t malloc_size(const void*);
-# ifndef FOLLY_HAVE_MALLOC_USABLE_SIZE
+# if !FOLLY_HAVE_MALLOC_USABLE_SIZE
 #  define malloc_usable_size malloc_size
 # endif
 # ifndef malloc_usable_size

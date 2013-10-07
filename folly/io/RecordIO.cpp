@@ -56,7 +56,7 @@ void RecordIOWriter::write(std::unique_ptr<IOBuf> buf) {
   // We're going to write.  Reserve space for ourselves.
   off_t pos = filePos_.fetch_add(totalLength);
 
-#ifdef FOLLY_HAVE_PWRITEV
+#if FOLLY_HAVE_PWRITEV
   auto iov = buf->getIov();
   ssize_t bytes = pwritevFull(file_.fd(), iov.data(), iov.size(), pos);
 #else

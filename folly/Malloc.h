@@ -49,7 +49,7 @@ namespace folly {
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  It's defitions
 // are found in stdlib.h.
-#ifdef FOLLY_HAVE_MALLOC_H
+#if FOLLY_HAVE_MALLOC_H
 #include <malloc.h>
 #else
 #include <stdlib.h>

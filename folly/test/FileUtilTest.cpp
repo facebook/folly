@@ -222,7 +222,7 @@ TEST_F(FileUtilTest, readv) {
   }
 }
 
-#ifdef FOLLY_HAVE_PREADV
+#if FOLLY_HAVE_PREADV
 TEST_F(FileUtilTest, preadv) {
   for (auto& p : readers_) {
     IovecBuffers buf({12, 19, 31});
