@@ -15,6 +15,7 @@
  */
 
 #include "folly/ScopeGuard.h"
+#include "folly/Portability.h"
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
@@ -126,7 +127,7 @@ TEST(ScopeGuard, GuardException) {
       throw std::runtime_error("destructors should never throw!");
     });
   },
-#ifdef _LIBCPP_VERSION
+#if FOLLY_USE_LIBCPP
   "terminate called throwing an exception"
 #else
   "destructors should never throw"

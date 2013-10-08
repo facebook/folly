@@ -78,6 +78,15 @@ AC_COMPILE_IFELSE(
    AC_DEFINE([OVERRIDE], [],
              [Define to "override" if the compiler supports C++11 "override"])]
 )
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[
+    #include <type_traits>
+    #if !_LIBCPP_VERSION
+    #error No libc++
+    #endif
+    void func() {}]
+  ],
+  [AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])])
 
 # Check for clock_gettime(2). This is not in an AC_CHECK_FUNCS() because we
 # want to link with librt if necessary.
