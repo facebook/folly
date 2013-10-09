@@ -23,6 +23,20 @@ AC_PROG_CXX
 AC_PROG_CC
 AC_CXX_COMPILE_STDCXX_0X
 
+# Be sure to add any -std option to CXXFLAGS before we invoke any
+# AC_COMPILE_IFELSE() or similar macros. Any such macros that are invoked
+# before we update CXXFLAGS will not be run with the same options that we use
+# during the real build.
+STD=""
+if test "x$ac_cv_cxx_compile_cxx0x_cxx" = xyes; then
+   STD="-std=c++0x"
+fi
+if test "x$ac_cv_cxx_compile_cxx0x_gxx" = xyes; then
+   STD="-std=gnu++0x"
+fi
+
+CXXFLAGS="$STD $CXXFLAGS"
+
 # Checks for libraries.
 AC_CHECK_LIB([glog],[openlog],[],[AC_MSG_ERROR(
              [Please install google-glog library])])
@@ -131,15 +145,7 @@ if test "$ac_cv_func_pthread_yield" = "no"; then
    AC_CHECK_FUNCS([sched_yield])
 fi
 
-CXX_FLAGS=""
-if test "$ac_cv_cxx_compile_cxx0x_cxx" = yes; then
-   CXX_FLAGS="-std=c++0x"
-fi
-if test "$ac_cv_cxx_compile_cxx0x_gxx" = yes; then
-   CXX_FLAGS="-std=gnu++0x"
-fi
-
-AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" $CXX_FLAGS $BOOST_CPPFLAGS")
+AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" $BOOST_CPPFLAGS")
 AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread")
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
