@@ -89,6 +89,13 @@ AC_COMPILE_IFELSE(
 
 AC_COMPILE_IFELSE(
   [AC_LANG_SOURCE[
+    #include <cstring>
+    static constexpr int val = strlen("foo");]],
+  [AC_DEFINE([HAVE_CONSTEXPR_STRLEN], [1],
+             [Define to 1 if strlen(3) is constexpr.])])
+
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[
     #include <type_traits>
     #if !_LIBCPP_VERSION
     #error No libc++

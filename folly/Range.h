@@ -151,9 +151,15 @@ public:
   Range(Iter start, size_t size)
       : b_(start), e_(start + size) { }
 
+#if FOLLY_HAVE_CONSTEXPR_STRLEN
   // Works only for Range<const char*>
   /* implicit */ constexpr Range(Iter str)
       : b_(str), e_(str + strlen(str)) {}
+#else
+  // Works only for Range<const char*>
+  /* implicit */ Range(Iter str)
+      : b_(str), e_(str + strlen(str)) {}
+#endif
   // Works only for Range<const char*>
   /* implicit */ Range(const std::string& str)
       : b_(str.data()), e_(b_ + str.size()) {}
