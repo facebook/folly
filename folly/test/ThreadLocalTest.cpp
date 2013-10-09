@@ -346,6 +346,7 @@ class FillObject {
 
 }  // namespace
 
+#if FOLLY_HAVE_STD__THIS_THREAD__SLEEP_FOR
 TEST(ThreadLocal, Stress) {
   constexpr size_t numFillObjects = 250;
   std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;
@@ -376,6 +377,7 @@ TEST(ThreadLocal, Stress) {
 
   EXPECT_EQ(numFillObjects * numThreads * numReps, gDestroyed);
 }
+#endif
 
 // Yes, threads and fork don't mix
 // (http://cppwisdom.quora.com/Why-threads-and-fork-dont-mix) but if you're

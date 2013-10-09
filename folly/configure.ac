@@ -78,6 +78,15 @@ AC_COMPILE_IFELSE(
    AC_DEFINE([OVERRIDE], [],
              [Define to "override" if the compiler supports C++11 "override"])]
 )
+
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[
+    #include <thread>
+    #include <chrono>
+    void func() { std::this_thread::sleep_for(std::chrono::seconds(1)); }]],
+  [AC_DEFINE([HAVE_STD__THIS_THREAD__SLEEP_FOR], [1],
+             [Define to 1 if std::this_thread::sleep_for() is defined.])])
+
 AC_COMPILE_IFELSE(
   [AC_LANG_SOURCE[
     #include <type_traits>
