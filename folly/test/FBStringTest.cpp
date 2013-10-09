@@ -1082,22 +1082,14 @@ TEST(FBString, testMoveOperatorPlusRhs) {
   EXPECT_EQ(size1 + size2, test.size());
 }
 
+// The GNU C++ standard library throws an std::logic_error when an std::string
+// is constructed with a null pointer. Verify that we mirror this behavior.
+//
+// N.B. We behave this way even if the C++ library being used is something
+//      other than libstdc++. Someday if we deem it important to present
+//      identical undefined behavior for other platforms, we can re-visit this.
 TEST(FBString, testConstructionFromLiteralZero) {
-  try {
-    std::string s(0);
-    EXPECT_TRUE(false);
-  } catch (const std::logic_error&) {
-  } catch (...) {
-    EXPECT_TRUE(false);
-  }
-
-  try {
-    fbstring s(0);
-    EXPECT_TRUE(false);
-  } catch (const std::logic_error& e) {
-  } catch (...) {
-    EXPECT_TRUE(false);
-  }
+  EXPECT_THROW(fbstring s(0), std::logic_error);
 }
 
 TEST(FBString, testFixedBugs) {
