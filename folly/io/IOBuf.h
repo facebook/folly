@@ -895,12 +895,14 @@ class IOBuf {
    * Throws std::bad_alloc on error.  On error the IOBuf chain will be
    * unmodified.  Throws std::overflow_error if the length of the entire chain
    * larger than can be described by a uint32_t capacity.
+   *
+   * Returns ByteRange that points to the data IOBuf stores.
    */
-  void coalesce() {
-    if (!isChained()) {
-      return;
+  ByteRange coalesce() {
+    if (isChained()) {
+      coalesceSlow();
     }
-    coalesceSlow();
+    return ByteRange(data_, length_);
   }
 
   /**
