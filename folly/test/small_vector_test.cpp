@@ -676,9 +676,6 @@ TEST(small_vector, Capacity) {
   EXPECT_EQ(vec2.size(), 3);
   EXPECT_GT(vec2.capacity(), 2);
 
-  // Both have grown by the minimum amount
-  EXPECT_EQ(vec.capacity(), vec2.capacity());
-
   // Test capacity heapifying logic
   folly::small_vector<unsigned char, 1> vec3;
   const size_t hc_size = 1000000;
