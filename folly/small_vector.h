@@ -116,7 +116,7 @@ namespace detail {
    */
   template<class T>
   typename std::enable_if<
-    !boost::has_trivial_copy<T>::value
+    !FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
   moveToUninitialized(T* first, T* last, T* out) {
     auto const count = last - first;
@@ -138,11 +138,10 @@ namespace detail {
     }
   }
 
-  // Specialization for trivially copyable types.  (TODO: change to
-  // std::is_trivially_copyable when that works.)
+  // Specialization for trivially copyable types.
   template<class T>
   typename std::enable_if<
-    boost::has_trivial_copy<T>::value
+    FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(out, first, (last - first) * sizeof *first);
@@ -156,7 +155,7 @@ namespace detail {
    */
   template<class T>
   typename std::enable_if<
-    !boost::has_trivial_copy<T>::value
+    !FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
   moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
     if (lastConstructed == realLast) {
@@ -195,7 +194,7 @@ namespace detail {
   // change to std::is_trivially_copyable when that works.)
   template<class T>
   typename std::enable_if<
-    boost::has_trivial_copy<T>::value
+    FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
   moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
     std::move_backward(first, lastConstructed, realLast);

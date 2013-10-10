@@ -118,6 +118,15 @@ AC_COMPILE_IFELSE(
   ],
   [AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])])
 
+AC_COMPILE_IFELSE(
+  [AC_LANG_SOURCE[
+    #include <type_traits>
+    const bool val = std::is_trivially_copyable<bool>::value;]
+  ],
+  [AC_DEFINE([HAVE_STD__IS_TRIVIALLY_COPYABLE], [1],
+             [Define to 1 if we have a usable std::is_trivially_copyable<T>
+              implementation.])])
+
 # Check for clock_gettime(2). This is not in an AC_CHECK_FUNCS() because we
 # want to link with librt if necessary.
 AC_SEARCH_LIBS([clock_gettime], [rt],

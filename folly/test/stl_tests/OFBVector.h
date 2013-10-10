@@ -179,7 +179,7 @@ void uninitializedFillDefaultOrFree(T * b, size_t n) {
 template <class T>
 void uninitializedFillOrFree(T * b, size_t n, const T& value) {
   auto const e = b + n;
-  if (boost::has_trivial_copy<T>::value) {
+  if (FOLLY_IS_TRIVIALLY_COPYABLE(T)) {
     auto i = b;
     auto const e1 = b + (n & ~size_t(7));
     for (; i != e1; i += 8) {
@@ -764,7 +764,7 @@ public:
     memmove(const_cast<T*>(position) + n,
             position,
             sizeof(T) * (e_ - position));
-    if (boost::has_trivial_copy<T>::value) {
+    if (FOLLY_IS_TRIVIALLY_COPYABLE(T)) {
       std::uninitialized_fill(const_cast<T*>(position),
                               const_cast<T*>(position) + n,
                               x);

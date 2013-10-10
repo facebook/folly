@@ -84,8 +84,8 @@ struct NontrivialType {
 
   int32_t a;
 };
-static_assert(!boost::has_trivial_copy<NontrivialType>::value,
-              "NontrivialType isn't trivially copyable");
+static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(NontrivialType),
+              "NontrivialType is trivially copyable");
 
 int NontrivialType::ctored = 0;
 
@@ -147,6 +147,9 @@ struct NoncopyableCounter {
   NoncopyableCounter& operator=(NoncopyableCounter&&) { return *this; }
 };
 int NoncopyableCounter::alive = 0;
+
+static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(NoncopyableCounter),
+              "NoncopyableCounter is trivially copyable");
 
 // Check that throws don't break the basic guarantee for some cases.
 // Uses the method for testing exception safety described at
@@ -472,9 +475,10 @@ TEST(small_vector, Iteration) {
 }
 
 TEST(small_vector, NonCopyableType) {
-  folly::small_vector<std::unique_ptr<std::string>,2> vec;
+  folly::small_vector<NontrivialType,2> vec;
+
   for (int i = 0; i < 10; ++i) {
-    vec.emplace(vec.begin(), new std::string("asd"));
+    vec.emplace(vec.begin(), 13);
   }
   EXPECT_EQ(vec.size(), 10);
   auto vec2 = std::move(vec);
