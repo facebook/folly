@@ -105,6 +105,10 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 
+// FBString cannot use throw when replacing std::string, though it may still
+// use std::__throw_*
+#define throw
+
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
@@ -2422,6 +2426,7 @@ struct hash< ::folly::fbstring> {
 #endif // _LIBSTDCXX_FBSTRING
 
 #undef FBSTRING_DISABLE_ADDRESS_SANITIZER
+#undef throw
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
 
