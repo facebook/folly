@@ -168,7 +168,9 @@ struct StaticMeta {
     t->next = t->prev = t;
   }
 
+#if !__APPLE__
   static __thread ThreadEntry threadEntry_;
+#endif
   static StaticMeta<Tag>* inst_;
 
   StaticMeta() : nextId_(1) {
@@ -185,6 +187,21 @@ struct StaticMeta {
     LOG(FATAL) << "StaticMeta lives forever!";
   }
 
+  static ThreadEntry* getThreadEntry() {
+#if !__APPLE__
+    return &threadEntry_;
+#else
+    ThreadEntry* threadEntry =
+        static_cast<ThreadEntry*>(pthread_getspecific(inst_->pthreadKey_));
+    if (!threadEntry) {
+        threadEntry = new ThreadEntry();
+        int ret = pthread_setspecific(inst_->pthreadKey_, threadEntry);
+        checkPosixError(ret, "pthread_setspecific failed");
+    }
+    return threadEntry;
+#endif
+  }
+
   static void preFork(void) {
     instance().lock_.lock();  // Make sure it's created
   }
@@ -194,28 +211,39 @@ struct StaticMeta {
   }
 
   static void onForkChild(void) {
+    // only the current thread survives
     inst_->head_.next = inst_->head_.prev = &inst_->head_;
-    inst_->push_back(&threadEntry_);  // only the current thread survives
+    inst_->push_back(getThreadEntry());
     inst_->lock_.unlock();
   }
 
   static void onThreadExit(void* ptr) {
     auto & meta = instance();
+#if !__APPLE__
+    ThreadEntry* threadEntry = getThreadEntry();
+
     DCHECK_EQ(ptr, &meta);
-    // We wouldn't call pthread_setspecific unless we actually called get()
-    DCHECK_NE(threadEntry_.elementsCapacity, 0);
+    DCHECK_GT(threadEntry->elementsCapacity, 0);
+#else
+    ThreadEntry* threadEntry = static_cast<ThreadEntry*>(ptr);
+#endif
     {
       std::lock_guard<std::mutex> g(meta.lock_);
-      meta.erase(&threadEntry_);
-      // No need to hold the lock any longer; threadEntry_ is private to this
+      meta.erase(threadEntry);
+      // No need to hold the lock any longer; the ThreadEntry is private to this
       // thread now that it's been removed from meta.
     }
-    FOR_EACH_RANGE(i, 0, threadEntry_.elementsCapacity) {
-      threadEntry_.elements[i].dispose(TLPDestructionMode::THIS_THREAD);
+    FOR_EACH_RANGE(i, 0, threadEntry->elementsCapacity) {
+      threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD);
     }
-    free(threadEntry_.elements);
-    threadEntry_.elements = NULL;
+    free(threadEntry->elements);
+    threadEntry->elements = NULL;
     pthread_setspecific(meta.pthreadKey_, NULL);
+
+#if __APPLE__
+    // Allocated in getThreadEntry(); free it
+    delete threadEntry;
+#endif
   }
 
   static int create() {
@@ -270,21 +298,22 @@ struct StaticMeta {
   }
 
   /**
-   * Reserve enough space in the threadEntry_.elements for the item
+   * Reserve enough space in the ThreadEntry::elements for the item
    * @id to fit in.
    */
   static void reserve(int id) {
-    size_t prevCapacity = threadEntry_.elementsCapacity;
+    auto& meta = instance();
+    ThreadEntry* threadEntry = getThreadEntry();
+    size_t prevCapacity = threadEntry->elementsCapacity;
     // Growth factor < 2, see folly/docs/FBVector.md; + 5 to prevent
     // very slow start.
     size_t newCapacity = static_cast<size_t>((id + 5) * 1.7);
     assert(newCapacity > prevCapacity);
-    auto& meta = instance();
     ElementWrapper* reallocated = nullptr;
 
     // Need to grow. Note that we can't call realloc, as elements is
     // still linked in meta, so another thread might access invalid memory
-    // after realloc succeeds. We'll copy by hand and update threadEntry_
+    // after realloc succeeds. We'll copy by hand and update our ThreadEntry
     // under the lock.
     if (usingJEMalloc()) {
       bool success = false;
@@ -299,7 +328,7 @@ struct StaticMeta {
       // always expand our allocation to the real size.
       if (prevCapacity * sizeof(ElementWrapper) >=
           jemallocMinInPlaceExpandable) {
-        success = (rallocm(reinterpret_cast<void**>(&threadEntry_.elements),
+        success = (rallocm(reinterpret_cast<void**>(&threadEntry->elements),
                            &realByteSize,
                            newByteSize,
                            0,
@@ -341,7 +370,7 @@ struct StaticMeta {
       std::lock_guard<std::mutex> g(meta.lock_);
 
       if (prevCapacity == 0) {
-        meta.push_back(&threadEntry_);
+        meta.push_back(threadEntry);
       }
 
       if (reallocated) {
@@ -351,31 +380,36 @@ struct StaticMeta {
         * destructing a ThreadLocal and writing to the elements vector
         * of this thread.
         */
-        memcpy(reallocated, threadEntry_.elements,
+        memcpy(reallocated, threadEntry->elements,
                sizeof(ElementWrapper) * prevCapacity);
         using std::swap;
-        swap(reallocated, threadEntry_.elements);
+        swap(reallocated, threadEntry->elements);
       }
-      threadEntry_.elementsCapacity = newCapacity;
+      threadEntry->elementsCapacity = newCapacity;
     }
 
     free(reallocated);
 
+#if !__APPLE__
     if (prevCapacity == 0) {
       pthread_setspecific(meta.pthreadKey_, &meta);
     }
+#endif
   }
 
   static ElementWrapper& get(int id) {
-    if (UNLIKELY(threadEntry_.elementsCapacity <= id)) {
+    ThreadEntry* threadEntry = getThreadEntry();
+    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
       reserve(id);
-      assert(threadEntry_.elementsCapacity > id);
+      assert(threadEntry->elementsCapacity > id);
     }
-    return threadEntry_.elements[id];
+    return threadEntry->elements[id];
   }
 };
 
+#if !__APPLE__
 template <class Tag> __thread ThreadEntry StaticMeta<Tag>::threadEntry_ = {0};
+#endif
 template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 
 }  // namespace threadlocal_detail
