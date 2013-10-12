@@ -84,11 +84,11 @@ AC_COMPILE_IFELSE(
   [AC_LANG_SOURCE[class C { virtual void f() final {} virtual void g() {} };
                   class D : public C { virtual void g() override {} };]],
   [AC_DEFINE([FINAL], [final],
-             [Define to "final" if the compiler supports C++11 "final"]),
+             [Define to "final" if the compiler supports C++11 "final"])
    AC_DEFINE([OVERRIDE], [override],
              [Define to "override" if the compiler supports C++11 "override"])],
   [AC_DEFINE([FINAL], [],
-             [Define to "final" if the compiler supports C++11 "final"]),
+             [Define to "final" if the compiler supports C++11 "final"])
    AC_DEFINE([OVERRIDE], [],
              [Define to "override" if the compiler supports C++11 "override"])]
 )
