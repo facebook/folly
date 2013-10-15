@@ -445,22 +445,24 @@ public:
   }
 
   // Snatches a previously mallocated string. The parameter "size"
-  // is the size of the string, and the parameter "capacity" is the size
-  // of the mallocated block.  The string must be \0-terminated, so
-  // data[size] == '\0' and capacity >= size + 1.
+  // is the size of the string, and the parameter "allocatedSize"
+  // is the size of the mallocated block.  The string must be
+  // \0-terminated, so allocatedSize >= size + 1 and data[size] == '\0'.
   //
-  // So if you want a 2-character string, pass malloc(3) as "data", pass 2 as
-  // "size", and pass 3 as "capacity".
-  fbstring_core(Char *const data, const size_t size,
-                const size_t capacity,
+  // So if you want a 2-character string, pass malloc(3) as "data",
+  // pass 2 as "size", and pass 3 as "allocatedSize".
+  fbstring_core(Char * const data,
+                const size_t size,
+                const size_t allocatedSize,
                 AcquireMallocatedString) {
     if (size > 0) {
-      assert(capacity > size);
+      assert(allocatedSize >= size + 1);
       assert(data[size] == '\0');
       // Use the medium string storage
       ml_.data_ = data;
       ml_.size_ = size;
-      ml_.capacity_ = capacity | isMedium;
+      // Don't forget about null terminator
+      ml_.capacity_ = (allocatedSize - 1) | isMedium;
     } else {
       // No need for the memory
       free(data);
@@ -604,7 +606,7 @@ public:
           smartRealloc(
             ml_.data_,
             ml_.size_ * sizeof(Char),
-            ml_.capacity() * sizeof(Char),
+            (ml_.capacity() + 1) * sizeof(Char),
             capacityBytes));
         writeTerminator();
         ml_.capacity_ = (capacityBytes / sizeof(Char) - 1) | isMedium;
@@ -696,7 +698,7 @@ public:
     } else {
       sz = ml_.size_;
       if (sz == capacity()) {  // always true for isShared()
-        reserve(sz * 3 / 2);  // ensures not shared
+        reserve(1 + sz * 3 / 2);  // ensures not shared
       }
     }
     assert(!isShared());

@@ -1130,8 +1130,14 @@ TEST(FBString, testFixedBugs) {
     std::swap(str, str);
     EXPECT_EQ(1337, str.size());
   }
+  { // D1012196, --allocator=malloc
+    fbstring str(128, 'f');
+    str.clear();  // Empty medium string.
+    fbstring copy(str);  // Medium string of 0 capacity.
+    copy.push_back('b');
+    EXPECT_GE(copy.capacity(), 1);
+  }
 }
-
 
 TEST(FBString, testHash) {
   fbstring a;
