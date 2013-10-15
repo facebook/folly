@@ -137,6 +137,7 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #include "folly/detail/Clock.h"
 #endif
 
+#if defined(__cplusplus)
 // Unfortunately, boost::has_trivial_copy<T> is broken in libc++ due to its
 // usage of __has_trivial_copy(), so we can't use it as a
 // least-common-denominator for C++11 implementations that don't support
@@ -153,5 +154,6 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #include <boost/type_traits.hpp>
 #define FOLLY_IS_TRIVIALLY_COPYABLE(T)      (boost::has_trivial_copy<T>::value)
 #endif
+#endif // __cplusplus
 
 #endif // FOLLY_PORTABILITY_H_
