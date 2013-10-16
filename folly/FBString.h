@@ -107,7 +107,7 @@
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use std::__throw_*
-#define throw
+#define throw FOLLY_FBSTRING_MAY_NOT_USE_THROW
 
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
