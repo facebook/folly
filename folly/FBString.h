@@ -1794,7 +1794,9 @@ public:
                  const size_type nsize) const {
     if (!nsize) return pos;
     auto const size = this->size();
-    if (nsize + pos > size) return npos;
+    // nsize + pos can overflow (eg pos == npos), guard against that by checking
+    // that nsize + pos does not wrap around.
+    if (nsize + pos > size || nsize + pos < pos) return npos;
     // Don't use std::search, use a Boyer-Moore-like trick by comparing
     // the last characters first
     auto const haystack = data();

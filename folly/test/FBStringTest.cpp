@@ -1139,6 +1139,11 @@ TEST(FBString, testFixedBugs) {
   }
 }
 
+TEST(FBString, findWithNpos) {
+  fbstring fbstr("localhost:80");
+  EXPECT_EQ(fbstring::npos, fbstr.find(":", fbstring::npos));
+}
+
 TEST(FBString, testHash) {
   fbstring a;
   fbstring b;
