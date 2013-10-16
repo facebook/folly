@@ -526,10 +526,11 @@ template <class String> void clause11_21_4_6_6(String & test) {
                random(0, maxString), random('a', 'z'));
   pos = random(0, test.size());
   if (avoidAliasing) {
+    auto newString = String(test);
     test.replace(
       test.begin() + pos,
       test.begin() + pos + random(0, test.size() - pos),
-      String(test));
+      newString);
   } else {
     test.replace(
       test.begin() + pos,
@@ -538,10 +539,11 @@ template <class String> void clause11_21_4_6_6(String & test) {
   }
   pos = random(0, test.size());
   if (avoidAliasing) {
+    auto newString = String(test);
     test.replace(
       test.begin() + pos,
       test.begin() + pos + random(0, test.size() - pos),
-      String(test).c_str(),
+      newString.c_str(),
       test.size() - random(0, test.size()));
   } else {
     test.replace(
