@@ -17,6 +17,7 @@
 #include "folly/Bits.h"
 
 #include "folly/CpuId.h"
+#include "folly/Portability.h"
 
 // None of this is necessary if we're compiling for a target that supports
 // popcnt
@@ -32,8 +33,7 @@ int popcountll_builtin(unsigned long long x) {
   return __builtin_popcountll(x);
 }
 
-
-#if FOLLY_HAVE_IFUNC
+#if FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
 
 // Strictly speaking, these versions of popcount are usable without ifunc
 // support. However, we would have to check, via CpuId, if the processor
@@ -63,7 +63,7 @@ extern "C" Type_popcountll* folly_popcountll_ifunc() {
   return folly::CpuId().popcnt() ?  popcountll_inst : popcountll_builtin;
 }
 
-#endif // FOLLY_HAVE_IFUNC
+#endif  // FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
 
 }  // namespace
 
@@ -73,7 +73,7 @@ namespace detail {
 // Call folly_popcount_ifunc on startup to resolve to either popcount_inst
 // or popcount_builtin
 int popcount(unsigned int x)
-#if FOLLY_HAVE_IFUNC
+#if FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
   __attribute__((ifunc("folly_popcount_ifunc")));
 #else
 {  return popcount_builtin(x); }
@@ -82,7 +82,7 @@ int popcount(unsigned int x)
 // Call folly_popcount_ifunc on startup to resolve to either popcountll_inst
 // or popcountll_builtin
 int popcountll(unsigned long long x)
-#if FOLLY_HAVE_IFUNC
+#if FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
   __attribute__((ifunc("folly_popcountll_ifunc")));
 #else
 {  return popcountll_builtin(x); }
