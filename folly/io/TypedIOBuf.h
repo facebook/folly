@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <iterator>
 #include <type_traits>
+
+#include "folly/Malloc.h"
 #include "folly/io/IOBuf.h"
 
 namespace folly {
@@ -164,8 +166,14 @@ class TypedIOBuf {
    */
   template <class IT>
   void push(IT begin, IT end) {
-    auto n = std::distance(begin, end);
-    reserve(headroom(), n);
+    uint32_t n = std::distance(begin, end);
+    if (usingJEMalloc()) {
+      // Rely on rallocm() and avoid exponential growth to limit
+      // amount of memory wasted.
+      reserve(headroom(), n);
+    } else if (tailroom() < n) {
+      reserve(headroom(), std::max(n, 3 + size() / 2));
+    }
     std::copy(begin, end, writableTail());
     append(n);
   }
