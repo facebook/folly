@@ -37,7 +37,7 @@
  *    // read from proc.stdout()
  *    proc.wait();
  *
- * A thread-safe version of popen() (type="w", to write from the child):
+ * A thread-safe version of popen() (type="w", to write to the child):
  *    Subprocess proc(cmd, Subprocess::pipeStdin());
  *    // write to proc.stdin()
  *    proc.wait();
