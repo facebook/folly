@@ -21,6 +21,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <system_error>
+#include <gflags/gflags.h>
 
 DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
              "Maximum bytes to mlock/munlock/munmap at once "
