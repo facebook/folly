@@ -15,30 +15,40 @@ lib_LTLIBRARIES = \
 follyincludedir = $(includedir)/folly
 
 nobase_follyinclude_HEADERS = \
+	ApplyTuple.h \
 	Arena.h \
 	Arena-inl.h \
+	AtomicBitSet.h \
 	AtomicHashArray.h \
 	AtomicHashArray-inl.h \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
 	Benchmark.h \
 	Bits.h \
+	Chrono.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
 	Conv.h \
 	detail/AtomicHashUtils.h \
 	detail/BitIteratorDetail.h \
+	detail/BitsDetail.h \
 	detail/DiscriminatedPtrDetail.h \
+	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
+	detail/Futex.h \
 	detail/GroupVarintDetail.h \
+	detail/MPMCPipelineDetail.h \
 	detail/SlowFingerprint.h \
+	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
 	DiscriminatedPtr.h \
+	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
-	eventfd.h \
 	FBString.h \
 	FBVector.h \
+	File.h \
+	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
 	Foreach.h \
@@ -47,15 +57,27 @@ nobase_follyinclude_HEADERS = \
 	Format-inl.h \
 	GroupVarint.h \
 	Hash.h \
-	Histogram.h \
-	Histogram-inl.h \
 	IntrusiveList.h \
+	io/Cursor.h \
+	io/IOBuf.h \
+	io/IOBufQueue.h \
+	io/RecordIO.h \
+	io/RecordIO-inl.h \
+	io/TypedIOBuf.h \
 	json.h \
+	Lazy.h \
 	Likely.h \
 	Logging.h \
 	Malloc.h \
 	MapUtil.h \
+	Memory.h \
+	MemoryMapping.h \
+	MoveWrapper.h \
+	MPMCPipeline.h \
+	MPMCQueue.h \
+	Optional.h \
 	PackedSyncPtr.h \
+	Padded.h \
 	Portability.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
@@ -68,9 +90,15 @@ nobase_follyinclude_HEADERS = \
 	sorted_vector_types.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
-	StlAllocator.h \
+	stats/BucketedTimeSeries-defs.h \
+	stats/BucketedTimeSeries.h \
+	stats/Histogram-defs.h \
+	stats/Histogram.h \
+	stats/MultiLevelTimeSeries-defs.h \
+	stats/MultiLevelTimeSeries.h \
 	String.h \
 	String-inl.h \
+	Subprocess.h \
 	Synchronized.h \
 	test/FBStringTestBenchmarks.cpp.h \
 	test/FBVectorTestBenchmarks.cpp.h \
@@ -83,7 +111,10 @@ nobase_follyinclude_HEADERS = \
 	ThreadLocal.h \
 	TimeoutQueue.h \
 	Traits.h \
-	Unicode.h
+	Unicode.h \
+	Uri.h \
+	Uri-inl.h \
+	Varint.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
@@ -95,22 +126,31 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 	build/generate_varint_tables.py
 
 libfolly_la_SOURCES = \
-	Random.cpp \
-	Range.cpp \
-	Unicode.cpp \
+	Benchmark.cpp \
+	Bits.cpp \
 	Conv.cpp \
-	json.cpp \
 	dynamic.cpp \
-	GroupVarint.cpp \
-	GroupVarintTables.cpp \
-	EscapeTables.cpp \
-	ThreadCachedArena.cpp \
+	File.cpp \
+	FileUtil.cpp \
 	Format.cpp \
 	FormatTables.cpp \
-	String.cpp \
-	Bits.cpp \
+	GroupVarint.cpp \
+	io/IOBuf.cpp \
+	io/IOBufQueue.cpp \
+	io/RecordIO.cpp \
+	json.cpp \
+	MemoryMapping.cpp \
+	Random.cpp \
+	Range.cpp \
 	SpookyHashV1.cpp \
-	SpookyHashV2.cpp
+	SpookyHashV2.cpp \
+	stats/Instantiations.cpp \
+	String.cpp \
+	Subprocess.cpp \
+	ThreadCachedArena.cpp \
+	TimeoutQueue.cpp \
+	Unicode.cpp \
+	Uri.cpp
 
 if !HAVE_LINUX
 nobase_follyinclude_HEADERS += detail/Clock.h
