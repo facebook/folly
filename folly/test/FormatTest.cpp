@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "folly/FBVector.h"
+#include "folly/FileUtil.h"
 #include "folly/dynamic.h"
 #include "folly/json.h"
 
@@ -184,6 +185,26 @@ TEST(Format, Simple) {
   format(&s, "{} {}", 42, 23);
   format(&s, " hello {:X<7}", "world");
   EXPECT_EQ("42 23 hello worldXX", s);
+
+  // Test writing to FILE. I'd use open_memstream but that's not available
+  // outside of Linux (even though it's in POSIX.1-2008).
+  {
+    int fds[2];
+    CHECK_ERR(pipe(fds));
+    SCOPE_EXIT { closeNoInt(fds[1]); };
+    {
+      FILE* fp = fdopen(fds[1], "wb");
+      PCHECK(fp);
+      SCOPE_EXIT { fclose(fp); };
+      writeTo(fp, format("{} {}", 42, 23));  // <= 512 bytes (PIPE_BUF)
+    }
+
+    char buf[512];
+    ssize_t n = readFull(fds[0], buf, sizeof(buf));
+    CHECK_GE(n, 0);
+
+    EXPECT_EQ("42 23", std::string(buf, n));
+  }
 }
 
 TEST(Format, Float) {

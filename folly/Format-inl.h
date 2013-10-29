@@ -18,6 +18,7 @@
 #error This file may only be included from Format.h.
 #endif
 
+#include "folly/Exception.h"
 #include "folly/Traits.h"
 
 namespace folly {
@@ -231,6 +232,17 @@ void Formatter<containerMode, Args...>::operator()(Output& out) const {
 
     doFormat(argIndex, arg, out);
   }
+}
+
+template <bool containerMode, class... Args>
+void writeTo(FILE* fp, const Formatter<containerMode, Args...>& formatter) {
+  auto writer = [fp] (StringPiece sp) {
+    ssize_t n = fwrite(sp.data(), 1, sp.size(), fp);
+    if (n < sp.size()) {
+      throwSystemError("Formatter writeTo", "fwrite failed");
+    }
+  };
+  formatter(writer);
 }
 
 namespace format_value {

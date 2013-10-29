@@ -18,6 +18,7 @@
 #define FOLLY_FORMAT_H_
 
 #include <array>
+#include <cstdio>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -155,10 +156,17 @@ std::ostream& operator<<(std::ostream& out,
 }
 
 /**
+ * Formatter objects can be written to stdio FILEs.
+ */
+template<bool containerMode, class... Args>
+void writeTo(FILE* fp, const Formatter<containerMode, Args...>& formatter);
+
+/**
  * Create a formatter object.
  *
  * std::string formatted = format("{} {}", 23, 42).str();
  * LOG(INFO) << format("{} {}", 23, 42);
+ * writeTo(stdout, format("{} {}", 23, 42));
  */
 template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
