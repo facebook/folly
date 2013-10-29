@@ -43,7 +43,7 @@ class MoveWrapper {
   MoveWrapper(T&& t) : value(std::move(t)) {}
 
   /// copy is move
-  MoveWrapper(MoveWrapper& other) : value(std::move(other.value)) {}
+  MoveWrapper(const MoveWrapper& other) : value(std::move(other.value)) {}
 
   /// move is also move
   MoveWrapper(MoveWrapper&& other) : value(std::move(other.value)) {}
@@ -60,7 +60,7 @@ class MoveWrapper {
   MoveWrapper& operator=(MoveWrapper&&) = delete;
 
  private:
-  T value;
+  mutable T value;
 };
 
 template <class T>
