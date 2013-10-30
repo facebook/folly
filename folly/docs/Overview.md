@@ -226,6 +226,10 @@ STL allocator wrapping a simple allocate/deallocate interface.
 
 String utilities that connect `folly::fbstring` with `std::string`.
 
+####`Subprocess.h`
+
+Subprocess library, modeled after Python's subprocess module.
+
 ####[`Synchronized.h`](Synchronized.md)
 
 High-level synchronization library.
