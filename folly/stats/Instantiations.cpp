@@ -30,11 +30,15 @@
 #include "folly/stats/MultiLevelTimeSeries.h"
 #include "folly/stats/MultiLevelTimeSeries-defs.h"
 
+#include "folly/stats/TimeseriesHistogram.h"
+#include "folly/stats/TimeseriesHistogram-defs.h"
+
 namespace folly {
 
 template class BucketedTimeSeries<int64_t>;
 template class Histogram<int64_t>;
 template class detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>;
 template class MultiLevelTimeSeries<int64_t>;
+template class TimeseriesHistogram<int64_t>;
 
 } // folly

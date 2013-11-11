@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include <glog/logging.h>
 #include "folly/stats/BucketedTimeSeries.h"
 
 namespace folly {
