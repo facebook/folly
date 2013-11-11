@@ -29,6 +29,8 @@ nobase_follyinclude_HEADERS = \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
 	Conv.h \
+	CpuId.h \
+	CPortability.h \
 	detail/AtomicHashUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
