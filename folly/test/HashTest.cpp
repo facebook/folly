@@ -25,17 +25,17 @@ using namespace folly::hash;
 
 TEST(Hash, Fnv32) {
   const char* s1 = "hello, world!";
-  const uint32_t s1_res = 3180823791ul;
+  const uint32_t s1_res = 3605494790UL;
   EXPECT_EQ(fnv32(s1), s1_res);
   EXPECT_EQ(fnv32(s1), fnv32_buf(s1, strlen(s1)));
 
   const char* s2 = "monkeys! m0nk3yz! ev3ry \\/\\/here~~~~";
-  const uint32_t s2_res = 194407565ul;
+  const uint32_t s2_res = 1270448334UL;
   EXPECT_EQ(fnv32(s2), s2_res);
   EXPECT_EQ(fnv32(s2), fnv32_buf(s2, strlen(s2)));
 
   const char* s3 = "";
-  const uint32_t s3_res = 216613626ul;
+  const uint32_t s3_res = 2166136261UL;
   EXPECT_EQ(fnv32(s3), s3_res);
   EXPECT_EQ(fnv32(s3), fnv32_buf(s3, strlen(s3)));
 }

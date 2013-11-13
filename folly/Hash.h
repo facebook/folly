@@ -190,7 +190,7 @@ inline uint32_t jenkins_rev_unmix32(uint32_t key) {
  *     http://www.isthe.com/chongo/tech/comp/fnv/
  */
 
-const uint32_t FNV_32_HASH_START = 216613626UL;
+const uint32_t FNV_32_HASH_START = 2166136261UL;
 const uint64_t FNV_64_HASH_START = 14695981039346656037ULL;
 
 inline uint32_t fnv32(const char* s,
@@ -218,7 +218,7 @@ inline uint32_t fnv32_buf(const void* buf,
 }
 
 inline uint32_t fnv32(const std::string& str,
-                      uint64_t hash = FNV_32_HASH_START) {
+                      uint32_t hash = FNV_32_HASH_START) {
   return fnv32_buf(str.data(), str.size(), hash);
 }
 
