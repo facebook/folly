@@ -51,8 +51,8 @@ struct __cxa_eh_globals {
 };
 
 extern "C" {
-__cxa_eh_globals* __cxa_get_globals(void);
-__cxa_eh_globals* __cxa_get_globals_fast(void);
+__cxa_eh_globals* __cxa_get_globals(void) noexcept;
+__cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }
 
 }  // namespace __cxxabiv1

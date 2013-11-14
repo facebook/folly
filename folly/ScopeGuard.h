@@ -22,6 +22,7 @@
 #include <new>
 
 #include "folly/Preprocessor.h"
+#include "folly/detail/UncaughtExceptionCounter.h"
 
 namespace folly {
 
@@ -84,7 +85,7 @@ class ScopeGuardImplBase {
   bool dismissed_;
 };
 
-template<typename FunctionType>
+template <typename FunctionType>
 class ScopeGuardImpl : public ScopeGuardImplBase {
  public:
   explicit ScopeGuardImpl(const FunctionType& fn)
@@ -94,8 +95,8 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     : function_(std::move(fn)) {}
 
   ScopeGuardImpl(ScopeGuardImpl&& other)
-    : ScopeGuardImplBase(std::move(other)),
-      function_(std::move(other.function_)) {
+    : ScopeGuardImplBase(std::move(other))
+    , function_(std::move(other.function_)) {
   }
 
   ~ScopeGuardImpl() noexcept {
@@ -112,7 +113,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
   FunctionType function_;
 };
 
-template<typename FunctionType>
+template <typename FunctionType>
 ScopeGuardImpl<typename std::decay<FunctionType>::type>
 makeGuard(FunctionType&& fn) {
   return ScopeGuardImpl<typename std::decay<FunctionType>::type>(
@@ -125,6 +126,82 @@ makeGuard(FunctionType&& fn) {
 typedef ScopeGuardImplBase&& ScopeGuard;
 
 namespace detail {
+
+#if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
+    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
+
+/**
+ * ScopeGuard used for executing a function when leaving the current scope
+ * depending on the presence of a new uncaught exception.
+ *
+ * If the executeOnException template parameter is true, the function is
+ * executed if a new uncaught exception is present at the end of the scope.
+ * If the parameter is false, then the function is executed if no new uncaught
+ * exceptions are present at the end of the scope.
+ *
+ * Used to implement SCOPE_FAIL and SCOPE_SUCCES below.
+ */
+template <typename FunctionType, bool executeOnException>
+class ScopeGuardForNewException {
+ public:
+  explicit ScopeGuardForNewException(const FunctionType& fn)
+      : function_(fn) {
+  }
+
+  explicit ScopeGuardForNewException(FunctionType&& fn)
+      : function_(std::move(fn)) {
+  }
+
+  ScopeGuardForNewException(ScopeGuardForNewException&& other)
+      : function_(std::move(other.function_))
+      , exceptionCounter_(std::move(other.exceptionCounter_)) {
+  }
+
+  ~ScopeGuardForNewException() noexcept {
+    if (executeOnException == exceptionCounter_.isNewUncaughtException()) {
+      execute();
+    }
+  }
+
+ private:
+  ScopeGuardForNewException(const ScopeGuardForNewException& other) = delete;
+
+  void* operator new(size_t) = delete;
+
+  void execute() noexcept { function_(); }
+
+  FunctionType function_;
+  UncaughtExceptionCounter exceptionCounter_;
+};
+
+/**
+ * Internal use for the macro SCOPE_FAIL below
+ */
+enum class ScopeGuardOnFail {};
+
+template <typename FunctionType>
+ScopeGuardForNewException<typename std::decay<FunctionType>::type, true>
+operator+(detail::ScopeGuardOnFail, FunctionType&& fn) {
+  return
+      ScopeGuardForNewException<typename std::decay<FunctionType>::type, true>(
+      std::forward<FunctionType>(fn));
+}
+
+/**
+ * Internal use for the macro SCOPE_SUCCESS below
+ */
+enum class ScopeGuardOnSuccess {};
+
+template <typename FunctionType>
+ScopeGuardForNewException<typename std::decay<FunctionType>::type, false>
+operator+(ScopeGuardOnSuccess, FunctionType&& fn) {
+  return
+      ScopeGuardForNewException<typename std::decay<FunctionType>::type, false>(
+      std::forward<FunctionType>(fn));
+}
+
+#endif // native uncaught_exception() supported
+
 /**
  * Internal use for the macro SCOPE_EXIT below
  */
@@ -143,5 +220,16 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
 #define SCOPE_EXIT \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) \
   = ::folly::detail::ScopeGuardOnExit() + [&]
+
+#if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
+    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
+#define SCOPE_FAIL \
+  auto FB_ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) \
+  = ::folly::detail::ScopeGuardOnFail() + [&]
+
+#define SCOPE_SUCCESS \
+  auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) \
+  = ::folly::detail::ScopeGuardOnSuccess() + [&]
+#endif // native uncaught_exception() supported
 
 #endif // FOLLY_SCOPEGUARD_H_

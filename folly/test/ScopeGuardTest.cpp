@@ -258,6 +258,36 @@ TEST(ScopeGuard, TEST_SCOPE_FAILURE2) {
   }
 }
 
+void testScopeFailAndScopeSuccess(ErrorBehavior error, bool expectFail) {
+  bool scopeFailExecuted = false;
+  bool scopeSuccessExecuted = false;
+
+  try {
+    SCOPE_FAIL { scopeFailExecuted = true; };
+    SCOPE_SUCCESS { scopeSuccessExecuted = true; };
+
+    try {
+      if (error == ErrorBehavior::HANDLED_ERROR) {
+        throw std::runtime_error("throwing an expected error");
+      } else if (error == ErrorBehavior::UNHANDLED_ERROR) {
+        throw "never throw raw strings";
+      }
+    } catch (const std::runtime_error&) {
+    }
+  } catch (...) {
+    // Outer catch to swallow the error for the UNHANDLED_ERROR behavior
+  }
+
+  EXPECT_EQ(expectFail, scopeFailExecuted);
+  EXPECT_EQ(!expectFail, scopeSuccessExecuted);
+}
+
+TEST(ScopeGuard, TEST_SCOPE_FAIL_AND_SCOPE_SUCCESS) {
+  testScopeFailAndScopeSuccess(ErrorBehavior::SUCCESS, false);
+  testScopeFailAndScopeSuccess(ErrorBehavior::HANDLED_ERROR, false);
+  testScopeFailAndScopeSuccess(ErrorBehavior::UNHANDLED_ERROR, true);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
