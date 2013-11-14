@@ -65,8 +65,7 @@ S toFile(File file, std::unique_ptr<IOBuf> buffer) {
   return S(std::move(file), std::move(buffer));
 }
 
-}  // namespace gen
-}  // namespace folly
+}}  // !folly::gen
 
 #include "folly/experimental/FileGen-inl.h"
 

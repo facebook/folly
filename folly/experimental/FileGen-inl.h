@@ -120,13 +120,19 @@ class FileWriter : public Operator<FileWriter> {
   std::unique_ptr<IOBuf> buffer_;
 };
 
-}  // namespace detail
-
-inline auto byLine(File file, char delim='\n') ->
-decltype(fromFile(std::move(file)) | eachAs<StringPiece>() | resplit(delim)) {
-  return fromFile(std::move(file)) | eachAs<StringPiece>() | resplit(delim);
+}  // !detail
+/**
+ * Generator which reads lines from a file.
+ * Note: This produces StringPieces which reference temporary strings which are
+ * only valid during iteration.
+ */
+inline auto byLine(File file, char delim = '\n')
+    -> decltype(fromFile(std::move(file))
+                | eachAs<StringPiece>()
+                | resplit(delim)) {
+  return fromFile(std::move(file))
+       | eachAs<StringPiece>()
+       | resplit(delim);
 }
 
-}  // namespace gen
-}  // namespace folly
-
+}}  // !folly::gen
