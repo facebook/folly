@@ -22,6 +22,7 @@
 #include <tr1/tuple>
 #include <unordered_map>
 
+#include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -32,11 +33,39 @@
 
 namespace folly { namespace io { namespace test {
 
-constexpr size_t randomDataSizeLog2 = 27;  // 128MiB
-constexpr size_t randomDataSize = size_t(1) << randomDataSizeLog2;
+class DataHolder : private boost::noncopyable {
+ public:
+  uint64_t hash(size_t size) const;
+  ByteRange data(size_t size) const;
 
-std::unique_ptr<uint8_t[]> randomData;
-std::unordered_map<uint64_t, uint64_t> hashes;
+ protected:
+  explicit DataHolder(size_t sizeLog2);
+  const size_t size_;
+  std::unique_ptr<uint8_t[]> data_;
+  mutable std::unordered_map<uint64_t, uint64_t> hashCache_;
+};
+
+DataHolder::DataHolder(size_t sizeLog2)
+  : size_(size_t(1) << sizeLog2),
+    data_(new uint8_t[size_]) {
+}
+
+uint64_t DataHolder::hash(size_t size) const {
+  CHECK_LE(size, size_);
+  auto p = hashCache_.find(size);
+  if (p != hashCache_.end()) {
+    return p->second;
+  }
+
+  uint64_t h = folly::hash::fnv64_buf(data_.get(), size);
+  hashCache_[size] = h;
+  return h;
+}
+
+ByteRange DataHolder::data(size_t size) const {
+  CHECK_LE(size, size_);
+  return ByteRange(data_.get(), size);
+}
 
 uint64_t hashIOBuf(const IOBuf* buf) {
   uint64_t h = folly::hash::FNV_64_HASH_START;
@@ -46,20 +75,13 @@ uint64_t hashIOBuf(const IOBuf* buf) {
   return h;
 }
 
-uint64_t getRandomDataHash(uint64_t size) {
-  auto p = hashes.find(size);
-  if (p != hashes.end()) {
-    return p->second;
-  }
+class RandomDataHolder : public DataHolder {
+ public:
+  explicit RandomDataHolder(size_t sizeLog2);
+};
 
-  uint64_t h = folly::hash::fnv64_buf(randomData.get(), size);
-  hashes[size] = h;
-  return h;
-}
-
-void generateRandomData() {
-  randomData.reset(new uint8_t[size_t(1) << randomDataSizeLog2]);
-
+RandomDataHolder::RandomDataHolder(size_t sizeLog2)
+  : DataHolder(sizeLog2) {
   constexpr size_t numThreadsLog2 = 3;
   constexpr size_t numThreads = size_t(1) << numThreadsLog2;
 
@@ -69,12 +91,12 @@ void generateRandomData() {
   threads.reserve(numThreads);
   for (size_t t = 0; t < numThreads; ++t) {
     threads.emplace_back(
-        [seed, t, numThreadsLog2] () {
+        [this, seed, t, numThreadsLog2, sizeLog2] () {
           std::mt19937 rng(seed + t);
-          size_t countLog2 = size_t(1) << (randomDataSizeLog2 - numThreadsLog2);
+          size_t countLog2 = size_t(1) << (sizeLog2 - numThreadsLog2);
           size_t start = size_t(t) << countLog2;
           for (size_t i = 0; i < countLog2; ++i) {
-            randomData[start + i] = rng();
+            this->data_[start + i] = rng();
           }
         });
   }
@@ -83,6 +105,20 @@ void generateRandomData() {
     t.join();
   }
 }
+
+class ConstantDataHolder : public DataHolder {
+ public:
+  explicit ConstantDataHolder(size_t sizeLog2);
+};
+
+ConstantDataHolder::ConstantDataHolder(size_t sizeLog2)
+  : DataHolder(sizeLog2) {
+  memset(data_.get(), 'a', size_);
+}
+
+constexpr size_t dataSizeLog2 = 27;  // 128MiB
+RandomDataHolder randomDataHolder(dataSizeLog2);
+ConstantDataHolder constantDataHolder(dataSizeLog2);
 
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
   EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
@@ -101,33 +137,41 @@ class CompressionTest : public testing::TestWithParam<
      codec_ = getCodec(std::tr1::get<1>(tup));
    }
 
+   void runSimpleTest(const DataHolder& dh);
+
    uint64_t uncompressedLength_;
    std::unique_ptr<Codec> codec_;
 };
 
-TEST_P(CompressionTest, Simple) {
-  auto original = IOBuf::wrapBuffer(randomData.get(), uncompressedLength_);
+void CompressionTest::runSimpleTest(const DataHolder& dh) {
+  auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength_));
   auto compressed = codec_->compress(original.get());
   if (!codec_->needsUncompressedLength()) {
     auto uncompressed = codec_->uncompress(compressed.get());
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
-    EXPECT_EQ(getRandomDataHash(uncompressedLength_),
-              hashIOBuf(uncompressed.get()));
+    EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
   }
   {
     auto uncompressed = codec_->uncompress(compressed.get(),
                                            uncompressedLength_);
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
-    EXPECT_EQ(getRandomDataHash(uncompressedLength_),
-              hashIOBuf(uncompressed.get()));
+    EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
   }
+}
+
+TEST_P(CompressionTest, RandomData) {
+  runSimpleTest(randomDataHolder);
+}
+
+TEST_P(CompressionTest, ConstantData) {
+  runSimpleTest(constantDataHolder);
 }
 
 INSTANTIATE_TEST_CASE_P(
     CompressionTest,
     CompressionTest,
     testing::Combine(
-        testing::Values(0, 1, 12, 22, int(randomDataSizeLog2)),
+        testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(CodecType::NO_COMPRESSION,
                         CodecType::LZ4,
                         CodecType::SNAPPY,
@@ -140,26 +184,26 @@ class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
     codec_ = getCodec(GetParam());
   }
 
+  void runSimpleTest(const DataHolder& dh);
+
   std::unique_ptr<Codec> codec_;
 };
 
-TEST_P(CompressionCorruptionTest, Simple) {
+void CompressionCorruptionTest::runSimpleTest(const DataHolder& dh) {
   constexpr uint64_t uncompressedLength = 42;
-  auto original = IOBuf::wrapBuffer(randomData.get(), uncompressedLength);
+  auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength));
   auto compressed = codec_->compress(original.get());
 
   if (!codec_->needsUncompressedLength()) {
     auto uncompressed = codec_->uncompress(compressed.get());
     EXPECT_EQ(uncompressedLength, uncompressed->computeChainDataLength());
-    EXPECT_EQ(getRandomDataHash(uncompressedLength),
-              hashIOBuf(uncompressed.get()));
+    EXPECT_EQ(dh.hash(uncompressedLength), hashIOBuf(uncompressed.get()));
   }
   {
     auto uncompressed = codec_->uncompress(compressed.get(),
                                            uncompressedLength);
     EXPECT_EQ(uncompressedLength, uncompressed->computeChainDataLength());
-    EXPECT_EQ(getRandomDataHash(uncompressedLength),
-              hashIOBuf(uncompressed.get()));
+    EXPECT_EQ(dh.hash(uncompressedLength), hashIOBuf(uncompressed.get()));
   }
 
   EXPECT_THROW(codec_->uncompress(compressed.get(), uncompressedLength + 1),
@@ -177,6 +221,14 @@ TEST_P(CompressionCorruptionTest, Simple) {
                std::runtime_error);
 }
 
+TEST_P(CompressionCorruptionTest, RandomData) {
+  runSimpleTest(randomDataHolder);
+}
+
+TEST_P(CompressionCorruptionTest, ConstantData) {
+  runSimpleTest(constantDataHolder);
+}
+
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
@@ -191,8 +243,6 @@ INSTANTIATE_TEST_CASE_P(
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
-
-  folly::io::test::generateRandomData();  // 4GB
 
   auto ret = RUN_ALL_TESTS();
   if (!ret) {

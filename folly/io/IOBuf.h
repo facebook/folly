@@ -313,6 +313,10 @@ class IOBuf {
    * On error, std::bad_alloc will be thrown.
    */
   static std::unique_ptr<IOBuf> wrapBuffer(const void* buf, uint32_t capacity);
+  static std::unique_ptr<IOBuf> wrapBuffer(ByteRange br) {
+    CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
+    return wrapBuffer(br.data(), br.size());
+  }
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -322,6 +326,12 @@ class IOBuf {
   static std::unique_ptr<IOBuf> copyBuffer(const void* buf, uint32_t size,
                                            uint32_t headroom=0,
                                            uint32_t minTailroom=0);
+  static std::unique_ptr<IOBuf> copyBuffer(ByteRange br,
+                                           uint32_t headroom=0,
+                                           uint32_t minTailroom=0) {
+    CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
+    return copyBuffer(br.data(), br.size(), headroom, minTailroom);
+  }
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
