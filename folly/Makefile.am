@@ -132,11 +132,13 @@ libfolly_la_SOURCES = \
 	Bits.cpp \
 	Conv.cpp \
 	dynamic.cpp \
+	EscapeTables.cpp \
 	File.cpp \
 	FileUtil.cpp \
 	Format.cpp \
 	FormatTables.cpp \
 	GroupVarint.cpp \
+	GroupVarintTables.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
