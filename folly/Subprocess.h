@@ -56,7 +56,11 @@
 
 #include <sys/types.h>
 #include <signal.h>
+#if __APPLE__
+#include <sys/wait.h>
+#else
 #include <wait.h>
+#endif
 
 #include <exception>
 #include <vector>
@@ -201,8 +205,7 @@ class Subprocess : private boost::noncopyable {
    public:
     Options()
       : closeOtherFds_(false),
-        usePath_(false),
-        parentDeathSignal_(0) {
+        usePath_(false) {
     }
 
     /**
@@ -261,6 +264,7 @@ class Subprocess : private boost::noncopyable {
      */
     Options& usePath() { usePath_ = true; return *this; }
 
+#if __linux__
     /**
      * Child will receive a signal when the parent exits.
      */
@@ -268,6 +272,7 @@ class Subprocess : private boost::noncopyable {
       parentDeathSignal_ = sig;
       return *this;
     }
+#endif
 
     /**
      * Helpful way to combine Options.
@@ -279,7 +284,9 @@ class Subprocess : private boost::noncopyable {
     FdMap fdActions_;
     bool closeOtherFds_;
     bool usePath_;
-    int parentDeathSignal_;
+#if __linux__
+    int parentDeathSignal_{0};
+#endif
   };
 
   static Options pipeStdin() { return Options().stdin(PIPE); }
