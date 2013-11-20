@@ -2,6 +2,8 @@ SUBDIRS = . test
 
 ACLOCAL_AMFLAGS = -I m4
 
+CLEANFILES =
+
 noinst_PROGRAMS = generate_fingerprint_tables
 generate_fingerprint_tables_SOURCES = build/GenerateFingerprintTables.cpp
 generate_fingerprint_tables_LDADD = libfolly.la
@@ -121,12 +123,15 @@ nobase_follyinclude_HEADERS = \
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
+CLEANFILES += FormatTables.cpp
 
 EscapeTables.cpp: build/generate_escape_tables.py
 	build/generate_escape_tables.py
+CLEANFILES += EscapeTables.cpp
 
 GroupVarintTables.cpp: build/generate_varint_tables.py
 	build/generate_varint_tables.py
+CLEANFILES += GroupVarintTables.cpp
 
 libfolly_la_SOURCES = \
 	Benchmark.cpp \
@@ -168,6 +173,7 @@ endif
 
 FingerprintTables.cpp: generate_fingerprint_tables
 	./generate_fingerprint_tables
+CLEANFILES += FingerprintTables.cpp
 
 libfollyfingerprint_la_SOURCES = \
 	FingerprintTables.cpp
