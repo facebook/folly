@@ -165,27 +165,53 @@ namespace folly {
  * accessed by multiple threads.
  *
  *
- * IOBuf Object Allocation/Sharing
- * -------------------------------
+ * IOBuf Object Allocation
+ * -----------------------
  *
- * IOBuf objects themselves are always allocated on the heap.  The IOBuf
- * constructors are private, so IOBuf objects may not be created on the stack.
- * In part this is done since some IOBuf objects use small-buffer optimization
- * and contain the buffer data immediately after the IOBuf object itself.  The
- * coalesce() and unshare() methods also expect to be able to delete subsequent
- * IOBuf objects in the chain if they are no longer needed due to coalescing.
+ * IOBuf objects themselves exist separately from the data buffer they point
+ * to.  Therefore one must also consider how to allocate and manage the IOBuf
+ * objects.
  *
- * The IOBuf structure also does not provide room for an intrusive refcount on
- * the IOBuf object itself, only the underlying data buffer is reference
- * counted.  If users want to share the same IOBuf object between multiple
- * parts of the code, they are responsible for managing this sharing on their
- * own.  (For example, by using a shared_ptr.  Alternatively, users always have
- * the option of using clone() to create a second IOBuf that points to the same
- * underlying buffer.)
+ * It is more common to allocate IOBuf objects on the heap, using the create(),
+ * takeOwnership(), or wrapBuffer() factory functions.  The clone()/cloneOne()
+ * functions also return new heap-allocated IOBufs.  The createCombined()
+ * function allocates the IOBuf object and data storage space together, in a
+ * single memory allocation.  This can improve performance, particularly if you
+ * know that the data buffer and the IOBuf itself will have similar lifetimes.
  *
- * With jemalloc, allocating small objects like IOBuf objects should be
- * relatively fast, and the cost of allocating IOBuf objects on the heap and
- * cloning new IOBufs should be relatively cheap.
+ * That said, it is also possible to allocate IOBufs on the stack or inline
+ * inside another object as well.  This is useful for cases where the IOBuf is
+ * short-lived, or when the overhead of allocating the IOBuf on the heap is
+ * undesirable.
+ *
+ * However, note that stack-allocated IOBufs may only be used as the head of a
+ * chain (or standalone as the only IOBuf in a chain).  All non-head members of
+ * an IOBuf chain must be heap allocated.  (All functions to add nodes to a
+ * chain require a std::unique_ptr<IOBuf>, which enforces this requrement.)
+ *
+ * Additionally, no copy-constructor or assignment operator currently exists,
+ * so stack-allocated IOBufs may only be moved, not copied.  (Technically
+ * nothing is preventing us from adding a copy constructor and assignment
+ * operator.  However, it seems like this would add the possibility for some
+ * confusion.  We would need to determine if these functions would copy just a
+ * single buffer, or the entire chain.)
+ *
+ *
+ * IOBuf Sharing
+ * -------------
+ *
+ * The IOBuf class manages sharing of the underlying buffer that it points to,
+ * maintaining a reference count if multiple IOBufs are pointing at the same
+ * buffer.
+ *
+ * However, it is the callers responsibility to manage sharing and ownership of
+ * IOBuf objects themselves.  The IOBuf structure does not provide room for an
+ * intrusive refcount on the IOBuf object itself, only the underlying data
+ * buffer is reference counted.  If users want to share the same IOBuf object
+ * between multiple parts of the code, they are responsible for managing this
+ * sharing on their own.  (For example, by using a shared_ptr.  Alternatively,
+ * users always have the option of using clone() to create a second IOBuf that
+ * points to the same underlying buffer.)
  */
 namespace detail {
 // Is T a unique_ptr<> to a standard-layout type?
@@ -201,6 +227,11 @@ struct IsUniquePtrToSL<
 class IOBuf {
  public:
   class Iterator;
+
+  enum CreateOp { CREATE };
+  enum WrapBufferOp { WRAP_BUFFER };
+  enum TakeOwnershipOp { TAKE_OWNERSHIP };
+  enum CopyBufferOp { COPY_BUFFER };
 
   typedef ByteRange value_type;
   typedef Iterator iterator;
@@ -221,6 +252,7 @@ class IOBuf {
    * Throws std::bad_alloc on error.
    */
   static std::unique_ptr<IOBuf> create(uint32_t capacity);
+  IOBuf(CreateOp, uint32_t capacity);
 
   /**
    * Create a new IOBuf, using a single memory allocation to allocate space
@@ -275,18 +307,25 @@ class IOBuf {
    * default) the buffer will be freed before throwing the error.
    */
   static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
-                                              FreeFunction freeFn = NULL,
-                                              void* userData = NULL,
+                                              FreeFunction freeFn = nullptr,
+                                              void* userData = nullptr,
                                               bool freeOnError = true) {
     return takeOwnership(buf, capacity, capacity, freeFn,
                          userData, freeOnError);
   }
+  IOBuf(TakeOwnershipOp op, void* buf, uint32_t capacity,
+        FreeFunction freeFn = nullptr, void* userData = nullptr,
+        bool freeOnError = true)
+    : IOBuf(op, buf, capacity, capacity, freeFn, userData, freeOnError) {}
 
   static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
                                               uint32_t length,
-                                              FreeFunction freeFn = NULL,
-                                              void* userData = NULL,
+                                              FreeFunction freeFn = nullptr,
+                                              void* userData = nullptr,
                                               bool freeOnError = true);
+  IOBuf(TakeOwnershipOp, void* buf, uint32_t capacity, uint32_t length,
+        FreeFunction freeFn = nullptr, void* userData = nullptr,
+        bool freeOnError = true);
 
   /**
    * Create a new IOBuf pointing to an existing data buffer made up of
@@ -338,6 +377,8 @@ class IOBuf {
     CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
     return wrapBuffer(br.data(), br.size());
   }
+  IOBuf(WrapBufferOp op, const void* buf, uint32_t capacity);
+  IOBuf(WrapBufferOp op, ByteRange br);
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -353,6 +394,10 @@ class IOBuf {
     CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
     return copyBuffer(br.data(), br.size(), headroom, minTailroom);
   }
+  IOBuf(CopyBufferOp op, const void* buf, uint32_t size,
+        uint32_t headroom=0, uint32_t minTailroom=0);
+  IOBuf(CopyBufferOp op, ByteRange br,
+        uint32_t headroom=0, uint32_t minTailroom=0);
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -368,6 +413,9 @@ class IOBuf {
   static std::unique_ptr<IOBuf> copyBuffer(const std::string& buf,
                                            uint32_t headroom=0,
                                            uint32_t minTailroom=0);
+  IOBuf(CopyBufferOp op, const std::string& buf,
+        uint32_t headroom=0, uint32_t minTailroom=0)
+    : IOBuf(op, buf.data(), buf.size(), headroom, minTailroom) {}
 
   /**
    * A version of copyBuffer() that returns a null pointer if the input string
@@ -779,7 +827,7 @@ class IOBuf {
     prev_->next_ = next_;
     prev_ = this;
     next_ = this;
-    return std::unique_ptr<IOBuf>((next == this) ? NULL : next);
+    return std::unique_ptr<IOBuf>((next == this) ? nullptr : next);
   }
 
   /**
@@ -1016,6 +1064,39 @@ class IOBuf {
   Iterator begin() const;
   Iterator end() const;
 
+  /**
+   * Allocate a new null buffer.
+   *
+   * This can be used to allocate an empty IOBuf on the stack.  It will have no
+   * space allocated for it.  This is generally useful only to later use move
+   * assignment to fill out the IOBuf.
+   */
+  IOBuf() noexcept;
+
+  /**
+   * Move constructor and assignment operator.
+   *
+   * In general, you should only ever move the head of an IOBuf chain.
+   * Internal nodes in an IOBuf chain are owned by the head of the chain, and
+   * should not be moved from.  (Technically, nothing prevents you from moving
+   * a non-head node, but the moved-to node will replace the moved-from node in
+   * the chain.  This has implications for ownership, since non-head nodes are
+   * owned by the chain head.  You are then responsible for relinquishing
+   * ownership of the moved-to node, and manually deleting the moved-from
+   * node.)
+   *
+   * With the move assignment operator, the destination of the move should be
+   * the head of an IOBuf chain or a solitary IOBuf not part of a chain.  If
+   * the move destination is part of a chain, all other IOBufs in the chain
+   * will be deleted.
+   *
+   * (We currently don't provide a copy constructor or assignment operator.
+   * The main reason is because it is not clear these operations should copy
+   * the entire chain or just the single IOBuf.)
+   */
+  IOBuf(IOBuf&& other) noexcept;
+  IOBuf& operator=(IOBuf&& other) noexcept;
+
  private:
   enum FlagsEnum : uint32_t {
     kFlagUserOwned = 0x1,
@@ -1039,7 +1120,7 @@ class IOBuf {
     SharedInfo(FreeFunction fn, void* arg);
 
     // A pointer to a function to call to free the buffer when the refcount
-    // hits 0.  If this is NULL, free() will be used instead.
+    // hits 0.  If this is null, free() will be used instead.
     FreeFunction freeFn;
     void* userData;
     std::atomic<uint32_t> refcount;
@@ -1102,11 +1183,11 @@ class IOBuf {
    * Links to the next and the previous IOBuf in this chain.
    *
    * The chain is circularly linked (the last element in the chain points back
-   * at the head), and next_ and prev_ can never be NULL.  If this IOBuf is the
+   * at the head), and next_ and prev_ can never be null.  If this IOBuf is the
    * only element in the chain, next_ and prev_ will both point to this.
    */
-  IOBuf* next_;
-  IOBuf* prev_;
+  IOBuf* next_{this};
+  IOBuf* prev_{this};
 
   /*
    * A pointer to the start of the data referenced by this IOBuf, and the
@@ -1114,15 +1195,15 @@ class IOBuf {
    *
    * This may refer to any subsection of the actual buffer capacity.
    */
-  uint8_t* data_;
-  uint8_t* buf_;
-  uint32_t length_;
-  uint32_t capacity_;
-  mutable uint32_t flags_;
-  uint32_t type_;
+  uint8_t* data_{nullptr};
+  uint8_t* buf_{nullptr};
+  uint32_t length_{0};
+  uint32_t capacity_{0};
+  mutable uint32_t flags_{kFlagUserOwned};
+  uint32_t type_{kExtUserOwned};
   // SharedInfo may be NULL if kFlagUserOwned is set.  It is non-NULL
   // in all other cases.
-  SharedInfo* sharedInfo_;
+  SharedInfo* sharedInfo_{nullptr};
 
   struct DeleterBase {
     virtual ~DeleterBase() { }

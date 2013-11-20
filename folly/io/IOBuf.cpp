@@ -18,8 +18,11 @@
 
 #include "folly/io/IOBuf.h"
 
-#include "folly/Malloc.h"
+#include "folly/Conv.h"
 #include "folly/Likely.h"
+#include "folly/Malloc.h"
+#include "folly/Memory.h"
+#include "folly/ScopeGuard.h"
 
 #include <stdexcept>
 #include <assert.h>
@@ -51,7 +54,28 @@ enum : uint32_t {
   kDefaultCombinedBufSize = 1024
 };
 
+// Helper function for IOBuf::takeOwnership()
+void takeOwnershipError(bool freeOnError, void* buf,
+                        folly::IOBuf::FreeFunction freeFn,
+                        void* userData) {
+  if (!freeOnError) {
+    return;
+  }
+  if (!freeFn) {
+    free(buf);
+    return;
+  }
+  try {
+    freeFn(buf, userData);
+  } catch (...) {
+    // The user's free function is not allowed to throw.
+    // (We are already in the middle of throwing an exception, so
+    // we cannot let this exception go unhandled.)
+    abort();
+  }
 }
+
+} // unnamed namespace
 
 namespace folly {
 
@@ -160,6 +184,30 @@ void IOBuf::freeInternalBuf(void* buf, void* userData) {
   releaseStorage(storage, kDataInUse);
 }
 
+IOBuf::IOBuf(CreateOp, uint32_t capacity)
+  : next_(this),
+    prev_(this),
+    data_(nullptr),
+    length_(0),
+    flags_(0),
+    type_(kExtAllocated) {
+  allocExtBuffer(capacity, &buf_, &sharedInfo_, &capacity_);
+  data_ = buf_;
+}
+
+IOBuf::IOBuf(CopyBufferOp op, const void* buf, uint32_t size,
+             uint32_t headroom, uint32_t minTailroom)
+  : IOBuf(CREATE, headroom + size + minTailroom) {
+  advance(headroom);
+  memcpy(writableData(), buf, size);
+  append(size);
+}
+
+IOBuf::IOBuf(CopyBufferOp op, ByteRange br,
+             uint32_t headroom, uint32_t minTailroom)
+  : IOBuf(op, br.data(), br.size(), headroom, minTailroom) {
+}
+
 unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
   // For smaller-sized buffers, allocate the IOBuf, SharedInfo, and the buffer
   // all with a single allocation.
@@ -196,22 +244,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(uint32_t capacity) {
 }
 
 unique_ptr<IOBuf> IOBuf::createSeparate(uint32_t capacity) {
-  // Allocate an external buffer
-  uint8_t* buf;
-  SharedInfo* sharedInfo;
-  uint32_t actualCapacity;
-  allocExtBuffer(capacity, &buf, &sharedInfo, &actualCapacity);
-
-  // Allocate the IOBuf header
-  try {
-    return unique_ptr<IOBuf>(new IOBuf(kExtAllocated, 0,
-                                       buf, actualCapacity,
-                                       buf, 0,
-                                       sharedInfo));
-  } catch (...) {
-    free(buf);
-    throw;
-  }
+  return make_unique<IOBuf>(CREATE, capacity);
 }
 
 unique_ptr<IOBuf> IOBuf::createChain(
@@ -230,52 +263,71 @@ unique_ptr<IOBuf> IOBuf::createChain(
   return out;
 }
 
+IOBuf::IOBuf(TakeOwnershipOp, void* buf, uint32_t capacity, uint32_t length,
+             FreeFunction freeFn, void* userData,
+             bool freeOnError)
+  : next_(this),
+    prev_(this),
+    data_(static_cast<uint8_t*>(buf)),
+    buf_(static_cast<uint8_t*>(buf)),
+    length_(length),
+    capacity_(capacity),
+    flags_(kFlagFreeSharedInfo),
+    type_(kExtUserSupplied) {
+  try {
+    sharedInfo_ = new SharedInfo(freeFn, userData);
+  } catch (...) {
+    takeOwnershipError(freeOnError, buf, freeFn, userData);
+    throw;
+  }
+}
+
 unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
                                        uint32_t length,
                                        FreeFunction freeFn,
                                        void* userData,
                                        bool freeOnError) {
-  SharedInfo* sharedInfo = NULL;
   try {
     // TODO: We could allocate the IOBuf object and SharedInfo all in a single
     // memory allocation.  We could use the existing HeapStorage class, and
     // define a new kSharedInfoInUse flag.  We could change our code to call
     // releaseStorage(kFlagFreeSharedInfo) when this kFlagFreeSharedInfo,
     // rather than directly calling delete.
-    sharedInfo = new SharedInfo(freeFn, userData);
-
-    uint8_t* bufPtr = static_cast<uint8_t*>(buf);
-    return unique_ptr<IOBuf>(new IOBuf(kExtUserSupplied, kFlagFreeSharedInfo,
-                                       bufPtr, capacity,
-                                       bufPtr, length,
-                                       sharedInfo));
+    //
+    // Note that we always pass freeOnError as false to the constructor.
+    // If the constructor throws we'll handle it below.  (We have to handle
+    // allocation failures from make_unique too.)
+    return make_unique<IOBuf>(TAKE_OWNERSHIP, buf, capacity, length,
+                              freeFn, userData, false);
   } catch (...) {
-    delete sharedInfo;
-    if (freeOnError) {
-      if (freeFn) {
-        try {
-          freeFn(buf, userData);
-        } catch (...) {
-          // The user's free function is not allowed to throw.
-          abort();
-        }
-      } else {
-        free(buf);
-      }
-    }
+    takeOwnershipError(freeOnError, buf, freeFn, userData);
     throw;
   }
 }
 
+IOBuf::IOBuf(WrapBufferOp, const void* buf, uint32_t capacity)
+  : IOBuf(kExtUserOwned, kFlagUserOwned,
+          // We cast away the const-ness of the buffer here.
+          // This is okay since IOBuf users must use unshare() to create a copy
+          // of this buffer before writing to the buffer.
+          static_cast<uint8_t*>(const_cast<void*>(buf)), capacity,
+          static_cast<uint8_t*>(const_cast<void*>(buf)), capacity,
+          nullptr) {
+}
+
+IOBuf::IOBuf(WrapBufferOp op, ByteRange br)
+  : IOBuf(op, br.data(), folly::to<uint32_t>(br.size())) {
+}
+
 unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint32_t capacity) {
-  // We cast away the const-ness of the buffer here.
-  // This is okay since IOBuf users must use unshare() to create a copy of
-  // this buffer before writing to the buffer.
-  uint8_t* bufPtr = static_cast<uint8_t*>(const_cast<void*>(buf));
-  return unique_ptr<IOBuf>(new IOBuf(kExtUserSupplied, kFlagUserOwned,
-                                     bufPtr, capacity,
-                                     bufPtr, capacity,
-                                     NULL));
+  return make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
+}
+
+IOBuf::IOBuf() noexcept {
+}
+
+IOBuf::IOBuf(IOBuf&& other) noexcept {
+  *this = std::move(other);
 }
 
 IOBuf::IOBuf(ExtBufTypeEnum type,
@@ -311,6 +363,54 @@ IOBuf::~IOBuf() {
   }
 
   decrementRefcount();
+}
+
+IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
+  // If we are part of a chain, delete the rest of the chain.
+  while (next_ != this) {
+    // Since unlink() returns unique_ptr() and we don't store it,
+    // it will automatically delete the unlinked element.
+    (void)next_->unlink();
+  }
+
+  // Decrement our refcount on the current buffer
+  decrementRefcount();
+
+  // Take ownership of the other buffer's data
+  data_ = other.data_;
+  buf_ = other.buf_;
+  length_ = other.length_;
+  capacity_ = other.capacity_;
+  flags_ = other.flags_;
+  type_ = other.type_;
+  sharedInfo_ = other.sharedInfo_;
+  // Reset other so it is a clean state to be destroyed.
+  other.data_ = nullptr;
+  other.buf_ = nullptr;
+  other.length_ = 0;
+  other.capacity_ = 0;
+  other.flags_ = kFlagUserOwned;
+  other.type_ = kExtUserOwned;
+  other.sharedInfo_ = nullptr;
+
+  // If other was part of the chain, assume ownership of the rest of its chain.
+  // (It's only valid to perform move assignment on the head of a chain.)
+  if (other.next_ != &other) {
+    next_ = other.next_;
+    next_->prev_ = this;
+    other.next_ = &other;
+
+    prev_ = other.prev_;
+    prev_->next_ = this;
+    other.prev_ = &other;
+  }
+
+  // Sanity check to make sure that other is in a valid state to be destroyed.
+  DCHECK_EQ(other.prev_, &other);
+  DCHECK_EQ(other.next_, &other);
+  DCHECK(other.flags_ & kFlagUserOwned);
+
+  return *this;
 }
 
 bool IOBuf::empty() const {

@@ -142,7 +142,26 @@ TEST(IOBuf, TakeOwnership) {
   iobuf3.reset();
   EXPECT_EQ(1, deleteCount);
 
+  deleteCount = 0;
+  {
+    uint32_t size4 = 1234;
+    uint8_t *buf4 = new uint8_t[size4];
+    uint32_t length4 = 48;
+    IOBuf iobuf4(IOBuf::TAKE_OWNERSHIP, buf4, size4, length4,
+                 deleteArrayBuffer, &deleteCount);
+    EXPECT_EQ(buf4, iobuf4.data());
+    EXPECT_EQ(length4, iobuf4.length());
+    EXPECT_EQ(buf4, iobuf4.buffer());
+    EXPECT_EQ(size4, iobuf4.capacity());
 
+    IOBuf iobuf5 = std::move(iobuf4);
+    EXPECT_EQ(buf4, iobuf5.data());
+    EXPECT_EQ(length4, iobuf5.length());
+    EXPECT_EQ(buf4, iobuf5.buffer());
+    EXPECT_EQ(size4, iobuf5.capacity());
+    EXPECT_EQ(0, deleteCount);
+  }
+  EXPECT_EQ(1, deleteCount);
 }
 
 TEST(IOBuf, WrapBuffer) {
@@ -161,6 +180,14 @@ TEST(IOBuf, WrapBuffer) {
   EXPECT_EQ(size2, iobuf2->length());
   EXPECT_EQ(buf2.get(), iobuf2->buffer());
   EXPECT_EQ(size2, iobuf2->capacity());
+
+  uint32_t size3 = 4321;
+  unique_ptr<uint8_t[]> buf3(new uint8_t[size3]);
+  IOBuf iobuf3(IOBuf::WRAP_BUFFER, buf3.get(), size3);
+  EXPECT_EQ(buf3.get(), iobuf3.data());
+  EXPECT_EQ(size3, iobuf3.length());
+  EXPECT_EQ(buf3.get(), iobuf3.buffer());
+  EXPECT_EQ(size3, iobuf3.capacity());
 }
 
 TEST(IOBuf, CreateCombined) {
@@ -660,6 +687,13 @@ TEST(IOBuf, copyBuffer) {
   EXPECT_EQ(3, buf->headroom());
   EXPECT_EQ(0, buf->length());
   EXPECT_LE(6, buf->tailroom());
+
+  // A stack-allocated version
+  IOBuf stackBuf(IOBuf::COPY_BUFFER, s, 1, 2);
+  EXPECT_EQ(1, stackBuf.headroom());
+  EXPECT_EQ(s, std::string(reinterpret_cast<const char*>(stackBuf.data()),
+                           stackBuf.length()));
+  EXPECT_LE(2, stackBuf.tailroom());
 }
 
 TEST(IOBuf, maybeCopyBuffer) {
@@ -929,6 +963,47 @@ TEST(IOBuf, getIov) {
   buf->prev()->clear();
   iov = buf->getIov();
   EXPECT_EQ(count - 3, iov.size());
+}
+
+TEST(IOBuf, move) {
+  // Default allocate an IOBuf on the stack
+  IOBuf outerBuf;
+  char data[] = "foobar";
+  uint32_t length = sizeof(data);
+  uint32_t actualCapacity{0};
+  const void* ptr{nullptr};
+
+  {
+    // Create a small IOBuf on the stack.
+    // Note that IOBufs created on the stack always use an external buffer.
+    IOBuf b1(IOBuf::CREATE, 10);
+    actualCapacity = b1.capacity();
+    EXPECT_GE(actualCapacity, 10);
+    EXPECT_EQ(0, b1.length());
+    EXPECT_FALSE(b1.isShared());
+    ptr = b1.data();
+    ASSERT_TRUE(ptr != nullptr);
+    memcpy(b1.writableTail(), data, length);
+    b1.append(length);
+    EXPECT_EQ(length, b1.length());
+
+    // Use the move constructor
+    IOBuf b2(std::move(b1));
+    EXPECT_EQ(ptr, b2.data());
+    EXPECT_EQ(length, b2.length());
+    EXPECT_EQ(actualCapacity, b2.capacity());
+    EXPECT_FALSE(b2.isShared());
+
+    // Use the move assignment operator
+    outerBuf = std::move(b2);
+    // Close scope, destroying b1 and b2
+    // (which are both be invalid now anyway after moving out of them)
+  }
+
+  EXPECT_EQ(ptr, outerBuf.data());
+  EXPECT_EQ(length, outerBuf.length());
+  EXPECT_EQ(actualCapacity, outerBuf.capacity());
+  EXPECT_FALSE(outerBuf.isShared());
 }
 
 int main(int argc, char** argv) {
