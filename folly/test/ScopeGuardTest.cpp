@@ -127,11 +127,7 @@ TEST(ScopeGuard, GuardException) {
       throw std::runtime_error("destructors should never throw!");
     });
   },
-#if FOLLY_USE_LIBCPP
-  "terminate called throwing an exception"
-#else
-  "destructors should never throw"
-#endif
+  "destructors should never throw!"
   );
 }
 
