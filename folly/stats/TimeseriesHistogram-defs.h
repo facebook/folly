@@ -202,7 +202,7 @@ std::string TimeseriesHistogram<T, TT, C>::getString(int level) const {
     const ContainerType& cont = buckets_.getByIndex(i);
     toAppend(buckets_.getBucketMin(i),
              ":", cont.count(level),
-             ":", cont.avg<ValueType>(level), &result);
+             ":", cont.template avg<ValueType>(level), &result);
   }
 
   return result;
