@@ -272,4 +272,39 @@ int Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
   return rv;
 }
 
+
+template<>
+CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
+  static CacheLocality cache(CacheLocality::uniform(16));
+  return cache;
+}
+
+template<>
+test::DeterministicAtomic<size_t>
+    SequentialThreadId<test::DeterministicAtomic>::prevId(0);
+
+template<>
+__thread size_t SequentialThreadId<test::DeterministicAtomic>::currentId(0);
+
+template<>
+const AccessSpreader<test::DeterministicAtomic>
+AccessSpreader<test::DeterministicAtomic>::stripeByCore(
+    CacheLocality::system<>().numCachesByLevel.front());
+
+template<>
+const AccessSpreader<test::DeterministicAtomic>
+AccessSpreader<test::DeterministicAtomic>::stripeByChip(
+    CacheLocality::system<>().numCachesByLevel.back());
+
+template<>
+AccessSpreaderArray<test::DeterministicAtomic,128>
+AccessSpreaderArray<test::DeterministicAtomic,128>::sharedInstance = {};
+
+
+template<>
+Getcpu::Func
+AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(size_t numStripes) {
+  return &SequentialThreadId<test::DeterministicAtomic>::getcpu;
+}
+
 }}

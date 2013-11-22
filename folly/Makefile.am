@@ -36,6 +36,7 @@ nobase_follyinclude_HEADERS = \
 	detail/AtomicHashUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
+	detail/CacheLocality.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
@@ -137,6 +138,7 @@ libfolly_la_SOURCES = \
 	Benchmark.cpp \
 	Bits.cpp \
 	Conv.cpp \
+	detail/CacheLocality.cpp \
 	dynamic.cpp \
 	EscapeTables.cpp \
 	File.cpp \

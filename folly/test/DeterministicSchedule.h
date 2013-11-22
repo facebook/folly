@@ -27,6 +27,7 @@
 #include <assert.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
 
 namespace folly { namespace test {
