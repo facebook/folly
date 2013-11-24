@@ -453,18 +453,7 @@ void IOBuf::decrementRefcount() {
   }
 
   // We were the last user.  Free the buffer
-  if (ext_.sharedInfo->freeFn != NULL) {
-    try {
-      ext_.sharedInfo->freeFn(ext_.buf, ext_.sharedInfo->userData);
-    } catch (...) {
-      // The user's free function should never throw.  Otherwise we might
-      // throw from the IOBuf destructor.  Other code paths like coalesce()
-      // also assume that decrementRefcount() cannot throw.
-      abort();
-    }
-  } else {
-    free(ext_.buf);
-  }
+  freeExtBuffer();
 
   // Free the SharedInfo if it was allocated separately.
   //
@@ -484,6 +473,11 @@ void IOBuf::decrementRefcount() {
 void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
   size_t newCapacity = (size_t)length_ + minHeadroom + minTailroom;
   DCHECK_LT(newCapacity, UINT32_MAX);
+
+  // reserveSlow() is dangerous if anyone else is sharing the buffer, as we may
+  // reallocate and free the original buffer.  It should only ever be called if
+  // we are the only user of the buffer.
+  DCHECK(!isSharedOne());
 
   // We'll need to reallocate the buffer.
   // There are a few options.
@@ -511,11 +505,15 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
   uint32_t newHeadroom = 0;
   uint32_t oldHeadroom = headroom();
 
-  if ((flags_ & kFlagExt) && length_ != 0 && oldHeadroom >= minHeadroom) {
+  // If we have a buffer allocated with malloc and we just need more tailroom,
+  // try to use realloc()/rallocm() to grow the buffer in place.
+  if ((flags_ & (kFlagExt | kFlagUserOwned)) == kFlagExt &&
+      (ext_.sharedInfo->freeFn == nullptr) &&
+      length_ != 0 && oldHeadroom >= minHeadroom) {
     if (usingJEMalloc()) {
       size_t headSlack = oldHeadroom - minHeadroom;
       // We assume that tailroom is more useful and more important than
-      // tailroom (not least because realloc / rallocm allow us to grow the
+      // headroom (not least because realloc / rallocm allow us to grow the
       // buffer at the tail, but not at the head)  So, if we have more headroom
       // than we need, we consider that "wasted".  We arbitrarily define "too
       // much" headroom to be 25% of the capacity.
@@ -559,8 +557,8 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
     }
     newBuffer = static_cast<uint8_t*>(p);
     memcpy(newBuffer + minHeadroom, data_, length_);
-    if (flags_ & kFlagExt) {
-      free(ext_.buf);
+    if ((flags_ & (kFlagExt | kFlagUserOwned)) == kFlagExt) {
+      freeExtBuffer();
     }
     newHeadroom = minHeadroom;
   }
@@ -569,14 +567,34 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
   uint32_t cap;
   initExtBuffer(newBuffer, newAllocatedCapacity, &info, &cap);
 
-  flags_ = kFlagExt;
+  if (flags_ & kFlagFreeSharedInfo) {
+    delete ext_.sharedInfo;
+  }
 
+  flags_ = kFlagExt;
   ext_.capacity = cap;
   ext_.type = kExtAllocated;
   ext_.buf = newBuffer;
   ext_.sharedInfo = info;
   data_ = newBuffer + newHeadroom;
   // length_ is unchanged
+}
+
+void IOBuf::freeExtBuffer() {
+  DCHECK((flags_ & (kFlagExt | kFlagUserOwned)) == kFlagExt);
+
+  if (ext_.sharedInfo->freeFn) {
+    try {
+      ext_.sharedInfo->freeFn(ext_.buf, ext_.sharedInfo->userData);
+    } catch (...) {
+      // The user's free function should never throw.  Otherwise we might
+      // throw from the IOBuf destructor.  Other code paths like coalesce()
+      // also assume that decrementRefcount() cannot throw.
+      abort();
+    }
+  } else {
+    free(ext_.buf);
+  }
 }
 
 void IOBuf::allocExtBuffer(uint32_t minCapacity,

@@ -494,6 +494,12 @@ TEST(IOBuf, Chaining) {
   EXPECT_EQ(3, iob2->computeChainDataLength());
 }
 
+void reserveTestFreeFn(void* buffer, void* ptr) {
+  uint32_t* freeCount = static_cast<uint32_t*>(ptr);;
+  delete[] static_cast<uint8_t*>(buffer);
+  ++(*freeCount);
+};
+
 TEST(IOBuf, Reserve) {
   uint32_t fillSeed = 0x23456789;
   boost::mt19937 gen(fillSeed);
@@ -554,6 +560,26 @@ TEST(IOBuf, Reserve) {
     iob->reserve(0, 2000);
     EXPECT_EQ(0, iob->headroom());
     EXPECT_LE(2000, iob->tailroom());
+  }
+
+  // Test reserving from a user-allocated buffer.
+  {
+    uint8_t* buf = static_cast<uint8_t*>(malloc(100));
+    auto iob = IOBuf::takeOwnership(buf, 100);
+    iob->reserve(0, 2000);
+    EXPECT_EQ(0, iob->headroom());
+    EXPECT_LE(2000, iob->tailroom());
+  }
+
+  // Test reserving from a user-allocated with a custom free function.
+  {
+    uint32_t freeCount{0};
+    uint8_t* buf = new uint8_t[100];
+    auto iob = IOBuf::takeOwnership(buf, 100, reserveTestFreeFn, &freeCount);
+    iob->reserve(0, 2000);
+    EXPECT_EQ(0, iob->headroom());
+    EXPECT_LE(2000, iob->tailroom());
+    EXPECT_EQ(1, freeCount);
   }
 }
 

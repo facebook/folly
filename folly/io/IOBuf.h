@@ -1078,6 +1078,7 @@ class IOBuf {
       size_t newTailroom);
   void decrementRefcount();
   void reserveSlow(uint32_t minHeadroom, uint32_t minTailroom);
+  void freeExtBuffer();
 
   static size_t goodExtBufferSize(uint32_t minCapacity);
   static void initExtBuffer(uint8_t* buf, size_t mallocSize,
