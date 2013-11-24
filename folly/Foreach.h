@@ -35,9 +35,9 @@
  * evaluated multiple times, the macro defines one do-nothing if
  * statement to inject the Boolean variable FOR_EACH_state1, and then a
  * for statement that is executed only once, which defines the variable
- * FOR_EACH_state2 holding a reference to the container being
+ * FOR_EACH_state2 holding a rvalue reference to the container being
  * iterated. The workhorse is the last loop, which uses the just defined
- * reference FOR_EACH_state2.
+ * rvalue reference FOR_EACH_state2.
  *
  * The state variables are nested so they don't interfere; you can use
  * FOR_EACH multiple times in the same scope, either at the same level or
@@ -45,47 +45,18 @@
  *
  * In optimized builds g++ eliminates the extra gymnastics entirely and
  * generates code 100% identical to the handwritten loop.
- *
- * This will not work with temporary containers.  Consider BOOST_FOREACH
- * if you need that.
  */
 
 #include <boost/type_traits/remove_cv.hpp>
 
-namespace folly { namespace detail {
-
 /*
- * Simple template for obtaining the unqualified type given a generic
- * type T. For example, if T is const int,
- * typeof(remove_cv_from_expression(T())) yields int. Due to a bug in
- * g++, you need to actually use
- * typeof(remove_cv_from_expression(T())) instead of typename
- * boost::remove_cv<T>::type. Note that the function
- * remove_cv_from_expression is never defined - use it only inside
- * typeof.
- */
-template <class T> typename boost::remove_cv<T>::type
-remove_cv_from_expression(T value);
-
-}}
-
-/*
- * Use a "reference reference" (auto&&) to take advantage of reference
- * collapsing rules, if available.  In this case, FOR_EACH* will work with
- * temporary containers.
- */
-#define FB_AUTO_RR(x, y) auto&& x = y
-
-/*
- * The first AUTO should be replaced by decltype((c)) &
- * FOR_EACH_state2, but bugs in gcc prevent that from functioning
- * properly. The second pair of parens in decltype is actually
- * required, see
- * cpp-next.com/archive/2011/04/appearing-and-disappearing-consts-in-c/
+ * Shorthand for:
+ *   for (auto i = c.begin(); i != c.end(); ++i)
+ * except that c is only evaluated once.
  */
 #define FOR_EACH(i, c)                              \
   if (bool FOR_EACH_state1 = false) {} else         \
-    for (auto & FOR_EACH_state2 = (c);              \
+    for (auto && FOR_EACH_state2 = (c);             \
          !FOR_EACH_state1; FOR_EACH_state1 = true)  \
       for (auto i = FOR_EACH_state2.begin();        \
            i != FOR_EACH_state2.end(); ++i)
@@ -96,7 +67,7 @@ remove_cv_from_expression(T value);
  */
 #define FOR_EACH_R(i, c)                                \
   if (bool FOR_EACH_R_state1 = false) {} else           \
-    for (auto & FOR_EACH_R_state2 = (c);                \
+    for (auto && FOR_EACH_R_state2 = (c);               \
          !FOR_EACH_R_state1; FOR_EACH_R_state1 = true)  \
       for (auto i = FOR_EACH_R_state2.rbegin();         \
            i != FOR_EACH_R_state2.rend(); ++i)
@@ -112,7 +83,7 @@ remove_cv_from_expression(T value);
  */
 #define FOR_EACH_ENUMERATE(count, i, c)                                \
   if (bool FOR_EACH_state1 = false) {} else                            \
-    for (auto & FOR_EACH_state2 = (c);                                 \
+    for (auto && FOR_EACH_state2 = (c);                                \
          !FOR_EACH_state1; FOR_EACH_state1 = true)                     \
       if (size_t FOR_EACH_privateCount = 0) {} else                    \
         if (const size_t& count = FOR_EACH_privateCount) {} else       \
@@ -129,7 +100,7 @@ remove_cv_from_expression(T value);
  */
 #define FOR_EACH_KV(k, v, c)                                    \
   if (unsigned int FOR_EACH_state1 = 0) {} else                 \
-    for (FB_AUTO_RR(FOR_EACH_state2, (c));                      \
+    for (auto && FOR_EACH_state2 = (c);                         \
          !FOR_EACH_state1; FOR_EACH_state1 = 1)                 \
       for (auto FOR_EACH_state3 = FOR_EACH_state2.begin();      \
            FOR_EACH_state3 != FOR_EACH_state2.end();            \
