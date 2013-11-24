@@ -415,7 +415,7 @@ TEST(IOBuf, StringOperations) {
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(16));
     Appender app(chain.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello\0world\0\x01"), 13);
+    app.push(reinterpret_cast<const uint8_t*>("hello\0world\0\x01"), 13);
 
     Cursor curs(chain.get());
     EXPECT_STREQ("hello", curs.readTerminatedString().c_str());
@@ -423,12 +423,26 @@ TEST(IOBuf, StringOperations) {
     EXPECT_EQ(1, curs.read<uint8_t>());
   }
 
+  // Test multiple buffers where the first is empty and the string starts in
+  // the second buffer.
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(IOBuf::create(12));
+    Appender app(chain.get(), 0);
+    app.push(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello world", curs.readTerminatedString().c_str());
+  }
+
   // Test multiple buffers with a single null-terminated string spanning them
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(8));
     chain->prependChain(IOBuf::create(8));
-    Appender app(chain.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
+    chain->append(8);
+    chain->next()->append(4);
+    RWPrivateCursor rwc(chain.get());
+    rwc.push(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
 
     Cursor curs(chain.get());
     EXPECT_STREQ("hello world", curs.readTerminatedString().c_str());
@@ -439,18 +453,18 @@ TEST(IOBuf, StringOperations) {
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(16));
     Appender app(chain.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
+    app.push(reinterpret_cast<const uint8_t*>("hello world\0"), 12);
 
     Cursor curs(chain.get());
     EXPECT_THROW(curs.readTerminatedString('\0', 5), std::length_error);
   }
 
-  // Test reading a null-termianted string from a chain with an empty buffer at
+  // Test reading a null-terminated string from a chain with an empty buffer at
   // the front
   {
     std::unique_ptr<IOBuf> buf(IOBuf::create(8));
     Appender app(buf.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello\0"), 6);
+    app.push(reinterpret_cast<const uint8_t*>("hello\0"), 6);
     std::unique_ptr<IOBuf> chain(IOBuf::create(8));
     chain->prependChain(std::move(buf));
 
@@ -463,7 +477,7 @@ TEST(IOBuf, StringOperations) {
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(16));
     Appender app(chain.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("helloworld\x01"), 11);
+    app.push(reinterpret_cast<const uint8_t*>("helloworld\x01"), 11);
 
     Cursor curs(chain.get());
     EXPECT_STREQ("hello", curs.readFixedString(5).c_str());
@@ -471,12 +485,26 @@ TEST(IOBuf, StringOperations) {
     EXPECT_EQ(1, curs.read<uint8_t>());
   }
 
+  // Test multiple buffers where the first is empty and a fixed-length string
+  // starts in the second buffer.
+  {
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(IOBuf::create(16));
+    Appender app(chain.get(), 0);
+    app.push(reinterpret_cast<const uint8_t*>("hello world"), 11);
+
+    Cursor curs(chain.get());
+    EXPECT_STREQ("hello world", curs.readFixedString(11).c_str());
+  }
+
   // Test multiple buffers with a single fixed-length string spanning them
   {
     std::unique_ptr<IOBuf> chain(IOBuf::create(8));
     chain->prependChain(IOBuf::create(8));
-    Appender app(chain.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello world"), 11);
+    chain->append(7);
+    chain->next()->append(4);
+    RWPrivateCursor rwc(chain.get());
+    rwc.push(reinterpret_cast<const uint8_t*>("hello world"), 11);
 
     Cursor curs(chain.get());
     EXPECT_STREQ("hello world", curs.readFixedString(11).c_str());
@@ -487,7 +515,7 @@ TEST(IOBuf, StringOperations) {
   {
     std::unique_ptr<IOBuf> buf(IOBuf::create(8));
     Appender app(buf.get(), 0);
-    app.pushAtMost(reinterpret_cast<const uint8_t*>("hello"), 5);
+    app.push(reinterpret_cast<const uint8_t*>("hello"), 5);
     std::unique_ptr<IOBuf> chain(IOBuf::create(8));
     chain->prependChain(std::move(buf));
 
