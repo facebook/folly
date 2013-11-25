@@ -163,6 +163,61 @@ TEST(IOBuf, WrapBuffer) {
   EXPECT_EQ(size2, iobuf2->capacity());
 }
 
+TEST(IOBuf, CreateCombined) {
+  // Create a combined IOBuf, then destroy it.
+  // The data buffer and IOBuf both become unused as part of the destruction
+  {
+    auto buf = IOBuf::createCombined(256);
+    EXPECT_FALSE(buf->isShared());
+  }
+
+  // Create a combined IOBuf, clone from it, and then destroy the original
+  // IOBuf.  The data buffer cannot be deleted until the clone is also
+  // destroyed.
+  {
+    auto bufA = IOBuf::createCombined(256);
+    EXPECT_FALSE(bufA->isShared());
+    auto bufB = bufA->clone();
+    EXPECT_TRUE(bufA->isShared());
+    EXPECT_TRUE(bufB->isShared());
+    bufA.reset();
+    EXPECT_FALSE(bufB->isShared());
+  }
+
+  // Create a combined IOBuf, then call reserve() to get a larger buffer.
+  // The IOBuf no longer points to the combined data buffer, but the
+  // overall memory segment cannot be deleted until the IOBuf is also
+  // destroyed.
+  {
+    auto buf = IOBuf::createCombined(256);
+    buf->reserve(0, buf->capacity() + 100);
+  }
+
+  // Create a combined IOBuf, clone from it, then call unshare() on the original
+  // buffer.  This creates a situation where bufB is pointing at the combined
+  // buffer associated with bufA, but bufA is now using a different buffer.
+  auto testSwap = [](bool resetAFirst) {
+    auto bufA = IOBuf::createCombined(256);
+    EXPECT_FALSE(bufA->isShared());
+    auto bufB = bufA->clone();
+    EXPECT_TRUE(bufA->isShared());
+    EXPECT_TRUE(bufB->isShared());
+    bufA->unshare();
+    EXPECT_FALSE(bufA->isShared());
+    EXPECT_FALSE(bufB->isShared());
+
+    if (resetAFirst) {
+      bufA.reset();
+      bufB.reset();
+    } else {
+      bufB.reset();
+      bufA.reset();
+    }
+  };
+  testSwap(true);
+  testSwap(false);
+}
+
 void fillBuf(uint8_t* buf, uint32_t length, boost::mt19937& gen) {
   for (uint32_t n = 0; n < length; ++n) {
     buf[n] = static_cast<uint8_t>(gen() & 0xff);
@@ -392,8 +447,7 @@ TEST(IOBuf, Chaining) {
   EXPECT_TRUE(iob1->isShared());
 
   EXPECT_TRUE(iob1->isSharedOne());
-  // since iob2 has a small internal buffer, it will never be shared
-  EXPECT_FALSE(iob2ptr->isSharedOne());
+  EXPECT_TRUE(iob2ptr->isSharedOne());
   EXPECT_TRUE(iob3ptr->isSharedOne());
   EXPECT_TRUE(iob4ptr->isSharedOne());
   EXPECT_TRUE(iob5ptr->isSharedOne());

@@ -223,6 +223,27 @@ class IOBuf {
   static std::unique_ptr<IOBuf> create(uint32_t capacity);
 
   /**
+   * Create a new IOBuf, using a single memory allocation to allocate space
+   * for both the IOBuf object and the data storage space.
+   *
+   * This saves one memory allocation.  However, it can be wasteful if you
+   * later need to grow the buffer using reserve().  If the buffer needs to be
+   * reallocated, the space originally allocated will not be freed() until the
+   * IOBuf object itself is also freed.  (It can also be slightly wasteful in
+   * some cases where you clone this IOBuf and then free the original IOBuf.)
+   */
+  static std::unique_ptr<IOBuf> createCombined(uint32_t capacity);
+
+  /**
+   * Create a new IOBuf, using separate memory allocations for the IOBuf object
+   * for the IOBuf and the data storage space.
+   *
+   * This requires two memory allocations, but saves space in the long run
+   * if you know that you will need to reallocate the data buffer later.
+   */
+  static std::unique_ptr<IOBuf> createSeparate(uint32_t capacity);
+
+  /**
    * Allocate a new IOBuf chain with the requested total capacity, allocating
    * no more than maxBufCapacity to each buffer.
    */
@@ -455,7 +476,7 @@ class IOBuf {
    * get a pointer to the start of the data within the buffer.
    */
   const uint8_t* buffer() const {
-    return (flags_ & kFlagExt) ? ext_.buf : int_.buf;
+    return buf_;
   }
 
   /**
@@ -465,7 +486,7 @@ class IOBuf {
    * actually safe to write to the buffer.
    */
   uint8_t* writableBuffer() {
-    return (flags_ & kFlagExt) ? ext_.buf : int_.buf;
+    return buf_;
   }
 
   /**
@@ -476,9 +497,7 @@ class IOBuf {
    * get a pointer to the end of the data within the buffer.
    */
   const uint8_t* bufferEnd() const {
-    return (flags_ & kFlagExt) ?
-      ext_.buf + ext_.capacity :
-      int_.buf + kMaxInternalDataSize;
+    return buf_ + capacity_;
   }
 
   /**
@@ -488,7 +507,7 @@ class IOBuf {
    * method to get the length of the actual valid data in this IOBuf.
    */
   uint32_t capacity() const {
-    return (flags_ & kFlagExt) ?  ext_.capacity : kMaxInternalDataSize;
+    return capacity_;
   }
 
   /**
@@ -830,15 +849,11 @@ class IOBuf {
       return true;
     }
 
-    // an internal buffer wouldn't have kFlagMaybeShared or kFlagUserOwned
-    // so we would have returned false already.  The only remaining case
-    // is an external buffer which may be shared, so we need to read
-    // the reference count.
-    assert((flags_ & (kFlagExt | kFlagMaybeShared)) ==
-           (kFlagExt | kFlagMaybeShared));
-
-    bool shared =
-      ext_.sharedInfo->refcount.load(std::memory_order_acquire) > 1;
+    // kFlagMaybeShared is set, so we need to check the reference count.
+    // (Checking the reference count requires an atomic operation, which is why
+    // we prefer to only check kFlagMaybeShared if possible.)
+    DCHECK(flags_ & kFlagMaybeShared);
+    bool shared = sharedInfo_->refcount.load(std::memory_order_acquire) > 1;
     if (!shared) {
       // we're the last one left
       flags_ &= ~kFlagMaybeShared;
@@ -973,10 +988,12 @@ class IOBuf {
    */
   folly::fbvector<struct iovec> getIov() const;
 
-  // Overridden operator new and delete.
-  // These directly use malloc() and free() to allocate the space for IOBuf
-  // objects.  This is needed since IOBuf::create() manually uses malloc when
-  // allocating IOBuf objects with an internal buffer.
+  /*
+   * Overridden operator new and delete.
+   * These perform specialized memory management to help support
+   * createCombined(), which allocates IOBuf objects together with the buffer
+   * data.
+   */
   void* operator new(size_t size);
   void* operator new(size_t size, void* ptr);
   void operator delete(void* ptr);
@@ -1000,21 +1017,20 @@ class IOBuf {
 
  private:
   enum FlagsEnum : uint32_t {
-    kFlagExt = 0x1,
-    kFlagUserOwned = 0x2,
-    kFlagFreeSharedInfo = 0x4,
-    kFlagMaybeShared = 0x8,
+    kFlagUserOwned = 0x1,
+    kFlagFreeSharedInfo = 0x2,
+    kFlagMaybeShared = 0x4,
   };
 
-  // Values for the ExternalBuf type field.
+  // Values for the type_ field.
   // We currently don't really use this for anything, other than to have it
   // around for debugging purposes.  We store it at the moment just because we
-  // have the 4 extra bytes in the ExternalBuf struct that would just be
-  // padding otherwise.
+  // have the 4 extra bytes that would just be padding otherwise.
   enum ExtBufTypeEnum {
     kExtAllocated = 0,
     kExtUserSupplied = 1,
     kExtUserOwned = 2,
+    kCombinedAlloc = 3,
   };
 
   struct SharedInfo {
@@ -1027,32 +1043,14 @@ class IOBuf {
     void* userData;
     std::atomic<uint32_t> refcount;
   };
-  struct ExternalBuf {
-    uint32_t capacity;
-    uint32_t type;
-    uint8_t* buf;
-    // SharedInfo may be NULL if kFlagUserOwned is set.  It is non-NULL
-    // in all other cases.
-    SharedInfo* sharedInfo;
-  };
-  struct InternalBuf {
-    uint8_t buf[] __attribute__((aligned));
-  };
-
-  // The maximum size for an IOBuf object, including any internal data buffer
-  static const uint32_t kMaxIOBufSize = 256;
-  static const uint32_t kMaxInternalDataSize;
+  // Helper structs for use by operator new and delete
+  struct HeapPrefix;
+  struct HeapStorage;
+  struct HeapFullStorage;
 
   // Forbidden copy constructor and assignment opererator
   IOBuf(IOBuf const &);
   IOBuf& operator=(IOBuf const &);
-
-  /**
-   * Create a new IOBuf with internal data.
-   *
-   * end is a pointer to the end of the IOBuf's internal data buffer.
-   */
-  explicit IOBuf(uint8_t* end);
 
   /**
    * Create a new IOBuf pointing to an external buffer.
@@ -1088,6 +1086,8 @@ class IOBuf {
                              uint8_t** bufReturn,
                              SharedInfo** infoReturn,
                              uint32_t* capacityReturn);
+  static void releaseStorage(HeapStorage* storage, uint16_t freeFlags);
+  static void freeInternalBuf(void* buf, void* userData);
 
   /*
    * Member variables
@@ -1110,13 +1110,14 @@ class IOBuf {
    * This may refer to any subsection of the actual buffer capacity.
    */
   uint8_t* data_;
+  uint8_t* buf_;
   uint32_t length_;
+  uint32_t capacity_;
   mutable uint32_t flags_;
-
-  union {
-    ExternalBuf ext_;
-    InternalBuf int_;
-  };
+  uint32_t type_;
+  // SharedInfo may be NULL if kFlagUserOwned is set.  It is non-NULL
+  // in all other cases.
+  SharedInfo* sharedInfo_;
 
   struct DeleterBase {
     virtual ~DeleterBase() { }
