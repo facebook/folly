@@ -149,7 +149,7 @@ struct Printer {
   }
 
 private:
-  void printKV(const std::pair<dynamic, dynamic>& p) const {
+  void printKV(const std::pair<const dynamic, dynamic>& p) const {
     if (!opts_.allow_non_string_keys && !p.first.isString()) {
       throw std::runtime_error("folly::toJson: JSON object key was not a "
         "string");

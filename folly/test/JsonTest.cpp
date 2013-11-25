@@ -419,6 +419,16 @@ BENCHMARK(parseBigString, iters) {
   }
 }
 
+BENCHMARK(toJson, iters) {
+  dynamic something = parseJson(
+    "{\"old_value\":40,\"changed\":true,\"opened\":false,\"foo\":[1,2,3,4,5,6]}"
+  );
+
+  for (int i = 0; i < iters; i++) {
+    toJson(something);
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
