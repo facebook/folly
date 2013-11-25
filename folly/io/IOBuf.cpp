@@ -648,9 +648,10 @@ void IOBuf::initExtBuffer(uint8_t* buf, size_t mallocSize,
 }
 
 fbstring IOBuf::moveToFbString() {
-  // Externally allocated buffers (malloc) are just fine, everything else needs
+  // malloc-allocated buffers are just fine, everything else needs
   // to be turned into one.
-  if (flags_ != kFlagExt ||  // not malloc()-ed
+  if ((flags_ & (kFlagExt | kFlagUserOwned)) != kFlagExt ||  // not malloc()-ed
+      ext_.sharedInfo->freeFn != nullptr || // not malloc()-ed
       headroom() != 0 ||     // malloc()-ed block doesn't start at beginning
       tailroom() == 0 ||     // no room for NUL terminator
       isShared() ||          // shared
@@ -665,6 +666,10 @@ fbstring IOBuf::moveToFbString() {
   fbstring str(reinterpret_cast<char*>(writableData()),
                length(),  capacity(),
                AcquireMallocatedString());
+
+  if (flags_ & kFlagFreeSharedInfo) {
+    delete ext_.sharedInfo;
+  }
 
   // Reset to internal buffer.
   flags_ = 0;

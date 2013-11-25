@@ -494,10 +494,12 @@ TEST(IOBuf, Chaining) {
   EXPECT_EQ(3, iob2->computeChainDataLength());
 }
 
-void reserveTestFreeFn(void* buffer, void* ptr) {
+void testFreeFn(void* buffer, void* ptr) {
   uint32_t* freeCount = static_cast<uint32_t*>(ptr);;
   delete[] static_cast<uint8_t*>(buffer);
-  ++(*freeCount);
+  if (freeCount) {
+    ++(*freeCount);
+  }
 };
 
 TEST(IOBuf, Reserve) {
@@ -575,7 +577,7 @@ TEST(IOBuf, Reserve) {
   {
     uint32_t freeCount{0};
     uint8_t* buf = new uint8_t[100];
-    auto iob = IOBuf::takeOwnership(buf, 100, reserveTestFreeFn, &freeCount);
+    auto iob = IOBuf::takeOwnership(buf, 100, testFreeFn, &freeCount);
     iob->reserve(0, 2000);
     EXPECT_EQ(0, iob->headroom());
     EXPECT_LE(2000, iob->tailroom());
@@ -732,13 +734,19 @@ TEST(TypedIOBuf, Simple) {
     EXPECT_EQ(i, typed.data()[i]);
   }
 }
+enum BufType {
+  CREATE,
+  TAKE_OWNERSHIP_MALLOC,
+  TAKE_OWNERSHIP_CUSTOM,
+  USER_OWNED,
+};
 
 // chain element size, number of elements in chain, shared
 class MoveToFbStringTest
-  : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool>> {
+  : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool, BufType>> {
  protected:
   void SetUp() {
-    std::tr1::tie(elementSize_, elementCount_, shared_) = GetParam();
+    std::tr1::tie(elementSize_, elementCount_, shared_, type_) = GetParam();
     buf_ = makeBuf();
     for (int i = 0; i < elementCount_ - 1; ++i) {
       buf_->prependChain(makeBuf());
@@ -753,9 +761,36 @@ class MoveToFbStringTest
   }
 
   std::unique_ptr<IOBuf> makeBuf() {
-    auto buf = IOBuf::create(elementSize_);
-    memset(buf->writableTail(), 'x', elementSize_);
-    buf->append(elementSize_);
+    unique_ptr<IOBuf> buf;
+    switch (type_) {
+      case CREATE:
+        buf = IOBuf::create(elementSize_);
+        buf->append(elementSize_);
+        break;
+      case TAKE_OWNERSHIP_MALLOC: {
+        void* data = malloc(elementSize_);
+        if (!data) {
+          throw std::bad_alloc();
+        }
+        buf = IOBuf::takeOwnership(data, elementSize_);
+        break;
+      }
+      case TAKE_OWNERSHIP_CUSTOM: {
+        uint8_t* data = new uint8_t[elementSize_];
+        buf = IOBuf::takeOwnership(data, elementSize_, testFreeFn);
+        break;
+      }
+      case USER_OWNED: {
+        unique_ptr<uint8_t[]> data(new uint8_t[elementSize_]);
+        buf = IOBuf::wrapBuffer(data.get(), elementSize_);
+        ownedBuffers_.emplace_back(std::move(data));
+        break;
+      }
+      default:
+        throw std::invalid_argument("unexpected buffer type parameter");
+        break;
+    }
+    memset(buf->writableData(), 'x', elementSize_);
     return buf;
   }
 
@@ -772,8 +807,10 @@ class MoveToFbStringTest
   int elementSize_;
   int elementCount_;
   bool shared_;
+  BufType type_;
   std::unique_ptr<IOBuf> buf_;
   std::unique_ptr<IOBuf> buf2_;
+  std::vector<std::unique_ptr<uint8_t[]>> ownedBuffers_;
 };
 
 TEST_P(MoveToFbStringTest, Simple) {
@@ -789,7 +826,9 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Combine(
         ::testing::Values(0, 1, 24, 256, 1 << 10, 1 << 20),  // element size
         ::testing::Values(1, 2, 10),                         // element count
-        ::testing::Bool()));                                 // shared
+        ::testing::Bool(),                                   // shared
+        ::testing::Values(CREATE, TAKE_OWNERSHIP_MALLOC,
+                          TAKE_OWNERSHIP_CUSTOM, USER_OWNED)));
 
 TEST(IOBuf, getIov) {
   uint32_t fillSeed = 0xdeadbeef;
