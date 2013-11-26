@@ -30,18 +30,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include <boost/operators.hpp>
-
-// libc++ doesn't provide this header
-#if !FOLLY_USE_LIBCPP
-// This file appears in two locations: inside fbcode and in the
-// libstdc++ source code (when embedding fbstring as std::string).
-// To aid in this schizophrenic use, two macros are defined in
-// c++config.h:
-//   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
-//      gate use inside fbcode v. libstdc++
 #include <bits/c++config.h>
-#endif
-
 #include "folly/CpuId.h"
 #include "folly/Traits.h"
 #include "folly/Likely.h"

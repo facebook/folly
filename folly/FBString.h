@@ -58,12 +58,6 @@
 #endif
 #endif
 
-#include <atomic>
-#include <limits>
-#include <type_traits>
-
-// libc++ doesn't provide this header
-#ifndef _LIBCPP_VERSION
 // This file appears in two locations: inside fbcode and in the
 // libstdc++ source code (when embedding fbstring as std::string).
 // To aid in this schizophrenic use, two macros are defined in
@@ -71,7 +65,6 @@
 //   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
 //      gate use inside fbcode v. libstdc++
 #include <bits/c++config.h>
-#endif
 
 #ifdef _LIBSTDCXX_FBSTRING
 
@@ -87,27 +80,15 @@
 #undef FOLLY_MALLOC_H_
 #endif
 
-// FBString cannot use throw when replacing std::string, though it may still
-// use std::__throw_*
-#define throw FOLLY_FBSTRING_MAY_NOT_USE_THROW
-#define THROW_LENGTH_ERROR    std::__throw_length_error
-#define THROW_LOGIC_ERROR     std::__throw_logic_error
-#define THROW_OUT_OF_RANGE    std::__throw_out_of_range
-
 #else // !_LIBSTDCXX_FBSTRING
 
 #include <string>
 #include <cstring>
 #include <cassert>
-#include <stdexcept>
 
 #include "folly/Traits.h"
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
-
-#define THROW_LENGTH_ERROR    ::folly::throw_length_error
-#define THROW_LOGIC_ERROR     ::folly::throw_logic_error
-#define THROW_OUT_OF_RANGE    ::folly::throw_out_of_range
 
 #endif
 
@@ -116,30 +97,23 @@
 #define FBSTRING_LIKELY(x)   (__builtin_expect((x), 1))
 #define FBSTRING_UNLIKELY(x) (__builtin_expect((x), 0))
 
+#include <atomic>
+#include <limits>
+#include <type_traits>
+
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
+
+// FBString cannot use throw when replacing std::string, though it may still
+// use std::__throw_*
+#define throw FOLLY_FBSTRING_MAY_NOT_USE_THROW
 
 #ifdef _LIBSTDCXX_FBSTRING
 namespace std _GLIBCXX_VISIBILITY(default) {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
 #else
 namespace folly {
-namespace {
-
-void throw_length_error(const char* msg) {
-  throw std::length_error(msg);
-}
-
-void throw_logic_error(const char* msg) {
-  throw std::logic_error(msg);
-}
-
-void throw_out_of_range(const char* msg) {
-  throw std::out_of_range(msg);
-}
-
-} // namespace fbstring_detail
 #endif
 
 // Different versions of gcc/clang support different versions of
@@ -1074,7 +1048,7 @@ public:
       : store_(s, s ? traits_type::length(s) : ({
           basic_fbstring<char> err = __PRETTY_FUNCTION__;
           err += ": null pointer initializer not valid";
-          THROW_LOGIC_ERROR(err.c_str());
+          std::__throw_logic_error(err.c_str());
           0;
       })) {
   }
@@ -1287,7 +1261,7 @@ public:
   size_type capacity() const { return store_.capacity(); }
 
   void reserve(size_type res_arg = 0) {
-    enforce(res_arg <= max_size(), THROW_LENGTH_ERROR, "");
+    enforce(res_arg <= max_size(), std::__throw_length_error, "");
     store_.reserve(res_arg);
   }
 
@@ -1317,12 +1291,12 @@ public:
   }
 
   const_reference at(size_type n) const {
-    enforce(n <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(n <= size(), std::__throw_out_of_range, "");
     return (*this)[n];
   }
 
   reference at(size_type n) {
-    enforce(n < size(), THROW_OUT_OF_RANGE, "");
+    enforce(n < size(), std::__throw_out_of_range, "");
     return (*this)[n];
   }
 
@@ -1357,7 +1331,7 @@ public:
   basic_fbstring& append(const basic_fbstring& str, const size_type pos,
                          size_type n) {
     const size_type sz = str.size();
-    enforce(pos <= sz, THROW_OUT_OF_RANGE, "");
+    enforce(pos <= sz, std::__throw_out_of_range, "");
     procrustes(n, sz - pos);
     return append(str.data() + pos, n);
   }
@@ -1434,7 +1408,7 @@ public:
   basic_fbstring& assign(const basic_fbstring& str, const size_type pos,
                          size_type n) {
     const size_type sz = str.size();
-    enforce(pos <= sz, THROW_OUT_OF_RANGE, "");
+    enforce(pos <= sz, std::__throw_out_of_range, "");
     procrustes(n, sz - pos);
     return assign(str.data() + pos, n);
   }
@@ -1476,13 +1450,13 @@ public:
 
   basic_fbstring& insert(size_type pos1, const basic_fbstring& str,
                          size_type pos2, size_type n) {
-    enforce(pos2 <= str.length(), THROW_OUT_OF_RANGE, "");
+    enforce(pos2 <= str.length(), std::__throw_out_of_range, "");
     procrustes(n, str.length() - pos2);
     return insert(pos1, str.data() + pos2, n);
   }
 
   basic_fbstring& insert(size_type pos, const value_type* s, size_type n) {
-    enforce(pos <= length(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= length(), std::__throw_out_of_range, "");
     insert(begin() + pos, s, s + n);
     return *this;
   }
@@ -1492,7 +1466,7 @@ public:
   }
 
   basic_fbstring& insert(size_type pos, size_type n, value_type c) {
-    enforce(pos <= length(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= length(), std::__throw_out_of_range, "");
     insert(begin() + pos, n, c);
     return *this;
   }
@@ -1612,7 +1586,7 @@ public:
   basic_fbstring& erase(size_type pos = 0, size_type n = npos) {
     Invariant checker(*this);
     (void) checker;
-    enforce(pos <= length(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= length(), std::__throw_out_of_range, "");
     procrustes(n, length() - pos);
     std::copy(begin() + pos + n, end(), begin() + pos);
     resize(length() - n);
@@ -1621,7 +1595,7 @@ public:
 
   iterator erase(iterator position) {
     const size_type pos(position - begin());
-    enforce(pos <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= size(), std::__throw_out_of_range, "");
     erase(pos, 1);
     return begin() + pos;
   }
@@ -1644,7 +1618,7 @@ public:
   basic_fbstring& replace(size_type pos1, size_type n1,
                           const basic_fbstring& str,
                           size_type pos2, size_type n2) {
-    enforce(pos2 <= str.length(), THROW_OUT_OF_RANGE, "");
+    enforce(pos2 <= str.length(), std::__throw_out_of_range, "");
     return replace(pos1, n1, str.data() + pos2,
                    std::min(n2, str.size() - pos2));
   }
@@ -1666,7 +1640,7 @@ public:
                           StrOrLength s_or_n2, NumOrChar n_or_c) {
     Invariant checker(*this);
     (void) checker;
-    enforce(pos <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= size(), std::__throw_out_of_range, "");
     procrustes(n1, length() - pos);
     const iterator b = begin() + pos;
     return replace(b, b + n1, s_or_n2, n_or_c);
@@ -1788,7 +1762,7 @@ public:
   }
 
   size_type copy(value_type* s, size_type n, size_type pos = 0) const {
-    enforce(pos <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= size(), std::__throw_out_of_range, "");
     procrustes(n, size() - pos);
 
     fbstring_detail::pod_copy(
@@ -2020,7 +1994,7 @@ public:
   }
 
   basic_fbstring substr(size_type pos = 0, size_type n = npos) const {
-    enforce(pos <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos <= size(), std::__throw_out_of_range, "");
     return basic_fbstring(data() + pos, std::min(n, size() - pos));
   }
 
@@ -2041,7 +2015,7 @@ public:
 
   int compare(size_type pos1, size_type n1,
               const value_type* s, size_type n2) const {
-    enforce(pos1 <= size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos1 <= size(), std::__throw_out_of_range, "");
     procrustes(n1, size() - pos1);
     // The line below fixed by Jean-Francois Bastien, 04-23-2007. Thanks!
     const int r = traits_type::compare(pos1 + data(), s, std::min(n1, n2));
@@ -2051,7 +2025,7 @@ public:
   int compare(size_type pos1, size_type n1,
               const basic_fbstring& str,
               size_type pos2, size_type n2) const {
-    enforce(pos2 <= str.size(), THROW_OUT_OF_RANGE, "");
+    enforce(pos2 <= str.size(), std::__throw_out_of_range, "");
     return compare(pos1, n1, str.data() + pos2,
                    std::min(n2, str.size() - pos2));
   }
