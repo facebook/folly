@@ -43,6 +43,17 @@ namespace folly {
 
 #ifdef _LIBSTDCXX_FBSTRING
 #pragma GCC system_header
+
+/**
+ * Declare rallocm() and allocm() as weak symbols. These will be provided by
+ * jemalloc if we are using jemalloc, or will be NULL if we are using another
+ * malloc implementation.
+ */
+extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
+__attribute__((weak));
+extern "C" int allocm(void**, size_t*, size_t, int)
+__attribute__((weak));
+
 #define FOLLY_HAVE_MALLOC_H 1
 #else
 #include "folly/detail/Malloc.h"
