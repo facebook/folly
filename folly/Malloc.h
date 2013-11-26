@@ -54,6 +54,7 @@ __attribute__((weak));
 extern "C" int allocm(void**, size_t*, size_t, int)
 __attribute__((weak));
 
+#include <bits/functexcept.h>
 #define FOLLY_HAVE_MALLOC_H 1
 #else
 #include "folly/detail/Malloc.h"
@@ -75,8 +76,6 @@ __attribute__((weak));
 #include <cstring>
 
 #include <new>
-
-#include <bits/functexcept.h>
 
 /**
  * Define various ALLOCM_* macros normally provided by jemalloc.  We define

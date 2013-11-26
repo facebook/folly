@@ -41,6 +41,7 @@ nobase_follyinclude_HEADERS = \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
+	detail/FunctionalExcept.h \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
 	detail/Malloc.h \
@@ -172,6 +173,10 @@ endif
 
 if !HAVE_WEAK_SYMBOLS
 libfolly_la_SOURCES += detail/Malloc.cpp
+endif
+
+if !HAVE_BITS_FUNCTEXCEPT
+libfolly_la_SOURCES += detail/FunctionalExcept.cpp
 endif
 
 FingerprintTables.cpp: generate_fingerprint_tables

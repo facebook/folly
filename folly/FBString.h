@@ -58,6 +58,12 @@
 #endif
 #endif
 
+#include <atomic>
+#include <limits>
+#include <type_traits>
+
+// libc++ doesn't provide this header
+#ifndef _LIBCPP_VERSION
 // This file appears in two locations: inside fbcode and in the
 // libstdc++ source code (when embedding fbstring as std::string).
 // To aid in this schizophrenic use, two macros are defined in
@@ -65,6 +71,7 @@
 //   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
 //      gate use inside fbcode v. libstdc++
 #include <bits/c++config.h>
+#endif
 
 #ifdef _LIBSTDCXX_FBSTRING
 
@@ -96,10 +103,6 @@
 // redefinition errors when fbstring is imported into libstdc++.
 #define FBSTRING_LIKELY(x)   (__builtin_expect((x), 1))
 #define FBSTRING_UNLIKELY(x) (__builtin_expect((x), 0))
-
-#include <atomic>
-#include <limits>
-#include <type_traits>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push

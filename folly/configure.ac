@@ -52,7 +52,7 @@ AX_BOOST_SYSTEM
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h emmintrin.h byteswap.h])
+AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h emmintrin.h byteswap.h bits/functexcept.h])
 
 AC_CHECK_HEADER(double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \
@@ -175,6 +175,7 @@ AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
 AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
 AM_CONDITIONAL([HAVE_WEAK_SYMBOLS], [test "$ac_have_weak_symbols" = "yes"])
+AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT], [test "$ac_cv_header_bits_functexcept" = "yes"])
 
 # Output
 AC_CONFIG_FILES([Makefile
