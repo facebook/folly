@@ -59,6 +59,7 @@ namespace json {
       , encode_non_ascii(false)
       , validate_utf8(false)
       , allow_trailing_comma(false)
+      , sort_keys(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -85,6 +86,9 @@ namespace json {
 
     // Allow trailing comma in lists of values / items
     bool allow_trailing_comma;
+
+    // Sort keys of all objects before printing out (potentially slow)
+    bool sort_keys;
   };
 
   /*

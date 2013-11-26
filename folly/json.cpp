@@ -159,6 +159,16 @@ private:
     (*this)(p.second);
   }
 
+  template <typename Iterator>
+  void printKVPairs(Iterator begin, Iterator end) const {
+    printKV(*begin);
+    for (++begin; begin != end; ++begin) {
+      out_ += ',';
+      newline();
+      printKV(*begin);
+    }
+  }
+
   void printObject(dynamic const& o) const {
     if (o.empty()) {
       out_ += "{}";
@@ -168,12 +178,13 @@ private:
     out_ += '{';
     indent();
     newline();
-    auto it = o.items().begin();
-    printKV(*it);
-    for (++it; it != o.items().end(); ++it) {
-      out_ += ',';
-      newline();
-      printKV(*it);
+    if (opts_.sort_keys) {
+      std::vector<std::pair<dynamic, dynamic>> items(
+        o.items().begin(), o.items().end());
+      std::sort(items.begin(), items.end());
+      printKVPairs(items.begin(), items.end());
+    } else {
+      printKVPairs(o.items().begin(), o.items().end());
     }
     outdent();
     newline();

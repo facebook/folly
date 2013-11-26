@@ -331,6 +331,37 @@ TEST(Json, ParseNonStringKeys) {
   EXPECT_EQ(1.5, dval.items().begin()->first.asDouble());
 }
 
+TEST(Json, SortKeys) {
+  folly::json::serialization_opts opts_on, opts_off;
+  opts_on.sort_keys = true;
+  opts_off.sort_keys = false;
+
+  dynamic value = dynamic::object
+    ("foo", "bar")
+    ("junk", 12)
+    ("another", 32.2)
+    ("a",
+      {
+        dynamic::object("a", "b")
+                       ("c", "d"),
+        12.5,
+        "Yo Dawg",
+        { "heh" },
+        nullptr
+      }
+    )
+    ;
+
+  std::string sorted_keys =
+    R"({"a":[{"a":"b","c":"d"},12.5,"Yo Dawg",["heh"],null],)"
+    R"("another":32.2,"foo":"bar","junk":12})";
+
+  EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_on)));
+  EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_off)));
+
+  EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
+}
+
 BENCHMARK(jsonSerialize, iters) {
   folly::json::serialization_opts opts;
   for (int i = 0; i < iters; ++i) {
