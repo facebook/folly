@@ -89,11 +89,11 @@ class MPMCQueue : boost::noncopyable {
  public:
   typedef T value_type;
 
-  explicit MPMCQueue(size_t capacity)
-    : capacity_(capacity)
-    , slots_(new detail::SingleElementQueue<T,Atom>[capacity +
+  explicit MPMCQueue(size_t queueCapacity)
+    : capacity_(queueCapacity)
+    , slots_(new detail::SingleElementQueue<T,Atom>[queueCapacity +
                                                     2 * kSlotPadding])
-    , stride_(computeStride(capacity))
+    , stride_(computeStride(queueCapacity))
     , pushTicket_(0)
     , popTicket_(0)
     , pushSpinCutoff_(0)
