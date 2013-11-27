@@ -26,19 +26,13 @@
 #include <stdexcept>
 #include <system_error>
 
+#include "folly/Conv.h"
 #include "folly/Likely.h"
 #include "folly/Range.h"
-#include "folly/Conv.h"
+#include "folly/SafeAssert.h"
 
 namespace folly {
 namespace symbolizer {
-
-template <class... Args>
-inline void enforce(bool v, Args... args) {
-  if (UNLIKELY(!v)) {
-    throw std::runtime_error(folly::to<std::string>(args...));
-  }
-}
 
 /**
  * ELF file parser.
@@ -49,8 +43,20 @@ inline void enforce(bool v, Args... args) {
  */
 class ElfFile {
  public:
-  ElfFile();
+  ElfFile() noexcept;
+
+  // Note: may throw, call openNoThrow() explicitly if you don't want to throw
   explicit ElfFile(const char* name, bool readOnly=true);
+
+  // Open the ELF file.
+  // Returns 0 on success, -1 (and sets errno) on failure and (if msg is not
+  // NULL) sets *msg to a static string indicating what failed.
+  int openNoThrow(const char* name, bool readOnly=true,
+                  const char** msg=nullptr) noexcept;
+
+  // Open the ELF file. Throws on error.
+  void open(const char* name, bool readOnly=true);
+
   ~ElfFile();
 
   ElfFile(ElfFile&& other);
@@ -124,6 +130,8 @@ class ElfFile {
    * Find symbol definition by address.
    * Note that this is the file virtual address, so you need to undo
    * any relocation that might have happened.
+   *
+   * Returns {nullptr, nullptr} if not found.
    */
   typedef std::pair<const ElfW(Shdr)*, const ElfW(Sym)*> Symbol;
   Symbol getDefinitionByAddress(uintptr_t address) const;
@@ -133,6 +141,8 @@ class ElfFile {
    *
    * If a symbol with this name cannot be found, a <nullptr, nullptr> Symbol
    * will be returned. This is O(N) in the number of symbols in the file.
+   *
+   * Returns {nullptr, nullptr} if not found.
    */
   Symbol getSymbolByName(const char* name) const;
 
@@ -142,7 +152,7 @@ class ElfFile {
   template <class T>
   const T& getSymbolValue(const ElfW(Sym)* symbol) const {
     const ElfW(Shdr)* section = getSectionByIndex(symbol->st_shndx);
-    enforce(section, "Symbol's section index is invalid");
+    FOLLY_SAFE_CHECK(section, "Symbol's section index is invalid");
 
     return valueAt<T>(*section, symbol->st_value);
   }
@@ -161,7 +171,7 @@ class ElfFile {
   template <class T>
   const T& getAddressValue(const ElfW(Addr) addr) const {
     const ElfW(Shdr)* section = getSectionContainingAddress(addr);
-    enforce(section, "Address does not refer to existing section");
+    FOLLY_SAFE_CHECK(section, "Address does not refer to existing section");
 
     return valueAt<T>(*section, addr);
   }
@@ -185,8 +195,8 @@ class ElfFile {
   template <class T>
   const typename std::enable_if<std::is_pod<T>::value, T>::type&
   at(ElfW(Off) offset) const {
-    enforce(offset + sizeof(T) <= length_,
-            "Offset is not contained within our mmapped file");
+    FOLLY_SAFE_CHECK(offset + sizeof(T) <= length_,
+                     "Offset is not contained within our mmapped file");
 
     return *reinterpret_cast<T*>(file_ + offset);
   }
@@ -202,11 +212,13 @@ class ElfFile {
     // TODO: For other file types, st_value holds a file offset directly. Since
     //       I don't have a use-case for that right now, just assert that
     //       nobody wants this. We can always add it later.
-    enforce(elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN,
-            "Only exectuables and shared objects are supported");
-    enforce(addr >= section.sh_addr &&
-            (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
-            "Address is not contained within the provided segment");
+    FOLLY_SAFE_CHECK(
+        elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN,
+        "Only exectuables and shared objects are supported");
+    FOLLY_SAFE_CHECK(
+        addr >= section.sh_addr &&
+        (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
+        "Address is not contained within the provided segment");
 
     return at<T>(section.sh_offset + (addr - section.sh_addr));
   }

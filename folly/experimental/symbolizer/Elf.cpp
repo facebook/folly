@@ -32,7 +32,7 @@
 namespace folly {
 namespace symbolizer {
 
-ElfFile::ElfFile()
+ElfFile::ElfFile() noexcept
   : fd_(-1),
     file_(static_cast<char*>(MAP_FAILED)),
     length_(0),
@@ -40,18 +40,33 @@ ElfFile::ElfFile()
 }
 
 ElfFile::ElfFile(const char* name, bool readOnly)
-  : fd_(open(name, (readOnly) ? O_RDONLY : O_RDWR)),
+  : fd_(-1),
     file_(static_cast<char*>(MAP_FAILED)),
     length_(0),
     baseAddress_(0) {
+  open(name, readOnly);
+}
+
+void ElfFile::open(const char* name, bool readOnly) {
+  const char* msg = "";
+  int r = openNoThrow(name, readOnly, &msg);
+  folly::checkUnixError(r, msg);
+}
+
+int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
+  noexcept {
+  FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
+  fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
-    folly::throwSystemError("open ", name);
+    if (msg) *msg = "open";
+    return -1;
   }
 
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
-    folly::throwSystemError("fstat");
+    if (msg) *msg = "fstat";
+    return -1;
   }
 
   length_ = st.st_size;
@@ -61,9 +76,11 @@ ElfFile::ElfFile(const char* name, bool readOnly)
   }
   file_ = static_cast<char*>(mmap(nullptr, length_, prot, MAP_SHARED, fd_, 0));
   if (file_ == MAP_FAILED) {
-    folly::throwSystemError("mmap");
+    if (msg) *msg = "mmap";
+    return -1;
   }
   init();
+  return 0;
 }
 
 ElfFile::~ElfFile() {
@@ -112,18 +129,18 @@ void ElfFile::init() {
   auto& elfHeader = this->elfHeader();
 
   // Validate ELF magic numbers
-  enforce(elfHeader.e_ident[EI_MAG0] == ELFMAG0 &&
-          elfHeader.e_ident[EI_MAG1] == ELFMAG1 &&
-          elfHeader.e_ident[EI_MAG2] == ELFMAG2 &&
-          elfHeader.e_ident[EI_MAG3] == ELFMAG3,
-          "invalid ELF magic");
+  FOLLY_SAFE_CHECK(elfHeader.e_ident[EI_MAG0] == ELFMAG0 &&
+                   elfHeader.e_ident[EI_MAG1] == ELFMAG1 &&
+                   elfHeader.e_ident[EI_MAG2] == ELFMAG2 &&
+                   elfHeader.e_ident[EI_MAG3] == ELFMAG3,
+                   "invalid ELF magic");
 
   // Validate ELF class (32/64 bits)
 #define EXPECTED_CLASS P1(ELFCLASS, __ELF_NATIVE_CLASS)
 #define P1(a, b) P2(a, b)
 #define P2(a, b) a ## b
-  enforce(elfHeader.e_ident[EI_CLASS] == EXPECTED_CLASS,
-          "invalid ELF class");
+  FOLLY_SAFE_CHECK(elfHeader.e_ident[EI_CLASS] == EXPECTED_CLASS,
+                   "invalid ELF class");
 #undef P1
 #undef P2
 #undef EXPECTED_CLASS
@@ -136,24 +153,24 @@ void ElfFile::init() {
 #else
 # error Unsupported byte order
 #endif
-  enforce(elfHeader.e_ident[EI_DATA] == EXPECTED_ENCODING,
-          "invalid ELF encoding");
+  FOLLY_SAFE_CHECK(elfHeader.e_ident[EI_DATA] == EXPECTED_ENCODING,
+                   "invalid ELF encoding");
 #undef EXPECTED_ENCODING
 
   // Validate ELF version (1)
-  enforce(elfHeader.e_ident[EI_VERSION] == EV_CURRENT &&
-          elfHeader.e_version == EV_CURRENT,
-          "invalid ELF version");
+  FOLLY_SAFE_CHECK(elfHeader.e_ident[EI_VERSION] == EV_CURRENT &&
+                   elfHeader.e_version == EV_CURRENT,
+                   "invalid ELF version");
 
   // We only support executable and shared object files
-  enforce(elfHeader.e_type == ET_EXEC || elfHeader.e_type == ET_DYN,
-          "invalid ELF file type");
+  FOLLY_SAFE_CHECK(elfHeader.e_type == ET_EXEC || elfHeader.e_type == ET_DYN,
+                   "invalid ELF file type");
 
-  enforce(elfHeader.e_phnum != 0, "no program header!");
-  enforce(elfHeader.e_phentsize == sizeof(ElfW(Phdr)),
-          "invalid program header entry size");
-  enforce(elfHeader.e_shentsize == sizeof(ElfW(Shdr)),
-          "invalid section header entry size");
+  FOLLY_SAFE_CHECK(elfHeader.e_phnum != 0, "no program header!");
+  FOLLY_SAFE_CHECK(elfHeader.e_phentsize == sizeof(ElfW(Phdr)),
+                   "invalid program header entry size");
+  FOLLY_SAFE_CHECK(elfHeader.e_shentsize == sizeof(ElfW(Shdr)),
+                   "invalid section header entry size");
 
   const ElfW(Phdr)* programHeader = &at<ElfW(Phdr)>(elfHeader.e_phoff);
   bool foundBase = false;
@@ -167,11 +184,11 @@ void ElfFile::init() {
     }
   }
 
-  enforce(foundBase, "could not find base address");
+  FOLLY_SAFE_CHECK(foundBase, "could not find base address");
 }
 
 const ElfW(Shdr)* ElfFile::getSectionByIndex(size_t idx) const {
-  enforce(idx < elfHeader().e_shnum, "invalid section index");
+  FOLLY_SAFE_CHECK(idx < elfHeader().e_shnum, "invalid section index");
   return &at<ElfW(Shdr)>(elfHeader().e_shoff + idx * sizeof(ElfW(Shdr)));
 }
 
@@ -180,19 +197,21 @@ folly::StringPiece ElfFile::getSectionBody(const ElfW(Shdr)& section) const {
 }
 
 void ElfFile::validateStringTable(const ElfW(Shdr)& stringTable) const {
-  enforce(stringTable.sh_type == SHT_STRTAB, "invalid type for string table");
+  FOLLY_SAFE_CHECK(stringTable.sh_type == SHT_STRTAB,
+                   "invalid type for string table");
 
   const char* start = file_ + stringTable.sh_offset;
   // First and last bytes must be 0
-  enforce(stringTable.sh_size == 0 ||
-          (start[0] == '\0' && start[stringTable.sh_size - 1] == '\0'),
-          "invalid string table");
+  FOLLY_SAFE_CHECK(stringTable.sh_size == 0 ||
+                   (start[0] == '\0' && start[stringTable.sh_size - 1] == '\0'),
+                   "invalid string table");
 }
 
 const char* ElfFile::getString(const ElfW(Shdr)& stringTable, size_t offset)
   const {
   validateStringTable(stringTable);
-  enforce(offset < stringTable.sh_size, "invalid offset in string table");
+  FOLLY_SAFE_CHECK(offset < stringTable.sh_size,
+                   "invalid offset in string table");
 
   return file_ + stringTable.sh_offset + offset;
 }

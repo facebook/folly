@@ -41,9 +41,8 @@ namespace symbolizer {
  * actually support many of the version 4 features (such as VLIW, multiple
  * operations per instruction)
  *
- * Note that the DWARF record parser does not allocate heap memory at all
- * during normal operation (it might in the error case, as throwing exceptions
- * uses the heap).  This is on purpose: you can use the parser from
+ * Note that the DWARF record parser does not allocate heap memory at all.
+ * This is on purpose: you can use the parser from
  * memory-constrained situations (such as an exception handler for
  * std::out_of_memory)  If it weren't for this requirement, some things would
  * be much simpler: the Path class would be unnecessary and would be replaced

@@ -34,13 +34,13 @@ Dwarf::Section::Section(folly::StringPiece d) : is64Bit_(false), data_(d) {
 namespace {
 
 // All following read* functions read from a StringPiece, advancing the
-// StringPiece, and throwing an exception if there's not enough room
+// StringPiece, and aborting if there's not enough room.
 
 // Read (bitwise) one object of type T
 template <class T>
 typename std::enable_if<std::is_pod<T>::value, T>::type
 read(folly::StringPiece& sp) {
-  enforce(sp.size() >= sizeof(T), "underflow");
+  FOLLY_SAFE_CHECK(sp.size() >= sizeof(T), "underflow");
   T x;
   memcpy(&x, sp.data(), sizeof(T));
   sp.advance(sizeof(T));
@@ -85,7 +85,7 @@ uint64_t readOffset(folly::StringPiece& sp, bool is64Bit) {
 
 // Read "len" bytes
 folly::StringPiece readBytes(folly::StringPiece& sp, uint64_t len) {
-  enforce(len >= sp.size(), "invalid string length");
+  FOLLY_SAFE_CHECK(len >= sp.size(), "invalid string length");
   folly::StringPiece ret(sp.data(), len);
   sp.advance(len);
   return ret;
@@ -95,7 +95,7 @@ folly::StringPiece readBytes(folly::StringPiece& sp, uint64_t len) {
 folly::StringPiece readNullTerminated(folly::StringPiece& sp) {
   const char* p = static_cast<const char*>(
       memchr(sp.data(), 0, sp.size()));
-  enforce(p, "invalid null-terminated string");
+  FOLLY_SAFE_CHECK(p, "invalid null-terminated string");
   folly::StringPiece ret(sp.data(), p);
   sp.assign(p + 1, sp.end());
   return ret;
@@ -105,7 +105,7 @@ folly::StringPiece readNullTerminated(folly::StringPiece& sp) {
 void skipPadding(folly::StringPiece& sp, const char* start, size_t alignment) {
   size_t remainder = (sp.data() - start) % alignment;
   if (remainder) {
-    enforce(alignment - remainder <= sp.size(), "invalid padding");
+    FOLLY_SAFE_CHECK(alignment - remainder <= sp.size(), "invalid padding");
     sp.advance(alignment - remainder);
   }
 }
@@ -233,7 +233,7 @@ bool Dwarf::Section::next(folly::StringPiece& chunk) {
   auto initialLength = read<uint32_t>(chunk);
   is64Bit_ = (initialLength == (uint32_t)-1);
   auto length = is64Bit_ ? read<uint64_t>(chunk) : initialLength;
-  enforce(length <= chunk.size(), "invalid DWARF section");
+  FOLLY_SAFE_CHECK(length <= chunk.size(), "invalid DWARF section");
   chunk.reset(chunk.data(), length);
   data_.assign(chunk.end(), data_.end());
   return true;
@@ -279,7 +279,7 @@ bool Dwarf::readAbbreviation(folly::StringPiece& section,
   // attributes
   const char* attributeBegin = section.data();
   for (;;) {
-    enforce(!section.empty(), "invalid attribute section");
+    FOLLY_SAFE_CHECK(!section.empty(), "invalid attribute section");
     auto attr = readAttribute(section);
     if (attr.name == 0 && attr.form == 0) {
       break;
@@ -308,7 +308,7 @@ Dwarf::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
     }
   }
 
-  throw std::runtime_error("could not find abbreviation code");
+  FOLLY_SAFE_CHECK(false, "could not find abbreviation code");
 }
 
 Dwarf::AttributeValue Dwarf::readAttributeValue(
@@ -356,12 +356,12 @@ Dwarf::AttributeValue Dwarf::readAttributeValue(
   case DW_FORM_indirect:  // form is explicitly specified
     return readAttributeValue(sp, readULEB(sp), is64Bit);
   default:
-    throw std::runtime_error("invalid attribute form");
+    FOLLY_SAFE_CHECK(false, "invalid attribute form");
   }
 }
 
 folly::StringPiece Dwarf::getStringFromStringSection(uint64_t offset) const {
-  enforce(offset < strings_.size(), "invalid strp offset");
+  FOLLY_SAFE_CHECK(offset < strings_.size(), "invalid strp offset");
   folly::StringPiece sp(strings_);
   sp.advance(offset);
   return readNullTerminated(sp);
@@ -381,13 +381,13 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
   bool found = false;
   while (!found && arangesSection.next(chunk)) {
     auto version = read<uint16_t>(chunk);
-    enforce(version == 2, "invalid aranges version");
+    FOLLY_SAFE_CHECK(version == 2, "invalid aranges version");
 
     debugInfoOffset = readOffset(chunk, arangesSection.is64Bit());
     auto addressSize = read<uint8_t>(chunk);
-    enforce(addressSize == sizeof(uintptr_t), "invalid address size");
+    FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
     auto segmentSize = read<uint8_t>(chunk);
-    enforce(segmentSize == 0, "segmented architecture not supported");
+    FOLLY_SAFE_CHECK(segmentSize == 0, "segmented architecture not supported");
 
     // Padded to a multiple of 2 addresses.
     // Strangely enough, this is the only place in the DWARF spec that requires
@@ -417,21 +417,22 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
   folly::StringPiece sp(info_);
   sp.advance(debugInfoOffset);
   Section debugInfoSection(sp);
-  enforce(debugInfoSection.next(chunk), "invalid debug info");
+  FOLLY_SAFE_CHECK(debugInfoSection.next(chunk), "invalid debug info");
 
   auto version = read<uint16_t>(chunk);
-  enforce(version >= 2 && version <= 4, "invalid info version");
+  FOLLY_SAFE_CHECK(version >= 2 && version <= 4, "invalid info version");
   uint64_t abbrevOffset = readOffset(chunk, debugInfoSection.is64Bit());
   auto addressSize = read<uint8_t>(chunk);
-  enforce(addressSize == sizeof(uintptr_t), "invalid address size");
+  FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
 
   // We survived so far.  The first (and only) DIE should be
   // DW_TAG_compile_unit
   // TODO(tudorb): Handle DW_TAG_partial_unit?
   auto code = readULEB(chunk);
-  enforce(code != 0, "invalid code");
+  FOLLY_SAFE_CHECK(code != 0, "invalid code");
   auto abbr = getAbbreviation(code, abbrevOffset);
-  enforce(abbr.tag == DW_TAG_compile_unit, "expecting compile unit entry");
+  FOLLY_SAFE_CHECK(abbr.tag == DW_TAG_compile_unit,
+                   "expecting compile unit entry");
 
   // Read attributes, extracting the few we care about
   bool foundLineOffset = false;
@@ -488,7 +489,7 @@ Dwarf::LineNumberVM::LineNumberVM(folly::StringPiece data,
                                   folly::StringPiece compilationDirectory)
   : compilationDirectory_(compilationDirectory) {
   Section section(data);
-  enforce(section.next(data_), "invalid line number VM");
+  FOLLY_SAFE_CHECK(section.next(data_), "invalid line number VM");
   is64Bit_ = section.is64Bit();
   init();
   reset();
@@ -510,23 +511,24 @@ void Dwarf::LineNumberVM::reset() {
 
 void Dwarf::LineNumberVM::init() {
   version_ = read<uint16_t>(data_);
-  enforce(version_ >= 2 && version_ <= 4, "invalid version in line number VM");
+  FOLLY_SAFE_CHECK(version_ >= 2 && version_ <= 4,
+                   "invalid version in line number VM");
   uint64_t headerLength = readOffset(data_, is64Bit_);
-  enforce(headerLength <= data_.size(),
-          "invalid line number VM header length");
+  FOLLY_SAFE_CHECK(headerLength <= data_.size(),
+                   "invalid line number VM header length");
   folly::StringPiece header(data_.data(), headerLength);
   data_.assign(header.end(), data_.end());
 
   minLength_ = read<uint8_t>(header);
   if (version_ == 4) {  // Version 2 and 3 records don't have this
     uint8_t maxOpsPerInstruction = read<uint8_t>(header);
-    enforce(maxOpsPerInstruction == 1, "VLIW not supported");
+    FOLLY_SAFE_CHECK(maxOpsPerInstruction == 1, "VLIW not supported");
   }
   defaultIsStmt_ = read<uint8_t>(header);
   lineBase_ = read<int8_t>(header);  // yes, signed
   lineRange_ = read<uint8_t>(header);
   opcodeBase_ = read<uint8_t>(header);
-  enforce(opcodeBase_ != 0, "invalid opcode base");
+  FOLLY_SAFE_CHECK(opcodeBase_ != 0, "invalid opcode base");
   standardOpcodeLengths_ = reinterpret_cast<const uint8_t*>(header.data());
   header.advance(opcodeBase_ - 1);
 
@@ -561,7 +563,7 @@ bool Dwarf::LineNumberVM::next(folly::StringPiece& program) {
 
 Dwarf::LineNumberVM::FileName Dwarf::LineNumberVM::getFileName(uint64_t index)
   const {
-  enforce(index != 0, "invalid file index 0");
+  FOLLY_SAFE_CHECK(index != 0, "invalid file index 0");
 
   FileName fn;
   if (index <= fileNameCount_) {
@@ -578,7 +580,7 @@ Dwarf::LineNumberVM::FileName Dwarf::LineNumberVM::getFileName(uint64_t index)
 
   folly::StringPiece program = data_;
   for (; index; --index) {
-    enforce(nextDefineFile(program, fn), "invalid file index");
+    FOLLY_SAFE_CHECK(nextDefineFile(program, fn), "invalid file index");
   }
 
   return fn;
@@ -590,7 +592,8 @@ folly::StringPiece Dwarf::LineNumberVM::getIncludeDirectory(uint64_t index)
     return folly::StringPiece();
   }
 
-  enforce(index <= includeDirectoryCount_, "invalid include directory");
+  FOLLY_SAFE_CHECK(index <= includeDirectoryCount_,
+                   "invalid include directory");
 
   folly::StringPiece includeDirectories = includeDirectories_;
   folly::StringPiece dir;
@@ -638,13 +641,13 @@ bool Dwarf::LineNumberVM::nextDefineFile(folly::StringPiece& program,
     // Extended opcode
     auto length = readULEB(program);
     // the opcode itself should be included in the length, so length >= 1
-    enforce(length != 0, "invalid extended opcode length");
+    FOLLY_SAFE_CHECK(length != 0, "invalid extended opcode length");
     read<uint8_t>(program); // extended opcode
     --length;
 
     if (opcode == DW_LNE_define_file) {
-      enforce(readFileName(program, fn),
-              "invalid empty file in DW_LNE_define_file");
+      FOLLY_SAFE_CHECK(readFileName(program, fn),
+                       "invalid empty file in DW_LNE_define_file");
       return true;
     }
 
@@ -733,7 +736,7 @@ Dwarf::LineNumberVM::StepResult Dwarf::LineNumberVM::step(
   // Extended opcode
   auto length = readULEB(program);
   // the opcode itself should be included in the length, so length >= 1
-  enforce(length != 0, "invalid extende opcode length");
+  FOLLY_SAFE_CHECK(length != 0, "invalid extended opcode length");
   auto extendedOpcode = read<uint8_t>(program);
   --length;
 

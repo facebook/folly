@@ -54,15 +54,19 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << (info.frames.size() == 1 ? " frame" : " frames")
       << ")\n";
   try {
-    Symbolizer symbolizer;
-    folly::StringPiece symbolName;
-    Dwarf::LocationInfo location;
+    std::vector<AddressInfo> addresses;
+    addresses.reserve(info.frames.size());
     for (auto ip : info.frames) {
       // Symbolize the previous address because the IP might be in the
       // next function, per glog/src/signalhandler.cc
-      symbolizer.symbolize(ip-1, symbolName, location);
-      Symbolizer::write(out, ip, symbolName, location);
+      addresses.emplace_back(ip - 1);
     }
+
+    Symbolizer symbolizer;
+    symbolizer.symbolize(addresses.data(), addresses.size());
+
+    OStreamSymbolizePrinter osp(out);
+    osp.print(addresses.data(), addresses.size());
   } catch (const std::exception& e) {
     out << "\n !! caught " << folly::exceptionStr(e) << "\n";
   } catch (...) {

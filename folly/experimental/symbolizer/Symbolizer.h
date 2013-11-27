@@ -30,29 +30,101 @@ namespace folly {
 namespace symbolizer {
 
 /**
- * Convert an address to symbol name and source location.
+ * Address information: symbol name and location.
+ *
+ * Note that both name and location are references in the Symbolizer object,
+ * which must outlive this AddressInfo object.
  */
+struct AddressInfo {
+  /* implicit */ AddressInfo(uintptr_t a=0, bool sf=false)
+    : address(a),
+      isSignalFrame(sf),
+      found(false) { }
+  uintptr_t address;
+  bool isSignalFrame;
+  bool found;
+  StringPiece name;
+  Dwarf::LocationInfo location;
+};
+
+/**
+ * Get the current stack trace into addresses, which has room for at least
+ * maxAddresses entries. Skip the first (topmost) skip entries.
+ * Returns the number of entries in addresses on success, -1 on failure.
+ */
+ssize_t getStackTrace(AddressInfo* addresses,
+                      size_t maxAddresses,
+                      size_t skip=0);
+
 class Symbolizer {
  public:
-  /**
-   * Symbolize an instruction pointer address, returning the symbol name
-   * and file/line number information.
-   *
-   * The returned StringPiece objects are valid for the lifetime of
-   * this Symbolizer object.
-   */
-  bool symbolize(uintptr_t address, folly::StringPiece& symbolName,
-                 Dwarf::LocationInfo& location);
+  Symbolizer() : fileCount_(0) { }
 
-  static void write(std::ostream& out, uintptr_t address,
-                    folly::StringPiece symbolName,
-                    const Dwarf::LocationInfo& location);
+  /**
+   * Symbolize given addresses.
+   */
+  void symbolize(AddressInfo* addresses, size_t addressCount);
+
+  /**
+   * Shortcut to symbolize one address.
+   */
+  bool symbolize(AddressInfo& address) {
+    symbolize(&address, 1);
+    return address.found;
+  }
 
  private:
-  ElfFile& getFile(const std::string& name);
-  // cache open ELF files
-  std::unordered_map<std::string, ElfFile> elfFiles_;
+  // We can't allocate memory, so we'll preallocate room.
+  // "1023 shared libraries should be enough for everyone"
+  static constexpr size_t kMaxFiles = 1024;
+  size_t fileCount_;
+  ElfFile files_[kMaxFiles];
 };
+
+/**
+ * Print a list of symbolized addresses. Base class.
+ */
+class SymbolizePrinter {
+ public:
+  void print(const AddressInfo& ainfo);
+  void print(const AddressInfo* addresses, size_t addressCount);
+
+  virtual ~SymbolizePrinter() { }
+ private:
+  virtual void doPrint(StringPiece sp) = 0;
+};
+
+/**
+ * Print a list of symbolized addresses to a stream.
+ * Not reentrant. Do not use from signal handling code.
+ */
+class OStreamSymbolizePrinter : public SymbolizePrinter {
+ public:
+  explicit OStreamSymbolizePrinter(std::ostream& out) : out_(out) { }
+ private:
+  void doPrint(StringPiece sp) override;
+  std::ostream& out_;
+};
+
+/**
+ * Print a list of symbolized addresses to a file descriptor.
+ * Ignores errors. Async-signal-safe.
+ */
+class FDSymbolizePrinter : public SymbolizePrinter {
+ public:
+  explicit FDSymbolizePrinter(int fd) : fd_(fd) { }
+ private:
+  void doPrint(StringPiece sp) override;
+  int fd_;
+};
+
+/**
+ * Print an AddressInfo to a stream. Note that the Symbolizer that
+ * symbolized the address must outlive the AddressInfo. Just like
+ * OStreamSymbolizePrinter (which it uses internally), this is not
+ * reentrant; do not use from signal handling code.
+ */
+std::ostream& operator<<(std::ostream& out, const AddressInfo& ainfo);
 
 }  // namespace symbolizer
 }  // namespace folly
