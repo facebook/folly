@@ -322,11 +322,34 @@ fbstring errnoStr(int err);
  *
  * Use for debugging -- do not rely on demangle() returning anything useful.
  *
- * This function may allocate memory (and therefore throw).
+ * This function may allocate memory (and therefore throw std::bad_alloc).
  */
 fbstring demangle(const char* name);
 inline fbstring demangle(const std::type_info& type) {
   return demangle(type.name());
+}
+
+/**
+ * Return the demangled (prettyfied) version of a C++ type in a user-provided
+ * buffer.
+ *
+ * The semantics are the same as for snprintf or strlcpy: bufSize is the size
+ * of the buffer, the string is always null-terminated, and the return value is
+ * the number of characters (not including the null terminator) that would have
+ * been written if the buffer was big enough. (So a return value >= bufSize
+ * indicates that the output was truncated)
+ *
+ * This function does not allocate memory and is async-signal-safe.
+ *
+ * Note that the underlying function for the fbstring-returning demangle is
+ * somewhat standard (abi::__cxa_demangle, which uses malloc), the underlying
+ * function for this version is less so (cplus_demangle_v3_callback from
+ * libiberty), so it is possible for the fbstring version to work, while this
+ * version returns the original, mangled name.
+ */
+size_t demangle(const char* name, char* buf, size_t bufSize);
+inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
+  return demangle(type.name(), buf, bufSize);
 }
 
 /**

@@ -25,9 +25,27 @@
 #include <glog/logging.h>
 
 #undef FOLLY_DEMANGLE
+
 #if defined(__GNUG__) && __GNUG__ >= 4
 # include <cxxabi.h>
 # define FOLLY_DEMANGLE 1
+
+// From libiberty
+//
+// TODO(tudorb): Detect this with autoconf for the open-source version.
+//
+// __attribute__((weak)) doesn't work, because cplus_demangle_v3_callback
+// is exported by an object file in libiberty.a, and the ELF spec says
+// "The link editor does not extract archive members to resolve undefined weak
+// symbols" (but, interestingly enough, will resolve undefined weak symbols
+// with definitions from archive members that were extracted in order to
+// resolve an undefined global (strong) symbol)
+extern "C" int cplus_demangle_v3_callback(
+    const char* mangled,
+    int options,  // We use DMGL_PARAMS | DMGL_TYPES, aka 0x11
+    void (*callback)(const char*, size_t, void*),
+    void* arg);
+
 #endif
 
 namespace folly {
@@ -264,6 +282,21 @@ fbstring errnoStr(int err) {
   return result;
 }
 
+namespace {
+
+// glibc doesn't have strlcpy
+size_t my_strlcpy(char* dest, const char* src, size_t size) {
+  size_t len = strlen(src);
+  if (size != 0) {
+    size_t n = std::min(len, size - 1);  // always null terminate!
+    memcpy(dest, src, n);
+    dest[n] = '\0';
+  }
+  return len;
+}
+
+}  // namespace
+
 #ifdef FOLLY_DEMANGLE
 
 fbstring demangle(const char* name) {
@@ -279,10 +312,54 @@ fbstring demangle(const char* name) {
   return fbstring(demangled, strlen(demangled), len, AcquireMallocatedString());
 }
 
+namespace {
+
+struct DemangleBuf {
+  char* dest;
+  size_t remaining;
+  size_t total;
+};
+
+void demangleCallback(const char* str, size_t size, void* p) {
+  DemangleBuf* buf = static_cast<DemangleBuf*>(p);
+  size_t n = std::min(buf->remaining, size);
+  memcpy(buf->dest, str, n);
+  buf->dest += n;
+  buf->remaining -= n;
+  buf->total += size;
+}
+
+}  // namespace
+
+size_t demangle(const char* name, char* out, size_t outSize) {
+  DemangleBuf dbuf;
+  dbuf.dest = out;
+  dbuf.remaining = outSize ? outSize - 1 : 0;   // leave room for null term
+  dbuf.total = 0;
+
+  // Unlike most library functions, this returns 1 on success and 0 on failure
+  int status = cplus_demangle_v3_callback(
+      name,
+      0x11,  // DMGL_PARAMS | DMGL_TYPES
+      demangleCallback,
+      &dbuf);
+  if (status == 0) {  // failed, return original
+    return my_strlcpy(out, name, outSize);
+  }
+  if (outSize != 0) {
+    *dbuf.dest = '\0';
+  }
+  return dbuf.total;
+}
+
 #else
 
 fbstring demangle(const char* name) {
   return name;
+}
+
+size_t demangle(const char* name, char* out, size_t outSize) {
+  return my_strlcpy(out, name, outSize);
 }
 
 #endif

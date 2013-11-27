@@ -464,8 +464,23 @@ struct ThisIsAVeryLongStructureName {
 }  // namespace folly_test
 
 TEST(System, demangle) {
-  EXPECT_EQ("folly_test::ThisIsAVeryLongStructureName",
-            demangle(typeid(folly_test::ThisIsAVeryLongStructureName)));
+  char expected[] = "folly_test::ThisIsAVeryLongStructureName";
+  EXPECT_STREQ(
+      expected,
+      demangle(typeid(folly_test::ThisIsAVeryLongStructureName)).c_str());
+
+  {
+    char buf[sizeof(expected)];
+    EXPECT_EQ(sizeof(expected) - 1,
+              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
+                       buf, sizeof(buf)));
+    EXPECT_STREQ(expected, buf);
+
+    EXPECT_EQ(sizeof(expected) - 1,
+              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
+                       buf, 11));
+    EXPECT_STREQ("folly_test", buf);
+  }
 }
 
 namespace {
