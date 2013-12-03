@@ -193,18 +193,17 @@ void dumpStackTrace() {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
   // Get and symbolize stack trace
   constexpr size_t kMaxStackTraceDepth = 100;
-  AddressInfo addresses[kMaxStackTraceDepth];
+  FrameArray<kMaxStackTraceDepth> addresses;
 
   // Skip the getStackTrace frame
-  ssize_t stackTraceDepth = getStackTrace(addresses, kMaxStackTraceDepth, 1);
-  if (stackTraceDepth < 0) {
+  if (!getStackTrace(addresses)) {
     print("(error retrieving stack trace)\n");
   } else {
     Symbolizer symbolizer;
-    symbolizer.symbolize(addresses, stackTraceDepth);
+    symbolizer.symbolize(addresses);
 
     FDSymbolizePrinter printer(STDERR_FILENO);
-    printer.print(addresses, stackTraceDepth);
+    printer.print(addresses);
   }
 }
 

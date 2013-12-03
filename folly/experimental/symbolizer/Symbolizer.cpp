@@ -148,7 +148,7 @@ bool parseProcMapsLine(StringPiece line,
 
 }  // namespace
 
-ssize_t getStackTrace(AddressInfo* addresses,
+ssize_t getStackTrace(FrameInfo* addresses,
                       size_t maxAddresses,
                       size_t skip) {
   unw_context_t uctx;
@@ -160,7 +160,7 @@ ssize_t getStackTrace(AddressInfo* addresses,
   unw_cursor_t cursor;
   size_t idx = 0;
   bool first = true;
-  while (idx < maxAddresses) {
+  for (;;) {
     if (first) {
       first = false;
       r = unw_init_local(&cursor, &uctx);
@@ -178,26 +178,25 @@ ssize_t getStackTrace(AddressInfo* addresses,
       --skip;
       continue;
     }
-    unw_word_t ip;
-    int rr = unw_get_reg(&cursor, UNW_REG_IP, &ip);
-    if (rr < 0) {
-      return -1;
+
+    if (idx < maxAddresses) {
+      unw_word_t ip;
+      int rr = unw_get_reg(&cursor, UNW_REG_IP, &ip);
+      if (rr < 0) {
+        return -1;
+      }
+
+      // If error, assume not a signal frame
+      rr = unw_is_signal_frame(&cursor);
+      addresses[idx] = FrameInfo(ip, (rr > 0));
     }
-
-    // If error, assume not a signal frame
-    rr = unw_is_signal_frame(&cursor);
-
-    addresses[idx++] = AddressInfo(ip, (rr > 0));
-  }
-
-  if (r < 0) {
-    return -1;
+    ++idx;
   }
 
   return idx;
 }
 
-void Symbolizer::symbolize(AddressInfo* addresses, size_t addressCount) {
+void Symbolizer::symbolize(FrameInfo* addresses, size_t addressCount) {
   size_t remaining = 0;
   for (size_t i = 0; i < addressCount; ++i) {
     auto& ainfo = addresses[i];
@@ -305,7 +304,7 @@ namespace {
 const char kHexChars[] = "0123456789abcdef";
 }  // namespace
 
-void SymbolizePrinter::print(const AddressInfo& ainfo) {
+void SymbolizePrinter::print(const FrameInfo& ainfo) {
   uintptr_t address = ainfo.address;
   // Can't use sprintf, not async-signal-safe
   static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
@@ -372,11 +371,21 @@ void SymbolizePrinter::print(const AddressInfo& ainfo) {
   }
 }
 
-void SymbolizePrinter::print(const AddressInfo* addresses,
-                             size_t addressCount) {
-  for (size_t i = 0; i < addressCount; ++i) {
+void SymbolizePrinter::print(const FrameInfo* addresses,
+                             size_t addressesSize,
+                             size_t frameCount) {
+  for (size_t i = 0; i < std::min(addressesSize, frameCount); ++i) {
     auto& ainfo = addresses[i];
     print(ainfo);
+  }
+
+  // Indicate the number of frames that we couldn't log due to space
+  if (frameCount > addressesSize) {
+    char buf[22];
+    uint32_t n = uint64ToBufferUnsafe(frameCount - addressesSize, buf);
+    doPrint("    (");
+    doPrint(StringPiece(buf, n));
+    doPrint(" omitted, max buffer size reached)\n");
   }
 }
 
@@ -388,11 +397,29 @@ void FDSymbolizePrinter::doPrint(StringPiece sp) {
   writeFull(fd_, sp.data(), sp.size());
 }
 
-std::ostream& operator<<(std::ostream& out, const AddressInfo& ainfo) {
+std::ostream& operator<<(std::ostream& out, const FrameInfo& ainfo) {
   OStreamSymbolizePrinter osp(out);
   osp.print(ainfo);
   return out;
 }
+
+namespace {
+
+struct Init {
+  Init();
+};
+
+Init::Init() {
+  // Don't use global caching -- it's slow and leads to lock contention.  (And
+  // it's made signal-safe using sigprocmask to block all signals while the
+  // lock is being held, and sigprocmask contends on a lock inside the kernel,
+  // too, ugh.)
+  unw_set_caching_policy(unw_local_addr_space, UNW_CACHE_PER_THREAD);
+}
+
+Init initializer;
+
+}  // namespace
 
 }  // namespace symbolizer
 }  // namespace folly

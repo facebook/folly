@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << (info.frames.size() == 1 ? " frame" : " frames")
       << ")\n";
   try {
-    std::vector<AddressInfo> addresses;
+    std::vector<FrameInfo> addresses;
     addresses.reserve(info.frames.size());
     for (auto ip : info.frames) {
       // Symbolize the previous address because the IP might be in the
@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
     symbolizer.symbolize(addresses.data(), addresses.size());
 
     OStreamSymbolizePrinter osp(out);
-    osp.print(addresses.data(), addresses.size());
+    osp.print(addresses.data(), addresses.size(), addresses.size());
   } catch (const std::exception& e) {
     out << "\n !! caught " << folly::exceptionStr(e) << "\n";
   } catch (...) {

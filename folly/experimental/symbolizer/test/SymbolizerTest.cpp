@@ -27,7 +27,7 @@ void foo() {
 }
 
 TEST(Symbolizer, Single) {
-  AddressInfo a(reinterpret_cast<uintptr_t>(foo));
+  FrameInfo a(reinterpret_cast<uintptr_t>(foo));
   Symbolizer symbolizer;
   ASSERT_TRUE(symbolizer.symbolize(a));
   EXPECT_EQ("folly::symbolizer::test::foo()", demangle(a.name.str().c_str()));

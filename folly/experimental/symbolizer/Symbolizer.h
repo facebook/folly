@@ -30,13 +30,13 @@ namespace folly {
 namespace symbolizer {
 
 /**
- * Address information: symbol name and location.
+ * Frame information: symbol name and location.
  *
  * Note that both name and location are references in the Symbolizer object,
- * which must outlive this AddressInfo object.
+ * which must outlive this FrameInfo object.
  */
-struct AddressInfo {
-  /* implicit */ AddressInfo(uintptr_t a=0, bool sf=false)
+struct FrameInfo {
+  /* implicit */ FrameInfo(uintptr_t a=0, bool sf=false)
     : address(a),
       isSignalFrame(sf),
       found(false) { }
@@ -47,14 +47,45 @@ struct AddressInfo {
   Dwarf::LocationInfo location;
 };
 
+template <size_t N>
+struct FrameArray {
+  FrameArray() : frameCount(0) { }
+
+  size_t frameCount;
+  FrameInfo frames[N];
+};
+
 /**
  * Get the current stack trace into addresses, which has room for at least
- * maxAddresses entries. Skip the first (topmost) skip entries.
- * Returns the number of entries in addresses on success, -1 on failure.
+ * maxAddresses frames. Skip the first (topmost) skip entries.
+ *
+ * Returns the number of frames in the stack trace. Just like snprintf,
+ * if the number of frames is greater than maxAddresses, it will return
+ * the actual number of frames, so the stack trace was truncated iff
+ * the return value > maxAddresses.
+ *
+ * Returns -1 on failure.
  */
-ssize_t getStackTrace(AddressInfo* addresses,
+ssize_t getStackTrace(FrameInfo* addresses,
                       size_t maxAddresses,
                       size_t skip=0);
+
+/**
+ * Get stack trace into a given FrameArray, return true on success (and
+ * set frameCount to the actual frame count, which may be > N) and false
+ * on failure.
+ */
+template <size_t N>
+bool getStackTrace(FrameArray<N>& fa, size_t skip=0) {
+  ssize_t n = getStackTrace(fa.frames, N, skip);
+  if (n != -1) {
+    fa.frameCount = n;
+    return true;
+  } else {
+    fa.frameCount = 0;
+    return false;
+  }
+}
 
 class Symbolizer {
  public:
@@ -63,12 +94,17 @@ class Symbolizer {
   /**
    * Symbolize given addresses.
    */
-  void symbolize(AddressInfo* addresses, size_t addressCount);
+  void symbolize(FrameInfo* addresses, size_t addressCount);
+
+  template <size_t N>
+  void symbolize(FrameArray<N>& fa) {
+    symbolize(fa.frames, std::min(fa.frameCount, N));
+  }
 
   /**
    * Shortcut to symbolize one address.
    */
-  bool symbolize(AddressInfo& address) {
+  bool symbolize(FrameInfo& address) {
     symbolize(&address, 1);
     return address.found;
   }
@@ -86,8 +122,15 @@ class Symbolizer {
  */
 class SymbolizePrinter {
  public:
-  void print(const AddressInfo& ainfo);
-  void print(const AddressInfo* addresses, size_t addressCount);
+  void print(const FrameInfo& ainfo);
+  void print(const FrameInfo* addresses,
+             size_t addressesSize,
+             size_t frameCount);
+
+  template <size_t N>
+  void print(const FrameArray<N>& fa) {
+    print(fa.frames, N, fa.frameCount);
+  }
 
   virtual ~SymbolizePrinter() { }
  private:
@@ -119,12 +162,12 @@ class FDSymbolizePrinter : public SymbolizePrinter {
 };
 
 /**
- * Print an AddressInfo to a stream. Note that the Symbolizer that
- * symbolized the address must outlive the AddressInfo. Just like
+ * Print an FrameInfo to a stream. Note that the Symbolizer that
+ * symbolized the address must outlive the FrameInfo. Just like
  * OStreamSymbolizePrinter (which it uses internally), this is not
  * reentrant; do not use from signal handling code.
  */
-std::ostream& operator<<(std::ostream& out, const AddressInfo& ainfo);
+std::ostream& operator<<(std::ostream& out, const FrameInfo& ainfo);
 
 }  // namespace symbolizer
 }  // namespace folly
