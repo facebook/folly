@@ -64,7 +64,7 @@ class File {
    * Returns 'true' iff the file was successfully opened.
    */
   explicit operator bool() const {
-    return fd_ >= 0;
+    return fd_ != -1;
   }
 
   /**
@@ -85,9 +85,10 @@ class File {
   bool closeNoThrow();
 
   /**
-   * Releases the file descriptor; no longer owned by this File.
+   * Returns and releases the file descriptor; no longer owned by this File.
+   * Returns -1 if the File object didn't wrap a file.
    */
-  void release();
+  int release();
 
   /**
    * Swap this File with another.

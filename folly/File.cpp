@@ -37,8 +37,10 @@ File::File()
 
 File::File(int fd, bool ownsFd)
   : fd_(fd)
-  , ownsFd_(ownsFd)
-{}
+  , ownsFd_(ownsFd) {
+  CHECK_GE(fd, -1) << "fd must be -1 or non-negative";
+  CHECK(fd != -1 || !ownsFd) << "cannot own -1";
+}
 
 File::File(const char* name, int flags, mode_t mode)
   : fd_(::open(name, flags, mode))
@@ -53,7 +55,6 @@ File::File(const char* name, int flags, mode_t mode)
 File::File(File&& other)
   : fd_(other.fd_)
   , ownsFd_(other.ownsFd_) {
-
   other.release();
 }
 
@@ -79,9 +80,11 @@ File::~File() {
   return File(fd, true);
 }
 
-void File::release() {
+int File::release() {
+  int released = fd_;
   fd_ = -1;
   ownsFd_ = false;
+  return released;
 }
 
 void File::swap(File& other) {
@@ -95,7 +98,7 @@ void swap(File& a, File& b) {
 }
 
 File File::dup() const {
-  if (fd_ >= 0) {
+  if (fd_ != -1) {
     int fd = ::dup(fd_);
     checkUnixError(fd, "dup() failed");
 

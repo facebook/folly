@@ -91,6 +91,12 @@ TEST(File, OwnsFd) {
   ::close(p[0]);
 }
 
+TEST(File, Release) {
+  File in(STDOUT_FILENO, false);
+  CHECK_EQ(STDOUT_FILENO, in.release());
+  CHECK_EQ(-1, in.release());
+}
+
 #define EXPECT_CONTAINS(haystack, needle) \
   EXPECT_NE(::std::string::npos, ::folly::StringPiece(haystack).find(needle)) \
     << "Haystack: '" << haystack << "'\nNeedle: '" << needle << "'";
