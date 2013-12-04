@@ -749,7 +749,7 @@ TEST(IOBuf, takeOwnershipUniquePtr) {
   destructorCount = 0;
   {
     std::unique_ptr<OwnershipTestClass[], CustomDeleter>
-      p(new OwnershipTestClass[2], customDeleteArray);
+      p(new OwnershipTestClass[2], CustomDeleter(customDeleteArray));
     std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(std::move(p), 2));
     EXPECT_EQ(2 * sizeof(OwnershipTestClass), buf->length());
     EXPECT_EQ(0, destructorCount);

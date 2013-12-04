@@ -37,7 +37,6 @@ namespace folly { namespace test {
 
 namespace {
 // shortcut
-ByteRange br(StringPiece sp) { return ByteRange(sp); }
 StringPiece sp(ByteRange br) { return StringPiece(br); }
 
 template <class T>
