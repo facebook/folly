@@ -17,6 +17,7 @@
 #include "folly/SmallLocks.h"
 #include <cassert>
 #include <cstdio>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <pthread.h>
@@ -102,6 +103,22 @@ void doPslTest() {
   }
 }
 
+struct TestClobber {
+  TestClobber() {
+    lock_.init();
+  }
+
+  void go() {
+    std::lock_guard<MicroSpinLock> g(lock_);
+    // This bug depends on gcc register allocation and is very sensitive. We
+    // have to use DCHECK instead of EXPECT_*.
+    DCHECK(!lock_.try_lock());
+  }
+
+ private:
+  MicroSpinLock lock_;
+};
+
 }
 
 TEST(SmallLocks, SpinLockCorrectness) {
@@ -139,4 +156,8 @@ TEST(SmallLocks, PicoSpinSigned) {
     EXPECT_EQ(val.getData(), -8);
   }
   EXPECT_EQ(val.getData(), -8);
+}
+
+TEST(SmallLocks, RegClobber) {
+  TestClobber().go();
 }
