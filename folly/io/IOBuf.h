@@ -941,8 +941,9 @@ class IOBuf {
    * first IOBuf in the chain, and at least as much tailroom as the last IOBuf
    * that was coalesced.
    *
-   * Throws std::bad_alloc on error.  On error the IOBuf chain will be
-   * unmodified.  Throws std::overflow_error if the length of the coalesced
+   * Throws std::bad_alloc or std::overflow_error on error.  On error the IOBuf
+   * chain will be unmodified.  Throws std::overflow_error if maxLength is
+   * longer than the total chain length, or if the length of the coalesced
    * portion of the chain is larger than can be described by a uint32_t
    * capacity.  (Although maxLength is uint32_t, gather() doesn't split
    * buffers, so coalescing whole buffers may result in a capacity that can't
@@ -1066,7 +1067,8 @@ class IOBuf {
 
   void unshareOneSlow();
   void unshareChained();
-  void coalesceSlow(size_t maxLength=std::numeric_limits<size_t>::max());
+  void coalesceSlow();
+  void coalesceSlow(size_t maxLength);
   // newLength must be the entire length of the buffers between this and
   // end (no truncation)
   void coalesceAndReallocate(
@@ -1074,6 +1076,9 @@ class IOBuf {
       size_t newLength,
       IOBuf* end,
       size_t newTailroom);
+  void coalesceAndReallocate(size_t newLength, IOBuf* end) {
+    coalesceAndReallocate(headroom(), newLength, end, end->prev_->tailroom());
+  }
   void decrementRefcount();
   void reserveSlow(uint32_t minHeadroom, uint32_t minTailroom);
   void freeExtBuffer();

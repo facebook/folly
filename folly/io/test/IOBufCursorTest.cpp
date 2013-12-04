@@ -236,6 +236,48 @@ TEST(IOBuf, PullAndPeek) {
   }
 }
 
+TEST(IOBuf, Gather) {
+  std::unique_ptr<IOBuf> iobuf1(IOBuf::create(10));
+  append(iobuf1, "he");
+  std::unique_ptr<IOBuf> iobuf2(IOBuf::create(10));
+  append(iobuf2, "llo ");
+  std::unique_ptr<IOBuf> iobuf3(IOBuf::create(10));
+  append(iobuf3, "world");
+  iobuf1->prependChain(std::move(iobuf2));
+  iobuf1->prependChain(std::move(iobuf3));
+  EXPECT_EQ(3, iobuf1->countChainElements());
+  EXPECT_EQ(11, iobuf1->computeChainDataLength());
+
+  // Attempting to gather() more data than available in the chain should fail.
+  // Try from the very beginning of the chain.
+  RWPrivateCursor cursor(iobuf1.get());
+  EXPECT_THROW(cursor.gather(15), std::overflow_error);
+  // Now try from the middle of the chain
+  cursor += 3;
+  EXPECT_THROW(cursor.gather(10), std::overflow_error);
+
+  // Calling gatherAtMost() should succeed, however, and just gather
+  // as much as it can
+  cursor.gatherAtMost(10);
+  EXPECT_EQ(8, cursor.length());
+  EXPECT_EQ(8, cursor.totalLength());
+  EXPECT_EQ("lo world",
+            folly::StringPiece(reinterpret_cast<const char*>(cursor.data()),
+                               cursor.length()));
+  EXPECT_EQ(2, iobuf1->countChainElements());
+  EXPECT_EQ(11, iobuf1->computeChainDataLength());
+
+  // Now try gather again on the chain head
+  cursor = RWPrivateCursor(iobuf1.get());
+  cursor.gather(5);
+  // Since gather() doesn't split buffers, everything should be collapsed into
+  // a single buffer now.
+  EXPECT_EQ(1, iobuf1->countChainElements());
+  EXPECT_EQ(11, iobuf1->computeChainDataLength());
+  EXPECT_EQ(11, cursor.length());
+  EXPECT_EQ(11, cursor.totalLength());
+}
+
 TEST(IOBuf, cloneAndInsert) {
   std::unique_ptr<IOBuf> iobuf1(IOBuf::create(10));
   append(iobuf1, "he");

@@ -431,11 +431,10 @@ void IOBuf::unshareChained() {
   coalesceSlow();
 }
 
-void IOBuf::coalesceSlow(size_t maxLength) {
+void IOBuf::coalesceSlow() {
   // coalesceSlow() should only be called if we are part of a chain of multiple
   // IOBufs.  The caller should have already verified this.
-  assert(isChained());
-  assert(length_ < maxLength);
+  DCHECK(isChained());
 
   // Compute the length of the entire chain
   uint64_t newLength = 0;
@@ -443,13 +442,37 @@ void IOBuf::coalesceSlow(size_t maxLength) {
   do {
     newLength += end->length_;
     end = end->next_;
-  } while (newLength < maxLength && end != this);
+  } while (end != this);
 
-  uint64_t newHeadroom = headroom();
-  uint64_t newTailroom = end->prev_->tailroom();
-  coalesceAndReallocate(newHeadroom, newLength, end, newTailroom);
+  coalesceAndReallocate(newLength, end);
   // We should be only element left in the chain now
-  assert(length_ >= maxLength || !isChained());
+  DCHECK(!isChained());
+}
+
+void IOBuf::coalesceSlow(size_t maxLength) {
+  // coalesceSlow() should only be called if we are part of a chain of multiple
+  // IOBufs.  The caller should have already verified this.
+  DCHECK(isChained());
+  DCHECK_LT(length_, maxLength);
+
+  // Compute the length of the entire chain
+  uint64_t newLength = 0;
+  IOBuf* end = this;
+  while (true) {
+    newLength += end->length_;
+    end = end->next_;
+    if (newLength >= maxLength) {
+      break;
+    }
+    if (end == this) {
+      throw std::overflow_error("attempted to coalesce more data than "
+                                "available");
+    }
+  }
+
+  coalesceAndReallocate(newLength, end);
+  // We should have the requested length now
+  DCHECK_GE(length_, maxLength);
 }
 
 void IOBuf::coalesceAndReallocate(size_t newHeadroom,

@@ -486,6 +486,8 @@ TEST(IOBuf, Chaining) {
   EXPECT_EQ(0, arrayBufFreeCount);
 
   // Buffer lengths: 1500 20 1234 900 321
+  // Attempting to gather more data than available should fail
+  EXPECT_THROW(chainClone->gather(4000), std::overflow_error);
   // Coalesce the first 3 buffers
   chainClone->gather(1521);
   EXPECT_EQ(3, chainClone->countChainElements());
