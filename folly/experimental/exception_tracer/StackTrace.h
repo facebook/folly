@@ -75,11 +75,6 @@ void clearStack(StackTraceStack** head);
  */
 int moveTop(StackTraceStack** from, StackTraceStack** to);
 
-/**
- * Initialize the stack tracing code.
- */
-void initStackTrace();
-
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

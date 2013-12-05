@@ -403,23 +403,5 @@ std::ostream& operator<<(std::ostream& out, const FrameInfo& ainfo) {
   return out;
 }
 
-namespace {
-
-struct Init {
-  Init();
-};
-
-Init::Init() {
-  // Don't use global caching -- it's slow and leads to lock contention.  (And
-  // it's made signal-safe using sigprocmask to block all signals while the
-  // lock is being held, and sigprocmask contends on a lock inside the kernel,
-  // too, ugh.)
-  unw_set_caching_policy(unw_local_addr_space, UNW_CACHE_PER_THREAD);
-}
-
-Init initializer;
-
-}  // namespace
-
 }  // namespace symbolizer
 }  // namespace folly

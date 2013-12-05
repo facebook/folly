@@ -81,8 +81,6 @@ void initialize() {
       !orig_cxa_end_catch || !orig_rethrow_exception) {
     abort();  // what else can we do?
   }
-
-  initStackTrace();
 }
 
 }  // namespace
