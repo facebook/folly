@@ -108,7 +108,25 @@ struct CacheLocality {
   /// CacheLocality structure with the specified number of cpus and a
   /// single cache level that associates one cpu per cache.
   static CacheLocality uniform(size_t numCpus);
+
+  enum {
+    /// Memory locations on the same cache line are subject to false
+    /// sharing, which is very bad for performance.  Microbenchmarks
+    /// indicate that pairs of cache lines also see interference under
+    /// heavy use of atomic operations (observed for atomic increment on
+    /// Sandy Bridge).  See FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
+    kFalseSharingRange = 128
+  };
+
+  static_assert(kFalseSharingRange == 128,
+      "FOLLY_ALIGN_TO_AVOID_FALSE_SHARING should track kFalseSharingRange");
 };
+
+// TODO replace __attribute__ with alignas and 128 with kFalseSharingRange
+
+/// An attribute that will cause a variable or field to be aligned so that
+/// it doesn't have false sharing with anything at a smaller memory address.
+#define FOLLY_ALIGN_TO_AVOID_FALSE_SHARING __attribute__((aligned(128)))
 
 /// Holds a function pointer to the VDSO implementation of getcpu(2),
 /// if available
@@ -329,12 +347,6 @@ struct AccessSpreaderArray {
 
  private:
 
-  /// If we align the access spreaders at the beginning of a cache line
-  /// then getcpuFunc_ and the first 56 bytes of stripeByCpu will be on
-  /// the same cache line
-  enum { kAlignment = 64 };
-
-
   // AccessSpreader uses sharedInstance
   friend AccessSpreader<Atom>;
 
@@ -343,7 +355,8 @@ struct AccessSpreaderArray {
 
   /// aligned_storage is uninitialized, we use placement new since there
   /// is no AccessSpreader default constructor
-  typename std::aligned_storage<sizeof(AccessSpreader<Atom>),kAlignment>::type
+  typename std::aligned_storage<sizeof(AccessSpreader<Atom>),
+                                CacheLocality::kFalseSharingRange>::type
       raw[kMaxStripe + 1];
 };
 
