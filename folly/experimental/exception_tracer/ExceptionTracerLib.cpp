@@ -24,6 +24,7 @@
 #include "folly/experimental/exception_tracer/StackTrace.h"
 #include "folly/experimental/exception_tracer/ExceptionAbi.h"
 #include "folly/experimental/exception_tracer/ExceptionTracer.h"
+#include "folly/experimental/symbolizer/Symbolizer.h"
 
 namespace __cxxabiv1 {
 
@@ -37,11 +38,13 @@ void __cxa_end_catch(void);
 
 }  // namespace __cxxabiv1
 
+using namespace folly::exception_tracer;
+
 namespace {
 
 __thread bool invalid;
-__thread StackTraceStack* activeExceptions;
-__thread StackTraceStack* caughtExceptions;
+__thread StackTraceStack activeExceptions;
+__thread StackTraceStack caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
@@ -86,34 +89,34 @@ void initialize() {
 }  // namespace
 
 // This function is exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" const StackTraceStack* getExceptionStackTraceStack() {
-  return caughtExceptions;
+extern "C" StackTraceStack* getExceptionStackTraceStack() {
+  return invalid ? nullptr : &caughtExceptions;
 }
 
 namespace {
-// Make sure we're counting stack frames correctly for the "skip" argument to
-// pushCurrentStackTrace, don't inline.
+
+// Make sure we're counting stack frames correctly, don't inline.
 void addActiveException() __attribute__((noinline));
 
 void addActiveException() {
   pthread_once(&initialized, initialize);
   // Capture stack trace
   if (!invalid) {
-    if (pushCurrentStackTrace(3, &activeExceptions) != 0) {
-      clearStack(&activeExceptions);
-      clearStack(&caughtExceptions);
+    if (!activeExceptions.pushCurrent()) {
+      activeExceptions.clear();
+      caughtExceptions.clear();
       invalid = true;
     }
   }
 }
 
-void moveTopException(StackTraceStack** from, StackTraceStack** to) {
+void moveTopException(StackTraceStack& from, StackTraceStack& to) {
   if (invalid) {
     return;
   }
-  if (moveTop(from, to) != 0) {
-    clearStack(from);
-    clearStack(to);
+  if (!to.moveTopFrom(from)) {
+    from.clear();
+    to.clear();
     invalid = true;
   }
 }
@@ -134,13 +137,13 @@ void __cxa_rethrow() {
   // we'll implement something simpler (and slower): we pop the exception from
   // the caught stack, and push it back onto the active stack; this way, our
   // implementation of __cxa_begin_catch doesn't have to do anything special.
-  moveTopException(&caughtExceptions, &activeExceptions);
+  moveTopException(caughtExceptions, activeExceptions);
   orig_cxa_rethrow();
 }
 
 void* __cxa_begin_catch(void *excObj) {
   // excObj is a pointer to the unwindHeader in __cxa_exception
-  moveTopException(&activeExceptions, &caughtExceptions);
+  moveTopException(activeExceptions, caughtExceptions);
   return orig_cxa_begin_catch(excObj);
 }
 
@@ -153,7 +156,10 @@ void __cxa_end_catch() {
     // In the rethrow case, we've already popped the exception off the
     // caught stack, so we don't do anything here.
     if (top->handlerCount == 1) {
-      popStackTrace(&caughtExceptions);
+      if (!caughtExceptions.pop()) {
+        activeExceptions.clear();
+        invalid = true;
+      }
     }
   }
   orig_cxa_end_catch();

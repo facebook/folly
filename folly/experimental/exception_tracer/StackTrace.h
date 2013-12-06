@@ -18,66 +18,86 @@
 #ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_
 #define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace folly { namespace exception_tracer {
 
-typedef struct StackTrace {
-  uintptr_t* frameIPs;  /* allocated with malloc() */
+constexpr size_t kMaxFrames = 500;
+
+struct StackTrace {
+  StackTrace() : frameCount(0) { }
+
   size_t frameCount;
-} StackTrace;
+  uintptr_t addresses[kMaxFrames];
+};
 
-/**
- * Get the current stack trace, allocating trace->frameIPs using malloc().
- * Skip the topmost "skip" frames.
- * Return 0 on success, a negative value on error.
- * On error, trace->frameIPs is NULL.
- */
-int getCurrentStackTrace(size_t skip, StackTrace* trace);
+// note: no constructor so this can be __thread.
+// A StackTraceStack MUST be placed in zero-initialized memory.
+class StackTraceStack {
+  class Node;
+ public:
+  /**
+   * Push the current stack trace onto the stack.
+   * Returns false on failure (not enough memory, getting stack trace failed),
+   * true on success.
+   */
+  bool pushCurrent();
 
-/**
- * Free data allocated in a StackTrace object.
- */
-void destroyStackTrace(StackTrace* trace);
+  /**
+   * Pop the top stack trace from the stack.
+   * Returns true on success, false on failure (stack was empty).
+   */
+  bool pop();
 
-/**
- * A stack of stack traces.
- */
-typedef struct StackTraceStack {
-  StackTrace trace;
-  struct StackTraceStack* next;
-} StackTraceStack;
+  /**
+   * Move the top stack trace from other onto this.
+   * Returns true on success, false on failure (other was empty).
+   */
+  bool moveTopFrom(StackTraceStack& other);
 
-/**
- * Push the current stack trace onto the stack.
- * Return 0 on success, a negative value on error.
- * On error, the stack is unchanged.
- */
-int pushCurrentStackTrace(size_t skip, StackTraceStack** head);
+  /**
+   * Clear the stack.
+   */
 
-/**
- * Pop (and destroy) the top stack trace from the stack.
- */
-void popStackTrace(StackTraceStack** head);
+  void clear();
 
-/**
- * Completely empty the stack, destroying everything.
- */
-void clearStack(StackTraceStack** head);
+  /**
+   * Is the stack empty?
+   */
+  bool empty() const { return !top_; }
 
-/**
- * Move the top stack trace from one stack to another.
- * Return 0 on success, a negative value on error (if the source stack is
- * empty)
- */
-int moveTop(StackTraceStack** from, StackTraceStack** to);
+  /**
+   * Return the top stack trace, or nullptr if the stack is empty.
+   */
+  StackTrace* top();
 
-#ifdef __cplusplus
-}  /* extern "C" */
+  /**
+   * Return the stack trace following p, or nullptr if p is the bottom of
+   * the stack.
+   */
+  StackTrace* next(StackTrace* p);
+
+ private:
+  // In debug mode, we assert that we're in zero-initialized memory by
+  // checking that the two guards around top_ are zero.
+  void checkGuard() const {
+#ifndef NDEBUG
+    assert(guard1_ == 0 && guard2_ == 0);
 #endif
+  }
+
+#ifndef NDEBUG
+  uintptr_t guard1_;
+#endif
+  Node* top_;
+#ifndef NDEBUG
+  uintptr_t guard2_;
+#endif
+};
+
+}}  // namespaces
 
 #endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_ */
 

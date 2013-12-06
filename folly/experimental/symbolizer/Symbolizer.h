@@ -25,6 +25,7 @@
 #include "folly/Range.h"
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
+#include "folly/experimental/symbolizer/StackTrace.h"
 
 namespace folly {
 namespace symbolizer {
@@ -33,14 +34,10 @@ namespace symbolizer {
  * Frame information: symbol name and location.
  *
  * Note that both name and location are references in the Symbolizer object,
- * which must outlive this FrameInfo object.
+ * which must outlive this SymbolizedFrame object.
  */
-struct FrameInfo {
-  /* implicit */ FrameInfo(uintptr_t a=0, bool sf=false)
-    : address(a),
-      isSignalFrame(sf),
-      found(false) { }
-  uintptr_t address;
+struct SymbolizedFrame {
+  SymbolizedFrame() : found(false) { }
   bool isSignalFrame;
   bool found;
   StringPiece name;
@@ -52,23 +49,9 @@ struct FrameArray {
   FrameArray() : frameCount(0) { }
 
   size_t frameCount;
-  FrameInfo frames[N];
+  uintptr_t addresses[N];
+  SymbolizedFrame frames[N];
 };
-
-/**
- * Get the current stack trace into addresses, which has room for at least
- * maxAddresses frames. Skip the first (topmost) skip entries.
- *
- * Returns the number of frames in the stack trace. Just like snprintf,
- * if the number of frames is greater than maxAddresses, it will return
- * the actual number of frames, so the stack trace was truncated iff
- * the return value > maxAddresses.
- *
- * Returns -1 on failure.
- */
-ssize_t getStackTrace(FrameInfo* addresses,
-                      size_t maxAddresses,
-                      size_t skip=0);
 
 /**
  * Get stack trace into a given FrameArray, return true on success (and
@@ -76,10 +59,13 @@ ssize_t getStackTrace(FrameInfo* addresses,
  * on failure.
  */
 template <size_t N>
-bool getStackTrace(FrameArray<N>& fa, size_t skip=0) {
-  ssize_t n = getStackTrace(fa.frames, N, skip);
+bool getStackTrace(FrameArray<N>& fa) {
+  ssize_t n = getStackTrace(fa.addresses, N);
   if (n != -1) {
     fa.frameCount = n;
+    for (size_t i = 0; i < fa.frameCount; ++i) {
+      fa.frames[i].found = false;
+    }
     return true;
   } else {
     fa.frameCount = 0;
@@ -94,19 +80,21 @@ class Symbolizer {
   /**
    * Symbolize given addresses.
    */
-  void symbolize(FrameInfo* addresses, size_t addressCount);
+  void symbolize(const uintptr_t* addresses,
+                 SymbolizedFrame* frames,
+                 size_t frameCount);
 
   template <size_t N>
   void symbolize(FrameArray<N>& fa) {
-    symbolize(fa.frames, std::min(fa.frameCount, N));
+    symbolize(fa.addresses, fa.frames, fa.frameCount);
   }
 
   /**
    * Shortcut to symbolize one address.
    */
-  bool symbolize(FrameInfo& address) {
-    symbolize(&address, 1);
-    return address.found;
+  bool symbolize(uintptr_t address, SymbolizedFrame& frame) {
+    symbolize(&address, &frame, 1);
+    return frame.found;
   }
 
  private:
@@ -122,14 +110,16 @@ class Symbolizer {
  */
 class SymbolizePrinter {
  public:
-  void print(const FrameInfo& ainfo);
-  void print(const FrameInfo* addresses,
-             size_t addressesSize,
+  void print(uintptr_t address, const SymbolizedFrame& frame);
+  void print(const uintptr_t* addresses,
+             const SymbolizedFrame* frames,
              size_t frameCount);
 
   template <size_t N>
-  void print(const FrameArray<N>& fa) {
-    print(fa.frames, N, fa.frameCount);
+  void print(const FrameArray<N>& fa, size_t skip=0) {
+    if (skip < fa.frameCount) {
+      print(fa.addresses + skip, fa.frames + skip, fa.frameCount - skip);
+    }
   }
 
   virtual ~SymbolizePrinter() { }
@@ -160,14 +150,6 @@ class FDSymbolizePrinter : public SymbolizePrinter {
   void doPrint(StringPiece sp) override;
   int fd_;
 };
-
-/**
- * Print an FrameInfo to a stream. Note that the Symbolizer that
- * symbolized the address must outlive the FrameInfo. Just like
- * OStreamSymbolizePrinter (which it uses internally), this is not
- * reentrant; do not use from signal handling code.
- */
-std::ostream& operator<<(std::ostream& out, const FrameInfo& ainfo);
 
 }  // namespace symbolizer
 }  // namespace folly

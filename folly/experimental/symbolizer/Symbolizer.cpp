@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-// Must be first to ensure that UNW_LOCAL_ONLY is defined
-#define UNW_LOCAL_ONLY 1
-#include <libunwind.h>
-
 #include "folly/experimental/symbolizer/Symbolizer.h"
 
 #include <limits.h>
@@ -148,62 +144,16 @@ bool parseProcMapsLine(StringPiece line,
 
 }  // namespace
 
-ssize_t getStackTrace(FrameInfo* addresses,
-                      size_t maxAddresses,
-                      size_t skip) {
-  unw_context_t uctx;
-  int r = unw_getcontext(&uctx);
-  if (r < 0) {
-    return -1;
-  }
-
-  unw_cursor_t cursor;
-  size_t idx = 0;
-  bool first = true;
-  for (;;) {
-    if (first) {
-      first = false;
-      r = unw_init_local(&cursor, &uctx);
-    } else {
-      r = unw_step(&cursor);
-      if (r == 0) {
-        break;
-      }
-    }
-    if (r < 0) {
-      return -1;
-    }
-
-    if (skip != 0) {
-      --skip;
-      continue;
-    }
-
-    if (idx < maxAddresses) {
-      unw_word_t ip;
-      int rr = unw_get_reg(&cursor, UNW_REG_IP, &ip);
-      if (rr < 0) {
-        return -1;
-      }
-
-      // If error, assume not a signal frame
-      rr = unw_is_signal_frame(&cursor);
-      addresses[idx] = FrameInfo(ip, (rr > 0));
-    }
-    ++idx;
-  }
-
-  return idx;
-}
-
-void Symbolizer::symbolize(FrameInfo* addresses, size_t addressCount) {
+void Symbolizer::symbolize(const uintptr_t* addresses,
+                           SymbolizedFrame* frames,
+                           size_t addressCount) {
   size_t remaining = 0;
   for (size_t i = 0; i < addressCount; ++i) {
-    auto& ainfo = addresses[i];
-    if (!ainfo.found) {
+    auto& frame = frames[i];
+    if (!frame.found) {
       ++remaining;
-      ainfo.name.clear();
-      ainfo.location = Dwarf::LocationInfo();
+      frame.name.clear();
+      frame.location = Dwarf::LocationInfo();
     }
   }
 
@@ -240,27 +190,19 @@ void Symbolizer::symbolize(FrameInfo* addresses, size_t addressCount) {
 
     // See if any addresses are here
     for (size_t i = 0; i < addressCount; ++i) {
-      auto& ainfo = addresses[i];
-      if (ainfo.found) {
+      auto& frame = frames[i];
+      if (frame.found) {
         continue;
       }
 
-      uintptr_t address = ainfo.address;
-
-      // If the next address (closer to the top of the stack) was a signal
-      // frame, then this is the *resume* address, which is the address
-      // after the location where the signal was caught. This might be in
-      // the next function, so subtract 1 before symbolizing.
-      if (i != 0 && addresses[i-1].isSignalFrame) {
-        --address;
-      }
+      uintptr_t address = addresses[i];
 
       if (from > address || address >= to) {
         continue;
       }
 
       // Found
-      ainfo.found = true;
+      frame.found = true;
       --remaining;
 
       // Open the file on first use
@@ -290,10 +232,10 @@ void Symbolizer::symbolize(FrameInfo* addresses, size_t addressCount) {
       }
       auto name = elfFile->getSymbolName(sym);
       if (name) {
-        ainfo.name = name;
+        frame.name = name;
       }
 
-      Dwarf(elfFile).findAddress(fileAddress, ainfo.location);
+      Dwarf(elfFile).findAddress(fileAddress, frame.location);
     }
   }
 
@@ -304,8 +246,7 @@ namespace {
 const char kHexChars[] = "0123456789abcdef";
 }  // namespace
 
-void SymbolizePrinter::print(const FrameInfo& ainfo) {
-  uintptr_t address = ainfo.address;
+void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   // Can't use sprintf, not async-signal-safe
   static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
   char buf[] = "    @ 0000000000000000";
@@ -322,20 +263,20 @@ void SymbolizePrinter::print(const FrameInfo& ainfo) {
   doPrint(folly::StringPiece(buf, end));
 
   char mangledBuf[1024];
-  if (!ainfo.found) {
+  if (!frame.found) {
     doPrint(" (not found)\n");
     return;
   }
 
-  if (ainfo.name.empty()) {
+  if (frame.name.empty()) {
     doPrint(" (unknown)\n");
-  } else if (ainfo.name.size() >= sizeof(mangledBuf)) {
+  } else if (frame.name.size() >= sizeof(mangledBuf)) {
     doPrint(" ");
-    doPrint(ainfo.name);
+    doPrint(frame.name);
     doPrint("\n");
   } else {
-    memcpy(mangledBuf, ainfo.name.data(), ainfo.name.size());
-    mangledBuf[ainfo.name.size()] = '\0';
+    memcpy(mangledBuf, frame.name.data(), frame.name.size());
+    mangledBuf[frame.name.size()] = '\0';
 
     char demangledBuf[1024];
     demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
@@ -346,23 +287,23 @@ void SymbolizePrinter::print(const FrameInfo& ainfo) {
 
   char fileBuf[PATH_MAX];
   fileBuf[0] = '\0';
-  if (ainfo.location.hasFileAndLine) {
-    ainfo.location.file.toBuffer(fileBuf, sizeof(fileBuf));
+  if (frame.location.hasFileAndLine) {
+    frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
     doPrint(pad);
     doPrint(fileBuf);
 
     char buf[22];
-    uint32_t n = uint64ToBufferUnsafe(ainfo.location.line, buf);
+    uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
     doPrint(":");
     doPrint(StringPiece(buf, n));
     doPrint("\n");
   }
 
-  if (ainfo.location.hasMainFile) {
+  if (frame.location.hasMainFile) {
     char mainFileBuf[PATH_MAX];
     mainFileBuf[0] = '\0';
-    ainfo.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
-    if (!ainfo.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
+    frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
+    if (!frame.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
       doPrint(pad);
       doPrint("-> ");
       doPrint(mainFileBuf);
@@ -371,21 +312,11 @@ void SymbolizePrinter::print(const FrameInfo& ainfo) {
   }
 }
 
-void SymbolizePrinter::print(const FrameInfo* addresses,
-                             size_t addressesSize,
+void SymbolizePrinter::print(const uintptr_t* addresses,
+                             const SymbolizedFrame* frames,
                              size_t frameCount) {
-  for (size_t i = 0; i < std::min(addressesSize, frameCount); ++i) {
-    auto& ainfo = addresses[i];
-    print(ainfo);
-  }
-
-  // Indicate the number of frames that we couldn't log due to space
-  if (frameCount > addressesSize) {
-    char buf[22];
-    uint32_t n = uint64ToBufferUnsafe(frameCount - addressesSize, buf);
-    doPrint("    (");
-    doPrint(StringPiece(buf, n));
-    doPrint(" omitted, max buffer size reached)\n");
+  for (size_t i = 0; i < frameCount; ++i) {
+    print(addresses[i], frames[i]);
   }
 }
 
@@ -395,12 +326,6 @@ void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
 
 void FDSymbolizePrinter::doPrint(StringPiece sp) {
   writeFull(fd_, sp.data(), sp.size());
-}
-
-std::ostream& operator<<(std::ostream& out, const FrameInfo& ainfo) {
-  OStreamSymbolizePrinter osp(out);
-  osp.print(ainfo);
-  return out;
 }
 
 }  // namespace symbolizer

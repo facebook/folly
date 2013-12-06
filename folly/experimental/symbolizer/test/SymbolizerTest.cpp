@@ -27,10 +27,11 @@ void foo() {
 }
 
 TEST(Symbolizer, Single) {
-  FrameInfo a(reinterpret_cast<uintptr_t>(foo));
   Symbolizer symbolizer;
-  ASSERT_TRUE(symbolizer.symbolize(a));
-  EXPECT_EQ("folly::symbolizer::test::foo()", demangle(a.name.str().c_str()));
+  SymbolizedFrame a;
+  ASSERT_TRUE(symbolizer.symbolize(reinterpret_cast<uintptr_t>(foo), a));
+  EXPECT_EQ("folly::symbolizer::test::foo()",
+            demangle(a.name.str().c_str()));
 
   auto path = a.location.file.toString();
   folly::StringPiece basename(path);

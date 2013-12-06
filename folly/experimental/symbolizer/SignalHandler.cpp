@@ -44,30 +44,28 @@ namespace {
  */
 class FatalSignalCallbackRegistry {
  public:
-  typedef std::function<void()> Func;
-
   FatalSignalCallbackRegistry();
 
-  void add(Func func);
+  void add(SignalCallback func);
   void markInstalled();
   void run();
 
  private:
   std::atomic<bool> installed_;
   std::mutex mutex_;
-  std::vector<Func> handlers_;
+  std::vector<SignalCallback> handlers_;
 };
 
 FatalSignalCallbackRegistry::FatalSignalCallbackRegistry()
   : installed_(false) {
 }
 
-void FatalSignalCallbackRegistry::add(Func func) {
+void FatalSignalCallbackRegistry::add(SignalCallback func) {
   std::lock_guard<std::mutex> lock(mutex_);
   CHECK(!installed_)
     << "FatalSignalCallbackRegistry::add may not be used "
        "after installing the signal handlers.";
-  handlers_.push_back(std::move(func));
+  handlers_.push_back(func);
 }
 
 void FatalSignalCallbackRegistry::markInstalled() {
@@ -240,12 +238,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
 
 void signalHandler(int signum, siginfo_t* info, void* uctx) {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
-  try {
-    innerSignalHandler(signum, info, uctx);
-  } catch (...) {
-    // Ignore any exceptions. What? Exceptions?
-    print("Exception in innerSignalHandler!\n");
-  }
+  innerSignalHandler(signum, info, uctx);
 
   gSignalThread = nullptr;
   // Kill ourselves with the previous handler.
@@ -254,8 +247,8 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
 
 }  // namespace
 
-void addFatalSignalCallback(std::function<void()> handler) {
-  gFatalSignalCallbackRegistry->add(std::move(handler));
+void addFatalSignalCallback(SignalCallback cb) {
+  gFatalSignalCallbackRegistry->add(cb);
 }
 
 namespace {

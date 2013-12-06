@@ -41,7 +41,8 @@ void installFatalSignalHandler();
  * All these fatal callback must be added before calling
  * installFatalSignalHandler().
  */
-void addFatalSignalCallback(std::function<void()> callback);
+typedef void (*SignalCallback)(void);
+void addFatalSignalCallback(SignalCallback callback);
 
 
 }}  // namespaces

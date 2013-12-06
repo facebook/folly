@@ -29,16 +29,17 @@
 
 namespace {
 
+using namespace ::folly::exception_tracer;
+using namespace ::folly::symbolizer;
+using namespace __cxxabiv1;
+
 extern "C" {
-const StackTraceStack* getExceptionStackTraceStack(void) __attribute__((weak));
-typedef const StackTraceStack* (*GetExceptionStackTraceStackType)(void);
+StackTraceStack* getExceptionStackTraceStack(void) __attribute__((weak));
+typedef StackTraceStack* (*GetExceptionStackTraceStackType)(void);
 GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
 }
 
 }  // namespace
-
-using namespace ::folly::symbolizer;
-using namespace __cxxabiv1;
 
 namespace folly {
 namespace exception_tracer {
@@ -54,19 +55,23 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << (info.frames.size() == 1 ? " frame" : " frames")
       << ")\n";
   try {
-    std::vector<FrameInfo> addresses;
-    addresses.reserve(info.frames.size());
-    for (auto ip : info.frames) {
-      // Symbolize the previous address because the IP might be in the
-      // next function, per glog/src/signalhandler.cc
-      addresses.emplace_back(ip - 1);
+    ssize_t frameCount = info.frames.size();
+    // Skip our own internal frames
+    static constexpr size_t skip = 3;
+
+    if (frameCount > skip) {
+      auto addresses = info.frames.data() + skip;
+      frameCount -= skip;
+
+      std::vector<SymbolizedFrame> frames;
+      frames.resize(frameCount);
+
+      Symbolizer symbolizer;
+      symbolizer.symbolize(addresses, frames.data(), frameCount);
+
+      OStreamSymbolizePrinter osp(out);
+      osp.print(addresses, frames.data(), frameCount);
     }
-
-    Symbolizer symbolizer;
-    symbolizer.symbolize(addresses.data(), addresses.size());
-
-    OStreamSymbolizePrinter osp(out);
-    osp.print(addresses.data(), addresses.size(), addresses.size());
   } catch (const std::exception& e) {
     out << "\n !! caught " << folly::exceptionStr(e) << "\n";
   } catch (...) {
@@ -118,8 +123,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     return exceptions;
   }
 
-  bool hasTraceStack = false;
-  const StackTraceStack* traceStack = nullptr;
+  StackTraceStack* traceStack = nullptr;
   if (!getExceptionStackTraceStackFn) {
     static bool logged = false;
     if (!logged) {
@@ -134,10 +138,9 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
         << "Exception stack trace invalid, stack traces not available";
       logged = true;
     }
-  } else {
-    hasTraceStack = true;
   }
 
+  StackTrace* trace = traceStack ? traceStack->top() : nullptr;
   while (currentException) {
     ExceptionInfo info;
     // Dependent exceptions (thrown via std::rethrow_exception) aren't
@@ -148,18 +151,16 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
       isAbiCppException(currentException) ?
       currentException->exceptionType :
       nullptr;
-    if (hasTraceStack) {
-      CHECK(traceStack) << "Invalid trace stack!";
-      info.frames.assign(
-          traceStack->trace.frameIPs,
-          traceStack->trace.frameIPs + traceStack->trace.frameCount);
-      traceStack = traceStack->next;
+    if (traceStack) {
+      CHECK(trace) << "Invalid trace stack!";
+      info.frames.assign(trace->addresses,
+                         trace->addresses + trace->frameCount);
+      trace = traceStack->next(trace);
     }
     currentException = currentException->nextException;
     exceptions.push_back(std::move(info));
   }
-
-  CHECK(!traceStack) << "Invalid trace stack!";
+  CHECK(!trace) << "Invalid trace stack!";
 
   return exceptions;
 }
