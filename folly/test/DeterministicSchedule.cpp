@@ -134,6 +134,14 @@ DeterministicSchedule::afterSharedAccess() {
   sem_post(sched->sems_[sched->scheduler_(sched->sems_.size())]);
 }
 
+int
+DeterministicSchedule::getRandNumber(int n) {
+  if (tls_sched) {
+    return tls_sched->scheduler_(n);
+  }
+  return std::rand() % n;
+}
+
 sem_t*
 DeterministicSchedule::beforeThreadCreate() {
   sem_t* s = new sem_t;
@@ -245,6 +253,49 @@ bool Futex<DeterministicAtomic>::futexWait(uint32_t expected,
   futexLock.unlock();
   DeterministicSchedule::afterSharedAccess();
   return rv;
+}
+
+FutexResult futexWaitUntilImpl(Futex<DeterministicAtomic>* futex,
+                               uint32_t expected, uint32_t waitMask) {
+  if (futex == nullptr) {
+    return FutexResult::VALUE_CHANGED;
+  }
+
+  bool rv = false;
+  int futexErrno = 0;
+
+  DeterministicSchedule::beforeSharedAccess();
+  futexLock.lock();
+  if (futex->data == expected) {
+    auto& queue = futexQueues[futex];
+    queue.push_back(std::make_pair(waitMask, &rv));
+    auto ours = queue.end();
+    ours--;
+    while (!rv) {
+      futexLock.unlock();
+      DeterministicSchedule::afterSharedAccess();
+      DeterministicSchedule::beforeSharedAccess();
+      futexLock.lock();
+
+      // Simulate spurious wake-ups, timeouts each time with
+      // a 10% probability
+      if (DeterministicSchedule::getRandNumber(100) < 10) {
+        queue.erase(ours);
+        if (queue.empty()) {
+          futexQueues.erase(futex);
+        }
+        rv = false;
+        // Simulate ETIMEDOUT 90% of the time and other failures
+        // remaining time
+        futexErrno =
+          DeterministicSchedule::getRandNumber(100) >= 10 ? ETIMEDOUT : EINTR;
+        break;
+      }
+    }
+  }
+  futexLock.unlock();
+  DeterministicSchedule::afterSharedAccess();
+  return futexErrnoToFutexResult(rv ? 0 : -1, futexErrno);
 }
 
 template<>

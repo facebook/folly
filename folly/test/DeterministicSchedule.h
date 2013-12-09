@@ -124,6 +124,10 @@ class DeterministicSchedule : boost::noncopyable {
   /** Calls sem_wait(sem) as part of a deterministic schedule. */
   static void wait(sem_t* sem);
 
+  /** Used scheduler_ to get a random number b/w [0, n). If tls_sched is
+   *  not set-up it falls back to std::rand() */
+  static int getRandNumber(int n);
+
  private:
   static __thread sem_t* tls_sem;
   static __thread DeterministicSchedule* tls_sched;
@@ -273,6 +277,20 @@ namespace folly { namespace detail {
 template<>
 bool Futex<test::DeterministicAtomic>::futexWait(uint32_t expected,
                                                  uint32_t waitMask);
+
+/// This function ignores the time bound, and instead pseudo-randomly chooses
+/// whether the timeout was reached. To do otherwise would not be deterministic.
+FutexResult futexWaitUntilImpl(Futex<test::DeterministicAtomic> *futex,
+                               uint32_t expected, uint32_t waitMask);
+
+template<> template<class Clock, class Duration>
+FutexResult
+Futex<test::DeterministicAtomic>::futexWaitUntil(
+          uint32_t expected,
+          const time_point<Clock, Duration>& absTimeUnused,
+          uint32_t waitMask) {
+  return futexWaitUntilImpl(this, expected, waitMask);
+}
 
 template<>
 int Futex<test::DeterministicAtomic>::futexWake(int count, uint32_t wakeMask);
