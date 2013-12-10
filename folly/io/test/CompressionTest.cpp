@@ -126,6 +126,9 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
   EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
   EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
   EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
+  EXPECT_TRUE(getCodec(CodecType::LZMA2)->needsUncompressedLength());
+  EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
+    ->needsUncompressedLength());
 }
 
 class CompressionTest : public testing::TestWithParam<
@@ -176,7 +179,9 @@ INSTANTIATE_TEST_CASE_P(
                         CodecType::LZ4,
                         CodecType::SNAPPY,
                         CodecType::ZLIB,
-                        CodecType::LZ4_VARINT_SIZE)));
+                        CodecType::LZ4_VARINT_SIZE,
+                        CodecType::LZMA2,
+                        CodecType::LZMA2_VARINT_SIZE)));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
