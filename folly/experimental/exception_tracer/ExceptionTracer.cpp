@@ -70,7 +70,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       symbolizer.symbolize(addresses, frames.data(), frameCount);
 
       OStreamSymbolizePrinter osp(out);
-      osp.print(addresses, frames.data(), frameCount);
+      osp.println(addresses, frames.data(), frameCount);
     }
   } catch (const std::exception& e) {
     out << "\n !! caught " << folly::exceptionStr(e) << "\n";

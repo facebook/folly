@@ -40,6 +40,19 @@
 // symbols" (but, interestingly enough, will resolve undefined weak symbols
 // with definitions from archive members that were extracted in order to
 // resolve an undefined global (strong) symbol)
+
+# ifndef DMGL_NO_OPTS
+#  define FOLLY_DEFINED_DMGL 1
+#  define DMGL_NO_OPTS    0          /* For readability... */
+#  define DMGL_PARAMS     (1 << 0)   /* Include function args */
+#  define DMGL_ANSI       (1 << 1)   /* Include const, volatile, etc */
+#  define DMGL_JAVA       (1 << 2)   /* Demangle as Java rather than C++. */
+#  define DMGL_VERBOSE    (1 << 3)   /* Include implementation details.  */
+#  define DMGL_TYPES      (1 << 4)   /* Also try to demangle type encodings.  */
+#  define DMGL_RET_POSTFIX (1 << 5)  /* Print function return types (when
+                                        present) after function signature */
+# endif
+
 extern "C" int cplus_demangle_v3_callback(
     const char* mangled,
     int options,  // We use DMGL_PARAMS | DMGL_TYPES, aka 0x11
@@ -340,7 +353,7 @@ size_t demangle(const char* name, char* out, size_t outSize) {
   // Unlike most library functions, this returns 1 on success and 0 on failure
   int status = cplus_demangle_v3_callback(
       name,
-      0x11,  // DMGL_PARAMS | DMGL_TYPES
+      DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES,
       demangleCallback,
       &dbuf);
   if (status == 0) {  // failed, return original
@@ -410,3 +423,15 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
 } // namespace detail
 
 }   // namespace folly
+
+#ifdef FOLLY_DEFINED_DMGL
+# undef FOLLY_DEFINED_DMGL
+# undef DMGL_NO_OPTS
+# undef DMGL_PARAMS
+# undef DMGL_ANSI
+# undef DMGL_JAVA
+# undef DMGL_VERBOSE
+# undef DMGL_TYPES
+# undef DMGL_RET_POSTFIX
+#endif
+

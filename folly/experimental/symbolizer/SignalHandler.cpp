@@ -201,7 +201,7 @@ void dumpStackTrace() {
     symbolizer.symbolize(addresses);
 
     FDSymbolizePrinter printer(STDERR_FILENO);
-    printer.print(addresses);
+    printer.println(addresses);
   }
 }
 

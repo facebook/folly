@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "folly/FBString.h"
 #include "folly/Range.h"
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
@@ -110,20 +111,50 @@ class Symbolizer {
  */
 class SymbolizePrinter {
  public:
+  /**
+   * Print one address, no ending newline.
+   */
   void print(uintptr_t address, const SymbolizedFrame& frame);
-  void print(const uintptr_t* addresses,
-             const SymbolizedFrame* frames,
-             size_t frameCount);
 
+  /**
+   * Print one address with ending newline.
+   */
+  void println(uintptr_t address, const SymbolizedFrame& frame);
+
+  /**
+   * Print multiple addresses on separate lines.
+   */
+  void println(const uintptr_t* addresses,
+               const SymbolizedFrame* frames,
+               size_t frameCount);
+
+  /**
+   * Print multiple addresses on separate lines, skipping the first
+   * skip addresses.
+   */
   template <size_t N>
-  void print(const FrameArray<N>& fa, size_t skip=0) {
+  void println(const FrameArray<N>& fa, size_t skip=0) {
     if (skip < fa.frameCount) {
-      print(fa.addresses + skip, fa.frames + skip, fa.frameCount - skip);
+      println(fa.addresses + skip, fa.frames + skip, fa.frameCount - skip);
     }
   }
 
   virtual ~SymbolizePrinter() { }
+
+  enum Options {
+    // Skip file and line information
+    NO_FILE_AND_LINE = 1 << 0,
+
+    // As terse as it gets: function name if found, address otherwise
+    TERSE = 1 << 1,
+  };
+
+ protected:
+  explicit SymbolizePrinter(int options) : options_(options) { }
+  const int options_;
+
  private:
+  void printTerse(uintptr_t address, const SymbolizedFrame& frame);
   virtual void doPrint(StringPiece sp) = 0;
 };
 
@@ -133,7 +164,9 @@ class SymbolizePrinter {
  */
 class OStreamSymbolizePrinter : public SymbolizePrinter {
  public:
-  explicit OStreamSymbolizePrinter(std::ostream& out) : out_(out) { }
+  explicit OStreamSymbolizePrinter(std::ostream& out, int options=0)
+    : SymbolizePrinter(options),
+      out_(out) { }
  private:
   void doPrint(StringPiece sp) override;
   std::ostream& out_;
@@ -145,10 +178,43 @@ class OStreamSymbolizePrinter : public SymbolizePrinter {
  */
 class FDSymbolizePrinter : public SymbolizePrinter {
  public:
-  explicit FDSymbolizePrinter(int fd) : fd_(fd) { }
+  explicit FDSymbolizePrinter(int fd, int options=0)
+    : SymbolizePrinter(options),
+      fd_(fd) { }
  private:
   void doPrint(StringPiece sp) override;
   int fd_;
+};
+
+/**
+ * Print a list of symbolized addresses to a FILE*.
+ * Ignores errors. Not reentrant. Do not use from signal handling code.
+ */
+class FILESymbolizePrinter : public SymbolizePrinter {
+ public:
+  explicit FILESymbolizePrinter(FILE* file, int options=0)
+    : SymbolizePrinter(options),
+      file_(file) { }
+ private:
+  void doPrint(StringPiece sp) override;
+  FILE* file_;
+};
+
+/**
+ * Print a list of symbolized addresses to a std::string.
+ * Not reentrant. Do not use from signal handling code.
+ */
+class StringSymbolizePrinter : public SymbolizePrinter {
+ public:
+  explicit StringSymbolizePrinter(int options=0) : SymbolizePrinter(options) { }
+
+  std::string str() const { return buf_.toStdString(); }
+  const fbstring& fbstr() const { return buf_; }
+  fbstring moveFbString() { return std::move(buf_); }
+
+ private:
+  void doPrint(StringPiece sp) override;
+  fbstring buf_;
 };
 
 }  // namespace symbolizer

@@ -247,6 +247,11 @@ const char kHexChars[] = "0123456789abcdef";
 }  // namespace
 
 void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
+  if (options_ & TERSE) {
+    printTerse(address, frame);
+    return;
+  }
+
   // Can't use sprintf, not async-signal-safe
   static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
   char buf[] = "    @ 0000000000000000";
@@ -273,7 +278,6 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   } else if (frame.name.size() >= sizeof(mangledBuf)) {
     doPrint(" ");
     doPrint(frame.name);
-    doPrint("\n");
   } else {
     memcpy(mangledBuf, frame.name.data(), frame.name.size());
     mangledBuf[frame.name.size()] = '\0';
@@ -282,41 +286,73 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
     demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
     doPrint(" ");
     doPrint(demangledBuf);
-    doPrint("\n");
   }
 
-  char fileBuf[PATH_MAX];
-  fileBuf[0] = '\0';
-  if (frame.location.hasFileAndLine) {
-    frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
-    doPrint(pad);
-    doPrint(fileBuf);
-
-    char buf[22];
-    uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
-    doPrint(":");
-    doPrint(StringPiece(buf, n));
-    doPrint("\n");
-  }
-
-  if (frame.location.hasMainFile) {
-    char mainFileBuf[PATH_MAX];
-    mainFileBuf[0] = '\0';
-    frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
-    if (!frame.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
-      doPrint(pad);
-      doPrint("-> ");
-      doPrint(mainFileBuf);
+  if (!(options_ & NO_FILE_AND_LINE)) {
+    char fileBuf[PATH_MAX];
+    fileBuf[0] = '\0';
+    if (frame.location.hasFileAndLine) {
+      frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
       doPrint("\n");
+      doPrint(pad);
+      doPrint(fileBuf);
+
+      char buf[22];
+      uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
+      doPrint(":");
+      doPrint(StringPiece(buf, n));
+    }
+
+    if (frame.location.hasMainFile) {
+      char mainFileBuf[PATH_MAX];
+      mainFileBuf[0] = '\0';
+      frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
+      if (!frame.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
+        doPrint("\n");
+        doPrint(pad);
+        doPrint("-> ");
+        doPrint(mainFileBuf);
+      }
     }
   }
 }
 
-void SymbolizePrinter::print(const uintptr_t* addresses,
-                             const SymbolizedFrame* frames,
-                             size_t frameCount) {
+void SymbolizePrinter::println(uintptr_t address,
+                               const SymbolizedFrame& frame) {
+  print(address, frame);
+  doPrint("\n");
+}
+
+void SymbolizePrinter::printTerse(uintptr_t address,
+                                  const SymbolizedFrame& frame) {
+  if (frame.found) {
+    char mangledBuf[1024];
+    memcpy(mangledBuf, frame.name.data(), frame.name.size());
+    mangledBuf[frame.name.size()] = '\0';
+
+    char demangledBuf[1024];
+    demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
+    doPrint(demangledBuf);
+  } else {
+    // Can't use sprintf, not async-signal-safe
+    static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
+    char buf[] = "0x0000000000000000";
+    char* end = buf + sizeof(buf) - 1 - (16 - 2 * sizeof(uintptr_t));
+    char* p = end;
+    *p-- = '\0';
+    while (address != 0) {
+      *p-- = kHexChars[address & 0xf];
+      address >>= 4;
+    }
+    doPrint(StringPiece(buf, end));
+  }
+}
+
+void SymbolizePrinter::println(const uintptr_t* addresses,
+                               const SymbolizedFrame* frames,
+                               size_t frameCount) {
   for (size_t i = 0; i < frameCount; ++i) {
-    print(addresses[i], frames[i]);
+    println(addresses[i], frames[i]);
   }
 }
 
@@ -326,6 +362,14 @@ void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
 
 void FDSymbolizePrinter::doPrint(StringPiece sp) {
   writeFull(fd_, sp.data(), sp.size());
+}
+
+void FILESymbolizePrinter::doPrint(StringPiece sp) {
+  fwrite(sp.data(), 1, sp.size(), file_);
+}
+
+void StringSymbolizePrinter::doPrint(StringPiece sp) {
+  buf_.append(sp.data(), sp.size());
 }
 
 }  // namespace symbolizer
