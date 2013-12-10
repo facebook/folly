@@ -269,12 +269,12 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
 
   char mangledBuf[1024];
   if (!frame.found) {
-    doPrint(" (not found)\n");
+    doPrint(" (not found)");
     return;
   }
 
   if (frame.name.empty()) {
-    doPrint(" (unknown)\n");
+    doPrint(" (unknown)");
   } else if (frame.name.size() >= sizeof(mangledBuf)) {
     doPrint(" ");
     doPrint(frame.name);

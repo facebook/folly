@@ -77,7 +77,7 @@ void FatalSignalCallbackRegistry::markInstalled() {
 
 void FatalSignalCallbackRegistry::run() {
   if (!installed_) {
-    return;  // Shouldn't happen
+    return;
   }
 
   for (auto& fn : handlers_) {
@@ -251,6 +251,10 @@ void addFatalSignalCallback(SignalCallback cb) {
   gFatalSignalCallbackRegistry->add(cb);
 }
 
+void installFatalSignalCallbacks() {
+  gFatalSignalCallbackRegistry->markInstalled();
+}
+
 namespace {
 
 std::atomic<bool> gAlreadyInstalled;
@@ -262,8 +266,6 @@ void installFatalSignalHandler() {
     // Already done.
     return;
   }
-
-  gFatalSignalCallbackRegistry->markInstalled();
 
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));

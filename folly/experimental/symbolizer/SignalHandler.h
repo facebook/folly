@@ -30,7 +30,6 @@ namespace folly { namespace symbolizer {
  */
 void installFatalSignalHandler();
 
-
 /**
  * Add a callback to be run when receiving a fatal signal. They will also
  * be called by LOG(FATAL) and abort() (as those raise SIGABRT internally).
@@ -39,10 +38,16 @@ void installFatalSignalHandler();
  * LOG(...) or printf or malloc / new or doing anything even remotely fun.
  *
  * All these fatal callback must be added before calling
- * installFatalSignalHandler().
+ * installFatalSignalCallbacks(), below.
  */
 typedef void (*SignalCallback)(void);
 void addFatalSignalCallback(SignalCallback callback);
+
+/**
+ * Install the fatal signal callbacks; fatal signals will call these
+ * callbacks in the order in which they were added.
+ */
+void installFatalSignalCallbacks();
 
 
 }}  // namespaces
