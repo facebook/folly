@@ -2309,7 +2309,7 @@ operator<<(
   std::basic_ostream<typename basic_fbstring<E, T, A, S>::value_type,
   typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
-  os.write(str.data(), str.size());
+  std::__ostream_insert(os, str.data(), str.size());
   return os;
 }
 

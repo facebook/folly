@@ -23,6 +23,7 @@
 
 #include <list>
 #include <fstream>
+#include <iomanip>
 #include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
@@ -1179,6 +1180,31 @@ TEST(FBString, noexcept) {
   EXPECT_FALSE(noexcept(y = x));
   EXPECT_TRUE(noexcept(y = std::move(x)));
 #endif
+}
+
+TEST(FBString, iomanip) {
+  stringstream ss;
+  fbstring fbstr("Hello");
+
+  ss << setw(6) << fbstr;
+  EXPECT_EQ(ss.str(), " Hello");
+  ss.str("");
+
+  ss << left << setw(6) << fbstr;
+  EXPECT_EQ(ss.str(), "Hello ");
+  ss.str("");
+
+  ss << right << setw(6) << fbstr;
+  EXPECT_EQ(ss.str(), " Hello");
+  ss.str("");
+
+  ss << setw(4) << fbstr;
+  EXPECT_EQ(ss.str(), "Hello");
+  ss.str("");
+
+  ss << setfill('^') << setw(6) << fbstr;
+  EXPECT_EQ(ss.str(), "^Hello");
+  ss.str("");
 }
 
 int main(int argc, char** argv) {
