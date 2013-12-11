@@ -467,7 +467,6 @@ public:
 private:
   friend struct TypeError;
   struct ObjectImpl;
-  struct ObjectMaker;
   template<class T> struct TypeInfo;
   template<class T> struct CompareOp;
   template<class T> struct GetAddrImpl;
