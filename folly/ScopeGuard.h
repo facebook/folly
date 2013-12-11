@@ -157,9 +157,9 @@ class ScopeGuardForNewException {
       , exceptionCounter_(std::move(other.exceptionCounter_)) {
   }
 
-  ~ScopeGuardForNewException() noexcept {
+  ~ScopeGuardForNewException() noexcept(executeOnException) {
     if (executeOnException == exceptionCounter_.isNewUncaughtException()) {
-      execute();
+      function_();
     }
   }
 
@@ -167,8 +167,6 @@ class ScopeGuardForNewException {
   ScopeGuardForNewException(const ScopeGuardForNewException& other) = delete;
 
   void* operator new(size_t) = delete;
-
-  void execute() noexcept { function_(); }
 
   FunctionType function_;
   UncaughtExceptionCounter exceptionCounter_;
@@ -219,17 +217,17 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
 
 #define SCOPE_EXIT \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) \
-  = ::folly::detail::ScopeGuardOnExit() + [&]
+  = ::folly::detail::ScopeGuardOnExit() + [&]() noexcept
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
     defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
 #define SCOPE_FAIL \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) \
-  = ::folly::detail::ScopeGuardOnFail() + [&]
+  = ::folly::detail::ScopeGuardOnFail() + [&]() noexcept
 
 #define SCOPE_SUCCESS \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) \
-  = ::folly::detail::ScopeGuardOnSuccess() + [&]
+  = ::folly::detail::ScopeGuardOnSuccess() + [&]()
 #endif // native uncaught_exception() supported
 
 #endif // FOLLY_SCOPEGUARD_H_

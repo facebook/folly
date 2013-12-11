@@ -284,6 +284,13 @@ TEST(ScopeGuard, TEST_SCOPE_FAIL_AND_SCOPE_SUCCESS) {
   testScopeFailAndScopeSuccess(ErrorBehavior::UNHANDLED_ERROR, true);
 }
 
+TEST(ScopeGuard, TEST_SCOPE_SUCCESS_THROW) {
+  auto lambda = []() {
+    SCOPE_SUCCESS { throw std::runtime_error("ehm"); };
+  };
+  EXPECT_THROW(lambda(), std::runtime_error);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
