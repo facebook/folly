@@ -206,16 +206,22 @@ void dumpStackTrace() {
   }
 }
 
-std::atomic<pthread_t*> gSignalThread;
+// On Linux, pthread_t is a pointer, so 0 is an invalid value, which we
+// take to indicate "no thread in the signal handler".
+//
+// POSIX defines PTHREAD_NULL for this purpose, but that's not available.
+constexpr pthread_t kInvalidThreadId = 0;
+
+std::atomic<pthread_t> gSignalThread(kInvalidThreadId);
 
 // Here be dragons.
 void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
   // First, let's only let one thread in here at a time.
   pthread_t myId = pthread_self();
 
-  pthread_t* prevSignalThread = nullptr;
-  while (!gSignalThread.compare_exchange_strong(prevSignalThread, &myId)) {
-    if (pthread_equal(*prevSignalThread, myId)) {
+  pthread_t prevSignalThread = kInvalidThreadId;
+  while (!gSignalThread.compare_exchange_strong(prevSignalThread, myId)) {
+    if (pthread_equal(prevSignalThread, myId)) {
       print("Entered fatal signal handler recursively. We're in trouble.\n");
       return;
     }
@@ -226,7 +232,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
     ts.tv_nsec = 100L * 1000 * 1000;  // 100ms
     nanosleep(&ts, nullptr);
 
-    prevSignalThread = nullptr;
+    prevSignalThread = kInvalidThreadId;
   }
 
   dumpTimeInfo();
@@ -241,7 +247,7 @@ void signalHandler(int signum, siginfo_t* info, void* uctx) {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
   innerSignalHandler(signum, info, uctx);
 
-  gSignalThread = nullptr;
+  gSignalThread = kInvalidThreadId;
   // Kill ourselves with the previous handler.
   callPreviousSignalHandler(signum);
 }

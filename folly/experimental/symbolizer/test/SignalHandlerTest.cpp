@@ -45,6 +45,7 @@ TEST(SignalHandler, Simple) {
   addFatalSignalCallback(callback1);
   addFatalSignalCallback(callback2);
   installFatalSignalHandler();
+  installFatalSignalCallbacks();
 
   EXPECT_DEATH(
       failHard(),
