@@ -110,6 +110,7 @@ void callPreviousSignalHandler(int signum) {
   for (auto p = kFatalSignals; p->name; ++p) {
     if (p->number == signum) {
       sigaction(signum, &p->oldAction, nullptr);
+      raise(signum);
       return;
     }
   }
