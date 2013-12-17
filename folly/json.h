@@ -60,6 +60,7 @@ namespace json {
       , validate_utf8(false)
       , allow_trailing_comma(false)
       , sort_keys(false)
+      , skip_invalid_utf8(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -89,6 +90,9 @@ namespace json {
 
     // Sort keys of all objects before printing out (potentially slow)
     bool sort_keys;
+
+    // Replace invalid utf8 characters with U+FFFD and continue
+    bool skip_invalid_utf8;
   };
 
   /*

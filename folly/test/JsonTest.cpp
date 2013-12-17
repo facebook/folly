@@ -302,6 +302,23 @@ TEST(Json, UTF8Validation) {
   // test validate_utf8 with invalid utf8
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts));
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
+
+  opts.skip_invalid_utf8 = true;
+  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
+            "\"a\xe0\xa0\x80z\ufffd\ufffd\"");
+  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80\x80", opts),
+            "\"a\xe0\xa0\x80z\ufffd\ufffd\ufffd\"");
+  EXPECT_EQ(folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
+            "\"z\ufffd\ufffdz\xe0\xa0\x80\"");
+
+  opts.encode_non_ascii = true;
+  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts),
+            "\"a\\u0800z\\ufffd\\ufffd\"");
+  EXPECT_EQ(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80\x80", opts),
+            "\"a\\u0800z\\ufffd\\ufffd\\ufffd\"");
+  EXPECT_EQ(folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
+            "\"z\\ufffd\\ufffdz\\u0800\"");
+
 }
 
 

@@ -30,7 +30,10 @@ namespace folly {
 namespace json {
 namespace {
 
-char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
+char32_t decodeUtf8(
+    const unsigned char*& p,
+    const unsigned char* const e,
+    bool skipOnError) {
   /* The following encodings are valid, except for the 5 and 6 byte
    * combinations:
    * 0xxxxxxx
@@ -41,7 +44,10 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
    * 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
    */
 
+  auto skip = [&] { ++p; return U'\ufffd'; };
+
   if (p >= e) {
+    if (skipOnError) return skip();
     throw std::runtime_error("folly::decodeUtf8 empty/invalid string");
   }
 
@@ -62,8 +68,8 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
   uint32_t d = fst;
 
   if ((fst & 0xC0) != 0xC0) {
-    throw std::runtime_error(
-      to<std::string>("folly::decodeUtf8 i=0 d=", d));
+    if (skipOnError) return skip();
+    throw std::runtime_error(to<std::string>("folly::decodeUtf8 i=0 d=", d));
   }
 
   fst <<= 1;
@@ -72,6 +78,7 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
     unsigned char tmp = p[i];
 
     if ((tmp & 0xC0) != 0x80) {
+      if (skipOnError) return skip();
       throw std::runtime_error(
         to<std::string>("folly::decodeUtf8 i=", i, " tmp=", (uint32_t)tmp));
     }
@@ -84,6 +91,7 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
 
       // overlong, could have been encoded with i bytes
       if ((d & ~bitMask[i - 1]) == 0) {
+        if (skipOnError) return skip();
         throw std::runtime_error(
           to<std::string>("folly::decodeUtf8 i=", i, " d=", d));
       }
@@ -91,6 +99,7 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
       // check for surrogates only needed for 3 bytes
       if (i == 2) {
         if ((d >= 0xD800 && d <= 0xDFFF) || d > 0x10FFFF) {
+          if (skipOnError) return skip();
           throw std::runtime_error(
             to<std::string>("folly::decodeUtf8 i=", i, " d=", d));
         }
@@ -101,6 +110,7 @@ char32_t decodeUtf8(const unsigned char*& p, const unsigned char* const e) {
     }
   }
 
+  if (skipOnError) return skip();
   throw std::runtime_error("folly::decodeUtf8 encoding length maxed out");
 }
 
@@ -642,7 +652,8 @@ void escapeString(StringPiece input,
   while (p < e) {
     // Since non-ascii encoding inherently does utf8 validation
     // we explicitly validate utf8 only if non-ascii encoding is disabled.
-    if (opts.validate_utf8 && !opts.encode_non_ascii) {
+    if ((opts.validate_utf8 || opts.skip_invalid_utf8)
+        && !opts.encode_non_ascii) {
       // to achieve better spatial and temporal coherence
       // we do utf8 validation progressively along with the
       // string-escaping instead of two separate passes
@@ -654,13 +665,18 @@ void escapeString(StringPiece input,
       if (q == p) {
         // calling utf8_decode has the side effect of
         // checking that utf8 encodings are valid
-        decodeUtf8(q, e);
+        char32_t v = decodeUtf8(q, e, opts.skip_invalid_utf8);
+        if (opts.skip_invalid_utf8 && v == U'\ufffd') {
+          out.append("\ufffd");
+          p = q;
+          continue;
+        }
       }
     }
     if (opts.encode_non_ascii && (*p & 0x80)) {
       // note that this if condition captures utf8 chars
       // with value > 127, so size > 1 byte
-      char32_t v = decodeUtf8(p, e);
+      char32_t v = decodeUtf8(p, e, opts.skip_invalid_utf8);
       out.append("\\u");
       out.push_back(hexDigit(v >> 12));
       out.push_back(hexDigit((v >> 8) & 0x0f));
