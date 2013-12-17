@@ -59,9 +59,9 @@ struct FrameArray {
  * set frameCount to the actual frame count, which may be > N) and false
  * on failure.
  */
+namespace detail {
 template <size_t N>
-bool getStackTrace(FrameArray<N>& fa) {
-  ssize_t n = getStackTrace(fa.addresses, N);
+bool fixFrameArray(FrameArray<N>& fa, ssize_t n) {
   if (n != -1) {
     fa.frameCount = n;
     for (size_t i = 0; i < fa.frameCount; ++i) {
@@ -72,6 +72,17 @@ bool getStackTrace(FrameArray<N>& fa) {
     fa.frameCount = 0;
     return false;
   }
+}
+}  // namespace detail
+
+template <size_t N>
+bool getStackTrace(FrameArray<N>& fa) {
+  return detail::fixFrameArray(fa, getStackTrace(fa.addresses, N));
+}
+
+template <size_t N>
+bool getStackTraceSafe(FrameArray<N>& fa) {
+  return detail::fixFrameArray(fa, getStackTraceSafe(fa.addresses, N));
 }
 
 class Symbolizer {

@@ -25,9 +25,61 @@ namespace folly { namespace symbolizer {
 ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses) {
   static_assert(sizeof(uintptr_t) == sizeof(void*),
                 "uinptr_t / pointer size mismatch");
+  // The libunwind documentation says that unw_backtrace is async-signal-safe
+  // but, as of libunwind 1.0.1, it isn't (tdep_trace allocates memory on
+  // x86_64)
   int r = unw_backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
 }
 
-}}  // namespaces
+namespace {
+inline bool getFrameInfo(unw_cursor_t* cursor, uintptr_t& ip) {
+  unw_word_t uip;
+  if (unw_get_reg(cursor, UNW_REG_IP, &uip) < 0) {
+    return false;
+  }
+  int r = unw_is_signal_frame(cursor);
+  if (r < 0) {
+    return false;
+  }
+  // Use previous instruction in normal (call) frames (because the
+  // return address might not be in the same function for noreturn functions)
+  // but not in signal frames.
+  ip = uip - (r == 0);
+  return true;
+}
+}  // namespace
 
+ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
+  if (maxAddresses == 0) {
+    return 0;
+  }
+  unw_context_t context;
+  if (unw_getcontext(&context) < 0) {
+    return -1;
+  }
+  unw_cursor_t cursor;
+  if (unw_init_local(&cursor, &context) < 0) {
+    return -1;
+  }
+  if (!getFrameInfo(&cursor, *addresses)) {
+    return -1;
+  }
+  ++addresses;
+  ssize_t count = 1;
+  for (; count != maxAddresses; ++count, ++addresses) {
+    int r = unw_step(&cursor);
+    if (r < 0) {
+      return -1;
+    }
+    if (r == 0) {
+      break;
+    }
+    if (!getFrameInfo(&cursor, *addresses)) {
+      return -1;
+    }
+  }
+  return count;
+}
+
+}}  // namespaces

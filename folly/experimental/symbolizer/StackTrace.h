@@ -17,8 +17,8 @@
 #ifndef FOLLY_SYMBOLIZER_STACKTRACE_H_
 #define FOLLY_SYMBOLIZER_STACKTRACE_H_
 
-#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 
 namespace folly { namespace symbolizer {
 
@@ -28,8 +28,21 @@ namespace folly { namespace symbolizer {
  *
  * Returns the number of frames written in the array.
  * Returns -1 on failure.
+ *
+ * NOT async-signal-safe, but fast.
  */
 ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses);
+
+/**
+ * Get the current stack trace into addresses, which has room for at least
+ * maxAddresses frames.
+ *
+ * Returns the number of frames written in the array.
+ * Returns -1 on failure.
+ *
+ * Async-signal-safe, but likely slower.
+ */
+ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
 
 }}  // namespaces
 

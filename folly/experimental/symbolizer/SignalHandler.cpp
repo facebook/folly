@@ -195,7 +195,7 @@ void dumpStackTrace() {
   FrameArray<kMaxStackTraceDepth> addresses;
 
   // Skip the getStackTrace frame
-  if (!getStackTrace(addresses)) {
+  if (!getStackTraceSafe(addresses)) {
     print("(error retrieving stack trace)\n");
   } else {
     Symbolizer symbolizer;
