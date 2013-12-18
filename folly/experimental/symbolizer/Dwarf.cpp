@@ -110,22 +110,48 @@ void skipPadding(folly::StringPiece& sp, const char* start, size_t alignment) {
   }
 }
 
-void stripSlashes(folly::StringPiece& sp, bool keepInitialSlash) {
-  if (sp.empty()) {
-    return;
+// Simplify a path -- as much as we can while not moving data around...
+void simplifyPath(folly::StringPiece& sp) {
+  // Strip leading slashes and useless patterns (./), leaving one initial
+  // slash.
+  for (;;) {
+    if (sp.empty()) {
+      return;
+    }
+
+    // Strip leading slashes, leaving one.
+    while (sp.startsWith("//")) {
+      sp.advance(1);
+    }
+
+    if (sp.startsWith("/./")) {
+      // Note 2, not 3, to keep it absolute
+      sp.advance(2);
+      continue;
+    }
+
+    if (sp.removePrefix("./")) {
+      continue;
+    }
+
+    break;
   }
 
-  const char* p = sp.begin();
-  for (; p != sp.end() && *p == '/'; ++p);
+  // Strip trailing slashes and useless patterns (/.).
+  for (;;) {
+    if (sp.empty()) {
+      return;
+    }
 
-  const char* q = sp.end();
-  for (; q != p && q[-1] == '/'; --q);
+    // Strip trailing slashes
+    while (sp.removeSuffix('/')) { }
 
-  if (keepInitialSlash && p != sp.begin()) {
-    --p;
+    if (sp.removeSuffix("/.")) {
+      continue;
+    }
+
+    break;
   }
-
-  sp.assign(p, q);
 }
 
 }  // namespace
@@ -159,12 +185,17 @@ Dwarf::Path::Path(folly::StringPiece baseDir, folly::StringPiece subDir,
     swap(baseDir_, subDir_);
   }
 
-  stripSlashes(baseDir_, true);  // keep leading slash if it exists
-  stripSlashes(subDir_, false);
-  stripSlashes(file_, false);
+  simplifyPath(baseDir_);
+  simplifyPath(subDir_);
+  simplifyPath(file_);
 }
 
 size_t Dwarf::Path::size() const {
+  if (baseDir_.empty()) {
+    assert(subDir_.empty());
+    return file_.size();
+  }
+
   return
     baseDir_.size() + !subDir_.empty() + subDir_.size() + !file_.empty() +
     file_.size();
@@ -192,7 +223,9 @@ size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
     append(subDir_);
   }
   if (!file_.empty()) {
-    append("/");
+    if (!baseDir_.empty()) {
+      append("/");
+    }
     append(file_);
   }
   if (bufSize) {
