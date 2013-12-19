@@ -302,6 +302,126 @@ TEST(StringPiece, Constexpr) {
 }
 #endif
 
+TEST(StringPiece, Prefix) {
+  StringPiece a("hello");
+  EXPECT_TRUE(a.startsWith(""));
+  EXPECT_TRUE(a.startsWith("h"));
+  EXPECT_TRUE(a.startsWith('h'));
+  EXPECT_TRUE(a.startsWith("hello"));
+  EXPECT_FALSE(a.startsWith("hellox"));
+  EXPECT_FALSE(a.startsWith('x'));
+  EXPECT_FALSE(a.startsWith("x"));
+
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removePrefix(""));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removePrefix("h"));
+    EXPECT_EQ("ello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removePrefix('h'));
+    EXPECT_EQ("ello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removePrefix("hello"));
+    EXPECT_EQ("", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removePrefix("hellox"));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removePrefix("x"));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removePrefix('x'));
+    EXPECT_EQ("hello", b);
+  }
+}
+
+TEST(StringPiece, Suffix) {
+  StringPiece a("hello");
+  EXPECT_TRUE(a.endsWith(""));
+  EXPECT_TRUE(a.endsWith("o"));
+  EXPECT_TRUE(a.endsWith('o'));
+  EXPECT_TRUE(a.endsWith("hello"));
+  EXPECT_FALSE(a.endsWith("xhello"));
+  EXPECT_FALSE(a.endsWith("x"));
+  EXPECT_FALSE(a.endsWith('x'));
+
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removeSuffix(""));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removeSuffix("o"));
+    EXPECT_EQ("hell", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removeSuffix('o'));
+    EXPECT_EQ("hell", b);
+  }
+  {
+    auto b = a;
+    EXPECT_TRUE(b.removeSuffix("hello"));
+    EXPECT_EQ("", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removeSuffix("xhello"));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removeSuffix("x"));
+    EXPECT_EQ("hello", b);
+  }
+  {
+    auto b = a;
+    EXPECT_FALSE(b.removeSuffix('x'));
+    EXPECT_EQ("hello", b);
+  }
+}
+
+TEST(StringPiece, PrefixEmpty) {
+  StringPiece a;
+  EXPECT_TRUE(a.startsWith(""));
+  EXPECT_FALSE(a.startsWith("a"));
+  EXPECT_FALSE(a.startsWith('a'));
+  EXPECT_TRUE(a.removePrefix(""));
+  EXPECT_EQ("", a);
+  EXPECT_FALSE(a.removePrefix("a"));
+  EXPECT_EQ("", a);
+  EXPECT_FALSE(a.removePrefix('a'));
+  EXPECT_EQ("", a);
+}
+
+TEST(StringPiece, SuffixEmpty) {
+  StringPiece a;
+  EXPECT_TRUE(a.endsWith(""));
+  EXPECT_FALSE(a.endsWith("a"));
+  EXPECT_FALSE(a.endsWith('a'));
+  EXPECT_TRUE(a.removeSuffix(""));
+  EXPECT_EQ("", a);
+  EXPECT_FALSE(a.removeSuffix("a"));
+  EXPECT_EQ("", a);
+  EXPECT_FALSE(a.removeSuffix('a'));
+  EXPECT_EQ("", a);
+}
+
 TEST(qfind, UInt32_Ranges) {
   vector<uint32_t> a({1, 2, 3, 260, 5});
   vector<uint32_t> b({2, 3, 4});
@@ -494,3 +614,4 @@ TYPED_TEST(NeedleFinderTest, NoSegFault) {
     }
   }
 }
+

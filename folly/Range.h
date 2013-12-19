@@ -455,6 +455,48 @@ public:
     std::swap(e_, rhs.e_);
   }
 
+  /**
+   * Does this Range start with another range?
+   */
+  bool startsWith(const Range& other) const {
+    return size() >= other.size() && subpiece(0, other.size()) == other;
+  }
+  bool startsWith(value_type c) const {
+    return !empty() && front() == c;
+  }
+
+  /**
+   * Does this Range end with another range?
+   */
+  bool endsWith(const Range& other) const {
+    return size() >= other.size() && subpiece(size() - other.size()) == other;
+  }
+  bool endsWith(value_type c) const {
+    return !empty() && back() == c;
+  }
+
+  /**
+   * Remove the given prefix and return true if the range starts with the given
+   * prefix; return false otherwise.
+   */
+  bool removePrefix(const Range& prefix) {
+    return startsWith(prefix) && (b_ += prefix.size(), true);
+  }
+  bool removePrefix(value_type prefix) {
+    return startsWith(prefix) && (++b_, true);
+  }
+
+  /**
+   * Remove the given suffix and return true if the range ends with the given
+   * suffix; return false otherwise.
+   */
+  bool removeSuffix(const Range& suffix) {
+    return endsWith(suffix) && (e_ -= suffix.size(), true);
+  }
+  bool removeSuffix(value_type suffix) {
+    return endsWith(suffix) && (--e_, true);
+  }
+
 private:
   Iter b_, e_;
 };
