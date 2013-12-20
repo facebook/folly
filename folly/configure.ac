@@ -141,6 +141,12 @@ AC_LINK_IFELSE(
     AC_DEFINE([HAVE_WEAK_SYMBOLS], [1],
               [Define to 1 if the linker supports weak symbols.])])
 
+AC_SEARCH_LIBS([cplus_demangle_v3_callback], [iberty])
+if test "$ac_cv_search_cplus_demangle_v3_callback" != "no" ; then
+  AC_DEFINE([HAVE_CPLUS_DEMANGLE_V3_CALLBACK], [1],
+            [Define to 1 if we have cplus_demangle_v3_callback.])
+fi
+
 # Check for clock_gettime(2). This is not in an AC_CHECK_FUNCS() because we
 # want to link with librt if necessary.
 AC_SEARCH_LIBS([clock_gettime], [rt],

@@ -24,11 +24,8 @@
 #include <iterator>
 #include <glog/logging.h>
 
-#undef FOLLY_DEMANGLE
-
-#if defined(__GNUG__) && __GNUG__ >= 4
+#if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 # include <cxxabi.h>
-# define FOLLY_DEMANGLE 1
 
 // From libiberty
 //
@@ -310,7 +307,7 @@ size_t my_strlcpy(char* dest, const char* src, size_t size) {
 
 }  // namespace
 
-#ifdef FOLLY_DEMANGLE
+#if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 
 fbstring demangle(const char* name) {
   int status;
@@ -376,7 +373,6 @@ size_t demangle(const char* name, char* out, size_t outSize) {
 }
 
 #endif
-#undef FOLLY_DEMANGLE
 
 namespace detail {
 

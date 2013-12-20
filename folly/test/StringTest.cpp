@@ -463,6 +463,7 @@ struct ThisIsAVeryLongStructureName {
 };
 }  // namespace folly_test
 
+#if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 TEST(System, demangle) {
   char expected[] = "folly_test::ThisIsAVeryLongStructureName";
   EXPECT_STREQ(
@@ -482,6 +483,7 @@ TEST(System, demangle) {
     EXPECT_STREQ("folly_test", buf);
   }
 }
+#endif
 
 namespace {
 
