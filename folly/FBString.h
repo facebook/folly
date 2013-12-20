@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -2312,7 +2312,29 @@ operator<<(
   std::basic_ostream<typename basic_fbstring<E, T, A, S>::value_type,
   typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
+#if _LIBCPP_VERSION
+  typename std::basic_ostream<
+    typename basic_fbstring<E, T, A, S>::value_type,
+    typename basic_fbstring<E, T, A, S>::traits_type>::sentry __s(os);
+  if (__s) {
+    typedef std::ostreambuf_iterator<
+      typename basic_fbstring<E, T, A, S>::value_type,
+      typename basic_fbstring<E, T, A, S>::traits_type> _Ip;
+    size_t __len = str.size();
+    bool __left =
+      (os.flags() & std::ios_base::adjustfield) == std::ios_base::left;
+    if (__pad_and_output(_Ip(os),
+                         str.data(),
+                         __left ? str.data() + __len : str.data(),
+                         str.data() + __len,
+                         os,
+                         os.fill()).failed()) {
+      os.setstate(std::ios_base::badbit | std::ios_base::failbit);
+    }
+  }
+#else
   std::__ostream_insert(os, str.data(), str.size());
+#endif
   return os;
 }
 
