@@ -353,13 +353,6 @@ inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
 }
 
 /**
- * Debug string for an exception: include type only.
- */
-inline fbstring exceptionTypeStr(const std::exception& e) {
-  return folly::to<fbstring>(demangle(typeid(e)));
-}
-
-/**
  * Debug string for an exception: include type and what().
  */
 inline fbstring exceptionStr(const std::exception& e) {
