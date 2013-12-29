@@ -108,7 +108,12 @@ typename std::enable_if<
   IsOneOf<T, std::timed_mutex, std::recursive_timed_mutex>::value, bool>::type
 acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
-  return mutex.try_lock_for(std::chrono::milliseconds(milliseconds));
+  // work around try_lock_for bug in some gcc versions, see
+  // http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54562
+  return mutex.try_lock()
+      || (milliseconds > 0 &&
+          mutex.try_lock_until(std::chrono::system_clock::now() +
+                               std::chrono::milliseconds(milliseconds)));
 }
 
 /**
