@@ -53,6 +53,7 @@ nobase_follyinclude_HEADERS = \
 	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
+	Exception.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
