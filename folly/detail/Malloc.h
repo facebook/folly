@@ -18,7 +18,9 @@
 #define FOLLY_DETAIL_MALLOC_H
 
 #include <stdlib.h>
+#ifndef FOLLY_NO_CONFIG
 #include "folly/folly-config.h"
+#endif
 
 extern "C" {
 
