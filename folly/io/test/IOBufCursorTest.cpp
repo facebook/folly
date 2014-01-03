@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -315,9 +315,11 @@ TEST(IOBuf, cloneAndInsert) {
     cursor.skip(1);
 
     cursor.insert(std::move(cloned));
-    EXPECT_EQ(6, iobuf1->countChainElements());
+    cursor.insert(folly::IOBuf::create(0));
+    EXPECT_EQ(7, iobuf1->countChainElements());
     EXPECT_EQ(14, iobuf1->computeChainDataLength());
-    // Check that nextBuf got set correctly
+    // Check that nextBuf got set correctly to the buffer with 1 byte left
+    EXPECT_EQ(1, cursor.peek().second);
     cursor.read<uint8_t>();
   }
 
@@ -331,7 +333,7 @@ TEST(IOBuf, cloneAndInsert) {
     cursor.skip(1);
 
     cursor.insert(std::move(cloned));
-    EXPECT_EQ(7, iobuf1->countChainElements());
+    EXPECT_EQ(8, iobuf1->countChainElements());
     EXPECT_EQ(15, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly
     cursor.read<uint8_t>();
@@ -344,7 +346,7 @@ TEST(IOBuf, cloneAndInsert) {
     EXPECT_EQ(1, cloned->computeChainDataLength());
 
     cursor.insert(std::move(cloned));
-    EXPECT_EQ(8, iobuf1->countChainElements());
+    EXPECT_EQ(9, iobuf1->countChainElements());
     EXPECT_EQ(16, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly
     cursor.read<uint8_t>();

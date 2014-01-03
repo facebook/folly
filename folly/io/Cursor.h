@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -501,7 +501,7 @@ class RWCursor
     folly::IOBuf* nextBuf;
     if (this->offset_ == 0) {
       // Can just prepend
-      nextBuf = buf.get();
+      nextBuf = this->crtBuf_;
       this->crtBuf_->prependChain(std::move(buf));
     } else {
       std::unique_ptr<folly::IOBuf> remaining;
