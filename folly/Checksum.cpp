@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ namespace folly {
 
 namespace detail {
 
-#if defined(__x86_64__) && defined (__GNUC__)
+#if defined(__x86_64__) && defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+    (((__GNUC__ * 100) + __GNUC_MINOR__) >= 408)
 
 // Fast SIMD implementation of CRC-32C for x86 with SSE 4.2
 uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,

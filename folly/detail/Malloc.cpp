@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@
 
 extern "C" {
 
+#ifndef FOLLY_HAVE_WEAK_SYMBOLS
 int (*rallocm)(void**, size_t*, size_t, size_t, int) = nullptr;
 int (*allocm)(void**, size_t*, size_t, int) = nullptr;
+#endif
 
 }
