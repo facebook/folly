@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,17 @@
 #define FB_ARG_2_OR_1_IMPL(a, b, ...) b
 
 /**
+ * Helper macro that provides a way to pass argument with commas in it to
+ * some other macro whose syntax doesn't allow using extra parentheses.
+ * Example:
+ *
+ *   #define MACRO(type, name) type name
+ *   MACRO(FB_SINGLE_ARG(std::pair<size_t, size_t>), x);
+ *
+ */
+#define FB_SINGLE_ARG(...) __VA_ARGS__
+
+/**
  * FB_ANONYMOUS_VARIABLE(str) introduces an identifier starting with
  * str and ending with a number that varies with the line.
  */
@@ -65,6 +76,5 @@
  * another macro expansion.
  */
 #define FB_STRINGIZE(name) #name
-
 
 #endif // FOLLY_PREPROCESSOR_
