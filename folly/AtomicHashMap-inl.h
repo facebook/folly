@@ -155,7 +155,7 @@ typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::iterator
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
 find(KeyT k) {
   SimpleRetT ret = findInternal(k);
-  if (ret.i >= numMapsAllocated_.load(std::memory_order_acquire)) {
+  if (!ret.success) {
     return end();
   }
   SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
