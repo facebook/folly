@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -201,7 +201,7 @@ void dumpStackTrace() {
     Symbolizer symbolizer;
     symbolizer.symbolize(addresses);
 
-    FDSymbolizePrinter printer(STDERR_FILENO);
+    FDSymbolizePrinter printer(STDERR_FILENO, SymbolizePrinter::COLOR_IF_TTY);
     printer.println(addresses);
   }
 }
@@ -286,4 +286,3 @@ void installFatalSignalHandler() {
 }
 
 }}  // namespaces
-

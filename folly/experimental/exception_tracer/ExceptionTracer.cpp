@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 #include "folly/experimental/exception_tracer/ExceptionTracer.h"
 
@@ -69,7 +68,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       Symbolizer symbolizer;
       symbolizer.symbolize(addresses, frames.data(), frameCount);
 
-      OStreamSymbolizePrinter osp(out);
+      OStreamSymbolizePrinter osp(out, SymbolizePrinter::COLOR_IF_TTY);
       osp.println(addresses, frames.data(), frameCount);
     }
   } catch (const std::exception& e) {
@@ -206,4 +205,3 @@ void installHandlers() {
 
 }  // namespace exception_tracer
 }  // namespace folly
-

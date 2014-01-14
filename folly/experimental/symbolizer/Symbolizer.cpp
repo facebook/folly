@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,24 @@
 #include "folly/experimental/symbolizer/Symbolizer.h"
 
 #include <limits.h>
+#include <cstdio>
+#include <iostream>
+#include <map>
+
+#ifdef __GNUC__
+#include <ext/stdio_filebuf.h>
+#include <ext/stdio_sync_filebuf.h>
+#endif
 
 #include "folly/Conv.h"
 #include "folly/FileUtil.h"
+#include "folly/ScopeGuard.h"
 #include "folly/String.h"
 
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
 #include "folly/experimental/symbolizer/LineReader.h"
+
 
 namespace folly {
 namespace symbolizer {
@@ -244,6 +254,9 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
 
 namespace {
 const char kHexChars[] = "0123456789abcdef";
+const SymbolizePrinter::Color kAddressColor = SymbolizePrinter::Color::BLUE;
+const SymbolizePrinter::Color kFunctionColor = SymbolizePrinter::Color::PURPLE;
+const SymbolizePrinter::Color kFileColor = SymbolizePrinter::Color::DEFAULT;
 }  // namespace
 
 void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
@@ -252,6 +265,9 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
     return;
   }
 
+  SCOPE_EXIT { color(Color::DEFAULT); };
+
+  color(kAddressColor);
   // Can't use sprintf, not async-signal-safe
   static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
   char buf[] = "    @ 0000000000000000";
@@ -267,6 +283,7 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   }
   doPrint(folly::StringPiece(buf, end));
 
+  color(kFunctionColor);
   char mangledBuf[1024];
   if (!frame.found) {
     doPrint(" (not found)");
@@ -289,6 +306,7 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   }
 
   if (!(options_ & NO_FILE_AND_LINE)) {
+    color(kFileColor);
     char fileBuf[PATH_MAX];
     fileBuf[0] = '\0';
     if (frame.location.hasFileAndLine) {
@@ -317,6 +335,33 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   }
 }
 
+namespace {
+
+const std::map<SymbolizePrinter::Color, std::string> kColorMap = {
+  { SymbolizePrinter::Color::DEFAULT,  "\x1B[0m" },
+  { SymbolizePrinter::Color::RED,  "\x1B[31m" },
+  { SymbolizePrinter::Color::GREEN,  "\x1B[32m" },
+  { SymbolizePrinter::Color::YELLOW,  "\x1B[33m" },
+  { SymbolizePrinter::Color::BLUE,  "\x1B[34m" },
+  { SymbolizePrinter::Color::CYAN,  "\x1B[36m" },
+  { SymbolizePrinter::Color::WHITE,  "\x1B[37m" },
+  { SymbolizePrinter::Color::PURPLE,  "\x1B[35m" },
+};
+
+}
+
+void SymbolizePrinter::color(SymbolizePrinter::Color color) {
+  if ((options_ & COLOR) == 0 &&
+      ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
+    return;
+  }
+  auto it = kColorMap.find(color);
+  if (it == kColorMap.end()) {
+    return;
+  }
+  doPrint(it->second);
+}
+
 void SymbolizePrinter::println(uintptr_t address,
                                const SymbolizedFrame& frame) {
   print(address, frame);
@@ -330,9 +375,9 @@ void SymbolizePrinter::printTerse(uintptr_t address,
     memcpy(mangledBuf, frame.name.data(), frame.name.size());
     mangledBuf[frame.name.size()] = '\0';
 
-    char demangledBuf[1024];
+    char demangledBuf[1024] = {0};
     demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
-    doPrint(demangledBuf);
+    doPrint(strlen(demangledBuf) == 0 ? "(unknown)" : demangledBuf);
   } else {
     // Can't use sprintf, not async-signal-safe
     static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
@@ -356,12 +401,58 @@ void SymbolizePrinter::println(const uintptr_t* addresses,
   }
 }
 
+namespace {
+
+int getFD(const std::ios& stream) {
+#ifdef __GNUC__
+  std::streambuf* buf = stream.rdbuf();
+  using namespace __gnu_cxx;
+
+  {
+    auto sbuf = dynamic_cast<stdio_sync_filebuf<char>*>(buf);
+    if (sbuf) {
+      return fileno(sbuf->file());
+    }
+  }
+  {
+    auto sbuf = dynamic_cast<stdio_filebuf<char>*>(buf);
+    if (sbuf) {
+      return sbuf->fd();
+    }
+  }
+#endif  // __GNUC__
+  return -1;
+}
+
+bool isTty(int options, int fd) {
+  return ((options & SymbolizePrinter::TERSE) == 0 &&
+          (options & SymbolizePrinter::COLOR_IF_TTY) != 0 &&
+          fd >= 0 && ::isatty(fd));
+}
+
+}  // anonymous namespace
+
+OStreamSymbolizePrinter::OStreamSymbolizePrinter(std::ostream& out, int options)
+  : SymbolizePrinter(options, isTty(options, getFD(out))),
+    out_(out) {
+}
+
 void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
   out_ << sp;
 }
 
+FDSymbolizePrinter::FDSymbolizePrinter(int fd, int options)
+  : SymbolizePrinter(options, isTty(options, fd)),
+    fd_(fd) {
+}
+
 void FDSymbolizePrinter::doPrint(StringPiece sp) {
   writeFull(fd_, sp.data(), sp.size());
+}
+
+FILESymbolizePrinter::FILESymbolizePrinter(FILE* file, int options)
+  : SymbolizePrinter(options, isTty(options, fileno(file))),
+    file_(file) {
 }
 
 void FILESymbolizePrinter::doPrint(StringPiece sp) {
