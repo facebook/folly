@@ -1,0 +1,162 @@
+/*
+ * Copyright 2014 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <folly/IndexedMemPool.h>
+#include <folly/test/DeterministicSchedule.h>
+#include <thread>
+#include <unistd.h>
+#include <semaphore.h>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+using namespace folly;
+using namespace folly::test;
+
+TEST(IndexedMemPool, unique_ptr) {
+  typedef IndexedMemPool<size_t> Pool;
+  Pool pool(100);
+
+  for (size_t i = 0; i < 100000; ++i) {
+    auto ptr = pool.allocElem();
+    EXPECT_TRUE(!!ptr);
+    *ptr = i;
+  }
+
+  std::vector<Pool::UniquePtr> leak;
+  while (true) {
+    auto ptr = pool.allocElem();
+    if (!ptr) {
+      // good, we finally ran out
+      break;
+    }
+    leak.emplace_back(std::move(ptr));
+    EXPECT_LT(leak.size(), 10000);
+  }
+}
+
+TEST(IndexedMemPool, no_starvation) {
+  const int count = 1000;
+  const int poolSize = 100;
+
+  typedef DeterministicSchedule Sched;
+  Sched sched(Sched::uniform(0));
+
+  typedef IndexedMemPool<int,8,8,DeterministicAtomic> Pool;
+  Pool pool(poolSize);
+
+  for (auto pass = 0; pass < 10; ++pass) {
+    int fd[2];
+    EXPECT_EQ(pipe(fd), 0);
+
+    // makes sure we wait for available nodes, rather than fail allocIndex
+    sem_t allocSem;
+    sem_init(&allocSem, 0, poolSize);
+
+    // this semaphore is only needed for deterministic replay, so that we
+    // always block in an Sched:: operation rather than in a read() syscall
+    sem_t readSem;
+    sem_init(&readSem, 0, 0);
+
+    std::thread produce = Sched::thread([&]() {
+      for (auto i = 0; i < count; ++i) {
+        Sched::wait(&allocSem);
+        uint32_t idx = pool.allocIndex();
+        EXPECT_NE(idx, 0);
+        EXPECT_LE(idx,
+            poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
+        pool[idx] = i;
+        EXPECT_EQ(write(fd[1], &idx, sizeof(idx)), sizeof(idx));
+        Sched::post(&readSem);
+      }
+    });
+
+    std::thread consume = Sched::thread([&]() {
+      for (auto i = 0; i < count; ++i) {
+        uint32_t idx;
+        Sched::wait(&readSem);
+        EXPECT_EQ(read(fd[0], &idx, sizeof(idx)), sizeof(idx));
+        EXPECT_NE(idx, 0);
+        EXPECT_GE(idx, 1);
+        EXPECT_LE(idx,
+            poolSize + (Pool::NumLocalLists - 1) * Pool::LocalListLimit);
+        EXPECT_EQ(pool[idx], i);
+        pool.recycleIndex(idx);
+        Sched::post(&allocSem);
+      }
+    });
+
+    Sched::join(produce);
+    Sched::join(consume);
+    close(fd[0]);
+    close(fd[1]);
+  }
+}
+
+TEST(IndexedMemPool, st_capacity) {
+  // only one local list => capacity is exact
+  typedef IndexedMemPool<int,1,32> Pool;
+  Pool pool(10);
+
+  EXPECT_EQ(pool.capacity(), 10);
+  EXPECT_EQ(Pool::maxIndexForCapacity(10), 10);
+  for (auto i = 0; i < 10; ++i) {
+    EXPECT_NE(pool.allocIndex(), 0);
+  }
+  EXPECT_EQ(pool.allocIndex(), 0);
+}
+
+TEST(IndexedMemPool, mt_capacity) {
+  typedef IndexedMemPool<int,16,32> Pool;
+  Pool pool(1000);
+
+  std::thread threads[10];
+  for (auto i = 0; i < 10; ++i) {
+    threads[i] = std::thread([&]() {
+      for (auto j = 0; j < 100; ++j) {
+        uint32_t idx = pool.allocIndex();
+        EXPECT_NE(idx, 0);
+      }
+    });
+  }
+
+  for (auto i = 0; i < 10; ++i) {
+    threads[i].join();
+  }
+
+  for (auto i = 0; i < 16 * 32; ++i) {
+    pool.allocIndex();
+  }
+  EXPECT_EQ(pool.allocIndex(), 0);
+}
+
+TEST(IndexedMemPool, locate_elem) {
+  IndexedMemPool<int> pool(1000);
+
+  for (auto i = 0; i < 1000; ++i) {
+    auto idx = pool.allocIndex();
+    EXPECT_FALSE(idx == 0);
+    int* elem = &pool[idx];
+    EXPECT_TRUE(idx == pool.locateElem(elem));
+  }
+
+  EXPECT_EQ(pool.locateElem(nullptr), 0);
+}
+
+int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  return RUN_ALL_TESTS();
+}

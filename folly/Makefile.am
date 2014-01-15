@@ -65,6 +65,7 @@ nobase_follyinclude_HEADERS = \
 	Format-inl.h \
 	GroupVarint.h \
 	Hash.h \
+	IndexedMemPool.h \
 	IntrusiveList.h \
 	io/Cursor.h \
 	io/IOBuf.h \
