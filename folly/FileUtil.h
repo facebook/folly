@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,10 @@
 #define FOLLY_FILEUTIL_H_
 
 #include "folly/Portability.h"
+#include "folly/ScopeGuard.h"
 
+#include <cassert>
+#include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -102,7 +105,66 @@ ssize_t writevFull(int fd, iovec* iov, int count);
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
 #endif
 
+/**
+ * Read entire file (if num_bytes is defaulted) or no more than
+ * num_bytes (otherwise) into container *out. The container is assumed
+ * to be contiguous, with element size equal to 1, and offer size(),
+ * reserve(), and random access (e.g. std::vector<char>, std::string,
+ * fbstring).
+ *
+ * Returns: true on success or false on failure. In the latter case
+ * errno will be set appropriately by the failing system primitive.
+ */
+template <class Container>
+bool readFile(const char* file_name, Container& out,
+              size_t num_bytes = std::numeric_limits<size_t>::max()) {
+  static_assert(sizeof(out[0]) == 1,
+                "readFile: only containers with byte-sized elements accepted");
+  assert(file_name);
+
+  const auto fd = open(file_name, O_RDONLY);
+  if (fd == -1) return false;
+
+  size_t soFar = 0; // amount of bytes successfully read
+  SCOPE_EXIT {
+    assert(out.size() >= soFar); // resize better doesn't throw
+    out.resize(soFar);
+    // Ignore errors when closing the file
+    close(fd);
+  };
+
+  // Obtain file size:
+  struct stat buf;
+  if (fstat(fd, &buf) == -1) return false;
+  // Some files (notably under /proc and /sys on Linux) lie about
+  // their size, so treat the size advertised by fstat under advise
+  // but don't rely on it. In particular, if the size is zero, we
+  // should attempt to read stuff. If not zero, we'll attempt to read
+  // one extra byte.
+  constexpr size_t initialAlloc = 1024 * 4;
+  out.resize(
+    std::min(
+      buf.st_size ? buf.st_size + 1 : initialAlloc,
+      num_bytes));
+
+  while (soFar < out.size()) {
+    const auto actual = readFull(fd, &out[soFar], out.size() - soFar);
+    if (actual == -1) {
+      return false;
+    }
+    soFar += actual;
+    if (soFar < out.size()) {
+      // File exhausted
+      break;
+    }
+    // Ew, allocate more memory. Use exponential growth to avoid
+    // quadratic behavior. Cap size to num_bytes.
+    out.resize(std::min(out.size() * 3 / 2, num_bytes));
+  }
+
+  return true;
+}
+
 }  // namespaces
 
 #endif /* FOLLY_FILEUTIL_H_ */
-

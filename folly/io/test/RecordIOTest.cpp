@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,12 +54,12 @@ std::unique_ptr<IOBuf> iobufs(std::initializer_list<T> ranges) {
 TEST(RecordIOTest, Simple) {
   TemporaryFile file;
   {
-    RecordIOWriter writer(file.fd());
+    RecordIOWriter writer(File(file.fd()));
     writer.write(iobufs({"hello ", "world"}));
     writer.write(iobufs({"goodbye"}));
   }
   {
-    RecordIOReader reader(file.fd());
+    RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello world", sp((it++)->first));
@@ -68,12 +68,12 @@ TEST(RecordIOTest, Simple) {
     EXPECT_TRUE(it == reader.end());
   }
   {
-    RecordIOWriter writer(file.fd());
+    RecordIOWriter writer(File(file.fd()));
     writer.write(iobufs({"meow"}));
     writer.write(iobufs({"woof"}));
   }
   {
-    RecordIOReader reader(file.fd());
+    RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello world", sp((it++)->first));
@@ -93,13 +93,13 @@ TEST(RecordIOTest, SmallRecords) {
   memset(tmp, 'x', kSize);
   TemporaryFile file;
   {
-    RecordIOWriter writer(file.fd());
+    RecordIOWriter writer(File(file.fd()));
     for (int i = 0; i < kSize; ++i) {  // record of size 0 should be ignored
       writer.write(IOBuf::wrapBuffer(tmp, i));
     }
   }
   {
-    RecordIOReader reader(file.fd());
+    RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();
     for (int i = 1; i < kSize; ++i) {
       ASSERT_FALSE(it == reader.end());
@@ -112,19 +112,19 @@ TEST(RecordIOTest, SmallRecords) {
 TEST(RecordIOTest, MultipleFileIds) {
   TemporaryFile file;
   {
-    RecordIOWriter writer(file.fd(), 1);
+    RecordIOWriter writer(File(file.fd()), 1);
     writer.write(iobufs({"hello"}));
   }
   {
-    RecordIOWriter writer(file.fd(), 2);
+    RecordIOWriter writer(File(file.fd()), 2);
     writer.write(iobufs({"world"}));
   }
   {
-    RecordIOWriter writer(file.fd(), 1);
+    RecordIOWriter writer(File(file.fd()), 1);
     writer.write(iobufs({"goodbye"}));
   }
   {
-    RecordIOReader reader(file.fd(), 0);  // return all
+    RecordIOReader reader(File(file.fd()), 0);  // return all
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello", sp((it++)->first));
@@ -135,7 +135,7 @@ TEST(RecordIOTest, MultipleFileIds) {
     EXPECT_TRUE(it == reader.end());
   }
   {
-    RecordIOReader reader(file.fd(), 1);
+    RecordIOReader reader(File(file.fd()), 1);
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello", sp((it++)->first));
@@ -144,14 +144,14 @@ TEST(RecordIOTest, MultipleFileIds) {
     EXPECT_TRUE(it == reader.end());
   }
   {
-    RecordIOReader reader(file.fd(), 2);
+    RecordIOReader reader(File(file.fd()), 2);
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("world", sp((it++)->first));
     EXPECT_TRUE(it == reader.end());
   }
   {
-    RecordIOReader reader(file.fd(), 3);
+    RecordIOReader reader(File(file.fd()), 3);
     auto it = reader.begin();
     EXPECT_TRUE(it == reader.end());
   }
@@ -160,7 +160,7 @@ TEST(RecordIOTest, MultipleFileIds) {
 TEST(RecordIOTest, ExtraMagic) {
   TemporaryFile file;
   {
-    RecordIOWriter writer(file.fd());
+    RecordIOWriter writer(File(file.fd()));
     writer.write(iobufs({"hello"}));
   }
   uint8_t buf[recordio_helpers::headerSize() + 5];
@@ -172,7 +172,7 @@ TEST(RecordIOTest, ExtraMagic) {
   // and an extra record
   EXPECT_EQ(sizeof(buf), write(file.fd(), buf, sizeof(buf)));
   {
-    RecordIOReader reader(file.fd());
+    RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();
     ASSERT_FALSE(it == reader.end());
     EXPECT_EQ("hello", sp((it++)->first));
@@ -213,7 +213,7 @@ TEST(RecordIOTest, Randomized) {
   // Recreate the writer multiple times so we test that we create a
   // continuous stream
   for (size_t i = 0; i < 3; ++i) {
-    RecordIOWriter writer(file.fd());
+    RecordIOWriter writer(File(file.fd()));
     for (size_t j = 0; j < recordCount; ++j) {
       off_t beginPos = writer.filePos();
       record.clear();
@@ -251,7 +251,7 @@ TEST(RecordIOTest, Randomized) {
 
   {
     size_t i = 0;
-    RecordIOReader reader(file.fd());
+    RecordIOReader reader(File(file.fd()));
     for (auto& r : reader) {
       SCOPED_TRACE(i);
       ASSERT_LT(i, records.size());
@@ -270,4 +270,3 @@ int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }
-

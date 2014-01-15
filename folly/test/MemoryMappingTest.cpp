@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ namespace folly {
 TEST(MemoryMapping, Basic) {
   File f = File::temporary();
   {
-    WritableMemoryMapping m(f.fd(), 0, sizeof(double));
+    WritableMemoryMapping m(File(f.fd()), 0, sizeof(double));
     double volatile* d = m.asWritableRange<double>().data();
     *d = 37 * M_PI;
   }
   {
-    MemoryMapping m(f.fd(), 0, 3);
+    MemoryMapping m(File(f.fd()), 0, 3);
     EXPECT_EQ(0, m.asRange<int>().size()); //not big enough
   }
   {
-    MemoryMapping m(f.fd(), 0, sizeof(double));
+    MemoryMapping m(File(f.fd()), 0, sizeof(double));
     const double volatile* d = m.asRange<double>().data();
     EXPECT_EQ(*d, 37 * M_PI);
   }
@@ -41,8 +41,8 @@ TEST(MemoryMapping, Basic) {
 TEST(MemoryMapping, DoublyMapped) {
   File f = File::temporary();
   // two mappings of the same memory, different addresses.
-  WritableMemoryMapping mw(f.fd(), 0, sizeof(double));
-  MemoryMapping mr(f.fd(), 0, sizeof(double));
+  WritableMemoryMapping mw(File(f.fd()), 0, sizeof(double));
+  MemoryMapping mr(File(f.fd()), 0, sizeof(double));
 
   double volatile* dw = mw.asWritableRange<double>().data();
   const double volatile* dr = mr.asRange<double>().data();
@@ -84,11 +84,11 @@ TEST(MemoryMapping, Simple) {
   writeStringToFileOrDie("hello", f.fd());
 
   {
-    MemoryMapping m(f.fd());
+    MemoryMapping m(File(f.fd()));
     EXPECT_EQ("hello", m.data());
   }
   {
-    MemoryMapping m(f.fd(), 1, 2);
+    MemoryMapping m(File(f.fd()), 1, 2);
     EXPECT_EQ("el", m.data());
   }
 }
@@ -105,20 +105,20 @@ TEST(MemoryMapping, LargeFile) {
   writeStringToFileOrDie(fileData, f.fd());
 
   {
-    MemoryMapping m(f.fd());
+    MemoryMapping m(File(f.fd()));
     EXPECT_EQ(fileData, m.data());
   }
   {
     size_t size = sysconf(_SC_PAGESIZE) * 2;
     StringPiece s(fileData.data() + 9, size - 9);
-    MemoryMapping m(f.fd(), 9, size - 9);
+    MemoryMapping m(File(f.fd()), 9, size - 9);
     EXPECT_EQ(s.toString(), m.data());
   }
 }
 
 TEST(MemoryMapping, ZeroLength) {
   File f = File::temporary();
-  MemoryMapping m(f.fd());
+  MemoryMapping m(File(f.fd()));
   EXPECT_TRUE(m.mlock(MemoryMapping::LockMode::MUST_LOCK));
   EXPECT_TRUE(m.mlocked());
   EXPECT_EQ(0, m.data().size());

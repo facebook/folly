@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@
 namespace folly { namespace test {
 
 using namespace fileutil_detail;
+using namespace std;
 
 namespace {
 
@@ -238,6 +239,49 @@ TEST_F(FileUtilTest, preadv) {
 }
 #endif
 
+TEST(String, readFile) {
+  srand(time(nullptr));
+  const string tmpPrefix = to<string>("/tmp/folly-file-util-test-",
+                                      getpid(), "-", rand(), "-");
+  const string afile = tmpPrefix + "myfile";
+  const string emptyFile = tmpPrefix + "myfile2";
+
+  SCOPE_EXIT {
+    unlink(afile.c_str());
+    unlink(emptyFile.c_str());
+  };
+
+  auto f = fopen(emptyFile.c_str(), "wb");
+  EXPECT_NE(nullptr, f);
+  EXPECT_EQ(0, fclose(f));
+  f = fopen(afile.c_str(), "wb");
+  EXPECT_NE(nullptr, f);
+  EXPECT_EQ(3, fwrite("bar", 1, 3, f));
+  EXPECT_EQ(0, fclose(f));
+
+  {
+    string contents;
+    EXPECT_TRUE(readFile(emptyFile.c_str(), contents));
+    EXPECT_EQ(contents, "");
+    EXPECT_TRUE(readFile(afile.c_str(), contents, 0));
+    EXPECT_EQ("", contents);
+    EXPECT_TRUE(readFile(afile.c_str(), contents, 2));
+    EXPECT_EQ("ba", contents);
+    EXPECT_TRUE(readFile(afile.c_str(), contents));
+    EXPECT_EQ("bar", contents);
+  }
+  {
+    vector<unsigned char> contents;
+    EXPECT_TRUE(readFile(emptyFile.c_str(), contents));
+    EXPECT_EQ(vector<unsigned char>(), contents);
+    EXPECT_TRUE(readFile(afile.c_str(), contents, 0));
+    EXPECT_EQ(vector<unsigned char>(), contents);
+    EXPECT_TRUE(readFile(afile.c_str(), contents, 2));
+    EXPECT_EQ(vector<unsigned char>({'b', 'a'}), contents);
+    EXPECT_TRUE(readFile(afile.c_str(), contents));
+    EXPECT_EQ(vector<unsigned char>({'b', 'a', 'r'}), contents);
+  }
+}
 
 }}  // namespaces
 
@@ -246,4 +290,3 @@ int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }
-

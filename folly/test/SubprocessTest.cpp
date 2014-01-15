@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
 TEST(PopenSubprocessTest, PopenRead) {
   Subprocess proc("ls /", Subprocess::pipeStdout());
   int found = 0;
-  gen::byLine(proc.stdout()) |
+  gen::byLine(File(proc.stdout())) |
     [&] (StringPiece line) {
       if (line == "etc" || line == "bin" || line == "usr") {
         ++found;

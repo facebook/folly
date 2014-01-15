@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1349,7 +1349,7 @@ TEST_P(FileGenBufferedTest, FileWriter) {
   auto collect = eachTo<std::string>() | as<vector>();
   auto expected = src | resplit('\n') | collect;
 
-  src | eachAs<StringPiece>() | toFile(file.fd(), bufferSize);
+  src | eachAs<StringPiece>() | toFile(File(file.fd()), bufferSize);
   auto found = byLine(file.path().c_str()) | collect;
 
   EXPECT_TRUE(expected == found);

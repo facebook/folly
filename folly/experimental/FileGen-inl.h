@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,6 +133,14 @@ inline auto byLine(File file, char delim = '\n')
   return fromFile(std::move(file))
        | eachAs<StringPiece>()
        | resplit(delim);
+}
+
+/**
+ * Ditto, take the filename and opens it
+ */
+inline auto byLine(const char* fileName, char delim = '\n')
+  -> decltype(byLine(File(fileName))) {
+  return byLine(File(fileName), delim);
 }
 
 }}  // !folly::gen

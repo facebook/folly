@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -598,7 +598,7 @@ BENCHMARK(ByLine_Pipes, iters) {
     PCHECK(::read(rfd, &buf, 1) == 1);  // wait for startup
   }
 
-  auto s = byLine(rfd) | eachTo<int64_t>() | sum;
+  auto s = byLine(File(rfd)) | eachTo<int64_t>() | sum;
   folly::doNotOptimizeAway(s);
 
   BENCHMARK_SUSPEND {
