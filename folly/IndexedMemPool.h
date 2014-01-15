@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_INDEXEDMEMPOOL_H
-#define FOLLY_DETAIL_INDEXEDMEMPOOL_H
+#ifndef FOLLY_INDEXEDMEMPOOL_H
+#define FOLLY_INDEXEDMEMPOOL_H
 
 #include <stdint.h>
 #include <assert.h>
