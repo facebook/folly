@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ class Formatter {
    * Append to a string.
    */
   template <class Str>
-  typename std::enable_if<detail::IsSomeString<Str>::value>::type
+  typename std::enable_if<IsSomeString<Str>::value>::type
   appendTo(Str& str) const {
     auto appender = [&str] (StringPiece s) { str.append(s.data(), s.size()); };
     (*this)(appender);
@@ -202,7 +202,7 @@ Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
  * Shortcut for toAppend(format(...), &foo);
  */
 template <class Str, class... Args>
-typename std::enable_if<detail::IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type
 format(Str* out, StringPiece fmt, Args&&... args) {
   format(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
@@ -211,7 +211,7 @@ format(Str* out, StringPiece fmt, Args&&... args) {
  * Append vformatted output to a string.
  */
 template <class Str, class Container>
-typename std::enable_if<detail::IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type
 vformat(Str* out, StringPiece fmt, Container&& container) {
   vformat(fmt, std::forward<Container>(container)).appendTo(*out);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,11 +103,6 @@ to(const Src & value) {
  ******************************************************************************/
 
 namespace detail {
-
-template <class T> struct IsSomeString {
-  enum { value = std::is_same<T, std::string>::value
-         || std::is_same<T, fbstring>::value };
-};
 
 template <class T>
 const T& getLastElement(const T & v) {
@@ -246,12 +241,20 @@ void toAppend(char value, Tgt * result) {
 }
 
 /**
+ * Ubiquitous helper template for writing string appenders
+ */
+template <class T> struct IsSomeString {
+  enum { value = std::is_same<T, std::string>::value
+         || std::is_same<T, fbstring>::value };
+};
+
+/**
  * Everything implicitly convertible to const char* gets appended.
  */
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_convertible<Src, const char*>::value
-  && detail::IsSomeString<Tgt>::value>::type
+  && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt * result) {
   // Treat null pointers like an empty string, as in:
   // operator<<(std::ostream&, const char*).
@@ -266,7 +269,7 @@ toAppend(Src value, Tgt * result) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  detail::IsSomeString<Src>::value && detail::IsSomeString<Tgt>::value>::type
+  IsSomeString<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(const Src& value, Tgt * result) {
   result->append(value);
 }
@@ -276,7 +279,7 @@ toAppend(const Src& value, Tgt * result) {
  */
 template <class Tgt>
 typename std::enable_if<
-   detail::IsSomeString<Tgt>::value>::type
+   IsSomeString<Tgt>::value>::type
 toAppend(StringPiece value, Tgt * result) {
   result->append(value.data(), value.size());
 }
@@ -287,7 +290,7 @@ toAppend(StringPiece value, Tgt * result) {
  */
 template <class Tgt>
 typename std::enable_if<
-   detail::IsSomeString<Tgt>::value>::type
+   IsSomeString<Tgt>::value>::type
 toAppend(const fbstring& value, Tgt * result) {
   result->append(value.data(), value.size());
 }
@@ -338,7 +341,7 @@ toAppend(unsigned __int128 value, Tgt * result) {
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_integral<Src>::value && std::is_signed<Src>::value &&
-  detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+  IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
   char buffer[20];
   if (value < 0) {
@@ -355,7 +358,7 @@ toAppend(Src value, Tgt * result) {
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_integral<Src>::value && !std::is_signed<Src>::value
-  && detail::IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+  && IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
   char buffer[20];
   result->append(buffer, buffer + uint64ToBufferUnsafe(value, buffer));
@@ -368,7 +371,7 @@ toAppend(Src value, Tgt * result) {
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_integral<Src>::value
-  && detail::IsSomeString<Tgt>::value && sizeof(Src) < 4>::type
+  && IsSomeString<Tgt>::value && sizeof(Src) < 4>::type
 toAppend(Src value, Tgt * result) {
   typedef typename
     std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::type
@@ -384,7 +387,7 @@ toAppend(Src value, Tgt * result) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_enum<Src>::value && detail::IsSomeString<Tgt>::value>::type
+  std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt * result) {
   toAppend(
       static_cast<typename std::underlying_type<Src>::type>(value), result);
@@ -397,7 +400,7 @@ toAppend(Src value, Tgt * result) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_enum<Src>::value && detail::IsSomeString<Tgt>::value>::type
+  std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt * result) {
   /* static */ if (Src(-1) < 0) {
     /* static */ if (sizeof(Src) <= sizeof(int)) {
@@ -424,7 +427,7 @@ toAppend(Src value, Tgt * result) {
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_floating_point<Src>::value
-  && detail::IsSomeString<Tgt>::value>::type
+  && IsSomeString<Tgt>::value>::type
 toAppend(
   Src value,
   Tgt * result,
@@ -463,7 +466,7 @@ toAppend(
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_floating_point<Src>::value
-  && detail::IsSomeString<Tgt>::value>::type
+  && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt * result) {
   toAppend(
     value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
@@ -474,7 +477,7 @@ toAppend(Src value, Tgt * result) {
  */
 template <class T, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 2
-  && detail::IsSomeString<
+  && IsSomeString<
   typename std::remove_pointer<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
@@ -487,7 +490,7 @@ toAppend(const T& v, const Ts&... vs) {
  * Variadic base case: do nothing.
  */
 template <class Tgt>
-typename std::enable_if<detail::IsSomeString<Tgt>::value>::type
+typename std::enable_if<IsSomeString<Tgt>::value>::type
 toAppend(Tgt* result) {
 }
 
@@ -495,7 +498,7 @@ toAppend(Tgt* result) {
  * Variadic base case: do nothing.
  */
 template <class Delimiter, class Tgt>
-typename std::enable_if<detail::IsSomeString<Tgt>::value>::type
+typename std::enable_if<IsSomeString<Tgt>::value>::type
 toAppendDelim(const Delimiter& delim, Tgt* result) {
 }
 
@@ -503,7 +506,7 @@ toAppendDelim(const Delimiter& delim, Tgt* result) {
  * 1 element: same as toAppend.
  */
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<detail::IsSomeString<Tgt>::value>::type
+typename std::enable_if<IsSomeString<Tgt>::value>::type
 toAppendDelim(const Delimiter& delim, const T& v, Tgt* tgt) {
   toAppend(v, tgt);
 }
@@ -513,7 +516,7 @@ toAppendDelim(const Delimiter& delim, const T& v, Tgt* tgt) {
  */
 template <class Delimiter, class T, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 2
-  && detail::IsSomeString<
+  && IsSomeString<
   typename std::remove_pointer<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
@@ -527,7 +530,7 @@ toAppendDelim(const Delimiter& delim, const T& v, const Ts&... vs) {
  * for all types.
  */
 template <class Tgt, class... Ts>
-typename std::enable_if<detail::IsSomeString<Tgt>::value, Tgt>::type
+typename std::enable_if<IsSomeString<Tgt>::value, Tgt>::type
 to(const Ts&... vs) {
   Tgt result;
   toAppend(vs..., &result);
@@ -539,7 +542,7 @@ to(const Ts&... vs) {
  * back-end for all types.
  */
 template <class Tgt, class Delim, class... Ts>
-typename std::enable_if<detail::IsSomeString<Tgt>::value, Tgt>::type
+typename std::enable_if<IsSomeString<Tgt>::value, Tgt>::type
 toDelim(const Delim& delim, const Ts&... vs) {
   Tgt result;
   toAppendDelim(delim, vs..., &result);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1112,7 +1112,7 @@ class FormatValue<Formatter<containerMode, Args...>, void> {
  */
 template <class Tgt, bool containerMode, class... Args>
 typename std::enable_if<
-   detail::IsSomeString<Tgt>::value>::type
+   IsSomeString<Tgt>::value>::type
 toAppend(const Formatter<containerMode, Args...>& value, Tgt * result) {
   value.appendTo(*result);
 }
