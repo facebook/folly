@@ -24,6 +24,7 @@
 #include <assert.h>
 
 #include <folly/detail/Futex.h>
+#include <folly/detail/MemoryIdler.h>
 
 namespace folly {
 
@@ -151,11 +152,25 @@ struct Baton : boost::noncopyable {
     }
 
     while (true) {
-      state_.futexWait(WAITING);
+      detail::MemoryIdler::futexWait(state_, WAITING);
 
       // state_ is the truth even if FUTEX_WAIT reported a matching
-      // FUTEX_WAKE, since we aren't using type-stable storage and
-      // we don't guarantee reuse
+      // FUTEX_WAKE, since we aren't using type-stable storage and we
+      // don't guarantee reuse.  The scenario goes like this: thread
+      // A's last touch of a Baton is a call to wake(), which stores
+      // LATE_DELIVERY and gets an unlucky context switch before delivering
+      // the corresponding futexWake.  Thread B sees LATE_DELIVERY
+      // without consuming a futex event, because it calls futexWait
+      // with an expected value of WAITING and hence doesn't go to sleep.
+      // B returns, so the Baton's memory is reused and becomes another
+      // Baton (or a reuse of this one).  B calls futexWait on the new
+      // Baton lifetime, then A wakes up and delivers a spurious futexWake
+      // to the same memory location.  B's futexWait will then report a
+      // consumed wake event even though state_ is still WAITING.
+      //
+      // It would be possible to add an extra state_ dance to communicate
+      // that the futexWake has been sent so that we can be sure to consume
+      // it before returning, but that would be a perf and complexity hit.
       uint32_t s = state_.load(std::memory_order_acquire);
       assert(s == WAITING || s == LATE_DELIVERY);
 

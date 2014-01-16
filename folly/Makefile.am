@@ -46,6 +46,7 @@ nobase_follyinclude_HEADERS = \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
 	detail/Malloc.h \
+	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
 	detail/SlowFingerprint.h \
 	detail/Stats.h \
@@ -155,6 +156,7 @@ libfolly_la_SOURCES = \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
 	json.cpp \
+	detail/MemoryIdler.cpp \
 	MemoryMapping.cpp \
 	Random.cpp \
 	Range.cpp \
