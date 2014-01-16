@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,19 @@ void verifyStackTraces() {
   CHECK(getStackTraceSafe(faSafe));
 
   CHECK_EQ(fa.frameCount, faSafe.frameCount);
+
+  if (VLOG_IS_ON(1)) {
+    Symbolizer symbolizer;
+    OStreamSymbolizePrinter printer(std::cerr, SymbolizePrinter::COLOR_IF_TTY);
+
+    symbolizer.symbolize(fa);
+    VLOG(1) << "getStackTrace\n";
+    printer.println(fa);
+
+    symbolizer.symbolize(faSafe);
+    VLOG(1) << "getStackTraceSafe\n";
+    printer.println(faSafe);
+  }
 
   // Other than the top 2 frames (this one and getStackTrace /
   // getStackTraceSafe), the stack traces should be identical

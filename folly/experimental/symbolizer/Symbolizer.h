@@ -74,13 +74,20 @@ bool fixFrameArray(FrameArray<N>& fa, ssize_t n) {
 }
 }  // namespace detail
 
+// Always inline these functions; they don't do much, and unittests rely
+// on them never showing up in a stack trace.
 template <size_t N>
-bool getStackTrace(FrameArray<N>& fa) {
-  return detail::fixFrameArray(fa, getStackTrace(fa.addresses, N));
-}
+inline bool getStackTrace(FrameArray<N>& fa) __attribute__((always_inline));
 
 template <size_t N>
-bool getStackTraceSafe(FrameArray<N>& fa) {
+inline bool getStackTrace(FrameArray<N>& fa) {
+  return detail::fixFrameArray(fa, getStackTrace(fa.addresses, N));
+}
+template <size_t N>
+inline bool getStackTraceSafe(FrameArray<N>& fa) __attribute__((always_inline));
+
+template <size_t N>
+inline bool getStackTraceSafe(FrameArray<N>& fa) {
   return detail::fixFrameArray(fa, getStackTraceSafe(fa.addresses, N));
 }
 
