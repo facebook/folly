@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -308,6 +308,15 @@ struct Input {
     return skipWhile([] (char c) { return c >= '0' && c <= '9'; });
   }
 
+  StringPiece skipMinusAndDigits() {
+    bool firstChar = true;
+    return skipWhile([&firstChar] (char c) {
+        bool result = (c >= '0' && c <= '9') || (firstChar && c == '-');
+        firstChar = false;
+        return result;
+      });
+  }
+
   void skipWhitespace() {
     // Spaces other than ' ' characters are less common but should be
     // checked.  This configuration where we loop on the ' '
@@ -469,22 +478,19 @@ dynamic parseArray(Input& in) {
 dynamic parseNumber(Input& in) {
   bool const negative = (*in == '-');
   if (negative) {
-    ++in;
-    if (in.consume("Infinity")) {
+    if (in.consume("-Infinity")) {
       return -std::numeric_limits<double>::infinity();
     }
   }
 
-  auto integral = in.skipDigits();
-  if (integral.empty()) {
+  auto integral = in.skipMinusAndDigits();
+  if (negative && integral.size() < 2) {
     in.error("expected digits after `-'");
   }
+
   auto const wasE = *in == 'e' || *in == 'E';
   if (*in != '.' && !wasE) {
     auto val = to<int64_t>(integral);
-    if (negative) {
-      val = -val;
-    }
     in.skipWhitespace();
     return val;
   }
@@ -501,9 +507,6 @@ dynamic parseNumber(Input& in) {
   auto fullNum = makeRange(integral.begin(), end);
 
   auto val = to<double>(fullNum);
-  if (negative) {
-    val *= -1;
-  }
   return val;
 }
 
