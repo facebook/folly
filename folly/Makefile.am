@@ -26,6 +26,7 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
 	AtomicStruct.h \
+	Baton.h \
 	Benchmark.h \
 	Bits.h \
 	Chrono.h \
