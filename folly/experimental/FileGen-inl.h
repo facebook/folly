@@ -135,12 +135,4 @@ inline auto byLine(File file, char delim = '\n')
        | resplit(delim);
 }
 
-/**
- * Ditto, take the filename and opens it
- */
-inline auto byLine(const char* fileName, char delim = '\n')
-  -> decltype(byLine(File(fileName))) {
-  return byLine(File(fileName), delim);
-}
-
 }}  // !folly::gen
