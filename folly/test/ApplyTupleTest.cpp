@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "folly/ApplyTuple.h"
 #include <gtest/gtest.h>
 
-#include <iostream>
 #include <memory>
 
 namespace {
