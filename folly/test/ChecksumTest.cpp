@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include "folly/detail/ChecksumDetail.h"
 
 namespace {
-const unsigned int BUFFER_SIZE = 64 * 1024 * sizeof(uint64_t);
+const unsigned int BUFFER_SIZE = 512 * 1024 * sizeof(uint64_t);
 uint8_t buffer[BUFFER_SIZE];
 
 struct ExpectedResult {
@@ -62,15 +62,15 @@ ExpectedResult expectedResults[] = {
     { 8, 16, 2897079161 },
     { 8, 17, 675168386 },
     // Much larger inputs
-    { 0, BUFFER_SIZE, 2961263300 },
-    { 1, BUFFER_SIZE / 2, 1708529329 },
+    { 0, BUFFER_SIZE, 2096790750 },
+    { 1, BUFFER_SIZE / 2, 3854797577 },
 };
 
 void testCRC32C(
     std::function<uint32_t(const uint8_t*, size_t, uint32_t)> impl) {
   for (auto expected : expectedResults) {
     uint32_t result = impl(buffer + expected.offset, expected.length, ~0U);
-    EXPECT_EQ(result, expected.crc32c);
+    EXPECT_EQ(expected.crc32c, result);
   }
 }
 
@@ -83,7 +83,7 @@ void testCRC32CContinuation(
     uint32_t result = impl(
         buffer + expected.offset + partialLength,
         expected.length - partialLength, partialChecksum);
-    EXPECT_EQ(result, expected.crc32c);
+    EXPECT_EQ(expected.crc32c, result);
   }
 }
 
@@ -123,6 +123,60 @@ TEST(Checksum, crc32c_autodetect) {
 TEST(Checksum, crc32c_continuation_autodetect) {
   testCRC32CContinuation(folly::crc32c);
 }
+
+void benchmarkHardwareCRC32C(unsigned long iters, size_t blockSize) {
+  if (folly::detail::crc32c_hw_supported()) {
+    uint32_t checksum;
+    for (unsigned long i = 0; i < iters; i++) {
+      checksum = folly::detail::crc32c_hw(buffer, blockSize);
+      folly::doNotOptimizeAway(checksum);
+    }
+  } else {
+    LOG(WARNING) << "skipping hardware-accelerated CRC-32C benchmarks" <<
+        " (not supported on this CPU)";
+  }
+}
+
+void benchmarkSoftwareCRC32C(unsigned long iters, size_t blockSize) {
+  uint32_t checksum;
+  for (unsigned long i = 0; i < iters; i++) {
+    checksum = folly::detail::crc32c_sw(buffer, blockSize);
+    folly::doNotOptimizeAway(checksum);
+  }
+}
+
+// This test fits easily in the L1 cache on modern server processors,
+// and thus it mainly measures the speed of the checksum computation.
+BENCHMARK(crc32c_hardware_1KB_block, iters) {
+  benchmarkHardwareCRC32C(iters, 1024);
+}
+
+BENCHMARK(crc32c_software_1KB_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 1024);
+}
+
+BENCHMARK_DRAW_LINE();
+
+// This test is too big for the L1 cache but fits in L2
+BENCHMARK(crc32c_hardware_64KB_block, iters) {
+  benchmarkHardwareCRC32C(iters, 64 * 1024);
+}
+
+BENCHMARK(crc32c_software_64KB_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 64 * 1024);
+}
+
+BENCHMARK_DRAW_LINE();
+
+// This test is too big for the L2 cache but fits in L3
+BENCHMARK(crc32c_hardware_512KB_block, iters) {
+  benchmarkHardwareCRC32C(iters, 512 * 1024);
+}
+
+BENCHMARK(crc32c_software_512KB_block, iters) {
+  benchmarkSoftwareCRC32C(iters, 512 * 1024);
+}
+
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
