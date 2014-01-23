@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,10 +103,13 @@ struct EliasFanoCompressedList {
     encode(list, list + size, result);
   }
 
+  // Range (begin, end) should be sorted.
   template <class RandomAccessIterator>
   static void encode(RandomAccessIterator begin,
                      RandomAccessIterator end,
                      EliasFanoCompressedList& result) {
+    CHECK(std::is_sorted(begin, end));
+
     auto list = begin;
     const size_t size = end - begin;
 
@@ -114,8 +117,6 @@ struct EliasFanoCompressedList {
       result = EliasFanoCompressedList();
       return;
     }
-
-    DCHECK(std::is_sorted(list, list + size));
 
     const ValueType upperBound = list[size - 1];
     uint8_t numLowerBits = defaultNumLowerBits(upperBound, size);
