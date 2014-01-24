@@ -17,6 +17,7 @@
 #ifndef FOLLY_FILEUTIL_H_
 #define FOLLY_FILEUTIL_H_
 
+#include "folly/Conv.h"
 #include "folly/Portability.h"
 #include "folly/ScopeGuard.h"
 
@@ -144,7 +145,7 @@ bool readFile(const char* file_name, Container& out,
   constexpr size_t initialAlloc = 1024 * 4;
   out.resize(
     std::min(
-      buf.st_size ? buf.st_size + 1 : initialAlloc,
+      buf.st_size > 0 ? folly::to<size_t>(buf.st_size + 1) : initialAlloc,
       num_bytes));
 
   while (soFar < out.size()) {
