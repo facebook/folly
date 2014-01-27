@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,7 +202,7 @@ inline void FormatArg::error(Args&&... args) const {
 
 template <bool emptyOk>
 inline StringPiece FormatArg::splitKey() {
-  CHECK(nextKeyMode_ != NextKeyMode::INT) << errorStr("integer key expected");
+  enforce(nextKeyMode_ != NextKeyMode::INT, "integer key expected");
   return doSplitKey<emptyOk>();
 }
 
@@ -210,12 +210,16 @@ template <bool emptyOk>
 inline StringPiece FormatArg::doSplitKey() {
   if (nextKeyMode_ == NextKeyMode::STRING) {
     nextKeyMode_ = NextKeyMode::NONE;
-    CHECK(emptyOk || !nextKey_.empty()) << errorStr("non-empty key required");
+    if (!emptyOk) {  // static
+      enforce(!nextKey_.empty(), "non-empty key required");
+    }
     return nextKey_;
   }
 
   if (key_.empty()) {
-    CHECK(emptyOk) << errorStr("non-empty key required");
+    if (!emptyOk) {  // static
+      error("non-empty key required");
+    }
     return StringPiece();
   }
 
@@ -225,7 +229,7 @@ inline StringPiece FormatArg::doSplitKey() {
   if (e[-1] == ']') {
     --e;
     p = static_cast<const char*>(memchr(b, '[', e - b));
-    CHECK(p) << errorStr("unmatched ']'");
+    enforce(p, "unmatched ']'");
   } else {
     p = static_cast<const char*>(memchr(b, '.', e - b));
   }
@@ -235,8 +239,9 @@ inline StringPiece FormatArg::doSplitKey() {
     p = e;
     key_.clear();
   }
-  CHECK(emptyOk || b != p) << errorStr("non-empty key required");
-
+  if (!emptyOk) {  // static
+    enforce(b != p, "non-empty key required");
+  }
   return StringPiece(b, p);
 }
 
@@ -248,7 +253,7 @@ inline int FormatArg::splitIntKey() {
   try {
     return to<int>(doSplitKey<true>());
   } catch (const std::out_of_range& e) {
-    LOG(FATAL) << errorStr("integer key required");
+    error("integer key required");
     return 0;  // unreached
   }
 }

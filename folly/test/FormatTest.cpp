@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -296,6 +296,20 @@ TEST(Format, Custom) {
   EXPECT_NE("", fstr("{}", &kv));
 }
 
+namespace {
+
+struct Opaque {
+  int k;
+};
+
+} // namespace
+
+TEST(Format, Unformatted) {
+  Opaque o;
+  EXPECT_NE("", fstr("{}", &o));
+  EXPECT_THROW(fstr("{0[0]}", &o), std::invalid_argument);
+}
+
 TEST(Format, Nested) {
   EXPECT_EQ("1 2 3 4", fstr("{} {} {}", 1, 2, format("{} {}", 3, 4)));
   //
@@ -312,6 +326,18 @@ TEST(Format, OutOfBounds) {
   std::map<std::string, int> map{{"hello", 0}, {"world", 1}};
   EXPECT_EQ("hello = 0", fstr("hello = {[hello]}", map));
   EXPECT_THROW(fstr("{[nope]}", map), std::out_of_range);
+  EXPECT_THROW(vstr("{nope}", map), std::out_of_range);
+}
+
+TEST(Format, BogusFormatString) {
+  EXPECT_THROW(fstr("}"), std::invalid_argument);
+  EXPECT_THROW(fstr("foo}bar"), std::invalid_argument);
+  EXPECT_THROW(fstr("foo{bar"), std::invalid_argument);
+  EXPECT_THROW(fstr("{[test]"), std::invalid_argument);
+
+  // This one fails in detail::enforceWhitespace(), which throws
+  // std::range_error
+  EXPECT_THROW(fstr("{0[test}"), std::exception);
 }
 
 int main(int argc, char *argv[]) {

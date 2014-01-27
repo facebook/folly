@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ void FormatArg::initSlow() {
     }
 
     if (*p == '0') {
-      CHECK(align == Align::DEFAULT) << errorStr("alignment specified twice");
+      enforce(align == Align::DEFAULT, "alignment specified twice");
       fill = '0';
       align = Align::PAD_AFTER_SIGN;
       if (++p == end) return;
@@ -105,31 +105,31 @@ void FormatArg::initSlow() {
     if (++p == end) return;
   }
 
-  LOG(FATAL) << "extra characters in format string";
+  error("extra characters in format string");
 }
 
 void FormatArg::validate(Type type) const {
-  CHECK(keyEmpty()) << "index not allowed";
+  enforce(keyEmpty(), "index not allowed");
   switch (type) {
   case Type::INTEGER:
-    CHECK(precision == kDefaultPrecision)
-      << errorStr("precision not allowed on integers");
+    enforce(precision == kDefaultPrecision,
+            "precision not allowed on integers");
     break;
   case Type::FLOAT:
-    CHECK(!basePrefix)
-      << errorStr("base prefix ('#') specifier only allowed on integers");
-    CHECK(!thousandsSeparator)
-      << errorStr("thousands separator (',') only allowed on integers");
+    enforce(!basePrefix,
+            "base prefix ('#') specifier only allowed on integers");
+    enforce(!thousandsSeparator,
+            "thousands separator (',') only allowed on integers");
     break;
   case Type::OTHER:
-    CHECK(align != Align::PAD_AFTER_SIGN)
-      << errorStr("'='alignment only allowed on numbers");
-    CHECK(sign == Sign::DEFAULT)
-      << errorStr("sign specifier only allowed on numbers");
-    CHECK(!basePrefix)
-      << errorStr("base prefix ('#') specifier only allowed on integers");
-    CHECK(!thousandsSeparator)
-      << errorStr("thousands separator (',') only allowed on integers");
+    enforce(align != Align::PAD_AFTER_SIGN,
+            "'='alignment only allowed on numbers");
+    enforce(sign == Sign::DEFAULT,
+            "sign specifier only allowed on numbers");
+    enforce(!basePrefix,
+            "base prefix ('#') specifier only allowed on integers");
+    enforce(!thousandsSeparator,
+            "thousands separator (',') only allowed on integers");
     break;
   }
 }
