@@ -61,11 +61,20 @@ template <class T, class Enable=void> class FormatValue;
 
 template <bool containerMode, class... Args>
 class Formatter {
-  template <class... A>
-  friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
-  template <class C>
-  friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
  public:
+  /*
+   * Change whether or not Formatter should crash or throw exceptions if the
+   * format string is invalid.
+   *
+   * Crashing is desirable for literal format strings that are fixed at compile
+   * time.  Errors in the format string are generally programmer bugs, and
+   * should be caught early on in development.  Crashing helps ensure these
+   * problems are noticed.
+   */
+  void setCrashOnError(bool crash) {
+    crashOnError_ = crash;
+  }
+
   /**
    * Append to output.  out(StringPiece sp) may be called (more than once)
    */
@@ -119,6 +128,10 @@ class Formatter {
       typename std::decay<Args>::type>...> ValueTuple;
   static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
 
+  void handleFormatStrError() const FOLLY_NORETURN;
+  template <class Output>
+  void appendOutput(Output& out) const;
+
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
@@ -142,6 +155,16 @@ class Formatter {
 
   StringPiece str_;
   ValueTuple values_;
+  bool crashOnError_{true};
+
+  template <class... A>
+  friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
+  template <class... A>
+  friend Formatter<false, A...> formatChecked(StringPiece fmt, A&&... arg);
+  template <class C>
+  friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
+  template <class C>
+  friend Formatter<true, C> vformatChecked(StringPiece fmt, C&& container);
 };
 
 /**
@@ -167,11 +190,36 @@ void writeTo(FILE* fp, const Formatter<containerMode, Args...>& formatter);
  * std::string formatted = format("{} {}", 23, 42).str();
  * LOG(INFO) << format("{} {}", 23, 42);
  * writeTo(stdout, format("{} {}", 23, 42));
+ *
+ * Note that format() will crash the program if the format string is invalid.
+ * Normally, the format string is a fixed string literal specified by the
+ * programmer.  Invalid format strings are normally programmer bugs, and should
+ * be caught early on during development.  Crashing helps ensure these bugs are
+ * found.
+ *
+ * Use formatChecked() if you have a dynamic format string (for example, a user
+ * supplied value).  formatChecked() will throw an exception rather than
+ * crashing the program.
  */
 template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
   return Formatter<false, Args...>(
       fmt, std::forward<Args>(args)...);
+}
+
+/**
+ * Create a formatter object from a dynamic format string.
+ *
+ * This is identical to format(), but throws an exception if the format string
+ * is invalid, rather than aborting the program.  This allows it to be used
+ * with user-specified format strings which are not guaranteed to be well
+ * formed.
+ */
+template <class... Args>
+Formatter<false, Args...> formatChecked(StringPiece fmt, Args&&... args) {
+  Formatter<false, Args...> f(fmt, std::forward<Args>(args)...);
+  f.setCrashOnError(false);
+  return f;
 }
 
 /**
@@ -191,6 +239,22 @@ template <class Container>
 Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
   return Formatter<true, Container>(
       fmt, std::forward<Container>(container));
+}
+
+/**
+ * Create a formatter object from a dynamic format string.
+ *
+ * This is identical to vformat(), but throws an exception if the format string
+ * is invalid, rather than aborting the program.  This allows it to be used
+ * with user-specified format strings which are not guaranteed to be well
+ * formed.
+ */
+template <class Container>
+Formatter<true, Container> vformatChecked(StringPiece fmt,
+                                          Container&& container) {
+  Formatter<true, Container> f(fmt, std::forward<Container>(container));
+  f.setCrashOnError(false);
+  return f;
 }
 
 /**

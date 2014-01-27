@@ -148,8 +148,50 @@ Formatter<containerMode, Args...>::Formatter(StringPiece str, Args&&... args)
 }
 
 template <bool containerMode, class... Args>
+void Formatter<containerMode, Args...>::handleFormatStrError() const {
+  if (crashOnError_) {
+    LOG(FATAL) << "folly::format: bad format string \"" << str_ << "\": " <<
+      folly::exceptionStr(std::current_exception());
+  }
+  throw;
+}
+
+template <bool containerMode, class... Args>
 template <class Output>
 void Formatter<containerMode, Args...>::operator()(Output& out) const {
+  // Catch BadFormatArg and range_error exceptions, and call
+  // handleFormatStrError().
+  //
+  // These exception types indicate a problem with the format string.  Most
+  // format strings are string literals specified by the programmer.  If they
+  // have a problem, this is usually a programmer bug.  We want to crash to
+  // ensure that these are found early on during development.
+  //
+  // BadFormatArg is thrown by the Format.h code, while range_error is thrown
+  // by Conv.h, which is used in several places in our format string
+  // processing.
+  //
+  // (Note: This behavior is slightly dangerous.  If the Output object throws a
+  // BadFormatArg or a range_error, we will also crash the program, even if it
+  // wasn't an issue with the format string.  This seems highly unlikely
+  // though, and none of our current Output objects can throw these errors.)
+  //
+  // We also throw out_of_range errors if the format string references an
+  // argument that isn't present (or a key that isn't present in one of the
+  // argument containers).  However, at the moment we don't crash on these
+  // errors, as it is likely that the container is dynamic at runtime.
+  try {
+    appendOutput(out);
+  } catch (const BadFormatArg& ex) {
+    handleFormatStrError();
+  } catch (const std::range_error& ex) {
+    handleFormatStrError();
+  }
+}
+
+template <bool containerMode, class... Args>
+template <class Output>
+void Formatter<containerMode, Args...>::appendOutput(Output& out) const {
   auto p = str_.begin();
   auto end = str_.end();
 
@@ -170,8 +212,7 @@ void Formatter<containerMode, Args...>::operator()(Output& out) const {
       p = q;
 
       if (p == end || *p != '}') {
-        throw std::invalid_argument(
-            "folly::format: single '}' in format string");
+        throw BadFormatArg("folly::format: single '}' in format string");
       }
       ++p;
     }
@@ -190,8 +231,7 @@ void Formatter<containerMode, Args...>::operator()(Output& out) const {
     p = q + 1;
 
     if (p == end) {
-      throw std::invalid_argument(
-          "folly::format: '}' at end of format string");
+      throw BadFormatArg("folly::format: '}' at end of format string");
     }
 
     // "{{" -> "{"
@@ -204,7 +244,7 @@ void Formatter<containerMode, Args...>::operator()(Output& out) const {
     // Format string
     q = static_cast<const char*>(memchr(p, '}', end - p));
     if (q == nullptr) {
-      throw std::invalid_argument("folly::format: missing ending '}'");
+      throw BadFormatArg("folly::format: missing ending '}'");
     }
     FormatArg arg(StringPiece(p, q));
     p = q + 1;
@@ -235,7 +275,7 @@ void Formatter<containerMode, Args...>::operator()(Output& out) const {
     }
 
     if (hasDefaultArgIndex && hasExplicitArgIndex) {
-      throw std::invalid_argument(
+      throw BadFormatArg(
           "folly::format: may not have both default and explicit arg indexes");
     }
 

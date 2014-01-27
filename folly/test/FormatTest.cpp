@@ -37,6 +37,16 @@ std::string vstr(StringPiece fmt, const C& c) {
   return vformat(fmt, c).str();
 }
 
+template <class... Args>
+std::string fstrChecked(StringPiece fmt, Args&&... args) {
+  return formatChecked(fmt, std::forward<Args>(args)...).str();
+}
+
+template <class C>
+std::string vstrChecked(StringPiece fmt, const C& c) {
+  return vformatChecked(fmt, c).str();
+}
+
 template <class Uint>
 void compareOctal(Uint u) {
   char buf1[detail::kMaxOctalLength + 1];
@@ -307,7 +317,8 @@ struct Opaque {
 TEST(Format, Unformatted) {
   Opaque o;
   EXPECT_NE("", fstr("{}", &o));
-  EXPECT_THROW(fstr("{0[0]}", &o), std::invalid_argument);
+  EXPECT_DEATH(fstr("{0[0]}", &o), "No formatter available for this type");
+  EXPECT_THROW(fstrChecked("{0[0]}", &o), std::invalid_argument);
 }
 
 TEST(Format, Nested) {
@@ -322,22 +333,39 @@ TEST(Format, OutOfBounds) {
   std::vector<int> ints{1, 2, 3, 4, 5};
   EXPECT_EQ("1 3 5", fstr("{0[0]} {0[2]} {0[4]}", ints));
   EXPECT_THROW(fstr("{[5]}", ints), std::out_of_range);
+  EXPECT_THROW(fstrChecked("{[5]}", ints), std::out_of_range);
 
   std::map<std::string, int> map{{"hello", 0}, {"world", 1}};
   EXPECT_EQ("hello = 0", fstr("hello = {[hello]}", map));
   EXPECT_THROW(fstr("{[nope]}", map), std::out_of_range);
   EXPECT_THROW(vstr("{nope}", map), std::out_of_range);
+  EXPECT_THROW(vstrChecked("{nope}", map), std::out_of_range);
 }
 
 TEST(Format, BogusFormatString) {
-  EXPECT_THROW(fstr("}"), std::invalid_argument);
-  EXPECT_THROW(fstr("foo}bar"), std::invalid_argument);
-  EXPECT_THROW(fstr("foo{bar"), std::invalid_argument);
-  EXPECT_THROW(fstr("{[test]"), std::invalid_argument);
+  // format() will crash the program if the format string is invalid.
+  EXPECT_DEATH(fstr("}"), "single '}' in format string");
+  EXPECT_DEATH(fstr("foo}bar"), "single '}' in format string");
+  EXPECT_DEATH(fstr("foo{bar"), "missing ending '}'");
+  EXPECT_DEATH(fstr("{[test]"), "missing ending '}'");
+  EXPECT_DEATH(fstr("{-1.3}"), "argument index must be non-negative");
+  EXPECT_DEATH(fstr("{1.3}", 0, 1, 2), "index not allowed");
+  EXPECT_DEATH(fstr("{0} {} {1}", 0, 1, 2),
+               "may not have both default and explicit arg indexes");
+
+  // formatChecked() should throw exceptions rather than crashing the program
+  EXPECT_THROW(fstrChecked("}"), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("foo}bar"), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("foo{bar"), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("{[test]"), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("{-1.3}"), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("{1.3}", 0, 1, 2), std::invalid_argument);
+  EXPECT_THROW(fstrChecked("{0} {} {1}", 0, 1, 2), std::invalid_argument);
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error
-  EXPECT_THROW(fstr("{0[test}"), std::exception);
+  EXPECT_DEATH(fstr("{0[test}"), "Non-whitespace: \\[");
+  EXPECT_THROW(fstrChecked("{0[test}"), std::exception);
 }
 
 int main(int argc, char *argv[]) {
