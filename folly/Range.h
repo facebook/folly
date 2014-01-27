@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -507,6 +507,93 @@ public:
   bool removeSuffix(value_type suffix) {
     return endsWith(suffix) && (--e_, true);
   }
+
+  /**
+   * Splits this `Range` `[b, e)` in the position `i` dictated by the next
+   * occurence of `delimiter`.
+   *
+   * Returns a new `Range` `[b, i)` and adjusts this range to start right after
+   * the delimiter's position. This range will be empty if the delimiter is not
+   * found. If called on an empty `Range`, both this and the returned `Range`
+   * will be empty.
+   *
+   * Example:
+   *
+   *  folly::StringPiece s("sample string for split_next");
+   *  auto p = s.split_step(' ');
+   *
+   *  // prints "sample"
+   *  cout << s << endl;
+   *
+   *  // prints "string for split_next"
+   *  cout << p << endl;
+   *
+   * Example 2:
+   *
+   *  void tokenize(StringPiece s, char delimiter) {
+   *    while (!s.empty()) {
+   *      cout << s.split_step(delimiter);
+   *    }
+   *  }
+   *
+   * @author: Marcelo Juchem <marcelo@fb.com>
+   */
+  Range split_step(value_type delimiter) {
+    auto i = std::find(b_, e_, delimiter);
+    Range result(b_, i);
+
+    b_ = i == e_ ? e_ : std::next(i);
+
+    return result;
+  }
+
+  Range split_step(Range delimiter) {
+    auto i = find(delimiter);
+    Range result(b_, i == std::string::npos ? size() : i);
+
+    b_ = result.end() == e_ ? e_ : std::next(result.end(), delimiter.size());
+
+    return result;
+  }
+
+  /**
+   * Convenience method that calls `split_step()` and passes the result to a
+   * functor, returning whatever the functor does.
+   *
+   * Say you have a functor with this signature:
+   *
+   *  Foo fn(Range r) { }
+   *
+   * `split_step()`'s return type will be `Foo`. It works just like:
+   *
+   *  auto result = fn(myRange.split_step(' '));
+   *
+   * A functor returning `void` is also supported.
+   *
+   * Example:
+   *
+   *  void do_some_parsing(folly::StringPiece s) {
+   *    auto version = s.split_step(' ', [&](folly::StringPiece x) {
+   *      if (x.empty()) {
+   *        throw std::invalid_argument("empty string");
+   *      }
+   *      return std::strtoull(x.begin(), x.end(), 16);
+   *    });
+   *
+   *    // ...
+   *  }
+   *
+   * @author: Marcelo Juchem <marcelo@fb.com>
+   */
+  template <typename TProcess>
+  auto split_step(value_type delimiter, TProcess &&process)
+    -> decltype(process(std::declval<Range>()))
+  { return process(split_step(delimiter)); }
+
+  template <typename TProcess>
+  auto split_step(Range delimiter, TProcess &&process)
+    -> decltype(process(std::declval<Range>()))
+  { return process(split_step(delimiter)); }
 
 private:
   Iter b_, e_;
