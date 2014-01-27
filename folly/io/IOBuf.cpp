@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -714,11 +714,16 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
         size_t allocatedCapacity = capacity() + sizeof(SharedInfo);
         void* p = buf_;
         if (allocatedCapacity >= jemallocMinInPlaceExpandable) {
-          int r = rallocm(&p, &newAllocatedCapacity, newAllocatedCapacity,
+          // rallocm can write to its 2nd arg even if it returns
+          // ALLOCM_ERR_NOT_MOVED. So, we pass a temporary to its 2nd arg and
+          // update newAllocatedCapacity only on success.
+          size_t allocatedSize;
+          int r = rallocm(&p, &allocatedSize, newAllocatedCapacity,
                           0, ALLOCM_NO_MOVE);
           if (r == ALLOCM_SUCCESS) {
             newBuffer = static_cast<uint8_t*>(p);
             newHeadroom = oldHeadroom;
+            newAllocatedCapacity = allocatedSize;
           } else if (r == ALLOCM_ERR_OOM) {
             // shouldn't happen as we don't actually allocate new memory
             // (due to ALLOCM_NO_MOVE)
