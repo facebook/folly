@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,12 @@ MemoryMapping::MemoryMapping(File file, off_t offset, off_t length)
 
   init(std::move(file), offset, length, PROT_READ, false);
 }
+
+MemoryMapping::MemoryMapping(const char* name, off_t offset, off_t length)
+  : MemoryMapping(File(name), offset, length) { }
+
+MemoryMapping::MemoryMapping(int fd, off_t offset, off_t length)
+  : MemoryMapping(File(fd), offset, length) { }
 
 void MemoryMapping::init(File file,
                          off_t offset, off_t length,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,6 +53,14 @@ class MemoryMapping : boost::noncopyable {
    * likely become inaccessible) when the MemoryMapping object is destroyed.
    */
   explicit MemoryMapping(File file,
+                         off_t offset=0,
+                         off_t length=-1);
+
+  explicit MemoryMapping(const char* name,
+                         off_t offset=0,
+                         off_t length=-1);
+
+  explicit MemoryMapping(int fd,
                          off_t offset=0,
                          off_t length=-1);
 

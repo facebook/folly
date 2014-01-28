@@ -38,15 +38,12 @@ class File {
    * Create a File object from an existing file descriptor.
    * Takes ownership of the file descriptor if ownsFd is true.
    */
-  /* implicit */ File(int fd,
-                      bool ownsFd = false);
+  explicit File(int fd, bool ownsFd = false);
 
   /**
    * Open and create a file object.  Throws on error.
    */
-  /* implicit */ File(const char* name,
-                      int flags = O_RDONLY,
-                      mode_t mode = 0644);
+  explicit File(const char* name, int flags = O_RDONLY, mode_t mode = 0644);
 
   ~File();
 

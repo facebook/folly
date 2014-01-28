@@ -121,6 +121,7 @@ class FileWriter : public Operator<FileWriter> {
 };
 
 }  // !detail
+
 /**
  * Generator which reads lines from a file.
  * Note: This produces StringPieces which reference temporary strings which are
@@ -134,5 +135,11 @@ inline auto byLine(File file, char delim = '\n')
        | eachAs<StringPiece>()
        | resplit(delim);
 }
+
+inline auto byLine(int fd, char delim = '\n')
+  -> decltype(byLine(File(fd), delim)) { return byLine(File(fd), delim); }
+
+inline auto byLine(const char* f, char delim = '\n')
+  -> decltype(byLine(File(f), delim)) { return byLine(File(f), delim); }
 
 }}  // !folly::gen
