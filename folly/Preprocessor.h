@@ -72,9 +72,9 @@
 #endif
 
 /**
- * Use FB_STRINGIZE(name) when you'd want to do what #name does inside
+ * Use FB_STRINGIZE(x) when you'd want to do what #x does inside
  * another macro expansion.
  */
-#define FB_STRINGIZE(name) #name
+#define FB_STRINGIZE(x) #x
 
 #endif // FOLLY_PREPROCESSOR_
