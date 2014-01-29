@@ -13,5 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma message "folly::gen has moved to folly/gen/*.h"
-#include "folly/gen/Base.h"
+
+#ifndef FOLLY_GEN_CORE_H
+#define FOLLY_GEN_CORE_H
+
+namespace folly { namespace gen {
+
+template<class Value, class Self>
+class GenImpl;
+
+template<class Self>
+class Operator;
+
+namespace detail {
+
+template<class Self>
+struct FBounded;
+
+template<class First, class Second>
+class Composed;
+
+template<class Value, class First, class Second>
+class Chain;
+
+} // detail
+
+}} // folly::gen
+
+#include "folly/gen/Core-inl.h"
+
+#endif // FOLLY_GEN_CORE_H

@@ -13,35 +13,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef FOLLY_COMBINEGEN_H_
-#define FOLLY_COMBINEGEN_H_
-
-#include "folly/experimental/Gen.h"
-
-namespace folly {
-namespace gen {
-namespace detail {
-
-template<class Container>
-class Interleave;
-
-template<class Container>
-class Zip;
-
-}  // namespace detail
-
-template<class Source2,
-         class Source2Decayed = typename std::decay<Source2>::type,
-         class Interleave = detail::Interleave<Source2Decayed>>
-Interleave interleave(Source2&& source2) {
-  return Interleave(std::forward<Source2>(source2));
-}
-
-}  // namespace gen
-}  // namespace folly
-
-#include "folly/experimental/CombineGen-inl.h"
-
-#endif /* FOLLY_COMBINEGEN_H_ */
-
+#pragma GCC message "folly::gen has moved to folly/gen/*.h"
+#include "folly/gen/Combine.h"

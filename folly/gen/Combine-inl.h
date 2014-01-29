@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_COMBINEGEN_H_
-#error This file may only be included from folly/experimental/CombineGen.h
+#ifndef FOLLY_GEN_COMBINE_H
+#error This file may only be included from folly/gen/Combine.h
 #endif
 
 #include <iterator>

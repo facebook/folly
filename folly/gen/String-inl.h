@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STRINGGEN_H_
-#error This file may only be included from folly/experimental/StringGen.h
+#ifndef FOLLY_GEN_STRING_H
+#error This file may only be included from folly/gen/String.h
 #endif
 
 #include "folly/Conv.h"

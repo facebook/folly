@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FILEGEN_H_
-#error This file may only be included from folly/experimental/FileGen.h
+#ifndef FOLLY_GEN_FILE_H
+#error This file may only be included from folly/gen/File.h
 #endif
 
 #include <system_error>
 
-#include "folly/experimental/StringGen.h"
+#include "folly/gen/String.h"
 
 namespace folly {
 namespace gen {

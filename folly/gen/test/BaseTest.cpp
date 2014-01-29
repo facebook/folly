@@ -16,21 +16,16 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <iostream>
+#include <iosfwd>
 #include <random>
 #include <set>
 #include <vector>
 
-#include "folly/FBString.h"
 #include "folly/FBVector.h"
-#include "folly/Format.h"
 #include "folly/MapUtil.h"
 #include "folly/Memory.h"
 #include "folly/dynamic.h"
-#include "folly/experimental/CombineGen.h"
-#include "folly/experimental/FileGen.h"
-#include "folly/experimental/Gen.h"
-#include "folly/experimental/StringGen.h"
+#include "folly/gen/Base.h"
 #include "folly/experimental/TestUtil.h"
 
 using namespace folly::gen;
@@ -356,136 +351,6 @@ TEST(Gen, Until) {
   */
 }
 
-auto even = [](int i) -> bool { return i % 2 == 0; };
-auto odd = [](int i) -> bool { return i % 2 == 1; };
-
-TEST(CombineGen, Interleave) {
-  { // large (infinite) base, small container
-    auto base = seq(1) | filter(odd);
-    auto toInterleave = seq(1, 6) | filter(even);
-    auto interleaved = base | interleave(toInterleave | as<vector>());
-    EXPECT_EQ(interleaved | as<vector>(), vector<int>({1, 2, 3, 4, 5, 6}));
-  }
-  { // small base, large container
-    auto base = seq(1) | filter(odd) | take(3);
-    auto toInterleave = seq(1) | filter(even) | take(50);
-    auto interleaved = base | interleave(toInterleave | as<vector>());
-    EXPECT_EQ(interleaved | as<vector>(),
-              vector<int>({1, 2, 3, 4, 5, 6}));
-  }
-}
-
-TEST(CombineGen, Zip) {
-  auto base0 = seq(1);
-  // We rely on std::move(fbvector) emptying the source vector
-  auto zippee = fbvector<string>{"one", "two", "three"};
-  {
-    auto combined = base0
-      | zip(zippee)
-      | as<vector>();
-    ASSERT_EQ(combined.size(), 3);
-    EXPECT_EQ(std::get<0>(combined[0]), 1);
-    EXPECT_EQ(std::get<1>(combined[0]), "one");
-    EXPECT_EQ(std::get<0>(combined[1]), 2);
-    EXPECT_EQ(std::get<1>(combined[1]), "two");
-    EXPECT_EQ(std::get<0>(combined[2]), 3);
-    EXPECT_EQ(std::get<1>(combined[2]), "three");
-    ASSERT_FALSE(zippee.empty());
-    EXPECT_FALSE(zippee.front().empty());  // shouldn't have been move'd
-  }
-
-  { // same as top, but using std::move.
-    auto combined = base0
-      | zip(std::move(zippee))
-      | as<vector>();
-    ASSERT_EQ(combined.size(), 3);
-    EXPECT_EQ(std::get<0>(combined[0]), 1);
-    EXPECT_TRUE(zippee.empty());
-  }
-
-  { // same as top, but base is truncated
-    auto baseFinite = seq(1) | take(1);
-    auto combined = baseFinite
-      | zip(vector<string>{"one", "two", "three"})
-      | as<vector>();
-    ASSERT_EQ(combined.size(), 1);
-    EXPECT_EQ(std::get<0>(combined[0]), 1);
-    EXPECT_EQ(std::get<1>(combined[0]), "one");
-  }
-}
-
-TEST(CombineGen, TupleFlatten) {
-  vector<tuple<int,string>> intStringTupleVec{
-    tuple<int,string>{1, "1"},
-    tuple<int,string>{2, "2"},
-    tuple<int,string>{3, "3"},
-  };
-
-  vector<tuple<char>> charTupleVec{
-    tuple<char>{'A'},
-    tuple<char>{'B'},
-    tuple<char>{'C'},
-    tuple<char>{'D'},
-  };
-
-  vector<double> doubleVec{
-    1.0,
-    4.0,
-    9.0,
-    16.0,
-    25.0,
-  };
-
-  auto zipped1 = from(intStringTupleVec)
-    | zip(charTupleVec)
-    | assert_type<tuple<tuple<int, string>, tuple<char>>>()
-    | as<vector>();
-  EXPECT_EQ(std::get<0>(zipped1[0]), std::make_tuple(1, "1"));
-  EXPECT_EQ(std::get<1>(zipped1[0]), std::make_tuple('A'));
-
-  auto zipped2 = from(zipped1)
-    | tuple_flatten
-    | assert_type<tuple<int, string, char>&&>()
-    | as<vector>();
-  ASSERT_EQ(zipped2.size(), 3);
-  EXPECT_EQ(zipped2[0], std::make_tuple(1, "1", 'A'));
-
-  auto zipped3 = from(charTupleVec)
-    | zip(intStringTupleVec)
-    | tuple_flatten
-    | assert_type<tuple<char, int, string>&&>()
-    | as<vector>();
-  ASSERT_EQ(zipped3.size(), 3);
-  EXPECT_EQ(zipped3[0], std::make_tuple('A', 1, "1"));
-
-  auto zipped4 = from(intStringTupleVec)
-    | zip(doubleVec)
-    | tuple_flatten
-    | assert_type<tuple<int, string, double>&&>()
-    | as<vector>();
-  ASSERT_EQ(zipped4.size(), 3);
-  EXPECT_EQ(zipped4[0], std::make_tuple(1, "1", 1.0));
-
-  auto zipped5 = from(doubleVec)
-    | zip(doubleVec)
-    | assert_type<tuple<double, double>>()
-    | tuple_flatten  // essentially a no-op
-    | assert_type<tuple<double, double>&&>()
-    | as<vector>();
-  ASSERT_EQ(zipped5.size(), 5);
-  EXPECT_EQ(zipped5[0], std::make_tuple(1.0, 1.0));
-
-  auto zipped6 = from(intStringTupleVec)
-    | zip(charTupleVec)
-    | tuple_flatten
-    | zip(doubleVec)
-    | tuple_flatten
-    | assert_type<tuple<int, string, char, double>&&>()
-    | as<vector>();
-  ASSERT_EQ(zipped6.size(), 3);
-  EXPECT_EQ(zipped6[0], std::make_tuple(1, "1", 'A', 1.0));
-}
-
 TEST(Gen, Composed) {
   // Operator, Operator
   auto valuesOf =
@@ -616,8 +481,8 @@ TEST(Gen, MaxBy) {
 }
 
 TEST(Gen, Append) {
-  fbstring expected = "facebook";
-  fbstring actual = "face";
+  string expected = "facebook";
+  string actual = "face";
   from(StringPiece("book")) | appendTo(actual);
   EXPECT_EQ(expected, actual);
 }
@@ -628,7 +493,7 @@ TEST(Gen, FromRValue) {
     // reference of a std::vector when it is used as the 'other' for an rvalue
     // constructor.  Use fbvector because we're sure its size will be zero in
     // this case.
-    folly::fbvector<int> v({1,2,3,4});
+    fbvector<int> v({1,2,3,4});
     auto q1 = from(v);
     EXPECT_EQ(v.size(), 4);  // ensure that the lvalue version was called!
     auto expected = 1 * 2 * 3 * 4;
@@ -894,9 +759,9 @@ TEST(Gen, FromStdArray) {
 
 TEST(Gen, StringConcat) {
   auto gen = seq(1, 10)
-           | map([](int n) { return folly::to<fbstring>(n); })
+           | eachTo<string>()
            | rconcat;
-  EXPECT_EQ("12345678910", gen | as<fbstring>());
+  EXPECT_EQ("12345678910", gen | as<string>());
 }
 
 struct CopyCounter {
@@ -975,33 +840,6 @@ TEST(Gen, Collect) {
   EXPECT_EQ(s.size(), 5);
 }
 
-TEST(StringGen, EmptySplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  {
-    auto pieces = split("", ',') | collect;
-    EXPECT_EQ(0, pieces.size());
-  }
-
-  // The last delimiter is eaten, just like std::getline
-  {
-    auto pieces = split(",", ',') | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-  }
-
-  {
-    auto pieces = split(",,", ',') | collect;
-    EXPECT_EQ(2, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-  }
-
-  {
-    auto pieces = split(",,", ',') | take(1) | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-  }
-}
 
 TEST(Gen, Cycle) {
   {
@@ -1094,271 +932,6 @@ TEST(Gen, Dereference) {
     EXPECT_EQ(10, from(ups) | move | dereference | sum);
   }
 }
-
-TEST(StringGen, Split) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  {
-    auto pieces = split("hello,, world, goodbye, meow", ',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
-  }
-
-  {
-    auto pieces = split("hello,, world, goodbye, meow", ',')
-                | take(3) | collect;
-    EXPECT_EQ(3, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-  }
-
-  {
-    auto pieces = split("hello,, world, goodbye, meow", ',')
-                | take(5) | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-  }
-}
-
-TEST(StringGen, EmptyResplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  {
-    auto pieces = from({""}) | resplit(',') | collect;
-    EXPECT_EQ(0, pieces.size());
-  }
-
-  // The last delimiter is eaten, just like std::getline
-  {
-    auto pieces = from({","}) | resplit(',') | collect;
-    EXPECT_EQ(1, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-  }
-
-  {
-    auto pieces = from({",,"}) | resplit(',') | collect;
-    EXPECT_EQ(2, pieces.size());
-    EXPECT_EQ("", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-  }
-}
-
-TEST(StringGen, EachToTuple) {
-  {
-    auto lines = "2:1.414:yo 3:1.732:hi";
-    auto actual
-      = split(lines, ' ')
-      | eachToTuple<int, double, std::string>(':')
-      | as<vector>();
-    vector<tuple<int, double, std::string>> expected {
-      make_tuple(2, 1.414, "yo"),
-      make_tuple(3, 1.732, "hi"),
-    };
-    EXPECT_EQ(expected, actual);
-  }
-  {
-    auto lines = "2 3";
-    auto actual
-      = split(lines, ' ')
-      | eachToTuple<int>(',')
-      | as<vector>();
-    vector<tuple<int>> expected {
-      make_tuple(2),
-      make_tuple(3),
-    };
-    EXPECT_EQ(expected, actual);
-  }
-  {
-    // StringPiece target
-    auto lines = "1:cat 2:dog";
-    auto actual
-      = split(lines, ' ')
-      | eachToTuple<int, StringPiece>(':')
-      | as<vector>();
-    vector<tuple<int, StringPiece>> expected {
-      make_tuple(1, "cat"),
-      make_tuple(2, "dog"),
-    };
-    EXPECT_EQ(expected, actual);
-  }
-  {
-    // Empty field
-    auto lines = "2:tjackson:4 3::5";
-    auto actual
-      = split(lines, ' ')
-      | eachToTuple<int, fbstring, int>(':')
-      | as<vector>();
-    vector<tuple<int, fbstring, int>> expected {
-      make_tuple(2, "tjackson", 4),
-      make_tuple(3, "", 5),
-    };
-    EXPECT_EQ(expected, actual);
-  }
-  {
-    // Excess fields
-    auto lines = "1:2 3:4:5";
-    EXPECT_THROW((split(lines, ' ')
-                    | eachToTuple<int, int>(':')
-                    | as<vector>()),
-                 std::runtime_error);
-  }
-  {
-    // Missing fields
-    auto lines = "1:2:3 4:5";
-    EXPECT_THROW((split(lines, ' ')
-                    | eachToTuple<int, int, int>(':')
-                    | as<vector>()),
-                 std::runtime_error);
-  }
-}
-
-TEST(StringGen, EachToPair) {
-  {
-    // char delimiters
-    auto lines = "2:1.414 3:1.732";
-    auto actual
-      = split(lines, ' ')
-      | eachToPair<int, double>(':')
-      | as<std::map<int, double>>();
-    std::map<int, double> expected {
-      { 3, 1.732 },
-      { 2, 1.414 },
-    };
-    EXPECT_EQ(expected, actual);
-  }
-  {
-    // string delimiters
-    auto lines = "ab=>cd ef=>gh";
-    auto actual
-      = split(lines, ' ')
-      | eachToPair<string, string>("=>")
-      | as<std::map<string, string>>();
-    std::map<string, string> expected {
-      { "ab", "cd" },
-      { "ef", "gh" },
-    };
-    EXPECT_EQ(expected, actual);
-  }
-}
-
-TEST(StringGen, Resplit) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  {
-    auto pieces = from({"hello,, world, goodbye, meow"}) |
-      resplit(',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
-  }
-  {
-    auto pieces = from({"hel", "lo,", ", world", ", goodbye, m", "eow"}) |
-      resplit(',') | collect;
-    EXPECT_EQ(5, pieces.size());
-    EXPECT_EQ("hello", pieces[0]);
-    EXPECT_EQ("", pieces[1]);
-    EXPECT_EQ(" world", pieces[2]);
-    EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
-  }
-}
-
-template<typename F>
-void runUnsplitSuite(F fn) {
-  fn("hello, world");
-  fn("hello,world,goodbye");
-  fn(" ");
-  fn("");
-  fn(", ");
-  fn(", a, b,c");
-}
-
-TEST(StringGen, Unsplit) {
-
-  auto basicFn = [](const StringPiece& s) {
-    EXPECT_EQ(split(s, ',') | unsplit(','), s);
-  };
-
-  auto existingBuffer = [](const StringPiece& s) {
-    folly::fbstring buffer("asdf");
-    split(s, ',') | unsplit(',', &buffer);
-    auto expected = folly::to<folly::fbstring>(
-        "asdf", s.empty() ? "" : ",", s);
-    EXPECT_EQ(expected, buffer);
-  };
-
-  auto emptyBuffer = [](const StringPiece& s) {
-    std::string buffer;
-    split(s, ',') | unsplit(',', &buffer);
-    EXPECT_EQ(s, buffer);
-  };
-
-  auto stringDelim = [](const StringPiece& s) {
-    EXPECT_EQ(s, split(s, ',') | unsplit(","));
-    std::string buffer;
-    split(s, ',') | unsplit(",", &buffer);
-    EXPECT_EQ(buffer, s);
-  };
-
-  runUnsplitSuite(basicFn);
-  runUnsplitSuite(existingBuffer);
-  runUnsplitSuite(emptyBuffer);
-  runUnsplitSuite(stringDelim);
-  EXPECT_EQ("1, 2, 3", seq(1, 3) | unsplit(", "));
-}
-
-TEST(FileGen, ByLine) {
-  auto collect = eachTo<std::string>() | as<vector>();
-  test::TemporaryFile file("ByLine");
-  static const std::string lines(
-      "Hello world\n"
-      "This is the second line\n"
-      "\n"
-      "\n"
-      "a few empty lines above\n"
-      "incomplete last line");
-  EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
-
-  auto expected = from({lines}) | resplit('\n') | collect;
-  auto found = byLine(file.path().c_str()) | collect;
-
-  EXPECT_TRUE(expected == found);
-}
-
-class FileGenBufferedTest : public ::testing::TestWithParam<int> { };
-
-TEST_P(FileGenBufferedTest, FileWriter) {
-  size_t bufferSize = GetParam();
-  test::TemporaryFile file("FileWriter");
-
-  static const std::string lines(
-      "Hello world\n"
-      "This is the second line\n"
-      "\n"
-      "\n"
-      "a few empty lines above\n");
-
-  auto src = from({lines, lines, lines, lines, lines, lines, lines, lines});
-  auto collect = eachTo<std::string>() | as<vector>();
-  auto expected = src | resplit('\n') | collect;
-
-  src | eachAs<StringPiece>() | toFile(File(file.fd()), bufferSize);
-  auto found = byLine(file.path().c_str()) | collect;
-
-  EXPECT_TRUE(expected == found);
-}
-
-INSTANTIATE_TEST_CASE_P(
-    DifferentBufferSizes,
-    FileGenBufferedTest,
-    ::testing::Values(0, 1, 2, 4, 8, 64, 4096));
 
 TEST(Gen, Guard) {
   using std::runtime_error;
