@@ -18,7 +18,7 @@
 
 extern "C" {
 
-#ifndef FOLLY_HAVE_WEAK_SYMBOLS
+#if !FOLLY_HAVE_WEAK_SYMBOLS
 int (*rallocm)(void**, size_t*, size_t, size_t, int) = nullptr;
 int (*allocm)(void**, size_t*, size_t, int) = nullptr;
 #endif

@@ -25,7 +25,7 @@
 
 extern "C" {
 
-#ifdef FOLLY_HAVE_WEAK_SYMBOLS
+#if FOLLY_HAVE_WEAK_SYMBOLS
 int rallocm(void**, size_t*, size_t, size_t, int) __attribute__((weak));
 int allocm(void**, size_t*, size_t, int) __attribute__((weak));
 #else
