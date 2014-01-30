@@ -271,6 +271,12 @@ format(Str* out, StringPiece fmt, Args&&... args) {
   format(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
 
+template <class Str, class... Args>
+typename std::enable_if<IsSomeString<Str>::value>::type
+formatChecked(Str* out, StringPiece fmt, Args&&... args) {
+  formatChecked(fmt, std::forward<Args>(args)...).appendTo(*out);
+}
+
 /**
  * Append vformatted output to a string.
  */
@@ -278,6 +284,12 @@ template <class Str, class Container>
 typename std::enable_if<IsSomeString<Str>::value>::type
 vformat(Str* out, StringPiece fmt, Container&& container) {
   vformat(fmt, std::forward<Container>(container)).appendTo(*out);
+}
+
+template <class Str, class Container>
+typename std::enable_if<IsSomeString<Str>::value>::type
+vformatChecked(Str* out, StringPiece fmt, Container&& container) {
+  vformatChecked(fmt, std::forward<Container>(container)).appendTo(*out);
 }
 
 /**
