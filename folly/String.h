@@ -21,6 +21,11 @@
 #include <string>
 #include <boost/type_traits.hpp>
 
+#ifdef _GLIBCXX_SYMVER
+#include <ext/hash_set>
+#include <ext/hash_map>
+#endif
+
 #include <unordered_set>
 #include <unordered_map>
 
@@ -491,7 +496,10 @@ std::string join(const Delim& delimiter,
 } // namespace folly
 
 // Hash functions for string and fbstring usable with e.g. hash_map
-FOLLY_NAMESPACE_STD_BEGIN
+//
+// We let Boost pick the namespace here for us, since it has logic to do the
+// right thing based on the C++ standard library implementation being used.
+namespace BOOST_STD_EXTENSION_NAMESPACE {
 
 template <class C>
 struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
@@ -507,7 +515,7 @@ struct hash<std::basic_string<C> > : private hash<const C*> {
   }
 };
 
-FOLLY_NAMESPACE_STD_END
+}
 
 // Hook into boost's type traits
 namespace boost {
