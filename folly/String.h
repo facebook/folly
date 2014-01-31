@@ -21,14 +21,13 @@
 #include <string>
 #include <boost/type_traits.hpp>
 
-#ifdef __GNUC__
-# include <ext/hash_set>
-# include <ext/hash_map>
-#endif
+#include <unordered_set>
+#include <unordered_map>
 
 #include "folly/Conv.h"
 #include "folly/FBString.h"
 #include "folly/FBVector.h"
+#include "folly/Portability.h"
 #include "folly/Range.h"
 #include "folly/ScopeGuard.h"
 
@@ -492,8 +491,7 @@ std::string join(const Delim& delimiter,
 } // namespace folly
 
 // Hash functions for string and fbstring usable with e.g. hash_map
-#ifdef __GNUC__
-namespace __gnu_cxx {
+FOLLY_NAMESPACE_STD_BEGIN
 
 template <class C>
 struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
@@ -509,8 +507,7 @@ struct hash<std::basic_string<C> > : private hash<const C*> {
   }
 };
 
-} // namespace __gnu_cxx
-#endif
+FOLLY_NAMESPACE_STD_END
 
 // Hook into boost's type traits
 namespace boost {
