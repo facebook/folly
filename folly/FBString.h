@@ -73,6 +73,11 @@
 #include <bits/c++config.h>
 #endif
 
+#ifdef _GLIBCXX_SYMVER
+#include <ext/hash_set>
+#include <ext/hash_map>
+#endif
+
 #ifdef _LIBSTDCXX_FBSTRING
 
 #pragma GCC system_header
@@ -2439,20 +2444,52 @@ _GLIBCXX_END_NAMESPACE_VERSION
 
 } // namespace folly
 
-#pragma GCC diagnostic pop
-
 #ifndef _LIBSTDCXX_FBSTRING
 
+// Hash functions to make fbstring usable with e.g. hash_map
+//
+// Handle interaction with different C++ standard libraries, which
+// expect these types to be in different namespaces.
 namespace std {
+
+template <class C>
+struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
+  size_t operator()(const folly::basic_fbstring<C> & s) const {
+    return hash<const C*>::operator()(s.c_str());
+  }
+};
+
 template <>
 struct hash< ::folly::fbstring> {
   size_t operator()(const ::folly::fbstring& s) const {
     return ::folly::hash::fnv32_buf(s.data(), s.size());
   }
 };
+
 }
 
+#if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
+namespace __gnu_cxx {
+
+template <class C>
+struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
+  size_t operator()(const folly::basic_fbstring<C> & s) const {
+    return hash<const C*>::operator()(s.c_str());
+  }
+};
+
+template <>
+struct hash< ::folly::fbstring> {
+  size_t operator()(const ::folly::fbstring& s) const {
+    return ::folly::hash::fnv32_buf(s.data(), s.size());
+  }
+};
+
+}
+#endif // _GLIBCXX_SYMVER && !__BIONIC__
 #endif // _LIBSTDCXX_FBSTRING
+
+#pragma GCC diagnostic pop
 
 #undef FBSTRING_DISABLE_ADDRESS_SANITIZER
 #undef throw

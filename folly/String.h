@@ -495,18 +495,11 @@ std::string join(const Delim& delimiter,
 
 } // namespace folly
 
-// Hash functions for string and fbstring usable with e.g. hash_map
+// Hash functions to make std::string usable with e.g. hash_map
 //
-// We let Boost pick the namespace here for us, since it has logic to do the
-// right thing based on the C++ standard library implementation being used.
-namespace BOOST_STD_EXTENSION_NAMESPACE {
-
-template <class C>
-struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
-  size_t operator()(const folly::basic_fbstring<C> & s) const {
-    return hash<const C*>::operator()(s.c_str());
-  }
-};
+// Handle interaction with different C++ standard libraries, which
+// expect these types to be in different namespaces.
+namespace std {
 
 template <class C>
 struct hash<std::basic_string<C> > : private hash<const C*> {
@@ -516,6 +509,19 @@ struct hash<std::basic_string<C> > : private hash<const C*> {
 };
 
 }
+
+#if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
+namespace __gnu_cxx {
+
+template <class C>
+struct hash<std::basic_string<C> > : private hash<const C*> {
+  size_t operator()(const std::basic_string<C> & s) const {
+    return hash<const C*>::operator()(s.c_str());
+  }
+};
+
+}
+#endif
 
 // Hook into boost's type traits
 namespace boost {
