@@ -17,7 +17,7 @@
 #ifndef FOLLY_LOGGING_H_
 #define FOLLY_LOGGING_H_
 
-#include <time.h>
+#include <chrono>
 #include <glog/logging.h>
 
 #ifndef FB_LOG_EVERY_MS
@@ -31,15 +31,16 @@
  * The implementation uses for statements to introduce variables in
  * a nice way that doesn't mess surrounding statements.
  */
-#define FB_LOG_EVERY_MS(severity, milliseconds)                         \
-  for (bool LOG_EVERY_MS_once = true; LOG_EVERY_MS_once; )              \
-    for (const ::clock_t LOG_EVERY_MS_now = ::clock(); LOG_EVERY_MS_once; ) \
-      for (static ::clock_t LOG_EVERY_MS_last; LOG_EVERY_MS_once;       \
-           LOG_EVERY_MS_once = false)                                   \
-        if (1000 * (LOG_EVERY_MS_now - LOG_EVERY_MS_last) <             \
-            (milliseconds) * CLOCKS_PER_SEC) {}                         \
-        else                                                            \
-          (LOG_EVERY_MS_last = LOG_EVERY_MS_now, LOG(severity))
+#define FB_LOG_EVERY_MS(severity, milli_interval)                       \
+  for (bool FB_LEM_once = true; FB_LEM_once; )                          \
+    for (const auto FB_LEM_now = ::std::chrono::system_clock::now();    \
+         FB_LEM_once; )                                                 \
+      for (static ::std::chrono::system_clock::time_point FB_LEM_last;  \
+            FB_LEM_once; FB_LEM_once = false)                           \
+        if (FB_LEM_now - FB_LEM_last <                                  \
+            ::std::chrono::milliseconds(milli_interval)) {              \
+        } else                                                          \
+          (FB_LEM_last = FB_LEM_now, LOG(severity))
 
 #endif
 
