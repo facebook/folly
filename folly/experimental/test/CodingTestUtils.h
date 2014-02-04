@@ -69,27 +69,6 @@ std::vector<uint32_t> loadList(const std::string& filename) {
 }
 
 template <class Reader, class List>
-void testEmpty() {
-  List list;
-  const typename List::ValueType* const data = nullptr;
-  List::encode(data, 0, list);
-  {
-    Reader reader(list);
-    EXPECT_FALSE(reader.next());
-    EXPECT_EQ(reader.size(), 0);
-  }
-  {
-    Reader reader(list);
-    EXPECT_FALSE(reader.skip(1));
-    EXPECT_FALSE(reader.skip(10));
-  }
-  {
-    Reader reader(list);
-    EXPECT_FALSE(reader.skipTo(1));
-  }
-}
-
-template <class Reader, class List>
 void testNext(const std::vector<uint32_t>& data, const List& list) {
   Reader reader(list);
   EXPECT_EQ(reader.value(), 0);
@@ -169,10 +148,31 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
   }
 }
 
-template <class Reader, class List>
+template <class Reader, class Encoder>
+void testEmpty() {
+  typename Encoder::CompressedList list;
+  const typename Encoder::ValueType* const data = nullptr;
+  Encoder::encode(data, 0, list);
+  {
+    Reader reader(list);
+    EXPECT_FALSE(reader.next());
+    EXPECT_EQ(reader.size(), 0);
+  }
+  {
+    Reader reader(list);
+    EXPECT_FALSE(reader.skip(1));
+    EXPECT_FALSE(reader.skip(10));
+  }
+  {
+    Reader reader(list);
+    EXPECT_FALSE(reader.skipTo(1));
+  }
+}
+
+template <class Reader, class Encoder>
 void testAll(const std::vector<uint32_t>& data) {
-  List list;
-  List::encode(data.begin(), data.end(), list);
+  typename Encoder::CompressedList list;
+  Encoder::encode(data.begin(), data.end(), list);
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
   testSkipTo<Reader>(data, list);

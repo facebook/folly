@@ -14,54 +14,74 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/test/CodingTestUtils.h"
-#include "folly/experimental/EliasFanoCoding.h"
 #include "folly/Benchmark.h"
+#include "folly/experimental/EliasFanoCoding.h"
+#include "folly/experimental/test/CodingTestUtils.h"
 
 using namespace folly::compression;
 
-template <class List>
-void testAll() {
-  typedef EliasFanoReader<List> Reader;
-  testAll<Reader, List>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
-  testAll<Reader, List>(generateSeqList(1, 100000, 100));
+template <size_t kVersion>
+struct TestType {
+  static constexpr size_t Version = kVersion;
+};
+
+template <class T>
+class EliasFanoCodingTest : public ::testing::Test {
+ public:
+  void doTestEmpty() {
+    typedef EliasFanoEncoder<uint32_t, size_t, 0, 0, T::Version> Encoder;
+    typedef EliasFanoReader<Encoder> Reader;
+    testEmpty<Reader, Encoder>();
+  }
+
+  template <size_t kSkipQuantum, size_t kForwardQuantum>
+  void doTestAll() {
+    typedef EliasFanoEncoder<
+      uint32_t, uint32_t, kSkipQuantum, kForwardQuantum, T::Version> Encoder;
+    typedef EliasFanoReader<Encoder> Reader;
+    testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
+    testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
+  }
+};
+
+typedef ::testing::Types<TestType<0>, TestType<1>> TestTypes;
+TYPED_TEST_CASE(EliasFanoCodingTest, TestTypes);
+
+TYPED_TEST(EliasFanoCodingTest, Empty) {
+  TestFixture::doTestEmpty();
 }
 
-TEST(EliasFanoCompressedList, Empty) {
-  typedef EliasFanoCompressedList<uint32_t> List;
-  typedef EliasFanoReader<List> Reader;
-  testEmpty<Reader, List>();
+TYPED_TEST(EliasFanoCodingTest, Simple) {
+  TestFixture::template doTestAll<0, 0>();
 }
 
-TEST(EliasFanoCompressedList, Simple) {
-  testAll<EliasFanoCompressedList<uint32_t> >();
+TYPED_TEST(EliasFanoCodingTest, SkipPointers) {
+  TestFixture::template doTestAll<128, 0>();
 }
 
-TEST(EliasFanoCompressedList, SkipPointers) {
-  testAll<EliasFanoCompressedList<uint32_t, uint32_t, 128, 0> >();
+TYPED_TEST(EliasFanoCodingTest, ForwardPointers) {
+  TestFixture::template doTestAll<0, 128>();
 }
 
-TEST(EliasFanoCompressedList, ForwardPointers) {
-  testAll<EliasFanoCompressedList<uint32_t, uint32_t, 0, 128> >();
-}
-
-TEST(EliasFanoCompressedList, SkipForwardPointers) {
-  testAll<EliasFanoCompressedList<uint32_t, uint32_t, 128, 128> >();
+TYPED_TEST(EliasFanoCodingTest, SkipForwardPointers) {
+  TestFixture::template doTestAll<128, 128>();
 }
 
 namespace bm {
 
 constexpr size_t k1M = 1000000;
-typedef EliasFanoCompressedList<uint32_t, uint32_t, 128, 128> List;
-typedef EliasFanoReader<List> Reader;
+constexpr size_t kVersion = 1;
+
+typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128, kVersion> Encoder;
+typedef EliasFanoReader<Encoder> Reader;
 
 std::vector<uint32_t> data;
-List list;
+typename Encoder::CompressedList list;
 
 void init() {
   data = generateRandomList(100 * 1000, 10 * 1000 * 1000);
   //data = loadList("/home/philipp/pl_test_dump.txt");
-  List::encode(data.data(), data.size(), bm::list);
+  Encoder::encode(data.data(), data.size(), bm::list);
 }
 
 void free() {
