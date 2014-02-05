@@ -126,6 +126,11 @@ struct Printer {
   void operator()(dynamic const& v) const {
     switch (v.type()) {
     case dynamic::DOUBLE:
+      if (!opts_.allow_nan_inf &&
+          (isnan(v.asDouble()) || isinf(v.asDouble()))) {
+        throw std::runtime_error("folly::toJson: JSON object value was a "
+          "NaN or INF");
+      }
       toAppend(v.asDouble(), &out_);
       break;
     case dynamic::INT64: {
@@ -751,6 +756,7 @@ fbstring toPrettyJson(dynamic const& dyn) {
 void dynamic::print_as_pseudo_json(std::ostream& out) const {
   json::serialization_opts opts;
   opts.allow_non_string_keys = true;
+  opts.allow_nan_inf = true;
   out << json::serialize(*this, opts);
 }
 

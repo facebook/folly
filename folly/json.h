@@ -61,6 +61,7 @@ namespace json {
       , allow_trailing_comma(false)
       , sort_keys(false)
       , skip_invalid_utf8(false)
+      , allow_nan_inf(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -93,6 +94,9 @@ namespace json {
 
     // Replace invalid utf8 characters with U+FFFD and continue
     bool skip_invalid_utf8;
+
+    // true to allow NaN or INF values
+    bool allow_nan_inf;
   };
 
   /*
