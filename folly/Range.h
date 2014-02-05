@@ -323,12 +323,12 @@ public:
   }
 
   value_type& operator[](size_t i) {
-    CHECK_GT(size(), i);
+    DCHECK_GT(size(), i);
     return b_[i];
   }
 
   const value_type& operator[](size_t i) const {
-    CHECK_GT(size(), i);
+    DCHECK_GT(size(), i);
     return b_[i];
   }
 
