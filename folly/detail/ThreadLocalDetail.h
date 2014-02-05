@@ -213,7 +213,11 @@ struct StaticMeta {
   static void onForkChild(void) {
     // only the current thread survives
     inst_->head_.next = inst_->head_.prev = &inst_->head_;
-    inst_->push_back(getThreadEntry());
+    ThreadEntry* threadEntry = getThreadEntry();
+    // If this thread was in the list before the fork, add it back.
+    if (threadEntry->elementsCapacity != 0) {
+      inst_->push_back(threadEntry);
+    }
     inst_->lock_.unlock();
   }
 

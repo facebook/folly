@@ -476,6 +476,35 @@ TEST(ThreadLocal, Fork) {
   EXPECT_EQ(1, totalValue());
 }
 
+struct HoldsOneTag2 {};
+
+TEST(ThreadLocal, Fork2) {
+  // A thread-local tag that was used in the parent from a *different* thread
+  // (but not the forking thread) would cause the child to hang in a
+  // ThreadLocalPtr's object destructor. Yeah.
+  ThreadLocal<HoldsOne, HoldsOneTag2> p;
+  {
+    // use tag in different thread
+    std::thread t([&p] { p.get(); });
+    t.join();
+  }
+  pid_t pid = fork();
+  if (pid == 0) {
+    {
+      ThreadLocal<HoldsOne, HoldsOneTag2> q;
+      q.get();
+    }
+    _exit(0);
+  } else if (pid > 0) {
+    int status;
+    EXPECT_EQ(pid, waitpid(pid, &status, 0));
+    EXPECT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(0, WEXITSTATUS(status));
+  } else {
+    EXPECT_TRUE(false) << "fork failed";
+  }
+}
+
 // Simple reference implementation using pthread_get_specific
 template<typename T>
 class PThreadGetSpecific {
