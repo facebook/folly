@@ -27,9 +27,9 @@
 #include "folly/Exception.h"
 #include "folly/Format.h"
 #include "folly/String.h"
-#include "folly/experimental/Gen.h"
-#include "folly/experimental/FileGen.h"
-#include "folly/experimental/StringGen.h"
+#include "folly/gen/Base.h"
+#include "folly/gen/File.h"
+#include "folly/gen/String.h"
 #include "folly/experimental/io/FsUtil.h"
 
 using namespace folly;

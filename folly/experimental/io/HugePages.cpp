@@ -39,9 +39,9 @@
 #include "folly/ScopeGuard.h"
 #include "folly/String.h"
 
-#include "folly/experimental/Gen.h"
-#include "folly/experimental/FileGen.h"
-#include "folly/experimental/StringGen.h"
+#include "folly/gen/Base.h"
+#include "folly/gen/File.h"
+#include "folly/gen/String.h"
 
 #ifndef MAP_POPULATE
 #define MAP_POPULATE 0
