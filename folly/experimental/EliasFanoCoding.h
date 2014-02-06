@@ -213,7 +213,12 @@ struct EliasFanoEncoder {
     /* static */ if (forwardQuantum != 0) {
       // Workaround to avoid 'division by zero' compile-time error.
       constexpr size_t q = forwardQuantum ?: 1;
-      CHECK_LT(upperSizeBits, std::numeric_limits<SkipValueType>::max());
+      /* static */ if (kVersion > 0) {
+        CHECK_LT(upperBound >> numLowerBits,
+                 std::numeric_limits<SkipValueType>::max());
+      } else {
+        CHECK_LT(upperSizeBits, std::numeric_limits<SkipValueType>::max());
+      }
 
       numForwardPointers = size / q;
       forwardPointers = static_cast<SkipValueType*>(
