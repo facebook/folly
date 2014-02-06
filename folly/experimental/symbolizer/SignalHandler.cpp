@@ -188,6 +188,16 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   print("), stack trace: ***\n");
 }
 
+namespace {
+constexpr size_t kDefaultCapacity = 500;
+
+// Note: not thread-safe, but that's okay, as we only let one thread
+// in our signal handler at a time.
+SignalSafeElfCache signalSafeElfCache(kDefaultCapacity);
+}  // namespace
+
+void dumpStackTrace() __attribute__((noinline));
+
 void dumpStackTrace() {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
   // Get and symbolize stack trace
@@ -198,11 +208,17 @@ void dumpStackTrace() {
   if (!getStackTraceSafe(addresses)) {
     print("(error retrieving stack trace)\n");
   } else {
-    Symbolizer symbolizer;
+    Symbolizer symbolizer(&signalSafeElfCache);
     symbolizer.symbolize(addresses);
 
     FDSymbolizePrinter printer(STDERR_FILENO, SymbolizePrinter::COLOR_IF_TTY);
-    printer.println(addresses);
+
+    // Skip the top 2 frames:
+    // getStackTraceSafe
+    // dumpStackTrace (here)
+    //
+    // Leaving signalHandler on the stack for clarity, I think.
+    printer.println(addresses, 2);
   }
 }
 

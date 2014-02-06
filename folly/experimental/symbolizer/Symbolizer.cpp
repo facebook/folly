@@ -152,7 +152,17 @@ bool parseProcMapsLine(StringPiece line,
   return true;
 }
 
+ElfCache* defaultElfCache() {
+  static constexpr size_t defaultCapacity = 500;
+  static ElfCache cache(defaultCapacity);
+  return &cache;
+}
+
 }  // namespace
+
+Symbolizer::Symbolizer(ElfCacheBase* cache)
+  : cache_(cache ?: defaultElfCache()) {
+}
 
 void Symbolizer::symbolize(const uintptr_t* addresses,
                            SymbolizedFrame* frames,
@@ -196,7 +206,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     }
 
     bool first = true;
-    ElfFile* elfFile = nullptr;
+    std::shared_ptr<ElfFile> elfFile;
 
     // See if any addresses are here
     for (size_t i = 0; i < addressCount; ++i) {
@@ -218,16 +228,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
       // Open the file on first use
       if (first) {
         first = false;
-        if (fileCount_ < kMaxFiles &&
-            !fileName.empty() &&
-            fileName.size() < sizeof(fileNameBuf)) {
-          memcpy(fileNameBuf, fileName.data(), fileName.size());
-          fileNameBuf[fileName.size()] = '\0';
-          auto& f = files_[fileCount_++];
-          if (f.openNoThrow(fileNameBuf) != -1) {
-            elfFile = &f;
-          }
-        }
+        elfFile = cache_->getFile(fileName);
       }
 
       if (!elfFile) {
@@ -245,7 +246,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
         frame.name = name;
       }
 
-      Dwarf(elfFile).findAddress(fileAddress, frame.location);
+      Dwarf(elfFile.get()).findAddress(fileAddress, frame.location);
     }
   }
 

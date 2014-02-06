@@ -23,7 +23,9 @@
 
 #include "folly/FBString.h"
 #include "folly/Range.h"
+#include "folly/String.h"
 #include "folly/experimental/symbolizer/Elf.h"
+#include "folly/experimental/symbolizer/ElfCache.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
 #include "folly/experimental/symbolizer/StackTrace.h"
 
@@ -42,6 +44,13 @@ struct SymbolizedFrame {
   bool found;
   StringPiece name;
   Dwarf::LocationInfo location;
+
+  /**
+   * Demangle the name and return it. Not async-signal-safe; allocates memory.
+   */
+  fbstring demangledName() const {
+    return demangle(name.fbstr().c_str());
+  }
 };
 
 template <size_t N>
@@ -93,7 +102,7 @@ inline bool getStackTraceSafe(FrameArray<N>& fa) {
 
 class Symbolizer {
  public:
-  Symbolizer() : fileCount_(0) { }
+  explicit Symbolizer(ElfCacheBase* cache = nullptr);
 
   /**
    * Symbolize given addresses.
@@ -116,11 +125,7 @@ class Symbolizer {
   }
 
  private:
-  // We can't allocate memory, so we'll preallocate room.
-  // "1023 shared libraries should be enough for everyone"
-  static constexpr size_t kMaxFiles = 1024;
-  size_t fileCount_;
-  ElfFile files_[kMaxFiles];
+  ElfCacheBase* cache_;
 };
 
 /**

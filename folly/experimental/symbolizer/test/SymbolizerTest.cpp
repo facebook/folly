@@ -16,6 +16,8 @@
 
 #include "folly/experimental/symbolizer/Symbolizer.h"
 
+#include <cstdlib>
+
 #include <gtest/gtest.h>
 
 #include "folly/Range.h"
@@ -40,6 +42,70 @@ TEST(Symbolizer, Single) {
     basename.advance(pos + 1);
   }
   EXPECT_EQ("SymbolizerTest.cpp", basename.str());
+}
+
+FrameArray<100> goldenFrames;
+
+int comparator(const void* ap, const void* bp) {
+  getStackTrace(goldenFrames);
+
+  int a = *static_cast<const int*>(ap);
+  int b = *static_cast<const int*>(bp);
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// Test stack frames...
+void bar() __attribute__((noinline));
+
+void bar() {
+  int a[2] = {1, 2};
+  // Use qsort, which is in a different library
+  qsort(a, 2, sizeof(int), comparator);
+}
+
+class ElfCacheTest : public testing::Test {
+ protected:
+  void SetUp();
+};
+
+// Capture "golden" stack trace with default-configured Symbolizer
+void ElfCacheTest::SetUp() {
+  bar();
+  Symbolizer symbolizer;
+  symbolizer.symbolize(goldenFrames);
+  // At least 3 stack frames from us + getStackTrace()
+  ASSERT_LE(4, goldenFrames.frameCount);
+}
+
+void runElfCacheTest(Symbolizer& symbolizer) {
+  FrameArray<100> frames = goldenFrames;
+  for (size_t i = 0; i < frames.frameCount; ++i) {
+    auto& f = frames.frames[i];
+    f.found = false;
+    f.name.clear();
+  }
+  symbolizer.symbolize(frames);
+  ASSERT_LE(4, frames.frameCount);
+  for (size_t i = 1; i < 4; ++i) {
+    EXPECT_EQ(goldenFrames.frames[i].name, frames.frames[i].name);
+  }
+}
+
+TEST_F(ElfCacheTest, TinyElfCache) {
+  ElfCache cache(1);
+  Symbolizer symbolizer(&cache);
+  // Run twice, in case the wrong stuff gets evicted?
+  for (size_t i = 0; i < 2; ++i) {
+    runElfCacheTest(symbolizer);
+  }
+}
+
+TEST_F(ElfCacheTest, SignalSafeElfCache) {
+  SignalSafeElfCache cache(100);
+  Symbolizer symbolizer(&cache);
+  for (size_t i = 0; i < 2; ++i) {
+    runElfCacheTest(symbolizer);
+  }
 }
 
 }}}  // namespaces
