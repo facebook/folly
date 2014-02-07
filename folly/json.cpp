@@ -127,7 +127,7 @@ struct Printer {
     switch (v.type()) {
     case dynamic::DOUBLE:
       if (!opts_.allow_nan_inf &&
-          (isnan(v.asDouble()) || isinf(v.asDouble()))) {
+          (std::isnan(v.asDouble()) || std::isinf(v.asDouble()))) {
         throw std::runtime_error("folly::toJson: JSON object value was a "
           "NaN or INF");
       }
