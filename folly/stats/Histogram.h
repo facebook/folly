@@ -202,9 +202,9 @@ class HistogramBuckets {
   }
 
  private:
-  const ValueType bucketSize_;
-  const ValueType min_;
-  const ValueType max_;
+  ValueType bucketSize_;
+  ValueType min_;
+  ValueType max_;
   std::vector<BucketType> buckets_;
 };
 
@@ -259,8 +259,24 @@ class Histogram {
     }
   }
 
+  /* Subtract another histogram data from the histogram */
+  void subtract(const Histogram &hist) {
+    // the two histogram bucket definitions must match to support
+    // subtract.
+    if (getBucketSize() != hist.getBucketSize() ||
+        getMin() != hist.getMin() ||
+        getMax() != hist.getMax() ||
+        getNumBuckets() != hist.getNumBuckets() ) {
+      throw std::invalid_argument("Cannot subtract input histogram.");
+    }
+
+    for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+      buckets_.getByIndex(i) -= hist.buckets_.getByIndex(i);
+    }
+  }
+
   /* Merge two histogram data together */
-  void merge(Histogram &hist) {
+  void merge(const Histogram &hist) {
     // the two histogram bucket definitions must match to support
     // a merge.
     if (getBucketSize() != hist.getBucketSize() ||
@@ -276,7 +292,7 @@ class Histogram {
   }
 
   /* Copy bucket values from another histogram */
-  void copy(Histogram &hist) {
+  void copy(const Histogram &hist) {
     // the two histogram bucket definition must match
     if (getBucketSize() != hist.getBucketSize() ||
         getMin() != hist.getMin() ||
