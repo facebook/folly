@@ -172,20 +172,25 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
 #if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
 
 template <bool HAYSTACK_ALIGNED>
-inline size_t scanHaystackBlock(const StringPiece& haystack,
-                                const StringPiece& needles,
-                                int64_t idx)
+size_t scanHaystackBlock(const StringPiece& haystack,
+                         const StringPiece& needles,
+                         int64_t idx)
 // inline is okay because it's only called from other sse4.2 functions
-  __attribute__ ((__target__("sse4.2")));
+  __attribute__ ((__target__("sse4.2")))
+// Turn off ASAN because the "arr2 = ..." assignment in the loop below reads
+// up to 15 bytes beyond end of the buffer in #needles#.  That is ok because
+// ptr2 is always 16-byte aligned, so the read can never span a page boundary.
+// Also, the extra data that may be read is never actually used.
+  FOLLY_DISABLE_ADDRESS_SANITIZER;
 
 // Scans a 16-byte block of haystack (starting at blockStartIdx) to find first
 // needle. If HAYSTACK_ALIGNED, then haystack must be 16byte aligned.
 // If !HAYSTACK_ALIGNED, then caller must ensure that it is safe to load the
 // block.
 template <bool HAYSTACK_ALIGNED>
-inline size_t scanHaystackBlock(const StringPiece& haystack,
-                                const StringPiece& needles,
-                                int64_t blockStartIdx) {
+size_t scanHaystackBlock(const StringPiece& haystack,
+                         const StringPiece& needles,
+                         int64_t blockStartIdx) {
   DCHECK_GT(needles.size(), 16);  // should handled by *needles16() method
   DCHECK(blockStartIdx + 16 <= haystack.size() ||
          (PAGE_FOR(haystack.data() + blockStartIdx) ==
