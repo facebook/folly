@@ -326,8 +326,8 @@ TEST(MPMCQueue, mt_prod_cons_deterministic) {
           "", 10, 10, 1000);
 }
 
-#define PC_BENCH(q, np, nc, nops...) \
-    producerConsumerBench(q, #q, (np), (nc), nops)
+#define PC_BENCH(q, np, nc, ...) \
+    producerConsumerBench(q, #q, (np), (nc), __VA_ARGS__)
 
 TEST(MPMCQueue, mt_prod_cons) {
   int n = 100000;
@@ -433,7 +433,7 @@ static void lc_snap() {
   }
 }
 
-#define LIFECYCLE_STEP(args...) lc_step(__LINE__, args)
+#define LIFECYCLE_STEP(...) lc_step(__LINE__, __VA_ARGS__)
 
 static void lc_step(int lineno, int what = NOTHING, int what2 = NOTHING) {
   for (int i = 0; i < MAX_LIFECYCLE_EVENT; ++i) {
@@ -636,4 +636,3 @@ int main(int argc, char ** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   return RUN_ALL_TESTS();
 }
-
