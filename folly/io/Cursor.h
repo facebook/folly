@@ -27,6 +27,7 @@
 #include "folly/io/IOBuf.h"
 #include "folly/io/IOBufQueue.h"
 #include "folly/Likely.h"
+#include "folly/Memory.h"
 
 /**
  * Cursor class for fast iteration over IOBuf chains.
@@ -221,6 +222,12 @@ class CursorBase {
     }
   }
 
+  void clone(folly::IOBuf& buf, size_t len) {
+    if (UNLIKELY(cloneAtMost(buf, len) != len)) {
+      throw std::out_of_range("underflow");
+    }
+  }
+
   void skip(size_t len) {
     if (UNLIKELY(skipAtMost(len) != len)) {
       throw std::out_of_range("underflow");
@@ -249,33 +256,38 @@ class CursorBase {
     }
   }
 
-  size_t cloneAtMost(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
-    buf.reset(nullptr);
+  size_t cloneAtMost(folly::IOBuf& buf, size_t len) {
+    buf = folly::IOBuf();
 
     std::unique_ptr<folly::IOBuf> tmp;
     size_t copied = 0;
-    for (;;) {
+    for (int loopCount = 0; true; ++loopCount) {
       // Fast path: it all fits in one buffer.
       size_t available = length();
       if (LIKELY(available >= len)) {
-        tmp = crtBuf_->cloneOne();
-        tmp->trimStart(offset_);
-        tmp->trimEnd(tmp->length() - len);
-        offset_ += len;
-        if (!buf) {
-          buf = std::move(tmp);
+        if (loopCount == 0) {
+          crtBuf_->cloneOneInto(buf);
+          buf.trimStart(offset_);
+          buf.trimEnd(buf.length() - len);
         } else {
-          buf->prependChain(std::move(tmp));
+          tmp = crtBuf_->cloneOne();
+          tmp->trimStart(offset_);
+          tmp->trimEnd(tmp->length() - len);
+          buf.prependChain(std::move(tmp));
         }
+
+        offset_ += len;
         return copied + len;
       }
 
-      tmp = crtBuf_->cloneOne();
-      tmp->trimStart(offset_);
-      if (!buf) {
-        buf = std::move(tmp);
+
+      if (loopCount == 0) {
+        crtBuf_->cloneOneInto(buf);
+        buf.trimStart(offset_);
       } else {
-        buf->prependChain(std::move(tmp));
+        tmp = crtBuf_->cloneOne();
+        tmp->trimStart(offset_);
+        buf.prependChain(std::move(tmp));
       }
 
       copied += available;
@@ -284,6 +296,14 @@ class CursorBase {
       }
       len -= available;
     }
+  }
+
+  size_t cloneAtMost(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
+    if (!buf) {
+      buf = make_unique<folly::IOBuf>();
+    }
+
+    return cloneAtMost(*buf, len);
   }
 
   size_t skipAtMost(size_t len) {

@@ -459,27 +459,39 @@ void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
 }
 
 unique_ptr<IOBuf> IOBuf::clone() const {
-  unique_ptr<IOBuf> newHead(cloneOne());
-
-  for (IOBuf* current = next_; current != this; current = current->next_) {
-    newHead->prependChain(current->cloneOne());
-  }
-
-  return newHead;
+  unique_ptr<IOBuf> ret = make_unique<IOBuf>();
+  cloneInto(*ret);
+  return ret;
 }
 
 unique_ptr<IOBuf> IOBuf::cloneOne() const {
+  unique_ptr<IOBuf> ret = make_unique<IOBuf>();
+  cloneOneInto(*ret);
+  return ret;
+}
+
+void IOBuf::cloneInto(IOBuf& other) const {
+  IOBuf tmp;
+  cloneOneInto(tmp);
+
+  for (IOBuf* current = next_; current != this; current = current->next_) {
+    tmp.prependChain(current->cloneOne());
+  }
+
+  other = std::move(tmp);
+}
+
+void IOBuf::cloneOneInto(IOBuf& other) const {
   if (sharedInfo_) {
     flags_ |= kFlagMaybeShared;
   }
-  unique_ptr<IOBuf> iobuf(new IOBuf(static_cast<ExtBufTypeEnum>(type_),
-                                    flags_, buf_, capacity_,
-                                    data_, length_,
-                                    sharedInfo_));
+  other = IOBuf(static_cast<ExtBufTypeEnum>(type_),
+                flags_, buf_, capacity_,
+                data_, length_,
+                sharedInfo_);
   if (sharedInfo_) {
     sharedInfo_->refcount.fetch_add(1, std::memory_order_acq_rel);
   }
-  return iobuf;
 }
 
 void IOBuf::unshareOneSlow() {

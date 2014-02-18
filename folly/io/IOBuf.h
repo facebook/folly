@@ -1027,6 +1027,18 @@ class IOBuf {
   std::unique_ptr<IOBuf> cloneOne() const;
 
   /**
+   * Similar to Clone(). But use other as the head node. Other nodes in the
+   * chain (if any) will be allocted on heap.
+   */
+  void cloneInto(IOBuf& other) const;
+
+  /**
+   * Similar to CloneOne(). But to fill an existing IOBuf instead of a new
+   * IOBuf.
+   */
+  void cloneOneInto(IOBuf& other) const;
+
+  /**
    * Return an iovector suitable for e.g. writev()
    *
    *   auto iov = buf->getIov();
