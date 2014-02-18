@@ -592,7 +592,7 @@ TEST(Conv, UnsignedEnum) {
   }
 }
 
-#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#if defined(__clang__) || __GNUC_PREREQ(4, 7)
 // to<enum class> and to(enum class) only supported in gcc 4.7 onwards
 
 TEST(Conv, UnsignedEnumClass) {

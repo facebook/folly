@@ -379,7 +379,7 @@ toAppend(Src value, Tgt * result) {
   toAppend<Tgt>(static_cast<Intermediate>(value), result);
 }
 
-#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#if defined(__clang__) || __GNUC_PREREQ(4, 7)
 // std::underlying_type became available by gcc 4.7.0
 
 /**
@@ -1071,7 +1071,7 @@ to(const Src & value) {
  * Enum to anything and back
  ******************************************************************************/
 
-#if defined(__GNUC__) && __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
+#if defined(__clang__) || __GNUC_PREREQ(4, 7)
 // std::underlying_type became available by gcc 4.7.0
 
 template <class Tgt, class Src>
