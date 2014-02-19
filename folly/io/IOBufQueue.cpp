@@ -29,7 +29,7 @@ namespace {
 using folly::IOBuf;
 
 const size_t MIN_ALLOC_SIZE = 2000;
-const size_t MAX_ALLOC_SIZE = 8000; // Must fit within a uint32_t
+const size_t MAX_ALLOC_SIZE = 8000;
 const size_t MAX_PACK_COPY = 4096;
 
 /**
@@ -46,7 +46,7 @@ appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
       // reduce wastage (the tail's tailroom and the head's headroom) when
       // joining two IOBufQueues together.
       size_t copyRemaining = MAX_PACK_COPY;
-      uint32_t n;
+      uint64_t n;
       while (src &&
              (n = src->length()) < copyRemaining &&
              n < tail->tailroom()) {
@@ -88,7 +88,7 @@ IOBufQueue& IOBufQueue::operator=(IOBufQueue&& other) {
   return *this;
 }
 
-std::pair<void*, uint32_t>
+std::pair<void*, uint64_t>
 IOBufQueue::headroom() {
   if (head_) {
     return std::make_pair(head_->writableBuffer(), head_->headroom());
@@ -98,7 +98,7 @@ IOBufQueue::headroom() {
 }
 
 void
-IOBufQueue::markPrepended(uint32_t n) {
+IOBufQueue::markPrepended(uint64_t n) {
   if (n == 0) {
     return;
   }
@@ -108,7 +108,7 @@ IOBufQueue::markPrepended(uint32_t n) {
 }
 
 void
-IOBufQueue::prepend(const void* buf, uint32_t n) {
+IOBufQueue::prepend(const void* buf, uint64_t n) {
   auto p = headroom();
   if (n > p.second) {
     throw std::overflow_error("Not enough room to prepend");
@@ -156,7 +156,7 @@ IOBufQueue::append(const void* buf, size_t len) {
           false);
     }
     IOBuf* last = head_->prev();
-    uint32_t copyLen = std::min(len, (size_t)last->tailroom());
+    uint64_t copyLen = std::min(len, (size_t)last->tailroom());
     memcpy(last->writableTail(), src, copyLen);
     src += copyLen;
     last->append(copyLen);
@@ -166,7 +166,7 @@ IOBufQueue::append(const void* buf, size_t len) {
 }
 
 void
-IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
+IOBufQueue::wrapBuffer(const void* buf, size_t len, uint64_t blockSize) {
   auto src = static_cast<const uint8_t*>(buf);
   while (len != 0) {
     size_t n = std::min(len, size_t(blockSize));
@@ -176,9 +176,9 @@ IOBufQueue::wrapBuffer(const void* buf, size_t len, uint32_t blockSize) {
   }
 }
 
-pair<void*,uint32_t>
-IOBufQueue::preallocateSlow(uint32_t min, uint32_t newAllocationSize,
-                            uint32_t max) {
+pair<void*,uint64_t>
+IOBufQueue::preallocateSlow(uint64_t min, uint64_t newAllocationSize,
+                            uint64_t max) {
   // Allocate a new buffer of the requested max size.
   unique_ptr<IOBuf> newBuf(IOBuf::create(std::max(min, newAllocationSize)));
   appendToChain(head_, std::move(newBuf), false);

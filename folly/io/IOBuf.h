@@ -251,8 +251,8 @@ class IOBuf {
    *
    * Throws std::bad_alloc on error.
    */
-  static std::unique_ptr<IOBuf> create(uint32_t capacity);
-  IOBuf(CreateOp, uint32_t capacity);
+  static std::unique_ptr<IOBuf> create(uint64_t capacity);
+  IOBuf(CreateOp, uint64_t capacity);
 
   /**
    * Create a new IOBuf, using a single memory allocation to allocate space
@@ -264,7 +264,7 @@ class IOBuf {
    * IOBuf object itself is also freed.  (It can also be slightly wasteful in
    * some cases where you clone this IOBuf and then free the original IOBuf.)
    */
-  static std::unique_ptr<IOBuf> createCombined(uint32_t capacity);
+  static std::unique_ptr<IOBuf> createCombined(uint64_t capacity);
 
   /**
    * Create a new IOBuf, using separate memory allocations for the IOBuf object
@@ -273,14 +273,14 @@ class IOBuf {
    * This requires two memory allocations, but saves space in the long run
    * if you know that you will need to reallocate the data buffer later.
    */
-  static std::unique_ptr<IOBuf> createSeparate(uint32_t capacity);
+  static std::unique_ptr<IOBuf> createSeparate(uint64_t capacity);
 
   /**
    * Allocate a new IOBuf chain with the requested total capacity, allocating
    * no more than maxBufCapacity to each buffer.
    */
   static std::unique_ptr<IOBuf> createChain(
-      size_t totalCapacity, uint32_t maxBufCapacity);
+      size_t totalCapacity, uint64_t maxBufCapacity);
 
   /**
    * Create a new IOBuf pointing to an existing data buffer.
@@ -306,24 +306,24 @@ class IOBuf {
    * On error, std::bad_alloc will be thrown.  If freeOnError is true (the
    * default) the buffer will be freed before throwing the error.
    */
-  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
+  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint64_t capacity,
                                               FreeFunction freeFn = nullptr,
                                               void* userData = nullptr,
                                               bool freeOnError = true) {
     return takeOwnership(buf, capacity, capacity, freeFn,
                          userData, freeOnError);
   }
-  IOBuf(TakeOwnershipOp op, void* buf, uint32_t capacity,
+  IOBuf(TakeOwnershipOp op, void* buf, uint64_t capacity,
         FreeFunction freeFn = nullptr, void* userData = nullptr,
         bool freeOnError = true)
     : IOBuf(op, buf, capacity, capacity, freeFn, userData, freeOnError) {}
 
-  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint32_t capacity,
-                                              uint32_t length,
+  static std::unique_ptr<IOBuf> takeOwnership(void* buf, uint64_t capacity,
+                                              uint64_t length,
                                               FreeFunction freeFn = nullptr,
                                               void* userData = nullptr,
                                               bool freeOnError = true);
-  IOBuf(TakeOwnershipOp, void* buf, uint32_t capacity, uint32_t length,
+  IOBuf(TakeOwnershipOp, void* buf, uint64_t capacity, uint64_t length,
         FreeFunction freeFn = nullptr, void* userData = nullptr,
         bool freeOnError = true);
 
@@ -372,12 +372,11 @@ class IOBuf {
    *
    * On error, std::bad_alloc will be thrown.
    */
-  static std::unique_ptr<IOBuf> wrapBuffer(const void* buf, uint32_t capacity);
+  static std::unique_ptr<IOBuf> wrapBuffer(const void* buf, uint64_t capacity);
   static std::unique_ptr<IOBuf> wrapBuffer(ByteRange br) {
-    CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
     return wrapBuffer(br.data(), br.size());
   }
-  IOBuf(WrapBufferOp op, const void* buf, uint32_t capacity);
+  IOBuf(WrapBufferOp op, const void* buf, uint64_t capacity);
   IOBuf(WrapBufferOp op, ByteRange br);
 
   /**
@@ -385,19 +384,18 @@ class IOBuf {
    * user-supplied buffer, optionally allocating a given amount of
    * headroom and tailroom.
    */
-  static std::unique_ptr<IOBuf> copyBuffer(const void* buf, uint32_t size,
-                                           uint32_t headroom=0,
-                                           uint32_t minTailroom=0);
+  static std::unique_ptr<IOBuf> copyBuffer(const void* buf, uint64_t size,
+                                           uint64_t headroom=0,
+                                           uint64_t minTailroom=0);
   static std::unique_ptr<IOBuf> copyBuffer(ByteRange br,
-                                           uint32_t headroom=0,
-                                           uint32_t minTailroom=0) {
-    CHECK_LE(br.size(), std::numeric_limits<uint32_t>::max());
+                                           uint64_t headroom=0,
+                                           uint64_t minTailroom=0) {
     return copyBuffer(br.data(), br.size(), headroom, minTailroom);
   }
-  IOBuf(CopyBufferOp op, const void* buf, uint32_t size,
-        uint32_t headroom=0, uint32_t minTailroom=0);
+  IOBuf(CopyBufferOp op, const void* buf, uint64_t size,
+        uint64_t headroom=0, uint64_t minTailroom=0);
   IOBuf(CopyBufferOp op, ByteRange br,
-        uint32_t headroom=0, uint32_t minTailroom=0);
+        uint64_t headroom=0, uint64_t minTailroom=0);
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -411,10 +409,10 @@ class IOBuf {
    * copyBuffer() above, with the size argument of 3.
    */
   static std::unique_ptr<IOBuf> copyBuffer(const std::string& buf,
-                                           uint32_t headroom=0,
-                                           uint32_t minTailroom=0);
+                                           uint64_t headroom=0,
+                                           uint64_t minTailroom=0);
   IOBuf(CopyBufferOp op, const std::string& buf,
-        uint32_t headroom=0, uint32_t minTailroom=0)
+        uint64_t headroom=0, uint64_t minTailroom=0)
     : IOBuf(op, buf.data(), buf.size(), headroom, minTailroom) {}
 
   /**
@@ -422,8 +420,8 @@ class IOBuf {
    * is empty.
    */
   static std::unique_ptr<IOBuf> maybeCopyBuffer(const std::string& buf,
-                                                uint32_t headroom=0,
-                                                uint32_t minTailroom=0);
+                                                uint64_t headroom=0,
+                                                uint64_t minTailroom=0);
 
   /**
    * Convenience function to free a chain of IOBufs held by a unique_ptr.
@@ -494,7 +492,7 @@ class IOBuf {
   /**
    * Get the data length.
    */
-  uint32_t length() const {
+  uint64_t length() const {
     return length_;
   }
 
@@ -503,7 +501,7 @@ class IOBuf {
    *
    * Returns the number of bytes in the buffer before the start of the data.
    */
-  uint32_t headroom() const {
+  uint64_t headroom() const {
     return data_ - buffer();
   }
 
@@ -512,7 +510,7 @@ class IOBuf {
    *
    * Returns the number of bytes in the buffer after the end of the data.
    */
-  uint32_t tailroom() const {
+  uint64_t tailroom() const {
     return bufferEnd() - tail();
   }
 
@@ -554,7 +552,7 @@ class IOBuf {
    * This returns the total usable length of the buffer.  Use the length()
    * method to get the length of the actual valid data in this IOBuf.
    */
-  uint32_t capacity() const {
+  uint64_t capacity() const {
     return capacity_;
   }
 
@@ -593,7 +591,7 @@ class IOBuf {
    * for making sure the buffer is unshared, so it will not affect other IOBufs
    * that may be sharing the same underlying buffer.
    */
-  void advance(uint32_t amount) {
+  void advance(uint64_t amount) {
     // In debug builds, assert if there is a problem.
     assert(amount <= tailroom());
 
@@ -614,7 +612,7 @@ class IOBuf {
    * for making sure the buffer is unshared, so it will not affect other IOBufs
    * that may be sharing the same underlying buffer.
    */
-  void retreat(uint32_t amount) {
+  void retreat(uint64_t amount) {
     // In debug builds, assert if there is a problem.
     assert(amount <= headroom());
 
@@ -634,7 +632,7 @@ class IOBuf {
    *
    * This does not modify any actual data in the buffer.
    */
-  void prepend(uint32_t amount) {
+  void prepend(uint64_t amount) {
     DCHECK_LE(amount, headroom());
     data_ -= amount;
     length_ += amount;
@@ -650,7 +648,7 @@ class IOBuf {
    *
    * This does not modify any actual data in the buffer.
    */
-  void append(uint32_t amount) {
+  void append(uint64_t amount) {
     DCHECK_LE(amount, tailroom());
     length_ += amount;
   }
@@ -664,7 +662,7 @@ class IOBuf {
    *
    * This does not modify any actual data in the buffer.
    */
-  void trimStart(uint32_t amount) {
+  void trimStart(uint64_t amount) {
     DCHECK_LE(amount, length_);
     data_ += amount;
     length_ -= amount;
@@ -679,7 +677,7 @@ class IOBuf {
    *
    * This does not modify any actual data in the buffer.
    */
-  void trimEnd(uint32_t amount) {
+  void trimEnd(uint64_t amount) {
     DCHECK_LE(amount, length_);
     length_ -= amount;
   }
@@ -702,7 +700,7 @@ class IOBuf {
    * Postcondition: headroom() >= minHeadroom, tailroom() >= minTailroom,
    * the data (between data() and data() + length()) is preserved.
    */
-  void reserve(uint32_t minHeadroom, uint32_t minTailroom) {
+  void reserve(uint64_t minHeadroom, uint64_t minTailroom) {
     // Maybe we don't need to do anything.
     if (headroom() >= minHeadroom && tailroom() >= minTailroom) {
       return;
@@ -734,7 +732,7 @@ class IOBuf {
    * Use isChained() if you just want to check if this IOBuf is part of a chain
    * or not.
    */
-  uint32_t countChainElements() const;
+  size_t countChainElements() const;
 
   /**
    * Get the length of all the data in this IOBuf chain.
@@ -888,23 +886,22 @@ class IOBuf {
    * This only checks the current IOBuf, and not other IOBufs in the chain.
    */
   bool isSharedOne() const {
-    if (LIKELY(flags_ & (kFlagUserOwned | kFlagMaybeShared)) == 0) {
-      return false;
+    // If this is a user-owned buffer, it is always considered shared
+    if (UNLIKELY(!sharedInfo())) {
+      return true;
     }
 
-    // If this is a user-owned buffer, it is always considered shared
-    if (flags_ & kFlagUserOwned) {
-      return true;
+    if (LIKELY(!(flags() & kFlagMaybeShared))) {
+      return false;
     }
 
     // kFlagMaybeShared is set, so we need to check the reference count.
     // (Checking the reference count requires an atomic operation, which is why
     // we prefer to only check kFlagMaybeShared if possible.)
-    DCHECK(flags_ & kFlagMaybeShared);
-    bool shared = sharedInfo_->refcount.load(std::memory_order_acquire) > 1;
+    bool shared = sharedInfo()->refcount.load(std::memory_order_acquire) > 1;
     if (!shared) {
       // we're the last one left
-      flags_ &= ~kFlagMaybeShared;
+      clearFlags(kFlagMaybeShared);
     }
     return shared;
   }
@@ -966,8 +963,7 @@ class IOBuf {
    * in the chain.
    *
    * Throws std::bad_alloc on error.  On error the IOBuf chain will be
-   * unmodified.  Throws std::overflow_error if the length of the entire chain
-   * larger than can be described by a uint32_t capacity.
+   * unmodified.
    *
    * Returns ByteRange that points to the data IOBuf stores.
    */
@@ -991,17 +987,13 @@ class IOBuf {
    *
    * Throws std::bad_alloc or std::overflow_error on error.  On error the IOBuf
    * chain will be unmodified.  Throws std::overflow_error if maxLength is
-   * longer than the total chain length, or if the length of the coalesced
-   * portion of the chain is larger than can be described by a uint32_t
-   * capacity.  (Although maxLength is uint32_t, gather() doesn't split
-   * buffers, so coalescing whole buffers may result in a capacity that can't
-   * be described in uint32_t.
+   * longer than the total chain length.
    *
    * Upon return, either enough of the chain was coalesced into a contiguous
    * region, or the entire chain was coalesced.  That is,
    * length() >= maxLength || !isChained() is true.
    */
-  void gather(uint32_t maxLength) {
+  void gather(uint64_t maxLength) {
     if (!isChained() || length_ >= maxLength) {
       return;
     }
@@ -1110,21 +1102,13 @@ class IOBuf {
   IOBuf& operator=(IOBuf&& other) noexcept;
 
  private:
-  enum FlagsEnum : uint32_t {
-    kFlagUserOwned = 0x1,
-    kFlagFreeSharedInfo = 0x2,
-    kFlagMaybeShared = 0x4,
-  };
-
-  // Values for the type_ field.
-  // We currently don't really use this for anything, other than to have it
-  // around for debugging purposes.  We store it at the moment just because we
-  // have the 4 extra bytes that would just be padding otherwise.
-  enum ExtBufTypeEnum {
-    kExtAllocated = 0,
-    kExtUserSupplied = 1,
-    kExtUserOwned = 2,
-    kCombinedAlloc = 3,
+  enum FlagsEnum : uintptr_t {
+    // Adding any more flags would not work on 32-bit architectures,
+    // as these flags are stashed in the least significant 2 bits of a
+    // max-align-aligned pointer.
+    kFlagFreeSharedInfo = 0x1,
+    kFlagMaybeShared = 0x2,
+    kFlagMask = kFlagFreeSharedInfo | kFlagMaybeShared
   };
 
   struct SharedInfo {
@@ -1153,10 +1137,10 @@ class IOBuf {
    * IOBuf.  The IOBuf constructor does not automatically increment the
    * reference count.
    */
-  IOBuf(ExtBufTypeEnum type, uint32_t flags,
-        uint8_t* buf, uint32_t capacity,
-        uint8_t* data, uint32_t length,
-        SharedInfo* sharedInfo);
+  struct InternalConstructor {};  // avoid conflicts
+  IOBuf(InternalConstructor, uintptr_t flagsAndSharedInfo,
+        uint8_t* buf, uint64_t capacity,
+        uint8_t* data, uint64_t length);
 
   void unshareOneSlow();
   void unshareChained();
@@ -1173,17 +1157,17 @@ class IOBuf {
     coalesceAndReallocate(headroom(), newLength, end, end->prev_->tailroom());
   }
   void decrementRefcount();
-  void reserveSlow(uint32_t minHeadroom, uint32_t minTailroom);
+  void reserveSlow(uint64_t minHeadroom, uint64_t minTailroom);
   void freeExtBuffer();
 
-  static size_t goodExtBufferSize(uint32_t minCapacity);
+  static size_t goodExtBufferSize(uint64_t minCapacity);
   static void initExtBuffer(uint8_t* buf, size_t mallocSize,
                             SharedInfo** infoReturn,
-                            uint32_t* capacityReturn);
-  static void allocExtBuffer(uint32_t minCapacity,
+                            uint64_t* capacityReturn);
+  static void allocExtBuffer(uint64_t minCapacity,
                              uint8_t** bufReturn,
                              SharedInfo** infoReturn,
-                             uint32_t* capacityReturn);
+                             uint64_t* capacityReturn);
   static void releaseStorage(HeapStorage* storage, uint16_t freeFlags);
   static void freeInternalBuf(void* buf, void* userData);
 
@@ -1209,13 +1193,48 @@ class IOBuf {
    */
   uint8_t* data_{nullptr};
   uint8_t* buf_{nullptr};
-  uint32_t length_{0};
-  uint32_t capacity_{0};
-  mutable uint32_t flags_{kFlagUserOwned};
-  uint32_t type_{kExtUserOwned};
-  // SharedInfo may be NULL if kFlagUserOwned is set.  It is non-NULL
-  // in all other cases.
-  SharedInfo* sharedInfo_{nullptr};
+  uint64_t length_{0};
+  uint64_t capacity_{0};
+
+  // Pack flags in least significant 2 bits, sharedInfo in the rest
+  mutable uintptr_t flagsAndSharedInfo_{0};
+
+  static inline uintptr_t packFlagsAndSharedInfo(uintptr_t flags,
+                                                 SharedInfo* info) {
+    uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
+    DCHECK_EQ(flags & ~kFlagMask, 0);
+    DCHECK_EQ(uinfo & kFlagMask, 0);
+    return flags | uinfo;
+  }
+
+  inline SharedInfo* sharedInfo() const {
+    return reinterpret_cast<SharedInfo*>(flagsAndSharedInfo_ & ~kFlagMask);
+  }
+
+  inline void setSharedInfo(SharedInfo* info) {
+    uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
+    DCHECK_EQ(uinfo & kFlagMask, 0);
+    flagsAndSharedInfo_ = (flagsAndSharedInfo_ & kFlagMask) | uinfo;
+  }
+
+  inline uintptr_t flags() const {
+    return flagsAndSharedInfo_ & kFlagMask;
+  }
+
+  // flags_ are changed from const methods
+  inline void setFlags(uintptr_t flags) const {
+    DCHECK_EQ(flags & ~kFlagMask, 0);
+    flagsAndSharedInfo_ |= flags;
+  }
+
+  inline void clearFlags(uintptr_t flags) const {
+    DCHECK_EQ(flags & ~kFlagMask, 0);
+    flagsAndSharedInfo_ &= ~flags;
+  }
+
+  inline void setFlagsAndSharedInfo(uintptr_t flags, SharedInfo* info) {
+    flagsAndSharedInfo_ = packFlagsAndSharedInfo(flags, info);
+  }
 
   struct DeleterBase {
     virtual ~DeleterBase() { }
@@ -1251,7 +1270,6 @@ typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
                         std::unique_ptr<IOBuf>>::type
 IOBuf::takeOwnership(UniquePtr&& buf, size_t count) {
   size_t size = count * sizeof(typename UniquePtr::element_type);
-  DCHECK_LT(size, size_t(std::numeric_limits<uint32_t>::max()));
   auto deleter = new UniquePtrDeleter<UniquePtr>(buf.get_deleter());
   return takeOwnership(buf.release(),
                        size,
@@ -1260,9 +1278,9 @@ IOBuf::takeOwnership(UniquePtr&& buf, size_t count) {
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
-    const void* data, uint32_t size, uint32_t headroom,
-    uint32_t minTailroom) {
-  uint32_t capacity = headroom + size + minTailroom;
+    const void* data, uint64_t size, uint64_t headroom,
+    uint64_t minTailroom) {
+  uint64_t capacity = headroom + size + minTailroom;
   std::unique_ptr<IOBuf> buf = create(capacity);
   buf->advance(headroom);
   memcpy(buf->writableData(), data, size);
@@ -1271,14 +1289,14 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(const std::string& buf,
-                                                uint32_t headroom,
-                                                uint32_t minTailroom) {
+                                                uint64_t headroom,
+                                                uint64_t minTailroom) {
   return copyBuffer(buf.data(), buf.size(), headroom, minTailroom);
 }
 
 inline std::unique_ptr<IOBuf> IOBuf::maybeCopyBuffer(const std::string& buf,
-                                                     uint32_t headroom,
-                                                     uint32_t minTailroom) {
+                                                     uint64_t headroom,
+                                                     uint64_t minTailroom) {
   if (buf.empty()) {
     return nullptr;
   }

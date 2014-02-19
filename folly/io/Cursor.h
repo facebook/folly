@@ -575,7 +575,7 @@ typedef RWCursor<CursorAccess::UNSHARE> RWUnshareCursor;
  */
 class Appender : public detail::Writable<Appender> {
  public:
-  Appender(IOBuf* buf, uint32_t growth)
+  Appender(IOBuf* buf, uint64_t growth)
     : buffer_(buf),
       crtBuf_(buf->prev()),
       growth_(growth) {
@@ -601,7 +601,7 @@ class Appender : public detail::Writable<Appender> {
    * Ensure at least n contiguous bytes available to write.
    * Postcondition: length() >= n.
    */
-  void ensure(uint32_t n) {
+  void ensure(uint64_t n) {
     if (LIKELY(length() >= n)) {
       return;
     }
@@ -653,7 +653,7 @@ class Appender : public detail::Writable<Appender> {
 
   IOBuf* buffer_;
   IOBuf* crtBuf_;
-  uint32_t growth_;
+  uint64_t growth_;
 };
 
 class QueueAppender : public detail::Writable<QueueAppender> {
@@ -663,11 +663,11 @@ class QueueAppender : public detail::Writable<QueueAppender> {
    * space in the queue, we grow no more than growth bytes at once
    * (unless you call ensure() with a bigger value yourself).
    */
-  QueueAppender(IOBufQueue* queue, uint32_t growth) {
+  QueueAppender(IOBufQueue* queue, uint64_t growth) {
     reset(queue, growth);
   }
 
-  void reset(IOBufQueue* queue, uint32_t growth) {
+  void reset(IOBufQueue* queue, uint64_t growth) {
     queue_ = queue;
     growth_ = growth;
   }
@@ -682,7 +682,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   // Ensure at least n contiguous; can go above growth_, throws if
   // not enough room.
-  void ensure(uint32_t n) { queue_->preallocate(n, growth_); }
+  void ensure(uint64_t n) { queue_->preallocate(n, growth_); }
 
   template <class T>
   typename std::enable_if<std::is_integral<T>::value>::type

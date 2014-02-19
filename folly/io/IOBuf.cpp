@@ -41,7 +41,7 @@ enum : uint16_t {
   kDataInUse = 0x02,
 };
 
-enum : uint32_t {
+enum : uint64_t {
   // When create() is called for buffers less than kDefaultCombinedBufSize,
   // we allocate a single combined memory segment for the IOBuf and the data
   // together.  See the comments for createCombined()/createSeparate() for more
@@ -103,6 +103,11 @@ struct IOBuf::HeapStorage {
 };
 
 struct IOBuf::HeapFullStorage {
+  // Make sure jemalloc allocates from the 64-byte class.  Putting this here
+  // because HeapStorage is private so it can't be at namespace level.
+  static_assert(sizeof(HeapStorage) <= 64,
+                "IOBuf may not grow over 56 bytes!");
+
   HeapStorage hs;
   SharedInfo shared;
   MaxAlign align;
@@ -184,19 +189,20 @@ void IOBuf::freeInternalBuf(void* buf, void* userData) {
   releaseStorage(storage, kDataInUse);
 }
 
-IOBuf::IOBuf(CreateOp, uint32_t capacity)
+IOBuf::IOBuf(CreateOp, uint64_t capacity)
   : next_(this),
     prev_(this),
     data_(nullptr),
     length_(0),
-    flags_(0),
-    type_(kExtAllocated) {
-  allocExtBuffer(capacity, &buf_, &sharedInfo_, &capacity_);
+    flagsAndSharedInfo_(0) {
+  SharedInfo* info;
+  allocExtBuffer(capacity, &buf_, &info, &capacity_);
+  setSharedInfo(info);
   data_ = buf_;
 }
 
-IOBuf::IOBuf(CopyBufferOp op, const void* buf, uint32_t size,
-             uint32_t headroom, uint32_t minTailroom)
+IOBuf::IOBuf(CopyBufferOp op, const void* buf, uint64_t size,
+             uint64_t headroom, uint64_t minTailroom)
   : IOBuf(CREATE, headroom + size + minTailroom) {
   advance(headroom);
   memcpy(writableData(), buf, size);
@@ -204,11 +210,11 @@ IOBuf::IOBuf(CopyBufferOp op, const void* buf, uint32_t size,
 }
 
 IOBuf::IOBuf(CopyBufferOp op, ByteRange br,
-             uint32_t headroom, uint32_t minTailroom)
+             uint64_t headroom, uint64_t minTailroom)
   : IOBuf(op, br.data(), br.size(), headroom, minTailroom) {
 }
 
-unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
+unique_ptr<IOBuf> IOBuf::create(uint64_t capacity) {
   // For smaller-sized buffers, allocate the IOBuf, SharedInfo, and the buffer
   // all with a single allocation.
   //
@@ -224,7 +230,7 @@ unique_ptr<IOBuf> IOBuf::create(uint32_t capacity) {
   return createSeparate(capacity);
 }
 
-unique_ptr<IOBuf> IOBuf::createCombined(uint32_t capacity) {
+unique_ptr<IOBuf> IOBuf::createCombined(uint64_t capacity) {
   // To save a memory allocation, allocate space for the IOBuf object, the
   // SharedInfo struct, and the data itself all with a single call to malloc().
   size_t requiredStorage = offsetof(HeapFullStorage, align) + capacity;
@@ -238,17 +244,17 @@ unique_ptr<IOBuf> IOBuf::createCombined(uint32_t capacity) {
   uint8_t* storageEnd = reinterpret_cast<uint8_t*>(storage) + mallocSize;
   size_t actualCapacity = storageEnd - bufAddr;
   unique_ptr<IOBuf> ret(new (&storage->hs.buf) IOBuf(
-        kCombinedAlloc, 0, bufAddr, actualCapacity,
-        bufAddr, 0, &storage->shared));
+        InternalConstructor(), packFlagsAndSharedInfo(0, &storage->shared),
+        bufAddr, actualCapacity, bufAddr, 0));
   return ret;
 }
 
-unique_ptr<IOBuf> IOBuf::createSeparate(uint32_t capacity) {
+unique_ptr<IOBuf> IOBuf::createSeparate(uint64_t capacity) {
   return make_unique<IOBuf>(CREATE, capacity);
 }
 
 unique_ptr<IOBuf> IOBuf::createChain(
-    size_t totalCapacity, uint32_t maxBufCapacity) {
+    size_t totalCapacity, uint64_t maxBufCapacity) {
   unique_ptr<IOBuf> out = create(
       std::min(totalCapacity, size_t(maxBufCapacity)));
   size_t allocatedCapacity = out->capacity();
@@ -263,7 +269,7 @@ unique_ptr<IOBuf> IOBuf::createChain(
   return out;
 }
 
-IOBuf::IOBuf(TakeOwnershipOp, void* buf, uint32_t capacity, uint32_t length,
+IOBuf::IOBuf(TakeOwnershipOp, void* buf, uint64_t capacity, uint64_t length,
              FreeFunction freeFn, void* userData,
              bool freeOnError)
   : next_(this),
@@ -272,18 +278,17 @@ IOBuf::IOBuf(TakeOwnershipOp, void* buf, uint32_t capacity, uint32_t length,
     buf_(static_cast<uint8_t*>(buf)),
     length_(length),
     capacity_(capacity),
-    flags_(kFlagFreeSharedInfo),
-    type_(kExtUserSupplied) {
+    flagsAndSharedInfo_(packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
   try {
-    sharedInfo_ = new SharedInfo(freeFn, userData);
+    setSharedInfo(new SharedInfo(freeFn, userData));
   } catch (...) {
     takeOwnershipError(freeOnError, buf, freeFn, userData);
     throw;
   }
 }
 
-unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
-                                       uint32_t length,
+unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint64_t capacity,
+                                       uint64_t length,
                                        FreeFunction freeFn,
                                        void* userData,
                                        bool freeOnError) {
@@ -305,21 +310,20 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(void* buf, uint32_t capacity,
   }
 }
 
-IOBuf::IOBuf(WrapBufferOp, const void* buf, uint32_t capacity)
-  : IOBuf(kExtUserOwned, kFlagUserOwned,
+IOBuf::IOBuf(WrapBufferOp, const void* buf, uint64_t capacity)
+  : IOBuf(InternalConstructor(), 0,
           // We cast away the const-ness of the buffer here.
           // This is okay since IOBuf users must use unshare() to create a copy
           // of this buffer before writing to the buffer.
           static_cast<uint8_t*>(const_cast<void*>(buf)), capacity,
-          static_cast<uint8_t*>(const_cast<void*>(buf)), capacity,
-          nullptr) {
+          static_cast<uint8_t*>(const_cast<void*>(buf)), capacity) {
 }
 
 IOBuf::IOBuf(WrapBufferOp op, ByteRange br)
-  : IOBuf(op, br.data(), folly::to<uint32_t>(br.size())) {
+  : IOBuf(op, br.data(), br.size()) {
 }
 
-unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint32_t capacity) {
+unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
   return make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
@@ -330,26 +334,21 @@ IOBuf::IOBuf(IOBuf&& other) noexcept {
   *this = std::move(other);
 }
 
-IOBuf::IOBuf(ExtBufTypeEnum type,
-             uint32_t flags,
+IOBuf::IOBuf(InternalConstructor,
+             uintptr_t flagsAndSharedInfo,
              uint8_t* buf,
-             uint32_t capacity,
+             uint64_t capacity,
              uint8_t* data,
-             uint32_t length,
-             SharedInfo* sharedInfo)
+             uint64_t length)
   : next_(this),
     prev_(this),
     data_(data),
     buf_(buf),
     length_(length),
     capacity_(capacity),
-    flags_(flags),
-    type_(type),
-    sharedInfo_(sharedInfo) {
+    flagsAndSharedInfo_(flagsAndSharedInfo) {
   assert(data >= buf);
   assert(data + length <= buf + capacity);
-  assert(static_cast<bool>(flags & kFlagUserOwned) ==
-         (sharedInfo == NULL));
 }
 
 IOBuf::~IOBuf() {
@@ -381,17 +380,13 @@ IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
   buf_ = other.buf_;
   length_ = other.length_;
   capacity_ = other.capacity_;
-  flags_ = other.flags_;
-  type_ = other.type_;
-  sharedInfo_ = other.sharedInfo_;
+  flagsAndSharedInfo_ = other.flagsAndSharedInfo_;
   // Reset other so it is a clean state to be destroyed.
   other.data_ = nullptr;
   other.buf_ = nullptr;
   other.length_ = 0;
   other.capacity_ = 0;
-  other.flags_ = kFlagUserOwned;
-  other.type_ = kExtUserOwned;
-  other.sharedInfo_ = nullptr;
+  other.flagsAndSharedInfo_ = 0;
 
   // If other was part of the chain, assume ownership of the rest of its chain.
   // (It's only valid to perform move assignment on the head of a chain.)
@@ -408,7 +403,6 @@ IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
   // Sanity check to make sure that other is in a valid state to be destroyed.
   DCHECK_EQ(other.prev_, &other);
   DCHECK_EQ(other.next_, &other);
-  DCHECK(other.flags_ & kFlagUserOwned);
 
   return *this;
 }
@@ -424,8 +418,8 @@ bool IOBuf::empty() const {
   return true;
 }
 
-uint32_t IOBuf::countChainElements() const {
-  uint32_t numElements = 1;
+size_t IOBuf::countChainElements() const {
+  size_t numElements = 1;
   for (IOBuf* current = next_; current != this; current = current->next_) {
     ++numElements;
   }
@@ -482,15 +476,15 @@ void IOBuf::cloneInto(IOBuf& other) const {
 }
 
 void IOBuf::cloneOneInto(IOBuf& other) const {
-  if (sharedInfo_) {
-    flags_ |= kFlagMaybeShared;
+  SharedInfo* info = sharedInfo();
+  if (info) {
+    setFlags(kFlagMaybeShared);
   }
-  other = IOBuf(static_cast<ExtBufTypeEnum>(type_),
-                flags_, buf_, capacity_,
-                data_, length_,
-                sharedInfo_);
-  if (sharedInfo_) {
-    sharedInfo_->refcount.fetch_add(1, std::memory_order_acq_rel);
+  other = IOBuf(InternalConstructor(),
+                flagsAndSharedInfo_, buf_, capacity_,
+                data_, length_);
+  if (info) {
+    info->refcount.fetch_add(1, std::memory_order_acq_rel);
   }
 }
 
@@ -498,25 +492,23 @@ void IOBuf::unshareOneSlow() {
   // Allocate a new buffer for the data
   uint8_t* buf;
   SharedInfo* sharedInfo;
-  uint32_t actualCapacity;
+  uint64_t actualCapacity;
   allocExtBuffer(capacity_, &buf, &sharedInfo, &actualCapacity);
 
   // Copy the data
   // Maintain the same amount of headroom.  Since we maintained the same
   // minimum capacity we also maintain at least the same amount of tailroom.
-  uint32_t headlen = headroom();
+  uint64_t headlen = headroom();
   memcpy(buf + headlen, data_, length_);
 
   // Release our reference on the old buffer
   decrementRefcount();
-  // Make sure kFlagUserOwned, kFlagMaybeShared, and kFlagFreeSharedInfo
-  // are all cleared.
-  flags_ = 0;
+  // Make sure kFlagMaybeShared and kFlagFreeSharedInfo are all cleared.
+  setFlagsAndSharedInfo(0, sharedInfo);
 
   // Update the buffer pointers to point to the new buffer
   data_ = buf + headlen;
   buf_ = buf;
-  sharedInfo_ = sharedInfo;
 }
 
 void IOBuf::unshareChained() {
@@ -601,7 +593,7 @@ void IOBuf::coalesceAndReallocate(size_t newHeadroom,
   // internal buffer before.
   uint8_t* newBuf;
   SharedInfo* newInfo;
-  uint32_t actualCapacity;
+  uint64_t actualCapacity;
   allocExtBuffer(newCapacity, &newBuf, &newInfo, &actualCapacity);
 
   // Copy the data into the new buffer
@@ -621,14 +613,11 @@ void IOBuf::coalesceAndReallocate(size_t newHeadroom,
   // Point at the new buffer
   decrementRefcount();
 
-  // Make sure kFlagUserOwned, kFlagMaybeShared, and kFlagFreeSharedInfo
-  // are all cleared.
-  flags_ = 0;
+  // Make sure kFlagMaybeShared and kFlagFreeSharedInfo are all cleared.
+  setFlagsAndSharedInfo(0, newInfo);
 
   capacity_ = actualCapacity;
-  type_ = kExtAllocated;
   buf_ = newBuf;
-  sharedInfo_ = newInfo;
   data_ = newData;
   length_ = newLength;
 
@@ -643,13 +632,13 @@ void IOBuf::coalesceAndReallocate(size_t newHeadroom,
 void IOBuf::decrementRefcount() {
   // Externally owned buffers don't have a SharedInfo object and aren't managed
   // by the reference count
-  if (flags_ & kFlagUserOwned) {
-    assert(sharedInfo_ == nullptr);
+  SharedInfo* info = sharedInfo();
+  if (!info) {
     return;
   }
 
   // Decrement the refcount
-  uint32_t newcnt = sharedInfo_->refcount.fetch_sub(
+  uint32_t newcnt = info->refcount.fetch_sub(
       1, std::memory_order_acq_rel);
   // Note that fetch_sub() returns the value before we decremented.
   // If it is 1, we were the only remaining user; if it is greater there are
@@ -671,12 +660,12 @@ void IOBuf::decrementRefcount() {
   // takeOwnership() store the user's free function with its allocated
   // SharedInfo object.)  However, handling this specially with a flag seems
   // like it shouldn't be problematic.
-  if (flags_ & kFlagFreeSharedInfo) {
-    delete sharedInfo_;
+  if (flags() & kFlagFreeSharedInfo) {
+    delete sharedInfo();
   }
 }
 
-void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
+void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
   size_t newCapacity = (size_t)length_ + minHeadroom + minTailroom;
   DCHECK_LT(newCapacity, UINT32_MAX);
 
@@ -708,13 +697,14 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
 
   size_t newAllocatedCapacity = goodExtBufferSize(newCapacity);
   uint8_t* newBuffer = nullptr;
-  uint32_t newHeadroom = 0;
-  uint32_t oldHeadroom = headroom();
+  uint64_t newHeadroom = 0;
+  uint64_t oldHeadroom = headroom();
 
   // If we have a buffer allocated with malloc and we just need more tailroom,
   // try to use realloc()/rallocm() to grow the buffer in place.
-  if ((flags_ & kFlagUserOwned) == 0 && (sharedInfo_->freeFn == nullptr) &&
-      length_ != 0 && oldHeadroom >= minHeadroom) {
+  SharedInfo* info = sharedInfo();
+  if (info && (info->freeFn == nullptr) && length_ != 0 &&
+      oldHeadroom >= minHeadroom) {
     if (usingJEMalloc()) {
       size_t headSlack = oldHeadroom - minHeadroom;
       // We assume that tailroom is more useful and more important than
@@ -767,35 +757,33 @@ void IOBuf::reserveSlow(uint32_t minHeadroom, uint32_t minTailroom) {
     }
     newBuffer = static_cast<uint8_t*>(p);
     memcpy(newBuffer + minHeadroom, data_, length_);
-    if ((flags_ & kFlagUserOwned) == 0) {
+    if (sharedInfo()) {
       freeExtBuffer();
     }
     newHeadroom = minHeadroom;
   }
 
-  SharedInfo* info;
-  uint32_t cap;
+  uint64_t cap;
   initExtBuffer(newBuffer, newAllocatedCapacity, &info, &cap);
 
-  if (flags_ & kFlagFreeSharedInfo) {
-    delete sharedInfo_;
+  if (flags() & kFlagFreeSharedInfo) {
+    delete sharedInfo();
   }
 
-  flags_ = 0;
+  setFlagsAndSharedInfo(0, info);
   capacity_ = cap;
-  type_ = kExtAllocated;
   buf_ = newBuffer;
-  sharedInfo_ = info;
   data_ = newBuffer + newHeadroom;
   // length_ is unchanged
 }
 
 void IOBuf::freeExtBuffer() {
-  DCHECK((flags_ & kFlagUserOwned) == 0);
+  SharedInfo* info = sharedInfo();
+  DCHECK(info);
 
-  if (sharedInfo_->freeFn) {
+  if (info->freeFn) {
     try {
-      sharedInfo_->freeFn(buf_, sharedInfo_->userData);
+      info->freeFn(buf_, info->userData);
     } catch (...) {
       // The user's free function should never throw.  Otherwise we might
       // throw from the IOBuf destructor.  Other code paths like coalesce()
@@ -807,10 +795,10 @@ void IOBuf::freeExtBuffer() {
   }
 }
 
-void IOBuf::allocExtBuffer(uint32_t minCapacity,
+void IOBuf::allocExtBuffer(uint64_t minCapacity,
                            uint8_t** bufReturn,
                            SharedInfo** infoReturn,
-                           uint32_t* capacityReturn) {
+                           uint64_t* capacityReturn) {
   size_t mallocSize = goodExtBufferSize(minCapacity);
   uint8_t* buf = static_cast<uint8_t*>(malloc(mallocSize));
   if (UNLIKELY(buf == NULL)) {
@@ -820,7 +808,7 @@ void IOBuf::allocExtBuffer(uint32_t minCapacity,
   *bufReturn = buf;
 }
 
-size_t IOBuf::goodExtBufferSize(uint32_t minCapacity) {
+size_t IOBuf::goodExtBufferSize(uint64_t minCapacity) {
   // Determine how much space we should allocate.  We'll store the SharedInfo
   // for the external buffer just after the buffer itself.  (We store it just
   // after the buffer rather than just before so that the code can still just
@@ -838,34 +826,25 @@ size_t IOBuf::goodExtBufferSize(uint32_t minCapacity) {
 
 void IOBuf::initExtBuffer(uint8_t* buf, size_t mallocSize,
                           SharedInfo** infoReturn,
-                          uint32_t* capacityReturn) {
+                          uint64_t* capacityReturn) {
   // Find the SharedInfo storage at the end of the buffer
   // and construct the SharedInfo.
   uint8_t* infoStart = (buf + mallocSize) - sizeof(SharedInfo);
   SharedInfo* sharedInfo = new(infoStart) SharedInfo;
 
-  size_t actualCapacity = infoStart - buf;
-  // On the unlikely possibility that the actual capacity is larger than can
-  // fit in a uint32_t after adding room for the refcount and calling
-  // goodMallocSize(), truncate downwards if necessary.
-  if (actualCapacity >= UINT32_MAX) {
-    *capacityReturn = UINT32_MAX;
-  } else {
-    *capacityReturn = actualCapacity;
-  }
-
+  *capacityReturn = infoStart - buf;
   *infoReturn = sharedInfo;
 }
 
 fbstring IOBuf::moveToFbString() {
   // malloc-allocated buffers are just fine, everything else needs
   // to be turned into one.
-  if ((flags_ & kFlagUserOwned) ||  // user owned, not ours to give up
-      sharedInfo_->freeFn != nullptr || // not malloc()-ed
-      headroom() != 0 ||     // malloc()-ed block doesn't start at beginning
-      tailroom() == 0 ||     // no room for NUL terminator
-      isShared() ||          // shared
-      isChained()) {         // chained
+  if (!sharedInfo() ||         // user owned, not ours to give up
+      sharedInfo()->freeFn ||  // not malloc()-ed
+      headroom() != 0 ||       // malloc()-ed block doesn't start at beginning
+      tailroom() == 0 ||       // no room for NUL terminator
+      isShared() ||            // shared
+      isChained()) {           // chained
     // We might as well get rid of all head and tailroom if we're going
     // to reallocate; we need 1 byte for NUL terminator.
     coalesceAndReallocate(0, computeChainDataLength(), this, 1);
@@ -877,13 +856,12 @@ fbstring IOBuf::moveToFbString() {
                length(),  capacity(),
                AcquireMallocatedString());
 
-  if (flags_ & kFlagFreeSharedInfo) {
-    delete sharedInfo_;
+  if (flags() & kFlagFreeSharedInfo) {
+    delete sharedInfo();
   }
 
   // Reset to a state where we can be deleted cleanly
-  flags_ = kFlagUserOwned;
-  sharedInfo_ = nullptr;
+  flagsAndSharedInfo_ = 0;
   buf_ = nullptr;
   clear();
   return str;

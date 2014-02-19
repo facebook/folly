@@ -54,18 +54,18 @@ class IOBufQueue {
   /**
    * Return a space to prepend bytes and the amount of headroom available.
    */
-  std::pair<void*, uint32_t> headroom();
+  std::pair<void*, uint64_t> headroom();
 
   /**
    * Indicate that n bytes from the headroom have been used.
    */
-  void markPrepended(uint32_t n);
+  void markPrepended(uint64_t n);
 
   /**
    * Prepend an existing range; throws std::overflow_error if not enough
    * room.
    */
-  void prepend(const void* buf, uint32_t n);
+  void prepend(const void* buf, uint64_t n);
 
   /**
    * Add a buffer or buffer chain to the end of this queue. The
@@ -115,7 +115,7 @@ class IOBufQueue {
    * Importantly, this method may be used to wrap buffers larger than 4GB.
    */
   void wrapBuffer(const void* buf, size_t len,
-                  uint32_t blockSize=(1U << 31));  // default block size: 2GB
+                  uint64_t blockSize=(1U << 31));  // default block size: 2GB
 
   /**
    * Obtain a writable block of contiguous bytes at the end of this
@@ -137,9 +137,9 @@ class IOBufQueue {
    *       callback, tell the application how much of the buffer they've
    *       filled with data.
    */
-  std::pair<void*,uint32_t> preallocate(
-    uint32_t min, uint32_t newAllocationSize,
-    uint32_t max = std::numeric_limits<uint32_t>::max()) {
+  std::pair<void*,uint64_t> preallocate(
+    uint64_t min, uint64_t newAllocationSize,
+    uint64_t max = std::numeric_limits<uint64_t>::max()) {
     auto buf = tailBuf();
     if (LIKELY(buf && buf->tailroom() >= min)) {
       return std::make_pair(buf->writableTail(),
@@ -159,7 +159,7 @@ class IOBufQueue {
    *       invoke any other non-const methods on this IOBufQueue between
    *       the call to preallocate and the call to postallocate().
    */
-  void postallocate(uint32_t n) {
+  void postallocate(uint64_t n) {
     head_->prev()->append(n);
     chainLength_ += n;
   }
@@ -168,7 +168,7 @@ class IOBufQueue {
    * Obtain a writable block of n contiguous bytes, allocating more space
    * if necessary, and mark it as used.  The caller can fill it later.
    */
-  void* allocate(uint32_t n) {
+  void* allocate(uint64_t n) {
     void* p = preallocate(n, n).first;
     postallocate(n);
     return p;
@@ -271,8 +271,8 @@ class IOBufQueue {
     IOBuf* buf = head_->prev();
     return LIKELY(!buf->isSharedOne()) ? buf : nullptr;
   }
-  std::pair<void*,uint32_t> preallocateSlow(
-    uint32_t min, uint32_t newAllocationSize, uint32_t max);
+  std::pair<void*,uint64_t> preallocateSlow(
+    uint64_t min, uint64_t newAllocationSize, uint64_t max);
 
   static const size_t kChainLengthNotCached = (size_t)-1;
   /** Not copyable */
