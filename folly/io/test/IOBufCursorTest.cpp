@@ -98,15 +98,23 @@ TEST(IOBuf, copy_assign_convert) {
   EXPECT_EQ(3, cursor4.read<uint8_t>());
 }
 
-TEST(IOBuf, overloading) {
-  unique_ptr<IOBuf> iobuf1(IOBuf::create(20));
-  iobuf1->append(20);
-  RWPrivateCursor wcursor(iobuf1.get());
+TEST(IOBuf, arithmetic) {
+  IOBuf iobuf1(IOBuf::CREATE, 20);
+  iobuf1.append(20);
+  RWPrivateCursor wcursor(&iobuf1);
   wcursor += 1;
   wcursor.write((uint8_t)1);
-  Cursor cursor(iobuf1.get());
+  Cursor cursor(&iobuf1);
   cursor += 1;
   EXPECT_EQ(1, cursor.read<uint8_t>());
+
+  Cursor start(&iobuf1);
+  Cursor cursor2 = start + 9;
+  EXPECT_EQ(7, cursor2 - cursor);
+  EXPECT_NE(cursor, cursor2);
+  cursor += 8;
+  cursor2 = cursor2 + 1;
+  EXPECT_EQ(cursor, cursor2);
 }
 
 TEST(IOBuf, endian) {

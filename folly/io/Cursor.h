@@ -84,6 +84,24 @@ class CursorBase {
     p->skip(offset);
     return *p;
   }
+  Derived operator+(size_t offset) const {
+    Derived other(*this);
+    other.skip(offset);
+    return other;
+  }
+
+  /**
+   * Compare cursors for equality/inequality.
+   *
+   * Two cursors are equal if they are pointing to the same location in the
+   * same IOBuf chain.
+   */
+  bool operator==(const Derived& other) const {
+    return (offset_ == other.offset_) && (crtBuf_ == other.crtBuf_);
+  }
+  bool operator!=(const Derived& other) const {
+    return !operator==(other);
+  }
 
   template <class T>
   typename std::enable_if<std::is_arithmetic<T>::value, T>::type
