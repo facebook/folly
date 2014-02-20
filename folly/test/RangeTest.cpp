@@ -908,3 +908,17 @@ TYPED_TEST(NeedleFinderTest, NoSegFault) {
   }
 }
 
+TEST(NonConstTest, StringPiece) {
+  std::string hello("hello");
+  MutableStringPiece sp(&hello.front(), hello.size());
+  sp[0] = 'x';
+  EXPECT_EQ("xello", hello);
+  {
+    StringPiece s(sp);
+    EXPECT_EQ("xello", s);
+  }
+  {
+    ByteRange r1(sp);
+    MutableByteRange r2(sp);
+  }
+}

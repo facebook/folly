@@ -240,18 +240,57 @@ public:
   // direction.
   template <class OtherIter, typename std::enable_if<
       (std::is_same<Iter, const unsigned char*>::value &&
-       std::is_same<OtherIter, const char*>::value), int>::type = 0>
+       (std::is_same<OtherIter, const char*>::value ||
+        std::is_same<OtherIter, char*>::value)), int>::type = 0>
   /* implicit */ Range(const Range<OtherIter>& other)
     : b_(reinterpret_cast<const unsigned char*>(other.begin())),
       e_(reinterpret_cast<const unsigned char*>(other.end())) {
   }
 
   template <class OtherIter, typename std::enable_if<
+      (std::is_same<Iter, unsigned char*>::value &&
+       std::is_same<OtherIter, char*>::value), int>::type = 0>
+  /* implicit */ Range(const Range<OtherIter>& other)
+    : b_(reinterpret_cast<unsigned char*>(other.begin())),
+      e_(reinterpret_cast<unsigned char*>(other.end())) {
+  }
+
+  template <class OtherIter, typename std::enable_if<
       (std::is_same<Iter, const char*>::value &&
-       std::is_same<OtherIter, const unsigned char*>::value), int>::type = 0>
+       (std::is_same<OtherIter, const unsigned char*>::value ||
+        std::is_same<OtherIter, unsigned char*>::value)), int>::type = 0>
   explicit Range(const Range<OtherIter>& other)
     : b_(reinterpret_cast<const char*>(other.begin())),
       e_(reinterpret_cast<const char*>(other.end())) {
+  }
+
+  template <class OtherIter, typename std::enable_if<
+      (std::is_same<Iter, char*>::value &&
+       std::is_same<OtherIter, unsigned char*>::value), int>::type = 0>
+  explicit Range(const Range<OtherIter>& other)
+    : b_(reinterpret_cast<char*>(other.begin())),
+      e_(reinterpret_cast<char*>(other.end())) {
+  }
+
+  // Allow implicit conversion from Range<From> to Range<To> if From is
+  // implicitly convertible to To.
+  template <class OtherIter, typename std::enable_if<
+     (!std::is_same<Iter, OtherIter>::value &&
+      std::is_convertible<OtherIter, Iter>::value), int>::type = 0>
+  /* implicit */ Range(const Range<OtherIter>& other)
+    : b_(other.begin()),
+      e_(other.end()) {
+  }
+
+  // Allow explicit conversion from Range<From> to Range<To> if From is
+  // explicitly convertible to To.
+  template <class OtherIter, typename std::enable_if<
+    (!std::is_same<Iter, OtherIter>::value &&
+     !std::is_convertible<OtherIter, Iter>::value &&
+     std::is_constructible<Iter, const OtherIter&>::value), int>::type = 0>
+  explicit Range(const Range<OtherIter>& other)
+    : b_(other.begin()),
+      e_(other.end()) {
   }
 
   void clear() {
@@ -616,7 +655,9 @@ Range<Iter> makeRange(Iter first, Iter last) {
 }
 
 typedef Range<const char*> StringPiece;
+typedef Range<char*> MutableStringPiece;
 typedef Range<const unsigned char*> ByteRange;
+typedef Range<unsigned char*> MutableByteRange;
 
 std::ostream& operator<<(std::ostream& os, const StringPiece& piece);
 
