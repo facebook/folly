@@ -86,7 +86,7 @@ class CursorBase {
   }
 
   template <class T>
-  typename std::enable_if<std::is_integral<T>::value, T>::type
+  typename std::enable_if<std::is_arithmetic<T>::value, T>::type
   read() {
     T val;
     pull(&val, sizeof(T));
@@ -409,7 +409,7 @@ template <class Derived>
 class Writable {
  public:
   template <class T>
-  typename std::enable_if<std::is_integral<T>::value>::type
+  typename std::enable_if<std::is_arithmetic<T>::value>::type
   write(T value) {
     const uint8_t* u8 = reinterpret_cast<const uint8_t*>(&value);
     Derived* d = static_cast<Derived*>(this);
@@ -685,7 +685,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   void ensure(uint64_t n) { queue_->preallocate(n, growth_); }
 
   template <class T>
-  typename std::enable_if<std::is_integral<T>::value>::type
+  typename std::enable_if<std::is_arithmetic<T>::value>::type
   write(T value) {
     // We can't fail.
     auto p = queue_->preallocate(sizeof(T), growth_);
