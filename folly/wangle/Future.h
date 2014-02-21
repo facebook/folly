@@ -75,8 +75,7 @@ class Future {
   template <typename Executor>
   void executeWith(Executor* executor, Promise<T>&& cont_promise);
 
-  /** True when the result (or exception) is ready.  value() will not block
-      when this returns true. */
+  /** True when the result (or exception) is ready. */
   bool isReady() const;
 
   /** A reference to the Try of the value */
@@ -88,36 +87,39 @@ class Future {
 
     Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
 
-    The functor given may call value() without blocking, which may rethrow if
-    this has captured an exception. If func throws, the exception will be
-    captured in the Future that is returned.
+    The Future given to the functor is ready, and the functor may call
+    value(), which may rethrow if this has captured an exception. If func
+    throws, the exception will be captured in the Future that is returned.
     */
-  /* n3428 has then(scheduler&, F&&), we might want to reorganize to use
-     similar API. or maybe not */
+  /* TODO n3428 and other async frameworks have something like then(scheduler,
+     Future), we probably want to support a similar API (instead of
+     executeWith). */
   template <class F>
   typename std::enable_if<
     !isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
     Future<typename std::result_of<F(Try<T>&&)>::type> >::type
   then(F&& func);
 
+  /// Variant where func returns a future<T> instead of a T. e.g.
+  ///
+  ///   Future<string> f2 = f1.then(
+  ///     [](Try<T>&&) { return makeFuture<string>("foo"); });
   template <class F>
   typename std::enable_if<
     isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
     Future<typename std::result_of<F(Try<T>&&)>::type::value_type> >::type
   then(F&& func);
 
-  /** Use this method on the Future when we don't really care about the
-    returned value and want to convert the Future<T> to a Future<void>
-    Convenience function
-    */
+  /// Convenience method for ignoring the value and creating a Future<void>.
+  /// Exceptions still propagate.
   Future<void> then();
 
+  /// Use of this method is advanced wizardry.
+  /// XXX should this be protected?
   template <class F>
   void setContinuation(F&& func);
 
  private:
-  /* Eventually this may not be a shared_ptr, but something similar without
-     expensive thread-safety. */
   typedef detail::FutureObject<T>* objPtr;
 
   // shared state object
@@ -131,8 +133,15 @@ class Future {
   friend class Promise<T>;
 };
 
-/** Make a completed Future by moving in a value. e.g.
-  auto f = makeFuture(string("foo"));
+/**
+  Make a completed Future by moving in a value. e.g.
+
+    string foo = "foo";
+    auto f = makeFuture(std::move(foo));
+
+  or
+
+    auto f = makeFuture<string>("foo");
 */
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t);
@@ -154,11 +163,10 @@ auto makeFutureTry(
   F const& func)
   -> Future<decltype(func())>;
 
-/** Make a completed (error) Future from an exception_ptr. Because the type
-can't be inferred you have to give it, e.g.
-
-auto f = makeFuture<string>(std::current_exception());
-*/
+/// Make a failed Future from an exception_ptr.
+/// Because the Future's type cannot be inferred you have to specify it, e.g.
+///
+///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
 Future<T> makeFuture(std::exception_ptr const& e);
 
@@ -176,19 +184,20 @@ makeFuture(E const& e);
   The Futures are moved in, so your copies are invalid. If you need to
   chain further from these Futures, use the variant with an output iterator.
 
+  XXX is this still true?
   This function is thread-safe for Futures running on different threads.
 
-  The return type for Future<T> input is a Future<vector<Try<T>>>
+  The return type for Future<T> input is a Future<std::vector<Try<T>>>
   */
 template <class InputIterator>
 Future<std::vector<Try<
   typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 whenAll(InputIterator first, InputIterator last);
 
-/** This version takes a varying number of Futures instead of an iterator.
-  The return type for (Future<T1>, Future<T2>, ...) input
-  is a Future<tuple<Try<T1>, Try<T2>, ...>>.
-  */
+/// This version takes a varying number of Futures instead of an iterator.
+/// The return type for (Future<T1>, Future<T2>, ...) input
+/// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
+// XXX why does it take Fs& instead of Fs&&?
 template <typename... Fs>
 typename detail::VariadicContext<typename Fs::value_type...>::type
 whenAll(Fs&... fs);
@@ -220,17 +229,3 @@ whenN(InputIterator first, InputIterator last, size_t n);
 }} // folly::wangle
 
 #include "Future-inl.h"
-
-/*
-
-TODO
-
-I haven't included a Future<T&> specialization because I don't forsee us
-using it, however it is not difficult to add when needed. Refer to
-Future<void> for guidance. std::Future and boost::Future code would also be
-instructive.
-
-I think that this might be a good candidate for folly, once it has baked for
-awhile.
-
-*/

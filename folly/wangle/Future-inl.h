@@ -400,3 +400,8 @@ whenN(InputIterator first, InputIterator last, size_t n) {
 }
 
 }}
+
+// I haven't included a Future<T&> specialization because I don't forsee us
+// using it, however it is not difficult to add when needed. Refer to
+// Future<void> for guidance. std::future and boost::future code would also be
+// instructive.
