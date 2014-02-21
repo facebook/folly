@@ -125,7 +125,22 @@ nobase_follyinclude_HEADERS = \
 	Unicode.h \
 	Uri.h \
 	Uri-inl.h \
-	Varint.h
+	Varint.h \
+	wangle/Executor.h \
+	wangle/Future-inl.h \
+	wangle/Future.h \
+	wangle/GenericThreadGate.h \
+	wangle/InlineExecutor.h \
+	wangle/Later-inl.h \
+	wangle/Later.h \
+	wangle/ManualExecutor.h \
+	wangle/Promise-inl.h \
+	wangle/Promise.h \
+	wangle/ThreadGate.h \
+	wangle/Try-inl.h \
+	wangle/Try.h \
+	wangle/WangleException.h \
+	wangle/detail.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
@@ -168,7 +183,10 @@ libfolly_la_SOURCES = \
 	ThreadCachedArena.cpp \
 	TimeoutQueue.cpp \
 	Unicode.cpp \
-	Uri.cpp
+	Uri.cpp \
+	wangle/InlineExecutor.cpp \
+	wangle/ManualExecutor.cpp \
+	wangle/ThreadGate.cpp
 
 if !HAVE_LINUX
 nobase_follyinclude_HEADERS += detail/Clock.h
@@ -196,4 +214,3 @@ libfollybenchmark_la_LIBADD = libfolly.la
 
 libfollytimeout_queue_la_SOURCES = TimeoutQueue.cpp
 libfollytimeout_queue_la_LIBADD = libfolly.la
-
