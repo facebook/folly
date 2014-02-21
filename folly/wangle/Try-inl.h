@@ -24,9 +24,9 @@ namespace folly { namespace wangle {
 
 template <class T>
 Try<T>::Try(Try<T>&& t) : contains_(t.contains_) {
-  if (contains_ == VALUE) {
+  if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
-  } else if (contains_ == EXCEPTION) {
+  } else if (contains_ == Contains::EXCEPTION) {
     new (&e_)std::exception_ptr(t.e_);
   }
 }
@@ -35,9 +35,9 @@ template <class T>
 Try<T>& Try<T>::operator=(Try<T>&& t) {
   this->~Try();
   contains_ = t.contains_;
-  if (contains_ == VALUE) {
+  if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
-  } else if (contains_ == EXCEPTION) {
+  } else if (contains_ == Contains::EXCEPTION) {
     new (&e_)std::exception_ptr(t.e_);
   }
   return *this;
@@ -45,9 +45,9 @@ Try<T>& Try<T>::operator=(Try<T>&& t) {
 
 template <class T>
 Try<T>::~Try() {
-  if (contains_ == VALUE) {
+  if (contains_ == Contains::VALUE) {
     value_.~T();
-  } else if (contains_ == EXCEPTION) {
+  } else if (contains_ == Contains::EXCEPTION) {
     e_.~exception_ptr();
   }
 }
@@ -66,8 +66,8 @@ const T& Try<T>::value() const {
 
 template <class T>
 void Try<T>::throwIfFailed() const {
-  if (contains_ != VALUE) {
-    if (contains_ == EXCEPTION) {
+  if (contains_ != Contains::VALUE) {
+    if (contains_ == Contains::EXCEPTION) {
       std::rethrow_exception(e_);
     } else {
       throw UsingUninitializedTry();

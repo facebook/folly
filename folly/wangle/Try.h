@@ -23,7 +23,7 @@ class Try {
   static_assert(!std::is_reference<T>::value,
                 "Try may not be used with reference types");
 
-  enum Contains {
+  enum class Contains {
     VALUE,
     EXCEPTION,
     NOTHING,
@@ -32,10 +32,10 @@ class Try {
  public:
   typedef T element_type;
 
-  Try() : contains_(NOTHING) {}
-  explicit Try(const T& v) : contains_(VALUE), value_(v) {}
-  explicit Try(T&& v) : contains_(VALUE), value_(std::move(v)) {}
-  explicit Try(std::exception_ptr e) : contains_(EXCEPTION), e_(e) {}
+  Try() : contains_(Contains::NOTHING) {}
+  explicit Try(const T& v) : contains_(Contains::VALUE), value_(v) {}
+  explicit Try(T&& v) : contains_(Contains::VALUE), value_(std::move(v)) {}
+  explicit Try(std::exception_ptr e) : contains_(Contains::EXCEPTION), e_(e) {}
 
   // move
   Try(Try<T>&& t);
@@ -58,8 +58,8 @@ class Try {
   const T* operator->() const { return &value(); }
         T* operator->()       { return &value(); }
 
-  bool hasValue() const { return contains_ == VALUE; }
-  bool hasException() const { return contains_ == EXCEPTION; }
+  bool hasValue() const { return contains_ == Contains::VALUE; }
+  bool hasException() const { return contains_ == Contains::EXCEPTION; }
 
  private:
   Contains contains_;
