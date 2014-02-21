@@ -79,19 +79,6 @@ class Future {
       when this returns true. */
   bool isReady() const;
 
-  /** Wait until the result (or exception) is ready. Once this returns,
-    value() will not block, and isReady() will return true.
-
-    XXX This implementation is simplistic and inefficient, but it does work
-    and a fully intelligent implementation is coming down the pipe.
-  */
-  void wait() const {
-    while (!isReady()) {
-      // spin
-      std::this_thread::yield();
-    }
-  }
-
   Try<T>& valueTry();
 
   /** When this Future has completed, execute func which is a function that

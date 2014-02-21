@@ -500,21 +500,6 @@ TEST(when, small_vector) {
   }
 }
 
-TEST(Future, wait) {
-  Promise<void> p;
-  auto f = p.getFuture();
-  auto t = std::thread([&] {
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
-    p.setValue();
-  });
-
-  f.wait();
-
-  EXPECT_TRUE(f.isReady());
-
-  t.join();
-}
-
 TEST(Future, whenAllVariadic) {
   Promise<bool> pb;
   Promise<int> pi;
