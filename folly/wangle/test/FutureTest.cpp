@@ -108,13 +108,13 @@ TEST(Future, isReady) {
   }
 
 TEST(Future, hasException) {
-  EXPECT_TRUE(makeFuture<int>(eggs).valueTry().hasException());
-  EXPECT_FALSE(makeFuture(42).valueTry().hasException());
+  EXPECT_TRUE(makeFuture<int>(eggs).getTry().hasException());
+  EXPECT_FALSE(makeFuture(42).getTry().hasException());
 }
 
 TEST(Future, hasValue) {
-  EXPECT_TRUE(makeFuture(42).valueTry().hasValue());
-  EXPECT_FALSE(makeFuture<int>(eggs).valueTry().hasValue());
+  EXPECT_TRUE(makeFuture(42).getTry().hasValue());
+  EXPECT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
 }
 
 TEST(Future, makeFuture) {
@@ -329,7 +329,7 @@ TEST(Future, whenAll) {
     promises[3].setException(eggs);
 
     EXPECT_TRUE(allf.isReady());
-    EXPECT_FALSE(allf.valueTry().hasException());
+    EXPECT_FALSE(allf.getTry().hasException());
 
     auto& results = allf.value();
     EXPECT_EQ(42, results[0].value());

@@ -40,7 +40,7 @@ class FutureObject {
   FutureObject(FutureObject&&) = delete;
   FutureObject& operator=(FutureObject&&) = delete;
 
-  Try<T>& valueTry() {
+  Try<T>& getTry() {
     return *value_;
   }
 

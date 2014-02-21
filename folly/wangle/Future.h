@@ -79,7 +79,8 @@ class Future {
       when this returns true. */
   bool isReady() const;
 
-  Try<T>& valueTry();
+  /** A reference to the Try of the value */
+  Try<T>& getTry();
 
   /** When this Future has completed, execute func which is a function that
     takes a Try<T>&&. A Future for the return type of func is

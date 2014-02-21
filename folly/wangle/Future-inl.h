@@ -178,10 +178,10 @@ typename std::add_lvalue_reference<const T>::type Future<T>::value() const {
 }
 
 template <class T>
-Try<T>& Future<T>::valueTry() {
+Try<T>& Future<T>::getTry() {
   throwIfInvalid();
 
-  return obj_->valueTry();
+  return obj_->getTry();
 }
 
 template <class T>
