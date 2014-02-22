@@ -21,6 +21,11 @@
 
 namespace folly { namespace wangle {
 
+/// This generic threadgate takes two executors and an optional waiter (if you
+/// need to support waiting). Hint: use executors that inherit from Executor
+/// (in Executor.h), then you just do
+///
+///   GenericThreadGate tg(westExecutor, eastExecutor, waiter);
 template <
   class WestExecutorPtr = Executor*,
   class EastExecutorPtr = Executor*,
@@ -52,6 +57,7 @@ public:
   WestExecutorPtr westExecutor;
   EastExecutorPtr eastExecutor;
   WaiterPtr waiter;
+
 private:
   void makeProgress_(std::true_type const&) {
     throw std::logic_error("No waiter.");

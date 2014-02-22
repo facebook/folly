@@ -110,18 +110,18 @@ class Later {
 
   /*
    * Resets the executor - all then() calls made after the call to via() will be
-   * made in the new executor.
+   * made in the new executor. The Executor must outlive.
    */
   Later<T> via(Executor* executor);
 
   /*
    * Starts the workflow. The function provided in the constructor will be
-   * called in the executor provided in the constructor. All proximate then()
+   * called in the executor provided in the constructor. Subsequent then()
    * calls will be made, potentially changing threads if a via() call is made.
    * The future returned will be fulfilled in the last executor.
    *
    * Thread safety issues of Futures still apply. If you want to wait on the
-   * Future, it must be done in the thread that will fulfill it. If you do not
+   * Future, it must be done in the thread that will fulfil it. If you do not
    * plan to use the result of the Future, use fireAndForget()
    */
   Future<T> launch();

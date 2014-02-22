@@ -49,9 +49,7 @@ namespace folly { namespace wangle {
   In order to make and use a ThreadGate, you need to provide a strategy for
   executing code in the east and west threads. These strategies may be
   different. The only requirement is a threadsafe method
-  `void add(function<void()>&&)`. You may find the executors in
-  Executor.h handy, but ensure that you are using them
-  threadsafely.
+  `void add(function<void()>&&)`.
 
   In order for your ThreadGate to do anything, you need to drive those
   executors somehow. An event loop is a natural fit. A thread pool might be
@@ -69,6 +67,9 @@ namespace folly { namespace wangle {
   Future change toward a multithreaded architecture easier, as you need only
   change the components of the ThreadGate which your client code is already
   using.
+
+  Later (in Later.h) is an alternative mechanism for thread-traversing
+  asynchronous workflows.
   */
 class ThreadGate {
 public:
@@ -105,7 +106,7 @@ public:
 
     In summary, both east and west need to have plans to drive their
     executors, or nothing will actually happen. When the executors are driven,
-    then everything flows.    */
+    then everything flows. */
   template <class T>
   Future<T> gate(std::function<Future<T>()>&& fn) {
     Promise<T> pWest;
