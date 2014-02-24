@@ -196,9 +196,9 @@ constexpr size_t kDefaultCapacity = 500;
 SignalSafeElfCache signalSafeElfCache(kDefaultCapacity);
 }  // namespace
 
-void dumpStackTrace() __attribute__((noinline));
+void dumpStackTrace(bool symbolize) __attribute__((noinline));
 
-void dumpStackTrace() {
+void dumpStackTrace(bool symbolize) {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
   // Get and symbolize stack trace
   constexpr size_t kMaxStackTraceDepth = 100;
@@ -207,7 +207,7 @@ void dumpStackTrace() {
   // Skip the getStackTrace frame
   if (!getStackTraceSafe(addresses)) {
     print("(error retrieving stack trace)\n");
-  } else {
+  } else if (symbolize) {
     Symbolizer symbolizer(&signalSafeElfCache);
     symbolizer.symbolize(addresses);
 
@@ -219,6 +219,13 @@ void dumpStackTrace() {
     //
     // Leaving signalHandler on the stack for clarity, I think.
     printer.println(addresses, 2);
+  } else {
+    print("(safe mode, symbolizer not available)\n");
+    AddressFormatter formatter;
+    for (ssize_t i = 0; i < addresses.frameCount; ++i) {
+      print(formatter.format(addresses.addresses[i]));
+      print("\n");
+    }
   }
 }
 
@@ -229,6 +236,7 @@ void dumpStackTrace() {
 constexpr pthread_t kInvalidThreadId = 0;
 
 std::atomic<pthread_t> gSignalThread(kInvalidThreadId);
+std::atomic<bool> gInRecursiveSignalHandler(false);
 
 // Here be dragons.
 void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
@@ -238,7 +246,13 @@ void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
   pthread_t prevSignalThread = kInvalidThreadId;
   while (!gSignalThread.compare_exchange_strong(prevSignalThread, myId)) {
     if (pthread_equal(prevSignalThread, myId)) {
-      print("Entered fatal signal handler recursively. We're in trouble.\n");
+      // First time here. Try to dump the stack trace without symbolization.
+      // If we still fail, well, we're mightily screwed, so we do nothing the
+      // next time around.
+      if (!gInRecursiveSignalHandler.exchange(true)) {
+        print("Entered fatal signal handler recursively. We're in trouble.\n");
+        dumpStackTrace(false);  // no symbolization
+      }
       return;
     }
 
@@ -253,7 +267,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
 
   dumpTimeInfo();
   dumpSignalInfo(signum, info);
-  dumpStackTrace();
+  dumpStackTrace(true);  // with symbolization
 
   // Run user callbacks
   gFatalSignalCallbackRegistry->run();

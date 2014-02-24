@@ -260,6 +260,26 @@ const SymbolizePrinter::Color kFunctionColor = SymbolizePrinter::Color::PURPLE;
 const SymbolizePrinter::Color kFileColor = SymbolizePrinter::Color::DEFAULT;
 }  // namespace
 
+constexpr char AddressFormatter::bufTemplate[];
+
+AddressFormatter::AddressFormatter() {
+  memcpy(buf_, bufTemplate, sizeof(buf_));
+}
+
+folly::StringPiece AddressFormatter::format(uintptr_t address) {
+  // Can't use sprintf, not async-signal-safe
+  static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
+  char* end = buf_ + sizeof(buf_) - 1 - (16 - 2 * sizeof(uintptr_t));
+  char* p = end;
+  *p-- = '\0';
+  while (address != 0) {
+    *p-- = kHexChars[address & 0xf];
+    address >>= 4;
+  }
+
+  return folly::StringPiece(buf_, end);
+}
+
 void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   if (options_ & TERSE) {
     printTerse(address, frame);
@@ -269,20 +289,13 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   SCOPE_EXIT { color(Color::DEFAULT); };
 
   color(kAddressColor);
-  // Can't use sprintf, not async-signal-safe
-  static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
-  char buf[] = "    @ 0000000000000000";
-  char* end = buf + sizeof(buf) - 1 - (16 - 2 * sizeof(uintptr_t));
+
+  AddressFormatter formatter;
+  doPrint(formatter.format(address));
+
   const char padBuf[] = "                       ";
   folly::StringPiece pad(padBuf,
                          sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
-  char* p = end;
-  *p-- = '\0';
-  while (address != 0) {
-    *p-- = kHexChars[address & 0xf];
-    address >>= 4;
-  }
-  doPrint(folly::StringPiece(buf, end));
 
   color(kFunctionColor);
   char mangledBuf[1024];

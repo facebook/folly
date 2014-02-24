@@ -129,6 +129,24 @@ class Symbolizer {
 };
 
 /**
+ * Format one address in the way it's usually printer by SymbolizePrinter.
+ * Async-signal-safe.
+ */
+class AddressFormatter {
+ public:
+  AddressFormatter();
+
+  /**
+   * Format the address. Returns an internal buffer.
+   */
+  StringPiece format(uintptr_t address);
+
+ private:
+  static constexpr char bufTemplate[] = "    @ 0000000000000000";
+  char buf_[sizeof(bufTemplate)];
+};
+
+/**
  * Print a list of symbolized addresses. Base class.
  */
 class SymbolizePrinter {
