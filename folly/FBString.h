@@ -73,11 +73,6 @@
 #include <bits/c++config.h>
 #endif
 
-#ifdef _GLIBCXX_SYMVER
-#include <ext/hash_set>
-#include <ext/hash_map>
-#endif
-
 #ifdef _LIBSTDCXX_FBSTRING
 
 #pragma GCC system_header
@@ -101,6 +96,11 @@
 #include "folly/Traits.h"
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
+
+#ifdef _GLIBCXX_SYMVER
+#include <ext/hash_set>
+#include <ext/hash_map>
+#endif
 
 #endif
 
