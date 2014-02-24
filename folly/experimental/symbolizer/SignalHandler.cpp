@@ -193,7 +193,9 @@ constexpr size_t kDefaultCapacity = 500;
 
 // Note: not thread-safe, but that's okay, as we only let one thread
 // in our signal handler at a time.
-SignalSafeElfCache signalSafeElfCache(kDefaultCapacity);
+//
+// Leak it so we don't have to worry about destruction order
+auto gSignalSafeElfCache = new SignalSafeElfCache(kDefaultCapacity);
 }  // namespace
 
 void dumpStackTrace(bool symbolize) __attribute__((noinline));
@@ -208,7 +210,7 @@ void dumpStackTrace(bool symbolize) {
   if (!getStackTraceSafe(addresses)) {
     print("(error retrieving stack trace)\n");
   } else if (symbolize) {
-    Symbolizer symbolizer(&signalSafeElfCache);
+    Symbolizer symbolizer(gSignalSafeElfCache);
     symbolizer.symbolize(addresses);
 
     FDSymbolizePrinter printer(STDERR_FILENO, SymbolizePrinter::COLOR_IF_TTY);
