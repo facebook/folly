@@ -156,7 +156,6 @@ OutIt copy_n(InIt b,
              typename std::iterator_traits<InIt>::difference_type n,
              OutIt d) {
   for (; n != 0; --n, ++b, ++d) {
-    assert((const void*)&*d != &*b);
     *d = *b;
   }
   return d;
@@ -1696,15 +1695,15 @@ private:
   }
 
 private:
-  template <class FwdIterator, class P>
+  template <class FwdIterator>
   bool replaceAliased(iterator i1, iterator i2,
-                      FwdIterator s1, FwdIterator s2, P*) {
+                      FwdIterator s1, FwdIterator s2, std::false_type) {
     return false;
   }
 
   template <class FwdIterator>
   bool replaceAliased(iterator i1, iterator i2,
-                      FwdIterator s1, FwdIterator s2, value_type*) {
+                      FwdIterator s1, FwdIterator s2, std::true_type) {
     static const std::less_equal<const value_type*> le =
       std::less_equal<const value_type*>();
     const bool aliased = le(&*begin(), &*s1) && le(&*s1, &*end());
@@ -1719,7 +1718,6 @@ private:
     return true;
   }
 
-public:
   template <class FwdIterator>
   void replaceImpl(iterator i1, iterator i2,
                    FwdIterator s1, FwdIterator s2, std::forward_iterator_tag) {
@@ -1727,7 +1725,10 @@ public:
     (void) checker;
 
     // Handle aliased replace
-    if (replaceAliased(i1, i2, s1, s2, &*s1)) {
+    if (replaceAliased(i1, i2, s1, s2,
+          std::integral_constant<bool,
+            std::is_same<FwdIterator, iterator>::value ||
+            std::is_same<FwdIterator, const_iterator>::value>())) {
       return;
     }
 

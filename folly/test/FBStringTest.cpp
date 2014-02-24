@@ -1207,6 +1207,23 @@ TEST(FBString, iomanip) {
   ss.str("");
 }
 
+TEST(FBString, rvalueIterators) {
+  // you cannot take &* of a move-iterator, so use that for testing
+  fbstring s = "base";
+  fbstring r = "hello";
+  r.replace(r.begin(), r.end(),
+      make_move_iterator(s.begin()), make_move_iterator(s.end()));
+  EXPECT_EQ("base", r);
+
+  // The following test is probably not required by the standard.
+  // i.e. this could be in the realm of undefined behavior.
+  fbstring b = "123abcXYZ";
+  auto ait = b.begin() + 3;
+  auto Xit = b.begin() + 6;
+  b.replace(ait, b.end(), b.begin(), Xit);
+  EXPECT_EQ("123123abc", b); // if things go wrong, you'd get "123123123"
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
