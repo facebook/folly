@@ -90,4 +90,31 @@ inline void moveFromTry(wangle::Try<void>&& t) {
   return t.value();
 }
 
+template <typename F>
+typename std::enable_if<
+  !std::is_same<typename std::result_of<F()>::type, void>::value,
+  Try<typename std::result_of<F()>::type>>::type
+makeTryFunction(F&& f) {
+  typedef typename std::result_of<F()>::type ResultType;
+  try {
+    auto value = f();
+    return Try<ResultType>(std::move(value));
+  } catch (...) {
+    return Try<ResultType>(std::current_exception());
+  }
+}
+
+template <typename F>
+typename std::enable_if<
+  std::is_same<typename std::result_of<F()>::type, void>::value,
+  Try<void>>::type
+makeTryFunction(F&& f) {
+  try {
+    f();
+    return Try<void>();
+  } catch (...) {
+    return Try<void>(std::current_exception());
+  }
+}
+
 }}

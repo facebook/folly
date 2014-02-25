@@ -99,6 +99,26 @@ T moveFromTry(wangle::Try<T>&& t);
  */
 void moveFromTry(wangle::Try<void>&& t);
 
+/**
+ * Constructs Try based on the result of execution of function f (e.g. result
+ * or exception).
+ */
+template <typename F>
+typename std::enable_if<
+  !std::is_same<typename std::result_of<F()>::type, void>::value,
+  Try<typename std::result_of<F()>::type>>::type
+makeTryFunction(F&& f);
+
+/**
+ * makeTryFunction specialization for void functions.
+ */
+template <typename F>
+typename std::enable_if<
+  std::is_same<typename std::result_of<F()>::type, void>::value,
+  Try<void>>::type
+makeTryFunction(F&& f);
+
+
 }}
 
 #include "Try-inl.h"
