@@ -162,6 +162,7 @@ libfolly_la_SOURCES = \
 	Benchmark.cpp \
 	Bits.cpp \
 	Conv.cpp \
+	Demangle.cpp \
 	detail/CacheLocality.cpp \
 	dynamic.cpp \
 	EscapeTables.cpp \
