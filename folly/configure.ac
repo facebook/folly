@@ -54,10 +54,10 @@ AX_BOOST_SYSTEM
 AC_HEADER_STDC
 AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h emmintrin.h byteswap.h bits/functexcept.h])
 
-AC_CHECK_HEADER(double-conversion.h, [], [AC_MSG_ERROR(
+AC_CHECK_HEADER(double-conversion/double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \
                 http://code.google.com/p/double-conversion/])], [])
-AC_CHECK_LIB([double_conversion_pic],[ceil],[],[AC_MSG_ERROR(
+AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
              [Please install double-conversion library])])
 
 # Checks for typedefs, structures, and compiler characteristics.

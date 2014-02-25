@@ -39,7 +39,8 @@
 
 #include <limits.h>
 
-#include "double-conversion.h"   // V8 JavaScript implementation
+// V8 JavaScript implementation
+#include <double-conversion/double-conversion.h>
 
 #define FOLLY_RANGE_CHECK(condition, message)                           \
   ((condition) ? (void)0 : throw std::range_error(                      \
