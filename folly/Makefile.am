@@ -39,6 +39,8 @@ nobase_follyinclude_HEADERS = \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
+	detail/ChecksumDetail.h \
+	detail/Clock.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
@@ -51,6 +53,7 @@ nobase_follyinclude_HEADERS = \
 	detail/SlowFingerprint.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
+	detail/UncaughtExceptionCounter.h \
 	DiscriminatedPtr.h \
 	DynamicConverter.h \
 	dynamic.h \
@@ -61,6 +64,7 @@ nobase_follyinclude_HEADERS = \
 	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
+	Exception.h \
 	Foreach.h \
 	FormatArg.h \
 	Format.h \
