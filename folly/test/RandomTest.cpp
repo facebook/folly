@@ -99,9 +99,11 @@ BENCHMARK(Random64Num) { doNotOptimizeAway(Random::rand64(100ul << 32)); }
 BENCHMARK(Random64OneIn) { doNotOptimizeAway(Random::oneIn(100)); }
 
 int main(int argc, char** argv) {
+  testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  runBenchmarks();
-
-  return 0;
+  if (FLAGS_benchmark) {
+    folly::runBenchmarks();
+  }
+  return RUN_ALL_TESTS();
 }
