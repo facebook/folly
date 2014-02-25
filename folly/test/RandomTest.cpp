@@ -15,6 +15,9 @@
  */
 
 #include "folly/Random.h"
+#include "folly/Range.h"
+#include "folly/Benchmark.h"
+#include "folly/Foreach.h"
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -22,6 +25,7 @@
 #include <algorithm>
 #include <thread>
 #include <vector>
+#include <random>
 
 using namespace folly;
 
@@ -49,4 +53,55 @@ TEST(Random, MultiThreaded) {
   for (int i = 0; i < n-1; ++i) {
     EXPECT_LT(seeds[i], seeds[i+1]);
   }
+}
+
+BENCHMARK(minstdrand, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  std::minstd_rand rng(rd());
+
+  braces.dismiss();
+
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(mt19937, n) {
+  BenchmarkSuspender braces;
+  std::random_device rd;
+  std::mt19937 rng(rd());
+
+  braces.dismiss();
+
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(rng());
+  }
+}
+
+BENCHMARK(threadprng, n) {
+  BenchmarkSuspender braces;
+  ThreadLocalPRNG tprng;
+  tprng();
+
+  braces.dismiss();
+
+  FOR_EACH_RANGE (i, 0, n) {
+    doNotOptimizeAway(tprng());
+  }
+}
+
+BENCHMARK(RandomDouble) { doNotOptimizeAway(Random::randDouble01()); }
+BENCHMARK(Random32) { doNotOptimizeAway(Random::rand32()); }
+BENCHMARK(Random32Num) { doNotOptimizeAway(Random::rand32(100)); }
+BENCHMARK(Random64) { doNotOptimizeAway(Random::rand64()); }
+BENCHMARK(Random64Num) { doNotOptimizeAway(Random::rand64(100ul << 32)); }
+BENCHMARK(Random64OneIn) { doNotOptimizeAway(Random::oneIn(100)); }
+
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
+
+  runBenchmarks();
+
+  return 0;
 }
