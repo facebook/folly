@@ -424,7 +424,7 @@ void runBenchmarks() {
     get<2>(benchmarks.front()), 0);
   FOR_EACH_RANGE (i, 1, benchmarks.size()) {
     double elapsed = 0.0;
-    if (strcmp(get<1>(benchmarks[i]), "-")) { // skip separators
+    if (strcmp(get<1>(benchmarks[i]), "-") != 0) { // skip separators
       if (bmRegex && !boost::regex_search(get<1>(benchmarks[i]), *bmRegex)) {
         continue;
       }
