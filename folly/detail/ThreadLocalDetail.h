@@ -263,7 +263,7 @@ struct StaticMeta {
     return id;
   }
 
-  static void destroy(int id) {
+  static void destroy(size_t id) {
     try {
       auto & meta = instance();
       // Elements in other threads that use this id.
@@ -401,7 +401,7 @@ struct StaticMeta {
 #endif
   }
 
-  static ElementWrapper& get(int id) {
+  static ElementWrapper& get(size_t id) {
     ThreadEntry* threadEntry = getThreadEntry();
     if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
       reserve(id);
@@ -420,4 +420,3 @@ template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_THREADLOCALDETAIL_H_ */
-

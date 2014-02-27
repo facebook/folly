@@ -867,7 +867,9 @@ private:
   }
 
   size_t smallSize() const {
-    assert(category() == isSmall && small_[maxSmallSize] <= maxSmallSize);
+    assert(category() == isSmall &&
+           static_cast<size_t>(small_[maxSmallSize])
+           <= static_cast<size_t>(maxSmallSize));
     return static_cast<size_t>(maxSmallSize)
       - static_cast<size_t>(small_[maxSmallSize]);
   }
