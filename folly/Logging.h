@@ -17,6 +17,7 @@
 #ifndef FOLLY_LOGGING_H_
 #define FOLLY_LOGGING_H_
 
+#include <atomic>
 #include <chrono>
 #include <glog/logging.h>
 
@@ -29,18 +30,24 @@
  *   " since you last saw this.";
  *
  * The implementation uses for statements to introduce variables in
- * a nice way that doesn't mess surrounding statements.
+ * a nice way that doesn't mess surrounding statements.  It is thread
+ * safe.
  */
-#define FB_LOG_EVERY_MS(severity, milli_interval)                       \
-  for (bool FB_LEM_once = true; FB_LEM_once; )                          \
-    for (const auto FB_LEM_now = ::std::chrono::system_clock::now();    \
-         FB_LEM_once; )                                                 \
-      for (static ::std::chrono::system_clock::time_point FB_LEM_last;  \
-            FB_LEM_once; FB_LEM_once = false)                           \
-        if (FB_LEM_now - FB_LEM_last <                                  \
-            ::std::chrono::milliseconds(milli_interval)) {              \
-        } else                                                          \
-          (FB_LEM_last = FB_LEM_now, LOG(severity))
+#define FB_LOG_EVERY_MS(severity, milli_interval)                            \
+  for (bool FB_LEM_once = true; FB_LEM_once; )                               \
+    for (::std::chrono::milliseconds::rep FB_LEM_prev, FB_LEM_now =          \
+             ::std::chrono::duration_cast< ::std::chrono::milliseconds>(     \
+                 ::std::chrono::system_clock::now().time_since_epoch()       \
+                 ).count();                                                  \
+         FB_LEM_once; )                                                      \
+      for (static ::std::atomic< ::std::chrono::milliseconds::rep>           \
+               FB_LEM_hist; FB_LEM_once; FB_LEM_once = false)                \
+        if (FB_LEM_now - (FB_LEM_prev =                                      \
+                          FB_LEM_hist.load(std::memory_order_acquire)) <     \
+                milli_interval ||                                            \
+            !FB_LEM_hist.compare_exchange_strong(FB_LEM_prev, FB_LEM_now)) { \
+        } else                                                               \
+          LOG(severity)
 
 #endif
 
