@@ -189,8 +189,6 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
   char buf[PATH_MAX + 100];  // Long enough for any line
   LineReader reader(fd, buf, sizeof(buf));
 
-  char fileNameBuf[PATH_MAX];
-
   while (remaining != 0) {
     StringPiece line;
     if (reader.readLine(line) != LineReader::kReading) {

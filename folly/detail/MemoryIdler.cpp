@@ -163,8 +163,7 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
     // errno of ENOMEM.  We can also get an EAGAIN, theoretically.
     // EINVAL means either an invalid alignment or length, or that some
     // of the pages are locked or shared.  Neither should occur.
-    int e = errno;
-    assert(e == EAGAIN || e == ENOMEM);
+    assert(errno == EAGAIN || errno == ENOMEM);
   }
 }
 
