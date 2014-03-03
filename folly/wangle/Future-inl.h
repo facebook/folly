@@ -283,12 +283,12 @@ makeFuture(E const& e) {
 
 template <typename... Fs>
 typename detail::VariadicContext<typename Fs::value_type...>::type
-whenAll(Fs&... fs)
+whenAll(Fs&&... fs)
 {
   auto ctx = new detail::VariadicContext<typename Fs::value_type...>();
   ctx->total = sizeof...(fs);
   auto f_saved = ctx->p.getFuture();
-  detail::whenAllVariadicHelper(ctx, fs...);
+  detail::whenAllVariadicHelper(ctx, std::forward<Fs>(fs)...);
   return std::move(f_saved);
 }
 

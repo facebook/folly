@@ -506,7 +506,7 @@ TEST(Future, whenAllVariadic) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  whenAll(fb, fi)
+  whenAll(std::move(fb), std::move(fi))
     .then([&](Try<std::tuple<Try<bool>, Try<int>>>&& t) {
       flag = true;
       EXPECT_TRUE(t.hasValue());

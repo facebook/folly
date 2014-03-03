@@ -104,10 +104,9 @@ struct VariadicContext {
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) == 0, void>::type
-whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead& head, Fs&... tail) {
+whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
   head.setContinuation([ctx](Try<typename THead::value_type>&& t) {
-    const size_t i = sizeof...(Ts) - sizeof...(Fs) - 1;
-    std::get<i>(ctx->results) = std::move(t);
+    std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
       ctx->p.setValue(std::move(ctx->results));
       delete ctx;
@@ -117,16 +116,16 @@ whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead& head, Fs&... tail) {
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) != 0, void>::type
-whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead& head, Fs&... tail) {
+whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
   head.setContinuation([ctx](Try<typename THead::value_type>&& t) {
-    const size_t i = sizeof...(Ts) - sizeof...(Fs) - 1;
-    std::get<i>(ctx->results) = std::move(t);
+    std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
       ctx->p.setValue(std::move(ctx->results));
       delete ctx;
     }
   });
-  whenAllVariadicHelper(ctx, tail...); // recursive template tail call
+  // template tail-recursion
+  whenAllVariadicHelper(ctx, std::forward<Fs>(tail)...);
 }
 
 template <typename T>

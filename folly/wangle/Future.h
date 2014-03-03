@@ -197,10 +197,9 @@ whenAll(InputIterator first, InputIterator last);
 /// This version takes a varying number of Futures instead of an iterator.
 /// The return type for (Future<T1>, Future<T2>, ...) input
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
-// XXX why does it take Fs& instead of Fs&&?
 template <typename... Fs>
 typename detail::VariadicContext<typename Fs::value_type...>::type
-whenAll(Fs&... fs);
+whenAll(Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
   the Try. If multiple Futures complete at the same time (or are already
