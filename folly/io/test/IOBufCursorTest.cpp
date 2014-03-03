@@ -591,20 +591,20 @@ void runBenchmark() {
 }
 
 BENCHMARK(rwPrivateCursorBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     runBenchmark<RWPrivateCursor>();
   }
 }
 
 BENCHMARK(rwUnshareCursorBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     runBenchmark<RWUnshareCursor>();
   }
 }
 
 
 BENCHMARK(cursorBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     Cursor c(iobuf_read_benchmark.get());
     for(int i = 0; i < benchmark_size ; i++) {
       c.read<uint8_t>();
@@ -614,7 +614,7 @@ BENCHMARK(cursorBenchmark, iters) {
 
 BENCHMARK(skipBenchmark, iters) {
   uint8_t buf;
-  while (--iters) {
+  while (iters--) {
     Cursor c(iobuf_read_benchmark.get());
     for(int i = 0; i < benchmark_size ; i++) {
       c.peek();

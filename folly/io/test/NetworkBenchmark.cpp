@@ -31,7 +31,7 @@ size_t buf_size = 0;
 size_t num_bufs = 0;
 
 BENCHMARK(reserveBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     unique_ptr<IOBuf> iobuf1(IOBuf::create(buf_size));
     iobuf1->append(buf_size);
     for (size_t bufs = num_bufs; bufs > 1; bufs --) {
@@ -42,7 +42,7 @@ BENCHMARK(reserveBenchmark, iters) {
 }
 
 BENCHMARK(chainBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     unique_ptr<IOBuf> iobuf1(IOBuf::create(buf_size));
     iobuf1->append(buf_size);
     for (size_t bufs = num_bufs; bufs > 1; bufs --) {
@@ -75,7 +75,7 @@ inline void poolPutIOBuf(unique_ptr<IOBuf>&& buf) {
 }
 
 BENCHMARK(poolBenchmark, iters) {
-  while (--iters) {
+  while (iters--) {
     unique_ptr<IOBuf> head = std::move(poolGetIOBuf());
     for (size_t bufs = num_bufs; bufs > 1; bufs --) {
       unique_ptr<IOBuf> iobufNext = std::move(poolGetIOBuf());
