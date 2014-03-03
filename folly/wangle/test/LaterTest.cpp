@@ -54,6 +54,12 @@ struct LaterFixture : public testing::Test {
     t.join();
   }
 
+  void addAsync(int a, int b, std::function<void(int&&)>&& cob) {
+    eastExecutor->add([=]() {
+      cob(a + b);
+    });
+  }
+
   Later<void> later;
   std::shared_ptr<ManualExecutor> westExecutor;
   std::shared_ptr<ManualExecutor> eastExecutor;
@@ -110,6 +116,25 @@ TEST_F(LaterFixture, thread_hops) {
     waiter->makeProgress();
   }
   EXPECT_EQ(future.value(), 1);
+}
+
+TEST_F(LaterFixture, wrapping_preexisting_async_modules) {
+  auto westThreadId = std::this_thread::get_id();
+  std::function<void(std::function<void(int&&)>&&)> wrapper =
+    [=](std::function<void(int&&)>&& fn) {
+      addAsync(2, 2, std::move(fn));
+    };
+  auto future = Later<int>(std::move(wrapper))
+  .via(westExecutor.get())
+  .then([=](Try<int>&& t) {
+    EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+    return t.value();
+  })
+  .launch();
+  while (!future.isReady()) {
+    waiter->makeProgress();
+  }
+  EXPECT_EQ(future.value(), 4);
 }
 
 TEST_F(LaterFixture, chain_laters) {

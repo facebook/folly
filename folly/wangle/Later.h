@@ -32,7 +32,8 @@ template <typename T> struct isLater;
  * threadsafe manner.
  *
  * The interface to add additional work is the same as future: a then() method
- * that can take either a type T, a Future<T>, or a Later<T>
+ * that takes a function that can return either a type T, a Future<T>, or a
+ * Later<T>
  *
  * Thread transitions are done by using executors and calling the via() method.
  *
@@ -62,15 +63,43 @@ class Later {
  public:
   typedef T value_type;
 
+  /*
+   * This default constructor is used to build an asynchronous workflow that
+   * takes no input.
+   */
   template <class U = void,
             class = typename std::enable_if<std::is_void<U>::value>::type,
             class = typename std::enable_if<std::is_same<T, U>::value>::type>
   Later();
 
+  /*
+   * This constructor is used to build an asynchronous workflow that takes a
+   * value as input, and that value is passed in.
+   */
   template <class U,
             class = typename std::enable_if<!std::is_void<U>::value>::type,
             class = typename std::enable_if<std::is_same<T, U>::value>::type>
   explicit Later(U&& input);
+
+  /*
+   * This constructor is used to wrap a pre-existing cob-style asynchronous api
+   * so that it can be used in wangle in a threadsafe manner. wangle provides
+   * the callback to this pre-existing api, and this callback will fulfill a
+   * promise so as to incorporate this api into the workflow.
+   *
+   * Example usage:
+   *
+   * // This adds two ints asynchronously. cob is called in another thread.
+   * void addAsync(int a, int b, std::function<void(int&&)>&& cob);
+   *
+   * Later<int> asyncWrapper([=](std::function<void(int&&)>&& fn) {
+   *   addAsync(1, 2, std::move(fn));
+   * });
+   */
+  template <class U,
+            class = typename std::enable_if<!std::is_void<U>::value>::type,
+            class = typename std::enable_if<std::is_same<T, U>::value>::type>
+  explicit Later(std::function<void(std::function<void(U&&)>&&)>&& fn);
 
   /*
    * then() adds additional work to the end of the workflow. If the lambda

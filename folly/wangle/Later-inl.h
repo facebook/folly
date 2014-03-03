@@ -69,6 +69,18 @@ Later<T>::Later(U&& input) {
 }
 
 template <class T>
+template <class U, class Unused, class Unused2>
+Later<T>::Later(std::function<void(std::function<void(U&&)>&&)>&& fn) {
+  folly::MoveWrapper<Promise<U>> promise;
+  future_ = promise->getFuture();
+  starter_.getFuture().then([=](Try<void>&& t) mutable {
+    fn([=](U&& output) mutable {
+      promise->setValue(std::move(output));
+    });
+  });
+}
+
+template <class T>
 template <class F>
 typename std::enable_if<
   !isLaterOrFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
