@@ -115,6 +115,20 @@ class Random {
   }
 
   /**
+   * Returns a random uint32_t in [min, max). If min == max, returns 0.
+   */
+  template<class RNG = ThreadLocalPRNG>
+  static uint32_t rand32(uint32_t min,
+                         uint32_t max,
+                         ValidRNG<RNG> rng = RNG()) {
+    if (min == max) {
+      return 0;
+    }
+
+    return std::uniform_int_distribution<uint32_t>(min, max - 1)(rng);
+  }
+
+  /**
    * Returns a random uint64_t
    */
   template<class RNG = ThreadLocalPRNG>
@@ -132,6 +146,20 @@ class Random {
     }
 
     return std::uniform_int_distribution<uint64_t>(0, max - 1)(rng);
+  }
+
+  /**
+   * Returns a random uint64_t in [min, max). If min == max, returns 0.
+   */
+  template<class RNG = ThreadLocalPRNG>
+  static uint64_t rand64(uint64_t min,
+                         uint64_t max,
+                         ValidRNG<RNG> rng = RNG()) {
+    if (min == max) {
+      return 0;
+    }
+
+    return std::uniform_int_distribution<uint64_t>(min, max - 1)(rng);
   }
 
   /**
@@ -153,6 +181,17 @@ class Random {
   static double randDouble01(ValidRNG<RNG> rng = RNG()) {
     return std::generate_canonical<double, std::numeric_limits<double>::digits>
       (rng);
+  }
+
+  /**
+    * Returns a double in [min, max), if min == max, returns 0.
+    */
+  template<class RNG = ThreadLocalPRNG>
+  static double randDouble(double min, double max, ValidRNG<RNG> rng = RNG()) {
+    if (std::fabs(max - min) < std::numeric_limits<double>::epsilon()) {
+      return 0;
+    }
+    return std::uniform_real_distribution<double>(min, max)(rng);
   }
 
 };
