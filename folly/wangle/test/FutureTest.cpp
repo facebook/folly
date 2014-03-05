@@ -521,6 +521,27 @@ TEST(Future, whenAllVariadic) {
   EXPECT_TRUE(flag);
 }
 
+TEST(Future, whenAllVariadicReferences) {
+  Promise<bool> pb;
+  Promise<int> pi;
+  Future<bool> fb = pb.getFuture();
+  Future<int> fi = pi.getFuture();
+  bool flag = false;
+  whenAll(fb, fi)
+    .then([&](Try<std::tuple<Try<bool>, Try<int>>>&& t) {
+      flag = true;
+      EXPECT_TRUE(t.hasValue());
+      EXPECT_TRUE(std::get<0>(t.value()).hasValue());
+      EXPECT_EQ(std::get<0>(t.value()).value(), true);
+      EXPECT_TRUE(std::get<1>(t.value()).hasValue());
+      EXPECT_EQ(std::get<1>(t.value()).value(), 42);
+    });
+  pb.setValue(true);
+  EXPECT_FALSE(flag);
+  pi.setValue(42);
+  EXPECT_TRUE(flag);
+}
+
 TEST(Future, whenAll_none) {
   vector<Future<int>> fs;
   auto f = whenAll(fs.begin(), fs.end());

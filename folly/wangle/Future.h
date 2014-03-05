@@ -197,8 +197,10 @@ whenAll(InputIterator first, InputIterator last);
 /// This version takes a varying number of Futures instead of an iterator.
 /// The return type for (Future<T1>, Future<T2>, ...) input
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
+/// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-typename detail::VariadicContext<typename Fs::value_type...>::type
+typename detail::VariadicContext<
+  typename std::decay<Fs>::type::value_type...>::type
 whenAll(Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
