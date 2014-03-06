@@ -51,7 +51,7 @@ TemporaryFile::TemporaryFile(StringPiece namePrefix,
     closeOnDestruction_(closeOnDestruction),
     fd_(-1),
     path_(generateUniquePath(std::move(dir), namePrefix)) {
-  fd_ = open(path_.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
+  fd_ = open(path_.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
   checkUnixError(fd_, "open failed");
 
   if (scope_ == Scope::UNLINK_IMMEDIATELY) {

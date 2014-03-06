@@ -37,7 +37,7 @@ namespace folly {
  * until all data is written.  Note that *Full wrappers weaken the thread
  * semantics of underlying system calls.
  */
-int openNoInt(const char* name, int flags, mode_t mode=0644);
+int openNoInt(const char* name, int flags, mode_t mode = 0666);
 int closeNoInt(int fd);
 int dupNoInt(int fd);
 int dup2NoInt(int oldfd, int newfd);

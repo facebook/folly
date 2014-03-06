@@ -81,7 +81,7 @@ void testTemporaryDirectory(TemporaryDirectory::Scope scope) {
     EXPECT_TRUE(fs::is_directory(path));
 
     fs::path fp = path / "bar";
-    int fd = open(fp.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
+    int fd = open(fp.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
     EXPECT_NE(fd, -1);
     close(fd);
 
