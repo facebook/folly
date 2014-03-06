@@ -171,14 +171,10 @@ TEST(Promise, setValue) {
 
   pod = Promise<Foo>();
   fpod = pod.getFuture();
-  return;
   pod.setValue(std::move(f2));
   Foo f3 = fpod.value();
   EXPECT_EQ(f.name, f3.name);
   EXPECT_EQ(f.value, f3.value);
-  EXPECT_NE(f.name, f2.name);
-
-  return;
 
   Promise<unique_ptr<int>> mov;
   auto fmov = mov.getFuture();
