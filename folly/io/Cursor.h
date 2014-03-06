@@ -199,12 +199,17 @@ class CursorBase {
   // Make all the templated classes friends for copy constructor.
   template <class D, typename B> friend class CursorBase;
 
-  template <class T>
-  explicit CursorBase(const T& cursor) {
-    crtBuf_ = cursor.crtBuf_;
-    offset_ = cursor.offset_;
-    buffer_ = cursor.buffer_;
-  }
+  /*
+   * Copy constructor.
+   *
+   * This also allows constructing a CursorBase from other derived types.
+   * For instance, this allows constructing a Cursor from an RWPrivateCursor.
+   */
+  template <class OtherDerived, class OtherBuf>
+  explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor)
+    : crtBuf_(cursor.crtBuf_),
+      offset_(cursor.offset_),
+      buffer_(cursor.buffer_) {}
 
   // reset cursor to point to a new buffer.
   void reset(BufType* buf) {
@@ -461,8 +466,8 @@ class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
   explicit Cursor(const IOBuf* buf)
     : detail::CursorBase<Cursor, const IOBuf>(buf) {}
 
-  template <class CursorType>
-  explicit Cursor(CursorType& cursor)
+  template <class OtherDerived, class OtherBuf>
+  explicit Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
     : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
 };
 
@@ -481,8 +486,8 @@ class RWCursor
     : detail::CursorBase<RWCursor<access>, IOBuf>(buf),
       maybeShared_(true) {}
 
-  template <class CursorType>
-  explicit RWCursor(CursorType& cursor)
+  template <class OtherDerived, class OtherBuf>
+  explicit RWCursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
     : detail::CursorBase<RWCursor<access>, IOBuf>(cursor),
       maybeShared_(true) {}
   /**
