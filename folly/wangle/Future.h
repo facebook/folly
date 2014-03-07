@@ -100,7 +100,7 @@ class Future {
     Future<typename std::result_of<F(Try<T>&&)>::type> >::type
   then(F&& func);
 
-  /// Variant where func returns a future<T> instead of a T. e.g.
+  /// Variant where func returns a Future<T> instead of a T. e.g.
   ///
   ///   Future<string> f2 = f1.then(
   ///     [](Try<T>&&) { return makeFuture<string>("foo"); });
@@ -109,6 +109,70 @@ class Future {
     isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
     Future<typename std::result_of<F(Try<T>&&)>::type::value_type> >::type
   then(F&& func);
+
+  /// Variant where func is an ordinary function (static method, method)
+  ///
+  ///   R doWork(Try<T>&&);
+  ///
+  ///   Future<R> f2 = f1.then(doWork);
+  ///
+  /// or
+  ///
+  ///   struct Worker {
+  ///     static R doWork(Try<T>&&); }
+  ///
+  ///   Future<R> f2 = f1.then(&Worker::doWork);
+  template <class = T, class R = std::nullptr_t>
+  typename std::enable_if<!isFuture<R>::value, Future<R>>::type
+  inline then(R(*func)(Try<T>&&)) {
+    return then([func](Try<T>&& t) {
+      return (*func)(std::move(t));
+    });
+  }
+
+  /// Variant where func returns a Future<R> instead of a R. e.g.
+  ///
+  ///   struct Worker {
+  ///     Future<R> doWork(Try<T>&&); }
+  ///
+  ///   Future<R> f2 = f1.then(&Worker::doWork);
+  template <class = T, class R = std::nullptr_t>
+  typename std::enable_if<isFuture<R>::value, R>::type
+  inline then(R(*func)(Try<T>&&)) {
+    return then([func](Try<T>&& t) {
+      return (*func)(std::move(t));
+    });
+  }
+
+  /// Variant where func is an member function
+  ///
+  ///   struct Worker {
+  ///     R doWork(Try<T>&&); }
+  ///
+  ///   Worker *w;
+  ///   Future<R> f2 = f1.then(w, &Worker::doWork);
+  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
+  typename std::enable_if<!isFuture<R>::value, Future<R>>::type
+  inline then(Caller *instance, R(Caller::*func)(Try<T>&&)) {
+    return then([instance, func](Try<T>&& t) {
+      return (instance->*func)(std::move(t));
+    });
+  }
+
+  /// Variant where func returns a Future<R> instead of a R. e.g.
+  ///
+  ///   struct Worker {
+  ///     Future<R> doWork(Try<T>&&); }
+  ///
+  ///   Worker *w;
+  ///   Future<R> f2 = f1.then(w, &Worker::doWork);
+  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
+  typename std::enable_if<isFuture<R>::value, R>::type
+  inline then(Caller *instance, R(Caller::*func)(Try<T>&&)) {
+    return then([instance, func](Try<T>&& t) {
+      return (instance->*func)(std::move(t));
+    });
+  }
 
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.

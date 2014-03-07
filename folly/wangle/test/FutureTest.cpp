@@ -91,6 +91,50 @@ TEST(Future, then) {
   EXPECT_TRUE(f.isReady());
 }
 
+static string doWorkStatic(Try<string>&& t) {
+  return t.value() + ";static";
+}
+
+TEST(Future, thenFunction) {
+  struct Worker {
+    string doWork(Try<string>&& t) {
+      return t.value() + ";class";
+    }
+    static string doWorkStatic(Try<string>&& t) {
+      return t.value() + ";class-static";
+    }
+  } w;
+
+  auto f = makeFuture<string>("start")
+    .then(doWorkStatic)
+    .then(Worker::doWorkStatic)
+    .then(&w, &Worker::doWork);
+
+  EXPECT_EQ(f.value(), "start;static;class-static;class");
+}
+
+static Future<string> doWorkStaticFuture(Try<string>&& t) {
+  return makeFuture(t.value() + ";static");
+}
+
+TEST(Future, thenFunctionFuture) {
+  struct Worker {
+    Future<string> doWorkFuture(Try<string>&& t) {
+      return makeFuture(t.value() + ";class");
+    }
+    static Future<string> doWorkStaticFuture(Try<string>&& t) {
+      return makeFuture(t.value() + ";class-static");
+    }
+  } w;
+
+  auto f = makeFuture<string>("start")
+    .then(doWorkStaticFuture)
+    .then(Worker::doWorkStaticFuture)
+    .then(&w, &Worker::doWorkFuture);
+
+  EXPECT_EQ(f.value(), "start;static;class-static;class");
+}
+
 TEST(Future, value) {
   auto f = makeFuture(unique_ptr<int>(new int(42)));
   auto up = std::move(f.value());
