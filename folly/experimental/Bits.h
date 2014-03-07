@@ -27,6 +27,9 @@
 
 namespace folly {
 
+template <class T>
+struct UnalignedNoASan : public Unaligned<T> { };
+
 // As a general rule, bit operations work on unsigned values only;
 // right-shift is arithmetic for signed values, and that can lead to
 // unpleasant bugs.
@@ -62,6 +65,28 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   }
 };
 
+// Special version that allows to disable address sanitizer on demand.
+template <class T>
+struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
+    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+  typedef T UnderlyingType;
+  static T FOLLY_DISABLE_ADDRESS_SANITIZER
+  load(const UnalignedNoASan<T>& x) { return x.value; }
+  static void FOLLY_DISABLE_ADDRESS_SANITIZER
+  store(UnalignedNoASan<T>& x, T v) { x.value = v; }
+  static T FOLLY_DISABLE_ADDRESS_SANITIZER
+  loadRMW(const UnalignedNoASan<T>& x) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+// make sure we compile without warning on gcc 4.6 with -Wpragmas
+#if __GNUC_PREREQ(4, 7)
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+    return x.value;
+#pragma GCC diagnostic pop
+  }
+};
+
 // Partial specialization for T, where T is unsigned integral
 template <class T>
 struct BitsTraits<T, typename std::enable_if<
@@ -79,6 +104,7 @@ struct BitsTraits<T, typename std::enable_if<
 #pragma GCC diagnostic pop
   }
 };
+
 }  // namespace detail
 
 /**
