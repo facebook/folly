@@ -15,7 +15,8 @@
  */
 
 /*
- * For high-level documentation and usage examples see folly/doc/small_vector.md
+ * For high-level documentation and usage examples see
+ * folly/docs/small_vector.md
  *
  * @author Jordan DeLong <delong.j@fb.com>
  */
