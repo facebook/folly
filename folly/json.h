@@ -62,6 +62,8 @@ namespace json {
       , sort_keys(false)
       , skip_invalid_utf8(false)
       , allow_nan_inf(false)
+      , double_mode(double_conversion::DoubleToStringConverter::SHORTEST)
+      , double_num_digits(0) // ignored when mode is SHORTEST
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -97,6 +99,11 @@ namespace json {
 
     // true to allow NaN or INF values
     bool allow_nan_inf;
+
+    // Options for how to print floating point values.  See Conv.h
+    // toAppend implementation for floating point for more info
+    double_conversion::DoubleToStringConverter::DtoaMode double_mode;
+    unsigned int double_num_digits;
   };
 
   /*

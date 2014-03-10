@@ -131,7 +131,7 @@ struct Printer {
         throw std::runtime_error("folly::toJson: JSON object value was a "
           "NaN or INF");
       }
-      toAppend(v.asDouble(), &out_);
+      toAppend(v.asDouble(), &out_, opts_.double_mode, opts_.double_num_digits);
       break;
     case dynamic::INT64: {
       auto intval = v.asInt();
