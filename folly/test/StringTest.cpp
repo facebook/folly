@@ -834,6 +834,34 @@ TEST(Split, fixed) {
   EXPECT_FALSE(folly::split('.', "a.b", a));
 }
 
+TEST(Split, fixed_convert) {
+  StringPiece a, d;
+  int b;
+  double c;
+
+  EXPECT_TRUE(folly::split(':', "a:13:14.7:b", a, b, c, d));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ(13, b);
+  EXPECT_NEAR(14.7, c, 1e-10);
+  EXPECT_EQ("b", d);
+
+  EXPECT_TRUE(folly::split<false>(':', "b:14:15.3:c", a, b, c, d));
+  EXPECT_EQ("b", a);
+  EXPECT_EQ(14, b);
+  EXPECT_NEAR(15.3, c, 1e-10);
+  EXPECT_EQ("c", d);
+
+  EXPECT_FALSE(folly::split(':', "a:13:14.7:b", a, b, d));
+
+  EXPECT_TRUE(folly::split<false>(':', "a:13:14.7:b", a, b, d));
+  EXPECT_EQ("a", a);
+  EXPECT_EQ(13, b);
+  EXPECT_EQ("14.7:b", d);
+
+  EXPECT_THROW(folly::split<false>(':', "a:13:14.7:b", a, b, c),
+               std::range_error);
+}
+
 TEST(String, join) {
   string output;
 

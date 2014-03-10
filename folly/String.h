@@ -384,16 +384,24 @@ void splitTo(const Delim& delimiter,
              bool ignoreEmpty = false);
 
 /*
- * Split a string into a fixed number of pieces by delimiter. Returns 'true' if
- * the fields were all successfully populated.
+ * Split a string into a fixed number of string pieces and/or numeric types
+ * by delimiter. Any numeric type that folly::to<> can convert to from a
+ * string piece is supported as a target. Returns 'true' if the fields were
+ * all successfully populated.
  *
- * Example:
+ * Examples:
  *
  *  folly::StringPiece name, key, value;
  *  if (folly::split('\t', line, name, key, value))
  *    ...
  *
- * The 'exact' template paremeter specifies how the function behaves when too
+ *  folly::StringPiece name;
+ *  double value;
+ *  int id;
+ *  if (folly::split('\t', line, name, value, id))
+ *    ...
+ *
+ * The 'exact' template parameter specifies how the function behaves when too
  * many fields are present in the input string. When 'exact' is set to its
  * default value of 'true', a call to split will fail if the number of fields in
  * the input string does not exactly match the number of output parameters
@@ -403,14 +411,24 @@ void splitTo(const Delim& delimiter,
  *  folly::StringPiece x, y.
  *  if (folly::split<false>(':', "a:b:c", x, y))
  *    assert(x == "a" && y == "b:c");
+ *
+ * Note that this will likely not work if the last field's target is of numeric
+ * type, in which case folly::to<> will throw an exception.
  */
+template <class T>
+using IsSplitTargetType = std::integral_constant<bool,
+  std::is_arithmetic<T>::value ||
+  std::is_same<T, StringPiece>::value>;
+
 template<bool exact = true,
          class Delim,
-         class... StringPieces>
-bool split(const Delim& delimiter,
-           StringPiece input,
-           StringPiece& outHead,
-           StringPieces&... outTail);
+         class OutputType,
+         class... OutputTypes>
+typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
+split(const Delim& delimiter,
+      StringPiece input,
+      OutputType& outHead,
+      OutputTypes&... outTail);
 
 /*
  * Join list of tokens.

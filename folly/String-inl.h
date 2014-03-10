@@ -347,25 +347,36 @@ template<class String> StringPiece prepareDelim(const String& s) {
 }
 inline char prepareDelim(char c) { return c; }
 
+template <class Dst>
+struct convertTo {
+  template <class Src>
+  static Dst from(const Src& src) { return folly::to<Dst>(src); }
+  static Dst from(const Dst& src) { return src; }
+};
+
 template<bool exact,
-         class Delim>
-bool splitFixed(const Delim& delimiter,
-                StringPiece input,
-                StringPiece& out) {
+         class Delim,
+         class OutputType>
+typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
+splitFixed(const Delim& delimiter,
+           StringPiece input,
+           OutputType& out) {
   if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
-  out = input;
+  out = convertTo<OutputType>::from(input);
   return true;
 }
 
 template<bool exact,
          class Delim,
-         class... StringPieces>
-bool splitFixed(const Delim& delimiter,
-                StringPiece input,
-                StringPiece& outHead,
-                StringPieces&... outTail) {
+         class OutputType,
+         class... OutputTypes>
+typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
+splitFixed(const Delim& delimiter,
+           StringPiece input,
+           OutputType& outHead,
+           OutputTypes&... outTail) {
   size_t cut = input.find(delimiter);
   if (UNLIKELY(cut == std::string::npos)) {
     return false;
@@ -374,7 +385,7 @@ bool splitFixed(const Delim& delimiter,
   StringPiece tail(input.begin() + cut + detail::delimSize(delimiter),
                    input.end());
   if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
-    outHead = head;
+    outHead = convertTo<OutputType>::from(head);
     return true;
   }
   return false;
@@ -423,11 +434,13 @@ void splitTo(const Delim& delimiter,
 
 template<bool exact,
          class Delim,
-         class... StringPieces>
-bool split(const Delim& delimiter,
-           StringPiece input,
-           StringPiece& outHead,
-           StringPieces&... outTail) {
+         class OutputType,
+         class... OutputTypes>
+typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
+split(const Delim& delimiter,
+      StringPiece input,
+      OutputType& outHead,
+      OutputTypes&... outTail) {
   return detail::splitFixed<exact>(
     detail::prepareDelim(delimiter),
     input,
