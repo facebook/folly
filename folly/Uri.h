@@ -61,6 +61,8 @@ class Uri {
   std::string str() const { return toString<std::string>(); }
   fbstring fbstr() const { return toString<fbstring>(); }
 
+  void setPort(uint16_t port) {port_ = port;}
+
  private:
   fbstring scheme_;
   fbstring username_;
