@@ -869,9 +869,18 @@ struct AsciiCaseSensitive {
   }
 };
 
+/**
+ * Check if two ascii characters are case insensitive equal.
+ * The difference between the lower/upper case characters are the 6-th bit.
+ * We also check they are alpha chars, in case of xor = 32.
+ */
 struct AsciiCaseInsensitive {
   bool operator()(char lhs, char rhs) const {
-    return toupper(lhs) == toupper(rhs);
+    char k = lhs ^ rhs;
+    if (k == 0) return true;
+    if (k != 32) return false;
+    k = lhs | rhs;
+    return (k >= 'a' && k <= 'z');
   }
 };
 
