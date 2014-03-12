@@ -63,6 +63,9 @@ static_assert(sizeof(small_vector<int16_t,4,NoHeap,uint16_t,
 
 #endif
 
+static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(std::unique_ptr<int>),
+              "std::unique_ptr<> is trivially copyable");
+
 namespace {
 
 struct NontrivialType {

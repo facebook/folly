@@ -123,10 +123,13 @@ struct MaxAlign { char c; } __attribute__((aligned));
 // to Boost otherwise.
 #if FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE
 #include <type_traits>
-#define FOLLY_IS_TRIVIALLY_COPYABLE(T)      (std::is_trivially_copyable<T>::value)
+#define FOLLY_IS_TRIVIALLY_COPYABLE(T)                   \
+  (std::is_trivially_copyable<T>::value)
 #else
 #include <boost/type_traits.hpp>
-#define FOLLY_IS_TRIVIALLY_COPYABLE(T)      (boost::has_trivial_copy<T>::value)
+#define FOLLY_IS_TRIVIALLY_COPYABLE(T)                   \
+  (boost::has_trivial_copy<T>::value &&                  \
+   boost::has_trivial_destructor<T>::value)
 #endif
 #endif // __cplusplus
 
