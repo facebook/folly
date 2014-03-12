@@ -79,6 +79,14 @@ nobase_follyinclude_HEADERS = \
 	io/RecordIO.h \
 	io/RecordIO-inl.h \
 	io/TypedIOBuf.h \
+	io/async/AsyncTimeout.h \
+	io/async/EventBase.h \
+	io/async/EventFDWrapper.h \
+	io/async/EventHandler.h \
+	io/async/EventUtil.h \
+	io/async/NotificationQueue.h \
+	io/async/Request.h \
+	io/async/TimeoutManager.h \
 	json.h \
 	Lazy.h \
 	Likely.h \
@@ -175,6 +183,10 @@ libfolly_la_SOURCES = \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
+	io/async/AsyncTimeout.cpp \
+	io/async/EventBase.cpp \
+	io/async/EventHandler.cpp \
+	io/async/Request.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
 	MemoryMapping.cpp \
