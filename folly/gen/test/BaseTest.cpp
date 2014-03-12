@@ -189,13 +189,13 @@ TEST(Gen, Seq) {
 TEST(Gen, Range) {
   // cover the fenceposts of the loop unrolling
   for (int n = 1; n < 100; ++n) {
-    EXPECT_EQ(range(0, n) | count, n);
+    EXPECT_EQ(gen::range(0, n) | count, n);
   }
 }
 
 TEST(Gen, FromIterators) {
   vector<int> source {2, 3, 5, 7, 11};
-  auto gen = from(makeRange(source.begin() + 1, source.end() - 1));
+  auto gen = from(folly::range(source.begin() + 1, source.end() - 1));
   EXPECT_EQ(3 * 5 * 7, gen | product);
 }
 
@@ -618,7 +618,7 @@ TEST(Gen, Any) {
   EXPECT_FALSE(seq(0, 10) | any([](int i) { return i == 11; }));
 
   EXPECT_TRUE(from({1}) | any);
-  EXPECT_FALSE(range(0, 0) | any);
+  EXPECT_FALSE(gen::range(0, 0) | any);
   EXPECT_FALSE(from({1}) | take(0) | any);
 }
 

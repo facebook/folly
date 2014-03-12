@@ -22,14 +22,14 @@
 
 #include "folly/Portability.h"
 #include "folly/FBString.h"
-#include <glog/logging.h>
 #include <algorithm>
-#include <cstring>
-#include <iosfwd>
-#include <string>
-#include <stdexcept>
-#include <type_traits>
 #include <boost/operators.hpp>
+#include <cstring>
+#include <glog/logging.h>
+#include <iosfwd>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 
 // libc++ doesn't provide this header
 #if !FOLLY_USE_LIBCPP
@@ -174,6 +174,7 @@ public:
   // Works only for Range<const char*>
   /* implicit */ Range(const std::string& str)
       : b_(str.data()), e_(b_ + str.size()) {}
+
   // Works only for Range<const char*>
   Range(const std::string& str, std::string::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
@@ -650,8 +651,24 @@ void swap(Range<T>& lhs, Range<T>& rhs) {
  * Create a range from two iterators, with type deduction.
  */
 template <class Iter>
-Range<Iter> makeRange(Iter first, Iter last) {
+Range<Iter> range(Iter first, Iter last) {
   return Range<Iter>(first, last);
+}
+
+/*
+ * Creates a range to reference the contents of a contiguous-storage container.
+ */
+// Use pointers for types with '.data()' member
+template <class Collection,
+          class T = typename std::remove_pointer<
+              decltype(std::declval<Collection>().data())>::type>
+Range<T*> range(Collection&& v) {
+  return Range<T*>(v.data(), v.data() + v.size());
+}
+
+template <class T, size_t n>
+Range<T*> range(T (&array)[n]) {
+  return Range<T*>(array, array + n);
 }
 
 typedef Range<const char*> StringPiece;

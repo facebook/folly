@@ -19,13 +19,15 @@
 
 #include "folly/Range.h"
 
-#include <limits>
-#include <cstdlib>
-#include <string>
-#include <iterator>
-#include <sys/mman.h>
+#include <array>
 #include <boost/range/concepts.hpp>
+#include <cstdlib>
 #include <gtest/gtest.h>
+#include <iterator>
+#include <limits>
+#include <string>
+#include <sys/mman.h>
+#include <vector>
 
 namespace folly { namespace detail {
 
@@ -921,4 +923,38 @@ TEST(NonConstTest, StringPiece) {
     ByteRange r1(sp);
     MutableByteRange r2(sp);
   }
+}
+
+template<class C>
+void testRangeFunc(C&& x, size_t n) {
+  const auto& cx = x;
+  // type, conversion checks
+  Range<int*> r1 = range(std::forward<C>(x));
+  Range<const int*> r2 = range(std::forward<C>(x));
+  Range<const int*> r3 = range(cx);
+  Range<const int*> r5 = range(std::move(cx));
+  EXPECT_EQ(r1.begin(), &x[0]);
+  EXPECT_EQ(r1.end(), &x[n]);
+  EXPECT_EQ(n, r1.size());
+  EXPECT_EQ(n, r2.size());
+  EXPECT_EQ(n, r3.size());
+  EXPECT_EQ(n, r5.size());
+}
+
+TEST(RangeFunc, Vector) {
+  std::vector<int> x;
+  testRangeFunc(x, 0);
+  x.push_back(2);
+  testRangeFunc(x, 1);
+  testRangeFunc(std::vector<int>{1, 2}, 2);
+}
+
+TEST(RangeFunc, Array) {
+  std::array<int, 3> x;
+  testRangeFunc(x, 3);
+}
+
+TEST(RangeFunc, CArray) {
+  int x[] {1, 2, 3, 4};
+  testRangeFunc(x, 4);
 }

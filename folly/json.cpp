@@ -216,7 +216,7 @@ private:
     indent();
     newline();
     (*this)(a[0]);
-    for (auto& val : makeRange(boost::next(a.begin()), a.end())) {
+    for (auto& val : range(boost::next(a.begin()), a.end())) {
       out_ += ',';
       newline();
       (*this)(val);
@@ -509,7 +509,7 @@ dynamic parseNumber(Input& in) {
     auto expPart = in.skipDigits();
     end = expPart.end();
   }
-  auto fullNum = makeRange(integral.begin(), end);
+  auto fullNum = range(integral.begin(), end);
 
   auto val = to<double>(fullNum);
   return val;

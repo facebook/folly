@@ -19,8 +19,8 @@
 #include "folly/Benchmark.h"
 #include "folly/gen/Base.h"
 
-using namespace folly;
 using namespace folly::gen;
+using folly::fbstring;
 using std::pair;
 using std::set;
 using std::vector;
@@ -339,6 +339,6 @@ BENCHMARK(Sample, iters) {
 
 int main(int argc, char *argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  runBenchmarks();
+  folly::runBenchmarks();
   return 0;
 }

@@ -341,8 +341,8 @@ TEST(DynamicConverter, construct) {
 
   {
     vector<int> vi { 2, 3, 4, 5 };
-    auto c = std::make_pair(makeRange(vi.begin(), vi.begin() + 3),
-                            makeRange(vi.begin() + 1, vi.begin() + 4));
+    auto c = std::make_pair(range(vi.begin(), vi.begin() + 3),
+                            range(vi.begin() + 1, vi.begin() + 4));
     dynamic d = { { 2, 3, 4 }, { 3, 4, 5 } };
     EXPECT_EQ(d, toDynamic(c));
   }
