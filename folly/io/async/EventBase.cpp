@@ -1,20 +1,17 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements. See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership. The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
+ * Copyright 2014 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef __STDC_FORMAT_MACROS
@@ -35,10 +32,14 @@ namespace {
 using folly::Cob;
 using folly::EventBase;
 
-class Tr1FunctionLoopCallback : public EventBase::LoopCallback {
+template <typename Callback>
+class FunctionLoopCallback : public EventBase::LoopCallback {
  public:
-  explicit Tr1FunctionLoopCallback(const Cob& function)
-    : function_(function) {}
+  explicit FunctionLoopCallback(Cob&& function)
+      : function_(std::move(function)) {}
+
+  explicit FunctionLoopCallback(const Cob& function)
+      : function_(function) {}
 
   virtual void runLoopCallback() noexcept {
     function_();
@@ -46,7 +47,7 @@ class Tr1FunctionLoopCallback : public EventBase::LoopCallback {
   }
 
  private:
-  Cob function_;
+  Callback function_;
 };
 
 }
@@ -206,12 +207,12 @@ void EventBase::resetLoadAvg(double value) {
   maxLatencyLoopTime_.reset(value);
 }
 
-static int64_t getTimeDelta(int64_t *prev) {
-  int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
-  int64_t delta = now - *prev;
-  *prev = now;
-  return delta;
+static std::chrono::milliseconds
+getTimeDelta(std::chrono::steady_clock::time_point* prev) {
+  auto result = std::chrono::steady_clock::now() - *prev;
+  *prev = std::chrono::steady_clock::now();
+
+  return std::chrono::duration_cast<std::chrono::milliseconds>(result);
 }
 
 void EventBase::waitUntilRunning() {
@@ -235,8 +236,7 @@ bool EventBase::loop() {
   }
 #endif
 
-  int64_t prev = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
+  auto prev = std::chrono::steady_clock::now();
   int64_t idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
     std::chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -300,7 +300,8 @@ bool EventBase::loop() {
       }
     }
 
-    VLOG(5) << "EventBase " << this << " loop time: " << getTimeDelta(&prev);
+    VLOG(5) << "EventBase " << this << " loop time: " <<
+      getTimeDelta(&prev).count();
   }
   // Reset stop_ so loop() can be called again
   stop_ = false;
@@ -401,7 +402,18 @@ void EventBase::runInLoop(LoopCallback* callback, bool thisIteration) {
 
 void EventBase::runInLoop(const Cob& cob, bool thisIteration) {
   DCHECK(isInEventBaseThread());
-  Tr1FunctionLoopCallback* wrapper = new Tr1FunctionLoopCallback(cob);
+  auto wrapper = new FunctionLoopCallback<Cob>(cob);
+  wrapper->context_ = RequestContext::saveContext();
+  if (runOnceCallbacks_ != nullptr && thisIteration) {
+    runOnceCallbacks_->push_back(*wrapper);
+  } else {
+    loopCallbacks_.push_back(*wrapper);
+  }
+}
+
+void EventBase::runInLoop(Cob&& cob, bool thisIteration) {
+  DCHECK(isInEventBaseThread());
+  auto wrapper = new FunctionLoopCallback<Cob>(std::move(cob));
   wrapper->context_ = RequestContext::saveContext();
   if (runOnceCallbacks_ != nullptr && thisIteration) {
     runOnceCallbacks_->push_back(*wrapper);
@@ -457,7 +469,7 @@ bool EventBase::runInEventBaseThread(const Cob& fn) {
     return false;
   }
 
-  if (!runInEventBaseThread(&EventBase::runTr1FunctionPtr, fnCopy)) {
+  if (!runInEventBaseThread(&EventBase::runFunctionPtr, fnCopy)) {
     delete fnCopy;
     return false;
   }
@@ -567,7 +579,7 @@ bool EventBase::nothingHandledYet() {
 }
 
 /* static */
-void EventBase::runTr1FunctionPtr(Cob* fn) {
+void EventBase::runFunctionPtr(Cob* fn) {
   // The function should never throw an exception, because we have no
   // way of knowing what sort of error handling to perform.
   //
