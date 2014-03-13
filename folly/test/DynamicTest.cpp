@@ -20,6 +20,7 @@
 
 #include "folly/Benchmark.h"
 #include "folly/dynamic.h"
+#include "folly/gen/Base.h"
 #include "folly/json.h"
 
 using folly::dynamic;
@@ -303,6 +304,13 @@ TEST(Dynamic, GetPtr) {
   EXPECT_EQ(dynamic(11), *object.get_ptr("one"));
   const dynamic& cobject = object;
   EXPECT_EQ(dynamic(2), *cobject.get_ptr("two"));
+}
+
+TEST(Dynamic, ArrayGenerator) {
+  // Make sure arrays can be used with folly::gen.
+  using namespace folly::gen;
+  dynamic arr { 1, 2, 3, 4 };
+  EXPECT_EQ(from(arr) | take(3) | member(&dynamic::asInt) | sum, 6);
 }
 
 int main(int argc, char** argv) {

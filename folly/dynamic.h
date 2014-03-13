@@ -110,6 +110,7 @@ private:
   typedef std::vector<dynamic> Array;
 public:
   typedef Array::const_iterator const_iterator;
+  typedef dynamic value_type;
   struct const_key_iterator;
   struct const_value_iterator;
   struct const_item_iterator;
