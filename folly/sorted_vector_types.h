@@ -617,6 +617,71 @@ inline void swap(sorted_vector_map<K,V,C,A,G>& a,
   return a.swap(b);
 }
 
+/*
+ * Efficiently moves all elements from b into a by taking advantage of sorted
+ * inputs. Any keys that belong to both a and b will have the value from b.
+ * Assumes that C and A can be constructed using the default constructor.
+ *
+ * std::merge cannot be used for this use case because in the event of equal
+ * keys belonging to both a and b, it undefined which element will be inserted
+ * into the output map last (and therefore be present in the map).
+ */
+template<class K, class V, class C, class A, class G>
+inline void merge(sorted_vector_map<K,V,C,A,G>& a,
+                  sorted_vector_map<K,V,C,A,G>& b) {
+  auto size = a.size();
+  auto it_a = a.begin();
+  auto it_b = b.begin();
+  while (it_a != a.end() && it_b != b.end()) {
+    auto comp = a.key_comp()(it_a->first, it_b->first);
+    if (!comp) {
+      if (!a.key_comp()(it_b->first, it_a->first)) {
+        ++it_a;
+        ++it_b;
+      } else {
+        ++size;
+        ++it_b;
+      }
+    } else {
+      ++it_a;
+    }
+  }
+  if (it_b != b.end()) {
+    size += b.end() - it_b;
+  }
+
+  sorted_vector_map<K,V,C,A,G> c;
+  c.reserve(size);
+  it_a = a.begin();
+  it_b = b.begin();
+  while (it_a != a.end() && it_b != b.end()) {
+    auto comp = a.key_comp()(it_a->first, it_b->first);
+    if (!comp) {
+      if (!a.key_comp()(it_b->first, it_a->first)) {
+        c.insert(c.end(), std::move(*it_b));
+        ++it_a;
+        ++it_b;
+      } else {
+        c.insert(c.end(), std::move(*it_b));
+        ++it_b;
+      }
+    } else {
+      c.insert(c.end(), std::move(*it_a));
+      ++it_a;
+    }
+  }
+  while (it_a != a.end()) {
+    c.insert(c.end(), std::move(*it_a));
+    ++it_a;
+  }
+  while (it_b != b.end()) {
+    c.insert(c.end(), std::move(*it_b));
+    ++it_b;
+  }
+  a.swap(c);
+  b.clear();
+}
+
 //////////////////////////////////////////////////////////////////////
 
 }
