@@ -301,29 +301,3 @@ TEST(SortedVectorTest, EmptyTest) {
   EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
   EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
 }
-
-TEST(SortedVectorTest, MergeTest) {
-  sorted_vector_map<int, int> a;
-  a[0] = 0;
-  a[1] = 1;
-  a[5] = 5;
-  a[10] = 10;
-
-  sorted_vector_map<int, int> b;
-  b[0] = 10;
-  b[3] = 13;
-  b[7] = 17;
-  b[11] = 111;
-
-  merge(a, b);
-
-  EXPECT_TRUE(b.empty());
-  EXPECT_EQ(a.size(), 7);
-  EXPECT_EQ(a[0], 10);
-  EXPECT_EQ(a[1], 1);
-  EXPECT_EQ(a[3], 13);
-  EXPECT_EQ(a[5], 5);
-  EXPECT_EQ(a[7], 17);
-  EXPECT_EQ(a[10], 10);
-  EXPECT_EQ(a[11], 111);
-}
