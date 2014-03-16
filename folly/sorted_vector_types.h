@@ -112,7 +112,7 @@ namespace detail {
   }
 
   template<class OurContainer, class Vector, class GrowthPolicy>
-  std::pair<typename OurContainer::iterator,bool>
+  typename OurContainer::iterator
   insert_with_hint(OurContainer& sorted,
                    Vector& cont,
                    typename OurContainer::iterator hint,
@@ -123,25 +123,25 @@ namespace detail {
     if (hint == cont.end() || cmp(value, *hint)) {
       if (hint == cont.begin()) {
         po.increase_capacity(cont, cont.begin());
-        return std::make_pair(cont.insert(cont.begin(), value), true);
+        return cont.insert(cont.begin(), value);
       }
       if (cmp(*(hint - 1), value)) {
         hint = po.increase_capacity(cont, hint);
-        return std::make_pair(cont.insert(hint, value), true);
+        return cont.insert(hint, value);
       }
-      return sorted.insert(value);
+      return sorted.insert(value).first;
     }
 
     if (cmp(*hint, value)) {
       if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
         typename OurContainer::iterator it =
           po.increase_capacity(cont, hint + 1);
-        return std::make_pair(cont.insert(it, value), true);
+        return cont.insert(it, value);
       }
     }
 
     // Value and *hint did not compare, so they are equal keys.
-    return std::make_pair(hint, false);
+    return hint;
   }
 
 }
@@ -252,7 +252,7 @@ public:
     return std::make_pair(it, false);
   }
 
-  std::pair<iterator,bool> insert(iterator hint, const value_type& value) {
+  iterator insert(iterator hint, const value_type& value) {
     return detail::insert_with_hint(*this, m_.cont_, hint, value,
       get_growth_policy());
   }
@@ -487,7 +487,7 @@ public:
     return std::make_pair(it, false);
   }
 
-  std::pair<iterator,bool> insert(iterator hint, const value_type& value) {
+  iterator insert(iterator hint, const value_type& value) {
     return detail::insert_with_hint(*this, m_.cont_, hint, value,
       get_growth_policy());
   }
@@ -585,7 +585,7 @@ public:
   mapped_type& operator[](const key_type& key) {
     iterator it = lower_bound(key);
     if (it == end() || key_comp()(key, it->first)) {
-      return insert(it, value_type(key, mapped_type())).first->second;
+      return insert(it, value_type(key, mapped_type()))->second;
     }
     return it->second;
   }
