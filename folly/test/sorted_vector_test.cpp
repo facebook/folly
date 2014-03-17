@@ -301,3 +301,21 @@ TEST(SortedVectorTest, EmptyTest) {
   EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
   EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
 }
+
+TEST(SortedVectorTest, MoveTest) {
+  sorted_vector_set<std::unique_ptr<int>> s;
+  s.insert(std::unique_ptr<int>(new int(5)));
+  s.insert(s.end(), std::unique_ptr<int>(new int(10)));
+  EXPECT_EQ(s.size(), 2);
+
+  for (const auto& p : s) {
+    EXPECT_TRUE(*p == 5 || *p == 10);
+  }
+
+  sorted_vector_map<int, std::unique_ptr<int>> m;
+  m.insert(std::make_pair(5, std::unique_ptr<int>(new int(5))));
+  m.insert(m.end(), std::make_pair(10, std::unique_ptr<int>(new int(10))));
+
+  EXPECT_EQ(*m[5], 5);
+  EXPECT_EQ(*m[10], 10);
+}

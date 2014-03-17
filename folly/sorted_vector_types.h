@@ -116,27 +116,27 @@ namespace detail {
   insert_with_hint(OurContainer& sorted,
                    Vector& cont,
                    typename OurContainer::iterator hint,
-                   typename OurContainer::value_type value,
+                   typename OurContainer::value_type&& value,
                    GrowthPolicy& po)
   {
     const typename OurContainer::value_compare& cmp(sorted.value_comp());
     if (hint == cont.end() || cmp(value, *hint)) {
       if (hint == cont.begin()) {
         po.increase_capacity(cont, cont.begin());
-        return cont.insert(cont.begin(), value);
+        return cont.insert(cont.begin(), std::move(value));
       }
       if (cmp(*(hint - 1), value)) {
         hint = po.increase_capacity(cont, hint);
-        return cont.insert(hint, value);
+        return cont.insert(hint, std::move(value));
       }
-      return sorted.insert(value).first;
+      return sorted.insert(std::move(value)).first;
     }
 
     if (cmp(*hint, value)) {
       if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
         typename OurContainer::iterator it =
           po.increase_capacity(cont, hint + 1);
-        return cont.insert(it, value);
+        return cont.insert(it, std::move(value));
       }
     }
 
@@ -244,16 +244,24 @@ public:
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {
+    return insert(value_type(value));
+  }
+
+  std::pair<iterator,bool> insert(value_type&& value) {
     iterator it = lower_bound(value);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, value), true);
+      return std::make_pair(m_.cont_.insert(it, std::move(value)), true);
     }
     return std::make_pair(it, false);
   }
 
   iterator insert(iterator hint, const value_type& value) {
-    return detail::insert_with_hint(*this, m_.cont_, hint, value,
+    return insert(hint, value_type(value));
+  }
+
+  iterator insert(iterator hint, value_type&& value) {
+    return detail::insert_with_hint(*this, m_.cont_, hint, std::move(value),
       get_growth_policy());
   }
 
@@ -479,16 +487,24 @@ public:
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {
+    return insert(value_type(value));
+  }
+
+  std::pair<iterator,bool> insert(value_type&& value) {
     iterator it = lower_bound(value.first);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, value), true);
+      return std::make_pair(m_.cont_.insert(it, std::move(value)), true);
     }
     return std::make_pair(it, false);
   }
 
   iterator insert(iterator hint, const value_type& value) {
-    return detail::insert_with_hint(*this, m_.cont_, hint, value,
+    return insert(hint, value_type(value));
+  }
+
+  iterator insert(iterator hint, value_type&& value) {
+    return detail::insert_with_hint(*this, m_.cont_, hint, std::move(value),
       get_growth_policy());
   }
 
