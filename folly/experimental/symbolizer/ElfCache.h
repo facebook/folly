@@ -107,7 +107,9 @@ class ElfCache : public ElfCacheBase {
   std::mutex mutex_;
 
   typedef boost::intrusive::list_member_hook<> LruLink;
+
   struct Entry {
+    std::string path;
     ElfFile file;
     LruLink lruLink;
   };
@@ -115,7 +117,10 @@ class ElfCache : public ElfCacheBase {
   static std::shared_ptr<ElfFile> filePtr(const std::shared_ptr<Entry>& e);
 
   size_t capacity_;
-  std::unordered_map<std::string, std::shared_ptr<Entry>> files_;
+  std::unordered_map<
+    StringPiece,
+    std::shared_ptr<Entry>,
+    StringPieceHash> files_;
 
   typedef boost::intrusive::list<
       Entry,

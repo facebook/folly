@@ -57,11 +57,9 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
 ElfCache::ElfCache(size_t capacity) : capacity_(capacity) { }
 
 std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
-  auto path = p.str();
-
   std::lock_guard<std::mutex> lock(mutex_);
 
-  auto pos = files_.find(path);
+  auto pos = files_.find(p);
   if (pos != files_.end()) {
     // Found, move to back (MRU)
     auto& entry = pos->second;
@@ -71,6 +69,8 @@ std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   }
 
   auto entry = std::make_shared<Entry>();
+  entry->path = p.str();
+  auto& path = entry->path;
 
   // No negative caching
   if (entry->file.openNoThrow(path.c_str()) == -1) {
@@ -78,11 +78,12 @@ std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   }
 
   if (files_.size() == capacity_) {
-    // Evict LRU
+    auto& e = lruList_.front();
     lruList_.pop_front();
+    files_.erase(e.path);
   }
 
-  files_.emplace(std::move(path), entry);
+  files_.emplace(entry->path, entry);
   lruList_.push_back(*entry);
 
   return filePtr(entry);

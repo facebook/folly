@@ -160,6 +160,27 @@ ElfCache* defaultElfCache() {
 
 }  // namespace
 
+void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
+                          uintptr_t address) {
+  clear();
+  found = true;
+
+  address += file->getBaseAddress();
+  auto sym = file->getDefinitionByAddress(address);
+  if (!sym.first) {
+    return;
+  }
+
+  file_ = file;
+  auto name = file->getSymbolName(sym);
+  if (name) {
+    this->name = name;
+  }
+
+  Dwarf(file.get()).findAddress(address, location);
+}
+
+
 Symbolizer::Symbolizer(ElfCacheBase* cache)
   : cache_(cache ?: defaultElfCache()) {
 }
@@ -172,8 +193,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     auto& frame = frames[i];
     if (!frame.found) {
       ++remaining;
-      frame.name.clear();
-      frame.location = Dwarf::LocationInfo();
+      frame.clear();
     }
   }
 
@@ -234,17 +254,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
       }
 
       // Undo relocation
-      uintptr_t fileAddress = address - from + elfFile->getBaseAddress();
-      auto sym = elfFile->getDefinitionByAddress(fileAddress);
-      if (!sym.first) {
-        continue;
-      }
-      auto name = elfFile->getSymbolName(sym);
-      if (name) {
-        frame.name = name;
-      }
-
-      Dwarf(elfFile.get()).findAddress(fileAddress, frame.location);
+      frame.set(elfFile, address - from);
     }
   }
 

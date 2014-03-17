@@ -32,14 +32,17 @@
 namespace folly {
 namespace symbolizer {
 
+class Symbolizer;
+
 /**
  * Frame information: symbol name and location.
- *
- * Note that both name and location are references in the Symbolizer object,
- * which must outlive this SymbolizedFrame object.
  */
 struct SymbolizedFrame {
   SymbolizedFrame() : found(false) { }
+
+  void set(const std::shared_ptr<ElfFile>& file, uintptr_t address);
+  void clear() { *this = SymbolizedFrame(); }
+
   bool isSignalFrame;
   bool found;
   StringPiece name;
@@ -51,6 +54,8 @@ struct SymbolizedFrame {
   fbstring demangledName() const {
     return demangle(name.fbstr().c_str());
   }
+ private:
+  std::shared_ptr<ElfFile> file_;
 };
 
 template <size_t N>
