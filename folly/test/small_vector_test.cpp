@@ -529,7 +529,7 @@ TEST(small_vector, NoHeap) {
     std::size_t,folly::small_vector_policy::NoHeap> Vector;
 
   Vector v;
-  EXPECT_EQ(v.max_size(), 10);
+  static_assert(v.max_size() == 10, "max_size is incorrect");
 
   for (int i = 0; i < 10; ++i) {
     v.push_back(folly::to<std::string>(i));
@@ -546,7 +546,7 @@ TEST(small_vector, NoHeap) {
 
   // Check max_size works right with various policy combinations.
   folly::small_vector<std::string,32,uint32_t,NoHeap,OneBitMutex> v2;
-  EXPECT_EQ(v2.max_size(), 32);
+  static_assert(v2.max_size() == 32, "max_size is incorrect");
   folly::small_vector<std::string,32,uint32_t,OneBitMutex> v3;
   EXPECT_EQ(v3.max_size(), (1ul << 30) - 1);
   folly::small_vector<std::string,32,uint32_t> v4;
@@ -558,7 +558,8 @@ TEST(small_vector, NoHeap) {
    * pointer.
    */
   folly::small_vector<char,1,NoHeap> notsosmall;
-  EXPECT_EQ(notsosmall.max_size(), sizeof(char*));
+  static_assert(notsosmall.max_size() == sizeof(char*),
+                "max_size is incorrect");
   caught = false;
   try {
     notsosmall.push_back(12);
