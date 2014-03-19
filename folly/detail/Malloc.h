@@ -28,9 +28,11 @@ extern "C" {
 #if FOLLY_HAVE_WEAK_SYMBOLS
 int rallocm(void**, size_t*, size_t, size_t, int) __attribute__((weak));
 int allocm(void**, size_t*, size_t, int) __attribute__((weak));
+int mallctl(const char*, void*, size_t*, void*, size_t) __attribute__((weak));
 #else
 extern int (*rallocm)(void**, size_t*, size_t, size_t, int);
 extern int (*allocm)(void**, size_t*, size_t, int);
+extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
 #endif
 
 }

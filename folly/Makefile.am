@@ -189,6 +189,7 @@ libfolly_la_SOURCES = \
 	io/async/Request.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
+	Malloc.cpp \
 	MemoryMapping.cpp \
 	Random.cpp \
 	Range.cpp \

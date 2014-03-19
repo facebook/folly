@@ -21,6 +21,7 @@ extern "C" {
 #if !FOLLY_HAVE_WEAK_SYMBOLS
 int (*rallocm)(void**, size_t*, size_t, size_t, int) = nullptr;
 int (*allocm)(void**, size_t*, size_t, int) = nullptr;
+int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
 #endif
 
 }

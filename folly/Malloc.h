@@ -45,13 +45,15 @@ namespace folly {
 #pragma GCC system_header
 
 /**
- * Declare rallocm() and allocm() as weak symbols. These will be provided by
- * jemalloc if we are using jemalloc, or will be NULL if we are using another
- * malloc implementation.
+ * Declare rallocm(), allocm(), and mallctl() as weak symbols. These will be
+ * provided by jemalloc if we are using jemalloc, or will be NULL if we are
+ * using another malloc implementation.
  */
 extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
 __attribute__((weak));
 extern "C" int allocm(void**, size_t*, size_t, int)
+__attribute__((weak));
+extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
 __attribute__((weak));
 
 #include <bits/functexcept.h>
@@ -107,12 +109,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 namespace folly {
 #endif
 
+bool usingJEMallocSlow();
 
 /**
  * Determine if we are using jemalloc or not.
  */
 inline bool usingJEMalloc() {
-  return rallocm != NULL;
+  // Checking for rallocm != NULL is not sufficient; we may be in a dlopen()ed
+  // module that depends on libjemalloc, so rallocm is resolved, but the main
+  // program might be using a different memory allocator. Look at the
+  // implementation of usingJEMallocSlow() for the (hacky) details.
+  static bool result = usingJEMallocSlow();
+  return result;
 }
 
 /**
