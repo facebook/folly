@@ -145,7 +145,8 @@ TEST_F(GenericThreadGateFixture, gate_with_promise) {
     });
 
   bool eastPromiseMade = false;
-  std::async(std::launch::async, [&p, &eastPromiseMade, this]() {
+  auto thread = std::thread([&p, &eastPromiseMade, this]() {
+    EXPECT_NE(t.get_id(), std::this_thread::get_id());
     // South thread != west thread. p gets set in west thread.
     tg.gate<int>([&p, &eastPromiseMade, this] {
                    EXPECT_EQ(t.get_id(), std::this_thread::get_id());
@@ -162,4 +163,5 @@ TEST_F(GenericThreadGateFixture, gate_with_promise) {
   EXPECT_TRUE(westThenCalled);
   EXPECT_TRUE(eastPromiseMade);
   EXPECT_EQ(f.value(), 1);
+  thread.join();
 }
