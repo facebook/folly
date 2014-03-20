@@ -520,6 +520,12 @@ TEST(when, whenN) {
 
 /* Ensure that we can compile when_{all,any} with folly::small_vector */
 TEST(when, small_vector) {
+
+  static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<void>),
+                "Futures should not be trivially copyable");
+  static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<int>),
+                "Futures should not be trivially copyable");
+
   using folly::small_vector;
   {
     small_vector<Future<void>> futures;
