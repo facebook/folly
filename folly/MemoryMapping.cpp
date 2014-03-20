@@ -33,29 +33,40 @@ namespace folly {
 MemoryMapping::MemoryMapping()
   : mapStart_(nullptr)
   , mapLength_(0)
+  , pageSize_(0)
   , locked_(false) {
 }
 
-MemoryMapping::MemoryMapping(File file, off_t offset, off_t length)
+MemoryMapping::MemoryMapping(File file, off_t offset, off_t length,
+                             off_t pageSize)
   : mapStart_(nullptr)
   , mapLength_(0)
+  , pageSize_(0)
   , locked_(false) {
 
-  init(std::move(file), offset, length, PROT_READ, false);
+  init(std::move(file), offset, length, pageSize, PROT_READ, false);
 }
 
-MemoryMapping::MemoryMapping(const char* name, off_t offset, off_t length)
-  : MemoryMapping(File(name), offset, length) { }
+MemoryMapping::MemoryMapping(const char* name, off_t offset, off_t length,
+                             off_t pageSize)
+  : MemoryMapping(File(name), offset, length, pageSize) { }
 
-MemoryMapping::MemoryMapping(int fd, off_t offset, off_t length)
-  : MemoryMapping(File(fd), offset, length) { }
+MemoryMapping::MemoryMapping(int fd, off_t offset, off_t length,
+                             off_t pageSize)
+  : MemoryMapping(File(fd), offset, length, pageSize) { }
 
 void MemoryMapping::init(File file,
                          off_t offset, off_t length,
+                         off_t pageSize,
                          int prot,
                          bool grow) {
-  off_t pageSize = sysconf(_SC_PAGESIZE);
+  if (pageSize == 0) {
+    pageSize = sysconf(_SC_PAGESIZE);
+  }
+  CHECK_GT(pageSize, 0);
+  CHECK_EQ(pageSize & (pageSize - 1), 0);  // power of two
   CHECK_GE(offset, 0);
+  pageSize_ = pageSize;
 
   // Round down the start of the mapped region
   size_t skipStart = offset % pageSize;
@@ -105,14 +116,13 @@ void MemoryMapping::init(File file,
 
 namespace {
 
-off_t memOpChunkSize(off_t length) {
+off_t memOpChunkSize(off_t length, off_t pageSize) {
   off_t chunkSize = length;
   if (FLAGS_mlock_chunk_size <= 0) {
     return chunkSize;
   }
 
   chunkSize = FLAGS_mlock_chunk_size;
-  off_t pageSize = sysconf(_SC_PAGESIZE);
   off_t r = chunkSize % pageSize;
   if (r) {
     chunkSize += (pageSize - r);
@@ -128,7 +138,7 @@ off_t memOpChunkSize(off_t length) {
  * - failure: false + amountSucceeded == nr bytes on which op succeeded.
  */
 bool memOpInChunks(std::function<int(void*, size_t)> op,
-                   void* mem, size_t bufSize,
+                   void* mem, size_t bufSize, off_t pageSize,
                    size_t& amountSucceeded) {
   // unmap/mlock/munlock take a kernel semaphore and block other threads from
   // doing other memory operations. If the size of the buffer is big the
@@ -137,7 +147,7 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  size_t chunkSize = memOpChunkSize(bufSize);
+  size_t chunkSize = memOpChunkSize(bufSize, pageSize);
 
   char* addr = static_cast<char*>(mem);
   amountSucceeded = 0;
@@ -157,7 +167,8 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
 
 bool MemoryMapping::mlock(LockMode lock) {
   size_t amountSucceeded = 0;
-  locked_ = memOpInChunks(::mlock, mapStart_, mapLength_, amountSucceeded);
+  locked_ = memOpInChunks(::mlock, mapStart_, mapLength_, pageSize_,
+                          amountSucceeded);
   if (locked_) {
     return true;
   }
@@ -173,7 +184,8 @@ bool MemoryMapping::mlock(LockMode lock) {
   }
 
   // only part of the buffer was mlocked, unlock it back
-  if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, amountSucceeded)) {
+  if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, pageSize_,
+                     amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
 
@@ -184,7 +196,8 @@ void MemoryMapping::munlock(bool dontneed) {
   if (!locked_) return;
 
   size_t amountSucceeded = 0;
-  if (!memOpInChunks(::munlock, mapStart_, mapLength_, amountSucceeded)) {
+  if (!memOpInChunks(::munlock, mapStart_, mapLength_, pageSize_,
+                     amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
   if (mapLength_ && dontneed &&
@@ -201,7 +214,8 @@ void MemoryMapping::hintLinearScan() {
 MemoryMapping::~MemoryMapping() {
   if (mapLength_) {
     size_t amountSucceeded = 0;
-    if (!memOpInChunks(::munmap, mapStart_, mapLength_, amountSucceeded)) {
+    if (!memOpInChunks(::munmap, mapStart_, mapLength_, pageSize_,
+                       amountSucceeded)) {
       PLOG(FATAL) << folly::format(
         "munmap({}) failed at {}",
         mapLength_, amountSucceeded).str();
@@ -215,8 +229,9 @@ void MemoryMapping::advise(int advice) const {
   }
 }
 
-WritableMemoryMapping::WritableMemoryMapping(File file, off_t offset, off_t length) {
-  init(std::move(file), offset, length, PROT_READ | PROT_WRITE, true);
+WritableMemoryMapping::WritableMemoryMapping(
+    File file, off_t offset, off_t length, off_t pageSize) {
+  init(std::move(file), offset, length, pageSize, PROT_READ | PROT_WRITE, true);
 }
 
 }  // namespace folly

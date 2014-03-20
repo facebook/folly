@@ -54,15 +54,18 @@ class MemoryMapping : boost::noncopyable {
    */
   explicit MemoryMapping(File file,
                          off_t offset=0,
-                         off_t length=-1);
+                         off_t length=-1,
+                         off_t pageSize=0);
 
   explicit MemoryMapping(const char* name,
                          off_t offset=0,
-                         off_t length=-1);
+                         off_t length=-1,
+                         off_t pageSize=0);
 
   explicit MemoryMapping(int fd,
                          off_t offset=0,
-                         off_t length=-1);
+                         off_t length=-1,
+                         off_t pageSize=0);
 
   virtual ~MemoryMapping();
 
@@ -126,12 +129,14 @@ class MemoryMapping : boost::noncopyable {
 
   void init(File file,
             off_t offset, off_t length,
+            off_t pageSize,
             int prot,
             bool grow);
 
   File file_;
   void* mapStart_;
   off_t mapLength_;
+  off_t pageSize_;
   bool locked_;
   Range<uint8_t*> data_;
 };
@@ -145,7 +150,8 @@ class WritableMemoryMapping : public MemoryMapping {
  public:
   explicit WritableMemoryMapping(File file,
                                  off_t offset = 0,
-                                 off_t length = -1);
+                                 off_t length = -1,
+                                 off_t pageSize = 0);
   /**
    * A bitwise cast of the mapped bytes as range of mutable values. Only
    * intended for use with POD or in-place usable types.
