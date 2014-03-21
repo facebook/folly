@@ -106,6 +106,7 @@ set(_CXX_ALL_FEATURES
     initializer_list
     lambda
     long_long
+    noexcept
     nullptr
     rvalue_references
     sizeof_member

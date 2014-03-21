@@ -8,13 +8,11 @@ CHECK_INCLUDE_FILE_CXX(stdint.h HAVE_STDINT)
 CHECK_INCLUDE_FILE_CXX(stdlib.h HAVE_STDLIB)
 CHECK_INCLUDE_FILE_CXX(string.h HAVE_STRING)
 CHECK_INCLUDE_FILE_CXX(time.h HAVE_TIME)
-CHECK_INCLUDE_FILE_CXX(sys/time.h HAVE_SYS_TIME)
 CHECK_INCLUDE_FILE_CXX(unistd.h HAVE_UNISTD)
 CHECK_INCLUDE_FILE_CXX(mutex.h HAVE_MUTEX)
 CHECK_INCLUDE_FILE_CXX(malloc.h HAVE_MALLOC)
 CHECK_INCLUDE_FILE_CXX(emmintrin.h HAVE_EMMINTRIN)
 CHECK_INCLUDE_FILE_CXX(byteswap.h HAVE_BYTESWAP)
-CHECK_INCLUDE_FILE_CXX(bits/funcexcept.h HAVE_BITS_FUNCEXCEPT)
 
 INCLUDE(CheckTypeSize)
 CHECK_TYPE_SIZE(__int128 HAVE_INT128)
@@ -98,16 +96,7 @@ CHECK_CXX_SOURCE_COMPILES("
     HAVE_CONSTEXPR_STRLEN
 )
 
-INCLUDE(CheckCSourceCompiles) 
-CHECK_C_SOURCE_COMPILES("
-    extern \"C\" void configure_link_extern_weak_test() __attribute__((weak));
-    int main(int argc, char** argv) {
-        return configure_link_extern_weak_test == nullptr;
-    }
-"
-    HAVE_WEAK_SYMBOLS
-)
-
+INCLUDE(CheckCSourceCompiles)
 CHECK_C_SOURCE_COMPILES("
     #pragma GCC diagnostic error \"-Wattributes\"
     extern \"C\" void (*test_ifunc(void))() { return 0; }
