@@ -93,9 +93,9 @@ if(HAVE_CLOCK_GETTIME)
         )
 endif()
 
-# /folly/gen - NO HEADERS from here
-# TODO: figure out how to generate these, and commit generated versions
+# /folly/gen
 file(GLOB Folly_gen_SOURCES folly/gen/*.cpp)
+file(GLOB Folly_gen_HEADERS folly/gen/*.h)
 
 # /folly/io
 file(GLOB Folly_io_HEADERS folly/io/*.h)
@@ -114,7 +114,7 @@ file(GLOB Folly_wangle_SOURCES folly/wangle/*.cpp)
 # libfolly library
 add_library(libfolly STATIC ${Folly_SOURCES} ${Folly_HEADERS}
                             ${Folly_detail_SOURCES} ${Folly_detail_HEADERS}
-                            ${Folly_gen_SOURCES}
+                            ${Folly_gen_SOURCES} ${Folly_gen_HEADERS}
                             ${Folly_io_SOURCES} ${Folly_io_HEADERS}
                             ${Folly_ioasync_SOURCES} ${Folly_ioasync_HEADERS}
                             ${Folly_stats_SOURCES} ${Folly_stats_HEADERS}
@@ -174,12 +174,32 @@ install(TARGETS libfolly DESTINATION lib)
 install(FILES something.h DESTINATION include)
 
 # Re-generate file options
-if(generate)
-    find_package(Python)
-    
-    python_target(something)
-    
-endif(generate)
+if(regenerate_sources)
+
+    include(FindPythonInterp)
+    if(NOT PYTHONINTERP_FOUND)
+    message(FATAL_ERROR "
+        Unable to find Python interpreter required testing. Please install Python
+        or specify the PYTHON_EXECUTABLE CMake variable.")
+    endif()
+
+    # we use execute process because we're forcing regeneration
+    message("${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_format_tables.py")
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_format_tables.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/folly/gen/
+        RESULT_VARIABLE out
+        OUTPUT_VARIABLE output)
+    message("${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_escape_tables.py")
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_escape_tables.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/folly/gen/
+        RESULT_VARIABLE out
+        OUTPUT_VARIABLE output)
+    message("${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_varint_tables.py")
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/folly/build/generate_varint_tables.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/folly/gen/
+        RESULT_VARIABLE out
+        OUTPUT_VARIABLE output)
+endif()
 
 # Testing option
 if(test)
