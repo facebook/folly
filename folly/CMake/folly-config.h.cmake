@@ -3,7 +3,8 @@
 /* C++11 support related */
 #cmakedefine FOLLY_FINAL final
 #cmakedefine FOLLY_OVERRIDE override
-#cmakedefine FOLLY_HAVE_CONSTEXPR
+#cmakedefine FOLLY_HAVE_CONSTEXPR 1
+#cmakedefine FOLLY_NOEXCEPT noexcept
 
 /* Defines to change the behavior of Portability.h */
 #cmakedefine FOLLY_USE_LIBCPP 1

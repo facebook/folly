@@ -2,8 +2,8 @@
 # bundled helper for c++11 support is in cmake next
 include(FindCXXFeatures)
 find_package(CXXFeatures)
+
 # TODO: add additional not worked around features
-# Also note that noexcept is not checked for!
 set(needed_features
     CXXFeatures_auto
     CXXFeatures_initializer_list
@@ -24,6 +24,10 @@ endif()
 
 if(CXXFeatures_constexpr_FOUND)
     set(FOLLY_CONSTEXPR 1)
+endif()
+
+if(CXXFeatures_noexcept_FOUND)
+    set(FOLLY_NOEXCEPT  1)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")

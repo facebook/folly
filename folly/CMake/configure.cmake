@@ -21,10 +21,8 @@ CHECK_TYPE_SIZE(ptrdiff_t HAVE_PTRDIFF_T)
 
 # Platform specific hackery
 if(MSVC)
-    CHECK_TYPE_SIZE(ssize_t SIZE_OF_SSIZE_T)
-    IF(NOT HAVE_SIZE_OF_SSIZE_T)
-     SET(ssize_t SSIZE_T)
-    ENDIF()
+    # add a define for NOMINMAX to keep the min and max macros from overwriting the world
+    add_definitions(-DNOMINMAX)
 endif(MSVC)
 
 INCLUDE(CheckFunctionExists)
