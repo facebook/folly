@@ -15,5 +15,16 @@ foreach(i ${needed_features})
 endif()
 endforeach()
 
+# c++11 features we workaround
+# final, override, constexpr, noexcept
+if(CXXFeatures_class_override_final_FOUND)
+    set(FOLLY_FINAL 1)
+    set(FOLLY_OVERRIDE 1)
+endif()
+
+if(CXXFeatures_constexpr_FOUND)
+    set(FOLLY_CONSTEXPR 1)
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
 message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS}")

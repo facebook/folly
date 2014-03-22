@@ -1,8 +1,18 @@
 /* folly-config.h for CMake builds */
 
-#cmakedefine HAVE_BITS_FUNCEXCEPT 1
+/* C++11 support related */
+#cmakedefine FOLLY_FINAL final
+#cmakedefine FOLLY_OVERRIDE override
+#cmakedefine FOLLY_HAVE_CONSTEXPR
+
+/* Defines to change the behavior of Portability.h */
+#cmakedefine FOLLY_USE_LIBCPP 1
+#cmakedefine FOLLY_HAVE_CLOCK_GETTIME 1
+#cmakedefine FOLLY_HAVE_BITS_FUNCTEXCEPT_H 1
+#cmakedefine FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE 1
+
+
 #cmakedefine HAVE_BYTESWAP 1
-#cmakedefine HAVE_CLOCK_GETTIME 1
 #cmakedefine HAVE_CONSTEXPR_STRLEN 1
 #cmakedefine HAVE_EMMINTRIN 1
 #cmakedefine HAVE_UNISTD 1
@@ -12,7 +22,7 @@
 #cmakedefine HAVE_STRING 1
 #cmakedefine HAVE_STRERROR 1
 #cmakedefine HAVE_STD__THIS_THREAD__SLEEP_FOR 1
-#cmakedefine HAVE_STD__IS_TRIVIALLY_COPYABLE 1
+
 #cmakedefine HAVE_STDLIB 1
 #cmakedefine HAVE_STDINT_H 1
 #cmakedefine HAVE_STDDEF_H 1
@@ -37,7 +47,6 @@
 #cmakedefine HAVE_SCHED 1
 #cmakedefine HAVE_SCHED_YIELD 1
 
-#cmakedefine HAVE_LIBCPP 1
 #cmakedefine HAVE_WEAK_SYMBOLS 1
 
 /* end folly-config.h for CMake builds */

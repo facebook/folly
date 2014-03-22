@@ -71,8 +71,8 @@ if(HAVE_WEAK_SYMBOLS)
 endif()
 
 # exception wrappers
-CHECK_INCLUDE_FILE_CXX(bits/funcexcept.h HAVE_BITS_FUNCEXCEPT)
-if(HAVE_BITS_FUNCEXCEPT)
+CHECK_INCLUDE_FILE_CXX(bits/funcexcept.h FOLLY_HAVE_BITS_FUNCTEXCEPT_H)
+if(FOLLY_HAVE_BITS_FUNCTEXCEPT_H)
     list(REMOVE_ITEM Folly_detail_SOURCES
         ${CMAKE_SOURCE_DIR}/folly/detail/FunctionalExcept.cpp
         )
@@ -83,8 +83,8 @@ endif()
 
 CHECK_INCLUDE_FILE_CXX(sys/time.h HAVE_SYS_TIME)
 INCLUDE(CheckFunctionExists)
-CHECK_FUNCTION_EXISTS(clock_gettime HAVE_CLOCK_GETTIME)
-if(HAVE_CLOCK_GETTIME)
+CHECK_FUNCTION_EXISTS(clock_gettime FOLLY_HAVE_CLOCK_GETTIME)
+if(FOLLY_HAVE_CLOCK_GETTIME)
     list(REMOVE_ITEM Folly_detail_SOURCES
         ${CMAKE_SOURCE_DIR}/folly/detail/Clock.cpp
         )

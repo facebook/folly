@@ -56,7 +56,7 @@ CHECK_CXX_SOURCE_COMPILES("
     const bool val = std::is_trivially_copyable<bool>::value;
     int main() { return 0; }
 "
-      HAVE_STD__IS_TRIVIALLY_COPYABLE
+      FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE
 )
 
 CHECK_CXX_SOURCE_COMPILES("
@@ -85,7 +85,7 @@ CHECK_CXX_SOURCE_COMPILES("
     void func() {}
     int main() { return 0; }
 "
-    HAVE_LIBCPP
+    FOLLY_USE_LIBCPP
 )
 
 CHECK_CXX_SOURCE_COMPILES("
