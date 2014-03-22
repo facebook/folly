@@ -19,12 +19,6 @@ INCLUDE(CheckTypeSize)
 CHECK_TYPE_SIZE(__int128 HAVE_INT128)
 CHECK_TYPE_SIZE(ptrdiff_t HAVE_PTRDIFF_T)
 
-# Platform specific hackery
-if(MSVC)
-    # add a define for NOMINMAX to keep the min and max macros from overwriting the world
-    add_definitions(-DNOMINMAX)
-endif(MSVC)
-
 INCLUDE(CheckFunctionExists)
 # Checks for library functions.
 CHECK_FUNCTION_EXISTS (getdelim HAVE_GETDELIM)

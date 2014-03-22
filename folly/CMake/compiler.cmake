@@ -32,3 +32,9 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
 message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS}")
+
+# Platform specific hackery
+if(MSVC)
+    # add a define for NOMINMAX to keep the min and max macros from overwriting the world
+    add_definitions(-DNOMINMAX)
+endif(MSVC)

@@ -10,11 +10,16 @@ message(STATUS "Module path: ${CMAKE_MODULE_PATH}")
 # options
 include(folly/CMake/options.cmake)
 
-# we could do this with recursion but then we'd have to filter back out tests
-# explicit is better
+
 include_directories(${CMAKE_SOURCE_DIR})
+if(MSVC)
+include_directories(${CMAKE_SOURCE_DIR}/win32)
+endif()
+
 
 # libfolly definition
+# we could do this with recursion but then we'd have to filter back out tests
+# explicit is better
 
 # /folly (without benchmark and timeoutqueue)
 file(GLOB Folly_HEADERS folly/*.h)
