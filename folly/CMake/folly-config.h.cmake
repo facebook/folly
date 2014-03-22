@@ -11,8 +11,11 @@
 #cmakedefine FOLLY_HAVE_BITS_FUNCTEXCEPT_H 1
 #cmakedefine FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE 1
 
+/* Blocks around Includes */
+#cmakedefine FOLLY_HAVE_CXX_CONFIG_H
+#cmakedefine FOLLY_HAVE_BYTESWAP_H
 
-#cmakedefine HAVE_BYTESWAP 1
+
 #cmakedefine HAVE_CONSTEXPR_STRLEN 1
 #cmakedefine HAVE_EMMINTRIN 1
 #cmakedefine HAVE_UNISTD 1
