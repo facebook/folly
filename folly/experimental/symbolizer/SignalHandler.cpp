@@ -198,7 +198,7 @@ constexpr size_t kDefaultCapacity = 500;
 auto gSignalSafeElfCache = new SignalSafeElfCache(kDefaultCapacity);
 }  // namespace
 
-void dumpStackTrace(bool symbolize) __attribute__((noinline));
+FOLLY_NOINLINE void dumpStackTrace(bool symbolize);
 
 void dumpStackTrace(bool symbolize) {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };

@@ -133,4 +133,25 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #endif
 #endif // __cplusplus
 
+/**
+ * Macros related to compiler specific functionality
+ * clang tends to copy the "normal" behavior for the 
+ * current platform
+ */
+
+// Prefix a function you do not want inlined
+#if defined(_MSC_VER)
+#define FOLLY_NOINLINE __attribute__((noinline))
+#elif defined(__GNUC__)
+#define FOLLY_NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif
+
+#if defined(_MSC_VER)
+#define FOLLY_ALWAYS_INLINE __forceinline
+#elif defined(__GNUC__)
+#define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

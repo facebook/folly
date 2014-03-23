@@ -55,7 +55,7 @@ int comparator(const void* ap, const void* bp) {
 }
 
 // Test stack frames...
-void bar() __attribute__((noinline));
+FOLLY_NOINLINE void bar();
 
 void bar() {
   int a[2] = {1, 2};

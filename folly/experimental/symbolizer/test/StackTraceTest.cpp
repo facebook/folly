@@ -23,8 +23,8 @@
 using namespace folly;
 using namespace folly::symbolizer;
 
-void foo1() __attribute__((noinline));
-void foo2() __attribute__((noinline));
+FOLLY_NOINLINE void foo1();
+FOLLY_NOINLINE void foo2();
 
 void verifyStackTraces() {
   constexpr size_t kMaxAddresses = 100;
