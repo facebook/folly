@@ -128,9 +128,9 @@ class EventCount {
   static_assert(sizeof(uint64_t) == 8, "bad platform");
 
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-  static constexpr size_t kEpochOffset = 1;
+  static FOLLY_CONSTEXPR size_t kEpochOffset = 1;
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-  static constexpr size_t kEpochOffset = 0;  // in units of sizeof(int)
+  static FOLLY_CONSTEXPR size_t kEpochOffset = 0;  // in units of sizeof(int)
 #else
 # error Your machine uses a weird endianness!
 #endif
@@ -139,11 +139,11 @@ class EventCount {
   // waiter count in the least significant 32 bits.
   std::atomic<uint64_t> val_;
 
-  static constexpr uint64_t kAddWaiter = uint64_t(1);
-  static constexpr uint64_t kSubWaiter = uint64_t(-1);
-  static constexpr size_t  kEpochShift = 32;
-  static constexpr uint64_t kAddEpoch = uint64_t(1) << kEpochShift;
-  static constexpr uint64_t kWaiterMask = kAddEpoch - 1;
+  static FOLLY_CONSTEXPR uint64_t kAddWaiter = uint64_t(1);
+  static FOLLY_CONSTEXPR uint64_t kSubWaiter = uint64_t(-1);
+  static FOLLY_CONSTEXPR size_t  kEpochShift = 32;
+  static FOLLY_CONSTEXPR uint64_t kAddEpoch = uint64_t(1) << kEpochShift;
+  static FOLLY_CONSTEXPR uint64_t kWaiterMask = kAddEpoch - 1;
 };
 
 inline void EventCount::notify() noexcept {

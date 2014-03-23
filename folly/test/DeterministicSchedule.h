@@ -155,7 +155,7 @@ struct DeterministicAtomic {
   DeterministicAtomic(DeterministicAtomic<T> const &) = delete;
   DeterministicAtomic<T>& operator= (DeterministicAtomic<T> const &) = delete;
 
-  constexpr /* implicit */ DeterministicAtomic(T v) noexcept : data(v) {}
+  FOLLY_CONSTEXPR /* implicit */ DeterministicAtomic(T v) noexcept : data(v) {}
 
   bool is_lock_free() const noexcept {
     return data.is_lock_free();

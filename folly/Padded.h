@@ -72,9 +72,9 @@ template <class T, size_t NS>
 class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
  public:
   typedef T value_type;
-  static constexpr size_t kNodeSize = NS;
-  static constexpr size_t kElementCount = NS / sizeof(T);
-  static constexpr size_t kPaddingBytes = NS % sizeof(T);
+  static FOLLY_CONSTEXPR size_t kNodeSize = NS;
+  static FOLLY_CONSTEXPR size_t kElementCount = NS / sizeof(T);
+  static FOLLY_CONSTEXPR size_t kPaddingBytes = NS % sizeof(T);
 
   T* data() { return storage_.data; }
   const T* data() const { return storage_.data; }
@@ -89,7 +89,7 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
   /**
    * Return the number of nodes needed to represent n values.  Rounds up.
    */
-  static constexpr size_t nodeCount(size_t n) {
+  static FOLLY_CONSTEXPR size_t nodeCount(size_t n) {
     return (n + kElementCount - 1) / kElementCount;
   }
 
@@ -97,7 +97,7 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
    * Return the total byte size needed to represent n values, rounded up
    * to the nearest full node.
    */
-  static constexpr size_t paddedByteSize(size_t n) {
+  static FOLLY_CONSTEXPR size_t paddedByteSize(size_t n) {
     return nodeCount(n) * NS;
   }
 
@@ -107,7 +107,7 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
    * return non-zero if kPaddingBytes != 0, as the padding at the end of
    * the last node is not included in the result.
    */
-  static constexpr size_t paddingBytes(size_t n) {
+  static FOLLY_CONSTEXPR size_t paddingBytes(size_t n) {
     return (n ? (kPaddingBytes +
                  (kElementCount - 1 - (n-1) % kElementCount) * sizeof(T)) :
             0);
@@ -120,7 +120,7 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
    * the padding at the end of the last node is not included in the result.
    * Note that the calculation below works for n=0 correctly (returns 0).
    */
-  static constexpr size_t unpaddedByteSize(size_t n) {
+  static FOLLY_CONSTEXPR size_t unpaddedByteSize(size_t n) {
     return paddedByteSize(n) - paddingBytes(n);
   }
 
@@ -133,11 +133,11 @@ class Node<T, NS, typename detail::NodeValid<T,NS>::type> {
 
 // We must define kElementCount and kPaddingBytes to work around a bug
 // in gtest that odr-uses them.
-template <class T, size_t NS> constexpr size_t
+template <class T, size_t NS> FOLLY_CONSTEXPR size_t
 Node<T, NS, typename detail::NodeValid<T,NS>::type>::kNodeSize;
-template <class T, size_t NS> constexpr size_t
+template <class T, size_t NS> FOLLY_CONSTEXPR size_t
 Node<T, NS, typename detail::NodeValid<T,NS>::type>::kElementCount;
-template <class T, size_t NS> constexpr size_t
+template <class T, size_t NS> FOLLY_CONSTEXPR size_t
 Node<T, NS, typename detail::NodeValid<T,NS>::type>::kPaddingBytes;
 
 template <class Iter> class Iterator;
@@ -223,7 +223,7 @@ class Iterator : public detail::IteratorBase<Iter>::type {
   }
 
   void advance(typename Super::difference_type n) {
-    constexpr ssize_t elementCount = Node::kElementCount;  // signed!
+    FOLLY_CONSTEXPR ssize_t elementCount = Node::kElementCount;  // signed!
     ssize_t newPos = pos_ + n;
     if (newPos >= 0 && newPos < elementCount) {
       pos_ = newPos;
@@ -254,7 +254,7 @@ class Iterator : public detail::IteratorBase<Iter>::type {
   }
 
   typename Super::difference_type distance_to(const Iterator& other) const {
-    constexpr ssize_t elementCount = Node::kElementCount;  // signed!
+    FOLLY_CONSTEXPR ssize_t elementCount = Node::kElementCount;  // signed!
     ssize_t nblocks =
       std::distance(this->base_reference(), other.base_reference());
     return nblocks * elementCount + (other.pos_ - pos_);
@@ -336,7 +336,7 @@ class Adaptor {
   typedef typename const_iterator::difference_type difference_type;
   typedef typename Container::size_type size_type;
 
-  static constexpr size_t kElementsPerNode = Node::kElementCount;
+  static FOLLY_CONSTEXPR size_t kElementsPerNode = Node::kElementCount;
   // Constructors
   Adaptor() : lastCount_(Node::kElementCount) { }
   explicit Adaptor(Container c, size_t lastCount=Node::kElementCount)

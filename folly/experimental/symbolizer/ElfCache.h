@@ -82,7 +82,7 @@ class SignalSafeElfCache : public ElfCacheBase {
       return data_;
     }
 
-    static constexpr size_t kMaxSize = PATH_MAX - 1;
+	static FOLLY_CONSTEXPR size_t kMaxSize = PATH_MAX - 1;
 
    private:
     char data_[kMaxSize + 1];

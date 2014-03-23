@@ -56,7 +56,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
   try {
     ssize_t frameCount = info.frames.size();
     // Skip our own internal frames
-    static constexpr size_t skip = 3;
+	static FOLLY_CONSTEXPR size_t skip = 3;
 
     if (frameCount > skip) {
       auto addresses = info.frames.data() + skip;

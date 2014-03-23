@@ -56,10 +56,10 @@ class ThreadLocalPRNG {
     return getImpl(local_);
   }
 
-  static constexpr result_type min() {
+  static FOLLY_CONSTEXPR result_type min() {
     return std::numeric_limits<result_type>::min();
   }
-  static constexpr result_type max() {
+  static FOLLY_CONSTEXPR result_type max() {
     return std::numeric_limits<result_type>::max();
   }
   friend class Random;

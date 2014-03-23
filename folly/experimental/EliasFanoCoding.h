@@ -94,9 +94,9 @@ struct EliasFanoEncoder {
   typedef Value ValueType;
   typedef SkipValue SkipValueType;
 
-  static constexpr size_t skipQuantum = kSkipQuantum;
-  static constexpr size_t forwardQuantum = kForwardQuantum;
-  static constexpr size_t version = kVersion;
+  static FOLLY_CONSTEXPR size_t skipQuantum = kSkipQuantum;
+  static FOLLY_CONSTEXPR size_t forwardQuantum = kForwardQuantum;
+  static FOLLY_CONSTEXPR size_t version = kVersion;
 
   static uint8_t defaultNumLowerBits(size_t upperBound, size_t size) {
     if (size == 0 || upperBound < size) {
@@ -176,7 +176,7 @@ struct EliasFanoEncoder {
     size_t numSkipPointers = 0;
     /* static */ if (skipQuantum != 0) {
       // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = skipQuantum ?: 1;
+      FOLLY_CONSTEXPR size_t q = skipQuantum ?: 1;
       /* static */ if (kVersion > 0) {
         CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
       } else {
@@ -212,7 +212,7 @@ struct EliasFanoEncoder {
     size_t numForwardPointers = 0;
     /* static */ if (forwardQuantum != 0) {
       // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = forwardQuantum ?: 1;
+      FOLLY_CONSTEXPR size_t q = forwardQuantum ?: 1;
       /* static */ if (kVersion > 0) {
         CHECK_LT(upperBound >> numLowerBits,
                  std::numeric_limits<SkipValueType>::max());
@@ -342,7 +342,7 @@ class UpperBitsReader {
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
       // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::forwardQuantum ?: 1;
+      FOLLY_CONSTEXPR size_t q = Encoder::forwardQuantum ?: 1;
 
       const size_t steps = position_ / q;
       const size_t dest =
@@ -390,7 +390,7 @@ class UpperBitsReader {
     // Use skip pointer.
     if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
       // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::skipQuantum ?: 1;
+      FOLLY_CONSTEXPR size_t q = Encoder::skipQuantum ?: 1;
 
       const size_t steps = v / q;
       const size_t dest =
@@ -416,7 +416,7 @@ class UpperBitsReader {
     size_t cnt;
     size_t skip = v - (8 * outer_ - position_ - 1);
 
-    constexpr size_t kBitsPerBlock = 8 * sizeof(block_t);
+	FOLLY_CONSTEXPR size_t kBitsPerBlock = 8 * sizeof(block_t);
     while ((cnt = Instructions::popcount(~block_)) < skip) {
       skip -= cnt;
       position_ += kBitsPerBlock - cnt;
@@ -425,8 +425,8 @@ class UpperBitsReader {
     }
 
     // Try to skip half-block.
-    constexpr size_t kBitsPerHalfBlock = 4 * sizeof(block_t);
-    constexpr block_t halfBlockMask = (block_t(1) << kBitsPerHalfBlock) - 1;
+	FOLLY_CONSTEXPR size_t kBitsPerHalfBlock = 4 * sizeof(block_t);
+	FOLLY_CONSTEXPR block_t halfBlockMask = (block_t(1) << kBitsPerHalfBlock) - 1;
     if ((cnt = Instructions::popcount(~block_ & halfBlockMask)) < skip) {
       position_ += kBitsPerHalfBlock - cnt;
       block_ &= ~halfBlockMask;

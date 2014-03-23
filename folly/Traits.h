@@ -312,10 +312,10 @@ template <typename T>
 class is_complete {
   template <unsigned long long> struct sfinae {};
   template <typename U>
-  constexpr static bool test(sfinae<sizeof(U)>*) { return true; }
-  template <typename> constexpr static bool test(...) { return false; }
+  FOLLY_CONSTEXPR static bool test(sfinae<sizeof(U)>*) { return true; }
+  template <typename> FOLLY_CONSTEXPR static bool test(...) { return false; }
 public:
-  constexpr static bool value = test<T>(nullptr);
+  FOLLY_CONSTEXPR static bool value = test<T>(nullptr);
 };
 
 /*
@@ -332,12 +332,12 @@ namespace detail {
 
 template <typename T, bool>
 struct is_negative_impl {
-  constexpr static bool check(T x) { return x < 0; }
+  FOLLY_CONSTEXPR static bool check(T x) { return x < 0; }
 };
 
 template <typename T>
 struct is_negative_impl<T, false> {
-  constexpr static bool check(T x) { return false; }
+  FOLLY_CONSTEXPR static bool check(T x) { return false; }
 };
 
 template <typename RHS, RHS rhs, typename LHS>
@@ -406,21 +406,21 @@ bool greater_than_impl(
 
 // same as `x < 0`
 template <typename T>
-constexpr bool is_negative(T x) {
+FOLLY_CONSTEXPR bool is_negative(T x) {
   return folly::detail::is_negative_impl<T, std::is_signed<T>::value>::check(x);
 }
 
 // same as `x <= 0`
 template <typename T>
-constexpr bool is_non_positive(T x) { return !x || folly::is_negative(x); }
+FOLLY_CONSTEXPR bool is_non_positive(T x) { return !x || folly::is_negative(x); }
 
 // same as `x > 0`
 template <typename T>
-constexpr bool is_positive(T x) { return !is_non_positive(x); }
+FOLLY_CONSTEXPR bool is_positive(T x) { return !is_non_positive(x); }
 
 // same as `x >= 0`
 template <typename T>
-constexpr bool is_non_negative(T x) {
+FOLLY_CONSTEXPR bool is_non_negative(T x) {
   return !x || is_positive(x);
 }
 
@@ -458,12 +458,12 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
       typename UTheClass_, RTheReturn_ (UTheClass_::*)(TTheArgs_...) cv_qual \
     > struct sfinae {}; \
     template <typename UTheClass_> \
-    constexpr static bool test(sfinae<UTheClass_, &UTheClass_::func_name>*) \
+	FOLLY_CONSTEXPR static bool test(sfinae<UTheClass_, &UTheClass_::func_name>*) \
     { return true; } \
     template <typename> \
-    constexpr static bool test(...) { return false; } \
+	FOLLY_CONSTEXPR static bool test(...) { return false; } \
   public: \
-    constexpr static bool value = test<TTheClass_>(nullptr); \
+  FOLLY_CONSTEXPR static bool value = test<TTheClass_>(nullptr); \
   }
 
 /*

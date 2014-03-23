@@ -98,7 +98,7 @@ template <class In, class... Stages> class MPMCPipeline {
              detail::MPMCPipelineStageImpl<
                  typename detail::PipelineStageInfo<Stages>::value_type>...>
     StageTuple;
-  static constexpr size_t kAmplification =
+  static FOLLY_CONSTEXPR size_t kAmplification =
     detail::AmplificationProduct<StageInfos>::value;
 
  public:

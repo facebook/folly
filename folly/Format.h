@@ -126,7 +126,7 @@ class Formatter {
 
   typedef std::tuple<FormatValue<
       typename std::decay<Args>::type>...> ValueTuple;
-  static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
+  static FOLLY_CONSTEXPR size_t valueCount = std::tuple_size<ValueTuple>::value;
 
   FOLLY_NORETURN void handleFormatStrError() const;
   template <class Output>

@@ -109,7 +109,7 @@ using namespace detail;
 
 namespace {
 
-constexpr uint32_t kHashSeed = 0xdeadbeef;  // for mcurtiss
+FOLLY_CONSTEXPR uint32_t kHashSeed = 0xdeadbeef;  // for mcurtiss
 
 uint32_t headerHash(const Header& header) {
   return hash::SpookyHashV2::Hash32(&header, offsetof(Header, headerHash),

@@ -123,27 +123,27 @@ struct Bits {
   /**
    * Number of bits in a block.
    */
-  static constexpr size_t bitsPerBlock = std::numeric_limits<
+  static FOLLY_CONSTEXPR size_t bitsPerBlock = std::numeric_limits<
       typename std::make_unsigned<UnderlyingType>::type>::digits;
 
   /**
    * Byte index of the given bit.
    */
-  static constexpr size_t blockIndex(size_t bit) {
+  static FOLLY_CONSTEXPR size_t blockIndex(size_t bit) {
     return bit / bitsPerBlock;
   }
 
   /**
    * Offset in block of the given bit.
    */
-  static constexpr size_t bitOffset(size_t bit) {
+  static FOLLY_CONSTEXPR size_t bitOffset(size_t bit) {
     return bit % bitsPerBlock;
   }
 
   /**
    * Number of blocks used by the given number of bits.
    */
-  static constexpr size_t blockCount(size_t nbits) {
+  static FOLLY_CONSTEXPR size_t blockCount(size_t nbits) {
     return nbits / bitsPerBlock + (nbits % bitsPerBlock != 0);
   }
 
@@ -192,10 +192,10 @@ struct Bits {
   // (bitStart < sizeof(T) * 8, bitStart + count <= sizeof(T) * 8)
   static UnderlyingType innerGet(const T* p, size_t bitStart, size_t count);
 
-  static constexpr UnderlyingType zero = UnderlyingType(0);
-  static constexpr UnderlyingType one = UnderlyingType(1);
+  static FOLLY_CONSTEXPR UnderlyingType zero = UnderlyingType(0);
+  static FOLLY_CONSTEXPR UnderlyingType one = UnderlyingType(1);
 
-  static constexpr UnderlyingType ones(size_t count) {
+  static FOLLY_CONSTEXPR UnderlyingType ones(size_t count) {
     return count < bitsPerBlock ? (one << count) - 1 : ~zero;
   }
 };

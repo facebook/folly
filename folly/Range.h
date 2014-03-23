@@ -164,7 +164,7 @@ public:
 
 #if FOLLY_HAVE_CONSTEXPR_STRLEN
   // Works only for Range<const char*>
-  /* implicit */ constexpr Range(Iter str)
+  /* implicit */ FOLLY_CONSTEXPR Range(Iter str)
       : b_(str), e_(str + strlen(str)) {}
 #else
   // Works only for Range<const char*>

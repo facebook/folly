@@ -153,7 +153,7 @@ bool parseProcMapsLine(StringPiece line,
 }
 
 ElfCache* defaultElfCache() {
-  static constexpr size_t defaultCapacity = 500;
+  static FOLLY_CONSTEXPR size_t defaultCapacity = 500;
   static ElfCache cache(defaultCapacity);
   return &cache;
 }
@@ -268,7 +268,7 @@ const SymbolizePrinter::Color kFunctionColor = SymbolizePrinter::Color::PURPLE;
 const SymbolizePrinter::Color kFileColor = SymbolizePrinter::Color::DEFAULT;
 }  // namespace
 
-constexpr char AddressFormatter::bufTemplate[];
+FOLLY_CONSTEXPR char AddressFormatter::bufTemplate[];
 
 AddressFormatter::AddressFormatter() {
   memcpy(buf_, bufTemplate, sizeof(buf_));

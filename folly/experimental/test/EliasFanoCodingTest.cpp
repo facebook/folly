@@ -22,7 +22,7 @@ using namespace folly::compression;
 
 template <size_t kVersion>
 struct TestType {
-  static constexpr size_t Version = kVersion;
+  static FOLLY_CONSTEXPR size_t Version = kVersion;
 };
 
 template <class T>
@@ -69,8 +69,8 @@ TYPED_TEST(EliasFanoCodingTest, SkipForwardPointers) {
 
 namespace bm {
 
-constexpr size_t k1M = 1000000;
-constexpr size_t kVersion = 1;
+FOLLY_CONSTEXPR size_t k1M = 1000000;
+FOLLY_CONSTEXPR size_t kVersion = 1;
 
 typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128, kVersion> Encoder;
 typedef EliasFanoReader<Encoder> Reader;

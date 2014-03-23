@@ -75,7 +75,7 @@ TEST(MPMCPipeline, TrivialAmplification) {
 }
 
 TEST(MPMCPipeline, MultiThreaded) {
-  constexpr size_t numThreadsPerStage = 6;
+  FOLLY_CONSTEXPR size_t numThreadsPerStage = 6;
   MPMCPipeline<int, std::string, std::string> a(5, 5, 5);
 
   std::vector<std::thread> threads;
@@ -124,7 +124,7 @@ TEST(MPMCPipeline, MultiThreaded) {
     }
   });
 
-  constexpr size_t numValues = 1000;
+  FOLLY_CONSTEXPR size_t numValues = 1000;
   for (size_t i = 0; i < numValues; ++i) {
     a.blockingWrite(i);
   }

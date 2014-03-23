@@ -40,7 +40,7 @@ using namespace std;
 namespace {
 
 std::string str;
-constexpr int kVstrSize = 16;
+FOLLY_CONSTEXPR int kVstrSize = 16;
 std::vector<std::string> vstr;
 std::vector<StringPiece> vstrp;
 

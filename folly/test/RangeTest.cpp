@@ -249,7 +249,7 @@ void expectEQ(const T& a, const T& b) {
 
 TEST(StringPiece, EightBitComparisons) {
   char values[] = {'\x00', '\x20', '\x40', '\x7f', '\x80', '\xc0', '\xff'};
-  constexpr size_t count = sizeof(values) / sizeof(values[0]);
+  FOLLY_CONSTEXPR size_t count = sizeof(values) / sizeof(values[0]);
   for (size_t i = 0; i < count; ++i) {
     std::string a(1, values[i]);
     // Defeat copy-on-write
@@ -298,13 +298,13 @@ TEST(StringPiece, InvalidRange) {
 }
 
 #if FOLLY_HAVE_CONSTEXPR_STRLEN
-constexpr char helloArray[] = "hello";
+FOLLY_CONSTEXPR char helloArray[] = "hello";
 
 TEST(StringPiece, Constexpr) {
-  constexpr StringPiece hello1("hello");
+  FOLLY_CONSTEXPR StringPiece hello1("hello");
   EXPECT_EQ("hello", hello1);
 
-  constexpr StringPiece hello2(helloArray);
+  FOLLY_CONSTEXPR StringPiece hello2(helloArray);
   EXPECT_EQ("hello", hello2);
 }
 #endif

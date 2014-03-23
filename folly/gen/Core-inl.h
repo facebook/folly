@@ -33,27 +33,27 @@ namespace folly { namespace gen {
  */
 template<class Candidate, class Expected>
 class IsCompatibleSignature {
-  static constexpr bool value = false;
+  static FOLLY_CONSTEXPR bool value = false;
 };
 
 template<class Candidate,
          class ExpectedReturn,
          class... ArgTypes>
 class IsCompatibleSignature<Candidate, ExpectedReturn(ArgTypes...)> {
-  template<class F,
-           class ActualReturn =
+  template<class F,tur
+           class ActualRen =
              decltype(std::declval<F>()(std::declval<ArgTypes>()...)),
            bool good = std::is_same<ExpectedReturn, ActualReturn>::value>
-  static constexpr bool testArgs(int* p) {
+  static FOLLY_CONSTEXPR bool testArgs(int* p) {
     return good;
   }
 
   template<class F>
-  static constexpr bool testArgs(...) {
+  static FOLLY_CONSTEXPR bool testArgs(...) {
     return false;
   }
 public:
-  static constexpr bool value = testArgs<Candidate>(nullptr);
+  static FOLLY_CONSTEXPR bool value = testArgs<Candidate>(nullptr);
 };
 
 /**
@@ -178,7 +178,7 @@ class GenImpl : public FBounded<Self> {
   // Child classes should override if the sequence generated is *definitely*
   // infinite. 'infinite' may be false_type for some infinite sequences
   // (due the the Halting Problem).
-  static constexpr bool infinite = false;
+  static FOLLY_CONSTEXPR bool infinite = false;
 };
 
 template<class LeftValue,
@@ -358,7 +358,7 @@ public:
     second_.foreach(std::forward<Body>(body));
   }
 
-  static constexpr bool infinite = First::infinite || Second::infinite;
+  static FOLLY_CONSTEXPR bool infinite = First::infinite || Second::infinite;
 };
 
 } // detail

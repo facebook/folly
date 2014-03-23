@@ -396,7 +396,7 @@ class Map : public Operator<Map<Predicate>> {
       });
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -462,7 +462,7 @@ class Filter : public Operator<Filter<Predicate>> {
       });
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -539,7 +539,7 @@ class Until : public Operator<Until<Predicate>> {
   }
 
   // Theoretically an 'until' might stop an infinite
-  static constexpr bool infinite = false;
+  static FOLLY_CONSTEXPR bool infinite = false;
 };
 
 /**
@@ -732,7 +732,7 @@ class Skip : public Operator<Skip> {
         });
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -1044,7 +1044,7 @@ class Batch : public Operator<Batch> {
       return shouldContinue;
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -1505,7 +1505,7 @@ class Concat : public Operator<Concat> {
         });
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Value,
@@ -1641,7 +1641,7 @@ class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
       });
     }
 
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Value,
@@ -1706,7 +1706,7 @@ class Cycle : public Operator<Cycle> {
     }
 
     // not actually infinite, since an empty generator will end the cycles.
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,
@@ -1774,7 +1774,7 @@ class Dereference : public Operator<Dereference> {
     }
 
     // not actually infinite, since an empty generator will end the cycles.
-    static constexpr bool infinite = Source::infinite;
+	static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,

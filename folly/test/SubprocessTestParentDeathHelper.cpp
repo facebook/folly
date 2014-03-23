@@ -39,7 +39,7 @@ using folly::Subprocess;
 DEFINE_bool(child, false, "");
 
 namespace {
-constexpr int kSignal = SIGUSR1;
+FOLLY_CONSTEXPR int kSignal = SIGUSR1;
 }  // namespace
 
 void runChild(const char* file) {

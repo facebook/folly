@@ -297,7 +297,7 @@ struct SpinLockArray {
     return data_[i].lock;
   }
 
-  constexpr size_t size() const { return N; }
+  FOLLY_CONSTEXPR size_t size() const { return N; }
 
  private:
   struct PaddedSpinLock {

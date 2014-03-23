@@ -154,9 +154,9 @@ class Arena {
   // max_align_t are supported by gcc 4.6.2.
 
  public:
-  static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
-  static constexpr size_t kNoSizeLimit = 0;
-  static constexpr size_t kDefaultMaxAlign = alignof(Block);
+  static FOLLY_CONSTEXPR size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
+  static FOLLY_CONSTEXPR size_t kNoSizeLimit = 0;
+  static FOLLY_CONSTEXPR size_t kDefaultMaxAlign = alignof(Block);
 
  private:
   bool isAligned(uintptr_t address) const {

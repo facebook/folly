@@ -303,7 +303,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
     val.reset(val.data(), arg.precision);
   }
 
-  constexpr int padBufSize = 128;
+  FOLLY_CONSTEXPR int padBufSize = 128;
   char padBuf[padBufSize];
 
   // Output padding, no more than padBufSize at once
@@ -463,7 +463,7 @@ class FormatValue<
     // ,d: 26 bytes (including thousands separators!)
     // + nul terminator
     // + 3 for sign and prefix shenanigans (see below)
-    constexpr size_t valBufSize = 69;
+	FOLLY_CONSTEXPR size_t valBufSize = 69;
     char valBuf[valBufSize];
     char* valBufBegin = nullptr;
     char* valBufEnd = nullptr;
@@ -1112,7 +1112,7 @@ class FormatValue<std::tuple<Args...>> {
   }
 
  private:
-  static constexpr size_t valueCount = std::tuple_size<Tuple>::value;
+  static FOLLY_CONSTEXPR size_t valueCount = std::tuple_size<Tuple>::value;
 
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type

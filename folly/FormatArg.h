@@ -90,7 +90,7 @@ struct FormatArg {
   /**
    * Fill
    */
-  static constexpr char kDefaultFill = '\0';
+  static FOLLY_CONSTEXPR char kDefaultFill = '\0';
   char fill;
 
   /**
@@ -131,19 +131,19 @@ struct FormatArg {
   /**
    * Field width
    */
-  static constexpr int kDefaultWidth = -1;
+  static FOLLY_CONSTEXPR int kDefaultWidth = -1;
   int width;
 
   /**
    * Precision
    */
-  static constexpr int kDefaultPrecision = -1;
+  static FOLLY_CONSTEXPR int kDefaultPrecision = -1;
   int precision;
 
   /**
    * Presentation
    */
-  static constexpr char kDefaultPresentation = '\0';
+  static FOLLY_CONSTEXPR char kDefaultPresentation = '\0';
   char presentation;
 
   /**

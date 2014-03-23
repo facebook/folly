@@ -41,7 +41,7 @@ using folly::AsyncIOQueue;
 
 namespace {
 
-constexpr size_t kAlign = 4096;  // align reads to 4096 B (for O_DIRECT)
+FOLLY_CONSTEXPR size_t kAlign = 4096;  // align reads to 4096 B (for O_DIRECT)
 
 struct TestSpec {
   off_t start;
