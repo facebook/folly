@@ -140,7 +140,7 @@ endif()
 if(enable_libfolly_fingerprint)
     # fingerprint
     # TODO: this requires building an exe and linking it against libfolly - and running it to get the .cpp file
-    add_library(libfolly_fingerprint STATIC FingerprintTables.cpp)
+    add_library(libfolly_fingerprint STATIC folly/gen/FingerprintTables.cpp)
     target_link_libraries(libfolly_fingerprint libfolly)
 endif()
 

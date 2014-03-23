@@ -23,7 +23,7 @@ if(CXXFeatures_class_override_final_FOUND)
 endif()
 
 if(CXXFeatures_constexpr_FOUND)
-    set(FOLLY_CONSTEXPR 1)
+    set(FOLLY_HAVE_CONSTEXPR 1)
 endif()
 
 if(CXXFeatures_noexcept_FOUND)
