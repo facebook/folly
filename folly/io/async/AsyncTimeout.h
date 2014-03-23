@@ -77,7 +77,7 @@ class AsyncTimeout : private boost::noncopyable {
   /**
    * timeoutExpired() is invoked when the timeout period has expired.
    */
-  virtual void timeoutExpired() noexcept = 0;
+  virtual void timeoutExpired() FOLLY_NOEXCEPT = 0;
 
   /**
    * Schedule the timeout to fire in the specified number of milliseconds.

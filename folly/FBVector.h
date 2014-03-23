@@ -225,7 +225,7 @@ private:
       }
     }
 
-    void D_deallocate(T* p, size_type n) noexcept {
+    void D_deallocate(T* p, size_type n) FOLLY_NOEXCEPT {
       if (usingStdAllocator::value) {
         free(p);
       } else {
@@ -241,7 +241,7 @@ private:
     }
 
     // data ops
-    inline void destroy() noexcept {
+    inline void destroy() FOLLY_NOEXCEPT {
       if (b_) {
         // THIS DISPATCH CODE IS DUPLICATED IN fbvector::D_destroy_range_a.
         // It has been inlined here for speed. It calls the static fbvector
@@ -345,7 +345,7 @@ private:
   //---------------------------------------------------------------------------
   // deallocate
 
-  void M_deallocate(T* p, size_type n) noexcept {
+  void M_deallocate(T* p, size_type n) FOLLY_NOEXCEPT {
     impl_.D_deallocate(p, n);
   }
 
@@ -426,7 +426,7 @@ private:
   //---------------------------------------------------------------------------
   // destroy
 
-  void M_destroy(T* p) noexcept {
+  void M_destroy(T* p) FOLLY_NOEXCEPT {
     if (usingStdAllocator::value) {
       if (!boost::has_trivial_destructor<T>::value) p->~T();
     } else {
@@ -443,14 +443,14 @@ private:
   // destroy_range
 
   // wrappers
-  void M_destroy_range_e(T* pos) noexcept {
+  void M_destroy_range_e(T* pos) FOLLY_NOEXCEPT {
     D_destroy_range_a(pos, impl_.e_);
     impl_.e_ = pos;
   }
 
   // dispatch
   // THIS DISPATCH CODE IS DUPLICATED IN IMPL. SEE IMPL FOR DETAILS.
-  void D_destroy_range_a(T* first, T* last) noexcept {
+  void D_destroy_range_a(T* first, T* last) FOLLY_NOEXCEPT {
     if (usingStdAllocator::value) {
       S_destroy_range(first, last);
     } else {
@@ -459,13 +459,13 @@ private:
   }
 
   // allocator
-  static void S_destroy_range_a(Allocator& a, T* first, T* last) noexcept {
+  static void S_destroy_range_a(Allocator& a, T* first, T* last) FOLLY_NOEXCEPT {
     for (; first != last; ++first)
       folly::fbv_allocator_traits<Allocator>::destroy(a, first);
   }
 
   // optimized
-  static void S_destroy_range(T* first, T* last) noexcept {
+  static void S_destroy_range(T* first, T* last) FOLLY_NOEXCEPT {
     if (!boost::has_trivial_destructor<T>::value) {
       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
       //  size 0).
@@ -757,7 +757,7 @@ private:
   }
 
   // done
-  void relocate_done(T* dest, T* first, T* last) noexcept {
+  void relocate_done(T* dest, T* first, T* last) FOLLY_NOEXCEPT {
     if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
       // used memcpy; data has been relocated, do not call destructor
     } else {
@@ -766,7 +766,7 @@ private:
   }
 
   // undo
-  void relocate_undo(T* dest, T* first, T* last) noexcept {
+  void relocate_undo(T* dest, T* first, T* last) FOLLY_NOEXCEPT {
     if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
       // used memcpy, old data is still valid, nothing to do
     } else if (folly::fbv_is_nothrow_move_constructible<T>::value &&
@@ -814,7 +814,7 @@ public:
     : impl_(other.size(), A::select_on_container_copy_construction(other.impl_))
     { M_uninitialized_copy_e(other.begin(), other.end()); }
 
-  fbvector(fbvector&& other) noexcept : impl_(std::move(other.impl_)) {}
+  fbvector(fbvector&& other) FOLLY_NOEXCEPT : impl_(std::move(other.impl_)) {}
 
   fbvector(const fbvector& other, const Allocator& a)
     #ifndef FOLLY_FBV_COMPATIBILITY_MODE
@@ -902,7 +902,7 @@ public:
     assign(il.begin(), il.end());
   }
 
-  allocator_type get_allocator() const noexcept {
+  allocator_type get_allocator() const FOLLY_NOEXCEPT {
     return impl_;
   }
 
@@ -998,41 +998,41 @@ private:
   // iterators
 public:
 
-  iterator begin() noexcept {
+  iterator begin() FOLLY_NOEXCEPT {
     return impl_.b_;
   }
-  const_iterator begin() const noexcept {
+  const_iterator begin() const FOLLY_NOEXCEPT {
     return impl_.b_;
   }
-  iterator end() noexcept {
+  iterator end() FOLLY_NOEXCEPT {
     return impl_.e_;
   }
-  const_iterator end() const noexcept {
+  const_iterator end() const FOLLY_NOEXCEPT {
     return impl_.e_;
   }
-  reverse_iterator rbegin() noexcept {
+  reverse_iterator rbegin() FOLLY_NOEXCEPT {
     return reverse_iterator(end());
   }
-  const_reverse_iterator rbegin() const noexcept {
+  const_reverse_iterator rbegin() const FOLLY_NOEXCEPT {
     return const_reverse_iterator(end());
   }
-  reverse_iterator rend() noexcept {
+  reverse_iterator rend() FOLLY_NOEXCEPT {
     return reverse_iterator(begin());
   }
-  const_reverse_iterator rend() const noexcept {
+  const_reverse_iterator rend() const FOLLY_NOEXCEPT {
     return const_reverse_iterator(begin());
   }
 
-  const_iterator cbegin() const noexcept {
+  const_iterator cbegin() const FOLLY_NOEXCEPT {
     return impl_.b_;
   }
-  const_iterator cend() const noexcept {
+  const_iterator cend() const FOLLY_NOEXCEPT {
     return impl_.e_;
   }
-  const_reverse_iterator crbegin() const noexcept {
+  const_reverse_iterator crbegin() const FOLLY_NOEXCEPT {
     return const_reverse_iterator(end());
   }
-  const_reverse_iterator crend() const noexcept {
+  const_reverse_iterator crend() const FOLLY_NOEXCEPT {
     return const_reverse_iterator(begin());
   }
 
@@ -1041,11 +1041,11 @@ public:
   // capacity
 public:
 
-  size_type size() const noexcept {
+  size_type size() const FOLLY_NOEXCEPT {
     return impl_.e_ - impl_.b_;
   }
 
-  size_type max_size() const noexcept {
+  size_type max_size() const FOLLY_NOEXCEPT {
     // good luck gettin' there
     return ~size_type(0);
   }
@@ -1072,11 +1072,11 @@ public:
     }
   }
 
-  size_type capacity() const noexcept {
+  size_type capacity() const FOLLY_NOEXCEPT {
     return impl_.z_ - impl_.b_;
   }
 
-  bool empty() const noexcept {
+  bool empty() const FOLLY_NOEXCEPT {
     return impl_.b_ == impl_.e_;
   }
 
@@ -1099,7 +1099,7 @@ public:
     impl_.b_ = newB;
   }
 
-  void shrink_to_fit() noexcept {
+  void shrink_to_fit() FOLLY_NOEXCEPT {
     auto const newCapacityBytes = folly::goodMallocSize(size() * sizeof(T));
     auto const newCap = newCapacityBytes / sizeof(T);
     auto const oldCap = capacity();
@@ -1197,10 +1197,10 @@ public:
   // data access
 public:
 
-  T* data() noexcept {
+  T* data() FOLLY_NOEXCEPT {
     return impl_.b_;
   }
-  const T* data() const noexcept {
+  const T* data() const FOLLY_NOEXCEPT {
     return impl_.b_;
   }
 
@@ -1245,14 +1245,14 @@ public:
     M_destroy(impl_.e_);
   }
 
-  void swap(fbvector& other) noexcept {
+  void swap(fbvector& other) FOLLY_NOEXCEPT {
     if (!usingStdAllocator::value &&
         A::propagate_on_container_swap::value)
       swap(impl_, other.impl_);
     else impl_.swapData(other.impl_);
   }
 
-  void clear() noexcept {
+  void clear() FOLLY_NOEXCEPT {
     M_destroy_range_e(impl_.b_);
   }
 
@@ -1426,7 +1426,7 @@ private: // we have the private section first because it defines some macros
     }
   }
 
-  void undo_window(iterator position, size_type n) noexcept {
+  void undo_window(iterator position, size_type n) FOLLY_NOEXCEPT {
     D_destroy_range_a(position + n, impl_.e_);
     impl_.e_ = position;
   }
@@ -1711,7 +1711,7 @@ void fbvector<T, Allocator>::emplace_back_aux(Args&&... args) {
 // specialized functions
 
 template <class T, class A>
-void swap(fbvector<T, A>& lhs, fbvector<T, A>& rhs) noexcept {
+void swap(fbvector<T, A>& lhs, fbvector<T, A>& rhs) FOLLY_NOEXCEPT {
   lhs.swap(rhs);
 }
 

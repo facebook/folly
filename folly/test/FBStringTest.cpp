@@ -1180,6 +1180,7 @@ TEST(FBString, testFrontBack) {
   EXPECT_EQ(str, "HellO");
 }
 
+#if FOLLY_HAVE_NOEXCEPT
 TEST(FBString, noexcept) {
   EXPECT_TRUE(noexcept(fbstring()));
   // std::move is not marked noexcept in gcc 4.6, sigh
@@ -1192,6 +1193,7 @@ TEST(FBString, noexcept) {
   EXPECT_TRUE(noexcept(y = std::move(x)));
 #endif
 }
+#endif
 
 TEST(FBString, iomanip) {
   stringstream ss;

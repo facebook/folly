@@ -381,23 +381,23 @@ int Ticker::TicksLeft = -1;
 
 template <Flags f>
 struct DataTicker : Ticker {
-  DataTicker() noexcept(f & DC_NOEXCEPT) {
+  DataTicker() FOLLY_NOEXCEPT_VALUE(f & DC_NOEXCEPT) {
     if (!(f & DC_NOEXCEPT)) Tick("Data()");
   }
-  DataTicker(const DataTicker&) noexcept(f & CC_NOEXCEPT) {
+  DataTicker(const DataTicker&) FOLLY_NOEXCEPT_VALUE(f & CC_NOEXCEPT) {
     if (!(f & CC_NOEXCEPT)) Tick("Data(const Data&)");
   }
-  DataTicker(DataTicker&&) noexcept(f & MC_NOEXCEPT) {
+  DataTicker(DataTicker&&) FOLLY_NOEXCEPT_VALUE(f & MC_NOEXCEPT) {
     if (!(f & MC_NOEXCEPT)) Tick("Data(Data&&)");
   }
-  explicit DataTicker(std::nullptr_t) noexcept(f & OC_NOEXCEPT) {
+  explicit DataTicker(std::nullptr_t) FOLLY_NOEXCEPT_VALUE(f & OC_NOEXCEPT) {
     if (!(f & OC_NOEXCEPT)) Tick("Data(int)");
   }
-  ~DataTicker() noexcept {}
-  void operator=(const DataTicker&) noexcept(f & CA_NOEXCEPT) {
+  ~DataTicker() FOLLY_NOEXCEPT {}
+  void operator=(const DataTicker&) FOLLY_NOEXCEPT_VALUE(f & CA_NOEXCEPT) {
     if (!(f & CA_NOEXCEPT)) Tick("op=(const Data&)");
   }
-  void operator=(DataTicker&&) noexcept(f & MA_NOEXCEPT) {
+  void operator=(DataTicker&&) FOLLY_NOEXCEPT_VALUE(f & MA_NOEXCEPT) {
     if (!(f & MA_NOEXCEPT)) Tick("op=(Data&&)");
   }
 };
@@ -409,13 +409,13 @@ struct Counter {
   static int CountDC, CountCC, CountMC, CountOC, CountCA, CountMA;
   static int CountDestroy, CountTotalOps, CountLoggedConstruction;
 
-  Counter()                         noexcept { CountTotalOps++; CountDC++; }
-  Counter(const Counter&)           noexcept { CountTotalOps++; CountCC++; }
-  Counter(Counter&&)                noexcept { CountTotalOps++; CountMC++; }
-  explicit Counter(std::nullptr_t)  noexcept { CountTotalOps++; CountOC++; }
-  void operator=(const Counter&)    noexcept { CountTotalOps++; CountCA++; }
-  void operator=(Counter&&)         noexcept { CountTotalOps++; CountMA++; }
-  ~Counter()                      noexcept { CountTotalOps++; CountDestroy++; }
+  Counter()                         FOLLY_NOEXCEPT { CountTotalOps++; CountDC++; }
+  Counter(const Counter&)           FOLLY_NOEXCEPT { CountTotalOps++; CountCC++; }
+  Counter(Counter&&)                FOLLY_NOEXCEPT { CountTotalOps++; CountMC++; }
+  explicit Counter(std::nullptr_t)  FOLLY_NOEXCEPT { CountTotalOps++; CountOC++; }
+  void operator=(const Counter&)    FOLLY_NOEXCEPT { CountTotalOps++; CountCA++; }
+  void operator=(Counter&&)         FOLLY_NOEXCEPT { CountTotalOps++; CountMA++; }
+  ~Counter()                        FOLLY_NOEXCEPT { CountTotalOps++; CountDestroy++; }
 };
 
 int Counter::CountDC = 0;
@@ -446,33 +446,33 @@ struct Tracker {
 
 template <bool isRelocatable>
 struct DataTracker : Tracker {
-  DataTracker() noexcept : Tracker(this, UID++) {
+  DataTracker() FOLLY_NOEXCEPT : Tracker(this, UID++) {
     UIDCount[uid]++;
     UIDTotal++;
     if (!isRelocatable) Locations[self] = uid;
     print("Data()");
   }
-  DataTracker(const DataTracker& o) noexcept : Tracker(this, o.uid) {
+  DataTracker(const DataTracker& o) FOLLY_NOEXCEPT : Tracker(this, o.uid) {
     UIDCount[uid]++;
     UIDTotal++;
     if (!isRelocatable) Locations[self] = uid;
     print("Data(const Data&)");
   }
-  DataTracker(DataTracker&& o) noexcept : Tracker(this, o.uid) {
+  DataTracker(DataTracker&& o) FOLLY_NOEXCEPT : Tracker(this, o.uid) {
     UIDCount[uid]++;
     UIDTotal++;
     if (!isRelocatable) Locations[self] = uid;
     print("Data(Data&&)");
   }
 
-  explicit DataTracker(int uid) noexcept : Tracker(this, uid) {
+  explicit DataTracker(int uid) FOLLY_NOEXCEPT : Tracker(this, uid) {
     UIDCount[uid]++;
     UIDTotal++;
     if (!isRelocatable) Locations[self] = uid;
     print("Data(int)");
   }
 
-  ~DataTracker() noexcept {
+  ~DataTracker() FOLLY_NOEXCEPT {
     UIDCount[uid]--;
     UIDTotal--;
     if (!isRelocatable) Locations.erase(self);
@@ -481,7 +481,7 @@ struct DataTracker : Tracker {
     self = (DataTracker*)0xfeebdaed;
   }
 
-  DataTracker& operator=(const DataTracker& o) noexcept {
+  DataTracker& operator=(const DataTracker& o) FOLLY_NOEXCEPT {
     UIDCount[uid]--;
     uid = o.uid;
     UIDCount[uid]++;
@@ -489,7 +489,7 @@ struct DataTracker : Tracker {
     print("op=(const Data&)");
     return *this;
   }
-  DataTracker& operator=(DataTracker&& o) noexcept {
+  DataTracker& operator=(DataTracker&& o) FOLLY_NOEXCEPT {
     UIDCount[uid]--;
     uid = o.uid;
     UIDCount[uid]++;

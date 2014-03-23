@@ -273,7 +273,7 @@ class ThreadLocalPtr {
     Accessor(const Accessor&) = delete;
     Accessor& operator=(const Accessor&) = delete;
 
-    Accessor(Accessor&& other) noexcept
+	Accessor(Accessor&& other) FOLLY_NOEXCEPT
       : meta_(other.meta_),
         lock_(other.lock_),
         id_(other.id_) {
@@ -281,7 +281,7 @@ class ThreadLocalPtr {
       other.lock_ = nullptr;
     }
 
-    Accessor& operator=(Accessor&& other) noexcept {
+    Accessor& operator=(Accessor&& other) FOLLY_NOEXCEPT {
       // Each Tag has its own unique meta, and accessors with different Tags
       // have different types.  So either *this is empty, or this and other
       // have the same tag.  But if they have the same tag, they have the same

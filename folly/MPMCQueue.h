@@ -113,7 +113,7 @@ class MPMCQueue : boost::noncopyable {
 
   /// A default-constructed queue is useful because a usable (non-zero
   /// capacity) queue can be moved onto it or swapped with it
-  MPMCQueue() noexcept
+  MPMCQueue() FOLLY_NOEXCEPT
     : capacity_(0)
     , slots_(nullptr)
     , stride_(0)
@@ -126,7 +126,7 @@ class MPMCQueue : boost::noncopyable {
   /// IMPORTANT: The move constructor is here to make it easier to perform
   /// the initialization phase, it is not safe to use when there are any
   /// concurrent accesses (this is not checked).
-  MPMCQueue(MPMCQueue<T,Atom>&& rhs) noexcept
+  MPMCQueue(MPMCQueue<T,Atom>&& rhs) FOLLY_NOEXCEPT
     : capacity_(rhs.capacity_)
     , slots_(rhs.slots_)
     , stride_(rhs.stride_)
@@ -168,7 +168,7 @@ class MPMCQueue : boost::noncopyable {
   /// Returns the number of successful reads minus the number of successful
   /// writes.  Waiting blockingRead and blockingWrite calls are included,
   /// so this value can be negative.
-  ssize_t size() const noexcept {
+  ssize_t size() const FOLLY_NOEXCEPT {
     // since both pushes and pops increase monotonically, we can get a
     // consistent snapshot either by bracketing a read of popTicket_ with
     // two reads of pushTicket_ that return the same value, or the other
@@ -195,38 +195,38 @@ class MPMCQueue : boost::noncopyable {
   }
 
   /// Returns true if there are no items available for dequeue
-  bool isEmpty() const noexcept {
+  bool isEmpty() const FOLLY_NOEXCEPT {
     return size() <= 0;
   }
 
   /// Returns true if there is currently no empty space to enqueue
-  bool isFull() const noexcept {
+  bool isFull() const FOLLY_NOEXCEPT {
     // careful with signed -> unsigned promotion, since size can be negative
     return size() >= static_cast<ssize_t>(capacity_);
   }
 
   /// Returns is a guess at size() for contexts that don't need a precise
   /// value, such as stats.
-  ssize_t sizeGuess() const noexcept {
+  ssize_t sizeGuess() const FOLLY_NOEXCEPT {
     return writeCount() - readCount();
   }
 
   /// Doesn't change
-  size_t capacity() const noexcept {
+  size_t capacity() const FOLLY_NOEXCEPT {
     return capacity_;
   }
 
   /// Returns the total number of calls to blockingWrite or successful
   /// calls to write, including those blockingWrite calls that are
   /// currently blocking
-  uint64_t writeCount() const noexcept {
+  uint64_t writeCount() const FOLLY_NOEXCEPT {
     return pushTicket_.load(std::memory_order_acquire);
   }
 
   /// Returns the total number of calls to blockingRead or successful
   /// calls to read, including those blockingRead calls that are currently
   /// blocking
-  uint64_t readCount() const noexcept {
+  uint64_t readCount() const FOLLY_NOEXCEPT {
     return popTicket_.load(std::memory_order_acquire);
   }
 
@@ -236,7 +236,7 @@ class MPMCQueue : boost::noncopyable {
   /// via emplacement if args is an initializer list that can be passed
   /// to a T constructor.
   template <typename ...Args>
-  void blockingWrite(Args&&... args) noexcept {
+  void blockingWrite(Args&&... args) FOLLY_NOEXCEPT {
     enqueueWithTicket(pushTicket_++, std::forward<Args>(args)...);
   }
 
@@ -254,7 +254,7 @@ class MPMCQueue : boost::noncopyable {
   /// or operator.  std::move doesn't actually move anything.  It could
   /// more accurately be called std::rvalue_cast or std::move_permission.
   template <typename ...Args>
-  bool write(Args&&... args) noexcept {
+  bool write(Args&&... args) FOLLY_NOEXCEPT {
     uint64_t ticket;
     if (tryObtainReadyPushTicket(ticket)) {
       // we have pre-validated that the ticket won't block
@@ -279,7 +279,7 @@ class MPMCQueue : boost::noncopyable {
   /// your own wakeup, because it guarantees that after every successful
   /// write a readIfNotFull will succeed.
   template <typename ...Args>
-  bool writeIfNotFull(Args&&... args) noexcept {
+  bool writeIfNotFull(Args&&... args) FOLLY_NOEXCEPT {
     uint64_t ticket;
     if (tryObtainPromisedPushTicket(ticket)) {
       // some other thread is already dequeuing the slot into which we
@@ -293,13 +293,13 @@ class MPMCQueue : boost::noncopyable {
 
   /// Moves a dequeued element onto elem, blocking until an element
   /// is available
-  void blockingRead(T& elem) noexcept {
+  void blockingRead(T& elem) FOLLY_NOEXCEPT {
     dequeueWithTicket(popTicket_++, elem);
   }
 
   /// If an item can be dequeued with no blocking, does so and returns
   /// true, otherwise returns false.
-  bool read(T& elem) noexcept {
+  bool read(T& elem) FOLLY_NOEXCEPT {
     uint64_t ticket;
     if (tryObtainReadyPopTicket(ticket)) {
       // the ticket has been pre-validated to not block
@@ -315,7 +315,7 @@ class MPMCQueue : boost::noncopyable {
   /// method may block waiting for it.  If you don't rely on being able
   /// to dequeue (such as by counting completed write) then you should
   /// prefer read.
-  bool readIfNotEmpty(T& elem) noexcept {
+  bool readIfNotEmpty(T& elem) FOLLY_NOEXCEPT {
     uint64_t ticket;
     if (tryObtainPromisedPopTicket(ticket)) {
       // the matching enqueue already has a ticket, but might not be done
@@ -390,7 +390,7 @@ class MPMCQueue : boost::noncopyable {
   /// The simple way to avoid false sharing would be to pad each
   /// SingleElementQueue, but since we have capacity_ of them that could
   /// waste a lot of space.
-  static int computeStride(size_t capacity) noexcept {
+  static int computeStride(size_t capacity) FOLLY_NOEXCEPT {
     static const int smallPrimes[] = { 2, 3, 5, 7, 11, 13, 17, 19, 23 };
 
     int bestStride = 1;
@@ -411,20 +411,20 @@ class MPMCQueue : boost::noncopyable {
 
   /// Returns the index into slots_ that should be used when enqueuing or
   /// dequeuing with the specified ticket
-  size_t idx(uint64_t ticket) noexcept {
+  size_t idx(uint64_t ticket) FOLLY_NOEXCEPT {
     return ((ticket * stride_) % capacity_) + kSlotPadding;
   }
 
   /// Maps an enqueue or dequeue ticket to the turn should be used at the
   /// corresponding SingleElementQueue
-  uint32_t turn(uint64_t ticket) noexcept {
+  uint32_t turn(uint64_t ticket) FOLLY_NOEXCEPT {
     return ticket / capacity_;
   }
 
   /// Tries to obtain a push ticket for which SingleElementQueue::enqueue
   /// won't block.  Returns true on immediate success, false on immediate
   /// failure.
-  bool tryObtainReadyPushTicket(uint64_t& rv) noexcept {
+  bool tryObtainReadyPushTicket(uint64_t& rv) FOLLY_NOEXCEPT {
     auto ticket = pushTicket_.load(std::memory_order_acquire); // A
     while (true) {
       if (!slots_[idx(ticket)].mayEnqueue(turn(ticket))) {
@@ -456,7 +456,7 @@ class MPMCQueue : boost::noncopyable {
   /// blocking may be required when using the returned ticket if some
   /// other thread's pop is still in progress (ticket has been granted but
   /// pop has not yet completed).
-  bool tryObtainPromisedPushTicket(uint64_t& rv) noexcept {
+  bool tryObtainPromisedPushTicket(uint64_t& rv) FOLLY_NOEXCEPT {
     auto numPushes = pushTicket_.load(std::memory_order_acquire); // A
     while (true) {
       auto numPops = popTicket_.load(std::memory_order_acquire); // B
@@ -478,7 +478,7 @@ class MPMCQueue : boost::noncopyable {
   /// Tries to obtain a pop ticket for which SingleElementQueue::dequeue
   /// won't block.  Returns true on immediate success, false on immediate
   /// failure.
-  bool tryObtainReadyPopTicket(uint64_t& rv) noexcept {
+  bool tryObtainReadyPopTicket(uint64_t& rv) FOLLY_NOEXCEPT {
     auto ticket = popTicket_.load(std::memory_order_acquire);
     while (true) {
       if (!slots_[idx(ticket)].mayDequeue(turn(ticket))) {
@@ -506,7 +506,7 @@ class MPMCQueue : boost::noncopyable {
   /// to block waiting for someone to call enqueue, although we might
   /// have to block waiting for them to finish executing code inside the
   /// MPMCQueue itself.
-  bool tryObtainPromisedPopTicket(uint64_t& rv) noexcept {
+  bool tryObtainPromisedPopTicket(uint64_t& rv) FOLLY_NOEXCEPT {
     auto numPops = popTicket_.load(std::memory_order_acquire); // A
     while (true) {
       auto numPushes = pushTicket_.load(std::memory_order_acquire); // B
@@ -525,7 +525,7 @@ class MPMCQueue : boost::noncopyable {
 
   // Given a ticket, constructs an enqueued item using args
   template <typename ...Args>
-  void enqueueWithTicket(uint64_t ticket, Args&&... args) noexcept {
+  void enqueueWithTicket(uint64_t ticket, Args&&... args) FOLLY_NOEXCEPT {
     slots_[idx(ticket)].enqueue(turn(ticket),
                                 pushSpinCutoff_,
                                 (ticket % kAdaptationFreq) == 0,
@@ -533,7 +533,7 @@ class MPMCQueue : boost::noncopyable {
   }
 
   // Given a ticket, dequeues the corresponding element
-  void dequeueWithTicket(uint64_t ticket, T& elem) noexcept {
+  void dequeueWithTicket(uint64_t ticket, T& elem) FOLLY_NOEXCEPT {
     slots_[idx(ticket)].dequeue(turn(ticket),
                                 popSpinCutoff_,
                                 (ticket % kAdaptationFreq) == 0,
@@ -585,12 +585,12 @@ namespace detail {
 /// by the caller.
 template <template<typename> class Atom>
 struct TurnSequencer {
-  explicit TurnSequencer(const uint32_t firstTurn = 0) noexcept
+  explicit TurnSequencer(const uint32_t firstTurn = 0) FOLLY_NOEXCEPT
       : state_(encode(firstTurn << kTurnShift, 0))
   {}
 
   /// Returns true iff a call to waitForTurn(turn, ...) won't block
-  bool isTurn(const uint32_t turn) const noexcept {
+  bool isTurn(const uint32_t turn) const FOLLY_NOEXCEPT {
     auto state = state_.load(std::memory_order_acquire);
     return decodeCurrentSturn(state) == (turn << kTurnShift);
   }
@@ -606,7 +606,7 @@ struct TurnSequencer {
   /// otherwise it will spin for at most spinCutoff spins.
   void waitForTurn(const uint32_t turn,
                    Atom<int>& spinCutoff,
-                   const bool updateSpinCutoff) noexcept {
+                   const bool updateSpinCutoff) FOLLY_NOEXCEPT {
     int prevThresh = spinCutoff.load(std::memory_order_relaxed);
     const int effectiveSpinCutoff =
         updateSpinCutoff || prevThresh == 0 ? kMaxSpins : prevThresh;
@@ -672,7 +672,7 @@ struct TurnSequencer {
   }
 
   /// Unblocks a thread running waitForTurn(turn + 1)
-  void completeTurn(const uint32_t turn) noexcept {
+  void completeTurn(const uint32_t turn) FOLLY_NOEXCEPT {
     uint32_t state = state_.load(std::memory_order_acquire);
     while (true) {
       assert(state == encode(turn << kTurnShift, decodeMaxWaitersDelta(state)));
@@ -694,7 +694,7 @@ struct TurnSequencer {
 
   /// Returns the least-most significant byte of the current uncompleted
   /// turn.  The full 32 bit turn cannot be recovered.
-  uint8_t uncompletedTurnLSB() const noexcept {
+  uint8_t uncompletedTurnLSB() const FOLLY_NOEXCEPT {
     return state_.load(std::memory_order_acquire) >> kTurnShift;
   }
 
@@ -725,19 +725,19 @@ struct TurnSequencer {
 
   /// Returns the bitmask to pass futexWait or futexWake when communicating
   /// about the specified turn
-  int futexChannel(uint32_t turn) const noexcept {
+  int futexChannel(uint32_t turn) const FOLLY_NOEXCEPT {
     return 1 << (turn & 31);
   }
 
-  uint32_t decodeCurrentSturn(uint32_t state) const noexcept {
+  uint32_t decodeCurrentSturn(uint32_t state) const FOLLY_NOEXCEPT {
     return state & ~kWaitersMask;
   }
 
-  uint32_t decodeMaxWaitersDelta(uint32_t state) const noexcept {
+  uint32_t decodeMaxWaitersDelta(uint32_t state) const FOLLY_NOEXCEPT {
     return state & kWaitersMask;
   }
 
-  uint32_t encode(uint32_t currentSturn, uint32_t maxWaiterD) const noexcept {
+  uint32_t encode(uint32_t currentSturn, uint32_t maxWaiterD) const FOLLY_NOEXCEPT {
     return currentSturn | std::min(uint32_t{ kWaitersMask }, maxWaiterD);
   }
 };
@@ -750,7 +750,7 @@ struct TurnSequencer {
 template <typename T, template <typename> class Atom>
 struct SingleElementQueue {
 
-  ~SingleElementQueue() noexcept {
+  ~SingleElementQueue() FOLLY_NOEXCEPT {
     if ((sequencer_.uncompletedTurnLSB() & 1) == 1) {
       // we are pending a dequeue, so we have a constructed item
       destroyContents();
@@ -764,7 +764,7 @@ struct SingleElementQueue {
   void enqueue(const uint32_t turn,
                Atom<int>& spinCutoff,
                const bool updateSpinCutoff,
-               Args&&... args) noexcept {
+               Args&&... args) FOLLY_NOEXCEPT {
     sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
     new (&contents_) T(std::forward<Args>(args)...);
     sequencer_.completeTurn(turn * 2);
@@ -780,7 +780,7 @@ struct SingleElementQueue {
   void enqueue(const uint32_t turn,
                Atom<int>& spinCutoff,
                const bool updateSpinCutoff,
-               T&& goner) noexcept {
+               T&& goner) FOLLY_NOEXCEPT {
     if (std::is_nothrow_constructible<T,T&&>::value) {
       // this is preferred
       sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
@@ -796,14 +796,14 @@ struct SingleElementQueue {
     }
   }
 
-  bool mayEnqueue(const uint32_t turn) const noexcept {
+  bool mayEnqueue(const uint32_t turn) const FOLLY_NOEXCEPT {
     return sequencer_.isTurn(turn * 2);
   }
 
   void dequeue(uint32_t turn,
                Atom<int>& spinCutoff,
                const bool updateSpinCutoff,
-               T& elem) noexcept {
+               T& elem) FOLLY_NOEXCEPT {
     if (folly::IsRelocatable<T>::value) {
       // this version is preferred, because we do as much work as possible
       // before waiting
@@ -824,7 +824,7 @@ struct SingleElementQueue {
     }
   }
 
-  bool mayDequeue(const uint32_t turn) const noexcept {
+  bool mayDequeue(const uint32_t turn) const FOLLY_NOEXCEPT {
     return sequencer_.isTurn(turn * 2 + 1);
   }
 
@@ -835,11 +835,11 @@ struct SingleElementQueue {
   /// Even turns are pushes, odd turns are pops
   TurnSequencer<Atom> sequencer_;
 
-  T* ptr() noexcept {
+  T* ptr() FOLLY_NOEXCEPT {
     return static_cast<T*>(static_cast<void*>(&contents_));
   }
 
-  void destroyContents() noexcept {
+  void destroyContents() FOLLY_NOEXCEPT {
     try {
       ptr()->~T();
     } catch (...) {

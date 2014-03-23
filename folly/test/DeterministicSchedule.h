@@ -155,15 +155,15 @@ struct DeterministicAtomic {
   DeterministicAtomic(DeterministicAtomic<T> const &) = delete;
   DeterministicAtomic<T>& operator= (DeterministicAtomic<T> const &) = delete;
 
-  constexpr /* implicit */ DeterministicAtomic(T v) noexcept : data(v) {}
+  constexpr /* implicit */ DeterministicAtomic(T v) FOLLY_NOEXCEPT : data(v) {}
 
-  bool is_lock_free() const noexcept {
+  bool is_lock_free() const FOLLY_NOEXCEPT {
     return data.is_lock_free();
   }
 
   bool compare_exchange_strong(
           T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+          std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     bool rv = data.compare_exchange_strong(v0, v1, mo);
     DeterministicSchedule::afterSharedAccess();
@@ -172,97 +172,97 @@ struct DeterministicAtomic {
 
   bool compare_exchange_weak(
           T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+          std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     bool rv = data.compare_exchange_weak(v0, v1, mo);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T exchange(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T exchange(T v, std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data.exchange(v, mo);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  /* implicit */ operator T () const noexcept {
+  /* implicit */ operator T () const FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T load(std::memory_order mo = std::memory_order_seq_cst) const noexcept {
+  T load(std::memory_order mo = std::memory_order_seq_cst) const FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data.load(mo);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator= (T v) noexcept {
+  T operator= (T v) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data = v);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  void store(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  void store(T v, std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     data.store(v, mo);
     DeterministicSchedule::afterSharedAccess();
   }
 
-  T operator++ () noexcept {
+  T operator++ () FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = ++data;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator++ (int postDummy) noexcept {
+  T operator++ (int postDummy) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data++;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator-- () noexcept {
+  T operator-- () FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = --data;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator-- (int postDummy) noexcept {
+  T operator-- (int postDummy) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data--;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator+= (T v) noexcept {
+  T operator+= (T v) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data += v);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator-= (T v) noexcept {
+  T operator-= (T v) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data -= v);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator&= (T v) noexcept {
+  T operator&= (T v) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data &= v);
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
 
-  T operator|= (T v) noexcept {
+  T operator|= (T v) FOLLY_NOEXCEPT {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data |= v);
     DeterministicSchedule::afterSharedAccess();

@@ -41,7 +41,7 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
   explicit FunctionLoopCallback(const Cob& function)
       : function_(function) {}
 
-  virtual void runLoopCallback() noexcept {
+  virtual void runLoopCallback() FOLLY_NOEXCEPT {
     function_();
     delete this;
   }
@@ -107,7 +107,7 @@ class EventBase::FunctionRunner
  * EventBase::CobTimeout methods
  */
 
-void EventBase::CobTimeout::timeoutExpired() noexcept {
+void EventBase::CobTimeout::timeoutExpired() FOLLY_NOEXCEPT {
   // For now, we just swallow any exceptions that the callback threw.
   try {
     cob_();
@@ -616,7 +616,7 @@ EventBase::RunInLoopCallback::RunInLoopCallback(void (*fn)(void*), void* arg)
     : fn_(fn)
     , arg_(arg) {}
 
-void EventBase::RunInLoopCallback::runLoopCallback() noexcept {
+void EventBase::RunInLoopCallback::runLoopCallback() FOLLY_NOEXCEPT {
   fn_(arg_);
   delete this;
 }

@@ -115,7 +115,7 @@ struct Thrower {
     MaybeThrow();
     ++alive;
   }
-  ~Thrower() noexcept {
+  ~Thrower() FOLLY_NOEXCEPT {
     EXPECT_EQ(magic, kMagic);
     magic = 0;
     --alive;

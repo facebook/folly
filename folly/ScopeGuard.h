@@ -69,7 +69,7 @@ namespace folly {
  */
 class ScopeGuardImplBase {
  public:
-  void dismiss() noexcept {
+  void dismiss() FOLLY_NOEXCEPT {
     dismissed_ = true;
   }
 
@@ -99,7 +99,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     , function_(std::move(other.function_)) {
   }
 
-  ~ScopeGuardImpl() noexcept {
+  ~ScopeGuardImpl() FOLLY_NOEXCEPT {
     if (!dismissed_) {
       execute();
     }
@@ -108,7 +108,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
  private:
   void* operator new(size_t) = delete;
 
-  void execute() noexcept { function_(); }
+  void execute() FOLLY_NOEXCEPT { function_(); }
 
   FunctionType function_;
 };
@@ -157,7 +157,7 @@ class ScopeGuardForNewException {
       , exceptionCounter_(std::move(other.exceptionCounter_)) {
   }
 
-  ~ScopeGuardForNewException() noexcept(executeOnException) {
+  ~ScopeGuardForNewException() FOLLY_NOEXCEPT_VALUE(executeOnException) {
     if (executeOnException == exceptionCounter_.isNewUncaughtException()) {
       function_();
     }
@@ -217,13 +217,13 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
 
 #define SCOPE_EXIT \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_EXIT_STATE) \
-  = ::folly::detail::ScopeGuardOnExit() + [&]() noexcept
+  = ::folly::detail::ScopeGuardOnExit() + [&]() FOLLY_NOEXCEPT
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
     defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
 #define SCOPE_FAIL \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) \
-  = ::folly::detail::ScopeGuardOnFail() + [&]() noexcept
+  = ::folly::detail::ScopeGuardOnFail() + [&]() FOLLY_NOEXCEPT
 
 #define SCOPE_SUCCESS \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) \

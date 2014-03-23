@@ -43,7 +43,7 @@ namespace symbolizer {
  */
 class ElfFile {
  public:
-  ElfFile() noexcept;
+  ElfFile() FOLLY_NOEXCEPT;
 
   // Note: may throw, call openNoThrow() explicitly if you don't want to throw
   explicit ElfFile(const char* name, bool readOnly=true);
@@ -52,7 +52,7 @@ class ElfFile {
   // Returns 0 on success, -1 (and sets errno) on failure and (if msg is not
   // NULL) sets *msg to a static string indicating what failed.
   int openNoThrow(const char* name, bool readOnly=true,
-                  const char** msg=nullptr) noexcept;
+                  const char** msg=nullptr) FOLLY_NOEXCEPT;
 
   // Open the ELF file. Throws on error.
   void open(const char* name, bool readOnly=true);

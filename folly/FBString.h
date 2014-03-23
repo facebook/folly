@@ -322,7 +322,7 @@ private:
  */
 template <class Char> class fbstring_core {
 public:
-  fbstring_core() noexcept {
+  fbstring_core() FOLLY_NOEXCEPT {
     // Only initialize the tag, will set the MSBs (i.e. the small
     // string size) to zero too
     ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
@@ -376,7 +376,7 @@ public:
     assert(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
   }
 
-  fbstring_core(fbstring_core&& goner) noexcept {
+  fbstring_core(fbstring_core&& goner) FOLLY_NOEXCEPT {
     if (goner.category() == isSmall) {
       // Just copy, leave the goner in peace
       new(this) fbstring_core(goner.small_, goner.smallSize());
@@ -445,7 +445,7 @@ public:
     assert(memcmp(this->data(), data, size * sizeof(Char)) == 0);
   }
 
-  ~fbstring_core() noexcept {
+  ~fbstring_core() FOLLY_NOEXCEPT {
     auto const c = category();
     if (c == isSmall) {
       return;
@@ -1035,7 +1035,7 @@ private:
 
 public:
   // C++11 21.4.2 construct/copy/destroy
-  explicit basic_fbstring(const A& a = A()) noexcept {
+  explicit basic_fbstring(const A& a = A()) FOLLY_NOEXCEPT {
   }
 
   basic_fbstring(const basic_fbstring& str)
@@ -1043,7 +1043,7 @@ public:
   }
 
   // Move constructor
-  basic_fbstring(basic_fbstring&& goner) noexcept
+  basic_fbstring(basic_fbstring&& goner) FOLLY_NOEXCEPT
       : store_(std::move(goner.store_)) {
   }
 
@@ -1103,7 +1103,7 @@ public:
     assign(il.begin(), il.end());
   }
 
-  ~basic_fbstring() noexcept {
+  ~basic_fbstring() FOLLY_NOEXCEPT {
   }
 
   basic_fbstring& operator=(const basic_fbstring& lhs) {
@@ -1129,7 +1129,7 @@ public:
   }
 
   // Move assignment
-  basic_fbstring& operator=(basic_fbstring&& goner) noexcept {
+  basic_fbstring& operator=(basic_fbstring&& goner) FOLLY_NOEXCEPT {
     if (FBSTRING_UNLIKELY(&goner == this)) {
       // Compatibility with std::basic_string<>,
       // C++11 21.4.2 [string.cons] / 23 requires self-move-assignment support.

@@ -46,7 +46,7 @@ class AtomicStruct {
 
   Atom<Raw> data;
 
-  static Raw encode(T v) noexcept {
+  static Raw encode(T v) FOLLY_NOEXCEPT {
     // we expect the compiler to optimize away the memcpy, but without
     // it we would violate strict aliasing rules
     Raw d = 0;
@@ -54,7 +54,7 @@ class AtomicStruct {
     return d;
   }
 
-  static T decode(Raw d) noexcept {
+  static T decode(Raw d) FOLLY_NOEXCEPT {
     T v;
     memcpy(&v, &d, sizeof(T));
     return v;
@@ -66,15 +66,15 @@ class AtomicStruct {
   AtomicStruct(AtomicStruct<T> const &) = delete;
   AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
 
-  constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
+  constexpr /* implicit */ AtomicStruct(T v) FOLLY_NOEXCEPT : data(encode(v)) {}
 
-  bool is_lock_free() const noexcept {
+  bool is_lock_free() const FOLLY_NOEXCEPT {
     return data.is_lock_free();
   }
 
   bool compare_exchange_strong(
           T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+          std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     Raw d0 = encode(v0);
     bool rv = data.compare_exchange_strong(d0, encode(v1), mo);
     if (!rv) {
@@ -85,7 +85,7 @@ class AtomicStruct {
 
   bool compare_exchange_weak(
           T& v0, T v1,
-          std::memory_order mo = std::memory_order_seq_cst) noexcept {
+          std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     Raw d0 = encode(v0);
     bool rv = data.compare_exchange_weak(d0, encode(v1), mo);
     if (!rv) {
@@ -94,23 +94,23 @@ class AtomicStruct {
     return rv;
   }
 
-  T exchange(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T exchange(T v, std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     return decode(data.exchange(encode(v), mo));
   }
 
-  /* implicit */ operator T () const noexcept {
+  /* implicit */ operator T () const FOLLY_NOEXCEPT {
     return decode(data);
   }
 
-  T load(std::memory_order mo = std::memory_order_seq_cst) const noexcept {
+  T load(std::memory_order mo = std::memory_order_seq_cst) const FOLLY_NOEXCEPT {
     return decode(data.load(mo));
   }
 
-  T operator= (T v) noexcept {
+  T operator= (T v) FOLLY_NOEXCEPT {
     return decode(data = encode(v));
   }
 
-  void store(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  void store(T v, std::memory_order mo = std::memory_order_seq_cst) FOLLY_NOEXCEPT {
     data.store(encode(v), mo);
   }
 
