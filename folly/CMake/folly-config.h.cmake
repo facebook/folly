@@ -4,7 +4,7 @@
 #cmakedefine FOLLY_FINAL final
 #cmakedefine FOLLY_OVERRIDE override
 #cmakedefine FOLLY_HAVE_CONSTEXPR 1
-#cmakedefine FOLLY_NOEXCEPT noexcept
+#cmakedefine FOLLY_HAVE_NOEXCEPT 1
 
 /* Defines to change the behavior of Portability.h */
 #cmakedefine FOLLY_USE_LIBCPP 1

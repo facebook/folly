@@ -27,7 +27,7 @@ if(CXXFeatures_constexpr_FOUND)
 endif()
 
 if(CXXFeatures_noexcept_FOUND)
-    set(FOLLY_NOEXCEPT  1)
+    set(FOLLY_HAVE_NOEXCEPT  1)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
