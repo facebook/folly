@@ -13,7 +13,7 @@ include(folly/CMake/options.cmake)
 
 include_directories(${CMAKE_SOURCE_DIR})
 if(MSVC)
-include_directories(${CMAKE_SOURCE_DIR}/win32)
+include_directories(${CMAKE_SOURCE_DIR}/folly/win32)
 endif()
 
 
