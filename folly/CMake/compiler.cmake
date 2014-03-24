@@ -30,6 +30,14 @@ if(CXXFeatures_noexcept_FOUND)
     set(FOLLY_HAVE_NOEXCEPT  1)
 endif()
 
+if(CXXFeatures_alignof_FOUND)
+    set(FOLLY_HAVE_ALIGNOF  1)
+endif()
+
+if(CXXFeatures_alignas_FOUND)
+    set(FOLLY_HAVE_ALIGNAS  1)
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX11_COMPILER_FLAGS}")
 message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS}")
 

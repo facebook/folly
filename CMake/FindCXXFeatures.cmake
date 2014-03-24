@@ -95,6 +95,7 @@ endfunction(cxx_check_feature)
 
 set(_CXX_ALL_FEATURES
     alignof
+    alignas
     auto
     class_override_final
     constexpr

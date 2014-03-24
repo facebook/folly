@@ -5,6 +5,8 @@
 #cmakedefine FOLLY_OVERRIDE override
 #cmakedefine FOLLY_HAVE_CONSTEXPR 1
 #cmakedefine FOLLY_HAVE_NOEXCEPT 1
+#cmakedefine FOLLY_HAVE_ALIGNAS 1
+#cmakedefine FOLLY_HAVE_ALIGNOF 1
 
 /* Defines to change the behavior of Portability.h */
 #cmakedefine FOLLY_USE_LIBCPP 1
