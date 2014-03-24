@@ -154,4 +154,15 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
 #endif
 
+// packing is ugly with push/pop
+#if defined(_MSC_VER)
+# define FOLLY_PACK_ATTR /**/
+# define FOLLY_PACK_PUSH __pragma(pack(push, 1))
+# define FOLLY_PACK_POP __pragma(pack(pop))
+#else
+# define FOLLY_PACK_ATTR __attribute__((packed))
+# define FOLLY_PACK_PUSH /**/
+# define FOLLY_PACK_POP  /**/
+#endif
+
 #endif // FOLLY_PORTABILITY_H_
