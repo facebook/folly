@@ -116,6 +116,7 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s.find('y'), StringPiece::npos);
   EXPECT_EQ(s.find('y', 1), StringPiece::npos);
   EXPECT_EQ(s.find('o', 4), StringPiece::npos);  // starting position too far
+  EXPECT_TRUE(s.contains('z'));
   // starting pos that is obviously past the end -- This works for std::string
   EXPECT_EQ(s.toString().find('y', 55), StringPiece::npos);
   EXPECT_EQ(s.find('z', s.size()), StringPiece::npos);
@@ -123,6 +124,7 @@ TEST(StringPiece, All) {
   // null char
   EXPECT_EQ(s.find('\0'), std::string().find('\0'));
   EXPECT_EQ(s.find('\0'), StringPiece::npos);
+  EXPECT_FALSE(s.contains('\0'));
 
   // single char rfinds
   EXPECT_EQ(s.rfind('b'), 6);
@@ -139,8 +141,10 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s.find_first_of("bar"), 3);
   EXPECT_EQ(s.find_first_of("ba", 3), 3);
   EXPECT_EQ(s.find_first_of("ba", 4), 4);
+  EXPECT_TRUE(s.contains("bar"));
   EXPECT_EQ(s.find_first_of("xyxy"), StringPiece::npos);
   EXPECT_EQ(s.find_first_of("xyxy", 1), StringPiece::npos);
+  EXPECT_FALSE(s.contains("xyxy"));
   // starting position too far
   EXPECT_EQ(s.find_first_of("foo", 4), StringPiece::npos);
   // starting pos that is obviously past the end -- This works for std::string

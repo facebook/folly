@@ -501,6 +501,19 @@ public:
     return find(c, pos);
   }
 
+  /**
+   * Determine whether the range contains the given subrange or item.
+   *
+   * Note: Call find() directly if the index is needed.
+   */
+  bool contains(const Range& other) const {
+    return find(other) != std::string::npos;
+  }
+
+  bool contains(const value_type& other) const {
+    return find(other) != std::string::npos;
+  }
+
   void swap(Range& rhs) {
     std::swap(b_, rhs.b_);
     std::swap(e_, rhs.e_);
