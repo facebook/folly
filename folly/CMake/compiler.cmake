@@ -45,4 +45,6 @@ message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS}")
 if(MSVC)
     # add a define for NOMINMAX to keep the min and max macros from overwriting the world
     add_definitions(-DNOMINMAX)
+    # make sure glog doesn't redefine error
+    add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
 endif(MSVC)
