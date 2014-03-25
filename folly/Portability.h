@@ -39,7 +39,7 @@
 #ifdef __GNUC__
 struct MaxAlign { char c; } __attribute__((aligned));
 #elif _MSC_VER
-struct MaxAlign { char c; }  __declspec(align(max_align_t))
+struct MaxAlign { char c; } max_align_t;
 #else /* !__GNUC__ */
 # error Cannot define MaxAlign on this platform
 #endif
@@ -194,4 +194,12 @@ struct MaxAlign { char c; }  __declspec(align(max_align_t))
 #else
 # define FOLLY_MAXALIGN __attribute__((aligned))
 #endif
+
+#if defined(__GNUC__)
+#define FOLLY_PRINTF_FORMAT(format_param, dots_param) \
+	__attribute__((format(printf, format_param, dots_param)))
+#else
+#define FOLLY_PRINTF_FORMAT(format_param, dots_param)
+#endif
+
 #endif // FOLLY_PORTABILITY_H_
