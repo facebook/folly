@@ -42,6 +42,21 @@
 #include <boost/mpl/has_xxx.hpp>
 #include <boost/mpl/not.hpp>
 
+/**
+* The lack of constexpr means that using
+* std::numeric_limits<LHS>::min() in a template will fail
+* however boost has a clever workaround for this in the form
+* of boost's integer_traits
+*/
+#ifdef FOLLY_HAVE_CONSTEXPR
+#define FOLLY_LIMITS_MAX(x) std::numeric_limits<x>::max()
+#define FOLLY_LIMITS_MIN(x) std::numeric_limits<x>::min()
+#else
+#include <boost/integer_traits.hpp>
+#define FOLLY_LIMITS_MAX(x) boost::integer_traits<x>::const_max
+#define FOLLY_LIMITS_MIN(x) boost::integer_traits<x>::const_min
+#endif
+
 namespace folly {
 
 /**
@@ -343,8 +358,8 @@ struct is_negative_impl<T, false> {
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs > std::numeric_limits<LHS>::min()),
+    (rhs <= FOLLY_LIMITS_MIN(LHS)
+      && rhs > FOLLY_LIMITS_MAX(LHS)),
     LHS
   >::type const lhs
 ) {
@@ -354,7 +369,7 @@ bool less_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
+    (rhs > FOLLY_LIMITS_MAX(LHS)),
     LHS
   >::type const
 ) {
@@ -364,7 +379,7 @@ bool less_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::min()),
+    (rhs <= FOLLY_LIMITS_MIN(LHS)),
     LHS
   >::type const
 ) {
@@ -374,8 +389,8 @@ bool less_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs >= std::numeric_limits<LHS>::min()),
+    (rhs <= FOLLY_LIMITS_MAX(LHS)
+      && rhs >= FOLLY_LIMITS_MIN(LHS)),
     LHS
   >::type const lhs
 ) {
@@ -385,7 +400,7 @@ bool greater_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
+    (rhs > FOLLY_LIMITS_MAX(LHS)),
     LHS
   >::type const
 ) {
@@ -395,7 +410,7 @@ bool greater_than_impl(
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
   typename std::enable_if<
-    (rhs < std::numeric_limits<LHS>::min()),
+    (rhs < FOLLY_LIMITS_MIN(LHS)),
     LHS
   >::type const
 ) {
