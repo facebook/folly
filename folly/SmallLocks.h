@@ -312,14 +312,14 @@ struct SpinLockArray {
   // Check if T can theoretically cross a cache line.
   // NOTE: It should be alignof(std::max_align_t), but max_align_t
   // isn't supported by gcc 4.6.2.
-  static_assert(alignof(MaxAlign) > 0 &&
-                FOLLY_CACHE_LINE_SIZE % alignof(MaxAlign) == 0 &&
-                sizeof(T) <= alignof(MaxAlign),
+  static_assert(FOLLY_ALIGNOF(MaxAlign) > 0 &&
+                FOLLY_CACHE_LINE_SIZE % FOLLY_ALIGNOF(MaxAlign) == 0 &&
+				sizeof(T) <= FOLLY_ALIGNOF(MaxAlign),
                 "T can cross cache line boundaries");
 
   char padding_[FOLLY_CACHE_LINE_SIZE];
   std::array<PaddedSpinLock, N> data_;
-} __attribute__((aligned));
+} FOLLY_MAXALIGN;
 
 //////////////////////////////////////////////////////////////////////
 

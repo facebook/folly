@@ -63,7 +63,7 @@ struct NodeValid<T, NS,
                  typename std::enable_if<(
                      std::is_trivial<T>::value &&
                      sizeof(T) <= NS &&
-                     NS % alignof(T) == 0)>::type> {
+					 NS % FOLLY_ALIGNOF(T) == 0)>::type> {
   typedef void type;
 };
 }  // namespace detail

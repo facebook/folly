@@ -38,6 +38,8 @@
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__
 struct MaxAlign { char c; } __attribute__((aligned));
+#elif _MSC_VER
+struct MaxAlign { char c; }  __declspec(align(max_align_t))
 #else /* !__GNUC__ */
 # error Cannot define MaxAlign on this platform
 #endif
@@ -165,4 +167,31 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_PACK_POP  /**/
 #endif
 
+// Deal with alignas and alignof
+#if !defined(FOLLY_HAS_ALIGNAS)
+# ifdef _MSC_VER
+#  define FOLLY_ALIGNAS(x) __declspec(align(x))
+# else
+#  define FOLLY_ALIGNAS(x) __attribute__((aligned(x)))
+# endif
+#else
+# define FOLLY_ALIGNAS(x) alignas(x)
+#endif
+
+#if !defined(FOLLY_HAS_ALIGNOF)
+# ifdef _MSC_VER
+#  define FOLLY_ALIGNOF(x) __alignof(x)
+# else
+#  define FOLLY_ALIGNOF(x) __alignof__(x))
+# endif
+#else
+# define FOLLY_ALIGNOF(x) alignof(x)
+#endif
+
+// MSVC has max_align_t
+#ifdef _MSC_VER
+#  define FOLLY_MAXALIGN FOLLY_ALIGNAS(max_align_t)
+#else
+# define FOLLY_MAXALIGN __attribute__((aligned))
+#endif
 #endif // FOLLY_PORTABILITY_H_

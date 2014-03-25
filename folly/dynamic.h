@@ -511,7 +511,7 @@ private:
      */
     typename std::aligned_storage<
       sizeof(std::unordered_map<int,int>),
-      alignof(std::unordered_map<int,int>)
+	  FOLLY_ALIGNOF(std::unordered_map<int, int>)
     >::type objectBuffer;
   } u_;
 };

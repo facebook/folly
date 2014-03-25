@@ -1105,7 +1105,7 @@ private:
 #else
   typedef typename std::aligned_storage<
     sizeof(value_type) * MaxInline,
-    alignof(value_type)
+	FOLLY_ALIGNOF(value_type)
   >::type InlineStorageType;
 #endif
 
@@ -1116,7 +1116,7 @@ private:
   static size_t const kHeapifyCapacitySize = sizeof(
     typename std::aligned_storage<
       sizeof(InternalSizeType),
-      alignof(value_type)
+	  FOLLY_ALIGNOF(value_type)
     >::type);
   // Threshold to control capacity heapifying.
   static size_t const kHeapifyCapacityThreshold =

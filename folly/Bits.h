@@ -541,7 +541,7 @@ FOLLY_PACK_POP
 template <class T>
 inline T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  static_assert(FOLLY_ALIGNOF(Unaligned<T>) == 1, "Invalid alignment");
   return static_cast<const Unaligned<T>*>(p)->value;
 }
 
@@ -551,7 +551,7 @@ inline T loadUnaligned(const void* p) {
 template <class T>
 inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  static_assert(FOLLY_ALIGNOF(Unaligned<T>) == 1, "Invalid alignment");
   new (p) Unaligned<T>(value);
 }
 

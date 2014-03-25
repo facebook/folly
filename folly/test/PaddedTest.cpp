@@ -25,7 +25,7 @@ TEST(NodeTest, Padding) {
   typedef padded::Node<int32_t, 64> IntNode;
   EXPECT_EQ(16, IntNode::kElementCount);
   EXPECT_EQ(0, IntNode::kPaddingBytes);
-  EXPECT_EQ(alignof(int32_t), alignof(IntNode));
+  EXPECT_EQ(FOLLY_ALIGNOF(int32_t), FOLLY_ALIGNOF(IntNode));
   EXPECT_EQ(64, sizeof(IntNode));
   EXPECT_EQ(0, IntNode::nodeCount(0));
   EXPECT_EQ(0, IntNode::paddedByteSize(0));
@@ -48,11 +48,11 @@ TEST(NodeTest, Padding) {
   struct SevenBytes {
     char c[7];
   };
-  EXPECT_EQ(1, alignof(SevenBytes));
+  EXPECT_EQ(1, FOLLY_ALIGNOF(SevenBytes));
   typedef padded::Node<SevenBytes, 64> SevenByteNode;
   EXPECT_EQ(9, SevenByteNode::kElementCount);  // 64 / 7
   EXPECT_EQ(1, SevenByteNode::kPaddingBytes);  // 64 % 7
-  EXPECT_EQ(1, alignof(SevenByteNode));
+  EXPECT_EQ(1, FOLLY_ALIGNOF(SevenByteNode));
   EXPECT_EQ(64, sizeof(SevenByteNode));
   EXPECT_EQ(0, SevenByteNode::nodeCount(0));
   EXPECT_EQ(0, SevenByteNode::paddedByteSize(0));

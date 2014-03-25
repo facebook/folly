@@ -36,7 +36,7 @@ template <
     template<typename> class Atom = std::atomic,
     typename Raw = typename detail::AtomicStructIntPick<sizeof(T)>::type>
 class AtomicStruct {
-  static_assert(alignof(T) <= alignof(Raw),
+  static_assert(FOLLY_ALIGNOF(T) <= FOLLY_ALIGNOF(Raw),
       "target type can't have stricter alignment than matching int");
   static_assert(sizeof(T) <= sizeof(Raw),
       "underlying type isn't big enough");
