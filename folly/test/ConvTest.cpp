@@ -420,9 +420,9 @@ void testVariadicToDelim() {
 }
 
 TEST(Conv, NullString) {
-  string s1 = to<string>((char *) NULL);
+  string s1 = to<string>((char *) nullptr);
   EXPECT_TRUE(s1.empty());
-  fbstring s2 = to<fbstring>((char *) NULL);
+  fbstring s2 = to<fbstring>((char *) nullptr);
   EXPECT_TRUE(s2.empty());
 }
 

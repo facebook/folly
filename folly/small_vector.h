@@ -966,7 +966,7 @@ private:
     doConstruct(n, val);
   }
 
-  void makeSize(size_type size, value_type* v = NULL) {
+  void makeSize(size_type size, value_type* v = nullptr) {
     makeSize(size, v, size - 1);
   }
 
@@ -1009,7 +1009,7 @@ private:
         detail::shiftPointer(newh, kHeapifyCapacitySize) :
         newh);
 
-    if (v != NULL) {
+    if (v != nullptr) {
       // move new element
       try {
         new (&newp[pos]) value_type(std::move(*v));

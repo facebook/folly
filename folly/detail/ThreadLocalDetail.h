@@ -74,22 +74,22 @@ class CustomDeleter : public DeleterBase {
  */
 struct ElementWrapper {
   void dispose(TLPDestructionMode mode) {
-    if (ptr != NULL) {
-      DCHECK(deleter != NULL);
+    if (ptr != nullptr) {
+      DCHECK(deleter != nullptr);
       deleter->dispose(ptr, mode);
       if (ownsDeleter) {
         delete deleter;
       }
-      ptr = NULL;
-      deleter = NULL;
+      ptr = nullptr;
+      deleter = nullptr;
       ownsDeleter = false;
     }
   }
 
   template <class Ptr>
   void set(Ptr p) {
-    DCHECK(ptr == NULL);
-    DCHECK(deleter == NULL);
+    DCHECK(ptr == nullptr);
+    DCHECK(deleter == nullptr);
 
     if (p) {
       // We leak a single object here but that is ok.  If we used an
@@ -105,8 +105,8 @@ struct ElementWrapper {
 
   template <class Ptr, class Deleter>
   void set(Ptr p, Deleter d) {
-    DCHECK(ptr == NULL);
-    DCHECK(deleter == NULL);
+    DCHECK(ptr == nullptr);
+    DCHECK(deleter == nullptr);
     if (p) {
       ptr = p;
       deleter = new CustomDeleter<Ptr,Deleter>(d);
@@ -241,8 +241,8 @@ struct StaticMeta {
       threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD);
     }
     free(threadEntry->elements);
-    threadEntry->elements = NULL;
-    pthread_setspecific(meta.pthreadKey_, NULL);
+    threadEntry->elements = nullptr;
+    pthread_setspecific(meta.pthreadKey_, nullptr);
 
 #if __APPLE__
     // Allocated in getThreadEntry(); free it

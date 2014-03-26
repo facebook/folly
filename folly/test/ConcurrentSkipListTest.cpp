@@ -104,8 +104,8 @@ TEST(ConcurrentSkipList, SequentialAccess) {
     LOG(INFO) << "nodetype size=" << sizeof(SkipListNodeType);
 
     auto skipList(SkipListType::create(kHeadHeight));
-    EXPECT_TRUE(skipList.first() == NULL);
-    EXPECT_TRUE(skipList.last() == NULL);
+    EXPECT_TRUE(skipList.first() == nullptr);
+    EXPECT_TRUE(skipList.last() == nullptr);
 
     skipList.add(3);
     EXPECT_TRUE(skipList.contains(3));

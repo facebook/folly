@@ -169,7 +169,7 @@ TEST(ThreadLocal, SimpleRepeatDestructor) {
 
 TEST(ThreadLocal, InterleavedDestructors) {
   Widget::totalVal_ = 0;
-  ThreadLocal<Widget>* w = NULL;
+  ThreadLocal<Widget>* w = nullptr;
   int wVersion = 0;
   const int wVersionMax = 2;
   int thIter = 0;

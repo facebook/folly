@@ -63,14 +63,14 @@ void checkConsistency(const IOBufQueue& queue) {
 
 TEST(IOBufQueue, Simple) {
   IOBufQueue queue(clOptions);
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
   queue.append(SCL(""));
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
   queue.append(unique_ptr<IOBuf>());
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
   string emptyString;
   queue.append(emptyString);
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
 }
 
 TEST(IOBufQueue, Append) {
@@ -85,9 +85,9 @@ TEST(IOBufQueue, Append) {
   checkConsistency(queue);
   checkConsistency(queue2);
   const IOBuf* chain = queue.front();
-  EXPECT_NE((IOBuf*)NULL, chain);
+  EXPECT_NE((IOBuf*)nullptr, chain);
   EXPECT_EQ(12, chain->computeChainDataLength());
-  EXPECT_EQ(NULL, queue2.front());
+  EXPECT_EQ(nullptr, queue2.front());
 }
 
 TEST(IOBufQueue, Append2) {
@@ -102,9 +102,9 @@ TEST(IOBufQueue, Append2) {
   checkConsistency(queue);
   checkConsistency(queue2);
   const IOBuf* chain = queue.front();
-  EXPECT_NE((IOBuf*)NULL, chain);
+  EXPECT_NE((IOBuf*)nullptr, chain);
   EXPECT_EQ(12, chain->computeChainDataLength());
-  EXPECT_EQ(NULL, queue2.front());
+  EXPECT_EQ(nullptr, queue2.front());
 }
 
 TEST(IOBufQueue, Split) {
@@ -136,7 +136,7 @@ TEST(IOBufQueue, Split) {
   prefix = queue.split(5);
   checkConsistency(queue);
   EXPECT_EQ(5, prefix->computeChainDataLength());
-  EXPECT_EQ((IOBuf*)NULL, queue.front());
+  EXPECT_EQ((IOBuf*)nullptr, queue.front());
 
   queue.append(stringToIOBuf(SCL("Hello,")));
   queue.append(stringToIOBuf(SCL(" World")));
@@ -151,7 +151,7 @@ TEST(IOBufQueue, Preallocate) {
   queue.append(string("Hello"));
   pair<void*,uint32_t> writable = queue.preallocate(2, 64, 64);
   checkConsistency(queue);
-  EXPECT_NE((void*)NULL, writable.first);
+  EXPECT_NE((void*)nullptr, writable.first);
   EXPECT_LE(2, writable.second);
   EXPECT_GE(64, writable.second);
   memcpy(writable.first, SCL(", "));
@@ -238,7 +238,7 @@ TEST(IOBufQueue, Trim) {
 
   queue.trimEnd(1);
   checkConsistency(queue);
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
 
   EXPECT_THROW(queue.trimStart(2), std::underflow_error);
   checkConsistency(queue);
@@ -296,7 +296,7 @@ TEST(IOBufQueue, TrimPack) {
 
   queue.trimEnd(1);
   checkConsistency(queue);
-  EXPECT_EQ(NULL, queue.front());
+  EXPECT_EQ(nullptr, queue.front());
 
   EXPECT_THROW(queue.trimStart(2), std::underflow_error);
   checkConsistency(queue);
@@ -354,12 +354,12 @@ TEST(IOBufQueue, PopFirst) {
   checkConsistency(queue);
   EXPECT_EQ(chainLength, queue.chainLength());
 
-  EXPECT_EQ((IOBuf*)NULL, queue.front());
+  EXPECT_EQ((IOBuf*)nullptr, queue.front());
   first = queue.pop_front();
-  EXPECT_EQ((IOBuf*)NULL, first.get());
+  EXPECT_EQ((IOBuf*)nullptr, first.get());
 
   checkConsistency(queue);
-  EXPECT_EQ((IOBuf*)NULL, queue.front());
+  EXPECT_EQ((IOBuf*)nullptr, queue.front());
   EXPECT_EQ(0, queue.chainLength());
 }
 

@@ -1109,7 +1109,7 @@ public:
     void* p = impl_.b_;
     if ((rallocm && usingStdAllocator::value) &&
         newCapacityBytes >= folly::jemallocMinInPlaceExpandable &&
-        rallocm(&p, NULL, newCapacityBytes, 0, ALLOCM_NO_MOVE)
+        rallocm(&p, nullptr, newCapacityBytes, 0, ALLOCM_NO_MOVE)
           == ALLOCM_SUCCESS) {
       impl_.z_ += newCap - oldCap;
     } else {
@@ -1144,7 +1144,7 @@ private:
 
     auto const newCapacityBytes = folly::goodMallocSize(n * sizeof(T));
     void* p = impl_.b_;
-    if (rallocm(&p, NULL, newCapacityBytes, 0, ALLOCM_NO_MOVE)
+    if (rallocm(&p, nullptr, newCapacityBytes, 0, ALLOCM_NO_MOVE)
         == ALLOCM_SUCCESS) {
       impl_.z_ = impl_.b_ + newCapacityBytes / sizeof(T);
       return true;

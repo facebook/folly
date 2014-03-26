@@ -2358,7 +2358,7 @@ getline(
     basic_fbstring<E, T, A, S>& str,
   typename basic_fbstring<E, T, A, S>::value_type delim) {
   // Use the nonstandard getdelim()
-  char * buf = NULL;
+  char * buf = nullptr;
   size_t size = 0;
   for (;;) {
     // This looks quadratic but it really depends on realloc

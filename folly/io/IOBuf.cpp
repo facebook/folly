@@ -114,8 +114,8 @@ struct IOBuf::HeapFullStorage {
 };
 
 IOBuf::SharedInfo::SharedInfo()
-  : freeFn(NULL),
-    userData(NULL) {
+  : freeFn(nullptr),
+    userData(nullptr) {
   // Use relaxed memory ordering here.  Since we are creating a new SharedInfo,
   // no other threads should be referring to it yet.
   refcount.store(1, std::memory_order_relaxed);
@@ -801,7 +801,7 @@ void IOBuf::allocExtBuffer(uint64_t minCapacity,
                            uint64_t* capacityReturn) {
   size_t mallocSize = goodExtBufferSize(minCapacity);
   uint8_t* buf = static_cast<uint8_t*>(malloc(mallocSize));
-  if (UNLIKELY(buf == NULL)) {
+  if (UNLIKELY(buf == nullptr)) {
     throw std::bad_alloc();
   }
   initExtBuffer(buf, mallocSize, infoReturn, capacityReturn);

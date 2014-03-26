@@ -27,7 +27,7 @@ bool usingJEMallocSlow() {
   // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
   // in the form if (mallctl != NULL). Not if (mallctl) or if (!mallctl) (!!).
   // http://goo.gl/xpmctm
-  if (allocm == NULL || rallocm == NULL || mallctl == NULL) {
+  if (allocm == nullptr || rallocm == nullptr || mallctl == nullptr) {
     return false;
   }
 

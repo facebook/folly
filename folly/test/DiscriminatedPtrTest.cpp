@@ -44,7 +44,7 @@ TEST(DiscriminatedPtr, Basic) {
   EXPECT_EQ(&a, static_cast<const Ptr&>(p).get_nothrow<int>());
   EXPECT_EQ(&a, p.get<int>());
   EXPECT_EQ(&a, static_cast<const Ptr&>(p).get<int>());
-  EXPECT_EQ(static_cast<void*>(NULL), p.get_nothrow<void>());
+  EXPECT_EQ(static_cast<void*>(nullptr), p.get_nothrow<void>());
   EXPECT_THROW({p.get<void>();}, std::invalid_argument);
 
   Foo foo;
@@ -55,7 +55,7 @@ TEST(DiscriminatedPtr, Basic) {
   EXPECT_TRUE(p.hasType<Foo>());
   EXPECT_FALSE(p.hasType<Bar>());
 
-  EXPECT_EQ(static_cast<int*>(NULL), p.get_nothrow<int>());
+  EXPECT_EQ(static_cast<int*>(nullptr), p.get_nothrow<int>());
 
   p.clear();
   EXPECT_TRUE(p.empty());

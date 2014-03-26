@@ -267,7 +267,7 @@ static const ScaleInfo kTimeSuffixes[] {
   { 1E-9, "ns" },
   { 1E-12, "ps" },
   { 1E-15, "fs" },
-  { 0, NULL },
+  { 0, nullptr },
 };
 
 static const ScaleInfo kMetricSuffixes[] {
@@ -289,7 +289,7 @@ static const ScaleInfo kMetricSuffixes[] {
   { 1E-18, "a" }, // atto
   { 1E-21, "z" }, // zepto
   { 1E-24, "y" }, // yocto
-  { 0, NULL },
+  { 0, nullptr },
 };
 
 static string humanReadable(double n, unsigned int decimals,
@@ -300,7 +300,7 @@ static string humanReadable(double n, unsigned int decimals,
 
   const double absValue = fabs(n);
   const ScaleInfo* scale = scales;
-  while (absValue < scale[0].boundary && scale[1].suffix != NULL) {
+  while (absValue < scale[0].boundary && scale[1].suffix != nullptr) {
     ++scale;
   }
 

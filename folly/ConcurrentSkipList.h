@@ -804,17 +804,17 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Skipper {
   }
 
   const value_type &data() const {
-    DCHECK(succs_[0] != NULL);
+    DCHECK(succs_[0] != nullptr);
     return succs_[0]->data();
   }
 
   value_type &operator *() const {
-    DCHECK(succs_[0] != NULL);
+    DCHECK(succs_[0] != nullptr);
     return succs_[0]->data();
   }
 
   value_type *operator->() {
-    DCHECK(succs_[0] != NULL);
+    DCHECK(succs_[0] != nullptr);
     return &succs_[0]->data();
   }
 
@@ -839,7 +839,7 @@ class ConcurrentSkipList<T, Comp, MAX_HEIGHT>::Skipper {
       findInsertionPoint(preds_[lyr], lyr, data, preds_, succs_);
     if (foundLayer < 0) return false;
 
-    DCHECK(succs_[0] != NULL) << "lyr=" << lyr << "; max_layer=" << max_layer;
+    DCHECK(succs_[0] != nullptr) << "lyr=" << lyr << "; max_layer=" << max_layer;
     return !succs_[0]->markedForRemoval();
   }
 

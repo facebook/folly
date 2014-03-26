@@ -346,7 +346,7 @@ void* insertThread(void* jj) {
     KeyT key = randomizeKey(i + j * numOpsPerThread);
     globalAHM->insert(key, genVal(key));
   }
-  return NULL;
+  return nullptr;
 }
 
 void* insertThreadArr(void* jj) {
@@ -355,7 +355,7 @@ void* insertThreadArr(void* jj) {
     KeyT key = randomizeKey(i + j * numOpsPerThread);
     globalAHA->insert(std::make_pair(key, genVal(key)));
   }
-  return NULL;
+  return nullptr;
 }
 
 std::atomic<bool> runThreadsCreatedAllThreads;
@@ -365,7 +365,7 @@ void runThreads(void *(*thread)(void*), int numThreads, void **statuses) {
   vector<pthread_t> threadIds;
   for (int64_t j = 0; j < numThreads; j++) {
     pthread_t tid;
-    if (pthread_create(&tid, NULL, thread, (void*) j) != 0) {
+    if (pthread_create(&tid, nullptr, thread, (void*) j) != 0) {
        LOG(ERROR) << "Could not start thread";
     } else {
       threadIds.push_back(tid);
@@ -375,12 +375,12 @@ void runThreads(void *(*thread)(void*), int numThreads, void **statuses) {
 
   runThreadsCreatedAllThreads.store(true);
   for (int i = 0; i < threadIds.size(); ++i) {
-    pthread_join(threadIds[i], statuses == NULL ? NULL : &statuses[i]);
+    pthread_join(threadIds[i], statuses == nullptr ? nullptr : &statuses[i]);
   }
 }
 
 void runThreads(void *(*thread)(void*)) {
-  runThreads(thread, FLAGS_numThreads, NULL);
+  runThreads(thread, FLAGS_numThreads, nullptr);
 }
 
 }
@@ -462,10 +462,10 @@ void* raceIterateThread(void* jj) {
     ++count;
     if (count > raceFinalSizeEstimate) {
       EXPECT_FALSE("Infinite loop in iterator.");
-      return NULL;
+      return nullptr;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 void* raceInsertRandomThread(void* jj) {
@@ -474,7 +474,7 @@ void* raceInsertRandomThread(void* jj) {
     KeyT key = rand();
     globalAHM->insert(key, genVal(key));
   }
-  return NULL;
+  return nullptr;
 }
 
 }
@@ -496,14 +496,14 @@ TEST(Ahm, race_insert_iterate_thread_test) {
     pthread_t tid;
     void *(*thread)(void*) =
       (j < kInsertThreads ? raceInsertRandomThread : raceIterateThread);
-    if (pthread_create(&tid, NULL, thread, (void*) j) != 0) {
+    if (pthread_create(&tid, nullptr, thread, (void*) j) != 0) {
       LOG(ERROR) << "Could not start thread";
     } else {
       threadIds.push_back(tid);
     }
   }
   for (int i = 0; i < threadIds.size(); ++i) {
-    pthread_join(threadIds[i], NULL);
+    pthread_join(threadIds[i], nullptr);
   }
   VLOG(1) << "Ended up with " << globalAHM->numSubMaps() << " submaps";
   VLOG(1) << "Final size of map " << globalAHM->size();
@@ -521,7 +521,7 @@ void* testEraseInsertThread(void*) {
     insertedLevel.store(i, std::memory_order_release);
   }
   insertedLevel.store(kTestEraseInsertions, std::memory_order_release);
-  return NULL;
+  return nullptr;
 }
 
 void* testEraseEraseThread(void*) {
@@ -551,7 +551,7 @@ void* testEraseEraseThread(void*) {
       }
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 }
@@ -572,14 +572,14 @@ TEST(Ahm, thread_erase_insert_race) {
     pthread_t tid;
     void *(*thread)(void*) =
       (j < kInsertThreads ? testEraseInsertThread : testEraseEraseThread);
-    if (pthread_create(&tid, NULL, thread, (void*) j) != 0) {
+    if (pthread_create(&tid, nullptr, thread, (void*) j) != 0) {
       LOG(ERROR) << "Could not start thread";
     } else {
       threadIds.push_back(tid);
     }
   }
   for (int i = 0; i < threadIds.size(); i++) {
-    pthread_join(threadIds[i], NULL);
+    pthread_join(threadIds[i], nullptr);
   }
 
   EXPECT_TRUE(globalAHM->empty());

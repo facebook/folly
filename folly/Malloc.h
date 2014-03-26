@@ -208,7 +208,7 @@ inline void* smartRealloc(void* p,
     // using jemalloc's API. Don't forget that jemalloc can never grow
     // in place blocks smaller than 4096 bytes.
     if (currentCapacity >= jemallocMinInPlaceExpandable &&
-        rallocm(&p, NULL, newCapacity, 0, ALLOCM_NO_MOVE) == ALLOCM_SUCCESS) {
+        rallocm(&p, nullptr, newCapacity, 0, ALLOCM_NO_MOVE) == ALLOCM_SUCCESS) {
       // Managed to expand in place
       return p;
     }

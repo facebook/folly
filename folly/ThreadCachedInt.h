@@ -48,7 +48,7 @@ class ThreadCachedInt : boost::noncopyable {
 
   void increment(IntT inc) {
     auto cache = cache_.get();
-    if (UNLIKELY(cache == NULL || cache->parent_ == NULL)) {
+    if (UNLIKELY(cache == nullptr || cache->parent_ == nullptr)) {
       cache = new IntCache(*this);
       cache_.reset(cache);
     }
@@ -122,7 +122,7 @@ class ThreadCachedInt : boost::noncopyable {
   // need to make sure we signal that this parent is dead.
   ~ThreadCachedInt() {
     for (auto& cache : cache_.accessAllThreads()) {
-      cache.parent_ = NULL;
+      cache.parent_ = nullptr;
     }
   }
 

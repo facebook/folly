@@ -267,7 +267,7 @@ public:
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
 // 23.3.6.1 construct/copy/destroy:
-  fbvector() : b_(NULL), e_(NULL), z_(NULL) {}
+  fbvector() : b_(nullptr), e_(nullptr), z_(nullptr) {}
 
   explicit fbvector(const Allocator&) {
     new(this) fbvector;
@@ -566,7 +566,7 @@ private:
 
     auto const newCapacityBytes = goodMallocSize(n * sizeof(T));
     void* p = b_;
-    if (rallocm(&p, NULL, newCapacityBytes, 0, ALLOCM_NO_MOVE)
+    if (rallocm(&p, nullptr, newCapacityBytes, 0, ALLOCM_NO_MOVE)
         != ALLOCM_SUCCESS) {
       return false;
     }
@@ -609,7 +609,7 @@ public:
     auto const crtCapacityBytes = capacity() * sizeof(T);
     auto const newCapacityBytes = goodMallocSize(size() * sizeof(T));
     if (crtCapacityBytes >= jemallocMinInPlaceExpandable &&
-        rallocm(&p, NULL, newCapacityBytes, 0, ALLOCM_NO_MOVE)
+        rallocm(&p, nullptr, newCapacityBytes, 0, ALLOCM_NO_MOVE)
         == ALLOCM_SUCCESS) {
       // Celebrate
       z_ = b_ + newCapacityBytes / sizeof(T);
@@ -697,7 +697,7 @@ private:
     if (capBytes < jemallocMinInPlaceExpandable) return false;
     auto const newCapBytes = goodMallocSize(capBytes + sizeof(T));
     void * bv = b_;
-    if (rallocm(&bv, NULL, newCapBytes, 0, ALLOCM_NO_MOVE) != ALLOCM_SUCCESS) {
+    if (rallocm(&bv, nullptr, newCapBytes, 0, ALLOCM_NO_MOVE) != ALLOCM_SUCCESS) {
       return false;
     }
     // Managed to expand in place

@@ -315,7 +315,7 @@ struct Synchronized {
         return;
       }
       // Could not acquire the resource, pointer is null
-      parent_ = NULL;
+      parent_ = nullptr;
     }
 
     /**
@@ -363,7 +363,7 @@ struct Synchronized {
      * SYNCHRONIZED below.
      */
     T* operator->() {
-      return parent_ ? &parent_->datum_ : NULL;
+      return parent_ ? &parent_->datum_ : nullptr;
     }
 
     /**
@@ -433,7 +433,7 @@ struct Synchronized {
         return;
       }
       // Could not acquire the resource, pointer is null
-      parent_ = NULL;
+      parent_ = nullptr;
     }
 
     ConstLockedPtr& operator=(const ConstLockedPtr& rhs) {
@@ -449,7 +449,7 @@ struct Synchronized {
     }
 
     const T* operator->() const {
-      return parent_ ? &parent_->datum_ : NULL;
+      return parent_ ? &parent_->datum_ : nullptr;
     }
 
     struct Unsynchronizer {

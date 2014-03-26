@@ -161,8 +161,8 @@ class HistogramBuckets {
   template <typename CountFn>
   unsigned int getPercentileBucketIdx(double pct,
                                       CountFn countFromBucket,
-                                      double* lowPct = NULL,
-                                      double* highPct = NULL) const;
+                                      double* lowPct = nullptr,
+                                      double* highPct = nullptr) const;
 
   /**
    * Estimate the value at the specified percentile.
@@ -357,8 +357,8 @@ class Histogram {
    * returned in the lowPct and highPct arguments, if they are non-NULL.
    */
   unsigned int getPercentileBucketIdx(double pct,
-                                      double* lowPct = NULL,
-                                      double* highPct = NULL) const {
+                                      double* lowPct = nullptr,
+                                      double* highPct = nullptr) const {
     // We unfortunately can't use lambdas here yet;
     // Some users of this code are still built with gcc-4.4.
     CountFromBucket countFn;

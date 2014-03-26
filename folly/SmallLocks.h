@@ -80,7 +80,7 @@ namespace detail {
          * linux this varies by kernel version from 1ms to 10ms).
          */
         struct timespec ts = { 0, 500000 };
-        nanosleep(&ts, NULL);
+        nanosleep(&ts, nullptr);
       }
     }
   };

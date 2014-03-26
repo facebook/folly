@@ -35,7 +35,7 @@ std::atomic<uint32_t> seedInput(0);
 
 uint32_t randomNumberSeed() {
   struct timeval tv;
-  gettimeofday(&tv, NULL);
+  gettimeofday(&tv, nullptr);
   const uint32_t kPrime0 = 51551;
   const uint32_t kPrime1 = 61631;
   const uint32_t kPrime2 = 64997;
