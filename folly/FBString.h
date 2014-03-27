@@ -1054,12 +1054,13 @@ public:
   }
 
   /* implicit */ basic_fbstring(const value_type* s, const A& a = A())
-      : store_(s, s ? traits_type::length(s) : ({
-          basic_fbstring<char> err = __PRETTY_FUNCTION__;
-          err += ": null pointer initializer not valid";
-          std::__throw_logic_error(err.c_str());
-          0;
-      })) {
+      : store_(s, s
+          ? traits_type::length(s)
+          : [] {
+              std::__throw_logic_error(
+                "basic_fbstring: null pointer initializer not valid");
+              return 0;
+            }()) {
   }
 
   basic_fbstring(const value_type* s, size_type n, const A& a = A())
