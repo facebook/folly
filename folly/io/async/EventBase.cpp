@@ -223,6 +223,14 @@ void EventBase::waitUntilRunning() {
 
 // enters the event_base loop -- will only exit when forced to
 bool EventBase::loop() {
+  return loopBody();
+}
+
+bool EventBase::loopOnce() {
+  return loopBody(true);
+}
+
+bool EventBase::loopBody(bool once) {
   VLOG(5) << "EventBase(): Starting loop.";
   int res = 0;
   bool ranLoopCallbacks;
@@ -302,6 +310,10 @@ bool EventBase::loop() {
 
     VLOG(5) << "EventBase " << this << " loop time: " <<
       getTimeDelta(&prev).count();
+
+    if (once) {
+      break;
+    }
   }
   // Reset stop_ so loop() can be called again
   stop_ = false;

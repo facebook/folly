@@ -144,6 +144,15 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   bool loop();
 
   /**
+   * Wait for some events to become active, run them, then return.
+   *
+   * This is useful for callers that want to run the loop manually.
+   *
+   * Returns the same result as loop().
+   */
+  bool loopOnce();
+
+  /**
    * Runs the event loop.
    *
    * loopForever() behaves like loop(), except that it keeps running even if
@@ -478,6 +487,8 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
 
   typedef LoopCallback::List LoopCallbackList;
   class FunctionRunner;
+
+  bool loopBody(bool once = false);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks(bool setContext = true);
