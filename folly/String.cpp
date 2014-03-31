@@ -180,6 +180,31 @@ const PrettySuffix kPrettyUnitsBinaryIECSuffixes[] = {
   { 0, 0 },
 };
 
+const PrettySuffix kPrettySISuffixes[] = {
+  { "Y", 1e24L },
+  { "Z", 1e21L },
+  { "E", 1e18L },
+  { "P", 1e15L },
+  { "T", 1e12L },
+  { "G", 1e9L },
+  { "M", 1e6L },
+  { "k", 1e3L },
+  { "h", 1e2L },
+  { "da", 1e1L },
+  { "d", 1e-1L },
+  { "c", 1e-2L },
+  { "m", 1e-3L },
+  { "u", 1e-6L },
+  { "n", 1e-9L },
+  { "p", 1e-12L },
+  { "f", 1e-15L },
+  { "a", 1e-18L },
+  { "z", 1e-21L },
+  { "y", 1e-24L },
+  { " ", 0 },
+  { 0, 0} 
+};
+
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettyTimeSuffixes,
   kPrettyBytesMetricSuffixes,
@@ -188,6 +213,7 @@ const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
   kPrettyUnitsMetricSuffixes,
   kPrettyUnitsBinarySuffixes,
   kPrettyUnitsBinaryIECSuffixes,
+  kPrettySISuffixes,
 };
 
 }  // namespace
@@ -216,6 +242,50 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
   // no suffix, we've got a tiny value -- just print it in sci-notation
   snprintf(buf, sizeof buf, "%.4g", val);
   return std::string(buf);
+}
+
+//TODO:
+//1) Benchmark & optimize
+double prettyToDouble(folly::StringPiece *const prettyString, 
+                      const PrettyType type) {
+  double value = folly::to<double>(prettyString);
+  while (prettyString->size() > 0 && std::isspace(prettyString->front())) {
+    prettyString->advance(1); //Skipping spaces between number and suffix
+  }
+  const PrettySuffix* suffixes = kPrettySuffixes[type];
+  int longestPrefixLen = -1;
+  int bestPrefixId = -1;
+  for (int j = 0 ; suffixes[j].suffix; ++j) {
+    if (suffixes[j].suffix[0] == ' '){//Checking for " " -> number rule.
+      if (longestPrefixLen == -1) {
+        longestPrefixLen = 0; //No characters to skip
+        bestPrefixId = j;
+      }
+    } else if (prettyString->startsWith(suffixes[j].suffix)) {
+      int suffixLen = strlen(suffixes[j].suffix);
+      //We are looking for a longest suffix matching prefix of the string
+      //after numeric value. We need this in case suffixes have common prefix.
+      if (suffixLen > longestPrefixLen) {
+        longestPrefixLen = suffixLen;
+        bestPrefixId = j;
+      }
+    }
+  }
+  if (bestPrefixId == -1) { //No valid suffix rule found
+    throw std::invalid_argument(folly::to<std::string>(
+            "Unable to parse suffix \"",
+            prettyString->toString(), "\""));
+  }
+  prettyString->advance(longestPrefixLen);
+  return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val : 
+                                      value;
+}
+
+double prettyToDouble(folly::StringPiece prettyString, const PrettyType type){
+  double result = prettyToDouble(&prettyString, type);
+  detail::enforceWhitespace(prettyString.data(), 
+                            prettyString.data() + prettyString.size());
+  return result;
 }
 
 std::string hexDump(const void* ptr, size_t size) {
