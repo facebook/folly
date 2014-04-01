@@ -26,6 +26,7 @@
 
 #include "folly/Exception.h"
 #include "folly/Format.h"
+#include "folly/FileUtil.h"
 #include "folly/String.h"
 #include "folly/gen/Base.h"
 #include "folly/gen/File.h"
@@ -290,5 +291,104 @@ TEST(CommunicateSubprocessTest, Duplex2) {
     for (const auto& line : stderrLines) {
       EXPECT_EQ("another line", line);
     }
+  });
+}
+
+namespace {
+
+bool readToString(int fd, std::string& buf, size_t maxSize) {
+  size_t bytesRead = 0;
+
+  buf.resize(maxSize);
+  char* dest = &buf.front();
+  size_t remaining = maxSize;
+
+  ssize_t n = -1;
+  while (remaining) {
+    n = ::read(fd, dest, remaining);
+    if (n == -1) {
+      if (errno == EINTR) {
+        continue;
+      }
+      if (errno == EAGAIN) {
+        break;
+      }
+      PCHECK("read failed");
+    } else if (n == 0) {
+      break;
+    }
+    dest += n;
+    remaining -= n;
+  }
+
+  buf.resize(dest - buf.data());
+  return (n == 0);
+}
+
+}  // namespace
+
+TEST(CommunicateSubprocessTest, Chatty) {
+  checkFdLeak([] {
+    const int lineCount = 1000;
+
+    int wcount = 0;
+    int rcount = 0;
+
+    auto options = Subprocess::pipeStdin().pipeStdout().pipeStderr().usePath();
+    std::vector<std::string> cmd {
+      "sed",
+      "-u",
+      "-e",
+      "s/a test/a successful test/",
+    };
+
+    Subprocess proc(cmd, options);
+
+    auto writeCallback = [&] (int pfd, int cfd) -> bool {
+      EXPECT_EQ(0, cfd);  // child stdin
+      EXPECT_EQ(rcount, wcount);  // chatty, one read for every write
+
+      auto msg = folly::to<std::string>("a test ", wcount, "\n");
+
+      // Not entirely kosher, we should handle partial writes, but this is
+      // fine for writes <= PIPE_BUF
+      EXPECT_EQ(msg.size(), writeFull(pfd, msg.data(), msg.size()));
+
+      ++wcount;
+      proc.enableNotifications(0, false);
+
+      return (wcount == lineCount);
+    };
+
+    auto readCallback = [&] (int pfd, int cfd) -> bool {
+      EXPECT_EQ(1, cfd);  // child stdout
+      EXPECT_EQ(wcount, rcount + 1);
+
+      auto expected =
+        folly::to<std::string>("a successful test ", rcount, "\n");
+
+      std::string lineBuf;
+
+      // Not entirely kosher, we should handle partial reads, but this is
+      // fine for reads <= PIPE_BUF
+      bool r = readToString(pfd, lineBuf, expected.size() + 1);
+
+      EXPECT_EQ((rcount == lineCount), r);  // EOF iff at lineCount
+      EXPECT_EQ(expected, lineBuf);
+
+      ++rcount;
+      if (rcount != lineCount) {
+        proc.enableNotifications(0, true);
+      }
+
+      return (rcount == lineCount);
+    };
+
+    proc.communicate(readCallback, writeCallback);
+
+    EXPECT_EQ(lineCount, wcount);
+    EXPECT_EQ(lineCount, rcount);
+
+    EXPECT_EQ(0, proc.wait().exitStatus());
   });
 }

@@ -384,6 +384,18 @@ class Subprocess : private boost::noncopyable {
   void communicate(FdCallback readCallback, FdCallback writeCallback);
 
   /**
+   * Enable notifications (callbacks) for one pipe to/from child. By default,
+   * all are enabled. Useful for "chatty" communication -- you want to disable
+   * write callbacks until you receive the expected message.
+   */
+  void enableNotifications(int childFd, bool enabled);
+
+  /**
+   * Are notifications for one pipe to/from child enabled?
+   */
+  bool notificationsEnabled(int childFd) const;
+
+  /**
    * Return the child's pid, or -1 if the child wasn't successfully spawned
    * or has already been wait()ed upon.
    */
@@ -504,9 +516,11 @@ class Subprocess : private boost::noncopyable {
   // so we're happy with a vector here, even if it means linear erase.
   // sorted by childFd
   struct PipeInfo : private boost::totally_ordered<PipeInfo> {
-    int parentFd;
-    int childFd;
-    int direction;  // one of PIPE_IN / PIPE_OUT
+    int parentFd = -1;
+    int childFd = -1;
+    int direction = PIPE_IN;  // one of PIPE_IN / PIPE_OUT
+    bool enabled = true;
+
     bool operator<(const PipeInfo& other) const {
       return childFd < other.childFd;
     }

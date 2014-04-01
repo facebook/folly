@@ -700,7 +700,15 @@ void Subprocess::communicate(FdCallback readCallback,
       pfd.fd = p.parentFd;
       // Yes, backwards, PIPE_IN / PIPE_OUT are defined from the
       // child's point of view.
-      pfd.events = (p.direction == PIPE_IN ?  POLLOUT : POLLIN);
+      if (!p.enabled) {
+        // Still keeping fd in watched set so we get notified of POLLHUP /
+        // POLLERR
+        pfd.events = 0;
+      } else if (p.direction == PIPE_IN) {
+        pfd.events = POLLOUT;
+      } else {
+        pfd.events = POLLIN;
+      }
       fds.push_back(pfd);
     }
 
@@ -745,6 +753,14 @@ void Subprocess::communicate(FdCallback readCallback,
       pipes_.erase(pos);
     }
   }
+}
+
+void Subprocess::enableNotifications(int childFd, bool enabled) {
+  pipes_[findByChildFd(childFd)].enabled = enabled;
+}
+
+bool Subprocess::notificationsEnabled(int childFd) const {
+  return pipes_[findByChildFd(childFd)].enabled;
 }
 
 int Subprocess::findByChildFd(int childFd) const {
