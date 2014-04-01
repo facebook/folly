@@ -427,7 +427,7 @@ struct Synchronized {
       acquire();
     }
     ConstLockedPtr(const Synchronized* parent, unsigned int milliseconds) {
-      if (parent->mutex_.timed_lock(
+      if (parent->mutex_.timed_lock_shared(
             boost::posix_time::milliseconds(milliseconds))) {
         parent_ = parent;
         return;

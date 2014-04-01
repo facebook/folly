@@ -119,6 +119,8 @@ TEST(Synchronized, TimedSynchronized) {
   testTimedSynchronized<boost::timed_mutex>();
   testTimedSynchronized<boost::recursive_timed_mutex>();
   testTimedSynchronized<boost::shared_mutex>();
+
+  testTimedSynchronizedWithConst<boost::shared_mutex>();
 }
 #endif
 

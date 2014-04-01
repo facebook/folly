@@ -40,6 +40,8 @@ template <class Mutex> void testDualLockingWithConst();
 
 template <class Mutex> void testTimedSynchronized();
 
+template <class Mutex> void testTimedSynchronizedWithConst();
+
 template <class Mutex> void testConstCopy();
 
 #include "folly/test/SynchronizedTestLib-inl.h"

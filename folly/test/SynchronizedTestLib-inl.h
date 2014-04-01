@@ -274,6 +274,56 @@ template <class Mutex> void testTimedSynchronized() {
   }
 }
 
+template <class Mutex> void testTimedSynchronizedWithConst() {
+  folly::Synchronized<std::vector<int>, Mutex> v;
+
+  struct Local {
+    static bool threadMain(int i,
+                           folly::Synchronized<std::vector<int>, Mutex>& pv) {
+      usleep(::random(100 * 1000, 1000 * 1000));
+
+      // Test operator->
+      pv->push_back(i);
+
+      usleep(::random(5 * 1000, 1000 * 1000));
+      // Test TIMED_SYNCHRONIZED_CONST
+      for (;;) {
+        TIMED_SYNCHRONIZED_CONST (10, v, pv) {
+          if (v) {
+            auto found = std::find(v->begin(), v->end(),  i);
+            CHECK(found != v->end());
+            return true;
+          } else {
+            // do nothing
+            usleep(::random(10 * 1000, 100 * 1000));
+          }
+        }
+      }
+    }
+  };
+
+  std::vector<std::thread> results;
+
+  static const size_t threads = 100;
+  FOR_EACH_RANGE (i, 0, threads) {
+    results.push_back(std::thread([&, i]() { Local::threadMain(i, v); }));
+  }
+
+  FOR_EACH (i, results) {
+    i->join();
+  }
+
+  std::vector<int> result;
+  v.swap(result);
+
+  EXPECT_EQ(result.size(), threads);
+  sort(result.begin(), result.end());
+
+  FOR_EACH_RANGE (i, 0, threads) {
+    EXPECT_EQ(result[i], i);
+  }
+}
+
 template <class Mutex> void testConstCopy() {
   std::vector<int> input = {1, 2, 3};
   const folly::Synchronized<std::vector<int>, Mutex> v(input);
