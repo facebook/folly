@@ -952,8 +952,7 @@ public:
   }
 
 private:
-  std::__1::basic_string<Char> backend_;
- // std::basic_string<Char> backend_;
+  std::basic_string<Char> backend_;
 };
 #endif // !_LIBSTDCXX_FBSTRING
 
