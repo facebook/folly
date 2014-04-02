@@ -952,11 +952,8 @@ public:
   }
 
 private:
-#ifndef _LIBCPP_VERSION // libc++
   std::__1::basic_string<Char> backend_;
-#else                   // libstdc++
-  std::basic_string<Char> backend_;
-#endif
+ // std::basic_string<Char> backend_;
 };
 #endif // !_LIBSTDCXX_FBSTRING
 
