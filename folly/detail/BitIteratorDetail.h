@@ -18,7 +18,12 @@
 #define FOLLY_DETAIL_BITITERATORDETAIL_H_
 
 #include <iterator>
-#include <type_traits>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+#else                   // libstdc++
+  #include <type_traits>
+#endif
 #include <boost/iterator/iterator_adaptor.hpp>
 
 namespace folly {

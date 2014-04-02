@@ -17,7 +17,12 @@
 #ifndef FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
 #define FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
 
-#include <type_traits>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+#else                   // libstdc++
+  #include <type_traits>
+#endif
 
 namespace folly {
 namespace dptr_detail {

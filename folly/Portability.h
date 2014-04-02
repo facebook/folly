@@ -122,7 +122,12 @@ struct MaxAlign { char c; } __attribute__((aligned));
 // As a result, use std::is_trivially_copyable() where it exists, and fall back
 // to Boost otherwise.
 #if FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE
-#include <type_traits>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+#else                   // libstdc++
+  #include <type_traits>
+#endif
 #define FOLLY_IS_TRIVIALLY_COPYABLE(T)                   \
   (std::is_trivially_copyable<T>::value)
 #else

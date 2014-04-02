@@ -36,7 +36,12 @@
 
 #include <array>
 #include <cinttypes>
-#include <type_traits>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+#else                   // libstdc++
+  #include <type_traits>
+#endif
 #include <ctime>
 #include <boost/noncopyable.hpp>
 #include <cstdlib>

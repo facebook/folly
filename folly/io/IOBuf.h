@@ -26,7 +26,12 @@
 #include <memory>
 #include <limits>
 #include <sys/uio.h>
-#include <type_traits>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+#else                   // libstdc++
+  #include <type_traits>
+#endif
 
 #include <boost/iterator/iterator_facade.hpp>
 
