@@ -58,9 +58,14 @@
 #endif
 #endif
 
+#include <ciso646>  // detect std::lib, libc++ doesn't provide this header
 #include <atomic>
 #include <limits>
-#include <type_traits>
+#ifndef _LIBCPP_VERSION
+   #include <tr1/type_traits>
+#else
+   #include <type_traits>
+#endif
 
 // libc++ doesn't provide this header
 #ifndef _LIBCPP_VERSION
