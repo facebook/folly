@@ -23,7 +23,12 @@
 #include "folly/SpookyHashV1.h"
 #include "folly/Benchmark.h"
 
-#include <cinttypes>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cinttypes>
+#else                   // libstdc++
+  #include <cinttypes>
+#endif
 #include <cstdio>
 #include <cstddef>
 #include <cstring>

@@ -20,7 +20,6 @@
 #include <glog/logging.h>
 #include <atomic>
 #include <cassert>
-#include <cinttypes>
 #include <cstddef>
 #include <cstring>
 #include <memory>
@@ -28,8 +27,10 @@
 #include <sys/uio.h>
 #include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
 #ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cinttypes>
   #include <tr1/type_traits>
 #else                   // libstdc++
+  #include <cinttypes>
   #include <type_traits>
 #endif
 
