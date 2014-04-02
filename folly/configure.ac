@@ -113,16 +113,6 @@ AC_COMPILE_IFELSE(
 AC_COMPILE_IFELSE(
   [AC_LANG_SOURCE[
     #include <type_traits>
-    #if !_LIBCPP_VERSION
-    #error No libc++
-    #endif
-    void func() {}]
-  ],
-  [AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])])
-
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #include <type_traits>
     const bool val = std::is_trivially_copyable<bool>::value;]
   ],
   [AC_DEFINE([HAVE_STD__IS_TRIVIALLY_COPYABLE], [1],
