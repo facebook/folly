@@ -22,7 +22,14 @@
 #include <libaio.h>
 
 #include <atomic>
-#include <cstdint>
+
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
+
 #include <deque>
 #include <functional>
 #include <mutex>

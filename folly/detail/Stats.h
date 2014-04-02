@@ -18,8 +18,15 @@
 #define FOLLY_DETAIL_STATS_H_
 
 #include <chrono>
-#include <cstdint>
-#include <type_traits>
+
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <type_traits>
+  #include <cstdint>
+#endif
 
 namespace folly { namespace detail {
 

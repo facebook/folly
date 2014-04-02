@@ -19,7 +19,12 @@
 #endif
 
 #include <cstdio>
-#include <cinttypes>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cinttypes>
+#else                   // libstdc++
+  #include <cinttypes>
+#endif
 
 #include <string>
 
