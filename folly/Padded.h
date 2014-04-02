@@ -18,12 +18,20 @@
 #define FOLLY_PADDED_H_
 
 #include <cassert>
-#include <cstdint>
+
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/type_traits>
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <type_traits>
+  #include <cstdint>
+#endif
+
 #include <cstring>
 #include <functional>
 #include <iterator>
 #include <limits>
-#include <type_traits>
 
 #include <boost/iterator/iterator_adaptor.hpp>
 

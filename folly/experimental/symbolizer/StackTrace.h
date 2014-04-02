@@ -17,7 +17,12 @@
 #ifndef FOLLY_SYMBOLIZER_STACKTRACE_H_
 #define FOLLY_SYMBOLIZER_STACKTRACE_H_
 
-#include <cstdint>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
 #include <cstdlib>
 
 namespace folly { namespace symbolizer {

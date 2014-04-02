@@ -17,7 +17,13 @@
 #ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
 
-#include <cstdint>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
+
 #include <string>
 #include <unordered_map>
 

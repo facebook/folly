@@ -24,7 +24,13 @@
 #if defined(__x86_64__) || defined(__i386__)
 #define HAVE_GROUP_VARINT 1
 
-#include <cstdint>
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
+
 #include <limits>
 #include "folly/detail/GroupVarintDetail.h"
 #include "folly/Bits.h"

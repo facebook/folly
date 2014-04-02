@@ -18,7 +18,13 @@
 #define FOLLY_DETAIL_CLOCK_H_
 
 #include <ctime>
-#include <cstdint>
+
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
 
 #ifndef FOLLY_NO_CONFIG
 #include "folly/folly-config.h"

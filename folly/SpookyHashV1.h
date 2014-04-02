@@ -46,7 +46,13 @@
 #define FOLLY_SPOOKYHASHV1_H_
 
 #include <cstddef>
-#include <cstdint>
+
+#include <ciso646>      // detect libc++ (std::lib provide _LIBCPP_VERSION on this header)
+#ifndef _LIBCPP_VERSION // libc++
+  #include <tr1/cstdint>
+#else                   // libstdc++
+  #include <cstdint>
+#endif
 
 namespace folly {
 namespace hash {
