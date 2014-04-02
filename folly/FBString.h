@@ -68,15 +68,22 @@
   #include <type_traits>
 #endif
 
-// libc++ doesn't provide this header
-#ifndef _LIBCPP_VERSION
 // This file appears in two locations: inside fbcode and in the
 // libstdc++ source code (when embedding fbstring as std::string).
 // To aid in this schizophrenic use, two macros are defined in
 // c++config.h:
 //   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
 //      gate use inside fbcode v. libstdc++
-#include <bits/c++config.h>
+#if defined(__clang__)
+#   if __has_include(<__config>) // defines _LIBCPP_VERSION
+#       include <__config>
+#   elif __has_include(<bits/c++config.h>) // defines __GLIBCXX__
+#       include <bits/c++config.h>
+#   else
+#       include <ios>
+#   endif
+#elif defined(__GNUC__) // gcc does not have __has_include
+#   include <ios> // ios should include the c++config.h which defines __GLIBCXX__
 #endif
 
 #ifdef _LIBSTDCXX_FBSTRING
