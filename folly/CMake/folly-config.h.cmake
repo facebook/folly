@@ -18,6 +18,9 @@
 #cmakedefine FOLLY_HAVE_CXX_CONFIG_H
 #cmakedefine FOLLY_HAVE_BYTESWAP_H
 
+/* Madvise feature in memory mapping */
+#cmakedefine FOLLY_HAVE_MADVISE 1
+
 
 #cmakedefine HAVE_CONSTEXPR_STRLEN 1
 #cmakedefine HAVE_EMMINTRIN 1
