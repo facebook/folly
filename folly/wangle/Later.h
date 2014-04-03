@@ -150,8 +150,7 @@ class Later {
    * The future returned will be fulfilled in the last executor.
    *
    * Thread safety issues of Futures still apply. If you want to wait on the
-   * Future, it must be done in the thread that will fulfil it. If you do not
-   * plan to use the result of the Future, use fireAndForget()
+   * Future, it must be done in the thread that will fulfil it.
    */
   Future<T> launch();
 
@@ -159,8 +158,10 @@ class Later {
    * Same as launch, only no Future is returned. This guarantees thread safe
    * cleanup of the internal Futures, even if the Later completes in a different
    * thread than the thread that calls fireAndForget().
+   *
+   * Deprecated. Use launch()
    */
-  void fireAndForget();
+  void fireAndForget() { launch(); }
 
  private:
   Promise<void> starter_;

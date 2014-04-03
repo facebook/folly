@@ -167,32 +167,55 @@ Using `then` to add continuations is idiomatic. It brings all the code into one 
 
 Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future.
 
-Other future frameworks like Finagle and std::future/boost::future, give you the ability to wait directly on a Future, by calling `fut.wait()` (naturally enough). Wangle has diverged from this pattern for performance reasons. It turns out, making things threadsafe slows them down.  Whodathunkit? So Wangle Futures (and Promises, for you API developers) are not threadsafe. Yes, you heard right, and it should give you pause—what good is an *asynchronous* framework that isn't threadsafe? Well, actually, in an event-driven architecture there's still quite a bit of value, but that doesn't really answer the question. Wangle is, indeed, meant to be used in multithreaded environments. It's just that we move synchronization out of the Future/Promise pair and instead require explicit synchronization or (preferably) crossing thread boundaries with a form of message passing. It turns out that `then()` chaining is really handy and there are often many Futures chained together. But there is often only one thread boundary to cross.  We choose to pay the threadsafety overhead only at that thread boundary.
+Other future frameworks like Finagle and std::future/boost::future, give you the ability to wait directly on a Future, by calling `fut.wait()` (naturally enough). Wangle has diverged from this pattern because we don't want to be in the business of dictating how your thread waits. We may work out something that we feel is sufficiently general, in the meantime adapt this spin loop to however your thread should wait:
 
-Wangle provides a mechanism to make this easy, called a `ThreadGate`. ThreadGates stand between two threads and pass messages (actually, functors) back and forth in a threadsafe manner. Let's work an example. Assume that `MemcacheClient::get()` is not thread-aware. It registers with libevent and tries to send a request, and then later in your event loop when it has successfully sent and received a reply it will complete the Future. But it doesn't even consider that there might be other threads in your program.  Now consider that `get()` calls should happen in an IO thread (the *east* thread) and user code is happening in a user thread (the *west* thread).  A ThreadGate will allow us to do this:
+  while (!f.isReady()) {}
 
-```C++
-Future<GetReply> threadsafeGet(std::string key) {
-  std::function<Future<GetReply>()> doEast = [=]() {
-    return mc_->get(key);
-  };
-  auto westFuture = gate_.add(doEast);
-  return westFuture;
-}
-```
+(Hint: you might want to use an event loop or a semaphore or something. You probably don't want to just spin like this.)
 
-Think of the ThreadGate as a pair of queues: from west to east we queue some functor that returns a Future, and then the ThreadGate conveys the result back from east to west and eventually fulfils the west Future. But when? The ThreadGate has to be *driven* from both sides—the IO thread has to pull work off the west-to-east queue, and the user thread has to drive the east-to-west queue. Sometimes this happens in the course of an event loop, as it would in a libevent architecture. Other times it has to be explicit, in which case you would call the gate's `makeProgress()` method. Or, if you know which Future you want to wait for you can use:
+Wangle is partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. BUT, be warned that you might be surprised about which thread your callback executes on. Let's consider an example.
 
 ```C++
-gate_.waitFor(fut);
+// Thread A
+Promise<void> p;
+auto f = p.getFuture();
+
+// Thread B
+f.then(x).then(y).then(z);
+
+// Thread A
+p.setValue();
 ```
 
-The ThreadGate interface is simple, so any kind of threadsafe functor conveyance you can dream up that is perfect for your application can be implemented. Or, you can use `GenericThreadGate` and `Executor`s to make one out of existing pieces. The `ManualThreadGate` is worth a look as well, especially for unit tests.
+This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread `x`, `y`, and/or `z` will execute. Maybe they will execute in Thread A when `p.setValue()` is called. Or, maybe they will execute in Thread B when `f.then` is called. Or, maybe `x` will execute in Thread B, but `y` and/or `z` will execute in Thread A. There's a race between `setValue` and `then`—whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.
 
-In practice, the API will probably do the gating for you, e.g. `MemcacheClient::get()` would return an already-gated Future and provide a `waitFor()` proxy that lets you wait for Futures it has returned. Then as a user you never have to worry about it. But this exposition was to explain the probably-surprising design decision to make Futures not threadsafe and not support direct waiting.
+Naturally, you will want some control over which thread executes callbacks. We have a few mechanisms to help.
 
-`Later` is another approach to crossing thread boundaries that can be more flexible than ThreadGates.
-(TODO document `Later` here.)
+The first and most useful is `Later`, which behaves like a Future but nothing starts executing until `launch` is called. Thus you avoid the race condition when setting up the multithreaded workflow. 
+```C++
+Later<void>()
+  .then(x)
+  .via(e1).then(y1).then(y2)
+  .via(e2).then(z)
+  .launch();
+```
+`x` will execute in the current thread (the one calling `launch`). `y1` and `y2` will execute in the thread on the other side of `e1`, and `z` will execute in the thread on the other side of `e2`. `y1` and `y2` will execute on the same thread, whichever thread that is. If `e1` and `e2` execute in different threads than the current thread, then the final callback does not happen in the current thread. If you want to get back to the current thread, you need to get there via an executor.
+
+The second and most basic is `Future::via(Executor*)`, which creates a future which will execute its callback via the given executor. i.e. given `f.via(e).then(x)`, `x` will always execute via executor `e`. NB given `f.via(e).then(x).then(y)`, `y` is *not* guaranteed to execute via `e` or in the same thread as `x` (use a Later).
+
+TODO implement `Future::then(callback, executor)` so we can do the above with a single Future.
+
+The third and least flexible (but sometimes very useful) method assumes only two threads and that you want to do something in the far thread, then come back to the current thread. `ThreadGate` is an interface for a bidirectional gateway between two threads. It's usually easier to use a Later, but ThreadGate can be more efficient, and if the pattern is used often in your code it can be more convenient.
+```C++
+// Using a ThreadGate (which has two executors xe and xw)
+tg.gate(a).then(b);
+
+// Using Later
+makeFuture()
+  .via(xe).then(a)
+  .via(xw).then(b)
+  .launch();
+```
 
 ## You make me Promises, Promises
 
@@ -250,7 +273,6 @@ See also http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf
 - 1.53 is brand new, and not in fbcode
 - It's still a bit buggy/bleeding-edge
 - They haven't fleshed out the threading model very well yet, e.g. every single `then` currently spawns a new thread unless you explicitly ask it to work on this thread only, and there is no support for executors yet.
-- boost::future has locking which isn't necessary in our cooperative-multithreaded use case, and assumed to be very expensive.
 
 ### Why use heap-allocated shared state? Why is Promise not a subclass of Future?
 C++. It boils down to wanting to return a Future by value for performance (move semantics and compiler optimizations), and programmer sanity, and needing a reference to the shared state by both the user (which holds the Future) and the asynchronous operation (which holds the Promise), and allowing either to go out of scope.
@@ -263,10 +285,3 @@ C++ doesn't directly support continuations very well. But there are some ways to
 The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster and the code might read cleaner.
 
 Wangle takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn't claim to be the best model for all situations. Use your tools wisely.
-
-### It's so @!#?'n hard to get the thread safety right
-That's not a question.
-
-Yes, it is hard and so you should use a ThreadGate or Later if you need to do any crossing of thread boundaries. Otherwise you need to be very careful. Especially because in most cases the naïve approach is not threadsafe and naïve testing doesn't expose the race condition.
-
-The careful reader will note that we have only assumed locks to be a terrible performance penalty. We are planning on thoroughly benchmarking locks (and the alternative code patterns that having locks would enable), and if we find locks are Not That Bad™ we might reverse this decision (and fold ThreadGate and Later into Future/Promise).

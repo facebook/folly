@@ -186,7 +186,7 @@ Try<T>& Future<T>::getTry() {
 
 template <class T>
 template <typename Executor>
-inline Future<T> Future<T>::executeWithSameThread(Executor* executor) {
+inline Future<T> Future<T>::via(Executor* executor) {
   throwIfInvalid();
 
   folly::MoveWrapper<Promise<T>> p;

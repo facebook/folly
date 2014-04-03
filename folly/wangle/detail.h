@@ -50,11 +50,11 @@ class FutureObject {
       throw std::logic_error("setContinuation called twice");
     }
 
-    if (value_.hasValue()) {
-      func(std::move(*value_));
+    continuation_ = std::move(func);
+
+    if (shouldContinue_.test_and_set()) {
+      continuation_(std::move(*value_));
       delete this;
-    } else {
-      continuation_ = std::move(func);
     }
   }
 
@@ -63,11 +63,11 @@ class FutureObject {
       throw std::logic_error("fulfil called twice");
     }
 
-    if (continuation_) {
-      continuation_(std::move(t));
+    value_ = std::move(t);
+
+    if (shouldContinue_.test_and_set()) {
+      continuation_(std::move(*value_));
       delete this;
-    } else {
-      value_ = std::move(t);
     }
   }
 
@@ -88,6 +88,7 @@ class FutureObject {
   }
 
  private:
+  std::atomic_flag shouldContinue_ = ATOMIC_FLAG_INIT;
   folly::Optional<Try<T>> value_;
   std::function<void(Try<T>&&)> continuation_;
 };

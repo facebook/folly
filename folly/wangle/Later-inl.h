@@ -143,10 +143,4 @@ Future<T> Later<T>::launch() {
   return std::move(*future_);
 }
 
-template <class T>
-void Later<T>::fireAndForget() {
-  future_->setContinuation([] (Try<T>&& t) {}); // detach
-  starter_.setValue();
-}
-
 }}

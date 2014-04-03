@@ -58,8 +58,23 @@ class Future {
   typename std::add_lvalue_reference<const T>::type
   value() const;
 
+  /// Returns a future which will call back on the other side of executor.
+  ///
+  ///   f.via(e).then(a); // safe
+  ///
+  ///   f.via(e).then(a).then(b); // faux pas
+  ///
+  /// a will definitely execute in the intended thread, but b may execute
+  /// either in that thread, or in the current thread. If you need to
+  /// guarantee where b executes, use a Later.
   template <typename Executor>
-  Future<T> executeWithSameThread(Executor* executor);
+  Future<T> via(Executor* executor);
+
+  /// Deprecated alias for via
+  template <typename Executor>
+  Future<T> executeWithSameThread(Executor* executor) {
+    return via(executor);
+  }
 
   /**
      Thread-safe version of executeWith
@@ -71,6 +86,8 @@ class Future {
      Instead, you may pass in a Promise so that we can set up
      the rest of the chain in advance, without any racey
      modifications of the continuation
+
+     Deprecated. Use a Later.
    */
   template <typename Executor>
   void executeWith(Executor* executor, Promise<T>&& cont_promise);
