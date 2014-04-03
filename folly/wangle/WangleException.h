@@ -17,6 +17,7 @@
 #pragma once
 
 #include <exception>
+#include <string>
 
 namespace folly { namespace wangle {
 

@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <atomic>
 #include <folly/Optional.h>
 #include <stdexcept>
-#include <atomic>
+#include <vector>
 
 #include "Try.h"
 #include "Promise.h"

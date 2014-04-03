@@ -17,6 +17,7 @@
 #include "ManualExecutor.h"
 
 #include <string.h>
+#include <string>
 
 #include <stdexcept>
 
