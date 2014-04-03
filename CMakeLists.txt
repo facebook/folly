@@ -117,15 +117,16 @@ file(GLOB Folly_wangle_HEADERS folly/wangle/*.h)
 file(GLOB Folly_wangle_SOURCES folly/wangle/*.cpp)
 
 # libfolly library
-add_library(libfolly STATIC ${Folly_SOURCES} ${Folly_HEADERS}
-                            ${Folly_detail_SOURCES} ${Folly_detail_HEADERS}
-                            ${Folly_gen_SOURCES} ${Folly_gen_HEADERS}
-                            ${Folly_io_SOURCES} ${Folly_io_HEADERS}
-                            ${Folly_ioasync_SOURCES} ${Folly_ioasync_HEADERS}
-                            ${Folly_stats_SOURCES} ${Folly_stats_HEADERS}
-                            ${Folly_wangle_SOURCES} ${Folly_wangle_HEADERS})
+add_library(libfolly STATIC folly/Bits.cpp folly/detail/Clock.cpp #${Folly_SOURCES} ${Folly_HEADERS}
+#                            ${Folly_detail_SOURCES} ${Folly_detail_HEADERS}
+#                            ${Folly_gen_SOURCES} ${Folly_gen_HEADERS}
+#                            ${Folly_io_SOURCES} ${Folly_io_HEADERS}
+#                            ${Folly_ioasync_SOURCES} ${Folly_ioasync_HEADERS}
+#                            ${Folly_stats_SOURCES} ${Folly_stats_HEADERS}
+#                            ${Folly_wangle_SOURCES} ${Folly_wangle_HEADERS}
+                            )
 
-if(enable_libfolly_benchmark)
+if(enable_libfolly_benchmark OR enable_test)
     # benchmark
     add_library(libfolly_benchmark STATIC folly/Benchmark.cpp folly/Benchmark.h)
     target_link_libraries(libfolly_benchmark libfolly)
@@ -204,19 +205,9 @@ if(regenerate_sources)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/folly/gen/
         RESULT_VARIABLE out
         OUTPUT_VARIABLE output)
-endif()
+endif(regenerate_sources)
 
 # Testing option
-if(test)
-    add_subdirectory(where/the/tests/are)
-
-    enable_testing()
-
-    # link in gtest targets plus folly
-    target_link_libraries(rununittests gtest gtest_main)
-    target_link_libraries(rununittests libfolly)
-
-    # make make test work
-    add_test(NAME unittests COMMAND rununittests)
-    
-endif(test)
+if(enable_test)
+    include(folly/CMake/testing.cmake)
+endif(enable_test)

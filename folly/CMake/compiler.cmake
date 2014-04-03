@@ -47,4 +47,6 @@ if(MSVC)
     add_definitions(-DNOMINMAX)
     # make sure glog doesn't redefine error
     add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
+    # static glob means no dll import - grrr
+    add_definitions(-DGOOGLE_GLOG_DLL_DECL=)
 endif(MSVC)

@@ -18,12 +18,12 @@ find_path(GFLAGS_INCLUDE_DIR gflags/gflags.h
 
 if(MSVC)
     find_library(GFLAGS_LIBRARY_RELEASE 
-        NAMES libgflags
+        NAMES libgflags gflags
         PATHS ${GFLAGS_ROOT_DIR}
         PATH_SUFFIXES Release)
 
     find_library(GFLAGS_LIBRARY_DEBUG
-        NAMES libgflags-debug
+        NAMES libgflags-debug gflags
         PATHS ${GFLAGS_ROOT_DIR}
         PATH_SUFFIXES Debug)
 
