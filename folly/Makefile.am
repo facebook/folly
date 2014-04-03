@@ -212,7 +212,7 @@ libfolly_la_SOURCES += detail/Clock.cpp
 endif
 
 if !HAVE_WEAK_SYMBOLS
-libfolly_la_SOURCES += detail/Malloc.cpp
+libfolly_la_SOURCES += detail/MallocImpl.cpp
 endif
 
 if !HAVE_BITS_FUNCTEXCEPT
