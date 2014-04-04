@@ -167,7 +167,6 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
 libfolly_la_SOURCES = \
-	Benchmark.cpp \
 	Bits.cpp \
 	Conv.cpp \
 	Demangle.cpp \
