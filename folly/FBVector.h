@@ -1412,9 +1412,15 @@ private: // we have the private section first because it defines some macros
         impl_.e_ += n;
       } else {
         D_uninitialized_move_a(impl_.e_, impl_.e_ - n, impl_.e_);
+        try {
+          std::copy_backward(std::make_move_iterator(position),
+                             std::make_move_iterator(impl_.e_ - n), impl_.e_);
+        } catch (...) {
+          D_destroy_range_a(impl_.e_ - n, impl_.e_ + n);
+          impl_.e_ -= n;
+          throw;
+        }
         impl_.e_ += n;
-        std::copy_backward(std::make_move_iterator(position),
-                           std::make_move_iterator(impl_.e_ - n), impl_.e_);
         D_destroy_range_a(position, position + n);
       }
     }
