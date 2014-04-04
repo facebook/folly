@@ -41,7 +41,8 @@ namespace detail {
  * (T, where T is an unsigned integral type) or unaligned values
  * (Unaligned<T>, where T is an unsigned integral type)
  */
-template <class T, class Enable=void> struct BitsTraits;
+template <class T, class Enable = void>
+struct BitsTraits;
 
 // Partial specialization for Unaligned<T>, where T is unsigned integral
 // loadRMW is the same as load, but it indicates that it loads for a
@@ -49,7 +50,7 @@ template <class T, class Enable=void> struct BitsTraits;
 // silence the GCC warning in that case.
 template <class T>
 struct BitsTraits<Unaligned<T>, typename std::enable_if<
-    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+    (std::is_integral<T>::value)>::type> {
   typedef T UnderlyingType;
   static T load(const Unaligned<T>& x) { return x.value; }
   static void store(Unaligned<T>& x, T v) { x.value = v; }
@@ -68,7 +69,7 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
 // Special version that allows to disable address sanitizer on demand.
 template <class T>
 struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
-    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+    (std::is_integral<T>::value)>::type> {
   typedef T UnderlyingType;
   static T FOLLY_DISABLE_ADDRESS_SANITIZER
   load(const UnalignedNoASan<T>& x) { return x.value; }
@@ -90,7 +91,7 @@ struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
 // Partial specialization for T, where T is unsigned integral
 template <class T>
 struct BitsTraits<T, typename std::enable_if<
-    (std::is_integral<T>::value && std::is_unsigned<T>::value)>::type> {
+    (std::is_integral<T>::value)>::type> {
   typedef T UnderlyingType;
   static T load(const T& x) { return x; }
   static void store(T& x, T v) { x = v; }
@@ -122,8 +123,8 @@ struct Bits {
   /**
    * Number of bits in a block.
    */
-  static constexpr size_t bitsPerBlock =
-    std::numeric_limits<UnderlyingType>::digits;
+  static constexpr size_t bitsPerBlock = std::numeric_limits<
+      typename std::make_unsigned<UnderlyingType>::type>::digits;
 
   /**
    * Byte index of the given bit.
@@ -166,6 +167,7 @@ struct Bits {
    * from the least significant count bits of value; little endian.
    * (value & 1 becomes the bit at bitStart, etc)
    * Precondition: count <= sizeof(T) * 8
+   * Precondition: value can fit in 'count' bits
    */
   static void set(T* p, size_t bitStart, size_t count, UnderlyingType value);
 
@@ -223,16 +225,26 @@ template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
                                  UnderlyingType value) {
   assert(count <= sizeof(UnderlyingType) * 8);
+  size_t cut = bitsPerBlock - count;
+  assert(value == (value << cut >> cut));
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
+  if (std::is_signed<UnderlyingType>::value) {
+    value &= ones(count);
+  }
   if (offset + count <= bitsPerBlock) {
     innerSet(p + idx, offset, count, value);
   } else {
     size_t countInThisBlock = bitsPerBlock - offset;
     size_t countInNextBlock = count - countInThisBlock;
-    innerSet(p + idx, offset, countInThisBlock,
-             value & ((one << countInThisBlock) - 1));
-    innerSet(p + idx + 1, 0, countInNextBlock, value >> countInThisBlock);
+
+    UnderlyingType thisBlock = value & ((one << countInThisBlock) - 1);
+    UnderlyingType nextBlock = value >> countInThisBlock;
+    if (std::is_signed<UnderlyingType>::value) {
+      nextBlock &= ones(countInNextBlock);
+    }
+    innerSet(p + idx, offset, countInThisBlock, thisBlock);
+    innerSet(p + idx + 1, 0, countInNextBlock, nextBlock);
   }
 }
 
@@ -259,20 +271,27 @@ inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
   assert(count <= sizeof(UnderlyingType) * 8);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
+  UnderlyingType ret;
   if (offset + count <= bitsPerBlock) {
-    return innerGet(p + idx, offset, count);
+    ret = innerGet(p + idx, offset, count);
   } else {
     size_t countInThisBlock = bitsPerBlock - offset;
     size_t countInNextBlock = count - countInThisBlock;
     UnderlyingType thisBlockValue = innerGet(p + idx, offset, countInThisBlock);
     UnderlyingType nextBlockValue = innerGet(p + idx + 1, 0, countInNextBlock);
-    return (nextBlockValue << countInThisBlock) | thisBlockValue;
+    ret = (nextBlockValue << countInThisBlock) | thisBlockValue;
   }
+  if (std::is_signed<UnderlyingType>::value) {
+    size_t emptyBits = bitsPerBlock - count;
+    ret <<= emptyBits;
+    ret >>= emptyBits;
+  }
+  return ret;
 }
 
 template <class T, class Traits>
 inline auto Bits<T, Traits>::innerGet(const T* p, size_t offset, size_t count)
-  -> UnderlyingType {
+    -> UnderlyingType {
   return (Traits::load(*p) >> offset) & ones(count);
 }
 
