@@ -528,7 +528,7 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
   // that we get contention on 128 byte boundaries for Ivy Bridge.  The
   // extra indirection adds 1 or 2 nanos
   assert(counterAlignment >= sizeof(std::atomic<size_t>));
-  char raw[counterAlignment * stripes];
+  std::vector<char> raw(counterAlignment * stripes);
 
   // if we happen to be using the tlsRoundRobin, then sequentially
   // assigning the thread identifiers is the unlikely best-case scenario.
@@ -543,7 +543,8 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
     threads.push_back(std::thread([&,iters,stripes,work]() {
       std::atomic<size_t>* counters[stripes];
       for (size_t i = 0; i < stripes; ++i) {
-        counters[i] = new (raw + counterAlignment * i) std::atomic<size_t>();
+        counters[i]
+          = new (raw.data() + counterAlignment * i) std::atomic<size_t>();
       }
 
       spreader.current();
@@ -702,4 +703,3 @@ int main(int argc, char** argv) {
   }
   return ret;
 }
-
