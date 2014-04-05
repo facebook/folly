@@ -173,7 +173,7 @@ struct SequentialThreadId {
   static Atom<size_t> prevId;
 
   // TODO: switch to thread_local
-  static __thread size_t currentId;
+  static FOLLY_THREAD_LOCAL size_t currentId;
 };
 
 template <template<typename> class Atom, size_t kMaxCpus>

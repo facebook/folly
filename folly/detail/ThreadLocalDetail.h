@@ -169,7 +169,7 @@ struct StaticMeta {
   }
 
 #if !__APPLE__
-  static __thread ThreadEntry threadEntry_;
+  static FOLLY_THREAD_LOCAL ThreadEntry threadEntry_;
 #endif
   static StaticMeta<Tag>* inst_;
 
@@ -178,10 +178,12 @@ struct StaticMeta {
     int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
     checkPosixError(ret, "pthread_key_create failed");
 
+#ifndef _MSC_VER
     ret = pthread_atfork(/*prepare*/ &StaticMeta::preFork,
                          /*parent*/ &StaticMeta::onForkParent,
                          /*child*/ &StaticMeta::onForkChild);
     checkPosixError(ret, "pthread_atfork failed");
+#endif
   }
   ~StaticMeta() {
     LOG(FATAL) << "StaticMeta lives forever!";
@@ -412,7 +414,7 @@ struct StaticMeta {
 };
 
 #if !__APPLE__
-template <class Tag> __thread ThreadEntry StaticMeta<Tag>::threadEntry_ = {0};
+template <class Tag> FOLLY_THREAD_LOCAL ThreadEntry StaticMeta<Tag>::threadEntry_ = { 0 };
 #endif
 template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 

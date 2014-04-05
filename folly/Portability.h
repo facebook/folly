@@ -202,4 +202,14 @@ struct MaxAlign { char c; } max_align_t;
 #define FOLLY_PRINTF_FORMAT(format_param, dots_param)
 #endif
 
+#if defined(__x86_64__) || defined(_M_X64)
+#define FOLLY_IS_X64 1
+#endif
+
+#ifdef _MSC_VER
+#define FOLLY_THREAD_LOCAL __declspec(thread)
+#else
+#define FOLLY_THREAD_LOCAL __thread
+#endif
+
 #endif // FOLLY_PORTABILITY_H_
