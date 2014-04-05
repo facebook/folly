@@ -1,6 +1,3 @@
-# gtest configuration for folly
-enable_testing()
-
 # use externalproject for gtest to not muddy up the source dir
 include(ExternalProject)
 set_directory_properties(PROPERTIES EP_PREFIX ${CMAKE_BINARY_DIR}/third_party)

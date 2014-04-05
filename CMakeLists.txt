@@ -209,5 +209,7 @@ endif(regenerate_sources)
 
 # Testing option
 if(enable_test)
+# gtest configuration for folly
+    enable_testing()
     include(folly/CMake/testing.cmake)
 endif(enable_test)
