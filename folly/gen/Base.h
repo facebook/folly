@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef FOLLY_GEN_BASE_H
 #define FOLLY_GEN_BASE_H
 
@@ -264,6 +265,8 @@ class Yield;
 template<class Value>
 class Empty;
 
+template<class Value>
+class Just;
 
 /*
  * Operators
@@ -289,6 +292,9 @@ class Order;
 
 template<class Selector>
 class Distinct;
+
+template<class Operators>
+class Composer;
 
 template<class Expected>
 class TypeAssertion;
@@ -431,6 +437,11 @@ detail::Empty<Value> empty() {
   return {};
 }
 
+template<class Value>
+detail::Just<Value> just(Value value) {
+  return detail::Just<Value>(std::move(value));
+}
+
 /*
  * Operator Factories
  */
@@ -444,6 +455,21 @@ template<class Predicate,
          class Map = detail::Map<Predicate>>
 Map map(Predicate pred = Predicate()) {
   return Map(std::move(pred));
+}
+
+/**
+ * mapOp - Given a generator of generators, maps the application of the given
+ * operator on to each inner gen. Especially useful in aggregating nested data
+ * structures:
+ *
+ *   chunked(samples, 256)
+ *     | mapOp(filter(sampleTest) | count)
+ *     | sum;
+ */
+template<class Operator,
+         class Map = detail::Map<detail::Composer<Operator>>>
+Map mapOp(Operator op) {
+  return Map(detail::Composer<Operator>(std::move(op)));
 }
 
 /*

@@ -90,8 +90,10 @@ class Operator : public FBounded<Self> {
 
  protected:
   Operator() = default;
-  Operator(const Operator&) = default;
   Operator(Operator&&) = default;
+  Operator(const Operator&) = default;
+  Operator& operator=(Operator&&) = default;
+  Operator& operator=(const Operator&) = default;
 };
 
 /**
@@ -142,8 +144,10 @@ class GenImpl : public FBounded<Self> {
  protected:
   // To prevent slicing
   GenImpl() = default;
-  GenImpl(const GenImpl&) = default;
   GenImpl(GenImpl&&) = default;
+  GenImpl(const GenImpl&) = default;
+  GenImpl& operator=(GenImpl&&) = default;
+  GenImpl& operator=(const GenImpl&) = default;
 
  public:
   typedef Value ValueType;

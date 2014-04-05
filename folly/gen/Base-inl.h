@@ -143,6 +143,45 @@ public:
 };
 
 /**
+ * RangeSource - For producing values from a folly::Range. Useful for referring
+ * to a slice of some container.
+ *
+ * This type is primarily used through the 'from' function, like:
+ *
+ *   auto rangeSource = from(folly::range(v.begin(), v.end()));
+ *   auto sum = rangeSource | sum;
+ *
+ * Reminder: Be careful not to invalidate iterators when using ranges like this.
+ */
+template<class Iterator>
+class RangeSource : public GenImpl<typename Range<Iterator>::reference,
+                                   RangeSource<Iterator>> {
+  Range<Iterator> range_;
+ public:
+  RangeSource() {}
+  explicit RangeSource(Range<Iterator> range)
+    : range_(std::move(range))
+  {}
+
+  template<class Handler>
+  bool apply(Handler&& handler) const {
+    for (auto& value : range_) {
+      if (!handler(value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  template<class Body>
+  void foreach(Body&& body) const {
+    for (auto& value : range_) {
+      body(value);
+    }
+  }
+};
+
+/**
  * Sequence - For generating values from beginning value, incremented along the
  * way with the ++ and += operators. Iteration may continue indefinitely by
  * setting the 'endless' template parameter to true. If set to false, iteration
@@ -256,8 +295,32 @@ class Yield : public GenImpl<Value, Yield<Value, Source>> {
 template<class Value>
 class Empty : public GenImpl<Value, Empty<Value>> {
  public:
-  template<class Handler>
-  bool apply(Handler&&) const { return true; }
+  template <class Handler>
+  bool apply(Handler&&) const {
+    return true;
+  }
+
+  template <class Body>
+  void foreach(Body&&) const {}
+};
+
+template<class Value>
+class Just : public GenImpl<const Value&, Just<Value>> {
+  static_assert(!std::is_reference<Value>::value,
+                "Just requires non-ref types");
+  const Value value_;
+ public:
+  Just(Value value) : value_(std::forward<Value>(value)) {}
+
+  template <class Handler>
+  bool apply(Handler&& handler) const {
+    return handler(value_);
+  }
+
+  template <class Body>
+  void foreach(Body&& body) const {
+    body(value_);
+  }
 };
 
 /*
@@ -876,6 +939,25 @@ class Distinct : public Operator<Distinct<Selector>> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_);
+  }
+};
+
+/**
+ * Composer - Helper class for adapting pipelines into functors. Primarily used
+ * for 'mapOp'.
+ */
+template<class Operators>
+class Composer {
+  Operators op_;
+ public:
+  explicit Composer(Operators op)
+    : op_(std::move(op)) {}
+
+  template<class Source,
+           class Ret = decltype(std::declval<Operators>()
+                                  .compose(std::declval<Source>()))>
+  Ret operator()(Source&& source) const {
+    return op_.compose(std::forward<Source>(source));
   }
 };
 
