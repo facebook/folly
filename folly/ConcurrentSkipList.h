@@ -121,17 +121,15 @@ Sample usage:
 #define FOLLY_CONCURRENT_SKIP_LIST_H_
 
 #include <algorithm>
+#include <atomic>
 #include <climits>
+#include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <atomic>
-#include <thread>
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <memory>
-
 #include <glog/logging.h>
+
 #include "folly/ConcurrentSkipList-inl.h"
 #include "folly/Likely.h"
 #include "folly/SmallLocks.h"
@@ -153,28 +151,24 @@ class ConcurrentSkipList {
   typedef T value_type;
   typedef T key_type;
 
-
   typedef detail::csl_iterator<value_type, NodeType> iterator;
   typedef detail::csl_iterator<const value_type, const NodeType> const_iterator;
 
   class Accessor;
   class Skipper;
 
-  // convenient function to get an Accessor to a new instance.
-  static Accessor create(int height=1) {
+  explicit ConcurrentSkipList(int height)
+    : head_(NodeType::create(height, value_type(), true)), size_(0) { }
+
+  // Convenient function to get an Accessor to a new instance.
+  static Accessor create(int height = 1) {
     return Accessor(createInstance(height));
   }
 
-  // create a shared_ptr skiplist object with initial head height.
-  static std::shared_ptr<SkipListType> createInstance(int height=1) {
-    return std::shared_ptr<SkipListType>(new SkipListType(height));
+  // Create a shared_ptr skiplist object with initial head height.
+  static std::shared_ptr<SkipListType> createInstance(int height = 1) {
+    return std::make_shared<ConcurrentSkipList>(height);
   }
-
-  // create a unique_ptr skiplist object with initial head height.
-  static std::unique_ptr<SkipListType> createRawInstance(int height=1) {
-    return std::unique_ptr<SkipListType>(new SkipListType(height));
-  }
-
 
   //===================================================================
   // Below are implementation details.
@@ -183,15 +177,14 @@ class ConcurrentSkipList {
 
   ~ConcurrentSkipList() {
     CHECK_EQ(recycler_.refs(), 0);
-    while (NodeType* current = head_.load(std::memory_order_relaxed)) {
+    for (NodeType* current = head_.load(std::memory_order_relaxed); current; ) {
       NodeType* tmp = current->skip(0);
       NodeType::destroy(current);
-      head_.store(tmp, std::memory_order_relaxed);
+      current = tmp;
     }
   }
 
  private:
-
   static bool greater(const value_type &data, const NodeType *node) {
     return node && Comp()(node->data(), data);
   }
@@ -267,7 +260,7 @@ class ConcurrentSkipList {
         return refs_.fetch_add(-1, std::memory_order_relaxed);
       }
 
-      boost::scoped_ptr<std::vector<NodeType*> > newNodes;
+      std::unique_ptr<std::vector<NodeType*>> newNodes;
       {
         std::lock_guard<MicroSpinLock> g(lock_);
         if (nodes_.get() == nullptr || refs() > 1) {
@@ -294,14 +287,11 @@ class ConcurrentSkipList {
     }
 
    private:
-    boost::scoped_ptr<std::vector<NodeType*>> nodes_;
+    std::unique_ptr<std::vector<NodeType*>> nodes_;
     std::atomic<int32_t> refs_; // current number of visitors to the list
     std::atomic<bool> dirty_; // whether *nodes_ is non-empty
     MicroSpinLock lock_; // protects access to *nodes_
   };  // class ConcurrentSkipList::Recycler
-
-  explicit ConcurrentSkipList(int height) :
-    head_(NodeType::create(height, value_type(), true)), size_(0) {}
 
   size_t size() const { return size_.load(std::memory_order_relaxed); }
   int height() const {
