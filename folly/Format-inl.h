@@ -21,6 +21,10 @@
 #include "folly/Exception.h"
 #include "folly/Traits.h"
 
+// Ignore -Wformat-nonliteral warnings within this file
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+
 namespace folly {
 
 namespace detail {
@@ -1167,3 +1171,5 @@ toAppend(const Formatter<containerMode, Args...>& value, Tgt * result) {
 }
 
 }  // namespace folly
+
+#pragma GCC diagnostic pop
