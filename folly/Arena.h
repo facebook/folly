@@ -18,12 +18,13 @@
 #define FOLLY_ARENA_H_
 
 #include <cassert>
-#include <utility>
 #include <limits>
+#include <utility>
 #include <boost/intrusive/slist.hpp>
 
 #include "folly/Likely.h"
 #include "folly/Malloc.h"
+#include "folly/Memory.h"
 
 namespace folly {
 
@@ -52,8 +53,7 @@ namespace folly {
  *      guaranteed to be rounded up to a multiple of the maximum alignment
  *      required on your system; the returned value must be also.
  *
- * An implementation that uses malloc() / free() is defined below, see
- * SysAlloc / SysArena.
+ * An implementation that uses malloc() / free() is defined below, see SysArena.
  */
 template <class Alloc> struct ArenaAllocatorTraits;
 template <class Alloc>
@@ -197,6 +197,9 @@ class Arena {
   size_t sizeLimit_;
 };
 
+template <class Alloc>
+struct IsArenaAllocator<Arena<Alloc>> : std::true_type { };
+
 /**
  * By default, don't pad the given size.
  */
@@ -204,21 +207,6 @@ template <class Alloc>
 struct ArenaAllocatorTraits {
   static size_t goodSize(const Alloc& alloc, size_t size) {
     return size;
-  }
-};
-
-/**
- * Arena-compatible allocator that calls malloc() and free(); see
- * goodMallocSize() in Malloc.h for goodSize().
- */
-class SysAlloc {
- public:
-  void* allocate(size_t size) {
-    return checkedMalloc(size);
-  }
-
-  void deallocate(void* p) {
-    free(p);
   }
 };
 
@@ -234,12 +222,14 @@ struct ArenaAllocatorTraits<SysAlloc> {
  */
 class SysArena : public Arena<SysAlloc> {
  public:
-  explicit SysArena(
-    size_t minBlockSize = kDefaultMinBlockSize,
-    size_t sizeLimit = 0)
-      : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit) {
+  explicit SysArena(size_t minBlockSize = kDefaultMinBlockSize,
+                    size_t sizeLimit = 0)
+    : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit) {
   }
 };
+
+template <>
+struct IsArenaAllocator<SysArena> : std::true_type { };
 
 }  // namespace folly
 

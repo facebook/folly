@@ -19,13 +19,13 @@
 
 #include "folly/Traits.h"
 
-#include <memory>
-#include <limits>
-#include <utility>
-#include <exception>
-#include <stdexcept>
-
 #include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <limits>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 namespace folly {
 
@@ -42,12 +42,7 @@ std::unique_ptr<T, Dp> make_unique(Args&&... args) {
   return std::unique_ptr<T, Dp>(new T(std::forward<Args>(args)...));
 }
 
-/*
- * StlAllocator wraps a SimpleAllocator into a STL-compliant
- * allocator, maintaining an instance pointer to the simple allocator
- * object.  The underlying SimpleAllocator object must outlive all
- * instances of StlAllocator using it.
- *
+/**
  * A SimpleAllocator must provide two methods:
  *
  *    void* allocate(size_t size);
@@ -58,26 +53,31 @@ std::unique_ptr<T, Dp> make_unique(Args&&... args) {
  * if the allocation can't be satisfied, and free a previously
  * allocated block.
  *
- * Note that the following allocator resembles the standard allocator
- * quite well:
- *
- * class MallocAllocator {
- *  public:
- *   void* allocate(size_t size) {
- *     void* p = malloc(size);
- *     if (!p) throw std::bad_alloc();
- *     return p;
- *   }
- *   void deallocate(void* p) {
- *     free(p);
- *   }
- * };
+ * SysAlloc resembles the standard allocator.
+ */
+class SysAlloc {
+ public:
+  void* allocate(size_t size) {
+    void* p = ::malloc(size);
+    if (!p) throw std::bad_alloc();
+    return p;
+  }
+  void deallocate(void* p) {
+    ::free(p);
+  }
+};
+
+/**
+ * StlAllocator wraps a SimpleAllocator into a STL-compliant
+ * allocator, maintaining an instance pointer to the simple allocator
+ * object.  The underlying SimpleAllocator object must outlive all
+ * instances of StlAllocator using it.
  *
  * But note that if you pass StlAllocator<MallocAllocator,...> to a
  * standard container it will be larger due to the contained state
  * pointer.
  *
- * author: Tudor Bosman <tudorb@fb.com>
+ * @author: Tudor Bosman <tudorb@fb.com>
  */
 
 // This would be so much simpler with std::allocator_traits, but gcc 4.6.2
@@ -340,6 +340,12 @@ std::shared_ptr<T> allocate_shared(Allocator&& allocator, Args&&... args) {
     std::forward<Args>(args)...
   );
 }
+
+/**
+ * IsArenaAllocator<T>::value describes whether SimpleAllocator has
+ * no-op deallocate().
+ */
+template <class T> struct IsArenaAllocator : std::false_type { };
 
 }  // namespace folly
 

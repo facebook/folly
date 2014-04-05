@@ -25,6 +25,8 @@
 
 using namespace folly;
 
+static_assert(IsArenaAllocator<SysArena>::value, "");
+
 TEST(Arena, SizeSanity) {
   std::set<size_t*> allocatedItems;
 
