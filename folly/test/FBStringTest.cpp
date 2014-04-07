@@ -889,36 +889,47 @@ TEST(FBString, testAllClauses) {
   std::wstring wr;
   folly::fbstring c;
   folly::basic_fbstring<wchar_t> wc;
-#define TEST_CLAUSE(x)                                              \
-  do {                                                              \
-      if (1) {} else EXPECT_TRUE(1) << "Testing clause " << #x;     \
-      randomString(&r);                                             \
-      c = r;                                                        \
-      EXPECT_EQ(c, r);                                              \
-      wr = std::wstring(r.begin(), r.end());                        \
-      wc = folly::basic_fbstring<wchar_t>(wr.c_str());              \
-      auto localSeed = seed + count;                                \
-      rng = RandomT(localSeed);                                     \
-      clause11_##x(r);                                                \
-      rng = RandomT(localSeed);                                     \
-      clause11_##x(c);                                                \
-      EXPECT_EQ(r, c)                                               \
-        << "Lengths: " << r.size() << " vs. " << c.size()           \
-        << "\nReference: '" << r << "'"                             \
-        << "\nActual:    '" << c.data()[0] << "'";                  \
-      rng = RandomT(localSeed);                                     \
-      clause11_##x(wc);                                               \
-      int wret = wcslen(wc.c_str());                                \
-      char mb[wret+1];                                              \
-      int ret = wcstombs(mb, wc.c_str(), sizeof(mb));               \
-      if (ret == wret) mb[wret] = '\0';                             \
-      const char *mc = c.c_str();                                   \
-      std::string one(mb);                                          \
-      std::string two(mc);                                          \
-      EXPECT_EQ(one, two);                                          \
-    } while (++count % 100 != 0)
-
   int count = 0;
+
+  auto l = [&](const char * const clause,
+               void(*f_string)(std::string&),
+               void(*f_fbstring)(folly::fbstring&),
+               void(*f_wfbstring)(folly::basic_fbstring<wchar_t>&)) {
+    do {
+      if (1) {} else EXPECT_TRUE(1) << "Testing clause " << clause;
+      randomString(&r);
+      c = r;
+      EXPECT_EQ(c, r);
+      wr = std::wstring(r.begin(), r.end());
+      wc = folly::basic_fbstring<wchar_t>(wr.c_str());
+      auto localSeed = seed + count;
+      rng = RandomT(localSeed);
+      f_string(r);
+      rng = RandomT(localSeed);
+      f_fbstring(c);
+      EXPECT_EQ(r, c)
+        << "Lengths: " << r.size() << " vs. " << c.size()
+        << "\nReference: '" << r << "'"
+        << "\nActual:    '" << c.data()[0] << "'";
+      rng = RandomT(localSeed);
+      f_wfbstring(wc);
+      int wret = wcslen(wc.c_str());
+      char mb[wret+1];
+      int ret = wcstombs(mb, wc.c_str(), sizeof(mb));
+      if (ret == wret) mb[wret] = '\0';
+      const char *mc = c.c_str();
+      std::string one(mb);
+      std::string two(mc);
+      EXPECT_EQ(one, two);
+    } while (++count % 100 != 0);
+  };
+
+#define TEST_CLAUSE(x) \
+  l(#x, \
+    clause11_##x<std::string>, \
+    clause11_##x<folly::fbstring>, \
+    clause11_##x<folly::basic_fbstring<wchar_t>>);
+
   TEST_CLAUSE(21_4_2_a);
   TEST_CLAUSE(21_4_2_b);
   TEST_CLAUSE(21_4_2_c);
