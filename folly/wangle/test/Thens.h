@@ -1,0 +1,106 @@
+/*
+ * Copyright 2014 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+#include <gtest/gtest.h>
+#include <memory>
+#include "folly/wangle/Future.h"
+#include "folly/wangle/Executor.h"
+
+using namespace folly::wangle;
+using namespace std;
+using namespace testing;
+
+typedef unique_ptr<int> A;
+struct B {};
+
+template <class T>
+using EnableIfFuture = typename std::enable_if<isFuture<T>::value>::type;
+
+template <class T>
+using EnableUnlessFuture = typename std::enable_if<!isFuture<T>::value>::type;
+
+template <class T>
+Future<T> someFuture() {
+  return makeFuture(T());
+}
+
+template <class Ret, class... Params, typename = void>
+Ret aFunction(Params...);
+
+template <class Ret, class... Params>
+typename std::enable_if<isFuture<Ret>::value, Ret>::type
+aFunction(Params...) {
+  typedef typename Ret::value_type T;
+  return makeFuture(T());
+}
+
+template <class Ret, class... Params>
+typename std::enable_if<!isFuture<Ret>::value, Ret>::type
+aFunction(Params...) {
+  return Ret();
+}
+
+template <class Ret, class... Params>
+std::function<Ret(Params...)>
+aStdFunction(typename std::enable_if<!isFuture<Ret>::value, bool>::type = false) {
+  return [](Params...) -> Ret { return Ret(); };
+}
+
+template <class Ret, class... Params>
+std::function<Ret(Params...)>
+aStdFunction(typename std::enable_if<isFuture<Ret>::value, bool>::type = true) {
+  typedef typename Ret::value_type T;
+  return [](Params...) -> Future<T> { return makeFuture(T()); };
+}
+
+class SomeClass {
+  B b;
+public:
+  template <class Ret, class... Params>
+  static Ret aStaticMethod(Params...);
+
+  template <class Ret, class... Params>
+  static
+  typename std::enable_if<!isFuture<Ret>::value, Ret>::type
+  aStaticMethod(Params...) {
+    return Ret();
+  }
+
+  template <class Ret, class... Params>
+  static
+  typename std::enable_if<isFuture<Ret>::value, Ret>::type
+  aStaticMethod(Params...) {
+    typedef typename Ret::value_type T;
+    return makeFuture(T());
+  }
+
+  template <class Ret, class... Params>
+  Ret aMethod(Params...);
+
+  template <class Ret, class... Params>
+  typename std::enable_if<!isFuture<Ret>::value, Ret>::type
+  aMethod(Params...) {
+    return Ret();
+  }
+
+  template <class Ret, class... Params>
+  typename std::enable_if<isFuture<Ret>::value, Ret>::type
+  aMethod(Params...) {
+    typedef typename Ret::value_type T;
+    return makeFuture(T());
+  }
+};
