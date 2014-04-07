@@ -575,10 +575,10 @@ public:
    *  folly::StringPiece s("sample string for split_next");
    *  auto p = s.split_step(' ');
    *
-   *  // prints "sample"
+   *  // prints "string for split_next"
    *  cout << s << endl;
    *
-   *  // prints "string for split_next"
+   *  // prints "sample"
    *  cout << p << endl;
    *
    * Example 2:
