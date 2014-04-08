@@ -19,9 +19,11 @@
 
 #include <cassert>
 #include <limits>
+#include <stdexcept>
 #include <utility>
 #include <boost/intrusive/slist.hpp>
 
+#include "folly/Conv.h"
 #include "folly/Likely.h"
 #include "folly/Malloc.h"
 #include "folly/Memory.h"
@@ -61,13 +63,19 @@ class Arena {
  public:
   explicit Arena(const Alloc& alloc,
                  size_t minBlockSize = kDefaultMinBlockSize,
-                 size_t sizeLimit = 0)
+                 size_t sizeLimit = kNoSizeLimit,
+                 size_t maxAlign = kDefaultMaxAlign)
     : allocAndSize_(alloc, minBlockSize)
     , ptr_(nullptr)
     , end_(nullptr)
     , totalAllocatedSize_(0)
     , bytesUsed_(0)
-    , sizeLimit_(sizeLimit) {
+    , sizeLimit_(sizeLimit)
+    , maxAlign_(maxAlign) {
+    if ((maxAlign_ & (maxAlign_ - 1)) || maxAlign_ > alignof(Block)) {
+      throw std::invalid_argument(
+          folly::to<std::string>("Invalid maxAlign: ", maxAlign_));
+    }
   }
 
   ~Arena();
@@ -147,19 +155,20 @@ class Arena {
 
  public:
   static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
+  static constexpr size_t kNoSizeLimit = 0;
+  static constexpr size_t kDefaultMaxAlign = alignof(Block);
 
  private:
-  static constexpr size_t maxAlign = alignof(Block);
-  static constexpr bool isAligned(uintptr_t address) {
-    return (address & (maxAlign - 1)) == 0;
+  bool isAligned(uintptr_t address) const {
+    return (address & (maxAlign_ - 1)) == 0;
   }
-  static bool isAligned(void* p) {
+  bool isAligned(void* p) const {
     return isAligned(reinterpret_cast<uintptr_t>(p));
   }
 
   // Round up size so it's properly aligned
-  static constexpr size_t roundUp(size_t size) {
-    return (size + maxAlign - 1) & ~(maxAlign - 1);
+  size_t roundUp(size_t size) const {
+    return (size + maxAlign_ - 1) & ~(maxAlign_ - 1);
   }
 
   // cache_last<true> makes the list keep a pointer to the last element, so we
@@ -194,7 +203,8 @@ class Arena {
   char* end_;
   size_t totalAllocatedSize_;
   size_t bytesUsed_;
-  size_t sizeLimit_;
+  const size_t sizeLimit_;
+  const size_t maxAlign_;
 };
 
 template <class Alloc>
@@ -223,8 +233,9 @@ struct ArenaAllocatorTraits<SysAlloc> {
 class SysArena : public Arena<SysAlloc> {
  public:
   explicit SysArena(size_t minBlockSize = kDefaultMinBlockSize,
-                    size_t sizeLimit = 0)
-    : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit) {
+                    size_t sizeLimit = kNoSizeLimit,
+                    size_t maxAlign = kDefaultMaxAlign)
+    : Arena<SysAlloc>(SysAlloc(), minBlockSize, sizeLimit, maxAlign) {
   }
 };
 

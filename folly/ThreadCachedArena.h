@@ -42,7 +42,8 @@ namespace folly {
 class ThreadCachedArena {
  public:
   explicit ThreadCachedArena(
-      size_t minBlockSize = SysArena::kDefaultMinBlockSize);
+      size_t minBlockSize = SysArena::kDefaultMinBlockSize,
+      size_t maxAlign = SysArena::kDefaultMaxAlign);
 
   void* allocate(size_t size) {
     SysArena* arena = arena_.get();
@@ -69,11 +70,15 @@ class ThreadCachedArena {
   // the ThreadCachedArena is destroyed.
   void zombify(SysArena&& arena);
 
-  size_t minBlockSize_;
+  const size_t minBlockSize_;
+  const size_t maxAlign_;
   SysArena zombies_;  // allocated from threads that are now dead
   std::mutex zombiesMutex_;
   ThreadLocalPtr<SysArena> arena_;  // per-thread arena
 };
+
+template <>
+struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
 
 }  // namespace folly
 

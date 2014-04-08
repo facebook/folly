@@ -31,7 +31,6 @@ Arena<Alloc>::Block::allocate(Alloc& alloc, size_t size, bool allowSlack) {
   }
 
   void* mem = alloc.allocate(allocSize);
-  assert(isAligned(mem));
   return std::make_pair(new (mem) Block(), allocSize - sizeof(Block));
 }
 
@@ -46,9 +45,9 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
   std::pair<Block*, size_t> p;
   char* start;
 
-
   size_t allocSize = std::max(size, minBlockSize()) + sizeof(Block);
-  if(sizeLimit_ && allocSize > sizeLimit_ - totalAllocatedSize_) {
+  if (sizeLimit_ != kNoSizeLimit &&
+      allocSize > sizeLimit_ - totalAllocatedSize_) {
     throw std::bad_alloc();
   }
 

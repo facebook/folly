@@ -18,12 +18,13 @@
 
 namespace folly {
 
-ThreadCachedArena::ThreadCachedArena(size_t minBlockSize)
-  : minBlockSize_(minBlockSize) {
+ThreadCachedArena::ThreadCachedArena(size_t minBlockSize, size_t maxAlign)
+  : minBlockSize_(minBlockSize), maxAlign_(maxAlign) {
 }
 
 SysArena* ThreadCachedArena::allocateThreadLocalArena() {
-  SysArena* arena = new SysArena(minBlockSize_);
+  SysArena* arena =
+    new SysArena(minBlockSize_, SysArena::kNoSizeLimit, maxAlign_);
   auto disposer = [this] (SysArena* t, TLPDestructionMode mode) {
     std::unique_ptr<SysArena> tp(t);  // ensure it gets deleted
     if (mode == TLPDestructionMode::THIS_THREAD) {
