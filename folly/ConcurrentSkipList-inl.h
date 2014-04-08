@@ -234,7 +234,7 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   !NodeType::template destroyIsNoOp<NodeAlloc>()>::type> {
  public:
   explicit NodeRecycler(const NodeAlloc& alloc)
-    : alloc_(alloc), refs_(0), dirty_(false) { lock_.init(); }
+    : refs_(0), dirty_(false), alloc_(alloc) { lock_.init(); }
 
   ~NodeRecycler() {
     CHECK_EQ(refs(), 0);
@@ -304,11 +304,11 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
     return refs_.load(std::memory_order_relaxed);
   }
 
-  NodeAlloc alloc_;
   std::unique_ptr<std::vector<NodeType*>> nodes_;
   std::atomic<int32_t> refs_; // current number of visitors to the list
   std::atomic<bool> dirty_; // whether *nodes_ is non-empty
   MicroSpinLock lock_; // protects access to *nodes_
+  NodeAlloc alloc_;
 };
 
 // In case of arena allocator, no recycling is necessary, and it's possible
