@@ -90,8 +90,8 @@ void MemoryIdler::flushLocalMallocCaches() {
 #ifdef __x86_64__
 
 static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
-static __thread uintptr_t tls_stackLimit;
-static __thread size_t tls_stackSize;
+static FOLLY_THREAD_LOCAL uintptr_t tls_stackLimit;
+static FOLLY_THREAD_LOCAL size_t tls_stackSize;
 
 static void fetchStackLimits() {
   pthread_attr_t attr;
@@ -130,7 +130,7 @@ static void fetchStackLimits() {
   assert((tls_stackLimit & (s_pageSize - 1)) == 0);
 }
 
-static __attribute__((noinline)) uintptr_t getStackPtr() {
+FOLLY_NOINLINE static uintptr_t getStackPtr() {
   char marker;
   auto rv = uintptr_t(&marker);
   return rv;

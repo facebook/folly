@@ -38,6 +38,8 @@
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__
 struct MaxAlign { char c; } __attribute__((aligned));
+#elif _MSC_VER
+struct MaxAlign { char c; } max_align_t;
 #else /* !__GNUC__ */
 # error Cannot define MaxAlign on this platform
 #endif
@@ -132,5 +134,82 @@ struct MaxAlign { char c; } __attribute__((aligned));
    boost::has_trivial_destructor<T>::value)
 #endif
 #endif // __cplusplus
+
+/**
+ * Macros related to compiler specific functionality
+ * clang tends to copy the "normal" behavior for the 
+ * current platform
+ */
+
+// Prefix a function you do not want inlined
+#if defined(_MSC_VER)
+#define FOLLY_NOINLINE __attribute__((noinline))
+#elif defined(__GNUC__)
+#define FOLLY_NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif
+
+#if defined(_MSC_VER)
+#define FOLLY_ALWAYS_INLINE __forceinline
+#elif defined(__GNUC__)
+#define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#endif
+
+// packing is ugly with push/pop
+#if defined(_MSC_VER)
+# define FOLLY_PACK_ATTR /**/
+# define FOLLY_PACK_PUSH __pragma(pack(push, 1))
+# define FOLLY_PACK_POP __pragma(pack(pop))
+#else
+# define FOLLY_PACK_ATTR __attribute__((packed))
+# define FOLLY_PACK_PUSH /**/
+# define FOLLY_PACK_POP  /**/
+#endif
+
+// Deal with alignas and alignof
+#if !defined(FOLLY_HAS_ALIGNAS)
+# ifdef _MSC_VER
+#  define FOLLY_ALIGNAS(x) __declspec(align(x))
+# else
+#  define FOLLY_ALIGNAS(x) __attribute__((aligned(x)))
+# endif
+#else
+# define FOLLY_ALIGNAS(x) alignas(x)
+#endif
+
+#if !defined(FOLLY_HAS_ALIGNOF)
+# ifdef _MSC_VER
+#  define FOLLY_ALIGNOF(x) __alignof(x)
+# else
+#  define FOLLY_ALIGNOF(x) __alignof__(x))
+# endif
+#else
+# define FOLLY_ALIGNOF(x) alignof(x)
+#endif
+
+// MSVC has max_align_t
+#ifdef _MSC_VER
+#  define FOLLY_MAXALIGN FOLLY_ALIGNAS(max_align_t)
+#else
+# define FOLLY_MAXALIGN __attribute__((aligned))
+#endif
+
+#if defined(__GNUC__)
+#define FOLLY_PRINTF_FORMAT(format_param, dots_param) \
+	__attribute__((format(printf, format_param, dots_param)))
+#else
+#define FOLLY_PRINTF_FORMAT(format_param, dots_param)
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
+#define FOLLY_IS_X64 1
+#endif
+
+#ifdef _MSC_VER
+#define FOLLY_THREAD_LOCAL __declspec(thread)
+#else
+#define FOLLY_THREAD_LOCAL __thread
+#endif
 
 #endif // FOLLY_PORTABILITY_H_

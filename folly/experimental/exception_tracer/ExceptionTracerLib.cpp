@@ -42,9 +42,9 @@ using namespace folly::exception_tracer;
 
 namespace {
 
-__thread bool invalid;
-__thread StackTraceStack activeExceptions;
-__thread StackTraceStack caughtExceptions;
+FOLLY_THREAD_LOCAL bool invalid;
+FOLLY_THREAD_LOCAL StackTraceStack activeExceptions;
+FOLLY_THREAD_LOCAL StackTraceStack caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
@@ -96,7 +96,7 @@ extern "C" StackTraceStack* getExceptionStackTraceStack() {
 namespace {
 
 // Make sure we're counting stack frames correctly, don't inline.
-void addActiveException() __attribute__((noinline));
+FOLLY_NOINLINE void addActiveException();
 
 void addActiveException() {
   pthread_once(&initialized, initialize);

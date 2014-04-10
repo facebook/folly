@@ -798,8 +798,8 @@ TEST(IOBuf, Alignment) {
   // max_align_t doesn't exist in gcc 4.6.2
   struct MaxAlign {
     char c;
-  } __attribute__((aligned));
-  size_t alignment = alignof(MaxAlign);
+  } FOLLY_MAXALIGN;
+  size_t alignment = FOLLY_ALIGNOF(MaxAlign);
 
   std::vector<size_t> sizes {0, 1, 64, 256, 1024, 1 << 10};
   for (size_t size : sizes) {

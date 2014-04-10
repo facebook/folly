@@ -524,6 +524,7 @@ template <class T, class Enable=void> struct Unaligned;
 /**
  * Representation of an unaligned value of a POD type.
  */
+FOLLY_PACK_PUSH
 template <class T>
 struct Unaligned<
     T,
@@ -531,7 +532,8 @@ struct Unaligned<
   Unaligned() = default;  // uninitialized
   /* implicit */ Unaligned(T v) : value(v) { }
   T value;
-} __attribute__((packed));
+} FOLLY_PACK_ATTR;
+FOLLY_PACK_POP
 
 /**
  * Read an unaligned value of type T and return it.
@@ -539,7 +541,7 @@ struct Unaligned<
 template <class T>
 inline T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  static_assert(FOLLY_ALIGNOF(Unaligned<T>) == 1, "Invalid alignment");
   return static_cast<const Unaligned<T>*>(p)->value;
 }
 
@@ -549,7 +551,7 @@ inline T loadUnaligned(const void* p) {
 template <class T>
 inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
-  static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
+  static_assert(FOLLY_ALIGNOF(Unaligned<T>) == 1, "Invalid alignment");
   new (p) Unaligned<T>(value);
 }
 

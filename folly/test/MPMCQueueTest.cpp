@@ -418,8 +418,8 @@ enum LifecycleEvent {
   MAX_LIFECYCLE_EVENT
 };
 
-static __thread int lc_counts[MAX_LIFECYCLE_EVENT];
-static __thread int lc_prev[MAX_LIFECYCLE_EVENT];
+static FOLLY_THREAD_LOCAL int lc_counts[MAX_LIFECYCLE_EVENT];
+static FOLLY_THREAD_LOCAL int lc_prev[MAX_LIFECYCLE_EVENT];
 
 static int lc_outstanding() {
   return lc_counts[DEFAULT_CONSTRUCTOR] + lc_counts[COPY_CONSTRUCTOR] +

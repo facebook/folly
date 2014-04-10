@@ -104,7 +104,7 @@ class MPMCQueue : boost::noncopyable {
     , popSpinCutoff_(0)
   {
     // ideally this would be a static assert, but g++ doesn't allow it
-    assert(alignof(MPMCQueue<T,Atom>)
+    assert(FOLLY_ALIGNOF(MPMCQueue<T,Atom>)
            >= detail::CacheLocality::kFalseSharingRange);
     assert(static_cast<uint8_t*>(static_cast<void*>(&popTicket_))
            - static_cast<uint8_t*>(static_cast<void*>(&pushTicket_))
@@ -830,7 +830,7 @@ struct SingleElementQueue {
 
  private:
   /// Storage for a T constructed with placement new
-  typename std::aligned_storage<sizeof(T),alignof(T)>::type contents_;
+  typename std::aligned_storage<sizeof(T),FOLLY_ALIGNOF(T)>::type contents_;
 
   /// Even turns are pushes, odd turns are pops
   TurnSequencer<Atom> sequencer_;

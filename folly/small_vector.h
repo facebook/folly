@@ -50,9 +50,13 @@
 
 #if defined(__GNUC__) && defined(__x86_64__)
 # include "folly/SmallLocks.h"
-# define FB_PACKED __attribute__((packed))
+# define FB_PACKED FOLLY_PACK_ATTR
+# define FB_PACK_PUSH FOLLY_PACK_PUSH
+# define FB_PACK_POP FOLLY_PACK_POP
 #else
 # define FB_PACKED
+# define FB_PACK_PUSH
+# define FB_PACK_POP
 #endif
 
 #if FOLLY_HAVE_MALLOC_SIZE
@@ -1079,6 +1083,7 @@ private:
   }
 
 private:
+FB_PACK_PUSH
   struct HeapPtrWithCapacity {
     void* heap_;
     InternalSizeType capacity_;
@@ -1087,7 +1092,9 @@ private:
       return &capacity_;
     }
   } FB_PACKED;
+FB_PACK_POP
 
+FB_PACK_PUSH
   struct HeapPtr {
     // Lower order bit of heap_ is used as flag to indicate whether capacity is
     // stored at the front of the heap allocation.
@@ -1099,13 +1106,15 @@ private:
         detail::pointerFlagClear(heap_));
     }
   } FB_PACKED;
+FB_PACK_POP
 
+FB_PACK_PUSH
 #if defined(__x86_64_)
   typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<
     sizeof(value_type) * MaxInline,
-    alignof(value_type)
+	FOLLY_ALIGNOF(value_type)
   >::type InlineStorageType;
 #endif
 
@@ -1116,7 +1125,7 @@ private:
   static size_t const kHeapifyCapacitySize = sizeof(
     typename std::aligned_storage<
       sizeof(InternalSizeType),
-      alignof(value_type)
+	  FOLLY_ALIGNOF(value_type)
     >::type);
   // Threshold to control capacity heapifying.
   static size_t const kHeapifyCapacityThreshold =
@@ -1127,7 +1136,7 @@ private:
     HeapPtrWithCapacity,
     HeapPtr
   >::type PointerType;
-
+FB_PACK_PUSH
   union Data {
     explicit Data() { pdata_.heap_ = 0; }
 
@@ -1168,7 +1177,9 @@ private:
       free(vp);
     }
   } FB_PACKED u;
+FB_PACK_POP
 } FB_PACKED;
+FB_PACK_POP
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1188,6 +1199,8 @@ void swap(small_vector<T,MaxInline,A,B,C>& a,
 
 #ifdef FB_PACKED
 # undef FB_PACKED
+# undef FB_PACK_PUSH
+# undef FB_PACK_POP
 #endif
 
 #endif

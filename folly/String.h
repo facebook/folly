@@ -174,15 +174,15 @@ String uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * the specified string and returns a reference to it.
  */
 std::string stringPrintf(const char* format, ...)
-  __attribute__ ((format (printf, 1, 2)));
+ FOLLY_PRINTF_FORMAT(1, 2);
 
 /** Similar to stringPrintf, with different signiture.
   */
 void stringPrintf(std::string* out, const char* fmt, ...)
-  __attribute__ ((format (printf, 2, 3)));
+  FOLLY_PRINTF_FORMAT(2, 3);
 
 std::string& stringAppendf(std::string* output, const char* format, ...)
-  __attribute__ ((format (printf, 2, 3)));
+ FOLLY_PRINTF_FORMAT(2, 3);
 
 /**
  * Backslashify a string, that is, replace non-printable characters

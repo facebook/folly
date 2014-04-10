@@ -141,7 +141,7 @@ class Arena {
    private:
     Block() { }
     ~Block() { }
-  } __attribute__((aligned));
+  } FOLLY_MAXALIGN;
   // This should be alignas(std::max_align_t) but neither alignas nor
   // max_align_t are supported by gcc 4.6.2.
 
@@ -149,7 +149,7 @@ class Arena {
   static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
 
  private:
-  static constexpr size_t maxAlign = alignof(Block);
+  static constexpr size_t maxAlign = FOLLY_ALIGNOF(Block);
   static constexpr bool isAligned(uintptr_t address) {
     return (address & (maxAlign - 1)) == 0;
   }
