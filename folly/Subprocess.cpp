@@ -413,6 +413,14 @@ int Subprocess::prepareChild(const Options& options,
     return r;  // pthread_sigmask() returns an errno value
   }
 
+  // Change the working directory, if one is given
+  if (!options.childDir_.empty()) {
+    r = ::chdir(options.childDir_.c_str());
+    if (r == -1) {
+      return errno;
+    }
+  }
+
   // Close parent's ends of all pipes
   for (auto& p : pipes_) {
     r = ::close(p.parentFd);

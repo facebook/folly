@@ -88,6 +88,33 @@ TEST(SimpleSubprocessTest, ShellExitsWithError) {
   EXPECT_EQ(1, proc.wait().exitStatus());
 }
 
+TEST(SimpleSubprocessTest, ChangeChildDirectorySuccessfully) {
+  // The filesystem root normally lacks a 'true' binary
+  EXPECT_EQ(0, chdir("/"));
+  EXPECT_SPAWN_ERROR(ENOENT, "failed to execute ./true", "./true");
+  // The child can fix that by moving to /bin before exec().
+  Subprocess proc("./true", Subprocess::Options().chdir("/bin"));
+  EXPECT_EQ(0, proc.wait().exitStatus());
+}
+
+TEST(SimpleSubprocessTest, ChangeChildDirectoryWithError) {
+  try {
+    Subprocess proc(
+      std::vector<std::string>{"/bin/true"},
+      Subprocess::Options().chdir("/usually/this/is/not/a/valid/directory/")
+    );
+    ADD_FAILURE() << "expected to fail when changing the child's directory";
+  } catch (const SubprocessSpawnError& ex) {
+    EXPECT_EQ(ENOENT, ex.errnoValue());
+    const std::string expectedError =
+      "error preparing to execute /bin/true: No such file or directory";
+    if (StringPiece(ex.what()).find(expectedError) == StringPiece::npos) {
+      ADD_FAILURE() << "failed to find \"" << expectedError <<
+        "\" in exception: \"" << ex.what() << "\"";
+    }
+  }
+}
+
 namespace {
 boost::container::flat_set<int> getOpenFds() {
   auto pid = getpid();

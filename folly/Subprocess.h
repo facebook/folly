@@ -264,6 +264,11 @@ class Subprocess : private boost::noncopyable {
      */
     Options& usePath() { usePath_ = true; return *this; }
 
+    /**
+     * Change the child's working directory, after the vfork.
+     */
+    Options& chdir(const std::string& dir) { childDir_ = dir; return *this; }
+
 #if __linux__
     /**
      * Child will receive a signal when the parent exits.
@@ -284,6 +289,7 @@ class Subprocess : private boost::noncopyable {
     FdMap fdActions_;
     bool closeOtherFds_;
     bool usePath_;
+    std::string childDir_;  // "" keeps the parent's working directory
 #if __linux__
     int parentDeathSignal_{0};
 #endif
