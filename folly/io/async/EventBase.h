@@ -345,6 +345,8 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
 
   int getNotificationQueueSize() const;
 
+  void setMaxReadAtOnce(uint32_t maxAtOnce);
+
   /**
    * Verify that current thread is the EventBase thread, if the EventBase is
    * running.

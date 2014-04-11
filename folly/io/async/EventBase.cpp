@@ -190,6 +190,10 @@ int EventBase::getNotificationQueueSize() const {
   return queue_->size();
 }
 
+void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
+  fnRunner_->setMaxReadAtOnce(maxAtOnce);
+}
+
 // Set smoothing coefficient for loop load average; input is # of milliseconds
 // for exp(-1) decay.
 void EventBase::setLoadAvgMsec(uint32_t ms) {
