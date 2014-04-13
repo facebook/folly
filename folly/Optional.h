@@ -112,15 +112,17 @@ class Optional {
     }
   }
 
-  /* implicit */ Optional(const None&)
+  /* implicit */ Optional(const None&) noexcept
     : hasValue_(false) {
   }
 
-  /* implicit */ Optional(Value&& newValue) {
+  /* implicit */ Optional(Value&& newValue)
+    noexcept(std::is_nothrow_move_constructible<Value>::value) {
     construct(std::move(newValue));
   }
 
-  /* implicit */ Optional(const Value& newValue) {
+  /* implicit */ Optional(const Value& newValue)
+    noexcept(std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
   }
 
