@@ -400,7 +400,7 @@ TEST(CommunicateSubprocessTest, Chatty) {
       // fine for reads <= PIPE_BUF
       bool r = readToString(pfd, lineBuf, expected.size() + 1);
 
-      EXPECT_EQ((rcount == lineCount), r);  // EOF iff at lineCount
+      EXPECT_TRUE(!r || (rcount + 1 == lineCount)); // may read EOF at end
       EXPECT_EQ(expected, lineBuf);
 
       ++rcount;
