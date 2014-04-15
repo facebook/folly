@@ -72,8 +72,8 @@ struct ThroughputTest {
     for (int i = 0; i < iters_; ++i) {
       ThroughputType item = 0;
       while (!queue_.read(item)) {
-        doNotOptimizeAway(item);
       }
+      doNotOptimizeAway(item);
     }
   }
 
