@@ -153,6 +153,11 @@ class TypedIOBuf {
     return data()[idx];
   }
 
+  T& operator[](ssize_t idx) {
+    assert(idx >= 0 && idx < length());
+    return writableData()[idx];
+  }
+
   /**
    * Append one element.
    */
