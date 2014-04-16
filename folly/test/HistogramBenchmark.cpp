@@ -22,7 +22,7 @@
 
 using folly::Histogram;
 
-void addValue(uint n, int64_t bucketSize, int64_t min, int64_t max) {
+void addValue(unsigned int n, int64_t bucketSize, int64_t min, int64_t max) {
   Histogram<int64_t> hist(bucketSize, min, max);
   int64_t num = min;
   FOR_EACH_RANGE (i, 0, n) {

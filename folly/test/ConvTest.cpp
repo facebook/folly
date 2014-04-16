@@ -768,21 +768,21 @@ static int64_t handwrittenAtoi(const char* start, const char* end) {
 
 static StringPiece pc1 = "1234567890123456789";
 
-void handwrittenAtoiMeasure(uint n, uint digits) {
+void handwrittenAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(handwrittenAtoi(p.begin(), p.end()));
   }
 }
 
-void follyAtoiMeasure(uint n, uint digits) {
+void follyAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   FOR_EACH_RANGE (i, 0, n) {
     doNotOptimizeAway(folly::to<int64_t>(p.begin(), p.end()));
   }
 }
 
-void clibAtoiMeasure(uint n, uint digits) {
+void clibAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
   static_assert(sizeof(long) == 8, "64-bit long assumed");
@@ -791,7 +791,7 @@ void clibAtoiMeasure(uint n, uint digits) {
   }
 }
 
-void clibStrtoulMeasure(uint n, uint digits) {
+void clibStrtoulMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
   char * endptr;
@@ -800,7 +800,7 @@ void clibStrtoulMeasure(uint n, uint digits) {
   }
 }
 
-void lexicalCastMeasure(uint n, uint digits) {
+void lexicalCastMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
   FOR_EACH_RANGE (i, 0, n) {
@@ -843,7 +843,7 @@ unsigned u64ToAsciiTable(uint64_t value, char* dst) {
   return length;
 }
 
-void u64ToAsciiTableBM(uint n, uint64_t value) {
+void u64ToAsciiTableBM(unsigned int n, uint64_t value) {
   // This is too fast, need to do 10 times per iteration
   char buf[20];
   FOR_EACH_RANGE (i, 0, n) {
@@ -873,7 +873,7 @@ unsigned u64ToAsciiClassic(uint64_t value, char* dst) {
   return length;
 }
 
-void u64ToAsciiClassicBM(uint n, uint64_t value) {
+void u64ToAsciiClassicBM(unsigned int n, uint64_t value) {
   // This is too fast, need to do 10 times per iteration
   char buf[20];
   FOR_EACH_RANGE (i, 0, n) {
@@ -881,7 +881,7 @@ void u64ToAsciiClassicBM(uint n, uint64_t value) {
   }
 }
 
-void u64ToAsciiFollyBM(uint n, uint64_t value) {
+void u64ToAsciiFollyBM(unsigned int n, uint64_t value) {
   // This is too fast, need to do 10 times per iteration
   char buf[20];
   FOR_EACH_RANGE (i, 0, n) {
@@ -891,7 +891,7 @@ void u64ToAsciiFollyBM(uint n, uint64_t value) {
 
 // Benchmark uitoa with string append
 
-void u2aAppendClassicBM(uint n, uint64_t value) {
+void u2aAppendClassicBM(unsigned int n, uint64_t value) {
   string s;
   FOR_EACH_RANGE (i, 0, n) {
     // auto buf = &s.back() + 1;
@@ -901,7 +901,7 @@ void u2aAppendClassicBM(uint n, uint64_t value) {
   }
 }
 
-void u2aAppendFollyBM(uint n, uint64_t value) {
+void u2aAppendFollyBM(unsigned int n, uint64_t value) {
   string s;
   FOR_EACH_RANGE (i, 0, n) {
     // auto buf = &s.back() + 1;

@@ -319,7 +319,7 @@ static string metricReadable(double n, unsigned int decimals) {
 static void printBenchmarkResultsAsTable(
   const vector<tuple<const char*, const char*, double> >& data) {
   // Width available
-  static const uint columns = 76;
+  static const unsigned int columns = 76;
 
   // Compute the longest benchmark name
   size_t longestName = 0;
