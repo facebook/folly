@@ -130,7 +130,7 @@ static void fetchStackLimits() {
   assert((tls_stackLimit & (s_pageSize - 1)) == 0);
 }
 
-static __attribute__((noinline)) uintptr_t getStackPtr() {
+FOLLY_NOINLINE static uintptr_t getStackPtr() {
   char marker;
   auto rv = uintptr_t(&marker);
   return rv;

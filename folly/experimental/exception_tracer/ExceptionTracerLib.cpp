@@ -96,7 +96,7 @@ extern "C" StackTraceStack* getExceptionStackTraceStack() {
 namespace {
 
 // Make sure we're counting stack frames correctly, don't inline.
-void addActiveException() __attribute__((noinline));
+FOLLY_NOINLINE void addActiveException();
 
 void addActiveException() {
   pthread_once(&initialized, initialize);

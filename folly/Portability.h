@@ -50,6 +50,23 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_NORETURN
 #endif
 
+// noinline
+#ifdef _MSC_VER
+# define FOLLY_NOINLINE __declspec(noinline)
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_NOINLINE __attribute__((noinline))
+#else
+# define FOLLY_NOINLINE
+#endif
+
+// always inline
+#ifdef _MSC_VER
+# define FOLLY_ALWAYS_INLINE __forceinline
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_ALWAYS_INLINE inline __attribute__((always_inline))
+#else
+# define FOLLY_ALWAYS_INLINE
+#endif
 
 // portable version check
 #ifndef __GNUC_PREREQ
