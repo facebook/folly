@@ -43,9 +43,9 @@
 
 namespace folly { namespace detail {
 
-void assertionFailure(const char* expr, const char* msg, const char* file,
-                      unsigned int line, const char* function)
-  FOLLY_NORETURN;
+FOLLY_NORETURN void assertionFailure(const char* expr, const char* msg,
+                      const char* file, unsigned int line,
+                      const char* function);
 
 }}  // namespace folly
 

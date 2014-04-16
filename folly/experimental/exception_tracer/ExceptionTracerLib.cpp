@@ -29,10 +29,10 @@
 namespace __cxxabiv1 {
 
 extern "C" {
-void __cxa_throw(void* thrownException, std::type_info* type,
-                 void (*destructor)(void)) FOLLY_NORETURN;
+FOLLY_NORETURN void __cxa_throw(void* thrownException,
+                 std::type_info* type, void (*destructor)(void));
 void* __cxa_begin_catch(void* excObj);
-void __cxa_rethrow(void) FOLLY_NORETURN;
+FOLLY_NORETURN void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }
 
@@ -48,11 +48,10 @@ __thread StackTraceStack caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
-typedef void (*CxaThrowType)(void*, std::type_info*, void (*)(void))
-  FOLLY_NORETURN;
+FOLLY_NORETURN typedef void (*CxaThrowType)(void*, std::type_info*,
+                                            void (*)(void));
 typedef void* (*CxaBeginCatchType)(void*);
-typedef void (*CxaRethrowType)(void)
-  FOLLY_NORETURN;
+FOLLY_NORETURN typedef void (*CxaRethrowType)(void);
 typedef void (*CxaEndCatchType)(void);
 
 CxaThrowType orig_cxa_throw;
@@ -61,8 +60,7 @@ CxaRethrowType orig_cxa_rethrow;
 CxaEndCatchType orig_cxa_end_catch;
 }  // extern "C"
 
-typedef void (*RethrowExceptionType)(std::exception_ptr)
-  FOLLY_NORETURN;
+FOLLY_NORETURN typedef void (*RethrowExceptionType)(std::exception_ptr);
 RethrowExceptionType orig_rethrow_exception;
 
 void initialize() {

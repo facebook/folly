@@ -39,7 +39,7 @@ using namespace folly;
 
 namespace {
 
-void usage(const char* name) FOLLY_NORETURN;
+FOLLY_NORETURN void usage(const char* name);
 
 void usage(const char* name) {
   std::cerr << folly::format(

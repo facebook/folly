@@ -37,13 +37,13 @@ namespace folly {
 // The *Explicit functions take an explicit value for errno.
 
 // Helper to throw std::system_error
-void throwSystemErrorExplicit(int err, const char*) FOLLY_NORETURN;
+FOLLY_NORETURN void throwSystemErrorExplicit(int err, const char*);
 inline void throwSystemErrorExplicit(int err, const char* msg) {
   throw std::system_error(err, std::system_category(), msg);
 }
 
 template <class... Args>
-void throwSystemErrorExplicit(int, Args&&... args) FOLLY_NORETURN;
+FOLLY_NORETURN void throwSystemErrorExplicit(int, Args&&... args);
 template <class... Args>
 void throwSystemErrorExplicit(int err, Args&&... args) {
   throwSystemErrorExplicit(
@@ -52,7 +52,7 @@ void throwSystemErrorExplicit(int err, Args&&... args) {
 
 // Helper to throw std::system_error from errno and components of a string
 template <class... Args>
-void throwSystemError(Args&&... args) FOLLY_NORETURN;
+FOLLY_NORETURN void throwSystemError(Args&&... args);
 template <class... Args>
 void throwSystemError(Args&&... args) {
   throwSystemErrorExplicit(errno, std::forward<Args>(args)...);

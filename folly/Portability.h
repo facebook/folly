@@ -42,9 +42,13 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # error Cannot define MaxAlign on this platform
 #endif
 
+// compiler specific attribute translation
+// msvc should come first, so if clang is in msvc mode it gets the right defines
 
 // noreturn
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(_MSC_VER)
+# define FOLLY_NORETURN __declspec(noreturn)
+#elif defined(__clang__) || defined(__GNUC__)
 # define FOLLY_NORETURN __attribute__((noreturn))
 #else
 # define FOLLY_NORETURN

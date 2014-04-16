@@ -21,9 +21,9 @@
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-void __throw_length_error(const char* msg) FOLLY_NORETURN;
-void __throw_logic_error(const char* msg) FOLLY_NORETURN;
-void __throw_out_of_range(const char* msg) FOLLY_NORETURN;
+FOLLY_NORETURN void __throw_length_error(const char* msg);
+FOLLY_NORETURN void __throw_logic_error(const char* msg);
+FOLLY_NORETURN void __throw_out_of_range(const char* msg);
 
 FOLLY_NAMESPACE_STD_END
 

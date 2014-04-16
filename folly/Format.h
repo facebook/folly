@@ -128,7 +128,7 @@ class Formatter {
       typename std::decay<Args>::type>...> ValueTuple;
   static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
 
-  void handleFormatStrError() const FOLLY_NORETURN;
+  FOLLY_NORETURN void handleFormatStrError() const;
   template <class Output>
   void appendOutput(Output& out) const;
 

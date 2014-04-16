@@ -80,7 +80,7 @@ struct FormatArg {
   template <typename... Args>
   std::string errorStr(Args&&... args) const;
   template <typename... Args>
-  void error(Args&&... args) const FOLLY_NORETURN;
+  FOLLY_NORETURN void error(Args&&... args) const;
 
   /**
    * Full argument string, as passed in to the constructor.
