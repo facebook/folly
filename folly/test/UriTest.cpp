@@ -79,11 +79,44 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.username());
     EXPECT_EQ("", u.password());
     EXPECT_EQ("[::1]", u.host());
+    EXPECT_EQ("::1", u.hostname());
     EXPECT_EQ(8080, u.port());
     EXPECT_EQ("[::1]:8080", u.authority());
     EXPECT_EQ("/hello/world", u.path());
     EXPECT_EQ("query", u.query());
     EXPECT_EQ("fragment", u.fragment());
+    EXPECT_EQ(s, u.fbstr());  // canonical
+  }
+
+  {
+    fbstring s("http://[2401:db00:20:7004:face:0:29:0]:8080/hello/world?query");
+    Uri u(s);
+    EXPECT_EQ("http", u.scheme());
+    EXPECT_EQ("", u.username());
+    EXPECT_EQ("", u.password());
+    EXPECT_EQ("[2401:db00:20:7004:face:0:29:0]", u.host());
+    EXPECT_EQ("2401:db00:20:7004:face:0:29:0", u.hostname());
+    EXPECT_EQ(8080, u.port());
+    EXPECT_EQ("[2401:db00:20:7004:face:0:29:0]:8080", u.authority());
+    EXPECT_EQ("/hello/world", u.path());
+    EXPECT_EQ("query", u.query());
+    EXPECT_EQ("", u.fragment());
+    EXPECT_EQ(s, u.fbstr());  // canonical
+  }
+
+  {
+    fbstring s("http://[2401:db00:20:7004:face:0:29:0]/hello/world?query");
+    Uri u(s);
+    EXPECT_EQ("http", u.scheme());
+    EXPECT_EQ("", u.username());
+    EXPECT_EQ("", u.password());
+    EXPECT_EQ("[2401:db00:20:7004:face:0:29:0]", u.host());
+    EXPECT_EQ("2401:db00:20:7004:face:0:29:0", u.hostname());
+    EXPECT_EQ(0, u.port());
+    EXPECT_EQ("[2401:db00:20:7004:face:0:29:0]", u.authority());
+    EXPECT_EQ("/hello/world", u.path());
+    EXPECT_EQ("query", u.query());
+    EXPECT_EQ("", u.fragment());
     EXPECT_EQ(s, u.fbstr());  // canonical
   }
 
@@ -241,6 +274,50 @@ TEST(Uri, Simple) {
       CHECK(false) << "Control should not have reached here";
     } catch (const std::invalid_argument& ex) {
       EXPECT_TRUE(boost::algorithm::ends_with(ex.what(), s));
+    }
+  }
+
+  {
+    fbstring s("http://[::1:8080/hello/world?query#fragment");
+
+    try {
+      Uri u(s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      // success
+    }
+  }
+
+  {
+    fbstring s("http://::1]:8080/hello/world?query#fragment");
+
+    try {
+      Uri u(s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      // success
+    }
+  }
+
+  {
+    fbstring s("http://::1:8080/hello/world?query#fragment");
+
+    try {
+      Uri u(s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      // success
+    }
+  }
+
+  {
+    fbstring s("http://2401:db00:20:7004:face:0:29:0/hello/world?query");
+
+    try {
+      Uri u(s);
+      CHECK(false) << "Control should not have reached here";
+    } catch (const std::invalid_argument& ex) {
+      // success
     }
   }
 }

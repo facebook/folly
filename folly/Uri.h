@@ -47,7 +47,21 @@ class Uri {
   const fbstring& scheme() const { return scheme_; }
   const fbstring& username() const { return username_; }
   const fbstring& password() const { return password_; }
+  /**
+   * Get host part of URI. If host is an IPv6 address, square brackets will be
+   * returned, for example: "[::1]".
+   */
   const fbstring& host() const { return host_; }
+  /**
+   * Get host part of URI. If host is an IPv6 address, square brackets will not
+   * be returned, for exmaple "::1"; otherwise it returns the same thing as
+   * host().
+   *
+   * hostname() is what one needs to call if passing the host to any other tool
+   * or API that connects to that host/port; e.g. getaddrinfo() only understands
+   * IPv6 host without square brackets
+   */
+  fbstring hostname() const;
   uint16_t port() const { return port_; }
   const fbstring& path() const { return path_; }
   const fbstring& query() const { return query_; }

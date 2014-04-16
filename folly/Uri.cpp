@@ -64,8 +64,8 @@ Uri::Uri(StringPiece str) : port_(0) {
   } else {
     static const boost::regex authorityRegex(
         "(?:([^@:]*)(?::([^@]*))?@)?"  // username, password
-        "(\\[[^\\]]*\\]|[^\\[:]*)"     // host (IP-literal, dotted-IPv4, or
-                                       // named host)
+        "(\\[[^\\]]*\\]|[^\\[:]*)"     // host (IP-literal (e.g. '['+IPv6+']',
+                                       // dotted-IPv4, or named host)
         "(?::(\\d*))?");               // port
 
     auto authority = authorityAndPathMatch[1];
@@ -119,6 +119,15 @@ fbstring Uri::authority() const {
   }
 
   return result;
+}
+
+fbstring Uri::hostname() const {
+  if (host_.size() > 0 && host_[0] == '[') {
+    // If it starts with '[', then it should end with ']', this is ensured by
+    // regex
+    return host_.substr(1, host_.size() - 2);
+  }
+  return host_;
 }
 
 }  // namespace folly
