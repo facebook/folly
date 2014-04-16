@@ -107,6 +107,21 @@ TEST(IOBufQueue, Append2) {
   EXPECT_EQ(nullptr, queue2.front());
 }
 
+TEST(IOBufQueue, AppendStringPiece) {
+  std::string s("Hello, World");
+  IOBufQueue queue(clOptions);
+  IOBufQueue queue2(clOptions);
+  queue.append(s.data(), s.length());
+  queue2.append(s);
+  checkConsistency(queue);
+  checkConsistency(queue2);
+  const IOBuf* chain = queue.front();
+  const IOBuf* chain2 = queue2.front();
+  EXPECT_EQ(s.length(), chain->computeChainDataLength());
+  EXPECT_EQ(s.length(), chain2->computeChainDataLength());
+  EXPECT_EQ(0, memcmp(chain->data(), chain2->data(), s.length()));
+}
+
 TEST(IOBufQueue, Split) {
   IOBufQueue queue(clOptions);
   queue.append(stringToIOBuf(SCL("Hello")));

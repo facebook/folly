@@ -98,8 +98,8 @@ class IOBufQueue {
    * Copy a string to the end of this queue.
    * The caller retains ownership of the source data.
    */
-  void append(const std::string& buf) {
-    append(buf.data(), buf.length());
+  void append(StringPiece sp) {
+    append(sp.data(), sp.size());
   }
 
   /**
