@@ -107,8 +107,13 @@
 
 // We defined these here rather than including Likely.h to avoid
 // redefinition errors when fbstring is imported into libstdc++.
+#if defined(__GNUC__) && __GNUC__ >= 4
 #define FBSTRING_LIKELY(x)   (__builtin_expect((x), 1))
 #define FBSTRING_UNLIKELY(x) (__builtin_expect((x), 0))
+#else
+#define FBSTRING_LIKELY(x)   (x)
+#define FBSTRING_UNLIKELY(x) (x)
+#endif
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
