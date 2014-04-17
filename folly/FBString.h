@@ -61,6 +61,7 @@
 #include <atomic>
 #include <limits>
 #include <type_traits>
+#include <algorithm>
 
 // libc++ doesn't provide this header
 #ifndef _LIBCPP_VERSION

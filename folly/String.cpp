@@ -22,6 +22,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <iterator>
+#include <cctype>
 #include <glog/logging.h>
 
 namespace folly {

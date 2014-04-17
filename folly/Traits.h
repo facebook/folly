@@ -22,6 +22,7 @@
 #include <memory>
 #include <limits>
 #include <type_traits>
+#include <functional>
 
 #include "folly/Portability.h"
 
