@@ -882,7 +882,7 @@ TEST(Gen, Cycle) {
 TEST(Gen, Dereference) {
   {
     const int x = 4, y = 2;
-    auto s = from<const int*>({&x, nullptr, &y});
+    auto s = from(std::initializer_list<const int*>({&x, nullptr, &y}));
     EXPECT_EQ(6, s | dereference | sum);
   }
   {
