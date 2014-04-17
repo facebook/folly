@@ -256,8 +256,23 @@ template<class Value,
          class Container = std::vector<typename std::decay<Value>::type>>
 class CopiedSource;
 
-template<class Value, bool endless = false, bool endInclusive = false>
+template<class Value, class SequenceImpl>
 class Sequence;
+
+template <class Value>
+class RangeImpl;
+
+template <class Value, class Distance>
+class RangeWithStepImpl;
+
+template <class Value>
+class SeqImpl;
+
+template <class Value, class Distance>
+class SeqWithStepImpl;
+
+template <class Value>
+class InfiniteImpl;
 
 template<class Value, class Source>
 class Yield;
@@ -396,21 +411,36 @@ From from(Container&& source) {
   return From(std::move(source));
 }
 
-template<class Value, class Gen = detail::Sequence<Value, false, false>>
+template<class Value, class Impl = detail::RangeImpl<Value>,
+         class Gen = detail::Sequence<Value, Impl>>
 Gen range(Value begin, Value end) {
-  return Gen(begin, end);
+  return Gen{std::move(begin), Impl{std::move(end)}};
 }
 
-template<class Value,
-         class Gen = detail::Sequence<Value, false, true>>
+template<class Value, class Distance,
+         class Impl = detail::RangeWithStepImpl<Value, Distance>,
+         class Gen = detail::Sequence<Value, Impl>>
+Gen range(Value begin, Value end, Distance step) {
+  return Gen{std::move(begin), Impl{std::move(end), std::move(step)}};
+}
+
+template<class Value, class Impl = detail::SeqImpl<Value>,
+         class Gen = detail::Sequence<Value, Impl>>
 Gen seq(Value first, Value last) {
-  return Gen(first, last);
+  return Gen{std::move(first), Impl{std::move(last)}};
 }
 
-template<class Value,
-         class Gen = detail::Sequence<Value, true>>
-Gen seq(Value begin) {
-  return Gen(begin);
+template<class Value, class Distance,
+         class Impl = detail::SeqWithStepImpl<Value, Distance>,
+         class Gen = detail::Sequence<Value, Impl>>
+Gen seq(Value first, Value last, Distance step) {
+  return Gen{std::move(first), Impl{std::move(last), std::move(step)}};
+}
+
+template<class Value, class Impl = detail::InfiniteImpl<Value>,
+         class Gen = detail::Sequence<Value, Impl>>
+Gen seq(Value first) {
+  return Gen{std::move(first), Impl{}};
 }
 
 template<class Value,

@@ -186,11 +186,26 @@ TEST(Gen, Seq) {
   }
 }
 
+TEST(Gen, SeqWithStep) {
+  EXPECT_EQ(75, seq(5, 25, 5) | sum);
+}
+
+TEST(Gen, SeqWithStepArray) {
+  const std::array<int, 6> arr{{1, 2, 3, 4, 5, 6}};
+  EXPECT_EQ(9, seq(&arr[0], &arr[5], 2)
+             | map([](const int *i) { return *i; })
+             | sum);
+}
+
 TEST(Gen, Range) {
   // cover the fenceposts of the loop unrolling
   for (int n = 1; n < 100; ++n) {
     EXPECT_EQ(gen::range(0, n) | count, n);
   }
+}
+
+TEST(Gen, RangeWithStep) {
+  EXPECT_EQ(50, range(5, 25, 5) | sum);
 }
 
 TEST(Gen, FromIterators) {

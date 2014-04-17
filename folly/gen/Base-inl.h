@@ -183,47 +183,29 @@ class RangeSource : public GenImpl<typename Range<Iterator>::reference,
 
 /**
  * Sequence - For generating values from beginning value, incremented along the
- * way with the ++ and += operators. Iteration may continue indefinitely by
- * setting the 'endless' template parameter to true. If set to false, iteration
- * will stop when value reaches 'end', either inclusively or exclusively,
- * depending on the template parameter 'endInclusive'. Value type specified
- * explicitly.
+ * way with the ++ and += operators. Iteration may continue indefinitely.
+ * Value type specified explicitly.
  *
  * This type is primarily used through the 'seq' and 'range' function, like:
  *
  *   int total = seq(1, 10) | sum;
  *   auto indexes = range(0, 10);
+ *   auto endless = seq(0); // 0, 1, 2, 3, ...
  */
-template<class Value,
-         bool endless,
-         bool endInclusive>
-class Sequence : public GenImpl<const Value&,
-                                Sequence<Value, endless, endInclusive>> {
+template<class Value, class SequenceImpl>
+class Sequence : public GenImpl<const Value&, Sequence<Value, SequenceImpl>> {
   static_assert(!std::is_reference<Value>::value &&
                 !std::is_const<Value>::value, "Value mustn't be const or ref.");
-  Value bounds_[endless ? 1 : 2];
+  Value start_;
+  SequenceImpl impl_;
 public:
-  explicit Sequence(Value begin)
-      : bounds_{std::move(begin)} {
-    static_assert(endless, "Must supply 'end'");
-  }
-
-  Sequence(Value begin,
-           Value end)
-    : bounds_{std::move(begin), std::move(end)} {}
+  explicit Sequence(Value start, SequenceImpl impl)
+      : start_(std::move(start)), impl_(std::move(impl)) { }
 
   template<class Handler>
   bool apply(Handler&& handler) const {
-    Value value = bounds_[0];
-    for (;endless || value < bounds_[1]; ++value) {
-      const Value& arg = value;
-      if (!handler(arg)) {
-        return false;
-      }
-    }
-    if (endInclusive && value == bounds_[1]) {
-      const Value& arg = value;
-      if (!handler(arg)) {
+    for (Value current = start_; impl_.test(current); impl_.step(current)) {
+      if (!handler(current)) {
         return false;
       }
     }
@@ -232,18 +214,60 @@ public:
 
   template<class Body>
   void foreach(Body&& body) const {
-    Value value = bounds_[0];
-    for (;endless || value < bounds_[1]; ++value) {
-      const Value& arg = value;
-      body(arg);
-    }
-    if (endInclusive && value == bounds_[1]) {
-      const Value& arg = value;
-      body(arg);
+    for (Value current = start_; impl_.test(current); impl_.step(current)) {
+      body(current);
     }
   }
+};
 
-  static constexpr bool infinite = endless;
+/**
+ * Sequence implementations (range, sequence, infinite, with/without step)
+ **/
+template<class Value>
+class RangeImpl {
+  Value end_;
+ public:
+  explicit RangeImpl(Value end) : end_(std::move(end)) { }
+  bool test(const Value& current) const { return current < end_; }
+  void step(Value& current) const { ++current; }
+};
+
+template<class Value, class Distance>
+class RangeWithStepImpl {
+  Value end_;
+  Distance step_;
+ public:
+  explicit RangeWithStepImpl(Value end, Distance step)
+    : end_(std::move(end)), step_(std::move(step)) { }
+  bool test(const Value& current) const { return current < end_; }
+  void step(Value& current) const { current += step_; }
+};
+
+template<class Value>
+class SeqImpl {
+  Value end_;
+ public:
+  explicit SeqImpl(Value end) : end_(std::move(end)) { }
+  bool test(const Value& current) const { return current <= end_; }
+  void step(Value& current) const { ++current; }
+};
+
+template<class Value, class Distance>
+class SeqWithStepImpl {
+  Value end_;
+  Distance step_;
+ public:
+  explicit SeqWithStepImpl(Value end, Distance step)
+    : end_(std::move(end)), step_(std::move(step)) { }
+  bool test(const Value& current) const { return current <= end_; }
+  void step(Value& current) const { current += step_; }
+};
+
+template<class Value>
+class InfiniteImpl {
+ public:
+  bool test(const Value& current) const { return true; }
+  void step(Value& current) const { ++current; }
 };
 
 /**
