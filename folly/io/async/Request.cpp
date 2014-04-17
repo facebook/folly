@@ -26,7 +26,7 @@
 namespace folly {
 
 #ifdef NO_LIB_GFLAGS
-  bool FLAGS_enable_thrift_request_context = true;
+  bool FLAGS_enable_request_context = true;
 #endif
 
 RequestContext* defaultContext;
