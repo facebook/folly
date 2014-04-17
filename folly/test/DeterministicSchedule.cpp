@@ -25,8 +25,8 @@
 
 namespace folly { namespace test {
 
-__thread sem_t* DeterministicSchedule::tls_sem;
-__thread DeterministicSchedule* DeterministicSchedule::tls_sched;
+FOLLY_TLS sem_t* DeterministicSchedule::tls_sem;
+FOLLY_TLS DeterministicSchedule* DeterministicSchedule::tls_sched;
 
 // access is protected by futexLock
 static std::unordered_map<detail::Futex<DeterministicAtomic>*,
@@ -335,7 +335,8 @@ test::DeterministicAtomic<size_t>
     SequentialThreadId<test::DeterministicAtomic>::prevId(0);
 
 template<>
-__thread size_t SequentialThreadId<test::DeterministicAtomic>::currentId(0);
+FOLLY_TLS size_t
+    SequentialThreadId<test::DeterministicAtomic>::currentId(0);
 
 template<>
 const AccessSpreader<test::DeterministicAtomic>

@@ -169,7 +169,7 @@ struct StaticMeta {
   }
 
 #if !__APPLE__
-  static __thread ThreadEntry threadEntry_;
+  static FOLLY_TLS ThreadEntry threadEntry_;
 #endif
   static StaticMeta<Tag>* inst_;
 
@@ -412,7 +412,8 @@ struct StaticMeta {
 };
 
 #if !__APPLE__
-template <class Tag> __thread ThreadEntry StaticMeta<Tag>::threadEntry_ = {0};
+template <class Tag>
+FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_ = {0};
 #endif
 template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 

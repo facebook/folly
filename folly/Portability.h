@@ -95,6 +95,18 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # endif
 #endif
 
+/* Platform specific TLS support
+ * gcc implements __thread
+ * msvc implements __declspec(thread)
+ * the semantics are the same (but remember __thread is broken on apple)
+ */
+#if defined(_MSC_VER)
+# define FOLLY_TLS __declspec(thread)
+#elif defined(__GNUC__) || defined(__clang__)
+# define FOLLY_TLS __thread
+#else
+# error cannot define platform specific thread local storage
+#endif
 
 // Define to 1 if you have the `preadv' and `pwritev' functions, respectively
 #if !defined(FOLLY_HAVE_PREADV) && !defined(FOLLY_HAVE_PWRITEV)

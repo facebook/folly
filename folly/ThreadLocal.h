@@ -128,7 +128,8 @@ class ThreadLocal {
  * NOTE: Apple platforms don't support the same semantics for __thread that
  *       Linux does (and it's only supported at all on i386). For these, use
  *       pthread_setspecific()/pthread_getspecific() for the per-thread
- *       storage.
+ *       storage.  Windows (MSVC and GCC) does support the same semantics
+ *       with __declspec(thread)
  */
 
 template<class T, class Tag=void>

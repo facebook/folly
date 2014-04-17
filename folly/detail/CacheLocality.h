@@ -26,6 +26,7 @@
 #include <type_traits>
 #include <vector>
 #include "folly/Likely.h"
+#include "folly/Portability.h"
 
 namespace folly { namespace detail {
 
@@ -172,8 +173,7 @@ struct SequentialThreadId {
  private:
   static Atom<size_t> prevId;
 
-  // TODO: switch to thread_local
-  static __thread size_t currentId;
+  static FOLLY_TLS size_t currentId;
 };
 
 template <template<typename> class Atom, size_t kMaxCpus>

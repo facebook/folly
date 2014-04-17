@@ -129,8 +129,8 @@ class DeterministicSchedule : boost::noncopyable {
   static int getRandNumber(int n);
 
  private:
-  static __thread sem_t* tls_sem;
-  static __thread DeterministicSchedule* tls_sched;
+  static FOLLY_TLS sem_t* tls_sem;
+  static FOLLY_TLS DeterministicSchedule* tls_sched;
 
   std::function<int(int)> scheduler_;
   std::vector<sem_t*> sems_;

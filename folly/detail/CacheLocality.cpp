@@ -230,7 +230,7 @@ template<>
 std::atomic<size_t> SequentialThreadId<std::atomic>::prevId(0);
 
 template<>
-__thread size_t SequentialThreadId<std::atomic>::currentId(0);
+FOLLY_TLS size_t SequentialThreadId<std::atomic>::currentId(0);
 
 /////////////// AccessSpreader
 

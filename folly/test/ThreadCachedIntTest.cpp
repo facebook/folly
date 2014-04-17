@@ -152,8 +152,8 @@ ThreadLocal<int64_t> globalTL64Baseline;
 ThreadLocal<int32_t> globalTL32Baseline;
 std::atomic<int64_t> globalInt64Baseline(0);
 std::atomic<int32_t> globalInt32Baseline(0);
-__thread int64_t global__thread64;
-__thread int32_t global__thread32;
+FOLLY_TLS int64_t global__thread64;
+FOLLY_TLS int32_t global__thread32;
 
 // Alternate lock-free implementation.  Achieves about the same performance,
 // but uses about 20x more memory than ThreadCachedInt with 24 threads.

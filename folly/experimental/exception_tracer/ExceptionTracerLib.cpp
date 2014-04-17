@@ -42,9 +42,9 @@ using namespace folly::exception_tracer;
 
 namespace {
 
-__thread bool invalid;
-__thread StackTraceStack activeExceptions;
-__thread StackTraceStack caughtExceptions;
+FOLLY_TLS bool invalid;
+FOLLY_TLS StackTraceStack activeExceptions;
+FOLLY_TLS StackTraceStack caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
