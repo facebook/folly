@@ -882,7 +882,7 @@ folly::fbvector<struct iovec> IOBuf::getIov() const {
   do {
     // some code can get confused by empty iovs, so skip them
     if (p->length() > 0) {
-      iov.push_back({(void*)p->data(), p->length()});
+      iov.push_back({(void*)p->data(), folly::to<size_t>(p->length())});
     }
     p = p->next();
   } while (p != this);
