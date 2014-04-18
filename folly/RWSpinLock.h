@@ -106,6 +106,8 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 
 */
 
+#include "folly/Portability.h"
+
 #if defined(__GNUC__) && !defined(__clang__) && \
   (defined(__i386) || FOLLY_X64 || \
    defined(ARCH_K8))
