@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include "folly/experimental/symbolizer/StackTrace.h"
+
 // Must be first to ensure that UNW_LOCAL_ONLY is defined
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
-
-#include "folly/experimental/symbolizer/StackTrace.h"
 
 namespace folly { namespace symbolizer {
 
