@@ -121,7 +121,7 @@ struct Bytes : private boost::noncopyable {
     // Compare a byte at a time. Note - I measured compared this with
     // going multiple bytes at a time (8, 4, 2 and 1). It turns out
     // to be 20 - 25% slower for 4 and 16 byte arrays.
-    while (byteIndex * 8 <= mask && one[byteIndex] == two[byteIndex]) {
+    while (byteIndex * 8 < mask && one[byteIndex] == two[byteIndex]) {
       ba[byteIndex] = one[byteIndex];
       ++byteIndex;
     }
