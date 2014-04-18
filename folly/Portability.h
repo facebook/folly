@@ -72,6 +72,13 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_ALWAYS_INLINE
 #endif
 
+// detection for 64 bit
+#if defined(__x86_64__) || defined(_M_X64)
+# define FOLLY_X64 1
+#else
+# define FOLLY_X64 0
+#endif
+
 // portable version check
 #ifndef __GNUC_PREREQ
 # if defined __GNUC__ && defined __GNUC_MINOR__

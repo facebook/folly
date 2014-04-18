@@ -21,7 +21,9 @@
 #error GroupVarint.h requires GCC
 #endif
 
-#if defined(__x86_64__) || defined(__i386__)
+#include "folly/Portability.h"
+
+#if FOLLY_X64 || defined(__i386__)
 #define HAVE_GROUP_VARINT 1
 
 #include <cstdint>
@@ -607,6 +609,6 @@ typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
 
 }  // namespace folly
 
-#endif /* defined(__x86_64__) || defined(__i386__) */
+#endif /* FOLLY_X64 || defined(__i386__) */
 #endif /* FOLLY_GROUPVARINT_H_ */
 

@@ -52,7 +52,9 @@ OUTPUT_FILE = "GroupVarintTables.cpp"
 
 def generate(f):
     f.write("""
-#if defined(__x86_64__) || defined(__i386__)
+#include "folly/Portability.h"
+
+#if FOLLY_X64 || defined(__i386__)
 #include <stdint.h>
 #include <x86intrin.h>
 
@@ -96,7 +98,7 @@ extern const __m128i groupVarintSSEMasks[] = {
 
 }  // namespace detail
 }  // namespace folly
-#endif /* defined(__x86_64__) || defined(__i386__) */
+#endif /* FOLLY_X64 || defined(__i386__) */
 """)
 
 def main():

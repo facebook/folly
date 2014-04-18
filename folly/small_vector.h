@@ -48,7 +48,7 @@
 
 #include "folly/Malloc.h"
 
-#if defined(__GNUC__) && defined(__x86_64__)
+#if defined(__GNUC__) && FOLLY_X64
 # include "folly/SmallLocks.h"
 # define FB_PACKED __attribute__((packed))
 #else
@@ -268,7 +268,7 @@ namespace detail {
     SizeType size_;
   };
 
-#ifdef __x86_64__
+#if FOLLY_X64
   template<class SizeType, bool ShouldUseHeap>
   struct OneBitMutexImpl {
     typedef SizeType InternalSizeType;
@@ -1100,7 +1100,7 @@ private:
     }
   } FB_PACKED;
 
-#if defined(__x86_64_)
+#if FOLLY_X64
   typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<

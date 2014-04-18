@@ -135,7 +135,7 @@ struct Baton : boost::noncopyable {
         return;
       }
       assert(before == INIT);
-#ifdef __x86_64__
+#if FOLLY_X64
       // The pause instruction is the polite way to spin, but it doesn't
       // actually affect correctness to omit it if we don't have it.
       // Pausing donates the full capabilities of the current core to

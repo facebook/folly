@@ -17,7 +17,9 @@
 #ifndef FOLLY_PACKEDSYNCPTR_H_
 #define FOLLY_PACKEDSYNCPTR_H_
 
-#ifndef __x86_64__
+#include "folly/Portability.h"
+
+#if !FOLLY_X64
 # error "PackedSyncPtr is x64-specific code."
 #endif
 

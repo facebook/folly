@@ -19,7 +19,7 @@
 // Note: no include guard; different -inl.h files include this and
 // undef it more than once in a translation unit.
 
-#if !(defined(__x86__) || defined(__i386__) || defined(__x86_64__))
+#if !(defined(__x86__) || defined(__i386__) || FOLLY_X64)
 #define FOLLY_SPIN_WAIT(condition)                \
    for (int counter = 0; condition; ++counter) {  \
      if (counter < 10000) continue;               \

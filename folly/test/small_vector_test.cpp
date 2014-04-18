@@ -29,7 +29,7 @@
 using folly::small_vector;
 using namespace folly::small_vector_policy;
 
-#if defined(__x86_64__)
+#if FOLLY_X64
 
 static_assert(sizeof(small_vector<int>) == 16,
               "Object size is not what we expect for small_vector<int>");
@@ -602,14 +602,14 @@ TEST(small_vector, AllHeap) {
 
 TEST(small_vector, Basic) {
   typedef folly::small_vector<int,3,uint32_t
-#ifdef __x86_64__
+#if FOLLY_X64
     ,OneBitMutex
 #endif
   > Vector;
 
   Vector a;
 
-#ifdef __x86_64__
+#if FOLLY_X64
   a.lock();
   a.unlock();
 #endif

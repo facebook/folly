@@ -28,7 +28,7 @@
 #error EliasFanoCoding.h requires GCC
 #endif
 
-#if !defined(__x86_64__)
+#if !FOLLY_X64
 #error EliasFanoCoding.h requires x86_64
 #endif
 

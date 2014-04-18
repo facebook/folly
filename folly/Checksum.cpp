@@ -24,7 +24,7 @@ namespace folly {
 
 namespace detail {
 
-#if defined(__x86_64__) && defined(__GNUC__) && defined(__GNUC_MINOR__) && \
+#if FOLLY_X64 && defined(__GNUC__) && defined(__GNUC_MINOR__) && \
     (((__GNUC__ * 100) + __GNUC_MINOR__) >= 407)
 
 // Fast SIMD implementation of CRC-32C for x86 with SSE 4.2

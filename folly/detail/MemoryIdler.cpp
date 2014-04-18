@@ -87,7 +87,7 @@ void MemoryIdler::flushLocalMallocCaches() {
 }
 
 
-#ifdef __x86_64__
+#if FOLLY_X64
 
 static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
 static FOLLY_TLS uintptr_t tls_stackLimit;

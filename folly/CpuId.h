@@ -18,6 +18,7 @@
 #define FOLLY_CPUID_H_
 
 #include <cstdint>
+#include "folly/Portability.h"
 
 namespace folly {
 
@@ -29,7 +30,7 @@ namespace folly {
 class CpuId {
  public:
   CpuId() {
-#if defined(__x86_64__) || defined(__i386__)
+#if FOLLY_X64 || defined(__i386__)
     __asm__("cpuid" : "=c"(c_), "=d"(d_) : "a"(1) : "ebx");
 #else
     // On non-Intel, none of these features exist; at least not in the same form
