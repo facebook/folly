@@ -32,8 +32,7 @@ TEST(Symbolizer, Single) {
   Symbolizer symbolizer;
   SymbolizedFrame a;
   ASSERT_TRUE(symbolizer.symbolize(reinterpret_cast<uintptr_t>(foo), a));
-  EXPECT_EQ("folly::symbolizer::test::foo()",
-            demangle(a.name.str().c_str()));
+  EXPECT_EQ("folly::symbolizer::test::foo()", a.demangledName());
 
   auto path = a.location.file.toString();
   folly::StringPiece basename(path);
@@ -80,14 +79,12 @@ void ElfCacheTest::SetUp() {
 void runElfCacheTest(Symbolizer& symbolizer) {
   FrameArray<100> frames = goldenFrames;
   for (size_t i = 0; i < frames.frameCount; ++i) {
-    auto& f = frames.frames[i];
-    f.found = false;
-    f.name.clear();
+    frames.frames[i].clear();
   }
   symbolizer.symbolize(frames);
   ASSERT_LE(4, frames.frameCount);
   for (size_t i = 1; i < 4; ++i) {
-    EXPECT_EQ(goldenFrames.frames[i].name, frames.frames[i].name);
+    EXPECT_STREQ(goldenFrames.frames[i].name, frames.frames[i].name);
   }
 }
 

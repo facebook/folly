@@ -38,21 +38,21 @@ class Symbolizer;
  * Frame information: symbol name and location.
  */
 struct SymbolizedFrame {
-  SymbolizedFrame() : found(false) { }
+  SymbolizedFrame() : found(false), name(nullptr) { }
 
   void set(const std::shared_ptr<ElfFile>& file, uintptr_t address);
   void clear() { *this = SymbolizedFrame(); }
 
   bool isSignalFrame;
   bool found;
-  StringPiece name;
+  const char* name;
   Dwarf::LocationInfo location;
 
   /**
    * Demangle the name and return it. Not async-signal-safe; allocates memory.
    */
   fbstring demangledName() const {
-    return demangle(name.fbstr().c_str());
+    return name ? demangle(name) : fbstring();
   }
  private:
   std::shared_ptr<ElfFile> file_;

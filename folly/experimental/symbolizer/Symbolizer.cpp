@@ -172,10 +172,7 @@ void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
   }
 
   file_ = file;
-  auto name = file->getSymbolName(sym);
-  if (name) {
-    this->name = name;
-  }
+  name = file->getSymbolName(sym);
 
   Dwarf(file.get()).findAddress(address, location);
 }
@@ -306,25 +303,18 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
                          sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
 
   color(kFunctionColor);
-  char mangledBuf[1024];
   if (!frame.found) {
     doPrint(" (not found)");
     return;
   }
 
-  if (frame.name.empty()) {
+  if (!frame.name || frame.name[0] == '\0') {
     doPrint(" (unknown)");
-  } else if (frame.name.size() >= sizeof(mangledBuf)) {
-    doPrint(" ");
-    doPrint(frame.name);
   } else {
-    memcpy(mangledBuf, frame.name.data(), frame.name.size());
-    mangledBuf[frame.name.size()] = '\0';
-
     char demangledBuf[1024];
-    demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
+    demangle(frame.name, demangledBuf, sizeof(demangledBuf));
     doPrint(" ");
-    doPrint(demangledBuf);
+    doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
   }
 
   if (!(options_ & NO_FILE_AND_LINE)) {
@@ -392,14 +382,10 @@ void SymbolizePrinter::println(uintptr_t address,
 
 void SymbolizePrinter::printTerse(uintptr_t address,
                                   const SymbolizedFrame& frame) {
-  if (frame.found) {
-    char mangledBuf[1024];
-    memcpy(mangledBuf, frame.name.data(), frame.name.size());
-    mangledBuf[frame.name.size()] = '\0';
-
+  if (frame.found && frame.name && frame.name[0] != '\0') {
     char demangledBuf[1024] = {0};
-    demangle(mangledBuf, demangledBuf, sizeof(demangledBuf));
-    doPrint(strlen(demangledBuf) == 0 ? "(unknown)" : demangledBuf);
+    demangle(frame.name, demangledBuf, sizeof(demangledBuf));
+    doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
   } else {
     // Can't use sprintf, not async-signal-safe
     static_assert(sizeof(uintptr_t) <= 8, "huge uintptr_t?");
