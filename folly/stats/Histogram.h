@@ -238,6 +238,14 @@ class Histogram {
     bucket.count += 1;
   }
 
+  /* Add multiple same data points to the histogram */
+  void addRepeatedValue(ValueType value, uint64_t nSamples) {
+    Bucket& bucket = buckets_.getByValue(value);
+    // TODO: It would be nice to handle overflow here.
+    bucket.sum += value * nSamples;
+    bucket.count += nSamples;
+  }
+
   /*
    * Remove a data point to the histogram
    *
@@ -248,8 +256,26 @@ class Histogram {
   void removeValue(ValueType value) {
     Bucket& bucket = buckets_.getByValue(value);
     // TODO: It would be nice to handle overflow here.
-    bucket.sum -= value;
-    bucket.count -= 1;
+    if (bucket.count > 0) {
+      bucket.sum -= value;
+      bucket.count -= 1;
+    } else {
+      bucket.sum = ValueType();
+      bucket.count = 0;
+    }
+  }
+
+  /* Remove multiple same data points from the histogram */
+  void removeRepeatedValue(ValueType value, uint64_t nSamples) {
+    Bucket& bucket = buckets_.getByValue(value);
+    // TODO: It would be nice to handle overflow here.
+    if (bucket.count >= nSamples) {
+      bucket.sum -= value * nSamples;
+      bucket.count -= nSamples;
+    } else {
+      bucket.sum = ValueType();
+      bucket.count = 0;
+    }
   }
 
   /* Remove all data points from the histogram */
