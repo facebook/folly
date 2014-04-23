@@ -124,8 +124,8 @@ void Promise<T>::setValue() {
 
 template <class T>
 template <class F>
-void Promise<T>::fulfil(const F& func) {
-  fulfilHelper(func);
+void Promise<T>::fulfil(F&& func) {
+  fulfilHelper(std::forward<F>(func));
 }
 
 template <class T>
@@ -133,7 +133,7 @@ template <class F>
 typename std::enable_if<
   std::is_convertible<typename std::result_of<F()>::type, T>::value &&
   !std::is_same<T, void>::value>::type
-inline Promise<T>::fulfilHelper(const F& func) {
+inline Promise<T>::fulfilHelper(F&& func) {
   throwIfFulfilled();
   try {
     setValue(func());
@@ -147,7 +147,7 @@ template <class F>
 typename std::enable_if<
   std::is_same<typename std::result_of<F()>::type, void>::value &&
   std::is_same<T, void>::value>::type
-inline Promise<T>::fulfilHelper(const F& func) {
+inline Promise<T>::fulfilHelper(F&& func) {
   throwIfFulfilled();
   try {
     func();

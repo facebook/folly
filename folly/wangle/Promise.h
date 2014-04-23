@@ -73,7 +73,7 @@ public:
     p.fulfil([] { do something that may throw; return a T; });
   */
   template <class F>
-  void fulfil(const F& func);
+  void fulfil(F&& func);
 
 private:
   typedef typename Future<T>::objPtr objPtr;
@@ -91,13 +91,13 @@ private:
   typename std::enable_if<
     std::is_convertible<typename std::result_of<F()>::type, T>::value &&
     !std::is_same<T, void>::value>::type
-  fulfilHelper(const F& func);
+  fulfilHelper(F&& func);
 
   template <class F>
   typename std::enable_if<
     std::is_same<typename std::result_of<F()>::type, void>::value &&
     std::is_same<T, void>::value>::type
-  fulfilHelper(const F& func);
+  fulfilHelper(F&& func);
 };
 
 }}
