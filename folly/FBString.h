@@ -63,8 +63,10 @@
 #include <type_traits>
 #include <algorithm>
 
-// libc++ doesn't provide this header
-#ifndef _LIBCPP_VERSION
+#include "folly/Portability.h"
+
+// libc++ doesn't provide this header, nor does msvc
+#ifdef FOLLY_HAVE_BITS_CXXCONFIG_H
 // This file appears in two locations: inside fbcode and in the
 // libstdc++ source code (when embedding fbstring as std::string).
 // To aid in this schizophrenic use, two macros are defined in
