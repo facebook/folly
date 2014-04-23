@@ -29,7 +29,7 @@
           that do not support clock_gettime(2).
 #endif
 
-typedef uint8_t clockid_t;
+typedef __clockid_t clockid_t;
 #define CLOCK_REALTIME 0
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts);
