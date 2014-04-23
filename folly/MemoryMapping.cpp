@@ -37,6 +37,14 @@ MemoryMapping::MemoryMapping()
   , locked_(false) {
 }
 
+MemoryMapping::MemoryMapping(MemoryMapping&& other)
+  : mapStart_(nullptr)
+  , mapLength_(0)
+  , pageSize_(0)
+  , locked_(false) {
+  swap(other);
+}
+
 MemoryMapping::MemoryMapping(File file, off_t offset, off_t length,
                              off_t pageSize)
   : mapStart_(nullptr)
@@ -229,9 +237,26 @@ void MemoryMapping::advise(int advice) const {
   }
 }
 
+MemoryMapping& MemoryMapping::operator=(MemoryMapping other) {
+  swap(other);
+  return *this;
+}
+
+void MemoryMapping::swap(MemoryMapping& other) {
+  using std::swap;
+  swap(this->file_, other.file_);
+  swap(this->mapStart_, other.mapStart_);
+  swap(this->mapLength_, other.mapLength_);
+  swap(this->pageSize_, other.pageSize_);
+  swap(this->locked_, other.locked_);
+  swap(this->data_, other.data_);
+}
+
 WritableMemoryMapping::WritableMemoryMapping(
     File file, off_t offset, off_t length, off_t pageSize) {
   init(std::move(file), offset, length, pageSize, PROT_READ | PROT_WRITE, true);
 }
+
+void swap(MemoryMapping& a, MemoryMapping& b) { a.swap(b); }
 
 }  // namespace folly

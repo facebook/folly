@@ -67,7 +67,13 @@ class MemoryMapping : boost::noncopyable {
                          off_t length=-1,
                          off_t pageSize=0);
 
+  MemoryMapping(MemoryMapping&&);
+
   virtual ~MemoryMapping();
+
+  MemoryMapping& operator=(MemoryMapping);
+
+  void swap(MemoryMapping& other);
 
   /**
    * Lock the pages in memory
@@ -79,7 +85,7 @@ class MemoryMapping : boost::noncopyable {
    * If dontneed is true, the kernel is instructed to release these pages
    * (per madvise(MADV_DONTNEED)).
    */
-  void munlock(bool dontneed=false);
+  void munlock(bool dontneed = false);
 
   /**
    * Hint that these pages will be scanned linearly.
@@ -171,6 +177,8 @@ class WritableMemoryMapping : public MemoryMapping {
     return data_;
   }
 };
+
+void swap(MemoryMapping&, MemoryMapping&);
 
 }  // namespace folly
 
