@@ -524,6 +524,7 @@ template <class T, class Enable=void> struct Unaligned;
 /**
  * Representation of an unaligned value of a POD type.
  */
+FOLLY_PACK_PUSH
 template <class T>
 struct Unaligned<
     T,
@@ -531,7 +532,8 @@ struct Unaligned<
   Unaligned() = default;  // uninitialized
   /* implicit */ Unaligned(T v) : value(v) { }
   T value;
-} __attribute__((packed));
+} FOLLY_PACK_ATTR;
+FOLLY_PACK_POP
 
 /**
  * Read an unaligned value of type T and return it.

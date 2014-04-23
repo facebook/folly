@@ -79,6 +79,21 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_X64 0
 #endif
 
+// packing is very ugly in msvc
+#ifdef _MSC_VER
+# define FOLLY_PACK_ATTR /**/
+# define FOLLY_PACK_PUSH __pragma(pack(push, 1))
+# define FOLLY_PACK_POP __pragma(pack(pop))
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_PACK_ATTR __attribute__((packed))
+# define FOLLY_PACK_PUSH /**/
+# define FOLLY_PACK_POP /**/
+#else
+# define FOLLY_PACK_ATTR /**/
+# define FOLLY_PACK_PUSH /**/
+# define FOLLY_PACK_POP /**/
+#endif
+
 // portable version check
 #ifndef __GNUC_PREREQ
 # if defined __GNUC__ && defined __GNUC_MINOR__

@@ -28,7 +28,9 @@ namespace {
 
 // Compile time check for packability.  This requires that
 // PackedSyncPtr is a POD struct on gcc.
-struct ignore { PackedSyncPtr<int> foo; char c; } __attribute__((packed));
+FOLLY_PACK_PUSH
+struct ignore { PackedSyncPtr<int> foo; char c; } FOLLY_PACK_ATTR;
+FOLLY_PACK_POP
 static_assert(sizeof(ignore) == 9, "PackedSyncPtr wasn't packable");
 
 }

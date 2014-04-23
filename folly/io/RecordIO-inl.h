@@ -61,6 +61,7 @@ namespace recordio_helpers {
 
 namespace detail {
 
+FOLLY_PACK_PUSH
 struct Header {
   // First 4 bytes of SHA1("zuck"), big-endian
   // Any values will do, except that the sequence must not have a
@@ -75,7 +76,8 @@ struct Header {
   uint32_t dataLength;
   uint64_t dataHash;
   uint32_t headerHash;  // must be last
-} __attribute__((packed));
+} FOLLY_PACK_ATTR;
+FOLLY_PACK_POP
 
 static_assert(offsetof(Header, headerHash) + sizeof(Header::headerHash) ==
               sizeof(Header), "invalid header layout");

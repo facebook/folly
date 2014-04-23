@@ -46,11 +46,13 @@ struct LockedVal {
 
 // Compile time test for packed struct support (requires that both of
 // these classes are POD).
-struct ignore1 { MicroSpinLock msl; int16_t foo; } __attribute__((packed));
+FOLLY_PACK_PUSH
+struct ignore1 { MicroSpinLock msl; int16_t foo; } FOLLY_PACK_ATTR;
 struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; }
-  __attribute__((packed));
+  FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore1) == 3, "Size check failed");
 static_assert(sizeof(ignore2) == 6, "Size check failed");
+FOLLY_PACK_POP
 
 LockedVal v;
 void splock_test() {

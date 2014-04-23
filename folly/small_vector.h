@@ -50,9 +50,13 @@
 
 #if defined(__GNUC__) && FOLLY_X64
 # include "folly/SmallLocks.h"
-# define FB_PACKED __attribute__((packed))
+# define FB_PACK_ATTR FOLLY_PACK_ATTR
+# define FB_PACK_PUSH FOLLY_PACK_PUSH
+# define FB_PACK_POP FOLLY_PACK_POP
 #else
-# define FB_PACKED
+# define FB_PACK_ATTR
+# define FB_PACK_PUSH
+# define FB_PACK_POP
 #endif
 
 #if FOLLY_HAVE_MALLOC_SIZE
@@ -427,7 +431,7 @@ namespace detail {
 }
 
 //////////////////////////////////////////////////////////////////////
-
+FB_PACK_PUSH
 template<class Value,
          std::size_t RequestedMaxInline    = 1,
          class PolicyA                     = void,
@@ -1086,7 +1090,7 @@ private:
     InternalSizeType* getCapacity() {
       return &capacity_;
     }
-  } FB_PACKED;
+  } FB_PACK_ATTR;
 
   struct HeapPtr {
     // Lower order bit of heap_ is used as flag to indicate whether capacity is
@@ -1098,7 +1102,7 @@ private:
       return static_cast<InternalSizeType*>(
         detail::pointerFlagClear(heap_));
     }
-  } FB_PACKED;
+  } FB_PACK_ATTR;
 
 #if FOLLY_X64
   typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
@@ -1167,8 +1171,9 @@ private:
       auto vp = detail::pointerFlagClear(pdata_.heap_);
       free(vp);
     }
-  } FB_PACKED u;
-} FB_PACKED;
+  } FB_PACK_ATTR u;
+} FB_PACK_ATTR;
+FB_PACK_POP
 
 //////////////////////////////////////////////////////////////////////
 
@@ -1186,8 +1191,10 @@ void swap(small_vector<T,MaxInline,A,B,C>& a,
 
 #pragma GCC diagnostic pop
 
-#ifdef FB_PACKED
-# undef FB_PACKED
+#ifdef FB_PACK_ATTR
+# undef FB_PACK_ATTR
+# undef FB_PACK_PUSH
+# undef FB_PACK_POP
 #endif
 
 #endif
