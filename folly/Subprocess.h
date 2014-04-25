@@ -341,12 +341,15 @@ class Subprocess : private boost::noncopyable {
    * If stdout or stderr is not a pipe, an empty IOBuf queue will be returned
    * for the respective buffer.
    *
-   * Note that communicate() returns when all pipes to/from the child are
-   * closed; the child might stay alive after that, so you must still wait().
+   * Note that communicate() and communicateIOBuf() both return when all
+   * pipes to/from the child are closed; the child might stay alive after
+   * that, so you must still wait().
    *
-   * communicateIOBuf uses IOBufQueue for buffering (which has the advantage
-   * that it won't try to allocate all data at once).  communicate
-   * uses strings for simplicity.
+   * communicateIOBuf() uses IOBufQueue for buffering (which has the
+   * advantage that it won't try to allocate all data at once), but it does
+   * store the subprocess's entire output in memory before returning.
+   *
+   * communicate() uses strings for simplicity.
    */
   std::pair<IOBufQueue, IOBufQueue> communicateIOBuf(
       IOBufQueue input = IOBufQueue());
