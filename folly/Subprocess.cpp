@@ -39,7 +39,6 @@
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
-#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
