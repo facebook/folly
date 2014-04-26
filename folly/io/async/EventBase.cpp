@@ -20,6 +20,7 @@
 
 #include "folly/io/async/EventBase.h"
 
+#include "folly/ThreadName.h"
 #include "folly/io/async/NotificationQueue.h"
 
 #include <boost/static_assert.hpp>
@@ -242,11 +243,9 @@ bool EventBase::loopBody(bool once) {
 
   loopThread_.store(pthread_self(), std::memory_order_release);
 
-#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 12)
   if (!name_.empty()) {
-    pthread_setname_np(pthread_self(), name_.c_str());
+    setThreadName(name_);
   }
-#endif
 
   auto prev = std::chrono::steady_clock::now();
   int64_t idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -672,12 +671,11 @@ void EventBase::cancelTimeout(AsyncTimeout* obj) {
 void EventBase::setName(const std::string& name) {
   assert(isInEventBaseThread());
   name_ = name;
-#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 12)
+
   if (isRunning()) {
-    pthread_setname_np(loopThread_.load(std::memory_order_relaxed),
-                       name_.c_str());
+    setThreadName(loopThread_.load(std::memory_order_relaxed),
+                  name_);
   }
-#endif
 }
 
 const std::string& EventBase::getName() {
