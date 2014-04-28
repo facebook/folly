@@ -25,6 +25,10 @@
 #include <folly/AtomicStruct.h>
 #include <folly/detail/CacheLocality.h>
 
+// Ignore shadowing warnings within this file, so includers can use -Wshadow.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+
 namespace folly {
 
 namespace detail {
@@ -424,4 +428,5 @@ struct IndexedMemPoolRecycler {
 
 } // namespace folly
 
+# pragma GCC diagnostic pop
 #endif

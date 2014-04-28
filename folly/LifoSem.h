@@ -265,11 +265,11 @@ class LifoSemHead {
   }
 
   /// Returns the LifoSemHead that results from pushing a new waiter node
-  inline LifoSemHead withPush(uint32_t idx) const {
+  inline LifoSemHead withPush(uint32_t _idx) const {
     assert(isNodeIdx() || value() == 0);
     assert(!isShutdown());
-    assert(idx != 0);
-    return LifoSemHead{ (bits & SeqMask) | IsNodeIdxMask | idx };
+    assert(_idx != 0);
+    return LifoSemHead{ (bits & SeqMask) | IsNodeIdxMask | _idx };
   }
 
   /// Returns the LifoSemHead with value increased by delta, with
