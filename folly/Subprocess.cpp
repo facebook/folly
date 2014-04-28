@@ -576,10 +576,7 @@ bool handleWrite(int fd, IOBufQueue& queue) {
       return true;  // EOF
     }
 
-    ssize_t n;
-    do {
-      n = ::write(fd, p.first, p.second);
-    } while (n == -1 && errno == EINTR);
+    ssize_t n = writeNoInt(fd, p.first, p.second);
     if (n == -1 && errno == EAGAIN) {
       return false;
     }
@@ -592,10 +589,7 @@ bool handleWrite(int fd, IOBufQueue& queue) {
 bool handleRead(int fd, IOBufQueue& queue) {
   for (;;) {
     auto p = queue.preallocate(100, 65000);
-    ssize_t n;
-    do {
-      n = ::read(fd, p.first, p.second);
-    } while (n == -1 && errno == EINTR);
+    ssize_t n = readNoInt(fd, p.first, p.second);
     if (n == -1 && errno == EAGAIN) {
       return false;
     }
@@ -613,10 +607,7 @@ bool discardRead(int fd) {
   static std::unique_ptr<char[]> buf(new char[bufSize]);
 
   for (;;) {
-    ssize_t n;
-    do {
-      n = ::read(fd, buf.get(), bufSize);
-    } while (n == -1 && errno == EINTR);
+    ssize_t n = readNoInt(fd, buf.get(), bufSize);
     if (n == -1 && errno == EAGAIN) {
       return false;
     }
