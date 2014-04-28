@@ -17,6 +17,7 @@
 #ifndef FOLLY_BASE_RANDOM_H_
 #define FOLLY_BASE_RANDOM_H_
 
+#include <random>
 #include <stdint.h>
 #include "folly/ThreadLocal.h"
 
