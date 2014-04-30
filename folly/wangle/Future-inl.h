@@ -44,11 +44,7 @@ Future<T>& Future<T>::operator=(Future<T>&& other) {
 template <class T>
 Future<T>::~Future() {
   if (obj_) {
-    if (obj_->ready()) {
-      delete obj_;
-    } else {
-      setContinuation([](Try<T>&&) {}); // detach
-    }
+    setContinuation([](Try<T>&&) {}); // detach
   }
 }
 
