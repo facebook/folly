@@ -258,6 +258,31 @@ Formatter<true, Container> vformatChecked(StringPiece fmt,
 }
 
 /**
+ * Wrap a sequence or associative container so that out-of-range lookups
+ * return a default value rather than throwing an exception.
+ *
+ * Usage:
+ * format("[no_such_key"], defaulted(map, 42))  -> 42
+ */
+namespace detail {
+template <class Container, class Value> struct DefaultValueWrapper {
+  DefaultValueWrapper(const Container& container, const Value& defaultValue)
+    : container(container),
+      defaultValue(defaultValue) {
+  }
+
+  const Container& container;
+  const Value& defaultValue;
+};
+}  // namespace
+
+template <class Container, class Value>
+detail::DefaultValueWrapper<Container, Value>
+defaulted(const Container& c, const Value& v) {
+  return detail::DefaultValueWrapper<Container, Value>(c, v);
+}
+
+/**
  * Append formatted output to a string.
  *
  * std::string foo;

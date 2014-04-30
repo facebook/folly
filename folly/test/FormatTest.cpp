@@ -135,6 +135,12 @@ TEST(Format, Simple) {
   const std::vector<int> v2 = v1;
   EXPECT_EQ("0020", fstr("{0[1]:04}", v2));
   EXPECT_EQ("0020", vstr("{1:04}", v2));
+  EXPECT_THROW(fstr("{0[3]:04}", v2), std::out_of_range);
+  EXPECT_THROW(vstr("{3:04}", v2), std::out_of_range);
+  EXPECT_EQ("0020", fstr("{0[1]:04}", defaulted(v2, 42)));
+  EXPECT_EQ("0020", vstr("{1:04}", defaulted(v2, 42)));
+  EXPECT_EQ("0042", fstr("{0[3]:04}", defaulted(v2, 42)));
+  EXPECT_EQ("0042", vstr("{3:04}", defaulted(v2, 42)));
 
   const int p[] = {10, 20, 30};
   const int* q = p;
@@ -154,10 +160,22 @@ TEST(Format, Simple) {
   std::map<int, std::string> m { {10, "hello"}, {20, "world"} };
   EXPECT_EQ("worldXX", fstr("{[20]:X<7}", m));
   EXPECT_EQ("worldXX", vstr("{20:X<7}", m));
+  EXPECT_THROW(fstr("{[42]:X<7}", m), std::out_of_range);
+  EXPECT_THROW(vstr("{42:X<7}", m), std::out_of_range);
+  EXPECT_EQ("worldXX", fstr("{[20]:X<7}", defaulted(m, "meow")));
+  EXPECT_EQ("worldXX", vstr("{20:X<7}", defaulted(m, "meow")));
+  EXPECT_EQ("meowXXX", fstr("{[42]:X<7}", defaulted(m, "meow")));
+  EXPECT_EQ("meowXXX", vstr("{42:X<7}", defaulted(m, "meow")));
 
   std::map<std::string, std::string> m2 { {"hello", "world"} };
   EXPECT_EQ("worldXX", fstr("{[hello]:X<7}", m2));
   EXPECT_EQ("worldXX", vstr("{hello:X<7}", m2));
+  EXPECT_THROW(fstr("{[none]:X<7}", m2), std::out_of_range);
+  EXPECT_THROW(vstr("{none:X<7}", m2), std::out_of_range);
+  EXPECT_EQ("worldXX", fstr("{[hello]:X<7}", defaulted(m2, "meow")));
+  EXPECT_EQ("worldXX", vstr("{hello:X<7}", defaulted(m2, "meow")));
+  EXPECT_EQ("meowXXX", fstr("{[none]:X<7}", defaulted(m2, "meow")));
+  EXPECT_EQ("meowXXX", vstr("{none:X<7}", defaulted(m2, "meow")));
 
   // Test indexing in strings
   EXPECT_EQ("61 62", fstr("{0[0]:x} {0[1]:x}", "abcde"));
@@ -260,7 +278,20 @@ TEST(Format, dynamic) {
       "}");
 
   EXPECT_EQ("world", fstr("{0[hello]}", dyn));
+  EXPECT_THROW(fstr("{0[none]}", dyn), std::out_of_range);
+  EXPECT_EQ("world", fstr("{0[hello]}", defaulted(dyn, "meow")));
+  EXPECT_EQ("meow", fstr("{0[none]}", defaulted(dyn, "meow")));
+
   EXPECT_EQ("20", fstr("{0[x.0]}", dyn));
+  EXPECT_THROW(fstr("{0[x.2]}", dyn), std::out_of_range);
+
+  // No support for "deep" defaulting (dyn["x"] is not defaulted)
+  auto v = dyn.at("x");
+  EXPECT_EQ("20", fstr("{0[0]}", v));
+  EXPECT_THROW(fstr("{0[2]}", v), std::out_of_range);
+  EXPECT_EQ("20", fstr("{0[0]}", defaulted(v, 42)));
+  EXPECT_EQ("42", fstr("{0[2]}", defaulted(v, 42)));
+
   EXPECT_EQ("42", fstr("{0[y.a]}", dyn));
 
   EXPECT_EQ("(null)", fstr("{}", dynamic(nullptr)));

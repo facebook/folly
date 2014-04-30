@@ -260,6 +260,12 @@ inline dynamic::dynamic(ObjectMaker (*)())
   new (getAddress<ObjectImpl>()) ObjectImpl();
 }
 
+inline dynamic::dynamic(StringPiece s)
+  : type_(STRING)
+{
+  new (&u_.string) fbstring(s.data(), s.size());
+}
+
 inline dynamic::dynamic(char const* s)
   : type_(STRING)
 {
@@ -270,6 +276,18 @@ inline dynamic::dynamic(std::string const& s)
   : type_(STRING)
 {
   new (&u_.string) fbstring(s);
+}
+
+inline dynamic::dynamic(fbstring const& s)
+  : type_(STRING)
+{
+  new (&u_.string) fbstring(s);
+}
+
+inline dynamic::dynamic(fbstring&& s)
+  : type_(STRING)
+{
+  new (&u_.string) fbstring(std::move(s));
 }
 
 inline dynamic::dynamic(std::initializer_list<dynamic> il)
@@ -907,7 +925,52 @@ class FormatValue<dynamic> {
   const dynamic& val_;
 };
 
-}
+template <class V>
+class FormatValue<detail::DefaultValueWrapper<dynamic, V>> {
+ public:
+  explicit FormatValue(
+      const detail::DefaultValueWrapper<dynamic, V>& val)
+    : val_(val) { }
+
+  template <class FormatCallback>
+  void format(FormatArg& arg, FormatCallback& cb) const {
+    auto& c = val_.container;
+    switch (c.type()) {
+    case dynamic::NULLT:
+    case dynamic::BOOL:
+    case dynamic::INT64:
+    case dynamic::STRING:
+    case dynamic::DOUBLE:
+      FormatValue<dynamic>(c).format(arg, cb);
+      break;
+    case dynamic::ARRAY:
+      {
+        int key = arg.splitIntKey();
+        if (key >= 0 && key < c.size()) {
+          FormatValue<dynamic>(c.at(key)).format(arg, cb);
+        } else{
+          FormatValue<V>(val_.defaultValue).format(arg, cb);
+        }
+      }
+      break;
+    case dynamic::OBJECT:
+      {
+        auto pos = c.find(arg.splitKey());
+        if (pos != c.items().end()) {
+          FormatValue<dynamic>(pos->second).format(arg, cb);
+        } else {
+          FormatValue<V>(val_.defaultValue).format(arg, cb);
+        }
+      }
+      break;
+    }
+  }
+
+ private:
+  const detail::DefaultValueWrapper<dynamic, V>& val_;
+};
+
+}  // namespaces
 
 #undef FB_DYNAMIC_APPLY
 

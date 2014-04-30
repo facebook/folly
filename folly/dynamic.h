@@ -63,19 +63,21 @@
 #ifndef FOLLY_DYNAMIC_H_
 #define FOLLY_DYNAMIC_H_
 
-#include <unordered_map>
-#include <memory>
-#include <string>
-#include <utility>
-#include <ostream>
-#include <type_traits>
-#include <initializer_list>
-#include <vector>
 #include <cstdint>
+#include <initializer_list>
+#include <memory>
+#include <ostream>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include <boost/operators.hpp>
 
-#include "folly/Traits.h"
 #include "folly/FBString.h"
+#include "folly/Range.h"
+#include "folly/Traits.h"
 
 namespace folly {
 
@@ -143,8 +145,11 @@ public:
   /*
    * String compatibility constructors.
    */
+  /* implicit */ dynamic(StringPiece val);
   /* implicit */ dynamic(char const* val);
   /* implicit */ dynamic(std::string const& val);
+  /* implicit */ dynamic(fbstring const& val);
+  /* implicit */ dynamic(fbstring&& val);
 
   /*
    * This is part of the plumbing for object(), above.  Used to create
@@ -325,7 +330,6 @@ public:
    * const_item_iterator pointing to the item.
    */
   const_item_iterator find(dynamic const&) const;
-
 
   /*
    * If this is an object, returns whether it contains a field with
