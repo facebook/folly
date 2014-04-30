@@ -387,34 +387,51 @@ TEST(CommunicateSubprocessTest, Chatty) {
       return (wcount == lineCount);
     };
 
+    bool eofSeen = false;
+
     auto readCallback = [&] (int pfd, int cfd) -> bool {
-      EXPECT_EQ(1, cfd);  // child stdout
-      EXPECT_EQ(wcount, rcount + 1);
-
-      auto expected =
-        folly::to<std::string>("a successful test ", rcount, "\n");
-
       std::string lineBuf;
+
+      if (cfd != 1) {
+        EXPECT_EQ(2, cfd);
+        EXPECT_TRUE(readToString(pfd, lineBuf, 1));
+        EXPECT_EQ(0, lineBuf.size());
+        return true;
+      }
+
+      EXPECT_FALSE(eofSeen);
+
+      std::string expected;
+
+      if (rcount < lineCount) {
+        expected = folly::to<std::string>("a successful test ", rcount++, "\n");
+      }
+
+      EXPECT_EQ(wcount, rcount);
 
       // Not entirely kosher, we should handle partial reads, but this is
       // fine for reads <= PIPE_BUF
-      bool r = readToString(pfd, lineBuf, expected.size() + 1);
+      bool atEof = readToString(pfd, lineBuf, expected.size() + 1);
+      if (atEof) {
+        // EOF only expected after we finished reading
+        EXPECT_EQ(lineCount, rcount);
+        eofSeen = true;
+      }
 
-      EXPECT_TRUE(!r || (rcount + 1 == lineCount)); // may read EOF at end
       EXPECT_EQ(expected, lineBuf);
 
-      ++rcount;
-      if (rcount != lineCount) {
+      if (wcount != lineCount) {  // still more to write...
         proc.enableNotifications(0, true);
       }
 
-      return (rcount == lineCount);
+      return eofSeen;
     };
 
     proc.communicate(readCallback, writeCallback);
 
     EXPECT_EQ(lineCount, wcount);
     EXPECT_EQ(lineCount, rcount);
+    EXPECT_TRUE(eofSeen);
 
     EXPECT_EQ(0, proc.wait().exitStatus());
   });

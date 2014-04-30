@@ -731,7 +731,9 @@ void Subprocess::communicate(FdCallback readCallback,
         }
       }
 
-      if (events & POLLIN) {
+      // Call read callback on POLLHUP, to give it a chance to read (and act
+      // on) end of file
+      if (events & (POLLIN | POLLHUP)) {
         DCHECK(!(events & POLLOUT));
         if (readCallback(p.parentFd, p.childFd)) {
           toClose.push_back(i);
