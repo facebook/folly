@@ -42,6 +42,7 @@ nobase_follyinclude_HEADERS = \
 	detail/ChecksumDetail.h \
 	detail/Clock.h \
 	detail/DiscriminatedPtrDetail.h \
+	detail/ExceptionWrapper.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
 	detail/FunctionalExcept.h \
@@ -65,6 +66,7 @@ nobase_follyinclude_HEADERS = \
 	Fingerprint.h \
 	folly-config.h \
 	Exception.h \
+	ExceptionWrapper.h \
 	Foreach.h \
 	FormatArg.h \
 	Format.h \
