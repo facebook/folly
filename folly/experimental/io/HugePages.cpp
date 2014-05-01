@@ -16,7 +16,6 @@
 
 #include "folly/experimental/io/HugePages.h"
 
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -42,10 +41,6 @@
 #include "folly/gen/Base.h"
 #include "folly/gen/File.h"
 #include "folly/gen/String.h"
-
-#ifndef MAP_POPULATE
-#define MAP_POPULATE 0
-#endif
 
 namespace folly {
 
@@ -75,7 +70,7 @@ size_t getDefaultHugePageSize() {
 }
 
 // Get raw huge page sizes (without mount points, they'll be filled later)
-HugePageSizeVec getRawHugePageSizes() {
+HugePageSizeVec readRawHugePageSizes() {
   // We need to parse file names from /sys/kernel/mm/hugepages
   static const boost::regex regex(R"!(hugepages-(\d+)kB)!");
   boost::smatch match;
@@ -118,8 +113,8 @@ size_t parsePageSizeValue(StringPiece value) {
  * Get list of supported huge page sizes and their mount points, if
  * hugetlbfs file systems are mounted for those sizes.
  */
-HugePageSizeVec getHugePageSizes() {
-  HugePageSizeVec sizeVec = getRawHugePageSizes();
+HugePageSizeVec readHugePageSizes() {
+  HugePageSizeVec sizeVec = readRawHugePageSizes();
   if (sizeVec.empty()) {
     return sizeVec;  // nothing to do
   }
@@ -179,184 +174,48 @@ HugePageSizeVec getHugePageSizes() {
         // Store mount point
         pos->mountPoint = fs::canonical(fs::path(parts[1].begin(),
                                                  parts[1].end()));
+
+        struct stat st;
+        checkUnixError(stat(pos->mountPoint.c_str(), &st),
+                       "stat hugepage mountpoint failed");
+        pos->device = st.st_dev;
       }
     };
 
   return sizeVec;
 }
 
-// RAII wrapper around an open file, closes on exit unless you call release()
-class ScopedFd : private boost::noncopyable {
- public:
-  explicit ScopedFd(int fd) : fd_(fd) { }
-  int fd() const { return fd_; }
-
-  void release() {
-    fd_ = -1;
-  }
-
-  void close() {
-    if (fd_ == -1) {
-      return;
-    }
-    int r = ::close(fd_);
-    fd_ = -1;
-    if (r == -1) {
-      throw std::system_error(errno, std::system_category(), "close failed");
-    }
-  }
-
-  ~ScopedFd() {
-    try {
-      close();
-    } catch (...) {
-      PLOG(ERROR) << "close failed!";
-    }
-  }
-
- private:
-  int fd_;
-};
-
-// RAII wrapper that deletes a file upon destruction unless you call release()
-class ScopedDeleter : private boost::noncopyable {
- public:
-  explicit ScopedDeleter(fs::path name) : name_(std::move(name)) { }
-  void release() {
-    name_.clear();
-  }
-
-  ~ScopedDeleter() {
-    if (name_.empty()) {
-      return;
-    }
-    int r = ::unlink(name_.c_str());
-    if (r == -1) {
-      PLOG(ERROR) << "unlink failed";
-    }
-  }
- private:
-  fs::path name_;
-};
-
-// RAII wrapper around a mmap mapping, munmaps upon destruction unless you
-// call release()
-class ScopedMmap : private boost::noncopyable {
- public:
-  ScopedMmap(void* start, size_t size) : start_(start), size_(size) { }
-
-  void* start() const { return start_; }
-  size_t size() const { return size_; }
-
-  void release() {
-    start_ = MAP_FAILED;
-  }
-
-  void munmap() {
-    if (start_ == MAP_FAILED) {
-      return;
-    }
-    int r = ::munmap(start_, size_);
-    start_ = MAP_FAILED;
-    if (r == -1) {
-      throw std::system_error(errno, std::system_category(), "munmap failed");
-    }
-  }
-
-  ~ScopedMmap() {
-    try {
-      munmap();
-    } catch (...) {
-      PLOG(ERROR) << "munmap failed!";
-    }
-  }
- private:
-  void* start_;
-  size_t size_;
-};
-
 }  // namespace
 
-HugePages::HugePages() : sizes_(getHugePageSizes()) { }
-
-const HugePageSize& HugePages::getSize(size_t hugePageSize) const {
-  // Linear search is just fine.
-  for (auto& p : sizes_) {
-    if (p.mountPoint.empty()) {
-      continue;  // not mounted
-    }
-    if (hugePageSize == 0 || hugePageSize == p.size) {
-      return p;
-    }
-  }
-  throw std::runtime_error("Huge page not supported / not mounted");
+const HugePageSizeVec& getHugePageSizes() {
+  static HugePageSizeVec sizes = readHugePageSizes();
+  return sizes;
 }
 
-HugePages::File HugePages::create(ByteRange data,
-                                  const fs::path& path,
-                                  HugePageSize hugePageSize) const {
-  namespace bsys = ::boost::system;
-  if (hugePageSize.size == 0) {
-    hugePageSize = getSize();
-  }
-
-  // Round size up
-  File file;
-  file.size = data.size() / hugePageSize.size * hugePageSize.size;
-  if (file.size != data.size()) {
-    file.size += hugePageSize.size;
-  }
-
-  {
-    file.path = fs::canonical_parent(path, hugePageSize.mountPoint);
-    if (!fs::starts_with(file.path, hugePageSize.mountPoint)) {
-      throw fs::filesystem_error(
-          "HugePages::create: path not rooted at mount point",
-          file.path, hugePageSize.mountPoint,
-          bsys::errc::make_error_code(bsys::errc::invalid_argument));
+const HugePageSize* getHugePageSize(size_t size) {
+  // Linear search is just fine.
+  for (auto& p : getHugePageSizes()) {
+    if (p.mountPoint.empty()) {
+      continue;
+    }
+    if (size == 0 || size == p.size) {
+      return &p;
     }
   }
-  ScopedFd fd(open(file.path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666));
-  if (fd.fd() == -1) {
-    throw std::system_error(errno, std::system_category(), "open failed");
-  }
+  return nullptr;
+}
 
-  ScopedDeleter deleter(file.path);
-
-  ScopedMmap map(mmap(nullptr, file.size, PROT_READ | PROT_WRITE,
-                      MAP_SHARED | MAP_POPULATE, fd.fd(), 0),
-                 file.size);
-  if (map.start() == MAP_FAILED) {
-    throw std::system_error(errno, std::system_category(), "mmap failed");
-  }
-
-  // Ignore madvise return code
-  madvise(const_cast<unsigned char*>(data.data()), data.size(),
-          MADV_SEQUENTIAL);
-  // Why is this not memcpy, you ask?
-  // The SSSE3-optimized memcpy in glibc likes to copy memory backwards,
-  // rendering any prefetching from madvise useless (even harmful).
-  const unsigned char* src = data.data();
-  size_t size = data.size();
-  unsigned char* dest = reinterpret_cast<unsigned char*>(map.start());
-  if (reinterpret_cast<uintptr_t>(src) % 8 == 0) {
-    const uint64_t* src8 = reinterpret_cast<const uint64_t*>(src);
-    size_t size8 = size / 8;
-    uint64_t* dest8 = reinterpret_cast<uint64_t*>(dest);
-    while (size8--) {
-      *dest8++ = *src8++;
+const HugePageSize* getHugePageSizeForDevice(dev_t device) {
+  // Linear search is just fine.
+  for (auto& p : getHugePageSizes()) {
+    if (p.mountPoint.empty()) {
+      continue;
     }
-    src = reinterpret_cast<const unsigned char*>(src8);
-    dest = reinterpret_cast<unsigned char*>(dest8);
-    size %= 8;
+    if (device == p.device) {
+      return &p;
+    }
   }
-  memcpy(dest, src, size);
-
-  map.munmap();
-  deleter.release();
-  fd.close();
-
-  return file;
+  return nullptr;
 }
 
 }  // namespace folly

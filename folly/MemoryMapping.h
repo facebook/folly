@@ -52,24 +52,84 @@ class MemoryMapping : boost::noncopyable {
    * The mapping will be destroyed (and the memory pointed-to by data() will
    * likely become inaccessible) when the MemoryMapping object is destroyed.
    */
+  struct Options {
+    Options() { }
+
+    // Convenience methods; return *this for chaining.
+    Options& setPageSize(off_t v) { pageSize = v; return *this; }
+    Options& setShared(bool v) { shared = v; return *this; }
+    Options& setPrefault(bool v) { prefault = v; return *this; }
+    Options& setReadable(bool v) { readable = v; return *this; }
+    Options& setWritable(bool v) { writable = v; return *this; }
+    Options& setGrow(bool v) { grow = v; return *this; }
+
+    // Page size. 0 = use appropriate page size.
+    // (On Linux, we use a huge page size if the file is on a hugetlbfs
+    // file system, and the default page size otherwise)
+    off_t pageSize = 0;
+
+    // If shared (default), the memory mapping is shared with other processes
+    // mapping the same file (or children); if not shared (private), each
+    // process has its own mapping; if the mapping is writable, the changes
+    // are not reflected to the underlying file. See the discussion of
+    // MAP_PRIVATE vs MAP_SHARED in the mmap(2) manual page.
+    bool shared = true;
+
+    // Populate page tables; subsequent accesses should not be blocked
+    // by page faults. This is a hint, as it may not be supported.
+    bool prefault = false;
+
+    // Map the pages readable. Note that mapping pages without read permissions
+    // is not universally supported (not supported on hugetlbfs on Linux, for
+    // example)
+    bool readable = true;
+
+    // Map the pages writable.
+    bool writable = false;
+
+    // When mapping a file in writable mode, grow the file to the requested
+    // length (using ftruncate()) before mapping; if false, truncate the
+    // mapping to the actual file size instead.
+    bool grow = false;
+
+    // Fix map at this address, if not nullptr. Must be aligned to a multiple
+    // of the appropriate page size.
+    void* address = nullptr;
+  };
+
+  // Options to emulate the old WritableMemoryMapping: readable and writable,
+  // allow growing the file if mapping past EOF.
+  static Options writable() {
+    return Options().setWritable(true).setGrow(true);
+  }
+
+  enum AnonymousType {
+    kAnonymous
+  };
+
+  /**
+   * Create an anonymous mapping.
+   */
+  MemoryMapping(AnonymousType, off_t length, Options options=Options());
+
   explicit MemoryMapping(File file,
                          off_t offset=0,
                          off_t length=-1,
-                         off_t pageSize=0);
+                         Options options=Options());
 
   explicit MemoryMapping(const char* name,
                          off_t offset=0,
                          off_t length=-1,
-                         off_t pageSize=0);
+                         Options options=Options());
 
   explicit MemoryMapping(int fd,
                          off_t offset=0,
                          off_t length=-1,
-                         off_t pageSize=0);
+                         Options options=Options());
 
   MemoryMapping(MemoryMapping&&);
 
-  virtual ~MemoryMapping();
+  ~MemoryMapping();
 
   MemoryMapping& operator=(MemoryMapping);
 
@@ -113,12 +173,34 @@ class MemoryMapping : boost::noncopyable {
   /**
    * A range of bytes mapped by this mapping.
    */
-  Range<const uint8_t*> range() const {
-    return {data_.begin(), data_.end()};
+  ByteRange range() const {
+    return data_;
+  }
+
+  /**
+   * A bitwise cast of the mapped bytes as range of mutable values. Only
+   * intended for use with POD or in-place usable types.
+   */
+  template<class T>
+  Range<T*> asWritableRange() const {
+    DCHECK(options_.writable);  // you'll segfault anyway...
+    size_t count = data_.size() / sizeof(T);
+    return Range<T*>(static_cast<T*>(
+                       static_cast<void*>(data_.data())),
+                     count);
+  }
+
+  /**
+   * A range of mutable bytes mapped by this mapping.
+   */
+  MutableByteRange writableRange() const {
+    DCHECK(options_.writable);  // you'll segfault anyway...
+    return data_;
   }
 
   /**
    * Return the memory area where the file was mapped.
+   * Deprecated; use range() instead.
    */
   StringPiece data() const {
     return asRange<const char>();
@@ -130,55 +212,41 @@ class MemoryMapping : boost::noncopyable {
 
   int fd() const { return file_.fd(); }
 
- protected:
+ private:
   MemoryMapping();
 
-  void init(File file,
-            off_t offset, off_t length,
-            off_t pageSize,
-            int prot,
-            bool grow);
+  enum InitFlags {
+    kGrow = 1 << 0,
+    kAnon = 1 << 1,
+  };
+  void init(off_t offset, off_t length);
 
   File file_;
-  void* mapStart_;
-  off_t mapLength_;
-  off_t pageSize_;
-  bool locked_;
-  Range<uint8_t*> data_;
-};
-
-/**
- * Maps files in memory for writing.
- *
- * @author Tom Jackson (tjackson@fb.com)
- */
-class WritableMemoryMapping : public MemoryMapping {
- public:
-  explicit WritableMemoryMapping(File file,
-                                 off_t offset = 0,
-                                 off_t length = -1,
-                                 off_t pageSize = 0);
-  /**
-   * A bitwise cast of the mapped bytes as range of mutable values. Only
-   * intended for use with POD or in-place usable types.
-   */
-  template<class T>
-  Range<T*> asWritableRange() const {
-    size_t count = data_.size() / sizeof(T);
-    return Range<T*>(static_cast<T*>(
-                       static_cast<void*>(data_.data())),
-                     count);
-  }
-
-  /**
-   * A range of mutable bytes mapped by this mapping.
-   */
-  Range<uint8_t*> writableRange() const {
-    return data_;
-  }
+  void* mapStart_ = nullptr;
+  off_t mapLength_ = 0;
+  Options options_;
+  bool locked_ = false;
+  MutableByteRange data_;
 };
 
 void swap(MemoryMapping&, MemoryMapping&);
+
+/**
+ * A special case of memcpy() that always copies memory forwards.
+ * (libc's memcpy() is allowed to copy memory backwards, and will do so
+ * when using SSSE3 instructions).
+ *
+ * Assumes src and dest are aligned to alignof(unsigned long).
+ *
+ * Useful when copying from/to memory mappings after hintLinearScan();
+ * copying backwards renders any prefetching useless (even harmful).
+ */
+void alignedForwardMemcpy(void* dest, const void* src, size_t size);
+
+/**
+ * Copy a file using mmap(). Overwrites dest.
+ */
+void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
 
 }  // namespace folly
 
