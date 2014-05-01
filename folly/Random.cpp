@@ -22,7 +22,7 @@
 #include <random>
 #include <array>
 
-#if __GNUC_PREREQ(4, 8)
+#if __GNUC_PREREQ(4, 8) && !defined(ANDROID)
 #include <ext/random>
 #define USE_SIMD_PRNG
 #endif
