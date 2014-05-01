@@ -29,6 +29,7 @@ nobase_follyinclude_HEADERS = \
 	Baton.h \
 	Benchmark.h \
 	Bits.h \
+	Checksum.h \
 	Chrono.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
@@ -55,10 +56,12 @@ nobase_follyinclude_HEADERS = \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
 	detail/UncaughtExceptionCounter.h \
+	Demangle.h \
 	DiscriminatedPtr.h \
 	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
+	Exception.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -73,6 +76,10 @@ nobase_follyinclude_HEADERS = \
 	Format-inl.h \
 	GroupVarint.h \
 	Hash.h \
+	IPAddress.h \
+	IPAddressV4.h \
+	IPAddressV6.h \
+	IPAddressException.h \
 	IndexedMemPool.h \
 	IntrusiveList.h \
 	io/Cursor.h \
@@ -91,8 +98,10 @@ nobase_follyinclude_HEADERS = \
 	io/async/TimeoutManager.h \
 	json.h \
 	Lazy.h \
+	LifoSem.h \
 	Likely.h \
 	Logging.h \
+	MacAddress.h \
 	Malloc.h \
 	MapUtil.h \
 	Memory.h \
@@ -179,8 +188,13 @@ libfolly_la_SOURCES = \
 	FileUtil.cpp \
 	Format.cpp \
 	FormatTables.cpp \
+	detail/Futex.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
+	IPAddress.cpp \
+	IPAddressV4.cpp \
+	IPAddressV6.cpp \
+	LifoSem.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
@@ -189,11 +203,14 @@ libfolly_la_SOURCES = \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
 	json.cpp \
+	detail/MallocImpl.cpp \
 	detail/MemoryIdler.cpp \
+	MacAddress.cpp \
 	Malloc.cpp \
 	MemoryMapping.cpp \
 	Random.cpp \
 	Range.cpp \
+	SafeAssert.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
 	stats/Instantiations.cpp \
