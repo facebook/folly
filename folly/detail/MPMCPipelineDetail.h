@@ -25,7 +25,7 @@ template <class T, class... Stages> class MPMCPipeline;
 template <class T, size_t Amp> class MPMCPipelineStage {
  public:
   typedef T value_type;
-  static constexpr size_t kAmplification = Amp;
+  static FOLLY_CONSTEXPR size_t kAmplification = Amp;
 };
 
 namespace detail {
@@ -35,13 +35,13 @@ namespace detail {
  * we use MPMCPipelineStage<>
  */
 template <class T> struct PipelineStageInfo {
-  static constexpr size_t kAmplification = 1;
+	static FOLLY_CONSTEXPR size_t kAmplification = 1;
   typedef T value_type;
 };
 
 template <class T, size_t Amp>
 struct PipelineStageInfo<MPMCPipelineStage<T, Amp>> {
-  static constexpr size_t kAmplification = Amp;
+  static FOLLY_CONSTEXPR size_t kAmplification = Amp;
   typedef T value_type;
 };
 
@@ -112,12 +112,12 @@ class MPMCPipelineStageImpl {
 template <class Tuple> struct AmplificationProduct;
 
 template <> struct AmplificationProduct<std::tuple<>> {
-  static constexpr size_t value = 1;
+  static FOLLY_CONSTEXPR size_t value = 1;
 };
 
 template <class T, class... Ts>
 struct AmplificationProduct<std::tuple<T, Ts...>> {
-  static constexpr size_t value =
+  static FOLLY_CONSTEXPR size_t value =
     T::kAmplification *
     AmplificationProduct<std::tuple<Ts...>>::value;
 };

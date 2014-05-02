@@ -119,7 +119,7 @@ class Codec {
    * Regardless of the behavior of the underlying compressor, uncompressing
    * an empty IOBuf chain will return an empty IOBuf chain.
    */
-  static constexpr uint64_t UNKNOWN_UNCOMPRESSED_LENGTH = uint64_t(-1);
+  static FOLLY_CONSTEXPR uint64_t UNKNOWN_UNCOMPRESSED_LENGTH = uint64_t(-1);
 
   std::unique_ptr<IOBuf> uncompress(
       const IOBuf* data,
@@ -140,9 +140,9 @@ class Codec {
   CodecType type_;
 };
 
-constexpr int COMPRESSION_LEVEL_FASTEST = -1;
-constexpr int COMPRESSION_LEVEL_DEFAULT = -2;
-constexpr int COMPRESSION_LEVEL_BEST = -3;
+FOLLY_CONSTEXPR int COMPRESSION_LEVEL_FASTEST = -1;
+FOLLY_CONSTEXPR int COMPRESSION_LEVEL_DEFAULT = -2;
+FOLLY_CONSTEXPR int COMPRESSION_LEVEL_BEST = -3;
 
 /**
  * Return a codec for the given type. Throws on error.  The level

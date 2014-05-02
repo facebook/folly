@@ -84,7 +84,7 @@ class AtomicBitSet : private boost::noncopyable {
   /**
    * Return the size of the bitset.
    */
-  constexpr size_t size() const {
+  FOLLY_CONSTEXPR size_t size() const {
     return N;
   }
 
@@ -100,19 +100,19 @@ class AtomicBitSet : private boost::noncopyable {
 #endif
   typedef std::atomic<BlockType> AtomicBlockType;
 
-  static constexpr size_t kBitsPerBlock =
+  static FOLLY_CONSTEXPR size_t kBitsPerBlock =
     std::numeric_limits<BlockType>::digits;
 
-  static constexpr size_t blockIndex(size_t bit) {
+  static FOLLY_CONSTEXPR size_t blockIndex(size_t bit) {
     return bit / kBitsPerBlock;
   }
 
-  static constexpr size_t bitOffset(size_t bit) {
+  static FOLLY_CONSTEXPR size_t bitOffset(size_t bit) {
     return bit % kBitsPerBlock;
   }
 
   // avoid casts
-  static constexpr BlockType kOne = 1;
+  static FOLLY_CONSTEXPR BlockType kOne = 1;
 
   std::array<AtomicBlockType, N> data_;
 };

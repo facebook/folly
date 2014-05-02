@@ -30,7 +30,7 @@ DEFINE_int32(threads,
              std::max(1, (int32_t) sysconf(_SC_NPROCESSORS_CONF) / 2),
              "Num threads.");
 
-constexpr int kFib = 35;  // unit of work
+FOLLY_CONSTEXPR int kFib = 35;  // unit of work
 size_t fib(int n) { return n <= 1 ? 1 : fib(n-1) * fib(n-2); }
 
 BENCHMARK(FibSumMap, n) {

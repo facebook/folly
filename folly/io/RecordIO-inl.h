@@ -66,7 +66,7 @@ struct Header {
   // Any values will do, except that the sequence must not have a
   // repeated prefix (that is, if we see kMagic, we know that the next
   // occurrence must start at least 4 bytes later)
-  static constexpr uint32_t kMagic = 0xeac313a1;
+  static FOLLY_CONSTEXPR uint32_t kMagic = 0xeac313a1;
   uint32_t magic;
   uint8_t  version;       // backwards incompatible version, currently 0
   uint8_t  hashFunction;  // 0 = SpookyHashV2
@@ -82,7 +82,7 @@ static_assert(offsetof(Header, headerHash) + sizeof(Header::headerHash) ==
 
 }  // namespace detail
 
-constexpr size_t headerSize() { return sizeof(detail::Header); }
+FOLLY_CONSTEXPR size_t headerSize() { return sizeof(detail::Header); }
 
 inline RecordInfo findRecord(ByteRange range, uint32_t fileId) {
   return findRecord(range, range, fileId);

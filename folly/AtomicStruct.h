@@ -66,7 +66,7 @@ class AtomicStruct {
   AtomicStruct(AtomicStruct<T> const &) = delete;
   AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
 
-  constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
+  FOLLY_CONSTEXPR /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
 
   bool is_lock_free() const noexcept {
     return data.is_lock_free();

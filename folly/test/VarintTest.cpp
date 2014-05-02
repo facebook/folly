@@ -96,7 +96,7 @@ TEST(ZigZag, Simple) {
 
 namespace {
 
-constexpr size_t kNumValues = 1000;
+FOLLY_CONSTEXPR size_t kNumValues = 1000;
 std::vector<uint64_t> gValues;
 std::vector<uint64_t> gDecodedValues;
 std::vector<uint8_t> gEncoded;

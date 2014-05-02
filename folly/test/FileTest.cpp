@@ -141,7 +141,7 @@ TEST(File, Locks) {
   typedef boost::shared_lock<File> SharedLock;
 
   // Find out where we are.
-  static constexpr size_t pathLength = 2048;
+  static FOLLY_CONSTEXPR size_t pathLength = 2048;
   char buf[pathLength + 1];
   int r = readlink("/proc/self/exe", buf, pathLength);
   CHECK_ERR(r);

@@ -230,13 +230,13 @@ class LifoSemHead {
     assert(!isNodeIdx());
     return uint32_t(bits);
   }
-  inline constexpr bool isNodeIdx() const {
+  inline FOLLY_CONSTEXPR bool isNodeIdx() const {
     return (bits & IsNodeIdxMask) != 0;
   }
-  inline constexpr bool isShutdown() const {
+  inline FOLLY_CONSTEXPR bool isShutdown() const {
     return (bits & IsShutdownMask) != 0;
   }
-  inline constexpr uint32_t seq() const {
+  inline FOLLY_CONSTEXPR uint32_t seq() const {
     return uint32_t(bits >> SeqShift);
   }
 
@@ -244,7 +244,7 @@ class LifoSemHead {
 
   /// This should only be used for initial construction, not for setting
   /// the value, because it clears the sequence number
-  static inline constexpr LifoSemHead fresh(uint32_t value) {
+  static inline FOLLY_CONSTEXPR LifoSemHead fresh(uint32_t value) {
     return LifoSemHead{ value };
   }
 
@@ -296,10 +296,10 @@ class LifoSemHead {
     return LifoSemHead{ bits | IsShutdownMask };
   }
 
-  inline constexpr bool operator== (const LifoSemHead& rhs) const {
+  inline FOLLY_CONSTEXPR bool operator== (const LifoSemHead& rhs) const {
     return bits == rhs.bits;
   }
-  inline constexpr bool operator!= (const LifoSemHead& rhs) const {
+  inline FOLLY_CONSTEXPR bool operator!= (const LifoSemHead& rhs) const {
     return !(*this == rhs);
   }
 };

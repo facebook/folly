@@ -128,7 +128,7 @@ namespace recordio_helpers {
 /**
  * Header size.
  */
-constexpr size_t headerSize();  // defined in RecordIO-inl.h
+FOLLY_CONSTEXPR size_t headerSize();  // defined in RecordIO-inl.h
 
 /**
  * Write a header in the buffer.  We will prepend the header to the front

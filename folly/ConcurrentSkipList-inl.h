@@ -71,7 +71,7 @@ class SkipListNode : private boost::noncopyable {
   }
 
   template<typename NodeAlloc>
-  static constexpr bool destroyIsNoOp() {
+  static FOLLY_CONSTEXPR bool destroyIsNoOp() {
     return IsArenaAllocator<NodeAlloc>::value &&
            boost::has_trivial_destructor<std::atomic<SkipListNode*>>::value;
   }

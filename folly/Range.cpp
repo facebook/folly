@@ -61,7 +61,7 @@ namespace {
 
 // It's okay if pages are bigger than this (as powers of two), but they should
 // not be smaller.
-constexpr size_t kMinPageSize = 4096;
+FOLLY_CONSTEXPR size_t kMinPageSize = 4096;
 static_assert(kMinPageSize >= 16,
               "kMinPageSize must be at least SSE register size");
 #define PAGE_FOR(addr) \

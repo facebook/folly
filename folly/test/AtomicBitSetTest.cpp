@@ -22,7 +22,7 @@
 namespace folly { namespace test {
 
 TEST(AtomicBitSet, Simple) {
-  constexpr size_t kSize = 1000;
+  FOLLY_CONSTEXPR size_t kSize = 1000;
   AtomicBitSet<kSize> bs;
 
   EXPECT_EQ(kSize, bs.size());

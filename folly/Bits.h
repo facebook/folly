@@ -61,7 +61,7 @@
 #error GCC required
 #endif
 
-#ifndef __clang__
+#if defined(FOLLY_HAS_CONSTEXPR) && !defined(_clang__)
 #define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #else
 // Unlike GCC, in Clang (as of 3.2) intrinsics aren't constexpr.
@@ -196,7 +196,7 @@ nextPowTwo(T v) {
 }
 
 template <class T>
-inline constexpr
+inline FOLLY_CONSTEXPR
 typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   bool>::type
@@ -248,7 +248,7 @@ struct EndianIntBase {
 #else
 
 template<class Int16>
-inline constexpr typename std::enable_if<
+inline FOLLY_CONSTEXPR typename std::enable_if<
   sizeof(Int16) == 2,
   Int16>::type
 our_bswap16(Int16 x) {
@@ -322,7 +322,7 @@ class Endian {
     BIG
   };
 
-  static constexpr Order order =
+  static FOLLY_CONSTEXPR Order order =
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     Order::LITTLE;
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__

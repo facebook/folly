@@ -228,7 +228,7 @@ namespace detail {
     IntegralSizePolicy() : size_(0) {}
 
   protected:
-    static constexpr std::size_t policyMaxSize() {
+    static FOLLY_CONSTEXPR std::size_t policyMaxSize() {
       return SizeType(~kExternMask);
     }
 
@@ -282,7 +282,7 @@ namespace detail {
   protected:
     static bool const kShouldUseHeap = ShouldUseHeap;
 
-    static constexpr std::size_t policyMaxSize() {
+	static FOLLY_CONSTEXPR std::size_t policyMaxSize() {
       return SizeType(~(SizeType(1) << kLockBit | kExternMask));
     }
 
@@ -529,7 +529,7 @@ public:
     return std::lexicographical_compare(begin(), end(), o.begin(), o.end());
   }
 
-  static constexpr size_type max_size() {
+  static FOLLY_CONSTEXPR size_type max_size() {
     return !BaseType::kShouldUseHeap ? MaxInline
                                      : BaseType::policyMaxSize();
   }

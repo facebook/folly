@@ -37,12 +37,12 @@ namespace folly {
 /**
  * Maximum length (in bytes) of the varint encoding of a 32-bit value.
  */
-constexpr size_t kMaxVarintLength32 = 5;
+FOLLY_CONSTEXPR size_t kMaxVarintLength32 = 5;
 
 /**
  * Maximum length (in bytes) of the varint encoding of a 64-bit value.
  */
-constexpr size_t kMaxVarintLength64 = 10;
+FOLLY_CONSTEXPR size_t kMaxVarintLength64 = 10;
 
 /**
  * Encode a value in the given buffer, returning the number of bytes used

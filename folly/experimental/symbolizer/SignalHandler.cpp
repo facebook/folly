@@ -189,7 +189,7 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
 }
 
 namespace {
-constexpr size_t kDefaultCapacity = 500;
+FOLLY_CONSTEXPR size_t kDefaultCapacity = 500;
 
 // Note: not thread-safe, but that's okay, as we only let one thread
 // in our signal handler at a time.
@@ -203,7 +203,7 @@ FOLLY_NOINLINE void dumpStackTrace(bool symbolize);
 void dumpStackTrace(bool symbolize) {
   SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
   // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
+  FOLLY_CONSTEXPR size_t kMaxStackTraceDepth = 100;
   FrameArray<kMaxStackTraceDepth> addresses;
 
   // Skip the getStackTrace frame
@@ -235,7 +235,7 @@ void dumpStackTrace(bool symbolize) {
 // take to indicate "no thread in the signal handler".
 //
 // POSIX defines PTHREAD_NULL for this purpose, but that's not available.
-constexpr pthread_t kInvalidThreadId = 0;
+FOLLY_CONSTEXPR pthread_t kInvalidThreadId = 0;
 
 std::atomic<pthread_t> gSignalThread(kInvalidThreadId);
 std::atomic<bool> gInRecursiveSignalHandler(false);

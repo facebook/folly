@@ -90,13 +90,13 @@ struct IndexedMemPool : boost::noncopyable {
   // these are public because clients may need to reason about the number
   // of bits required to hold indices from a pool, given its capacity
 
-  static constexpr uint32_t maxIndexForCapacity(uint32_t capacity) {
+  static FOLLY_CONSTEXPR uint32_t maxIndexForCapacity(uint32_t capacity) {
     // index of uint32_t(-1) == UINT32_MAX is reserved for isAllocated tracking
     return std::min(uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
                     uint64_t(uint32_t(-1) - 1));
   }
 
-  static constexpr uint32_t capacityForMaxIndex(uint32_t maxIndex) {
+  static FOLLY_CONSTEXPR uint32_t capacityForMaxIndex(uint32_t maxIndex) {
     return maxIndex - (NumLocalLists - 1) * LocalListLimit;
   }
 

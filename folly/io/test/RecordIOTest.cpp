@@ -88,7 +88,7 @@ TEST(RecordIOTest, Simple) {
 }
 
 TEST(RecordIOTest, SmallRecords) {
-  constexpr size_t kSize = 10;
+  FOLLY_CONSTEXPR size_t kSize = 10;
   char tmp[kSize];
   memset(tmp, 'x', kSize);
   TemporaryFile file;

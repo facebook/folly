@@ -506,8 +506,8 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   uint64_t maxCompressedLength = deflateBound(&stream, uncompressedLength);
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  FOLLY_CONSTEXPR uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
+  FOLLY_CONSTEXPR uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
 
   auto out = addOutputBuffer(
       &stream,
@@ -579,8 +579,8 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
   };
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  FOLLY_CONSTEXPR uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
+  FOLLY_CONSTEXPR uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
 
   auto out = addOutputBuffer(
       &stream,
@@ -714,8 +714,8 @@ std::unique_ptr<IOBuf> LZMA2Codec::doCompress(const IOBuf* data) {
   uint64_t maxCompressedLength = lzma_stream_buffer_bound(uncompressedLength);
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  FOLLY_CONSTEXPR uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
+  FOLLY_CONSTEXPR uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
 
   auto out = addOutputBuffer(
     &stream,
@@ -806,8 +806,8 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
   SCOPE_EXIT { lzma_end(&stream); };
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  FOLLY_CONSTEXPR uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
+  FOLLY_CONSTEXPR uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
 
   folly::io::Cursor cursor(data);
   uint64_t actualUncompressedLength;

@@ -24,7 +24,7 @@
 
 namespace folly { namespace exception_tracer {
 
-constexpr size_t kMaxFrames = 500;
+FOLLY_CONSTEXPR size_t kMaxFrames = 500;
 
 struct StackTrace {
   StackTrace() : frameCount(0) { }

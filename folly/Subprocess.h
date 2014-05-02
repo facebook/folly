@@ -142,8 +142,8 @@ class ProcessReturnCode {
   void enforce(State state) const;
  private:
   explicit ProcessReturnCode(int rv) : rawStatus_(rv) { }
-  static constexpr int RV_NOT_STARTED = -2;
-  static constexpr int RV_RUNNING = -1;
+  static FOLLY_CONSTEXPR int RV_NOT_STARTED = -2;
+  static FOLLY_CONSTEXPR int RV_RUNNING = -1;
 
   int rawStatus_;
 };

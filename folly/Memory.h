@@ -247,7 +247,7 @@ class is_simple_allocator {
   typedef value_type* pointer;
 
 public:
-  constexpr static bool value = !has_destroy<allocator, void(pointer)>::value
+	FOLLY_CONSTEXPR static bool value = !has_destroy<allocator, void(pointer)>::value
     && !has_destroy<allocator, void(void*)>::value;
 };
 

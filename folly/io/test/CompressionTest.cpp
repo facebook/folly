@@ -82,8 +82,8 @@ class RandomDataHolder : public DataHolder {
 
 RandomDataHolder::RandomDataHolder(size_t sizeLog2)
   : DataHolder(sizeLog2) {
-  constexpr size_t numThreadsLog2 = 3;
-  constexpr size_t numThreads = size_t(1) << numThreadsLog2;
+  FOLLY_CONSTEXPR size_t numThreadsLog2 = 3;
+  FOLLY_CONSTEXPR size_t numThreads = size_t(1) << numThreadsLog2;
 
   uint32_t seed = randomNumberSeed();
 
@@ -116,7 +116,7 @@ ConstantDataHolder::ConstantDataHolder(size_t sizeLog2)
   memset(data_.get(), 'a', size_);
 }
 
-constexpr size_t dataSizeLog2 = 27;  // 128MiB
+FOLLY_CONSTEXPR size_t dataSizeLog2 = 27;  // 128MiB
 RandomDataHolder randomDataHolder(dataSizeLog2);
 ConstantDataHolder constantDataHolder(dataSizeLog2);
 
@@ -195,7 +195,7 @@ class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
 };
 
 void CompressionCorruptionTest::runSimpleTest(const DataHolder& dh) {
-  constexpr uint64_t uncompressedLength = 42;
+  FOLLY_CONSTEXPR uint64_t uncompressedLength = 42;
   auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength));
   auto compressed = codec_->compress(original.get());
 

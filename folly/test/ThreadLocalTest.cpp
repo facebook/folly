@@ -305,7 +305,7 @@ TEST(ThreadLocal, Movable2) {
 
 namespace {
 
-constexpr size_t kFillObjectSize = 300;
+FOLLY_CONSTEXPR size_t kFillObjectSize = 300;
 
 std::atomic<uint64_t> gDestroyed;
 
@@ -348,11 +348,11 @@ class FillObject {
 
 #if FOLLY_HAVE_STD__THIS_THREAD__SLEEP_FOR
 TEST(ThreadLocal, Stress) {
-  constexpr size_t numFillObjects = 250;
+  FOLLY_CONSTEXPR size_t numFillObjects = 250;
   std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;
 
-  constexpr size_t numThreads = 32;
-  constexpr size_t numReps = 20;
+  FOLLY_CONSTEXPR size_t numThreads = 32;
+  FOLLY_CONSTEXPR size_t numReps = 20;
 
   std::vector<std::thread> threads;
   threads.reserve(numThreads);

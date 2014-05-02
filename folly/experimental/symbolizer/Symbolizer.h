@@ -147,7 +147,7 @@ class AddressFormatter {
   StringPiece format(uintptr_t address);
 
  private:
-  static constexpr char bufTemplate[] = "    @ 0000000000000000";
+  static FOLLY_CONSTEXPR char bufTemplate[] = "    @ 0000000000000000";
   char buf_[sizeof(bufTemplate)];
 };
 

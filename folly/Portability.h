@@ -115,6 +115,18 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # error cannot define platform specific thread local storage
 #endif
 
+/* Define macro wrappers for c++11's constexpr keyword, which
+isn't yet support in MSVC */
+#if !defined(FOLLY_HAVE_CONSTEXPR)
+# if defined(__clang__) || __GNUC_PREREQ(4, 7)
+# define FOLLY_CONSTEXPR constexpr
+# else
+# define FOLLY_CONSTEXPR const
+# endif
+#else
+# define FOLLY_CONSTEXPR constexpr
+#endif
+
 // Define to 1 if you have the `preadv' and `pwritev' functions, respectively
 #if !defined(FOLLY_HAVE_PREADV) && !defined(FOLLY_HAVE_PWRITEV)
 # if defined(__GLIBC_PREREQ)

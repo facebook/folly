@@ -27,7 +27,7 @@ FOLLY_NOINLINE void foo1();
 FOLLY_NOINLINE void foo2();
 
 void verifyStackTraces() {
-  constexpr size_t kMaxAddresses = 100;
+  FOLLY_CONSTEXPR size_t kMaxAddresses = 100;
   FrameArray<kMaxAddresses> fa;
   CHECK(getStackTrace(fa));
 

@@ -142,7 +142,7 @@ bool readFile(const char* file_name, Container& out,
   // but don't rely on it. In particular, if the size is zero, we
   // should attempt to read stuff. If not zero, we'll attempt to read
   // one extra byte.
-  constexpr size_t initialAlloc = 1024 * 4;
+  FOLLY_CONSTEXPR size_t initialAlloc = 1024 * 4;
   out.resize(
     std::min(
       buf.st_size > 0 ? folly::to<size_t>(buf.st_size + 1) : initialAlloc,

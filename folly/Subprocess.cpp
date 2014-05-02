@@ -41,8 +41,8 @@
 
 extern char** environ;
 
-constexpr int kExecFailure = 127;
-constexpr int kChildFailure = 126;
+FOLLY_CONSTEXPR int kExecFailure = 127;
+FOLLY_CONSTEXPR int kChildFailure = 126;
 
 namespace folly {
 
