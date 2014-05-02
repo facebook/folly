@@ -73,7 +73,7 @@ class ClosableMPMCQueue {
   }
 
   template <typename... Args>
-  bool writeUnlessFull(Args&&... args) noexcept {
+  bool writeUnlessFull(Args&&... args) FOLLY_NOEXCEPT {
     if (queue_.write(std::forward<Args>(args)...)) {
       // wake consumers to pick up new value
       wakeConsumer_.notify();

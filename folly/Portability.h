@@ -102,6 +102,18 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # endif
 #endif
 
+/* Define macro wrappers for C++11's "noexcept"
+ * fake with throw on non-supporting platforms */
+#if !defined(FOLLY_HAVE_NOEXCEPT)
+# if defined(__clang__) || __GNUC_PREREQ(4, 7)
+#  define FOLLY_NOEXCEPT noexcept
+#  define FOLLY_NOEXCEPT_VALUE(x) noexcept(x)
+# else
+#  define FOLLY_NOEXCEPT throw()
+#  define FOLLY_NOEXCEPT_VALUE(x) throw()
+# endif
+#endif
+
 /* Platform specific TLS support
  * gcc implements __thread
  * msvc implements __declspec(thread)
