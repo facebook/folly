@@ -233,7 +233,7 @@ class PMap : public Operator<PMap<Predicate>> {
       return more;
     }
 
-    static constexpr bool infinite = Source::infinite;
+    static FOLLY_CONSTEXPR bool infinite = Source::infinite;
   };
 
   template<class Source,

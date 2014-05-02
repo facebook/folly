@@ -33,7 +33,7 @@ using namespace folly::gen;
 using std::vector;
 
 
-constexpr int kFib = 28;  // unit of work
+FOLLY_CONSTEXPR int kFib = 28;  // unit of work
 size_t fib(int n) { return n <= 1 ? 1 : fib(n - 1) + fib(n - 2); }
 
 static auto add = [](int a, int b) { return a + b; };
