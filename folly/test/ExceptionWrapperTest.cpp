@@ -36,3 +36,10 @@ TEST(ExceptionWrapper, throw_test) {
     EXPECT_EQ(expected, actual);
   }
 }
+
+TEST(ExceptionWrapper, boolean) {
+  auto ew = exception_wrapper();
+  EXPECT_FALSE(bool(ew));
+  ew = make_exception_wrapper<std::runtime_error>("payload");
+  EXPECT_TRUE(bool(ew));
+}

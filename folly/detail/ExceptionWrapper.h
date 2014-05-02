@@ -20,10 +20,10 @@
 namespace folly { namespace detail {
 
 template <class T>
-class thrower {
+class Thrower {
  public:
-  static void doThrow(void* obj) {
-    throw *((T*)(obj));
+  static void doThrow(std::exception* obj) {
+    throw *static_cast<T*>(obj);
   }
 };
 

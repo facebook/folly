@@ -17,6 +17,7 @@
 #ifndef FOLLY_EXCEPTIONWRAPPER_H
 #define FOLLY_EXCEPTIONWRAPPER_H
 
+#include <cassert>
 #include <exception>
 #include <memory>
 #include "folly/detail/ExceptionWrapper.h"
@@ -33,23 +34,30 @@ class exception_wrapper {
     }
   }
 
-  std::exception* get() {
-    return item_.get();
-  }
+  std::exception* get() { return item_.get(); }
+  const std::exception* get() const { return item_.get(); }
+
+  std::exception* operator->() { return get(); }
+  const std::exception* operator->() const { return get(); }
+
+  std::exception& operator*() { assert(get()); return *get(); }
+  const std::exception& operator*() const { assert(get()); return *get(); }
+
+  explicit operator bool() const { return get(); }
 
  private:
   std::shared_ptr<std::exception> item_;
-  void (*throwfn_)(void*);
+  void (*throwfn_)(std::exception*);
 
   template <class T, class... Args>
-  friend exception_wrapper make_exception_wrapper(Args... args);
+  friend exception_wrapper make_exception_wrapper(Args&&... args);
 };
 
 template <class T, class... Args>
-exception_wrapper make_exception_wrapper(Args... args) {
+exception_wrapper make_exception_wrapper(Args&&... args) {
   exception_wrapper ew;
   ew.item_ = std::make_shared<T>(std::forward<Args>(args)...);
-  ew.throwfn_ = folly::detail::thrower<T>::doThrow;
+  ew.throwfn_ = folly::detail::Thrower<T>::doThrow;
   return ew;
 }
 
