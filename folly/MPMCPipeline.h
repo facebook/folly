@@ -109,21 +109,21 @@ template <class In, class... Stages> class MPMCPipeline {
   template <size_t Stage>
   class Ticket {
    public:
-    ~Ticket() noexcept {
+    ~Ticket() FOLLY_NOEXCEPT {
       CHECK_EQ(remainingUses_, 0) << "All tickets must be completely used!";
     }
 
 #ifndef NDEBUG
-    Ticket() noexcept
+    Ticket() FOLLY_NOEXCEPT
       : owner_(nullptr),
         remainingUses_(0),
         value_(0xdeadbeeffaceb00c) {
     }
 #else
-    Ticket() noexcept : remainingUses_(0) { }
+    Ticket() FOLLY_NOEXCEPT : remainingUses_(0) { }
 #endif
 
-    Ticket(Ticket&& other) noexcept
+    Ticket(Ticket&& other) FOLLY_NOEXCEPT
       :
 #ifndef NDEBUG
         owner_(other.owner_),
@@ -137,7 +137,7 @@ template <class In, class... Stages> class MPMCPipeline {
 #endif
     }
 
-    Ticket& operator=(Ticket&& other) noexcept {
+    Ticket& operator=(Ticket&& other) FOLLY_NOEXCEPT {
       if (this != &other) {
         this->~Ticket();
         new (this) Ticket(std::move(other));
@@ -154,7 +154,7 @@ template <class In, class... Stages> class MPMCPipeline {
     uint64_t value_;
 
 
-    Ticket(MPMCPipeline* owner, size_t amplification, uint64_t value) noexcept
+	Ticket(MPMCPipeline* owner, size_t amplification, uint64_t value) FOLLY_NOEXCEPT
       :
 #ifndef NDEBUG
         owner_(owner),
@@ -271,7 +271,7 @@ template <class In, class... Stages> class MPMCPipeline {
    * Elements "in flight" (currently processed as part of a stage, so not
    * in any queue) are also counted.
    */
-  ssize_t sizeGuess() const noexcept {
+  ssize_t sizeGuess() const FOLLY_NOEXCEPT {
     return (std::get<0>(stages_).writeCount() * kAmplification -
             std::get<sizeof...(Stages)>(stages_).readCount());
   }

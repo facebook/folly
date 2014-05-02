@@ -61,32 +61,32 @@ class MPMCPipelineStageImpl {
   // only use on first stage, uses queue_.pushTicket_ instead of existing
   // ticket
   template <class... Args>
-  void blockingWrite(Args&&... args) noexcept {
+  void blockingWrite(Args&&... args) FOLLY_NOEXCEPT {
     queue_.blockingWrite(std::forward<Args>(args)...);
   }
 
   template <class... Args>
-  bool write(Args&&... args) noexcept {
+  bool write(Args&&... args) FOLLY_NOEXCEPT {
     return queue_.write(std::forward<Args>(args)...);
   }
 
   template <class... Args>
-  void blockingWriteWithTicket(uint64_t ticket, Args&&... args) noexcept {
+  void blockingWriteWithTicket(uint64_t ticket, Args&&... args) FOLLY_NOEXCEPT {
     queue_.enqueueWithTicket(ticket, std::forward<Args>(args)...);
   }
 
-  uint64_t blockingRead(T& elem) noexcept {
+  uint64_t blockingRead(T& elem) FOLLY_NOEXCEPT {
     uint64_t ticket = queue_.popTicket_++;
     queue_.dequeueWithTicket(ticket, elem);
     return ticket;
   }
 
-  bool read(T& elem) noexcept {  // only use on last stage, won't track ticket
+  bool read(T& elem) FOLLY_NOEXCEPT {  // only use on last stage, won't track ticket
     return queue_.read(elem);
   }
 
   template <class... Args>
-  bool readAndGetTicket(uint64_t& ticket, T& elem) noexcept {
+  bool readAndGetTicket(uint64_t& ticket, T& elem) FOLLY_NOEXCEPT {
     if (queue_.tryObtainReadyPopTicket(ticket)) {
       queue_.dequeueWithTicket(ticket, elem);
       return true;
@@ -96,11 +96,11 @@ class MPMCPipelineStageImpl {
   }
 
   // See MPMCQueue<T>::writeCount; only works for the first stage
-  uint64_t writeCount() const noexcept {
+  uint64_t writeCount() const FOLLY_NOEXCEPT {
     return queue_.writeCount();
   }
 
-  uint64_t readCount() const noexcept {
+  uint64_t readCount() const FOLLY_NOEXCEPT {
     return queue_.readCount();
   }
 

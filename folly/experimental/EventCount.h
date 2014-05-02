@@ -35,7 +35,7 @@ namespace folly {
 namespace detail {
 
 inline int futex(int* uaddr, int op, int val, const timespec* timeout,
-                 int* uaddr2, int val3) noexcept {
+                 int* uaddr2, int val3) FOLLY_NOEXCEPT {
   return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
 }
 
@@ -94,19 +94,19 @@ inline int futex(int* uaddr, int op, int val, const timespec* timeout,
  */
 class EventCount {
  public:
-  EventCount() noexcept : val_(0) { }
+  EventCount() FOLLY_NOEXCEPT : val_(0) { }
 
   class Key {
     friend class EventCount;
-    explicit Key(uint32_t e) noexcept : epoch_(e) { }
+    explicit Key(uint32_t e) FOLLY_NOEXCEPT : epoch_(e) { }
     uint32_t epoch_;
   };
 
-  void notify() noexcept;
-  void notifyAll() noexcept;
-  Key prepareWait() noexcept;
-  void cancelWait() noexcept;
-  void wait(Key key) noexcept;
+  void notify() FOLLY_NOEXCEPT;
+  void notifyAll() FOLLY_NOEXCEPT;
+  Key prepareWait() FOLLY_NOEXCEPT;
+  void cancelWait() FOLLY_NOEXCEPT;
+  void wait(Key key) FOLLY_NOEXCEPT;
 
   /**
    * Wait for condition() to become true.  Will clean up appropriately if
@@ -116,7 +116,7 @@ class EventCount {
   void await(Condition condition);
 
  private:
-  void doNotify(int n) noexcept;
+  void doNotify(int n) FOLLY_NOEXCEPT;
   EventCount(const EventCount&) = delete;
   EventCount(EventCount&&) = delete;
   EventCount& operator=(const EventCount&) = delete;
@@ -146,15 +146,15 @@ class EventCount {
   static constexpr uint64_t kWaiterMask = kAddEpoch - 1;
 };
 
-inline void EventCount::notify() noexcept {
+inline void EventCount::notify() FOLLY_NOEXCEPT {
   doNotify(1);
 }
 
-inline void EventCount::notifyAll() noexcept {
+inline void EventCount::notifyAll() FOLLY_NOEXCEPT {
   doNotify(INT_MAX);
 }
 
-inline void EventCount::doNotify(int n) noexcept {
+inline void EventCount::doNotify(int n) FOLLY_NOEXCEPT {
   uint64_t prev = val_.fetch_add(kAddEpoch, std::memory_order_acq_rel);
   if (UNLIKELY(prev & kWaiterMask)) {
     detail::futex(reinterpret_cast<int*>(&val_) + kEpochOffset,
@@ -162,12 +162,12 @@ inline void EventCount::doNotify(int n) noexcept {
   }
 }
 
-inline EventCount::Key EventCount::prepareWait() noexcept {
+inline EventCount::Key EventCount::prepareWait() FOLLY_NOEXCEPT {
   uint64_t prev = val_.fetch_add(kAddWaiter, std::memory_order_acq_rel);
   return Key(prev >> kEpochShift);
 }
 
-inline void EventCount::cancelWait() noexcept {
+inline void EventCount::cancelWait() FOLLY_NOEXCEPT {
   // memory_order_relaxed would suffice for correctness, but the faster
   // #waiters gets to 0, the less likely it is that we'll do spurious wakeups
   // (and thus system calls).
@@ -175,7 +175,7 @@ inline void EventCount::cancelWait() noexcept {
   assert((prev & kWaiterMask) != 0);
 }
 
-inline void EventCount::wait(Key key) noexcept {
+inline void EventCount::wait(Key key) FOLLY_NOEXCEPT {
   while ((val_.load(std::memory_order_acquire) >> kEpochShift) == key.epoch_) {
     detail::futex(reinterpret_cast<int*>(&val_) + kEpochOffset,
                   FUTEX_WAIT, key.epoch_, nullptr, nullptr, 0);

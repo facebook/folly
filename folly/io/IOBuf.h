@@ -1075,7 +1075,7 @@ class IOBuf {
    * space allocated for it.  This is generally useful only to later use move
    * assignment to fill out the IOBuf.
    */
-  IOBuf() noexcept;
+  IOBuf() FOLLY_NOEXCEPT;
 
   /**
    * Move constructor and assignment operator.
@@ -1098,8 +1098,8 @@ class IOBuf {
    * The main reason is because it is not clear these operations should copy
    * the entire chain or just the single IOBuf.)
    */
-  IOBuf(IOBuf&& other) noexcept;
-  IOBuf& operator=(IOBuf&& other) noexcept;
+  IOBuf(IOBuf&& other) FOLLY_NOEXCEPT;
+  IOBuf& operator=(IOBuf&& other) FOLLY_NOEXCEPT;
 
  private:
   enum FlagsEnum : uintptr_t {

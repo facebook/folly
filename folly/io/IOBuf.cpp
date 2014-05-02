@@ -327,10 +327,10 @@ unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
   return make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
-IOBuf::IOBuf() noexcept {
+IOBuf::IOBuf() FOLLY_NOEXCEPT {
 }
 
-IOBuf::IOBuf(IOBuf&& other) noexcept {
+IOBuf::IOBuf(IOBuf&& other) FOLLY_NOEXCEPT {
   *this = std::move(other);
 }
 
@@ -364,7 +364,7 @@ IOBuf::~IOBuf() {
   decrementRefcount();
 }
 
-IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
+IOBuf& IOBuf::operator=(IOBuf&& other) FOLLY_NOEXCEPT {
   // If we are part of a chain, delete the rest of the chain.
   while (next_ != this) {
     // Since unlink() returns unique_ptr() and we don't store it,

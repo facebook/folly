@@ -58,7 +58,7 @@ std::string returnString() {
   return "this is a test";
 }
 
-std::string returnStringNoExcept() noexcept {
+std::string returnStringNoExcept() FOLLY_NOEXCEPT {
   return "this is a test";
 }
 
@@ -66,7 +66,7 @@ int returnCode(int value) {
   return value;
 }
 
-int returnCodeNoExcept(int value) noexcept {
+int returnCodeNoExcept(int value) FOLLY_NOEXCEPT {
   return value;
 }
 

@@ -32,7 +32,7 @@
 namespace folly {
 namespace symbolizer {
 
-ElfFile::ElfFile() noexcept
+	ElfFile::ElfFile() FOLLY_NOEXCEPT
   : fd_(-1),
     file_(static_cast<char*>(MAP_FAILED)),
     length_(0),
@@ -54,7 +54,7 @@ void ElfFile::open(const char* name, bool readOnly) {
 }
 
 int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
-  noexcept {
+  FOLLY_NOEXCEPT {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {

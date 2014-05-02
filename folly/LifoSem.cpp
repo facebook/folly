@@ -34,7 +34,7 @@ ShutdownSemError::ShutdownSemError(const std::string& msg)
   : std::runtime_error(msg)
 {}
 
-ShutdownSemError::~ShutdownSemError() noexcept {
+ShutdownSemError::~ShutdownSemError() FOLLY_NOEXCEPT {
 }
 
 }

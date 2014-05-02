@@ -138,7 +138,7 @@ class NotificationQueue {
       return base_;
     }
 
-    virtual void handlerReady(uint16_t events) noexcept;
+	virtual void handlerReady(uint16_t events) FOLLY_NOEXCEPT;
 
    private:
     void init(EventBase* eventBase, NotificationQueue* queue);
@@ -510,7 +510,7 @@ NotificationQueue<MessageT>::Consumer::~Consumer() {
 
 template<typename MessageT>
 void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t events)
-    noexcept {
+    FOLLY_NOEXCEPT {
   uint32_t numProcessed = 0;
   while (true) {
     // Try to decrement the eventfd.

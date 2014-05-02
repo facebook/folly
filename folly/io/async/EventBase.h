@@ -85,7 +85,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
    public:
     virtual ~LoopCallback() {}
 
-    virtual void runLoopCallback() noexcept = 0;
+	virtual void runLoopCallback() FOLLY_NOEXCEPT = 0;
     void cancelLoopCallback() {
       hook_.unlink();
     }
@@ -444,7 +444,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   class RunInLoopCallback : public LoopCallback {
    public:
     RunInLoopCallback(void (*fn)(void*), void* arg);
-    void runLoopCallback() noexcept;
+	void runLoopCallback() FOLLY_NOEXCEPT;
 
    private:
     void (*fn_)(void*);
@@ -468,7 +468,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
     CobTimeout(EventBase* b, const Cob& c, TimeoutManager::InternalEnum in)
         : AsyncTimeout(b, in), cob_(c) {}
 
-    virtual void timeoutExpired() noexcept;
+	virtual void timeoutExpired() FOLLY_NOEXCEPT;
 
    private:
     Cob cob_;

@@ -82,7 +82,7 @@ namespace folly { namespace gen {
 
 class EmptySequence : public std::exception {
 public:
-  virtual const char* what() const noexcept {
+  virtual const char* what() const FOLLY_NOEXCEPT {
     return "This operation cannot be called on an empty sequence";
   }
 };

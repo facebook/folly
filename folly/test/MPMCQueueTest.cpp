@@ -452,33 +452,33 @@ struct Lifecycle {
 
   bool constructed;
 
-  Lifecycle() noexcept : constructed(true) {
+  Lifecycle() FOLLY_NOEXCEPT : constructed(true) {
     ++lc_counts[DEFAULT_CONSTRUCTOR];
   }
 
-  explicit Lifecycle(int n, char const* s) noexcept : constructed(true) {
+  explicit Lifecycle(int n, char const* s) FOLLY_NOEXCEPT : constructed(true) {
     ++lc_counts[TWO_ARG_CONSTRUCTOR];
   }
 
-  Lifecycle(const Lifecycle& rhs) noexcept : constructed(true) {
+  Lifecycle(const Lifecycle& rhs) FOLLY_NOEXCEPT : constructed(true) {
     ++lc_counts[COPY_CONSTRUCTOR];
   }
 
-  Lifecycle(Lifecycle&& rhs) noexcept : constructed(true) {
+  Lifecycle(Lifecycle&& rhs) FOLLY_NOEXCEPT : constructed(true) {
     ++lc_counts[MOVE_CONSTRUCTOR];
   }
 
-  Lifecycle& operator= (const Lifecycle& rhs) noexcept {
+  Lifecycle& operator= (const Lifecycle& rhs) FOLLY_NOEXCEPT {
     ++lc_counts[COPY_OPERATOR];
     return *this;
   }
 
-  Lifecycle& operator= (Lifecycle&& rhs) noexcept {
+  Lifecycle& operator= (Lifecycle&& rhs) FOLLY_NOEXCEPT {
     ++lc_counts[MOVE_OPERATOR];
     return *this;
   }
 
-  ~Lifecycle() noexcept {
+  ~Lifecycle() FOLLY_NOEXCEPT {
     ++lc_counts[DESTRUCTOR];
     assert(lc_outstanding() >= 0);
     assert(constructed);

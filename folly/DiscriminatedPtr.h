@@ -90,13 +90,13 @@ class DiscriminatedPtr {
    * an object of a different type.
    */
   template <typename T>
-  T* get_nothrow() noexcept {
+  T* get_nothrow() FOLLY_NOEXCEPT {
     void* p = LIKELY(hasType<T>()) ? ptr() : nullptr;
     return static_cast<T*>(p);
   }
 
   template <typename T>
-  const T* get_nothrow() const noexcept {
+  const T* get_nothrow() const FOLLY_NOEXCEPT {
     const void* p = LIKELY(hasType<T>()) ? ptr() : nullptr;
     return static_cast<const T*>(p);
   }

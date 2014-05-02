@@ -25,7 +25,7 @@ namespace __cxxabiv1 {
 // forward declaration (originally defined in unwind-cxx.h from from libstdc++)
 struct __cxa_eh_globals;
 // declared in cxxabi.h from libstdc++-v3
-extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
+extern "C" __cxa_eh_globals* __cxa_get_globals() FOLLY_NOEXCEPT;
 }
 #elif defined(_MSC_VER) && (_MSC_VER >= 1400) // MSVC++ 8.0 or greater
 #define FOLLY_EXCEPTION_COUNT_USE_GETPTD
@@ -57,12 +57,12 @@ class UncaughtExceptionCounter {
   UncaughtExceptionCounter(const UncaughtExceptionCounter& other)
     : exceptionCount_(other.exceptionCount_) {}
 
-  bool isNewUncaughtException() noexcept {
+  bool isNewUncaughtException() FOLLY_NOEXCEPT {
     return getUncaughtExceptionCount() > exceptionCount_;
   }
 
  private:
-  int getUncaughtExceptionCount() noexcept;
+	 int getUncaughtExceptionCount() FOLLY_NOEXCEPT;
 
   int exceptionCount_;
 };
@@ -73,7 +73,7 @@ class UncaughtExceptionCounter {
  * This function is based on Evgeny Panasyuk's implementation from here:
  * http://fburl.com/15190026
  */
-inline int UncaughtExceptionCounter::getUncaughtExceptionCount() noexcept {
+inline int UncaughtExceptionCounter::getUncaughtExceptionCount() FOLLY_NOEXCEPT {
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS)
   // __cxa_get_globals returns a __cxa_eh_globals* (defined in unwind-cxx.h).
   // The offset below returns __cxa_eh_globals::uncaughtExceptions.

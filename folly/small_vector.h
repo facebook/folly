@@ -663,11 +663,11 @@ public:
     this->setSize(sz);
   }
 
-  value_type* data() noexcept {
+  value_type* data() FOLLY_NOEXCEPT {
     return this->isExtern() ? u.heap() : u.buffer();
   }
 
-  value_type const* data() const noexcept {
+  value_type const* data() const FOLLY_NOEXCEPT {
     return this->isExtern() ? u.heap() : u.buffer();
   }
 
@@ -1134,14 +1134,14 @@ private:
     PointerType pdata_;
     InlineStorageType storage_;
 
-    value_type* buffer() noexcept {
+    value_type* buffer() FOLLY_NOEXCEPT {
       void* vp = &storage_;
       return static_cast<value_type*>(vp);
     }
-    value_type const* buffer() const noexcept {
+    value_type const* buffer() const FOLLY_NOEXCEPT {
       return const_cast<Data*>(this)->buffer();
     }
-    value_type* heap() noexcept {
+    value_type* heap() FOLLY_NOEXCEPT {
       if (kHasInlineCapacity || !detail::pointerFlagGet(pdata_.heap_)) {
         return static_cast<value_type*>(pdata_.heap_);
       }
@@ -1149,7 +1149,7 @@ private:
         detail::shiftPointer(
           detail::pointerFlagClear(pdata_.heap_), kHeapifyCapacitySize));
     }
-    value_type const* heap() const noexcept {
+    value_type const* heap() const FOLLY_NOEXCEPT {
       return const_cast<Data*>(this)->heap();
     }
 

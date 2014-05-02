@@ -70,7 +70,7 @@ class EventHandler : private boost::noncopyable {
    *
    * @param events  A bitset indicating the events that are ready.
    */
-  virtual void handlerReady(uint16_t events) noexcept = 0;
+  virtual void handlerReady(uint16_t events) FOLLY_NOEXCEPT = 0;
 
   /**
    * Register the handler.

@@ -93,7 +93,7 @@ class Optional {
   }
 
   Optional(const Optional& src)
-    noexcept(std::is_nothrow_copy_constructible<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_copy_constructible<Value>::value) {
 
     if (src.hasValue()) {
       construct(src.value());
@@ -103,7 +103,7 @@ class Optional {
   }
 
   Optional(Optional&& src)
-    noexcept(std::is_nothrow_move_constructible<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_move_constructible<Value>::value) {
 
     if (src.hasValue()) {
       construct(std::move(src.value()));
@@ -118,16 +118,16 @@ class Optional {
   }
 
   /* implicit */ Optional(Value&& newValue)
-    noexcept(std::is_nothrow_move_constructible<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_move_constructible<Value>::value) {
     construct(std::move(newValue));
   }
 
   /* implicit */ Optional(const Value& newValue)
-    noexcept(std::is_nothrow_copy_constructible<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
   }
 
-  ~Optional() noexcept {
+  ~Optional() FOLLY_NOEXCEPT {
     clear();
   }
 
@@ -175,14 +175,14 @@ class Optional {
   }
 
   Optional& operator=(Optional &&other)
-    noexcept (std::is_nothrow_move_assignable<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_move_assignable<Value>::value) {
 
     assign(std::move(other));
     return *this;
   }
 
   Optional& operator=(const Optional &other)
-    noexcept (std::is_nothrow_copy_assignable<Value>::value) {
+    FOLLY_NOEXCEPT_VALUE(std::is_nothrow_copy_assignable<Value>::value) {
 
     assign(other);
     return *this;
