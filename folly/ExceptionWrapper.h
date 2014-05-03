@@ -130,7 +130,7 @@ class exception_wrapper {
     return std::exception_ptr();
   }
 
- private:
+ protected:
   std::shared_ptr<std::exception> item_;
   void (*throwfn_)(std::exception*);
 
@@ -146,5 +146,84 @@ exception_wrapper make_exception_wrapper(Args&&... args) {
   return ew;
 }
 
+/*
+ * try_and_catch is a simple replacement for try {} catch(){} that allows you to
+ * specify which derived exceptions you would like to catch and store in an
+ * exception_wrapper.
+ *
+ * Because we cannot build an equivalent of std::current_exception(), we need
+ * to catch every derived exception that we are interested in catching.
+ *
+ * Exceptions should be listed in the reverse order that you would write your
+ * catch statements (that is, std::exception& should be first).
+ *
+ * NOTE: Although implemented as a derived class (for syntactic delight), don't
+ * be confused - you should not pass around try_and_catch objects!
+ *
+ * Example Usage:
+ *
+ * // This catches my runtime_error and if I call throwException() on ew, it
+ * // will throw a runtime_error
+ * auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
+ *   if (badThingHappens()) {
+ *     throw std::runtime_error("ZOMG!");
+ *   }
+ * });
+ *
+ * // This will catch the exception and if I call throwException() on ew, it
+ * // will throw a std::exception
+ * auto ew = folly::try_and_catch<std::exception, std::runtime_error>([=]() {
+ *   if (badThingHappens()) {
+ *     throw std::exception();
+ *   }
+ * });
+ *
+ * // This will not catch the exception and it will be thrown.
+ * auto ew = folly::try_and_catch<std::runtime_error>([=]() {
+ *   if (badThingHappens()) {
+ *     throw std::exception();
+ *   }
+ * });
+ */
+
+template <typename... Exceptions>
+class try_and_catch;
+
+template <typename LastException, typename... Exceptions>
+class try_and_catch<LastException, Exceptions...> :
+    public try_and_catch<Exceptions...> {
+ public:
+  template <typename F>
+  explicit try_and_catch(F&& fn) : Base() {
+    call_fn(fn);
+  }
+
+ protected:
+  typedef try_and_catch<Exceptions...> Base;
+
+  try_and_catch() : Base() {}
+
+  template <typename F>
+  void call_fn(F&& fn) {
+    try {
+      Base::call_fn(std::move(fn));
+    } catch (const LastException& e) {
+      this->item_ = std::make_shared<LastException>(e);
+      this->throwfn_ = folly::detail::Thrower<LastException>::doThrow;
+    }
+  }
+};
+
+template<>
+class try_and_catch<> : public exception_wrapper {
+ public:
+  try_and_catch() {}
+
+ protected:
+  template <typename F>
+  void call_fn(F&& fn) {
+    fn();
+  }
+};
 }
 #endif

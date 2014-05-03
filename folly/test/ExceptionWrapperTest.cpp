@@ -43,3 +43,44 @@ TEST(ExceptionWrapper, boolean) {
   ew = make_exception_wrapper<std::runtime_error>("payload");
   EXPECT_TRUE(bool(ew));
 }
+
+TEST(ExceptionWrapper, try_and_catch_test) {
+  std::string expected = "payload";
+
+  // Catch rightmost matching exception type
+  exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
+    [=]() {
+      throw std::runtime_error(expected);
+    });
+  EXPECT_TRUE(ew.get());
+  EXPECT_EQ(ew.get()->what(), expected);
+  auto rep = dynamic_cast<std::runtime_error*>(ew.get());
+  EXPECT_TRUE(rep);
+
+  // Changing order is like catching in wrong order. Beware of this in your
+  // code.
+  auto ew2 = try_and_catch<std::runtime_error, std::exception>([=]() {
+    throw std::runtime_error(expected);
+  });
+  EXPECT_TRUE(ew2.get());
+  // We are catching a std::exception, not std::runtime_error.
+  EXPECT_NE(ew2.get()->what(), expected);
+  rep = dynamic_cast<std::runtime_error*>(ew2.get());
+  EXPECT_FALSE(rep);
+
+  // Catches even if not rightmost.
+  auto ew3 = try_and_catch<std::exception, std::runtime_error>([]() {
+    throw std::exception();
+  });
+  EXPECT_TRUE(ew3.get());
+  EXPECT_NE(ew3.get()->what(), expected);
+  rep = dynamic_cast<std::runtime_error*>(ew3.get());
+  EXPECT_FALSE(rep);
+
+  // If does not catch, throws.
+  EXPECT_THROW(
+    try_and_catch<std::runtime_error>([]() {
+      throw std::exception();
+    }),
+    std::exception);
+}
