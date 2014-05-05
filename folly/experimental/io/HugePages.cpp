@@ -170,16 +170,21 @@ HugePageSizeVec readHugePageSizes() {
       if (pos == sizeVec.end() || pos->size != pageSize) {
         throw std::runtime_error("Mount page size not found");
       }
-      if (pos->mountPoint.empty()) {
-        // Store mount point
-        pos->mountPoint = fs::canonical(fs::path(parts[1].begin(),
-                                                 parts[1].end()));
-
-        struct stat st;
-        checkUnixError(stat(pos->mountPoint.c_str(), &st),
-                       "stat hugepage mountpoint failed");
-        pos->device = st.st_dev;
+      if (!pos->mountPoint.empty()) {
+        // Only one mount point per page size is allowed
+        return;
       }
+
+      // Store mount point
+      fs::path path(parts[1].begin(), parts[1].end());
+      struct stat st;
+      const int ret = stat(path.c_str(), &st);
+      if (ret == -1 && errno == ENOENT) {
+        return;
+      }
+      checkUnixError(ret, "stat hugepage mountpoint failed");
+      pos->mountPoint = fs::canonical(path);
+      pos->device = st.st_dev;
     };
 
   return sizeVec;
