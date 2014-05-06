@@ -188,4 +188,24 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #endif
 #endif // __cplusplus
 
+// MSVC specific defines
+// mainly for posix compat
+#ifdef _MSC_VER
+
+// this definition is in a really silly place with a silly name
+// and ifdefing it every time we want it is painful
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
+
+// sprintf semantics are not exactly identical
+// but current usage is not a problem
+# define snprintf _snprintf
+
+// semantics here are identical
+# define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+
+// compiler specific to compiler specific
+# define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
 #endif // FOLLY_PORTABILITY_H_
