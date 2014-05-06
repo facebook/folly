@@ -48,6 +48,10 @@ int clock_getres(clockid_t clk_id, struct timespec* ts) {
 
   return 0;
 }
+#elif _MSC_VER
+// using winpthreads from mingw-w64
+// <pthreads_time.h> has clock_gettime and friends
+// make sure to include <pthread.h> as well for typedefs of timespec/etc
 #else
 #error No clock_gettime(2) compatibility wrapper available for this platform.
 #endif

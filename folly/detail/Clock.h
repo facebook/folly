@@ -29,10 +29,16 @@
           that do not support clock_gettime(2).
 #endif
 
+/* For windows, we'll use pthread's time implementations */
+#ifdef _MSC_VER
+#include <pthread.h>
+#include <pthread_time.h>
+#else
 typedef uint8_t clockid_t;
 #define CLOCK_REALTIME 0
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts);
 int clock_getres(clockid_t clk_id, struct timespec* ts);
+#endif
 
 #endif /* FOLLY_DETAIL_CLOCK_H_ */
