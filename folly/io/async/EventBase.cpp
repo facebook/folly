@@ -144,6 +144,10 @@ EventBase::EventBase()
   , startWork_(0)
   , observer_(nullptr)
   , observerSampleCount_(0) {
+  if (UNLIKELY(evb_ == nullptr)) {
+    LOG(ERROR) << "EventBase(): Failed to init event base.";
+    folly::throwSystemError("error in EventBase::EventBase()");
+  }
   VLOG(5) << "EventBase(): Created.";
   initNotificationQueue();
   RequestContext::getStaticContext();
@@ -165,6 +169,10 @@ EventBase::EventBase(event_base* evb)
   , startWork_(0)
   , observer_(nullptr)
   , observerSampleCount_(0) {
+  if (UNLIKELY(evb_ == nullptr)) {
+    LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
+    throw std::invalid_argument("EventBase(): event base cannot be nullptr");
+  }
   initNotificationQueue();
   RequestContext::getStaticContext();
 }
