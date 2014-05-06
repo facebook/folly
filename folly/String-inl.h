@@ -450,9 +450,20 @@ split(const Delim& delimiter,
 
 namespace detail {
 
+/*
+ * If a type can have its string size determined cheaply, we can more
+ * efficiently append it in a loop (see internalJoinAppend). Note that the
+ * struct need not conform to the std::string api completely (ex. does not need
+ * to implement append()).
+ */
+template <class T> struct IsSizableString {
+  enum { value = IsSomeString<T>::value
+         || std::is_same<T, StringPiece>::value };
+};
+
 template <class Iterator>
-struct IsStringContainerIterator :
-  IsSomeString<typename std::iterator_traits<Iterator>::value_type> {
+struct IsSizableStringContainerIterator :
+  IsSizableString<typename std::iterator_traits<Iterator>::value_type> {
 };
 
 template <class Delim, class Iterator, class String>
@@ -473,7 +484,7 @@ void internalJoinAppend(Delim delimiter,
 }
 
 template <class Delim, class Iterator, class String>
-typename std::enable_if<IsStringContainerIterator<Iterator>::value>::type
+typename std::enable_if<IsSizableStringContainerIterator<Iterator>::value>::type
 internalJoin(Delim delimiter,
              Iterator begin,
              Iterator end,
@@ -493,7 +504,8 @@ internalJoin(Delim delimiter,
 }
 
 template <class Delim, class Iterator, class String>
-typename std::enable_if<!IsStringContainerIterator<Iterator>::value>::type
+typename
+std::enable_if<!IsSizableStringContainerIterator<Iterator>::value>::type
 internalJoin(Delim delimiter,
              Iterator begin,
              Iterator end,
