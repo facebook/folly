@@ -365,6 +365,10 @@ IOBuf::~IOBuf() {
 }
 
 IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+
   // If we are part of a chain, delete the rest of the chain.
   while (next_ != this) {
     // Since unlink() returns unique_ptr() and we don't store it,
