@@ -45,6 +45,21 @@ struct MaxAlign { char c; } __attribute__((aligned));
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
+// NOTE: this will only do checking in msvc with versions that support /analyze
+#if _MSC_VER
+# ifdef _USE_ATTRIBUTES_FOR_SAL
+#    undef _USE_ATTRIBUTES_FOR_SAL
+# endif
+# define _USE_ATTRIBUTES_FOR_SAL 1
+# include <sal.h>
+# define FOLLY_PRINTF_FORMAT _Printf_format_string_
+# define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) /**/
+#else
+# define FOLLY_PRINTF_FORMAT /**/
+# define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) \
+  __attribute__((format(printf, format_param, dots_param)))
+#endif
+
 // noreturn
 #if defined(_MSC_VER)
 # define FOLLY_NORETURN __declspec(noreturn)
