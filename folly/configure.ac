@@ -49,6 +49,7 @@ AX_BOOST_BASE([1.20.0], [], [AC_MSG_ERROR(
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
+AX_BOOST_FILESYSTEM
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -177,7 +178,7 @@ if test "$ac_cv_func_pthread_yield" = "no"; then
 fi
 
 AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" $BOOST_CPPFLAGS")
-AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread")
+AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread")
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])

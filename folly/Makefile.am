@@ -202,6 +202,7 @@ libfolly_la_SOURCES = \
 	io/async/EventBase.cpp \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
+	experimental/io/HugePages.cpp \
 	json.cpp \
 	detail/MallocImpl.cpp \
 	detail/MemoryIdler.cpp \
