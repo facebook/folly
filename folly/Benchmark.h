@@ -230,10 +230,23 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
  * good job at eliminating unused variables, and this function fools
  * it into thinking var is in fact needed.
  */
+#ifdef _MSC_VER
+
+#pragma optimize("", off)
+
+template <class T>
+void doNotOptimizeAway(T&& datum) {
+  datum = datum;
+}
+
+#pragma optimize("", on)
+
+#else
 template <class T>
 void doNotOptimizeAway(T&& datum) {
   asm volatile("" : "+r" (datum));
 }
+#endif
 
 } // namespace folly
 
