@@ -121,6 +121,14 @@ class exception_wrapper {
 
   explicit operator bool() const { return get(); }
 
+  std::exception_ptr getExceptionPtr() const {
+    try {
+      throwException();
+    } catch (...) {
+      return std::current_exception();
+    }
+  }
+
  private:
   std::shared_ptr<std::exception> item_;
   void (*throwfn_)(std::exception*);
