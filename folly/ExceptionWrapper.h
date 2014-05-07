@@ -127,6 +127,7 @@ class exception_wrapper {
     } catch (...) {
       return std::current_exception();
     }
+    return std::exception_ptr();
   }
 
  private:
