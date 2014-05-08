@@ -528,12 +528,16 @@ public:
     if (c == isSmall) {
       assert(small_[smallSize()] == TERMINATOR || smallSize() == maxSmallSize
              || small_[smallSize()] == '\0');
-      small_[smallSize()] = '\0';
+      if (small_[smallSize()] != '\0') {
+        small_[smallSize()] = '\0';
+      }
       return small_;
     }
     assert(c == isMedium || c == isLarge);
     assert(ml_.data_[ml_.size_] == TERMINATOR || ml_.data_[ml_.size_] == '\0');
-    ml_.data_[ml_.size_] = '\0';
+    if (ml_.data_[ml_.size_] != '\0') {
+      ml_.data_[ml_.size_] = '\0';
+    }
 #elif defined(FBSTRING_CONSERVATIVE)
     if (c == isSmall) {
       assert(small_[smallSize()] == '\0');
@@ -543,11 +547,15 @@ public:
     assert(ml_.data_[ml_.size_] == '\0');
 #else
     if (c == isSmall) {
-      small_[smallSize()] = '\0';
+      if (small_[smallSize()] != '\0') {
+        small_[smallSize()] = '\0';
+      }
       return small_;
     }
     assert(c == isMedium || c == isLarge);
-    ml_.data_[ml_.size_] = '\0';
+    if (ml_.data_[ml_.size_] != '\0') {
+      ml_.data_[ml_.size_] = '\0';
+    }
 #endif
     return ml_.data_;
   }
