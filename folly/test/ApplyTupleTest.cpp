@@ -21,6 +21,10 @@
 
 #include <memory>
 
+// this placates visual studio stupidity - see
+// http://stackoverflow.com/questions/5503901
+namespace {}
+
 namespace {
 
 void func(int a, int b, double c) {

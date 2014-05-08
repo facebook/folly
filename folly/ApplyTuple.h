@@ -51,13 +51,24 @@ struct DerefSize
   : std::tuple_size<typename std::remove_reference<Tuple>::type>
 {};
 
+template<class Tuple, class ...Unpacked> struct ExprDoUnpack {
+  enum {
+    value = sizeof...(Unpacked) < DerefSize<Tuple>::value
+  };
+};
+
+template<class Tuple, class ...Unpacked> struct ExprIsUnpacked {
+  enum {
+    value = sizeof...(Unpacked) == DerefSize<Tuple>::value
+  };
+};
+
 // CallTuple recursively unpacks tuple arguments so we can forward
 // them into the function.
 template<class Ret>
 struct CallTuple {
   template<class F, class Tuple, class ...Unpacked>
-  static typename std::enable_if<
-    (sizeof...(Unpacked) < DerefSize<Tuple>::value),
+  static typename std::enable_if<ExprDoUnpack<Tuple, Unpacked...>::value,
     Ret
   >::type call(const F& f, Tuple&& t, Unpacked&&... unp) {
     typedef typename std::tuple_element<
@@ -71,8 +82,7 @@ struct CallTuple {
   }
 
   template<class F, class Tuple, class ...Unpacked>
-  static typename std::enable_if<
-    (sizeof...(Unpacked) == DerefSize<Tuple>::value),
+  static typename std::enable_if<ExprIsUnpacked<Tuple, Unpacked...>::value,
     Ret
   >::type call(const F& f, Tuple&& t, Unpacked&&... unp) {
     return makeCallable(f)(std::forward<Unpacked>(unp)...);
