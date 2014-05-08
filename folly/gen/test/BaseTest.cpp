@@ -122,11 +122,21 @@ TEST(Gen, Member) {
             from(counters)
           | member(&Counter::count)
           | sum);
+  EXPECT_EQ(10 * (1 + 10) / 2,
+            from(counters)
+          | mapped([](const Counter& c) { return &c; })
+          | member(&Counter::count)
+          | sum);
   EXPECT_EQ(10 * (2 + 11) / 2,
             from(counters)
           | member(&Counter::incr)
           | sum);
-  EXPECT_EQ(10 * (2 + 11) / 2,
+  EXPECT_EQ(10 * (3 + 12) / 2,
+            from(counters)
+          | mapped([](Counter& c) { return &c; })
+          | member(&Counter::incr)
+          | sum);
+  EXPECT_EQ(10 * (3 + 12) / 2,
             from(counters)
           | member(&Counter::count)
           | sum);
@@ -162,18 +172,29 @@ TEST(Gen, Field) {
   EXPECT_EQ(4, from(xs)
              | field(&X::c)
              | first);
+  EXPECT_EQ(2, seq(&xs[0], &xs[0])
+             | field(&X::a)
+             | first);
   // type-verification
   empty<X&>() | field(&X::a) | assert_type<const int&>();
+  empty<X*>() | field(&X::a) | assert_type<const int&>();
   empty<X&>() | field(&X::b) | assert_type<int&>();
+  empty<X*>() | field(&X::b) | assert_type<int&>();
   empty<X&>() | field(&X::c) | assert_type<int&>();
+  empty<X*>() | field(&X::c) | assert_type<int&>();
+
   empty<X&&>() | field(&X::a) | assert_type<const int&&>();
   empty<X&&>() | field(&X::b) | assert_type<int&&>();
   empty<X&&>() | field(&X::c) | assert_type<int&&>();
   // references don't imply ownership so they're not moved
+
   empty<const X&>() | field(&X::a) | assert_type<const int&>();
+  empty<const X*>() | field(&X::a) | assert_type<const int&>();
   empty<const X&>() | field(&X::b) | assert_type<const int&>();
+  empty<const X*>() | field(&X::b) | assert_type<const int&>();
   // 'mutable' has no effect on field pointers, by C++ spec
   empty<const X&>() | field(&X::c) | assert_type<const int&>();
+  empty<const X*>() | field(&X::c) | assert_type<const int&>();
 
   // can't form pointer-to-reference field: empty<X&>() | field(&X::d)
 }

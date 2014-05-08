@@ -136,6 +136,10 @@ class MemberFunction {
   Result operator()(Class& x) const {
     return (x.*member_)();
   }
+
+  Result operator()(Class* x) const {
+    return (x->*member_)();
+  }
 };
 
 template<class Class,
@@ -152,6 +156,10 @@ class ConstMemberFunction{
 
   Result operator()(const Class& x) const {
     return (x.*member_)();
+  }
+
+  Result operator()(const Class* x) const {
+    return (x->*member_)();
   }
 };
 
@@ -171,8 +179,16 @@ class Field {
     return x.*field_;
   }
 
+  const FieldType& operator()(const Class* x) const {
+    return x->*field_;
+  }
+
   FieldType& operator()(Class& x) const {
     return x.*field_;
+  }
+
+  FieldType& operator()(Class* x) const {
+    return x->*field_;
   }
 
   FieldType&& operator()(Class&& x) const {
