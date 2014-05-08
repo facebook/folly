@@ -104,13 +104,15 @@ TEST(StringGen, Split) {
 TEST(StringGen, SplitByNewLine) {
   auto collect = eachTo<std::string>() | as<vector>();
   {
-    auto pieces = lines("hello\n\n world\r\n goodbye\r meow") | collect;
-    EXPECT_EQ(5, pieces.size());
+    auto pieces = lines("hello\n\n world\r\n goodbye\r me\n\row") | collect;
+    EXPECT_EQ(7, pieces.size());
     EXPECT_EQ("hello", pieces[0]);
     EXPECT_EQ("", pieces[1]);
     EXPECT_EQ(" world", pieces[2]);
     EXPECT_EQ(" goodbye", pieces[3]);
-    EXPECT_EQ(" meow", pieces[4]);
+    EXPECT_EQ(" me", pieces[4]);
+    EXPECT_EQ("", pieces[5]);
+    EXPECT_EQ("ow", pieces[6]);
   }
 }
 
@@ -256,6 +258,50 @@ TEST(StringGen, Resplit) {
     EXPECT_EQ(" goodbye", pieces[3]);
     EXPECT_EQ(" meow", pieces[4]);
   }
+}
+
+void checkResplitMaxLength(vector<string> ins,
+                           char delim,
+                           uint64_t maxLength,
+                           vector<string> outs) {
+  vector<std::string> pieces;
+  auto splitter = streamSplitter(delim, [&pieces](StringPiece s) {
+    pieces.push_back(string(s.begin(), s.end()));
+    return true;
+  }, maxLength);
+  for (const auto& in : ins) {
+    splitter(in);
+  }
+  splitter.flush();
+
+  EXPECT_EQ(outs.size(), pieces.size());
+  for (int i = 0; i < outs.size(); ++i) {
+    EXPECT_EQ(outs[i], pieces[i]);
+  }
+
+  // Also check the concatenated input against the same output
+  if (ins.size() > 1) {
+    checkResplitMaxLength({folly::join("", ins)}, delim, maxLength, outs);
+  }
+}
+
+TEST(StringGen, ResplitMaxLength) {
+  checkResplitMaxLength(
+    {"hel", "lo,", ", world", ", goodbye, m", "ew"}, ',', 5,
+    {"hello", ",", ",", " worl", "d,", " good", "bye,", " mew"}
+  );
+  // " meow" cannot be "end of stream", since it's maxLength long
+  checkResplitMaxLength(
+    {"hel", "lo,", ", world", ", goodbye, m", "eow"}, ',', 5,
+    {"hello", ",", ",", " worl", "d,", " good", "bye,", " meow", ""}
+  );
+  checkResplitMaxLength(
+    {"||", "", "", "", "|a|b", "cdefghijklmn", "|opqrst",
+     "uvwx|y|||", "z", "0123456789", "|", ""}, '|', 2,
+    {"|", "|", "|", "a|", "bc", "de", "fg", "hi", "jk", "lm", "n|", "op", "qr",
+     "st", "uv", "wx", "|", "y|", "|", "|", "z0", "12", "34", "56", "78", "9|",
+     ""}
+  );
 }
 
 template<typename F>

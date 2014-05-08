@@ -19,6 +19,7 @@
 
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
+#include <folly/io/IOBuf.h>
 
 namespace folly {
 namespace gen {
@@ -48,6 +49,8 @@ class SplitTo;
  *
  * resplit() behaves as if the input strings were concatenated into one long
  * string and then split.
+ *
+ * Equivalently, you can use StreamSplitter outside of a folly::gen setting.
  */
 // make this a template so we don't require StringResplitter to be complete
 // until use
@@ -166,6 +169,77 @@ eachToPair(StringPiece delim) {
     detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>>(
     detail::SplitTo<std::pair<First, Second>, fbstring, First, Second>(
       to<fbstring>(delim)));
+}
+
+/**
+ * Outputs exactly the same bytes as the input stream, in different chunks.
+ * A chunk boundary occurs after each delimiter, or, if maxLength is
+ * non-zero, after maxLength bytes, whichever comes first.  Your callback
+ * can return false to stop consuming the stream at any time.
+ *
+ * The splitter buffers the last incomplete chunk, so you must call flush()
+ * to consume the piece of the stream after the final delimiter.  This piece
+ * may be empty.  After a flush(), the splitter can be re-used for a new
+ * stream.
+ *
+ * operator() and flush() return false iff your callback returns false. The
+ * internal buffer is not flushed, so reusing such a splitter will have
+ * indeterminate results.  Same goes if your callback throws.  Feel free to
+ * fix these corner cases if needed.
+ *
+ * Tips:
+ *  - Create via streamSplitter() to take advantage of template deduction.
+ *  - If your callback needs an end-of-stream signal, test for "no
+ *    trailing delimiter **and** shorter than maxLength".
+ *  - You can fine-tune the initial capacity of the internal IOBuf.
+ */
+template <class Callback>
+class StreamSplitter {
+
+ public:
+  StreamSplitter(char delimiter,
+                 Callback&& pieceCb,
+                 uint64_t maxLength = 0,
+                 uint64_t initialCapacity = 0)
+      : buffer_(IOBuf::CREATE, initialCapacity),
+        delimiter_(delimiter),
+        maxLength_(maxLength),
+        pieceCb_(std::move(pieceCb)) {}
+
+  /**
+   * Consume any incomplete last line (may be empty). Do this before
+   * destroying the StreamSplitter, or you will fail to consume part of the
+   * input.
+   *
+   * After flush() you may proceed to consume the next stream via ().
+   *
+   * Returns false if the callback wants no more data, true otherwise.
+   * A return value of false means that this splitter must no longer be used.
+   */
+  bool flush();
+
+  /**
+   * Consume another piece of the input stream.
+   *
+   * Returns false only if your callback refuses to consume more data by
+   * returning false (true otherwise).  A return value of false means that
+   * this splitter must no longer be used.
+   */
+  bool operator()(StringPiece in);
+
+ private:
+  // Holds the current "incomplete" chunk so that chunks can span calls to ()
+  IOBuf buffer_;
+  char delimiter_;
+  uint64_t maxLength_;  // The callback never gets more chars than this
+  Callback pieceCb_;
+};
+
+template <class Callback>  // Helper to enable template deduction
+StreamSplitter<Callback> streamSplitter(char delimiter,
+                                        Callback&& pieceCb,
+                                        uint64_t capacity = 0) {
+  return StreamSplitter<Callback>(delimiter, std::move(pieceCb), capacity);
 }
 
 }  // namespace gen
