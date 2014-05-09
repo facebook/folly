@@ -87,21 +87,6 @@ namespace small_vector_policy {
  */
 struct NoHeap;
 
-/*
- * Passing this policy will cause small_vector to provide lock() and
- * unlock() functions using a 1-bit spin lock in the size value.
- *
- * Note that this is intended for a fairly specialized (although
- * strangely common at facebook) use case, where you have billions of
- * vectors in memory where none of them are "hot" and most of them are
- * small.  This allows you to get fine-grained locks without spending
- * a lot of memory on mutexes (the alternative of a large hashtable of
- * locks leads to extra cache misses in the lookup path).
- *
- * __x86_64__ only.
- */
-struct OneBitMutex;
-
 //////////////////////////////////////////////////////////////////////
 
 } // small_vector_policy
@@ -272,65 +257,6 @@ namespace detail {
     SizeType size_;
   };
 
-#if FOLLY_X64
-  template<class SizeType, bool ShouldUseHeap>
-  struct OneBitMutexImpl {
-    typedef SizeType InternalSizeType;
-
-    OneBitMutexImpl() { psl_.init(); }
-
-    void lock()     const { psl_.lock(); }
-    void unlock()   const { psl_.unlock(); }
-    bool try_lock() const { return psl_.try_lock(); }
-
-  protected:
-    static bool const kShouldUseHeap = ShouldUseHeap;
-
-    static constexpr std::size_t policyMaxSize() {
-      return SizeType(~(SizeType(1) << kLockBit | kExternMask));
-    }
-
-    std::size_t doSize() const {
-      return psl_.getData() & ~kExternMask;
-    }
-
-    std::size_t isExtern() const {
-      return psl_.getData() & kExternMask;
-    }
-
-    void setExtern(bool b) {
-      if (b) {
-        setSize(SizeType(doSize()) | kExternMask);
-      } else {
-        setSize(SizeType(doSize()) & ~kExternMask);
-      }
-    }
-
-    void setSize(std::size_t sz) {
-      assert(sz < (std::size_t(1) << kLockBit));
-      psl_.setData((kExternMask & psl_.getData()) | SizeType(sz));
-    }
-
-    void swapSizePolicy(OneBitMutexImpl& o) {
-      std::swap(psl_, o.psl_);
-    }
-
-  private:
-    static SizeType const kLockBit = sizeof(SizeType) * 8 - 1;
-    static SizeType const kExternMask =
-      kShouldUseHeap ? SizeType(1) << (sizeof(SizeType) * 8 - 2)
-                     : 0;
-
-    PicoSpinLock<SizeType,kLockBit> psl_;
-  };
-#else
-  template<class SizeType, bool ShouldUseHeap>
-  struct OneBitMutexImpl {
-    static_assert(std::is_same<SizeType,void>::value,
-                  "OneBitMutex only works on x86-64");
-  };
-#endif
-
   /*
    * If you're just trying to use this class, ignore everything about
    * this next small_vector_base class thing.
@@ -371,17 +297,6 @@ namespace detail {
                   "Multiple size types specified in small_vector<>");
 
     /*
-     * Figure out if we're supposed to supply a one-bit mutex. :)
-     */
-    typedef typename mpl::count<
-      PolicyList,small_vector_policy::OneBitMutex
-    >::type HasMutex;
-
-    static_assert(HasMutex::value == 0 || HasMutex::value == 1,
-                  "Multiple copies of small_vector_policy::OneBitMutex "
-                  "supplied; this is probably a mistake");
-
-    /*
      * Determine whether we should allow spilling to the heap or not.
      */
     typedef typename mpl::count<
@@ -395,11 +310,8 @@ namespace detail {
     /*
      * Make the real policy base classes.
      */
-    typedef typename mpl::if_<
-      HasMutex,
-      OneBitMutexImpl<SizeType,!HasNoHeap::value>,
-      IntegralSizePolicy<SizeType,!HasNoHeap::value>
-    >::type ActualSizePolicy;
+    typedef IntegralSizePolicy<SizeType,!HasNoHeap::value>
+      ActualSizePolicy;
 
     /*
      * Now inherit from them all.  This is done in such a convoluted

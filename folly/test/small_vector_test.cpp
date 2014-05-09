@@ -50,15 +50,7 @@ static_assert(sizeof(small_vector<int32_t,1,uint8_t>) ==
                 8 + 1,
               "small_vector<int32_t,1,uint32_t> is wrong size");
 
-static_assert(sizeof(small_vector<int32_t,1,OneBitMutex>) == 16,
-              "OneBitMutex took more space than expected");
-
 static_assert(sizeof(small_vector<int16_t,4,uint16_t>) == 10,
-              "Sizeof unexpectedly large");
-static_assert(sizeof(small_vector<int16_t,4,uint16_t,OneBitMutex>) == 10,
-              "Sizeof unexpectedly large");
-static_assert(sizeof(small_vector<int16_t,4,NoHeap,uint16_t,
-                                  OneBitMutex>) == 10,
               "Sizeof unexpectedly large");
 
 #endif
@@ -545,10 +537,6 @@ TEST(small_vector, NoHeap) {
   EXPECT_TRUE(caught);
 
   // Check max_size works right with various policy combinations.
-  folly::small_vector<std::string,32,uint32_t,NoHeap,OneBitMutex> v2;
-  static_assert(v2.max_size() == 32, "max_size is incorrect");
-  folly::small_vector<std::string,32,uint32_t,OneBitMutex> v3;
-  EXPECT_EQ(v3.max_size(), (1ul << 30) - 1);
   folly::small_vector<std::string,32,uint32_t> v4;
   EXPECT_EQ(v4.max_size(), (1ul << 31) - 1);
 
@@ -576,8 +564,6 @@ TEST(small_vector, MaxSize) {
   EXPECT_EQ(vec.max_size(), 127);
   folly::small_vector<int,2,uint16_t> vec2;
   EXPECT_EQ(vec2.max_size(), (1 << 15) - 1);
-  folly::small_vector<int,2,uint16_t,OneBitMutex> vec3;
-  EXPECT_EQ(vec3.max_size(), (1 << 14) - 1);
 }
 
 TEST(small_vector, AllHeap) {
@@ -602,17 +588,9 @@ TEST(small_vector, AllHeap) {
 
 TEST(small_vector, Basic) {
   typedef folly::small_vector<int,3,uint32_t
-#if FOLLY_X64
-    ,OneBitMutex
-#endif
   > Vector;
 
   Vector a;
-
-#if FOLLY_X64
-  a.lock();
-  a.unlock();
-#endif
 
   a.push_back(12);
   EXPECT_EQ(a.front(), 12);

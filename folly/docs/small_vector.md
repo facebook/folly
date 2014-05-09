@@ -46,10 +46,6 @@ small_vector_policy`.
 * `NoHeap` - Avoid the heap entirely.  (Throws `std::length_error` if
   you would've spilled out of the in-place allocation.)
 
-* `OneBitMutex` - On x64 platforms, this spends one bit of the
-  `size_type` to provide a spin lock that you can use for whatever you
-  want.
-
 * `<Any integral type>` - customizes the amount of space we spend on
   tracking the size of the vector.
 
@@ -60,10 +56,9 @@ A couple more examples:
     // 4-byte size_type.
     small_vector<std::unique_ptr<int>, 32, uint32_t> v;
 
-    // A inline vector of up to 256 ints which will not use the
-    // heap and comes with a spin lock.
-    small_vector<int, 256, NoHeap, OneBitMutex> v;
+    // A inline vector of up to 256 ints which will not use the heap.
+    small_vector<int, 256, NoHeap> v;
 
     // Same as the above, but making the size_type smaller too.
-    small_vector<int, 256, NoHeap, uint16_t, OneBitMutex> v;
+    small_vector<int, 256, NoHeap, uint16_t> v;
 ```
