@@ -42,6 +42,11 @@ namespace folly { namespace wangle {
       run();
     }
 
+    template <class F> void waitFor(F const& f) {
+      while (!f.isReady())
+        makeProgress();
+    }
+
    private:
     std::mutex lock_;
     std::queue<std::function<void()>> runnables_;
