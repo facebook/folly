@@ -258,6 +258,10 @@ template <class T, class E>
 typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::type
 makeFuture(E const& e);
 
+/** Make a Future out of a Try */
+template <class T>
+Future<T> makeFuture(Try<T>&& t);
+
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed
   after all its Futures have finished (whether successfully or with an

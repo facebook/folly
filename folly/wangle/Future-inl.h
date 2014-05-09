@@ -275,6 +275,25 @@ makeFuture(E const& e) {
   return std::move(f);
 }
 
+template <class T>
+Future<T> makeFuture(Try<T>&& t) {
+  try {
+    return makeFuture<T>(std::move(t.value()));
+  } catch (...) {
+    return makeFuture<T>(std::current_exception());
+  }
+}
+
+template <>
+inline Future<void> makeFuture(Try<void>&& t) {
+  try {
+    t.throwIfFailed();
+    return makeFuture();
+  } catch (...) {
+    return makeFuture<void>(std::current_exception());
+  }
+}
+
 // when (variadic)
 
 template <typename... Fs>
@@ -303,8 +322,9 @@ whenAll(InputIterator first, InputIterator last)
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   auto n = std::distance(first, last);
-  if (n == 0)
-    return makeFuture<std::vector<Try<T>>>({});
+  if (n == 0) {
+    return makeFuture(std::vector<Try<T>>());
+  }
 
   auto ctx = new detail::WhenAllContext<T>();
 
