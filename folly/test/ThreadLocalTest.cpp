@@ -86,6 +86,21 @@ TEST(ThreadLocalPtr, resetNull) {
   EXPECT_FALSE(tl);
 }
 
+TEST(ThreadLocalPtr, TestRelease) {
+  Widget::totalVal_ = 0;
+  ThreadLocalPtr<Widget> w;
+  std::unique_ptr<Widget> wPtr;
+  std::thread([&w, &wPtr]() {
+      w.reset(new Widget());
+      w.get()->val_ += 10;
+
+      wPtr.reset(w.release());
+    }).join();
+  EXPECT_EQ(0, Widget::totalVal_);
+  wPtr.reset();
+  EXPECT_EQ(10, Widget::totalVal_);
+}
+
 // Test deleting the ThreadLocalPtr object
 TEST(ThreadLocalPtr, CustomDeleter2) {
   Widget::totalVal_ = 0;

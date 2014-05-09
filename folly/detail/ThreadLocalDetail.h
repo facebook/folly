@@ -77,13 +77,19 @@ struct ElementWrapper {
     if (ptr != nullptr) {
       DCHECK(deleter != nullptr);
       deleter->dispose(ptr, mode);
-      if (ownsDeleter) {
-        delete deleter;
-      }
-      ptr = nullptr;
-      deleter = nullptr;
-      ownsDeleter = false;
+
+      cleanup();
     }
+  }
+
+  void* release() {
+    auto retPtr = ptr;
+
+    if (ptr != nullptr) {
+      cleanup();
+    }
+
+    return retPtr;
   }
 
   template <class Ptr>
@@ -112,6 +118,15 @@ struct ElementWrapper {
       deleter = new CustomDeleter<Ptr,Deleter>(d);
       ownsDeleter = true;
     }
+  }
+
+  void cleanup() {
+    if (ownsDeleter) {
+      delete deleter;
+    }
+    ptr = nullptr;
+    deleter = nullptr;
+    ownsDeleter = false;
   }
 
   void* ptr;

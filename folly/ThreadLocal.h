@@ -165,6 +165,13 @@ class ThreadLocalPtr {
     return *get();
   }
 
+  T* release() {
+    threadlocal_detail::ElementWrapper& w =
+      threadlocal_detail::StaticMeta<Tag>::get(id_);
+
+    return static_cast<T*>(w.release());
+  }
+
   void reset(T* newPtr = nullptr) {
     threadlocal_detail::ElementWrapper& w =
       threadlocal_detail::StaticMeta<Tag>::get(id_);
