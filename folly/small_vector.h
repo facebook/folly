@@ -737,8 +737,9 @@ public:
   }
 
   iterator erase(const_iterator q1, const_iterator q2) {
+    if (q1 == q2) return unconst(q1);
     std::move(unconst(q2), end(), unconst(q1));
-    for (auto it = q1; it != end(); ++it) {
+    for (auto it = (end() - std::distance(q1, q2)); it != end(); ++it) {
       it->~value_type();
     }
     this->setSize(size() - (q2 - q1));
