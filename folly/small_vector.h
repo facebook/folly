@@ -372,7 +372,7 @@ class small_vector
   };
 
 public:
-  typedef std::size_t size_type;
+  typedef std::size_t        size_type;
   typedef Value              value_type;
   typedef value_type&        reference;
   typedef value_type const&  const_reference;
@@ -386,11 +386,26 @@ public:
   explicit small_vector() {}
 
   small_vector(small_vector const& o) {
-    assign(o.begin(), o.end());
+    auto n = o.size();
+    makeSize(n);
+    try {
+      std::uninitialized_copy(o.begin(), o.end(), begin());
+    } catch (...) {
+      if (this->isExtern()) u.freeHeap();
+      throw;
+    }
+    this->setSize(n);
   }
 
   small_vector(small_vector&& o) {
-    *this = std::move(o);
+    if (o.isExtern()) {
+      swap(o);
+    } else {
+      std::uninitialized_copy(std::make_move_iterator(o.begin()),
+                              std::make_move_iterator(o.end()),
+                              begin());
+      this->setSize(o.size());
+    }
   }
 
   small_vector(std::initializer_list<value_type> il) {
@@ -424,16 +439,11 @@ public:
   }
 
   small_vector& operator=(small_vector&& o) {
+    // TODO: optimization:
+    // if both are internal, use move assignment where possible
+    if (this == &o) return *this;
     clear();
-    if (!o.isExtern()) {
-      makeSize(o.size());
-      for (std::size_t i = 0; i < o.size(); ++i) {
-        new (data() + i) value_type(std::move(o[i]));
-      }
-      this->setSize(o.size());
-    } else {
-      swap(o);
-    }
+    swap(o);
     return *this;
   }
 
@@ -508,19 +518,23 @@ public:
       }
 
       size_type i = oldSmall.size();
+      const size_type ci = i;
       try {
         for (; i < oldLarge.size(); ++i) {
-          new (&oldSmall[i]) value_type(std::move(oldLarge[i]));
+          auto addr = oldSmall.begin() + i;
+          new (addr) value_type(std::move(oldLarge[i]));
           oldLarge[i].~value_type();
         }
       } catch (...) {
+        oldSmall.setSize(i);
         for (; i < oldLarge.size(); ++i) {
           oldLarge[i].~value_type();
         }
-        oldLarge.setSize(oldSmall.size());
+        oldLarge.setSize(ci);
         throw;
       }
-      this->swapSizePolicy(o);
+      oldSmall.setSize(i);
+      oldLarge.setSize(ci);
       return;
     }
 
