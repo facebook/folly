@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <thread>
 
 #include <boost/container/flat_set.hpp>
 #include <glog/logging.h>
@@ -32,6 +33,7 @@
 #include "folly/gen/File.h"
 #include "folly/gen/String.h"
 #include "folly/experimental/io/FsUtil.h"
+#include "folly/Memory.h"
 
 using namespace folly;
 
@@ -435,4 +437,22 @@ TEST(CommunicateSubprocessTest, Chatty) {
 
     EXPECT_EQ(0, proc.wait().exitStatus());
   });
+}
+
+TEST(ConcurrentSubprocessTest, construction) {
+  std::vector<std::unique_ptr<Subprocess>> ps(100);
+  auto action = [](std::unique_ptr<Subprocess>& p) {
+    p = make_unique<Subprocess>("read", Subprocess::pipeStdout());
+  };
+  std::vector<std::thread> threads;
+  for (auto& p : ps) {
+    threads.emplace_back(action, ref(p));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+  for (auto& p : ps) {
+    p->terminate();
+    p->wait();
+  }
 }

@@ -248,24 +248,24 @@ void Subprocess::spawn(
   });
 
   // Create a pipe to use to receive error information from the child,
-  // in case it fails before calling exec()
+  // in case it fails before calling exec(), setting the close-on-exec flag
+  // on both sides of the pipe.
+  // This way the pipe will be closed automatically in the child if execve()
+  // succeeds.  If the exec fails the child can write error information to the
+  // pipe.
+  // Note that O_CLOEXEC must be set in a single call while we are creating
+  // the pipe instead of doing pipe()/fcntl separately, which might race if a
+  // another thread calls fork()/exec() concurrently and both sides of the pipe
+  // may be inherited by the corresponding child process without being closed.
   int errFds[2];
-  int r = ::pipe(errFds);
-  checkUnixError(r, "pipe");
+  int r = ::pipe2(errFds, O_CLOEXEC);
+  checkUnixError(r, "pipe2");
   SCOPE_EXIT {
     CHECK_ERR(::close(errFds[0]));
     if (errFds[1] >= 0) {
       CHECK_ERR(::close(errFds[1]));
     }
   };
-  // Ask the child to close the read end of the error pipe.
-  options.fdActions_[errFds[0]] = CLOSE;
-  // Set the close-on-exec flag on the write side of the pipe.
-  // This way the pipe will be closed automatically in the child if execve()
-  // succeeds.  If the exec fails the child can write error information to the
-  // pipe.
-  r = fcntl(errFds[1], F_SETFD, FD_CLOEXEC);
-  checkUnixError(r, "set FD_CLOEXEC");
 
   // Perform the actual work of setting up pipes then forking and
   // executing the child.
@@ -312,8 +312,14 @@ void Subprocess::spawnInternal(
   for (auto& p : options.fdActions_) {
     if (p.second == PIPE_IN || p.second == PIPE_OUT) {
       int fds[2];
-      r = ::pipe(fds);
-      checkUnixError(r, "pipe");
+      // Set O_CLOEXEC on both ends of the pipe atomically while creating
+      // the pipe. The child will clear O_CLOEXEC on its side of the pipe
+      // before calling exec() so that stays open afterwards.
+      // This way even if a concurrently constructed Subprocess inherits
+      // both ends of this pipe, they will be automatically closed
+      // after the corresponding exec().
+      r = ::pipe2(fds, O_CLOEXEC);
+      checkUnixError(r, "pipe2");
       PipeInfo pinfo;
       pinfo.direction = p.second;
       int cfd;
@@ -422,9 +428,13 @@ int Subprocess::prepareChild(const Options& options,
     }
   }
 
-  // Close parent's ends of all pipes
   for (auto& p : pipes_) {
-    r = ::close(p.parentFd);
+    // Clear FD_CLOEXEC on the child side of the pipe so
+    // it stays open after exec() (so that the child could
+    // access it).
+    // See spawnInternal() for why FD_CLOEXEC must be set
+    // by default on pipes.
+    r = fcntl(p.childFd, F_SETFD, 0);
     if (r == -1) {
       return errno;
     }
