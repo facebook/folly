@@ -313,6 +313,15 @@ Future<std::vector<std::pair<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 whenN(InputIterator first, InputIterator last, size_t n);
 
+/** Wait for the given future to complete on a semaphore. Returns the result of
+ * the given future.
+ *
+ * NB if the promise for the future would be fulfilled in the same thread that
+ * you call this, it will deadlock.
+ */
+template <class F>
+typename F::value_type waitWithSemaphore(F&& f);
+
 }} // folly::wangle
 
 #include "Future-inl.h"

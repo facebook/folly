@@ -17,6 +17,7 @@
 #pragma once
 
 #include "detail.h"
+#include <folly/LifoSem.h>
 
 namespace folly { namespace wangle {
 
@@ -416,6 +417,18 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   }
 
   return ctx->p.getFuture();
+}
+
+template <typename F>
+typename F::value_type waitWithSemaphore(F&& f) {
+  LifoSem sem;
+  Try<typename F::value_type> done;
+  f.then([&](Try<typename F::value_type> &&t) {
+    done = std::move(t);
+    sem.post();
+  });
+  sem.wait();
+  return done.value();
 }
 
 }}

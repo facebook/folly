@@ -15,10 +15,12 @@
  */
 
 #include <algorithm>
+#include <atomic>
 #include <folly/small_vector.h>
 #include <gtest/gtest.h>
 #include <memory>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <unistd.h>
 #include "folly/wangle/Executor.h"
@@ -620,4 +622,38 @@ TEST(Future, throwIfFailed) {
     .then([=](Try<int>&& t) {
       EXPECT_NO_THROW(t.throwIfFailed());
     });
+}
+
+TEST(Future, waitWithSemaphoreImmediate) {
+  waitWithSemaphore(makeFuture());
+  auto done = waitWithSemaphore(makeFuture(42));
+  EXPECT_EQ(done, 42);
+}
+
+TEST(Future, waitWithSemaphore) {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  std::atomic<bool> flag{false};
+  std::atomic<int> result{1};
+  std::atomic<std::thread::id> id;
+
+  std::thread t([&](Future<int>&& tf){
+      auto n = tf.then([&](Try<int> && t) {
+          id = std::this_thread::get_id();
+          return t.value();
+        });
+      flag = true;
+      result.store(waitWithSemaphore(std::move(n)));
+      LOG(INFO) << result;
+    },
+    std::move(f)
+    );
+  while(!flag){}
+  EXPECT_EQ(result.load(), 1);
+  p.setValue(42);
+  t.join();
+  // validate that the continuation ended up executing in this thread, which
+  // is more to ensure that this test actually tests what it should
+  EXPECT_EQ(id, std::this_thread::get_id());
+  EXPECT_EQ(result.load(), 42);
 }
