@@ -32,4 +32,10 @@ void __throw_out_of_range(const char* msg) {
   throw std::out_of_range(msg);
 }
 
+#if defined(_MSC_VER)
+void __throw_bad_alloc() {
+  throw std::bad_alloc();
+}
+#endif
+
 FOLLY_NAMESPACE_STD_END
