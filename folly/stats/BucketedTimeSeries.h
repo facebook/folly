@@ -36,10 +36,12 @@ namespace folly {
  * be discarded and new data will go into the newly opened bucket.  Internally,
  * it uses a circular array of buckets that it reuses as time advances.
  *
- * The class assumes that time advances forward --  you can't retroactively add
- * values for events in the past -- the 'now' argument is provided for better
- * efficiency and ease of unittesting.
- *
+ * This class assumes that time advances forwards.  The window of time tracked
+ * by the timeseries will advance forwards whenever a more recent timestamp is
+ * passed to addValue().  While it is possible to pass old time values to
+ * addValue(), this will never move the time window backwards.  If the old time
+ * value falls outside the tracked window of time, the data point will be
+ * ignored.
  *
  * This class is not thread-safe -- use your own synchronization!
  */
@@ -65,23 +67,32 @@ class BucketedTimeSeries {
   /*
    * Adds the value 'val' at time 'now'
    *
-   * This function expects time to always move forwards: it cannot be used to
-   * add historical data points that have occurred in the past.  If now is
-   * older than the another timestamp that has already been passed to
-   * addValue() or update(), now will be ignored and the latest timestamp will
-   * be used.
+   * This function expects time to generally move forwards.  The window of time
+   * tracked by this time series will move forwards with time.  If 'now' is
+   * more recent than any time previously seen, addValue() will automatically
+   * call update(now) to advance the time window tracked by this data
+   * structure.
+   *
+   * Values in the recent past may be added to the data structure by passing in
+   * a slightly older value of 'now', as long as this time point still falls
+   * within the tracked duration.  If 'now' is older than the tracked duration
+   * of time, the data point value will be ignored, and addValue() will return
+   * false without doing anything else.
+   *
+   * Returns true on success, or false if now was older than the tracked time
+   * window.
    */
-  void addValue(TimeType now, const ValueType& val);
+  bool addValue(TimeType now, const ValueType& val);
 
   /*
    * Adds the value 'val' the given number of 'times' at time 'now'
    */
-  void addValue(TimeType now, const ValueType& val, int64_t times);
+  bool addValue(TimeType now, const ValueType& val, int64_t times);
 
   /*
    * Adds the value 'sum' as the sum of 'nsamples' samples
    */
-  void addValueAggregated(TimeType now, const ValueType& sum, int64_t nsamples);
+  bool addValueAggregated(TimeType now, const ValueType& sum, int64_t nsamples);
 
   /*
    * Updates the container to the specified time, doing all the necessary
@@ -375,6 +386,9 @@ class BucketedTimeSeries {
     return detail::rateHelper<ReturnType, TimeType, Interval>(numerator,
                                                               elapsed);
   }
+
+  TimeType getEarliestTimeNonEmpty() const;
+  size_t updateBuckets(TimeType now);
 
   ValueType rangeAdjust(TimeType bucketStart, TimeType nextBucketStart,
                         TimeType start, TimeType end,

@@ -714,6 +714,52 @@ TEST(BucketedTimeSeries, rateByInterval) {
   EXPECT_EQ(1.0, b.countRate(seconds(0), kDuration * 10));
 }
 
+TEST(BucketedTimeSeries, addHistorical) {
+  const int kNumBuckets = 5;
+  const seconds kDuration(10);
+  BucketedTimeSeries<double> b(kNumBuckets, kDuration);
+
+  // Initially fill with a constant rate of data
+  for (seconds i = seconds(0); i < seconds(10); ++i) {
+    b.addValue(i, 10.0);
+  }
+
+  EXPECT_EQ(10.0, b.rate());
+  EXPECT_EQ(10.0, b.avg());
+  EXPECT_EQ(10, b.count());
+
+  // Add some more data points to the middle bucket
+  b.addValue(seconds(4), 40.0);
+  b.addValue(seconds(5), 40.0);
+  EXPECT_EQ(15.0, b.avg());
+  EXPECT_EQ(18.0, b.rate());
+  EXPECT_EQ(12, b.count());
+
+  // Now start adding more current data points, until we are about to roll over
+  // the bucket where we added the extra historical data.
+  for (seconds i = seconds(10); i < seconds(14); ++i) {
+    b.addValue(i, 10.0);
+  }
+  EXPECT_EQ(15.0, b.avg());
+  EXPECT_EQ(18.0, b.rate());
+  EXPECT_EQ(12, b.count());
+
+  // Now roll over the middle bucket
+  b.addValue(seconds(14), 10.0);
+  b.addValue(seconds(15), 10.0);
+  EXPECT_EQ(10.0, b.avg());
+  EXPECT_EQ(10.0, b.rate());
+  EXPECT_EQ(10, b.count());
+
+  // Add more historical values past the bucket window.
+  // These should be ignored.
+  EXPECT_FALSE(b.addValue(seconds(4), 40.0));
+  EXPECT_FALSE(b.addValue(seconds(5), 40.0));
+  EXPECT_EQ(10.0, b.avg());
+  EXPECT_EQ(10.0, b.rate());
+  EXPECT_EQ(10, b.count());
+}
+
 namespace IntMHTS {
   enum Levels {
     MINUTE,

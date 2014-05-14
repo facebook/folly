@@ -18,6 +18,7 @@
 #define FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
 
 #include <glog/logging.h>
+#include "folly/Likely.h"
 
 namespace folly {
 
@@ -43,39 +44,58 @@ BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t numBuckets,
 }
 
 template <typename VT, typename TT>
-void BucketedTimeSeries<VT, TT>::addValue(TimeType now, const ValueType& val) {
-  addValueAggregated(now, val, 1);
+bool BucketedTimeSeries<VT, TT>::addValue(TimeType now, const ValueType& val) {
+  return addValueAggregated(now, val, 1);
 }
 
 template <typename VT, typename TT>
-void BucketedTimeSeries<VT, TT>::addValue(TimeType now,
+bool BucketedTimeSeries<VT, TT>::addValue(TimeType now,
                                           const ValueType& val,
                                           int64_t times) {
-  addValueAggregated(now, val * times, times);
+  return addValueAggregated(now, val * times, times);
 }
 
 template <typename VT, typename TT>
-void BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
+bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
                                                     const ValueType& sum,
                                                     int64_t nsamples) {
-  // Make sure time doesn't go backwards
-  now = std::max(now, latestTime_);
-
   if (isAllTime()) {
-    if (empty()) {
+    if (UNLIKELY(empty())) {
+      firstTime_ = now;
+      latestTime_ = now;
+    } else if (now > latestTime_) {
+      latestTime_ = now;
+    } else if (now < firstTime_) {
       firstTime_ = now;
     }
-    latestTime_ = now;
     total_.add(sum, nsamples);
-    return;
+    return true;
   }
 
-  // Update the buckets
-  size_t curBucket = update(now);
-  buckets_[curBucket].add(sum, nsamples);
+  size_t bucketIdx;
+  if (UNLIKELY(empty())) {
+    // First data point we've ever seen
+    firstTime_ = now;
+    latestTime_ = now;
+    bucketIdx = getBucketIdx(now);
+  } else if (now > latestTime_) {
+    // More recent time.  Need to update the buckets.
+    bucketIdx = updateBuckets(now);
+  } else if (LIKELY(now == latestTime_)) {
+    // Current time.
+    bucketIdx = getBucketIdx(now);
+  } else {
+    // An earlier time in the past.  We need to check if this time still falls
+    // within our window.
+    if (now < getEarliestTimeNonEmpty()) {
+      return false;
+    }
+    bucketIdx = getBucketIdx(now);
+  }
 
-  // Update the aggregate sum/count
   total_.add(sum, nsamples);
+  buckets_[bucketIdx].add(sum, nsamples);
+  return true;
 }
 
 template <typename VT, typename TT>
@@ -98,6 +118,11 @@ size_t BucketedTimeSeries<VT, TT>::update(TimeType now) {
     return getBucketIdx(latestTime_);
   }
 
+  return updateBuckets(now);
+}
+
+template <typename VT, typename TT>
+size_t BucketedTimeSeries<VT, TT>::updateBuckets(TimeType now) {
   // We could cache nextBucketStart as a member variable, so we don't have to
   // recompute it each time update() is called with a new timestamp value.
   // This makes things faster when update() (or addValue()) is called once
@@ -169,6 +194,17 @@ TT BucketedTimeSeries<VT, TT>::getEarliestTime() const {
     return firstTime_;
   }
 
+  // Compute the earliest time we can track
+  TimeType earliestTime = getEarliestTimeNonEmpty();
+
+  // We're never tracking data before firstTime_
+  earliestTime = std::max(earliestTime, firstTime_);
+
+  return earliestTime;
+}
+
+template <typename VT, typename TT>
+TT BucketedTimeSeries<VT, TT>::getEarliestTimeNonEmpty() const {
   size_t currentBucket;
   TimeType currentBucketStart;
   TimeType nextBucketStart;
@@ -177,12 +213,7 @@ TT BucketedTimeSeries<VT, TT>::getEarliestTime() const {
 
   // Subtract 1 duration from the start of the next bucket to find the
   // earliest possible data point we could be tracking.
-  TimeType earliestTime = nextBucketStart - duration_;
-
-  // We're never tracking data before firstTime_
-  earliestTime = std::max(earliestTime, firstTime_);
-
-  return earliestTime;
+  return nextBucketStart - duration_;
 }
 
 template <typename VT, typename TT>
