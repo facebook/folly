@@ -167,7 +167,7 @@ class EventHandler : private boost::noncopyable {
     return registerImpl(events, true);
   }
 
-  bool isPending();
+  bool isPending() const;
 
  private:
   bool registerImpl(uint16_t events, bool internal);

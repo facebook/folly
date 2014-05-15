@@ -156,7 +156,7 @@ void EventHandler::setEventBase(EventBase* eventBase) {
   eventBase_ = eventBase;
 }
 
-bool EventHandler::isPending() {
+bool EventHandler::isPending() const {
   if (event_.ev_flags & EVLIST_ACTIVE) {
     if (event_.ev_res & EV_READ) {
       return true;
