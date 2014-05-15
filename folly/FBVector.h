@@ -51,104 +51,10 @@
 //=============================================================================
 // forward declaration
 
-#ifdef FOLLY_BENCHMARK_USE_NS_IFOLLY
-namespace Ifolly {
-#else
 namespace folly {
-#endif
   template <class T, class Allocator = std::allocator<T>>
   class fbvector;
 }
-
-//=============================================================================
-// compatibility
-
-#if __GNUC__ < 4 || __GNUC__ == 4 && __GNUC_MINOR__ < 7
-// PLEASE UPGRADE TO GCC 4.7 or above
-#define FOLLY_FBV_COMPATIBILITY_MODE
-#endif
-
-#ifndef FOLLY_FBV_COMPATIBILITY_MODE
-
-namespace folly {
-
-template <typename A>
-struct fbv_allocator_traits
-  : std::allocator_traits<A> {};
-
-template <typename T>
-struct fbv_is_nothrow_move_constructible
-  : std::is_nothrow_move_constructible<T> {};
-
-template <typename T, typename... Args>
-struct fbv_is_nothrow_constructible
-  : std::is_nothrow_constructible<T, Args...> {};
-
-template <typename T>
-struct fbv_is_copy_constructible
-  : std::is_copy_constructible<T> {};
-
-}
-
-#else
-
-namespace folly {
-
-template <typename A>
-struct fbv_allocator_traits {
-  static_assert(sizeof(A) == 0,
-    "If you want to use a custom allocator, then you must upgrade to gcc 4.7");
-  // for some old code that deals with this case, see D566719, diff number 10.
-};
-
-template <typename T>
-struct fbv_allocator_traits<std::allocator<T>> {
-  typedef std::allocator<T> A;
-
-  typedef T* pointer;
-  typedef const T* const_pointer;
-  typedef size_t size_type;
-
-  typedef std::false_type propagate_on_container_copy_assignment;
-  typedef std::false_type propagate_on_container_move_assignment;
-  typedef std::false_type propagate_on_container_swap;
-
-  static pointer allocate(A& a, size_type n) {
-    return static_cast<pointer>(::operator new(n * sizeof(T)));
-  }
-  static void deallocate(A& a, pointer p, size_type n) {
-    ::operator delete(p);
-  }
-
-  template <typename R, typename... Args>
-  static void construct(A& a, R* p, Args&&... args) {
-    new (p) R(std::forward<Args>(args)...);
-  }
-  template <typename R>
-  static void destroy(A& a, R* p) {
-    p->~R();
-  }
-
-  static A select_on_container_copy_construction(const A& a) {
-    return a;
-  }
-};
-
-template <typename T>
-struct fbv_is_nothrow_move_constructible
-  : std::false_type {};
-
-template <typename T, typename... Args>
-struct fbv_is_nothrow_constructible
-  : std::false_type {};
-
-template <typename T>
-struct fbv_is_copy_constructible
-  : std::true_type {};
-
-}
-
-#endif
 
 //=============================================================================
 // unrolling
@@ -170,11 +76,7 @@ struct fbv_is_copy_constructible
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef FOLLY_BENCHMARK_USE_NS_IFOLLY
-namespace Ifolly {
-#else
 namespace folly {
-#endif
 
 template <class T, class Allocator>
 class fbvector : private boost::totally_ordered<fbvector<T, Allocator>> {
@@ -184,7 +86,7 @@ class fbvector : private boost::totally_ordered<fbvector<T, Allocator>> {
   // implementation
 private:
 
-  typedef folly::fbv_allocator_traits<Allocator> A;
+  typedef std::allocator_traits<Allocator> A;
 
   struct Impl : public Allocator {
     // typedefs
@@ -221,7 +123,7 @@ private:
       if (usingStdAllocator::value) {
         return static_cast<T*>(malloc(n * sizeof(T)));
       } else {
-        return folly::fbv_allocator_traits<Allocator>::allocate(*this, n);
+        return std::allocator_traits<Allocator>::allocate(*this, n);
       }
     }
 
@@ -229,7 +131,7 @@ private:
       if (usingStdAllocator::value) {
         free(p);
       } else {
-        folly::fbv_allocator_traits<Allocator>::deallocate(*this, p, n);
+        std::allocator_traits<Allocator>::deallocate(*this, p, n);
       }
     }
 
@@ -360,7 +262,7 @@ private:
     if (usingStdAllocator::value) {
       new (p) U(std::forward<Args>(args)...);
     } else {
-      folly::fbv_allocator_traits<Allocator>::construct(
+      std::allocator_traits<Allocator>::construct(
         impl_, p, std::forward<Args>(args)...);
     }
   }
@@ -372,7 +274,7 @@ private:
 
   template <typename U, typename... Args>
   static void S_construct_a(Allocator& a, U* p, Args&&... args) {
-    folly::fbv_allocator_traits<Allocator>::construct(
+    std::allocator_traits<Allocator>::construct(
       a, p, std::forward<Args>(args)...);
   }
 
@@ -384,7 +286,7 @@ private:
     if (usingStdAllocator::value) {
       *p = arg;
     } else {
-      folly::fbv_allocator_traits<Allocator>::construct(impl_, p, arg);
+      std::allocator_traits<Allocator>::construct(impl_, p, arg);
     }
   }
 
@@ -397,7 +299,7 @@ private:
   template <typename U, typename Enable = typename
     std::enable_if<std::is_scalar<U>::value>::type>
   static void S_construct_a(Allocator& a, U* p, U arg) {
-    folly::fbv_allocator_traits<Allocator>::construct(a, p, arg);
+    std::allocator_traits<Allocator>::construct(a, p, arg);
   }
 
   // const& optimization
@@ -407,7 +309,7 @@ private:
     if (usingStdAllocator::value) {
       new (p) U(value);
     } else {
-      folly::fbv_allocator_traits<Allocator>::construct(impl_, p, value);
+      std::allocator_traits<Allocator>::construct(impl_, p, value);
     }
   }
 
@@ -420,7 +322,7 @@ private:
   template <typename U, typename Enable = typename
     std::enable_if<!std::is_scalar<U>::value>::type>
   static void S_construct_a(Allocator& a, U* p, const U& value) {
-    folly::fbv_allocator_traits<Allocator>::construct(a, p, value);
+    std::allocator_traits<Allocator>::construct(a, p, value);
   }
 
   //---------------------------------------------------------------------------
@@ -430,7 +332,7 @@ private:
     if (usingStdAllocator::value) {
       if (!boost::has_trivial_destructor<T>::value) p->~T();
     } else {
-      folly::fbv_allocator_traits<Allocator>::destroy(impl_, p);
+      std::allocator_traits<Allocator>::destroy(impl_, p);
     }
   }
 
@@ -461,7 +363,7 @@ private:
   // allocator
   static void S_destroy_range_a(Allocator& a, T* first, T* last) noexcept {
     for (; first != last; ++first)
-      folly::fbv_allocator_traits<Allocator>::destroy(a, first);
+      std::allocator_traits<Allocator>::destroy(a, first);
   }
 
   // optimized
@@ -523,7 +425,7 @@ private:
     auto e = dest + sz;
     try {
       for (; b != e; ++b)
-        folly::fbv_allocator_traits<Allocator>::construct(a, b,
+        std::allocator_traits<Allocator>::construct(a, b,
           std::forward<Args>(args)...);
     } catch (...) {
       S_destroy_range_a(a, dest, b);
@@ -605,7 +507,7 @@ private:
     auto b = dest;
     try {
       for (; first != last; ++first, ++b)
-        folly::fbv_allocator_traits<Allocator>::construct(a, b, *first);
+        std::allocator_traits<Allocator>::construct(a, b, *first);
     } catch (...) {
       S_destroy_range_a(a, dest, b);
       throw;
@@ -730,9 +632,9 @@ private:
     > relocate_use_memcpy;
 
   typedef std::integral_constant<bool,
-      (folly::fbv_is_nothrow_move_constructible<T>::value
+      (std::is_nothrow_move_constructible<T>::value
        && usingStdAllocator::value)
-      || !folly::fbv_is_copy_constructible<T>::value
+      || !std::is_copy_constructible<T>::value
     > relocate_use_move;
 
   // move
@@ -769,11 +671,11 @@ private:
   void relocate_undo(T* dest, T* first, T* last) noexcept {
     if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
       // used memcpy, old data is still valid, nothing to do
-    } else if (folly::fbv_is_nothrow_move_constructible<T>::value &&
+    } else if (std::is_nothrow_move_constructible<T>::value &&
                usingStdAllocator::value) {
       // noexcept move everything back, aka relocate_move
       relocate_move(first, dest, dest + (last - first));
-    } else if (!folly::fbv_is_copy_constructible<T>::value) {
+    } else if (!std::is_copy_constructible<T>::value) {
       // weak guarantee
       D_destroy_range_a(dest, dest + (last - first));
     } else {
@@ -803,12 +705,7 @@ public:
   template <class It, class Category = typename
             std::iterator_traits<It>::iterator_category>
   fbvector(It first, It last, const Allocator& a = Allocator())
-    #ifndef FOLLY_FBV_COMPATIBILITY_MODE
     : fbvector(first, last, a, Category()) {}
-    #else
-    : impl_(std::distance(first, last), a)
-    { fbvector_init(first, last, Category()); }
-    #endif
 
   fbvector(const fbvector& other)
     : impl_(other.size(), A::select_on_container_copy_construction(other.impl_))
@@ -817,12 +714,7 @@ public:
   fbvector(fbvector&& other) noexcept : impl_(std::move(other.impl_)) {}
 
   fbvector(const fbvector& other, const Allocator& a)
-    #ifndef FOLLY_FBV_COMPATIBILITY_MODE
     : fbvector(other.begin(), other.end(), a) {}
-    #else
-    : impl_(other.size(), a)
-    { fbvector_init(other.begin(), other.end(), std::forward_iterator_tag()); }
-    #endif
 
   fbvector(fbvector&& other, const Allocator& a) : impl_(a) {
     if (impl_ == other.impl_) {
@@ -834,12 +726,7 @@ public:
   }
 
   fbvector(std::initializer_list<T> il, const Allocator& a = Allocator())
-    #ifndef FOLLY_FBV_COMPATIBILITY_MODE
     : fbvector(il.begin(), il.end(), a) {}
-    #else
-    : impl_(std::distance(il.begin(), il.end()), a)
-    { fbvector_init(il.begin(), il.end(), std::forward_iterator_tag()); }
-    #endif
 
   ~fbvector() = default; // the cleanup occurs in impl_
 
@@ -908,7 +795,6 @@ public:
 
 private:
 
-  #ifndef FOLLY_FBV_COMPATIBILITY_MODE
   // contract dispatch for iterator types fbvector(It first, It last)
   template <class ForwardIterator>
   fbvector(ForwardIterator first, ForwardIterator last,
@@ -921,21 +807,6 @@ private:
            const Allocator& a, std::input_iterator_tag)
     : impl_(a)
     { for (; first != last; ++first) emplace_back(*first); }
-
-  #else
-  // contract dispatch for iterator types without constructor forwarding
-  template <class ForwardIterator>
-  void
-  fbvector_init(ForwardIterator first, ForwardIterator last,
-                std::forward_iterator_tag)
-    { M_uninitialized_copy_e(first, last); }
-
-  template <class InputIterator>
-  void
-  fbvector_init(InputIterator first, InputIterator last,
-                std::input_iterator_tag)
-    { for (; first != last; ++first) emplace_back(*first); }
-  #endif
 
   // contract dispatch for allocator movement in operator=(fbvector&&)
   void

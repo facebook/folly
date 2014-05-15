@@ -165,9 +165,8 @@ THOUGHTS:
 #include <vector>
 #define VECTOR_ std::vector
 #else
-#define FOLLY_BENCHMARK_USE_NS_IFOLLY
 #include "folly/FBVector.h"
-#define VECTOR_ Ifolly::fbvector
+#define VECTOR_ folly::fbvector
 #endif
 
 //#define USING_STD_VECTOR
@@ -194,8 +193,6 @@ THOUGHTS:
 
 using namespace std;
 using namespace folly;
-namespace Ifolly {}
-using namespace Ifolly;
 
 //=============================================================================
 //=============================================================================
