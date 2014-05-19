@@ -420,14 +420,15 @@ whenN(InputIterator first, InputIterator last, size_t n) {
 }
 
 template <typename F>
-typename F::value_type waitWithSemaphore(F&& f) {
+typename std::add_lvalue_reference<typename F::value_type>::type
+waitWithSemaphore(F&& f) {
   LifoSem sem;
-  Try<typename F::value_type> done;
-  f.then([&](Try<typename F::value_type> &&t) {
-    done = std::move(t);
+  auto done = f.then([&](Try<typename F::value_type> &&t) {
     sem.post();
+    return t.value();
   });
   sem.wait();
+  while (!done.isReady()) {}
   return done.value();
 }
 

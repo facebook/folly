@@ -627,7 +627,18 @@ TEST(Future, throwIfFailed) {
 TEST(Future, waitWithSemaphoreImmediate) {
   waitWithSemaphore(makeFuture());
   auto done = waitWithSemaphore(makeFuture(42));
-  EXPECT_EQ(done, 42);
+  EXPECT_EQ(42, done);
+
+  vector<int> v{1,2,3};
+  auto done_v = waitWithSemaphore(makeFuture(v));
+  EXPECT_EQ(v.size(), done_v.size());
+  EXPECT_EQ(v, done_v);
+
+  vector<Future<void>> v_f;
+  v_f.push_back(makeFuture());
+  v_f.push_back(makeFuture());
+  auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end()));
+  EXPECT_EQ(2, done_v_f.size());
 }
 
 TEST(Future, waitWithSemaphore) {
