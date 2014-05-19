@@ -24,6 +24,7 @@
 #include "folly/FBString.h"
 #include "folly/Range.h"
 #include "folly/String.h"
+#include "folly/io/IOBuf.h"
 #include "folly/experimental/symbolizer/Elf.h"
 #include "folly/experimental/symbolizer/ElfCache.h"
 #include "folly/experimental/symbolizer/Dwarf.h"
@@ -174,6 +175,11 @@ class SymbolizePrinter {
                size_t frameCount);
 
   /**
+   * Print a string, no endling newline.
+   */
+  void print(StringPiece sp) { doPrint(sp); }
+
+  /**
    * Print multiple addresses on separate lines, skipping the first
    * skip addresses.
    */
@@ -235,10 +241,15 @@ class OStreamSymbolizePrinter : public SymbolizePrinter {
  */
 class FDSymbolizePrinter : public SymbolizePrinter {
  public:
-  explicit FDSymbolizePrinter(int fd, int options=0);
+  explicit FDSymbolizePrinter(int fd, int options=0,
+                              size_t bufferSize=0);
+  ~FDSymbolizePrinter();
+  void flush();
  private:
   void doPrint(StringPiece sp) override;
+
   int fd_;
+  std::unique_ptr<IOBuf> buffer_;
 };
 
 /**

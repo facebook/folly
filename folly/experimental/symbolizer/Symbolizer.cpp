@@ -449,13 +449,35 @@ void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
   out_ << sp;
 }
 
-FDSymbolizePrinter::FDSymbolizePrinter(int fd, int options)
+FDSymbolizePrinter::FDSymbolizePrinter(int fd, int options, size_t bufferSize)
   : SymbolizePrinter(options, isTty(options, fd)),
-    fd_(fd) {
+    fd_(fd),
+    buffer_(bufferSize ? IOBuf::create(bufferSize) : nullptr) {
+}
+
+FDSymbolizePrinter::~FDSymbolizePrinter() {
+  flush();
 }
 
 void FDSymbolizePrinter::doPrint(StringPiece sp) {
-  writeFull(fd_, sp.data(), sp.size());
+  if (buffer_) {
+    if (sp.size() > buffer_->tailroom()) {
+      flush();
+      writeFull(fd_, sp.data(), sp.size());
+    } else {
+      memcpy(buffer_->writableTail(), sp.data(), sp.size());
+      buffer_->append(sp.size());
+    }
+  } else {
+    writeFull(fd_, sp.data(), sp.size());
+  }
+}
+
+void FDSymbolizePrinter::flush() {
+  if (buffer_ && !buffer_->empty()) {
+    writeFull(fd_, buffer_->data(), buffer_->length());
+    buffer_->clear();
+  }
 }
 
 FILESymbolizePrinter::FILESymbolizePrinter(FILE* file, int options)

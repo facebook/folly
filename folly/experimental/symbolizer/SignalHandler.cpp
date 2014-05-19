@@ -123,10 +123,32 @@ void callPreviousSignalHandler(int signum) {
   raise(signum);
 }
 
+constexpr size_t kDefaultCapacity = 500;
+
+// Note: not thread-safe, but that's okay, as we only let one thread
+// in our signal handler at a time.
+//
+// Leak it so we don't have to worry about destruction order
+auto gSignalSafeElfCache = new SignalSafeElfCache(kDefaultCapacity);
+
+// Buffered writer (using a fixed-size buffer). We try to write only once
+// to prevent interleaving with messages written from other threads.
+//
+// Leak it so we don't have to worry about destruction order.
+auto gPrinter = new FDSymbolizePrinter(STDERR_FILENO,
+                                       SymbolizePrinter::COLOR_IF_TTY,
+                                       size_t(64) << 10);  // 64KiB
+
+// Flush gPrinter, also fsync, in case we're about to crash again...
+void flush() {
+  gPrinter->flush();
+  fsyncNoInt(STDERR_FILENO);
+}
+
 void printDec(uint64_t val) {
   char buf[20];
   uint32_t n = uint64ToBufferUnsafe(val, buf);
-  writeFull(STDERR_FILENO, buf, n);
+  gPrinter->print(StringPiece(buf, n));
 }
 
 const char kHexChars[] = "0123456789abcdef";
@@ -143,15 +165,15 @@ void printHex(uint64_t val) {
   *--p = 'x';
   *--p = '0';
 
-  writeFull(STDERR_FILENO, p, end - p);
+  gPrinter->print(StringPiece(p, end));
 }
 
 void print(StringPiece sp) {
-  writeFull(STDERR_FILENO, sp.data(), sp.size());
+  gPrinter->print(sp);
 }
 
 void dumpTimeInfo() {
-  SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
+  SCOPE_EXIT { flush(); };
   time_t now = time(nullptr);
   print("*** Aborted at ");
   printDec(now);
@@ -161,7 +183,7 @@ void dumpTimeInfo() {
 }
 
 void dumpSignalInfo(int signum, siginfo_t* siginfo) {
-  SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
+  SCOPE_EXIT { flush(); };
   // Get the signal name, if possible.
   const char* name = nullptr;
   for (auto p = kFatalSignals; p->name; ++p) {
@@ -188,20 +210,10 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   print("), stack trace: ***\n");
 }
 
-namespace {
-constexpr size_t kDefaultCapacity = 500;
-
-// Note: not thread-safe, but that's okay, as we only let one thread
-// in our signal handler at a time.
-//
-// Leak it so we don't have to worry about destruction order
-auto gSignalSafeElfCache = new SignalSafeElfCache(kDefaultCapacity);
-}  // namespace
-
 FOLLY_NOINLINE void dumpStackTrace(bool symbolize);
 
 void dumpStackTrace(bool symbolize) {
-  SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
+  SCOPE_EXIT { flush(); };
   // Get and symbolize stack trace
   constexpr size_t kMaxStackTraceDepth = 100;
   FrameArray<kMaxStackTraceDepth> addresses;
@@ -213,14 +225,12 @@ void dumpStackTrace(bool symbolize) {
     Symbolizer symbolizer(gSignalSafeElfCache);
     symbolizer.symbolize(addresses);
 
-    FDSymbolizePrinter printer(STDERR_FILENO, SymbolizePrinter::COLOR_IF_TTY);
-
     // Skip the top 2 frames:
     // getStackTraceSafe
     // dumpStackTrace (here)
     //
     // Leaving signalHandler on the stack for clarity, I think.
-    printer.println(addresses, 2);
+    gPrinter->println(addresses, 2);
   } else {
     print("(safe mode, symbolizer not available)\n");
     AddressFormatter formatter;
@@ -276,7 +286,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
 }
 
 void signalHandler(int signum, siginfo_t* info, void* uctx) {
-  SCOPE_EXIT { fsyncNoInt(STDERR_FILENO); };
+  SCOPE_EXIT { flush(); };
   innerSignalHandler(signum, info, uctx);
 
   gSignalThread = kInvalidThreadId;
