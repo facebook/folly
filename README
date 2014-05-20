@@ -46,7 +46,10 @@ Dependencies
     - libgoogle-glog-dev
     - libgflags-dev
     - scons (for double-conversion)
-
+    - binutils-dev      (optional)
+    - libiberty-dev     (optional)
+    - libjemalloc-dev   (optional)
+ 
   Fedora 17 64-bit
     - gcc
     - gcc-c++

@@ -238,6 +238,8 @@ if !HAVE_BITS_FUNCTEXCEPT
 libfolly_la_SOURCES += detail/FunctionalExcept.cpp
 endif
 
+libfolly_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+
 FingerprintTables.cpp: generate_fingerprint_tables
 	./generate_fingerprint_tables
 CLEANFILES += FingerprintTables.cpp
@@ -245,9 +247,13 @@ CLEANFILES += FingerprintTables.cpp
 libfollyfingerprint_la_SOURCES = \
 	FingerprintTables.cpp
 libfollyfingerprint_la_LIBADD = libfolly.la
+libfollyfingerprint_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 
 libfollybenchmark_la_SOURCES = Benchmark.cpp
 libfollybenchmark_la_LIBADD = libfolly.la
+libfollybenchmark_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 
 libfollytimeout_queue_la_SOURCES = TimeoutQueue.cpp
 libfollytimeout_queue_la_LIBADD = libfolly.la
+libfollytimeout_queue_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+

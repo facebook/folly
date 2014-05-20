@@ -4,12 +4,19 @@
 
 AC_PREREQ(2.59)
 AC_INIT(folly, 0.1, folly@fb.com)
+
+m4_define([folly_libtool_current], [1])
+
+# We assume all revisions are backwards incompatible.
+LT_VERSION=folly_libtool_current:0:0
+AC_SUBST(LT_VERSION)
+
 AC_CONFIG_SRCDIR([Likely.h])
 AC_CONFIG_HEADERS([config.h])
 AX_PREFIX_CONFIG_H([folly-config.h], [folly], [config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 
-AM_INIT_AUTOMAKE([foreign dist-bzip2 nostdinc])
+AM_INIT_AUTOMAKE([foreign dist-bzip2 nostdinc subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -62,6 +69,8 @@ AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
              [Please install double-conversion library])])
 
 AC_CHECK_LIB([event], [event_set], [], [AC_MSG_ERROR([Unable to find libevent])])
+
+AC_CHECK_LIB([jemalloc], [rallocm])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
