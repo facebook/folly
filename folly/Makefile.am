@@ -6,13 +6,14 @@ CLEANFILES =
 
 noinst_PROGRAMS = generate_fingerprint_tables
 generate_fingerprint_tables_SOURCES = build/GenerateFingerprintTables.cpp
-generate_fingerprint_tables_LDADD = libfolly.la
+generate_fingerprint_tables_LDADD = libfollybase.la
+
+noinst_LTLIBRARIES = \
+	libfollybase.la
 
 lib_LTLIBRARIES = \
 	libfolly.la \
-	libfollybenchmark.la \
-	libfollytimeout_queue.la \
-	libfollyfingerprint.la
+	libfollybenchmark.la
 
 follyincludedir = $(includedir)/folly
 
@@ -62,18 +63,35 @@ nobase_follyinclude_HEADERS = \
 	dynamic.h \
 	dynamic-inl.h \
 	Exception.h \
+	ExceptionWrapper.h \
+	experimental/Bits.h \
+	experimental/EliasFanoCoding.h \
+	experimental/EventCount.h \
+	experimental/io/FsUtil.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
 	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
-	Exception.h \
-	ExceptionWrapper.h \
 	Foreach.h \
 	FormatArg.h \
 	Format.h \
 	Format-inl.h \
+	gen/Base.h \
+	gen/Base-inl.h \
+	gen/Combine.h \
+	gen/Combine-inl.h \
+	gen/Core.h \
+	gen/Core-inl.h \
+	gen/File.h \
+	gen/File-inl.h \
+	gen/Parallel.h \
+	gen/Parallel-inl.h \
+	gen/ParallelMap.h \
+	gen/ParallelMap-inl.h \
+	gen/String.h \
+	gen/String-inl.h \
 	GroupVarint.h \
 	Hash.h \
 	IPAddress.h \
@@ -177,17 +195,24 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 	build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
-libfolly_la_SOURCES = \
-	Bits.cpp \
+libfollybase_la_SOURCES = \
 	Conv.cpp \
 	Demangle.cpp \
-	detail/CacheLocality.cpp \
-	dynamic.cpp \
 	EscapeTables.cpp \
-	File.cpp \
-	FileUtil.cpp \
 	Format.cpp \
 	FormatTables.cpp \
+	Malloc.cpp \
+	Range.cpp \
+	String.cpp \
+	Unicode.cpp
+
+libfolly_la_SOURCES = \
+	Bits.cpp \
+	detail/CacheLocality.cpp \
+	dynamic.cpp \
+	File.cpp \
+	FileUtil.cpp \
+	FingerprintTables.cpp \
 	detail/Futex.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
@@ -202,58 +227,53 @@ libfolly_la_SOURCES = \
 	io/async/EventBase.cpp \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
-	experimental/io/HugePages.cpp \
 	json.cpp \
-	detail/MallocImpl.cpp \
 	detail/MemoryIdler.cpp \
 	MacAddress.cpp \
-	Malloc.cpp \
 	MemoryMapping.cpp \
 	Random.cpp \
-	Range.cpp \
 	SafeAssert.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
 	stats/Instantiations.cpp \
-	String.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
 	TimeoutQueue.cpp \
-	Unicode.cpp \
 	Uri.cpp \
 	wangle/InlineExecutor.cpp \
 	wangle/ManualExecutor.cpp \
-	wangle/ThreadGate.cpp
+	wangle/ThreadGate.cpp \
+	experimental/io/FsUtil.cpp
+
+if HAVE_LINUX
+nobase_follyinclude_HEADERS += \
+	experimental/io/HugePages.h
+libfolly_la_SOURCES += \
+	experimental/io/HugePages.cpp
+endif
 
 if !HAVE_LINUX
 nobase_follyinclude_HEADERS += detail/Clock.h
-libfolly_la_SOURCES += detail/Clock.cpp
+libfollybase_la_SOURCES += detail/Clock.cpp
 endif
 
 if !HAVE_WEAK_SYMBOLS
-libfolly_la_SOURCES += detail/MallocImpl.cpp
+libfollybase_la_SOURCES += detail/MallocImpl.cpp
 endif
 
 if !HAVE_BITS_FUNCTEXCEPT
-libfolly_la_SOURCES += detail/FunctionalExcept.cpp
+libfollybase_la_SOURCES += detail/FunctionalExcept.cpp
 endif
 
+libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+
+libfolly_la_LIBADD = libfollybase.la
 libfolly_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 
 FingerprintTables.cpp: generate_fingerprint_tables
 	./generate_fingerprint_tables
 CLEANFILES += FingerprintTables.cpp
 
-libfollyfingerprint_la_SOURCES = \
-	FingerprintTables.cpp
-libfollyfingerprint_la_LIBADD = libfolly.la
-libfollyfingerprint_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
-
 libfollybenchmark_la_SOURCES = Benchmark.cpp
 libfollybenchmark_la_LIBADD = libfolly.la
 libfollybenchmark_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
-
-libfollytimeout_queue_la_SOURCES = TimeoutQueue.cpp
-libfollytimeout_queue_la_LIBADD = libfolly.la
-libfollytimeout_queue_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
-

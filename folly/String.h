@@ -21,9 +21,11 @@
 #include <string>
 #include <boost/type_traits.hpp>
 
+#ifdef FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER
 #include <ext/hash_set>
 #include <ext/hash_map>
+#endif
 #endif
 
 #include <unordered_set>
@@ -518,6 +520,7 @@ struct hash<std::basic_string<C> > : private hash<const C*> {
 
 }
 
+#if FOLLY_HAVE_DEPRECATED_ASSOC
 #if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
 namespace __gnu_cxx {
 
@@ -529,6 +532,7 @@ struct hash<std::basic_string<C> > : private hash<const C*> {
 };
 
 }
+#endif
 #endif
 
 // Hook into boost's type traits

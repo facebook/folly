@@ -14,7 +14,7 @@ TESTS= \
 	bits_test \
 	bit_iterator_test
 
-lib_LTLIBRARIES = libgtestmain.la libgtest.la
+noinst_LTLIBRARIES = libgtestmain.la libgtest.la
 
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
@@ -92,7 +92,7 @@ scope_guard_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += scope_guard_test
 
 timeout_queue_test_SOURCES = TimeoutQueueTest.cpp
-timeout_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfollytimeout_queue.la
+timeout_queue_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 
 conv_test_SOURCES = ConvTest.cpp
 conv_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
@@ -159,7 +159,7 @@ format_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libf
 TESTS += format_test
 
 fingerprint_test_SOURCES = FingerprintTest.cpp
-fingerprint_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollyfingerprint.la $(top_builddir)/libfollybenchmark.la
+fingerprint_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += fingerprint_test
 
 portability_test_SOURCES = PortabilityTest.cpp

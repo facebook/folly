@@ -100,9 +100,11 @@
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
 
+#if FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER
 #include <ext/hash_set>
 #include <ext/hash_map>
+#endif
 #endif
 
 #endif
@@ -2488,6 +2490,7 @@ struct hash< ::folly::fbstring> {
 
 }
 
+#if FOLLY_HAVE_DEPRECATED_ASSOC
 #if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
 namespace __gnu_cxx {
 
@@ -2507,6 +2510,8 @@ struct hash< ::folly::fbstring> {
 
 }
 #endif // _GLIBCXX_SYMVER && !__BIONIC__
+#endif // FOLLY_HAVE_DEPRECATED_ASSOC
+
 #endif // _LIBSTDCXX_FBSTRING
 
 #pragma GCC diagnostic pop
