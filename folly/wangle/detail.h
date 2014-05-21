@@ -38,7 +38,7 @@ class FutureObject {
   FutureObject& operator=(FutureObject const&) = delete;
 
   // not movable (see comment in the implementation of Future::then)
-  FutureObject(FutureObject&&) = delete;
+  FutureObject(FutureObject&&) noexcept = delete;
   FutureObject& operator=(FutureObject&&) = delete;
 
   Try<T>& getTry() {
@@ -85,7 +85,11 @@ class FutureObject {
   }
 
   typename std::add_lvalue_reference<T>::type value() {
-    return value_->value();
+    if (ready()) {
+      return value_->value();
+    } else {
+      throw FutureNotReady();
+    }
   }
 
  private:

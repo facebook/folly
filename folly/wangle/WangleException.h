@@ -63,6 +63,12 @@ class PromiseAlreadySatisfied : public WangleException {
       WangleException("Promise already satisfied") { }
 };
 
+class FutureNotReady : public WangleException {
+  public:
+    explicit FutureNotReady() :
+      WangleException("Future not ready") { }
+};
+
 class FutureAlreadyRetrieved : public WangleException {
   public:
     explicit FutureAlreadyRetrieved () :

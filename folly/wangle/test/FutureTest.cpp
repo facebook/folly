@@ -153,6 +153,12 @@ TEST(Future, isReady) {
   EXPECT_TRUE(f.isReady());
   }
 
+TEST(Future, futureNotReady) {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  EXPECT_THROW(f.value(), eggs_t);
+}
+
 TEST(Future, hasException) {
   EXPECT_TRUE(makeFuture<int>(eggs).getTry().hasException());
   EXPECT_FALSE(makeFuture(42).getTry().hasException());
