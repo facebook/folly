@@ -18,6 +18,9 @@
 #error This file may only be included from folly/gen/Core.h
 #endif
 
+#include <type_traits>
+#include <utility>
+
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -90,9 +93,9 @@ class Operator : public FBounded<Self> {
 
  protected:
   Operator() = default;
-  Operator(Operator&&) = default;
+  Operator(Operator&&) noexcept = default;
   Operator(const Operator&) = default;
-  Operator& operator=(Operator&&) = default;
+  Operator& operator=(Operator&&) noexcept = default;
   Operator& operator=(const Operator&) = default;
 };
 
