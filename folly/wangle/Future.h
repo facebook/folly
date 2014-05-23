@@ -320,7 +320,7 @@ whenN(InputIterator first, InputIterator last, size_t n);
  * you call this, it will deadlock.
  */
 template <class F>
-typename std::add_lvalue_reference<typename F::value_type>::type
+typename F::value_type
 waitWithSemaphore(F&& f);
 
 }} // folly::wangle

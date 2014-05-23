@@ -645,6 +645,13 @@ TEST(Future, waitWithSemaphoreImmediate) {
   v_f.push_back(makeFuture());
   auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end()));
   EXPECT_EQ(2, done_v_f.size());
+
+  vector<Future<bool>> v_fb;
+  v_fb.push_back(makeFuture(true));
+  v_fb.push_back(makeFuture(false));
+  auto fut = whenAll(v_fb.begin(), v_fb.end());
+  auto done_v_fb = waitWithSemaphore(std::move(fut));
+  EXPECT_EQ(2, done_v_fb.size());
 }
 
 TEST(Future, waitWithSemaphore) {
