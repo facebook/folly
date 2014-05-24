@@ -19,12 +19,18 @@ Here are some code samples to get started:
 
 ``` Cpp
 using folly::format;
+using folly::sformat;
 using folly::vformat;
+using folly::svformat;
 
 // Objects produced by format() can be streamed without creating
 // an intermediary string; {} yields the next argument using default
 // formatting.
 std::cout << format("The answers are {} and {}", 23, 42);
+// => "The answers are 23 and 42"
+
+// If you just want the string, though, you're covered.
+std::string result = sformat("The answers are {} and {}", 23, 42);
 // => "The answers are 23 and 42"
 
 // To insert a literal '{' or '}', just double it.
@@ -53,6 +59,11 @@ std::cout << vformat("The only {what} is {value}", m);
 // => "The only answer is 42"
 // same as
 std::cout << format("The only {0[what]} is {0[value]}", m);
+// => "The only answer is 42"
+// And if you just want the string,
+std::string result = svformat("The only {what} is {value}", m);
+// => "The only answer is 42"
+std::string result = svformat("The only {0[what]} is {0[value]}", m);
 // => "The only answer is 42"
 
 // {} works for vformat too

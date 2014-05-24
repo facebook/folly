@@ -208,6 +208,15 @@ Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
 }
 
 /**
+ * Like format(), but immediately returns the formatted string instead of an
+ * intermediate format object.
+ */
+template <class... Args>
+inline std::string sformat(StringPiece fmt, Args&&... args) {
+  return format(fmt, std::forward<Args>(args)...).str();
+}
+
+/**
  * Create a formatter object from a dynamic format string.
  *
  * This is identical to format(), but throws an exception if the format string
@@ -220,6 +229,15 @@ Formatter<false, Args...> formatChecked(StringPiece fmt, Args&&... args) {
   Formatter<false, Args...> f(fmt, std::forward<Args>(args)...);
   f.setCrashOnError(false);
   return f;
+}
+
+/**
+ * Like formatChecked(), but immediately returns the formatted string instead of
+ * an intermediate format object.
+ */
+template <class... Args>
+inline std::string sformatChecked(StringPiece fmt, Args&&... args) {
+  return formatChecked(fmt, std::forward<Args>(args)...).str();
 }
 
 /**
@@ -242,6 +260,15 @@ Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
 }
 
 /**
+ * Like vformat(), but immediately returns the formatted string instead of an
+ * intermediate format object.
+ */
+template <class Container>
+inline std::string svformat(StringPiece fmt, Container&& container) {
+  return vformat(fmt, std::forward<Container>(container)).str();
+}
+
+/**
  * Create a formatter object from a dynamic format string.
  *
  * This is identical to vformat(), but throws an exception if the format string
@@ -255,6 +282,15 @@ Formatter<true, Container> vformatChecked(StringPiece fmt,
   Formatter<true, Container> f(fmt, std::forward<Container>(container));
   f.setCrashOnError(false);
   return f;
+}
+
+/**
+ * Like vformatChecked(), but immediately returns the formatted string instead
+ * of an intermediate format object.
+ */
+template <class Container>
+inline std::string svformatChecked(StringPiece fmt, Container&& container) {
+  return vformatChecked(fmt, std::forward<Container>(container)).str();
 }
 
 /**
