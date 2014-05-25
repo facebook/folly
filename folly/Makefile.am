@@ -62,14 +62,13 @@ nobase_follyinclude_HEADERS = \
 	dynamic.h \
 	dynamic-inl.h \
 	Exception.h \
+	ExceptionWrapper.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
 	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
-	Exception.h \
-	ExceptionWrapper.h \
 	Foreach.h \
 	FormatArg.h \
 	Format.h \
