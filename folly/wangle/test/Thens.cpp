@@ -2,6 +2,9 @@
 
 #include "Thens.h"
 
+#ifndef __clang__
+// TODO: fails to compile with clang:dev.  See task #4412111
+
 TEST(Future, thenVariants) {
   SomeClass anObject;
   Executor* anExecutor;
@@ -17,3 +20,5 @@ TEST(Future, thenVariants) {
   {Future<B> f = someFuture<A>().then(aStdFunction<B, Try<A>&&>());}
   {Future<B> f = someFuture<A>().then([&](Try<A>&&){return B();});}
 }
+
+#endif
