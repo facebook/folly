@@ -123,7 +123,7 @@ bool readFile(const char* file_name, Container& out,
                 "readFile: only containers with byte-sized elements accepted");
   assert(file_name);
 
-  const auto fd = open(file_name, O_RDONLY);
+  const auto fd = openNoInt(file_name, O_RDONLY);
   if (fd == -1) return false;
 
   size_t soFar = 0; // amount of bytes successfully read
@@ -131,7 +131,7 @@ bool readFile(const char* file_name, Container& out,
     assert(out.size() >= soFar); // resize better doesn't throw
     out.resize(soFar);
     // Ignore errors when closing the file
-    close(fd);
+    closeNoInt(fd);
   };
 
   // Obtain file size:
