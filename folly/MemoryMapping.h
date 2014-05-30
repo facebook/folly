@@ -70,8 +70,8 @@ class MemoryMapping : boost::noncopyable {
 
     // If shared (default), the memory mapping is shared with other processes
     // mapping the same file (or children); if not shared (private), each
-    // process has its own mapping; if the mapping is writable, the changes
-    // are not reflected to the underlying file. See the discussion of
+    // process has its own mapping. Changes in writable, private mappings are
+    // not reflected to the underlying file. See the discussion of
     // MAP_PRIVATE vs MAP_SHARED in the mmap(2) manual page.
     bool shared = true;
 
