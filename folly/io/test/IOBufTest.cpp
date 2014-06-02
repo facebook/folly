@@ -1006,6 +1006,67 @@ TEST(IOBuf, move) {
   EXPECT_FALSE(outerBuf.isShared());
 }
 
+namespace {
+std::unique_ptr<IOBuf> fromStr(StringPiece sp) {
+  return IOBuf::copyBuffer(ByteRange(sp));
+}
+}  // namespace
+
+TEST(IOBuf, HashAndEqual) {
+  folly::IOBufEqual eq;
+  folly::IOBufHash hash;
+
+  EXPECT_TRUE(eq(nullptr, nullptr));
+  EXPECT_EQ(0, hash(nullptr));
+
+  auto empty = IOBuf::create(0);
+
+  EXPECT_TRUE(eq(*empty, *empty));
+  EXPECT_TRUE(eq(empty, empty));
+
+  EXPECT_FALSE(eq(nullptr, empty));
+  EXPECT_FALSE(eq(empty, nullptr));
+
+  EXPECT_EQ(hash(*empty), hash(empty));
+  EXPECT_NE(0, hash(empty));
+
+  auto a = fromStr("hello");
+
+  EXPECT_TRUE(eq(*a, *a));
+  EXPECT_TRUE(eq(a, a));
+
+  EXPECT_FALSE(eq(nullptr, a));
+  EXPECT_FALSE(eq(a, nullptr));
+
+  EXPECT_EQ(hash(*a), hash(a));
+  EXPECT_NE(0, hash(a));
+
+  auto b = fromStr("hello");
+
+  EXPECT_TRUE(eq(*a, *b));
+  EXPECT_TRUE(eq(a, b));
+
+  EXPECT_EQ(hash(a), hash(b));
+
+  auto c = fromStr("hellow");
+
+  EXPECT_FALSE(eq(a, c));
+  EXPECT_NE(hash(a), hash(c));
+
+  auto d = fromStr("world");
+
+  EXPECT_FALSE(eq(a, d));
+  EXPECT_NE(hash(a), hash(d));
+
+  auto e = fromStr("helloworld");
+  auto f = fromStr("hello");
+  f->prependChain(fromStr("wo"));
+  f->prependChain(fromStr("rld"));
+
+  EXPECT_TRUE(eq(e, f));
+  EXPECT_EQ(hash(e), hash(f));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);

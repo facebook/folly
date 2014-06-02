@@ -1265,6 +1265,33 @@ class IOBuf {
   }
 };
 
+/**
+ * Hasher for IOBuf objects. Hashes the entire chain using SpookyHashV2.
+ */
+struct IOBufHash {
+  size_t operator()(const IOBuf& buf) const;
+  size_t operator()(const std::unique_ptr<IOBuf>& buf) const {
+    return buf ? (*this)(*buf) : 0;
+  }
+};
+
+/**
+ * Equality predicate for IOBuf objects. Compares data in the entire chain.
+ */
+struct IOBufEqual {
+  bool operator()(const IOBuf& a, const IOBuf& b) const;
+  bool operator()(const std::unique_ptr<IOBuf>& a,
+                  const std::unique_ptr<IOBuf>& b) const {
+    if (!a && !b) {
+      return true;
+    } else if (!a || !b) {
+      return false;
+    } else {
+      return (*this)(*a, *b);
+    }
+  }
+};
+
 template <class UniquePtr>
 typename std::enable_if<detail::IsUniquePtrToSL<UniquePtr>::value,
                         std::unique_ptr<IOBuf>>::type

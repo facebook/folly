@@ -23,6 +23,8 @@
 #include "folly/Malloc.h"
 #include "folly/Memory.h"
 #include "folly/ScopeGuard.h"
+#include "folly/SpookyHashV2.h"
+#include "folly/io/Cursor.h"
 
 #include <stdexcept>
 #include <assert.h>
@@ -891,6 +893,45 @@ folly::fbvector<struct iovec> IOBuf::getIov() const {
     p = p->next();
   } while (p != this);
   return iov;
+}
+
+size_t IOBufHash::operator()(const IOBuf& buf) const {
+  folly::hash::SpookyHashV2 hasher;
+  hasher.Init(0, 0);
+  io::Cursor cursor(&buf);
+  for (;;) {
+    auto p = cursor.peek();
+    if (p.second == 0) {
+      break;
+    }
+    hasher.Update(p.first, p.second);
+    cursor.skip(p.second);
+  }
+  uint64_t h1;
+  uint64_t h2;
+  hasher.Final(&h1, &h2);
+  return h1;
+}
+
+bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
+  io::Cursor ca(&a);
+  io::Cursor cb(&b);
+  for (;;) {
+    auto pa = ca.peek();
+    auto pb = cb.peek();
+    if (pa.second == 0 && pb.second == 0) {
+      return true;
+    } else if (pa.second == 0 || pb.second == 0) {
+      return false;
+    }
+    size_t n = std::min(pa.second, pb.second);
+    DCHECK_GT(n, 0);
+    if (memcmp(pa.first, pb.first, n)) {
+      return false;
+    }
+    ca.skip(n);
+    cb.skip(n);
+  }
 }
 
 } // folly
