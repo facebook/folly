@@ -419,29 +419,67 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
-template <typename F>
-typename F::value_type
-waitWithSemaphore(F&& f) {
+template <typename T>
+Future<T>
+waitWithSemaphore(Future<T>&& f) {
   LifoSem sem;
-  Try<typename F::value_type> done;
-  f.then([&](Try<typename F::value_type> &&t) {
-    done = std::move(t);
+  auto done = f.then([&](Try<T> &&t) {
     sem.post();
+    return std::move(t.value());
   });
   sem.wait();
-  return std::move(done.value());
+  return done;
 }
 
-inline void waitWithSemaphore(Future<void>&& f) {
+template<>
+inline Future<void> waitWithSemaphore<void>(Future<void>&& f) {
   LifoSem sem;
-  Try<void> done;
-  f.then([&](Try<void> &&t) {
-    done = std::move(t);
+  auto done = f.then([&](Try<void> &&t) {
     sem.post();
+    t.value();
   });
   sem.wait();
-  return done.value();
+  return done;
 }
+
+template <typename T, class Duration>
+Future<T>
+waitWithSemaphore(Future<T>&& f, Duration timeout) {
+  auto sem = std::make_shared<LifoSem>();
+  auto done = f.then([sem](Try<T> &&t) {
+    sem->post();
+    return std::move(t.value());
+  });
+  std::thread t([sem, timeout](){
+    std::this_thread::sleep_for(timeout);
+    sem->shutdown();
+    });
+  t.detach();
+  try {
+    sem->wait();
+  } catch (ShutdownSemError & ign) { }
+  return done;
+}
+
+template <class Duration>
+Future<void>
+waitWithSemaphore(Future<void>&& f, Duration timeout) {
+  auto sem = std::make_shared<LifoSem>();
+  auto done = f.then([sem](Try<void> &&t) {
+    sem->post();
+    t.value();
+  });
+  std::thread t([sem, timeout](){
+    std::this_thread::sleep_for(timeout);
+    sem->shutdown();
+    });
+  t.detach();
+  try {
+    sem->wait();
+  } catch (ShutdownSemError & ign) { }
+  return done;
+}
+
 }}
 
 // I haven't included a Future<T&> specialization because I don't forsee us

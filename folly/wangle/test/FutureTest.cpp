@@ -632,25 +632,25 @@ TEST(Future, throwIfFailed) {
 
 TEST(Future, waitWithSemaphoreImmediate) {
   waitWithSemaphore(makeFuture());
-  auto done = waitWithSemaphore(makeFuture(42));
+  auto done = waitWithSemaphore(makeFuture(42)).value();
   EXPECT_EQ(42, done);
 
   vector<int> v{1,2,3};
-  auto done_v = waitWithSemaphore(makeFuture(v));
+  auto done_v = waitWithSemaphore(makeFuture(v)).value();
   EXPECT_EQ(v.size(), done_v.size());
   EXPECT_EQ(v, done_v);
 
   vector<Future<void>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end()));
+  auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end())).value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto fut = whenAll(v_fb.begin(), v_fb.end());
-  auto done_v_fb = waitWithSemaphore(std::move(fut));
+  auto done_v_fb = std::move(waitWithSemaphore(std::move(fut)).value());
   EXPECT_EQ(2, done_v_fb.size());
 }
 
@@ -667,7 +667,7 @@ TEST(Future, waitWithSemaphore) {
           return t.value();
         });
       flag = true;
-      result.store(waitWithSemaphore(std::move(n)));
+      result.store(waitWithSemaphore(std::move(n)).value());
       LOG(INFO) << result;
     },
     std::move(f)
@@ -680,4 +680,64 @@ TEST(Future, waitWithSemaphore) {
   // is more to ensure that this test actually tests what it should
   EXPECT_EQ(id, std::this_thread::get_id());
   EXPECT_EQ(result.load(), 42);
+}
+
+TEST(Future, waitWithSemaphoreForTime) {
+ {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::microseconds(1));
+  EXPECT_FALSE(t.isReady());
+  p.setValue(1);
+  EXPECT_TRUE(t.isReady());
+ }
+ {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  p.setValue(1);
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
+  EXPECT_TRUE(t.isReady());
+ }
+ {
+  vector<Future<bool>> v_fb;
+  v_fb.push_back(makeFuture(true));
+  v_fb.push_back(makeFuture(false));
+  auto f = whenAll(v_fb.begin(), v_fb.end());
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
+  EXPECT_TRUE(t.isReady());
+  EXPECT_EQ(2, t.value().size());
+ }
+ {
+  vector<Future<bool>> v_fb;
+  Promise<bool> p1;
+  Promise<bool> p2;
+  v_fb.push_back(p1.getFuture());
+  v_fb.push_back(p2.getFuture());
+  auto f = whenAll(v_fb.begin(), v_fb.end());
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
+  EXPECT_FALSE(t.isReady());
+  p1.setValue(true);
+  EXPECT_FALSE(t.isReady());
+  p2.setValue(true);
+  EXPECT_TRUE(t.isReady());
+ }
+ {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  auto begin = std::chrono::system_clock::now();
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
+  auto end = std::chrono::system_clock::now();
+  EXPECT_TRUE( end - begin < std::chrono::milliseconds(2));
+  EXPECT_FALSE(t.isReady());
+ }
+ {
+  auto t = waitWithSemaphore(makeFuture(),
+    std::chrono::milliseconds(1));
+  EXPECT_TRUE(t.isReady());
+ }
 }
