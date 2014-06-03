@@ -439,6 +439,7 @@ TEST(StringPiece, split_step_char_delimiter) {
   folly::StringPiece p(s);
   EXPECT_EQ(s, p.begin());
   EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
 
   auto x = p.split_step(' ');
   EXPECT_EQ(std::next(s, 5), p.begin());
@@ -496,6 +497,7 @@ TEST(StringPiece, split_step_range_delimiter) {
   folly::StringPiece p(s);
   EXPECT_EQ(s, p.begin());
   EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
 
   auto x = p.split_step("  ");
   EXPECT_EQ(std::next(s, 6), p.begin());
@@ -560,6 +562,7 @@ TEST(StringPiece, split_step_with_process_char_delimiter) {
   folly::StringPiece p(s);
   EXPECT_EQ(s, p.begin());
   EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
 
   EXPECT_EQ(1, (p.split_step(' ', [&](folly::StringPiece x) {
     EXPECT_EQ(std::next(s, 5), p.begin());
@@ -642,6 +645,7 @@ TEST(StringPiece, split_step_with_process_range_delimiter) {
   folly::StringPiece p(s);
   EXPECT_EQ(s, p.begin());
   EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
 
   EXPECT_EQ(1, (p.split_step("  ", [&](folly::StringPiece x) {
     EXPECT_EQ(std::next(s, 6), p.begin());
@@ -719,6 +723,82 @@ TEST(StringPiece, split_step_with_process_range_delimiter) {
   >::value));
 
   EXPECT_NO_THROW(p.split_step(' ', split_step_with_process_noop));
+}
+
+TEST(StringPiece, split_step_with_process_char_delimiter_additional_args) {
+  //              0         1         2
+  //              012345678901234567890123456
+  auto const s = "this is just  a test string";
+  auto const e = std::next(s, std::strlen(s));
+  auto const delimiter = ' ';
+  EXPECT_EQ('\0', *e);
+
+  folly::StringPiece p(s);
+  EXPECT_EQ(s, p.begin());
+  EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
+
+  auto const functor = [](
+    folly::StringPiece s,
+    folly::StringPiece expected
+  ) {
+    EXPECT_EQ(expected, s);
+    return expected;
+  };
+
+  auto const checker = [&](folly::StringPiece expected) {
+    EXPECT_EQ(expected, p.split_step(delimiter, functor, expected));
+  };
+
+  checker("this");
+  checker("is");
+  checker("just");
+  checker("");
+  checker("a");
+  checker("test");
+  checker("string");
+  checker("");
+  checker("");
+
+  EXPECT_TRUE(p.empty());
+}
+
+TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
+  //              0         1         2         3
+  //              0123456789012345678901234567890123
+  auto const s = "this  is  just    a   test  string";
+  auto const e = std::next(s, std::strlen(s));
+  auto const delimiter = "  ";
+  EXPECT_EQ('\0', *e);
+
+  folly::StringPiece p(s);
+  EXPECT_EQ(s, p.begin());
+  EXPECT_EQ(e, p.end());
+  EXPECT_EQ(s, p);
+
+  auto const functor = [](
+    folly::StringPiece s,
+    folly::StringPiece expected
+  ) {
+    EXPECT_EQ(expected, s);
+    return expected;
+  };
+
+  auto const checker = [&](folly::StringPiece expected) {
+    EXPECT_EQ(expected, p.split_step(delimiter, functor, expected));
+  };
+
+  checker("this");
+  checker("is");
+  checker("just");
+  checker("");
+  checker("a");
+  checker(" test");
+  checker("string");
+  checker("");
+  checker("");
+
+  EXPECT_TRUE(p.empty());
 }
 
 TEST(qfind, UInt32_Ranges) {

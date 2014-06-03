@@ -611,7 +611,8 @@ public:
 
   /**
    * Convenience method that calls `split_step()` and passes the result to a
-   * functor, returning whatever the functor does.
+   * functor, returning whatever the functor does. Any additional arguments
+   * `args` passed to this function are perfectly forwarded to the functor.
    *
    * Say you have a functor with this signature:
    *
@@ -636,17 +637,49 @@ public:
    *    // ...
    *  }
    *
+   *  struct Foo {
+   *    void parse(folly::StringPiece s) {
+   *      s.split_step(' ', parse_field, bar, 10);
+   *      s.split_step('\t', parse_field, baz, 20);
+   *
+   *      auto const kludge = [](folly::StringPiece x, int &out, int def) {
+   *        if (x == "null") {
+   *          out = 0;
+   *        } else {
+   *          parse_field(x, out, def);
+   *        }
+   *      };
+   *
+   *      s.split_step('\t', kludge, gaz);
+   *      s.split_step(' ', kludge, foo);
+   *    }
+   *
+   *  private:
+   *    int bar;
+   *    int baz;
+   *    int gaz;
+   *    int foo;
+   *
+   *    static parse_field(folly::StringPiece s, int &out, int def) {
+   *      try {
+   *        out = folly::to<int>(s);
+   *      } catch (std::exception const &) {
+   *        value = def;
+   *      }
+   *    }
+   *  };
+   *
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
-  template <typename TProcess>
-  auto split_step(value_type delimiter, TProcess &&process)
-    -> decltype(process(std::declval<Range>()))
-  { return process(split_step(delimiter)); }
+  template <typename TProcess, typename... Args>
+  auto split_step(value_type delimiter, TProcess &&process, Args &&...args)
+    -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...))
+  { return process(split_step(delimiter), std::forward<Args>(args)...); }
 
-  template <typename TProcess>
-  auto split_step(Range delimiter, TProcess &&process)
-    -> decltype(process(std::declval<Range>()))
-  { return process(split_step(delimiter)); }
+  template <typename TProcess, typename... Args>
+  auto split_step(Range delimiter, TProcess &&process, Args &&...args)
+    -> decltype(process(std::declval<Range>(), std::forward<Args>(args)...))
+  { return process(split_step(delimiter), std::forward<Args>(args)...); }
 
 private:
   Iter b_, e_;
