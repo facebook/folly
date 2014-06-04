@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-#pragma once
-#include "folly/wangle/Executor.h"
+#include "QueuedImmediateExecutor.h"
+#include "folly/ThreadLocal.h"
+#include <queue>
 
 namespace folly { namespace wangle {
 
-  /// When work is "queued", execute it immediately inline.
-  /// Usually when you think you want this, you actually want a
-  /// QueuedImmediateExecutor.
-  class InlineExecutor : public Executor {
-   public:
-    void add(std::function<void()>&& f) override {
-      f();
-    }
-  };
+void QueuedImmediateExecutor::add(Action&& callback)
+{
+  thread_local std::queue<Action> q;
 
-}}
+  if (q.empty()) {
+    q.push(std::move(callback));
+    while (!q.empty()) {
+      q.front()();
+      q.pop();
+    }
+  } else {
+    q.push(callback);
+  }
+}
+
+}} // namespace

@@ -15,11 +15,13 @@
  */
 
 #include <gtest/gtest.h>
+#include "folly/wangle/InlineExecutor.h"
 #include "folly/wangle/ManualExecutor.h"
+#include "folly/wangle/QueuedImmediateExecutor.h"
 
-using namespace testing;
 using namespace folly::wangle;
 using namespace std::chrono;
+using namespace testing;
 
 TEST(ManualExecutor, runIsStable) {
   ManualExecutor x;
@@ -85,4 +87,54 @@ TEST(ManualExecutor, advanceNeg) {
   EXPECT_EQ(count, 0);
   x.advance(microseconds(-1));
   EXPECT_EQ(count, 0);
+}
+
+TEST(Executor, InlineExecutor) {
+  InlineExecutor x;
+  size_t counter = 0;
+  x.add([&]{
+    x.add([&]{
+      EXPECT_EQ(counter++, 0);
+    });
+    EXPECT_EQ(counter++, 1);
+  });
+  EXPECT_EQ(counter, 2);
+}
+
+TEST(Executor, QueuedImmediateExecutor) {
+  QueuedImmediateExecutor x;
+  size_t counter = 0;
+  x.add([&]{
+    x.add([&]{
+      EXPECT_EQ(1, counter++);
+    });
+    EXPECT_EQ(0, counter++);
+  });
+  EXPECT_EQ(2, counter);
+}
+
+TEST(Executor, Runnable) {
+  InlineExecutor x;
+  size_t counter = 0;
+  struct Runnable {
+    std::function<void()> fn;
+    void operator()() { fn(); }
+  };
+  Runnable f;
+  f.fn = [&]{ counter++; };
+  x.add(f);
+  EXPECT_EQ(counter, 1);
+}
+
+TEST(Executor, RunnablePtr) {
+  InlineExecutor x;
+  struct Runnable {
+    std::function<void()> fn;
+    void operator()() { fn(); }
+  };
+  size_t counter = 0;
+  auto fnp = std::make_shared<Runnable>();
+  fnp->fn = [&]{ counter++; };
+  x.addPtr(fnp);
+  EXPECT_EQ(counter, 1);
 }

@@ -15,18 +15,19 @@
  */
 
 #pragma once
+
 #include "folly/wangle/Executor.h"
 
 namespace folly { namespace wangle {
 
-  /// When work is "queued", execute it immediately inline.
-  /// Usually when you think you want this, you actually want a
-  /// QueuedImmediateExecutor.
-  class InlineExecutor : public Executor {
-   public:
-    void add(std::function<void()>&& f) override {
-      f();
-    }
-  };
+/**
+ * Runs inline like InlineExecutor, but with a queue so that any tasks added
+ * to this executor by one of its own callbacks will be queued instead of
+ * executed inline (nested). This is usually better behavior than Inline.
+ */
+class QueuedImmediateExecutor : public Executor {
+ public:
+  void add(Action&&) override;
+};
 
-}}
+}} // namespace

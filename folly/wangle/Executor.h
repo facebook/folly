@@ -17,13 +17,16 @@
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <functional>
 #include <chrono>
+#include <functional>
+#include <memory>
 
 namespace folly { namespace wangle {
-  // Like an Rx Scheduler. We should probably rename it to match now that it
-  // has scheduling semantics too, but that's a codemod for another lazy
-  // summer afternoon.
+  /// An Executor accepts units of work with add(), which should be
+  /// threadsafe.
+  /// Like an Rx Scheduler. We should probably rename it to match now that it
+  /// has scheduling semantics too, but that's a codemod for another lazy
+  /// summer afternoon.
   class Executor : boost::noncopyable {
    public:
      typedef std::function<void()> Action;
@@ -37,6 +40,16 @@ namespace folly { namespace wangle {
      /// Enqueue an action to be performed by this executor. This and all
      /// schedule variants must be threadsafe.
      virtual void add(Action&&) = 0;
+
+     /// A convenience function for shared_ptr to legacy functors.
+     ///
+     /// Sometimes you have a functor that is move-only, and therefore can't be
+     /// converted to a std::function (e.g. std::packaged_task). In that case,
+     /// wrap it in a shared_ptr (or maybe folly::MoveWrapper) and use this.
+     template <class P>
+     void addPtr(P fn) {
+       this->add([fn]() mutable { (*fn)(); });
+     }
 
      /// Alias for add() (for Rx consistency)
      void schedule(Action&& a) { add(std::move(a)); }
