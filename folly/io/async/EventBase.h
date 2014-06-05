@@ -241,6 +241,18 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   void runInLoop(Cob&& c, bool thisIteration = false);
 
   /**
+   * Adds the given callback to a queue of things run before destruction
+   * of current EventBase.
+   *
+   * This allows users of EventBase that run in it, but don't control it,
+   * to be notified before EventBase gets destructed.
+   *
+   * Note: will be called from the thread that invoked EventBase destructor,
+   *       before the final run of loop callbacks.
+   */
+  void runOnDestruction(LoopCallback* callback);
+
+  /**
    * Run the specified function in the EventBase's thread.
    *
    * This method is thread-safe, and may be called from another thread.
@@ -500,6 +512,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   CobTimeout::List pendingCobTimeouts_;
 
   LoopCallbackList loopCallbacks_;
+  LoopCallbackList onDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks
   // if we are in the middle of running loop callbacks, such that

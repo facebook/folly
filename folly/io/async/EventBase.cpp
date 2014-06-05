@@ -178,6 +178,13 @@ EventBase::EventBase(event_base* evb)
 }
 
 EventBase::~EventBase() {
+  // Call all destruction callbacks, before we start cleaning up our state.
+  while (!onDestructionCallbacks_.empty()) {
+    LoopCallback* callback = &onDestructionCallbacks_.front();
+    onDestructionCallbacks_.pop_front();
+    callback->runLoopCallback();
+  }
+
   // Delete any unfired CobTimeout objects, so that we don't leak memory
   // (Note that we don't fire them.  The caller is responsible for cleaning up
   // its own data structures if it destroys the EventBase with unfired events
@@ -443,6 +450,12 @@ void EventBase::runInLoop(Cob&& cob, bool thisIteration) {
   } else {
     loopCallbacks_.push_back(*wrapper);
   }
+}
+
+void EventBase::runOnDestruction(LoopCallback* callback) {
+  DCHECK(isInEventBaseThread());
+  callback->cancelLoopCallback();
+  onDestructionCallbacks_.push_back(*callback);
 }
 
 bool EventBase::runInEventBaseThread(void (*fn)(void*), void* arg) {
