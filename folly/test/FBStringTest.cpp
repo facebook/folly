@@ -1114,7 +1114,7 @@ TEST(FBString, testFixedBugs) {
     cp.c_str();
     EXPECT_EQ(str.front(), 'f');
   }
-  { // D481173, --extra-cxxflags=-DFBSTRING_CONSERVATIVE
+  { // D481173
     fbstring str(1337, 'f');
     for (int i = 0; i < 2; ++i) {
       fbstring cp = str;

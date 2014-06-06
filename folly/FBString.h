@@ -20,44 +20,6 @@
 #ifndef FOLLY_BASE_FBSTRING_H_
 #define FOLLY_BASE_FBSTRING_H_
 
-/**
-   fbstring's behavior can be configured via two macro definitions, as
-   follows. Normally, fbstring does not write a '\0' at the end of
-   each string whenever it changes the underlying characters. Instead,
-   it lazily writes the '\0' whenever either c_str() or data()
-   called.
-
-   This is standard-compliant behavior and may save costs in some
-   circumstances. However, it may be surprising to some client code
-   because c_str() and data() are const member functions (fbstring
-   uses the "mutable" storage class for its own state).
-
-   In order to appease client code that expects fbstring to be
-   zero-terminated at all times, if the preprocessor symbol
-   FBSTRING_CONSERVATIVE is defined, fbstring does exactly that,
-   i.e. it goes the extra mile to guarantee a '\0' is always planted
-   at the end of its data.
-
-   On the contrary, if the desire is to debug faulty client code that
-   unduly assumes the '\0' is present, fbstring plants a '^' (i.e.,
-   emphatically NOT a zero) at the end of each string if
-   FBSTRING_PERVERSE is defined. (Calling c_str() or data() still
-   writes the '\0', of course.)
-
-   The preprocessor symbols FBSTRING_PERVERSE and
-   FBSTRING_CONSERVATIVE cannot be defined simultaneously. This is
-   enforced during preprocessing.
-*/
-
-//#define FBSTRING_PERVERSE
-//#define FBSTRING_CONSERVATIVE
-
-#ifdef FBSTRING_PERVERSE
-#ifdef FBSTRING_CONSERVATIVE
-#error Cannot define both FBSTRING_PERVERSE and FBSTRING_CONSERVATIVE.
-#endif
-#endif
-
 #include <atomic>
 #include <limits>
 #include <type_traits>
@@ -541,31 +503,12 @@ public:
 
   const Char * c_str() const {
     auto const c = category();
-#ifdef FBSTRING_PERVERSE
-    if (c == isSmall) {
-      assert(small_[smallSize()] == TERMINATOR || smallSize() == maxSmallSize
-             || small_[smallSize()] == '\0');
-      small_[smallSize()] = '\0';
-      return small_;
-    }
-    assert(c == isMedium || c == isLarge);
-    assert(ml_.data_[ml_.size_] == TERMINATOR || ml_.data_[ml_.size_] == '\0');
-    ml_.data_[ml_.size_] = '\0';
-#elif defined(FBSTRING_CONSERVATIVE)
     if (c == isSmall) {
       assert(small_[smallSize()] == '\0');
       return small_;
     }
     assert(c == isMedium || c == isLarge);
     assert(ml_.data_[ml_.size_] == '\0');
-#else
-    if (c == isSmall) {
-      small_[smallSize()] = '\0';
-      return small_;
-    }
-    assert(c == isMedium || c == isLarge);
-    ml_.data_[ml_.size_] = '\0';
-#endif
     return ml_.data_;
   }
 
@@ -761,23 +704,15 @@ public:
     return category() == isLarge && RefCounted::refs(ml_.data_) > 1;
   }
 
-#ifdef FBSTRING_PERVERSE
-  enum { TERMINATOR = '^' };
-#else
-  enum { TERMINATOR = '\0' };
-#endif
-
   void writeTerminator() {
-#if defined(FBSTRING_PERVERSE) || defined(FBSTRING_CONSERVATIVE)
     if (category() == isSmall) {
       const auto s = smallSize();
       if (s != maxSmallSize) {
-        small_[s] = TERMINATOR;
+        small_[s] = '\0';
       }
     } else {
-      ml_.data_[ml_.size_] = TERMINATOR;
+      ml_.data_[ml_.size_] = '\0';
     }
-#endif
   }
 
 private:
@@ -996,7 +931,7 @@ class basic_fbstring {
       size() <= max_size() &&
       capacity() <= max_size() &&
       size() <= capacity() &&
-      (begin()[size()] == Storage::TERMINATOR || begin()[size()] == '\0');
+      begin()[size()] == '\0';
   }
 
   struct Invariant;
