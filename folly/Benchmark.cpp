@@ -51,7 +51,7 @@ namespace folly {
 
 BenchmarkSuspender::NanosecondsSpent BenchmarkSuspender::nsSpent;
 
-typedef function<uint64_t(unsigned int)> BenchmarkFun;
+typedef function<detail::TimeIterPair(unsigned int)> BenchmarkFun;
 static vector<tuple<const char*, const char*, BenchmarkFun>> benchmarks;
 
 // Add the global baseline
@@ -231,13 +231,14 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
 
   for (; actualEpochs < epochs; ++actualEpochs) {
     for (unsigned int n = FLAGS_bm_min_iters; n < (1UL << 30); n *= 2) {
-      auto const nsecs = fun(n);
-      if (nsecs < minNanoseconds) {
+      auto const nsecsAndIter = fun(n);
+      if (nsecsAndIter.first < minNanoseconds) {
         continue;
       }
       // We got an accurate enough timing, done. But only save if
       // smaller than the current result.
-      epochResults[actualEpochs] = max(0.0, double(nsecs) / n - globalBaseline);
+      epochResults[actualEpochs] = max(0.0, double(nsecsAndIter.first) /
+                                       nsecsAndIter.second - globalBaseline);
       // Done with the current epoch, we got a meaningful timing.
       break;
     }
