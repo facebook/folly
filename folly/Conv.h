@@ -527,11 +527,28 @@ toAppendDelim(const Delimiter& delim, const T& v, const Ts&... vs) {
 }
 
 /**
+ * to<SomeString>(SomeString str) returns itself. As both std::string and
+ * folly::fbstring use Copy-on-Write, it's much more efficient by
+ * avoiding copying the underlying char array.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<
+  IsSomeString<Tgt>::value && std::is_same<Tgt, Src>::value,
+  Tgt>::type
+to(const Src & value) {
+  return value;
+}
+
+/**
  * to<SomeString>(v1, v2, ...) uses toAppend() (see below) as back-end
  * for all types.
  */
 template <class Tgt, class... Ts>
-typename std::enable_if<IsSomeString<Tgt>::value, Tgt>::type
+typename std::enable_if<
+  IsSomeString<Tgt>::value && (
+    sizeof...(Ts) != 1 ||
+    !std::is_same<Tgt, typename detail::last_element<Ts...>::type>::value),
+  Tgt>::type
 to(const Ts&... vs) {
   Tgt result;
   toAppend(vs..., &result);
@@ -539,11 +556,26 @@ to(const Ts&... vs) {
 }
 
 /**
+ * toDelim<SomeString>(SomeString str) returns itself.
+ */
+template <class Tgt, class Delim, class Src>
+typename std::enable_if<
+  IsSomeString<Tgt>::value && std::is_same<Tgt, Src>::value,
+  Tgt>::type
+toDelim(const Delim& delim, const Src & value) {
+  return value;
+}
+
+/**
  * toDelim<SomeString>(delim, v1, v2, ...) uses toAppendDelim() as
  * back-end for all types.
  */
 template <class Tgt, class Delim, class... Ts>
-typename std::enable_if<IsSomeString<Tgt>::value, Tgt>::type
+typename std::enable_if<
+  IsSomeString<Tgt>::value && (
+    sizeof...(Ts) != 1 ||
+    !std::is_same<Tgt, typename detail::last_element<Ts...>::type>::value),
+  Tgt>::type
 toDelim(const Delim& delim, const Ts&... vs) {
   Tgt result;
   toAppendDelim(delim, vs..., &result);

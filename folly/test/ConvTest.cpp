@@ -390,6 +390,14 @@ TEST(Conv, BadStringToIntegral) {
 }
 
 template <class String>
+void testIdenticalTo() {
+  String s("Yukkuri shiteitte ne!!!");
+
+  String result = to<String>(s);
+  EXPECT_EQ(result, s);
+}
+
+template <class String>
 void testVariadicTo() {
   String s;
   toAppend(&s);
@@ -401,6 +409,17 @@ void testVariadicTo() {
 
   s = to<String>("Lorem ipsum ", nullptr, 1234, " dolor amet ", 567.89, '.');
   EXPECT_EQ(s, "Lorem ipsum 1234 dolor amet 567.89.");
+}
+
+template <class String>
+void testIdenticalToDelim() {
+  String s("Yukkuri shiteitte ne!!!");
+
+  String charDelim = toDelim<String>('$', s);
+  EXPECT_EQ(charDelim, s);
+
+  String strDelim = toDelim<String>(String(">_<"), s);
+  EXPECT_EQ(strDelim, s);
 }
 
 template <class String>
@@ -427,11 +446,15 @@ TEST(Conv, NullString) {
 }
 
 TEST(Conv, VariadicTo) {
+  testIdenticalTo<string>();
+  testIdenticalTo<fbstring>();
   testVariadicTo<string>();
   testVariadicTo<fbstring>();
 }
 
 TEST(Conv, VariadicToDelim) {
+  testIdenticalToDelim<string>();
+  testIdenticalToDelim<fbstring>();
   testVariadicToDelim<string>();
   testVariadicToDelim<fbstring>();
 }
@@ -911,6 +934,35 @@ void u2aAppendFollyBM(unsigned int n, uint64_t value) {
   }
 }
 
+template <class String>
+struct StringIdenticalToBM {
+  void operator()(unsigned int n, size_t len) const {
+    String s;
+    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    FOR_EACH_RANGE (i, 0, n) {
+      String result = to<String>(s);
+      doNotOptimizeAway(result.size());
+    }
+  }
+};
+
+template <class String>
+struct StringVariadicToBM {
+  void operator()(unsigned int n, size_t len) const {
+    String s;
+    BENCHMARK_SUSPEND { s.append(len, '0'); }
+    FOR_EACH_RANGE (i, 0, n) {
+      String result = to<String>(s, nullptr);
+      doNotOptimizeAway(result.size());
+    }
+  }
+};
+
+static const StringIdenticalToBM<std::string> stringIdenticalToBM;
+static const StringVariadicToBM<std::string> stringVariadicToBM;
+static const StringIdenticalToBM<fbstring> fbstringIdenticalToBM;
+static const StringVariadicToBM<fbstring> fbstringVariadicToBM;
+
 #define DEFINE_BENCHMARK_GROUP(n)                       \
   BENCHMARK_PARAM(u64ToAsciiClassicBM, n);              \
   BENCHMARK_RELATIVE_PARAM(u64ToAsciiTableBM, n);       \
@@ -966,6 +1018,20 @@ DEFINE_BENCHMARK_GROUP(16);
 DEFINE_BENCHMARK_GROUP(17);
 DEFINE_BENCHMARK_GROUP(18);
 DEFINE_BENCHMARK_GROUP(19);
+
+#undef DEFINE_BENCHMARK_GROUP
+
+#define DEFINE_BENCHMARK_GROUP(T, n)                    \
+  BENCHMARK_PARAM(T ## VariadicToBM, n);                \
+  BENCHMARK_RELATIVE_PARAM(T ## IdenticalToBM, n);      \
+  BENCHMARK_DRAW_LINE();
+
+DEFINE_BENCHMARK_GROUP(string, 32);
+DEFINE_BENCHMARK_GROUP(string, 1024);
+DEFINE_BENCHMARK_GROUP(string, 32768);
+DEFINE_BENCHMARK_GROUP(fbstring, 32);
+DEFINE_BENCHMARK_GROUP(fbstring, 1024);
+DEFINE_BENCHMARK_GROUP(fbstring, 32768);
 
 #undef DEFINE_BENCHMARK_GROUP
 
