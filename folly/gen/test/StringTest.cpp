@@ -82,12 +82,35 @@ TEST(StringGen, Split) {
   }
 
   {
-    auto pieces = split("hello,, world, goodbye, meow", ',')
+    auto pieces = split("hello,, world, goodbye, meow", ",")
                 | take(5) | collect;
     EXPECT_EQ(5, pieces.size());
     EXPECT_EQ("hello", pieces[0]);
     EXPECT_EQ("", pieces[1]);
     EXPECT_EQ(" world", pieces[2]);
+  }
+
+  {
+    auto pieces = split("hello,, world, goodbye, meow", ", ")
+                | collect;
+    EXPECT_EQ(4, pieces.size());
+    EXPECT_EQ("hello,", pieces[0]);
+    EXPECT_EQ("world", pieces[1]);
+    EXPECT_EQ("goodbye", pieces[2]);
+    EXPECT_EQ("meow", pieces[3]);
+  }
+}
+
+TEST(StringGen, SplitByNewLine) {
+  auto collect = eachTo<std::string>() | as<vector>();
+  {
+    auto pieces = lines("hello\n\n world\r\n goodbye\r meow") | collect;
+    EXPECT_EQ(5, pieces.size());
+    EXPECT_EQ("hello", pieces[0]);
+    EXPECT_EQ("", pieces[1]);
+    EXPECT_EQ(" world", pieces[2]);
+    EXPECT_EQ(" goodbye", pieces[3]);
+    EXPECT_EQ(" meow", pieces[4]);
   }
 }
 

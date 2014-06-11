@@ -26,6 +26,39 @@ namespace folly {
 namespace gen {
 namespace detail {
 
+inline bool splitPrefix(StringPiece& in,
+                        StringPiece& prefix,
+                        StringPiece delimiter) {
+  auto p = in.find(delimiter);
+  if (p != std::string::npos) {
+    prefix.assign(in.data(), in.data() + p);
+    in.advance(p + delimiter.size());
+    return true;
+  }
+  prefix.clear();
+  return false;
+}
+
+/**
+ * Split by any of the EOL terms: \r, \n, or \r\n.
+ */
+inline bool splitPrefix(StringPiece& in,
+                        StringPiece& prefix,
+                        MixedNewlines) {
+  auto newline = "\r\n";
+  auto p = in.find_first_of(newline);
+  if (p != std::string::npos) {
+    prefix.assign(in.data(), in.data() + p);
+    in.advance(p);
+    if (!in.removePrefix(newline)) {
+      in.advance(1);
+    }
+    return true;
+  }
+  prefix.clear();
+  return false;
+}
+
 inline bool splitPrefix(StringPiece& in, StringPiece& prefix, char delimiter) {
   auto p = static_cast<const char*>(memchr(in.data(), delimiter, in.size()));
   if (p) {
@@ -128,14 +161,16 @@ class StringResplitter : public Operator<StringResplitter> {
   }
 };
 
-class SplitStringSource : public GenImpl<StringPiece, SplitStringSource> {
+template <class DelimiterType = char>
+class SplitStringSource
+    : public GenImpl<StringPiece, SplitStringSource<DelimiterType>> {
   StringPiece source_;
-  char delimiter_;
+  DelimiterType delimiter_;
  public:
   SplitStringSource(const StringPiece& source,
-                    char delimiter)
+                    DelimiterType delimiter)
     : source_(source)
-    , delimiter_(delimiter) { }
+    , delimiter_(std::move(delimiter)) { }
 
   template <class Body>
   bool apply(Body&& body) const {
@@ -166,7 +201,7 @@ template<class Delimiter,
 class Unsplit : public Operator<Unsplit<Delimiter, Output>> {
   Delimiter delimiter_;
  public:
-  Unsplit(const Delimiter& delimiter)
+  explicit Unsplit(const Delimiter& delimiter)
     : delimiter_(delimiter) {
   }
 

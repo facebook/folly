@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ namespace gen {
 
 namespace detail {
 class StringResplitter;
+
+template<class Delimiter>
 class SplitStringSource;
 
 template<class Delimiter, class Output>
@@ -54,9 +56,28 @@ S resplit(char delimiter) {
   return S(delimiter);
 }
 
-template <class S=detail::SplitStringSource>
+template <class S = detail::SplitStringSource<char>>
 S split(const StringPiece& source, char delimiter) {
   return S(source, delimiter);
+}
+
+template <class S = detail::SplitStringSource<StringPiece>>
+S split(StringPiece source, StringPiece delimiter) {
+  return S(source, delimiter);
+}
+
+/**
+ * EOL terms ("\r", "\n", or "\r\n").
+ */
+class MixedNewlines {};
+
+/**
+ * Split by EOL ("\r", "\n", or "\r\n").
+ * @see split().
+ */
+template <class S = detail::SplitStringSource<MixedNewlines>>
+S lines(StringPiece source) {
+  return S(source, MixedNewlines{});
 }
 
 /*
