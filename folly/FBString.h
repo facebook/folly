@@ -339,9 +339,12 @@ public:
     assert(&rhs != this);
     // Simplest case first: small strings are bitblitted
     if (rhs.category() == isSmall) {
-      assert(offsetof(MediumLarge, data_) == 0);
-      assert(offsetof(MediumLarge, size_) == sizeof(ml_.data_));
-      assert(offsetof(MediumLarge, capacity_) == 2 * sizeof(ml_.data_));
+      static_assert(offsetof(MediumLarge, data_) == 0,
+          "fbstring layout failure");
+      static_assert(offsetof(MediumLarge, size_) == sizeof(ml_.data_),
+          "fbstring layout failure");
+      static_assert(offsetof(MediumLarge, capacity_) == 2 * sizeof(ml_.data_),
+          "fbstring layout failure");
       const size_t size = rhs.smallSize();
       if (size == 0) {
         ml_.capacity_ = rhs.ml_.capacity_;
@@ -400,10 +403,13 @@ public:
     // Simplest case first: small strings are bitblitted
     if (size <= maxSmallSize) {
       // Layout is: Char* data_, size_t size_, size_t capacity_
-      /*static_*/assert(sizeof(*this) == sizeof(Char*) + 2 * sizeof(size_t));
-      /*static_*/assert(sizeof(Char*) == sizeof(size_t));
+      static_assert(sizeof(*this) == sizeof(Char*) + 2 * sizeof(size_t),
+          "fbstring has unexpected size");
+      static_assert(sizeof(Char*) == sizeof(size_t),
+          "fbstring size assumption violation");
       // sizeof(size_t) must be a power of 2
-      /*static_*/assert((sizeof(size_t) & (sizeof(size_t) - 1)) == 0);
+      static_assert((sizeof(size_t) & (sizeof(size_t) - 1)) == 0,
+          "fbstring size assumption violation");
 
       // If data is aligned, use fast word-wise copying. Otherwise,
       // use conservative memcpy.
