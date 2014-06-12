@@ -99,6 +99,7 @@
 #include "folly/Traits.h"
 #include "folly/Malloc.h"
 #include "folly/Hash.h"
+#include "folly/ScopeGuard.h"
 
 #if FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER
@@ -400,6 +401,15 @@ public:
   // so just disable it on this function.
   fbstring_core(const Char *const data, const size_t size)
       FBSTRING_DISABLE_ADDRESS_SANITIZER {
+#ifndef NDEBUG
+#ifndef _LIBSTDCXX_FBSTRING
+    SCOPE_EXIT {
+      assert(this->size() == size);
+      assert(memcmp(this->data(), data, size * sizeof(Char)) == 0);
+    };
+#endif
+#endif
+
     // Simplest case first: small strings are bitblitted
     if (size <= maxSmallSize) {
       // Layout is: Char* data_, size_t size_, size_t capacity_
@@ -434,6 +444,7 @@ public:
         }
       }
       setSmallSize(size);
+      return;
     } else if (size <= maxMediumSize) {
       // Medium strings are allocated normally. Don't forget to
       // allocate one extra Char for the terminating null.
@@ -451,8 +462,6 @@ public:
       ml_.capacity_ = effectiveCapacity | isLarge;
     }
     writeTerminator();
-    assert(this->size() == size);
-    assert(memcmp(this->data(), data, size * sizeof(Char)) == 0);
   }
 
   ~fbstring_core() noexcept {
@@ -570,6 +579,7 @@ public:
       // handling.
       assert(ml_.size_ >= delta);
       ml_.size_ -= delta;
+      writeTerminator();
     } else {
       assert(ml_.size_ >= delta);
       // Shared large string, must make unique. This is because of the
@@ -579,9 +589,7 @@ public:
         fbstring_core(ml_.data_, ml_.size_ - delta).swap(*this);
       }
       // No need to write the terminator.
-      return;
     }
-    writeTerminator();
   }
 
   void reserve(size_t minCapacity) {
@@ -686,7 +694,6 @@ public:
       newSz = sz + delta;
       if (newSz <= maxSmallSize) {
         setSmallSize(newSz);
-        writeTerminator();
         return small_ + sz;
       }
       reserve(newSz);
@@ -712,9 +719,8 @@ public:
     if (category() == isSmall) {
       sz = smallSize();
       if (sz < maxSmallSize) {
-        setSmallSize(sz + 1);
         small_[sz] = c;
-        writeTerminator();
+        setSmallSize(sz + 1);
         return;
       }
       reserve(maxSmallSize * 2);
@@ -896,6 +902,7 @@ private:
     // small_[maxSmallSize].
     assert(s <= maxSmallSize);
     small_[maxSmallSize] = maxSmallSize - s;
+    writeTerminator();
   }
 };
 
