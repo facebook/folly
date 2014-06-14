@@ -68,6 +68,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
 	experimental/io/FsUtil.h \
+	experimental/TestUtil.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -243,7 +244,8 @@ libfolly_la_SOURCES = \
 	wangle/InlineExecutor.cpp \
 	wangle/ManualExecutor.cpp \
 	wangle/ThreadGate.cpp \
-	experimental/io/FsUtil.cpp
+	experimental/io/FsUtil.cpp \
+	experimental/TestUtil.cpp
 
 if HAVE_LINUX
 nobase_follyinclude_HEADERS += \
