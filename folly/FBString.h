@@ -797,8 +797,8 @@ private:
   };
 
   union {
-    mutable Char small_[sizeof(MediumLarge) / sizeof(Char)];
-    mutable MediumLarge ml_;
+    Char small_[sizeof(MediumLarge) / sizeof(Char)];
+    MediumLarge ml_;
   };
 
   enum {
@@ -1247,14 +1247,10 @@ public:
 
   // C++11 21.4.5 element access:
   const_reference operator[](size_type pos) const {
-    return *(c_str() + pos);
+    return *(begin() + pos);
   }
 
   reference operator[](size_type pos) {
-    if (pos == size()) {
-      // Just call c_str() to make sure '\0' is present
-      c_str();
-    }
     return *(begin() + pos);
   }
 
