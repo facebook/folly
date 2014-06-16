@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#ifndef FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+
 #include "folly/detail/FunctionalExcept.h"
 
 #include <stdexcept>
@@ -39,3 +41,5 @@ void __throw_bad_alloc() {
 #endif
 
 FOLLY_NAMESPACE_STD_END
+
+#endif  // FOLLY_HAVE_BITS_FUNCTEXCEPT_H
