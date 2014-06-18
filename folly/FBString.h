@@ -23,21 +23,11 @@
 #include <atomic>
 #include <limits>
 #include <type_traits>
-#include <algorithm>
 
-#include "folly/Portability.h"
-
-// libc++ doesn't provide this header, nor does msvc
-#ifdef FOLLY_HAVE_BITS_CXXCONFIG_H
 // This file appears in two locations: inside fbcode and in the
 // libstdc++ source code (when embedding fbstring as std::string).
-// To aid in this schizophrenic use, two macros are defined in
-// c++config.h:
-//   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
-//      gate use inside fbcode v. libstdc++
-#include <bits/c++config.h>
-#endif
-
+// To aid in this schizophrenic use, _LIBSTDCXX_FBSTRING is defined in
+// libstdc++'s c++config.h, to gate use inside fbcode v. libstdc++.
 #ifdef _LIBSTDCXX_FBSTRING
 
 #pragma GCC system_header
@@ -54,9 +44,17 @@
 
 #else // !_LIBSTDCXX_FBSTRING
 
+#include "folly/Portability.h"
+
+// libc++ doesn't provide this header, nor does msvc
+#ifdef FOLLY_HAVE_BITS_CXXCONFIG_H
+#include <bits/c++config.h>
+#endif
+
 #include <string>
 #include <cstring>
 #include <cassert>
+#include <algorithm>
 
 #include "folly/Traits.h"
 #include "folly/Malloc.h"
@@ -1014,11 +1012,9 @@ public:
   /* implicit */ basic_fbstring(const value_type* s, const A& a = A())
       : store_(s, s
           ? traits_type::length(s)
-          : [] {
-              std::__throw_logic_error(
-                "basic_fbstring: null pointer initializer not valid");
-              return 0;
-            }()) {
+          : (std::__throw_logic_error(
+                "basic_fbstring: null pointer initializer not valid"),
+             0)) {
   }
 
   basic_fbstring(const value_type* s, size_type n, const A& a = A())
@@ -2426,6 +2422,7 @@ struct hash< ::folly::fbstring> {
 
 }
 
+#ifndef _LIBSTDCXX_FBSTRING
 #if FOLLY_HAVE_DEPRECATED_ASSOC
 #if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
 namespace __gnu_cxx {
@@ -2447,6 +2444,7 @@ struct hash< ::folly::fbstring> {
 }
 #endif // _GLIBCXX_SYMVER && !__BIONIC__
 #endif // FOLLY_HAVE_DEPRECATED_ASSOC
+#endif // _LIBSTDCXX_FBSTRING
 
 #endif // _LIBSTDCXX_FBSTRING
 
