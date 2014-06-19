@@ -146,11 +146,14 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   /**
    * Wait for some events to become active, run them, then return.
    *
+   * When EVLOOP_NONBLOCK is set in flags, the loop won't block if there
+   * are not any events to process.
+   *
    * This is useful for callers that want to run the loop manually.
    *
    * Returns the same result as loop().
    */
-  bool loopOnce();
+  bool loopOnce(int flags = 0);
 
   /**
    * Runs the event loop.
@@ -502,7 +505,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   typedef LoopCallback::List LoopCallbackList;
   class FunctionRunner;
 
-  bool loopBody(bool once = false);
+  bool loopBody(int flags = 0);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
   bool runLoopCallbacks(bool setContext = true);

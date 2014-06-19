@@ -246,15 +246,16 @@ bool EventBase::loop() {
   return loopBody();
 }
 
-bool EventBase::loopOnce() {
-  return loopBody(true);
+bool EventBase::loopOnce(int flags) {
+  return loopBody(flags | EVLOOP_ONCE);
 }
 
-bool EventBase::loopBody(bool once) {
+bool EventBase::loopBody(int flags) {
   VLOG(5) << "EventBase(): Starting loop.";
   int res = 0;
   bool ranLoopCallbacks;
-  int nonBlocking;
+  bool blocking = !(flags & EVLOOP_NONBLOCK);
+  bool once = (flags & EVLOOP_ONCE);
 
   loopThread_.store(pthread_self(), std::memory_order_release);
 
@@ -272,8 +273,11 @@ bool EventBase::loopBody(bool once) {
 
     // nobody can add loop callbacks from within this thread if
     // we don't have to handle anything to start with...
-    nonBlocking = (loopCallbacks_.empty() ? 0 : EVLOOP_NONBLOCK);
-    res = event_base_loop(evb_, EVLOOP_ONCE | nonBlocking);
+    if (blocking && loopCallbacks_.empty()) {
+      res = event_base_loop(evb_, EVLOOP_ONCE);
+    } else {
+      res = event_base_loop(evb_, EVLOOP_ONCE | EVLOOP_NONBLOCK);
+    }
     ranLoopCallbacks = runLoopCallbacks();
 
     int64_t busy = std::chrono::duration_cast<std::chrono::microseconds>(
