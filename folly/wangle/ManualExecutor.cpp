@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <string>
+#include <tuple>
 
 #include <stdexcept>
 
@@ -31,24 +32,33 @@ ManualExecutor::ManualExecutor() {
 
 void ManualExecutor::add(std::function<void()>&& callback) {
   std::lock_guard<std::mutex> lock(lock_);
-  runnables_.push(callback);
+  actions_.push(callback);
   sem_post(&sem_);
 }
 
 size_t ManualExecutor::run() {
   size_t count;
   size_t n;
-  std::function<void()> runnable;
+  Action action;
 
   {
     std::lock_guard<std::mutex> lock(lock_);
-    n = runnables_.size();
+
+    while (!scheduledActions_.empty()) {
+      auto& sa = scheduledActions_.top();
+      if (sa.time > now_)
+        break;
+      actions_.push(sa.action);
+      scheduledActions_.pop();
+    }
+
+    n = actions_.size();
   }
 
   for (count = 0; count < n; count++) {
     {
       std::lock_guard<std::mutex> lock(lock_);
-      if (runnables_.empty()) {
+      if (actions_.empty()) {
         break;
       }
 
@@ -57,10 +67,10 @@ size_t ManualExecutor::run() {
       // This may fail (with EAGAIN), that's fine.
       sem_trywait(&sem_);
 
-      runnable = std::move(runnables_.front());
-      runnables_.pop();
+      action = std::move(actions_.front());
+      actions_.pop();
     }
-    runnable();
+    action();
   }
 
   return count;
@@ -70,7 +80,7 @@ void ManualExecutor::wait() {
   while (true) {
     {
       std::lock_guard<std::mutex> lock(lock_);
-      if (!runnables_.empty())
+      if (!actions_.empty())
         break;
     }
 
