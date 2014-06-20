@@ -22,53 +22,91 @@
 #include <random>
 #include <array>
 
-#if __GNUC_PREREQ(4, 8) && !defined(ANDROID)
-#include <ext/random>
-#define USE_SIMD_PRNG
-#endif
+#include <glog/logging.h>
+#include "folly/File.h"
+#include "folly/FileUtil.h"
 
 namespace folly {
 
 namespace {
-std::atomic<uint32_t> seedInput(0);
+
+// Keep it open for the duration of the program
+File randomDevice("/dev/urandom");
+
+void readRandomDevice(void* data, size_t size) {
+  PCHECK(readFull(randomDevice.fd(), data, size) == size);
 }
 
-uint32_t randomNumberSeed() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  const uint32_t kPrime0 = 51551;
-  const uint32_t kPrime1 = 61631;
-  const uint32_t kPrime2 = 64997;
-  const uint32_t kPrime3 = 111857;
-  return kPrime0 * (seedInput++)
-       + kPrime1 * static_cast<uint32_t>(getpid())
-       + kPrime2 * static_cast<uint32_t>(tv.tv_sec)
-       + kPrime3 * static_cast<uint32_t>(tv.tv_usec);
+class BufferedRandomDevice {
+ public:
+  static constexpr size_t kDefaultBufferSize = 128;
+
+  explicit BufferedRandomDevice(size_t bufferSize = kDefaultBufferSize);
+
+  void get(void* data, size_t size) {
+    if (LIKELY(size <= remaining())) {
+      memcpy(data, ptr_, size);
+      ptr_ += size;
+    } else {
+      getSlow(static_cast<unsigned char*>(data), size);
+    }
+  }
+
+ private:
+  void getSlow(unsigned char* data, size_t size);
+
+  inline size_t remaining() const {
+    return buffer_.get() + bufferSize_ - ptr_;
+  }
+
+  const size_t bufferSize_;
+  std::unique_ptr<unsigned char[]> buffer_;
+  unsigned char* ptr_;
+};
+
+BufferedRandomDevice::BufferedRandomDevice(size_t bufferSize)
+  : bufferSize_(bufferSize),
+    buffer_(new unsigned char[bufferSize]),
+    ptr_(buffer_.get() + bufferSize) {  // refill on first use
 }
 
+void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
+  DCHECK_GT(size, remaining());
+  if (size >= bufferSize_) {
+    // Just read directly.
+    readRandomDevice(data, size);
+    return;
+  }
+
+  size_t copied = remaining();
+  memcpy(data, ptr_, copied);
+  data += copied;
+  size -= copied;
+
+  // refill
+  readRandomDevice(buffer_.get(), bufferSize_);
+  ptr_ = buffer_.get();
+
+  memcpy(data, ptr_, size);
+  ptr_ += size;
+}
+
+ThreadLocal<BufferedRandomDevice> bufferedRandomDevice;
+
+}  // namespace
+
+void Random::secureRandom(void* data, size_t size) {
+  bufferedRandomDevice->get(data, size);
+}
 
 folly::ThreadLocalPtr<ThreadLocalPRNG::LocalInstancePRNG>
 ThreadLocalPRNG::localInstance;
 
 class ThreadLocalPRNG::LocalInstancePRNG {
-#ifdef USE_SIMD_PRNG
-  typedef  __gnu_cxx::sfmt19937 RNG;
-#else
-  typedef std::mt19937 RNG;
-#endif
-
-  static RNG makeRng() {
-    std::array<int, RNG::state_size> seed_data;
-    std::random_device r;
-    std::generate_n(seed_data.data(), seed_data.size(), std::ref(r));
-    std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
-    return RNG(seq);
-  }
-
  public:
-  LocalInstancePRNG() : rng(std::move(makeRng())) {}
+  LocalInstancePRNG() : rng(Random::create()) { }
 
-  RNG rng;
+  Random::DefaultGenerator rng;
 };
 
 ThreadLocalPRNG::LocalInstancePRNG* ThreadLocalPRNG::initLocal() {

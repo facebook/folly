@@ -43,7 +43,7 @@ int closeNoInt(int fd) {
   // Interestingly enough, the Single Unix Specification says that the state
   // of the file descriptor is unspecified if close returns EINTR.  In that
   // case, the safe thing to do is also not to retry close() -- leaking a file
-  // descriptor is probably better than closing the wrong file.
+  // descriptor is definitely better than closing the wrong file.
   if (r == -1 && errno == EINTR) {
     r = 0;
   }

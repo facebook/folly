@@ -29,6 +29,19 @@
 
 using namespace folly;
 
+TEST(Random, StateSize) {
+  using namespace folly::detail;
+
+  // uint_fast32_t is uint64_t on x86_64, w00t
+  EXPECT_EQ(sizeof(uint_fast32_t) / 4 + 3,
+            StateSize<std::minstd_rand0>::value);
+  EXPECT_EQ(624, StateSize<std::mt19937>::value);
+#if FOLLY_USE_SIMD_PRNG
+  EXPECT_EQ(624, StateSize<__gnu_cxx::sfmt19937>::value);
+#endif
+  EXPECT_EQ(24, StateSize<std::ranlux24_base>::value);
+}
+
 TEST(Random, Simple) {
   uint32_t prev = 0, seed = 0;
   for (int i = 0; i < 1024; ++i) {

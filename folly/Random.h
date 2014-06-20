@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_RANDOM_H_
-#define FOLLY_BASE_RANDOM_H_
+#ifndef FOLLY_RANDOM_H_
+#define FOLLY_RANDOM_H_
 
+#include <type_traits>
 #include <random>
 #include <stdint.h>
 #include "folly/ThreadLocal.h"
 
+#if __GNUC_PREREQ(4, 8) && !defined(ANDROID)
+#include <ext/random>
+#define FOLLY_USE_SIMD_PRNG 1
+#endif
+
 namespace folly {
-
-/*
- * Return a good seed for a random number generator.
- */
-uint32_t randomNumberSeed();
-
-class Random;
 
 /**
  * A PRNG with one instance per thread. This PRNG uses a mersenne twister random
@@ -83,7 +82,6 @@ class ThreadLocalPRNG {
 };
 
 
-
 class Random {
 
  private:
@@ -93,13 +91,59 @@ class Random {
    RNG>::type;
 
  public:
+  // Default generator type.
+#if FOLLY_USE_SIMD_PRNG
+  typedef __gnu_cxx::sfmt19937 DefaultGenerator;
+#else
+  typedef std::mt19937 DefaultGenerator;
+#endif
+
+  /**
+   * Get secure random bytes. (On Linux and OSX, this means /dev/urandom).
+   */
+  static void secureRandom(void* data, size_t len);
+
+  /**
+   * Shortcut to get a secure random value of integral type.
+   */
+  template <class T>
+  static typename std::enable_if<
+    std::is_integral<T>::value && !std::is_same<T,bool>::value,
+    T>::type
+  secureRandom() {
+    T val;
+    secureRandom(&val, sizeof(val));
+    return val;
+  }
+
+  /**
+   * (Re-)Seed an existing RNG with a good seed.
+   *
+   * Note that you should usually use ThreadLocalPRNG unless you need
+   * reproducibility (such as during a test), in which case you'd want
+   * to create a RNG with a good seed in production, and seed it yourself
+   * in test.
+   */
+  template <class RNG = DefaultGenerator>
+  static void seed(ValidRNG<RNG>& rng);
+
+  /**
+   * Create a new RNG, seeded with a good seed.
+   *
+   * Note that you should usually use ThreadLocalPRNG unless you need
+   * reproducibility (such as during a test), in which case you'd want
+   * to create a RNG with a good seed in production, and seed it yourself
+   * in test.
+   */
+  template <class RNG = DefaultGenerator>
+  static ValidRNG<RNG> create();
 
   /**
    * Returns a random uint32_t
    */
   template<class RNG = ThreadLocalPRNG>
-  static uint32_t rand32(ValidRNG<RNG>  rrng = RNG()) {
-    uint32_t r = rrng.operator()();
+  static uint32_t rand32(ValidRNG<RNG> rng = RNG()) {
+    uint32_t r = rng.operator()();
     return r;
   }
 
@@ -197,6 +241,18 @@ class Random {
 
 };
 
+/*
+ * Return a good seed for a random number generator.
+ * Note that this is a legacy function, as it returns a 32-bit value, which
+ * is too small to be useful as a "real" RNG seed. Use the functions in class
+ * Random instead.
+ */
+inline uint32_t randomNumberSeed() {
+  return Random::rand32();
 }
+
+}
+
+#include "folly/Random-inl.h"
 
 #endif
