@@ -16,13 +16,25 @@
 
 #include "folly/io/Compression.h"
 
+#if FOLLY_HAVE_LIBLZ4
 #include <lz4.h>
 #include <lz4hc.h>
+#endif
+
 #include <glog/logging.h>
+
+#if FOLLY_HAVE_LIBSNAPPY
 #include <snappy.h>
 #include <snappy-sinksource.h>
+#endif
+
+#if FOLLY_HAVE_LIBZ
 #include <zlib.h>
+#endif
+
+#if FOLLY_HAVE_LIBLZMA
 #include <lzma.h>
+#endif
 
 #include "folly/Conv.h"
 #include "folly/Memory.h"
@@ -129,6 +141,26 @@ std::unique_ptr<IOBuf> NoCompressionCodec::doUncompress(
   return data->clone();
 }
 
+namespace {
+
+void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
+  DCHECK_GE(out->tailroom(), kMaxVarintLength64);
+  out->append(encodeVarint(val, out->writableTail()));
+}
+
+uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
+  // Must have enough room in *this* buffer.
+  auto p = cursor.peek();
+  folly::ByteRange range(p.first, p.second);
+  uint64_t val = decodeVarint(range);
+  cursor.skip(range.data() - p.first);
+  return val;
+}
+
+}  // namespace
+
+#if FOLLY_HAVE_LIBLZ4
+
 /**
  * LZ4 compression
  */
@@ -183,24 +215,6 @@ uint64_t LZ4Codec::doMaxUncompressedLength() const {
   // more accurate.
   return 1.8 * (uint64_t(1) << 30);
 }
-
-namespace {
-
-void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
-  DCHECK_GE(out->tailroom(), kMaxVarintLength64);
-  out->append(encodeVarint(val, out->writableTail()));
-}
-
-uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
-  // Must have enough room in *this* buffer.
-  auto p = cursor.peek();
-  folly::ByteRange range(p.first, p.second);
-  uint64_t val = decodeVarint(range);
-  cursor.skip(range.data() - p.first);
-  return val;
-}
-
-}  // namespace
 
 std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
   std::unique_ptr<IOBuf> clone;
@@ -271,6 +285,10 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
   out->append(actualUncompressedLength);
   return out;
 }
+
+#endif  // FOLLY_HAVE_LIBLZ4
+
+#if FOLLY_HAVE_LIBSNAPPY
 
 /**
  * Snappy compression
@@ -391,6 +409,9 @@ std::unique_ptr<IOBuf> SnappyCodec::doUncompress(const IOBuf* data,
   return out;
 }
 
+#endif  // FOLLY_HAVE_LIBSNAPPY
+
+#if FOLLY_HAVE_LIBZ
 /**
  * Zlib codec
  */
@@ -474,7 +495,6 @@ bool ZlibCodec::doInflate(z_stream* stream,
 
   return false;
 }
-
 
 std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   z_stream stream;
@@ -624,6 +644,10 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
 
   return out;
 }
+
+#endif  // FOLLY_HAVE_LIBZ
+
+#if FOLLY_HAVE_LIBLZMA
 
 /**
  * LZMA2 compression
@@ -861,6 +885,7 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
   return out;
 }
 
+#endif  // FOLLY_HAVE_LIBLZMA
 
 typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
 
@@ -868,12 +893,38 @@ CodecFactory gCodecFactories[
     static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
   nullptr,  // USER_DEFINED
   NoCompressionCodec::create,
+
+#if FOLLY_HAVE_LIBLZ4
   LZ4Codec::create,
+#else
+  nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBSNAPPY
   SnappyCodec::create,
+#else
+  nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBZ
   ZlibCodec::create,
+#else
+  nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBLZ4
   LZ4Codec::create,
+#else
+  nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBLZMA
   LZMA2Codec::create,
   LZMA2Codec::create,
+#else
+  nullptr,
+  nullptr,
+#endif
 };
 
 }  // namespace

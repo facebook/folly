@@ -193,6 +193,11 @@ if test "$ac_cv_func_pthread_yield" = "no"; then
    AC_CHECK_FUNCS([sched_yield])
 fi
 
+AC_CHECK_HEADER([lz4.h], AC_CHECK_LIB([lz4], [main]))
+AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
+AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
+AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
+
 AC_SUBST(AM_CPPFLAGS, '-I../$(top_srcdir)'" "'-I$(top_srcdir)/io'" "'-I$(top_srcdir)/test'" $BOOST_CPPFLAGS")
 AC_SUBST(AM_LDFLAGS, "$BOOST_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread")
 
