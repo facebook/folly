@@ -45,6 +45,10 @@ Dependencies
     - libboost1.46-all-dev
     - libgoogle-glog-dev
     - libgflags-dev
+    - liblz4-dev
+    - liblzma-dev
+    - libsnappy-dev
+    - zlib1g-dev
     - scons (for double-conversion)
     - binutils-dev      (optional)
     - libiberty-dev     (optional)
