@@ -162,6 +162,7 @@ nobase_follyinclude_HEADERS = \
 	ThreadCachedArena.h \
 	ThreadCachedInt.h \
 	ThreadLocal.h \
+	ThreadName.h \
 	TimeoutQueue.h \
 	Traits.h \
 	Unicode.h \
