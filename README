@@ -62,6 +62,10 @@ Dependencies
     - automake
     - boost-devel
     - libtool
+    - lz4-devel
+    - lzma-devel
+    - snappy-devel
+    - zlib-devel
     - glog-devel
     - gflags-devel
     - scons (for double-conversion)
