@@ -294,6 +294,8 @@ FutexResult futexWaitUntilImpl(Futex<DeterministicAtomic>* futex,
         break;
       }
     }
+  } else {
+    futexErrno = EWOULDBLOCK;
   }
   futexLock.unlock();
   DeterministicSchedule::afterSharedAccess();
