@@ -41,7 +41,7 @@ class Future {
   Future& operator=(Future const&) = delete;
 
   // movable
-  Future(Future&&);
+  Future(Future&&) noexcept;
   Future& operator=(Future&&);
 
   ~Future();

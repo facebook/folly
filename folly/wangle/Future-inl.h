@@ -32,7 +32,7 @@ struct isFuture<Future<T> > {
 };
 
 template <class T>
-Future<T>::Future(Future<T>&& other) : obj_(other.obj_) {
+Future<T>::Future(Future<T>&& other) noexcept : obj_(other.obj_) {
   other.obj_ = nullptr;
 }
 
