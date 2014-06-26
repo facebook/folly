@@ -134,7 +134,7 @@ Later<T> Later<T>::via(Executor* executor) {
   Later<T> later(std::move(starter_));
   later.future_ = promise->getFuture();
 
-  future_->setContinuation([executor, promise](Try<T>&& t) mutable {
+  future_->setCallback_([executor, promise](Try<T>&& t) mutable {
     folly::MoveWrapper<Try<T>> tt(std::move(t));
     executor->add([promise, tt]() mutable {
       promise->fulfilTry(std::move(*tt));

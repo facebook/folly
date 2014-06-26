@@ -46,9 +46,9 @@ class FutureObject {
   }
 
   template <typename F>
-  void setContinuation(F func) {
+  void setCallback_(F func) {
     if (continuation_) {
-      throw std::logic_error("setContinuation called twice");
+      throw std::logic_error("setCallback_ called twice");
     }
 
     continuation_ = std::move(func);
@@ -111,7 +111,7 @@ struct VariadicContext {
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) == 0, void>::type
 whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
-  head.setContinuation([ctx](Try<typename THead::value_type>&& t) {
+  head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
       ctx->p.setValue(std::move(ctx->results));
@@ -123,7 +123,7 @@ whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) != 0, void>::type
 whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
-  head.setContinuation([ctx](Try<typename THead::value_type>&& t) {
+  head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
       ctx->p.setValue(std::move(ctx->results));

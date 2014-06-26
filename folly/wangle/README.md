@@ -13,7 +13,7 @@ A framework for expressing asynchronous control flow in C++, that is composable 
 
 Wangle is a futures-based async framework inspired by [Twitter's Finagle](http://twitter.github.io/finagle/) (which is in scala), and (loosely) building upon the existing (but anemic) Futures code found in the C++11 standard ([`std::future`](http://en.cppreference.com/w/cpp/thread/future)) and [`boost::future`](http://www.boost.org/doc/libs/1_53_0/boost/thread/future.hpp) (especially >= 1.53.0). Although inspired by the std::future interface, it is not syntactically drop-in compatible because some ideas didn't translate well enough and we decided to break from the API. But semantically, it should be straightforward to translate from existing std::future code to Wangle.
 
-The primary semantic differences are that Wangle Futures and Promises are not threadsafe; and as does `boost::future`, Wangle supports continuations (`then()`) and there are helper methods `whenAll()` and `whenAny()` which are important compositional building blocks.
+The primary semantic differences are that Wangle Futures and Promises are not threadsafe; and as does `boost::future`, Wangle supports continuing callbacks (`then()`) and there are helper methods `whenAll()` and `whenAny()` which are important compositional building blocks.
 
 ## Brief Synopsis
 
@@ -139,7 +139,7 @@ auto any = whenAny(futs.begin(), futs.end());
 
 `all` and `any` are Futures (for the exact type and usage see the header files).  They will be complete when all/one of `futs` are complete, respectively. (There is also `whenN()` for when you need *some*.)
 
-Second, we can attach continuations (aka callbacks) to a Future, and chain them together monadically. An example will clarify:
+Second, we can attach callbacks to a Future, and chain them together monadically. An example will clarify:
 
 ```C++
 Future<GetReply> fut1 = mc.get("foo");
@@ -163,7 +163,7 @@ Future<void> fut3 = fut2.then(
 
 That example is a little contrived but the idea is that you can transform a result from one type to another, potentially in a chain, and unhandled errors propagate. Of course, the intermediate variables are optional. `Try<T>` is the object wrapper that supports both value and exception.
 
-Using `then` to add continuations is idiomatic. It brings all the code into one place, which avoids callback hell.
+Using `then` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell.
 
 Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future.
 
@@ -266,7 +266,7 @@ p.fulfil([]{
 ## FAQ
 
 ### Why not use std::future?
-No callback or continuation support.
+No callback support.
 See also http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf
 
 ### Why not use boost::future?
@@ -278,7 +278,7 @@ See also http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf
 C++. It boils down to wanting to return a Future by value for performance (move semantics and compiler optimizations), and programmer sanity, and needing a reference to the shared state by both the user (which holds the Future) and the asynchronous operation (which holds the Promise), and allowing either to go out of scope.
 
 ### What about proper continuations? Futures suck.
-People mean two things here, they either mean using continuations or they mean using generators which require continuations. It's important to know those are two distinct questions, but in our context the answer is the same because continuations are a prerequisite for generators.
+People mean two things here, they either mean using continuations (as in CSP) or they mean using generators which require continuations. It's important to know those are two distinct questions, but in our context the answer is the same because continuations are a prerequisite for generators.
 
 C++ doesn't directly support continuations very well. But there are some ways to do them in C/C++ that rely on some rather low-level facilities like `setjmp` and `longjmp` (among others). So yes, they are possible (cf. [Mordor](https://github.com/ccutrer/mordor)).
 

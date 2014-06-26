@@ -279,18 +279,18 @@ TEST(Future, finish) {
   Promise<int> p;
   auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-  // The continuation hasn't executed
+  // The callback hasn't executed
   EXPECT_EQ(0, *x);
 
-  // The continuation has a reference to x
+  // The callback has a reference to x
   EXPECT_EQ(2, x.use_count());
 
   p.setValue(42);
 
-  // the continuation has executed
+  // the callback has executed
   EXPECT_EQ(42, *x);
 
-  // the continuation has been destructed
+  // the callback has been destructed
   // and has released its reference to x
   EXPECT_EQ(1, x.use_count());
 }
@@ -676,7 +676,7 @@ TEST(Future, waitWithSemaphore) {
   EXPECT_EQ(result.load(), 1);
   p.setValue(42);
   t.join();
-  // validate that the continuation ended up executing in this thread, which
+  // validate that the callback ended up executing in this thread, which
   // is more to ensure that this test actually tests what it should
   EXPECT_EQ(id, std::this_thread::get_id());
   EXPECT_EQ(result.load(), 42);

@@ -45,7 +45,7 @@ Future<T>& Future<T>::operator=(Future<T>&& other) {
 template <class T>
 Future<T>::~Future() {
   if (obj_) {
-    setContinuation([](Try<T>&&) {}); // detach
+    setCallback_([](Try<T>&&) {}); // detach
   }
 }
 
@@ -57,9 +57,9 @@ void Future<T>::throwIfInvalid() const {
 
 template <class T>
 template <class F>
-void Future<T>::setContinuation(F&& func) {
+void Future<T>::setCallback_(F&& func) {
   throwIfInvalid();
-  obj_->setContinuation(std::move(func));
+  obj_->setCallback_(std::move(func));
   obj_ = nullptr;
 }
 
@@ -112,7 +112,7 @@ Future<T>::then(F&& func) {
      in some circumstances, but I think it should be explicit not implicit
      in the destruction of the Future used to create it.
      */
-  setContinuation(
+  setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       p->fulfil([&]() {
           return (*funcm)(std::move(t));
@@ -139,12 +139,12 @@ Future<T>::then(F&& func) {
   // grab the Future now before we lose our handle on the Promise
   auto f = p->getFuture();
 
-  setContinuation(
+  setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       try {
         auto f2 = (*funcm)(std::move(t));
         // that didn't throw, now we can steal p
-        f2.setContinuation([p](Try<B>&& b) mutable {
+        f2.setCallback_([p](Try<B>&& b) mutable {
             p->fulfilTry(std::move(b));
           });
       } catch (...) {
@@ -189,7 +189,7 @@ inline Future<T> Future<T>::via(Executor* executor) {
   folly::MoveWrapper<Promise<T>> p;
   auto f = p->getFuture();
 
-  setContinuation([executor, p](Try<T>&& t) mutable {
+  setCallback_([executor, p](Try<T>&& t) mutable {
       folly::MoveWrapper<Try<T>> tt(std::move(t));
       executor->add([p, tt]() mutable {
           p->fulfilTry(std::move(*tt));
@@ -320,7 +320,7 @@ whenAll(InputIterator first, InputIterator last)
 
   for (size_t i = 0; first != last; ++first, ++i) {
      auto& f = *first;
-     f.setContinuation([ctx, i](Try<T>&& t) {
+     f.setCallback_([ctx, i](Try<T>&& t) {
          ctx->results[i] = std::move(t);
          if (++ctx->count == ctx->total) {
            ctx->p.setValue(std::move(ctx->results));
@@ -347,7 +347,7 @@ whenAny(InputIterator first, InputIterator last) {
 
   for (size_t i = 0; first != last; first++, i++) {
     auto& f = *first;
-    f.setContinuation([i, ctx](Try<T>&& t) {
+    f.setCallback_([i, ctx](Try<T>&& t) {
       if (!ctx->done.exchange(true)) {
         ctx->p.setValue(std::make_pair(i, std::move(t)));
       }

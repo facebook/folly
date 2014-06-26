@@ -181,7 +181,7 @@ class Future {
   /// not worth listing all those and their fancy template signatures as
   /// friends. But it's not for public consumption.
   template <class F>
-  void setContinuation(F&& func);
+  void setCallback_(F&& func);
 
  private:
   typedef detail::FutureObject<T>* objPtr;
