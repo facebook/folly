@@ -278,8 +278,10 @@ FutexResult futexWaitUntilImpl(Futex<DeterministicAtomic>* futex,
       futexLock.lock();
 
       // Simulate spurious wake-ups, timeouts each time with
-      // a 10% probability
-      if (DeterministicSchedule::getRandNumber(100) < 10) {
+      // a 10% probability if we haven't been woken up already
+      if (!rv && DeterministicSchedule::getRandNumber(100) < 10) {
+        assert(futexQueues.count(futex) != 0 &&
+               &futexQueues[futex] == &queue);
         queue.erase(ours);
         if (queue.empty()) {
           futexQueues.erase(futex);
