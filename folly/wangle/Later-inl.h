@@ -130,10 +130,17 @@ Later<T>::then(F&& fn) {
 
 template <class T>
 Later<T> Later<T>::via(Executor* executor) {
-  Promise<T> promise;
+  folly::MoveWrapper<Promise<T>> promise;
   Later<T> later(std::move(starter_));
-  later.future_ = promise.getFuture();
-  future_->executeWith(executor, std::move(promise));
+  later.future_ = promise->getFuture();
+
+  future_->setContinuation([executor, promise](Try<T>&& t) mutable {
+    folly::MoveWrapper<Try<T>> tt(std::move(t));
+    executor->add([promise, tt]() mutable {
+      promise->fulfilTry(std::move(*tt));
+    });
+  });
+
   return later;
 }
 

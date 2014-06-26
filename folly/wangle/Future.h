@@ -71,28 +71,6 @@ class Future {
   template <typename Executor>
   Future<T> via(Executor* executor);
 
-  /// Deprecated alias for via
-  template <typename Executor>
-  Future<T> executeWithSameThread(Executor* executor) {
-    return via(executor);
-  }
-
-  /**
-     Thread-safe version of executeWith
-
-     Since an executor would likely start executing the Future chain
-     right away, it would be a race condition to call:
-     Future.executeWith(...).then(...), as there would be race
-     condition between the then and the running Future.
-     Instead, you may pass in a Promise so that we can set up
-     the rest of the chain in advance, without any racey
-     modifications of the continuation
-
-     Deprecated. Use a Later.
-   */
-  template <typename Executor>
-  void executeWith(Executor* executor, Promise<T>&& cont_promise);
-
   /** True when the result (or exception) is ready. */
   bool isReady() const;
 
@@ -111,7 +89,8 @@ class Future {
     */
   /* TODO n3428 and other async frameworks have something like then(scheduler,
      Future), we probably want to support a similar API (instead of
-     executeWith). */
+     via. or rather, via should return a cold future (Later) and we provide
+     then(scheduler, Future) ). */
   template <class F>
   typename std::enable_if<
     !isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
@@ -196,8 +175,11 @@ class Future {
   /// Exceptions still propagate.
   Future<void> then();
 
-  /// Use of this method is advanced wizardry.
-  /// XXX should this be protected?
+  /// This is not the method you're looking for.
+  ///
+  /// This needs to be public because it's used by make* and when*, and it's
+  /// not worth listing all those and their fancy template signatures as
+  /// friends. But it's not for public consumption.
   template <class F>
   void setContinuation(F&& func);
 

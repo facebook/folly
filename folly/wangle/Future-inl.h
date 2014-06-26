@@ -200,22 +200,6 @@ inline Future<T> Future<T>::via(Executor* executor) {
 }
 
 template <class T>
-template <typename Executor>
-inline void Future<T>::executeWith(
-    Executor* executor, Promise<T>&& cont_promise) {
-  throwIfInvalid();
-
-  folly::MoveWrapper<Promise<T>> p(std::move(cont_promise));
-
-  setContinuation([executor, p](Try<T>&& t) mutable {
-      folly::MoveWrapper<Try<T>> tt(std::move(t));
-      executor->add([p, tt]() mutable {
-          p->fulfilTry(std::move(*tt));
-        });
-    });
-}
-
-template <class T>
 bool Future<T>::isReady() const {
   throwIfInvalid();
   return obj_->ready();
