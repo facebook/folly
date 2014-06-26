@@ -94,4 +94,11 @@ void ManualExecutor::wait() {
   }
 }
 
+void ManualExecutor::advanceTo(TimePoint const& t) {
+  if (t > now_) {
+    now_ = t;
+  }
+  run();
+}
+
 }} // namespace

@@ -76,12 +76,7 @@ namespace folly { namespace wangle {
 
     /// Advance the clock to this absolute time. If t is <= now(),
     /// this is a noop.
-    void advanceTo(TimePoint const& t) {
-      if (t > now_) {
-        now_ = t;
-      }
-      run();
-    }
+    void advanceTo(TimePoint const& t);
 
     TimePoint now() override { return now_; }
 
