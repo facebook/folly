@@ -503,6 +503,12 @@ std::string join(const Delim& delimiter,
   return output;
 }
 
+/**
+ * Returns a subpiece with all whitespace removed from the front of @sp.
+ * Whitespace means any of [' ', '\n', '\r', '\t'].
+ */
+StringPiece skipWhitespace(StringPiece sp);
+
 } // namespace folly
 
 // Hash functions to make std::string usable with e.g. hash_map

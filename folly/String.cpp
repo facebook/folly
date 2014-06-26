@@ -203,7 +203,7 @@ const PrettySuffix kPrettySISuffixes[] = {
   { "z", 1e-21L },
   { "y", 1e-24L },
   { " ", 0 },
-  { 0, 0} 
+  { 0, 0}
 };
 
 const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
@@ -247,7 +247,7 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
 
 //TODO:
 //1) Benchmark & optimize
-double prettyToDouble(folly::StringPiece *const prettyString, 
+double prettyToDouble(folly::StringPiece *const prettyString,
                       const PrettyType type) {
   double value = folly::to<double>(prettyString);
   while (prettyString->size() > 0 && std::isspace(prettyString->front())) {
@@ -278,13 +278,13 @@ double prettyToDouble(folly::StringPiece *const prettyString,
             prettyString->toString(), "\""));
   }
   prettyString->advance(longestPrefixLen);
-  return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val : 
+  return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val :
                                       value;
 }
 
 double prettyToDouble(folly::StringPiece prettyString, const PrettyType type){
   double result = prettyToDouble(&prettyString, type);
-  detail::enforceWhitespace(prettyString.data(), 
+  detail::enforceWhitespace(prettyString.data(),
                             prettyString.data() + prettyString.size());
   return result;
 }
@@ -327,6 +327,25 @@ fbstring errnoStr(int err) {
 #endif
 
   return result;
+}
+
+StringPiece skipWhitespace(StringPiece sp) {
+  // Spaces other than ' ' characters are less common but should be
+  // checked.  This configuration where we loop on the ' '
+  // separately from oddspaces was empirically fastest.
+  auto oddspace = [] (char c) {
+    return c == '\n' || c == '\t' || c == '\r';
+  };
+
+loop:
+  for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
+  }
+  if (!sp.empty() && oddspace(sp.front())) {
+    sp.pop_front();
+    goto loop;
+  }
+
+  return sp;
 }
 
 namespace detail {
@@ -385,4 +404,3 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
 # undef DMGL_TYPES
 # undef DMGL_RET_POSTFIX
 #endif
-

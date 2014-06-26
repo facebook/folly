@@ -19,9 +19,10 @@
 #include <boost/next_prior.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <folly/Range.h>
-#include <folly/Unicode.h>
 #include <folly/Conv.h>
+#include <folly/Range.h>
+#include <folly/String.h>
+#include <folly/Unicode.h>
 
 namespace folly {
 
@@ -323,20 +324,7 @@ struct Input {
   }
 
   void skipWhitespace() {
-    // Spaces other than ' ' characters are less common but should be
-    // checked.  This configuration where we loop on the ' '
-    // separately from oddspaces was empirically fastest.
-    auto oddspace = [] (char c) {
-      return c == '\n' || c == '\t' || c == '\r';
-    };
-
-  loop:
-    for (; !range_.empty() && range_.front() == ' '; range_.pop_front()) {
-    }
-    if (!range_.empty() && oddspace(range_.front())) {
-      range_.pop_front();
-      goto loop;
-    }
+    range_ = folly::skipWhitespace(range_);
     storeCurrent();
   }
 
