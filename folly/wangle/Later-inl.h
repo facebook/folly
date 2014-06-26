@@ -53,6 +53,15 @@ Later<T>::Later() {
   future_ = starter_.getFuture();
 }
 
+template <class T>
+Later<T>::Later(Future<T>&& f) {
+  MoveWrapper<Future<T>> fw(std::move(f));
+  *this = Later<void>()
+    .then([fw](Try<void>&&) mutable {
+      return std::move(*fw);
+    });
+}
+
 template <typename T>
 Later<T>::Later(Promise<void>&& starter)
   : starter_(std::forward<Promise<void>>(starter)) { }

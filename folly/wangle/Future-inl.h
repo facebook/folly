@@ -183,20 +183,9 @@ Try<T>& Future<T>::getTry() {
 
 template <class T>
 template <typename Executor>
-inline Future<T> Future<T>::via(Executor* executor) {
+inline Later<T> Future<T>::via(Executor* executor) {
   throwIfInvalid();
-
-  folly::MoveWrapper<Promise<T>> p;
-  auto f = p->getFuture();
-
-  setCallback_([executor, p](Try<T>&& t) mutable {
-      folly::MoveWrapper<Try<T>> tt(std::move(t));
-      executor->add([p, tt]() mutable {
-          p->fulfilTry(std::move(*tt));
-        });
-    });
-
-  return f;
+  return Later<T>(std::move(*this)).via(executor);
 }
 
 template <class T>

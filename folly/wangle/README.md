@@ -201,9 +201,7 @@ Later<void>()
 ```
 `x` will execute in the current thread (the one calling `launch`). `y1` and `y2` will execute in the thread on the other side of `e1`, and `z` will execute in the thread on the other side of `e2`. `y1` and `y2` will execute on the same thread, whichever thread that is. If `e1` and `e2` execute in different threads than the current thread, then the final callback does not happen in the current thread. If you want to get back to the current thread, you need to get there via an executor.
 
-The second and most basic is `Future::via(Executor*)`, which creates a future which will execute its callback via the given executor. i.e. given `f.via(e).then(x)`, `x` will always execute via executor `e`. NB given `f.via(e).then(x).then(y)`, `y` is *not* guaranteed to execute via `e` or in the same thread as `x` (use a Later).
-
-TODO implement `Future::then(callback, executor)` so we can do the above with a single Future.
+`Future::via(Executor*)` will return a Later, too.
 
 The third and least flexible (but sometimes very useful) method assumes only two threads and that you want to do something in the far thread, then come back to the current thread. `ThreadGate` is an interface for a bidirectional gateway between two threads. It's usually easier to use a Later, but ThreadGate can be more efficient, and if the pattern is used often in your code it can be more convenient.
 ```C++

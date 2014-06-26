@@ -73,6 +73,11 @@ class Later {
   Later();
 
   /*
+   * Lift a Future into a Later
+   */
+  /* implicit */ Later(Future<T>&& f);
+
+  /*
    * This constructor is used to build an asynchronous workflow that takes a
    * value as input, and that value is passed in.
    */

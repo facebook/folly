@@ -167,3 +167,15 @@ TEST_F(LaterFixture, fire_and_forget) {
   }).fireAndForget();
   waiter->makeProgress();
 }
+
+TEST(Later, FutureViaReturnsLater) {
+  ManualExecutor x;
+  {
+    Future<void> f = makeFuture();
+    Later<void> l = f.via(&x);
+  }
+  {
+    Future<int> f = makeFuture(42);
+    Later<int> l = f.via(&x);
+  }
+}

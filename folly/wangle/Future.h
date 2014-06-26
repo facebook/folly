@@ -30,6 +30,7 @@
 namespace folly { namespace wangle {
 
 template <typename T> struct isFuture;
+template <class> class Later;
 
 template <class T>
 class Future {
@@ -59,17 +60,13 @@ class Future {
   typename std::add_lvalue_reference<const T>::type
   value() const;
 
-  /// Returns a future which will call back on the other side of executor.
+  /// Returns a Later which will call back on the other side of executor.
   ///
-  ///   f.via(e).then(a); // safe
+  ///   f.via(e).then(a).then(b).launch();
   ///
-  ///   f.via(e).then(a).then(b); // faux pas
-  ///
-  /// a will definitely execute in the intended thread, but b may execute
-  /// either in that thread, or in the current thread. If you need to
-  /// guarantee where b executes, use a Later.
+  /// a and b will execute in the same context (the far side of e)
   template <typename Executor>
-  Future<T> via(Executor* executor);
+  Later<T> via(Executor* executor);
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -316,3 +313,4 @@ Future<T> waitWithSemaphore(Future<T>&& f, Duration timeout);
 }} // folly::wangle
 
 #include "Future-inl.h"
+#include "Later.h"
