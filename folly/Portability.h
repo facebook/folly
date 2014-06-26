@@ -34,6 +34,12 @@
  #endif
 #endif
 
+#ifndef MAP_ANONYMOUS
+ #include <sys/mman.h>
+ #ifdef MAP_ANON
+  #define MAP_ANONYMOUS MAP_ANON
+ #endif
+#endif
 
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__
