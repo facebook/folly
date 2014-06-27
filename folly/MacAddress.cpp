@@ -24,7 +24,7 @@ using std::string;
 
 namespace folly {
 
-const MacAddress MacAddress::BROADCAST{Endian::big(0xffffffffffffU)};
+const MacAddress MacAddress::BROADCAST{Endian::big(uint64_t(0xffffffffffffU))};
 const MacAddress MacAddress::ZERO;
 
 MacAddress::MacAddress(StringPiece str) {
