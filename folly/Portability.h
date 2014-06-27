@@ -34,6 +34,16 @@
  #endif
 #endif
 
+// A change in folly/MemoryMapping.cpp uses MAP_ANONYMOUS, which is named
+// MAP_ANON on OSX/BSD.
+#if defined(__APPLE__) || defined(__FreeBSD__)
+  #include <sys/mman.h>
+  #ifndef MAP_ANONYMOUS
+    #ifdef MAP_ANON
+      #define MAP_ANONYMOUS MAP_ANON
+    #endif
+  #endif
+#endif
 
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__
