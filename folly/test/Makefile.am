@@ -14,7 +14,8 @@ TESTS= \
 	bits_test \
 	bit_iterator_test
 
-noinst_LTLIBRARIES = libgtestmain.la libgtest.la
+check_LTLIBRARIES = libgtestmain.la libgtest.la
+check_PROGRAMS = 
 
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
@@ -24,8 +25,6 @@ libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
 
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
 		 FBVectorTestBenchmarks.cpp.h
-
-noinst_PROGRAMS=benchmark_test
 
 if HAVE_X86_64
 small_locks_test_SOURCES = SmallLocksTest.cpp
@@ -85,6 +84,7 @@ TESTS += json_test
 
 benchmark_test_SOURCES = BenchmarkTest.cpp
 benchmark_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
+check_PROGRAMS += benchmark_test
 
 # fails due to destructor
 scope_guard_test_SOURCES = ScopeGuardTest.cpp
@@ -124,7 +124,7 @@ TESTS += concurrent_skiplist_test
 
 concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
 concurrent_skiplist_benchmark_LDADD = $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
-noinst_PROGRAMS += concurrent_skiplist_benchmark
+check_PROGRAMS += concurrent_skiplist_benchmark
 
 histogram_test_SOURCES = HistogramTest.cpp
 histogram_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
@@ -178,4 +178,4 @@ spooky_hash_v2_test_SOURCES = SpookyHashV2Test.cpp
 spooky_hash_v2_test_LDADD = $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v2_test
 
-check_PROGRAMS= $(TESTS)
+check_PROGRAMS += $(TESTS)
