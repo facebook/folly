@@ -19,9 +19,9 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 #include <cerrno>
+#include <ostream>
 #include <stdexcept>
 #include <string>
-#include <fstream>
 
 #include <boost/intrusive/parent_from_member.hpp>
 #include <glog/logging.h>
@@ -220,13 +220,25 @@ Range<AsyncIO::Op**> AsyncIO::pollCompleted() {
 
 Range<AsyncIO::Op**> AsyncIO::doWait(size_t minRequests, size_t maxRequests) {
   io_event events[maxRequests];
-  int count;
+
+  size_t count = 0;
   do {
-    // Wait forever
-    count = io_getevents(ctx_, minRequests, maxRequests, events, nullptr);
-  } while (count == -EINTR);
-  checkKernelError(count, "AsyncIO: io_getevents failed");
-  DCHECK_GE(count, minRequests);  // the man page says so
+    int ret;
+    do {
+      // GOTCHA: io_getevents() may returns less than min_nr results if
+      // interrupted after some events have been read (if before, -EINTR
+      // is returned).
+      ret = io_getevents(ctx_,
+                         minRequests - count,
+                         maxRequests - count,
+                         events + count,
+                         /* timeout */ nullptr);  // wait forever
+    } while (ret == -EINTR);
+    // Check as may not be able to recover without leaking events.
+    CHECK_GE(ret, 0)
+      << "AsyncIO: io_getevents failed with error " << errnoStr(-ret);
+    count += ret;
+  } while (count < minRequests);
   DCHECK_LE(count, maxRequests);
 
   completed_.clear();

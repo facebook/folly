@@ -25,8 +25,8 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <iosfwd>
 #include <mutex>
-#include <ostream>
 #include <utility>
 #include <vector>
 
@@ -233,6 +233,7 @@ class AsyncIOQueue {
    */
   typedef std::function<AsyncIOOp*()> OpFactory;
   void submit(OpFactory op);
+
  private:
   void onCompleted(AsyncIOOp* op);
   void maybeDequeue();
