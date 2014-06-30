@@ -20,30 +20,30 @@
 #include <thread>
 
 #include "WangleException.h"
-#include "detail.h"
+#include "detail/State.h"
 
 namespace folly { namespace wangle {
 
 template <class T>
-Promise<T>::Promise() : retrieved_(false), obj_(new detail::FutureObject<T>())
+Promise<T>::Promise() : retrieved_(false), state_(new detail::State<T>())
 {}
 
 template <class T>
 Promise<T>::Promise(Promise<T>&& other) :
-retrieved_(other.retrieved_), obj_(other.obj_) {
-  other.obj_ = nullptr;
+retrieved_(other.retrieved_), state_(other.state_) {
+  other.state_ = nullptr;
 }
 
 template <class T>
 Promise<T>& Promise<T>::operator=(Promise<T>&& other) {
-  std::swap(obj_, other.obj_);
+  std::swap(state_, other.state_);
   std::swap(retrieved_, other.retrieved_);
   return *this;
 }
 
 template <class T>
 void Promise<T>::throwIfFulfilled() {
-  if (!obj_)
+  if (!state_)
     throw PromiseAlreadySatisfied();
 }
 
@@ -55,7 +55,7 @@ void Promise<T>::throwIfRetrieved() {
 
 template <class T>
 Promise<T>::~Promise() {
-  if (obj_) {
+  if (state_) {
     setException(BrokenPromise());
   }
 }
@@ -65,7 +65,7 @@ Future<T> Promise<T>::getFuture() {
   throwIfRetrieved();
   throwIfFulfilled();
   retrieved_ = true;
-  return Future<T>(obj_);
+  return Future<T>(state_);
 }
 
 template <class T>
@@ -78,21 +78,21 @@ void Promise<T>::setException(E const& e) {
 template <class T>
 void Promise<T>::setException(std::exception_ptr const& e) {
   throwIfFulfilled();
-  obj_->setException(e);
+  state_->setException(e);
   if (!retrieved_) {
-    delete obj_;
+    delete state_;
   }
-  obj_ = nullptr;
+  state_ = nullptr;
 }
 
 template <class T>
 void Promise<T>::fulfilTry(Try<T>&& t) {
   throwIfFulfilled();
-  obj_->fulfil(std::move(t));
+  state_->fulfil(std::move(t));
   if (!retrieved_) {
-    delete obj_;
+    delete state_;
   }
-  obj_ = nullptr;
+  state_ = nullptr;
 }
 
 template <class T>
@@ -102,11 +102,11 @@ void Promise<T>::setValue(M&& v) {
                 "Use setValue() instead");
 
   throwIfFulfilled();
-  obj_->fulfil(Try<T>(std::forward<M>(v)));
+  state_->fulfil(Try<T>(std::forward<M>(v)));
   if (!retrieved_) {
-    delete obj_;
+    delete state_;
   }
-  obj_ = nullptr;
+  state_ = nullptr;
 }
 
 template <class T>
@@ -115,11 +115,11 @@ void Promise<T>::setValue() {
                 "Use setValue(value) instead");
 
   throwIfFulfilled();
-  obj_->fulfil(Try<void>());
+  state_->fulfil(Try<void>());
   if (!retrieved_) {
-    delete obj_;
+    delete state_;
   }
-  obj_ = nullptr;
+  state_ = nullptr;
 }
 
 template <class T>

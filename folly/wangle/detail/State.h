@@ -17,29 +17,30 @@
 #pragma once
 
 #include <atomic>
-#include <folly/Optional.h>
 #include <stdexcept>
 #include <vector>
 
-#include "Try.h"
-#include "Promise.h"
-#include "Future.h"
+#include <folly/Optional.h>
+
+#include <folly/wangle/Try.h>
+#include <folly/wangle/Promise.h>
+#include <folly/wangle/Future.h>
 
 namespace folly { namespace wangle { namespace detail {
 
 /** The shared state object for Future and Promise. */
 template<typename T>
-class FutureObject {
+class State {
  public:
-  FutureObject() = default;
+  State() = default;
 
   // not copyable
-  FutureObject(FutureObject const&) = delete;
-  FutureObject& operator=(FutureObject const&) = delete;
+  State(State const&) = delete;
+  State& operator=(State const&) = delete;
 
   // not movable (see comment in the implementation of Future::then)
-  FutureObject(FutureObject&&) noexcept = delete;
-  FutureObject& operator=(FutureObject&&) = delete;
+  State(State&&) noexcept = delete;
+  State& operator=(State&&) = delete;
 
   Try<T>& getTry() {
     return *value_;

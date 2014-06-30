@@ -181,13 +181,13 @@ class Future {
   void setCallback_(F&& func);
 
  private:
-  typedef detail::FutureObject<T>* objPtr;
+  typedef detail::State<T>* statePtr;
 
   // shared state object
-  objPtr obj_;
+  statePtr state_;
 
   explicit
-  Future(objPtr obj) : obj_(obj) {}
+  Future(statePtr obj) : state_(obj) {}
 
   void throwIfInvalid() const;
 

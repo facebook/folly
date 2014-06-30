@@ -76,13 +76,13 @@ public:
   void fulfil(F&& func);
 
 private:
-  typedef typename Future<T>::objPtr objPtr;
+  typedef typename Future<T>::statePtr statePtr;
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;
 
   // shared state object
-  objPtr obj_;
+  statePtr state_;
 
   void throwIfFulfilled();
   void throwIfRetrieved();
