@@ -48,14 +48,14 @@ class State {
 
   template <typename F>
   void setCallback_(F func) {
-    if (continuation_) {
+    if (callback_) {
       throw std::logic_error("setCallback_ called twice");
     }
 
-    continuation_ = std::move(func);
+    callback_ = std::move(func);
 
     if (shouldContinue_.test_and_set()) {
-      continuation_(std::move(*value_));
+      callback_(std::move(*value_));
       delete this;
     }
   }
@@ -68,7 +68,7 @@ class State {
     value_ = std::move(t);
 
     if (shouldContinue_.test_and_set()) {
-      continuation_(std::move(*value_));
+      callback_(std::move(*value_));
       delete this;
     }
   }
@@ -96,7 +96,7 @@ class State {
  private:
   std::atomic_flag shouldContinue_ = ATOMIC_FLAG_INIT;
   folly::Optional<Try<T>> value_;
-  std::function<void(Try<T>&&)> continuation_;
+  std::function<void(Try<T>&&)> callback_;
 };
 
 template <typename... Ts>
