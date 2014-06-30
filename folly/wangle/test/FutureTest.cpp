@@ -276,20 +276,21 @@ TEST(Promise, fulfil) {
 
 TEST(Future, finish) {
   auto x = std::make_shared<int>(0);
-  Promise<int> p;
-  auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
+  {
+    Promise<int> p;
+    auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-  // The callback hasn't executed
-  EXPECT_EQ(0, *x);
+    // The callback hasn't executed
+    EXPECT_EQ(0, *x);
 
-  // The callback has a reference to x
-  EXPECT_EQ(2, x.use_count());
+    // The callback has a reference to x
+    EXPECT_EQ(2, x.use_count());
 
-  p.setValue(42);
+    p.setValue(42);
 
-  // the callback has executed
-  EXPECT_EQ(42, *x);
-
+    // the callback has executed
+    EXPECT_EQ(42, *x);
+  }
   // the callback has been destructed
   // and has released its reference to x
   EXPECT_EQ(1, x.use_count());

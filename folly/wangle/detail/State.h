@@ -17,6 +17,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <stdexcept>
 #include <vector>
 
@@ -32,7 +33,14 @@ namespace folly { namespace wangle { namespace detail {
 template<typename T>
 class State {
  public:
+  // This must be heap-constructed. There's probably a way to enforce that in
+  // code but since this is just internal detail code and I don't know how
+  // off-hand, I'm punting.
   State() = default;
+  ~State() {
+    assert(calledBack_);
+    assert(detached_ == 2);
+  }
 
   // not copyable
   State(State const&) = delete;
@@ -48,29 +56,32 @@ class State {
 
   template <typename F>
   void setCallback(F func) {
-    if (callback_) {
-      throw std::logic_error("setCallback called twice");
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+
+      if (callback_) {
+        throw std::logic_error("setCallback called twice");
+      }
+
+      callback_ = std::move(func);
     }
 
-    callback_ = std::move(func);
-
-    if (shouldContinue_.test_and_set()) {
-      callback_(std::move(*value_));
-      delete this;
-    }
+    maybeCallback();
   }
 
   void fulfil(Try<T>&& t) {
-    if (value_.hasValue()) {
-      throw std::logic_error("fulfil called twice");
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+
+      if (ready()) {
+        throw std::logic_error("fulfil called twice");
+      }
+
+      value_ = std::move(t);
+      assert(ready());
     }
 
-    value_ = std::move(t);
-
-    if (shouldContinue_.test_and_set()) {
-      callback_(std::move(*value_));
-      delete this;
-    }
+    maybeCallback();
   }
 
   void setException(std::exception_ptr const& e) {
@@ -93,10 +104,57 @@ class State {
     }
   }
 
+  // Called by a destructing Future
+  void detachFuture() {
+    if (!callback_) {
+      setCallback([](Try<T>&&) {});
+    }
+    detachOne();
+  }
+
+  // Called by a destructing Promise
+  void detachPromise() {
+    if (!ready()) {
+      setException(BrokenPromise());
+    }
+    detachOne();
+  }
+
  private:
-  std::atomic_flag shouldContinue_ = ATOMIC_FLAG_INIT;
+  void maybeCallback() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (value_ && callback_) {
+      // TODO we should probably try/catch here
+      callback_(std::move(*value_));
+      calledBack_ = true;
+    }
+  }
+
+  void detachOne() {
+    bool shouldDelete;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      detached_++;
+      assert(detached_ == 1 || detached_ == 2);
+      shouldDelete = (detached_ == 2);
+    }
+
+    if (shouldDelete) {
+      // we should have already executed the callback with the value
+      assert(calledBack_);
+      delete this;
+    }
+  }
+
   folly::Optional<Try<T>> value_;
   std::function<void(Try<T>&&)> callback_;
+  bool calledBack_ = false;
+  unsigned char detached_ = 0;
+
+  // this lock isn't meant to protect all accesses to members, only the ones
+  // that need to be threadsafe: the act of setting value_ and callback_, and
+  // seeing if they are set and whether we should then continue.
+  std::mutex mutex_;
 };
 
 template <typename... Ts>

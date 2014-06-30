@@ -32,8 +32,8 @@ struct isFuture<Future<T> > {
 };
 
 template <class T>
-Future<T>::Future(Future<T>&& other) noexcept : state_(other.state_) {
-  other.state_ = nullptr;
+Future<T>::Future(Future<T>&& other) noexcept : state_(nullptr) {
+  *this = std::move(other);
 }
 
 template <class T>
@@ -44,8 +44,14 @@ Future<T>& Future<T>::operator=(Future<T>&& other) {
 
 template <class T>
 Future<T>::~Future() {
+  detach();
+}
+
+template <class T>
+void Future<T>::detach() {
   if (state_) {
-    setCallback_([](Try<T>&&) {}); // detach
+    state_->detachFuture();
+    state_ = nullptr;
   }
 }
 
@@ -60,7 +66,6 @@ template <class F>
 void Future<T>::setCallback_(F&& func) {
   throwIfInvalid();
   state_->setCallback(std::move(func));
-  state_ = nullptr;
 }
 
 template <class T>

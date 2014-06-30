@@ -189,6 +189,8 @@ class Future {
   explicit
   Future(statePtr obj) : state_(obj) {}
 
+  void detach();
+
   void throwIfInvalid() const;
 
   friend class Promise<T>;

@@ -29,9 +29,8 @@ Promise<T>::Promise() : retrieved_(false), state_(new detail::State<T>())
 {}
 
 template <class T>
-Promise<T>::Promise(Promise<T>&& other) :
-retrieved_(other.retrieved_), state_(other.state_) {
-  other.state_ = nullptr;
+Promise<T>::Promise(Promise<T>&& other) : state_(nullptr) {
+  *this = std::move(other);
 }
 
 template <class T>
@@ -44,6 +43,8 @@ Promise<T>& Promise<T>::operator=(Promise<T>&& other) {
 template <class T>
 void Promise<T>::throwIfFulfilled() {
   if (!state_)
+    throw NoState();
+  if (state_->ready())
     throw PromiseAlreadySatisfied();
 }
 
@@ -55,8 +56,16 @@ void Promise<T>::throwIfRetrieved() {
 
 template <class T>
 Promise<T>::~Promise() {
+  detach();
+}
+
+template <class T>
+void Promise<T>::detach() {
   if (state_) {
-    setException(BrokenPromise());
+    if (!retrieved_)
+      state_->detachFuture();
+    state_->detachPromise();
+    state_ = nullptr;
   }
 }
 
@@ -71,7 +80,6 @@ Future<T> Promise<T>::getFuture() {
 template <class T>
 template <class E>
 void Promise<T>::setException(E const& e) {
-  throwIfFulfilled();
   setException(std::make_exception_ptr<E>(e));
 }
 
@@ -79,20 +87,12 @@ template <class T>
 void Promise<T>::setException(std::exception_ptr const& e) {
   throwIfFulfilled();
   state_->setException(e);
-  if (!retrieved_) {
-    delete state_;
-  }
-  state_ = nullptr;
 }
 
 template <class T>
 void Promise<T>::fulfilTry(Try<T>&& t) {
   throwIfFulfilled();
   state_->fulfil(std::move(t));
-  if (!retrieved_) {
-    delete state_;
-  }
-  state_ = nullptr;
 }
 
 template <class T>
@@ -101,12 +101,7 @@ void Promise<T>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value,
                 "Use setValue() instead");
 
-  throwIfFulfilled();
-  state_->fulfil(Try<T>(std::forward<M>(v)));
-  if (!retrieved_) {
-    delete state_;
-  }
-  state_ = nullptr;
+  fulfilTry(Try<T>(std::forward<M>(v)));
 }
 
 template <class T>
@@ -114,47 +109,14 @@ void Promise<T>::setValue() {
   static_assert(std::is_same<T, void>::value,
                 "Use setValue(value) instead");
 
-  throwIfFulfilled();
-  state_->fulfil(Try<void>());
-  if (!retrieved_) {
-    delete state_;
-  }
-  state_ = nullptr;
+  fulfilTry(Try<void>());
 }
 
 template <class T>
 template <class F>
 void Promise<T>::fulfil(F&& func) {
-  fulfilHelper(std::forward<F>(func));
-}
-
-template <class T>
-template <class F>
-typename std::enable_if<
-  std::is_convertible<typename std::result_of<F()>::type, T>::value &&
-  !std::is_same<T, void>::value>::type
-inline Promise<T>::fulfilHelper(F&& func) {
   throwIfFulfilled();
-  try {
-    setValue(func());
-  } catch (...) {
-    setException(std::current_exception());
-  }
-}
-
-template <class T>
-template <class F>
-typename std::enable_if<
-  std::is_same<typename std::result_of<F()>::type, void>::value &&
-  std::is_same<T, void>::value>::type
-inline Promise<T>::fulfilHelper(F&& func) {
-  throwIfFulfilled();
-  try {
-    func();
-    setValue();
-  } catch (...) {
-    setException(std::current_exception());
-  }
+  fulfilTry(makeTryFunction(std::forward<F>(func)));
 }
 
 }}

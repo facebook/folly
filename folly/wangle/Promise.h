@@ -86,18 +86,7 @@ private:
 
   void throwIfFulfilled();
   void throwIfRetrieved();
-
-  template <class F>
-  typename std::enable_if<
-    std::is_convertible<typename std::result_of<F()>::type, T>::value &&
-    !std::is_same<T, void>::value>::type
-  fulfilHelper(F&& func);
-
-  template <class F>
-  typename std::enable_if<
-    std::is_same<typename std::result_of<F()>::type, void>::value &&
-    std::is_same<T, void>::value>::type
-  fulfilHelper(F&& func);
+  void detach();
 };
 
 }}
