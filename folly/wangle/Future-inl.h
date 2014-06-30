@@ -59,7 +59,7 @@ template <class T>
 template <class F>
 void Future<T>::setCallback_(F&& func) {
   throwIfInvalid();
-  state_->setCallback_(std::move(func));
+  state_->setCallback(std::move(func));
   state_ = nullptr;
 }
 

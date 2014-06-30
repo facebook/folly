@@ -47,9 +47,9 @@ class State {
   }
 
   template <typename F>
-  void setCallback_(F func) {
+  void setCallback(F func) {
     if (callback_) {
-      throw std::logic_error("setCallback_ called twice");
+      throw std::logic_error("setCallback called twice");
     }
 
     callback_ = std::move(func);
