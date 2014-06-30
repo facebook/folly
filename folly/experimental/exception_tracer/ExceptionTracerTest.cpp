@@ -18,7 +18,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "folly/experimental/exception_tracer/ExceptionTracer.h"
+#include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
 void bar() {
   throw std::runtime_error("hello");

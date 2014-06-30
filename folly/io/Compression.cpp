@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/io/Compression.h"
+#include <folly/io/Compression.h>
 
 #if FOLLY_HAVE_LIBLZ4
 #include <lz4.h>
@@ -36,12 +36,12 @@
 #include <lzma.h>
 #endif
 
-#include "folly/Conv.h"
-#include "folly/Memory.h"
-#include "folly/Portability.h"
-#include "folly/ScopeGuard.h"
-#include "folly/Varint.h"
-#include "folly/io/Cursor.h"
+#include <folly/Conv.h>
+#include <folly/Memory.h>
+#include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
+#include <folly/Varint.h>
+#include <folly/io/Cursor.h>
 
 namespace folly { namespace io {
 

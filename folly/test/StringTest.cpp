@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "folly/String.h"
+#include <folly/String.h>
 
 #include <random>
 #include <boost/algorithm/string.hpp>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace std;

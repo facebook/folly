@@ -17,8 +17,8 @@
 // @author Tudor Bosman (tudorb@fb.com)
 
 #include <gflags/gflags.h>
-#include "folly/Bits.h"
-#include "folly/Benchmark.h"
+#include <folly/Bits.h>
+#include <folly/Benchmark.h>
 #include <gtest/gtest.h>
 
 using namespace folly;

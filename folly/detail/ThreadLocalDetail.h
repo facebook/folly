@@ -26,9 +26,9 @@
 
 #include <glog/logging.h>
 
-#include "folly/Foreach.h"
-#include "folly/Exception.h"
-#include "folly/Malloc.h"
+#include <folly/Foreach.h>
+#include <folly/Exception.h>
+#include <folly/Malloc.h>
 
 namespace folly {
 namespace threadlocal_detail {

@@ -41,9 +41,9 @@
 #ifndef FOLLY_JSON_H_
 #define FOLLY_JSON_H_
 
-#include "folly/dynamic.h"
-#include "folly/FBString.h"
-#include "folly/Range.h"
+#include <folly/dynamic.h>
+#include <folly/FBString.h>
+#include <folly/Range.h>
 
 namespace folly {
 

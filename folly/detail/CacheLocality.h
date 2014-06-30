@@ -25,8 +25,8 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include "folly/Likely.h"
-#include "folly/Portability.h"
+#include <folly/Likely.h>
+#include <folly/Portability.h>
 
 namespace folly { namespace detail {
 

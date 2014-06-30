@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/CpuId.h"
+#include <folly/CpuId.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

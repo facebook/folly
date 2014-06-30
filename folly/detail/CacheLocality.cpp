@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-#include "folly/detail/CacheLocality.h"
+#include <folly/detail/CacheLocality.h>
 
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
 #include <fstream>
 
-#include "folly/Conv.h"
-#include "folly/Exception.h"
-#include "folly/FileUtil.h"
-#include "folly/Format.h"
-#include "folly/ScopeGuard.h"
+#include <folly/Conv.h>
+#include <folly/Exception.h>
+#include <folly/FileUtil.h>
+#include <folly/Format.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly { namespace detail {
 

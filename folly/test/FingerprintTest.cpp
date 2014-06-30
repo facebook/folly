@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "folly/Fingerprint.h"
+#include <folly/Fingerprint.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/detail/SlowFingerprint.h"
-#include "folly/Benchmark.h"
+#include <folly/detail/SlowFingerprint.h>
+#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace folly::detail;

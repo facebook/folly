@@ -75,9 +75,9 @@
 
 #include <boost/operators.hpp>
 
-#include "folly/FBString.h"
-#include "folly/Range.h"
-#include "folly/Traits.h"
+#include <folly/FBString.h>
+#include <folly/Range.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -524,6 +524,6 @@ private:
 
 }
 
-#include "folly/dynamic-inl.h"
+#include <folly/dynamic-inl.h>
 
 #endif

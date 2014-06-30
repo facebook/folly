@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/AtomicStruct.h"
+#include <folly/AtomicStruct.h>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

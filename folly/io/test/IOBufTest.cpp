@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/io/IOBuf.h"
-#include "folly/io/TypedIOBuf.h"
+#include <folly/io/IOBuf.h>
+#include <folly/io/TypedIOBuf.h>
 
 // googletest requires std::tr1::tuple, not std::tuple
 #include <tr1/tuple>
@@ -24,8 +24,8 @@
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
 
-#include "folly/Malloc.h"
-#include "folly/Range.h"
+#include <folly/Malloc.h>
+#include <folly/Range.h>
 
 using folly::fbstring;
 using folly::fbvector;

@@ -18,7 +18,7 @@
 #define FOLLY_CPUID_H_
 
 #include <cstdint>
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 namespace folly {
 

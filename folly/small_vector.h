@@ -46,7 +46,7 @@
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/max.hpp>
 
-#include "folly/Malloc.h"
+#include <folly/Malloc.h>
 
 #if defined(__GNUC__) && FOLLY_X64
 # include "folly/SmallLocks.h"

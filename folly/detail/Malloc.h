@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #ifndef FOLLY_NO_CONFIG
-#include "folly/folly-config.h"
+#include <folly/folly-config.h>
 #endif
 
 extern "C" {

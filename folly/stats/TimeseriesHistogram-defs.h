@@ -17,10 +17,10 @@
 #ifndef FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
 #define FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
 
-#include "folly/Conv.h"
-#include "folly/stats/Histogram-defs.h"
-#include "folly/stats/MultiLevelTimeSeries-defs.h"
-#include "folly/stats/BucketedTimeSeries-defs.h"
+#include <folly/Conv.h>
+#include <folly/stats/Histogram-defs.h>
+#include <folly/stats/MultiLevelTimeSeries-defs.h>
+#include <folly/stats/BucketedTimeSeries-defs.h>
 
 namespace folly {
 

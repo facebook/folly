@@ -15,9 +15,9 @@
  */
 
 #include <gtest/gtest.h>
-#include "folly/wangle/InlineExecutor.h"
-#include "folly/wangle/ManualExecutor.h"
-#include "folly/wangle/QueuedImmediateExecutor.h"
+#include <folly/wangle/InlineExecutor.h>
+#include <folly/wangle/ManualExecutor.h>
+#include <folly/wangle/QueuedImmediateExecutor.h>
 
 using namespace folly::wangle;
 using namespace std::chrono;

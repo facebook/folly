@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/AtomicHashMap.h"
+#include <folly/AtomicHashMap.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -22,8 +22,8 @@
 #include <thread>
 #include <atomic>
 #include <memory>
-#include "folly/Benchmark.h"
-#include "folly/Conv.h"
+#include <folly/Benchmark.h>
+#include <folly/Conv.h>
 
 using std::vector;
 using std::string;

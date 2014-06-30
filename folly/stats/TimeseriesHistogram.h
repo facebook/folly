@@ -19,8 +19,8 @@
 
 #include <string>
 #include <boost/static_assert.hpp>
-#include "folly/stats/Histogram.h"
-#include "folly/stats/MultiLevelTimeSeries.h"
+#include <folly/stats/Histogram.h>
+#include <folly/stats/MultiLevelTimeSeries.h>
 
 namespace folly {
 

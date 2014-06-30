@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/ThreadLocal.h"
+#include <folly/ThreadLocal.h>
 
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -35,7 +35,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly;
 

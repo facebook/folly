@@ -165,7 +165,7 @@ THOUGHTS:
 #include <vector>
 #define VECTOR_ std::vector
 #else
-#include "folly/FBVector.h"
+#include <folly/FBVector.h>
 #define VECTOR_ folly::fbvector
 #endif
 
@@ -184,8 +184,8 @@ THOUGHTS:
 #include <cstddef>
 #include <iomanip>
 
-#include "folly/ScopeGuard.h"
-#include "folly/Conv.h"
+#include <folly/ScopeGuard.h>
+#include <folly/Conv.h>
 #include <boost/preprocessor.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <gflags/gflags.h>

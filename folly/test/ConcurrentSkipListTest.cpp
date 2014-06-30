@@ -24,9 +24,9 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
-#include "folly/ConcurrentSkipList.h"
-#include "folly/Foreach.h"
-#include "folly/String.h"
+#include <folly/ConcurrentSkipList.h>
+#include <folly/Foreach.h>
+#include <folly/String.h>
 #include <gtest/gtest.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");

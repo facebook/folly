@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/ProducerConsumerQueue.h"
+#include <folly/ProducerConsumerQueue.h>
 
 #include <gtest/gtest.h>
 #include <vector>

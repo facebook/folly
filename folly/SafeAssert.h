@@ -17,8 +17,8 @@
 #ifndef FOLLY_SAFEASSERT_H_
 #define FOLLY_SAFEASSERT_H_
 
-#include "folly/Portability.h"
-#include "folly/Preprocessor.h"
+#include <folly/Portability.h>
+#include <folly/Preprocessor.h>
 
 /**
  * Verify that the expression is true. If not, prints an error message

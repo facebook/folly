@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/io/Compression.h"
+#include <folly/io/Compression.h>
 
 // Yes, tr1, as that's what gtest requires
 #include <random>
@@ -26,10 +26,10 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
-#include "folly/Hash.h"
-#include "folly/Random.h"
-#include "folly/io/IOBufQueue.h"
+#include <folly/Benchmark.h>
+#include <folly/Hash.h>
+#include <folly/Random.h>
+#include <folly/io/IOBufQueue.h>
 
 namespace folly { namespace io { namespace test {
 

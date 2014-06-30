@@ -20,9 +20,9 @@
 #include <vector>
 #include <future>
 
-#include "folly/gen/Base.h"
-#include "folly/gen/Parallel.h"
-#include "folly/gen/test/Bench.h"
+#include <folly/gen/Base.h>
+#include <folly/gen/Parallel.h>
+#include <folly/gen/test/Bench.h>
 
 
 DEFINE_int32(threads,

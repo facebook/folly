@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include "folly/IPAddressV6.h"
-#include "folly/MacAddress.h"
+#include <folly/IPAddressV6.h>
+#include <folly/MacAddress.h>
 
 using folly::MacAddress;
 using folly::IPAddressV6;

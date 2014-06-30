@@ -16,8 +16,8 @@
 
 #include "MacAddress.h"
 
-#include "folly/Exception.h"
-#include "folly/IPAddressV6.h"
+#include <folly/Exception.h>
+#include <folly/IPAddressV6.h>
 
 using std::invalid_argument;
 using std::string;

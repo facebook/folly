@@ -26,10 +26,10 @@
 #include <stdexcept>
 #include <system_error>
 
-#include "folly/Conv.h"
-#include "folly/Likely.h"
-#include "folly/Range.h"
-#include "folly/SafeAssert.h"
+#include <folly/Conv.h>
+#include <folly/Likely.h>
+#include <folly/Range.h>
+#include <folly/SafeAssert.h>
 
 namespace folly {
 namespace symbolizer {
@@ -233,7 +233,7 @@ class ElfFile {
 }  // namespace symbolizer
 }  // namespace folly
 
-#include "folly/experimental/symbolizer/Elf-inl.h"
+#include <folly/experimental/symbolizer/Elf-inl.h>
 
 #endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_ */
 

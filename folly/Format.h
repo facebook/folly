@@ -28,14 +28,14 @@
 
 #include <double-conversion/double-conversion.h>
 
-#include "folly/FBVector.h"
-#include "folly/Conv.h"
-#include "folly/Range.h"
-#include "folly/Traits.h"
-#include "folly/Likely.h"
-#include "folly/String.h"
-#include "folly/small_vector.h"
-#include "folly/FormatArg.h"
+#include <folly/FBVector.h>
+#include <folly/Conv.h>
+#include <folly/Range.h>
+#include <folly/Traits.h>
+#include <folly/Likely.h>
+#include <folly/String.h>
+#include <folly/small_vector.h>
+#include <folly/FormatArg.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
@@ -415,7 +415,7 @@ void formatFormatter(const Formatter<containerMode, Args...>& formatter,
 
 }  // namespace folly
 
-#include "folly/Format-inl.h"
+#include <folly/Format-inl.h>
 
 #pragma GCC diagnostic pop
 

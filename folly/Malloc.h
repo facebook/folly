@@ -26,7 +26,7 @@
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
-#include "folly/detail/Malloc.h"
+#include <folly/detail/Malloc.h>
 
 #include <string>
 namespace folly {
@@ -59,8 +59,8 @@ __attribute__((weak));
 #include <bits/functexcept.h>
 #define FOLLY_HAVE_MALLOC_H 1
 #else
-#include "folly/detail/Malloc.h"
-#include "folly/Portability.h"
+#include <folly/detail/Malloc.h>
+#include <folly/Portability.h>
 #endif
 
 // for malloc_usable_size

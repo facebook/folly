@@ -17,8 +17,8 @@
 #ifndef FOLLY_GEN_STRING_H
 #define FOLLY_GEN_STRING_H
 
-#include "folly/Range.h"
-#include "folly/gen/Base.h"
+#include <folly/Range.h>
+#include <folly/gen/Base.h>
 
 namespace folly {
 namespace gen {
@@ -171,6 +171,6 @@ eachToPair(StringPiece delim) {
 }  // namespace gen
 }  // namespace folly
 
-#include "folly/gen/String-inl.h"
+#include <folly/gen/String-inl.h>
 
 #endif // FOLLY_GEN_STRING_H

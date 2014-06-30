@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/DiscriminatedPtr.h"
+#include <folly/DiscriminatedPtr.h>
 
 #include <gtest/gtest.h>
 

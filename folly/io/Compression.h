@@ -21,7 +21,7 @@
 #include <limits>
 #include <memory>
 
-#include "folly/io/IOBuf.h"
+#include <folly/io/IOBuf.h>
 
 /**
  * Compression / decompression over IOBufs

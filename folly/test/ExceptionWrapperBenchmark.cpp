@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "folly/ExceptionWrapper.h"
+#include <folly/ExceptionWrapper.h>
 
 #include <gflags/gflags.h>
 #include <atomic>
@@ -22,7 +22,7 @@
 #include <stdexcept>
 #include <thread>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 DEFINE_int32(num_threads, 32, "Number of threads to run concurrency "
                               "benchmarks");

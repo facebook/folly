@@ -19,7 +19,7 @@
 #pragma once
 
 #include <glog/logging.h>
-#include "folly/io/async/EventUtil.h"
+#include <folly/io/async/EventUtil.h>
 #include <boost/noncopyable.hpp>
 #include <stddef.h>
 

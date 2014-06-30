@@ -26,10 +26,10 @@
 #include <vector>
 #include <unordered_set>
 
-#include "folly/Range.h"
-#include "folly/Optional.h"
-#include "folly/Conv.h"
-#include "folly/gen/Core.h"
+#include <folly/Range.h>
+#include <folly/Optional.h>
+#include <folly/Conv.h>
+#include <folly/gen/Core.h>
 
 /**
  * Generator-based Sequence Comprehensions in C++, akin to C#'s LINQ
@@ -709,6 +709,6 @@ GuardImpl guard(ErrorHandler&& handler) {
 
 }} // folly::gen
 
-#include "folly/gen/Base-inl.h"
+#include <folly/gen/Base-inl.h>
 
 #endif // FOLLY_GEN_BASE_H

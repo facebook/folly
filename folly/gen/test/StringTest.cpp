@@ -20,7 +20,7 @@
 #include <map>
 #include <vector>
 
-#include "folly/gen/String.h"
+#include <folly/gen/String.h>
 
 using namespace folly::gen;
 using namespace folly;

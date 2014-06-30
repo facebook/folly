@@ -20,8 +20,8 @@
 #ifndef FOLLY_RANGE_H_
 #define FOLLY_RANGE_H_
 
-#include "folly/Portability.h"
-#include "folly/FBString.h"
+#include <folly/Portability.h>
+#include <folly/FBString.h>
 #include <algorithm>
 #include <boost/operators.hpp>
 #include <cstring>
@@ -42,9 +42,9 @@
 #include <bits/c++config.h>
 #endif
 
-#include "folly/CpuId.h"
-#include "folly/Traits.h"
-#include "folly/Likely.h"
+#include <folly/CpuId.h>
+#include <folly/Traits.h>
+#include <folly/Likely.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push

@@ -26,9 +26,9 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
-#include "folly/Format.h"
+#include <folly/Format.h>
 
-#include "folly/detail/FingerprintPolynomial.h"
+#include <folly/detail/FingerprintPolynomial.h>
 
 using namespace folly;
 using namespace folly::detail;
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
       " * AUTOMATICALLY GENERATED.  DO NOT EDIT.\n"
       " */\n"
       "\n"
-      "#include \"folly/Fingerprint.h\"\n"
+      "#include <folly/Fingerprint.h>\n"
       "\n"
       "namespace folly {\n"
       "namespace detail {\n"

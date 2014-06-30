@@ -39,10 +39,10 @@
 #include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 
-#include "folly/Bits.h"
-#include "folly/CpuId.h"
-#include "folly/Likely.h"
-#include "folly/Range.h"
+#include <folly/Bits.h>
+#include <folly/CpuId.h>
+#include <folly/Likely.h>
+#include <folly/Range.h>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error EliasFanoCoding.h requires little endianness

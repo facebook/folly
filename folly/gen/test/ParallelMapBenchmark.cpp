@@ -20,9 +20,9 @@
 #include <thread>
 #include <vector>
 
-#include "folly/Benchmark.h"
-#include "folly/gen/Base.h"
-#include "folly/gen/ParallelMap.h"
+#include <folly/Benchmark.h>
+#include <folly/gen/Base.h>
+#include <folly/gen/ParallelMap.h>
 
 using namespace folly::gen;
 

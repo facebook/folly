@@ -19,7 +19,7 @@
 #ifndef FOLLY_UNICODE_H_
 #define FOLLY_UNICODE_H_
 
-#include "folly/FBString.h"
+#include <folly/FBString.h>
 
 namespace folly {
 

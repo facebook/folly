@@ -19,8 +19,8 @@
 #include <iostream>
 #include <array>
 #include <vector>
-#include "folly/gen/Base.h"
-#include "folly/gen/Parallel.h"
+#include <folly/gen/Base.h>
+#include <folly/gen/Parallel.h>
 
 using namespace folly;
 using namespace folly::gen;

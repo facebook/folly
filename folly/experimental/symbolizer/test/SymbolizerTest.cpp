@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/symbolizer/Symbolizer.h"
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 #include <cstdlib>
 
 #include <gtest/gtest.h>
 
-#include "folly/Range.h"
-#include "folly/String.h"
+#include <folly/Range.h>
+#include <folly/String.h>
 
 namespace folly { namespace symbolizer { namespace test {
 

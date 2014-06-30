@@ -20,7 +20,7 @@
 #include <type_traits>
 #include <random>
 #include <stdint.h>
-#include "folly/ThreadLocal.h"
+#include <folly/ThreadLocal.h>
 
 #if __GNUC_PREREQ(4, 8) && !defined(ANDROID)
 #include <ext/random>
@@ -253,6 +253,6 @@ inline uint32_t randomNumberSeed() {
 
 }
 
-#include "folly/Random-inl.h"
+#include <folly/Random-inl.h>
 
 #endif

@@ -17,7 +17,7 @@
 #ifndef FOLLY_MEMORY_H_
 #define FOLLY_MEMORY_H_
 
-#include "folly/Traits.h"
+#include <folly/Traits.h>
 
 #include <cstddef>
 #include <cstdlib>

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "folly/SafeAssert.h"
+#include <folly/SafeAssert.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly;
 

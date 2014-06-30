@@ -17,9 +17,9 @@
 #ifndef FOLLY_DETAIL_SLOWFINGERPRINT_H_
 #define FOLLY_DETAIL_SLOWFINGERPRINT_H_
 
-#include "folly/Fingerprint.h"
-#include "folly/detail/FingerprintPolynomial.h"
-#include "folly/Range.h"
+#include <folly/Fingerprint.h>
+#include <folly/detail/FingerprintPolynomial.h>
+#include <folly/Range.h>
 
 namespace folly {
 namespace detail {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/Malloc.h"
+#include <folly/Malloc.h>
 
 namespace folly {
 

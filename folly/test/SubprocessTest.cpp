@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/Subprocess.h"
+#include <folly/Subprocess.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -24,14 +24,14 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Exception.h"
-#include "folly/Format.h"
-#include "folly/FileUtil.h"
-#include "folly/String.h"
-#include "folly/gen/Base.h"
-#include "folly/gen/File.h"
-#include "folly/gen/String.h"
-#include "folly/experimental/io/FsUtil.h"
+#include <folly/Exception.h>
+#include <folly/Format.h>
+#include <folly/FileUtil.h>
+#include <folly/String.h>
+#include <folly/gen/Base.h>
+#include <folly/gen/File.h>
+#include <folly/gen/String.h>
+#include <folly/experimental/io/FsUtil.h>
 
 using namespace folly;
 

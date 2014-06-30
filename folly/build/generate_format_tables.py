@@ -43,7 +43,7 @@ def binary_values():
     return (tuple("{0:08b}".format(x)) for x in xrange(256))
 
 def generate(f):
-    f.write("#include \"folly/FormatArg.h\"\n"
+    f.write("#include <folly/FormatArg.h>\n"
             "\n"
             "namespace folly {\n"
             "namespace detail {\n"

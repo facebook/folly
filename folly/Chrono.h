@@ -19,7 +19,7 @@
 #define FOLLY_CHRONO_H_
 
 #include <chrono>
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 // gcc 4.6 uses an obsolete name for steady_clock, although the implementation
 // is the same

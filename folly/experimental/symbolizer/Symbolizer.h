@@ -21,14 +21,14 @@
 #include <string>
 #include <unordered_map>
 
-#include "folly/FBString.h"
-#include "folly/Range.h"
-#include "folly/String.h"
-#include "folly/io/IOBuf.h"
-#include "folly/experimental/symbolizer/Elf.h"
-#include "folly/experimental/symbolizer/ElfCache.h"
-#include "folly/experimental/symbolizer/Dwarf.h"
-#include "folly/experimental/symbolizer/StackTrace.h"
+#include <folly/FBString.h>
+#include <folly/Range.h>
+#include <folly/String.h>
+#include <folly/io/IOBuf.h>
+#include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
+#include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/StackTrace.h>
 
 namespace folly {
 namespace symbolizer {

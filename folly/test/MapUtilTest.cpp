@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/MapUtil.h"
+#include <folly/MapUtil.h>
 
 #include <map>
 #include <gtest/gtest.h>

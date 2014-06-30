@@ -21,16 +21,16 @@
 #error GroupVarint.h requires GCC
 #endif
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 #if FOLLY_X64 || defined(__i386__)
 #define HAVE_GROUP_VARINT 1
 
 #include <cstdint>
 #include <limits>
-#include "folly/detail/GroupVarintDetail.h"
-#include "folly/Bits.h"
-#include "folly/Range.h"
+#include <folly/detail/GroupVarintDetail.h>
+#include <folly/Bits.h>
+#include <folly/Range.h>
 #include <glog/logging.h>
 
 #ifdef __SSSE3__

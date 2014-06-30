@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/symbolizer/LineReader.h"
+#include <folly/experimental/symbolizer/LineReader.h>
 
 #include <cstring>
 
-#include "folly/FileUtil.h"
+#include <folly/FileUtil.h>
 
 namespace folly { namespace symbolizer {
 

@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include "folly/Memory.h"
-#include "folly/wangle/Try.h"
+#include <folly/Memory.h>
+#include <folly/wangle/Try.h>
 
 using namespace folly::wangle;
 

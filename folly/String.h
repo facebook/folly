@@ -31,13 +31,13 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include "folly/Conv.h"
-#include "folly/Demangle.h"
-#include "folly/FBString.h"
-#include "folly/FBVector.h"
-#include "folly/Portability.h"
-#include "folly/Range.h"
-#include "folly/ScopeGuard.h"
+#include <folly/Conv.h>
+#include <folly/Demangle.h>
+#include <folly/FBString.h>
+#include <folly/FBVector.h>
+#include <folly/Portability.h>
+#include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 
 // Compatibility function, to make sure toStdString(s) can be called
 // to convert a std::string or fbstring variable s into type std::string
@@ -543,6 +543,6 @@ struct has_nothrow_constructor<folly::basic_fbstring<T> > : true_type {
 };
 } // namespace boost
 
-#include "folly/String-inl.h"
+#include <folly/String-inl.h>
 
 #endif

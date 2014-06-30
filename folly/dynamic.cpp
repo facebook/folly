@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/dynamic.h"
+#include <folly/dynamic.h>
 
 namespace folly {
 

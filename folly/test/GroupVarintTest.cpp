@@ -15,7 +15,7 @@
  */
 
 #include <stdarg.h>
-#include "folly/GroupVarint.h"
+#include <folly/GroupVarint.h>
 
 // On platforms where it's not supported, GroupVarint will be compiled out.
 #if HAVE_GROUP_VARINT

@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "folly/experimental/symbolizer/Elf.h"
+#include <folly/experimental/symbolizer/Elf.h>
 
 using folly::symbolizer::ElfFile;
 

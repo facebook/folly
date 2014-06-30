@@ -18,7 +18,7 @@
 #define FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
 
 #include <glog/logging.h>
-#include "folly/Likely.h"
+#include <folly/Likely.h>
 
 namespace folly {
 

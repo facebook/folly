@@ -16,8 +16,8 @@
 #include <atomic>
 #include <glog/logging.h>
 
-#include "folly/Benchmark.h"
-#include "folly/gen/Base.h"
+#include <folly/Benchmark.h>
+#include <folly/gen/Base.h>
 
 using namespace folly::gen;
 using folly::fbstring;

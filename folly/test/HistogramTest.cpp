@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/stats/Histogram.h"
-#include "folly/stats/Histogram-defs.h"
+#include <folly/stats/Histogram.h>
+#include <folly/stats/Histogram-defs.h>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

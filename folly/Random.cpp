@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/Random.h"
+#include <folly/Random.h>
 
 #include <atomic>
 #include <unistd.h>
@@ -23,8 +23,8 @@
 #include <array>
 
 #include <glog/logging.h>
-#include "folly/File.h"
-#include "folly/FileUtil.h"
+#include <folly/File.h>
+#include <folly/FileUtil.h>
 
 namespace folly {
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/detail/Malloc.h"
+#include <folly/detail/Malloc.h>
 
 extern "C" {
 

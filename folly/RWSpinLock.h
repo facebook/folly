@@ -106,7 +106,7 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 
 */
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 #if defined(__GNUC__) && \
   (defined(__i386) || FOLLY_X64 || \
@@ -125,7 +125,7 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #include <sched.h>
 #include <glog/logging.h>
 
-#include "folly/Likely.h"
+#include <folly/Likely.h>
 
 namespace folly {
 

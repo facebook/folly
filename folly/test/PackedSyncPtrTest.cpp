@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/PackedSyncPtr.h"
+#include <folly/PackedSyncPtr.h>
 
 #include <cinttypes>
 #include <gtest/gtest.h>

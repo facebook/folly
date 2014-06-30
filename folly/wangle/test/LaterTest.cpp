@@ -17,9 +17,9 @@
 #include <gtest/gtest.h>
 #include <thread>
 
-#include "folly/wangle/ManualExecutor.h"
-#include "folly/wangle/InlineExecutor.h"
-#include "folly/wangle/Later.h"
+#include <folly/wangle/ManualExecutor.h>
+#include <folly/wangle/InlineExecutor.h>
+#include <folly/wangle/Later.h>
 
 using namespace folly::wangle;
 

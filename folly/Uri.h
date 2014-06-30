@@ -17,7 +17,7 @@
 #ifndef FOLLY_URI_H_
 #define FOLLY_URI_H_
 
-#include "folly/String.h"
+#include <folly/String.h>
 
 namespace folly {
 
@@ -90,6 +90,6 @@ class Uri {
 
 }  // namespace folly
 
-#include "folly/Uri-inl.h"
+#include <folly/Uri-inl.h>
 
 #endif /* FOLLY_URI_H_ */

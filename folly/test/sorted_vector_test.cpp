@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/sorted_vector_types.h"
+#include <folly/sorted_vector_types.h>
 #include <gtest/gtest.h>
 #include <list>
 

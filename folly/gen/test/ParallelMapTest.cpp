@@ -19,9 +19,9 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Memory.h"
-#include "folly/gen/Base.h"
-#include "folly/gen/ParallelMap.h"
+#include <folly/Memory.h>
+#include <folly/gen/Base.h>
+#include <folly/gen/ParallelMap.h>
 
 using namespace folly;
 using namespace folly::gen;

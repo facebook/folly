@@ -52,7 +52,7 @@ OUTPUT_FILE = "GroupVarintTables.cpp"
 
 def generate(f):
     f.write("""
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 #if FOLLY_X64 || defined(__i386__)
 #include <stdint.h>

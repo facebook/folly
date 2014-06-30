@@ -18,8 +18,8 @@
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
 
-#include "folly/Memory.h"
-#include "folly/Arena.h"
+#include <folly/Memory.h>
+#include <folly/Arena.h>
 
 #include <gtest/gtest.h>
 

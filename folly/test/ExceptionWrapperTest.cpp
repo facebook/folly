@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 #include <stdexcept>
-#include "folly/ExceptionWrapper.h"
+#include <folly/ExceptionWrapper.h>
 
 using namespace folly;
 

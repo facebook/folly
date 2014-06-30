@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/ThreadCachedArena.h"
-#include "folly/Memory.h"
+#include <folly/ThreadCachedArena.h>
+#include <folly/Memory.h>
 
 #include <map>
 #include <mutex>
@@ -28,8 +28,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Range.h"
-#include "folly/Benchmark.h"
+#include <folly/Range.h>
+#include <folly/Benchmark.h>
 
 using namespace folly;
 

@@ -21,8 +21,8 @@
 #include <functional>
 #include <new>
 
-#include "folly/Preprocessor.h"
-#include "folly/detail/UncaughtExceptionCounter.h"
+#include <folly/Preprocessor.h>
+#include <folly/detail/UncaughtExceptionCounter.h>
 
 namespace folly {
 

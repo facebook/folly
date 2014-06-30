@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "folly/LifoSem.h"
-#include "folly/test/DeterministicSchedule.h"
+#include <folly/LifoSem.h>
+#include <folly/test/DeterministicSchedule.h>
 
 #include <thread>
 #include <semaphore.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
-#include "folly/Random.h"
+#include <folly/Benchmark.h>
+#include <folly/Random.h>
 
 using namespace folly;
 using namespace folly::test;

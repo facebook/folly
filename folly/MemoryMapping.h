@@ -17,9 +17,9 @@
 #ifndef FOLLY_MEMORYMAPPING_H_
 #define FOLLY_MEMORYMAPPING_H_
 
-#include "folly/FBString.h"
-#include "folly/File.h"
-#include "folly/Range.h"
+#include <folly/FBString.h>
+#include <folly/File.h>
+#include <folly/Range.h>
 #include <glog/logging.h>
 #include <boost/noncopyable.hpp>
 

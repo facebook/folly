@@ -37,9 +37,9 @@
 #ifndef FOLLY_THREADLOCAL_H_
 #define FOLLY_THREADLOCAL_H_
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 #include <boost/iterator/iterator_facade.hpp>
-#include "folly/Likely.h"
+#include <folly/Likely.h>
 #include <type_traits>
 
 
@@ -50,7 +50,7 @@ enum class TLPDestructionMode {
 };
 }  // namespace
 
-#include "folly/detail/ThreadLocalDetail.h"
+#include <folly/detail/ThreadLocalDetail.h>
 
 namespace folly {
 

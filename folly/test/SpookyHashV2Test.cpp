@@ -20,8 +20,8 @@
 #define __STDC_FORMAT_MACROS 1
 #endif
 
-#include "folly/SpookyHashV2.h"
-#include "folly/Benchmark.h"
+#include <folly/SpookyHashV2.h>
+#include <folly/Benchmark.h>
 
 #include <cinttypes>
 #include <cstdio>

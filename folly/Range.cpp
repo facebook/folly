@@ -17,7 +17,7 @@
 // @author Mark Rabkin (mrabkin@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
-#include "folly/Range.h"
+#include <folly/Range.h>
 
 #if FOLLY_HAVE_EMMINTRIN_H
 #include <emmintrin.h>  // __v16qi

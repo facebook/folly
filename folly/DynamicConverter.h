@@ -19,7 +19,7 @@
 #ifndef DYNAMIC_CONVERTER_H
 #define DYNAMIC_CONVERTER_H
 
-#include "folly/dynamic.h"
+#include <folly/dynamic.h>
 namespace folly {
   template <typename T> T convertTo(const dynamic&);
   template <typename T> dynamic toDynamic(const T&);
@@ -41,7 +41,7 @@ namespace folly {
 #include <iterator>
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/mpl/has_xxx.hpp>
-#include "folly/Likely.h"
+#include <folly/Likely.h>
 
 namespace folly {
 

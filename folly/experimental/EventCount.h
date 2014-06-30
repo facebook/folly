@@ -26,8 +26,8 @@
 #include <atomic>
 #include <thread>
 
-#include "folly/Bits.h"
-#include "folly/Likely.h"
+#include <folly/Bits.h>
+#include <folly/Likely.h>
 
 
 namespace folly {

@@ -25,8 +25,8 @@
 #include <utility>
 #include <vector>
 
-#include "folly/MPMCPipeline.h"
-#include "folly/experimental/EventCount.h"
+#include <folly/MPMCPipeline.h>
+#include <folly/experimental/EventCount.h>
 
 namespace folly { namespace gen { namespace detail {
 

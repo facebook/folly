@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "folly/ThreadCachedInt.h"
-#include "folly/Hash.h"
+#include <folly/ThreadCachedInt.h>
+#include <folly/Hash.h>
 
 #include <atomic>
 #include <thread>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly;
 

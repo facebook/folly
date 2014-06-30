@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/Varint.h"
+#include <folly/Varint.h>
 
 #include <array>
 #include <initializer_list>
@@ -24,8 +24,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
-#include "folly/Random.h"
+#include <folly/Benchmark.h>
+#include <folly/Random.h>
 
 DEFINE_int32(random_seed, folly::randomNumberSeed(), "random seed");
 

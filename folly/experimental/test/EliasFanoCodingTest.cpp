@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "folly/Benchmark.h"
-#include "folly/experimental/EliasFanoCoding.h"
-#include "folly/experimental/test/CodingTestUtils.h"
+#include <folly/Benchmark.h>
+#include <folly/experimental/EliasFanoCoding.h>
+#include <folly/experimental/test/CodingTestUtils.h>
 
 using namespace folly::compression;
 

@@ -40,6 +40,6 @@ class Chain;
 
 }} // folly::gen
 
-#include "folly/gen/Core-inl.h"
+#include <folly/gen/Core-inl.h>
 
 #endif // FOLLY_GEN_CORE_H

@@ -44,7 +44,7 @@
 
 #else // !_LIBSTDCXX_FBSTRING
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 // libc++ doesn't provide this header, nor does msvc
 #ifdef FOLLY_HAVE_BITS_CXXCONFIG_H
@@ -56,10 +56,10 @@
 #include <cassert>
 #include <algorithm>
 
-#include "folly/Traits.h"
-#include "folly/Malloc.h"
-#include "folly/Hash.h"
-#include "folly/ScopeGuard.h"
+#include <folly/Traits.h>
+#include <folly/Malloc.h>
+#include <folly/Hash.h>
+#include <folly/ScopeGuard.h>
 
 #if FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER

@@ -21,8 +21,8 @@
 #include <map>
 #include <memory>
 #include <glog/logging.h>
-#include "folly/ThreadLocal.h"
-#include "folly/RWSpinLock.h"
+#include <folly/ThreadLocal.h>
+#include <folly/RWSpinLock.h>
 
 /**
  * In many cases this header is included as a

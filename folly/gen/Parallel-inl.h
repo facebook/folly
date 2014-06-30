@@ -18,9 +18,9 @@
 #error This file may only be included from folly/gen/ParallelGen.h
 #endif
 
-#include "folly/MPMCQueue.h"
-#include "folly/ScopeGuard.h"
-#include "folly/experimental/EventCount.h"
+#include <folly/MPMCQueue.h>
+#include <folly/ScopeGuard.h>
+#include <folly/experimental/EventCount.h>
 #include <atomic>
 #include <thread>
 #include <vector>

@@ -17,7 +17,7 @@
 #ifndef FOLLY_IO_IOBUF_QUEUE_H
 #define FOLLY_IO_IOBUF_QUEUE_H
 
-#include "folly/io/IOBuf.h"
+#include <folly/io/IOBuf.h>
 
 #include <stdexcept>
 #include <string>

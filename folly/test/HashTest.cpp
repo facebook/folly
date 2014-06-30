@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/Hash.h"
-#include "folly/MapUtil.h"
+#include <folly/Hash.h>
+#include <folly/MapUtil.h>
 #include <gtest/gtest.h>
 #include <stdint.h>
 #include <unordered_map>

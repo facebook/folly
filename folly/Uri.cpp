@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/Uri.h"
+#include <folly/Uri.h>
 
 #include <ctype.h>
 #include <boost/regex.hpp>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/MPMCPipeline.h"
+#include <folly/MPMCPipeline.h>
 
 #include <thread>
 #include <vector>
@@ -22,7 +22,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Conv.h"
+#include <folly/Conv.h>
 
 namespace folly { namespace test {
 

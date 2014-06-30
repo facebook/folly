@@ -26,7 +26,7 @@
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include "folly/RWSpinLock.h"
+#include <folly/RWSpinLock.h>
 
 DEFINE_int32(num_threads, 8, "num threads");
 

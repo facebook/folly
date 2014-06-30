@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "folly/String.h"
+#include <folly/String.h>
 
 using std::ostream;
 using std::string;

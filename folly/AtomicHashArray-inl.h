@@ -18,8 +18,8 @@
 #error "This should only be included by AtomicHashArray.h"
 #endif
 
-#include "folly/Bits.h"
-#include "folly/detail/AtomicHashUtils.h"
+#include <folly/Bits.h>
+#include <folly/detail/AtomicHashUtils.h>
 
 namespace folly {
 

@@ -27,8 +27,8 @@
 #include <type_traits>
 #include <mutex>
 #include <boost/thread.hpp>
-#include "folly/Preprocessor.h"
-#include "folly/Traits.h"
+#include <folly/Preprocessor.h>
+#include <folly/Traits.h>
 
 namespace folly {
 

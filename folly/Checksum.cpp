@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "folly/Checksum.h"
+#include <folly/Checksum.h>
 #include <algorithm>
 #include <stdexcept>
 #include <boost/crc.hpp>
-#include "folly/CpuId.h"
+#include <folly/CpuId.h>
 
 namespace folly {
 

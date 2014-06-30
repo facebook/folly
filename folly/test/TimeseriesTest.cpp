@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include "folly/stats/BucketedTimeSeries.h"
-#include "folly/stats/BucketedTimeSeries-defs.h"
-#include "folly/stats/MultiLevelTimeSeries.h"
-#include "folly/stats/MultiLevelTimeSeries-defs.h"
+#include <folly/stats/BucketedTimeSeries.h>
+#include <folly/stats/BucketedTimeSeries-defs.h>
+#include <folly/stats/MultiLevelTimeSeries.h>
+#include <folly/stats/MultiLevelTimeSeries-defs.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "folly/Foreach.h"
+#include <folly/Foreach.h>
 
 using std::chrono::seconds;
 using std::string;

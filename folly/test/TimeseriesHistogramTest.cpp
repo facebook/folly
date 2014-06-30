@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/stats/TimeseriesHistogram.h"
-#include "folly/stats/TimeseriesHistogram-defs.h"
+#include <folly/stats/TimeseriesHistogram.h>
+#include <folly/stats/TimeseriesHistogram-defs.h>
 
 #include <gtest/gtest.h>
 

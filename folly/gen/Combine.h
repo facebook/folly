@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Facebook, Inc.
+ * Copyright 2014 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #ifndef FOLLY_GEN_COMBINE_H
 #define FOLLY_GEN_COMBINE_H
 
-#include "folly/gen/Base.h"
+#include <folly/gen/Base.h>
 
 namespace folly {
 namespace gen {
@@ -40,6 +41,6 @@ Interleave interleave(Source2&& source2) {
 }  // namespace gen
 }  // namespace folly
 
-#include "folly/gen/Combine-inl.h"
+#include <folly/gen/Combine-inl.h>
 
 #endif // FOLLY_GEN_COMBINE_H

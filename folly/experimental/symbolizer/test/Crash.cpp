@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/symbolizer/SignalHandler.h"
+#include <folly/experimental/symbolizer/SignalHandler.h>
 
 int main() {
   folly::symbolizer::installFatalSignalHandler();

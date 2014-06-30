@@ -22,9 +22,9 @@
 #include <limits>
 #include <boost/intrusive/slist.hpp>
 
-#include "folly/Likely.h"
-#include "folly/Arena.h"
-#include "folly/ThreadLocal.h"
+#include <folly/Likely.h>
+#include <folly/Arena.h>
+#include <folly/ThreadLocal.h>
 
 namespace folly {
 

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/exception_tracer/StackTrace.h"
+#include <folly/experimental/exception_tracer/StackTrace.h>
 
 #include <cassert>
 #include <cstdlib>
 #include <new>
-#include "folly/experimental/symbolizer/StackTrace.h"
+#include <folly/experimental/symbolizer/StackTrace.h>
 
 namespace folly { namespace exception_tracer {
 

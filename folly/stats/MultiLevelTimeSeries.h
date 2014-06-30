@@ -22,7 +22,7 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include "folly/stats/BucketedTimeSeries.h"
+#include <folly/stats/BucketedTimeSeries.h>
 
 namespace folly {
 

@@ -21,7 +21,7 @@
 #include <cstdint>
 
 #ifndef FOLLY_NO_CONFIG
-#include "folly/folly-config.h"
+#include <folly/folly-config.h>
 #endif
 
 #if FOLLY_HAVE_CLOCK_GETTIME

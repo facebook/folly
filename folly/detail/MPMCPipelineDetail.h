@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "folly/MPMCQueue.h"
+#include <folly/MPMCQueue.h>
 
 namespace folly {
 

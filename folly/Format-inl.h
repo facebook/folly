@@ -18,8 +18,8 @@
 #error This file may only be included from Format.h.
 #endif
 
-#include "folly/Exception.h"
-#include "folly/Traits.h"
+#include <folly/Exception.h>
+#include <folly/Traits.h>
 
 // Ignore -Wformat-nonliteral warnings within this file
 #pragma GCC diagnostic push

@@ -19,7 +19,7 @@
 
 #include <mutex>
 
-#include "folly/gen/Base.h"
+#include <folly/gen/Base.h>
 
 namespace folly { namespace gen {
 namespace detail {
@@ -105,6 +105,6 @@ Sub sub(Sink sink) {
 
 }} // !namespace folly::gen
 
-#include "folly/gen/Parallel-inl.h"
+#include <folly/gen/Parallel-inl.h>
 
 #endif /* FOLLY_GEN_PARALLEL_H_ */

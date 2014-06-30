@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/Benchmark.h"
-#include "folly/Traits.h"
+#include <folly/Benchmark.h>
+#include <folly/Traits.h>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

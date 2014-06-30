@@ -44,7 +44,7 @@
 #include <mutex>
 
 #include <glog/logging.h>
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 #if !FOLLY_X64
 # error "SmallLocks.h is currently x64-only."

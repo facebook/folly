@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "folly/json.h"
+#include <folly/json.h>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
 #include <cmath>
 #include <limits>
 #include <iostream>
 #include <boost/next_prior.hpp>
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using folly::dynamic;
 using folly::parseJson;

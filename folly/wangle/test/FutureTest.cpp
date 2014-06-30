@@ -23,8 +23,8 @@
 #include <thread>
 #include <type_traits>
 #include <unistd.h>
-#include "folly/wangle/Executor.h"
-#include "folly/wangle/Future.h"
+#include <folly/wangle/Executor.h>
+#include <folly/wangle/Future.h>
 
 using namespace folly::wangle;
 using std::pair;

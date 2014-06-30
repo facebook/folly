@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "folly/MemoryMapping.h"
-#include "folly/Format.h"
-#include "folly/Portability.h"
+#include <folly/MemoryMapping.h>
+#include <folly/Format.h>
+#include <folly/Portability.h>
 
 #ifdef __linux__
-#include "folly/experimental/io/HugePages.h"
+#include <folly/experimental/io/HugePages.h>
 #endif
 
 #include <fcntl.h>

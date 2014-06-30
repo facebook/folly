@@ -17,7 +17,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "folly/File.h"
+#include <folly/File.h>
 
 DEFINE_bool(s, false, "get shared lock");
 DEFINE_bool(x, false, "get exclusive lock");

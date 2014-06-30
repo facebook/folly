@@ -23,8 +23,8 @@
 #include <utility>
 #include <tuple>
 
-#include "folly/SpookyHashV1.h"
-#include "folly/SpookyHashV2.h"
+#include <folly/SpookyHashV1.h>
+#include <folly/SpookyHashV2.h>
 
 /*
  * Various hashing functions.

@@ -37,8 +37,8 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "folly/Hash.h"
-#include "folly/ThreadCachedInt.h"
+#include <folly/Hash.h>
+#include <folly/ThreadCachedInt.h>
 
 namespace folly {
 

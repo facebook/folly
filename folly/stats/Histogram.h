@@ -24,7 +24,7 @@
 #include <vector>
 #include <stdexcept>
 
-#include "folly/detail/Stats.h"
+#include <folly/detail/Stats.h>
 
 namespace folly {
 

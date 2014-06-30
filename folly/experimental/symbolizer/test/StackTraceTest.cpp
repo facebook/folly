@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/symbolizer/StackTrace.h"
-#include "folly/experimental/symbolizer/Symbolizer.h"
+#include <folly/experimental/symbolizer/StackTrace.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

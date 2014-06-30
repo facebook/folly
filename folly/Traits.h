@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <functional>
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 // libc++ doesn't provide this header, nor does msvc
 #ifdef FOLLY_HAVE_BITS_CXXCONFIG_H

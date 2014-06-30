@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/ScopeGuard.h"
-#include "folly/Portability.h"
+#include <folly/ScopeGuard.h>
+#include <folly/Portability.h>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

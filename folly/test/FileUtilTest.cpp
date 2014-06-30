@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/FileUtil.h"
-#include "folly/detail/FileUtilDetail.h"
+#include <folly/FileUtil.h>
+#include <folly/detail/FileUtilDetail.h>
 
 #include <deque>
 
@@ -23,9 +23,9 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include "folly/Benchmark.h"
-#include "folly/Range.h"
-#include "folly/String.h"
+#include <folly/Benchmark.h>
+#include <folly/Range.h>
+#include <folly/String.h>
 
 namespace folly { namespace test {
 

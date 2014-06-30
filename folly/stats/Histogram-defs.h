@@ -17,7 +17,7 @@
 #ifndef FOLLY_HISTOGRAM_DEFS_H_
 #define FOLLY_HISTOGRAM_DEFS_H_
 
-#include "folly/Conv.h"
+#include <folly/Conv.h>
 
 #include <glog/logging.h>
 

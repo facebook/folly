@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/FileUtil.h"
+#include <folly/FileUtil.h>
 
 #include <cerrno>
 #ifdef __APPLE__
@@ -23,7 +23,7 @@
 #include <sys/file.h>
 #include <sys/socket.h>
 
-#include "folly/detail/FileUtilDetail.h"
+#include <folly/detail/FileUtilDetail.h>
 
 namespace folly {
 

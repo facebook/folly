@@ -16,7 +16,7 @@
 
 // This is heavily inspired by the signal handler from google-glog
 
-#include "folly/experimental/symbolizer/SignalHandler.h"
+#include <folly/experimental/symbolizer/SignalHandler.h>
 
 #include <sys/types.h>
 #include <atomic>
@@ -29,11 +29,11 @@
 
 #include <glog/logging.h>
 
-#include "folly/Conv.h"
-#include "folly/FileUtil.h"
-#include "folly/Portability.h"
-#include "folly/ScopeGuard.h"
-#include "folly/experimental/symbolizer/Symbolizer.h"
+#include <folly/Conv.h>
+#include <folly/FileUtil.h>
+#include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 namespace folly { namespace symbolizer {
 

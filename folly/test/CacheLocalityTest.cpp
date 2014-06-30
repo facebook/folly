@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/detail/CacheLocality.h"
+#include <folly/detail/CacheLocality.h>
 
 #include <sched.h>
 #include <memory>
@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly::detail;
 

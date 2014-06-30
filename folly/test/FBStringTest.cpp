@@ -17,7 +17,7 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
-#include "folly/FBString.h"
+#include <folly/FBString.h>
 
 #include <cstdlib>
 
@@ -30,10 +30,10 @@
 
 #include <gflags/gflags.h>
 
-#include "folly/Foreach.h"
-#include "folly/Portability.h"
-#include "folly/Random.h"
-#include "folly/Conv.h"
+#include <folly/Foreach.h>
+#include <folly/Portability.h>
+#include <folly/Random.h>
+#include <folly/Conv.h>
 
 using namespace std;
 using namespace folly;

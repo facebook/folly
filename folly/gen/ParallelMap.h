@@ -17,7 +17,7 @@
 #ifndef FOLLY_GEN_PARALLELMAP_H
 #define FOLLY_GEN_PARALLELMAP_H
 
-#include "folly/gen/Core.h"
+#include <folly/gen/Core.h>
 
 namespace folly { namespace gen {
 
@@ -45,6 +45,6 @@ template<class Predicate,
 
 }}  // namespaces
 
-#include "folly/gen/ParallelMap-inl.h"
+#include <folly/gen/ParallelMap-inl.h>
 
 #endif  // FOLLY_GEN_PARALLELMAP_H

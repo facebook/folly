@@ -23,10 +23,10 @@
 #include <utility>
 #include <boost/intrusive/slist.hpp>
 
-#include "folly/Conv.h"
-#include "folly/Likely.h"
-#include "folly/Malloc.h"
-#include "folly/Memory.h"
+#include <folly/Conv.h>
+#include <folly/Likely.h>
+#include <folly/Malloc.h>
+#include <folly/Memory.h>
 
 namespace folly {
 
@@ -244,6 +244,6 @@ struct IsArenaAllocator<SysArena> : std::true_type { };
 
 }  // namespace folly
 
-#include "folly/Arena-inl.h"
+#include <folly/Arena-inl.h>
 
 #endif /* FOLLY_ARENA_H_ */

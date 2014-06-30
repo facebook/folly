@@ -30,7 +30,7 @@
 #include <boost/intrusive/list.hpp>
 #include <glog/logging.h>
 
-#include "folly/experimental/symbolizer/Elf.h"
+#include <folly/experimental/symbolizer/Elf.h>
 
 namespace folly { namespace symbolizer {
 

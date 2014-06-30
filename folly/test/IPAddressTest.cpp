@@ -18,10 +18,10 @@
 
 #include <gtest/gtest.h>
 
-#include "folly/Bits.h"
-#include "folly/Format.h"
-#include "folly/String.h"
-#include "folly/MacAddress.h"
+#include <folly/Bits.h>
+#include <folly/Format.h>
+#include <folly/String.h>
+#include <folly/MacAddress.h>
 
 using namespace folly;
 using namespace std;

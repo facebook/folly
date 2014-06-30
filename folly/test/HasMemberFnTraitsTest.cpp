@@ -18,7 +18,7 @@
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
 
-#include "folly/Traits.h"
+#include <folly/Traits.h>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>

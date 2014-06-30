@@ -16,7 +16,7 @@
 
 // @author Nicholas Ormrod <njormrod@fb.com>
 
-#include "folly/DynamicConverter.h"
+#include <folly/DynamicConverter.h>
 
 #include <algorithm>
 #include <gflags/gflags.h>
@@ -24,7 +24,7 @@
 #include <map>
 #include <vector>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace folly::dynamicconverter_detail;

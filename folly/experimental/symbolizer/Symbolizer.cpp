@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/experimental/symbolizer/Symbolizer.h"
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 #include <limits.h>
 #include <cstdio>
@@ -26,14 +26,14 @@
 #include <ext/stdio_sync_filebuf.h>
 #endif
 
-#include "folly/Conv.h"
-#include "folly/FileUtil.h"
-#include "folly/ScopeGuard.h"
-#include "folly/String.h"
+#include <folly/Conv.h>
+#include <folly/FileUtil.h>
+#include <folly/ScopeGuard.h>
+#include <folly/String.h>
 
-#include "folly/experimental/symbolizer/Elf.h"
-#include "folly/experimental/symbolizer/Dwarf.h"
-#include "folly/experimental/symbolizer/LineReader.h"
+#include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/LineReader.h>
 
 
 namespace folly {

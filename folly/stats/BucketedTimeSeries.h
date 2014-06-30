@@ -20,7 +20,7 @@
 #include <chrono>
 #include <vector>
 
-#include "folly/detail/Stats.h"
+#include <folly/detail/Stats.h>
 
 namespace folly {
 

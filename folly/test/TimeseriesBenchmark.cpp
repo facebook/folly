@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "folly/stats/BucketedTimeSeries.h"
-#include "folly/stats/BucketedTimeSeries-defs.h"
+#include <folly/stats/BucketedTimeSeries.h>
+#include <folly/stats/BucketedTimeSeries-defs.h>
 
 #include <glog/logging.h>
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 using std::chrono::seconds;
 using folly::BenchmarkSuspender;

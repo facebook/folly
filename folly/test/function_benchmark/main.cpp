@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include "folly/test/function_benchmark/benchmark_impl.h"
-#include "folly/test/function_benchmark/test_functions.h"
+#include <folly/test/function_benchmark/benchmark_impl.h>
+#include <folly/test/function_benchmark/test_functions.h>
 
-#include "folly/Benchmark.h"
-#include "folly/ScopeGuard.h"
+#include <folly/Benchmark.h>
+#include <folly/ScopeGuard.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 

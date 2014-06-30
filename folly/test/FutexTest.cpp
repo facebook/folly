@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "folly/detail/Futex.h"
-#include "folly/test/DeterministicSchedule.h"
+#include <folly/detail/Futex.h>
+#include <folly/test/DeterministicSchedule.h>
 
 #include <chrono>
 #include <thread>

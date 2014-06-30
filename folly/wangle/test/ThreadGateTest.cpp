@@ -18,10 +18,10 @@
 #include <thread>
 #include <future>
 
-#include "folly/wangle/Executor.h"
-#include "folly/wangle/ManualExecutor.h"
-#include "folly/wangle/ThreadGate.h"
-#include "folly/wangle/GenericThreadGate.h"
+#include <folly/wangle/Executor.h>
+#include <folly/wangle/ManualExecutor.h>
+#include <folly/wangle/ThreadGate.h>
+#include <folly/wangle/GenericThreadGate.h>
 
 using namespace folly::wangle;
 using std::make_shared;

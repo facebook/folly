@@ -18,9 +18,9 @@
 
 // Test bed for folly/Synchronized.h
 
-#include "folly/Synchronized.h"
-#include "folly/RWSpinLock.h"
-#include "folly/test/SynchronizedTestLib.h"
+#include <folly/Synchronized.h>
+#include <folly/RWSpinLock.h>
+#include <folly/test/SynchronizedTestLib.h>
 #include <gtest/gtest.h>
 
 

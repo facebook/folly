@@ -128,10 +128,10 @@ Sample usage:
 #include <boost/iterator/iterator_facade.hpp>
 #include <glog/logging.h>
 
-#include "folly/ConcurrentSkipList-inl.h"
-#include "folly/Likely.h"
-#include "folly/Memory.h"
-#include "folly/SmallLocks.h"
+#include <folly/ConcurrentSkipList-inl.h>
+#include <folly/Likely.h>
+#include <folly/Memory.h>
+#include <folly/SmallLocks.h>
 
 namespace folly {
 

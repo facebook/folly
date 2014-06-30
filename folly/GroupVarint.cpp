@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/GroupVarint.h"
+#include <folly/GroupVarint.h>
 
 #if HAVE_GROUP_VARINT
 namespace folly {

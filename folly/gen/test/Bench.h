@@ -17,7 +17,7 @@
 #ifndef FOLLY_GEN_BENCH_H_
 #define FOLLY_GEN_BENCH_H_
 
-#include "folly/Benchmark.h"
+#include <folly/Benchmark.h>
 
 #define BENCH_GEN_IMPL(gen, prefix)                         \
 static bool FB_ANONYMOUS_VARIABLE(benchGen) = (             \

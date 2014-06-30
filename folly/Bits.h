@@ -55,7 +55,7 @@
 #ifndef FOLLY_BITS_H_
 #define FOLLY_BITS_H_
 
-#include "folly/Portability.h"
+#include <folly/Portability.h>
 
 #ifndef __GNUC__
 #error GCC required
@@ -69,12 +69,12 @@
 #endif
 
 #ifndef FOLLY_NO_CONFIG
-#include "folly/folly-config.h"
+#include <folly/folly-config.h>
 #endif
 
-#include "folly/detail/BitsDetail.h"
-#include "folly/detail/BitIteratorDetail.h"
-#include "folly/Likely.h"
+#include <folly/detail/BitsDetail.h>
+#include <folly/detail/BitIteratorDetail.h>
+#include <folly/Likely.h>
 
 #if FOLLY_HAVE_BYTESWAP_H
 # include <byteswap.h>

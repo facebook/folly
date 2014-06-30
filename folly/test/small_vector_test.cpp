@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/small_vector.h"
+#include <folly/small_vector.h>
 
 #include <gtest/gtest.h>
 #include <string>
@@ -24,7 +24,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "folly/Conv.h"
+#include <folly/Conv.h>
 
 using folly::small_vector;
 using namespace folly::small_vector_policy;

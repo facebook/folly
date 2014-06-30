@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "folly/Memory.h"
-#include "folly/Arena.h"
-#include "folly/String.h"
+#include <folly/Memory.h>
+#include <folly/Arena.h>
+#include <folly/String.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>

@@ -21,8 +21,8 @@
 #include <iterator>
 #include <type_traits>
 
-#include "folly/Malloc.h"
-#include "folly/io/IOBuf.h"
+#include <folly/Malloc.h>
+#include <folly/io/IOBuf.h>
 
 namespace folly {
 

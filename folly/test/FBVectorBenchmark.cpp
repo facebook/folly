@@ -17,11 +17,11 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
-#include "folly/Traits.h"
-#include "folly/Random.h"
-#include "folly/FBString.h"
-#include "folly/FBVector.h"
-#include "folly/Benchmark.h"
+#include <folly/Traits.h>
+#include <folly/Random.h>
+#include <folly/FBString.h>
+#include <folly/FBVector.h>
+#include <folly/Benchmark.h>
 
 #include <gflags/gflags.h>
 
@@ -93,16 +93,16 @@ typedef vector<folly::fbstring> FBStringVector;
 typedef fbvector<folly::fbstring> FBStringFBVector;
 
 #define VECTOR IntVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
+#include <folly/test/FBVectorTestBenchmarks.cpp.h>
 #undef VECTOR
 #define VECTOR IntFBVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
+#include <folly/test/FBVectorTestBenchmarks.cpp.h>
 #undef VECTOR
 #define VECTOR FBStringVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
+#include <folly/test/FBVectorTestBenchmarks.cpp.h>
 #undef VECTOR
 #define VECTOR FBStringFBVector
-#include "folly/test/FBVectorTestBenchmarks.cpp.h"
+#include <folly/test/FBVectorTestBenchmarks.cpp.h>
 #undef VECTOR
 
 int main(int argc, char** argv) {

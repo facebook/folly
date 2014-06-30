@@ -20,9 +20,9 @@
 #include <memory>
 #include <mutex>
 
-#include "folly/AtomicHashMap.h"
-#include "folly/ScopeGuard.h"
-#include "folly/Memory.h"
+#include <folly/AtomicHashMap.h>
+#include <folly/ScopeGuard.h>
+#include <folly/Memory.h>
 
 namespace {
 

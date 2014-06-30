@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "folly/SmallLocks.h"
+#include <folly/SmallLocks.h>
 #include <cassert>
 #include <cstdio>
 #include <mutex>
