@@ -27,7 +27,6 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
 	AtomicStruct.h \
-	Baton.h \
 	Benchmark.h \
 	Bits.h \
 	Checksum.h \
@@ -48,10 +47,8 @@ nobase_follyinclude_HEADERS = \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
 	detail/FunctionalExcept.h \
-	detail/Futex.h \
 	detail/GroupVarintDetail.h \
 	detail/Malloc.h \
-	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
 	detail/SlowFingerprint.h \
 	detail/Stats.h \
@@ -108,17 +105,8 @@ nobase_follyinclude_HEADERS = \
 	io/RecordIO.h \
 	io/RecordIO-inl.h \
 	io/TypedIOBuf.h \
-	io/async/AsyncTimeout.h \
-	io/async/EventBase.h \
-	io/async/EventFDWrapper.h \
-	io/async/EventHandler.h \
-	io/async/EventUtil.h \
-	io/async/NotificationQueue.h \
-	io/async/Request.h \
-	io/async/TimeoutManager.h \
 	json.h \
 	Lazy.h \
-	LifoSem.h \
 	Likely.h \
 	Logging.h \
 	MacAddress.h \
@@ -135,7 +123,6 @@ nobase_follyinclude_HEADERS = \
 	Portability.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
-	Random.h \
 	Range.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
@@ -169,22 +156,7 @@ nobase_follyinclude_HEADERS = \
 	Unicode.h \
 	Uri.h \
 	Uri-inl.h \
-	Varint.h \
-	wangle/Executor.h \
-	wangle/Future-inl.h \
-	wangle/Future.h \
-	wangle/GenericThreadGate.h \
-	wangle/InlineExecutor.h \
-	wangle/Later-inl.h \
-	wangle/Later.h \
-	wangle/ManualExecutor.h \
-	wangle/Promise-inl.h \
-	wangle/Promise.h \
-	wangle/ThreadGate.h \
-	wangle/Try-inl.h \
-	wangle/Try.h \
-	wangle/WangleException.h \
-	wangle/detail.h
+	Varint.h 
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
@@ -216,26 +188,18 @@ libfolly_la_SOURCES = \
 	File.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
-	detail/Futex.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
 	IPAddress.cpp \
 	IPAddressV4.cpp \
 	IPAddressV6.cpp \
-	LifoSem.cpp \
 	io/Compression.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
-	io/async/AsyncTimeout.cpp \
-	io/async/EventBase.cpp \
-	io/async/EventHandler.cpp \
-	io/async/Request.cpp \
 	json.cpp \
-	detail/MemoryIdler.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
-	Random.cpp \
 	SafeAssert.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
@@ -244,16 +208,52 @@ libfolly_la_SOURCES = \
 	ThreadCachedArena.cpp \
 	TimeoutQueue.cpp \
 	Uri.cpp \
-	wangle/InlineExecutor.cpp \
-	wangle/ManualExecutor.cpp \
-	wangle/ThreadGate.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/TestUtil.cpp
 
 if HAVE_LINUX
 nobase_follyinclude_HEADERS += \
+	Baton.h \
+	detail/Futex.h \
+	detail/MemoryIdler.h \
+	LifoSem.h \
+	io/async/AsyncTimeout.h \
+	io/async/EventBase.h \
+	io/async/EventFDWrapper.h \
+	io/async/EventHandler.h \
+	io/async/EventUtil.h \
+	io/async/NotificationQueue.h \
+	io/async/Request.h \
+	io/async/TimeoutManager.h \
+	Random.h \
+	wangle/Executor.h \
+	wangle/Future-inl.h \
+	wangle/Future.h \
+	wangle/GenericThreadGate.h \
+	wangle/InlineExecutor.h \
+	wangle/Later-inl.h \
+	wangle/Later.h \
+	wangle/ManualExecutor.h \
+	wangle/Promise-inl.h \
+	wangle/Promise.h \
+	wangle/ThreadGate.h \
+	wangle/Try-inl.h \
+	wangle/Try.h \
+	wangle/WangleException.h \
+	wangle/detail.h \
 	experimental/io/HugePages.h
 libfolly_la_SOURCES += \
+	detail/Futex.cpp \
+	detail/MemoryIdler.cpp \
+	io/async/AsyncTimeout.cpp \
+	io/async/EventBase.cpp \
+	io/async/EventHandler.cpp \
+	io/async/Request.cpp \
+	LifoSem.cpp \
+	Random.cpp \
+	wangle/InlineExecutor.cpp \
+	wangle/ManualExecutor.cpp \
+	wangle/ThreadGate.cpp \
 	experimental/io/HugePages.cpp
 endif
 
