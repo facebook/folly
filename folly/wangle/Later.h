@@ -26,16 +26,42 @@ template <typename T> struct isLaterOrFuture;
 template <typename T> struct isLater;
 
 /*
- * Since wangle primitives (promise/future) are not thread safe, it is difficult
- * to build complex asynchronous workflows. A Later allows you to build such a
- * workflow before actually launching it so that callbacks can be set in a
- * threadsafe manner.
+ * Later is like a cold Future, but makes it easier to avoid triggering until
+ * later, because it must be triggered explicitly. An equivalence example will
+ * help differentiate:
  *
- * The interface to add additional work is the same as future: a then() method
- * that takes a function that can return either a type T, a Future<T>, or a
- * Later<T>
+ *   Later<Foo> later =
+ *     Later<Foo>(std::move(foo))
+ *     .then(cb1)
+ *     .via(ex1)
+ *     .then(cb2)
+ *     .then(cb3)
+ *     .via(ex2)
+ *     .then(cb4)
+ *     .then(cb5);
+ *   ...
+ *   later.launch();
  *
- * Thread transitions are done by using executors and calling the via() method.
+ *   Future<Foo> coldFuture = makeFuture(std::move(foo));
+ *   coldFuture.deactivate();
+ *   coldFuture
+ *     .then(cb1)
+ *     .via(ex1)
+ *     .then(cb2)
+ *     .then(cb3)
+ *     .via(ex2)
+ *     .then(cb4)
+ *     .then(cb5);
+ *   ...
+ *   coldFuture.activate();
+ *
+ * Using a Later means you don't have to grab a handle to the first Future and
+ * deactivate it.
+ *
+ * Later used to be a workaround to the thread-unsafe nature of Future
+ * chaining, but that has changed and there is no need to use Later if your
+ * only goal is to traverse thread boundaries with executors. In that case,
+ * just use Future::via().
  *
  * Here is an example of a workflow:
  *
@@ -49,14 +75,6 @@ template <typename T> struct isLater;
  *   .via(serverExecutor)
  *   .then([=]Try<DiskResponse>&& t) { return sendClientResponse(t.value()); })
  *   .launch();
- *
- * Although this workflow traverses many threads, we are able to string
- * continuations together in a threadsafe manner.
- *
- * Laters can also be used to wrap preexisting asynchronous modules that were
- * not built with wangle in mind. You can create a Later with a function that
- * takes a callback as input. The function will not actually be called until
- * launch(), allowing you to string then() statements on top of the callback.
  */
 template <class T>
 class Later {
@@ -88,9 +106,9 @@ class Later {
 
   /*
    * This constructor is used to wrap a pre-existing cob-style asynchronous api
-   * so that it can be used in wangle in a threadsafe manner. wangle provides
-   * the callback to this pre-existing api, and this callback will fulfill a
-   * promise so as to incorporate this api into the workflow.
+   * so that it can be used in wangle. wangle provides the callback to this
+   * pre-existing api, and this callback will fulfill a promise so as to
+   * incorporate this api into the workflow.
    *
    * Example usage:
    *
@@ -101,6 +119,7 @@ class Later {
    *   addAsync(1, 2, std::move(fn));
    * });
    */
+  // TODO we should implement a makeFuture-ish with this pattern too, now.
   template <class U,
             class = typename std::enable_if<!std::is_void<U>::value>::type,
             class = typename std::enable_if<std::is_same<T, U>::value>::type>
@@ -129,8 +148,7 @@ class Later {
    * be chained to the new Later before launching the new Later.
    *
    * This can be used to build asynchronous modules that can be called from a
-   * user thread and completed in a callback thread. Callbacks can be set up
-   * ahead of time without thread safety issues.
+   * user thread and completed in a callback thread.
    *
    * Using the Later(std::function<void(std::function<void(T&&)>)>&& fn)
    * constructor, you can wrap existing asynchronous modules with a Later and
@@ -153,20 +171,13 @@ class Later {
    * called in the executor provided in the constructor. Subsequent then()
    * calls will be made, potentially changing threads if a via() call is made.
    * The future returned will be fulfilled in the last executor.
-   *
-   * Thread safety issues of Futures still apply. If you want to wait on the
-   * Future, it must be done in the thread that will fulfil it.
    */
   Future<T> launch();
 
   /*
-   * Same as launch, only no Future is returned. This guarantees thread safe
-   * cleanup of the internal Futures, even if the Later completes in a different
-   * thread than the thread that calls fireAndForget().
-   *
    * Deprecated. Use launch()
    */
-  void fireAndForget() { launch(); }
+  void fireAndForget() __attribute__ ((deprecated)) { launch(); }
 
  private:
   Promise<void> starter_;

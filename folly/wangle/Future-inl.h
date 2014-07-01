@@ -188,9 +188,17 @@ Try<T>& Future<T>::getTry() {
 
 template <class T>
 template <typename Executor>
-inline Later<T> Future<T>::via(Executor* executor) {
+inline Future<T> Future<T>::via(Executor* executor) {
   throwIfInvalid();
-  return Later<T>(std::move(*this)).via(executor);
+  auto f = then([=](Try<T>&& t) {
+    MoveWrapper<Promise<T>> promise;
+    MoveWrapper<Try<T>> tw(std::move(t));
+    auto f = promise->getFuture();
+    executor->add([=]() mutable { promise->fulfilTry(std::move(*tw)); });
+    return f;
+  });
+  f.deactivate();
+  return f;
 }
 
 template <class T>

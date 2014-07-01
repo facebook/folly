@@ -30,7 +30,6 @@
 namespace folly { namespace wangle {
 
 template <typename T> struct isFuture;
-template <class> class Later;
 
 template <class T>
 class Future {
@@ -60,13 +59,27 @@ class Future {
   typename std::add_lvalue_reference<const T>::type
   value() const;
 
-  /// Returns a Later which will call back on the other side of executor.
+  /// Returns an inactive Future which will call back on the other side of
+  /// executor (when it is activated).
   ///
-  ///   f.via(e).then(a).then(b).launch();
+  /// NB remember that Futures activate when they destruct. This is good,
+  /// it means that this will work:
   ///
-  /// a and b will execute in the same context (the far side of e)
+  ///   f.via(e).then(a).then(b);
+  ///
+  /// a and b will execute in the same context (the far side of e), because
+  /// the Future (temporary variable) created by via(e) does not call back
+  /// until it destructs, which is after then(a) and then(b) have been wired
+  /// up.
+  ///
+  /// But this is still racy:
+  ///
+  ///   f = f.via(e).then(a);
+  ///   f.then(b);
+  ///
+  /// If you need something like that, use a Later.
   template <typename Executor>
-  Later<T> via(Executor* executor);
+  Future<T> via(Executor* executor);
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -85,9 +98,9 @@ class Future {
     throws, the exception will be captured in the Future that is returned.
     */
   /* TODO n3428 and other async frameworks have something like then(scheduler,
-     Future), we probably want to support a similar API (instead of
-     via. or rather, via should return a cold future (Later) and we provide
-     then(scheduler, Future) ). */
+     Future), we might want to support a similar API which could be
+     implemented a little more efficiently than
+     f.via(executor).then(callback) */
   template <class F>
   typename std::enable_if<
     !isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
@@ -179,6 +192,18 @@ class Future {
   /// friends. But it's not for public consumption.
   template <class F>
   void setCallback_(F&& func);
+
+  /// A Future's callback is executed when all three of these conditions have
+  /// become true: it has a value (set by the Promise), it has a callback (set
+  /// by then), and it is active (active by default).
+  ///
+  /// Inactive Futures will activate upon destruction.
+  void activate() {
+    state_->activate();
+  }
+  void deactivate() {
+    state_->deactivate();
+  }
 
  private:
   typedef detail::State<T>* statePtr;
@@ -315,4 +340,3 @@ Future<T> waitWithSemaphore(Future<T>&& f, Duration timeout);
 }} // folly::wangle
 
 #include "Future-inl.h"
-#include "Later.h"

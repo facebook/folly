@@ -191,28 +191,39 @@ This is legal and technically threadsafe. However, it is important to realize th
 
 Naturally, you will want some control over which thread executes callbacks. We have a few mechanisms to help.
 
-The first and most useful is `Later`, which behaves like a Future but nothing starts executing until `launch` is called. Thus you avoid the race condition when setting up the multithreaded workflow. 
+The first and most useful is `via`, which passes execution through an `Executor`, which usually has the effect of running the callback in a new thread.
 ```C++
-Later<void>()
+aFuture
   .then(x)
   .via(e1).then(y1).then(y2)
-  .via(e2).then(z)
-  .launch();
+  .via(e2).then(z);
 ```
-`x` will execute in the current thread (the one calling `launch`). `y1` and `y2` will execute in the thread on the other side of `e1`, and `z` will execute in the thread on the other side of `e2`. `y1` and `y2` will execute on the same thread, whichever thread that is. If `e1` and `e2` execute in different threads than the current thread, then the final callback does not happen in the current thread. If you want to get back to the current thread, you need to get there via an executor.
+`x` will execute in the current thread. `y1` and `y2` will execute in the thread on the other side of `e1`, and `z` will execute in the thread on the other side of `e2`. `y1` and `y2` will execute on the same thread, whichever thread that is. If `e1` and `e2` execute in different threads than the current thread, then the final callback does not happen in the current thread. If you want to get back to the current thread, you need to get there via an executor.
 
-`Future::via(Executor*)` will return a Later, too.
+This works because `via` returns a deactivated ("cold") Future, which blocks the propagation of callbacks until it is activated. Activation happens either explicitly (`activate`) or implicitly when the Future returned by `via` is destructed. In this example, there is no ambiguity about in which context any of the callbacks happen (including `y2`), because propagation is blocked at the `via` callsites until after everything is wired up (temporaries are destructed after the calls to `then` have completed).
+
+You can still have a race after `via` if you break it into multiple statements, e.g. in this counterexample:
+```C++
+f = f.via(e1).then(y1).then(y2); // nothing racy here
+f2.then(y3); // racy
+```
+If you want more control over the delayed execution, check out `Later`.
+```C++
+Later<void> later;
+later = later.via(e1).then(y1).then(y2); // nothing racy here
+later = later.then(y3); // nor here
+later.launch(); // explicit launch
+```
 
 The third and least flexible (but sometimes very useful) method assumes only two threads and that you want to do something in the far thread, then come back to the current thread. `ThreadGate` is an interface for a bidirectional gateway between two threads. It's usually easier to use a Later, but ThreadGate can be more efficient, and if the pattern is used often in your code it can be more convenient.
 ```C++
 // Using a ThreadGate (which has two executors xe and xw)
 tg.gate(a).then(b);
 
-// Using Later
+// Using via
 makeFuture()
   .via(xe).then(a)
-  .via(xw).then(b)
-  .launch();
+  .via(xw).then(b);
 ```
 
 ## You make me Promises, Promises

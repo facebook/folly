@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <folly/wangle/Executor.h>
 #include <folly/wangle/Future.h>
+#include <folly/wangle/ManualExecutor.h>
 
 using namespace folly::wangle;
 using std::pair;
@@ -741,4 +742,49 @@ TEST(Future, waitWithSemaphoreForTime) {
     std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
  }
+}
+
+TEST(Future, callbackAfterActivate) {
+  Promise<void> p;
+  auto f = p.getFuture();
+  f.deactivate();
+
+  size_t count = 0;
+  f.then([&](Try<void>&&) { count++; });
+
+  p.setValue();
+  EXPECT_EQ(0, count);
+
+  f.activate();
+  EXPECT_EQ(1, count);
+}
+
+TEST(Future, activateOnDestruct) {
+  Promise<void> p;
+  auto f = p.getFuture();
+  f.deactivate();
+
+  size_t count = 0;
+  f.then([&](Try<void>&&) { count++; });
+
+  p.setValue();
+  EXPECT_EQ(0, count);
+
+  f = makeFuture(); // force destruction of old f
+  EXPECT_EQ(1, count);
+}
+
+TEST(Future, viaIsCold) {
+  ManualExecutor x;
+  size_t count = 0;
+
+  auto fv = makeFuture().via(&x);
+  fv.then([&](Try<void>&&) { count++; });
+
+  EXPECT_EQ(0, count);
+
+  fv.activate();
+
+  EXPECT_EQ(1, x.run());
+  EXPECT_EQ(1, count);
 }

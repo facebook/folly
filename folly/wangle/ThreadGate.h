@@ -21,16 +21,21 @@
 namespace folly { namespace wangle {
 
 /**
-  Yo dawg, I heard you like asynchrony so I put asynchrony in your asynchronous
-  framework.
+  The ThreadGate strategy encapsulates a bidirectional gate via two Executors,
+  kind of like a stargate for wangle Future chains. Its implementation is
+  slightly more efficient then using Future::via in both directions, and if
+  the pattern is common it can be more convenient (although the overhead of
+  setting up a ThreadGate is less convenient in most situations).
 
-  Wangle's futures and promises are not thread safe. Counterintuitive as this
-  may seem at first, this is very intentional. Making futures and promises
-  threadsafe drastically reduces their performance.
+    // Using a ThreadGate (which has two executors xe and xw)
+    tg.gate(a).then(b);
 
-  On the other hand, an asynchronous framework isn't much use if you can't do
-  asynchronous things in other threads. So we use the ThreadGate strategy to
-  decouple the threads and their futures with a form of message passing.
+    // Using via
+    makeFuture()
+      .via(xe).then(a)
+      .via(xw).then(b);
+
+  If you're not sure whether you want a ThreadGate, you don't. Use via.
 
   There are two actors, the east thread which does the asynchronous operation
   (the server) and the west thread that wants the asynchronous operation done
@@ -67,9 +72,6 @@ namespace folly { namespace wangle {
   Future change toward a multithreaded architecture easier, as you need only
   change the components of the ThreadGate which your client code is already
   using.
-
-  Later (in Later.h) is an alternative mechanism for thread-traversing
-  asynchronous workflows.
   */
 class ThreadGate {
 public:

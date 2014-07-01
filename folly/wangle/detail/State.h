@@ -109,6 +109,7 @@ class State {
     if (!callback_) {
       setCallback([](Try<T>&&) {});
     }
+    activate();
     detachOne();
   }
 
@@ -120,10 +121,24 @@ class State {
     detachOne();
   }
 
+  void deactivate() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    active_ = false;
+  }
+
+  void activate() {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      active_ = true;
+    }
+    maybeCallback();
+  }
+
  private:
   void maybeCallback() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (value_ && callback_) {
+    if (!calledBack_ &&
+        value_ && callback_ && active_) {
       // TODO we should probably try/catch here
       callback_(std::move(*value_));
       calledBack_ = true;
@@ -150,6 +165,7 @@ class State {
   std::function<void(Try<T>&&)> callback_;
   bool calledBack_ = false;
   unsigned char detached_ = 0;
+  bool active_ = true;
 
   // this lock isn't meant to protect all accesses to members, only the ones
   // that need to be threadsafe: the act of setting value_ and callback_, and
