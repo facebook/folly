@@ -624,6 +624,13 @@ void splitTest() {
   EXPECT_EQ(parts[2], "kdbk");
   parts.clear();
 
+  // test last part is shorter than the delimiter
+  folly::split("bc", "abcd", parts, true);
+  EXPECT_EQ(parts.size(), 2);
+  EXPECT_EQ(parts[0], "a");
+  EXPECT_EQ(parts[1], "d");
+  parts.clear();
+
   string orig = "ab2342asdfv~~!";
   folly::split("", orig, parts, true);
   EXPECT_EQ(parts.size(), 1);

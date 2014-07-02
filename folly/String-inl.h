@@ -335,9 +335,8 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
       ++tokenSize;
     }
   }
-
+  tokenSize = strSize - tokenStartPos;
   if (!ignoreEmpty || tokenSize > 0) {
-    tokenSize = strSize - tokenStartPos;
     *out++ = conv(StringPiece(&s[tokenStartPos], tokenSize));
   }
 }
