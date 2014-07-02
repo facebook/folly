@@ -136,6 +136,7 @@ nobase_follyinclude_HEADERS = \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
 	Random.h \
+	Random-inl.h \
 	Range.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
