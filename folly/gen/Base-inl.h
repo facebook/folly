@@ -334,7 +334,7 @@ class Just : public GenImpl<const Value&, Just<Value>> {
                 "Just requires non-ref types");
   const Value value_;
  public:
-  Just(Value value) : value_(std::forward<Value>(value)) {}
+  explicit Just(Value value) : value_(std::forward<Value>(value)) {}
 
   template <class Handler>
   bool apply(Handler&& handler) const {
@@ -595,6 +595,69 @@ class Take : public Operator<Take> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), count_);
+  }
+};
+
+/**
+ * Stride - For producing every Nth value from a source.
+ *
+ * This type is usually used through the 'stride' helper function, like:
+ *
+ *   auto half = from(samples)
+ *             | stride(2);
+ */
+class Stride : public Operator<Stride> {
+  size_t stride_;
+
+ public:
+  explicit Stride(size_t stride) : stride_(stride) {
+    if (stride == 0) {
+      throw std::invalid_argument("stride must not be 0");
+    }
+  }
+
+  template <class Value, class Source>
+  class Generator : public GenImpl<Value, Generator<Value, Source>> {
+    Source source_;
+    size_t stride_;
+  public:
+   Generator(Source source, size_t stride)
+       : source_(std::move(source)), stride_(stride) {}
+
+   template <class Handler>
+   bool apply(Handler&& handler) const {
+     size_t distance = stride_;
+     return source_.apply([&](Value value)->bool {
+       if (++distance >= stride_) {
+         if (!handler(std::forward<Value>(value))) {
+           return false;
+         }
+         distance = 0;
+       }
+       return true;
+     });
+   }
+
+   template <class Body>
+   void foreach(Body&& body) const {
+     size_t distance = stride_;
+     source_.foreach([&](Value value) {
+       if (++distance >= stride_) {
+         body(std::forward<Value>(value));
+         distance = 0;
+       }
+     });
+   }
+  };
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), stride_);
+  }
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), stride_);
   }
 };
 
@@ -1615,8 +1678,7 @@ template<class Exception,
 class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
   ErrorHandler handler_;
  public:
-  GuardImpl(ErrorHandler handler)
-    : handler_(std::move(handler)) {}
+  explicit GuardImpl(ErrorHandler handler) : handler_(std::move(handler)) {}
 
   template<class Value,
            class Source>
@@ -1801,7 +1863,7 @@ template<class Value>
 class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
   class WrapperBase {
    public:
-    virtual ~WrapperBase() {}
+    virtual ~WrapperBase() noexcept {}
     virtual bool apply(const std::function<bool(Value)>& handler) const = 0;
     virtual void foreach(const std::function<void(Value)>& body) const = 0;
     virtual std::unique_ptr<const WrapperBase> clone() const = 0;
@@ -1831,25 +1893,22 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
   std::unique_ptr<const WrapperBase> wrapper_;
 
  public:
-  template<class Self>
+  template <class Self>
   /* implicit */ VirtualGen(Self source)
-   : wrapper_(new WrapperImpl<Self>(std::move(source)))
-  { }
+      : wrapper_(new WrapperImpl<Self>(std::move(source))) {}
 
-  VirtualGen(VirtualGen&& source)
-   : wrapper_(std::move(source.wrapper_))
-  { }
+  VirtualGen(VirtualGen&& source) noexcept
+      : wrapper_(std::move(source.wrapper_)) {}
 
   VirtualGen(const VirtualGen& source)
-   : wrapper_(source.wrapper_->clone())
-  { }
+      : wrapper_(source.wrapper_->clone()) {}
 
   VirtualGen& operator=(const VirtualGen& source) {
     wrapper_.reset(source.wrapper_->clone());
     return *this;
   }
 
-  VirtualGen& operator=(VirtualGen&& source) {
+  VirtualGen& operator=(VirtualGen&& source) noexcept {
     wrapper_= std::move(source.wrapper_);
     return *this;
   }
@@ -1908,6 +1967,10 @@ static const detail::Dereference dereference;
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);
+}
+
+inline detail::Stride stride(size_t s) {
+  return detail::Stride(s);
 }
 
 template<class Random = std::default_random_engine>

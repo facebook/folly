@@ -313,6 +313,8 @@ class Until;
 
 class Take;
 
+class Stride;
+
 template<class Rand>
 class Sample;
 
