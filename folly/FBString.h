@@ -293,13 +293,13 @@ public:
     ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
     // or: setSmallSize(0);
     writeTerminator();
-    assert(category() == isSmall && size() == 0);
+    assert(category() == Category::isSmall && size() == 0);
   }
 
   fbstring_core(const fbstring_core & rhs) {
     assert(&rhs != this);
     // Simplest case first: small strings are bitblitted
-    if (rhs.category() == isSmall) {
+    if (rhs.category() == Category::isSmall) {
       static_assert(offsetof(MediumLarge, data_) == 0,
           "fbstring layout failure");
       static_assert(offsetof(MediumLarge, size_) == sizeof(ml_.data_),
@@ -318,12 +318,12 @@ public:
         // ml_.capacity field).
         ml_ = rhs.ml_;
       }
-      assert(category() == isSmall && this->size() == rhs.size());
-    } else if (rhs.category() == isLarge) {
+      assert(category() == Category::isSmall && this->size() == rhs.size());
+    } else if (rhs.category() == Category::isLarge) {
       // Large strings are just refcounted
       ml_ = rhs.ml_;
       RefCounted::incrementRefs(ml_.data_);
-      assert(category() == isLarge && size() == rhs.size());
+      assert(category() == Category::isLarge && size() == rhs.size());
     } else {
       // Medium strings are copied eagerly. Don't forget to allocate
       // one extra Char for the null terminator.
@@ -337,15 +337,16 @@ public:
       // No need for writeTerminator() here, we copied one extra
       // element just above.
       ml_.size_ = rhs.ml_.size_;
-      ml_.capacity_ = (allocSize / sizeof(Char) - 1) | isMedium;
-      assert(category() == isMedium);
+      ml_.capacity_ = (allocSize / sizeof(Char) - 1)
+                      | static_cast<category_type>(Category::isMedium);
+      assert(category() == Category::isMedium);
     }
     assert(size() == rhs.size());
     assert(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
   }
 
   fbstring_core(fbstring_core&& goner) noexcept {
-    if (goner.category() == isSmall) {
+    if (goner.category() == Category::isSmall) {
       // Just copy, leave the goner in peace
       new(this) fbstring_core(goner.small_, goner.smallSize());
     } else {
@@ -412,24 +413,26 @@ public:
       ml_.data_ = static_cast<Char*>(checkedMalloc(allocSize));
       fbstring_detail::pod_copy(data, data + size, ml_.data_);
       ml_.size_ = size;
-      ml_.capacity_ = (allocSize / sizeof(Char) - 1) | isMedium;
+      ml_.capacity_ = (allocSize / sizeof(Char) - 1)
+                      | static_cast<category_type>(Category::isMedium);
     } else {
       // Large strings are allocated differently
       size_t effectiveCapacity = size;
       auto const newRC = RefCounted::create(data, & effectiveCapacity);
       ml_.data_ = newRC->data_;
       ml_.size_ = size;
-      ml_.capacity_ = effectiveCapacity | isLarge;
+      ml_.capacity_ = effectiveCapacity
+                      | static_cast<category_type>(Category::isLarge);
     }
     writeTerminator();
   }
 
   ~fbstring_core() noexcept {
     auto const c = category();
-    if (c == isSmall) {
+    if (c == Category::isSmall) {
       return;
     }
-    if (c == isMedium) {
+    if (c == Category::isMedium) {
       free(ml_.data_);
       return;
     }
@@ -454,7 +457,8 @@ public:
       ml_.data_ = data;
       ml_.size_ = size;
       // Don't forget about null terminator
-      ml_.capacity_ = (allocatedSize - 1) | isMedium;
+      ml_.capacity_ = (allocatedSize - 1)
+                      | static_cast<category_type>(Category::isMedium);
     } else {
       // No need for the memory
       free(data);
@@ -479,11 +483,11 @@ public:
 
   Char * mutable_data() {
     auto const c = category();
-    if (c == isSmall) {
+    if (c == Category::isSmall) {
       return small_;
     }
-    assert(c == isMedium || c == isLarge);
-    if (c == isLarge && RefCounted::refs(ml_.data_) > 1) {
+    assert(c == Category::isMedium || c == Category::isLarge);
+    if (c == Category::isLarge && RefCounted::refs(ml_.data_) > 1) {
       // Ensure unique.
       size_t effectiveCapacity = ml_.capacity();
       auto const newRC = RefCounted::create(& effectiveCapacity);
@@ -501,21 +505,22 @@ public:
 
   const Char * c_str() const {
     auto const c = category();
-    if (c == isSmall) {
+    if (c == Category::isSmall) {
       assert(small_[smallSize()] == '\0');
       return small_;
     }
-    assert(c == isMedium || c == isLarge);
+    assert(c == Category::isMedium || c == Category::isLarge);
     assert(ml_.data_[ml_.size_] == '\0');
     return ml_.data_;
   }
 
   void shrink(const size_t delta) {
-    if (category() == isSmall) {
+    if (category() == Category::isSmall) {
       // Check for underflow
       assert(delta <= smallSize());
       setSmallSize(smallSize() - delta);
-    } else if (category() == isMedium || RefCounted::refs(ml_.data_) == 1) {
+    } else if (category() == Category::isMedium ||
+               RefCounted::refs(ml_.data_) == 1) {
       // Medium strings and unique large strings need no special
       // handling.
       assert(ml_.size_ >= delta);
@@ -534,7 +539,7 @@ public:
   }
 
   void reserve(size_t minCapacity) {
-    if (category() == isLarge) {
+    if (category() == Category::isLarge) {
       // Ensure unique
       if (RefCounted::refs(ml_.data_) > 1) {
         // We must make it unique regardless; in-place reallocation is
@@ -550,7 +555,8 @@ public:
         // we have + 1 above.
         RefCounted::decrementRefs(ml_.data_);
         ml_.data_ = newRC->data_;
-        ml_.capacity_ = minCapacity | isLarge;
+        ml_.capacity_ = minCapacity
+                        | static_cast<category_type>(Category::isLarge);
         // size remains unchanged
       } else {
         // String is not shared, so let's try to realloc (if needed)
@@ -560,12 +566,13 @@ public:
                RefCounted::reallocate(ml_.data_, ml_.size_,
                                       ml_.capacity(), minCapacity);
           ml_.data_ = newRC->data_;
-          ml_.capacity_ = minCapacity | isLarge;
+          ml_.capacity_ = minCapacity
+                          | static_cast<category_type>(Category::isLarge);
           writeTerminator();
         }
         assert(capacity() >= minCapacity);
       }
-    } else if (category() == isMedium) {
+    } else if (category() == Category::isMedium) {
       // String is not shared
       if (minCapacity <= ml_.capacity()) {
         return; // nothing to do, there's enough room
@@ -581,7 +588,8 @@ public:
             (ml_.capacity() + 1) * sizeof(Char),
             capacityBytes));
         writeTerminator();
-        ml_.capacity_ = (capacityBytes / sizeof(Char) - 1) | isMedium;
+        ml_.capacity_ = (capacityBytes / sizeof(Char) - 1)
+                        | static_cast<category_type>(Category::isMedium);
       } else {
         // Conversion from medium to large string
         fbstring_core nascent;
@@ -595,7 +603,7 @@ public:
         assert(capacity() >= minCapacity);
       }
     } else {
-      assert(category() == isSmall);
+      assert(category() == Category::isSmall);
       if (minCapacity > maxMediumSize) {
         // large
         auto const newRC = RefCounted::create(& minCapacity);
@@ -604,7 +612,8 @@ public:
         // No need for writeTerminator(), we wrote it above with + 1.
         ml_.data_ = newRC->data_;
         ml_.size_ = size;
-        ml_.capacity_ = minCapacity | isLarge;
+        ml_.capacity_ = minCapacity
+                        | static_cast<category_type>(Category::isLarge);
         assert(capacity() >= minCapacity);
       } else if (minCapacity > maxSmallSize) {
         // medium
@@ -617,7 +626,8 @@ public:
         // No need for writeTerminator(), we wrote it above with + 1.
         ml_.data_ = data;
         ml_.size_ = size;
-        ml_.capacity_ = (allocSizeBytes / sizeof(Char) - 1) | isMedium;
+        ml_.capacity_ = (allocSizeBytes / sizeof(Char) - 1)
+                        | static_cast<category_type>(Category::isMedium);
       } else {
         // small
         // Nothing to do, everything stays put
@@ -630,7 +640,7 @@ public:
     // Strategy is simple: make room, then change size
     assert(capacity() >= size());
     size_t sz, newSz;
-    if (category() == isSmall) {
+    if (category() == Category::isSmall) {
       sz = smallSize();
       newSz = sz + delta;
       if (newSz <= maxSmallSize) {
@@ -647,7 +657,7 @@ public:
     }
     assert(capacity() >= newSz);
     // Category can't be small - we took care of that above
-    assert(category() == isMedium || category() == isLarge);
+    assert(category() == Category::isMedium || category() == Category::isLarge);
     ml_.size_ = newSz;
     writeTerminator();
     assert(size() == newSz);
@@ -657,7 +667,7 @@ public:
   void push_back(Char c) {
     assert(capacity() >= size());
     size_t sz;
-    if (category() == isSmall) {
+    if (category() == Category::isSmall) {
       sz = smallSize();
       if (sz < maxSmallSize) {
         small_[sz] = c;
@@ -674,21 +684,21 @@ public:
     assert(!isShared());
     assert(capacity() >= sz + 1);
     // Category can't be small - we took care of that above
-    assert(category() == isMedium || category() == isLarge);
+    assert(category() == Category::isMedium || category() == Category::isLarge);
     ml_.size_ = sz + 1;
     ml_.data_[sz] = c;
     writeTerminator();
   }
 
   size_t size() const {
-    return category() == isSmall ? smallSize() : ml_.size_;
+    return category() == Category::isSmall ? smallSize() : ml_.size_;
   }
 
   size_t capacity() const {
     switch (category()) {
-      case isSmall:
+      case Category::isSmall:
         return maxSmallSize;
-      case isLarge:
+      case Category::isLarge:
         // For large-sized strings, a multi-referenced chunk has no
         // available capacity. This is because any attempt to append
         // data would trigger a new allocation.
@@ -699,11 +709,11 @@ public:
   }
 
   bool isShared() const {
-    return category() == isLarge && RefCounted::refs(ml_.data_) > 1;
+    return category() == Category::isLarge && RefCounted::refs(ml_.data_) > 1;
   }
 
   void writeTerminator() {
-    if (category() == isSmall) {
+    if (category() == Category::isSmall) {
       const auto s = smallSize();
       if (s != maxSmallSize) {
         small_[s] = '\0';
@@ -810,7 +820,10 @@ private:
   static_assert(!(sizeof(MediumLarge) % sizeof(Char)),
                 "Corrupt memory layout for fbstring.");
 
-  enum Category {
+  typedef std::conditional<sizeof(size_t) == 4, uint32_t, uint64_t>::type
+          category_type;
+
+  enum class Category : category_type {
     isSmall = 0,
     isMedium = sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000,
     isLarge =  sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000,
@@ -822,7 +835,7 @@ private:
   }
 
   size_t smallSize() const {
-    assert(category() == isSmall &&
+    assert(category() == Category::isSmall &&
            static_cast<size_t>(small_[maxSmallSize])
            <= static_cast<size_t>(maxSmallSize));
     return static_cast<size_t>(maxSmallSize)
