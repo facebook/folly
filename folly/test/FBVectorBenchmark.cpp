@@ -106,7 +106,7 @@ typedef fbvector<folly::fbstring> FBStringFBVector;
 #undef VECTOR
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

@@ -363,7 +363,7 @@ TEST(DynamicConverter, errors) {
 
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_benchmark) {
     folly::runBenchmarks();
   }

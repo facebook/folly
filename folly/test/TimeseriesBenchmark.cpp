@@ -71,7 +71,7 @@ BENCHMARK_NAMED_PARAM(addValue, 71x5_100perSec, seconds(71), 5, 100);
 BENCHMARK_NAMED_PARAM(addValue, 1x1_100perSec, seconds(1), 1, 100);
 
 int main(int argc, char *argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

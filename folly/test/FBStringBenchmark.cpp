@@ -93,7 +93,7 @@ std::list<char> RandomList(unsigned int maxSize) {
 #undef STRING
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

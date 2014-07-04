@@ -74,7 +74,7 @@ void runParent(const char* file) {
 }
 
 int main(int argc, char *argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 2);
   if (FLAGS_child) {
     runChild(argv[1]);

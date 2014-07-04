@@ -129,7 +129,7 @@ BENCHMARK_PARAM_MULTI(paramMulti, 5);
 BENCHMARK_RELATIVE_PARAM_MULTI(paramMultiRel, 5);
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
   runBenchmarksOnFlag();
 }

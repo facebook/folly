@@ -22,6 +22,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 /**

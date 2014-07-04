@@ -337,7 +337,7 @@ BENCHMARK(FindFirstOfOffsetRange, n) {
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   for (int len : {1, 8, 10, 16, 32, 64, 128, 256, 10*1024, 1024*1024}) {
     initStr(len);

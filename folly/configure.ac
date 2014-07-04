@@ -90,75 +90,160 @@ AC_CHECK_TYPE([__int128],
   [AC_DEFINE([HAVE_INT128_T], [1], [Define if __int128 exists])],
   [AC_DEFINE([HAVE_INT128_T], [0], [Define if __int128 does not exist])])
 AC_CHECK_TYPES([ptrdiff_t])
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #pragma GCC diagnostic error "-Wattributes"
-    extern "C" void (*test_ifunc(void))() { return 0; }
-    void func() __attribute__((ifunc("test_ifunc")));]
-  ],
-  [AC_DEFINE([HAVE_IFUNC], [1], [Define to 1 if the compiler supports ifunc])],
-  [AC_DEFINE([HAVE_IFUNC], [0], [Define to 0 if the compiler doesn't support ifunc])]
-)
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[class C { virtual void f() final {} virtual void g() {} };
-                  class D : public C { virtual void g() override {} };]],
-  [AC_DEFINE([FINAL], [final],
-             [Define to "final" if the compiler supports C++11 "final"])
-   AC_DEFINE([OVERRIDE], [override],
-             [Define to "override" if the compiler supports C++11 "override"])],
-  [AC_DEFINE([FINAL], [],
-             [Define to "final" if the compiler supports C++11 "final"])
-   AC_DEFINE([OVERRIDE], [],
-             [Define to "override" if the compiler supports C++11 "override"])]
-)
 
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #include <thread>
-    #include <chrono>
-    void func() { std::this_thread::sleep_for(std::chrono::seconds(1)); }]],
-  [AC_DEFINE([HAVE_STD__THIS_THREAD__SLEEP_FOR], [1],
-             [Define to 1 if std::this_thread::sleep_for() is defined.])])
+AC_CACHE_CHECK(
+  [for ifunc support],
+  [folly_cv_prog_cc_ifunc],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #pragma GCC diagnostic error "-Wattributes"
+      extern "C" void (*test_ifunc(void))() { return 0; }
+      void func() __attribute__((ifunc("test_ifunc")));]
+    ],
+    [folly_cv_prog_cc_ifunc=yes],
+    [folly_cv_prog_cc_ifunc=no])])
 
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #include <cstring>
-    static constexpr int val = strlen("foo");]],
-  [AC_DEFINE([HAVE_CONSTEXPR_STRLEN], [1],
-             [Define to 1 if strlen(3) is constexpr.])])
+if test "$folly_cv_prog_cc_ifunc" = "yes"; then
+  AC_DEFINE([HAVE_IFUNC], [1], [Define to 1 if the compiler supports ifunc])
+fi
 
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #include <type_traits>
-    #if !_LIBCPP_VERSION
-    #error No libc++
-    #endif
-    void func() {}]
-  ],
-  [AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])])
+AC_CACHE_CHECK(
+  [for final and override support],
+  [folly_cv_c_final_override],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[class C { virtual void f() final {} virtual void g() {} };
+                    class D : public C { virtual void g() override {} };]],
+    [folly_cv_c_final_override=yes],
+    [folly_cv_c_final_override=no])])
 
-AC_COMPILE_IFELSE(
-  [AC_LANG_SOURCE[
-    #include <type_traits>
-    const bool val = std::is_trivially_copyable<bool>::value;]
-  ],
-  [AC_DEFINE([HAVE_STD__IS_TRIVIALLY_COPYABLE], [1],
-             [Define to 1 if we have a usable std::is_trivially_copyable<T>
-              implementation.])])
+if test "$folly_cv_c_final_override" = "yes"; then
+  final_val=final
+  override_val=override
+else
+  final_val=
+  override_val=
+fi
+
+AC_DEFINE_UNQUOTED(
+  [FINAL], [$final_val],
+  [Define to "final" if the compiler supports C++11 "final"])
+AC_DEFINE_UNQUOTED(
+  [OVERRIDE], [$override_val],
+  [Define to "override" if the compiler supports C++11 "override"])
+
+AC_CACHE_CHECK(
+  [for std::this_thread::sleep_for],
+  [folly_cv_func_this_thread_sleep_for],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <thread>
+      #include <chrono>
+      void func() { std::this_thread::sleep_for(std::chrono::seconds(1)); }]],
+    [folly_cv_func_this_thread_sleep_for=yes],
+    [folly_cv_func_this_thread_sleep_for=no])])
+
+if test "$folly_cv_func_this_thread_sleep_for" = yes; then
+    AC_DEFINE([HAVE_STD__THIS_THREAD__SLEEP_FOR], [1],
+              [Define to 1 if std::this_thread::sleep_for() is defined.])
+fi
+
+AC_CACHE_CHECK(
+  [for constexpr strlen],
+  [folly_cv_func_constexpr_strlen],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <cstring>
+      static constexpr int val = strlen("foo");]],
+    [folly_cv_func_constexpr_strlen=yes],
+    [folly_cv_func_constexpr_strlen=no])])
+
+if test "$folly_cv_func_constexpr_strlen" = yes; then
+    AC_DEFINE([HAVE_CONSTEXPR_STRLEN], [1],
+              [Define to 1 if strlen(3) is constexpr.])
+fi
+
+AC_CACHE_CHECK(
+  [for libc++],
+  [folly_cv_lib_libcpp],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <type_traits>
+      #if !_LIBCPP_VERSION
+      #error No libc++
+      #endif
+      void func() {}]
+    ],
+    [folly_cv_lib_libcpp=yes],
+    [folly_cv_lib_libcpp=no])])
+
+if test "$folly_cv_lib_libcpp" = yes; then
+  AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])
+fi
+
+AC_CACHE_CHECK(
+  [for usable std::is_trivially_copyable],
+  [folly_cv_decl_std_is_trivially_copyable],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <type_traits>
+      const bool val = std::is_trivially_copyable<bool>::value;]
+    ],
+    [folly_cv_decl_std_is_trivially_copyable=yes],
+    [folly_cv_decl_std_is_trivially_copyable=no])])
+
+if test "$folly_cv_decl_std_is_trivially_copyable" = yes; then
+  AC_DEFINE([HAVE_STD__IS_TRIVIALLY_COPYABLE], [1],
+            [Define to 1 if we have a usable std::is_trivially_copyable<T>
+             implementation.])
+fi
+
+AC_CACHE_CHECK(
+  [gflags namespace],
+  [folly_cv_decl_gflags_namespace],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <gflags/gflags.h>
+      void foo() { gflags::GetArgv(); }]
+    ],
+    [folly_cv_decl_gflags_namespace=gflags],
+    [AC_COMPILE_IFELSE(
+      [AC_LANG_SOURCE[
+        #include <gflags/gflags.h>
+        void foo() { google::GetArgv(); }]
+      ],
+      [folly_cv_decl_gflags_namespace=google],
+      [folly_cv_decl_gflags_namespace=error])])])
+
+if test "$folly_cv_decl_gflags_namespace" = error; then
+  AC_MSG_ERROR([Cannot determine gflags namespace])
+else
+  AC_DEFINE_UNQUOTED(
+    [GFLAGS_NAMESPACE], [$folly_cv_decl_gflags_namespace],
+    [Define to gflags namespace (usually "google" or "gflags")])
+  if test "$folly_cv_decl_gflags_namespace" != gflags; then
+     AC_DEFINE([UNUSUAL_GFLAGS_NAMESPACE], [1],
+               [Define to 1 if the gflags namespace is not "gflags"])
+  fi
+fi
 
 # Figure out if we support weak symbols. If not, we will link in some null
 # stubs for functions that would otherwise be weak.
-AC_LINK_IFELSE(
-  [AC_LANG_SOURCE[
-    extern "C" void configure_link_extern_weak_test() __attribute__((weak));
-    int main(int argc, char** argv) {
-        return configure_link_extern_weak_test == nullptr;
-    }]
-  ],
-  [
-    ac_have_weak_symbols="yes"
-    AC_DEFINE([HAVE_WEAK_SYMBOLS], [1],
-              [Define to 1 if the linker supports weak symbols.])])
+AC_CACHE_CHECK(
+  [for weak symbol support],
+  [folly_cv_prog_cc_weak_symbols],
+  [AC_LINK_IFELSE(
+    [AC_LANG_SOURCE[
+      extern "C" void configure_link_extern_weak_test() __attribute__((weak));
+      int main(int argc, char** argv) {
+          return configure_link_extern_weak_test == nullptr;
+      }]],
+    [folly_cv_prog_cc_weak_symbols="yes"],
+    [folly_cv_prog_cc_weak_symbols="no"])])
+
+if test "$folly_cv_prog_cc_weak_symbols" = yes; then
+  AC_DEFINE([HAVE_WEAK_SYMBOLS], [1],
+            [Define to 1 if the linker supports weak symbols.])
+fi
 
 AC_SEARCH_LIBS([cplus_demangle_v3_callback], [iberty_pic iberty])
 if test "$ac_cv_search_cplus_demangle_v3_callback" != "no" ; then
@@ -210,7 +295,8 @@ AC_SUBST([AM_LDFLAGS])
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
 AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
-AM_CONDITIONAL([HAVE_WEAK_SYMBOLS], [test "$ac_have_weak_symbols" = "yes"])
+AM_CONDITIONAL([HAVE_WEAK_SYMBOLS],
+               [test "$folly_cv_prog_cc_weak_symbols" = "yes"])
 AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT], [test "$ac_cv_header_bits_functexcept" = "yes"])
 
 # Output

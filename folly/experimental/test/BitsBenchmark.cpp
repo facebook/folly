@@ -111,7 +111,7 @@ benchmarkGet(i64)                                 85.78%     8.53ns  117.16M
 #endif
 
 int main(int argc, char *argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   return sum.load();
 }

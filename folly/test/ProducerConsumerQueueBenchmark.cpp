@@ -232,7 +232,7 @@ BENCHMARK_PARAM(BM_ProducerConsumerLatency, 1048574);
 
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   runBenchmarks();
   return 0;

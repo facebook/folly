@@ -572,9 +572,9 @@ BENCHMARK_DRAW_LINE();
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::SetCommandLineOptionWithMode(
-    "bm_max_iters", "100000000", google::SET_FLAG_IF_DEFAULT
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::SetCommandLineOptionWithMode(
+    "bm_max_iters", "100000000", gflags::SET_FLAG_IF_DEFAULT
   );
   if (FLAGS_benchmark) {
     folly::runBenchmarks();

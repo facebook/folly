@@ -25,6 +25,8 @@
 
 #include <boost/noncopyable.hpp>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 /**

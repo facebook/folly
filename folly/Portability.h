@@ -233,4 +233,11 @@ typedef SSIZE_T ssize_t;
 # define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
+#if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
+namespace FOLLY_GFLAGS_NAMESPACE { }
+namespace gflags {
+using namespace FOLLY_GFLAGS_NAMESPACE;
+}  // namespace gflags
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

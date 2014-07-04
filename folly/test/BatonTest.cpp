@@ -90,7 +90,7 @@ BENCHMARK(posix_sem_pingpong, iters) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto rv = RUN_ALL_TESTS();
   if (!rv && FLAGS_benchmark) {

@@ -180,7 +180,7 @@ BENCHMARK(crc32c_software_512KB_block, iters) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   // Populate a buffer with a deterministic pattern
   // on which to compute checksums

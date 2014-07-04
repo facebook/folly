@@ -181,7 +181,7 @@ BENCHMARK_RELATIVE(format_nested_direct, iters) {
 // ============================================================================
 
 int main(int argc, char *argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   runBenchmarks();
   return 0;
 }

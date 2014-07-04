@@ -322,7 +322,7 @@ BENCHMARK_RELATIVE(Records_VectorString, iters) {
 // ============================================================================
 
 int main(int argc, char *argv[]) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   initStringResplitterBenchmark();
   runBenchmarks();
   return 0;
