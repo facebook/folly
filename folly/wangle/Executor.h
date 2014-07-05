@@ -20,6 +20,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 namespace folly { namespace wangle {
   /// An Executor accepts units of work with add(), which should be

@@ -16,6 +16,8 @@
 
 #include <folly/Malloc.h>
 
+#include <cstdint>
+
 namespace folly {
 
 // How do we determine that we're using jemalloc?

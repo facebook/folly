@@ -105,23 +105,28 @@ constexpr size_t
 StateSize<std::subtract_with_carry_engine<UIntType, w, s, r>>::value;
 
 template <class RNG>
-std::seed_seq generateSeed() {
-  std::array<uint32_t, StateSize<RNG>::value> seed_data;
-  Random::secureRandom(seed_data.begin(), seed_data.size() * sizeof(uint32_t));
-  return std::seed_seq(std::begin(seed_data), std::end(seed_data));
-}
+struct SeedData {
+  SeedData() {
+    Random::secureRandom(seedData.begin(), seedData.size() * sizeof(uint32_t));
+  }
+
+  static constexpr size_t stateSize = StateSize<RNG>::value;
+  std::array<uint32_t, stateSize> seedData;
+};
 
 }  // namespace detail
 
 template <class RNG>
 void Random::seed(ValidRNG<RNG>& rng) {
-  auto s = detail::generateSeed<RNG>();
+  detail::SeedData<RNG> sd;
+  std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   rng.seed(s);
 }
 
 template <class RNG>
 auto Random::create() -> ValidRNG<RNG> {
-  auto s = detail::generateSeed<RNG>();
+  detail::SeedData<RNG> sd;
+  std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   return RNG(s);
 }
 
