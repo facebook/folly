@@ -185,7 +185,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/Try-inl.h \
 	wangle/Try.h \
 	wangle/WangleException.h \
-	wangle/detail.h
+	wangle/detail/State.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
