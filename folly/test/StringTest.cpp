@@ -1034,6 +1034,49 @@ TEST(String, humanify) {
   EXPECT_EQ("0x61ffffffffff", humanify(string("a\xff\xff\xff\xff\xff")));
 }
 
+namespace {
+
+void testToLowerAscii(Range<const char*> src) {
+  char control[src.size()];
+  memcpy(control, src.begin(), src.size());
+  char test[src.size()];
+  memcpy(test, src.begin(), src.size());
+  for (size_t i = 0; i < src.size(); i++) {
+    control[i] = tolower(control[i]);
+  }
+  toLowerAscii(test, src.size());
+  for (size_t i = 0; i < src.size(); i++) {
+    EXPECT_EQ(control[i], test[i]);
+  }
+}
+
+} // anon namespace
+
+TEST(String, toLowerAsciiAligned) {
+  static const size_t kSize = 256;
+  char input[kSize];
+  for (size_t i = 0; i < kSize; i++) {
+    input[i] = (char)(i & 0xff);
+  }
+  testToLowerAscii(Range<const char*>(input, kSize));
+}
+
+TEST(String, toLowerAsciiUnaligned) {
+  static const size_t kSize = 256;
+  char input[kSize];
+  for (size_t i = 0; i < kSize; i++) {
+    input[i] = (char)(i & 0xff);
+  }
+  // Test input buffers of several lengths to exercise all the
+  // cases: buffer at the start/middle/end of an aligned block, plus
+  // buffers that span multiple aligned blocks.
+  for (size_t length = 1; length < 11; length++) {
+    for (size_t offset = 0; offset + length <= kSize; offset++) {
+      testToLowerAscii(Range<const char*>(input + offset, length));
+    }
+  }
+}
+
 //////////////////////////////////////////////////////////////////////
 
 BENCHMARK(splitOnSingleChar, iters) {

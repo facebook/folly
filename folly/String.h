@@ -509,6 +509,19 @@ std::string join(const Delim& delimiter,
  */
 StringPiece skipWhitespace(StringPiece sp);
 
+/**
+ * Fast, in-place lowercasing of ASCII alphabetic characters in strings.
+ * Leaves all other characters unchanged, including those with the 0x80
+ * bit set.
+ * @param str String to convert
+ * @param len Length of str, in bytes
+ */
+void toLowerAscii(char* str, size_t length);
+
+inline void toLowerAscii(MutableStringPiece str) {
+  toLowerAscii(str.begin(), str.size());
+}
+
 } // namespace folly
 
 // Hash functions to make std::string usable with e.g. hash_map
