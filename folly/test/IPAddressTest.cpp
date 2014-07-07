@@ -435,6 +435,26 @@ TEST_P(IPAddressMaskBoundaryTest, NonMaskedSubnet) {
   EXPECT_EQ(param.inSubnet, ip.inSubnet(subnet, param.mask));
 }
 
+TEST(IPAddress, UnitializedEqual) {
+  IPAddress addrEmpty;
+  IPAddress ip4("127.0.0.1");
+  EXPECT_FALSE(addrEmpty == ip4);
+  EXPECT_FALSE(ip4 == addrEmpty);
+  IPAddress ip6("::1");
+  EXPECT_FALSE(addrEmpty == ip6);
+  EXPECT_FALSE(ip6 == addrEmpty);
+  IPAddress ip6Map("::ffff:192.0.2.129");
+  EXPECT_FALSE(addrEmpty == ip6Map);
+  EXPECT_FALSE(ip6Map == addrEmpty);
+  IPAddress ip4Zero("0.0.0.0");
+  EXPECT_FALSE(addrEmpty == ip4Zero);
+  EXPECT_FALSE(ip4Zero == addrEmpty);
+  IPAddress ip6Zero("::");
+  EXPECT_FALSE(addrEmpty == ip6Zero);
+  EXPECT_FALSE(ip6Zero == addrEmpty);
+  EXPECT_EQ(addrEmpty, addrEmpty);
+}
+
 // Test subnet calcs with 6to4 addresses
 TEST(IPAddress, InSubnetWith6to4) {
   auto ip = IPAddress("2002:c000:022a::"); // 192.0.2.42

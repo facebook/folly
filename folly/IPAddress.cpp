@@ -330,13 +330,13 @@ bool operator==(const IPAddress& addr1, const IPAddress& addr2) {
     }
   }
   // addr1 is v4 mapped v6 address, addr2 is v4
-  if (addr1.isIPv4Mapped()) {
+  if (addr1.isIPv4Mapped() && addr2.isV4()) {
     if (IPAddress::createIPv4(addr1) == addr2.asV4()) {
       return true;
     }
   }
   // addr2 is v4 mapped v6 address, addr1 is v4
-  if (addr2.isIPv4Mapped()) {
+  if (addr2.isIPv4Mapped() && addr1.isV4()) {
     if (IPAddress::createIPv4(addr2) == addr1.asV4()) {
       return true;
     }
