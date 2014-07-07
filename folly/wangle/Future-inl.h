@@ -193,9 +193,9 @@ inline Future<T> Future<T>::via(Executor* executor) {
   auto f = then([=](Try<T>&& t) {
     MoveWrapper<Promise<T>> promise;
     MoveWrapper<Try<T>> tw(std::move(t));
-    auto f = promise->getFuture();
+    auto f2 = promise->getFuture();
     executor->add([=]() mutable { promise->fulfilTry(std::move(*tw)); });
-    return f;
+    return f2;
   });
   f.deactivate();
   return f;
