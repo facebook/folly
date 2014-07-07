@@ -68,9 +68,7 @@
 #define FOLLY_INTRINSIC_CONSTEXPR const
 #endif
 
-#ifndef FOLLY_NO_CONFIG
-#include <folly/folly-config.h>
-#endif
+#include <folly/Portability.h>
 
 #include <folly/detail/BitsDetail.h>
 #include <folly/detail/BitIteratorDetail.h>

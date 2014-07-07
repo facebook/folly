@@ -20,9 +20,7 @@
 #include <ctime>
 #include <cstdint>
 
-#ifndef FOLLY_NO_CONFIG
-#include <folly/folly-config.h>
-#endif
+#include <folly/Portability.h>
 
 #if FOLLY_HAVE_CLOCK_GETTIME
 #error This should only be used as a workaround for platforms \

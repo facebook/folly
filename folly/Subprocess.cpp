@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <folly/Subprocess.h>
 
 #if __linux__
@@ -22,9 +26,6 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 #include <unistd.h>
 
 #include <array>
@@ -254,7 +255,11 @@ void Subprocess::spawn(
   // Create a pipe to use to receive error information from the child,
   // in case it fails before calling exec()
   int errFds[2];
+#if FOLLY_HAVE_PIPE2
+  int r = ::pipe2(errFds, O_CLOEXEC);
+#else
   int r = ::pipe(errFds);
+#endif
   checkUnixError(r, "pipe");
   SCOPE_EXIT {
     CHECK_ERR(::close(errFds[0]));
@@ -264,12 +269,17 @@ void Subprocess::spawn(
   };
   // Ask the child to close the read end of the error pipe.
   options.fdActions_[errFds[0]] = CLOSE;
+
+#if !FOLLY_HAVE_PIPE2
+  r = fcntl(errFds[0], F_SETFD, FD_CLOEXEC);
+  checkUnixError(r, "set FD_CLOEXEC");
   // Set the close-on-exec flag on the write side of the pipe.
   // This way the pipe will be closed automatically in the child if execve()
   // succeeds.  If the exec fails the child can write error information to the
   // pipe.
   r = fcntl(errFds[1], F_SETFD, FD_CLOEXEC);
   checkUnixError(r, "set FD_CLOEXEC");
+#endif
 
   // Perform the actual work of setting up pipes then forking and
   // executing the child.
@@ -316,8 +326,20 @@ void Subprocess::spawnInternal(
   for (auto& p : options.fdActions_) {
     if (p.second == PIPE_IN || p.second == PIPE_OUT) {
       int fds[2];
+      // We're setting both ends of the pipe as close-on-exec. The child
+      // doesn't need to reset the flag on its end, as we always dup2() the fd,
+      // and dup2() fds don't share the close-on-exec flag.
+#if FOLLY_HAVE_PIPE2
+      r = ::pipe2(fds, O_CLOEXEC);
+      checkUnixError(r, "pipe2");
+#else
       r = ::pipe(fds);
       checkUnixError(r, "pipe");
+      r = fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+      checkUnixError(r, "set FD_CLOEXEC");
+      r = fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+      checkUnixError(r, "set FD_CLOEXEC");
+#endif
       PipeInfo pinfo;
       pinfo.direction = p.second;
       int cfd;
@@ -380,9 +402,12 @@ void Subprocess::spawnInternal(
     CHECK_EQ(r, 0) << "pthread_sigmask: " << errnoStr(r);  // shouldn't fail
   };
 
+  // Call c_str() here, as it's not necessarily safe after fork.
+  const char* childDir =
+    options.childDir_.empty() ? nullptr : options.childDir_.c_str();
   pid_t pid = vfork();
   if (pid == 0) {
-    int errnoValue = prepareChild(options, &oldSignals);
+    int errnoValue = prepareChild(options, &oldSignals, childDir);
     if (errnoValue != 0) {
       childError(errFd, kChildFailure, errnoValue);
     }
@@ -406,43 +431,44 @@ void Subprocess::spawnInternal(
 }
 
 int Subprocess::prepareChild(const Options& options,
-                             const sigset_t* sigmask) const {
+                             const sigset_t* sigmask,
+                             const char* childDir) const {
   // While all signals are blocked, we must reset their
   // dispositions to default.
   for (int sig = 1; sig < NSIG; ++sig) {
     ::signal(sig, SIG_DFL);
   }
-  // Unblock signals; restore signal mask.
-  int r = pthread_sigmask(SIG_SETMASK, sigmask, nullptr);
-  if (r != 0) {
-    return r;  // pthread_sigmask() returns an errno value
+
+  {
+    // Unblock signals; restore signal mask.
+    int r = pthread_sigmask(SIG_SETMASK, sigmask, nullptr);
+    if (r != 0) {
+      return r;  // pthread_sigmask() returns an errno value
+    }
   }
 
   // Change the working directory, if one is given
-  if (!options.childDir_.empty()) {
-    r = ::chdir(options.childDir_.c_str());
-    if (r == -1) {
+  if (childDir) {
+    if (::chdir(childDir) == -1) {
       return errno;
     }
   }
 
   // Close parent's ends of all pipes
   for (auto& p : pipes_) {
-    r = ::close(p.parentFd);
-    if (r == -1) {
+    if (::close(p.parentFd) == -1) {
       return errno;
     }
   }
 
   // Close all fds that we're supposed to close.
-  // Note that we're ignoring errors here, in case some of these
-  // fds were set to close on exec.
   for (auto& p : options.fdActions_) {
     if (p.second == CLOSE) {
-      ::close(p.first);
-    } else {
-      r = ::dup2(p.second, p.first);
-      if (r == -1) {
+      if (::close(p.first) == -1) {
+        return errno;
+      }
+    } else if (p.second != p.first) {
+      if (::dup2(p.second, p.first) == -1) {
         return errno;
       }
     }
@@ -462,8 +488,7 @@ int Subprocess::prepareChild(const Options& options,
 #if __linux__
   // Opt to receive signal on parent death, if requested
   if (options.parentDeathSignal_ != 0) {
-    r = prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0);
-    if (r == -1) {
+    if (prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0) == -1) {
       return errno;
     }
   }

@@ -271,7 +271,8 @@ AC_CHECK_FUNCS([getdelim \
                 rallocm \
                 malloc_size \
                 malloc_usable_size \
-                memrchr])
+                memrchr \
+                pipe2])
 
 if test "$ac_cv_func_pthread_yield" = "no"; then
    AC_CHECK_HEADERS([sched.h])

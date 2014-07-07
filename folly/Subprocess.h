@@ -500,7 +500,9 @@ class Subprocess : private boost::noncopyable {
   // Actions to run in child.
   // Note that this runs after vfork(), so tread lightly.
   // Returns 0 on success, or an errno value on failure.
-  int prepareChild(const Options& options, const sigset_t* sigmask) const;
+  int prepareChild(const Options& options,
+                   const sigset_t* sigmask,
+                   const char* childDir) const;
   int runChild(const char* executable, char** argv, char** env,
                const Options& options) const;
 
