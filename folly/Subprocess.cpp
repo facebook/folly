@@ -256,29 +256,25 @@ void Subprocess::spawn(
   // in case it fails before calling exec()
   int errFds[2];
 #if FOLLY_HAVE_PIPE2
-  int r = ::pipe2(errFds, O_CLOEXEC);
+  checkUnixError(::pipe2(errFds, O_CLOEXEC), "pipe2");
 #else
-  int r = ::pipe(errFds);
+  checkUnixError(::pipe(errFds), "pipe");
 #endif
-  checkUnixError(r, "pipe");
   SCOPE_EXIT {
     CHECK_ERR(::close(errFds[0]));
     if (errFds[1] >= 0) {
       CHECK_ERR(::close(errFds[1]));
     }
   };
-  // Ask the child to close the read end of the error pipe.
-  options.fdActions_[errFds[0]] = CLOSE;
 
 #if !FOLLY_HAVE_PIPE2
-  r = fcntl(errFds[0], F_SETFD, FD_CLOEXEC);
-  checkUnixError(r, "set FD_CLOEXEC");
+  // Ask the child to close the read end of the error pipe.
+  checkUnixError(fcntl(errFds[0], F_SETFD, FD_CLOEXEC), "set FD_CLOEXEC");
   // Set the close-on-exec flag on the write side of the pipe.
   // This way the pipe will be closed automatically in the child if execve()
   // succeeds.  If the exec fails the child can write error information to the
   // pipe.
-  r = fcntl(errFds[1], F_SETFD, FD_CLOEXEC);
-  checkUnixError(r, "set FD_CLOEXEC");
+  checkUnixError(fcntl(errFds[1], F_SETFD, FD_CLOEXEC), "set FD_CLOEXEC");
 #endif
 
   // Perform the actual work of setting up pipes then forking and
@@ -454,12 +450,9 @@ int Subprocess::prepareChild(const Options& options,
     }
   }
 
-  // Close parent's ends of all pipes
-  for (auto& p : pipes_) {
-    if (::close(p.parentFd) == -1) {
-      return errno;
-    }
-  }
+  // We don't have to explicitly close the parent's end of all pipes,
+  // as they all have the FD_CLOEXEC flag set and will be closed at
+  // exec time.
 
   // Close all fds that we're supposed to close.
   for (auto& p : options.fdActions_) {
