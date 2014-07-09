@@ -25,6 +25,8 @@
 #include <folly/dynamic.h>
 #include <folly/json.h>
 
+#include <string>
+
 using namespace folly;
 
 template <class Uint>
@@ -377,6 +379,58 @@ TEST(Format, BogusFormatString) {
   // std::range_error
   EXPECT_DEATH(sformat("{0[test}"), "Non-whitespace: \\[");
   EXPECT_THROW(sformatChecked("{0[test}"), std::exception);
+}
+
+template <bool containerMode, class... Args>
+class TestExtendingFormatter;
+
+template <bool containerMode, class... Args>
+class TestExtendingFormatter
+    : public BaseFormatter<TestExtendingFormatter<containerMode, Args...>,
+                           containerMode,
+                           Args...> {
+ private:
+  explicit TestExtendingFormatter(StringPiece& str, Args&&... args)
+      : BaseFormatter<TestExtendingFormatter<containerMode, Args...>,
+                      containerMode,
+                      Args...>(str, std::forward<Args>(args)...) {}
+
+  template <size_t K, class Callback>
+  void doFormatArg(FormatArg& arg, Callback& cb) const {
+    std::string result;
+    auto appender = [&result](StringPiece s) {
+      result.append(s.data(), s.size());
+    };
+    std::get<K>(this->values_).format(arg, appender);
+    result = sformat("{{{}}}", result);
+    cb(StringPiece(result));
+  }
+
+  friend class BaseFormatter<TestExtendingFormatter<containerMode, Args...>,
+                             containerMode,
+                             Args...>;
+
+  template <class... A>
+  friend std::string texsformat(StringPiece fmt, A&&... arg);
+};
+
+template <class... Args>
+std::string texsformat(StringPiece fmt, Args&&... args) {
+  return TestExtendingFormatter<false, Args...>(
+      fmt, std::forward<Args>(args)...).str();
+}
+
+TEST(Format, Extending) {
+  EXPECT_EQ(texsformat("I {} brackets", "love"), "I {love} brackets");
+  EXPECT_EQ(texsformat("I {} nesting", sformat("really {}", "love")),
+            "I {really love} nesting");
+  EXPECT_EQ(
+      sformat("I also {} nesting", texsformat("have an {} for", "affinity")),
+      "I also have an {affinity} for nesting");
+  EXPECT_EQ(texsformat("Extending {} in {}",
+                       texsformat("a {}", "formatter"),
+                       "another formatter"),
+            "Extending {a {formatter}} in {another formatter}");
 }
 
 int main(int argc, char *argv[]) {
