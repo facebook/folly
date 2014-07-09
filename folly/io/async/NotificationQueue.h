@@ -1,21 +1,19 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements. See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership. The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License. You may obtain a copy of the License at
+ * Copyright 2014 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 #pragma once
 
 #include <fcntl.h>
@@ -143,14 +141,23 @@ class NotificationQueue {
 
    private:
 
-    void setActive(bool active) {
-      DCHECK(queue_);
+    void setActive(bool active, bool shouldLock = false) {
+      if (!queue_) {
+        active_ = active;
+        return;
+      }
+      if (shouldLock) {
+        queue_->spinlock_.lock();
+      }
       if (!active_ && active) {
         ++queue_->numActiveConsumers_;
       } else if (active_ && !active) {
         --queue_->numActiveConsumers_;
       }
       active_ = active;
+      if (shouldLock) {
+        queue_->spinlock_.unlock();
+      }
     }
     void init(EventBase* eventBase, NotificationQueue* queue);
 
@@ -542,7 +549,7 @@ void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t events)
   uint32_t numProcessed = 0;
   bool firstRun = true;
   setActive(true);
-  SCOPE_EXIT { setActive(false); };
+  SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
   while (true) {
     // Try to decrement the eventfd.
     //
