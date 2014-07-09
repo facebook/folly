@@ -51,11 +51,6 @@ template <class C>
 Formatter<true, C> vformat(StringPiece fmt, C&& container);
 template <class T, class Enable=void> class FormatValue;
 
-// meta-attribute to identify formatters in this sea of template weirdness
-namespace detail {
-class FormatterTag {};
-};
-
 /**
  * Formatter class.
  *
@@ -64,12 +59,8 @@ class FormatterTag {};
  * this directly, you have to use format(...) below.
  */
 
-/* BaseFormatter class. Currently, the only behavior that can be
- * overridden is the actual formatting of positional parameters in
- * `doFormatArg`. The Formatter class provides the default implementation.
- */
-template <class Derived, bool containerMode, class... Args>
-class BaseFormatter {
+template <bool containerMode, class... Args>
+class Formatter {
  public:
   /*
    * Change whether or not Formatter should crash or throw exceptions if the
@@ -118,13 +109,21 @@ class BaseFormatter {
     return s;
   }
 
-  /**
-   * metadata to identify generated children of BaseFormatter
-   */
-  typedef detail::FormatterTag IsFormatter;
-  typedef BaseFormatter BaseType;
-
  private:
+  explicit Formatter(StringPiece str, Args&&... args);
+
+  // Not copyable
+  Formatter(const Formatter&) = delete;
+  Formatter& operator=(const Formatter&) = delete;
+
+  // Movable, but the move constructor and assignment operator are private,
+  // for the exclusive use of format() (below).  This way, you can't create
+  // a Formatter object, but can handle references to it (for streaming,
+  // conversion to string, etc) -- which is good, as Formatter objects are
+  // dangerous (they hold references, possibly to temporaries)
+  Formatter(Formatter&&) = default;
+  Formatter& operator=(Formatter&&) = default;
+
   typedef std::tuple<FormatValue<
       typename std::decay<Args>::type>...> ValueTuple;
   static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
@@ -143,7 +142,7 @@ class BaseFormatter {
   typename std::enable_if<(K < valueCount)>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
     if (i == K) {
-      static_cast<const Derived*>(this)->template doFormatArg<K>(arg, cb);
+      std::get<K>(values_).format(arg, cb);
     } else {
       doFormatFrom<K+1>(i, arg, cb);
     }
@@ -155,44 +154,8 @@ class BaseFormatter {
   }
 
   StringPiece str_;
-  bool crashOnError_{true};
-
- protected:
-  explicit BaseFormatter(StringPiece str, Args&&... args);
-
-  // Not copyable
-  BaseFormatter(const BaseFormatter&) = delete;
-  BaseFormatter& operator=(const BaseFormatter&) = delete;
-
-  // Movable, but the move constructor and assignment operator are private,
-  // for the exclusive use of format() (below).  This way, you can't create
-  // a Formatter object, but can handle references to it (for streaming,
-  // conversion to string, etc) -- which is good, as Formatter objects are
-  // dangerous (they hold references, possibly to temporaries)
-  BaseFormatter(BaseFormatter&&) = default;
-  BaseFormatter& operator=(BaseFormatter&&) = default;
-
   ValueTuple values_;
-};
-
-template <bool containerMode, class... Args>
-class Formatter : public BaseFormatter<Formatter<containerMode, Args...>,
-                                       containerMode,
-                                       Args...> {
- private:
-  explicit Formatter(StringPiece& str, Args&&... args)
-      : BaseFormatter<Formatter<containerMode, Args...>,
-                      containerMode,
-                      Args...>(str, std::forward<Args>(args)...) {}
-
-  template <size_t K, class Callback>
-  void doFormatArg(FormatArg& arg, Callback& cb) const {
-    std::get<K>(this->values_).format(arg, cb);
-  }
-
-  friend class BaseFormatter<Formatter<containerMode, Args...>,
-                             containerMode,
-                             Args...>;
+  bool crashOnError_{true};
 
   template <class... A>
   friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
@@ -218,9 +181,8 @@ std::ostream& operator<<(std::ostream& out,
 /**
  * Formatter objects can be written to stdio FILEs.
  */
-template <class Derived, bool containerMode, class... Args>
-void writeTo(FILE* fp,
-             const BaseFormatter<Derived, containerMode, Args...>& formatter);
+template<bool containerMode, class... Args>
+void writeTo(FILE* fp, const Formatter<containerMode, Args...>& formatter);
 
 /**
  * Create a formatter object.
@@ -422,14 +384,10 @@ void formatNumber(StringPiece val, int prefixLen, FormatArg& arg,
  * formatString(fmt.str(), arg, cb); but avoids creating a temporary
  * string if possible.
  */
-template <class FormatCallback,
-          class Derived,
-          bool containerMode,
-          class... Args>
-void formatFormatter(
-    const BaseFormatter<Derived, containerMode, Args...>& formatter,
-    FormatArg& arg,
-    FormatCallback& cb);
+template <class FormatCallback, bool containerMode, class... Args>
+void formatFormatter(const Formatter<containerMode, Args...>& formatter,
+                     FormatArg& arg,
+                     FormatCallback& cb);
 
 }  // namespace format_value
 
@@ -454,19 +412,6 @@ void formatFormatter(
  * as many times as you'd like (or not at all, if you want to output an
  * empty string)
  */
-
-namespace detail {
-
-template <class T, class Enable = void>
-struct IsFormatter : public std::false_type {};
-
-template <class T>
-struct IsFormatter<
-    T,
-    typename std::enable_if<
-        std::is_same<typename T::IsFormatter, detail::FormatterTag>::value>::
-        type> : public std::true_type {};
-} // folly::detail
 
 }  // namespace folly
 
