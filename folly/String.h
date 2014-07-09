@@ -524,36 +524,6 @@ inline void toLowerAscii(MutableStringPiece str) {
 
 } // namespace folly
 
-// Hash functions to make std::string usable with e.g. hash_map
-//
-// Handle interaction with different C++ standard libraries, which
-// expect these types to be in different namespaces.
-namespace std {
-
-template <class C>
-struct hash<std::basic_string<C> > : private hash<const C*> {
-  size_t operator()(const std::basic_string<C> & s) const {
-    return hash<const C*>::operator()(s.c_str());
-  }
-};
-
-}
-
-#if FOLLY_HAVE_DEPRECATED_ASSOC
-#if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
-namespace __gnu_cxx {
-
-template <class C>
-struct hash<std::basic_string<C> > : private hash<const C*> {
-  size_t operator()(const std::basic_string<C> & s) const {
-    return hash<const C*>::operator()(s.c_str());
-  }
-};
-
-}
-#endif
-#endif
-
 // Hook into boost's type traits
 namespace boost {
 template <class T>

@@ -2417,47 +2417,40 @@ _GLIBCXX_END_NAMESPACE_VERSION
 //
 // Handle interaction with different C++ standard libraries, which
 // expect these types to be in different namespaces.
+
+#define FOLLY_FBSTRING_HASH1(T) \
+  template <> \
+  struct hash< ::folly::basic_fbstring<T> > { \
+    size_t operator()(const ::folly::fbstring& s) const { \
+      return ::folly::hash::fnv32_buf(s.data(), s.size()); \
+    } \
+  };
+
+// The C++11 standard says that these four are defined
+#define FOLLY_FBSTRING_HASH \
+  FOLLY_FBSTRING_HASH1(char) \
+  FOLLY_FBSTRING_HASH1(char16_t) \
+  FOLLY_FBSTRING_HASH1(char32_t) \
+  FOLLY_FBSTRING_HASH1(wchar_t)
+
 namespace std {
 
-template <class C>
-struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
-  size_t operator()(const folly::basic_fbstring<C> & s) const {
-    return hash<const C*>::operator()(s.c_str());
-  }
-};
+FOLLY_FBSTRING_HASH
 
-template <>
-struct hash< ::folly::fbstring> {
-  size_t operator()(const ::folly::fbstring& s) const {
-    return ::folly::hash::fnv32_buf(s.data(), s.size());
-  }
-};
+}  // namespace std
 
-}
-
-#ifndef _LIBSTDCXX_FBSTRING
 #if FOLLY_HAVE_DEPRECATED_ASSOC
 #if defined(_GLIBCXX_SYMVER) && !defined(__BIONIC__)
 namespace __gnu_cxx {
 
-template <class C>
-struct hash<folly::basic_fbstring<C> > : private hash<const C*> {
-  size_t operator()(const folly::basic_fbstring<C> & s) const {
-    return hash<const C*>::operator()(s.c_str());
-  }
-};
+FOLLY_FBSTRING_HASH
 
-template <>
-struct hash< ::folly::fbstring> {
-  size_t operator()(const ::folly::fbstring& s) const {
-    return ::folly::hash::fnv32_buf(s.data(), s.size());
-  }
-};
-
-}
+}  // namespace __gnu_cxx
 #endif // _GLIBCXX_SYMVER && !__BIONIC__
 #endif // FOLLY_HAVE_DEPRECATED_ASSOC
-#endif // _LIBSTDCXX_FBSTRING
+
+#undef FOLLY_FBSTRING_HASH
+#undef FOLLY_FBSTRING_HASH1
 
 #endif // _LIBSTDCXX_FBSTRING
 
