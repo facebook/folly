@@ -20,9 +20,8 @@
 #include <folly/Portability.h>
 
 // None of this is necessary if we're compiling for a target that supports
-// popcnt
-#ifndef __POPCNT__
-
+// popcnt, which includes MSVC
+#if !defined(__POPCNT__) && !defined(_MSC_VER)
 namespace {
 
 int popcount_builtin(unsigned int x) {

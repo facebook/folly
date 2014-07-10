@@ -24,7 +24,14 @@ namespace detail {
 // __builtin_popcount directly, as it's presumably inlined.
 // If not, use runtime detection using __attribute__((ifunc))
 // (see Bits.cpp)
-#ifdef __POPCNT__
+#ifdef _MSC_VER
+inline int popcount(unsigned int x) {
+  return __popcnt(x);
+}
+inline int popcountll(unsigned long long x) {
+  return __popcnt64(x);
+}
+#elif defined(__POPCNT__)
 
 inline int popcount(unsigned int x) {
   return __builtin_popcount(x);

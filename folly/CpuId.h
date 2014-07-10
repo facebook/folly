@@ -30,7 +30,14 @@ namespace folly {
 class CpuId {
  public:
   CpuId() {
-#if FOLLY_X64 || defined(__i386__)
+#ifdef _MSC_VER
+    int reg[4];
+
+    __cpuid((int *)reg, 1);
+    c_ = reg[2];
+    d_ = reg[3];
+
+#elif FOLLY_X64 || defined(__i386__)
     __asm__("cpuid" : "=c"(c_), "=d"(d_) : "a"(1) : "ebx");
 #else
     // On non-Intel, none of these features exist; at least not in the same form

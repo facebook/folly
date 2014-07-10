@@ -57,14 +57,10 @@
 
 #include <folly/Portability.h>
 
-#ifndef __GNUC__
-#error GCC required
-#endif
-
-#ifndef __clang__
+#if !defined(__clang__) && !defined(_MSC_VER)
 #define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #else
-// Unlike GCC, in Clang (as of 3.2) intrinsics aren't constexpr.
+// GCC is the only compiler with intrinsics constexpr.
 #define FOLLY_INTRINSIC_CONSTEXPR const
 #endif
 
@@ -76,6 +72,14 @@
 
 #if FOLLY_HAVE_BYTESWAP_H
 # include <byteswap.h>
+#endif
+
+#ifdef _MSC_VER
+# include <intrin.h>
+# pragma intrinsic(_BitScanForward)
+# pragma intrinsic(_BitScanForward64)
+# pragma intrinsic(_BitScanReverse)
+# pragma intrinsic(_BitScanReverse64)
 #endif
 
 #include <cassert>
@@ -98,7 +102,12 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findFirstSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  return _BitScanForward(&index, x) ? index : 0;
+#else
   return __builtin_ffs(x);
+#endif
 }
 
 template <class T>
@@ -110,7 +119,12 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findFirstSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  return _BitScanForward(&index, x) ? index : 0;
+#else
   return __builtin_ffsl(x);
+#endif
 }
 
 template <class T>
@@ -122,7 +136,12 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findFirstSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  return _BitScanForward64(&index, x) ? index : 0;
+#else
   return __builtin_ffsll(x);
+#endif
 }
 
 template <class T>
@@ -147,7 +166,18 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findLastSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  int clz;
+  if (_BitScanReverse(&index, x)) {
+    clz = static_cast<int>(31 - index);
+  } else {
+    clz = 32;
+  }
+  return x ? 8 * sizeof(unsigned int) - clz : 0;
+#else
   return x ? 8 * sizeof(unsigned int) - __builtin_clz(x) : 0;
+#endif
 }
 
 template <class T>
@@ -159,7 +189,18 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findLastSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  int clz;
+  if (_BitScanReverse(&index, x)) {
+    clz = static_cast<int>(31 - index);
+  } else {
+    clz = 32;
+  }
+  return x ? 8 * sizeof(unsigned int) - clz : 0;
+#else
   return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;
+#endif
 }
 
 template <class T>
@@ -171,7 +212,18 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findLastSet(T x) {
+#ifdef _MSC_VER
+  unsigned long index;
+  unsigned long long clz;
+  if (_BitScanReverse(&index, x)) {
+    clz = static_cast<unsigned long long>(63 - index);
+  } else {
+    clz = 64;
+  }
+  return x ? 8 * sizeof(unsigned long long) - clz : 0;
+#else
   return x ? 8 * sizeof(unsigned long long) - __builtin_clzll(x) : 0;
+#endif
 }
 
 template <class T>
@@ -237,6 +289,8 @@ struct EndianIntBase {
   static T swap(T x);
 };
 
+#ifndef _MSC_VER
+
 /**
  * If we have the bswap_16 macro from byteswap.h, use it; otherwise, provide our
  * own definition.
@@ -254,6 +308,8 @@ our_bswap16(Int16 x) {
 }
 #endif
 
+#endif
+
 #define FB_GEN(t, fn) \
 template<> inline t EndianIntBase<t>::swap(t x) { return fn(x); }
 
@@ -262,12 +318,21 @@ template<> inline t EndianIntBase<t>::swap(t x) { return fn(x); }
 // __builtin_bswap16 for some reason, so we have to provide our own.
 FB_GEN( int8_t,)
 FB_GEN(uint8_t,)
+#ifdef _MSC_VER
+FB_GEN( int64_t, _byteswap_uint64)
+FB_GEN(uint64_t, _byteswap_uint64)
+FB_GEN( int32_t, _byteswap_ulong)
+FB_GEN(uint32_t, _byteswap_ulong)
+FB_GEN( int16_t, _byteswap_ushort)
+FB_GEN(uint16_t, _byteswap_ushort)
+#else
 FB_GEN( int64_t, __builtin_bswap64)
 FB_GEN(uint64_t, __builtin_bswap64)
 FB_GEN( int32_t, __builtin_bswap32)
 FB_GEN(uint32_t, __builtin_bswap32)
 FB_GEN( int16_t, our_bswap16)
 FB_GEN(uint16_t, our_bswap16)
+#endif
 
 #undef FB_GEN
 
