@@ -57,7 +57,7 @@ class State {
   template <typename F>
   void setCallback(F func) {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard<decltype(mutex_)> lock(mutex_);
 
       if (callback_) {
         throw std::logic_error("setCallback called twice");
@@ -71,7 +71,7 @@ class State {
 
   void fulfil(Try<T>&& t) {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard<decltype(mutex_)> lock(mutex_);
 
       if (ready()) {
         throw std::logic_error("fulfil called twice");
@@ -122,13 +122,13 @@ class State {
   }
 
   void deactivate() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     active_ = false;
   }
 
   void activate() {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard<decltype(mutex_)> lock(mutex_);
       active_ = true;
     }
     maybeCallback();
@@ -136,7 +136,7 @@ class State {
 
  private:
   void maybeCallback() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (!calledBack_ &&
         value_ && callback_ && active_) {
       // TODO we should probably try/catch here
@@ -148,7 +148,7 @@ class State {
   void detachOne() {
     bool shouldDelete;
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard<decltype(mutex_)> lock(mutex_);
       detached_++;
       assert(detached_ == 1 || detached_ == 2);
       shouldDelete = (detached_ == 2);
@@ -170,7 +170,7 @@ class State {
   // this lock isn't meant to protect all accesses to members, only the ones
   // that need to be threadsafe: the act of setting value_ and callback_, and
   // seeing if they are set and whether we should then continue.
-  std::mutex mutex_;
+  std::recursive_mutex mutex_;
 };
 
 template <typename... Ts>
