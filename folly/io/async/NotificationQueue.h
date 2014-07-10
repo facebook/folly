@@ -576,6 +576,7 @@ void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t events)
     try {
       if (UNLIKELY(queue_->queue_.empty())) {
         // If there is no message, we've reached the end of the queue, return.
+        setActive(false);
         queue_->spinlock_.unlock();
         return;
       }
