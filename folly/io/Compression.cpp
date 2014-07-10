@@ -49,7 +49,14 @@ Codec::Codec(CodecType type) : type_(type) { }
 
 // Ensure consistent behavior in the nullptr case
 std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
-  return !data->empty() ? doCompress(data) : IOBuf::create(0);
+  uint64_t len = data->computeChainDataLength();
+  if (len == 0) {
+    return IOBuf::create(0);
+  } else if (len > maxUncompressedLength()) {
+    throw std::runtime_error("Codec: uncompressed length too large");
+  }
+
+  return doCompress(data);
 }
 
 std::unique_ptr<IOBuf> Codec::uncompress(const IOBuf* data,
@@ -86,7 +93,7 @@ bool Codec::doNeedsUncompressedLength() const {
 }
 
 uint64_t Codec::doMaxUncompressedLength() const {
-  return std::numeric_limits<uint64_t>::max() - 1;
+  return UNLIMITED_UNCOMPRESSED_LENGTH;
 }
 
 namespace {
@@ -211,9 +218,7 @@ bool LZ4Codec::doNeedsUncompressedLength() const {
 }
 
 uint64_t LZ4Codec::doMaxUncompressedLength() const {
-  // From lz4.h: "Max supported value is ~1.9GB"; I wish we had something
-  // more accurate.
-  return 1.8 * (uint64_t(1) << 30);
+  return LZ4_MAX_INPUT_SIZE;
 }
 
 std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
@@ -270,15 +275,20 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
     }
   } else {
     actualUncompressedLength = uncompressedLength;
-    DCHECK_NE(actualUncompressedLength, UNKNOWN_UNCOMPRESSED_LENGTH);
+    if (actualUncompressedLength == UNKNOWN_UNCOMPRESSED_LENGTH ||
+        actualUncompressedLength > maxUncompressedLength()) {
+      throw std::runtime_error("LZ4Codec: invalid uncompressed length");
+    }
   }
 
-  auto out = IOBuf::create(actualUncompressedLength);
   auto p = cursor.peek();
-  int n = LZ4_uncompress(reinterpret_cast<const char*>(p.first),
-                         reinterpret_cast<char*>(out->writableTail()),
-                         actualUncompressedLength);
-  if (n != p.second) {
+  auto out = IOBuf::create(actualUncompressedLength);
+  int n = LZ4_decompress_safe(reinterpret_cast<const char*>(p.first),
+                              reinterpret_cast<char*>(out->writableTail()),
+                              p.second,
+                              actualUncompressedLength);
+
+  if (n != actualUncompressedLength) {
     throw std::runtime_error(to<std::string>(
         "LZ4 decompression returned invalid value ", n));
   }

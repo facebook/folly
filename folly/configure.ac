@@ -279,7 +279,7 @@ if test "$ac_cv_func_pthread_yield" = "no"; then
    AC_CHECK_FUNCS([sched_yield])
 fi
 
-AC_CHECK_HEADER([lz4.h], AC_CHECK_LIB([lz4], [main]))
+AC_CHECK_HEADER([lz4.h], AC_CHECK_LIB([lz4], [LZ4_decompress_safe]))
 AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
 AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))

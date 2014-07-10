@@ -84,6 +84,7 @@ class Codec {
    * Return the maximum length of data that may be compressed with this codec.
    * NO_COMPRESSION and ZLIB support arbitrary lengths;
    * LZ4 supports up to 1.9GiB; SNAPPY supports up to 4GiB.
+   * May return UNLIMITED_UNCOMPRESSED_LENGTH if unlimited.
    */
   uint64_t maxUncompressedLength() const;
 
@@ -120,6 +121,7 @@ class Codec {
    * an empty IOBuf chain will return an empty IOBuf chain.
    */
   static constexpr uint64_t UNKNOWN_UNCOMPRESSED_LENGTH = uint64_t(-1);
+  static constexpr uint64_t UNLIMITED_UNCOMPRESSED_LENGTH = uint64_t(-2);
 
   std::unique_ptr<IOBuf> uncompress(
       const IOBuf* data,
