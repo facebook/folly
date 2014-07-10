@@ -49,7 +49,8 @@ struct HasLockUnlock {
   enum { value = IsOneOf<T,
          std::mutex, std::recursive_mutex,
          boost::mutex, boost::recursive_mutex, boost::shared_mutex
-#ifndef __APPLE__ // OSX doesn't have timed mutexes
+// OSX and Cygwin don't have timed mutexes
+#if !defined(__APPLE__) && !defined(__CYGWIN__)
         ,std::timed_mutex, std::recursive_timed_mutex,
          boost::timed_mutex, boost::recursive_timed_mutex
 #endif
@@ -97,7 +98,8 @@ acquireReadWrite(T& mutex) {
   mutex.lock();
 }
 
-#ifndef __APPLE__ // OSX doesn't have timed mutexes
+// OSX and Cygwin don't have timed mutexes
+#if !defined(__APPLE__) && !defined(__CYGWIN__)
 /**
  * Acquires a mutex for reading and writing with timeout by calling
  * .try_lock_for(). This applies to two of the std mutex classes as
