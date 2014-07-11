@@ -393,10 +393,6 @@ bool EventBase::bumpHandlingTime() {
 void EventBase::terminateLoopSoon() {
   VLOG(5) << "EventBase(): Received terminateLoopSoon() command.";
 
-  if (!isRunning()) {
-    return;
-  }
-
   // Set stop to true, so the event loop will know to exit.
   // TODO: We should really use an atomic operation here with a release
   // barrier.

@@ -184,7 +184,11 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
    * to wake up and return in the EventBase loop thread.  terminateLoopSoon()
    * may also be called from the loop thread itself (for example, a
    * EventHandler or AsyncTimeout callback may call terminateLoopSoon() to
-   * cause the loop to exit after the callback returns.)
+   * cause the loop to exit after the callback returns.)  If the loop is not
+   * running, this will cause the next call to loop to terminate soon after
+   * starting.  If a loop runs out of work (and so terminates on its own)
+   * concurrently with a call to terminateLoopSoon(), this may cause a race
+   * condition.
    *
    * Note that the caller is responsible for ensuring that cleanup of all event
    * callbacks occurs properly.  Since terminateLoopSoon() causes the loop to
