@@ -217,6 +217,13 @@ bool LZ4Codec::doNeedsUncompressedLength() const {
   return !encodeSize();
 }
 
+// The value comes from lz4.h in lz4-r117, but older versions of lz4 don't
+// define LZ4_MAX_INPUT_SIZE (even though the max size is the same), so do it
+// here.
+#ifndef LZ4_MAX_INPUT_SIZE
+# define LZ4_MAX_INPUT_SIZE 0x7E000000
+#endif
+
 uint64_t LZ4Codec::doMaxUncompressedLength() const {
   return LZ4_MAX_INPUT_SIZE;
 }
