@@ -453,6 +453,7 @@ void toLowerAscii(char* str, size_t length) {
   n = std::min(n, length);
   size_t offset = 0;
   if (n != 0) {
+    n = std::min(4 - n, length);
     do {
       toLowerAscii8(str[offset]);
       offset++;
@@ -461,7 +462,7 @@ void toLowerAscii(char* str, size_t length) {
 
   n = (size_t)(str + offset);
   n &= kAlignMask64;
-  if ((n != 0) && (offset + 4 < length)) {
+  if ((n != 0) && (offset + 4 <= length)) {
     // The next address is 32-bit aligned but not 64-bit aligned.
     // Convert the next 4 bytes in order to get to the 64-bit aligned
     // part of the input.
@@ -470,13 +471,13 @@ void toLowerAscii(char* str, size_t length) {
   }
 
   // Convert 8 characters at a time
-  while (offset + 8 < length) {
+  while (offset + 8 <= length) {
     toLowerAscii64(*(uint64_t*)(str + offset));
     offset += 8;
   }
 
   // Convert 4 characters at a time
-  while (offset + 4 < length) {
+  while (offset + 4 <= length) {
     toLowerAscii32(*(uint32_t*)(str + offset));
     offset += 4;
   }
