@@ -42,8 +42,7 @@ sudo apt-get install \
     make \
     zlib1g-dev \
     binutils-dev \
-    libjemalloc-dev \
-    libgtest-dev
+    libjemalloc-dev
 
 Ubuntu 14.04 LTS
 ----------------
