@@ -241,6 +241,14 @@ void toAppend(char value, Tgt * result) {
   *result += value;
 }
 
+template<class T>
+constexpr typename std::enable_if<
+  std::is_same<T, char>::value,
+  size_t>::type
+estimateSpaceNeeded(T) {
+  return 1;
+}
+
 /**
  * Ubiquitous helper template for writing string appenders
  */
@@ -263,6 +271,37 @@ toAppend(Src value, Tgt * result) {
   if (c) {
     result->append(value);
   }
+}
+
+template<class Src>
+typename std::enable_if<
+  std::is_convertible<Src, const char*>::value,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  const char *c = value;
+  if (c) {
+    return folly::StringPiece(value).size();
+  };
+  return 0;
+}
+
+template<class Src>
+typename std::enable_if<
+  (std::is_convertible<Src, folly::StringPiece>::value ||
+  IsSomeString<Src>::value) &&
+  !std::is_convertible<Src, const char*>::value,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  return folly::StringPiece(value).size();
+}
+
+template<class Src>
+typename std::enable_if<
+  std::is_pointer<Src>::value &&
+  IsSomeString<std::remove_pointer<Src>>::value,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  return value->size();
 }
 
 /**
@@ -329,6 +368,22 @@ toAppend(unsigned __int128 value, Tgt * result) {
   result->append(buffer + p, buffer + sizeof(buffer));
 }
 
+template<class T>
+constexpr typename std::enable_if<
+  std::is_same<T, __int128>::value,
+  size_t>::type
+estimateSpaceNeeded(T) {
+  return detail::digitsEnough<__int128>();
+}
+
+template<class T>
+constexpr typename std::enable_if<
+  std::is_same<T, unsigned __int128>::value,
+  size_t>::type
+estimateSpaceNeeded(T) {
+  return detail::digitsEnough<unsigned __int128>();
+}
+
 #endif
 
 /**
@@ -353,6 +408,19 @@ toAppend(Src value, Tgt * result) {
   }
 }
 
+template <class Src>
+typename std::enable_if<
+  std::is_integral<Src>::value && std::is_signed<Src>::value
+  && sizeof(Src) >= 4 && sizeof(Src) < 16,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  if (value < 0) {
+    return 1 + digits10(static_cast<uint64_t>(-value));
+  }
+
+  return digits10(static_cast<uint64_t>(value));
+}
+
 /**
  * As above, but for uint32_t and uint64_t.
  */
@@ -363,6 +431,15 @@ typename std::enable_if<
 toAppend(Src value, Tgt * result) {
   char buffer[20];
   result->append(buffer, buffer + uint64ToBufferUnsafe(value, buffer));
+}
+
+template <class Src>
+typename std::enable_if<
+  std::is_integral<Src>::value && !std::is_signed<Src>::value
+  && sizeof(Src) >= 4 && sizeof(Src) < 16,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  return digits10(value);
 }
 
 /**
@@ -380,6 +457,19 @@ toAppend(Src value, Tgt * result) {
   toAppend<Tgt>(static_cast<Intermediate>(value), result);
 }
 
+template <class Src>
+typename std::enable_if<
+  std::is_integral<Src>::value
+  && sizeof(Src) < 4
+  && !std::is_same<Src, char>::value,
+  size_t>::type
+estimateSpaceNeeded(Src value) {
+  typedef typename
+    std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::type
+    Intermediate;
+  return estimateSpaceNeeded(static_cast<Intermediate>(value));
+}
+
 #if defined(__clang__) || __GNUC_PREREQ(4, 7)
 // std::underlying_type became available by gcc 4.7.0
 
@@ -392,6 +482,14 @@ typename std::enable_if<
 toAppend(Src value, Tgt * result) {
   toAppend(
       static_cast<typename std::underlying_type<Src>::type>(value), result);
+}
+
+template <class Src>
+typename std::enable_if<
+  std::is_enum<Src>::value, size_t>::type
+estimateSpaceNeeded(Src value) {
+  return estimateSpaceNeeded(
+      static_cast<typename std::underlying_type<Src>::type>(value));
 }
 
 #else
@@ -414,6 +512,25 @@ toAppend(Src value, Tgt * result) {
       toAppend(static_cast<unsigned int>(value), result);
     } else {
       toAppend(static_cast<unsigned long>(value), result);
+    }
+  }
+}
+
+template <class Src>
+typename std::enable_if<
+  std::is_enum<Src>::value, size_t>::type
+estimateSpaceNeeded(Src value) {
+  /* static */ if (Src(-1) < 0) {
+    /* static */ if (sizeof(Src) <= sizeof(int)) {
+      return estimateSpaceNeeded(static_cast<int>(value));
+    } else {
+      return estimateSpaceNeeded(static_cast<long>(value));
+    }
+  } else {
+    /* static */ if (sizeof(Src) <= sizeof(int)) {
+      return estimateSpaceNeeded(static_cast<unsigned int>(value));
+    } else {
+      return estimateSpaceNeeded(static_cast<unsigned long>(value));
     }
   }
 }
@@ -474,17 +591,111 @@ toAppend(Src value, Tgt * result) {
 }
 
 /**
- * Variadic conversion to string. Appends each element in turn.
+ * Very primitive, lets say its our best effort
  */
+template <class Src>
+typename std::enable_if<
+  std::is_floating_point<Src>::value, size_t>::type
+estimateSpaceNeeded(Src value) {
+  size_t sofar = 0;
+  if (value < 0) {
+    ++sofar;
+    value = -value;
+  }
+
+  if (value < 1) {
+    return sofar + 10; // lets assume 0 + '.' + 8 precision digits
+  }
+
+  if (value < static_cast<double>(std::numeric_limits<uint64_t>::max())) {
+    sofar += digits10(static_cast<uint64_t>(value));
+  } else {
+    return 64; // give up, it will be more than 23 anyway
+  }
+
+  return sofar + 10; // integral part + '.' + 8 precision digits
+}
+
+/**
+ * This can be specialized, together with adding specialization
+ * for estimateSpaceNeed for your type, so that we allocate
+ * as much as you need instead of the default
+ */
+template<class Src>
+struct HasLengthEstimator : std::false_type {};
+
+template <class Src>
+constexpr typename std::enable_if<
+  !std::is_fundamental<Src>::value
+  && !IsSomeString<Src>::value
+  && !std::is_convertible<Src, const char*>::value
+  && !std::is_convertible<Src, StringPiece>::value
+  && !std::is_enum<Src>::value
+  && !HasLengthEstimator<Src>::value,
+  size_t>::type
+estimateSpaceNeeded(const Src&) {
+  return sizeof(Src) + 1; // dumbest best effort ever?
+}
+
+namespace detail {
+
+inline size_t estimateSpaceToReserve(size_t sofar) {
+  return sofar;
+}
+
+template <class T, class... Ts>
+size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
+  return estimateSpaceToReserve(sofar + estimateSpaceNeeded(v), vs...);
+}
+
+template<class T>
+size_t estimateSpaceToReserve(size_t sofar, const T& v) {
+  return sofar + estimateSpaceNeeded(v);
+}
+
+template<class...Ts>
+void reserveInTarget(const Ts&...vs) {
+  getLastElement(vs...)->reserve(detail::estimateSpaceToReserve(0, vs...));
+}
+
+/**
+ * Variadic base case: append one element
+ */
+template <class T, class Tgt>
+typename std::enable_if<
+  IsSomeString<typename std::remove_pointer<Tgt>::type>
+  ::value>::type
+toAppendStrImpl(const T& v, Tgt result) {
+  toAppend(v, result);
+}
+
 template <class T, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 2
   && IsSomeString<
   typename std::remove_pointer<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
-toAppend(const T& v, const Ts&... vs) {
-  toAppend(v, detail::getLastElement(vs...));
-  toAppend(vs...);
+toAppendStrImpl(const T& v, const Ts&... vs) {
+  toAppend(v, getLastElement(vs...));
+  toAppendStrImpl(vs...);
+}
+} // folly::detail
+
+
+/**
+ * Variadic conversion to string. Appends each element in turn.
+ * If we have two or more things to append, we will reserve
+ * the space for them (at least we will try).
+ */
+template <class... Ts>
+typename std::enable_if<sizeof...(Ts) >= 3
+  && IsSomeString<
+  typename std::remove_pointer<
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
+toAppend(const Ts&... vs) {
+  detail::reserveInTarget(vs...);
+  detail::toAppendStrImpl(vs...);
 }
 
 /**

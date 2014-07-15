@@ -958,6 +958,33 @@ struct StringVariadicToBM {
   }
 };
 
+static size_t bigInt = 11424545345345;
+static size_t smallInt = 104;
+static char someString[] = "this is some nice string";
+static char otherString[] = "this is a long string, so it's not so nice";
+static char reallyShort[] = "meh";
+static std::string stdString = "std::strings are very nice";
+static float fValue = 1.2355;
+static double dValue = 345345345.435;
+
+BENCHMARK(preallocateTestNoFloat, n) {
+  for (int i=0; i < n; ++i) {
+    auto val1 = to<std::string>(bigInt, someString, stdString, otherString);
+    auto val3 = to<std::string>(reallyShort, smallInt);
+    auto val2 = to<std::string>(bigInt, stdString);
+    auto val4 = to<std::string>(bigInt, stdString, dValue, otherString);
+    auto val5 = to<std::string>(bigInt, someString, reallyShort);
+  }
+}
+
+BENCHMARK(preallocateTestFloat, n) {
+  for (int i=0; i < n; ++i) {
+    auto val1 = to<std::string>(stdString, ',', fValue, dValue);
+    auto val2 = to<std::string>(stdString, ',', dValue);
+  }
+}
+BENCHMARK_DRAW_LINE();
+
 static const StringIdenticalToBM<std::string> stringIdenticalToBM;
 static const StringVariadicToBM<std::string> stringVariadicToBM;
 static const StringIdenticalToBM<fbstring> fbstringIdenticalToBM;
