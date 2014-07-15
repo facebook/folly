@@ -25,6 +25,7 @@
 #include <gtest/gtest.h>
 #include <iterator>
 #include <limits>
+#include <random>
 #include <string>
 #include <sys/mman.h>
 #include <vector>
@@ -1041,4 +1042,124 @@ TEST(RangeFunc, Array) {
 TEST(RangeFunc, CArray) {
   int x[] {1, 2, 3, 4};
   testRangeFunc(x, 4);
+}
+
+std::string get_rand_str(
+    int size, std::uniform_int_distribution<>& dist, std::mt19937& gen) {
+  std::string ret(size, '\0');
+  for (int i=0; i<size; ++i) {
+    ret[i] = static_cast<char>(dist(gen));
+  }
+
+  return ret;
+}
+
+namespace folly {
+bool operator==(MutableStringPiece mp, StringPiece sp) {
+  return mp.compare(sp) == 0;
+}
+
+bool operator==(StringPiece sp, MutableStringPiece mp) {
+  return mp.compare(sp) == 0;
+}
+}
+
+TEST(ReplaceAt, exhaustiveTest) {
+  char input[] = "this is nice and long input";
+  auto msp = MutableStringPiece(input);
+  auto str = std::string(input);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dist('a', 'z');
+
+  for (int i=0; i < 100; ++i) {
+    for (int j = 1; j <= msp.size(); ++j) {
+      auto replacement = get_rand_str(j, dist, gen);
+      for (int pos=0; pos < msp.size() - j; ++pos) {
+        msp.replaceAt(pos, replacement);
+        str.replace(pos, replacement.size(), replacement);
+        EXPECT_EQ(msp.compare(str), 0);
+      }
+    }
+  }
+
+  // too far
+  EXPECT_EQ(msp.replaceAt(msp.size() - 2, StringPiece("meh")), false);
+}
+
+TEST(ReplaceAll, basicTest) {
+  char input[] = "this is nice and long input";
+  auto orig = std::string(input);
+  auto msp = MutableStringPiece(input);
+
+  EXPECT_EQ(msp.replaceAll("is", "si"), 2);
+  EXPECT_EQ("thsi si nice and long input", msp);
+  EXPECT_EQ(msp.replaceAll("si", "is"), 2);
+  EXPECT_EQ(msp, orig);
+
+  EXPECT_EQ(msp.replaceAll("abcd", "efgh"), 0); // nothing to replace
+  EXPECT_EQ(msp, orig);
+
+  // at the very beginning
+  EXPECT_EQ(msp.replaceAll("this", "siht"), 1);
+  EXPECT_EQ("siht is nice and long input", msp);
+  EXPECT_EQ(msp.replaceAll("siht", "this"), 1);
+  EXPECT_EQ(msp, orig);
+
+  // at the very end
+  EXPECT_EQ(msp.replaceAll("input", "soput"), 1);
+  EXPECT_EQ("this is nice and long soput", msp);
+  EXPECT_EQ(msp.replaceAll("soput", "input"), 1);
+  EXPECT_EQ(msp, orig);
+
+  // all spaces
+  EXPECT_EQ(msp.replaceAll(" ", "@"), 5);
+  EXPECT_EQ("this@is@nice@and@long@input", msp);
+  EXPECT_EQ(msp.replaceAll("@", " "), 5);
+  EXPECT_EQ(msp, orig);
+}
+
+TEST(ReplaceAll, randomTest) {
+  char input[] = "abcdefghijklmnoprstuwqz"; // no pattern repeata inside
+  auto orig = std::string(input);
+  auto msp = MutableStringPiece(input);
+
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> dist('A', 'Z');
+
+  for (int i=0; i < 100; ++i) {
+    for (int j = 1; j <= orig.size(); ++j) {
+      auto replacement = get_rand_str(j, dist, gen);
+      for (int pos=0; pos < msp.size() - j; ++pos) {
+        auto piece = orig.substr(pos, j);
+        EXPECT_EQ(msp.replaceAll(piece, replacement), 1);
+        EXPECT_EQ(msp.find(replacement), pos);
+        EXPECT_EQ(msp.replaceAll(replacement, piece), 1);
+        EXPECT_EQ(msp, orig);
+      }
+    }
+  }
+}
+
+TEST(ReplaceAll, BadArg) {
+  int count = 0;
+  auto fst = "longer";
+  auto snd = "small";
+  char input[] = "meh meh meh";
+  auto all =  MutableStringPiece(input);
+
+  try {
+    all.replaceAll(fst, snd);
+  } catch (std::invalid_argument&) {
+    ++count;
+  }
+
+  try {
+    all.replaceAll(snd, fst);
+  } catch (std::invalid_argument&) {
+    ++count;
+  }
+
+  EXPECT_EQ(count, 2);
 }
