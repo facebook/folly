@@ -19,16 +19,17 @@
 
 #include <folly/Range.h>
 
+#include <sys/mman.h>
 #include <array>
-#include <boost/range/concepts.hpp>
 #include <cstdlib>
-#include <gtest/gtest.h>
 #include <iterator>
 #include <limits>
 #include <random>
 #include <string>
-#include <sys/mman.h>
+#include <type_traits>
 #include <vector>
+#include <boost/range/concepts.hpp>
+#include <gtest/gtest.h>
 
 namespace folly { namespace detail {
 
@@ -43,6 +44,8 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
 
 using namespace folly;
 using namespace std;
+
+static_assert(std::is_literal_type<StringPiece>::value, "");
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
 

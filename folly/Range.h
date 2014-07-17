@@ -163,21 +163,21 @@ public:
   static const size_type npos;
 
   // Works for all iterators
-  Range() : b_(), e_() {
+  constexpr Range() : b_(), e_() {
   }
 
 public:
   // Works for all iterators
-  Range(Iter start, Iter end) : b_(start), e_(end) {
+  constexpr Range(Iter start, Iter end) : b_(start), e_(end) {
   }
 
   // Works only for random-access iterators
-  Range(Iter start, size_t size)
+  constexpr Range(Iter start, size_t size)
       : b_(start), e_(start + size) { }
 
 #if FOLLY_HAVE_CONSTEXPR_STRLEN
   // Works only for Range<const char*>
-  /* implicit */ constexpr Range(Iter str)
+  constexpr /* implicit */ Range(Iter str)
       : b_(str), e_(str + strlen(str)) {}
 #else
   // Works only for Range<const char*>
@@ -291,7 +291,7 @@ public:
   template <class OtherIter, typename std::enable_if<
      (!std::is_same<Iter, OtherIter>::value &&
       std::is_convertible<OtherIter, Iter>::value), int>::type = 0>
-  /* implicit */ Range(const Range<OtherIter>& other)
+  constexpr /* implicit */ Range(const Range<OtherIter>& other)
     : b_(other.begin()),
       e_(other.end()) {
   }
@@ -302,7 +302,7 @@ public:
     (!std::is_same<Iter, OtherIter>::value &&
      !std::is_convertible<OtherIter, Iter>::value &&
      std::is_constructible<Iter, const OtherIter&>::value), int>::type = 0>
-  explicit Range(const Range<OtherIter>& other)
+  constexpr explicit Range(const Range<OtherIter>& other)
     : b_(other.begin()),
       e_(other.end()) {
   }
