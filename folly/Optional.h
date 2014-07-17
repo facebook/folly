@@ -136,11 +136,13 @@ class Optional {
   }
 
   void assign(Optional&& src) {
-    if (src.hasValue()) {
-      assign(std::move(src.value()));
-      src.clear();
-    } else {
-      clear();
+    if (this != &src) {
+      if (src.hasValue()) {
+        assign(std::move(src.value()));
+        src.clear();
+      } else {
+        clear();
+      }
     }
   }
 

@@ -379,6 +379,16 @@ TEST(Optional, MakeOptional) {
   EXPECT_EQ(**optIntPtr, 3);
 }
 
+TEST(Optional, SelfAssignment) {
+  Optional<int> a = 42;
+  a = a;
+  ASSERT_TRUE(a.hasValue() && a.value() == 42);
+
+  Optional<int> b = 23333333;
+  b = std::move(b);
+  ASSERT_TRUE(b.hasValue() && b.value() == 23333333);
+}
+
 class ContainsOptional {
  public:
   ContainsOptional() { }
