@@ -448,7 +448,8 @@ void splitTo(const Delim& delimiter,
 template <class T>
 using IsSplitTargetType = std::integral_constant<bool,
   std::is_arithmetic<T>::value ||
-  std::is_same<T, StringPiece>::value>;
+  std::is_same<T, StringPiece>::value ||
+  IsSomeString<T>::value>;
 
 template<bool exact = true,
          class Delim,
