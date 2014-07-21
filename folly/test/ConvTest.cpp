@@ -936,6 +936,7 @@ void u2aAppendFollyBM(unsigned int n, uint64_t value) {
 
 template <class String>
 struct StringIdenticalToBM {
+  StringIdenticalToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
     BENCHMARK_SUSPEND { s.append(len, '0'); }
@@ -948,6 +949,7 @@ struct StringIdenticalToBM {
 
 template <class String>
 struct StringVariadicToBM {
+  StringVariadicToBM() {}
   void operator()(unsigned int n, size_t len) const {
     String s;
     BENCHMARK_SUSPEND { s.append(len, '0'); }
