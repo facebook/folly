@@ -3,12 +3,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT(folly, 0.1, folly@fb.com)
 
-m4_define([folly_libtool_current], [1])
+m4_define([folly_version_str], m4_esyscmd_s([cat VERSION]))
+
+AC_INIT([folly], m4_translit(folly_version_str, [:], [.]), [folly@fb.com])
 
 # We assume all revisions are backwards incompatible.
-LT_VERSION=folly_libtool_current:0:0
+LT_VERSION=folly_version_str:0
 AC_SUBST(LT_VERSION)
 
 AC_CONFIG_SRCDIR([Likely.h])

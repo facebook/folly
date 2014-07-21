@@ -245,6 +245,7 @@ libfolly_la_SOURCES = \
 	ThreadCachedArena.cpp \
 	TimeoutQueue.cpp \
 	Uri.cpp \
+	Version.cpp \
 	wangle/InlineExecutor.cpp \
 	wangle/ManualExecutor.cpp \
 	wangle/ThreadGate.cpp \
