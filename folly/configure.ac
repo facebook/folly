@@ -10,7 +10,7 @@ AC_INIT([folly], m4_translit(folly_version_str, [:], [.]), [folly@fb.com])
 
 # We assume all revisions are backwards incompatible.
 LT_VERSION=folly_version_str:0
-AC_SUBST(LT_VERSION)
+AC_SUBST([LT_VERSION])
 
 AC_CONFIG_SRCDIR([Likely.h])
 AC_CONFIG_HEADERS([config.h])
