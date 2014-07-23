@@ -72,7 +72,6 @@ void Promise<T>::detach() {
 template <class T>
 Future<T> Promise<T>::getFuture() {
   throwIfRetrieved();
-  throwIfFulfilled();
   retrieved_ = true;
   return Future<T>(state_);
 }

@@ -788,3 +788,15 @@ TEST(Future, viaIsCold) {
   EXPECT_EQ(1, x.run());
   EXPECT_EQ(1, count);
 }
+
+TEST(Future, getFuture_after_setValue) {
+  Promise<int> p;
+  p.setValue(42);
+  EXPECT_EQ(42, p.getFuture().value());
+}
+
+TEST(Future, getFuture_after_setException) {
+  Promise<void> p;
+  p.fulfil([]() -> void { throw std::logic_error("foo"); });
+  EXPECT_THROW(p.getFuture().value(), std::logic_error);
+}
