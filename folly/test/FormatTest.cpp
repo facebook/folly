@@ -240,6 +240,7 @@ TEST(Format, Float) {
   EXPECT_EQ("0.01", sformat("{:.2f}", 0.01));
   EXPECT_EQ("0.00", sformat("{:.2f}", 0.001));
 
+  EXPECT_EQ("100000. !== 100000", sformat("{:.} !== {:.}", 100000.0, 100000));
   EXPECT_EQ("100000.", sformat("{:.}", 100000.0));
   EXPECT_EQ("1e+6", sformat("{:.}", 1000000.0));
   EXPECT_EQ(" 100000.", sformat("{:8.}", 100000.0));
