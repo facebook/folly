@@ -124,7 +124,7 @@ Format string (`vformat`):
 - `format_spec`: format specification, see below
 
 Format specification:
-`[[fill] align] [sign] ["#"] ["0"] [width] [","] ["." precision] [type]`
+`[[fill] align] [sign] ["#"] ["0"] [width] [","] ["." precision] ["."] [type]`
 
 - `fill` (may only be specified if `align` is also specified): pad with this
   character ('` `' (space) or '`0`' (zero) might be useful; space is default)
@@ -149,6 +149,8 @@ Format specification:
     - for floating point values, number of digits after decimal point ('`f`' or
       '`F`' presentation) or number of significant digits ('`g`' or '`G`')
     - for others, maximum field size (truncate subsequent characters)
+- '`.`' (when used after precision or in lieu of precison): Forces a trailing
+  decimal point to make it clear this is a floating point value.
 - `type`: presentation format, see below
 
 Presentation formats:

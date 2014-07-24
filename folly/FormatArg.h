@@ -46,6 +46,7 @@ struct FormatArg {
       sign(Sign::DEFAULT),
       basePrefix(false),
       thousandsSeparator(false),
+      trailingDot(false),
       width(kDefaultWidth),
       precision(kDefaultPrecision),
       presentation(kDefaultPresentation),
@@ -127,6 +128,11 @@ struct FormatArg {
    * Output thousands separator (comma)
    */
   bool thousandsSeparator;
+
+  /**
+   * Force a trailing decimal on doubles which could be rendered as ints
+   */
+  bool trailingDot;
 
   /**
    * Field width

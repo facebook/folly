@@ -649,6 +649,11 @@ class FormatValue<double> {
       break;
     };
 
+    auto flags =
+        DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
+        (arg.trailingDot ? DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT
+                         : 0);
+
     double val = val_;
     switch (arg.presentation) {
     case '%':
@@ -660,13 +665,14 @@ class FormatValue<double> {
             DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {
           arg.precision = DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
         }
-        DoubleToStringConverter conv(
-            DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN,
-            infinitySymbol,
-            nanSymbol,
-            exponentSymbol,
-            -4, arg.precision,
-            0, 0);
+        DoubleToStringConverter conv(flags,
+                                     infinitySymbol,
+                                     nanSymbol,
+                                     exponentSymbol,
+                                     -4,
+                                     arg.precision,
+                                     0,
+                                     0);
         arg.enforce(conv.ToFixed(val, arg.precision, &builder),
                     "fixed double conversion failed");
       }
@@ -678,13 +684,14 @@ class FormatValue<double> {
           arg.precision = DoubleToStringConverter::kMaxExponentialDigits;
         }
 
-        DoubleToStringConverter conv(
-            DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN,
-            infinitySymbol,
-            nanSymbol,
-            exponentSymbol,
-            -4, arg.precision,
-            0, 0);
+        DoubleToStringConverter conv(flags,
+                                     infinitySymbol,
+                                     nanSymbol,
+                                     exponentSymbol,
+                                     -4,
+                                     arg.precision,
+                                     0,
+                                     0);
         arg.enforce(conv.ToExponential(val, arg.precision, &builder));
       }
       break;
@@ -698,13 +705,14 @@ class FormatValue<double> {
                    DoubleToStringConverter::kMaxPrecisionDigits) {
           arg.precision = DoubleToStringConverter::kMaxPrecisionDigits;
         }
-        DoubleToStringConverter conv(
-            DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN,
-            infinitySymbol,
-            nanSymbol,
-            exponentSymbol,
-            -4, arg.precision,
-            0, 0);
+        DoubleToStringConverter conv(flags,
+                                     infinitySymbol,
+                                     nanSymbol,
+                                     exponentSymbol,
+                                     -4,
+                                     arg.precision,
+                                     0,
+                                     0);
         arg.enforce(conv.ToShortest(val, &builder));
       }
       break;
