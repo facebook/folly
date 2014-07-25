@@ -91,6 +91,26 @@ Uri::Uri(StringPiece str) : port_(0) {
   }
 
   query_ = submatch(match, 3);
+  if (!query_.empty()) {
+    // Parse query string
+    static const boost::regex queryParamRegex(
+      "(^|&)([^=&]*)=?([^=&]*)(?=(&|$))");
+    boost::cregex_iterator paramBeginItr(
+      match[3].first,
+      match[3].second,
+      queryParamRegex);
+    boost::cregex_iterator paramEndItr;
+    for(auto itr = paramBeginItr; itr != paramEndItr; itr++) {
+      if (itr->length(2) == 0) {
+        // key is empty, ignore it
+        continue;
+      }
+      queryParams_.emplace_back(
+        fbstring((*itr)[2].first, (*itr)[2].second), // parameter name
+        fbstring((*itr)[3].first, (*itr)[3].second)  // parameter value
+      );
+    }
+  }
   fragment_ = submatch(match, 4);
 }
 

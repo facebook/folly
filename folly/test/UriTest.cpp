@@ -19,6 +19,7 @@
 #include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <map>
 
 using namespace folly;
 
@@ -253,6 +254,73 @@ TEST(Uri, Simple) {
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
     EXPECT_EQ(s, u.fbstr());
+  }
+
+  {
+    // test query parameters
+    fbstring s("http://localhost?&key1=foo&key2=&key3&=bar&=bar=&");
+    Uri u(s);
+    auto paramsList = u.getQueryParams();
+    std::map<fbstring, fbstring> params;
+    for (auto& param : paramsList) {
+      params[param.first] = param.second;
+    }
+    EXPECT_EQ(3, params.size());
+    EXPECT_EQ("foo", params["key1"]);
+    EXPECT_NE(params.end(), params.find("key2"));
+    EXPECT_EQ("", params["key2"]);
+    EXPECT_NE(params.end(), params.find("key3"));
+    EXPECT_EQ("", params["key3"]);
+  }
+
+  {
+    // test query parameters
+    fbstring s("http://localhost?&&&&&&&&&&&&&&&");
+    Uri u(s);
+    auto params = u.getQueryParams();
+    EXPECT_TRUE(params.empty());
+  }
+
+  {
+    // test query parameters
+    fbstring s("http://localhost?&=invalid_key&key2&key3=foo");
+    Uri u(s);
+    auto paramsList = u.getQueryParams();
+    std::map<fbstring, fbstring> params;
+    for (auto& param : paramsList) {
+      params[param.first] = param.second;
+    }
+    EXPECT_EQ(2, params.size());
+    EXPECT_NE(params.end(), params.find("key2"));
+    EXPECT_EQ("", params["key2"]);
+    EXPECT_EQ("foo", params["key3"]);
+  }
+
+  {
+    // test query parameters
+    fbstring s("http://localhost?&key1=====&&=key2&key3=");
+    Uri u(s);
+    auto paramsList = u.getQueryParams();
+    std::map<fbstring, fbstring> params;
+    for (auto& param : paramsList) {
+      params[param.first] = param.second;
+    }
+    EXPECT_EQ(1, params.size());
+    EXPECT_NE(params.end(), params.find("key3"));
+    EXPECT_EQ("", params["key3"]);
+  }
+
+  {
+    // test query parameters
+    fbstring s("http://localhost?key1=foo=bar&key2=foobar&");
+    Uri u(s);
+    auto paramsList = u.getQueryParams();
+    std::map<fbstring, fbstring> params;
+    for (auto& param : paramsList) {
+      params[param.first] = param.second;
+    }
+    EXPECT_EQ(1, params.size());
+    EXPECT_EQ("foobar", params["key2"]);
   }
 
   {

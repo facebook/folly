@@ -18,6 +18,7 @@
 #define FOLLY_URI_H_
 
 #include <folly/String.h>
+#include <vector>
 
 namespace folly {
 
@@ -77,6 +78,26 @@ class Uri {
 
   void setPort(uint16_t port) {port_ = port;}
 
+  /**
+   * Get query parameters as key-value pairs.
+   * e.g. for URI containing query string:  key1=foo&key2=&key3&=bar&=bar=
+   * In returned list, there are 3 entries:
+   *     "key1" => "foo"
+   *     "key2" => ""
+   *     "key3" => ""
+   * Parts "=bar" and "=bar=" are ignored, as they are not valid query
+   * parameters. "=bar" is missing parameter name, while "=bar=" has more than
+   * one equal signs, we don't know which one is the delimiter for key and
+   * value.
+   *
+   * @return  query parameter key-value pairs in a vector, each element is a
+   *          pair of which the first element is parameter name and the second
+   *          one is parameter value
+   */
+  const std::vector<std::pair<fbstring, fbstring>>& getQueryParams() const {
+    return queryParams_;
+  };
+
  private:
   fbstring scheme_;
   fbstring username_;
@@ -86,6 +107,7 @@ class Uri {
   fbstring path_;
   fbstring query_;
   fbstring fragment_;
+  std::vector<std::pair<fbstring, fbstring>> queryParams_;
 };
 
 }  // namespace folly
