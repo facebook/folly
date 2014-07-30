@@ -34,11 +34,29 @@
 // std::weak_ptr<MyExpensiveService> instance =
 //     Singleton<MyExpensiveService>::get_weak();
 //
+// You also can directly access it by the variable defining the
+// singleton rather than via get(), and even treat that variable like
+// a smart pointer (dereferencing it or using the -> operator).
+//
+// Please note, however, that all non-weak_ptr interfaces are
+// inherently subject to races with destruction.  Use responsibly.
+//
 // The singleton will be created on demand.  If the constructor for
 // MyExpensiveService actually makes use of *another* Singleton, then
 // the right thing will happen -- that other singleton will complete
 // construction before get() returns.  However, in the event of a
 // circular dependency, a runtime error will occur.
+//
+// You can have multiple singletons of the same underlying type, but
+// each must be given a unique name:
+//
+// namespace {
+// folly::Singleton<MyExpensiveService> s1("name1");
+// folly::Singleton<MyExpensiveService> s2("name2");
+// }
+// ...
+// MyExpensiveService* svc1 = Singleton<MyExpensiveService>::get("name1");
+// MyExpensiveService* svc2 = Singleton<MyExpensiveService>::get("name2");
 //
 // By default, the singleton instance is constructed via new and
 // deleted via delete, but this is configurable:
@@ -59,6 +77,7 @@
 
 #pragma once
 #include <folly/Exception.h>
+#include <folly/Hash.h>
 
 #include <vector>
 #include <mutex>
@@ -92,6 +111,54 @@ namespace folly {
 // In general, you don't need to worry about any of the above; just
 // ensure registrationComplete() is called near the top of your main()
 // function, otherwise no singletons can be instantiated.
+
+namespace detail {
+
+const char* const kDefaultTypeDescriptorName = "(default)";
+// A TypeDescriptor is the unique handle for a given singleton.  It is
+// a combinaiton of the type and of the optional name, and is used as
+// a key in unordered_maps.
+class TypeDescriptor {
+ public:
+  TypeDescriptor(const std::type_info& ti, std::string name)
+      : ti_(ti), name_(name) {
+    if (name_ == kDefaultTypeDescriptorName) {
+      LOG(DFATAL) << "Caller used the default name as their literal name; "
+                  << "name your singleton something other than "
+                  << kDefaultTypeDescriptorName;
+    }
+  }
+
+  std::string name() const {
+    std::string ret = ti_.name();
+    ret += "/";
+    if (name_.empty()) {
+      ret += kDefaultTypeDescriptorName;
+    } else {
+      ret += name_;
+    }
+    return ret;
+  }
+
+  friend class TypeDescriptorHasher;
+
+  bool operator==(const TypeDescriptor& other) const {
+    return ti_ == other.ti_ && name_ == other.name_;
+  }
+
+ private:
+  const std::type_index ti_;
+  const std::string name_;
+};
+
+class TypeDescriptorHasher {
+ public:
+  size_t operator()(const TypeDescriptor& ti) const {
+    return folly::hash::hash_combine(ti.ti_, ti.name_);
+  }
+};
+}
+
 class SingletonVault {
  public:
   SingletonVault() {};
@@ -102,7 +169,7 @@ class SingletonVault {
 
   // Register a singleton of a given type with the create and teardown
   // functions.
-  void registerSingleton(const std::type_info& type,
+  void registerSingleton(detail::TypeDescriptor type,
                          CreateFunc create,
                          TeardownFunc teardown) {
     std::lock_guard<std::mutex> guard(mutex_);
@@ -136,49 +203,20 @@ class SingletonVault {
   void destroyInstances();
 
   // Retrieve a singleton from the vault, creating it if necessary.
-  std::shared_ptr<void> get_shared(const std::type_info& type) {
+  std::shared_ptr<void> get_shared(detail::TypeDescriptor type) {
     std::unique_lock<std::mutex> lock(mutex_);
-    if (state_ != SingletonVaultState::Running) {
-      throw std::logic_error(
-          "Attempt to load a singleton before "
-          "SingletonVault::registrationComplete was called (hint: you probably "
-          "didn't call initFacebook)");
-    }
-
-    auto it = singletons_.find(type);
-    if (it == singletons_.end()) {
-      throw std::out_of_range(std::string("non-existent singleton: ") +
-                              type.name());
-    }
-
-    auto& entry = it->second;
-    std::unique_lock<std::mutex> entry_lock(entry->mutex_);
-
-    if (entry->state == SingletonEntryState::BeingBorn) {
-      throw std::out_of_range(std::string("circular singleton dependency: ") +
-                              type.name());
-    }
-
-    if (entry->instance == nullptr) {
-      CHECK(entry->state == SingletonEntryState::Dead);
-      entry->state = SingletonEntryState::BeingBorn;
-
-      entry_lock.unlock();
-      lock.unlock();
-      // Can't use make_shared -- no support for a custom deleter, sadly.
-      auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
-      lock.lock();
-      entry_lock.lock();
-
-      CHECK(entry->state == SingletonEntryState::BeingBorn);
-      entry->instance = instance;
-      entry->state = SingletonEntryState::Living;
-
-      creation_order_.push_back(type);
-    }
-    CHECK(entry->state == SingletonEntryState::Living);
-
+    auto entry = get_entry(type, &lock);
     return entry->instance;
+  }
+
+  // This function is inherently racy since we don't hold the
+  // shared_ptr that contains the Singleton.  It is the caller's
+  // responsibility to be sane with this, but it is preferable to use
+  // the weak_ptr interface for true safety.
+  void* get_ptr(detail::TypeDescriptor type) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    auto entry = get_entry(type, &lock);
+    return entry->instance_ptr;
   }
 
   // For testing; how many registered and living singletons we have.
@@ -225,6 +263,7 @@ class SingletonVault {
   struct SingletonEntry {
     std::mutex mutex_;
     std::shared_ptr<void> instance;
+    void* instance_ptr = nullptr;
     CreateFunc create = nullptr;
     TeardownFunc teardown = nullptr;
     SingletonEntryState state = SingletonEntryState::Dead;
@@ -236,10 +275,61 @@ class SingletonVault {
     SingletonEntry(SingletonEntry&&) = delete;
   };
 
+  // Get a pointer to the living SingletonEntry for the specified
+  // type.  The singleton is created as part of this function, if
+  // necessary.
+  SingletonEntry* get_entry(detail::TypeDescriptor type,
+                            std::unique_lock<std::mutex>* lock) {
+    // mutex_ must be held when calling this function
+    if (state_ != SingletonVaultState::Running) {
+      throw std::logic_error(
+          "Attempt to load a singleton before "
+          "SingletonVault::registrationComplete was called (hint: you probably "
+          "didn't call initFacebook)");
+    }
+
+    auto it = singletons_.find(type);
+    if (it == singletons_.end()) {
+      throw std::out_of_range(std::string("non-existent singleton: ") +
+                              type.name());
+    }
+
+    auto& entry = it->second;
+    std::unique_lock<std::mutex> entry_lock(entry->mutex_);
+
+    if (entry->state == SingletonEntryState::BeingBorn) {
+      throw std::out_of_range(std::string("circular singleton dependency: ") +
+                              type.name());
+    }
+
+    if (entry->instance == nullptr) {
+      CHECK(entry->state == SingletonEntryState::Dead);
+      entry->state = SingletonEntryState::BeingBorn;
+
+      entry_lock.unlock();
+      lock->unlock();
+      // Can't use make_shared -- no support for a custom deleter, sadly.
+      auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
+      lock->lock();
+      entry_lock.lock();
+
+      CHECK(entry->state == SingletonEntryState::BeingBorn);
+      entry->instance = instance;
+      entry->instance_ptr = instance.get();
+      entry->state = SingletonEntryState::Living;
+
+      creation_order_.push_back(type);
+    }
+    CHECK(entry->state == SingletonEntryState::Living);
+    return entry.get();
+  }
+
   mutable std::mutex mutex_;
   typedef std::unique_ptr<SingletonEntry> SingletonEntryPtr;
-  std::unordered_map<std::type_index, SingletonEntryPtr> singletons_;
-  std::vector<std::type_index> creation_order_;
+  std::unordered_map<detail::TypeDescriptor,
+                     SingletonEntryPtr,
+                     detail::TypeDescriptorHasher> singletons_;
+  std::vector<detail::TypeDescriptor> creation_order_;
   SingletonVaultState state_ = SingletonVaultState::Registering;
 };
 
@@ -258,21 +348,55 @@ class Singleton {
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
   static T* get(SingletonVault* vault = nullptr /* for testing */) {
-    return get_shared(vault).get();
+    return get_ptr({typeid(T), ""}, vault);
+  }
+
+  static T* get(const char* name,
+                SingletonVault* vault = nullptr /* for testing */) {
+    return get_ptr({typeid(T), name}, vault);
   }
 
   // If, however, you do need to hold a reference to the specific
   // singleton, you can try to do so with a weak_ptr.  Avoid this when
   // possible but the inability to lock the weak pointer can be a
   // signal that the vault has been destroyed.
-  static std::weak_ptr<T> get_weak(SingletonVault* vault =
-                                       nullptr /* for testing */) {
-    return std::weak_ptr<T>(get_shared(vault));
+  static std::weak_ptr<T> get_weak(
+      SingletonVault* vault = nullptr /* for testing */) {
+    return get_weak("", vault);
   }
 
-  Singleton(Singleton::CreateFunc c = nullptr,
-            Singleton::TeardownFunc t = nullptr,
-            SingletonVault* vault = nullptr /* for testing */) {
+  static std::weak_ptr<T> get_weak(
+      const char* name, SingletonVault* vault = nullptr /* for testing */) {
+    return std::weak_ptr<T>(get_shared({typeid(T), name}, vault));
+  }
+
+  std::weak_ptr<T> get_weak(const char* name) {
+    return std::weak_ptr<T>(get_shared({typeid(T), name}, vault_));
+  }
+
+  // Allow the Singleton<t> instance to also retrieve the underlying
+  // singleton, if desired.
+  T* ptr() { return get_ptr(type_descriptor_, vault_); }
+  T& operator*() { return *ptr(); }
+  T* operator->() { return ptr(); }
+
+  explicit Singleton(Singleton::CreateFunc c = nullptr,
+                     Singleton::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */)
+      : Singleton({typeid(T), ""}, c, t, vault) {}
+
+  explicit Singleton(const char* name,
+                     Singleton::CreateFunc c = nullptr,
+                     Singleton::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */)
+      : Singleton({typeid(T), name}, c, t, vault) {}
+
+ private:
+  explicit Singleton(detail::TypeDescriptor type,
+                     Singleton::CreateFunc c = nullptr,
+                     Singleton::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */)
+      : type_descriptor_(type) {
     if (c == nullptr) {
       c = []() { return new T; };
     }
@@ -286,11 +410,16 @@ class Singleton {
     if (vault == nullptr) {
       vault = SingletonVault::singleton();
     }
-
-    vault->registerSingleton(typeid(T), c, teardown);
+    vault_ = vault;
+    vault->registerSingleton(type, c, teardown);
   }
 
- private:
+  static T* get_ptr(detail::TypeDescriptor type_descriptor = {typeid(T), ""},
+                    SingletonVault* vault = nullptr /* for testing */) {
+    return static_cast<T*>(
+        (vault ?: SingletonVault::singleton())->get_ptr(type_descriptor));
+  }
+
   // Don't use this function, it's private for a reason!  Using it
   // would defeat the *entire purpose* of the vault in that we lose
   // the ability to guarantee that, after a destroyInstances is
@@ -301,10 +430,14 @@ class Singleton {
   // Yes, you can just get the weak pointer and lock it, but hopefully
   // if you have taken the time to read this far, you see why that
   // would be bad.
-  static std::shared_ptr<T> get_shared(SingletonVault* vault =
-                                           nullptr /* for testing */) {
+  static std::shared_ptr<T> get_shared(
+      detail::TypeDescriptor type_descriptor = {typeid(T), ""},
+      SingletonVault* vault = nullptr /* for testing */) {
     return std::static_pointer_cast<T>(
-        (vault ?: SingletonVault::singleton())->get_shared(typeid(T)));
+        (vault ?: SingletonVault::singleton())->get_shared(type_descriptor));
   }
+
+  detail::TypeDescriptor type_descriptor_;
+  SingletonVault* vault_;
 };
 }

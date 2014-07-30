@@ -41,6 +41,7 @@ struct Watchdog {
   }
 
   const size_t serial_number;
+  size_t livingWatchdogCount() const { return creation_order.size(); }
 
   Watchdog(const Watchdog&) = delete;
   Watchdog& operator=(const Watchdog&) = delete;
@@ -115,6 +116,59 @@ TEST(Singleton, BasicUsage) {
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 }
 
+TEST(Singleton, DirectUsage) {
+  SingletonVault vault;
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 0);
+
+  // Verify we can get to the underlying singletons via directly using
+  // the singleton definition.
+  Singleton<Watchdog> watchdog(nullptr, nullptr, &vault);
+  Singleton<Watchdog> named_watchdog("named", nullptr, nullptr, &vault);
+  EXPECT_EQ(vault.registeredSingletonCount(), 2);
+  vault.registrationComplete();
+
+  EXPECT_NE(watchdog.ptr(), nullptr);
+  EXPECT_EQ(watchdog.ptr(), Singleton<Watchdog>::get(&vault));
+  EXPECT_NE(watchdog.ptr(), named_watchdog.ptr());
+  EXPECT_EQ(watchdog->livingWatchdogCount(), 2);
+  EXPECT_EQ((*watchdog).livingWatchdogCount(), 2);
+}
+
+TEST(Singleton, NamedUsage) {
+  SingletonVault vault;
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 0);
+
+  // Define two named Watchdog singletons and one unnamed singleton.
+  Singleton<Watchdog> watchdog1_singleton(
+      "watchdog1", nullptr, nullptr, &vault);
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+  Singleton<Watchdog> watchdog2_singleton(
+      "watchdog2", nullptr, nullptr, &vault);
+  EXPECT_EQ(vault.registeredSingletonCount(), 2);
+  Singleton<Watchdog> watchdog3_singleton(nullptr, nullptr, &vault);
+  EXPECT_EQ(vault.registeredSingletonCount(), 3);
+
+  vault.registrationComplete();
+
+  // Verify our three singletons are distinct and non-nullptr.
+  Watchdog* s1 = Singleton<Watchdog>::get("watchdog1", &vault);
+  EXPECT_EQ(s1, watchdog1_singleton.ptr());
+  Watchdog* s2 = Singleton<Watchdog>::get("watchdog2", &vault);
+  EXPECT_EQ(s2, watchdog2_singleton.ptr());
+  EXPECT_NE(s1, s2);
+  Watchdog* s3 = Singleton<Watchdog>::get(&vault);
+  EXPECT_EQ(s3, watchdog3_singleton.ptr());
+  EXPECT_NE(s3, s1);
+  EXPECT_NE(s3, s2);
+
+  // Verify the "default" singleton is the same as the empty string
+  // singleton.
+  Watchdog* s4 = Singleton<Watchdog>::get("", &vault);
+  EXPECT_EQ(s4, watchdog3_singleton.ptr());
+}
+
 // Some pathological cases such as getting unregistered singletons,
 // double registration, etc.
 TEST(Singleton, NaughtyUsage) {
@@ -163,6 +217,8 @@ TEST(Singleton, SharedPtrUsage) {
   Singleton<ChildWatchdog> child_watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
 
+  Singleton<Watchdog> named_watchdog_singleton(
+      "a_name", nullptr, nullptr, &vault);
   vault.registrationComplete();
 
   Watchdog* s1 = Singleton<Watchdog>::get(&vault);
@@ -178,9 +234,15 @@ TEST(Singleton, SharedPtrUsage) {
   EXPECT_EQ(shared_s1.get(), s1);
   EXPECT_EQ(shared_s1.use_count(), 2);
 
+  {
+    auto named_weak_s1 = Singleton<Watchdog>::get_weak("a_name", &vault);
+    auto locked = named_weak_s1.lock();
+    EXPECT_NE(locked.get(), shared_s1.get());
+  }
+
   LOG(ERROR) << "The following log message regarding ref counts is expected";
   vault.destroyInstances();
-  EXPECT_EQ(vault.registeredSingletonCount(), 2);
+  EXPECT_EQ(vault.registeredSingletonCount(), 3);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 
   EXPECT_EQ(shared_s1.use_count(), 1);
