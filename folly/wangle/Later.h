@@ -105,6 +105,21 @@ class Later {
   explicit Later(U&& input);
 
   /*
+   * This constructor is used to build an asynchronous workflow that takes an
+   * exception_ptr as input, and throws it on completion.
+   */
+  explicit Later(std::exception_ptr const&);
+
+  /*
+   * This constructor is used to build an asynchronous workflow that takes an
+   * exception as input, and throws it on completion.
+   */
+  template <class E,
+            class = typename std::enable_if<
+                std::is_base_of<std::exception, E>::value>::type>
+  explicit Later(E const& e);
+
+  /*
    * This constructor is used to wrap a pre-existing cob-style asynchronous api
    * so that it can be used in wangle. wangle provides the callback to this
    * pre-existing api, and this callback will fulfill a promise so as to

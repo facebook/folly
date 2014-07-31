@@ -77,6 +77,21 @@ Later<T>::Later(U&& input) {
   });
 }
 
+template <typename T>
+Later<T>::Later(std::exception_ptr const& eptr) {
+  folly::MoveWrapper<Promise<T>> promise;
+  future_ = promise->getFuture();
+  starter_.getFuture().then([=](Try<void>&& t) mutable {
+    promise->setException(eptr);
+  });
+}
+
+template <typename T>
+template <typename E, class Unused>
+Later<T>::Later(E const& e) :
+    Later<T>::Later(std::make_exception_ptr<E>(e)) {
+}
+
 template <class T>
 template <class U, class Unused, class Unused2>
 Later<T>::Later(std::function<void(std::function<void(U&&)>&&)>&& fn) {

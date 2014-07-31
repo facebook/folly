@@ -83,6 +83,11 @@ TEST(Later, construct_and_launch) {
   EXPECT_TRUE(fulfilled);
 }
 
+TEST(Later, exception_on_launch) {
+  auto later = Later<void>(std::runtime_error("E"));
+  EXPECT_THROW(later.launch().value(), std::runtime_error);
+}
+
 TEST(Later, then_value) {
   auto future = Later<int>(std::move(1))
     .then([](Try<int>&& t) {
