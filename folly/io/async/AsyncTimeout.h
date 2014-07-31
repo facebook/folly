@@ -138,6 +138,10 @@ class AsyncTimeout : private boost::noncopyable {
   void detachTimeoutManager();
   void detachEventBase();
 
+  const TimeoutManager* getTimeoutManager() {
+    return timeoutManager_;
+  }
+
   /**
    * Returns the internal handle to the event
    */
