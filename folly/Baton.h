@@ -103,15 +103,23 @@ struct Baton : boost::noncopyable {
   /// allows us to have better assert-ions during debug builds.
   void post() {
     uint32_t before = state_.load(std::memory_order_acquire);
-    assert(before == INIT || before == WAITING);
-    if (before != INIT ||
-        !state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
-      // we didn't get to state_ before wait(), so we need to call futex()
-      assert(before == WAITING);
 
-      state_.store(LATE_DELIVERY, std::memory_order_release);
-      state_.futexWake(1);
+    assert(before == INIT || before == WAITING || before == TIMED_OUT);
+
+    if (before == INIT &&
+        state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
+      return;
     }
+
+    assert(before == WAITING || before == TIMED_OUT);
+
+    if (before == TIMED_OUT) {
+      return;
+    }
+
+    assert(before == WAITING);
+    state_.store(LATE_DELIVERY, std::memory_order_release);
+    state_.futexWake(1);
   }
 
   /// Waits until post() has been called in the current Baton lifetime.
@@ -124,30 +132,16 @@ struct Baton : boost::noncopyable {
   /// but by making this condition very restrictive we can provide better
   /// checking in debug builds.
   void wait() {
-    uint32_t before;
-
-    static_assert(PreBlockAttempts > 0,
-        "isn't this assert clearer than an uninitialized variable warning?");
-    for (int i = 0; i < PreBlockAttempts; ++i) {
-      before = state_.load(std::memory_order_acquire);
-      if (before == EARLY_DELIVERY) {
-        // hooray!
-        return;
-      }
-      assert(before == INIT);
-#if FOLLY_X64
-      // The pause instruction is the polite way to spin, but it doesn't
-      // actually affect correctness to omit it if we don't have it.
-      // Pausing donates the full capabilities of the current core to
-      // its other hyperthreads for a dozen cycles or so
-      asm volatile ("pause");
-#endif
+    if (spinWaitForEarlyDelivery()) {
+      assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
+      return;
     }
 
     // guess we have to block :(
-    if (!state_.compare_exchange_strong(before, WAITING)) {
+    uint32_t expected = INIT;
+    if (!state_.compare_exchange_strong(expected, WAITING)) {
       // CAS failed, last minute reprieve
-      assert(before == EARLY_DELIVERY);
+      assert(expected == EARLY_DELIVERY);
       return;
     }
 
@@ -181,12 +175,70 @@ struct Baton : boost::noncopyable {
     }
   }
 
+  /// Similar to wait, but with a timeout. The thread is unblocked if the
+  /// timeout expires.
+  /// Note: Only a single call to timed_wait/wait is allowed during a baton's
+  /// life-cycle (from construction/reset to destruction/reset). In other
+  /// words, after timed_wait the caller can't invoke wait/timed_wait/try_wait
+  /// again on the same baton without resetting it.
+  ///
+  /// @param  deadline      Time until which the thread can block
+  /// @return               true if the baton was posted to before timeout,
+  ///                       false otherwise
+  template <typename Clock, typename Duration = typename Clock::duration>
+  bool timed_wait(const std::chrono::time_point<Clock,Duration>& deadline) {
+    if (spinWaitForEarlyDelivery()) {
+      assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
+      return true;
+    }
+
+    // guess we have to block :(
+    uint32_t expected = INIT;
+    if (!state_.compare_exchange_strong(expected, WAITING)) {
+      // CAS failed, last minute reprieve
+      assert(expected == EARLY_DELIVERY);
+      return true;
+    }
+
+    while (true) {
+      auto rv = state_.futexWaitUntil(WAITING, deadline);
+      if (rv == folly::detail::FutexResult::TIMEDOUT) {
+        state_.store(TIMED_OUT, std::memory_order_release);
+        return false;
+      }
+
+      uint32_t s = state_.load(std::memory_order_acquire);
+      assert(s == WAITING || s == LATE_DELIVERY);
+      if (s == LATE_DELIVERY) {
+        return true;
+      }
+    }
+  }
+
+  /// Similar to wait, but doesn't block the thread if it hasn't been posted.
+  ///
+  /// try_wait has the following semantics:
+  /// - It is ok to call try_wait any number times on the same baton until
+  ///   try_wait reports that the baton has been posted.
+  /// - It is ok to call timed_wait or wait on the same baton if try_wait
+  ///   reports that baton hasn't been posted.
+  /// - If try_wait indicates that the baton has been posted, it is invalid to
+  ///   call wait, try_wait or timed_wait on the same baton without resetting
+  ///
+  /// @return       true if baton has been posted, false othewise
+  bool try_wait() {
+    auto s = state_.load(std::memory_order_acquire);
+    assert(s == INIT || s == EARLY_DELIVERY);
+    return s == EARLY_DELIVERY;
+  }
+
  private:
   enum State : uint32_t {
     INIT = 0,
     EARLY_DELIVERY = 1,
     WAITING = 2,
     LATE_DELIVERY = 3,
+    TIMED_OUT = 4
   };
 
   enum {
@@ -205,6 +257,33 @@ struct Baton : boost::noncopyable {
     // are giving a speed boost to the colocated hyperthread.
     PreBlockAttempts = 300,
   };
+
+  // Spin for "some time" (see discussion on PreBlockAttempts) waiting
+  // for a post.
+  //
+  // @return       true if we received an early delivery during the wait,
+  //               false otherwise. If the function returns true then
+  //               state_ is guaranteed to be EARLY_DELIVERY
+  bool spinWaitForEarlyDelivery() {
+
+    static_assert(PreBlockAttempts > 0,
+        "isn't this assert clearer than an uninitialized variable warning?");
+    for (int i = 0; i < PreBlockAttempts; ++i) {
+      if (try_wait()) {
+        // hooray!
+        return true;
+      }
+#if FOLLY_X64
+      // The pause instruction is the polite way to spin, but it doesn't
+      // actually affect correctness to omit it if we don't have it.
+      // Pausing donates the full capabilities of the current core to
+      // its other hyperthreads for a dozen cycles or so
+      asm volatile ("pause");
+#endif
+    }
+
+    return false;
+  }
 
   detail::Futex<Atom> state_;
 };
