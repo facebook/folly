@@ -40,6 +40,17 @@ TEST(LogEveryMs, basic) {
   EXPECT_TRUE(atLeastOneIsGood);
 }
 
+TEST(LogEveryMs, zero) {
+  int count = 0;
+
+  for (int i = 0; i < 10; ++i) {
+    FB_LOG_EVERY_MS(INFO, 0)
+      << "test msg " << ++count;
+  }
+
+  EXPECT_EQ(10, count);
+}
+
 BENCHMARK(skip_overhead, iter) {
   auto prev = FLAGS_minloglevel;
   FLAGS_minloglevel = 2;
