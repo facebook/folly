@@ -109,6 +109,7 @@ nobase_follyinclude_HEADERS = \
 	io/RecordIO-inl.h \
 	io/TypedIOBuf.h \
 	io/async/AsyncTimeout.h \
+	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
 	io/async/EventFDWrapper.h \
 	io/async/EventHandler.h \
