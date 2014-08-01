@@ -256,26 +256,6 @@ private:
   serialization_opts const& opts_;
 };
 
-//////////////////////////////////////////////////////////////////////
-
-struct ParseError : std::runtime_error {
-  explicit ParseError(int line)
-    : std::runtime_error(to<std::string>("json parse error on line ", line))
-  {}
-
-  explicit ParseError(int line, std::string const& context,
-      std::string const& expected)
-    : std::runtime_error(to<std::string>("json parse error on line ", line,
-        !context.empty() ? to<std::string>(" near `", context, '\'')
-                        : "",
-        ": ", expected))
-  {}
-
-  explicit ParseError(std::string const& what)
-    : std::runtime_error("json parse error: " + what)
-  {}
-};
-
 // Wraps our input buffer with some helper functions.
 struct Input {
   explicit Input(StringPiece range, json::serialization_opts const* opts)
