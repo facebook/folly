@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <random>
+#include <vector>
+
 #include <folly/Benchmark.h>
 #include <folly/experimental/EliasFanoCoding.h>
 #include <folly/experimental/test/CodingTestUtils.h>
@@ -76,12 +80,23 @@ typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128, kVersion> Encoder;
 typedef EliasFanoReader<Encoder> Reader;
 
 std::vector<uint32_t> data;
+std::vector<size_t> order;
+
 typename Encoder::CompressedList list;
 
 void init() {
-  data = generateRandomList(100 * 1000, 10 * 1000 * 1000);
+  std::mt19937 gen;
+
+  data = generateRandomList(100 * 1000, 10 * 1000 * 1000, gen);
   //data = loadList("/home/philipp/pl_test_dump.txt");
   Encoder::encode(data.data(), data.size(), bm::list);
+
+  order.clear();
+  order.reserve(data.size());
+  for (size_t i = 0; i < data.size(); ++i) {
+    order.push_back(i);
+  }
+  std::shuffle(order.begin(), order.end(), gen);
 }
 
 void free() {
@@ -110,6 +125,10 @@ BENCHMARK(Skip1000_ForwardQ128_1M) {
   bmSkip<bm::Reader>(bm::list, bm::data, 1000, bm::k1M);
 }
 
+BENCHMARK(GoTo_ForwardQ128_1M) {
+  bmGoTo<bm::Reader>(bm::list, bm::data, bm::order, bm::k1M);
+}
+
 BENCHMARK(SkipTo1_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1, bm::k1M);
 }
@@ -125,6 +144,25 @@ BENCHMARK(SkipTo100_SkipQ128_1M) {
 BENCHMARK(SkipTo1000_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1000, bm::k1M);
 }
+
+#if 0
+Intel Xeon CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Fast.
+
+============================================================================
+folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
+============================================================================
+Next_1M                                                      4.86ms   205.97
+Skip1_ForwarQ128_1M                                          5.17ms   193.36
+Skip10_ForwarQ128_1M                                        13.69ms    73.03
+Skip100_ForwardQ128_1M                                      26.76ms    37.37
+Skip1000_ForwardQ128_1M                                     20.66ms    48.40
+GoTo_ForwardQ128_1M                                         43.75ms    22.86
+SkipTo1_SkipQ128_1M                                          9.74ms   102.70
+SkipTo10_SkipQ128_1M                                        30.62ms    32.66
+SkipTo100_SkipQ128_1M                                       37.70ms    26.53
+SkipTo1000_SkipQ128_1M                                      31.14ms    32.11
+============================================================================
+#endif
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

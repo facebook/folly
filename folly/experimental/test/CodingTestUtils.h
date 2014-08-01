@@ -29,13 +29,13 @@
 
 namespace folly { namespace compression {
 
-std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId) {
+template <class URNG>
+std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId, URNG&& g) {
   CHECK_LT(n, 2 * maxId);
-  std::mt19937 gen;
   std::uniform_int_distribution<> uid(1, maxId);
   std::unordered_set<uint32_t> dataset;
   while (dataset.size() < n) {
-    uint32_t value = uid(gen);
+    uint32_t value = uid(g);
     if (dataset.count(value) == 0) {
       dataset.insert(value);
     }
@@ -46,8 +46,13 @@ std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId) {
   return ids;
 }
 
-std::vector<uint32_t> generateSeqList(uint32_t minId, uint32_t maxId,
-                                      uint32_t step = 1) {
+inline std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId) {
+  std::mt19937 gen;
+  return generateRandomList(n, maxId, gen);
+}
+
+inline std::vector<uint32_t> generateSeqList(uint32_t minId, uint32_t maxId,
+                                             uint32_t step = 1) {
   CHECK_LE(minId, maxId);
   CHECK_GT(step, 0);
   std::vector<uint32_t> ids;
@@ -58,7 +63,7 @@ std::vector<uint32_t> generateSeqList(uint32_t minId, uint32_t maxId,
   return ids;
 }
 
-std::vector<uint32_t> loadList(const std::string& filename) {
+inline std::vector<uint32_t> loadList(const std::string& filename) {
   std::ifstream fin(filename);
   std::vector<uint32_t> result;
   uint32_t id;
@@ -126,7 +131,6 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list,
     EXPECT_EQ(reader.value(), *it);
     value = reader.value() + delta;
   }
-
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
   EXPECT_FALSE(reader.next());
 }
@@ -146,6 +150,29 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
     EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
     EXPECT_FALSE(reader.next());
   }
+}
+
+template <class Reader, class List>
+void testGoTo(const std::vector<uint32_t>& data, const List& list) {
+  std::mt19937 gen;
+  std::vector<size_t> is(data.size());
+  for (size_t i = 0; i < data.size(); ++i) {
+    is[i] = i;
+  }
+  std::shuffle(is.begin(), is.end(), gen);
+  if (Reader::EncoderType::forwardQuantum == 0) {
+    is.resize(std::min<size_t>(is.size(), 100));
+  }
+
+  Reader reader(list);
+  EXPECT_TRUE(reader.goTo(0));
+  EXPECT_EQ(reader.value(), 0);
+  for (auto i : is) {
+    EXPECT_TRUE(reader.goTo(i + 1));
+    EXPECT_EQ(reader.value(), data[i]);
+  }
+  EXPECT_FALSE(reader.goTo(data.size() + 1));
+  EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
 }
 
 template <class Reader, class Encoder>
@@ -176,6 +203,7 @@ void testAll(const std::vector<uint32_t>& data) {
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
   testSkipTo<Reader>(data, list);
+  testGoTo<Reader>(data, list);
   list.free();
 }
 
@@ -222,6 +250,23 @@ void bmSkipTo(const List& list, const std::vector<uint32_t>& data,
       reader.skipTo(data[j]);
       const uint32_t value = reader.value();
       CHECK_EQ(value, data[j]);
+    }
+  }
+}
+
+template <class Reader, class List>
+void bmGoTo(const List& list, const std::vector<uint32_t>& data,
+            const std::vector<size_t>& order, size_t iters) {
+  CHECK(!data.empty());
+  CHECK_EQ(data.size(), order.size());
+
+  Reader reader(list);
+  for (size_t i = 0; i < iters; ) {
+    for (size_t j : order) {
+      reader.goTo(j + 1);
+      const uint32_t value = reader.value();
+      CHECK_EQ(value, data[j]);
+      ++i;
     }
   }
 }
