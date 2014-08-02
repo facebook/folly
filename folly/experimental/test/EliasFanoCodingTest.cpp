@@ -131,15 +131,15 @@ BENCHMARK(Skip1000_ForwardQ128_1M) {
   bmSkip<bm::Reader>(bm::list, bm::data, 1000, bm::k1M);
 }
 
-BENCHMARK(GoTo_ForwardQ128_1M) {
-  bmGoTo<bm::Reader>(bm::list, bm::data, bm::order, bm::k1M);
+BENCHMARK(Jump_ForwardQ128_1M) {
+  bmJump<bm::Reader>(bm::list, bm::data, bm::order, bm::k1M);
 }
+
+BENCHMARK_DRAW_LINE();
 
 BENCHMARK(SkipTo1_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1, bm::k1M);
 }
-
-BENCHMARK_DRAW_LINE();
 
 BENCHMARK(SkipTo10_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 10, bm::k1M);
@@ -151,6 +151,10 @@ BENCHMARK(SkipTo100_SkipQ128_1M) {
 
 BENCHMARK(SkipTo1000_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1000, bm::k1M);
+}
+
+BENCHMARK(JumpTo_SkipQ128_1M) {
+  bmJumpTo<bm::Reader>(bm::list, bm::data, bm::order, bm::k1M);
 }
 
 BENCHMARK_DRAW_LINE();
@@ -173,20 +177,21 @@ Intel(R) Xeon(R) CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Fast.
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
 ============================================================================
-Next_1M                                                      4.86ms   205.97
-Skip1_ForwarQ128_1M                                          5.17ms   193.36
-Skip10_ForwarQ128_1M                                        13.69ms    73.03
-Skip100_ForwardQ128_1M                                      26.76ms    37.37
-Skip1000_ForwardQ128_1M                                     20.66ms    48.40
-GoTo_ForwardQ128_1M                                         43.75ms    22.86
+Next_1M                                                      4.61ms   216.70
+Skip1_ForwarQ128_1M                                          5.33ms   187.71
+Skip10_ForwarQ128_1M                                        14.23ms    70.26
+Skip100_ForwardQ128_1M                                      29.10ms    34.37
+Skip1000_ForwardQ128_1M                                     21.15ms    47.28
+Jump_ForwardQ128_1M                                         46.30ms    21.60
 ----------------------------------------------------------------------------
-SkipTo1_SkipQ128_1M                                          9.74ms   102.70
-SkipTo10_SkipQ128_1M                                        30.62ms    32.66
-SkipTo100_SkipQ128_1M                                       37.70ms    26.53
-SkipTo1000_SkipQ128_1M                                      31.14ms    32.11
+SkipTo1_SkipQ128_1M                                         12.03ms    83.15
+SkipTo10_SkipQ128_1M                                        36.11ms    27.69
+SkipTo100_SkipQ128_1M                                       42.91ms    23.30
+SkipTo1000_SkipQ128_1M                                      36.92ms    27.08
+JumpTo_SkipQ128_1M                                          78.51ms    12.74
 ----------------------------------------------------------------------------
-Encode_10                                                  208.16ns    4.80M
-Encode_1M                                                    8.90ms   112.37
+Encode_10                                                  199.19ns    5.02M
+Encode_1M                                                    8.82ms   113.37
 ============================================================================
 #endif
 

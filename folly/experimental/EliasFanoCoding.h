@@ -460,13 +460,22 @@ class UpperBitsReader {
     return value_;
   }
 
-  ValueType goTo(size_t n) {
+  ValueType jump(size_t n) {
     if (Encoder::forwardQuantum == 0 || n <= Encoder::forwardQuantum) {
       reset();
     } else {
-      position_ = -1;  // Avoid reading the head, skip() will call reposition().
+      position_ = -1;  // Avoid reading the head, skip() will reposition.
     }
     return skip(n);
+  }
+
+  ValueType jumpToNext(ValueType v) {
+    if (Encoder::skipQuantum == 0 || v < Encoder::skipQuantum) {
+      reset();
+    } else {
+      value_ = 0;  // Avoid reading the head, skipToNext() will reposition.
+    }
+    return skipToNext(v);
   }
 
  private:
@@ -520,10 +529,11 @@ class EliasFanoReader : private boost::noncopyable {
                  (lastUpperValue << list_.numLowerBits);
   }
 
-  size_t size() const { return list_.size; }
-
-  size_t position() const { return progress_ - 1; }
-  ValueType value() const { return value_; }
+  void reset() {
+    upper_.reset();
+    progress_ = 0;
+    value_ = 0;
+  }
 
   bool next() {
     if (UNLIKELY(progress_ == list_.size)) {
@@ -555,42 +565,50 @@ class EliasFanoReader : private boost::noncopyable {
     DCHECK_GE(value, value_);
     if (value <= value_) {
       return true;
-    }
-    if (value > lastValue_) {
+    } else if (value > lastValue_) {
       progress_ = list_.size;
       value_ = std::numeric_limits<ValueType>::max();
       return false;
     }
 
     upper_.skipToNext(value >> list_.numLowerBits);
-    progress_ = upper_.position();
-    value_ = readLowerPart(progress_) |
-             (upper_.value() << list_.numLowerBits);
-    ++progress_;
-    while (value_ < value) {
-      value_ = readLowerPart(progress_) |
-               (upper_.next() << list_.numLowerBits);
-      ++progress_;
-    }
-
+    iterateTo(value);
     return true;
   }
 
-  bool goTo(size_t n) {
+  bool jump(size_t n) {
     if (LIKELY(n - 1 < list_.size)) {  // n > 0 && n <= list_.size
       progress_ = n;
-      value_ = readLowerPart(n - 1) | (upper_.goTo(n) << list_.numLowerBits);
+      value_ = readLowerPart(n - 1) | (upper_.jump(n) << list_.numLowerBits);
       return true;
     } else if (n == 0) {
-      upper_.reset();
-      progress_ = 0;
-      value_ = 0;
+      reset();
       return true;
     }
     progress_ = list_.size;
     value_ = std::numeric_limits<ValueType>::max();
     return false;
   }
+
+  ValueType jumpTo(ValueType value) {
+    if (value <= 0) {
+      reset();
+      return true;
+    } else if (value > lastValue_) {
+      progress_ = list_.size;
+      value_ = std::numeric_limits<ValueType>::max();
+      return false;
+    }
+
+    upper_.jumpToNext(value >> list_.numLowerBits);
+    iterateTo(value);
+    return true;
+  }
+
+  size_t size() const { return list_.size; }
+
+  size_t position() const { return progress_ - 1; }
+  ValueType value() const { return value_; }
 
  private:
   ValueType readLowerPart(size_t i) const {
@@ -599,6 +617,16 @@ class EliasFanoReader : private boost::noncopyable {
     const unsigned char* ptr = list_.lower.data() + (pos / 8);
     const uint64_t ptrv = folly::loadUnaligned<uint64_t>(ptr);
     return lowerMask_ & (ptrv >> (pos % 8));
+  }
+
+  void iterateTo(ValueType value) {
+    progress_ = upper_.position();
+    value_ = readLowerPart(progress_) | (upper_.value() << list_.numLowerBits);
+    ++progress_;
+    while (value_ < value) {
+      value_ = readLowerPart(progress_) | (upper_.next() << list_.numLowerBits);
+      ++progress_;
+    }
   }
 
   const EliasFanoCompressedList list_;

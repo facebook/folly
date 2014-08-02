@@ -153,7 +153,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
 }
 
 template <class Reader, class List>
-void testGoTo(const std::vector<uint32_t>& data, const List& list) {
+void testJump(const std::vector<uint32_t>& data, const List& list) {
   std::mt19937 gen;
   std::vector<size_t> is(data.size());
   for (size_t i = 0; i < data.size(); ++i) {
@@ -165,13 +165,45 @@ void testGoTo(const std::vector<uint32_t>& data, const List& list) {
   }
 
   Reader reader(list);
-  EXPECT_TRUE(reader.goTo(0));
+  EXPECT_TRUE(reader.jump(0));
   EXPECT_EQ(reader.value(), 0);
   for (auto i : is) {
-    EXPECT_TRUE(reader.goTo(i + 1));
+    EXPECT_TRUE(reader.jump(i + 1));
     EXPECT_EQ(reader.value(), data[i]);
   }
-  EXPECT_FALSE(reader.goTo(data.size() + 1));
+  EXPECT_FALSE(reader.jump(data.size() + 1));
+  EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+}
+
+template <class Reader, class List>
+void testJumpTo(const std::vector<uint32_t>& data, const List& list) {
+  CHECK(!data.empty());
+
+  Reader reader(list);
+
+  std::mt19937 gen;
+  std::uniform_int_distribution<> values(0, data.back());
+  const size_t iters = Reader::EncoderType::skipQuantum == 0 ? 100 : 10000;
+  for (size_t i = 0; i < iters; ++i) {
+    const uint32_t value = values(gen);
+    auto it = std::lower_bound(data.begin(), data.end(), value);
+    CHECK(it != data.end());
+    EXPECT_TRUE(reader.jumpTo(value));
+    EXPECT_EQ(reader.value(), *it);
+  }
+
+  EXPECT_TRUE(reader.jumpTo(0));
+  EXPECT_EQ(reader.value(), 0);
+
+  if (data.front() > 0) {
+    EXPECT_TRUE(reader.jumpTo(1));
+    EXPECT_EQ(reader.value(), data.front());
+  }
+
+  EXPECT_TRUE(reader.jumpTo(data.back()));
+  EXPECT_EQ(reader.value(), data.back());
+
+  EXPECT_FALSE(reader.jumpTo(data.back() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
 }
 
@@ -188,10 +220,13 @@ void testEmpty() {
     Reader reader(list);
     EXPECT_FALSE(reader.skip(1));
     EXPECT_FALSE(reader.skip(10));
+    EXPECT_FALSE(reader.jump(1));
+    EXPECT_FALSE(reader.jump(10));
   }
   {
     Reader reader(list);
     EXPECT_FALSE(reader.skipTo(1));
+    EXPECT_FALSE(reader.jumpTo(1));
   }
 }
 
@@ -201,7 +236,8 @@ void testAll(const std::vector<uint32_t>& data) {
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
   testSkipTo<Reader>(data, list);
-  testGoTo<Reader>(data, list);
+  testJump<Reader>(data, list);
+  testJumpTo<Reader>(data, list);
   list.free();
 }
 
@@ -214,8 +250,7 @@ void bmNext(const List& list, const std::vector<uint32_t>& data,
   for (size_t i = 0, j; i < iters; ) {
     Reader reader(list);
     for (j = 0; reader.next(); ++j, ++i) {
-      const uint32_t value = reader.value();
-      CHECK_EQ(value, data[j]) << j;
+      CHECK_EQ(reader.value(), data[j]) << j;
     }
   }
 }
@@ -230,8 +265,7 @@ void bmSkip(const List& list, const std::vector<uint32_t>& data,
     Reader reader(list);
     for (j = skip - 1; j < data.size(); j += skip, ++i) {
       reader.skip(skip);
-      const uint32_t value = reader.value();
-      CHECK_EQ(value, data[j]);
+      CHECK_EQ(reader.value(), data[j]);
     }
   }
 }
@@ -246,14 +280,13 @@ void bmSkipTo(const List& list, const std::vector<uint32_t>& data,
     Reader reader(list);
     for (j = 0; j < data.size(); j += skip, ++i) {
       reader.skipTo(data[j]);
-      const uint32_t value = reader.value();
-      CHECK_EQ(value, data[j]);
+      CHECK_EQ(reader.value(), data[j]);
     }
   }
 }
 
 template <class Reader, class List>
-void bmGoTo(const List& list, const std::vector<uint32_t>& data,
+void bmJump(const List& list, const std::vector<uint32_t>& data,
             const std::vector<size_t>& order, size_t iters) {
   CHECK(!data.empty());
   CHECK_EQ(data.size(), order.size());
@@ -261,9 +294,24 @@ void bmGoTo(const List& list, const std::vector<uint32_t>& data,
   Reader reader(list);
   for (size_t i = 0; i < iters; ) {
     for (size_t j : order) {
-      reader.goTo(j + 1);
-      const uint32_t value = reader.value();
-      CHECK_EQ(value, data[j]);
+      reader.jump(j + 1);
+      CHECK_EQ(reader.value(), data[j]);
+      ++i;
+    }
+  }
+}
+
+template <class Reader, class List>
+void bmJumpTo(const List& list, const std::vector<uint32_t>& data,
+              const std::vector<size_t>& order, size_t iters) {
+  CHECK(!data.empty());
+  CHECK_EQ(data.size(), order.size());
+
+  Reader reader(list);
+  for (size_t i = 0; i < iters; ) {
+    for (size_t j : order) {
+      reader.jumpTo(data[j]);
+      CHECK_EQ(reader.value(), data[j]);
       ++i;
     }
   }
