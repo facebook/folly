@@ -177,9 +177,8 @@ void testGoTo(const std::vector<uint32_t>& data, const List& list) {
 
 template <class Reader, class Encoder>
 void testEmpty() {
-  typename Encoder::CompressedList list;
   const typename Encoder::ValueType* const data = nullptr;
-  Encoder::encode(data, 0, list);
+  auto list = Encoder::encode(data, data);
   {
     Reader reader(list);
     EXPECT_FALSE(reader.next());
@@ -198,8 +197,7 @@ void testEmpty() {
 
 template <class Reader, class Encoder>
 void testAll(const std::vector<uint32_t>& data) {
-  typename Encoder::CompressedList list;
-  Encoder::encode(data.begin(), data.end(), list);
+  auto list = Encoder::encode(data.begin(), data.end());
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
   testSkipTo<Reader>(data, list);

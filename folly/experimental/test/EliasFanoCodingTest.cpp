@@ -82,6 +82,9 @@ typedef EliasFanoReader<Encoder> Reader;
 std::vector<uint32_t> data;
 std::vector<size_t> order;
 
+std::vector<uint32_t> encodeSmallData;
+std::vector<uint32_t> encodeLargeData;
+
 typename Encoder::CompressedList list;
 
 void init() {
@@ -89,7 +92,7 @@ void init() {
 
   data = generateRandomList(100 * 1000, 10 * 1000 * 1000, gen);
   //data = loadList("/home/philipp/pl_test_dump.txt");
-  Encoder::encode(data.data(), data.size(), bm::list);
+  list = Encoder::encode(data.begin(), data.end());
 
   order.clear();
   order.reserve(data.size());
@@ -97,6 +100,9 @@ void init() {
     order.push_back(i);
   }
   std::shuffle(order.begin(), order.end(), gen);
+
+  encodeSmallData = generateRandomList(10, 100 * 1000, gen);
+  encodeLargeData = generateRandomList(1000 * 1000, 100 * 1000 * 1000, gen);
 }
 
 void free() {
@@ -133,6 +139,8 @@ BENCHMARK(SkipTo1_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1, bm::k1M);
 }
 
+BENCHMARK_DRAW_LINE();
+
 BENCHMARK(SkipTo10_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 10, bm::k1M);
 }
@@ -145,8 +153,22 @@ BENCHMARK(SkipTo1000_SkipQ128_1M) {
   bmSkipTo<bm::Reader>(bm::list, bm::data, 1000, bm::k1M);
 }
 
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(Encode_10) {
+  auto list = bm::Encoder::encode(bm::encodeSmallData.begin(),
+                                  bm::encodeSmallData.end());
+  list.free();
+}
+
+BENCHMARK(Encode_1M) {
+  auto list = bm::Encoder::encode(bm::encodeLargeData.begin(),
+                                  bm::encodeLargeData.end());
+  list.free();
+}
+
 #if 0
-Intel Xeon CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Fast.
+Intel(R) Xeon(R) CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Fast.
 
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
@@ -157,10 +179,14 @@ Skip10_ForwarQ128_1M                                        13.69ms    73.03
 Skip100_ForwardQ128_1M                                      26.76ms    37.37
 Skip1000_ForwardQ128_1M                                     20.66ms    48.40
 GoTo_ForwardQ128_1M                                         43.75ms    22.86
+----------------------------------------------------------------------------
 SkipTo1_SkipQ128_1M                                          9.74ms   102.70
 SkipTo10_SkipQ128_1M                                        30.62ms    32.66
 SkipTo100_SkipQ128_1M                                       37.70ms    26.53
 SkipTo1000_SkipQ128_1M                                      31.14ms    32.11
+----------------------------------------------------------------------------
+Encode_10                                                  208.16ns    4.80M
+Encode_1M                                                    8.90ms   112.37
 ============================================================================
 #endif
 
