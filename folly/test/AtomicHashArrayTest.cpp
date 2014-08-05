@@ -81,7 +81,7 @@ class MmapAllocator {
   T *allocate(size_t n) {
     void *p = mmap(nullptr, n * sizeof(T), PROT_READ | PROT_WRITE,
         MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (!p) throw std::bad_alloc();
+    if (p == MAP_FAILED) throw std::bad_alloc();
     return (T *)p;
   }
 
