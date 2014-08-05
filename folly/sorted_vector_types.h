@@ -241,6 +241,7 @@ public:
   size_type max_size() const    { return m_.cont_.max_size(); }
   bool empty() const            { return m_.cont_.empty();    }
   void reserve(size_type s)     { return m_.cont_.reserve(s); }
+  void shrink_to_fit()          { m_.cont_.shrink_to_fit();   }
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {
@@ -484,6 +485,7 @@ public:
   size_type max_size() const    { return m_.cont_.max_size(); }
   bool empty() const            { return m_.cont_.empty();    }
   void reserve(size_type s)     { return m_.cont_.reserve(s); }
+  void shrink_to_fit()          { m_.cont_.shrink_to_fit();   }
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {

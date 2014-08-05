@@ -319,3 +319,17 @@ TEST(SortedVectorTest, MoveTest) {
   EXPECT_EQ(*m[5], 5);
   EXPECT_EQ(*m[10], 10);
 }
+
+TEST(SortedVectorTest, ShrinkTest) {
+  sorted_vector_set<int> s;
+  int i = 0;
+  // Hopefully your resize policy doubles when capacity is full, or this will
+  // hang forever :(
+  while (s.capacity() == s.size()) {
+    s.insert(i++);
+  }
+  s.shrink_to_fit();
+  // The standard does not actually enforce that this be true, but assume that
+  // vector::shrink_to_fit respects the caller.
+  EXPECT_EQ(s.capacity(), s.size());
+}
