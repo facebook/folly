@@ -121,7 +121,7 @@ struct IndexedMemPool : boost::noncopyable {
     slots_ = static_cast<Slot*>(mmap(nullptr, mmapLength_,
                                      PROT_READ | PROT_WRITE,
                                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-    if (slots_ == nullptr) {
+    if (slots_ == MAP_FAILED) {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
     }
