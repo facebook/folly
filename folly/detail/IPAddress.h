@@ -183,4 +183,113 @@ struct Bytes : private boost::noncopyable {
   ~Bytes() = delete;
 };
 
+//
+// Write a maximum amount of base-converted character digits, of a
+// given base, from an unsigned integral type into a byte buffer of
+// sufficient size.
+//
+// This function does not append null terminators.
+//
+// Output buffer size must be guaranteed by caller (indirectly
+// controlled by DigitCount template parameter).
+//
+// Having these parameters at compile time allows compiler to
+// precompute several of the values, use smaller instructions, and
+// better optimize surrounding code.
+//
+// IntegralType:
+//   - Something like uint8_t, uint16_t, etc
+//
+// DigitCount is the maximum number of digits to be printed
+//   - This is tied to IntegralType and Base. For example:
+//     - uint8_t in base 10 will print at most 3 digits ("255")
+//     - uint16_t in base 16 will print at most 4 hex digits ("FFFF")
+//
+// Base is the desired output base of the string
+//   - Base 10 will print [0-9], base 16 will print [0-9a-f]
+//
+// PrintAllDigits:
+//   - Whether or not leading zeros should be printed
+//
+template<class IntegralType,
+         IntegralType DigitCount,
+         IntegralType Base = 10,
+         bool PrintAllDigits = false,
+         class = typename std::enable_if<
+           std::is_integral<IntegralType>::value &&
+           std::is_unsigned<IntegralType>::value,
+           bool>::type>
+  inline void writeIntegerString(
+    IntegralType val,
+    char** buffer) {
+  char* buf = *buffer;
+
+  if (!PrintAllDigits && val == 0) {
+    *(buf++) = '0';
+    *buffer = buf;
+    return;
+  }
+
+  IntegralType powerToPrint = 1;
+  for (int i = 1; i < DigitCount; ++i) {
+    powerToPrint *= Base;
+  }
+
+  bool found = PrintAllDigits;
+  while (powerToPrint) {
+
+    if (found || powerToPrint <= val) {
+      IntegralType value = val/powerToPrint;
+      if (Base == 10 || value < 10) {
+        value += '0';
+      } else {
+        value += ('a'-10);
+      }
+      *(buf++) = value;
+      val %= powerToPrint;
+      found = true;
+    }
+
+    powerToPrint /= Base;
+  }
+
+  *buffer = buf;
+}
+
+inline std::string fastIpv4ToString(
+  const in_addr& inAddr) {
+  const uint8_t* octets = reinterpret_cast<const uint8_t*>(&inAddr.s_addr);
+  char str[sizeof("255.255.255.255")];
+  char* buf = str;
+
+  writeIntegerString<uint8_t, 3>(octets[0], &buf);
+  *(buf++) = '.';
+  writeIntegerString<uint8_t, 3>(octets[1], &buf);
+  *(buf++) = '.';
+  writeIntegerString<uint8_t, 3>(octets[2], &buf);
+  *(buf++) = '.';
+  writeIntegerString<uint8_t, 3>(octets[3], &buf);
+
+  return std::string(str, buf-str);
+}
+
+inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
+  const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
+  char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
+  char* buf = str;
+
+  for (int i = 0; i < 8; ++i) {
+    writeIntegerString<uint16_t,
+                       4,  // at most 4 hex digits per ushort
+                       16, // base 16 (hex)
+                       true>(htons(bytes[i]), &buf);
+
+    if(i != 7) {
+      *(buf++) = ':';
+    }
+  }
+
+  return std::string(str, buf-str);
+}
+
 }}  // folly::detail

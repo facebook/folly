@@ -185,35 +185,8 @@ IPAddressV4 IPAddressV4::mask(size_t numBits) const {
 }
 
 // public
-// Taken from TSocketAddress::getAddressStrIPv4Fast
 string IPAddressV4::str() const {
-  char buf[INET_ADDRSTRLEN] = {0};
-  const uint8_t* ip = addr_.bytes_.data();
-  int pos = 0;
-  for (int k = 0; k < 4; ++k) {
-    uint8_t num = ip[k];
-
-    if (num >= 200) {
-      buf[pos++] = '2';
-      num -= 200;
-    } else if (num >= 100) {
-      buf[pos++] = '1';
-      num -= 100;
-    }
-
-    // num < 100
-    if (ip[k] >= 10) {
-      buf[pos++] = '0' + num / 10;
-      buf[pos++] = '0' + num % 10;
-    } else {
-      buf[pos++] = '0' + num;
-    }
-
-    buf[pos++] = '.';
-  }
-  buf[pos-1] = '\0';
-  string ipAddr(buf);
-  return std::move(ipAddr);
+  return detail::fastIpv4ToString(addr_.inAddr_);
 }
 
 // public

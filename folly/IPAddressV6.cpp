@@ -319,14 +319,7 @@ string IPAddressV6::str() const {
 
 // public
 string IPAddressV6::toFullyQualified() const {
-  auto asHex = detail::Bytes::toHex(bytes(), 16);
-  uint8_t chunks = asHex.size() / 4;
-  for (int chunk = 1; chunk < chunks; chunk++) {
-    // position changes as new characters are inserted
-    int pos = (chunk*4) + (chunk - 1);
-    asHex.insert(pos, ":");
-  }
-  return asHex;
+  return detail::fastIpv6ToString(addr_.in6Addr_);
 }
 
 // public
