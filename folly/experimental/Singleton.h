@@ -138,7 +138,12 @@ class SingletonVault {
   // Retrieve a singleton from the vault, creating it if necessary.
   std::shared_ptr<void> get_shared(const std::type_info& type) {
     std::unique_lock<std::mutex> lock(mutex_);
-    CHECK_THROW(state_ == SingletonVaultState::Running, std::logic_error);
+    if (state_ != SingletonVaultState::Running) {
+      throw std::logic_error(
+          "Attempt to load a singleton before "
+          "SingletonVault::registrationComplete was called (hint: you probably "
+          "didn't call initFacebook)");
+    }
 
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
