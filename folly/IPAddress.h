@@ -255,7 +255,7 @@ class IPAddress : boost::totally_ordered<IPAddress> {
   bool empty() const { return (family_ == AF_UNSPEC); }
 
   // @return true if address is initialized
-  explicit operator bool() { return !empty(); }
+  explicit operator bool() const { return !empty(); }
 
   // @return true if this is an IPAddressV4 instance
   bool isV4() const { return (family_ == AF_INET); }
