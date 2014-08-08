@@ -206,6 +206,7 @@ class IPAddress : boost::totally_ordered<IPAddress> {
       sockaddr_in6 *sin = reinterpret_cast<sockaddr_in6*>(dest);
       sin->sin6_addr = asV6().toAddr();
       sin->sin6_port = port;
+      sin->sin6_scope_id = asV6().getScopeId();
       return sizeof(*sin);
     } else {
       throw InvalidAddressFamilyException(family());

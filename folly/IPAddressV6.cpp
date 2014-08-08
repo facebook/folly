@@ -65,7 +65,18 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
     ip = ip.substr(1, ip.size() - 2);
   }
 
-  if (inet_pton(AF_INET6, ip.c_str(), &addr_.in6Addr_) != 1) {
+  struct addrinfo* result;
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET6;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_NUMERICHOST;
+  if (!getaddrinfo(ip.c_str(), nullptr, &hints, &result)) {
+    struct sockaddr_in6* ipAddr = (struct sockaddr_in6*)result->ai_addr;
+    addr_.in6Addr_ = ipAddr->sin6_addr;
+    scope_ = ipAddr->sin6_scope_id;
+    freeaddrinfo(result);
+  } else {
     throw IPAddressFormatException("Invalid IPv6 address '", ip, "'");
   }
 }
@@ -73,6 +84,13 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
 // in6_addr constructor
 IPAddressV6::IPAddressV6(const in6_addr& src)
   : addr_(src)
+{
+}
+
+// sockaddr_in6 constructor
+IPAddressV6::IPAddressV6(const sockaddr_in6& src)
+  : addr_(src.sin6_addr)
+  , scope_(src.sin6_scope_id)
 {
 }
 
@@ -108,6 +126,7 @@ void IPAddressV6::setFromBinary(ByteRange bytes) {
                                    "be 16 bytes, got ", bytes.size());
   }
   memcpy(&addr_.in6Addr_.s6_addr, bytes.data(), sizeof(in6_addr));
+  scope_ = 0;
 }
 
 // public
@@ -309,12 +328,17 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
 // public
 string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN] = {0};
-  if (!inet_ntop(AF_INET6, &addr_.in6Addr_, buffer, INET6_ADDRSTRLEN)) {
+  sockaddr_in6 sock = toSockAddr();
+  if (!getnameinfo(
+        (sockaddr*)&sock, sizeof(sock),
+        buffer, INET6_ADDRSTRLEN,
+        nullptr, 0, NI_NUMERICHOST)) {
+    string ip(buffer);
+    return std::move(ip);
+  } else {
     throw IPAddressFormatException("Invalid address with hex ",
                                    "'", detail::Bytes::toHex(bytes(), 16), "'");
   }
-  string ip(buffer);
-  return std::move(ip);
 }
 
 // public

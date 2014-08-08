@@ -51,6 +51,17 @@ typedef std::array<uint8_t, 16> ByteArray16;
  *                isTeredo, isIPv4Mapped, tryCreateIPv4, type
  *
  * @see IPAddress
+ *
+ * Notes on scope ID parsing:
+ *
+ * getaddrinfo() uses if_nametoindex() to convert interface names
+ * into a numerical index. For instance,
+ * "fe80::202:c9ff:fec1:ee08%eth0" may return scope ID 2 on some
+ * hosts, but other numbers on other hosts. It will fail entirely on
+ * hosts without an eth0 interface.
+ *
+ * Serializing / Deserializing IPAddressB6's on different hosts
+ * that use link-local scoping probably won't work.
  */
 class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
  public:
@@ -90,6 +101,7 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
 
   // Create an IPAddressV6 from a string
   // @throws IPAddressFormatException
+  //
   explicit IPAddressV6(StringPiece ip);
 
   // ByteArray16 constructor
@@ -97,6 +109,9 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
 
   // in6_addr constructor
   explicit IPAddressV6(const in6_addr& src);
+
+  // sockaddr_in6 constructor
+  explicit IPAddressV6(const sockaddr_in6& src);
 
   /**
    * Create a link-local IPAddressV6 from the specified ethernet MAC address.
@@ -209,10 +224,16 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   // return underlying in6_addr structure
   in6_addr toAddr() const { return addr_.in6Addr_; }
 
+  uint16_t getScopeId() const { return scope_; }
+  void setScopeId(uint16_t scope) {
+    scope_ = scope;
+  }
+
   sockaddr_in6 toSockAddr() const {
     sockaddr_in6 addr;
     memset(&addr, 0, sizeof(sockaddr_in6));
     addr.sin6_family = AF_INET6;
+    addr.sin6_scope_id = scope_;
     memcpy(&addr.sin6_addr, &addr_.in6Addr_, sizeof(in6_addr));
     return addr;
   }
@@ -294,6 +315,10 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
     explicit AddressStorage(MacAddress mac);
   } addr_;
 
+  // Link-local scope id.  This should always be 0 for IPAddresses that
+  // are *not* link-local.
+  uint16_t scope_{0};
+
   static const std::array<ByteArray16, 129> masks_;
 
   /**
@@ -315,11 +340,18 @@ void toAppend(IPAddressV6 addr, fbstring* result);
  * Return true if two addresses are equal.
  */
 inline bool operator==(const IPAddressV6& addr1, const IPAddressV6& addr2) {
-  return (std::memcmp(addr1.toAddr().s6_addr, addr2.toAddr().s6_addr, 16) == 0);
+  return (std::memcmp(addr1.toAddr().s6_addr, addr2.toAddr().s6_addr, 16) == 0)
+    && addr1.getScopeId() == addr2.getScopeId();
 }
 // Return true if addr1 < addr2
 inline bool operator<(const IPAddressV6& addr1, const IPAddressV6& addr2) {
-  return (std::memcmp(addr1.toAddr().s6_addr, addr2.toAddr().s6_addr, 16) < 0);
+  auto cmp = std::memcmp(addr1.toAddr().s6_addr,
+                         addr2.toAddr().s6_addr, 16) < 0;
+  if (!cmp) {
+    return addr1.getScopeId() < addr2.getScopeId();
+  } else {
+    return cmp;
+  }
 }
 
 }  // folly

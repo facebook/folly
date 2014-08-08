@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <sys/types.h>
+#include <netdb.h>
 }
 
 #include <folly/Conv.h>

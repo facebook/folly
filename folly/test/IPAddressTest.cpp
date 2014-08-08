@@ -29,8 +29,8 @@ using namespace std;
 // tests code example
 TEST(IPAddress, CodeExample) {
   EXPECT_EQ(4, sizeof(IPAddressV4));
-  EXPECT_EQ(16, sizeof(IPAddressV6));
-  EXPECT_EQ(20, sizeof(IPAddress));
+  EXPECT_EQ(20, sizeof(IPAddressV6));
+  EXPECT_EQ(24, sizeof(IPAddress));
   IPAddress uninitaddr;
   IPAddress v4addr("192.0.2.129");
   IPAddress v6map("::ffff:192.0.2.129");
@@ -51,6 +51,24 @@ TEST(IPAddress, CodeExample) {
   ASSERT_TRUE(v6map.isIPv4Mapped());
   EXPECT_TRUE(v4addr.asV4() == IPAddress::createIPv4(v6map));
   EXPECT_TRUE(IPAddress::createIPv6(v4addr) == v6map.asV6());
+}
+
+TEST(IPAddress, Scope) {
+  // Test that link-local scope is saved
+  auto str = "fe80::62eb:69ff:fe9b:ba60%eth0";
+  IPAddressV6 a2(str);
+  EXPECT_EQ(str, a2.str());
+
+  sockaddr_in6 sock = a2.toSockAddr();
+  EXPECT_NE(0, sock.sin6_scope_id);
+
+  IPAddress a1(str);
+  EXPECT_EQ(str, a1.str());
+
+  a2.setScopeId(0);
+  EXPECT_NE(a1, a2);
+
+  EXPECT_TRUE(a2 < a1);
 }
 
 TEST(IPAddress, Ordering) {
@@ -272,6 +290,7 @@ TEST(IPAddress, CtorSockaddr) {
   {
     // setup
     sockaddr_in6 addr;
+    memset(&addr, 0, sizeof(addr));
     in6_addr sin_addr;
     ByteArray16 sec{{
       // 2620:0:1cfe:face:b00c::3

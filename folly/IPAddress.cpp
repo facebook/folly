@@ -146,12 +146,20 @@ IPAddress::IPAddress(StringPiece addr)
   // need to check for V4 address second, since IPv4-mapped IPv6 addresses may
   // contain a period
   if (ip.find(':') != string::npos) {
-    in6_addr ipAddr;
-    if (inet_pton(AF_INET6, ip.c_str(), &ipAddr) != 1) {
-      throwFormatException("inet_pton failed for V6 address");
+    struct addrinfo* result;
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_NUMERICHOST;
+    if (!getaddrinfo(ip.c_str(), nullptr, &hints, &result)) {
+      struct sockaddr_in6* ipAddr = (struct sockaddr_in6*)result->ai_addr;
+      addr_ = IPAddressV46(IPAddressV6(*ipAddr));
+      family_ = AF_INET6;
+      freeaddrinfo(result);
+    } else {
+      throwFormatException("getsockaddr failed for V6 address");
     }
-    addr_ = IPAddressV46(IPAddressV6(ipAddr));
-    family_ = AF_INET6;
   } else if (ip.find('.') != string::npos) {
     in_addr ipAddr;
     if (inet_pton(AF_INET, ip.c_str(), &ipAddr) != 1) {
@@ -181,7 +189,7 @@ IPAddress::IPAddress(const sockaddr* addr)
     }
     case AF_INET6: {
       const sockaddr_in6 *v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
-      addr_.ipV6Addr = IPAddressV6(v6addr->sin6_addr);
+      addr_.ipV6Addr = IPAddressV6(*v6addr);
       break;
     }
     default:
