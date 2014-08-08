@@ -24,10 +24,14 @@
 using namespace folly;
 
 // A simple class that tracks how often instances of the class and
-// subclasses are created, and the ordering.
+// subclasses are created, and the ordering.  Also tracks a global
+// unique counter for each object.
+std::atomic<size_t> global_counter(19770326);
 struct Watchdog {
   static std::vector<Watchdog*> creation_order;
-  Watchdog() { creation_order.push_back(this); }
+  Watchdog() : serial_number(++global_counter) {
+    creation_order.push_back(this);
+  }
 
   ~Watchdog() {
     if (creation_order.back() != this) {
@@ -35,6 +39,8 @@ struct Watchdog {
     }
     creation_order.pop_back();
   }
+
+  const size_t serial_number;
 
   Watchdog(const Watchdog&) = delete;
   Watchdog& operator=(const Watchdog&) = delete;
@@ -185,12 +191,16 @@ TEST(Singleton, SharedPtrUsage) {
   EXPECT_EQ(shared_s1.use_count(), 2);
   locked_s1.reset();
   EXPECT_EQ(shared_s1.use_count(), 1);
+
+  // Track serial number rather than pointer since the memory could be
+  // re-used when we create new_s1.
+  auto old_serial = shared_s1->serial_number;
   shared_s1.reset();
   locked_s1 = weak_s1.lock();
   EXPECT_TRUE(weak_s1.expired());
 
   Watchdog* new_s1 = Singleton<Watchdog>::get(&vault);
-  EXPECT_NE(new_s1, s1);
+  EXPECT_NE(new_s1->serial_number, old_serial);
 }
 
 // Some classes to test singleton dependencies.  NeedySingleton has a
