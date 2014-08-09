@@ -101,7 +101,7 @@ bool consumeFixedSizeChunks(Callback& cb, StringPiece& s, uint64_t maxLength) {
   while (!s.empty()) {
     auto num_to_add = s.size();
     if (maxLength) {
-      num_to_add = std::min(num_to_add, maxLength);
+      num_to_add = std::min<uint64_t>(num_to_add, maxLength);
     }
     if (!cb(StringPiece(s.begin(), num_to_add))) {
       return false;
