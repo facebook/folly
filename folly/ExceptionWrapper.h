@@ -20,6 +20,7 @@
 #include <cassert>
 #include <exception>
 #include <memory>
+#include <folly/String.h>
 #include <folly/detail/ExceptionWrapper.h>
 
 namespace folly {
@@ -50,11 +51,13 @@ namespace folly {
  * exception_wrapper is designed to handle exception management for both
  * convenience and high performance use cases. make_exception_wrapper is
  * templated on derived type, allowing us to rethrow the exception properly for
- * users that prefer convenience. exception_wrapper is flexible enough to accept
- * any std::exception. For performance sensitive applications, exception_wrapper
- * exposes a get() function. These users can use dynamic_cast to retrieve
- * desired derived types (hence the decision to limit usage to just
- * std::exception instead of void*).
+ * users that prefer convenience. These explicitly named exception types can
+ * therefore be handled without any peformance penalty.  exception_wrapper is
+ * also flexible enough to accept any type. If a caught exception is not of an
+ * explicitly named type, then std::exception_ptr is used to preserve the
+ * exception state. For performance sensitive applications, the accessor methods
+ * can test or extract a pointer to a specific exception type with very little
+ * overhead.
  *
  * Example usage:
  *
@@ -86,16 +89,14 @@ namespace folly {
  * // Thread2: Exceptions are bad!
  * void processResult() {
  *   auto ep = globalExceptionWrapper.get();
- *   if (ep) {
- *     auto faceplant = dynamic_cast<FacePlantException*>(ep);
- *     if (faceplant) {
+ *   if (!ep.with_exception<FacePlantException>([&](
+ *     FacePlantException& faceplant) {
  *       LOG(ERROR) << "FACEPLANT";
- *     } else {
- *       auto failwhale = dynamic_cast<FailWhaleException*>(ep);
- *       if (failwhale) {
+ *     })) {
+ *     ep.with_exception<FailWhaleException>([&](
+ *       FailWhaleException& failwhale) {
  *         LOG(ERROR) << "FAILWHALE!";
- *       }
- *     }
+ *       });
  *   }
  * }
  *
@@ -107,21 +108,80 @@ class exception_wrapper {
   void throwException() const {
     if (throwfn_) {
       throwfn_(item_.get());
+    } else if (eptr_) {
+      std::rethrow_exception(eptr_);
     }
   }
 
-  std::exception* get() { return item_.get(); }
-  const std::exception* get() const { return item_.get(); }
+  explicit operator bool() const {
+    return item_ || eptr_;
+  }
 
-  std::exception* operator->() { return get(); }
-  const std::exception* operator->() const { return get(); }
+  // This will return a non-nullptr only if the exception is held as a
+  // copy.  It is the only interface which will distinguish between an
+  // exception held this way, and by exception_ptr.  You probably
+  // shouldn't use it at all.
+  std::exception* getCopied() { return item_.get(); }
+  const std::exception* getCopied() const { return item_.get(); }
 
-  std::exception& operator*() { assert(get()); return *get(); }
-  const std::exception& operator*() const { assert(get()); return *get(); }
+  fbstring what() const {
+    if (item_) {
+      return exceptionStr(*item_.get());
+    } else if (eptr_) {
+      return estr_;
+    } else {
+      return fbstring();
+    }
+  }
 
-  explicit operator bool() const { return get(); }
+  template <class Ex>
+  bool is_compatible_with() const {
+    if (item_) {
+      return dynamic_cast<const Ex*>(getCopied());
+    } else if (eptr_) {
+      try {
+        std::rethrow_exception(eptr_);
+      } catch (std::exception& e) {
+        return dynamic_cast<const Ex*>(&e);
+      } catch (...) {
+        // fall through
+      }
+    }
+    return false;
+  }
+
+  template <class Ex, class F>
+  bool with_exception(F f) {
+    if (item_) {
+      if (auto ex = dynamic_cast<Ex*>(getCopied())) {
+        f(*ex);
+        return true;
+      }
+    } else if (eptr_) {
+      try {
+        std::rethrow_exception(eptr_);
+      } catch (std::exception& e) {
+        if (auto ex = dynamic_cast<Ex*>(&e)) {
+          f(*ex);
+          return true;
+        }
+      } catch (...) {
+        // fall through
+      }
+    }
+    return false;
+  }
+
+  template <class Ex, class F>
+  bool with_exception(F f) const {
+    return with_exception<const Ex>(f);
+  }
 
   std::exception_ptr getExceptionPtr() const {
+    if (eptr_) {
+      return eptr_;
+    }
+
     try {
       throwException();
     } catch (...) {
@@ -131,8 +191,16 @@ class exception_wrapper {
   }
 
  protected:
+  // Optimized case: if we know what type the exception is, we can
+  // store a copy of the concrete type, and a helper function so we
+  // can rethrow it.
   std::shared_ptr<std::exception> item_;
   void (*throwfn_)(std::exception*);
+  // Fallback case: store the library wrapper, which is less efficient
+  // but gets the job done.  Also store the the what() string, so we
+  // can at least get it back out without having to rethrow.
+  std::exception_ptr eptr_;
+  std::string estr_;
 
   template <class T, class... Args>
   friend exception_wrapper make_exception_wrapper(Args&&... args);
@@ -203,13 +271,52 @@ class try_and_catch<LastException, Exceptions...> :
 
   try_and_catch() : Base() {}
 
+  template <typename Ex>
+  typename std::enable_if<std::is_base_of<std::exception, Ex>::value>::type
+  assign_eptr(Ex& e) {
+    this->eptr_ = std::current_exception();
+    // The cast is needed so we get the desired overload of exceptionStr()
+    this->estr_ = exceptionStr(static_cast<std::exception&>(e)).toStdString();
+  }
+
+  template <typename Ex>
+  typename std::enable_if<!std::is_base_of<std::exception, Ex>::value>::type
+  assign_eptr(Ex& e) {
+    this->eptr_ = std::current_exception();
+    this->estr_ = exceptionStr(e).toStdString();
+  }
+
+  template <typename Ex>
+  struct optimize {
+    static const bool value =
+      std::is_base_of<std::exception, Ex>::value &&
+      std::is_copy_assignable<Ex>::value &&
+      !std::is_abstract<Ex>::value;
+  };
+
+  template <typename Ex>
+  typename std::enable_if<!optimize<Ex>::value>::type
+  assign_exception(Ex& e) {
+    assign_eptr(e);
+  }
+
+  template <typename Ex>
+  typename std::enable_if<optimize<Ex>::value>::type
+  assign_exception(Ex& e) {
+    this->item_ = std::make_shared<Ex>(e);
+    this->throwfn_ = folly::detail::Thrower<Ex>::doThrow;
+  }
+
   template <typename F>
   void call_fn(F&& fn) {
     try {
       Base::call_fn(std::move(fn));
-    } catch (const LastException& e) {
-      this->item_ = std::make_shared<LastException>(e);
-      this->throwfn_ = folly::detail::Thrower<LastException>::doThrow;
+    } catch (LastException& e) {
+      if (typeid(e) == typeid(LastException&)) {
+        assign_exception(e);
+      } else {
+        assign_eptr(e);
+      }
     }
   }
 };

@@ -44,7 +44,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_test, iters) {
   std::runtime_error e("payload");
   for (int i = 0; i < iters; ++i) {
     auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
-    assert(ew.get());
+    assert(ew);
   }
 }
 
@@ -81,7 +81,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_test_concurrent, iters) {
         std::runtime_error e("payload");
         for (int i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
-          assert(ew.get());
+          assert(ew);
         }
       });
     }
@@ -127,9 +127,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast, iters) {
   std::runtime_error e("payload");
   for (int i = 0; i < iters; ++i) {
     auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
-    std::exception* basePtr = static_cast<std::exception*>(ew.get());
-    auto ep = dynamic_cast<std::runtime_error*>(basePtr);
-    assert(ep);
+    assert(ew.is_compatible_with<std::runtime_error>());
   }
 }
 
@@ -196,9 +194,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_cast_concurrent, iters) {
         std::runtime_error e("payload");
         for (int i = 0; i < iters; ++i) {
           auto ew = folly::make_exception_wrapper<std::runtime_error>(e);
-          std::exception* basePtr = static_cast<std::exception*>(ew.get());
-          auto ep = dynamic_cast<std::runtime_error*>(basePtr);
-          assert(ep);
+          assert(ew.is_compatible_with<std::runtime_error>());
         }
       });
     }

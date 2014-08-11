@@ -349,8 +349,15 @@ std::string hexDump(const void* ptr, size_t size);
 fbstring errnoStr(int err);
 
 /**
- * Debug string for an exception: include type and what().
+ * Debug string for an exception: include type and what().  Note that
+ * the non-templated function overloads will be used in preference to
+ * the template.
  */
+template<typename T>
+fbstring exceptionStr(const T& e) {
+  return folly::to<fbstring>(demangle(typeid(e)));
+}
+
 inline fbstring exceptionStr(const std::exception& e) {
   return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
 }

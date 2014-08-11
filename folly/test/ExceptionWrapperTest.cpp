@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <folly/ExceptionWrapper.h>
+#include <folly/Conv.h>
 
 using namespace folly;
 
@@ -52,9 +53,10 @@ TEST(ExceptionWrapper, try_and_catch_test) {
     [=]() {
       throw std::runtime_error(expected);
     });
-  EXPECT_TRUE(ew.get());
-  EXPECT_EQ(ew.get()->what(), expected);
-  auto rep = dynamic_cast<std::runtime_error*>(ew.get());
+  EXPECT_TRUE(bool(ew));
+  EXPECT_TRUE(ew.getCopied());
+  EXPECT_EQ(ew.what(), "std::runtime_error: payload");
+  auto rep = ew.is_compatible_with<std::runtime_error>();
   EXPECT_TRUE(rep);
 
   // Changing order is like catching in wrong order. Beware of this in your
@@ -62,19 +64,20 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   auto ew2 = try_and_catch<std::runtime_error, std::exception>([=]() {
     throw std::runtime_error(expected);
   });
-  EXPECT_TRUE(ew2.get());
+  EXPECT_TRUE(bool(ew2));
   // We are catching a std::exception, not std::runtime_error.
-  EXPECT_NE(ew2.get()->what(), expected);
-  rep = dynamic_cast<std::runtime_error*>(ew2.get());
-  EXPECT_FALSE(rep);
+  EXPECT_FALSE(ew2.getCopied());
+  // But, we can still get the actual type if we want it.
+  rep = ew2.is_compatible_with<std::runtime_error>();
+  EXPECT_TRUE(rep);
 
   // Catches even if not rightmost.
   auto ew3 = try_and_catch<std::exception, std::runtime_error>([]() {
     throw std::exception();
   });
-  EXPECT_TRUE(ew3.get());
-  EXPECT_NE(ew3.get()->what(), expected);
-  rep = dynamic_cast<std::runtime_error*>(ew3.get());
+  EXPECT_TRUE(bool(ew3));
+  EXPECT_NE(ew3.what(), expected);
+  rep = ew3.is_compatible_with<std::runtime_error>();
   EXPECT_FALSE(rep);
 
   // If does not catch, throws.
@@ -83,4 +86,72 @@ TEST(ExceptionWrapper, try_and_catch_test) {
       throw std::exception();
     }),
     std::exception);
+}
+
+class AbstractIntException : public std::exception {
+public:
+  virtual int getInt() const = 0;
+};
+
+class IntException : public AbstractIntException {
+public:
+  explicit IntException(int i)
+    : i_(i) {}
+
+  virtual int getInt() const { return i_; }
+  virtual const char* what() const noexcept override {
+    what_ = folly::to<std::string>("int == ", i_);
+    return what_.c_str();
+  }
+
+private:
+  int i_;
+  mutable std::string what_;
+};
+
+TEST(ExceptionWrapper, with_exception_test) {
+  int expected = 23;
+
+  // This works, and doesn't slice.
+  exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
+    [=]() {
+      throw IntException(expected);
+    });
+  EXPECT_TRUE(bool(ew));
+  EXPECT_EQ(ew.what(), "IntException: int == 23");
+  ew.with_exception<IntException>([&](const IntException& ie) {
+      EXPECT_EQ(ie.getInt(), expected);
+    });
+
+  // I can try_and_catch a non-copyable base class.  This will use
+  // std::exception_ptr internally.
+  exception_wrapper ew2 = try_and_catch<AbstractIntException>(
+    [=]() {
+      throw IntException(expected);
+    });
+  EXPECT_TRUE(bool(ew2));
+  EXPECT_EQ(ew2.what(), "IntException: int == 23");
+  ew2.with_exception<AbstractIntException>([&](AbstractIntException& ie) {
+      EXPECT_EQ(ie.getInt(), expected);
+      EXPECT_EQ(typeid(ie), typeid(IntException));
+    });
+}
+
+TEST(ExceptionWrapper, non_std_exception_test) {
+  int expected = 17;
+
+  exception_wrapper ew = try_and_catch<std::exception, int>(
+    [=]() {
+      throw expected;
+    });
+  EXPECT_TRUE(bool(ew));
+  EXPECT_FALSE(ew.is_compatible_with<std::exception>());
+  EXPECT_EQ(ew.what(), "int");
+  // non-std::exception types are supported, but the only way to
+  // access their value is to explicity rethrow and catch it.
+  try {
+    ew.throwException();
+  } catch (int& i) {
+    EXPECT_EQ(i, expected);
+  }
 }
