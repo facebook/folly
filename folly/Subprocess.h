@@ -205,10 +205,7 @@ class Subprocess : private boost::noncopyable {
   class Options : private boost::orable<Options> {
     friend class Subprocess;
    public:
-    Options()
-      : closeOtherFds_(false),
-        usePath_(false) {
-    }
+    Options() {}  // E.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58328
 
     /**
      * Change action for file descriptor fd.
@@ -282,6 +279,16 @@ class Subprocess : private boost::noncopyable {
 #endif
 
     /**
+     * Child will be made a process group leader when it starts. Upside: one
+     * can reliably all its kill non-daemonizing descendants.  Downside: the
+     * child will not receive Ctrl-C etc during interactive use.
+     */
+    Options& processGroupLeader() {
+      processGroupLeader_ = true;
+      return *this;
+    }
+
+    /**
      * Helpful way to combine Options.
      */
     Options& operator|=(const Options& other);
@@ -289,12 +296,13 @@ class Subprocess : private boost::noncopyable {
    private:
     typedef boost::container::flat_map<int, int> FdMap;
     FdMap fdActions_;
-    bool closeOtherFds_;
-    bool usePath_;
+    bool closeOtherFds_{false};
+    bool usePath_{false};
     std::string childDir_;  // "" keeps the parent's working directory
 #if __linux__
     int parentDeathSignal_{0};
 #endif
+    bool processGroupLeader_{false};
   };
 
   static Options pipeStdin() { return Options().stdin(PIPE); }
@@ -660,6 +668,7 @@ inline Subprocess::Options& Subprocess::Options::operator|=(
   }
   closeOtherFds_ |= other.closeOtherFds_;
   usePath_ |= other.usePath_;
+  processGroupLeader_ |= other.processGroupLeader_;
   return *this;
 }
 
