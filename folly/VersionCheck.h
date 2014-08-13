@@ -67,6 +67,14 @@
  *
  * ... and then commpile your file with -DMYLIB_VERSION=\"1\"
  */
+
+#ifdef __APPLE__
+// OS X doesn't support constructor priorities. Just pray it works, I guess.
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((constructor))
+#else
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((constructor(101)))
+#endif
+
 // Note that this is carefully crafted: PRODUCT##Version must have external
 // linkage (so it collides among versions), versionCheck must have internal
 // linkage (so it does NOT collide between versions); if we're trying to have
@@ -75,7 +83,7 @@
 #define FOLLY_VERSION_CHECK(PRODUCT, VERSION) \
   const char* PRODUCT##Version = VERSION; \
   namespace { \
-  __attribute__((constructor(101))) void versionCheck() { \
+  FOLLY_VERSION_CHECK_PRIORITY void versionCheck() { \
     if (strcmp(PRODUCT##Version, VERSION)) { \
       fprintf(stderr, \
               "Invalid %s version: desired [%s], currently loaded [%s]\n", \
