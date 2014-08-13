@@ -73,7 +73,10 @@ class MultiLevelTimeSeries {
   /*
    * Return the number of buckets used to track time series at each level.
    */
-  size_t numBuckets() const { return numBuckets_; }
+  size_t numBuckets() const {
+    // The constructor ensures that levels_ has at least one item
+    return levels_[0].numBuckets();
+  }
 
   /*
    * Return the number of levels tracked by MultiLevelTimeSeries.
@@ -297,7 +300,6 @@ class MultiLevelTimeSeries {
   void flush();
 
  private:
-  size_t numBuckets_;
   std::vector<Level> levels_;
 
   // Updates within the same time interval are cached

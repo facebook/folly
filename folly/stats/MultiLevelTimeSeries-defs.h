@@ -26,8 +26,7 @@ MultiLevelTimeSeries<VT, TT>::MultiLevelTimeSeries(
   size_t numBuckets,
   size_t numLevels,
   const TimeType levelDurations[])
-    : numBuckets_(numBuckets),
-      cachedTime_(0),
+    : cachedTime_(0),
       cachedSum_(0),
       cachedCount_(0) {
     CHECK_GT(numLevels, 0);
