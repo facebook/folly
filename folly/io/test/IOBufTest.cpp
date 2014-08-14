@@ -17,9 +17,6 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/TypedIOBuf.h>
 
-// googletest requires std::tr1::tuple, not std::tuple
-#include <tr1/tuple>
-
 #include <gflags/gflags.h>
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
@@ -836,7 +833,11 @@ class MoveToFbStringTest
   : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool, BufType>> {
  protected:
   void SetUp() {
-    std::tr1::tie(elementSize_, elementCount_, shared_, type_) = GetParam();
+    elementSize_ = std::tr1::get<0>(GetParam());
+    elementCount_ = std::tr1::get<1>(GetParam());
+    shared_ = std::tr1::get<2>(GetParam());
+    type_ = std::tr1::get<3>(GetParam());
+
     buf_ = makeBuf();
     for (int i = 0; i < elementCount_ - 1; ++i) {
       buf_->prependChain(makeBuf());

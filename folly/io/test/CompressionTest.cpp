@@ -16,10 +16,8 @@
 
 #include <folly/io/Compression.h>
 
-// Yes, tr1, as that's what gtest requires
 #include <random>
 #include <thread>
-#include <tr1/tuple>
 #include <unordered_map>
 
 #include <boost/noncopyable.hpp>
