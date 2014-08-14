@@ -59,6 +59,19 @@ inline size_t hash_combine_generic() {
   return 0;
 }
 
+template <
+    class Iter,
+    class Hash = std::hash<typename std::iterator_traits<Iter>::value_type>>
+uint64_t hash_range(Iter begin,
+                    Iter end,
+                    uint64_t hash = 0,
+                    Hash hasher = Hash()) {
+  for (; begin != end; ++begin) {
+    hash = hash_128_to_64(hash, hasher(*begin));
+  }
+  return hash;
+}
+
 template <class Hasher, typename T, typename... Ts>
 size_t hash_combine_generic(const T& t, const Ts&... ts) {
   size_t seed = Hasher::hash(t);

@@ -238,6 +238,19 @@ TEST(Hash, std_tuple) {
   EXPECT_EQ("bar", m[t]);
 }
 
+namespace {
+template <class T>
+size_t hash_vector(const std::vector<T>& v) {
+  return hash_range(v.begin(), v.end());
+}
+}
+
+TEST(Hash, hash_range) {
+  EXPECT_EQ(hash_vector<int32_t>({1, 2}), hash_vector<int16_t>({1, 2}));
+  EXPECT_NE(hash_vector<int>({2, 1}), hash_vector<int>({1, 2}));
+  EXPECT_EQ(hash_vector<int>({}), hash_vector<float>({}));
+}
+
 TEST(Hash, std_tuple_different_hash) {
   typedef std::tuple<int64_t, std::string, int32_t> tuple3;
   tuple3 t1(42, "foo", 1);
