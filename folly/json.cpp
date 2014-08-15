@@ -684,6 +684,62 @@ void escapeString(StringPiece input,
   out.push_back('\"');
 }
 
+fbstring stripComments(StringPiece jsonC) {
+  fbstring result;
+  enum class State {
+    None,
+    InString,
+    InlineComment,
+    LineComment
+  } state = State::None;
+
+  for (size_t i = 0; i < jsonC.size(); ++i) {
+    auto s = jsonC.subpiece(i);
+    switch (state) {
+      case State::None:
+        if (s.startsWith("/*")) {
+          state = State::InlineComment;
+          ++i;
+          continue;
+        } else if (s.startsWith("//")) {
+          state = State::LineComment;
+          ++i;
+          continue;
+        } else if (s.startsWith("\"")) {
+          state = State::InString;
+        }
+        result.push_back(s[0]);
+        break;
+      case State::InString:
+        if (s.startsWith("\\\"")) {
+          result.push_back(s[0]);
+          result.push_back(s[1]);
+          ++i;
+          continue;
+        } else if (s.startsWith("\"")) {
+          state = State::None;
+        }
+        result.push_back(s[0]);
+        break;
+      case State::InlineComment:
+        if (s.startsWith("*/")) {
+          state = State::None;
+          ++i;
+        }
+        break;
+      case State::LineComment:
+        if (s.startsWith("\n")) {
+          // skip the line break. It doesn't matter.
+          state = State::None;
+        }
+        break;
+      default:
+        throw std::logic_error("Unknown comment state");
+    }
+  }
+  return result;
+}
+
 }
 
 //////////////////////////////////////////////////////////////////////

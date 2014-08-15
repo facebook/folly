@@ -142,6 +142,11 @@ namespace json {
   void escapeString(StringPiece input,
                     fbstring& out,
                     const serialization_opts& opts);
+
+  /*
+   * Strip all C99-like comments (i.e. // and / * ... * /)
+   */
+  fbstring stripComments(StringPiece jsonC);
 }
 
 //////////////////////////////////////////////////////////////////////

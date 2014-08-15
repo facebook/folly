@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/FileUtil.h>
 #include <folly/json.h>
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
@@ -377,6 +378,23 @@ TEST(Json, SortKeys) {
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_off)));
 
   EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
+}
+
+TEST(Json, StripComments) {
+  const std::string kTestFile =
+    "folly/test/json_test_data/commented.json";
+  const std::string kTestExpected =
+    "folly/test/json_test_data/commented.json.exp";
+
+  std::string testStr;
+  std::string expectedStr;
+  if (!folly::readFile(kTestFile.data(), testStr)) {
+    FAIL() << "can not read test file " << kTestFile;
+  }
+  if (!folly::readFile(kTestExpected.data(), expectedStr)) {
+    FAIL() << "can not read test file " << kTestExpected;
+  }
+  EXPECT_EQ(expectedStr, folly::json::stripComments(testStr));
 }
 
 BENCHMARK(jsonSerialize, iters) {
