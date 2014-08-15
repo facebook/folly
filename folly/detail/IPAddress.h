@@ -45,6 +45,10 @@ extern "C" {
 #include <folly/Conv.h>
 #include <folly/Format.h>
 
+#if defined(__APPLE__) && !defined(s6_addr16)
+# define s6_addr16 __u6_addr.__u6_addr16
+#endif
+
 namespace folly { namespace detail {
 
 inline std::string familyNameStr(sa_family_t family) {
