@@ -32,11 +32,13 @@ namespace folly { namespace detail {
 
 /// Returns the best real CacheLocality information available
 static CacheLocality getSystemLocalityInfo() {
+#ifdef __linux__
   try {
     return CacheLocality::readFromSysfs();
   } catch (...) {
     // keep trying
   }
+#endif
 
   long numCpus = sysconf(_SC_NPROCESSORS_CONF);
   if (numCpus <= 0) {
