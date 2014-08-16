@@ -225,6 +225,17 @@ class Optional {
   const Value* operator->() const { return &value(); }
         Value* operator->()       { return &value(); }
 
+  // Return a copy of the value if set, or a given default if not.
+  template <class U>
+  Value value_or(U&& dflt) const& {
+    return hasValue_ ? value_ : std::forward<U>(dflt);
+  }
+
+  template <class U>
+  Value value_or(U&& dflt) && {
+    return hasValue_ ? std::move(value_) : std::forward<U>(dflt);
+  }
+
  private:
   template<class... Args>
   void construct(Args&&... args) {

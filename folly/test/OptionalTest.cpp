@@ -97,13 +97,47 @@ TEST(Optional, Const) {
 TEST(Optional, Simple) {
   Optional<int> opt;
   EXPECT_FALSE(bool(opt));
+  EXPECT_EQ(42, opt.value_or(42));
   opt = 4;
   EXPECT_TRUE(bool(opt));
   EXPECT_EQ(4, *opt);
+  EXPECT_EQ(4, opt.value_or(42));
   opt = 5;
   EXPECT_EQ(5, *opt);
   opt.clear();
   EXPECT_FALSE(bool(opt));
+}
+
+TEST(Optional, value_or_rvalue_arg) {
+  Optional<std::string> opt;
+  std::string dflt = "hello";
+  EXPECT_EQ("hello", opt.value_or(dflt));
+  EXPECT_EQ("hello", dflt);
+  EXPECT_EQ("hello", opt.value_or(std::move(dflt)));
+  EXPECT_EQ("", dflt);
+  EXPECT_EQ("world", opt.value_or("world"));
+
+  dflt = "hello";
+  // Make sure that the const overload works on const objects
+  const auto& optc = opt;
+  EXPECT_EQ("hello", optc.value_or(dflt));
+  EXPECT_EQ("hello", dflt);
+  EXPECT_EQ("hello", optc.value_or(std::move(dflt)));
+  EXPECT_EQ("", dflt);
+  EXPECT_EQ("world", optc.value_or("world"));
+
+  dflt = "hello";
+  opt = "meow";
+  EXPECT_EQ("meow", opt.value_or(dflt));
+  EXPECT_EQ("hello", dflt);
+  EXPECT_EQ("meow", opt.value_or(std::move(dflt)));
+  EXPECT_EQ("hello", dflt);  // only moved if used
+}
+
+TEST(Optional, value_or_noncopyable) {
+  Optional<std::unique_ptr<int>> opt;
+  std::unique_ptr<int> dflt(new int(42));
+  EXPECT_EQ(42, *std::move(opt).value_or(std::move(dflt)));
 }
 
 TEST(Optional, EmptyConstruct) {
