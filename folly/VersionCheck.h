@@ -70,9 +70,9 @@
 
 #ifdef __APPLE__
 // OS X doesn't support constructor priorities. Just pray it works, I guess.
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((constructor))
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__))
 #else
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((constructor(101)))
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__(101)))
 #endif
 
 // Note that this is carefully crafted: PRODUCT##Version must have external

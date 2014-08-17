@@ -22,7 +22,7 @@ namespace detail {
 
 // If we're targeting an architecture with popcnt support, use
 // __builtin_popcount directly, as it's presumably inlined.
-// If not, use runtime detection using __attribute__((ifunc))
+// If not, use runtime detection using __attribute__((__ifunc__))
 // (see Bits.cpp)
 #ifdef _MSC_VER
 inline int popcount(unsigned int x) {

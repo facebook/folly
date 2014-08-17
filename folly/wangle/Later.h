@@ -192,7 +192,7 @@ class Later {
   /*
    * Deprecated. Use launch()
    */
-  void fireAndForget() __attribute__ ((deprecated)) { launch(); }
+  void fireAndForget() __attribute__ ((__deprecated__)) { launch(); }
 
  private:
   Promise<void> starter_;

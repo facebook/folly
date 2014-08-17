@@ -94,7 +94,7 @@ void ArenaTester::merge(ArenaTester&& other) {
 }  // namespace
 
 TEST(ThreadCachedArena, BlockSize) {
-  struct Align { char c; } __attribute__((aligned));
+  struct Align { char c; } __attribute__((__aligned__));
   static const size_t alignment = alignof(Align);
   static const size_t requestedBlockSize = 64;
 

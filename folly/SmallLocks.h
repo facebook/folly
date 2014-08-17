@@ -96,7 +96,7 @@ namespace detail {
  * init(), since the free state is guaranteed to be all-bits zero.
  *
  * This class should be kept a POD, so we can used it in other packed
- * structs (gcc does not allow __attribute__((packed)) on structs that
+ * structs (gcc does not allow __attribute__((__packed__)) on structs that
  * contain non-POD data).  This means avoid adding a constructor, or
  * making some members private, etc.
  */
@@ -318,7 +318,7 @@ struct SpinLockArray {
 
   char padding_[FOLLY_CACHE_LINE_SIZE];
   std::array<PaddedSpinLock, N> data_;
-} __attribute__((aligned));
+} __attribute__((__aligned__));
 
 //////////////////////////////////////////////////////////////////////
 

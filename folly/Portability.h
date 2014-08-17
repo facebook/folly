@@ -51,7 +51,7 @@
 
 // MaxAlign: max_align_t isn't supported by gcc
 #ifdef __GNUC__
-struct MaxAlign { char c; } __attribute__((aligned));
+struct MaxAlign { char c; } __attribute__((__aligned__));
 #else /* !__GNUC__ */
 # error Cannot define MaxAlign on this platform
 #endif
@@ -71,14 +71,14 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #else
 # define FOLLY_PRINTF_FORMAT /**/
 # define FOLLY_PRINTF_FORMAT_ATTR(format_param, dots_param) \
-  __attribute__((format(printf, format_param, dots_param)))
+  __attribute__((__format__(__printf__, format_param, dots_param)))
 #endif
 
 // noreturn
 #if defined(_MSC_VER)
 # define FOLLY_NORETURN __declspec(noreturn)
 #elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_NORETURN __attribute__((noreturn))
+# define FOLLY_NORETURN __attribute__((__noreturn__))
 #else
 # define FOLLY_NORETURN
 #endif
@@ -87,7 +87,7 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #ifdef _MSC_VER
 # define FOLLY_NOINLINE __declspec(noinline)
 #elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_NOINLINE __attribute__((noinline))
+# define FOLLY_NOINLINE __attribute__((__noinline__))
 #else
 # define FOLLY_NOINLINE
 #endif
@@ -96,7 +96,7 @@ struct MaxAlign { char c; } __attribute__((aligned));
 #ifdef _MSC_VER
 # define FOLLY_ALWAYS_INLINE __forceinline
 #elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_ALWAYS_INLINE inline __attribute__((always_inline))
+# define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
 #else
 # define FOLLY_ALWAYS_INLINE
 #endif
@@ -114,7 +114,7 @@ struct MaxAlign { char c; } __attribute__((aligned));
 # define FOLLY_PACK_PUSH __pragma(pack(push, 1))
 # define FOLLY_PACK_POP __pragma(pack(pop))
 #elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_PACK_ATTR __attribute__((packed))
+# define FOLLY_PACK_ATTR __attribute__((__packed__))
 # define FOLLY_PACK_PUSH /**/
 # define FOLLY_PACK_POP /**/
 #else

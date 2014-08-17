@@ -28,7 +28,7 @@
 //
 // TODO(tudorb): Detect this with autoconf for the open-source version.
 //
-// __attribute__((weak)) doesn't work, because cplus_demangle_v3_callback
+// __attribute__((__weak__)) doesn't work, because cplus_demangle_v3_callback
 // is exported by an object file in libiberty.a, and the ELF spec says
 // "The link editor does not extract archive members to resolve undefined weak
 // symbols" (but, interestingly enough, will resolve undefined weak symbols

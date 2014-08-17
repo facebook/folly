@@ -33,7 +33,7 @@ using namespace ::folly::symbolizer;
 using namespace __cxxabiv1;
 
 extern "C" {
-StackTraceStack* getExceptionStackTraceStack(void) __attribute__((weak));
+StackTraceStack* getExceptionStackTraceStack(void) __attribute__((__weak__));
 typedef StackTraceStack* (*GetExceptionStackTraceStackType)(void);
 GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
 }

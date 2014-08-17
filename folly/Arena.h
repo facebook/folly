@@ -149,7 +149,7 @@ class Arena {
    private:
     Block() { }
     ~Block() { }
-  } __attribute__((aligned));
+  } __attribute__((__aligned__));
   // This should be alignas(std::max_align_t) but neither alignas nor
   // max_align_t are supported by gcc 4.6.2.
 

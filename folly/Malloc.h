@@ -51,11 +51,11 @@ namespace folly {
  * using another malloc implementation.
  */
 extern "C" int rallocm(void**, size_t*, size_t, size_t, int)
-__attribute__((weak));
+__attribute__((__weak__));
 extern "C" int allocm(void**, size_t*, size_t, int)
-__attribute__((weak));
+__attribute__((__weak__));
 extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
-__attribute__((weak));
+__attribute__((__weak__));
 
 #include <bits/functexcept.h>
 #define FOLLY_HAVE_MALLOC_H 1

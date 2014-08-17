@@ -73,7 +73,7 @@ namespace detail {
 // or popcount_builtin
 int popcount(unsigned int x)
 #if FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
-  __attribute__((ifunc("folly_popcount_ifunc")));
+  __attribute__((__ifunc__("folly_popcount_ifunc")));
 #else
 {  return popcount_builtin(x); }
 #endif
@@ -82,7 +82,7 @@ int popcount(unsigned int x)
 // or popcountll_builtin
 int popcountll(unsigned long long x)
 #if FOLLY_HAVE_IFUNC && !defined(FOLLY_SANITIZE_ADDRESS)
-  __attribute__((ifunc("folly_popcountll_ifunc")));
+  __attribute__((__ifunc__("folly_popcountll_ifunc")));
 #else
 {  return popcountll_builtin(x); }
 #endif

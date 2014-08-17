@@ -32,7 +32,7 @@
 // of a link failure
 extern "C" int mallctl(const char *name, void *oldp, size_t *oldlenp,
                        void *newp, size_t newlen)
-    __attribute__((weak));
+    __attribute__((__weak__));
 
 
 namespace folly { namespace detail {
