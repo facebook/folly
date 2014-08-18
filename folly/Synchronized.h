@@ -198,36 +198,55 @@ struct Synchronized {
    */
   Synchronized() = default;
 
+ private:
+  static constexpr bool nxCopyCtor{
+      std::is_nothrow_copy_constructible<T>::value};
+  static constexpr bool nxMoveCtor{
+      std::is_nothrow_move_constructible<T>::value};
+
+  /**
+   * Helper constructors to enable Synchronized for
+   * non-default constructible types T.
+   * Guards are created in actual public constructors and are alive
+   * for the time required to construct the object
+   */
+  template <typename Guard>
+  Synchronized(const Synchronized& rhs,
+               const Guard& /*guard*/) noexcept(nxCopyCtor)
+      : datum_(rhs.datum_) {}
+
+  template <typename Guard>
+  Synchronized(Synchronized&& rhs, const Guard& /*guard*/) noexcept(nxMoveCtor)
+      : datum_(std::move(rhs.datum_)) {}
+
+ public:
   /**
    * Copy constructor copies the data (with locking the source and
    * all) but does NOT copy the mutex. Doing so would result in
    * deadlocks.
    */
-  Synchronized(const Synchronized& rhs) {
-    auto guard = rhs.operator->();
-    datum_ = rhs.datum_;
-  }
+  Synchronized(const Synchronized& rhs) noexcept(nxCopyCtor)
+      : Synchronized(rhs, rhs.operator->()) {}
 
   /**
    * Move constructor moves the data (with locking the source and all)
    * but does not move the mutex.
    */
-  Synchronized(Synchronized&& rhs) {
-    auto guard = rhs.operator->();
-    datum_ = std::move(rhs.datum_);
-  }
+  Synchronized(Synchronized&& rhs) noexcept(nxMoveCtor)
+      : Synchronized(std::move(rhs), rhs.operator->()) {}
 
   /**
    * Constructor taking a datum as argument copies it. There is no
    * need to lock the constructing object.
    */
-  explicit Synchronized(const T& rhs) : datum_(rhs) {}
+  explicit Synchronized(const T& rhs) noexcept(nxCopyCtor) : datum_(rhs) {}
 
   /**
    * Constructor taking a datum rvalue as argument moves it. Again,
    * there is no need to lock the constructing object.
    */
-  explicit Synchronized(T&& rhs) : datum_(std::move(rhs)) {}
+  explicit Synchronized(T&& rhs) noexcept(nxMoveCtor)
+      : datum_(std::move(rhs)) {}
 
   /**
    * The canonical assignment operator only assigns the data, NOT the
