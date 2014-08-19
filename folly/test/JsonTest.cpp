@@ -381,17 +381,18 @@ TEST(Json, SortKeys) {
 }
 
 TEST(Json, StripComments) {
-  const std::string kTestFile =
-    "folly/test/json_test_data/commented.json";
-  const std::string kTestExpected =
-    "folly/test/json_test_data/commented.json.exp";
+  const std::string kTestDir = "folly/test/";
+  const std::string kTestFile = "json_test_data/commented.json";
+  const std::string kTestExpected = "json_test_data/commented.json.exp";
 
   std::string testStr;
   std::string expectedStr;
-  if (!folly::readFile(kTestFile.data(), testStr)) {
+  if (!folly::readFile(kTestFile.data(), testStr) &&
+      !folly::readFile((kTestDir + kTestFile).data(), testStr)) {
     FAIL() << "can not read test file " << kTestFile;
   }
-  if (!folly::readFile(kTestExpected.data(), expectedStr)) {
+  if (!folly::readFile(kTestExpected.data(), expectedStr) &&
+      !folly::readFile((kTestDir + kTestExpected).data(), expectedStr)) {
     FAIL() << "can not read test file " << kTestExpected;
   }
   EXPECT_EQ(expectedStr, folly::json::stripComments(testStr));
