@@ -29,6 +29,11 @@
 
 namespace folly { namespace wangle { namespace detail {
 
+// As of GCC 4.8.1, the std::function in libstdc++ optimizes only for pointers
+// to functions, using a helper avoids a call to malloc.
+template<typename T>
+void empty_callback(Try<T>&&) { }
+
 /** The shared state object for Future and Promise. */
 template<typename T>
 class State {
@@ -107,7 +112,7 @@ class State {
   // Called by a destructing Future
   void detachFuture() {
     if (!callback_) {
-      setCallback([](Try<T>&&) {});
+      setCallback(empty_callback<T>);
     }
     activate();
     detachOne();
