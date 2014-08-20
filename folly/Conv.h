@@ -655,7 +655,14 @@ size_t estimateSpaceToReserve(size_t sofar, const T& v) {
 
 template<class...Ts>
 void reserveInTarget(const Ts&...vs) {
-  getLastElement(vs...)->reserve(detail::estimateSpaceToReserve(0, vs...));
+  getLastElement(vs...)->reserve(estimateSpaceToReserve(0, vs...));
+}
+
+template<class Delimiter, class...Ts>
+void reserveInTargetDelim(const Delimiter& d, const Ts&...vs) {
+  static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
+  size_t fordelim = (sizeof...(vs) - 2) * estimateSpaceToReserve(0, d);
+  getLastElement(vs...)->reserve(estimateSpaceToReserve(fordelim, vs...));
 }
 
 /**
@@ -678,6 +685,29 @@ typename std::enable_if<sizeof...(Ts) >= 2
 toAppendStrImpl(const T& v, const Ts&... vs) {
   toAppend(v, getLastElement(vs...));
   toAppendStrImpl(vs...);
+}
+
+template <class Delimiter, class T, class Tgt>
+typename std::enable_if<
+  IsSomeString<typename std::remove_pointer<Tgt>::type>
+  ::value>::type
+toAppendDelimStrImpl(const Delimiter& delim, const T& v, Tgt result) {
+  toAppend(v, result);
+}
+
+template <class Delimiter, class T, class... Ts>
+typename std::enable_if<sizeof...(Ts) >= 2
+  && IsSomeString<
+  typename std::remove_pointer<
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
+toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
+  // we are really careful here, calling toAppend with just one element does
+  // not try to estimate space needed (as we already did that). If we call
+  // toAppend(v, delim, ....) we would do unnecesary size calculation
+  toAppend(v, detail::getLastElement(vs...));
+  toAppend(delim, detail::getLastElement(vs...));
+  toAppendDelimStrImpl(delim, vs...);
 }
 } // folly::detail
 
@@ -726,15 +756,15 @@ toAppendDelim(const Delimiter& delim, const T& v, Tgt* tgt) {
 /**
  * Append to string with a delimiter in between elements.
  */
-template <class Delimiter, class T, class... Ts>
-typename std::enable_if<sizeof...(Ts) >= 2
+template <class Delimiter, class... Ts>
+typename std::enable_if<sizeof...(Ts) >= 3
   && IsSomeString<
   typename std::remove_pointer<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
-toAppendDelim(const Delimiter& delim, const T& v, const Ts&... vs) {
-  toAppend(v, delim, detail::getLastElement(vs...));
-  toAppendDelim(delim, vs...);
+toAppendDelim(const Delimiter& delim, const Ts&... vs) {
+  detail::reserveInTargetDelim(delim, vs...);
+  detail::toAppendDelimStrImpl(delim, vs...);
 }
 
 /**
