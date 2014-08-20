@@ -108,9 +108,28 @@ TEST(Optional, Simple) {
   EXPECT_FALSE(bool(opt));
 }
 
+class MoveTester {
+public:
+  /* implicit */ MoveTester(const char* s) : s_(s) {}
+  MoveTester(const MoveTester&) = default;
+  MoveTester(MoveTester&& other) noexcept {
+    s_ = std::move(other.s_);
+    other.s_ = "";
+  }
+  MoveTester& operator=(const MoveTester&) = default;
+  MoveTester& operator=(MoveTester&&) = default;
+private:
+  friend bool operator==(const MoveTester& o1, const MoveTester& o2);
+  std::string s_;
+};
+
+bool operator==(const MoveTester& o1, const MoveTester& o2) {
+  return o1.s_ == o2.s_;
+}
+
 TEST(Optional, value_or_rvalue_arg) {
-  Optional<std::string> opt;
-  std::string dflt = "hello";
+  Optional<MoveTester> opt;
+  MoveTester dflt = "hello";
   EXPECT_EQ("hello", opt.value_or(dflt));
   EXPECT_EQ("hello", dflt);
   EXPECT_EQ("hello", opt.value_or(std::move(dflt)));
