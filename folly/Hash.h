@@ -217,11 +217,11 @@ inline uint32_t fnv32(const char* s,
 }
 
 inline uint32_t fnv32_buf(const void* buf,
-                          int n,
+                          size_t n,
                           uint32_t hash = FNV_32_HASH_START) {
   const char* char_buf = reinterpret_cast<const char*>(buf);
 
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     hash += (hash << 1) + (hash << 4) + (hash << 7) +
             (hash << 8) + (hash << 24);
     hash ^= char_buf[i];
@@ -246,11 +246,11 @@ inline uint64_t fnv64(const char* s,
 }
 
 inline uint64_t fnv64_buf(const void* buf,
-                          int n,
+                          size_t n,
                           uint64_t hash = FNV_64_HASH_START) {
   const char* char_buf = reinterpret_cast<const char*>(buf);
 
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) +
       (hash << 8) + (hash << 40);
     hash ^= char_buf[i];
@@ -269,11 +269,11 @@ inline uint64_t fnv64(const std::string& str,
 
 #define get16bits(d) (*((const uint16_t*) (d)))
 
-inline uint32_t hsieh_hash32_buf(const void* buf, int len) {
+inline uint32_t hsieh_hash32_buf(const void* buf, size_t len) {
   const char* s = reinterpret_cast<const char*>(buf);
-  uint32_t hash = len;
+  uint32_t hash = static_cast<uint32_t>(len);
   uint32_t tmp;
-  int rem;
+  size_t rem;
 
   if (len <= 0 || buf == 0) {
     return 0;

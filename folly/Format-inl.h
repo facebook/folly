@@ -326,7 +326,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
   int padRemaining = 0;
   if (arg.width != FormatArg::kDefaultWidth && val.size() < arg.width) {
     char fill = arg.fill == FormatArg::kDefaultFill ? ' ' : arg.fill;
-    int padChars = arg.width - val.size();
+    int padChars = static_cast<int> (arg.width - val.size());
     memset(padBuf, fill, std::min(padBufSize, padChars));
 
     switch (arg.align) {
@@ -634,7 +634,7 @@ class FormatValue<double> {
          DoubleToStringConverter::kMaxFixedDigitsAfterPoint),
         (8 + DoubleToStringConverter::kMaxExponentialDigits),
         (7 + DoubleToStringConverter::kMaxPrecisionDigits)})];
-    StringBuilder builder(buf + 1, sizeof(buf) - 1);
+    StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
 
     char plusSign;
     switch (arg.sign) {

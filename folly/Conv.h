@@ -153,10 +153,10 @@ digitsEnough() {
   return ceil((double(sizeof(IntegerType) * CHAR_BIT) * M_LN2) / M_LN10);
 }
 
-inline unsigned int
-unsafeTelescope128(char * buffer, unsigned int room, unsigned __int128 x) {
+inline size_t
+unsafeTelescope128(char * buffer, size_t room, unsigned __int128 x) {
   typedef unsigned __int128 Usrc;
-  unsigned int p = room - 1;
+  size_t p = room - 1;
 
   while (x >= (Usrc(1) << 64)) { // Using 128-bit division while needed
     const auto y = x / 10;
@@ -348,7 +348,7 @@ void
 toAppend(__int128 value, Tgt * result) {
   typedef unsigned __int128 Usrc;
   char buffer[detail::digitsEnough<unsigned __int128>() + 1];
-  unsigned int p;
+  size_t p;
 
   if (value < 0) {
     p = detail::unsafeTelescope128(buffer, sizeof(buffer), Usrc(-value));
@@ -364,7 +364,7 @@ template <class Tgt>
 void
 toAppend(unsigned __int128 value, Tgt * result) {
   char buffer[detail::digitsEnough<unsigned __int128>()];
-  unsigned int p;
+  size_t p;
 
   p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);
 
@@ -1230,8 +1230,9 @@ to(StringPiece *const src) {
   FOLLY_RANGE_CHECK(!src->empty(), "No digits found in input string");
 
   int length;
-  auto result = conv.StringToDouble(src->data(), src->size(),
-                                       &length); // processed char count
+  auto result = conv.StringToDouble(src->data(),
+                                    static_cast<int>(src->size()),
+                                    &length); // processed char count
 
   if (!std::isnan(result)) {
     src->advance(length);
