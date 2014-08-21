@@ -410,6 +410,6 @@ class AtomicHashMap : boost::noncopyable {
 
 } // namespace folly
 
-#include "AtomicHashMap-inl.h"
+#include <folly/AtomicHashMap-inl.h>
 
 #endif // FOLLY_ATOMICHASHMAP_H_

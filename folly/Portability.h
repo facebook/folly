@@ -18,7 +18,7 @@
 #define FOLLY_PORTABILITY_H_
 
 #ifndef FOLLY_NO_CONFIG
-#include "folly-config.h"
+#include <folly/folly-config.h>
 #endif
 
 #ifdef FOLLY_PLATFORM_CONFIG
@@ -29,7 +29,7 @@
 #include <features.h>
 #endif
 
-#include "CPortability.h"
+#include <folly/CPortability.h>
 
 #if FOLLY_HAVE_SCHED_H
  #include <sched.h>

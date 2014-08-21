@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "IPAddressV6.h"
+#include <folly/IPAddressV6.h>
 
 #include <ostream>
 #include <string>

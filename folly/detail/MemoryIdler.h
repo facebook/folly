@@ -22,7 +22,7 @@
 #include <folly/AtomicStruct.h>
 #include <folly/Hash.h>
 #include <folly/Traits.h>
-#include "Futex.h"
+#include <folly/detail/Futex.h>
 
 namespace folly {
 

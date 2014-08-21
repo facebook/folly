@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "LifoSem.h"
+#include <folly/LifoSem.h>
 
 /// Raw node storage is preallocated in a contiguous memory segment,
 /// but we use an anonymous mmap so the physical memory used (RSS) will

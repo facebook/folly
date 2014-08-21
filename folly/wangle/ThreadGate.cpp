@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "ThreadGate.h"
+#include <folly/wangle/ThreadGate.h>
 #include <stdexcept>
 
 namespace folly { namespace wangle {

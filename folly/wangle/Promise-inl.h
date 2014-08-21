@@ -19,8 +19,8 @@
 #include <atomic>
 #include <thread>
 
-#include "WangleException.h"
-#include "detail/State.h"
+#include <folly/wangle/WangleException.h>
+#include <folly/wangle/detail/State.h>
 
 namespace folly { namespace wangle {
 

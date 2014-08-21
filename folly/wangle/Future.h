@@ -24,8 +24,8 @@
 #include <vector>
 
 #include <folly/MoveWrapper.h>
-#include "Promise.h"
-#include "Try.h"
+#include <folly/wangle/Promise.h>
+#include <folly/wangle/Try.h>
 
 namespace folly { namespace wangle {
 
@@ -339,4 +339,4 @@ Future<T> waitWithSemaphore(Future<T>&& f, Duration timeout);
 
 }} // folly::wangle
 
-#include "Future-inl.h"
+#include <folly/wangle/Future-inl.h>

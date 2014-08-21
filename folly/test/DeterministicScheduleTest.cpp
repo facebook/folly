@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "DeterministicSchedule.h"
+#include <folly/test/DeterministicSchedule.h>
 
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "ManualExecutor.h"
+#include <folly/wangle/ManualExecutor.h>
 
 #include <string.h>
 #include <string>

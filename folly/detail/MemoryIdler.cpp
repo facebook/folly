@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "MemoryIdler.h"
+#include <folly/detail/MemoryIdler.h>
 #include <folly/Logging.h>
 #include <folly/Malloc.h>
 #include <folly/ScopeGuard.h>

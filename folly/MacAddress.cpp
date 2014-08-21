@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "MacAddress.h"
+#include <folly/MacAddress.h>
 
 #include <folly/Exception.h>
 #include <folly/IPAddressV6.h>

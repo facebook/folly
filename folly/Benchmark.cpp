@@ -16,10 +16,10 @@
 
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
-#include "Benchmark.h"
-#include "Foreach.h"
-#include "json.h"
-#include "String.h"
+#include <folly/Benchmark.h>
+#include <folly/Foreach.h>
+#include <folly/json.h>
+#include <folly/String.h>
 
 #include <algorithm>
 #include <boost/regex.hpp>

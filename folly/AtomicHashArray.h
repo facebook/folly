@@ -296,6 +296,6 @@ class AtomicHashArray : boost::noncopyable {
 
 } // namespace folly
 
-#include "AtomicHashArray-inl.h"
+#include <folly/AtomicHashArray-inl.h>
 
 #endif // FOLLY_ATOMICHASHARRAY_H_

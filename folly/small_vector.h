@@ -23,7 +23,7 @@
 #ifndef FOLLY_SMALL_VECTOR_H_
 #define FOLLY_SMALL_VECTOR_H_
 
-#include "Portability.h"
+#include <folly/Portability.h>
 
 #include <stdexcept>
 #include <cstdlib>
@@ -49,7 +49,7 @@
 #include <folly/Malloc.h>
 
 #if defined(__GNUC__) && FOLLY_X64
-# include "folly/SmallLocks.h"
+# include <folly/SmallLocks.h>
 # define FB_PACK_ATTR FOLLY_PACK_ATTR
 # define FB_PACK_PUSH FOLLY_PACK_PUSH
 # define FB_PACK_POP FOLLY_PACK_POP

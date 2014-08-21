@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "IPAddressTest.h"
+#include <folly/test/IPAddressTest.h>
 
 #include <gtest/gtest.h>
 

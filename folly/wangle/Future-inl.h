@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "detail/State.h"
+#include <folly/wangle/detail/State.h>
 #include <folly/LifoSem.h>
 
 namespace folly { namespace wangle {

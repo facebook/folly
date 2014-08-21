@@ -16,8 +16,8 @@ build (either directly or packaged with a library).
 Using `folly/Benchmark.h` is very simple. Here's an example:
 
 ``` Cpp
-    #include "folly/Benchmark.h"
-    #include "folly/Foreach.h"
+    #include <folly/Benchmark.h>
+    #include <folly/Foreach.h>
     #include <vector>
     using namespace std;
     using namespace folly;
@@ -70,8 +70,8 @@ passed by the framework down to the function. The type of the count is
 implicitly `unsigned`. Consider a slightly reworked example:
 
 ``` Cpp
-    #include "folly/Benchmark.h"
-    #include "folly/Foreach.h"
+    #include <folly/Benchmark.h>
+    #include <folly/Foreach.h>
     #include <vector>
     using namespace std;
     using namespace folly;
@@ -126,8 +126,8 @@ front insertion for a vector as a baseline and see how back insertion
 compares with it:
 
 ``` Cpp
-    #include "folly/Benchmark.h"
-    #include "folly/Foreach.h"
+    #include <folly/Benchmark.h>
+    #include <folly/Foreach.h>
     #include <vector>
     using namespace std;
     using namespace folly;

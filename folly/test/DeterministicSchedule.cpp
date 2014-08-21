@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "DeterministicSchedule.h"
+#include <folly/test/DeterministicSchedule.h>
 #include <algorithm>
 #include <list>
 #include <mutex>

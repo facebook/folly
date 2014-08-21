@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "IPAddress.h"
+#include <folly/IPAddress.h>
 
 #include <limits>
 #include <ostream>

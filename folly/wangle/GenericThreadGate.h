@@ -15,8 +15,8 @@
  */
 
 #pragma once
-#include "ThreadGate.h"
-#include "Executor.h"
+#include <folly/wangle/ThreadGate.h>
+#include <folly/wangle/Executor.h>
 #include <type_traits>
 
 namespace folly { namespace wangle {
