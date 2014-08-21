@@ -322,7 +322,7 @@ void internalSplit(DelimT delim, StringPiece sp, OutputIterator out,
 
   int tokenStartPos = 0;
   int tokenSize = 0;
-  for (int i = 0; i <= strSize - dSize; ++i) {
+  for (size_t i = 0; i <= strSize - dSize; ++i) {
     if (atDelim(&s[i], delim)) {
       if (!ignoreEmpty || tokenSize > 0) {
         *out++ = conv(StringPiece(&s[tokenStartPos], tokenSize));
@@ -617,7 +617,7 @@ bool hexlify(const InputString& input, OutputString& output,
   static char hexValues[] = "0123456789abcdef";
   int j = output.size();
   output.resize(2 * input.size() + output.size());
-  for (int i = 0; i < input.size(); ++i) {
+  for (size_t i = 0; i < input.size(); ++i) {
     int ch = input[i];
     output[j++] = hexValues[(ch >> 4) & 0xf];
     output[j++] = hexValues[ch & 0xf];
@@ -639,7 +639,7 @@ bool unhexlify(const InputString& input, OutputString& output) {
            -1;
   };
 
-  for (int i = 0; i < input.size(); i += 2) {
+  for (size_t i = 0; i < input.size(); i += 2) {
     int highBits = unhex(input[i]);
     int lowBits = unhex(input[i + 1]);
     if (highBits < 0 || lowBits < 0) {
