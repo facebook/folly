@@ -39,7 +39,7 @@ TEST(Arena, SizeSanity) {
   size_t* ptr = static_cast<size_t*>(arena.allocate(sizeof(long)));
   allocatedItems.insert(ptr);
   minimum_size += requestedBlockSize;
-  maximum_size += goodMallocSize(requestedBlockSize + 1);
+  maximum_size += goodMallocSize(requestedBlockSize + SysArena::kBlockOverhead);
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
@@ -59,7 +59,8 @@ TEST(Arena, SizeSanity) {
     allocatedItems.insert(ptr);
   }
   minimum_size += 10 * requestedBlockSize;
-  maximum_size += 10 * goodMallocSize(requestedBlockSize + 1);
+  maximum_size += 10 * goodMallocSize(requestedBlockSize
+                                      + SysArena::kBlockOverhead);
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
@@ -69,7 +70,8 @@ TEST(Arena, SizeSanity) {
   ptr = static_cast<size_t*>(arena.allocate(10 * requestedBlockSize));
   allocatedItems.insert(ptr);
   minimum_size += 10 * requestedBlockSize;
-  maximum_size += goodMallocSize(10 * requestedBlockSize + 1);
+  maximum_size += goodMallocSize(10 * requestedBlockSize
+                                 + SysArena::kBlockOverhead);
   EXPECT_TRUE(arena.totalSize() >= minimum_size);
   EXPECT_TRUE(arena.totalSize() <= maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "

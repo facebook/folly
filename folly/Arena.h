@@ -157,6 +157,7 @@ class Arena {
   static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
   static constexpr size_t kNoSizeLimit = 0;
   static constexpr size_t kDefaultMaxAlign = alignof(Block);
+  static constexpr size_t kBlockOverhead = sizeof(Block);
 
  private:
   bool isAligned(uintptr_t address) const {
