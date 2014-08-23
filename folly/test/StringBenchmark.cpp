@@ -48,7 +48,7 @@ BENCHMARK(folly_toLowerAscii, iters) {
 }
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
   if (FLAGS_benchmark) {
     folly::runBenchmarks();
