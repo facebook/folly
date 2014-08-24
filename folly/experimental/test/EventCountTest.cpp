@@ -17,12 +17,14 @@
 #include <folly/experimental/EventCount.h>
 
 #include <algorithm>
+#include <atomic>
 #include <random>
+#include <thread>
+#include <vector>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include <folly/Random.h>
-#include <folly/Benchmark.h>
 
 using namespace folly;
 
@@ -47,15 +49,12 @@ class Semaphore {
 
  private:
   bool tryDown() {
-    for (;;) {
-      int v = value_;
-      if (v == 0) {
-        return false;
-      }
+    for (int v = value_; v != 0;) {
       if (value_.compare_exchange_weak(v, v-1)) {
         return true;
       }
     }
+    return false;
   }
 
   std::atomic<int> value_;
@@ -124,14 +123,3 @@ TEST(EventCount, Simple) {
 
   EXPECT_EQ(0, sem.value());
 }
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  if (!ret) {
-    folly::runBenchmarksOnFlag();
-  }
-  return ret;
-}
-
