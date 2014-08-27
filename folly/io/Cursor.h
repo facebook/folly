@@ -235,25 +235,25 @@ class CursorBase {
 
   void pull(void* buf, size_t len) {
     if (UNLIKELY(pullAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      throw std::out_of_range("pull underflow");
     }
   }
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      throw std::out_of_range("clone1 underflow");
     }
   }
 
   void clone(folly::IOBuf& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      throw std::out_of_range("clone2 underflow");
     }
   }
 
   void skip(size_t len) {
     if (UNLIKELY(skipAtMost(len) != len)) {
-      throw std::out_of_range("underflow");
+      throw std::out_of_range("skip underflow");
     }
   }
 
@@ -370,7 +370,7 @@ class CursorBase {
       len += offset_;
     } else {
       if (offset_ < other.offset_) {
-        throw std::out_of_range("underflow");
+        throw std::out_of_range("operator- underflow");
       }
 
       len += offset_ - other.offset_;
