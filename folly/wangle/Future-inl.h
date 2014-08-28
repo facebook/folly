@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <chrono>
+
 #include <folly/wangle/detail/State.h>
-#include <folly/LifoSem.h>
+#include <folly/Baton.h>
 
 namespace folly { namespace wangle {
 
@@ -408,61 +410,47 @@ whenN(InputIterator first, InputIterator last, size_t n) {
 template <typename T>
 Future<T>
 waitWithSemaphore(Future<T>&& f) {
-  LifoSem sem;
+  Baton<> baton;
   auto done = f.then([&](Try<T> &&t) {
-    sem.post();
+    baton.post();
     return std::move(t.value());
   });
-  sem.wait();
+  baton.wait();
   return done;
 }
 
 template<>
 inline Future<void> waitWithSemaphore<void>(Future<void>&& f) {
-  LifoSem sem;
+  Baton<> baton;
   auto done = f.then([&](Try<void> &&t) {
-    sem.post();
+    baton.post();
     t.value();
   });
-  sem.wait();
+  baton.wait();
   return done;
 }
 
 template <typename T, class Duration>
 Future<T>
 waitWithSemaphore(Future<T>&& f, Duration timeout) {
-  auto sem = std::make_shared<LifoSem>();
-  auto done = f.then([sem](Try<T> &&t) {
-    sem->post();
+  auto baton = std::make_shared<Baton<>>();
+  auto done = f.then([baton](Try<T> &&t) {
+    baton->post();
     return std::move(t.value());
   });
-  std::thread t([sem, timeout](){
-    std::this_thread::sleep_for(timeout);
-    sem->shutdown();
-    });
-  t.detach();
-  try {
-    sem->wait();
-  } catch (ShutdownSemError & ign) { }
+  baton->timed_wait(std::chrono::system_clock::now() + timeout);
   return done;
 }
 
 template <class Duration>
 Future<void>
 waitWithSemaphore(Future<void>&& f, Duration timeout) {
-  auto sem = std::make_shared<LifoSem>();
-  auto done = f.then([sem](Try<void> &&t) {
-    sem->post();
+  auto baton = std::make_shared<Baton<>>();
+  auto done = f.then([baton](Try<void> &&t) {
+    baton->post();
     t.value();
   });
-  std::thread t([sem, timeout](){
-    std::this_thread::sleep_for(timeout);
-    sem->shutdown();
-    });
-  t.detach();
-  try {
-    sem->wait();
-  } catch (ShutdownSemError & ign) { }
+  baton->timed_wait(std::chrono::system_clock::now() + timeout);
   return done;
 }
 
