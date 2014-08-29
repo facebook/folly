@@ -428,6 +428,20 @@ class CursorBase {
   BufType* buffer_;
 };
 
+} //namespace detail
+
+class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
+ public:
+  explicit Cursor(const IOBuf* buf)
+    : detail::CursorBase<Cursor, const IOBuf>(buf) {}
+
+  template <class OtherDerived, class OtherBuf>
+  explicit Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
+    : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
+};
+
+namespace detail {
+
 template <class Derived>
 class Writable {
  public:
@@ -457,19 +471,46 @@ class Writable {
       throw std::out_of_range("overflow");
     }
   }
+
+  /**
+   * push len bytes of data from input cursor, data could be in an IOBuf chain.
+   * If input cursor contains less than len bytes, or this cursor has less than
+   * len bytes writable space, an out_of_range exception will be thrown.
+   */
+  void push(Cursor cursor, size_t len) {
+    if (this->pushAtMost(cursor, len) != len) {
+      throw std::out_of_range("overflow");
+    }
+  }
+
+  size_t pushAtMost(Cursor cursor, size_t len) {
+    size_t written = 0;
+    for(;;) {
+      auto currentBuffer = cursor.peek();
+      const uint8_t* crtData = currentBuffer.first;
+      size_t available = currentBuffer.second;
+      if (available == 0) {
+        // end of buffer chain
+        return written;
+      }
+      // all data is in current buffer
+      if (available >= len) {
+        this->push(crtData, len);
+        cursor.skip(len);
+        return written + len;
+      }
+
+      // write the whole current IOBuf
+      this->push(crtData, available);
+      cursor.skip(available);
+      written += available;
+      len -= available;
+    }
+  }
+
 };
 
 } // namespace detail
-
-class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
- public:
-  explicit Cursor(const IOBuf* buf)
-    : detail::CursorBase<Cursor, const IOBuf>(buf) {}
-
-  template <class OtherDerived, class OtherBuf>
-  explicit Cursor(const detail::CursorBase<OtherDerived, OtherBuf>& cursor)
-    : detail::CursorBase<Cursor, const IOBuf>(cursor) {}
-};
 
 enum class CursorAccess {
   PRIVATE,
