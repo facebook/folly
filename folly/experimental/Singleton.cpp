@@ -33,7 +33,7 @@ void SingletonVault::destroyInstances() {
     auto it = singletons_.find(type);
     CHECK(it != singletons_.end());
     auto& entry = it->second;
-    std::lock_guard<std::mutex> entry_guard(entry->mutex_);
+    std::lock_guard<std::mutex> entry_guard(entry->mutex);
     if (entry->instance.use_count() > 1) {
       LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
                  << "reference at destroyInstances time; beware!  Raw pointer "
@@ -42,6 +42,7 @@ void SingletonVault::destroyInstances() {
     }
     entry->instance.reset();
     entry->state = SingletonEntryState::Dead;
+    entry->state_condvar.notify_all();
   }
 
   creation_order_.clear();

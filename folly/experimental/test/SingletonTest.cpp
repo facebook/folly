@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <thread>
+
 #include <folly/experimental/Singleton.h>
 
 #include <folly/Benchmark.h>
@@ -305,6 +307,42 @@ TEST(Singleton, SingletonDependencies) {
                  Singleton<SelfNeedySingleton>::get(&self_needy_vault);
                }(),
                std::out_of_range);
+}
+
+// A test to ensure multiple threads contending on singleton creation
+// properly wait for creation rather than thinking it is a circular
+// dependency.
+class Slowpoke {
+ public:
+  Slowpoke() { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+};
+
+TEST(Singleton, SingletonConcurrency) {
+  SingletonVault vault;
+  Singleton<Slowpoke> slowpoke_singleton(nullptr, nullptr, &vault);
+  vault.registrationComplete();
+
+  std::mutex gatekeeper;
+  gatekeeper.lock();
+  auto func = [&vault, &gatekeeper]() {
+    gatekeeper.lock();
+    gatekeeper.unlock();
+    auto unused = Singleton<Slowpoke>::get(&vault);
+  };
+
+  EXPECT_EQ(vault.livingSingletonCount(), 0);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 100; ++i) {
+    threads.emplace_back(func);
+  }
+  // If circular dependency checks fail, the unlock would trigger a
+  // crash.  Instead, it succeeds, and we have exactly one living
+  // singleton.
+  gatekeeper.unlock();
+  for (auto& t : threads) {
+    t.join();
+  }
+  EXPECT_EQ(vault.livingSingletonCount(), 1);
 }
 
 // Benchmarking a normal singleton vs a Meyers singleton vs a Folly

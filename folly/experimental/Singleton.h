@@ -81,6 +81,8 @@
 
 #include <vector>
 #include <mutex>
+#include <thread>
+#include <condition_variable>
 #include <string>
 #include <unordered_map>
 #include <functional>
@@ -181,7 +183,7 @@ class SingletonVault {
       entry.reset(new SingletonEntry);
     }
 
-    std::lock_guard<std::mutex> entry_guard(entry->mutex_);
+    std::lock_guard<std::mutex> entry_guard(entry->mutex);
     CHECK(entry->instance == nullptr);
     CHECK(create);
     CHECK(teardown);
@@ -261,12 +263,21 @@ class SingletonVault {
   // its state as described above, and the create and teardown
   // functions.
   struct SingletonEntry {
-    std::mutex mutex_;
+    // mutex protects the entire entry
+    std::mutex mutex;
+
+    // state changes notify state_condvar
+    SingletonEntryState state = SingletonEntryState::Dead;
+    std::condition_variable state_condvar;
+
+    // the thread creating the singleton
+    std::thread::id creating_thread;
+
+    // The singleton itself and related functions.
     std::shared_ptr<void> instance;
     void* instance_ptr = nullptr;
     CreateFunc create = nullptr;
     TeardownFunc teardown = nullptr;
-    SingletonEntryState state = SingletonEntryState::Dead;
 
     SingletonEntry() = default;
     SingletonEntry(const SingletonEntry&) = delete;
@@ -280,7 +291,7 @@ class SingletonVault {
   // necessary.
   SingletonEntry* get_entry(detail::TypeDescriptor type,
                             std::unique_lock<std::mutex>* lock) {
-    // mutex_ must be held when calling this function
+    // mutex must be held when calling this function
     if (state_ != SingletonVaultState::Running) {
       throw std::logic_error(
           "Attempt to load a singleton before "
@@ -294,17 +305,31 @@ class SingletonVault {
                               type.name());
     }
 
-    auto& entry = it->second;
-    std::unique_lock<std::mutex> entry_lock(entry->mutex_);
+    auto entry = it->second.get();
+    std::unique_lock<std::mutex> entry_lock(entry->mutex);
 
     if (entry->state == SingletonEntryState::BeingBorn) {
-      throw std::out_of_range(std::string("circular singleton dependency: ") +
-                              type.name());
+      // If this thread is trying to give birth to the singleton, it's
+      // a circular dependency and we must panic.
+      if (entry->creating_thread == std::this_thread::get_id()) {
+        throw std::out_of_range(std::string("circular singleton dependency: ") +
+                                type.name());
+      }
+
+      // Otherwise, another thread is constructing the singleton;
+      // let's wait on a condvar to see it complete.  We release and
+      // reaquire lock while waiting on the entry to resolve its state.
+      lock->unlock();
+      entry->state_condvar.wait(entry_lock, [&entry]() {
+        return entry->state != SingletonEntryState::BeingBorn;
+      });
+      lock->lock();
     }
 
     if (entry->instance == nullptr) {
       CHECK(entry->state == SingletonEntryState::Dead);
       entry->state = SingletonEntryState::BeingBorn;
+      entry->creating_thread = std::this_thread::get_id();
 
       entry_lock.unlock();
       lock->unlock();
@@ -317,11 +342,12 @@ class SingletonVault {
       entry->instance = instance;
       entry->instance_ptr = instance.get();
       entry->state = SingletonEntryState::Living;
+      entry->state_condvar.notify_all();
 
       creation_order_.push_back(type);
     }
     CHECK(entry->state == SingletonEntryState::Living);
-    return entry.get();
+    return entry;
   }
 
   mutable std::mutex mutex_;
