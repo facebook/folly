@@ -137,9 +137,7 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
   bool inSubnetWithMask(const IPAddressV4& subnet, const ByteArray4 mask) const;
 
   // @see IPAddress#isLoopback
-  bool isLoopback() const {
-    return (INADDR_LOOPBACK == toLongHBO());
-  }
+  bool isLoopback() const;
 
   // @see IPAddress#isNonroutable
   bool isNonroutable() const;

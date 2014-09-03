@@ -50,6 +50,7 @@ nobase_follyinclude_HEADERS = \
 	detail/FunctionalExcept.h \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
+	detail/IPAddress.h \
 	detail/Malloc.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \

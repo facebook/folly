@@ -255,13 +255,12 @@ bool IPAddressV6::inSubnetWithMask(const IPAddressV6& subnet,
 
 // public
 bool IPAddressV6::isLoopback() const {
-  const unsigned char* by = bytes();
-  for (int i = 0; i < 15; i++) {
-    if (by[i] != 0x00) {
-      return false;
-    }
+  // Check if v4 mapped is loopback
+  if (isIPv4Mapped() && createIPv4().isLoopback()) {
+    return true;
   }
-  return (by[15] == 0x01);
+  auto socka = toSockAddr();
+  return IN6_IS_ADDR_LOOPBACK(&socka.sin6_addr);
 }
 
 bool IPAddressV6::isRoutable() const {
@@ -280,6 +279,10 @@ bool IPAddressV6::isLinkLocalBroadcast() const {
 
 // public
 bool IPAddressV6::isPrivate() const {
+  // Check if mapped is private
+  if (isIPv4Mapped() && createIPv4().isPrivate()) {
+    return true;
+  }
   return isLoopback() || inBinarySubnet({{0xfc, 0x00}}, 7);
 }
 
