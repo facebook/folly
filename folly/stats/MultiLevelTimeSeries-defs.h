@@ -23,23 +23,23 @@ namespace folly {
 
 template <typename VT, typename TT>
 MultiLevelTimeSeries<VT, TT>::MultiLevelTimeSeries(
-  size_t numBuckets,
-  size_t numLevels,
+  size_t nBuckets,
+  size_t nLevels,
   const TimeType levelDurations[])
     : cachedTime_(0),
       cachedSum_(0),
       cachedCount_(0) {
-    CHECK_GT(numLevels, 0);
+    CHECK_GT(nLevels, 0);
     CHECK(levelDurations);
 
-    levels_.reserve(numLevels);
-    for (int i = 0; i < numLevels; ++i) {
+    levels_.reserve(nLevels);
+    for (int i = 0; i < nLevels; ++i) {
       if (levelDurations[i] == TT(0)) {
-        CHECK_EQ(i, numLevels - 1);
+        CHECK_EQ(i, nLevels - 1);
       } else if (i > 0) {
         CHECK(levelDurations[i-1] < levelDurations[i]);
       }
-      levels_.emplace_back(numBuckets, levelDurations[i]);
+      levels_.emplace_back(nBuckets, levelDurations[i]);
     }
 }
 
@@ -58,13 +58,13 @@ void MultiLevelTimeSeries<VT, TT>::addValue(TimeType now,
 
 template <typename VT, typename TT>
 void MultiLevelTimeSeries<VT, TT>::addValueAggregated(TimeType now,
-                                                      const ValueType& sum,
+                                                      const ValueType& total,
                                                       int64_t nsamples) {
   if (cachedTime_ != now) {
     flush();
     cachedTime_ = now;
   }
-  cachedSum_ += sum;
+  cachedSum_ += total;
   cachedCount_ += nsamples;
 }
 

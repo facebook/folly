@@ -23,23 +23,23 @@
 namespace folly {
 
 template <typename VT, typename TT>
-BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t numBuckets,
-                                               TimeType duration)
+BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t nBuckets,
+                                               TimeType maxDuration)
   : firstTime_(1),
     latestTime_(0),
-    duration_(duration) {
+    duration_(maxDuration) {
   // For tracking all-time data we only use total_, and don't need to bother
   // with buckets_
   if (!isAllTime()) {
-    // Round numBuckets down to duration_.count().
+    // Round nBuckets down to duration_.count().
     //
     // There is no point in having more buckets than our timestamp
     // granularity: otherwise we would have buckets that could never be used.
-    if (numBuckets > duration_.count()) {
-      numBuckets = duration_.count();
+    if (nBuckets > duration_.count()) {
+      nBuckets = duration_.count();
     }
 
-    buckets_.resize(numBuckets, Bucket());
+    buckets_.resize(nBuckets, Bucket());
   }
 }
 
@@ -57,7 +57,7 @@ bool BucketedTimeSeries<VT, TT>::addValue(TimeType now,
 
 template <typename VT, typename TT>
 bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
-                                                    const ValueType& sum,
+                                                    const ValueType& total,
                                                     int64_t nsamples) {
   if (isAllTime()) {
     if (UNLIKELY(empty())) {
@@ -68,7 +68,7 @@ bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
     } else if (now < firstTime_) {
       firstTime_ = now;
     }
-    total_.add(sum, nsamples);
+    total_.add(total, nsamples);
     return true;
   }
 
@@ -93,8 +93,8 @@ bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
     bucketIdx = getBucketIdx(now);
   }
 
-  total_.add(sum, nsamples);
-  buckets_[bucketIdx].add(sum, nsamples);
+  total_.add(total, nsamples);
+  buckets_[bucketIdx].add(total, nsamples);
   return true;
 }
 
@@ -239,52 +239,52 @@ TT BucketedTimeSeries<VT, TT>::elapsed(TimeType start, TimeType end) const {
 
 template <typename VT, typename TT>
 VT BucketedTimeSeries<VT, TT>::sum(TimeType start, TimeType end) const {
-  ValueType sum = ValueType();
+  ValueType total = ValueType();
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
                                 TimeType nextBucketStart) -> bool {
-    sum += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
+    total += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                              bucket.sum);
     return true;
   });
 
-  return sum;
+  return total;
 }
 
 template <typename VT, typename TT>
 uint64_t BucketedTimeSeries<VT, TT>::count(TimeType start, TimeType end) const {
-  uint64_t count = 0;
+  uint64_t sample_count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
                                 TimeType nextBucketStart) -> bool {
-    count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
+    sample_count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                                bucket.count);
     return true;
   });
 
-  return count;
+  return sample_count;
 }
 
 template <typename VT, typename TT>
 template <typename ReturnType>
 ReturnType BucketedTimeSeries<VT, TT>::avg(TimeType start, TimeType end) const {
-  ValueType sum = ValueType();
-  uint64_t count = 0;
+  ValueType total = ValueType();
+  uint64_t sample_count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
                                 TimeType nextBucketStart) -> bool {
-    sum += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
+    total += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                              bucket.sum);
-    count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
+    sample_count += this->rangeAdjust(bucketStart, nextBucketStart, start, end,
                                bucket.count);
     return true;
   });
 
-  if (count == 0) {
+  if (sample_count == 0) {
     return ReturnType(0);
   }
 
-  return detail::avgHelper<ReturnType>(sum, count);
+  return detail::avgHelper<ReturnType>(total, sample_count);
 }
 
 /*

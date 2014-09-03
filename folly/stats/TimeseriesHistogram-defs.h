@@ -28,13 +28,13 @@ template <class T, class TT, class C>
 template <typename ReturnType>
 ReturnType TimeseriesHistogram<T, TT, C>::avg(int level) const {
   ValueType total = ValueType();
-  int64_t count = 0;
+  int64_t nsamples = 0;
   for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
     total += levelObj.sum();
-    count += levelObj.count();
+    nsamples += levelObj.count();
   }
-  return folly::detail::avgHelper<ReturnType>(total, count);
+  return folly::detail::avgHelper<ReturnType>(total, nsamples);
 }
 
 template <class T, class TT, class C>
@@ -42,13 +42,13 @@ template <typename ReturnType>
 ReturnType TimeseriesHistogram<T, TT, C>::avg(TimeType start,
                                               TimeType end) const {
   ValueType total = ValueType();
-  int64_t count = 0;
+  int64_t nsamples = 0;
   for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(start, end);
     total += levelObj.sum(start, end);
-    count += levelObj.count(start, end);
+    nsamples += levelObj.count(start, end);
   }
-  return folly::detail::avgHelper<ReturnType>(total, count);
+  return folly::detail::avgHelper<ReturnType>(total, nsamples);
 }
 
 template <class T, class TT, class C>

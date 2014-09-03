@@ -382,9 +382,9 @@ class BucketedTimeSeries {
 
  private:
   template <typename ReturnType=double, typename Interval=TimeType>
-  ReturnType rateHelper(ReturnType numerator, TimeType elapsed) const {
+  ReturnType rateHelper(ReturnType numerator, TimeType elapsedTime) const {
     return detail::rateHelper<ReturnType, TimeType, Interval>(numerator,
-                                                              elapsed);
+                                                              elapsedTime);
   }
 
   TimeType getEarliestTimeNonEmpty() const;
