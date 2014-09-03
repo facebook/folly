@@ -707,14 +707,14 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
   uint64_t oldHeadroom = headroom();
 
   // If we have a buffer allocated with malloc and we just need more tailroom,
-  // try to use realloc()/rallocm() to grow the buffer in place.
+  // try to use realloc()/xallocx() to grow the buffer in place.
   SharedInfo* info = sharedInfo();
   if (info && (info->freeFn == nullptr) && length_ != 0 &&
       oldHeadroom >= minHeadroom) {
     if (usingJEMalloc()) {
       size_t headSlack = oldHeadroom - minHeadroom;
       // We assume that tailroom is more useful and more important than
-      // headroom (not least because realloc / rallocm allow us to grow the
+      // headroom (not least because realloc / xallocx allow us to grow the
       // buffer at the tail, but not at the head)  So, if we have more headroom
       // than we need, we consider that "wasted".  We arbitrarily define "too
       // much" headroom to be 25% of the capacity.
@@ -722,23 +722,12 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
         size_t allocatedCapacity = capacity() + sizeof(SharedInfo);
         void* p = buf_;
         if (allocatedCapacity >= jemallocMinInPlaceExpandable) {
-          // rallocm can write to its 2nd arg even if it returns
-          // ALLOCM_ERR_NOT_MOVED. So, we pass a temporary to its 2nd arg and
-          // update newAllocatedCapacity only on success.
-          size_t allocatedSize;
-          int r = rallocm(&p, &allocatedSize, newAllocatedCapacity,
-                          0, ALLOCM_NO_MOVE);
-          if (r == ALLOCM_SUCCESS) {
+          if (xallocx(p, newAllocatedCapacity, 0, 0) == newAllocatedCapacity) {
             newBuffer = static_cast<uint8_t*>(p);
             newHeadroom = oldHeadroom;
-            newAllocatedCapacity = allocatedSize;
-          } else if (r == ALLOCM_ERR_OOM) {
-            // shouldn't happen as we don't actually allocate new memory
-            // (due to ALLOCM_NO_MOVE)
-            throw std::bad_alloc();
+            newAllocatedCapacity = newAllocatedCapacity;
           }
-          // if ALLOCM_ERR_NOT_MOVED, do nothing, fall back to
-          // malloc/memcpy/free
+          // if xallocx failed, do nothing, fall back to malloc/memcpy/free
         }
       }
     } else {  // Not using jemalloc

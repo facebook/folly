@@ -78,7 +78,7 @@ AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
 
 AC_CHECK_LIB([event], [event_set], [], [AC_MSG_ERROR([Unable to find libevent])])
 
-AC_CHECK_LIB([jemalloc], [rallocm])
+AC_CHECK_LIB([jemalloc], [xallocx])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -269,7 +269,6 @@ AC_CHECK_FUNCS([getdelim \
                 pow \
                 strerror \
                 pthread_yield \
-                rallocm \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \

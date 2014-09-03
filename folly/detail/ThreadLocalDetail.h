@@ -336,40 +336,30 @@ struct StaticMeta {
     // under the lock.
     if (usingJEMalloc()) {
       bool success = false;
-      size_t newByteSize = newCapacity * sizeof(ElementWrapper);
-      size_t realByteSize = 0;
+      size_t newByteSize = nallocx(newCapacity * sizeof(ElementWrapper), 0);
 
       // Try to grow in place.
       //
-      // Note that rallocm(ALLOCM_ZERO) will only zero newly allocated memory,
+      // Note that xallocx(MALLOCX_ZERO) will only zero newly allocated memory,
       // even if a previous allocation allocated more than we requested.
-      // This is fine; we always use ALLOCM_ZERO with jemalloc and we
+      // This is fine; we always use MALLOCX_ZERO with jemalloc and we
       // always expand our allocation to the real size.
       if (prevCapacity * sizeof(ElementWrapper) >=
           jemallocMinInPlaceExpandable) {
-        success = (rallocm(reinterpret_cast<void**>(&threadEntry->elements),
-                           &realByteSize,
-                           newByteSize,
-                           0,
-                           ALLOCM_NO_MOVE | ALLOCM_ZERO) == ALLOCM_SUCCESS);
-
+        success = (xallocx(threadEntry->elements, newByteSize, 0, MALLOCX_ZERO)
+                   == newByteSize);
       }
 
       // In-place growth failed.
       if (!success) {
-        // Note that, unlike calloc,allocm(... ALLOCM_ZERO) zeros all
-        // allocated bytes (*realByteSize) and not just the requested
-        // bytes (newByteSize)
-        success = (allocm(reinterpret_cast<void**>(&reallocated),
-                          &realByteSize,
-                          newByteSize,
-                          ALLOCM_ZERO) == ALLOCM_SUCCESS);
+        success = ((reallocated = static_cast<ElementWrapper*>(
+                    mallocx(newByteSize, MALLOCX_ZERO))) != nullptr);
       }
 
       if (success) {
         // Expand to real size
-        assert(realByteSize / sizeof(ElementWrapper) >= newCapacity);
-        newCapacity = realByteSize / sizeof(ElementWrapper);
+        assert(newByteSize / sizeof(ElementWrapper) >= newCapacity);
+        newCapacity = newByteSize / sizeof(ElementWrapper);
       } else {
         throw std::bad_alloc();
       }

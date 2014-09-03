@@ -24,12 +24,20 @@
 extern "C" {
 
 #if FOLLY_HAVE_WEAK_SYMBOLS
-int rallocm(void**, size_t*, size_t, size_t, int) __attribute__((__weak__));
-int allocm(void**, size_t*, size_t, int) __attribute__((__weak__));
+void* mallocx(size_t, int) __attribute__((__weak__));
+void* rallocx(void*, size_t, int) __attribute__((__weak__));
+size_t xallocx(void*, size_t, size_t, int) __attribute__((__weak__));
+size_t sallocx(const void*, int) __attribute__((__weak__));
+void dallocx(void*, int) __attribute__((__weak__));
+size_t nallocx(size_t, int) __attribute__((__weak__));
 int mallctl(const char*, void*, size_t*, void*, size_t) __attribute__((__weak__));
 #else
-extern int (*rallocm)(void**, size_t*, size_t, size_t, int);
-extern int (*allocm)(void**, size_t*, size_t, int);
+extern void* (*mallocx)(size_t, int);
+extern void* (*rallocx)(void*, size_t, int);
+extern size_t (*xallocx)(void*, size_t, size_t, int);
+extern size_t (*sallocx)(const void*, int);
+extern void (*dallocx)(void*, int);
+extern size_t (*nallocx)(size_t, int);
 extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
 #endif
 
