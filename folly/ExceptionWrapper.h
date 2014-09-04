@@ -275,8 +275,7 @@ class try_and_catch<LastException, Exceptions...> :
   typename std::enable_if<std::is_base_of<std::exception, Ex>::value>::type
   assign_eptr(Ex& e) {
     this->eptr_ = std::current_exception();
-    // The cast is needed so we get the desired overload of exceptionStr()
-    this->estr_ = exceptionStr(static_cast<std::exception&>(e)).toStdString();
+    this->estr_ = exceptionStr(e).toStdString();
   }
 
   template <typename Ex>
