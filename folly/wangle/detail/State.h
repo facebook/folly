@@ -236,4 +236,13 @@ struct WhenAnyContext {
   }
 };
 
+template <typename T>
+struct WhenAllLaterContext {
+  explicit WhenAllLaterContext() : count(0), total(0) {}
+  std::function<void(std::vector<Try<T>>&&)> fn;
+  std::vector<Try<T> > results;
+  std::atomic<size_t> count;
+  size_t total;
+};
+
 }}} // namespace

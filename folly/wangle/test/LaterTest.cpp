@@ -107,6 +107,29 @@ TEST(Later, then_future) {
   EXPECT_TRUE(future.value());
 }
 
+static Later<std::string> doWorkStatic(Try<std::string>&& t) {
+  return Later<std::string>(t.value() + ";static");
+}
+
+TEST(Later, then_function) {
+  struct Worker {
+    Later<std::string> doWork(Try<std::string>&& t) {
+      return Later<std::string>(t.value() + ";class");
+    }
+    static Later<std::string> doWorkStatic(Try<std::string>&& t) {
+      return Later<std::string>(t.value() + ";class-static");
+    }
+  } w;
+
+  auto f = Later<std::string>(std::string("start"))
+    .then(doWorkStatic)
+    .then(Worker::doWorkStatic)
+    .then(&w, &Worker::doWork)
+    .launch();
+
+  EXPECT_EQ(f.value(), "start;static;class-static;class");
+}
+
 TEST_F(LaterFixture, thread_hops) {
   auto westThreadId = std::this_thread::get_id();
   auto future = later.via(eastExecutor.get()).then([=](Try<void>&& t) {
@@ -163,4 +186,25 @@ TEST_F(LaterFixture, chain_laters) {
     waiter->makeProgress();
   }
   EXPECT_EQ(future.value(), 1);
+}
+
+TEST(Later, when_all_later) {
+  size_t done = 0;
+  std::vector<Later<int>> laters;
+  laters.emplace_back(Later<int>(1).then([&](Try<int>&& i) mutable {
+    done += i.value(); return 8;
+  }));
+  laters.emplace_back(Later<int>(2).then([&](Try<int>&& i) mutable {
+    done += i.value(); return 16;
+  }));
+  laters.emplace_back(Later<int>(4).then([&](Try<int>&& i) mutable {
+    done += i.value(); return 32;
+  }));
+  whenAllLater(std::move(laters))
+  .then([&](Try<std::vector<Try<int>>>&& v) mutable {
+    for (const auto& i : v.value()) {
+      done += i.value();
+    }
+  }).launch();
+  EXPECT_EQ(done, 63);
 }

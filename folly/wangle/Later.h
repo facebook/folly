@@ -175,6 +175,27 @@ class Later {
     Later<typename std::result_of<F(Try<T>&&)>::type::value_type> >::type
   then(F&& fn);
 
+
+  /// Variant where func is an ordinary function (static method, method)
+  /// Must return a Later
+  template <class R>
+  typename std::enable_if<isLater<R>::value, R>::type
+  inline then(R(*func)(Try<T>&&)) {
+    return then([func](Try<T>&& t) {
+      return (*func)(std::move(t));
+    });
+  }
+
+  /// Variant where func is an member function
+  /// Must return a Later
+  template <class R, class Caller>
+  typename std::enable_if<isLater<R>::value, R>::type
+  inline then(Caller *instance, R(Caller::*func)(Try<T>&&)) {
+    return then([instance, func](Try<T>&& t) {
+      return (instance->*func)(std::move(t));
+    });
+  }
+
   /*
    * Resets the executor - all then() calls made after the call to via() will be
    * made in the new executor. The Executor must outlive.
@@ -205,6 +226,10 @@ class Later {
   template <class U>
   friend class Later;
 };
+
+// See Future.whenAll
+template <class T>
+Later<std::vector<Try<T>>> whenAllLater(std::vector<Later<T>>&& laters);
 
 }}
 

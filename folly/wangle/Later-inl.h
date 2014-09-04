@@ -174,4 +174,34 @@ Future<T> Later<T>::launch() {
   return std::move(*future_);
 }
 
+template <class T>
+Later<std::vector<Try<T>>> whenAllLater(std::vector<Later<T>>&& laters) {
+  if (laters.size() == 0) {
+    return Later<std::vector<Try<T>>>(std::vector<Try<T>>());
+  }
+
+  auto ctx = new detail::WhenAllLaterContext<T>();
+  ctx->total = laters.size();
+  ctx->results.resize(ctx->total);
+
+  MoveWrapper<std::vector<Later<T>>> mlaters{std::move(laters)};
+
+  std::function<void(std::function<void(std::vector<Try<T>>&&)>&&)> wrapper =
+    [ctx, mlaters](std::function<void(std::vector<Try<T>>&&)>&& fn) mutable {
+      ctx->fn = std::move(fn);
+      size_t i = 0;
+      for (auto& l : *mlaters) {
+        l.then([ctx, i](Try<T>&& t) {
+            ctx->results[i] = std::move(t);
+            if (++ctx->count == ctx->total) {
+              ctx->fn(std::move(ctx->results));
+              delete ctx;
+            }
+          }).launch();
+          ++i;
+      }
+    };
+  return Later<std::vector<Try<T>>>(std::move(wrapper));
+}
+
 }}
