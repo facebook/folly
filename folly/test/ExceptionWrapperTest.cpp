@@ -38,11 +38,15 @@ TEST(ExceptionWrapper, throw_test) {
   }
 }
 
-TEST(ExceptionWrapper, boolean) {
+TEST(ExceptionWrapper, members) {
   auto ew = exception_wrapper();
   EXPECT_FALSE(bool(ew));
+  EXPECT_EQ(ew.what(), "");
+  EXPECT_EQ(ew.class_name(), "");
   ew = make_exception_wrapper<std::runtime_error>("payload");
   EXPECT_TRUE(bool(ew));
+  EXPECT_EQ(ew.what(), "std::runtime_error: payload");
+  EXPECT_EQ(ew.class_name(), "std::runtime_error");
 }
 
 TEST(ExceptionWrapper, equals) {
@@ -91,6 +95,7 @@ TEST(ExceptionWrapper, try_and_catch_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_TRUE(ew.getCopied());
   EXPECT_EQ(ew.what(), "std::runtime_error: payload");
+  EXPECT_EQ(ew.class_name(), "std::runtime_error");
   auto rep = ew.is_compatible_with<std::runtime_error>();
   EXPECT_TRUE(rep);
 
@@ -111,7 +116,8 @@ TEST(ExceptionWrapper, try_and_catch_test) {
     throw std::exception();
   });
   EXPECT_TRUE(bool(ew3));
-  EXPECT_NE(ew3.what(), expected);
+  EXPECT_EQ(ew3.what(), "std::exception: std::exception");
+  EXPECT_EQ(ew3.class_name(), "std::exception");
   rep = ew3.is_compatible_with<std::runtime_error>();
   EXPECT_FALSE(rep);
 
@@ -154,6 +160,7 @@ TEST(ExceptionWrapper, with_exception_test) {
     });
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), "IntException: int == 23");
+  EXPECT_EQ(ew.class_name(), "IntException");
   ew.with_exception<IntException>([&](const IntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
     });
@@ -166,6 +173,7 @@ TEST(ExceptionWrapper, with_exception_test) {
     });
   EXPECT_TRUE(bool(ew2));
   EXPECT_EQ(ew2.what(), "IntException: int == 23");
+  EXPECT_EQ(ew2.class_name(), "IntException");
   ew2.with_exception<AbstractIntException>([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
       EXPECT_EQ(typeid(ie), typeid(IntException));
@@ -197,6 +205,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
   EXPECT_EQ(ew.what(), "int");
+  EXPECT_EQ(ew.class_name(), "int");
   // non-std::exception types are supported, but the only way to
   // access their value is to explicity rethrow and catch it.
   try {

@@ -143,9 +143,19 @@ class exception_wrapper {
 
   fbstring what() const {
     if (item_) {
-      return exceptionStr(*item_.get());
+      return exceptionStr(*item_);
     } else if (eptr_) {
       return estr_;
+    } else {
+      return fbstring();
+    }
+  }
+
+  fbstring class_name() const {
+    if (item_) {
+      return demangle(typeid(*item_));
+    } else if (eptr_) {
+      return ename_;
     } else {
       return fbstring();
     }
@@ -154,7 +164,7 @@ class exception_wrapper {
   template <class Ex>
   bool is_compatible_with() const {
     if (item_) {
-      return dynamic_cast<const Ex*>(getCopied());
+      return dynamic_cast<const Ex*>(item_.get());
     } else if (eptr_) {
       try {
         std::rethrow_exception(eptr_);
@@ -197,10 +207,12 @@ protected:
   std::shared_ptr<std::exception> item_;
   void (*throwfn_)(std::exception*);
   // Fallback case: store the library wrapper, which is less efficient
-  // but gets the job done.  Also store the the what() string, so we
-  // can at least get it back out without having to rethrow.
+  // but gets the job done.  Also store exceptionPtr() the name of the
+  // exception type, so we can at least get those back out without
+  // having to rethrow.
   std::exception_ptr eptr_;
   std::string estr_;
+  std::string ename_;
 
   template <class T, class... Args>
   friend exception_wrapper make_exception_wrapper(Args&&... args);
@@ -212,7 +224,7 @@ private:
   template <class Ex, class F, class T>
   static bool with_exception1(F f, T* that) {
     if (that->item_) {
-      if (auto ex = dynamic_cast<Ex*>(that->getCopied())) {
+      if (auto ex = dynamic_cast<Ex*>(that->item_.get())) {
         f(*ex);
         return true;
       }
@@ -298,17 +310,10 @@ class try_and_catch<LastException, Exceptions...> :
   try_and_catch() : Base() {}
 
   template <typename Ex>
-  typename std::enable_if<std::is_base_of<std::exception, Ex>::value>::type
-  assign_eptr(Ex& e) {
+  void assign_eptr(Ex& e) {
     this->eptr_ = std::current_exception();
     this->estr_ = exceptionStr(e).toStdString();
-  }
-
-  template <typename Ex>
-  typename std::enable_if<!std::is_base_of<std::exception, Ex>::value>::type
-  assign_eptr(Ex& e) {
-    this->eptr_ = std::current_exception();
-    this->estr_ = exceptionStr(e).toStdString();
+    this->ename_ = demangle(typeid(e)).toStdString();
   }
 
   template <typename Ex>
