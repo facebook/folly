@@ -705,18 +705,21 @@ fbstring stripComments(StringPiece jsonC) {
           state = State::LineComment;
           ++i;
           continue;
-        } else if (s.startsWith("\"")) {
+        } else if (s[0] == '\"') {
           state = State::InString;
         }
         result.push_back(s[0]);
         break;
       case State::InString:
-        if (s.startsWith("\\\"")) {
+        if (s[0] == '\\') {
+          if (UNLIKELY(s.size() == 1)) {
+            throw std::logic_error("Invalid JSONC: string is not terminated");
+          }
           result.push_back(s[0]);
           result.push_back(s[1]);
           ++i;
           continue;
-        } else if (s.startsWith("\"")) {
+        } else if (s[0] == '\"') {
           state = State::None;
         }
         result.push_back(s[0]);
@@ -728,7 +731,7 @@ fbstring stripComments(StringPiece jsonC) {
         }
         break;
       case State::LineComment:
-        if (s.startsWith("\n")) {
+        if (s[0] == '\n') {
           // skip the line break. It doesn't matter.
           state = State::None;
         }

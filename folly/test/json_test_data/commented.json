@@ -7,5 +7,6 @@
   */
   "test4": "foo /* bar", /* comment */
   "te//": "foo",
-  "te/*": "bar"
+  "te/*": "bar",
+  "\\\"": "\\" /* comment */
 }
