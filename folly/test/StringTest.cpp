@@ -1077,13 +1077,6 @@ TEST(String, humanify) {
   EXPECT_EQ("0x61ffffffffff", humanify(string("a\xff\xff\xff\xff\xff")));
 }
 
-TEST(String, exceptionStr) {
-  EXPECT_EQ(exceptionStr(0), "int");
-  EXPECT_EQ(exceptionStr(std::exception()), "std::exception: std::exception");
-  EXPECT_EQ(exceptionStr(std::runtime_error("folly")),
-            "std::runtime_error: folly");
-}
-
 namespace {
 
 /**
