@@ -21,8 +21,16 @@
 
 namespace folly {
 
+// This looks a bit weird, but it's necessary to avoid
+// having an undefined compiler function called.
+#if defined(__GLIBC__) && !defined(__APPLE__)
+#if __GLIBC_PREREQ(2, 12)
+# define FOLLY_GLIBC_2_12
+#endif
+#endif
+
 inline bool setThreadName(pthread_t id, StringPiece name) {
-#if (defined(__GLIBC__) && __GLIBC_PREREQ(2, 12))
+#ifdef FOLLY_GLIBC_2_12
   return 0 == pthread_setname_np(id, name.fbstr().substr(0, 15).c_str());
 #else
   return false;
