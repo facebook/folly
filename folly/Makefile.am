@@ -64,6 +64,7 @@ nobase_follyinclude_HEADERS = \
 	dynamic-inl.h \
 	Exception.h \
 	ExceptionWrapper.h \
+	EvictingCacheMap.h \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
