@@ -169,29 +169,12 @@ class exception_wrapper {
 
   template <class Ex, class F>
   bool with_exception(F f) {
-    if (item_) {
-      if (auto ex = dynamic_cast<Ex*>(getCopied())) {
-        f(*ex);
-        return true;
-      }
-    } else if (eptr_) {
-      try {
-        std::rethrow_exception(eptr_);
-      } catch (std::exception& e) {
-        if (auto ex = dynamic_cast<Ex*>(&e)) {
-          f(*ex);
-          return true;
-        }
-      } catch (...) {
-        // fall through
-      }
-    }
-    return false;
+    return with_exception1<Ex>(f, this);
   }
 
   template <class Ex, class F>
   bool with_exception(F f) const {
-    return with_exception<const Ex>(f);
+    return with_exception1<const Ex>(f, this);
   }
 
   std::exception_ptr getExceptionPtr() const {
@@ -207,7 +190,7 @@ class exception_wrapper {
     return std::exception_ptr();
   }
 
- protected:
+protected:
   // Optimized case: if we know what type the exception is, we can
   // store a copy of the concrete type, and a helper function so we
   // can rethrow it.
@@ -221,6 +204,32 @@ class exception_wrapper {
 
   template <class T, class... Args>
   friend exception_wrapper make_exception_wrapper(Args&&... args);
+
+private:
+  // What makes this useful is that T can be exception_wrapper* or
+  // const exception_wrapper*, and the compiler will use the
+  // instantiation which works with F.
+  template <class Ex, class F, class T>
+  static bool with_exception1(F f, T* that) {
+    if (that->item_) {
+      if (auto ex = dynamic_cast<Ex*>(that->getCopied())) {
+        f(*ex);
+        return true;
+      }
+    } else if (that->eptr_) {
+      try {
+        std::rethrow_exception(that->eptr_);
+      } catch (std::exception& e) {
+        if (auto ex = dynamic_cast<Ex*>(&e)) {
+          f(*ex);
+          return true;
+        }
+      } catch (...) {
+        // fall through
+      }
+    }
+    return false;
+  }
 };
 
 template <class T, class... Args>

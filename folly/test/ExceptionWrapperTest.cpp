@@ -170,6 +170,21 @@ TEST(ExceptionWrapper, with_exception_test) {
       EXPECT_EQ(ie.getInt(), expected);
       EXPECT_EQ(typeid(ie), typeid(IntException));
     });
+
+  // Test with const this.  If this compiles and does not crash due to
+  // infinite loop when it runs, it succeeds.
+  const exception_wrapper& cew = ew;
+  cew.with_exception<IntException>([&](const IntException& ie) {
+      SUCCEED();
+    });
+
+  // This won't even compile.  You can't use a function which takes a
+  // non-const reference with a const exception_wrapper.
+/*
+  cew.with_exception<IntException>([&](IntException& ie) {
+      SUCCEED();
+    });
+*/
 }
 
 TEST(ExceptionWrapper, non_std_exception_test) {
