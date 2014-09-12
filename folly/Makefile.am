@@ -148,6 +148,7 @@ nobase_follyinclude_HEADERS = \
 	ScopeGuard.h \
 	SmallLocks.h \
 	small_vector.h \
+	SocketAddress.h \
 	sorted_vector_types.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
@@ -246,6 +247,7 @@ libfolly_la_SOURCES = \
 	MemoryMapping.cpp \
 	Random.cpp \
 	SafeAssert.cpp \
+	SocketAddress.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
 	stats/Instantiations.cpp \
