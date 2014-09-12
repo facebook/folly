@@ -174,7 +174,7 @@ TEST(Singleton, NamedUsage) {
 // Some pathological cases such as getting unregistered singletons,
 // double registration, etc.
 TEST(Singleton, NaughtyUsage) {
-  SingletonVault vault;
+  SingletonVault vault(SingletonVault::Type::Strict);
   vault.registrationComplete();
 
   // Unregistered.
@@ -188,10 +188,10 @@ TEST(Singleton, NaughtyUsage) {
                }(),
                std::logic_error);
 
-  EXPECT_THROW([]() { Singleton<Watchdog> watchdog_singleton; }(),
-               std::logic_error);
+  // Default vault is non-strict; this should work.
+  Singleton<Watchdog> global_watchdog_singleton;
 
-  SingletonVault vault_2;
+  SingletonVault vault_2(SingletonVault::Type::Strict);
   EXPECT_THROW(Singleton<Watchdog>::get(&vault_2), std::logic_error);
   Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault_2);
   // double registration

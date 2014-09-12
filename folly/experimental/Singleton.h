@@ -163,7 +163,9 @@ class TypeDescriptorHasher {
 
 class SingletonVault {
  public:
-  SingletonVault() {};
+  enum class Type { Strict, Relaxed };
+
+  explicit SingletonVault(Type type = Type::Relaxed) : type_(type) {}
   ~SingletonVault();
 
   typedef std::function<void(void*)> TeardownFunc;
@@ -176,7 +178,7 @@ class SingletonVault {
                          TeardownFunc teardown) {
     std::lock_guard<std::mutex> guard(mutex_);
 
-    CHECK_THROW(state_ == SingletonVaultState::Registering, std::logic_error);
+    stateCheck(SingletonVaultState::Registering);
     CHECK_THROW(singletons_.find(type) == singletons_.end(), std::logic_error);
     auto& entry = singletons_[type];
     if (!entry) {
@@ -196,7 +198,7 @@ class SingletonVault {
   // registered at this point.
   void registrationComplete() {
     std::lock_guard<std::mutex> guard(mutex_);
-    CHECK_THROW(state_ == SingletonVaultState::Registering, std::logic_error);
+    stateCheck(SingletonVaultState::Registering);
     state_ = SingletonVaultState::Running;
   }
 
@@ -259,6 +261,13 @@ class SingletonVault {
     Living,
   };
 
+  void stateCheck(SingletonVaultState expected,
+                  const char* msg="Unexpected singleton state change") {
+    if (type_ == Type::Strict && expected != state_) {
+        throw std::logic_error(msg);
+    }
+  }
+
   // An actual instance of a singleton, tracking the instance itself,
   // its state as described above, and the create and teardown
   // functions.
@@ -292,12 +301,11 @@ class SingletonVault {
   SingletonEntry* get_entry(detail::TypeDescriptor type,
                             std::unique_lock<std::mutex>* lock) {
     // mutex must be held when calling this function
-    if (state_ != SingletonVaultState::Running) {
-      throw std::logic_error(
-          "Attempt to load a singleton before "
-          "SingletonVault::registrationComplete was called (hint: you probably "
-          "didn't call initFacebook)");
-    }
+    stateCheck(
+        SingletonVaultState::Running,
+        "Attempt to load a singleton before "
+        "SingletonVault::registrationComplete was called (hint: you probably "
+        "didn't call initFacebook)");
 
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
@@ -357,6 +365,7 @@ class SingletonVault {
                      detail::TypeDescriptorHasher> singletons_;
   std::vector<detail::TypeDescriptor> creation_order_;
   SingletonVaultState state_ = SingletonVaultState::Registering;
+  Type type_ = Type::Relaxed;
 };
 
 // This is the wrapper class that most users actually interact with.
