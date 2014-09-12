@@ -117,6 +117,23 @@ class exception_wrapper {
     return item_ || eptr_;
   }
 
+  // This implementation is similar to std::exception_ptr's implementation
+  // where two exception_wrappers are equal when the address in the underlying
+  // reference field both point to the same exception object.  The reference
+  // field remains the same when the exception_wrapper is copied or when
+  // the exception_wrapper is "rethrown".
+  bool operator==(const exception_wrapper& a) const {
+    if (item_) {
+      return a.item_ && item_.get() == a.item_.get();
+    } else {
+      return eptr_ == a.eptr_;
+    }
+  }
+
+  bool operator!=(const exception_wrapper& a) const {
+    return !(*this == a);
+  }
+
   // This will return a non-nullptr only if the exception is held as a
   // copy.  It is the only interface which will distinguish between an
   // exception held this way, and by exception_ptr.  You probably

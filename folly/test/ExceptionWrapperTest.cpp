@@ -45,6 +45,41 @@ TEST(ExceptionWrapper, boolean) {
   EXPECT_TRUE(bool(ew));
 }
 
+TEST(ExceptionWrapper, equals) {
+  std::runtime_error e("payload");
+  auto ew1 = make_exception_wrapper<std::runtime_error>(e);
+  auto ew2 = ew1;
+  EXPECT_EQ(ew1, ew2);
+
+  auto ew3 = try_and_catch<std::exception>([&]() {
+    throw std::runtime_error("payload");
+  });
+  auto ew4 = try_and_catch<std::exception>([&]() {
+    ew3.throwException();
+  });
+  EXPECT_EQ(ew3, ew4);
+}
+
+TEST(ExceptionWrapper, not_equals) {
+  std::runtime_error e1("payload");
+  std::runtime_error e2("payload");
+  auto ew1 = make_exception_wrapper<std::runtime_error>(e1);
+  auto ew2 = make_exception_wrapper<std::runtime_error>(e2);
+  EXPECT_NE(ew1, ew2);
+
+  auto ew3 = make_exception_wrapper<std::runtime_error>(e1);
+  auto ew4 = make_exception_wrapper<std::runtime_error>(e1);
+  EXPECT_NE(ew3, ew4);
+
+  auto ew5 = try_and_catch<std::exception>([&]() {
+    throw e1;
+  });
+  auto ew6 = try_and_catch<std::exception>([&]() {
+    throw e1;
+  });
+  EXPECT_NE(ew5, ew6);
+}
+
 TEST(ExceptionWrapper, try_and_catch_test) {
   std::string expected = "payload";
 
