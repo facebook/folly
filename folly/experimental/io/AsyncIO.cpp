@@ -108,6 +108,7 @@ AsyncIO::AsyncIO(size_t capacity, PollMode pollMode)
   : ctx_(0),
     ctxSet_(false),
     pending_(0),
+    submitted_(0),
     capacity_(capacity),
     pollFd_(-1) {
   CHECK_GT(capacity_, 0);
@@ -130,7 +131,7 @@ AsyncIO::~AsyncIO() {
 }
 
 void AsyncIO::decrementPending() {
-  ssize_t p = pending_.fetch_add(-1, std::memory_order_acq_rel);
+  auto p = pending_.fetch_add(-1, std::memory_order_acq_rel);
   DCHECK_GE(p, 1);
 }
 
@@ -168,7 +169,7 @@ void AsyncIO::submit(Op* op) {
   initializeContext();  // on demand
 
   // We can increment past capacity, but we'll clean up after ourselves.
-  ssize_t p = pending_.fetch_add(1, std::memory_order_acq_rel);
+  auto p = pending_.fetch_add(1, std::memory_order_acq_rel);
   if (p >= capacity_) {
     decrementPending();
     throw std::range_error("AsyncIO: too many pending requests");
@@ -183,6 +184,7 @@ void AsyncIO::submit(Op* op) {
     decrementPending();
     throwSystemErrorExplicit(-rc, "AsyncIO: io_submit failed");
   }
+  submitted_++;
   DCHECK_EQ(rc, 1);
   op->start();
 }
@@ -190,7 +192,7 @@ void AsyncIO::submit(Op* op) {
 Range<AsyncIO::Op**> AsyncIO::wait(size_t minRequests) {
   CHECK(ctx_);
   CHECK_EQ(pollFd_, -1) << "wait() only allowed on non-pollable object";
-  ssize_t p = pending_.load(std::memory_order_acquire);
+  auto p = pending_.load(std::memory_order_acquire);
   CHECK_LE(minRequests, p);
   return doWait(minRequests, p);
 }

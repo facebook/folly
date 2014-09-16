@@ -169,6 +169,12 @@ class AsyncIO : private boost::noncopyable {
   size_t capacity() const { return capacity_; }
 
   /**
+   * Return the accumulative number of submitted I/O, since this object
+   * has been created.
+   */
+  size_t totalSubmits() const { return submitted_; }
+
+  /**
    * If POLLABLE, return a file descriptor that can be passed to poll / epoll
    * and will become readable when any async IO operations have completed.
    * If NOT_POLLABLE, return -1.
@@ -197,8 +203,9 @@ class AsyncIO : private boost::noncopyable {
   std::atomic<bool> ctxSet_;
   std::mutex initMutex_;
 
-  std::atomic<ssize_t> pending_;
-  const ssize_t capacity_;
+  std::atomic<size_t> pending_;
+  std::atomic<size_t> submitted_;
+  const size_t capacity_;
   int pollFd_;
   std::vector<Op*> completed_;
 };
