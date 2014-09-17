@@ -83,4 +83,3 @@ struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
 }  // namespace folly
 
 #endif /* FOLLY_THREADCACHEDARENA_H_ */
-

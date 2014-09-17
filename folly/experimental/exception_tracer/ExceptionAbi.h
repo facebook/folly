@@ -58,4 +58,3 @@ __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }  // namespace __cxxabiv1
 
 #endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONABI_H_ */
-

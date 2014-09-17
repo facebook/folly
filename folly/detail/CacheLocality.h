@@ -363,4 +363,3 @@ struct AccessSpreaderArray {
 } }
 
 #endif /* FOLLY_DETAIL_CacheLocality_H_ */
-

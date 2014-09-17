@@ -53,4 +53,3 @@ void installHandlers();
 }  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_ */
-

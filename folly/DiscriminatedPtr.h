@@ -219,4 +219,3 @@ class DiscriminatedPtr {
 }  // namespace folly
 
 #endif /* FOLLY_DISCRIMINATEDPTR_H_ */
-

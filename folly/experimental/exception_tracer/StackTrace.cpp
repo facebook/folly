@@ -108,4 +108,3 @@ StackTrace* StackTraceStack::next(StackTrace* p) {
 }
 
 }}  // namespaces
-

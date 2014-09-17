@@ -282,4 +282,3 @@ template <class In, class... Stages> class MPMCPipeline {
 
 
 }  // namespaces
-

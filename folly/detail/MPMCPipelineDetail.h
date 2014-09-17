@@ -123,4 +123,3 @@ struct AmplificationProduct<std::tuple<T, Ts...>> {
 };
 
 }}  // namespaces
-

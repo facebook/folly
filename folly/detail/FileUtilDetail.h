@@ -109,4 +109,3 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
 }}  // namespaces
 
 #endif /* FOLLY_DETAIL_FILEUTILDETAIL_H_ */
-

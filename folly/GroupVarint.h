@@ -611,4 +611,3 @@ typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
 
 #endif /* FOLLY_X64 || defined(__i386__) */
 #endif /* FOLLY_GROUPVARINT_H_ */
-

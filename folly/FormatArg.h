@@ -273,4 +273,3 @@ inline int FormatArg::splitIntKey() {
 }  // namespace folly
 
 #endif /* FOLLY_FORMATARG_H_ */
-

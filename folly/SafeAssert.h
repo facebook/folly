@@ -50,4 +50,3 @@ FOLLY_NORETURN void assertionFailure(const char* expr, const char* msg,
 }}  // namespace folly
 
 #endif /* FOLLY_SAFEASSERT_H_ */
-

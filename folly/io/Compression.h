@@ -168,4 +168,3 @@ std::unique_ptr<Codec> getCodec(CodecType type,
 }}  // namespaces
 
 #endif /* FOLLY_IO_COMPRESSION_H_ */
-

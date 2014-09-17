@@ -484,4 +484,3 @@ TEST(TimeseriesHistogram, SingleUniqueValue) {
     }
   }
 }
-

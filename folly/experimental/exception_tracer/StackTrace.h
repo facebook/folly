@@ -100,4 +100,3 @@ class StackTraceStack {
 }}  // namespaces
 
 #endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_ */
-

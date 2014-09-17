@@ -132,4 +132,3 @@ class ElfCache : public ElfCacheBase {
 }}  // namespaces
 
 #endif /* FOLLY_SYMBOLIZER_ELFCACHE_H_ */
-

@@ -47,4 +47,3 @@ void assertionFailure(const char* expr, const char* msg, const char* file,
 }
 
 }}  // namespaces
-

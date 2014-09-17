@@ -90,4 +90,3 @@ const ElfW(Sym)* ElfFile::iterateSymbolsWithType(const ElfW(Shdr)& section,
 
 }  // namespace symbolizer
 }  // namespace folly
-

@@ -143,4 +143,3 @@ class FingerprintPolynomial {
 }  // namespace folly
 
 #endif /* FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_ */
-

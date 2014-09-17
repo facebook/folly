@@ -88,4 +88,3 @@ class LineReader : private boost::noncopyable {
 }}  // namespaces
 
 #endif /* FOLLY_SYMBOLIZER_LINEREADER_H_ */
-

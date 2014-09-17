@@ -51,4 +51,3 @@ int popcountll(unsigned long long x);
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_BITSDETAIL_H_ */
-

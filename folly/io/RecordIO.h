@@ -178,4 +178,3 @@ RecordInfo validateRecord(ByteRange range, uint32_t fileId);
 #include <folly/io/RecordIO-inl.h>
 
 #endif /* FOLLY_IO_RECORDIO_H_ */
-

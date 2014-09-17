@@ -41,4 +41,3 @@ void ThreadCachedArena::zombify(SysArena&& arena) {
 }
 
 }  // namespace folly
-

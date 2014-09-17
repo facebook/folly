@@ -129,4 +129,3 @@ class TimeoutQueue {
 }  // namespace folly
 
 #endif /* FOLLY_TIMEOUTQUEUE_H_ */
-

@@ -379,4 +379,3 @@ std::ostream& operator<<(std::ostream& os, AsyncIOOp::State state) {
 }
 
 }  // namespace folly
-

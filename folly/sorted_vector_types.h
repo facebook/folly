@@ -640,4 +640,3 @@ inline void swap(sorted_vector_map<K,V,C,A,G>& a,
 }
 
 #endif
-

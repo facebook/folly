@@ -110,4 +110,3 @@ TEST(TimeoutQueue, RunOnceReschedule) {
   EXPECT_EQ(std::numeric_limits<int64_t>::max(), q.runLoop(0));
   EXPECT_EQ(100, count);
 }
-

@@ -307,4 +307,3 @@ inline size_t Bits<T, Traits>::count(const T* begin, const T* end) {
 }  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_BITS_H_ */
-

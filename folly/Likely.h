@@ -36,4 +36,3 @@
 #endif
 
 #endif /* FOLLY_BASE_LIKELY_H_ */
-

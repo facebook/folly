@@ -253,4 +253,3 @@ class AsyncIOQueue {
 }  // namespace folly
 
 #endif /* FOLLY_IO_ASYNCIO_H_ */
-

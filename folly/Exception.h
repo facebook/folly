@@ -126,4 +126,3 @@ void throwOnFail(V&& value, Args&&... args) {
 }  // namespace folly
 
 #endif /* FOLLY_EXCEPTION_H_ */
-

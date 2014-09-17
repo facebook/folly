@@ -101,4 +101,3 @@ class GroupVarintBase {
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_GROUPVARINTDETAIL_H_ */
-

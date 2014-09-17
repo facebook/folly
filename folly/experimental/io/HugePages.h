@@ -81,4 +81,3 @@ const HugePageSize* getHugePageSizeForDevice(dev_t device);
 }  // namespace folly
 
 #endif /* FOLLY_IO_HUGEPAGES_H_ */
-

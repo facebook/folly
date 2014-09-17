@@ -74,4 +74,3 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
 }
 
 }  // namespace folly
-

@@ -160,4 +160,3 @@ inline bool AtomicBitSet<N>::operator[](size_t idx) const {
 }  // namespaces
 
 #endif /* FOLLY_ATOMICBITSET_H_ */
-

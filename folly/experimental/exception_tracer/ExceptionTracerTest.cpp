@@ -96,4 +96,3 @@ int main(int argc, char *argv[]) {
   baz();
   return 0;
 }
-

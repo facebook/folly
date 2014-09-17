@@ -126,4 +126,3 @@ inline uint64_t decodeVarint(ByteRange& data) {
 }  // namespaces
 
 #endif /* FOLLY_VARINT_H_ */
-

@@ -69,4 +69,3 @@ typename Map::mapped_type* get_ptr(
 }  // namespace folly
 
 #endif /* FOLLY_MAPUTIL_H_ */
-

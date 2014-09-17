@@ -375,4 +375,3 @@ const char* ElfFile::getSymbolName(Symbol symbol) const {
 
 }  // namespace symbolizer
 }  // namespace folly
-

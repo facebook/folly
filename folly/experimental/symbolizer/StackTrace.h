@@ -47,4 +47,3 @@ ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
 }}  // namespaces
 
 #endif /* FOLLY_SYMBOLIZER_STACKTRACE_H_ */
-

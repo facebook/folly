@@ -26,4 +26,3 @@ TEST(CpuId, Simple) {
   CpuId id;
   EXPECT_TRUE(id.mmx());
 }
-

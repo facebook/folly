@@ -30,4 +30,3 @@ typedef monotonic_clock steady_clock;
 #endif
 
 #endif /* FOLLY_CHRONO_H_ */
-

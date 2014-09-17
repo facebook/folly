@@ -53,4 +53,3 @@ void installFatalSignalCallbacks();
 }}  // namespaces
 
 #endif /* FOLLY_SYMBOLIZER_SIGNALHANDLER_H_ */
-

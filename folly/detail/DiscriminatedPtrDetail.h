@@ -162,4 +162,3 @@ struct ApplyConstVisitor
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_ */
-

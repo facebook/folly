@@ -93,4 +93,3 @@ inline RecordInfo findRecord(ByteRange range, uint32_t fileId) {
 }  // namespace recordio_helpers
 
 }  // namespaces
-

@@ -68,4 +68,3 @@ path canonical_parent(const path& pth, const path& base) {
 
 }  // namespace fs
 }  // namespace folly
-

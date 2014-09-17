@@ -73,4 +73,3 @@ TEST(Simple, CanonicalizeParent) {
   expectPathEq(c, canonical_parent(c));
   expectPathEq(c, canonical_parent(d));
 }
-

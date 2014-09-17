@@ -71,4 +71,3 @@ LineReader::State LineReader::readLine(StringPiece& line) {
 }
 
 }}  // namespaces
-

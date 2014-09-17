@@ -92,4 +92,3 @@ class TemporaryDirectory {
 }  // namespace folly
 
 #endif /* FOLLY_TESTUTIL_H_ */
-

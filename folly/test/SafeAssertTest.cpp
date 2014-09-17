@@ -35,4 +35,3 @@ TEST(SafeAssert, AssertionFailure) {
   succeed();
   EXPECT_DEATH(fail(), ".*Assertion failure:.*hello.*");
 }
-

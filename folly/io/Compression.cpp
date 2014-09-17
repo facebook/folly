@@ -963,4 +963,3 @@ std::unique_ptr<Codec> getCodec(CodecType type, int level) {
 }
 
 }}  // namespaces
-

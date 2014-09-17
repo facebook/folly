@@ -666,4 +666,3 @@ inline Subprocess::Options& Subprocess::Options::operator|=(
 }  // namespace folly
 
 #endif /* FOLLY_SUBPROCESS_H_ */
-

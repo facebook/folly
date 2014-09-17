@@ -216,4 +216,3 @@ class TypedIOBuf {
 }  // namespace folly
 
 #endif /* FOLLY_IO_TYPEDIOBUF_H_ */
-

@@ -212,4 +212,3 @@ void EventCount::await(Condition condition) {
 }  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_EVENTCOUNT_H_ */
-

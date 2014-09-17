@@ -239,4 +239,3 @@ TEST_F(IntAdaptorTest, ResizeConstructor) {
     EXPECT_EQ(42, a[i]);
   }
 }
-

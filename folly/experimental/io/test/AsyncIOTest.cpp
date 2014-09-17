@@ -389,5 +389,3 @@ TEST(AsyncIO, NonBlockingWait) {
   EXPECT_EQ(size, res);
   EXPECT_EQ(aioReader.pending(), 0);
 }
-
-

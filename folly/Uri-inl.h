@@ -46,4 +46,3 @@ String Uri::toString() const {
 }
 
 }  // namespace folly
-
