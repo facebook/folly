@@ -17,6 +17,7 @@
 #pragma once
 
 #include <chrono>
+#include <thread>
 
 #include <folly/wangle/detail/State.h>
 #include <folly/Baton.h>
@@ -416,6 +417,12 @@ waitWithSemaphore(Future<T>&& f) {
     return std::move(t.value());
   });
   baton.wait();
+  while (!done.isReady()) {
+    // There's a race here between the return here and the actual finishing of
+    // the future. f is completed, but the setup may not have finished on done
+    // after the baton has posted.
+    std::this_thread::yield();
+  }
   return done;
 }
 
@@ -427,6 +434,12 @@ inline Future<void> waitWithSemaphore<void>(Future<void>&& f) {
     t.value();
   });
   baton.wait();
+  while (!done.isReady()) {
+    // There's a race here between the return here and the actual finishing of
+    // the future. f is completed, but the setup may not have finished on done
+    // after the baton has posted.
+    std::this_thread::yield();
+  }
   return done;
 }
 
