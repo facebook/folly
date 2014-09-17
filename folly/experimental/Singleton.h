@@ -415,25 +415,38 @@ class Singleton {
   T& operator*() { return *ptr(); }
   T* operator->() { return ptr(); }
 
-  explicit Singleton(Singleton::CreateFunc c = nullptr,
+  template <typename CreateFunc = std::nullptr_t>
+  explicit Singleton(CreateFunc c = nullptr,
                      Singleton::TeardownFunc t = nullptr,
                      SingletonVault* vault = nullptr /* for testing */)
       : Singleton({typeid(T), ""}, c, t, vault) {}
 
+  template <typename CreateFunc = std::nullptr_t>
   explicit Singleton(const char* name,
-                     Singleton::CreateFunc c = nullptr,
+                     CreateFunc c = nullptr,
                      Singleton::TeardownFunc t = nullptr,
                      SingletonVault* vault = nullptr /* for testing */)
       : Singleton({typeid(T), name}, c, t, vault) {}
 
  private:
   explicit Singleton(detail::TypeDescriptor type,
-                     Singleton::CreateFunc c = nullptr,
-                     Singleton::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */)
+                     std::nullptr_t,
+                     Singleton::TeardownFunc t,
+                     SingletonVault* vault) :
+      Singleton (type,
+                 []() { return new T; },
+                 std::move(t),
+                 vault) {
+  }
+
+  explicit Singleton(detail::TypeDescriptor type,
+                     Singleton::CreateFunc c,
+                     Singleton::TeardownFunc t,
+                     SingletonVault* vault)
       : type_descriptor_(type) {
     if (c == nullptr) {
-      c = []() { return new T; };
+      throw std::logic_error(
+        "nullptr_t should be passed if you want T to be default constructed");
     }
     SingletonVault::TeardownFunc teardown;
     if (t == nullptr) {
