@@ -85,7 +85,7 @@ inline bool getNthMSBitImpl(const IPAddrType& ip, uint8_t bitIndex,
 struct Bytes : private boost::noncopyable {
   // return true if all values of src are zero
   static bool isZero(const uint8_t* src, std::size_t len) {
-    for (auto i = 0; i < len; i++) {
+    for (std::size_t i = 0; i < len; i++) {
       if (src[i] != 0x00) {
         return false;
       }
@@ -100,7 +100,7 @@ struct Bytes : private boost::noncopyable {
     static_assert(N > 0, "Can't mask an empty ByteArray");
     std::size_t asize = a.size();
     std::array<uint8_t, N> ba{{0}};
-    for (int i = 0; i < asize; i++) {
+    for (std::size_t i = 0; i < asize; i++) {
       ba[i] = a[i] & b[i];
     }
     return ba;
@@ -176,7 +176,7 @@ struct Bytes : private boost::noncopyable {
   static std::string toHex(const uint8_t* src, std::size_t len) {
     static const char* const lut = "0123456789abcdef";
     std::stringstream ss;
-    for (int i = 0; i < len; i++) {
+    for (std::size_t i = 0; i < len; i++) {
       const unsigned char c = src[i];
       ss << lut[c >> 4] << lut[c & 15];
     }
