@@ -175,6 +175,7 @@ nobase_follyinclude_HEADERS = \
 	Uri.h \
 	Uri-inl.h \
 	Varint.h \
+	VersionCheck.h \
 	wangle/Executor.h \
 	wangle/Future-inl.h \
 	wangle/Future.h \
