@@ -24,6 +24,7 @@
 
 #include <boost/operators.hpp>
 
+#include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/IPAddressException.h>
@@ -98,7 +99,7 @@ class IPAddress : boost::totally_ordered<IPAddress> {
    * @return string representing the netblock
    */
   static std::string networkToString(const CIDRNetwork& network) {
-    return network.first.str() + "/" + std::to_string(network.second);
+    return network.first.str() + "/" + folly::to<std::string>(network.second);
   }
 
   /**

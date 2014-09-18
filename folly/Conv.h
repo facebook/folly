@@ -42,9 +42,12 @@
 // V8 JavaScript implementation
 #include <double-conversion/double-conversion.h>
 
-#define FOLLY_RANGE_CHECK(condition, message)                           \
-  ((condition) ? (void)0 : throw std::range_error(                      \
-    (__FILE__ "(" + std::to_string((long long int) __LINE__) + "): "    \
+#define FOLLY_RANGE_CHECK_STRINGIZE(x) #x
+#define FOLLY_RANGE_CHECK_STRINGIZE2(x) FOLLY_RANGE_CHECK_STRINGIZE(x)
+
+#define FOLLY_RANGE_CHECK(condition, message)                               \
+  ((condition) ? (void)0 : throw std::range_error(                          \
+    (std::string(__FILE__ "(" FOLLY_RANGE_CHECK_STRINGIZE2(__LINE__) "): ") \
      + (message)).c_str()))
 
 namespace folly {
@@ -1407,6 +1410,8 @@ to(const Src & value) {
 // to avoid defining this global macro name in other files that include Conv.h.
 #ifndef FOLLY_CONV_INTERNAL
 #undef FOLLY_RANGE_CHECK
+#undef FOLLY_RANGE_CHECK_STRINGIZE2
+#undef FOLLY_RANGE_CHECK_STRINGIZE
 #endif
 
 #endif /* FOLLY_BASE_CONV_H_ */
