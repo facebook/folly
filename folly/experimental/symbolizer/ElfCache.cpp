@@ -49,10 +49,9 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
 
   const char* msg = "";
   int r = f->openNoThrow(path.data(), true, &msg);
-  if (r == ElfFile::kSystemError) {
+  if (r != ElfFile::kSuccess) {
     return nullptr;
   }
-  FOLLY_SAFE_CHECK(r == ElfFile::kSuccess, msg);
 
   map_[path] = n;
   return f;
@@ -79,10 +78,9 @@ std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   // No negative caching
   const char* msg = "";
   int r = entry->file.openNoThrow(path.c_str(), true, &msg);
-  if (r == ElfFile::kSystemError) {
+  if (r != ElfFile::kSuccess) {
     return nullptr;
   }
-  FOLLY_SAFE_CHECK(r == ElfFile::kSuccess, msg);
 
   if (files_.size() == capacity_) {
     auto& e = lruList_.front();
