@@ -53,8 +53,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
 
-  std::atomic<size_t> threadsToStop_;
   std::unique_ptr<BlockingQueue<Task>> taskQueue_;
+  std::atomic<ssize_t> threadsToStop_{0};
 };
 
 }} // folly::wangle
