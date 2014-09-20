@@ -24,6 +24,7 @@
 #include <folly/json.h>
 
 using folly::dynamic;
+using folly::TypeError;
 
 TEST(Dynamic, ObjectBasics) {
   dynamic obj = dynamic::object("a", false);
@@ -226,12 +227,20 @@ TEST(Dynamic, Conversions) {
 TEST(Dynamic, StringPtrs) {
   dynamic str = "12.0";
   dynamic num = 12.0;
+  dynamic nullStr = folly::parseJson("\"foo\\u0000bar\"");
 
   EXPECT_EQ(0, strcmp(str.c_str(), "12.0"));
   EXPECT_EQ(0, strncmp(str.data(), "12.0", str.asString().length()));
+  EXPECT_EQ(str.stringPiece(), "12.0");
 
-  EXPECT_ANY_THROW(num.c_str());
-  EXPECT_ANY_THROW(num.data());
+  EXPECT_THROW(num.c_str(), TypeError);
+  EXPECT_THROW(num.data(), TypeError);
+  EXPECT_THROW(num.stringPiece(), TypeError);
+
+  EXPECT_EQ(nullStr.stringPiece(), folly::StringPiece("foo\0bar", 7));
+
+  nullStr.getString()[3] = '|';
+  EXPECT_EQ(nullStr.stringPiece(), "foo|bar");
 }
 
 TEST(Dynamic, FormattedIO) {
@@ -311,6 +320,46 @@ TEST(Dynamic, ArrayGenerator) {
   using namespace folly::gen;
   dynamic arr { 1, 2, 3, 4 };
   EXPECT_EQ(from(arr) | take(3) | member(&dynamic::asInt) | sum, 6);
+}
+
+TEST(Dynamic, Getters) {
+  dynamic dStr = folly::parseJson("\"foo\\u0000bar\"");
+  dynamic dInt = 1;
+  dynamic dDouble = 0.5;
+  dynamic dBool = true;
+
+  EXPECT_EQ(dStr.getString(), std::string("foo\0bar", 7));
+  EXPECT_EQ(dInt.getInt(), 1);
+  EXPECT_EQ(dDouble.getDouble(), 0.5);
+  EXPECT_EQ(dBool.getBool(), true);
+
+  dStr.getString()[3] = '|';
+  EXPECT_EQ(dStr.getString(), "foo|bar");
+
+  dInt.getInt() = 2;
+  EXPECT_EQ(dInt.getInt(), 2);
+
+  dDouble.getDouble() = 0.7;
+  EXPECT_EQ(dDouble.getDouble(), 0.7);
+
+  dBool.getBool() = false;
+  EXPECT_EQ(dBool.getBool(), false);
+
+  EXPECT_THROW(dStr.getInt(), TypeError);
+  EXPECT_THROW(dStr.getDouble(), TypeError);
+  EXPECT_THROW(dStr.getBool(), TypeError);
+
+  EXPECT_THROW(dInt.getString(), TypeError);
+  EXPECT_THROW(dInt.getDouble(), TypeError);
+  EXPECT_THROW(dInt.getBool(), TypeError);
+
+  EXPECT_THROW(dDouble.getString(), TypeError);
+  EXPECT_THROW(dDouble.getInt(), TypeError);
+  EXPECT_THROW(dDouble.getBool(), TypeError);
+
+  EXPECT_THROW(dBool.getString(), TypeError);
+  EXPECT_THROW(dBool.getInt(), TypeError);
+  EXPECT_THROW(dBool.getDouble(), TypeError);
 }
 
 int main(int argc, char** argv) {

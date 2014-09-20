@@ -279,6 +279,20 @@ public:
   bool     asBool() const;
 
   /*
+   * Extract the value stored in this dynamic without type conversion.
+   *
+   * These will throw a TypeError if the dynamic has a different type.
+   */
+  const fbstring& getString() const;
+  double          getDouble() const;
+  int64_t         getInt() const;
+  bool            getBool() const;
+  fbstring& getString();
+  double&   getDouble();
+  int64_t&  getInt();
+  bool&     getBool();
+
+  /*
    * It is occasionally useful to access a string's internal pointer
    * directly, without the type conversion of `asString()`.
    *
@@ -286,6 +300,7 @@ public:
    */
   const char* data()  const;
   const char* c_str() const;
+  StringPiece stringPiece() const;
 
   /*
    * Returns: true if this dynamic is null, an empty array, an empty

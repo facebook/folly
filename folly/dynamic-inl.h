@@ -392,8 +392,19 @@ inline double   dynamic::asDouble() const { return asImpl<double>(); }
 inline int64_t  dynamic::asInt()    const { return asImpl<int64_t>(); }
 inline bool     dynamic::asBool()   const { return asImpl<bool>(); }
 
+inline const fbstring& dynamic::getString() const { return get<fbstring>(); }
+inline double          dynamic::getDouble() const { return get<double>(); }
+inline int64_t         dynamic::getInt()    const { return get<int64_t>(); }
+inline bool            dynamic::getBool()   const { return get<bool>(); }
+
+inline fbstring& dynamic::getString() { return get<fbstring>(); }
+inline double&   dynamic::getDouble() { return get<double>(); }
+inline int64_t&  dynamic::getInt()    { return get<int64_t>(); }
+inline bool&     dynamic::getBool()   { return get<bool>(); }
+
 inline const char* dynamic::data()  const { return get<fbstring>().data();  }
 inline const char* dynamic::c_str() const { return get<fbstring>().c_str(); }
+inline StringPiece dynamic::stringPiece() const { return get<fbstring>(); }
 
 template<class T>
 struct dynamic::CompareOp {
