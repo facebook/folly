@@ -32,20 +32,20 @@ namespace folly {
 const AsciiCaseSensitive asciiCaseSensitive = AsciiCaseSensitive();
 const AsciiCaseInsensitive asciiCaseInsensitive = AsciiCaseInsensitive();
 
-std::ostream& operator<<(std::ostream& os, const StringPiece& piece) {
+std::ostream& operator<<(std::ostream& os, const StringPiece piece) {
   os.write(piece.start(), piece.size());
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const MutableStringPiece& piece) {
+std::ostream& operator<<(std::ostream& os, const MutableStringPiece piece) {
   os.write(piece.start(), piece.size());
   return os;
 }
 
 namespace detail {
 
-size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
-                                  const StringPiece& needles) {
+size_t qfind_first_byte_of_memchr(const StringPiece haystack,
+                                  const StringPiece needles) {
   size_t best = haystack.size();
   for (char needle: needles) {
     const void* ptr = memchr(haystack.data(), needle, best);
@@ -84,14 +84,14 @@ inline size_t nextAlignedIndex(const char* arr) {
 }
 
 // build sse4.2-optimized version even if -msse4.2 is not passed to GCC
-size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
-                                     const StringPiece& needles)
+size_t qfind_first_byte_of_needles16(const StringPiece haystack,
+                                     const StringPiece needles)
   __attribute__ ((__target__("sse4.2"), noinline))
   FOLLY_DISABLE_ADDRESS_SANITIZER;
 
 // helper method for case where needles.size() <= 16
-size_t qfind_first_byte_of_needles16(const StringPiece& haystack,
-                                     const StringPiece& needles) {
+size_t qfind_first_byte_of_needles16(const StringPiece haystack,
+                                     const StringPiece needles) {
   DCHECK(!haystack.empty());
   DCHECK(!needles.empty());
   DCHECK_LE(needles.size(), 16);
@@ -160,8 +160,8 @@ class FastByteSet {
 
 namespace detail {
 
-size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
-                                   const StringPiece& needles) {
+size_t qfind_first_byte_of_byteset(const StringPiece haystack,
+                                   const StringPiece needles) {
   FastByteSet s;
   for (auto needle: needles) {
     s.add(needle);
@@ -177,8 +177,8 @@ size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
 #if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
 
 template <bool HAYSTACK_ALIGNED>
-size_t scanHaystackBlock(const StringPiece& haystack,
-                         const StringPiece& needles,
+size_t scanHaystackBlock(const StringPiece haystack,
+                         const StringPiece needles,
                          int64_t idx)
 // inline is okay because it's only called from other sse4.2 functions
   __attribute__ ((__target__("sse4.2")))
@@ -193,8 +193,8 @@ size_t scanHaystackBlock(const StringPiece& haystack,
 // If !HAYSTACK_ALIGNED, then caller must ensure that it is safe to load the
 // block.
 template <bool HAYSTACK_ALIGNED>
-size_t scanHaystackBlock(const StringPiece& haystack,
-                         const StringPiece& needles,
+size_t scanHaystackBlock(const StringPiece haystack,
+                         const StringPiece needles,
                          int64_t blockStartIdx) {
   DCHECK_GT(needles.size(), 16);  // should handled by *needles16() method
   DCHECK(blockStartIdx + 16 <= haystack.size() ||
@@ -230,12 +230,12 @@ size_t scanHaystackBlock(const StringPiece& haystack,
   return StringPiece::npos;
 }
 
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
-                                 const StringPiece& needles)
+size_t qfind_first_byte_of_sse42(const StringPiece haystack,
+                                 const StringPiece needles)
   __attribute__ ((__target__("sse4.2"), noinline));
 
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
-                                 const StringPiece& needles) {
+size_t qfind_first_byte_of_sse42(const StringPiece haystack,
+                                 const StringPiece needles) {
   if (UNLIKELY(needles.empty() || haystack.empty())) {
     return StringPiece::npos;
   } else if (needles.size() <= 16) {
@@ -270,8 +270,8 @@ size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
 }
 #endif // FOLLY_HAVE_EMMINTRIN_H && GCC 4.6+
 
-size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
-                                 const StringPiece& needles) {
+size_t qfind_first_byte_of_nosse(const StringPiece haystack,
+                                 const StringPiece needles) {
   if (UNLIKELY(needles.empty() || haystack.empty())) {
     return StringPiece::npos;
   }

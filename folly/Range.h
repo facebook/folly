@@ -803,8 +803,8 @@ typedef Range<char*> MutableStringPiece;
 typedef Range<const unsigned char*> ByteRange;
 typedef Range<unsigned char*> MutableByteRange;
 
-std::ostream& operator<<(std::ostream& os, const StringPiece& piece);
-std::ostream& operator<<(std::ostream& os, const MutableStringPiece& piece);
+std::ostream& operator<<(std::ostream& os, const StringPiece piece);
+std::ostream& operator<<(std::ostream& os, const MutableStringPiece piece);
 
 /**
  * Templated comparison operators
@@ -891,7 +891,7 @@ operator>=(const T& lhs, const U& rhs) {
 }
 
 struct StringPieceHash {
-  std::size_t operator()(const StringPiece& str) const {
+  std::size_t operator()(const StringPiece str) const {
     return static_cast<std::size_t>(str.hash());
   }
 };
@@ -957,15 +957,15 @@ size_t qfind(const Range<T>& haystack,
 
 namespace detail {
 
-size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
-                                 const StringPiece& needles);
+size_t qfind_first_byte_of_nosse(const StringPiece haystack,
+                                 const StringPiece needles);
 
 #if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
-size_t qfind_first_byte_of_sse42(const StringPiece& haystack,
-                                 const StringPiece& needles);
+size_t qfind_first_byte_of_sse42(const StringPiece haystack,
+                                 const StringPiece needles);
 
-inline size_t qfind_first_byte_of(const StringPiece& haystack,
-                                  const StringPiece& needles) {
+inline size_t qfind_first_byte_of(const StringPiece haystack,
+                                  const StringPiece needles) {
   static auto const qfind_first_byte_of_fn =
     folly::CpuId().sse42() ? qfind_first_byte_of_sse42
                            : qfind_first_byte_of_nosse;
@@ -973,8 +973,8 @@ inline size_t qfind_first_byte_of(const StringPiece& haystack,
 }
 
 #else
-inline size_t qfind_first_byte_of(const StringPiece& haystack,
-                                  const StringPiece& needles) {
+inline size_t qfind_first_byte_of(const StringPiece haystack,
+                                  const StringPiece needles) {
   return qfind_first_byte_of_nosse(haystack, needles);
 }
 #endif // FOLLY_HAVE_EMMINTRIN_H

@@ -24,14 +24,14 @@
 
 namespace folly { namespace detail {
 // declaration of functions in Range.cpp
-size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
-                                  const StringPiece& needles);
+size_t qfind_first_byte_of_memchr(const StringPiece haystack,
+                                  const StringPiece needles);
 
-size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
-                                   const StringPiece& needles);
+size_t qfind_first_byte_of_byteset(const StringPiece haystack,
+                                   const StringPiece needles);
 
-size_t qfind_first_byte_of_nosse(const StringPiece& haystack,
-                                 const StringPiece& needles);
+size_t qfind_first_byte_of_nosse(const StringPiece haystack,
+                                 const StringPiece needles);
 }}
 
 using namespace folly;
@@ -131,15 +131,15 @@ BENCHMARK_RELATIVE(FindSingleCharRange, n) {
 BENCHMARK_DRAW_LINE();
 
 // it's useful to compare our custom implementations vs. the standard library
-inline size_t qfind_first_byte_of_std(const StringPiece& haystack,
-                                      const StringPiece& needles) {
+inline size_t qfind_first_byte_of_std(const StringPiece haystack,
+                                      const StringPiece needles) {
   return qfind_first_of(haystack, needles, asciiCaseSensitive);
 }
 
 template <class Func>
 void findFirstOfRange(StringPiece needles, Func func, size_t n) {
   FOR_EACH_RANGE (i, 0, n) {
-    const StringPiece& haystack = vstr[i % kVstrSize];
+    const StringPiece haystack = vstr[i % kVstrSize];
     doNotOptimizeAway(func(haystack, needles));
     char x = haystack[0];
     doNotOptimizeAway(&x);

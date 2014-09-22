@@ -60,7 +60,7 @@ S resplit(char delimiter) {
 }
 
 template <class S = detail::SplitStringSource<char>>
-S split(const StringPiece& source, char delimiter) {
+S split(const StringPiece source, char delimiter) {
   return S(source, delimiter);
 }
 

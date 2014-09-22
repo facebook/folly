@@ -34,11 +34,11 @@
 namespace folly { namespace detail {
 
 // declaration of functions in Range.cpp
-size_t qfind_first_byte_of_memchr(const StringPiece& haystack,
-                                  const StringPiece& needles);
+size_t qfind_first_byte_of_memchr(const StringPiece haystack,
+                                  const StringPiece needles);
 
-size_t qfind_first_byte_of_byteset(const StringPiece& haystack,
-                                   const StringPiece& needles);
+size_t qfind_first_byte_of_byteset(const StringPiece haystack,
+                                   const StringPiece needles);
 
 }}  // namespaces
 

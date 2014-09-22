@@ -269,7 +269,7 @@ class SplitStringSource
   StringPiece source_;
   DelimiterType delimiter_;
  public:
-  SplitStringSource(const StringPiece& source,
+  SplitStringSource(const StringPiece source,
                     DelimiterType delimiter)
     : source_(source)
     , delimiter_(std::move(delimiter)) { }
