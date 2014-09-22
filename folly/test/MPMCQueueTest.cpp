@@ -100,17 +100,27 @@ void runElementTypeTest(T&& src) {
 }
 
 struct RefCounted {
+  static __thread int active_instances;
+
   mutable std::atomic<int> rc;
 
-  RefCounted() : rc(0) {}
+  RefCounted() : rc(0) {
+    ++active_instances;
+  }
+
+  ~RefCounted() {
+    --active_instances;
+  }
 };
+__thread int RefCounted::active_instances;
+
 
 void intrusive_ptr_add_ref(RefCounted const* p) {
   p->rc++;
 }
 
 void intrusive_ptr_release(RefCounted const* p) {
-  if (--(p->rc)) {
+  if (--(p->rc) == 0) {
     delete p;
   }
 }
@@ -123,6 +133,7 @@ TEST(MPMCQueue, lots_of_element_types) {
   runElementTypeTest(std::make_shared<char>('a'));
   runElementTypeTest(folly::make_unique<char>('a'));
   runElementTypeTest(boost::intrusive_ptr<RefCounted>(new RefCounted));
+  EXPECT_EQ(RefCounted::active_instances, 0);
 }
 
 TEST(MPMCQueue, single_thread_enqdeq) {
