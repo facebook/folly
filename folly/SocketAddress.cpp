@@ -290,7 +290,7 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_un* address,
 const folly::IPAddress& SocketAddress::getIPAddress() const {
   auto family = getFamily();
   if (family != AF_INET && family != AF_INET6) {
-    throw std::invalid_argument("getIPAddress called on a non-ip address");
+    throw InvalidAddressFamilyException(family);
   }
   return storage_.addr;
 }
