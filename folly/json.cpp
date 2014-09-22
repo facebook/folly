@@ -75,7 +75,7 @@ char32_t decodeUtf8(
 
   fst <<= 1;
 
-  for (unsigned int i = 1; i != 3 && p + i < e; ++i) {
+  for (unsigned int i = 1; i != 4 && p + i < e; ++i) {
     unsigned char tmp = p[i];
 
     if ((tmp & 0xC0) != 0x80) {
