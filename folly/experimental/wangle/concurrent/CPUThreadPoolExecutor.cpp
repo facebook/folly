@@ -56,8 +56,8 @@ void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
         LOG(ERROR) << "CPUThreadPoolExecutor: func threw unhandled " <<
                       typeid(e).name() << " exception: " << e.what();
       } catch (...) {
-        LOG(ERROR) << "CPUThreadPoolExecutor: func threw unhandled non-exception "
-                      "object";
+        LOG(ERROR) << "CPUThreadPoolExecutor: func threw unhandled "
+                      "non-exception object";
       }
       thread->idle = true;
     }

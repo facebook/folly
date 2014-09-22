@@ -257,7 +257,8 @@ Future<T> makeFuture(std::exception_ptr const& e) {
 }
 
 template <class T, class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::type
+typename std::enable_if<std::is_base_of<std::exception, E>::value,
+                        Future<T>>::type
 makeFuture(E const& e) {
   Promise<T> p;
   auto f = p.getFuture();

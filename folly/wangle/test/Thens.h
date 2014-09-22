@@ -56,7 +56,8 @@ aFunction(Params...) {
 
 template <class Ret, class... Params>
 std::function<Ret(Params...)>
-aStdFunction(typename std::enable_if<!isFuture<Ret>::value, bool>::type = false) {
+aStdFunction(
+    typename std::enable_if<!isFuture<Ret>::value, bool>::type = false) {
   return [](Params...) -> Ret { return Ret(); };
 }
 

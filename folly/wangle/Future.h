@@ -261,7 +261,8 @@ Future<T> makeFuture(std::exception_ptr const& e);
 /** Make a Future from an exception type E that can be passed to
   std::make_exception_ptr(). */
 template <class T, class E>
-typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::type
+typename std::enable_if<std::is_base_of<std::exception, E>::value,
+                        Future<T>>::type
 makeFuture(E const& e);
 
 /** Make a Future out of a Try */

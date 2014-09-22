@@ -74,7 +74,8 @@ private:
 };
 
 // fastest conceivable hash function (for comparison)
-static void Add(const void *data, size_t length, uint64_t *hash1, uint64_t *hash2)
+static void Add(const void *data, size_t length,
+                uint64_t *hash1, uint64_t *hash2)
 {
     uint64_t *p64 = (uint64_t *)data;
     uint64_t *end = p64 + length/8;
@@ -426,8 +427,10 @@ void TestDeltas(int seed)
                     {
                         buf1[j/8] ^= (1 << (j%8));
                     }
-                    SpookyHashV1::Hash128(buf1, h, &measure[0][0], &measure[0][1]);
-                    SpookyHashV1::Hash128(buf2, h, &measure[1][0], &measure[1][1]);
+                    SpookyHashV1::Hash128(buf1, h,
+                            &measure[0][0], &measure[0][1]);
+                    SpookyHashV1::Hash128(buf2, h,
+                            &measure[1][0], &measure[1][1]);
                     for (int l=0; l<2; ++l) {
                         measure[2][l] = measure[0][l] ^ measure[1][l];
                         measure[3][l] = ~(measure[0][l] ^ measure[1][l]);

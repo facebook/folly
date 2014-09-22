@@ -769,7 +769,8 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
       findInsertionPoint(preds_[lyr], lyr, data, preds_, succs_);
     if (foundLayer < 0) return false;
 
-    DCHECK(succs_[0] != nullptr) << "lyr=" << lyr << "; max_layer=" << max_layer;
+    DCHECK(succs_[0] != nullptr) << "lyr=" << lyr
+                                 << "; max_layer=" << max_layer;
     return !succs_[0]->markedForRemoval();
   }
 

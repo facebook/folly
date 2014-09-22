@@ -30,7 +30,8 @@ size_t xallocx(void*, size_t, size_t, int) __attribute__((__weak__));
 size_t sallocx(const void*, int) __attribute__((__weak__));
 void dallocx(void*, int) __attribute__((__weak__));
 size_t nallocx(size_t, int) __attribute__((__weak__));
-int mallctl(const char*, void*, size_t*, void*, size_t) __attribute__((__weak__));
+int mallctl(const char*, void*, size_t*, void*, size_t)
+      __attribute__((__weak__));
 #else
 extern void* (*mallocx)(size_t, int);
 extern void* (*rallocx)(void*, size_t, int);
