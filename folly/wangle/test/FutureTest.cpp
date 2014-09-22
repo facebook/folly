@@ -734,7 +734,7 @@ TEST(Future, waitWithSemaphoreForTime) {
   auto t = waitWithSemaphore(std::move(f),
     std::chrono::milliseconds(1));
   auto end = std::chrono::system_clock::now();
-  EXPECT_TRUE( end - begin < std::chrono::milliseconds(2));
+  EXPECT_TRUE( end - begin < std::chrono::milliseconds(5));
   EXPECT_FALSE(t.isReady());
  }
  {
