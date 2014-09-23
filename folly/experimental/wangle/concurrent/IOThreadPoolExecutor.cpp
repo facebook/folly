@@ -35,6 +35,13 @@ IOThreadPoolExecutor::~IOThreadPoolExecutor() {
 }
 
 void IOThreadPoolExecutor::add(Func func) {
+  add(std::move(func), std::chrono::milliseconds(0));
+}
+
+void IOThreadPoolExecutor::add(
+    Func func,
+    std::chrono::milliseconds expiration,
+    Func expireCallback) {
   RWSpinLock::ReadHolder{&threadListLock_};
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
@@ -42,7 +49,8 @@ void IOThreadPoolExecutor::add(Func func) {
   auto thread = threadList_.get()[nextThread_++ % threadList_.get().size()];
   auto ioThread = std::static_pointer_cast<IOThread>(thread);
 
-  auto moveTask = folly::makeMoveWrapper(Task(std::move(func)));
+  auto moveTask = folly::makeMoveWrapper(
+      Task(std::move(func), expiration, std::move(expireCallback)));
   auto wrappedFunc = [this, ioThread, moveTask] () mutable {
     runTask(ioThread, std::move(*moveTask));
     ioThread->pendingTasks--;

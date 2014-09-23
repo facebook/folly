@@ -38,6 +38,12 @@ class ThreadPoolExecutor : public experimental::Executor {
 
   ~ThreadPoolExecutor();
 
+  virtual void add(Func func) override = 0;
+  virtual void add(
+      Func func,
+      std::chrono::milliseconds expiration,
+      Func expireCallback) = 0;
+
   size_t numThreads();
   void setNumThreads(size_t numThreads);
   void stop();
@@ -55,8 +61,8 @@ class ThreadPoolExecutor : public experimental::Executor {
   struct TaskStats {
     TaskStats() : expired(false), waitTime(0), runTime(0) {}
     bool expired;
-    std::chrono::microseconds waitTime;
-    std::chrono::microseconds runTime;
+    std::chrono::nanoseconds waitTime;
+    std::chrono::nanoseconds runTime;
   };
 
   Subscription subscribeToTaskStats(
@@ -82,27 +88,15 @@ class ThreadPoolExecutor : public experimental::Executor {
   typedef std::shared_ptr<Thread> ThreadPtr;
 
   struct Task {
-    explicit Task(Func&& f) : func(std::move(f)) {
-      // Assume that the task in enqueued on creation
-      intervalBegin = std::chrono::steady_clock::now();
-    }
-
-    Func func;
-    TaskStats stats;
-    // TODO per-task timeouts, expirations
-
-    void started() {
-      auto now = std::chrono::steady_clock::now();
-      stats.waitTime = std::chrono::duration_cast<std::chrono::microseconds>(
-          now - intervalBegin);
-      intervalBegin = now;
-    }
-    void completed() {
-      stats.runTime = std::chrono::duration_cast<std::chrono::microseconds>(
-         std::chrono::steady_clock::now() - intervalBegin);
-    }
-
-    std::chrono::steady_clock::time_point intervalBegin;
+    explicit Task(
+        Func&& func,
+        std::chrono::milliseconds expiration,
+        Func&& expireCallback);
+    Func func_;
+    TaskStats stats_;
+    std::chrono::steady_clock::time_point enqueueTime_;
+    std::chrono::milliseconds expiration_;
+    Func expireCallback_;
   };
 
   void runTask(const ThreadPtr& thread, Task&& task);

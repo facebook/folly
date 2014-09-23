@@ -36,13 +36,20 @@ CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
 }
 
 void CPUThreadPoolExecutor::add(Func func) {
+  add(std::move(func), std::chrono::milliseconds(0));
+}
+
+void CPUThreadPoolExecutor::add(
+    Func func,
+    std::chrono::milliseconds expiration,
+    Func expireCallback) {
   // TODO handle enqueue failure, here and in other add() callsites
-  taskQueue_->add(CPUTask(std::move(func)));
+  taskQueue_->add(
+      CPUTask(std::move(func), expiration, std::move(expireCallback)));
 }
 
 void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
   while (1) {
-    // TODO expiration / codel
     auto task = taskQueue_->take();
     if (UNLIKELY(task.poison)) {
       CHECK(threadsToStop_-- > 0);

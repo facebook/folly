@@ -30,6 +30,10 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
   ~IOThreadPoolExecutor();
 
   void add(Func func) override;
+  void add(
+      Func func,
+      std::chrono::milliseconds expiration,
+      Func expireCallback = nullptr) override;
 
  private:
   ThreadPtr makeThread() override;

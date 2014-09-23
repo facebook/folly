@@ -27,23 +27,43 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
   CHECK(threadList_.get().size() == 0);
 }
 
+ThreadPoolExecutor::Task::Task(
+    Func&& func,
+    std::chrono::milliseconds expiration,
+    Func&& expireCallback)
+    : func_(std::move(func)),
+      expiration_(expiration),
+      expireCallback_(std::move(expireCallback)) {
+  // Assume that the task in enqueued on creation
+  enqueueTime_ = std::chrono::steady_clock::now();
+}
+
 void ThreadPoolExecutor::runTask(
     const ThreadPtr& thread,
     Task&& task) {
   thread->idle = false;
-  task.started();
-  try {
-    task.func();
-  } catch (const std::exception& e) {
-    LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled " <<
-                  typeid(e).name() << " exception: " << e.what();
-  } catch (...) {
-    LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled non-exception "
-                  "object";
+  auto startTime = std::chrono::steady_clock::now();
+  task.stats_.waitTime = startTime - task.enqueueTime_;
+  if (task.expiration_ > std::chrono::milliseconds(0) &&
+      task.stats_.waitTime >= task.expiration_) {
+    task.stats_.expired = true;
+    if (task.expireCallback_ != nullptr) {
+      task.expireCallback_();
+    }
+  } else {
+    try {
+      task.func_();
+    } catch (const std::exception& e) {
+      LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled " <<
+                    typeid(e).name() << " exception: " << e.what();
+    } catch (...) {
+      LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled non-exception "
+                    "object";
+    }
+    task.stats_.runTime = std::chrono::steady_clock::now() - startTime;
   }
-  task.completed();
-  taskStatsSubject_.onNext(std::move(task.stats));
   thread->idle = true;
+  taskStatsSubject_.onNext(std::move(task.stats_));
 }
 
 size_t ThreadPoolExecutor::numThreads() {
