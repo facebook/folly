@@ -201,12 +201,11 @@ void SocketAddress::setFromLocalAddress(int socket) {
 }
 
 void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
+  uint16_t port;
   if (address->sa_family == AF_INET) {
-    storage_.addr = folly::IPAddress(address);
-    port_ = ntohs(((sockaddr_in*)address)->sin_port);
+    port = ntohs(((sockaddr_in*)address)->sin_port);
   } else if (address->sa_family == AF_INET6) {
-    storage_.addr = folly::IPAddress(address);
-    port_ = ntohs(((sockaddr_in6*)address)->sin6_port);
+    port = ntohs(((sockaddr_in6*)address)->sin6_port);
   } else if (address->sa_family == AF_UNIX) {
     // We need an explicitly specified length for AF_UNIX addresses,
     // to be able to distinguish anonymous addresses from addresses
@@ -220,7 +219,12 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
       "SocketAddress::setFromSockaddr() called "
       "with unsupported address type");
   }
-  external_ = false;
+  if (getFamily() == AF_UNIX) {
+    storage_.un.free();
+    external_ = false;
+  }
+  storage_.addr = folly::IPAddress(address);
+  port_ = port;
 }
 
 void SocketAddress::setFromSockaddr(const struct sockaddr* address,
