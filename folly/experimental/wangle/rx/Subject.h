@@ -25,17 +25,24 @@ namespace folly { namespace wangle {
 /// observed events to the Subject's observers.
 template <class T>
 struct Subject : public Observable<T>, public Observer<T> {
+  typedef typename Observable<T>::ObserversGuard ObserversGuard;
   void onNext(T val) override {
-    for (auto& o : this->observers_)
+    ObserversGuard guard(this);
+    for (auto& o : Observable<T>::getObservers()) {
       o->onNext(val);
+    }
   }
   void onError(Error e) override {
-    for (auto& o : this->observers_)
+    ObserversGuard guard(this);
+    for (auto& o : Observable<T>::getObservers()) {
       o->onError(e);
+    }
   }
   void onCompleted() override {
-    for (auto& o : this->observers_)
+    ObserversGuard guard(this);
+    for (auto& o : Observable<T>::getObservers()) {
       o->onCompleted();
+    }
   }
 };
 

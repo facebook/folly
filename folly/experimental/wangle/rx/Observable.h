@@ -20,6 +20,8 @@
 #include "Subject.h"
 #include "Subscription.h"
 
+#include <folly/RWSpinLock.h>
+#include <folly/ThreadLocal.h>
 #include <folly/wangle/Executor.h>
 #include <list>
 #include <memory>
@@ -27,15 +29,33 @@
 namespace folly { namespace wangle {
 
 template <class T>
-struct Observable {
+class Observable {
+ public:
+  Observable() = default;
+  Observable(Observable&& other) noexcept {
+    RWSpinLock::WriteHolder{&other.observersLock_};
+    observers_ = std::move(other.observers_);
+  }
+
   virtual ~Observable() = default;
 
   /// Subscribe the given Observer to this Observable.
   // Eventually this will return a Subscription object of some kind, in order
   // to support cancellation. This is kinda really important. Maybe I should
   // just do it now, using an dummy Subscription object.
+  //
+  // If this is called within an Observer callback, the new observer will not
+  // get the current update but will get subsequent updates.
   virtual Subscription subscribe(ObserverPtr<T> o) {
-    observers_.push_back(o);
+    if (inCallback_ && *inCallback_) {
+      if (!newObservers_) {
+        newObservers_.reset(new std::list<ObserverPtr<T>>());
+      }
+      newObservers_->push_back(o);
+    } else {
+      RWSpinLock::WriteHolder{&observersLock_};
+      observers_.push_back(o);
+    }
     return Subscription();
   }
 
@@ -97,7 +117,48 @@ struct Observable {
   }
 
  protected:
+  const std::list<ObserverPtr<T>>& getObservers() {
+    return observers_;
+  }
+
+  // This guard manages deferred modification of the observers list.
+  // Subclasses should use this guard if they want to subscribe new observers
+  // in the course of a callback. New observers won't be added until the guard
+  // goes out of scope. See Subject for an example.
+  class ObserversGuard {
+   public:
+    explicit ObserversGuard(Observable* o) : o_(o) {
+      if (UNLIKELY(!o_->inCallback_)) {
+        o_->inCallback_.reset(new bool{false});
+      }
+      CHECK(!(*o_->inCallback_));
+      *o_->inCallback_ = true;
+      o_->observersLock_.lock_shared();
+    }
+
+    ~ObserversGuard() {
+      o_->observersLock_.unlock_shared();
+      if (UNLIKELY(o_->newObservers_ && !o_->newObservers_->empty())) {
+        {
+          RWSpinLock::WriteHolder(o_->observersLock_);
+          for (auto& o : *(o_->newObservers_)) {
+            o_->observers_.push_back(o);
+          }
+        }
+        o_->newObservers_->clear();
+      }
+      *o_->inCallback_ = false;
+    }
+
+   private:
+    Observable* o_;
+  };
+
+ private:
   std::list<ObserverPtr<T>> observers_;
+  RWSpinLock observersLock_;
+  folly::ThreadLocalPtr<bool> inCallback_;
+  folly::ThreadLocalPtr<std::list<ObserverPtr<T>>> newObservers_;
 };
 
 }}
