@@ -42,15 +42,15 @@ void IOThreadPoolExecutor::add(Func func) {
   auto thread = threadList_.get()[nextThread_++ % threadList_.get().size()];
   auto ioThread = std::static_pointer_cast<IOThread>(thread);
 
-  auto moveFunc = folly::makeMoveWrapper(std::move(func));
-  auto wrappedFunc = [moveFunc, ioThread] () {
-    (*moveFunc)();
-    ioThread->outstandingTasks--;
+  auto moveTask = folly::makeMoveWrapper(Task(std::move(func)));
+  auto wrappedFunc = [this, ioThread, moveTask] () mutable {
+    runTask(ioThread, std::move(*moveTask));
+    ioThread->pendingTasks--;
   };
 
-  ioThread->outstandingTasks++;
+  ioThread->pendingTasks++;
   if (!ioThread->eventBase.runInEventBaseThread(std::move(wrappedFunc))) {
-    ioThread->outstandingTasks--;
+    ioThread->pendingTasks--;
     throw std::runtime_error("Unable to run func in event base thread");
   }
 }
@@ -66,13 +66,14 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     ioThread->eventBase.loopForever();
   }
   if (isJoin_) {
-    while (ioThread->outstandingTasks > 0) {
+    while (ioThread->pendingTasks > 0) {
       ioThread->eventBase.loopOnce();
     }
   }
   stoppedThreads_.add(ioThread);
 }
 
+// threadListLock_ is writelocked
 void IOThreadPoolExecutor::stopThreads(size_t n) {
   for (int i = 0; i < n; i++) {
     const auto ioThread = std::static_pointer_cast<IOThread>(
@@ -80,6 +81,20 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
     ioThread->shouldRun = false;
     ioThread->eventBase.terminateLoopSoon();
   }
+}
+
+// threadListLock_ is readlocked
+uint64_t IOThreadPoolExecutor::getPendingTaskCount() {
+  uint64_t count = 0;
+  for (const auto& thread : threadList_.get()) {
+    auto ioThread = std::static_pointer_cast<IOThread>(thread);
+    size_t pendingTasks = ioThread->pendingTasks;
+    if (pendingTasks > 0 && !ioThread->idle) {
+      pendingTasks--;
+    }
+    count += pendingTasks;
+  }
+  return count;
 }
 
 }} // folly::wangle

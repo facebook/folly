@@ -27,6 +27,25 @@ ThreadPoolExecutor::~ThreadPoolExecutor() {
   CHECK(threadList_.get().size() == 0);
 }
 
+void ThreadPoolExecutor::runTask(
+    const ThreadPtr& thread,
+    Task&& task) {
+  thread->idle = false;
+  task.started();
+  try {
+    task.func();
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled " <<
+                  typeid(e).name() << " exception: " << e.what();
+  } catch (...) {
+    LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled non-exception "
+                  "object";
+  }
+  task.completed();
+  taskStatsSubject_.onNext(std::move(task.stats));
+  thread->idle = true;
+}
+
 size_t ThreadPoolExecutor::numThreads() {
   RWSpinLock::ReadHolder{&threadListLock_};
   return threadList_.get().size();
@@ -43,6 +62,7 @@ void ThreadPoolExecutor::setNumThreads(size_t n) {
   CHECK(threadList_.get().size() == n);
 }
 
+// threadListLock_ is writelocked
 void ThreadPoolExecutor::addThreads(size_t n) {
   for (int i = 0; i < n; i++) {
     auto thread = makeThread();
@@ -54,6 +74,7 @@ void ThreadPoolExecutor::addThreads(size_t n) {
   }
 }
 
+// threadListLock_ is writelocked
 void ThreadPoolExecutor::removeThreads(size_t n, bool isJoin) {
   CHECK(n <= threadList_.get().size());
   CHECK(stoppedThreads_.size() == 0);
@@ -77,6 +98,22 @@ void ThreadPoolExecutor::join() {
   RWSpinLock::WriteHolder{&threadListLock_};
   removeThreads(threadList_.get().size(), true);
   CHECK(threadList_.get().size() == 0);
+}
+
+ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
+  RWSpinLock::ReadHolder{&threadListLock_};
+  ThreadPoolExecutor::PoolStats stats;
+  stats.threadCount = threadList_.get().size();
+  for (auto thread : threadList_.get()) {
+    if (thread->idle) {
+      stats.idleThreadCount++;
+    } else {
+      stats.activeThreadCount++;
+    }
+  }
+  stats.pendingTaskCount = getPendingTaskCount();
+  stats.totalTaskCount = stats.pendingTaskCount + stats.activeThreadCount;
+  return stats;
 }
 
 std::atomic<uint64_t> ThreadPoolExecutor::Thread::nextId(0);

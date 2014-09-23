@@ -18,6 +18,7 @@
 #include <folly/experimental/wangle/concurrent/Executor.h>
 #include <folly/experimental/wangle/concurrent/LifoSemMPMCQueue.h>
 #include <folly/experimental/wangle/concurrent/NamedThreadFactory.h>
+#include <folly/experimental/wangle/rx/Observable.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 
@@ -29,7 +30,7 @@
 
 namespace folly { namespace wangle {
 
-class ThreadPoolExecutor : public Executor {
+class ThreadPoolExecutor : public experimental::Executor {
  public:
   explicit ThreadPoolExecutor(
       size_t numThreads,
@@ -41,10 +42,32 @@ class ThreadPoolExecutor : public Executor {
   void setNumThreads(size_t numThreads);
   void stop();
   void join();
-  // TODO expose stats
+
+  struct PoolStats {
+    PoolStats() : threadCount(0), idleThreadCount(0), activeThreadCount(0),
+                  pendingTaskCount(0), totalTaskCount(0) {}
+    size_t threadCount, idleThreadCount, activeThreadCount;
+    uint64_t pendingTaskCount, totalTaskCount;
+  };
+
+  PoolStats getPoolStats();
+
+  struct TaskStats {
+    TaskStats() : expired(false), waitTime(0), runTime(0) {}
+    bool expired;
+    std::chrono::microseconds waitTime;
+    std::chrono::microseconds runTime;
+  };
+
+  Subscription subscribeToTaskStats(
+      const ObserverPtr<TaskStats>& observer) {
+    return taskStatsSubject_.subscribe(observer);
+  }
 
  protected:
+  // Prerequisite: threadListLock_ writelocked
   void addThreads(size_t n);
+  // Prerequisite: threadListLock_ writelocked
   void removeThreads(size_t n, bool isJoin);
 
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread {
@@ -54,20 +77,50 @@ class ThreadPoolExecutor : public Executor {
     uint64_t id;
     std::thread handle;
     bool idle;
-    // TODO per-thread stats go here
   };
 
   typedef std::shared_ptr<Thread> ThreadPtr;
 
+  struct Task {
+    explicit Task(Func&& f) : func(std::move(f)) {
+      // Assume that the task in enqueued on creation
+      intervalBegin = std::chrono::steady_clock::now();
+    }
+
+    Func func;
+    TaskStats stats;
+    // TODO per-task timeouts, expirations
+
+    void started() {
+      auto now = std::chrono::steady_clock::now();
+      stats.waitTime = std::chrono::duration_cast<std::chrono::microseconds>(
+          now - intervalBegin);
+      intervalBegin = now;
+    }
+    void completed() {
+      stats.runTime = std::chrono::duration_cast<std::chrono::microseconds>(
+         std::chrono::steady_clock::now() - intervalBegin);
+    }
+
+    std::chrono::steady_clock::time_point intervalBegin;
+  };
+
+  void runTask(const ThreadPtr& thread, Task&& task);
+
   // The function that will be bound to pool threads
   virtual void threadRun(ThreadPtr thread) = 0;
-  // Stop n threads and put their Thread structs in the threadsStopped_ queue
+
+  // Stop n threads and put their ThreadPtrs in the threadsStopped_ queue
+  // Prerequisite: threadListLock_ writelocked
   virtual void stopThreads(size_t n) = 0;
+
   // Create a suitable Thread struct
   virtual ThreadPtr makeThread() {
     return std::make_shared<Thread>();
   }
-  // need a stopThread(id) for keepalive feature
+
+  // Prerequisite: threadListLock_ readlocked
+  virtual uint64_t getPendingTaskCount() = 0;
 
   class ThreadList {
    public:
@@ -112,6 +165,8 @@ class ThreadPoolExecutor : public Executor {
   RWSpinLock threadListLock_;
   StoppedThreadQueue stoppedThreads_;
   std::atomic<bool> isJoin_; // whether the current downsizing is a join
+
+  Subject<TaskStats> taskStatsSubject_;
 };
 
 }} // folly::wangle

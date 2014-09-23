@@ -21,13 +21,12 @@ namespace folly { namespace wangle {
 
 class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  public:
-  struct Task;
+  struct CPUTask;
 
-  // TODO thread naming, perhaps a required input to ThreadFactories
   explicit CPUThreadPoolExecutor(
       size_t numThreads,
-      std::unique_ptr<BlockingQueue<Task>> taskQueue =
-          folly::make_unique<LifoSemMPMCQueue<Task>>(
+      std::unique_ptr<BlockingQueue<CPUTask>> taskQueue =
+          folly::make_unique<LifoSemMPMCQueue<CPUTask>>(
               CPUThreadPoolExecutor::kDefaultMaxQueueSize),
       std::unique_ptr<ThreadFactory> threadFactory =
           folly::make_unique<NamedThreadFactory>("CPUThreadPool"));
@@ -36,15 +35,14 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
 
   void add(Func func) override;
 
-  struct Task {
-    explicit Task(Func&& taskArg) : func(std::move(taskArg)), poison(false) {}
-    Task() : func(nullptr), poison(true) {}
-    Task(Task&& o) noexcept : func(std::move(o.func)), poison(o.poison) {}
-    Task(const Task&) = default;
-    Task& operator=(const Task&) = default;
-    Func func;
+  struct CPUTask : public ThreadPoolExecutor::Task {
+    // Must be noexcept move constructible so it can be used in MPMCQueue
+    explicit CPUTask(Func&& f) : Task(std::move(f)), poison(false) {}
+    CPUTask() : Task(nullptr), poison(true) {}
+    CPUTask(CPUTask&& o) noexcept : Task(std::move(o)), poison(o.poison) {}
+    CPUTask(const CPUTask&) = default;
+    CPUTask& operator=(const CPUTask&) = default;
     bool poison;
-    // TODO per-task stats, timeouts, expirations
   };
 
   static const size_t kDefaultMaxQueueSize;
@@ -52,8 +50,9 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  private:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
+  uint64_t getPendingTaskCount() override;
 
-  std::unique_ptr<BlockingQueue<Task>> taskQueue_;
+  std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
   std::atomic<ssize_t> threadsToStop_{0};
 };
 

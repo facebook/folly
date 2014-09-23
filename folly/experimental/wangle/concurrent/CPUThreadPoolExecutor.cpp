@@ -22,7 +22,7 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 18;
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
-    std::unique_ptr<BlockingQueue<Task>> taskQueue,
+    std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
     std::unique_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(numThreads, std::move(threadFactory)),
       taskQueue_(std::move(taskQueue)) {
@@ -37,29 +37,19 @@ CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
 
 void CPUThreadPoolExecutor::add(Func func) {
   // TODO handle enqueue failure, here and in other add() callsites
-  taskQueue_->add(Task(std::move(func)));
+  taskQueue_->add(CPUTask(std::move(func)));
 }
 
 void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
   while (1) {
     // TODO expiration / codel
-    auto t = taskQueue_->take();
-    if (UNLIKELY(t.poison)) {
+    auto task = taskQueue_->take();
+    if (UNLIKELY(task.poison)) {
       CHECK(threadsToStop_-- > 0);
       stoppedThreads_.add(thread);
       return;
     } else {
-      thread->idle = false;
-      try {
-        t.func();
-      } catch (const std::exception& e) {
-        LOG(ERROR) << "CPUThreadPoolExecutor: func threw unhandled " <<
-                      typeid(e).name() << " exception: " << e.what();
-      } catch (...) {
-        LOG(ERROR) << "CPUThreadPoolExecutor: func threw unhandled "
-                      "non-exception object";
-      }
-      thread->idle = true;
+      runTask(thread, std::move(task));
     }
 
     if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
@@ -77,8 +67,12 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
   CHECK(stoppedThreads_.size() == 0);
   threadsToStop_ = n;
   for (int i = 0; i < n; i++) {
-    taskQueue_->add(Task());
+    taskQueue_->add(CPUTask());
   }
+}
+
+uint64_t CPUThreadPoolExecutor::getPendingTaskCount() {
+  return taskQueue_->size();
 }
 
 }} // folly::wangle

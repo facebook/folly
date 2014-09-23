@@ -35,11 +35,12 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
   ThreadPtr makeThread() override;
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
+  uint64_t getPendingTaskCount() override;
 
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
-    IOThread() : shouldRun(true), outstandingTasks(0) {};
+    IOThread() : shouldRun(true), pendingTasks(0) {};
     std::atomic<bool> shouldRun;
-    std::atomic<size_t> outstandingTasks;
+    std::atomic<size_t> pendingTasks;
     EventBase eventBase;
   };
 

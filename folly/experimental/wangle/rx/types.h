@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/wangle/Executor.h>
 
 namespace folly { namespace wangle {
   typedef folly::exception_wrapper Error;

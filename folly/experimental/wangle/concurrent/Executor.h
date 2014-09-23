@@ -22,10 +22,14 @@ namespace folly { namespace wangle {
 
 typedef std::function<void()> Func;
 
+namespace experimental { // TODO(jsedgwick) merge with folly/wangle/Executor.h
+
 class Executor {
  public:
   virtual ~Executor() {};
   virtual void add(Func func) = 0;
 };
+
+}
 
 }} // folly::wangle

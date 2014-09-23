@@ -22,6 +22,10 @@
 
 using namespace folly::wangle;
 
+static Func burnMs(uint64_t ms) {
+  return [ms]() { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); };
+}
+
 template <class TPE>
 static void basic() {
   // Create and destroy
@@ -59,7 +63,7 @@ static void stop() {
   TPE tpe(10);
   std::atomic<int> completed(0);
   auto f = [&](){
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    burnMs(1)();
     completed++;
   };
   for (int i = 0; i < 1000; i++) {
@@ -82,7 +86,7 @@ static void join() {
   TPE tpe(10);
   std::atomic<int> completed(0);
   auto f = [&](){
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    burnMs(1)();
     completed++;
   };
   for (int i = 0; i < 1000; i++) {
@@ -105,7 +109,7 @@ static void resizeUnderLoad() {
   TPE tpe(10);
   std::atomic<int> completed(0);
   auto f = [&](){
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    burnMs(1)();
     completed++;
   };
   for (int i = 0; i < 1000; i++) {
@@ -123,4 +127,76 @@ TEST(ThreadPoolExecutorTest, CPUResizeUnderLoad) {
 
 TEST(ThreadPoolExecutorTest, IOResizeUnderLoad) {
   resizeUnderLoad<IOThreadPoolExecutor>();
+}
+
+template <class TPE>
+static void poolStats() {
+  {
+    TPE tpe(10);
+    for (int i = 0; i < 20; i++) {
+      tpe.add(burnMs(20));
+    }
+    burnMs(10)();
+    auto stats = tpe.getPoolStats();
+    EXPECT_EQ(10, stats.threadCount);
+    EXPECT_EQ(0, stats.idleThreadCount);
+    EXPECT_EQ(10, stats.activeThreadCount);
+    EXPECT_EQ(10, stats.pendingTaskCount);
+    EXPECT_EQ(20, stats.totalTaskCount);
+  }
+
+  {
+    TPE tpe(10);
+    for (int i = 0; i < 5; i++) {
+      tpe.add(burnMs(20));
+    }
+    burnMs(10)();
+    auto stats = tpe.getPoolStats();
+    EXPECT_EQ(10, stats.threadCount);
+    EXPECT_EQ(5, stats.idleThreadCount);
+    EXPECT_EQ(5, stats.activeThreadCount);
+    EXPECT_EQ(0, stats.pendingTaskCount);
+    EXPECT_EQ(5, stats.totalTaskCount);
+  }
+}
+
+TEST(ThreadPoolExecutorTest, CPUPoolStats) {
+  poolStats<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IOPoolStats) {
+  poolStats<IOThreadPoolExecutor>();
+}
+
+template <class TPE>
+static void taskStats() {
+  TPE tpe(10);
+  std::atomic<int> c(0);
+  tpe.subscribeToTaskStats(Observer<ThreadPoolExecutor::TaskStats>::create(
+      [&] (ThreadPoolExecutor::TaskStats stats) {
+        int i = c++;
+        if (i < 10) {
+          EXPECT_GE(10000, stats.waitTime.count());
+          EXPECT_LE(20000, stats.runTime.count());
+        } else {
+          EXPECT_LE(10000, stats.waitTime.count());
+          EXPECT_LE(10000, stats.runTime.count());
+        }
+      }));
+  for (int i = 0; i < 10; i++) {
+    tpe.add(burnMs(20));
+  }
+  for (int i = 0; i < 10; i++) {
+    tpe.add(burnMs(10));
+  }
+  tpe.join();
+  EXPECT_EQ(20, c);
+}
+
+TEST(ThreadPoolExecutorTest, CPUTaskStats) {
+  taskStats<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IOTaskStats) {
+  taskStats<IOThreadPoolExecutor>();
 }
