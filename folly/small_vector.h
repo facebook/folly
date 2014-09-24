@@ -391,16 +391,13 @@ public:
     try {
       std::uninitialized_copy(o.begin(), o.end(), begin());
     } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
+      if (this->isExtern()) u.freeHeap();
       throw;
     }
     this->setSize(n);
   }
 
-  small_vector(small_vector&& o)
-  noexcept(std::is_nothrow_move_constructible<Value>::value) {
+  small_vector(small_vector&& o) {
     if (o.isExtern()) {
       swap(o);
     } else {
@@ -880,31 +877,18 @@ private:
     auto distance = std::distance(first, last);
     makeSize(distance);
     this->setSize(distance);
-    try {
-      detail::populateMemForward(data(), distance,
-        [&] (void* p) { new (p) value_type(*first++); }
-      );
-    } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
-      throw;
-    }
+
+    detail::populateMemForward(data(), distance,
+      [&] (void* p) { new (p) value_type(*first++); }
+    );
   }
 
   void doConstruct(size_type n, value_type const& val) {
     makeSize(n);
     this->setSize(n);
-    try {
-      detail::populateMemForward(data(), n,
-        [&] (void* p) { new (p) value_type(val); }
-      );
-    } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
-      throw;
-    }
+    detail::populateMemForward(data(), n,
+      [&] (void* p) { new (p) value_type(val); }
+    );
   }
 
   // The true_type means we should forward to the size_t,value_type

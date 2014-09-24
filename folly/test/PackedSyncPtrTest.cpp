@@ -61,7 +61,6 @@ TEST(PackedSyncPtr, Basic) {
   EXPECT_EQ(sp.extra(), 0x13);
   EXPECT_EQ(sp.get(), newP);
   sp.unlock();
-  delete sp.get();
 }
 
 // Here we use the PackedSyncPtr to lock the whole SyncVec (base, *base, and sz)
@@ -69,7 +68,6 @@ template<typename T>
 struct SyncVec {
   PackedSyncPtr<T> base;
   SyncVec() { base.init(); }
-  ~SyncVec() { free(base.get()); }
   void push_back(const T& t) {
     base.set((T*) realloc(base.get(),
       (base.extra() + 1) * sizeof(T)));
