@@ -409,10 +409,6 @@ class Singleton {
     return std::weak_ptr<T>(get_shared({typeid(T), name}, vault));
   }
 
-  std::weak_ptr<T> get_weak(const char* name) {
-    return std::weak_ptr<T>(get_shared({typeid(T), name}, vault_));
-  }
-
   // Allow the Singleton<t> instance to also retrieve the underlying
   // singleton, if desired.
   T* ptr() { return get_ptr(type_descriptor_, vault_); }
