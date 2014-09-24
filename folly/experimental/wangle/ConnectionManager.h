@@ -121,6 +121,15 @@ class ConnectionManager: public folly::DelayedDestruction {
 
   size_t getNumConnections() const { return conns_.size(); }
 
+  template <typename F>
+  void iterateConns(F func) {
+    auto it = conns_.begin();
+    while ( it != conns_.end()) {
+      func(&(*it));
+      it++;
+    }
+  }
+
  private:
   class CloseIdleConnsCallback :
       public folly::EventBase::LoopCallback,
