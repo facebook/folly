@@ -184,7 +184,7 @@ TEST(ThreadLocal, SimpleRepeatDestructor) {
 
 TEST(ThreadLocal, InterleavedDestructors) {
   Widget::totalVal_ = 0;
-  ThreadLocal<Widget>* w = nullptr;
+  std::unique_ptr<ThreadLocal<Widget>> w;
   int wVersion = 0;
   const int wVersionMax = 2;
   int thIter = 0;
@@ -214,8 +214,7 @@ TEST(ThreadLocal, InterleavedDestructors) {
     {
       std::lock_guard<std::mutex> g(lock);
       thIterPrev = thIter;
-      delete w;
-      w = new ThreadLocal<Widget>();
+      w.reset(new ThreadLocal<Widget>());
       ++wVersion;
     }
     while (true) {
