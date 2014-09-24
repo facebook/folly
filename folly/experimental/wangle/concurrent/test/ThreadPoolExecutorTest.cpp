@@ -132,33 +132,24 @@ TEST(ThreadPoolExecutorTest, IOResizeUnderLoad) {
 
 template <class TPE>
 static void poolStats() {
-  {
-    TPE tpe(10);
-    for (int i = 0; i < 20; i++) {
-      tpe.add(burnMs(20));
-    }
-    burnMs(10)();
-    auto stats = tpe.getPoolStats();
-    EXPECT_EQ(10, stats.threadCount);
-    EXPECT_EQ(0, stats.idleThreadCount);
-    EXPECT_EQ(10, stats.activeThreadCount);
-    EXPECT_EQ(10, stats.pendingTaskCount);
-    EXPECT_EQ(20, stats.totalTaskCount);
-  }
-
-  {
-    TPE tpe(10);
-    for (int i = 0; i < 5; i++) {
-      tpe.add(burnMs(20));
-    }
-    burnMs(10)();
-    auto stats = tpe.getPoolStats();
-    EXPECT_EQ(10, stats.threadCount);
-    EXPECT_EQ(5, stats.idleThreadCount);
-    EXPECT_EQ(5, stats.activeThreadCount);
-    EXPECT_EQ(0, stats.pendingTaskCount);
-    EXPECT_EQ(5, stats.totalTaskCount);
-  }
+  folly::Baton<> startBaton, endBaton;
+  TPE tpe(1);
+  auto stats = tpe.getPoolStats();
+  EXPECT_EQ(1, stats.threadCount);
+  EXPECT_EQ(1, stats.idleThreadCount);
+  EXPECT_EQ(0, stats.activeThreadCount);
+  EXPECT_EQ(0, stats.pendingTaskCount);
+  EXPECT_EQ(0, stats.totalTaskCount);
+  tpe.add([&](){ startBaton.post(); endBaton.wait(); });
+  tpe.add([&](){});
+  startBaton.wait();
+  stats = tpe.getPoolStats();
+  EXPECT_EQ(1, stats.threadCount);
+  EXPECT_EQ(0, stats.idleThreadCount);
+  EXPECT_EQ(1, stats.activeThreadCount);
+  EXPECT_EQ(1, stats.pendingTaskCount);
+  EXPECT_EQ(2, stats.totalTaskCount);
+  endBaton.post();
 }
 
 TEST(ThreadPoolExecutorTest, CPUPoolStats) {
@@ -171,27 +162,20 @@ TEST(ThreadPoolExecutorTest, IOPoolStats) {
 
 template <class TPE>
 static void taskStats() {
-  TPE tpe(10);
+  TPE tpe(1);
   std::atomic<int> c(0);
   tpe.subscribeToTaskStats(Observer<ThreadPoolExecutor::TaskStats>::create(
       [&] (ThreadPoolExecutor::TaskStats stats) {
         int i = c++;
-        if (i < 10) {
-          EXPECT_GE(milliseconds(10), stats.waitTime);
-          EXPECT_LE(milliseconds(20), stats.runTime);
-        } else {
-          EXPECT_LE(milliseconds(10), stats.waitTime);
-          EXPECT_LE(milliseconds(10), stats.runTime);
+        EXPECT_LT(milliseconds(0), stats.runTime);
+        if (i == 1) {
+          EXPECT_LT(milliseconds(0), stats.waitTime);
         }
       }));
-  for (int i = 0; i < 10; i++) {
-    tpe.add(burnMs(20));
-  }
-  for (int i = 0; i < 10; i++) {
-    tpe.add(burnMs(10));
-  }
+  tpe.add(burnMs(10));
+  tpe.add(burnMs(10));
   tpe.join();
-  EXPECT_EQ(20, c);
+  EXPECT_EQ(2, c);
 }
 
 TEST(ThreadPoolExecutorTest, CPUTaskStats) {
