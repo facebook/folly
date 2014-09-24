@@ -32,9 +32,7 @@ namespace folly {
 
 class SocketAddress {
  public:
-  SocketAddress() {
-    storage_.addr = folly::IPAddress();
-  }
+  SocketAddress() {}
 
   /**
    * Construct a SocketAddress from a hostname and port.
@@ -76,16 +74,17 @@ class SocketAddress {
   }
 
   SocketAddress(const SocketAddress& addr) {
-    storage_ = addr.storage_;
     port_ = addr.port_;
     if (addr.getFamily() == AF_UNIX) {
       storage_.un.init(addr.storage_.un);
+    } else {
+      storage_ = addr.storage_;
     }
     external_ = addr.external_;
   }
 
   SocketAddress& operator=(const SocketAddress& addr) {
-    if (getFamily() != AF_UNIX) {
+    if (!external_) {
       if (addr.getFamily() != AF_UNIX) {
         storage_ = addr.storage_;
       } else {
@@ -105,7 +104,7 @@ class SocketAddress {
     return *this;
   }
 
-  SocketAddress(SocketAddress&& addr) {
+  SocketAddress(SocketAddress&& addr) noexcept {
     storage_ = addr.storage_;
     port_ = addr.port_;
     external_ = addr.external_;
@@ -120,7 +119,7 @@ class SocketAddress {
   }
 
   ~SocketAddress() {
-    if (getFamily() == AF_UNIX) {
+    if (external_) {
       storage_.un.free();
     }
   }
@@ -349,7 +348,7 @@ class SocketAddress {
    * Returns the actual size of the storage used.
    */
   socklen_t getAddress(sockaddr_storage* addr) const {
-    if (getFamily() != AF_UNIX) {
+    if (!external_) {
       return storage_.addr.toSockaddrStorage(addr, htons(port_));
     } else {
       memcpy(addr, storage_.un.addr, sizeof(*storage_.un.addr));
@@ -363,6 +362,7 @@ class SocketAddress {
   socklen_t getActualSize() const;
 
   sa_family_t getFamily() const {
+    DCHECK(external_ || AF_UNIX != storage_.addr.family());
     return external_ ? AF_UNIX : storage_.addr.family();
   }
 
@@ -547,12 +547,13 @@ class SocketAddress {
 
   void prepFamilyChange(sa_family_t newFamily) {
     if (newFamily != AF_UNIX) {
-      if (getFamily() == AF_UNIX) {
+      if (external_) {
         storage_.un.free();
+        storage_.addr = folly::IPAddress();
       }
       external_ = false;
     } else {
-      if (getFamily() != AF_UNIX) {
+      if (!external_) {
         storage_.un.init();
       }
       external_ = true;
@@ -569,7 +570,7 @@ class SocketAddress {
   union {
     folly::IPAddress addr{};
     ExternalUnixAddr un;
-  } storage_;
+  } storage_{};
   // IPAddress class does nto save zone or port, and must be saved here
   uint16_t port_;
 

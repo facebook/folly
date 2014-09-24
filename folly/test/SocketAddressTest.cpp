@@ -840,3 +840,11 @@ TEST(SocketAddress, SetFromSocketUnixAnonymous) {
   EXPECT_EQ(clientAddr.getPath(), "");
   EXPECT_EQ(acceptAddr.getPath(), "");
 }
+
+TEST(SocketAddress, ResetUnixAddress) {
+  SocketAddress addy;
+  addy.setFromPath("/foo");
+
+  addy.reset();
+  EXPECT_EQ(addy.getFamily(), AF_UNSPEC);
+}
