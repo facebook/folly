@@ -147,9 +147,21 @@ TEST(File, Locks) {
   CHECK_ERR(r);
   buf[r] = '\0';
 
-  fs::path helper(buf);
-  helper.remove_filename();
-  helper /= "file_test_lock_helper";
+  // NOTE(agallagher): Our various internal build systems layout built
+  // binaries differently, so the two layouts below.
+  fs::path me(buf);
+  auto helper_basename = "file_test_lock_helper";
+  fs::path helper;
+  if (fs::exists(me.parent_path() / helper_basename)) {
+    helper = me.parent_path() / helper_basename;
+  } else if (fs::exists(
+      me.parent_path().parent_path() / helper_basename / helper_basename)) {
+    helper = me.parent_path().parent_path()
+      / helper_basename / helper_basename;
+  } else {
+    throw std::runtime_error(
+      folly::to<std::string>("cannot find helper ", helper_basename));
+  }
 
   TemporaryFile tempFile;
   File f(tempFile.fd());

@@ -22,8 +22,8 @@
 #include <thread>
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <common/logging/logging.h>
 #include <time.h>
 
 using namespace folly::detail;
