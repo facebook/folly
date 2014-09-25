@@ -728,16 +728,6 @@ TEST(Future, waitWithSemaphoreForTime) {
   EXPECT_TRUE(t.isReady());
  }
  {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  auto begin = std::chrono::system_clock::now();
-  auto t = waitWithSemaphore(std::move(f),
-    std::chrono::milliseconds(1));
-  auto end = std::chrono::system_clock::now();
-  EXPECT_TRUE( end - begin < std::chrono::milliseconds(5));
-  EXPECT_FALSE(t.isReady());
- }
- {
   auto t = waitWithSemaphore(makeFuture(),
     std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
