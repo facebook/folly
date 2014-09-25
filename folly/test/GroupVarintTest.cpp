@@ -15,6 +15,7 @@
  */
 
 #include <stdarg.h>
+#include <algorithm>
 #include <folly/GroupVarint.h>
 
 // On platforms where it's not supported, GroupVarint will be compiled out.
@@ -56,7 +57,10 @@ void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {
   EXPECT_EQ(expectedBytes.size(), size);
 
   std::vector<char> foundBytes;
-  foundBytes.resize(size + 4);
+
+  // ssse3 decoding requires that the source buffer have length >= 17,
+  // so that it can read 128 bits from &start[1] via _mm_loadu_si128.
+  foundBytes.resize(std::max(size + 4, 17UL));
   char* start = &(foundBytes.front());
   char* p = GroupVarint32::encode(start, a, b, c, d);
   EXPECT_EQ((void*)(start + size), (void*)p);

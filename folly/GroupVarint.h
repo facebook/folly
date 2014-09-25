@@ -176,7 +176,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     p += k2+1;
     size_t k3 = b3key(k);
     *d = loadUnaligned<uint32_t>(p) & kMask[k3];
-    p += k3+1;
+    // p += k3+1;
     return end;
   }
 
@@ -189,6 +189,10 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
   }
 
 #ifdef __SSSE3__
+  /**
+   * Just like the non-SSSE3 decode below, but with the additional constraint
+   * that we must be able to read at least 17 bytes from the input pointer, p.
+   */
   static const char* decode(const char* p, uint32_t* dest) {
     uint8_t key = p[0];
     __m128i val = _mm_loadu_si128((const __m128i*)(p+1));
@@ -198,6 +202,10 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     return p + detail::groupVarintLengths[key];
   }
 
+  /**
+   * Just like decode_simple, but with the additional constraint that
+   * we must be able to read at least 17 bytes from the input pointer, p.
+   */
   static const char* decode(const char* p, uint32_t* a, uint32_t* b,
                             uint32_t* c, uint32_t* d) {
     uint8_t key = p[0];
