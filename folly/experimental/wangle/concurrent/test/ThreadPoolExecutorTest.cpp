@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/experimental/wangle/concurrent/FutureExecutor.h>
 #include <folly/experimental/wangle/concurrent/ThreadPoolExecutor.h>
 #include <folly/experimental/wangle/concurrent/CPUThreadPoolExecutor.h>
 #include <folly/experimental/wangle/concurrent/IOThreadPoolExecutor.h>
@@ -216,4 +217,59 @@ TEST(ThreadPoolExecutorTest, CPUExpiration) {
 
 TEST(ThreadPoolExecutorTest, IOExpiration) {
   expiration<IOThreadPoolExecutor>();
+}
+
+template <typename TPE>
+static void futureExecutor() {
+  FutureExecutor<TPE> fe(2);
+  int c = 0;
+  fe.addFuture([] () { return makeFuture<int>(42); }).then(
+    [&] (Try<int>&& t) {
+      c++;
+      EXPECT_EQ(42, t.value());
+    });
+  fe.addFuture([] () { return 100; }).then(
+    [&] (Try<int>&& t) {
+      c++;
+      EXPECT_EQ(100, t.value());
+    });
+  fe.addFuture([] () { return makeFuture(); }).then(
+    [&] (Try<void>&& t) {
+      c++;
+      EXPECT_NO_THROW(t.value());
+    });
+  fe.addFuture([] () { return; }).then(
+    [&] (Try<void>&& t) {
+      c++;
+      EXPECT_NO_THROW(t.value());
+    });
+  fe.addFuture([] () { throw std::runtime_error("oops"); }).then(
+    [&] (Try<void>&& t) {
+      c++;
+      EXPECT_THROW(t.value(), std::runtime_error);
+    });
+  // Test doing actual async work
+  fe.addFuture([] () {
+    auto p = std::make_shared<Promise<int>>();
+    std::thread t([p](){
+      burnMs(10)();
+      p->setValue(42);
+    });
+    t.detach();
+    return p->getFuture();
+  }).then([&] (Try<int>&& t) {
+    EXPECT_EQ(42, t.value());
+    c++;
+  });
+  burnMs(15)(); // Sleep long enough for the promise to be fulfilled
+  fe.join();
+  EXPECT_EQ(6, c);
+}
+
+TEST(ThreadPoolExecutorTest, CPUFuturePool) {
+  futureExecutor<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, IOFuturePool) {
+  futureExecutor<IOThreadPoolExecutor>();
 }
