@@ -51,7 +51,7 @@ TEST(Random, Simple) {
 }
 
 TEST(Random, MultiThreaded) {
-  const int n = 1024;
+  const int n = 100;
   std::vector<uint32_t> seeds(n);
   std::vector<std::thread> threads;
   for (int i = 0; i < n; ++i) {
