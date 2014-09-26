@@ -78,6 +78,7 @@
 #pragma once
 #include <folly/Exception.h>
 #include <folly/Hash.h>
+#include <folly/RWSpinLock.h>
 
 #include <vector>
 #include <mutex>
@@ -176,14 +177,12 @@ class SingletonVault {
   void registerSingleton(detail::TypeDescriptor type,
                          CreateFunc create,
                          TeardownFunc teardown) {
-    std::lock_guard<std::mutex> guard(mutex_);
+    RWSpinLock::WriteHolder wh(&mutex_);
 
     stateCheck(SingletonVaultState::Registering);
     CHECK_THROW(singletons_.find(type) == singletons_.end(), std::logic_error);
     auto& entry = singletons_[type];
-    if (!entry) {
-      entry.reset(new SingletonEntry);
-    }
+    entry.reset(new SingletonEntry);
 
     std::lock_guard<std::mutex> entry_guard(entry->mutex);
     CHECK(entry->instance == nullptr);
@@ -197,7 +196,8 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
-    std::lock_guard<std::mutex> guard(mutex_);
+    RWSpinLock::WriteHolder wh(&mutex_);
+
     stateCheck(SingletonVaultState::Registering);
     state_ = SingletonVaultState::Running;
   }
@@ -208,8 +208,7 @@ class SingletonVault {
 
   // Retrieve a singleton from the vault, creating it if necessary.
   std::shared_ptr<void> get_shared(detail::TypeDescriptor type) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    auto entry = get_entry(type, &lock);
+    auto entry = get_entry_create(type);
     return entry->instance;
   }
 
@@ -218,21 +217,23 @@ class SingletonVault {
   // responsibility to be sane with this, but it is preferable to use
   // the weak_ptr interface for true safety.
   void* get_ptr(detail::TypeDescriptor type) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    auto entry = get_entry(type, &lock);
+    auto entry = get_entry_create(type);
     return entry->instance_ptr;
   }
 
   // For testing; how many registered and living singletons we have.
   size_t registeredSingletonCount() const {
-    std::lock_guard<std::mutex> guard(mutex_);
+    RWSpinLock::ReadHolder rh(&mutex_);
+
     return singletons_.size();
   }
 
   size_t livingSingletonCount() const {
-    std::lock_guard<std::mutex> guard(mutex_);
+    RWSpinLock::ReadHolder rh(&mutex_);
+
     size_t ret = 0;
     for (const auto& p : singletons_) {
+      std::lock_guard<std::mutex> entry_guard(p.second->mutex);
       if (p.second->instance) {
         ++ret;
       }
@@ -295,17 +296,15 @@ class SingletonVault {
     SingletonEntry(SingletonEntry&&) = delete;
   };
 
-  // Get a pointer to the living SingletonEntry for the specified
-  // type.  The singleton is created as part of this function, if
-  // necessary.
-  SingletonEntry* get_entry(detail::TypeDescriptor type,
-                            std::unique_lock<std::mutex>* lock) {
+  SingletonEntry* get_entry(detail::TypeDescriptor type) {
+    RWSpinLock::ReadHolder rh(&mutex_);
+
     // mutex must be held when calling this function
     stateCheck(
-        SingletonVaultState::Running,
-        "Attempt to load a singleton before "
-        "SingletonVault::registrationComplete was called (hint: you probably "
-        "didn't call initFacebook)");
+      SingletonVaultState::Running,
+      "Attempt to load a singleton before "
+      "SingletonVault::registrationComplete was called (hint: you probably "
+      "didn't call initFacebook)");
 
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
@@ -313,7 +312,15 @@ class SingletonVault {
                               type.name());
     }
 
-    auto entry = it->second.get();
+    return it->second.get();
+  }
+
+  // Get a pointer to the living SingletonEntry for the specified
+  // type.  The singleton is created as part of this function, if
+  // necessary.
+  SingletonEntry* get_entry_create(detail::TypeDescriptor type) {
+    auto entry = get_entry(type);
+
     std::unique_lock<std::mutex> entry_lock(entry->mutex);
 
     if (entry->state == SingletonEntryState::BeingBorn) {
@@ -324,14 +331,9 @@ class SingletonVault {
                                 type.name());
       }
 
-      // Otherwise, another thread is constructing the singleton;
-      // let's wait on a condvar to see it complete.  We release and
-      // reaquire lock while waiting on the entry to resolve its state.
-      lock->unlock();
       entry->state_condvar.wait(entry_lock, [&entry]() {
         return entry->state != SingletonEntryState::BeingBorn;
       });
-      lock->lock();
     }
 
     if (entry->instance == nullptr) {
@@ -340,10 +342,8 @@ class SingletonVault {
       entry->creating_thread = std::this_thread::get_id();
 
       entry_lock.unlock();
-      lock->unlock();
       // Can't use make_shared -- no support for a custom deleter, sadly.
       auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
-      lock->lock();
       entry_lock.lock();
 
       CHECK(entry->state == SingletonEntryState::BeingBorn);
@@ -352,13 +352,17 @@ class SingletonVault {
       entry->state = SingletonEntryState::Living;
       entry->state_condvar.notify_all();
 
-      creation_order_.push_back(type);
+      {
+        RWSpinLock::WriteHolder wh(&mutex_);
+
+        creation_order_.push_back(type);
+      }
     }
     CHECK(entry->state == SingletonEntryState::Living);
     return entry;
   }
 
-  mutable std::mutex mutex_;
+  mutable folly::RWSpinLock mutex_;
   typedef std::unique_ptr<SingletonEntry> SingletonEntryPtr;
   std::unordered_map<detail::TypeDescriptor,
                      SingletonEntryPtr,

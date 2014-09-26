@@ -23,29 +23,35 @@ namespace folly {
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::destroyInstances() {
-  std::lock_guard<std::mutex> guard(mutex_);
-  CHECK_GE(singletons_.size(), creation_order_.size());
+  {
+    RWSpinLock::ReadHolder rh(&mutex_);
 
-  for (auto type_iter = creation_order_.rbegin();
-       type_iter != creation_order_.rend();
-       ++type_iter) {
-    auto type = *type_iter;
-    auto it = singletons_.find(type);
-    CHECK(it != singletons_.end());
-    auto& entry = it->second;
-    std::lock_guard<std::mutex> entry_guard(entry->mutex);
-    if (entry->instance.use_count() > 1) {
-      LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
-                 << "reference at destroyInstances time; beware!  Raw pointer "
-                 << "is " << entry->instance.get() << " with use_count of "
-                 << entry->instance.use_count();
+    CHECK_GE(singletons_.size(), creation_order_.size());
+
+    for (auto type_iter = creation_order_.rbegin();
+         type_iter != creation_order_.rend();
+         ++type_iter) {
+      auto type = *type_iter;
+      auto it = singletons_.find(type);
+      CHECK(it != singletons_.end());
+      auto& entry = it->second;
+      std::lock_guard<std::mutex> entry_guard(entry->mutex);
+      if (entry->instance.use_count() > 1) {
+        LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
+                   << "reference at destroyInstances time; beware! Raw pointer "
+                   << "is " << entry->instance.get() << " with use_count of "
+                   << entry->instance.use_count();
+      }
+      entry->instance.reset();
+      entry->state = SingletonEntryState::Dead;
+      entry->state_condvar.notify_all();
     }
-    entry->instance.reset();
-    entry->state = SingletonEntryState::Dead;
-    entry->state_condvar.notify_all();
   }
 
-  creation_order_.clear();
+  {
+    RWSpinLock::WriteHolder wh(&mutex_);
+    creation_order_.clear();
+  }
 }
 
 SingletonVault* SingletonVault::singleton() {
