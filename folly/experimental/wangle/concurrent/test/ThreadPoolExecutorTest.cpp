@@ -249,7 +249,8 @@ static void futureExecutor() {
       EXPECT_THROW(t.value(), std::runtime_error);
     });
   // Test doing actual async work
-  fe.addFuture([] () {
+  folly::Baton<> baton;
+  fe.addFuture([&] () {
     auto p = std::make_shared<Promise<int>>();
     std::thread t([p](){
       burnMs(10)();
@@ -260,8 +261,9 @@ static void futureExecutor() {
   }).then([&] (Try<int>&& t) {
     EXPECT_EQ(42, t.value());
     c++;
+    baton.post();
   });
-  burnMs(15)(); // Sleep long enough for the promise to be fulfilled
+  baton.wait();
   fe.join();
   EXPECT_EQ(6, c);
 }
