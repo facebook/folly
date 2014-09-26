@@ -84,8 +84,6 @@ __attribute__((__weak__));
 #include <folly/Portability.h>
 #endif
 
-#include <folly/ScopeGuard.h>
-
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  It's defitions
 // are found in stdlib.h.
@@ -133,31 +131,30 @@ inline size_t goodMallocSize(size_t minSize) noexcept {
     return minSize;
   }
   size_t goodSize;
-  SCOPE_EXIT { assert(nallocx(goodSize, 0) == goodSize); };
   if (minSize <= 64) {
     // Choose smallest allocation to be 64 bytes - no tripping over
     // cache line boundaries, and small string optimization takes care
     // of short strings anyway.
-    return goodSize = 64;
-  }
-  if (minSize <= 512) {
+    goodSize = 64;
+  } else if (minSize <= 512) {
     // Round up to the next multiple of 64; we don't want to trip over
     // cache line boundaries.
-    return goodSize = (minSize + 63) & ~size_t(63);
-  }
-  if (minSize <= 3584) {
+    goodSize = (minSize + 63) & ~size_t(63);
+  } else if (minSize <= 3584) {
     // Round up to the next multiple of 256.  For some size classes jemalloc
     // will additionally round up to the nearest multiple of 512, hence the
     // nallocx() call.
-    return goodSize = nallocx((minSize + 255) & ~size_t(255), 0);
-  }
-  if (minSize <= 4072 * 1024) {
+    goodSize = nallocx((minSize + 255) & ~size_t(255), 0);
+  } else if (minSize <= 4072 * 1024) {
     // Round up to the next multiple of 4KB
-    return goodSize = (minSize + 4095) & ~size_t(4095);
+    goodSize = (minSize + 4095) & ~size_t(4095);
+  } else {
+    // Holy Moly
+    // Round up to the next multiple of 4MB
+    goodSize = (minSize + 4194303) & ~size_t(4194303);
   }
-  // Holy Moly
-  // Round up to the next multiple of 4MB
-  return goodSize = (minSize + 4194303) & ~size_t(4194303);
+  assert(nallocx(goodSize, 0) == goodSize);
+  return goodSize;
 }
 
 // We always request "good" sizes for allocation, so jemalloc can
