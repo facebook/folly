@@ -61,10 +61,10 @@ TEST(ThreadPoolExecutorTest, IOResize) {
 
 template <class TPE>
 static void stop() {
-  TPE tpe(10);
+  TPE tpe(1);
   std::atomic<int> completed(0);
   auto f = [&](){
-    burnMs(1)();
+    burnMs(10)();
     completed++;
   };
   for (int i = 0; i < 1000; i++) {
@@ -203,7 +203,7 @@ static void expiration() {
       }));
   std::atomic<int> expireCbCount(0);
   auto expireCb = [&] () { expireCbCount++; };
-  tpe.add(burnMs(10), milliseconds(10), expireCb);
+  tpe.add(burnMs(10), seconds(60), expireCb);
   tpe.add(burnMs(10), milliseconds(10), expireCb);
   tpe.join();
   EXPECT_EQ(2, statCbCount);
