@@ -18,6 +18,7 @@
 #define FOLLY_CURSOR_H
 
 #include <assert.h>
+#include <cstdarg>
 #include <stdexcept>
 #include <string.h>
 #include <type_traits>
@@ -28,6 +29,8 @@
 #include <folly/io/IOBufQueue.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
+#include <folly/Portability.h>
+#include <folly/Range.h>
 
 /**
  * Cursor class for fast iteration over IOBuf chains.
@@ -472,6 +475,17 @@ class Writable {
     }
   }
 
+  void push(ByteRange buf) {
+    if (this->pushAtMost(buf) != buf.size()) {
+      throw std::out_of_range("overflow");
+    }
+  }
+
+  size_t pushAtMost(ByteRange buf) {
+    Derived* d = static_cast<Derived*>(this);
+    return d->pushAtMost(buf.data(), buf.size());
+  }
+
   /**
    * push len bytes of data from input cursor, data could be in an IOBuf chain.
    * If input cursor contains less than len bytes, or this cursor has less than
@@ -507,7 +521,6 @@ class Writable {
       len -= available;
     }
   }
-
 };
 
 } // namespace detail
@@ -554,6 +567,7 @@ class RWCursor
     return this->crtBuf_->gather(this->offset_ + size);
   }
 
+  using detail::Writable<RWCursor<access>>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     size_t copied = 0;
     for (;;) {
@@ -681,6 +695,7 @@ class Appender : public detail::Writable<Appender> {
     crtBuf_ = buffer_->prev();
   }
 
+  using detail::Writable<Appender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     size_t copied = 0;
     for (;;) {
@@ -701,6 +716,42 @@ class Appender : public detail::Writable<Appender> {
       buf += available;
       len -= available;
     }
+  }
+
+  /*
+   * Append to the end of this buffer, using a printf() style
+   * format specifier.
+   *
+   * Note that folly/Format.h provides nicer and more type-safe mechanisms
+   * for formatting strings, which should generally be preferred over
+   * printf-style formatting.  Appender objects can be used directly as an
+   * output argument for Formatter objects.  For example:
+   *
+   *   Appender app(&iobuf);
+   *   format("{} {}", "hello", "world")(app);
+   *
+   * However, printf-style strings are still needed when dealing with existing
+   * third-party code in some cases.
+   *
+   * This will always add a nul-terminating character after the end
+   * of the output.  However, the buffer data length will only be updated to
+   * include the data itself.  The nul terminator will be the first byte in the
+   * buffer tailroom.
+   *
+   * This method may throw exceptions on error.
+   */
+  void printf(FOLLY_PRINTF_FORMAT const char* fmt, ...)
+    FOLLY_PRINTF_FORMAT_ATTR(2, 3);
+
+  void vprintf(const char* fmt, va_list ap);
+
+  /*
+   * Calling an Appender object with a StringPiece will append the string
+   * piece.  This allows Appender objects to be used directly with
+   * Formatter.
+   */
+  void operator()(StringPiece sp) {
+    push(ByteRange(sp));
   }
 
  private:
@@ -757,7 +808,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     queue_->postallocate(sizeof(T));
   }
 
-
+  using detail::Writable<QueueAppender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
     size_t remaining = len;
     while (remaining != 0) {
