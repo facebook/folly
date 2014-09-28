@@ -187,6 +187,16 @@ std::string& stringAppendf(std::string* output,
   FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
 /**
+ * Similar to stringPrintf, but accepts a va_list argument.
+ *
+ * As with vsnprintf() itself, the value of ap is undefined after the call.
+ * These functions do not call va_end() on ap.
+ */
+std::string stringVPrintf(const char* format, va_list ap);
+void stringVPrintf(std::string* out, const char* format, va_list ap);
+std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
+
+/**
  * Backslashify a string, that is, replace non-printable characters
  * with C-style (but NOT C compliant) "\xHH" encoding.  If hex_style
  * is false, then shorthand notations like "\0" will be used instead

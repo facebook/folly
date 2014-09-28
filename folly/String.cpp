@@ -15,7 +15,9 @@
  */
 
 #include <folly/String.h>
+
 #include <folly/Format.h>
+#include <folly/ScopeGuard.h>
 
 #include <cerrno>
 #include <cstdarg>
@@ -73,6 +75,15 @@ inline void stringPrintfImpl(std::string& output, const char* format,
 }  // anon namespace
 
 std::string stringPrintf(const char* format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  SCOPE_EXIT {
+    va_end(ap);
+  };
+  return stringVPrintf(format, ap);
+}
+
+std::string stringVPrintf(const char* format, va_list ap) {
   // snprintf will tell us how large the output buffer should be, but
   // we then have to call it a second time, which is costly.  By
   // guestimating the final size, we avoid the double snprintf in many
@@ -85,10 +96,7 @@ std::string stringPrintf(const char* format, ...) {
   std::string ret(std::max(32UL, strlen(format) * 2), '\0');
   ret.resize(0);
 
-  va_list ap;
-  va_start(ap, format);
   stringPrintfImpl(ret, format, ap);
-  va_end(ap);
   return ret;
 }
 
@@ -97,17 +105,31 @@ std::string stringPrintf(const char* format, ...) {
 std::string& stringAppendf(std::string* output, const char* format, ...) {
   va_list ap;
   va_start(ap, format);
+  SCOPE_EXIT {
+    va_end(ap);
+  };
+  return stringVAppendf(output, format, ap);
+}
+
+std::string& stringVAppendf(std::string* output,
+                            const char* format,
+                            va_list ap) {
   stringPrintfImpl(*output, format, ap);
-  va_end(ap);
   return *output;
 }
 
 void stringPrintf(std::string* output, const char* format, ...) {
-  output->clear();
   va_list ap;
   va_start(ap, format);
+  SCOPE_EXIT {
+    va_end(ap);
+  };
+  return stringVPrintf(output, format, ap);
+}
+
+void stringVPrintf(std::string* output, const char* format, va_list ap) {
+  output->clear();
   stringPrintfImpl(*output, format, ap);
-  va_end(ap);
 };
 
 namespace {

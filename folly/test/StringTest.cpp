@@ -16,6 +16,7 @@
 
 #include <folly/String.h>
 
+#include <cstdarg>
 #include <random>
 #include <boost/algorithm/string.hpp>
 #include <gtest/gtest.h>
@@ -58,6 +59,56 @@ TEST(StringPrintf, Appending) {
   EXPECT_EQ(s, "abc");
   stringAppendf(&s, " %d", 123);
   EXPECT_EQ(s, "abc 123");
+}
+
+void vprintfCheck(const char* expected, const char* fmt, ...) {
+  va_list apOrig;
+  va_start(apOrig, fmt);
+  SCOPE_EXIT {
+    va_end(apOrig);
+  };
+  va_list ap;
+  va_copy(ap, apOrig);
+  SCOPE_EXIT {
+    va_end(ap);
+  };
+
+  // Check both APIs for calling stringVPrintf()
+  EXPECT_EQ(expected, stringVPrintf(fmt, ap));
+  va_end(ap);
+  va_copy(ap, apOrig);
+
+  std::string out;
+  stringVPrintf(&out, fmt, ap);
+  va_end(ap);
+  va_copy(ap, apOrig);
+  EXPECT_EQ(expected, out);
+
+  // Check stringVAppendf() as well
+  std::string prefix = "foobar";
+  out = prefix;
+  EXPECT_EQ(prefix + expected, stringVAppendf(&out, fmt, ap));
+  va_end(ap);
+  va_copy(ap, apOrig);
+}
+
+void vprintfError(const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  SCOPE_EXIT {
+    va_end(ap);
+  };
+
+  EXPECT_THROW({stringVPrintf(fmt, ap);},
+               std::runtime_error);
+}
+
+TEST(StringPrintf, VPrintf) {
+  vprintfCheck("foo", "%s", "foo");
+  vprintfCheck("long string requiring reallocation 1 2 3 0x12345678",
+               "%s %s %d %d %d %#x",
+               "long string", "requiring reallocation", 1, 2, 3, 0x12345678);
+  vprintfError("bogus%", "foo");
 }
 
 TEST(StringPrintf, VariousSizes) {
