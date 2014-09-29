@@ -493,7 +493,6 @@ int Subprocess::runChild(const char* executable,
                          char** argv, char** env,
                          const Options& options) const {
   // Now, finally, exec.
-  int r;
   if (options.usePath_) {
     ::execvp(executable, argv);
   } else {
@@ -818,4 +817,3 @@ Initializer initializer;
 }  // namespace
 
 }  // namespace folly
-
