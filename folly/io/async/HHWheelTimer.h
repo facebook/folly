@@ -219,7 +219,7 @@ class HHWheelTimer : protected folly::AsyncTimeout,
   typedef Callback::List CallbackList;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
 
-  uint32_t timeToWheelTicks(std::chrono::milliseconds t) {
+  int64_t timeToWheelTicks(std::chrono::milliseconds t) {
     return t.count() / interval_.count();
   }
 

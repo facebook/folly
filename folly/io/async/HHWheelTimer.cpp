@@ -94,18 +94,18 @@ void HHWheelTimer::destroy() {
 
 void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
                                        std::chrono::milliseconds timeout) {
-  uint32_t due = timeToWheelTicks(timeout) + nextTick_;
+  int64_t due = timeToWheelTicks(timeout) + nextTick_;
   int64_t diff = due - nextTick_;
   CallbackList* list;
 
-  if (diff < WHEEL_SIZE) {
+  if (diff < 0) {
+    list = &buckets_[0][nextTick_ & WHEEL_MASK];
+  } else if (diff < WHEEL_SIZE) {
     list = &buckets_[0][due & WHEEL_MASK];
   } else if (diff < 1 << (2 * WHEEL_BITS)) {
     list = &buckets_[1][(due >> WHEEL_BITS) & WHEEL_MASK];
   } else if (diff < 1 << (3 * WHEEL_BITS)) {
     list = &buckets_[2][(due >> 2 * WHEEL_BITS) & WHEEL_MASK];
-  } else if (diff < 0) {
-    list = &buckets_[0][nextTick_ & WHEEL_MASK];
   } else {
     /* in largest slot */
     if (diff > LARGEST_SLOT) {
