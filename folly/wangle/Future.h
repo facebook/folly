@@ -204,6 +204,9 @@ class Future {
   void deactivate() {
     state_->deactivate();
   }
+  bool isActive() {
+    return state_->isActive();
+  }
 
  private:
   typedef detail::State<T>* statePtr;

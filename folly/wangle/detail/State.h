@@ -139,11 +139,13 @@ class State {
     maybeCallback();
   }
 
+  bool isActive() { return active_; }
+
  private:
   void maybeCallback() {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (!calledBack_ &&
-        value_ && callback_ && active_) {
+        value_ && callback_ && isActive()) {
       // TODO we should probably try/catch here
       callback_(std::move(*value_));
       calledBack_ = true;

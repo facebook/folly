@@ -764,7 +764,7 @@ TEST(Future, activateOnDestruct) {
   EXPECT_EQ(1, count);
 }
 
-TEST(Future, viaIsCold) {
+TEST(Future, viaActsCold) {
   ManualExecutor x;
   size_t count = 0;
 
@@ -777,6 +777,63 @@ TEST(Future, viaIsCold) {
 
   EXPECT_EQ(1, x.run());
   EXPECT_EQ(1, count);
+}
+
+TEST(Future, viaIsCold) {
+  ManualExecutor x;
+  EXPECT_FALSE(makeFuture().via(&x).isActive());
+}
+
+TEST(Future, viaRaces) {
+  ManualExecutor x;
+  Promise<void> p;
+  auto tid = std::this_thread::get_id();
+  bool done = false;
+
+  std::thread t1([&] {
+    p.getFuture()
+      .via(&x)
+      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { done = true; });
+  });
+
+  std::thread t2([&] {
+    p.setValue();
+  });
+
+  while (!done) x.run();
+  t1.join();
+  t2.join();
+}
+
+// TODO(#4920689)
+TEST(Future, DISABLED_viaRaces_2stage) {
+  ManualExecutor x;
+  Promise<void> p;
+  auto tid = std::this_thread::get_id();
+  bool done = false;
+
+  std::thread t1([&] {
+    auto f2 = p.getFuture().via(&x);
+    f2.then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { done = true; });
+
+    // the bug was in the promise being fulfilled before f2 is reactivated. we
+    // could sleep, but yielding should cause this to fail with reasonable
+    // probability
+    std::this_thread::yield();
+    f2.activate();
+  });
+
+  std::thread t2([&] {
+    p.setValue();
+  });
+
+  while (!done) x.run();
+  t1.join();
+  t2.join();
 }
 
 TEST(Future, getFuture_after_setValue) {
