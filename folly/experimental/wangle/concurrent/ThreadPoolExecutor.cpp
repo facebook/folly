@@ -84,13 +84,19 @@ void ThreadPoolExecutor::setNumThreads(size_t n) {
 
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::addThreads(size_t n) {
+  std::vector<ThreadPtr> newThreads;
   for (int i = 0; i < n; i++) {
-    auto thread = makeThread();
+    newThreads.push_back(makeThread());
+  }
+  for (auto& thread : newThreads) {
     // TODO need a notion of failing to create the thread
     // and then handling for that case
     thread->handle = threadFactory_->newThread(
         std::bind(&ThreadPoolExecutor::threadRun, this, thread));
     threadList_.add(thread);
+  }
+  for (auto& thread : newThreads) {
+    thread->startupBaton.wait();
   }
 }
 

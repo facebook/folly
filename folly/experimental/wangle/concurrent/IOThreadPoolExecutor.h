@@ -45,7 +45,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
     IOThread() : shouldRun(true), pendingTasks(0) {};
     std::atomic<bool> shouldRun;
     std::atomic<size_t> pendingTasks;
-    EventBase eventBase;
+    EventBase* eventBase;
   };
 
   size_t nextThread_;

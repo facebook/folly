@@ -19,6 +19,7 @@
 #include <folly/experimental/wangle/concurrent/LifoSemMPMCQueue.h>
 #include <folly/experimental/wangle/concurrent/NamedThreadFactory.h>
 #include <folly/experimental/wangle/rx/Observable.h>
+#include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 
@@ -83,6 +84,7 @@ class ThreadPoolExecutor : public experimental::Executor {
     uint64_t id;
     std::thread handle;
     bool idle;
+    Baton<> startupBaton;
   };
 
   typedef std::shared_ptr<Thread> ThreadPtr;
@@ -101,7 +103,8 @@ class ThreadPoolExecutor : public experimental::Executor {
 
   void runTask(const ThreadPtr& thread, Task&& task);
 
-  // The function that will be bound to pool threads
+  // The function that will be bound to pool threads. It must call
+  // thread->startupBaton.post() when it's ready to consume work.
   virtual void threadRun(ThreadPtr thread) = 0;
 
   // Stop n threads and put their ThreadPtrs in the threadsStopped_ queue

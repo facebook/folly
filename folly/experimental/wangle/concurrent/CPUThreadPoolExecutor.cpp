@@ -49,6 +49,7 @@ void CPUThreadPoolExecutor::add(
 }
 
 void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
+  thread->startupBaton.post();
   while (1) {
     auto task = taskQueue_->take();
     if (UNLIKELY(task.poison)) {

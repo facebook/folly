@@ -18,6 +18,7 @@
 
 #include <folly/MoveWrapper.h>
 #include <glog/logging.h>
+#include <thrift/lib/cpp/async/TEventBaseManager.h>
 
 namespace folly { namespace wangle {
 
@@ -57,7 +58,7 @@ void IOThreadPoolExecutor::add(
   };
 
   ioThread->pendingTasks++;
-  if (!ioThread->eventBase.runInEventBaseThread(std::move(wrappedFunc))) {
+  if (!ioThread->eventBase->runInEventBaseThread(std::move(wrappedFunc))) {
     ioThread->pendingTasks--;
     throw std::runtime_error("Unable to run func in event base thread");
   }
@@ -70,12 +71,15 @@ IOThreadPoolExecutor::makeThread() {
 
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
+  ioThread->eventBase =
+    apache::thrift::async::TEventBaseManager::get()->getEventBase();
+  thread->startupBaton.post();
   while (ioThread->shouldRun) {
-    ioThread->eventBase.loopForever();
+    ioThread->eventBase->loopForever();
   }
   if (isJoin_) {
     while (ioThread->pendingTasks > 0) {
-      ioThread->eventBase.loopOnce();
+      ioThread->eventBase->loopOnce();
     }
   }
   stoppedThreads_.add(ioThread);
@@ -87,7 +91,7 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
     const auto ioThread = std::static_pointer_cast<IOThread>(
         threadList_.get()[i]);
     ioThread->shouldRun = false;
-    ioThread->eventBase.terminateLoopSoon();
+    ioThread->eventBase->terminateLoopSoon();
   }
 }
 
