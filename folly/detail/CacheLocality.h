@@ -322,6 +322,10 @@ struct AccessSpreader {
   static Getcpu::Func pickGetcpuFunc(size_t numStripes);
 };
 
+template<>
+Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t);
+
+
 /// An array of kMaxCpus+1 AccessSpreader<Atom> instances constructed
 /// with default params, with the zero-th element having 1 stripe
 template <template<typename> class Atom, size_t kMaxStripe>

@@ -20,11 +20,8 @@
 #include <atomic>
 #include <assert.h>
 #include <boost/noncopyable.hpp>
-#include <errno.h>
 #include <limits>
-#include <linux/futex.h>
 #include <string.h>
-#include <sys/syscall.h>
 #include <type_traits>
 #include <unistd.h>
 
@@ -661,7 +658,7 @@ struct TurnSequencer {
 
       if (prevThresh == 0) {
         // bootstrap
-        spinCutoff = target;
+        spinCutoff.store(target);
       } else {
         // try once, keep moving if CAS fails.  Exponential moving average
         // with alpha of 7/8

@@ -20,15 +20,8 @@
 #include <chrono>
 #include <limits>
 #include <assert.h>
-#include <errno.h>
-#include <linux/futex.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include <boost/noncopyable.hpp>
-
-using std::chrono::steady_clock;
-using std::chrono::system_clock;
-using std::chrono::time_point;
 
 namespace folly { namespace detail {
 
@@ -38,9 +31,6 @@ enum class FutexResult {
   INTERRUPTED,   /* Spurious wake-up or signal caused futex wait failure */
   TIMEDOUT
 };
-
-/* Converts return value and errno from a futex syscall to a FutexResult */
-FutexResult futexErrnoToFutexResult(int returnVal, int futexErrno);
 
 /**
  * Futex is an atomic 32 bit unsigned integer that provides access to the
@@ -59,7 +49,11 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
   /** Puts the thread to sleep if this->load() == expected.  Returns true when
    *  it is returning because it has consumed a wake() event, false for any
    *  other return (signal, this->load() != expected, or spurious wakeup). */
-  bool futexWait(uint32_t expected, uint32_t waitMask = -1);
+  bool futexWait(uint32_t expected, uint32_t waitMask = -1) {
+    auto rv = futexWaitImpl(expected, nullptr, nullptr, waitMask);
+    assert(rv != FutexResult::TIMEDOUT);
+    return rv == FutexResult::AWOKEN;
+  }
 
   /** Similar to futexWait but also accepts a timeout that gives the time until
    *  when the call can block (time is the absolute time i.e time since epoch).
@@ -69,118 +63,84 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
    *  NOTE: On some systems steady_clock is just an alias for system_clock,
    *  and is not actually steady.*/
   template <class Clock, class Duration = typename Clock::duration>
-  FutexResult futexWaitUntil(uint32_t expected,
-                             const time_point<Clock, Duration>& absTime,
-                             uint32_t waitMask = -1);
+  FutexResult futexWaitUntil(
+          uint32_t expected,
+          const std::chrono::time_point<Clock, Duration>& absTime,
+          uint32_t waitMask = -1) {
+    using std::chrono::duration_cast;
+    using std::chrono::nanoseconds;
+    using std::chrono::seconds;
+    using std::chrono::steady_clock;
+    using std::chrono::system_clock;
+    using std::chrono::time_point;
+
+    static_assert(
+        (std::is_same<Clock, system_clock>::value ||
+         std::is_same<Clock, steady_clock>::value),
+        "futexWaitUntil only knows std::chrono::{system_clock,steady_clock}");
+    assert((std::is_same<Clock, system_clock>::value) || Clock::is_steady);
+
+    auto duration = absTime.time_since_epoch();
+    if (std::is_same<Clock, system_clock>::value) {
+      time_point<system_clock> absSystemTime(duration);
+      return futexWaitImpl(expected, &absSystemTime, nullptr, waitMask);
+    } else {
+      time_point<steady_clock> absSteadyTime(duration);
+      return futexWaitImpl(expected, nullptr, &absSteadyTime, waitMask);
+    }
+  }
 
   /** Wakens up to count waiters where (waitMask & wakeMask) != 0,
    *  returning the number of awoken threads. */
   int futexWake(int count = std::numeric_limits<int>::max(),
                 uint32_t wakeMask = -1);
 
-  private:
+ private:
 
-  /** Futex wait implemented via syscall SYS_futex. absTimeout gives
-   *  time till when the wait can block. If it is nullptr the call will
-   *  block until a matching futex wake is received. extraOpFlags can be
-   *  used to specify addtional flags to add to the futex operation (by
-   *  default only FUTEX_WAIT_BITSET and FUTEX_PRIVATE_FLAG are included).
-   *  Returns 0 on success or -1 on error, with errno set to one of the
-   *  values listed in futex(2). */
-  int futexWaitImpl(uint32_t expected,
-                    const struct timespec* absTimeout,
-                    int extraOpFlags,
-                    uint32_t waitMask);
+  /** Underlying implementation of futexWait and futexWaitUntil.
+   *  At most one of absSystemTime and absSteadyTime should be non-null.
+   *  Timeouts are separated into separate parameters to allow the
+   *  implementations to be elsewhere without templating on the clock
+   *  type, which is otherwise complicated by the fact that steady_clock
+   *  is the same as system_clock on some platforms. */
+  FutexResult futexWaitImpl(
+      uint32_t expected,
+      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
+      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      uint32_t waitMask);
 };
 
-template <>
-inline int
-Futex<std::atomic>::futexWaitImpl(uint32_t expected,
-                                  const struct timespec* absTimeout,
-                                  int extraOpFlags,
-                                  uint32_t waitMask) {
-  assert(sizeof(*this) == sizeof(int));
+/** A std::atomic subclass that can be used to force Futex to emulate
+ *  the underlying futex() syscall.  This is primarily useful to test or
+ *  benchmark the emulated implementation on systems that don't need it. */
+template <typename T>
+struct EmulatedFutexAtomic : public std::atomic<T> {
+  EmulatedFutexAtomic() noexcept = default;
+  constexpr /* implicit */ EmulatedFutexAtomic(T init) noexcept
+      : std::atomic<T>(init) {}
+  EmulatedFutexAtomic(const EmulatedFutexAtomic& rhs) = delete;
+};
 
-  /* Unlike FUTEX_WAIT, FUTEX_WAIT_BITSET requires an absolute timeout
-   * value - http://locklessinc.com/articles/futex_cheat_sheet/ */
-  int rv = syscall(
-      SYS_futex,
-      this, /* addr1 */
-      FUTEX_WAIT_BITSET | FUTEX_PRIVATE_FLAG | extraOpFlags, /* op */
-      expected, /* val */
-      absTimeout, /* timeout */
-      nullptr, /* addr2 */
-      waitMask); /* val3 */
+/* Available specializations, with definitions elsewhere */
 
-  assert(rv == 0 ||
-         errno == EWOULDBLOCK ||
-         errno == EINTR ||
-         (absTimeout != nullptr && errno == ETIMEDOUT));
+template<>
+int Futex<std::atomic>::futexWake(int count, uint32_t wakeMask);
 
-  return rv;
-}
+template<>
+FutexResult Futex<std::atomic>::futexWaitImpl(
+      uint32_t expected,
+      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
+      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      uint32_t waitMask);
 
-template <>
-inline bool Futex<std::atomic>::futexWait(uint32_t expected,
-                                          uint32_t waitMask) {
-  return futexWaitImpl(expected, nullptr, 0 /* extraOpFlags */, waitMask) == 0;
-}
+template<>
+int Futex<EmulatedFutexAtomic>::futexWake(int count, uint32_t wakeMask);
 
-template <>
-inline int Futex<std::atomic>::futexWake(int count, uint32_t wakeMask) {
-  assert(sizeof(*this) == sizeof(int));
-  int rv = syscall(SYS_futex,
-                   this, /* addr1 */
-                   FUTEX_WAKE_BITSET | FUTEX_PRIVATE_FLAG, /* op */
-                   count, /* val */
-                   nullptr, /* timeout */
-                   nullptr, /* addr2 */
-                   wakeMask); /* val3 */
-  assert(rv >= 0);
-  return rv;
-}
-
-/* Convert std::chrono::time_point to struct timespec */
-template <class Clock, class Duration = typename Clock::Duration>
-struct timespec timePointToTimeSpec(const time_point<Clock, Duration>& tp) {
-  using std::chrono::nanoseconds;
-  using std::chrono::seconds;
-  using std::chrono::duration_cast;
-
-  struct timespec ts;
-  auto duration = tp.time_since_epoch();
-  auto secs = duration_cast<seconds>(duration);
-  auto nanos = duration_cast<nanoseconds>(duration - secs);
-  ts.tv_sec = secs.count();
-  ts.tv_nsec = nanos.count();
-  return ts;
-}
-
-template <template<typename> class Atom> template<class Clock, class Duration>
-inline FutexResult
-Futex<Atom>::futexWaitUntil(
-               uint32_t expected,
-               const time_point<Clock, Duration>& absTime,
-               uint32_t waitMask) {
-
-  static_assert(std::is_same<Clock,system_clock>::value ||
-                std::is_same<Clock,steady_clock>::value,
-                "Only std::system_clock or std::steady_clock supported");
-
-  struct timespec absTimeSpec = timePointToTimeSpec(absTime);
-  int extraOpFlags = 0;
-
-  /* We must use FUTEX_CLOCK_REALTIME flag if we are getting the time_point
-   * from the system clock (CLOCK_REALTIME). This check also works correctly for
-   * broken glibc in which steady_clock is a typedef to system_clock.*/
-  if (std::is_same<Clock,system_clock>::value) {
-    extraOpFlags = FUTEX_CLOCK_REALTIME;
-  } else {
-    assert(Clock::is_steady);
-  }
-
-  const int rv = futexWaitImpl(expected, &absTimeSpec, extraOpFlags, waitMask);
-  return futexErrnoToFutexResult(rv, errno);
-}
+template<>
+FutexResult Futex<EmulatedFutexAtomic>::futexWaitImpl(
+      uint32_t expected,
+      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
+      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      uint32_t waitMask);
 
 }}

@@ -82,6 +82,12 @@ TEST(MPMCQueue, sequencer) {
   run_mt_sequencer_test<std::atomic>(100, 10000, -100);
 }
 
+TEST(MPMCQueue, sequencer_emulated_futex) {
+  run_mt_sequencer_test<EmulatedFutexAtomic>(1, 100, 0);
+  run_mt_sequencer_test<EmulatedFutexAtomic>(2, 100000, -100);
+  run_mt_sequencer_test<EmulatedFutexAtomic>(100, 10000, -100);
+}
+
 TEST(MPMCQueue, sequencer_deterministic) {
   DSched sched(DSched::uniform(0));
   run_mt_sequencer_test<DeterministicAtomic>(1, 100, -50);
@@ -254,6 +260,15 @@ TEST(MPMCQueue, mt_try_enq_deq) {
   }
 }
 
+TEST(MPMCQueue, mt_try_enq_deq_emulated_futex) {
+  int nts[] = { 1, 3, 100 };
+
+  int n = 100000;
+  for (int nt : nts) {
+    runTryEnqDeqTest<EmulatedFutexAtomic>(nt, n);
+  }
+}
+
 TEST(MPMCQueue, mt_try_enq_deq_deterministic) {
   int nts[] = { 3, 10 };
 
@@ -373,6 +388,20 @@ TEST(MPMCQueue, mt_prod_cons) {
   LOG(INFO) << PC_BENCH(MPMCQueue<int>(100000), 32, 100, n);
 }
 
+TEST(MPMCQueue, mt_prod_cons_emulated_futex) {
+  int n = 100000;
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10)), 1, 1, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10)), 10, 1, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10)), 1, 10, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10)), 10, 10, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10000)), 1, 1, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10000)), 10, 1, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10000)), 1, 10, n);
+  LOG(INFO) << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(10000)), 10, 10, n);
+  LOG(INFO)
+    << PC_BENCH((MPMCQueue<int,EmulatedFutexAtomic>(100000)), 32, 100, n);
+}
+
 template <template<typename> class Atom>
 void runNeverFailThread(
     int numThreads,
@@ -422,6 +451,17 @@ TEST(MPMCQueue, mt_never_fail) {
   int n = 100000;
   for (int nt : nts) {
     uint64_t elapsed = runNeverFailTest<std::atomic>(nt, n);
+    LOG(INFO) << (elapsed * 1000.0) / (n * 2) << " nanos per op with "
+              << nt << " threads";
+  }
+}
+
+TEST(MPMCQueue, mt_never_fail_emulated_futex) {
+  int nts[] = { 1, 3, 100 };
+
+  int n = 100000;
+  for (int nt : nts) {
+    uint64_t elapsed = runNeverFailTest<EmulatedFutexAtomic>(nt, n);
     LOG(INFO) << (elapsed * 1000.0) / (n * 2) << " nanos per op with "
               << nt << " threads";
   }

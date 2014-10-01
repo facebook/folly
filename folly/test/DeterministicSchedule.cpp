@@ -229,49 +229,28 @@ DeterministicSchedule::wait(sem_t* sem) {
 namespace folly { namespace detail {
 
 using namespace test;
+using namespace std::chrono;
 
-template<>
-bool Futex<DeterministicAtomic>::futexWait(uint32_t expected,
-                                           uint32_t waitMask) {
-  bool rv;
-  DeterministicSchedule::beforeSharedAccess();
-  futexLock.lock();
-  if (data != expected) {
-    rv = false;
-  } else {
-    auto& queue = futexQueues[this];
-    bool done = false;
-    queue.push_back(std::make_pair(waitMask, &done));
-    while (!done) {
-      futexLock.unlock();
-      DeterministicSchedule::afterSharedAccess();
-      DeterministicSchedule::beforeSharedAccess();
-      futexLock.lock();
-    }
-    rv = true;
-  }
-  futexLock.unlock();
-  DeterministicSchedule::afterSharedAccess();
-  return rv;
-}
-
-FutexResult futexWaitUntilImpl(Futex<DeterministicAtomic>* futex,
-                               uint32_t expected, uint32_t waitMask) {
-  if (futex == nullptr) {
-    return FutexResult::VALUE_CHANGED;
-  }
-
-  bool rv = false;
+template <>
+FutexResult
+Futex<DeterministicAtomic>::futexWaitImpl(
+        uint32_t expected,
+        time_point<system_clock>* absSystemTimeout,
+        time_point<steady_clock>* absSteadyTimeout,
+        uint32_t waitMask) {
+  bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
+  bool awoken = false;
+  FutexResult result = FutexResult::AWOKEN;
   int futexErrno = 0;
 
   DeterministicSchedule::beforeSharedAccess();
   futexLock.lock();
-  if (futex->data == expected) {
-    auto& queue = futexQueues[futex];
-    queue.push_back(std::make_pair(waitMask, &rv));
+  if (data == expected) {
+    auto& queue = futexQueues[this];
+    queue.push_back(std::make_pair(waitMask, &awoken));
     auto ours = queue.end();
     ours--;
-    while (!rv) {
+    while (!awoken) {
       futexLock.unlock();
       DeterministicSchedule::afterSharedAccess();
       DeterministicSchedule::beforeSharedAccess();
@@ -279,31 +258,33 @@ FutexResult futexWaitUntilImpl(Futex<DeterministicAtomic>* futex,
 
       // Simulate spurious wake-ups, timeouts each time with
       // a 10% probability if we haven't been woken up already
-      if (!rv && DeterministicSchedule::getRandNumber(100) < 10) {
-        assert(futexQueues.count(futex) != 0 &&
-               &futexQueues[futex] == &queue);
+      if (!awoken && hasTimeout &&
+          DeterministicSchedule::getRandNumber(100) < 10) {
+        assert(futexQueues.count(this) != 0 &&
+               &futexQueues[this] == &queue);
         queue.erase(ours);
         if (queue.empty()) {
-          futexQueues.erase(futex);
+          futexQueues.erase(this);
         }
-        rv = false;
         // Simulate ETIMEDOUT 90% of the time and other failures
         // remaining time
-        futexErrno =
-          DeterministicSchedule::getRandNumber(100) >= 10 ? ETIMEDOUT : EINTR;
+        result =
+          DeterministicSchedule::getRandNumber(100) >= 10
+              ? FutexResult::TIMEDOUT : FutexResult::INTERRUPTED;
         break;
       }
     }
   } else {
-    futexErrno = EWOULDBLOCK;
+    result = FutexResult::VALUE_CHANGED;
   }
   futexLock.unlock();
   DeterministicSchedule::afterSharedAccess();
-  return futexErrnoToFutexResult(rv ? 0 : -1, futexErrno);
+  return result;
 }
 
 template<>
-int Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
+int
+Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
   int rv = 0;
   DeterministicSchedule::beforeSharedAccess();
   futexLock.lock();

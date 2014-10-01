@@ -270,29 +270,24 @@ struct DeterministicAtomic {
   }
 };
 
-}}
+}} // namespace folly::test
+
+/* Specialization declarations */
 
 namespace folly { namespace detail {
 
 template<>
-bool Futex<test::DeterministicAtomic>::futexWait(uint32_t expected,
-                                                 uint32_t waitMask);
-
-/// This function ignores the time bound, and instead pseudo-randomly chooses
-/// whether the timeout was reached. To do otherwise would not be deterministic.
-FutexResult futexWaitUntilImpl(Futex<test::DeterministicAtomic> *futex,
-                               uint32_t expected, uint32_t waitMask);
-
-template<> template<class Clock, class Duration>
-FutexResult
-Futex<test::DeterministicAtomic>::futexWaitUntil(
-          uint32_t expected,
-          const time_point<Clock, Duration>& absTimeUnused,
-          uint32_t waitMask) {
-  return futexWaitUntilImpl(this, expected, waitMask);
-}
-
-template<>
 int Futex<test::DeterministicAtomic>::futexWake(int count, uint32_t wakeMask);
 
-}}
+template<>
+FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
+      uint32_t expected,
+      std::chrono::time_point<std::chrono::system_clock>* absSystemTime,
+      std::chrono::time_point<std::chrono::steady_clock>* absSteadyTime,
+      uint32_t waitMask);
+
+template<>
+Getcpu::Func
+AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(size_t numStripes);
+
+}} // namespace folly::detail

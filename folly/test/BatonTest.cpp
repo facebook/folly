@@ -24,6 +24,7 @@
 
 using namespace folly;
 using namespace folly::test;
+using folly::detail::EmulatedFutexAtomic;
 
 typedef DeterministicSchedule DSched;
 
@@ -63,6 +64,10 @@ BENCHMARK(baton_pingpong, iters) {
   run_pingpong_test<std::atomic>(iters);
 }
 
+BENCHMARK(baton_pingpong_emulated_futex, iters) {
+  run_pingpong_test<EmulatedFutexAtomic>(iters);
+}
+
 BENCHMARK(posix_sem_pingpong, iters) {
   sem_t sems[3];
   sem_t* a = sems + 0;
@@ -83,45 +88,50 @@ BENCHMARK(posix_sem_pingpong, iters) {
   thr.join();
 }
 
-template <template<typename> class Atom>
+template <template<typename> class Atom, typename Clock>
 void run_basic_timed_wait_tests() {
   Baton<Atom> b;
   b.post();
   // tests if early delivery works fine
-  EXPECT_TRUE(b.timed_wait(std::chrono::system_clock::now()));
+  EXPECT_TRUE(b.timed_wait(Clock::now()));
 }
 
-template <template<typename> class Atom>
+template <template<typename> class Atom, typename Clock>
 void run_timed_wait_tmo_tests() {
   Baton<Atom> b;
 
   auto thr = DSched::thread([&]{
-    bool rv = b.timed_wait(std::chrono::system_clock::now() +
-                           std::chrono::milliseconds(1));
+    bool rv = b.timed_wait(Clock::now() + std::chrono::milliseconds(1));
     // main thread is guaranteed to not post until timeout occurs
     EXPECT_FALSE(rv);
   });
   DSched::join(thr);
 }
 
-template <template<typename> class Atom>
+template <template<typename> class Atom, typename Clock>
 void run_timed_wait_regular_test() {
   Baton<Atom> b;
 
   auto thr = DSched::thread([&] {
-    bool rv = b.timed_wait(
-                std::chrono::time_point<std::chrono::system_clock>::max());
-    if (std::is_same<Atom<int>, std::atomic<int>>::value) {
-      // We can only ensure this for std::atomic
+    // To wait forever we'd like to use time_point<Clock>::max, but
+    // std::condition_variable does math to convert the timeout to
+    // system_clock without handling overflow.
+    auto farFuture = Clock::now() + std::chrono::hours(1000);
+    bool rv = b.timed_wait(farFuture);
+    if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
+      // DeterministicAtomic ignores actual times, so doesn't guarantee
+      // a lack of timeout
       EXPECT_TRUE(rv);
     }
   });
 
-  if (std::is_same<Atom<int>, std::atomic<int>>::value) {
-    // If we are using std::atomic, then a sleep here guarantees to a large
-    // extent that 'thr' will execute wait before we post it, thus testing
-    // late delivery. For DeterministicAtomic, we just rely on
-    // DeterministicSchedule to do the scheduling
+  if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
+    // If we are using std::atomic (or EmulatedFutexAtomic) then
+    // a sleep here guarantees to a large extent that 'thr' will
+    // execute wait before we post it, thus testing late delivery. For
+    // DeterministicAtomic, we just rely on DeterministicSchedule to do
+    // the scheduling.  The test won't fail if we lose the race, we just
+    // don't get coverage.
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 
@@ -129,19 +139,40 @@ void run_timed_wait_regular_test() {
   DSched::join(thr);
 }
 
-TEST(Baton, timed_wait_basic) {
-  run_basic_timed_wait_tests<std::atomic>();
-  run_basic_timed_wait_tests<DeterministicAtomic>();
+TEST(Baton, timed_wait_basic_system_clock) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::system_clock>();
+  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
+  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::system_clock>();
 }
 
-TEST(Baton, timed_wait_timeout) {
-  run_timed_wait_tmo_tests<std::atomic>();
-  run_timed_wait_tmo_tests<DeterministicAtomic>();
+TEST(Baton, timed_wait_timeout_system_clock) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::system_clock>();
+  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::system_clock>();
+  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::system_clock>();
 }
 
-TEST(Baton, timed_wait) {
-  run_timed_wait_regular_test<std::atomic>();
-  run_timed_wait_regular_test<DeterministicAtomic>();
+TEST(Baton, timed_wait_system_clock) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::system_clock>();
+  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::system_clock>();
+  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::system_clock>();
+}
+
+TEST(Baton, timed_wait_basic_steady_clock) {
+  run_basic_timed_wait_tests<std::atomic, std::chrono::steady_clock>();
+  run_basic_timed_wait_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
+  run_basic_timed_wait_tests<DeterministicAtomic, std::chrono::steady_clock>();
+}
+
+TEST(Baton, timed_wait_timeout_steady_clock) {
+  run_timed_wait_tmo_tests<std::atomic, std::chrono::steady_clock>();
+  run_timed_wait_tmo_tests<EmulatedFutexAtomic, std::chrono::steady_clock>();
+  run_timed_wait_tmo_tests<DeterministicAtomic, std::chrono::steady_clock>();
+}
+
+TEST(Baton, timed_wait_steady_clock) {
+  run_timed_wait_regular_test<std::atomic, std::chrono::steady_clock>();
+  run_timed_wait_regular_test<EmulatedFutexAtomic, std::chrono::steady_clock>();
+  run_timed_wait_regular_test<DeterministicAtomic, std::chrono::steady_clock>();
 }
 
 template <template<typename> class Atom>
@@ -154,6 +185,7 @@ void run_try_wait_tests() {
 
 TEST(Baton, try_wait) {
   run_try_wait_tests<std::atomic>();
+  run_try_wait_tests<EmulatedFutexAtomic>();
   run_try_wait_tests<DeterministicAtomic>();
 }
 
