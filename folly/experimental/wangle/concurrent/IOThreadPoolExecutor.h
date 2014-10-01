@@ -24,8 +24,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
  public:
   explicit IOThreadPoolExecutor(
       size_t numThreads,
-      std::unique_ptr<ThreadFactory> threadFactory =
-          folly::make_unique<NamedThreadFactory>("IOThreadPool"));
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("IOThreadPool"));
 
   ~IOThreadPoolExecutor();
 

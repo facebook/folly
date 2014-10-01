@@ -20,7 +20,7 @@ namespace folly { namespace wangle {
 
 ThreadPoolExecutor::ThreadPoolExecutor(
     size_t numThreads,
-    std::unique_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory)
     : threadFactory_(std::move(threadFactory)) {}
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {

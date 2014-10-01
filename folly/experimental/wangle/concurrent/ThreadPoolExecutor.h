@@ -35,7 +35,7 @@ class ThreadPoolExecutor : public experimental::Executor {
  public:
   explicit ThreadPoolExecutor(
       size_t numThreads,
-      std::unique_ptr<ThreadFactory> threadFactory);
+      std::shared_ptr<ThreadFactory> threadFactory);
 
   ~ThreadPoolExecutor();
 
@@ -157,7 +157,7 @@ class ThreadPoolExecutor : public experimental::Executor {
     std::queue<ThreadPtr> queue_;
   };
 
-  std::unique_ptr<ThreadFactory> threadFactory_;
+  std::shared_ptr<ThreadFactory> threadFactory_;
   ThreadList threadList_;
   RWSpinLock threadListLock_;
   StoppedThreadQueue stoppedThreads_;

@@ -24,7 +24,7 @@ namespace folly { namespace wangle {
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
-    std::unique_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory)
   : ThreadPoolExecutor(numThreads, std::move(threadFactory)),
     nextThread_(0) {
   addThreads(numThreads);

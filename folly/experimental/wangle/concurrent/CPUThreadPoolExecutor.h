@@ -28,8 +28,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::unique_ptr<BlockingQueue<CPUTask>> taskQueue =
           folly::make_unique<LifoSemMPMCQueue<CPUTask>>(
               CPUThreadPoolExecutor::kDefaultMaxQueueSize),
-      std::unique_ptr<ThreadFactory> threadFactory =
-          folly::make_unique<NamedThreadFactory>("CPUThreadPool"));
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
   ~CPUThreadPoolExecutor();
 

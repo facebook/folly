@@ -23,7 +23,7 @@ const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 18;
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
-    std::unique_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory)
     : ThreadPoolExecutor(numThreads, std::move(threadFactory)),
       taskQueue_(std::move(taskQueue)) {
   addThreads(numThreads);
