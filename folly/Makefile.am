@@ -143,6 +143,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/NotificationQueue.h \
 	io/async/HHWheelTimer.h \
 	io/async/Request.h \
+	io/async/SSLContext.h \
 	io/async/TimeoutManager.h \
 	json.h \
 	Lazy.h \
@@ -269,6 +270,7 @@ libfolly_la_SOURCES = \
 	io/async/EventBaseManager.cpp \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
+	io/async/SSLContext.cpp \
 	io/async/HHWheelTimer.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
