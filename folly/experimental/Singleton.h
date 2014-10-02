@@ -167,6 +167,8 @@ class SingletonVault {
   enum class Type { Strict, Relaxed };
 
   explicit SingletonVault(Type type = Type::Relaxed) : type_(type) {}
+
+  // Destructor is only called by unit tests to check destroyInstances.
   ~SingletonVault();
 
   typedef std::function<void(void*)> TeardownFunc;
