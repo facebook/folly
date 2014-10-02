@@ -55,21 +55,7 @@ void SingletonVault::destroyInstances() {
 }
 
 SingletonVault* SingletonVault::singleton() {
-  static SingletonVault* vault = new SingletonVault();
-  return vault;
+  static SingletonVault vault;
+  return &vault;
 }
-
-namespace {
-
-class SingletonVaultDestructor {
- public:
-  ~SingletonVaultDestructor() {
-    SingletonVault::singleton()->destroyInstances();
-  }
-};
-
-SingletonVaultDestructor singletonVaultDestructor;
-
-}
-
 }
