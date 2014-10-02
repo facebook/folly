@@ -509,17 +509,23 @@ class SocketAddress {
     struct sockaddr_un *addr;
     socklen_t len;
 
+    /* For debugging only, will be removed */
+    uint64_t magic;
+    static constexpr uint64_t kMagic = 0x1234faceb00c;
+
     socklen_t pathLength() const {
       return len - offsetof(struct sockaddr_un, sun_path);
     }
 
     void init() {
       addr = new sockaddr_un;
+      magic = kMagic;
       addr->sun_family = AF_UNIX;
       len = 0;
     }
     void init(const ExternalUnixAddr &other) {
       addr = new sockaddr_un;
+      magic = kMagic;
       len = other.len;
       memcpy(addr, other.addr, len);
       // Fill the rest with 0s, just for safety
@@ -527,11 +533,14 @@ class SocketAddress {
              sizeof(struct sockaddr_un) - len);
     }
     void copy(const ExternalUnixAddr &other) {
+      CHECK(magic == kMagic);
       len = other.len;
       memcpy(addr, other.addr, len);
     }
     void free() {
+      CHECK(magic == kMagic);
       delete addr;
+      magic = 0;
     }
   };
 
