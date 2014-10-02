@@ -66,7 +66,7 @@ class ThreadPoolExecutor : public experimental::Executor {
     std::chrono::nanoseconds runTime;
   };
 
-  Subscription subscribeToTaskStats(
+  Subscription<TaskStats> subscribeToTaskStats(
       const ObserverPtr<TaskStats>& observer) {
     return taskStatsSubject_.subscribe(observer);
   }

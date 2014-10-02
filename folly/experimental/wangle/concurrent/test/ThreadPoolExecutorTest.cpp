@@ -165,8 +165,9 @@ template <class TPE>
 static void taskStats() {
   TPE tpe(1);
   std::atomic<int> c(0);
-  tpe.subscribeToTaskStats(Observer<ThreadPoolExecutor::TaskStats>::create(
-      [&] (ThreadPoolExecutor::TaskStats stats) {
+  auto s = tpe.subscribeToTaskStats(
+      Observer<ThreadPoolExecutor::TaskStats>::create(
+          [&](ThreadPoolExecutor::TaskStats stats) {
         int i = c++;
         EXPECT_LT(milliseconds(0), stats.runTime);
         if (i == 1) {
@@ -191,8 +192,9 @@ template <class TPE>
 static void expiration() {
   TPE tpe(1);
   std::atomic<int> statCbCount(0);
-  tpe.subscribeToTaskStats(Observer<ThreadPoolExecutor::TaskStats>::create(
-      [&] (ThreadPoolExecutor::TaskStats stats) {
+  auto s = tpe.subscribeToTaskStats(
+      Observer<ThreadPoolExecutor::TaskStats>::create(
+          [&](ThreadPoolExecutor::TaskStats stats) {
         int i = statCbCount++;
         if (i == 0) {
           EXPECT_FALSE(stats.expired);

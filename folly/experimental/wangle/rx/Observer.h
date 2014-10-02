@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "types.h"
+#include <folly/experimental/wangle/rx/types.h>
 #include <functional>
 #include <memory>
 #include <stdexcept>

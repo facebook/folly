@@ -15,8 +15,9 @@
  */
 
 #pragma once
-#include "Observable.h"
-#include "Observer.h"
+
+#include <folly/experimental/wangle/rx/Observable.h>
+#include <folly/experimental/wangle/rx/Observer.h>
 
 namespace folly { namespace wangle {
 
@@ -28,20 +29,20 @@ struct Subject : public Observable<T>, public Observer<T> {
   typedef typename Observable<T>::ObserversGuard ObserversGuard;
   void onNext(T val) override {
     ObserversGuard guard(this);
-    for (auto& o : Observable<T>::getObservers()) {
-      o->onNext(val);
+    for (auto& kv : Observable<T>::getObservers()) {
+      kv.second->onNext(val);
     }
   }
   void onError(Error e) override {
     ObserversGuard guard(this);
-    for (auto& o : Observable<T>::getObservers()) {
-      o->onError(e);
+    for (auto& kv : Observable<T>::getObservers()) {
+      kv.second->onError(e);
     }
   }
   void onCompleted() override {
     ObserversGuard guard(this);
-    for (auto& o : Observable<T>::getObservers()) {
-      o->onCompleted();
+    for (auto& kv : Observable<T>::getObservers()) {
+      kv.second->onCompleted();
     }
   }
 };
