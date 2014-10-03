@@ -113,6 +113,7 @@ nobase_follyinclude_HEADERS = \
 	io/RecordIO.h \
 	io/RecordIO-inl.h \
 	io/TypedIOBuf.h \
+	io/ShutdownSocketSet.h \
 	io/async/AsyncTimeout.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
@@ -238,6 +239,7 @@ libfolly_la_SOURCES = \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \
+	io/ShutdownSocketSet.cpp \
 	io/async/AsyncTimeout.cpp \
 	io/async/EventBase.cpp \
 	io/async/EventBaseManager.cpp \
