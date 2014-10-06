@@ -28,13 +28,6 @@
 #include <utility>
 
 
-// weak linking means the symbol will be null if not available, instead
-// of a link failure
-extern "C" int mallctl(const char *name, void *oldp, size_t *oldlenp,
-                       void *newp, size_t newlen)
-    __attribute__((__weak__));
-
-
 namespace folly { namespace detail {
 
 AtomicStruct<std::chrono::steady_clock::duration>
