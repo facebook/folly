@@ -226,6 +226,8 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
 
  private:
   union AddressStorage {
+    static_assert(sizeof(in_addr) == sizeof(ByteArray4),
+                  "size of in_addr and ByteArray4 are different");
     in_addr inAddr_;
     ByteArray4 bytes_;
     AddressStorage() {

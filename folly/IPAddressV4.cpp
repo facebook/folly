@@ -28,7 +28,6 @@ using std::string;
 
 namespace folly {
 
-static IPAddressV4 loopback_addr("127.0.0.0");
 
 // free functions
 size_t hash_value(const IPAddressV4& addr) {
@@ -146,6 +145,7 @@ bool IPAddressV4::inSubnetWithMask(const IPAddressV4& subnet,
 }
 
 bool IPAddressV4::isLoopback() const {
+  static IPAddressV4 loopback_addr("127.0.0.0");
   return inSubnetWithMask(loopback_addr, fetchMask(8));
 }
 
