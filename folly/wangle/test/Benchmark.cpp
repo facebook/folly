@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
 #include <folly/Baton.h>
 #include <folly/Benchmark.h>
 #include <folly/wangle/Future.h>
@@ -23,6 +24,8 @@
 
 using namespace folly::wangle;
 using namespace std;
+
+namespace {
 
 template <class T>
 T incr(Try<T>&& t) {
@@ -35,6 +38,8 @@ void someThens(size_t n) {
     f = f.then(incr<int>);
   }
 }
+
+} // anonymous namespace
 
 BENCHMARK(constantFuture) {
   makeFuture(42);
@@ -160,6 +165,8 @@ BENCHMARK_RELATIVE(contention) {
   producer.join();
 }
 
-int main() {
+int main(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();
+  return 0;
 }
