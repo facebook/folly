@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
+#include <folly/Baton.h>
 #include <folly/Benchmark.h>
 #include <folly/wangle/Future.h>
 #include <folly/wangle/Promise.h>
+#include <semaphore.h>
+#include <vector>
 
 using namespace folly::wangle;
+using namespace std;
 
 template <class T>
 T incr(Try<T>&& t) {
@@ -72,6 +76,88 @@ BENCHMARK_RELATIVE(fourThens) {
 // look for >= 1% relative
 BENCHMARK_RELATIVE(hundredThens) {
   someThens(100);
+}
+
+// Lock contention. Although in practice fulfil()s tend to be temporally
+// separate from then()s, still sometimes they will be concurrent. So the
+// higher this number is, the better.
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(no_contention) {
+  vector<Promise<int>> promises(10000);
+  vector<Future<int>> futures;
+  std::thread producer, consumer;
+
+  BENCHMARK_SUSPEND {
+    folly::Baton<> b1, b2;
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    consumer = std::thread([&]{
+      b1.post();
+      for (auto& f : futures) f.then(incr<int>);
+    });
+    consumer.join();
+
+    producer = std::thread([&]{
+      b2.post();
+      for (auto& p : promises) p.setValue(42);
+    });
+
+    b1.wait();
+    b2.wait();
+  }
+
+  // The only thing we are measuring is how long fulfil + callbacks take
+  producer.join();
+}
+
+BENCHMARK_RELATIVE(contention) {
+  vector<Promise<int>> promises(10000);
+  vector<Future<int>> futures;
+  std::thread producer, consumer;
+  sem_t sem;
+  sem_init(&sem, 0, 0);
+
+  BENCHMARK_SUSPEND {
+    folly::Baton<> b1, b2;
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    consumer = std::thread([&]{
+      b1.post();
+      for (auto& f : futures) {
+        sem_wait(&sem);
+        f.then(incr<int>);
+      }
+    });
+
+    producer = std::thread([&]{
+      b2.post();
+      for (auto& p : promises) {
+        sem_post(&sem);
+        p.setValue(42);
+      }
+    });
+
+    b1.wait();
+    b2.wait();
+  }
+
+  // The astute reader will notice that we're not *precisely* comparing apples
+  // to apples here. Well, maybe it's like comparing Granny Smith to
+  // Braeburn or something. In the serial version, we waited for the futures
+  // to be all set up, but here we are probably still doing that work
+  // (although in parallel). But even though there is more work (on the order
+  // of 2x), it is being done by two threads. Hopefully most of the difference
+  // we see is due to lock contention and not false parallelism.
+  //
+  // Be warned that if the box is under heavy load, this will greatly skew
+  // these results (scheduling overhead will begin to dwarf lock contention).
+  // I'm not sure but I'd guess in Windtunnel this will mean large variance,
+  // because I expect they load the boxes as much as they can?
+  consumer.join();
+  producer.join();
 }
 
 int main() {
