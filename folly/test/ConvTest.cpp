@@ -748,6 +748,22 @@ TEST(Conv, NewUint64ToString) {
 #undef THE_GREAT_EXPECTATIONS
 }
 
+TEST(Conv, allocate_size) {
+  std::string str1 = "meh meh meh";
+  std::string str2 = "zdech zdech zdech";
+
+  auto res1 = folly::to<std::string>(str1, ".", str2);
+  EXPECT_EQ(res1, str1 + "." + str2);
+
+  std::string res2; //empty
+  toAppendFit(str1, str2, 1, &res2);
+  EXPECT_EQ(res2, str1 + str2 + "1");
+
+  std::string res3;
+  toAppendDelimFit(",", str1, str2, &res3);
+  EXPECT_EQ(res3, str1 + "," + str2);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Benchmarks for ASCII to int conversion
 ////////////////////////////////////////////////////////////////////////////////

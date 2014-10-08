@@ -717,8 +717,10 @@ toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
 
 /**
  * Variadic conversion to string. Appends each element in turn.
- * If we have two or more things to append, we will reserve
- * the space for them (at least we will try).
+ * If we have two or more things to append, we it will not reserve
+ * the space for them and will depend on strings exponential growth.
+ * If you just append once consider using toAppendFit which reserves
+ * the space needed (but does not have exponential as a result).
  */
 template <class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 3
@@ -727,9 +729,31 @@ typename std::enable_if<sizeof...(Ts) >= 3
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppend(const Ts&... vs) {
-  detail::reserveInTarget(vs...);
   detail::toAppendStrImpl(vs...);
 }
+
+/**
+ * Special version of the call that preallocates exaclty as much memory
+ * as need for arguments to be stored in target. This means we are
+ * not doing exponential growth when we append. If you are using it
+ * in a loop you are aiming at your foot with a big perf-destroying
+ * bazooka.
+ * On the other hand if you are appending to a string once, this
+ * will probably save a few calls to malloc.
+ */
+template <class... Ts>
+typename std::enable_if<
+  IsSomeString<
+  typename std::remove_pointer<
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
+toAppendFit(const Ts&... vs) {
+  detail::reserveInTarget(vs...);
+  toAppend(vs...);
+}
+
+template <class Ts>
+void toAppendFit(const Ts&) {}
 
 /**
  * Variadic base case: do nothing.
@@ -757,7 +781,8 @@ toAppendDelim(const Delimiter& delim, const T& v, Tgt* tgt) {
 }
 
 /**
- * Append to string with a delimiter in between elements.
+ * Append to string with a delimiter in between elements. Check out
+ * comments for toAppend for details about memory allocation.
  */
 template <class Delimiter, class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 3
@@ -766,9 +791,25 @@ typename std::enable_if<sizeof...(Ts) >= 3
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppendDelim(const Delimiter& delim, const Ts&... vs) {
-  detail::reserveInTargetDelim(delim, vs...);
   detail::toAppendDelimStrImpl(delim, vs...);
 }
+
+/**
+ * Detail in comment for toAppendFit
+ */
+template <class Delimiter, class... Ts>
+typename std::enable_if<
+  IsSomeString<
+  typename std::remove_pointer<
+    typename detail::last_element<Ts...>::type
+  >::type>::value>::type
+toAppendDelimFit(const Delimiter& delim, const Ts&... vs) {
+  detail::reserveInTargetDelim(delim, vs...);
+  toAppendDelim(delim, vs...);
+}
+
+template <class De, class Ts>
+void toAppendDelimFit(const De&, const Ts&) {}
 
 /**
  * to<SomeString>(SomeString str) returns itself. As both std::string and
@@ -795,7 +836,7 @@ typename std::enable_if<
   Tgt>::type
 to(const Ts&... vs) {
   Tgt result;
-  toAppend(vs..., &result);
+  toAppendFit(vs..., &result);
   return result;
 }
 
@@ -822,7 +863,7 @@ typename std::enable_if<
   Tgt>::type
 toDelim(const Delim& delim, const Ts&... vs) {
   Tgt result;
-  toAppendDelim(delim, vs..., &result);
+  toAppendDelimFit(delim, vs..., &result);
   return result;
 }
 
