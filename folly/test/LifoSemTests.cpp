@@ -261,7 +261,7 @@ TEST(LifoSem, multi_try_wait) {
     }
   };
 
-  std::atomic<bool> consumer_stop;
+  DeterministicAtomic<bool> consumer_stop(false);
   int consumed = 0;
 
   auto consumer = [&]{

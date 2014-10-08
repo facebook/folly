@@ -552,7 +552,7 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
       while (!go.load()) {
         sched_yield();
       }
-      std::atomic<int> localWork;
+      std::atomic<int> localWork(0);
       if (spreaderType == SpreaderType::SHARED) {
         for (size_t i = iters; i > 0; --i) {
           ++*(counters[AccessSpreader<>::current(stripes)]);
@@ -604,8 +604,8 @@ static void atomicIncrBaseline(size_t iters, size_t work,
       while (!go.load()) {
         sched_yield();
       }
-      std::atomic<size_t> localCounter;
-      std::atomic<int> localWork;
+      std::atomic<size_t> localCounter(0);
+      std::atomic<int> localWork(0);
       for (size_t i = iters; i > 0; --i) {
         localCounter++;
         for (size_t j = work; j > 0; --j) {
