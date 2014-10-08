@@ -74,6 +74,9 @@
 // TeardownFunc for each singleton, in the reverse order they were
 // created.  It is your responsibility to ensure your singletons can
 // handle cases where the singletons they depend on go away, however.
+// Singletons won't be recreated after destroyInstances call. If you
+// want to re-enable singleton creation (say after fork was called) you
+// should call reenableInstances.
 
 #pragma once
 #include <folly/Exception.h>
@@ -179,9 +182,16 @@ class SingletonVault {
   void registerSingleton(detail::TypeDescriptor type,
                          CreateFunc create,
                          TeardownFunc teardown) {
+    RWSpinLock::ReadHolder rh(&stateMutex_);
+
+    stateCheck(SingletonVaultState::Running);
+    if (UNLIKELY(registrationComplete_)) {
+      throw std::logic_error(
+        "Registering singleton after registrationComplete().");
+    }
+
     RWSpinLock::WriteHolder wh(&mutex_);
 
-    stateCheck(SingletonVaultState::Registering);
     CHECK_THROW(singletons_.find(type) == singletons_.end(), std::logic_error);
     auto& entry = singletons_[type];
     entry.reset(new SingletonEntry);
@@ -198,19 +208,36 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
-    RWSpinLock::WriteHolder wh(&mutex_);
+    RWSpinLock::WriteHolder wh(&stateMutex_);
 
-    stateCheck(SingletonVaultState::Registering);
-    state_ = SingletonVaultState::Running;
+    stateCheck(SingletonVaultState::Running);
+
+    if (type_ == Type::Strict) {
+      for (const auto& id_singleton_entry: singletons_) {
+        const auto& singleton_entry = *id_singleton_entry.second;
+        if (singleton_entry.state != SingletonEntryState::Dead) {
+          throw std::runtime_error(
+            "Singleton created before registration was complete.");
+        }
+      }
+    }
+
+    registrationComplete_ = true;
   }
 
-  // Destroy all singletons; when complete, the vault can create
-  // singletons once again, or remain dormant.
+  // Destroy all singletons; when complete, the vault can't create
+  // singletons once again until reenableInstances() is called.
   void destroyInstances();
+
+  // Enable re-creating singletons after destroyInstances() was called.
+  void reenableInstances();
 
   // Retrieve a singleton from the vault, creating it if necessary.
   std::shared_ptr<void> get_shared(detail::TypeDescriptor type) {
     auto entry = get_entry_create(type);
+    if (UNLIKELY(!entry)) {
+      return std::shared_ptr<void>();
+    }
     return entry->instance;
   }
 
@@ -220,6 +247,10 @@ class SingletonVault {
   // the weak_ptr interface for true safety.
   void* get_ptr(detail::TypeDescriptor type) {
     auto entry = get_entry_create(type);
+    if (UNLIKELY(!entry)) {
+      throw std::runtime_error(
+        "Raw pointer to a singleton requested after its destruction.");
+    }
     return entry->instance_ptr;
   }
 
@@ -251,8 +282,8 @@ class SingletonVault {
  private:
   // The two stages of life for a vault, as mentioned in the class comment.
   enum class SingletonVaultState {
-    Registering,
     Running,
+    Quiescing,
   };
 
   // Each singleton in the vault can be in three states: dead
@@ -266,7 +297,7 @@ class SingletonVault {
 
   void stateCheck(SingletonVaultState expected,
                   const char* msg="Unexpected singleton state change") {
-    if (type_ == Type::Strict && expected != state_) {
+    if (expected != state_) {
         throw std::logic_error(msg);
     }
   }
@@ -301,13 +332,6 @@ class SingletonVault {
   SingletonEntry* get_entry(detail::TypeDescriptor type) {
     RWSpinLock::ReadHolder rh(&mutex_);
 
-    // mutex must be held when calling this function
-    stateCheck(
-      SingletonVaultState::Running,
-      "Attempt to load a singleton before "
-      "SingletonVault::registrationComplete was called (hint: you probably "
-      "didn't call initFacebook)");
-
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
       throw std::out_of_range(std::string("non-existent singleton: ") +
@@ -339,6 +363,11 @@ class SingletonVault {
     }
 
     if (entry->instance == nullptr) {
+      RWSpinLock::ReadHolder rh(&stateMutex_);
+      if (state_ == SingletonVaultState::Quiescing) {
+        return nullptr;
+      }
+
       CHECK(entry->state == SingletonEntryState::Dead);
       entry->state = SingletonEntryState::BeingBorn;
       entry->creating_thread = std::this_thread::get_id();
@@ -370,8 +399,10 @@ class SingletonVault {
                      SingletonEntryPtr,
                      detail::TypeDescriptorHasher> singletons_;
   std::vector<detail::TypeDescriptor> creation_order_;
-  SingletonVaultState state_ = SingletonVaultState::Registering;
-  Type type_ = Type::Relaxed;
+  SingletonVaultState state_{SingletonVaultState::Running};
+  bool registrationComplete_{false};
+  folly::RWSpinLock stateMutex_;
+  Type type_{Type::Relaxed};
 };
 
 // This is the wrapper class that most users actually interact with.

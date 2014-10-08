@@ -188,9 +188,6 @@ TEST(Singleton, NaughtyUsage) {
                }(),
                std::logic_error);
 
-  // Default vault is non-strict; this should work.
-  Singleton<Watchdog> global_watchdog_singleton;
-
   SingletonVault vault_2(SingletonVault::Type::Strict);
   EXPECT_THROW(Singleton<Watchdog>::get(&vault_2), std::logic_error);
   Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault_2);
@@ -263,6 +260,12 @@ TEST(Singleton, SharedPtrUsage) {
   locked_s1 = weak_s1.lock();
   EXPECT_TRUE(weak_s1.expired());
 
+  auto empty_s1 = Singleton<Watchdog>::get_weak(&vault);
+  EXPECT_FALSE(empty_s1.lock());
+
+  vault.reenableInstances();
+
+  // Singleton should be re-created only after reenableInstances() was called.
   Watchdog* new_s1 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(new_s1->serial_number, old_serial);
 }

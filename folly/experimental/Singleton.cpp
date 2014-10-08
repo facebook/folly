@@ -23,6 +23,15 @@ namespace folly {
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::destroyInstances() {
+  RWSpinLock::WriteHolder state_wh(&stateMutex_);
+
+  if (state_ == SingletonVaultState::Quiescing) {
+    return;
+  }
+  state_ = SingletonVaultState::Quiescing;
+
+  RWSpinLock::ReadHolder state_rh(std::move(state_wh));
+
   {
     RWSpinLock::ReadHolder rh(&mutex_);
 
@@ -52,6 +61,14 @@ void SingletonVault::destroyInstances() {
     RWSpinLock::WriteHolder wh(&mutex_);
     creation_order_.clear();
   }
+}
+
+void SingletonVault::reenableInstances() {
+  RWSpinLock::WriteHolder state_wh(&stateMutex_);
+
+  stateCheck(SingletonVaultState::Quiescing);
+
+  state_ = SingletonVaultState::Running;
 }
 
 SingletonVault* SingletonVault::singleton() {
