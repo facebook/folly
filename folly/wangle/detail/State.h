@@ -26,6 +26,7 @@
 #include <folly/wangle/Try.h>
 #include <folly/wangle/Promise.h>
 #include <folly/wangle/Future.h>
+#include <folly/wangle/Executor.h>
 
 namespace folly { namespace wangle { namespace detail {
 
@@ -141,14 +142,26 @@ class State {
 
   bool isActive() { return active_; }
 
+  void setExecutor(Executor* x) {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    executor_ = x;
+  }
+
  private:
   void maybeCallback() {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (!calledBack_ &&
         value_ && callback_ && isActive()) {
-      // TODO we should probably try/catch here
-      callback_(std::move(*value_));
-      calledBack_ = true;
+      // TODO(5306911) we should probably try/catch here
+      if (executor_) {
+        MoveWrapper<folly::Optional<Try<T>>> val(std::move(value_));
+        MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
+        executor_->add([cb, val]() mutable { (*cb)(std::move(**val)); });
+        calledBack_ = true;
+      } else {
+        callback_(std::move(*value_));
+        calledBack_ = true;
+      }
     }
   }
 
@@ -173,6 +186,7 @@ class State {
   bool calledBack_ = false;
   unsigned char detached_ = 0;
   bool active_ = true;
+  Executor* executor_ = nullptr;
 
   // this lock isn't meant to protect all accesses to members, only the ones
   // that need to be threadsafe: the act of setting value_ and callback_, and

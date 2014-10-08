@@ -808,7 +808,7 @@ TEST(Future, viaRaces) {
 }
 
 // TODO(#4920689)
-TEST(Future, DISABLED_viaRaces_2stage) {
+TEST(Future, viaRaces_2stage) {
   ManualExecutor x;
   Promise<void> p;
   auto tid = std::this_thread::get_id();

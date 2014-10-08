@@ -193,42 +193,11 @@ template <class T>
 template <typename Executor>
 inline Future<T> Future<T>::via(Executor* executor) {
   throwIfInvalid();
-  MoveWrapper<Promise<T>> promise;
 
-  auto f = promise->getFuture();
-  // We are obligated to return a cold future.
-  f.deactivate();
-  // But we also need to make this one cold for via to at least work some of
-  // the time. (see below)
-  deactivate();
+  this->deactivate();
+  state_->setExecutor(executor);
 
-  then([=](Try<T>&& t) mutable {
-    MoveWrapper<Try<T>> tw(std::move(t));
-    // There is a race here.
-    // When the promise is fulfilled, and the future is still inactive, when
-    // the future is activated (e.g. by destruction) the callback will happen
-    // in that context, not in the intended context (which has already left
-    // the building).
-    //
-    // Currently, this will work fine because all the temporaries are
-    // destructed in an order that is compatible with this implementation:
-    //
-    //   makeFuture().via(x).then(a).then(b);
-    //
-    // However, this will not work reliably:
-    //
-    //   auto f2 = makeFuture().via(x);
-    //   f2.then(a).then(b);
-    //
-    // Because the first temporary is destructed on the first line, and the
-    // executor is fed. But by the time f2 is destructed, the executor
-    // may have already fulfilled the promise on the other thread.
-    //
-    // TODO(#4920689) fix it
-    executor->add([=]() mutable { promise->fulfilTry(std::move(*tw)); });
-  });
-
-  return f;
+  return std::move(*this);
 }
 
 template <class T>
