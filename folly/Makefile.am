@@ -116,6 +116,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncTimeout.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
+	io/async/EventBaseManager.h \
 	io/async/EventFDWrapper.h \
 	io/async/EventHandler.h \
 	io/async/EventUtil.h \
@@ -239,6 +240,7 @@ libfolly_la_SOURCES = \
 	io/RecordIO.cpp \
 	io/async/AsyncTimeout.cpp \
 	io/async/EventBase.cpp \
+	io/async/EventBaseManager.cpp \
 	io/async/EventHandler.cpp \
 	io/async/Request.cpp \
 	io/async/HHWheelTimer.cpp \

@@ -385,8 +385,8 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   // guaranteed to always be present if we ever provide alternative EventBase
   // implementations that do not use libevent internally.
   event_base* getLibeventBase() const { return evb_; }
-  static const char* getLibeventVersion() { return event_get_version(); }
-  static const char* getLibeventMethod() { return event_get_method(); }
+  static const char* getLibeventVersion();
+  static const char* getLibeventMethod();
 
   /**
    * only EventHandler/AsyncTimeout subclasses and ourselves should

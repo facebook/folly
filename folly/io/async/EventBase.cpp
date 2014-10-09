@@ -704,4 +704,7 @@ const std::string& EventBase::getName() {
   return name_;
 }
 
+const char* EventBase::getLibeventVersion() { return event_get_version(); }
+const char* EventBase::getLibeventMethod() { return event_get_method(); }
+
 } // folly
