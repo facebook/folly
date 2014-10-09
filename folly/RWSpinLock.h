@@ -274,7 +274,7 @@ class RWSpinLock : boost::noncopyable {
       lock_->lock_shared();
     }
 
-    ReadHolder(ReadHolder&& other) : lock_(other.lock_) {
+    ReadHolder(ReadHolder&& other) noexcept : lock_(other.lock_) {
       other.lock_ = nullptr;
     }
 
@@ -333,7 +333,7 @@ class RWSpinLock : boost::noncopyable {
       if (lock_) lock_->unlock_and_lock_upgrade();
     }
 
-    UpgradedHolder(UpgradedHolder&& other) : lock_(other.lock_) {
+    UpgradedHolder(UpgradedHolder&& other) noexcept : lock_(other.lock_) {
       other.lock_ = nullptr;
     }
 
@@ -383,7 +383,7 @@ class RWSpinLock : boost::noncopyable {
       if (lock_) lock_->unlock_upgrade_and_lock();
     }
 
-    WriteHolder(WriteHolder&& other) : lock_(other.lock_) {
+    WriteHolder(WriteHolder&& other) noexcept : lock_(other.lock_) {
       other.lock_ = nullptr;
     }
 

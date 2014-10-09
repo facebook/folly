@@ -23,7 +23,7 @@ namespace folly {
 
 // This looks a bit weird, but it's necessary to avoid
 // having an undefined compiler function called.
-#if defined(__GLIBC__) && !defined(__APPLE__)
+#if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
 #if __GLIBC_PREREQ(2, 12)
 # define FOLLY_GLIBC_2_12
 #endif

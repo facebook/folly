@@ -93,7 +93,7 @@ std::string stringVPrintf(const char* format, va_list ap) {
   // the format string size, or 32 bytes, whichever is larger.  This
   // is a hueristic that doesn't affect correctness but attempts to be
   // reasonably fast for the most common cases.
-  std::string ret(std::max(32UL, strlen(format) * 2), '\0');
+  std::string ret(std::max(size_t(32), strlen(format) * 2), '\0');
   ret.resize(0);
 
   stringPrintfImpl(ret, format, ap);
@@ -330,7 +330,8 @@ fbstring errnoStr(int err) {
 
   // https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/strerror_r.3.html
   // http://www.kernel.org/doc/man-pages/online/pages/man3/strerror.3.html
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__CYGWIN__) ||\
+#if defined(__APPLE__) || defined(__FreeBSD__) ||\
+    defined(__CYGWIN__) || defined(__ANDROID__) ||\
     ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE)
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
