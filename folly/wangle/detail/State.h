@@ -149,7 +149,7 @@ class State {
 
  private:
   void maybeCallback() {
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    std::unique_lock<decltype(mutex_)> lock(mutex_);
     if (!calledBack_ &&
         value_ && callback_ && isActive()) {
       // TODO(5306911) we should probably try/catch here
@@ -159,8 +159,9 @@ class State {
         executor_->add([cb, val]() mutable { (*cb)(std::move(**val)); });
         calledBack_ = true;
       } else {
-        callback_(std::move(*value_));
         calledBack_ = true;
+        lock.unlock();
+        callback_(std::move(*value_));
       }
     }
   }
@@ -191,7 +192,7 @@ class State {
   // this lock isn't meant to protect all accesses to members, only the ones
   // that need to be threadsafe: the act of setting value_ and callback_, and
   // seeing if they are set and whether we should then continue.
-  std::recursive_mutex mutex_;
+  std::mutex mutex_;
 };
 
 template <typename... Ts>
