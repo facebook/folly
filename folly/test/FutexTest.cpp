@@ -54,36 +54,36 @@ void run_basic_tests() {
   DSched::join(thr);
 }
 
-template<template<typename> class Atom>
-void run_wait_until_tests();
+template <template<typename> class Atom, typename Clock>
+void liveClockWaitUntilTests() {
+  Futex<Atom> f(0);
 
-template <typename Clock>
-void stdAtomicWaitUntilTests() {
-  Futex<std::atomic> f(0);
-
-  auto thrA = DSched::thread([&]{
-    while (true) {
-      typename Clock::time_point nowPlus2s = Clock::now() + seconds(2);
-      auto res = f.futexWaitUntil(0, nowPlus2s);
-      EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::AWOKEN);
-      if (res == FutexResult::AWOKEN) {
-        break;
+  for (int stress = 0; stress < 1000; ++stress) {
+    auto fp = &f; // workaround for t5336595
+    auto thrA = DSched::thread([fp,stress]{
+      while (true) {
+        auto deadline = Clock::now() + microseconds(1 << (stress % 20));
+        auto res = fp->futexWaitUntil(0, deadline);
+        EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::AWOKEN);
+        if (res == FutexResult::AWOKEN) {
+          break;
+        }
       }
+    });
+
+    while (f.futexWake() != 1) {
+      std::this_thread::yield();
     }
-  });
 
-  while (f.futexWake() != 1) {
-    std::this_thread::yield();
+    DSched::join(thrA);
   }
-
-  DSched::join(thrA);
 
   auto start = Clock::now();
   EXPECT_EQ(f.futexWaitUntil(0, start + milliseconds(100)),
             FutexResult::TIMEDOUT);
   LOG(INFO) << "Futex wait timed out after waiting for "
             << duration_cast<milliseconds>(Clock::now() - start).count()
-            << "ms";
+            << "ms, should be ~100ms";
 }
 
 template <typename Clock>
@@ -96,10 +96,10 @@ void deterministicAtomicWaitUntilTests() {
   EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::INTERRUPTED);
 }
 
-template <>
-void run_wait_until_tests<std::atomic>() {
-  stdAtomicWaitUntilTests<system_clock>();
-  stdAtomicWaitUntilTests<steady_clock>();
+template<template<typename> class Atom>
+void run_wait_until_tests() {
+  liveClockWaitUntilTests<Atom, system_clock>();
+  liveClockWaitUntilTests<Atom, steady_clock>();
 }
 
 template <>
@@ -175,6 +175,11 @@ TEST(Futex, clock_source) {
 TEST(Futex, basic_live) {
   run_basic_tests<std::atomic>();
   run_wait_until_tests<std::atomic>();
+}
+
+TEST(Futex, basic_emulated) {
+  run_basic_tests<EmulatedFutexAtomic>();
+  run_wait_until_tests<EmulatedFutexAtomic>();
 }
 
 TEST(Futex, basic_deterministic) {

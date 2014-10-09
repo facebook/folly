@@ -123,17 +123,24 @@ FutexResult nativeFutexWaitImpl(void* addr,
 ///////////////////////////////////////////////////////
 // compatibility implementation using standard C++ API
 
+// Our emulated futex uses 4096 lists of wait nodes.  There are two levels
+// of locking: a per-list mutex that controls access to the list and a
+// per-node mutex, condvar, and bool that are used for the actual wakeups.
+// The per-node mutex allows us to do precise wakeups without thundering
+// herds.
+
 struct EmulatedFutexWaitNode : public boost::intrusive::list_base_hook<> {
   void* const addr_;
   const uint32_t waitMask_;
-  bool hasTimeout_;
+
+  // tricky: hold both bucket and node mutex to write, either to read
   bool signaled_;
+  std::mutex mutex_;
   std::condition_variable cond_;
 
-  EmulatedFutexWaitNode(void* addr, uint32_t waitMask, bool hasTimeout)
+  EmulatedFutexWaitNode(void* addr, uint32_t waitMask)
     : addr_(addr)
     , waitMask_(waitMask)
-    , hasTimeout_(hasTimeout)
     , signaled_(false)
   {
   }
@@ -162,42 +169,24 @@ std::once_flag EmulatedFutexBucket::gBucketInit;
 
 int emulatedFutexWake(void* addr, int count, uint32_t waitMask) {
   auto& bucket = EmulatedFutexBucket::bucketFor(addr);
+  std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
 
   int numAwoken = 0;
-  boost::intrusive::list<EmulatedFutexWaitNode> deferredWakeups;
+  for (auto iter = bucket.waiters_.begin();
+       numAwoken < count && iter != bucket.waiters_.end(); ) {
+    auto current = iter;
+    auto& node = *iter++;
+    if (node.addr_ == addr && (node.waitMask_ & waitMask) != 0) {
+      ++numAwoken;
 
-  {
-    std::unique_lock<std::mutex> lock(bucket.mutex_);
+      // we unlink, but waiter destroys the node
+      bucket.waiters_.erase(current);
 
-    for (auto iter = bucket.waiters_.begin();
-         numAwoken < count && iter != bucket.waiters_.end(); ) {
-      auto current = iter;
-      auto& node = *iter++;
-      if (node.addr_ == addr && (node.waitMask_ & waitMask) != 0) {
-        // We unlink, but waiter destroys the node.  We must signal timed
-        // waiters under the lock, to avoid a race where we release the lock,
-        // the waiter times out and deletes the node, and then we try to
-        // signal it.  This problem doesn't exist for unbounded waiters,
-        // so for them we optimize their wakeup by releasing the lock first.
-        bucket.waiters_.erase(current);
-        if (node.hasTimeout_) {
-          node.signaled_ = true;
-          node.cond_.notify_one();
-        } else {
-          deferredWakeups.push_back(node);
-        }
-        ++numAwoken;
-      }
+      std::unique_lock<std::mutex> nodeLock(node.mutex_);
+      node.signaled_ = true;
+      node.cond_.notify_one();
     }
   }
-
-  while (!deferredWakeups.empty()) {
-    auto& node = deferredWakeups.front();
-    deferredWakeups.pop_front();
-    node.signaled_ = true;
-    node.cond_.notify_one();
-  }
-
   return numAwoken;
 }
 
@@ -207,30 +196,39 @@ FutexResult emulatedFutexWaitImpl(
         time_point<system_clock>* absSystemTime,
         time_point<steady_clock>* absSteadyTime,
         uint32_t waitMask) {
-  bool hasTimeout = absSystemTime != nullptr || absSteadyTime != nullptr;
-  EmulatedFutexWaitNode node(addr, waitMask, hasTimeout);
-
   auto& bucket = EmulatedFutexBucket::bucketFor(addr);
-  std::unique_lock<std::mutex> lock(bucket.mutex_);
+  EmulatedFutexWaitNode node(addr, waitMask);
 
-  uint32_t actual;
-  memcpy(&actual, addr, sizeof(uint32_t));
-  if (actual != expected) {
-    return FutexResult::VALUE_CHANGED;
-  }
+  {
+    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
 
-  bucket.waiters_.push_back(node);
-  while (!node.signaled_) {
-    std::cv_status status = std::cv_status::no_timeout;
-    if (absSystemTime != nullptr) {
-      status = node.cond_.wait_until(lock, *absSystemTime);
-    } else if (absSteadyTime != nullptr) {
-      status = node.cond_.wait_until(lock, *absSteadyTime);
-    } else {
-      node.cond_.wait(lock);
+    uint32_t actual;
+    memcpy(&actual, addr, sizeof(uint32_t));
+    if (actual != expected) {
+      return FutexResult::VALUE_CHANGED;
     }
 
-    if (status == std::cv_status::timeout) {
+    bucket.waiters_.push_back(node);
+  } // bucketLock scope
+
+  std::cv_status status = std::cv_status::no_timeout;
+  {
+    std::unique_lock<std::mutex> nodeLock(node.mutex_);
+    while (!node.signaled_ && status != std::cv_status::timeout) {
+      if (absSystemTime != nullptr) {
+        status = node.cond_.wait_until(nodeLock, *absSystemTime);
+      } else if (absSteadyTime != nullptr) {
+        status = node.cond_.wait_until(nodeLock, *absSteadyTime);
+      } else {
+        node.cond_.wait(nodeLock);
+      }
+    }
+  } // nodeLock scope
+
+  if (status == std::cv_status::timeout) {
+    // it's not really a timeout until we unlink the unsignaled node
+    std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
+    if (!node.signaled_) {
       bucket.waiters_.erase(bucket.waiters_.iterator_to(node));
       return FutexResult::TIMEDOUT;
     }
