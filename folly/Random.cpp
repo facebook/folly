@@ -30,10 +30,9 @@ namespace folly {
 
 namespace {
 
-// Keep it open for the duration of the program
-File randomDevice("/dev/urandom");
-
 void readRandomDevice(void* data, size_t size) {
+  // Keep it open for the duration of the program
+  static File randomDevice("/dev/urandom");
   PCHECK(readFull(randomDevice.fd(), data, size) == size);
 }
 
