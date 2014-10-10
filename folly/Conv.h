@@ -30,6 +30,7 @@
 #include <folly/Range.h>
 
 #include <boost/implicit_cast.hpp>
+#include <algorithm>
 #include <type_traits>
 #include <limits>
 #include <string>
@@ -544,6 +545,11 @@ estimateSpaceNeeded(Src value) {
  * Conversions from floating-point types to string types.
  ******************************************************************************/
 
+namespace detail {
+constexpr int kConvMaxDecimalInShortestLow = -6;
+constexpr int kConvMaxDecimalInShortestHigh = 21;
+} // folly::detail
+
 /** Wrapper around DoubleToStringConverter **/
 template <class Tgt, class Src>
 typename std::enable_if<
@@ -558,8 +564,8 @@ toAppend(
   DoubleToStringConverter
     conv(DoubleToStringConverter::NO_FLAGS,
          "infinity", "NaN", 'E',
-         -6,  // decimal in shortest low
-         21,  // decimal in shortest high
+         detail::kConvMaxDecimalInShortestLow,
+         detail::kConvMaxDecimalInShortestHigh,
          6,   // max leading padding zeros
          1);  // max trailing padding zeros
   char buffer[256];
@@ -594,29 +600,31 @@ toAppend(Src value, Tgt * result) {
 }
 
 /**
- * Very primitive, lets say its our best effort
+ * Upper bound of the length of the output from
+ * DoubleToStringConverter::ToShortest(double, StringBuilder*),
+ * as used in toAppend(double, string*).
  */
 template <class Src>
 typename std::enable_if<
   std::is_floating_point<Src>::value, size_t>::type
 estimateSpaceNeeded(Src value) {
-  size_t sofar = 0;
-  if (value < 0) {
-    ++sofar;
-    value = -value;
-  }
-
-  if (value < 1) {
-    return sofar + 10; // lets assume 0 + '.' + 8 precision digits
-  }
-
-  if (value < static_cast<double>(std::numeric_limits<uint64_t>::max())) {
-    sofar += digits10(static_cast<uint64_t>(value));
-  } else {
-    return 64; // give up, it will be more than 23 anyway
-  }
-
-  return sofar + 10; // integral part + '.' + 8 precision digits
+  // kBase10MaximalLength is 17. We add 1 for decimal point,
+  // e.g. 10.0/9 is 17 digits and 18 characters, including the decimal point.
+  constexpr int kMaxMantissaSpace =
+    double_conversion::DoubleToStringConverter::kBase10MaximalLength + 1;
+  // strlen("E-") + digits10(numeric_limits<double>::max_exponent10)
+  constexpr int kMaxExponentSpace = 2 + 3;
+  static const int kMaxPositiveSpace = std::max({
+      // E.g. 1.1111111111111111E-100.
+      kMaxMantissaSpace + kMaxExponentSpace,
+      // E.g. 0.000001.1111111111111111, if kConvMaxDecimalInShortestLow is -6.
+      kMaxMantissaSpace - detail::kConvMaxDecimalInShortestLow,
+      // If kConvMaxDecimalInShortestHigh is 21, then 1e21 is the smallest
+      // number > 1 which ToShortest outputs in exponential notation,
+      // so 21 is the longest non-exponential number > 1.
+      detail::kConvMaxDecimalInShortestHigh
+    });
+  return kMaxPositiveSpace + (value < 0);  // +1 for minus sign, if negative
 }
 
 /**
