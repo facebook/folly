@@ -64,18 +64,10 @@ class ThreadLocalPRNG {
   }
   friend class Random;
 
-  ThreadLocalPRNG() {
-    local_ = localInstance.get();
-    if (!local_) {
-      local_ = initLocal();
-    }
-  }
+  ThreadLocalPRNG();
 
  private:
   class LocalInstancePRNG;
-  static LocalInstancePRNG* initLocal();
-  static folly::ThreadLocalPtr<ThreadLocalPRNG::LocalInstancePRNG>
-    localInstance;
 
   static result_type getImpl(LocalInstancePRNG* local);
   LocalInstancePRNG* local_;

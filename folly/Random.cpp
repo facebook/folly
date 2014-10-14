@@ -98,8 +98,10 @@ void Random::secureRandom(void* data, size_t size) {
   bufferedRandomDevice->get(data, size);
 }
 
-folly::ThreadLocalPtr<ThreadLocalPRNG::LocalInstancePRNG>
-ThreadLocalPRNG::localInstance;
+ThreadLocalPRNG::ThreadLocalPRNG() {
+  static folly::ThreadLocal<ThreadLocalPRNG::LocalInstancePRNG> localInstance;
+  local_ = localInstance.get();
+}
 
 class ThreadLocalPRNG::LocalInstancePRNG {
  public:
@@ -107,12 +109,6 @@ class ThreadLocalPRNG::LocalInstancePRNG {
 
   Random::DefaultGenerator rng;
 };
-
-ThreadLocalPRNG::LocalInstancePRNG* ThreadLocalPRNG::initLocal() {
-  auto ret = new LocalInstancePRNG;
-  localInstance.reset(ret);
-  return ret;
-}
 
 uint32_t ThreadLocalPRNG::getImpl(LocalInstancePRNG* local) {
   return local->rng();
