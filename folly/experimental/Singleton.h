@@ -329,6 +329,16 @@ class SingletonVault {
     SingletonEntry(SingletonEntry&&) = delete;
   };
 
+  // Initializes static object, which calls destroyInstances on destruction.
+  // Used to have better deletion ordering with singleton not managed by
+  // folly::Singleton. The desruction will happen in the following order:
+  // 1. Singletons, not managed by folly::Singleton, which were created after
+  //    any of the singletons managed by folly::Singleton was requested.
+  // 2. All singletons managed by folly::Singleton
+  // 3. Singletons, not managed by folly::Singleton, which were created before
+  //    any of the singletons managed by folly::Singleton was requested.
+  static void scheduleDestroyInstances();
+
   SingletonEntry* get_entry(detail::TypeDescriptor type) {
     RWSpinLock::ReadHolder rh(&mutex_);
 
@@ -375,6 +385,13 @@ class SingletonVault {
       entry_lock.unlock();
       // Can't use make_shared -- no support for a custom deleter, sadly.
       auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
+
+      // We should schedule destroyInstances() only after the singleton was
+      // created. This will ensure it will be destroyed before singletons,
+      // not managed by folly::Singleton, which were initialized in its
+      // constructor
+      scheduleDestroyInstances();
+
       entry_lock.lock();
 
       CHECK(entry->state == SingletonEntryState::BeingBorn);

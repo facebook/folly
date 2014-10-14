@@ -73,16 +73,22 @@ void SingletonVault::reenableInstances() {
 
 SingletonVault* SingletonVault::singleton() {
   static SingletonVault* vault = new SingletonVault();
+  return vault;
+}
 
+void SingletonVault::scheduleDestroyInstances() {
   class SingletonVaultDestructor {
    public:
     ~SingletonVaultDestructor() {
       SingletonVault::singleton()->destroyInstances();
     }
   };
-  static SingletonVaultDestructor singletonVaultDestructor;
 
-  return vault;
+  // Here we intialize a singleton, which calls destroyInstances in its
+  // destructor. Because of singleton destruction order - it will be destroyed
+  // before all the singletons, which were initialized before it and after all
+  // the singletons initialized after it.
+  static SingletonVaultDestructor singletonVaultDestructor;
 }
 
 }
