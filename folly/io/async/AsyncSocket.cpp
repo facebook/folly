@@ -175,6 +175,14 @@ class AsyncSocket::WriteRequest {
   struct iovec writeOps_[];     ///< write operation(s) list
 };
 
+AsyncSocket::AsyncSocket()
+  : eventBase_(nullptr)
+  , writeTimeout_(this, nullptr)
+  , ioHandler_(this, nullptr) {
+  VLOG(5) << "new AsyncSocket(" << ")";
+  init();
+}
+
 AsyncSocket::AsyncSocket(EventBase* evb)
   : eventBase_(evb)
   , writeTimeout_(this, evb)

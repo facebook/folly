@@ -44,9 +44,11 @@ AsyncTimeout::AsyncTimeout(EventBase* eventBase)
 
   event_set(&event_, -1, EV_TIMEOUT, &AsyncTimeout::libeventCallback, this);
   event_.ev_base = nullptr;
-  timeoutManager_->attachTimeoutManager(
+  if (eventBase) {
+    timeoutManager_->attachTimeoutManager(
       this,
       TimeoutManager::InternalEnum::NORMAL);
+  }
   RequestContext::getStaticContext();
 }
 

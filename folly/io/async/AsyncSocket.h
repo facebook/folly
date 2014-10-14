@@ -184,6 +184,7 @@ class AsyncSocket : virtual public AsyncTransport {
       noexcept = 0;
   };
 
+  explicit AsyncSocket();
   /**
    * Create a new unconnected AsyncSocket.
    *
@@ -549,6 +550,14 @@ class AsyncSocket : virtual public AsyncTransport {
     return setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
+  enum class StateEnum : uint8_t {
+    UNINIT,
+    CONNECTING,
+    ESTABLISHED,
+    CLOSED,
+    ERROR
+  };
+
  protected:
   enum ReadResultEnum {
     READ_EOF = 0,
@@ -564,14 +573,6 @@ class AsyncSocket : virtual public AsyncTransport {
    * more details.)
    */
   ~AsyncSocket();
-
-  enum class StateEnum : uint8_t {
-    UNINIT,
-    CONNECTING,
-    ESTABLISHED,
-    CLOSED,
-    ERROR
-  };
 
   friend std::ostream& operator << (std::ostream& os, const StateEnum& state);
 
