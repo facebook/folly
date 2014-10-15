@@ -90,13 +90,15 @@ class Uri {
    * one equal signs, we don't know which one is the delimiter for key and
    * value.
    *
+   * Note, this method is not thread safe, it might update internal state, but
+   * only the first call to this method update the state. After the first call
+   * is finished, subsequent calls to this method are thread safe.
+   *
    * @return  query parameter key-value pairs in a vector, each element is a
    *          pair of which the first element is parameter name and the second
    *          one is parameter value
    */
-  const std::vector<std::pair<fbstring, fbstring>>& getQueryParams() const {
-    return queryParams_;
-  };
+  const std::vector<std::pair<fbstring, fbstring>>& getQueryParams();
 
  private:
   fbstring scheme_;
