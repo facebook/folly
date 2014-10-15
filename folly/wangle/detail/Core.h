@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <folly/Optional.h>
+#include <folly/SmallLocks.h>
 
 #include <folly/wangle/Try.h>
 #include <folly/wangle/Promise.h>
@@ -192,7 +193,7 @@ class Core {
   // this lock isn't meant to protect all accesses to members, only the ones
   // that need to be threadsafe: the act of setting value_ and callback_, and
   // seeing if they are set and whether we should then continue.
-  std::mutex mutex_;
+  folly::MicroSpinLock mutex_ {0};
 };
 
 template <typename... Ts>
