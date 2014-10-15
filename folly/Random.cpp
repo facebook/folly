@@ -90,11 +90,11 @@ void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
   ptr_ += size;
 }
 
-ThreadLocal<BufferedRandomDevice> bufferedRandomDevice;
 
 }  // namespace
 
 void Random::secureRandom(void* data, size_t size) {
+  static ThreadLocal<BufferedRandomDevice> bufferedRandomDevice;
   bufferedRandomDevice->get(data, size);
 }
 
