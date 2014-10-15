@@ -27,7 +27,7 @@ namespace folly { namespace wangle {
  */
 class QueuedImmediateExecutor : public Executor {
  public:
-  void add(Action&&) override;
+  void add(Func) override;
 };
 
 }} // namespace

@@ -30,35 +30,35 @@ ManualExecutor::ManualExecutor() {
   }
 }
 
-void ManualExecutor::add(std::function<void()>&& callback) {
+void ManualExecutor::add(Func callback) {
   std::lock_guard<std::mutex> lock(lock_);
-  actions_.push(callback);
+  funcs_.push(std::move(callback));
   sem_post(&sem_);
 }
 
 size_t ManualExecutor::run() {
   size_t count;
   size_t n;
-  Action action;
+  Func func;
 
   {
     std::lock_guard<std::mutex> lock(lock_);
 
-    while (!scheduledActions_.empty()) {
-      auto& sa = scheduledActions_.top();
-      if (sa.time > now_)
+    while (!scheduledFuncs_.empty()) {
+      auto& sf = scheduledFuncs_.top();
+      if (sf.time > now_)
         break;
-      actions_.push(sa.action);
-      scheduledActions_.pop();
+      funcs_.push(sf.func);
+      scheduledFuncs_.pop();
     }
 
-    n = actions_.size();
+    n = funcs_.size();
   }
 
   for (count = 0; count < n; count++) {
     {
       std::lock_guard<std::mutex> lock(lock_);
-      if (actions_.empty()) {
+      if (funcs_.empty()) {
         break;
       }
 
@@ -67,10 +67,10 @@ size_t ManualExecutor::run() {
       // This may fail (with EAGAIN), that's fine.
       sem_trywait(&sem_);
 
-      action = std::move(actions_.front());
-      actions_.pop();
+      func = std::move(funcs_.front());
+      funcs_.pop();
     }
-    action();
+    func();
   }
 
   return count;
@@ -80,7 +80,7 @@ void ManualExecutor::wait() {
   while (true) {
     {
       std::lock_guard<std::mutex> lock(lock_);
-      if (!actions_.empty())
+      if (!funcs_.empty())
         break;
     }
 

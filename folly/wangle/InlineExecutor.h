@@ -24,7 +24,7 @@ namespace folly { namespace wangle {
   /// QueuedImmediateExecutor.
   class InlineExecutor : public Executor {
    public:
-    void add(std::function<void()>&& f) override {
+    void add(Func f) override {
       f();
     }
   };

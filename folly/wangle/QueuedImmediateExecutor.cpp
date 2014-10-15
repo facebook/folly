@@ -20,9 +20,8 @@
 
 namespace folly { namespace wangle {
 
-void QueuedImmediateExecutor::add(Action&& callback)
-{
-  thread_local std::queue<Action> q;
+void QueuedImmediateExecutor::add(Func callback) {
+  thread_local std::queue<Func> q;
 
   if (q.empty()) {
     q.push(std::move(callback));

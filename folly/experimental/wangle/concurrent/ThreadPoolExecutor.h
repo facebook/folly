@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/experimental/wangle/concurrent/Executor.h>
+#include <folly/wangle/Executor.h>
 #include <folly/experimental/wangle/concurrent/LifoSemMPMCQueue.h>
 #include <folly/experimental/wangle/concurrent/NamedThreadFactory.h>
 #include <folly/experimental/wangle/rx/Observable.h>
@@ -31,7 +31,7 @@
 
 namespace folly { namespace wangle {
 
-class ThreadPoolExecutor : public experimental::Executor {
+class ThreadPoolExecutor : public Executor {
  public:
   explicit ThreadPoolExecutor(
       size_t numThreads,

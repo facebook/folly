@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/wangle/Executor.h>
+#include <folly/wangle/ScheduledExecutor.h>
 #include <semaphore.h>
 #include <memory>
 #include <mutex>
@@ -31,15 +31,15 @@ namespace folly { namespace wangle {
   ///
   /// NB No attempt has been made to make anything other than add and schedule
   /// threadsafe.
-  class ManualExecutor : public Executor {
+  class ManualExecutor : public ScheduledExecutor {
    public:
     ManualExecutor();
 
-    void add(Action&&) override;
+    void add(Func) override;
 
-    /// Do work. Returns the number of actions that were executed (maybe 0).
+    /// Do work. Returns the number of functions that were executed (maybe 0).
     /// Non-blocking, in the sense that we don't wait for work (we can't
-    /// control whether one of the actions blocks).
+    /// control whether one of the functions blocks).
     /// This is stable, it will not chase an ever-increasing tail of work.
     /// This also means, there may be more work available to perform at the
     /// moment that this returns.
@@ -60,9 +60,9 @@ namespace folly { namespace wangle {
         makeProgress();
     }
 
-    virtual void scheduleAt(Action&& a, TimePoint const& t) override {
+    virtual void scheduleAt(Func&& f, TimePoint const& t) override {
       std::lock_guard<std::mutex> lock(lock_);
-      scheduledActions_.emplace(t, std::move(a));
+      scheduledFuncs_.emplace(t, std::move(f));
       sem_post(&sem_);
     }
 
@@ -82,30 +82,30 @@ namespace folly { namespace wangle {
 
    private:
     std::mutex lock_;
-    std::queue<Action> actions_;
+    std::queue<Func> funcs_;
     sem_t sem_;
 
     // helper class to enable ordering of scheduled events in the priority
     // queue
-    struct ScheduledAction {
+    struct ScheduledFunc {
       TimePoint time;
       size_t ordinal;
-      Action action;
+      Func func;
 
-      ScheduledAction(TimePoint const& t, Action&& a)
-        : time(t), action(std::move(a))
+      ScheduledFunc(TimePoint const& t, Func&& f)
+        : time(t), func(std::move(f))
       {
         static size_t seq = 0;
         ordinal = seq++;
       }
 
-      bool operator<(ScheduledAction const& b) const {
+      bool operator<(ScheduledFunc const& b) const {
         if (time == b.time)
           return ordinal < b.ordinal;
         return time < b.time;
       }
     };
-    std::priority_queue<ScheduledAction> scheduledActions_;
+    std::priority_queue<ScheduledFunc> scheduledFuncs_;
     TimePoint now_ = now_.min();
   };
 
