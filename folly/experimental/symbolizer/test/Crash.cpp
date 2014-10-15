@@ -18,6 +18,6 @@
 
 int main() {
   folly::symbolizer::installFatalSignalHandler();
-  *(int*) nullptr = 1;
+  __builtin_trap();
   return 0;
 }

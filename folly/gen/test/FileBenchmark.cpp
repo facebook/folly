@@ -46,7 +46,7 @@ BENCHMARK(ByLine_Pipes, iters) {
     PCHECK(::read(rfd, &buf, 1) == 1);  // wait for startup
   }
 
-  CHECK_ERR(rfd >= 0);
+  CHECK_ERR(rfd);
   auto s = byLine(folly::File(rfd)) | eachTo<int64_t>() | sum;
   folly::doNotOptimizeAway(s);
 
