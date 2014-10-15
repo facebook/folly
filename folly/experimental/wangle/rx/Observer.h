@@ -31,7 +31,7 @@ template <class T> class FunctionObserver;
 template <class T>
 struct Observer {
   // These are what it means to be an Observer.
-  virtual void onNext(T) = 0;
+  virtual void onNext(const T&) = 0;
   virtual void onError(Error) = 0;
   virtual void onCompleted() = 0;
 
@@ -79,7 +79,7 @@ struct Observer {
 /// make one of these directly - instead use the Observer::create() methods.
 template <class T>
 struct FunctionObserver : public Observer<T> {
-  typedef std::function<void(T)> OnNext;
+  typedef std::function<void(const T&)> OnNext;
   typedef std::function<void(Error)> OnError;
   typedef std::function<void()> OnCompleted;
 
@@ -92,7 +92,7 @@ struct FunctionObserver : public Observer<T> {
       onCompleted_(std::forward<C>(c))
   {}
 
-  void onNext(T val) override {
+  void onNext(const T& val) override {
     if (onNext_) onNext_(val);
   }
 

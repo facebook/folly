@@ -105,3 +105,43 @@ TEST(RxTest, SubscribeUnsubscribeDuringCallback) {
   EXPECT_EQ(2, outerCount);
   EXPECT_EQ(0, innerCount);
 }
+
+// Move only type
+typedef std::unique_ptr<int> MO;
+static MO makeMO() { return folly::make_unique<int>(1); }
+template <typename T>
+static ObserverPtr<T> makeMOObserver() {
+  return Observer<T>::create([](const T& mo) {
+    EXPECT_EQ(1, *mo);
+  });
+}
+
+TEST(RxTest, MoveOnlyRvalue) {
+  Subject<MO> subject;
+  auto s1 = subject.subscribe(makeMOObserver<MO>());
+  auto s2 = subject.subscribe(makeMOObserver<MO>());
+  auto mo = makeMO();
+  // Can't bind lvalues to rvalue references
+  // subject.onNext(mo);
+  subject.onNext(std::move(mo));
+  subject.onNext(makeMO());
+}
+
+// Copy only type
+struct CO {
+  CO() = default;
+  CO(const CO&) = default;
+  CO(CO&&) = delete;
+};
+
+template <typename T>
+static ObserverPtr<T> makeCOObserver() {
+  return Observer<T>::create([](const T& mo) {});
+}
+
+TEST(RxTest, CopyOnly) {
+  Subject<CO> subject;
+  auto s1 = subject.subscribe(makeCOObserver<CO>());
+  CO co;
+  subject.onNext(co);
+}
