@@ -38,7 +38,7 @@ public:
   Promise(Promise<T>&&);
   Promise& operator=(Promise<T>&&);
 
-  /** Return a Future tied to the shared state. This can be called only
+  /** Return a Future tied to the shared core state. This can be called only
     once, thereafter Future already retrieved exception will be raised. */
   Future<T> getFuture();
 
@@ -76,13 +76,13 @@ public:
   void fulfil(F&& func);
 
 private:
-  typedef typename Future<T>::statePtr statePtr;
+  typedef typename Future<T>::corePtr corePtr;
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;
 
-  // shared state object
-  statePtr state_;
+  // shared core state object
+  corePtr core_;
 
   void throwIfFulfilled();
   void throwIfRetrieved();

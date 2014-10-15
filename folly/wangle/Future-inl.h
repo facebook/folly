@@ -19,7 +19,7 @@
 #include <chrono>
 #include <thread>
 
-#include <folly/wangle/detail/State.h>
+#include <folly/wangle/detail/Core.h>
 #include <folly/Baton.h>
 
 namespace folly { namespace wangle {
@@ -35,13 +35,13 @@ struct isFuture<Future<T> > {
 };
 
 template <class T>
-Future<T>::Future(Future<T>&& other) noexcept : state_(nullptr) {
+Future<T>::Future(Future<T>&& other) noexcept : core_(nullptr) {
   *this = std::move(other);
 }
 
 template <class T>
 Future<T>& Future<T>::operator=(Future<T>&& other) {
-  std::swap(state_, other.state_);
+  std::swap(core_, other.core_);
   return *this;
 }
 
@@ -52,15 +52,15 @@ Future<T>::~Future() {
 
 template <class T>
 void Future<T>::detach() {
-  if (state_) {
-    state_->detachFuture();
-    state_ = nullptr;
+  if (core_) {
+    core_->detachFuture();
+    core_ = nullptr;
   }
 }
 
 template <class T>
 void Future<T>::throwIfInvalid() const {
-  if (!state_)
+  if (!core_)
     throw NoState();
 }
 
@@ -68,7 +68,7 @@ template <class T>
 template <class F>
 void Future<T>::setCallback_(F&& func) {
   throwIfInvalid();
-  state_->setCallback(std::move(func));
+  core_->setCallback(std::move(func));
 }
 
 template <class T>
@@ -95,10 +95,10 @@ Future<T>::then(F&& func) {
      sophisticated that avoids making a new Future object when it can, as an
      optimization. But this is correct.
 
-     state_ can't be moved, it is explicitly disallowed (as is copying). But
+     core_ can't be moved, it is explicitly disallowed (as is copying). But
      if there's ever a reason to allow it, this is one place that makes that
      assumption and would need to be fixed. We use a standard shared pointer
-     for state_ (by copying it in), which means in essence obj holds a shared
+     for core_ (by copying it in), which means in essence obj holds a shared
      pointer to itself.  But this shouldn't leak because Promise will not
      outlive the continuation, because Promise will setException() with a
      broken Promise if it is destructed before completed. We could use a
@@ -110,11 +110,11 @@ Future<T>::then(F&& func) {
      We have to move in the Promise and func using the MoveWrapper
      hack. (func could be copied but it's a big drag on perf).
 
-     Two subtle but important points about this design. detail::State has no
+     Two subtle but important points about this design. detail::Core has no
      back pointers to Future or Promise, so if Future or Promise get moved
      (and they will be moved in performant code) we don't have to do
      anything fancy. And because we store the continuation in the
-     detail::State, not in the Future, we can execute the continuation even
+     detail::Core, not in the Future, we can execute the continuation even
      after the Future has gone out of scope. This is an intentional design
      decision. It is likely we will want to be able to cancel a continuation
      in some circumstances, but I think it should be explicit not implicit
@@ -172,21 +172,21 @@ template <class T>
 typename std::add_lvalue_reference<T>::type Future<T>::value() {
   throwIfInvalid();
 
-  return state_->value();
+  return core_->value();
 }
 
 template <class T>
 typename std::add_lvalue_reference<const T>::type Future<T>::value() const {
   throwIfInvalid();
 
-  return state_->value();
+  return core_->value();
 }
 
 template <class T>
 Try<T>& Future<T>::getTry() {
   throwIfInvalid();
 
-  return state_->getTry();
+  return core_->getTry();
 }
 
 template <class T>
@@ -195,7 +195,7 @@ inline Future<T> Future<T>::via(Executor* executor) {
   throwIfInvalid();
 
   this->deactivate();
-  state_->setExecutor(executor);
+  core_->setExecutor(executor);
 
   return std::move(*this);
 }
@@ -203,7 +203,7 @@ inline Future<T> Future<T>::via(Executor* executor) {
 template <class T>
 bool Future<T>::isReady() const {
   throwIfInvalid();
-  return state_->ready();
+  return core_->ready();
 }
 
 // makeFuture

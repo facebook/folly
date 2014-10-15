@@ -20,31 +20,31 @@
 #include <thread>
 
 #include <folly/wangle/WangleException.h>
-#include <folly/wangle/detail/State.h>
+#include <folly/wangle/detail/Core.h>
 
 namespace folly { namespace wangle {
 
 template <class T>
-Promise<T>::Promise() : retrieved_(false), state_(new detail::State<T>())
+Promise<T>::Promise() : retrieved_(false), core_(new detail::Core<T>())
 {}
 
 template <class T>
-Promise<T>::Promise(Promise<T>&& other) : state_(nullptr) {
+Promise<T>::Promise(Promise<T>&& other) : core_(nullptr) {
   *this = std::move(other);
 }
 
 template <class T>
 Promise<T>& Promise<T>::operator=(Promise<T>&& other) {
-  std::swap(state_, other.state_);
+  std::swap(core_, other.core_);
   std::swap(retrieved_, other.retrieved_);
   return *this;
 }
 
 template <class T>
 void Promise<T>::throwIfFulfilled() {
-  if (!state_)
+  if (!core_)
     throw NoState();
-  if (state_->ready())
+  if (core_->ready())
     throw PromiseAlreadySatisfied();
 }
 
@@ -61,11 +61,11 @@ Promise<T>::~Promise() {
 
 template <class T>
 void Promise<T>::detach() {
-  if (state_) {
+  if (core_) {
     if (!retrieved_)
-      state_->detachFuture();
-    state_->detachPromise();
-    state_ = nullptr;
+      core_->detachFuture();
+    core_->detachPromise();
+    core_ = nullptr;
   }
 }
 
@@ -73,7 +73,7 @@ template <class T>
 Future<T> Promise<T>::getFuture() {
   throwIfRetrieved();
   retrieved_ = true;
-  return Future<T>(state_);
+  return Future<T>(core_);
 }
 
 template <class T>
@@ -85,13 +85,13 @@ void Promise<T>::setException(E const& e) {
 template <class T>
 void Promise<T>::setException(std::exception_ptr const& e) {
   throwIfFulfilled();
-  state_->setException(e);
+  core_->setException(e);
 }
 
 template <class T>
 void Promise<T>::fulfilTry(Try<T>&& t) {
   throwIfFulfilled();
-  state_->fulfil(std::move(t));
+  core_->fulfil(std::move(t));
 }
 
 template <class T>

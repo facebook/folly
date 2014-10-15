@@ -37,24 +37,24 @@ void empty_callback(Try<T>&&) { }
 
 /** The shared state object for Future and Promise. */
 template<typename T>
-class State {
+class Core {
  public:
   // This must be heap-constructed. There's probably a way to enforce that in
   // code but since this is just internal detail code and I don't know how
   // off-hand, I'm punting.
-  State() = default;
-  ~State() {
+  Core() = default;
+  ~Core() {
     assert(calledBack_);
     assert(detached_ == 2);
   }
 
   // not copyable
-  State(State const&) = delete;
-  State& operator=(State const&) = delete;
+  Core(Core const&) = delete;
+  Core& operator=(Core const&) = delete;
 
   // not movable (see comment in the implementation of Future::then)
-  State(State&&) noexcept = delete;
-  State& operator=(State&&) = delete;
+  Core(Core&&) noexcept = delete;
+  Core& operator=(Core&&) = delete;
 
   Try<T>& getTry() {
     return *value_;

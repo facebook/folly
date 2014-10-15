@@ -199,23 +199,23 @@ class Future {
   ///
   /// Inactive Futures will activate upon destruction.
   void activate() {
-    state_->activate();
+    core_->activate();
   }
   void deactivate() {
-    state_->deactivate();
+    core_->deactivate();
   }
   bool isActive() {
-    return state_->isActive();
+    return core_->isActive();
   }
 
  private:
-  typedef detail::State<T>* statePtr;
+  typedef detail::Core<T>* corePtr;
 
-  // shared state object
-  statePtr state_;
+  // shared core state object
+  corePtr core_;
 
   explicit
-  Future(statePtr obj) : state_(obj) {}
+  Future(corePtr obj) : core_(obj) {}
 
   void detach();
 
