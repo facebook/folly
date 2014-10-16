@@ -295,7 +295,7 @@ bool operator!=(const Optional<V>& a, const V& b) {
 }
 
 template<class V>
-bool operator==(const V& a, const Optional<V&> b) {
+bool operator==(const V& a, const Optional<V>& b) {
   return b.hasValue() && b.value() == a;
 }
 
