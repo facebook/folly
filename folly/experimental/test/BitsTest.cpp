@@ -252,50 +252,64 @@ T testValue(int bits) {
 }
 }
 
-static_assert((-4) >> 1 == -2, "OH");
 template <bool aligned>
 void testConcatenation() {
   // concatenate fields of length 1, 2, 3, ... 64, all unsigned, storing 2/3s
   // the maximum value in each.
-  const size_t bitLimit = 64;
-  const size_t bitsPerPass = (1 + bitLimit) * bitLimit / 2;
-  const size_t totalBits = bitsPerPass * 3;
-  uint8_t buf[(totalBits + 7) / 8];
 #define EACH_UNSIGNED_SIZE(MACRO, ARG) \
-  MACRO(8, uint8_t, ARG);              \
-  MACRO(16, uint16_t, ARG);            \
-  MACRO(32, uint32_t, ARG);            \
-  MACRO(64, uint64_t, ARG);
+  MACRO(8, uint8_t, ARG)               \
+  MACRO(16, uint16_t, ARG)             \
+  MACRO(32, uint32_t, ARG)             \
+  MACRO(64, uint64_t, ARG)
 #define EACH_SIGNED_SIZE(MACRO, ARG) \
-  MACRO(7, int8_t, ARG);             \
-  MACRO(15, int16_t, ARG);           \
-  MACRO(31, int32_t, ARG);           \
-  MACRO(63, int64_t, ARG);
+  MACRO(7, int8_t, ARG)              \
+  MACRO(15, int16_t, ARG)            \
+  MACRO(31, int32_t, ARG)            \
+  MACRO(63, int64_t, ARG)
+  // calculate how much buffer size we need
+  size_t bufSize = 0;
   {
-    size_t w = 0, s;
+    size_t w = 0;
+#define SIZE_TEST(N, T, NEG)        \
+  for (size_t s = 0; s <= N; ++s) { \
+    w += s;                         \
+  }
+    EACH_UNSIGNED_SIZE(SIZE_TEST, false)
+    EACH_SIGNED_SIZE(SIZE_TEST, false)
+    EACH_SIGNED_SIZE(SIZE_TEST, true)
+#undef SIZE_TEST
+    bufSize = w;
+  }
+  // bits->bytes, rounding up
+  bufSize = (bufSize + 7) / 8;
+  // round up to next multiple of 8
+  bufSize = (bufSize + 7) / 8 * 8;
+  std::vector<uint8_t> buffer(bufSize);
+  uint8_t *buf = buffer.data();
+  {
+    size_t w = 0;
 #define WRITE_TEST(N, T, NEG)                                                 \
-  for (; s <= N; ++s, w += s) {                                               \
+  for (size_t s = 0; s <= N; ++s) {                                           \
+    CHECK_LE(s + w, 8 * bufSize);                                             \
     testSet<aligned>(buf, w, s, testValue<T, NEG>(s));                        \
     EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, w, s))) << s; \
+    w += s;                                                                   \
   }
-    s = 0;
     EACH_UNSIGNED_SIZE(WRITE_TEST, false)
-    s = 0;
     EACH_SIGNED_SIZE(WRITE_TEST, false)
-    s = 0;
     EACH_SIGNED_SIZE(WRITE_TEST, true)
 #undef WRITE_TEST
   }
   {
-    size_t r = 0, s;
-#define READ_TEST(N, T, NEG)  \
-  for (; s <= N; ++s, r += s) \
-    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, r, s))) << s;
-    s = 0;
+    size_t r = 0;
+#define READ_TEST(N, T, NEG)                                                  \
+  for (size_t s = 0; s <= N; ++s) {                                           \
+    CHECK_LE(s + r, 8 * bufSize);                                             \
+    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, r, s))) << s; \
+    r += s;                                                                   \
+  }
     EACH_UNSIGNED_SIZE(READ_TEST, false)
-    s = 0;
     EACH_SIGNED_SIZE(READ_TEST, false)
-    s = 0;
     EACH_SIGNED_SIZE(READ_TEST, true)
 #undef READ_TEST
   }
@@ -304,9 +318,7 @@ void testConcatenation() {
 
 TEST(Bits, ConcatenationUnalignedUnsigned) { testConcatenation<false>(); }
 
-TEST(Bits, ConcatenationAligned) {
-  testConcatenation<true>();
-}
+TEST(Bits, ConcatenationAligned) { testConcatenation<true>(); }
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
