@@ -25,12 +25,12 @@ namespace folly {
 // having an undefined compiler function called.
 #if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
 #if __GLIBC_PREREQ(2, 12)
-# define FOLLY_GLIBC_2_12
+# define FOLLY_HAS_PTHREAD_SETNAME_NP
 #endif
 #endif
 
 inline bool setThreadName(pthread_t id, StringPiece name) {
-#ifdef FOLLY_GLIBC_2_12
+#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP
   return 0 == pthread_setname_np(id, name.fbstr().substr(0, 15).c_str());
 #else
   return false;

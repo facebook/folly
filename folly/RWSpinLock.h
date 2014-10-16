@@ -117,6 +117,13 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #undef RW_SPINLOCK_USE_X86_INTRINSIC_
 #endif
 
+// iOS doesn't define _mm_cvtsi64_si128 and friends
+#if defined(__SSE2__) && !TARGET_OS_IPHONE
+#define RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
+#else
+#undef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
+#endif
+
 #include <atomic>
 #include <string>
 #include <algorithm>
@@ -442,7 +449,7 @@ struct RWTicketIntTrait<64> {
   typedef uint32_t HalfInt;
   typedef uint16_t QuarterInt;
 
-#ifdef __SSE2__
+#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint16_t v[4]) {
     return _mm_set_epi16(0, 0, 0, 0, v[3], v[2], v[1], v[0]);
   }
@@ -464,7 +471,7 @@ struct RWTicketIntTrait<32> {
   typedef uint16_t HalfInt;
   typedef uint8_t QuarterInt;
 
-#ifdef __SSE2__
+#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint8_t v[4]) {
     return _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, v[3], v[2], v[1], v[0]);
@@ -598,7 +605,7 @@ class RWTicketSpinLockT : boost::noncopyable {
     t.whole = load_acquire(&ticket.whole);
     FullInt old = t.whole;
 
-#ifdef __SSE2__
+#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
     // SSE2 can reduce the lock and unlock overhead by 10%
     static const QuarterInt kDeltaBuf[4] = { 1, 1, 0, 0 };   // write/read/user
     static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);
@@ -626,7 +633,7 @@ class RWTicketSpinLockT : boost::noncopyable {
     RWTicket t, old;
     old.whole = t.whole = load_acquire(&ticket.whole);
     old.users = old.read;
-#ifdef  __SSE2__
+#ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
     // SSE2 may reduce the total lock and unlock overhead by 10%
     static const QuarterInt kDeltaBuf[4] = { 0, 1, 1, 0 };   // write/read/user
     static const __m128i kDelta = IntTraitType::make128(kDeltaBuf);

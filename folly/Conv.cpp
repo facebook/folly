@@ -46,8 +46,7 @@ static_assert(sizeof(unsigned long long) >= 8,
               "Wrong value for MaxString<unsigned long long>::value"
               ", please update.");
 
-/* Test for GCC >= 3.6.0 */
-#if __GNUC__ > 3 || (__GNUC__ == 3 && (__GNUC_MINOR__ >= 6))
+#ifdef FOLLY_HAVE_INT128_T
 template <> const char *const MaxString<__uint128_t>::value =
   "340282366920938463463374607431768211455";
 #endif

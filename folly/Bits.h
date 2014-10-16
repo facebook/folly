@@ -55,8 +55,6 @@
 #ifndef FOLLY_BITS_H_
 #define FOLLY_BITS_H_
 
-#include <folly/Portability.h>
-
 #if !defined(__clang__) && !defined(_MSC_VER)
 #define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #else
@@ -404,10 +402,12 @@ class Endian {
     return detail::EndianInt<T>::little(x);
   }
 
+#if !defined(__ANDROID__)
   FB_GEN(64)
   FB_GEN(32)
   FB_GEN(16)
   FB_GEN(8)
+#endif
 };
 
 #undef FB_GEN

@@ -42,12 +42,12 @@ namespace folly { namespace hash {
 // This is the Hash128to64 function from Google's cityhash (available
 // under the MIT License).  We use it to reduce multiple 64 bit hashes
 // into a single hash.
-inline size_t hash_128_to_64(const size_t upper, const size_t lower) {
+inline uint64_t hash_128_to_64(const uint64_t upper, const uint64_t lower) {
   // Murmur-inspired hashing.
-  const size_t kMul = 0x9ddfea08eb382d69ULL;
-  size_t a = (lower ^ upper) * kMul;
+  const uint64_t kMul = 0x9ddfea08eb382d69ULL;
+  uint64_t a = (lower ^ upper) * kMul;
   a ^= (a >> 47);
-  size_t b = (upper ^ a) * kMul;
+  uint64_t b = (upper ^ a) * kMul;
   b ^= (b >> 47);
   b *= kMul;
   return b;

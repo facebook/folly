@@ -245,4 +245,9 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 }  // namespace gflags
 #endif
 
+// for TARGET_OS_IPHONE
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
+
 #endif // FOLLY_PORTABILITY_H_
