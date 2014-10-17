@@ -70,6 +70,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
 	experimental/io/FsUtil.h \
+	experimental/Singleton.h \
 	experimental/TestUtil.h \
 	experimental/wangle/concurrent/Codel.h \
 	experimental/wangle/ConnectionManager.h \
@@ -265,6 +266,7 @@ libfolly_la_SOURCES = \
 	wangle/ManualExecutor.cpp \
 	wangle/ThreadGate.cpp \
 	experimental/io/FsUtil.cpp \
+	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
 	experimental/wangle/concurrent/Codel.cpp \
 	experimental/wangle/ConnectionManager.cpp \
