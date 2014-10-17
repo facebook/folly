@@ -19,16 +19,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <folly/io/PortableSpinLock.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/io/async/EventFDWrapper.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/Request.h>
 #include <folly/Likely.h>
-#include <folly/SmallLocks.h>
 #include <folly/ScopeGuard.h>
 
 #include <glog/logging.h>
 #include <deque>
+
+#if __linux__ && !__ANDROID__
+#define FOLLY_HAVE_EVENTFD
+#include <folly/io/async/EventFDWrapper.h>
+#endif
 
 namespace folly {
 
@@ -169,8 +173,10 @@ class NotificationQueue {
   };
 
   enum class FdType {
+    PIPE,
+#ifdef FOLLY_HAVE_EVENTFD
     EVENTFD,
-    PIPE
+#endif
   };
 
   /**
@@ -189,17 +195,20 @@ class NotificationQueue {
    * mostly for testing purposes.
    */
   explicit NotificationQueue(uint32_t maxSize = 0,
-                              FdType fdType = FdType::EVENTFD)
+#ifdef FOLLY_HAVE_EVENTFD
+                             FdType fdType = FdType::EVENTFD)
+#else
+                             FdType fdType = FdType::PIPE)
+#endif
     : eventfd_(-1),
       pipeFds_{-1, -1},
       advisoryMaxQueueSize_(maxSize),
       pid_(getpid()),
       queue_() {
 
-    spinlock_.init();
-
     RequestContext::getStaticContext();
 
+#ifdef FOLLY_HAVE_EVENTFD
     if (fdType == FdType::EVENTFD) {
       eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
       if (eventfd_ == -1) {
@@ -216,6 +225,7 @@ class NotificationQueue {
         }
       }
     }
+#endif
     if (fdType == FdType::PIPE) {
       if (pipe(pipeFds_)) {
         folly::throwSystemError("Failed to create pipe for NotificationQueue",
@@ -342,7 +352,7 @@ class NotificationQueue {
 
     try {
 
-      folly::MSLGuard g(spinlock_);
+      folly::io::PortableSpinLockGuard g(spinlock_);
 
       if (UNLIKELY(queue_.empty())) {
         return false;
@@ -366,7 +376,7 @@ class NotificationQueue {
   }
 
   int size() {
-    folly::MSLGuard g(spinlock_);
+    folly::io::PortableSpinLockGuard g(spinlock_);
     return queue_.size();
   }
 
@@ -393,7 +403,7 @@ class NotificationQueue {
   NotificationQueue& operator=(NotificationQueue const &) = delete;
 
   inline bool checkQueueSize(size_t maxSize, bool throws=true) const {
-    DCHECK(0 == spinlock_.try_lock());
+    DCHECK(0 == spinlock_.trylock());
     if (maxSize > 0 && queue_.size() >= maxSize) {
       if (throws) {
         throw std::overflow_error("unable to add message to NotificationQueue: "
@@ -461,7 +471,7 @@ class NotificationQueue {
     checkPid();
     bool signal = false;
     {
-      folly::MSLGuard g(spinlock_);
+      folly::io::PortableSpinLockGuard g(spinlock_);
       if (!checkQueueSize(maxSize, throws)) {
         return false;
       }
@@ -485,7 +495,7 @@ class NotificationQueue {
     checkPid();
     bool signal = false;
     {
-      folly::MSLGuard g(spinlock_);
+      folly::io::PortableSpinLockGuard g(spinlock_);
       if (!checkQueueSize(maxSize, throws)) {
         return false;
       }
@@ -507,7 +517,7 @@ class NotificationQueue {
     bool signal = false;
     size_t numAdded = 0;
     {
-      folly::MSLGuard g(spinlock_);
+      folly::io::PortableSpinLockGuard g(spinlock_);
       while (first != last) {
         queue_.push_back(std::make_pair(*first, RequestContext::saveContext()));
         ++first;
@@ -522,7 +532,7 @@ class NotificationQueue {
     }
   }
 
-  mutable folly::MicroSpinLock spinlock_;
+  mutable folly::io::PortableSpinLock spinlock_;
   int eventfd_;
   int pipeFds_[2]; // to fallback to on older/non-linux systems
   uint32_t advisoryMaxQueueSize_;
@@ -675,7 +685,7 @@ void NotificationQueue<MessageT>::Consumer::init(
   queue_ = queue;
 
   {
-    folly::MSLGuard g(queue_->spinlock_);
+    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
     queue_->numConsumers_++;
   }
   queue_->signalEvent();
@@ -695,7 +705,7 @@ void NotificationQueue<MessageT>::Consumer::stopConsuming() {
   }
 
   {
-    folly::MSLGuard g(queue_->spinlock_);
+    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
     queue_->numConsumers_--;
     setActive(false);
   }
