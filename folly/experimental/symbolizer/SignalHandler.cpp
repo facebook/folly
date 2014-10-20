@@ -234,7 +234,7 @@ void dumpStackTrace(bool symbolize) {
   } else {
     print("(safe mode, symbolizer not available)\n");
     AddressFormatter formatter;
-    for (ssize_t i = 0; i < addresses.frameCount; ++i) {
+    for (size_t i = 0; i < addresses.frameCount; ++i) {
       print(formatter.format(addresses.addresses[i]));
       print("\n");
     }

@@ -33,7 +33,8 @@ namespace {
 void readRandomDevice(void* data, size_t size) {
   // Keep it open for the duration of the program
   static File randomDevice("/dev/urandom");
-  PCHECK(readFull(randomDevice.fd(), data, size) == size);
+  auto bytesRead = readFull(randomDevice.fd(), data, size);
+  PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);
 }
 
 class BufferedRandomDevice {

@@ -284,7 +284,7 @@ TEST(small_vector, Insert) {
   folly::small_vector<int> someVec(3, 3);
   someVec.insert(someVec.begin(), 12, 12);
   EXPECT_EQ(someVec.size(), 15);
-  for (int i = 0; i < someVec.size(); ++i) {
+  for (size_t i = 0; i < someVec.size(); ++i) {
     if (i < 12) {
       EXPECT_EQ(someVec[i], 12);
     } else {
@@ -424,7 +424,7 @@ TEST(small_vector, GrowShrinkGrow) {
   auto capacity = vec.capacity();
 
   auto oldSize = vec.size();
-  for (int i = 0; i < oldSize; ++i) {
+  for (size_t i = 0; i < oldSize; ++i) {
     vec.erase(vec.begin() + (std::rand() % vec.size()));
     EXPECT_EQ(vec.capacity(), capacity);
   }

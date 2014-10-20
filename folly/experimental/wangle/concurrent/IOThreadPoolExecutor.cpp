@@ -132,7 +132,7 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
 // threadListLock_ is writelocked
 void IOThreadPoolExecutor::stopThreads(size_t n) {
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     const auto ioThread = std::static_pointer_cast<IOThread>(
         threadList_.get()[i]);
     ioThread->shouldRun = false;

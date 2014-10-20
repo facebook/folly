@@ -295,7 +295,7 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
                               p.second,
                               actualUncompressedLength);
 
-  if (n != actualUncompressedLength) {
+  if (n < 0 || uint64_t(n) != actualUncompressedLength) {
     throw std::runtime_error(to<std::string>(
         "LZ4 decompression returned invalid value ", n));
   }

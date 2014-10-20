@@ -275,7 +275,7 @@ void checkResplitMaxLength(vector<string> ins,
   splitter.flush();
 
   EXPECT_EQ(outs.size(), pieces.size());
-  for (int i = 0; i < outs.size(); ++i) {
+  for (size_t i = 0; i < outs.size(); ++i) {
     EXPECT_EQ(outs[i], pieces[i]);
   }
 

@@ -726,7 +726,7 @@ TEST(IPAddress, SolicitedNodeAddress) {
 TEST_P(IPAddressByteAccessorTest, CheckBytes) {
   auto addrData = GetParam();
   IPAddress ip(addrData.address);
-  auto i = 0;
+  size_t i = 0;
   for (auto byitr = addrData.bytes.begin(); i < ip.byteCount(); ++i, ++byitr) {
     EXPECT_EQ(*byitr, ip.getNthMSByte(i));
     EXPECT_EQ(*byitr, ip.isV4() ?
@@ -750,7 +750,7 @@ TEST_P(IPAddressBitAccessorTest, CheckBits) {
   //We will traverse the IPAddress bits from 0 to bitCount -1
   auto bitr = folly::makeBitIterator(littleEndianAddrData.begin());
   IPAddress ip(addrData.address);
-  for (auto i = 0; i < ip.bitCount(); ++i) {
+  for (size_t i = 0; i < ip.bitCount(); ++i) {
     auto msbIndex = ip.bitCount() - i - 1;
     EXPECT_EQ(*bitr, ip.getNthMSBit(msbIndex));
     EXPECT_EQ(*bitr, ip.isV4() ? ip.asV4().getNthMSBit(msbIndex) :

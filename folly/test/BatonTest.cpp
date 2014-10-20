@@ -76,12 +76,12 @@ BENCHMARK(posix_sem_pingpong, iters) {
   sem_init(a, 0, 0);
   sem_init(b, 0, 0);
   auto thr = std::thread([=]{
-    for (int i = 0; i < iters; ++i) {
+    for (size_t i = 0; i < iters; ++i) {
       sem_wait(a);
       sem_post(b);
     }
   });
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     sem_post(a);
     sem_wait(b);
   }

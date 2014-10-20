@@ -895,7 +895,7 @@ TYPED_TEST(NeedleFinderTest, Empty) {
 TYPED_TEST(NeedleFinderTest, Unaligned) {
   // works correctly even if input buffers are not 16-byte aligned
   string s = "0123456789ABCDEFGH";
-  for (int i = 0; i < s.size(); ++i) {
+  for (size_t i = 0; i < s.size(); ++i) {
     StringPiece a(s.c_str() + i);
     for (int j = 0; j < s.size(); ++j) {
       StringPiece b(s.c_str() + j);
@@ -912,23 +912,23 @@ TYPED_TEST(NeedleFinderTest, Needles256) {
   const auto maxValue = std::numeric_limits<StringPiece::value_type>::max();
   // make the size ~big to avoid any edge-case branches for tiny haystacks
   const int haystackSize = 50;
-  for (int i = minValue; i <= maxValue; i++) {  // <=
+  for (size_t i = minValue; i <= maxValue; i++) {  // <=
     needles.push_back(i);
   }
   EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
-  for (int i = minValue; i <= maxValue; i++) {
+  for (size_t i = minValue; i <= maxValue; i++) {
     EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
   }
 
   needles.append("these are redundant characters");
   EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
-  for (int i = minValue; i <= maxValue; i++) {
+  for (size_t i = minValue; i <= maxValue; i++) {
     EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
   }
 }
 
 TYPED_TEST(NeedleFinderTest, Base) {
-  for (int i = 0; i < 32; ++i) {
+  for (size_t i = 0; i < 32; ++i) {
     for (int j = 0; j < 32; ++j) {
       string s = string(i, 'X') + "abca" + string(i, 'X');
       string delims = string(j, 'Y') + "a" + string(j, 'Y');
@@ -1047,10 +1047,11 @@ TEST(RangeFunc, CArray) {
   testRangeFunc(x, 4);
 }
 
-std::string get_rand_str(
-    int size, std::uniform_int_distribution<>& dist, std::mt19937& gen) {
+std::string get_rand_str(size_t size,
+                         std::uniform_int_distribution<>& dist,
+                         std::mt19937& gen) {
   std::string ret(size, '\0');
-  for (int i=0; i<size; ++i) {
+  for (size_t i = 0; i < size; ++i) {
     ret[i] = static_cast<char>(dist(gen));
   }
 
@@ -1076,9 +1077,9 @@ TEST(ReplaceAt, exhaustiveTest) {
   std::uniform_int_distribution<> dist('a', 'z');
 
   for (int i=0; i < 100; ++i) {
-    for (int j = 1; j <= msp.size(); ++j) {
+    for (size_t j = 1; j <= msp.size(); ++j) {
       auto replacement = get_rand_str(j, dist, gen);
-      for (int pos=0; pos < msp.size() - j; ++pos) {
+      for (size_t pos = 0; pos < msp.size() - j; ++pos) {
         msp.replaceAt(pos, replacement);
         str.replace(pos, replacement.size(), replacement);
         EXPECT_EQ(msp.compare(str), 0);
@@ -1132,9 +1133,9 @@ TEST(ReplaceAll, randomTest) {
   std::uniform_int_distribution<> dist('A', 'Z');
 
   for (int i=0; i < 100; ++i) {
-    for (int j = 1; j <= orig.size(); ++j) {
+    for (size_t j = 1; j <= orig.size(); ++j) {
       auto replacement = get_rand_str(j, dist, gen);
-      for (int pos=0; pos < msp.size() - j; ++pos) {
+      for (size_t pos = 0; pos < msp.size() - j; ++pos) {
         auto piece = orig.substr(pos, j);
         EXPECT_EQ(msp.replaceAll(piece, replacement), 1);
         EXPECT_EQ(msp.find(replacement), pos);

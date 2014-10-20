@@ -80,10 +80,10 @@ const CacheLocality& CacheLocality::system<std::atomic>() {
 /// Returns the first decimal number in the string, or throws an exception
 /// if the string does not start with a number terminated by ',', '-',
 /// '\n', or eos.
-static ssize_t parseLeadingNumber(const std::string& line) {
+static size_t parseLeadingNumber(const std::string& line) {
   auto raw = line.c_str();
   char *end;
-  unsigned val = strtoul(raw, &end, 10);
+  unsigned long val = strtoul(raw, &end, 10);
   if (end == raw || (*end != ',' && *end != '-' && *end != '\n')) {
     throw std::runtime_error(to<std::string>(
         "error parsing list '", line, "'").c_str());
@@ -165,7 +165,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
   // to each other than entries that are far away.  For striping we want
   // the inverse map, since we are starting with the cpu
   std::vector<size_t> indexes(cpus.size());
-  for (int i = 0; i < cpus.size(); ++i) {
+  for (size_t i = 0; i < cpus.size(); ++i) {
     indexes[cpus[i]] = i;
   }
 

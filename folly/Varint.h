@@ -94,7 +94,8 @@ inline uint64_t decodeVarint(ByteRange& data) {
   const int8_t* p = begin;
   uint64_t val = 0;
 
-  if (LIKELY(end - begin >= kMaxVarintLength64)) {  // fast path
+  // end is always greater than or equal to begin, so this subtraction is safe
+  if (LIKELY(size_t(end - begin) >= kMaxVarintLength64)) {  // fast path
     int64_t b;
     do {
       b = *p++; val  = (b & 0x7f)      ; if (b >= 0) break;

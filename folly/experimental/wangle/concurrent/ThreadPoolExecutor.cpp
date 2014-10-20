@@ -85,7 +85,7 @@ void ThreadPoolExecutor::setNumThreads(size_t n) {
 // threadListLock_ is writelocked
 void ThreadPoolExecutor::addThreads(size_t n) {
   std::vector<ThreadPtr> newThreads;
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     newThreads.push_back(makeThread());
   }
   for (auto& thread : newThreads) {
@@ -106,7 +106,7 @@ void ThreadPoolExecutor::removeThreads(size_t n, bool isJoin) {
   CHECK(stoppedThreads_.size() == 0);
   isJoin_ = isJoin;
   stopThreads(n);
-  for (int i = 0; i < n; i++) {
+  for (size_t i = 0; i < n; i++) {
     auto thread = stoppedThreads_.take();
     thread->handle.join();
     threadList_.remove(thread);

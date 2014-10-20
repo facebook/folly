@@ -90,7 +90,6 @@ TEST(Ahm, BasicNoncopyable) {
 }
 
 typedef int32_t     KeyT;
-typedef int64_t     KeyTBig;
 typedef int32_t     ValueT;
 
 typedef AtomicHashMap<KeyT,ValueT> AHMapT;
@@ -109,7 +108,7 @@ static int genVal(int key) {
 TEST(Ahm, grow) {
   VLOG(1) << "Overhead: " << sizeof(AHArrayT) << " (array) " <<
     sizeof(AHMapT) + sizeof(AHArrayT) << " (map/set) Bytes.";
-  int numEntries = 10000;
+  uint64_t numEntries = 10000;
   float sizeFactor = 0.46;
 
   std::unique_ptr<AHMapT> m(new AHMapT(int(numEntries * sizeFactor), config));
@@ -138,7 +137,7 @@ TEST(Ahm, grow) {
   EXPECT_GT(m->numSubMaps(), 1);  // make sure we grew
   success = true;
   EXPECT_EQ(m->size(), numEntries);
-  for (int i = 0; i < numEntries; i++) {
+  for (size_t i = 0; i < numEntries; i++) {
     success &= (m->find(i)->second == genVal(i));
   }
   EXPECT_TRUE(success);
@@ -147,10 +146,12 @@ TEST(Ahm, grow) {
   success = true;
   KeyT key(0);
   AHMapT::const_iterator retIt;
-  for (uint64_t i = 0; i < numEntries; i++) {
+  for (int32_t i = 0; i < int32_t(numEntries); i++) {
     retIt = m->find(i);
     retIt = m->findAt(retIt.getIndex());
     success &= (retIt->second == genVal(i));
+    // We use a uint32_t index so that this comparison is between two
+    // variables of the same type.
     success &= (retIt->first == i);
   }
   EXPECT_TRUE(success);
@@ -175,7 +176,7 @@ TEST(Ahm, iterator) {
   std::unique_ptr<AHMapT> m(new AHMapT(int(numEntries * sizeFactor), config));
 
   // load map - make sure we succeed and the index is accurate
-  for (uint64_t i = 0; i < numEntries; i++) {
+  for (int i = 0; i < numEntries; i++) {
     m->insert(RecordT(i, genVal(i)));
   }
 
@@ -296,7 +297,7 @@ TEST(Ahm, map_exception_safety) {
 }
 
 TEST(Ahm, basicErase) {
-  int numEntries = 3000;
+  size_t numEntries = 3000;
 
   std::unique_ptr<AHMapT> s(new AHMapT(numEntries, config));
   // Iterate filling up the map and deleting all keys a few times
@@ -304,7 +305,7 @@ TEST(Ahm, basicErase) {
   for (int iterations = 0; iterations < 4; ++iterations) {
     // Testing insertion of keys
     bool success = true;
-    for (uint64_t i = 0; i < numEntries; ++i) {
+    for (size_t i = 0; i < numEntries; ++i) {
       success &= !(s->count(i));
       auto ret = s->insert(RecordT(i, i));
       success &= s->count(i);
@@ -316,7 +317,7 @@ TEST(Ahm, basicErase) {
     // Delete every key in the map and verify that the key is gone and the the
     // size is correct.
     success = true;
-    for (uint64_t i = 0; i < numEntries; ++i) {
+    for (size_t i = 0; i < numEntries; ++i) {
       success &= s->erase(i);
       success &= (s->size() == numEntries - 1 - i);
       success &= !(s->count(i));
@@ -374,7 +375,7 @@ void runThreads(void *(*thread)(void*), int numThreads, void **statuses) {
   susp.dismiss();
 
   runThreadsCreatedAllThreads.store(true);
-  for (int i = 0; i < threadIds.size(); ++i) {
+  for (size_t i = 0; i < threadIds.size(); ++i) {
     pthread_join(threadIds[i], statuses == nullptr ? nullptr : &statuses[i]);
   }
 }
@@ -502,7 +503,7 @@ TEST(Ahm, race_insert_iterate_thread_test) {
       threadIds.push_back(tid);
     }
   }
-  for (int i = 0; i < threadIds.size(); ++i) {
+  for (size_t i = 0; i < threadIds.size(); ++i) {
     pthread_join(threadIds[i], nullptr);
   }
   VLOG(1) << "Ended up with " << globalAHM->numSubMaps() << " submaps";
@@ -578,7 +579,7 @@ TEST(Ahm, thread_erase_insert_race) {
       threadIds.push_back(tid);
     }
   }
-  for (int i = 0; i < threadIds.size(); i++) {
+  for (size_t i = 0; i < threadIds.size(); i++) {
     pthread_join(threadIds[i], nullptr);
   }
 
@@ -651,7 +652,7 @@ void loadGlobalAhm() {
 
 BENCHMARK(st_aha_find, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);
-  for (int i = 0; i < iters; i++) {
+  for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i);
     folly::doNotOptimizeAway(globalAHA->find(key)->second);
   }
@@ -659,7 +660,7 @@ BENCHMARK(st_aha_find, iters) {
 
 BENCHMARK(st_ahm_find, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);
-  for (int i = 0; i < iters; i++) {
+  for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i);
     folly::doNotOptimizeAway(globalAHM->find(key)->second);
   }
@@ -683,7 +684,7 @@ BENCHMARK(mt_ahm_miss, iters) {
 
 BENCHMARK(st_ahm_miss, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);
-  for (int i = 0; i < iters; i++) {
+  for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i + iters * 100);
     folly::doNotOptimizeAway(globalAHM->find(key) == globalAHM->end());
   }
@@ -738,7 +739,7 @@ BENCHMARK(mt_ahm_find, iters) {
 
 KeyT k;
 BENCHMARK(st_baseline_modulus_and_random, iters) {
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     k = randomizeKey(i) % iters;
   }
 }
@@ -758,7 +759,7 @@ BENCHMARK(st_ahm_insert, iters) {
   std::unique_ptr<AHMapT> ahm(new AHMapT(int(iters * LF), config));
   susp.dismiss();
 
-  for (int i = 0; i < iters; i++) {
+  for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i);
     ahm->insert(key, genVal(key));
   }

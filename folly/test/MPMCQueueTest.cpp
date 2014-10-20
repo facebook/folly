@@ -175,7 +175,7 @@ TEST(MPMCQueue, single_thread_enqdeq) {
 TEST(MPMCQueue, tryenq_capacity_test) {
   for (size_t cap = 1; cap < 100; ++cap) {
     MPMCQueue<int> cq(cap);
-    for (int i = 0; i < cap; ++i) {
+    for (size_t i = 0; i < cap; ++i) {
       EXPECT_TRUE(cq.write(i));
     }
     EXPECT_FALSE(cq.write(100));

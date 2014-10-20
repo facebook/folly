@@ -47,7 +47,7 @@ void Appender::vprintf(const char* fmt, va_list ap) {
   }
   // vsnprintf() returns the number of characters that would be printed,
   // not including the terminating nul.
-  if (ret < length()) {
+  if (size_t(ret) < length()) {
     // All of the data was successfully written.
     append(ret);
     return;
@@ -61,7 +61,7 @@ void Appender::vprintf(const char* fmt, va_list ap) {
   if (ret < 0) {
     throw std::runtime_error("error formatting printf() data");
   }
-  if (ret >= length()) {
+  if (size_t(ret) >= length()) {
     // This shouldn't ever happen.
     throw std::runtime_error("unexpectedly out of buffer space on second "
                              "vsnprintf() attmept");

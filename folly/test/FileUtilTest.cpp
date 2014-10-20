@@ -88,7 +88,7 @@ ssize_t Reader::operator()(int fd, void* buf, size_t count) {
   if (n <= 0) {
     return n;
   }
-  if (n > count) {
+  if (size_t(n) > count) {
     throw std::runtime_error("requested count too small");
   }
   memcpy(buf, data_.data(), n);
@@ -160,7 +160,7 @@ TEST_F(FileUtilTest, read) {
   for (auto& p : readers_) {
     std::string out(in_.size(), '\0');
     EXPECT_EQ(p.first, wrapFull(p.second, 0, &out[0], out.size()));
-    if (p.first != -1) {
+    if (p.first != (typeof(p.first))(-1)) {
       EXPECT_EQ(in_.substr(0, p.first), out.substr(0, p.first));
     }
   }
@@ -170,7 +170,7 @@ TEST_F(FileUtilTest, pread) {
   for (auto& p : readers_) {
     std::string out(in_.size(), '\0');
     EXPECT_EQ(p.first, wrapFull(p.second, 0, &out[0], out.size(), off_t(42)));
-    if (p.first != -1) {
+    if (p.first != (typeof(p.first))(-1)) {
       EXPECT_EQ(in_.substr(0, p.first), out.substr(0, p.first));
     }
   }
@@ -217,7 +217,7 @@ TEST_F(FileUtilTest, readv) {
 
     auto iov = buf.iov();
     EXPECT_EQ(p.first, wrapvFull(p.second, 0, iov.data(), iov.size()));
-    if (p.first != -1) {
+    if (p.first != (typeof(p.first))(-1)) {
       EXPECT_EQ(in_.substr(0, p.first), buf.join().substr(0, p.first));
     }
   }
@@ -232,7 +232,7 @@ TEST_F(FileUtilTest, preadv) {
     auto iov = buf.iov();
     EXPECT_EQ(p.first,
               wrapvFull(p.second, 0, iov.data(), iov.size(), off_t(42)));
-    if (p.first != -1) {
+    if (p.first != (typeof(p.first))(-1)) {
       EXPECT_EQ(in_.substr(0, p.first), buf.join().substr(0, p.first));
     }
   }

@@ -30,7 +30,7 @@ DECLARE_int32(bm_max_iters);
 
 // Directly invoking a function
 BENCHMARK(fn_invoke, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     doNothing();
   }
 }
@@ -97,7 +97,7 @@ BENCHMARK(virtual_fn_invoke, iters) {
 
 // Creating a function pointer and invoking it
 BENCHMARK(fn_ptr_create_invoke, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     void (*fn)() = doNothing;
     fn();
   }
@@ -105,7 +105,7 @@ BENCHMARK(fn_ptr_create_invoke, iters) {
 
 // Creating a std::function object from a function pointer, and invoking it
 BENCHMARK(std_function_create_invoke, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     std::function<void()> fn = doNothing;
     fn();
   }
@@ -114,7 +114,7 @@ BENCHMARK(std_function_create_invoke, iters) {
 // Creating a pointer-to-member and invoking it
 BENCHMARK(mem_fn_create_invoke, iters) {
   TestClass tc;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     void (TestClass::*memfn)() = &TestClass::doNothing;
     (tc.*memfn)();
   }
@@ -124,7 +124,7 @@ BENCHMARK(mem_fn_create_invoke, iters) {
 // and invoking it
 BENCHMARK(std_bind_create_invoke, iters) {
   TestClass tc;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     std::function<void()> fn = std::bind(&TestClass::doNothing, &tc);
     fn();
   }
@@ -133,7 +133,7 @@ BENCHMARK(std_bind_create_invoke, iters) {
 // Using std::bind directly to invoke a member function
 BENCHMARK(std_bind_direct_invoke, iters) {
   TestClass tc;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     auto fn = std::bind(&TestClass::doNothing, &tc);
     fn();
   }
@@ -142,7 +142,7 @@ BENCHMARK(std_bind_direct_invoke, iters) {
 // Using ScopeGuard to invoke a std::function
 BENCHMARK(scope_guard_std_function, iters) {
   std::function<void()> fn(doNothing);
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(fn);
   }
 }
@@ -150,28 +150,28 @@ BENCHMARK(scope_guard_std_function, iters) {
 // Using ScopeGuard to invoke a std::function,
 // but create the ScopeGuard with an rvalue to a std::function
 BENCHMARK(scope_guard_std_function_rvalue, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(std::function<void()>(doNothing));
   }
 }
 
 // Using ScopeGuard to invoke a function pointer
 BENCHMARK(scope_guard_fn_ptr, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(doNothing);
   }
 }
 
 // Using ScopeGuard to invoke a lambda that does nothing
 BENCHMARK(scope_guard_lambda_noop, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard([] {});
   }
 }
 
 // Using ScopeGuard to invoke a lambda that invokes a function
 BENCHMARK(scope_guard_lambda_function, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard([] { doNothing(); });
   }
 }
@@ -179,7 +179,7 @@ BENCHMARK(scope_guard_lambda_function, iters) {
 // Using ScopeGuard to invoke a lambda that modifies a local variable
 BENCHMARK(scope_guard_lambda_local_var, iters) {
   uint32_t count = 0;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard([&] {
       // Increment count if n is odd.  Without this conditional check
       // (i.e., if we just increment count each time through the loop),
@@ -200,7 +200,7 @@ BENCHMARK(scope_guard_lambda_local_var, iters) {
 BENCHMARK_DRAW_LINE()
 
 BENCHMARK(throw_exception, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     try {
       throwException();
     } catch (const std::exception& ex) {
@@ -209,7 +209,7 @@ BENCHMARK(throw_exception, iters) {
 }
 
 BENCHMARK(catch_no_exception, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     try {
       doNothing();
     } catch (const std::exception& ex) {
@@ -218,44 +218,44 @@ BENCHMARK(catch_no_exception, iters) {
 }
 
 BENCHMARK(return_exc_ptr, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     returnExceptionPtr();
   }
 }
 
 BENCHMARK(exc_ptr_param_return, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     std::exception_ptr ex;
     exceptionPtrReturnParam(&ex);
   }
 }
 
 BENCHMARK(exc_ptr_param_return_null, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     exceptionPtrReturnParam(nullptr);
   }
 }
 
 BENCHMARK(return_string, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     returnString();
   }
 }
 
 BENCHMARK(return_string_noexcept, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     returnStringNoExcept();
   }
 }
 
 BENCHMARK(return_code, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     returnCode(false);
   }
 }
 
 BENCHMARK(return_code_noexcept, iters) {
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     returnCodeNoExcept(false);
   }
 }

@@ -367,13 +367,13 @@ struct BenchmarkSingleton {
 };
 
 BENCHMARK(NormalSingleton, n) {
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     doNotOptimizeAway(getNormalSingleton());
   }
 }
 
 BENCHMARK_RELATIVE(MeyersSingleton, n) {
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     doNotOptimizeAway(getMeyersSingleton());
   }
 }
@@ -384,7 +384,7 @@ BENCHMARK_RELATIVE(FollySingleton, n) {
       nullptr, nullptr, &benchmark_vault);
   benchmark_vault.registrationComplete();
 
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     doNotOptimizeAway(Singleton<BenchmarkSingleton>::get(&benchmark_vault));
   }
 }

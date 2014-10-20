@@ -115,7 +115,7 @@ void generateRandomValues() {
   for (size_t i = 0; i < kNumValues; ++i) {
     int n = numBytes(rng);
     uint64_t val = 0;
-    for (size_t j = 0; j < n; ++j) {
+    for (int j = 0; j < n; ++j) {
       val = (val << 8) + byte(rng);
     }
     gValues[i] = val;

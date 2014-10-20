@@ -78,7 +78,8 @@ RecordIOReader::Iterator::Iterator(ByteRange range, uint32_t fileId, off_t pos)
   : range_(range),
     fileId_(fileId),
     recordAndPos_(ByteRange(), 0) {
-  if (pos >= range_.size()) {
+  if (size_t(pos) >= range_.size()) {
+    // Note that this branch can execute if pos is negative as well.
     recordAndPos_.second = off_t(-1);
     range_.clear();
   } else {

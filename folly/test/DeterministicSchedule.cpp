@@ -58,7 +58,7 @@ DeterministicSchedule::~DeterministicSchedule() {
 std::function<int(int)>
 DeterministicSchedule::uniform(long seed) {
   auto rand = std::make_shared<std::ranlux48>(seed);
-  return [rand](int numActive) {
+  return [rand](size_t numActive) {
     auto dist = std::uniform_int_distribution<int>(0, numActive - 1);
     return dist(*rand);
   };
@@ -73,7 +73,7 @@ struct UniformSubset {
   {
   }
 
-  int operator()(int numActive) {
+  size_t operator()(size_t numActive) {
     adjustPermSize(numActive);
     if (stepsLeft_-- == 0) {
       stepsLeft_ = stepsBetweenSelect_ - 1;
@@ -84,17 +84,17 @@ struct UniformSubset {
 
  private:
   std::function<int(int)> uniform_;
-  const int subsetSize_;
+  const size_t subsetSize_;
   const int stepsBetweenSelect_;
 
   int stepsLeft_;
   // only the first subsetSize_ is properly randomized
   std::vector<int> perm_;
 
-  void adjustPermSize(int numActive) {
+  void adjustPermSize(size_t numActive) {
     if (perm_.size() > numActive) {
       perm_.erase(std::remove_if(perm_.begin(), perm_.end(),
-              [=](int x){ return x >= numActive; }), perm_.end());
+              [=](size_t x){ return x >= numActive; }), perm_.end());
     } else {
       while (perm_.size() < numActive) {
         perm_.push_back(perm_.size());
@@ -104,7 +104,7 @@ struct UniformSubset {
   }
 
   void shufflePrefix() {
-    for (int i = 0; i < std::min(int(perm_.size() - 1), subsetSize_); ++i) {
+    for (size_t i = 0; i < std::min(perm_.size() - 1, subsetSize_); ++i) {
       int j = uniform_(perm_.size() - i) + i;
       std::swap(perm_[i], perm_[j]);
     }
@@ -114,7 +114,7 @@ struct UniformSubset {
 std::function<int(int)>
 DeterministicSchedule::uniformSubset(long seed, int n, int m) {
   auto gen = std::make_shared<UniformSubset>(seed, n, m);
-  return [=](int numActive) { return (*gen)(numActive); };
+  return [=](size_t numActive) { return (*gen)(numActive); };
 }
 
 void

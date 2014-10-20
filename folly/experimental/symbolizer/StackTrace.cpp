@@ -66,7 +66,7 @@ ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses) {
     return -1;
   }
   ++addresses;
-  ssize_t count = 1;
+  size_t count = 1;
   for (; count != maxAddresses; ++count, ++addresses) {
     int r = unw_step(&cursor);
     if (r < 0) {

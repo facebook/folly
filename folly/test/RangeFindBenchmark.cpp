@@ -90,7 +90,7 @@ void initDelims(int len) {
   s.push_back('a');
   ffoTestString = s;
 
-  for (int i = 0; i < ffoDelimSize; ++i) {
+  for (size_t i = 0; i < ffoDelimSize; ++i) {
     // most delimiter sets are pretty small, but occasionally there could
     // be a big one.
     auto n = rnd() % 8 + 1;
@@ -293,7 +293,7 @@ BENCHMARK_DRAW_LINE();
 
 template <class Func>
 void findFirstOfRandom(Func func, size_t iters) {
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     auto test = i % ffoDelim.size();
     auto p = func(ffoTestString, ffoDelim[test]);
     doNotOptimizeAway(p);

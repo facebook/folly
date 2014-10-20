@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << (info.frames.size() == 1 ? " frame" : " frames")
       << ")\n";
   try {
-    ssize_t frameCount = info.frames.size();
+    size_t frameCount = info.frames.size();
     // Skip our own internal frames
     static constexpr size_t skip = 3;
 

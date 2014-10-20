@@ -30,7 +30,7 @@ TEST(LogEveryMs, basic) {
   }
 
   bool atLeastOneIsGood = false;
-  for (int i = 0; i < hist.size() - 1; ++i) {
+  for (size_t i = 0; i < hist.size() - 1; ++i) {
     auto delta = hist[i + 1] - hist[i];
     if (delta > std::chrono::milliseconds(5) &&
         delta < std::chrono::milliseconds(15)) {

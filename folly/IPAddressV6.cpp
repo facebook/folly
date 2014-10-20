@@ -148,7 +148,7 @@ static inline uint16_t unpack(uint8_t lobyte, uint8_t hibyte) {
 static inline void unpackInto(const unsigned char* src,
                               uint16_t* dest,
                               size_t count) {
-  for (int i = 0, hi = 1, lo = 0; i < count; i++) {
+  for (size_t i = 0, hi = 1, lo = 0; i < count; i++) {
     dest[i] = unpack(src[hi], src[lo]);
     hi += 2;
     lo += 2;

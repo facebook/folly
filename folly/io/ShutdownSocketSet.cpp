@@ -39,7 +39,7 @@ ShutdownSocketSet::ShutdownSocketSet(size_t maxFd)
 void ShutdownSocketSet::add(int fd) {
   // Silently ignore any fds >= maxFd_, very unlikely
   DCHECK_GE(fd, 0);
-  if (fd >= maxFd_) {
+  if (size_t(fd) >= maxFd_) {
     return;
   }
 
@@ -53,7 +53,7 @@ void ShutdownSocketSet::add(int fd) {
 
 void ShutdownSocketSet::remove(int fd) {
   DCHECK_GE(fd, 0);
-  if (fd >= maxFd_) {
+  if (size_t(fd) >= maxFd_) {
     return;
   }
 
@@ -81,7 +81,7 @@ retry:
 
 int ShutdownSocketSet::close(int fd) {
   DCHECK_GE(fd, 0);
-  if (fd >= maxFd_) {
+  if (size_t(fd) >= maxFd_) {
     return folly::closeNoInt(fd);
   }
 
@@ -113,7 +113,7 @@ retry:
 
 void ShutdownSocketSet::shutdown(int fd, bool abortive) {
   DCHECK_GE(fd, 0);
-  if (fd >= maxFd_) {
+  if (fd >= 0 && size_t(fd) >= maxFd_) {
     doShutdown(fd, abortive);
     return;
   }

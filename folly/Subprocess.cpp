@@ -118,7 +118,7 @@ namespace {
 // Copy pointers to the given strings in a format suitable for posix_spawn
 std::unique_ptr<const char*[]> cloneStrings(const std::vector<std::string>& s) {
   std::unique_ptr<const char*[]> d(new const char*[s.size() + 1]);
-  for (int i = 0; i < s.size(); i++) {
+  for (size_t i = 0; i < s.size(); i++) {
     d[i] = s[i].c_str();
   }
   d[s.size()] = nullptr;
@@ -738,7 +738,7 @@ void Subprocess::communicate(FdCallback readCallback,
     } while (r == -1 && errno == EINTR);
     checkUnixError(r, "poll");
 
-    for (int i = 0; i < pipes_.size(); ++i) {
+    for (size_t i = 0; i < pipes_.size(); ++i) {
       auto& p = pipes_[i];
       DCHECK_EQ(fds[i].fd, p.parentFd);
       short events = fds[i].revents;

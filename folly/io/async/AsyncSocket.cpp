@@ -1284,7 +1284,7 @@ void AsyncSocket::handleRead() noexcept {
       // completely filled the available buffer.
       // Note that readCallback_ may have been uninstalled or changed inside
       // readDataAvailable().
-      if (bytesRead < buflen) {
+      if (size_t(bytesRead) < buflen) {
         return;
       }
     } else if (bytesRead == READ_BLOCKING) {

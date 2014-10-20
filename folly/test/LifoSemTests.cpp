@@ -289,12 +289,12 @@ BENCHMARK(lifo_sem_pingpong, iters) {
   LifoSem a;
   LifoSem b;
   auto thr = std::thread([&]{
-    for (int i = 0; i < iters; ++i) {
+    for (size_t i = 0; i < iters; ++i) {
       a.wait();
       b.post();
     }
   });
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     a.post();
     b.wait();
   }
@@ -304,11 +304,11 @@ BENCHMARK(lifo_sem_pingpong, iters) {
 BENCHMARK(lifo_sem_oneway, iters) {
   LifoSem a;
   auto thr = std::thread([&]{
-    for (int i = 0; i < iters; ++i) {
+    for (size_t i = 0; i < iters; ++i) {
       a.wait();
     }
   });
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     a.post();
   }
   thr.join();
@@ -316,7 +316,7 @@ BENCHMARK(lifo_sem_oneway, iters) {
 
 BENCHMARK(single_thread_lifo_post, iters) {
   LifoSem sem;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     sem.post();
     asm volatile ("":::"memory");
   }
@@ -324,7 +324,7 @@ BENCHMARK(single_thread_lifo_post, iters) {
 
 BENCHMARK(single_thread_lifo_wait, iters) {
   LifoSem sem(iters);
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     sem.wait();
     asm volatile ("":::"memory");
   }
@@ -332,7 +332,7 @@ BENCHMARK(single_thread_lifo_wait, iters) {
 
 BENCHMARK(single_thread_lifo_postwait, iters) {
   LifoSem sem;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     sem.post();
     asm volatile ("":::"memory");
     sem.wait();
@@ -342,7 +342,7 @@ BENCHMARK(single_thread_lifo_postwait, iters) {
 
 BENCHMARK(single_thread_lifo_trywait, iters) {
   LifoSem sem;
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     EXPECT_FALSE(sem.tryWait());
     asm volatile ("":::"memory");
   }
@@ -351,7 +351,7 @@ BENCHMARK(single_thread_lifo_trywait, iters) {
 BENCHMARK(single_thread_posix_postwait, iters) {
   sem_t sem;
   EXPECT_EQ(sem_init(&sem, 0, 0), 0);
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     EXPECT_EQ(sem_post(&sem), 0);
     EXPECT_EQ(sem_wait(&sem), 0);
   }
@@ -361,7 +361,7 @@ BENCHMARK(single_thread_posix_postwait, iters) {
 BENCHMARK(single_thread_posix_trywait, iters) {
   sem_t sem;
   EXPECT_EQ(sem_init(&sem, 0, 0), 0);
-  for (int n = 0; n < iters; ++n) {
+  for (size_t n = 0; n < iters; ++n) {
     EXPECT_EQ(sem_trywait(&sem), -1);
   }
   EXPECT_EQ(sem_destroy(&sem), 0);

@@ -64,7 +64,7 @@ void splock_test() {
     MSLGuard g(v.lock);
 
     int first = v.ar[0];
-    for (int i = 1; i < sizeof v.ar / sizeof i; ++i) {
+    for (size_t i = 1; i < sizeof v.ar / sizeof i; ++i) {
       EXPECT_EQ(first, v.ar[i]);
     }
 

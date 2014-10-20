@@ -262,7 +262,7 @@ TEST(CommunicateSubprocessTest, Duplex2) {
     const size_t numCopies = 100000;
     auto iobuf = IOBuf::copyBuffer("this is a test\nanother line\n");
     IOBufQueue input;
-    for (int n = 0; n < numCopies; ++n) {
+    for (size_t n = 0; n < numCopies; ++n) {
       input.append(iobuf->clone());
     }
 

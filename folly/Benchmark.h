@@ -75,10 +75,11 @@ inline uint64_t timespecDiff(timespec end, timespec start) {
     assert(end.tv_nsec >= start.tv_nsec);
     return end.tv_nsec - start.tv_nsec;
   }
-  assert(end.tv_sec > start.tv_sec &&
-         (uint64_t)(end.tv_sec - start.tv_sec) <
+  assert(end.tv_sec > start.tv_sec);
+  auto diff = uint64_t(end.tv_sec - start.tv_sec);
+  assert(diff <
          std::numeric_limits<uint64_t>::max() / 1000000000UL);
-  return (end.tv_sec - start.tv_sec) * 1000000000UL
+  return diff * 1000000000UL
     + end.tv_nsec - start.tv_nsec;
 }
 

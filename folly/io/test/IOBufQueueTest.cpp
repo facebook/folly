@@ -351,14 +351,14 @@ TEST(IOBufQueue, PopFirst) {
 
   const size_t numStrings=sizeof(strings)/sizeof(*strings);
   size_t chainLength = 0;
-  for(ssize_t i=0; i<numStrings; ++i) {
+  for(size_t i = 0; i < numStrings; ++i) {
     queue.append(stringToIOBuf(strings[i], strlen(strings[i])));
     checkConsistency(queue);
     chainLength += strlen(strings[i]);
   }
 
   unique_ptr<IOBuf> first;
-  for(ssize_t i=0; i<numStrings; ++i) {
+  for(size_t i = 0; i < numStrings; ++i) {
     checkConsistency(queue);
     EXPECT_EQ(chainLength, queue.front()->computeChainDataLength());
     EXPECT_EQ(chainLength, queue.chainLength());

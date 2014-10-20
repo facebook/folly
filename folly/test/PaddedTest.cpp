@@ -88,7 +88,7 @@ class IntPaddedConstTest : public IntPaddedTestBase {
     v_.resize(4);
     n_ = 0;
     for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < IntNode::kElementCount; ++j, ++n_) {
+      for (size_t j = 0; j < IntNode::kElementCount; ++j, ++n_) {
         v_[i].data()[j] = n_;
       }
     }
@@ -160,7 +160,7 @@ TEST_F(IntPaddedNonConstTest, Iteration) {
 
   k = 0;
   for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < IntNode::kElementCount; ++j, ++k) {
+    for (size_t j = 0; j < IntNode::kElementCount; ++j, ++k) {
       EXPECT_EQ(k, v_[i].data()[j]);
     }
   }
@@ -185,7 +185,7 @@ class StructPaddedConstTest : public StructPaddedTestBase {
     v_.resize(4);
     n_ = 0;
     for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < PointNode::kElementCount; ++j, ++n_) {
+      for (size_t j = 0; j < PointNode::kElementCount; ++j, ++n_) {
         auto& point = v_[i].data()[j];
         point.x = n_;
         point.y = n_ + 1;

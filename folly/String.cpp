@@ -52,7 +52,7 @@ inline void stringPrintfImpl(std::string& output, const char* format,
     throw std::runtime_error(
       to<std::string>("Invalid format string; snprintf returned negative "
                       "with format string: ", format));
-  } else if (bytes_used < remaining) {
+  } else if (size_t(bytes_used) < remaining) {
     // There was enough room, just shrink and return.
     output.resize(write_point + bytes_used);
   } else {
@@ -63,7 +63,7 @@ inline void stringPrintfImpl(std::string& output, const char* format,
     bytes_used = vsnprintf(&output[write_point], remaining, format,
                            args_copy);
     va_end(args_copy);
-    if (bytes_used + 1 != remaining) {
+    if (size_t(bytes_used) + 1 != remaining) {
       throw std::runtime_error(
         to<std::string>("vsnprint retry did not manage to work "
                         "with format string: ", format));

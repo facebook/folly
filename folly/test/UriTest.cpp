@@ -404,14 +404,14 @@ TEST(Uri, Simple) {
  */
 BENCHMARK(init_uri_simple, iters) {
   const fbstring s("http://localhost?&key1=foo&key2=&key3&=bar&=bar=&");
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     Uri u(s);
   }
 }
 
 BENCHMARK(init_uri_simple_with_query_parsing, iters) {
   const fbstring s("http://localhost?&key1=foo&key2=&key3&=bar&=bar=&");
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     Uri u(s);
     u.getQueryParams();
   }
@@ -429,7 +429,7 @@ BENCHMARK(init_uri_complex, iters) {
       "04nYX8N%46zzpv%999h&KGmBt988y=q4P57C-Dh-Nz-x_7-5oPxz%1gz3N03t6c7-R67N4DT"
       "Y6-f98W1&Lts&%02dOty%8eEYEnLz4yexQQLnL4MGU2JFn3OcmXcatBcabZgBdDdy67hdgW"
       "tYn4");
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     Uri u(s);
   }
 }
@@ -446,7 +446,7 @@ BENCHMARK(init_uri_complex_with_query_parsing, iters) {
       "04nYX8N%46zzpv%999h&KGmBt988y=q4P57C-Dh-Nz-x_7-5oPxz%1gz3N03t6c7-R67N4DT"
       "Y6-f98W1&Lts&%02dOty%8eEYEnLz4yexQQLnL4MGU2JFn3OcmXcatBcabZgBdDdy67hdgW"
       "tYn4");
-  for (int i = 0; i < iters; ++i) {
+  for (size_t i = 0; i < iters; ++i) {
     Uri u(s);
     u.getQueryParams();
   }

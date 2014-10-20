@@ -94,14 +94,14 @@ TEST(RecordIOTest, SmallRecords) {
   TemporaryFile file;
   {
     RecordIOWriter writer(File(file.fd()));
-    for (int i = 0; i < kSize; ++i) {  // record of size 0 should be ignored
+    for (size_t i = 0; i < kSize; ++i) {  // record of size 0 should be ignored
       writer.write(IOBuf::wrapBuffer(tmp, i));
     }
   }
   {
     RecordIOReader reader(File(file.fd()));
     auto it = reader.begin();
-    for (int i = 1; i < kSize; ++i) {
+    for (size_t i = 1; i < kSize; ++i) {
       ASSERT_FALSE(it == reader.end());
       EXPECT_EQ(StringPiece(tmp, i), sp((it++)->first));
     }

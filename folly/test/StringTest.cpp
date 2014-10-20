@@ -1203,7 +1203,7 @@ TEST(String, toLowerAsciiUnaligned) {
 
 BENCHMARK(splitOnSingleChar, iters) {
   static const std::string line = "one:two:three:four";
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split(':', line, pieces);
   }
@@ -1211,7 +1211,7 @@ BENCHMARK(splitOnSingleChar, iters) {
 
 BENCHMARK(splitOnSingleCharFixed, iters) {
   static const std::string line = "one:two:three:four";
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split(':', line, a, b, c, d);
   }
@@ -1219,7 +1219,7 @@ BENCHMARK(splitOnSingleCharFixed, iters) {
 
 BENCHMARK(splitOnSingleCharFixedAllowExtra, iters) {
   static const std::string line = "one:two:three:four";
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split<false>(':', line, a, b, c, d);
   }
@@ -1227,7 +1227,7 @@ BENCHMARK(splitOnSingleCharFixedAllowExtra, iters) {
 
 BENCHMARK(splitStr, iters) {
   static const std::string line = "one-*-two-*-three-*-four";
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<StringPiece> pieces;
     folly::split("-*-", line, pieces);
   }
@@ -1235,7 +1235,7 @@ BENCHMARK(splitStr, iters) {
 
 BENCHMARK(splitStrFixed, iters) {
   static const std::string line = "one-*-two-*-three-*-four";
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     StringPiece a, b, c, d;
     folly::split("-*-", line, a, b, c, d);
   }
@@ -1244,7 +1244,7 @@ BENCHMARK(splitStrFixed, iters) {
 BENCHMARK(boost_splitOnSingleChar, iters) {
   static const std::string line = "one:two:three:four";
   bool(*pred)(char) = [] (char c) -> bool { return c == ':'; };
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::vector<boost::iterator_range<std::string::const_iterator> > pieces;
     boost::split(pieces, line, pred);
   }
@@ -1253,7 +1253,7 @@ BENCHMARK(boost_splitOnSingleChar, iters) {
 BENCHMARK(joinCharStr, iters) {
   static const std::vector<std::string> input = {
     "one", "two", "three", "four", "five", "six", "seven" };
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::string output;
     folly::join(':', input, output);
   }
@@ -1262,7 +1262,7 @@ BENCHMARK(joinCharStr, iters) {
 BENCHMARK(joinStrStr, iters) {
   static const std::vector<std::string> input = {
     "one", "two", "three", "four", "five", "six", "seven" };
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::string output;
     folly::join(":", input, output);
   }
@@ -1271,7 +1271,7 @@ BENCHMARK(joinStrStr, iters) {
 BENCHMARK(joinInt, iters) {
   static const auto input = {
     123, 456, 78910, 1112, 1314, 151, 61718 };
-  for (int i = 0; i < iters << 4; ++i) {
+  for (size_t i = 0; i < iters << 4; ++i) {
     std::string output;
     folly::join(":", input, output);
   }
