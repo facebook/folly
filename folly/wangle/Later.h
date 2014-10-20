@@ -210,11 +210,6 @@ class Later {
    */
   Future<T> launch();
 
-  /*
-   * Deprecated. Use launch()
-   */
-  void fireAndForget() __attribute__ ((__deprecated__)) { launch(); }
-
  private:
   Promise<void> starter_;
   folly::Optional<Future<T>> future_;
