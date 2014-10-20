@@ -21,6 +21,63 @@ using namespace folly::wangle::detail;
 
 enum class State { A, B };
 
+TEST(FSM, example) {
+  FSM<State> fsm(State::A);
+  int count = 0;
+  int unprotectedCount = 0;
+
+  // somebody set up us the switch
+  auto tryTransition = [&]{
+    switch (fsm.getState()) {
+    case State::A:
+      return fsm.updateState(State::A, State::B, [&]{ count++; });
+    case State::B:
+      return fsm.updateState(State::B, State::A,
+                             [&]{ count--; }, [&]{ unprotectedCount--; });
+    }
+    return false; // unreachable
+  };
+
+  // keep retrying until success (like a cas)
+  while (!tryTransition()) ;
+  EXPECT_EQ(State::B, fsm.getState());
+  EXPECT_EQ(1, count);
+  EXPECT_EQ(0, unprotectedCount);
+
+  while (!tryTransition()) ;
+  EXPECT_EQ(State::A, fsm.getState());
+  EXPECT_EQ(0, count);
+  EXPECT_EQ(-1, unprotectedCount);
+}
+
+TEST(FSM, magicMacrosExample) {
+  struct MyFSM : public FSM<State> {
+    int count = 0;
+    int unprotectedCount = 0;
+    MyFSM() : FSM<State>(State::A) {}
+    void twiddle() {
+      FSM_START
+        FSM_CASE(State::A, State::B, [&]{ count++; });
+        FSM_CASE2(State::B, State::A,
+                  [&]{ count--; }, [&]{ unprotectedCount--; });
+      FSM_END
+    }
+  };
+
+  MyFSM fsm;
+
+  fsm.twiddle();
+  EXPECT_EQ(State::B, fsm.getState());
+  EXPECT_EQ(1, fsm.count);
+  EXPECT_EQ(0, fsm.unprotectedCount);
+
+  fsm.twiddle();
+  EXPECT_EQ(State::A, fsm.getState());
+  EXPECT_EQ(0, fsm.count);
+  EXPECT_EQ(-1, fsm.unprotectedCount);
+}
+
+
 TEST(FSM, ctor) {
   FSM<State> fsm(State::A);
   EXPECT_EQ(State::A, fsm.getState());
@@ -39,63 +96,20 @@ TEST(FSM, badUpdate) {
 
 TEST(FSM, actionOnUpdate) {
   FSM<State> fsm(State::A);
-  size_t count = 0;
+  int count = 0;
   fsm.updateState(State::A, State::B, [&]{ count++; });
   EXPECT_EQ(1, count);
 }
 
 TEST(FSM, noActionOnBadUpdate) {
   FSM<State> fsm(State::A);
-  size_t count = 0;
+  int count = 0;
   fsm.updateState(State::B, State::A, [&]{ count++; });
   EXPECT_EQ(0, count);
 }
 
-TEST(FSM, magicMacros) {
-  struct MyFSM : public FSM<State> {
-    size_t count = 0;
-    MyFSM() : FSM<State>(State::A) {}
-    void twiddle() {
-      FSM_START
-        FSM_UPDATE(State::A, State::B, [&]{ count++; });
-        FSM_UPDATE(State::B, State::A, [&]{ count--; });
-      FSM_END
-    }
-  };
-
-  MyFSM fsm;
-
-  fsm.twiddle();
-  EXPECT_EQ(State::B, fsm.getState());
-  EXPECT_EQ(1, fsm.count);
-
-  fsm.twiddle();
-  EXPECT_EQ(State::A, fsm.getState());
-  EXPECT_EQ(0, fsm.count);
-}
-
-TEST(FSM, magicMacros2) {
-  struct MyFSM : public FSM<State> {
-    size_t count = 0;
-    size_t count2 = 0;
-    MyFSM() : FSM<State>(State::A) {}
-    void twiddle() {
-      FSM_START
-        FSM_UPDATE2(State::A, State::B, [&]{ count++; }, count2++);
-        FSM_UPDATE2(State::B, State::A, [&]{ count--; }, count2--);
-      FSM_END
-    }
-  };
-
-  MyFSM fsm;
-
-  fsm.twiddle();
-  EXPECT_EQ(State::B, fsm.getState());
-  EXPECT_EQ(1, fsm.count);
-  EXPECT_EQ(1, fsm.count2);
-
-  fsm.twiddle();
-  EXPECT_EQ(State::A, fsm.getState());
-  EXPECT_EQ(0, fsm.count);
-  EXPECT_EQ(0, fsm.count2);
+TEST(FSM, stateTransitionBeforeAction) {
+  FSM<State> fsm(State::A);
+  fsm.updateState(State::A, State::B,
+                  [&]{ EXPECT_EQ(State::B, fsm.getState()); });
 }

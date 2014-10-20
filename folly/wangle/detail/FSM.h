@@ -41,16 +41,14 @@ private:
   std::atomic<Enum> state_;
 
 public:
-  FSM(Enum startState) : state_(startState) {}
+  explicit FSM(Enum startState) : state_(startState) {}
 
   Enum getState() const {
     return state_.load(std::memory_order_relaxed);
   }
 
-  // transition from state A to state B, and then perform action while the
-  // lock is still held.
-  //
-  // If the current state is not A, returns false.
+  /// Atomically do a state transition with accompanying action.
+  /// @returns true on success, false and action unexecuted otherwise
   template <class F>
   bool updateState(Enum A, Enum B, F const& action) {
     std::lock_guard<Mutex> lock(mutex_);
@@ -59,22 +57,62 @@ public:
     action();
     return true;
   }
+
+  /// Atomically do a state transition with accompanying action. Then do the
+  /// unprotected action without holding the lock. If the atomic transition
+  /// fails, returns false and neither action was executed.
+  ///
+  /// This facilitates code like this:
+  ///   bool done = false;
+  ///   while (!done) {
+  ///     switch (getState()) {
+  ///     case State::Foo:
+  ///       done = updateState(State::Foo, State::Bar,
+  ///           [&]{ /* do protected stuff */ },
+  ///           [&]{ /* do unprotected stuff */});
+  ///       break;
+  ///
+  /// Which reads nicer than code like this:
+  ///   while (true) {
+  ///     switch (getState()) {
+  ///     case State::Foo:
+  ///       if (!updateState(State::Foo, State::Bar,
+  ///           [&]{ /* do protected stuff */ })) {
+  ///         continue;
+  ///       }
+  ///       /* do unprotected stuff */
+  ///       return; // or otherwise break out of the loop
+  template <class F1, class F2>
+  bool updateState(Enum A, Enum B,
+                   F1 const& protectedAction, F2 const& unprotectedAction) {
+    bool result = updateState(A, B, protectedAction);
+    if (result) {
+      unprotectedAction();
+    }
+    return result;
+  }
 };
 
 #define FSM_START \
-  retry: \
-    switch (getState()) {
+  {bool done = false; while (!done) { auto state = getState(); switch (state) {
 
-#define FSM_UPDATE2(a, b, action, unlocked_code) \
-    case a: \
-      if (!updateState((a), (b), (action))) goto retry; \
-      { unlocked_code ; } \
-      break;
+#define FSM_UPDATE2(b, protectedAction, unprotectedAction) \
+    done = updateState(state, (b), (protectedAction), (unprotectedAction));
 
-#define FSM_UPDATE(a, b, action) FSM_UPDATE2((a), (b), (action), {})
+#define FSM_UPDATE(b, action) FSM_UPDATE2((b), (action), []{})
 
-#define FSM_END \
-    }
+#define FSM_CASE(a, b, action) \
+  case (a): \
+    FSM_UPDATE((b), (action)); \
+    break;
+
+#define FSM_CASE2(a, b, protectedAction, unprotectedAction) \
+  case (a): \
+    FSM_UPDATE2((b), (protectedAction), (unprotectedAction)); \
+    break;
+
+#define FSM_BREAK done = true; break;
+#define FSM_END }}}
 
 
 }}}
