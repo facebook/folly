@@ -72,7 +72,20 @@ nobase_follyinclude_HEADERS = \
 	experimental/io/FsUtil.h \
 	experimental/Singleton.h \
 	experimental/TestUtil.h \
+	experimental/wangle/concurrent/BlockingQueue.h \
 	experimental/wangle/concurrent/Codel.h \
+	experimental/wangle/concurrent/CPUThreadPoolExecutor.h \
+	experimental/wangle/concurrent/FutureExecutor.h \
+	experimental/wangle/concurrent/IOThreadPoolExecutor.h \
+	experimental/wangle/concurrent/LifoSemMPMCQueue.h \
+	experimental/wangle/concurrent/NamedThreadFactory.h \
+	experimental/wangle/concurrent/ThreadFactory.h \
+	experimental/wangle/concurrent/ThreadPoolExecutor.h \
+	experimental/wangle/rx/Observable.h \
+	experimental/wangle/rx/Observer.h \
+	experimental/wangle/rx/Subject.h \
+	experimental/wangle/rx/Subscription.h \
+	experimental/wangle/rx/types.h \
 	experimental/wangle/ConnectionManager.h \
 	experimental/wangle/ManagedConnection.h \
 	FBString.h \
@@ -268,7 +281,10 @@ libfolly_la_SOURCES = \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
+	experimental/wangle/concurrent/CPUThreadPoolExecutor.cpp \
 	experimental/wangle/concurrent/Codel.cpp \
+	experimental/wangle/concurrent/IOThreadPoolExecutor.cpp \
+	experimental/wangle/concurrent/ThreadPoolExecutor.cpp \
 	experimental/wangle/ConnectionManager.cpp \
 	experimental/wangle/ManagedConnection.cpp
 
