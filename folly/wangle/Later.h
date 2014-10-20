@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/wangle/Deprecated.h>
 #include <folly/wangle/Executor.h>
 #include <folly/wangle/Future.h>
 #include <folly/Optional.h>
@@ -76,8 +77,10 @@ template <typename T> struct isLater;
  *   .then([=]Try<DiskResponse>&& t) { return sendClientResponse(t.value()); })
  *   .launch();
  */
+// DEPRECATED. Just use Future::via() to accomplish the same thing. If it's
+// not obvious how, feel free to reach out.
 template <class T>
-class Later {
+class DEPRECATED Later {
  public:
   typedef T value_type;
 

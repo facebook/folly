@@ -17,6 +17,7 @@
 #pragma once
 #include <memory>
 #include <folly/wangle/Future.h>
+#include <folly/wangle/Deprecated.h>
 
 namespace folly { namespace wangle {
 
@@ -73,7 +74,9 @@ namespace folly { namespace wangle {
   change the components of the ThreadGate which your client code is already
   using.
   */
-class ThreadGate {
+// DEPRECATED. Just use Future::via() to accomplish the same thing. If it's
+// not obvious how, feel free to reach out.
+class DEPRECATED ThreadGate {
 public:
   virtual ~ThreadGate() {}
 
