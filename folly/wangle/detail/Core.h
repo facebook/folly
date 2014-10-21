@@ -205,12 +205,13 @@ class Core : protected FSM<State> {
   }
 
   void detachOne() {
-    if (++detached_ == 2) {
+    ++detached_;
+    assert(detached_ == 1 || detached_ == 2);
+    if (detached_ == 2) {
       // we should have already executed the callback with the value
       assert(calledBack_);
       delete this;
     }
-    assert(detached_ == 1 || detached_ == 2);
   }
 
   folly::Optional<Try<T>> result_;
