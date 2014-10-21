@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/wangle/Try.h>
-#include <folly/wangle/Future.h>
 
 namespace folly { namespace wangle {
 
@@ -98,4 +97,5 @@ private:
 
 }}
 
+#include <folly/wangle/Future.h>
 #include <folly/wangle/Promise-inl.h>

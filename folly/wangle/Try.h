@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <type_traits>
+#include <exception>
+#include <algorithm>
+
 namespace folly { namespace wangle {
 
 template <class T>

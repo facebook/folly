@@ -29,6 +29,12 @@
 
 namespace folly { namespace wangle {
 
+namespace detail {
+  template <class> struct Core;
+  template <class...> struct VariadicContext;
+}
+template <class> struct Promise;
+
 template <typename T> struct isFuture;
 
 template <class T>
