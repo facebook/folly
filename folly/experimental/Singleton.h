@@ -208,6 +208,8 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
+    scheduleDestroyInstances();
+
     RWSpinLock::WriteHolder wh(&stateMutex_);
 
     stateCheck(SingletonVaultState::Running);
