@@ -18,6 +18,8 @@
 #include <folly/wangle/InlineExecutor.h>
 #include <folly/wangle/ManualExecutor.h>
 #include <folly/wangle/QueuedImmediateExecutor.h>
+#include <folly/wangle/Future.h>
+#include <folly/Baton.h>
 
 using namespace folly::wangle;
 using namespace std::chrono;
@@ -87,6 +89,22 @@ TEST(ManualExecutor, advanceNeg) {
   EXPECT_EQ(count, 0);
   x.advance(microseconds(-1));
   EXPECT_EQ(count, 0);
+}
+
+TEST(ManualExecutor, waitForDoesNotDeadlock) {
+  ManualExecutor east, west;
+  folly::Baton<> baton;
+  auto f = makeFuture()
+    .via(&east)
+    .then([](Try<void>){ return makeFuture(); })
+    .via(&west);
+  std::thread t([&]{
+    baton.post();
+    west.waitFor(f);
+  });
+  baton.wait();
+  east.run();
+  t.join();
 }
 
 TEST(Executor, InlineExecutor) {

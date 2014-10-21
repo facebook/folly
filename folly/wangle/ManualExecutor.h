@@ -56,8 +56,16 @@ namespace folly { namespace wangle {
 
     /// makeProgress until this Future is ready.
     template <class F> void waitFor(F const& f) {
+      // TODO(5427828)
+#if 0
       while (!f.isReady())
         makeProgress();
+#else
+      while (!f.isReady()) {
+        run();
+      }
+#endif
+
     }
 
     virtual void scheduleAt(Func&& f, TimePoint const& t) override {
