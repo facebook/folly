@@ -28,6 +28,7 @@
 #include <folly/wangle/Promise.h>
 #include <folly/wangle/Future.h>
 #include <folly/wangle/Executor.h>
+#include <folly/wangle/detail/FSM.h>
 
 namespace folly { namespace wangle { namespace detail {
 
@@ -36,14 +37,19 @@ namespace folly { namespace wangle { namespace detail {
 template<typename T>
 void empty_callback(Try<T>&&) { }
 
+enum class State {
+  Waiting,
+  Done,
+};
+
 /** The shared state object for Future and Promise. */
 template<typename T>
-class Core {
+class Core : protected FSM<State> {
  public:
   // This must be heap-constructed. There's probably a way to enforce that in
   // code but since this is just internal detail code and I don't know how
   // off-hand, I'm punting.
-  Core() = default;
+  Core() : FSM<State>(State::Waiting) {}
   ~Core() {
     assert(calledBack_);
     assert(detached_ == 2);
@@ -67,36 +73,48 @@ class Core {
 
   template <typename F>
   void setCallback(F func) {
-    {
-      std::lock_guard<decltype(mutex_)> lock(mutex_);
-
+    auto setCallback_ = [&]{
       if (callback_) {
         throw std::logic_error("setCallback called twice");
       }
 
       callback_ = std::move(func);
-    }
+    };
 
-    maybeCallback();
+    bool done = false;
+    while (!done) {
+      switch (getState()) {
+      case State::Waiting:
+        done = updateState(State::Waiting, State::Waiting, setCallback_);
+        break;
+
+      case State::Done:
+        done = updateState(State::Done, State::Done,
+                           setCallback_,
+                           [&]{ maybeCallback(); });
+        break;
+      }
+    }
   }
 
   void setResult(Try<T>&& t) {
-    {
-      std::lock_guard<decltype(mutex_)> lock(mutex_);
+    bool done = false;
+    while (!done) {
+      switch (getState()) {
+      case State::Waiting:
+        done = updateState(State::Waiting, State::Done,
+          [&]{ result_ = std::move(t); },
+          [&]{ maybeCallback(); });
+        break;
 
-      if (ready()) {
+      case State::Done:
         throw std::logic_error("setResult called twice");
       }
-
-      result_ = std::move(t);
-      assert(ready());
     }
-
-    maybeCallback();
   }
 
   bool ready() const {
-    return result_.hasValue();
+    return getState() == State::Done;
   }
 
   // Called by a destructing Future
@@ -117,71 +135,54 @@ class Core {
   }
 
   void deactivate() {
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
     active_ = false;
   }
 
   void activate() {
-    {
-      std::lock_guard<decltype(mutex_)> lock(mutex_);
-      active_ = true;
+    active_ = true;
+    if (ready()) {
+      maybeCallback();
     }
-    maybeCallback();
   }
 
   bool isActive() { return active_; }
 
   void setExecutor(Executor* x) {
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
     executor_ = x;
   }
 
  private:
   void maybeCallback() {
-    std::unique_lock<decltype(mutex_)> lock(mutex_);
-    if (!calledBack_ &&
-        result_ && callback_ && isActive()) {
-      // TODO(5306911) we should probably try/catch here
-      if (executor_) {
-        MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
+    assert(ready());
+    if (!calledBack_ && isActive() && callback_) {
+      // TODO(5306911) we should probably try/catch
+      calledBack_ = true;
+      Executor* x = executor_;
+      if (x) {
         MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
-        executor_->add([cb, val]() mutable { (*cb)(std::move(**val)); });
-        calledBack_ = true;
+        MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
+        x->add([cb, val]() mutable { (*cb)(std::move(**val)); });
       } else {
-        calledBack_ = true;
-        lock.unlock();
         callback_(std::move(*result_));
       }
     }
   }
 
   void detachOne() {
-    bool shouldDelete;
-    {
-      std::lock_guard<decltype(mutex_)> lock(mutex_);
-      detached_++;
-      assert(detached_ == 1 || detached_ == 2);
-      shouldDelete = (detached_ == 2);
-    }
-
-    if (shouldDelete) {
+    if (++detached_ == 2) {
       // we should have already executed the callback with the value
       assert(calledBack_);
       delete this;
     }
+    assert(detached_ == 1 || detached_ == 2);
   }
 
   folly::Optional<Try<T>> result_;
   std::function<void(Try<T>&&)> callback_;
-  bool calledBack_ = false;
-  unsigned char detached_ = 0;
-  bool active_ = true;
-  Executor* executor_ = nullptr;
-
-  // this lock isn't meant to protect all accesses to members, only the ones
-  // that need to be threadsafe: the act of setting result_ and callback_, and
-  // seeing if they are set and whether we should then continue.
-  folly::MicroSpinLock mutex_ {0};
+  std::atomic<bool> calledBack_ {false};
+  std::atomic<unsigned char> detached_ {0};
+  std::atomic<bool> active_ {true};
+  std::atomic<Executor*> executor_ {nullptr};
 };
 
 template <typename... Ts>
