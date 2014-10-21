@@ -58,7 +58,11 @@ class Core {
   Core& operator=(Core&&) = delete;
 
   Try<T>& getTry() {
-    return *value_;
+    if (ready()) {
+      return *result_;
+    } else {
+      throw FutureNotReady();
+    }
   }
 
   template <typename F>
@@ -76,39 +80,23 @@ class Core {
     maybeCallback();
   }
 
-  void fulfil(Try<T>&& t) {
+  void setResult(Try<T>&& t) {
     {
       std::lock_guard<decltype(mutex_)> lock(mutex_);
 
       if (ready()) {
-        throw std::logic_error("fulfil called twice");
+        throw std::logic_error("setResult called twice");
       }
 
-      value_ = std::move(t);
+      result_ = std::move(t);
       assert(ready());
     }
 
     maybeCallback();
   }
 
-  void setException(std::exception_ptr const& e) {
-    fulfil(Try<T>(e));
-  }
-
-  template <class E> void setException(E const& e) {
-    fulfil(Try<T>(std::make_exception_ptr<E>(e)));
-  }
-
   bool ready() const {
-    return value_.hasValue();
-  }
-
-  typename std::add_lvalue_reference<T>::type value() {
-    if (ready()) {
-      return value_->value();
-    } else {
-      throw FutureNotReady();
-    }
+    return result_.hasValue();
   }
 
   // Called by a destructing Future
@@ -123,7 +111,7 @@ class Core {
   // Called by a destructing Promise
   void detachPromise() {
     if (!ready()) {
-      setException(BrokenPromise());
+      setResult(Try<T>(std::make_exception_ptr(BrokenPromise())));
     }
     detachOne();
   }
@@ -152,17 +140,17 @@ class Core {
   void maybeCallback() {
     std::unique_lock<decltype(mutex_)> lock(mutex_);
     if (!calledBack_ &&
-        value_ && callback_ && isActive()) {
+        result_ && callback_ && isActive()) {
       // TODO(5306911) we should probably try/catch here
       if (executor_) {
-        MoveWrapper<folly::Optional<Try<T>>> val(std::move(value_));
+        MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
         MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
         executor_->add([cb, val]() mutable { (*cb)(std::move(**val)); });
         calledBack_ = true;
       } else {
         calledBack_ = true;
         lock.unlock();
-        callback_(std::move(*value_));
+        callback_(std::move(*result_));
       }
     }
   }
@@ -183,7 +171,7 @@ class Core {
     }
   }
 
-  folly::Optional<Try<T>> value_;
+  folly::Optional<Try<T>> result_;
   std::function<void(Try<T>&&)> callback_;
   bool calledBack_ = false;
   unsigned char detached_ = 0;
@@ -191,7 +179,7 @@ class Core {
   Executor* executor_ = nullptr;
 
   // this lock isn't meant to protect all accesses to members, only the ones
-  // that need to be threadsafe: the act of setting value_ and callback_, and
+  // that need to be threadsafe: the act of setting result_ and callback_, and
   // seeing if they are set and whether we should then continue.
   folly::MicroSpinLock mutex_ {0};
 };

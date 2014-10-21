@@ -172,7 +172,7 @@ template <class T>
 typename std::add_lvalue_reference<T>::type Future<T>::value() {
   throwIfInvalid();
 
-  return core_->value();
+  return core_->getTry().value();
 }
 
 template <class T>

@@ -85,13 +85,13 @@ void Promise<T>::setException(E const& e) {
 template <class T>
 void Promise<T>::setException(std::exception_ptr const& e) {
   throwIfFulfilled();
-  core_->setException(e);
+  core_->setResult(Try<T>(e));
 }
 
 template <class T>
 void Promise<T>::fulfilTry(Try<T>&& t) {
   throwIfFulfilled();
-  core_->fulfil(std::move(t));
+  core_->setResult(std::move(t));
 }
 
 template <class T>
