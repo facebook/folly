@@ -39,6 +39,8 @@ void empty_callback(Try<T>&&) { }
 
 enum class State {
   Waiting,
+  Interruptible,
+  Interrupted,
   Done,
 };
 
@@ -81,36 +83,34 @@ class Core : protected FSM<State> {
       callback_ = std::move(func);
     };
 
-    bool done = false;
-    while (!done) {
-      switch (getState()) {
+    FSM_START
       case State::Waiting:
-        done = updateState(State::Waiting, State::Waiting, setCallback_);
+      case State::Interruptible:
+      case State::Interrupted:
+        FSM_UPDATE(state, setCallback_);
         break;
 
       case State::Done:
-        done = updateState(State::Done, State::Done,
-                           setCallback_,
-                           [&]{ maybeCallback(); });
+        FSM_UPDATE2(State::Done,
+          setCallback_,
+          [&]{ maybeCallback(); });
         break;
-      }
-    }
+    FSM_END
   }
 
   void setResult(Try<T>&& t) {
-    bool done = false;
-    while (!done) {
-      switch (getState()) {
+    FSM_START
       case State::Waiting:
-        done = updateState(State::Waiting, State::Done,
+      case State::Interruptible:
+      case State::Interrupted:
+        FSM_UPDATE2(State::Done,
           [&]{ result_ = std::move(t); },
           [&]{ maybeCallback(); });
         break;
 
       case State::Done:
         throw std::logic_error("setResult called twice");
-      }
-    }
+    FSM_END
   }
 
   bool ready() const {
@@ -151,6 +151,42 @@ class Core : protected FSM<State> {
     executor_ = x;
   }
 
+  void raise(std::exception_ptr const& e) {
+    FSM_START
+      case State::Interruptible:
+        FSM_UPDATE2(State::Interrupted,
+          [&]{ interrupt_ = e; },
+          [&]{ interruptHandler_(interrupt_); });
+        break;
+
+      case State::Waiting:
+      case State::Interrupted:
+        FSM_UPDATE(State::Interrupted,
+          [&]{ interrupt_ = e; });
+        break;
+
+      case State::Done:
+        FSM_BREAK
+    FSM_END
+  }
+
+  void setInterruptHandler(std::function<void(std::exception_ptr const&)> fn) {
+    FSM_START
+      case State::Waiting:
+      case State::Interruptible:
+        FSM_UPDATE(State::Interruptible,
+          [&]{ interruptHandler_ = std::move(fn); });
+        break;
+
+      case State::Interrupted:
+        fn(interrupt_);
+        FSM_BREAK
+
+      case State::Done:
+        FSM_BREAK
+    FSM_END
+  }
+
  private:
   void maybeCallback() {
     assert(ready());
@@ -183,6 +219,8 @@ class Core : protected FSM<State> {
   std::atomic<unsigned char> detached_ {0};
   std::atomic<bool> active_ {true};
   std::atomic<Executor*> executor_ {nullptr};
+  std::exception_ptr interrupt_;
+  std::function<void(std::exception_ptr const&)> interruptHandler_;
 };
 
 template <typename... Ts>

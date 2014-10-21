@@ -89,6 +89,12 @@ void Promise<T>::setException(std::exception_ptr const& e) {
 }
 
 template <class T>
+void Promise<T>::setInterruptHandler(
+  std::function<void(std::exception_ptr const&)> fn) {
+  core_->setInterruptHandler(std::move(fn));
+}
+
+template <class T>
 void Promise<T>::fulfilTry(Try<T>&& t) {
   throwIfFulfilled();
   core_->setResult(std::move(t));

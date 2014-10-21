@@ -208,6 +208,25 @@ class Future {
     return core_->isActive();
   }
 
+  template <class E>
+  void raise(E&& exception) {
+    raise(std::make_exception_ptr(std::forward<E>(exception)));
+  }
+
+  /// Raise an interrupt. If the promise holder has an interrupt
+  /// handler it will be called and potentially stop asynchronous work from
+  /// being done. This is advisory only - a promise holder may not set an
+  /// interrupt handler, or may do anything including ignore. But, if you know
+  /// your future supports this the most likely result is stopping or
+  /// preventing the asynchronous operation (if in time), and the promise
+  /// holder setting an exception on the future. (That may happen
+  /// asynchronously, of course.)
+  void raise(std::exception_ptr interrupt);
+
+  void cancel() {
+    raise(FutureCancellation());
+  }
+
  private:
   typedef detail::Core<T>* corePtr;
 

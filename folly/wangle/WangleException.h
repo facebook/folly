@@ -81,4 +81,9 @@ class UsingUninitializedTry : public WangleException {
       WangleException("Using unitialized try") { }
 };
 
+class FutureCancellation : public WangleException {
+ public:
+  FutureCancellation() : WangleException("Future was cancelled") {}
+};
+
 }}
