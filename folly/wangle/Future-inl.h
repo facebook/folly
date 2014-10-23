@@ -206,11 +206,6 @@ bool Future<T>::isReady() const {
   return core_->ready();
 }
 
-template <class T>
-void Future<T>::raise(std::exception_ptr exception) {
-  core_->raise(exception);
-}
-
 // makeFuture
 
 template <class T>

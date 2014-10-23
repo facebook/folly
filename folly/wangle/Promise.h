@@ -56,13 +56,6 @@ public:
     */
   template <class E> void setException(E const&);
 
-  /// Set an interrupt handler to handle interrupts. See the documentation for
-  /// Future::raise(). Your handler can do whatever it wants, but if you
-  /// bother to set one then you probably will want to fulfil the promise with
-  /// an exception (or special value) indicating how the interrupt was
-  /// handled.
-  void setInterruptHandler(std::function<void(std::exception_ptr const&)>);
-
   /** Fulfil this Promise (only for Promise<void>) */
   void setValue();
 
