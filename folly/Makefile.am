@@ -88,6 +88,26 @@ nobase_follyinclude_HEADERS = \
 	experimental/wangle/rx/types.h \
 	experimental/wangle/ConnectionManager.h \
 	experimental/wangle/ManagedConnection.h \
+	experimental/wangle/acceptor/Acceptor.h \
+	experimental/wangle/acceptor/ConnectionCounter.h \
+	experimental/wangle/acceptor/SocketOptions.h \
+	experimental/wangle/acceptor/DomainNameMisc.h \
+	experimental/wangle/acceptor/LoadShedConfiguration.h \
+	experimental/wangle/acceptor/NetworkAddress.h \
+	experimental/wangle/acceptor/ServerSocketConfig.h \
+	experimental/wangle/acceptor/TransportInfo.h \
+	experimental/wangle/ssl/ClientHelloExtStats.h \
+	experimental/wangle/ssl/DHParam.h \
+	experimental/wangle/ssl/PasswordInFile.h \
+	experimental/wangle/ssl/SSLCacheOptions.h \
+	experimental/wangle/ssl/SSLCacheProvider.h \
+	experimental/wangle/ssl/SSLContextConfig.h \
+	experimental/wangle/ssl/SSLContextManager.h \
+	experimental/wangle/ssl/SSLSessionCacheManager.h \
+	experimental/wangle/ssl/SSLStats.h \
+	experimental/wangle/ssl/SSLUtil.h \
+	experimental/wangle/ssl/TLSTicketKeyManager.h \
+	experimental/wangle/ssl/TLSTicketKeySeeds.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -301,7 +321,16 @@ libfolly_la_SOURCES = \
 	experimental/wangle/concurrent/IOThreadPoolExecutor.cpp \
 	experimental/wangle/concurrent/ThreadPoolExecutor.cpp \
 	experimental/wangle/ConnectionManager.cpp \
-	experimental/wangle/ManagedConnection.cpp
+	experimental/wangle/ManagedConnection.cpp \
+	experimental/wangle/acceptor/Acceptor.cpp \
+	experimental/wangle/acceptor/SocketOptions.cpp \
+	experimental/wangle/acceptor/LoadShedConfiguration.cpp \
+	experimental/wangle/acceptor/TransportInfo.cpp \
+	experimental/wangle/ssl/PasswordInFile.cpp \
+	experimental/wangle/ssl/SSLContextManager.cpp \
+	experimental/wangle/ssl/SSLSessionCacheManager.cpp \
+	experimental/wangle/ssl/SSLUtil.cpp \
+	experimental/wangle/ssl/TLSTicketKeyManager.cpp
 
 if HAVE_LINUX
 nobase_follyinclude_HEADERS += \
