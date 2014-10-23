@@ -18,7 +18,7 @@
 
 #include <folly/MoveWrapper.h>
 #include <glog/logging.h>
-#include <thrift/lib/cpp/async/TEventBaseManager.h>
+#include <folly/io/async/EventBaseManager.h>
 
 namespace folly { namespace wangle {
 
@@ -72,7 +72,7 @@ IOThreadPoolExecutor::makeThread() {
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase =
-    apache::thrift::async::TEventBaseManager::get()->getEventBase();
+    folly::EventBaseManager::get()->getEventBase();
   thread->startupBaton.post();
   while (ioThread->shouldRun) {
     ioThread->eventBase->loopForever();
