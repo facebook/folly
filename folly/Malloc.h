@@ -140,18 +140,11 @@ inline size_t goodMallocSize(size_t minSize) noexcept {
     // Round up to the next multiple of 64; we don't want to trip over
     // cache line boundaries.
     goodSize = (minSize + 63) & ~size_t(63);
-  } else if (minSize <= 3584) {
-    // Round up to the next multiple of 256.  For some size classes jemalloc
-    // will additionally round up to the nearest multiple of 512, hence the
-    // nallocx() call.
-    goodSize = nallocx((minSize + 255) & ~size_t(255), 0);
-  } else if (minSize <= 4072 * 1024) {
-    // Round up to the next multiple of 4KB
-    goodSize = (minSize + 4095) & ~size_t(4095);
   } else {
-    // Holy Moly
-    // Round up to the next multiple of 4MB
-    goodSize = (minSize + 4194303) & ~size_t(4194303);
+    // Boundaries between size classes depend on numerious factors, some of
+    // which can even be modified at run-time. Determine the good allocation
+    // size by calling nallocx() directly.
+    goodSize = nallocx(minSize, 0);
   }
   assert(nallocx(goodSize, 0) == goodSize);
   return goodSize;
