@@ -130,8 +130,10 @@ nobase_follyinclude_HEADERS = \
 	io/TypedIOBuf.h \
 	io/ShutdownSocketSet.h \
 	io/async/AsyncTimeout.h \
+	io/async/AsyncTransport.h \
 	io/async/AsyncServerSocket.h \
 	io/async/AsyncSocket.h \
+	io/async/AsyncSocketException.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
 	io/async/EventBaseManager.h \
@@ -199,6 +201,7 @@ nobase_follyinclude_HEADERS = \
 	Uri-inl.h \
 	Varint.h \
 	VersionCheck.h \
+	wangle/Deprecated.h \
 	wangle/Executor.h \
 	wangle/Future-inl.h \
 	wangle/Future.h \
@@ -207,13 +210,17 @@ nobase_follyinclude_HEADERS = \
 	wangle/Later-inl.h \
 	wangle/Later.h \
 	wangle/ManualExecutor.h \
+	wangle/OpaqueCallbackShunt.h \
 	wangle/Promise-inl.h \
 	wangle/Promise.h \
+	wangle/QueuedImmediateExecutor.h \
+	wangle/ScheduledExecutor.h \
 	wangle/ThreadGate.h \
 	wangle/Try-inl.h \
 	wangle/Try.h \
 	wangle/WangleException.h \
-	wangle/detail/Core.h
+	wangle/detail/Core.h \
+	wangle/detail/FSM.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
