@@ -259,6 +259,8 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
    */
   void runOnDestruction(LoopCallback* callback);
 
+  void runBeforeLoop(LoopCallback* callback);
+
   /**
    * Run the specified function in the EventBase's thread.
    *
@@ -519,6 +521,7 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
   CobTimeout::List pendingCobTimeouts_;
 
   LoopCallbackList loopCallbacks_;
+  LoopCallbackList noWaitLoopCallbacks_;
   LoopCallbackList onDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks

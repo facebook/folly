@@ -20,7 +20,48 @@
 #include <glog/logging.h>
 #include <folly/io/async/EventBaseManager.h>
 
+#include <folly/detail/MemoryIdler.h>
+
 namespace folly { namespace wangle {
+
+using folly::detail::MemoryIdler;
+
+/* Class that will free jemalloc caches and madvise the stack away
+ * if the event loop is unused for some period of time
+ */
+class MemoryIdlerTimeout
+    : public AsyncTimeout , public EventBase::LoopCallback {
+ public:
+  explicit MemoryIdlerTimeout(EventBase* b) : AsyncTimeout(b), base_(b) {}
+
+  virtual void timeoutExpired() noexcept {
+    idled = true;
+  }
+
+  virtual void runLoopCallback() noexcept {
+    if (idled) {
+      MemoryIdler::flushLocalMallocCaches();
+      MemoryIdler::unmapUnusedStack(MemoryIdler::kDefaultStackToRetain);
+
+      idled = false;
+    } else {
+      std::chrono::steady_clock::duration idleTimeout =
+        MemoryIdler::defaultIdleTimeout.load(
+          std::memory_order_acquire);
+
+      idleTimeout = MemoryIdler::getVariationTimeout(idleTimeout);
+
+      scheduleTimeout(std::chrono::duration_cast<std::chrono::milliseconds>(
+                        idleTimeout).count());
+    }
+
+    // reschedule this callback for the next event loop.
+    base_->runBeforeLoop(this);
+  }
+ private:
+  EventBase* base_;
+  bool idled{false};
+} ;
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
@@ -73,6 +114,10 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase =
     folly::EventBaseManager::get()->getEventBase();
+
+  auto idler = new MemoryIdlerTimeout(ioThread->eventBase);
+  ioThread->eventBase->runBeforeLoop(idler);
+
   thread->startupBaton.post();
   while (ioThread->shouldRun) {
     ioThread->eventBase->loopForever();

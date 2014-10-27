@@ -74,6 +74,31 @@ struct MemoryIdler {
   /// avoid synchronizing their flushes.
   static AtomicStruct<std::chrono::steady_clock::duration> defaultIdleTimeout;
 
+  /// Selects a timeout pseudo-randomly chosen to be between
+  /// idleTimeout and idleTimeout * (1 + timeoutVariationFraction), to
+  /// smooth out the behavior in a bursty system
+  template <typename Clock = std::chrono::steady_clock>
+  static typename Clock::duration getVariationTimeout(
+      typename Clock::duration idleTimeout
+          = defaultIdleTimeout.load(std::memory_order_acquire),
+      float timeoutVariationFrac = 0.5) {
+    if (idleTimeout.count() > 0 && timeoutVariationFrac > 0) {
+      // hash the pthread_t and the time to get the adjustment.
+      // Standard hash func isn't very good, so bit mix the result
+      auto pr = std::make_pair(pthread_self(),
+                               Clock::now().time_since_epoch().count());
+      std::hash<decltype(pr)> hash_fn;
+      uint64_t h = folly::hash::twang_mix64(hash_fn(pr));
+
+      // multiplying the duration by a floating point doesn't work, grr..
+      auto extraFrac =
+        timeoutVariationFrac / std::numeric_limits<uint64_t>::max() * h;
+      uint64_t tics = idleTimeout.count() * (1 + extraFrac);
+      idleTimeout = typename Clock::duration(tics);
+    }
+
+    return idleTimeout;
+  }
 
   /// Equivalent to fut.futexWait(expected, waitMask), but calls
   /// flushLocalMallocCaches() and unmapUnusedStack(stackToRetain)
@@ -100,26 +125,11 @@ struct MemoryIdler {
       return fut.futexWait(expected, waitMask);
     }
 
+    idleTimeout = getVariationTimeout(idleTimeout, timeoutVariationFrac);
     if (idleTimeout.count() > 0) {
-      auto begin = Clock::now();
-
-      if (timeoutVariationFrac > 0) {
-        // hash the pthread_t and the time to get the adjustment.
-        // Standard hash func isn't very good, so bit mix the result
-        auto pr = std::make_pair(pthread_self(),
-                                 begin.time_since_epoch().count());
-        std::hash<decltype(pr)> hash_fn;
-        uint64_t h = folly::hash::twang_mix64(hash_fn(pr));
-
-        // multiplying the duration by a floating point doesn't work, grr..
-        auto extraFrac =
-            timeoutVariationFrac / std::numeric_limits<uint64_t>::max() * h;
-        uint64_t tics = idleTimeout.count() * (1 + extraFrac);
-        idleTimeout = typename Clock::duration(tics);
-      }
-
       while (true) {
-        auto rv = fut.futexWaitUntil(expected, begin + idleTimeout, waitMask);
+        auto rv = fut.futexWaitUntil(
+          expected, Clock::now() + idleTimeout, waitMask);
         if (rv == FutexResult::TIMEDOUT) {
           // timeout is over
           break;

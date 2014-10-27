@@ -185,13 +185,17 @@ EventBase::~EventBase() {
     callback->runLoopCallback();
   }
 
-  // Delete any unfired CobTimeout objects, so that we don't leak memory
+  // Delete any unfired callback objects, so that we don't leak memory
   // (Note that we don't fire them.  The caller is responsible for cleaning up
   // its own data structures if it destroys the EventBase with unfired events
   // remaining.)
   while (!pendingCobTimeouts_.empty()) {
     CobTimeout* timeout = &pendingCobTimeouts_.front();
     delete timeout;
+  }
+
+  while (!noWaitLoopCallbacks_.empty()) {
+    delete &noWaitLoopCallbacks_.front();
   }
 
   (void) runLoopCallbacks(false);
@@ -274,10 +278,20 @@ bool EventBase::loopBody(int flags) {
     // nobody can add loop callbacks from within this thread if
     // we don't have to handle anything to start with...
     if (blocking && loopCallbacks_.empty()) {
+      LoopCallbackList callbacks;
+      callbacks.swap(noWaitLoopCallbacks_);
+
+      while(!callbacks.empty()) {
+        auto* item = &callbacks.front();
+        callbacks.pop_front();
+        item->runLoopCallback();
+      }
+
       res = event_base_loop(evb_, EVLOOP_ONCE);
     } else {
       res = event_base_loop(evb_, EVLOOP_ONCE | EVLOOP_NONBLOCK);
     }
+
     ranLoopCallbacks = runLoopCallbacks();
 
     int64_t busy = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -456,6 +470,12 @@ void EventBase::runOnDestruction(LoopCallback* callback) {
   DCHECK(isInEventBaseThread());
   callback->cancelLoopCallback();
   onDestructionCallbacks_.push_back(*callback);
+}
+
+void EventBase::runBeforeLoop(LoopCallback* callback) {
+  DCHECK(isInEventBaseThread());
+  callback->cancelLoopCallback();
+  noWaitLoopCallbacks_.push_back(*callback);
 }
 
 bool EventBase::runInEventBaseThread(void (*fn)(void*), void* arg) {
