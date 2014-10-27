@@ -205,9 +205,10 @@ class Core : protected FSM<State> {
   }
 
   void detachOne() {
-    ++detached_;
-    assert(detached_ == 1 || detached_ == 2);
-    if (detached_ == 2) {
+    auto d = ++detached_;
+    assert(d >= 1);
+    assert(d <= 2);
+    if (d == 2) {
       // we should have already executed the callback with the value
       assert(calledBack_);
       delete this;

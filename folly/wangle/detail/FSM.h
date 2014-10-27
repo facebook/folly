@@ -48,13 +48,14 @@ public:
   }
 
   /// Atomically do a state transition with accompanying action.
+  /// The action will see the old state.
   /// @returns true on success, false and action unexecuted otherwise
   template <class F>
   bool updateState(Enum A, Enum B, F const& action) {
     std::lock_guard<Mutex> lock(mutex_);
     if (state_ != A) return false;
-    state_ = B;
     action();
+    state_ = B;
     return true;
   }
 
@@ -82,6 +83,9 @@ public:
   ///       }
   ///       /* do unprotected stuff */
   ///       return; // or otherwise break out of the loop
+  ///
+  /// The protected action will see the old state, and the unprotected action
+  /// will see the new state.
   template <class F1, class F2>
   bool updateState(Enum A, Enum B,
                    F1 const& protectedAction, F2 const& unprotectedAction) {

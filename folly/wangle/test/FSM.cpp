@@ -108,8 +108,8 @@ TEST(FSM, noActionOnBadUpdate) {
   EXPECT_EQ(0, count);
 }
 
-TEST(FSM, stateTransitionBeforeAction) {
+TEST(FSM, stateTransitionAfterAction) {
   FSM<State> fsm(State::A);
   fsm.updateState(State::A, State::B,
-                  [&]{ EXPECT_EQ(State::B, fsm.getState()); });
+                  [&]{ EXPECT_EQ(State::A, fsm.getState()); });
 }

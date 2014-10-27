@@ -23,6 +23,7 @@
 #include <thread>
 #include <type_traits>
 #include <unistd.h>
+#include <folly/Memory.h>
 #include <folly/wangle/Executor.h>
 #include <folly/wangle/Future.h>
 #include <folly/wangle/ManualExecutor.h>
@@ -670,7 +671,6 @@ TEST(Future, waitWithSemaphore) {
         });
       flag = true;
       result.store(waitWithSemaphore(std::move(n)).value());
-      LOG(INFO) << result;
     },
     std::move(f)
     );
@@ -846,4 +846,27 @@ TEST(Future, getFuture_after_setException) {
   Promise<void> p;
   p.fulfil([]() -> void { throw std::logic_error("foo"); });
   EXPECT_THROW(p.getFuture().value(), std::logic_error);
+}
+
+TEST(Future, detachRace) {
+  // Task #5438209
+  // This test is designed to detect a race that was in Core::detachOne()
+  // where detached_ was incremented and then tested, and that
+  // allowed a race where both Promise and Future would think they were the
+  // second and both try to delete. This showed up at scale but was very
+  // difficult to reliably repro in a test. As it is, this only fails about
+  // once in every 1,000 executions. Doing this 1,000 times is going to make a
+  // slow test so I won't do that but if it ever fails, take it seriously, and
+  // run the test binary with "--gtest_repeat=10000 --gtest_filter=*detachRace"
+  // (Don't forget to enable ASAN)
+  auto p = folly::make_unique<Promise<bool>>();
+  auto f = folly::make_unique<Future<bool>>(p->getFuture());
+  folly::Baton<> baton;
+  std::thread t1([&]{
+    baton.post();
+    p.reset();
+  });
+  baton.wait();
+  f.reset();
+  t1.join();
 }
