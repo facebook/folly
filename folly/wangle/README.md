@@ -215,17 +215,6 @@ later = later.then(y3); // nor here
 later.launch(); // explicit launch
 ```
 
-The third and least flexible (but sometimes very useful) method assumes only two threads and that you want to do something in the far thread, then come back to the current thread. `ThreadGate` is an interface for a bidirectional gateway between two threads. It's usually easier to use a Later, but ThreadGate can be more efficient, and if the pattern is used often in your code it can be more convenient.
-```C++
-// Using a ThreadGate (which has two executors xe and xw)
-tg.gate(a).then(b);
-
-// Using via
-makeFuture()
-  .via(xe).then(a)
-  .via(xw).then(b);
-```
-
 ## You make me Promises, Promises
 
 If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make Promises. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with `makeFuture()`). Promises are simple, you make one, you extract the Future, and you fulfil it with a value or an exception. Example:

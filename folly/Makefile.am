@@ -203,7 +203,6 @@ nobase_follyinclude_HEADERS = \
 	wangle/Executor.h \
 	wangle/Future-inl.h \
 	wangle/Future.h \
-	wangle/GenericThreadGate.h \
 	wangle/InlineExecutor.h \
 	wangle/Later-inl.h \
 	wangle/Later.h \
@@ -213,7 +212,6 @@ nobase_follyinclude_HEADERS = \
 	wangle/Promise.h \
 	wangle/QueuedImmediateExecutor.h \
 	wangle/ScheduledExecutor.h \
-	wangle/ThreadGate.h \
 	wangle/Try-inl.h \
 	wangle/Try.h \
 	wangle/WangleException.h \
@@ -286,7 +284,6 @@ libfolly_la_SOURCES = \
 	Version.cpp \
 	wangle/InlineExecutor.cpp \
 	wangle/ManualExecutor.cpp \
-	wangle/ThreadGate.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
