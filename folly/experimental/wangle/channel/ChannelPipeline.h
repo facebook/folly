@@ -354,3 +354,16 @@ class ChannelPipeline<Handler, Handlers...>
 };
 
 }}
+
+namespace folly {
+
+class AsyncSocket;
+
+template <typename Pipeline>
+class PipelineFactory {
+ public:
+  virtual Pipeline* newPipeline(std::shared_ptr<AsyncSocket>) = 0;
+  virtual ~PipelineFactory() {}
+};
+
+}

@@ -50,6 +50,10 @@ class ThreadPoolExecutor : public Executor {
     threadFactory_ = std::move(threadFactory);
   }
 
+  std::shared_ptr<ThreadFactory> getThreadFactory(void) {
+    return threadFactory_;
+  }
+
   size_t numThreads();
   void setNumThreads(size_t numThreads);
   void stop();

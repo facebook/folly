@@ -98,7 +98,7 @@ class Acceptor :
   /**
    * Access the Acceptor's event base.
    */
-  EventBase* getEventBase() { return base_; }
+  virtual EventBase* getEventBase() const { return base_; }
 
   /**
    * Access the Acceptor's downstream (client-side) ConnectionManager
@@ -173,6 +173,12 @@ class Acceptor :
     std::chrono::steady_clock::time_point acceptTime
   ) noexcept;
 
+  /**
+   * Drains all open connections of their outstanding transactions. When
+   * a connection's transaction count reaches zero, the connection closes.
+   */
+  void drainAllConnections();
+
  protected:
   friend class AcceptorHandshakeHelper;
 
@@ -239,11 +245,7 @@ class Acceptor :
    */
   void dropAllConnections();
 
-  /**
-   * Drains all open connections of their outstanding transactions. When
-   * a connection's transaction count reaches zero, the connection closes.
-   */
-  void drainAllConnections();
+ protected:
 
   /**
    * onConnectionsDrained() will be called once all connections have been
@@ -333,6 +335,12 @@ class Acceptor :
   LoadShedConfiguration loadShedConfig_;
   IConnectionCounter* connectionCounter_{nullptr};
   std::shared_ptr<SSLCacheProvider> cacheProvider_;
+};
+
+class AcceptorFactory {
+ public:
+  virtual std::shared_ptr<Acceptor> newAcceptor() = 0;
+  virtual ~AcceptorFactory() = default;
 };
 
 } // namespace
