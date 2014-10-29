@@ -19,6 +19,8 @@
 #include <type_traits>
 #include <exception>
 #include <algorithm>
+#include <folly/Likely.h>
+#include <folly/wangle/WangleException.h>
 
 namespace folly { namespace wangle {
 
@@ -65,6 +67,14 @@ class Try {
   bool hasValue() const { return contains_ == Contains::VALUE; }
   bool hasException() const { return contains_ == Contains::EXCEPTION; }
 
+  std::exception_ptr getException() const {
+    if (UNLIKELY(!hasException())) {
+      throw WangleException(
+          "getException(): Try does not contain an exception");
+    }
+    return e_;
+  }
+
  private:
   Contains contains_;
   union {
@@ -86,6 +96,14 @@ class Try<void> {
 
   bool hasValue() const { return hasValue_; }
   bool hasException() const { return !hasValue_; }
+
+  std::exception_ptr getException() const {
+    if (UNLIKELY(!hasException())) {
+      throw WangleException(
+          "getException(): Try does not contain an exception");
+    }
+    return e_;
+  }
 
  private:
   bool hasValue_;

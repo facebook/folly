@@ -71,6 +71,7 @@ void Future<T>::setCallback_(F&& func) {
   core_->setCallback(std::move(func));
 }
 
+// Variant: f.then([](Try<T>&& t){ return t.value(); });
 template <class T>
 template <class F>
 typename std::enable_if<
@@ -130,6 +131,69 @@ Future<T>::then(F&& func) {
   return std::move(f);
 }
 
+// Variant: f.then([](T&& t){ return t; });
+template <class T>
+template <class F>
+typename std::enable_if<
+  !std::is_same<T, void>::value &&
+  !isFuture<typename std::result_of<
+    F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
+  Future<typename std::result_of<
+    F(typename detail::AliasIfVoid<T>::type&&)>::type> >::type
+Future<T>::then(F&& func) {
+  typedef typename std::result_of<F(T&&)>::type B;
+
+  throwIfInvalid();
+
+  folly::MoveWrapper<Promise<B>> p;
+  folly::MoveWrapper<F> funcm(std::forward<F>(func));
+  auto f = p->getFuture();
+
+  setCallback_(
+    [p, funcm](Try<T>&& t) mutable {
+      if (t.hasException()) {
+        p->setException(t.getException());
+      } else {
+        p->fulfil([&]() {
+          return (*funcm)(std::move(t.value()));
+        });
+      }
+    });
+
+  return std::move(f);
+}
+
+// Variant: f.then([](){ return; });
+template <class T>
+template <class F>
+typename std::enable_if<
+  std::is_same<T, void>::value &&
+  !isFuture<typename std::result_of<F()>::type>::value,
+  Future<typename std::result_of<F()>::type> >::type
+Future<T>::then(F&& func) {
+  typedef typename std::result_of<F()>::type B;
+
+  throwIfInvalid();
+
+  folly::MoveWrapper<Promise<B>> p;
+  folly::MoveWrapper<F> funcm(std::forward<F>(func));
+  auto f = p->getFuture();
+
+  setCallback_(
+    [p, funcm](Try<T>&& t) mutable {
+      if (t.hasException()) {
+        p->setException(t.getException());
+      } else {
+        p->fulfil([&]() {
+          return (*funcm)();
+        });
+      }
+    });
+
+  return std::move(f);
+}
+
+// Variant: f.then([](Try<T>&& t){ return makeFuture<T>(t.value()); });
 template <class T>
 template <class F>
 typename std::enable_if<
@@ -157,6 +221,79 @@ Future<T>::then(F&& func) {
           });
       } catch (...) {
         p->setException(std::current_exception());
+      }
+    });
+
+  return std::move(f);
+}
+
+// Variant: f.then([](T&& t){ return makeFuture<T>(t); });
+template <class T>
+template <class F>
+typename std::enable_if<
+  !std::is_same<T, void>::value &&
+  isFuture<typename std::result_of<
+    F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
+  Future<typename std::result_of<
+    F(typename detail::AliasIfVoid<T>::type&&)>::type::value_type> >::type
+Future<T>::then(F&& func) {
+  typedef typename std::result_of<F(T&&)>::type::value_type B;
+
+  throwIfInvalid();
+
+  folly::MoveWrapper<Promise<B>> p;
+  folly::MoveWrapper<F> funcm(std::forward<F>(func));
+  auto f = p->getFuture();
+
+  setCallback_(
+    [p, funcm](Try<T>&& t) mutable {
+      if (t.hasException()) {
+        p->setException(t.getException());
+      } else {
+        try {
+          auto f2 = (*funcm)(std::move(t.value()));
+          f2.setCallback_([p](Try<B>&& b) mutable {
+              p->fulfilTry(std::move(b));
+            });
+        } catch (...) {
+          p->setException(std::current_exception());
+        }
+      }
+    });
+
+  return std::move(f);
+}
+
+// Variant: f.then([](){ return makeFuture(); });
+template <class T>
+template <class F>
+typename std::enable_if<
+  std::is_same<T, void>::value &&
+  isFuture<typename std::result_of<F()>::type>::value,
+  Future<typename std::result_of<F()>::type::value_type> >::type
+Future<T>::then(F&& func) {
+  typedef typename std::result_of<F()>::type::value_type B;
+
+  throwIfInvalid();
+
+  folly::MoveWrapper<Promise<B>> p;
+  folly::MoveWrapper<F> funcm(std::forward<F>(func));
+
+  auto f = p->getFuture();
+
+  setCallback_(
+    [p, funcm](Try<T>&& t) mutable {
+      if (t.hasException()) {
+        p->setException(t.getException());
+      } else {
+        try {
+          auto f2 = (*funcm)();
+          f2.setCallback_([p](Try<B>&& b) mutable {
+              p->fulfilTry(std::move(b));
+            });
+        } catch (...) {
+          p->setException(std::current_exception());
+        }
       }
     });
 

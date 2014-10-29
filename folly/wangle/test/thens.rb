@@ -35,7 +35,7 @@ param_types = [
     #"Try<A> const&",
     #"Try<A>",
     #"Try<A>&",
-    #"A&&",
+    "A&&",
     #"A const&",
     #"A",
     #"A&",
@@ -47,7 +47,7 @@ tests = (
     param_types.map { |param|
       both = "#{ret}, #{param}"
       [
-        ["aFunction<#{both}>"],
+        ["&aFunction<#{both}>"],
         ["&SomeClass::aStaticMethod<#{both}>"],
         # TODO switch these around (std::bind-style)
         ["&anObject", "&SomeClass::aMethod<#{both}>"],
@@ -67,6 +67,9 @@ print <<EOF
 #ifndef __clang__
 
 #include <folly/wangle/test/Thens.h>
+
+#ifndef __clang__
+// TODO: fails to compile with clang:dev.  See task #4412111
 
 TEST(Future, thenVariants) {
   SomeClass anObject;

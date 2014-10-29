@@ -69,7 +69,7 @@ TEST(Future, special) {
   EXPECT_TRUE(std::is_move_assignable<Future<int>>::value);
 }
 
-TEST(Future, then) {
+TEST(Future, thenTry) {
   bool flag = false;
 
   makeFuture<int>(42).then([&](Try<int>&& t) {
@@ -93,6 +93,44 @@ TEST(Future, then) {
   p.setValue();
   EXPECT_TRUE(flag);
   EXPECT_TRUE(f.isReady());
+}
+
+TEST(Future, thenValue) {
+  bool flag = false;
+  makeFuture<int>(42).then([&](int i){
+    EXPECT_EQ(42, i);
+    flag = true;
+  });
+  EXPECT_TRUE(flag); flag = false;
+
+  makeFuture<int>(42)
+    .then([](int i){ return i; })
+    .then([&](int i) { flag = true; EXPECT_EQ(42, i); });
+  EXPECT_TRUE(flag); flag = false;
+
+  makeFuture().then([&]{
+    flag = true;
+  });
+  EXPECT_TRUE(flag); flag = false;
+
+  auto f = makeFuture<int>(eggs).then([&](int i){});
+  EXPECT_THROW(f.value(), eggs_t);
+
+  f = makeFuture<void>(eggs).then([&]{});
+  EXPECT_THROW(f.value(), eggs_t);
+}
+
+TEST(Future, thenValueFuture) {
+  bool flag = false;
+  makeFuture<int>(42)
+    .then([](int i){ return makeFuture<int>(std::move(i)); })
+    .then([&](Try<int>&& t) { flag = true; EXPECT_EQ(42, t.value()); });
+  EXPECT_TRUE(flag); flag = false;
+
+  makeFuture()
+    .then([]{ return makeFuture(); })
+    .then([&](Try<void>&& t) { flag = true; });
+  EXPECT_TRUE(flag); flag = false;
 }
 
 static string doWorkStatic(Try<string>&& t) {
