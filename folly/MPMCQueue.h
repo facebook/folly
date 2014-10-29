@@ -34,7 +34,7 @@ namespace folly {
 namespace detail {
 
 template<typename T, template<typename> class Atom>
-class SingleElementQueue;
+struct SingleElementQueue;
 
 template <typename T> class MPMCPipelineStageImpl;
 

@@ -21,6 +21,7 @@
 #include <boost/algorithm/string.hpp>
 #include <gtest/gtest.h>
 
+#include <folly/config.h>
 #include <folly/Benchmark.h>
 
 using namespace folly;
@@ -113,7 +114,9 @@ TEST(StringPrintf, VPrintf) {
   vprintfCheck("long string requiring reallocation 1 2 3 0x12345678",
                "%s %s %d %d %d %#x",
                "long string", "requiring reallocation", 1, 2, 3, 0x12345678);
+#ifdef HAVE_VSNPRINTF_ERRORS
   vprintfError("bogus%", "foo");
+#endif
 }
 
 TEST(StringPrintf, VariousSizes) {
