@@ -338,7 +338,7 @@ bool operator>=(const Optional<V>& a, const Optional<V>& b) {
   return !(a < b);
 }
 
-// To supress comparability of Optional<T> with T, despite implicit conversion.
+// Suppress comparability of Optional<T> with T, despite implicit conversion.
 template<class V> bool operator< (const Optional<V>&, const V& other) = delete;
 template<class V> bool operator<=(const Optional<V>&, const V& other) = delete;
 template<class V> bool operator>=(const Optional<V>&, const V& other) = delete;
