@@ -36,7 +36,7 @@ class BitReference {
  public:
   BitReference(Ref r, size_t bit) : ref_(r), bit_(bit) { }
 
-  operator bool() const {
+  /* implicit */ operator bool() const {
     return ref_ & (one_ << bit_);
   }
 
