@@ -313,8 +313,12 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
     throw BadFormatArg("folly::format: invalid precision");
   }
 
+  // XXX: clang should be smart enough to not need the two static_cast<size_t>
+  // uses below given the above checks. If clang ever becomes that smart, we
+  // should remove the otherwise unnecessary warts.
+
   if (arg.precision != FormatArg::kDefaultPrecision &&
-      val.size() > arg.precision) {
+      val.size() > static_cast<size_t>(arg.precision)) {
     val.reset(val.data(), arg.precision);
   }
 
@@ -331,7 +335,8 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
   };
 
   int padRemaining = 0;
-  if (arg.width != FormatArg::kDefaultWidth && val.size() < arg.width) {
+  if (arg.width != FormatArg::kDefaultWidth &&
+      val.size() < static_cast<size_t>(arg.width)) {
     char fill = arg.fill == FormatArg::kDefaultFill ? ' ' : arg.fill;
     int padChars = static_cast<int> (arg.width - val.size());
     memset(padBuf, fill, std::min(padBufSize, padChars));
