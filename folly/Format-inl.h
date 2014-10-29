@@ -306,6 +306,13 @@ namespace format_value {
 
 template <class FormatCallback>
 void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
+  if (arg.width != FormatArg::kDefaultWidth && arg.width < 0) {
+    throw BadFormatArg("folly::format: invalid width");
+  }
+  if (arg.precision != FormatArg::kDefaultPrecision && arg.precision < 0) {
+    throw BadFormatArg("folly::format: invalid precision");
+  }
+
   if (arg.precision != FormatArg::kDefaultPrecision &&
       val.size() > arg.precision) {
     val.reset(val.data(), arg.precision);
