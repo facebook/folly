@@ -36,9 +36,9 @@
 // either before or after this inclusion.
 #ifdef FOLLY_MALLOC_H_
 #undef FOLLY_MALLOC_H_
-#include "basic_fbstring_malloc.h"
+#include "basic_fbstring_malloc.h" // nolint
 #else
-#include "basic_fbstring_malloc.h"
+#include "basic_fbstring_malloc.h" // nolint
 #undef FOLLY_MALLOC_H_
 #endif
 

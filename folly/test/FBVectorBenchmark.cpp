@@ -93,16 +93,16 @@ typedef vector<folly::fbstring> FBStringVector;
 typedef fbvector<folly::fbstring> FBStringFBVector;
 
 #define VECTOR IntVector
-#include <folly/test/FBVectorTestBenchmarks.cpp.h>
+#include <folly/test/FBVectorTestBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR IntFBVector
-#include <folly/test/FBVectorTestBenchmarks.cpp.h>
+#include <folly/test/FBVectorTestBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR FBStringVector
-#include <folly/test/FBVectorTestBenchmarks.cpp.h>
+#include <folly/test/FBVectorTestBenchmarks.cpp.h> // nolint
 #undef VECTOR
 #define VECTOR FBStringFBVector
-#include <folly/test/FBVectorTestBenchmarks.cpp.h>
+#include <folly/test/FBVectorTestBenchmarks.cpp.h> // nolint
 #undef VECTOR
 
 int main(int argc, char** argv) {

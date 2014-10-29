@@ -86,10 +86,10 @@ std::list<char> RandomList(unsigned int maxSize) {
 #define BENCHFUN(F) CONCAT(CONCAT(BM_, F), CONCAT(_, STRING))
 
 #define STRING string
-#include <folly/test/FBStringTestBenchmarks.cpp.h>
+#include <folly/test/FBStringTestBenchmarks.cpp.h> // nolint
 #undef STRING
 #define STRING fbstring
-#include <folly/test/FBStringTestBenchmarks.cpp.h>
+#include <folly/test/FBStringTestBenchmarks.cpp.h> // nolint
 #undef STRING
 
 int main(int argc, char** argv) {
