@@ -15,4 +15,4 @@
  */
 
 #pragma once
-#define DEPRECATED __attribute__((deprecated))
+#define DEPRECATED __attribute__((__deprecated__))
