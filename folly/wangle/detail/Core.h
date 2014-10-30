@@ -30,6 +30,8 @@
 #include <folly/wangle/Executor.h>
 #include <folly/wangle/detail/FSM.h>
 
+#include <folly/io/async/Request.h>
+
 namespace folly { namespace wangle { namespace detail {
 
 // As of GCC 4.8.1, the std::function in libstdc++ optimizes only for pointers
@@ -80,6 +82,7 @@ class Core : protected FSM<State> {
         throw std::logic_error("setCallback called twice");
       }
 
+      context_ = RequestContext::saveContext();
       callback_ = std::move(func);
     };
 
@@ -194,6 +197,8 @@ class Core : protected FSM<State> {
       // TODO(5306911) we should probably try/catch
       calledBack_ = true;
       Executor* x = executor_;
+
+      RequestContext::setContext(context_);
       if (x) {
         MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
         MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
@@ -217,6 +222,7 @@ class Core : protected FSM<State> {
 
   folly::Optional<Try<T>> result_;
   std::function<void(Try<T>&&)> callback_;
+  std::shared_ptr<RequestContext> context_{nullptr};
   std::atomic<bool> calledBack_ {false};
   std::atomic<unsigned char> detached_ {0};
   std::atomic<bool> active_ {true};

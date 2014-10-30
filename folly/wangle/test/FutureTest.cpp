@@ -28,6 +28,9 @@
 #include <folly/wangle/Future.h>
 #include <folly/wangle/ManualExecutor.h>
 
+#include <folly/io/async/Request.h>
+
+using namespace folly;
 using namespace folly::wangle;
 using std::pair;
 using std::string;
@@ -907,4 +910,43 @@ TEST(Future, detachRace) {
   baton.wait();
   f.reset();
   t1.join();
+}
+
+class TestData : public RequestData {
+ public:
+  explicit TestData(int data) : data_(data) {}
+  virtual ~TestData() {}
+  int data_;
+};
+
+TEST(Future, context) {
+
+  // Start a new context
+  RequestContext::create();
+
+  EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
+
+  // Set some test data
+  RequestContext::get()->setContextData(
+    "test",
+    std::unique_ptr<TestData>(new TestData(10)));
+
+  // Start a future
+  Promise<void> p;
+  auto future = p.getFuture().then([&]{
+    // Check that the context followed the future
+    EXPECT_TRUE(RequestContext::get() != nullptr);
+    auto a = dynamic_cast<TestData*>(
+      RequestContext::get()->getContextData("test"));
+    auto data = a->data_;
+    EXPECT_EQ(10, data);
+  });
+
+  // Clear the context
+  RequestContext::setContext(nullptr);
+
+  EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
+
+  // Fulfil the promise
+  p.setValue();
 }
