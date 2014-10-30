@@ -5,9 +5,6 @@
 
 #include <folly/wangle/test/Thens.h>
 
-#ifndef __clang__
-// TODO: fails to compile with clang:dev.  See task #4412111
-
 TEST(Future, thenVariants) {
   SomeClass anObject;
   Executor* anExecutor;
