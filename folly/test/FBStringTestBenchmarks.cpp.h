@@ -17,6 +17,8 @@
 /**
  * This file is supposed to be included from within
  * FBStringTest. Do not use otherwise.
+ *
+ * override-include-guard
  */
 
 void BENCHFUN(initRNG)(int iters, int) {

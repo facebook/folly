@@ -18,6 +18,7 @@
 //
 // Note: no include guard; different -inl.h files include this and
 // undef it more than once in a translation unit.
+// override-include-guard
 
 #if !(defined(__x86__) || defined(__i386__) || FOLLY_X64)
 #define FOLLY_SPIN_WAIT(condition)                \
