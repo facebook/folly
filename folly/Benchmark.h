@@ -149,12 +149,11 @@ struct BenchmarkSuspender {
   }
 
   /**
-   * This helps the macro definition. To get around the dangers of
-   * operator bool, returns a pointer to member (which allows no
-   * arithmetic).
+   * This is for use inside of if-conditions, used in BENCHMARK macros.
+   * If-conditions bypass the explicit on operator bool.
    */
-  operator int BenchmarkSuspender::*() const {
-    return nullptr;
+  explicit operator bool() const {
+    return false;
   }
 
   /**
