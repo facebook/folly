@@ -210,7 +210,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
   // access their value is to explicity rethrow and catch it.
   try {
     ew.throwException();
-  } catch (int& i) {
+  } catch /* nolint */ (int& i) {
     EXPECT_EQ(i, expected);
   }
 }
