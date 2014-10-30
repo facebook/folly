@@ -309,13 +309,13 @@ inline dynamic::dynamic(dynamic const& o)
   *this = o;
 }
 
-inline dynamic::dynamic(dynamic&& o)
+inline dynamic::dynamic(dynamic&& o) noexcept
   : type_(NULLT)
 {
   *this = std::move(o);
 }
 
-inline dynamic::~dynamic() { destroy(); }
+inline dynamic::~dynamic() noexcept { destroy(); }
 
 template<class T>
 dynamic::dynamic(T t) {
@@ -508,7 +508,7 @@ inline dynamic& dynamic::operator=(dynamic const& o) {
   return *this;
 }
 
-inline dynamic& dynamic::operator=(dynamic&& o) {
+inline dynamic& dynamic::operator=(dynamic&& o) noexcept {
   if (&o != this) {
     destroy();
 #define FB_X(T) new (getAddress<T>()) T(std::move(*o.getAddress<T>()))
@@ -772,7 +772,7 @@ T dynamic::asImpl() const {
 
 // Return a T* to our type, or null if we're not that type.
 template<class T>
-T* dynamic::get_nothrow() {
+T* dynamic::get_nothrow() noexcept {
   if (type_ != TypeInfo<T>::type) {
     return nullptr;
   }
@@ -780,40 +780,40 @@ T* dynamic::get_nothrow() {
 }
 
 template<class T>
-T const* dynamic::get_nothrow() const {
+T const* dynamic::get_nothrow() const noexcept {
   return const_cast<dynamic*>(this)->get_nothrow<T>();
 }
 
 // Return T* for where we can put a T, without type checking.  (Memory
 // might be uninitialized, even.)
 template<class T>
-T* dynamic::getAddress() {
+T* dynamic::getAddress() noexcept {
   return GetAddrImpl<T>::get(u_);
 }
 
 template<class T>
-T const* dynamic::getAddress() const {
+T const* dynamic::getAddress() const noexcept {
   return const_cast<dynamic*>(this)->getAddress<T>();
 }
 
 template<class T> struct dynamic::GetAddrImpl {};
 template<> struct dynamic::GetAddrImpl<void*> {
-  static void** get(Data& d) { return &d.nul; }
+  static void** get(Data& d) noexcept { return &d.nul; }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::Array> {
-  static Array* get(Data& d) { return &d.array; }
+  static Array* get(Data& d) noexcept { return &d.array; }
 };
 template<> struct dynamic::GetAddrImpl<bool> {
-  static bool* get(Data& d) { return &d.boolean; }
+  static bool* get(Data& d) noexcept { return &d.boolean; }
 };
 template<> struct dynamic::GetAddrImpl<int64_t> {
-  static int64_t* get(Data& d) { return &d.integer; }
+  static int64_t* get(Data& d) noexcept { return &d.integer; }
 };
 template<> struct dynamic::GetAddrImpl<double> {
-  static double* get(Data& d) { return &d.doubl; }
+  static double* get(Data& d) noexcept { return &d.doubl; }
 };
 template<> struct dynamic::GetAddrImpl<fbstring> {
-  static fbstring* get(Data& d) { return &d.string; }
+  static fbstring* get(Data& d) noexcept { return &d.string; }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
   static_assert(sizeof(ObjectImpl) <= sizeof(Data::objectBuffer),
@@ -821,7 +821,7 @@ template<> struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
     " amount of space depending on its template parameters.  This is "
     "weird.  Make objectBuffer bigger if you want to compile dynamic.");
 
-  static ObjectImpl* get(Data& d) {
+  static ObjectImpl* get(Data& d) noexcept {
     void* data = &d.objectBuffer;
     return static_cast<ObjectImpl*>(data);
   }
@@ -846,7 +846,7 @@ inline char const* dynamic::typeName(Type t) {
 #undef FB_X
 }
 
-inline void dynamic::destroy() {
+inline void dynamic::destroy() noexcept {
   // This short-circuit speeds up some microbenchmarks.
   if (type_ == NULLT) return;
 

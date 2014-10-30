@@ -180,8 +180,8 @@ public:
   template<class Iterator> dynamic(Iterator first, Iterator last);
 
   dynamic(dynamic const&);
-  dynamic(dynamic&&);
-  ~dynamic();
+  dynamic(dynamic&&) noexcept;
+  ~dynamic() noexcept;
 
   /*
    * "Deep" equality comparison.  This will compare all the way down
@@ -223,7 +223,7 @@ public:
    * Basic guarantee only.
    */
   dynamic& operator=(dynamic const&);
-  dynamic& operator=(dynamic&&);
+  dynamic& operator=(dynamic&&) noexcept;
 
   /*
    * For simple dynamics (not arrays or objects), this prints the
@@ -494,15 +494,15 @@ private:
 
   template<class T> T const& get() const;
   template<class T> T&       get();
-  template<class T> T*       get_nothrow();
-  template<class T> T const* get_nothrow() const;
-  template<class T> T*       getAddress();
-  template<class T> T const* getAddress() const;
+  template<class T> T*       get_nothrow() noexcept;
+  template<class T> T const* get_nothrow() const noexcept;
+  template<class T> T*       getAddress() noexcept;
+  template<class T> T const* getAddress() const noexcept;
 
   template<class T> T asImpl() const;
 
   static char const* typeName(Type);
-  void destroy();
+  void destroy() noexcept;
   void print(std::ostream&) const;
   void print_as_pseudo_json(std::ostream&) const; // see json.cpp
 
