@@ -262,7 +262,7 @@ class IOBufQueue {
   void clear();
 
   /** Movable */
-  IOBufQueue(IOBufQueue&&);
+  IOBufQueue(IOBufQueue&&) noexcept;
   IOBufQueue& operator=(IOBufQueue&&);
 
  private:

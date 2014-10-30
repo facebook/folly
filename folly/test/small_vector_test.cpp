@@ -136,7 +136,7 @@ struct NoncopyableCounter {
   ~NoncopyableCounter() {
     --alive;
   }
-  NoncopyableCounter(NoncopyableCounter&&) { ++alive; }
+  NoncopyableCounter(NoncopyableCounter&&) noexcept { ++alive; }
   NoncopyableCounter(NoncopyableCounter const&) = delete;
   NoncopyableCounter& operator=(NoncopyableCounter const&) const = delete;
   NoncopyableCounter& operator=(NoncopyableCounter&&) { return *this; }

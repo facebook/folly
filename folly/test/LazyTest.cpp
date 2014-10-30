@@ -72,7 +72,7 @@ TEST(Lazy, Map) {
 struct CopyCount {
   CopyCount() {}
   CopyCount(const CopyCount&) { ++count; }
-  CopyCount(CopyCount&&)      {}
+  CopyCount(CopyCount&&) noexcept {}
 
   static int count;
 

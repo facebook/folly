@@ -77,7 +77,7 @@ class ScopeGuardImplBase {
   ScopeGuardImplBase()
     : dismissed_(false) {}
 
-  ScopeGuardImplBase(ScopeGuardImplBase&& other)
+  ScopeGuardImplBase(ScopeGuardImplBase&& other) noexcept
     : dismissed_(other.dismissed_) {
     other.dismissed_ = true;
   }

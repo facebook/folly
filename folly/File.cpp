@@ -52,7 +52,7 @@ File::File(const char* name, int flags, mode_t mode)
   ownsFd_ = true;
 }
 
-File::File(File&& other)
+File::File(File&& other) noexcept
   : fd_(other.fd_)
   , ownsFd_(other.ownsFd_) {
   other.release();
@@ -80,7 +80,7 @@ File::~File() {
   return File(fd, true);
 }
 
-int File::release() {
+int File::release() noexcept {
   int released = fd_;
   fd_ = -1;
   ownsFd_ = false;

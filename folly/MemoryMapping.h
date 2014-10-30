@@ -127,13 +127,13 @@ class MemoryMapping : boost::noncopyable {
                          off_t length=-1,
                          Options options=Options());
 
-  MemoryMapping(MemoryMapping&&);
+  MemoryMapping(MemoryMapping&&) noexcept;
 
   ~MemoryMapping();
 
   MemoryMapping& operator=(MemoryMapping);
 
-  void swap(MemoryMapping& other);
+  void swap(MemoryMapping& other) noexcept;
 
   /**
    * Lock the pages in memory
@@ -229,7 +229,7 @@ class MemoryMapping : boost::noncopyable {
   MutableByteRange data_;
 };
 
-void swap(MemoryMapping&, MemoryMapping&);
+void swap(MemoryMapping&, MemoryMapping&) noexcept;
 
 /**
  * A special case of memcpy() that always copies memory forwards.

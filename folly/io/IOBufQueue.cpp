@@ -71,7 +71,7 @@ IOBufQueue::IOBufQueue(const Options& options)
     chainLength_(0) {
 }
 
-IOBufQueue::IOBufQueue(IOBufQueue&& other)
+IOBufQueue::IOBufQueue(IOBufQueue&& other) noexcept
   : options_(other.options_),
     chainLength_(other.chainLength_),
     head_(std::move(other.head_)) {

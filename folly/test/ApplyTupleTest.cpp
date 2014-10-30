@@ -73,7 +73,7 @@ std::function<void (int, int, double)> makeFunc() {
 }
 
 struct GuardObjBase {
-  GuardObjBase(GuardObjBase&&) {}
+  GuardObjBase(GuardObjBase&&) noexcept {}
   GuardObjBase() {}
   GuardObjBase(GuardObjBase const&) = delete;
   GuardObjBase& operator=(GuardObjBase const&) = delete;
@@ -115,7 +115,7 @@ guard(F&& f, Args&&... args) {
 
 struct Mover {
   Mover() {}
-  Mover(Mover&&) {}
+  Mover(Mover&&) noexcept {}
   Mover(const Mover&) = delete;
   Mover& operator=(const Mover&) = delete;
 };

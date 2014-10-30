@@ -137,7 +137,7 @@ class ThreadLocalPtr {
  public:
   ThreadLocalPtr() : id_(threadlocal_detail::StaticMeta<Tag>::create()) { }
 
-  ThreadLocalPtr(ThreadLocalPtr&& other) : id_(other.id_) {
+  ThreadLocalPtr(ThreadLocalPtr&& other) noexcept : id_(other.id_) {
     other.id_ = 0;
   }
 

@@ -116,7 +116,7 @@ struct BenchmarkSuspender {
   }
 
   BenchmarkSuspender(const BenchmarkSuspender &) = delete;
-  BenchmarkSuspender(BenchmarkSuspender && rhs) {
+  BenchmarkSuspender(BenchmarkSuspender && rhs) noexcept {
     start = rhs.start;
     rhs.start.tv_nsec = rhs.start.tv_sec = 0;
   }

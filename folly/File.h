@@ -87,7 +87,7 @@ class File {
    * Returns and releases the file descriptor; no longer owned by this File.
    * Returns -1 if the File object didn't wrap a file.
    */
-  int release();
+  int release() noexcept;
 
   /**
    * Swap this File with another.
@@ -95,7 +95,7 @@ class File {
   void swap(File& other);
 
   // movable
-  File(File&&);
+  File(File&&) noexcept;
   File& operator=(File&&);
 
   // FLOCK (INTERPROCESS) LOCKS

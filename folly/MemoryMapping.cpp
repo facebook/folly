@@ -38,7 +38,7 @@ DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
 
 namespace folly {
 
-MemoryMapping::MemoryMapping(MemoryMapping&& other) {
+MemoryMapping::MemoryMapping(MemoryMapping&& other) noexcept {
   swap(other);
 }
 
@@ -298,7 +298,7 @@ MemoryMapping& MemoryMapping::operator=(MemoryMapping other) {
   return *this;
 }
 
-void MemoryMapping::swap(MemoryMapping& other) {
+void MemoryMapping::swap(MemoryMapping& other) noexcept {
   using std::swap;
   swap(this->file_, other.file_);
   swap(this->mapStart_, other.mapStart_);
@@ -308,7 +308,7 @@ void MemoryMapping::swap(MemoryMapping& other) {
   swap(this->data_, other.data_);
 }
 
-void swap(MemoryMapping& a, MemoryMapping& b) { a.swap(b); }
+void swap(MemoryMapping& a, MemoryMapping& b) noexcept { a.swap(b); }
 
 void alignedForwardMemcpy(void* dst, const void* src, size_t size) {
   assert(reinterpret_cast<uintptr_t>(src) % alignof(unsigned long) == 0);
