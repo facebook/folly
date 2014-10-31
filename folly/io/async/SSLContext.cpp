@@ -21,7 +21,6 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
-#include <folly/SmallLocks.h>
 #include <folly/Format.h>
 #include <folly/io/PortableSpinLock.h>
 
@@ -547,7 +546,13 @@ static void callbackLocking(int mode, int n, const char*, int) {
 }
 
 static unsigned long callbackThreadID() {
-  return static_cast<unsigned long>(pthread_self());
+  return static_cast<unsigned long>(
+#ifdef __APPLE__
+    pthread_mach_thread_np(pthread_self())
+#else
+    pthread_self()
+#endif
+  );
 }
 
 static CRYPTO_dynlock_value* dyn_create(const char*, int) {
