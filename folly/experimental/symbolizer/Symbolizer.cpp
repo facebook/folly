@@ -311,7 +311,7 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   if (!frame.name || frame.name[0] == '\0') {
     doPrint(" (unknown)");
   } else {
-    char demangledBuf[1024];
+    char demangledBuf[2048];
     demangle(frame.name, demangledBuf, sizeof(demangledBuf));
     doPrint(" ");
     doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
@@ -383,7 +383,7 @@ void SymbolizePrinter::println(uintptr_t address,
 void SymbolizePrinter::printTerse(uintptr_t address,
                                   const SymbolizedFrame& frame) {
   if (frame.found && frame.name && frame.name[0] != '\0') {
-    char demangledBuf[1024] = {0};
+    char demangledBuf[2048] = {0};
     demangle(frame.name, demangledBuf, sizeof(demangledBuf));
     doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
   } else {
