@@ -29,6 +29,9 @@
 #include <errno.h>
 #include <sstream>
 #include <string>
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 namespace {
 
@@ -543,6 +546,14 @@ size_t SocketAddress::hash() const {
       break;
     case AF_UNSPEC:
     default:
+      void *array[20];
+      size_t size;
+      // get void*'s for all entries on the stack
+      size = backtrace(array, 20);
+      // print out all the frames to stderr
+      fprintf(stderr, "Exception: \n");
+      backtrace_symbols_fd(array, size, STDERR_FILENO);
+      LOG(FATAL) << "Invalid ip address: " << describe();
       throw std::invalid_argument(
         "SocketAddress: unsupported address family "
         "for hashing");
