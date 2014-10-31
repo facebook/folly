@@ -282,16 +282,16 @@ TEST(Optional, Comparisons) {
   Optional<int> o1(1);
   Optional<int> o2(2);
 
-  EXPECT_TRUE(o_ <= o_);
-  EXPECT_TRUE(o_ == o_);
-  EXPECT_TRUE(o_ >= o_);
+  EXPECT_TRUE(o_ <= (o_));
+  EXPECT_TRUE(o_ == (o_));
+  EXPECT_TRUE(o_ >= (o_));
 
   EXPECT_TRUE(o1 < o2);
   EXPECT_TRUE(o1 <= o2);
-  EXPECT_TRUE(o1 <= o1);
-  EXPECT_TRUE(o1 == o1);
+  EXPECT_TRUE(o1 <= (o1));
+  EXPECT_TRUE(o1 == (o1));
   EXPECT_TRUE(o1 != o2);
-  EXPECT_TRUE(o1 >= o1);
+  EXPECT_TRUE(o1 >= (o1));
   EXPECT_TRUE(o2 >= o1);
   EXPECT_TRUE(o2 > o1);
 
@@ -299,7 +299,7 @@ TEST(Optional, Comparisons) {
   EXPECT_FALSE(o2 <= o1);
   EXPECT_FALSE(o2 <= o1);
   EXPECT_FALSE(o2 == o1);
-  EXPECT_FALSE(o1 != o1);
+  EXPECT_FALSE(o1 != (o1));
   EXPECT_FALSE(o1 >= o2);
   EXPECT_FALSE(o1 >= o2);
   EXPECT_FALSE(o1 > o2);

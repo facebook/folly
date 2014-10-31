@@ -149,7 +149,7 @@ void testCmp(const char* str1, const char* str2) {
   EXPECT_TRUE(m2 > m1);
   EXPECT_TRUE(m2 >= m1);
   EXPECT_TRUE(m1 != m2);
-  EXPECT_TRUE(m1 == m1);
+  EXPECT_TRUE(m1 == (m1));
   EXPECT_FALSE(m1 == m2);
 
   // Also test the copy constructor and assignment operator
