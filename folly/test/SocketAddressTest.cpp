@@ -657,9 +657,11 @@ void testSetFromSocket(const SocketAddress *serverBindAddr,
 
   sockaddr_storage acceptAddr;
   socklen_t acceptAddrLen = sizeof(acceptAddr);
-  int serverSock = accept(listenSock, reinterpret_cast<sockaddr*>(&acceptAddr), &acceptAddrLen);
+  int serverSock = accept(listenSock,
+      reinterpret_cast<sockaddr*>(&acceptAddr), &acceptAddrLen);
   REQUIRE_ERRNO(serverSock > 0, "failed to accept");
-  acceptAddrRet->setFromSockaddr(reinterpret_cast<sockaddr*>(&acceptAddr), acceptAddrLen);
+  acceptAddrRet->setFromSockaddr(
+      reinterpret_cast<sockaddr*>(&acceptAddr), acceptAddrLen);
 
   serverAddrRet->setFromLocalAddress(serverSock);
   serverPeerAddrRet->setFromPeerAddress(serverSock);
