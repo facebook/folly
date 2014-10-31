@@ -360,7 +360,7 @@ class FillObject {
 
 }  // namespace
 
-#if FOLLY_HAVE_STD__THIS_THREAD__SLEEP_FOR
+#if FOLLY_HAVE_STD_THIS_THREAD_SLEEP_FOR
 TEST(ThreadLocal, Stress) {
   constexpr size_t numFillObjects = 250;
   std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;

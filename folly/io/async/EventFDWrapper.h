@@ -49,8 +49,10 @@
 // arch/x86/include/asm/unistd_{32,64}.h
 #ifndef __NR_eventfd2
 #if FOLLY_X64
+/* nolint */
 #define __NR_eventfd2  290
 #elif defined(__i386__)
+/* nolint */
 #define __NR_eventfd2  328
 #else
 #error "Can't define __NR_eventfd2 for your architecture."

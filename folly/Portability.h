@@ -64,6 +64,7 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # ifdef _USE_ATTRIBUTES_FOR_SAL
 #    undef _USE_ATTRIBUTES_FOR_SAL
 # endif
+/* nolint */
 # define _USE_ATTRIBUTES_FOR_SAL 1
 # include <sal.h>
 # define FOLLY_PRINTF_FORMAT _Printf_format_string_
@@ -126,9 +127,11 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 // portable version check
 #ifndef __GNUC_PREREQ
 # if defined __GNUC__ && defined __GNUC_MINOR__
+/* nolint */
 #  define __GNUC_PREREQ(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= \
                                    ((maj) << 16) + (min))
 # else
+/* nolint */
 #  define __GNUC_PREREQ(maj, min) 0
 # endif
 #endif
@@ -235,6 +238,7 @@ typedef SSIZE_T ssize_t;
 # define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
 
 // compiler specific to compiler specific
+// nolint
 # define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 

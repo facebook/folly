@@ -25,6 +25,7 @@ namespace folly {
 namespace detail {
 
 #ifndef __has_builtin
+  /* nolint */
   #define __has_builtin(x) 0
 #endif
 
