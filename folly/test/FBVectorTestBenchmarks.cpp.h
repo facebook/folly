@@ -376,4 +376,3 @@ void BENCHFUN(erase)(int iters, int size) {
   }
 }
 BENCHMARK_PARAM(BENCHFUN(erase), 1024);
-

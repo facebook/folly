@@ -263,4 +263,3 @@ inline uint64_t Fingerprint<128>::shlor64(uint64_t v) {
 }  // namespace folly
 
 #endif /* FOLLY_FINGERPRINT_H_ */
-

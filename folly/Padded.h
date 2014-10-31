@@ -503,4 +503,3 @@ class Adaptor {
 }  // namespace folly
 
 #endif /* FOLLY_PADDED_H_ */
-

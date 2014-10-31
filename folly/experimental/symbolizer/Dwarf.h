@@ -272,4 +272,3 @@ inline std::ostream& operator<<(std::ostream& out, const Dwarf::Path& path) {
 }  // namespace folly
 
 #endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_ */
-

@@ -90,4 +90,3 @@ struct BitIteratorBase {
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_BITITERATORDETAIL_H_ */
-

@@ -90,4 +90,3 @@ class SlowFingerprint {
 }  // namespace folly
 
 #endif /* FOLLY_DETAIL_SLOWFINGERPRINT_H_ */
-

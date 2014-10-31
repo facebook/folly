@@ -337,4 +337,3 @@ dynamic toDynamic(const T& x) {
 } // namespace folly
 
 #endif // DYNAMIC_CONVERTER_H
-

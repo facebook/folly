@@ -149,4 +149,3 @@ static_assert(sizeof(PackedSyncPtr<void>) == 8,
 }
 
 #endif
-

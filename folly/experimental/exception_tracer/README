@@ -20,4 +20,3 @@ requires no link-time changes.  On the other hand, you need to ensure that
 libexceptiontracer.so is compiled with the same compiler and flags as
 your binary, and the usual caveats about LD_PRELOAD apply (it propagates
 to child processes, etc).
-

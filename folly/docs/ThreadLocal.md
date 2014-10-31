@@ -103,4 +103,3 @@ require a global mutex, but only happen at construction and destruction time.
 We use a single global `pthread_key_t` per `Tag` to manage object destruction
 and memory cleanup upon thread exit because there is a finite number of
 `pthread_key_t`'s available per machine.
-

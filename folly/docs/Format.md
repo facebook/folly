@@ -191,4 +191,3 @@ You can extend `format` for your own class by providing a specialization for
 `folly::FormatValue`.  See `folly/Format.h` and `folly/FormatArg.h` for
 details, and the existing specialization for `folly::dynamic` in
 `folly/dynamic-inl.h` for an implementation example.
-

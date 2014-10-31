@@ -26,4 +26,3 @@ inline void failHard() {
 }}}  // namespaces
 
 #endif /* FOLLY_SYMBOLIZER_TEST_SIGNALHANDLERTEST_H_ */
-

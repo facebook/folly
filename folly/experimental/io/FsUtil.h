@@ -56,4 +56,3 @@ path canonical_parent(const path& p, const path& basePath = current_path());
 }  // namespace folly
 
 #endif /* FOLLY_IO_FSUTIL_H_ */
-

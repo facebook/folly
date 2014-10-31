@@ -243,4 +243,3 @@ class ElfFile {
 #include <folly/experimental/symbolizer/Elf-inl.h>
 
 #endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_ */
-

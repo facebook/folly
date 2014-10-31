@@ -124,4 +124,3 @@ class CpuId {
 }  // namespace folly
 
 #endif /* FOLLY_CPUID_H_ */
-
