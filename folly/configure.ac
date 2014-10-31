@@ -58,6 +58,11 @@ AC_CHECK_LIB([glog],[openlog],[],[AC_MSG_ERROR(
 AC_CHECK_LIB([gflags],[getenv],[],[AC_MSG_ERROR(
              [Please install google-gflags library])])
 
+AC_CHECK_LIB(ssl,
+        SSL_ctrl,
+        [],
+        [AC_MSG_ERROR(["Error: libssl required"])])
+
 # check for boost libs
 AX_BOOST_BASE([1.20.0], [], [AC_MSG_ERROR(
               [Please install boost >= 1.20.0 (thread, regex, and system)])])

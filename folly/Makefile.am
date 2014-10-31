@@ -322,7 +322,7 @@ endif
 libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 
 libfolly_la_LIBADD = libfollybase.la
-libfolly_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+libfolly_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION) -lssl
 
 FingerprintTables.cpp: generate_fingerprint_tables
 	./generate_fingerprint_tables
