@@ -518,7 +518,9 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
   template <typename, typename> class classname; \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, ); \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, const); \
-  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, volatile); \
-  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, volatile const)
+  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL( \
+      classname, func_name, /* nolint */ volatile); \
+  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL( \
+      classname, func_name, /* nolint */ volatile const)
 
 #endif //FOLLY_BASE_TRAITS_H_

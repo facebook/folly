@@ -37,7 +37,7 @@ bool usingJEMallocSlow() {
 
   // "volatile" because gcc optimizes out the reads from *counter, because
   // it "knows" malloc doesn't modify global state...
-  volatile uint64_t* counter;
+  /* nolint */ volatile uint64_t* counter;
   size_t counterLen = sizeof(uint64_t*);
 
   if (mallctl("thread.allocatedp", static_cast<void*>(&counter), &counterLen,

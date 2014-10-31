@@ -20,7 +20,7 @@
 namespace folly { namespace symbolizer { namespace test {
 
 inline void failHard() {
-  *(volatile char*)42;  // SIGSEGV
+  *(/* nolint */ volatile char*)42;  // SIGSEGV
 }
 
 }}}  // namespaces

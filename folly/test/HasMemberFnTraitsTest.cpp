@@ -45,8 +45,8 @@ struct Bar {
 struct Gaz {
   void test();
   void test() const;
-  void test() volatile;
-  void test() const volatile;
+  void test() /* nolint */ volatile;
+  void test() const /* nolint */ volatile;
 };
 
 struct NoCV {
@@ -58,11 +58,11 @@ struct Const {
 };
 
 struct Volatile {
-  void test() volatile;
+  void test() /* nolint */ volatile;
 };
 
 struct CV {
-  void test() const volatile;
+  void test() const /* nolint */ volatile;
 };
 
 bool log_value(const char* what, bool result) {
@@ -89,33 +89,47 @@ TEST(HasMemberFnTraits, DirectMembers) {
 
   EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void()>::value)));
   EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void() const>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void() volatile>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void() const volatile>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void() volatile const>::value)));
+  EXPECT_TRUE(LOG_VALUE((has_test<Gaz, void() /* nolint */ volatile>::value)));
+  EXPECT_TRUE(LOG_VALUE((
+          has_test<Gaz, void() const /* nolint */ volatile>::value)));
+  EXPECT_TRUE(LOG_VALUE((
+          has_test<Gaz, void() /* nolint */ volatile const>::value)));
 
   EXPECT_TRUE(LOG_VALUE((has_test<NoCV, void()>::value)));
   EXPECT_FALSE(LOG_VALUE((has_test<NoCV, void() const>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<NoCV, void() volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<NoCV, void() const volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<NoCV, void() volatile const>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<NoCV, void() /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<NoCV, void() const /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<NoCV, void() /* nolint */ volatile const>::value)));
 
   EXPECT_FALSE(LOG_VALUE((has_test<Const, void()>::value)));
   EXPECT_TRUE(LOG_VALUE((has_test<Const, void() const>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<Const, void() volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<Const, void() const volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<Const, void() volatile const>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<Const, void() /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<Const, void() const /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<Const, void() /* nolint */ volatile const>::value)));
 
   EXPECT_FALSE(LOG_VALUE((has_test<Volatile, void()>::value)));
   EXPECT_FALSE(LOG_VALUE((has_test<Volatile, void() const>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<Volatile, void() volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<Volatile, void() const volatile>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<Volatile, void() volatile const>::value)));
+  EXPECT_TRUE(LOG_VALUE((
+          has_test<Volatile, void() /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<Volatile, void() const /* nolint */ volatile>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<Volatile, void() /* nolint */ volatile const>::value)));
 
   EXPECT_FALSE(LOG_VALUE((has_test<CV, void()>::value)));
   EXPECT_FALSE(LOG_VALUE((has_test<CV, void() const>::value)));
-  EXPECT_FALSE(LOG_VALUE((has_test<CV, void() volatile>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<CV, void() const volatile>::value)));
-  EXPECT_TRUE(LOG_VALUE((has_test<CV, void() volatile const>::value)));
+  EXPECT_FALSE(LOG_VALUE((
+          has_test<CV, void() /* nolint */ volatile>::value)));
+  EXPECT_TRUE(LOG_VALUE((
+          has_test<CV, void() const /* nolint */ volatile>::value)));
+  EXPECT_TRUE(LOG_VALUE((
+          has_test<CV, void() /* nolint */ volatile const>::value)));
 }
 
 int main(int argc, char *argv[]) {
