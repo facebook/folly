@@ -25,9 +25,9 @@
 class Exception : public std::exception {
  public:
   explicit Exception(const std::string& value) : value_(value) {}
-  virtual ~Exception(void) throw() {}
+  virtual ~Exception(void) noexcept {}
 
-  virtual const char *what(void) const throw() {
+  virtual const char *what(void) const noexcept {
     return value_.c_str();
   }
 
