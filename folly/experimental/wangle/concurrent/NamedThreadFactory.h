@@ -24,14 +24,18 @@ namespace folly { namespace wangle {
 class NamedThreadFactory : public ThreadFactory {
  public:
   explicit NamedThreadFactory(folly::StringPiece prefix)
-    : prefix_(prefix), suffix_(0) {}
+    : prefix_(std::move(prefix)), suffix_(0) {}
 
-  std::thread newThread(Func&& func) override {
+  virtual std::thread newThread(Func&& func) override {
     auto thread = std::thread(std::move(func));
     folly::setThreadName(
         thread.native_handle(),
         folly::to<std::string>(prefix_, suffix_++));
     return thread;
+  }
+
+  void setNamePrefix(folly::StringPiece prefix) {
+    prefix_ = std::move(prefix);
   }
 
  private:

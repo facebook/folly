@@ -45,6 +45,11 @@ class ThreadPoolExecutor : public Executor {
       std::chrono::milliseconds expiration,
       Func expireCallback) = 0;
 
+  void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
+    CHECK(numThreads() == 0);
+    threadFactory_ = std::move(threadFactory);
+  }
+
   size_t numThreads();
   void setNumThreads(size_t numThreads);
   void stop();
