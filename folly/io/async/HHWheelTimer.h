@@ -54,7 +54,7 @@ namespace folly {
  * maintaining time and timers, provided that we can maintain
  * a consistent rate of ticks.
  */
-class HHWheelTimer : protected folly::AsyncTimeout,
+class HHWheelTimer : private folly::AsyncTimeout,
                      public folly::DelayedDestruction {
  public:
   typedef std::unique_ptr<HHWheelTimer, Destructor> UniquePtr;
