@@ -30,14 +30,16 @@
 #include <folly/Synchronized.h>
 
 
-static const auto seed = folly::randomNumberSeed();
-typedef std::mt19937 RandomT;
-static RandomT rng(seed);
+inline std::mt19937& getRNG() {
+  static const auto seed = folly::randomNumberSeed();
+  static std::mt19937 rng(seed);
+  return rng;
+}
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
   std::uniform_int_distribution<> range(low, up);
-  return range(rng);
+  return range(getRNG());
 }
 
 template <class Mutex>

@@ -168,7 +168,7 @@ public:
 
 // conversion factory
 template <typename T, typename It>
-static inline std::move_iterator<Transformer<T, It>>
+inline std::move_iterator<Transformer<T, It>>
 conversionIterator(const It& it) {
   return std::make_move_iterator(Transformer<T, It>(it));
 }
