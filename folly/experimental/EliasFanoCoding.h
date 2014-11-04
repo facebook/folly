@@ -291,7 +291,7 @@ struct EliasFanoEncoder {
 namespace instructions {
 
 struct Default {
-  static bool supported() {
+  static bool supported(const folly::CpuId& cpuId = {}) {
     return true;
   }
   static inline uint64_t popcount(uint64_t value) {
@@ -301,16 +301,32 @@ struct Default {
     DCHECK_GT(value, 0);
     return __builtin_ctzll(value);
   }
+  static inline uint64_t blsr(uint64_t value) {
+    return value & (value - 1);
+  }
 };
 
-struct Fast : public Default {
-  static bool supported() {
-    folly::CpuId cpuId;
+struct Nehalem : public Default {
+  static bool supported(const folly::CpuId& cpuId = {}) {
     return cpuId.popcnt();
   }
   static inline uint64_t popcount(uint64_t value) {
+    // POPCNT is supported starting with Intel Nehalem, AMD K10.
     uint64_t result;
     asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
+    return result;
+  }
+};
+
+struct Haswell : public Nehalem {
+  static bool supported(const folly::CpuId& cpuId = {}) {
+    return Nehalem::supported(cpuId) && cpuId.bmi1();
+  }
+  static inline uint64_t blsr(uint64_t value) {
+    // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
+    // BLSR combines two instuctions into one and reduces register pressure.
+    uint64_t result;
+    asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
     return result;
   }
 };
@@ -352,7 +368,7 @@ class UpperBitsReader {
 
     ++position_;
     inner_ = Instructions::ctz(block_);
-    block_ &= block_ - 1;
+    block_ = Instructions::blsr(block_);
 
     return setValue();
   }
@@ -396,11 +412,11 @@ class UpperBitsReader {
 
     // Kill n - 1 least significant 1-bits.
     for (size_t i = 0; i < n - 1; ++i) {
-      block_ &= block_ - 1;
+      block_ = Instructions::blsr(block_);
     }
 
     inner_ = Instructions::ctz(block_);
-    block_ &= block_ - 1;
+    block_ = Instructions::blsr(block_);
 
     return setValue();
   }

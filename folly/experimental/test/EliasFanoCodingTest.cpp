@@ -172,7 +172,7 @@ BENCHMARK(Encode_1M) {
 }
 
 #if 0
-Intel(R) Xeon(R) CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Fast.
+Intel(R) Xeon(R) CPU E5-2660 @ 2.7GHz (turbo on), using instructions::Nehalem.
 
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
