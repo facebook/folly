@@ -15,8 +15,14 @@
  */
 
 #pragma once
+
+#include <atomic>
+#include <string>
+#include <thread>
+
 #include <folly/experimental/wangle/concurrent/ThreadFactory.h>
 #include <folly/Conv.h>
+#include <folly/Range.h>
 #include <folly/ThreadName.h>
 
 namespace folly { namespace wangle {
@@ -24,9 +30,9 @@ namespace folly { namespace wangle {
 class NamedThreadFactory : public ThreadFactory {
  public:
   explicit NamedThreadFactory(folly::StringPiece prefix)
-    : prefix_(std::move(prefix)), suffix_(0) {}
+    : prefix_(prefix.str()), suffix_(0) {}
 
-  virtual std::thread newThread(Func&& func) override {
+  std::thread newThread(Func&& func) override {
     auto thread = std::thread(std::move(func));
     folly::setThreadName(
         thread.native_handle(),
@@ -35,11 +41,11 @@ class NamedThreadFactory : public ThreadFactory {
   }
 
   void setNamePrefix(folly::StringPiece prefix) {
-    prefix_ = std::move(prefix);
+    prefix_ = prefix.str();
   }
 
  private:
-  folly::StringPiece prefix_;
+  std::string prefix_;
   std::atomic<uint64_t> suffix_;
 };
 
