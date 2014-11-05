@@ -193,18 +193,19 @@ class Core : protected FSM<State> {
  private:
   void maybeCallback() {
     assert(ready());
-    if (!calledBack_ && isActive() && callback_) {
-      // TODO(5306911) we should probably try/catch
-      calledBack_ = true;
-      Executor* x = executor_;
+    if (isActive() && callback_) {
+      if (!calledBack_.exchange(true)) {
+        // TODO(5306911) we should probably try/catch
+        Executor* x = executor_;
 
-      RequestContext::setContext(context_);
-      if (x) {
-        MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
-        MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
-        x->add([cb, val]() mutable { (*cb)(std::move(**val)); });
-      } else {
-        callback_(std::move(*result_));
+        RequestContext::setContext(context_);
+        if (x) {
+          MoveWrapper<std::function<void(Try<T>&&)>> cb(std::move(callback_));
+          MoveWrapper<folly::Optional<Try<T>>> val(std::move(result_));
+          x->add([cb, val]() mutable { (*cb)(std::move(**val)); });
+        } else {
+          callback_(std::move(*result_));
+        }
       }
     }
   }
