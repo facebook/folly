@@ -457,16 +457,16 @@ whenAll(InputIterator first, InputIterator last)
 
   auto ctx = new detail::WhenAllContext<T>();
 
-  ctx->total = n;
-  ctx->results.resize(ctx->total);
+  ctx->results.resize(n);
 
   auto f_saved = ctx->p.getFuture();
 
   for (size_t i = 0; first != last; ++first, ++i) {
+     assert(i < n);
      auto& f = *first;
-     f.setCallback_([ctx, i](Try<T>&& t) {
+     f.setCallback_([ctx, i, n](Try<T>&& t) {
          ctx->results[i] = std::move(t);
-         if (++ctx->count == ctx->total) {
+         if (++ctx->count == n) {
            ctx->p.setValue(std::move(ctx->results));
            delete ctx;
          }

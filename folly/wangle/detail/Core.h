@@ -269,11 +269,10 @@ whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
 
 template <typename T>
 struct WhenAllContext {
-  explicit WhenAllContext() : count(0), total(0) {}
+  WhenAllContext() : count(0) {}
   Promise<std::vector<Try<T> > > p;
   std::vector<Try<T> > results;
   std::atomic<size_t> count;
-  size_t total;
 };
 
 template <typename T>
