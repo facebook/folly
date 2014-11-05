@@ -31,8 +31,9 @@ namespace folly {
 namespace {
 
 void readRandomDevice(void* data, size_t size) {
-  // Keep it open for the duration of the program
-  static File randomDevice("/dev/urandom");
+  // Keep it open for the duration of the program. Note that we leak the File
+  // to ensure the file is indeed open for the duration of the program.
+  static File& randomDevice = *new File("/dev/urandom");
   auto bytesRead = readFull(randomDevice.fd(), data, size);
   PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);
 }
