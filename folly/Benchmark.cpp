@@ -222,7 +222,7 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   static const unsigned int epochs = 1000;
   // We establish a total time budget as we don't want a measurement
   // to take too long. This will curtail the number of actual epochs.
-  const uint64_t timeBudgetInNs = FLAGS_bm_max_secs * 1000000000;
+  const uint64_t timeBudgetInNs = FLAGS_bm_max_secs * 1000000000ULL;
   timespec global;
   CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &global));
 
