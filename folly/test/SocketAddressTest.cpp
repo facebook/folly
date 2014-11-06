@@ -139,6 +139,21 @@ TEST(SocketAddress, SetFromStrings) {
   EXPECT_EQ(addr.getFamily(), AF_INET);
   EXPECT_EQ(addr.getAddressStr(), "1.2.3.4");
   EXPECT_EQ(addr.getPort(), 9999);
+
+  // Call setFromIpPort() with a bracketed IPv6
+  addr.setFromIpPort("[::]:1234");
+  EXPECT_EQ(addr.getFamily(), AF_INET6);
+  EXPECT_EQ(addr.getAddressStr(), "::");
+  EXPECT_EQ(addr.getPort(), 1234);
+
+  // Call setFromIpPort() with a bracketed IPv6
+  addr.setFromIpPort("[9:8::2]:1234");
+  EXPECT_EQ(addr.getFamily(), AF_INET6);
+  EXPECT_EQ(addr.getAddressStr(), "9:8::2");
+  EXPECT_EQ(addr.getPort(), 1234);
+
+  // Call setFromIpPort() with a bracketed IPv6 and no port
+  EXPECT_THROW(addr.setFromIpPort("[::]"), std::system_error);
 }
 
 TEST(SocketAddress, EqualityAndHash) {
