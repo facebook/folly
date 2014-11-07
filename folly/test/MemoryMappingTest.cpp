@@ -23,18 +23,17 @@ namespace folly {
 TEST(MemoryMapping, Basic) {
   File f = File::temporary();
   {
-    MemoryMapping m(File(f.fd()), 0, sizeof(double),
-                    MemoryMapping::writable());
-    double volatile* d = m.asWritableRange<double>().data();
+    MemoryMapping m(File(f.fd()), 0, sizeof(double), MemoryMapping::writable());
+    double* d = m.asWritableRange<double>().data();
     *d = 37 * M_PI;
   }
   {
     MemoryMapping m(File(f.fd()), 0, 3);
-    EXPECT_EQ(0, m.asRange<int>().size()); //not big enough
+    EXPECT_EQ(0, m.asRange<int>().size()); // not big enough
   }
   {
     MemoryMapping m(File(f.fd()), 0, sizeof(double));
-    const double volatile* d = m.asRange<double>().data();
+    const double* d = m.asRange<double>().data();
     EXPECT_EQ(*d, 37 * M_PI);
   }
 }
@@ -42,20 +41,20 @@ TEST(MemoryMapping, Basic) {
 TEST(MemoryMapping, Move) {
   File f = File::temporary();
   {
-    MemoryMapping m(File(f.fd()), 0, sizeof(double) * 2,
-                    MemoryMapping::writable());
-    double volatile* d = m.asWritableRange<double>().data();
+    MemoryMapping m(
+        File(f.fd()), 0, sizeof(double) * 2, MemoryMapping::writable());
+    double* d = m.asWritableRange<double>().data();
     d[0] = 37 * M_PI;
     MemoryMapping m2(std::move(m));
-    double volatile* d2 = m2.asWritableRange<double>().data();
+    double* d2 = m2.asWritableRange<double>().data();
     d2[1] = 39 * M_PI;
   }
   {
     MemoryMapping m(File(f.fd()), 0, sizeof(double));
-    const double volatile* d = m.asRange<double>().data();
+    const double* d = m.asRange<double>().data();
     EXPECT_EQ(d[0], 37 * M_PI);
     MemoryMapping m2(std::move(m));
-    const double volatile* d2 = m2.asRange<double>().data();
+    const double* d2 = m2.asRange<double>().data();
     EXPECT_EQ(d2[1], 39 * M_PI);
   }
 }
@@ -63,12 +62,11 @@ TEST(MemoryMapping, Move) {
 TEST(MemoryMapping, DoublyMapped) {
   File f = File::temporary();
   // two mappings of the same memory, different addresses.
-  MemoryMapping mw(File(f.fd()), 0, sizeof(double),
-                   MemoryMapping::writable());
+  MemoryMapping mw(File(f.fd()), 0, sizeof(double), MemoryMapping::writable());
   MemoryMapping mr(File(f.fd()), 0, sizeof(double));
 
-  double volatile* dw = mw.asWritableRange<double>().data();
-  const double volatile* dr = mr.asRange<double>().data();
+  double* dw = mw.asWritableRange<double>().data();
+  const double* dr = mr.asRange<double>().data();
 
   // Show that it's truly the same value, even though the pointers differ
   EXPECT_NE(dw, dr);
