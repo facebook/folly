@@ -187,6 +187,10 @@ class HHWheelTimer : private folly::AsyncTimeout,
     catchupEveryN_ = everyN;
   }
 
+  bool isDetachable() const {
+    return !folly::AsyncTimeout::isScheduled();
+  }
+
   using folly::AsyncTimeout::attachEventBase;
   using folly::AsyncTimeout::detachEventBase;
   using folly::AsyncTimeout::getTimeoutManager;
