@@ -166,11 +166,14 @@ class EvictingCacheMap : private boost::noncopyable {
    * If you intend to resize dynamically using this, then picking an index size
    * that works well and initializing with corresponding maxSize is the only
    * reasonable option.
+   *
+   * @param maxSize new maximum size of the cache map.
+   * @param pruneHook callback to use on eviction.
    */
-  void setMaxSize(size_t maxSize) {
+  void setMaxSize(size_t maxSize, PruneHookCall pruneHook = nullptr) {
     if (maxSize != 0 && maxSize < size()) {
       // Prune the excess elements with our new constraints.
-      prune(std::max(size() - maxSize, clearSize_));
+      prune(std::max(size() - maxSize, clearSize_), pruneHook);
     }
     maxSize_ = maxSize;
   }
@@ -286,8 +289,12 @@ class EvictingCacheMap : private boost::noncopyable {
    * @param promote boolean flag indicating whether or not to move something
    *     to the front of an LRU.  This only really matters if you're setting
    *     a value that already exists.
+   * @param pruneHook callback to use on eviction (if it occurs).
    */
-  void set(const TKey& key, TValue value, bool promote = true) {
+  void set(const TKey& key,
+           TValue value,
+           bool promote = true,
+           PruneHookCall pruneHook = nullptr) {
     auto it = findInIndex(key);
     if (it != index_.end()) {
       it->pr.second = std::move(value);
@@ -302,7 +309,7 @@ class EvictingCacheMap : private boost::noncopyable {
 
       // no evictions if maxSize_ is 0 i.e. unlimited capacity
       if (maxSize_ > 0 && size() > maxSize_) {
-        prune(clearSize_);
+        prune(clearSize_, pruneHook);
       }
     }
   }
@@ -323,8 +330,8 @@ class EvictingCacheMap : private boost::noncopyable {
     return index_.empty();
   }
 
-  void clear() {
-    prune(size());
+  void clear(PruneHookCall pruneHook = nullptr) {
+    prune(size(), pruneHook);
   }
 
   /**
