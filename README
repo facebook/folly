@@ -42,7 +42,8 @@ sudo apt-get install \
     make \
     zlib1g-dev \
     binutils-dev \
-    libjemalloc-dev
+    libjemalloc-dev \
+    libssl-dev
 
 Ubuntu 14.04 LTS
 ----------------
