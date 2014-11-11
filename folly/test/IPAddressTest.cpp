@@ -690,10 +690,7 @@ TEST_P(IPAddressFlagTest, IsZero) {
 
 TEST_P(IPAddressFlagTest, IsLinkLocal) {
   AddressFlags param = GetParam();
-  if (param.version != 6) {
-    return;
-  }
-  IPAddressV6 addr(param.address);
+  IPAddress addr(param.address);
   EXPECT_EQ(param.isLinkLocal(), addr.isLinkLocal()) << addr;
 }
 
@@ -954,13 +951,16 @@ static vector<AddressFlags> flagProvider = {
   AddressFlags("127.0.0.1", 4, IS_LOCAL | IS_PVT_NONROUTE),
   AddressFlags("::1", 6, IS_LOCAL | IS_PVT_NONROUTE),
 
+  // link-local v4
+  AddressFlags("169.254.0.1", 4, IS_LINK_LOCAL | IS_PVT_NONROUTE),
+
   // private v4
   AddressFlags("10.0.0.0", 4, IS_PVT_NONROUTE),
   AddressFlags("10.11.12.13", 4, IS_PVT_NONROUTE),
   AddressFlags("10.255.255.255", 4, IS_PVT_NONROUTE),
   AddressFlags("127.128.129.200", 4, IS_LOCAL | IS_PVT_NONROUTE),
   AddressFlags("127.255.255.255", 4, IS_LOCAL | IS_PVT_NONROUTE),
-  AddressFlags("169.254.0.0", 4, IS_PVT_NONROUTE),
+  AddressFlags("169.254.0.0", 4, IS_LINK_LOCAL | IS_PVT_NONROUTE),
   AddressFlags("192.168.0.0", 4, IS_PVT_NONROUTE),
   AddressFlags("192.168.200.255", 4, IS_PVT_NONROUTE),
   AddressFlags("192.168.255.255", 4, IS_PVT_NONROUTE),

@@ -286,6 +286,7 @@ bool IPAddressV6::isPrivate() const {
   return isLoopback() || inBinarySubnet({{0xfc, 0x00}}, 7);
 }
 
+// public
 bool IPAddressV6::isLinkLocal() const {
   return inBinarySubnet({{0xfe, 0x80}}, 10);
 }

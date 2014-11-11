@@ -318,6 +318,12 @@ class IPAddress : boost::totally_ordered<IPAddress> {
                   : asV6().isLoopback();
   }
 
+  // Return true if the address qualifies as link local
+  bool isLinkLocal() const {
+    return isV4() ? asV4().isLinkLocal()
+                  : asV6().isLinkLocal();
+  }
+
   // Return true if the address qualifies as broadcast.
   bool isLinkLocalBroadcast() const {
     return isV4() ? asV4().isLinkLocalBroadcast()

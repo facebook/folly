@@ -139,6 +139,9 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
   // @see IPAddress#isLoopback
   bool isLoopback() const;
 
+  // @see IPAddress#isLinkLocal
+  bool isLinkLocal() const;
+
   // @see IPAddress#isNonroutable
   bool isNonroutable() const;
 

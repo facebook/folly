@@ -144,9 +144,16 @@ bool IPAddressV4::inSubnetWithMask(const IPAddressV4& subnet,
   return (mask == subMask);
 }
 
+// public
 bool IPAddressV4::isLoopback() const {
   static IPAddressV4 loopback_addr("127.0.0.0");
   return inSubnetWithMask(loopback_addr, fetchMask(8));
+}
+
+// public
+bool IPAddressV4::isLinkLocal() const {
+  static IPAddressV4 linklocal_addr("169.254.0.0");
+  return inSubnetWithMask(linklocal_addr, fetchMask(16));
 }
 
 // public
