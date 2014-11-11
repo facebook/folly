@@ -126,8 +126,8 @@ const char* const kDefaultTypeDescriptorName = "(default)";
 // a key in unordered_maps.
 class TypeDescriptor {
  public:
-  TypeDescriptor(const std::type_info& ti, std::string name)
-      : ti_(ti), name_(name) {
+  TypeDescriptor(const std::type_info& ti, std::string name__)
+      : ti_(ti), name_(name__) {
     if (name_ == kDefaultTypeDescriptorName) {
       LOG(DFATAL) << "Caller used the default name as their literal name; "
                   << "name your singleton something other than "
