@@ -24,7 +24,7 @@ namespace folly { namespace wangle {
 
   /// An Executor accepts units of work with add(), which should be
   /// threadsafe.
-  class Executor : boost::noncopyable {
+  class Executor {
    public:
     virtual ~Executor() = default;
 

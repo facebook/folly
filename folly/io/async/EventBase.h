@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/TimeoutManager.h>
+#include <folly/wangle/Executor.h>
 #include <memory>
 #include <stack>
 #include <list>
@@ -68,7 +69,9 @@ class EventBaseObserver {
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase : private boost::noncopyable, public TimeoutManager {
+class EventBase :
+  private boost::noncopyable, public TimeoutManager, public wangle::Executor
+{
  public:
   /**
    * A callback interface to use with runInLoop()
@@ -446,6 +449,13 @@ class EventBase : private boost::noncopyable, public TimeoutManager {
    * Returns the name of the thread that runs this event base.
    */
   const std::string& getName();
+
+  /// Implements the wangle::Executor interface
+  void add(Cob fn) override {
+    // runInEventBaseThread() takes a const&,
+    // so no point in doing std::move here.
+    runInEventBaseThread(fn);
+  }
 
  private:
 
