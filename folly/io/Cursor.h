@@ -236,6 +236,25 @@ class CursorBase {
     return std::make_pair(data(), available);
   }
 
+  /**
+   * Read one byte. Equivalent to pull(&byte, 1) but faster.
+   */
+  uint8_t pullByte() {
+    // fast path
+    if (LIKELY(length() >= 1)) {
+      uint8_t byte = *data();
+      offset_++;
+      return byte;
+    }
+
+    // slow path
+    uint8_t byte;
+    if (UNLIKELY(pullAtMost(&byte, 1) != 1)) {
+      throw std::out_of_range("underflow");
+    }
+    return byte;
+  }
+
   void pull(void* buf, size_t len) {
     if (UNLIKELY(pullAtMost(buf, len) != len)) {
       throw std::out_of_range("underflow");
