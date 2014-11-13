@@ -764,7 +764,8 @@ void AsyncServerSocket::dispatchError(const char *msgstr, int errnoValue) {
   while (true) {
     // Short circuit if the callback is in the primary EventBase thread
     if (info->eventBase == nullptr) {
-      std::runtime_error ex(msgstr + errnoValue);
+      std::runtime_error ex(
+        std::string(msgstr) +  folly::to<std::string>(errnoValue));
       info->callback->acceptError(ex);
       return;
     }
