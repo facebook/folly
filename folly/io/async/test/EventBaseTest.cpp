@@ -1540,3 +1540,26 @@ TEST(EventBaseTest, EventBaseThreadName) {
   ASSERT_EQ(0, strcmp("foo", name));
 #endif
 }
+
+TEST(TEventBaseTest, RunBeforeLoop) {
+  TEventBase base;
+  CountedLoopCallback cb(&base, 1, [&](){
+    base.terminateLoopSoon();
+  });
+  base.runBeforeLoop(&cb);
+  base.loopForever();
+  ASSERT_EQUAL(cb.getCount(), 0);
+}
+
+TEST(TEventBaseTest, RunBeforeLoopWait) {
+  TEventBase base;
+  CountedLoopCallback cb(&base, 1);
+  base.runAfterDelay([&](){
+      base.terminateLoopSoon();
+    }, 500);
+  base.runBeforeLoop(&cb);
+  base.loopForever();
+
+  // Check that we only ran once, and did not loop multiple times.
+  ASSERT_EQUAL(cb.getCount(), 0);
+}

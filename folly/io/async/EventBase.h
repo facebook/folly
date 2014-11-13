@@ -262,6 +262,11 @@ class EventBase :
    */
   void runOnDestruction(LoopCallback* callback);
 
+  /**
+   * Adds a callback that will run immediately *before* the event loop.
+   * This is very similar to runInLoop(), but will not cause the loop to break:
+   * For example, this callback could be used to get loop times.
+   */
   void runBeforeLoop(LoopCallback* callback);
 
   /**
@@ -531,7 +536,7 @@ class EventBase :
   CobTimeout::List pendingCobTimeouts_;
 
   LoopCallbackList loopCallbacks_;
-  LoopCallbackList noWaitLoopCallbacks_;
+  LoopCallbackList runBeforeLoopCallbacks_;
   LoopCallbackList onDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks

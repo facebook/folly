@@ -215,8 +215,8 @@ EventBase::~EventBase() {
     delete timeout;
   }
 
-  while (!noWaitLoopCallbacks_.empty()) {
-    delete &noWaitLoopCallbacks_.front();
+  while (!runBeforeLoopCallbacks_.empty()) {
+    delete &runBeforeLoopCallbacks_.front();
   }
 
   (void) runLoopCallbacks(false);
@@ -299,18 +299,19 @@ bool EventBase::loopBody(int flags) {
   while (!stop_) {
     ++nextLoopCnt_;
 
+    // Run the before loop callbacks
+    LoopCallbackList callbacks;
+    callbacks.swap(runBeforeLoopCallbacks_);
+
+    while(!callbacks.empty()) {
+      auto* item = &callbacks.front();
+      callbacks.pop_front();
+      item->runLoopCallback();
+    }
+
     // nobody can add loop callbacks from within this thread if
     // we don't have to handle anything to start with...
     if (blocking && loopCallbacks_.empty()) {
-      LoopCallbackList callbacks;
-      callbacks.swap(noWaitLoopCallbacks_);
-
-      while(!callbacks.empty()) {
-        auto* item = &callbacks.front();
-        callbacks.pop_front();
-        item->runLoopCallback();
-      }
-
       res = event_base_loop(evb_, EVLOOP_ONCE);
     } else {
       res = event_base_loop(evb_, EVLOOP_ONCE | EVLOOP_NONBLOCK);
@@ -499,7 +500,7 @@ void EventBase::runOnDestruction(LoopCallback* callback) {
 void EventBase::runBeforeLoop(LoopCallback* callback) {
   DCHECK(isInEventBaseThread());
   callback->cancelLoopCallback();
-  noWaitLoopCallbacks_.push_back(*callback);
+  runBeforeLoopCallbacks_.push_back(*callback);
 }
 
 bool EventBase::runInEventBaseThread(void (*fn)(void*), void* arg) {
