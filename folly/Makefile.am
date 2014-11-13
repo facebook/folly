@@ -167,6 +167,9 @@ nobase_follyinclude_HEADERS = \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/TimeoutManager.h \
+	io/async/test/TimeUtil.h \
+	io/async/test/UndelayedDestruction.h \
+	io/async/test/Util.h \
 	json.h \
 	Lazy.h \
 	LifoSem.h \
@@ -296,6 +299,7 @@ libfolly_la_SOURCES = \
 	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
 	io/async/HHWheelTimer.cpp \
+	io/async/test/TimeUtil.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
 	MacAddress.cpp \
