@@ -274,9 +274,11 @@ class CursorBase {
   }
 
   void skip(size_t len) {
-    if (UNLIKELY(skipAtMost(len) != len)) {
-      throw std::out_of_range("underflow");
+    if (LIKELY(length() >= len)) {
+      offset_ += len;
+      return;
     }
+    skipSlow(len);
   }
 
   size_t pullAtMost(void* buf, size_t len) {
@@ -445,6 +447,12 @@ class CursorBase {
 
  private:
   void advanceDone() {
+  }
+
+  void skipSlow(size_t len) {
+    if (UNLIKELY(skipAtMost(len) != len)) {
+      throw std::out_of_range("underflow");
+    }
   }
 
   BufType* buffer_;
