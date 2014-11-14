@@ -101,6 +101,23 @@ TEST(ThreadLocalPtr, TestRelease) {
   EXPECT_EQ(10, Widget::totalVal_);
 }
 
+TEST(ThreadLocalPtr, CreateOnThreadExit) {
+  Widget::totalVal_ = 0;
+  ThreadLocal<Widget> w;
+  ThreadLocalPtr<int> tl;
+
+  std::thread([&] {
+      tl.reset(new int(1), [&] (int* ptr, TLPDestructionMode mode) {
+        delete ptr;
+        // This test ensures Widgets allocated here are not leaked.
+        ++w.get()->val_;
+        ThreadLocal<Widget> wl;
+        ++wl.get()->val_;
+      });
+    }).join();
+  EXPECT_EQ(2, Widget::totalVal_);
+}
+
 // Test deleting the ThreadLocalPtr object
 TEST(ThreadLocalPtr, CustomDeleter2) {
   Widget::totalVal_ = 0;

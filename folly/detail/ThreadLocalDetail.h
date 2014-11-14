@@ -73,13 +73,15 @@ class CustomDeleter : public DeleterBase {
  * This must be POD, as we memset() it to 0 and memcpy() it around.
  */
 struct ElementWrapper {
-  void dispose(TLPDestructionMode mode) {
-    if (ptr != nullptr) {
-      DCHECK(deleter != nullptr);
-      deleter->dispose(ptr, mode);
-
-      cleanup();
+  bool dispose(TLPDestructionMode mode) {
+    if (ptr == nullptr) {
+      return false;
     }
+
+    DCHECK(deleter != nullptr);
+    deleter->dispose(ptr, mode);
+    cleanup();
+    return true;
   }
 
   void* release() {
@@ -242,7 +244,7 @@ struct StaticMeta {
   }
 
   static void onThreadExit(void* ptr) {
-    auto & meta = instance();
+    auto& meta = instance();
 #if !__APPLE__
     ThreadEntry* threadEntry = getThreadEntry();
 
@@ -257,8 +259,17 @@ struct StaticMeta {
       // No need to hold the lock any longer; the ThreadEntry is private to this
       // thread now that it's been removed from meta.
     }
-    FOR_EACH_RANGE(i, 0, threadEntry->elementsCapacity) {
-      threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD);
+    // NOTE: User-provided deleter / object dtor itself may be using ThreadLocal
+    // with the same Tag, so dispose() calls below may (re)create some of the
+    // elements or even increase elementsCapacity, thus multiple cleanup rounds
+    // may be required.
+    for (bool shouldRun = true; shouldRun; ) {
+      shouldRun = false;
+      FOR_EACH_RANGE(i, 0, threadEntry->elementsCapacity) {
+        if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
+          shouldRun = true;
+        }
+      }
     }
     free(threadEntry->elements);
     threadEntry->elements = nullptr;
