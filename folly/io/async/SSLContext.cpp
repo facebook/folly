@@ -34,24 +34,24 @@ struct CRYPTO_dynlock_value {
 
 namespace folly {
 
-uint64_t SSLContext::count_ = 0;
+bool SSLContext::initialized_ = false;
 std::mutex    SSLContext::mutex_;
 #ifdef OPENSSL_NPN_NEGOTIATED
 int SSLContext::sNextProtocolsExDataIndex_ = -1;
-
 #endif
+
+#ifndef SSLCONTEXT_NO_REFCOUNT
+uint64_t SSLContext::count_ = 0;
+#endif
+
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
   {
     std::lock_guard<std::mutex> g(mutex_);
-    if (!count_++) {
-      initializeOpenSSL();
-      randomize();
-#ifdef OPENSSL_NPN_NEGOTIATED
-      sNextProtocolsExDataIndex_ = SSL_get_ex_new_index(0,
-          (void*)"Advertised next protocol index", nullptr, nullptr, nullptr);
+#ifndef SSLCONTEXT_NO_REFCOUNT
+    count_++;
 #endif
-    }
+    initializeOpenSSLLocked();
   }
 
   ctx_ = SSL_CTX_new(SSLv23_method());
@@ -94,10 +94,14 @@ SSLContext::~SSLContext() {
   deleteNextProtocolsStrings();
 #endif
 
-  std::lock_guard<std::mutex> g(mutex_);
-  if (!--count_) {
-    cleanupOpenSSL();
+#ifndef SSLCONTEXT_NO_REFCOUNT
+  {
+    std::lock_guard<std::mutex> g(mutex_);
+    if (!--count_) {
+      cleanupOpenSSLLocked();
+    }
   }
+#endif
 }
 
 void SSLContext::ciphers(const std::string& ciphers) {
@@ -580,6 +584,14 @@ void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
 }
 
 void SSLContext::initializeOpenSSL() {
+  std::lock_guard<std::mutex> g(mutex_);
+  initializeOpenSSLLocked();
+}
+
+void SSLContext::initializeOpenSSLLocked() {
+  if (initialized_) {
+    return;
+  }
   SSL_library_init();
   SSL_load_error_strings();
   ERR_load_crypto_strings();
@@ -594,9 +606,24 @@ void SSLContext::initializeOpenSSL() {
   CRYPTO_set_dynlock_create_callback(dyn_create);
   CRYPTO_set_dynlock_lock_callback(dyn_lock);
   CRYPTO_set_dynlock_destroy_callback(dyn_destroy);
+  randomize();
+#ifdef OPENSSL_NPN_NEGOTIATED
+  sNextProtocolsExDataIndex_ = SSL_get_ex_new_index(0,
+      (void*)"Advertised next protocol index", nullptr, nullptr, nullptr);
+#endif
+  initialized_ = true;
 }
 
 void SSLContext::cleanupOpenSSL() {
+  std::lock_guard<std::mutex> g(mutex_);
+  cleanupOpenSSLLocked();
+}
+
+void SSLContext::cleanupOpenSSLLocked() {
+  if (!initialized_) {
+    return;
+  }
+
   CRYPTO_set_id_callback(nullptr);
   CRYPTO_set_locking_callback(nullptr);
   CRYPTO_set_dynlock_create_callback(nullptr);
@@ -607,6 +634,7 @@ void SSLContext::cleanupOpenSSL() {
   EVP_cleanup();
   ERR_remove_state(0);
   locks.reset();
+  initialized_ = false;
 }
 
 void SSLContext::setOptions(long options) {

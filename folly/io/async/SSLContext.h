@@ -199,10 +199,6 @@ class SSLContext {
    */
   virtual void loadClientCAList(const char* path);
   /**
-   * Default randomize method.
-   */
-  virtual void randomize();
-  /**
    * Override default OpenSSL password collector.
    *
    * @param collector Instance of user defined password collector
@@ -388,6 +384,18 @@ class SSLContext {
    */
   static bool matchName(const char* host, const char* pattern, int size);
 
+  /**
+   * Functions for setting up and cleaning up openssl.
+   * They can be invoked during the start of the application.
+   */
+  static void initializeOpenSSL();
+  static void cleanupOpenSSL();
+
+  /**
+   * Default randomize method.
+   */
+  static void randomize();
+
  protected:
   SSL_CTX* ctx_;
 
@@ -403,7 +411,11 @@ class SSLContext {
 #endif
 
   static std::mutex mutex_;
+  static bool initialized_;
+
+#ifndef SSLCONTEXT_NO_REFCOUNT
   static uint64_t count_;
+#endif
 
 #ifdef OPENSSL_NPN_NEGOTIATED
   /**
@@ -420,10 +432,6 @@ class SSLContext {
 #endif // OPENSSL_NPN_NEGOTIATED
 
   static int passwordCallback(char* password, int size, int, void* data);
-
-  static void initializeOpenSSL();
-  static void cleanupOpenSSL();
-
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
   /**
@@ -444,6 +452,10 @@ class SSLContext {
 #endif
 
   std::string providedCiphersString_;
+
+  // Functions are called when locked by the calling function.
+  static void initializeOpenSSLLocked();
+  static void cleanupOpenSSLLocked();
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
