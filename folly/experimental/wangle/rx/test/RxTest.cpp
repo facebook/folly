@@ -26,6 +26,24 @@ static std::unique_ptr<Observer<int>> incrementer(int& counter) {
   });
 }
 
+TEST(RxTest, Observe) {
+  Subject<int> subject;
+  auto count = 0;
+  subject.observe(incrementer(count));
+  subject.onNext(1);
+  EXPECT_EQ(1, count);
+}
+
+TEST(RxTest, ObserveInline) {
+  Subject<int> subject;
+  auto count = 0;
+  auto o = incrementer(count).release();
+  subject.observe(o);
+  subject.onNext(1);
+  EXPECT_EQ(1, count);
+  delete o;
+}
+
 TEST(RxTest, Subscription) {
   Subject<int> subject;
   auto count = 0;
@@ -73,6 +91,36 @@ TEST(RxTest, SubscribeDuringCallback) {
   subject.onNext(0xDEADBEEF);
   EXPECT_EQ(2, outerCount);
   EXPECT_EQ(1, innerCount);
+}
+
+TEST(RxTest, ObserveDuringCallback) {
+  Subject<int> subject;
+  int outerCount = 0, innerCount = 0;
+  subject.observe(Observer<int>::create([&] (int x) {
+    outerCount++;
+    subject.observe(incrementer(innerCount));
+  }));
+  subject.onNext(42);
+  subject.onNext(0xDEADBEEF);
+  EXPECT_EQ(2, outerCount);
+  EXPECT_EQ(1, innerCount);
+}
+
+TEST(RxTest, ObserveInlineDuringCallback) {
+  Subject<int> subject;
+  int outerCount = 0, innerCount = 0;
+  auto innerO = incrementer(innerCount).release();
+  auto outerO = Observer<int>::create([&] (int x) {
+    outerCount++;
+    subject.observe(innerO);
+  }).release();
+  subject.observe(outerO);
+  subject.onNext(42);
+  subject.onNext(0xDEADBEEF);
+  EXPECT_EQ(2, outerCount);
+  EXPECT_EQ(1, innerCount);
+  delete innerO;
+  delete outerO;
 }
 
 TEST(RxTest, UnsubscribeDuringCallback) {

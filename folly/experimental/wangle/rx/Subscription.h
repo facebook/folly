@@ -49,7 +49,6 @@ class Subscription {
 
   Subscription(std::shared_ptr<Unsubscriber> unsubscriber, uint64_t id)
     : unsubscriber_(std::move(unsubscriber)), id_(id) {
-    CHECK(unsubscriber_);
     CHECK(id_ > 0);
   }
 
