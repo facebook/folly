@@ -27,7 +27,7 @@ static std::unique_ptr<Observer<int>> makeObserver() {
 }
 
 void subscribeImpl(uint iters, int N, bool countUnsubscribe) {
-  for (int iter = 0; iter < iters; iter++) {
+  for (uint iter = 0; iter < iters; iter++) {
     BenchmarkSuspender bs;
     Subject<int> subject;
     std::vector<std::unique_ptr<Observer<int>>> observers;
@@ -56,7 +56,7 @@ void subscribe(uint iters, int N) {
 }
 
 void observe(uint iters, int N) {
-  for (int iter = 0; iter < iters; iter++) {
+  for (uint iter = 0; iter < iters; iter++) {
     BenchmarkSuspender bs;
     Subject<int> subject;
     std::vector<std::unique_ptr<Observer<int>>> observers;
@@ -72,7 +72,7 @@ void observe(uint iters, int N) {
 }
 
 void inlineObserve(uint iters, int N) {
-  for (int iter = 0; iter < iters; iter++) {
+  for (uint iter = 0; iter < iters; iter++) {
     BenchmarkSuspender bs;
     Subject<int> subject;
     std::vector<Observer<int>*> observers;
@@ -91,7 +91,7 @@ void inlineObserve(uint iters, int N) {
 }
 
 void notifySubscribers(uint iters, int N) {
-  for (int iter = 0; iter < iters; iter++) {
+  for (uint iter = 0; iter < iters; iter++) {
     BenchmarkSuspender bs;
     Subject<int> subject;
     std::vector<std::unique_ptr<Observer<int>>> observers;
@@ -110,7 +110,7 @@ void notifySubscribers(uint iters, int N) {
 }
 
 void notifyInlineObservers(uint iters, int N) {
-  for (int iter = 0; iter < iters; iter++) {
+  for (uint iter = 0; iter < iters; iter++) {
     BenchmarkSuspender bs;
     Subject<int> subject;
     std::vector<Observer<int>*> observers;
