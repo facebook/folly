@@ -21,7 +21,8 @@ namespace folly { namespace wangle {
 ThreadPoolExecutor::ThreadPoolExecutor(
     size_t numThreads,
     std::shared_ptr<ThreadFactory> threadFactory)
-    : threadFactory_(std::move(threadFactory)) {}
+    : threadFactory_(std::move(threadFactory)),
+      taskStatsSubject_(std::make_shared<Subject<TaskStats>>()) {}
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   CHECK(threadList_.get().size() == 0);
@@ -63,7 +64,7 @@ void ThreadPoolExecutor::runTask(
     task.stats_.runTime = std::chrono::steady_clock::now() - startTime;
   }
   thread->idle = true;
-  taskStatsSubject_.onNext(std::move(task.stats_));
+  thread->taskStatsSubject->onNext(std::move(task.stats_));
 }
 
 size_t ThreadPoolExecutor::numThreads() {

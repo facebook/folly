@@ -73,7 +73,7 @@ class ThreadPoolExecutor : public Executor {
 
   Subscription<TaskStats> subscribeToTaskStats(
       const ObserverPtr<TaskStats>& observer) {
-    return taskStatsSubject_.subscribe(observer);
+    return taskStatsSubject_->subscribe(observer);
   }
 
  protected:
@@ -83,13 +83,20 @@ class ThreadPoolExecutor : public Executor {
   void removeThreads(size_t n, bool isJoin);
 
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread {
+    explicit Thread(ThreadPoolExecutor* pool)
+      : id(nextId++),
+        handle(),
+        idle(true),
+        taskStatsSubject(pool->taskStatsSubject_) {}
+
     virtual ~Thread() {}
-    Thread() : id(nextId++), handle(), idle(true) {};
+
     static std::atomic<uint64_t> nextId;
     uint64_t id;
     std::thread handle;
     bool idle;
     Baton<> startupBaton;
+    std::shared_ptr<Subject<TaskStats>> taskStatsSubject;
   };
 
   typedef std::shared_ptr<Thread> ThreadPtr;
@@ -106,7 +113,7 @@ class ThreadPoolExecutor : public Executor {
     Func expireCallback_;
   };
 
-  void runTask(const ThreadPtr& thread, Task&& task);
+  static void runTask(const ThreadPtr& thread, Task&& task);
 
   // The function that will be bound to pool threads. It must call
   // thread->startupBaton.post() when it's ready to consume work.
@@ -118,7 +125,7 @@ class ThreadPoolExecutor : public Executor {
 
   // Create a suitable Thread struct
   virtual ThreadPtr makeThread() {
-    return std::make_shared<Thread>();
+    return std::make_shared<Thread>(this);
   }
 
   // Prerequisite: threadListLock_ readlocked
@@ -168,7 +175,7 @@ class ThreadPoolExecutor : public Executor {
   StoppedThreadQueue stoppedThreads_;
   std::atomic<bool> isJoin_; // whether the current downsizing is a join
 
-  Subject<TaskStats> taskStatsSubject_;
+  std::shared_ptr<Subject<TaskStats>> taskStatsSubject_;
 };
 
 }} // folly::wangle

@@ -93,7 +93,7 @@ void IOThreadPoolExecutor::add(
 
   auto moveTask = folly::makeMoveWrapper(
       Task(std::move(func), expiration, std::move(expireCallback)));
-  auto wrappedFunc = [this, ioThread, moveTask] () mutable {
+  auto wrappedFunc = [ioThread, moveTask] () mutable {
     runTask(ioThread, std::move(*moveTask));
     ioThread->pendingTasks--;
   };
@@ -107,7 +107,7 @@ void IOThreadPoolExecutor::add(
 
 std::shared_ptr<ThreadPoolExecutor::Thread>
 IOThreadPoolExecutor::makeThread() {
-  return std::make_shared<IOThread>();
+  return std::make_shared<IOThread>(this);
 }
 
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
