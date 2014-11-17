@@ -105,6 +105,14 @@ class exception_wrapper {
  public:
   exception_wrapper() : throwfn_(nullptr) { }
 
+  // Implicitly construct an exception_wrapper from any std::exception
+  template <typename T, typename =
+    typename std::enable_if<std::is_base_of<std::exception, T>::value>::type>
+  /* implicit */ exception_wrapper(T&& exn) {
+    item_ = std::make_shared<T>(std::forward<T>(exn));
+    throwfn_ = folly::detail::Thrower<T>::doThrow;
+  }
+
   void throwException() const {
     if (throwfn_) {
       throwfn_(item_.get());
