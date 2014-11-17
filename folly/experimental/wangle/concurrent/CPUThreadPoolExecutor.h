@@ -15,6 +15,7 @@
  */
 
 #pragma once
+
 #include <folly/experimental/wangle/concurrent/ThreadPoolExecutor.h>
 
 namespace folly { namespace wangle {
@@ -25,9 +26,19 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
 
   explicit CPUThreadPoolExecutor(
       size_t numThreads,
-      std::unique_ptr<BlockingQueue<CPUTask>> taskQueue =
-          folly::make_unique<LifoSemMPMCQueue<CPUTask>>(
-              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+      std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+
+  explicit CPUThreadPoolExecutor(size_t numThreads);
+
+  explicit CPUThreadPoolExecutor(
+      size_t numThreads,
+      std::shared_ptr<ThreadFactory> threadFactory);
+
+  explicit CPUThreadPoolExecutor(
+      size_t numThreads,
+      uint32_t numPriorities,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
@@ -38,6 +49,15 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       Func func,
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr) override;
+
+  void add(Func func, uint32_t priority);
+  void add(
+      Func func,
+      uint32_t priority,
+      std::chrono::milliseconds expiration,
+      Func expireCallback = nullptr);
+
+  uint32_t getNumPriorities() const;
 
   struct CPUTask : public ThreadPoolExecutor::Task {
     // Must be noexcept move constructible so it can be used in MPMCQueue
@@ -57,6 +77,10 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   };
 
   static const size_t kDefaultMaxQueueSize;
+  static const size_t kDefaultNumPriorities;
+
+ protected:
+  BlockingQueue<CPUTask>* getTaskQueue();
 
  private:
   void threadRun(ThreadPtr thread) override;

@@ -277,3 +277,26 @@ TEST(ThreadPoolExecutorTest, CPUFuturePool) {
 TEST(ThreadPoolExecutorTest, IOFuturePool) {
   futureExecutor<IOThreadPoolExecutor>();
 }
+
+TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
+  bool tookLopri = false;
+  auto completed = 0;
+  auto hipri = [&] {
+    EXPECT_FALSE(tookLopri);
+    completed++;
+  };
+  auto lopri = [&] {
+    tookLopri = true;
+    completed++;
+  };
+  CPUThreadPoolExecutor pool(0, 2);
+  for (int i = 0; i < 50; i++) {
+    pool.add(lopri, 0);
+  }
+  for (int i = 0; i < 50; i++) {
+    pool.add(hipri, 1);
+  }
+  pool.setNumThreads(1);
+  pool.join();
+  EXPECT_EQ(100, completed);
+}

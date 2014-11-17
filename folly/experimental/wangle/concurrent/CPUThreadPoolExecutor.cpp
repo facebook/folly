@@ -15,10 +15,12 @@
  */
 
 #include <folly/experimental/wangle/concurrent/CPUThreadPoolExecutor.h>
+#include <folly/experimental/wangle/concurrent/PriorityLifoSemMPMCQueue.h>
 
 namespace folly { namespace wangle {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 18;
+const size_t CPUThreadPoolExecutor::kDefaultNumPriorities = 2;
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
@@ -29,6 +31,31 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
   addThreads(numThreads);
   CHECK(threadList_.get().size() == numThreads);
 }
+
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(
+    size_t numThreads,
+    std::shared_ptr<ThreadFactory> threadFactory)
+    : CPUThreadPoolExecutor(
+          numThreads,
+          folly::make_unique<LifoSemMPMCQueue<CPUTask>>(
+              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::move(threadFactory)) {}
+
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
+    : CPUThreadPoolExecutor(
+          numThreads,
+          std::make_shared<NamedThreadFactory>("CPUThreadPool")) {}
+
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(
+    size_t numThreads,
+    uint32_t numPriorities,
+    std::shared_ptr<ThreadFactory> threadFactory)
+    : CPUThreadPoolExecutor(
+          numThreads,
+          folly::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
+              numPriorities,
+              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   stop();
@@ -46,6 +73,30 @@ void CPUThreadPoolExecutor::add(
   // TODO handle enqueue failure, here and in other add() callsites
   taskQueue_->add(
       CPUTask(std::move(func), expiration, std::move(expireCallback)));
+}
+
+void CPUThreadPoolExecutor::add(Func func, uint32_t priority) {
+  add(std::move(func), priority, std::chrono::milliseconds(0));
+}
+
+void CPUThreadPoolExecutor::add(
+    Func func,
+    uint32_t priority,
+    std::chrono::milliseconds expiration,
+    Func expireCallback) {
+  CHECK(priority < getNumPriorities());
+  taskQueue_->addWithPriority(
+      CPUTask(std::move(func), expiration, std::move(expireCallback)),
+      priority);
+}
+
+uint32_t CPUThreadPoolExecutor::getNumPriorities() const {
+  return taskQueue_->getNumPriorities();
+}
+
+BlockingQueue<CPUThreadPoolExecutor::CPUTask>*
+CPUThreadPoolExecutor::getTaskQueue() {
+  return taskQueue_.get();
 }
 
 void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
