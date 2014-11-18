@@ -401,6 +401,17 @@ makeFuture(E const& e);
 template <class T>
 Future<T> makeFuture(Try<T>&& t);
 
+/*
+ * Return a new Future that will call back on the given Executor.
+ * This is just syntactic sugar for makeFuture().via(executor)
+ *
+ * @param executor the Executor to call back on
+ *
+ * @returns a void Future that will call back on the given executor
+ */
+template <typename Executor>
+Future<void> via(Executor* executor);
+
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed
   after all its Futures have finished (whether successfully or with an

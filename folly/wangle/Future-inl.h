@@ -423,6 +423,12 @@ inline Future<void> makeFuture(Try<void>&& t) {
   }
 }
 
+// via
+template <typename Executor>
+Future<void> via(Executor* executor) {
+  return makeFuture().via(executor);
+}
+
 // when (variadic)
 
 template <typename... Fs>
