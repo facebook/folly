@@ -60,7 +60,7 @@ class TimePoint {
  private:
   std::chrono::system_clock::time_point timeStart_;
   std::chrono::system_clock::time_point timeEnd_;
-  std::chrono::milliseconds timeWaiting_;
+  std::chrono::milliseconds timeWaiting_{0};
   pid_t tid_;
 };
 

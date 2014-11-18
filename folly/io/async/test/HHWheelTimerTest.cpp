@@ -80,10 +80,10 @@ TEST(HHWheelTimerTest, FireOnce) {
 
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], 5);
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], 5);
-  T_CHECK_TIMEOUT(start, t3.timestamps[0], 10);
-  T_CHECK_TIMEOUT(start, end, 10);
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
+  T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }
 
 /*
@@ -146,16 +146,16 @@ TEST(HHWheelTimerTest, CancelTimeout) {
   TimePoint end;
 
   ASSERT_EQ(t5_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], 5);
+  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], milliseconds(5));
 
   ASSERT_EQ(t5_3.timestamps.size(), 2);
-  T_CHECK_TIMEOUT(start, t5_3.timestamps[0], 5);
-  T_CHECK_TIMEOUT(t5_3.timestamps[0], t5_3.timestamps[1], 5);
+  T_CHECK_TIMEOUT(start, t5_3.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(t5_3.timestamps[0], t5_3.timestamps[1], milliseconds(5));
 
   ASSERT_EQ(t10_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_1.timestamps[0], 10);
+  T_CHECK_TIMEOUT(start, t10_1.timestamps[0], milliseconds(10));
   ASSERT_EQ(t10_3.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t10_3.timestamps[0], 10);
+  T_CHECK_TIMEOUT(start, t10_3.timestamps[0], milliseconds(10));
 
   // Cancelled timeouts
   ASSERT_EQ(t5_2.timestamps.size(), 0);
@@ -165,7 +165,7 @@ TEST(HHWheelTimerTest, CancelTimeout) {
   ASSERT_EQ(t20_1.timestamps.size(), 0);
   ASSERT_EQ(t20_2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, end, 10);
+  T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }
 
 /*
@@ -200,15 +200,15 @@ TEST(HHWheelTimerTest, DestroyTimeoutSet) {
   TimePoint end;
 
   ASSERT_EQ(t5_1.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], 5);
+  T_CHECK_TIMEOUT(start, t5_1.timestamps[0], milliseconds(5));
   ASSERT_EQ(t5_2.timestamps.size(), 1);
-  T_CHECK_TIMEOUT(start, t5_2.timestamps[0], 5);
+  T_CHECK_TIMEOUT(start, t5_2.timestamps[0], milliseconds(5));
 
   ASSERT_EQ(t5_3.timestamps.size(), 0);
   ASSERT_EQ(t10_1.timestamps.size(), 0);
   ASSERT_EQ(t10_2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, end, 5);
+  T_CHECK_TIMEOUT(start, end, milliseconds(5));
 }
 
 /*
@@ -278,8 +278,7 @@ TEST(HHWheelTimerTest, AtMostEveryN) {
     // T_CHECK_TIMEOUT() normally has a tolerance of 5ms.  Allow an additional
     // atMostEveryN.
     milliseconds tolerance = milliseconds(5) + interval;
-    T_CHECK_TIMEOUT(scheduledTime, firedTime, atMostEveryN.count(),
-                    tolerance.count());
+    T_CHECK_TIMEOUT(scheduledTime, firedTime, atMostEveryN, tolerance);
 
     // Assert that the difference between the previous timeout and now was
     // either very small (fired in the same event loop), or larger than
@@ -290,10 +289,11 @@ TEST(HHWheelTimerTest, AtMostEveryN) {
     }
     TimePoint prev(timeouts[idx - 1].timestamps[1]);
 
-    milliseconds delta((firedTime.getTimeStart() - prev.getTimeEnd()) -
-                       (firedTime.getTimeWaiting() - prev.getTimeWaiting()));
+    auto delta = (firedTime.getTimeStart() - prev.getTimeEnd()) -
+      (firedTime.getTimeWaiting() - prev.getTimeWaiting());
     if (delta > milliseconds(1)) {
-      T_CHECK_TIMEOUT(prev, firedTime, atMostEveryN.count()); }
+      T_CHECK_TIMEOUT(prev, firedTime, atMostEveryN);
+    }
   }
 }
 
@@ -323,8 +323,8 @@ TEST(HHWheelTimerTest, SlowLoop) {
   ASSERT_EQ(t.count(), 0);
 
   // Check that the timeout was delayed by sleep
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], 15, 1);
-  T_CHECK_TIMEOUT(start, end, 15, 1);
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(15), milliseconds(1));
+  T_CHECK_TIMEOUT(start, end, milliseconds(15), milliseconds(1));
 
   // Try it again, this time with catchup timing every loop
   t.setCatchupEveryN(1);
@@ -342,6 +342,6 @@ TEST(HHWheelTimerTest, SlowLoop) {
   ASSERT_EQ(t.count(), 0);
 
   // Check that the timeout was NOT delayed by sleep
-  T_CHECK_TIMEOUT(start2, t2.timestamps[0], 10, 1);
-  T_CHECK_TIMEOUT(start2, end2, 10, 1);
+  T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(10), milliseconds(1));
+  T_CHECK_TIMEOUT(start2, end2, milliseconds(10), milliseconds(1));
 }
