@@ -80,7 +80,12 @@ bool Codel::overloaded(std::chrono::microseconds delay) {
 }
 
 int Codel::getLoad() {
-  return std::min(100, (int)codelMinDelay_.count() / FLAGS_codel_interval);
+  return std::min(100, (int)codelMinDelay_.count() /
+                  (2 * FLAGS_codel_target_delay));
+}
+
+int Codel::getMinDelay() {
+  return (int) codelMinDelay_.count();
 }
 
 }} //namespace

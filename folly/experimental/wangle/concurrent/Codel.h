@@ -50,6 +50,8 @@ class Codel {
   // Return:  0 = no delay, 100 = At the queueing limit
   int getLoad();
 
+  int getMinDelay();
+
  private:
   std::chrono::microseconds codelMinDelay_;
   std::chrono::time_point<std::chrono::steady_clock> codelIntervalTime_;
