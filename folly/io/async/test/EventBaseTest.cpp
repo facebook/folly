@@ -1558,3 +1558,36 @@ TEST(EventBaseTest, RunBeforeLoopWait) {
   // Check that we only ran once, and did not loop multiple times.
   ASSERT_EQ(cb.getCount(), 0);
 }
+
+class PipeHandler : public EventHandler {
+public:
+  PipeHandler(EventBase* eventBase, int fd)
+    : EventHandler(eventBase, fd) {}
+
+  void handlerReady(uint16_t events) noexcept {
+    abort();
+  }
+};
+
+TEST(EventBaseTest, StopBeforeLoop) {
+  EventBase evb;
+
+  // Give the evb something to do.
+  int p[2];
+  ASSERT_EQ(0, pipe(p));
+  PipeHandler handler(&evb, p[0]);
+  handler.registerHandler(EventHandler::READ);
+
+  // It's definitely not running yet
+  evb.terminateLoopSoon();
+
+  // let it run, it should exit quickly.
+  std::thread t([&] { evb.loop(); });
+  t.join();
+
+  handler.unregisterHandler();
+  close(p[0]);
+  close(p[1]);
+
+  SUCCEED();
+}
