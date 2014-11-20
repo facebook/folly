@@ -39,6 +39,7 @@ sudo apt-get install \
     liblz4-dev \
     liblzma-dev \
     libsnappy-dev \
+    libssl-dev \
     make \
     zlib1g-dev \
     binutils-dev \
