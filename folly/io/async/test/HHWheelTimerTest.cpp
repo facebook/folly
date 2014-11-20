@@ -46,6 +46,16 @@ class TestTimeout : public HHWheelTimer::Callback {
   std::function<void()> fn;
 };
 
+
+class TestTimeoutDelayed : public TestTimeout {
+ protected:
+    std::chrono::milliseconds getCurTime() override {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()) -
+        milliseconds(5);
+    }
+};
+
 /*
  * Test firing some simple timeouts that are fired once and never rescheduled
  */
@@ -84,6 +94,32 @@ TEST(HHWheelTimerTest, FireOnce) {
   T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
   T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
   T_CHECK_TIMEOUT(start, end, milliseconds(10));
+}
+
+/*
+ * Test scheduling a timeout from another timeout callback.
+ */
+BOOST_AUTO_TEST_CASE(CallbackSchedulingTimeout) {
+  TEventBase eventBase;
+  StackWheelTimer t(&eventBase, milliseconds(10));
+  const HHWheelTimer::Callback* nullCallback = nullptr;
+
+  TestTimeout t1;
+  // Delayed to simulate the steady_clock counter lagging
+  TestTimeoutDelayed t2;
+
+  t.scheduleTimeout(&t1, milliseconds(500));
+  t1.fn = [&] { t.scheduleTimeout(&t2, milliseconds(1)); };
+  // If t is in an inconsistent state, detachEventBase should fail.
+  t2.fn = [&] { t.detachEventBase(); };
+
+  BOOST_REQUIRE_EQUAL(t.count(), 1);
+
+  eventBase.loop();
+
+  BOOST_REQUIRE_EQUAL(t.count(), 0);
+  BOOST_REQUIRE_EQUAL(t1.timestamps.size(), 1);
+  BOOST_REQUIRE_EQUAL(t2.timestamps.size(), 1);
 }
 
 /*

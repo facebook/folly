@@ -95,6 +95,16 @@ class HHWheelTimer : private folly::AsyncTimeout,
       return wheel_ != nullptr;
     }
 
+   protected:
+    /**
+     * Don't override this unless you're doing a test. This is mainly here so
+     * that we can override it to simulate lag in steady_clock.
+     */
+    virtual std::chrono::milliseconds getCurTime() {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+    }
+
    private:
     // Get the time remaining until this timeout expires
     std::chrono::milliseconds getTimeRemaining(
@@ -236,6 +246,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   uint32_t catchupEveryN_;
   uint32_t expirationsSinceCatchup_;
+  bool processingCallbacksGuard_;
 };
 
 } // folly

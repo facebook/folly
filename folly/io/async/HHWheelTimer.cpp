@@ -56,9 +56,9 @@ void HHWheelTimer::Callback::setScheduled(HHWheelTimer* wheel,
 
   wheel_ = wheel;
 
-  if (wheel_->count_  == 0) {
-    wheel_->now_ = std::chrono::duration_cast<milliseconds>(
-      std::chrono::steady_clock::now().time_since_epoch());
+  // Only update the now_ time if we're not in a timeout expired callback
+  if (wheel_->count_  == 0 && !wheel_->processingCallbacksGuard_) {
+    wheel_->now_ = getCurTime();
   }
 
   expiration_ = wheel_->now_ + timeout;
@@ -83,6 +83,7 @@ HHWheelTimer::HHWheelTimer(folly::EventBase* eventBase,
   , count_(0)
   , catchupEveryN_(DEFAULT_CATCHUP_EVERY_N)
   , expirationsSinceCatchup_(0)
+  , processingCallbacksGuard_(false)
 {
 }
 
@@ -126,7 +127,7 @@ void HHWheelTimer::scheduleTimeout(Callback* callback,
 
   callback->context_ = RequestContext::saveContext();
 
-  if (count_ == 0) {
+  if (count_ == 0 && !processingCallbacksGuard_) {
     this->AsyncTimeout::scheduleTimeout(interval_.count());
   }
 
@@ -152,6 +153,13 @@ void HHWheelTimer::timeoutExpired() noexcept {
   // If destroy() is called inside timeoutExpired(), delay actual destruction
   // until timeoutExpired() returns
   DestructorGuard dg(this);
+  // If scheduleTimeout is called from a callback in this function, it may
+  // cause inconsistencies in the state of this object. As such, we need
+  // to treat these calls slightly differently.
+  processingCallbacksGuard_ = true;
+  auto reEntryGuard = folly::makeGuard([&] {
+    processingCallbacksGuard_ = false;
+  });
 
   // timeoutExpired() can only be invoked directly from the event base loop.
   // It should never be invoked recursively.
