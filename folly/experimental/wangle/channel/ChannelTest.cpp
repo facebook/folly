@@ -16,6 +16,8 @@
 
 #include <folly/experimental/wangle/channel/ChannelHandler.h>
 #include <folly/experimental/wangle/channel/ChannelPipeline.h>
+#include <folly/experimental/wangle/channel/AsyncSocketHandler.h>
+#include <folly/experimental/wangle/channel/OutputBufferingHandler.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/Memory.h>
 #include <folly/Conv.h>
@@ -102,4 +104,14 @@ TEST(ChannelTest, PlzCompile2) {
     .addBack(ChannelHandlerPtr<EchoService, false>(&echoService))
     .finalize();
   pipeline.read(42);
+}
+
+TEST(ChannelTest, HandlersCompile) {
+  EventBase eb;
+  auto socket = AsyncSocket::newSocket(&eb);
+  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  pipeline
+    .addBack(AsyncSocketHandler(socket))
+    .addBack(OutputBufferingHandler())
+    .finalize();
 }

@@ -106,7 +106,7 @@ class AsyncSocket : virtual public AsyncTransport {
      *
      * If getReadBuffer() throws an exception, returns a nullptr buffer, or
      * returns a 0 length, the ReadCallback will be uninstalled and its
-     * readError() method will be invoked.
+     * readErr() method will be invoked.
      *
      * getReadBuffer() is not allowed to change the transport state before it
      * returns.  (For example, it should never uninstall the read callback, or
@@ -144,11 +144,11 @@ class AsyncSocket : virtual public AsyncTransport {
     virtual void readEOF() noexcept = 0;
 
     /**
-     * readError() will be invoked if an error occurs reading from the
+     * readErr() will be invoked if an error occurs reading from the
      * transport.
      *
      * The read callback will be automatically uninstalled immediately before
-     * readError() is invoked.
+     * readErr() is invoked.
      *
      * @param ex        An exception describing the error that occurred.
      */
@@ -174,7 +174,7 @@ class AsyncSocket : virtual public AsyncTransport {
     virtual void writeSuccess() noexcept = 0;
 
     /**
-     * writeError() will be invoked if an error occurs writing the data.
+     * writeErr() will be invoked if an error occurs writing the data.
      *
      * @param bytesWritten      The number of bytes that were successfull
      * @param ex                An exception describing the error that occurred.
