@@ -18,6 +18,7 @@
 #include <folly/experimental/wangle/channel/ChannelPipeline.h>
 #include <folly/experimental/wangle/channel/AsyncSocketHandler.h>
 #include <folly/experimental/wangle/channel/OutputBufferingHandler.h>
+#include <folly/experimental/wangle/channel/test/MockChannelHandler.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/Memory.h>
 #include <folly/Conv.h>
@@ -106,7 +107,7 @@ TEST(ChannelTest, PlzCompile2) {
   pipeline.read(42);
 }
 
-TEST(ChannelTest, HandlersCompile) {
+TEST(ChannelTest, RealHandlersCompile) {
   EventBase eb;
   auto socket = AsyncSocket::newSocket(&eb);
   ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
@@ -114,4 +115,32 @@ TEST(ChannelTest, HandlersCompile) {
     .addBack(AsyncSocketHandler(socket))
     .addBack(OutputBufferingHandler())
     .finalize();
+}
+
+TEST(ChannelTest, MoveOnlyTypesCompile) {
+  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
+    BytesToBytesHandler,
+    BytesToBytesHandler>
+  pipeline(BytesToBytesHandler{}, BytesToBytesHandler{});
+  pipeline
+    .addFront(BytesToBytesHandler{})
+    .addBack(BytesToBytesHandler{})
+    .finalize();
+}
+
+typedef StrictMock<MockChannelHandlerAdapter<int, int>> IntHandler;
+
+ACTION(FireRead) {
+  arg0->fireRead(arg1);
+}
+
+TEST(ChannelTest, Handoffs) {
+  IntHandler handler1;
+  IntHandler handler2;
+  MockChannelHandlerAdapter<int, int> handler2;
+  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
+    ChannelHandlerPtr<IntHandler, false>,
+    ChannelHandlerPtr<IntHandler, false>>
+  pipeline(IntHandler{}, IntHandler{});
+  pipeline.read(1);
 }

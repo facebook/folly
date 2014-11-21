@@ -123,7 +123,7 @@ class AsyncSocketHandler
 
   void readErr(const AsyncSocketException& ex)
     noexcept override {
-    ctx_->fireReadException(ex);
+    ctx_->fireReadException(make_exception_wrapper<AsyncSocketException>(ex));
   }
 
  private:

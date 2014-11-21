@@ -26,6 +26,10 @@
 
 namespace folly { namespace wangle {
 
+/*
+ * R is the inbound type, i.e. inbound calls start with pipeline.read(R)
+ * W is the outbound type, i.e. outbound calls start with pipeline.write(W)
+ */
 template <class R, class W, class... Handlers>
 class ChannelPipeline;
 
@@ -84,8 +88,11 @@ class ChannelPipeline<R, W> : public DelayedDestruction {
 
   template <class H>
   ChannelPipeline& addFront(H&& handler) {
-    ctxs_.insert(0, folly::make_unique<ContextImpl<ChannelPipeline, H>>(
-        this, std::forward<H>(handler)));
+    ctxs_.insert(
+        ctxs_.begin(),
+        folly::make_unique<ContextImpl<ChannelPipeline, H>>(
+            this,
+            std::forward<H>(handler)));
     return *this;
   }
 
@@ -171,6 +178,7 @@ class ChannelPipeline<R, W, Handler, Handlers...>
       finalize();
     }
   }
+
  public:
   template <class... HandlersArgs>
   explicit ChannelPipeline(HandlersArgs&&... handlersArgs)
@@ -195,7 +203,7 @@ class ChannelPipeline<R, W, Handler, Handlers...>
   void readException(exception_wrapper e) {
     typename ChannelPipeline<R, W>::DestructorGuard dg(
         static_cast<DelayedDestruction*>(this));
-    front_->readEOF(std::move(e));
+    front_->readException(std::move(e));
   }
 
   Future<void> write(W msg) {
@@ -242,8 +250,11 @@ class ChannelPipeline<R, W, Handler, Handlers...>
 
   template <class H>
   ChannelPipeline& addFront(H&& handler) {
-    ctxs_.insert(0, folly::make_unique<ContextImpl<ChannelPipeline, H>>(
-        this, std::move(handler)));
+    ctxs_.insert(
+        ctxs_.begin(),
+        folly::make_unique<ContextImpl<ChannelPipeline, H>>(
+            this,
+            std::move(handler)));
     return *this;
   }
 

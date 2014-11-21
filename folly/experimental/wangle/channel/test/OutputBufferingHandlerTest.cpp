@@ -16,6 +16,7 @@
 
 #include <folly/experimental/wangle/channel/ChannelPipeline.h>
 #include <folly/experimental/wangle/channel/OutputBufferingHandler.h>
+#include <folly/experimental/wangle/channel/test/MockChannelHandler.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -24,27 +25,16 @@ using namespace folly;
 using namespace folly::wangle;
 using namespace testing;
 
-// TODO(jsedgwick) Extract this to somewhere common and fill it out.
-template <class R, class W = R>
-class MockChannelHandler : public ChannelHandlerAdapter<R, W> {
- public:
-  typedef typename ChannelHandlerAdapter<R, W>::Context Context;
-  MOCK_METHOD2_T(read, void(Context*, R));
-  MOCK_METHOD2_T(write_, void(Context*, W&));
-
-  Future<void> write(Context* ctx, W msg) override {
-    write_(ctx, msg);
-    return makeFuture();
-  }
-};
-
-typedef StrictMock<MockChannelHandler<IOBufQueue&, std::unique_ptr<IOBuf>>>
+typedef StrictMock<MockChannelHandlerAdapter<
+  IOBufQueue&,
+  std::unique_ptr<IOBuf>>>
 MockHandler;
 
 MATCHER_P(IOBufContains, str, "") { return arg->moveToFbString() == str; }
 
 TEST(OutputBufferingHandlerTest, Basic) {
   MockHandler mockHandler;
+  EXPECT_CALL(mockHandler, attachPipeline(_));
   ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
     ChannelHandlerPtr<MockHandler, false>,
     OutputBufferingHandler>
@@ -52,6 +42,7 @@ TEST(OutputBufferingHandlerTest, Basic) {
 
   EventBase eb;
   auto socket = AsyncSocket::newSocket(&eb);
+  EXPECT_CALL(mockHandler, attachTransport(_));
   pipeline.attachTransport(socket);
 
   // Buffering should prevent writes until the EB loops, and the writes should
@@ -64,4 +55,5 @@ TEST(OutputBufferingHandlerTest, Basic) {
   eb.loopOnce();
   EXPECT_TRUE(f1.isReady());
   EXPECT_TRUE(f2.isReady());
+  EXPECT_CALL(mockHandler, detachPipeline(_));
 }
