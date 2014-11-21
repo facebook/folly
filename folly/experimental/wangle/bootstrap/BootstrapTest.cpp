@@ -24,8 +24,7 @@
 using namespace folly::wangle;
 using namespace folly;
 
-typedef ChannelHandlerAdapter<IOBuf> BytesPassthrough;
-typedef ChannelPipeline<BytesPassthrough> Pipeline;
+typedef ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> Pipeline;
 
 class TestServer : public ServerBootstrap<Pipeline> {
   Pipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
@@ -49,7 +48,7 @@ class TestPipelineFactory : public PipelineFactory<Pipeline> {
  public:
   Pipeline* newPipeline(std::shared_ptr<AsyncSocket> sock) {
     pipelines++;
-    return new Pipeline(BytesPassthrough());
+    return new Pipeline();
   }
   std::atomic<int> pipelines{0};
 };
