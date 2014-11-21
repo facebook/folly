@@ -138,7 +138,6 @@ class ChannelHandlerPtr : public ChannelHandler<
     }
   }
 
-
   void attachTransport(Context* ctx) override {
     ctx_ = ctx;
     if (handler_) {

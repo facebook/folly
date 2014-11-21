@@ -17,6 +17,7 @@
 #include <folly/experimental/wangle/channel/ChannelHandler.h>
 #include <folly/experimental/wangle/channel/ChannelPipeline.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/Memory.h>
 #include <folly/Conv.h>
 #include <gtest/gtest.h>
 
@@ -63,7 +64,7 @@ class EchoService : public ChannelHandlerAdapter<std::string> {
 };
 
 TEST(ChannelTest, PlzCompile) {
-  ChannelPipeline<
+  ChannelPipeline<IOBuf, IOBuf,
     BytesPassthrough,
     BytesPassthrough,
     // If this were useful it wouldn't be that hard
@@ -71,18 +72,34 @@ TEST(ChannelTest, PlzCompile) {
     BytesPassthrough>
   pipeline(BytesPassthrough(), BytesPassthrough(), BytesPassthrough);
 
-  ChannelPipeline<
+  ChannelPipeline<int, std::string,
     ChannelHandlerPtr<ToString>,
     KittyPrepender,
-    KittyPrepender,
-    EchoService>
+    KittyPrepender>
   kittyPipeline(
       std::make_shared<ToString>(),
       KittyPrepender{},
-      KittyPrepender{},
-      EchoService{});
+      KittyPrepender{});
+  kittyPipeline.addBack(KittyPrepender{});
+  kittyPipeline.addBack(EchoService{});
+  kittyPipeline.finalize();
   kittyPipeline.read(5);
 
   auto handler = kittyPipeline.getHandler<KittyPrepender>(2);
   CHECK(handler);
+
+  auto p = folly::make_unique<int>(42);
+  folly::Optional<std::unique_ptr<int>> foo{std::move(p)};
+}
+
+TEST(ChannelTest, PlzCompile2) {
+  EchoService echoService;
+  ChannelPipeline<int, std::string> pipeline;
+  pipeline
+    .addBack(ToString())
+    .addBack(KittyPrepender())
+    .addBack(KittyPrepender())
+    .addBack(ChannelHandlerPtr<EchoService, false>(&echoService))
+    .finalize();
+  pipeline.read(42);
 }
