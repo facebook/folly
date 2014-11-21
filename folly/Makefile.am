@@ -72,6 +72,11 @@ nobase_follyinclude_HEADERS = \
 	experimental/io/FsUtil.h \
 	experimental/Singleton.h \
 	experimental/TestUtil.h \
+	experimental/wangle/channel/AsyncSocketHandler.h \
+	experimental/wangle/channel/ChannelHandler.h \
+	experimental/wangle/channel/ChannelHandlerContext.h \
+	experimental/wangle/channel/ChannelPipeline.h \
+	experimental/wangle/channel/OutputBufferingHandler.h \
 	experimental/wangle/concurrent/BlockingQueue.h \
 	experimental/wangle/concurrent/Codel.h \
 	experimental/wangle/concurrent/CPUThreadPoolExecutor.h \
