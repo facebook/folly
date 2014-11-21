@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <folly/SocketAddress.h>
+#include <folly/io/async/DelayedDestruction.h>
+#include <folly/io/async/EventBase.h>
+
 namespace folly {
 
 /*
