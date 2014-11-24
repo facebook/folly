@@ -102,9 +102,11 @@ class ServerBootstrap {
       io_group = std::make_shared<folly::wangle::IOThreadPoolExecutor>(
         32, std::make_shared<wangle::NamedThreadFactory>("IO Thread"));
     }
-    auto factory = io_group->getThreadFactory();
-
-    //CHECK(factory == nullptr); // TODO
+    auto factoryBase = io_group->getThreadFactory();
+    CHECK(factoryBase);
+    auto factory = std::dynamic_pointer_cast<folly::wangle::NamedThreadFactory>(
+      factoryBase);
+    CHECK(factory); // Must be named thread factory
 
     CHECK(acceptorFactory_ || pipelineFactory_);
 
@@ -115,6 +117,7 @@ class ServerBootstrap {
       workerFactory_ = std::make_shared<ServerWorkerFactory>(
         std::make_shared<ServerAcceptorFactory<Pipeline>>(pipelineFactory_));
     }
+    workerFactory_->setInternalFactory(factory);
 
     acceptor_group_ = accept_group;
     io_group_ = io_group;
