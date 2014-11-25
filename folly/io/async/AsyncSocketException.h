@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Format.h>
 #include <folly/io/async/DelayedDestruction.h>
 
 namespace folly {
