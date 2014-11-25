@@ -538,14 +538,31 @@ struct SSLLock {
   std::mutex mutex;
 };
 
-static std::map<int, SSLContext::SSLLockType> lockTypes;
-static std::unique_ptr<SSLLock[]> locks;
+// Statics are unsafe in environments that call exit().
+// If one thread calls exit() while another thread is
+// references a member of SSLContext, bad things can happen.
+// SSLContext runs in such environments.
+// Instead of declaring a static member we "new" the static
+// member so that it won't be destructed on exit().
+static std::map<int, SSLContext::SSLLockType>* lockTypesInst =
+  new std::map<int, SSLContext::SSLLockType>();
+
+static std::unique_ptr<SSLLock[]>* locksInst =
+  new std::unique_ptr<SSLLock[]>();
+
+static std::unique_ptr<SSLLock[]>& locks() {
+  return *locksInst;
+}
+
+static std::map<int, SSLContext::SSLLockType>& lockTypes() {
+  return *lockTypesInst;
+}
 
 static void callbackLocking(int mode, int n, const char*, int) {
   if (mode & CRYPTO_LOCK) {
-    locks[n].lock();
+    locks()[n].lock();
   } else {
-    locks[n].unlock();
+    locks()[n].unlock();
   }
 }
 
@@ -580,7 +597,7 @@ static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
 }
 
 void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
-  lockTypes = inLockTypes;
+  lockTypes() = inLockTypes;
 }
 
 void SSLContext::initializeOpenSSL() {
@@ -596,9 +613,9 @@ void SSLContext::initializeOpenSSLLocked() {
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   // static locking
-  locks.reset(new SSLLock[::CRYPTO_num_locks()]);
-  for (auto it: lockTypes) {
-    locks[it.first].lockType = it.second;
+  locks().reset(new SSLLock[::CRYPTO_num_locks()]);
+  for (auto it: lockTypes()) {
+    locks()[it.first].lockType = it.second;
   }
   CRYPTO_set_id_callback(callbackThreadID);
   CRYPTO_set_locking_callback(callbackLocking);
@@ -633,7 +650,7 @@ void SSLContext::cleanupOpenSSLLocked() {
   ERR_free_strings();
   EVP_cleanup();
   ERR_remove_state(0);
-  locks.reset();
+  locks().reset();
   initialized_ = false;
 }
 
