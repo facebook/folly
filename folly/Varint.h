@@ -108,7 +108,7 @@ inline uint64_t decodeVarint(ByteRange& data) {
       b = *p++; val |= (b & 0x7f) << 49; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 56; if (b >= 0) break;
       b = *p++; val |= (b & 0x7f) << 63; if (b >= 0) break;
-      throw std::invalid_argument("Invalid varint value");  // too big
+      throw std::invalid_argument("Invalid varint value. Too big.");
     } while (false);
   } else {
     int shift = 0;
@@ -116,7 +116,10 @@ inline uint64_t decodeVarint(ByteRange& data) {
       val |= static_cast<uint64_t>(*p++ & 0x7f) << shift;
       shift += 7;
     }
-    if (p == end) throw std::invalid_argument("Invalid varint value");
+    if (p == end) {
+      throw std::invalid_argument("Invalid varint value. Too small: " +
+                                  std::to_string(end - begin) + " bytes");
+    }
     val |= static_cast<uint64_t>(*p++) << shift;
   }
 

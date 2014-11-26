@@ -155,12 +155,19 @@ void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
   out->append(encodeVarint(val, out->writableTail()));
 }
 
-uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
-  // Must have enough room in *this* buffer.
-  auto p = cursor.peek();
-  folly::ByteRange range(p.first, p.second);
-  uint64_t val = decodeVarint(range);
-  cursor.skip(range.data() - p.first);
+inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
+  uint64_t val = 0;
+  int8_t b = 0;
+  for (int shift = 0; shift <= 63; shift += 7) {
+    b = cursor.pullByte();
+    val |= static_cast<uint64_t>(b & 0x7f) << shift;
+    if (b >= 0) {
+      break;
+    }
+  }
+  if (b < 0) {
+    throw std::invalid_argument("Invalid varint value. Too big.");
+  }
   return val;
 }
 

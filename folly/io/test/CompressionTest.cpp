@@ -27,6 +27,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
 #include <folly/Random.h>
+#include <folly/Varint.h>
 #include <folly/io/IOBufQueue.h>
 
 namespace folly { namespace io { namespace test {
@@ -129,8 +130,8 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
     ->needsUncompressedLength());
 }
 
-class CompressionTest : public testing::TestWithParam<
-    std::tr1::tuple<int, CodecType>> {
+class CompressionTest
+    : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
   protected:
    void SetUp() {
      auto tup = GetParam();
@@ -149,6 +150,7 @@ void CompressionTest::runSimpleTest(const DataHolder& dh) {
   auto compressed = codec_->compress(original.get());
   if (!codec_->needsUncompressedLength()) {
     auto uncompressed = codec_->uncompress(compressed.get());
+
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
     EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
   }
@@ -171,15 +173,67 @@ TEST_P(CompressionTest, ConstantData) {
 INSTANTIATE_TEST_CASE_P(
     CompressionTest,
     CompressionTest,
-    testing::Combine(
-        testing::Values(0, 1, 12, 22, 25, 27),
-        testing::Values(CodecType::NO_COMPRESSION,
-                        CodecType::LZ4,
-                        CodecType::SNAPPY,
-                        CodecType::ZLIB,
-                        CodecType::LZ4_VARINT_SIZE,
-                        CodecType::LZMA2,
-                        CodecType::LZMA2_VARINT_SIZE)));
+    testing::Combine(testing::Values(0, 1, 12, 22, 25, 27),
+                     testing::Values(CodecType::NO_COMPRESSION,
+                                     CodecType::LZ4,
+                                     CodecType::SNAPPY,
+                                     CodecType::ZLIB,
+                                     CodecType::LZ4_VARINT_SIZE,
+                                     CodecType::LZMA2,
+                                     CodecType::LZMA2_VARINT_SIZE)));
+
+class CompressionVarintTest
+    : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
+ protected:
+  void SetUp() {
+    auto tup = GetParam();
+    uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
+    codec_ = getCodec(std::tr1::get<1>(tup));
+  }
+
+  void runSimpleTest(const DataHolder& dh);
+
+  uint64_t uncompressedLength_;
+  std::unique_ptr<Codec> codec_;
+};
+
+inline uint64_t oneBasedMsbPos(uint64_t number) {
+  uint64_t pos = 0;
+  for (; number > 0; ++pos, number >>= 1) {
+  }
+  return pos;
+}
+
+void CompressionVarintTest::runSimpleTest(const DataHolder& dh) {
+  auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength_));
+  auto compressed = codec_->compress(original.get());
+  auto breakPoint =
+      1UL +
+      Random::rand64(std::max(9UL, oneBasedMsbPos(uncompressedLength_)) / 9UL);
+  auto tinyBuf = IOBuf::copyBuffer(compressed->data(),
+                                   std::min(compressed->length(), breakPoint));
+  compressed->trimStart(breakPoint);
+  tinyBuf->prependChain(std::move(compressed));
+  compressed = std::move(tinyBuf);
+
+  auto uncompressed = codec_->uncompress(compressed.get());
+
+  EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
+  EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
+}
+
+TEST_P(CompressionVarintTest, RandomData) { runSimpleTest(randomDataHolder); }
+
+TEST_P(CompressionVarintTest, ConstantData) {
+  runSimpleTest(constantDataHolder);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    CompressionVarintTest,
+    CompressionVarintTest,
+    testing::Combine(testing::Values(0, 1, 12, 22, 25, 27),
+                     testing::Values(CodecType::LZ4_VARINT_SIZE,
+                                     CodecType::LZMA2_VARINT_SIZE)));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
