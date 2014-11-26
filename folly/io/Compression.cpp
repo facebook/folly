@@ -553,21 +553,25 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
        defaultBufferLength));
 
   for (auto& range : *data) {
-    if (range.empty()) {
-      continue;
-    }
+    uint64_t remaining = range.size();
+    uint64_t written = 0;
+    while (remaining) {
+      uint32_t step = (remaining > maxSingleStepLength ?
+                       maxSingleStepLength : remaining);
+      stream.next_in = const_cast<uint8_t*>(range.data() + written);
+      stream.avail_in = step;
+      remaining -= step;
+      written += step;
 
-    stream.next_in = const_cast<uint8_t*>(range.data());
-    stream.avail_in = range.size();
+      while (stream.avail_in != 0) {
+        if (stream.avail_out == 0) {
+          out->prependChain(addOutputBuffer(&stream, defaultBufferLength));
+        }
 
-    while (stream.avail_in != 0) {
-      if (stream.avail_out == 0) {
-        out->prependChain(addOutputBuffer(&stream, defaultBufferLength));
+        rc = deflate(&stream, Z_NO_FLUSH);
+
+        CHECK_EQ(rc, Z_OK) << stream.msg;
       }
-
-      rc = deflate(&stream, Z_NO_FLUSH);
-
-      CHECK_EQ(rc, Z_OK) << stream.msg;
     }
   }
 
