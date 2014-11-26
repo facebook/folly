@@ -590,9 +590,6 @@ void IOBuf::coalesceAndReallocate(size_t newHeadroom,
                                   IOBuf* end,
                                   size_t newTailroom) {
   uint64_t newCapacity = newLength + newHeadroom + newTailroom;
-  if (newCapacity > UINT32_MAX) {
-    throw std::overflow_error("IOBuf chain too large to coalesce");
-  }
 
   // Allocate space for the coalesced buffer.
   // We always convert to an external buffer, even if we happened to be an
