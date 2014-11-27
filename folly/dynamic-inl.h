@@ -636,15 +636,8 @@ inline dynamic::const_item_iterator dynamic::find(dynamic const& key) const {
 
 template<class K, class V> inline void dynamic::insert(K&& key, V&& val) {
   auto& obj = get<ObjectImpl>();
-  auto rv = obj.insert(std::make_pair(std::forward<K>(key),
-                                      std::forward<V>(val)));
-  if (!rv.second) {
-    // note, the second use of std:forward<V>(val) is only correct
-    // if the first one did not result in a move. obj[key] = val
-    // would be preferrable but doesn't compile because dynamic
-    // is (intentionally) not default constructable
-    rv.first->second = std::forward<V>(val);
-  }
+  auto rv = obj.insert({ std::forward<K>(key), nullptr });
+  rv.first->second = std::forward<V>(val);
 }
 
 inline std::size_t dynamic::erase(dynamic const& key) {

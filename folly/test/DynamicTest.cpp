@@ -84,6 +84,15 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(d3.at("123"), 42);
   EXPECT_EQ(d3.at(123), 321);
 
+  dynamic objInsert = folly::dynamic::object();
+  dynamic objA = folly::dynamic::object("1", "2");
+  dynamic objB = folly::dynamic::object("1", "2");
+
+  objInsert.insert("1", std::move(objA));
+  objInsert.insert("1", std::move(objB));
+
+  EXPECT_EQ(objInsert.find("1")->second.size(), 1);
+
   // We don't allow objects as keys in objects.
   EXPECT_ANY_THROW(newObject[d3] = 12);
 }
