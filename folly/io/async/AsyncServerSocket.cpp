@@ -574,8 +574,18 @@ void AsyncServerSocket::setupSocket(int fd) {
     LOG(ERROR) << "failed to set SO_REUSEADDR on async server socket " << errno;
   }
 
-  // Set keepalive as desired
+  // Set reuseport to support multiple accept threads
   int zero = 0;
+  if (reusePortEnabled_ &&
+      setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) != 0) {
+    LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
+               << strerror(errno);
+    folly::throwSystemError(errno,
+                            "failed to bind to async server socket: " +
+                            address.describe());
+  }
+
+  // Set keepalive as desired
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
                  (keepAliveEnabled_) ? &one : &zero, sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: " <<

@@ -30,6 +30,13 @@
 #include <stddef.h>
 #include <sys/socket.h>
 
+
+// Due to the way kernel headers are included, this may or may not be defined.
+// Number pulled from 3.10 kernel headers.
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 15
+#endif
+
 namespace folly {
 
 /**
@@ -511,6 +518,36 @@ class AsyncServerSocket : public DelayedDestruction {
   }
 
   /**
+   * Set whether or not SO_REUSEPORT should be enabled on the server socket,
+   * allowing multiple binds to the same port
+   */
+  void setReusePortEnabled(bool enabled) {
+    reusePortEnabled_ = enabled;
+
+    for (auto& handler : sockets_) {
+      if (handler.socket_ < 0) {
+        continue;
+      }
+
+      int val = (enabled) ? 1 : 0;
+      if (setsockopt(handler.socket_, SOL_SOCKET,
+                     SO_REUSEPORT, &val, sizeof(val)) != 0) {
+        LOG(ERROR) <<
+          "failed to set SO_REUSEPORT on async server socket " << errno;
+        folly::throwSystemError(errno,
+                                "failed to bind to async server socket");
+      }
+    }
+  }
+
+  /**
+   * Get whether or not SO_REUSEPORT is enabled on the server socket.
+   */
+  bool getReusePortEnabled_() const {
+    return reusePortEnabled_;
+  }
+
+  /**
    * Set whether or not the socket should close during exec() (FD_CLOEXEC). By
    * default, this is enabled
    */
@@ -675,6 +712,7 @@ class AsyncServerSocket : public DelayedDestruction {
   BackoffTimeout *backoffTimeout_;
   std::vector<CallbackInfo> callbacks_;
   bool keepAliveEnabled_;
+  bool reusePortEnabled_{false};
   bool closeOnExec_;
   ShutdownSocketSet* shutdownSocketSet_;
 };
