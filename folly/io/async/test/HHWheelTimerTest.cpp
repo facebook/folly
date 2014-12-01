@@ -97,6 +97,32 @@ TEST(HHWheelTimerTest, FireOnce) {
 }
 
 /*
+ * Test scheduling a timeout from another timeout callback.
+ */
+TEST(HHWheelTimerTest, TestSchedulingWithinCallback) {
+  EventBase eventBase;
+  StackWheelTimer t(&eventBase, milliseconds(10));
+  const HHWheelTimer::Callback* nullCallback = nullptr;
+
+  TestTimeout t1;
+  // Delayed to simulate the steady_clock counter lagging
+  TestTimeoutDelayed t2;
+
+  t.scheduleTimeout(&t1, milliseconds(500));
+  t1.fn = [&] { t.scheduleTimeout(&t2, milliseconds(1)); };
+  // If t is in an inconsistent state, detachEventBase should fail.
+  t2.fn = [&] { t.detachEventBase(); };
+
+  ASSERT_EQ(t.count(), 1);
+
+  eventBase.loop();
+
+  ASSERT_EQ(t.count(), 0);
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 1);
+}
+
+/*
  * Test cancelling a timeout when it is scheduled to be fired right away.
  */
 
