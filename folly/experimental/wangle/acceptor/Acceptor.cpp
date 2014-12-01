@@ -420,7 +420,7 @@ Acceptor::forceStop() {
 void
 Acceptor::dropAllConnections() {
   if (downstreamConnectionManager_) {
-    LOG(INFO) << "Dropping all connections from Acceptor=" << this <<
+    VLOG(3) << "Dropping all connections from Acceptor=" << this <<
       " in thread " << base_;
     assert(base_->isInEventBaseThread());
     forceShutdownInProgress_ = true;
