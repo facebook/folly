@@ -308,11 +308,21 @@ class Future {
   /// by then), and it is active (active by default).
   ///
   /// Inactive Futures will activate upon destruction.
-  void activate() {
+  Future<T>& activate() & {
     core_->activate();
+    return *this;
   }
-  void deactivate() {
+  Future<T>& deactivate() & {
     core_->deactivate();
+    return *this;
+  }
+  Future<T> activate() && {
+    core_->activate();
+    return std::move(*this);
+  }
+  Future<T> deactivate() && {
+    core_->deactivate();
+    return std::move(*this);
   }
   bool isActive() {
     return core_->isActive();
