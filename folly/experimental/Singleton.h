@@ -208,7 +208,7 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
-    scheduleDestroyInstances();
+    std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
     RWSpinLock::WriteHolder wh(&stateMutex_);
 
@@ -329,6 +329,9 @@ class SingletonVault {
     SingletonEntry(SingletonEntry&&) = delete;
   };
 
+  // This method only matters if registrationComplete() is never called.
+  // Otherwise destroyInstances is scheduled to be executed atexit.
+  //
   // Initializes static object, which calls destroyInstances on destruction.
   // Used to have better deletion ordering with singleton not managed by
   // folly::Singleton. The desruction will happen in the following order:
