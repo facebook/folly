@@ -530,11 +530,14 @@ class AsyncSocket : virtual public AsyncTransport {
    * @param optname   same as the "optname" parameter in getsockopt().
    * @param optval    pointer to the variable in which the option value should
    *                  be returned.
+   * @param optlen    value-result argument, initially containing the size of
+   *                  the buffer pointed to by optval, and modified on return
+   *                  to indicate the actual size of the value returned.
    * @return          same as the return value of getsockopt().
    */
   template <typename T>
-  int  getSockOpt(int level, int optname, T *optval) {
-    return getsockopt(fd_, level, optname, optval, sizeof(T));
+  int getSockOpt(int level, int optname, T* optval, socklen_t* optlen) {
+    return getsockopt(fd_, level, optname, (void*) optval, optlen);
   }
 
   /**
