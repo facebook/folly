@@ -15,6 +15,10 @@
 
 #include <folly/io/async/EventBase.h>
 
+#ifndef NO_LIB_GFLAGS
+#include <gflags/gflags.h>
+#endif
+
 using std::string;
 using std::shared_ptr;
 
