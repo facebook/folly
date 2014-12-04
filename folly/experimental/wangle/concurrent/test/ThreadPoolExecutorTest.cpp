@@ -75,6 +75,24 @@ static void stop() {
   EXPECT_GT(1000, completed);
 }
 
+// IOThreadPoolExecutor's stop() behaves like join(). Outstanding tasks belong
+// to the event base, will be executed upon its destruction, and cannot be
+// taken back.
+template <>
+void stop<IOThreadPoolExecutor>() {
+  IOThreadPoolExecutor tpe(1);
+  std::atomic<int> completed(0);
+  auto f = [&](){
+    burnMs(10)();
+    completed++;
+  };
+  for (int i = 0; i < 10; i++) {
+    tpe.add(f);
+  }
+  tpe.stop();
+  EXPECT_EQ(10, completed);
+}
+
 TEST(ThreadPoolExecutorTest, CPUStop) {
   stop<CPUThreadPoolExecutor>();
 }

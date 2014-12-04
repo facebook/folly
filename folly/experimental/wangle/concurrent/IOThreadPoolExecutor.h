@@ -20,6 +20,8 @@
 
 namespace folly { namespace wangle {
 
+// N.B. For this thread pool, stop() behaves like join() because outstanding
+// tasks belong to the event base and will be executed upon its destruction.
 class IOThreadPoolExecutor : public ThreadPoolExecutor {
  public:
   explicit IOThreadPoolExecutor(

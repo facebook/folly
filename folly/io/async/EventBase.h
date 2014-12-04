@@ -281,9 +281,7 @@ class EventBase :
    * If runInEventBaseThread() returns true the function has successfully been
    * scheduled to run in the loop thread.  However, if the loop is terminated
    * (and never later restarted) before it has a chance to run the requested
-   * function, the function may never be run at all.  The caller is responsible
-   * for handling this situation correctly if they may terminate the loop with
-   * outstanding runInEventBaseThread() calls pending.
+   * function, the function will be run upon the EventBase's destruction.
    *
    * If two calls to runInEventBaseThread() are made from the same thread, the
    * functions will always be run in the order that they were scheduled.
@@ -313,10 +311,9 @@ class EventBase :
    * function pointer and void* argument, as it has to allocate memory to copy
    * the std::function object.
    *
-   * If the EventBase loop is terminated before it has a chance to run this
-   * function, the allocated memory will be leaked.  The caller is responsible
-   * for ensuring that the EventBase loop is not terminated before this
-   * function can run.
+   * If the loop is terminated (and never later restarted) before it has a
+   * chance to run the requested function, the function will be run upon the
+   * EventBase's destruction.
    *
    * The function must not throw any exceptions.
    */

@@ -221,6 +221,10 @@ EventBase::~EventBase() {
 
   (void) runLoopCallbacks(false);
 
+  if (!fnRunner_->consumeUntilDrained()) {
+    LOG(ERROR) << "~EventBase(): Unable to drain notification queue";
+  }
+
   // Stop consumer before deleting NotificationQueue
   fnRunner_->stopConsuming();
   {

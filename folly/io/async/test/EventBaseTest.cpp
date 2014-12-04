@@ -1591,3 +1591,16 @@ TEST(EventBaseTest, StopBeforeLoop) {
 
   SUCCEED();
 }
+
+TEST(EventBaseTest, RunCallbacksOnDestruction) {
+  bool ran = false;
+
+  {
+    EventBase base;
+    base.runInEventBaseThread([&](){
+      ran = true;
+    });
+  }
+
+  ASSERT_TRUE(ran);
+}

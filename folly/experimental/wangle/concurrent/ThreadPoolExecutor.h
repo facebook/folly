@@ -56,6 +56,11 @@ class ThreadPoolExecutor : public Executor {
 
   size_t numThreads();
   void setNumThreads(size_t numThreads);
+  /*
+   * stop() is best effort - there is no guarantee that unexecuted tasks won't
+   * be executed before it returns. Specifically, IOThreadPoolExecutor's stop()
+   * behaves like join().
+   */
   void stop();
   void join();
 
