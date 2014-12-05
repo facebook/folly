@@ -56,11 +56,14 @@ class TestTimeoutDelayed : public TestTimeout {
     }
 };
 
+struct HHWheelTimerTest : public ::testing::Test {
+  EventBase eventBase;
+};
+
 /*
  * Test firing some simple timeouts that are fired once and never rescheduled
  */
-TEST(HHWheelTimerTest, FireOnce) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, FireOnce) {
   StackWheelTimer t(&eventBase, milliseconds(1));
 
   const HHWheelTimer::Callback* nullCallback = nullptr;
@@ -99,8 +102,7 @@ TEST(HHWheelTimerTest, FireOnce) {
 /*
  * Test scheduling a timeout from another timeout callback.
  */
-TEST(HHWheelTimerTest, TestSchedulingWithinCallback) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, TestSchedulingWithinCallback) {
   StackWheelTimer t(&eventBase, milliseconds(10));
   const HHWheelTimer::Callback* nullCallback = nullptr;
 
@@ -126,8 +128,7 @@ TEST(HHWheelTimerTest, TestSchedulingWithinCallback) {
  * Test cancelling a timeout when it is scheduled to be fired right away.
  */
 
-TEST(HHWheelTimerTest, CancelTimeout) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, CancelTimeout) {
   StackWheelTimer t(&eventBase, milliseconds(1));
 
   // Create several timeouts that will all fire in 5ms.
@@ -208,8 +209,7 @@ TEST(HHWheelTimerTest, CancelTimeout) {
  * Test destroying a HHWheelTimer with timeouts outstanding
  */
 
-TEST(HHWheelTimerTest, DestroyTimeoutSet) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, DestroyTimeoutSet) {
 
   HHWheelTimer::UniquePtr t(
     new HHWheelTimer(&eventBase, milliseconds(1)));
@@ -250,8 +250,7 @@ TEST(HHWheelTimerTest, DestroyTimeoutSet) {
 /*
  * Test the tick interval parameter
  */
-TEST(HHWheelTimerTest, AtMostEveryN) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, AtMostEveryN) {
 
   // Create a timeout set with a 10ms interval, to fire no more than once
   // every 3ms.
@@ -337,8 +336,7 @@ TEST(HHWheelTimerTest, AtMostEveryN) {
  * Test an event loop that is blocking
  */
 
-TEST(HHWheelTimerTest, SlowLoop) {
-  EventBase eventBase;
+TEST_F(HHWheelTimerTest, SlowLoop) {
   StackWheelTimer t(&eventBase, milliseconds(1));
 
   TestTimeout t1;
@@ -380,4 +378,21 @@ TEST(HHWheelTimerTest, SlowLoop) {
   // Check that the timeout was NOT delayed by sleep
   T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(10), milliseconds(1));
   T_CHECK_TIMEOUT(start2, end2, milliseconds(10), milliseconds(1));
+}
+
+TEST_F(HHWheelTimerTest, lambda) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  size_t count = 0;
+  t.scheduleTimeoutFn([&]{ count++; }, milliseconds(1));
+  eventBase.loop();
+  EXPECT_EQ(1, count);
+}
+
+// shouldn't crash because we swallow and log the error (you'll have to look
+// at the console to confirm logging)
+TEST_F(HHWheelTimerTest, lambdaThrows) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  t.scheduleTimeoutFn([&]{ throw std::runtime_error("foo"); },
+                      milliseconds(1));
+  eventBase.loop();
 }

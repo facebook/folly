@@ -20,6 +20,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 
 #include <boost/intrusive/list.hpp>
+#include <glog/logging.h>
 
 #include <chrono>
 #include <cstddef>
@@ -175,6 +176,24 @@ class HHWheelTimer : private folly::AsyncTimeout,
                        std::chrono::milliseconds timeout);
   void scheduleTimeoutImpl(Callback* callback,
                        std::chrono::milliseconds timeout);
+
+  template <class F>
+  void scheduleTimeoutFn(F fn, std::chrono::milliseconds timeout) {
+    struct Wrapper : Callback {
+      Wrapper(F fn) : fn_(std::move(fn)) {}
+      void timeoutExpired() noexcept override {
+        try {
+          fn_();
+        } catch (std::exception const& e) {
+          LOG(ERROR) << e.what();
+        } catch (...) { }
+        delete this;
+      }
+      F fn_;
+    };
+    Wrapper* w = new Wrapper(std::move(fn));
+    scheduleTimeout(w, timeout);
+  }
 
   /**
    * Return the number of currently pending timeouts
