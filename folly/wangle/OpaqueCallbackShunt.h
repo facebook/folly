@@ -21,7 +21,7 @@
 namespace folly { namespace wangle {
 
 /// These classes help you wrap an existing C style callback function
-/// into a Future/Later.
+/// into a Future.
 ///
 ///   void legacy_send_async(..., void (*cb)(void*), void*);
 ///
@@ -51,39 +51,6 @@ public:
   }
   folly::wangle::Promise<T> promise_;
 private:
-  T obj_;
-};
-
-/// Variant that returns a Later instead of a Future
-///
-///   Later<int> wrappedSendAsyncLater(int i) {
-///     folly::MoveWrapper<int> wrapped(std::move(i));
-///     return Later<int>(
-///       [..., wrapped](std::function<void(int&&)>&& fn) mutable {
-///         auto handle = new OpaqueCallbackLaterShunt<int>(
-///           std::move(*wrapped), std::move(fn));
-///         legacy_send_async(...,
-///          OpaqueCallbackLaterShunt<int>::callback, handle);
-///       });
-///   }
-///
-/// Depending on your compiler's kung-fu knowledge, you might need to assign
-/// the lambda to a std::function<void(std::function<void(int&&)>&&)> temporary
-/// variable before std::moving into it into the later.
-
-template <typename T>
-class OpaqueCallbackLaterShunt {
-public:
-  explicit
-  OpaqueCallbackLaterShunt(T&& obj, std::function<void(T&&)>&& fn)
-   : fn_(std::move(fn)), obj_(std::move(obj)) { }
-  static void callback(void* arg) {
-    std::unique_ptr<OpaqueCallbackLaterShunt<T>> handle(
-      static_cast<OpaqueCallbackLaterShunt<T>*>(arg));
-    handle->fn_(std::move(handle->obj_));
-  }
-private:
-  std::function<void(T&&)> fn_;
   T obj_;
 };
 

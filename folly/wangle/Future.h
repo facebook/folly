@@ -91,8 +91,6 @@ class Future {
   ///
   ///   f = f.via(e).then(a);
   ///   f.then(b);
-  ///
-  /// If you need something like that, use a Later.
   template <typename Executor>
   Future<T> via(Executor* executor);
 

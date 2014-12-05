@@ -207,13 +207,6 @@ You can still have a race after `via` if you break it into multiple statements, 
 f = f.via(e1).then(y1).then(y2); // nothing racy here
 f2.then(y3); // racy
 ```
-If you want more control over the delayed execution, check out `Later`.
-```C++
-Later<void> later;
-later = later.via(e1).then(y1).then(y2); // nothing racy here
-later = later.then(y3); // nor here
-later.launch(); // explicit launch
-```
 
 ## You make me Promises, Promises
 

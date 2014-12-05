@@ -237,8 +237,6 @@ nobase_follyinclude_HEADERS = \
 	wangle/Future-inl.h \
 	wangle/Future.h \
 	wangle/InlineExecutor.h \
-	wangle/Later-inl.h \
-	wangle/Later.h \
 	wangle/ManualExecutor.h \
 	wangle/OpaqueCallbackShunt.h \
 	wangle/Promise-inl.h \
