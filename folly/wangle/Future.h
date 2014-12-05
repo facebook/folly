@@ -91,8 +91,17 @@ class Future {
   ///
   ///   f = f.via(e).then(a);
   ///   f.then(b);
+  // The ref-qualifier allows for `this` to be moved out so we
+  // don't get access-after-free situations in chaining.
+  // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
   template <typename Executor>
-  Future<T> via(Executor* executor);
+  Future<T> via(Executor* executor) &&;
+
+  /// This variant creates a new future, where the ref-qualifier && version
+  /// moves `this` out. This one is less efficient but avoids confusing users
+  /// when "return f.via(x);" fails.
+  template <typename Executor>
+  Future<T> via(Executor* executor) &;
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -322,6 +331,7 @@ class Future {
     core_->deactivate();
     return std::move(*this);
   }
+
   bool isActive() {
     return core_->isActive();
   }

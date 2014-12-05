@@ -36,7 +36,6 @@ struct ManualWaiter {
 
 struct ViaFixture : public testing::Test {
   ViaFixture() :
-    future_(makeFuture().deactivate()),
     westExecutor(new ManualExecutor),
     eastExecutor(new ManualExecutor),
     waiter(new ManualWaiter(westExecutor)),
@@ -61,7 +60,6 @@ struct ViaFixture : public testing::Test {
     });
   }
 
-  Future<void> future_;
   std::shared_ptr<ManualExecutor> westExecutor;
   std::shared_ptr<ManualExecutor> eastExecutor;
   std::shared_ptr<ManualWaiter> waiter;
@@ -117,9 +115,30 @@ TEST(Via, then_function) {
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
 
+TEST_F(ViaFixture, deactivateChain) {
+  bool flag = false;
+  auto f = makeFuture().deactivate();
+  EXPECT_FALSE(f.isActive());
+  auto f2 = f.then([&](Try<void>){ flag = true; });
+  EXPECT_FALSE(flag);
+}
+
+TEST_F(ViaFixture, deactivateActivateChain) {
+  bool flag = false;
+  // you can do this all day long with temporaries.
+  auto f1 = makeFuture().deactivate().activate().deactivate();
+  // Chaining on activate/deactivate requires an rvalue, so you have to move
+  // one of these two ways (if you're not using a temporary).
+  auto f2 = std::move(f1).activate();
+  f2.deactivate();
+  auto f3 = std::move(f2.activate());
+  f3.then([&](Try<void>){ flag = true; });
+  EXPECT_TRUE(flag);
+}
+
 TEST_F(ViaFixture, thread_hops) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = future_.via(eastExecutor.get()).then([=](Try<void>&& t) {
+  auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
     return makeFuture<int>(1);
   }).via(westExecutor.get()
@@ -135,7 +154,7 @@ TEST_F(ViaFixture, thread_hops) {
 
 TEST_F(ViaFixture, chain_vias) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = future_.via(eastExecutor.get()).then([=](Try<void>&& t) {
+  auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
     return makeFuture<int>(1);
   }).then([=](Try<int>&& t) {
@@ -156,3 +175,12 @@ TEST_F(ViaFixture, chain_vias) {
   EXPECT_EQ(f.value(), 1);
 }
 
+TEST_F(ViaFixture, bareViaAssignment) {
+  auto f = via(eastExecutor.get());
+}
+TEST_F(ViaFixture, viaAssignment) {
+  // via()&&
+  auto f = makeFuture().via(eastExecutor.get());
+  // via()&
+  auto f2 = f.via(eastExecutor.get());
+}

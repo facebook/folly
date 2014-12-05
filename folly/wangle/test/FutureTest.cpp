@@ -829,17 +829,14 @@ TEST(Future, callbackAfterActivate) {
 }
 
 TEST(Future, activateOnDestruct) {
-  Promise<void> p;
-  auto f = p.getFuture();
-  f.deactivate();
+  auto f = std::make_shared<Future<void>>(makeFuture());
+  f->deactivate();
 
   size_t count = 0;
-  f.then([&](Try<void>&&) { count++; });
-
-  p.setValue();
+  f->then([&](Try<void>&&) { count++; });
   EXPECT_EQ(0, count);
 
-  f = makeFuture(); // force destruction of old f
+  f.reset();
   EXPECT_EQ(1, count);
 }
 

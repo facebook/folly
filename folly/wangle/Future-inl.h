@@ -328,13 +328,24 @@ Try<T>& Future<T>::getTry() {
 
 template <class T>
 template <typename Executor>
-inline Future<T> Future<T>::via(Executor* executor) {
+inline Future<T> Future<T>::via(Executor* executor) && {
   throwIfInvalid();
 
   this->deactivate();
   core_->setExecutor(executor);
 
   return std::move(*this);
+}
+
+template <class T>
+template <typename Executor>
+inline Future<T> Future<T>::via(Executor* executor) & {
+  throwIfInvalid();
+
+  MoveWrapper<Promise<T>> p;
+  auto f = p->getFuture();
+  then([p](Try<T>&& t) mutable { p->fulfilTry(std::move(t)); });
+  return std::move(f).via(executor);
 }
 
 template <class T>
