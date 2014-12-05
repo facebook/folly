@@ -185,8 +185,11 @@ class HHWheelTimer : private folly::AsyncTimeout,
         try {
           fn_();
         } catch (std::exception const& e) {
-          LOG(ERROR) << e.what();
-        } catch (...) { }
+          LOG(ERROR) << "HHWheelTimer timeout callback threw an exception: "
+            << e.what();
+        } catch (...) {
+          LOG(ERROR) << "HHWheelTimer timeout callback threw a non-exception.";
+        }
         delete this;
       }
       F fn_;
