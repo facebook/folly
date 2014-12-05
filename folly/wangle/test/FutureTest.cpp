@@ -844,7 +844,7 @@ TEST(Future, viaActsCold) {
   ManualExecutor x;
   size_t count = 0;
 
-  auto fv = makeFuture().via(&x);
+  auto fv = via(&x);
   fv.then([&](Try<void>&&) { count++; });
 
   EXPECT_EQ(0, count);
@@ -857,7 +857,7 @@ TEST(Future, viaActsCold) {
 
 TEST(Future, viaIsCold) {
   ManualExecutor x;
-  EXPECT_FALSE(makeFuture().via(&x).isActive());
+  EXPECT_FALSE(via(&x).isActive());
 }
 
 TEST(Future, viaRaces) {
