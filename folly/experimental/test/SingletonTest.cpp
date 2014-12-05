@@ -315,9 +315,9 @@ TEST(Singleton, SingletonDependencies) {
 // A test to ensure multiple threads contending on singleton creation
 // properly wait for creation rather than thinking it is a circular
 // dependency.
-class Slowpoke {
+class Slowpoke : public Watchdog {
  public:
-  Slowpoke() { std::this_thread::sleep_for(std::chrono::seconds(1)); }
+  Slowpoke() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
 };
 
 TEST(Singleton, SingletonConcurrency) {
@@ -346,6 +346,31 @@ TEST(Singleton, SingletonConcurrency) {
     t.join();
   }
   EXPECT_EQ(vault.livingSingletonCount(), 1);
+}
+
+TEST(Singleton, SingletonConcurrencyStress) {
+  SingletonVault vault;
+  Singleton<Slowpoke> slowpoke_singleton(nullptr, nullptr, &vault);
+
+  std::vector<std::thread> ts;
+  for (size_t i = 0; i < 100; ++i) {
+    ts.emplace_back([&]() {
+        slowpoke_singleton.get_weak(&vault).lock();
+      });
+  }
+
+  for (size_t i = 0; i < 100; ++i) {
+    std::chrono::milliseconds d(20);
+
+    std::this_thread::sleep_for(d);
+    vault.destroyInstances();
+    std::this_thread::sleep_for(d);
+    vault.destroyInstances();
+  }
+
+  for (auto& t : ts) {
+    t.join();
+  }
 }
 
 // Benchmarking a normal singleton vs a Meyers singleton vs a Folly

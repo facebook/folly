@@ -81,6 +81,7 @@
 #pragma once
 #include <folly/Exception.h>
 #include <folly/Hash.h>
+#include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 
 #include <algorithm>
@@ -217,59 +218,53 @@ class SingletonVault {
   // functions. Must hold reader locks on stateMutex_ and mutex_
   // when invoking this function.
   void registerSingletonImpl(detail::TypeDescriptor type,
-                         CreateFunc create,
-                         TeardownFunc teardown) {
+                             CreateFunc create,
+                             TeardownFunc teardown) {
     RWSpinLock::UpgradedHolder wh(&mutex_);
 
-    auto& entry = singletons_[type];
-    if (!entry) {
-      entry.reset(new SingletonEntry);
-    }
-
-    std::lock_guard<std::mutex> entry_guard(entry->mutex);
-    CHECK(entry->instance == nullptr);
-    CHECK(create);
-    CHECK(teardown);
-    entry->create = create;
-    entry->teardown = teardown;
-    entry->state = SingletonEntryState::Dead;
+    singletons_[type] = folly::make_unique<SingletonEntry>(std::move(create),
+                                                           std::move(teardown));
   }
 
   /* Register a mock singleton used for testing of singletons which
    * depend on other private singletons which cannot be otherwise injected.
    */
   void registerMockSingleton(detail::TypeDescriptor type,
-                         CreateFunc create,
-                         TeardownFunc teardown) {
+                             CreateFunc create,
+                             TeardownFunc teardown) {
     RWSpinLock::ReadHolder rh(&stateMutex_);
     RWSpinLock::ReadHolder rhMutex(&mutex_);
 
-    auto existing_entry_it = singletons_.find(type);
+    auto entry_it = singletons_.find(type);
     // Mock singleton registration, we allow existing entry to be overridden.
-    if (existing_entry_it != singletons_.end()) {
-      // Upgrade to write lock.
-      RWSpinLock::UpgradedHolder whMutex(&mutex_);
-
-      // Destroy existing singleton.
-      destroyInstance(type);
-
-      // Remove singleton from creation order and singletons_.
-      // This happens only in test code and not frequently.
-      // Performance is not a concern here.
-      auto creation_order_it = std::find(
-        creation_order_.begin(),
-        creation_order_.end(),
-        type);
-      if (creation_order_it != creation_order_.end()) {
-        creation_order_.erase(creation_order_it);
-      }
+    if (entry_it == singletons_.end()) {
+      throw std::logic_error(
+        "Registering mock before the singleton was registered");
     }
 
-    // This method will re-upgrade to write lock for &mutex_.
-    registerSingletonImpl(
-      type,
-      create,
-      teardown);
+    {
+      auto& entry = *(entry_it->second);
+      // Destroy existing singleton.
+      std::lock_guard<std::mutex> entry_lg(entry.mutex);
+
+      destroyInstance(entry_it);
+      entry.create = create;
+      entry.teardown = teardown;
+    }
+
+    // Upgrade to write lock.
+    RWSpinLock::UpgradedHolder whMutex(&mutex_);
+
+    // Remove singleton from creation order and singletons_.
+    // This happens only in test code and not frequently.
+    // Performance is not a concern here.
+    auto creation_order_it = std::find(
+      creation_order_.begin(),
+      creation_order_.end(),
+      type);
+    if (creation_order_it != creation_order_.end()) {
+      creation_order_.erase(creation_order_it);
+    }
   }
 
   // Mark registration is complete; no more singletons can be
@@ -297,12 +292,6 @@ class SingletonVault {
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.
   void destroyInstances();
-
-  /* Destroy and clean-up one singleton. Must be invoked while holding
-   * a read lock on mutex_.
-   * @param typeDescriptor - the type key for the removed singleton.
-   */
-  void destroyInstance(const detail::TypeDescriptor& typeDescriptor);
 
   // Enable re-creating singletons after destroyInstances() was called.
   void reenableInstances();
@@ -338,8 +327,7 @@ class SingletonVault {
 
     size_t ret = 0;
     for (const auto& p : singletons_) {
-      std::lock_guard<std::mutex> entry_guard(p.second->mutex);
-      if (p.second->instance) {
+      if (p.second->state == SingletonEntryState::Living) {
         ++ret;
       }
     }
@@ -358,12 +346,10 @@ class SingletonVault {
     Quiescing,
   };
 
-  // Each singleton in the vault can be in three states: dead
-  // (registered but never created), being born (running the
-  // CreateFunc), and living (CreateFunc returned an instance).
+  // Each singleton in the vault can be in two states: dead
+  // (registered but never created), living (CreateFunc returned an instance).
   enum class SingletonEntryState {
     Dead,
-    BeingBorn,
     Living,
   };
 
@@ -378,24 +364,33 @@ class SingletonVault {
   // its state as described above, and the create and teardown
   // functions.
   struct SingletonEntry {
-    // mutex protects the entire entry
+    SingletonEntry(CreateFunc c, TeardownFunc t) :
+        create(std::move(c)), teardown(std::move(t)) {}
+
+    // mutex protects the entire entry during construction/destruction
     std::mutex mutex;
 
-    // state changes notify state_condvar
-    SingletonEntryState state = SingletonEntryState::Dead;
-    std::condition_variable state_condvar;
+    // State of the singleton entry. If state is Living, instance_ptr and
+    // instance_weak can be safely accessed w/o synchronization.
+    std::atomic<SingletonEntryState> state{SingletonEntryState::Dead};
 
-    // the thread creating the singleton
+    // the thread creating the singleton (only valid while creating an object)
     std::thread::id creating_thread;
 
     // The singleton itself and related functions.
+
+    // holds a shared_ptr to singleton instance, set when state is changed from
+    // Dead to Living. Reset when state is changed from Living to Dead.
     std::shared_ptr<void> instance;
+    // weak_ptr to the singleton instance, set when state is changed from Dead
+    // to Living. We never write to this object after initialization, so it is
+    // safe to read it from different threads w/o synchronization if we know
+    // that state is set to Living
     std::weak_ptr<void> instance_weak;
     void* instance_ptr = nullptr;
     CreateFunc create = nullptr;
     TeardownFunc teardown = nullptr;
 
-    SingletonEntry() = default;
     SingletonEntry(const SingletonEntry&) = delete;
     SingletonEntry& operator=(const SingletonEntry&) = delete;
     SingletonEntry& operator=(SingletonEntry&&) = delete;
@@ -433,65 +428,70 @@ class SingletonVault {
   SingletonEntry* get_entry_create(detail::TypeDescriptor type) {
     auto entry = get_entry(type);
 
-    std::unique_lock<std::mutex> entry_lock(entry->mutex);
-
-    if (entry->state == SingletonEntryState::BeingBorn) {
-      // If this thread is trying to give birth to the singleton, it's
-      // a circular dependency and we must panic.
-      if (entry->creating_thread == std::this_thread::get_id()) {
-        throw std::out_of_range(std::string("circular singleton dependency: ") +
-                                type.name());
-      }
-
-      entry->state_condvar.wait(entry_lock, [&entry]() {
-        return entry->state != SingletonEntryState::BeingBorn;
-      });
+    if (LIKELY(entry->state == SingletonEntryState::Living)) {
+      return entry;
     }
 
-    if (entry->instance == nullptr) {
-      RWSpinLock::ReadHolder rh(&stateMutex_);
-      if (state_ == SingletonVaultState::Quiescing) {
-        return entry;
-      }
-
-      CHECK(entry->state == SingletonEntryState::Dead);
-      entry->state = SingletonEntryState::BeingBorn;
-      entry->creating_thread = std::this_thread::get_id();
-
-      entry_lock.unlock();
-      // Can't use make_shared -- no support for a custom deleter, sadly.
-      auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
-
-      // We should schedule destroyInstances() only after the singleton was
-      // created. This will ensure it will be destroyed before singletons,
-      // not managed by folly::Singleton, which were initialized in its
-      // constructor
-      scheduleDestroyInstances();
-
-      entry_lock.lock();
-
-      CHECK(entry->state == SingletonEntryState::BeingBorn);
-      entry->instance = instance;
-      entry->instance_weak = instance;
-      entry->instance_ptr = instance.get();
-      entry->state = SingletonEntryState::Living;
-      entry->state_condvar.notify_all();
-
-      {
-        RWSpinLock::WriteHolder wh(&mutex_);
-
-        creation_order_.push_back(type);
-      }
+    // There's no synchronization here, so we may not see the current value
+    // for creating_thread if it was set by other thread, but we only care about
+    // it if it was set by current thread anyways.
+    if (entry->creating_thread == std::this_thread::get_id()) {
+      throw std::out_of_range(std::string("circular singleton dependency: ") +
+                              type.name());
     }
-    CHECK(entry->state == SingletonEntryState::Living);
+
+    std::lock_guard<std::mutex> entry_lock(entry->mutex);
+
+    if (entry->state == SingletonEntryState::Living) {
+      return entry;
+    }
+
+    entry->creating_thread = std::this_thread::get_id();
+
+    RWSpinLock::ReadHolder rh(&stateMutex_);
+    if (state_ == SingletonVaultState::Quiescing) {
+      entry->creating_thread = std::thread::id();
+      return entry;
+    }
+
+    // Can't use make_shared -- no support for a custom deleter, sadly.
+    auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
+
+    // We should schedule destroyInstances() only after the singleton was
+    // created. This will ensure it will be destroyed before singletons,
+    // not managed by folly::Singleton, which were initialized in its
+    // constructor
+    scheduleDestroyInstances();
+
+    entry->instance = instance;
+    entry->instance_weak = instance;
+    entry->instance_ptr = instance.get();
+    entry->creating_thread = std::thread::id();
+
+    // This has to be the last step, because once state is Living other threads
+    // may access instance and instance_weak w/o synchronization.
+    entry->state.store(SingletonEntryState::Living);
+
+    {
+      RWSpinLock::WriteHolder wh(&mutex_);
+      creation_order_.push_back(type);
+    }
     return entry;
   }
 
-  mutable folly::RWSpinLock mutex_;
   typedef std::unique_ptr<SingletonEntry> SingletonEntryPtr;
-  std::unordered_map<detail::TypeDescriptor,
-                     SingletonEntryPtr,
-                     detail::TypeDescriptorHasher> singletons_;
+  typedef std::unordered_map<detail::TypeDescriptor,
+                             SingletonEntryPtr,
+                             detail::TypeDescriptorHasher> SingletonMap;
+
+  /* Destroy and clean-up one singleton. Must be invoked while holding
+   * a read lock on mutex_.
+   * @param typeDescriptor - the type key for the removed singleton.
+   */
+  void destroyInstance(SingletonMap::iterator entry_it);
+
+  mutable folly::RWSpinLock mutex_;
+  SingletonMap singletons_;
   std::vector<detail::TypeDescriptor> creation_order_;
   SingletonVaultState state_{SingletonVaultState::Running};
   bool registrationComplete_{false};

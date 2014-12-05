@@ -40,8 +40,7 @@ void SingletonVault::destroyInstances() {
     for (auto type_iter = creation_order_.rbegin();
          type_iter != creation_order_.rend();
          ++type_iter) {
-      auto type = *type_iter;
-      destroyInstance(type);
+      destroyInstance(singletons_.find(*type_iter));
     }
   }
 
@@ -55,22 +54,17 @@ void SingletonVault::destroyInstances() {
  * a read lock on mutex_.
  * @param typeDescriptor - the type key for the removed singleton.
  */
-void SingletonVault::destroyInstance(
-    const detail::TypeDescriptor& typeDescriptor) {
-  auto it = singletons_.find(typeDescriptor);
-  CHECK(it != singletons_.end());
-  auto& entry = it->second;
-  std::lock_guard<std::mutex> entry_guard(entry->mutex);
-  if (entry->instance.use_count() > 1) {
-    LOG(ERROR) << "Singleton of typeDescriptor "
-               << typeDescriptor.name() << " has a living "
+void SingletonVault::destroyInstance(SingletonMap::iterator entry_it) {
+  const auto& type = entry_it->first;
+  auto& entry = *(entry_it->second);
+  if (entry.instance.use_count() > 1) {
+    LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
                << "reference at destroyInstances time; beware! Raw pointer "
-               << "is " << entry->instance.get() << " with use_count of "
-               << entry->instance.use_count();
+               << "is " << entry.instance.get() << " with use_count of "
+               << entry.instance.use_count();
   }
-  entry->instance.reset();
-  entry->state = SingletonEntryState::Dead;
-  entry->state_condvar.notify_all();
+  entry.state = SingletonEntryState::Dead;
+  entry.instance.reset();
 }
 
 void SingletonVault::reenableInstances() {
