@@ -166,8 +166,8 @@ struct StaticMeta {
     return *inst_;
   }
 
-  int nextId_;
-  std::vector<int> freeIds_;
+  uint32_t nextId_;
+  std::vector<uint32_t> freeIds_;
   std::mutex lock_;
   pthread_key_t pthreadKey_;
   ThreadEntry head_;
@@ -281,8 +281,8 @@ struct StaticMeta {
 #endif
   }
 
-  static int create() {
-    int id;
+  static uint32_t create() {
+    uint32_t id;
     auto & meta = instance();
     std::lock_guard<std::mutex> g(meta.lock_);
     if (!meta.freeIds_.empty()) {
@@ -294,7 +294,7 @@ struct StaticMeta {
     return id;
   }
 
-  static void destroy(size_t id) {
+  static void destroy(uint32_t id) {
     try {
       auto & meta = instance();
       // Elements in other threads that use this id.
@@ -336,7 +336,7 @@ struct StaticMeta {
    * Reserve enough space in the ThreadEntry::elements for the item
    * @id to fit in.
    */
-  static void reserve(int id) {
+  static void reserve(uint32_t id) {
     auto& meta = instance();
     ThreadEntry* threadEntry = getThreadEntry();
     size_t prevCapacity = threadEntry->elementsCapacity;
@@ -422,7 +422,7 @@ struct StaticMeta {
 #endif
   }
 
-  static ElementWrapper& get(size_t id) {
+  static ElementWrapper& get(uint32_t id) {
     ThreadEntry* threadEntry = getThreadEntry();
     if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
       reserve(id);

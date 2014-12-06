@@ -210,7 +210,7 @@ class ThreadLocalPtr {
 
     threadlocal_detail::StaticMeta<Tag>& meta_;
     std::mutex* lock_;
-    int id_;
+    uint32_t id_;
 
    public:
     class Iterator;
@@ -309,7 +309,7 @@ class ThreadLocalPtr {
     }
 
    private:
-    explicit Accessor(int id)
+    explicit Accessor(uint32_t id)
       : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
         lock_(&meta_.lock_) {
       lock_->lock();
@@ -344,7 +344,7 @@ class ThreadLocalPtr {
   ThreadLocalPtr(const ThreadLocalPtr&) = delete;
   ThreadLocalPtr& operator=(const ThreadLocalPtr&) = delete;
 
-  int id_;  // every instantiation has a unique id
+  uint32_t id_;  // every instantiation has a unique id
 };
 
 }  // namespace folly
