@@ -49,16 +49,42 @@
  * access to the buffer (you need to call unshare() yourself if necessary).
  **/
 namespace folly { namespace io {
+
 namespace detail {
 
-template <class Derived, typename BufType>
+template <class Derived, class BufType>
 class CursorBase {
+  // Make all the templated classes friends for copy constructor.
+  template <class D, typename B> friend class CursorBase;
  public:
+  explicit CursorBase(BufType* buf) : crtBuf_(buf), buffer_(buf) { }
+
+  /**
+   * Copy constructor.
+   *
+   * This also allows constructing a CursorBase from other derived types.
+   * For instance, this allows constructing a Cursor from an RWPrivateCursor.
+   */
+  template <class OtherDerived, class OtherBuf>
+  explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor)
+    : crtBuf_(cursor.crtBuf_),
+      offset_(cursor.offset_),
+      buffer_(cursor.buffer_) { }
+
+  /**
+   * Reset cursor to point to a new buffer.
+   */
+  void reset(BufType* buf) {
+    crtBuf_ = buf;
+    buffer_ = buf;
+    offset_ = 0;
+  }
+
   const uint8_t* data() const {
     return crtBuf_->data() + offset_;
   }
 
-  /*
+  /**
    * Return the remaining space available in the current IOBuf.
    *
    * May return 0 if the cursor is at the end of an IOBuf.  Use peek() instead
@@ -70,7 +96,7 @@ class CursorBase {
     return crtBuf_->length() - offset_;
   }
 
-  /*
+  /**
    * Return the space available until the end of the entire IOBuf chain.
    */
   size_t totalLength() const {
@@ -107,10 +133,14 @@ class CursorBase {
   }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value, T>::type
-  read() {
+  typename std::enable_if<std::is_arithmetic<T>::value, T>::type read() {
     T val;
-    pull(&val, sizeof(T));
+    if (LIKELY(length() >= sizeof(T))) {
+      val = loadUnaligned<T>(data());
+      offset_ += sizeof(T);
+    } else {
+      pullSlow(&val, sizeof(T));
+    }
     return val;
   }
 
@@ -133,23 +163,14 @@ class CursorBase {
    */
   std::string readFixedString(size_t len) {
     std::string str;
-
     str.reserve(len);
-    for (;;) {
-      // Fast path: it all fits in one buffer.
-      size_t available = length();
-      if (LIKELY(available >= len)) {
-        str.append(reinterpret_cast<const char*>(data()), len);
-        offset_ += len;
-        return str;
-      }
-
-      str.append(reinterpret_cast<const char*>(data()), available);
-      if (UNLIKELY(!tryAdvanceBuffer())) {
-        throw std::out_of_range("string underflow");
-      }
-      len -= available;
+    if (LIKELY(length() >= len)) {
+      str.append(reinterpret_cast<const char*>(data()), len);
+      offset_ += len;
+    } else {
+      readFixedStringSlow(&str, len);
     }
+    return str;
   }
 
   /**
@@ -161,8 +182,8 @@ class CursorBase {
    * vs. using pull().
    */
   std::string readTerminatedString(
-    char termChar = '\0',
-    size_t maxLength = std::numeric_limits<size_t>::max()) {
+      char termChar = '\0',
+      size_t maxLength = std::numeric_limits<size_t>::max()) {
     std::string str;
 
     for (;;) {
@@ -194,31 +215,39 @@ class CursorBase {
     }
   }
 
-  explicit CursorBase(BufType* buf)
-    : crtBuf_(buf)
-    , offset_(0)
-    , buffer_(buf) {}
+  size_t skipAtMost(size_t len) {
+    if (LIKELY(length() >= len)) {
+      offset_ += len;
+      return len;
+    }
+    return skipAtMostSlow(len);
+  }
 
-  // Make all the templated classes friends for copy constructor.
-  template <class D, typename B> friend class CursorBase;
+  void skip(size_t len) {
+    if (LIKELY(length() >= len)) {
+      offset_ += len;
+    } else {
+      skipSlow(len);
+    }
+  }
 
-  /*
-   * Copy constructor.
-   *
-   * This also allows constructing a CursorBase from other derived types.
-   * For instance, this allows constructing a Cursor from an RWPrivateCursor.
-   */
-  template <class OtherDerived, class OtherBuf>
-  explicit CursorBase(const CursorBase<OtherDerived, OtherBuf>& cursor)
-    : crtBuf_(cursor.crtBuf_),
-      offset_(cursor.offset_),
-      buffer_(cursor.buffer_) {}
+  size_t pullAtMost(void* buf, size_t len) {
+    // Fast path: it all fits in one buffer.
+    if (LIKELY(length() >= len)) {
+      memcpy(buf, data(), len);
+      offset_ += len;
+      return len;
+    }
+    return pullAtMostSlow(buf, len);
+  }
 
-  // reset cursor to point to a new buffer.
-  void reset(BufType* buf) {
-    crtBuf_ = buf;
-    buffer_ = buf;
-    offset_ = 0;
+  void pull(void* buf, size_t len) {
+    if (LIKELY(length() >= len)) {
+      memcpy(buf, data(), len);
+      offset_ += len;
+    } else {
+      pullSlow(buf, len);
+    }
   }
 
   /**
@@ -232,33 +261,7 @@ class CursorBase {
     while (UNLIKELY(available == 0 && tryAdvanceBuffer())) {
       available = length();
     }
-
     return std::make_pair(data(), available);
-  }
-
-  /**
-   * Read one byte. Equivalent to pull(&byte, 1) but faster.
-   */
-  uint8_t pullByte() {
-    // fast path
-    if (LIKELY(length() >= 1)) {
-      uint8_t byte = *data();
-      offset_++;
-      return byte;
-    }
-
-    // slow path
-    uint8_t byte;
-    if (UNLIKELY(pullAtMost(&byte, 1) != 1)) {
-      throw std::out_of_range("underflow");
-    }
-    return byte;
-  }
-
-  void pull(void* buf, size_t len) {
-    if (UNLIKELY(pullAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
-    }
   }
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
@@ -270,36 +273,6 @@ class CursorBase {
   void clone(folly::IOBuf& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
       throw std::out_of_range("underflow");
-    }
-  }
-
-  void skip(size_t len) {
-    if (LIKELY(length() >= len)) {
-      offset_ += len;
-      return;
-    }
-    skipSlow(len);
-  }
-
-  size_t pullAtMost(void* buf, size_t len) {
-    uint8_t* p = reinterpret_cast<uint8_t*>(buf);
-    size_t copied = 0;
-    for (;;) {
-      // Fast path: it all fits in one buffer.
-      size_t available = length();
-      if (LIKELY(available >= len)) {
-        memcpy(p, data(), len);
-        offset_ += len;
-        return copied + len;
-      }
-
-      memcpy(p, data(), available);
-      copied += available;
-      if (UNLIKELY(!tryAdvanceBuffer())) {
-        return copied;
-      }
-      p += available;
-      len -= available;
     }
   }
 
@@ -327,7 +300,6 @@ class CursorBase {
         return copied + len;
       }
 
-
       if (loopCount == 0) {
         crtBuf_->cloneOneInto(buf);
         buf.trimStart(offset_);
@@ -349,26 +321,7 @@ class CursorBase {
     if (!buf) {
       buf = make_unique<folly::IOBuf>();
     }
-
     return cloneAtMost(*buf, len);
-  }
-
-  size_t skipAtMost(size_t len) {
-    size_t skipped = 0;
-    for (;;) {
-      // Fast path: it all fits in one buffer.
-      size_t available = length();
-      if (LIKELY(available >= len)) {
-        offset_ += len;
-        return skipped + len;
-      }
-
-      skipped += available;
-      if (UNLIKELY(!tryAdvanceBuffer())) {
-        return skipped;
-      }
-      len -= available;
-    }
   }
 
   /**
@@ -423,10 +376,7 @@ class CursorBase {
   }
 
  protected:
-  BufType* crtBuf_;
-  size_t offset_;
-
-  ~CursorBase(){}
+  ~CursorBase() { }
 
   BufType* head() {
     return buffer_;
@@ -445,20 +395,71 @@ class CursorBase {
     return true;
   }
 
+  BufType* crtBuf_;
+  size_t offset_ = 0;
+
  private:
-  void advanceDone() {
+  void readFixedStringSlow(std::string* str, size_t len) {
+    for (size_t available; (available = length()) < len; ) {
+      str->append(reinterpret_cast<const char*>(data()), available);
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        throw std::out_of_range("string underflow");
+      }
+      len -= available;
+    }
+    str->append(reinterpret_cast<const char*>(data()), len);
+    offset_ += len;
+  }
+
+  size_t pullAtMostSlow(void* buf, size_t len) {
+    uint8_t* p = reinterpret_cast<uint8_t*>(buf);
+    size_t copied = 0;
+    for (size_t available; (available = length()) < len; ) {
+      memcpy(p, data(), available);
+      copied += available;
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        return copied;
+      }
+      p += available;
+      len -= available;
+    }
+    memcpy(p, data(), len);
+    offset_ += len;
+    return copied + len;
+  }
+
+  void pullSlow(void* buf, size_t len) {
+    if (UNLIKELY(pullAtMostSlow(buf, len) != len)) {
+      throw std::out_of_range("underflow");
+    }
+  }
+
+  size_t skipAtMostSlow(size_t len) {
+    size_t skipped = 0;
+    for (size_t available; (available = length()) < len; ) {
+      skipped += available;
+      if (UNLIKELY(!tryAdvanceBuffer())) {
+        return skipped;
+      }
+      len -= skipped;
+    }
+    offset_ += len;
+    return skipped + len;
   }
 
   void skipSlow(size_t len) {
-    if (UNLIKELY(skipAtMost(len) != len)) {
+    if (UNLIKELY(skipAtMostSlow(len) != len)) {
       throw std::out_of_range("underflow");
     }
+  }
+
+  void advanceDone() {
   }
 
   BufType* buffer_;
 };
 
-} //namespace detail
+}  // namespace detail
 
 class Cursor : public detail::CursorBase<Cursor, const IOBuf> {
  public:

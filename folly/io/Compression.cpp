@@ -159,7 +159,7 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
   uint64_t val = 0;
   int8_t b = 0;
   for (int shift = 0; shift <= 63; shift += 7) {
-    b = cursor.pullByte();
+    b = cursor.read<int8_t>();
     val |= static_cast<uint64_t>(b & 0x7f) << shift;
     if (b >= 0) {
       break;
