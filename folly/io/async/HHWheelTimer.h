@@ -180,7 +180,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   template <class F>
   void scheduleTimeoutFn(F fn, std::chrono::milliseconds timeout) {
     struct Wrapper : Callback {
-      Wrapper(F fn) : fn_(std::move(fn)) {}
+      Wrapper(F f) : fn_(std::move(f)) {}
       void timeoutExpired() noexcept override {
         try {
           fn_();
