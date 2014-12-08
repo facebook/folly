@@ -234,7 +234,7 @@ void AsyncSocket::init() {
   eventFlags_ = EventHandler::NONE;
   fd_ = -1;
   sendTimeout_ = 0;
-  maxReadsPerEvent_ = 0;
+  maxReadsPerEvent_ = 16;
   connectCallback_ = nullptr;
   readCallback_ = nullptr;
   writeReqHead_ = nullptr;
