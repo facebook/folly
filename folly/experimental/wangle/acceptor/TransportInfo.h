@@ -27,13 +27,13 @@ struct HTTPHeaderSize {
    * before decompression. If header compression is not supported, the value
    * is set to 0.
    */
-  uint32_t compressed{0};
+  size_t compressed{0};
 
   /**
    * The number of bytes used to represent the serialized header before
    * compression or after decompression, in plain-text format.
    */
-  uint32_t uncompressed{0};
+  size_t uncompressed{0};
 };
 
 struct TransportInfo {
