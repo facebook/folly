@@ -441,7 +441,7 @@ class CursorBase {
       if (UNLIKELY(!tryAdvanceBuffer())) {
         return skipped;
       }
-      len -= skipped;
+      len -= available;
     }
     offset_ += len;
     return skipped + len;
