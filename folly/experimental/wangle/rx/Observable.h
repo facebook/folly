@@ -94,9 +94,9 @@ class Observable {
     // helper class.
     struct ViaSubject : public Observable<T>
     {
-      ViaSubject(SchedulerPtr scheduler,
+      ViaSubject(SchedulerPtr sched,
                  Observable* obs)
-        : scheduler_(scheduler), observable_(obs)
+        : scheduler_(sched), observable_(obs)
       {}
 
       Subscription<T> subscribe(ObserverPtr<T> o) override {
