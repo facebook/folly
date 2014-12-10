@@ -145,7 +145,7 @@ class ServerBootstrap {
     }
 
     bool reusePort = false;
-    if (acceptor_group_->numThreads() >= 0) {
+    if (acceptor_group_->numThreads() > 1) {
       reusePort = true;
     }
 

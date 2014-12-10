@@ -138,6 +138,20 @@ TEST(Bootstrap, ServerAcceptGroupTest) {
 TEST(Bootstrap, ServerAcceptGroup2Test) {
   // Verify that server is using the accept IO group
 
+  // Check if reuse port is supported, if not, don't run this test
+  try {
+    EventBase base;
+    auto serverSocket = AsyncServerSocket::newSocket(&base);
+    serverSocket->bind(0);
+    serverSocket->listen(0);
+    serverSocket->startAccepting();
+    serverSocket->setReusePortEnabled(true);
+    serverSocket->stopAccepting();
+  } catch(...) {
+    LOG(INFO) << "Reuse port probably not supported";
+    return;
+  }
+
   TestServer server;
   auto factory = std::make_shared<TestPipelineFactory>();
   server.childPipeline(factory);
