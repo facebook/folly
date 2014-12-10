@@ -151,7 +151,7 @@ class Observable {
     *inCallback_ = true;
 
     {
-      RWSpinLock::ReadHolder(observersLock_);
+      RWSpinLock::ReadHolder rh(observersLock_);
       for (auto o : observers_) {
         f(o);
       }
@@ -165,7 +165,7 @@ class Observable {
                  (newSubscribers_ && !newSubscribers_->empty()) ||
                  (oldSubscribers_ && !oldSubscribers_->empty()))) {
       {
-        RWSpinLock::WriteHolder(observersLock_);
+        RWSpinLock::WriteHolder wh(observersLock_);
         if (newObservers_) {
           for (auto observer : *(newObservers_)) {
             observers_.push_back(observer);

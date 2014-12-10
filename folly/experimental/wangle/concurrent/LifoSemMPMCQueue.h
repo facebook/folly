@@ -24,7 +24,7 @@ namespace folly { namespace wangle {
 template <class T>
 class LifoSemMPMCQueue : public BlockingQueue<T> {
  public:
-  explicit LifoSemMPMCQueue(size_t capacity) : queue_(capacity) {}
+  explicit LifoSemMPMCQueue(size_t max_capacity) : queue_(max_capacity) {}
 
   void add(T item) override {
     if (!queue_.write(std::move(item))) {
