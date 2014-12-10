@@ -362,6 +362,28 @@ int* getNormalSingleton() {
   return &normal_singleton_value;
 }
 
+// Verify that existing Singleton's can be overridden
+// using the make_mock functionality.
+TEST(Singleton, make_mock) {
+  SingletonVault vault(SingletonVault::Type::Strict);
+  Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault);
+  vault.registrationComplete();
+
+  // Registring singletons after registrationComplete called works
+  // with make_mock (but not with Singleton ctor).
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+  int serial_count_first = Singleton<Watchdog>::get(&vault)->serial_number;
+
+  // Override existing mock using make_mock.
+  Singleton<Watchdog>::make_mock(nullptr, nullptr, &vault);
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+  int serial_count_mock = Singleton<Watchdog>::get(&vault)->serial_number;
+
+  // If serial_count value is the same, then singleton was not replaced.
+  EXPECT_NE(serial_count_first, serial_count_mock);
+}
+
 struct BenchmarkSingleton {
   int val = 0;
 };

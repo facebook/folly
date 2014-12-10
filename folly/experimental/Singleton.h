@@ -83,6 +83,7 @@
 #include <folly/Hash.h>
 #include <folly/RWSpinLock.h>
 
+#include <algorithm>
 #include <vector>
 #include <mutex>
 #include <thread>
@@ -135,6 +136,19 @@ class TypeDescriptor {
     }
   }
 
+  TypeDescriptor(const TypeDescriptor& other)
+      : ti_(other.ti_), name_(other.name_) {
+  }
+
+  TypeDescriptor& operator=(const TypeDescriptor& other) {
+    if (this != &other) {
+      name_ = other.name_;
+      ti_ = other.ti_;
+    }
+
+    return *this;
+  }
+
   std::string name() const {
     std::string ret = ti_.name();
     ret += "/";
@@ -153,8 +167,8 @@ class TypeDescriptor {
   }
 
  private:
-  const std::type_index ti_;
-  const std::string name_;
+  std::type_index ti_;
+  std::string name_;
 };
 
 class TypeDescriptorHasher {
@@ -177,7 +191,9 @@ class SingletonVault {
   typedef std::function<void(void*)> TeardownFunc;
   typedef std::function<void*(void)> CreateFunc;
 
-  // Register a singleton of a given type with the create and teardown
+  // Ensure that Singleton has not been registered previously and that
+  // registration is not complete. If validations succeeds,
+  // register a singleton of a given type with the create and teardown
   // functions.
   void registerSingleton(detail::TypeDescriptor type,
                          CreateFunc create,
@@ -185,16 +201,30 @@ class SingletonVault {
     RWSpinLock::ReadHolder rh(&stateMutex_);
 
     stateCheck(SingletonVaultState::Running);
+
     if (UNLIKELY(registrationComplete_)) {
       throw std::logic_error(
         "Registering singleton after registrationComplete().");
     }
 
-    RWSpinLock::WriteHolder wh(&mutex_);
-
+    RWSpinLock::ReadHolder rhMutex(&mutex_);
     CHECK_THROW(singletons_.find(type) == singletons_.end(), std::logic_error);
+
+    registerSingletonImpl(type, create, teardown);
+  }
+
+  // Register a singleton of a given type with the create and teardown
+  // functions. Must hold reader locks on stateMutex_ and mutex_
+  // when invoking this function.
+  void registerSingletonImpl(detail::TypeDescriptor type,
+                         CreateFunc create,
+                         TeardownFunc teardown) {
+    RWSpinLock::UpgradedHolder wh(&mutex_);
+
     auto& entry = singletons_[type];
-    entry.reset(new SingletonEntry);
+    if (!entry) {
+      entry.reset(new SingletonEntry);
+    }
 
     std::lock_guard<std::mutex> entry_guard(entry->mutex);
     CHECK(entry->instance == nullptr);
@@ -203,6 +233,43 @@ class SingletonVault {
     entry->create = create;
     entry->teardown = teardown;
     entry->state = SingletonEntryState::Dead;
+  }
+
+  /* Register a mock singleton used for testing of singletons which
+   * depend on other private singletons which cannot be otherwise injected.
+   */
+  void registerMockSingleton(detail::TypeDescriptor type,
+                         CreateFunc create,
+                         TeardownFunc teardown) {
+    RWSpinLock::ReadHolder rh(&stateMutex_);
+    RWSpinLock::ReadHolder rhMutex(&mutex_);
+
+    auto existing_entry_it = singletons_.find(type);
+    // Mock singleton registration, we allow existing entry to be overridden.
+    if (existing_entry_it != singletons_.end()) {
+      // Upgrade to write lock.
+      RWSpinLock::UpgradedHolder whMutex(&mutex_);
+
+      // Destroy existing singleton.
+      destroyInstance(type);
+
+      // Remove singleton from creation order and singletons_.
+      // This happens only in test code and not frequently.
+      // Performance is not a concern here.
+      auto creation_order_it = std::find(
+        creation_order_.begin(),
+        creation_order_.end(),
+        type);
+      if (creation_order_it != creation_order_.end()) {
+        creation_order_.erase(creation_order_it);
+      }
+    }
+
+    // This method will re-upgrade to write lock for &mutex_.
+    registerSingletonImpl(
+      type,
+      create,
+      teardown);
   }
 
   // Mark registration is complete; no more singletons can be
@@ -230,6 +297,12 @@ class SingletonVault {
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.
   void destroyInstances();
+
+  /* Destroy and clean-up one singleton. Must be invoked while holding
+   * a read lock on mutex_.
+   * @param typeDescriptor - the type key for the removed singleton.
+   */
+  void destroyInstance(const detail::TypeDescriptor& typeDescriptor);
 
   // Enable re-creating singletons after destroyInstances() was called.
   void reenableInstances();
@@ -491,26 +564,87 @@ class Singleton {
                      SingletonVault* vault = nullptr /* for testing */)
       : Singleton({typeid(T), name}, c, t, vault) {}
 
+  /**
+  * Construct and inject a mock singleton which should be used only from tests.
+  * See overloaded method for more details.
+  */
+  template <typename CreateFunc = std::nullptr_t>
+  static void make_mock(CreateFunc c = nullptr,
+                     typename Singleton<T>::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */) {
+
+    make_mock("", c, t, vault);
+  }
+
+  /**
+  * Construct and inject a mock singleton which should be used only from tests.
+  * Unlike regular singletons which are initialized once per process lifetime,
+  * mock singletons live for the duration of a test. This means that one process
+  * running multiple tests can initialize and register the same singleton
+  * multiple times. This functionality should be used only from tests
+  * since it relaxes validation and performance in order to be able to perform
+  * the injection. The returned mock singleton is functionality identical to
+  * regular singletons.
+  */
+  template <typename CreateFunc = std::nullptr_t>
+  static void make_mock(const char* name,
+                     CreateFunc c = nullptr,
+                     typename Singleton<T>::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */ ) {
+
+    Singleton<T> mockSingleton({typeid(T), name}, c, t, vault, false);
+    mockSingleton.vault_->registerMockSingleton(
+      mockSingleton.type_descriptor_,
+      c,
+      getTeardownFunc(t));
+  }
+
  private:
   explicit Singleton(detail::TypeDescriptor type,
                      std::nullptr_t,
                      Singleton::TeardownFunc t,
-                     SingletonVault* vault) :
+                     SingletonVault* vault,
+                     bool registerSingleton = true) :
       Singleton (type,
                  []() { return new T; },
                  std::move(t),
-                 vault) {
+                 vault,
+                 registerSingleton) {
   }
 
   explicit Singleton(detail::TypeDescriptor type,
                      Singleton::CreateFunc c,
                      Singleton::TeardownFunc t,
-                     SingletonVault* vault)
+                     SingletonVault* vault,
+                     bool registerSingleton = true)
       : type_descriptor_(type) {
     if (c == nullptr) {
       throw std::logic_error(
         "nullptr_t should be passed if you want T to be default constructed");
     }
+
+    if (vault == nullptr) {
+      vault = SingletonVault::singleton();
+    }
+
+    vault_ = vault;
+    if (registerSingleton) {
+      vault->registerSingleton(type, c, getTeardownFunc(t));
+    }
+  }
+
+  static inline void make_mock(const char* name,
+                     std::nullptr_t c,
+                     typename Singleton<T>::TeardownFunc t = nullptr,
+                     SingletonVault* vault = nullptr /* for testing */ ) {
+    make_mock(name, []() { return new T; }, std::move(t), vault);
+  }
+
+
+private:
+  // Construct SingletonVault::TeardownFunc.
+  static SingletonVault::TeardownFunc getTeardownFunc(
+      Singleton<T>::TeardownFunc t) {
     SingletonVault::TeardownFunc teardown;
     if (t == nullptr) {
       teardown = [](void* v) { delete static_cast<T*>(v); };
@@ -518,11 +652,7 @@ class Singleton {
       teardown = [t](void* v) { t(static_cast<T*>(v)); };
     }
 
-    if (vault == nullptr) {
-      vault = SingletonVault::singleton();
-    }
-    vault_ = vault;
-    vault->registerSingleton(type, c, teardown);
+    return teardown;
   }
 
   static T* get_ptr(detail::TypeDescriptor type_descriptor = {typeid(T), ""},
@@ -551,4 +681,5 @@ class Singleton {
   detail::TypeDescriptor type_descriptor_;
   SingletonVault* vault_;
 };
+
 }
