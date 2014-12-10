@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/experimental/wangle/bootstrap/ServerBootstrap-inl.h>
+#include <boost/thread.hpp>
 
 namespace folly {
 
@@ -137,37 +138,80 @@ class ServerBootstrap {
    * @param port Port to listen on
    */
   void bind(int port) {
-    // TODO bind to v4 and v6
     // TODO take existing socket
-    // TODO use the acceptor thread
-    auto socket = folly::AsyncServerSocket::newSocket(
-      EventBaseManager::get()->getEventBase());
-    sockets_.push_back(socket);
-    socket->bind(port);
-
-    // TODO Take ServerSocketConfig
-    socket->listen(1024);
 
     if (!workerFactory_) {
       group(nullptr);
     }
 
+    bool reusePort = false;
+    if (acceptor_group_->numThreads() >= 0) {
+      reusePort = true;
+    }
+
+    std::mutex sock_lock;
+    std::vector<std::shared_ptr<folly::AsyncServerSocket>> new_sockets;
+
+    auto startupFunc = [&](std::shared_ptr<boost::barrier> barrier){
+        auto socket = folly::AsyncServerSocket::newSocket();
+        sock_lock.lock();
+        new_sockets.push_back(socket);
+        sock_lock.unlock();
+        socket->setReusePortEnabled(reusePort);
+        socket->attachEventBase(EventBaseManager::get()->getEventBase());
+        socket->bind(port);
+        // TODO Take ServerSocketConfig
+        socket->listen(1024);
+        socket->startAccepting();
+
+        if (port == 0) {
+          SocketAddress address;
+          socket->getAddress(&address);
+          port = address.getPort();
+        }
+
+        barrier->wait();
+    };
+
+    auto bind0 = std::make_shared<boost::barrier>(2);
+    acceptor_group_->add(std::bind(startupFunc, bind0));
+    bind0->wait();
+
+    auto barrier = std::make_shared<boost::barrier>(acceptor_group_->numThreads());
+    for (int i = 1; i < acceptor_group_->numThreads(); i++) {
+      acceptor_group_->add(std::bind(startupFunc, barrier));
+    }
+    barrier->wait();
+
     // Startup all the threads
-    workerFactory_->forEachWorker([this, socket](Acceptor* worker){
+    for(auto socket : new_sockets) {
+      workerFactory_->forEachWorker([this, socket](Acceptor* worker){
         socket->getEventBase()->runInEventBaseThread([this, worker, socket](){
           socket->addAcceptCallback(worker, worker->getEventBase());
         });
-    });
-    socket->startAccepting();
+      });
+    }
+
+    for (auto& socket : new_sockets) {
+      sockets_.push_back(socket);
+    }
   }
 
   /*
    * Stop listening on all sockets.
    */
   void stop() {
-    for (auto& socket : sockets_) {
-      socket->stopAccepting();
+    auto barrier = std::make_shared<boost::barrier>(sockets_.size() + 1);
+    for (auto socket : sockets_) {
+      socket->getEventBase()->runInEventBaseThread([barrier, socket]() {
+        socket->stopAccepting();
+        socket->detachEventBase();
+        barrier->wait();
+      });
     }
+    barrier->wait();
+    sockets_.clear();
+
     acceptor_group_->join();
     io_group_->join();
   }

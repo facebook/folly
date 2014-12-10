@@ -62,11 +62,7 @@ TEST(Bootstrap, ServerWithPipeline) {
   TestServer server;
   server.childPipeline(std::make_shared<TestPipelineFactory>());
   server.bind(0);
-  auto base = EventBaseManager::get()->getEventBase();
-  base->runAfterDelay([&](){
-    server.stop();
-  }, 500);
-  base->loop();
+  server.stop();
 }
 
 TEST(Bootstrap, ClientServerTest) {
@@ -81,10 +77,8 @@ TEST(Bootstrap, ClientServerTest) {
 
   TestClient client;
   client.connect(address);
-  base->runAfterDelay([&](){
-    server.stop();
-  }, 500);
   base->loop();
+  server.stop();
 
   CHECK(factory->pipelines == 1);
 }
@@ -109,11 +103,55 @@ TEST(Bootstrap, ClientConnectionManagerTest) {
   TestClient client2;
   client2.connect(address);
 
-  base->runAfterDelay([&](){
-    server.stop();
-  }, 500);
-
   base->loop();
+  server.stop();
 
   CHECK(factory->pipelines == 2);
+}
+
+TEST(Bootstrap, ServerAcceptGroupTest) {
+  // Verify that server is using the accept IO group
+
+  TestServer server;
+  auto factory = std::make_shared<TestPipelineFactory>();
+  server.childPipeline(factory);
+  server.group(std::make_shared<IOThreadPoolExecutor>(1), nullptr);
+  server.bind(0);
+
+  SocketAddress address;
+  server.getSockets()[0]->getAddress(&address);
+
+  boost::barrier barrier(2);
+  auto thread = std::thread([&](){
+    TestClient client;
+    client.connect(address);
+    EventBaseManager::get()->getEventBase()->loop();
+    barrier.wait();
+  });
+  barrier.wait();
+  server.stop();
+  thread.join();
+
+  CHECK(factory->pipelines == 1);
+}
+
+TEST(Bootstrap, ServerAcceptGroup2Test) {
+  // Verify that server is using the accept IO group
+
+  TestServer server;
+  auto factory = std::make_shared<TestPipelineFactory>();
+  server.childPipeline(factory);
+  server.group(std::make_shared<IOThreadPoolExecutor>(4), nullptr);
+  server.bind(0);
+
+  SocketAddress address;
+  server.getSockets()[0]->getAddress(&address);
+
+  TestClient client;
+  client.connect(address);
+  EventBaseManager::get()->getEventBase()->loop();
+
+  server.stop();
+
+  CHECK(factory->pipelines == 1);
 }

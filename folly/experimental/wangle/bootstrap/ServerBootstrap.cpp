@@ -21,13 +21,13 @@ namespace folly {
 
 std::thread ServerWorkerFactory::newThread(
     folly::wangle::Func&& func) {
+  auto id = nextWorkerId_++;
+  auto worker = acceptorFactory_->newAcceptor();
+  {
+    folly::RWSpinLock::WriteHolder guard(workersLock_);
+    workers_.insert({id, worker});
+  }
   return internalFactory_->newThread([=](){
-    auto id = nextWorkerId_++;
-    auto worker = acceptorFactory_->newAcceptor();
-    {
-      folly::RWSpinLock::WriteHolder guard(workersLock_);
-      workers_.insert({id, worker});
-    }
     EventBaseManager::get()->setEventBase(worker->getEventBase(), false);
     func();
     EventBaseManager::get()->clearEventBase();
