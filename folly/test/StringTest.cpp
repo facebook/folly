@@ -146,13 +146,36 @@ TEST(StringPrintf, oldStringAppendf) {
   EXPECT_EQ(string("helloa/b/c/d"), s);
 }
 
-BENCHMARK(new_stringPrintfSmall, iters) {
+// A simple benchmark that tests various output sizes for a simple
+// input; the goal is to measure the output buffer resize code cost.
+void stringPrintfOutputSize(int iters, int param) {
+  string buffer;
+  BENCHMARK_SUSPEND { buffer.resize(param, 'x'); }
+
   for (int64_t i = 0; i < iters; ++i) {
-    int32_t x = int32_t(i);
-    int32_t y = int32_t(i + 1);
-    string s =
-      stringPrintf("msg msg msg msg msg msg msg msg:  %d, %d, %s",
-                   x, y, "hello");
+    string s = stringPrintf("msg: %d, %d, %s", 10, 20, buffer.c_str());
+  }
+}
+
+// The first few of these tend to fit in the inline buffer, while the
+// subsequent ones cross that limit, trigger a second vsnprintf, and
+// exercise a different codepath.
+BENCHMARK_PARAM(stringPrintfOutputSize, 1)
+BENCHMARK_PARAM(stringPrintfOutputSize, 4)
+BENCHMARK_PARAM(stringPrintfOutputSize, 16)
+BENCHMARK_PARAM(stringPrintfOutputSize, 64)
+BENCHMARK_PARAM(stringPrintfOutputSize, 256)
+BENCHMARK_PARAM(stringPrintfOutputSize, 1024)
+
+// Benchmark simple stringAppendf behavior to show a pathology Lovro
+// reported (t5735468).
+BENCHMARK(stringPrintfAppendfBenchmark, iters) {
+  for (unsigned int i = 0; i < iters; ++i) {
+    string s;
+    BENCHMARK_SUSPEND { s.reserve(300000); }
+    for (int j = 0; j < 300000; ++j) {
+      stringAppendf(&s, "%d", 1);
+    }
   }
 }
 
