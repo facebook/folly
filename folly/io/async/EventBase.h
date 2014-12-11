@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/TimeoutManager.h>
+#include <folly/io/async/Request.h>
 #include <folly/wangle/Executor.h>
 #include <memory>
 #include <stack>
@@ -49,6 +50,31 @@ class EventBaseObserver {
 
   virtual void loopSample(
     int64_t busyTime, int64_t idleTime) = 0;
+};
+
+// Helper class that sets and retrieves the EventBase associated with a given
+// request via RequestContext. See Request.h for that mechanism.
+class RequestEventBase : public RequestData {
+ public:
+  static EventBase* get() {
+    auto data = dynamic_cast<RequestEventBase*>(
+        RequestContext::get()->getContextData(kContextDataName));
+    if (!data) {
+      return nullptr;
+    }
+    return data->eb_;
+  }
+
+  static void set(EventBase* eb) {
+    RequestContext::get()->setContextData(
+        kContextDataName,
+        std::unique_ptr<RequestEventBase>(new RequestEventBase(eb)));
+  }
+
+ private:
+  explicit RequestEventBase(EventBase* eb) : eb_(eb) {}
+  EventBase* eb_;
+  static constexpr const char* kContextDataName{"EventBase"};
 };
 
 /**
