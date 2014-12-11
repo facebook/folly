@@ -430,10 +430,11 @@ class ConcurrentSkipList {
     bool found = false;
     while (!found) {
       // stepping down
-      for (; ht > 0 && less(data, pred->skip(ht - 1)); --ht) {}
-      if (ht == 0) return std::make_pair(pred->skip(0), 0);  // not found
+      for (; ht > 0 && less(data, node = pred->skip(ht - 1)); --ht) {}
+      if (ht == 0) return std::make_pair(node, 0);  // not found
+      // node <= data now, but we need to fix up ht
+      --ht;
 
-      node = pred->skip(--ht);  // node <= data now
       // stepping right
       while (greater(data, node)) {
         pred = node;
