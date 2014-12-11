@@ -31,48 +31,57 @@ namespace folly {
 
 namespace {
 
-inline void stringPrintfImpl(std::string& output, const char* format,
-                             va_list args) {
-  // Tru to the space at the end of output for our output buffer.
-  // Find out write point then inflate its size temporarily to its
-  // capacity; we will later shrink it to the size needed to represent
-  // the formatted string.  If this buffer isn't large enough, we do a
-  // resize and try again.
-
-  const auto write_point = output.size();
-  auto remaining = output.capacity() - write_point;
-  output.resize(output.capacity());
-
+int stringAppendfImplHelper(char* buf,
+                            size_t bufsize,
+                            const char* format,
+                            va_list args) {
   va_list args_copy;
   va_copy(args_copy, args);
-  int bytes_used = vsnprintf(&output[write_point], remaining, format,
-                             args_copy);
+  int bytes_used = vsnprintf(buf, bufsize, format, args_copy);
   va_end(args_copy);
-  if (bytes_used < 0) {
-    throw std::runtime_error(
-      to<std::string>("Invalid format string; snprintf returned negative "
-                      "with format string: ", format));
-  } else if (size_t(bytes_used) < remaining) {
-    // There was enough room, just shrink and return.
-    output.resize(write_point + bytes_used);
-  } else {
-    output.resize(write_point + bytes_used + 1);
-    remaining = bytes_used + 1;
-    va_list args_copy;
-    va_copy(args_copy, args);
-    bytes_used = vsnprintf(&output[write_point], remaining, format,
-                           args_copy);
-    va_end(args_copy);
-    if (size_t(bytes_used) + 1 != remaining) {
-      throw std::runtime_error(
-        to<std::string>("vsnprint retry did not manage to work "
-                        "with format string: ", format));
-    }
-    output.resize(write_point + bytes_used);
-  }
+  return bytes_used;
 }
 
-}  // anon namespace
+void stringAppendfImpl(std::string& output, const char* format, va_list args) {
+  // Very simple; first, try to avoid an allocation by using an inline
+  // buffer.  If that fails to hold the output string, allocate one on
+  // the heap, use it instead.
+  //
+  // It is hard to guess the proper size of this buffer; some
+  // heuristics could be based on the number of format characters, or
+  // static analysis of a codebase.  Or, we can just pick a number
+  // that seems big enough for simple cases (say, one line of text on
+  // a terminal) without being large enough to be concerning as a
+  // stack variable.
+  std::array<char, 128> inline_buffer;
+
+  int bytes_used = stringAppendfImplHelper(
+      inline_buffer.data(), inline_buffer.size(), format, args);
+  if (bytes_used < 0) {
+    throw std::runtime_error(to<std::string>(
+        "Invalid format string; snprintf returned negative "
+        "with format string: ",
+        format));
+  }
+
+  if (static_cast<size_t>(bytes_used) < inline_buffer.size()) {
+    output.append(inline_buffer.data(), bytes_used);
+    return;
+  }
+
+  // Couldn't fit.  Heap allocate a buffer, oh well.
+  std::unique_ptr<char[]> heap_buffer(new char[bytes_used + 1]);
+  int final_bytes_used =
+      stringAppendfImplHelper(heap_buffer.get(), bytes_used + 1, format, args);
+  // The second call should require the same length, which is 1 less
+  // than the buffer size (we don't keep the trailing \0 byte in our
+  // output string).
+  CHECK(bytes_used == final_bytes_used);
+
+  output.append(heap_buffer.get(), bytes_used);
+}
+
+} // anon namespace
 
 std::string stringPrintf(const char* format, ...) {
   va_list ap;
@@ -84,19 +93,8 @@ std::string stringPrintf(const char* format, ...) {
 }
 
 std::string stringVPrintf(const char* format, va_list ap) {
-  // snprintf will tell us how large the output buffer should be, but
-  // we then have to call it a second time, which is costly.  By
-  // guestimating the final size, we avoid the double snprintf in many
-  // cases, resulting in a performance win.  We use this constructor
-  // of std::string to avoid a double allocation, though it does pad
-  // the resulting string with nul bytes.  Our guestimation is twice
-  // the format string size, or 32 bytes, whichever is larger.  This
-  // is a hueristic that doesn't affect correctness but attempts to be
-  // reasonably fast for the most common cases.
-  std::string ret(std::max(size_t(32), strlen(format) * 2), '\0');
-  ret.resize(0);
-
-  stringPrintfImpl(ret, format, ap);
+  std::string ret;
+  stringAppendfImpl(ret, format, ap);
   return ret;
 }
 
@@ -114,7 +112,7 @@ std::string& stringAppendf(std::string* output, const char* format, ...) {
 std::string& stringVAppendf(std::string* output,
                             const char* format,
                             va_list ap) {
-  stringPrintfImpl(*output, format, ap);
+  stringAppendfImpl(*output, format, ap);
   return *output;
 }
 
@@ -129,7 +127,7 @@ void stringPrintf(std::string* output, const char* format, ...) {
 
 void stringVPrintf(std::string* output, const char* format, va_list ap) {
   output->clear();
-  stringPrintfImpl(*output, format, ap);
+  stringAppendfImpl(*output, format, ap);
 };
 
 namespace {

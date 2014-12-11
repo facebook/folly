@@ -112,10 +112,14 @@ TEST(StringPrintf, VPrintf) {
 }
 
 TEST(StringPrintf, VariousSizes) {
-  // Test a wide variety of output sizes
-  for (int i = 0; i < 100; ++i) {
+  // Test a wide variety of output sizes, making sure to cross the
+  // vsnprintf buffer boundary implementation detail.
+  for (int i = 0; i < 4096; ++i) {
     string expected(i + 1, 'a');
-    EXPECT_EQ("X" + expected + "X", stringPrintf("X%sX", expected.c_str()));
+    expected = "X" + expected + "X";
+    string result = stringPrintf("%s", expected.c_str());
+    EXPECT_EQ(expected.size(), result.size());
+    EXPECT_EQ(expected, result);
   }
 
   EXPECT_EQ("abc12345678910111213141516171819202122232425xyz",
