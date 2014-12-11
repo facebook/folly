@@ -26,6 +26,10 @@ libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
 		 FBVectorTestBenchmarks.cpp.h
 
+small_locks_test_SOURCES = SpinLockTest.cpp
+small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += spin_lock_test
+
 if HAVE_X86_64
 small_locks_test_SOURCES = SmallLocksTest.cpp
 small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la

@@ -57,7 +57,7 @@ namespace folly {
 namespace detail {
 
   /*
-   * A helper object for the condended case. Starts off with eager
+   * A helper object for the contended case. Starts off with eager
    * spinning, and falls back to sleeping for small quantums.
    */
   class Sleeper {

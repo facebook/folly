@@ -208,6 +208,7 @@ nobase_follyinclude_HEADERS = \
 	small_vector.h \
 	SocketAddress.h \
 	sorted_vector_types.h \
+	SpinLock.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
 	stats/BucketedTimeSeries-defs.h \
