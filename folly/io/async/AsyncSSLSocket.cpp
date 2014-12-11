@@ -33,9 +33,9 @@
 
 #include <folly/Bits.h>
 #include <folly/SocketAddress.h>
+#include <folly/SpinLock.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/Cursor.h>
-#include <folly/io/PortableSpinLock.h>
 
 using folly::SocketAddress;
 using folly::SSLContext;
@@ -44,9 +44,9 @@ using std::shared_ptr;
 
 using folly::Endian;
 using folly::IOBuf;
+using folly::SpinLock;
+using folly::SpinLockGuard;
 using folly::io::Cursor;
-using folly::io::PortableSpinLock;
-using folly::io::PortableSpinLockGuard;
 using std::unique_ptr;
 using std::bind;
 
@@ -62,7 +62,7 @@ size_t MIN_WRITE_SIZE = 1500;
 // We have one single dummy SSL context so that we can implement attach
 // and detach methods in a thread safe fashion without modifying opnessl.
 static SSLContext *dummyCtx = nullptr;
-static PortableSpinLock dummyCtxLock;
+static SpinLock dummyCtxLock;
 
 // Numbers chosen as to not collide with functions in ssl.h
 const uint8_t TASYNCSSLSOCKET_F_PERFORM_READ = 90;
@@ -494,7 +494,7 @@ void AsyncSSLSocket::attachSSLContext(
   // In order to call attachSSLContext, detachSSLContext must have been
   // previously called which sets the socket's context to the dummy
   // context. Thus we must acquire this lock.
-  PortableSpinLockGuard guard(dummyCtxLock);
+  SpinLockGuard guard(dummyCtxLock);
   SSL_set_SSL_CTX(ssl_, ctx->getSSLCtx());
 }
 
@@ -509,7 +509,7 @@ void AsyncSSLSocket::detachSSLContext() {
     ssl_->initial_ctx = nullptr;
   }
 #endif
-  PortableSpinLockGuard guard(dummyCtxLock);
+  SpinLockGuard guard(dummyCtxLock);
   if (nullptr == dummyCtx) {
     // We need to lazily initialize the dummy context so we don't
     // accidentally override any programmatic settings to openssl

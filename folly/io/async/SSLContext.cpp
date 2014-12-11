@@ -22,7 +22,7 @@
 #include <openssl/x509v3.h>
 
 #include <folly/Format.h>
-#include <folly/io/PortableSpinLock.h>
+#include <folly/SpinLock.h>
 
 // ---------------------------------------------------------------------
 // SSLContext implementation
@@ -534,7 +534,7 @@ struct SSLLock {
   }
 
   SSLContext::SSLLockType lockType;
-  folly::io::PortableSpinLock spinLock{};
+  folly::SpinLock spinLock{};
   std::mutex mutex;
 };
 

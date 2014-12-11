@@ -19,12 +19,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <folly/io/PortableSpinLock.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/Request.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
+#include <folly/SpinLock.h>
 
 #include <glog/logging.h>
 #include <deque>
@@ -379,7 +379,7 @@ class NotificationQueue {
 
     try {
 
-      folly::io::PortableSpinLockGuard g(spinlock_);
+      folly::SpinLockGuard g(spinlock_);
 
       if (UNLIKELY(queue_.empty())) {
         return false;
@@ -403,7 +403,7 @@ class NotificationQueue {
   }
 
   int size() {
-    folly::io::PortableSpinLockGuard g(spinlock_);
+    folly::SpinLockGuard g(spinlock_);
     return queue_.size();
   }
 
@@ -505,7 +505,7 @@ class NotificationQueue {
     checkPid();
     bool signal = false;
     {
-      folly::io::PortableSpinLockGuard g(spinlock_);
+      folly::SpinLockGuard g(spinlock_);
       if (checkDraining(throws) || !checkQueueSize(maxSize, throws)) {
         return false;
       }
@@ -529,7 +529,7 @@ class NotificationQueue {
     checkPid();
     bool signal = false;
     {
-      folly::io::PortableSpinLockGuard g(spinlock_);
+      folly::SpinLockGuard g(spinlock_);
       if (checkDraining(throws) || !checkQueueSize(maxSize, throws)) {
         return false;
       }
@@ -551,7 +551,7 @@ class NotificationQueue {
     bool signal = false;
     size_t numAdded = 0;
     {
-      folly::io::PortableSpinLockGuard g(spinlock_);
+      folly::SpinLockGuard g(spinlock_);
       checkDraining();
       while (first != last) {
         queue_.push_back(std::make_pair(*first, RequestContext::saveContext()));
@@ -567,7 +567,7 @@ class NotificationQueue {
     }
   }
 
-  mutable folly::io::PortableSpinLock spinlock_;
+  mutable folly::SpinLock spinlock_;
   int eventfd_;
   int pipeFds_[2]; // to fallback to on older/non-linux systems
   uint32_t advisoryMaxQueueSize_;
@@ -730,7 +730,7 @@ void NotificationQueue<MessageT>::Consumer::init(
   queue_ = queue;
 
   {
-    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
+    folly::SpinLockGuard g(queue_->spinlock_);
     queue_->numConsumers_++;
   }
   queue_->signalEvent();
@@ -750,7 +750,7 @@ void NotificationQueue<MessageT>::Consumer::stopConsuming() {
   }
 
   {
-    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
+    folly::SpinLockGuard g(queue_->spinlock_);
     queue_->numConsumers_--;
     setActive(false);
   }
@@ -764,7 +764,7 @@ void NotificationQueue<MessageT>::Consumer::stopConsuming() {
 template<typename MessageT>
 bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained() noexcept {
   {
-    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
+    folly::SpinLockGuard g(queue_->spinlock_);
     if (queue_->draining_) {
       return false;
     }
@@ -772,7 +772,7 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained() noexcept {
   }
   consumeMessages(true);
   {
-    folly::io::PortableSpinLockGuard g(queue_->spinlock_);
+    folly::SpinLockGuard g(queue_->spinlock_);
     queue_->draining_ = false;
   }
   return true;
