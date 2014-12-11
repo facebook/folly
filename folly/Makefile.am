@@ -152,7 +152,6 @@ nobase_follyinclude_HEADERS = \
 	io/Cursor.h \
 	io/IOBuf.h \
 	io/IOBufQueue.h \
-	io/PortableSpinLock.h \
 	io/RecordIO.h \
 	io/RecordIO-inl.h \
 	io/TypedIOBuf.h \
