@@ -16,30 +16,31 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <functional>
 
 namespace folly { namespace wangle {
-  typedef std::function<void()> Func;
 
-  /// An Executor accepts units of work with add(), which should be
-  /// threadsafe.
-  class Executor {
-   public:
-    virtual ~Executor() = default;
+typedef std::function<void()> Func;
 
-    /// Enqueue a function to executed by this executor. This and all
-    /// variants must be threadsafe.
-    virtual void add(Func) = 0;
+/// An Executor accepts units of work with add(), which should be
+/// threadsafe.
+class Executor {
+ public:
+  virtual ~Executor() = default;
 
-    /// A convenience function for shared_ptr to legacy functors.
-    ///
-    /// Sometimes you have a functor that is move-only, and therefore can't be
-    /// converted to a std::function (e.g. std::packaged_task). In that case,
-    /// wrap it in a shared_ptr (or maybe folly::MoveWrapper) and use this.
-    template <class P>
-    void addPtr(P fn) {
-      this->add([fn]() mutable { (*fn)(); });
-    }
-  };
-}}
+  /// Enqueue a function to executed by this executor. This and all
+  /// variants must be threadsafe.
+  virtual void add(Func) = 0;
+
+  /// A convenience function for shared_ptr to legacy functors.
+  ///
+  /// Sometimes you have a functor that is move-only, and therefore can't be
+  /// converted to a std::function (e.g. std::packaged_task). In that case,
+  /// wrap it in a shared_ptr (or maybe folly::MoveWrapper) and use this.
+  template <class P>
+  void addPtr(P fn) {
+    this->add([fn]() mutable { (*fn)(); });
+  }
+};
+
+}} // folly::wangle
