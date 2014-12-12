@@ -1072,6 +1072,9 @@ TEST(String, join) {
 
   join("_", { "", "f", "a", "c", "e", "b", "o", "o", "k", "" }, output);
   EXPECT_EQ(output, "_f_a_c_e_b_o_o_k_");
+
+  output = join("", input3.begin(), input3.end());
+  EXPECT_EQ(output, "facebook");
 }
 
 TEST(String, hexlify) {
