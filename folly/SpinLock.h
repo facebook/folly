@@ -16,107 +16,34 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
-#include <folly/Portability.h>
+#include <folly/detail/SpinLockImpl.h>
 
-// This is a wrapper SpinLock implementation that works around the
-// x64 limitation of the base folly MicroSpinLock. If that is available, this
-// simply thinly wraps it. Otherwise, it uses the simplest analog available on
-// iOS (or 32-bit Mac) or, failing that, POSIX (on Android et. al.)
+namespace folly {
 
 #if __x86_64__
-#include <folly/SmallLocks.h>
-
-namespace folly {
-
-class SpinLock {
- public:
-  FOLLY_ALWAYS_INLINE SpinLock() {
-    lock_.init();
-  }
-  FOLLY_ALWAYS_INLINE void lock() const {
-    lock_.lock();
-  }
-  FOLLY_ALWAYS_INLINE void unlock() const {
-    lock_.unlock();
-  }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
-    return lock_.try_lock();
-  }
- private:
-  mutable folly::MicroSpinLock lock_;
-};
-
-}
-
+typedef SpinLockMslImpl SpinLock;
 #elif __APPLE__
-#include <libkern/OSAtomic.h>
-
-namespace folly {
-
-class SpinLock {
- public:
-  FOLLY_ALWAYS_INLINE SpinLock() : lock_(0) {}
-  FOLLY_ALWAYS_INLINE void lock() const {
-    OSSpinLockLock(&lock_);
-  }
-  FOLLY_ALWAYS_INLINE void unlock() const {
-    OSSpinLockUnlock(&lock_);
-  }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
-    return OSSpinLockTry(&lock_);
-  }
- private:
-  mutable OSSpinLock lock_;
-};
-
-}
-
+typedef SpinLockAppleImpl SpinLock;
+#elif __ANDROID__
+typedef SpinLockPthreadMutexImpl SpinLock;
 #else
-#include <pthread.h>
-#include <glog/logging.h>
-
-namespace folly {
-
-class SpinLock {
- public:
-  FOLLY_ALWAYS_INLINE SpinLock() {
-    pthread_mutex_init(&lock_, nullptr);
-  }
-  void lock() const {
-    int rc = pthread_mutex_lock(&lock_);
-    CHECK_EQ(0, rc);
-  }
-  FOLLY_ALWAYS_INLINE void unlock() const {
-    int rc = pthread_mutex_unlock(&lock_);
-    CHECK_EQ(0, rc);
-  }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
-    int rc = pthread_mutex_trylock(&lock_);
-    CHECK_GE(rc, 0);
-    return rc == 0;
-  }
- private:
-  mutable pthread_mutex_t lock_;
-};
-
-}
-
+typedef SpinLockPthreadImpl SpinLock;
 #endif
 
-namespace folly {
-
-class SpinLockGuard : private boost::noncopyable {
+template <typename LOCK>
+class SpinLockGuardImpl : private boost::noncopyable {
  public:
-  FOLLY_ALWAYS_INLINE explicit SpinLockGuard(SpinLock& lock) :
+  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) :
     lock_(lock) {
     lock_.lock();
   }
-  FOLLY_ALWAYS_INLINE ~SpinLockGuard() {
+  FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {
     lock_.unlock();
   }
  private:
-  SpinLock& lock_;
+  LOCK& lock_;
 };
+
+typedef SpinLockGuardImpl<SpinLock> SpinLockGuard;
 
 }

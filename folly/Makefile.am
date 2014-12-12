@@ -55,6 +55,7 @@ nobase_follyinclude_HEADERS = \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
 	detail/SlowFingerprint.h \
+	detail/SpinLock.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
 	detail/UncaughtExceptionCounter.h \

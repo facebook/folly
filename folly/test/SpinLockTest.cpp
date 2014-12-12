@@ -18,101 +18,146 @@
 #include <gtest/gtest.h>
 #include <thread>
 
-using folly::SpinLock;
-using folly::SpinLockGuard;
+using folly::SpinLockGuardImpl;
 
 namespace {
 
+template <typename LOCK>
 struct LockedVal {
   int ar[1024];
-  SpinLock lock;
+  LOCK lock;
 
   LockedVal() {
     memset(ar, 0, sizeof ar);
   }
 };
 
-LockedVal v;
-void splock_test() {
+template <typename LOCK>
+void spinlockTestThread(LockedVal<LOCK>* v) {
   const int max = 1000;
   unsigned int seed = (uintptr_t)pthread_self();
   for (int i = 0; i < max; i++) {
     asm("pause");
-    SpinLockGuard g(v.lock);
+    SpinLockGuardImpl<LOCK> g(v->lock);
 
-    int first = v.ar[0];
-    for (size_t i = 1; i < sizeof v.ar / sizeof i; ++i) {
-      EXPECT_EQ(first, v.ar[i]);
+    int first = v->ar[0];
+    for (size_t i = 1; i < sizeof v->ar / sizeof i; ++i) {
+      EXPECT_EQ(first, v->ar[i]);
     }
 
     int byte = rand_r(&seed);
-    memset(v.ar, char(byte), sizeof v.ar);
+    memset(v->ar, char(byte), sizeof v->ar);
   }
 }
 
+template <typename LOCK>
 struct TryLockState {
-  SpinLock lock1;
-  SpinLock lock2;
+  LOCK lock1;
+  LOCK lock2;
   bool locked{false};
   uint64_t obtained{0};
   uint64_t failed{0};
 };
-TryLockState tryState;
 
-void trylock_test() {
-  const int max = 1000;
+template <typename LOCK>
+void trylockTestThread(TryLockState<LOCK>* state, int count) {
   while (true) {
     asm("pause");
-    SpinLockGuard g(tryState.lock1);
-    if (tryState.obtained >= max) {
+    SpinLockGuardImpl<LOCK> g(state->lock1);
+    if (state->obtained >= count) {
       break;
     }
 
-    bool ret = tryState.lock2.trylock();
-    EXPECT_NE(tryState.locked, ret);
+    bool ret = state->lock2.trylock();
+    EXPECT_NE(state->locked, ret);
 
     if (ret) {
       // We got lock2.
-      ++tryState.obtained;
-      tryState.locked = true;
+      ++state->obtained;
+      state->locked = true;
 
-      // Release lock1 and let other threads try to obtain lock2
-      tryState.lock1.unlock();
-      asm("pause");
-      tryState.lock1.lock();
+      // Release lock1 and wait until at least one other thread fails to
+      // obtain the lock2 before continuing.
+      auto oldFailed = state->failed;
+      while (state->failed == oldFailed && state->obtained < count) {
+        state->lock1.unlock();
+        asm("pause");
+        state->lock1.lock();
+      }
 
-      tryState.locked = false;
-      tryState.lock2.unlock();
+      state->locked = false;
+      state->lock2.unlock();
     } else {
-      ++tryState.failed;
+      ++state->failed;
     }
   }
+}
+
+template <typename LOCK>
+void correctnessTest() {
+  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
+  std::vector<std::thread> threads;
+  LockedVal<LOCK> v;
+  for (int i = 0; i < nthrs; ++i) {
+    threads.push_back(std::thread(spinlockTestThread<LOCK>, &v));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
+template <typename LOCK>
+void trylockTest() {
+  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) + 4;
+  std::vector<std::thread> threads;
+  TryLockState<LOCK> state;
+  int count = 100;
+  for (int i = 0; i < nthrs; ++i) {
+    threads.push_back(std::thread(trylockTestThread<LOCK>, &state, count));
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  EXPECT_EQ(count, state.obtained);
+  // Each time the code obtains lock2 it waits for another thread to fail
+  // to acquire it.  The only time this might not happen is on the very last
+  // loop when no other threads are left.
+  EXPECT_GE(state.failed + 1, state.obtained);
 }
 
 } // unnamed namespace
 
-TEST(SpinLock, Correctness) {
-  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
-  std::vector<std::thread> threads;
-  for (int i = 0; i < nthrs; ++i) {
-    threads.push_back(std::thread(splock_test));
-  }
-  for (auto& t : threads) {
-    t.join();
-  }
+#if __x86_64__
+TEST(SpinLock, MslCorrectness) {
+  correctnessTest<folly::SpinLockMslImpl>();
 }
+TEST(SpinLock, MslTryLock) {
+  trylockTest<folly::SpinLockMslImpl>();
+}
+#endif
 
-TEST(SpinLock, TryLock) {
-  int nthrs = sysconf(_SC_NPROCESSORS_ONLN) * 2;
-  std::vector<std::thread> threads;
-  for (int i = 0; i < nthrs; ++i) {
-    threads.push_back(std::thread(trylock_test));
-  }
-  for (auto& t : threads) {
-    t.join();
-  }
+#if __APPLE__
+TEST(SpinLock, AppleCorrectness) {
+  correctnessTest<folly::SpinLockAppleImpl>();
+}
+TEST(SpinLock, AppleTryLock) {
+  trylockTest<folly::SpinLockAppleImpl>();
+}
+#endif
 
-  EXPECT_EQ(1000, tryState.obtained);
-  EXPECT_GT(tryState.failed, 0);
-  LOG(INFO) << "failed count: " << tryState.failed;
+#if !__ANDROID__
+TEST(SpinLock, PthreadCorrectness) {
+  correctnessTest<folly::SpinLockPthreadImpl>();
+}
+TEST(SpinLock, PthreadTryLock) {
+  trylockTest<folly::SpinLockPthreadImpl>();
+}
+#endif
+
+TEST(SpinLock, MutexCorrectness) {
+  correctnessTest<folly::SpinLockPthreadMutexImpl>();
+}
+TEST(SpinLock, MutexTryLock) {
+  trylockTest<folly::SpinLockPthreadMutexImpl>();
 }
