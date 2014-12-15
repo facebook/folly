@@ -65,6 +65,7 @@ nobase_follyinclude_HEADERS = \
 	dynamic-inl.h \
 	Exception.h \
 	ExceptionWrapper.h \
+	Executor.h \
 	EvictingCacheMap.h \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
@@ -235,7 +236,6 @@ nobase_follyinclude_HEADERS = \
 	Varint.h \
 	VersionCheck.h \
 	wangle/Deprecated.h \
-	wangle/Executor.h \
 	wangle/Future-inl.h \
 	wangle/Future.h \
 	wangle/InlineExecutor.h \

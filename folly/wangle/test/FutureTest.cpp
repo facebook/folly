@@ -24,7 +24,7 @@
 #include <type_traits>
 #include <unistd.h>
 #include <folly/Memory.h>
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <folly/wangle/Future.h>
 #include <folly/wangle/ManualExecutor.h>
 #include <folly/MPMCQueue.h>

@@ -20,7 +20,7 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/Request.h>
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <memory>
 #include <stack>
 #include <list>
@@ -96,7 +96,7 @@ class RequestEventBase : public RequestData {
  * another thread it is explicitly listed in the method comments.
  */
 class EventBase :
-  private boost::noncopyable, public TimeoutManager, public wangle::Executor
+  private boost::noncopyable, public TimeoutManager, public Executor
 {
  public:
   /**
@@ -478,7 +478,7 @@ class EventBase :
    */
   const std::string& getName();
 
-  /// Implements the wangle::Executor interface
+  /// Implements the Executor interface
   void add(Cob fn) override {
     // runInEventBaseThread() takes a const&,
     // so no point in doing std::move here.

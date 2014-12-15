@@ -20,7 +20,7 @@
 namespace folly {
 
 std::thread ServerWorkerFactory::newThread(
-    folly::wangle::Func&& func) {
+    folly::Func&& func) {
   auto id = nextWorkerId_++;
   auto worker = acceptorFactory_->newAcceptor();
   {

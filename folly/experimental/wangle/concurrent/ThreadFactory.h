@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 
 #include <thread>
 

@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <folly/experimental/wangle/concurrent/LifoSemMPMCQueue.h>
 #include <folly/experimental/wangle/concurrent/NamedThreadFactory.h>
 #include <folly/experimental/wangle/rx/Observable.h>

@@ -24,7 +24,7 @@
 #include <folly/SmallLocks.h>
 #include <folly/ThreadLocal.h>
 #include <folly/small_vector.h>
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <map>
 #include <memory>
 

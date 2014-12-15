@@ -27,7 +27,7 @@
 #include <folly/wangle/Try.h>
 #include <folly/wangle/Promise.h>
 #include <folly/wangle/Future.h>
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <folly/wangle/detail/FSM.h>
 
 #include <folly/io/async/Request.h>

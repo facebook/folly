@@ -17,13 +17,13 @@
 #pragma once
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 
 namespace folly { namespace wangle {
   typedef folly::exception_wrapper Error;
-  // The wangle::Executor is basically an rx Scheduler (by design). So just
+  // The Executor is basically an rx Scheduler (by design). So just
   // alias it.
-  typedef std::shared_ptr<folly::wangle::Executor> SchedulerPtr;
+  typedef std::shared_ptr<folly::Executor> SchedulerPtr;
 
   template <class T, size_t InlineObservers = 3> struct Observable;
   template <class T> struct Observer;

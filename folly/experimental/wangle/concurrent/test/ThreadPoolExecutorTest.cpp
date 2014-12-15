@@ -24,7 +24,7 @@
 using namespace folly::wangle;
 using namespace std::chrono;
 
-static Func burnMs(uint64_t ms) {
+static folly::Func burnMs(uint64_t ms) {
   return [ms]() { std::this_thread::sleep_for(milliseconds(ms)); };
 }
 

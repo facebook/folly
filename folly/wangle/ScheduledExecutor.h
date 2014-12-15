@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/wangle/Executor.h>
+#include <folly/Executor.h>
 #include <chrono>
 #include <memory>
 #include <stdexcept>

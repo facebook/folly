@@ -7,7 +7,7 @@
 
 TEST(Future, thenVariants) {
   SomeClass anObject;
-  Executor* anExecutor;
+  folly::Executor* anExecutor;
 
   {Future<B> f = someFuture<A>().then(&aFunction<Future<B>, Try<A>&&>);}
   {Future<B> f = someFuture<A>().then(&SomeClass::aStaticMethod<Future<B>, Try<A>&&>);}

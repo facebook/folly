@@ -70,7 +70,7 @@ print <<EOF
 
 TEST(Future, thenVariants) {
   SomeClass anObject;
-  Executor* anExecutor;
+  folly::Executor* anExecutor;
 
   #{tests.join("\n  ")}
 }

@@ -18,7 +18,7 @@
 
 #include <functional>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 typedef std::function<void()> Func;
 
@@ -43,4 +43,4 @@ class Executor {
   }
 };
 
-}} // folly::wangle
+} // folly
