@@ -15,6 +15,8 @@
  */
 
 #pragma once
+
+#include <folly/experimental/wangle/concurrent/IOExecutor.h>
 #include <folly/experimental/wangle/concurrent/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBase.h>
 
@@ -22,7 +24,7 @@ namespace folly { namespace wangle {
 
 // N.B. For this thread pool, stop() behaves like join() because outstanding
 // tasks belong to the event base and will be executed upon its destruction.
-class IOThreadPoolExecutor : public ThreadPoolExecutor {
+class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
  public:
   explicit IOThreadPoolExecutor(
       size_t numThreads,
@@ -37,12 +39,9 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr) override;
 
- private:
-  ThreadPtr makeThread() override;
-  void threadRun(ThreadPtr thread) override;
-  void stopThreads(size_t n) override;
-  uint64_t getPendingTaskCount() override;
+  EventBase* getEventBase() override;
 
+ private:
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
       : Thread(pool),
@@ -53,7 +52,14 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor {
     EventBase* eventBase;
   };
 
+  ThreadPtr makeThread() override;
+  std::shared_ptr<IOThread> pickThread();
+  void threadRun(ThreadPtr thread) override;
+  void stopThreads(size_t n) override;
+  uint64_t getPendingTaskCount() override;
+
   size_t nextThread_;
+  ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
 };
 
 }} // folly::wangle

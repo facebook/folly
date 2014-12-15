@@ -82,6 +82,8 @@ nobase_follyinclude_HEADERS = \
 	experimental/wangle/concurrent/Codel.h \
 	experimental/wangle/concurrent/CPUThreadPoolExecutor.h \
 	experimental/wangle/concurrent/FutureExecutor.h \
+	experimental/wangle/concurrent/GlobalExecutor.h \
+	experimental/wangle/concurrent/IOExecutor.h \
 	experimental/wangle/concurrent/IOThreadPoolExecutor.h \
 	experimental/wangle/concurrent/LifoSemMPMCQueue.h \
 	experimental/wangle/concurrent/NamedThreadFactory.h \
@@ -328,6 +330,8 @@ libfolly_la_SOURCES = \
 	experimental/TestUtil.cpp \
 	experimental/wangle/concurrent/CPUThreadPoolExecutor.cpp \
 	experimental/wangle/concurrent/Codel.cpp \
+	experimental/wangle/concurrent/GlobalExecutor.cpp \
+	experimental/wangle/concurrent/IOExecutor.cpp \
 	experimental/wangle/concurrent/IOThreadPoolExecutor.cpp \
 	experimental/wangle/concurrent/ThreadPoolExecutor.cpp \
 	experimental/wangle/ConnectionManager.cpp \

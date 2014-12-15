@@ -88,8 +88,7 @@ void IOThreadPoolExecutor::add(
   if (threadList_.get().empty()) {
     throw std::runtime_error("No threads available");
   }
-  auto thread = threadList_.get()[nextThread_++ % threadList_.get().size()];
-  auto ioThread = std::static_pointer_cast<IOThread>(thread);
+  auto ioThread = pickThread();
 
   auto moveTask = folly::makeMoveWrapper(
       Task(std::move(func), expiration, std::move(expireCallback)));
@@ -105,6 +104,19 @@ void IOThreadPoolExecutor::add(
   }
 }
 
+std::shared_ptr<IOThreadPoolExecutor::IOThread>
+IOThreadPoolExecutor::pickThread() {
+  if (*thisThread_) {
+    return *thisThread_;
+  }
+  auto thread = threadList_.get()[nextThread_++ % threadList_.get().size()];
+  return std::static_pointer_cast<IOThread>(thread);
+}
+
+EventBase* IOThreadPoolExecutor::getEventBase() {
+  return pickThread()->eventBase;
+}
+
 std::shared_ptr<ThreadPoolExecutor::Thread>
 IOThreadPoolExecutor::makeThread() {
   return std::make_shared<IOThread>(this);
@@ -114,6 +126,7 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
   ioThread->eventBase =
     folly::EventBaseManager::get()->getEventBase();
+  thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
 
   auto idler = new MemoryIdlerTimeout(ioThread->eventBase);
   ioThread->eventBase->runBeforeLoop(idler);

@@ -31,7 +31,7 @@
 
 namespace folly { namespace wangle {
 
-class ThreadPoolExecutor : public Executor {
+class ThreadPoolExecutor : public virtual Executor {
  public:
   explicit ThreadPoolExecutor(
       size_t numThreads,
