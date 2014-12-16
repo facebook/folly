@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <functional>
+#include <ratio>
 #include <thread>
 
 #include <gflags/gflags.h>
@@ -28,6 +29,7 @@
 
 using namespace folly::detail;
 using namespace folly::test;
+using namespace std;
 using namespace std::chrono;
 
 typedef DeterministicSchedule DSched;
@@ -54,7 +56,7 @@ void run_basic_tests() {
   DSched::join(thr);
 }
 
-template <template<typename> class Atom, typename Clock>
+template <template<typename> class Atom, typename Clock, typename Duration>
 void liveClockWaitUntilTests() {
   Futex<Atom> f(0);
 
@@ -62,7 +64,8 @@ void liveClockWaitUntilTests() {
     auto fp = &f; // workaround for t5336595
     auto thrA = DSched::thread([fp,stress]{
       while (true) {
-        auto deadline = Clock::now() + microseconds(1 << (stress % 20));
+        auto deadline = time_point_cast<Duration>(
+            Clock::now() + microseconds(1 << (stress % 20)));
         auto res = fp->futexWaitUntil(0, deadline);
         EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::AWOKEN);
         if (res == FutexResult::AWOKEN) {
@@ -98,8 +101,11 @@ void deterministicAtomicWaitUntilTests() {
 
 template<template<typename> class Atom>
 void run_wait_until_tests() {
-  liveClockWaitUntilTests<Atom, system_clock>();
-  liveClockWaitUntilTests<Atom, steady_clock>();
+  liveClockWaitUntilTests<Atom, system_clock, system_clock::duration>();
+  liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();
+
+  typedef duration<int64_t, pico> picoseconds;
+  liveClockWaitUntilTests<Atom, system_clock, picoseconds>();
 }
 
 template <>

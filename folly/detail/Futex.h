@@ -80,12 +80,24 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
         "futexWaitUntil only knows std::chrono::{system_clock,steady_clock}");
     assert((std::is_same<Clock, system_clock>::value) || Clock::is_steady);
 
-    auto duration = absTime.time_since_epoch();
+    // We launder the clock type via a std::chrono::duration so that we
+    // can compile both the true and false branch.  Tricky case is when
+    // steady_clock has a higher precision than system_clock (Xcode 6,
+    // for example), for which time_point<system_clock> construction
+    // refuses to do an implicit duration conversion.  (duration is
+    // happy to implicitly convert its denominator causing overflow, but
+    // refuses conversion that might cause truncation.)  We use explicit
+    // duration_cast to work around this.  Truncation does not actually
+    // occur (unless Duration != Clock::duration) because the missing
+    // implicit conversion is in the untaken branch.
+    Duration absTimeDuration = absTime.time_since_epoch();
     if (std::is_same<Clock, system_clock>::value) {
-      time_point<system_clock> absSystemTime(duration);
+      time_point<system_clock> absSystemTime(
+          duration_cast<system_clock::duration>(absTimeDuration));
       return futexWaitImpl(expected, &absSystemTime, nullptr, waitMask);
     } else {
-      time_point<steady_clock> absSteadyTime(duration);
+      time_point<steady_clock> absSteadyTime(
+          duration_cast<steady_clock::duration>(absTimeDuration));
       return futexWaitImpl(expected, nullptr, &absSteadyTime, waitMask);
     }
   }
