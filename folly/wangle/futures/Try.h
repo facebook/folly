@@ -20,7 +20,7 @@
 #include <exception>
 #include <algorithm>
 #include <folly/Likely.h>
-#include <folly/wangle/WangleException.h>
+#include <folly/wangle/futures/WangleException.h>
 
 namespace folly { namespace wangle {
 
@@ -143,4 +143,4 @@ makeTryFunction(F&& f);
 
 }}
 
-#include <folly/wangle/Try-inl.h>
+#include <folly/wangle/futures/Try-inl.h>

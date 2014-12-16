@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/io/async/AsyncTransport.h>
-#include <folly/wangle/Future.h>
+#include <folly/wangle/futures/Future.h>
 #include <folly/ExceptionWrapper.h>
 
 namespace folly { namespace wangle {

@@ -19,7 +19,7 @@
 #include <chrono>
 #include <thread>
 
-#include <folly/wangle/detail/Core.h>
+#include <folly/wangle/futures/detail/Core.h>
 #include <folly/Baton.h>
 
 namespace folly { namespace wangle {

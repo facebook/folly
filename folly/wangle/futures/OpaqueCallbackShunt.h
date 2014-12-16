@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/wangle/Promise.h>
+#include <folly/wangle/futures/Promise.h>
 
 namespace folly { namespace wangle {
 

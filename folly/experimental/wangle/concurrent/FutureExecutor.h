@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/wangle/Future.h>
+#include <folly/wangle/futures/Future.h>
 
 namespace folly { namespace wangle {
 

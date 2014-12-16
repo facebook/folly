@@ -66,7 +66,7 @@ print <<EOF
 // TODO: fails to compile with clang:dev.  See task #4412111
 #ifndef __clang__
 
-#include <folly/wangle/test/Thens.h>
+#include <folly/wangle/futures/test/Thens.h>
 
 TEST(Future, thenVariants) {
   SomeClass anObject;

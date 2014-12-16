@@ -16,7 +16,7 @@
 
 // amazing what things can go wrong if you include things in an unexpected
 // order.
-#include <folly/wangle/Try.h>
-#include <folly/wangle/Promise.h>
-#include <folly/wangle/Future.h>
+#include <folly/wangle/futures/Try.h>
+#include <folly/wangle/futures/Promise.h>
+#include <folly/wangle/futures/Future.h>
 int main() { return 0; }

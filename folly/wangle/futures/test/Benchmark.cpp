@@ -17,8 +17,8 @@
 #include <gflags/gflags.h>
 #include <folly/Baton.h>
 #include <folly/Benchmark.h>
-#include <folly/wangle/Future.h>
-#include <folly/wangle/Promise.h>
+#include <folly/wangle/futures/Future.h>
+#include <folly/wangle/futures/Promise.h>
 #include <semaphore.h>
 #include <vector>
 

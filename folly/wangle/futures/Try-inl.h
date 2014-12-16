@@ -18,7 +18,7 @@
 
 #include <stdexcept>
 
-#include <folly/wangle/WangleException.h>
+#include <folly/wangle/futures/WangleException.h>
 
 namespace folly { namespace wangle {
 

@@ -237,21 +237,21 @@ nobase_follyinclude_HEADERS = \
 	Uri-inl.h \
 	Varint.h \
 	VersionCheck.h \
-	wangle/Deprecated.h \
-	wangle/Future-inl.h \
-	wangle/Future.h \
-	wangle/InlineExecutor.h \
-	wangle/ManualExecutor.h \
-	wangle/OpaqueCallbackShunt.h \
-	wangle/Promise-inl.h \
-	wangle/Promise.h \
-	wangle/QueuedImmediateExecutor.h \
-	wangle/ScheduledExecutor.h \
-	wangle/Try-inl.h \
-	wangle/Try.h \
-	wangle/WangleException.h \
-	wangle/detail/Core.h \
-	wangle/detail/FSM.h
+	wangle/futures/Deprecated.h \
+	wangle/futures/Future-inl.h \
+	wangle/futures/Future.h \
+	wangle/futures/InlineExecutor.h \
+	wangle/futures/ManualExecutor.h \
+	wangle/futures/OpaqueCallbackShunt.h \
+	wangle/futures/Promise-inl.h \
+	wangle/futures/Promise.h \
+	wangle/futures/QueuedImmediateExecutor.h \
+	wangle/futures/ScheduledExecutor.h \
+	wangle/futures/Try-inl.h \
+	wangle/futures/Try.h \
+	wangle/futures/WangleException.h \
+	wangle/futures/detail/Core.h \
+	wangle/futures/detail/FSM.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
@@ -323,8 +323,8 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
-	wangle/InlineExecutor.cpp \
-	wangle/ManualExecutor.cpp \
+	wangle/futures/InlineExecutor.cpp \
+	wangle/futures/ManualExecutor.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
