@@ -273,6 +273,29 @@ void AsyncServerSocket::useExistingSocket(int fd) {
   useExistingSockets({fd});
 }
 
+void AsyncServerSocket::bindSocket(
+    int fd,
+    const SocketAddress& address,
+    bool isExistingSocket) {
+  sockaddr_storage addrStorage;
+  address.getAddress(&addrStorage);
+  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+  if (::bind(fd, saddr, address.getActualSize()) != 0) {
+    if (!isExistingSocket) {
+      ::close(fd);
+    }
+    folly::throwSystemError(errno,
+        "failed to bind to async server socket: " +
+        address.describe());
+  }
+
+  // If we just created this socket, update the EventHandler and set socket_
+  if (!isExistingSocket) {
+    sockets_.push_back(
+      ServerEventHandler(eventBase_, fd, this, address.getFamily()));
+  }
+}
+
 void AsyncServerSocket::bind(const SocketAddress& address) {
   assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
 
@@ -295,27 +318,29 @@ void AsyncServerSocket::bind(const SocketAddress& address) {
                               "Attempted to bind to multiple fds");
   }
 
-  // Bind to the socket
-  sockaddr_storage addrStorage;
-  address.getAddress(&addrStorage);
-  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(fd, saddr, address.getActualSize()) != 0) {
-    if (sockets_.size() == 0) {
-      ::close(fd);
-    }
-    folly::throwSystemError(errno,
-                              "failed to bind to async server socket: " +
-                                address.describe());
+  bindSocket(fd, address, !sockets_.empty());
+}
+
+void AsyncServerSocket::bind(
+    const std::vector<IPAddress>& ipAddresses,
+    uint16_t port) {
+  if (ipAddresses.empty()) {
+    throw std::invalid_argument("No ip addresses were provided");
+  }
+  if (!sockets_.empty()) {
+    throw std::invalid_argument("Cannot call bind on a AsyncServerSocket "
+                                "that already has a socket.");
   }
 
-  // Record the address family that we are using,
-  // so we know how much address space we need to record accepted addresses.
+  for (const IPAddress& ipAddress : ipAddresses) {
+    SocketAddress address(ipAddress.toFullyQualified(), port);
+    int fd = createSocket(address.getFamily());
 
-  // If we just created this socket, update the EventHandler and set socket_
+    bindSocket(fd, address, false);
+  }
   if (sockets_.size() == 0) {
-    sockets_.push_back(
-      ServerEventHandler(eventBase_, fd, this, address.getFamily()));
-    sockets_[0].changeHandlerFD(fd);
+    throw std::runtime_error(
+        "did not bind any async server socket for port and addresses");
   }
 }
 

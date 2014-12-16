@@ -256,6 +256,17 @@ class AsyncServerSocket : public DelayedDestruction {
   virtual void bind(const SocketAddress& address);
 
   /**
+   * Bind to the specified port for the specified addresses.
+   *
+   * This must be called from the primary EventBase thread.
+   *
+   * Throws TTransportException on error.
+   */
+  virtual void bind(
+      const std::vector<IPAddress>& ipAddresses,
+      uint16_t port);
+
+  /**
    * Bind to the specified port.
    *
    * This must be called from the primary EventBase thread.
@@ -639,6 +650,7 @@ class AsyncServerSocket : public DelayedDestruction {
 
   int createSocket(int family);
   void setupSocket(int fd);
+  void bindSocket(int fd, const SocketAddress& address, bool isExistingSocket);
   void dispatchSocket(int socket, SocketAddress&& address);
   void dispatchError(const char *msg, int errnoValue);
   void enterBackoff();
