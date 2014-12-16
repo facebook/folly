@@ -425,7 +425,7 @@ BENCHMARK_RELATIVE(MeyersSingleton, n) {
   }
 }
 
-BENCHMARK_RELATIVE(FollySingleton, n) {
+BENCHMARK_RELATIVE(FollySingletonSlow, n) {
   SingletonVault benchmark_vault;
   Singleton<BenchmarkSingleton> benchmark_singleton(
       nullptr, nullptr, &benchmark_vault);
@@ -433,6 +433,28 @@ BENCHMARK_RELATIVE(FollySingleton, n) {
 
   for (size_t i = 0; i < n; ++i) {
     doNotOptimizeAway(Singleton<BenchmarkSingleton>::get(&benchmark_vault));
+  }
+}
+
+BENCHMARK_RELATIVE(FollySingletonFast, n) {
+  SingletonVault benchmark_vault;
+  Singleton<BenchmarkSingleton> benchmark_singleton(
+      nullptr, nullptr, &benchmark_vault);
+  benchmark_vault.registrationComplete();
+
+  for (size_t i = 0; i < n; ++i) {
+    doNotOptimizeAway(benchmark_singleton.get_fast());
+  }
+}
+
+BENCHMARK_RELATIVE(FollySingletonFastWeak, n) {
+  SingletonVault benchmark_vault;
+  Singleton<BenchmarkSingleton> benchmark_singleton(
+      nullptr, nullptr, &benchmark_vault);
+  benchmark_vault.registrationComplete();
+
+  for (size_t i = 0; i < n; ++i) {
+    benchmark_singleton.get_weak_fast();
   }
 }
 

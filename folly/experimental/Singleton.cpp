@@ -63,7 +63,7 @@ void SingletonVault::destroyInstance(SingletonMap::iterator entry_it) {
                << "is " << entry.instance.get() << " with use_count of "
                << entry.instance.use_count();
   }
-  entry.state = SingletonEntryState::Dead;
+  entry.state = detail::SingletonEntryState::Dead;
   entry.instance.reset();
 }
 
