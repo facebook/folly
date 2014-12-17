@@ -24,7 +24,6 @@ using folly::wangle::IOExecutor;
 namespace {
 
 Singleton<std::atomic<IOExecutor*>> globalIOExecutorSingleton(
-    "GlobalIOExecutor",
     [](){
       return new std::atomic<IOExecutor*>(nullptr);
     });
@@ -44,7 +43,7 @@ IOExecutor::~IOExecutor() {
 }
 
 std::atomic<IOExecutor*>* IOExecutor::getSingleton() {
-  return Singleton<std::atomic<IOExecutor*>>::get("GlobalIOExecutor");
+  return globalIOExecutorSingleton.get_fast();
 }
 
 }} // folly::wangle

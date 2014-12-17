@@ -126,7 +126,8 @@ TEST(Singleton, DirectUsage) {
   // Verify we can get to the underlying singletons via directly using
   // the singleton definition.
   Singleton<Watchdog> watchdog(nullptr, nullptr, &vault);
-  Singleton<Watchdog> named_watchdog("named", nullptr, nullptr, &vault);
+  struct TestTag {};
+  Singleton<Watchdog, TestTag> named_watchdog(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
   vault.registrationComplete();
 
@@ -143,31 +144,32 @@ TEST(Singleton, NamedUsage) {
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
 
   // Define two named Watchdog singletons and one unnamed singleton.
-  Singleton<Watchdog> watchdog1_singleton(
-      "watchdog1", nullptr, nullptr, &vault);
+  struct Watchdog1 {};
+  struct Watchdog2 {};
+  typedef detail::DefaultTag Watchdog3;
+  Singleton<Watchdog, Watchdog1> watchdog1_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  Singleton<Watchdog> watchdog2_singleton(
-      "watchdog2", nullptr, nullptr, &vault);
+  Singleton<Watchdog, Watchdog2> watchdog2_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
-  Singleton<Watchdog> watchdog3_singleton(nullptr, nullptr, &vault);
+  Singleton<Watchdog, Watchdog3> watchdog3_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 3);
 
   vault.registrationComplete();
 
   // Verify our three singletons are distinct and non-nullptr.
-  Watchdog* s1 = Singleton<Watchdog>::get("watchdog1", &vault);
+  Watchdog* s1 = Singleton<Watchdog, Watchdog1>::get(&vault);
   EXPECT_EQ(s1, watchdog1_singleton.ptr());
-  Watchdog* s2 = Singleton<Watchdog>::get("watchdog2", &vault);
+  Watchdog* s2 = Singleton<Watchdog, Watchdog2>::get(&vault);
   EXPECT_EQ(s2, watchdog2_singleton.ptr());
   EXPECT_NE(s1, s2);
-  Watchdog* s3 = Singleton<Watchdog>::get(&vault);
+  Watchdog* s3 = Singleton<Watchdog, Watchdog3>::get(&vault);
   EXPECT_EQ(s3, watchdog3_singleton.ptr());
   EXPECT_NE(s3, s1);
   EXPECT_NE(s3, s2);
 
-  // Verify the "default" singleton is the same as the empty string
+  // Verify the "default" singleton is the same as the DefaultTag-tagged
   // singleton.
-  Watchdog* s4 = Singleton<Watchdog>::get("", &vault);
+  Watchdog* s4 = Singleton<Watchdog>::get(&vault);
   EXPECT_EQ(s4, watchdog3_singleton.ptr());
 }
 
@@ -216,8 +218,8 @@ TEST(Singleton, SharedPtrUsage) {
   Singleton<ChildWatchdog> child_watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
 
-  Singleton<Watchdog> named_watchdog_singleton(
-      "a_name", nullptr, nullptr, &vault);
+  struct ATag {};
+  Singleton<Watchdog, ATag> named_watchdog_singleton(nullptr, nullptr, &vault);
   vault.registrationComplete();
 
   Watchdog* s1 = Singleton<Watchdog>::get(&vault);
@@ -234,7 +236,7 @@ TEST(Singleton, SharedPtrUsage) {
   EXPECT_EQ(shared_s1.use_count(), 2);
 
   {
-    auto named_weak_s1 = Singleton<Watchdog>::get_weak("a_name", &vault);
+    auto named_weak_s1 = Singleton<Watchdog, ATag>::get_weak(&vault);
     auto locked = named_weak_s1.lock();
     EXPECT_NE(locked.get(), shared_s1.get());
   }

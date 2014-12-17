@@ -34,9 +34,18 @@
 // std::weak_ptr<MyExpensiveService> instance =
 //     Singleton<MyExpensiveService>::get_weak();
 //
-// You also can directly access it by the variable defining the
-// singleton rather than via get(), and even treat that variable like
-// a smart pointer (dereferencing it or using the -> operator).
+// Within same compilation unit you should directly access it by the variable
+// defining the singleton via get_fast()/get_weak_fast(), and even treat that
+// variable like a smart pointer (dereferencing it or using the -> operator):
+//
+// MyExpensiveService* instance = the_singleton.get_fast();
+// or
+// std::weak_ptr<MyExpensiveService> instance = the_singleton.get_weak_fast();
+// or even
+// the_singleton->doSomething();
+//
+// *_fast() accessors are faster than static accessors, and have performance
+// similar to Meyers singletons/static objects.
 //
 // Please note, however, that all non-weak_ptr interfaces are
 // inherently subject to races with destruction.  Use responsibly.
@@ -48,15 +57,19 @@
 // circular dependency, a runtime error will occur.
 //
 // You can have multiple singletons of the same underlying type, but
-// each must be given a unique name:
+// each must be given a unique tag. If no tag is specified - default tag is used
 //
 // namespace {
-// folly::Singleton<MyExpensiveService> s1("name1");
-// folly::Singleton<MyExpensiveService> s2("name2");
+// struct Tag1 {};
+// struct Tag2 {};
+// folly::Singleton<MyExpensiveService> s_default();
+// folly::Singleton<MyExpensiveService, Tag1> s1();
+// folly::Singleton<MyExpensiveService, Tag2> s2();
 // }
 // ...
-// MyExpensiveService* svc1 = Singleton<MyExpensiveService>::get("name1");
-// MyExpensiveService* svc2 = Singleton<MyExpensiveService>::get("name2");
+// MyExpensiveService* svc_default = s_default.get_fast();
+// MyExpensiveService* svc1 = s1.get_fast();
+// MyExpensiveService* svc2 = s2.get_fast();
 //
 // By default, the singleton instance is constructed via new and
 // deleted via delete, but this is configurable:
@@ -122,29 +135,26 @@ namespace folly {
 
 namespace detail {
 
-const char* const kDefaultTypeDescriptorName = "(default)";
+struct DefaultTag {};
+
 // A TypeDescriptor is the unique handle for a given singleton.  It is
 // a combinaiton of the type and of the optional name, and is used as
 // a key in unordered_maps.
 class TypeDescriptor {
  public:
-  TypeDescriptor(const std::type_info& ti, std::string name__)
-      : ti_(ti), name_(name__) {
-    if (name_ == kDefaultTypeDescriptorName) {
-      LOG(DFATAL) << "Caller used the default name as their literal name; "
-                  << "name your singleton something other than "
-                  << kDefaultTypeDescriptorName;
-    }
+  TypeDescriptor(const std::type_info& ti,
+                 const std::type_info& tag_ti)
+      : ti_(ti), tag_ti_(tag_ti) {
   }
 
   TypeDescriptor(const TypeDescriptor& other)
-      : ti_(other.ti_), name_(other.name_) {
+      : ti_(other.ti_), tag_ti_(other.tag_ti_) {
   }
 
   TypeDescriptor& operator=(const TypeDescriptor& other) {
     if (this != &other) {
-      name_ = other.name_;
       ti_ = other.ti_;
+      tag_ti_ = other.tag_ti_;
     }
 
     return *this;
@@ -152,34 +162,28 @@ class TypeDescriptor {
 
   std::string name() const {
     std::string ret = ti_.name();
-    ret += "/";
-    if (name_.empty()) {
-      ret += kDefaultTypeDescriptorName;
-    } else {
-      ret += name_;
+    if (tag_ti_ != std::type_index(typeid(DefaultTag))) {
+      ret += "/";
+      ret += tag_ti_.name();
     }
     return ret;
-  }
-
-  std::string name_raw() const {
-    return name_;
   }
 
   friend class TypeDescriptorHasher;
 
   bool operator==(const TypeDescriptor& other) const {
-    return ti_ == other.ti_ && name_ == other.name_;
+    return ti_ == other.ti_ && tag_ti_ == other.tag_ti_;
   }
 
  private:
   std::type_index ti_;
-  std::string name_;
+  std::type_index tag_ti_;
 };
 
 class TypeDescriptorHasher {
  public:
   size_t operator()(const TypeDescriptor& ti) const {
-    return folly::hash::hash_combine(ti.ti_, ti.name_);
+    return folly::hash::hash_combine(ti.ti_, ti.tag_ti_);
   }
 };
 
@@ -515,7 +519,7 @@ class SingletonVault {
 // singletons.  Create instances of this class in the global scope of
 // type Singleton<T> to register your singleton for later access via
 // Singleton<T>::get().
-template <typename T>
+template <typename T, typename Tag = detail::DefaultTag>
 class Singleton {
  public:
   typedef std::function<T*(void)> CreateFunc;
@@ -525,19 +529,17 @@ class Singleton {
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
   static T* get(SingletonVault* vault = nullptr /* for testing */) {
-    return get_ptr({typeid(T), ""}, vault);
+    return static_cast<T*>(
+      (vault ?: SingletonVault::singleton())->get_ptr(typeDescriptor()));
   }
 
-  static T* get(const char* name,
-                SingletonVault* vault = nullptr /* for testing */) {
-    return get_ptr({typeid(T), name}, vault);
-  }
-
+  // Same as get, but should be preffered to it in the same compilation
+  // unit, where Singleton is registered.
   T* get_fast() {
     if (LIKELY(entry_->state == detail::SingletonEntryState::Living)) {
       return reinterpret_cast<T*>(entry_->instance_ptr);
     } else {
-      return get(type_descriptor_.name_raw().c_str(), vault_);
+      return get(vault_);
     }
   }
 
@@ -547,13 +549,8 @@ class Singleton {
   // signal that the vault has been destroyed.
   static std::weak_ptr<T> get_weak(
       SingletonVault* vault = nullptr /* for testing */) {
-    return get_weak("", vault);
-  }
-
-  static std::weak_ptr<T> get_weak(
-      const char* name, SingletonVault* vault = nullptr /* for testing */) {
     auto weak_void_ptr =
-      (vault ?: SingletonVault::singleton())->get_weak({typeid(T), name});
+      (vault ?: SingletonVault::singleton())->get_weak(typeDescriptor());
 
     // This is ugly and inefficient, but there's no other way to do it, because
     // there's no static_pointer_cast for weak_ptr.
@@ -564,6 +561,8 @@ class Singleton {
     return std::static_pointer_cast<T>(shared_void_ptr);
   }
 
+  // Same as get_weak, but should be preffered to it in the same compilation
+  // unit, where Singleton is registered.
   std::weak_ptr<T> get_weak_fast() {
     if (LIKELY(entry_->state == detail::SingletonEntryState::Living)) {
       // This is ugly and inefficient, but there's no other way to do it,
@@ -574,39 +573,39 @@ class Singleton {
       }
       return std::static_pointer_cast<T>(shared_void_ptr);
     } else {
-      return get_weak(type_descriptor_.name_raw().c_str(), vault_);
+      return get_weak(vault_);
     }
   }
 
   // Allow the Singleton<t> instance to also retrieve the underlying
   // singleton, if desired.
-  T* ptr() { return get_ptr(type_descriptor_, vault_); }
+  T* ptr() { return get_fast(); }
   T& operator*() { return *ptr(); }
   T* operator->() { return ptr(); }
 
-  template <typename CreateFunc = std::nullptr_t>
-  explicit Singleton(CreateFunc c = nullptr,
+  explicit Singleton(std::nullptr_t _ = nullptr,
                      Singleton::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */)
-      : Singleton({typeid(T), ""}, c, t, vault) {}
+                     SingletonVault* vault = nullptr) :
+      Singleton ([]() { return new T; },
+                 std::move(t),
+                 vault) {
+  }
 
-  template <typename CreateFunc = std::nullptr_t>
-  explicit Singleton(const char* name,
-                     CreateFunc c = nullptr,
+  explicit Singleton(Singleton::CreateFunc c,
                      Singleton::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */)
-      : Singleton({typeid(T), name}, c, t, vault) {}
+                     SingletonVault* vault = nullptr) {
+    if (c == nullptr) {
+      throw std::logic_error(
+        "nullptr_t should be passed if you want T to be default constructed");
+    }
 
-  /**
-  * Construct and inject a mock singleton which should be used only from tests.
-  * See overloaded method for more details.
-  */
-  template <typename CreateFunc = std::nullptr_t>
-  static void make_mock(CreateFunc c = nullptr,
-                     typename Singleton<T>::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */) {
+    if (vault == nullptr) {
+      vault = SingletonVault::singleton();
+    }
 
-    make_mock("", c, t, vault);
+    vault_ = vault;
+    entry_ =
+      &(vault->registerSingleton(typeDescriptor(), c, getTeardownFunc(t)));
   }
 
   /**
@@ -619,38 +618,15 @@ class Singleton {
   * the injection. The returned mock singleton is functionality identical to
   * regular singletons.
   */
-  template <typename CreateFunc = std::nullptr_t>
-  static void make_mock(const char* name,
-                     CreateFunc c = nullptr,
-                     typename Singleton<T>::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */ ) {
-
-    Singleton<T> mockSingleton({typeid(T), name}, c, t, vault, false);
-    mockSingleton.vault_->registerMockSingleton(
-      mockSingleton.type_descriptor_,
-      c,
-      getTeardownFunc(t));
+  static void make_mock(std::nullptr_t c = nullptr,
+                        typename Singleton<T>::TeardownFunc t = nullptr,
+                        SingletonVault* vault = nullptr /* for testing */ ) {
+    make_mock([]() { return new T; }, t, vault);
   }
 
- private:
-  explicit Singleton(detail::TypeDescriptor type,
-                     std::nullptr_t,
-                     Singleton::TeardownFunc t,
-                     SingletonVault* vault,
-                     bool registerSingleton = true) :
-      Singleton (type,
-                 []() { return new T; },
-                 std::move(t),
-                 vault,
-                 registerSingleton) {
-  }
-
-  explicit Singleton(detail::TypeDescriptor type,
-                     Singleton::CreateFunc c,
-                     Singleton::TeardownFunc t,
-                     SingletonVault* vault,
-                     bool registerSingleton = true)
-      : type_descriptor_(type) {
+  static void make_mock(CreateFunc c,
+                        typename Singleton<T>::TeardownFunc t = nullptr,
+                        SingletonVault* vault = nullptr /* for testing */ ) {
     if (c == nullptr) {
       throw std::logic_error(
         "nullptr_t should be passed if you want T to be default constructed");
@@ -660,24 +636,20 @@ class Singleton {
       vault = SingletonVault::singleton();
     }
 
-    vault_ = vault;
-    if (registerSingleton) {
-      entry_ = &(vault->registerSingleton(type, c, getTeardownFunc(t)));
-    }
+    vault->registerMockSingleton(
+      typeDescriptor(),
+      c,
+      getTeardownFunc(t));
   }
 
-  static inline void make_mock(const char* name,
-                     std::nullptr_t c,
-                     typename Singleton<T>::TeardownFunc t = nullptr,
-                     SingletonVault* vault = nullptr /* for testing */ ) {
-    make_mock(name, []() { return new T; }, std::move(t), vault);
+ private:
+  static detail::TypeDescriptor typeDescriptor() {
+    return {typeid(T), typeid(Tag)};
   }
 
-
-private:
   // Construct SingletonVault::TeardownFunc.
   static SingletonVault::TeardownFunc getTeardownFunc(
-      Singleton<T>::TeardownFunc t) {
+      TeardownFunc t) {
     SingletonVault::TeardownFunc teardown;
     if (t == nullptr) {
       teardown = [](void* v) { delete static_cast<T*>(v); };
@@ -688,30 +660,6 @@ private:
     return teardown;
   }
 
-  static T* get_ptr(detail::TypeDescriptor type_descriptor = {typeid(T), ""},
-                    SingletonVault* vault = nullptr /* for testing */) {
-    return static_cast<T*>(
-        (vault ?: SingletonVault::singleton())->get_ptr(type_descriptor));
-  }
-
-  // Don't use this function, it's private for a reason!  Using it
-  // would defeat the *entire purpose* of the vault in that we lose
-  // the ability to guarantee that, after a destroyInstances is
-  // called, all instances are, in fact, destroyed.  You should use
-  // weak_ptr if you need to hold a reference to the singleton and
-  // guarantee briefly that it exists.
-  //
-  // Yes, you can just get the weak pointer and lock it, but hopefully
-  // if you have taken the time to read this far, you see why that
-  // would be bad.
-  static std::shared_ptr<T> get_shared(
-      detail::TypeDescriptor type_descriptor = {typeid(T), ""},
-      SingletonVault* vault = nullptr /* for testing */) {
-    return std::static_pointer_cast<T>(
-      (vault ?: SingletonVault::singleton())->get_weak(type_descriptor).lock());
-  }
-
-  detail::TypeDescriptor type_descriptor_;
   // This is pointing to SingletonEntry paired with this singleton object. This
   // is never reset, so each SingletonEntry should never be destroyed.
   // We rely on the fact that Singleton destructor won't reset this pointer, so

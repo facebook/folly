@@ -24,7 +24,6 @@ using namespace folly::wangle;
 namespace {
 
 Singleton<IOThreadPoolExecutor> globalIOThreadPoolSingleton(
-    "GlobalIOThreadPool",
     [](){
       return new IOThreadPoolExecutor(
           sysconf(_SC_NPROCESSORS_ONLN),
@@ -42,7 +41,7 @@ IOExecutor* getIOExecutor() {
     IOExecutor* nullIOExecutor = nullptr;
     singleton->compare_exchange_strong(
         nullIOExecutor,
-        Singleton<IOThreadPoolExecutor>::get("GlobalIOThreadPool"));
+        globalIOThreadPoolSingleton.get_fast());
     executor = singleton->load();
   }
   return executor;
