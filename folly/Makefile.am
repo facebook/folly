@@ -250,15 +250,15 @@ nobase_follyinclude_HEADERS = \
 	wangle/detail/FSM.h
 
 FormatTables.cpp: build/generate_format_tables.py
-	build/generate_format_tables.py
+	$(PYTHON_BIN) build/generate_format_tables.py
 CLEANFILES += FormatTables.cpp
 
 EscapeTables.cpp: build/generate_escape_tables.py
-	build/generate_escape_tables.py
+	$(PYTHON_BIN) build/generate_escape_tables.py
 CLEANFILES += EscapeTables.cpp
 
 GroupVarintTables.cpp: build/generate_varint_tables.py
-	build/generate_varint_tables.py
+	$(PYTHON_BIN) build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
 libfollybase_la_SOURCES = \
