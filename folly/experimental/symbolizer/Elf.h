@@ -193,7 +193,7 @@ class ElfFile {
 
  private:
   bool init(const char** msg);
-  void destroy();
+  void reset();
   ElfFile(const ElfFile&) = delete;
   ElfFile& operator=(const ElfFile&) = delete;
 

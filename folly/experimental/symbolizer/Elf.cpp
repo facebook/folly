@@ -28,6 +28,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 namespace symbolizer {
@@ -65,7 +66,10 @@ int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
     if (msg) *msg = "open";
     return kSystemError;
   }
-
+  // Always close fd and unmap in case of failure along the way to avoid
+  // check failure above if we leave fd != -1 and the object is recycled
+  // like it is inside SignalSafeElfCache
+  ScopeGuard guard = makeGuard([&]{ reset(); });
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
@@ -87,12 +91,12 @@ int ElfFile::openNoThrow(const char* name, bool readOnly, const char** msg)
     errno = EINVAL;
     return kInvalidElfFile;
   }
-
+  guard.dismiss();
   return kSuccess;
 }
 
 ElfFile::~ElfFile() {
-  destroy();
+  reset();
 }
 
 ElfFile::ElfFile(ElfFile&& other) noexcept
@@ -108,7 +112,7 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
 
 ElfFile& ElfFile::operator=(ElfFile&& other) {
   assert(this != &other);
-  destroy();
+  reset();
 
   fd_ = other.fd_;
   file_ = other.file_;
@@ -123,13 +127,15 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
   return *this;
 }
 
-void ElfFile::destroy() {
+void ElfFile::reset() {
   if (file_ != MAP_FAILED) {
     munmap(file_, length_);
+    file_ = static_cast<char*>(MAP_FAILED);
   }
 
   if (fd_ != -1) {
     close(fd_);
+    fd_ = -1;
   }
 }
 
