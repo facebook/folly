@@ -242,7 +242,7 @@ TEST(ThreadPoolExecutorTest, IOExpiration) {
 template <typename TPE>
 static void futureExecutor() {
   FutureExecutor<TPE> fe(2);
-  int c = 0;
+  std::atomic<int> c{0};
   fe.addFuture([] () { return makeFuture<int>(42); }).then(
     [&] (Try<int>&& t) {
       c++;
