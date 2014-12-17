@@ -1969,9 +1969,16 @@ public:
     return find_last_not_of(&c, pos, 1);
   }
 
-  basic_fbstring substr(size_type pos = 0, size_type n = npos) const {
+  basic_fbstring substr(size_type pos = 0, size_type n = npos) const& {
     enforce(pos <= size(), std::__throw_out_of_range, "");
     return basic_fbstring(data() + pos, std::min(n, size() - pos));
+  }
+
+  basic_fbstring substr(size_type pos = 0, size_type n = npos) && {
+    enforce(pos <= size(), std::__throw_out_of_range, "");
+    erase(0, pos);
+    if (n < size()) resize(n);
+    return std::move(*this);
   }
 
   int compare(const basic_fbstring& str) const {
@@ -2021,7 +2028,7 @@ private:
 };
 
 // non-member functions
-// C++11 21.4.8.1/2
+// C++11 21.4.8.1/1
 template <typename E, class T, class A, class S>
 inline
 basic_fbstring<E, T, A, S> operator+(const basic_fbstring<E, T, A, S>& lhs,
@@ -2063,24 +2070,44 @@ basic_fbstring<E, T, A, S> operator+(basic_fbstring<E, T, A, S>&& lhs,
   return std::move(lhs.append(rhs));
 }
 
+// C++11 21.4.8.1/5
 template <typename E, class T, class A, class S>
 inline
 basic_fbstring<E, T, A, S> operator+(
-  const typename basic_fbstring<E, T, A, S>::value_type* lhs,
+  const E* lhs,
   const basic_fbstring<E, T, A, S>& rhs) {
   //
   basic_fbstring<E, T, A, S> result;
-  const typename basic_fbstring<E, T, A, S>::size_type len =
-    basic_fbstring<E, T, A, S>::traits_type::length(lhs);
+  const auto len = basic_fbstring<E, T, A, S>::traits_type::length(lhs);
   result.reserve(len + rhs.size());
   result.append(lhs, len).append(rhs);
   return result;
 }
 
+// C++11 21.4.8.1/6
 template <typename E, class T, class A, class S>
 inline
 basic_fbstring<E, T, A, S> operator+(
-  typename basic_fbstring<E, T, A, S>::value_type lhs,
+  const E* lhs,
+  basic_fbstring<E, T, A, S>&& rhs) {
+  //
+  const auto len = basic_fbstring<E, T, A, S>::traits_type::length(lhs);
+  if (rhs.capacity() >= len + rhs.size()) {
+    // Good, at least we don't need to reallocate
+    return std::move(rhs.insert(rhs.begin(), lhs, lhs + len));
+  }
+  // Meh, no go. Do it by hand since we have len already.
+  basic_fbstring<E, T, A, S> result;
+  result.reserve(len + rhs.size());
+  result.append(lhs, len).append(rhs);
+  return result;
+}
+
+// C++11 21.4.8.1/7
+template <typename E, class T, class A, class S>
+inline
+basic_fbstring<E, T, A, S> operator+(
+  E lhs,
   const basic_fbstring<E, T, A, S>& rhs) {
 
   basic_fbstring<E, T, A, S> result;
@@ -2090,11 +2117,28 @@ basic_fbstring<E, T, A, S> operator+(
   return result;
 }
 
+// C++11 21.4.8.1/8
+template <typename E, class T, class A, class S>
+inline
+basic_fbstring<E, T, A, S> operator+(
+  E lhs,
+  basic_fbstring<E, T, A, S>&& rhs) {
+  //
+  if (rhs.capacity() > rhs.size()) {
+    // Good, at least we don't need to reallocate
+    return std::move(rhs.insert(rhs.begin(), lhs));
+  }
+  // Meh, no go. Forward to operator+(E, const&).
+  auto const& rhsC = rhs;
+  return lhs + rhsC;
+}
+
+// C++11 21.4.8.1/9
 template <typename E, class T, class A, class S>
 inline
 basic_fbstring<E, T, A, S> operator+(
   const basic_fbstring<E, T, A, S>& lhs,
-  const typename basic_fbstring<E, T, A, S>::value_type* rhs) {
+  const E* rhs) {
 
   typedef typename basic_fbstring<E, T, A, S>::size_type size_type;
   typedef typename basic_fbstring<E, T, A, S>::traits_type traits_type;
@@ -2106,17 +2150,38 @@ basic_fbstring<E, T, A, S> operator+(
   return result;
 }
 
+// C++11 21.4.8.1/10
+template <typename E, class T, class A, class S>
+inline
+basic_fbstring<E, T, A, S> operator+(
+  basic_fbstring<E, T, A, S>&& lhs,
+  const E* rhs) {
+  //
+  return std::move(lhs += rhs);
+}
+
+// C++11 21.4.8.1/11
 template <typename E, class T, class A, class S>
 inline
 basic_fbstring<E, T, A, S> operator+(
   const basic_fbstring<E, T, A, S>& lhs,
-  typename basic_fbstring<E, T, A, S>::value_type rhs) {
+  E rhs) {
 
   basic_fbstring<E, T, A, S> result;
   result.reserve(lhs.size() + 1);
   result.append(lhs);
   result.push_back(rhs);
   return result;
+}
+
+// C++11 21.4.8.1/12
+template <typename E, class T, class A, class S>
+inline
+basic_fbstring<E, T, A, S> operator+(
+  basic_fbstring<E, T, A, S>&& lhs,
+  E rhs) {
+  //
+  return std::move(lhs += rhs);
 }
 
 template <typename E, class T, class A, class S>

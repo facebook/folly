@@ -603,6 +603,21 @@ template <class String> void clause11_21_4_7_2_a(String & test) {
   Num2String(test, test.find(str, random(0, test.size())));
 }
 
+template <class String> void clause11_21_4_7_2_a1(String & test) {
+  String str = String(test).substr(
+    random(0, test.size()),
+    random(0, test.size()));
+  Num2String(test, test.find(str, random(0, test.size())));
+}
+
+template <class String> void clause11_21_4_7_2_a2(String & test) {
+  auto const& cTest = test;
+  String str = cTest.substr(
+    random(0, test.size()),
+    random(0, test.size()));
+  Num2String(test, test.find(str, random(0, test.size())));
+}
+
 template <class String> void clause11_21_4_7_2_b(String & test) {
   auto from = random(0, test.size());
   auto length = random(0, test.size() - from);
@@ -612,8 +627,44 @@ template <class String> void clause11_21_4_7_2_b(String & test) {
                              random(0, str.size())));
 }
 
+template <class String> void clause11_21_4_7_2_b1(String & test) {
+  auto from = random(0, test.size());
+  auto length = random(0, test.size() - from);
+  String str = String(test).substr(from, length);
+  Num2String(test, test.find(str.c_str(),
+                             random(0, test.size()),
+                             random(0, str.size())));
+}
+
+template <class String> void clause11_21_4_7_2_b2(String & test) {
+  auto from = random(0, test.size());
+  auto length = random(0, test.size() - from);
+  const auto& cTest = test;
+  String str = cTest.substr(from, length);
+  Num2String(test, test.find(str.c_str(),
+                             random(0, test.size()),
+                             random(0, str.size())));
+}
+
 template <class String> void clause11_21_4_7_2_c(String & test) {
   String str = test.substr(
+    random(0, test.size()),
+    random(0, test.size()));
+  Num2String(test, test.find(str.c_str(),
+                             random(0, test.size())));
+}
+
+template <class String> void clause11_21_4_7_2_c1(String & test) {
+  String str = String(test).substr(
+    random(0, test.size()),
+    random(0, test.size()));
+  Num2String(test, test.find(str.c_str(),
+                             random(0, test.size())));
+}
+
+template <class String> void clause11_21_4_7_2_c2(String & test) {
+  const auto& cTest = test;
+  String str = cTest.substr(
     random(0, test.size()),
     random(0, test.size()));
   Num2String(test, test.find(str.c_str(),
@@ -838,25 +889,27 @@ template <class String> void clause11_21_4_8_1_a(String & test) {
 }
 
 template <class String> void clause11_21_4_8_1_b(String & test) {
-  String s;
-  randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = s.c_str() + s1;
+  String s2;
+  randomString(&s2, maxString);
+  test = move(s1) + s2;
 }
 
 template <class String> void clause11_21_4_8_1_c(String & test) {
-  String s;
-  randomString(&s, maxString);
-  test = typename String::value_type(random('a', 'z')) + s;
+  String s1;
+  randomString(&s1, maxString);
+  String s2;
+  randomString(&s2, maxString);
+  test = s1 + move(s2);
 }
 
 template <class String> void clause11_21_4_8_1_d(String & test) {
-  String s;
-  randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = s + s1.c_str();
+  String s2;
+  randomString(&s2, maxString);
+  test = move(s1) + move(s2);
 }
 
 template <class String> void clause11_21_4_8_1_e(String & test) {
@@ -864,13 +917,57 @@ template <class String> void clause11_21_4_8_1_e(String & test) {
   randomString(&s, maxString);
   String s1;
   randomString(&s1, maxString);
-  test = s + s1.c_str();
+  test = s.c_str() + s1;
 }
 
 template <class String> void clause11_21_4_8_1_f(String & test) {
   String s;
   randomString(&s, maxString);
+  String s1;
+  randomString(&s1, maxString);
+  test = s.c_str() + move(s1);
+}
+
+template <class String> void clause11_21_4_8_1_g(String & test) {
+  String s;
+  randomString(&s, maxString);
+  test = typename String::value_type(random('a', 'z')) + s;
+}
+
+template <class String> void clause11_21_4_8_1_h(String & test) {
+  String s;
+  randomString(&s, maxString);
+  test = typename String::value_type(random('a', 'z')) + move(s);
+}
+
+template <class String> void clause11_21_4_8_1_i(String & test) {
+  String s;
+  randomString(&s, maxString);
+  String s1;
+  randomString(&s1, maxString);
+  test = s + s1.c_str();
+}
+
+template <class String> void clause11_21_4_8_1_j(String & test) {
+  String s;
+  randomString(&s, maxString);
+  String s1;
+  randomString(&s1, maxString);
+  test = move(s) + s1.c_str();
+}
+
+template <class String> void clause11_21_4_8_1_k(String & test) {
+  String s;
+  randomString(&s, maxString);
   test = s + typename String::value_type(random('a', 'z'));
+}
+
+template <class String> void clause11_21_4_8_1_l(String & test) {
+  String s;
+  randomString(&s, maxString);
+  String s1;
+  randomString(&s1, maxString);
+  test = move(s) + s1.c_str();
 }
 
 // Numbering here is from C++11
@@ -969,8 +1066,14 @@ TEST(FBString, testAllClauses) {
   TEST_CLAUSE(21_4_7_1);
 
   TEST_CLAUSE(21_4_7_2_a);
+  TEST_CLAUSE(21_4_7_2_a1);
+  TEST_CLAUSE(21_4_7_2_a2);
   TEST_CLAUSE(21_4_7_2_b);
+  TEST_CLAUSE(21_4_7_2_b1);
+  TEST_CLAUSE(21_4_7_2_b2);
   TEST_CLAUSE(21_4_7_2_c);
+  TEST_CLAUSE(21_4_7_2_c1);
+  TEST_CLAUSE(21_4_7_2_c2);
   TEST_CLAUSE(21_4_7_2_d);
   TEST_CLAUSE(21_4_7_3_a);
   TEST_CLAUSE(21_4_7_3_b);
@@ -1004,6 +1107,12 @@ TEST(FBString, testAllClauses) {
   TEST_CLAUSE(21_4_8_1_d);
   TEST_CLAUSE(21_4_8_1_e);
   TEST_CLAUSE(21_4_8_1_f);
+  TEST_CLAUSE(21_4_8_1_g);
+  TEST_CLAUSE(21_4_8_1_h);
+  TEST_CLAUSE(21_4_8_1_i);
+  TEST_CLAUSE(21_4_8_1_j);
+  TEST_CLAUSE(21_4_8_1_k);
+  TEST_CLAUSE(21_4_8_1_l);
   TEST_CLAUSE(21_4_8_9_a);
 }
 
