@@ -805,6 +805,16 @@ TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
   EXPECT_TRUE(p.empty());
 }
 
+TEST(StringPiece, NoInvalidImplicitConversions) {
+  struct IsString {
+    bool operator()(folly::Range<int*>) { return false; }
+    bool operator()(folly::StringPiece) { return true; }
+  };
+
+  std::string s = "hello";
+  EXPECT_TRUE(IsString()(s));
+}
+
 TEST(qfind, UInt32_Ranges) {
   vector<uint32_t> a({1, 2, 3, 260, 5});
   vector<uint32_t> b({2, 3, 4});

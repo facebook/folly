@@ -121,6 +121,23 @@ value_before(Iter i) {
   return *--i;
 }
 
+/*
+ * Use IsCharPointer<T>::type to enable const char* or char*.
+ * Use IsCharPointer<T>::const_type to enable only const char*.
+ */
+template <class T> struct IsCharPointer {};
+
+template <>
+struct IsCharPointer<char*> {
+  typedef int type;
+};
+
+template <>
+struct IsCharPointer<const char*> {
+  typedef int const_type;
+  typedef int type;
+};
+
 } // namespace detail
 
 /**
@@ -176,19 +193,19 @@ public:
       : b_(start), e_(start + size) { }
 
 #if FOLLY_HAVE_CONSTEXPR_STRLEN
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   constexpr /* implicit */ Range(Iter str)
       : b_(str), e_(str + strlen(str)) {}
 #else
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   /* implicit */ Range(Iter str)
       : b_(str), e_(str + strlen(str)) {}
 #endif
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const std::string& str)
       : b_(str.data()), e_(b_ + str.size()) {}
 
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const std::string& str, std::string::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
       throw std::out_of_range("index out of range");
@@ -196,7 +213,7 @@ public:
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
   }
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const std::string& str,
         std::string::size_type startFrom,
         std::string::size_type size) {
@@ -210,6 +227,7 @@ public:
       e_ = b_ + size;
     }
   }
+  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   Range(const Range<Iter>& str,
         size_t startFrom,
         size_t size) {
@@ -223,10 +241,10 @@ public:
       e_ = b_ + size;
     }
   }
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const fbstring& str)
     : b_(str.data()), e_(b_ + str.size()) { }
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
       throw std::out_of_range("index out of range");
@@ -234,7 +252,7 @@ public:
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
   }
-  // Works only for Range<const char*>
+  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom,
         fbstring::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
@@ -358,10 +376,10 @@ public:
     assert(b_ < e_);
     return detail::value_before(e_);
   }
-  // Works only for Range<const char*>
+  // Works only for Range<const char*> and Range<char*>
   std::string str() const { return std::string(b_, size()); }
   std::string toString() const { return str(); }
-  // Works only for Range<const char*>
+  // Works only for Range<const char*> and Range<char*>
   fbstring fbstr() const { return fbstring(b_, size()); }
   fbstring toFbstring() const { return fbstr(); }
 
@@ -369,7 +387,7 @@ public:
     return const_range_type(*this);
   };
 
-  // Works only for Range<const char*> (and Range<char*>)
+  // Works only for Range<const char*> and Range<char*>
   int compare(const const_range_type& o) const {
     const size_type tsize = this->size();
     const size_type osize = o.size();
@@ -399,7 +417,7 @@ public:
     return b_[i];
   }
 
-  // Works only for Range<const char*>
+  // Works only for Range<const char*> and Range<char*>
   uint32_t hash() const {
     // Taken from fbi/nstring.h:
     //    Quick and dirty bernstein hash...fine for short ascii strings
