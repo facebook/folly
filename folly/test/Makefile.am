@@ -15,7 +15,7 @@ TESTS= \
 	bit_iterator_test
 
 check_LTLIBRARIES = libgtestmain.la libgtest.la
-check_PROGRAMS = 
+check_PROGRAMS =
 
 libgtestmain_la_CPPFLAGS = -Igtest-1.6.0 -Igtest-1.6.0/src
 libgtestmain_la_SOURCES = gtest-1.6.0/src/gtest-all.cc gtest-1.6.0/src/gtest_main.cc
@@ -26,8 +26,8 @@ libgtest_la_SOURCES = gtest-1.6.0/src/gtest-all.cc
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
 		 FBVectorTestBenchmarks.cpp.h
 
-small_locks_test_SOURCES = SpinLockTest.cpp
-small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+spin_lock_test_SOURCES = SpinLockTest.cpp
+spin_lock_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += spin_lock_test
 
 if HAVE_X86_64
