@@ -44,6 +44,10 @@ class NamedThreadFactory : public ThreadFactory {
     prefix_ = prefix.str();
   }
 
+  std::string getNamePrefix() {
+    return prefix_;
+  }
+
  private:
   std::string prefix_;
   std::atomic<uint64_t> suffix_;

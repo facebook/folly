@@ -153,6 +153,16 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
   }
 }
 
+std::vector<EventBase*> IOThreadPoolExecutor::getEventBases() {
+  std::vector<EventBase*> bases;
+  RWSpinLock::ReadHolder{&threadListLock_};
+  for (const auto& thread : threadList_.get()) {
+    auto ioThread = std::static_pointer_cast<IOThread>(thread);
+    bases.push_back(ioThread->eventBase);
+  }
+  return bases;
+}
+
 // threadListLock_ is readlocked
 uint64_t IOThreadPoolExecutor::getPendingTaskCount() {
   uint64_t count = 0;

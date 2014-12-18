@@ -41,6 +41,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   EventBase* getEventBase() override;
 
+  std::vector<EventBase*> getEventBases();
+
  private:
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
