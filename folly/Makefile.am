@@ -74,49 +74,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/io/FsUtil.h \
 	experimental/Singleton.h \
 	experimental/TestUtil.h \
-	experimental/wangle/channel/AsyncSocketHandler.h \
-	experimental/wangle/channel/ChannelHandler.h \
-	experimental/wangle/channel/ChannelHandlerContext.h \
-	experimental/wangle/channel/ChannelPipeline.h \
-	experimental/wangle/channel/OutputBufferingHandler.h \
-	experimental/wangle/concurrent/BlockingQueue.h \
-	experimental/wangle/concurrent/Codel.h \
-	experimental/wangle/concurrent/CPUThreadPoolExecutor.h \
-	experimental/wangle/concurrent/FutureExecutor.h \
-	experimental/wangle/concurrent/GlobalExecutor.h \
-	experimental/wangle/concurrent/IOExecutor.h \
-	experimental/wangle/concurrent/IOThreadPoolExecutor.h \
-	experimental/wangle/concurrent/LifoSemMPMCQueue.h \
-	experimental/wangle/concurrent/NamedThreadFactory.h \
-	experimental/wangle/concurrent/ThreadFactory.h \
-	experimental/wangle/concurrent/ThreadPoolExecutor.h \
-	experimental/wangle/rx/Observable.h \
-	experimental/wangle/rx/Observer.h \
-	experimental/wangle/rx/Subject.h \
-	experimental/wangle/rx/Subscription.h \
-	experimental/wangle/rx/types.h \
-	experimental/wangle/ConnectionManager.h \
-	experimental/wangle/ManagedConnection.h \
-	experimental/wangle/acceptor/Acceptor.h \
-	experimental/wangle/acceptor/ConnectionCounter.h \
-	experimental/wangle/acceptor/SocketOptions.h \
-	experimental/wangle/acceptor/DomainNameMisc.h \
-	experimental/wangle/acceptor/LoadShedConfiguration.h \
-	experimental/wangle/acceptor/NetworkAddress.h \
-	experimental/wangle/acceptor/ServerSocketConfig.h \
-	experimental/wangle/acceptor/TransportInfo.h \
-	experimental/wangle/ssl/ClientHelloExtStats.h \
-	experimental/wangle/ssl/DHParam.h \
-	experimental/wangle/ssl/PasswordInFile.h \
-	experimental/wangle/ssl/SSLCacheOptions.h \
-	experimental/wangle/ssl/SSLCacheProvider.h \
-	experimental/wangle/ssl/SSLContextConfig.h \
-	experimental/wangle/ssl/SSLContextManager.h \
-	experimental/wangle/ssl/SSLSessionCacheManager.h \
-	experimental/wangle/ssl/SSLStats.h \
-	experimental/wangle/ssl/SSLUtil.h \
-	experimental/wangle/ssl/TLSTicketKeyManager.h \
-	experimental/wangle/ssl/TLSTicketKeySeeds.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -238,6 +195,32 @@ nobase_follyinclude_HEADERS = \
 	Uri-inl.h \
 	Varint.h \
 	VersionCheck.h \
+	wangle/acceptor/Acceptor.h \
+	wangle/acceptor/ConnectionCounter.h \
+	wangle/acceptor/ConnectionManager.h \
+	wangle/acceptor/DomainNameMisc.h \
+	wangle/acceptor/LoadShedConfiguration.h \
+	wangle/acceptor/ManagedConnection.h \
+	wangle/acceptor/NetworkAddress.h \
+	wangle/acceptor/ServerSocketConfig.h \
+	wangle/acceptor/SocketOptions.h \
+	wangle/acceptor/TransportInfo.h \
+	wangle/channel/AsyncSocketHandler.h \
+	wangle/channel/ChannelHandler.h \
+	wangle/channel/ChannelHandlerContext.h \
+	wangle/channel/ChannelPipeline.h \
+	wangle/channel/OutputBufferingHandler.h \
+	wangle/concurrent/BlockingQueue.h \
+	wangle/concurrent/Codel.h \
+	wangle/concurrent/CPUThreadPoolExecutor.h \
+	wangle/concurrent/FutureExecutor.h \
+	wangle/concurrent/IOExecutor.h \
+	wangle/concurrent/IOThreadPoolExecutor.h \
+	wangle/concurrent/GlobalExecutor.h \
+	wangle/concurrent/LifoSemMPMCQueue.h \
+	wangle/concurrent/NamedThreadFactory.h \
+	wangle/concurrent/ThreadFactory.h \
+	wangle/concurrent/ThreadPoolExecutor.h \
 	wangle/futures/Deprecated.h \
 	wangle/futures/Future-inl.h \
 	wangle/futures/Future.h \
@@ -252,7 +235,24 @@ nobase_follyinclude_HEADERS = \
 	wangle/futures/Try.h \
 	wangle/futures/WangleException.h \
 	wangle/futures/detail/Core.h \
-	wangle/futures/detail/FSM.h
+	wangle/futures/detail/FSM.h \
+	wangle/rx/Observable.h \
+	wangle/rx/Observer.h \
+	wangle/rx/Subject.h \
+	wangle/rx/Subscription.h \
+	wangle/rx/types.h \
+	wangle/ssl/ClientHelloExtStats.h \
+	wangle/ssl/DHParam.h \
+	wangle/ssl/PasswordInFile.h \
+	wangle/ssl/SSLCacheOptions.h \
+	wangle/ssl/SSLCacheProvider.h \
+	wangle/ssl/SSLContextConfig.h \
+	wangle/ssl/SSLContextManager.h \
+	wangle/ssl/SSLSessionCacheManager.h \
+	wangle/ssl/SSLStats.h \
+	wangle/ssl/SSLUtil.h \
+	wangle/ssl/TLSTicketKeyManager.h \
+	wangle/ssl/TLSTicketKeySeeds.h
 
 FormatTables.cpp: build/generate_format_tables.py
 	build/generate_format_tables.py
@@ -324,28 +324,28 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
-	wangle/futures/InlineExecutor.cpp \
-	wangle/futures/ManualExecutor.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
-	experimental/wangle/concurrent/CPUThreadPoolExecutor.cpp \
-	experimental/wangle/concurrent/Codel.cpp \
-	experimental/wangle/concurrent/GlobalExecutor.cpp \
-	experimental/wangle/concurrent/IOExecutor.cpp \
-	experimental/wangle/concurrent/IOThreadPoolExecutor.cpp \
-	experimental/wangle/concurrent/ThreadPoolExecutor.cpp \
-	experimental/wangle/ConnectionManager.cpp \
-	experimental/wangle/ManagedConnection.cpp \
-	experimental/wangle/acceptor/Acceptor.cpp \
-	experimental/wangle/acceptor/SocketOptions.cpp \
-	experimental/wangle/acceptor/LoadShedConfiguration.cpp \
-	experimental/wangle/acceptor/TransportInfo.cpp \
-	experimental/wangle/ssl/PasswordInFile.cpp \
-	experimental/wangle/ssl/SSLContextManager.cpp \
-	experimental/wangle/ssl/SSLSessionCacheManager.cpp \
-	experimental/wangle/ssl/SSLUtil.cpp \
-	experimental/wangle/ssl/TLSTicketKeyManager.cpp
+	wangle/acceptor/Acceptor.cpp \
+	wangle/acceptor/ConnectionManager.cpp \
+	wangle/acceptor/LoadShedConfiguration.cpp \
+	wangle/acceptor/ManagedConnection.cpp \
+	wangle/acceptor/SocketOptions.cpp \
+	wangle/acceptor/TransportInfo.cpp \
+	wangle/concurrent/CPUThreadPoolExecutor.cpp \
+	wangle/concurrent/Codel.cpp \
+	wangle/concurrent/IOExecutor.cpp \
+	wangle/concurrent/IOThreadPoolExecutor.cpp \
+	wangle/concurrent/GlobalExecutor.cpp \
+	wangle/concurrent/ThreadPoolExecutor.cpp \
+	wangle/futures/InlineExecutor.cpp \
+	wangle/futures/ManualExecutor.cpp \
+	wangle/ssl/PasswordInFile.cpp \
+	wangle/ssl/SSLContextManager.cpp \
+	wangle/ssl/SSLSessionCacheManager.cpp \
+	wangle/ssl/SSLUtil.cpp \
+	wangle/ssl/TLSTicketKeyManager.cpp
 
 if HAVE_LINUX
 nobase_follyinclude_HEADERS += \
