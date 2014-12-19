@@ -30,17 +30,62 @@
 namespace folly { namespace wangle {
 
 namespace detail {
-  template <class> struct Core;
-  template <class...> struct VariadicContext;
 
-  template <class T>
-  struct AliasIfVoid {
-    typedef typename std::conditional<
-      std::is_same<T, void>::value,
-      int,
-      T>::type type;
-  };
-}
+template <class> struct Core;
+template <class...> struct VariadicContext;
+
+template <class T>
+struct AliasIfVoid {
+  typedef typename std::conditional<
+    std::is_same<T, void>::value,
+    int,
+    T>::type type;
+};
+
+
+template <typename T>
+struct IsFuture : std::integral_constant<bool, false> {
+    typedef T Inner;
+};
+
+template <template <typename T> class Future, typename T>
+struct IsFuture<Future<T>> : std::integral_constant<bool, true> {
+    typedef T Inner;
+};
+
+template <typename...>
+struct ArgType;
+
+template <typename Arg, typename... Args>
+struct ArgType<Arg, Args...> {
+  typedef Arg FirstArg;
+};
+
+template <>
+struct ArgType<> {
+  typedef void FirstArg;
+};
+
+template <typename L>
+struct Extract : Extract<decltype(&L::operator())> { };
+
+template <typename Class, typename R, typename... Args>
+struct Extract<R(Class::*)(Args...) const> {
+  typedef IsFuture<R> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner RawReturn;
+  typedef typename ArgType<Args...>::FirstArg FirstArg;
+};
+
+template <typename Class, typename R, typename... Args>
+struct Extract<R(Class::*)(Args...)> {
+  typedef IsFuture<R> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+  typedef typename ReturnsFuture::Inner RawReturn;
+  typedef typename ArgType<Args...>::FirstArg FirstArg;
+};
+
+} // detail
 
 template <class> struct Promise;
 
@@ -301,6 +346,33 @@ class Future {
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.
   Future<void> then();
+
+  /// Set an error callback for this Future. The callback should take a single
+  /// argument of the type that you want to catch, and should return a value of
+  /// the same type as this Future, or a Future of that type (see overload
+  /// below). For instance,
+  ///
+  /// makeFuture()
+  ///   .then([] {
+  ///     throw std::runtime_error("oh no!");
+  ///     return 42;
+  ///   })
+  ///   .onError([] (std::runtime_error& e) {
+  ///     LOG(INFO) << "std::runtime_error: " << e.what();
+  ///     return -1; // or makeFuture<int>(-1)
+  ///   });
+  template <class F>
+  typename std::enable_if<
+    !detail::Extract<F>::ReturnsFuture::value,
+    Future<T>>::type
+  onError(F&& func);
+
+  /// Overload of onError where the error callback returns a Future<T>
+  template <class F>
+  typename std::enable_if<
+    detail::Extract<F>::ReturnsFuture::value,
+    Future<T>>::type
+  onError(F&& func);
 
   /// This is not the method you're looking for.
   ///

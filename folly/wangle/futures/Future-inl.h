@@ -305,6 +305,77 @@ Future<void> Future<T>::then() {
   return then([] (Try<T>&& t) {});
 }
 
+// onError where the callback returns T
+template <class T>
+template <class F>
+typename std::enable_if<
+  !detail::Extract<F>::ReturnsFuture::value,
+  Future<T>>::type
+Future<T>::onError(F&& func) {
+  typedef typename detail::Extract<F>::FirstArg Exn;
+  static_assert(
+      std::is_same<typename detail::Extract<F>::RawReturn, T>::value,
+      "Return type of onError callback must be T or Future<T>");
+
+  Promise<T> p;
+  auto f = p.getFuture();
+  auto pm = folly::makeMoveWrapper(std::move(p));
+  auto funcm = folly::makeMoveWrapper(std::move(func));
+  setCallback_([pm, funcm](Try<T>&& t) mutable {
+    try {
+      t.throwIfFailed();
+    } catch (Exn& e) {
+      pm->fulfil([&]{
+        return (*funcm)(e);
+      });
+      return;
+    } catch (...) {
+      // fall through
+    }
+    pm->fulfilTry(std::move(t));
+  });
+
+  return f;
+}
+
+// onError where the callback returns Future<T>
+template <class T>
+template <class F>
+typename std::enable_if<
+  detail::Extract<F>::ReturnsFuture::value,
+  Future<T>>::type
+Future<T>::onError(F&& func) {
+  static_assert(
+      std::is_same<typename detail::Extract<F>::Return, Future<T>>::value,
+      "Return type of onError callback must be T or Future<T>");
+  typedef typename detail::Extract<F>::FirstArg Exn;
+
+  Promise<T> p;
+  auto f = p.getFuture();
+  auto pm = folly::makeMoveWrapper(std::move(p));
+  auto funcm = folly::makeMoveWrapper(std::move(func));
+  setCallback_([pm, funcm](Try<T>&& t) mutable {
+    try {
+      t.throwIfFailed();
+    } catch (Exn& e) {
+      try {
+        auto f2 = (*funcm)(e);
+        f2.setCallback_([pm](Try<T>&& t2) mutable {
+          pm->fulfilTry(std::move(t2));
+        });
+      } catch (...) {
+        pm->setException(std::current_exception());
+      }
+      return;
+    } catch (...) {
+      // fall through
+    }
+    pm->fulfilTry(std::move(t));
+  });
+
+  return f;
+}
+
 template <class T>
 typename std::add_lvalue_reference<T>::type Future<T>::value() {
   throwIfInvalid();

@@ -60,7 +60,7 @@ class ThreadExecutor : public Executor {
   }
 
  public:
-  ThreadExecutor(size_t n = 1024)
+  explicit ThreadExecutor(size_t n = 1024)
     : funcs(n), worker(std::bind(&ThreadExecutor::work, this)) {}
 
   ~ThreadExecutor() {
@@ -82,6 +82,172 @@ typedef WangleException eggs_t;
 static eggs_t eggs("eggs");
 
 // Future
+
+TEST(Future, onError) {
+  bool theFlag = false;
+  auto flag = [&]{ theFlag = true; };
+#define EXPECT_FLAG() \
+  do { \
+    EXPECT_TRUE(theFlag); \
+    theFlag = false; \
+  } while(0);
+
+#define EXPECT_NO_FLAG() \
+  do { \
+    EXPECT_FALSE(theFlag); \
+    theFlag = false; \
+  } while(0);
+
+  // By reference
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t& e) { flag(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t& e) { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // By value
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t e) { flag(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t e) { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // Polymorphic
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (std::exception& e) { flag(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (std::exception& e) { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // Non-exceptions
+  {
+    auto f = makeFuture()
+      .then([] { throw -1; })
+      .onError([&] (int e) { flag(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw -1; })
+      .onError([&] (int e) { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // Mutable lambda
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t& e) mutable { flag(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (eggs_t& e) mutable { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // No throw
+  {
+    auto f = makeFuture()
+      .then([] { return 42; })
+      .onError([&] (eggs_t& e) { flag(); return -1; });
+    EXPECT_NO_FLAG();
+    EXPECT_EQ(42, f.value());
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { return 42; })
+      .onError([&] (eggs_t& e) { flag(); return makeFuture<int>(-1); });
+    EXPECT_NO_FLAG();
+    EXPECT_EQ(42, f.value());
+  }
+
+  // Catch different exception
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (std::runtime_error& e) { flag(); });
+    EXPECT_NO_FLAG();
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (std::runtime_error& e) { flag(); return makeFuture(); });
+    EXPECT_NO_FLAG();
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+
+  // Returned value propagates
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; return 0; })
+      .onError([&] (eggs_t& e) { return 42; });
+    EXPECT_EQ(42, f.value());
+  }
+
+  // Returned future propagates
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; return 0; })
+      .onError([&] (eggs_t& e) { return makeFuture<int>(42); });
+    EXPECT_EQ(42, f.value());
+  }
+
+  // Throw in callback
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; return 0; })
+      .onError([&] (eggs_t& e) { throw e; return -1; });
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; return 0; })
+      .onError([&] (eggs_t& e) { throw e; return makeFuture<int>(-1); });
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+}
 
 TEST(Future, try) {
   class A {
