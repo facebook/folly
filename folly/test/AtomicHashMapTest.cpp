@@ -618,6 +618,35 @@ TEST(Ahm, atomic_hash_array_insert_race) {
   }
 }
 
+// Repro for a bug when iterator didn't skip empty submaps.
+TEST(Ahm, iterator_skips_empty_submaps) {
+  AtomicHashMap<uint64_t, uint64_t>::Config config;
+  config.growthFactor = 1;
+
+  AtomicHashMap<uint64_t, uint64_t> map(1, config);
+
+  map.insert(1, 1);
+  map.insert(2, 2);
+  map.insert(3, 3);
+
+  map.erase(2);
+
+  auto it = map.find(1);
+
+  ASSERT_NE(map.end(), it);
+  ASSERT_EQ(1, it->first);
+  ASSERT_EQ(1, it->second);
+
+  ++it;
+
+  ASSERT_NE(map.end(), it);
+  ASSERT_EQ(3, it->first);
+  ASSERT_EQ(3, it->second);
+
+  ++it;
+  ASSERT_EQ(map.end(), it);
+}
+
 namespace {
 
 void loadGlobalAha() {

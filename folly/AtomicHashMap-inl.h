@@ -408,7 +408,7 @@ struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::ahm_iterator
 
     SubMap* thisMap = ahm_->subMaps_[subMap_].
       load(std::memory_order_relaxed);
-    if (subIt_ == thisMap->end()) {
+    while (subIt_ == thisMap->end()) {
       // This sub iterator is done, advance to next one
       if (subMap_ + 1 <
           ahm_->numMapsAllocated_.load(std::memory_order_acquire)) {
@@ -417,6 +417,7 @@ struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::ahm_iterator
         subIt_ = thisMap->begin();
       } else {
         ahm_ = nullptr;
+        return;
       }
     }
   }
