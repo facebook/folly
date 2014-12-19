@@ -16,11 +16,17 @@
 
 #pragma once
 
-#include <folly/SocketAddress.h>
+#include <memory>
+#include <sys/uio.h>
+
 #include <folly/io/async/DelayedDestruction.h>
-#include <folly/io/async/EventBase.h>
 
 namespace folly {
+
+class AsyncSocketException;
+class EventBase;
+class IOBuf;
+class SocketAddress;
 
 /*
  * flags given by the application for write* calls
@@ -288,7 +294,7 @@ class AsyncTransport : public DelayedDestruction {
    * @param address  The local address will be stored in the specified
    *                 SocketAddress.
    */
-  virtual void getLocalAddress(folly::SocketAddress* address) const = 0;
+  virtual void getLocalAddress(SocketAddress* address) const = 0;
 
   /**
    * Get the address of the remote endpoint to which this transport is
@@ -299,7 +305,7 @@ class AsyncTransport : public DelayedDestruction {
    * @param address  The remote endpoint's address will be stored in the
    *                 specified SocketAddress.
    */
-  virtual void getPeerAddress(folly::SocketAddress* address) const = 0;
+  virtual void getPeerAddress(SocketAddress* address) const = 0;
 
   /**
    * @return True iff end of record tracking is enabled
@@ -317,5 +323,121 @@ class AsyncTransport : public DelayedDestruction {
   virtual ~AsyncTransport() {}
 };
 
+// Transitional intermediate interface. This is deprecated.
+// Wrapper around folly::AsyncTransport, that includes read/write callbacks
+class AsyncTransportWrapper : virtual public AsyncTransport {
+ public:
+  typedef std::unique_ptr<AsyncTransportWrapper, Destructor> UniquePtr;
+
+  class ReadCallback {
+   public:
+    virtual ~ReadCallback() {}
+
+    /**
+     * When data becomes available, getReadBuffer() will be invoked to get the
+     * buffer into which data should be read.
+     *
+     * This method allows the ReadCallback to delay buffer allocation until
+     * data becomes available.  This allows applications to manage large
+     * numbers of idle connections, without having to maintain a separate read
+     * buffer for each idle connection.
+     *
+     * It is possible that in some cases, getReadBuffer() may be called
+     * multiple times before readDataAvailable() is invoked.  In this case, the
+     * data will be written to the buffer returned from the most recent call to
+     * readDataAvailable().  If the previous calls to readDataAvailable()
+     * returned different buffers, the ReadCallback is responsible for ensuring
+     * that they are not leaked.
+     *
+     * If getReadBuffer() throws an exception, returns a nullptr buffer, or
+     * returns a 0 length, the ReadCallback will be uninstalled and its
+     * readError() method will be invoked.
+     *
+     * getReadBuffer() is not allowed to change the transport state before it
+     * returns.  (For example, it should never uninstall the read callback, or
+     * set a different read callback.)
+     *
+     * @param bufReturn getReadBuffer() should update *bufReturn to contain the
+     *                  address of the read buffer.  This parameter will never
+     *                  be nullptr.
+     * @param lenReturn getReadBuffer() should update *lenReturn to contain the
+     *                  maximum number of bytes that may be written to the read
+     *                  buffer.  This parameter will never be nullptr.
+     */
+    virtual void getReadBuffer(void** bufReturn, size_t* lenReturn) = 0;
+
+    /**
+     * readDataAvailable() will be invoked when data has been successfully read
+     * into the buffer returned by the last call to getReadBuffer().
+     *
+     * The read callback remains installed after readDataAvailable() returns.
+     * It must be explicitly uninstalled to stop receiving read events.
+     * getReadBuffer() will be called at least once before each call to
+     * readDataAvailable().  getReadBuffer() will also be called before any
+     * call to readEOF().
+     *
+     * @param len       The number of bytes placed in the buffer.
+     */
+    virtual void readDataAvailable(size_t len) noexcept = 0;
+
+    /**
+     * readEOF() will be invoked when the transport is closed.
+     *
+     * The read callback will be automatically uninstalled immediately before
+     * readEOF() is invoked.
+     */
+    virtual void readEOF() noexcept = 0;
+
+    /**
+     * readError() will be invoked if an error occurs reading from the
+     * transport.
+     *
+     * The read callback will be automatically uninstalled immediately before
+     * readError() is invoked.
+     *
+     * @param ex        An exception describing the error that occurred.
+     */
+    virtual void readErr(const AsyncSocketException& ex) noexcept = 0;
+  };
+
+  class WriteCallback {
+   public:
+    virtual ~WriteCallback() {}
+
+    /**
+     * writeSuccess() will be invoked when all of the data has been
+     * successfully written.
+     *
+     * Note that this mainly signals that the buffer containing the data to
+     * write is no longer needed and may be freed or re-used.  It does not
+     * guarantee that the data has been fully transmitted to the remote
+     * endpoint.  For example, on socket-based transports, writeSuccess() only
+     * indicates that the data has been given to the kernel for eventual
+     * transmission.
+     */
+    virtual void writeSuccess() noexcept = 0;
+
+    /**
+     * writeError() will be invoked if an error occurs writing the data.
+     *
+     * @param bytesWritten      The number of bytes that were successfull
+     * @param ex                An exception describing the error that occurred.
+     */
+    virtual void writeErr(size_t bytesWritten,
+                          const AsyncSocketException& ex) noexcept = 0;
+  };
+
+  // Read/write methods that aren't part of AsyncTransport
+  virtual void setReadCB(ReadCallback* callback) = 0;
+  virtual ReadCallback* getReadCallback() const = 0;
+
+  virtual void write(WriteCallback* callback, const void* buf, size_t bytes,
+                     WriteFlags flags = WriteFlags::NONE) = 0;
+  virtual void writev(WriteCallback* callback, const iovec* vec, size_t count,
+                      WriteFlags flags = WriteFlags::NONE) = 0;
+  virtual void writeChain(WriteCallback* callback,
+                          std::unique_ptr<IOBuf>&& buf,
+                          WriteFlags flags = WriteFlags::NONE) = 0;
+};
 
 } // folly
