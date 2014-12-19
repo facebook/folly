@@ -1177,3 +1177,15 @@ TEST(ReplaceAll, BadArg) {
 
   EXPECT_EQ(count, 2);
 }
+
+TEST(Range, Constructors) {
+  vector<int> c = {1, 2, 3};
+  typedef Range<vector<int>::iterator> RangeType;
+  typedef Range<vector<int>::const_iterator> ConstRangeType;
+  RangeType cr(c.begin(), c.end());
+  auto subpiece1 = ConstRangeType(cr, 1, 5);
+  auto subpiece2 = ConstRangeType(cr, 1);
+  EXPECT_EQ(subpiece1.size(), 2);
+  EXPECT_EQ(subpiece1.begin(), subpiece2.begin());
+  EXPECT_EQ(subpiece1.end(), subpiece2.end());
+}

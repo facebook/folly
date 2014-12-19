@@ -213,6 +213,7 @@ public:
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
   }
+
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const std::string& str,
         std::string::size_type startFrom,
@@ -227,23 +228,17 @@ public:
       e_ = b_ + size;
     }
   }
-  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
-  Range(const Range<Iter>& str,
-        size_t startFrom,
-        size_t size) {
-    if (UNLIKELY(startFrom > str.size())) {
-      throw std::out_of_range("index out of range");
-    }
-    b_ = str.b_ + startFrom;
-    if (str.size() - startFrom < size) {
-      e_ = str.e_;
-    } else {
-      e_ = b_ + size;
-    }
-  }
+
+  Range(const Range& other,
+        size_type first,
+        size_type length = npos)
+      : Range(other.subpiece(first, length))
+    { }
+
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const fbstring& str)
     : b_(str.data()), e_(b_ + str.size()) { }
+
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
@@ -252,6 +247,7 @@ public:
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
   }
+
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom,
         fbstring::size_type size) {
@@ -452,13 +448,12 @@ public:
     --e_;
   }
 
-  Range subpiece(size_type first,
-                 size_type length = std::string::npos) const {
+  Range subpiece(size_type first, size_type length = npos) const {
     if (UNLIKELY(first > size())) {
       throw std::out_of_range("index out of range");
     }
-    return Range(b_ + first,
-                 std::min<std::string::size_type>(length, size() - first));
+
+    return Range(b_ + first, std::min(length, size() - first));
   }
 
   // string work-alike functions
