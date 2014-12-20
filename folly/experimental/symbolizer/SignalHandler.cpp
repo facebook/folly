@@ -19,6 +19,7 @@
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
 #include <sys/types.h>
+#include <sys/syscall.h>
 #include <atomic>
 #include <ctime>
 #include <mutex>
@@ -205,8 +206,10 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printHex(reinterpret_cast<uint64_t>(siginfo->si_addr));
   print(") received by PID ");
   printDec(getpid());
-  print(" (TID ");
+  print(" (pthread TID ");
   printHex((uint64_t)pthread_self());
+  print(") (linux TID ");
+  printDec(syscall(__NR_gettid));
   print("), stack trace: ***\n");
 }
 
