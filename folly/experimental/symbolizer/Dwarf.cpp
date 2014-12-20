@@ -131,6 +131,10 @@ void simplifyPath(folly::StringPiece& sp) {
     }
 
     if (sp.removePrefix("./")) {
+      // Also remove any subsequent slashes to avoid making this path absolute.
+      while (sp.startsWith('/')) {
+        sp.advance(1);
+      }
       continue;
     }
 
@@ -143,8 +147,8 @@ void simplifyPath(folly::StringPiece& sp) {
       return;
     }
 
-    // Strip trailing slashes
-    while (sp.removeSuffix('/')) { }
+    // Strip trailing slashes, except when this is the root path.
+    while (sp.size() > 1 && sp.removeSuffix('/')) { }
 
     if (sp.removeSuffix("/.")) {
       continue;
@@ -180,29 +184,42 @@ Dwarf::Path::Path(folly::StringPiece baseDir, folly::StringPiece subDir,
     baseDir_.clear();  // subDir_ is absolute
   }
 
-  // Make sure that baseDir_ isn't empty; subDir_ may be
-  if (baseDir_.empty()) {
-    swap(baseDir_, subDir_);
-  }
-
   simplifyPath(baseDir_);
   simplifyPath(subDir_);
   simplifyPath(file_);
+
+  // Make sure it's never the case that baseDir_ is empty, but subDir_ isn't.
+  if (baseDir_.empty()) {
+    swap(baseDir_, subDir_);
+  }
 }
 
 size_t Dwarf::Path::size() const {
-  if (baseDir_.empty()) {
-    assert(subDir_.empty());
-    return file_.size();
+  size_t size = 0;
+  bool needsSlash = false;
+
+  if (!baseDir_.empty()) {
+    size += baseDir_.size();
+    needsSlash = !baseDir_.endsWith('/');
   }
 
-  return
-    baseDir_.size() + !subDir_.empty() + subDir_.size() + !file_.empty() +
-    file_.size();
+  if (!subDir_.empty()) {
+    size += needsSlash;
+    size += subDir_.size();
+    needsSlash = !subDir_.endsWith('/');
+  }
+
+  if (!file_.empty()) {
+    size += needsSlash;
+    size += file_.size();
+  }
+
+  return size;
 }
 
 size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
   size_t totalSize = 0;
+  bool needsSlash = false;
 
   auto append = [&] (folly::StringPiece sp) {
     if (bufSize >= 2) {
@@ -216,14 +233,17 @@ size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
 
   if (!baseDir_.empty()) {
     append(baseDir_);
+    needsSlash = !baseDir_.endsWith('/');
   }
   if (!subDir_.empty()) {
-    assert(!baseDir_.empty());
-    append("/");
+    if (needsSlash) {
+      append("/");
+    }
     append(subDir_);
+    needsSlash = !subDir_.endsWith('/');
   }
   if (!file_.empty()) {
-    if (!baseDir_.empty()) {
+    if (needsSlash) {
       append("/");
     }
     append(file_);
@@ -237,17 +257,23 @@ size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
 
 void Dwarf::Path::toString(std::string& dest) const {
   size_t initialSize = dest.size();
+  bool needsSlash = false;
   dest.reserve(initialSize + size());
   if (!baseDir_.empty()) {
     dest.append(baseDir_.begin(), baseDir_.end());
+    needsSlash = baseDir_.endsWith('/');
   }
   if (!subDir_.empty()) {
-    assert(!baseDir_.empty());
-    dest.push_back('/');
+    if (needsSlash) {
+      dest.push_back('/');
+    }
     dest.append(subDir_.begin(), subDir_.end());
+    needsSlash = subDir_.endsWith('/');
   }
   if (!file_.empty()) {
-    dest.push_back('/');
+    if (needsSlash) {
+      dest.push_back('/');
+    }
     dest.append(file_.begin(), file_.end());
   }
   assert(dest.size() == initialSize + size());
