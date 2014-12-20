@@ -46,6 +46,18 @@
  *    RWTicketSpinLock<64> only allows up to 2^16 - 1 concurrent
  *    readers and writers.
  *
+ *    RWTicketSpinLock<..., true> (kFavorWriter = true, that is, strict
+ *    writer priority) is NOT reentrant, even for lock_shared().
+ *
+ *    The lock will not grant any new shared (read) accesses while a thread
+ *    attempting to acquire the lock in write mode is blocked. (That is,
+ *    if the lock is held in shared mode by N threads, and a thread attempts
+ *    to acquire it in write mode, no one else can acquire it in shared mode
+ *    until these N threads release the lock and then the blocked thread
+ *    acquires and releases the exclusive lock.) This also applies for
+ *    attempts to reacquire the lock in shared mode by threads that already
+ *    hold it in shared mode, making the lock non-reentrant.
+ *
  *    RWSpinLock handles 2^30 - 1 concurrent readers.
  *
  * @author Xin Liu <xliux@fb.com>
