@@ -820,14 +820,15 @@ template <class De, class Ts>
 void toAppendDelimFit(const De&, const Ts&) {}
 
 /**
- * to<SomeString>(SomeString str) returns itself. As both std::string and
- * folly::fbstring use Copy-on-Write, it's much more efficient by
- * avoiding copying the underlying char array.
+ * to<SomeString>(SomeString str) or to<StringPiece>(StringPiece str) returns
+ * itself. As both std::string and folly::fbstring use Copy-on-Write, it's much
+ * more efficient by avoiding copying the underlying char array.
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  IsSomeString<Tgt>::value && std::is_same<Tgt, Src>::value,
-  Tgt>::type
+  (IsSomeString<Tgt>::value
+   || std::is_same<Tgt, folly::StringPiece>::value)
+  && std::is_same<Tgt, Src>::value, Tgt>::type
 to(const Src & value) {
   return value;
 }
