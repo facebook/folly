@@ -17,6 +17,7 @@
 #ifndef FOLLY_BASE_STRING_H_
 #define FOLLY_BASE_STRING_H_
 
+#include <stdarg.h>
 #include <exception>
 #include <string>
 #include <boost/type_traits.hpp>
