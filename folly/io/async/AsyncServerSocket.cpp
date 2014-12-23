@@ -365,13 +365,13 @@ void AsyncServerSocket::bind(uint16_t port) {
     });
   DCHECK(&guard);
 
-  auto setupAddress = [&] (struct addrinfo* res) {
+  for (res = res0; res; res = res->ai_next) {
     int s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     // IPv6/IPv4 may not be supported by the kernel
     if (s < 0 && errno == EAFNOSUPPORT) {
-      return;
+      continue;
     }
-    CHECK_GE(s, 0);
+    CHECK(s);
 
     try {
       setupSocket(s);
@@ -398,26 +398,7 @@ void AsyncServerSocket::bind(uint16_t port) {
         errno,
         "failed to bind to async server socket for port");
     }
-  };
-
-  // Prefer AF_INET6 addresses. RFC 3484 mandates that getaddrinfo
-  // should return IPv6 first and then IPv4 addresses, but glibc's
-  // getaddrinfo(nullptr) with AI_PASSIVE returns:
-  // - 0.0.0.0 (IPv4-only)
-  // - :: (IPv6+IPv4) in this order
-  // See: https://sourceware.org/bugzilla/show_bug.cgi?id=9981
-  for (res = res0; res; res = res->ai_next) {
-    if (res->ai_family == AF_INET6) {
-      setupAddress(res);
-    }
   }
-
-  for (res = res0; res; res = res->ai_next) {
-    if (res->ai_family != AF_INET6) {
-      setupAddress(res);
-    }
-  }
-
   if (sockets_.size() == 0) {
     throw std::runtime_error(
         "did not bind any async server socket for port");
@@ -438,10 +419,10 @@ void AsyncServerSocket::listen(int backlog) {
 
 void AsyncServerSocket::getAddress(SocketAddress* addressReturn) const {
   CHECK(sockets_.size() >= 1);
-  VLOG_IF(2, sockets_.size() > 1)
-    << "Warning: getAddress() called and multiple addresses available ("
-    << sockets_.size() << "). Returning only the first one.";
-
+  if (sockets_.size() > 1) {
+    VLOG(2) << "Warning: getAddress can return multiple addresses, " <<
+      "but getAddress was called, so only returning the first";
+  }
   addressReturn->setFromLocalAddress(sockets_[0].socket_);
 }
 
