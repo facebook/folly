@@ -481,6 +481,13 @@ void AsyncSocket::connect(ConnectCallback* callback,
   }
 }
 
+void AsyncSocket::cancelConnect() {
+  connectCallback_ = nullptr;
+  if (state_ == StateEnum::CONNECTING) {
+    closeNow();
+  }
+}
+
 void AsyncSocket::setSendTimeout(uint32_t milliseconds) {
   sendTimeout_ = milliseconds;
   assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());

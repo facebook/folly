@@ -261,6 +261,15 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                const OptionMap &options = emptyOptionMap) noexcept;
 
   /**
+   * If a connect request is in-flight, cancels it and closes the socket
+   * immediately. Otherwise, this is a no-op.
+   *
+   * This does not invoke any connection related callbacks. Call this to
+   * prevent any connect callback while cleaning up, etc.
+   */
+  void cancelConnect();
+
+  /**
    * Set the send timeout.
    *
    * If write requests do not make any progress for more than the specified
