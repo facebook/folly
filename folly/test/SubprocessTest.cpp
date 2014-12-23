@@ -257,7 +257,7 @@ TEST(CommunicateSubprocessTest, Duplex) {
 }
 
 TEST(CommunicateSubprocessTest, ProcessGroupLeader) {
-  const auto testIsLeader = "test $(cut -d ' ' -f 5 /proc/$$/stat) == $$";
+  const auto testIsLeader = "test $(cut -d ' ' -f 5 /proc/$$/stat) = $$";
   Subprocess nonLeader(testIsLeader);
   EXPECT_THROW(nonLeader.waitChecked(), CalledProcessError);
   Subprocess leader(testIsLeader, Subprocess::Options().processGroupLeader());
