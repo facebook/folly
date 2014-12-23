@@ -183,9 +183,18 @@ class AtomicHashArray : boost::noncopyable {
 
   bool empty() const { return size() == 0; }
 
-  iterator begin()             { return iterator(this, 0); }
+  iterator begin() {
+    iterator it(this, 0);
+    it.advancePastEmpty();
+    return it;
+  }
+  const_iterator begin() const {
+    const_iterator it(this, 0);
+    it.advancePastEmpty();
+    return it;
+  }
+
   iterator end()               { return iterator(this, capacity_); }
-  const_iterator begin() const { return const_iterator(this, 0); }
   const_iterator end() const   { return const_iterator(this, capacity_); }
 
   // See AtomicHashMap::findAt - access elements directly

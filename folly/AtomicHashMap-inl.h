@@ -370,9 +370,7 @@ struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::ahm_iterator
       : ahm_(ahm)
       , subMap_(subMap)
       , subIt_(subIt)
-  {
-    checkAdvanceToNextSubmap();
-  }
+  {}
 
   friend class boost::iterator_core_access;
 

@@ -318,17 +318,21 @@ class AtomicHashMap : boost::noncopyable {
   }
 
   iterator begin() {
-    return iterator(this, 0,
+    iterator it(this, 0,
       subMaps_[0].load(std::memory_order_relaxed)->begin());
+    it.checkAdvanceToNextSubmap();
+    return it;
+  }
+
+  const_iterator begin() const {
+    const_iterator it(this, 0,
+      subMaps_[0].load(std::memory_order_relaxed)->begin());
+    it.checkAdvanceToNextSubmap();
+    return it;
   }
 
   iterator end() {
     return iterator();
-  }
-
-  const_iterator begin() const {
-    return const_iterator(this, 0,
-      subMaps_[0].load(std::memory_order_relaxed)->begin());
   }
 
   const_iterator end() const {

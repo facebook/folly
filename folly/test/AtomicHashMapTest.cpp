@@ -618,6 +618,44 @@ TEST(Ahm, atomic_hash_array_insert_race) {
   }
 }
 
+// Repro for T#5841499. Race between erase() and find() on the same key.
+TEST(Ahm, erase_find_race) {
+  const uint64_t limit = 10000;
+  AtomicHashMap<uint64_t, uint64_t> map(limit + 10);
+  std::atomic<uint64_t> key {1};
+
+  // Invariant: all values are equal to their keys.
+  // At any moment there is one or two consecutive keys in the map.
+
+  std::thread write_thread([&]() {
+    while (true) {
+      uint64_t k = ++key;
+      if (k > limit) {
+        break;
+      }
+      map.insert(k + 1, k + 1);
+      map.erase(k);
+    }
+  });
+
+  std::thread read_thread([&]() {
+    while (true) {
+      uint64_t k = key.load();
+      if (k > limit) {
+        break;
+      }
+
+      auto it = map.find(k);
+      if (it != map.end()) {
+        ASSERT_EQ(k, it->second);
+      }
+    }
+  });
+
+  read_thread.join();
+  write_thread.join();
+}
+
 // Repro for a bug when iterator didn't skip empty submaps.
 TEST(Ahm, iterator_skips_empty_submaps) {
   AtomicHashMap<uint64_t, uint64_t>::Config config;

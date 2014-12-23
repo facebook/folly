@@ -353,14 +353,18 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::aha_iterator
   explicit aha_iterator(ContT* array, size_t offset)
       : aha_(array)
       , offset_(offset)
-  {
-    advancePastEmpty();
-  }
+  {}
 
   // Returns unique index that can be used with findAt().
   // WARNING: The following function will fail silently for hashtable
   // with capacity > 2^32
   uint32_t getIndex() const { return offset_; }
+
+  void advancePastEmpty() {
+    while (offset_ < aha_->capacity_ && !isValid()) {
+      ++offset_;
+    }
+  }
 
  private:
   friend class AtomicHashArray;
@@ -377,12 +381,6 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::aha_iterator
 
   IterVal& dereference() const {
     return aha_->cells_[offset_];
-  }
-
-  void advancePastEmpty() {
-    while (offset_ < aha_->capacity_ && !isValid()) {
-      ++offset_;
-    }
   }
 
   bool isValid() const {
