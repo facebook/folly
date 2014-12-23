@@ -257,21 +257,18 @@ size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
 
 void Dwarf::Path::toString(std::string& dest) const {
   size_t initialSize = dest.size();
-  bool needsSlash = false;
   dest.reserve(initialSize + size());
   if (!baseDir_.empty()) {
     dest.append(baseDir_.begin(), baseDir_.end());
-    needsSlash = baseDir_.endsWith('/');
   }
   if (!subDir_.empty()) {
-    if (needsSlash) {
+    if (!dest.empty() && dest.back() != '/') {
       dest.push_back('/');
     }
     dest.append(subDir_.begin(), subDir_.end());
-    needsSlash = subDir_.endsWith('/');
   }
   if (!file_.empty()) {
-    if (needsSlash) {
+    if (!dest.empty() && dest.back() != '/') {
       dest.push_back('/');
     }
     dest.append(file_.begin(), file_.end());
