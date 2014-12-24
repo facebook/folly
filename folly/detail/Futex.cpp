@@ -59,6 +59,10 @@ struct timespec
 timeSpecFromTimePoint(time_point<Clock> absTime)
 {
   auto duration = absTime.time_since_epoch();
+  if (duration.count() < 0) {
+    // kernel timespec_valid requires non-negative seconds and nanos in [0,1G)
+    duration = Clock::duration::zero();
+  }
   auto secs = duration_cast<seconds>(duration);
   auto nanos = duration_cast<nanoseconds>(duration - secs);
   struct timespec result = { secs.count(), nanos.count() };
@@ -108,8 +112,11 @@ FutexResult nativeFutexWaitImpl(void* addr,
         return FutexResult::VALUE_CHANGED;
       default:
         assert(false);
-        // EACCESS, EFAULT, or EINVAL. All of these mean *addr point to
-        // invalid memory (or I misunderstand the API).  We can either
+        // EINVAL, EACCESS, or EFAULT.  EINVAL means there was an invalid
+        // op (should be impossible) or an invalid timeout (should have
+        // been sanitized by timeSpecFromTimePoint).  EACCESS or EFAULT
+        // means *addr points to invalid memory, which is unlikely because
+        // the caller should have segfaulted already.  We can either
         // crash, or return a value that lets the process continue for
         // a bit. We choose the latter. VALUE_CHANGED probably turns the
         // caller into a spin lock.

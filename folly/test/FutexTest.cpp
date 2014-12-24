@@ -64,9 +64,9 @@ void liveClockWaitUntilTests() {
     auto fp = &f; // workaround for t5336595
     auto thrA = DSched::thread([fp,stress]{
       while (true) {
-        auto deadline = time_point_cast<Duration>(
+        const auto deadline = time_point_cast<Duration>(
             Clock::now() + microseconds(1 << (stress % 20)));
-        auto res = fp->futexWaitUntil(0, deadline);
+        const auto res = fp->futexWaitUntil(0, deadline);
         EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::AWOKEN);
         if (res == FutexResult::AWOKEN) {
           break;
@@ -81,12 +81,26 @@ void liveClockWaitUntilTests() {
     DSched::join(thrA);
   }
 
-  auto start = Clock::now();
-  EXPECT_EQ(f.futexWaitUntil(0, start + milliseconds(100)),
-            FutexResult::TIMEDOUT);
-  LOG(INFO) << "Futex wait timed out after waiting for "
-            << duration_cast<milliseconds>(Clock::now() - start).count()
-            << "ms, should be ~100ms";
+  {
+    const auto start = Clock::now();
+    const auto deadline = time_point_cast<Duration>(start + milliseconds(100));
+    EXPECT_EQ(f.futexWaitUntil(0, deadline), FutexResult::TIMEDOUT);
+    LOG(INFO) << "Futex wait timed out after waiting for "
+              << duration_cast<milliseconds>(Clock::now() - start).count()
+              << "ms using clock with " << Duration::period::den
+              << " precision, should be ~100ms";
+  }
+
+  {
+    const auto start = Clock::now();
+    const auto deadline = time_point_cast<Duration>(
+        start - 2 * start.time_since_epoch());
+    EXPECT_EQ(f.futexWaitUntil(0, deadline), FutexResult::TIMEDOUT);
+    LOG(INFO) << "Futex wait with invalid deadline timed out after waiting for "
+              << duration_cast<milliseconds>(Clock::now() - start).count()
+              << "ms using clock with " << Duration::period::den
+              << " precision, should be ~0ms";
+  }
 }
 
 template <typename Clock>
@@ -95,7 +109,7 @@ void deterministicAtomicWaitUntilTests() {
 
   // Futex wait must eventually fail with either FutexResult::TIMEDOUT or
   // FutexResult::INTERRUPTED
-  auto res = f.futexWaitUntil(0, Clock::now() + milliseconds(100));
+  const auto res = f.futexWaitUntil(0, Clock::now() + milliseconds(100));
   EXPECT_TRUE(res == FutexResult::TIMEDOUT || res == FutexResult::INTERRUPTED);
 }
 
@@ -104,8 +118,8 @@ void run_wait_until_tests() {
   liveClockWaitUntilTests<Atom, system_clock, system_clock::duration>();
   liveClockWaitUntilTests<Atom, steady_clock, steady_clock::duration>();
 
-  typedef duration<int64_t, pico> picoseconds;
-  liveClockWaitUntilTests<Atom, system_clock, picoseconds>();
+  typedef duration<int64_t, std::ratio<1, 10000000>> decimicroseconds;
+  liveClockWaitUntilTests<Atom, system_clock, decimicroseconds>();
 }
 
 template <>
@@ -124,7 +138,7 @@ void run_system_clock_test() {
   struct timespec ts;
   const int maxIters = 1000;
   int iter = 0;
-  uint64_t delta = 10000000 /* 10 ms */;
+  const uint64_t delta = 10000000 /* 10 ms */;
 
   /** The following loop is only to make the test more robust in the presence of
    * clock adjustments that can occur. We just run the loop maxIter times and
@@ -156,15 +170,15 @@ void run_steady_clock_test() {
    * for the time_points */
   EXPECT_TRUE(steady_clock::is_steady);
 
-  uint64_t A = duration_cast<nanoseconds>(steady_clock::now()
-                                          .time_since_epoch()).count();
+  const uint64_t A = duration_cast<nanoseconds>(steady_clock::now()
+                                                .time_since_epoch()).count();
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  uint64_t B = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
+  const uint64_t B = ts.tv_sec * 1000000000ULL + ts.tv_nsec;
 
-  uint64_t C = duration_cast<nanoseconds>(steady_clock::now()
-                                          .time_since_epoch()).count();
+  const uint64_t C = duration_cast<nanoseconds>(steady_clock::now()
+                                                .time_since_epoch()).count();
   EXPECT_TRUE(A <= B && B <= C);
 }
 
