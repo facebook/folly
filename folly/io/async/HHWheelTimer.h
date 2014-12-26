@@ -76,6 +76,13 @@ class HHWheelTimer : private folly::AsyncTimeout,
      */
     virtual void timeoutExpired() noexcept = 0;
 
+    /// This callback was canceled. The default implementation is to just
+    /// proxy to `timeoutExpired` but if you care about the difference between
+    /// the timeout finishing or being canceled you can override this.
+    virtual void callbackCanceled() noexcept {
+      timeoutExpired();
+    }
+
     /**
      * Cancel the timeout, if it is running.
      *
@@ -152,9 +159,17 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * Destroy the HHWheelTimer.
    *
    * A HHWheelTimer should only be destroyed when there are no more
-   * callbacks pending in the set.
+   * callbacks pending in the set. (If it helps you may use cancelAll() to
+   * cancel all pending timeouts explicitly before calling this.)
    */
   virtual void destroy();
+
+  /**
+   * Cancel all outstanding timeouts
+   *
+   * @returns the number of timeouts that were cancelled.
+   */
+  size_t cancelAll();
 
   /**
    * Get the tick interval for this HHWheelTimer.

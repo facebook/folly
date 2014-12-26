@@ -35,14 +35,23 @@ class TestTimeout : public HHWheelTimer::Callback {
   TestTimeout(HHWheelTimer* t, milliseconds timeout) {
     t->scheduleTimeout(this, timeout);
   }
-  virtual void timeoutExpired() noexcept {
+
+  void timeoutExpired() noexcept override {
     timestamps.push_back(TimePoint());
     if (fn) {
       fn();
     }
   }
 
+  void callbackCanceled() noexcept override {
+    canceledTimestamps.push_back(TimePoint());
+    if (fn) {
+      fn();
+    }
+  }
+
   std::deque<TimePoint> timestamps;
+  std::deque<TimePoint> canceledTimestamps;
   std::function<void()> fn;
 };
 
@@ -392,7 +401,15 @@ TEST_F(HHWheelTimerTest, lambda) {
 // at the console to confirm logging)
 TEST_F(HHWheelTimerTest, lambdaThrows) {
   StackWheelTimer t(&eventBase, milliseconds(1));
-  t.scheduleTimeoutFn([&]{ throw std::runtime_error("foo"); },
+  t.scheduleTimeoutFn([&]{ throw std::runtime_error("expected"); },
                       milliseconds(1));
   eventBase.loop();
+}
+
+TEST_F(HHWheelTimerTest, cancelAll) {
+  StackWheelTimer t(&eventBase);
+  TestTimeout tt;
+  t.scheduleTimeout(&tt, std::chrono::minutes(1));
+  EXPECT_EQ(1, t.cancelAll());
+  EXPECT_EQ(1, tt.canceledTimestamps.size());
 }

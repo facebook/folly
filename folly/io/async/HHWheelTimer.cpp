@@ -203,4 +203,23 @@ void HHWheelTimer::timeoutExpired() noexcept {
   }
 }
 
+size_t HHWheelTimer::cancelAll() {
+  decltype(buckets_) buckets;
+  std::swap(buckets, buckets_);
+  size_t count = 0;
+
+  for (auto& tick : buckets) {
+    for (auto& bucket : tick) {
+      while (!bucket.empty()) {
+        auto& cb = bucket.front();
+        cb.cancelTimeout();
+        cb.callbackCanceled();
+        count++;
+      }
+    }
+  }
+
+  return count;
+}
+
 } // folly
