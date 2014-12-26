@@ -86,4 +86,9 @@ class FutureCancellation : public WangleException {
   FutureCancellation() : WangleException("Future was cancelled") {}
 };
 
+class TimedOut : public WangleException {
+ public:
+  TimedOut() : WangleException("Timed out") {}
+};
+
 }}

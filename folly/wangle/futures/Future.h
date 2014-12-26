@@ -26,8 +26,12 @@
 #include <folly/MoveWrapper.h>
 #include <folly/wangle/futures/Promise.h>
 #include <folly/wangle/futures/Try.h>
+#include <folly/wangle/futures/WangleException.h>
+#include <folly/wangle/futures/detail/Types.h>
 
 namespace folly { namespace wangle {
+
+template <class> struct Promise;
 
 namespace detail {
 
@@ -85,11 +89,33 @@ struct Extract<R(Class::*)(Args...)> {
   typedef typename ArgType<Args...>::FirstArg FirstArg;
 };
 
+
 } // detail
 
-template <class> struct Promise;
+struct Timekeeper;
 
 template <typename T> struct isFuture;
+
+/// This namespace is for utility functions that would usually be static
+/// members of Future, except they don't make sense there because they don't
+/// depend on the template type (rather, on the type of their arguments in
+/// some cases). This is the least-bad naming scheme we could think of. Some
+/// of the functions herein have really-likely-to-collide names, like "map"
+/// and "sleep".
+namespace futures {
+  /// Returns a Future that will complete after the specified duration. The
+  /// Duration typedef of a `std::chrono` duration type indicates the
+  /// resolution you can expect to be meaningful (milliseconds at the time of
+  /// writing). Normally you wouldn't need to specify a Timekeeper, we will
+  /// use the global wangle timekeeper (we run a thread whose job it is to
+  /// keep time for wangle timeouts) but we provide the option for power
+  /// users.
+  ///
+  /// The Timekeeper thread will be lazily created the first time it is
+  /// needed. If your program never uses any timeouts or other time-based
+  /// Futures you will pay no Timekeeper thread overhead.
+  Future<void> sleep(Duration, Timekeeper* = nullptr);
+}
 
 template <class T>
 class Future {
@@ -153,6 +179,15 @@ class Future {
 
   /** A reference to the Try of the value */
   Try<T>& getTry();
+
+  /// Block until the future is fulfilled. Returns the value (moved out), or
+  /// throws the exception. The future must not already have a callback.
+  T get();
+
+  /// Block until the future is fulfilled, or until timed out. Returns the
+  /// value (moved out), or throws the exception (which might be a TimedOut
+  /// exception).
+  T get(Duration dur);
 
   /** When this Future has completed, execute func which is a function that
     takes a Try<T>&&. A Future for the return type of func is
@@ -427,6 +462,10 @@ class Future {
     raise(FutureCancellation());
   }
 
+  /// Delay the completion of this Future for at least this duration from
+  /// now. The optional Timekeeper is as with futures::sleep().
+  Future<T> delayed(Duration, Timekeeper* = nullptr);
+
  private:
   typedef detail::Core<T>* corePtr;
 
@@ -568,8 +607,8 @@ Future<T> waitWithSemaphore(Future<T>&& f);
  *
  * Note: each call to this starts a (short-lived) thread and allocates memory.
  */
-template <typename T, class Duration>
-Future<T> waitWithSemaphore(Future<T>&& f, Duration timeout);
+template <typename T, class Dur>
+Future<T> waitWithSemaphore(Future<T>&& f, Dur timeout);
 
 }} // folly::wangle
 

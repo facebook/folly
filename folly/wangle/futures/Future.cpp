@@ -13,7 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/wangle/futures/Future.h>
+#include <folly/wangle/futures/detail/ThreadWheelTimekeeper.h>
+#include <folly/Likely.h>
 
-// fbbuild is too dumb to know that .h files in the directory affect
-// our project, unless we have a .cpp file in the target, in the same
-// directory.
+namespace folly { namespace wangle { namespace futures {
+
+Future<void> sleep(Duration dur, Timekeeper* tk) {
+  if (LIKELY(!tk)) {
+    tk = detail::getTimekeeperSingleton();
+  }
+  return tk->after(dur);
+}
+
+}}}

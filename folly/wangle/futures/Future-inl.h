@@ -19,10 +19,17 @@
 #include <chrono>
 #include <thread>
 
-#include <folly/wangle/futures/detail/Core.h>
 #include <folly/Baton.h>
+#include <folly/wangle/futures/detail/Core.h>
+#include <folly/wangle/futures/Timekeeper.h>
 
 namespace folly { namespace wangle {
+
+class Timekeeper;
+
+namespace detail {
+  Timekeeper* getTimekeeperSingleton();
+}
 
 template <typename T>
 struct isFuture {
@@ -670,9 +677,9 @@ inline Future<void> waitWithSemaphore<void>(Future<void>&& f) {
   return done;
 }
 
-template <typename T, class Duration>
+template <typename T, class Dur>
 Future<T>
-waitWithSemaphore(Future<T>&& f, Duration timeout) {
+waitWithSemaphore(Future<T>&& f, Dur timeout) {
   auto baton = std::make_shared<Baton<>>();
   auto done = f.then([baton](Try<T> &&t) {
     baton->post();
@@ -682,9 +689,9 @@ waitWithSemaphore(Future<T>&& f, Duration timeout) {
   return done;
 }
 
-template <class Duration>
+template <class Dur>
 Future<void>
-waitWithSemaphore(Future<void>&& f, Duration timeout) {
+waitWithSemaphore(Future<void>&& f, Dur timeout) {
   auto baton = std::make_shared<Baton<>>();
   auto done = f.then([baton](Try<void> &&t) {
     baton->post();
@@ -692,6 +699,93 @@ waitWithSemaphore(Future<void>&& f, Duration timeout) {
   });
   baton->timed_wait(std::chrono::system_clock::now() + timeout);
   return done;
+}
+
+namespace {
+  template <class T>
+  void getWaitHelper(Future<T>* f) {
+    // If we already have a value do the cheap thing
+    if (f->isReady()) {
+      return;
+    }
+
+    folly::Baton<> baton;
+    f->then([&](Try<T> const&) {
+      baton.post();
+    });
+    baton.wait();
+  }
+
+  template <class T>
+  Future<T> getWaitTimeoutHelper(Future<T>* f, Duration dur) {
+    // TODO make and use variadic whenAny #5877971
+    Promise<T> p;
+    auto token = std::make_shared<std::atomic<bool>>();
+    folly::Baton<> baton;
+
+    folly::wangle::detail::getTimekeeperSingleton()->after(dur)
+      .then([&,token](Try<void> const& t) {
+        try {
+          t.value();
+          if (token->exchange(true) == false) {
+            p.setException(TimedOut());
+            baton.post();
+          }
+        } catch (std::exception const& e) {
+          if (token->exchange(true) == false) {
+            p.setException(std::current_exception());
+            baton.post();
+          }
+        }
+      });
+
+    f->then([&, token](Try<T>&& t) {
+      if (token->exchange(true) == false) {
+        p.fulfilTry(std::move(t));
+        baton.post();
+      }
+    });
+
+    baton.wait();
+    return p.getFuture();
+  }
+}
+
+template <class T>
+T Future<T>::get() {
+  getWaitHelper(this);
+
+  // Big assumption here: the then() call above, since it doesn't move out
+  // the value, leaves us with a value to return here. This would be a big
+  // no-no in user code, but I'm invoking internal developer privilege. This
+  // is slightly more efficient (save a move()) especially if there's an
+  // exception (save a throw).
+  return std::move(value());
+}
+
+template <>
+inline void Future<void>::get() {
+  getWaitHelper(this);
+}
+
+template <class T>
+T Future<T>::get(Duration dur) {
+  return std::move(getWaitTimeoutHelper(this, dur).value());
+}
+
+template <>
+inline void Future<void>::get(Duration dur) {
+  getWaitTimeoutHelper(this, dur).value();
+}
+
+template <class T>
+Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk)
+{
+  return whenAll(*this, futures::sleep(dur, tk))
+    .then([](Try<std::tuple<Try<T>, Try<void>>>&& tup) {
+      Try<T>& t = std::get<0>(tup.value());
+      return makeFuture<T>(std::move(t));
+    });
 }
 
 }}
