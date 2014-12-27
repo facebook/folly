@@ -231,7 +231,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/futures/Promise.h \
 	wangle/futures/QueuedImmediateExecutor.h \
 	wangle/futures/ScheduledExecutor.h \
-	wangle/futures/Timekeeper.h
+	wangle/futures/Timekeeper.h \
 	wangle/futures/Try-inl.h \
 	wangle/futures/Try.h \
 	wangle/futures/WangleException.h \
@@ -342,7 +342,7 @@ libfolly_la_SOURCES = \
 	wangle/concurrent/IOThreadPoolExecutor.cpp \
 	wangle/concurrent/GlobalExecutor.cpp \
 	wangle/concurrent/ThreadPoolExecutor.cpp \
-	wangle/futures/detail/ThreadwheelTimekeeper.cpp \
+	wangle/futures/detail/ThreadWheelTimekeeper.cpp \
 	wangle/futures/Future.cpp \
 	wangle/futures/InlineExecutor.cpp \
 	wangle/futures/ManualExecutor.cpp \
