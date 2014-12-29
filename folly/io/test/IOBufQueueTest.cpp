@@ -378,6 +378,15 @@ TEST(IOBufQueue, PopFirst) {
   EXPECT_EQ(0, queue.chainLength());
 }
 
+TEST(IOBufQueue, AppendToString) {
+  IOBufQueue queue;
+  queue.append("hello ", 6);
+  queue.append("world", 5);
+  std::string s;
+  queue.appendToString(s);
+  EXPECT_EQ("hello world", s);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

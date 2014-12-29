@@ -273,4 +273,17 @@ void IOBufQueue::clear() {
   chainLength_ = 0;
 }
 
+void IOBufQueue::appendToString(std::string& out) const {
+  if (!head_) {
+    return;
+  }
+  auto len =
+    options_.cacheChainLength ? chainLength_ : head_->computeChainDataLength();
+  out.reserve(out.size() + len);
+
+  for (auto range : *head_) {
+    out.append(reinterpret_cast<const char*>(range.data()), range.size());
+  }
+}
+
 } // folly
