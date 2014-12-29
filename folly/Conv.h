@@ -53,6 +53,22 @@
 
 namespace folly {
 
+/**
+ * The identity conversion function.
+ * to<T>(T) returns itself for all types T.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<std::is_same<Tgt, Src>::value, Tgt>::type
+to(const Src & value) {
+  return value;
+}
+
+template <class Tgt, class Src>
+typename std::enable_if<std::is_same<Tgt, Src>::value, Tgt>::type
+to(Src && value) {
+  return std::move(value);
+}
+
 /*******************************************************************************
  * Integral to integral
  ******************************************************************************/
@@ -64,7 +80,9 @@ namespace folly {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value && std::is_integral<Tgt>::value,
+  std::is_integral<Src>::value
+  && std::is_integral<Tgt>::value
+  && !std::is_same<Tgt, Src>::value,
   Tgt>::type
 to(const Src & value) {
   /* static */ if (std::numeric_limits<Tgt>::max()
@@ -90,7 +108,9 @@ to(const Src & value) {
 
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_floating_point<Tgt>::value && std::is_floating_point<Src>::value,
+  std::is_floating_point<Tgt>::value
+  && std::is_floating_point<Src>::value
+  && !std::is_same<Tgt, Src>::value,
   Tgt>::type
 to(const Src & value) {
   /* static */ if (std::numeric_limits<Tgt>::max() <
@@ -820,20 +840,6 @@ template <class De, class Ts>
 void toAppendDelimFit(const De&, const Ts&) {}
 
 /**
- * to<SomeString>(SomeString str) or to<StringPiece>(StringPiece str) returns
- * itself. As both std::string and folly::fbstring use Copy-on-Write, it's much
- * more efficient by avoiding copying the underlying char array.
- */
-template <class Tgt, class Src>
-typename std::enable_if<
-  (IsSomeString<Tgt>::value
-   || std::is_same<Tgt, folly::StringPiece>::value)
-  && std::is_same<Tgt, Src>::value, Tgt>::type
-to(const Src & value) {
-  return value;
-}
-
-/**
  * to<SomeString>(v1, v2, ...) uses toAppend() (see below) as back-end
  * for all types.
  */
@@ -1403,13 +1409,15 @@ to(const Src & value) {
 // std::underlying_type became available by gcc 4.7.0
 
 template <class Tgt, class Src>
-typename std::enable_if<std::is_enum<Src>::value, Tgt>::type
+typename std::enable_if<
+  std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
 to(const Src & value) {
   return to<Tgt>(static_cast<typename std::underlying_type<Src>::type>(value));
 }
 
 template <class Tgt, class Src>
-typename std::enable_if<std::is_enum<Tgt>::value, Tgt>::type
+typename std::enable_if<
+  std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
 to(const Src & value) {
   return static_cast<Tgt>(to<typename std::underlying_type<Tgt>::type>(value));
 }
@@ -1417,7 +1425,8 @@ to(const Src & value) {
 #else
 
 template <class Tgt, class Src>
-typename std::enable_if<std::is_enum<Src>::value, Tgt>::type
+typename std::enable_if<
+  std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
 to(const Src & value) {
   /* static */ if (Src(-1) < 0) {
     /* static */ if (sizeof(Src) <= sizeof(int)) {
@@ -1435,7 +1444,8 @@ to(const Src & value) {
 }
 
 template <class Tgt, class Src>
-typename std::enable_if<std::is_enum<Tgt>::value, Tgt>::type
+typename std::enable_if<
+  std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
 to(const Src & value) {
   /* static */ if (Tgt(-1) < 0) {
     /* static */ if (sizeof(Tgt) <= sizeof(int)) {
