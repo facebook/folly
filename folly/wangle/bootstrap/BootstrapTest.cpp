@@ -169,3 +169,37 @@ TEST(Bootstrap, ServerAcceptGroup2Test) {
 
   CHECK(factory->pipelines == 1);
 }
+
+TEST(Bootstrap, SharedThreadPool) {
+  auto pool = std::make_shared<IOThreadPoolExecutor>(2);
+
+  TestServer server;
+  auto factory = std::make_shared<TestPipelineFactory>();
+  server.childPipeline(factory);
+  server.group(pool, pool);
+
+  server.bind(0);
+
+  SocketAddress address;
+  server.getSockets()[0]->getAddress(&address);
+
+  TestClient client;
+  client.connect(address);
+
+  TestClient client2;
+  client2.connect(address);
+
+  TestClient client3;
+  client3.connect(address);
+
+  TestClient client4;
+  client4.connect(address);
+
+  TestClient client5;
+  client5.connect(address);
+
+  EventBaseManager::get()->getEventBase()->loop();
+
+  server.stop();
+  CHECK(factory->pipelines == 5);
+}
