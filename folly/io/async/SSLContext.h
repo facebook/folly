@@ -26,6 +26,9 @@
 #include <openssl/ssl.h>
 #include <openssl/tls1.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include <glog/logging.h>
 
 namespace folly {
@@ -461,5 +464,41 @@ class SSLContext {
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
 
 std::ostream& operator<<(std::ostream& os, const folly::PasswordCollector& collector);
+
+class OpenSSLUtils {
+ public:
+  /**
+   * Validate that the peer certificate's common name or subject alt names
+   * match what we expect.  Currently this only checks for IPs within
+   * subject alt names but it could easily be expanded to check common name
+   * and hostnames as well.
+   *
+   * @param cert    X509* peer certificate
+   * @param addr    sockaddr object containing sockaddr to verify
+   * @param addrLen length of sockaddr as returned by getpeername or accept
+   * @return true iff a subject altname IP matches addr
+   */
+  // TODO(agartrell): Add support for things like common name when
+  // necessary.
+  static bool validatePeerCertNames(X509* cert,
+                                    const sockaddr* addr,
+                                    socklen_t addrLen);
+
+  /**
+   * Get the peer socket address from an X509_STORE_CTX*.  Unlike the
+   * accept, getsockname, getpeername, etc family of operations, addrLen's
+   * initial value is ignored and reset.
+   *
+   * @param ctx         Context from which to retrieve peer sockaddr
+   * @param addrStorage out param for address
+   * @param addrLen     out param for length of address
+   * @return true on success, false on failure
+   */
+  static bool getPeerAddressFromX509StoreCtx(X509_STORE_CTX* ctx,
+                                             sockaddr_storage* addrStorage,
+                                             socklen_t* addrLen);
+
+};
+
 
 } // folly
