@@ -30,7 +30,8 @@ namespace __cxxabiv1 {
 
 extern "C" {
 FOLLY_NORETURN void __cxa_throw(void* thrownException,
-                 std::type_info* type, void (*destructor)(void));
+                                std::type_info* type,
+                                void (*destructor)(void*));
 void* __cxa_begin_catch(void* excObj);
 FOLLY_NORETURN void __cxa_rethrow(void);
 void __cxa_end_catch(void);
@@ -48,8 +49,9 @@ FOLLY_TLS StackTraceStack caughtExceptions;
 pthread_once_t initialized = PTHREAD_ONCE_INIT;
 
 extern "C" {
-FOLLY_NORETURN typedef void (*CxaThrowType)(void*, std::type_info*,
-                                            void (*)(void));
+FOLLY_NORETURN typedef void (*CxaThrowType)(void*,
+                                            std::type_info*,
+                                            void (*)(void*));
 typedef void* (*CxaBeginCatchType)(void*);
 FOLLY_NORETURN typedef void (*CxaRethrowType)(void);
 typedef void (*CxaEndCatchType)(void);
@@ -123,8 +125,9 @@ void moveTopException(StackTraceStack& from, StackTraceStack& to) {
 
 namespace __cxxabiv1 {
 
-void __cxa_throw(void* thrownException, std::type_info* type,
-                 void (*destructor)(void)) {
+void __cxa_throw(void* thrownException,
+                 std::type_info* type,
+                 void (*destructor)(void*)) {
   addActiveException();
   orig_cxa_throw(thrownException, type, destructor);
 }
