@@ -18,6 +18,8 @@ folly/folly-config.h
 folly/test/*_benchmark
 folly/test/*_test
 folly/test/*_test_using_jemalloc
+folly/test/*.log
+folly/test/*.trs
 folly/config.*
 folly/configure
 folly/m4/libtool.m4
