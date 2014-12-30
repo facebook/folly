@@ -152,7 +152,8 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 /* Platform specific TLS support
  * gcc implements __thread
  * msvc implements __declspec(thread)
- * the semantics are the same (but remember __thread is broken on apple)
+ * the semantics are the same
+ * (but remember __thread has different semantics when using emutls (ex. apple))
  */
 #if defined(_MSC_VER)
 # define FOLLY_TLS __declspec(thread)

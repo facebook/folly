@@ -30,6 +30,18 @@
 #include <folly/Exception.h>
 #include <folly/Malloc.h>
 
+// In general, emutls cleanup is not guaranteed to play nice with the way
+// StaticMeta mixes direct pthread calls and the use of __thread. This has
+// caused problems on multiple platforms so don't use __thread there.
+//
+// XXX: Ideally we would instead determine if emutls is in use at runtime as it
+// is possible to configure glibc on Linux to use emutls regardless.
+#if !__APPLE__ && !__ANDROID__
+#define FOLLY_TLD_USE_FOLLY_TLS 1
+#else
+#undef FOLLY_TLD_USE_FOLLY_TLS
+#endif
+
 namespace folly {
 namespace threadlocal_detail {
 
@@ -185,7 +197,7 @@ struct StaticMeta {
     t->next = t->prev = t;
   }
 
-#if !__APPLE__
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
   static FOLLY_TLS ThreadEntry threadEntry_;
 #endif
   static StaticMeta<Tag>* inst_;
@@ -210,7 +222,7 @@ struct StaticMeta {
   }
 
   static ThreadEntry* getThreadEntry() {
-#if !__APPLE__
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
     return &threadEntry_;
 #else
     ThreadEntry* threadEntry =
@@ -245,7 +257,7 @@ struct StaticMeta {
 
   static void onThreadExit(void* ptr) {
     auto& meta = instance();
-#if !__APPLE__
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
     ThreadEntry* threadEntry = getThreadEntry();
 
     DCHECK_EQ(ptr, &meta);
@@ -275,8 +287,8 @@ struct StaticMeta {
     threadEntry->elements = nullptr;
     pthread_setspecific(meta.pthreadKey_, nullptr);
 
-#if __APPLE__
-    // Allocated in getThreadEntry(); free it
+#ifndef FOLLY_TLD_USE_FOLLY_TLS
+    // Allocated in getThreadEntry() when not using folly TLS; free it
     delete threadEntry;
 #endif
   }
@@ -415,7 +427,7 @@ struct StaticMeta {
 
     free(reallocated);
 
-#if !__APPLE__
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
     if (prevCapacity == 0) {
       pthread_setspecific(meta.pthreadKey_, &meta);
     }
@@ -432,7 +444,7 @@ struct StaticMeta {
   }
 };
 
-#if !__APPLE__
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
 template <class Tag>
 FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_{nullptr, 0,
                                                     nullptr, nullptr};
