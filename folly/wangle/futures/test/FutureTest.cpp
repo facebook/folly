@@ -1178,3 +1178,27 @@ TEST(Future, t5506504) {
 
   waitWithSemaphore(fn());
 }
+
+// Test of handling of a circular dependency. It's never recommended
+// to have one because of possible memory leaks. Here we test that
+// we can handle freeing of the Future while it is running.
+TEST(Future, CircularDependencySharedPtrSelfReset) {
+  Promise<int64_t> promise;
+  auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
+
+  ptr->then(
+    [ptr] (folly::wangle::Try<int64_t>&& uid) mutable {
+      EXPECT_EQ(1, ptr.use_count());
+
+      // Leaving no references to ourselves.
+      ptr.reset();
+      EXPECT_EQ(0, ptr.use_count());
+    }
+  );
+
+  EXPECT_EQ(2, ptr.use_count());
+
+  ptr.reset();
+
+  promise.fulfil([]{return 1l;});
+}
