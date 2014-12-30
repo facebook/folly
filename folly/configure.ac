@@ -77,7 +77,7 @@ AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h stdint.h stdlib.h strin
 
 AC_CHECK_HEADER(double-conversion/double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \
-                http://code.google.com/p/double-conversion/])], [])
+                https://github.com/floitsch/double-conversion/])], [])
 AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
              [Please install double-conversion library])])
 
