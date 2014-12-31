@@ -52,9 +52,9 @@ void verifyStackTraces() {
   // Other than the top 2 frames (this one and getStackTrace /
   // getStackTraceSafe), the stack traces should be identical
   for (size_t i = 2; i < fa.frameCount; ++i) {
-    VLOG(1) << "i=" << i << " " << std::hex << fa.addresses[i] << " "
-            << faSafe.addresses[i];
-    CHECK_EQ(fa.addresses[i], faSafe.addresses[i]);
+    LOG(INFO) << "i=" << i << " " << std::hex << "0x" << fa.addresses[i]
+              << " 0x" << faSafe.addresses[i];
+    EXPECT_EQ(fa.addresses[i], faSafe.addresses[i]);
   }
 }
 
@@ -85,11 +85,12 @@ TEST(StackTraceTest, Signal) {
   sa.sa_flags = SA_RESETHAND | SA_SIGINFO;
   CHECK_ERR(sigaction(SIGUSR1, &sa, nullptr));
   raise(SIGUSR1);
-  CHECK(handled);
+  EXPECT_TRUE(handled);
 }
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
   return RUN_ALL_TESTS();
 }
