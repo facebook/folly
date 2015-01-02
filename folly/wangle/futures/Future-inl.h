@@ -725,17 +725,14 @@ namespace {
 
     folly::wangle::detail::getTimekeeperSingleton()->after(dur)
       .then([&,token](Try<void> const& t) {
-        try {
-          t.value();
-          if (token->exchange(true) == false) {
+        if (token->exchange(true) == false) {
+          try {
+            t.value();
             p.setException(TimedOut());
-            baton.post();
-          }
-        } catch (std::exception const& e) {
-          if (token->exchange(true) == false) {
+          } catch (std::exception const& e) {
             p.setException(std::current_exception());
-            baton.post();
           }
+          baton.post();
         }
       });
 
@@ -766,6 +763,7 @@ T Future<T>::get() {
 template <>
 inline void Future<void>::get() {
   getWaitHelper(this);
+  value();
 }
 
 template <class T>
@@ -779,8 +777,49 @@ inline void Future<void>::get(Duration dur) {
 }
 
 template <class T>
-Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk)
-{
+Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
+  return within(dur, TimedOut(), tk);
+}
+
+template <class T>
+template <class E>
+Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
+
+  struct Context {
+    Context(E ex) : exception(std::move(ex)), promise(), token(false) {}
+    E exception;
+    Promise<T> promise;
+    std::atomic<bool> token;
+  };
+  auto ctx = std::make_shared<Context>(std::move(e));
+
+  if (!tk) {
+    tk = folly::wangle::detail::getTimekeeperSingleton();
+  }
+
+  tk->after(dur)
+    .then([ctx](Try<void> const& t) {
+      if (ctx->token.exchange(true) == false) {
+        try {
+          t.throwIfFailed();
+          ctx->promise.setException(std::move(ctx->exception));
+        } catch (std::exception const&) {
+          ctx->promise.setException(std::current_exception());
+        }
+      }
+    });
+
+  this->then([ctx](Try<T>&& t) {
+    if (ctx->token.exchange(true) == false) {
+      ctx->promise.fulfilTry(std::move(t));
+    }
+  });
+
+  return ctx->promise.getFuture();
+}
+
+template <class T>
+Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
   return whenAll(*this, futures::sleep(dur, tk))
     .then([](Try<std::tuple<Try<T>, Try<void>>>&& tup) {
       Try<T>& t = std::get<0>(tup.value());

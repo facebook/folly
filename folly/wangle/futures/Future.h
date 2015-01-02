@@ -462,6 +462,16 @@ class Future {
     raise(FutureCancellation());
   }
 
+  /// Throw TimedOut if this Future does not complete within the given
+  /// duration from now. The optional Timeekeeper is as with futures::sleep().
+  Future<T> within(Duration, Timekeeper* = nullptr);
+
+  /// Throw the given exception if this Future does not complete within the
+  /// given duration from now. The optional Timeekeeper is as with
+  /// futures::sleep().
+  template <class E>
+  Future<T> within(Duration, E exception, Timekeeper* = nullptr);
+
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
   Future<T> delayed(Duration, Timekeeper* = nullptr);

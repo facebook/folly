@@ -88,3 +88,40 @@ TEST(Timekeeper, futureDelayed) {
 
   EXPECT_GE(dur, one_ms);
 }
+
+TEST(Timekeeper, futureWithinThrows) {
+  Promise<int> p;
+  auto f = p.getFuture()
+    .within(one_ms)
+    .onError([](TimedOut&) { return -1; });
+
+  EXPECT_EQ(-1, f.get());
+}
+
+TEST(Timekeeper, futureWithinAlreadyComplete) {
+  auto f = makeFuture(42)
+    .within(one_ms)
+    .onError([&](TimedOut&){ return -1; });
+
+  EXPECT_EQ(42, f.get());
+}
+
+TEST(Timekeeper, futureWithinFinishesInTime) {
+  Promise<int> p;
+  auto f = p.getFuture()
+    .within(std::chrono::minutes(1))
+    .onError([&](TimedOut&){ return -1; });
+  p.setValue(42);
+
+  EXPECT_EQ(42, f.get());
+}
+
+TEST(Timekeeper, futureWithinVoidSpecialization) {
+  makeFuture().within(one_ms);
+}
+
+TEST(Timekeeper, futureWithinException) {
+  Promise<void> p;
+  auto f = p.getFuture().within(awhile, std::runtime_error("expected"));
+  EXPECT_THROW(f.get(), std::runtime_error);
+}
