@@ -171,6 +171,20 @@ TEST(Bootstrap, ServerAcceptGroup2Test) {
 }
 
 TEST(Bootstrap, SharedThreadPool) {
+  // Check if reuse port is supported, if not, don't run this test
+  try {
+    EventBase base;
+    auto serverSocket = AsyncServerSocket::newSocket(&base);
+    serverSocket->bind(0);
+    serverSocket->listen(0);
+    serverSocket->startAccepting();
+    serverSocket->setReusePortEnabled(true);
+    serverSocket->stopAccepting();
+  } catch(...) {
+    LOG(INFO) << "Reuse port probably not supported";
+    return;
+  }
+
   auto pool = std::make_shared<IOThreadPoolExecutor>(2);
 
   TestServer server;
