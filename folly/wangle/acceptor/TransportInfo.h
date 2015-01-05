@@ -75,13 +75,13 @@ struct TransportInfo {
    * The name of the SSL ciphersuite used by the transaction's
    * transport.  Returns null if the transport is not SSL.
    */
-  const char* sslCipher{nullptr};
+  std::shared_ptr<std::string> sslCipher{nullptr};
 
   /*
    * The SSL server name used by the transaction's
    * transport.  Returns null if the transport is not SSL.
    */
-  const char* sslServerName{nullptr};
+  std::shared_ptr<std::string> sslServerName{nullptr};
 
   /*
    * list of ciphers sent by the client

@@ -15,14 +15,12 @@
 #include <boost/cast.hpp>
 #include <fcntl.h>
 #include <folly/ScopeGuard.h>
-#include <folly/wangle/acceptor/ManagedConnection.h>
 #include <folly/io/async/EventBase.h>
 #include <fstream>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>
-#include <folly/io/async/EventBase.h>
 #include <unistd.h>
 
 using folly::wangle::ConnectionManager;
@@ -113,8 +111,10 @@ class AcceptorHandshakeHelper :
     tinfo.sslSetupTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - acceptTime_);
     tinfo.sslSetupBytesRead = sock->getRawBytesReceived();
     tinfo.sslSetupBytesWritten = sock->getRawBytesWritten();
-    tinfo.sslServerName = sock->getSSLServerName();
-    tinfo.sslCipher = sock->getNegotiatedCipherName();
+    tinfo.sslServerName = sock->getSSLServerName() ?
+      std::make_shared<std::string>(sock->getSSLServerName()) : nullptr;
+    tinfo.sslCipher = sock->getNegotiatedCipherName() ?
+      std::make_shared<std::string>(sock->getNegotiatedCipherName()) : nullptr;
     tinfo.sslVersion = sock->getSSLVersion();
     tinfo.sslCertSize = sock->getSSLCertSize();
     tinfo.sslResume = SSLUtil::getResumeState(sock);
