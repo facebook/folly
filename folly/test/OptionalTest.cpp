@@ -341,7 +341,7 @@ TEST(Optional, Comparisons) {
   EXPECT_TRUE(6 >  boi);
 
   boost::optional<bool> bob(false);
-  EXPECT_TRUE(bob);
+  EXPECT_TRUE((bool)bob);
   EXPECT_TRUE(bob == false); // well that was confusing
   EXPECT_FALSE(bob != false);
 }

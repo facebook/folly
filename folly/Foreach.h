@@ -48,6 +48,7 @@
  */
 
 #include <boost/type_traits/remove_cv.hpp>
+#include <type_traits>
 
 /*
  * Shorthand for:

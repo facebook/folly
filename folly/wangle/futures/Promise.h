@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/wangle/futures/Try.h>
+#include <functional>
 
 namespace folly { namespace wangle {
 
