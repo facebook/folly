@@ -546,10 +546,10 @@ whenAll(InputIterator first, InputIterator last)
   typedef
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
-  auto n = std::distance(first, last);
-  if (n == 0) {
+  if (first >= last) {
     return makeFuture(std::vector<Try<T>>());
   }
+  size_t n = std::distance(first, last);
 
   auto ctx = new detail::WhenAllContext<T>();
 
