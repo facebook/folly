@@ -123,7 +123,7 @@ class ChannelPipeline<R, W> : public DelayedDestruction {
       return;
     }
 
-    for (int i = 0; i < ctxs_.size() - 1; i++) {
+    for (size_t i = 0; i < ctxs_.size() - 1; i++) {
       ctxs_[i]->link(ctxs_[i+1].get());
     }
 
@@ -293,7 +293,7 @@ class ChannelPipeline<R, W, Handler, Handlers...>
     }
 
     if (!ctxs_.empty()) {
-      for (int i = 0; i < ctxs_.size() - 1; i++) {
+      for (size_t i = 0; i < ctxs_.size() - 1; i++) {
         ctxs_[i]->link(ctxs_[i+1].get());
       }
       ctxs_.back()->link(&ctx_);
