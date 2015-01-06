@@ -179,7 +179,7 @@ size_t qfind_first_byte_of_byteset(const StringPiece haystack,
 template <bool HAYSTACK_ALIGNED>
 size_t scanHaystackBlock(const StringPiece haystack,
                          const StringPiece needles,
-                         int64_t idx)
+                         uint64_t idx)
 // inline is okay because it's only called from other sse4.2 functions
   __attribute__ ((__target__("sse4.2")))
 // Turn off ASAN because the "arr2 = ..." assignment in the loop below reads
@@ -195,7 +195,7 @@ size_t scanHaystackBlock(const StringPiece haystack,
 template <bool HAYSTACK_ALIGNED>
 size_t scanHaystackBlock(const StringPiece haystack,
                          const StringPiece needles,
-                         int64_t blockStartIdx) {
+                         uint64_t blockStartIdx) {
   DCHECK_GT(needles.size(), 16);  // should handled by *needles16() method
   DCHECK(blockStartIdx + 16 <= haystack.size() ||
          (PAGE_FOR(haystack.data() + blockStartIdx) ==
