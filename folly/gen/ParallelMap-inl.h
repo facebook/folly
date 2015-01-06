@@ -75,7 +75,7 @@ class PMap : public Operator<PMap<Predicate>> {
         : pred_(pred),
           pipeline_(nThreads, nThreads) {
         workers_.reserve(nThreads);
-        for (int i = 0; i < nThreads; i++) {
+        for (size_t i = 0; i < nThreads; i++) {
           workers_.push_back(std::thread([this] { this->predApplier(); }));
         }
       }
