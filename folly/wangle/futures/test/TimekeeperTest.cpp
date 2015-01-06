@@ -58,7 +58,7 @@ TEST(Timekeeper, futureGet) {
 
 TEST(Timekeeper, futureGetBeforeTimeout) {
   Promise<int> p;
-  std::thread([&]{ p.setValue(42); }).detach();
+  auto t = std::thread([&]{ p.setValue(42); });
   // Technically this is a race and if the test server is REALLY overloaded
   // and it takes more than a second to do that thread it could be flaky. But
   // I want a low timeout (in human terms) so if this regresses and someone
@@ -66,6 +66,7 @@ TEST(Timekeeper, futureGetBeforeTimeout) {
   // blocked, and get a useful error message instead. If it does get flaky,
   // empirically increase the timeout to the point where it's very improbable.
   EXPECT_EQ(42, p.getFuture().get(seconds(2)));
+  t.join();
 }
 
 TEST(Timekeeper, futureGetTimeout) {
