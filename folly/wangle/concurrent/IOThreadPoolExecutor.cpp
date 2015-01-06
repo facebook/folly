@@ -117,6 +117,17 @@ EventBase* IOThreadPoolExecutor::getEventBase() {
   return pickThread()->eventBase;
 }
 
+EventBase* IOThreadPoolExecutor::getEventBase(
+    ThreadPoolExecutor::ThreadHandle* h) {
+  auto thread = dynamic_cast<IOThread*>(h);
+
+  if (thread) {
+    return thread->eventBase;
+  }
+
+  return nullptr;
+}
+
 std::shared_ptr<ThreadPoolExecutor::Thread>
 IOThreadPoolExecutor::makeThread() {
   return std::make_shared<IOThread>(this);
@@ -148,19 +159,12 @@ void IOThreadPoolExecutor::stopThreads(size_t n) {
   for (size_t i = 0; i < n; i++) {
     const auto ioThread = std::static_pointer_cast<IOThread>(
         threadList_.get()[i]);
+    for (auto& o : observers_) {
+      o->threadStopped(ioThread.get());
+    }
     ioThread->shouldRun = false;
     ioThread->eventBase->terminateLoopSoon();
   }
-}
-
-std::vector<EventBase*> IOThreadPoolExecutor::getEventBases() {
-  std::vector<EventBase*> bases;
-  RWSpinLock::ReadHolder{&threadListLock_};
-  for (const auto& thread : threadList_.get()) {
-    auto ioThread = std::static_pointer_cast<IOThread>(thread);
-    bases.push_back(ioThread->eventBase);
-  }
-  return bases;
 }
 
 // threadListLock_ is readlocked

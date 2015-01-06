@@ -85,13 +85,40 @@ class ThreadPoolExecutor : public virtual Executor {
     return taskStatsSubject_->subscribe(observer);
   }
 
+  /**
+   * Base class for threads created with ThreadPoolExecutor.
+   * Some subclasses have methods that operate on these
+   * handles.
+   */
+  class ThreadHandle {
+   public:
+    virtual ~ThreadHandle() = default;
+  };
+
+  /**
+   * Observer interface for thread start/stop.
+   * Provides hooks so actions can be taken when
+   * threads are created
+   */
+  class Observer {
+   public:
+    virtual void threadStarted(ThreadHandle*) = 0;
+    virtual void threadStopped(ThreadHandle*) = 0;
+    virtual void threadPreviouslyStarted(ThreadHandle*) = 0;
+    virtual void threadNotYetStopped(ThreadHandle*) = 0;
+    virtual ~Observer() = default;
+  };
+
+  void addObserver(std::shared_ptr<Observer>);
+  void removeObserver(std::shared_ptr<Observer>);
+
  protected:
   // Prerequisite: threadListLock_ writelocked
   void addThreads(size_t n);
   // Prerequisite: threadListLock_ writelocked
   void removeThreads(size_t n, bool isJoin);
 
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread {
+  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Thread : public ThreadHandle {
     explicit Thread(ThreadPoolExecutor* pool)
       : id(nextId++),
         handle(),
@@ -185,6 +212,7 @@ class ThreadPoolExecutor : public virtual Executor {
   std::atomic<bool> isJoin_; // whether the current downsizing is a join
 
   std::shared_ptr<Subject<TaskStats>> taskStatsSubject_;
+  std::vector<std::shared_ptr<Observer>> observers_;
 };
 
 }} // folly::wangle

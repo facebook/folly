@@ -105,6 +105,10 @@ void CPUThreadPoolExecutor::threadRun(std::shared_ptr<Thread> thread) {
     auto task = taskQueue_->take();
     if (UNLIKELY(task.poison)) {
       CHECK(threadsToStop_-- > 0);
+      for (auto& o : observers_) {
+        o->threadStopped(thread.get());
+      }
+
       stoppedThreads_.add(thread);
       return;
     } else {

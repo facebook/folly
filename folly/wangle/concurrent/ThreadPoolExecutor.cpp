@@ -99,6 +99,11 @@ void ThreadPoolExecutor::addThreads(size_t n) {
   for (auto& thread : newThreads) {
     thread->startupBaton.wait();
   }
+  for (auto& o : observers_) {
+    for (auto& thread : newThreads) {
+      o->threadStarted(thread.get());
+    }
+  }
 }
 
 // threadListLock_ is writelocked
@@ -169,6 +174,29 @@ ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
 size_t ThreadPoolExecutor::StoppedThreadQueue::size() {
   std::lock_guard<std::mutex> guard(mutex_);
   return queue_.size();
+}
+
+void ThreadPoolExecutor::addObserver(std::shared_ptr<Observer> o) {
+  RWSpinLock::ReadHolder{&threadListLock_};
+  observers_.push_back(o);
+  for (auto& thread : threadList_.get()) {
+    o->threadPreviouslyStarted(thread.get());
+  }
+}
+
+void ThreadPoolExecutor::removeObserver(std::shared_ptr<Observer> o) {
+  RWSpinLock::ReadHolder{&threadListLock_};
+  for (auto& thread : threadList_.get()) {
+    o->threadNotYetStopped(thread.get());
+  }
+
+  for (auto it = observers_.begin(); it != observers_.end(); it++) {
+    if (*it == o) {
+      observers_.erase(it);
+      return;
+    }
+  }
+  DCHECK(false);
 }
 
 }} // folly::wangle

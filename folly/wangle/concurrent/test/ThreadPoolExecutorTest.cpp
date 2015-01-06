@@ -318,3 +318,56 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
   pool.join();
   EXPECT_EQ(100, completed);
 }
+
+class TestObserver : public ThreadPoolExecutor::Observer {
+ public:
+  void threadStarted(ThreadPoolExecutor::ThreadHandle*) {
+    threads_++;
+  }
+  void threadStopped(ThreadPoolExecutor::ThreadHandle*) {
+    threads_--;
+  }
+  void threadPreviouslyStarted(ThreadPoolExecutor::ThreadHandle*) {
+    threads_++;
+  }
+  void threadNotYetStopped(ThreadPoolExecutor::ThreadHandle*) {
+    threads_--;
+  }
+  void checkCalls() {
+    ASSERT_EQ(threads_, 0);
+  }
+ private:
+  int threads_{0};
+};
+
+TEST(ThreadPoolExecutorTest, IOObserver) {
+  auto observer = std::make_shared<TestObserver>();
+
+  {
+    IOThreadPoolExecutor exe(10);
+    exe.addObserver(observer);
+    exe.setNumThreads(3);
+    exe.setNumThreads(0);
+    exe.setNumThreads(7);
+    exe.removeObserver(observer);
+    exe.setNumThreads(10);
+  }
+
+  observer->checkCalls();
+}
+
+TEST(ThreadPoolExecutorTest, CPUObserver) {
+  auto observer = std::make_shared<TestObserver>();
+
+  {
+    CPUThreadPoolExecutor exe(10);
+    exe.addObserver(observer);
+    exe.setNumThreads(3);
+    exe.setNumThreads(0);
+    exe.setNumThreads(7);
+    exe.removeObserver(observer);
+    exe.setNumThreads(10);
+  }
+
+  observer->checkCalls();
+}
