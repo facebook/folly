@@ -33,7 +33,7 @@ MultiLevelTimeSeries<VT, TT>::MultiLevelTimeSeries(
     CHECK(levelDurations);
 
     levels_.reserve(nLevels);
-    for (int i = 0; i < nLevels; ++i) {
+    for (size_t i = 0; i < nLevels; ++i) {
       if (levelDurations[i] == TT(0)) {
         CHECK_EQ(i, nLevels - 1);
       } else if (i > 0) {
@@ -71,7 +71,7 @@ void MultiLevelTimeSeries<VT, TT>::addValueAggregated(TimeType now,
 template <typename VT, typename TT>
 void MultiLevelTimeSeries<VT, TT>::update(TimeType now) {
   flush();
-  for (int i = 0; i < levels_.size(); ++i) {
+  for (size_t i = 0; i < levels_.size(); ++i) {
     levels_[i].update(now);
   }
 }
@@ -80,7 +80,7 @@ template <typename VT, typename TT>
 void MultiLevelTimeSeries<VT, TT>::flush() {
   // update all the underlying levels
   if (cachedCount_ > 0) {
-    for (int i = 0; i < levels_.size(); ++i) {
+    for (size_t i = 0; i < levels_.size(); ++i) {
       levels_[i].addValueAggregated(cachedTime_, cachedSum_, cachedCount_);
     }
     cachedCount_ = 0;

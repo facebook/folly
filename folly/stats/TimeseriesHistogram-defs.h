@@ -29,7 +29,7 @@ template <typename ReturnType>
 ReturnType TimeseriesHistogram<T, TT, C>::avg(int level) const {
   ValueType total = ValueType();
   int64_t nsamples = 0;
-  for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
     total += levelObj.sum();
     nsamples += levelObj.count();
@@ -43,7 +43,7 @@ ReturnType TimeseriesHistogram<T, TT, C>::avg(TimeType start,
                                               TimeType end) const {
   ValueType total = ValueType();
   int64_t nsamples = 0;
-  for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(start, end);
     total += levelObj.sum(start, end);
     nsamples += levelObj.count(start, end);
@@ -57,7 +57,7 @@ ReturnType TimeseriesHistogram<T, TT, C>::rate(TimeType start,
                                                TimeType end) const {
   ValueType total = ValueType();
   TimeType elapsed(0);
-  for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& level = buckets_.getByIndex(b).getLevel(start);
     total += level.sum(start, end);
     elapsed = std::max(elapsed, level.elapsed(start, end));
@@ -169,7 +169,7 @@ template <typename T, typename TT, typename C>
 T TimeseriesHistogram<T, TT, C>::rate(int level) const {
   ValueType total = ValueType();
   TimeType elapsed(0);
-  for (int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
     total += levelObj.sum();
     elapsed = std::max(elapsed, levelObj.elapsed());
