@@ -109,10 +109,9 @@ namespace detail {
     !FOLLY_IS_TRIVIALLY_COPYABLE(T)
   >::type
   moveToUninitialized(T* first, T* last, T* out) {
-    auto const count = last - first;
     std::size_t idx = 0;
     try {
-      for (; idx < count; ++first, ++idx) {
+      for (; first != last; ++first, ++idx) {
         new (&out[idx]) T(std::move(*first));
       }
     } catch (...) {
