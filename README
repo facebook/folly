@@ -62,24 +62,28 @@ In the folly directory, run
   make check
   sudo make install
 
+OS X
+----
+There is a bootstrap script if you use Homebrew (http://brew.sh/). At the time
+of writing (OS X Yosemite 10.10.1) the default compiler (clang) has some
+issues building, but gcc 4.9.2 from Homebrew works fine. (This is taken care
+of by the bootstrap script.)
+
+  cd folly
+  ./bootstrap-osx-homebrew.sh
+  make
+  make check
 
 Other Linux distributions
 -------------------------
 
 - double-conversion (http://code.google.com/p/double-conversion/)
 
-    By default, the build tooling for double-conversion does not build
-    any libraries, which folly requires.  To build the necessary libraries
-    copy folly/SConstruct.double-conversion to your double-conversion
-    source directory before building:
+  Download and build double-conversion.
+  You may need to tell configure where to find it.
 
-      [double-conversion/] scons -f SConstruct.double-conversion
+  ./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/src/
 
-    Then set CPPFLAGS/LDFLAGS so that folly can find your double-conversion
-    build:
-
-      [folly/] LDFLAGS=-L<double-conversion>/ CPPFLAGS=-I<double-conversion>/src/
-        configure ...
 
 - additional platform specific dependencies:
 
