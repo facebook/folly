@@ -84,7 +84,8 @@ class Arena {
     size = roundUp(size);
     bytesUsed_ += size;
 
-    if (LIKELY(end_ - ptr_ >= size)) {
+    assert(ptr_ <= end_);
+    if (LIKELY((size_t)(end_ - ptr_) >= size)) {
       // Fast path: there's enough room in the current block
       char* r = ptr_;
       ptr_ += size;

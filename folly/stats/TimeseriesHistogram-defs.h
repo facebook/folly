@@ -179,14 +179,14 @@ T TimeseriesHistogram<T, TT, C>::rate(int level) const {
 
 template <typename T, typename TT, typename C>
 void TimeseriesHistogram<T, TT, C>::clear() {
-  for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).clear();
   }
 }
 
 template <typename T, typename TT, typename C>
 void TimeseriesHistogram<T, TT, C>::update(TimeType now) {
-  for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).update(now);
   }
 }
@@ -195,7 +195,7 @@ template <typename T, typename TT, typename C>
 std::string TimeseriesHistogram<T, TT, C>::getString(int level) const {
   std::string result;
 
-  for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     if (i > 0) {
       toAppend(",", &result);
     }
@@ -213,7 +213,7 @@ std::string TimeseriesHistogram<T, TT, C>::getString(TimeType start,
                                                      TimeType end) const {
   std::string result;
 
-  for (int i = 0; i < buckets_.getNumBuckets(); i++) {
+  for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     if (i > 0) {
       toAppend(",", &result);
     }

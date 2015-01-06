@@ -358,14 +358,15 @@ class MPMCQueue : boost::noncopyable {
   /// This is how many times we will spin before using FUTEX_WAIT when
   /// the queue is full on enqueue, adaptively computed by occasionally
   /// spinning for longer and smoothing with an exponential moving average
-  Atom<int> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushSpinCutoff_;
+  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING pushSpinCutoff_;
 
   /// The adaptive spin cutoff when the queue is empty on dequeue
-  Atom<int> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popSpinCutoff_;
+  Atom<uint32_t> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING popSpinCutoff_;
 
   /// Alignment doesn't prevent false sharing at the end of the struct,
   /// so fill out the last cache line
-  char padding_[detail::CacheLocality::kFalseSharingRange - sizeof(Atom<int>)];
+  char padding_[detail::CacheLocality::kFalseSharingRange -
+                sizeof(Atom<uint32_t>)];
 
 
   /// We assign tickets in increasing order, but we don't want to
@@ -602,13 +603,13 @@ struct TurnSequencer {
   /// before blocking and will adjust spinCutoff based on the results,
   /// otherwise it will spin for at most spinCutoff spins.
   void waitForTurn(const uint32_t turn,
-                   Atom<int>& spinCutoff,
+                   Atom<uint32_t>& spinCutoff,
                    const bool updateSpinCutoff) noexcept {
-    int prevThresh = spinCutoff.load(std::memory_order_relaxed);
-    const int effectiveSpinCutoff =
+    uint32_t prevThresh = spinCutoff.load(std::memory_order_relaxed);
+    const uint32_t effectiveSpinCutoff =
         updateSpinCutoff || prevThresh == 0 ? kMaxSpins : prevThresh;
-    int tries;
 
+    uint32_t tries;
     const uint32_t sturn = turn << kTurnShift;
     for (tries = 0; ; ++tries) {
       uint32_t state = state_.load(std::memory_order_acquire);
@@ -647,13 +648,14 @@ struct TurnSequencer {
     if (updateSpinCutoff || prevThresh == 0) {
       // if we hit kMaxSpins then spinning was pointless, so the right
       // spinCutoff is kMinSpins
-      int target;
+      uint32_t target;
       if (tries >= kMaxSpins) {
         target = kMinSpins;
       } else {
         // to account for variations, we allow ourself to spin 2*N when
         // we think that N is actually required in order to succeed
-        target = std::min(int{kMaxSpins}, std::max(int{kMinSpins}, tries * 2));
+        target = std::min<uint32_t>(kMaxSpins,
+                                    std::max<uint32_t>(kMinSpins, tries * 2));
       }
 
       if (prevThresh == 0) {
@@ -759,7 +761,7 @@ struct SingleElementQueue {
             typename = typename std::enable_if<
                 std::is_nothrow_constructible<T,Args...>::value>::type>
   void enqueue(const uint32_t turn,
-               Atom<int>& spinCutoff,
+               Atom<uint32_t>& spinCutoff,
                const bool updateSpinCutoff,
                Args&&... args) noexcept {
     sequencer_.waitForTurn(turn * 2, spinCutoff, updateSpinCutoff);
@@ -775,7 +777,7 @@ struct SingleElementQueue {
                  boost::has_nothrow_constructor<T>::value) ||
                 std::is_nothrow_constructible<T,T&&>::value>::type>
   void enqueue(const uint32_t turn,
-               Atom<int>& spinCutoff,
+               Atom<uint32_t>& spinCutoff,
                const bool updateSpinCutoff,
                T&& goner) noexcept {
     if (std::is_nothrow_constructible<T,T&&>::value) {
@@ -798,7 +800,7 @@ struct SingleElementQueue {
   }
 
   void dequeue(uint32_t turn,
-               Atom<int>& spinCutoff,
+               Atom<uint32_t>& spinCutoff,
                const bool updateSpinCutoff,
                T& elem) noexcept {
     if (folly::IsRelocatable<T>::value) {

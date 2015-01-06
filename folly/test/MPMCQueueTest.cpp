@@ -45,7 +45,7 @@ void run_mt_sequencer_thread(
     int numOps,
     uint32_t init,
     TurnSequencer<Atom>& seq,
-    Atom<int>& spinThreshold,
+    Atom<uint32_t>& spinThreshold,
     int& prev,
     int i) {
   for (int op = i; op < numOps; op += numThreads) {
@@ -59,7 +59,7 @@ void run_mt_sequencer_thread(
 template <template<typename> class Atom>
 void run_mt_sequencer_test(int numThreads, int numOps, uint32_t init) {
   TurnSequencer<Atom> seq(init);
-  Atom<int> spinThreshold(0);
+  Atom<uint32_t> spinThreshold(0);
 
   int prev = -1;
   std::vector<std::thread> threads(numThreads);

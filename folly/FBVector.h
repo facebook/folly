@@ -826,7 +826,7 @@ private:
   template <class ForwardIterator>
   void assign(ForwardIterator first, ForwardIterator last,
               std::forward_iterator_tag) {
-    auto const newSize = std::distance(first, last);
+    const size_t newSize = std::distance(first, last);
     if (newSize > capacity()) {
       impl_.reset(newSize);
       M_uninitialized_copy_e(first, last);
