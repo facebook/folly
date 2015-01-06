@@ -239,7 +239,7 @@ class Parallel : public Operator<Parallel<Ops>> {
             ops_(ops) {
         inQueue_.openProducer();
         outQueue_.openConsumer();
-        for (int t = 0; t < threads; ++t) {
+        for (size_t t = 0; t < threads; ++t) {
           inQueue_.openConsumer();
           outQueue_.openProducer();
           workers_.emplace_back([this] {
