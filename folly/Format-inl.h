@@ -199,8 +199,6 @@ template <class Derived, bool containerMode, class... Args>
 template <class Output>
 void BaseFormatter<Derived, containerMode, Args...>::appendOutput(Output& out)
     const {
-  auto p = str_.begin();
-  auto end = str_.end();
 
   // Copy raw string (without format specifiers) to output;
   // not as simple as we'd like, as we still need to translate "}}" to "}"
@@ -224,6 +222,9 @@ void BaseFormatter<Derived, containerMode, Args...>::appendOutput(Output& out)
       ++p;
     }
   };
+
+  auto p = str_.begin();
+  auto end = str_.end();
 
   int nextArg = 0;
   bool hasDefaultArgIndex = false;
