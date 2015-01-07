@@ -1271,7 +1271,8 @@ private: // we have the private section first because it defines some macros
     assert(size() + n <= capacity());
     assert(n != 0);
 
-    auto tail = std::distance(position, impl_.e_);
+    // The result is guaranteed to be non-negative, so use an unsigned type:
+    size_type tail = std::distance(position, impl_.e_);
 
     if (tail <= n) {
       relocate_move(position + n, position, impl_.e_);
