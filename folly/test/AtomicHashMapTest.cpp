@@ -606,7 +606,7 @@ void* atomicHashArrayInsertRaceThread(void* j) {
 }
 TEST(Ahm, atomic_hash_array_insert_race) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
-  int numIterations = 50000, FLAGS_numThreads = 4;
+  int numIterations = 5000, FLAGS_numThreads = 4;
   void* statuses[FLAGS_numThreads];
   for (int i = 0; i < numIterations; i++) {
     arr->clear();
