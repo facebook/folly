@@ -295,7 +295,7 @@ template <class Derived, bool containerMode, class... Args>
 void writeTo(FILE* fp,
              const BaseFormatter<Derived, containerMode, Args...>& formatter) {
   auto writer = [fp] (StringPiece sp) {
-    ssize_t n = fwrite(sp.data(), 1, sp.size(), fp);
+    size_t n = fwrite(sp.data(), 1, sp.size(), fp);
     if (n < sp.size()) {
       throwSystemError("Formatter writeTo", "fwrite failed");
     }
