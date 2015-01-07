@@ -266,7 +266,7 @@ BENCHMARK(ForEachDescendingManual, iters) {
 
 BENCHMARK(ForEachRangeR, iters) {
   int sum = 1;
-  FOR_EACH_RANGE_R (i, 1, iters) {
+  FOR_EACH_RANGE_R (i, 1U, iters) {
     sum *= i;
   }
   doNotOptimizeAway(sum);
