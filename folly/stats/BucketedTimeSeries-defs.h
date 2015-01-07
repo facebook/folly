@@ -35,7 +35,7 @@ BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t nBuckets,
     //
     // There is no point in having more buckets than our timestamp
     // granularity: otherwise we would have buckets that could never be used.
-    if (nBuckets > duration_.count()) {
+    if (nBuckets > size_t(duration_.count())) {
       nBuckets = duration_.count();
     }
 
