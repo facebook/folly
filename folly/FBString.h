@@ -2318,12 +2318,13 @@ std::basic_istream<
   auto err = __ios_base::goodbit;
   if (sentry) {
     auto n = is.width();
-    if (n == 0) {
+    if (n <= 0) {
       n = str.max_size();
     }
     str.erase();
     auto got = is.rdbuf()->sgetc();
-    for (; extracted != n && got != T::eof() && !isspace(got); ++extracted) {
+    for (; extracted != size_t(n) && got != T::eof() &&
+           !isspace(got); ++extracted) {
       // Whew. We get to store this guy
       str.push_back(got);
       got = is.rdbuf()->snextc();
