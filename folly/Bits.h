@@ -436,7 +436,7 @@ class BitIterator
   /**
    * Return the number of bits in an element of the underlying iterator.
    */
-  static size_t bitsPerBlock() {
+  static unsigned int bitsPerBlock() {
     return std::numeric_limits<
       typename std::make_unsigned<
         typename std::iterator_traits<BaseIter>::value_type
@@ -525,7 +525,7 @@ class BitIterator
       (other.bitOffset_ - bitOffset_);
   }
 
-  ssize_t bitOffset_;
+  unsigned int bitOffset_;
 };
 
 /**
