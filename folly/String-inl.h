@@ -567,8 +567,8 @@ void backslashify(const String1& input, String2& output, bool hex_style) {
 
 template <class String1, class String2>
 void humanify(const String1& input, String2& output) {
-  int numUnprintable = 0;
-  int numPrintablePrefix = 0;
+  size_t numUnprintable = 0;
+  size_t numPrintablePrefix = 0;
   for (unsigned char c : input) {
     if (c < 0x20 || c > 0x7e || c == '\\') {
       ++numUnprintable;
