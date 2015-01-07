@@ -36,7 +36,9 @@ HistogramBuckets<T, BucketT>::HistogramBuckets(ValueType bucketSize,
   CHECK_GT(bucketSize_, ValueType(0));
   CHECK_LT(min_, max_);
 
-  unsigned int numBuckets = (max - min) / bucketSize;
+  // Deliberately make this a signed type, because we're about
+  // to compare it against max-min, which is nominally signed, too.
+  int numBuckets = (max - min) / bucketSize;
   // Round up if the bucket size does not fit evenly
   if (numBuckets * bucketSize < max - min) {
     ++numBuckets;
