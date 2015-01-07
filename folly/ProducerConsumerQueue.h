@@ -61,8 +61,8 @@ struct ProducerConsumerQueue : private boost::noncopyable {
     // (No real synchronization needed at destructor time: only one
     // thread can be doing this.)
     if (!boost::has_trivial_destructor<T>::value) {
-      int read = readIndex_;
-      int end = writeIndex_;
+      size_t read = readIndex_;
+      size_t end = writeIndex_;
       while (read != end) {
         records_[read].~T();
         if (++read == size_) {
@@ -168,8 +168,8 @@ private:
   const uint32_t size_;
   T* const records_;
 
-  std::atomic<int> readIndex_;
-  std::atomic<int> writeIndex_;
+  std::atomic<unsigned int> readIndex_;
+  std::atomic<unsigned int> writeIndex_;
 };
 
 }

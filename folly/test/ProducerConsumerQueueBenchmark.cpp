@@ -32,10 +32,10 @@ namespace {
 
 using namespace folly;
 
-typedef int ThroughputType;
+typedef unsigned int ThroughputType;
 typedef ProducerConsumerQueue<ThroughputType> ThroughputQueueType;
 
-typedef long LatencyType;
+typedef unsigned long LatencyType;
 typedef ProducerConsumerQueue<LatencyType> LatencyQueueType;
 
 template<class QueueType>
@@ -138,7 +138,7 @@ struct LatencyTest {
       pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
     }
     for (int i = 0; i < iters_; ++i) {
-      long enqueue_nsec;
+      unsigned long enqueue_nsec;
       while (!queue_.read(enqueue_nsec)) {
       }
 
