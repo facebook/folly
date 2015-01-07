@@ -337,7 +337,7 @@ class TestObserver : public ThreadPoolExecutor::Observer {
     ASSERT_EQ(threads_, 0);
   }
  private:
-  int threads_{0};
+  std::atomic<int> threads_{0};
 };
 
 TEST(ThreadPoolExecutorTest, IOObserver) {
