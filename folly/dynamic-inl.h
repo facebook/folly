@@ -950,7 +950,7 @@ class FormatValue<detail::DefaultValueWrapper<dynamic, V>> {
     case dynamic::ARRAY:
       {
         int key = arg.splitIntKey();
-        if (key >= 0 && key < c.size()) {
+        if (key >= 0 && size_t(key) < c.size()) {
           FormatValue<dynamic>(c.at(key)).format(arg, cb);
         } else{
           FormatValue<V>(val_.defaultValue).format(arg, cb);
