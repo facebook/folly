@@ -944,7 +944,7 @@ struct IndexableTraitsSeq : public FormatTraitsBase {
 
   static const value_type& at(const C& c, int idx,
                               const value_type& dflt) {
-    return (idx >= 0 && idx < c.size()) ? c.at(idx) : dflt;
+    return (idx >= 0 && size_t(idx) < c.size()) ? c.at(idx) : dflt;
   }
 };
 
