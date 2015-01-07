@@ -907,7 +907,7 @@ TYPED_TEST(NeedleFinderTest, Unaligned) {
   string s = "0123456789ABCDEFGH";
   for (size_t i = 0; i < s.size(); ++i) {
     StringPiece a(s.c_str() + i);
-    for (int j = 0; j < s.size(); ++j) {
+    for (size_t j = 0; j < s.size(); ++j) {
       StringPiece b(s.c_str() + j);
       EXPECT_EQ((i > j) ? 0 : j - i, this->find_first_byte_of(a, b));
     }
