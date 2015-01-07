@@ -178,7 +178,7 @@ class ServerBootstrap {
     bind0->wait();
 
     auto barrier = std::make_shared<boost::barrier>(acceptor_group_->numThreads());
-    for (int i = 1; i < acceptor_group_->numThreads(); i++) {
+    for (size_t i = 1; i < acceptor_group_->numThreads(); i++) {
       acceptor_group_->add(std::bind(startupFunc, barrier));
     }
     barrier->wait();
