@@ -2322,16 +2322,15 @@ std::basic_istream<
       n = str.max_size();
     }
     str.erase();
-    auto got = is.rdbuf()->sgetc();
-    for (; extracted != size_t(n) && got != T::eof() &&
-           !isspace(got); ++extracted) {
-      // Whew. We get to store this guy
+    for (auto got = is.rdbuf()->sgetc(); extracted != size_t(n); ++extracted) {
+      if (got == T::eof()) {
+        err |= __ios_base::eofbit;
+        is.width(0);
+        break;
+      }
+      if (isspace(got)) break;
       str.push_back(got);
       got = is.rdbuf()->snextc();
-    }
-    if (got == T::eof()) {
-      err |= __ios_base::eofbit;
-      is.width(0);
     }
   }
   if (!extracted) {
