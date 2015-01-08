@@ -92,10 +92,8 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_C_VOLATILE
-AC_CHECK_TYPE([__int128],
-  [AC_DEFINE([HAVE_INT128_T], [1], [Define if __int128 exists])],
-  [AC_DEFINE([HAVE_INT128_T], [0], [Define if __int128 does not exist])])
-AC_CHECK_TYPES([ptrdiff_t])
+AC_CHECK_TYPE([__int128], AC_DEFINE([HAVE_INT128_T], [1], [Define if we have __int128]))
+AC_CHECK_TYPES([ptrdiff_t, pthread_spinlock_t])
 
 AC_CACHE_CHECK(
   [for ifunc support],
@@ -274,6 +272,7 @@ AC_CHECK_FUNCS([getdelim \
                 pow \
                 strerror \
                 pthread_yield \
+                pthread_atfork \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \

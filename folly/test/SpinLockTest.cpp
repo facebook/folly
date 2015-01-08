@@ -146,7 +146,7 @@ TEST(SpinLock, AppleTryLock) {
 }
 #endif
 
-#if !__ANDROID__
+#if FOLLY_HAVE_PTHREAD_SPINLOCK_T
 TEST(SpinLock, PthreadCorrectness) {
   correctnessTest<folly::SpinLockPthreadImpl>();
 }

@@ -207,7 +207,7 @@ TEST(SortedVectorTypes, Sizes) {
   typedef sorted_vector_set<int,std::less<int>,
     std::allocator<int>,OneAtATimePolicy> SetT;
   typedef sorted_vector_map<int,int,std::less<int>,
-    std::allocator<int>,OneAtATimePolicy> MapT;
+    std::allocator<std::pair<int,int>>,OneAtATimePolicy> MapT;
 
   EXPECT_EQ(sizeof(SetT), sizeof(std::vector<int>));
   EXPECT_EQ(sizeof(MapT), sizeof(std::vector<std::pair<int,int> >));

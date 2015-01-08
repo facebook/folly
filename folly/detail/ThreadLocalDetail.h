@@ -207,14 +207,18 @@ struct StaticMeta {
     int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
     checkPosixError(ret, "pthread_key_create failed");
 
-    // pthread_atfork is not part of the Android NDK at least as of n9d. If
-    // something is trying to call native fork() directly at all with Android's
-    // process management model, this is probably the least of the problems.
-#if !__ANDROID__
+#if FOLLY_HAVE_PTHREAD_ATFORK
     ret = pthread_atfork(/*prepare*/ &StaticMeta::preFork,
                          /*parent*/ &StaticMeta::onForkParent,
                          /*child*/ &StaticMeta::onForkChild);
     checkPosixError(ret, "pthread_atfork failed");
+#elif !__ANDROID__
+    // pthread_atfork is not part of the Android NDK at least as of n9d. If
+    // something is trying to call native fork() directly at all with Android's
+    // process management model, this is probably the least of the problems.
+    //
+    // But otherwise, this is a problem.
+    #warning pthread_atfork unavailable
 #endif
   }
   ~StaticMeta() {

@@ -84,7 +84,7 @@ class SpinLockAppleImpl {
 #include <pthread.h>
 #include <folly/Exception.h>
 
-#if !__ANDROID__ && !__APPLE__
+#if FOLLY_HAVE_PTHREAD_SPINLOCK_T
 
 // Apple and Android systems don't have pthread_spinlock_t, so we can't support
 // this version on those platforms.
@@ -122,7 +122,7 @@ class SpinLockPthreadImpl {
 
 }
 
-#endif // !__ANDROID__ && !__APPLE__
+#endif // FOLLY_HAVE_PTHREAD_SPINLOCK_T
 
 namespace folly {
 

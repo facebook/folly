@@ -24,7 +24,7 @@ namespace folly {
 typedef SpinLockMslImpl SpinLock;
 #elif __APPLE__
 typedef SpinLockAppleImpl SpinLock;
-#elif __ANDROID__
+#elif FOLLY_HAVE_PTHREAD_SPINLOCK_T
 typedef SpinLockPthreadMutexImpl SpinLock;
 #else
 typedef SpinLockPthreadImpl SpinLock;
