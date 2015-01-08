@@ -20,20 +20,21 @@
 #include <folly/wangle/futures/Promise.h>
 
 using namespace folly::wangle;
+using folly::exception_wrapper;
 
 TEST(Interrupts, raise) {
   std::runtime_error eggs("eggs");
   Promise<void> p;
-  p.setInterruptHandler([&](std::exception_ptr e) {
-    EXPECT_THROW(std::rethrow_exception(e), decltype(eggs));
+  p.setInterruptHandler([&](const exception_wrapper& e) {
+    EXPECT_THROW(e.throwException(), decltype(eggs));
   });
   p.getFuture().raise(eggs);
 }
 
 TEST(Interrupts, cancel) {
   Promise<void> p;
-  p.setInterruptHandler([&](std::exception_ptr e) {
-    EXPECT_THROW(std::rethrow_exception(e), FutureCancellation);
+  p.setInterruptHandler([&](const exception_wrapper& e) {
+    EXPECT_THROW(e.throwException(), FutureCancellation);
   });
   p.getFuture().cancel();
 }
@@ -41,7 +42,7 @@ TEST(Interrupts, cancel) {
 TEST(Interrupts, handleThenInterrupt) {
   Promise<int> p;
   bool flag = false;
-  p.setInterruptHandler([&](std::exception_ptr e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
   p.getFuture().cancel();
   EXPECT_TRUE(flag);
 }
@@ -50,14 +51,14 @@ TEST(Interrupts, interruptThenHandle) {
   Promise<int> p;
   bool flag = false;
   p.getFuture().cancel();
-  p.setInterruptHandler([&](std::exception_ptr e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
   EXPECT_TRUE(flag);
 }
 
 TEST(Interrupts, interruptAfterFulfilNoop) {
   Promise<void> p;
   bool flag = false;
-  p.setInterruptHandler([&](std::exception_ptr e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
   p.setValue();
   p.getFuture().cancel();
   EXPECT_FALSE(flag);
@@ -66,7 +67,7 @@ TEST(Interrupts, interruptAfterFulfilNoop) {
 TEST(Interrupts, secondInterruptNoop) {
   Promise<void> p;
   int count = 0;
-  p.setInterruptHandler([&](std::exception_ptr e) { count++; });
+  p.setInterruptHandler([&](const exception_wrapper& e) { count++; });
   auto f = p.getFuture();
   f.cancel();
   f.cancel();

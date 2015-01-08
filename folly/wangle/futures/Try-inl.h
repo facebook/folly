@@ -27,7 +27,7 @@ Try<T>::Try(Try<T>&& t) : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::exception_ptr(t.e_);
+    new (&e_)std::unique_ptr<exception_wrapper>(std::move(t.e_));
   }
 }
 
@@ -38,7 +38,7 @@ Try<T>& Try<T>::operator=(Try<T>&& t) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
-    new (&e_)std::exception_ptr(t.e_);
+    new (&e_)std::unique_ptr<exception_wrapper>(std::move(t.e_));
   }
   return *this;
 }
@@ -48,7 +48,7 @@ Try<T>::~Try() {
   if (contains_ == Contains::VALUE) {
     value_.~T();
   } else if (contains_ == Contains::EXCEPTION) {
-    e_.~exception_ptr();
+    e_.~unique_ptr<exception_wrapper>();
   }
 }
 
@@ -68,7 +68,7 @@ template <class T>
 void Try<T>::throwIfFailed() const {
   if (contains_ != Contains::VALUE) {
     if (contains_ == Contains::EXCEPTION) {
-      std::rethrow_exception(e_);
+      e_->throwException();
     } else {
       throw UsingUninitializedTry();
     }
@@ -77,7 +77,7 @@ void Try<T>::throwIfFailed() const {
 
 void Try<void>::throwIfFailed() const {
   if (!hasValue_) {
-    std::rethrow_exception(e_);
+    e_->throwException();
   }
 }
 
@@ -97,10 +97,11 @@ typename std::enable_if<
 makeTryFunction(F&& f) {
   typedef typename std::result_of<F()>::type ResultType;
   try {
-    auto value = f();
-    return Try<ResultType>(std::move(value));
+    return Try<ResultType>(f());
+  } catch (std::exception& e) {
+    return Try<ResultType>(exception_wrapper(std::current_exception(), e));
   } catch (...) {
-    return Try<ResultType>(std::current_exception());
+    return Try<ResultType>(exception_wrapper(std::current_exception()));
   }
 }
 
@@ -112,8 +113,10 @@ makeTryFunction(F&& f) {
   try {
     f();
     return Try<void>();
+  } catch (std::exception& e) {
+    return Try<void>(exception_wrapper(std::current_exception(), e));
   } catch (...) {
-    return Try<void>(std::current_exception());
+    return Try<void>(exception_wrapper(std::current_exception()));
   }
 }
 

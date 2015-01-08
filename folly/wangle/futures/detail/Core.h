@@ -132,7 +132,7 @@ class Core : protected FSM<State> {
   // Called by a destructing Promise
   void detachPromise() {
     if (!ready()) {
-      setResult(Try<T>(std::make_exception_ptr(BrokenPromise())));
+      setResult(Try<T>(exception_wrapper(BrokenPromise())));
     }
     detachOne();
   }
@@ -154,18 +154,18 @@ class Core : protected FSM<State> {
     executor_ = x;
   }
 
-  void raise(std::exception_ptr const& e) {
+  void raise(exception_wrapper const& e) {
     FSM_START
       case State::Interruptible:
         FSM_UPDATE2(State::Interrupted,
-          [&]{ interrupt_ = e; },
-          [&]{ interruptHandler_(interrupt_); });
+          [&]{ interrupt_ = folly::make_unique<exception_wrapper>(e); },
+          [&]{ interruptHandler_(*interrupt_); });
         break;
 
       case State::Waiting:
       case State::Interrupted:
         FSM_UPDATE(State::Interrupted,
-          [&]{ interrupt_ = e; });
+          [&]{ interrupt_ = folly::make_unique<exception_wrapper>(e); });
         break;
 
       case State::Done:
@@ -173,7 +173,7 @@ class Core : protected FSM<State> {
     FSM_END
   }
 
-  void setInterruptHandler(std::function<void(std::exception_ptr const&)> fn) {
+  void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
     FSM_START
       case State::Waiting:
       case State::Interruptible:
@@ -182,7 +182,7 @@ class Core : protected FSM<State> {
         break;
 
       case State::Interrupted:
-        fn(interrupt_);
+        fn(*interrupt_);
         FSM_BREAK
 
       case State::Done:
@@ -228,8 +228,8 @@ class Core : protected FSM<State> {
   std::atomic<unsigned char> detached_ {0};
   std::atomic<bool> active_ {true};
   std::atomic<Executor*> executor_ {nullptr};
-  std::exception_ptr interrupt_;
-  std::function<void(std::exception_ptr const&)> interruptHandler_;
+  std::unique_ptr<exception_wrapper> interrupt_;
+  std::function<void(exception_wrapper const&)> interruptHandler_;
 };
 
 template <typename... Ts>

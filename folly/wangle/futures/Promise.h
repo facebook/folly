@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/wangle/futures/Deprecated.h>
 #include <folly/wangle/futures/Try.h>
 #include <functional>
 
@@ -42,6 +43,9 @@ public:
     once, thereafter Future already retrieved exception will be raised. */
   Future<T> getFuture();
 
+  /** Fulfil the Promise with an exception_wrapper */
+  void setException(exception_wrapper ew);
+
   /** Fulfil the Promise with an exception_ptr, e.g.
     try {
       ...
@@ -49,20 +53,22 @@ public:
       p.setException(std::current_exception());
     }
     */
-  void setException(std::exception_ptr const&);
+  void setException(std::exception_ptr const&) DEPRECATED;
 
   /** Fulfil the Promise with an exception type E, which can be passed to
     std::make_exception_ptr(). Useful for originating exceptions. If you
-    caught an exception the exception_ptr form is more appropriate.
+    caught an exception the exception_wrapper form is more appropriate.
     */
-  template <class E> void setException(E const&);
+  template <class E>
+  typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
+  setException(E const&);
 
   /// Set an interrupt handler to handle interrupts. See the documentation for
   /// Future::raise(). Your handler can do whatever it wants, but if you
   /// bother to set one then you probably will want to fulfil the promise with
   /// an exception (or special value) indicating how the interrupt was
   /// handled.
-  void setInterruptHandler(std::function<void(std::exception_ptr const&)>);
+  void setInterruptHandler(std::function<void(exception_wrapper const&)>);
 
   /** Fulfil this Promise (only for Promise<void>) */
   void setValue();

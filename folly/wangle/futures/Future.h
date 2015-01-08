@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <folly/MoveWrapper.h>
+#include <folly/wangle/futures/Deprecated.h>
 #include <folly/wangle/futures/Promise.h>
 #include <folly/wangle/futures/Try.h>
 #include <folly/wangle/futures/WangleException.h>
@@ -445,7 +446,8 @@ class Future {
 
   template <class E>
   void raise(E&& exception) {
-    raise(std::make_exception_ptr(std::forward<E>(exception)));
+    raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
+        std::move(exception)));
   }
 
   /// Raise an interrupt. If the promise holder has an interrupt
@@ -456,7 +458,7 @@ class Future {
   /// preventing the asynchronous operation (if in time), and the promise
   /// holder setting an exception on the future. (That may happen
   /// asynchronously, of course.)
-  void raise(std::exception_ptr interrupt);
+  void raise(exception_wrapper interrupt);
 
   void cancel() {
     raise(FutureCancellation());
@@ -527,7 +529,11 @@ auto makeFutureTry(
 ///
 ///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
-Future<T> makeFuture(std::exception_ptr const& e);
+Future<T> makeFuture(std::exception_ptr const& e) DEPRECATED;
+
+/// Make a failed Future from an exception_wrapper.
+template <class T>
+Future<T> makeFuture(exception_wrapper ew);
 
 /** Make a Future from an exception type E that can be passed to
   std::make_exception_ptr(). */

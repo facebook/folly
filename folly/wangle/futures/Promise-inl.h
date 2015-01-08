@@ -78,19 +78,31 @@ Future<T> Promise<T>::getFuture() {
 
 template <class T>
 template <class E>
-void Promise<T>::setException(E const& e) {
-  setException(std::make_exception_ptr<E>(e));
+typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
+Promise<T>::setException(E const& e) {
+  setException(make_exception_wrapper<E>(e));
 }
 
 template <class T>
 void Promise<T>::setException(std::exception_ptr const& e) {
+  try {
+    std::rethrow_exception(e);
+  } catch (const std::exception& e) {
+    setException(exception_wrapper(std::current_exception(), e));
+  } catch (...) {
+    setException(exception_wrapper(std::current_exception()));
+  }
+}
+
+template <class T>
+void Promise<T>::setException(exception_wrapper ew) {
   throwIfFulfilled();
-  core_->setResult(Try<T>(e));
+  core_->setResult(Try<T>(std::move(ew)));
 }
 
 template <class T>
 void Promise<T>::setInterruptHandler(
-  std::function<void(std::exception_ptr const&)> fn) {
+  std::function<void(exception_wrapper const&)> fn) {
   core_->setInterruptHandler(std::move(fn));
 }
 

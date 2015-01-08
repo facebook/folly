@@ -165,6 +165,132 @@ BENCHMARK_RELATIVE(contention) {
   producer.join();
 }
 
+BENCHMARK_DRAW_LINE();
+
+// The old way. Throw an exception, and rethrow to access it upstream.
+void throwAndCatchImpl() {
+  makeFuture()
+      .then([](Try<void>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<void>&& t) {
+        try {
+          t.value();
+        } catch(const std::runtime_error& e) {
+          // ...
+          return;
+        }
+        CHECK(false);
+      });
+}
+
+// Not much better. Throw an exception, and access it via the wrapper upstream.
+// Actually a little worse due to wrapper overhead. then() won't know that the
+// exception is a runtime_error, so will have to store it as an exception_ptr
+// anyways. withException will therefore have to rethrow. Note that if we threw
+// std::exception instead, we would see some wins, as that's the type then()
+// will try to wrap, so no exception_ptrs/rethrows are necessary.
+void throwAndCatchWrappedImpl() {
+  makeFuture()
+      .then([](Try<void>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<void>&& t) {
+        auto caught = t.withException<std::runtime_error>(
+            [](const std::runtime_error& e){
+              // ...
+            });
+        CHECK(caught);
+      });
+}
+
+// Better. Wrap an exception, and rethrow to access it upstream.
+void throwWrappedAndCatchImpl() {
+  makeFuture()
+      .then([](Try<void>&&){
+        return makeFuture<void>(std::runtime_error("oh no"));
+      })
+      .then([](Try<void>&& t) {
+        try {
+          t.value();
+        } catch(const std::runtime_error& e) {
+          // ...
+          return;
+        }
+        CHECK(false);
+      });
+}
+
+// The new way. Wrap an exception, and access it via the wrapper upstream
+void throwWrappedAndCatchWrappedImpl() {
+  makeFuture()
+      .then([](Try<void>&&){
+        return makeFuture<void>(std::runtime_error("oh no"));
+      })
+      .then([](Try<void>&& t){
+        auto caught = t.withException<std::runtime_error>(
+            [](const std::runtime_error& e){
+              // ...
+            });
+        CHECK(caught);
+      });
+}
+
+// Simulate heavy contention on func
+void contend(void(*func)()) {
+  folly::BenchmarkSuspender s;
+  const int N = 100;
+  const int iters = 1000;
+  pthread_barrier_t barrier;
+  pthread_barrier_init(&barrier, nullptr, N+1);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < N; i++) {
+    threads.push_back(std::thread([&](){
+      pthread_barrier_wait(&barrier);
+      for (int j = 0; j < iters; j++) {
+        func();
+      }
+    }));
+  }
+  pthread_barrier_wait(&barrier);
+  s.dismiss();
+  for (auto& t : threads) {
+    t.join();
+  }
+  s.rehire();
+  pthread_barrier_destroy(&barrier);
+}
+
+BENCHMARK(throwAndCatch) {
+  throwAndCatchImpl();
+}
+
+BENCHMARK_RELATIVE(throwAndCatchWrapped) {
+  throwAndCatchWrappedImpl();
+}
+
+BENCHMARK_RELATIVE(throwWrappedAndCatch) {
+  throwWrappedAndCatchImpl();
+}
+
+BENCHMARK_RELATIVE(throwWrappedAndCatchWrapped) {
+  throwWrappedAndCatchWrappedImpl();
+}
+
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(throwAndCatchContended) {
+  contend(throwAndCatchImpl);
+}
+
+BENCHMARK_RELATIVE(throwAndCatchWrappedContended) {
+  contend(throwAndCatchWrappedImpl);
+}
+
+BENCHMARK_RELATIVE(throwWrappedAndCatchContended) {
+  contend(throwWrappedAndCatchImpl);
+}
+
+BENCHMARK_RELATIVE(throwWrappedAndCatchWrappedContended) {
+  contend(throwWrappedAndCatchWrappedImpl);
+}
+
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   folly::runBenchmarks();

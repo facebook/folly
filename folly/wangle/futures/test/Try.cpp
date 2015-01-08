@@ -38,7 +38,7 @@ TEST(Try, makeTryFunctionThrow) {
   };
 
   auto result = makeTryFunction(func);
-  EXPECT_TRUE(result.hasException());
+  EXPECT_TRUE(result.hasException<std::runtime_error>());
 }
 
 TEST(Try, makeTryFunctionVoid) {
@@ -57,5 +57,5 @@ TEST(Try, makeTryFunctionVoidThrow) {
   };
 
   auto result = makeTryFunction(func);
-  EXPECT_TRUE(result.hasException());
+  EXPECT_TRUE(result.hasException<std::runtime_error>());
 }

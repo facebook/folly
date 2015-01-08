@@ -102,15 +102,50 @@ namespace folly {
  *
  */
 class exception_wrapper {
- public:
-  exception_wrapper() : throwfn_(nullptr) { }
+ protected:
+  template <typename Ex>
+  struct optimize;
 
-  // Implicitly construct an exception_wrapper from any std::exception
-  template <typename T, typename =
-    typename std::enable_if<std::is_base_of<std::exception, T>::value>::type>
-  /* implicit */ exception_wrapper(T&& exn) {
-    item_ = std::make_shared<T>(std::forward<T>(exn));
-    throwfn_ = folly::detail::Thrower<T>::doThrow;
+ public:
+  exception_wrapper() = default;
+
+  // Implicitly construct an exception_wrapper from a qualifying exception.
+  // See the optimize struct for details.
+  template <typename Ex, typename =
+    typename std::enable_if<optimize<Ex>::value>::type>
+  /* implicit */ exception_wrapper(Ex&& exn) {
+    item_ = std::make_shared<Ex>(std::forward<Ex>(exn));
+    throwfn_ = folly::detail::Thrower<Ex>::doThrow;
+  }
+
+  // The following two constructors are meant to emulate the behavior of
+  // try_and_catch in performance sensitive code as well as to be flexible
+  // enough to wrap exceptions of unknown type. There is an overload that
+  // takes an exception reference so that the wrapper can extract and store
+  // the exception's type and what() when possible.
+  //
+  // The canonical use case is to construct an all-catching exception wrapper
+  // with minimal overhead like so:
+  //
+  //   try {
+  //     // some throwing code
+  //   } catch (const std::exception& e) {
+  //     // won't lose e's type and what()
+  //     exception_wrapper ew{std::current_exception(), e};
+  //   } catch (...) {
+  //     // everything else
+  //     exception_wrapper ew{std::current_exception()};
+  //   }
+  //
+  // try_and_catch is cleaner and preferable. Use it unless you're sure you need
+  // something like this instead.
+  template <typename Ex>
+  explicit exception_wrapper(std::exception_ptr eptr, Ex& exn) {
+    assign_eptr(eptr, exn);
+  }
+
+  explicit exception_wrapper(std::exception_ptr eptr) {
+    assign_eptr(eptr);
   }
 
   void throwException() const {
@@ -185,14 +220,41 @@ class exception_wrapper {
     return false;
   }
 
+  // If this exception wrapper wraps an exception of type Ex, with_exception
+  // will call f with the wrapped exception as an argument and return true, and
+  // will otherwise return false.
   template <class Ex, class F>
-  bool with_exception(F f) {
-    return with_exception1<Ex>(f, this);
+  typename std::enable_if<
+    std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
+    bool>::type
+  with_exception(F f) {
+    return with_exception1<typename std::decay<Ex>::type>(f, this);
   }
 
+  // Const overload
   template <class Ex, class F>
-  bool with_exception(F f) const {
-    return with_exception1<const Ex>(f, this);
+  typename std::enable_if<
+    std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
+    bool>::type
+  with_exception(F f) const {
+    return with_exception1<const typename std::decay<Ex>::type>(f, this);
+  }
+
+  // Overload for non-exceptions. Always rethrows.
+  template <class Ex, class F>
+  typename std::enable_if<
+    !std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
+    bool>::type
+  with_exception(F f) const {
+    try {
+      throwException();
+    } catch (typename std::decay<Ex>::type& e) {
+      f(e);
+      return true;
+    } catch (...) {
+      // fall through
+    }
+    return false;
   }
 
   std::exception_ptr getExceptionPtr() const {
@@ -209,11 +271,30 @@ class exception_wrapper {
   }
 
 protected:
+  template <typename Ex>
+  struct optimize {
+    static const bool value =
+      std::is_base_of<std::exception, Ex>::value &&
+      std::is_copy_assignable<Ex>::value &&
+      !std::is_abstract<Ex>::value;
+  };
+
+  template <typename Ex>
+  void assign_eptr(std::exception_ptr eptr, Ex& e) {
+    this->eptr_ = eptr;
+    this->estr_ = exceptionStr(e).toStdString();
+    this->ename_ = demangle(typeid(e)).toStdString();
+  }
+
+  void assign_eptr(std::exception_ptr eptr) {
+    this->eptr_ = eptr;
+  }
+
   // Optimized case: if we know what type the exception is, we can
   // store a copy of the concrete type, and a helper function so we
   // can rethrow it.
   std::shared_ptr<std::exception> item_;
-  void (*throwfn_)(std::exception*);
+  void (*throwfn_)(std::exception*){nullptr};
   // Fallback case: store the library wrapper, which is less efficient
   // but gets the job done.  Also store exceptionPtr() the name of the
   // exception type, so we can at least get those back out without
@@ -318,29 +399,14 @@ class try_and_catch<LastException, Exceptions...> :
   try_and_catch() : Base() {}
 
   template <typename Ex>
-  void assign_eptr(Ex& e) {
-    this->eptr_ = std::current_exception();
-    this->estr_ = exceptionStr(e).toStdString();
-    this->ename_ = demangle(typeid(e)).toStdString();
+  typename std::enable_if<!exception_wrapper::optimize<Ex>::value>::type
+  assign_exception(Ex& e, std::exception_ptr eptr) {
+    exception_wrapper::assign_eptr(eptr, e);
   }
 
   template <typename Ex>
-  struct optimize {
-    static const bool value =
-      std::is_base_of<std::exception, Ex>::value &&
-      std::is_copy_assignable<Ex>::value &&
-      !std::is_abstract<Ex>::value;
-  };
-
-  template <typename Ex>
-  typename std::enable_if<!optimize<Ex>::value>::type
-  assign_exception(Ex& e) {
-    assign_eptr(e);
-  }
-
-  template <typename Ex>
-  typename std::enable_if<optimize<Ex>::value>::type
-  assign_exception(Ex& e) {
+  typename std::enable_if<exception_wrapper::optimize<Ex>::value>::type
+  assign_exception(Ex& e, std::exception_ptr eptr) {
     this->item_ = std::make_shared<Ex>(e);
     this->throwfn_ = folly::detail::Thrower<Ex>::doThrow;
   }
@@ -351,9 +417,9 @@ class try_and_catch<LastException, Exceptions...> :
       Base::call_fn(std::move(fn));
     } catch (LastException& e) {
       if (typeid(e) == typeid(LastException&)) {
-        assign_exception(e);
+        assign_exception(e, std::current_exception());
       } else {
-        assign_eptr(e);
+        exception_wrapper::assign_eptr(std::current_exception(), e);
       }
     }
   }

@@ -131,8 +131,8 @@ Future<T>::then(F&& func) {
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       p->fulfil([&]() {
-          return (*funcm)(std::move(t));
-        });
+        return (*funcm)(std::move(t));
+      });
     });
 
   return std::move(f);
@@ -159,7 +159,7 @@ Future<T>::then(F&& func) {
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       if (t.hasException()) {
-        p->setException(t.getException());
+        p->setException(std::move(t.exception()));
       } else {
         p->fulfil([&]() {
           return (*funcm)(std::move(t.value()));
@@ -189,7 +189,7 @@ Future<T>::then(F&& func) {
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       if (t.hasException()) {
-        p->setException(t.getException());
+        p->setException(std::move(t.exception()));
       } else {
         p->fulfil([&]() {
           return (*funcm)();
@@ -224,10 +224,12 @@ Future<T>::then(F&& func) {
         auto f2 = (*funcm)(std::move(t));
         // that didn't throw, now we can steal p
         f2.setCallback_([p](Try<B>&& b) mutable {
-            p->fulfilTry(std::move(b));
-          });
+          p->fulfilTry(std::move(b));
+        });
+      } catch (const std::exception& e) {
+        p->setException(exception_wrapper(std::current_exception(), e));
       } catch (...) {
-        p->setException(std::current_exception());
+        p->setException(exception_wrapper(std::current_exception()));
       }
     });
 
@@ -255,15 +257,17 @@ Future<T>::then(F&& func) {
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       if (t.hasException()) {
-        p->setException(t.getException());
+        p->setException(std::move(t.exception()));
       } else {
         try {
           auto f2 = (*funcm)(std::move(t.value()));
           f2.setCallback_([p](Try<B>&& b) mutable {
-              p->fulfilTry(std::move(b));
-            });
+            p->fulfilTry(std::move(b));
+          });
+        } catch (const std::exception& e) {
+          p->setException(exception_wrapper(std::current_exception(), e));
         } catch (...) {
-          p->setException(std::current_exception());
+          p->setException(exception_wrapper(std::current_exception()));
         }
       }
     });
@@ -291,15 +295,17 @@ Future<T>::then(F&& func) {
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
       if (t.hasException()) {
-        p->setException(t.getException());
+        p->setException(t.exception());
       } else {
         try {
           auto f2 = (*funcm)();
           f2.setCallback_([p](Try<B>&& b) mutable {
-              p->fulfilTry(std::move(b));
-            });
+            p->fulfilTry(std::move(b));
+          });
+        } catch (const std::exception& e) {
+          p->setException(exception_wrapper(std::current_exception(), e));
         } catch (...) {
-          p->setException(std::current_exception());
+          p->setException(exception_wrapper(std::current_exception()));
         }
       }
     });
@@ -329,17 +335,13 @@ Future<T>::onError(F&& func) {
   auto pm = folly::makeMoveWrapper(std::move(p));
   auto funcm = folly::makeMoveWrapper(std::move(func));
   setCallback_([pm, funcm](Try<T>&& t) mutable {
-    try {
-      t.throwIfFailed();
-    } catch (Exn& e) {
-      pm->fulfil([&]{
-        return (*funcm)(e);
-      });
-      return;
-    } catch (...) {
-      // fall through
+    if (!t.template withException<Exn>([&] (Exn& e) {
+          pm->fulfil([&]{
+            return (*funcm)(e);
+          });
+        })) {
+      pm->fulfilTry(std::move(t));
     }
-    pm->fulfilTry(std::move(t));
   });
 
   return f;
@@ -362,22 +364,20 @@ Future<T>::onError(F&& func) {
   auto pm = folly::makeMoveWrapper(std::move(p));
   auto funcm = folly::makeMoveWrapper(std::move(func));
   setCallback_([pm, funcm](Try<T>&& t) mutable {
-    try {
-      t.throwIfFailed();
-    } catch (Exn& e) {
-      try {
-        auto f2 = (*funcm)(e);
-        f2.setCallback_([pm](Try<T>&& t2) mutable {
-          pm->fulfilTry(std::move(t2));
-        });
-      } catch (...) {
-        pm->setException(std::current_exception());
-      }
-      return;
-    } catch (...) {
-      // fall through
+    if (!t.template withException<Exn>([&] (Exn& e) {
+          try {
+            auto f2 = (*funcm)(e);
+            f2.setCallback_([pm](Try<T>&& t2) mutable {
+              pm->fulfilTry(std::move(t2));
+            });
+          } catch (const std::exception& e) {
+            pm->setException(exception_wrapper(std::current_exception(), e));
+          } catch (...) {
+            pm->setException(exception_wrapper(std::current_exception()));
+          }
+        })) {
+      pm->fulfilTry(std::move(t));
     }
-    pm->fulfilTry(std::move(t));
   });
 
   return f;
@@ -433,8 +433,8 @@ bool Future<T>::isReady() const {
 }
 
 template <class T>
-void Future<T>::raise(std::exception_ptr exception) {
-  core_->raise(exception);
+void Future<T>::raise(exception_wrapper exception) {
+  core_->raise(std::move(exception));
 }
 
 // makeFuture
@@ -483,32 +483,38 @@ Future<T> makeFuture(std::exception_ptr const& e) {
   return std::move(f);
 }
 
+template <class T>
+Future<T> makeFuture(exception_wrapper ew) {
+  Promise<T> p;
+  p.setException(std::move(ew));
+  return p.getFuture();
+}
+
 template <class T, class E>
 typename std::enable_if<std::is_base_of<std::exception, E>::value,
                         Future<T>>::type
 makeFuture(E const& e) {
   Promise<T> p;
   auto f = p.getFuture();
-  p.fulfil([&]() -> T { throw e; });
+  p.setException(make_exception_wrapper<E>(e));
   return std::move(f);
 }
 
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
-  try {
+  if (t.hasException()) {
+    return makeFuture<T>(std::move(t.exception()));
+  } else {
     return makeFuture<T>(std::move(t.value()));
-  } catch (...) {
-    return makeFuture<T>(std::current_exception());
   }
 }
 
 template <>
 inline Future<void> makeFuture(Try<void>&& t) {
-  try {
-    t.throwIfFailed();
+  if (t.hasException()) {
+    return makeFuture<void>(std::move(t.exception()));
+  } else {
     return makeFuture();
-  } catch (...) {
-    return makeFuture<void>(std::current_exception());
   }
 }
 
@@ -730,7 +736,9 @@ namespace {
             t.value();
             p.setException(TimedOut());
           } catch (std::exception const& e) {
-            p.setException(std::current_exception());
+            p.setException(exception_wrapper(std::current_exception(), e));
+          } catch (...) {
+            p.setException(exception_wrapper(std::current_exception()));
           }
           baton.post();
         }
@@ -803,8 +811,12 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
         try {
           t.throwIfFailed();
           ctx->promise.setException(std::move(ctx->exception));
-        } catch (std::exception const&) {
-          ctx->promise.setException(std::current_exception());
+        } catch (std::exception const& e) {
+          ctx->promise.setException(
+              exception_wrapper(std::current_exception(), e));
+        } catch (...) {
+          ctx->promise.setException(
+              exception_wrapper(std::current_exception()));
         }
       }
     });

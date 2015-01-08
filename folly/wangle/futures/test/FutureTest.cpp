@@ -500,7 +500,7 @@ TEST(Promise, setException) {
     try {
       throw eggs;
     } catch (...) {
-      p.setException(std::current_exception());
+      p.setException(exception_wrapper(std::current_exception()));
     }
     EXPECT_THROW(f.value(), eggs_t);
   }

@@ -19,7 +19,10 @@
 #include <type_traits>
 #include <exception>
 #include <algorithm>
+#include <folly/ExceptionWrapper.h>
 #include <folly/Likely.h>
+#include <folly/Memory.h>
+#include <folly/wangle/futures/Deprecated.h>
 #include <folly/wangle/futures/WangleException.h>
 
 namespace folly { namespace wangle {
@@ -41,7 +44,19 @@ class Try {
   Try() : contains_(Contains::NOTHING) {}
   explicit Try(const T& v) : contains_(Contains::VALUE), value_(v) {}
   explicit Try(T&& v) : contains_(Contains::VALUE), value_(std::move(v)) {}
-  explicit Try(std::exception_ptr e) : contains_(Contains::EXCEPTION), e_(e) {}
+  explicit Try(exception_wrapper e)
+    : contains_(Contains::EXCEPTION),
+      e_(folly::make_unique<exception_wrapper>(std::move(e))) {}
+  explicit Try(std::exception_ptr ep) DEPRECATED
+    : contains_(Contains::EXCEPTION) {
+    try {
+      std::rethrow_exception(ep);
+    } catch (const std::exception& e) {
+      e_ = folly::make_unique<exception_wrapper>(std::current_exception(), e);
+    } catch (...) {
+      e_ = folly::make_unique<exception_wrapper>(std::current_exception());
+    }
+  }
 
   // move
   Try(Try<T>&& t);
@@ -67,19 +82,31 @@ class Try {
   bool hasValue() const { return contains_ == Contains::VALUE; }
   bool hasException() const { return contains_ == Contains::EXCEPTION; }
 
-  std::exception_ptr getException() const {
+  template <class Ex>
+  bool hasException() const {
+    return hasException() && e_->is_compatible_with<Ex>();
+  }
+
+  exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw WangleException(
-          "getException(): Try does not contain an exception");
+      throw WangleException("exception(): Try does not contain an exception");
     }
-    return e_;
+    return *e_;
+  }
+
+  template <class Ex, class F>
+  bool withException(F func) const {
+    if (!hasException()) {
+      return false;
+    }
+    return e_->with_exception<Ex>(std::move(func));
   }
 
  private:
   Contains contains_;
   union {
     T value_;
-    std::exception_ptr e_;
+    std::unique_ptr<exception_wrapper> e_;
   };
 };
 
@@ -87,7 +114,29 @@ template <>
 class Try<void> {
  public:
   Try() : hasValue_(true) {}
-  explicit Try(std::exception_ptr e) : hasValue_(false), e_(e) {}
+  explicit Try(exception_wrapper e)
+    : hasValue_(false),
+      e_(folly::make_unique<exception_wrapper>(std::move(e))) {}
+  explicit Try(std::exception_ptr ep) DEPRECATED : hasValue_(false) {
+    try {
+      std::rethrow_exception(ep);
+    } catch (const std::exception& e) {
+      e_ = folly::make_unique<exception_wrapper>(std::current_exception(), e);
+    } catch (...) {
+      e_ = folly::make_unique<exception_wrapper>(std::current_exception());
+    }
+  }
+
+  Try& operator=(const Try<void>& t) {
+    hasValue_ = t.hasValue_;
+    if (t.e_) {
+      e_ = folly::make_unique<exception_wrapper>(*t.e_);
+    }
+    return *this;
+  }
+  Try(const Try<void>& t) {
+    *this = t;
+  }
 
   void value() const { throwIfFailed(); }
   void operator*() const { return value(); }
@@ -97,17 +146,29 @@ class Try<void> {
   bool hasValue() const { return hasValue_; }
   bool hasException() const { return !hasValue_; }
 
-  std::exception_ptr getException() const {
+  template <class Ex>
+  bool hasException() const {
+    return hasException() && e_->is_compatible_with<Ex>();
+  }
+
+  exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw WangleException(
-          "getException(): Try does not contain an exception");
+      throw WangleException("exception(): Try does not contain an exception");
     }
-    return e_;
+    return *e_;
+  }
+
+  template <class Ex, class F>
+  bool withException(F func) const {
+    if (!hasException()) {
+      return false;
+    }
+    return e_->with_exception<Ex>(std::move(func));
   }
 
  private:
   bool hasValue_;
-  std::exception_ptr e_;
+  std::unique_ptr<exception_wrapper> e_{nullptr};
 };
 
 /**
