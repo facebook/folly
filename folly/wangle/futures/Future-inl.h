@@ -135,7 +135,7 @@ Future<T>::then(F&& func) {
       });
     });
 
-  return std::move(f);
+  return f;
 }
 
 // Variant: f.then([](T&& t){ return t; });
@@ -167,7 +167,7 @@ Future<T>::then(F&& func) {
       }
     });
 
-  return std::move(f);
+  return f;
 }
 
 // Variant: f.then([](){ return; });
@@ -197,7 +197,7 @@ Future<T>::then(F&& func) {
       }
     });
 
-  return std::move(f);
+  return f;
 }
 
 // Variant: f.then([](Try<T>&& t){ return makeFuture<T>(t.value()); });
@@ -233,7 +233,7 @@ Future<T>::then(F&& func) {
       }
     });
 
-  return std::move(f);
+  return f;
 }
 
 // Variant: f.then([](T&& t){ return makeFuture<T>(t); });
@@ -272,7 +272,7 @@ Future<T>::then(F&& func) {
       }
     });
 
-  return std::move(f);
+  return f;
 }
 
 // Variant: f.then([](){ return makeFuture(); });
@@ -310,7 +310,7 @@ Future<T>::then(F&& func) {
       }
     });
 
-  return std::move(f);
+  return f;
 }
 
 template <class T>
@@ -442,17 +442,15 @@ void Future<T>::raise(exception_wrapper exception) {
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
   Promise<typename std::decay<T>::type> p;
-  auto f = p.getFuture();
   p.setValue(std::forward<T>(t));
-  return std::move(f);
+  return p.getFuture();
 }
 
 inline // for multiple translation units
 Future<void> makeFuture() {
   Promise<void> p;
-  auto f = p.getFuture();
   p.setValue();
-  return std::move(f);
+  return p.getFuture();
 }
 
 template <class F>
@@ -461,12 +459,11 @@ auto makeFutureTry(
     typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
     -> Future<decltype(func())> {
   Promise<decltype(func())> p;
-  auto f = p.getFuture();
   p.fulfil(
     [&func]() {
       return (func)();
     });
-  return std::move(f);
+  return p.getFuture();
 }
 
 template <class F>
@@ -478,9 +475,8 @@ auto makeFutureTry(F const& func) -> Future<decltype(func())> {
 template <class T>
 Future<T> makeFuture(std::exception_ptr const& e) {
   Promise<T> p;
-  auto f = p.getFuture();
   p.setException(e);
-  return std::move(f);
+  return p.getFuture();
 }
 
 template <class T>
@@ -495,9 +491,8 @@ typename std::enable_if<std::is_base_of<std::exception, E>::value,
                         Future<T>>::type
 makeFuture(E const& e) {
   Promise<T> p;
-  auto f = p.getFuture();
   p.setException(make_exception_wrapper<E>(e));
-  return std::move(f);
+  return p.getFuture();
 }
 
 template <class T>
@@ -537,7 +532,7 @@ whenAll(Fs&&... fs)
   auto f_saved = ctx->p.getFuture();
   detail::whenAllVariadicHelper(ctx,
     std::forward<typename std::decay<Fs>::type>(fs)...);
-  return std::move(f_saved);
+  return f_saved;
 }
 
 // when (iterator)
@@ -574,7 +569,7 @@ whenAll(InputIterator first, InputIterator last)
        });
   }
 
-  return std::move(f_saved);
+  return f_saved;
 }
 
 template <class InputIterator>
@@ -600,7 +595,7 @@ whenAny(InputIterator first, InputIterator last) {
     });
   }
 
-  return std::move(f_saved);
+  return f_saved;
 }
 
 template <class InputIterator>
