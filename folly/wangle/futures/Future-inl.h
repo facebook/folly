@@ -370,8 +370,8 @@ Future<T>::onError(F&& func) {
             f2.setCallback_([pm](Try<T>&& t2) mutable {
               pm->fulfilTry(std::move(t2));
             });
-          } catch (const std::exception& e) {
-            pm->setException(exception_wrapper(std::current_exception(), e));
+          } catch (const std::exception& e2) {
+            pm->setException(exception_wrapper(std::current_exception(), e2));
           } catch (...) {
             pm->setException(exception_wrapper(std::current_exception()));
           }
@@ -811,9 +811,9 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
         try {
           t.throwIfFailed();
           ctx->promise.setException(std::move(ctx->exception));
-        } catch (std::exception const& e) {
+        } catch (std::exception const& e2) {
           ctx->promise.setException(
-              exception_wrapper(std::current_exception(), e));
+              exception_wrapper(std::current_exception(), e2));
         } catch (...) {
           ctx->promise.setException(
               exception_wrapper(std::current_exception()));

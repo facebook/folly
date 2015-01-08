@@ -84,9 +84,9 @@ Promise<T>::setException(E const& e) {
 }
 
 template <class T>
-void Promise<T>::setException(std::exception_ptr const& e) {
+void Promise<T>::setException(std::exception_ptr const& ep) {
   try {
-    std::rethrow_exception(e);
+    std::rethrow_exception(ep);
   } catch (const std::exception& e) {
     setException(exception_wrapper(std::current_exception(), e));
   } catch (...) {
