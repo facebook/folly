@@ -16,8 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include <folly/wangle/futures/Future.h>
-#include <folly/wangle/futures/Promise.h>
+#include <folly/futures/Future.h>
+#include <folly/futures/Promise.h>
 
 using namespace folly::wangle;
 using folly::exception_wrapper;

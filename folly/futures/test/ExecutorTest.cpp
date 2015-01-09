@@ -15,10 +15,10 @@
  */
 
 #include <gtest/gtest.h>
-#include <folly/wangle/futures/InlineExecutor.h>
-#include <folly/wangle/futures/ManualExecutor.h>
-#include <folly/wangle/futures/QueuedImmediateExecutor.h>
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/InlineExecutor.h>
+#include <folly/futures/ManualExecutor.h>
+#include <folly/futures/QueuedImmediateExecutor.h>
+#include <folly/futures/Future.h>
 #include <folly/Baton.h>
 
 using namespace folly::wangle;

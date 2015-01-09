@@ -17,7 +17,7 @@
 #pragma once
 #include <gtest/gtest.h>
 #include <memory>
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Future.h>
 #include <folly/Executor.h>
 
 using namespace folly::wangle;

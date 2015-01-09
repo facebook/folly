@@ -13,17 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/wangle/futures/Future.h>
-#include <folly/wangle/futures/detail/ThreadWheelTimekeeper.h>
-#include <folly/Likely.h>
 
-namespace folly { namespace wangle { namespace futures {
-
-Future<void> sleep(Duration dur, Timekeeper* tk) {
-  if (LIKELY(!tk)) {
-    tk = detail::getTimekeeperSingleton();
-  }
-  return tk->after(dur);
-}
-
-}}}
+// amazing what things can go wrong if you include things in an unexpected
+// order.
+#include <folly/futures/Try.h>
+#include <folly/futures/Promise.h>
+#include <folly/futures/Future.h>
+int main() { return 0; }

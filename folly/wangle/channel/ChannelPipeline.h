@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/wangle/channel/ChannelHandlerContext.h>
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Future.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/ExceptionWrapper.h>

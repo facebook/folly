@@ -15,7 +15,7 @@
  */
 #include <gtest/gtest.h>
 
-#include <folly/wangle/futures/Timekeeper.h>
+#include <folly/futures/Timekeeper.h>
 #include <unistd.h>
 
 using namespace folly::wangle;

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/wangle/futures/detail/Types.h>
+#include <folly/futures/detail/Types.h>
 
 namespace folly { namespace wangle {
 
@@ -71,7 +71,7 @@ class Timekeeper {
 }}
 
 // now get those definitions
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Future.h>
 
 // finally we can use Future
 namespace folly { namespace wangle {

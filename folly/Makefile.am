@@ -84,6 +84,24 @@ nobase_follyinclude_HEADERS = \
 	FormatArg.h \
 	Format.h \
 	Format-inl.h \
+	futures/Deprecated.h \
+	futures/Future-inl.h \
+	futures/Future.h \
+	futures/InlineExecutor.h \
+	futures/ManualExecutor.h \
+	futures/OpaqueCallbackShunt.h \
+	futures/Promise-inl.h \
+	futures/Promise.h \
+	futures/QueuedImmediateExecutor.h \
+	futures/ScheduledExecutor.h \
+	futures/Timekeeper.h \
+	futures/Try-inl.h \
+	futures/Try.h \
+	futures/WangleException.h \
+	futures/detail/Core.h \
+	futures/detail/FSM.h \
+	futures/detail/ThreadWheelTimekeeper.h \
+	futures/detail/Types.h \
 	gen/Base.h \
 	gen/Base-inl.h \
 	gen/Combine.h \
@@ -221,24 +239,6 @@ nobase_follyinclude_HEADERS = \
 	wangle/concurrent/NamedThreadFactory.h \
 	wangle/concurrent/ThreadFactory.h \
 	wangle/concurrent/ThreadPoolExecutor.h \
-	wangle/futures/Deprecated.h \
-	wangle/futures/Future-inl.h \
-	wangle/futures/Future.h \
-	wangle/futures/InlineExecutor.h \
-	wangle/futures/ManualExecutor.h \
-	wangle/futures/OpaqueCallbackShunt.h \
-	wangle/futures/Promise-inl.h \
-	wangle/futures/Promise.h \
-	wangle/futures/QueuedImmediateExecutor.h \
-	wangle/futures/ScheduledExecutor.h \
-	wangle/futures/Timekeeper.h \
-	wangle/futures/Try-inl.h \
-	wangle/futures/Try.h \
-	wangle/futures/WangleException.h \
-	wangle/futures/detail/Core.h \
-	wangle/futures/detail/FSM.h \
-	wangle/futures/detail/ThreadWheelTimekeeper.h \
-	wangle/futures/detail/Types.h \
 	wangle/rx/Observable.h \
 	wangle/rx/Observer.h \
 	wangle/rx/Subject.h \
@@ -287,6 +287,11 @@ libfolly_la_SOURCES = \
 	File.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
+	futures/detail/ThreadWheelTimekeeper.cpp \
+	futures/Future.cpp \
+	futures/InlineExecutor.cpp \
+	futures/ManualExecutor.cpp \
+	futures/QueuedImmediateExecutor.cpp \
 	detail/Futex.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
@@ -342,11 +347,6 @@ libfolly_la_SOURCES = \
 	wangle/concurrent/IOThreadPoolExecutor.cpp \
 	wangle/concurrent/GlobalExecutor.cpp \
 	wangle/concurrent/ThreadPoolExecutor.cpp \
-	wangle/futures/detail/ThreadWheelTimekeeper.cpp \
-	wangle/futures/Future.cpp \
-	wangle/futures/InlineExecutor.cpp \
-	wangle/futures/ManualExecutor.cpp \
-	wangle/futures/QueuedImmediateExecutor.cpp \
 	wangle/ssl/PasswordInFile.cpp \
 	wangle/ssl/SSLContextManager.cpp \
 	wangle/ssl/SSLSessionCacheManager.cpp \

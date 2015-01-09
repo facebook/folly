@@ -20,8 +20,8 @@
 #include <thread>
 
 #include <folly/Baton.h>
-#include <folly/wangle/futures/detail/Core.h>
-#include <folly/wangle/futures/Timekeeper.h>
+#include <folly/futures/detail/Core.h>
+#include <folly/futures/Timekeeper.h>
 
 namespace folly { namespace wangle {
 

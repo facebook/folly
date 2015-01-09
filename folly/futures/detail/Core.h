@@ -24,11 +24,11 @@
 #include <folly/Optional.h>
 #include <folly/SmallLocks.h>
 
-#include <folly/wangle/futures/Try.h>
-#include <folly/wangle/futures/Promise.h>
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Try.h>
+#include <folly/futures/Promise.h>
+#include <folly/futures/Future.h>
 #include <folly/Executor.h>
-#include <folly/wangle/futures/detail/FSM.h>
+#include <folly/futures/detail/FSM.h>
 
 #include <folly/io/async/Request.h>
 

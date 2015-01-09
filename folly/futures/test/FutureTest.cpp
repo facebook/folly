@@ -25,8 +25,8 @@
 #include <unistd.h>
 #include <folly/Memory.h>
 #include <folly/Executor.h>
-#include <folly/wangle/futures/Future.h>
-#include <folly/wangle/futures/ManualExecutor.h>
+#include <folly/futures/Future.h>
+#include <folly/futures/ManualExecutor.h>
 #include <folly/MPMCQueue.h>
 
 #include <folly/io/async/Request.h>

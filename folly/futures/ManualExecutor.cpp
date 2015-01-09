@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/wangle/futures/ManualExecutor.h>
+#include <folly/futures/ManualExecutor.h>
 
 #include <string.h>
 #include <string>

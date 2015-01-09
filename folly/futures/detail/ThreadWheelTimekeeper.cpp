@@ -16,7 +16,7 @@
 #include "ThreadWheelTimekeeper.h"
 
 #include <folly/experimental/Singleton.h>
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Future.h>
 #include <future>
 
 namespace folly { namespace wangle { namespace detail {

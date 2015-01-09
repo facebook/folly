@@ -15,7 +15,7 @@
  */
 
 #pragma once
-#include <folly/wangle/futures/ScheduledExecutor.h>
+#include <folly/futures/ScheduledExecutor.h>
 #include <semaphore.h>
 #include <memory>
 #include <mutex>

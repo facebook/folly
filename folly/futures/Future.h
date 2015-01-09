@@ -24,11 +24,11 @@
 #include <vector>
 
 #include <folly/MoveWrapper.h>
-#include <folly/wangle/futures/Deprecated.h>
-#include <folly/wangle/futures/Promise.h>
-#include <folly/wangle/futures/Try.h>
-#include <folly/wangle/futures/WangleException.h>
-#include <folly/wangle/futures/detail/Types.h>
+#include <folly/futures/Deprecated.h>
+#include <folly/futures/Promise.h>
+#include <folly/futures/Try.h>
+#include <folly/futures/WangleException.h>
+#include <folly/futures/detail/Types.h>
 
 namespace folly { namespace wangle {
 
@@ -628,4 +628,4 @@ Future<T> waitWithSemaphore(Future<T>&& f, Dur timeout);
 
 }} // folly::wangle
 
-#include <folly/wangle/futures/Future-inl.h>
+#include <folly/futures/Future-inl.h>

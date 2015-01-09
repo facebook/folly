@@ -15,7 +15,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <folly/wangle/futures/detail/FSM.h>
+#include <folly/futures/detail/FSM.h>
 
 using namespace folly::wangle::detail;
 

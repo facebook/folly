@@ -13,25 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/futures/Future.h>
+#include <folly/futures/detail/ThreadWheelTimekeeper.h>
+#include <folly/Likely.h>
 
-#include <folly/wangle/futures/QueuedImmediateExecutor.h>
-#include <folly/ThreadLocal.h>
-#include <queue>
+namespace folly { namespace wangle { namespace futures {
 
-namespace folly { namespace wangle {
-
-void QueuedImmediateExecutor::add(Func callback) {
-  thread_local std::queue<Func> q;
-
-  if (q.empty()) {
-    q.push(std::move(callback));
-    while (!q.empty()) {
-      q.front()();
-      q.pop();
-    }
-  } else {
-    q.push(callback);
+Future<void> sleep(Duration dur, Timekeeper* tk) {
+  if (LIKELY(!tk)) {
+    tk = detail::getTimekeeperSingleton();
   }
+  return tk->after(dur);
 }
 
-}} // namespace
+}}}

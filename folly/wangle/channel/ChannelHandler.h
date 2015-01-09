@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/wangle/futures/Future.h>
+#include <folly/futures/Future.h>
 #include <folly/wangle/channel/ChannelPipeline.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>

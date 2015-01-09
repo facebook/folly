@@ -22,8 +22,8 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
-#include <folly/wangle/futures/Deprecated.h>
-#include <folly/wangle/futures/WangleException.h>
+#include <folly/futures/Deprecated.h>
+#include <folly/futures/WangleException.h>
 
 namespace folly { namespace wangle {
 
@@ -349,4 +349,4 @@ makeTryFunction(F&& f);
 
 }}
 
-#include <folly/wangle/futures/Try-inl.h>
+#include <folly/futures/Try-inl.h>

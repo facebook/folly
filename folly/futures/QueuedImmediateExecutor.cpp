@@ -14,9 +14,24 @@
  * limitations under the License.
  */
 
-// amazing what things can go wrong if you include things in an unexpected
-// order.
-#include <folly/wangle/futures/Try.h>
-#include <folly/wangle/futures/Promise.h>
-#include <folly/wangle/futures/Future.h>
-int main() { return 0; }
+#include <folly/futures/QueuedImmediateExecutor.h>
+#include <folly/ThreadLocal.h>
+#include <queue>
+
+namespace folly { namespace wangle {
+
+void QueuedImmediateExecutor::add(Func callback) {
+  thread_local std::queue<Func> q;
+
+  if (q.empty()) {
+    q.push(std::move(callback));
+    while (!q.empty()) {
+      q.front()();
+      q.pop();
+    }
+  } else {
+    q.push(callback);
+  }
+}
+
+}} // namespace
