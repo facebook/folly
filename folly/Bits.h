@@ -525,7 +525,7 @@ class BitIterator
       (other.bitOffset_ - bitOffset_);
   }
 
-  unsigned int bitOffset_;
+  size_t bitOffset_;
 };
 
 /**
