@@ -1484,6 +1484,7 @@ TEST(EventBaseTest, IdleTime) {
   ASSERT_EQ(7, tos0.getTimeouts());
   ASSERT_GE(5900, eventBase.getAvgLoopTime() - 1200);
   ASSERT_LE(5900, eventBase.getAvgLoopTime() + 1200);
+  ASSERT_TRUE(!!tos);
   ASSERT_EQ(21, tos->getTimeouts());
 }
 

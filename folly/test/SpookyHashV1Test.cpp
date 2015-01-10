@@ -30,6 +30,8 @@
 #include <cstdlib>
 #include <ctime>
 
+#include <gtest/gtest.h>
+
 using namespace ::folly::hash;
 
 static bool failed = false;
@@ -532,16 +534,15 @@ void TestPieces()
 }
 #undef BUFSIZE
 
-int main(int argc, const char **argv)
-{
+TEST(SpookyHashV1, Main) {
     TestResults();
     TestAlignment();
     TestPieces();
-    DoTimingBig(argc);
+    DoTimingBig(1);
     // tudorb@fb.com: Commented out slow tests
 #if 0
     DoTimingSmall(argc);
     TestDeltas(argc);
 #endif
-    return failed;
+    CHECK_EQ(failed, 0);
 }
