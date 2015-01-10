@@ -522,10 +522,10 @@ class BitIterator
   ssize_t distance_to(const BitIterator& other) const {
     return
       (other.base_reference() - this->base_reference()) * bitsPerBlock() +
-      (other.bitOffset_ - bitOffset_);
+      other.bitOffset_ - bitOffset_;
   }
 
-  size_t bitOffset_;
+  unsigned int bitOffset_;
 };
 
 /**
