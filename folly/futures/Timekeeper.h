@@ -18,7 +18,7 @@
 
 #include <folly/futures/detail/Types.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 template <class> struct Future;
 
@@ -68,23 +68,23 @@ class Timekeeper {
   Future<void> at(std::chrono::time_point<Clock> when);
 };
 
-}}
+} // namespace folly
 
 // now get those definitions
 #include <folly/futures/Future.h>
 
 // finally we can use Future
-namespace folly { namespace wangle {
+namespace folly {
 
-  template <class Clock>
-  Future<void> Timekeeper::at(std::chrono::time_point<Clock> when) {
-    auto now = Clock::now();
+template <class Clock>
+Future<void> Timekeeper::at(std::chrono::time_point<Clock> when) {
+  auto now = Clock::now();
 
-    if (when <= now) {
-      return makeFuture();
-    }
-
-    return after(when - now);
+  if (when <= now) {
+    return makeFuture();
   }
 
-}}
+  return after(when - now);
+}
+
+} // namespace folly

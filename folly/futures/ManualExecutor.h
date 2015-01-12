@@ -22,7 +22,7 @@
 #include <queue>
 #include <cstdio>
 
-namespace folly { namespace wangle {
+namespace folly {
   /// A ManualExecutor only does work when you turn the crank, by calling
   /// run() or indirectly with makeProgress() or waitFor().
   ///
@@ -117,4 +117,4 @@ namespace folly { namespace wangle {
     TimePoint now_ = now_.min();
   };
 
-}}
+}

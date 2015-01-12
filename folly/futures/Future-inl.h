@@ -23,7 +23,7 @@
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 class Timekeeper;
 
@@ -724,7 +724,7 @@ namespace {
     auto token = std::make_shared<std::atomic<bool>>();
     folly::Baton<> baton;
 
-    folly::wangle::detail::getTimekeeperSingleton()->after(dur)
+    folly::detail::getTimekeeperSingleton()->after(dur)
       .then([&,token](Try<void> const& t) {
         if (token->exchange(true) == false) {
           try {
@@ -797,7 +797,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   auto ctx = std::make_shared<Context>(std::move(e));
 
   if (!tk) {
-    tk = folly::wangle::detail::getTimekeeperSingleton();
+    tk = folly::detail::getTimekeeperSingleton();
   }
 
   tk->after(dur)
@@ -834,7 +834,7 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
     });
 }
 
-}}
+}
 
 // I haven't included a Future<T&> specialization because I don't forsee us
 // using it, however it is not difficult to add when needed. Refer to

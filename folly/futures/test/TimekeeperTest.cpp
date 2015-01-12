@@ -18,10 +18,10 @@
 #include <folly/futures/Timekeeper.h>
 #include <unistd.h>
 
-using namespace folly::wangle;
+using namespace folly;
 using namespace std::chrono;
-using folly::wangle::Timekeeper;
-using Duration = folly::wangle::Duration;
+using folly::Timekeeper;
+using Duration = folly::Duration;
 
 std::chrono::milliseconds const one_ms(1);
 std::chrono::milliseconds const awhile(10);
@@ -32,7 +32,7 @@ std::chrono::steady_clock::time_point now() {
 
 struct TimekeeperFixture : public testing::Test {
   TimekeeperFixture() :
-    timeLord_(folly::wangle::detail::getTimekeeperSingleton())
+    timeLord_(folly::detail::getTimekeeperSingleton())
   {}
 
   Timekeeper* timeLord_;
@@ -71,7 +71,7 @@ TEST(Timekeeper, futureGetBeforeTimeout) {
 
 TEST(Timekeeper, futureGetTimeout) {
   Promise<int> p;
-  EXPECT_THROW(p.getFuture().get(Duration(1)), folly::wangle::TimedOut);
+  EXPECT_THROW(p.getFuture().get(Duration(1)), folly::TimedOut);
 }
 
 TEST(Timekeeper, futureSleep) {

@@ -19,7 +19,7 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 
-using namespace folly::wangle;
+using namespace folly;
 using folly::exception_wrapper;
 
 TEST(Interrupts, raise) {

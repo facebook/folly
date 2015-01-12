@@ -22,7 +22,7 @@
 
 #include <stdexcept>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 ManualExecutor::ManualExecutor() {
   if (sem_init(&sem_, 0, 0) == -1) {
@@ -101,4 +101,4 @@ void ManualExecutor::advanceTo(TimePoint const& t) {
   run();
 }
 
-}} // namespace
+} // folly

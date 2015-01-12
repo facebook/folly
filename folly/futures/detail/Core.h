@@ -32,7 +32,7 @@
 
 #include <folly/io/async/Request.h>
 
-namespace folly { namespace wangle { namespace detail {
+namespace folly { namespace detail {
 
 // As of GCC 4.8.1, the std::function in libstdc++ optimizes only for pointers
 // to functions, using a helper avoids a call to malloc.
@@ -289,4 +289,4 @@ struct WhenAnyContext {
   }
 };
 
-}}} // namespace
+}} // folly::detail

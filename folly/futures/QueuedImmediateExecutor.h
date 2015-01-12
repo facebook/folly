@@ -18,7 +18,7 @@
 
 #include <folly/Executor.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 /**
  * Runs inline like InlineExecutor, but with a queue so that any tasks added
@@ -30,4 +30,4 @@ class QueuedImmediateExecutor : public Executor {
   void add(Func) override;
 };
 
-}} // namespace
+} // folly

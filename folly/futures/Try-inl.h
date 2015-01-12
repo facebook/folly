@@ -20,7 +20,7 @@
 
 #include <folly/futures/WangleException.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 template <class T>
 Try<T>::Try(Try<T>&& t) : contains_(t.contains_) {
@@ -82,11 +82,11 @@ void Try<void>::throwIfFailed() const {
 }
 
 template <typename T>
-inline T moveFromTry(wangle::Try<T>&& t) {
+inline T moveFromTry(Try<T>&& t) {
   return std::move(t.value());
 }
 
-inline void moveFromTry(wangle::Try<void>&& t) {
+inline void moveFromTry(Try<void>&& t) {
   return t.value();
 }
 
@@ -120,4 +120,4 @@ makeTryFunction(F&& f) {
   }
 }
 
-}}
+} // folly

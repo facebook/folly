@@ -22,7 +22,7 @@
 #include <semaphore.h>
 #include <vector>
 
-using namespace folly::wangle;
+using namespace folly;
 using namespace std;
 
 namespace {

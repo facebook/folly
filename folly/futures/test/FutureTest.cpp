@@ -32,7 +32,6 @@
 #include <folly/io/async/Request.h>
 
 using namespace folly;
-using namespace folly::wangle;
 using std::pair;
 using std::string;
 using std::unique_ptr;
@@ -1187,7 +1186,7 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
   ptr->then(
-    [ptr] (folly::wangle::Try<int64_t>&& uid) mutable {
+    [ptr] (folly::Try<int64_t>&& uid) mutable {
       EXPECT_EQ(1, ptr.use_count());
 
       // Leaving no references to ourselves.

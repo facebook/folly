@@ -18,8 +18,8 @@
 
 #include <chrono>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 using Duration = std::chrono::milliseconds;
 
-}}
+}

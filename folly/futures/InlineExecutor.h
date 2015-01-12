@@ -17,7 +17,7 @@
 #pragma once
 #include <folly/Executor.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
   /// When work is "queued", execute it immediately inline.
   /// Usually when you think you want this, you actually want a
@@ -29,4 +29,4 @@ namespace folly { namespace wangle {
     }
   };
 
-}}
+}

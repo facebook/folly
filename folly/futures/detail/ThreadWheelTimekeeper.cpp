@@ -19,7 +19,7 @@
 #include <folly/futures/Future.h>
 #include <future>
 
-namespace folly { namespace wangle { namespace detail {
+namespace folly { namespace detail {
 
 namespace {
   Singleton<ThreadWheelTimekeeper> timekeeperSingleton_;
@@ -90,4 +90,4 @@ Timekeeper* getTimekeeperSingleton() {
   return timekeeperSingleton_.get_fast();
 }
 
-}}}
+}} // folly::detail

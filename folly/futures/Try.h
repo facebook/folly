@@ -25,7 +25,7 @@
 #include <folly/futures/Deprecated.h>
 #include <folly/futures/WangleException.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 /*
  * Try<T> is a wrapper that contains either an instance of T, an exception, or
@@ -313,14 +313,14 @@ class Try<void> {
  * @returns value contained in t
  */
 template <typename T>
-T moveFromTry(wangle::Try<T>&& t);
+T moveFromTry(Try<T>&& t);
 
 /*
  * Throws if try contained an exception.
  *
  * @param t Try to move from
  */
-void moveFromTry(wangle::Try<void>&& t);
+void moveFromTry(Try<void>&& t);
 
 /*
  * @param f a function to execute and capture the result of (value or exception)
@@ -346,7 +346,6 @@ typename std::enable_if<
   Try<void>>::type
 makeTryFunction(F&& f);
 
-
-}}
+} // folly
 
 #include <folly/futures/Try-inl.h>

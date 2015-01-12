@@ -17,7 +17,7 @@
 #include <folly/futures/detail/ThreadWheelTimekeeper.h>
 #include <folly/Likely.h>
 
-namespace folly { namespace wangle { namespace futures {
+namespace folly { namespace futures {
 
 Future<void> sleep(Duration dur, Timekeeper* tk) {
   if (LIKELY(!tk)) {
@@ -26,4 +26,4 @@ Future<void> sleep(Duration dur, Timekeeper* tk) {
   return tk->after(dur);
 }
 
-}}}
+}}

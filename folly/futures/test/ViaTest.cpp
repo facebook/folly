@@ -21,7 +21,7 @@
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
 
-using namespace folly::wangle;
+using namespace folly;
 
 struct ManualWaiter {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}

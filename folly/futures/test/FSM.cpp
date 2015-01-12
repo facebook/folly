@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 #include <folly/futures/detail/FSM.h>
 
-using namespace folly::wangle::detail;
+using namespace folly::detail;
 
 enum class State { A, B };
 

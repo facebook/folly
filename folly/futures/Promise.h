@@ -20,7 +20,7 @@
 #include <folly/futures/Try.h>
 #include <functional>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 // forward declaration
 template <class T> class Future;
@@ -102,7 +102,7 @@ private:
   void detach();
 };
 
-}}
+}
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise-inl.h>

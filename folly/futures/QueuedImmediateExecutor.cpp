@@ -18,7 +18,7 @@
 #include <folly/ThreadLocal.h>
 #include <queue>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 void QueuedImmediateExecutor::add(Func callback) {
   thread_local std::queue<Func> q;
@@ -34,4 +34,4 @@ void QueuedImmediateExecutor::add(Func callback) {
   }
 }
 
-}} // namespace
+} // namespace

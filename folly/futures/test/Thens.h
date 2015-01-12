@@ -20,7 +20,7 @@
 #include <folly/futures/Future.h>
 #include <folly/Executor.h>
 
-using namespace folly::wangle;
+using namespace folly;
 using namespace std;
 using namespace testing;
 

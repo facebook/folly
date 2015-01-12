@@ -69,16 +69,16 @@ class AsyncSocketHandler
     ctx_ = ctx;
   }
 
-  folly::wangle::Future<void> write(
+  folly::Future<void> write(
       Context* ctx,
       std::unique_ptr<folly::IOBuf> buf) override {
     if (UNLIKELY(!buf)) {
-      return folly::wangle::makeFuture();
+      return folly::makeFuture();
     }
 
     if (!socket_->good()) {
       VLOG(5) << "socket is closed in write()";
-      return folly::wangle::makeFuture<void>(AsyncSocketException(
+      return folly::makeFuture<void>(AsyncSocketException(
           AsyncSocketException::AsyncSocketExceptionType::NOT_OPEN,
           "socket is closed in write()"));
     }
@@ -89,12 +89,12 @@ class AsyncSocketHandler
     return future;
   };
 
-  folly::wangle::Future<void> close(Context* ctx) {
+  folly::Future<void> close(Context* ctx) {
     if (socket_) {
       detachReadCallback();
       socket_->closeNow();
     }
-    return folly::wangle::makeFuture();
+    return folly::makeFuture();
   }
 
   // Must override to avoid warnings about hidden overloaded virtual due to
@@ -142,7 +142,7 @@ class AsyncSocketHandler
 
    private:
     friend class AsyncSocketHandler;
-    folly::wangle::Promise<void> promise_;
+    folly::Promise<void> promise_;
   };
 
   Context* ctx_{nullptr};

@@ -20,7 +20,7 @@
 #include <mutex>
 #include <folly/SmallLocks.h>
 
-namespace folly { namespace wangle { namespace detail {
+namespace folly { namespace detail {
 
 /// Finite State Machine helper base class.
 /// Inherit from this.
@@ -119,4 +119,4 @@ public:
 #define FSM_END }}}
 
 
-}}}
+}} // folly::detail

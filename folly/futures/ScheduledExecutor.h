@@ -21,7 +21,7 @@
 #include <memory>
 #include <stdexcept>
 
-namespace folly { namespace wangle {
+namespace folly {
   // An executor that supports timed scheduling. Like RxScheduler.
   class ScheduledExecutor : public Executor {
    public:
@@ -54,4 +54,4 @@ namespace folly { namespace wangle {
        return std::chrono::steady_clock::now();
      }
   };
-}}
+}

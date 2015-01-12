@@ -21,7 +21,7 @@
 #include <folly/futures/Future.h>
 #include <folly/Baton.h>
 
-using namespace folly::wangle;
+using namespace folly;
 using namespace std::chrono;
 using namespace testing;
 

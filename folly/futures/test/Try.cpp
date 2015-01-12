@@ -19,7 +19,7 @@
 #include <folly/Memory.h>
 #include <folly/futures/Try.h>
 
-using namespace folly::wangle;
+using namespace folly;
 
 TEST(Try, makeTryFunction) {
   auto func = []() {

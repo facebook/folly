@@ -19,7 +19,7 @@ The primary semantic differences are that Wangle Futures and Promises are not th
 
 ```C++
 #include <folly/futures/Future.h>
-using namespace folly::wangle;
+using namespace folly;
 using namespace std;
 
 void foo(int x) {

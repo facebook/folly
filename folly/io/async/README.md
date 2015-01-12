@@ -281,7 +281,7 @@ threads.  Major uses for this include:
 
 In this library only runInEventBaseThread save/restores the request
 context, although other Facebook libraries that pass requests between
-threads do also: folly::wangle::future, and fbthrift::ThreadManager, etc
+threads do also: folly::future, and fbthrift::ThreadManager, etc
 
 ### DelayedDestruction
 

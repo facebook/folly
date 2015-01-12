@@ -18,7 +18,7 @@
 
 #include <folly/futures/Promise.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 /// These classes help you wrap an existing C style callback function
 /// into a Future.
@@ -49,9 +49,9 @@ public:
       static_cast<OpaqueCallbackShunt<T>*>(arg));
     handle->promise_.setValue(std::move(handle->obj_));
   }
-  folly::wangle::Promise<T> promise_;
+  folly::Promise<T> promise_;
 private:
   T obj_;
 };
 
-}} // folly::wangle
+} // folly

@@ -30,7 +30,7 @@
 #include <folly/futures/WangleException.h>
 #include <folly/futures/detail/Types.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 template <class> struct Promise;
 
@@ -626,6 +626,6 @@ Future<T> waitWithSemaphore(Future<T>&& f);
 template <typename T, class Dur>
 Future<T> waitWithSemaphore(Future<T>&& f, Dur timeout);
 
-}} // folly::wangle
+} // folly
 
 #include <folly/futures/Future-inl.h>

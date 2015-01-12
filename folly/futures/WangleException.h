@@ -19,7 +19,7 @@
 #include <exception>
 #include <string>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 class WangleException : public std::exception {
 
@@ -91,4 +91,4 @@ class TimedOut : public WangleException {
   TimedOut() : WangleException("Timed out") {}
 };
 
-}}
+}

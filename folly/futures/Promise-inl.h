@@ -22,7 +22,7 @@
 #include <folly/futures/WangleException.h>
 #include <folly/futures/detail/Core.h>
 
-namespace folly { namespace wangle {
+namespace folly {
 
 template <class T>
 Promise<T>::Promise() : retrieved_(false), core_(new detail::Core<T>())
@@ -136,4 +136,4 @@ void Promise<T>::fulfil(F&& func) {
   fulfilTry(makeTryFunction(std::forward<F>(func)));
 }
 
-}}
+}

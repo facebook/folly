@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+using namespace folly;
 using namespace folly::wangle;
 using namespace std::chrono;
 

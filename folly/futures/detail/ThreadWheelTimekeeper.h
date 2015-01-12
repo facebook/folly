@@ -22,7 +22,7 @@
 #include <folly/io/async/HHWheelTimer.h>
 #include <thread>
 
-namespace folly { namespace wangle { namespace detail {
+namespace folly { namespace detail {
 
 /// The default Timekeeper implementation which uses a HHWheelTimer on an
 /// EventBase in a dedicated thread. Users needn't deal with this directly, it
@@ -47,4 +47,4 @@ class ThreadWheelTimekeeper : public Timekeeper {
 
 Timekeeper* getTimekeeperSingleton();
 
-}}}
+}} // folly::detail
