@@ -149,10 +149,12 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   m[32] = 100.0;
   check_invariant(m);
   EXPECT_TRUE(m.count(32) == 1);
+  EXPECT_DOUBLE_EQ(100.0, m.at(32));
   EXPECT_FALSE(m.find(32) == m.end());
   m.erase(32);
   EXPECT_TRUE(m.find(32) == m.end());
   check_invariant(m);
+  EXPECT_THROW(m.at(32), std::out_of_range);
 
   sorted_vector_map<int,float> m2 = m;
   EXPECT_TRUE(m2 == m);
@@ -300,6 +302,7 @@ TEST(SortedVectorTest, EmptyTest) {
   sorted_vector_map<int,int> emptyMap;
   EXPECT_TRUE(emptyMap.lower_bound(10) == emptyMap.end());
   EXPECT_TRUE(emptyMap.find(10) == emptyMap.end());
+  EXPECT_THROW(emptyMap.at(10), std::out_of_range);
 }
 
 TEST(SortedVectorTest, MoveTest) {
