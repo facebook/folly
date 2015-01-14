@@ -20,6 +20,40 @@
 
 using namespace folly::wangle;
 
+TEST(GlobalExecutorTest, GlobalCPUExecutor) {
+  class DummyExecutor : public folly::Executor {
+   public:
+    void add(folly::Func f) override {
+      f();
+      count++;
+    }
+    int count{0};
+  };
+
+  // The default CPU executor is a synchronous inline executor, lets verify
+  // that work we add is executed
+  auto count = 0;
+  auto f = [&](){ count++; };
+
+  // Don't explode, we should create the default global CPUExecutor lazily here.
+  getCPUExecutor()->add(f);
+  EXPECT_EQ(1, count);
+
+  {
+    auto dummy = std::make_shared<DummyExecutor>();
+    setCPUExecutor(dummy);
+    getCPUExecutor()->add(f);
+    // Make sure we were properly installed.
+    EXPECT_EQ(1, dummy->count);
+    EXPECT_EQ(2, count);
+  }
+
+  // Don't explode, we should restore the default global CPUExecutor because our
+  // weak reference to dummy has expired
+  getCPUExecutor()->add(f);
+  EXPECT_EQ(3, count);
+}
+
 TEST(GlobalExecutorTest, GlobalIOExecutor) {
   class DummyExecutor : public IOExecutor {
    public:
@@ -38,14 +72,14 @@ TEST(GlobalExecutorTest, GlobalIOExecutor) {
   getIOExecutor()->add(f);
 
   {
-    DummyExecutor dummy;
-    setIOExecutor(&dummy);
+    auto dummy = std::make_shared<DummyExecutor>();
+    setIOExecutor(dummy);
     getIOExecutor()->add(f);
     // Make sure we were properly installed.
-    EXPECT_EQ(1, dummy.count);
+    EXPECT_EQ(1, dummy->count);
   }
 
-  // Don't explode, we should restore the default global IOExecutor when dummy
-  // is destructed.
+  // Don't explode, we should restore the default global IOExecutor because our
+  // weak reference to dummy has expired
   getIOExecutor()->add(f);
 }

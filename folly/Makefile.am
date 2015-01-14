@@ -343,7 +343,6 @@ libfolly_la_SOURCES = \
 	wangle/acceptor/TransportInfo.cpp \
 	wangle/concurrent/CPUThreadPoolExecutor.cpp \
 	wangle/concurrent/Codel.cpp \
-	wangle/concurrent/IOExecutor.cpp \
 	wangle/concurrent/IOThreadPoolExecutor.cpp \
 	wangle/concurrent/GlobalExecutor.cpp \
 	wangle/concurrent/ThreadPoolExecutor.cpp \

@@ -40,13 +40,8 @@ namespace folly { namespace wangle {
 // IOThreadPoolExecutor will be created and returned.
 class IOExecutor : public virtual Executor {
  public:
-  virtual ~IOExecutor();
+  virtual ~IOExecutor() {}
   virtual EventBase* getEventBase() = 0;
-
- private:
-  static std::atomic<IOExecutor*>* getSingleton();
-  friend IOExecutor* getIOExecutor();
-  friend void setIOExecutor(IOExecutor* executor);
 };
 
 }}
