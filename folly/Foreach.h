@@ -47,6 +47,8 @@
  * generates code 100% identical to the handwritten loop.
  */
 
+#include <type_traits>
+
 #include <boost/type_traits/remove_cv.hpp>
 #include <type_traits>
 
