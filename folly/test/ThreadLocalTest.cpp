@@ -437,6 +437,7 @@ int totalValue() {
 
 }  // namespace
 
+#ifdef FOLLY_HAVE_PTHREAD_ATFORK
 TEST(ThreadLocal, Fork) {
   EXPECT_EQ(1, ptr->value());  // ensure created
   EXPECT_EQ(1, totalValue());
@@ -506,6 +507,7 @@ TEST(ThreadLocal, Fork) {
 
   EXPECT_EQ(1, totalValue());
 }
+#endif
 
 struct HoldsOneTag2 {};
 
