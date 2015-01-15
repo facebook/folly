@@ -25,9 +25,9 @@ typedef SpinLockMslImpl SpinLock;
 #elif __APPLE__
 typedef SpinLockAppleImpl SpinLock;
 #elif FOLLY_HAVE_PTHREAD_SPINLOCK_T
-typedef SpinLockPthreadMutexImpl SpinLock;
-#else
 typedef SpinLockPthreadImpl SpinLock;
+#else
+typedef SpinLockPthreadMutexImpl SpinLock;
 #endif
 
 template <typename LOCK>
