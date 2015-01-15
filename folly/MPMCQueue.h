@@ -664,8 +664,9 @@ struct TurnSequencer {
       } else {
         // try once, keep moving if CAS fails.  Exponential moving average
         // with alpha of 7/8
+        // Be careful that the quantity we add to prevThresh is signed.
         spinCutoff.compare_exchange_weak(
-            prevThresh, prevThresh + (target - prevThresh) / 8);
+            prevThresh, prevThresh + int(target - prevThresh) / 8);
       }
     }
   }
