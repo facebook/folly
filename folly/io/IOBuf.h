@@ -1041,6 +1041,17 @@ class IOBuf {
    */
   folly::fbvector<struct iovec> getIov() const;
 
+  /**
+   * Update an existing iovec array with the IOBuf data.
+   *
+   * New iovecs will be appended to the existing vector; anything already
+   * present in the vector will be left unchanged.
+   *
+   * Naturally, the returned iovec data will be invalid if you modify the
+   * buffer chain.
+   */
+  void appendToIov(folly::fbvector<struct iovec>* iov) const;
+
   /*
    * Overridden operator new and delete.
    * These perform specialized memory management to help support

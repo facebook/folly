@@ -870,15 +870,19 @@ IOBuf::Iterator IOBuf::cend() const {
 folly::fbvector<struct iovec> IOBuf::getIov() const {
   folly::fbvector<struct iovec> iov;
   iov.reserve(countChainElements());
+  appendToIov(&iov);
+  return iov;
+}
+
+void IOBuf::appendToIov(folly::fbvector<struct iovec>* iov) const {
   IOBuf const* p = this;
   do {
     // some code can get confused by empty iovs, so skip them
     if (p->length() > 0) {
-      iov.push_back({(void*)p->data(), folly::to<size_t>(p->length())});
+      iov->push_back({(void*)p->data(), folly::to<size_t>(p->length())});
     }
     p = p->next();
   } while (p != this);
-  return iov;
 }
 
 size_t IOBufHash::operator()(const IOBuf& buf) const {

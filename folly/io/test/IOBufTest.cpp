@@ -964,6 +964,19 @@ TEST(IOBuf, getIov) {
   buf->prev()->clear();
   iov = buf->getIov();
   EXPECT_EQ(count - 3, iov.size());
+
+  // test appending to an existing iovec array
+  iov.clear();
+  const char localBuf[] = "hello";
+  iov.push_back({(void*)localBuf, sizeof(localBuf)});
+  iov.push_back({(void*)localBuf, sizeof(localBuf)});
+  buf->appendToIov(&iov);
+  EXPECT_EQ(count - 1, iov.size());
+  EXPECT_EQ(localBuf, iov[0].iov_base);
+  EXPECT_EQ(localBuf, iov[1].iov_base);
+  // The first two IOBufs were cleared, so the next iov entry
+  // should be the third IOBuf in the chain.
+  EXPECT_EQ(buf->next()->next()->data(), iov[2].iov_base);
 }
 
 TEST(IOBuf, move) {
