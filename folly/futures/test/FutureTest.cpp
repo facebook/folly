@@ -713,8 +713,8 @@ TEST(Future, whenAny) {
       futures.push_back(p.getFuture());
 
     auto anyf = whenAny(futures.begin(), futures.end())
-      .then([](Try<pair<size_t, Try<int>>>&& f) {
-        EXPECT_EQ(42, f.value().second.value());
+      .then([](pair<size_t, Try<int>> p) {
+        EXPECT_EQ(42, p.second.value());
       });
 
     promises[3].setValue(42);
@@ -730,8 +730,8 @@ TEST(when, already_completed) {
       fs.push_back(makeFuture());
 
     whenAll(fs.begin(), fs.end())
-      .then([&](Try<vector<Try<void>>>&& t) {
-        EXPECT_EQ(fs.size(), t.value().size());
+      .then([&](vector<Try<void>> ts) {
+        EXPECT_EQ(fs.size(), ts.size());
       });
   }
   {
@@ -740,8 +740,7 @@ TEST(when, already_completed) {
       fs.push_back(makeFuture(i));
 
     whenAny(fs.begin(), fs.end())
-      .then([&](Try<pair<size_t, Try<int>>>&& t) {
-        auto& p = t.value();
+      .then([&](pair<size_t, Try<int>> p) {
         EXPECT_EQ(p.first, p.second.value());
       });
   }
@@ -757,9 +756,8 @@ TEST(when, whenN) {
   bool flag = false;
   size_t n = 3;
   whenN(futures.begin(), futures.end(), n)
-    .then([&](Try<vector<pair<size_t, Try<void>>>>&& t) {
+    .then([&](vector<pair<size_t, Try<void>>> v) {
       flag = true;
-      auto v = t.value();
       EXPECT_EQ(n, v.size());
       for (auto& tt : v)
         EXPECT_TRUE(tt.second.hasValue());
@@ -808,13 +806,12 @@ TEST(Future, whenAllVariadic) {
   Future<int> fi = pi.getFuture();
   bool flag = false;
   whenAll(std::move(fb), std::move(fi))
-    .then([&](Try<std::tuple<Try<bool>, Try<int>>>&& t) {
+    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
       flag = true;
-      EXPECT_TRUE(t.hasValue());
-      EXPECT_TRUE(std::get<0>(t.value()).hasValue());
-      EXPECT_EQ(std::get<0>(t.value()).value(), true);
-      EXPECT_TRUE(std::get<1>(t.value()).hasValue());
-      EXPECT_EQ(std::get<1>(t.value()).value(), 42);
+      EXPECT_TRUE(std::get<0>(tup).hasValue());
+      EXPECT_EQ(std::get<0>(tup).value(), true);
+      EXPECT_TRUE(std::get<1>(tup).hasValue());
+      EXPECT_EQ(std::get<1>(tup).value(), 42);
     });
   pb.setValue(true);
   EXPECT_FALSE(flag);
@@ -829,13 +826,12 @@ TEST(Future, whenAllVariadicReferences) {
   Future<int> fi = pi.getFuture();
   bool flag = false;
   whenAll(fb, fi)
-    .then([&](Try<std::tuple<Try<bool>, Try<int>>>&& t) {
+    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
       flag = true;
-      EXPECT_TRUE(t.hasValue());
-      EXPECT_TRUE(std::get<0>(t.value()).hasValue());
-      EXPECT_EQ(std::get<0>(t.value()).value(), true);
-      EXPECT_TRUE(std::get<1>(t.value()).hasValue());
-      EXPECT_EQ(std::get<1>(t.value()).value(), 42);
+      EXPECT_TRUE(std::get<0>(tup).hasValue());
+      EXPECT_EQ(std::get<0>(tup).value(), true);
+      EXPECT_TRUE(std::get<1>(tup).hasValue());
+      EXPECT_EQ(std::get<1>(tup).value(), 42);
     });
   pb.setValue(true);
   EXPECT_FALSE(flag);

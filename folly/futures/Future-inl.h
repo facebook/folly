@@ -828,8 +828,8 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
   return whenAll(*this, futures::sleep(dur, tk))
-    .then([](Try<std::tuple<Try<T>, Try<void>>>&& tup) {
-      Try<T>& t = std::get<0>(tup.value());
+    .then([](std::tuple<Try<T>, Try<void>> tup) {
+      Try<T>& t = std::get<0>(tup);
       return makeFuture<T>(std::move(t));
     });
 }
