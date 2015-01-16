@@ -77,7 +77,7 @@ class ThreadExecutor : public Executor {
   }
 };
 
-typedef WangleException eggs_t;
+typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
 // Future

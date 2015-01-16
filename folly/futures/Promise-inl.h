@@ -19,7 +19,7 @@
 #include <atomic>
 #include <thread>
 
-#include <folly/futures/WangleException.h>
+#include <folly/futures/FutureException.h>
 #include <folly/futures/detail/Core.h>
 
 namespace folly {

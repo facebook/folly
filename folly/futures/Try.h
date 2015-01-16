@@ -23,7 +23,7 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/futures/Deprecated.h>
-#include <folly/futures/WangleException.h>
+#include <folly/futures/FutureException.h>
 
 namespace folly {
 
@@ -178,7 +178,7 @@ class Try {
 
   exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw WangleException("exception(): Try does not contain an exception");
+      throw FutureException("exception(): Try does not contain an exception");
     }
     return *e_;
   }
@@ -274,13 +274,13 @@ class Try<void> {
   }
 
   /*
-   * @throws WangleException if the Try doesn't contain an exception
+   * @throws FutureException if the Try doesn't contain an exception
    *
    * @returns mutable reference to the exception contained by this Try
    */
   exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw WangleException("exception(): Try does not contain an exception");
+      throw FutureException("exception(): Try does not contain an exception");
     }
     return *e_;
   }

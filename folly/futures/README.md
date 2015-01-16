@@ -1,19 +1,8 @@
-# Wangle
-Wangle is a framework for expressing asynchronous code in C++ using the Future pattern.
+# folly::Futures
 
-**wan•gle** |ˈwaNGgəl| informal  
-*verb*  
-Obtain (something that is desired) by persuading others to comply or by manipulating events.
+Futures is a futures-based async framework inspired by [Twitter's Finagle](http://twitter.github.io/finagle/) (which is in scala), and (loosely) building upon the existing (but anemic) Futures code found in the C++11 standard ([`std::future`](http://en.cppreference.com/w/cpp/thread/future)) and [`boost::future`](http://www.boost.org/doc/libs/1_53_0/boost/thread/future.hpp) (especially >= 1.53.0). Although inspired by the std::future interface, it is not syntactically drop-in compatible because some ideas didn't translate well enough and we decided to break from the API. But semantically, it should be straightforward to translate from existing std::future code to Futures.
 
-*noun*  
-A framework for expressing asynchronous control flow in C++, that is composable and easily translated to/from synchronous code.
-
-*synonyms*  
-[Finagle](http://twitter.github.io/finagle/)
-
-Wangle is a futures-based async framework inspired by [Twitter's Finagle](http://twitter.github.io/finagle/) (which is in scala), and (loosely) building upon the existing (but anemic) Futures code found in the C++11 standard ([`std::future`](http://en.cppreference.com/w/cpp/thread/future)) and [`boost::future`](http://www.boost.org/doc/libs/1_53_0/boost/thread/future.hpp) (especially >= 1.53.0). Although inspired by the std::future interface, it is not syntactically drop-in compatible because some ideas didn't translate well enough and we decided to break from the API. But semantically, it should be straightforward to translate from existing std::future code to Wangle.
-
-The primary semantic differences are that Wangle Futures and Promises are not threadsafe; and as does `boost::future`, Wangle supports continuing callbacks (`then()`) and there are helper methods `whenAll()` and `whenAny()` which are important compositional building blocks.
+The primary semantic differences are that folly's Futures and Promises are not threadsafe; and as does `boost::future`, folly::Futures support continuing callbacks (`then()`) and there are helper methods `whenAll()` and `whenAny()` which are important compositional building blocks.
 
 ## Brief Synopsis
 
@@ -167,13 +156,13 @@ Using `then` to add callbacks is idiomatic. It brings all the code into one plac
 
 Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future.
 
-Other future frameworks like Finagle and std::future/boost::future, give you the ability to wait directly on a Future, by calling `fut.wait()` (naturally enough). Wangle has diverged from this pattern because we don't want to be in the business of dictating how your thread waits. We may work out something that we feel is sufficiently general, in the meantime adapt this spin loop to however your thread should wait:
+Other future frameworks like Finagle and std::future/boost::future, give you the ability to wait directly on a Future, by calling `fut.wait()` (naturally enough). Futures have diverged from this pattern because we don't want to be in the business of dictating how your thread waits. We may work out something that we feel is sufficiently general, in the meantime adapt this spin loop to however your thread should wait:
 
   while (!f.isReady()) {}
 
 (Hint: you might want to use an event loop or a semaphore or something. You probably don't want to just spin like this.)
 
-Wangle is partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. BUT, be warned that you might be surprised about which thread your callback executes on. Let's consider an example.
+Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. BUT, be warned that you might be surprised about which thread your callback executes on. Let's consider an example.
 
 ```C++
 // Thread A
@@ -275,4 +264,4 @@ C++ doesn't directly support continuations very well. But there are some ways to
 
 The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster and the code might read cleaner.
 
-Wangle takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn't claim to be the best model for all situations. Use your tools wisely.
+Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn't claim to be the best model for all situations. Use your tools wisely.

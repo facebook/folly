@@ -27,7 +27,7 @@
 #include <folly/futures/Deprecated.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
-#include <folly/futures/WangleException.h>
+#include <folly/futures/FutureException.h>
 #include <folly/futures/detail/Types.h>
 
 namespace folly {
@@ -108,8 +108,8 @@ namespace futures {
   /// Duration typedef of a `std::chrono` duration type indicates the
   /// resolution you can expect to be meaningful (milliseconds at the time of
   /// writing). Normally you wouldn't need to specify a Timekeeper, we will
-  /// use the global wangle timekeeper (we run a thread whose job it is to
-  /// keep time for wangle timeouts) but we provide the option for power
+  /// use the global futures timekeeper (we run a thread whose job it is to
+  /// keep time for futures timeouts) but we provide the option for power
   /// users.
   ///
   /// The Timekeeper thread will be lazily created the first time it is

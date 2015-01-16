@@ -87,6 +87,7 @@ nobase_follyinclude_HEADERS = \
 	futures/Deprecated.h \
 	futures/Future-inl.h \
 	futures/Future.h \
+	futures/FutureException.h \
 	futures/InlineExecutor.h \
 	futures/ManualExecutor.h \
 	futures/OpaqueCallbackShunt.h \
@@ -97,7 +98,6 @@ nobase_follyinclude_HEADERS = \
 	futures/Timekeeper.h \
 	futures/Try-inl.h \
 	futures/Try.h \
-	futures/WangleException.h \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
 	futures/detail/ThreadWheelTimekeeper.h \

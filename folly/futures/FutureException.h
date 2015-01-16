@@ -21,24 +21,24 @@
 
 namespace folly {
 
-class WangleException : public std::exception {
+class FutureException : public std::exception {
 
 public:
 
-  explicit WangleException(std::string message_arg)
+  explicit FutureException(std::string message_arg)
     : message(message_arg) {}
 
-  ~WangleException() throw(){}
+  ~FutureException() throw(){}
 
   virtual const char *what() const throw() {
     return message.c_str();
   }
 
-  bool operator==(const WangleException &other) const{
+  bool operator==(const FutureException &other) const{
     return other.message == this->message;
   }
 
-  bool operator!=(const WangleException &other) const{
+  bool operator!=(const FutureException &other) const{
     return !(*this == other);
   }
 
@@ -46,49 +46,49 @@ public:
     std::string message;
 };
 
-class BrokenPromise : public WangleException {
+class BrokenPromise : public FutureException {
   public:
     explicit BrokenPromise() :
-      WangleException("Broken promise") { }
+      FutureException("Broken promise") { }
 };
 
-class NoState : public WangleException {
+class NoState : public FutureException {
   public:
-    explicit NoState() : WangleException("No state") { }
+    explicit NoState() : FutureException("No state") { }
 };
 
-class PromiseAlreadySatisfied : public WangleException {
+class PromiseAlreadySatisfied : public FutureException {
   public:
     explicit PromiseAlreadySatisfied() :
-      WangleException("Promise already satisfied") { }
+      FutureException("Promise already satisfied") { }
 };
 
-class FutureNotReady : public WangleException {
+class FutureNotReady : public FutureException {
   public:
     explicit FutureNotReady() :
-      WangleException("Future not ready") { }
+      FutureException("Future not ready") { }
 };
 
-class FutureAlreadyRetrieved : public WangleException {
+class FutureAlreadyRetrieved : public FutureException {
   public:
     explicit FutureAlreadyRetrieved () :
-      WangleException("Future already retrieved") { }
+      FutureException("Future already retrieved") { }
 };
 
-class UsingUninitializedTry : public WangleException {
+class UsingUninitializedTry : public FutureException {
   public:
     explicit UsingUninitializedTry() :
-      WangleException("Using unitialized try") { }
+      FutureException("Using unitialized try") { }
 };
 
-class FutureCancellation : public WangleException {
+class FutureCancellation : public FutureException {
  public:
-  FutureCancellation() : WangleException("Future was cancelled") {}
+  FutureCancellation() : FutureException("Future was cancelled") {}
 };
 
-class TimedOut : public WangleException {
+class TimedOut : public FutureException {
  public:
-  TimedOut() : WangleException("Timed out") {}
+  TimedOut() : FutureException("Timed out") {}
 };
 
 }
