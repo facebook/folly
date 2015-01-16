@@ -190,13 +190,13 @@ Acceptor::init(AsyncServerSocket* serverSocket,
 
   if (serverSocket) {
     serverSocket->addAcceptCallback(this, eventBase);
-    // SO_KEEPALIVE is the only setting that is inherited by accepted
-    // connections so only apply this setting
-    for (const auto& option: socketOptions_) {
-      if (option.first.level == SOL_SOCKET &&
-          option.first.optname == SO_KEEPALIVE && option.second == 1) {
-        serverSocket->setKeepAliveEnabled(true);
-        break;
+
+    for (auto& fd : serverSocket->getSockets()) {
+      if (fd < 0) {
+        continue;
+      }
+      for (const auto& opt: socketOptions_) {
+        opt.first.apply(fd, opt.second);
       }
     }
   }
