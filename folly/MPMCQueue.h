@@ -289,7 +289,7 @@ class MPMCQueue : boost::noncopyable {
   /// return false, but writeIfNotFull will wait for the dequeue to finish.
   /// This method is required if you are composing queues and managing
   /// your own wakeup, because it guarantees that after every successful
-  /// write a readIfNotFull will succeed.
+  /// write a readIfNotEmpty will succeed.
   template <typename ...Args>
   bool writeIfNotFull(Args&&... args) noexcept {
     uint64_t ticket;
