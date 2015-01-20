@@ -34,6 +34,8 @@ using std::make_pair;
 using std::cerr;
 using std::endl;
 using std::chrono::milliseconds;
+using std::chrono::microseconds;
+using std::chrono::duration_cast;
 
 using namespace folly;
 
@@ -1456,6 +1458,9 @@ TEST(EventBaseTest, IdleTime) {
   IdleTimeTimeoutSeries tos0(&eventBase, timeouts0);
   std::deque<uint64_t> timeouts(20, 20);
   std::unique_ptr<IdleTimeTimeoutSeries> tos;
+  int64_t testStart = duration_cast<microseconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count();
+  bool hostOverloaded = false;
 
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(6000, [&]() {
@@ -1463,6 +1468,15 @@ TEST(EventBaseTest, IdleTime) {
 
     switch (latencyCallbacks) {
     case 1:
+      if (tos0.getTimeouts() < 6) {
+        // This could only happen if the host this test is running
+        // on is heavily loaded.
+        int64_t maxLatencyReached = duration_cast<microseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        ASSERT_LE(43800, maxLatencyReached - testStart);
+        hostOverloaded = true;
+        break;
+      }
       ASSERT_EQ(6, tos0.getTimeouts());
       ASSERT_GE(6100, eventBase.getAvgLoopTime() - 1200);
       ASSERT_LE(6100, eventBase.getAvgLoopTime() + 1200);
@@ -1479,6 +1493,10 @@ TEST(EventBaseTest, IdleTime) {
   tos0.scheduleTimeout(1);
 
   eventBase.loop();
+
+  if (hostOverloaded) {
+    return;
+  }
 
   ASSERT_EQ(1, latencyCallbacks);
   ASSERT_EQ(7, tos0.getTimeouts());

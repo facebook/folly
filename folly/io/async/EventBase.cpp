@@ -646,6 +646,8 @@ void EventBase::SmoothLoopTime::addSample(int64_t idle, int64_t busy) {
       LEFT = 2,   // busy sample placed at the beginning of the iteration
     };
 
+  // See http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
+  // and D676020 for more info on this calculation.
   VLOG(11) << "idle " << idle << " oldBusyLeftover_ " << oldBusyLeftover_ <<
               " idle + oldBusyLeftover_ " << idle + oldBusyLeftover_ <<
               " busy " << busy << " " << __PRETTY_FUNCTION__;
