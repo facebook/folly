@@ -154,13 +154,7 @@ That example is a little contrived but the idea is that you can transform a resu
 
 Using `then` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell.
 
-Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future.
-
-Other future frameworks like Finagle and std::future/boost::future, give you the ability to wait directly on a Future, by calling `fut.wait()` (naturally enough). Futures have diverged from this pattern because we don't want to be in the business of dictating how your thread waits. We may work out something that we feel is sufficiently general, in the meantime adapt this spin loop to however your thread should wait:
-
-  while (!f.isReady()) {}
-
-(Hint: you might want to use an event loop or a semaphore or something. You probably don't want to just spin like this.)
+Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future. Futures have a blocking method called wait() that does exactly that and optionally takes a timeout.
 
 Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. BUT, be warned that you might be surprised about which thread your callback executes on. Let's consider an example.
 
