@@ -20,13 +20,18 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
+#include <folly/futures/DrivableExecutor.h>
 
 using namespace folly;
 
-struct ManualWaiter {
+struct ManualWaiter : public DrivableExecutor {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
 
-  void makeProgress() {
+  void add(Func f) {
+    ex->add(f);
+  }
+
+  void drive() override {
     ex->wait();
     ex->run();
   }
@@ -44,7 +49,7 @@ struct ViaFixture : public testing::Test {
     t = std::thread([=] {
       ManualWaiter eastWaiter(eastExecutor);
       while (!done)
-        eastWaiter.makeProgress();
+        eastWaiter.drive();
       });
   }
 
@@ -146,10 +151,7 @@ TEST_F(ViaFixture, thread_hops) {
     EXPECT_EQ(std::this_thread::get_id(), westThreadId);
     return t.value();
   });
-  while (!f.isReady()) {
-    waiter->makeProgress();
-  }
-  EXPECT_EQ(f.value(), 1);
+  EXPECT_EQ(f.getVia(waiter.get()), 1);
 }
 
 TEST_F(ViaFixture, chain_vias) {
@@ -169,10 +171,7 @@ TEST_F(ViaFixture, chain_vias) {
     return t.value();
   });
 
-  while (!f.isReady()) {
-    waiter->makeProgress();
-  }
-  EXPECT_EQ(f.value(), 1);
+  EXPECT_EQ(f.getVia(waiter.get()), 1);
 }
 
 TEST_F(ViaFixture, bareViaAssignment) {

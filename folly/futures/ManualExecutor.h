@@ -15,6 +15,7 @@
  */
 
 #pragma once
+#include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/ScheduledExecutor.h>
 #include <semaphore.h>
 #include <memory>
@@ -31,7 +32,8 @@ namespace folly {
   ///
   /// NB No attempt has been made to make anything other than add and schedule
   /// threadsafe.
-  class ManualExecutor : public ScheduledExecutor {
+  class ManualExecutor : public DrivableExecutor,
+                         public ScheduledExecutor {
    public:
     ManualExecutor();
 
@@ -52,6 +54,11 @@ namespace folly {
     void makeProgress() {
       wait();
       run();
+    }
+
+    /// Implements DrivableExecutor
+    void drive() override {
+      makeProgress();
     }
 
     /// makeProgress until this Future is ready.

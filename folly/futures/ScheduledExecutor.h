@@ -23,7 +23,7 @@
 
 namespace folly {
   // An executor that supports timed scheduling. Like RxScheduler.
-  class ScheduledExecutor : public Executor {
+  class ScheduledExecutor : public virtual Executor {
    public:
      // Reality is that better than millisecond resolution is very hard to
      // achieve. However, we reserve the right to be incredible.

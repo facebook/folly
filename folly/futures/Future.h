@@ -25,6 +25,7 @@
 
 #include <folly/MoveWrapper.h>
 #include <folly/futures/Deprecated.h>
+#include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
 #include <folly/futures/FutureException.h>
@@ -89,7 +90,6 @@ struct Extract<R(Class::*)(Args...)> {
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
 };
-
 
 } // detail
 
@@ -189,6 +189,11 @@ class Future {
   /// value (moved out), or throws the exception (which might be a TimedOut
   /// exception).
   T get(Duration dur);
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns the
+  /// value (moved out), or throws the exception.
+  T getVia(DrivableExecutor* e);
 
   /** When this Future has completed, execute func which is a function that
     takes a Try<T>&&. A Future for the return type of func is
@@ -486,6 +491,15 @@ class Future {
   /// Returns a new Future which either contains the result or is incomplete,
   /// depending on whether the Duration passed.
   Future<T> wait(Duration);
+
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
+  /// reference to this Future so that you can chain calls if desired.
+  /// value (moved out), or throws the exception.
+  Future<T>& waitVia(DrivableExecutor* e) &;
+
+  /// Overload of waitVia() for rvalue Futures
+  Future<T> waitVia(DrivableExecutor* e) &&;
 
  private:
   typedef detail::Core<T>* corePtr;

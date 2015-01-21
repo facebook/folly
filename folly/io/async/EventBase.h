@@ -21,6 +21,7 @@
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/Request.h>
 #include <folly/Executor.h>
+#include <folly/futures/DrivableExecutor.h>
 #include <memory>
 #include <stack>
 #include <list>
@@ -95,9 +96,9 @@ class RequestEventBase : public RequestData {
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase :
-  private boost::noncopyable, public TimeoutManager, public Executor
-{
+class EventBase : private boost::noncopyable,
+                  public TimeoutManager,
+                  public DrivableExecutor {
  public:
   /**
    * A callback interface to use with runInLoop()
@@ -483,6 +484,11 @@ class EventBase :
     // runInEventBaseThread() takes a const&,
     // so no point in doing std::move here.
     runInEventBaseThread(fn);
+  }
+
+  /// Implements the DrivableExecutor interface
+  void drive() override {
+    loopOnce();
   }
 
  private:

@@ -721,6 +721,22 @@ inline void Future<void>::get(Duration dur) {
 }
 
 template <class T>
+T Future<T>::getVia(DrivableExecutor* e) {
+  while (!isReady()) {
+    e->drive();
+  }
+  return std::move(value());
+}
+
+template <>
+inline void Future<void>::getVia(DrivableExecutor* e) {
+  while (!isReady()) {
+    e->drive();
+  }
+  value();
+}
+
+template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
 }
@@ -801,6 +817,22 @@ Future<T> Future<T>::wait(Duration dur) {
   });
   baton->timed_wait(std::chrono::system_clock::now() + dur);
   return done;
+}
+
+template <class T>
+Future<T>& Future<T>::waitVia(DrivableExecutor* e) & {
+  while (!isReady()) {
+    e->drive();
+  }
+  return *this;
+}
+
+template <class T>
+Future<T> Future<T>::waitVia(DrivableExecutor* e) && {
+  while (!isReady()) {
+    e->drive();
+  }
+  return std::move(*this);
 }
 
 }

@@ -27,6 +27,7 @@
 #include <folly/Executor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/ManualExecutor.h>
+#include <folly/futures/DrivableExecutor.h>
 #include <folly/MPMCQueue.h>
 
 #include <folly/io/async/Request.h>
@@ -967,6 +968,59 @@ TEST(Future, waitWithDuration) {
   auto t = makeFuture().wait(std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
  }
+}
+
+class DummyDrivableExecutor : public DrivableExecutor {
+ public:
+  void add(Func f) override {}
+  void drive() override { ran = true; }
+  bool ran{false};
+};
+
+TEST(Future, getVia) {
+  {
+    // non-void
+    ManualExecutor x;
+    auto f = via(&x).then([]{ return true; });
+    EXPECT_TRUE(f.getVia(&x));
+  }
+
+  {
+    // void
+    ManualExecutor x;
+    auto f = via(&x).then();
+    f.getVia(&x);
+  }
+
+  {
+    DummyDrivableExecutor x;
+    auto f = makeFuture(true);
+    EXPECT_TRUE(f.getVia(&x));
+    EXPECT_FALSE(x.ran);
+  }
+}
+
+TEST(Future, waitVia) {
+  {
+    ManualExecutor x;
+    auto f = via(&x).then();
+    EXPECT_FALSE(f.isReady());
+    f.waitVia(&x);
+    EXPECT_TRUE(f.isReady());
+  }
+
+  {
+    // try rvalue as well
+    ManualExecutor x;
+    auto f = via(&x).activate().then().waitVia(&x);
+    EXPECT_TRUE(f.isReady());
+  }
+
+  {
+    DummyDrivableExecutor x;
+    makeFuture(true).waitVia(&x);
+    EXPECT_FALSE(x.ran);
+  }
 }
 
 TEST(Future, callbackAfterActivate) {
