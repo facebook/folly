@@ -643,65 +643,6 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
-template <typename T>
-Future<T>
-waitWithSemaphore(Future<T>&& f) {
-  Baton<> baton;
-  auto done = f.then([&](Try<T> &&t) {
-    baton.post();
-    return std::move(t.value());
-  });
-  baton.wait();
-  while (!done.isReady()) {
-    // There's a race here between the return here and the actual finishing of
-    // the future. f is completed, but the setup may not have finished on done
-    // after the baton has posted.
-    std::this_thread::yield();
-  }
-  return done;
-}
-
-template<>
-inline Future<void> waitWithSemaphore<void>(Future<void>&& f) {
-  Baton<> baton;
-  auto done = f.then([&](Try<void> &&t) {
-    baton.post();
-    t.value();
-  });
-  baton.wait();
-  while (!done.isReady()) {
-    // There's a race here between the return here and the actual finishing of
-    // the future. f is completed, but the setup may not have finished on done
-    // after the baton has posted.
-    std::this_thread::yield();
-  }
-  return done;
-}
-
-template <typename T, class Dur>
-Future<T>
-waitWithSemaphore(Future<T>&& f, Dur timeout) {
-  auto baton = std::make_shared<Baton<>>();
-  auto done = f.then([baton](Try<T> &&t) {
-    baton->post();
-    return std::move(t.value());
-  });
-  baton->timed_wait(std::chrono::system_clock::now() + timeout);
-  return done;
-}
-
-template <class Dur>
-Future<void>
-waitWithSemaphore(Future<void>&& f, Dur timeout) {
-  auto baton = std::make_shared<Baton<>>();
-  auto done = f.then([baton](Try<void> &&t) {
-    baton->post();
-    t.value();
-  });
-  baton->timed_wait(std::chrono::system_clock::now() + timeout);
-  return done;
-}
-
 namespace {
   template <class T>
   void getWaitHelper(Future<T>* f) {
@@ -832,6 +773,34 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
       Try<T>& t = std::get<0>(tup);
       return makeFuture<T>(std::move(t));
     });
+}
+
+template <class T>
+Future<T> Future<T>::wait() {
+  Baton<> baton;
+  auto done = then([&](Try<T> t) {
+    baton.post();
+    return makeFuture(std::move(t));
+  });
+  baton.wait();
+  while (!done.isReady()) {
+    // There's a race here between the return here and the actual finishing of
+    // the future. f is completed, but the setup may not have finished on done
+    // after the baton has posted.
+    std::this_thread::yield();
+  }
+  return done;
+}
+
+template <class T>
+Future<T> Future<T>::wait(Duration dur) {
+  auto baton = std::make_shared<Baton<>>();
+  auto done = then([baton](Try<T> t) {
+    baton->post();
+    return makeFuture(std::move(t));
+  });
+  baton->timed_wait(std::chrono::system_clock::now() + dur);
+  return done;
 }
 
 }
