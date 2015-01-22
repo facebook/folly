@@ -96,6 +96,7 @@
 #include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
+#include <folly/io/async/Request.h>
 
 #include <algorithm>
 #include <vector>
@@ -326,6 +327,7 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
+    RequestContext::getStaticContext();
     std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
     RWSpinLock::WriteHolder wh(&stateMutex_);

@@ -81,6 +81,8 @@ SingletonVault* SingletonVault::singleton() {
 }
 
 void SingletonVault::scheduleDestroyInstances() {
+  RequestContext::getStaticContext();
+
   class SingletonVaultDestructor {
    public:
     ~SingletonVaultDestructor() {
