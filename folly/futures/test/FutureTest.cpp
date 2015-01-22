@@ -874,31 +874,31 @@ TEST(Future, throwIfFailed) {
     });
 }
 
-TEST(Future, waitImmediate) {
-  makeFuture().wait();
-  auto done = makeFuture(42).wait().value();
+TEST(Future, waitWithSemaphoreImmediate) {
+  waitWithSemaphore(makeFuture());
+  auto done = waitWithSemaphore(makeFuture(42)).value();
   EXPECT_EQ(42, done);
 
   vector<int> v{1,2,3};
-  auto done_v = makeFuture(v).wait().value();
+  auto done_v = waitWithSemaphore(makeFuture(v)).value();
   EXPECT_EQ(v.size(), done_v.size());
   EXPECT_EQ(v, done_v);
 
   vector<Future<void>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = whenAll(v_f.begin(), v_f.end()).wait().value();
+  auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end())).value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto fut = whenAll(v_fb.begin(), v_fb.end());
-  auto done_v_fb = std::move(fut.wait().value());
+  auto done_v_fb = std::move(waitWithSemaphore(std::move(fut)).value());
   EXPECT_EQ(2, done_v_fb.size());
 }
 
-TEST(Future, wait) {
+TEST(Future, waitWithSemaphore) {
   Promise<int> p;
   Future<int> f = p.getFuture();
   std::atomic<bool> flag{false};
@@ -911,7 +911,7 @@ TEST(Future, wait) {
           return t.value();
         });
       flag = true;
-      result.store(n.wait().value());
+      result.store(waitWithSemaphore(std::move(n)).value());
     },
     std::move(f)
     );
@@ -925,11 +925,12 @@ TEST(Future, wait) {
   EXPECT_EQ(result.load(), 42);
 }
 
-TEST(Future, waitWithDuration) {
+TEST(Future, waitWithSemaphoreForTime) {
  {
   Promise<int> p;
   Future<int> f = p.getFuture();
-  auto t = f.wait(std::chrono::milliseconds(1));
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::microseconds(1));
   EXPECT_FALSE(t.isReady());
   p.setValue(1);
   EXPECT_TRUE(t.isReady());
@@ -938,7 +939,8 @@ TEST(Future, waitWithDuration) {
   Promise<int> p;
   Future<int> f = p.getFuture();
   p.setValue(1);
-  auto t = f.wait(std::chrono::milliseconds(1));
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
  }
  {
@@ -946,7 +948,8 @@ TEST(Future, waitWithDuration) {
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = f.wait(std::chrono::milliseconds(1));
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
   EXPECT_EQ(2, t.value().size());
  }
@@ -957,7 +960,8 @@ TEST(Future, waitWithDuration) {
   v_fb.push_back(p1.getFuture());
   v_fb.push_back(p2.getFuture());
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = f.wait(std::chrono::milliseconds(1));
+  auto t = waitWithSemaphore(std::move(f),
+    std::chrono::milliseconds(1));
   EXPECT_FALSE(t.isReady());
   p1.setValue(true);
   EXPECT_FALSE(t.isReady());
@@ -965,7 +969,8 @@ TEST(Future, waitWithDuration) {
   EXPECT_TRUE(t.isReady());
  }
  {
-  auto t = makeFuture().wait(std::chrono::milliseconds(1));
+  auto t = waitWithSemaphore(makeFuture(),
+    std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
  }
 }
@@ -1220,7 +1225,7 @@ TEST(Future, t5506504) {
     return whenAll(futures.begin(), futures.end());
   };
 
-  fn().wait();
+  waitWithSemaphore(fn());
 }
 
 // Test of handling of a circular dependency. It's never recommended
