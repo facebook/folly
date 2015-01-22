@@ -64,4 +64,16 @@ TEST(AsyncSocketTest, REUSEPORT) {
 
 }
 
+TEST(AsyncSocketTest, v4v6samePort) {
+  EventBase base;
+  auto serverSocket = AsyncServerSocket::newSocket(&base);
+  serverSocket->bind(0);
+  auto addrs = serverSocket->getAddresses();
+  ASSERT_GT(addrs.size(), 0);
+  uint16_t port = addrs[0].getPort();
+  for (const auto& addr : addrs) {
+    EXPECT_EQ(port, addr.getPort());
+  }
+}
+
 } // namespace

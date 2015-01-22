@@ -397,24 +397,53 @@ void AsyncServerSocket::bind(uint16_t port) {
         errno,
         "failed to bind to async server socket for port");
     }
+
+    if (port == 0) {
+      address.setFromLocalAddress(s);
+      snprintf(sport, sizeof(sport), "%u", address.getPort());
+      CHECK(!getaddrinfo(nullptr, sport, &hints, &res0));
+    }
+
   };
 
-  // Prefer AF_INET6 addresses. RFC 3484 mandates that getaddrinfo
-  // should return IPv6 first and then IPv4 addresses, but glibc's
-  // getaddrinfo(nullptr) with AI_PASSIVE returns:
-  // - 0.0.0.0 (IPv4-only)
-  // - :: (IPv6+IPv4) in this order
-  // See: https://sourceware.org/bugzilla/show_bug.cgi?id=9981
-  for (res = res0; res; res = res->ai_next) {
-    if (res->ai_family == AF_INET6) {
-      setupAddress(res);
+  for (int tries = 1; true; tries++) {
+    // Prefer AF_INET6 addresses. RFC 3484 mandates that getaddrinfo
+    // should return IPv6 first and then IPv4 addresses, but glibc's
+    // getaddrinfo(nullptr) with AI_PASSIVE returns:
+    // - 0.0.0.0 (IPv4-only)
+    // - :: (IPv6+IPv4) in this order
+    // See: https://sourceware.org/bugzilla/show_bug.cgi?id=9981
+    for (res = res0; res; res = res->ai_next) {
+      if (res->ai_family == AF_INET6) {
+        setupAddress(res);
+      }
     }
-  }
 
-  for (res = res0; res; res = res->ai_next) {
-    if (res->ai_family != AF_INET6) {
-      setupAddress(res);
+    try {
+      for (res = res0; res; res = res->ai_next) {
+        if (res->ai_family != AF_INET6) {
+            setupAddress(res);
+        }
+      }
+    } catch (const std::system_error& e) {
+      // if we can't bind to the same port on ipv4 as ipv6 when using port=0
+      // then we will try again another 2 times before giving up.  We do this
+      // by closing the sockets that were opened, then redoing the whole thing
+      if (port == 0 && !sockets_.empty() && tries != 3) {
+        for (const auto& socket : sockets_) {
+          if (socket.socket_ > 0) {
+            CHECK(::close(socket.socket_) == 0);
+          }
+        }
+        sockets_.clear();
+        snprintf(sport, sizeof(sport), "%u", port);
+        CHECK(!getaddrinfo(nullptr, sport, &hints, &res0));
+        continue;
+      }
+      throw;
     }
+
+    break;
   }
 
   if (sockets_.size() == 0) {
