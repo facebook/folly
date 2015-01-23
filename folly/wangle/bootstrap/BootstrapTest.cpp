@@ -26,13 +26,11 @@ using namespace folly;
 
 typedef ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> Pipeline;
 
-class TestServer : public ServerBootstrap<Pipeline> {
-  Pipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
-    return nullptr;
-  }
-};
+typedef ServerBootstrap<Pipeline> TestServer;
+typedef ClientBootstrap<Pipeline> TestClient;
 
-class TestClient : public ClientBootstrap<Pipeline> {
+class TestClientPipelineFactory : public PipelineFactory<Pipeline> {
+ public:
   Pipeline* newPipeline(std::shared_ptr<AsyncSocket> sock) {
     CHECK(sock->good());
 
@@ -76,6 +74,7 @@ TEST(Bootstrap, ClientServerTest) {
   server.getSockets()[0]->getAddress(&address);
 
   TestClient client;
+  client.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client.connect(address);
   base->loop();
   server.stop();
@@ -98,9 +97,12 @@ TEST(Bootstrap, ClientConnectionManagerTest) {
   server.getSockets()[0]->getAddress(&address);
 
   TestClient client;
+  client.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
+
   client.connect(address);
 
   TestClient client2;
+  client2.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client2.connect(address);
 
   base->loop();
@@ -124,6 +126,7 @@ TEST(Bootstrap, ServerAcceptGroupTest) {
   boost::barrier barrier(2);
   auto thread = std::thread([&](){
     TestClient client;
+    client.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
     client.connect(address);
     EventBaseManager::get()->getEventBase()->loop();
     barrier.wait();
@@ -162,6 +165,8 @@ TEST(Bootstrap, ServerAcceptGroup2Test) {
   server.getSockets()[0]->getAddress(&address);
 
   TestClient client;
+  client.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
+
   client.connect(address);
   EventBaseManager::get()->getEventBase()->loop();
 
@@ -198,18 +203,23 @@ TEST(Bootstrap, SharedThreadPool) {
   server.getSockets()[0]->getAddress(&address);
 
   TestClient client;
+  client.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client.connect(address);
 
   TestClient client2;
+  client2.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client2.connect(address);
 
   TestClient client3;
+  client3.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client3.connect(address);
 
   TestClient client4;
+  client4.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client4.connect(address);
 
   TestClient client5;
+  client5.pipelineFactory(std::make_shared<TestClientPipelineFactory>());
   client5.connect(address);
 
   EventBaseManager::get()->getEventBase()->loop();

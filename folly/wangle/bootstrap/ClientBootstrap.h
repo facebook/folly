@@ -33,11 +33,22 @@ class ClientBootstrap {
     return this;
   }
   ClientBootstrap* connect(SocketAddress address) {
+    DCHECK(pipelineFactory_);
     pipeline_.reset(
-      newPipeline(
+      pipelineFactory_->newPipeline(
         AsyncSocket::newSocket(EventBaseManager::get()->getEventBase(), address)
       ));
     return this;
+  }
+
+  ClientBootstrap* pipelineFactory(
+      std::shared_ptr<PipelineFactory<Pipeline>> factory) {
+    pipelineFactory_ = factory;
+    return this;
+  }
+
+  Pipeline* getPipeline() {
+    return pipeline_.get();
   }
 
   virtual ~ClientBootstrap() {}
@@ -48,7 +59,7 @@ class ClientBootstrap {
 
   int port_;
 
-  virtual Pipeline* newPipeline(std::shared_ptr<AsyncSocket> socket) = 0;
+  std::shared_ptr<PipelineFactory<Pipeline>> pipelineFactory_;
 };
 
 } // namespace
