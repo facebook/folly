@@ -90,7 +90,8 @@ class ConnectionManager: public folly::DelayedDestruction {
   /**
    * Schedule a timeout callback for a connection.
    */
-  void scheduleTimeout(ManagedConnection* connection);
+  void scheduleTimeout(ManagedConnection* const connection,
+                       std::chrono::milliseconds timeout);
 
   /*
    * Schedule a callback on the wheel timer
@@ -128,6 +129,10 @@ class ConnectionManager: public folly::DelayedDestruction {
       func(&(*it));
       it++;
     }
+  }
+
+  std::chrono::milliseconds getDefaultTimeout() const {
+    return timeout_;
   }
 
  private:

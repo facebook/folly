@@ -76,8 +76,8 @@ class ManagedConnection:
   virtual void dumpConnectionState(uint8_t loglevel) = 0;
 
   /**
-   * If the connection has a connection manager, reset the timeout
-   * countdown.
+   * If the connection has a connection manager, reset the timeout countdown to
+   * connection manager's default timeout.
    * @note If the connection manager doesn't have the connection scheduled
    *       for a timeout already, this method will schedule one.  If the
    *       connection manager does have the connection connection scheduled
@@ -85,6 +85,12 @@ class ManagedConnection:
    *       from now, where N is the connection manager's timer interval.
    */
   virtual void resetTimeout();
+
+  /**
+   * If the connection has a connection manager, reset the timeout countdown to
+   * user specified timeout.
+   */
+  void resetTimeoutTo(std::chrono::milliseconds);
 
   // Schedule an arbitrary timeout on the HHWheelTimer
   virtual void scheduleTimeout(

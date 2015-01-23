@@ -33,7 +33,14 @@ ManagedConnection::~ManagedConnection() {
 void
 ManagedConnection::resetTimeout() {
   if (connectionManager_) {
-    connectionManager_->scheduleTimeout(this);
+    resetTimeoutTo(connectionManager_->getDefaultTimeout());
+  }
+}
+
+void
+ManagedConnection::resetTimeoutTo(std::chrono::milliseconds timeout) {
+  if (connectionManager_) {
+    connectionManager_->scheduleTimeout(this, timeout);
   }
 }
 
