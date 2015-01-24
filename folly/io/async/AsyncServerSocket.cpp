@@ -397,13 +397,6 @@ void AsyncServerSocket::bind(uint16_t port) {
         errno,
         "failed to bind to async server socket for port");
     }
-
-    if (port == 0) {
-      address.setFromLocalAddress(s);
-      snprintf(sport, sizeof(sport), "%u", address.getPort());
-      CHECK(!getaddrinfo(nullptr, sport, &hints, &res0));
-    }
-
   };
 
   for (int tries = 1; true; tries++) {
@@ -419,6 +412,16 @@ void AsyncServerSocket::bind(uint16_t port) {
       }
     }
 
+    // If port == 0, then we should try to bind to the same port on ipv4 and
+    // ipv6.  So if we did bind to ipv6, figure out that port and use it.
+    if (!sockets_.empty() && port == 0) {
+      SocketAddress address;
+      address.setFromLocalAddress(sockets_.back().socket_);
+      snprintf(sport, sizeof(sport), "%u", address.getPort());
+      freeaddrinfo(res0);
+      CHECK_EQ(0, getaddrinfo(nullptr, sport, &hints, &res0));
+    }
+
     try {
       for (res = res0; res; res = res->ai_next) {
         if (res->ai_family != AF_INET6) {
@@ -432,12 +435,13 @@ void AsyncServerSocket::bind(uint16_t port) {
       if (port == 0 && !sockets_.empty() && tries != 3) {
         for (const auto& socket : sockets_) {
           if (socket.socket_ > 0) {
-            CHECK(::close(socket.socket_) == 0);
+            CHECK_EQ(0, ::close(socket.socket_));
           }
         }
         sockets_.clear();
         snprintf(sport, sizeof(sport), "%u", port);
-        CHECK(!getaddrinfo(nullptr, sport, &hints, &res0));
+        freeaddrinfo(res0);
+        CHECK_EQ(0, getaddrinfo(nullptr, sport, &hints, &res0));
         continue;
       }
       throw;
