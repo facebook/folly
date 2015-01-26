@@ -33,14 +33,14 @@ def generate_conv_table(f, name, values):
     f.write("};\n\n")
 
 def octal_values():
-    return (tuple("{0:03o}".format(x)) for x in xrange(512))
+    return (tuple("{0:03o}".format(x)) for x in range(512))
 
 def hex_values(upper):
     fmt = "{0:02X}" if upper else "{0:02x}"
-    return (tuple(fmt.format(x)) for x in xrange(256))
+    return (tuple(fmt.format(x)) for x in range(256))
 
 def binary_values():
-    return (tuple("{0:08b}".format(x)) for x in xrange(256))
+    return (tuple("{0:08b}".format(x)) for x in range(256))
 
 def generate(f):
     f.write("#include <folly/FormatArg.h>\n"

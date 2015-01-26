@@ -79,10 +79,10 @@ def generate(f):
     # 4 = always percent-encode
     f.write("extern const unsigned char uriEscapeTable[] = {")
     passthrough = (
-        range(ord('0'), ord('9')) +
-        range(ord('A'), ord('Z')) +
-        range(ord('a'), ord('z')) +
-        map(ord, '-_.~'))
+        list(range(ord('0'), ord('9'))) +
+        list(range(ord('A'), ord('Z'))) +
+        list(range(ord('a'), ord('z'))) +
+        list(map(ord, '-_.~')))
     for i in range(0, 256):
         if i % 16 == 0:
             f.write("\n  ")
