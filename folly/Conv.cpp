@@ -71,8 +71,8 @@ inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
 bool str_to_bool(StringPiece* src) {
   auto b = src->begin(), e = src->end();
   for (;; ++b) {
-    FOLLY_RANGE_CHECK(b < e,
-                      "No non-whitespace characters found in input string");
+    FOLLY_RANGE_CHECK_STRINGPIECE(
+      b < e, "No non-whitespace characters found in input string", *src);
     if (!isspace(*b)) break;
   }
 
@@ -85,8 +85,8 @@ bool str_to_bool(StringPiece* src) {
       StringPiece tmp(*src);
       uint8_t value = to<uint8_t>(&tmp);
       // Only accept 0 or 1
-      FOLLY_RANGE_CHECK(value <= 1,
-                        "Integer overflow when parsing bool: must be 0 or 1");
+      FOLLY_RANGE_CHECK_STRINGPIECE(
+        value <= 1, "Integer overflow when parsing bool: must be 0 or 1", *src);
       b = tmp.begin();
       result = (value == 1);
       break;
@@ -126,11 +126,11 @@ bool str_to_bool(StringPiece* src) {
       } else if (bool_str_cmp(&b, len, "off")) {
         result = false;
       } else {
-        FOLLY_RANGE_CHECK(false, "Invalid value for bool");
+        FOLLY_RANGE_CHECK_STRINGPIECE(false, "Invalid value for bool", *src);
       }
       break;
     default:
-      FOLLY_RANGE_CHECK(false, "Invalid value for bool");
+      FOLLY_RANGE_CHECK_STRINGPIECE(false, "Invalid value for bool", *src);
   }
 
   src->assign(b, e);
