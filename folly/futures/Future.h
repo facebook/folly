@@ -35,29 +35,29 @@ namespace folly {
 
 template <class> struct Promise;
 
+template <typename T>
+struct isFuture : std::false_type {
+  typedef T Inner;
+};
+
+template <typename T>
+struct isFuture<Future<T>> : std::true_type {
+  typedef T Inner;
+};
+
+template <typename T>
+struct isTry : std::false_type {};
+
+template <typename T>
+struct isTry<Try<T>> : std::true_type {};
+
 namespace detail {
 
 template <class> struct Core;
 template <class...> struct VariadicContext;
 
-template <class T>
-struct AliasIfVoid {
-  typedef typename std::conditional<
-    std::is_same<T, void>::value,
-    int,
-    T>::type type;
-};
-
-
-template <typename T>
-struct IsFuture : std::integral_constant<bool, false> {
-    typedef T Inner;
-};
-
-template <template <typename T> class Future, typename T>
-struct IsFuture<Future<T>> : std::integral_constant<bool, true> {
-    typedef T Inner;
-};
+template<typename F, typename... Args>
+using resultOf = decltype(std::declval<F>()(std::declval<Args>()...));
 
 template <typename...>
 struct ArgType;
@@ -72,12 +72,64 @@ struct ArgType<> {
   typedef void FirstArg;
 };
 
+template <bool isTry, typename F, typename... Args>
+struct argResult {
+  typedef resultOf<F, Args...> Result;
+};
+
+template<typename F, typename... Args>
+struct callableWith {
+    template<typename T,
+             typename = detail::resultOf<T, Args...>>
+    static constexpr std::true_type
+    check(std::nullptr_t) { return std::true_type{}; };
+
+    template<typename>
+    static constexpr std::false_type
+    check(...) { return std::false_type{}; };
+
+    typedef decltype(check<F>(nullptr)) type;
+    static constexpr bool value = type::value;
+};
+
+template<typename T, typename F>
+struct callableResult {
+  typedef typename std::conditional<
+    callableWith<F>::value,
+    detail::argResult<false, F>,
+    typename std::conditional<
+      callableWith<F, Try<T>&&>::value,
+      detail::argResult<true, F, Try<T>&&>,
+      typename std::conditional<
+        callableWith<F, Try<T>&>::value,
+        detail::argResult<true, F, Try<T>&>,
+        typename std::conditional<
+          callableWith<F, T&&>::value,
+          detail::argResult<false, F, T&&>,
+          detail::argResult<false, F, T&>>::type>::type>::type>::type Arg;
+  typedef isFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
+template<typename F>
+struct callableResult<void, F> {
+  typedef typename std::conditional<
+    callableWith<F>::value,
+    detail::argResult<false, F>,
+    typename std::conditional<
+      callableWith<F, Try<void>&&>::value,
+      detail::argResult<true, F, Try<void>&&>,
+      detail::argResult<true, F, Try<void>&>>::type>::type Arg;
+  typedef isFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
 template <typename L>
 struct Extract : Extract<decltype(&L::operator())> { };
 
 template <typename Class, typename R, typename... Args>
 struct Extract<R(Class::*)(Args...) const> {
-  typedef IsFuture<R> ReturnsFuture;
+  typedef isFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
@@ -85,7 +137,7 @@ struct Extract<R(Class::*)(Args...) const> {
 
 template <typename Class, typename R, typename... Args>
 struct Extract<R(Class::*)(Args...)> {
-  typedef IsFuture<R> ReturnsFuture;
+  typedef isFuture<R> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
   typedef typename ReturnsFuture::Inner RawReturn;
   typedef typename ArgType<Args...>::FirstArg FirstArg;
@@ -94,8 +146,6 @@ struct Extract<R(Class::*)(Args...)> {
 } // detail
 
 struct Timekeeper;
-
-template <typename T> struct isFuture;
 
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
@@ -196,8 +246,18 @@ class Future {
   T getVia(DrivableExecutor* e);
 
   /** When this Future has completed, execute func which is a function that
-    takes a Try<T>&&. A Future for the return type of func is
-    returned. e.g.
+    takes one of:
+      (const) Try<T>&&
+      (const) Try<T>&
+      (const) Try<T>
+      (const) T&&
+      (const) T&
+      (const) T
+      (void)
+
+    Func shall return either another Future or a value.
+
+    A Future for the return type of func is returned.
 
     Future<string> f2 = f1.then([](Try<T>&&) { return string("foo"); });
 
@@ -209,105 +269,10 @@ class Future {
      Future), we might want to support a similar API which could be
      implemented a little more efficiently than
      f.via(executor).then(callback) */
-  template <class F>
-  typename std::enable_if<
-    !isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
-    Future<typename std::result_of<F(Try<T>&&)>::type> >::type
-  then(F&& func);
-
-  /// Variant where func takes a T directly, bypassing a try. Any exceptions
-  /// will be implicitly passed on to the resultant Future.
-  ///
-  ///   Future<int> f = makeFuture<int>(42).then([](int i) { return i+1; });
-  template <class F>
-  typename std::enable_if<
-    !std::is_same<T, void>::value &&
-    !isFuture<typename std::result_of<
-      F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
-    Future<typename std::result_of<
-      F(typename detail::AliasIfVoid<T>::type&&)>::type> >::type
-  then(F&& func);
-
-  /// Like the above variant, but for void futures. That is, func takes no
-  /// argument.
-  ///
-  ///   Future<int> f = makeFuture().then([] { return 42; });
-  template <class F>
-  typename std::enable_if<
-    std::is_same<T, void>::value &&
-    !isFuture<typename std::result_of<F()>::type>::value,
-    Future<typename std::result_of<F()>::type> >::type
-  then(F&& func);
-
-  /// Variant where func returns a Future<T> instead of a T. e.g.
-  ///
-  ///   Future<string> f2 = f1.then(
-  ///     [](Try<T>&&) { return makeFuture<string>("foo"); });
-  template <class F>
-  typename std::enable_if<
-    isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
-    Future<typename std::result_of<F(Try<T>&&)>::type::value_type> >::type
-  then(F&& func);
-
-  /// Variant where func returns a Future<T2> and takes a T directly, bypassing
-  /// a Try. Any exceptions will be implicitly passed on to the resultant
-  /// Future. For example,
-  ///
-  ///   Future<int> f = makeFuture<int>(42).then(
-  ///     [](int i) { return makeFuture<int>(i+1); });
-  template <class F>
-  typename std::enable_if<
-    !std::is_same<T, void>::value &&
-    isFuture<typename std::result_of<
-      F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
-    Future<typename std::result_of<
-      F(typename detail::AliasIfVoid<T>::type&&)>::type::value_type> >::type
-  then(F&& func);
-
-  /// Like the above variant, but for void futures. That is, func takes no
-  /// argument and returns a future.
-  ///
-  ///   Future<int> f = makeFuture().then(
-  ///     [] { return makeFuture<int>(42); });
-  template <class F>
-  typename std::enable_if<
-    std::is_same<T, void>::value &&
-    isFuture<typename std::result_of<F()>::type>::value,
-    Future<typename std::result_of<F()>::type::value_type> >::type
-  then(F&& func);
-
-  /// Variant where func is an ordinary function (static method, method)
-  ///
-  ///   R doWork(Try<T>&&);
-  ///
-  ///   Future<R> f2 = f1.then(doWork);
-  ///
-  /// or
-  ///
-  ///   struct Worker {
-  ///     static R doWork(Try<T>&&); }
-  ///
-  ///   Future<R> f2 = f1.then(&Worker::doWork);
-  template <class = T, class R = std::nullptr_t>
-  typename std::enable_if<!isFuture<R>::value, Future<R>>::type
-  inline then(R(*func)(Try<T>&&)) {
-    return then([func](Try<T>&& t) {
-      return (*func)(std::move(t));
-    });
-  }
-
-  /// Variant where func returns a Future<R> instead of a R. e.g.
-  ///
-  ///   struct Worker {
-  ///     Future<R> doWork(Try<T>&&); }
-  ///
-  ///   Future<R> f2 = f1.then(&Worker::doWork);
-  template <class = T, class R = std::nullptr_t>
-  typename std::enable_if<isFuture<R>::value, R>::type
-  inline then(R(*func)(Try<T>&&)) {
-    return then([func](Try<T>&& t) {
-      return (*func)(std::move(t));
-    });
+  template <typename F, typename R = detail::callableResult<T, F>>
+  typename R::Return then(F func) {
+    typedef typename R::Arg Arguments;
+    return thenImplementation<F, R>(std::move(func), Arguments());
   }
 
   /// Variant where func is an member function
@@ -317,72 +282,9 @@ class Future {
   ///
   ///   Worker *w;
   ///   Future<R> f2 = f1.then(w, &Worker::doWork);
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<!isFuture<R>::value, Future<R>>::type
-  inline then(Caller *instance, R(Caller::*func)(Try<T>&&)) {
-    return then([instance, func](Try<T>&& t) {
-      return (instance->*func)(std::move(t));
-    });
-  }
-
-  // Same as above, but func takes void instead of Try<void>&&
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<
-      std::is_same<T, void>::value && !isFuture<R>::value, Future<R>>::type
-  inline then(Caller *instance, R(Caller::*func)()) {
-    return then([instance, func]() {
-      return (instance->*func)();
-    });
-  }
-
-  // Same as above, but func takes T&& instead of Try<T>&&
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<
-      !std::is_same<T, void>::value && !isFuture<R>::value, Future<R>>::type
-  inline then(
-      Caller *instance,
-      R(Caller::*func)(typename detail::AliasIfVoid<T>::type&&)) {
-    return then([instance, func](T&& t) {
-      return (instance->*func)(std::move(t));
-    });
-  }
-
-  /// Variant where func returns a Future<R> instead of a R. e.g.
-  ///
-  ///   struct Worker {
-  ///     Future<R> doWork(Try<T>&&); }
-  ///
-  ///   Worker *w;
-  ///   Future<R> f2 = f1.then(w, &Worker::doWork);
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<isFuture<R>::value, R>::type
-  inline then(Caller *instance, R(Caller::*func)(Try<T>&&)) {
-    return then([instance, func](Try<T>&& t) {
-      return (instance->*func)(std::move(t));
-    });
-  }
-
-  // Same as above, but func takes void instead of Try<void>&&
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<
-      std::is_same<T, void>::value && isFuture<R>::value, R>::type
-  inline then(Caller *instance, R(Caller::*func)()) {
-    return then([instance, func]() {
-      return (instance->*func)();
-    });
-  }
-
-  // Same as above, but func takes T&& instead of Try<T>&&
-  template <class = T, class R = std::nullptr_t, class Caller = std::nullptr_t>
-  typename std::enable_if<
-      !std::is_same<T, void>::value && isFuture<R>::value, R>::type
-  inline then(
-      Caller *instance,
-      R(Caller::*func)(typename detail::AliasIfVoid<T>::type&&)) {
-    return then([instance, func](T&& t) {
-      return (instance->*func)(std::move(t));
-    });
-  }
+  template <typename Caller, typename R, typename... Args>
+    Future<typename isFuture<R>::Inner>
+  then(Caller *instance, R(Caller::*func)(Args...));
 
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.
@@ -515,6 +417,18 @@ class Future {
   void throwIfInvalid() const;
 
   friend class Promise<T>;
+
+  // Variant: returns a value
+  // e.g. f.then([](Try<T> t){ return t.value(); });
+  template <typename F, typename R, bool isTry, typename... Args>
+  typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
+  thenImplementation(F func, detail::argResult<isTry, F, Args...>);
+
+  // Variant: returns a Future
+  // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
+  template <typename F, typename R, bool isTry, typename... Args>
+  typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
+  thenImplementation(F func, detail::argResult<isTry, F, Args...>);
 };
 
 /**

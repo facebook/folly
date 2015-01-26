@@ -38,9 +38,6 @@ Future<T> someFuture() {
   return makeFuture(T());
 }
 
-template <class Ret, class... Params, typename = void>
-Ret aFunction(Params...);
-
 template <class Ret, class... Params>
 typename std::enable_if<isFuture<Ret>::value, Ret>::type
 aFunction(Params...) {
@@ -69,11 +66,7 @@ aStdFunction(typename std::enable_if<isFuture<Ret>::value, bool>::type = true) {
 }
 
 class SomeClass {
-  B b;
 public:
-  template <class Ret, class... Params>
-  static Ret aStaticMethod(Params...);
-
   template <class Ret, class... Params>
   static
   typename std::enable_if<!isFuture<Ret>::value, Ret>::type
@@ -88,9 +81,6 @@ public:
     typedef typename Ret::value_type T;
     return makeFuture(T());
   }
-
-  template <class Ret, class... Params>
-  Ret aMethod(Params...);
 
   template <class Ret, class... Params>
   typename std::enable_if<!isFuture<Ret>::value, Ret>::type

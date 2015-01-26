@@ -198,6 +198,16 @@ class Try {
     return e_->with_exception<Ex>(std::move(func));
   }
 
+  template <bool isTry, typename R>
+  typename std::enable_if<isTry, R>::type get() {
+    return std::forward<R>(*this);
+  }
+
+  template <bool isTry, typename R>
+  typename std::enable_if<!isTry, R>::type get() {
+    return std::forward<R>(value());
+  }
+
  private:
   Contains contains_;
   union {
@@ -298,6 +308,11 @@ class Try<void> {
       return false;
     }
     return e_->with_exception<Ex>(std::move(func));
+  }
+
+  template <bool, typename R>
+  R get() {
+    return std::forward<R>(*this);
   }
 
  private:

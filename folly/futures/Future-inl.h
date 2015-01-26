@@ -31,16 +31,6 @@ namespace detail {
   Timekeeper* getTimekeeperSingleton();
 }
 
-template <typename T>
-struct isFuture {
-  static const bool value = false;
-};
-
-template <typename T>
-struct isFuture<Future<T> > {
-  static const bool value = true;
-};
-
 template <class T>
 Future<T>::Future(Future<T>&& other) noexcept : core_(nullptr) {
   *this = std::move(other);
@@ -78,14 +68,14 @@ void Future<T>::setCallback_(F&& func) {
   core_->setCallback(std::move(func));
 }
 
-// Variant: f.then([](Try<T>&& t){ return t.value(); });
+// Variant: returns a value
+// e.g. f.then([](Try<T>&& t){ return t.value(); });
 template <class T>
-template <class F>
-typename std::enable_if<
-  !isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
-  Future<typename std::result_of<F(Try<T>&&)>::type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F(Try<T>&&)>::type B;
+template <typename F, typename R, bool isTry, typename... Args>
+typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
+Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
+  static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
+  typedef typename R::ReturnsFuture::Inner B;
 
   throwIfInvalid();
 
@@ -130,39 +120,11 @@ Future<T>::then(F&& func) {
      */
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
-      p->fulfil([&]() {
-        return (*funcm)(std::move(t));
-      });
-    });
-
-  return f;
-}
-
-// Variant: f.then([](T&& t){ return t; });
-template <class T>
-template <class F>
-typename std::enable_if<
-  !std::is_same<T, void>::value &&
-  !isFuture<typename std::result_of<
-    F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
-  Future<typename std::result_of<
-    F(typename detail::AliasIfVoid<T>::type&&)>::type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F(T&&)>::type B;
-
-  throwIfInvalid();
-
-  folly::MoveWrapper<Promise<B>> p;
-  folly::MoveWrapper<F> funcm(std::forward<F>(func));
-  auto f = p->getFuture();
-
-  setCallback_(
-    [p, funcm](Try<T>&& t) mutable {
-      if (t.hasException()) {
+      if (!isTry && t.hasException()) {
         p->setException(std::move(t.exception()));
       } else {
         p->fulfil([&]() {
-          return (*funcm)(std::move(t.value()));
+          return (*funcm)(t.template get<isTry, Args>()...);
         });
       }
     });
@@ -170,44 +132,14 @@ Future<T>::then(F&& func) {
   return f;
 }
 
-// Variant: f.then([](){ return; });
+// Variant: returns a Future
+// e.g. f.then([](T&& t){ return makeFuture<T>(t); });
 template <class T>
-template <class F>
-typename std::enable_if<
-  std::is_same<T, void>::value &&
-  !isFuture<typename std::result_of<F()>::type>::value,
-  Future<typename std::result_of<F()>::type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F()>::type B;
-
-  throwIfInvalid();
-
-  folly::MoveWrapper<Promise<B>> p;
-  folly::MoveWrapper<F> funcm(std::forward<F>(func));
-  auto f = p->getFuture();
-
-  setCallback_(
-    [p, funcm](Try<T>&& t) mutable {
-      if (t.hasException()) {
-        p->setException(std::move(t.exception()));
-      } else {
-        p->fulfil([&]() {
-          return (*funcm)();
-        });
-      }
-    });
-
-  return f;
-}
-
-// Variant: f.then([](Try<T>&& t){ return makeFuture<T>(t.value()); });
-template <class T>
-template <class F>
-typename std::enable_if<
-  isFuture<typename std::result_of<F(Try<T>&&)>::type>::value,
-  Future<typename std::result_of<F(Try<T>&&)>::type::value_type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F(Try<T>&&)>::type::value_type B;
+template <typename F, typename R, bool isTry, typename... Args>
+typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
+Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
+  static_assert(sizeof...(Args) <= 1, "Then must take zero/one argument");
+  typedef typename R::ReturnsFuture::Inner B;
 
   throwIfInvalid();
 
@@ -220,53 +152,16 @@ Future<T>::then(F&& func) {
 
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
-      try {
-        auto f2 = (*funcm)(std::move(t));
-        // that didn't throw, now we can steal p
-        f2.setCallback_([p](Try<B>&& b) mutable {
-          p->fulfilTry(std::move(b));
-        });
-      } catch (const std::exception& e) {
-        p->setException(exception_wrapper(std::current_exception(), e));
-      } catch (...) {
-        p->setException(exception_wrapper(std::current_exception()));
-      }
-    });
-
-  return f;
-}
-
-// Variant: f.then([](T&& t){ return makeFuture<T>(t); });
-template <class T>
-template <class F>
-typename std::enable_if<
-  !std::is_same<T, void>::value &&
-  isFuture<typename std::result_of<
-    F(typename detail::AliasIfVoid<T>::type&&)>::type>::value,
-  Future<typename std::result_of<
-    F(typename detail::AliasIfVoid<T>::type&&)>::type::value_type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F(T&&)>::type::value_type B;
-
-  throwIfInvalid();
-
-  folly::MoveWrapper<Promise<B>> p;
-  folly::MoveWrapper<F> funcm(std::forward<F>(func));
-  auto f = p->getFuture();
-
-  setCallback_(
-    [p, funcm](Try<T>&& t) mutable {
-      if (t.hasException()) {
+      if (!isTry && t.hasException()) {
         p->setException(std::move(t.exception()));
       } else {
         try {
-          auto f2 = (*funcm)(std::move(t.value()));
+          auto f2 = (*funcm)(t.template get<isTry, Args>()...);
+          // that didn't throw, now we can steal p
           f2.setCallback_([p](Try<B>&& b) mutable {
             p->fulfilTry(std::move(b));
           });
         } catch (const std::exception& e) {
-          p->setException(exception_wrapper(std::current_exception(), e));
-        } catch (...) {
           p->setException(exception_wrapper(std::current_exception()));
         }
       }
@@ -275,42 +170,16 @@ Future<T>::then(F&& func) {
   return f;
 }
 
-// Variant: f.then([](){ return makeFuture(); });
-template <class T>
-template <class F>
-typename std::enable_if<
-  std::is_same<T, void>::value &&
-  isFuture<typename std::result_of<F()>::type>::value,
-  Future<typename std::result_of<F()>::type::value_type> >::type
-Future<T>::then(F&& func) {
-  typedef typename std::result_of<F()>::type::value_type B;
-
-  throwIfInvalid();
-
-  folly::MoveWrapper<Promise<B>> p;
-  folly::MoveWrapper<F> funcm(std::forward<F>(func));
-
-  auto f = p->getFuture();
-
-  setCallback_(
-    [p, funcm](Try<T>&& t) mutable {
-      if (t.hasException()) {
-        p->setException(t.exception());
-      } else {
-        try {
-          auto f2 = (*funcm)();
-          f2.setCallback_([p](Try<B>&& b) mutable {
-            p->fulfilTry(std::move(b));
-          });
-        } catch (const std::exception& e) {
-          p->setException(exception_wrapper(std::current_exception(), e));
-        } catch (...) {
-          p->setException(exception_wrapper(std::current_exception()));
-        }
-      }
-    });
-
-  return f;
+template <typename T>
+template <typename Caller, typename R, typename... Args>
+  Future<typename isFuture<R>::Inner>
+Future<T>::then(Caller *instance, R(Caller::*func)(Args...)) {
+  typedef typename std::remove_cv<
+    typename std::remove_reference<
+      typename detail::ArgType<Args...>::FirstArg>::type>::type FirstArg;
+  return then([instance, func](Try<T>&& t){
+    return (instance->*func)(t.template get<isTry<FirstArg>::value, Args>()...);
+  });
 }
 
 template <class T>

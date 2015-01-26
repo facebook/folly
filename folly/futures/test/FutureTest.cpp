@@ -276,6 +276,25 @@ TEST(Future, special) {
   EXPECT_TRUE(std::is_move_assignable<Future<int>>::value);
 }
 
+TEST(Future, then) {
+  auto f = makeFuture<string>("0")
+    .then([](){ return makeFuture<string>("1"); })
+    .then([](Try<string>&& t) { return makeFuture(t.value() + ";2"); })
+    .then([](const Try<string>&& t) { return makeFuture(t.value() + ";3"); })
+    .then([](Try<string>& t) { return makeFuture(t.value() + ";4"); })
+    .then([](const Try<string>& t) { return makeFuture(t.value() + ";5"); })
+    .then([](Try<string> t) { return makeFuture(t.value() + ";6"); })
+    .then([](const Try<string> t) { return makeFuture(t.value() + ";7"); })
+    .then([](string&& s) { return makeFuture(s + ";8"); })
+    .then([](const string&& s) { return makeFuture(s + ";9"); })
+    .then([](string& s) { return makeFuture(s + ";10"); })
+    .then([](const string& s) { return makeFuture(s + ";11"); })
+    .then([](string s) { return makeFuture(s + ";12"); })
+    .then([](const string s) { return makeFuture(s + ";13"); })
+  ;
+  EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11;12;13");
+}
+
 TEST(Future, thenTry) {
   bool flag = false;
 
@@ -382,6 +401,25 @@ TEST(Future, thenFunctionFuture) {
     .then(&w, &Worker::doWorkFuture);
 
   EXPECT_EQ(f.value(), "start;static;class-static;class");
+}
+
+TEST(Future, thenBind) {
+  auto l = []() {
+    return makeFuture("bind");
+  };
+  auto b = std::bind(l);
+  auto f = makeFuture().then(std::move(b));
+  EXPECT_EQ(f.value(), "bind");
+}
+
+TEST(Future, thenBindTry) {
+  auto l = [](Try<string>&& t) {
+    return makeFuture(t.value() + ";bind");
+  };
+  auto b = std::bind(l, std::placeholders::_1);
+  auto f = makeFuture<string>("start").then(std::move(b));
+
+  EXPECT_EQ(f.value(), "start;bind");
 }
 
 TEST(Future, value) {
