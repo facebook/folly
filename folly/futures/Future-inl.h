@@ -497,11 +497,9 @@ makeFuture(E const& e) {
 
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
-  if (t.hasException()) {
-    return makeFuture<T>(std::move(t.exception()));
-  } else {
-    return makeFuture<T>(std::move(t.value()));
-  }
+  Promise<typename std::decay<T>::type> p;
+  p.fulfilTry(std::move(t));
+  return p.getFuture();
 }
 
 template <>
