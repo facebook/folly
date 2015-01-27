@@ -26,24 +26,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/RWSpinLock.h>
 
-/**
- * In many cases this header is included as a
- * dependency to libraries which do not need
- * command line flags. GFLAGS is a large binary
- * and thus we do this so that a library which
- * is size sensitive doesn't have to pull in
- * GFLAGS if it doesn't want to.
- */
-#ifndef NO_LIB_GFLAGS
-  #include <gflags/gflags.h>
-  DECLARE_bool(enable_request_context);
-#endif
-
 namespace folly {
-
-#ifdef NO_LIB_GFLAGS
-  extern bool FLAGS_enable_request_context;
-#endif
 
 // Some request context that follows an async request through a process
 // Everything in the context must be thread safe
@@ -66,9 +49,6 @@ class RequestContext {
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
   static void create() {
-    if(!FLAGS_enable_request_context) {
-      return;
-    }
     getStaticContext() = std::make_shared<RequestContext>();
   }
 
@@ -88,10 +68,6 @@ class RequestContext {
   // profiling any use of these functions.
   void setContextData(
     const std::string& val, std::unique_ptr<RequestData> data) {
-    if (!FLAGS_enable_request_context) {
-      return;
-    }
-
     folly::RWSpinLock::WriteHolder guard(lock);
     if (data_.find(val) != data_.end()) {
       LOG_FIRST_N(WARNING, 1) <<
@@ -132,15 +108,12 @@ class RequestContext {
 
   static std::shared_ptr<RequestContext>
   setContext(std::shared_ptr<RequestContext> ctx) {
-    if (FLAGS_enable_request_context) {
-      std::shared_ptr<RequestContext> old_ctx;
-      if (getStaticContext()) {
-        old_ctx = getStaticContext();
-      }
-      getStaticContext() = ctx;
-      return old_ctx;
+    std::shared_ptr<RequestContext> old_ctx;
+    if (getStaticContext()) {
+      old_ctx = getStaticContext();
     }
-    return nullptr;
+    getStaticContext() = ctx;
+    return old_ctx;
   }
 
   static std::shared_ptr<RequestContext> saveContext() {
