@@ -24,11 +24,10 @@
 #include <folly/FBString.h>
 #include <algorithm>
 #include <boost/operators.hpp>
-#include <cstring>
 #include <climits>
+#include <cstring>
 #include <glog/logging.h>
 #include <iosfwd>
-#include <limits.h>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
