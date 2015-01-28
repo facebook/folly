@@ -389,7 +389,13 @@ public:
     const size_type osize = o.size();
     const size_type msize = std::min(tsize, osize);
     int r = traits_type::compare(data(), o.data(), msize);
-    if (r == 0) r = tsize - osize;
+    if (r == 0 && tsize != osize) {
+      // We check the signed bit of the subtraction and bit shift it
+      // to produce either 0 or 2. The subtraction yields the
+      // comparison values of either -1 or 1.
+      r = (static_cast<int>(
+             (osize - tsize) >> (CHAR_BIT * sizeof(size_t) - 1)) << 1) - 1;
+    }
     return r;
   }
 
