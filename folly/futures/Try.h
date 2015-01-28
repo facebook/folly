@@ -183,6 +183,13 @@ class Try {
     return *e_;
   }
 
+  const exception_wrapper& exception() const {
+    if (UNLIKELY(!hasException())) {
+      throw FutureException("exception(): Try does not contain an exception");
+    }
+    return *e_;
+  }
+
   /*
    * If the Try contains an exception and it is of type Ex, execute func(Ex)
    *
@@ -289,6 +296,13 @@ class Try<void> {
    * @returns mutable reference to the exception contained by this Try
    */
   exception_wrapper& exception() {
+    if (UNLIKELY(!hasException())) {
+      throw FutureException("exception(): Try does not contain an exception");
+    }
+    return *e_;
+  }
+
+  const exception_wrapper& exception() const {
     if (UNLIKELY(!hasException())) {
       throw FutureException("exception(): Try does not contain an exception");
     }

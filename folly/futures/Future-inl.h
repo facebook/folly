@@ -535,13 +535,10 @@ namespace {
     folly::detail::getTimekeeperSingleton()->after(dur)
       .then([&,token](Try<void> const& t) {
         if (token->exchange(true) == false) {
-          try {
-            t.value();
+          if (t.hasException()) {
+            p.setException(std::move(t.exception()));
+          } else {
             p.setException(TimedOut());
-          } catch (std::exception const& e) {
-            p.setException(exception_wrapper(std::current_exception(), e));
-          } catch (...) {
-            p.setException(exception_wrapper(std::current_exception()));
           }
           baton.post();
         }
@@ -627,15 +624,10 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   tk->after(dur)
     .then([ctx](Try<void> const& t) {
       if (ctx->token.exchange(true) == false) {
-        try {
-          t.throwIfFailed();
+        if (t.hasException()) {
+          ctx->promise.setException(std::move(t.exception()));
+        } else {
           ctx->promise.setException(std::move(ctx->exception));
-        } catch (std::exception const& e2) {
-          ctx->promise.setException(
-              exception_wrapper(std::current_exception(), e2));
-        } catch (...) {
-          ctx->promise.setException(
-              exception_wrapper(std::current_exception()));
         }
       }
     });
