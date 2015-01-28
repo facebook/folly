@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <boost/operators.hpp>
 #include <cstring>
+#include <climits>
 #include <glog/logging.h>
 #include <iosfwd>
 #include <limits.h>
