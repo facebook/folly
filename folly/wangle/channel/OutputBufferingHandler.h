@@ -56,16 +56,9 @@ class OutputBufferingHandler : public BytesToBytesHandler,
 
   void runLoopCallback() noexcept override {
     MoveWrapper<std::vector<Promise<void>>> promises(std::move(promises_));
-    ctx_->fireWrite(std::move(sends_)).then([promises](Try<void>&& t) mutable {
-      try {
-        t.throwIfFailed();
-        for (auto& p : *promises) {
-          p.setValue();
-        }
-      } catch (...) {
-        for (auto& p : *promises) {
-          p.setException(std::current_exception());
-        }
+    ctx_->fireWrite(std::move(sends_)).then([promises](Try<void> t) mutable {
+      for (auto& p : *promises) {
+        p.fulfilTry(t);
       }
     });
   }
