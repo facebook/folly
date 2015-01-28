@@ -77,13 +77,16 @@ of by the bootstrap script.)
 Other Linux distributions
 -------------------------
 
-- double-conversion (http://code.google.com/p/double-conversion/)
+- double-conversion (https://github.com/floitsch/double-conversion/)
 
   Download and build double-conversion.
   You may need to tell configure where to find it.
 
-  ./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/src/
-
+  [double-conversion/] ln -s src double-conversion
+ 
+  [folly/] ./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/
+ 
+  [folly/] LD_LIBRARY_PATH=$DOUBLE_CONVERISON_HOME/ make
 
 - additional platform specific dependencies:
 
