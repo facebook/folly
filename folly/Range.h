@@ -27,6 +27,7 @@
 #include <cstring>
 #include <glog/logging.h>
 #include <iosfwd>
+#include <limits.h>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
