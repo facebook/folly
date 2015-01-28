@@ -46,6 +46,13 @@
 #define FOLLY_RANGE_CHECK_STRINGIZE(x) #x
 #define FOLLY_RANGE_CHECK_STRINGIZE2(x) FOLLY_RANGE_CHECK_STRINGIZE(x)
 
+// Android doesn't support std::to_string so just use a placeholder there.
+#ifdef __ANDROID__
+#define FOLLY_RANGE_CHECK_TO_STRING(x) std::string("N/A")
+#else
+#define FOLLY_RANGE_CHECK_TO_STRING(x) std::to_string(x)
+#endif
+
 #define FOLLY_RANGE_CHECK(condition, message, src)                          \
   ((condition) ? (void)0 : throw std::range_error(                          \
     (std::string(__FILE__ "(" FOLLY_RANGE_CHECK_STRINGIZE2(__LINE__) "): ") \
@@ -95,15 +102,15 @@ to(const Src & value) {
                    < std::numeric_limits<Src>::max()) {
     FOLLY_RANGE_CHECK(
       (!greater_than<Tgt, std::numeric_limits<Tgt>::max()>(value)),
-      "Overflow", std::to_string(value)
-    );
+      "Overflow",
+      FOLLY_RANGE_CHECK_TO_STRING(value));
   }
   /* static */ if (std::is_signed<Src>::value &&
                    (!std::is_signed<Tgt>::value || sizeof(Src) > sizeof(Tgt))) {
     FOLLY_RANGE_CHECK(
       (!less_than<Tgt, std::numeric_limits<Tgt>::min()>(value)),
-      "Negative overflow", std::to_string(value)
-    );
+      "Negative overflow",
+      FOLLY_RANGE_CHECK_TO_STRING(value));
   }
   return static_cast<Tgt>(value);
 }
@@ -122,9 +129,11 @@ to(const Src & value) {
   /* static */ if (std::numeric_limits<Tgt>::max() <
                    std::numeric_limits<Src>::max()) {
     FOLLY_RANGE_CHECK(value <= std::numeric_limits<Tgt>::max(),
-                      "Overflow", std::to_string(value));
+                      "Overflow",
+                      FOLLY_RANGE_CHECK_TO_STRING(value));
     FOLLY_RANGE_CHECK(value >= -std::numeric_limits<Tgt>::max(),
-                      "Negative overflow", std::to_string(value));
+                      "Negative overflow",
+                      FOLLY_RANGE_CHECK_TO_STRING(value));
   }
   return boost::implicit_cast<Tgt>(value);
 }
