@@ -86,37 +86,37 @@ struct TransportInfo {
   /*
    * list of ciphers sent by the client
    */
-  std::string sslClientCiphers{};
+  std::shared_ptr<std::string> sslClientCiphers{nullptr};
 
   /*
    * list of compression methods sent by the client
    */
-  std::string sslClientComprMethods{};
+  std::shared_ptr<std::string> sslClientComprMethods{nullptr};
 
   /*
    * list of TLS extensions sent by the client
    */
-  std::string sslClientExts{};
+  std::shared_ptr<std::string> sslClientExts{nullptr};
 
   /*
    * hash of all the SSL parameters sent by the client
    */
-  std::string sslSignature{};
+  std::shared_ptr<std::string> sslSignature{nullptr};
 
   /*
    * list of ciphers supported by the server
    */
-  std::string sslServerCiphers{};
+  std::shared_ptr<std::string> sslServerCiphers{nullptr};
 
   /*
    * guessed "(os) (browser)" based on SSL Signature
    */
-  std::string guessedUserAgent{};
+  std::shared_ptr<std::string> guessedUserAgent{nullptr};
 
   /**
    * The result of SSL NPN negotiation.
    */
-  std::string sslNextProtocol{};
+  std::shared_ptr<std::string> sslNextProtocol{nullptr};
 
   /*
    * total number of bytes sent over the connection

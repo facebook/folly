@@ -118,13 +118,17 @@ class AcceptorHandshakeHelper :
     tinfo.sslVersion = sock->getSSLVersion();
     tinfo.sslCertSize = sock->getSSLCertSize();
     tinfo.sslResume = SSLUtil::getResumeState(sock);
-    sock->getSSLClientCiphers(tinfo.sslClientCiphers);
-    sock->getSSLServerCiphers(tinfo.sslServerCiphers);
-    tinfo.sslClientComprMethods = sock->getSSLClientComprMethods();
-    tinfo.sslClientExts = sock->getSSLClientExts();
-    tinfo.sslNextProtocol.assign(
-        reinterpret_cast<const char*>(nextProto),
-        nextProtoLength);
+    tinfo.sslClientCiphers = std::make_shared<std::string>();
+    sock->getSSLClientCiphers(*tinfo.sslClientCiphers);
+    tinfo.sslServerCiphers = std::make_shared<std::string>();
+    sock->getSSLServerCiphers(*tinfo.sslServerCiphers);
+    tinfo.sslClientComprMethods =
+        std::make_shared<std::string>(sock->getSSLClientComprMethods());
+    tinfo.sslClientExts =
+        std::make_shared<std::string>(sock->getSSLClientExts());
+    tinfo.sslNextProtocol = std::make_shared<std::string>();
+    tinfo.sslNextProtocol->assign(reinterpret_cast<const char*>(nextProto),
+                                  nextProtoLength);
 
     acceptor_->updateSSLStats(sock, tinfo.sslSetupTime, SSLErrorEnum::NO_ERROR);
     acceptor_->downstreamConnectionManager_->removeConnection(this);
