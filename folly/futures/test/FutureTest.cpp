@@ -912,31 +912,31 @@ TEST(Future, throwIfFailed) {
     });
 }
 
-TEST(Future, waitWithSemaphoreImmediate) {
-  waitWithSemaphore(makeFuture());
-  auto done = waitWithSemaphore(makeFuture(42)).value();
+TEST(Future, waitImmediate) {
+  makeFuture().wait();
+  auto done = makeFuture(42).wait().value();
   EXPECT_EQ(42, done);
 
   vector<int> v{1,2,3};
-  auto done_v = waitWithSemaphore(makeFuture(v)).value();
+  auto done_v = makeFuture(v).wait().value();
   EXPECT_EQ(v.size(), done_v.size());
   EXPECT_EQ(v, done_v);
 
   vector<Future<void>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = waitWithSemaphore(whenAll(v_f.begin(), v_f.end())).value();
+  auto done_v_f = whenAll(v_f.begin(), v_f.end()).wait().value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto fut = whenAll(v_fb.begin(), v_fb.end());
-  auto done_v_fb = std::move(waitWithSemaphore(std::move(fut)).value());
+  auto done_v_fb = std::move(fut.wait().value());
   EXPECT_EQ(2, done_v_fb.size());
 }
 
-TEST(Future, waitWithSemaphore) {
+TEST(Future, wait) {
   Promise<int> p;
   Future<int> f = p.getFuture();
   std::atomic<bool> flag{false};
@@ -949,7 +949,7 @@ TEST(Future, waitWithSemaphore) {
           return t.value();
         });
       flag = true;
-      result.store(waitWithSemaphore(std::move(n)).value());
+      result.store(n.wait().value());
     },
     std::move(f)
     );
@@ -963,12 +963,11 @@ TEST(Future, waitWithSemaphore) {
   EXPECT_EQ(result.load(), 42);
 }
 
-TEST(Future, waitWithSemaphoreForTime) {
+TEST(Future, waitWithDuration) {
  {
   Promise<int> p;
   Future<int> f = p.getFuture();
-  auto t = waitWithSemaphore(std::move(f),
-    std::chrono::microseconds(1));
+  auto t = f.wait(std::chrono::milliseconds(1));
   EXPECT_FALSE(t.isReady());
   p.setValue(1);
   EXPECT_TRUE(t.isReady());
@@ -977,8 +976,7 @@ TEST(Future, waitWithSemaphoreForTime) {
   Promise<int> p;
   Future<int> f = p.getFuture();
   p.setValue(1);
-  auto t = waitWithSemaphore(std::move(f),
-    std::chrono::milliseconds(1));
+  auto t = f.wait(std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
  }
  {
@@ -986,8 +984,7 @@ TEST(Future, waitWithSemaphoreForTime) {
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = waitWithSemaphore(std::move(f),
-    std::chrono::milliseconds(1));
+  auto t = f.wait(std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
   EXPECT_EQ(2, t.value().size());
  }
@@ -998,8 +995,7 @@ TEST(Future, waitWithSemaphoreForTime) {
   v_fb.push_back(p1.getFuture());
   v_fb.push_back(p2.getFuture());
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = waitWithSemaphore(std::move(f),
-    std::chrono::milliseconds(1));
+  auto t = f.wait(std::chrono::milliseconds(1));
   EXPECT_FALSE(t.isReady());
   p1.setValue(true);
   EXPECT_FALSE(t.isReady());
@@ -1007,9 +1003,35 @@ TEST(Future, waitWithSemaphoreForTime) {
   EXPECT_TRUE(t.isReady());
  }
  {
-  auto t = waitWithSemaphore(makeFuture(),
-    std::chrono::milliseconds(1));
+  auto t = makeFuture().wait(std::chrono::milliseconds(1));
   EXPECT_TRUE(t.isReady());
+ }
+
+ {
+   Promise<void> p;
+   auto start = std::chrono::steady_clock::now();
+   auto f = p.getFuture().wait(std::chrono::milliseconds(100));
+   auto elapsed = std::chrono::steady_clock::now() - start;
+   EXPECT_GE(elapsed, std::chrono::milliseconds(100));
+   EXPECT_FALSE(f.isReady());
+   p.setValue();
+   EXPECT_TRUE(f.isReady());
+ }
+
+ {
+   // Try to trigger the race where the resultant Future is not yet complete
+   // even if we didn't hit the timeout, and make sure we deal with it properly
+   Promise<void> p;
+   folly::Baton<> b;
+   auto t = std::thread([&]{
+     b.post();
+     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+     p.setValue();
+   });
+   b.wait();
+   auto f = p.getFuture().wait(std::chrono::seconds(3600));
+   EXPECT_TRUE(f.isReady());
+   t.join();
  }
 }
 
@@ -1263,7 +1285,7 @@ TEST(Future, t5506504) {
     return whenAll(futures.begin(), futures.end());
   };
 
-  waitWithSemaphore(fn());
+  fn().wait();
 }
 
 // Test of handling of a circular dependency. It's never recommended
