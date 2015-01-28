@@ -251,13 +251,8 @@ TEST(String, readFile) {
     unlink(emptyFile.c_str());
   };
 
-  auto f = fopen(emptyFile.c_str(), "wb");
-  EXPECT_NE(nullptr, f);
-  EXPECT_EQ(0, fclose(f));
-  f = fopen(afile.c_str(), "wb");
-  EXPECT_NE(nullptr, f);
-  EXPECT_EQ(3, fwrite("bar", 1, 3, f));
-  EXPECT_EQ(0, fclose(f));
+  EXPECT_TRUE(writeFile(string(), emptyFile.c_str()));
+  EXPECT_TRUE(writeFile(StringPiece("bar"), afile.c_str()));
 
   {
     string contents;
