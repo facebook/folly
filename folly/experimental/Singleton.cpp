@@ -20,6 +20,12 @@
 
 namespace folly {
 
+namespace {
+
+static constexpr std::chrono::seconds kDestroyWaitTime{5};
+
+}
+
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::destroyInstances() {
@@ -57,14 +63,18 @@ void SingletonVault::destroyInstances() {
 void SingletonVault::destroyInstance(SingletonMap::iterator entry_it) {
   const auto& type = entry_it->first;
   auto& entry = *(entry_it->second);
-  if (entry.instance.use_count() > 1) {
-    LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
-               << "reference at destroyInstances time; beware! Raw pointer "
-               << "is " << entry.instance.get() << " with use_count of "
-               << entry.instance.use_count();
-  }
+
   entry.state = detail::SingletonEntryState::Dead;
   entry.instance.reset();
+  auto wait_result = entry.destroy_baton->timed_wait(
+    std::chrono::steady_clock::now() + kDestroyWaitTime);
+  if (!wait_result) {
+    LOG(ERROR) << "Singleton of type " << type.name() << " has a living "
+               << "reference at destroyInstances time; beware! Raw pointer "
+               << "is " << entry.instance_ptr << ". It is very likely that "
+               << "some other singleton is holding a shared_ptr to it. Make "
+               << "dependencies between these singletons are properly defined.";
+  }
 }
 
 void SingletonVault::reenableInstances() {

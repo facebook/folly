@@ -241,8 +241,14 @@ TEST(Singleton, SharedPtrUsage) {
     EXPECT_NE(locked.get(), shared_s1.get());
   }
 
-  LOG(ERROR) << "The following log message regarding ref counts is expected";
-  vault.destroyInstances();
+  LOG(ERROR) << "The following log message regarding shared_ptr is expected";
+  {
+    auto start_time = std::chrono::steady_clock::now();
+    vault.destroyInstances();
+    auto duration = std::chrono::steady_clock::now() - start_time;
+    EXPECT_TRUE(duration > std::chrono::seconds{4} &&
+                duration < std::chrono::seconds{6});
+  }
   EXPECT_EQ(vault.registeredSingletonCount(), 3);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 
@@ -270,6 +276,23 @@ TEST(Singleton, SharedPtrUsage) {
   // Singleton should be re-created only after reenableInstances() was called.
   Watchdog* new_s1 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(new_s1->serial_number, old_serial);
+
+  auto new_s1_weak = Singleton<Watchdog>::get_weak(&vault);
+  auto new_s1_shared = new_s1_weak.lock();
+  std::thread t([new_s1_shared]() mutable {
+      std::this_thread::sleep_for(std::chrono::seconds{2});
+      new_s1_shared.reset();
+    });
+  new_s1_shared.reset();
+  {
+    auto start_time = std::chrono::steady_clock::now();
+    vault.destroyInstances();
+    auto duration = std::chrono::steady_clock::now() - start_time;
+    EXPECT_TRUE(duration > std::chrono::seconds{1} &&
+                duration < std::chrono::seconds{3});
+  }
+  EXPECT_TRUE(new_s1_weak.expired());
+  t.join();
 }
 
 // Some classes to test singleton dependencies.  NeedySingleton has a
