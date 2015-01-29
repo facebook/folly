@@ -342,6 +342,8 @@ class Batch;
 
 class Dereference;
 
+class Indirect;
+
 /*
  * Sinks
  */

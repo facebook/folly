@@ -124,7 +124,7 @@ TEST(Gen, Member) {
           | sum);
   EXPECT_EQ(10 * (1 + 10) / 2,
             from(counters)
-          | mapped([](const Counter& c) { return &c; })
+          | indirect
           | member(&Counter::count)
           | sum);
   EXPECT_EQ(10 * (2 + 11) / 2,
@@ -133,7 +133,7 @@ TEST(Gen, Member) {
           | sum);
   EXPECT_EQ(10 * (3 + 12) / 2,
             from(counters)
-          | mapped([](Counter& c) { return &c; })
+          | indirect
           | member(&Counter::incr)
           | sum);
   EXPECT_EQ(10 * (3 + 12) / 2,
@@ -1008,6 +1008,11 @@ TEST(Gen, Dereference) {
     EXPECT_EQ(10, from(ups) | dereference | sum);
     EXPECT_EQ(10, from(ups) | move | dereference | sum);
   }
+}
+
+TEST(Gen, Indirect) {
+  vector<int> vs{1};
+  EXPECT_EQ(&vs[0], from(vs) | indirect | first);
 }
 
 TEST(Gen, Guard) {

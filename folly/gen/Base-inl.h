@@ -1854,6 +1854,58 @@ class Dereference : public Operator<Dereference> {
   }
 };
 
+/**
+ * Indirect - For producing a sequence of the addresses of the values in the
+ * input.
+ *
+ * This type is usually used through the 'indirect' static value, like:
+ *
+ *   auto ptrs = from(refs) | indirect;
+ */
+class Indirect : public Operator<Indirect> {
+ public:
+  Indirect() {}
+
+  template <class Value,
+            class Source,
+            class Result = typename std::remove_reference<Value>::type*>
+  class Generator : public GenImpl<Result, Generator<Value, Source, Result>> {
+    Source source_;
+    static_assert(!std::is_rvalue_reference<Value>::value,
+                  "Cannot use indirect on an rvalue");
+
+   public:
+    explicit Generator(Source source) : source_(std::move(source)) {}
+
+    template <class Body>
+    void foreach (Body&& body) const {
+      source_.foreach([&](Value value) {
+        return body(&value);
+      });
+    }
+
+    template <class Handler>
+    bool apply(Handler&& handler) const {
+      return source_.apply([&](Value value) -> bool {
+        return handler(&value);
+      });
+    }
+
+    // not actually infinite, since an empty generator will end the cycles.
+    static constexpr bool infinite = Source::infinite;
+  };
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()));
+  }
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self());
+  }
+};
+
 } //::detail
 
 /**
@@ -1964,6 +2016,8 @@ static const detail::RangeConcat rconcat;
 static const detail::Cycle cycle;
 
 static const detail::Dereference dereference;
+
+static const detail::Indirect indirect;
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);
