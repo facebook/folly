@@ -102,8 +102,14 @@ struct Futex : Atom<uint32_t>, boost::noncopyable {
     }
   }
 
-  /** Wakens up to count waiters where (waitMask & wakeMask) != 0,
-   *  returning the number of awoken threads. */
+  /** Wakens up to count waiters where (waitMask & wakeMask) !=
+   *  0, returning the number of awoken threads, or -1 if an error
+   *  occurred.  Note that when constructing a concurrency primitive
+   *  that can guard its own destruction, it is likely that you will
+   *  want to ignore EINVAL here (as well as making sure that you
+   *  never touch the object after performing the memory store that
+   *  is the linearization point for unlock or control handoff).
+   *  See https://sourceware.org/bugzilla/show_bug.cgi?id=13690 */
   int futexWake(int count = std::numeric_limits<int>::max(),
                 uint32_t wakeMask = -1);
 
