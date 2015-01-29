@@ -31,6 +31,10 @@
 
 #include <glog/logging.h>
 
+#ifndef FOLLY_NO_CONFIG
+#include <folly/folly-config.h>
+#endif
+
 namespace folly {
 
 /**
@@ -326,6 +330,11 @@ class SSLContext {
    */
   void unsetNextProtocols();
   void deleteNextProtocolsStrings();
+
+#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
+  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
+  bool canUseFalseStartWithCipher(const SSL_CIPHER *cipher);
+#endif
 #endif // OPENSSL_NPN_NEGOTIATED
 
   /**
@@ -432,6 +441,29 @@ class SSLContext {
   static int selectNextProtocolCallback(
     SSL* ssl, unsigned char **out, unsigned char *outlen,
     const unsigned char *server, unsigned int server_len, void *args);
+
+#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
+  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
+  // This class contains all allowed ciphers for SSL false start. Call its
+  // `canUseFalseStartWithCipher` to check for cipher qualification.
+  class SSLFalseStartChecker {
+   public:
+    SSLFalseStartChecker();
+
+    bool canUseFalseStartWithCipher(const SSL_CIPHER *cipher);
+
+   private:
+    static int compare_ulong(const void *x, const void *y);
+
+    // All ciphers that are allowed to use false start.
+    unsigned long ciphers_[47];
+    unsigned int length_;
+    unsigned int width_;
+  };
+
+  SSLFalseStartChecker falseStartChecker_;
+#endif
+
 #endif // OPENSSL_NPN_NEGOTIATED
 
   static int passwordCallback(char* password, int size, int, void* data);
