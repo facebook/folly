@@ -1073,6 +1073,31 @@ TEST(Gen, BatchMove) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, Just) {
+  {
+    int x = 3;
+    auto j = just(x);
+    EXPECT_EQ(&x, j | mapped([](const int& v) { return &v; }) | first);
+    x = 4;
+    EXPECT_EQ(4, j | first);
+  }
+  {
+    int x = 3;
+    const int& cx = x;
+    auto j = just(cx);
+    EXPECT_EQ(&x, j | mapped([](const int& v) { return &v; }) | first);
+    x = 5;
+    EXPECT_EQ(5, j | first);
+  }
+  {
+    int x = 3;
+    auto j = just(std::move(x));
+    EXPECT_NE(&x, j | mapped([](const int& v) { return &v; }) | first);
+    x = 5;
+    EXPECT_EQ(3, j | first);
+  }
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
