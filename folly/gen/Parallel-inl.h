@@ -136,7 +136,7 @@ class Sub : public Operator<Sub<Sink>> {
             class Source,
             class Result =
                 decltype(std::declval<Sink>().compose(std::declval<Source>())),
-            class Just = SingleCopy<typename std::decay<Result>::type>>
+            class Just = Just<typename std::decay<Result>::type>>
   Just compose(const GenImpl<Value, Source>& source) const {
     return Just(source | sink_);
   }

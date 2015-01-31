@@ -297,10 +297,7 @@ template<class Value>
 class Empty;
 
 template<class Value>
-class SingleReference;
-
-template<class Value>
-class SingleCopy;
+class Just;
 
 /*
  * Operators
@@ -485,25 +482,14 @@ Yield generator(Source&& source) {
 /*
  * empty() - for producing empty sequences.
  */
-template <class Value>
+template<class Value>
 detail::Empty<Value> empty() {
   return {};
 }
 
-template <class Value, class Just = detail::SingleReference<Value>>
-Just just(Value& value) {
-  return Just(&value);
-}
-
-template <class Value, class Just = detail::SingleReference<const Value>>
-Just just(const Value& value) {
-  return Just(&value);
-}
-
-template <class Value,
-          class Just = detail::SingleCopy<typename std::decay<Value>::type>>
-Just just(Value&& value) {
-  return Just(std::move(value));
+template<class Value>
+detail::Just<Value> just(Value value) {
+  return detail::Just<Value>(std::move(value));
 }
 
 /*

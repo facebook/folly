@@ -328,32 +328,13 @@ class Empty : public GenImpl<Value, Empty<Value>> {
   void foreach(Body&&) const {}
 };
 
-template <class Value>
-class SingleReference : public GenImpl<Value&, SingleReference<Value>> {
+template<class Value>
+class Just : public GenImpl<const Value&, Just<Value>> {
   static_assert(!std::is_reference<Value>::value,
-                "SingleReference requires non-ref types");
-  Value* ptr_;
+                "Just requires non-ref types");
+  const Value value_;
  public:
-  explicit SingleReference(Value* ptr) : ptr_(ptr){}
-
-  template <class Handler>
-  bool apply(Handler&& handler) const {
-    return handler(*ptr_);
-  }
-
-  template <class Body>
-  void foreach(Body&& body) const {
-    body(*ptr_);
-  }
-};
-
-template <class Value>
-class SingleCopy : public GenImpl<const Value&, SingleCopy<Value>> {
-  static_assert(!std::is_reference<Value>::value,
-                "SingleCopy requires non-ref types");
-  Value value_;
- public:
-  explicit SingleCopy(Value value) : value_(std::forward<Value>(value)) {}
+  explicit Just(Value value) : value_(std::forward<Value>(value)) {}
 
   template <class Handler>
   bool apply(Handler&& handler) const {
