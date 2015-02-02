@@ -248,9 +248,25 @@ struct DeterministicAtomic {
     return rv;
   }
 
+  T fetch_add(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = data;
+    data += v;
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
   T operator-= (T v) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data -= v);
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
+  T fetch_sub(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = data;
+    data -= v;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
@@ -262,9 +278,40 @@ struct DeterministicAtomic {
     return rv;
   }
 
+  T fetch_and(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = data;
+    data &= v;
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
   T operator|= (T v) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data |= v);
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
+  T fetch_or(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = data;
+    data |= v;
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
+  T operator^= (T v) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = (data ^= v);
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
+  T fetch_xor(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    DeterministicSchedule::beforeSharedAccess();
+    T rv = data;
+    data ^= v;
     DeterministicSchedule::afterSharedAccess();
     return rv;
   }
