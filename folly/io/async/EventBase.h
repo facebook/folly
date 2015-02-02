@@ -346,6 +346,28 @@ class EventBase : private boost::noncopyable,
    */
   bool runInEventBaseThread(const Cob& fn);
 
+  /*
+   * Like runInEventBaseThread, but the caller waits for the callback to be
+   * executed.
+   */
+  template<typename T>
+  bool runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
+    return runInEventBaseThreadAndWait(reinterpret_cast<void (*)(void*)>(fn),
+                                       reinterpret_cast<void*>(arg));
+  }
+
+  /*
+   * Like runInEventBaseThread, but the caller waits for the callback to be
+   * executed.
+   */
+  bool runInEventBaseThreadAndWait(void (*fn)(void*), void* arg);
+
+  /*
+   * Like runInEventBaseThread, but the caller waits for the callback to be
+   * executed.
+   */
+  bool runInEventBaseThreadAndWait(const Cob& fn);
+
   /**
    * Runs the given Cob at some time after the specified number of
    * milliseconds.  (No guarantees exactly when.)

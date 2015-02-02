@@ -20,6 +20,7 @@
 
 #include <folly/io/async/EventBase.h>
 
+#include <folly/Baton.h>
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 
@@ -558,6 +559,40 @@ bool EventBase::runInEventBaseThread(const Cob& fn) {
     delete fnCopy;
     return false;
   }
+
+  return true;
+}
+
+bool EventBase::runInEventBaseThreadAndWait(void (*fn)(void*), void* arg) {
+  if (inRunningEventBaseThread()) {
+    LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
+               << "allowed";
+    return false;
+  }
+
+  Baton<> ready;
+  runInEventBaseThread([&] {
+      fn(arg);
+      ready.post();
+  });
+  ready.wait();
+
+  return true;
+}
+
+bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
+  if (inRunningEventBaseThread()) {
+    LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
+               << "allowed";
+    return false;
+  }
+
+  Baton<> ready;
+  runInEventBaseThread([&] {
+      fn();
+      ready.post();
+  });
+  ready.wait();
 
   return true;
 }
