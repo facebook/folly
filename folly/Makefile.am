@@ -138,7 +138,6 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncUDPServerSocket.h \
 	io/async/AsyncUDPSocket.h \
 	io/async/AsyncServerSocket.h \
-	io/async/AsyncSSLServerSocket.h \
 	io/async/AsyncSocket.h \
 	io/async/AsyncSSLSocket.h \
 	io/async/AsyncSocketException.h \
@@ -308,7 +307,6 @@ libfolly_la_SOURCES = \
 	io/async/AsyncTimeout.cpp \
 	io/async/AsyncUDPSocket.cpp \
 	io/async/AsyncServerSocket.cpp \
-	io/async/AsyncSSLServerSocket.cpp \
 	io/async/AsyncSocket.cpp \
 	io/async/AsyncSSLSocket.cpp \
 	io/async/EventBase.cpp \

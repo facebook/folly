@@ -173,10 +173,8 @@ a lock on accept()ing from a port, preventing more than ~20k accepts /
 sec.  There are various workarounds (SO_REUSEPORT), but generally
 clients should be using connection pooling instead when possible.
 
-#### AsyncSSLServerSocket
-
-Similar to AsyncServerSocket, but provides callbacks for SSL
-handshaking.
+Since AsyncServerSocket provides an fd, an AsyncSSLSocket or
+AsyncSocket can be made using the same codepath
 
 #### TAsyncUDPServerSocket
 
