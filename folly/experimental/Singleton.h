@@ -97,6 +97,7 @@
 #include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
+#include <folly/Demangle.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
@@ -162,13 +163,13 @@ class TypeDescriptor {
     return *this;
   }
 
-  std::string name() const {
-    std::string ret = ti_.name();
+  std::string prettyName() const {
+    auto ret = demangle(ti_.name());
     if (tag_ti_ != std::type_index(typeid(DefaultTag))) {
       ret += "/";
-      ret += tag_ti_.name();
+      ret += demangle(tag_ti_.name());
     }
-    return ret;
+    return ret.toStdString();
   }
 
   friend class TypeDescriptorHasher;
@@ -436,7 +437,7 @@ class SingletonVault {
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
       throw std::out_of_range(std::string("non-existent singleton: ") +
-                              type.name());
+                              type.prettyName());
     }
 
     return it->second.get();
@@ -457,7 +458,7 @@ class SingletonVault {
     // it if it was set by current thread anyways.
     if (entry->creating_thread == std::this_thread::get_id()) {
       throw std::out_of_range(std::string("circular singleton dependency: ") +
-                              type.name());
+                              type.prettyName());
     }
 
     std::lock_guard<std::mutex> entry_lock(entry->mutex);
