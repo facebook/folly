@@ -86,11 +86,6 @@ void SingletonVault::reenableInstances() {
   state_ = SingletonVaultState::Running;
 }
 
-SingletonVault* SingletonVault::singleton() {
-  static SingletonVault* vault = new SingletonVault();
-  return vault;
-}
-
 void SingletonVault::scheduleDestroyInstances() {
   RequestContext::getStaticContext();
 
