@@ -527,8 +527,10 @@ Future<void> via(Executor* executor);
   The Futures are moved in, so your copies are invalid. If you need to
   chain further from these Futures, use the variant with an output iterator.
 
-  XXX is this still true?
-  This function is thread-safe for Futures running on different threads.
+  This function is thread-safe for Futures running on different threads. But
+  if you are doing anything non-trivial after, you will probably want to
+  follow with `via(executor)` because it will complete in whichever thread the
+  last Future completes in.
 
   The return type for Future<T> input is a Future<std::vector<Try<T>>>
   */
