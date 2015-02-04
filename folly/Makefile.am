@@ -73,6 +73,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/io/FsUtil.h \
 	experimental/Singleton.h \
+	experimental/Singleton-inl.h \
 	experimental/TestUtil.h \
 	FBString.h \
 	FBVector.h \
