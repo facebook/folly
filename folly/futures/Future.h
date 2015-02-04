@@ -326,6 +326,22 @@ class Future {
     Future<T>>::type
   onError(F&& func);
 
+  /// Like onError, but for timeouts. example:
+  ///
+  ///   Future<int> f = makeFuture<int>(42)
+  ///     .delayed(long_time)
+  ///     .onTimeout(short_time,
+  ///       []() -> int{ return -1; });
+  ///
+  /// or perhaps
+  ///
+  ///   Future<int> f = makeFuture<int>(42)
+  ///     .delayed(long_time)
+  ///     .onTimeout(short_time,
+  ///       []() { return makeFuture<int>(some_exception); });
+  template <class F>
+  Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr);
+
   /// This is not the method you're looking for.
   ///
   /// This needs to be public because it's used by make* and when*, and it's

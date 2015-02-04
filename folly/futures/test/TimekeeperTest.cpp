@@ -126,3 +126,43 @@ TEST(Timekeeper, futureWithinException) {
   auto f = p.getFuture().within(awhile, std::runtime_error("expected"));
   EXPECT_THROW(f.get(), std::runtime_error);
 }
+
+TEST(Timekeeper, onTimeout) {
+  bool flag = false;
+  makeFuture(42).delayed(one_ms)
+    .onTimeout(Duration(0), [&]{ flag = true; return -1; })
+    .get();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Timekeeper, onTimeoutReturnsFuture) {
+  bool flag = false;
+  makeFuture(42).delayed(one_ms)
+    .onTimeout(Duration(0), [&]{ flag = true; return makeFuture(-1); })
+    .get();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Timekeeper, onTimeoutVoid) {
+  makeFuture().delayed(one_ms)
+    .onTimeout(Duration(0), [&]{
+     });
+  makeFuture().delayed(one_ms)
+    .onTimeout(Duration(0), [&]{
+       return makeFuture<void>(std::runtime_error("expected"));
+     });
+  // just testing compilation here
+}
+
+// TODO(5921764)
+/*
+TEST(Timekeeper, onTimeoutPropagates) {
+  bool flag = false;
+  EXPECT_THROW(
+    makeFuture(42).delayed(one_ms)
+      .onTimeout(Duration(0), [&]{ flag = true; })
+      .get(),
+    TimedOut);
+  EXPECT_TRUE(flag);
+}
+*/

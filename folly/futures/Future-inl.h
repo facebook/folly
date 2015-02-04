@@ -283,6 +283,14 @@ Future<T>::onError(F&& func) {
 }
 
 template <class T>
+template <class F>
+Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
+  auto funcw = folly::makeMoveWrapper(std::forward<F>(func));
+  return within(dur, tk)
+    .onError([funcw](TimedOut const&) { return (*funcw)(); });
+}
+
+template <class T>
 typename std::add_lvalue_reference<T>::type Future<T>::value() {
   throwIfInvalid();
 
