@@ -73,7 +73,8 @@ void SingletonVault::destroyInstance(SingletonMap::iterator entry_it) {
                << "reference at destroyInstances time; beware! Raw pointer "
                << "is " << entry.instance_ptr << ". It is very likely that "
                << "some other singleton is holding a shared_ptr to it. Make "
-               << "dependencies between these singletons are properly defined.";
+               << "sure dependencies between these singletons are properly "
+               << "defined.";
   }
 }
 
