@@ -34,9 +34,6 @@
 namespace folly { namespace detail {
 
 // declaration of functions in Range.cpp
-size_t qfind_first_byte_of_memchr(const StringPiece haystack,
-                                  const StringPiece needles);
-
 size_t qfind_first_byte_of_byteset(const StringPiece haystack,
                                    const StringPiece needles);
 
@@ -850,19 +847,14 @@ struct NoSseNeedleFinder {
   }
 };
 
-struct MemchrNeedleFinder {
-  static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
-    return detail::qfind_first_byte_of_memchr(haystack, needles);
-  }
-};
-
 struct ByteSetNeedleFinder {
   static size_t find_first_byte_of(StringPiece haystack, StringPiece needles) {
     return detail::qfind_first_byte_of_byteset(haystack, needles);
   }
 };
 
-typedef ::testing::Types<SseNeedleFinder, NoSseNeedleFinder, MemchrNeedleFinder,
+typedef ::testing::Types<SseNeedleFinder,
+                         NoSseNeedleFinder,
                          ByteSetNeedleFinder> NeedleFinders;
 TYPED_TEST_CASE(NeedleFinderTest, NeedleFinders);
 
