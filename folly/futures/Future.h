@@ -181,6 +181,19 @@ class Future {
   Future(Future&&) noexcept;
   Future& operator=(Future&&);
 
+  // makeFuture
+  template <class F = T>
+  /* implicit */
+  Future(const typename std::enable_if<!std::is_void<F>::value, F>::type& val);
+
+  template <class F = T>
+  /* implicit */
+  Future(typename std::enable_if<!std::is_void<F>::value, F>::type&& val);
+
+  template <class F = T,
+            typename std::enable_if<std::is_void<F>::value, int>::type = 0>
+  Future();
+
   ~Future();
 
   /** Return the reference to result. Should not be called if !isReady().
