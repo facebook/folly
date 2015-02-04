@@ -184,6 +184,9 @@ public:
   constexpr Range() : b_(), e_() {
   }
 
+  constexpr Range(const Range&) = default;
+  constexpr Range(Range&&) = default;
+
 public:
   // Works for all iterators
   constexpr Range(Iter start, Iter end) : b_(start), e_(end) {
@@ -321,6 +324,9 @@ public:
     : b_(other.begin()),
       e_(other.end()) {
   }
+
+  Range& operator=(const Range& rhs) & = default;
+  Range& operator=(Range&& rhs) & = default;
 
   void clear() {
     b_ = Iter();
