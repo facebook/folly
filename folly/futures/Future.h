@@ -199,10 +199,6 @@ class Future {
   /** Return the reference to result. Should not be called if !isReady().
     Will rethrow the exception if an exception has been
     captured.
-
-    This function is not thread safe - the returned Future can only
-    be executed from the thread that the executor runs it in.
-    See below for a thread safe version
     */
   typename std::add_lvalue_reference<T>::type
   value();
