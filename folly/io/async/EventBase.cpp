@@ -610,15 +610,23 @@ bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
   return true;
 }
 
-bool EventBase::runAfterDelay(const Cob& cob,
-                               int milliseconds,
-                               TimeoutManager::InternalEnum in) {
+void EventBase::runAfterDelay(const Cob& cob,
+                              int milliseconds,
+                              TimeoutManager::InternalEnum in) {
+  if (!tryRunAfterDelay(cob, milliseconds, in)) {
+    folly::throwSystemError(
+      "error in EventBase::runAfterDelay(), failed to schedule timeout");
+  }
+}
+
+bool EventBase::tryRunAfterDelay(const Cob& cob,
+                                 int milliseconds,
+                                 TimeoutManager::InternalEnum in) {
   CobTimeout* timeout = new CobTimeout(this, cob, in);
   if (!timeout->scheduleTimeout(milliseconds)) {
     delete timeout;
     return false;
   }
-
   pendingCobTimeouts_.push_back(*timeout);
   return true;
 }

@@ -386,12 +386,23 @@ class EventBase : private boost::noncopyable,
    * Runs the given Cob at some time after the specified number of
    * milliseconds.  (No guarantees exactly when.)
    *
-   * @return  true iff the cob was successfully registered.
+   * Throws a std::system_error if an error occurs.
    */
-  bool runAfterDelay(
+  void runAfterDelay(
       const Cob& c,
       int milliseconds,
-      TimeoutManager::InternalEnum = TimeoutManager::InternalEnum::NORMAL);
+      TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
+
+  /**
+   * @see tryRunAfterDelay for more details
+   *
+   * @return  true iff the cob was successfully registered.
+   *
+   * */
+  bool tryRunAfterDelay(
+      const Cob& cob,
+      int milliseconds,
+      TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
 
   /**
    * Set the maximum desired latency in us and provide a callback which will be

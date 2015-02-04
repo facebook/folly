@@ -36,7 +36,7 @@ class TestClientPipelineFactory : public PipelineFactory<Pipeline> {
     CHECK(sock->good());
 
     // We probably aren't connected immedately, check after a small delay
-    EventBaseManager::get()->getEventBase()->runAfterDelay([sock](){
+    EventBaseManager::get()->getEventBase()->tryRunAfterDelay([sock](){
       CHECK(sock->readable());
     }, 100);
     return nullptr;

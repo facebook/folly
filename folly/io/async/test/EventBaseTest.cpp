@@ -131,7 +131,7 @@ struct ScheduledEvent {
 
 void scheduleEvents(EventBase* eventBase, int fd, ScheduledEvent* events) {
   for (ScheduledEvent* ev = events; ev->milliseconds > 0; ++ev) {
-    eventBase->runAfterDelay(std::bind(&ScheduledEvent::perform, ev, fd),
+    eventBase->tryRunAfterDelay(std::bind(&ScheduledEvent::perform, ev, fd),
                              ev->milliseconds);
   }
 }
@@ -240,7 +240,7 @@ TEST(EventBaseTest, ReadPersist) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler after the third write
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
 
   // Loop
   TimePoint start;
@@ -288,7 +288,7 @@ TEST(EventBaseTest, ReadImmediate) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 20);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 20);
 
   // Loop
   TimePoint start;
@@ -379,7 +379,7 @@ TEST(EventBaseTest, WritePersist) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler after the third read
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
 
   // Loop
   TimePoint start;
@@ -421,7 +421,7 @@ TEST(EventBaseTest, WriteImmediate) {
 
   // Schedule a timeout to unregister the handler
   int64_t unregisterTimeout = 40;
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler),
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler),
                    unregisterTimeout);
 
   // Loop
@@ -601,7 +601,7 @@ TEST(EventBaseTest, ReadWritePersist) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 80);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 80);
 
   // Loop
   TimePoint start;
@@ -679,7 +679,7 @@ TEST(EventBaseTest, ReadPartial) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
 
   // Loop
   TimePoint start;
@@ -746,7 +746,7 @@ TEST(EventBaseTest, WritePartial) {
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
-  eb.runAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
+  eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
 
   // Loop
   TimePoint start;
@@ -800,7 +800,7 @@ TEST(EventBaseTest, DestroyHandler) {
 
   // After 10ms, read some data, so that the handler
   // will be notified that it can write.
-  eb.runAfterDelay(std::bind(checkReadUntilEmpty, sp[1], initialBytesWritten),
+  eb.tryRunAfterDelay(std::bind(checkReadUntilEmpty, sp[1], initialBytesWritten),
                    10);
 
   // Start a timer to destroy the handler after 25ms
@@ -833,9 +833,9 @@ TEST(EventBaseTest, RunAfterDelay) {
   TimePoint timestamp1(false);
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
-  eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
-  eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp2), 20);
-  eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 40);
+  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
+  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp2), 20);
+  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 40);
 
   TimePoint start;
   eb.loop();
@@ -848,7 +848,7 @@ TEST(EventBaseTest, RunAfterDelay) {
 }
 
 /**
- * Test the behavior of runAfterDelay() when some timeouts are
+ * Test the behavior of tryRunAfterDelay() when some timeouts are
  * still scheduled when the EventBase is destroyed.
  */
 TEST(EventBaseTest, RunAfterDelayDestruction) {
@@ -863,15 +863,15 @@ TEST(EventBaseTest, RunAfterDelayDestruction) {
     EventBase eb;
 
     // Run two normal timeouts
-    eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
-    eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp2), 20);
+    eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
+    eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp2), 20);
 
     // Schedule a timeout to stop the event loop after 40ms
-    eb.runAfterDelay(std::bind(&EventBase::terminateLoopSoon, &eb), 40);
+    eb.tryRunAfterDelay(std::bind(&EventBase::terminateLoopSoon, &eb), 40);
 
     // Schedule 2 timeouts that would fire after the event loop stops
-    eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 80);
-    eb.runAfterDelay(std::bind(&TimePoint::reset, &timestamp4), 160);
+    eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 80);
+    eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp4), 160);
 
     start.reset();
     eb.loop();
@@ -1003,9 +1003,9 @@ TEST(EventBaseTest, RescheduleTimeout) {
       &AsyncTimeout::scheduleTimeout);
 
   // after 10ms, reschedule t2 to run sooner than originally scheduled
-  eb.runAfterDelay(std::bind(f, &t2, 10), 10);
+  eb.tryRunAfterDelay(std::bind(f, &t2, 10), 10);
   // after 10ms, reschedule t3 to run later than originally scheduled
-  eb.runAfterDelay(std::bind(f, &t3, 40), 10);
+  eb.tryRunAfterDelay(std::bind(f, &t3, 40), 10);
 
   TimePoint start;
   eb.loop();
@@ -1030,7 +1030,7 @@ TEST(EventBaseTest, CancelTimeout) {
 
   ReschedulingTimeout t(&eb, timeouts);
   t.start();
-  eb.runAfterDelay(std::bind(&AsyncTimeout::cancelTimeout, &t), 50);
+  eb.tryRunAfterDelay(std::bind(&AsyncTimeout::cancelTimeout, &t), 50);
 
   TimePoint start;
   eb.loop();
@@ -1137,7 +1137,7 @@ TEST(EventBaseTest, RunInThread) {
   // Once the last thread exits, it will stop the loop().  However, this
   // timeout also stops the loop in case there is a bug performing the normal
   // stop.
-  data.evb.runAfterDelay(std::bind(&EventBase::terminateLoopSoon, &data.evb),
+  data.evb.tryRunAfterDelay(std::bind(&EventBase::terminateLoopSoon, &data.evb),
                          3000);
 
   TimePoint start;
@@ -1628,7 +1628,7 @@ TEST(EventBaseTest, RunBeforeLoop) {
 TEST(EventBaseTest, RunBeforeLoopWait) {
   EventBase base;
   CountedLoopCallback cb(&base, 1);
-  base.runAfterDelay([&](){
+  base.tryRunAfterDelay([&](){
       base.terminateLoopSoon();
     }, 500);
   base.runBeforeLoop(&cb);
