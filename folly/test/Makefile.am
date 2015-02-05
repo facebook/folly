@@ -47,6 +47,10 @@ TESTS += small_vector_test
 discriminated_ptr_test_SOURCES = DiscriminatedPtrTest.cpp
 discriminated_ptr_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += discriminated_ptr_test
+
+cpuid_test_SOURCES = CpuIdTest.cpp
+cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
+TESTS += cpuid_test
 endif
 
 sorted_vector_types_test_SOURCES = sorted_vector_test.cpp
@@ -169,10 +173,6 @@ TESTS += fingerprint_test
 portability_test_SOURCES = PortabilityTest.cpp
 portability_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += portability_test
-
-cpuid_test_SOURCES = CpuIdTest.cpp
-cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
-TESTS += cpuid_test
 
 spooky_hash_v1_test_SOURCES = SpookyHashV1Test.cpp
 spooky_hash_v1_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
