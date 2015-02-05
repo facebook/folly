@@ -289,14 +289,6 @@ void Subprocess::spawn(
   // child has exited and can be immediately waited for.  In all other cases,
   // we have no way of cleaning up the child.
 
-  if (options.processGroupLeader_) {
-    // This is done both in the parent and the child to avoid the race where
-    // the parent assumes that the child is a leader, but the child has not
-    // yet run setprp().  Not checking error codes since we're deliberately
-    // racing the child, which may already have run execve(), and expect to
-    // lose frequently.
-    setpgid(pid_, pid_);
-  }
   // Close writable side of the errFd pipe in the parent process
   CHECK_ERR(::close(errFds[1]));
   errFds[1] = -1;
