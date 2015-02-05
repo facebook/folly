@@ -102,11 +102,18 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # define FOLLY_ALWAYS_INLINE
 #endif
 
-// detection for 64 bit
+// detection for x64 bit
 #if defined(__x86_64__) || defined(_M_X64)
 # define FOLLY_X64 1
 #else
 # define FOLLY_X64 0
+#endif
+
+// detection for ppc64 bit
+#if defined(__powerpc64__) || defined(__PPC64__)
+# define FOLLY_PPC64 1
+#else
+# define FOLLY_PPC64 0
 #endif
 
 // packing is very ugly in msvc
