@@ -48,6 +48,18 @@ void SingletonVault::destroyInstances() {
          ++type_iter) {
       singletons_[*type_iter]->destroyInstance();
     }
+
+    for (auto& singleton_type: creation_order_) {
+      auto singleton = singletons_[singleton_type];
+      if (!singleton->hasLiveInstance()) {
+        continue;
+      }
+
+      LOG(DFATAL) << "Singleton of type " << singleton->type().name() << " has "
+                  << "a living reference after destroyInstances was finished;"
+                  << "beware! It is very likely that this singleton instance "
+                  << "will be leaked.";
+    }
   }
 
   {

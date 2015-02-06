@@ -268,6 +268,8 @@ struct SingletonHolder : public SingletonHolderBase {
   CreateFunc create_ = nullptr;
   TeardownFunc teardown_ = nullptr;
 
+  std::shared_ptr<std::atomic<bool>> print_destructor_stack_trace_;
+
   SingletonHolder(const SingletonHolder&) = delete;
   SingletonHolder& operator=(const SingletonHolder&) = delete;
   SingletonHolder& operator=(SingletonHolder&&) = delete;

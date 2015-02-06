@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/symbolizer/Symbolizer.h>
+
 namespace folly {
 
 namespace detail {
@@ -94,6 +96,7 @@ void SingletonHolder<T>::destroyInstance() {
   auto wait_result = destroy_baton_->timed_wait(
     std::chrono::steady_clock::now() + kDestroyWaitTime);
   if (!wait_result) {
+    print_destructor_stack_trace_->store(true);
     LOG(ERROR) << "Singleton of type " << type_.name() << " has a "
                << "living reference at destroyInstances time; beware! Raw "
                << "pointer is " << instance_ptr_ << ". It is very likely "
@@ -140,14 +143,42 @@ void SingletonHolder<T>::createInstance() {
   }
 
   auto destroy_baton = std::make_shared<folly::Baton<>>();
+  auto print_destructor_stack_trace =
+    std::make_shared<std::atomic<bool>>(false);
   auto teardown = teardown_;
+  auto type_name = type_.name();
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
   instance_ = std::shared_ptr<T>(
     create_(),
-    [destroy_baton, teardown](T* instance_ptr) mutable {
+    [destroy_baton, print_destructor_stack_trace, teardown, type_name]
+    (T* instance_ptr) mutable {
       teardown(instance_ptr);
       destroy_baton->post();
+      if (print_destructor_stack_trace->load()) {
+        std::string output = "Singleton " + type_name + " was destroyed.\n";
+
+        // Get and symbolize stack trace
+        constexpr size_t kMaxStackTraceDepth = 100;
+        symbolizer::FrameArray<kMaxStackTraceDepth> addresses;
+        if (!getStackTraceSafe(addresses)) {
+          output += "Failed to get destructor stack trace.";
+        } else {
+          output += "Destructor stack trace:\n";
+
+          constexpr size_t kDefaultCapacity = 500;
+          symbolizer::ElfCache elfCache(kDefaultCapacity);
+
+          symbolizer::Symbolizer symbolizer(&elfCache);
+          symbolizer.symbolize(addresses);
+
+          symbolizer::StringSymbolizePrinter printer;
+          printer.println(addresses);
+          output += printer.str();
+        }
+
+        LOG(ERROR) << output;
+      }
     });
 
   // We should schedule destroyInstances() only after the singleton was
@@ -160,6 +191,7 @@ void SingletonHolder<T>::createInstance() {
   instance_ptr_ = instance_.get();
   creating_thread_ = std::thread::id();
   destroy_baton_ = std::move(destroy_baton);
+  print_destructor_stack_trace_ = std::move(print_destructor_stack_trace);
 
   // This has to be the last step, because once state is Living other threads
   // may access instance and instance_weak w/o synchronization.

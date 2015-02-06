@@ -281,6 +281,7 @@ TEST(Singleton, SharedPtrUsage) {
   auto locked_s1 = weak_s1.lock();
   EXPECT_EQ(locked_s1.get(), s1);
   EXPECT_EQ(shared_s1.use_count(), 2);
+  LOG(ERROR) << "The following log message with stack trace is expected";
   locked_s1.reset();
   EXPECT_EQ(shared_s1.use_count(), 1);
 
