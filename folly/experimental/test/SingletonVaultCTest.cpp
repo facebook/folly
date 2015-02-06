@@ -40,12 +40,16 @@ TEST(SingletonVault, singletonReturnsSingletonInstance) {
   EXPECT_EQ(c, cpp);
 }
 
+struct TestTag {};
+template <typename T, typename Tag = folly::detail::DefaultTag>
+using SingletonTest = folly::Singleton <T, Tag, TestTag>;
+
 TEST(SingletonVault, singletonsAreCreatedAndDestroyed) {
-  auto *vault = new folly::SingletonVault();
-  folly::Singleton<InstanceCounter> counter_singleton(nullptr, nullptr, vault);
+  auto vault = folly::SingletonVault::singleton<TestTag>();
+  SingletonTest<InstanceCounter> counter_singleton;
   SingletonVault_registrationComplete((SingletonVault_t*) vault);
-  InstanceCounter *counter = folly::Singleton<InstanceCounter>::get(vault);
+  InstanceCounter *counter = SingletonTest<InstanceCounter>::get();
   EXPECT_EQ(instance_counter_instances, 1);
-  delete vault;
+  SingletonVault_destroyInstances((SingletonVault_t*) vault);
   EXPECT_EQ(instance_counter_instances, 0);
 }
