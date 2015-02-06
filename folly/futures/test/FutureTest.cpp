@@ -30,6 +30,7 @@
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/MPMCQueue.h>
 
+#include <folly/io/async/EventBase.h>
 #include <folly/io/async/Request.h>
 
 using namespace folly;
@@ -37,6 +38,7 @@ using std::pair;
 using std::string;
 using std::unique_ptr;
 using std::vector;
+using std::chrono::milliseconds;
 
 #define EXPECT_TYPE(x, T) \
   EXPECT_TRUE((std::is_same<decltype(x), T>::value))
@@ -963,30 +965,78 @@ TEST(Future, wait) {
   EXPECT_EQ(result.load(), 42);
 }
 
+struct MoveFlag {
+  MoveFlag() = default;
+  MoveFlag(const MoveFlag&) = delete;
+  MoveFlag(MoveFlag&& other) noexcept {
+    other.moved = true;
+  }
+  bool moved{false};
+};
+
+TEST(Future, waitReplacesSelf) {
+  // wait
+  {
+    // lvalue
+    auto f1 = makeFuture(MoveFlag());
+    f1.wait();
+    EXPECT_FALSE(f1.value().moved);
+
+    // rvalue
+    auto f2 = makeFuture(MoveFlag()).wait();
+    EXPECT_FALSE(f2.value().moved);
+  }
+
+  // wait(Duration)
+  {
+    // lvalue
+    auto f1 = makeFuture(MoveFlag());
+    f1.wait(milliseconds(1));
+    EXPECT_FALSE(f1.value().moved);
+
+    // rvalue
+    auto f2 = makeFuture(MoveFlag()).wait(milliseconds(1));
+    EXPECT_FALSE(f2.value().moved);
+  }
+
+  // waitVia
+  {
+    folly::EventBase eb;
+    // lvalue
+    auto f1 = makeFuture(MoveFlag());
+    f1.waitVia(&eb);
+    EXPECT_FALSE(f1.value().moved);
+
+    // rvalue
+    auto f2 = makeFuture(MoveFlag()).waitVia(&eb);
+    EXPECT_FALSE(f2.value().moved);
+  }
+}
+
 TEST(Future, waitWithDuration) {
  {
   Promise<int> p;
   Future<int> f = p.getFuture();
-  auto t = f.wait(std::chrono::milliseconds(1));
-  EXPECT_FALSE(t.isReady());
+  f.wait(milliseconds(1));
+  EXPECT_FALSE(f.isReady());
   p.setValue(1);
-  EXPECT_TRUE(t.isReady());
+  EXPECT_TRUE(f.isReady());
  }
  {
   Promise<int> p;
   Future<int> f = p.getFuture();
   p.setValue(1);
-  auto t = f.wait(std::chrono::milliseconds(1));
-  EXPECT_TRUE(t.isReady());
+  f.wait(milliseconds(1));
+  EXPECT_TRUE(f.isReady());
  }
  {
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = f.wait(std::chrono::milliseconds(1));
-  EXPECT_TRUE(t.isReady());
-  EXPECT_EQ(2, t.value().size());
+  f.wait(milliseconds(1));
+  EXPECT_TRUE(f.isReady());
+  EXPECT_EQ(2, f.value().size());
  }
  {
   vector<Future<bool>> v_fb;
@@ -995,24 +1045,24 @@ TEST(Future, waitWithDuration) {
   v_fb.push_back(p1.getFuture());
   v_fb.push_back(p2.getFuture());
   auto f = whenAll(v_fb.begin(), v_fb.end());
-  auto t = f.wait(std::chrono::milliseconds(1));
-  EXPECT_FALSE(t.isReady());
+  f.wait(milliseconds(1));
+  EXPECT_FALSE(f.isReady());
   p1.setValue(true);
-  EXPECT_FALSE(t.isReady());
+  EXPECT_FALSE(f.isReady());
   p2.setValue(true);
-  EXPECT_TRUE(t.isReady());
+  EXPECT_TRUE(f.isReady());
  }
  {
-  auto t = makeFuture().wait(std::chrono::milliseconds(1));
-  EXPECT_TRUE(t.isReady());
+  auto f = makeFuture().wait(milliseconds(1));
+  EXPECT_TRUE(f.isReady());
  }
 
  {
    Promise<void> p;
    auto start = std::chrono::steady_clock::now();
-   auto f = p.getFuture().wait(std::chrono::milliseconds(100));
+   auto f = p.getFuture().wait(milliseconds(100));
    auto elapsed = std::chrono::steady_clock::now() - start;
-   EXPECT_GE(elapsed, std::chrono::milliseconds(100));
+   EXPECT_GE(elapsed, milliseconds(100));
    EXPECT_FALSE(f.isReady());
    p.setValue();
    EXPECT_TRUE(f.isReady());
@@ -1025,7 +1075,7 @@ TEST(Future, waitWithDuration) {
    folly::Baton<> b;
    auto t = std::thread([&]{
      b.post();
-     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+     std::this_thread::sleep_for(milliseconds(100));
      p.setValue();
    });
    b.wait();

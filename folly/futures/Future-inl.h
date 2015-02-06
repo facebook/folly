@@ -688,27 +688,28 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
     });
 }
 
+namespace detail {
+
 template <class T>
-Future<T> Future<T>::wait() {
+void waitImpl(Future<T>& f) {
   Baton<> baton;
-  auto done = then([&](Try<T> t) {
+  f = f.then([&](Try<T> t) {
     baton.post();
     return makeFuture(std::move(t));
   });
   baton.wait();
-  while (!done.isReady()) {
-    // There's a race here between the return here and the actual finishing of
-    // the future. f is completed, but the setup may not have finished on done
-    // after the baton has posted.
+  // There's a race here between the return here and the actual finishing of
+  // the future. f is completed, but the setup may not have finished on done
+  // after the baton has posted.
+  while (!f.isReady()) {
     std::this_thread::yield();
   }
-  return done;
 }
 
 template <class T>
-Future<T> Future<T>::wait(Duration dur) {
+void waitImpl(Future<T>& f, Duration dur) {
   auto baton = std::make_shared<Baton<>>();
-  auto done = then([baton](Try<T> t) {
+  f = f.then([baton](Try<T> t) {
     baton->post();
     return makeFuture(std::move(t));
   });
@@ -716,26 +717,54 @@ Future<T> Future<T>::wait(Duration dur) {
   // true), then the returned Future is complete when it is returned to the
   // caller. We need to wait out the race for that Future to complete.
   if (baton->timed_wait(std::chrono::system_clock::now() + dur)) {
-    while (!done.isReady()) {
+    while (!f.isReady()) {
       std::this_thread::yield();
     }
   }
-  return done;
 }
 
 template <class T>
-Future<T>& Future<T>::waitVia(DrivableExecutor* e) & {
-  while (!isReady()) {
+void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
+  while (!f.isReady()) {
     e->drive();
   }
+}
+
+} // detail
+
+template <class T>
+Future<T>& Future<T>::wait() & {
+  detail::waitImpl(*this);
   return *this;
 }
 
 template <class T>
-Future<T> Future<T>::waitVia(DrivableExecutor* e) && {
-  while (!isReady()) {
-    e->drive();
-  }
+Future<T>&& Future<T>::wait() && {
+  detail::waitImpl(*this);
+  return std::move(*this);
+}
+
+template <class T>
+Future<T>& Future<T>::wait(Duration dur) & {
+  detail::waitImpl(*this, dur);
+  return *this;
+}
+
+template <class T>
+Future<T>&& Future<T>::wait(Duration dur) && {
+  detail::waitImpl(*this, dur);
+  return std::move(*this);
+}
+
+template <class T>
+Future<T>& Future<T>::waitVia(DrivableExecutor* e) & {
+  detail::waitViaImpl(*this, e);
+  return *this;
+}
+
+template <class T>
+Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
+  detail::waitViaImpl(*this, e);
   return std::move(*this);
 }
 

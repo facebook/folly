@@ -410,14 +410,18 @@ class Future {
   /// now. The optional Timekeeper is as with futures::sleep().
   Future<T> delayed(Duration, Timekeeper* = nullptr);
 
-  /// Block until this Future is complete. Returns a new Future containing the
-  /// result.
-  Future<T> wait();
+  /// Block until this Future is complete. Returns a reference to this Future.
+  Future<T>& wait() &;
+
+  /// Overload of wait() for rvalue Futures
+  Future<T>&& wait() &&;
 
   /// Block until this Future is complete or until the given Duration passes.
-  /// Returns a new Future which either contains the result or is incomplete,
-  /// depending on whether the Duration passed.
-  Future<T> wait(Duration);
+  /// Returns a reference to this Future
+  Future<T>& wait(Duration) &;
+
+  /// Overload of wait(Duration) for rvalue Futures
+  Future<T>&& wait(Duration) &&;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
@@ -426,7 +430,7 @@ class Future {
   Future<T>& waitVia(DrivableExecutor* e) &;
 
   /// Overload of waitVia() for rvalue Futures
-  Future<T> waitVia(DrivableExecutor* e) &&;
+  Future<T>&& waitVia(DrivableExecutor* e) &&;
 
  private:
   typedef detail::Core<T>* corePtr;
