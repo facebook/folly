@@ -360,7 +360,9 @@ class EventBase : private boost::noncopyable,
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
-  bool runInEventBaseThreadAndWait(void (*fn)(void*), void* arg);
+  bool runInEventBaseThreadAndWait(void (*fn)(void*), void* arg) {
+    return runInEventBaseThreadAndWait(std::bind(fn, arg));
+  }
 
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be

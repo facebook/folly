@@ -564,31 +564,6 @@ bool EventBase::runInEventBaseThread(const Cob& fn) {
   return true;
 }
 
-bool EventBase::runInEventBaseThreadAndWait(void (*fn)(void*), void* arg) {
-  if (inRunningEventBaseThread()) {
-    LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
-               << "allowed";
-    return false;
-  }
-
-  bool ready = false;
-  std::mutex m;
-  std::condition_variable cv;
-  runInEventBaseThread([&] {
-      SCOPE_EXIT {
-        std::unique_lock<std::mutex> l(m);
-        ready = true;
-        l.unlock();
-        cv.notify_one();
-      };
-      fn(arg);
-  });
-  std::unique_lock<std::mutex> l(m);
-  cv.wait(l, [&] { return ready; });
-
-  return true;
-}
-
 bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
   if (inRunningEventBaseThread()) {
     LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
