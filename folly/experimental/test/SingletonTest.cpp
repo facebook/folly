@@ -83,34 +83,30 @@ TEST(Singleton, MissingSingleton) {
                std::out_of_range);
 }
 
-struct BasicUsageTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonBasicUsage = Singleton <T, Tag, BasicUsageTag>;
-
 // Exercise some basic codepaths ensuring registration order and
 // destruction order happen as expected, that instances are created
 // when expected, etc etc.
 TEST(Singleton, BasicUsage) {
-  auto& vault = *SingletonVault::singleton<BasicUsageTag>();
+  SingletonVault vault;
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
-  SingletonBasicUsage<Watchdog> watchdog_singleton;
+  Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
 
-  SingletonBasicUsage<ChildWatchdog> child_watchdog_singleton;
+  Singleton<ChildWatchdog> child_watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
 
   vault.registrationComplete();
 
-  Watchdog* s1 = SingletonBasicUsage<Watchdog>::get();
+  Watchdog* s1 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(s1, nullptr);
 
-  Watchdog* s2 = SingletonBasicUsage<Watchdog>::get();
+  Watchdog* s2 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(s2, nullptr);
 
   EXPECT_EQ(s1, s2);
 
-  auto s3 = SingletonBasicUsage<ChildWatchdog>::get();
+  auto s3 = Singleton<ChildWatchdog>::get(&vault);
   EXPECT_NE(s3, nullptr);
   EXPECT_NE(s2, s3);
 
@@ -122,38 +118,28 @@ TEST(Singleton, BasicUsage) {
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 }
 
-struct DirectUsageTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonDirectUsage = Singleton <T, Tag, DirectUsageTag>;
-
 TEST(Singleton, DirectUsage) {
-  auto& vault = *SingletonVault::singleton<DirectUsageTag>();
+  SingletonVault vault;
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
 
   // Verify we can get to the underlying singletons via directly using
   // the singleton definition.
-  SingletonDirectUsage<Watchdog> watchdog;
+  Singleton<Watchdog> watchdog(nullptr, nullptr, &vault);
   struct TestTag {};
-  SingletonDirectUsage<Watchdog, TestTag> named_watchdog;
+  Singleton<Watchdog, TestTag> named_watchdog(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
   vault.registrationComplete();
 
   EXPECT_NE(watchdog.ptr(), nullptr);
-  EXPECT_EQ(watchdog.ptr(), SingletonDirectUsage<Watchdog>::get());
+  EXPECT_EQ(watchdog.ptr(), Singleton<Watchdog>::get(&vault));
   EXPECT_NE(watchdog.ptr(), named_watchdog.ptr());
   EXPECT_EQ(watchdog->livingWatchdogCount(), 2);
   EXPECT_EQ((*watchdog).livingWatchdogCount(), 2);
-
-  vault.destroyInstances();
 }
 
-struct NamedUsageTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonNamedUsage = Singleton <T, Tag, NamedUsageTag>;
-
 TEST(Singleton, NamedUsage) {
-  auto& vault = *SingletonVault::singleton<NamedUsageTag>();
+  SingletonVault vault;
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
 
@@ -161,105 +147,96 @@ TEST(Singleton, NamedUsage) {
   struct Watchdog1 {};
   struct Watchdog2 {};
   typedef detail::DefaultTag Watchdog3;
-  SingletonNamedUsage<Watchdog, Watchdog1> watchdog1_singleton;
+  Singleton<Watchdog, Watchdog1> watchdog1_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  SingletonNamedUsage<Watchdog, Watchdog2> watchdog2_singleton;
+  Singleton<Watchdog, Watchdog2> watchdog2_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
-  SingletonNamedUsage<Watchdog, Watchdog3> watchdog3_singleton;
+  Singleton<Watchdog, Watchdog3> watchdog3_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 3);
 
   vault.registrationComplete();
 
   // Verify our three singletons are distinct and non-nullptr.
-  Watchdog* s1 = SingletonNamedUsage<Watchdog, Watchdog1>::get();
+  Watchdog* s1 = Singleton<Watchdog, Watchdog1>::get(&vault);
   EXPECT_EQ(s1, watchdog1_singleton.ptr());
-  Watchdog* s2 = SingletonNamedUsage<Watchdog, Watchdog2>::get();
+  Watchdog* s2 = Singleton<Watchdog, Watchdog2>::get(&vault);
   EXPECT_EQ(s2, watchdog2_singleton.ptr());
   EXPECT_NE(s1, s2);
-  Watchdog* s3 = SingletonNamedUsage<Watchdog, Watchdog3>::get();
+  Watchdog* s3 = Singleton<Watchdog, Watchdog3>::get(&vault);
   EXPECT_EQ(s3, watchdog3_singleton.ptr());
   EXPECT_NE(s3, s1);
   EXPECT_NE(s3, s2);
 
   // Verify the "default" singleton is the same as the DefaultTag-tagged
   // singleton.
-  Watchdog* s4 = SingletonNamedUsage<Watchdog>::get();
+  Watchdog* s4 = Singleton<Watchdog>::get(&vault);
   EXPECT_EQ(s4, watchdog3_singleton.ptr());
-
-  vault.destroyInstances();
 }
-
-struct NaughtyUsageTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonNaughtyUsage = Singleton <T, Tag, NaughtyUsageTag>;
-struct NaughtyUsageTag2 {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonNaughtyUsage2 = Singleton <T, Tag, NaughtyUsageTag2>;
 
 // Some pathological cases such as getting unregistered singletons,
 // double registration, etc.
 TEST(Singleton, NaughtyUsage) {
-  auto& vault = *SingletonVault::singleton<NaughtyUsageTag>();
-
+  SingletonVault vault(SingletonVault::Type::Strict);
   vault.registrationComplete();
 
   // Unregistered.
   EXPECT_THROW(Singleton<Watchdog>::get(), std::out_of_range);
-  EXPECT_THROW(SingletonNaughtyUsage<Watchdog>::get(), std::out_of_range);
+  EXPECT_THROW(Singleton<Watchdog>::get(&vault), std::out_of_range);
 
-  vault.destroyInstances();
+  // Registring singletons after registrationComplete called.
+  EXPECT_THROW([&vault]() {
+                 Singleton<Watchdog> watchdog_singleton(
+                     nullptr, nullptr, &vault);
+               }(),
+               std::logic_error);
 
-  auto& vault2 = *SingletonVault::singleton<NaughtyUsageTag2>();
-
-  EXPECT_THROW(SingletonNaughtyUsage2<Watchdog>::get(), std::logic_error);
-  SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
+  SingletonVault vault_2(SingletonVault::Type::Strict);
+  EXPECT_THROW(Singleton<Watchdog>::get(&vault_2), std::logic_error);
+  Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault_2);
   // double registration
-  EXPECT_THROW([]() {
-      SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
-    }(),
-    std::logic_error);
-  vault2.destroyInstances();
+  EXPECT_THROW([&vault_2]() {
+                 Singleton<Watchdog> watchdog_singleton(
+                     nullptr, nullptr, &vault_2);
+               }(),
+               std::logic_error);
+  vault_2.destroyInstances();
   // double registration after destroy
-  EXPECT_THROW([]() {
-      SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
-    }(),
-    std::logic_error);
+  EXPECT_THROW([&vault_2]() {
+                 Singleton<Watchdog> watchdog_singleton(
+                     nullptr, nullptr, &vault_2);
+               }(),
+               std::logic_error);
 }
 
-struct SharedPtrUsageTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonSharedPtrUsage = Singleton <T, Tag, SharedPtrUsageTag>;
-
 TEST(Singleton, SharedPtrUsage) {
-  auto& vault = *SingletonVault::singleton<SharedPtrUsageTag>();
+  SingletonVault vault;
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
-  SingletonSharedPtrUsage<Watchdog> watchdog_singleton;
+  Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
 
-  SingletonSharedPtrUsage<ChildWatchdog> child_watchdog_singleton;
+  Singleton<ChildWatchdog> child_watchdog_singleton(nullptr, nullptr, &vault);
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
 
   struct ATag {};
-  SingletonSharedPtrUsage<Watchdog, ATag> named_watchdog_singleton;
+  Singleton<Watchdog, ATag> named_watchdog_singleton(nullptr, nullptr, &vault);
   vault.registrationComplete();
 
-  Watchdog* s1 = SingletonSharedPtrUsage<Watchdog>::get();
+  Watchdog* s1 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(s1, nullptr);
 
-  Watchdog* s2 = SingletonSharedPtrUsage<Watchdog>::get();
+  Watchdog* s2 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(s2, nullptr);
 
   EXPECT_EQ(s1, s2);
 
-  auto weak_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
+  auto weak_s1 = Singleton<Watchdog>::get_weak(&vault);
   auto shared_s1 = weak_s1.lock();
   EXPECT_EQ(shared_s1.get(), s1);
   EXPECT_EQ(shared_s1.use_count(), 2);
 
   {
-    auto named_weak_s1 =
-      SingletonSharedPtrUsage<Watchdog, ATag>::get_weak();
+    auto named_weak_s1 = Singleton<Watchdog, ATag>::get_weak(&vault);
     auto locked = named_weak_s1.lock();
     EXPECT_NE(locked.get(), shared_s1.get());
   }
@@ -291,16 +268,16 @@ TEST(Singleton, SharedPtrUsage) {
   locked_s1 = weak_s1.lock();
   EXPECT_TRUE(weak_s1.expired());
 
-  auto empty_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
+  auto empty_s1 = Singleton<Watchdog>::get_weak(&vault);
   EXPECT_FALSE(empty_s1.lock());
 
   vault.reenableInstances();
 
   // Singleton should be re-created only after reenableInstances() was called.
-  Watchdog* new_s1 = SingletonSharedPtrUsage<Watchdog>::get();
+  Watchdog* new_s1 = Singleton<Watchdog>::get(&vault);
   EXPECT_NE(new_s1->serial_number, old_serial);
 
-  auto new_s1_weak = SingletonSharedPtrUsage<Watchdog>::get_weak();
+  auto new_s1_weak = Singleton<Watchdog>::get_weak(&vault);
   auto new_s1_shared = new_s1_weak.lock();
   std::thread t([new_s1_shared]() mutable {
       std::this_thread::sleep_for(std::chrono::seconds{2});
@@ -321,51 +298,43 @@ TEST(Singleton, SharedPtrUsage) {
 // Some classes to test singleton dependencies.  NeedySingleton has a
 // dependency on NeededSingleton, which happens during its
 // construction.
-struct NeedyTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonNeedy = Singleton <T, Tag, NeedyTag>;
+SingletonVault needy_vault;
 
 struct NeededSingleton {};
 struct NeedySingleton {
   NeedySingleton() {
-    auto unused = SingletonNeedy<NeededSingleton>::get();
+    auto unused = Singleton<NeededSingleton>::get(&needy_vault);
     EXPECT_NE(unused, nullptr);
   }
 };
 
 // Ensure circular dependencies fail -- a singleton that needs itself, whoops.
-struct SelfNeedyTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonSelfNeedy = Singleton <T, Tag, SelfNeedyTag>;
-
+SingletonVault self_needy_vault;
 struct SelfNeedySingleton {
   SelfNeedySingleton() {
-    auto unused = SingletonSelfNeedy<SelfNeedySingleton>::get();
+    auto unused = Singleton<SelfNeedySingleton>::get(&self_needy_vault);
     EXPECT_NE(unused, nullptr);
   }
 };
 
 TEST(Singleton, SingletonDependencies) {
-  SingletonNeedy<NeededSingleton> needed_singleton;
-  SingletonNeedy<NeedySingleton> needy_singleton;
-  auto& needy_vault = *SingletonVault::singleton<NeedyTag>();
-
+  Singleton<NeededSingleton> needed_singleton(nullptr, nullptr, &needy_vault);
+  Singleton<NeedySingleton> needy_singleton(nullptr, nullptr, &needy_vault);
   needy_vault.registrationComplete();
 
   EXPECT_EQ(needy_vault.registeredSingletonCount(), 2);
   EXPECT_EQ(needy_vault.livingSingletonCount(), 0);
 
-  auto needy = SingletonNeedy<NeedySingleton>::get();
+  auto needy = Singleton<NeedySingleton>::get(&needy_vault);
   EXPECT_EQ(needy_vault.livingSingletonCount(), 2);
 
-  SingletonSelfNeedy<SelfNeedySingleton> self_needy_singleton;
-  auto& self_needy_vault = *SingletonVault::singleton<SelfNeedyTag>();
-
+  Singleton<SelfNeedySingleton> self_needy_singleton(
+      nullptr, nullptr, &self_needy_vault);
   self_needy_vault.registrationComplete();
   EXPECT_THROW([]() {
-      SingletonSelfNeedy<SelfNeedySingleton>::get();
-    }(),
-    std::out_of_range);
+                 Singleton<SelfNeedySingleton>::get(&self_needy_vault);
+               }(),
+               std::out_of_range);
 }
 
 // A test to ensure multiple threads contending on singleton creation
@@ -376,21 +345,17 @@ class Slowpoke : public Watchdog {
   Slowpoke() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
 };
 
-struct ConcurrencyTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonConcurrency = Singleton <T, Tag, ConcurrencyTag>;
-
 TEST(Singleton, SingletonConcurrency) {
-  auto& vault = *SingletonVault::singleton<ConcurrencyTag>();
-  SingletonConcurrency<Slowpoke> slowpoke_singleton;
+  SingletonVault vault;
+  Singleton<Slowpoke> slowpoke_singleton(nullptr, nullptr, &vault);
   vault.registrationComplete();
 
   std::mutex gatekeeper;
   gatekeeper.lock();
-  auto func = [&gatekeeper]() {
+  auto func = [&vault, &gatekeeper]() {
     gatekeeper.lock();
     gatekeeper.unlock();
-    auto unused = SingletonConcurrency<Slowpoke>::get();
+    auto unused = Singleton<Slowpoke>::get(&vault);
   };
 
   EXPECT_EQ(vault.livingSingletonCount(), 0);
@@ -408,18 +373,14 @@ TEST(Singleton, SingletonConcurrency) {
   EXPECT_EQ(vault.livingSingletonCount(), 1);
 }
 
-struct ConcurrencyStressTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonConcurrencyStress = Singleton <T, Tag, ConcurrencyStressTag>;
-
 TEST(Singleton, SingletonConcurrencyStress) {
-  auto& vault = *SingletonVault::singleton<ConcurrencyStressTag>();
-  SingletonConcurrencyStress<Slowpoke> slowpoke_singleton;
+  SingletonVault vault;
+  Singleton<Slowpoke> slowpoke_singleton(nullptr, nullptr, &vault);
 
   std::vector<std::thread> ts;
   for (size_t i = 0; i < 100; ++i) {
     ts.emplace_back([&]() {
-        slowpoke_singleton.get_weak().lock();
+        slowpoke_singleton.get_weak(&vault).lock();
       });
   }
 
@@ -451,28 +412,23 @@ int* getNormalSingleton() {
   return &normal_singleton_value;
 }
 
-struct MockTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonMock = Singleton <T, Tag, MockTag>;
-
 // Verify that existing Singleton's can be overridden
 // using the make_mock functionality.
-TEST(Singleton, MockTest) {
-  auto& vault = *SingletonVault::singleton<MockTag>();
-
-  SingletonMock<Watchdog> watchdog_singleton;
+TEST(Singleton, make_mock) {
+  SingletonVault vault(SingletonVault::Type::Strict);
+  Singleton<Watchdog> watchdog_singleton(nullptr, nullptr, &vault);
   vault.registrationComplete();
 
   // Registring singletons after registrationComplete called works
   // with make_mock (but not with Singleton ctor).
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  int serial_count_first = SingletonMock<Watchdog>::get()->serial_number;
+  int serial_count_first = Singleton<Watchdog>::get(&vault)->serial_number;
 
   // Override existing mock using make_mock.
-  SingletonMock<Watchdog>::make_mock();
+  Singleton<Watchdog>::make_mock(nullptr, nullptr, &vault);
 
   EXPECT_EQ(vault.registeredSingletonCount(), 1);
-  int serial_count_mock = SingletonMock<Watchdog>::get()->serial_number;
+  int serial_count_mock = Singleton<Watchdog>::get(&vault)->serial_number;
 
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock);
@@ -494,25 +450,34 @@ BENCHMARK_RELATIVE(MeyersSingleton, n) {
   }
 }
 
-struct BenchmarkTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonBenchmark = Singleton <T, Tag, BenchmarkTag>;
-
-SingletonBenchmark<BenchmarkSingleton> benchmark_singleton;
-
 BENCHMARK_RELATIVE(FollySingletonSlow, n) {
+  SingletonVault benchmark_vault;
+  Singleton<BenchmarkSingleton> benchmark_singleton(
+      nullptr, nullptr, &benchmark_vault);
+  benchmark_vault.registrationComplete();
+
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(SingletonBenchmark<BenchmarkSingleton>::get());
+    doNotOptimizeAway(Singleton<BenchmarkSingleton>::get(&benchmark_vault));
   }
 }
 
 BENCHMARK_RELATIVE(FollySingletonFast, n) {
+  SingletonVault benchmark_vault;
+  Singleton<BenchmarkSingleton> benchmark_singleton(
+      nullptr, nullptr, &benchmark_vault);
+  benchmark_vault.registrationComplete();
+
   for (size_t i = 0; i < n; ++i) {
     doNotOptimizeAway(benchmark_singleton.get_fast());
   }
 }
 
 BENCHMARK_RELATIVE(FollySingletonFastWeak, n) {
+  SingletonVault benchmark_vault;
+  Singleton<BenchmarkSingleton> benchmark_singleton(
+      nullptr, nullptr, &benchmark_vault);
+  benchmark_vault.registrationComplete();
+
   for (size_t i = 0; i < n; ++i) {
     benchmark_singleton.get_weak_fast();
   }
