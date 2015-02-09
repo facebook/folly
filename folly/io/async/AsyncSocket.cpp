@@ -222,6 +222,7 @@ AsyncSocket::AsyncSocket(EventBase* evb, int fd)
           << fd << ")";
   init();
   fd_ = fd;
+  setCloseOnExec();
   state_ = StateEnum::ESTABLISHED;
 }
 
@@ -293,6 +294,15 @@ void AsyncSocket::setShutdownSocketSet(ShutdownSocketSet* newSS) {
   }
 }
 
+void AsyncSocket::setCloseOnExec() {
+  int rv = fcntl(fd_, F_SETFD, FD_CLOEXEC);
+  if (rv != 0) {
+    throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
+                               withAddr("failed to set close-on-exec flag"),
+                               errno);
+  }
+}
+
 void AsyncSocket::connect(ConnectCallback* callback,
                            const folly::SocketAddress& address,
                            int timeout,
@@ -331,14 +341,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     }
     ioHandler_.changeHandlerFD(fd_);
 
-    // Set the FD_CLOEXEC flag so that the socket will be closed if the program
-    // later forks and execs.
-    int rv = fcntl(fd_, F_SETFD, FD_CLOEXEC);
-    if (rv != 0) {
-      throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                                withAddr("failed to set close-on-exec flag"),
-                                errno);
-    }
+    setCloseOnExec();
 
     // Put the socket in non-blocking mode
     int flags = fcntl(fd_, F_GETFL, 0);
@@ -346,7 +349,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
       throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
                                 withAddr("failed to get socket flags"), errno);
     }
-    rv = fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
+    int rv = fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
     if (rv == -1) {
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,

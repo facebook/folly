@@ -35,6 +35,7 @@ static vector<fbstring> testStrVector
   = seq(1, testSize.load())
   | eachTo<fbstring>()
   | as<vector>();
+static auto testFileContent = from(testStrVector) | unsplit('\n');
 
 const char* const kLine = "The quick brown fox jumped over the lazy dog.\n";
 const size_t kLineCount = 10000;
@@ -211,6 +212,20 @@ BENCHMARK_PARAM(StringUnsplit_Gen, 1000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 2000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 4000)
 BENCHMARK_RELATIVE_PARAM(StringUnsplit_Gen, 8000)
+
+BENCHMARK_DRAW_LINE()
+void Lines_Gen(size_t iters, int joinSize) {
+  size_t s = 0;
+  StringPiece content = testFileContent;
+  for (size_t i = 0; i < iters; ++i) {
+    s += lines(content.subpiece(0, joinSize)) | take(100) | count;
+  }
+  folly::doNotOptimizeAway(s);
+}
+
+BENCHMARK_PARAM(Lines_Gen, 1e3)
+BENCHMARK_RELATIVE_PARAM(Lines_Gen, 2e3)
+BENCHMARK_RELATIVE_PARAM(Lines_Gen, 3e3)
 
 BENCHMARK_DRAW_LINE()
 

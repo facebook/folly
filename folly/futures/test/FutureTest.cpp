@@ -1311,3 +1311,18 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
 
   promise.fulfil([]{return 1l;});
 }
+
+TEST(Future, Constructor) {
+  auto f1 = []() -> Future<int> { return Future<int>(3); }();
+  EXPECT_EQ(f1.value(), 3);
+  auto f2 = []() -> Future<void> { return Future<void>(); }();
+  EXPECT_NO_THROW(f2.value());
+}
+
+TEST(Future, ImplicitConstructor) {
+  auto f1 = []() -> Future<int> { return 3; }();
+  EXPECT_EQ(f1.value(), 3);
+  // Unfortunately, the C++ standard does not allow the
+  // following implicit conversion to work:
+  //auto f2 = []() -> Future<void> { }();
+}

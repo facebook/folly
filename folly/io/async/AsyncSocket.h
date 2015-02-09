@@ -398,6 +398,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   int setNoDelay(bool noDelay);
 
+
+  /**
+   * Set the FD_CLOEXEC flag so that the socket will be closed if the program
+   * later forks and execs.
+   */
+  void setCloseOnExec();
+
   /*
    * Set the Flavor of Congestion Control to be used for this Socket
    * Please check '/lib/modules/<kernel>/kernel/net/ipv4' for tcp_*.ko

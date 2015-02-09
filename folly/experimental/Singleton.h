@@ -92,10 +92,12 @@
 // should call reenableInstances.
 
 #pragma once
+#include <folly/Baton.h>
 #include <folly/Exception.h>
 #include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
+#include <folly/Demangle.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
@@ -161,13 +163,13 @@ class TypeDescriptor {
     return *this;
   }
 
-  std::string name() const {
-    std::string ret = ti_.name();
+  std::string prettyName() const {
+    auto ret = demangle(ti_.name());
     if (tag_ti_ != std::type_index(typeid(DefaultTag))) {
       ret += "/";
-      ret += tag_ti_.name();
+      ret += demangle(tag_ti_.name());
     }
-    return ret;
+    return ret.toStdString();
   }
 
   friend class TypeDescriptorHasher;
@@ -223,6 +225,8 @@ struct SingletonEntry {
   // safe to read it from different threads w/o synchronization if we know
   // that state is set to Living
   std::weak_ptr<void> instance_weak;
+  // Time we wait on destroy_baton after releasing Singleton shared_ptr.
+  std::shared_ptr<folly::Baton<>> destroy_baton;
   void* instance_ptr = nullptr;
   CreateFunc create = nullptr;
   TeardownFunc teardown = nullptr;
@@ -433,7 +437,7 @@ class SingletonVault {
     auto it = singletons_.find(type);
     if (it == singletons_.end()) {
       throw std::out_of_range(std::string("non-existent singleton: ") +
-                              type.name());
+                              type.prettyName());
     }
 
     return it->second.get();
@@ -454,7 +458,7 @@ class SingletonVault {
     // it if it was set by current thread anyways.
     if (entry->creating_thread == std::this_thread::get_id()) {
       throw std::out_of_range(std::string("circular singleton dependency: ") +
-                              type.name());
+                              type.prettyName());
     }
 
     std::lock_guard<std::mutex> entry_lock(entry->mutex);
@@ -471,8 +475,16 @@ class SingletonVault {
       return entry;
     }
 
+    auto destroy_baton = std::make_shared<folly::Baton<>>();
+    auto teardown = entry->teardown;
+
     // Can't use make_shared -- no support for a custom deleter, sadly.
-    auto instance = std::shared_ptr<void>(entry->create(), entry->teardown);
+    auto instance = std::shared_ptr<void>(
+      entry->create(),
+      [destroy_baton, teardown](void* instance_ptr) mutable {
+        teardown(instance_ptr);
+        destroy_baton->post();
+      });
 
     // We should schedule destroyInstances() only after the singleton was
     // created. This will ensure it will be destroyed before singletons,
@@ -484,6 +496,7 @@ class SingletonVault {
     entry->instance_weak = instance;
     entry->instance_ptr = instance.get();
     entry->creating_thread = std::thread::id();
+    entry->destroy_baton = std::move(destroy_baton);
 
     // This has to be the last step, because once state is Living other threads
     // may access instance and instance_weak w/o synchronization.

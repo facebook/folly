@@ -20,16 +20,7 @@
  */
 #include <folly/io/async/Request.h>
 
-#ifndef NO_LIB_GFLAGS
-  DEFINE_bool(enable_request_context, true,
-              "Enable collection of per-request queueing stats for thrift");
-#endif
-
 namespace folly {
-
-#ifdef NO_LIB_GFLAGS
-  bool FLAGS_enable_request_context = true;
-#endif
 
 RequestContext* defaultContext;
 

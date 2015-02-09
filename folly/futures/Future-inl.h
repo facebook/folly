@@ -43,6 +43,36 @@ Future<T>& Future<T>::operator=(Future<T>&& other) {
 }
 
 template <class T>
+template <class F>
+Future<T>::Future(
+  const typename std::enable_if<!std::is_void<F>::value, F>::type& val)
+    : core_(nullptr) {
+  Promise<F> p;
+  p.setValue(val);
+  *this = p.getFuture();
+}
+
+template <class T>
+template <class F>
+Future<T>::Future(
+  typename std::enable_if<!std::is_void<F>::value, F>::type&& val)
+    : core_(nullptr) {
+  Promise<F> p;
+  p.setValue(std::forward<F>(val));
+  *this = p.getFuture();
+}
+
+template <>
+template <class F,
+          typename std::enable_if<std::is_void<F>::value, int>::type>
+Future<void>::Future() : core_(nullptr) {
+  Promise<void> p;
+  p.setValue();
+  *this = p.getFuture();
+}
+
+
+template <class T>
 Future<T>::~Future() {
   detach();
 }

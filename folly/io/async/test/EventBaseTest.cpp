@@ -22,14 +22,17 @@
 #include <folly/io/async/test/SocketPair.h>
 #include <folly/io/async/test/Util.h>
 
+#include <atomic>
 #include <iostream>
 #include <unistd.h>
 #include <memory>
 #include <thread>
 
+using std::atomic;
 using std::deque;
 using std::pair;
 using std::vector;
+using std::thread;
 using std::make_pair;
 using std::cerr;
 using std::endl;
@@ -1169,6 +1172,45 @@ TEST(EventBaseTest, RunInThread) {
   for (auto& thread: threads) {
     thread.join();
   }
+}
+
+//  This test simulates some calls, and verifies that the waiting happens by
+//  triggering what otherwise would be race conditions, and trying to detect
+//  whether any of the race conditions happened.
+TEST(EventBaseTest, RunInEventLoopThreadAndWait) {
+  const size_t c = 256;
+  vector<atomic<size_t>> atoms(c);
+  for (size_t i = 0; i < c; ++i) {
+    auto& atom = atoms.at(i);
+    atom = 0;
+  }
+  vector<thread> threads(c);
+  for (size_t i = 0; i < c; ++i) {
+    auto& atom = atoms.at(i);
+    auto& th = threads.at(i);
+    th = thread([&atom] {
+        EventBase eb;
+        auto ebth = thread([&]{ eb.loopForever(); });
+        eb.waitUntilRunning();
+        eb.runInEventBaseThreadAndWait([&] {
+          size_t x = 0;
+          atom.compare_exchange_weak(
+              x, 1, std::memory_order_release, std::memory_order_relaxed);
+        });
+        size_t x = 0;
+        atom.compare_exchange_weak(
+            x, 2, std::memory_order_release, std::memory_order_relaxed);
+        eb.terminateLoopSoon();
+        ebth.join();
+    });
+  }
+  for (size_t i = 0; i < c; ++i) {
+    auto& th = threads.at(i);
+    th.join();
+  }
+  size_t sum = 0;
+  for (auto& atom : atoms) sum += atom;
+  EXPECT_EQ(c, sum);
 }
 
 ///////////////////////////////////////////////////////////////////////////
