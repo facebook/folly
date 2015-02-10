@@ -195,7 +195,7 @@ measurements in any way.
 ### Suspending a benchmark
 ***
 
-Sometimes benchmarking code must to some preparation work that is
+Sometimes benchmarking code must do some preparation work that is
 physically inside the benchmark function, but should not take part to
 its time budget. To temporarily suspend the benchmark, use the
 pseudo-statement `BENCHMARK_SUSPEND` as follows:
