@@ -201,9 +201,9 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 }
 
 template <typename T>
-template <typename Caller, typename R, typename... Args>
+template <typename R, typename Caller, typename... Args>
   Future<typename isFuture<R>::Inner>
-Future<T>::then(Caller *instance, R(Caller::*func)(Args...)) {
+Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
   typedef typename std::remove_cv<
     typename std::remove_reference<
       typename detail::ArgType<Args...>::FirstArg>::type>::type FirstArg;

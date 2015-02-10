@@ -114,7 +114,7 @@ TEST(Via, then_function) {
   auto f = makeFuture(std::string("start"))
     .then(doWorkStatic)
     .then(Worker::doWorkStatic)
-    .then(&w, &Worker::doWork)
+    .then(&Worker::doWork, &w)
     ;
 
   EXPECT_EQ(f.value(), "start;static;class-static;class");

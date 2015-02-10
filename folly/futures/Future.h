@@ -299,14 +299,17 @@ class Future {
 
   /// Variant where func is an member function
   ///
-  ///   struct Worker {
-  ///     R doWork(Try<T>&&); }
+  ///   struct Worker { R doWork(Try<T>); }
   ///
   ///   Worker *w;
-  ///   Future<R> f2 = f1.then(w, &Worker::doWork);
-  template <typename Caller, typename R, typename... Args>
-    Future<typename isFuture<R>::Inner>
-  then(Caller *instance, R(Caller::*func)(Args...));
+  ///   Future<R> f2 = f1.then(&Worker::doWork, w);
+  ///
+  /// This is just sugar for
+  ///
+  ///   f1.then(std::bind(&Worker::doWork, w));
+  template <typename R, typename Caller, typename... Args>
+  Future<typename isFuture<R>::Inner>
+  then(R(Caller::*func)(Args...), Caller *instance);
 
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.

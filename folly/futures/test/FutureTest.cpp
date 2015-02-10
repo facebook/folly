@@ -378,7 +378,7 @@ TEST(Future, thenFunction) {
   auto f = makeFuture<string>("start")
     .then(doWorkStatic)
     .then(Worker::doWorkStatic)
-    .then(&w, &Worker::doWork);
+    .then(&Worker::doWork, &w);
 
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
@@ -400,7 +400,7 @@ TEST(Future, thenFunctionFuture) {
   auto f = makeFuture<string>("start")
     .then(doWorkStaticFuture)
     .then(Worker::doWorkStaticFuture)
-    .then(&w, &Worker::doWorkFuture);
+    .then(&Worker::doWorkFuture, &w);
 
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }

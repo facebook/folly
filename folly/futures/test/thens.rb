@@ -50,8 +50,7 @@ tests = (
         [
           ["&aFunction<#{both}>"],
           ["&SomeClass::aStaticMethod<#{both}>"],
-          # TODO switch these around (std::bind-style)
-          ["&anObject", "&SomeClass::aMethod<#{both}>"],
+          ["&SomeClass::aMethod<#{both}>", "&anObject"],
           ["aStdFunction<#{both}>()"],
           ["[&](#{param}){return #{retval(ret)};}"],
         ]
