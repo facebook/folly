@@ -17,6 +17,7 @@
 #ifndef FOLLY_VARINT_H_
 #define FOLLY_VARINT_H_
 
+#include <type_traits>
 #include <folly/Range.h>
 
 namespace folly {
@@ -55,7 +56,8 @@ size_t encodeVarint(uint64_t val, uint8_t* buf);
 /**
  * Decode a value from a given buffer, advances data past the returned value.
  */
-uint64_t decodeVarint(ByteRange& data);
+template <class T>
+uint64_t decodeVarint(Range<T*>& data);
 
 /**
  * ZigZag encoding that maps signed integers with a small absolute value
@@ -88,7 +90,13 @@ inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
   return p - buf;
 }
 
-inline uint64_t decodeVarint(ByteRange& data) {
+template <class T>
+inline uint64_t decodeVarint(Range<T*>& data) {
+  static_assert(
+      std::is_same<typename std::remove_cv<T>::type, char>::value ||
+          std::is_same<typename std::remove_cv<T>::type, unsigned char>::value,
+      "Only character ranges are supported");
+
   const int8_t* begin = reinterpret_cast<const int8_t*>(data.begin());
   const int8_t* end = reinterpret_cast<const int8_t*>(data.end());
   const int8_t* p = begin;
