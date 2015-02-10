@@ -166,6 +166,19 @@ namespace futures {
   /// needed. If your program never uses any timeouts or other time-based
   /// Futures you will pay no Timekeeper thread overhead.
   Future<void> sleep(Duration, Timekeeper* = nullptr);
+
+  /// Create a Future chain from a sequence of callbacks. i.e.
+  ///
+  ///   f.then(a).then(b).then(c);
+  ///
+  /// where f is a Future<A> and the result of the chain is a Future<Z>
+  /// becomes
+  ///
+  ///   f.then(chain<A,Z>(a, b, c));
+  // If anyone figures how to get chain to deduce A and Z, I'll buy you a drink.
+  template <class A, class Z, class... Callbacks>
+  std::function<Future<Z>(Try<A>)>
+  chain(Callbacks... fns);
 }
 
 template <class T>

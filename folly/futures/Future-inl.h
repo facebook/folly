@@ -768,7 +768,37 @@ Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
   return std::move(*this);
 }
 
+namespace futures {
+
+  namespace {
+    template <class Z, class F, class... Callbacks>
+    Future<Z> chainHelper(F, Callbacks...);
+
+    template <class Z>
+    Future<Z> chainHelper(Future<Z> f) {
+      return f;
+    }
+
+    template <class Z, class F, class Fn, class... Callbacks>
+    Future<Z> chainHelper(F f, Fn fn, Callbacks... fns) {
+      return chainHelper<Z>(f.then(fn), fns...);
+    }
+  }
+
+  template <class A, class Z, class... Callbacks>
+  std::function<Future<Z>(Try<A>)>
+  chain(Callbacks... fns) {
+    MoveWrapper<Promise<A>> pw;
+    MoveWrapper<Future<Z>> fw(chainHelper<Z>(pw->getFuture(), fns...));
+    return [=](Try<A> t) mutable {
+      pw->fulfilTry(std::move(t));
+      return std::move(*fw);
+    };
+  }
+
 }
+
+} // namespace folly
 
 // I haven't included a Future<T&> specialization because I don't forsee us
 // using it, however it is not difficult to add when needed. Refer to
