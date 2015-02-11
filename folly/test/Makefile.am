@@ -30,7 +30,7 @@ spin_lock_test_SOURCES = SpinLockTest.cpp
 spin_lock_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += spin_lock_test
 
-if HAVE_X86_64
+if RUN_ARCH_SPECIFIC_TESTS
 small_locks_test_SOURCES = SmallLocksTest.cpp
 small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += small_locks_test
@@ -170,9 +170,11 @@ portability_test_SOURCES = PortabilityTest.cpp
 portability_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += portability_test
 
+if !HAVE_PPC64
 cpuid_test_SOURCES = CpuIdTest.cpp
 cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += cpuid_test
+endif
 
 spooky_hash_v1_test_SOURCES = SpookyHashV1Test.cpp
 spooky_hash_v1_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la

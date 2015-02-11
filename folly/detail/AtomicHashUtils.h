@@ -26,6 +26,15 @@
      if (counter < 10000) continue;               \
      pthread_yield();                             \
    }
+#elif FOLLY_PPC64
+#define FOLLY_SPIN_WAIT(condition)              \
+  for (int counter = 0; condition; ++counter) { \
+    if (counter < 10000) {                      \
+      asm volatile("or 31,31,31");              \
+      continue;                                 \
+    }                                           \
+    pthread_yield();                            \
+  }
 #else
 #define FOLLY_SPIN_WAIT(condition)              \
   for (int counter = 0; condition; ++counter) { \
