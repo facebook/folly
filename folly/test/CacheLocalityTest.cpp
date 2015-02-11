@@ -447,71 +447,67 @@ enum class SpreaderType { GETCPU, SHARED, TLS_RR };
 // _getcpu refers to the vdso getcpu implementation with a locally
 // constructed AccessSpreader.  _tls_rr refers to execution using
 // SequentialThreadId, the fallback if the vdso getcpu isn't available.
-// _shared refers to calling AccessSpreader<>::current(numStripes) inside
-// the hot loop.
+// _shared refers to calling AccessSpreader<>::current(numStripes)
+// inside the hot loop.
 //
-// At 16_stripe_0_work and 32_stripe_0_work there is only L1 traffic, so
-// since the stripe selection is 6 nanos the atomic increments in the L1 is
-// ~15 nanos.  At width 8_stripe_0_work the line is expected to ping-pong
-// almost every operation, since the loops have the same duration.
-// Widths 4 and 2 have the same behavior, but each tour of the cache line
-// is 4 and 8 cores long, respectively.  These all suggest a lower bound
-// of ~60 nanos for intra-chip handoff and increment between the L1s.
+// At 16_stripe_0_work and 32_stripe_0_work there is only L1 traffic,
+// so since the stripe selection is 21 nanos the atomic increments in
+// the L1 is ~15 nanos.  At width 8_stripe_0_work the line is expected
+// to ping-pong almost every operation, since the loops have the same
+// duration.  Widths 4 and 2 have the same behavior, but each tour of the
+// cache line is 4 and 8 cores long, respectively.  These all suggest a
+// lower bound of 60 nanos for intra-chip handoff and increment between
+// the L1s.
 //
-// With 396 nanos (500 std::memory_order_seq_cst loads) of busywork per
-// contended increment, the system can hide all of the latency of a tour
-// of length 4, but not quite one of length 8.  I was a bit surprised
-// at how much worse the non-striped version got.  It seems that the
-// inter-chip traffic also interferes with the L1-only localWork.load().
-// When the local work is doubled to 776 nanoseconds we see that the
-// inter-chip contention is still very important, but subdivisions on
-// the same chip don't matter.
+// With 455 nanos (1K cycles) of busywork per contended increment, the
+// system can hide all of the latency of a tour of length 4, but not
+// quite one of length 8.  I was a bit surprised at how much worse the
+// non-striped version got.  It seems that the inter-chip traffic also
+// interferes with the L1-only localWork.load().  When the local work is
+// doubled to about 1 microsecond we see that the inter-chip contention
+// is still very important, but subdivisions on the same chip don't matter.
 //
 // sudo nice -n -20
 //   _bin/folly/test/cache_locality_test --benchmark --bm_min_iters=1000000
 // ============================================================================
 // folly/test/CacheLocalityTest.cpp                relative  time/iter  iters/s
 // ============================================================================
-// LocalAccessSpreaderUse                                       6.34ns  157.75M
-// SharedAccessSpreaderUse                                      6.34ns  157.75M
-// AccessSpreaderConstruction                                 328.19ns    3.05M
+// contentionAtWidth(1_stripe_0_work_stub)                      1.14us  873.64K
+// contentionAtWidth(2_stripe_0_work_getcpu)                  495.58ns    2.02M
+// contentionAtWidth(4_stripe_0_work_getcpu)                  232.99ns    4.29M
+// contentionAtWidth(8_stripe_0_work_getcpu)                  101.16ns    9.88M
+// contentionAtWidth(16_stripe_0_work_getcpu)                  41.93ns   23.85M
+// contentionAtWidth(32_stripe_0_work_getcpu)                  42.04ns   23.79M
+// contentionAtWidth(64_stripe_0_work_getcpu)                  41.94ns   23.84M
+// contentionAtWidth(2_stripe_0_work_tls_rr)                    1.00us  997.41K
+// contentionAtWidth(4_stripe_0_work_tls_rr)                  694.41ns    1.44M
+// contentionAtWidth(8_stripe_0_work_tls_rr)                  590.27ns    1.69M
+// contentionAtWidth(16_stripe_0_work_tls_rr)                 222.13ns    4.50M
+// contentionAtWidth(32_stripe_0_work_tls_rr)                 169.49ns    5.90M
+// contentionAtWidth(64_stripe_0_work_tls_rr)                 162.20ns    6.17M
+// contentionAtWidth(2_stripe_0_work_shared)                  495.54ns    2.02M
+// contentionAtWidth(4_stripe_0_work_shared)                  236.27ns    4.23M
+// contentionAtWidth(8_stripe_0_work_shared)                  114.81ns    8.71M
+// contentionAtWidth(16_stripe_0_work_shared)                  44.65ns   22.40M
+// contentionAtWidth(32_stripe_0_work_shared)                  41.76ns   23.94M
+// contentionAtWidth(64_stripe_0_work_shared)                  43.47ns   23.00M
+// atomicIncrBaseline(local_incr_0_work)                       20.39ns   49.06M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_0_work_stub)                    909.99ns    1.10M
-// contentionAtWidth(2_stripe_0_work_getcpu)                  527.54ns    1.90M
-// contentionAtWidth(4_stripe_0_work_getcpu)                  260.28ns    3.84M
-// contentionAtWidth(8_stripe_0_work_getcpu)                  131.82ns    7.59M
-// contentionAtWidth(16_stripe_0_work_getcpu)                  25.92ns   38.58M
-// contentionAtWidth(32_stripe_0_work_getcpu)                  21.80ns   45.88M
-// contentionAtWidth(64_stripe_0_work_getcpu)                  20.06ns   49.85M
-// contentionAtWidth(2_stripe_0_work_tls_rr)                  759.21ns    1.32M
-// contentionAtWidth(4_stripe_0_work_tls_rr)                  607.46ns    1.65M
-// contentionAtWidth(8_stripe_0_work_tls_rr)                  403.79ns    2.48M
-// contentionAtWidth(16_stripe_0_work_tls_rr)                 188.14ns    5.32M
-// contentionAtWidth(32_stripe_0_work_tls_rr)                 131.59ns    7.60M
-// contentionAtWidth(64_stripe_0_work_tls_rr)                 103.56ns    9.66M
-// contentionAtWidth(2_stripe_0_work_shared)                  553.07ns    1.81M
-// contentionAtWidth(4_stripe_0_work_shared)                  274.23ns    3.65M
-// contentionAtWidth(8_stripe_0_work_shared)                  137.43ns    7.28M
-// contentionAtWidth(16_stripe_0_work_shared)                  24.52ns   40.78M
-// contentionAtWidth(32_stripe_0_work_shared)                  21.80ns   45.86M
-// contentionAtWidth(64_stripe_0_work_shared)                  21.66ns   46.17M
-// atomicIncrBaseline(local_incr_0_work)                       16.73ns   59.78M
+// contentionAtWidth(1_stripe_500_work_stub)                    2.04us  491.13K
+// contentionAtWidth(2_stripe_500_work_getcpu)                610.98ns    1.64M
+// contentionAtWidth(4_stripe_500_work_getcpu)                507.72ns    1.97M
+// contentionAtWidth(8_stripe_500_work_getcpu)                542.53ns    1.84M
+// contentionAtWidth(16_stripe_500_work_getcpu)               496.55ns    2.01M
+// contentionAtWidth(32_stripe_500_work_getcpu)               500.67ns    2.00M
+// atomicIncrBaseline(local_incr_500_work)                    484.69ns    2.06M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_500_work_stub)                    1.75us  571.14K
-// contentionAtWidth(2_stripe_500_work_getcpu)                500.79ns    2.00M
-// contentionAtWidth(4_stripe_500_work_getcpu)                410.45ns    2.44M
-// contentionAtWidth(8_stripe_500_work_getcpu)                411.41ns    2.43M
-// contentionAtWidth(16_stripe_500_work_getcpu)               400.12ns    2.50M
-// contentionAtWidth(32_stripe_500_work_getcpu)               397.37ns    2.52M
-// atomicIncrBaseline(local_incr_500_work)                    396.53ns    2.52M
-// ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_1000_work_stub)                   1.88us  530.59K
-// contentionAtWidth(2_stripe_1000_work_getcpu)               778.77ns    1.28M
-// contentionAtWidth(4_stripe_1000_work_getcpu)               779.56ns    1.28M
-// contentionAtWidth(8_stripe_1000_work_getcpu)               795.62ns    1.26M
-// contentionAtWidth(16_stripe_1000_work_getcpu)              778.81ns    1.28M
-// contentionAtWidth(32_stripe_1000_work_getcpu)              780.26ns    1.28M
-// atomicIncrBaseline(local_incr_1000_work)                   776.39ns    1.29M
+// contentionAtWidth(1_stripe_1000_work_stub)                   2.11us  473.78K
+// contentionAtWidth(2_stripe_1000_work_getcpu)               970.64ns    1.03M
+// contentionAtWidth(4_stripe_1000_work_getcpu)               987.31ns    1.01M
+// contentionAtWidth(8_stripe_1000_work_getcpu)                 1.01us  985.52K
+// contentionAtWidth(16_stripe_1000_work_getcpu)              986.09ns    1.01M
+// contentionAtWidth(32_stripe_1000_work_getcpu)              960.23ns    1.04M
+// atomicIncrBaseline(local_incr_1000_work)                   950.63ns    1.05M
 // ============================================================================
 static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
                               SpreaderType spreaderType,

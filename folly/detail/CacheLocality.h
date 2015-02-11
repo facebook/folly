@@ -306,7 +306,8 @@ struct AccessSpreader {
 
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
-  /// is in range.
+  /// is in range.  We use a member for this instead of a static so that
+  /// this fetch preloads a prefix the stripeByCpu array
   Getcpu::Func getcpuFunc_;
 
   /// A precomputed map from cpu to stripe.  Rather than add a layer of
