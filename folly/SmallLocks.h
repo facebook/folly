@@ -47,8 +47,8 @@
 #include <glog/logging.h>
 #include <folly/Portability.h>
 
-#if !FOLLY_X64
-# error "SmallLocks.h is currently x64-only."
+#if !FOLLY_X64 && !FOLLY_PPC64
+# error "SmallLocks.h is currently x64/ppc64-only."
 #endif
 
 namespace folly {
@@ -72,7 +72,11 @@ namespace detail {
     void wait() {
       if (spinCount < kMaxActiveSpin) {
         ++spinCount;
+#if FOLLY_PPC64
+        asm volatile("or 31,31,31");
+#else
         asm volatile("pause");
+#endif
       } else {
         /*
          * Always sleep 0.5ms, assuming this will make the kernel put
@@ -105,6 +109,45 @@ struct MicroSpinLock {
   enum { FREE = 0, LOCKED = 1 };
   // lock_ can't be std::atomic<> to preserve POD-ness.
   uint8_t lock_;
+
+
+  /*
+   * Atomically move lock_ from "compare" to "newval". Return boolean
+   * success. Do not play on or around.
+   */
+  bool cas(uint8_t compare, uint8_t newVal) {
+    bool out = false;
+    bool memVal; // only set if the cmpxchg fails
+#if FOLLY_X64
+    asm volatile("lock; cmpxchgb %[newVal], (%[lockPtr]);"
+                 "setz %[output];"
+                 : [output] "=r" (out), "=a" (memVal)
+                 : "a" (compare), // cmpxchgb constrains this to be in %al
+                   [newVal] "q" (newVal),  // Needs to be byte-accessible
+                   [lockPtr] "r" (&lock_)
+                 : "memory", "flags");
+#elif FOLLY_PPC64
+    asm volatile (
+        "    eieio                        \n" // barrier
+        "    lbarx %[memVal],0,%[lockPtr] \n" // load and reserve
+        "    cmpw  %[memVal],%[compare]   \n" // compare lock val
+        "    bne- 0f                      \n" // if not equal, exit
+        "    stbcx. %[newVal],0,%[lockPtr]\n" // store new lock value
+        "    bne 0f                       \n" // reservation lost
+        "    ori %[output],%[output],1    \n" // else set output to 1
+        "    isync                        \n"
+        "0:                               \n"
+        : [output] "+r" (out),
+          [memVal] "+r" (memVal)
+        : [newVal] "r" (newVal),
+          [lockPtr] "r"(&lock_),
+          [compare] "r" (compare)
+        : "cr0", "memory");
+
+
+#endif
+    return out;
+  }
 
   // Initialize this MSL.  It is unnecessary to call this if you
   // zero-initialize the MicroSpinLock.
@@ -217,6 +260,7 @@ struct PicoSpinLock {
   bool try_lock() const {
     bool ret = false;
 
+#if FOLLY_X64
 #define FB_DOBTS(size)                                  \
   asm volatile("lock; bts" #size " %1, (%2); setnc %0"  \
                : "=r" (ret)                             \
@@ -231,6 +275,34 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTS
+#elif FOLLY_PPC64
+#define FB_DOBTS(size)                         \
+    asm volatile (                             \
+        "    eieio                          \n"\
+        "    l"#size"arx 14,0,%[lockPtr]    \n"\
+        "    li 15,1                        \n"\
+        "    sldi 15,15,%[bit]              \n"\
+        "    and. 16,15,14                  \n"\
+        "    bne 0f                         \n"\
+        "    or 14,14,15                    \n"\
+        "    st"#size"cx. 14,0,%[lockPtr]   \n"\
+        "    bne 0f                         \n"\
+        "    ori %[output],%[output],1      \n"\
+        "    isync                          \n"\
+        "0:                                 \n"\
+        : [output] "+r" (ret)                  \
+        : [lockPtr] "r"(&lock_),               \
+          [bit] "i" (Bit)                      \
+        : "cr0", "memory", "r14", "r15", "r16")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTS(h); break;
+    case 4: FB_DOBTS(w); break;
+    case 8: FB_DOBTS(d); break;
+    }
+
+#undef FB_DOBTS
+#endif
 
     return ret;
   }
@@ -250,6 +322,7 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
+#if FOLLY_X64
 #define FB_DOBTR(size)                          \
   asm volatile("lock; btr" #size " %0, (%1)"    \
                :                                \
@@ -267,6 +340,31 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTR
+#elif FOLLY_PPC64
+#define FB_DOBTS(size)                         \
+    asm volatile (                             \
+        "    eieio                          \n"\
+        "0:  l"#size"arx 14,0,%[lockPtr]    \n"\
+        "    li 15,1                        \n"\
+        "    sldi 15,15,%[bit]              \n"\
+        "    xor 14,14,15                   \n"\
+        "    st"#size"cx. 14,0,%[lockPtr]   \n"\
+        "    bne 0b                         \n"\
+        "    isync                          \n"\
+        :                                      \
+        : [lockPtr] "r"(&lock_),               \
+          [bit] "i" (Bit)                      \
+        : "cr0", "memory", "r14", "r15")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTS(h); break;
+    case 4: FB_DOBTS(w); break;
+    case 8: FB_DOBTS(d); break;
+    }
+
+#undef FB_DOBTS
+#endif
+
   }
 };
 
