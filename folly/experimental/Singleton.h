@@ -375,6 +375,13 @@ class SingletonVault {
     return vault;
   }
 
+  typedef std::string(*StackTraceGetterPtr)();
+
+  static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
+    static std::atomic<StackTraceGetterPtr> stackTraceGetterPtr;
+    return stackTraceGetterPtr;
+  }
+
  private:
   template <typename T>
   friend class detail::SingletonHolder;
