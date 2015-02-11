@@ -264,6 +264,23 @@ AC_SEARCH_LIBS([clock_gettime], [rt],
     [Define to 1 if we support clock_gettime(2).]),
   [])
 
+# Check for pthread_atfork(3). This is not in an AC_CHECK_FUNCS() because we
+# want to include pthread.h if necessary.
+AC_CACHE_CHECK(
+  [for pthread_atfork support],
+  [folly_cv_prog_cc_pthread_atfork],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <pthread.h>
+      void func() {pthread_atfork(NULL, NULL, NULL);}]
+    ],
+    [folly_cv_prog_cc_pthread_atfork=yes],
+    [folly_cv_prog_cc_pthread_atfork=no])])
+
+if test "$folly_cv_prog_cc_pthread_atfork" = "yes"; then
+  AC_DEFINE([HAVE_PTHREAD_ATFORK], [1], [Define to 1 if the compiler supports pthread_atfork])
+fi
+
 # Checks for library functions.
 AC_CHECK_FUNCS([getdelim \
                 gettimeofday \
@@ -272,7 +289,6 @@ AC_CHECK_FUNCS([getdelim \
                 pow \
                 strerror \
                 pthread_yield \
-                pthread_atfork \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \
