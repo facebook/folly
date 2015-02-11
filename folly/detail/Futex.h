@@ -136,7 +136,8 @@ struct EmulatedFutexAtomic : public std::atomic<T> {
   EmulatedFutexAtomic() noexcept = default;
   constexpr /* implicit */ EmulatedFutexAtomic(T init) noexcept
       : std::atomic<T>(init) {}
-  EmulatedFutexAtomic(const EmulatedFutexAtomic& rhs) = delete;
+  // It doesn't copy or move
+  EmulatedFutexAtomic(EmulatedFutexAtomic&& rhs) = delete;
 };
 
 /* Available specializations, with definitions elsewhere */
