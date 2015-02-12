@@ -192,6 +192,8 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
             p->fulfilTry(std::move(b));
           });
         } catch (const std::exception& e) {
+          p->setException(exception_wrapper(std::current_exception(), e));
+        } catch (...) {
           p->setException(exception_wrapper(std::current_exception()));
         }
       }
