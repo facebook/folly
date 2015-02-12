@@ -42,6 +42,7 @@
 #include <folly/CpuId.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
+#include <folly/experimental/Select64.h>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error EliasFanoCoding.h requires little endianness
@@ -405,18 +406,10 @@ class UpperBitsReader {
       block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     }
 
-    // NOTE: Trying to skip half-block here didn't show any
-    // performance improvements.
-
+    // Skip to the n-th one in the block.
     DCHECK_GT(n, 0);
-
-    // Kill n - 1 least significant 1-bits.
-    for (size_t i = 0; i < n - 1; ++i) {
-      block_ = Instructions::blsr(block_);
-    }
-
-    inner_ = Instructions::ctz(block_);
-    block_ = Instructions::blsr(block_);
+    inner_ = select64<Instructions>(block_, n - 1);
+    block_ &= (block_t(-1) << inner_) << 1;
 
     return setValue();
   }
@@ -463,16 +456,13 @@ class UpperBitsReader {
       block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     }
 
-    // Try to skip half-block.
-    constexpr size_t kBitsPerHalfBlock = 4 * sizeof(block_t);
-    constexpr block_t halfBlockMask = (block_t(1) << kBitsPerHalfBlock) - 1;
-    if ((cnt = Instructions::popcount(~block_ & halfBlockMask)) < skip) {
-      position_ += kBitsPerHalfBlock - cnt;
-      block_ &= ~halfBlockMask;
+    if (LIKELY(skip)) {
+      auto inner = select64<Instructions>(~block_, skip - 1);
+      position_ += inner - skip + 1;
+      block_ &= block_t(-1) << inner;
     }
 
-    // Just skip until we see expected value.
-    while (next() < v) { }
+    next();
     return value_;
   }
 
@@ -567,8 +557,13 @@ class EliasFanoReader : private boost::noncopyable {
 
     progress_ += n;
     if (LIKELY(progress_ <= list_.size)) {
+      if (LIKELY(n < kLinearScanThreshold)) {
+        for (size_t i = 0; i < n; ++i) upper_.next();
+      } else {
+        upper_.skip(n);
+      }
       value_ = readLowerPart(progress_ - 1) |
-               (upper_.skip(n) << list_.numLowerBits);
+        (upper_.value() << list_.numLowerBits);
       return true;
     }
 
@@ -587,7 +582,18 @@ class EliasFanoReader : private boost::noncopyable {
       return false;
     }
 
-    upper_.skipToNext(value >> list_.numLowerBits);
+    size_t upperValue = (value >> list_.numLowerBits);
+    size_t upperSkip = upperValue - upper_.value();
+    // The average density of ones in upper bits is 1/2.
+    // LIKELY here seems to make things worse, even for small skips.
+    if (upperSkip < 2 * kLinearScanThreshold) {
+      do {
+        upper_.next();
+      } while (UNLIKELY(upper_.value() < upperValue));
+    } else {
+      upper_.skipToNext(upperValue);
+    }
+
     iterateTo(value);
     return true;
   }
@@ -636,14 +642,16 @@ class EliasFanoReader : private boost::noncopyable {
   }
 
   void iterateTo(ValueType value) {
-    progress_ = upper_.position();
-    value_ = readLowerPart(progress_) | (upper_.value() << list_.numLowerBits);
-    ++progress_;
-    while (value_ < value) {
-      value_ = readLowerPart(progress_) | (upper_.next() << list_.numLowerBits);
-      ++progress_;
+    while (true) {
+      value_ = readLowerPart(upper_.position()) |
+        (upper_.value() << list_.numLowerBits);
+      if (LIKELY(value_ >= value)) break;
+      upper_.next();
     }
+    progress_ = upper_.position() + 1;
   }
+
+  constexpr static size_t kLinearScanThreshold = 8;
 
   const EliasFanoCompressedList list_;
   const ValueType lowerMask_;

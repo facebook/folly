@@ -75,6 +75,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
 	experimental/TestUtil.h \
+	experimental/Select64.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -335,6 +336,7 @@ libfolly_la_SOURCES = \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
+	experimental/Select64.cpp \
 	wangle/acceptor/Acceptor.cpp \
 	wangle/acceptor/ConnectionManager.cpp \
 	wangle/acceptor/LoadShedConfiguration.cpp \

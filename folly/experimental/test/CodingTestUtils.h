@@ -80,9 +80,11 @@ void testNext(const std::vector<uint32_t>& data, const List& list) {
   for (size_t i = 0; i < data.size(); ++i) {
     EXPECT_TRUE(reader.next());
     EXPECT_EQ(reader.value(), data[i]);
+    EXPECT_EQ(reader.position(), i);
   }
   EXPECT_FALSE(reader.next());
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
 }
 
 template <class Reader, class List>
@@ -94,9 +96,11 @@ void testSkip(const std::vector<uint32_t>& data, const List& list,
   for (size_t i = skipStep - 1; i < data.size(); i += skipStep) {
     EXPECT_TRUE(reader.skip(skipStep));
     EXPECT_EQ(reader.value(), data[i]);
+    EXPECT_EQ(reader.position(), i);
   }
   EXPECT_FALSE(reader.skip(skipStep));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
   EXPECT_FALSE(reader.next());
 }
 
@@ -132,6 +136,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list,
     value = reader.value() + delta;
   }
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
   EXPECT_FALSE(reader.next());
 }
 
@@ -148,6 +153,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
     Reader reader(list);
     EXPECT_FALSE(reader.skipTo(data.back() + 1));
     EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+    EXPECT_EQ(reader.position(), reader.size() - 1);
     EXPECT_FALSE(reader.next());
   }
 }
@@ -170,9 +176,11 @@ void testJump(const std::vector<uint32_t>& data, const List& list) {
   for (auto i : is) {
     EXPECT_TRUE(reader.jump(i + 1));
     EXPECT_EQ(reader.value(), data[i]);
+    EXPECT_EQ(reader.position(), i);
   }
   EXPECT_FALSE(reader.jump(data.size() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
 }
 
 template <class Reader, class List>
@@ -190,21 +198,26 @@ void testJumpTo(const std::vector<uint32_t>& data, const List& list) {
     CHECK(it != data.end());
     EXPECT_TRUE(reader.jumpTo(value));
     EXPECT_EQ(reader.value(), *it);
+    EXPECT_EQ(reader.position(), std::distance(data.begin(), it));
   }
 
   EXPECT_TRUE(reader.jumpTo(0));
   EXPECT_EQ(reader.value(), 0);
+  EXPECT_EQ(reader.position(), -1);
 
   if (data.front() > 0) {
     EXPECT_TRUE(reader.jumpTo(1));
     EXPECT_EQ(reader.value(), data.front());
+    EXPECT_EQ(reader.position(), 0);
   }
 
   EXPECT_TRUE(reader.jumpTo(data.back()));
   EXPECT_EQ(reader.value(), data.back());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
 
   EXPECT_FALSE(reader.jumpTo(data.back() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
+  EXPECT_EQ(reader.position(), reader.size() - 1);
 }
 
 template <class Reader, class Encoder>
@@ -242,46 +255,57 @@ void testAll(const std::vector<uint32_t>& data) {
 }
 
 template <class Reader, class List>
-void bmNext(const List& list, const std::vector<uint32_t>& data,
-            size_t iters) {
+void bmNext(const List& list, const std::vector<uint32_t>& data, size_t iters) {
   if (data.empty()) {
     return;
   }
-  for (size_t i = 0, j; i < iters; ) {
-    Reader reader(list);
-    for (j = 0; reader.next(); ++j, ++i) {
-      CHECK_EQ(reader.value(), data[j]) << j;
+
+  Reader reader(list);
+  for (size_t i = 0; i < iters; ++i) {
+    if (LIKELY(reader.next())) {
+      folly::doNotOptimizeAway(reader.value());
+    } else {
+      reader.reset();
     }
   }
 }
 
 template <class Reader, class List>
 void bmSkip(const List& list, const std::vector<uint32_t>& data,
-            size_t skip, size_t iters) {
-  if (skip >= data.size()) {
-    return;
-  }
-  for (size_t i = 0, j; i < iters; ) {
-    Reader reader(list);
-    for (j = skip - 1; j < data.size(); j += skip, ++i) {
-      reader.skip(skip);
-      CHECK_EQ(reader.value(), data[j]);
+            size_t logAvgSkip, size_t iters) {
+  size_t avg = (size_t(1) << logAvgSkip);
+  size_t base = avg - (avg >> 2);
+  size_t mask = (avg > 1) ? (avg >> 1) - 1 : 0;
+
+  Reader reader(list);
+  for (size_t i = 0; i < iters; ++i) {
+    size_t skip = base + (i & mask);
+    if (LIKELY(reader.skip(skip))) {
+      folly::doNotOptimizeAway(reader.value());
+    } else {
+      reader.reset();
     }
   }
 }
 
 template <class Reader, class List>
 void bmSkipTo(const List& list, const std::vector<uint32_t>& data,
-              size_t skip, size_t iters) {
-  if (skip >= data.size()) {
-    return;
-  }
-  for (size_t i = 0, j; i < iters; ) {
-    Reader reader(list);
-    for (j = 0; j < data.size(); j += skip, ++i) {
-      reader.skipTo(data[j]);
-      CHECK_EQ(reader.value(), data[j]);
+              size_t logAvgSkip, size_t iters) {
+  size_t avg = (size_t(1) << logAvgSkip);
+  size_t base = avg - (avg >> 2);
+  size_t mask = (avg > 1) ? (avg >> 1) - 1 : 0;
+
+  Reader reader(list);
+  for (size_t i = 0, j = -1; i < iters; ++i) {
+    size_t skip = base + (i & mask);
+    j += skip;
+    if (j >= data.size()) {
+      reader.reset();
+      j = -1;
     }
+
+    reader.skipTo(data[j]);
+    folly::doNotOptimizeAway(reader.value());
   }
 }
 
@@ -292,12 +316,10 @@ void bmJump(const List& list, const std::vector<uint32_t>& data,
   CHECK_EQ(data.size(), order.size());
 
   Reader reader(list);
-  for (size_t i = 0; i < iters; ) {
-    for (size_t j : order) {
-      reader.jump(j + 1);
-      CHECK_EQ(reader.value(), data[j]);
-      ++i;
-    }
+  for (size_t i = 0, j = 0; i < iters; ++i, ++j) {
+    if (j == order.size()) j = 0;
+    reader.jump(order[j]);
+    folly::doNotOptimizeAway(reader.value());
   }
 }
 
@@ -308,12 +330,10 @@ void bmJumpTo(const List& list, const std::vector<uint32_t>& data,
   CHECK_EQ(data.size(), order.size());
 
   Reader reader(list);
-  for (size_t i = 0; i < iters; ) {
-    for (size_t j : order) {
-      reader.jumpTo(data[j]);
-      CHECK_EQ(reader.value(), data[j]);
-      ++i;
-    }
+  for (size_t i = 0, j = 0; i < iters; ++i, ++j) {
+    if (j == order.size()) j = 0;
+    reader.jumpTo(data[order[j]]);
+    folly::doNotOptimizeAway(reader.value());
   }
 }
 
