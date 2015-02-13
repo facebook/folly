@@ -170,7 +170,8 @@ class Acceptor :
   void processEstablishedConnection(
     int fd,
     const SocketAddress& clientAddr,
-    std::chrono::steady_clock::time_point acceptTime
+    std::chrono::steady_clock::time_point acceptTime,
+    TransportInfo& tinfo
   ) noexcept;
 
   /**

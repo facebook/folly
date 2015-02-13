@@ -57,9 +57,11 @@ class AcceptorHandshakeHelper :
   AcceptorHandshakeHelper(AsyncSSLSocket::UniquePtr socket,
                           Acceptor* acceptor,
                           const SocketAddress& clientAddr,
-                          std::chrono::steady_clock::time_point acceptTime)
+                          std::chrono::steady_clock::time_point acceptTime,
+                          TransportInfo& tinfo)
     : socket_(std::move(socket)), acceptor_(acceptor),
-      acceptTime_(acceptTime), clientAddr_(clientAddr) {
+      acceptTime_(acceptTime), clientAddr_(clientAddr),
+      tinfo_(tinfo) {
     acceptor_->downstreamConnectionManager_->addConnection(this, true);
     if(acceptor_->parseClientHello_)  {
       socket_->enableClientHelloParsing();
@@ -106,36 +108,41 @@ class AcceptorHandshakeHelper :
 
     // fill in SSL-related fields from TransportInfo
     // the other fields like RTT are filled in the Acceptor
-    TransportInfo tinfo;
-    tinfo.ssl = true;
-    tinfo.acceptTime = acceptTime_;
-    tinfo.sslSetupTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - acceptTime_);
-    tinfo.sslSetupBytesRead = sock->getRawBytesReceived();
-    tinfo.sslSetupBytesWritten = sock->getRawBytesWritten();
-    tinfo.sslServerName = sock->getSSLServerName() ?
+    tinfo_.ssl = true;
+    tinfo_.acceptTime = acceptTime_;
+    tinfo_.sslSetupTime = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - acceptTime_
+    );
+    tinfo_.sslSetupBytesRead = sock->getRawBytesReceived();
+    tinfo_.sslSetupBytesWritten = sock->getRawBytesWritten();
+    tinfo_.sslServerName = sock->getSSLServerName() ?
       std::make_shared<std::string>(sock->getSSLServerName()) : nullptr;
-    tinfo.sslCipher = sock->getNegotiatedCipherName() ?
+    tinfo_.sslCipher = sock->getNegotiatedCipherName() ?
       std::make_shared<std::string>(sock->getNegotiatedCipherName()) : nullptr;
-    tinfo.sslVersion = sock->getSSLVersion();
-    tinfo.sslCertSize = sock->getSSLCertSize();
-    tinfo.sslResume = SSLUtil::getResumeState(sock);
-    tinfo.sslClientCiphers = std::make_shared<std::string>();
-    sock->getSSLClientCiphers(*tinfo.sslClientCiphers);
-    tinfo.sslServerCiphers = std::make_shared<std::string>();
-    sock->getSSLServerCiphers(*tinfo.sslServerCiphers);
-    tinfo.sslClientComprMethods =
+    tinfo_.sslVersion = sock->getSSLVersion();
+    tinfo_.sslCertSize = sock->getSSLCertSize();
+    tinfo_.sslResume = SSLUtil::getResumeState(sock);
+    tinfo_.sslClientCiphers = std::make_shared<std::string>();
+    sock->getSSLClientCiphers(*tinfo_.sslClientCiphers);
+    tinfo_.sslServerCiphers = std::make_shared<std::string>();
+    sock->getSSLServerCiphers(*tinfo_.sslServerCiphers);
+    tinfo_.sslClientComprMethods =
         std::make_shared<std::string>(sock->getSSLClientComprMethods());
-    tinfo.sslClientExts =
+    tinfo_.sslClientExts =
         std::make_shared<std::string>(sock->getSSLClientExts());
-    tinfo.sslNextProtocol = std::make_shared<std::string>();
-    tinfo.sslNextProtocol->assign(reinterpret_cast<const char*>(nextProto),
+    tinfo_.sslNextProtocol = std::make_shared<std::string>();
+    tinfo_.sslNextProtocol->assign(reinterpret_cast<const char*>(nextProto),
                                   nextProtoLength);
 
-    acceptor_->updateSSLStats(sock, tinfo.sslSetupTime, SSLErrorEnum::NO_ERROR);
+    acceptor_->updateSSLStats(
+      sock,
+      tinfo_.sslSetupTime,
+      SSLErrorEnum::NO_ERROR
+    );
     acceptor_->downstreamConnectionManager_->removeConnection(this);
     acceptor_->sslConnectionReady(std::move(socket_), clientAddr_,
         nextProto ? string((const char*)nextProto, nextProtoLength) :
-                                  empty_string, tinfo);
+                                  empty_string, tinfo_);
     delete this;
   }
 
@@ -155,6 +162,7 @@ class AcceptorHandshakeHelper :
   Acceptor* acceptor_;
   std::chrono::steady_clock::time_point acceptTime_;
   SocketAddress clientAddr_;
+  TransportInfo tinfo_;
   SSLErrorEnum sslError_{SSLErrorEnum::NO_ERROR};
 };
 
@@ -281,14 +289,16 @@ void Acceptor::onDoneAcceptingConnection(
     int fd,
     const SocketAddress& clientAddr,
     std::chrono::steady_clock::time_point acceptTime) noexcept {
-  processEstablishedConnection(fd, clientAddr, acceptTime);
+  TransportInfo tinfo;
+  processEstablishedConnection(fd, clientAddr, acceptTime, tinfo);
 }
 
 void
 Acceptor::processEstablishedConnection(
     int fd,
     const SocketAddress& clientAddr,
-    std::chrono::steady_clock::time_point acceptTime) noexcept {
+    std::chrono::steady_clock::time_point acceptTime,
+    TransportInfo& tinfo) noexcept {
   if (accConfig_.isSSL()) {
     CHECK(sslCtxManager_);
     AsyncSSLSocket::UniquePtr sslSock(
@@ -305,9 +315,13 @@ Acceptor::processEstablishedConnection(
       return;
     }
     new AcceptorHandshakeHelper(
-      std::move(sslSock), this, clientAddr, acceptTime);
+      std::move(sslSock),
+      this,
+      clientAddr,
+      acceptTime,
+      tinfo
+    );
   } else {
-    TransportInfo tinfo;
     tinfo.ssl = false;
     tinfo.acceptTime = acceptTime;
     AsyncSocket::UniquePtr sock(makeNewAsyncSocket(base_, fd));

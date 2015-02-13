@@ -124,6 +124,12 @@ struct TransportInfo {
   int64_t totalBytes{0};
 
   /**
+   * If the client passed through one of our L4 proxies (using PROXY Protocol),
+   * then this will contain the IP address of the proxy host.
+   */
+  std::shared_ptr<folly::SocketAddress> clientAddrOriginal;
+
+  /**
    * header bytes read
    */
   HTTPHeaderSize ingressHeader;
