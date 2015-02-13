@@ -196,7 +196,8 @@ class exception_wrapper {
 
   fbstring class_name() const {
     if (item_) {
-      return demangle(typeid(*item_));
+      auto& i = *item_;
+      return demangle(typeid(i));
     } else if (eptr_) {
       return ename_;
     } else {
