@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#include <folly/Memory.h>
+
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
@@ -32,6 +34,7 @@ using std::atomic;
 using std::deque;
 using std::pair;
 using std::vector;
+using std::unique_ptr;
 using std::thread;
 using std::make_pair;
 using std::cerr;
@@ -1179,14 +1182,14 @@ TEST(EventBaseTest, RunInThread) {
 //  whether any of the race conditions happened.
 TEST(EventBaseTest, RunInEventLoopThreadAndWait) {
   const size_t c = 256;
-  vector<atomic<size_t>> atoms(c);
+  vector<unique_ptr<atomic<size_t>>> atoms(c);
   for (size_t i = 0; i < c; ++i) {
     auto& atom = atoms.at(i);
-    atom = 0;
+    atom = make_unique<atomic<size_t>>(0);
   }
   vector<thread> threads(c);
   for (size_t i = 0; i < c; ++i) {
-    auto& atom = atoms.at(i);
+    auto& atom = *atoms.at(i);
     auto& th = threads.at(i);
     th = thread([&atom] {
         EventBase eb;
@@ -1209,7 +1212,7 @@ TEST(EventBaseTest, RunInEventLoopThreadAndWait) {
     th.join();
   }
   size_t sum = 0;
-  for (auto& atom : atoms) sum += atom;
+  for (auto& atom : atoms) sum += *atom;
   EXPECT_EQ(c, sum);
 }
 
