@@ -27,7 +27,8 @@ TEST(Lazy, Simple) {
   int computeCount = 0;
 
   auto const val = folly::lazy([&]() -> int {
-    EXPECT_EQ(++computeCount, 1);
+    ++computeCount;
+    EXPECT_EQ(computeCount, 1);
     return 12;
   });
   EXPECT_EQ(computeCount, 0);
@@ -46,7 +47,8 @@ TEST(Lazy, Simple) {
 
 auto globalCount = folly::lazy([]{ return 0; });
 auto const foo = folly::lazy([]() -> std::string {
-  EXPECT_EQ(++globalCount(), 1);
+  ++globalCount();
+  EXPECT_EQ(globalCount(), 1);
   return std::string("YEP");
 });
 

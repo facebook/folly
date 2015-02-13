@@ -112,9 +112,11 @@ TEST(Executor, InlineExecutor) {
   size_t counter = 0;
   x.add([&]{
     x.add([&]{
-      EXPECT_EQ(counter++, 0);
+      EXPECT_EQ(counter, 0);
+      counter++;
     });
-    EXPECT_EQ(counter++, 1);
+    EXPECT_EQ(counter, 1);
+    counter++;
   });
   EXPECT_EQ(counter, 2);
 }
@@ -124,9 +126,11 @@ TEST(Executor, QueuedImmediateExecutor) {
   size_t counter = 0;
   x.add([&]{
     x.add([&]{
-      EXPECT_EQ(1, counter++);
+      EXPECT_EQ(1, counter);
+      counter++;
     });
-    EXPECT_EQ(0, counter++);
+    EXPECT_EQ(0, counter);
+    counter++;
   });
   EXPECT_EQ(2, counter);
 }
