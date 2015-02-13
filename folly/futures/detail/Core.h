@@ -46,7 +46,7 @@ that the callback is only executed on the transition from Armed to Done,
 and that transition can happen immediately after transitioning from Only*
 to Armed, if it is active (the usual case).
 */
-enum class State {
+enum class State : uint8_t {
   Start,
   OnlyResult,
   OnlyCallback,
@@ -73,12 +73,12 @@ enum class State {
 /// doesn't access a Future or Promise object from more than one thread at a
 /// time there won't be any problems.
 template<typename T>
-class Core : protected FSM<State> {
+class Core {
  public:
   /// This must be heap-constructed. There's probably a way to enforce that in
   /// code but since this is just internal detail code and I don't know how
   /// off-hand, I'm punting.
-  Core() : FSM<State>(State::Start) {}
+  Core() {}
   ~Core() {
     assert(detached_ == 2);
   }
@@ -93,7 +93,7 @@ class Core : protected FSM<State> {
 
   /// May call from any thread
   bool hasResult() const {
-    switch (getState()) {
+    switch (fsm_.getState()) {
       case State::OnlyResult:
       case State::Armed:
       case State::Done:
@@ -128,13 +128,13 @@ class Core : protected FSM<State> {
       callback_ = std::move(func);
     };
 
-    FSM_START
+    FSM_START(fsm_)
       case State::Start:
-        FSM_UPDATE(State::OnlyCallback, setCallback_);
+        FSM_UPDATE(fsm_, State::OnlyCallback, setCallback_);
         break;
 
       case State::OnlyResult:
-        FSM_UPDATE(State::Armed, setCallback_);
+        FSM_UPDATE(fsm_, State::Armed, setCallback_);
         transitionToArmed = true;
         break;
 
@@ -155,13 +155,13 @@ class Core : protected FSM<State> {
   void setResult(Try<T>&& t) {
     bool transitionToArmed = false;
     auto setResult_ = [&]{ result_ = std::move(t); };
-    FSM_START
+    FSM_START(fsm_)
       case State::Start:
-        FSM_UPDATE(State::OnlyResult, setResult_);
+        FSM_UPDATE(fsm_, State::OnlyResult, setResult_);
         break;
 
       case State::OnlyCallback:
-        FSM_UPDATE(State::Armed, setResult_);
+        FSM_UPDATE(fsm_, State::Armed, setResult_);
         transitionToArmed = true;
         break;
 
@@ -236,10 +236,11 @@ class Core : protected FSM<State> {
 
  private:
   void maybeCallback() {
-    FSM_START
+    FSM_START(fsm_)
       case State::Armed:
         if (active_) {
-          FSM_UPDATE2(State::Done, []{}, std::bind(&Core::doCallback, this));
+          FSM_UPDATE2(fsm_, State::Done, []{},
+                                         std::bind(&Core::doCallback, this));
         }
         FSM_BREAK
 
@@ -273,15 +274,16 @@ class Core : protected FSM<State> {
     }
   }
 
-  folly::Optional<Try<T>> result_;
-  std::function<void(Try<T>&&)> callback_;
-  std::shared_ptr<RequestContext> context_{nullptr};
+  FSM<State> fsm_ {State::Start};
   std::atomic<unsigned char> detached_ {0};
   std::atomic<bool> active_ {true};
-  std::atomic<Executor*> executor_ {nullptr};
-  exception_wrapper interrupt_;
-  std::function<void(exception_wrapper const&)> interruptHandler_;
   folly::MicroSpinLock interruptLock_ {0};
+  folly::Optional<Try<T>> result_ {};
+  std::function<void(Try<T>&&)> callback_ {nullptr};
+  std::shared_ptr<RequestContext> context_ {nullptr};
+  std::atomic<Executor*> executor_ {nullptr};
+  exception_wrapper interrupt_ {};
+  std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
 };
 
 template <typename... Ts>

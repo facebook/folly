@@ -51,14 +51,15 @@ TEST(FSM, example) {
 }
 
 TEST(FSM, magicMacrosExample) {
-  struct MyFSM : public FSM<State> {
+  struct MyFSM {
+    FSM<State> fsm_;
     int count = 0;
     int unprotectedCount = 0;
-    MyFSM() : FSM<State>(State::A) {}
+    MyFSM() : fsm_(State::A) {}
     void twiddle() {
-      FSM_START
-        FSM_CASE(State::A, State::B, [&]{ count++; });
-        FSM_CASE2(State::B, State::A,
+      FSM_START(fsm_)
+        FSM_CASE(fsm_, State::A, State::B, [&]{ count++; });
+        FSM_CASE2(fsm_, State::B, State::A,
                   [&]{ count--; }, [&]{ unprotectedCount--; });
       FSM_END
     }
@@ -67,12 +68,12 @@ TEST(FSM, magicMacrosExample) {
   MyFSM fsm;
 
   fsm.twiddle();
-  EXPECT_EQ(State::B, fsm.getState());
+  EXPECT_EQ(State::B, fsm.fsm_.getState());
   EXPECT_EQ(1, fsm.count);
   EXPECT_EQ(0, fsm.unprotectedCount);
 
   fsm.twiddle();
-  EXPECT_EQ(State::A, fsm.getState());
+  EXPECT_EQ(State::A, fsm.fsm_.getState());
   EXPECT_EQ(0, fsm.count);
   EXPECT_EQ(-1, fsm.unprotectedCount);
 }

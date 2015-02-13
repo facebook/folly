@@ -83,6 +83,19 @@ class ThreadExecutor : public Executor {
 typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
+// Core
+
+TEST(Future, coreSize) {
+  // If this number goes down, it's fine!
+  // If it goes up, please seek professional advice ;-)
+  size_t size = 168;
+  if (sizeof(folly::exception_wrapper) == 80) {
+    // it contains strings, which can be bigger for -fb builds (e.g. fbstring)
+    size = 200;
+  }
+  EXPECT_EQ(size, sizeof(detail::Core<void>));
+}
+
 // Future
 
 TEST(Future, onError) {
@@ -1075,7 +1088,7 @@ TEST(Future, waitWithDuration) {
    folly::Baton<> b;
    auto t = std::thread([&]{
      b.post();
-     std::this_thread::sleep_for(milliseconds(100));
+     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
      p.setValue();
    });
    b.wait();

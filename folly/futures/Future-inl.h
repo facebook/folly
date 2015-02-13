@@ -773,9 +773,6 @@ Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
 namespace futures {
 
   namespace {
-    template <class Z, class F, class... Callbacks>
-    Future<Z> chainHelper(F, Callbacks...);
-
     template <class Z>
     Future<Z> chainHelper(Future<Z> f) {
       return f;
