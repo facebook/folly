@@ -542,9 +542,8 @@ class EliasFanoReader : private boost::noncopyable {
   }
 
   bool next() {
-    if (UNLIKELY(progress_ == list_.size)) {
-      value_ = std::numeric_limits<ValueType>::max();
-      return false;
+    if (UNLIKELY(progress_ >= list_.size)) {
+      return setDone();
     }
     value_ = readLowerPart(progress_) |
              (upper_.next() << list_.numLowerBits);
@@ -567,9 +566,7 @@ class EliasFanoReader : private boost::noncopyable {
       return true;
     }
 
-    progress_ = list_.size;
-    value_ = std::numeric_limits<ValueType>::max();
-    return false;
+    return setDone();
   }
 
   bool skipTo(ValueType value) {
@@ -577,9 +574,7 @@ class EliasFanoReader : private boost::noncopyable {
     if (value <= value_) {
       return true;
     } else if (value > lastValue_) {
-      progress_ = list_.size;
-      value_ = std::numeric_limits<ValueType>::max();
-      return false;
+      return setDone();
     }
 
     size_t upperValue = (value >> list_.numLowerBits);
@@ -607,19 +602,15 @@ class EliasFanoReader : private boost::noncopyable {
       reset();
       return true;
     }
-    progress_ = list_.size;
-    value_ = std::numeric_limits<ValueType>::max();
-    return false;
+    return setDone();
   }
 
-  ValueType jumpTo(ValueType value) {
+  bool jumpTo(ValueType value) {
     if (value <= 0) {
       reset();
       return true;
     } else if (value > lastValue_) {
-      progress_ = list_.size;
-      value_ = std::numeric_limits<ValueType>::max();
-      return false;
+      return setDone();
     }
 
     upper_.jumpToNext(value >> list_.numLowerBits);
@@ -633,6 +624,12 @@ class EliasFanoReader : private boost::noncopyable {
   ValueType value() const { return value_; }
 
  private:
+  bool setDone() {
+    value_ = std::numeric_limits<ValueType>::max();
+    progress_ = list_.size + 1;
+    return false;
+  }
+
   ValueType readLowerPart(size_t i) const {
     DCHECK_LT(i, list_.size);
     const size_t pos = i * list_.numLowerBits;

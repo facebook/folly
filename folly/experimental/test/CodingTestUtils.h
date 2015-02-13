@@ -84,7 +84,7 @@ void testNext(const std::vector<uint32_t>& data, const List& list) {
   }
   EXPECT_FALSE(reader.next());
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-  EXPECT_EQ(reader.position(), reader.size() - 1);
+  EXPECT_EQ(reader.position(), reader.size());
 }
 
 template <class Reader, class List>
@@ -100,7 +100,7 @@ void testSkip(const std::vector<uint32_t>& data, const List& list,
   }
   EXPECT_FALSE(reader.skip(skipStep));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-  EXPECT_EQ(reader.position(), reader.size() - 1);
+  EXPECT_EQ(reader.position(), reader.size());
   EXPECT_FALSE(reader.next());
 }
 
@@ -136,7 +136,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list,
     value = reader.value() + delta;
   }
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-  EXPECT_EQ(reader.position(), reader.size() - 1);
+  EXPECT_EQ(reader.position(), reader.size());
   EXPECT_FALSE(reader.next());
 }
 
@@ -153,7 +153,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
     Reader reader(list);
     EXPECT_FALSE(reader.skipTo(data.back() + 1));
     EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-    EXPECT_EQ(reader.position(), reader.size() - 1);
+    EXPECT_EQ(reader.position(), reader.size());
     EXPECT_FALSE(reader.next());
   }
 }
@@ -180,7 +180,7 @@ void testJump(const std::vector<uint32_t>& data, const List& list) {
   }
   EXPECT_FALSE(reader.jump(data.size() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-  EXPECT_EQ(reader.position(), reader.size() - 1);
+  EXPECT_EQ(reader.position(), reader.size());
 }
 
 template <class Reader, class List>
@@ -217,7 +217,7 @@ void testJumpTo(const std::vector<uint32_t>& data, const List& list) {
 
   EXPECT_FALSE(reader.jumpTo(data.back() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
-  EXPECT_EQ(reader.position(), reader.size() - 1);
+  EXPECT_EQ(reader.position(), reader.size());
 }
 
 template <class Reader, class Encoder>
