@@ -29,6 +29,11 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   MockChannelHandler() = default;
   MockChannelHandler(MockChannelHandler&&) = default;
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winconsistent-missing-override"
+#endif
+
   MOCK_METHOD2_T(read_, void(Context*, Rin&));
   MOCK_METHOD1_T(readEOF, void(Context*));
   MOCK_METHOD2_T(readException, void(Context*, exception_wrapper));
@@ -41,7 +46,11 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   MOCK_METHOD1_T(detachPipeline, void(Context*));
   MOCK_METHOD1_T(detachTransport, void(Context*));
 
-  void read(Context* ctx, Rin msg) {
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+  void read(Context* ctx, Rin msg) override {
     read_(ctx, msg);
   }
 

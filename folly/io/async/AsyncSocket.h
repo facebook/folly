@@ -186,7 +186,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * This prevents callers from deleting a AsyncSocket while it is invoking a
    * callback.
    */
-  virtual void destroy();
+  virtual void destroy() override;
 
   /**
    * Get the EventBase used by this socket.

@@ -139,7 +139,7 @@ public:
   explicit IntException(int i)
     : i_(i) {}
 
-  virtual int getInt() const { return i_; }
+  virtual int getInt() const override { return i_; }
   virtual const char* what() const noexcept override {
     what_ = folly::to<std::string>("int == ", i_);
     return what_.c_str();

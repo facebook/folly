@@ -89,7 +89,7 @@ class AsyncSocketHandler
     return future;
   };
 
-  folly::Future<void> close(Context* ctx) {
+  folly::Future<void> close(Context* ctx) override {
     if (socket_) {
       detachReadCallback();
       socket_->closeNow();

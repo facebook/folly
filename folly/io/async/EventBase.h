@@ -454,7 +454,7 @@ class EventBase : private boost::noncopyable,
    * first handler fired within that cycle.
    *
    */
-  bool bumpHandlingTime();
+  bool bumpHandlingTime() override;
 
   class SmoothLoopTime {
    public:
@@ -519,15 +519,16 @@ class EventBase : private boost::noncopyable,
 
   // TimeoutManager
   void attachTimeoutManager(AsyncTimeout* obj,
-                            TimeoutManager::InternalEnum internal);
+                            TimeoutManager::InternalEnum internal) override;
 
-  void detachTimeoutManager(AsyncTimeout* obj);
+  void detachTimeoutManager(AsyncTimeout* obj) override;
 
-  bool scheduleTimeout(AsyncTimeout* obj, std::chrono::milliseconds timeout);
+  bool scheduleTimeout(AsyncTimeout* obj, std::chrono::milliseconds timeout)
+    override;
 
-  void cancelTimeout(AsyncTimeout* obj);
+  void cancelTimeout(AsyncTimeout* obj) override;
 
-  bool isInTimeoutManagerThread() {
+  bool isInTimeoutManagerThread() override {
     return isInEventBaseThread();
   }
 

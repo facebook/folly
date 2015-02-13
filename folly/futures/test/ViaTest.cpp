@@ -27,7 +27,7 @@ using namespace folly;
 struct ManualWaiter : public DrivableExecutor {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
 
-  void add(Func f) {
+  void add(Func f) override {
     ex->add(f);
   }
 

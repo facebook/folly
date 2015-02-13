@@ -263,16 +263,16 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // See the documentation in TAsyncTransport.h
   // TODO: implement graceful shutdown in close()
   // TODO: implement detachSSL() that returns the SSL connection
-  virtual void closeNow();
-  virtual void shutdownWrite();
-  virtual void shutdownWriteNow();
-  virtual bool good() const;
-  virtual bool connecting() const;
+  virtual void closeNow() override;
+  virtual void shutdownWrite() override;
+  virtual void shutdownWriteNow() override;
+  virtual bool good() const override;
+  virtual bool connecting() const override;
 
   bool isEorTrackingEnabled() const override;
-  virtual void setEorTracking(bool track);
-  virtual size_t getRawBytesWritten() const;
-  virtual size_t getRawBytesReceived() const;
+  virtual void setEorTracking(bool track) override;
+  virtual size_t getRawBytesWritten() const override;
+  virtual size_t getRawBytesReceived() const override;
   void enableClientHelloParsing();
 
   /**
@@ -309,7 +309,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                int timeout = 0,
                const OptionMap &options = emptyOptionMap,
                const folly::SocketAddress& bindAddr = anyAddress)
-               noexcept;
+               noexcept override;
 
   using AsyncSocket::connect;
 
@@ -469,12 +469,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return 0;
   }
 
-  virtual void attachEventBase(EventBase* eventBase) {
+  virtual void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);
   }
 
-  virtual void detachEventBase() {
+  virtual void detachEventBase() override {
     AsyncSocket::detachEventBase();
     handshakeTimeout_.detachEventBase();
   }
@@ -654,21 +654,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // Inherit event notification methods from AsyncSocket except
   // the following.
 
-  void handleRead() noexcept;
-  void handleWrite() noexcept;
+  void handleRead() noexcept override;
+  void handleWrite() noexcept override;
   void handleAccept() noexcept;
-  void handleConnect() noexcept;
+  void handleConnect() noexcept override;
 
   void invalidState(HandshakeCB* callback);
   bool willBlock(int ret, int *errorOut) noexcept;
 
-  virtual void checkForImmediateRead() noexcept;
+  virtual void checkForImmediateRead() noexcept override;
   // AsyncSocket calls this at the wrong time for SSL
-  void handleInitialReadWrite() noexcept {}
+  void handleInitialReadWrite() noexcept override {}
 
-  ssize_t performRead(void* buf, size_t buflen);
+  ssize_t performRead(void* buf, size_t buflen) override;
   ssize_t performWrite(const iovec* vec, uint32_t count, WriteFlags flags,
-                       uint32_t* countWritten, uint32_t* partialWritten);
+                       uint32_t* countWritten, uint32_t* partialWritten)
+    override;
 
   // This virtual wrapper around SSL_write exists solely for testing/mockability
   virtual int sslWriteImpl(SSL *ssl, const void *buf, int n) {
