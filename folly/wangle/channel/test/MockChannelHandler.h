@@ -30,8 +30,10 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   MockChannelHandler(MockChannelHandler&&) = default;
 
 #ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winconsistent-missing-override"
+# pragma clang diagnostic push
+# if __clang_major__ > 3 || __clang_minor__ >= 6
+#  pragma clang diagnostic ignored "-Winconsistent-missing-override"
+# endif
 #endif
 
   MOCK_METHOD2_T(read_, void(Context*, Rin&));
