@@ -220,6 +220,9 @@ TEST(Escape, uriEscape) {
                                                         UriEscapeMode::PATH));
   EXPECT_EQ("hello%2c+%2fworld", uriEscape<std::string>("hello, /world",
                                                         UriEscapeMode::QUERY));
+  EXPECT_EQ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_.~",
+            uriEscape<std::string>(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_.~"));
 }
 
 TEST(Escape, uriUnescape) {
