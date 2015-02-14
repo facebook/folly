@@ -176,7 +176,14 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_EQ(ew2.class_name(), "IntException");
   ew2.with_exception<AbstractIntException>([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
+#if defined __clang__ && (__clang_major__ > 3 || __clang_minor__ >= 6)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wunevaluated-expression"
+#endif
       EXPECT_EQ(typeid(ie), typeid(IntException));
+#if defined __clang__ && (__clang_major__ > 3 || __clang_minor__ >= 6)
+# pragma clang diagnostic pop
+#endif
     });
 
   // Test with const this.  If this compiles and does not crash due to
