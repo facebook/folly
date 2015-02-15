@@ -16,7 +16,7 @@ Dependencies
 folly requires gcc 4.8+ and a version of boost compiled with C++11 support.
 
 Please download googletest from
-https://googletest.googlecode.com/files/gtest-1.6.0.zip and unzip it in the
+https://googletest.googlecode.com/files/gtest-1.7.0.zip and unzip it in the
 folly/test subdirectory.
 
 Ubuntu 13.10
