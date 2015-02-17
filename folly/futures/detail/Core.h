@@ -215,9 +215,9 @@ class Core {
   void raise(exception_wrapper e) {
     std::lock_guard<decltype(interruptLock_)> guard(interruptLock_);
     if (!interrupt_ && !hasResult()) {
-      interrupt_ = std::move(e);
+      interrupt_ = folly::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
-        interruptHandler_(interrupt_);
+        interruptHandler_(*interrupt_);
       }
     }
   }
@@ -226,8 +226,8 @@ class Core {
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
     std::lock_guard<decltype(interruptLock_)> guard(interruptLock_);
     if (!hasResult()) {
-      if (!!interrupt_) {
-        fn(interrupt_);
+      if (interrupt_) {
+        fn(*interrupt_);
       } else {
         interruptHandler_ = std::move(fn);
       }
@@ -282,7 +282,7 @@ class Core {
   std::function<void(Try<T>&&)> callback_ {nullptr};
   std::shared_ptr<RequestContext> context_ {nullptr};
   std::atomic<Executor*> executor_ {nullptr};
-  exception_wrapper interrupt_ {};
+  std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
 };
 

@@ -88,12 +88,7 @@ static eggs_t eggs("eggs");
 TEST(Future, coreSize) {
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  size_t size = 168;
-  if (sizeof(folly::exception_wrapper) == 80) {
-    // it contains strings, which can be bigger for -fb builds (e.g. fbstring)
-    size = 200;
-  }
-  EXPECT_EQ(size, sizeof(detail::Core<void>));
+  EXPECT_EQ(128, sizeof(detail::Core<void>));
 }
 
 // Future
