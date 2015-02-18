@@ -160,3 +160,32 @@ TEST(Executor, RunnablePtr) {
   x.addPtr(fnp);
   EXPECT_EQ(counter, 1);
 }
+
+TEST(Executor, ThrowableThen) {
+  InlineExecutor x;
+  auto f = Future<void>().via(&x).then([](){
+    throw std::runtime_error("Faildog");
+  });
+  EXPECT_THROW(f.value(), std::exception);
+}
+
+class CrappyExecutor : public Executor {
+ public:
+  void add(Func f) override {
+    throw std::runtime_error("bad");
+  }
+};
+
+TEST(Executor, CrappyExecutor) {
+  CrappyExecutor x;
+  try {
+    auto f = Future<void>().via(&x).activate().then([](){
+      return;
+    });
+    f.value();
+    EXPECT_TRUE(false);
+  } catch(...) {
+    // via() should throw
+    return;
+  }
+}
