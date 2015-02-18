@@ -139,9 +139,9 @@ TEST(Singleton, DirectUsage) {
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
   vault.registrationComplete();
 
-  EXPECT_NE(watchdog.ptr(), nullptr);
-  EXPECT_EQ(watchdog.ptr(), SingletonDirectUsage<Watchdog>::get());
-  EXPECT_NE(watchdog.ptr(), named_watchdog.ptr());
+  EXPECT_NE(watchdog.get(), nullptr);
+  EXPECT_EQ(watchdog.get(), SingletonDirectUsage<Watchdog>::get());
+  EXPECT_NE(watchdog.get(), named_watchdog.get());
   EXPECT_EQ(watchdog->livingWatchdogCount(), 2);
   EXPECT_EQ((*watchdog).livingWatchdogCount(), 2);
 
@@ -172,19 +172,19 @@ TEST(Singleton, NamedUsage) {
 
   // Verify our three singletons are distinct and non-nullptr.
   Watchdog* s1 = SingletonNamedUsage<Watchdog, Watchdog1>::get();
-  EXPECT_EQ(s1, watchdog1_singleton.ptr());
+  EXPECT_EQ(s1, watchdog1_singleton.get());
   Watchdog* s2 = SingletonNamedUsage<Watchdog, Watchdog2>::get();
-  EXPECT_EQ(s2, watchdog2_singleton.ptr());
+  EXPECT_EQ(s2, watchdog2_singleton.get());
   EXPECT_NE(s1, s2);
   Watchdog* s3 = SingletonNamedUsage<Watchdog, Watchdog3>::get();
-  EXPECT_EQ(s3, watchdog3_singleton.ptr());
+  EXPECT_EQ(s3, watchdog3_singleton.get());
   EXPECT_NE(s3, s1);
   EXPECT_NE(s3, s2);
 
   // Verify the "default" singleton is the same as the DefaultTag-tagged
   // singleton.
   Watchdog* s4 = SingletonNamedUsage<Watchdog>::get();
-  EXPECT_EQ(s4, watchdog3_singleton.ptr());
+  EXPECT_EQ(s4, watchdog3_singleton.get());
 
   vault.destroyInstances();
 }
@@ -499,23 +499,21 @@ struct BenchmarkTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonBenchmark = Singleton <T, Tag, BenchmarkTag>;
 
-SingletonBenchmark<BenchmarkSingleton> benchmark_singleton;
+struct GetTag{};
+struct GetWeakTag{};
 
-BENCHMARK_RELATIVE(FollySingletonSlow, n) {
+SingletonBenchmark<BenchmarkSingleton, GetTag> benchmark_singleton_get;
+SingletonBenchmark<BenchmarkSingleton, GetWeakTag> benchmark_singleton_get_weak;
+
+BENCHMARK_RELATIVE(FollySingleton, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(SingletonBenchmark<BenchmarkSingleton>::get());
+    doNotOptimizeAway(SingletonBenchmark<BenchmarkSingleton, GetTag>::get());
   }
 }
 
-BENCHMARK_RELATIVE(FollySingletonFast, n) {
+BENCHMARK_RELATIVE(FollySingletonWeak, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(benchmark_singleton.get_fast());
-  }
-}
-
-BENCHMARK_RELATIVE(FollySingletonFastWeak, n) {
-  for (size_t i = 0; i < n; ++i) {
-    benchmark_singleton.get_weak_fast();
+    SingletonBenchmark<BenchmarkSingleton, GetWeakTag>::get_weak();
   }
 }
 

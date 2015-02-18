@@ -87,7 +87,7 @@ Future<void> ThreadWheelTimekeeper::after(Duration dur) {
 }
 
 Timekeeper* getTimekeeperSingleton() {
-  return timekeeperSingleton_.get_fast();
+  return timekeeperSingleton_.get();
 }
 
 }} // folly::detail
