@@ -136,6 +136,13 @@ class AsyncUDPSocket : public EventHandler {
     CHECK_NE(-1, fd_) << "Need to bind before getting FD out";
     return fd_;
   }
+
+  /**
+   * Set reuse port mode to call bind() on the same address multiple times
+   */
+  void setReusePort(bool reusePort) {
+    reusePort_ = reusePort;
+  }
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
@@ -157,6 +164,8 @@ class AsyncUDPSocket : public EventHandler {
 
   // Non-null only when we are reading
   ReadCallback* readCallback_;
+
+  bool reusePort_{false};
 };
 
 } // Namespace
