@@ -29,14 +29,16 @@ Promise<T>::Promise() : retrieved_(false), core_(new detail::Core<T>())
 {}
 
 template <class T>
-Promise<T>::Promise(Promise<T>&& other) : core_(nullptr) {
-  *this = std::move(other);
+Promise<T>::Promise(Promise<T>&& other) noexcept
+    : retrieved_(other.retrieved_), core_(other.core_) {
+  other.core_ = nullptr;
 }
 
 template <class T>
-Promise<T>& Promise<T>::operator=(Promise<T>&& other) {
-  std::swap(core_, other.core_);
-  std::swap(retrieved_, other.retrieved_);
+Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
+  retrieved_ = other.retrieved_;
+  core_ = other.core_;
+  other.core_ = nullptr;
   return *this;
 }
 
