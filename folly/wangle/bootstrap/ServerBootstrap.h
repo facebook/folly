@@ -16,7 +16,7 @@
 #pragma once
 
 #include <folly/wangle/bootstrap/ServerBootstrap-inl.h>
-#include <boost/thread.hpp>
+#include <folly/Baton.h>
 
 namespace folly {
 
@@ -37,6 +37,10 @@ namespace folly {
 template <typename Pipeline>
 class ServerBootstrap {
  public:
+
+  ~ServerBootstrap() {
+    stop();
+  }
   /* TODO(davejwatson)
    *
    * If there is any work to be done BEFORE handing the work to IO
@@ -103,32 +107,63 @@ class ServerBootstrap {
       io_group = std::make_shared<folly::wangle::IOThreadPoolExecutor>(
         32, std::make_shared<wangle::NamedThreadFactory>("IO Thread"));
     }
-    auto factoryBase = io_group->getThreadFactory();
-    CHECK(factoryBase);
-    auto factory = std::dynamic_pointer_cast<folly::wangle::NamedThreadFactory>(
-      factoryBase);
-    CHECK(factory); // Must be named thread factory
 
     CHECK(acceptorFactory_ || pipelineFactory_);
 
     if (acceptorFactory_) {
-      workerFactory_ = std::make_shared<ServerWorkerFactory>(
-        acceptorFactory_);
+      workerFactory_ = std::make_shared<ServerWorkerPool>(
+        acceptorFactory_, io_group.get(), &sockets_);
     } else {
-      workerFactory_ = std::make_shared<ServerWorkerFactory>(
-        std::make_shared<ServerAcceptorFactory<Pipeline>>(pipelineFactory_));
+      workerFactory_ = std::make_shared<ServerWorkerPool>(
+        std::make_shared<ServerAcceptorFactory<Pipeline>>(pipelineFactory_),
+        io_group.get(), &sockets_);
     }
-    workerFactory_->setInternalFactory(factory);
+
+    io_group->addObserver(workerFactory_);
 
     acceptor_group_ = accept_group;
     io_group_ = io_group;
 
-    auto numThreads = io_group_->numThreads();
-    io_group_->setNumThreads(0);
-    io_group_->setThreadFactory(workerFactory_);
-    io_group_->setNumThreads(numThreads);
-
     return this;
+  }
+
+  /*
+   * Bind to an existing socket
+   *
+   * @param sock Existing socket to use for accepting
+   */
+  void bind(folly::AsyncServerSocket::UniquePtr s) {
+    if (!workerFactory_) {
+      group(nullptr);
+    }
+
+    // Since only a single socket is given,
+    // we can only accept on a single thread
+    CHECK(acceptor_group_->numThreads() == 1);
+    std::shared_ptr<folly::AsyncServerSocket> socket(
+      s.release(), DelayedDestruction::Destructor());
+
+    folly::Baton<> barrier;
+    acceptor_group_->add([&](){
+      socket->attachEventBase(EventBaseManager::get()->getEventBase());
+      socket->listen(1024);
+      socket->startAccepting();
+      barrier.post();
+    });
+    barrier.wait();
+
+    // Startup all the threads
+    workerFactory_->forEachWorker([this, socket](Acceptor* worker){
+      socket->getEventBase()->runInEventBaseThread([this, worker, socket](){
+        socket->addAcceptCallback(worker, worker->getEventBase());
+      });
+    });
+
+    sockets_.push_back(socket);
+  }
+
+  void bind(folly::SocketAddress address) {
+    bindImpl(-1, address);
   }
 
   /*
@@ -138,8 +173,11 @@ class ServerBootstrap {
    * @param port Port to listen on
    */
   void bind(int port) {
-    // TODO take existing socket
+    CHECK(port >= 0);
+    bindImpl(port, folly::SocketAddress());
+  }
 
+  void bindImpl(int port, folly::SocketAddress address) {
     if (!workerFactory_) {
       group(nullptr);
     }
@@ -152,16 +190,20 @@ class ServerBootstrap {
     std::mutex sock_lock;
     std::vector<std::shared_ptr<folly::AsyncServerSocket>> new_sockets;
 
-    auto startupFunc = [&](std::shared_ptr<boost::barrier> barrier){
+    auto startupFunc = [&](std::shared_ptr<folly::Baton<>> barrier){
         auto socket = folly::AsyncServerSocket::newSocket();
         sock_lock.lock();
         new_sockets.push_back(socket);
         sock_lock.unlock();
         socket->setReusePortEnabled(reusePort);
         socket->attachEventBase(EventBaseManager::get()->getEventBase());
-        socket->bind(port);
-        // TODO Take ServerSocketConfig
-        socket->listen(1024);
+        if (port >= 0) {
+          socket->bind(port);
+        } else {
+          socket->bind(address);
+          port = address.getPort();
+        }
+        socket->listen(socketConfig.acceptBacklog);
         socket->startAccepting();
 
         if (port == 0) {
@@ -170,18 +212,18 @@ class ServerBootstrap {
           port = address.getPort();
         }
 
-        barrier->wait();
+        barrier->post();
     };
 
-    auto bind0 = std::make_shared<boost::barrier>(2);
-    acceptor_group_->add(std::bind(startupFunc, bind0));
-    bind0->wait();
+    auto wait0 = std::make_shared<folly::Baton<>>();
+    acceptor_group_->add(std::bind(startupFunc, wait0));
+    wait0->wait();
 
-    auto barrier = std::make_shared<boost::barrier>(acceptor_group_->numThreads());
     for (size_t i = 1; i < acceptor_group_->numThreads(); i++) {
+      auto barrier = std::make_shared<folly::Baton<>>();
       acceptor_group_->add(std::bind(startupFunc, barrier));
+      barrier->wait();
     }
-    barrier->wait();
 
     // Startup all the threads
     for(auto socket : new_sockets) {
@@ -201,34 +243,49 @@ class ServerBootstrap {
    * Stop listening on all sockets.
    */
   void stop() {
-    auto barrier = std::make_shared<boost::barrier>(sockets_.size() + 1);
     for (auto socket : sockets_) {
-      socket->getEventBase()->runInEventBaseThread([barrier, socket]() {
+      folly::Baton<> barrier;
+      socket->getEventBase()->runInEventBaseThread([&barrier, socket]() {
         socket->stopAccepting();
         socket->detachEventBase();
-        barrier->wait();
+        barrier.post();
       });
+      barrier.wait();
     }
-    barrier->wait();
     sockets_.clear();
 
-    acceptor_group_->join();
-    io_group_->join();
+    if (acceptor_group_) {
+      acceptor_group_->join();
+    }
+    if (io_group_) {
+      io_group_->join();
+    }
   }
 
   /*
    * Get the list of listening sockets
    */
-  std::vector<std::shared_ptr<folly::AsyncServerSocket>>&
-  getSockets() {
+  const std::vector<std::shared_ptr<folly::AsyncServerSocket>>&
+  getSockets() const {
     return sockets_;
   }
+
+  std::shared_ptr<wangle::IOThreadPoolExecutor> getIOGroup() const {
+    return io_group_;
+  }
+
+  template <typename F>
+  void forEachWorker(F&& f) const {
+    workerFactory_->forEachWorker(f);
+  }
+
+  ServerSocketConfig socketConfig;
 
  private:
   std::shared_ptr<wangle::IOThreadPoolExecutor> acceptor_group_;
   std::shared_ptr<wangle::IOThreadPoolExecutor> io_group_;
 
-  std::shared_ptr<ServerWorkerFactory> workerFactory_;
+  std::shared_ptr<ServerWorkerPool> workerFactory_;
   std::vector<std::shared_ptr<folly::AsyncServerSocket>> sockets_;
 
   std::shared_ptr<AcceptorFactory> acceptorFactory_;

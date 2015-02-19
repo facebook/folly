@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <boost/thread.hpp>
 
 using namespace folly::wangle;
 using namespace folly;
@@ -226,4 +227,12 @@ TEST(Bootstrap, SharedThreadPool) {
 
   server.stop();
   CHECK(factory->pipelines == 5);
+}
+
+TEST(Bootstrap, ExistingSocket) {
+  TestServer server;
+  auto factory = std::make_shared<TestPipelineFactory>();
+  server.childPipeline(factory);
+  folly::AsyncServerSocket::UniquePtr socket(new AsyncServerSocket);
+  server.bind(std::move(socket));
 }

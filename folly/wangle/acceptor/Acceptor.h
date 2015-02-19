@@ -180,6 +180,14 @@ class Acceptor :
    */
   void drainAllConnections();
 
+  /**
+   * Drop all connections.
+   *
+   * forceStop() schedules dropAllConnections() to be called in the acceptor's
+   * thread.
+   */
+  void dropAllConnections();
+
  protected:
   friend class AcceptorHandshakeHelper;
 
@@ -237,14 +245,6 @@ class Acceptor :
       const AsyncSSLSocket* sock,
       std::chrono::milliseconds acceptLatency,
       SSLErrorEnum error) noexcept {}
-
-  /**
-   * Drop all connections.
-   *
-   * forceStop() schedules dropAllConnections() to be called in the acceptor's
-   * thread.
-   */
-  void dropAllConnections();
 
  protected:
 
@@ -340,7 +340,7 @@ class Acceptor :
 
 class AcceptorFactory {
  public:
-  virtual std::shared_ptr<Acceptor> newAcceptor() = 0;
+  virtual std::shared_ptr<Acceptor> newAcceptor(folly::EventBase*) = 0;
   virtual ~AcceptorFactory() = default;
 };
 
