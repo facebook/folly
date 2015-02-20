@@ -555,96 +555,6 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
-namespace {
-  template <class T>
-  void getWaitHelper(Future<T>* f) {
-    // If we already have a value do the cheap thing
-    if (f->isReady()) {
-      return;
-    }
-
-    folly::Baton<> baton;
-    f->then([&](Try<T> const&) {
-      baton.post();
-    });
-    baton.wait();
-  }
-
-  template <class T>
-  Future<T> getWaitTimeoutHelper(Future<T>* f, Duration dur) {
-    // TODO make and use variadic whenAny #5877971
-    Promise<T> p;
-    auto token = std::make_shared<std::atomic<bool>>();
-    folly::Baton<> baton;
-
-    folly::detail::getTimekeeperSingleton()->after(dur)
-      .then([&,token](Try<void> const& t) {
-        if (token->exchange(true) == false) {
-          if (t.hasException()) {
-            p.setException(std::move(t.exception()));
-          } else {
-            p.setException(TimedOut());
-          }
-          baton.post();
-        }
-      });
-
-    f->then([&, token](Try<T>&& t) {
-      if (token->exchange(true) == false) {
-        p.fulfilTry(std::move(t));
-        baton.post();
-      }
-    });
-
-    baton.wait();
-    return p.getFuture();
-  }
-}
-
-template <class T>
-T Future<T>::get() {
-  getWaitHelper(this);
-
-  // Big assumption here: the then() call above, since it doesn't move out
-  // the value, leaves us with a value to return here. This would be a big
-  // no-no in user code, but I'm invoking internal developer privilege. This
-  // is slightly more efficient (save a move()) especially if there's an
-  // exception (save a throw).
-  return std::move(value());
-}
-
-template <>
-inline void Future<void>::get() {
-  getWaitHelper(this);
-  value();
-}
-
-template <class T>
-T Future<T>::get(Duration dur) {
-  return std::move(getWaitTimeoutHelper(this, dur).value());
-}
-
-template <>
-inline void Future<void>::get(Duration dur) {
-  getWaitTimeoutHelper(this, dur).value();
-}
-
-template <class T>
-T Future<T>::getVia(DrivableExecutor* e) {
-  while (!isReady()) {
-    e->drive();
-  }
-  return std::move(value());
-}
-
-template <>
-inline void Future<void>::getVia(DrivableExecutor* e) {
-  while (!isReady()) {
-    e->drive();
-  }
-  value();
-}
-
 template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
@@ -699,12 +609,16 @@ namespace detail {
 
 template <class T>
 void waitImpl(Future<T>& f) {
+  // short-circuit if there's nothing to do
+  if (f.isReady()) return;
+
   Baton<> baton;
   f = f.then([&](Try<T> t) {
     baton.post();
     return makeFuture(std::move(t));
   });
   baton.wait();
+
   // There's a race here between the return here and the actual finishing of
   // the future. f is completed, but the setup may not have finished on done
   // after the baton has posted.
@@ -715,11 +629,15 @@ void waitImpl(Future<T>& f) {
 
 template <class T>
 void waitImpl(Future<T>& f, Duration dur) {
+  // short-circuit if there's nothing to do
+  if (f.isReady()) return;
+
   auto baton = std::make_shared<Baton<>>();
   f = f.then([baton](Try<T> t) {
     baton->post();
     return makeFuture(std::move(t));
   });
+
   // Let's preserve the invariant that if we did not timeout (timed_wait returns
   // true), then the returned Future is complete when it is returned to the
   // caller. We need to wait out the race for that Future to complete.
@@ -773,6 +691,46 @@ template <class T>
 Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
   detail::waitViaImpl(*this, e);
   return std::move(*this);
+}
+
+template <class T>
+T Future<T>::get() {
+  return std::move(wait().value());
+}
+
+template <>
+inline void Future<void>::get() {
+  wait().value();
+}
+
+template <class T>
+T Future<T>::get(Duration dur) {
+  wait(dur);
+  if (isReady()) {
+    return std::move(value());
+  } else {
+    throw TimedOut();
+  }
+}
+
+template <>
+inline void Future<void>::get(Duration dur) {
+  wait(dur);
+  if (isReady()) {
+    return;
+  } else {
+    throw TimedOut();
+  }
+}
+
+template <class T>
+T Future<T>::getVia(DrivableExecutor* e) {
+  return std::move(waitVia(e).value());
+}
+
+template <>
+inline void Future<void>::getVia(DrivableExecutor* e) {
+  waitVia(e).value();
 }
 
 namespace futures {

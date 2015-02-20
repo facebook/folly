@@ -1308,3 +1308,12 @@ TEST(Future, ImplicitConstructor) {
   // following implicit conversion to work:
   //auto f2 = []() -> Future<void> { }();
 }
+
+TEST(Future, via_then_get_was_racy) {
+  ThreadExecutor x;
+  std::unique_ptr<int> val = folly::via(&x)
+    .then([] { return folly::make_unique<int>(42); })
+    .get();
+  ASSERT_TRUE(!!val);
+  EXPECT_EQ(42, *val);
+}
