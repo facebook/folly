@@ -448,7 +448,7 @@ class Future {
   /// Overload of waitVia() for rvalue Futures
   Future<T>&& waitVia(DrivableExecutor* e) &&;
 
- private:
+ protected:
   typedef detail::Core<T>* corePtr;
 
   // shared core state object
@@ -462,6 +462,7 @@ class Future {
   void throwIfInvalid() const;
 
   friend class Promise<T>;
+  template <class> friend class Future;
 
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
@@ -474,6 +475,9 @@ class Future {
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F func, detail::argResult<isTry, F, Args...>);
+
+  Executor* getExecutor() { return core_->getExecutor(); }
+  void setExecutor(Executor* x) { core_->setExecutor(x); }
 };
 
 /**

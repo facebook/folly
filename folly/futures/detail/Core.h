@@ -178,7 +178,7 @@ class Core {
 
   /// Called by a destructing Future (in the Future thread, by definition)
   void detachFuture() {
-    activate();
+    activateNoDeprecatedWarning();
     detachOne();
   }
 
@@ -193,14 +193,13 @@ class Core {
   }
 
   /// May call from any thread
-  void deactivate() {
+  void deactivate() DEPRECATED {
     active_ = false;
   }
 
   /// May call from any thread
-  void activate() {
-    active_ = true;
-    maybeCallback();
+  void activate() DEPRECATED {
+    activateNoDeprecatedWarning();
   }
 
   /// May call from any thread
@@ -209,6 +208,10 @@ class Core {
   /// Call only from Future thread
   void setExecutor(Executor* x) {
     executor_ = x;
+  }
+
+  Executor* getExecutor() {
+    return executor_;
   }
 
   /// Call only from Future thread
@@ -234,7 +237,12 @@ class Core {
     }
   }
 
- private:
+ protected:
+  void activateNoDeprecatedWarning() {
+    active_ = true;
+    maybeCallback();
+  }
+
   void maybeCallback() {
     FSM_START(fsm_)
       case State::Armed:

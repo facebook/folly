@@ -115,6 +115,9 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 
   // grab the Future now before we lose our handle on the Promise
   auto f = p->getFuture();
+  if (getExecutor()) {
+    f.setExecutor(getExecutor());
+  }
 
   /* This is a bit tricky.
 
@@ -179,6 +182,9 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 
   // grab the Future now before we lose our handle on the Promise
   auto f = p->getFuture();
+  if (getExecutor()) {
+    f.setExecutor(getExecutor());
+  }
 
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {
@@ -318,8 +324,7 @@ template <typename Executor>
 inline Future<T> Future<T>::via(Executor* executor) && {
   throwIfInvalid();
 
-  this->deactivate();
-  core_->setExecutor(executor);
+  setExecutor(executor);
 
   return std::move(*this);
 }
