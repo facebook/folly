@@ -68,6 +68,7 @@ nobase_follyinclude_HEADERS = \
 	ExceptionWrapper.h \
 	Executor.h \
 	EvictingCacheMap.h \
+	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
