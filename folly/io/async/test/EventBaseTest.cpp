@@ -1265,6 +1265,21 @@ TEST(EventBaseTest, RepeatedRunInLoop) {
   ASSERT_EQ(c.getCount(), 0);
 }
 
+// Test that EventBase::loop() works as expected without time measurements.
+TEST(EventBaseTest, RunInLoopNoTimeMeasurement) {
+  EventBase eventBase(false);
+
+  CountedLoopCallback c(&eventBase, 10);
+  eventBase.runInLoop(&c);
+  // The callback shouldn't have run immediately
+  ASSERT_EQ(c.getCount(), 10);
+  eventBase.loop();
+
+  // loop() should loop until the CountedLoopCallback stops
+  // re-installing itself.
+  ASSERT_EQ(c.getCount(), 0);
+}
+
 // Test runInLoop() calls with terminateLoopSoon()
 TEST(EventBaseTest, RunInLoopStopLoop) {
   EventBase eventBase;

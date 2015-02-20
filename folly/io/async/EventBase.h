@@ -143,8 +143,14 @@ class EventBase : private boost::noncopyable,
 
   /**
    * Create a new EventBase object.
+   *
+   * @param enableTimeMeasurement Informs whether this event base should measure
+   *                              time. Disabling it would likely improve
+   *                              performance, but will disable some features
+   *                              that relies on time-measurement, including:
+   *                              observer, max latency and avg loop time.
    */
-  EventBase();
+  explicit EventBase(bool enableTimeMeasurement = true);
 
   /**
    * Create a new EventBase object that will use the specified libevent
@@ -152,8 +158,14 @@ class EventBase : private boost::noncopyable,
    *
    * The EventBase will take ownership of this event_base, and will call
    * event_base_free(evb) when the EventBase is destroyed.
+   *
+   * @param enableTimeMeasurement Informs whether this event base should measure
+   *                              time. Disabling it would likely improve
+   *                              performance, but will disable some features
+   *                              that relies on time-measurement, including:
+   *                              observer, max latency and avg loop time.
    */
-  explicit EventBase(event_base* evb);
+  explicit EventBase(event_base* evb, bool enableTimeMeasurement = true);
   ~EventBase();
 
   /**
@@ -384,11 +396,14 @@ class EventBase : private boost::noncopyable,
   /**
    * Set the maximum desired latency in us and provide a callback which will be
    * called when that latency is exceeded.
+   * OBS: This functionality depends on time-measurement.
    */
   void setMaxLatency(int64_t maxLatency, const Cob& maxLatencyCob) {
+    assert(enableTimeMeasurement_);
     maxLatency_ = maxLatency;
     maxLatencyCob_ = maxLatencyCob;
   }
+
 
   /**
    * Set smoothing coefficient for loop load average; # of milliseconds
@@ -405,6 +420,7 @@ class EventBase : private boost::noncopyable,
    * Get the average loop time in microseconds (an exponentially-smoothed ave)
    */
   double getAvgLoopTime() const {
+    assert(enableTimeMeasurement_);
     return avgLoopTime_.get();
   }
 
@@ -484,8 +500,8 @@ class EventBase : private boost::noncopyable,
     int64_t oldBusyLeftover_;
   };
 
-  void setObserver(
-    const std::shared_ptr<EventBaseObserver>& observer) {
+  void setObserver(const std::shared_ptr<EventBaseObserver>& observer) {
+    assert(enableTimeMeasurement_);
     observer_ = observer;
   }
 
@@ -631,6 +647,11 @@ class EventBase : private boost::noncopyable,
 
   // callback called when latency limit is exceeded
   Cob maxLatencyCob_;
+
+  // Enables/disables time measurements in loopBody(). if disabled, the
+  // following functionality that relies on time-measurement, will not
+  // be supported: avg loop time, observer and max latency.
+  const bool enableTimeMeasurement_;
 
   // we'll wait this long before running deferred callbacks if the event
   // loop is idle.

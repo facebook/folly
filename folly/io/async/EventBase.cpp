@@ -141,7 +141,7 @@ static std::mutex libevent_mutex_;
  * EventBase methods
  */
 
-EventBase::EventBase()
+EventBase::EventBase(bool enableTimeMeasurement)
   : runOnceCallbacks_(nullptr)
   , stop_(false)
   , loopThread_(0)
@@ -150,6 +150,7 @@ EventBase::EventBase()
   , maxLatency_(0)
   , avgLoopTime_(2000000)
   , maxLatencyLoopTime_(avgLoopTime_)
+  , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
@@ -177,7 +178,7 @@ EventBase::EventBase()
 }
 
 // takes ownership of the event_base
-EventBase::EventBase(event_base* evb)
+EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
   : runOnceCallbacks_(nullptr)
   , stop_(false)
   , loopThread_(0)
@@ -187,6 +188,7 @@ EventBase::EventBase(event_base* evb)
   , maxLatency_(0)
   , avgLoopTime_(2000000)
   , maxLatencyLoopTime_(avgLoopTime_)
+  , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
@@ -247,6 +249,7 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
 // Set smoothing coefficient for loop load average; input is # of milliseconds
 // for exp(-1) decay.
 void EventBase::setLoadAvgMsec(uint32_t ms) {
+  assert(enableTimeMeasurement_);
   uint64_t us = 1000 * ms;
   if (ms > 0) {
     maxLatencyLoopTime_.setTimeInterval(us);
@@ -257,6 +260,7 @@ void EventBase::setLoadAvgMsec(uint32_t ms) {
 }
 
 void EventBase::resetLoadAvg(double value) {
+  assert(enableTimeMeasurement_);
   avgLoopTime_.reset(value);
   maxLatencyLoopTime_.reset(value);
 }
@@ -291,15 +295,23 @@ bool EventBase::loopBody(int flags) {
   bool blocking = !(flags & EVLOOP_NONBLOCK);
   bool once = (flags & EVLOOP_ONCE);
 
+  // time-measurement variables.
+  std::chrono::steady_clock::time_point prev;
+  int64_t idleStart;
+  int64_t busy;
+  int64_t idle;
+
   loopThread_.store(pthread_self(), std::memory_order_release);
 
   if (!name_.empty()) {
     setThreadName(name_);
   }
 
-  auto prev = std::chrono::steady_clock::now();
-  int64_t idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
-    std::chrono::steady_clock::now().time_since_epoch()).count();
+  if (enableTimeMeasurement_) {
+    prev = std::chrono::steady_clock::now();
+    idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
 
   // TODO: Read stop_ atomically with an acquire barrier.
   while (!stop_) {
@@ -325,41 +337,48 @@ bool EventBase::loopBody(int flags) {
 
     ranLoopCallbacks = runLoopCallbacks();
 
-    int64_t busy = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now().time_since_epoch()).count() - startWork_;
-    int64_t idle = startWork_ - idleStart;
+    if (enableTimeMeasurement_) {
+      busy = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count() -
+        startWork_;
+      idle = startWork_ - idleStart;
 
-    avgLoopTime_.addSample(idle, busy);
-    maxLatencyLoopTime_.addSample(idle, busy);
+      avgLoopTime_.addSample(idle, busy);
+      maxLatencyLoopTime_.addSample(idle, busy);
 
-    if (observer_) {
-      if (observerSampleCount_++ == observer_->getSampleRate()) {
-        observerSampleCount_ = 0;
-        observer_->loopSample(busy, idle);
+      if (observer_) {
+        if (observerSampleCount_++ == observer_->getSampleRate()) {
+          observerSampleCount_ = 0;
+          observer_->loopSample(busy, idle);
+        }
       }
+
+      VLOG(11) << "EventBase "  << this         << " did not timeout "
+        " loop time guess: "    << busy + idle  <<
+        " idle time: "          << idle         <<
+        " busy time: "          << busy         <<
+        " avgLoopTime: "        << avgLoopTime_.get() <<
+        " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
+        " maxLatency_: "        << maxLatency_ <<
+        " nothingHandledYet(): "<< nothingHandledYet();
+
+      // see if our average loop time has exceeded our limit
+      if ((maxLatency_ > 0) &&
+          (maxLatencyLoopTime_.get() > double(maxLatency_))) {
+        maxLatencyCob_();
+        // back off temporarily -- don't keep spamming maxLatencyCob_
+        // if we're only a bit over the limit
+        maxLatencyLoopTime_.dampen(0.9);
+      }
+
+      // Our loop run did real work; reset the idle timer
+      idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    } else {
+      VLOG(11) << "EventBase "  << this << " did not timeout "
+        " time measurement is disabled "
+        " nothingHandledYet(): "<< nothingHandledYet();
     }
-
-    VLOG(11) << "EventBase " << this         << " did not timeout "
-     " loop time guess: "    << busy + idle  <<
-     " idle time: "          << idle         <<
-     " busy time: "          << busy         <<
-     " avgLoopTime: "        << avgLoopTime_.get() <<
-     " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
-     " maxLatency_: "        << maxLatency_ <<
-     " nothingHandledYet(): "<< nothingHandledYet();
-
-    // see if our average loop time has exceeded our limit
-    if ((maxLatency_ > 0) &&
-        (maxLatencyLoopTime_.get() > double(maxLatency_))) {
-      maxLatencyCob_();
-      // back off temporarily -- don't keep spamming maxLatencyCob_
-      // if we're only a bit over the limit
-      maxLatencyLoopTime_.dampen(0.9);
-    }
-
-    // Our loop run did real work; reset the idle timer
-    idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now().time_since_epoch()).count();
 
     // If the event loop indicate that there were no more events, and
     // we also didn't have any loop callbacks to run, there is nothing left to
@@ -375,8 +394,10 @@ bool EventBase::loopBody(int flags) {
       }
     }
 
-    VLOG(5) << "EventBase " << this << " loop time: " <<
-      getTimeDelta(&prev).count();
+    if (enableTimeMeasurement_) {
+      VLOG(5) << "EventBase " << this << " loop time: " <<
+        getTimeDelta(&prev).count();
+    }
 
     if (once) {
       break;
