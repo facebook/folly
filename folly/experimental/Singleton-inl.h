@@ -85,7 +85,7 @@ TypeDescriptor SingletonHolder<T>::type() {
 
 template <typename T>
 bool SingletonHolder<T>::hasLiveInstance() {
-  return state_ == SingletonHolderState::Living;
+  return !instance_weak_.expired();
 }
 
 template <typename T>

@@ -231,6 +231,16 @@ template <typename T, typename Tag = detail::DefaultTag>
 using SingletonSharedPtrUsage = Singleton <T, Tag, SharedPtrUsageTag>;
 
 TEST(Singleton, SharedPtrUsage) {
+  struct WatchdogHolder {
+    ~WatchdogHolder() {
+      if (watchdog) {
+        LOG(ERROR) << "The following log message with stack trace is expected";
+      }
+    }
+
+    std::shared_ptr<Watchdog> watchdog;
+  };
+
   auto& vault = *SingletonVault::singleton<SharedPtrUsageTag>();
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
@@ -242,7 +252,14 @@ TEST(Singleton, SharedPtrUsage) {
 
   struct ATag {};
   SingletonSharedPtrUsage<Watchdog, ATag> named_watchdog_singleton;
+
+  SingletonSharedPtrUsage<WatchdogHolder> watchdog_holder_singleton;
+
   vault.registrationComplete();
+
+  // Initilize holder singleton first, so that it's the last one to be
+  // destroyed.
+  watchdog_holder_singleton.get();
 
   Watchdog* s1 = SingletonSharedPtrUsage<Watchdog>::get();
   EXPECT_NE(s1, nullptr);
@@ -253,9 +270,12 @@ TEST(Singleton, SharedPtrUsage) {
   EXPECT_EQ(s1, s2);
 
   auto weak_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
+
   auto shared_s1 = weak_s1.lock();
   EXPECT_EQ(shared_s1.get(), s1);
   EXPECT_EQ(shared_s1.use_count(), 2);
+
+  auto old_serial = shared_s1->serial_number;
 
   {
     auto named_weak_s1 =
@@ -263,6 +283,10 @@ TEST(Singleton, SharedPtrUsage) {
     auto locked = named_weak_s1.lock();
     EXPECT_NE(locked.get(), shared_s1.get());
   }
+
+  // We should release externally locked shared_ptr, otherwise it will be
+  // considered a leak
+  watchdog_holder_singleton->watchdog = std::move(shared_s1);
 
   LOG(ERROR) << "The following log message regarding shared_ptr is expected";
   {
@@ -272,24 +296,9 @@ TEST(Singleton, SharedPtrUsage) {
     EXPECT_TRUE(duration > std::chrono::seconds{4} &&
                 duration < std::chrono::seconds{6});
   }
-  EXPECT_EQ(vault.registeredSingletonCount(), 3);
+  EXPECT_EQ(vault.registeredSingletonCount(), 4);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 
-  EXPECT_EQ(shared_s1.use_count(), 1);
-  EXPECT_EQ(shared_s1.get(), s1);
-
-  auto locked_s1 = weak_s1.lock();
-  EXPECT_EQ(locked_s1.get(), s1);
-  EXPECT_EQ(shared_s1.use_count(), 2);
-  LOG(ERROR) << "The following log message with stack trace is expected";
-  locked_s1.reset();
-  EXPECT_EQ(shared_s1.use_count(), 1);
-
-  // Track serial number rather than pointer since the memory could be
-  // re-used when we create new_s1.
-  auto old_serial = shared_s1->serial_number;
-  shared_s1.reset();
-  locked_s1 = weak_s1.lock();
   EXPECT_TRUE(weak_s1.expired());
 
   auto empty_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
@@ -299,6 +308,8 @@ TEST(Singleton, SharedPtrUsage) {
 
   // Singleton should be re-created only after reenableInstances() was called.
   Watchdog* new_s1 = SingletonSharedPtrUsage<Watchdog>::get();
+  // Track serial number rather than pointer since the memory could be
+  // re-used when we create new_s1.
   EXPECT_NE(new_s1->serial_number, old_serial);
 
   auto new_s1_weak = SingletonSharedPtrUsage<Watchdog>::get_weak();
