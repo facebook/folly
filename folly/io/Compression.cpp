@@ -148,6 +148,8 @@ std::unique_ptr<IOBuf> NoCompressionCodec::doUncompress(
   return data->clone();
 }
 
+#if (FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA)
+
 namespace {
 
 void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
@@ -172,6 +174,8 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 }
 
 }  // namespace
+
+#endif  // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
 
 #if FOLLY_HAVE_LIBLZ4
 
