@@ -1148,14 +1148,14 @@ private:
   //
 
   size_type computePushBackCapacity() const {
-    return empty() ? std::max(64 / sizeof(T), size_type(1))
-      : capacity() < folly::jemallocMinInPlaceExpandable / sizeof(T)
-      ? capacity() * 2
-      : sizeof(T) > folly::jemallocMinInPlaceExpandable / 2 && capacity() == 1
-      ? 2
-      : capacity() > 4096 * 32 / sizeof(T)
-      ? capacity() * 2
-      : (capacity() * 3 + 1) / 2;
+    if (empty()) {
+      return std::max(64 / sizeof(T), size_type(1));
+    }
+    size_t oldSize = capacity() * sizeof(T);
+    if (oldSize < folly::jemallocMinInPlaceExpandable || oldSize > 4096 * 32) {
+      return capacity() * 2;
+    }
+    return (capacity() * 3 + 1) / 2;
   }
 
   template <class... Args>
