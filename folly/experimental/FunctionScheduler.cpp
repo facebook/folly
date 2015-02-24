@@ -189,7 +189,6 @@ void FunctionScheduler::run() {
 
   if (!threadName_.empty()) {
     folly::setThreadName(threadName_);
-    google::setThreadName(threadName_);
   }
 
   while (running_) {
