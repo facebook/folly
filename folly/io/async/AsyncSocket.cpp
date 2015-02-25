@@ -179,7 +179,7 @@ AsyncSocket::AsyncSocket()
   : eventBase_(nullptr)
   , writeTimeout_(this, nullptr)
   , ioHandler_(this, nullptr) {
-  VLOG(5) << "new AsyncSocket(" << ")";
+  VLOG(5) << "new AsyncSocket()";
   init();
 }
 
@@ -194,11 +194,7 @@ AsyncSocket::AsyncSocket(EventBase* evb)
 AsyncSocket::AsyncSocket(EventBase* evb,
                            const folly::SocketAddress& address,
                            uint32_t connectTimeout)
-  : eventBase_(evb)
-  , writeTimeout_(this, evb)
-  , ioHandler_(this, evb) {
-  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ")";
-  init();
+  : AsyncSocket(evb) {
   connect(nullptr, address, connectTimeout);
 }
 
@@ -206,11 +202,7 @@ AsyncSocket::AsyncSocket(EventBase* evb,
                            const std::string& ip,
                            uint16_t port,
                            uint32_t connectTimeout)
-  : eventBase_(evb)
-  , writeTimeout_(this, evb)
-  , ioHandler_(this, evb) {
-  VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ")";
-  init();
+  : AsyncSocket(evb) {
   connect(nullptr, ip, port, connectTimeout);
 }
 
