@@ -292,6 +292,16 @@ Future<T>::onError(F&& func) {
 
 template <class T>
 template <class F>
+Future<T> Future<T>::ensure(F func) {
+  MoveWrapper<F> funcw(std::move(func));
+  return this->then([funcw](Try<T>&& t) {
+    (*funcw)();
+    return makeFuture(std::move(t));
+  });
+}
+
+template <class T>
+template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
   auto funcw = folly::makeMoveWrapper(std::forward<F>(func));
   return within(dur, tk)

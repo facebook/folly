@@ -342,6 +342,13 @@ class Future {
     Future<T>>::type
   onError(F&& func);
 
+  /// func is like std::function<void()> and is executed unconditionally, and
+  /// the value/exception is passed through to the resulting Future.
+  /// func shouldn't throw, but if it does it will be captured and propagated,
+  /// and discard any value/exception that this Future has obtained.
+  template <class F>
+  Future<T> ensure(F func);
+
   /// Like onError, but for timeouts. example:
   ///
   ///   Future<int> f = makeFuture<int>(42)

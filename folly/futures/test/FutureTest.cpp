@@ -1317,3 +1317,15 @@ TEST(Future, via_then_get_was_racy) {
   ASSERT_TRUE(!!val);
   EXPECT_EQ(42, *val);
 }
+
+TEST(Future, ensure) {
+  size_t count = 0;
+  auto cob = [&]{ count++; };
+  auto f = makeFuture(42)
+    .ensure(cob)
+    .then([](int) { throw std::runtime_error("ensure"); })
+    .ensure(cob);
+
+  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_EQ(2, count);
+}
