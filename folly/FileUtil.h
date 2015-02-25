@@ -188,7 +188,7 @@ bool writeFile(const Container& data, const char* filename,
     return false;
   }
   bool ok = data.empty() ||
-    writeFull(fd, &data[0], data.size()) == data.size();
+    writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
   return closeNoInt(fd) == 0 && ok;
 }
 
