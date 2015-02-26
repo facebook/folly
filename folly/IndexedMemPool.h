@@ -17,6 +17,7 @@
 #ifndef FOLLY_INDEXEDMEMPOOL_H
 #define FOLLY_INDEXEDMEMPOOL_H
 
+#include <type_traits>
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>
@@ -36,21 +37,30 @@ template <typename Pool>
 struct IndexedMemPoolRecycler;
 }
 
-/// Instances of IndexedMemPool dynamically allocate and then pool
-/// their element type (T), returning 4-byte integer indices that can be
-/// passed to the pool's operator[] method to access or obtain pointers
-/// to the actual elements.  Once they are constructed, elements are
-/// never destroyed.  These two features are useful for lock-free
-/// algorithms.  The indexing behavior makes it easy to build tagged
-/// pointer-like-things, since a large number of elements can be managed
-/// using fewer bits than a full pointer.  The pooling behavior makes
-/// it safe to read from T-s even after they have been recycled, since
-/// it is guaranteed that the memory won't have been returned to the OS
-/// and unmapped (the algorithm must still use a mechanism to validate
-/// that the read was correct, but it doesn't have to worry about page
-/// faults), and if the elements use internal sequence numbers it can be
-/// guaranteed that there won't be an ABA match due to the element being
-/// overwritten with a different type that has the same bit pattern.
+/// Instances of IndexedMemPool dynamically allocate and then pool their
+/// element type (T), returning 4-byte integer indices that can be passed
+/// to the pool's operator[] method to access or obtain pointers to the
+/// actual elements.  The memory backing items returned from the pool
+/// will always be readable, even if items have been returned to the pool.
+/// These two features are useful for lock-free algorithms.  The indexing
+/// behavior makes it easy to build tagged pointer-like-things, since
+/// a large number of elements can be managed using fewer bits than a
+/// full pointer.  The access-after-free behavior makes it safe to read
+/// from T-s even after they have been recycled, since it is guaranteed
+/// that the memory won't have been returned to the OS and unmapped
+/// (the algorithm must still use a mechanism to validate that the read
+/// was correct, but it doesn't have to worry about page faults), and if
+/// the elements use internal sequence numbers it can be guaranteed that
+/// there won't be an ABA match due to the element being overwritten with
+/// a different type that has the same bit pattern.
+///
+/// IndexedMemPool has two object lifecycle strategies.  The first
+/// is to construct objects when they are allocated from the pool and
+/// destroy them when they are recycled.  In this mode allocIndex and
+/// allocElem have emplace-like semantics.  In the second mode, objects
+/// are default-constructed the first time they are removed from the pool,
+/// and deleted when the pool itself is deleted.  By default the first
+/// mode is used for non-trivial T, and the second is used for trivial T.
 ///
 /// IMPORTANT: Space for extra elements is allocated to account for those
 /// that are inaccessible because they are in other local lists, so the
@@ -77,7 +87,9 @@ struct IndexedMemPoolRecycler;
 template <typename T,
           int NumLocalLists_ = 32,
           int LocalListLimit_ = 200,
-          template<typename> class Atom = std::atomic>
+          template<typename> class Atom = std::atomic,
+          bool EagerRecycleWhenTrivial = false,
+          bool EagerRecycleWhenNotTrivial = true>
 struct IndexedMemPool : boost::noncopyable {
   typedef T value_type;
 
@@ -90,6 +102,11 @@ struct IndexedMemPool : boost::noncopyable {
     LocalListLimit = LocalListLimit_
   };
 
+
+  static constexpr bool eagerRecycle() {
+    return std::is_trivial<T>::value
+        ? EagerRecycleWhenTrivial : EagerRecycleWhenNotTrivial;
+  }
 
   // these are public because clients may need to reason about the number
   // of bits required to hold indices from a pool, given its capacity
@@ -129,8 +146,10 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
-    for (size_t i = size_; i > 0; --i) {
-      slots_[i].~Slot();
+    if (!eagerRecycle()) {
+      for (size_t i = size_; i > 0; --i) {
+        slots_[i].~Slot();
+      }
     }
     munmap(slots_, mmapLength_);
   }
@@ -143,24 +162,38 @@ struct IndexedMemPool : boost::noncopyable {
     return capacityForMaxIndex(actualCapacity_);
   }
 
-  /// Grants ownership of (*this)[retval], or returns 0 if no elements
-  /// are available
-  uint32_t allocIndex() {
-    return localPop(localHead());
+  /// Finds a slot with a non-zero index, emplaces a T there if we're
+  /// using the eager recycle lifecycle mode, and returns the index,
+  /// or returns 0 if no elements are available.
+  template <typename ...Args>
+  uint32_t allocIndex(Args&&... args) {
+    static_assert(sizeof...(Args) == 0 || eagerRecycle(),
+        "emplace-style allocation requires eager recycle, "
+        "which is defaulted only for non-trivial types");
+    auto idx = localPop(localHead());
+    if (idx != 0 && eagerRecycle()) {
+      T* ptr = &slot(idx).elem;
+      new (ptr) T(std::forward<Args>(args)...);
+    }
+    return idx;
   }
 
   /// If an element is available, returns a std::unique_ptr to it that will
   /// recycle the element to the pool when it is reclaimed, otherwise returns
   /// a null (falsy) std::unique_ptr
-  UniquePtr allocElem() {
-    auto idx = allocIndex();
-    auto ptr = idx == 0 ? nullptr : &slot(idx).elem;
+  template <typename ...Args>
+  UniquePtr allocElem(Args&&... args) {
+    auto idx = allocIndex(std::forward<Args>(args)...);
+    T* ptr = idx == 0 ? nullptr : &slot(idx).elem;
     return UniquePtr(ptr, typename UniquePtr::deleter_type(this));
   }
 
   /// Gives up ownership previously granted by alloc()
   void recycleIndex(uint32_t idx) {
     assert(isAllocated(idx));
+    if (eagerRecycle()) {
+      slot(idx).elem.~T();
+    }
     localPush(localHead(), idx);
   }
 
@@ -379,8 +412,12 @@ struct IndexedMemPool : boost::noncopyable {
           // allocation failed
           return 0;
         }
-        // construct it
-        new (&slot(idx)) T();
+        // default-construct it now if we aren't going to construct and
+        // destroy on each allocation
+        if (!eagerRecycle()) {
+          T* ptr = &slot(idx).elem;
+          new (ptr) T();
+        }
         slot(idx).localNext = uint32_t(-1);
         return idx;
       }

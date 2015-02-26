@@ -16,6 +16,7 @@
 
 #include <folly/IndexedMemPool.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <string>
 #include <thread>
 #include <unistd.h>
 #include <semaphore.h>
@@ -153,6 +154,67 @@ TEST(IndexedMemPool, locate_elem) {
   }
 
   EXPECT_EQ(pool.locateElem(nullptr), 0);
+}
+
+struct NonTrivialStruct {
+  static __thread int count;
+
+  int elem_;
+
+  NonTrivialStruct() {
+    elem_ = 0;
+    ++count;
+  }
+
+  NonTrivialStruct(std::unique_ptr<std::string>&& arg1, int arg2) {
+    elem_ = arg1->length() + arg2;
+    ++count;
+  }
+
+  ~NonTrivialStruct() {
+    --count;
+  }
+};
+
+__thread int NonTrivialStruct::count;
+
+TEST(IndexedMemPool, eager_recycle) {
+  typedef IndexedMemPool<NonTrivialStruct> Pool;
+  Pool pool(100);
+
+  EXPECT_EQ(NonTrivialStruct::count, 0);
+
+  for (size_t i = 0; i < 10; ++i) {
+    {
+      std::unique_ptr<std::string> arg{ new std::string{ "abc" } };
+      auto ptr = pool.allocElem(std::move(arg), 100);
+      EXPECT_EQ(NonTrivialStruct::count, 1);
+      EXPECT_EQ(ptr->elem_, 103);
+      EXPECT_TRUE(!!ptr);
+    }
+    EXPECT_EQ(NonTrivialStruct::count, 0);
+  }
+}
+
+TEST(IndexedMemPool, late_recycle) {
+  {
+    typedef IndexedMemPool<NonTrivialStruct, 8, 8, std::atomic, false, false>
+        Pool;
+    Pool pool(100);
+
+    EXPECT_EQ(NonTrivialStruct::count, 0);
+
+    for (size_t i = 0; i < 10; ++i) {
+      {
+        auto ptr = pool.allocElem();
+        EXPECT_TRUE(NonTrivialStruct::count > 0);
+        EXPECT_TRUE(!!ptr);
+        ptr->elem_ = i;
+      }
+      EXPECT_TRUE(NonTrivialStruct::count > 0);
+    }
+  }
+  EXPECT_EQ(NonTrivialStruct::count, 0);
 }
 
 int main(int argc, char** argv) {
