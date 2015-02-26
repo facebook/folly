@@ -287,6 +287,90 @@ TEST(Format, dynamic) {
   EXPECT_EQ("(null)", sformat("{}", dynamic(nullptr)));
 }
 
+TEST(Format, separatorDecimalInteger) {
+  EXPECT_EQ("0", sformat("{:,d}", 0));
+  EXPECT_EQ("1", sformat("{:d}", 1));
+  EXPECT_EQ("1", sformat("{:,d}", 1));
+  EXPECT_EQ("1", sformat("{:,}", 1));
+  EXPECT_EQ("123", sformat("{:d}", 123));
+  EXPECT_EQ("123", sformat("{:,d}", 123));
+  EXPECT_EQ("123", sformat("{:,}", 123));
+  EXPECT_EQ("1234", sformat("{:d}", 1234));
+  EXPECT_EQ("1,234", sformat("{:,d}", 1234));
+  EXPECT_EQ("1,234", sformat("{:,}", 1234));
+  EXPECT_EQ("12345678", sformat("{:d}", 12345678));
+  EXPECT_EQ("12,345,678", sformat("{:,d}", 12345678));
+  EXPECT_EQ("12,345,678", sformat("{:,}", 12345678));
+  EXPECT_EQ("-1234", sformat("{:d}", -1234));
+  EXPECT_EQ("-1,234", sformat("{:,d}", -1234));
+  EXPECT_EQ("-1,234", sformat("{:,}", -1234));
+
+  int64_t max_int64_t = std::numeric_limits<int64_t>::max();
+  int64_t min_int64_t = std::numeric_limits<int64_t>::min();
+  uint64_t max_uint64_t = std::numeric_limits<uint64_t>::max();
+  EXPECT_EQ("9223372036854775807", sformat("{:d}", max_int64_t));
+  EXPECT_EQ("9,223,372,036,854,775,807", sformat("{:,d}", max_int64_t));
+  EXPECT_EQ("9,223,372,036,854,775,807", sformat("{:,}", max_int64_t));
+  EXPECT_EQ("-9223372036854775808", sformat("{:d}", min_int64_t));
+  EXPECT_EQ("-9,223,372,036,854,775,808", sformat("{:,d}", min_int64_t));
+  EXPECT_EQ("-9,223,372,036,854,775,808", sformat("{:,}", min_int64_t));
+  EXPECT_EQ("18446744073709551615", sformat("{:d}", max_uint64_t));
+  EXPECT_EQ("18,446,744,073,709,551,615", sformat("{:,d}", max_uint64_t));
+  EXPECT_EQ("18,446,744,073,709,551,615", sformat("{:,}", max_uint64_t));
+
+  EXPECT_EQ("  -1,234", sformat("{: 8,}", -1234));
+  EXPECT_EQ("-001,234", sformat("{:08,d}", -1234));
+  EXPECT_EQ("-00001,234", sformat("{:010,d}", -1234));
+  EXPECT_EQ(" -1,234 ", sformat("{:^ 8,d}", -1234));
+}
+
+// Note that sformat("{:n}", ...) uses the current locale setting to insert the
+// appropriate number separator characters.
+TEST(Format, separatorNumber) {
+  EXPECT_EQ("0", sformat("{:n}", 0));
+  EXPECT_EQ("1", sformat("{:n}", 1));
+  EXPECT_EQ("123", sformat("{:n}", 123));
+  EXPECT_EQ("1234", sformat("{:n}", 1234));
+  EXPECT_EQ("12345678", sformat("{:n}", 12345678));
+  EXPECT_EQ("-1234", sformat("{:n}", -1234));
+
+  int64_t max_int64_t = std::numeric_limits<int64_t>::max();
+  int64_t min_int64_t = std::numeric_limits<int64_t>::min();
+  uint64_t max_uint64_t = std::numeric_limits<uint64_t>::max();
+  EXPECT_EQ("9223372036854775807", sformat("{:n}", max_int64_t));
+  EXPECT_EQ("-9223372036854775808", sformat("{:n}", min_int64_t));
+  EXPECT_EQ("18446744073709551615", sformat("{:n}", max_uint64_t));
+
+  EXPECT_EQ("   -1234", sformat("{: 8n}", -1234));
+  EXPECT_EQ("-0001234", sformat("{:08n}", -1234));
+  EXPECT_EQ("-000001234", sformat("{:010n}", -1234));
+  EXPECT_EQ(" -1234  ", sformat("{:^ 8n}", -1234));
+}
+
+// insertThousandsGroupingUnsafe requires non-const params
+static void testGrouping(const char* a_str, const char* expected) {
+  char str[256];
+  strcpy(str, a_str);
+  char * end_ptr = str + strlen(str);
+  folly::detail::insertThousandsGroupingUnsafe(str, &end_ptr);
+  ASSERT_STREQ(expected, str);
+}
+
+TEST(Format, separatorUnit) {
+  testGrouping("0", "0");
+  testGrouping("1", "1");
+  testGrouping("12", "12");
+  testGrouping("123", "123");
+  testGrouping("1234", "1,234");
+  testGrouping("12345", "12,345");
+  testGrouping("123456", "123,456");
+  testGrouping("1234567", "1,234,567");
+  testGrouping("1234567890", "1,234,567,890");
+  testGrouping("9223372036854775807", "9,223,372,036,854,775,807");
+  testGrouping("18446744073709551615", "18,446,744,073,709,551,615");
+}
+
+
 namespace {
 
 struct KeyValue {

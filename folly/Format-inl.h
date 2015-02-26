@@ -29,6 +29,9 @@ namespace folly {
 
 namespace detail {
 
+// Updates the end of the buffer after the comma separators have been added.
+void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer);
+
 extern const char formatHexUpper[256][2];
 extern const char formatHexLower[256][2];
 extern const char formatOctal[512][3];
@@ -493,27 +496,31 @@ class FormatValue<
     char* valBufBegin = nullptr;
     char* valBufEnd = nullptr;
 
-    // Defer to sprintf
-    auto useSprintf = [&] (const char* format) mutable {
-      valBufBegin = valBuf + 3;  // room for sign and base prefix
-      valBufEnd = valBufBegin + sprintf(valBufBegin, format,
-                                        static_cast<uintmax_t>(uval));
-    };
-
     int prefixLen = 0;
-
     switch (presentation) {
-    case 'n':  // TODO(tudorb): locale awareness?
+    case 'n':
+      arg.enforce(!arg.basePrefix,
+                  "base prefix not allowed with '", presentation,
+                  "' specifier");
+
+      arg.enforce(!arg.thousandsSeparator,
+                  "cannot use ',' with the '", presentation,
+                  "' specifier");
+
+      valBufBegin = valBuf + 3;  // room for sign and base prefix
+      valBufEnd = valBufBegin + sprintf(valBufBegin, "%'ju",
+                                        static_cast<uintmax_t>(uval));
+      break;
     case 'd':
       arg.enforce(!arg.basePrefix,
                   "base prefix not allowed with '", presentation,
                   "' specifier");
+      valBufBegin = valBuf + 3;  // room for sign and base prefix
+
+      // Use uintToBuffer, faster than sprintf
+      valBufEnd = valBufBegin + uint64ToBufferUnsafe(uval, valBufBegin);
       if (arg.thousandsSeparator) {
-        useSprintf("%'ju");
-      } else {
-        // Use uintToBuffer, faster than sprintf
-        valBufBegin = valBuf + 3;
-        valBufEnd = valBufBegin + uint64ToBufferUnsafe(uval, valBufBegin);
+        detail::insertThousandsGroupingUnsafe(valBufBegin, &valBufEnd);
       }
       break;
     case 'c':
