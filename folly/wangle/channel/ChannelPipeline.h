@@ -186,8 +186,6 @@ class ChannelPipeline<R, W, Handler, Handlers...>
 
   ~ChannelPipeline() {}
 
-  void destroy() override { }
-
   void read(R msg) {
     typename ChannelPipeline<R, W>::DestructorGuard dg(
         static_cast<DelayedDestruction*>(this));

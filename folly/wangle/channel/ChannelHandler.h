@@ -115,6 +115,10 @@ class ChannelHandlerPtr : public ChannelHandler<
   explicit ChannelHandlerPtr(HandlerPtr handler)
     : handler_(std::move(handler)) {}
 
+  HandlerPtr getHandler() {
+    return handler_;
+  }
+
   void setHandler(HandlerPtr handler) {
     if (handler == handler_) {
       return;
