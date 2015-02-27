@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # Generate Escape tables.
-# Copyright 2011 Facebook
+# Copyright 2015 Facebook
 #
 # @author Tudor Bosman (tudorb@fb.com)
 #
