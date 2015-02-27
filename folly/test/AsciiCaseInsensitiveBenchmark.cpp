@@ -80,7 +80,7 @@ string lorem_ipsum =
 "vulputate quam urna quis eros. Donec vel."
 "\n";
 
-string needle = "commodo";
+const string needle = "commodo";
 
 // legacy implementation
 struct AsciiCaseInsensitiveLegacy {
