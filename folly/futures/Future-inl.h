@@ -743,8 +743,18 @@ inline void Future<void>::getVia(DrivableExecutor* e) {
   waitVia(e).value();
 }
 
-namespace futures {
+template <class T>
+Future<bool> Future<T>::willEqual(Future<T>& f) {
+  return whenAll(*this, f).then([](const std::tuple<Try<T>, Try<T>>& t) {
+    if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
+      return std::get<0>(t).value() == std::get<1>(t).value();
+    } else {
+      return false;
+      }
+  });
+}
 
+namespace futures {
   namespace {
     template <class Z>
     Future<Z> chainHelper(Future<Z> f) {

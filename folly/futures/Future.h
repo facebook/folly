@@ -455,7 +455,12 @@ class Future {
   /// Overload of waitVia() for rvalue Futures
   Future<T>&& waitVia(DrivableExecutor* e) &&;
 
- protected:
+  /// If the value in this Future is equal to the given Future, when they have
+  /// both completed, the value of the resulting Future<bool> will be true. It
+  /// will be false otherwise (including when one or both Futures have an
+  /// exception)
+  Future<bool> willEqual(Future<T>&);
+
   typedef detail::Core<T>* corePtr;
 
   // shared core state object

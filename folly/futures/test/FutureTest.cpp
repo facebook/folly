@@ -1329,3 +1329,84 @@ TEST(Future, ensure) {
   EXPECT_THROW(f.get(), std::runtime_error);
   EXPECT_EQ(2, count);
 }
+
+TEST(Future, willEqual) {
+    //both p1 and p2 already fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    p2.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    EXPECT_TRUE(f1.willEqual(f2).get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    p2.setValue(36);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    EXPECT_FALSE(f1.willEqual(f2).get());
+    }
+    //both p1 and p2 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    p2.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    p2.setValue(36);
+    EXPECT_FALSE(f3.get());
+    }
+    //p1 already fulfilled, p2 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p2.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p2.setValue(36);
+    EXPECT_FALSE(f3.get());
+    }
+    //p2 already fulfilled, p1 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p2.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p2.setValue(36);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    EXPECT_FALSE(f3.get());
+    }
+}
