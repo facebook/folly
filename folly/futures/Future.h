@@ -267,6 +267,13 @@ class Future {
   /// value (moved out), or throws the exception.
   T getVia(DrivableExecutor* e);
 
+  /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
+  /// Future<T> instance.
+  template <class F = T>
+  typename std::enable_if<isFuture<F>::value,
+                          Future<typename isFuture<T>::Inner>>::type
+  unwrap();
+
   /** When this Future has completed, execute func which is a function that
     takes one of:
       (const) Try<T>&&

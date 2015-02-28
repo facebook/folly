@@ -1410,3 +1410,35 @@ TEST(Future, willEqual) {
     EXPECT_FALSE(f3.get());
     }
 }
+
+// Unwrap tests.
+
+// A simple scenario for the unwrap call, when the promise was fulfilled
+// before calling to unwrap.
+TEST(Future, Unwrap_SimpleScenario) {
+  Future<int> encapsulated_future = makeFuture(5484);
+  Future<Future<int>> future = makeFuture(std::move(encapsulated_future));
+  EXPECT_EQ(5484, future.unwrap().value());
+}
+
+// Makes sure that unwrap() works when chaning Future's commands.
+TEST(Future, Unwrap_ChainCommands) {
+  Future<Future<int>> future = makeFuture(makeFuture(5484));
+  auto unwrapped = future.unwrap().then([](int i){ return i; });
+  EXPECT_EQ(5484, unwrapped.value());
+}
+
+// Makes sure that the unwrap call also works when the promise was not yet
+// fulfilled, and that the returned Future<T> becomes ready once the promise
+// is fulfilled.
+TEST(Future, Unwrap_FutureNotReady) {
+  Promise<Future<int>> p;
+  Future<Future<int>> future = p.getFuture();
+  Future<int> unwrapped = future.unwrap();
+  // Sanity - should not be ready before the promise is fulfilled.
+  ASSERT_FALSE(unwrapped.isReady());
+  // Fulfill the promise and make sure the unwrapped future is now ready.
+  p.setValue(makeFuture(5484));
+  ASSERT_TRUE(unwrapped.isReady());
+  EXPECT_EQ(5484, unwrapped.value());
+}

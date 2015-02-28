@@ -98,6 +98,20 @@ void Future<T>::setCallback_(F&& func) {
   core_->setCallback(std::move(func));
 }
 
+// unwrap
+
+template <class T>
+template <class F>
+typename std::enable_if<isFuture<F>::value,
+                        Future<typename isFuture<T>::Inner>>::type
+Future<T>::unwrap() {
+  return then([](Future<typename isFuture<T>::Inner> internal_future) {
+      return internal_future;
+  });
+}
+
+// then
+
 // Variant: returns a value
 // e.g. f.then([](Try<T>&& t){ return t.value(); });
 template <class T>
