@@ -31,6 +31,10 @@
 
 #include <folly/CPortability.h>
 
+#ifdef __APPLE__
+# include <malloc/malloc.h>
+#endif
+
 #if FOLLY_HAVE_SCHED_H
  #include <sched.h>
  #ifndef FOLLY_HAVE_PTHREAD_YIELD
@@ -253,6 +257,13 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 // for TARGET_OS_IPHONE
 #ifdef __APPLE__
 #include <TargetConditionals.h>
+#endif
+
+// MacOS doesn't have malloc_usable_size()
+#if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
+inline size_t malloc_usable_size(void* ptr) {
+  return malloc_size(ptr);
+}
 #endif
 
 #endif // FOLLY_PORTABILITY_H_
