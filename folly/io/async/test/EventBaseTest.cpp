@@ -1309,6 +1309,20 @@ TEST(EventBaseTest, RunInLoopStopLoop) {
   ASSERT_LE(c1.getCount(), 11);
 }
 
+TEST(EventBaseTest, TryRunningAfterTerminate) {
+  EventBase eventBase;
+  CountedLoopCallback c1(&eventBase, 1,
+                         std::bind(&EventBase::terminateLoopSoon, &eventBase));
+  eventBase.runInLoop(&c1);
+  eventBase.loopForever();
+  bool ran = false;
+  eventBase.runInEventBaseThread([&]() {
+    ran = true;
+  });
+
+  ASSERT_FALSE(ran);
+}
+
 // Test cancelling runInLoop() callbacks
 TEST(EventBaseTest, CancelRunInLoop) {
   EventBase eventBase;
