@@ -34,4 +34,19 @@ TEST(makeMoveWrapper, NonEmpty) {
   EXPECT_EQ(**p, 5);
 }
 
+TEST(makeMoveWrapper, rvalue) {
+  std::unique_ptr<int> p;
+  makeMoveWrapper(std::move(p));
+}
+
+TEST(makeMoveWrapper, lvalue) {
+  std::unique_ptr<int> p;
+  makeMoveWrapper(p);
+}
+
+TEST(makeMoveWrapper, lvalue_copyable) {
+  std::shared_ptr<int> p;
+  makeMoveWrapper(p);
+}
+
 } // namespace
