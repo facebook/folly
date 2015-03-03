@@ -199,9 +199,11 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 
 #if defined(__has_include)
 #if __has_include(<bits/functexcept.h>)
-#define FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+#undef FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+#define FOLLY_HAVE_BITS_FUNCTEXCEPT_H 1
 #else
 #undef FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+#define FOLLY_HAVE_BITS_FUNCTEXCEPT_H 0
 #endif
 #endif
 // Provide our own std::__throw_* wrappers for platforms that don't have them
