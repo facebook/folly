@@ -197,6 +197,13 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 #include <folly/detail/Clock.h>
 #endif
 
+#if defined(__has_include)
+#if __has_include(<bits/functexcept.h>)
+#define FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+#else
+#undef FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+#endif
+#endif
 // Provide our own std::__throw_* wrappers for platforms that don't have them
 #if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
 #include <bits/functexcept.h>
