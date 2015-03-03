@@ -68,6 +68,7 @@ nobase_follyinclude_HEADERS = \
 	ExceptionWrapper.h \
 	Executor.h \
 	EvictingCacheMap.h \
+	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
@@ -75,6 +76,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
 	experimental/TestUtil.h \
+	experimental/Select64.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -224,6 +226,9 @@ nobase_follyinclude_HEADERS = \
 	wangle/acceptor/ServerSocketConfig.h \
 	wangle/acceptor/SocketOptions.h \
 	wangle/acceptor/TransportInfo.h \
+	wangle/bootstrap/ServerBootstrap.h \
+	wangle/bootstrap/ServerBootstrap-inl.h \
+	wangle/bootstrap/ClientBootstrap.h \
 	wangle/channel/AsyncSocketHandler.h \
 	wangle/channel/ChannelHandler.h \
 	wangle/channel/ChannelHandlerContext.h \
@@ -335,12 +340,14 @@ libfolly_la_SOURCES = \
 	experimental/io/FsUtil.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
+	experimental/Select64.cpp \
 	wangle/acceptor/Acceptor.cpp \
 	wangle/acceptor/ConnectionManager.cpp \
 	wangle/acceptor/LoadShedConfiguration.cpp \
 	wangle/acceptor/ManagedConnection.cpp \
 	wangle/acceptor/SocketOptions.cpp \
 	wangle/acceptor/TransportInfo.cpp \
+	wangle/bootstrap/ServerBootstrap.cpp \
 	wangle/concurrent/CPUThreadPoolExecutor.cpp \
 	wangle/concurrent/Codel.cpp \
 	wangle/concurrent/IOThreadPoolExecutor.cpp \

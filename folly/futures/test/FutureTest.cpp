@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,14 @@ class ThreadExecutor : public Executor {
 
 typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
+
+// Core
+
+TEST(Future, coreSize) {
+  // If this number goes down, it's fine!
+  // If it goes up, please seek professional advice ;-)
+  EXPECT_EQ(128, sizeof(detail::Core<void>));
+}
 
 // Future
 
@@ -1075,7 +1083,7 @@ TEST(Future, waitWithDuration) {
    folly::Baton<> b;
    auto t = std::thread([&]{
      b.post();
-     std::this_thread::sleep_for(milliseconds(100));
+     /* sleep override */ std::this_thread::sleep_for(milliseconds(100));
      p.setValue();
    });
    b.wait();
@@ -1127,7 +1135,7 @@ TEST(Future, waitVia) {
   {
     // try rvalue as well
     ManualExecutor x;
-    auto f = via(&x).activate().then().waitVia(&x);
+    auto f = via(&x).then().waitVia(&x);
     EXPECT_TRUE(f.isReady());
   }
 
@@ -1136,53 +1144,6 @@ TEST(Future, waitVia) {
     makeFuture(true).waitVia(&x);
     EXPECT_FALSE(x.ran);
   }
-}
-
-TEST(Future, callbackAfterActivate) {
-  Promise<void> p;
-  auto f = p.getFuture();
-  f.deactivate();
-
-  size_t count = 0;
-  f.then([&](Try<void>&&) { count++; });
-
-  p.setValue();
-  EXPECT_EQ(0, count);
-
-  f.activate();
-  EXPECT_EQ(1, count);
-}
-
-TEST(Future, activateOnDestruct) {
-  auto f = std::make_shared<Future<void>>(makeFuture());
-  f->deactivate();
-
-  size_t count = 0;
-  f->then([&](Try<void>&&) { count++; });
-  EXPECT_EQ(0, count);
-
-  f.reset();
-  EXPECT_EQ(1, count);
-}
-
-TEST(Future, viaActsCold) {
-  ManualExecutor x;
-  size_t count = 0;
-
-  auto fv = via(&x);
-  fv.then([&](Try<void>&&) { count++; });
-
-  EXPECT_EQ(0, count);
-
-  fv.activate();
-
-  EXPECT_EQ(1, x.run());
-  EXPECT_EQ(1, count);
-}
-
-TEST(Future, viaIsCold) {
-  ManualExecutor x;
-  EXPECT_FALSE(via(&x).isActive());
 }
 
 TEST(Future, viaRaces) {
@@ -1197,35 +1158,6 @@ TEST(Future, viaRaces) {
       .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
       .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
       .then([&](Try<void>&&) { done = true; });
-  });
-
-  std::thread t2([&] {
-    p.setValue();
-  });
-
-  while (!done) x.run();
-  t1.join();
-  t2.join();
-}
-
-// TODO(#4920689)
-TEST(Future, viaRaces_2stage) {
-  ManualExecutor x;
-  Promise<void> p;
-  auto tid = std::this_thread::get_id();
-  bool done = false;
-
-  std::thread t1([&] {
-    auto f2 = p.getFuture().via(&x);
-    f2.then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
-      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
-      .then([&](Try<void>&&) { done = true; });
-
-    // the bug was in the promise being fulfilled before f2 is reactivated. we
-    // could sleep, but yielding should cause this to fail with reasonable
-    // probability
-    std::this_thread::yield();
-    f2.activate();
   });
 
   std::thread t2([&] {
@@ -1375,4 +1307,138 @@ TEST(Future, ImplicitConstructor) {
   // Unfortunately, the C++ standard does not allow the
   // following implicit conversion to work:
   //auto f2 = []() -> Future<void> { }();
+}
+
+TEST(Future, via_then_get_was_racy) {
+  ThreadExecutor x;
+  std::unique_ptr<int> val = folly::via(&x)
+    .then([] { return folly::make_unique<int>(42); })
+    .get();
+  ASSERT_TRUE(!!val);
+  EXPECT_EQ(42, *val);
+}
+
+TEST(Future, ensure) {
+  size_t count = 0;
+  auto cob = [&]{ count++; };
+  auto f = makeFuture(42)
+    .ensure(cob)
+    .then([](int) { throw std::runtime_error("ensure"); })
+    .ensure(cob);
+
+  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_EQ(2, count);
+}
+
+TEST(Future, willEqual) {
+    //both p1 and p2 already fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    p2.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    EXPECT_TRUE(f1.willEqual(f2).get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    p2.setValue(36);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    EXPECT_FALSE(f1.willEqual(f2).get());
+    }
+    //both p1 and p2 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    p2.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    p2.setValue(36);
+    EXPECT_FALSE(f3.get());
+    }
+    //p1 already fulfilled, p2 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p2.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p1.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p2.setValue(36);
+    EXPECT_FALSE(f3.get());
+    }
+    //p2 already fulfilled, p1 not yet fulfilled
+    {
+    Promise<int> p1;
+    Promise<int> p2;
+    p2.setValue(27);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    EXPECT_TRUE(f3.get());
+    }{
+    Promise<int> p1;
+    Promise<int> p2;
+    p2.setValue(36);
+    auto f1 = p1.getFuture();
+    auto f2 = p2.getFuture();
+    auto f3 = f1.willEqual(f2);
+    p1.setValue(27);
+    EXPECT_FALSE(f3.get());
+    }
+}
+
+// Unwrap tests.
+
+// A simple scenario for the unwrap call, when the promise was fulfilled
+// before calling to unwrap.
+TEST(Future, Unwrap_SimpleScenario) {
+  Future<int> encapsulated_future = makeFuture(5484);
+  Future<Future<int>> future = makeFuture(std::move(encapsulated_future));
+  EXPECT_EQ(5484, future.unwrap().value());
+}
+
+// Makes sure that unwrap() works when chaning Future's commands.
+TEST(Future, Unwrap_ChainCommands) {
+  Future<Future<int>> future = makeFuture(makeFuture(5484));
+  auto unwrapped = future.unwrap().then([](int i){ return i; });
+  EXPECT_EQ(5484, unwrapped.value());
+}
+
+// Makes sure that the unwrap call also works when the promise was not yet
+// fulfilled, and that the returned Future<T> becomes ready once the promise
+// is fulfilled.
+TEST(Future, Unwrap_FutureNotReady) {
+  Promise<Future<int>> p;
+  Future<Future<int>> future = p.getFuture();
+  Future<int> unwrapped = future.unwrap();
+  // Sanity - should not be ready before the promise is fulfilled.
+  ASSERT_FALSE(unwrapped.isReady());
+  // Fulfill the promise and make sure the unwrapped future is now ready.
+  p.setValue(makeFuture(5484));
+  ASSERT_TRUE(unwrapped.isReady());
+  EXPECT_EQ(5484, unwrapped.value());
 }

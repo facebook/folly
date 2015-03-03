@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,7 +136,8 @@ struct EmulatedFutexAtomic : public std::atomic<T> {
   EmulatedFutexAtomic() noexcept = default;
   constexpr /* implicit */ EmulatedFutexAtomic(T init) noexcept
       : std::atomic<T>(init) {}
-  EmulatedFutexAtomic(const EmulatedFutexAtomic& rhs) = delete;
+  // It doesn't copy or move
+  EmulatedFutexAtomic(EmulatedFutexAtomic&& rhs) = delete;
 };
 
 /* Available specializations, with definitions elsewhere */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -432,6 +432,13 @@ TEST(Optional, MakeOptional) {
   EXPECT_EQ(**optIntPtr, 3);
 }
 
+#ifdef __clang__
+# pragma clang diagnostic push
+# if __clang_major__ > 3 || __clang_minor__ >= 6
+#  pragma clang diagnostic ignored "-Wself-move"
+# endif
+#endif
+
 TEST(Optional, SelfAssignment) {
   Optional<int> a = 42;
   a = a;
@@ -441,6 +448,10 @@ TEST(Optional, SelfAssignment) {
   b = std::move(b);
   ASSERT_TRUE(b.hasValue() && b.value() == 23333333);
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
 
 class ContainsOptional {
  public:

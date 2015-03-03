@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,10 +48,10 @@ struct LockedVal {
 // these classes are POD).
 FOLLY_PACK_PUSH
 struct ignore1 { MicroSpinLock msl; int16_t foo; } FOLLY_PACK_ATTR;
-struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; }
-  FOLLY_PACK_ATTR;
+struct ignore2 { PicoSpinLock<uint32_t> psl; int16_t foo; } FOLLY_PACK_ATTR;
 static_assert(sizeof(ignore1) == 3, "Size check failed");
 static_assert(sizeof(ignore2) == 6, "Size check failed");
+static_assert(sizeof(MicroSpinLock) == 1, "Size check failed");
 FOLLY_PACK_POP
 
 LockedVal v;

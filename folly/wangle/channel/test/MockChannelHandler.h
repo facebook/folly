@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,13 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   MockChannelHandler() = default;
   MockChannelHandler(MockChannelHandler&&) = default;
 
+#ifdef __clang__
+# pragma clang diagnostic push
+# if __clang_major__ > 3 || __clang_minor__ >= 6
+#  pragma clang diagnostic ignored "-Winconsistent-missing-override"
+# endif
+#endif
+
   MOCK_METHOD2_T(read_, void(Context*, Rin&));
   MOCK_METHOD1_T(readEOF, void(Context*));
   MOCK_METHOD2_T(readException, void(Context*, exception_wrapper));
@@ -41,7 +48,11 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   MOCK_METHOD1_T(detachPipeline, void(Context*));
   MOCK_METHOD1_T(detachTransport, void(Context*));
 
-  void read(Context* ctx, Rin msg) {
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
+  void read(Context* ctx, Rin msg) override {
     read_(ctx, msg);
   }
 

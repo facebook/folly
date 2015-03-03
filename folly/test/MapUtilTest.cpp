@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,25 @@
 
 using namespace folly;
 
-TEST(MapUtil, Simple) {
+TEST(MapUtil, get_default) {
   std::map<int, int> m;
   m[1] = 2;
   EXPECT_EQ(2, get_default(m, 1, 42));
   EXPECT_EQ(42, get_default(m, 2, 42));
   EXPECT_EQ(0, get_default(m, 3));
+}
+
+TEST(MapUtil, get_ref_default) {
+  std::map<int, int> m;
+  m[1] = 2;
+  const int i = 42;
+  EXPECT_EQ(2, get_ref_default(m, 1, i));
+  EXPECT_EQ(42, get_ref_default(m, 2, i));
+}
+
+TEST(MapUtil, get_ptr) {
+  std::map<int, int> m;
+  m[1] = 2;
   EXPECT_EQ(2, *get_ptr(m, 1));
   EXPECT_TRUE(get_ptr(m, 2) == nullptr);
   *get_ptr(m, 1) = 4;

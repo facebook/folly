@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,8 +185,6 @@ class ChannelPipeline<R, W, Handler, Handlers...>
     : ChannelPipeline(true, std::forward<HandlersArgs>(handlersArgs)...) {}
 
   ~ChannelPipeline() {}
-
-  void destroy() override { }
 
   void read(R msg) {
     typename ChannelPipeline<R, W>::DestructorGuard dg(

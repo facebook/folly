@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -267,6 +267,13 @@ class Future {
   /// value (moved out), or throws the exception.
   T getVia(DrivableExecutor* e);
 
+  /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
+  /// Future<T> instance.
+  template <class F = T>
+  typename std::enable_if<isFuture<F>::value,
+                          Future<typename isFuture<T>::Inner>>::type
+  unwrap();
+
   /** When this Future has completed, execute func which is a function that
     takes one of:
       (const) Try<T>&&
@@ -341,6 +348,13 @@ class Future {
     detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
   onError(F&& func);
+
+  /// func is like std::function<void()> and is executed unconditionally, and
+  /// the value/exception is passed through to the resulting Future.
+  /// func shouldn't throw, but if it does it will be captured and propagated,
+  /// and discard any value/exception that this Future has obtained.
+  template <class F>
+  Future<T> ensure(F func);
 
   /// Like onError, but for timeouts. example:
   ///
@@ -448,7 +462,12 @@ class Future {
   /// Overload of waitVia() for rvalue Futures
   Future<T>&& waitVia(DrivableExecutor* e) &&;
 
- private:
+  /// If the value in this Future is equal to the given Future, when they have
+  /// both completed, the value of the resulting Future<bool> will be true. It
+  /// will be false otherwise (including when one or both Futures have an
+  /// exception)
+  Future<bool> willEqual(Future<T>&);
+
   typedef detail::Core<T>* corePtr;
 
   // shared core state object
@@ -462,6 +481,7 @@ class Future {
   void throwIfInvalid() const;
 
   friend class Promise<T>;
+  template <class> friend class Future;
 
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
@@ -474,6 +494,9 @@ class Future {
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F func, detail::argResult<isTry, F, Args...>);
+
+  Executor* getExecutor() { return core_->getExecutor(); }
+  void setExecutor(Executor* x) { core_->setExecutor(x); }
 };
 
 /**

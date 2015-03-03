@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,8 +60,8 @@ std::shared_ptr<Exe> getExecutor(
     Singleton<std::shared_ptr<DefaultExe>>& sDefaultExecutor,
     Singleton<RWSpinLock, LockTag>& sExecutorLock) {
   std::shared_ptr<Exe> executor;
-  auto singleton = sExecutor.get_fast();
-  auto lock = sExecutorLock.get_fast();
+  auto singleton = sExecutor.get();
+  auto lock = sExecutorLock.get();
 
   {
     RWSpinLock::ReadHolder guard(lock);
@@ -74,7 +74,7 @@ std::shared_ptr<Exe> getExecutor(
   RWSpinLock::WriteHolder guard(lock);
   executor = singleton->lock();
   if (!executor) {
-    executor = *sDefaultExecutor.get_fast();
+    executor = *sDefaultExecutor.get();
     *singleton = executor;
   }
   return executor;
@@ -85,8 +85,8 @@ void setExecutor(
     std::shared_ptr<Exe> executor,
     Singleton<std::weak_ptr<Exe>>& sExecutor,
     Singleton<RWSpinLock, LockTag>& sExecutorLock) {
-  RWSpinLock::WriteHolder guard(sExecutorLock.get_fast());
-  *sExecutor.get_fast() = std::move(executor);
+  RWSpinLock::WriteHolder guard(sExecutorLock.get());
+  *sExecutor.get() = std::move(executor);
 }
 
 std::shared_ptr<Executor> getCPUExecutor() {

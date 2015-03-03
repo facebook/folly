@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,7 +139,7 @@ public:
   explicit IntException(int i)
     : i_(i) {}
 
-  virtual int getInt() const { return i_; }
+  virtual int getInt() const override { return i_; }
   virtual const char* what() const noexcept override {
     what_ = folly::to<std::string>("int == ", i_);
     return what_.c_str();
@@ -176,7 +176,14 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_EQ(ew2.class_name(), "IntException");
   ew2.with_exception<AbstractIntException>([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
+#if defined __clang__ && (__clang_major__ > 3 || __clang_minor__ >= 6)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wunevaluated-expression"
+#endif
       EXPECT_EQ(typeid(ie), typeid(IntException));
+#if defined __clang__ && (__clang_major__ > 3 || __clang_minor__ >= 6)
+# pragma clang diagnostic pop
+#endif
     });
 
   // Test with const this.  If this compiles and does not crash due to

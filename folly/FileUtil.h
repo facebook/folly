@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,7 +188,7 @@ bool writeFile(const Container& data, const char* filename,
     return false;
   }
   bool ok = data.empty() ||
-    writeFull(fd, &data[0], data.size()) == data.size();
+    writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
   return closeNoInt(fd) == 0 && ok;
 }
 

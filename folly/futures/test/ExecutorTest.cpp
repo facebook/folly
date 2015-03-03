@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,9 +112,11 @@ TEST(Executor, InlineExecutor) {
   size_t counter = 0;
   x.add([&]{
     x.add([&]{
-      EXPECT_EQ(counter++, 0);
+      EXPECT_EQ(counter, 0);
+      counter++;
     });
-    EXPECT_EQ(counter++, 1);
+    EXPECT_EQ(counter, 1);
+    counter++;
   });
   EXPECT_EQ(counter, 2);
 }
@@ -124,9 +126,11 @@ TEST(Executor, QueuedImmediateExecutor) {
   size_t counter = 0;
   x.add([&]{
     x.add([&]{
-      EXPECT_EQ(1, counter++);
+      EXPECT_EQ(1, counter);
+      counter++;
     });
-    EXPECT_EQ(0, counter++);
+    EXPECT_EQ(0, counter);
+    counter++;
   });
   EXPECT_EQ(2, counter);
 }
@@ -155,4 +159,33 @@ TEST(Executor, RunnablePtr) {
   fnp->fn = [&]{ counter++; };
   x.addPtr(fnp);
   EXPECT_EQ(counter, 1);
+}
+
+TEST(Executor, ThrowableThen) {
+  InlineExecutor x;
+  auto f = Future<void>().via(&x).then([](){
+    throw std::runtime_error("Faildog");
+  });
+  EXPECT_THROW(f.value(), std::exception);
+}
+
+class CrappyExecutor : public Executor {
+ public:
+  void add(Func f) override {
+    throw std::runtime_error("bad");
+  }
+};
+
+TEST(Executor, CrappyExecutor) {
+  CrappyExecutor x;
+  try {
+    auto f = Future<void>().via(&x).activate().then([](){
+      return;
+    });
+    f.value();
+    EXPECT_TRUE(false);
+  } catch(...) {
+    // via() should throw
+    return;
+  }
 }

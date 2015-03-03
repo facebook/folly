@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,7 +196,8 @@ class exception_wrapper {
 
   fbstring class_name() const {
     if (item_) {
-      return demangle(typeid(*item_));
+      auto& i = *item_;
+      return demangle(typeid(i));
     } else if (eptr_) {
       return ename_;
     } else {

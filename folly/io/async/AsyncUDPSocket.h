@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,6 +136,13 @@ class AsyncUDPSocket : public EventHandler {
     CHECK_NE(-1, fd_) << "Need to bind before getting FD out";
     return fd_;
   }
+
+  /**
+   * Set reuse port mode to call bind() on the same address multiple times
+   */
+  void setReusePort(bool reusePort) {
+    reusePort_ = reusePort;
+  }
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
@@ -157,6 +164,8 @@ class AsyncUDPSocket : public EventHandler {
 
   // Non-null only when we are reading
   ReadCallback* readCallback_;
+
+  bool reusePort_{false};
 };
 
 } // Namespace
