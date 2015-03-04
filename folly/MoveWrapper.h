@@ -54,6 +54,9 @@ class MoveWrapper {
   const T* operator->() const { return &value; }
         T* operator->()       { return &value; }
 
+  /// move the value out (sugar for std::move(*moveWrapper))
+  T&& move() { return std::move(value); }
+
   // If you want these you're probably doing it wrong, though they'd be
   // easy enough to implement
   MoveWrapper& operator=(MoveWrapper const&) = delete;
