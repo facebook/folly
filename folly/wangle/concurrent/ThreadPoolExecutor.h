@@ -104,8 +104,12 @@ class ThreadPoolExecutor : public virtual Executor {
    public:
     virtual void threadStarted(ThreadHandle*) = 0;
     virtual void threadStopped(ThreadHandle*) = 0;
-    virtual void threadPreviouslyStarted(ThreadHandle*) = 0;
-    virtual void threadNotYetStopped(ThreadHandle*) = 0;
+    virtual void threadPreviouslyStarted(ThreadHandle* h) {
+      threadStarted(h);
+    }
+    virtual void threadNotYetStopped(ThreadHandle* h) {
+      threadStopped(h);
+    }
     virtual ~Observer() = default;
   };
 

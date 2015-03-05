@@ -92,7 +92,7 @@ class Acceptor :
    */
   uint32_t getNumConnections() const {
     return downstreamConnectionManager_ ?
-        downstreamConnectionManager_->getNumConnections() : 0;
+      (uint32_t)downstreamConnectionManager_->getNumConnections() : 0;
   }
 
   /**

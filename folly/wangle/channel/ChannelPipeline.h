@@ -282,8 +282,8 @@ class ChannelPipeline<R, W, Handler, Handlers...>
     ChannelPipeline<R, W, Handlers...>::finalizeHelper();
     back_ = ChannelPipeline<R, W, Handlers...>::back_;
     if (!back_) {
-      auto is_end = ChannelPipeline<R, W, Handlers...>::is_end;
-      CHECK(is_end);
+      auto is_at_end = ChannelPipeline<R, W, Handlers...>::is_end;
+      CHECK(is_at_end);
       back_ = dynamic_cast<OutboundChannelHandlerContext<W>*>(&ctx_);
       if (!back_) {
         throw std::invalid_argument("wrong type for last handler");

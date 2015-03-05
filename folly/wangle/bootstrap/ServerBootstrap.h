@@ -20,6 +20,9 @@
 
 namespace folly {
 
+typedef folly::wangle::ChannelPipeline<
+  folly::IOBufQueue&, std::unique_ptr<folly::IOBuf>> DefaultPipeline;
+
 /*
  * ServerBootstrap is a parent class intended to set up a
  * high-performance TCP accepting server.  It will manage a pool of
@@ -60,8 +63,8 @@ class ServerBootstrap {
    *
    * @param childHandler - acceptor factory to call for each IO thread
    */
-  ServerBootstrap* childHandler(std::shared_ptr<AcceptorFactory> childHandler) {
-    acceptorFactory_ = childHandler;
+  ServerBootstrap* childHandler(std::shared_ptr<AcceptorFactory> h) {
+    acceptorFactory_ = h;
     return this;
   }
 
@@ -162,7 +165,7 @@ class ServerBootstrap {
     sockets_.push_back(socket);
   }
 
-  void bind(folly::SocketAddress address) {
+  void bind(folly::SocketAddress& address) {
     bindImpl(-1, address);
   }
 
@@ -174,10 +177,11 @@ class ServerBootstrap {
    */
   void bind(int port) {
     CHECK(port >= 0);
-    bindImpl(port, folly::SocketAddress());
+    folly::SocketAddress address;
+    bindImpl(port, address);
   }
 
-  void bindImpl(int port, folly::SocketAddress address) {
+  void bindImpl(int port, folly::SocketAddress& address) {
     if (!workerFactory_) {
       group(nullptr);
     }
@@ -190,24 +194,35 @@ class ServerBootstrap {
     std::mutex sock_lock;
     std::vector<std::shared_ptr<folly::AsyncServerSocket>> new_sockets;
 
+    std::exception_ptr exn;
+
     auto startupFunc = [&](std::shared_ptr<folly::Baton<>> barrier){
         auto socket = folly::AsyncServerSocket::newSocket();
+        socket->setReusePortEnabled(reusePort);
+        socket->attachEventBase(EventBaseManager::get()->getEventBase());
+
+        try {
+          if (port >= 0) {
+            socket->bind(port);
+          } else {
+            socket->bind(address);
+            port = address.getPort();
+          }
+
+          socket->listen(socketConfig.acceptBacklog);
+          socket->startAccepting();
+        } catch (...) {
+          exn = std::current_exception();
+          barrier->post();
+
+          return;
+        }
+
         sock_lock.lock();
         new_sockets.push_back(socket);
         sock_lock.unlock();
-        socket->setReusePortEnabled(reusePort);
-        socket->attachEventBase(EventBaseManager::get()->getEventBase());
-        if (port >= 0) {
-          socket->bind(port);
-        } else {
-          socket->bind(address);
-          port = address.getPort();
-        }
-        socket->listen(socketConfig.acceptBacklog);
-        socket->startAccepting();
 
         if (port == 0) {
-          SocketAddress address;
           socket->getAddress(&address);
           port = address.getPort();
         }
@@ -223,6 +238,10 @@ class ServerBootstrap {
       auto barrier = std::make_shared<folly::Baton<>>();
       acceptor_group_->add(std::bind(startupFunc, barrier));
       barrier->wait();
+    }
+
+    if (exn) {
+      std::rethrow_exception(exn);
     }
 
     // Startup all the threads
