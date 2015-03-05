@@ -72,6 +72,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
+	experimental/FunctionScheduler.h \
 	experimental/io/FsUtil.h \
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
@@ -338,6 +339,7 @@ libfolly_la_SOURCES = \
 	Uri.cpp \
 	Version.cpp \
 	experimental/io/FsUtil.cpp \
+	experimental/FunctionScheduler.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
 	experimental/Select64.cpp \
