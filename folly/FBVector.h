@@ -42,12 +42,6 @@
 
 #include <boost/operators.hpp>
 
-// some files expected these from FBVector
-#include <limits>
-#include <folly/Foreach.h>
-#include <boost/type_traits.hpp>
-#include <boost/utility/enable_if.hpp>
-
 //=============================================================================
 // forward declaration
 
