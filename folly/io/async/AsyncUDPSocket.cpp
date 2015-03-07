@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+// Due to the way kernel headers are included, this may or may not be defined.
+// Number pulled from 3.10 kernel headers.
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 15
+#endif
 
 namespace folly {
 
@@ -66,6 +72,22 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
     throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                               "failed to put socket in reuse mode",
                               errno);
+  }
+
+  if (reusePort_) {
+    // put the socket in port reuse mode
+    int value = 1;
+    if (setsockopt(socket,
+                   SOL_SOCKET,
+                   SO_REUSEPORT,
+                   &value,
+                   sizeof(value)) != 0) {
+      ::close(socket);
+      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                                "failed to put socket in reuse_port mode",
+                                errno);
+
+    }
   }
 
   // bind to the address

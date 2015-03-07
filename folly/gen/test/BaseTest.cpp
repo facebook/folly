@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1071,6 +1071,31 @@ TEST(Gen, BatchMove) {
       })
     | as<vector>();
   EXPECT_EQ(expected, actual);
+}
+
+TEST(Gen, Just) {
+  {
+    int x = 3;
+    auto j = just(x);
+    EXPECT_EQ(&x, j | indirect | first);
+    x = 4;
+    EXPECT_EQ(4, j | first);
+  }
+  {
+    int x = 3;
+    const int& cx = x;
+    auto j = just(cx);
+    EXPECT_EQ(&x, j | indirect | first);
+    x = 5;
+    EXPECT_EQ(5, j | first);
+  }
+  {
+    int x = 3;
+    auto j = just(std::move(x));
+    EXPECT_NE(&x, j | indirect | first);
+    x = 5;
+    EXPECT_EQ(3, j | first);
+  }
 }
 
 int main(int argc, char *argv[]) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ using namespace folly;
 struct ManualWaiter : public DrivableExecutor {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex) : ex(ex) {}
 
-  void add(Func f) {
+  void add(Func f) override {
     ex->add(f);
   }
 
@@ -47,9 +47,9 @@ struct ViaFixture : public testing::Test {
     done(false)
   {
     t = std::thread([=] {
-      ManualWaiter eastWaiter(eastExecutor);
-      while (!done)
-        eastWaiter.drive();
+        ManualWaiter eastWaiter(eastExecutor);
+        while (!done)
+          eastWaiter.drive();
       });
   }
 
@@ -92,8 +92,7 @@ TEST(Via, then_future) {
   auto future = makeFuture(1)
     .then([](Try<int>&& t) {
       return makeFuture(t.value() == 1);
-    })
-    ;
+    });
   EXPECT_TRUE(future.value());
 }
 
@@ -120,27 +119,6 @@ TEST(Via, then_function) {
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
 
-TEST_F(ViaFixture, deactivateChain) {
-  bool flag = false;
-  auto f = makeFuture().deactivate();
-  EXPECT_FALSE(f.isActive());
-  auto f2 = f.then([&](Try<void>){ flag = true; });
-  EXPECT_FALSE(flag);
-}
-
-TEST_F(ViaFixture, deactivateActivateChain) {
-  bool flag = false;
-  // you can do this all day long with temporaries.
-  auto f1 = makeFuture().deactivate().activate().deactivate();
-  // Chaining on activate/deactivate requires an rvalue, so you have to move
-  // one of these two ways (if you're not using a temporary).
-  auto f2 = std::move(f1).activate();
-  f2.deactivate();
-  auto f3 = std::move(f2.activate());
-  f3.then([&](Try<void>){ flag = true; });
-  EXPECT_TRUE(flag);
-}
-
 TEST_F(ViaFixture, thread_hops) {
   auto westThreadId = std::this_thread::get_id();
   auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
@@ -156,22 +134,28 @@ TEST_F(ViaFixture, thread_hops) {
 
 TEST_F(ViaFixture, chain_vias) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
+  auto f = via(eastExecutor.get()).then([=]() {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
-    return makeFuture<int>(1);
-  }).then([=](Try<int>&& t) {
-    int val = t.value();
-    return makeFuture(std::move(val)).via(westExecutor.get())
-      .then([=](Try<int>&& t) mutable {
+    return 1;
+  }).then([=](int val) {
+    return makeFuture(val).via(westExecutor.get())
+      .then([=](int val) mutable {
         EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-        return t.value();
+        return val + 1;
       });
-  }).then([=](Try<int>&& t) {
+  }).then([=](int val) {
+    // even though ultimately the future that triggers this one executed in
+    // the west thread, this then() inherited the executor from its
+    // predecessor, ie the eastExecutor.
+    EXPECT_NE(std::this_thread::get_id(), westThreadId);
+    return val + 1;
+  }).via(westExecutor.get()).then([=](int val) {
+    // go back to west, so we can wait on it
     EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-    return t.value();
+    return val + 1;
   });
 
-  EXPECT_EQ(f.getVia(waiter.get()), 1);
+  EXPECT_EQ(f.getVia(waiter.get()), 4);
 }
 
 TEST_F(ViaFixture, bareViaAssignment) {

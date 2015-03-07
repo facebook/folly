@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   EventBase* getEventBase() override;
 
-  EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
+  static EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
  private:
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,22 +97,23 @@ public:
   }
 };
 
-#define FSM_START \
-  {bool done = false; while (!done) { auto state = getState(); switch (state) {
+#define FSM_START(fsm) {\
+    bool done = false; \
+    while (!done) { auto state = fsm.getState(); switch (state) {
 
-#define FSM_UPDATE2(b, protectedAction, unprotectedAction) \
-    done = updateState(state, (b), (protectedAction), (unprotectedAction));
+#define FSM_UPDATE2(fsm, b, protectedAction, unprotectedAction) \
+    done = fsm.updateState(state, (b), (protectedAction), (unprotectedAction));
 
-#define FSM_UPDATE(b, action) FSM_UPDATE2((b), (action), []{})
+#define FSM_UPDATE(fsm, b, action) FSM_UPDATE2(fsm, (b), (action), []{})
 
-#define FSM_CASE(a, b, action) \
+#define FSM_CASE(fsm, a, b, action) \
   case (a): \
-    FSM_UPDATE((b), (action)); \
+    FSM_UPDATE(fsm, (b), (action)); \
     break;
 
-#define FSM_CASE2(a, b, protectedAction, unprotectedAction) \
+#define FSM_CASE2(fsm, a, b, protectedAction, unprotectedAction) \
   case (a): \
-    FSM_UPDATE2((b), (protectedAction), (unprotectedAction)); \
+    FSM_UPDATE2(fsm, (b), (protectedAction), (unprotectedAction)); \
     break;
 
 #define FSM_BREAK done = true; break;

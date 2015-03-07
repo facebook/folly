@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -186,8 +186,6 @@ class ChannelPipeline<R, W, Handler, Handlers...>
 
   ~ChannelPipeline() {}
 
-  void destroy() override { }
-
   void read(R msg) {
     typename ChannelPipeline<R, W>::DestructorGuard dg(
         static_cast<DelayedDestruction*>(this));
@@ -284,8 +282,8 @@ class ChannelPipeline<R, W, Handler, Handlers...>
     ChannelPipeline<R, W, Handlers...>::finalizeHelper();
     back_ = ChannelPipeline<R, W, Handlers...>::back_;
     if (!back_) {
-      auto is_end = ChannelPipeline<R, W, Handlers...>::is_end;
-      CHECK(is_end);
+      auto is_at_end = ChannelPipeline<R, W, Handlers...>::is_end;
+      CHECK(is_at_end);
       back_ = dynamic_cast<OutboundChannelHandlerContext<W>*>(&ctx_);
       if (!back_) {
         throw std::invalid_argument("wrong type for last handler");

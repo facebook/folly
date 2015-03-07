@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/Foreach.h>
 #include <folly/String.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/String.h>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -422,9 +422,15 @@ int SSLContext::advertisedNextProtocolCallback(SSL* ssl,
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
   FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
 SSLContext::SSLFalseStartChecker::SSLFalseStartChecker() :
-  // The list was generated as follows:
-  //   grep "_CK_" openssl-1.0.1e/ssl/s3_lib.c -A 4 | while read A && read B && read C && read D && read E && read F; do echo $A $B $C $D $E; done | \
-  //     grep "\(SSL_kDHr\|SSL_kDHd\|SSL_kEDH\|SSL_kECDHr\|SSL_kECDHe\|SSL_kEECDH\)" | grep -v SSL_aNULL | grep SSL_AES | awk -F, '{ print $1"," }'
+  /**
+   * The list was generated as follows:
+   * grep "_CK_" openssl-1.0.1e/ssl/s3_lib.c -A 4 |
+   * while read A && read B && read C && read D && read E && read F; do
+   * echo $A $B $C $D $E; done |
+   * grep "\(SSL_kDHr\|SSL_kDHd\|SSL_kEDH\|SSL_kECDHr\|
+   *         SSL_kECDHe\|SSL_kEECDH\)" | grep -v SSL_aNULL | grep SSL_AES |
+   * awk -F, '{ print $1"," }'
+   */
   ciphers_{
     TLS1_CK_DH_DSS_WITH_AES_128_SHA,
     TLS1_CK_DH_RSA_WITH_AES_128_SHA,

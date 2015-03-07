@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,8 +104,12 @@ class ThreadPoolExecutor : public virtual Executor {
    public:
     virtual void threadStarted(ThreadHandle*) = 0;
     virtual void threadStopped(ThreadHandle*) = 0;
-    virtual void threadPreviouslyStarted(ThreadHandle*) = 0;
-    virtual void threadNotYetStopped(ThreadHandle*) = 0;
+    virtual void threadPreviouslyStarted(ThreadHandle* h) {
+      threadStarted(h);
+    }
+    virtual void threadNotYetStopped(ThreadHandle* h) {
+      threadStopped(h);
+    }
     virtual ~Observer() = default;
   };
 

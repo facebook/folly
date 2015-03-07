@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,8 @@ TESTFUN(clause_23_3_6_1_9) {
   EXPECT_EQ(v.size(), lst.size());
   size_t j = 0;
   FOR_EACH (i, lst) {
-    EXPECT_EQ(v[j++], *i);
+    EXPECT_EQ(v[j], *i);
+    j++;
   }
 }
 
@@ -63,7 +64,8 @@ TESTFUN(clause_23_3_6_1_11) {
   EXPECT_EQ(v.size(), lst.size());
   size_t j = 0;
   FOR_EACH (i, lst) {
-    EXPECT_EQ(v[j++], *i);
+    EXPECT_EQ(v[j], *i);
+    j++;
   }
 
   // aliased assign
@@ -72,7 +74,8 @@ TESTFUN(clause_23_3_6_1_11) {
   j = 0;
   FOR_EACH (i, lst) {
     if (j == v.size()) break;
-    EXPECT_EQ(v[j++], *i);
+    EXPECT_EQ(v[j], *i);
+    j++;
   }
 }
 

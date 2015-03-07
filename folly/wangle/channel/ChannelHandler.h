@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,6 +114,10 @@ class ChannelHandlerPtr : public ChannelHandler<
 
   explicit ChannelHandlerPtr(HandlerPtr handler)
     : handler_(std::move(handler)) {}
+
+  HandlerPtr getHandler() {
+    return handler_;
+  }
 
   void setHandler(HandlerPtr handler) {
     if (handler == handler_) {

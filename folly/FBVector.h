@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,12 +41,6 @@
 #include <folly/Traits.h>
 
 #include <boost/operators.hpp>
-
-// some files expected these from FBVector
-#include <limits>
-#include <folly/Foreach.h>
-#include <boost/type_traits.hpp>
-#include <boost/utility/enable_if.hpp>
 
 //=============================================================================
 // forward declaration
@@ -1148,14 +1142,16 @@ private:
   //
 
   size_type computePushBackCapacity() const {
-    return empty() ? std::max(64 / sizeof(T), size_type(1))
-      : capacity() < folly::jemallocMinInPlaceExpandable / sizeof(T)
-      ? capacity() * 2
-      : sizeof(T) > folly::jemallocMinInPlaceExpandable / 2 && capacity() == 1
-      ? 2
-      : capacity() > 4096 * 32 / sizeof(T)
-      ? capacity() * 2
-      : (capacity() * 3 + 1) / 2;
+    if (capacity() == 0) {
+      return std::max(64 / sizeof(T), size_type(1));
+    }
+    if (capacity() < folly::jemallocMinInPlaceExpandable / sizeof(T)) {
+      return capacity() * 2;
+    }
+    if (capacity() > 4096 * 32 / sizeof(T)) {
+      return capacity() * 2;
+    }
+    return (capacity() * 3 + 1) / 2;
   }
 
   template <class... Args>

@@ -92,7 +92,7 @@ class Acceptor :
    */
   uint32_t getNumConnections() const {
     return downstreamConnectionManager_ ?
-        downstreamConnectionManager_->getNumConnections() : 0;
+      (uint32_t)downstreamConnectionManager_->getNumConnections() : 0;
   }
 
   /**
@@ -170,7 +170,8 @@ class Acceptor :
   void processEstablishedConnection(
     int fd,
     const SocketAddress& clientAddr,
-    std::chrono::steady_clock::time_point acceptTime
+    std::chrono::steady_clock::time_point acceptTime,
+    TransportInfo& tinfo
   ) noexcept;
 
   /**
@@ -178,6 +179,14 @@ class Acceptor :
    * a connection's transaction count reaches zero, the connection closes.
    */
   void drainAllConnections();
+
+  /**
+   * Drop all connections.
+   *
+   * forceStop() schedules dropAllConnections() to be called in the acceptor's
+   * thread.
+   */
+  void dropAllConnections();
 
  protected:
   friend class AcceptorHandshakeHelper;
@@ -236,14 +245,6 @@ class Acceptor :
       const AsyncSSLSocket* sock,
       std::chrono::milliseconds acceptLatency,
       SSLErrorEnum error) noexcept {}
-
-  /**
-   * Drop all connections.
-   *
-   * forceStop() schedules dropAllConnections() to be called in the acceptor's
-   * thread.
-   */
-  void dropAllConnections();
 
  protected:
 
@@ -339,7 +340,7 @@ class Acceptor :
 
 class AcceptorFactory {
  public:
-  virtual std::shared_ptr<Acceptor> newAcceptor() = 0;
+  virtual std::shared_ptr<Acceptor> newAcceptor(folly::EventBase*) = 0;
   virtual ~AcceptorFactory() = default;
 };
 

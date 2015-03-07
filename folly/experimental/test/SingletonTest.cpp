@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -139,9 +139,9 @@ TEST(Singleton, DirectUsage) {
   EXPECT_EQ(vault.registeredSingletonCount(), 2);
   vault.registrationComplete();
 
-  EXPECT_NE(watchdog.ptr(), nullptr);
-  EXPECT_EQ(watchdog.ptr(), SingletonDirectUsage<Watchdog>::get());
-  EXPECT_NE(watchdog.ptr(), named_watchdog.ptr());
+  EXPECT_NE(watchdog.get(), nullptr);
+  EXPECT_EQ(watchdog.get(), SingletonDirectUsage<Watchdog>::get());
+  EXPECT_NE(watchdog.get(), named_watchdog.get());
   EXPECT_EQ(watchdog->livingWatchdogCount(), 2);
   EXPECT_EQ((*watchdog).livingWatchdogCount(), 2);
 
@@ -172,19 +172,19 @@ TEST(Singleton, NamedUsage) {
 
   // Verify our three singletons are distinct and non-nullptr.
   Watchdog* s1 = SingletonNamedUsage<Watchdog, Watchdog1>::get();
-  EXPECT_EQ(s1, watchdog1_singleton.ptr());
+  EXPECT_EQ(s1, watchdog1_singleton.get());
   Watchdog* s2 = SingletonNamedUsage<Watchdog, Watchdog2>::get();
-  EXPECT_EQ(s2, watchdog2_singleton.ptr());
+  EXPECT_EQ(s2, watchdog2_singleton.get());
   EXPECT_NE(s1, s2);
   Watchdog* s3 = SingletonNamedUsage<Watchdog, Watchdog3>::get();
-  EXPECT_EQ(s3, watchdog3_singleton.ptr());
+  EXPECT_EQ(s3, watchdog3_singleton.get());
   EXPECT_NE(s3, s1);
   EXPECT_NE(s3, s2);
 
   // Verify the "default" singleton is the same as the DefaultTag-tagged
   // singleton.
   Watchdog* s4 = SingletonNamedUsage<Watchdog>::get();
-  EXPECT_EQ(s4, watchdog3_singleton.ptr());
+  EXPECT_EQ(s4, watchdog3_singleton.get());
 
   vault.destroyInstances();
 }
@@ -231,6 +231,16 @@ template <typename T, typename Tag = detail::DefaultTag>
 using SingletonSharedPtrUsage = Singleton <T, Tag, SharedPtrUsageTag>;
 
 TEST(Singleton, SharedPtrUsage) {
+  struct WatchdogHolder {
+    ~WatchdogHolder() {
+      if (watchdog) {
+        LOG(ERROR) << "The following log message with stack trace is expected";
+      }
+    }
+
+    std::shared_ptr<Watchdog> watchdog;
+  };
+
   auto& vault = *SingletonVault::singleton<SharedPtrUsageTag>();
 
   EXPECT_EQ(vault.registeredSingletonCount(), 0);
@@ -242,7 +252,14 @@ TEST(Singleton, SharedPtrUsage) {
 
   struct ATag {};
   SingletonSharedPtrUsage<Watchdog, ATag> named_watchdog_singleton;
+
+  SingletonSharedPtrUsage<WatchdogHolder> watchdog_holder_singleton;
+
   vault.registrationComplete();
+
+  // Initilize holder singleton first, so that it's the last one to be
+  // destroyed.
+  watchdog_holder_singleton.get();
 
   Watchdog* s1 = SingletonSharedPtrUsage<Watchdog>::get();
   EXPECT_NE(s1, nullptr);
@@ -253,9 +270,12 @@ TEST(Singleton, SharedPtrUsage) {
   EXPECT_EQ(s1, s2);
 
   auto weak_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
+
   auto shared_s1 = weak_s1.lock();
   EXPECT_EQ(shared_s1.get(), s1);
   EXPECT_EQ(shared_s1.use_count(), 2);
+
+  auto old_serial = shared_s1->serial_number;
 
   {
     auto named_weak_s1 =
@@ -263,6 +283,10 @@ TEST(Singleton, SharedPtrUsage) {
     auto locked = named_weak_s1.lock();
     EXPECT_NE(locked.get(), shared_s1.get());
   }
+
+  // We should release externally locked shared_ptr, otherwise it will be
+  // considered a leak
+  watchdog_holder_singleton->watchdog = std::move(shared_s1);
 
   LOG(ERROR) << "The following log message regarding shared_ptr is expected";
   {
@@ -272,24 +296,9 @@ TEST(Singleton, SharedPtrUsage) {
     EXPECT_TRUE(duration > std::chrono::seconds{4} &&
                 duration < std::chrono::seconds{6});
   }
-  EXPECT_EQ(vault.registeredSingletonCount(), 3);
+  EXPECT_EQ(vault.registeredSingletonCount(), 4);
   EXPECT_EQ(vault.livingSingletonCount(), 0);
 
-  EXPECT_EQ(shared_s1.use_count(), 1);
-  EXPECT_EQ(shared_s1.get(), s1);
-
-  auto locked_s1 = weak_s1.lock();
-  EXPECT_EQ(locked_s1.get(), s1);
-  EXPECT_EQ(shared_s1.use_count(), 2);
-  LOG(ERROR) << "The following log message with stack trace is expected";
-  locked_s1.reset();
-  EXPECT_EQ(shared_s1.use_count(), 1);
-
-  // Track serial number rather than pointer since the memory could be
-  // re-used when we create new_s1.
-  auto old_serial = shared_s1->serial_number;
-  shared_s1.reset();
-  locked_s1 = weak_s1.lock();
   EXPECT_TRUE(weak_s1.expired());
 
   auto empty_s1 = SingletonSharedPtrUsage<Watchdog>::get_weak();
@@ -299,6 +308,8 @@ TEST(Singleton, SharedPtrUsage) {
 
   // Singleton should be re-created only after reenableInstances() was called.
   Watchdog* new_s1 = SingletonSharedPtrUsage<Watchdog>::get();
+  // Track serial number rather than pointer since the memory could be
+  // re-used when we create new_s1.
   EXPECT_NE(new_s1->serial_number, old_serial);
 
   auto new_s1_weak = SingletonSharedPtrUsage<Watchdog>::get_weak();
@@ -499,23 +510,21 @@ struct BenchmarkTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonBenchmark = Singleton <T, Tag, BenchmarkTag>;
 
-SingletonBenchmark<BenchmarkSingleton> benchmark_singleton;
+struct GetTag{};
+struct GetWeakTag{};
 
-BENCHMARK_RELATIVE(FollySingletonSlow, n) {
+SingletonBenchmark<BenchmarkSingleton, GetTag> benchmark_singleton_get;
+SingletonBenchmark<BenchmarkSingleton, GetWeakTag> benchmark_singleton_get_weak;
+
+BENCHMARK_RELATIVE(FollySingleton, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(SingletonBenchmark<BenchmarkSingleton>::get());
+    doNotOptimizeAway(SingletonBenchmark<BenchmarkSingleton, GetTag>::get());
   }
 }
 
-BENCHMARK_RELATIVE(FollySingletonFast, n) {
+BENCHMARK_RELATIVE(FollySingletonWeak, n) {
   for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(benchmark_singleton.get_fast());
-  }
-}
-
-BENCHMARK_RELATIVE(FollySingletonFastWeak, n) {
-  for (size_t i = 0; i < n; ++i) {
-    benchmark_singleton.get_weak_fast();
+    SingletonBenchmark<BenchmarkSingleton, GetWeakTag>::get_weak();
   }
 }
 

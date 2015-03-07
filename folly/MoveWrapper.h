@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,9 @@ class MoveWrapper {
   const T* operator->() const { return &value; }
         T* operator->()       { return &value; }
 
+  /// move the value out (sugar for std::move(*moveWrapper))
+  T&& move() { return std::move(value); }
+
   // If you want these you're probably doing it wrong, though they'd be
   // easy enough to implement
   MoveWrapper& operator=(MoveWrapper const&) = delete;
@@ -63,9 +66,12 @@ class MoveWrapper {
   mutable T value;
 };
 
-template <class T>
-MoveWrapper<T> makeMoveWrapper(T&& t) {
-    return MoveWrapper<T>(std::forward<T>(t));
+/// Make a MoveWrapper from the argument. Because the name "makeMoveWrapper"
+/// is already quite transparent in its intent, this will work for lvalues as
+/// if you had wrapped them in std::move.
+template <class T, class T0 = typename std::remove_reference<T>::type>
+MoveWrapper<T0> makeMoveWrapper(T&& t) {
+  return MoveWrapper<T0>(std::forward<T0>(t));
 }
 
 } // namespace

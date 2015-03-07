@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -306,7 +306,8 @@ struct AccessSpreader {
 
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
-  /// is in range.
+  /// is in range.  We use a member for this instead of a static so that
+  /// this fetch preloads a prefix the stripeByCpu array
   Getcpu::Func getcpuFunc_;
 
   /// A precomputed map from cpu to stripe.  Rather than add a layer of

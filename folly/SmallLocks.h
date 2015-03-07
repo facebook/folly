@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@
 #include <cstdlib>
 #include <pthread.h>
 #include <mutex>
+#include <atomic>
 
 #include <glog/logging.h>
 #include <folly/Portability.h>
@@ -102,29 +103,13 @@ namespace detail {
  */
 struct MicroSpinLock {
   enum { FREE = 0, LOCKED = 1 };
+  // lock_ can't be std::atomic<> to preserve POD-ness.
   uint8_t lock_;
-
-  /*
-   * Atomically move lock_ from "compare" to "newval". Return boolean
-   * success. Do not play on or around.
-   */
-  bool cas(uint8_t compare, uint8_t newVal) {
-    bool out;
-    bool memVal; // only set if the cmpxchg fails
-    asm volatile("lock; cmpxchgb %[newVal], (%[lockPtr]);"
-                 "setz %[output];"
-                 : [output] "=r" (out), "=a" (memVal)
-                 : "a" (compare), // cmpxchgb constrains this to be in %al
-                   [newVal] "q" (newVal),  // Needs to be byte-accessible
-                   [lockPtr] "r" (&lock_)
-                 : "memory", "flags");
-    return out;
-  }
 
   // Initialize this MSL.  It is unnecessary to call this if you
   // zero-initialize the MicroSpinLock.
   void init() {
-    lock_ = FREE;
+    payload()->store(FREE);
   }
 
   bool try_lock() {
@@ -134,18 +119,27 @@ struct MicroSpinLock {
   void lock() {
     detail::Sleeper sleeper;
     do {
-      while (lock_ != FREE) {
-        asm volatile("" : : : "memory");
+      while (payload()->load() != FREE) {
         sleeper.wait();
       }
     } while (!try_lock());
-    DCHECK(lock_ == LOCKED);
+    DCHECK(payload()->load() == LOCKED);
   }
 
   void unlock() {
-    CHECK(lock_ == LOCKED);
-    asm volatile("" : : : "memory");
-    lock_ = FREE; // release barrier on x86
+    CHECK(payload()->load() == LOCKED);
+    payload()->store(FREE, std::memory_order_release);
+  }
+
+ private:
+  std::atomic<uint8_t>* payload() {
+    return reinterpret_cast<std::atomic<uint8_t>*>(&this->lock_);
+  }
+
+  bool cas(uint8_t compare, uint8_t newVal) {
+    return std::atomic_compare_exchange_strong_explicit(payload(), &compare, newVal,
+                                                        std::memory_order_acquire,
+                                                        std::memory_order_relaxed);
   }
 };
 

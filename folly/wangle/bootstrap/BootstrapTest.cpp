@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <boost/thread.hpp>
 
 using namespace folly::wangle;
 using namespace folly;
@@ -35,7 +36,7 @@ class TestClientPipelineFactory : public PipelineFactory<Pipeline> {
     CHECK(sock->good());
 
     // We probably aren't connected immedately, check after a small delay
-    EventBaseManager::get()->getEventBase()->runAfterDelay([sock](){
+    EventBaseManager::get()->getEventBase()->tryRunAfterDelay([sock](){
       CHECK(sock->readable());
     }, 100);
     return nullptr;
@@ -226,4 +227,12 @@ TEST(Bootstrap, SharedThreadPool) {
 
   server.stop();
   CHECK(factory->pipelines == 5);
+}
+
+TEST(Bootstrap, ExistingSocket) {
+  TestServer server;
+  auto factory = std::make_shared<TestPipelineFactory>();
+  server.childPipeline(factory);
+  folly::AsyncServerSocket::UniquePtr socket(new AsyncServerSocket);
+  server.bind(std::move(socket));
 }

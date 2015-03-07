@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -297,7 +297,10 @@ template<class Value>
 class Empty;
 
 template<class Value>
-class Just;
+class SingleReference;
+
+template<class Value>
+class SingleCopy;
 
 /*
  * Operators
@@ -482,14 +485,19 @@ Yield generator(Source&& source) {
 /*
  * empty() - for producing empty sequences.
  */
-template<class Value>
+template <class Value>
 detail::Empty<Value> empty() {
   return {};
 }
 
-template<class Value>
-detail::Just<Value> just(Value value) {
-  return detail::Just<Value>(std::move(value));
+template <
+    class Value,
+    class Just = typename std::conditional<
+        std::is_reference<Value>::value,
+        detail::SingleReference<typename std::remove_reference<Value>::type>,
+        detail::SingleCopy<Value>>::type>
+Just just(Value&& value) {
+  return Just(std::forward<Value>(value));
 }
 
 /*

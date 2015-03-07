@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,5 +141,42 @@ void FormatArg::validate(Type type) const {
     break;
   }
 }
+
+namespace detail {
+void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
+  uint32_t remaining_digits = *end_buffer - start_buffer;
+  uint32_t separator_size = (remaining_digits - 1) / 3;
+  uint32_t result_size = remaining_digits + separator_size;
+  *end_buffer = *end_buffer + separator_size;
+
+  // get the end of the new string with the separators
+  uint32_t buffer_write_index = result_size - 1;
+  uint32_t buffer_read_index = remaining_digits - 1;
+  start_buffer[buffer_write_index + 1] = 0;
+
+  uint32_t count = 0;
+  bool done = false;
+  uint32_t next_group_size = 3;
+
+  while (!done) {
+    uint32_t current_group_size = std::max<uint32_t>(1,
+      std::min<uint32_t>(remaining_digits, next_group_size));
+
+    // write out the current group's digits to the buffer index
+    for (uint32_t i = 0; i < current_group_size; i++) {
+      start_buffer[buffer_write_index--] = start_buffer[buffer_read_index--];
+    }
+
+    // if not finished, write the separator before the next group
+    if (buffer_write_index < buffer_write_index + 1) {
+      start_buffer[buffer_write_index--] = ',';
+    } else {
+      done = true;
+    }
+
+    remaining_digits -= current_group_size;
+  }
+}
+} // detail
 
 }  // namespace folly

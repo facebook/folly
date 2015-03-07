@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -136,7 +136,7 @@ class Sub : public Operator<Sub<Sink>> {
             class Source,
             class Result =
                 decltype(std::declval<Sink>().compose(std::declval<Source>())),
-            class Just = Just<typename std::decay<Result>::type>>
+            class Just = SingleCopy<typename std::decay<Result>::type>>
   Just compose(const GenImpl<Value, Source>& source) const {
     return Just(source | sink_);
   }

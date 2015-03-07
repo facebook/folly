@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
 #include <fstream>
-#include <mutex>
 
 #include <folly/Conv.h>
 #include <folly/Exception.h>
@@ -37,7 +36,7 @@ static CacheLocality getSystemLocalityInfo() {
   try {
     return CacheLocality::readFromSysfs();
   } catch (...) {
-    // fall through to below if something goes wrong
+    // keep trying
   }
 #endif
 
@@ -202,87 +201,29 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 
 ////////////// Getcpu
 
-#ifdef CLOCK_REALTIME_COARSE
-
-static std::once_flag gVdsoInitOnce;
-static Getcpu::Func gVdsoGetcpuFunc;
-static int64_t (*gVdsoGettimeNsFunc)(clockid_t);
-
-static int cachingVdsoGetcpu(unsigned* cpu, unsigned* unused_node,
-                             void* unused_tcache) {
-  static __thread unsigned tls_cpu;
-  static __thread int64_t tls_lastContextSwitchNanos;
-
-  auto lastContextSwitchNanos = gVdsoGettimeNsFunc(CLOCK_REALTIME_COARSE);
-  if (tls_lastContextSwitchNanos != lastContextSwitchNanos) {
-    int rv = gVdsoGetcpuFunc(&tls_cpu, nullptr, nullptr);
-    if (rv != 0) {
-      return rv;
-    }
-    tls_lastContextSwitchNanos = lastContextSwitchNanos;
+/// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
+/// on failure
+static Getcpu::Func loadVdsoGetcpu() {
+  void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
+  if (h == nullptr) {
+    return nullptr;
   }
-  *cpu = tls_cpu;
-  return 0;
+
+  auto func = Getcpu::Func(dlsym(h, "__vdso_getcpu"));
+  if (func == nullptr) {
+    // technically a null result could either be a failure or a successful
+    // lookup of a symbol with the null value, but the second can't actually
+    // happen for this symbol.  No point holding the handle forever if
+    // we don't need the code
+    dlclose(h);
+  }
+
+  return func;
 }
-#endif
 
-/// Resolves the dynamically loaded symbol __vdso_getcpu and
-/// __vdso_clock_gettime_ns, returning a pair of nulls on failure.  Does a
-/// little bit of probing to make sure that the __vdso_clock_gettime_ns
-/// function isn't using the slow fallback path.
 Getcpu::Func Getcpu::vdsoFunc() {
-#ifdef CLOCK_REALTIME_COARSE
-  std::call_once(gVdsoInitOnce, []{
-    void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
-
-    typedef int64_t (*GettimeNsFunc)(clockid_t);
-
-    auto getcpuFunc = Getcpu::Func(
-        !h ? nullptr : dlsym(h, "__vdso_getcpu"));
-    auto gettimeNsFunc = GettimeNsFunc(
-        !h ? nullptr : dlsym(h, "__vdso_clock_gettime_ns"));
-
-    bool coarseGettimeDetected = false;
-    if (gettimeNsFunc != nullptr) {
-      // The TLS cache of getcpu results only is an optimization if the
-      // __vdso_clock_gettime_ns implementation is fast and actually
-      // coarse.  The slow fallback implementation is not coarse, so if
-      // we detect a coarse clock we are set.  If CLOCK_REALTIME_COARSE
-      // has the right properties, then so long as there is no context
-      // switch between two calls the returned time will be identical.
-      // Dynamically verify this.  An unlikely context switch while we're
-      // testing can lead to a false negative, but not a false positive,
-      // so we just run the test multiple times.  This ensures that we
-      // will get two calls to gettimeNsFunc in a row with no intervening
-      // context switch.
-      auto prev = gettimeNsFunc(CLOCK_REALTIME_COARSE);
-      for (int i = 0; i < 10 && !coarseGettimeDetected; ++i) {
-        auto next = gettimeNsFunc(CLOCK_REALTIME_COARSE);
-        coarseGettimeDetected = next == prev;
-        prev = next;
-      }
-    }
-
-    if (getcpuFunc == nullptr || !coarseGettimeDetected) {
-      // technically a null getcpuFunc could either be a failure or
-      // a successful lookup of a symbol with the null value, but the
-      // second can't actually happen for this symbol.  No point holding
-      // the handle forever if we don't need the code
-      if (h) {
-        dlclose(h);
-      }
-    } else {
-      gVdsoGetcpuFunc = getcpuFunc;
-      gVdsoGettimeNsFunc = gettimeNsFunc;
-    }
-  });
-
-  if (gVdsoGetcpuFunc != nullptr) {
-    return cachingVdsoGetcpu;
-  }
-#endif
-
-  return nullptr;
+  static Func func = loadVdsoGetcpu();
+  return func;
 }
 
 /////////////// SequentialThreadId

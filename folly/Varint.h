@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define FOLLY_VARINT_H_
 
 #include <type_traits>
+#include <folly/Conv.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -126,7 +127,8 @@ inline uint64_t decodeVarint(Range<T*>& data) {
     }
     if (p == end) {
       throw std::invalid_argument("Invalid varint value. Too small: " +
-                                  std::to_string(end - begin) + " bytes");
+                                  folly::to<std::string>(end - begin) +
+                                  " bytes");
     }
     val |= static_cast<uint64_t>(*p++) << shift;
   }

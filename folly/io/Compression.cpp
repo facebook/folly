@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,6 +148,8 @@ std::unique_ptr<IOBuf> NoCompressionCodec::doUncompress(
   return data->clone();
 }
 
+#if (FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA)
+
 namespace {
 
 void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
@@ -172,6 +174,8 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 }
 
 }  // namespace
+
+#endif  // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
 
 #if FOLLY_HAVE_LIBLZ4
 
@@ -915,55 +919,55 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 
 #endif  // FOLLY_HAVE_LIBLZMA
 
-typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
-
-CodecFactory gCodecFactories[
-    static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
-  nullptr,  // USER_DEFINED
-  NoCompressionCodec::create,
-
-#if FOLLY_HAVE_LIBLZ4
-  LZ4Codec::create,
-#else
-  nullptr,
-#endif
-
-#if FOLLY_HAVE_LIBSNAPPY
-  SnappyCodec::create,
-#else
-  nullptr,
-#endif
-
-#if FOLLY_HAVE_LIBZ
-  ZlibCodec::create,
-#else
-  nullptr,
-#endif
-
-#if FOLLY_HAVE_LIBLZ4
-  LZ4Codec::create,
-#else
-  nullptr,
-#endif
-
-#if FOLLY_HAVE_LIBLZMA
-  LZMA2Codec::create,
-  LZMA2Codec::create,
-#else
-  nullptr,
-  nullptr,
-#endif
-};
-
 }  // namespace
 
 std::unique_ptr<Codec> getCodec(CodecType type, int level) {
+  typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
+
+  static CodecFactory codecFactories[
+    static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
+    nullptr,  // USER_DEFINED
+    NoCompressionCodec::create,
+
+#if FOLLY_HAVE_LIBLZ4
+    LZ4Codec::create,
+#else
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBSNAPPY
+    SnappyCodec::create,
+#else
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBZ
+    ZlibCodec::create,
+#else
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBLZ4
+    LZ4Codec::create,
+#else
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBLZMA
+    LZMA2Codec::create,
+    LZMA2Codec::create,
+#else
+    nullptr,
+    nullptr,
+#endif
+  };
+
   size_t idx = static_cast<size_t>(type);
   if (idx >= static_cast<size_t>(CodecType::NUM_CODEC_TYPES)) {
     throw std::invalid_argument(to<std::string>(
         "Compression type ", idx, " not supported"));
   }
-  auto factory = gCodecFactories[idx];
+  auto factory = codecFactories[idx];
   if (!factory) {
     throw std::invalid_argument(to<std::string>(
         "Compression type ", idx, " not supported"));

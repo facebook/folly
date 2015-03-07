@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ string lorem_ipsum =
 "vulputate quam urna quis eros. Donec vel."
 "\n";
 
-string needle = "commodo";
+const string needle = "commodo";
 
 // legacy implementation
 struct AsciiCaseInsensitiveLegacy {

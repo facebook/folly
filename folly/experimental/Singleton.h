@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,18 +34,9 @@
 // std::weak_ptr<MyExpensiveService> instance =
 //     Singleton<MyExpensiveService>::get_weak();
 //
-// Within same compilation unit you should directly access it by the variable
-// defining the singleton via get_fast()/get_weak_fast(), and even treat that
-// variable like a smart pointer (dereferencing it or using the -> operator):
-//
-// MyExpensiveService* instance = the_singleton.get_fast();
-// or
-// std::weak_ptr<MyExpensiveService> instance = the_singleton.get_weak_fast();
-// or even
-// the_singleton->doSomething();
-//
-// *_fast() accessors are faster than static accessors, and have performance
-// similar to Meyers singletons/static objects.
+// You also can directly access it by the variable defining the
+// singleton rather than via get(), and even treat that variable like
+// a smart pointer (dereferencing it or using the -> operator).
 //
 // Please note, however, that all non-weak_ptr interfaces are
 // inherently subject to races with destruction.  Use responsibly.
@@ -67,9 +58,9 @@
 // folly::Singleton<MyExpensiveService, Tag2> s2();
 // }
 // ...
-// MyExpensiveService* svc_default = s_default.get_fast();
-// MyExpensiveService* svc1 = s1.get_fast();
-// MyExpensiveService* svc2 = s2.get_fast();
+// MyExpensiveService* svc_default = s_default.get();
+// MyExpensiveService* svc1 = s1.get();
+// MyExpensiveService* svc2 = s2.get();
 //
 // By default, the singleton instance is constructed via new and
 // deleted via delete, but this is configurable:
@@ -375,6 +366,13 @@ class SingletonVault {
     return vault;
   }
 
+  typedef std::string(*StackTraceGetterPtr)();
+
+  static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
+    static std::atomic<StackTraceGetterPtr> stackTraceGetterPtr;
+    return stackTraceGetterPtr;
+  }
+
  private:
   template <typename T>
   friend class detail::SingletonHolder;
@@ -441,12 +439,6 @@ class Singleton {
     return getEntry().get();
   }
 
-  // Same as get, but should be preffered to it in the same compilation
-  // unit, where Singleton is registered.
-  T* get_fast() {
-    return entry_.get();
-  }
-
   // If, however, you do need to hold a reference to the specific
   // singleton, you can try to do so with a weak_ptr.  Avoid this when
   // possible but the inability to lock the weak pointer can be a
@@ -455,17 +447,10 @@ class Singleton {
     return getEntry().get_weak();
   }
 
-  // Same as get_weak, but should be preffered to it in the same compilation
-  // unit, where Singleton is registered.
-  std::weak_ptr<T> get_weak_fast() {
-    return entry_.get_weak();
-  }
-
   // Allow the Singleton<t> instance to also retrieve the underlying
   // singleton, if desired.
-  T* ptr() { return get_fast(); }
-  T& operator*() { return *ptr(); }
-  T* operator->() { return ptr(); }
+  T& operator*() { return *get(); }
+  T* operator->() { return get(); }
 
   explicit Singleton(std::nullptr_t _ = nullptr,
                      Singleton::TeardownFunc t = nullptr) :
@@ -473,15 +458,15 @@ class Singleton {
   }
 
   explicit Singleton(Singleton::CreateFunc c,
-                     Singleton::TeardownFunc t = nullptr) : entry_(getEntry()) {
+                     Singleton::TeardownFunc t = nullptr) {
     if (c == nullptr) {
       throw std::logic_error(
         "nullptr_t should be passed if you want T to be default constructed");
     }
 
     auto vault = SingletonVault::singleton<VaultTag>();
-    entry_.registerSingleton(std::move(c), getTeardownFunc(std::move(t)));
-    vault->registerSingleton(&entry_);
+    getEntry().registerSingleton(std::move(c), getTeardownFunc(std::move(t)));
+    vault->registerSingleton(&getEntry());
   }
 
   /**
@@ -525,12 +510,6 @@ class Singleton {
       return t;
     }
   }
-
-  // This is pointing to SingletonHolder paired with this singleton object. This
-  // is never reset, so each SingletonHolder should never be destroyed.
-  // We rely on the fact that Singleton destructor won't reset this pointer, so
-  // it can be "safely" used even after static Singleton object is destroyed.
-  detail::SingletonHolder<T>& entry_;
 };
 
 }

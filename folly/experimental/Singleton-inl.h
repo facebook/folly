@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/symbolizer/Symbolizer.h>
 
 namespace folly {
 
@@ -86,7 +85,7 @@ TypeDescriptor SingletonHolder<T>::type() {
 
 template <typename T>
 bool SingletonHolder<T>::hasLiveInstance() {
-  return state_ == SingletonHolderState::Living;
+  return !instance_weak_.expired();
 }
 
 template <typename T>
@@ -158,23 +157,13 @@ void SingletonHolder<T>::createInstance() {
       if (print_destructor_stack_trace->load()) {
         std::string output = "Singleton " + type_name + " was destroyed.\n";
 
-        // Get and symbolize stack trace
-        constexpr size_t kMaxStackTraceDepth = 100;
-        symbolizer::FrameArray<kMaxStackTraceDepth> addresses;
-        if (!getStackTraceSafe(addresses)) {
+        auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+        auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+        if (stack_trace.empty()) {
           output += "Failed to get destructor stack trace.";
         } else {
           output += "Destructor stack trace:\n";
-
-          constexpr size_t kDefaultCapacity = 500;
-          symbolizer::ElfCache elfCache(kDefaultCapacity);
-
-          symbolizer::Symbolizer symbolizer(&elfCache);
-          symbolizer.symbolize(addresses);
-
-          symbolizer::StringSymbolizePrinter printer;
-          printer.println(addresses);
-          output += printer.str();
+          output += stack_trace;
         }
 
         LOG(ERROR) << output;

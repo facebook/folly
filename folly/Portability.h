@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Facebook, Inc.
+ * Copyright 2015 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,10 @@
 #endif
 
 #include <folly/CPortability.h>
+
+#ifdef __APPLE__
+# include <malloc/malloc.h>
+#endif
 
 #if FOLLY_HAVE_SCHED_H
  #include <sched.h>
@@ -253,6 +257,13 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 // for TARGET_OS_IPHONE
 #ifdef __APPLE__
 #include <TargetConditionals.h>
+#endif
+
+// MacOS doesn't have malloc_usable_size()
+#if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
+inline size_t malloc_usable_size(void* ptr) {
+  return malloc_size(ptr);
+}
 #endif
 
 #endif // FOLLY_PORTABILITY_H_
