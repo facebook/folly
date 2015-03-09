@@ -92,16 +92,18 @@ template <typename T>
 void SingletonHolder<T>::destroyInstance() {
   state_ = SingletonHolderState::Dead;
   instance_.reset();
-  auto wait_result = destroy_baton_->timed_wait(
-    std::chrono::steady_clock::now() + kDestroyWaitTime);
-  if (!wait_result) {
-    print_destructor_stack_trace_->store(true);
-    LOG(ERROR) << "Singleton of type " << type_.name() << " has a "
-               << "living reference at destroyInstances time; beware! Raw "
-               << "pointer is " << instance_ptr_ << ". It is very likely "
-               << "that some other singleton is holding a shared_ptr to it. "
-               << "Make sure dependencies between these singletons are "
-               << "properly defined.";
+  if (destroy_baton_) {
+    auto wait_result = destroy_baton_->timed_wait(
+      std::chrono::steady_clock::now() + kDestroyWaitTime);
+    if (!wait_result) {
+      print_destructor_stack_trace_->store(true);
+      LOG(ERROR) << "Singleton of type " << type_.name() << " has a "
+                 << "living reference at destroyInstances time; beware! Raw "
+                 << "pointer is " << instance_ptr_ << ". It is very likely "
+                 << "that some other singleton is holding a shared_ptr to it. "
+                 << "Make sure dependencies between these singletons are "
+                 << "properly defined.";
+    }
   }
 }
 
