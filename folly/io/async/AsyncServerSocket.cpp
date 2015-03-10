@@ -116,6 +116,8 @@ void AsyncServerSocket::RemoteAcceptor::messageAvailable(
  */
 class AsyncServerSocket::BackoffTimeout : public AsyncTimeout {
  public:
+  // It disallow copy, move, and default ctor
+  BackoffTimeout(BackoffTimeout&&) = delete;
   BackoffTimeout(AsyncServerSocket* socket)
     : AsyncTimeout(socket->getEventBase()),
       socket_(socket) {}
