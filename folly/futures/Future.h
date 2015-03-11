@@ -468,6 +468,7 @@ class Future {
   /// exception)
   Future<bool> willEqual(Future<T>&);
 
+ protected:
   typedef detail::Core<T>* corePtr;
 
   // shared core state object
