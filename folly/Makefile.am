@@ -74,11 +74,12 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/FunctionScheduler.h \
 	experimental/io/FsUtil.h \
+	experimental/JSONSchema.h \
+	experimental/Select64.h \
+	experimental/SharedMutex.h
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
 	experimental/TestUtil.h \
-	experimental/Select64.h \
-	experimental/JSONSchema.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -339,12 +340,13 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
-	experimental/io/FsUtil.cpp \
 	experimental/FunctionScheduler.cpp \
+	experimental/io/FsUtil.cpp \
+	experimental/JSONSchema.cpp \
+	experimental/Select64.cpp \
+	experimental/SharedMutex.cpp
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
-	experimental/Select64.cpp \
-	experimental/JSONSchema.cpp \
 	wangle/acceptor/Acceptor.cpp \
 	wangle/acceptor/ConnectionManager.cpp \
 	wangle/acceptor/LoadShedConfiguration.cpp \
