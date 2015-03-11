@@ -76,7 +76,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/io/FsUtil.h \
 	experimental/JSONSchema.h \
 	experimental/Select64.h \
-	experimental/SharedMutex.h
+	experimental/SharedMutex.h \
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
 	experimental/TestUtil.h \
@@ -344,7 +344,7 @@ libfolly_la_SOURCES = \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \
 	experimental/Select64.cpp \
-	experimental/SharedMutex.cpp
+	experimental/SharedMutex.cpp \
 	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
 	wangle/acceptor/Acceptor.cpp \
