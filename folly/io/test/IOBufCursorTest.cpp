@@ -263,9 +263,11 @@ TEST(IOBuf, pushCursorData) {
 
   //write 20 bytes to the buffer chain
   RWPrivateCursor wcursor(iobuf1.get());
+  EXPECT_FALSE(wcursor.isAtEnd());
   wcursor.writeBE<uint64_t>(1);
   wcursor.writeBE<uint64_t>(10);
   wcursor.writeBE<uint32_t>(20);
+  EXPECT_TRUE(wcursor.isAtEnd());
 
   // create a read buffer for the buffer chain
   Cursor rcursor(iobuf1.get());
@@ -320,6 +322,7 @@ TEST(IOBuf, Gather) {
   cursor.gatherAtMost(10);
   EXPECT_EQ(8, cursor.length());
   EXPECT_EQ(8, cursor.totalLength());
+  EXPECT_FALSE(cursor.isAtEnd());
   EXPECT_EQ("lo world",
             folly::StringPiece(reinterpret_cast<const char*>(cursor.data()),
                                cursor.length()));
@@ -504,10 +507,13 @@ TEST(IOBuf, CursorOperators) {
 
     Cursor curs1(chain1.get());
     EXPECT_EQ(0, curs1 - chain1.get());
+    EXPECT_FALSE(curs1.isAtEnd());
     curs1.skip(3);
     EXPECT_EQ(3, curs1 - chain1.get());
+    EXPECT_FALSE(curs1.isAtEnd());
     curs1.skip(7);
     EXPECT_EQ(10, curs1 - chain1.get());
+    EXPECT_TRUE(curs1.isAtEnd());
 
     Cursor curs2(chain1.get());
     EXPECT_EQ(0, curs2 - chain1.get());
@@ -550,6 +556,26 @@ TEST(IOBuf, CursorOperators) {
     curs2.skip(7);
     EXPECT_EQ(2, curs1 - curs2);
     EXPECT_THROW(curs2 - curs1, std::out_of_range);
+  }
+
+  // Test isAtEnd() with empty buffers at the end of a chain
+  {
+    auto iobuf1 = IOBuf::create(20);
+    iobuf1->append(15);
+    iobuf1->trimStart(5);
+
+    Cursor c(iobuf1.get());
+    EXPECT_FALSE(c.isAtEnd());
+    c.skip(10);
+    EXPECT_TRUE(c.isAtEnd());
+
+    iobuf1->prependChain(IOBuf::create(10));
+    iobuf1->prependChain(IOBuf::create(10));
+    EXPECT_TRUE(c.isAtEnd());
+    iobuf1->prev()->append(5);
+    EXPECT_FALSE(c.isAtEnd());
+    c.skip(5);
+    EXPECT_TRUE(c.isAtEnd());
   }
 }
 
