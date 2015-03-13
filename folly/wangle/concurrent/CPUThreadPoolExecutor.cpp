@@ -57,6 +57,18 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
               CPUThreadPoolExecutor::kDefaultMaxQueueSize),
           std::move(threadFactory)) {}
 
+CPUThreadPoolExecutor::CPUThreadPoolExecutor(
+    size_t numThreads,
+    uint32_t numPriorities,
+    size_t maxQueueSize,
+    std::shared_ptr<ThreadFactory> threadFactory)
+    : CPUThreadPoolExecutor(
+          numThreads,
+          folly::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
+              numPriorities,
+              maxQueueSize),
+          std::move(threadFactory)) {}
+
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   stop();
   CHECK(threadsToStop_ == 0);

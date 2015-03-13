@@ -42,6 +42,13 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
+  explicit CPUThreadPoolExecutor(
+      size_t numThreads,
+      uint32_t numPriorities,
+      size_t maxQueueSize,
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("CPUThreadPool"));
+
   ~CPUThreadPoolExecutor();
 
   void add(Func func) override;
