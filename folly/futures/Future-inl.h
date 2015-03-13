@@ -20,6 +20,7 @@
 #include <thread>
 
 #include <folly/Baton.h>
+#include <folly/Optional.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
@@ -341,6 +342,15 @@ Try<T>& Future<T>::getTry() {
   throwIfInvalid();
 
   return core_->getTry();
+}
+
+template <class T>
+Optional<Try<T>> Future<T>::poll() {
+  Optional<Try<T>> o;
+  if (core_->ready()) {
+    o = std::move(core_->getTry());
+  }
+  return o;
 }
 
 template <class T>

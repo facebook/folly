@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <folly/Optional.h>
 #include <folly/MoveWrapper.h>
 #include <folly/futures/Deprecated.h>
 #include <folly/futures/DrivableExecutor.h>
@@ -252,6 +253,11 @@ class Future {
 
   /** A reference to the Try of the value */
   Try<T>& getTry();
+
+  /// If the promise has been fulfilled, return an Optional with the Try<T>.
+  /// Otherwise return an empty Optional.
+  /// Note that this moves the Try<T> out.
+  Optional<Try<T>> poll();
 
   /// Block until the future is fulfilled. Returns the value (moved out), or
   /// throws the exception. The future must not already have a callback.
