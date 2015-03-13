@@ -885,6 +885,24 @@ void IOBuf::appendToIov(folly::fbvector<struct iovec>* iov) const {
   } while (p != this);
 }
 
+size_t IOBuf::fillIov(struct iovec* iov, size_t len) const {
+  IOBuf const* p = this;
+  size_t i = 0;
+  while (i < len) {
+    // some code can get confused by empty iovs, so skip them
+    if (p->length() > 0) {
+      iov[i].iov_base = const_cast<uint8_t*>(p->data());
+      iov[i].iov_len = p->length();
+      i++;
+    }
+    p = p->next();
+    if (p == this) {
+      return i;
+    }
+  }
+  return 0;
+}
+
 size_t IOBufHash::operator()(const IOBuf& buf) const {
   folly::hash::SpookyHashV2 hasher;
   hasher.Init(0, 0);

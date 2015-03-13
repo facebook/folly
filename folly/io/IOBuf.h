@@ -1052,6 +1052,18 @@ class IOBuf {
    */
   void appendToIov(folly::fbvector<struct iovec>* iov) const;
 
+  /**
+   * Fill an iovec array with the IOBuf data.
+   *
+   * Returns the number of iovec filled. If there are more buffer than
+   * iovec, returns 0. This version is suitable to use with stack iovec
+   * arrays.
+   *
+   * Naturally, the filled iovec data will be invalid if you modify the
+   * buffer chain.
+   */
+  size_t fillIov(struct iovec* iov, size_t len) const;
+
   /*
    * Overridden operator new and delete.
    * These perform specialized memory management to help support

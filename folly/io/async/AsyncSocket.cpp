@@ -622,21 +622,8 @@ void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,
 
 void AsyncSocket::writeChainImpl(WriteCallback* callback, iovec* vec,
     size_t count, unique_ptr<IOBuf>&& buf, WriteFlags flags) {
-  const IOBuf* head = buf.get();
-  const IOBuf* next = head;
-  unsigned i = 0;
-  do {
-    vec[i].iov_base = const_cast<uint8_t *>(next->data());
-    vec[i].iov_len = next->length();
-    // IOBuf can get confused by empty iovec buffers, so increment the
-    // output pointer only if the iovec buffer is non-empty.  We could
-    // end the loop with i < count, but that's ok.
-    if (vec[i].iov_len != 0) {
-      i++;
-    }
-    next = next->next();
-  } while (next != head);
-  writeImpl(callback, vec, i, std::move(buf), flags);
+  size_t veclen = buf->fillIov(vec, count);
+  writeImpl(callback, vec, veclen, std::move(buf), flags);
 }
 
 void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,

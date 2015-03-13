@@ -17,6 +17,7 @@
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <folly/io/async/EventBase.h>
+#include <folly/Likely.h>
 
 #include <errno.h>
 #include <unistd.h>
@@ -130,19 +131,32 @@ ssize_t AsyncUDPSocket::write(const folly::SocketAddress& address,
                                const std::unique_ptr<folly::IOBuf>& buf) {
   CHECK_NE(-1, fd_) << "Socket not yet bound";
 
-  // XXX: Use `sendmsg` instead of coalescing here
-  buf->coalesce();
+  // UDP's typical MTU size is 1500, so high number of buffers
+  //   really do not make sense. Optimze for buffer chains with
+  //   buffers less than 16, which is the highest I can think of
+  //   for a real use case.
+  iovec vec[16];
+  size_t iovec_len = buf->fillIov(vec, sizeof(vec)/sizeof(vec[0]));
+  if (UNLIKELY(iovec_len == 0)) {
+    buf->coalesce();
+    vec[0].iov_base = const_cast<uint8_t*>(buf->data());
+    vec[0].iov_len = buf->length();
+    iovec_len = 1;
+  }
 
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
-  return ::sendto(fd_,
-                  buf->data(),
-                  buf->length(),
-                  MSG_DONTWAIT,
-                  saddr,
-                  address.getActualSize());
+  struct msghdr msg;
+  msg.msg_name = reinterpret_cast<void*>(&addrStorage);
+  msg.msg_namelen = address.getActualSize();
+  msg.msg_iov = vec;
+  msg.msg_iovlen = iovec_len;
+  msg.msg_control = nullptr;
+  msg.msg_controllen = 0;
+  msg.msg_flags = 0;
+
+  return ::sendmsg(fd_, &msg, 0);
 }
 
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
