@@ -264,8 +264,8 @@ void AsyncServerSocket::useExistingSockets(const std::vector<int>& fds) {
     address.setFromLocalAddress(fd);
 
     setupSocket(fd);
-    sockets_.push_back(
-      ServerEventHandler(eventBase_, fd, this, address.getFamily()));
+    sockets_.emplace_back(
+      eventBase_, fd, this, address.getFamily());
     sockets_.back().changeHandlerFD(fd);
   }
 }
@@ -292,8 +292,8 @@ void AsyncServerSocket::bindSocket(
 
   // If we just created this socket, update the EventHandler and set socket_
   if (!isExistingSocket) {
-    sockets_.push_back(
-      ServerEventHandler(eventBase_, fd, this, address.getFamily()));
+    sockets_.emplace_back(
+      eventBase_, fd, this, address.getFamily());
   }
 }
 
@@ -387,8 +387,8 @@ void AsyncServerSocket::bind(uint16_t port) {
     SocketAddress address;
     address.setFromLocalAddress(s);
 
-    sockets_.push_back(
-      ServerEventHandler(eventBase_, s, this, address.getFamily()));
+    sockets_.emplace_back(
+      eventBase_, s, this, address.getFamily());
 
     // Bind to the socket
     if (::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
@@ -506,7 +506,7 @@ void AsyncServerSocket::addAcceptCallback(AcceptCallback *callback,
     eventBase = eventBase_; // Run in AsyncServerSocket's eventbase
   }
 
-  callbacks_.push_back(CallbackInfo(callback, eventBase));
+  callbacks_.emplace_back(callback, eventBase);
 
   // Start the remote acceptor.
   //
