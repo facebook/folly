@@ -59,6 +59,8 @@ namespace folly {
 class AsyncServerSocket : public DelayedDestruction {
  public:
   typedef std::unique_ptr<AsyncServerSocket, Destructor> UniquePtr;
+  // Disallow copy, move, and default construction.
+  AsyncServerSocket(AsyncServerSocket&&) = delete;
 
   class AcceptCallback {
    public:
