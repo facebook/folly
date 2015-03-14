@@ -73,12 +73,13 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   std::unique_ptr<char[]> heap_buffer(new char[bytes_used + 1]);
   int final_bytes_used =
       stringAppendfImplHelper(heap_buffer.get(), bytes_used + 1, format, args);
-  // The second call should require the same length, which is 1 less
-  // than the buffer size (we don't keep the trailing \0 byte in our
-  // output string).
-  CHECK(bytes_used == final_bytes_used);
+  // The second call can take fewer bytes if, for example, we were printing a
+  // string buffer with null-terminating char using a width specifier -
+  // vsnprintf("%.*s", buf.size(), buf)
+  CHECK(bytes_used >= final_bytes_used);
 
-  output.append(heap_buffer.get(), bytes_used);
+  // We don't keep the trailing '\0' in our output string
+  output.append(heap_buffer.get(), final_bytes_used);
 }
 
 } // anon namespace
