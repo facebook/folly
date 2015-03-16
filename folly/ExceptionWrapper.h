@@ -342,6 +342,11 @@ exception_wrapper make_exception_wrapper(Args&&... args) {
   return ew;
 }
 
+// For consistency with exceptionStr() functions in String.h
+inline fbstring exceptionStr(const exception_wrapper& ew) {
+  return ew.what();
+}
+
 /*
  * try_and_catch is a simple replacement for try {} catch(){} that allows you to
  * specify which derived exceptions you would like to catch and store in an

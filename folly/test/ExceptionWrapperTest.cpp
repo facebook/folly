@@ -221,3 +221,9 @@ TEST(ExceptionWrapper, non_std_exception_test) {
     EXPECT_EQ(i, expected);
   }
 }
+
+
+TEST(ExceptionWrapper, exceptionStr) {
+  auto ew = make_exception_wrapper<std::runtime_error>("argh");
+  EXPECT_EQ("std::runtime_error: argh", exceptionStr(ew));
+}
