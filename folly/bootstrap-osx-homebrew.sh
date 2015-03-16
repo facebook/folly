@@ -37,7 +37,7 @@ autoreconf -i
 ./configure CPPFLAGS=-I"$DOUBLE_CONVERSION_HOME/src" LDFLAGS=-L"$DOUBLE_CONVERSION_HOME"
 
 pushd test
-test -d gtest-1.7.0 || {
+test -e gtest-1.7.0.zip || {
     curl -O https://googletest.googlecode.com/files/gtest-1.7.0.zip
     unzip gtest-1.7.0.zip
 }
