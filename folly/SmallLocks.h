@@ -111,44 +111,6 @@ struct MicroSpinLock {
   uint8_t lock_;
 
 
-  /*
-   * Atomically move lock_ from "compare" to "newval". Return boolean
-   * success. Do not play on or around.
-   */
-  bool cas(uint8_t compare, uint8_t newVal) {
-    bool out = false;
-    bool memVal; // only set if the cmpxchg fails
-#if FOLLY_X64
-    asm volatile("lock; cmpxchgb %[newVal], (%[lockPtr]);"
-                 "setz %[output];"
-                 : [output] "=r" (out), "=a" (memVal)
-                 : "a" (compare), // cmpxchgb constrains this to be in %al
-                   [newVal] "q" (newVal),  // Needs to be byte-accessible
-                   [lockPtr] "r" (&lock_)
-                 : "memory", "flags");
-#elif FOLLY_PPC64
-    asm volatile (
-        "    eieio                        \n" // barrier
-        "    lbarx %[memVal],0,%[lockPtr] \n" // load and reserve
-        "    cmpw  %[memVal],%[compare]   \n" // compare lock val
-        "    bne- 0f                      \n" // if not equal, exit
-        "    stbcx. %[newVal],0,%[lockPtr]\n" // store new lock value
-        "    bne 0f                       \n" // reservation lost
-        "    ori %[output],%[output],1    \n" // else set output to 1
-        "    isync                        \n"
-        "0:                               \n"
-        : [output] "+r" (out),
-          [memVal] "+r" (memVal)
-        : [newVal] "r" (newVal),
-          [lockPtr] "r"(&lock_),
-          [compare] "r" (compare)
-        : "cr0", "memory");
-
-
-#endif
-    return out;
-  }
-
   // Initialize this MSL.  It is unnecessary to call this if you
   // zero-initialize the MicroSpinLock.
   void init() {
