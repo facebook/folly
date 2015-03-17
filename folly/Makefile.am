@@ -79,7 +79,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/SharedMutex.h \
 	experimental/Singleton.h \
 	experimental/Singleton-inl.h \
-	experimental/StringKeyedCommon.h
+	experimental/StringKeyedCommon.h \
 	experimental/StringKeyedUnorderedMap.h \
 	experimental/StringKeyedUnorderedSet.h \
 	experimental/TestUtil.h \
