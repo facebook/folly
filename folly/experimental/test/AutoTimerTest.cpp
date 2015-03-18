@@ -74,3 +74,14 @@ TEST(TestAutoTimer, HandleRealTimer) {
   t.log("First message");
   t.log("Second message");
 }
+
+TEST(TestAutoTimer, HandleMinLogTime) {
+  StubClock::t = 1;
+  AutoTimer<StubLogger, StubClock> timer;
+  timer.setMinTimeToLog(3);
+  StubClock::t = 3;
+  // only 2 "seconds" have passed, so this shouldn't log
+  StubLogger::t = 0;
+  ASSERT_EQ(2.0, timer.log("foo"));
+  ASSERT_EQ(0, StubLogger::t);
+}

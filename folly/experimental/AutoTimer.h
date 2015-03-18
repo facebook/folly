@@ -59,7 +59,8 @@ template<
 public:
   explicit AutoTimer(StringPiece msg = "")
     : destructionMessage_(msg.str()),
-      start_(Clock::now()) {
+      start_(Clock::now()),
+      minTimeToLog_(0.0) {
   }
 
   // Automatically generate a log message using to<std::string>. Makes it
@@ -68,7 +69,14 @@ public:
   template<typename... Args>
   explicit AutoTimer(Args&&... args)
     : destructionMessage_(to<std::string>(std::forward<Args>(args)...)),
-      start_(Clock::now()) {
+      start_(Clock::now()),
+      minTimeToLog_(0.0) {
+  }
+
+  // We don't expose this in the constructor because it creates ambiguity with
+  // the variadic template constructor.
+  void setMinTimeToLog(double t) {
+    minTimeToLog_ = t;
   }
 
   // It doesn't really make sense to copy/move an AutoTimer
@@ -104,17 +112,20 @@ private:
     double duration = std::chrono::duration_cast<std::chrono::duration<double>>(
       now - start_
     ).count();
-    Logger()(msg, duration);
+    if (duration >= minTimeToLog_) {
+      Logger()(msg, duration);
+    }
     start_ = Clock::now(); // Don't measure logging time
     return duration;
   }
 
   const std::string destructionMessage_;
   std::chrono::time_point<Clock> start_;
+  double minTimeToLog_;
 };
 
 template<GoogleLoggerStyle Style>
-struct GoogleLogger {
+struct GoogleLogger final {
   void operator()(StringPiece msg, double sec) const {
     if (msg.empty()) {
       return;
