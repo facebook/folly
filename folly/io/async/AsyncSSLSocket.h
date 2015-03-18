@@ -308,7 +308,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                const folly::SocketAddress& address,
                int timeout = 0,
                const OptionMap &options = emptyOptionMap,
-               const folly::SocketAddress& bindAddr = anyAddress)
+               const folly::SocketAddress& bindAddr = anyAddress())
                noexcept override;
 
   using AsyncSocket::connect;

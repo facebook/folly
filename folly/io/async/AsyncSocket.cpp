@@ -37,8 +37,6 @@ namespace folly {
 
 // static members initializers
 const AsyncSocket::OptionMap AsyncSocket::emptyOptionMap;
-const folly::SocketAddress AsyncSocket::anyAddress =
-  folly::SocketAddress("0.0.0.0", 0);
 
 const AsyncSocketException socketClosedLocallyEx(
     AsyncSocketException::END_OF_FILE, "socket closed locally");
@@ -273,6 +271,12 @@ int AsyncSocket::detachFd() {
   return fd;
 }
 
+const folly::SocketAddress& AsyncSocket::anyAddress() {
+  static const folly::SocketAddress anyAddress =
+    folly::SocketAddress("0.0.0.0", 0);
+  return anyAddress;
+}
+
 void AsyncSocket::setShutdownSocketSet(ShutdownSocketSet* newSS) {
   if (shutdownSocketSet_ == newSS) {
     return;
@@ -371,7 +375,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
             << ", fd=" << fd_ << ", host=" << address.describe().c_str();
 
     // bind the socket
-    if (bindAddr != anyAddress) {
+    if (bindAddr != anyAddress()) {
       int one = 1;
       if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
         doClose();

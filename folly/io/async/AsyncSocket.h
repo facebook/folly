@@ -238,7 +238,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   typedef std::map<OptionKey, int> OptionMap;
 
   static const OptionMap emptyOptionMap;
-  static const folly::SocketAddress anyAddress;
+  static const folly::SocketAddress& anyAddress();
 
   /**
    * Initiate a connection.
@@ -254,7 +254,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                const folly::SocketAddress& address,
                int timeout = 0,
                const OptionMap &options = emptyOptionMap,
-               const folly::SocketAddress& bindAddr = anyAddress
+               const folly::SocketAddress& bindAddr = anyAddress()
                ) noexcept;
   void connect(ConnectCallback* callback, const std::string& ip, uint16_t port,
                int timeout = 00,
