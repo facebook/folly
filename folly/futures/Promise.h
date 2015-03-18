@@ -36,8 +36,8 @@ public:
   Promise& operator=(Promise const&) = delete;
 
   // movable
-  Promise(Promise<T>&&);
-  Promise& operator=(Promise<T>&&);
+  Promise(Promise<T>&&) noexcept;
+  Promise& operator=(Promise<T>&&) noexcept;
 
   /** Return a Future tied to the shared core state. This can be called only
     once, thereafter Future already retrieved exception will be raised. */

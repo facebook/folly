@@ -33,12 +33,12 @@ namespace detail {
 }
 
 template <class T>
-Future<T>::Future(Future<T>&& other) noexcept : core_(nullptr) {
-  *this = std::move(other);
+Future<T>::Future(Future<T>&& other) noexcept : core_(other.core_) {
+  other.core_ = nullptr;
 }
 
 template <class T>
-Future<T>& Future<T>::operator=(Future<T>&& other) {
+Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
   std::swap(core_, other.core_);
   return *this;
 }

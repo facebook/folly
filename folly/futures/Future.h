@@ -193,7 +193,7 @@ class Future {
 
   // movable
   Future(Future&&) noexcept;
-  Future& operator=(Future&&);
+  Future& operator=(Future&&) noexcept;
 
   // makeFuture
   template <class F = T>
