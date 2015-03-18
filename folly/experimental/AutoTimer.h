@@ -94,7 +94,7 @@ public:
   template<typename... Args>
   double logFormat(Args&&... args) {
     auto now = Clock::now();
-    return logImpl(now, format(std::forward<Args>(args)...));
+    return logImpl(now, format(std::forward<Args>(args)...).str());
   }
 
 private:
