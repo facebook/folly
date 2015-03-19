@@ -127,13 +127,14 @@ TEST(Wangle, ClientServerTest) {
   server.bind(port);
 
   // client
-  ClientBootstrap<Pipeline> client;
+  auto client = std::make_shared<ClientBootstrap<Pipeline>>();
   ClientServiceFactory<Pipeline, std::string, std::string> serviceFactory;
-  client.pipelineFactory(
+  client->pipelineFactory(
     std::make_shared<ClientPipelineFactory<std::string, std::string>>());
   SocketAddress addr("127.0.0.1", port);
-  client.connect(addr);
-  auto service = serviceFactory(&client).value();
+  client->connect(addr);
+  auto service = std::shared_ptr<Service<std::string, std::string>>(
+    serviceFactory(client.get()).value());
   auto rep = (*service)("test");
 
   rep.then([&](std::string value) {
@@ -143,6 +144,7 @@ TEST(Wangle, ClientServerTest) {
   });
   EventBaseManager::get()->getEventBase()->loopForever();
   server.stop();
+  client.reset();
 }
 
 class AppendFilter : public Filter<std::string, std::string> {

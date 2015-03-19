@@ -45,7 +45,9 @@ class ServerAcceptor : public Acceptor {
     }
     void notifyPendingShutdown() {}
     void closeWhenIdle() {}
-    void dropConnection() {}
+    void dropConnection() {
+      delete this;
+    }
     void dumpConnectionState(uint8_t loglevel) {}
    private:
     PipelinePtr pipeline_;
