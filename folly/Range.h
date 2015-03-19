@@ -426,6 +426,11 @@ public:
     return b_[i];
   }
 
+  // Do NOT use this function, which was left behind for backwards
+  // compatibility.  Use SpookyHashV2 instead -- it is faster, and produces
+  // a 64-bit hash, which means dramatically fewer collisions in large maps.
+  // (The above advice does not apply if you are targeting a 32-bit system.)
+  //
   // Works only for Range<const char*> and Range<char*>
   uint32_t hash() const {
     // Taken from fbi/nstring.h:
@@ -916,6 +921,7 @@ operator>=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
 
+// Do NOT use this, use SpookyHashV2 instead, see commment on hash() above.
 struct StringPieceHash {
   std::size_t operator()(const StringPiece str) const {
     return static_cast<std::size_t>(str.hash());
