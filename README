@@ -1,4 +1,4 @@
-Folly: Facebook Open-source LibrarY
+Folly: Facebook Open-source Library
 -----------------------------------
 
 Folly is an open-source C++ library developed and used at Facebook.
