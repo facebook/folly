@@ -26,6 +26,29 @@ constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
 
 }
 
+namespace {
+
+struct FatalHelper {
+  ~FatalHelper() {
+    if (!leakedSingletons_.empty()) {
+      std::string leakedTypes;
+      for (const auto& singleton : leakedSingletons_) {
+        leakedTypes += "\t" + singleton.name() + "\n";
+      }
+      LOG(DFATAL) << "Singletons of the following types had living references "
+                  << "after destroyInstances was finished:\n" << leakedTypes
+                  << "beware! It is very likely that those singleton instances "
+                  << "are leaked.";
+    }
+  }
+
+  std::vector<detail::TypeDescriptor> leakedSingletons_;
+};
+
+FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
+
+}
+
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::destroyInstances() {
@@ -55,10 +78,7 @@ void SingletonVault::destroyInstances() {
         continue;
       }
 
-      LOG(DFATAL) << "Singleton of type " << singleton->type().name() << " has "
-                  << "a living reference after destroyInstances was finished;"
-                  << "beware! It is very likely that this singleton instance "
-                  << "will be leaked.";
+      fatalHelper.leakedSingletons_.push_back(singleton->type());
     }
   }
 
