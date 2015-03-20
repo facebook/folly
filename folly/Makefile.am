@@ -148,6 +148,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncUDPSocket.h \
 	io/async/AsyncServerSocket.h \
 	io/async/AsyncSocket.h \
+	io/async/AsyncSocketBase.h \
 	io/async/AsyncSSLSocket.h \
 	io/async/AsyncSocketException.h \
 	io/async/DelayedDestruction.h \
@@ -234,6 +235,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/acceptor/TransportInfo.h \
 	wangle/bootstrap/ServerBootstrap.h \
 	wangle/bootstrap/ServerBootstrap-inl.h \
+	wangle/bootstrap/ServerSocketFactory.h \
 	wangle/bootstrap/ClientBootstrap.h \
 	wangle/channel/AsyncSocketHandler.h \
 	wangle/channel/ChannelHandler.h \

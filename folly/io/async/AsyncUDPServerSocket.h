@@ -36,7 +36,8 @@ namespace folly {
  *       more than 1 packet will not work because they will end up with
  *       different event base to process.
  */
-class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback {
+class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
+                           , public AsyncSocketBase {
  public:
   class Callback {
    public:
@@ -93,6 +94,10 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback {
     return socket_->address();
   }
 
+  void getAddress(SocketAddress* a) const {
+    *a = address();
+  }
+
   /**
    * Add a listener to the round robin list
    */
@@ -122,6 +127,10 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback {
   void close() {
     CHECK(socket_) << "Need to bind before closing";
     socket_.reset();
+  }
+
+  EventBase* getEventBase() const {
+    return evb_;
   }
 
  private:

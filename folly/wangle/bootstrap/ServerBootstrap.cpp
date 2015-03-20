@@ -15,6 +15,7 @@
  */
 #include <folly/wangle/bootstrap/ServerBootstrap.h>
 #include <folly/wangle/concurrent/NamedThreadFactory.h>
+#include <folly/wangle/channel/ChannelHandler.h>
 #include <folly/io/async/EventBaseManager.h>
 
 namespace folly {
@@ -25,8 +26,9 @@ void ServerWorkerPool::threadStarted(
   workers_.insert({h, worker});
 
   for(auto socket : *sockets_) {
-    socket->getEventBase()->runInEventBaseThread([this, worker, socket](){
-      socket->addAcceptCallback(worker.get(), worker->getEventBase());
+    socket->getEventBase()->runInEventBaseThreadAndWait([this, worker, socket](){
+        socketFactory_->addAcceptCB(
+          socket, worker.get(), worker->getEventBase());
     });
   }
 }
@@ -38,22 +40,22 @@ void ServerWorkerPool::threadStopped(
 
   for (auto& socket : *sockets_) {
     folly::Baton<> barrier;
-    socket->getEventBase()->runInEventBaseThread([&]() {
-      socket->removeAcceptCallback(worker->second.get(), nullptr);
+    socket->getEventBase()->runInEventBaseThreadAndWait([&]() {
+      socketFactory_->removeAcceptCB(
+        socket, worker->second.get(), nullptr);
       barrier.post();
     });
     barrier.wait();
   }
 
-  CHECK(worker->second->getEventBase() != nullptr);
-  CHECK(!worker->second->getEventBase()->isInEventBaseThread());
-  folly::Baton<> barrier;
-  worker->second->getEventBase()->runInEventBaseThread([&]() {
-      worker->second->dropAllConnections();
-      barrier.post();
-  });
+  if (!worker->second->getEventBase()->isInEventBaseThread()) {
+    worker->second->getEventBase()->runInEventBaseThreadAndWait([=]() {
+        worker->second->dropAllConnections();
+      });
+  } else {
+    worker->second->dropAllConnections();
+  }
 
-  barrier.wait();
   workers_.erase(worker);
 }
 

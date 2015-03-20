@@ -21,6 +21,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/SocketAddress.h>
 #include <memory>
@@ -56,7 +57,8 @@ namespace folly {
  * modify the AsyncServerSocket state may only be performed from the primary
  * EventBase thread.
  */
-class AsyncServerSocket : public DelayedDestruction {
+class AsyncServerSocket : public DelayedDestruction
+                        , public AsyncSocketBase {
  public:
   typedef std::unique_ptr<AsyncServerSocket, Destructor> UniquePtr;
   // Disallow copy, move, and default construction.

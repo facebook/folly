@@ -20,6 +20,8 @@
 #include <sys/uio.h>
 
 #include <folly/io/async/DelayedDestruction.h>
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/AsyncSocketBase.h>
 
 namespace folly {
 
@@ -111,7 +113,7 @@ inline bool isSet(WriteFlags a, WriteFlags b) {
  * timeout, since most callers want to give up if the remote end stops
  * responding and no further progress can be made sending the data.
  */
-class AsyncTransport : public DelayedDestruction {
+class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
  public:
   typedef std::unique_ptr<AsyncTransport, Destructor> UniquePtr;
 
@@ -257,14 +259,6 @@ class AsyncTransport : public DelayedDestruction {
   virtual bool isDetachable() const = 0;
 
   /**
-   * Get the EventBase used by this transport.
-   *
-   * Returns nullptr if this transport is not currently attached to a
-   * EventBase.
-   */
-  virtual EventBase* getEventBase() const = 0;
-
-  /**
    * Set the send timeout.
    *
    * If write requests do not make any progress for more than the specified
@@ -295,6 +289,10 @@ class AsyncTransport : public DelayedDestruction {
    *                 SocketAddress.
    */
   virtual void getLocalAddress(SocketAddress* address) const = 0;
+
+  virtual void getAddress(SocketAddress* address) const {
+    getLocalAddress(address);
+  }
 
   /**
    * Get the address of the remote endpoint to which this transport is

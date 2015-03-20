@@ -20,6 +20,7 @@
 #include <event.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
+#include <folly/io/async/AsyncUDPServerSocket.h>
 
 namespace folly { namespace wangle {
 class ManagedConnection;
@@ -46,7 +47,8 @@ class SSLContextManager;
  */
 class Acceptor :
   public folly::AsyncServerSocket::AcceptCallback,
-  public folly::wangle::ConnectionManager::Callback {
+  public folly::wangle::ConnectionManager::Callback,
+  public AsyncUDPServerSocket::Callback  {
  public:
 
   enum class State : uint32_t {
@@ -228,6 +230,10 @@ class Acceptor :
       const folly::SocketAddress* address,
       const std::string& nextProtocolName,
       const TransportInfo& tinfo) = 0;
+
+  void onListenStarted() noexcept {}
+  void onListenStopped() noexcept {}
+  void onDataAvailable(const SocketAddress&, std::unique_ptr<IOBuf>, bool) noexcept {}
 
   virtual AsyncSocket::UniquePtr makeNewAsyncSocket(EventBase* base, int fd) {
     return AsyncSocket::UniquePtr(new AsyncSocket(base, fd));
