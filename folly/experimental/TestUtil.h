@@ -88,6 +88,22 @@ class TemporaryDirectory {
   fs::path path_;
 };
 
+/**
+ * Changes into a temporary directory, and deletes it with all its contents
+ * upon destruction, also changing back to the original working directory.
+ */
+class ChangeToTempDir {
+public:
+  ChangeToTempDir();
+  ~ChangeToTempDir();
+
+  const fs::path& path() const { return dir_.path(); }
+
+private:
+  fs::path initialPath_;
+  TemporaryDirectory dir_;
+};
+
 }  // namespace test
 }  // namespace folly
 

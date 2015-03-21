@@ -100,6 +100,15 @@ TEST(TemporaryDirectory, DeleteOnDestruction) {
   testTemporaryDirectory(TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION);
 }
 
+TEST(ChangeToTempDir, ChangeDir) {
+  auto pwd1 = fs::current_path();
+  {
+    ChangeToTempDir d;
+    EXPECT_NE(pwd1, fs::current_path());
+  }
+  EXPECT_EQ(pwd1, fs::current_path());
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

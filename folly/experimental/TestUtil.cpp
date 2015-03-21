@@ -107,5 +107,15 @@ TemporaryDirectory::~TemporaryDirectory() {
   }
 }
 
+ChangeToTempDir::ChangeToTempDir() : initialPath_(fs::current_path()) {
+  std::string p = dir_.path().native();
+  ::chdir(p.c_str());
+}
+
+ChangeToTempDir::~ChangeToTempDir() {
+  std::string p = initialPath_.native();
+  ::chdir(p.c_str());
+}
+
 }  // namespace test
 }  // namespace folly
