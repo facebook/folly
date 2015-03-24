@@ -82,11 +82,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     }
   }
 
-  void bind(const folly::SocketAddress& address) {
+  void bind(const folly::SocketAddress& addy) {
     CHECK(!socket_);
 
     socket_ = folly::make_unique<AsyncUDPSocket>(evb_);
-    socket_->bind(address);
+    socket_->bind(addy);
   }
 
   folly::SocketAddress address() const {

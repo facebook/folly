@@ -42,8 +42,14 @@ template <typename Pipeline>
 class ServerBootstrap {
  public:
 
+  ServerBootstrap(const ServerBootstrap& that) = delete;
+  ServerBootstrap(ServerBootstrap&& that) = default;
+
+  ServerBootstrap() {}
+
   ~ServerBootstrap() {
     stop();
+    join();
   }
 
   typedef wangle::ChannelPipeline<
@@ -222,7 +228,7 @@ class ServerBootstrap {
         new_sockets.push_back(socket);
         sock_lock.unlock();
 
-        if (port == 0) {
+        if (port <= 0) {
           socket->getAddress(&address);
           port = address.getPort();
         }
@@ -278,7 +284,9 @@ class ServerBootstrap {
       barrier.wait();
     }
     sockets_.clear();
+  }
 
+  void join() {
     if (acceptor_group_) {
       acceptor_group_->join();
     }
