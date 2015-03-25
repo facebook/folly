@@ -622,6 +622,32 @@ Future<std::vector<std::pair<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 whenN(InputIterator first, InputIterator last, size_t n);
 
+template <typename F, typename T, typename ItT>
+using MaybeTryArg = typename std::conditional<
+  detail::callableWith<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type;
+
+template<typename F, typename T, typename Arg>
+using isFutureResult = isFuture<typename std::result_of<F(T&&, Arg&&)>::type>;
+
+/** repeatedly calls func on every result, e.g.
+    reduce(reduce(reduce(T initial, result of first), result of second), ...)
+
+    The type of the final result is a Future of the type of the initial value.
+
+    Func can either return a T, or a Future<T>
+  */
+template <class It, class T, class F,
+          class ItT = typename std::iterator_traits<It>::value_type::value_type,
+          class Arg = MaybeTryArg<F, T, ItT>>
+typename std::enable_if<!isFutureResult<F, T, Arg>::value, Future<T>>::type
+reduce(It first, It last, T initial, F func);
+
+template <class It, class T, class F,
+          class ItT = typename std::iterator_traits<It>::value_type::value_type,
+          class Arg = MaybeTryArg<F, T, ItT>>
+typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
+reduce(It first, It last, T initial, F func);
+
 } // folly
 
 #include <folly/futures/Future-inl.h>

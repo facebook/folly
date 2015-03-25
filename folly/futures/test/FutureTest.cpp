@@ -1442,3 +1442,79 @@ TEST(Future, Unwrap_FutureNotReady) {
   ASSERT_TRUE(unwrapped.isReady());
   EXPECT_EQ(5484, unwrapped.value());
 }
+
+TEST(Reduce, Basic) {
+  auto makeFutures = [](int count) {
+    std::vector<Future<int>> fs;
+    for (int i = 1; i <= count; ++i) {
+      fs.emplace_back(makeFuture(i));
+    }
+    return fs;
+  };
+
+  // Empty (Try)
+  {
+    auto fs = makeFutures(0);
+
+    Future<double> f1 = reduce(fs.begin(), fs.end(), 1.2,
+      [](double a, Try<int>&& b){
+        return a + *b + 0.1;
+      });
+    EXPECT_EQ(1.2, f1.get());
+  }
+
+  // One (Try)
+  {
+    auto fs = makeFutures(1);
+
+    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+      [](double a, Try<int>&& b){
+        return a + *b + 0.1;
+      });
+    EXPECT_EQ(1.1, f1.get());
+  }
+
+  // Returning values (Try)
+  {
+    auto fs = makeFutures(3);
+
+    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+      [](double a, Try<int>&& b){
+        return a + *b + 0.1;
+      });
+    EXPECT_EQ(6.3, f1.get());
+  }
+
+  // Returning values
+  {
+    auto fs = makeFutures(3);
+
+    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+      [](double a, int&& b){
+        return a + b + 0.1;
+      });
+    EXPECT_EQ(6.3, f1.get());
+  }
+
+  // Returning futures (Try)
+  {
+    auto fs = makeFutures(3);
+
+    Future<double> f2 = reduce(fs.begin(), fs.end(), 0.0,
+      [](double a, Try<int>&& b){
+        return makeFuture<double>(a + *b + 0.1);
+      });
+    EXPECT_EQ(6.3, f2.get());
+  }
+
+  // Returning futures
+  {
+    auto fs = makeFutures(3);
+
+    Future<double> f2 = reduce(fs.begin(), fs.end(), 0.0,
+      [](double a, int&& b){
+        return makeFuture<double>(a + b + 0.1);
+      });
+    EXPECT_EQ(6.3, f2.get());
+  }
+}

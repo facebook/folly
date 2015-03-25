@@ -589,6 +589,53 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
+template <class It, class T, class F, class ItT, class Arg>
+typename std::enable_if<!isFutureResult<F, T, Arg>::value, Future<T>>::type
+reduce(It first, It last, T initial, F func) {
+  if (first == last) {
+    return makeFuture(std::move(initial));
+  }
+
+  typedef isTry<Arg> IsTry;
+
+  return whenAll(first, last)
+    .then([initial, func](std::vector<Try<ItT>>& vals) mutable {
+      for (auto& val : vals) {
+        initial = func(std::move(initial),
+                       // Either return a ItT&& or a Try<ItT>&& depending
+                       // on the type of the argument of func.
+                       val.template get<IsTry::value, Arg&&>());
+      }
+      return initial;
+    });
+}
+
+template <class It, class T, class F, class ItT, class Arg>
+typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
+reduce(It first, It last, T initial, F func) {
+  if (first == last) {
+    return makeFuture(std::move(initial));
+  }
+
+  typedef isTry<Arg> IsTry;
+
+  auto f = first->then([initial, func](Try<ItT>& head) mutable {
+    return func(std::move(initial),
+                head.template get<IsTry::value, Arg&&>());
+  });
+
+  for (++first; first != last; ++first) {
+    f = whenAll(f, *first).then([func](std::tuple<Try<T>, Try<ItT>>& t) {
+      return func(std::move(std::get<0>(t).value()),
+                  // Either return a ItT&& or a Try<ItT>&& depending
+                  // on the type of the argument of func.
+                  std::get<1>(t).template get<IsTry::value, Arg&&>());
+    });
+  }
+
+  return f;
+}
+
 template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
