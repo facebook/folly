@@ -48,6 +48,10 @@ class TemporaryFile {
                          bool closeOnDestruction = true);
   ~TemporaryFile();
 
+  // Movable, but not copiable
+  TemporaryFile(TemporaryFile&&) = default;
+  TemporaryFile& operator=(TemporaryFile&&) = default;
+
   int fd() const { return fd_; }
   const fs::path& path() const;
 
@@ -81,6 +85,10 @@ class TemporaryDirectory {
                               Scope scope = Scope::DELETE_ON_DESTRUCTION);
   ~TemporaryDirectory();
 
+  // Movable, but not copiable
+  TemporaryDirectory(TemporaryDirectory&&) = default;
+  TemporaryDirectory& operator=(TemporaryDirectory&&) = default;
+
   const fs::path& path() const { return path_; }
 
  private:
@@ -96,6 +104,10 @@ class ChangeToTempDir {
 public:
   ChangeToTempDir();
   ~ChangeToTempDir();
+
+  // Movable, but not copiable
+  ChangeToTempDir(ChangeToTempDir&&) = default;
+  ChangeToTempDir& operator=(ChangeToTempDir&&) = default;
 
   const fs::path& path() const { return dir_.path(); }
 
