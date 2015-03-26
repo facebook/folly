@@ -139,6 +139,58 @@ namespace detail {
   bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target);
 }  // namespace detail
 
+/**
+ * Use these patterns together with CaptureFD and EXPECT_PCRE_MATCH() to
+ * test for the presence (or absence) of log lines at a particular level:
+ *
+ *   CaptureFD stderr(2);
+ *   LOG(INFO) << "All is well";
+ *   EXPECT_NO_PCRE_MATCH(glogErrOrWarnPattern(), stderr.readIncremental());
+ *   LOG(ERROR) << "Uh-oh";
+ *   EXPECT_PCRE_MATCH(glogErrorPattern(), stderr.readIncremental());
+ */
+inline std::string glogErrorPattern() { return ".*(^|\n)E[0-9].*"; }
+inline std::string glogWarningPattern() { return ".*(^|\n)W[0-9].*"; }
+// Error OR warning
+inline std::string glogErrOrWarnPattern() { return ".*(^|\n)[EW][0-9].*"; }
+
+/**
+ * Temporarily capture a file descriptor by redirecting it into a file.
+ * You can consume its output either all-at-once or incrementally.
+ * Great for testing logging (see also glog*Pattern()).
+ */
+class CaptureFD {
+public:
+  explicit CaptureFD(int fd);
+  ~CaptureFD();
+
+  /**
+   * Restore the captured FD to its original state. It can be useful to do
+   * this before the destructor so that you can read() the captured data and
+   * log about it to the formerly captured stderr or stdout.
+   */
+  void release();
+
+  /**
+   * Reads the whole file into a string, but does not remove the redirect.
+   */
+  std::string read();
+
+  /**
+   * Read any bytes that were appended to the file since the last
+   * readIncremental.  Great for testing line-by-line output.
+   */
+  std::string readIncremental();
+
+private:
+  TemporaryFile file_;
+
+  int fd_;
+  int oldFDCopy_;  // equal to fd_ after restore()
+
+  off_t readOffset_;  // for incremental reading
+};
+
 }  // namespace test
 }  // namespace folly
 

@@ -115,6 +115,26 @@ TEST(PCREPatternMatch, Simple) {
   EXPECT_NO_PCRE_MATCH(".*ac.*", "gabca");
 }
 
+TEST(CaptureFD, GlogPatterns) {
+  CaptureFD stderr(2);
+  LOG(INFO) << "All is well";
+  EXPECT_NO_PCRE_MATCH(glogErrOrWarnPattern(), stderr.readIncremental());
+  {
+    LOG(ERROR) << "Uh-oh";
+    auto s = stderr.readIncremental();
+    EXPECT_PCRE_MATCH(glogErrorPattern(), s);
+    EXPECT_NO_PCRE_MATCH(glogWarningPattern(), s);
+    EXPECT_PCRE_MATCH(glogErrOrWarnPattern(), s);
+  }
+  {
+    LOG(WARNING) << "Oops";
+    auto s = stderr.readIncremental();
+    EXPECT_NO_PCRE_MATCH(glogErrorPattern(), s);
+    EXPECT_PCRE_MATCH(glogWarningPattern(), s);
+    EXPECT_PCRE_MATCH(glogErrOrWarnPattern(), s);
+  }
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
