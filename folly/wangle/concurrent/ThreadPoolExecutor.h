@@ -174,12 +174,24 @@ class ThreadPoolExecutor : public virtual Executor {
   class ThreadList {
    public:
     void add(const ThreadPtr& state) {
-      auto it = std::lower_bound(vec_.begin(), vec_.end(), state, compare);
+      auto it = std::lower_bound(vec_.begin(), vec_.end(), state,
+          // compare method is a static method of class
+          // and therefore cannot be inlined by compiler
+          // as a template predicate of the STL algorithm
+          // but wrapped up with the lambda function (lambda will be inlined)
+          // compiler can inline compare method as well
+          [&](const ThreadPtr& ts1, const ThreadPtr& ts2) -> bool { // inline
+            return compare(ts1, ts2);
+          });
       vec_.insert(it, state);
     }
 
     void remove(const ThreadPtr& state) {
-      auto itPair = std::equal_range(vec_.begin(), vec_.end(), state, compare);
+      auto itPair = std::equal_range(vec_.begin(), vec_.end(), state,
+          // the same as above
+          [&](const ThreadPtr& ts1, const ThreadPtr& ts2) -> bool { // inline
+            return compare(ts1, ts2);
+          });
       CHECK(itPair.first != vec_.end());
       CHECK(std::next(itPair.first) == itPair.second);
       vec_.erase(itPair.first);
