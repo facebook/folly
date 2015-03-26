@@ -207,10 +207,8 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   // removeAcceptCallback().
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
-  for (std::vector<CallbackInfo>::iterator it = callbacksCopy.begin();
-       it != callbacksCopy.end();
-       ++it) {
-    it->consumer->stop(it->eventBase, it->callback);
+  for (auto&& call : callbacksCopy) {
+    call.consumer->stop(call.eventBase, call.callback);
   }
 
   return result;
@@ -726,8 +724,8 @@ void AsyncServerSocket::handlerReady(
 
     std::chrono::time_point<std::chrono::steady_clock> nowMs =
       std::chrono::steady_clock::now();
-    int64_t timeSinceLastAccept = std::max(
-      int64_t(0),
+    auto timeSinceLastAccept = std::max(
+      decltype(nowMs.time_since_epoch().count()){0},
       nowMs.time_since_epoch().count() -
       lastAccepTimestamp_.time_since_epoch().count());
     lastAccepTimestamp_ = nowMs;
