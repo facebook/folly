@@ -116,6 +116,29 @@ private:
   TemporaryDirectory dir_;
 };
 
+/**
+ * Easy PCRE regex matching. Note that pattern must match the ENTIRE target,
+ * so use .* at the start and end of the pattern, as appropriate.  See
+ * http://regex101.com/ for a PCRE simulator.
+ */
+#define EXPECT_PCRE_MATCH(pattern_stringpiece, target_stringpiece) \
+  EXPECT_PRED2( \
+    ::folly::test::detail::hasPCREPatternMatch, \
+    pattern_stringpiece, \
+    target_stringpiece \
+  )
+#define EXPECT_NO_PCRE_MATCH(pattern_stringpiece, target_stringpiece) \
+  EXPECT_PRED2( \
+    ::folly::test::detail::hasNoPCREPatternMatch, \
+    pattern_stringpiece, \
+    target_stringpiece \
+  )
+
+namespace detail {
+  bool hasPCREPatternMatch(StringPiece pattern, StringPiece target);
+  bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target);
+}  // namespace detail
+
 }  // namespace test
 }  // namespace folly
 

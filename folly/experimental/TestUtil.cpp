@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <boost/regex.hpp>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 
@@ -41,7 +42,7 @@ fs::path generateUniquePath(fs::path path, StringPiece namePrefix) {
   return path;
 }
 
-}  // namespce
+}  // namespace
 
 TemporaryFile::TemporaryFile(StringPiece namePrefix,
                              fs::path dir,
@@ -116,6 +117,22 @@ ChangeToTempDir::~ChangeToTempDir() {
   std::string p = initialPath_.native();
   ::chdir(p.c_str());
 }
+
+namespace detail {
+
+bool hasPCREPatternMatch(StringPiece pattern, StringPiece target) {
+  return boost::regex_match(
+    target.begin(),
+    target.end(),
+    boost::regex(pattern.begin(), pattern.end())
+  );
+}
+
+bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target) {
+  return !hasPCREPatternMatch(pattern, target);
+}
+
+}  // namespace detail
 
 }  // namespace test
 }  // namespace folly

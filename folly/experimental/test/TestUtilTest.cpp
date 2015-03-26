@@ -109,6 +109,12 @@ TEST(ChangeToTempDir, ChangeDir) {
   EXPECT_EQ(pwd1, fs::current_path());
 }
 
+TEST(PCREPatternMatch, Simple) {
+  EXPECT_PCRE_MATCH(".*a.c.*", "gabca");
+  EXPECT_NO_PCRE_MATCH("a.c", "gabca");
+  EXPECT_NO_PCRE_MATCH(".*ac.*", "gabca");
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
