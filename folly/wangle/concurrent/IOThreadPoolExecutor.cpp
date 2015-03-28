@@ -18,7 +18,6 @@
 
 #include <folly/MoveWrapper.h>
 #include <glog/logging.h>
-#include <folly/io/async/EventBaseManager.h>
 
 #include <folly/detail/MemoryIdler.h>
 
@@ -65,9 +64,11 @@ class MemoryIdlerTimeout
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
     size_t numThreads,
-    std::shared_ptr<ThreadFactory> threadFactory)
+    std::shared_ptr<ThreadFactory> threadFactory,
+    EventBaseManager* ebm)
   : ThreadPoolExecutor(numThreads, std::move(threadFactory)),
-    nextThread_(0) {
+    nextThread_(0),
+    eventBaseManager_(ebm) {
   addThreads(numThreads);
   CHECK(threadList_.get().size() == numThreads);
 }
@@ -135,8 +136,7 @@ IOThreadPoolExecutor::makeThread() {
 
 void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
   const auto ioThread = std::static_pointer_cast<IOThread>(thread);
-  ioThread->eventBase =
-    folly::EventBaseManager::get()->getEventBase();
+  ioThread->eventBase = eventBaseManager_->getEventBase();
   thisThread_.reset(new std::shared_ptr<IOThread>(ioThread));
 
   auto idler = new MemoryIdlerTimeout(ioThread->eventBase);

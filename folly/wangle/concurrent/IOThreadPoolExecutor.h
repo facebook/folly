@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseManager.h>
 #include <folly/wangle/concurrent/IOExecutor.h>
 #include <folly/wangle/concurrent/ThreadPoolExecutor.h>
 
@@ -29,7 +29,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   explicit IOThreadPoolExecutor(
       size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory =
-          std::make_shared<NamedThreadFactory>("IOThreadPool"));
+          std::make_shared<NamedThreadFactory>("IOThreadPool"),
+      EventBaseManager* ebm = folly::EventBaseManager::get());
 
   ~IOThreadPoolExecutor();
 
@@ -62,6 +63,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   size_t nextThread_;
   ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
+  EventBaseManager* eventBaseManager_;
 };
 
 }} // folly::wangle
