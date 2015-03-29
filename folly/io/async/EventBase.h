@@ -584,8 +584,11 @@ class EventBase : private boost::noncopyable,
   // appropriate client-provided Cob
   class CobTimeout : public AsyncTimeout {
    public:
+    // It disallows copy, move, and default ctor
+    CobTimeout(CobTimeout&&) = delete;
+    
     CobTimeout(EventBase* b, const Cob& c, TimeoutManager::InternalEnum in)
-        : AsyncTimeout(b, in), cob_(c) {}
+        : AsyncTimeout{b, in}, cob_{c} {}
 
     virtual void timeoutExpired() noexcept;
 
