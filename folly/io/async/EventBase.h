@@ -57,6 +57,9 @@ class EventBaseObserver {
 // request via RequestContext. See Request.h for that mechanism.
 class RequestEventBase : public RequestData {
  public:
+  // It disallows copy, move, and default ctor
+  RequestEventBase(RequestEventBase&&) = delete;
+  
   static EventBase* get() {
     auto data = dynamic_cast<RequestEventBase*>(
         RequestContext::get()->getContextData(kContextDataName));
@@ -73,7 +76,7 @@ class RequestEventBase : public RequestData {
   }
 
  private:
-  explicit RequestEventBase(EventBase* eb) : eb_(eb) {}
+  explicit RequestEventBase(EventBase* eb) : eb_{eb} {}
   EventBase* eb_;
   static constexpr const char* kContextDataName{"EventBase"};
 };
