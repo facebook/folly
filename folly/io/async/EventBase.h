@@ -45,7 +45,10 @@ class NotificationQueue;
 
 class EventBaseObserver {
  public:
-  virtual ~EventBaseObserver() {}
+  // It disallows copy, move, and default ctor
+  EventBaseObserver(EventBaseObserver&&) = delete;
+  
+  virtual ~EventBaseObserver() = default;
 
   virtual uint32_t getSampleRate() const = 0;
 
