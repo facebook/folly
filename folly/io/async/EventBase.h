@@ -485,10 +485,10 @@ class EventBase : private boost::noncopyable,
 
   class SmoothLoopTime {
    public:
-    explicit SmoothLoopTime(uint64_t timeInterval)
-      : expCoeff_(-1.0/timeInterval)
-      , value_(0.0)
-      , oldBusyLeftover_(0) {
+    constexpr explicit SmoothLoopTime(uint64_t timeInterval)
+      : expCoeff_{-1.0/timeInterval}
+      , value_{0.0}
+      , oldBusyLeftover_{0} {
       VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
     }
 
@@ -497,7 +497,7 @@ class EventBase : private boost::noncopyable,
 
     void addSample(int64_t idle, int64_t busy);
 
-    double get() const {
+    constexpr double get() const {
       return value_;
     }
 
