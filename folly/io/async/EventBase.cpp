@@ -57,7 +57,7 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
 
 namespace folly {
 
-const int kNoFD = -1;
+constexpr const int kNoFD = -1;
 
 /*
  * EventBase::FunctionRunner
