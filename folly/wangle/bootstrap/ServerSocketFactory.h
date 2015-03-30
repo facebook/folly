@@ -88,7 +88,7 @@ class AsyncUDPServerSocketFactory : public ServerSocketFactory {
 
     auto socket = std::make_shared<AsyncUDPServerSocket>(
       EventBaseManager::get()->getEventBase());
-    //socket->setReusePortEnabled(reuse);
+    socket->setReusePort(reuse);
     SocketAddress addressr("::1", port);
     socket->bind(addressr);
     socket->listen();

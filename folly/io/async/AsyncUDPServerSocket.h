@@ -86,7 +86,12 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     CHECK(!socket_);
 
     socket_ = folly::make_unique<AsyncUDPSocket>(evb_);
+    socket_->setReusePort(reusePort_);
     socket_->bind(addy);
+  }
+
+  void setReusePort(bool reusePort) {
+    reusePort_ = reusePort;
   }
 
   folly::SocketAddress address() const {
@@ -202,6 +207,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
   // Temporary buffer for data
   folly::IOBufQueue buf_;
+
+  bool reusePort_{false};
 };
 
 } // Namespace
