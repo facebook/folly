@@ -474,6 +474,12 @@ class Future {
   /// exception)
   Future<bool> willEqual(Future<T>&);
 
+  /// predicate behaves like std::function<bool(T const&)>
+  /// If the predicate does not obtain with the value, the result
+  /// is a folly::PredicateDoesNotObtain exception
+  template <class F>
+  Future<T> filter(F predicate);
+
  protected:
   typedef detail::Core<T>* corePtr;
 

@@ -91,4 +91,9 @@ class TimedOut : public FutureException {
   TimedOut() : FutureException("Timed out") {}
 };
 
+class PredicateDoesNotObtain : public FutureException {
+ public:
+  PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
+};
+
 }

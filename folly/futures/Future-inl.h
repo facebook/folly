@@ -825,6 +825,19 @@ Future<bool> Future<T>::willEqual(Future<T>& f) {
   });
 }
 
+template <class T>
+template <class F>
+Future<T> Future<T>::filter(F predicate) {
+  auto p = folly::makeMoveWrapper(std::move(predicate));
+  return this->then([p](T val) {
+    T const& valConstRef = val;
+    if (!(*p)(valConstRef)) {
+      throw PredicateDoesNotObtain();
+    }
+    return val;
+  });
+}
+
 namespace futures {
   namespace {
     template <class Z>

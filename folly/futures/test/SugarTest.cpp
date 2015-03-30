@@ -27,15 +27,31 @@ TEST(Sugar, pollReady) {
   EXPECT_EQ(42, f.poll().value().value());
 }
 
-TEST(SUGAR, pollNotReady) {
+TEST(Sugar, pollNotReady) {
   Promise<int> p;
   auto f = p.getFuture();
   EXPECT_FALSE(f.poll().hasValue());
 }
 
-TEST(SUGAR, pollException) {
+TEST(Sugar, pollException) {
   Promise<void> p;
   auto f = p.getFuture();
   p.fulfil([] { throw std::runtime_error("Runtime"); });
   EXPECT_TRUE(f.poll().value().hasException());
+}
+
+TEST(Sugar, filterTrue) {
+  EXPECT_EQ(42, makeFuture(42).filter([](int){ return true; }).get());
+}
+
+TEST(Sugar, filterFalse) {
+  EXPECT_THROW(makeFuture(42).filter([](int){ return false; }).get(),
+               folly::PredicateDoesNotObtain);
+}
+
+TEST(Sugar, filterMoveonly) {
+  EXPECT_EQ(42,
+    *makeFuture(folly::make_unique<int>(42))
+     .filter([](std::unique_ptr<int> const&) { return true; })
+     .get());
 }
