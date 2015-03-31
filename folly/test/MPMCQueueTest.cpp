@@ -711,6 +711,11 @@ TEST(MPMCQueue, queue_moving) {
   LIFECYCLE_STEP(DESTRUCTOR);
 }
 
+TEST(MPMCQueue, explicit_zero_capacity_fail) {
+  ASSERT_THROW(MPMCQueue<int> cq(0), std::invalid_argument);
+}
+
+
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

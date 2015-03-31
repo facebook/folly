@@ -107,14 +107,21 @@ class MPMCQueue : boost::noncopyable {
 
   explicit MPMCQueue(size_t queueCapacity)
     : capacity_(queueCapacity)
-    , slots_(new detail::SingleElementQueue<T,Atom>[queueCapacity +
-                                                    2 * kSlotPadding])
-    , stride_(computeStride(queueCapacity))
     , pushTicket_(0)
     , popTicket_(0)
     , pushSpinCutoff_(0)
     , popSpinCutoff_(0)
   {
+    if (queueCapacity == 0)
+      throw std::invalid_argument(
+        "MPMCQueue with explicit capacity 0 is impossible"
+      );
+
+    // would sigfpe if capacity is 0
+    stride_ = computeStride(queueCapacity);
+    slots_ = new detail::SingleElementQueue<T,Atom>[queueCapacity +
+                                                    2 * kSlotPadding];
+
     // ideally this would be a static assert, but g++ doesn't allow it
     assert(alignof(MPMCQueue<T,Atom>)
            >= detail::CacheLocality::kFalseSharingRange);
