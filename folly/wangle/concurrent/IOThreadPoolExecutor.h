@@ -44,6 +44,8 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
 
   static EventBase* getEventBase(ThreadPoolExecutor::ThreadHandle*);
 
+  EventBaseManager* getEventBaseManager();
+
  private:
   struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)

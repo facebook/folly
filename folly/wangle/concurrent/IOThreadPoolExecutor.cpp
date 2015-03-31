@@ -129,6 +129,10 @@ EventBase* IOThreadPoolExecutor::getEventBase(
   return nullptr;
 }
 
+EventBaseManager* IOThreadPoolExecutor::getEventBaseManager() {
+  return eventBaseManager_;
+}
+
 std::shared_ptr<ThreadPoolExecutor::Thread>
 IOThreadPoolExecutor::makeThread() {
   return std::make_shared<IOThread>(this);
