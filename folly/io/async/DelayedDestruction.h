@@ -123,7 +123,7 @@ class DelayedDestruction : private boost::noncopyable {
     (void)delayed; // prevent unused variable warnings
   }
 
-  DelayedDestruction()
+  DelayedDestruction() noexcept
     : guardCount_(0)
     , destroyPending_(false) {}
 
