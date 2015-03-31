@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <inttypes.h>
 #include <assert.h>
 
@@ -39,8 +38,11 @@ namespace folly {
  * DelayedDestruction does not perform any locking.  It is intended to be used
  * only from a single thread.
  */
-class DelayedDestruction : private boost::noncopyable {
+class DelayedDestruction {
  public:
+  // It disallows copy, move, and default ctor
+  DelayedDestruction(DelayedDestruction&&) = delete;
+  
   /**
    * Helper class to allow DelayedDestruction classes to be used with
    * std::shared_ptr.
