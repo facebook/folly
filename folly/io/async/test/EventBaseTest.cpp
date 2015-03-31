@@ -1180,7 +1180,7 @@ TEST(EventBaseTest, RunInThread) {
 //  This test simulates some calls, and verifies that the waiting happens by
 //  triggering what otherwise would be race conditions, and trying to detect
 //  whether any of the race conditions happened.
-TEST(EventBaseTest, RunInEventLoopThreadAndWait) {
+TEST(EventBaseTest, RunInEventBaseThreadAndWait) {
   const size_t c = 256;
   vector<unique_ptr<atomic<size_t>>> atoms(c);
   for (size_t i = 0; i < c; ++i) {
@@ -1214,6 +1214,36 @@ TEST(EventBaseTest, RunInEventLoopThreadAndWait) {
   size_t sum = 0;
   for (auto& atom : atoms) sum += *atom;
   EXPECT_EQ(c, sum);
+}
+
+TEST(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadAndWaitCross) {
+  EventBase eb;
+  thread th(&EventBase::loopForever, &eb);
+  SCOPE_EXIT {
+    eb.terminateLoopSoon();
+    th.join();
+  };
+  auto mutated = false;
+  eb.runImmediatelyOrRunInEventBaseThreadAndWait([&] {
+      mutated = true;
+  });
+  EXPECT_TRUE(mutated);
+}
+
+TEST(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadAndWaitWithin) {
+  EventBase eb;
+  thread th(&EventBase::loopForever, &eb);
+  SCOPE_EXIT {
+    eb.terminateLoopSoon();
+    th.join();
+  };
+  eb.runInEventBaseThreadAndWait([&] {
+      auto mutated = false;
+      eb.runImmediatelyOrRunInEventBaseThreadAndWait([&] {
+          mutated = true;
+      });
+      EXPECT_TRUE(mutated);
+  });
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -382,6 +382,31 @@ class EventBase : private boost::noncopyable,
    */
   bool runInEventBaseThreadAndWait(const Cob& fn);
 
+  /*
+   * Like runInEventBaseThreadAndWait, except if the caller is already in the
+   * event base thread, the functor is simply run inline.
+   */
+  template<typename T>
+  bool runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
+    return runImmediatelyOrRunInEventBaseThreadAndWait(
+        reinterpret_cast<void (*)(void*)>(fn), reinterpret_cast<void*>(arg));
+  }
+
+  /*
+   * Like runInEventBaseThreadAndWait, except if the caller is already in the
+   * event base thread, the functor is simply run inline.
+   */
+  bool runImmediatelyOrRunInEventBaseThreadAndWait(
+      void (*fn)(void*), void* arg) {
+    return runImmediatelyOrRunInEventBaseThreadAndWait(std::bind(fn, arg));
+  }
+
+    /*
+   * Like runInEventBaseThreadAndWait, except if the caller is already in the
+   * event base thread, the functor is simply run inline.
+   */
+bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
+
   /**
    * Runs the given Cob at some time after the specified number of
    * milliseconds.  (No guarantees exactly when.)

@@ -610,6 +610,15 @@ bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
   return true;
 }
 
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn) {
+  if (inRunningEventBaseThread()) {
+    fn();
+    return true;
+  } else {
+    return runInEventBaseThreadAndWait(fn);
+  }
+}
+
 void EventBase::runAfterDelay(const Cob& cob,
                               int milliseconds,
                               TimeoutManager::InternalEnum in) {
