@@ -229,7 +229,7 @@ class Acceptor :
       AsyncSocket::UniquePtr sock,
       const folly::SocketAddress* address,
       const std::string& nextProtocolName,
-      const TransportInfo& tinfo) = 0;
+      const TransportInfo& tinfo) {}
 
   void onListenStarted() noexcept {}
   void onListenStopped() noexcept {}
