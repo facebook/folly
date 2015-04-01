@@ -436,7 +436,9 @@ void splitTo(const Delim& delimiter,
  * Split a string into a fixed number of string pieces and/or numeric types
  * by delimiter. Any numeric type that folly::to<> can convert to from a
  * string piece is supported as a target. Returns 'true' if the fields were
- * all successfully populated.
+ * all successfully populated.  Returns 'false' if there were too few fields
+ * in the input, or too many fields if exact=true.  Casting exceptions will
+ * not be caught.
  *
  * Examples:
  *
