@@ -425,10 +425,6 @@ class SSLContext {
   static std::mutex mutex_;
   static bool initialized_;
 
-#ifndef SSLCONTEXT_NO_REFCOUNT
-  static uint64_t count_;
-#endif
-
 #ifdef OPENSSL_NPN_NEGOTIATED
   /**
    * Wire-format list of advertised protocols for use in NPN.

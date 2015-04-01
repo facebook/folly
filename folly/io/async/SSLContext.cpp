@@ -40,17 +40,10 @@ std::mutex    SSLContext::mutex_;
 int SSLContext::sNextProtocolsExDataIndex_ = -1;
 #endif
 
-#ifndef SSLCONTEXT_NO_REFCOUNT
-uint64_t SSLContext::count_ = 0;
-#endif
-
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
   {
     std::lock_guard<std::mutex> g(mutex_);
-#ifndef SSLCONTEXT_NO_REFCOUNT
-    count_++;
-#endif
     initializeOpenSSLLocked();
   }
 
@@ -92,15 +85,6 @@ SSLContext::~SSLContext() {
 
 #ifdef OPENSSL_NPN_NEGOTIATED
   deleteNextProtocolsStrings();
-#endif
-
-#ifndef SSLCONTEXT_NO_REFCOUNT
-  {
-    std::lock_guard<std::mutex> g(mutex_);
-    if (!--count_) {
-      cleanupOpenSSLLocked();
-    }
-  }
 #endif
 }
 
