@@ -63,7 +63,9 @@ class ThreadExecutor : public Executor {
 
  public:
   explicit ThreadExecutor(size_t n = 1024)
-    : funcs(n), worker(std::bind(&ThreadExecutor::work, this)) {}
+    : funcs(n) {
+    worker = std::thread(std::bind(&ThreadExecutor::work, this));
+  }
 
   ~ThreadExecutor() {
     done = true;
@@ -88,7 +90,7 @@ static eggs_t eggs("eggs");
 TEST(Future, coreSize) {
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_EQ(128, sizeof(detail::Core<void>));
+  EXPECT_EQ(192, sizeof(detail::Core<void>));
 }
 
 // Future
