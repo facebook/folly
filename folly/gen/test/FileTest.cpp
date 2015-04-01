@@ -69,6 +69,16 @@ TEST_P(FileGenBufferedTest, FileWriter) {
   EXPECT_TRUE(expected == found);
 }
 
+TEST(FileGenBufferedTest, FileWriterSimple) {
+  test::TemporaryFile file("FileWriter");
+  auto toLine = [](int v) { return to<std::string>(v, '\n'); };
+
+  auto squares = seq(1, 100) | map([](int x) { return x * x; });
+  squares | map(toLine) | eachAs<StringPiece>() | toFile(File(file.fd()));
+  EXPECT_EQ(squares | sum,
+            byLine(File(file.path().c_str())) | eachTo<int>() | sum);
+}
+
 INSTANTIATE_TEST_CASE_P(
     DifferentBufferSizes,
     FileGenBufferedTest,

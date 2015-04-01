@@ -38,7 +38,7 @@ namespace folly { namespace gen { namespace detail {
  *
  * This type is usually used through the 'pmap' helper function:
  *
- *   auto squares = seq(1, 10) | pmap(4, fibonacci) | sum;
+ *   auto squares = seq(1, 10) | pmap(fibonacci, 4) | sum;
  */
 template<class Predicate>
 class PMap : public Operator<PMap<Predicate>> {
