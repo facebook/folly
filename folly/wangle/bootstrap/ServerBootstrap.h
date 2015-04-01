@@ -177,7 +177,7 @@ class ServerBootstrap {
 
     // Startup all the threads
     workerFactory_->forEachWorker([this, socket](Acceptor* worker){
-      socket->getEventBase()->runInEventBaseThreadAndWait(
+      socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
         [this, worker, socket](){
           socketFactory_->addAcceptCB(socket, worker, worker->getEventBase());
       });
@@ -262,8 +262,9 @@ class ServerBootstrap {
     for (auto& socket : new_sockets) {
       // Startup all the threads
       workerFactory_->forEachWorker([this, socket](Acceptor* worker){
-        socket->getEventBase()->runInEventBaseThreadAndWait([this, worker, socket](){
-          socketFactory_->addAcceptCB(socket, worker, worker->getEventBase());
+        socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+          [this, worker, socket](){
+            socketFactory_->addAcceptCB(socket, worker, worker->getEventBase());
         });
       });
 
@@ -276,12 +277,10 @@ class ServerBootstrap {
    */
   void stop() {
     for (auto socket : sockets_) {
-      folly::Baton<> barrier;
-      socket->getEventBase()->runInEventBaseThread([&]() mutable {
-        socketFactory_->stopSocket(socket);
-        barrier.post();
+      socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+        [&]() mutable {
+          socketFactory_->stopSocket(socket);
       });
-      barrier.wait();
     }
     sockets_.clear();
   }

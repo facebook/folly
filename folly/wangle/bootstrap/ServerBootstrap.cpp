@@ -26,7 +26,8 @@ void ServerWorkerPool::threadStarted(
   workers_.insert({h, worker});
 
   for(auto socket : *sockets_) {
-    socket->getEventBase()->runInEventBaseThreadAndWait([this, worker, socket](){
+    socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+      [this, worker, socket](){
         socketFactory_->addAcceptCB(
           socket, worker.get(), worker->getEventBase());
     });
@@ -39,17 +40,16 @@ void ServerWorkerPool::threadStopped(
   CHECK(worker != workers_.end());
 
   for (auto& socket : *sockets_) {
-    folly::Baton<> barrier;
-    socket->getEventBase()->runInEventBaseThreadAndWait([&]() {
-      socketFactory_->removeAcceptCB(
-        socket, worker->second.get(), nullptr);
-      barrier.post();
+    socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+      [&]() {
+        socketFactory_->removeAcceptCB(
+          socket, worker->second.get(), nullptr);
     });
-    barrier.wait();
   }
 
   if (!worker->second->getEventBase()->isInEventBaseThread()) {
-    worker->second->getEventBase()->runInEventBaseThreadAndWait([=]() {
+    worker->second->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+      [=]() {
         worker->second->dropAllConnections();
       });
   } else {
