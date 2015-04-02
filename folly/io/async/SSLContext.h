@@ -404,6 +404,13 @@ class SSLContext {
   static void cleanupOpenSSL();
 
   /**
+   * Mark openssl as initialized without actually performing any initialization.
+   * Please use this only if you are using a library which requires that it must
+   * make its own calls to SSL_library_init() and related functions.
+   */
+  static void markInitialized();
+
+  /**
    * Default randomize method.
    */
   static void randomize();

@@ -682,6 +682,11 @@ void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
   lockTypes() = inLockTypes;
 }
 
+void SSLContext::markInitialized() {
+  std::lock_guard<std::mutex> g(mutex_);
+  initialized_ = true;
+}
+
 void SSLContext::initializeOpenSSL() {
   std::lock_guard<std::mutex> g(mutex_);
   initializeOpenSSLLocked();
