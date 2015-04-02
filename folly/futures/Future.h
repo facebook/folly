@@ -99,15 +99,15 @@ struct callableResult {
     callableWith<F>::value,
     detail::argResult<false, F>,
     typename std::conditional<
-      callableWith<F, Try<T>&&>::value,
-      detail::argResult<true, F, Try<T>&&>,
+      callableWith<F, T&&>::value,
+      detail::argResult<false, F, T&&>,
       typename std::conditional<
-        callableWith<F, Try<T>&>::value,
-        detail::argResult<true, F, Try<T>&>,
+        callableWith<F, T&>::value,
+        detail::argResult<false, F, T&>,
         typename std::conditional<
-          callableWith<F, T&&>::value,
-          detail::argResult<false, F, T&&>,
-          detail::argResult<false, F, T&>>::type>::type>::type>::type Arg;
+          callableWith<F, Try<T>&&>::value,
+          detail::argResult<true, F, Try<T>&&>,
+          detail::argResult<true, F, Try<T>&>>::type>::type>::type>::type Arg;
   typedef isFuture<typename Arg::Result> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
 };

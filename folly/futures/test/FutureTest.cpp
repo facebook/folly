@@ -28,6 +28,7 @@
 #include <folly/futures/Future.h>
 #include <folly/futures/ManualExecutor.h>
 #include <folly/futures/DrivableExecutor.h>
+#include <folly/dynamic.h>
 #include <folly/MPMCQueue.h>
 
 #include <folly/io/async/EventBase.h>
@@ -1309,6 +1310,20 @@ TEST(Future, ImplicitConstructor) {
   // Unfortunately, the C++ standard does not allow the
   // following implicit conversion to work:
   //auto f2 = []() -> Future<void> { }();
+}
+
+TEST(Future, thenDynamic) {
+  // folly::dynamic has a constructor that takes any T, this test makes
+  // sure that we call the then lambda with folly::dynamic and not
+  // Try<folly::dynamic> because that then fails to compile
+  Promise<folly::dynamic> p;
+  Future<folly::dynamic> f = p.getFuture().then(
+      [](const folly::dynamic& d) {
+        return folly::dynamic(d.asInt() + 3);
+      }
+  );
+  p.setValue(2);
+  EXPECT_EQ(f.get(), 5);
 }
 
 TEST(Future, via_then_get_was_racy) {
