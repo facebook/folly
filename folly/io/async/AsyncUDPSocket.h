@@ -110,10 +110,16 @@ class AsyncUDPSocket : public EventHandler {
 
   /**
    * Send the data in buffer to destination. Returns the return code from
-   * ::sendto.
+   * ::sendmsg.
    */
   ssize_t write(const folly::SocketAddress& address,
                 const std::unique_ptr<folly::IOBuf>& buf);
+
+  /**
+   * Send data in iovec to destination. Returns the return code from sendmsg.
+   */
+  ssize_t writev(const folly::SocketAddress& address,
+                 const struct iovec* vec, size_t veclen);
 
   /**
    * Start reading datagrams

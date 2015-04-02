@@ -129,8 +129,6 @@ void AsyncUDPSocket::setFD(int fd, FDOwnership ownership) {
 
 ssize_t AsyncUDPSocket::write(const folly::SocketAddress& address,
                                const std::unique_ptr<folly::IOBuf>& buf) {
-  CHECK_NE(-1, fd_) << "Socket not yet bound";
-
   // UDP's typical MTU size is 1500, so high number of buffers
   //   really do not make sense. Optimze for buffer chains with
   //   buffers less than 16, which is the highest I can think of
@@ -144,13 +142,20 @@ ssize_t AsyncUDPSocket::write(const folly::SocketAddress& address,
     iovec_len = 1;
   }
 
+  return writev(address, vec, iovec_len);
+}
+
+ssize_t AsyncUDPSocket::writev(const folly::SocketAddress& address,
+                               const struct iovec* vec, size_t iovec_len) {
+  CHECK_NE(-1, fd_) << "Socket not yet bound";
+
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
 
   struct msghdr msg;
   msg.msg_name = reinterpret_cast<void*>(&addrStorage);
   msg.msg_namelen = address.getActualSize();
-  msg.msg_iov = vec;
+  msg.msg_iov = const_cast<struct iovec*>(vec);
   msg.msg_iovlen = iovec_len;
   msg.msg_control = nullptr;
   msg.msg_controllen = 0;
