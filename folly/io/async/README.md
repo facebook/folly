@@ -77,7 +77,7 @@ Unsupported libevent event types, and why-
 * TIMEOUT - this library has specific timeout support, instead of
   being attached to read/write fds.
 * SIGNAL - similarly, signals are handled separately, see
-  AsyncSignalHandler (TODO:currently in fbthrift)
+  AsyncSignalHandler
 * EV_ET - Currently all the implementations of EventHandler are set up
   for level triggered.  Benchmarking hasn't shown that edge triggered
   provides much improvement.
@@ -249,9 +249,7 @@ per application.   Using HHWheelTimer instead can clean up the code quite
 a bit, because only a single HHWheelTimer is needed per thread, as
 opposed to one AsyncTimeoutSet per timeout time per thread.
 
-### TAsyncSignalHandler
-
-TODO: still in fbthrift
+### AsyncSignalHandler
 
 Used to handle AsyncSignals.  Similar to AsyncTimeout, for code
 clarity, we don't reuse the same fd as a socket to receive signals.
