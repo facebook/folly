@@ -162,6 +162,8 @@ nobase_follyinclude_HEADERS = \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/TimeoutManager.h \
+	io/async/test/AsyncSSLSocketTest.h \
+	io/async/test/BlockingSocket.h \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
