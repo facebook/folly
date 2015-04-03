@@ -45,4 +45,43 @@ void Fiber::setReadyFunction(G&& func) {
   readyFunc_ = std::move(func);
 }
 
+template <typename T>
+T& Fiber::LocalData::get() {
+  if (data_) {
+    assert(*dataType_ == typeid(T));
+    return *reinterpret_cast<T*>(data_);
+  }
+
+  dataSize_ = sizeof(T);
+  dataType_ = &typeid(T);
+  if (sizeof(T) <= kBufferSize) {
+    dataDestructor_ = dataBufferDestructor<T>;
+    data_ = &buffer_;
+  } else {
+    dataDestructor_ = dataHeapDestructor<T>;
+    data_ = allocateHeapBuffer(dataSize_);
+  }
+  dataCopyConstructor_ = dataCopyConstructor<T>;
+
+  new (reinterpret_cast<T*>(data_)) T();
+
+  return *reinterpret_cast<T*>(data_);
+}
+
+template <typename T>
+void Fiber::LocalData::dataCopyConstructor(void* ptr, const void* other) {
+  new (reinterpret_cast<T*>(ptr)) T(*reinterpret_cast<const T*>(other));
+}
+
+template <typename T>
+void Fiber::LocalData::dataBufferDestructor(void* ptr) {
+  reinterpret_cast<T*>(ptr)->~T();
+}
+
+template <typename T>
+void Fiber::LocalData::dataHeapDestructor(void *ptr) {
+  reinterpret_cast<T*>(ptr)->~T();
+  freeHeapBuffer(ptr);
+}
+
 }}  // folly::fibers

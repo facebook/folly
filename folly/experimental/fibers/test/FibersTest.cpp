@@ -1215,6 +1215,71 @@ TEST(FiberManager, remoteHasReadyTasks) {
   EXPECT_EQ(result, 47);
 }
 
+template <typename Data>
+void testFiberLocal() {
+  FiberManager fm(folly::make_unique<SimpleLoopController>());
+
+  fm.addTask([]() {
+      EXPECT_EQ(42, local<Data>().value);
+
+      local<Data>().value = 43;
+
+      addTask([]() {
+          EXPECT_EQ(43, local<Data>().value);
+
+          local<Data>().value = 44;
+
+          addTask([]() {
+              EXPECT_EQ(44, local<Data>().value);
+            });
+        });
+   });
+
+  fm.addTask([&]() {
+      EXPECT_EQ(42, local<Data>().value);
+
+      local<Data>().value = 43;
+
+      fm.addTaskRemote([]() {
+          EXPECT_EQ(43, local<Data>().value);
+        });
+    });
+
+  fm.addTask([]() {
+      EXPECT_EQ(42, local<Data>().value);
+      local<Data>().value = 43;
+
+      auto task = []() {
+        EXPECT_EQ(43, local<Data>().value);
+        local<Data>().value = 44;
+      };
+      std::vector<std::function<void()>> tasks{task};
+      whenAny(tasks.begin(), tasks.end());
+
+      EXPECT_EQ(43, local<Data>().value);
+    });
+
+  fm.loopUntilNoReady();
+  EXPECT_FALSE(fm.hasTasks());
+}
+
+TEST(FiberManager, fiberLocal) {
+  struct SimpleData {
+    int value{42};
+  };
+
+  testFiberLocal<SimpleData>();
+}
+
+TEST(FiberManager, fiberLocalHeap) {
+  struct LargeData {
+    char _[1024*1024];
+    int value{42};
+  };
+
+  testFiberLocal<LargeData>();
+}
+
 static size_t sNumAwaits;
 
 void runBenchmark(size_t numAwaits, size_t toSend) {

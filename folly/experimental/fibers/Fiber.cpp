@@ -176,4 +176,47 @@ intptr_t Fiber::preempt(State state) {
   return ret;
 }
 
+Fiber::LocalData::LocalData(const LocalData& other) : data_(nullptr) {
+  *this = other;
+}
+
+Fiber::LocalData& Fiber::LocalData::operator=(const LocalData& other) {
+  reset();
+  if (!other.data_) {
+    return *this;
+  }
+
+  dataSize_ = other.dataSize_;
+  dataType_ = other.dataType_;
+  dataDestructor_ = other.dataDestructor_;
+  dataCopyConstructor_ = other.dataCopyConstructor_;
+
+  if (dataSize_ <= kBufferSize) {
+    data_ = &buffer_;
+  } else {
+    data_ = allocateHeapBuffer(dataSize_);
+  }
+
+  dataCopyConstructor_(data_, other.data_);
+
+  return *this;
+}
+
+void Fiber::LocalData::reset() {
+  if (!data_) {
+    return;
+  }
+
+  dataDestructor_(data_);
+  data_ = nullptr;
+}
+
+void* Fiber::LocalData::allocateHeapBuffer(size_t size) {
+  return new char[size];
+}
+
+void Fiber::LocalData::freeHeapBuffer(void* buffer) {
+  delete[] reinterpret_cast<char*>(buffer);
+}
+
 }}

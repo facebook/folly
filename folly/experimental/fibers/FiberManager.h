@@ -180,6 +180,16 @@ class FiberManager {
   runInMainContext(F&& func);
 
   /**
+   * Returns a refference to a fiber-local context for given Fiber. Should be
+   * always called with the same T for each fiber. Fiber-local context is lazily
+   * default-constructed on first request.
+   * When new task is scheduled via addTask / addTaskRemote from a fiber its
+   * fiber-local context is copied into the new fiber.
+   */
+  template <typename T>
+  T& local();
+
+  /**
    * @return How many fiber objects (and stacks) has this manager allocated.
    */
   size_t fibersAllocated() const;
@@ -213,14 +223,24 @@ class FiberManager {
 
   struct RemoteTask {
     template <typename F>
-    explicit RemoteTask(F&& f) : func(std::move(f)) {}
+    explicit RemoteTask(F&& f) : func(std::forward<F>(f)) {}
+    template <typename F>
+    RemoteTask(F&& f, const Fiber::LocalData& localData_) :
+        func(std::forward<F>(f)),
+        localData(folly::make_unique<Fiber::LocalData>(localData_)) {}
     std::function<void()> func;
-    folly::AtomicLinkedListHook<RemoteTask> nextRemoteTask;
+    std::unique_ptr<Fiber::LocalData> localData;
+    AtomicLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
 
   Fiber* activeFiber_{nullptr}; /**< active fiber, nullptr on main context */
+  /**
+   * Same as active fiber, but also set for functions run from fiber on main
+   * context.
+   */
+  Fiber* currentFiber_{nullptr};
 
   FiberTailQueue readyFibers_;  /**< queue of fibers ready to be executed */
   FiberTailQueue fibersPool_;   /**< pool of unitialized Fiber objects */
@@ -372,6 +392,18 @@ inline runInMainContext(F&& func) {
     return func();
   }
   return fm->runInMainContext(std::forward<F>(func));
+}
+
+/**
+ * Returns a refference to a fiber-local context for given Fiber. Should be
+ * always called with the same T for each fiber. Fiber-local context is lazily
+ * default-constructed on first request.
+ * When new task is scheduled via addTask / addTaskRemote from a fiber its
+ * fiber-local context is copied into the new fiber.
+ */
+template <typename T>
+T& local() {
+  return FiberManager::getFiberManager().local<T>();
 }
 
 }}

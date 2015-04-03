@@ -41,8 +41,9 @@ inline void FiberManager::ensureLoopScheduled() {
 inline void FiberManager::runReadyFiber(Fiber* fiber) {
   assert(fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN);
+  currentFiber_ = fiber;
 
-   while (fiber->state_ == Fiber::NOT_STARTED ||
+  while (fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN) {
     activeFiber_ = fiber;
     if (fiber->readyFunc_) {
@@ -79,6 +80,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       }
       fiber->finallyFunc_ = nullptr;
     }
+    fiber->localData_.reset();
 
     if (fibersPoolSize_ < options_.maxFibersPoolSize) {
       fibersPool_.push_front(*fiber);
@@ -89,6 +91,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       --fibersAllocated_;
     }
   }
+  currentFiber_ = nullptr;
 }
 
 inline bool FiberManager::loopUntilNoReady() {
@@ -120,6 +123,10 @@ inline bool FiberManager::loopUntilNoReady() {
       [this, &hadRemoteFiber] (RemoteTask* taskPtr) {
         std::unique_ptr<RemoteTask> task(taskPtr);
         auto fiber = getFiber();
+        if (task->localData) {
+          fiber->localData_ = *task->localData;
+        }
+
         fiber->setFunction(std::move(task->func));
         fiber->data_ = reinterpret_cast<intptr_t>(fiber);
         runReadyFiber(fiber);
@@ -170,6 +177,9 @@ void FiberManager::addTask(F&& func) {
   typedef AddTaskHelper<F> Helper;
 
   auto fiber = getFiber();
+  if (currentFiber_) {
+    fiber->localData_ = currentFiber_->localData_;
+  }
 
   if (Helper::allocateInBuffer) {
     auto funcLoc = static_cast<typename Helper::Func*>(fiber->getUserBuffer());
@@ -191,6 +201,10 @@ void FiberManager::addTask(F&& func) {
 template <typename F, typename G>
 void FiberManager::addTaskReadyFunc(F&& func, G&& readyFunc) {
   auto fiber = getFiber();
+  if (currentFiber_) {
+    fiber->localData_ = currentFiber_->localData_;
+  }
+
   fiber->setFunction(std::forward<F>(func));
   fiber->setReadyFunction(std::forward<G>(readyFunc));
 
@@ -202,7 +216,15 @@ void FiberManager::addTaskReadyFunc(F&& func, G&& readyFunc) {
 
 template <typename F>
 void FiberManager::addTaskRemote(F&& func) {
-  auto task = folly::make_unique<RemoteTask>(std::move(func));
+  auto task = [&]() {
+    auto currentFm = getFiberManagerUnsafe();
+    if (currentFm && currentFm->currentFiber_) {
+      return folly::make_unique<RemoteTask>(
+        std::forward<F>(func),
+        currentFm->currentFiber_->localData_);
+    }
+    return folly::make_unique<RemoteTask>(std::forward<F>(func));
+  }();
   if (remoteTaskQueue_.insertHead(task.release())) {
     loopController_->scheduleThreadSafe();
   }
@@ -294,6 +316,9 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
     "finally(Try<T>&&): T must be convertible from func()'s return type");
 
   auto fiber = getFiber();
+  if (currentFiber_) {
+    fiber->localData_ = currentFiber_->localData_;
+  }
 
   typedef AddTaskFinallyHelper<F,G> Helper;
 
@@ -373,6 +398,12 @@ inline FiberManager* FiberManager::getFiberManagerUnsafe() {
 
 inline bool FiberManager::hasActiveFiber() {
   return activeFiber_ != nullptr;
+}
+
+template <typename T>
+T& FiberManager::local() {
+  assert(getFiberManager().currentFiber_ != nullptr);
+  return currentFiber_->localData_.get<T>();
 }
 
 template <typename F>

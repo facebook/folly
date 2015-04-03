@@ -16,6 +16,7 @@
 #pragma once
 
 #include <functional>
+#include <typeinfo>
 
 #include <boost/context/all.hpp>
 #include <boost/version.hpp>
@@ -115,6 +116,40 @@ class Fiber {
 
   std::function<void()> resultFunc_;
   std::function<void()> finallyFunc_;
+
+  class LocalData {
+   public:
+    LocalData() {}
+    LocalData(const LocalData& other);
+    LocalData& operator=(const LocalData& other);
+
+    template <typename T>
+    T& get();
+
+    void reset();
+
+    //private:
+    static void* allocateHeapBuffer(size_t size);
+    static void freeHeapBuffer(void* buffer);
+
+    template <typename T>
+    static void dataCopyConstructor(void*, const void*);
+    template <typename T>
+    static void dataBufferDestructor(void*);
+    template <typename T>
+    static void dataHeapDestructor(void*);
+
+    static constexpr size_t kBufferSize = 128;
+    std::aligned_storage<kBufferSize>::type buffer_;
+    size_t dataSize_;
+
+    const std::type_info* dataType_;
+    void (*dataDestructor_)(void*);
+    void (*dataCopyConstructor_)(void*, const void*);
+    void* data_{nullptr};
+  };
+
+  LocalData localData_;
 
   folly::IntrusiveListHook listHook_; /**< list hook for different FiberManager
                                            queues */
