@@ -46,9 +46,6 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   while (fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN) {
     activeFiber_ = fiber;
-    if (fiber->readyFunc_) {
-      fiber->readyFunc_();
-    }
     jumpContext(&mainContext_, &fiber->fcontext_, fiber->data_);
     if (fiber->state_ == Fiber::AWAITING_IMMEDIATE) {
       try {
@@ -191,22 +188,6 @@ void FiberManager::addTask(F&& func) {
 
     fiber->setFunction(std::ref(*funcLoc));
   }
-
-  fiber->data_ = reinterpret_cast<intptr_t>(fiber);
-  readyFibers_.push_back(*fiber);
-
-  ensureLoopScheduled();
-}
-
-template <typename F, typename G>
-void FiberManager::addTaskReadyFunc(F&& func, G&& readyFunc) {
-  auto fiber = getFiber();
-  if (currentFiber_) {
-    fiber->localData_ = currentFiber_->localData_;
-  }
-
-  fiber->setFunction(std::forward<F>(func));
-  fiber->setReadyFunction(std::forward<G>(readyFunc));
 
   fiber->data_ = reinterpret_cast<intptr_t>(fiber);
   readyFibers_.push_back(*fiber);
@@ -402,8 +383,16 @@ inline bool FiberManager::hasActiveFiber() {
 
 template <typename T>
 T& FiberManager::local() {
-  assert(getFiberManager().currentFiber_ != nullptr);
-  return currentFiber_->localData_.get<T>();
+  if (currentFiber_) {
+    return currentFiber_->localData_.get<T>();
+  }
+  return localThread<T>();
+}
+
+template <typename T>
+T& FiberManager::localThread() {
+  static thread_local T t;
+  return t;
 }
 
 template <typename F>

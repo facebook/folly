@@ -39,12 +39,6 @@ inline void* Fiber::getUserBuffer() {
   return &userBuffer_;
 }
 
-template <typename G>
-void Fiber::setReadyFunction(G&& func) {
-  assert(state_ == INVALID || state_ == NOT_STARTED);
-  readyFunc_ = std::move(func);
-}
-
 template <typename T>
 T& Fiber::LocalData::get() {
   if (data_) {

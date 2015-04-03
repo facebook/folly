@@ -136,18 +136,6 @@ class FiberManager {
   void addTask(F&& func);
 
   /**
-   * Add a new task to be executed, along with a function readyFunc_ which needs
-   * to be executed just before jumping to the ready fiber
-   *
-   * @param func Task functor; must have a signature of `T func()` for some T.
-   * @param readyFunc functor that needs to be executed just before jumping to
-   *                  ready fiber on the main context. This can for example be
-   *                  used to set up state before starting or resuming a fiber.
-   */
-  template <typename F, typename G>
-  void addTaskReadyFunc(F&& func, G&& readyFunc);
-
-  /**
    * Add a new task to be executed. Safe to call from other threads.
    *
    * @param func Task function; must have a signature of `void func()`.
@@ -188,6 +176,9 @@ class FiberManager {
    */
   template <typename T>
   T& local();
+
+  template <typename T>
+  static T& localThread();
 
   /**
    * @return How many fiber objects (and stacks) has this manager allocated.
@@ -403,7 +394,11 @@ inline runInMainContext(F&& func) {
  */
 template <typename T>
 T& local() {
-  return FiberManager::getFiberManager().local<T>();
+  auto fm = FiberManager::getFiberManagerUnsafe();
+  if (fm) {
+    return fm->local<T>();
+  }
+  return FiberManager::localThread<T>();
 }
 
 }}

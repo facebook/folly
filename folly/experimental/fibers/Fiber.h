@@ -75,9 +75,6 @@ class Fiber {
   template <typename F, typename G>
   void setFunctionFinally(F&& func, G&& finally);
 
-  template <typename G>
-  void setReadyFunction(G&& func);
-
   static void fiberFuncHelper(intptr_t fiber);
   void fiberFunc();
 
@@ -101,8 +98,6 @@ class Fiber {
   FContext fcontext_;           /**< current task execution context */
   intptr_t data_;               /**< Used to keep some data with the Fiber */
   std::function<void()> func_;  /**< task function */
-  std::function<void()> readyFunc_; /**< function to be executed before jumping
-                                         to this fiber */
 
   /**
    * Points to next fiber in remote ready list
