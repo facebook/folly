@@ -39,7 +39,7 @@ void ServerWorkerPool::threadStopped(
   auto worker = workers_.find(h);
   CHECK(worker != workers_.end());
 
-  for (auto& socket : *sockets_) {
+  for (auto socket : *sockets_) {
     socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
       [&]() {
         socketFactory_->removeAcceptCB(

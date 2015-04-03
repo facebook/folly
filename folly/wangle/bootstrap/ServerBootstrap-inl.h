@@ -140,7 +140,7 @@ class ServerWorkerPool : public folly::wangle::ThreadPoolExecutor::Observer {
   explicit ServerWorkerPool(
     std::shared_ptr<AcceptorFactory> acceptorFactory,
     folly::wangle::IOThreadPoolExecutor* exec,
-    std::vector<std::shared_ptr<folly::AsyncSocketBase>>* sockets,
+    std::shared_ptr<std::vector<std::shared_ptr<folly::AsyncSocketBase>>> sockets,
     std::shared_ptr<ServerSocketFactory> socketFactory)
       : acceptorFactory_(acceptorFactory)
       , exec_(exec)
@@ -170,7 +170,7 @@ class ServerWorkerPool : public folly::wangle::ThreadPoolExecutor::Observer {
            std::shared_ptr<Acceptor>> workers_;
   std::shared_ptr<AcceptorFactory> acceptorFactory_;
   folly::wangle::IOThreadPoolExecutor* exec_{nullptr};
-  std::vector<std::shared_ptr<folly::AsyncSocketBase>>* sockets_;
+  std::shared_ptr<std::vector<std::shared_ptr<folly::AsyncSocketBase>>> sockets_;
   std::shared_ptr<ServerSocketFactory> socketFactory_;
 };
 

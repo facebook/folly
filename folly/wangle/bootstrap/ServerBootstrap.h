@@ -132,13 +132,13 @@ class ServerBootstrap {
 
     if (acceptorFactory_) {
       workerFactory_ = std::make_shared<ServerWorkerPool>(
-        acceptorFactory_, io_group.get(), &sockets_, socketFactory_);
+        acceptorFactory_, io_group.get(), sockets_, socketFactory_);
     } else {
       workerFactory_ = std::make_shared<ServerWorkerPool>(
         std::make_shared<ServerAcceptorFactory<Pipeline>>(
           childPipelineFactory_,
           pipeline_),
-        io_group.get(), &sockets_, socketFactory_);
+        io_group.get(), sockets_, socketFactory_);
     }
 
     io_group->addObserver(workerFactory_);
@@ -183,7 +183,7 @@ class ServerBootstrap {
       });
     });
 
-    sockets_.push_back(socket);
+    sockets_->push_back(socket);
   }
 
   void bind(folly::SocketAddress& address) {
@@ -268,7 +268,7 @@ class ServerBootstrap {
         });
       });
 
-      sockets_.push_back(socket);
+      sockets_->push_back(socket);
     }
   }
 
@@ -276,13 +276,16 @@ class ServerBootstrap {
    * Stop listening on all sockets.
    */
   void stop() {
-    for (auto socket : sockets_) {
-      socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
-        [&]() mutable {
-          socketFactory_->stopSocket(socket);
-      });
+    // sockets_ may be null if ServerBootstrap has been std::move'd
+    if (sockets_) {
+      for (auto socket : *sockets_) {
+        socket->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait(
+          [&]() mutable {
+            socketFactory_->stopSocket(socket);
+          });
+      }
+      sockets_->clear();
     }
-    sockets_.clear();
   }
 
   void join() {
@@ -299,7 +302,7 @@ class ServerBootstrap {
    */
   const std::vector<std::shared_ptr<folly::AsyncSocketBase>>&
   getSockets() const {
-    return sockets_;
+    return *sockets_;
   }
 
   std::shared_ptr<wangle::IOThreadPoolExecutor> getIOGroup() const {
@@ -318,7 +321,8 @@ class ServerBootstrap {
   std::shared_ptr<wangle::IOThreadPoolExecutor> io_group_;
 
   std::shared_ptr<ServerWorkerPool> workerFactory_;
-  std::vector<std::shared_ptr<folly::AsyncSocketBase>> sockets_;
+  std::shared_ptr<std::vector<std::shared_ptr<folly::AsyncSocketBase>>> sockets_{
+    std::make_shared<std::vector<std::shared_ptr<folly::AsyncSocketBase>>>()};
 
   std::shared_ptr<AcceptorFactory> acceptorFactory_;
   std::shared_ptr<PipelineFactory<Pipeline>> childPipelineFactory_;
