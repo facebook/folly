@@ -25,8 +25,6 @@
 
 #include <atomic>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Likely.h>
 #include <folly/ThreadLocal.h>
 
@@ -38,10 +36,13 @@ namespace folly {
 // ThreadCachedInt's you should considering breaking up the Tag space even
 // further.
 template <class IntT, class Tag=IntT>
-class ThreadCachedInt : boost::noncopyable {
+class ThreadCachedInt {
   struct IntCache;
 
  public:
+  // It disallows copy, move, and default ctor
+  ThreadCachedInt(ThreadCachedInt&&) = delete;
+  
   explicit ThreadCachedInt(IntT initialVal = 0, uint32_t cacheSize = 1000)
     : target_(initialVal), cacheSize_(cacheSize) {
   }
