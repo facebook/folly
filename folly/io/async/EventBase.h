@@ -501,6 +501,9 @@ class EventBase : private boost::noncopyable,
       return value_;
     }
 
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
     void dampen(double factor) {
       value_ *= factor;
     }
