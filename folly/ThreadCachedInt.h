@@ -42,8 +42,9 @@ class ThreadCachedInt : boost::noncopyable {
   struct IntCache;
 
  public:
-  explicit ThreadCachedInt(IntT initialVal = 0, uint32_t cacheSize = 1000)
-    : target_(initialVal), cacheSize_(cacheSize) {
+  constexpr explicit ThreadCachedInt(IntT initialVal = 0,
+                                       uint32_t cacheSize = 1000) noexcept :
+      target_{initialVal}, cacheSize_{cacheSize} {
   }
 
   void increment(IntT inc) {
