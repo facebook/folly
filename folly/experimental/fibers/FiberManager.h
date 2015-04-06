@@ -74,8 +74,9 @@ class FiberManager {
      * This is fairly expensive: we fill each newly allocated stack
      * with some known value and find the boundary of unused stack
      * with linear search every time we surrender the stack back to fibersPool.
+     * 0 disables stack recording.
      */
-    bool debugRecordStackUsed{false};
+    size_t recordStackEvery{0};
 
     /**
      * Keep at most this many free fibers in the pool.
@@ -194,7 +195,7 @@ class FiberManager {
   /**
    * return     true if running activeFiber_ is not nullptr.
    */
-  bool hasActiveFiber();
+  bool hasActiveFiber() const;
 
   /**
    * @return What was the most observed fiber stack usage (in bytes).
@@ -239,6 +240,7 @@ class FiberManager {
   size_t fibersAllocated_{0};   /**< total number of fibers allocated */
   size_t fibersPoolSize_{0};    /**< total number of fibers in the free pool */
   size_t fibersActive_{0};      /**< number of running or blocked fibers */
+  size_t fiberId_{0};           /**< id of last fiber used */
 
   FContext::ContextStruct mainContext_;  /**< stores loop function context */
 

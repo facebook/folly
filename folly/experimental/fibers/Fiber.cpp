@@ -38,13 +38,6 @@ pid_t localThreadId() {
   return threadId;
 }
 
-static void fillMagic(const FContext& context) {
-  uint64_t* begin = static_cast<uint64_t*>(context.stackLimit());
-  uint64_t* end = static_cast<uint64_t*>(context.stackBase());
-
-  std::fill(begin, end, kMagic8Bytes);
-}
-
 /* Size of the region from p + nBytes down to the last non-magic value */
 static size_t nonMagicInBytes(const FContext& context) {
   uint64_t* begin = static_cast<uint64_t*>(context.stackLimit());
@@ -82,9 +75,24 @@ Fiber::Fiber(FiberManager& fiberManager) :
   auto limit = fiberManager_.stackAllocator_.allocate(size);
 
   fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
+}
 
-  if (UNLIKELY(fiberManager_.options_.debugRecordStackUsed)) {
-    fillMagic(fcontext_);
+void Fiber::init(bool recordStackUsed) {
+  recordStackUsed_ = recordStackUsed;
+  if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
+    auto limit = fcontext_.stackLimit();
+    auto base = fcontext_.stackBase();
+
+    std::fill(static_cast<uint64_t*>(limit),
+              static_cast<uint64_t*>(base),
+              kMagic8Bytes);
+
+    // newer versions of boost allocate context on fiber stack,
+    // need to create a new one
+    auto size = fiberManager_.options_.stackSize;
+    fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
+
+    stackFilledWithMagic_ = true;
   }
 }
 
@@ -96,12 +104,12 @@ Fiber::~Fiber() {
 
 void Fiber::recordStackPosition() {
   int stackDummy;
+  auto currentPosition = static_cast<size_t>(
+     static_cast<unsigned char*>(fcontext_.stackBase()) -
+     static_cast<unsigned char*>(static_cast<void*>(&stackDummy)));
   fiberManager_.stackHighWatermark_ =
-    std::max(fiberManager_.stackHighWatermark_,
-             static_cast<size_t>(
-               static_cast<unsigned char*>(fcontext_.stackBase()) -
-               static_cast<unsigned char*>(
-                 static_cast<void*>(&stackDummy))));
+    std::max(fiberManager_.stackHighWatermark_, currentPosition);
+  VLOG(4) << "Stack usage: " << currentPosition;
 }
 
 void Fiber::fiberFuncHelper(intptr_t fiber) {
@@ -141,10 +149,13 @@ void Fiber::fiberFunc() {
                                        "running Fiber func_/resultFunc_");
     }
 
-    if (UNLIKELY(fiberManager_.options_.debugRecordStackUsed)) {
+    if (UNLIKELY(recordStackUsed_)) {
       fiberManager_.stackHighWatermark_ =
         std::max(fiberManager_.stackHighWatermark_,
                  nonMagicInBytes(fcontext_));
+      VLOG(3) << "Max stack usage: " << fiberManager_.stackHighWatermark_;
+      CHECK(fiberManager_.stackHighWatermark_ <
+              fiberManager_.options_.stackSize - 64) << "Fiber stack overflow";
     }
 
     state_ = INVALID;

@@ -93,8 +93,12 @@ Fiber* FiberManager::getFiber() {
     assert(fibersPoolSize_ > 0);
     --fibersPoolSize_;
   }
-  ++fibersActive_;
   assert(fiber);
+  ++fibersActive_;
+  ++fiberId_;
+  bool recordStack = (options_.recordStackEvery != 0) &&
+                     (fiberId_ % options_.recordStackEvery == 0);
+  fiber->init(recordStack);
   return fiber;
 }
 

@@ -68,6 +68,7 @@ class Fiber {
   friend class FiberManager;
 
   explicit Fiber(FiberManager& fiberManager);
+  void init(bool recordStackUsed);
 
   template <typename F>
   void setFunction(F&& func);
@@ -98,6 +99,8 @@ class Fiber {
   FContext fcontext_;           /**< current task execution context */
   intptr_t data_;               /**< Used to keep some data with the Fiber */
   std::function<void()> func_;  /**< task function */
+  bool recordStackUsed_{false};
+  bool stackFilledWithMagic_{false};
 
   /**
    * Points to next fiber in remote ready list
