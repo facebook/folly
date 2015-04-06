@@ -57,7 +57,7 @@ class ThreadCachedInt : boost::noncopyable {
 
   // Quickly grabs the current value which may not include some cached
   // increments.
-  IntT readFast() const {
+  constexpr IntT readFast() const {
     return target_.load(std::memory_order_relaxed);
   }
 
@@ -74,6 +74,9 @@ class ThreadCachedInt : boost::noncopyable {
   }
 
   // Quickly reads and resets current value (doesn't reset cached increments).
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
   IntT readFastAndReset() {
     return target_.exchange(0, std::memory_order_release);
   }
@@ -93,11 +96,14 @@ class ThreadCachedInt : boost::noncopyable {
     return ret;
   }
 
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
   void setCacheSize(uint32_t newSize) {
     cacheSize_.store(newSize, std::memory_order_release);
   }
 
-  uint32_t getCacheSize() const {
+  constexpr uint32_t getCacheSize() const {
     return cacheSize_.load();
   }
 
@@ -160,6 +166,9 @@ class ThreadCachedInt : boost::noncopyable {
       }
     }
 
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
     void flush() const {
       parent_->target_.fetch_add(val_, std::memory_order_release);
       val_.store(0, std::memory_order_release);
