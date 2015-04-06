@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <queue>
+#include <typeindex>
 #include <unordered_set>
 #include <vector>
 
@@ -91,13 +92,32 @@ class FiberManager {
   typedef std::function<void(std::exception_ptr, std::string)>
   ExceptionCallback;
 
+  FiberManager(const FiberManager&) = delete;
+  FiberManager& operator=(const FiberManager&) = delete;
+  FiberManager(FiberManager&&) = default;
+  FiberManager& operator=(FiberManager&&) = default;
+
   /**
    * Initializes, but doesn't start FiberManager loop
    *
+   * @param loopController
    * @param options FiberManager options
    */
   explicit FiberManager(std::unique_ptr<LoopController> loopController,
                         Options options = Options());
+
+  /**
+   * Initializes, but doesn't start FiberManager loop
+   *
+   * @param loopController
+   * @param options FiberManager options
+   * @tparam LocalT only local of this type may be stored on fibers.
+   *                Locals of other types will be considered thread-locals.
+   */
+  template <typename LocalT>
+  static FiberManager create(std::unique_ptr<LoopController> loopController,
+                             Options options = Options());
+
 
   ~FiberManager();
 
@@ -301,6 +321,11 @@ class FiberManager {
   Fiber* getFiber();
 
   /**
+   * Sets local data for given fiber if all conditions are met.
+   */
+  void initLocalData(Fiber& fiber);
+
+  /**
    * Function passed to the await call.
    */
   std::function<void(Fiber&)> awaitFunc_;
@@ -318,6 +343,11 @@ class FiberManager {
       remoteTaskQueue_;
 
   std::shared_ptr<TimeoutController> timeoutManager_;
+
+  /**
+   * Only local of this type will be available for fibers.
+   */
+  std::type_index localType_;
 
   void runReadyFiber(Fiber* fiber);
   void remoteReadyInsert(Fiber* fiber);

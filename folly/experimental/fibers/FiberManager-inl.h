@@ -174,9 +174,7 @@ void FiberManager::addTask(F&& func) {
   typedef AddTaskHelper<F> Helper;
 
   auto fiber = getFiber();
-  if (currentFiber_) {
-    fiber->localData_ = currentFiber_->localData_;
-  }
+  initLocalData(*fiber);
 
   if (Helper::allocateInBuffer) {
     auto funcLoc = static_cast<typename Helper::Func*>(fiber->getUserBuffer());
@@ -199,7 +197,9 @@ template <typename F>
 void FiberManager::addTaskRemote(F&& func) {
   auto task = [&]() {
     auto currentFm = getFiberManagerUnsafe();
-    if (currentFm && currentFm->currentFiber_) {
+    if (currentFm &&
+        currentFm->currentFiber_ &&
+        currentFm->localType_ == localType_) {
       return folly::make_unique<RemoteTask>(
         std::forward<F>(func),
         currentFm->currentFiber_->localData_);
@@ -297,9 +297,7 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
     "finally(Try<T>&&): T must be convertible from func()'s return type");
 
   auto fiber = getFiber();
-  if (currentFiber_) {
-    fiber->localData_ = currentFiber_->localData_;
-  }
+  initLocalData(*fiber);
 
   typedef AddTaskFinallyHelper<F,G> Helper;
 
@@ -383,7 +381,7 @@ inline bool FiberManager::hasActiveFiber() const {
 
 template <typename T>
 T& FiberManager::local() {
-  if (currentFiber_) {
+  if (std::type_index(typeid(T)) == localType_ && currentFiber_) {
     return currentFiber_->localData_.get<T>();
   }
   return localThread<T>();
@@ -393,6 +391,22 @@ template <typename T>
 T& FiberManager::localThread() {
   static thread_local T t;
   return t;
+}
+
+inline void FiberManager::initLocalData(Fiber& fiber) {
+  auto fm = getFiberManagerUnsafe();
+  if (fm && fm->currentFiber_ && fm->localType_ == localType_) {
+    fiber.localData_ = fm->currentFiber_->localData_;
+  }
+}
+
+template <typename LocalT>
+FiberManager FiberManager::create(
+    std::unique_ptr<LoopController> loopController,
+    Options options) {
+  FiberManager fm(std::move(loopController), std::move(options));
+  fm.localType_ = typeid(LocalT);
+  return fm;
 }
 
 template <typename F>

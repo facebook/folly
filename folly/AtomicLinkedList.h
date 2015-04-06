@@ -44,6 +44,20 @@ template <class T, AtomicLinkedListHook<T> T::* HookMember>
 class AtomicLinkedList {
  public:
   AtomicLinkedList() {}
+  AtomicLinkedList(const AtomicLinkedList&) = delete;
+  AtomicLinkedList& operator=(const AtomicLinkedList&) = delete;
+  AtomicLinkedList(AtomicLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
+  }
+  AtomicLinkedList& operator=(AtomicLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
+
+    return *this;
+  }
 
   /**
    * Note: list must be empty on destruction.

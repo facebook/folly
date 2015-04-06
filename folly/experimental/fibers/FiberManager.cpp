@@ -48,7 +48,8 @@ FiberManager::FiberManager(std::unique_ptr<LoopController> loopController,
           throw;
         }
       }),
-    timeoutManager_(std::make_shared<TimeoutController>(*loopController_)) {
+    timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
+    localType_(typeid(void)) {
   loopController_->setFiberManager(this);
 }
 
