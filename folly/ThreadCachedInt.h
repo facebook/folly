@@ -138,6 +138,9 @@ class ThreadCachedInt : boost::noncopyable {
     mutable uint32_t numUpdates_;
     std::atomic<bool> reset_;
 
+    // It disallows copy, move, and default ctor
+    IntCache(IntCache&&) = delete;
+    
     explicit IntCache(ThreadCachedInt& parent)
         : parent_(&parent), val_(0), numUpdates_(0), reset_(false) {}
 
