@@ -87,6 +87,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       assert(fibersAllocated_ > 0);
       --fibersAllocated_;
     }
+  } else if (fiber->state_ == Fiber::YIELDED) {
+    fiber->state_ = Fiber::READY_TO_RUN;
+    yieldedFibers_.push_back(*fiber);
   }
   currentFiber_ = nullptr;
 }
@@ -130,6 +133,11 @@ inline bool FiberManager::loopUntilNoReady() {
         hadRemoteFiber = true;
       }
     );
+  }
+
+  if (!yieldedFibers_.empty()) {
+    readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
+    ensureLoopScheduled();
   }
 
   return fibersActive_ > 0;
@@ -377,6 +385,13 @@ inline FiberManager* FiberManager::getFiberManagerUnsafe() {
 
 inline bool FiberManager::hasActiveFiber() const {
   return activeFiber_ != nullptr;
+}
+
+inline void FiberManager::yield() {
+  assert(currentFiberManager_ == this);
+  assert(activeFiber_ != nullptr);
+  assert(activeFiber_->state_ == Fiber::RUNNING);
+  activeFiber_->preempt(Fiber::YIELDED);
 }
 
 template <typename T>

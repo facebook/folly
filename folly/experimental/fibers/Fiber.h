@@ -60,6 +60,7 @@ class Fiber {
     AWAITING,                   /**< Is currently blocked */
     AWAITING_IMMEDIATE,         /**< Was preempted to run an immediate function,
                                      and will be resumed right away */
+    YIELDED,                    /**< The fiber yielded execution voluntarily */
   };
 
   State state_{INVALID};        /**< current Fiber state */

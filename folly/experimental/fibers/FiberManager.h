@@ -18,6 +18,7 @@
 #include <functional>
 #include <memory>
 #include <queue>
+#include <thread>
 #include <typeindex>
 #include <unordered_set>
 #include <vector>
@@ -222,6 +223,14 @@ class FiberManager {
    */
   size_t stackHighWatermark() const;
 
+  /**
+   * Yield execution of the currently running fiber. Must only be called from a
+   * fiber executing on this FiberManager. The calling fiber will be scheduled
+   * when all other fibers have had a chance to run and the event loop is
+   * serviced.
+   */
+  void yield();
+
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
@@ -255,6 +264,8 @@ class FiberManager {
   Fiber* currentFiber_{nullptr};
 
   FiberTailQueue readyFibers_;  /**< queue of fibers ready to be executed */
+  FiberTailQueue yieldedFibers_;  /**< queue of fibers which have yielded
+                                       execution */
   FiberTailQueue fibersPool_;   /**< pool of unitialized Fiber objects */
 
   size_t fibersAllocated_{0};   /**< total number of fibers allocated */
@@ -431,6 +442,15 @@ T& local() {
     return fm->local<T>();
   }
   return FiberManager::localThread<T>();
+}
+
+inline void yield() {
+  auto fm = FiberManager::getFiberManagerUnsafe();
+  if (fm) {
+    fm->yield();
+  } else {
+    std::this_thread::yield();
+  }
 }
 
 }}
