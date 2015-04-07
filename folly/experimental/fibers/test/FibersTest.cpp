@@ -1217,8 +1217,8 @@ TEST(FiberManager, remoteHasReadyTasks) {
 
 template <typename Data>
 void testFiberLocal() {
-  auto fm =
-    FiberManager::create<Data>(folly::make_unique<SimpleLoopController>());
+  FiberManager fm(LocalType<Data>(),
+                  folly::make_unique<SimpleLoopController>());
 
   fm.addTask([]() {
       EXPECT_EQ(42, local<Data>().value);

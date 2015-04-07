@@ -32,26 +32,9 @@ __thread FiberManager* FiberManager::currentFiberManager_ = nullptr;
 
 FiberManager::FiberManager(std::unique_ptr<LoopController> loopController,
                            Options options) :
-    loopController_(std::move(loopController)),
-    options_(options),
-    exceptionCallback_([](std::exception_ptr e, std::string context) {
-        try {
-          std::rethrow_exception(e);
-        } catch (const std::exception& e) {
-          LOG(DFATAL) << "Exception " << typeid(e).name()
-                      << " with message '" << e.what() << "' was thrown in "
-                      << "FiberManager with context '" << context << "'";
-          throw;
-        } catch (...) {
-          LOG(DFATAL) << "Unknown exception was thrown in FiberManager with "
-                      << "context '" << context << "'";
-          throw;
-        }
-      }),
-    timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
-    localType_(typeid(void)) {
-  loopController_->setFiberManager(this);
-}
+    FiberManager(LocalType<void>(),
+                 std::move(loopController),
+                 std::move(options)) {}
 
 FiberManager::~FiberManager() {
   if (isLoopScheduled_) {

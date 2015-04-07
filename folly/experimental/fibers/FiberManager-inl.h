@@ -416,12 +416,29 @@ inline void FiberManager::initLocalData(Fiber& fiber) {
 }
 
 template <typename LocalT>
-FiberManager FiberManager::create(
-    std::unique_ptr<LoopController> loopController,
-    Options options) {
-  FiberManager fm(std::move(loopController), std::move(options));
-  fm.localType_ = typeid(LocalT);
-  return fm;
+FiberManager::FiberManager(
+  LocalType<LocalT>,
+  std::unique_ptr<LoopController> loopController__,
+  Options options)  :
+    loopController_(std::move(loopController__)),
+    options_(std::move(options)),
+    exceptionCallback_([](std::exception_ptr eptr, std::string context) {
+        try {
+          std::rethrow_exception(eptr);
+        } catch (const std::exception& e) {
+          LOG(DFATAL) << "Exception " << typeid(e).name()
+                      << " with message '" << e.what() << "' was thrown in "
+                      << "FiberManager with context '" << context << "'";
+          throw;
+        } catch (...) {
+          LOG(DFATAL) << "Unknown exception was thrown in FiberManager with "
+                      << "context '" << context << "'";
+          throw;
+        }
+      }),
+    timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
+    localType_(typeid(LocalT)) {
+  loopController_->setFiberManager(this);
 }
 
 template <typename F>

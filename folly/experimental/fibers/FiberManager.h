@@ -43,6 +43,10 @@ class Fiber;
 class LoopController;
 class TimeoutController;
 
+template <typename T>
+class LocalType {
+};
+
 /**
  * @class FiberManager
  * @brief Single-threaded task execution engine.
@@ -95,8 +99,6 @@ class FiberManager {
 
   FiberManager(const FiberManager&) = delete;
   FiberManager& operator=(const FiberManager&) = delete;
-  FiberManager(FiberManager&&) = default;
-  FiberManager& operator=(FiberManager&&) = default;
 
   /**
    * Initializes, but doesn't start FiberManager loop
@@ -116,8 +118,9 @@ class FiberManager {
    *                Locals of other types will be considered thread-locals.
    */
   template <typename LocalT>
-  static FiberManager create(std::unique_ptr<LoopController> loopController,
-                             Options options = Options());
+  FiberManager(LocalType<LocalT>,
+               std::unique_ptr<LoopController> loopController,
+               Options options = Options());
 
 
   ~FiberManager();
