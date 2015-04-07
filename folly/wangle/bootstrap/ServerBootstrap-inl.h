@@ -98,7 +98,8 @@ class ServerAcceptor
   }
 
   // UDP thunk
-  void onDataAvailable(const folly::SocketAddress& addr,
+  void onDataAvailable(std::shared_ptr<AsyncUDPSocket> socket,
+                       const folly::SocketAddress& addr,
                        std::unique_ptr<folly::IOBuf> buf,
                        bool truncated) noexcept {
     acceptorPipeline_->read(buf.release());

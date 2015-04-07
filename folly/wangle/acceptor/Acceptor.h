@@ -233,7 +233,10 @@ class Acceptor :
 
   void onListenStarted() noexcept {}
   void onListenStopped() noexcept {}
-  void onDataAvailable(const SocketAddress&, std::unique_ptr<IOBuf>, bool) noexcept {}
+  void onDataAvailable(
+    std::shared_ptr<AsyncUDPSocket> socket,
+    const SocketAddress&,
+    std::unique_ptr<IOBuf>, bool) noexcept {}
 
   virtual AsyncSocket::UniquePtr makeNewAsyncSocket(EventBase* base, int fd) {
     return AsyncSocket::UniquePtr(new AsyncSocket(base, fd));

@@ -56,9 +56,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     /**
      * Invoked when a new packet is received
      */
-    virtual void onDataAvailable(const folly::SocketAddress& addr,
-                                 std::unique_ptr<folly::IOBuf> buf,
-                                 bool truncated) noexcept = 0;
+    virtual void onDataAvailable(
+      std::shared_ptr<AsyncUDPSocket> socket,
+      const folly::SocketAddress& addr,
+      std::unique_ptr<folly::IOBuf> buf,
+      bool truncated) noexcept = 0;
 
     virtual ~Callback() {}
   };
@@ -85,7 +87,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
   void bind(const folly::SocketAddress& addy) {
     CHECK(!socket_);
 
-    socket_ = folly::make_unique<AsyncUDPSocket>(evb_);
+    socket_ = std::make_shared<AsyncUDPSocket>(evb_);
     socket_->setReusePort(reusePort_);
     socket_->bind(addy);
   }
@@ -131,6 +133,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
   void close() {
     CHECK(socket_) << "Need to bind before closing";
+    socket_->close();
     socket_.reset();
   }
 
@@ -165,11 +168,12 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
     auto mvp =
         folly::MoveWrapper<
             std::unique_ptr<folly::IOBuf>>(std::move(data));
+    auto socket = socket_;
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    std::function<void()> f = [client, callback, mvp, truncated] () mutable {
-      callback->onDataAvailable(client, std::move(*mvp), truncated);
+    std::function<void()> f = [socket, client, callback, mvp, truncated] () mutable {
+      callback->onDataAvailable(socket, client, std::move(*mvp), truncated);
     };
 
     listeners_[nextListener_].first->runInEventBaseThread(f);
@@ -196,7 +200,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
   EventBase* const evb_;
   const size_t packetSize_;
 
-  std::unique_ptr<AsyncUDPSocket> socket_;
+  std::shared_ptr<AsyncUDPSocket> socket_;
 
   // List of listener to distribute packets among
   typedef std::pair<EventBase*, Callback*> Listener;
