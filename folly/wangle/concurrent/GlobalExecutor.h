@@ -18,9 +18,8 @@
 
 #include <memory>
 
-namespace folly {
-class Executor;
-}
+#include <folly/Executor.h>
+#include <folly/wangle/concurrent/IOExecutor.h>
 
 namespace folly { namespace wangle {
 
@@ -33,12 +32,11 @@ std::shared_ptr<Executor> getCPUExecutor();
 // subsequent calls to getCPUExecutor(). Takes a non-owning (weak) reference.
 void setCPUExecutor(std::shared_ptr<Executor> executor);
 
-// IOExecutors differ from Executors in that they drive and provide access to
-// one or more EventBases.
-class IOExecutor;
-
 // Retrieve the global IOExecutor. If there is none, a default
 // IOThreadPoolExecutor will be constructed and returned.
+//
+// IOExecutors differ from Executors in that they drive and provide access to
+// one or more EventBases.
 std::shared_ptr<IOExecutor> getIOExecutor();
 
 // Set an IOExecutor to be the global IOExecutor which will be returned by
