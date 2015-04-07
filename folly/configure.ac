@@ -64,8 +64,9 @@ AC_CHECK_LIB(ssl,
         [AC_MSG_ERROR(["Error: libssl required"])])
 
 # check for boost libs
-AX_BOOST_BASE([1.20.0], [], [AC_MSG_ERROR(
-              [Please install boost >= 1.20.0 (thread, regex, and system)])])
+AX_BOOST_BASE([1.51.0], [], [AC_MSG_ERROR(
+              [Please install boost >= 1.51.0 (context, thread, regex, and system)])])
+AX_BOOST_CONTEXT
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
@@ -307,7 +308,7 @@ AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
 AM_CPPFLAGS="$AM_CPPFLAGS $BOOST_CPPFLAGS"
-AM_LDFLAGS="$AM_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB"
+AM_LDFLAGS="$AM_LDFLAGS $BOOST_CONTEXT_LIB $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread"
 
 AC_SUBST([AM_CPPFLAGS])

@@ -26,6 +26,7 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashArray-inl.h \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
+	AtomicLinkedList.h \
 	AtomicStruct.h \
 	Baton.h \
 	Benchmark.h \
@@ -72,6 +73,31 @@ nobase_follyinclude_HEADERS = \
 	experimental/Bits.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
+	experimental/fibers/AddTasks.h \
+	experimental/fibers/AddTasks-inl.h \
+	experimental/fibers/Baton.h \
+	experimental/fibers/Baton-inl.h \
+	experimental/fibers/BoostContextCompatibility.h \
+	experimental/fibers/EventBaseLoopController.h \
+	experimental/fibers/EventBaseLoopController-inl.h \
+	experimental/fibers/Fiber.h \
+	experimental/fibers/Fiber-inl.h \
+	experimental/fibers/FiberManager.h \
+	experimental/fibers/FiberManager-inl.h \
+	experimental/fibers/FiberManagerMap.h \
+	experimental/fibers/ForEach.h \
+	experimental/fibers/ForEach-inl.h \
+	experimental/fibers/GenericBaton.h \
+	experimental/fibers/GuardPageAllocator.h \
+	experimental/fibers/GuardPageAllocator-inl.h \
+	experimental/fibers/LoopController.h \
+	experimental/fibers/Promise.h \
+	experimental/fibers/Promise-inl.h \
+	experimental/fibers/SimpleLoopController.h \
+	experimental/fibers/TimeoutController.h \
+	experimental/fibers/traits.h \
+	experimental/fibers/WhenN.h \
+	experimental/fibers/WhenN-inl.h \
 	experimental/FunctionScheduler.h \
 	experimental/io/FsUtil.h \
 	experimental/JSONSchema.h \
@@ -353,6 +379,11 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
+	experimental/fibers/Baton.cpp \
+	experimental/fibers/Fiber.cpp \
+	experimental/fibers/FiberManager.cpp \
+	experimental/fibers/FiberManagerMap.cpp \
+	experimental/fibers/TimeoutController.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \
