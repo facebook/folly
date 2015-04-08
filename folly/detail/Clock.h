@@ -32,7 +32,6 @@
 #include <pthread.h>
 #include <pthread_time.h>
 #else
-typedef uint8_t clockid_t;
 #define CLOCK_REALTIME 0
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts);
