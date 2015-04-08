@@ -63,6 +63,22 @@ class OutputBufferingHandler : public BytesToBytesHandler,
     });
   }
 
+  Future<void> close(Context* ctx) override {
+    if (isLoopCallbackScheduled()) {
+      cancelLoopCallback();
+    }
+
+    // If there are sends queued, cancel them
+    for (auto& promise : promises_) {
+      promise.setException(
+        folly::make_exception_wrapper<std::runtime_error>(
+          "close() called while sends still pending"));
+    }
+    sends_.reset();
+    promises_.clear();
+    return ctx->fireClose();
+  }
+
   std::vector<Promise<void>> promises_;
   std::unique_ptr<IOBuf> sends_{nullptr};
   bool queueSends_{true};
