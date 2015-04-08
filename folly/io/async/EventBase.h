@@ -497,7 +497,7 @@ class EventBase : private boost::noncopyable,
 
     void addSample(int64_t idle, int64_t busy);
 
-    double get() const {
+    constexpr double get() const {
       return value_;
     }
 
@@ -506,6 +506,7 @@ class EventBase : private boost::noncopyable,
     }
 
    private:
+    constexpr SmoothLoopTime() noexcept;
     double  expCoeff_;
     double  value_;
     int64_t oldBusyLeftover_;
