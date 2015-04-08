@@ -85,12 +85,18 @@ class DelayedDestruction : private boost::noncopyable {
   class DestructorGuard {
    public:
 
-    explicit DestructorGuard(DelayedDestruction* dd) : dd_(dd) {
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
+    explicit DestructorGuard(DelayedDestruction* dd) : dd_{dd} {
       ++dd_->guardCount_;
       assert(dd_->guardCount_ > 0); // check for wrapping
     }
 
-    DestructorGuard(const DestructorGuard& dg) : dd_(dg.dd_) {
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
+    DestructorGuard(const DestructorGuard& dg) : dd_{dg.dd_} {
       ++dd_->guardCount_;
       assert(dd_->guardCount_ > 0); // check for wrapping
     }
