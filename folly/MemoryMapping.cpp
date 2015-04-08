@@ -52,7 +52,10 @@ MemoryMapping::MemoryMapping(File file, off_t offset, off_t length,
 
 MemoryMapping::MemoryMapping(const char* name, off_t offset, off_t length,
                              Options options)
-  : MemoryMapping(File(name), offset, length, options) { }
+    : MemoryMapping(File(name, options.writable ? O_RDWR : O_RDONLY),
+                    offset,
+                    length,
+                    options) { }
 
 MemoryMapping::MemoryMapping(int fd, off_t offset, off_t length,
                              Options options)
