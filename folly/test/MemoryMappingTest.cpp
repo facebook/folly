@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#include <sys/mman.h>
 #include <cstdlib>
-#include <gtest/gtest.h>
+#include <folly/FileUtil.h>
 #include <folly/MemoryMapping.h>
+#include <gtest/gtest.h>
 
 namespace folly {
 
@@ -143,6 +145,31 @@ TEST(MemoryMapping, ZeroLength) {
   EXPECT_TRUE(m.mlock(MemoryMapping::LockMode::MUST_LOCK));
   EXPECT_TRUE(m.mlocked());
   EXPECT_EQ(0, m.data().size());
+}
+
+TEST(MemoryMapping, Advise) {
+  File f = File::temporary();
+  size_t kPageSize = 4096;
+  size_t size = kPageSize + 10;  // unaligned file size
+  PCHECK(ftruncateNoInt(f.fd(), size) == 0) << size;
+
+  MemoryMapping m(File(f.fd()));
+
+  // NOTE: advise crashes on bad input.
+
+  m.advise(MADV_NORMAL, 0, kPageSize);
+  m.advise(MADV_NORMAL, 1, kPageSize);
+  m.advise(MADV_NORMAL, 0, 2);
+  m.advise(MADV_NORMAL, 1, 2);
+
+  m.advise(MADV_NORMAL, kPageSize, 0);
+  m.advise(MADV_NORMAL, kPageSize, 1);
+  m.advise(MADV_NORMAL, kPageSize, size - kPageSize);
+
+  auto off = kPageSize + 1;
+  m.advise(MADV_NORMAL, off, size - off);
+
+  EXPECT_DEATH(m.advise(MADV_NORMAL, off, size - off + 1), "");
 }
 
 } // namespace folly

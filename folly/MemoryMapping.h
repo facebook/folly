@@ -157,6 +157,7 @@ class MemoryMapping : boost::noncopyable {
    * Advise the kernel about memory access.
    */
   void advise(int advice) const;
+  void advise(int advice, size_t offset, size_t length) const;
 
   /**
    * A bitwise cast of the mapped bytes as range of values. Only intended for

@@ -15,8 +15,12 @@
  */
 
 #include <folly/MemoryMapping.h>
+
+#include <algorithm>
+#include <functional>
+#include <utility>
+
 #include <folly/Format.h>
-#include <folly/Portability.h>
 
 #ifdef __linux__
 #include <folly/experimental/io/HugePages.h>
@@ -240,9 +244,8 @@ bool MemoryMapping::mlock(LockMode lock) {
     return true;
   }
 
-  auto msg(folly::format(
-    "mlock({}) failed at {}",
-    mapLength_, amountSucceeded).str());
+  auto msg =
+    folly::sformat("mlock({}) failed at {}", mapLength_, amountSucceeded);
 
   if (lock == LockMode::TRY_LOCK && (errno == EPERM || errno == ENOMEM)) {
     PLOG(WARNING) << msg;
@@ -283,17 +286,35 @@ MemoryMapping::~MemoryMapping() {
     size_t amountSucceeded = 0;
     if (!memOpInChunks(::munmap, mapStart_, mapLength_, options_.pageSize,
                        amountSucceeded)) {
-      PLOG(FATAL) << folly::format(
-        "munmap({}) failed at {}",
-        mapLength_, amountSucceeded).str();
+      PLOG(FATAL) << folly::format("munmap({}) failed at {}",
+                                   mapLength_, amountSucceeded);
     }
   }
 }
 
-void MemoryMapping::advise(int advice) const {
-  if (mapLength_ && ::madvise(mapStart_, mapLength_, advice)) {
-    PLOG(WARNING) << "madvise()";
+void MemoryMapping::advise(int advice) const { advise(advice, 0, mapLength_); }
+
+void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
+  CHECK_LE(offset + length, mapLength_)
+    << " offset: " << offset
+    << " length: " << length
+    << " mapLength_: " << mapLength_;
+
+  if (length == 0) {
+    return;
   }
+
+  auto offMisalign = offset % options_.pageSize;
+  if (offMisalign != 0) {
+    offset -= offMisalign;
+    length += offMisalign;
+  }
+
+  length = (length + options_.pageSize - 1) & ~(options_.pageSize - 1);
+  length = std::min(length, mapLength_ - offset);
+
+  char* mapStart = static_cast<char*>(mapStart_) + offset;
+  PLOG_IF(WARNING, ::madvise(mapStart, length, advice)) << "madvise";
 }
 
 MemoryMapping& MemoryMapping::operator=(MemoryMapping other) {
