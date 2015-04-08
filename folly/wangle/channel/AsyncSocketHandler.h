@@ -146,7 +146,7 @@ class AsyncSocketHandler
   };
 
   Context* ctx_{nullptr};
-  folly::IOBufQueue bufQueue_;
+  folly::IOBufQueue bufQueue_{folly::IOBufQueue::cacheChainLength()};
   std::shared_ptr<AsyncSocket> socket_{nullptr};
 };
 
