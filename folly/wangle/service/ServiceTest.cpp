@@ -15,9 +15,10 @@
  */
 #include <gtest/gtest.h>
 
-#include <folly/wangle/service/Service.h>
-#include <folly/wangle/service/ServerDispatcher.h>
+#include <folly/wangle/codec/StringCodec.h>
 #include <folly/wangle/service/ClientDispatcher.h>
+#include <folly/wangle/service/ServerDispatcher.h>
+#include <folly/wangle/service/Service.h>
 
 namespace folly {
 
@@ -36,27 +37,6 @@ class EchoIntService : public Service<std::string, int> {
  public:
   virtual Future<int> operator()(std::string req) override {
     return makeFuture<int>(folly::to<int>(req));
-  }
-};
-
-class StringCodec : public ChannelHandler<IOBufQueue&, std::string,
-                                          std::string, std::unique_ptr<IOBuf>> {
- public:
-  typedef typename ChannelHandler<
-   IOBufQueue&, std::string,
-   std::string, std::unique_ptr<IOBuf>>::Context Context;
-
-  void read(Context* ctx, IOBufQueue& q) override {
-    auto buf = q.pop_front();
-    buf->coalesce();
-    std::string data((const char*)buf->data(), buf->length());
-
-    ctx->fireRead(data);
-  }
-
-  Future<void> write(Context* ctx, std::string msg) override {
-    auto buf = IOBuf::copyBuffer(msg.data(), msg.length());
-    return ctx->fireWrite(std::move(buf));
   }
 };
 

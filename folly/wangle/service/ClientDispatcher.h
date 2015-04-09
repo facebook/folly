@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/wangle/channel/ChannelHandler.h>
+#include <folly/wangle/service/Service.h>
 
 namespace folly { namespace wangle {
 

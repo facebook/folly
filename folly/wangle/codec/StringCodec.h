@@ -13,34 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
 
 #include <folly/wangle/channel/ChannelHandler.h>
-#include <folly/wangle/service/Service.h>
 
 namespace folly { namespace wangle {
 
-/**
- * Dispatch requests from pipeline one at a time synchronously.
- * Concurrent requests are queued in the pipeline.
+/*
+ * StringCodec converts a pipeline from IOBufs to std::strings.
  */
-template <typename Req, typename Resp = Req>
-class SerialServerDispatcher : public ChannelHandlerAdapter<Req, Resp> {
+class StringCodec : public ChannelHandler<IOBufQueue&, std::string,
+                                          std::string, std::unique_ptr<IOBuf>> {
  public:
+  typedef typename ChannelHandler<
+   IOBufQueue&, std::string,
+   std::string, std::unique_ptr<IOBuf>>::Context Context;
 
-  typedef typename ChannelHandlerAdapter<Req, Resp>::Context Context;
+  void read(Context* ctx, IOBufQueue& q) override {
+    auto buf = q.pop_front();
+    buf->coalesce();
+    std::string data((const char*)buf->data(), buf->length());
 
-  explicit SerialServerDispatcher(Service<Req, Resp>* service)
-      : service_(service) {}
-
-  void read(Context* ctx, Req in) override {
-    auto resp = (*service_)(std::move(in)).get();
-    ctx->fireWrite(std::move(resp));
+    ctx->fireRead(data);
   }
 
- private:
-
-  Service<Req, Resp>* service_;
+  Future<void> write(Context* ctx, std::string msg) override {
+    auto buf = IOBuf::copyBuffer(msg.data(), msg.length());
+    return ctx->fireWrite(std::move(buf));
+  }
 };
 
 }} // namespace
