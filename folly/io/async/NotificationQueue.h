@@ -57,6 +57,9 @@ namespace folly {
 template<typename MessageT>
 class NotificationQueue {
  public:
+  // It disallows copy, move, and default ctor
+  NotificationQueue(NotificationQueue&&) = delete;
+  
   /**
    * A callback interface for consuming messages from the queue as they arrive.
    */
@@ -425,9 +428,6 @@ class NotificationQueue {
   }
 
  private:
-  // Forbidden copy constructor and assignment operator
-  NotificationQueue(NotificationQueue const &) = delete;
-  NotificationQueue& operator=(NotificationQueue const &) = delete;
 
   inline bool checkQueueSize(size_t maxSize, bool throws=true) const {
     DCHECK(0 == spinlock_.trylock());
