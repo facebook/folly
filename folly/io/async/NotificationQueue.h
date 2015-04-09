@@ -294,7 +294,10 @@ class NotificationQueue {
    * message on the queue, ignoring the configured maximum queue size.  This
    * can cause the queue size to exceed the configured maximum.
    */
-  void setMaxQueueSize(uint32_t max) {
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
+  void setMaxQueueSize(uint32_t max) noexcept {
     advisoryMaxQueueSize_ = max;
   }
 
@@ -429,6 +432,9 @@ class NotificationQueue {
   NotificationQueue(NotificationQueue const &) = delete;
   NotificationQueue& operator=(NotificationQueue const &) = delete;
 
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
   inline bool checkQueueSize(size_t maxSize, bool throws=true) const {
     DCHECK(0 == spinlock_.trylock());
     if (maxSize > 0 && queue_.size() >= maxSize) {
@@ -441,6 +447,9 @@ class NotificationQueue {
     return true;
   }
 
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
   inline bool checkDraining(bool throws=true) {
     if (UNLIKELY(draining_ && throws)) {
       throw std::runtime_error("queue is draining, cannot add message");
@@ -481,13 +490,16 @@ class NotificationQueue {
     }
   }
 
+#if __cplusplus >= 201402L
+  constexpr
+#endif  // __cplusplus
   bool tryConsumeEvent() {
     uint64_t value = 0;
     ssize_t rc = -1;
     if (eventfd_ >= 0) {
       rc = ::read(eventfd_, &value, sizeof(value));
     } else {
-      uint8_t value8;
+      uint8_t value8{0};
       rc = ::read(pipeFds_[0], &value8, sizeof(value8));
       value = value8;
     }
