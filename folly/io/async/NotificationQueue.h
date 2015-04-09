@@ -64,10 +64,10 @@ class NotificationQueue {
    public:
     enum : uint16_t { kDefaultMaxReadAtOnce = 10 };
 
-    Consumer()
-      : queue_(nullptr),
-        destroyedFlagPtr_(nullptr),
-        maxReadAtOnce_(kDefaultMaxReadAtOnce) {}
+    // It disallows copy, move, and default ctor
+    Consumer(Consumer&&) = delete;
+    
+    Consumer() = default;
 
     virtual ~Consumer();
 
@@ -187,9 +187,9 @@ class NotificationQueue {
     }
     void init(EventBase* eventBase, NotificationQueue* queue);
 
-    NotificationQueue* queue_;
-    bool* destroyedFlagPtr_;
-    uint32_t maxReadAtOnce_;
+    NotificationQueue* queue_{nullptr};
+    bool* destroyedFlagPtr_{nullptr};
+    uint32_t maxReadAtOnce_{kDefaultMaxReadAtOnce};
     EventBase* base_;
     bool active_{false};
   };
