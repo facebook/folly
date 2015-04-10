@@ -219,7 +219,7 @@ inline uint32_t fnv32(const char* s,
 inline uint32_t fnv32_buf(const void* buf,
                           size_t n,
                           uint32_t hash = FNV_32_HASH_START) {
-  const char* char_buf = reinterpret_cast<const char*>(buf);
+  const signed char* char_buf = reinterpret_cast<const signed char*>(buf);
 
   for (size_t i = 0; i < n; ++i) {
     hash += (hash << 1) + (hash << 4) + (hash << 7) +
@@ -248,7 +248,7 @@ inline uint64_t fnv64(const char* s,
 inline uint64_t fnv64_buf(const void* buf,
                           size_t n,
                           uint64_t hash = FNV_64_HASH_START) {
-  const char* char_buf = reinterpret_cast<const char*>(buf);
+  const signed char* char_buf = reinterpret_cast<const signed char*>(buf);
 
   for (size_t i = 0; i < n; ++i) {
     hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) +

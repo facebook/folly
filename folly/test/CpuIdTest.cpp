@@ -24,5 +24,9 @@ using namespace folly;
 TEST(CpuId, Simple) {
   // All CPUs should support MMX
   CpuId id;
+#ifdef __aarm64__
   EXPECT_TRUE(id.mmx());
+#else
+  EXPECT_TRUE(1);
+#endif
 }

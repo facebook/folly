@@ -72,7 +72,7 @@ namespace detail {
     void wait() {
       if (spinCount < kMaxActiveSpin) {
         ++spinCount;
-	PAUSE();
+	FOLLY_PAUSE();
       } else {
         /*
          * Always sleep 0.5ms, assuming this will make the kernel put
