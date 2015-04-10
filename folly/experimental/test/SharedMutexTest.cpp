@@ -917,7 +917,6 @@ static void runAllAndValidate(size_t numOps, size_t numThreads) {
 
 TEST(SharedMutex, deterministic_concurrent_readers_of_one_lock_read_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runContendedReaders<DeterministicAtomic,
                         DSharedMutexReadPriority,
@@ -927,7 +926,6 @@ TEST(SharedMutex, deterministic_concurrent_readers_of_one_lock_read_prio) {
 
 TEST(SharedMutex, deterministic_concurrent_readers_of_one_lock_write_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runContendedReaders<DeterministicAtomic,
                         DSharedMutexWritePriority,
@@ -951,7 +949,6 @@ TEST(SharedMutex, concurrent_readers_of_one_lock_write_prio) {
 
 TEST(SharedMutex, deterministic_readers_of_concurrent_locks_read_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runContendedReaders<DeterministicAtomic,
                         DSharedMutexReadPriority,
@@ -961,7 +958,6 @@ TEST(SharedMutex, deterministic_readers_of_concurrent_locks_read_prio) {
 
 TEST(SharedMutex, deterministic_readers_of_concurrent_locks_write_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runContendedReaders<DeterministicAtomic,
                         DSharedMutexWritePriority,
@@ -985,7 +981,6 @@ TEST(SharedMutex, readers_of_concurrent_locks_write_prio) {
 
 TEST(SharedMutex, deterministic_mixed_mostly_read_read_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runMixed<DeterministicAtomic, DSharedMutexReadPriority, Locker>(
         1000, 3, 0.1, false);
@@ -994,7 +989,6 @@ TEST(SharedMutex, deterministic_mixed_mostly_read_read_prio) {
 
 TEST(SharedMutex, deterministic_mixed_mostly_read_write_prio) {
   for (int pass = 0; pass < 3; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runMixed<DeterministicAtomic, DSharedMutexWritePriority, Locker>(
         1000, 3, 0.1, false);
@@ -1017,7 +1011,6 @@ TEST(SharedMutex, mixed_mostly_read_write_prio) {
 
 TEST(SharedMutex, deterministic_mixed_mostly_write_read_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runMixed<DeterministicAtomic, DSharedMutexReadPriority, TokenLocker>(
         1000, 10, 0.9, false);
@@ -1026,10 +1019,17 @@ TEST(SharedMutex, deterministic_mixed_mostly_write_read_prio) {
 
 TEST(SharedMutex, deterministic_mixed_mostly_write_write_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runMixed<DeterministicAtomic, DSharedMutexWritePriority, TokenLocker>(
         1000, 10, 0.9, false);
+  }
+}
+
+TEST(SharedMutex, deterministic_lost_wakeup_write_prio) {
+  for (int pass = 0; pass < 10; ++pass) {
+    DSched sched(DSched::uniformSubset(pass, 2, 200));
+    runMixed<DeterministicAtomic, DSharedMutexWritePriority, TokenLocker>(
+        1000, 3, 1.0, false);
   }
 }
 
@@ -1049,7 +1049,6 @@ TEST(SharedMutex, mixed_mostly_write_write_prio) {
 
 TEST(SharedMutex, deterministic_all_ops_read_prio) {
   for (int pass = 0; pass < 5; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runAllAndValidate<DSharedMutexReadPriority, DeterministicAtomic>(1000, 8);
   }
@@ -1057,7 +1056,6 @@ TEST(SharedMutex, deterministic_all_ops_read_prio) {
 
 TEST(SharedMutex, deterministic_all_ops_write_prio) {
   for (int pass = 0; pass < 5; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runAllAndValidate<DSharedMutexWritePriority, DeterministicAtomic>(1000, 8);
   }
@@ -1192,7 +1190,6 @@ static void runRemoteUnlock(size_t numOps,
 
 TEST(SharedMutex, deterministic_remote_write_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runRemoteUnlock<DSharedMutexWritePriority, DeterministicAtomic>(
         500, 0.1, 0.1, 5, 5);
@@ -1201,7 +1198,6 @@ TEST(SharedMutex, deterministic_remote_write_prio) {
 
 TEST(SharedMutex, deterministic_remote_read_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     DSched sched(DSched::uniform(pass));
     runRemoteUnlock<DSharedMutexReadPriority, DeterministicAtomic>(
         500, 0.1, 0.1, 5, 5);
@@ -1210,14 +1206,12 @@ TEST(SharedMutex, deterministic_remote_read_prio) {
 
 TEST(SharedMutex, remote_write_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     runRemoteUnlock<SharedMutexWritePriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
 
 TEST(SharedMutex, remote_read_prio) {
   for (int pass = 0; pass < 1; ++pass) {
-    // LOG(INFO) << "pass " << pass;
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
@@ -1718,329 +1712,329 @@ BENCH_REL (pthrd_rwlock_ping_pong, burn1M, 1000, 1000000)
 // ============================================================================
 // folly/experimental/test/SharedMutexTest.cpp     relative  time/iter  iters/s
 // ============================================================================
-// single_thread_lock_shared_unlock_shared                     23.01ns   43.47M
-// single_thread_lock_unlock                                   25.42ns   39.34M
+// single_thread_lock_shared_unlock_shared                     22.78ns   43.89M
+// single_thread_lock_unlock                                   26.01ns   38.45M
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(1thread)                                 15.13ns   66.10M
-// shmtx_wr_pri_reads(1thread)                       73.76%    20.51ns   48.75M
-// shmtx_w_bare_reads(1thread)                       59.49%    25.43ns   39.32M
-// shmtx_rd_pri_reads(1thread)                       72.60%    20.84ns   47.99M
-// shmtx_r_bare_reads(1thread)                       59.62%    25.37ns   39.41M
-// folly_ticket_reads(1thread)                       55.40%    27.31ns   36.62M
-// boost_shared_reads(1thread)                       10.88%   139.01ns    7.19M
-// pthrd_rwlock_reads(1thread)                       40.70%    37.17ns   26.90M
+// folly_rwspin_reads(1thread)                                 15.09ns   66.25M
+// shmtx_wr_pri_reads(1thread)                       69.89%    21.60ns   46.30M
+// shmtx_w_bare_reads(1thread)                       58.25%    25.91ns   38.59M
+// shmtx_rd_pri_reads(1thread)                       72.50%    20.82ns   48.03M
+// shmtx_r_bare_reads(1thread)                       58.27%    25.91ns   38.60M
+// folly_ticket_reads(1thread)                       54.80%    27.55ns   36.30M
+// boost_shared_reads(1thread)                       10.88%   138.80ns    7.20M
+// pthrd_rwlock_reads(1thread)                       40.68%    37.11ns   26.95M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(2thread)                                 47.51ns   21.05M
-// shmtx_wr_pri_reads(2thread)                      237.28%    20.02ns   49.94M
-// shmtx_w_bare_reads(2thread)                      222.10%    21.39ns   46.74M
-// shmtx_rd_pri_reads(2thread)                      251.68%    18.88ns   52.97M
-// shmtx_r_bare_reads(2thread)                      222.29%    21.37ns   46.78M
-// folly_ticket_reads(2thread)                       55.00%    86.39ns   11.58M
-// boost_shared_reads(2thread)                       22.86%   207.81ns    4.81M
-// pthrd_rwlock_reads(2thread)                       61.36%    77.43ns   12.92M
+// folly_rwspin_reads(2thread)                                 92.63ns   10.80M
+// shmtx_wr_pri_reads(2thread)                      462.86%    20.01ns   49.97M
+// shmtx_w_bare_reads(2thread)                      430.53%    21.51ns   46.48M
+// shmtx_rd_pri_reads(2thread)                      487.13%    19.01ns   52.59M
+// shmtx_r_bare_reads(2thread)                      433.35%    21.37ns   46.79M
+// folly_ticket_reads(2thread)                       69.82%   132.67ns    7.54M
+// boost_shared_reads(2thread)                       36.66%   252.63ns    3.96M
+// pthrd_rwlock_reads(2thread)                      127.76%    72.50ns   13.79M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(4thread)                                 69.29ns   14.43M
-// shmtx_wr_pri_reads(4thread)                      694.46%     9.98ns  100.23M
-// shmtx_w_bare_reads(4thread)                      650.25%    10.66ns   93.85M
-// shmtx_rd_pri_reads(4thread)                      738.08%     9.39ns  106.53M
-// shmtx_r_bare_reads(4thread)                      650.71%    10.65ns   93.92M
-// folly_ticket_reads(4thread)                       63.86%   108.49ns    9.22M
-// boost_shared_reads(4thread)                       19.53%   354.79ns    2.82M
-// pthrd_rwlock_reads(4thread)                       33.86%   204.61ns    4.89M
+// folly_rwspin_reads(4thread)                                 97.45ns   10.26M
+// shmtx_wr_pri_reads(4thread)                      978.22%     9.96ns  100.38M
+// shmtx_w_bare_reads(4thread)                      908.35%    10.73ns   93.21M
+// shmtx_rd_pri_reads(4thread)                     1032.29%     9.44ns  105.93M
+// shmtx_r_bare_reads(4thread)                      912.38%    10.68ns   93.63M
+// folly_ticket_reads(4thread)                       46.08%   211.46ns    4.73M
+// boost_shared_reads(4thread)                       25.00%   389.74ns    2.57M
+// pthrd_rwlock_reads(4thread)                       47.53%   205.01ns    4.88M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(8thread)                                 75.34ns   13.27M
-// shmtx_wr_pri_reads(8thread)                     1500.46%     5.02ns  199.16M
-// shmtx_w_bare_reads(8thread)                     1397.84%     5.39ns  185.54M
-// shmtx_rd_pri_reads(8thread)                     1589.99%     4.74ns  211.05M
-// shmtx_r_bare_reads(8thread)                     1398.83%     5.39ns  185.67M
-// folly_ticket_reads(8thread)                       53.26%   141.45ns    7.07M
-// boost_shared_reads(8thread)                       26.24%   287.11ns    3.48M
-// pthrd_rwlock_reads(8thread)                       43.40%   173.57ns    5.76M
+// folly_rwspin_reads(8thread)                                147.24ns    6.79M
+// shmtx_wr_pri_reads(8thread)                     2915.66%     5.05ns  198.02M
+// shmtx_w_bare_reads(8thread)                     2699.32%     5.45ns  183.32M
+// shmtx_rd_pri_reads(8thread)                     3092.58%     4.76ns  210.03M
+// shmtx_r_bare_reads(8thread)                     2744.63%     5.36ns  186.40M
+// folly_ticket_reads(8thread)                       54.84%   268.47ns    3.72M
+// boost_shared_reads(8thread)                       42.40%   347.30ns    2.88M
+// pthrd_rwlock_reads(8thread)                       78.90%   186.63ns    5.36M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(16thread)                                80.81ns   12.38M
-// shmtx_wr_pri_reads(16thread)                    3119.49%     2.59ns  386.05M
-// shmtx_w_bare_reads(16thread)                    2916.06%     2.77ns  360.87M
-// shmtx_rd_pri_reads(16thread)                    3330.06%     2.43ns  412.11M
-// shmtx_r_bare_reads(16thread)                    2909.05%     2.78ns  360.01M
-// folly_ticket_reads(16thread)                      44.59%   181.21ns    5.52M
-// boost_shared_reads(16thread)                      29.56%   273.40ns    3.66M
-// pthrd_rwlock_reads(16thread)                      48.39%   166.99ns    5.99M
+// folly_rwspin_reads(16thread)                               166.25ns    6.02M
+// shmtx_wr_pri_reads(16thread)                    6133.03%     2.71ns  368.91M
+// shmtx_w_bare_reads(16thread)                    5936.05%     2.80ns  357.06M
+// shmtx_rd_pri_reads(16thread)                    6786.57%     2.45ns  408.22M
+// shmtx_r_bare_reads(16thread)                    5995.54%     2.77ns  360.64M
+// folly_ticket_reads(16thread)                      56.35%   295.01ns    3.39M
+// boost_shared_reads(16thread)                      51.62%   322.08ns    3.10M
+// pthrd_rwlock_reads(16thread)                      92.47%   179.79ns    5.56M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(32thread)                                73.29ns   13.64M
-// shmtx_wr_pri_reads(32thread)                    4417.58%     1.66ns  602.77M
-// shmtx_w_bare_reads(32thread)                    4463.71%     1.64ns  609.06M
-// shmtx_rd_pri_reads(32thread)                    4777.84%     1.53ns  651.92M
-// shmtx_r_bare_reads(32thread)                    4312.45%     1.70ns  588.42M
-// folly_ticket_reads(32thread)                      25.56%   286.75ns    3.49M
-// boost_shared_reads(32thread)                      22.08%   331.86ns    3.01M
-// pthrd_rwlock_reads(32thread)                      46.72%   156.87ns    6.37M
+// folly_rwspin_reads(32thread)                               107.72ns    9.28M
+// shmtx_wr_pri_reads(32thread)                    6772.80%     1.59ns  628.77M
+// shmtx_w_bare_reads(32thread)                    6236.13%     1.73ns  578.94M
+// shmtx_rd_pri_reads(32thread)                    8143.32%     1.32ns  756.00M
+// shmtx_r_bare_reads(32thread)                    6485.18%     1.66ns  602.06M
+// folly_ticket_reads(32thread)                      35.12%   306.73ns    3.26M
+// boost_shared_reads(32thread)                      28.19%   382.17ns    2.62M
+// pthrd_rwlock_reads(32thread)                      65.29%   164.99ns    6.06M
 // ----------------------------------------------------------------------------
-// folly_rwspin_reads(64thread)                                74.92ns   13.35M
-// shmtx_wr_pri_reads(64thread)                    4171.71%     1.80ns  556.83M
-// shmtx_w_bare_reads(64thread)                    3973.49%     1.89ns  530.37M
-// shmtx_rd_pri_reads(64thread)                    4404.73%     1.70ns  587.94M
-// shmtx_r_bare_reads(64thread)                    3985.48%     1.88ns  531.98M
-// folly_ticket_reads(64thread)                      26.07%   287.39ns    3.48M
-// boost_shared_reads(64thread)                      23.59%   317.64ns    3.15M
-// pthrd_rwlock_reads(64thread)                      49.54%   151.24ns    6.61M
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// folly_rwspin(1thread_all_write)                             25.29ns   39.53M
-// shmtx_wr_pri(1thread_all_write)                   96.76%    26.14ns   38.25M
-// shmtx_rd_pri(1thread_all_write)                   96.60%    26.18ns   38.19M
-// folly_ticket(1thread_all_write)                   89.58%    28.24ns   35.42M
-// boost_shared(1thread_all_write)                   17.06%   148.29ns    6.74M
-// pthrd_rwlock(1thread_all_write)                   63.32%    39.95ns   25.03M
-// pthrd_mutex_(1thread_all_write)                   81.38%    31.08ns   32.17M
-// ----------------------------------------------------------------------------
-// folly_rwspin(2thread_all_write)                            104.60ns    9.56M
-// shmtx_wr_pri(2thread_all_write)                   48.87%   214.06ns    4.67M
-// shmtx_rd_pri(2thread_all_write)                   42.47%   246.31ns    4.06M
-// folly_ticket(2thread_all_write)                   73.12%   143.05ns    6.99M
-// boost_shared(2thread_all_write)                   24.59%   425.41ns    2.35M
-// pthrd_rwlock(2thread_all_write)                   38.69%   270.37ns    3.70M
-// pthrd_mutex_(2thread_all_write)                  155.45%    67.29ns   14.86M
-// ----------------------------------------------------------------------------
-// folly_rwspin(4thread_all_write)                            166.17ns    6.02M
-// shmtx_wr_pri(4thread_all_write)                   45.40%   366.00ns    2.73M
-// shmtx_rd_pri(4thread_all_write)                   62.81%   264.56ns    3.78M
-// folly_ticket(4thread_all_write)                  118.11%   140.69ns    7.11M
-// boost_shared(4thread_all_write)                    8.78%     1.89us  528.22K
-// pthrd_rwlock(4thread_all_write)                   27.30%   608.59ns    1.64M
-// pthrd_mutex_(4thread_all_write)                   92.18%   180.27ns    5.55M
-// ----------------------------------------------------------------------------
-// folly_rwspin(8thread_all_write)                            363.10ns    2.75M
-// shmtx_wr_pri(8thread_all_write)                  163.18%   222.51ns    4.49M
-// shmtx_rd_pri(8thread_all_write)                   91.20%   398.11ns    2.51M
-// folly_ticket(8thread_all_write)                  150.11%   241.89ns    4.13M
-// boost_shared(8thread_all_write)                    7.53%     4.82us  207.48K
-// pthrd_rwlock(8thread_all_write)                   57.06%   636.32ns    1.57M
-// pthrd_mutex_(8thread_all_write)                  218.78%   165.96ns    6.03M
-// ----------------------------------------------------------------------------
-// folly_rwspin(16thread_all_write)                           762.75ns    1.31M
-// shmtx_wr_pri(16thread_all_write)                 131.04%   582.08ns    1.72M
-// shmtx_rd_pri(16thread_all_write)                 130.26%   585.57ns    1.71M
-// folly_ticket(16thread_all_write)                 253.39%   301.01ns    3.32M
-// boost_shared(16thread_all_write)                  10.33%     7.38us  135.43K
-// pthrd_rwlock(16thread_all_write)                 141.66%   538.43ns    1.86M
-// pthrd_mutex_(16thread_all_write)                 471.34%   161.83ns    6.18M
-// ----------------------------------------------------------------------------
-// folly_rwspin(32thread_all_write)                             1.42us  705.40K
-// shmtx_wr_pri(32thread_all_write)                 229.36%   618.09ns    1.62M
-// shmtx_rd_pri(32thread_all_write)                 228.78%   619.65ns    1.61M
-// folly_ticket(32thread_all_write)                 326.61%   434.04ns    2.30M
-// boost_shared(32thread_all_write)                  18.65%     7.60us  131.59K
-// pthrd_rwlock(32thread_all_write)                 261.56%   542.00ns    1.85M
-// pthrd_mutex_(32thread_all_write)                 946.65%   149.75ns    6.68M
-// ----------------------------------------------------------------------------
-// folly_rwspin(64thread_all_write)                             1.83us  545.94K
-// shmtx_wr_pri(64thread_all_write)                 248.08%   738.34ns    1.35M
-// shmtx_rd_pri(64thread_all_write)                 249.47%   734.23ns    1.36M
-// folly_ticket(64thread_all_write)                 342.38%   535.00ns    1.87M
-// boost_shared(64thread_all_write)                  23.95%     7.65us  130.75K
-// pthrd_rwlock(64thread_all_write)                 318.32%   575.42ns    1.74M
-// pthrd_mutex_(64thread_all_write)                1288.43%   142.16ns    7.03M
+// folly_rwspin_reads(64thread)                               119.46ns    8.37M
+// shmtx_wr_pri_reads(64thread)                    6744.92%     1.77ns  564.60M
+// shmtx_w_bare_reads(64thread)                    6268.50%     1.91ns  524.72M
+// shmtx_rd_pri_reads(64thread)                    7508.56%     1.59ns  628.52M
+// shmtx_r_bare_reads(64thread)                    6299.53%     1.90ns  527.32M
+// folly_ticket_reads(64thread)                      37.42%   319.26ns    3.13M
+// boost_shared_reads(64thread)                      32.58%   366.70ns    2.73M
+// pthrd_rwlock_reads(64thread)                      73.64%   162.24ns    6.16M
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-// folly_rwspin(1thread_10pct_write)                           19.13ns   52.28M
-// shmtx_wr_pri(1thread_10pct_write)                 80.47%    23.77ns   42.07M
-// shmtx_rd_pri(1thread_10pct_write)                 80.63%    23.72ns   42.15M
-// folly_ticket(1thread_10pct_write)                 69.33%    27.59ns   36.25M
-// boost_shared(1thread_10pct_write)                 12.46%   153.53ns    6.51M
-// pthrd_rwlock(1thread_10pct_write)                 46.35%    41.27ns   24.23M
+// folly_rwspin(1thread_all_write)                             25.51ns   39.19M
+// shmtx_wr_pri(1thread_all_write)                   97.38%    26.20ns   38.17M
+// shmtx_rd_pri(1thread_all_write)                   97.55%    26.16ns   38.23M
+// folly_ticket(1thread_all_write)                   90.98%    28.04ns   35.66M
+// boost_shared(1thread_all_write)                   16.80%   151.89ns    6.58M
+// pthrd_rwlock(1thread_all_write)                   63.86%    39.96ns   25.03M
+// pthrd_mutex_(1thread_all_write)                   82.05%    31.09ns   32.16M
 // ----------------------------------------------------------------------------
-// folly_rwspin(2thread_10pct_write)                          142.93ns    7.00M
-// shmtx_wr_pri(2thread_10pct_write)                165.37%    86.43ns   11.57M
-// shmtx_rd_pri(2thread_10pct_write)                159.35%    89.70ns   11.15M
-// folly_ticket(2thread_10pct_write)                129.31%   110.53ns    9.05M
-// boost_shared(2thread_10pct_write)                 39.42%   362.54ns    2.76M
-// pthrd_rwlock(2thread_10pct_write)                 87.87%   162.65ns    6.15M
+// folly_rwspin(2thread_all_write)                            100.70ns    9.93M
+// shmtx_wr_pri(2thread_all_write)                   40.83%   246.61ns    4.05M
+// shmtx_rd_pri(2thread_all_write)                   40.53%   248.44ns    4.03M
+// folly_ticket(2thread_all_write)                   58.49%   172.17ns    5.81M
+// boost_shared(2thread_all_write)                   24.26%   415.00ns    2.41M
+// pthrd_rwlock(2thread_all_write)                   41.35%   243.49ns    4.11M
+// pthrd_mutex_(2thread_all_write)                  146.91%    68.55ns   14.59M
 // ----------------------------------------------------------------------------
-// folly_rwspin(4thread_10pct_write)                          197.39ns    5.07M
-// shmtx_wr_pri(4thread_10pct_write)                171.06%   115.39ns    8.67M
-// shmtx_rd_pri(4thread_10pct_write)                139.86%   141.13ns    7.09M
-// folly_ticket(4thread_10pct_write)                129.34%   152.62ns    6.55M
-// boost_shared(4thread_10pct_write)                 16.99%     1.16us  860.70K
-// pthrd_rwlock(4thread_10pct_write)                 47.65%   414.28ns    2.41M
+// folly_rwspin(4thread_all_write)                            199.52ns    5.01M
+// shmtx_wr_pri(4thread_all_write)                   51.71%   385.86ns    2.59M
+// shmtx_rd_pri(4thread_all_write)                   49.43%   403.62ns    2.48M
+// folly_ticket(4thread_all_write)                  117.88%   169.26ns    5.91M
+// boost_shared(4thread_all_write)                    9.81%     2.03us  491.48K
+// pthrd_rwlock(4thread_all_write)                   28.23%   706.69ns    1.42M
+// pthrd_mutex_(4thread_all_write)                  111.54%   178.88ns    5.59M
 // ----------------------------------------------------------------------------
-// folly_rwspin(8thread_10pct_write)                          392.62ns    2.55M
-// shmtx_wr_pri(8thread_10pct_write)                273.40%   143.61ns    6.96M
-// shmtx_rd_pri(8thread_10pct_write)                194.52%   201.84ns    4.95M
-// folly_ticket(8thread_10pct_write)                189.91%   206.75ns    4.84M
-// boost_shared(8thread_10pct_write)                 16.84%     2.33us  429.03K
-// pthrd_rwlock(8thread_10pct_write)                 87.03%   451.14ns    2.22M
+// folly_rwspin(8thread_all_write)                            304.61ns    3.28M
+// shmtx_wr_pri(8thread_all_write)                   69.77%   436.59ns    2.29M
+// shmtx_rd_pri(8thread_all_write)                   66.58%   457.51ns    2.19M
+// folly_ticket(8thread_all_write)                  141.00%   216.03ns    4.63M
+// boost_shared(8thread_all_write)                    6.11%     4.99us  200.59K
+// pthrd_rwlock(8thread_all_write)                   38.03%   800.88ns    1.25M
+// pthrd_mutex_(8thread_all_write)                  177.66%   171.45ns    5.83M
 // ----------------------------------------------------------------------------
-// folly_rwspin(16thread_10pct_write)                         794.93ns    1.26M
-// shmtx_wr_pri(16thread_10pct_write)               352.64%   225.43ns    4.44M
-// shmtx_rd_pri(16thread_10pct_write)               295.42%   269.09ns    3.72M
-// folly_ticket(16thread_10pct_write)               296.11%   268.46ns    3.72M
-// boost_shared(16thread_10pct_write)                17.04%     4.66us  214.39K
-// pthrd_rwlock(16thread_10pct_write)               176.40%   450.64ns    2.22M
+// folly_rwspin(16thread_all_write)                           576.97ns    1.73M
+// shmtx_wr_pri(16thread_all_write)                 105.72%   545.77ns    1.83M
+// shmtx_rd_pri(16thread_all_write)                 105.13%   548.83ns    1.82M
+// folly_ticket(16thread_all_write)                 161.70%   356.82ns    2.80M
+// boost_shared(16thread_all_write)                   7.73%     7.46us  134.03K
+// pthrd_rwlock(16thread_all_write)                  96.88%   595.54ns    1.68M
+// pthrd_mutex_(16thread_all_write)                 330.44%   174.61ns    5.73M
 // ----------------------------------------------------------------------------
-// folly_rwspin(32thread_10pct_write)                         821.14ns    1.22M
-// shmtx_wr_pri(32thread_10pct_write)               355.74%   230.82ns    4.33M
-// shmtx_rd_pri(32thread_10pct_write)               320.09%   256.53ns    3.90M
-// folly_ticket(32thread_10pct_write)               262.01%   313.41ns    3.19M
-// boost_shared(32thread_10pct_write)                 8.15%    10.08us   99.20K
-// pthrd_rwlock(32thread_10pct_write)               175.15%   468.83ns    2.13M
+// folly_rwspin(32thread_all_write)                             1.41us  707.76K
+// shmtx_wr_pri(32thread_all_write)                 240.46%   587.58ns    1.70M
+// shmtx_rd_pri(32thread_all_write)                 393.71%   358.87ns    2.79M
+// folly_ticket(32thread_all_write)                 325.07%   434.65ns    2.30M
+// boost_shared(32thread_all_write)                  18.57%     7.61us  131.43K
+// pthrd_rwlock(32thread_all_write)                 266.78%   529.62ns    1.89M
+// pthrd_mutex_(32thread_all_write)                 877.89%   160.94ns    6.21M
 // ----------------------------------------------------------------------------
-// folly_rwspin(64thread_10pct_write)                           1.20us  836.33K
-// shmtx_wr_pri(64thread_10pct_write)               437.20%   273.49ns    3.66M
-// shmtx_rd_pri(64thread_10pct_write)               438.80%   272.49ns    3.67M
-// folly_ticket(64thread_10pct_write)               254.51%   469.82ns    2.13M
-// boost_shared(64thread_10pct_write)                 6.05%    19.78us   50.56K
-// pthrd_rwlock(64thread_10pct_write)               254.24%   470.30ns    2.13M
-// ----------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// folly_rwspin(1thread_1pct_write)                            18.60ns   53.76M
-// shmtx_wr_pri(1thread_1pct_write)                  79.07%    23.52ns   42.51M
-// shmtx_w_bare(1thread_1pct_write)                  66.09%    28.15ns   35.53M
-// shmtx_rd_pri(1thread_1pct_write)                  79.21%    23.48ns   42.58M
-// shmtx_r_bare(1thread_1pct_write)                  65.98%    28.19ns   35.47M
-// folly_ticket(1thread_1pct_write)                  67.69%    27.48ns   36.39M
-// boost_shared(1thread_1pct_write)                  12.17%   152.88ns    6.54M
-// pthrd_rwlock(1thread_1pct_write)                  45.04%    41.30ns   24.22M
-// ----------------------------------------------------------------------------
-// folly_rwspin(2thread_1pct_write)                           128.42ns    7.79M
-// shmtx_wr_pri(2thread_1pct_write)                 347.63%    36.94ns   27.07M
-// shmtx_w_bare(2thread_1pct_write)                 475.37%    27.02ns   37.02M
-// shmtx_rd_pri(2thread_1pct_write)                 312.94%    41.04ns   24.37M
-// shmtx_r_bare(2thread_1pct_write)                 149.38%    85.97ns   11.63M
-// folly_ticket(2thread_1pct_write)                 147.88%    86.84ns   11.52M
-// boost_shared(2thread_1pct_write)                  45.50%   282.24ns    3.54M
-// pthrd_rwlock(2thread_1pct_write)                 129.88%    98.88ns   10.11M
-// ----------------------------------------------------------------------------
-// folly_rwspin(4thread_1pct_write)                           148.88ns    6.72M
-// shmtx_wr_pri(4thread_1pct_write)                 504.03%    29.54ns   33.86M
-// shmtx_w_bare(4thread_1pct_write)                 471.63%    31.57ns   31.68M
-// shmtx_rd_pri(4thread_1pct_write)                 291.84%    51.01ns   19.60M
-// shmtx_r_bare(4thread_1pct_write)                  81.41%   182.86ns    5.47M
-// folly_ticket(4thread_1pct_write)                 114.59%   129.92ns    7.70M
-// boost_shared(4thread_1pct_write)                  26.70%   557.56ns    1.79M
-// pthrd_rwlock(4thread_1pct_write)                  64.46%   230.97ns    4.33M
-// ----------------------------------------------------------------------------
-// folly_rwspin(8thread_1pct_write)                           213.06ns    4.69M
-// shmtx_wr_pri(8thread_1pct_write)                 734.88%    28.99ns   34.49M
-// shmtx_w_bare(8thread_1pct_write)                 676.88%    31.48ns   31.77M
-// shmtx_rd_pri(8thread_1pct_write)                 196.93%   108.19ns    9.24M
-// shmtx_r_bare(8thread_1pct_write)                  99.35%   214.46ns    4.66M
-// folly_ticket(8thread_1pct_write)                 120.84%   176.31ns    5.67M
-// boost_shared(8thread_1pct_write)                  28.51%   747.36ns    1.34M
-// pthrd_rwlock(8thread_1pct_write)                  88.85%   239.81ns    4.17M
-// ----------------------------------------------------------------------------
-// folly_rwspin(16thread_1pct_write)                          481.61ns    2.08M
-// shmtx_wr_pri(16thread_1pct_write)               1204.17%    40.00ns   25.00M
-// shmtx_w_bare(16thread_1pct_write)               1241.61%    38.79ns   25.78M
-// shmtx_rd_pri(16thread_1pct_write)                315.61%   152.60ns    6.55M
-// shmtx_r_bare(16thread_1pct_write)                211.23%   228.00ns    4.39M
-// folly_ticket(16thread_1pct_write)                227.88%   211.35ns    4.73M
-// boost_shared(16thread_1pct_write)                 34.17%     1.41us  709.47K
-// pthrd_rwlock(16thread_1pct_write)                210.97%   228.28ns    4.38M
-// ----------------------------------------------------------------------------
-// folly_rwspin(32thread_1pct_write)                          382.40ns    2.62M
-// shmtx_wr_pri(32thread_1pct_write)                984.99%    38.82ns   25.76M
-// shmtx_w_bare(32thread_1pct_write)                957.41%    39.94ns   25.04M
-// shmtx_rd_pri(32thread_1pct_write)                248.87%   153.65ns    6.51M
-// shmtx_r_bare(32thread_1pct_write)                175.33%   218.11ns    4.58M
-// folly_ticket(32thread_1pct_write)                140.50%   272.18ns    3.67M
-// boost_shared(32thread_1pct_write)                 12.67%     3.02us  331.22K
-// pthrd_rwlock(32thread_1pct_write)                172.70%   221.42ns    4.52M
-// ----------------------------------------------------------------------------
-// folly_rwspin(64thread_1pct_write)                          448.64ns    2.23M
-// shmtx_wr_pri(64thread_1pct_write)               1136.53%    39.47ns   25.33M
-// shmtx_w_bare(64thread_1pct_write)               1037.84%    43.23ns   23.13M
-// shmtx_rd_pri(64thread_1pct_write)                284.52%   157.68ns    6.34M
-// shmtx_r_bare(64thread_1pct_write)                216.51%   207.21ns    4.83M
-// folly_ticket(64thread_1pct_write)                114.00%   393.54ns    2.54M
-// boost_shared(64thread_1pct_write)                  8.29%     5.41us  184.85K
-// pthrd_rwlock(64thread_1pct_write)                207.19%   216.53ns    4.62M
-// ----------------------------------------------------------------------------
-// folly_rwspin(2thr_2lock_50pct_write)                        10.84ns   92.23M
-// shmtx_wr_pri(2thr_2lock_50pct_write)              85.21%    12.72ns   78.59M
-// shmtx_rd_pri(2thr_2lock_50pct_write)              84.80%    12.79ns   78.21M
-// folly_rwspin(4thr_4lock_50pct_write)                         5.33ns  187.76M
-// shmtx_wr_pri(4thr_4lock_50pct_write)              84.84%     6.28ns  159.30M
-// shmtx_rd_pri(4thr_4lock_50pct_write)              84.38%     6.31ns  158.42M
-// folly_rwspin(8thr_8lock_50pct_write)                         2.63ns  379.54M
-// shmtx_wr_pri(8thr_8lock_50pct_write)              84.30%     3.13ns  319.97M
-// shmtx_rd_pri(8thr_8lock_50pct_write)              84.35%     3.12ns  320.16M
-// folly_rwspin(16thr_16lock_50pct_write)                       1.31ns  760.73M
-// shmtx_wr_pri(16thr_16lock_50pct_write)            83.58%     1.57ns  635.80M
-// shmtx_rd_pri(16thr_16lock_50pct_write)            83.72%     1.57ns  636.89M
-// folly_rwspin(32thr_32lock_50pct_write)                       1.19ns  838.77M
-// shmtx_wr_pri(32thr_32lock_50pct_write)            89.84%     1.33ns  753.55M
-// shmtx_rd_pri(32thr_32lock_50pct_write)            89.39%     1.33ns  749.82M
-// folly_rwspin(64thr_64lock_50pct_write)                       1.39ns  718.11M
-// shmtx_wr_pri(64thr_64lock_50pct_write)            91.89%     1.52ns  659.90M
-// shmtx_rd_pri(64thr_64lock_50pct_write)            91.08%     1.53ns  654.04M
-// ----------------------------------------------------------------------------
-// folly_rwspin(2thr_2lock_10pct_write)                        10.25ns   97.53M
-// shmtx_wr_pri(2thr_2lock_10pct_write)              84.23%    12.17ns   82.14M
-// shmtx_rd_pri(2thr_2lock_10pct_write)              84.03%    12.20ns   81.96M
-// folly_rwspin(4thr_4lock_10pct_write)                         5.05ns  197.98M
-// shmtx_wr_pri(4thr_4lock_10pct_write)              84.01%     6.01ns  166.31M
-// shmtx_rd_pri(4thr_4lock_10pct_write)              83.98%     6.01ns  166.27M
-// folly_rwspin(8thr_8lock_10pct_write)                         2.46ns  405.97M
-// shmtx_wr_pri(8thr_8lock_10pct_write)              82.52%     2.98ns  335.03M
-// shmtx_rd_pri(8thr_8lock_10pct_write)              82.47%     2.99ns  334.82M
-// folly_rwspin(16thr_16lock_10pct_write)                       1.23ns  813.48M
-// shmtx_wr_pri(16thr_16lock_10pct_write)            82.08%     1.50ns  667.72M
-// shmtx_rd_pri(16thr_16lock_10pct_write)            81.53%     1.51ns  663.23M
-// folly_rwspin(32thr_32lock_10pct_write)                       1.20ns  836.43M
-// shmtx_wr_pri(32thr_32lock_10pct_write)            91.52%     1.31ns  765.47M
-// shmtx_rd_pri(32thr_32lock_10pct_write)            91.87%     1.30ns  768.45M
-// folly_rwspin(64thr_64lock_10pct_write)                       1.39ns  721.74M
-// shmtx_wr_pri(64thr_64lock_10pct_write)            92.04%     1.51ns  664.28M
-// shmtx_rd_pri(64thr_64lock_10pct_write)            92.57%     1.50ns  668.15M
-// ----------------------------------------------------------------------------
-// folly_rwspin(2thr_2lock_1pct_write)                         10.13ns   98.71M
-// shmtx_wr_pri(2thr_2lock_1pct_write)               83.59%    12.12ns   82.51M
-// shmtx_rd_pri(2thr_2lock_1pct_write)               83.59%    12.12ns   82.51M
-// folly_rwspin(4thr_4lock_1pct_write)                          4.96ns  201.67M
-// shmtx_wr_pri(4thr_4lock_1pct_write)               82.87%     5.98ns  167.13M
-// shmtx_rd_pri(4thr_4lock_1pct_write)               83.05%     5.97ns  167.48M
-// folly_rwspin(8thr_8lock_1pct_write)                          2.44ns  409.64M
-// shmtx_wr_pri(8thr_8lock_1pct_write)               82.46%     2.96ns  337.79M
-// shmtx_rd_pri(8thr_8lock_1pct_write)               82.40%     2.96ns  337.55M
-// folly_rwspin(16thr_16lock_1pct_write)                        1.22ns  821.15M
-// shmtx_wr_pri(16thr_16lock_1pct_write)             81.63%     1.49ns  670.29M
-// shmtx_rd_pri(16thr_16lock_1pct_write)             81.65%     1.49ns  670.50M
-// folly_rwspin(32thr_32lock_1pct_write)                        1.20ns  832.88M
-// shmtx_wr_pri(32thr_32lock_1pct_write)             92.22%     1.30ns  768.06M
-// shmtx_rd_pri(32thr_32lock_1pct_write)             92.21%     1.30ns  768.01M
-// folly_rwspin(64thr_64lock_1pct_write)                        1.38ns  726.10M
-// shmtx_wr_pri(64thr_64lock_1pct_write)             92.24%     1.49ns  669.75M
-// shmtx_rd_pri(64thr_64lock_1pct_write)             92.13%     1.49ns  668.95M
+// folly_rwspin(64thread_all_write)                             1.76us  566.94K
+// shmtx_wr_pri(64thread_all_write)                 255.67%   689.91ns    1.45M
+// shmtx_rd_pri(64thread_all_write)                 468.82%   376.23ns    2.66M
+// folly_ticket(64thread_all_write)                 294.72%   598.49ns    1.67M
+// boost_shared(64thread_all_write)                  23.39%     7.54us  132.58K
+// pthrd_rwlock(64thread_all_write)                 321.39%   548.83ns    1.82M
+// pthrd_mutex_(64thread_all_write)                1165.04%   151.40ns    6.61M
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-// folly_rwspin_ping_pong(burn0)                              503.21ns    1.99M
-// shmtx_w_bare_ping_pong(burn0)                     79.13%   635.96ns    1.57M
-// shmtx_r_bare_ping_pong(burn0)                     59.08%   851.81ns    1.17M
-// folly_ticket_ping_pong(burn0)                     60.50%   831.77ns    1.20M
-// boost_shared_ping_pong(burn0)                      4.46%    11.28us   88.65K
-// pthrd_rwlock_ping_pong(burn0)                      6.86%     7.34us  136.27K
+// folly_rwspin(1thread_10pct_write)                           19.51ns   51.26M
+// shmtx_wr_pri(1thread_10pct_write)                 83.25%    23.43ns   42.67M
+// shmtx_rd_pri(1thread_10pct_write)                 83.31%    23.42ns   42.71M
+// folly_ticket(1thread_10pct_write)                 70.88%    27.52ns   36.34M
+// boost_shared(1thread_10pct_write)                 13.09%   148.99ns    6.71M
+// pthrd_rwlock(1thread_10pct_write)                 47.41%    41.15ns   24.30M
 // ----------------------------------------------------------------------------
-// folly_rwspin_ping_pong(burn100k)                           685.00ns    1.46M
-// shmtx_w_bare_ping_pong(burn100k)                 100.05%   684.65ns    1.46M
-// shmtx_r_bare_ping_pong(burn100k)                  99.93%   685.51ns    1.46M
-// folly_ticket_ping_pong(burn100k)                  99.32%   689.72ns    1.45M
-// boost_shared_ping_pong(burn100k)                  56.59%     1.21us  826.06K
-// pthrd_rwlock_ping_pong(burn100k)                  58.32%     1.17us  851.41K
+// folly_rwspin(2thread_10pct_write)                          159.42ns    6.27M
+// shmtx_wr_pri(2thread_10pct_write)                188.44%    84.60ns   11.82M
+// shmtx_rd_pri(2thread_10pct_write)                188.29%    84.67ns   11.81M
+// folly_ticket(2thread_10pct_write)                140.28%   113.64ns    8.80M
+// boost_shared(2thread_10pct_write)                 42.09%   378.81ns    2.64M
+// pthrd_rwlock(2thread_10pct_write)                103.86%   153.49ns    6.51M
 // ----------------------------------------------------------------------------
-// folly_rwspin_ping_pong(burn300k)                             2.15us  464.20K
-// shmtx_w_bare_ping_pong(burn300k)                 101.02%     2.13us  468.93K
-// shmtx_r_bare_ping_pong(burn300k)                 103.95%     2.07us  482.55K
-// folly_ticket_ping_pong(burn300k)                 104.06%     2.07us  483.05K
-// boost_shared_ping_pong(burn300k)                  86.36%     2.49us  400.86K
-// pthrd_rwlock_ping_pong(burn300k)                  87.30%     2.47us  405.25K
+// folly_rwspin(4thread_10pct_write)                          193.35ns    5.17M
+// shmtx_wr_pri(4thread_10pct_write)                184.30%   104.91ns    9.53M
+// shmtx_rd_pri(4thread_10pct_write)                163.76%   118.07ns    8.47M
+// folly_ticket(4thread_10pct_write)                124.07%   155.84ns    6.42M
+// boost_shared(4thread_10pct_write)                 16.32%     1.18us  843.92K
+// pthrd_rwlock(4thread_10pct_write)                 48.59%   397.94ns    2.51M
 // ----------------------------------------------------------------------------
-// folly_rwspin_ping_pong(burn1M)                             675.20ns    1.48M
-// shmtx_w_bare_ping_pong(burn1M)                    99.73%   677.02ns    1.48M
-// shmtx_r_bare_ping_pong(burn1M)                    99.23%   680.45ns    1.47M
-// folly_ticket_ping_pong(burn1M)                    97.85%   690.01ns    1.45M
-// boost_shared_ping_pong(burn1M)                    93.17%   724.67ns    1.38M
-// pthrd_rwlock_ping_pong(burn1M)                    91.84%   735.22ns    1.36M
+// folly_rwspin(8thread_10pct_write)                          373.17ns    2.68M
+// shmtx_wr_pri(8thread_10pct_write)                252.02%   148.08ns    6.75M
+// shmtx_rd_pri(8thread_10pct_write)                203.59%   183.30ns    5.46M
+// folly_ticket(8thread_10pct_write)                184.37%   202.40ns    4.94M
+// boost_shared(8thread_10pct_write)                 15.85%     2.35us  424.72K
+// pthrd_rwlock(8thread_10pct_write)                 83.03%   449.45ns    2.22M
+// ----------------------------------------------------------------------------
+// folly_rwspin(16thread_10pct_write)                         742.87ns    1.35M
+// shmtx_wr_pri(16thread_10pct_write)               344.27%   215.78ns    4.63M
+// shmtx_rd_pri(16thread_10pct_write)               287.04%   258.80ns    3.86M
+// folly_ticket(16thread_10pct_write)               277.25%   267.94ns    3.73M
+// boost_shared(16thread_10pct_write)                15.33%     4.85us  206.30K
+// pthrd_rwlock(16thread_10pct_write)               158.34%   469.16ns    2.13M
+// ----------------------------------------------------------------------------
+// folly_rwspin(32thread_10pct_write)                         799.97ns    1.25M
+// shmtx_wr_pri(32thread_10pct_write)               351.40%   227.65ns    4.39M
+// shmtx_rd_pri(32thread_10pct_write)               341.71%   234.11ns    4.27M
+// folly_ticket(32thread_10pct_write)               245.91%   325.31ns    3.07M
+// boost_shared(32thread_10pct_write)                 7.72%    10.36us   96.56K
+// pthrd_rwlock(32thread_10pct_write)               165.87%   482.30ns    2.07M
+// ----------------------------------------------------------------------------
+// folly_rwspin(64thread_10pct_write)                           1.12us  892.01K
+// shmtx_wr_pri(64thread_10pct_write)               429.84%   260.81ns    3.83M
+// shmtx_rd_pri(64thread_10pct_write)               456.93%   245.35ns    4.08M
+// folly_ticket(64thread_10pct_write)               219.21%   511.42ns    1.96M
+// boost_shared(64thread_10pct_write)                 5.43%    20.65us   48.44K
+// pthrd_rwlock(64thread_10pct_write)               233.93%   479.23ns    2.09M
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// folly_rwspin(1thread_1pct_write)                            18.88ns   52.98M
+// shmtx_wr_pri(1thread_1pct_write)                  81.53%    23.15ns   43.19M
+// shmtx_w_bare(1thread_1pct_write)                  67.90%    27.80ns   35.97M
+// shmtx_rd_pri(1thread_1pct_write)                  81.50%    23.16ns   43.18M
+// shmtx_r_bare(1thread_1pct_write)                  67.74%    27.86ns   35.89M
+// folly_ticket(1thread_1pct_write)                  68.68%    27.48ns   36.39M
+// boost_shared(1thread_1pct_write)                  12.80%   147.51ns    6.78M
+// pthrd_rwlock(1thread_1pct_write)                  45.81%    41.20ns   24.27M
+// ----------------------------------------------------------------------------
+// folly_rwspin(2thread_1pct_write)                           125.85ns    7.95M
+// shmtx_wr_pri(2thread_1pct_write)                 359.04%    35.05ns   28.53M
+// shmtx_w_bare(2thread_1pct_write)                 475.60%    26.46ns   37.79M
+// shmtx_rd_pri(2thread_1pct_write)                 332.75%    37.82ns   26.44M
+// shmtx_r_bare(2thread_1pct_write)                 115.64%   108.83ns    9.19M
+// folly_ticket(2thread_1pct_write)                 140.24%    89.74ns   11.14M
+// boost_shared(2thread_1pct_write)                  40.62%   309.82ns    3.23M
+// pthrd_rwlock(2thread_1pct_write)                 134.67%    93.45ns   10.70M
+// ----------------------------------------------------------------------------
+// folly_rwspin(4thread_1pct_write)                           126.70ns    7.89M
+// shmtx_wr_pri(4thread_1pct_write)                 422.20%    30.01ns   33.32M
+// shmtx_w_bare(4thread_1pct_write)                 403.52%    31.40ns   31.85M
+// shmtx_rd_pri(4thread_1pct_write)                 282.50%    44.85ns   22.30M
+// shmtx_r_bare(4thread_1pct_write)                  66.30%   191.10ns    5.23M
+// folly_ticket(4thread_1pct_write)                  91.93%   137.83ns    7.26M
+// boost_shared(4thread_1pct_write)                  22.74%   557.10ns    1.80M
+// pthrd_rwlock(4thread_1pct_write)                  55.66%   227.62ns    4.39M
+// ----------------------------------------------------------------------------
+// folly_rwspin(8thread_1pct_write)                           169.42ns    5.90M
+// shmtx_wr_pri(8thread_1pct_write)                 567.81%    29.84ns   33.51M
+// shmtx_w_bare(8thread_1pct_write)                 519.18%    32.63ns   30.64M
+// shmtx_rd_pri(8thread_1pct_write)                 172.36%    98.30ns   10.17M
+// shmtx_r_bare(8thread_1pct_write)                  75.56%   224.21ns    4.46M
+// folly_ticket(8thread_1pct_write)                 104.03%   162.85ns    6.14M
+// boost_shared(8thread_1pct_write)                  22.01%   769.73ns    1.30M
+// pthrd_rwlock(8thread_1pct_write)                  71.79%   235.99ns    4.24M
+// ----------------------------------------------------------------------------
+// folly_rwspin(16thread_1pct_write)                          385.88ns    2.59M
+// shmtx_wr_pri(16thread_1pct_write)               1039.03%    37.14ns   26.93M
+// shmtx_w_bare(16thread_1pct_write)                997.26%    38.69ns   25.84M
+// shmtx_rd_pri(16thread_1pct_write)                263.60%   146.39ns    6.83M
+// shmtx_r_bare(16thread_1pct_write)                173.16%   222.85ns    4.49M
+// folly_ticket(16thread_1pct_write)                179.37%   215.13ns    4.65M
+// boost_shared(16thread_1pct_write)                 26.95%     1.43us  698.42K
+// pthrd_rwlock(16thread_1pct_write)                166.70%   231.48ns    4.32M
+// ----------------------------------------------------------------------------
+// folly_rwspin(32thread_1pct_write)                          382.49ns    2.61M
+// shmtx_wr_pri(32thread_1pct_write)               1046.64%    36.54ns   27.36M
+// shmtx_w_bare(32thread_1pct_write)                922.87%    41.45ns   24.13M
+// shmtx_rd_pri(32thread_1pct_write)                251.93%   151.82ns    6.59M
+// shmtx_r_bare(32thread_1pct_write)                176.44%   216.78ns    4.61M
+// folly_ticket(32thread_1pct_write)                131.07%   291.82ns    3.43M
+// boost_shared(32thread_1pct_write)                 12.77%     2.99us  333.95K
+// pthrd_rwlock(32thread_1pct_write)                173.43%   220.55ns    4.53M
+// ----------------------------------------------------------------------------
+// folly_rwspin(64thread_1pct_write)                          510.54ns    1.96M
+// shmtx_wr_pri(64thread_1pct_write)               1378.27%    37.04ns   27.00M
+// shmtx_w_bare(64thread_1pct_write)               1178.24%    43.33ns   23.08M
+// shmtx_rd_pri(64thread_1pct_write)                325.29%   156.95ns    6.37M
+// shmtx_r_bare(64thread_1pct_write)                247.82%   206.02ns    4.85M
+// folly_ticket(64thread_1pct_write)                117.87%   433.13ns    2.31M
+// boost_shared(64thread_1pct_write)                  9.45%     5.40us  185.09K
+// pthrd_rwlock(64thread_1pct_write)                236.72%   215.68ns    4.64M
+// ----------------------------------------------------------------------------
+// folly_rwspin(2thr_2lock_50pct_write)                        10.85ns   92.15M
+// shmtx_wr_pri(2thr_2lock_50pct_write)              81.73%    13.28ns   75.32M
+// shmtx_rd_pri(2thr_2lock_50pct_write)              81.82%    13.26ns   75.40M
+// folly_rwspin(4thr_4lock_50pct_write)                         5.29ns  188.90M
+// shmtx_wr_pri(4thr_4lock_50pct_write)              80.89%     6.54ns  152.80M
+// shmtx_rd_pri(4thr_4lock_50pct_write)              81.07%     6.53ns  153.14M
+// folly_rwspin(8thr_8lock_50pct_write)                         2.63ns  380.57M
+// shmtx_wr_pri(8thr_8lock_50pct_write)              80.56%     3.26ns  306.57M
+// shmtx_rd_pri(8thr_8lock_50pct_write)              80.29%     3.27ns  305.54M
+// folly_rwspin(16thr_16lock_50pct_write)                       1.31ns  764.70M
+// shmtx_wr_pri(16thr_16lock_50pct_write)            79.32%     1.65ns  606.54M
+// shmtx_rd_pri(16thr_16lock_50pct_write)            79.62%     1.64ns  608.84M
+// folly_rwspin(32thr_32lock_50pct_write)                       1.20ns  836.75M
+// shmtx_wr_pri(32thr_32lock_50pct_write)            91.67%     1.30ns  767.07M
+// shmtx_rd_pri(32thr_32lock_50pct_write)            92.00%     1.30ns  769.82M
+// folly_rwspin(64thr_64lock_50pct_write)                       1.39ns  717.80M
+// shmtx_wr_pri(64thr_64lock_50pct_write)            93.21%     1.49ns  669.08M
+// shmtx_rd_pri(64thr_64lock_50pct_write)            92.49%     1.51ns  663.89M
+// ----------------------------------------------------------------------------
+// folly_rwspin(2thr_2lock_10pct_write)                        10.24ns   97.70M
+// shmtx_wr_pri(2thr_2lock_10pct_write)              76.46%    13.39ns   74.70M
+// shmtx_rd_pri(2thr_2lock_10pct_write)              76.35%    13.41ns   74.60M
+// folly_rwspin(4thr_4lock_10pct_write)                         5.02ns  199.03M
+// shmtx_wr_pri(4thr_4lock_10pct_write)              75.83%     6.63ns  150.91M
+// shmtx_rd_pri(4thr_4lock_10pct_write)              76.10%     6.60ns  151.46M
+// folly_rwspin(8thr_8lock_10pct_write)                         2.47ns  405.50M
+// shmtx_wr_pri(8thr_8lock_10pct_write)              74.54%     3.31ns  302.27M
+// shmtx_rd_pri(8thr_8lock_10pct_write)              74.85%     3.29ns  303.52M
+// folly_rwspin(16thr_16lock_10pct_write)                       1.22ns  818.68M
+// shmtx_wr_pri(16thr_16lock_10pct_write)            73.35%     1.67ns  600.47M
+// shmtx_rd_pri(16thr_16lock_10pct_write)            73.38%     1.66ns  600.73M
+// folly_rwspin(32thr_32lock_10pct_write)                       1.21ns  827.95M
+// shmtx_wr_pri(32thr_32lock_10pct_write)            96.13%     1.26ns  795.89M
+// shmtx_rd_pri(32thr_32lock_10pct_write)            96.01%     1.26ns  794.95M
+// folly_rwspin(64thr_64lock_10pct_write)                       1.40ns  716.17M
+// shmtx_wr_pri(64thr_64lock_10pct_write)            96.91%     1.44ns  694.03M
+// shmtx_rd_pri(64thr_64lock_10pct_write)            96.85%     1.44ns  693.64M
+// ----------------------------------------------------------------------------
+// folly_rwspin(2thr_2lock_1pct_write)                         10.11ns   98.91M
+// shmtx_wr_pri(2thr_2lock_1pct_write)               75.07%    13.47ns   74.25M
+// shmtx_rd_pri(2thr_2lock_1pct_write)               74.98%    13.48ns   74.16M
+// folly_rwspin(4thr_4lock_1pct_write)                          4.96ns  201.77M
+// shmtx_wr_pri(4thr_4lock_1pct_write)               74.59%     6.64ns  150.49M
+// shmtx_rd_pri(4thr_4lock_1pct_write)               74.60%     6.64ns  150.51M
+// folly_rwspin(8thr_8lock_1pct_write)                          2.44ns  410.42M
+// shmtx_wr_pri(8thr_8lock_1pct_write)               73.68%     3.31ns  302.41M
+// shmtx_rd_pri(8thr_8lock_1pct_write)               73.38%     3.32ns  301.16M
+// folly_rwspin(16thr_16lock_1pct_write)                        1.21ns  827.53M
+// shmtx_wr_pri(16thr_16lock_1pct_write)             72.11%     1.68ns  596.74M
+// shmtx_rd_pri(16thr_16lock_1pct_write)             72.23%     1.67ns  597.73M
+// folly_rwspin(32thr_32lock_1pct_write)                        1.22ns  819.53M
+// shmtx_wr_pri(32thr_32lock_1pct_write)             98.17%     1.24ns  804.50M
+// shmtx_rd_pri(32thr_32lock_1pct_write)             98.21%     1.24ns  804.86M
+// folly_rwspin(64thr_64lock_1pct_write)                        1.41ns  710.26M
+// shmtx_wr_pri(64thr_64lock_1pct_write)             97.81%     1.44ns  694.71M
+// shmtx_rd_pri(64thr_64lock_1pct_write)             99.44%     1.42ns  706.28M
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// folly_rwspin_ping_pong(burn0)                              641.24ns    1.56M
+// shmtx_w_bare_ping_pong(burn0)                     91.07%   704.12ns    1.42M
+// shmtx_r_bare_ping_pong(burn0)                     78.70%   814.84ns    1.23M
+// folly_ticket_ping_pong(burn0)                     85.67%   748.53ns    1.34M
+// boost_shared_ping_pong(burn0)                      5.58%    11.50us   86.96K
+// pthrd_rwlock_ping_pong(burn0)                      8.81%     7.28us  137.40K
+// ----------------------------------------------------------------------------
+// folly_rwspin_ping_pong(burn100k)                           678.97ns    1.47M
+// shmtx_w_bare_ping_pong(burn100k)                  99.73%   680.78ns    1.47M
+// shmtx_r_bare_ping_pong(burn100k)                  98.67%   688.13ns    1.45M
+// folly_ticket_ping_pong(burn100k)                  99.31%   683.68ns    1.46M
+// boost_shared_ping_pong(burn100k)                  58.23%     1.17us  857.64K
+// pthrd_rwlock_ping_pong(burn100k)                  57.43%     1.18us  845.86K
+// ----------------------------------------------------------------------------
+// folly_rwspin_ping_pong(burn300k)                             2.03us  492.99K
+// shmtx_w_bare_ping_pong(burn300k)                  99.98%     2.03us  492.88K
+// shmtx_r_bare_ping_pong(burn300k)                  99.94%     2.03us  492.68K
+// folly_ticket_ping_pong(burn300k)                  99.88%     2.03us  492.40K
+// boost_shared_ping_pong(burn300k)                  81.43%     2.49us  401.47K
+// pthrd_rwlock_ping_pong(burn300k)                  83.22%     2.44us  410.29K
+// ----------------------------------------------------------------------------
+// folly_rwspin_ping_pong(burn1M)                             677.07ns    1.48M
+// shmtx_w_bare_ping_pong(burn1M)                   100.50%   673.74ns    1.48M
+// shmtx_r_bare_ping_pong(burn1M)                   100.14%   676.12ns    1.48M
+// folly_ticket_ping_pong(burn1M)                   100.44%   674.14ns    1.48M
+// boost_shared_ping_pong(burn1M)                    93.04%   727.72ns    1.37M
+// pthrd_rwlock_ping_pong(burn1M)                    94.52%   716.30ns    1.40M
 // ============================================================================
 
 int main(int argc, char** argv) {

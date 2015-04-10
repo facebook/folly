@@ -226,7 +226,7 @@ template <bool ReaderPriority,
           typename Tag_ = void,
           template <typename> class Atom = std::atomic,
           bool BlockImmediately = false>
-class SharedMutexImpl : boost::noncopyable {
+class SharedMutexImpl {
  public:
   static constexpr bool kReaderPriority = ReaderPriority;
   typedef Tag_ Tag;
@@ -238,6 +238,11 @@ class SharedMutexImpl : boost::noncopyable {
   class WriteHolder;
 
   SharedMutexImpl() : state_(0) {}
+
+  SharedMutexImpl(const SharedMutexImpl&) = delete;
+  SharedMutexImpl(SharedMutexImpl&&) = delete;
+  SharedMutexImpl& operator = (const SharedMutexImpl&) = delete;
+  SharedMutexImpl& operator = (SharedMutexImpl&&) = delete;
 
   // It is an error to destroy an SharedMutex that still has
   // any outstanding locks.  This is checked if NDEBUG isn't defined.
@@ -591,18 +596,18 @@ class SharedMutexImpl : boost::noncopyable {
   // one instead of wake all).
   static constexpr uint32_t kWaitingNotS = 1 << 4;
 
-  // If there are multiple pending waiters, then waking them all can
-  // lead to a thundering herd on the lock.  To avoid this, we keep
-  // a 2 bit saturating counter of the number of exclusive waiters
-  // (0, 1, 2, 3+), and if the value is >= 2 we perform futexWake(1)
-  // instead of futexWakeAll.  See wakeRegisteredWaiters for more.
-  // It isn't actually useful to make the counter bigger, because
-  // whenever a futexWait fails with EAGAIN the counter becomes higher
-  // than the actual number of waiters, and hence effectively saturated.
-  // Bigger counters just lead to more changes in state_, which increase
-  // contention and failed futexWait-s.
-  static constexpr uint32_t kIncrWaitingE = 1 << 2;
-  static constexpr uint32_t kWaitingE = 0x3 * kIncrWaitingE;
+  // When waking writers we can either wake them all, in which case we
+  // can clear kWaitingE, or we can call futexWake(1).  futexWake tells
+  // us if anybody woke up, but even if we detect that nobody woke up we
+  // can't clear the bit after the fact without issuing another wakeup.
+  // To avoid thundering herds when there are lots of pending lock()
+  // without needing to call futexWake twice when there is only one
+  // waiter, kWaitingE actually encodes if we have observed multiple
+  // concurrent waiters.  Tricky: ABA issues on futexWait mean that when
+  // we see kWaitingESingle we can't assume that there is only one.
+  static constexpr uint32_t kWaitingESingle = 1 << 2;
+  static constexpr uint32_t kWaitingEMultiple = 1 << 3;
+  static constexpr uint32_t kWaitingE = kWaitingESingle | kWaitingEMultiple;
 
   // kWaitingU is essentially a 1 bit saturating counter.  It always
   // requires a wakeAll.
@@ -857,9 +862,11 @@ class SharedMutexImpl : boost::noncopyable {
 
       auto after = state;
       if (waitMask == kWaitingE) {
-        if ((state & kWaitingE) != kWaitingE) {
-          after += kIncrWaitingE;
-        } // else counter is saturated
+        if ((state & kWaitingESingle) != 0) {
+          after |= kWaitingEMultiple;
+        } else {
+          after |= kWaitingESingle;
+        }
       } else {
         after |= waitMask;
       }
@@ -887,50 +894,25 @@ class SharedMutexImpl : boost::noncopyable {
   }
 
   void wakeRegisteredWaitersImpl(uint32_t& state, uint32_t wakeMask) {
-    if ((wakeMask & kWaitingE) != 0) {
-      // If there are multiple lock() pending only one of them will
-      // actually get to wake up, so issuing futexWakeAll will make
-      // a thundering herd.  There's nothing stopping us from issuing
-      // futexWake(1) instead, so long as the wait bits are still an
-      // accurate reflection of the waiters.  If our pending lock() counter
-      // hasn't saturated we can decrement it.  If it has saturated,
-      // then we can clear it by noticing that futexWake(1) returns 0
-      // (indicating no actual waiters) and then retrying via the normal
-      // clear+futexWakeAll path.
-      //
-      // It is possible that we wake an E waiter but an outside S grabs
-      // the lock instead, at which point we should wake pending U and
-      // S waiters.  Rather than tracking state to make the failing E
-      // regenerate the wakeup, we just disable the optimization in the
-      // case that there are waiting U or S that we are eligible to wake.
-      //
-      // Note that in the contended scenario it is quite likely that the
-      // waiter's futexWait call will fail with EAGAIN (expected value
-      // mismatch), at which point the awaiting-exclusive count will be
-      // larger than the actual number of waiters.  At this point the
-      // counter is effectively saturated.  Since this is likely, it is
-      // actually less efficient to have a larger counter.  2 bits seems
-      // to be the best.
-      while ((state & kWaitingE) != 0 &&
-             (state & wakeMask & (kWaitingU | kWaitingS)) == 0) {
-        if ((state & kWaitingE) != kWaitingE) {
-          // not saturated
-          if (!state_.compare_exchange_strong(state, state - kIncrWaitingE)) {
-            continue;
-          }
-          state -= kIncrWaitingE;
-        }
-
-        if (state_.futexWake(1, kWaitingE) > 0) {
-          return;
-        }
-
-        // Despite the non-zero awaiting-exclusive count, there aren't
-        // actually any pending writers.  Fall through to the logic below
-        // to wake up other classes of locks and to clear the saturated
-        // counter (if necessary).
-        break;
-      }
+    // If there are multiple lock() pending only one of them will actually
+    // get to wake up, so issuing futexWakeAll will make a thundering herd.
+    // There's nothing stopping us from issuing futexWake(1) instead,
+    // so long as the wait bits are still an accurate reflection of
+    // the waiters.  If we notice (via futexWake's return value) that
+    // nobody woke up then we can try again with the normal wake-all path.
+    // Note that we can't just clear the bits at that point; we need to
+    // clear the bits and then issue another wakeup.
+    //
+    // It is possible that we wake an E waiter but an outside S grabs the
+    // lock instead, at which point we should wake pending U and S waiters.
+    // Rather than tracking state to make the failing E regenerate the
+    // wakeup, we just disable the optimization in the case that there
+    // are waiting U or S that we are eligible to wake.
+    if ((wakeMask & kWaitingE) == kWaitingE &&
+        (state & wakeMask) == kWaitingE &&
+        state_.futexWake(1, kWaitingE) > 0) {
+      // somebody woke up, so leave state_ as is and clear it later
+      return;
     }
 
     if ((state & wakeMask) != 0) {
