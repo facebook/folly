@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/wangle/rx/types.h>
+#include <folly/wangle/rx/types.h> // must come first
 #include <functional>
 #include <memory>
 #include <stdexcept>
