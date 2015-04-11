@@ -142,20 +142,20 @@ static std::mutex libevent_mutex_;
  */
 
 EventBase::EventBase(bool enableTimeMeasurement)
-  : runOnceCallbacks_(nullptr)
-  , stop_(false)
-  , loopThread_(0)
-  , queue_(nullptr)
-  , fnRunner_(nullptr)
-  , maxLatency_(0)
-  , avgLoopTime_(2000000)
-  , maxLatencyLoopTime_(avgLoopTime_)
-  , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
-  , latestLoopCnt_(nextLoopCnt_)
-  , startWork_(0)
-  , observer_(nullptr)
-  , observerSampleCount_(0) {
+  : runOnceCallbacks_{nullptr}
+  , stop_{false}
+  , loopThread_{0}
+  , queue_{nullptr}
+  , fnRunner_{nullptr}
+  , maxLatency_{0}
+  , avgLoopTime_{2000000}
+  , maxLatencyLoopTime_{avgLoopTime_}
+  , enableTimeMeasurement_{enableTimeMeasurement}
+  , nextLoopCnt_{static_cast<uint64_t>(-40)}       // Early wrap-around so bugs will manifest soon
+  , latestLoopCnt_{nextLoopCnt_}
+  , startWork_{0}
+  , observer_{nullptr}
+  , observerSampleCount_{0} {
   {
     std::lock_guard<std::mutex> lock(libevent_mutex_);
 
