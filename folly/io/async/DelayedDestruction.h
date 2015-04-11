@@ -85,6 +85,9 @@ class DelayedDestruction : private boost::noncopyable {
   class DestructorGuard {
    public:
 
+    // It disallows copy, move, and default ctor
+    DestructorGuard(DestructorGuard&&) = delete;
+    
     explicit DestructorGuard(DelayedDestruction* dd) : dd_(dd) {
       ++dd_->guardCount_;
       assert(dd_->guardCount_ > 0); // check for wrapping
