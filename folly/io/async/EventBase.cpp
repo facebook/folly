@@ -66,6 +66,9 @@ const int kNoFD = -1;
 class EventBase::FunctionRunner
     : public NotificationQueue<std::pair<void (*)(void*), void*>>::Consumer {
  public:
+  // It disallows copy and move, but allows default ctor
+  FunctionRunner& operator=(FunctionRunner&&) = delete;
+  
   void messageAvailable(std::pair<void (*)(void*), void*>&& msg) {
 
     // In libevent2, internal events do not break the loop.
