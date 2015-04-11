@@ -179,21 +179,21 @@ EventBase::EventBase(bool enableTimeMeasurement)
 
 // takes ownership of the event_base
 EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
-  : runOnceCallbacks_(nullptr)
-  , stop_(false)
-  , loopThread_(0)
-  , evb_(evb)
-  , queue_(nullptr)
-  , fnRunner_(nullptr)
-  , maxLatency_(0)
-  , avgLoopTime_(2000000)
-  , maxLatencyLoopTime_(avgLoopTime_)
-  , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
-  , latestLoopCnt_(nextLoopCnt_)
-  , startWork_(0)
-  , observer_(nullptr)
-  , observerSampleCount_(0) {
+  : runOnceCallbacks_{nullptr}
+  , stop_{false}
+  , loopThread_{0}
+  , evb_{evb}
+  , queue_{nullptr}
+  , fnRunner_{nullptr}
+  , maxLatency_{0}
+  , avgLoopTime_{2000000}
+  , maxLatencyLoopTime_{avgLoopTime_}
+  , enableTimeMeasurement_{enableTimeMeasurement}
+  , nextLoopCnt_{static_cast<uint64_t>(-40)}       // Early wrap-around so bugs will manifest soon
+  , latestLoopCnt_{nextLoopCnt_}
+  , startWork_{0}
+  , observer_{nullptr}
+  , observerSampleCount_{0} {
   if (UNLIKELY(evb_ == nullptr)) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
