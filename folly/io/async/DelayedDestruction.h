@@ -123,9 +123,9 @@ class DelayedDestruction : private boost::noncopyable {
     (void)delayed; // prevent unused variable warnings
   }
 
-  DelayedDestruction()
-    : guardCount_(0)
-    , destroyPending_(false) {}
+  constexpr DelayedDestruction()
+    : guardCount_{0}
+    , destroyPending_{false} {}
 
   /**
    * Protected destructor.
@@ -143,7 +143,7 @@ class DelayedDestruction : private boost::noncopyable {
    * shared_ptr using a DelayedDestruction::Destructor as the second argument
    * to the shared_ptr constructor.
    */
-  virtual ~DelayedDestruction() {}
+  virtual ~DelayedDestruction() = default;
 
   /**
    * Get the number of DestructorGuards currently protecting this object.
