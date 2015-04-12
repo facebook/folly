@@ -587,6 +587,9 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
   // Helper class used to short circuit runInEventBaseThread
   class RunInLoopCallback : public LoopCallback {
    public:
+    // It disallows copy, move, and default ctor
+    RunInLoopCallback(RunInLoopCallback&&) = delete;
+    
     RunInLoopCallback(void (*fn)(void*), void* arg);
     void runLoopCallback() noexcept;
 
