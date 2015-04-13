@@ -682,6 +682,10 @@ constexpr typename std::enable_if<
   && !std::is_convertible<Src, const char*>::value
   && !std::is_convertible<Src, StringPiece>::value
   && !std::is_enum<Src>::value
+#ifdef FOLLY_HAVE_INT128_T
+  && !std::is_same<Src, __int128>::value
+  && !std::is_same<Src, unsigned __int128>::value
+#endif
   && !HasLengthEstimator<Src>::value,
   size_t>::type
 estimateSpaceNeeded(const Src&) {

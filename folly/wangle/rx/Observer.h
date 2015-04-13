@@ -24,7 +24,7 @@
 
 namespace folly { namespace wangle {
 
-template <class T> class FunctionObserver;
+template <class T> struct FunctionObserver;
 
 /// Observer interface. You can subclass it, or you can just use create()
 /// to use std::functions.

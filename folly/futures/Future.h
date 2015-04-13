@@ -34,7 +34,7 @@
 
 namespace folly {
 
-template <class> struct Promise;
+template <class> class Promise;
 
 template <typename T>
 struct isFuture : std::false_type {
@@ -54,7 +54,7 @@ struct isTry<Try<T>> : std::true_type {};
 
 namespace detail {
 
-template <class> struct Core;
+template <class> class Core;
 template <class...> struct VariadicContext;
 
 template<typename F, typename... Args>

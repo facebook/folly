@@ -63,7 +63,7 @@ class Subscription {
   std::shared_ptr<Unsubscriber> unsubscriber_;
   uint64_t id_{0};
 
-  friend class Observable<T>;
+  friend struct Observable<T>;
 };
 
 }}

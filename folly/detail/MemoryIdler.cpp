@@ -25,6 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <utility>
 
 
@@ -87,12 +88,9 @@ static FOLLY_TLS uintptr_t tls_stackLimit;
 static FOLLY_TLS size_t tls_stackSize;
 
 static void fetchStackLimits() {
-  pthread_attr_t attr;
 #if defined(_GNU_SOURCE) && defined(__linux__) // Linux+GNU extension
+  pthread_attr_t attr;
   pthread_getattr_np(pthread_self(), &attr);
-#else
-  pthread_attr_init(&attr);
-#endif
   SCOPE_EXIT { pthread_attr_destroy(&attr); };
 
   void* addr;
@@ -119,6 +117,22 @@ static void fetchStackLimits() {
   // stack goes down, so guard page adds to the base addr
   tls_stackLimit = uintptr_t(addr) + guardSize;
   tls_stackSize = rawSize - guardSize;
+
+#else
+
+  auto self = pthread_self();
+  if (pthread_main_np()) {
+    // FIXME: <rdar://problem/13741204>
+    // pthread_get_size lies to us when we're the main thread, use get_rlimit instead
+    rlimit limit;
+    getrlimit(RLIMIT_STACK, &limit);
+    tls_stackSize = limit.rlim_cur;
+  } else {
+    tls_stackSize = pthread_get_stacksize_np(self);
+  }
+
+  tls_stackLimit = uintptr_t(pthread_get_stackaddr_np(self)) - tls_stackSize;
+#endif
 
   assert((tls_stackLimit & (s_pageSize - 1)) == 0);
 }

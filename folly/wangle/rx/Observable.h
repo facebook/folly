@@ -31,7 +31,7 @@
 namespace folly { namespace wangle {
 
 template <class T, size_t InlineObservers>
-class Observable {
+struct Observable {
  public:
   Observable() : nextSubscriptionId_{1} {}
 
