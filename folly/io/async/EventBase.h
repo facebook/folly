@@ -113,7 +113,10 @@ class EventBase : private boost::noncopyable,
    */
   class LoopCallback {
    public:
-    virtual ~LoopCallback() {}
+    // It disallows copy and move, but allows default ctor
+    LoopCallback& operator=(LoopCallback&&) = delete;
+    
+    virtual ~LoopCallback() = default;
 
     virtual void runLoopCallback() noexcept = 0;
     void cancelLoopCallback() {
