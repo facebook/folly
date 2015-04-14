@@ -38,11 +38,14 @@ using folly::EventBase;
 template <typename Callback>
 class FunctionLoopCallback : public EventBase::LoopCallback {
  public:
+  // It disallows copy, move, and default ctor
+  FunctionLoopCallback(FunctionLoopCallback&&) = delete;
+  
   explicit FunctionLoopCallback(Cob&& function)
-      : function_(std::move(function)) {}
+      : function_{std::move(function)} {}
 
   explicit FunctionLoopCallback(const Cob& function)
-      : function_(function) {}
+      : function_{function} {}
 
   virtual void runLoopCallback() noexcept {
     function_();
