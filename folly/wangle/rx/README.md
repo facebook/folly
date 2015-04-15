@@ -4,12 +4,12 @@ RxJava for JVM languages.
 
 It is basically the plural of Futures (a la Wangle).
 
-
+```
                     singular              |            plural
         +---------------------------------+-----------------------------------
   sync  |  Foo getData()                  |  std::vector<Foo> getData()
   async |  wangle::Future<Foo> getData()  |  wangle::Observable<Foo> getData()
-
+```
 
 For more on Rx, I recommend these resources:
 
