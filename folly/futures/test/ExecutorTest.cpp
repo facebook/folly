@@ -179,7 +179,7 @@ class CrappyExecutor : public Executor {
 TEST(Executor, CrappyExecutor) {
   CrappyExecutor x;
   try {
-    auto f = Future<void>().via(&x).activate().then([](){
+    auto f = Future<void>().via(&x).then([](){
       return;
     });
     f.value();
