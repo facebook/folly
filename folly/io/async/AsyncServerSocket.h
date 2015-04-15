@@ -66,6 +66,9 @@ class AsyncServerSocket : public DelayedDestruction
 
   class AcceptCallback {
    public:
+    // AcceptCallback disallow undeclared copy and move.
+    // But allow implicit default construction
+    AcceptCallback& operator=(AcceptCallback&&) = delete;
     virtual ~AcceptCallback() {}
 
     /**
