@@ -39,6 +39,11 @@ inline void FiberManager::ensureLoopScheduled() {
 }
 
 inline void FiberManager::runReadyFiber(Fiber* fiber) {
+  SCOPE_EXIT {
+    assert(currentFiber_ == nullptr);
+    assert(activeFiber_ == nullptr);
+  };
+
   assert(fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN);
   currentFiber_ = fiber;
@@ -61,6 +66,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   if (fiber->state_ == Fiber::AWAITING) {
     awaitFunc_(*fiber);
     awaitFunc_ = nullptr;
+    currentFiber_ = nullptr;
   } else if (fiber->state_ == Fiber::INVALID) {
     assert(fibersActive_ > 0);
     --fibersActive_;
@@ -77,6 +83,8 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       }
       fiber->finallyFunc_ = nullptr;
     }
+    // Make sure LocalData is not accessible from its destructor
+    currentFiber_ = nullptr;
     fiber->localData_.reset();
 
     if (fibersPoolSize_ < options_.maxFibersPoolSize) {
@@ -88,10 +96,10 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
       --fibersAllocated_;
     }
   } else if (fiber->state_ == Fiber::YIELDED) {
+    currentFiber_ = nullptr;
     fiber->state_ = Fiber::READY_TO_RUN;
     yieldedFibers_.push_back(*fiber);
   }
-  currentFiber_ = nullptr;
 }
 
 inline bool FiberManager::loopUntilNoReady() {

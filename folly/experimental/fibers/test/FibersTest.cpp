@@ -1281,6 +1281,32 @@ TEST(FiberManager, fiberLocalHeap) {
   testFiberLocal<LargeData>();
 }
 
+TEST(FiberManager, fiberLocalDestructor) {
+  struct CrazyData {
+    size_t data{42};
+
+    ~CrazyData() {
+      if (data == 41) {
+        addTask([]() {
+            EXPECT_EQ(42, local<CrazyData>().data);
+            // Make sure we don't have infinite loop
+            local<CrazyData>().data = 0;
+          });
+      }
+    }
+  };
+
+  FiberManager fm(LocalType<CrazyData>(),
+                  folly::make_unique<SimpleLoopController>());
+
+  fm.addTask([]() {
+      local<CrazyData>().data = 41;
+    });
+
+  fm.loopUntilNoReady();
+  EXPECT_FALSE(fm.hasTasks());
+}
+
 TEST(FiberManager, yieldTest) {
   FiberManager manager(folly::make_unique<SimpleLoopController>());
   auto& loopController =
