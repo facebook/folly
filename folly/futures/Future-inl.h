@@ -244,6 +244,7 @@ Future<void> Future<T>::then() {
 template <class T>
 template <class F>
 typename std::enable_if<
+  !detail::callableWith<F, exception_wrapper>::value &&
   !detail::Extract<F>::ReturnsFuture::value,
   Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -273,6 +274,7 @@ Future<T>::onError(F&& func) {
 template <class T>
 template <class F>
 typename std::enable_if<
+  !detail::callableWith<F, exception_wrapper>::value &&
   detail::Extract<F>::ReturnsFuture::value,
   Future<T>>::type
 Future<T>::onError(F&& func) {
@@ -321,6 +323,70 @@ Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) {
   auto funcw = folly::makeMoveWrapper(std::forward<F>(func));
   return within(dur, tk)
     .onError([funcw](TimedOut const&) { return (*funcw)(); });
+}
+
+template <class T>
+template <class F>
+typename std::enable_if<
+  detail::callableWith<F, exception_wrapper>::value &&
+  detail::Extract<F>::ReturnsFuture::value,
+  Future<T>>::type
+Future<T>::onError(F&& func) {
+  static_assert(
+      std::is_same<typename detail::Extract<F>::Return, Future<T>>::value,
+      "Return type of onError callback must be T or Future<T>");
+
+  Promise<T> p;
+  auto f = p.getFuture();
+  auto pm = folly::makeMoveWrapper(std::move(p));
+  auto funcm = folly::makeMoveWrapper(std::move(func));
+  setCallback_([pm, funcm](Try<T> t) mutable {
+    if (t.hasException()) {
+      try {
+        auto f2 = (*funcm)(std::move(t.exception()));
+        f2.setCallback_([pm](Try<T> t2) mutable {
+          pm->fulfilTry(std::move(t2));
+        });
+      } catch (const std::exception& e2) {
+        pm->setException(exception_wrapper(std::current_exception(), e2));
+      } catch (...) {
+        pm->setException(exception_wrapper(std::current_exception()));
+      }
+    } else {
+      pm->fulfilTry(std::move(t));
+    }
+  });
+
+  return f;
+}
+
+// onError(exception_wrapper) that returns T
+template <class T>
+template <class F>
+typename std::enable_if<
+  detail::callableWith<F, exception_wrapper>::value &&
+  !detail::Extract<F>::ReturnsFuture::value,
+  Future<T>>::type
+Future<T>::onError(F&& func) {
+  static_assert(
+      std::is_same<typename detail::Extract<F>::Return, Future<T>>::value,
+      "Return type of onError callback must be T or Future<T>");
+
+  Promise<T> p;
+  auto f = p.getFuture();
+  auto pm = folly::makeMoveWrapper(std::move(p));
+  auto funcm = folly::makeMoveWrapper(std::move(func));
+  setCallback_([pm, funcm](Try<T> t) mutable {
+    if (t.hasException()) {
+      pm->fulfil([&]{
+        return (*funcm)(std::move(t.exception()));
+      });
+    } else {
+      pm->fulfilTry(std::move(t));
+    }
+  });
+
+  return f;
 }
 
 template <class T>

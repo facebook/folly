@@ -344,6 +344,7 @@ class Future {
   ///   });
   template <class F>
   typename std::enable_if<
+    !detail::callableWith<F, exception_wrapper>::value &&
     !detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
   onError(F&& func);
@@ -351,7 +352,24 @@ class Future {
   /// Overload of onError where the error callback returns a Future<T>
   template <class F>
   typename std::enable_if<
+    !detail::callableWith<F, exception_wrapper>::value &&
     detail::Extract<F>::ReturnsFuture::value,
+    Future<T>>::type
+  onError(F&& func);
+
+  /// Overload of onError that takes exception_wrapper and returns Future<T>
+  template <class F>
+  typename std::enable_if<
+    detail::callableWith<F, exception_wrapper>::value &&
+    detail::Extract<F>::ReturnsFuture::value,
+    Future<T>>::type
+  onError(F&& func);
+
+  /// Overload of onError that takes exception_wrapper and returns T
+  template <class F>
+  typename std::enable_if<
+    detail::callableWith<F, exception_wrapper>::value &&
+    !detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
   onError(F&& func);
 

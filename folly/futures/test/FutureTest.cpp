@@ -260,6 +260,66 @@ TEST(Future, onError) {
       .onError([&] (eggs_t& e) { throw e; return makeFuture<int>(-1); });
     EXPECT_THROW(f.value(), eggs_t);
   }
+
+  // exception_wrapper, return Future<T>
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (exception_wrapper e) { flag(); return makeFuture(); });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
+  // exception_wrapper, return Future<T> but throw
+  {
+    auto f = makeFuture()
+      .then([]{ throw eggs; return 0; })
+      .onError([&] (exception_wrapper e) {
+        flag();
+        throw eggs;
+        return makeFuture<int>(-1);
+      });
+    EXPECT_FLAG();
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+
+  // exception_wrapper, return T
+  {
+    auto f = makeFuture()
+      .then([]{ throw eggs; return 0; })
+      .onError([&] (exception_wrapper e) {
+        flag();
+        return -1;
+      });
+    EXPECT_FLAG();
+    EXPECT_EQ(-1, f.value());
+  }
+
+  // exception_wrapper, return T but throw
+  {
+    auto f = makeFuture()
+      .then([]{ throw eggs; return 0; })
+      .onError([&] (exception_wrapper e) {
+        flag();
+        throw eggs;
+        return -1;
+      });
+    EXPECT_FLAG();
+    EXPECT_THROW(f.value(), eggs_t);
+  }
+
+  // const exception_wrapper&
+  {
+    auto f = makeFuture()
+      .then([] { throw eggs; })
+      .onError([&] (const exception_wrapper& e) {
+        flag();
+        return makeFuture();
+      });
+    EXPECT_FLAG();
+    EXPECT_NO_THROW(f.value());
+  }
+
 }
 
 TEST(Future, try) {
