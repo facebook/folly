@@ -97,6 +97,9 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 inline bool FiberManager::loopUntilNoReady() {
   SCOPE_EXIT {
     isLoopScheduled_ = false;
+    if (!readyFibers_.empty()) {
+      ensureLoopScheduled();
+    }
     currentFiberManager_ = nullptr;
   };
 
@@ -135,10 +138,7 @@ inline bool FiberManager::loopUntilNoReady() {
     );
   }
 
-  if (!yieldedFibers_.empty()) {
-    readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
-    ensureLoopScheduled();
-  }
+  readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
 
   return fibersActive_ > 0;
 }

@@ -1281,6 +1281,31 @@ TEST(FiberManager, fiberLocalHeap) {
   testFiberLocal<LargeData>();
 }
 
+TEST(FiberManager, yieldTest) {
+  FiberManager manager(folly::make_unique<SimpleLoopController>());
+  auto& loopController =
+    dynamic_cast<SimpleLoopController&>(manager.loopController());
+
+  bool checkRan = false;
+
+  manager.addTask(
+    [&]() {
+      manager.yield();
+      checkRan = true;
+    }
+  );
+
+  loopController.loop(
+    [&]() {
+      if (checkRan) {
+        loopController.stop();
+      }
+    }
+  );
+
+  EXPECT_TRUE(checkRan);
+}
+
 static size_t sNumAwaits;
 
 void runBenchmark(size_t numAwaits, size_t toSend) {
