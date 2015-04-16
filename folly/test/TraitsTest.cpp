@@ -110,14 +110,6 @@ TEST(Traits, relational) {
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
 }
 
-struct CompleteType {};
-struct IncompleteType;
-TEST(Traits, is_complete) {
-  EXPECT_TRUE((folly::is_complete<int>::value));
-  EXPECT_TRUE((folly::is_complete<CompleteType>::value));
-  EXPECT_FALSE((folly::is_complete<IncompleteType>::value));
-}
-
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
