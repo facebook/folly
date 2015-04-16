@@ -109,4 +109,8 @@ void FiberManager::remoteReadyInsert(Fiber* fiber) {
   }
 }
 
+void FiberManager::setObserver(ExecutionObserver* observer) {
+  observer_ = observer;
+}
+
 }}

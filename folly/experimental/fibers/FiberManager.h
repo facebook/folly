@@ -29,6 +29,7 @@
 #include <folly/futures/Try.h>
 
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
+#include <folly/experimental/fibers/ExecutionObserver.h>
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/traits.h>
 
@@ -234,6 +235,14 @@ class FiberManager {
    */
   void yield();
 
+  /**
+   * Setup fibers execution observation/instrumentation. Fiber locals are
+   * available to observer.
+   *
+   * @param observer  Fiber's execution observer.
+   */
+  void setObserver(ExecutionObserver* observer);
+
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
@@ -348,6 +357,11 @@ class FiberManager {
    * Function passed to the runInMainContext call.
    */
   std::function<void()> immediateFunc_;
+
+  /**
+   * Fiber's execution observer.
+   */
+  ExecutionObserver* observer_{nullptr};
 
   ExceptionCallback exceptionCallback_; /**< task exception callback */
 

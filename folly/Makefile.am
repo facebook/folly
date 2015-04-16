@@ -80,6 +80,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/BoostContextCompatibility.h \
 	experimental/fibers/EventBaseLoopController.h \
 	experimental/fibers/EventBaseLoopController-inl.h \
+	experimental/fibers/ExecutionObserver.h \
 	experimental/fibers/Fiber.h \
 	experimental/fibers/Fiber-inl.h \
 	experimental/fibers/FiberManager.h \
