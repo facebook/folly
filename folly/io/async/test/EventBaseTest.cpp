@@ -1246,6 +1246,15 @@ TEST(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadAndWaitWithin) {
   });
 }
 
+TEST(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadNotLooping) {
+  EventBase eb;
+  auto mutated = false;
+  eb.runImmediatelyOrRunInEventBaseThreadAndWait([&] {
+      mutated = true;
+    });
+  EXPECT_TRUE(mutated);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Tests for runInLoop()
 ///////////////////////////////////////////////////////////////////////////

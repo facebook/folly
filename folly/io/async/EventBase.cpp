@@ -611,7 +611,7 @@ bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
 }
 
 bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn) {
-  if (inRunningEventBaseThread()) {
+  if (isInEventBaseThread()) {
     fn();
     return true;
   } else {
