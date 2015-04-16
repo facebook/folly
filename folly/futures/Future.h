@@ -56,6 +56,7 @@ namespace detail {
 
 template <class> struct Core;
 template <class...> struct VariadicContext;
+template <class> struct CollectContext;
 
 template<typename F, typename... Args>
 using resultOf = decltype(std::declval<F>()(std::declval<Args>()...));
@@ -621,6 +622,15 @@ template <typename... Fs>
 typename detail::VariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
 whenAll(Fs&&... fs);
+
+/// Like whenAll, but will short circuit on the first exception. Thus, the
+/// type of the returned Future is std::vector<T> instead of
+/// std::vector<Try<T>>
+template <class InputIterator>
+Future<typename detail::CollectContext<
+  typename std::iterator_traits<InputIterator>::value_type::value_type
+>::result_type>
+collect(InputIterator first, InputIterator last);
 
 /** The result is a pair of the index of the first Future to complete and
   the Try. If multiple Futures complete at the same time (or are already

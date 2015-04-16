@@ -536,8 +536,7 @@ Future<void> via(Executor* executor) {
 template <typename... Fs>
 typename detail::VariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
-whenAll(Fs&&... fs)
-{
+whenAll(Fs&&... fs) {
   auto ctx =
     new detail::VariadicContext<typename std::decay<Fs>::type::value_type...>();
   ctx->total = sizeof...(fs);
@@ -553,8 +552,7 @@ template <class InputIterator>
 Future<
   std::vector<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-whenAll(InputIterator first, InputIterator last)
-{
+whenAll(InputIterator first, InputIterator last) {
   typedef
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
@@ -572,13 +570,106 @@ whenAll(InputIterator first, InputIterator last)
   for (size_t i = 0; first != last; ++first, ++i) {
      assert(i < n);
      auto& f = *first;
-     f.setCallback_([ctx, i, n](Try<T>&& t) {
-         ctx->results[i] = std::move(t);
-         if (++ctx->count == n) {
-           ctx->p.setValue(std::move(ctx->results));
-           delete ctx;
+     f.setCallback_([ctx, i, n](Try<T> t) {
+       ctx->results[i] = std::move(t);
+       if (++ctx->count == n) {
+         ctx->p.setValue(std::move(ctx->results));
+         delete ctx;
+       }
+     });
+  }
+
+  return f_saved;
+}
+
+namespace detail {
+
+template <typename T>
+struct CollectContext {
+  explicit CollectContext(int n) : count(0), threw(false) {
+    results.resize(n);
+  }
+  Promise<std::vector<T>> p;
+  std::vector<T> results;
+  std::atomic<size_t> count;
+  std::atomic_bool threw;
+
+  typedef std::vector<T> result_type;
+
+  static inline Future<std::vector<T>> makeEmptyFuture() {
+    return makeFuture(std::vector<T>());
+  }
+
+  inline void setValue() {
+    p.setValue(std::move(results));
+  }
+
+  inline void addResult(int i, Try<T>& t) {
+    results[i] = std::move(t.value());
+  }
+};
+
+template <>
+struct CollectContext<void> {
+  explicit CollectContext(int n) : count(0), threw(false) {}
+  Promise<void> p;
+  std::atomic<size_t> count;
+  std::atomic_bool threw;
+
+  typedef void result_type;
+
+  static inline Future<void> makeEmptyFuture() {
+    return makeFuture();
+  }
+
+  inline void setValue() {
+    p.setValue();
+  }
+
+  inline void addResult(int i, Try<void>& t) {
+    // do nothing
+  }
+};
+
+} // detail
+
+template <class InputIterator>
+Future<typename detail::CollectContext<
+  typename std::iterator_traits<InputIterator>::value_type::value_type
+>::result_type>
+collect(InputIterator first, InputIterator last) {
+  typedef
+    typename std::iterator_traits<InputIterator>::value_type::value_type T;
+
+  if (first >= last) {
+    return detail::CollectContext<T>::makeEmptyFuture();
+  }
+
+  size_t n = std::distance(first, last);
+  auto ctx = new detail::CollectContext<T>(n);
+  auto f_saved = ctx->p.getFuture();
+
+  for (size_t i = 0; first != last; ++first, ++i) {
+     assert(i < n);
+     auto& f = *first;
+     f.setCallback_([ctx, i, n](Try<T> t) {
+       auto c = ++ctx->count;
+
+       if (t.hasException()) {
+         if (!ctx->threw.exchange(true)) {
+           ctx->p.setException(std::move(t.exception()));
          }
-       });
+       } else if (!ctx->threw) {
+         ctx->addResult(i, t);
+         if (c == n) {
+           ctx->setValue();
+         }
+       }
+
+       if (c == n) {
+         delete ctx;
+       }
+     });
   }
 
   return f_saved;

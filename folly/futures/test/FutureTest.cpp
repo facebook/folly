@@ -766,6 +766,118 @@ TEST(Future, whenAll) {
   }
 }
 
+TEST(Future, collect) {
+  // success case
+  {
+    vector<Promise<int>> promises(10);
+    vector<Future<int>> futures;
+
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    auto allf = collect(futures.begin(), futures.end());
+
+    random_shuffle(promises.begin(), promises.end());
+    for (auto& p : promises) {
+      EXPECT_FALSE(allf.isReady());
+      p.setValue(42);
+    }
+
+    EXPECT_TRUE(allf.isReady());
+    for (auto i : allf.value()) {
+      EXPECT_EQ(42, i);
+    }
+  }
+
+  // failure case
+  {
+    vector<Promise<int>> promises(10);
+    vector<Future<int>> futures;
+
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    auto allf = collect(futures.begin(), futures.end());
+
+    random_shuffle(promises.begin(), promises.end());
+    for (int i = 0; i < 10; i++) {
+      if (i < 5) {
+        // everthing goes well so far...
+        EXPECT_FALSE(allf.isReady());
+        promises[i].setValue(42);
+      } else if (i == 5) {
+        // short circuit with an exception
+        EXPECT_FALSE(allf.isReady());
+        promises[i].setException(eggs);
+        EXPECT_TRUE(allf.isReady());
+      } else if (i < 8) {
+        // don't blow up on further values
+        EXPECT_TRUE(allf.isReady());
+        promises[i].setValue(42);
+      } else {
+        // don't blow up on further exceptions
+        EXPECT_TRUE(allf.isReady());
+        promises[i].setException(eggs);
+      }
+    }
+
+    EXPECT_THROW(allf.value(), eggs_t);
+  }
+
+  // void futures success case
+  {
+    vector<Promise<void>> promises(10);
+    vector<Future<void>> futures;
+
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    auto allf = collect(futures.begin(), futures.end());
+
+    random_shuffle(promises.begin(), promises.end());
+    for (auto& p : promises) {
+      EXPECT_FALSE(allf.isReady());
+      p.setValue();
+    }
+
+    EXPECT_TRUE(allf.isReady());
+  }
+
+  // void futures failure case
+  {
+    vector<Promise<void>> promises(10);
+    vector<Future<void>> futures;
+
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    auto allf = collect(futures.begin(), futures.end());
+
+    random_shuffle(promises.begin(), promises.end());
+    for (int i = 0; i < 10; i++) {
+      if (i < 5) {
+        // everthing goes well so far...
+        EXPECT_FALSE(allf.isReady());
+        promises[i].setValue();
+      } else if (i == 5) {
+        // short circuit with an exception
+        EXPECT_FALSE(allf.isReady());
+        promises[i].setException(eggs);
+        EXPECT_TRUE(allf.isReady());
+      } else if (i < 8) {
+        // don't blow up on further values
+        EXPECT_TRUE(allf.isReady());
+        promises[i].setValue();
+      } else {
+        // don't blow up on further exceptions
+        EXPECT_TRUE(allf.isReady());
+        promises[i].setException(eggs);
+      }
+    }
+
+    EXPECT_THROW(allf.value(), eggs_t);
+  }
+}
 
 TEST(Future, whenAny) {
   {
