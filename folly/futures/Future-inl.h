@@ -345,7 +345,7 @@ Future<T>::onError(F&& func) {
       try {
         auto f2 = (*funcm)(std::move(t.exception()));
         f2.setCallback_([pm](Try<T> t2) mutable {
-          pm->fulfilTry(std::move(t2));
+          pm->setTry(std::move(t2));
         });
       } catch (const std::exception& e2) {
         pm->setException(exception_wrapper(std::current_exception(), e2));
@@ -353,7 +353,7 @@ Future<T>::onError(F&& func) {
         pm->setException(exception_wrapper(std::current_exception()));
       }
     } else {
-      pm->fulfilTry(std::move(t));
+      pm->setTry(std::move(t));
     }
   });
 
@@ -378,11 +378,11 @@ Future<T>::onError(F&& func) {
   auto funcm = folly::makeMoveWrapper(std::move(func));
   setCallback_([pm, funcm](Try<T> t) mutable {
     if (t.hasException()) {
-      pm->fulfil([&]{
+      pm->setWith([&]{
         return (*funcm)(std::move(t.exception()));
       });
     } else {
-      pm->fulfilTry(std::move(t));
+      pm->setTry(std::move(t));
     }
   });
 
