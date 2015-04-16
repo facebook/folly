@@ -514,9 +514,7 @@ class NotificationQueue {
       if (numActiveConsumers_ < numConsumers_) {
         signal = true;
       }
-      queue_.push_back(
-        std::make_pair(std::move(message),
-                       RequestContext::saveContext()));
+      queue_.emplace_back(std::move(message), RequestContext::saveContext());
     }
     if (signal) {
       signalEvent();
@@ -536,7 +534,7 @@ class NotificationQueue {
       if (numActiveConsumers_ < numConsumers_) {
         signal = true;
       }
-      queue_.push_back(std::make_pair(message, RequestContext::saveContext()));
+      queue_.emplace_back(message, RequestContext::saveContext());
     }
     if (signal) {
       signalEvent();
@@ -554,7 +552,7 @@ class NotificationQueue {
       folly::SpinLockGuard g(spinlock_);
       checkDraining();
       while (first != last) {
-        queue_.push_back(std::make_pair(*first, RequestContext::saveContext()));
+        queue_.emplace_back(*first, RequestContext::saveContext());
         ++first;
         ++numAdded;
       }
