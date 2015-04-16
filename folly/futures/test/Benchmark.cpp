@@ -83,7 +83,7 @@ BENCHMARK_RELATIVE(hundredThens) {
   someThens(100);
 }
 
-// Lock contention. Although in practice fulfil()s tend to be temporally
+// Lock contention. Although in practice fulfills tend to be temporally
 // separate from then()s, still sometimes they will be concurrent. So the
 // higher this number is, the better.
 BENCHMARK_DRAW_LINE()
@@ -113,7 +113,7 @@ BENCHMARK(no_contention) {
     b2.wait();
   }
 
-  // The only thing we are measuring is how long fulfil + callbacks take
+  // The only thing we are measuring is how long fulfill + callbacks take
   producer.join();
 }
 

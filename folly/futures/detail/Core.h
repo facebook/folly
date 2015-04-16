@@ -68,7 +68,7 @@ enum class State : uint8_t {
 /// migrate between threads, though this usually happens within the API code.
 /// For example, an async operation will probably make a Promise, grab its
 /// Future, then move the Promise into another thread that will eventually
-/// fulfil it. With executors and via, this gets slightly more complicated at
+/// fulfill it. With executors and via, this gets slightly more complicated at
 /// first blush, but it's the same principle. In general, as long as the user
 /// doesn't access a Future or Promise object from more than one thread at a
 /// time there won't be any problems.

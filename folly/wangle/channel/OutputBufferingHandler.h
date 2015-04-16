@@ -58,7 +58,7 @@ class OutputBufferingHandler : public BytesToBytesHandler,
     MoveWrapper<std::vector<Promise<void>>> promises(std::move(promises_));
     ctx_->fireWrite(std::move(sends_)).then([promises](Try<void> t) mutable {
       for (auto& p : *promises) {
-        p.fulfilTry(t);
+        p.setTry(t);
       }
     });
   }

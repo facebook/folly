@@ -171,7 +171,7 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
       if (!isTry && t.hasException()) {
         p->setException(std::move(t.exception()));
       } else {
-        p->fulfil([&]() {
+        p->setWith([&]() {
           return (*funcm)(t.template get<isTry, Args>()...);
         });
       }
@@ -210,7 +210,7 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
           auto f2 = (*funcm)(t.template get<isTry, Args>()...);
           // that didn't throw, now we can steal p
           f2.setCallback_([p](Try<B>&& b) mutable {
-            p->fulfilTry(std::move(b));
+            p->setTry(std::move(b));
           });
         } catch (const std::exception& e) {
           p->setException(exception_wrapper(std::current_exception(), e));
@@ -259,11 +259,11 @@ Future<T>::onError(F&& func) {
   auto funcm = folly::makeMoveWrapper(std::move(func));
   setCallback_([pm, funcm](Try<T>&& t) mutable {
     if (!t.template withException<Exn>([&] (Exn& e) {
-          pm->fulfil([&]{
+          pm->setWith([&]{
             return (*funcm)(e);
           });
         })) {
-      pm->fulfilTry(std::move(t));
+      pm->setTry(std::move(t));
     }
   });
 
@@ -292,7 +292,7 @@ Future<T>::onError(F&& func) {
           try {
             auto f2 = (*funcm)(e);
             f2.setCallback_([pm](Try<T>&& t2) mutable {
-              pm->fulfilTry(std::move(t2));
+              pm->setTry(std::move(t2));
             });
           } catch (const std::exception& e2) {
             pm->setException(exception_wrapper(std::current_exception(), e2));
@@ -300,7 +300,7 @@ Future<T>::onError(F&& func) {
             pm->setException(exception_wrapper(std::current_exception()));
           }
         })) {
-      pm->fulfilTry(std::move(t));
+      pm->setTry(std::move(t));
     }
   });
 
@@ -436,7 +436,7 @@ inline Future<T> Future<T>::via(Executor* executor) & {
 
   MoveWrapper<Promise<T>> p;
   auto f = p->getFuture();
-  then([p](Try<T>&& t) mutable { p->fulfilTry(std::move(t)); });
+  then([p](Try<T>&& t) mutable { p->setTry(std::move(t)); });
   return std::move(f).via(executor);
 }
 
@@ -473,7 +473,7 @@ auto makeFutureTry(
     typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
     -> Future<decltype(func())> {
   Promise<decltype(func())> p;
-  p.fulfil(
+  p.setWith(
     [&func]() {
       return (func)();
     });
@@ -512,7 +512,7 @@ makeFuture(E const& e) {
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
   Promise<typename std::decay<T>::type> p;
-  p.fulfilTry(std::move(t));
+  p.setTry(std::move(t));
   return p.getFuture();
 }
 
@@ -627,7 +627,7 @@ whenN(InputIterator first, InputIterator last, size_t n) {
   ctx->completed = 0;
 
   // for each completed Future, increase count and add to vector, until we
-  // have n completed futures at which point we fulfil our Promise with the
+  // have n completed futures at which point we fulfill our Promise with the
   // vector
   auto it = first;
   size_t i = 0;
@@ -639,7 +639,7 @@ whenN(InputIterator first, InputIterator last, size_t n) {
         assert(ctx->v.size() < n);
         v.push_back(std::make_pair(i, std::move(t)));
         if (c == n) {
-          ctx->p.fulfilTry(Try<V>(std::move(v)));
+          ctx->p.setTry(Try<V>(std::move(v)));
         }
       }
     });
@@ -736,7 +736,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
   this->then([ctx](Try<T>&& t) {
     if (ctx->token.exchange(true) == false) {
-      ctx->promise.fulfilTry(std::move(t));
+      ctx->promise.setTry(std::move(t));
     }
   });
 
@@ -923,7 +923,7 @@ namespace futures {
     MoveWrapper<Promise<A>> pw;
     MoveWrapper<Future<Z>> fw(chainHelper<Z>(pw->getFuture(), fns...));
     return [=](Try<A> t) mutable {
-      pw->fulfilTry(std::move(t));
+      pw->setTry(std::move(t));
       return std::move(*fw);
     };
   }

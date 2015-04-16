@@ -41,7 +41,7 @@ class Promise {
   Promise(Promise&&) noexcept;
   Promise& operator=(Promise&&);
 
-  /** Fulfil this promise (only for Promise<void>) */
+  /** Fulfill this promise (only for Promise<void>) */
   void setValue();
 
   /** Set the value (use perfect forwarding for both move and copy) */
@@ -53,18 +53,18 @@ class Promise {
    *
    * @param t
    */
-  void fulfilTry(folly::Try<T>&& t);
+  void setTry(folly::Try<T>&& t);
 
-  /** Fulfil this promise with the result of a function that takes no
+  /** Fulfill this promise with the result of a function that takes no
     arguments and returns something implicitly convertible to T.
     Captures exceptions. e.g.
 
-    p.fulfil([] { do something that may throw; return a T; });
+    p.setWith([] { do something that may throw; return a T; });
   */
   template <class F>
-  void fulfil(F&& func);
+  void setWith(F&& func);
 
-  /** Fulfil the Promise with an exception_wrapper, e.g.
+  /** Fulfill the Promise with an exception_wrapper, e.g.
     auto ew = folly::try_and_catch<std::exception>([]{ ... });
     if (ew) {
       p.setException(std::move(ew));

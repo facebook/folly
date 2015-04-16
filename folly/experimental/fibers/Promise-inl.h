@@ -53,11 +53,11 @@ Promise<T>::~Promise() {
 
 template <class T>
 void Promise<T>::setException(folly::exception_wrapper e) {
-  fulfilTry(folly::Try<T>(e));
+  setTry(folly::Try<T>(e));
 }
 
 template <class T>
-void Promise<T>::fulfilTry(folly::Try<T>&& t) {
+void Promise<T>::setTry(folly::Try<T>&& t) {
   throwIfFulfilled();
 
   *value_ = std::move(t);
@@ -73,7 +73,7 @@ void Promise<T>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value,
                 "Use setValue() instead");
 
-  fulfilTry(folly::Try<T>(std::forward<M>(v)));
+  setTry(folly::Try<T>(std::forward<M>(v)));
 }
 
 template <class T>
@@ -81,13 +81,13 @@ void Promise<T>::setValue() {
   static_assert(std::is_same<T, void>::value,
                 "Use setValue(value) instead");
 
-  fulfilTry(folly::Try<void>());
+  setTry(folly::Try<void>());
 }
 
 template <class T>
 template <class F>
-void Promise<T>::fulfil(F&& func) {
-  fulfilTry(makeTryFunction(std::forward<F>(func)));
+void Promise<T>::setWith(F&& func) {
+  setTry(makeTryFunction(std::forward<F>(func)));
 }
 
 }}

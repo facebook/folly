@@ -46,7 +46,7 @@ class FutureExecutor : public ExecutorImpl {
     auto moveFunc = folly::makeMoveWrapper(std::move(func));
     ExecutorImpl::add([movePromise, moveFunc] () mutable {
       (*moveFunc)().then([movePromise] (Try<T>&& t) mutable {
-        movePromise->fulfilTry(std::move(t));
+        movePromise->setTry(std::move(t));
       });
     });
     return future;
@@ -70,7 +70,7 @@ class FutureExecutor : public ExecutorImpl {
     auto movePromise = folly::makeMoveWrapper(std::move(promise));
     auto moveFunc = folly::makeMoveWrapper(std::move(func));
     ExecutorImpl::add([movePromise, moveFunc] () mutable {
-      movePromise->fulfil(std::move(*moveFunc));
+      movePromise->setWith(std::move(*moveFunc));
     });
     return future;
   }

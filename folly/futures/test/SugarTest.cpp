@@ -36,7 +36,7 @@ TEST(Sugar, pollNotReady) {
 TEST(Sugar, pollException) {
   Promise<void> p;
   auto f = p.getFuture();
-  p.fulfil([] { throw std::runtime_error("Runtime"); });
+  p.setWith([] { throw std::runtime_error("Runtime"); });
   EXPECT_TRUE(f.poll().value().hasException());
 }
 

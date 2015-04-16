@@ -193,7 +193,7 @@ f2.then(y3); // racy
 
 ## You make me Promises, Promises
 
-If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make Promises. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with `makeFuture()`). Promises are simple, you make one, you extract the Future, and you fulfil it with a value or an exception. Example:
+If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make Promises. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with `makeFuture()`). Promises are simple, you make one, you extract the Future, and you fulfill it with a value or an exception. Example:
 
 ```C++
 Promise<int> p;
@@ -221,11 +221,11 @@ f.isReady() == true
 f.value() // throws the exception
 ```
 
-It's good practice to use fulfil which takes a function and automatically captures exceptions, e.g.
+It's good practice to use setWith which takes a function and automatically captures exceptions, e.g.
 
 ```C++
 Promise<int> p;
-p.fulfil([]{
+p.setWith([]{
   try {
     // do stuff that may throw
     return 42;

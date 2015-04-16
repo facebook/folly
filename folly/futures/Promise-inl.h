@@ -109,7 +109,7 @@ void Promise<T>::setInterruptHandler(
 }
 
 template <class T>
-void Promise<T>::fulfilTry(Try<T> t) {
+void Promise<T>::setTry(Try<T> t) {
   throwIfFulfilled();
   core_->setResult(std::move(t));
 }
@@ -120,7 +120,7 @@ void Promise<T>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value,
                 "Use setValue() instead");
 
-  fulfilTry(Try<T>(std::forward<M>(v)));
+  setTry(Try<T>(std::forward<M>(v)));
 }
 
 template <class T>
@@ -128,14 +128,14 @@ void Promise<T>::setValue() {
   static_assert(std::is_same<T, void>::value,
                 "Use setValue(value) instead");
 
-  fulfilTry(Try<void>());
+  setTry(Try<void>());
 }
 
 template <class T>
 template <class F>
-void Promise<T>::fulfil(F&& func) {
+void Promise<T>::setWith(F&& func) {
   throwIfFulfilled();
-  fulfilTry(makeTryFunction(std::forward<F>(func)));
+  setTry(makeTryFunction(std::forward<F>(func)));
 }
 
 }

@@ -617,17 +617,17 @@ TEST(Promise, setException) {
   }
 }
 
-TEST(Promise, fulfil) {
+TEST(Promise, setWith) {
   {
     Promise<int> p;
     auto f = p.getFuture();
-    p.fulfil([] { return 42; });
+    p.setWith([] { return 42; });
     EXPECT_EQ(42, f.value());
   }
   {
     Promise<int> p;
     auto f = p.getFuture();
-    p.fulfil([]() -> int { throw eggs; });
+    p.setWith([]() -> int { throw eggs; });
     EXPECT_THROW(f.value(), eggs_t);
   }
 }
@@ -1240,7 +1240,7 @@ TEST(Future, getFuture_after_setValue) {
 
 TEST(Future, getFuture_after_setException) {
   Promise<void> p;
-  p.fulfil([]() -> void { throw std::logic_error("foo"); });
+  p.setWith([]() -> void { throw std::logic_error("foo"); });
   EXPECT_THROW(p.getFuture().value(), std::logic_error);
 }
 
@@ -1302,7 +1302,7 @@ TEST(Future, context) {
 
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
 
-  // Fulfil the promise
+  // Fulfill the promise
   p.setValue();
 }
 
@@ -1354,7 +1354,7 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
 
   ptr.reset();
 
-  promise.fulfil([]{return 1l;});
+  promise.setWith([]{return 1l;});
 }
 
 TEST(Future, Constructor) {
