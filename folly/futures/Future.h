@@ -325,6 +325,22 @@ class Future {
   Future<typename isFuture<R>::Inner>
   then(R(Caller::*func)(Args...), Caller *instance);
 
+  /// Execute the callback via the given Executor. The executor doesn't stick.
+  ///
+  /// Contrast
+  ///
+  ///   f.via(x).then(b).then(c)
+  ///
+  /// with
+  ///
+  ///   f.then(x, b).then(c)
+  ///
+  /// In the former both b and c execute via x. In the latter, only b executes
+  /// via x, and c executes via the same executor (if any) that f had.
+  template <class... Args>
+  auto then(Executor* x, Args&&... args)
+    -> decltype(this->then(std::forward<Args>(args)...));
+
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.
   Future<void> then();

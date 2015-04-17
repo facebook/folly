@@ -184,3 +184,33 @@ TEST(Via, chain3) {
   EXPECT_EQ(42, f.get());
   EXPECT_EQ(3, count);
 }
+
+TEST(Via, then2) {
+  ManualExecutor x1, x2;
+  bool a,b,c;
+  via(&x1)
+    .then([&]{ a = true; })
+    .then(&x2, [&]{ b = true; })
+    .then([&]{ c = true; });
+
+  EXPECT_FALSE(a);
+  EXPECT_FALSE(b);
+
+  x1.run();
+  EXPECT_TRUE(a);
+  EXPECT_FALSE(b);
+  EXPECT_FALSE(c);
+
+  x2.run();
+  EXPECT_TRUE(b);
+  EXPECT_FALSE(c);
+
+  x1.run();
+  EXPECT_TRUE(c);
+}
+
+TEST(Via, then2Variadic) {
+  struct Foo { void foo(Try<void>) {} };
+  Foo f;
+  makeFuture().then(nullptr, &Foo::foo, &f);
+}
