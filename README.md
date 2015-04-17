@@ -3,12 +3,11 @@ Folly: Facebook Open-source LibrarY
 
 Folly is an open-source C++ library developed and used at Facebook.
 
-For details, see folly/docs/Overview.md.
+###[Get Started](folly/docs/Overview.md)
 
 Folly is published on Github at https://github.com/facebook/folly; for
 discussions, there is a Google group at
 https://groups.google.com/d/forum/facebook-folly.
-
 
 Dependencies
 ------------
@@ -25,6 +24,7 @@ Ubuntu 13.10
 The following packages are required (feel free to cut and paste the apt-get
 command below):
 
+```
 sudo apt-get install \
     g++ \
     automake \
@@ -44,23 +44,28 @@ sudo apt-get install \
     binutils-dev \
     libjemalloc-dev \
     libssl-dev
+```
 
 Ubuntu 14.04 LTS
 ----------------
 
 The packages listed above for Ubuntu 13.10 are required, as well as:
 
+```
 sudo apt-get install \
     libiberty-dev
+```
 
 The above packages are sufficient for Ubuntu 13.10 and Ubuntu 14.04.
 
 In the folly directory, run
+```
   autoreconf -ivf
   ./configure
   make
   make check
   sudo make install
+```
 
 OS X
 ----
@@ -69,10 +74,12 @@ of writing (OS X Yosemite 10.10.1) the default compiler (clang) has some
 issues building, but gcc 4.9.2 from Homebrew works fine. (This is taken care
 of by the bootstrap script.)
 
+```
   cd folly
   ./bootstrap-osx-homebrew.sh
   make
   make check
+```
 
 Other Linux distributions
 -------------------------
@@ -82,11 +89,11 @@ Other Linux distributions
   Download and build double-conversion.
   You may need to tell configure where to find it.
 
-  [double-conversion/] ln -s src double-conversion
- 
-  [folly/] ./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/
- 
-  [folly/] LD_LIBRARY_PATH=$DOUBLE_CONVERISON_HOME/ make
+  [double-conversion/] `ln -s src double-conversion`
+
+  [folly/] `./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/`
+
+  [folly/] `LD_LIBRARY_PATH=$DOUBLE_CONVERISON_HOME/ make`
 
 - additional platform specific dependencies:
 
