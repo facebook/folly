@@ -586,9 +586,8 @@ namespace detail {
 
 template <typename T>
 struct CollectContext {
-  explicit CollectContext(int n) : count(0), threw(false) {
-    results.resize(n);
-  }
+  explicit CollectContext(int n) : count(0), threw(false) {}
+
   Promise<std::vector<T>> p;
   std::vector<T> results;
   std::atomic<size_t> count;
