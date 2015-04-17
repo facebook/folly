@@ -1425,7 +1425,12 @@ to(const Src & value) {
   if (value != witness) {
     throw std::range_error(
       to<std::string>("to<>: loss of precision when converting ", value,
-                      " to type ", typeid(Tgt).name()).c_str());
+#ifdef FOLLY_HAS_RTTI
+                      " to type ", typeid(Tgt).name()
+#else
+                      " to other type"
+#endif
+                      ).c_str());
   }
   return result;
 }

@@ -59,18 +59,10 @@ struct hash< ::folly::dynamic> {
 namespace folly {
 
 struct TypeError : std::runtime_error {
-  explicit TypeError(const std::string& expected, dynamic::Type actual)
-    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
-        "type `", expected, '\'', ", but had type `",
-        dynamic::typeName(actual), '\''))
-  {}
+  explicit TypeError(const std::string& expected, dynamic::Type actual);
   explicit TypeError(const std::string& expected,
-      dynamic::Type actual1, dynamic::Type actual2)
-    : std::runtime_error(to<std::string>("TypeError: expected dynamic "
-        "types `", expected, '\'', ", but had types `",
-        dynamic::typeName(actual1), "' and `", dynamic::typeName(actual2),
-        '\''))
-  {}
+    dynamic::Type actual1, dynamic::Type actual2);
+  ~TypeError();
 };
 
 
@@ -418,35 +410,6 @@ struct dynamic::CompareOp<dynamic::ObjectImpl> {
   }
 };
 
-inline bool dynamic::operator<(dynamic const& o) const {
-  if (UNLIKELY(type_ == OBJECT || o.type_ == OBJECT)) {
-    throw TypeError("object", type_);
-  }
-  if (type_ != o.type_) {
-    return type_ < o.type_;
-  }
-
-#define FB_X(T) return CompareOp<T>::comp(*getAddress<T>(),   \
-                                          *o.getAddress<T>())
-  FB_DYNAMIC_APPLY(type_, FB_X);
-#undef FB_X
-}
-
-inline bool dynamic::operator==(dynamic const& o) const {
-  if (type() != o.type()) {
-    if (isNumber() && o.isNumber()) {
-      auto& integ = isInt() ? *this : o;
-      auto& doubl = isInt() ? o     : *this;
-      return integ.asInt() == doubl.asDouble();
-    }
-    return false;
-  }
-
-#define FB_X(T) return *getAddress<T>() == *o.getAddress<T>();
-  FB_DYNAMIC_APPLY(type_, FB_X);
-#undef FB_X
-}
-
 inline dynamic& dynamic::operator+=(dynamic const& o) {
   if (type() == STRING && o.type() == STRING) {
     *getAddress<fbstring>() += *o.getAddress<fbstring>();
@@ -497,58 +460,8 @@ inline dynamic& dynamic::operator--() {
   return *this;
 }
 
-inline dynamic& dynamic::operator=(dynamic const& o) {
-  if (&o != this) {
-    destroy();
-#define FB_X(T) new (getAddress<T>()) T(*o.getAddress<T>())
-    FB_DYNAMIC_APPLY(o.type_, FB_X);
-#undef FB_X
-    type_ = o.type_;
-  }
-  return *this;
-}
-
-inline dynamic& dynamic::operator=(dynamic&& o) noexcept {
-  if (&o != this) {
-    destroy();
-#define FB_X(T) new (getAddress<T>()) T(std::move(*o.getAddress<T>()))
-    FB_DYNAMIC_APPLY(o.type_, FB_X);
-#undef FB_X
-    type_ = o.type_;
-  }
-  return *this;
-}
-
-inline dynamic& dynamic::operator[](dynamic const& k) {
-  if (!isObject() && !isArray()) {
-    throw TypeError("object/array", type());
-  }
-  if (isArray()) {
-    return at(k);
-  }
-  auto& obj = get<ObjectImpl>();
-  auto ret = obj.insert({k, nullptr});
-  return ret.first->second;
-}
-
 inline dynamic const& dynamic::operator[](dynamic const& idx) const {
   return at(idx);
-}
-
-inline dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) const {
-  auto& obj = get<ObjectImpl>();
-  auto it = obj.find(k);
-  return it == obj.end() ? v : it->second;
-}
-
-inline dynamic&& dynamic::getDefault(const dynamic& k, dynamic&& v) const {
-  auto& obj = get<ObjectImpl>();
-  auto it = obj.find(k);
-  if (it != obj.end()) {
-    v = it->second;
-  }
-
-  return std::move(v);
 }
 
 template<class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
@@ -561,49 +474,8 @@ inline dynamic* dynamic::get_ptr(dynamic const& idx) {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
-inline const dynamic* dynamic::get_ptr(dynamic const& idx) const {
-  if (auto* parray = get_nothrow<Array>()) {
-    if (!idx.isInt()) {
-      throw TypeError("int64", idx.type());
-    }
-    if (idx >= parray->size()) {
-      return nullptr;
-    }
-    return &(*parray)[idx.asInt()];
-  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
-    auto it = pobject->find(idx);
-    if (it == pobject->end()) {
-      return nullptr;
-    }
-    return &it->second;
-  } else {
-    throw TypeError("object/array", type());
-  }
-}
-
 inline dynamic& dynamic::at(dynamic const& idx) {
   return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
-}
-
-inline dynamic const& dynamic::at(dynamic const& idx) const {
-  if (auto* parray = get_nothrow<Array>()) {
-    if (!idx.isInt()) {
-      throw TypeError("int64", idx.type());
-    }
-    if (idx >= parray->size()) {
-      throw std::out_of_range("out of range in dynamic array");
-    }
-    return (*parray)[idx.asInt()];
-  } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
-    auto it = pobject->find(idx);
-    if (it == pobject->end()) {
-      throw std::out_of_range(to<std::string>(
-          "couldn't find key ", idx.asString(), " in dynamic object"));
-    }
-    return it->second;
-  } else {
-    throw TypeError("object/array", type());
-  }
 }
 
 inline bool dynamic::empty() const {
@@ -611,19 +483,6 @@ inline bool dynamic::empty() const {
     return true;
   }
   return !size();
-}
-
-inline std::size_t dynamic::size() const {
-  if (auto* ar = get_nothrow<Array>()) {
-    return ar->size();
-  }
-  if (auto* obj = get_nothrow<ObjectImpl>()) {
-    return obj->size();
-  }
-  if (auto* str = get_nothrow<fbstring>()) {
-    return str->size();
-  }
-  throw TypeError("array/object", type());
 }
 
 inline std::size_t dynamic::count(dynamic const& key) const {
@@ -651,14 +510,6 @@ inline dynamic::const_iterator dynamic::erase(const_iterator it) {
   // even though the standard says it should, so this hack converts to a
   // non-const iterator before calling erase.
   return get<Array>().erase(arr.begin() + (it - arr.begin()));
-}
-
-inline dynamic::const_iterator
-dynamic::erase(const_iterator first, const_iterator last) {
-  auto& arr = get<Array>();
-  return get<Array>().erase(
-    arr.begin() + (first - arr.begin()),
-    arr.begin() + (last - arr.begin()));
 }
 
 inline dynamic::const_key_iterator dynamic::erase(const_key_iterator it) {
@@ -709,25 +560,6 @@ inline void dynamic::push_back(dynamic&& v) {
 inline void dynamic::pop_back() {
   auto& array = get<Array>();
   array.pop_back();
-}
-
-inline std::size_t dynamic::hash() const {
-  switch (type()) {
-  case OBJECT:
-  case ARRAY:
-  case NULLT:
-    throw TypeError("not null/object/array", type());
-  case INT64:
-    return std::hash<int64_t>()(asInt());
-  case DOUBLE:
-    return std::hash<double>()(asDouble());
-  case BOOL:
-    return std::hash<bool>()(asBool());
-  case STRING:
-    return std::hash<fbstring>()(asString());
-  default:
-    CHECK(0); abort();
-  }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -831,23 +663,6 @@ T& dynamic::get() {
 template<class T>
 T const& dynamic::get() const {
   return const_cast<dynamic*>(this)->get<T>();
-}
-
-inline char const* dynamic::typeName(Type t) {
-#define FB_X(T) return TypeInfo<T>::name
-  FB_DYNAMIC_APPLY(t, FB_X);
-#undef FB_X
-}
-
-inline void dynamic::destroy() noexcept {
-  // This short-circuit speeds up some microbenchmarks.
-  if (type_ == NULLT) return;
-
-#define FB_X(T) detail::Destroy::destroy(getAddress<T>())
-  FB_DYNAMIC_APPLY(type_, FB_X);
-#undef FB_X
-  type_ = NULLT;
-  u_.nul = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////

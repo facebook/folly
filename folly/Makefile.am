@@ -337,6 +337,7 @@ libfollybase_la_SOURCES = \
 	FormatTables.cpp \
 	Malloc.cpp \
 	Range.cpp \
+	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
 

@@ -26,8 +26,6 @@
 #include <map>
 #include <unordered_map>
 
-#include <double-conversion/double-conversion.h>
-
 #include <folly/FBVector.h>
 #include <folly/Conv.h>
 #include <folly/Range.h>

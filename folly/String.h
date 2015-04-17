@@ -364,9 +364,17 @@ fbstring errnoStr(int err);
  * defined.
  */
 inline fbstring exceptionStr(const std::exception& e) {
+#ifdef FOLLY_HAS_RTTI
   return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
+#else
+  return folly::to<fbstring>("Exception (no RTTI available): ", e.what());
+#endif
 }
 
+// Empirically, this indicates if the runtime supports
+// std::exception_ptr, as not all (arm, for instance) do.
+#if defined(__GNUC__) && defined(__GCC_ATOMIC_INT_LOCK_FREE) && \
+  __GCC_ATOMIC_INT_LOCK_FREE > 1
 inline fbstring exceptionStr(std::exception_ptr ep) {
   try {
     std::rethrow_exception(ep);
@@ -376,13 +384,18 @@ inline fbstring exceptionStr(std::exception_ptr ep) {
     return "<unknown exception>";
   }
 }
+#endif
 
 template<typename E>
 auto exceptionStr(const E& e)
   -> typename std::enable_if<!std::is_base_of<std::exception, E>::value,
                              fbstring>::type
 {
+#ifdef FOLLY_HAS_RTTI
   return folly::to<fbstring>(demangle(typeid(e)));
+#else
+  return "Exception (no RTTI available)";
+#endif
 }
 
 /*

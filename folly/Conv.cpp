@@ -81,14 +81,13 @@ bool str_to_bool(StringPiece* src) {
   switch (*b) {
     case '0':
     case '1': {
-      // Attempt to parse the value as an integer
-      StringPiece tmp(*src);
-      uint8_t value = to<uint8_t>(&tmp);
-      // Only accept 0 or 1
-      FOLLY_RANGE_CHECK_STRINGPIECE(
-        value <= 1, "Integer overflow when parsing bool: must be 0 or 1", *src);
-      b = tmp.begin();
-      result = (value == 1);
+      result = false;
+      for (; b < e && isdigit(*b); ++b) {
+        FOLLY_RANGE_CHECK_STRINGPIECE(
+          !result && (*b == '0' || *b == '1'),
+          "Integer overflow when parsing bool: must be 0 or 1", *src);
+        result = (*b == '1');
+      }
       break;
     }
     case 'y':

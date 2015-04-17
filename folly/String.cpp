@@ -351,25 +351,6 @@ fbstring errnoStr(int err) {
   return result;
 }
 
-StringPiece skipWhitespace(StringPiece sp) {
-  // Spaces other than ' ' characters are less common but should be
-  // checked.  This configuration where we loop on the ' '
-  // separately from oddspaces was empirically fastest.
-  auto oddspace = [] (char c) {
-    return c == '\n' || c == '\t' || c == '\r';
-  };
-
-loop:
-  for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
-  }
-  if (!sp.empty() && oddspace(sp.front())) {
-    sp.pop_front();
-    goto loop;
-  }
-
-  return sp;
-}
-
 namespace {
 
 void toLowerAscii8(char& c) {

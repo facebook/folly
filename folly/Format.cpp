@@ -16,6 +16,8 @@
 
 #include <folly/Format.h>
 
+#include <double-conversion/double-conversion.h>
+
 namespace folly {
 namespace detail {
 
@@ -25,6 +27,137 @@ extern const FormatArg::Sign formatSignTable[];
 }  // namespace detail
 
 using namespace folly::detail;
+
+void FormatValue<double>::formatHelper(
+    fbstring& piece, int& prefixLen, FormatArg& arg) const {
+  using ::double_conversion::DoubleToStringConverter;
+  using ::double_conversion::StringBuilder;
+
+  arg.validate(FormatArg::Type::FLOAT);
+
+  if (arg.presentation == FormatArg::kDefaultPresentation) {
+    arg.presentation = 'g';
+  }
+
+  const char* infinitySymbol = isupper(arg.presentation) ? "INF" : "inf";
+  const char* nanSymbol = isupper(arg.presentation) ? "NAN" : "nan";
+  char exponentSymbol = isupper(arg.presentation) ? 'E' : 'e';
+
+  if (arg.precision == FormatArg::kDefaultPrecision) {
+    arg.precision = 6;
+  }
+
+  // 2+: for null terminator and optional sign shenanigans.
+  char buf[2 + std::max({
+      (2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+       DoubleToStringConverter::kMaxFixedDigitsAfterPoint),
+      (8 + DoubleToStringConverter::kMaxExponentialDigits),
+      (7 + DoubleToStringConverter::kMaxPrecisionDigits)})];
+  StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
+
+  char plusSign;
+  switch (arg.sign) {
+  case FormatArg::Sign::PLUS_OR_MINUS:
+    plusSign = '+';
+    break;
+  case FormatArg::Sign::SPACE_OR_MINUS:
+    plusSign = ' ';
+    break;
+  default:
+    plusSign = '\0';
+    break;
+  };
+
+  auto flags =
+      DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
+      (arg.trailingDot ? DoubleToStringConverter::EMIT_TRAILING_DECIMAL_POINT
+                       : 0);
+
+  double val = val_;
+  switch (arg.presentation) {
+  case '%':
+    val *= 100;
+  case 'f':
+  case 'F':
+    {
+      if (arg.precision >
+          DoubleToStringConverter::kMaxFixedDigitsAfterPoint) {
+        arg.precision = DoubleToStringConverter::kMaxFixedDigitsAfterPoint;
+      }
+      DoubleToStringConverter conv(flags,
+                                   infinitySymbol,
+                                   nanSymbol,
+                                   exponentSymbol,
+                                   -4,
+                                   arg.precision,
+                                   0,
+                                   0);
+      arg.enforce(conv.ToFixed(val, arg.precision, &builder),
+                  "fixed double conversion failed");
+    }
+    break;
+  case 'e':
+  case 'E':
+    {
+      if (arg.precision > DoubleToStringConverter::kMaxExponentialDigits) {
+        arg.precision = DoubleToStringConverter::kMaxExponentialDigits;
+      }
+
+      DoubleToStringConverter conv(flags,
+                                   infinitySymbol,
+                                   nanSymbol,
+                                   exponentSymbol,
+                                   -4,
+                                   arg.precision,
+                                   0,
+                                   0);
+      arg.enforce(conv.ToExponential(val, arg.precision, &builder));
+    }
+    break;
+  case 'n':  // should be locale-aware, but isn't
+  case 'g':
+  case 'G':
+    {
+      if (arg.precision < DoubleToStringConverter::kMinPrecisionDigits) {
+        arg.precision = DoubleToStringConverter::kMinPrecisionDigits;
+      } else if (arg.precision >
+                 DoubleToStringConverter::kMaxPrecisionDigits) {
+        arg.precision = DoubleToStringConverter::kMaxPrecisionDigits;
+      }
+      DoubleToStringConverter conv(flags,
+                                   infinitySymbol,
+                                   nanSymbol,
+                                   exponentSymbol,
+                                   -4,
+                                   arg.precision,
+                                   0,
+                                   0);
+      arg.enforce(conv.ToShortest(val, &builder));
+    }
+    break;
+  default:
+    arg.error("invalid specifier '", arg.presentation, "'");
+  }
+
+  int len = builder.position();
+  builder.Finalize();
+  DCHECK_GT(len, 0);
+
+  // Add '+' or ' ' sign if needed
+  char* p = buf + 1;
+  // anything that's neither negative nor nan
+  prefixLen = 0;
+  if (plusSign && (*p != '-' && *p != 'n' && *p != 'N')) {
+    *--p = plusSign;
+    ++len;
+    prefixLen = 1;
+  } else if (*p == '-') {
+    prefixLen = 1;
+  }
+
+  piece = fbstring(p, len);
+}
+
 
 void FormatArg::initSlow() {
   auto b = fullArgString.begin();
