@@ -100,7 +100,6 @@ void FunctionScheduler::addFunctionInternal(const std::function<void()>& cb,
 }
 
 bool FunctionScheduler::cancelFunction(StringPiece nameID) {
-  bool retValue = false;
   std::unique_lock<std::mutex> l(mutex_);
 
   if (currentFunction_ && currentFunction_->name == nameID) {
