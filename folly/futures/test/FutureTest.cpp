@@ -877,6 +877,18 @@ TEST(Future, collect) {
 
     EXPECT_THROW(allf.value(), eggs_t);
   }
+
+  // move only compiles
+  {
+    vector<Promise<unique_ptr<int>>> promises(10);
+    vector<Future<unique_ptr<int>>> futures;
+
+    for (auto& p : promises)
+      futures.push_back(p.getFuture());
+
+    collect(futures.begin(), futures.end());
+  }
+
 }
 
 struct NotDefaultConstructible {

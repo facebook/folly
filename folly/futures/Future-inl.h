@@ -602,8 +602,8 @@ template <class, class, typename = void> struct CollectContextHelper;
 template <class T, class VecT>
 struct CollectContextHelper<T, VecT,
     typename std::enable_if<std::is_same<T, VecT>::value>::type> {
-  static inline std::vector<T>& getResults(std::vector<VecT>& results) {
-    return results;
+  static inline std::vector<T>&& getResults(std::vector<VecT>& results) {
+    return std::move(results);
   }
 };
 
