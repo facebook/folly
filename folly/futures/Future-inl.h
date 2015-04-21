@@ -1018,6 +1018,14 @@ namespace futures {
     };
   }
 
+  template <class It, class F, class ItT, class Result>
+  std::vector<Future<Result>> map(It first, It last, F func) {
+    std::vector<Future<Result>> results;
+    for (auto it = first; it != last; it++) {
+      results.push_back(it->then(func));
+    }
+    return results;
+  }
 }
 
 } // namespace folly

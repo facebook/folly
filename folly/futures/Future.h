@@ -181,6 +181,16 @@ namespace futures {
   template <class A, class Z, class... Callbacks>
   std::function<Future<Z>(Try<A>)>
   chain(Callbacks... fns);
+
+  /**
+   * Set func as the callback for each input Future and return a vector of
+   * Futures containing the results in the input order.
+   */
+  template <class It, class F,
+            class ItT = typename std::iterator_traits<It>::value_type,
+            class Result = decltype(std::declval<ItT>().then(std::declval<F>()))>
+  std::vector<Future<Result>> map(It first, It last, F func);
+
 }
 
 template <class T>

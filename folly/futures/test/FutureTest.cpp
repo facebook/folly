@@ -1707,3 +1707,29 @@ TEST(Reduce, Basic) {
     EXPECT_EQ(6.3, f2.get());
   }
 }
+
+TEST(Map, Basic) {
+  Promise<int> p1;
+  Promise<int> p2;
+  Promise<int> p3;
+
+  std::vector<Future<int>> fs;
+  fs.push_back(p1.getFuture());
+  fs.push_back(p2.getFuture());
+  fs.push_back(p3.getFuture());
+
+  int c = 0;
+  auto fs2 = futures::map(fs.begin(), fs.end(), [&](int i){
+    c += i;
+  });
+
+  // Ensure we call the callbacks as the futures complete regardless of order
+  p2.setValue(1);
+  EXPECT_EQ(1, c);
+  p3.setValue(1);
+  EXPECT_EQ(2, c);
+  p1.setValue(1);
+  EXPECT_EQ(3, c);
+
+  EXPECT_TRUE(collect(fs2.begin(), fs2.end()).isReady());
+}
