@@ -235,6 +235,19 @@ Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
   });
 }
 
+// TODO(6838553)
+#ifndef __clang__
+template <class T>
+template <class... Args>
+auto Future<T>::then(Executor* x, Args&&... args)
+  -> decltype(this->then(std::forward<Args>(args)...))
+{
+  auto oldX = getExecutor();
+  setExecutor(x);
+  return this->then(std::forward<Args>(args)...).via(oldX);
+}
+#endif
+
 template <class T>
 Future<void> Future<T>::then() {
   return then([] (Try<T>&& t) {});
