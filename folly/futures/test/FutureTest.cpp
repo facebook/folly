@@ -879,6 +879,39 @@ TEST(Future, collect) {
   }
 }
 
+struct NotDefaultConstructible {
+  NotDefaultConstructible() = delete;
+  NotDefaultConstructible(int arg) : i(arg) {}
+  int i;
+};
+
+// We have a specialized implementation for non-default-constructible objects
+// Ensure that it works and preserves order
+TEST(Future, collectNotDefaultConstructible) {
+  vector<Promise<NotDefaultConstructible>> promises(10);
+  vector<Future<NotDefaultConstructible>> futures;
+  vector<int> indices(10);
+  std::iota(indices.begin(), indices.end(), 0);
+  random_shuffle(indices.begin(), indices.end());
+
+  for (auto& p : promises)
+    futures.push_back(p.getFuture());
+
+  auto allf = collect(futures.begin(), futures.end());
+
+  for (auto i : indices) {
+    EXPECT_FALSE(allf.isReady());
+    promises[i].setValue(NotDefaultConstructible(i));
+  }
+
+  EXPECT_TRUE(allf.isReady());
+  int i = 0;
+  for (auto val : allf.value()) {
+    EXPECT_EQ(i, val.i);
+    i++;
+  }
+}
+
 TEST(Future, whenAny) {
   {
     vector<Promise<int>> promises(10);

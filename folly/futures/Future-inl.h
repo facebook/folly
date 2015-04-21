@@ -584,12 +584,44 @@ whenAll(InputIterator first, InputIterator last) {
 
 namespace detail {
 
+template <class, class, typename = void> struct CollectContextHelper;
+
+template <class T, class VecT>
+struct CollectContextHelper<T, VecT,
+    typename std::enable_if<std::is_same<T, VecT>::value>::type> {
+  static inline std::vector<T>& getResults(std::vector<VecT>& results) {
+    return results;
+  }
+};
+
+template <class T, class VecT>
+struct CollectContextHelper<T, VecT,
+    typename std::enable_if<!std::is_same<T, VecT>::value>::type> {
+  static inline std::vector<T> getResults(std::vector<VecT>& results) {
+    std::vector<T> finalResults;
+    finalResults.reserve(results.size());
+    for (auto& opt : results) {
+      finalResults.push_back(std::move(opt.value()));
+    }
+    return finalResults;
+  }
+};
+
 template <typename T>
 struct CollectContext {
-  explicit CollectContext(int n) : count(0), threw(false) {}
+
+  typedef typename std::conditional<
+    std::is_default_constructible<T>::value,
+    T,
+    Optional<T>
+   >::type VecT;
+
+  explicit CollectContext(int n) : count(0), threw(false) {
+    results.resize(n);
+  }
 
   Promise<std::vector<T>> p;
-  std::vector<T> results;
+  std::vector<VecT> results;
   std::atomic<size_t> count;
   std::atomic_bool threw;
 
@@ -600,7 +632,7 @@ struct CollectContext {
   }
 
   inline void setValue() {
-    p.setValue(std::move(results));
+    p.setValue(CollectContextHelper<T, VecT>::getResults(results));
   }
 
   inline void addResult(int i, Try<T>& t) {
@@ -610,7 +642,9 @@ struct CollectContext {
 
 template <>
 struct CollectContext<void> {
+
   explicit CollectContext(int n) : count(0), threw(false) {}
+
   Promise<void> p;
   std::atomic<size_t> count;
   std::atomic_bool threw;
