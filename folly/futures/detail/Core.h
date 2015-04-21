@@ -278,18 +278,21 @@ class Core {
   }
 
   void doCallback() {
-    // TODO(5306911) we should probably try/catch around the callback
-
     RequestContext::setContext(context_);
 
     // TODO(6115514) semantic race on reading executor_ and setExecutor()
     Executor* x = executor_;
     if (x) {
       ++attached_; // keep Core alive until executor did its thing
-      x->add([this]() mutable {
-        SCOPE_EXIT { detachOne(); };
+      try {
+        x->add([this]() mutable {
+          SCOPE_EXIT { detachOne(); };
+          callback_(std::move(*result_));
+        });
+      } catch (...) {
+        result_ = Try<T>(exception_wrapper(std::current_exception()));
         callback_(std::move(*result_));
-      });
+      }
     } else {
       callback_(std::move(*result_));
     }

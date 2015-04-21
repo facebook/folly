@@ -178,14 +178,10 @@ class CrappyExecutor : public Executor {
 
 TEST(Executor, CrappyExecutor) {
   CrappyExecutor x;
-  try {
-    auto f = Future<void>().via(&x).then([](){
-      return;
-    });
-    f.value();
-    EXPECT_TRUE(false);
-  } catch(...) {
-    // via() should throw
-    return;
-  }
+  bool flag = false;
+  auto f = folly::via(&x).onError([&](std::runtime_error& e) {
+    EXPECT_STREQ("bad", e.what());
+    flag = true;
+  });
+  EXPECT_TRUE(flag);
 }
