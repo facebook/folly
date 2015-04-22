@@ -699,7 +699,7 @@ TEST(Future, collectAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collectAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures);
 
     random_shuffle(promises.begin(), promises.end());
     for (auto& p : promises) {
@@ -722,7 +722,7 @@ TEST(Future, collectAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collectAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures);
 
 
     promises[0].setValue(42);
@@ -754,7 +754,7 @@ TEST(Future, collectAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collectAll(futures.begin(), futures.end())
+    auto allf = collectAll(futures)
       .then([](Try<vector<Try<void>>>&& ts) {
         for (auto& f : ts.value())
           f.value();
@@ -776,7 +776,7 @@ TEST(Future, collect) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collect(futures.begin(), futures.end());
+    auto allf = collect(futures);
 
     random_shuffle(promises.begin(), promises.end());
     for (auto& p : promises) {
@@ -798,7 +798,7 @@ TEST(Future, collect) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collect(futures.begin(), futures.end());
+    auto allf = collect(futures);
 
     random_shuffle(promises.begin(), promises.end());
     for (int i = 0; i < 10; i++) {
@@ -833,7 +833,7 @@ TEST(Future, collect) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collect(futures.begin(), futures.end());
+    auto allf = collect(futures);
 
     random_shuffle(promises.begin(), promises.end());
     for (auto& p : promises) {
@@ -852,7 +852,7 @@ TEST(Future, collect) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = collect(futures.begin(), futures.end());
+    auto allf = collect(futures);
 
     random_shuffle(promises.begin(), promises.end());
     for (int i = 0; i < 10; i++) {
@@ -887,7 +887,7 @@ TEST(Future, collect) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    collect(futures.begin(), futures.end());
+    collect(futures);
   }
 
 }
@@ -910,7 +910,7 @@ TEST(Future, collectNotDefaultConstructible) {
   for (auto& p : promises)
     futures.push_back(p.getFuture());
 
-  auto allf = collect(futures.begin(), futures.end());
+  auto allf = collect(futures);
 
   for (auto i : indices) {
     EXPECT_FALSE(allf.isReady());
@@ -937,7 +937,7 @@ TEST(Future, collectAny) {
       EXPECT_FALSE(f.isReady());
     }
 
-    auto anyf = collectAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures);
 
     /* futures were moved in, so these are invalid now */
     EXPECT_FALSE(anyf.isReady());
@@ -965,7 +965,7 @@ TEST(Future, collectAny) {
       EXPECT_FALSE(f.isReady());
     }
 
-    auto anyf = collectAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures);
 
     EXPECT_FALSE(anyf.isReady());
 
@@ -982,7 +982,7 @@ TEST(Future, collectAny) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto anyf = collectAny(futures.begin(), futures.end())
+    auto anyf = collectAny(futures)
       .then([](pair<size_t, Try<int>> p) {
         EXPECT_EQ(42, p.second.value());
       });
@@ -999,7 +999,7 @@ TEST(when, already_completed) {
     for (int i = 0; i < 10; i++)
       fs.push_back(makeFuture());
 
-    collectAll(fs.begin(), fs.end())
+    collectAll(fs)
       .then([&](vector<Try<void>> ts) {
         EXPECT_EQ(fs.size(), ts.size());
       });
@@ -1009,7 +1009,7 @@ TEST(when, already_completed) {
     for (int i = 0; i < 10; i++)
       fs.push_back(makeFuture(i));
 
-    collectAny(fs.begin(), fs.end())
+    collectAny(fs)
       .then([&](pair<size_t, Try<int>> p) {
         EXPECT_EQ(p.first, p.second.value());
       });
@@ -1025,7 +1025,7 @@ TEST(when, collectN) {
 
   bool flag = false;
   size_t n = 3;
-  collectN(futures.begin(), futures.end(), n)
+  collectN(futures, n)
     .then([&](vector<pair<size_t, Try<void>>> v) {
       flag = true;
       EXPECT_EQ(n, v.size());
@@ -1056,7 +1056,7 @@ TEST(when, small_vector) {
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());
 
-    auto anyf = collectAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures);
   }
 
   {
@@ -1065,7 +1065,7 @@ TEST(when, small_vector) {
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());
 
-    auto allf = collectAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures);
   }
 }
 
@@ -1111,7 +1111,7 @@ TEST(Future, collectAllVariadicReferences) {
 
 TEST(Future, collectAll_none) {
   vector<Future<int>> fs;
-  auto f = collectAll(fs.begin(), fs.end());
+  auto f = collectAll(fs);
   EXPECT_TRUE(f.isReady());
 }
 
@@ -1156,13 +1156,13 @@ TEST(Future, waitImmediate) {
   vector<Future<void>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = collectAll(v_f.begin(), v_f.end()).wait().value();
+  auto done_v_f = collectAll(v_f).wait().value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
-  auto fut = collectAll(v_fb.begin(), v_fb.end());
+  auto fut = collectAll(v_fb);
   auto done_v_fb = std::move(fut.wait().value());
   EXPECT_EQ(2, done_v_fb.size());
 }
@@ -1262,7 +1262,7 @@ TEST(Future, waitWithDuration) {
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
-  auto f = collectAll(v_fb.begin(), v_fb.end());
+  auto f = collectAll(v_fb);
   f.wait(milliseconds(1));
   EXPECT_TRUE(f.isReady());
   EXPECT_EQ(2, f.value().size());
@@ -1273,7 +1273,7 @@ TEST(Future, waitWithDuration) {
   Promise<bool> p2;
   v_fb.push_back(p1.getFuture());
   v_fb.push_back(p2.getFuture());
-  auto f = collectAll(v_fb.begin(), v_fb.end());
+  auto f = collectAll(v_fb);
   f.wait(milliseconds(1));
   EXPECT_FALSE(f.isReady());
   p1.setValue(true);
@@ -1485,7 +1485,7 @@ TEST(Future, t5506504) {
       for (auto& p : *promises) p.setValue();
     });
 
-    return collectAll(futures.begin(), futures.end());
+    return collectAll(futures);
   };
 
   fn().wait();
@@ -1691,7 +1691,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(0);
 
-    Future<double> f1 = reduce(fs.begin(), fs.end(), 1.2,
+    Future<double> f1 = reduce(fs, 1.2,
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
@@ -1702,7 +1702,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(1);
 
-    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+    Future<double> f1 = reduce(fs, 0.0,
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
@@ -1713,7 +1713,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+    Future<double> f1 = reduce(fs, 0.0,
       [](double a, Try<int>&& b){
         return a + *b + 0.1;
       });
@@ -1724,7 +1724,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f1 = reduce(fs.begin(), fs.end(), 0.0,
+    Future<double> f1 = reduce(fs, 0.0,
       [](double a, int&& b){
         return a + b + 0.1;
       });
@@ -1735,7 +1735,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f2 = reduce(fs.begin(), fs.end(), 0.0,
+    Future<double> f2 = reduce(fs, 0.0,
       [](double a, Try<int>&& b){
         return makeFuture<double>(a + *b + 0.1);
       });
@@ -1746,7 +1746,7 @@ TEST(Reduce, Basic) {
   {
     auto fs = makeFutures(3);
 
-    Future<double> f2 = reduce(fs.begin(), fs.end(), 0.0,
+    Future<double> f2 = reduce(fs, 0.0,
       [](double a, int&& b){
         return makeFuture<double>(a + b + 0.1);
       });
@@ -1765,7 +1765,7 @@ TEST(Map, Basic) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  auto fs2 = futures::map(fs.begin(), fs.end(), [&](int i){
+  auto fs2 = futures::map(fs, [&](int i){
     c += i;
   });
 
@@ -1777,5 +1777,5 @@ TEST(Map, Basic) {
   p1.setValue(1);
   EXPECT_EQ(3, c);
 
-  EXPECT_TRUE(collect(fs2.begin(), fs2.end()).isReady());
+  EXPECT_TRUE(collect(fs2).isReady());
 }

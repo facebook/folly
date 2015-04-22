@@ -191,6 +191,13 @@ namespace futures {
             class Result = decltype(std::declval<ItT>().then(std::declval<F>()))>
   std::vector<Future<Result>> map(It first, It last, F func);
 
+  // Sugar for the most common case
+  template <class Collection, class F>
+  auto map(Collection&& c, F&& func)
+      -> decltype(map(c.begin(), c.end(), func)) {
+    return map(c.begin(), c.end(), std::forward<F>(func));
+  }
+
 }
 
 template <class T>
@@ -643,6 +650,12 @@ Future<std::vector<Try<
   typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAll(InputIterator first, InputIterator last);
 
+// Sugar for the most common case
+template <class Collection>
+auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
+  return collectAll(c.begin(), c.end());
+}
+
 /// This version takes a varying number of Futures instead of an iterator.
 /// The return type for (Future<T1>, Future<T2>, ...) input
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
@@ -661,6 +674,12 @@ Future<typename detail::CollectContext<
 >::result_type>
 collect(InputIterator first, InputIterator last);
 
+// Sugar for the most common case
+template <class Collection>
+auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
+  return collect(c.begin(), c.end());
+}
+
 /** The result is a pair of the index of the first Future to complete and
   the Try. If multiple Futures complete at the same time (or are already
   complete when passed in), the "winner" is chosen non-deterministically.
@@ -673,6 +692,12 @@ Future<std::pair<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
 
+// Sugar for the most common case
+template <class Collection>
+auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
+  return collectAny(c.begin(), c.end());
+}
+
 /** when n Futures have completed, the Future completes with a vector of
   the index and Try of those n Futures (the indices refer to the original
   order, but the result vector will be in an arbitrary order)
@@ -684,6 +709,13 @@ Future<std::vector<std::pair<
   size_t,
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 collectN(InputIterator first, InputIterator last, size_t n);
+
+// Sugar for the most common case
+template <class Collection>
+auto collectN(Collection&& c, size_t n)
+    -> decltype(collectN(c.begin(), c.end(), n)) {
+  return collectN(c.begin(), c.end(), n);
+}
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::conditional<
@@ -710,6 +742,17 @@ template <class It, class T, class F,
           class Arg = MaybeTryArg<F, T, ItT>>
 typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
 reduce(It first, It last, T initial, F func);
+
+// Sugar for the most common case
+template <class Collection, class T, class F>
+auto reduce(Collection&& c, T&& initial, F&& func)
+    -> decltype(reduce(c.begin(), c.end(), initial, func)) {
+  return reduce(
+      c.begin(),
+      c.end(),
+      std::forward<T>(initial),
+      std::forward<F>(func));
+}
 
 } // folly
 
