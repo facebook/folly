@@ -549,12 +549,12 @@ Future<void> via(Executor* executor) {
 template <typename... Fs>
 typename detail::VariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
-whenAll(Fs&&... fs) {
+collectAll(Fs&&... fs) {
   auto ctx =
     new detail::VariadicContext<typename std::decay<Fs>::type::value_type...>();
   ctx->total = sizeof...(fs);
   auto f_saved = ctx->p.getFuture();
-  detail::whenAllVariadicHelper(ctx,
+  detail::collectAllVariadicHelper(ctx,
     std::forward<typename std::decay<Fs>::type>(fs)...);
   return f_saved;
 }
@@ -565,7 +565,7 @@ template <class InputIterator>
 Future<
   std::vector<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-whenAll(InputIterator first, InputIterator last) {
+collectAll(InputIterator first, InputIterator last) {
   typedef
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
@@ -727,7 +727,7 @@ Future<
             Try<
               typename
               std::iterator_traits<InputIterator>::value_type::value_type> > >
-whenAny(InputIterator first, InputIterator last) {
+collectAny(InputIterator first, InputIterator last) {
   typedef
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
@@ -750,7 +750,7 @@ whenAny(InputIterator first, InputIterator last) {
 template <class InputIterator>
 Future<std::vector<std::pair<size_t, Try<typename
   std::iterator_traits<InputIterator>::value_type::value_type>>>>
-whenN(InputIterator first, InputIterator last, size_t n) {
+collectN(InputIterator first, InputIterator last, size_t n) {
   typedef typename
     std::iterator_traits<InputIterator>::value_type::value_type T;
   typedef std::vector<std::pair<size_t, Try<T>>> V;
@@ -801,7 +801,7 @@ reduce(It first, It last, T initial, F func) {
 
   typedef isTry<Arg> IsTry;
 
-  return whenAll(first, last)
+  return collectAll(first, last)
     .then([initial, func](std::vector<Try<ItT>>& vals) mutable {
       for (auto& val : vals) {
         initial = func(std::move(initial),
@@ -828,7 +828,7 @@ reduce(It first, It last, T initial, F func) {
   });
 
   for (++first; first != last; ++first) {
-    f = whenAll(f, *first).then([func](std::tuple<Try<T>, Try<ItT>>& t) {
+    f = collectAll(f, *first).then([func](std::tuple<Try<T>, Try<ItT>>& t) {
       return func(std::move(std::get<0>(t).value()),
                   // Either return a ItT&& or a Try<ItT>&& depending
                   // on the type of the argument of func.
@@ -882,7 +882,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {
-  return whenAll(*this, futures::sleep(dur, tk))
+  return collectAll(*this, futures::sleep(dur, tk))
     .then([](std::tuple<Try<T>, Try<void>> tup) {
       Try<T>& t = std::get<0>(tup);
       return makeFuture<T>(std::move(t));
@@ -1019,7 +1019,7 @@ inline void Future<void>::getVia(DrivableExecutor* e) {
 
 template <class T>
 Future<bool> Future<T>::willEqual(Future<T>& f) {
-  return whenAll(*this, f).then([](const std::tuple<Try<T>, Try<T>>& t) {
+  return collectAll(*this, f).then([](const std::tuple<Try<T>, Try<T>>& t) {
     if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
       return std::get<0>(t).value() == std::get<1>(t).value();
     } else {

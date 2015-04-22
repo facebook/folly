@@ -689,7 +689,7 @@ TEST(Future, unwrap) {
   EXPECT_EQ(7, f.value());
 }
 
-TEST(Future, whenAll) {
+TEST(Future, collectAll) {
   // returns a vector variant
   {
     vector<Promise<int>> promises(10);
@@ -698,7 +698,7 @@ TEST(Future, whenAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = whenAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures.begin(), futures.end());
 
     random_shuffle(promises.begin(), promises.end());
     for (auto& p : promises) {
@@ -721,7 +721,7 @@ TEST(Future, whenAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = whenAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures.begin(), futures.end());
 
 
     promises[0].setValue(42);
@@ -753,7 +753,7 @@ TEST(Future, whenAll) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto allf = whenAll(futures.begin(), futures.end())
+    auto allf = collectAll(futures.begin(), futures.end())
       .then([](Try<vector<Try<void>>>&& ts) {
         for (auto& f : ts.value())
           f.value();
@@ -924,7 +924,7 @@ TEST(Future, collectNotDefaultConstructible) {
   }
 }
 
-TEST(Future, whenAny) {
+TEST(Future, collectAny) {
   {
     vector<Promise<int>> promises(10);
     vector<Future<int>> futures;
@@ -936,7 +936,7 @@ TEST(Future, whenAny) {
       EXPECT_FALSE(f.isReady());
     }
 
-    auto anyf = whenAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures.begin(), futures.end());
 
     /* futures were moved in, so these are invalid now */
     EXPECT_FALSE(anyf.isReady());
@@ -964,7 +964,7 @@ TEST(Future, whenAny) {
       EXPECT_FALSE(f.isReady());
     }
 
-    auto anyf = whenAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures.begin(), futures.end());
 
     EXPECT_FALSE(anyf.isReady());
 
@@ -981,7 +981,7 @@ TEST(Future, whenAny) {
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
-    auto anyf = whenAny(futures.begin(), futures.end())
+    auto anyf = collectAny(futures.begin(), futures.end())
       .then([](pair<size_t, Try<int>> p) {
         EXPECT_EQ(42, p.second.value());
       });
@@ -998,7 +998,7 @@ TEST(when, already_completed) {
     for (int i = 0; i < 10; i++)
       fs.push_back(makeFuture());
 
-    whenAll(fs.begin(), fs.end())
+    collectAll(fs.begin(), fs.end())
       .then([&](vector<Try<void>> ts) {
         EXPECT_EQ(fs.size(), ts.size());
       });
@@ -1008,14 +1008,14 @@ TEST(when, already_completed) {
     for (int i = 0; i < 10; i++)
       fs.push_back(makeFuture(i));
 
-    whenAny(fs.begin(), fs.end())
+    collectAny(fs.begin(), fs.end())
       .then([&](pair<size_t, Try<int>> p) {
         EXPECT_EQ(p.first, p.second.value());
       });
   }
 }
 
-TEST(when, whenN) {
+TEST(when, collectN) {
   vector<Promise<void>> promises(10);
   vector<Future<void>> futures;
 
@@ -1024,7 +1024,7 @@ TEST(when, whenN) {
 
   bool flag = false;
   size_t n = 3;
-  whenN(futures.begin(), futures.end(), n)
+  collectN(futures.begin(), futures.end(), n)
     .then([&](vector<pair<size_t, Try<void>>> v) {
       flag = true;
       EXPECT_EQ(n, v.size());
@@ -1055,7 +1055,7 @@ TEST(when, small_vector) {
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());
 
-    auto anyf = whenAny(futures.begin(), futures.end());
+    auto anyf = collectAny(futures.begin(), futures.end());
   }
 
   {
@@ -1064,17 +1064,17 @@ TEST(when, small_vector) {
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());
 
-    auto allf = whenAll(futures.begin(), futures.end());
+    auto allf = collectAll(futures.begin(), futures.end());
   }
 }
 
-TEST(Future, whenAllVariadic) {
+TEST(Future, collectAllVariadic) {
   Promise<bool> pb;
   Promise<int> pi;
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  whenAll(std::move(fb), std::move(fi))
+  collectAll(std::move(fb), std::move(fi))
     .then([&](std::tuple<Try<bool>, Try<int>> tup) {
       flag = true;
       EXPECT_TRUE(std::get<0>(tup).hasValue());
@@ -1088,13 +1088,13 @@ TEST(Future, whenAllVariadic) {
   EXPECT_TRUE(flag);
 }
 
-TEST(Future, whenAllVariadicReferences) {
+TEST(Future, collectAllVariadicReferences) {
   Promise<bool> pb;
   Promise<int> pi;
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  whenAll(fb, fi)
+  collectAll(fb, fi)
     .then([&](std::tuple<Try<bool>, Try<int>> tup) {
       flag = true;
       EXPECT_TRUE(std::get<0>(tup).hasValue());
@@ -1108,9 +1108,9 @@ TEST(Future, whenAllVariadicReferences) {
   EXPECT_TRUE(flag);
 }
 
-TEST(Future, whenAll_none) {
+TEST(Future, collectAll_none) {
   vector<Future<int>> fs;
-  auto f = whenAll(fs.begin(), fs.end());
+  auto f = collectAll(fs.begin(), fs.end());
   EXPECT_TRUE(f.isReady());
 }
 
@@ -1155,13 +1155,13 @@ TEST(Future, waitImmediate) {
   vector<Future<void>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = whenAll(v_f.begin(), v_f.end()).wait().value();
+  auto done_v_f = collectAll(v_f.begin(), v_f.end()).wait().value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
-  auto fut = whenAll(v_fb.begin(), v_fb.end());
+  auto fut = collectAll(v_fb.begin(), v_fb.end());
   auto done_v_fb = std::move(fut.wait().value());
   EXPECT_EQ(2, done_v_fb.size());
 }
@@ -1261,7 +1261,7 @@ TEST(Future, waitWithDuration) {
   vector<Future<bool>> v_fb;
   v_fb.push_back(makeFuture(true));
   v_fb.push_back(makeFuture(false));
-  auto f = whenAll(v_fb.begin(), v_fb.end());
+  auto f = collectAll(v_fb.begin(), v_fb.end());
   f.wait(milliseconds(1));
   EXPECT_TRUE(f.isReady());
   EXPECT_EQ(2, f.value().size());
@@ -1272,7 +1272,7 @@ TEST(Future, waitWithDuration) {
   Promise<bool> p2;
   v_fb.push_back(p1.getFuture());
   v_fb.push_back(p2.getFuture());
-  auto f = whenAll(v_fb.begin(), v_fb.end());
+  auto f = collectAll(v_fb.begin(), v_fb.end());
   f.wait(milliseconds(1));
   EXPECT_FALSE(f.isReady());
   p1.setValue(true);
@@ -1484,7 +1484,7 @@ TEST(Future, t5506504) {
       for (auto& p : *promises) p.setValue();
     });
 
-    return whenAll(futures.begin(), futures.end());
+    return collectAll(futures.begin(), futures.end());
   };
 
   fn().wait();

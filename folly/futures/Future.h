@@ -641,7 +641,7 @@ Future<void> via(Executor* executor);
 template <class InputIterator>
 Future<std::vector<Try<
   typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-whenAll(InputIterator first, InputIterator last);
+collectAll(InputIterator first, InputIterator last);
 
 /// This version takes a varying number of Futures instead of an iterator.
 /// The return type for (Future<T1>, Future<T2>, ...) input
@@ -650,9 +650,9 @@ whenAll(InputIterator first, InputIterator last);
 template <typename... Fs>
 typename detail::VariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
-whenAll(Fs&&... fs);
+collectAll(Fs&&... fs);
 
-/// Like whenAll, but will short circuit on the first exception. Thus, the
+/// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
 /// std::vector<Try<T>>
 template <class InputIterator>
@@ -671,7 +671,7 @@ template <class InputIterator>
 Future<std::pair<
   size_t,
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-whenAny(InputIterator first, InputIterator last);
+collectAny(InputIterator first, InputIterator last);
 
 /** when n Futures have completed, the Future completes with a vector of
   the index and Try of those n Futures (the indices refer to the original
@@ -683,7 +683,7 @@ template <class InputIterator>
 Future<std::vector<std::pair<
   size_t,
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
-whenN(InputIterator first, InputIterator last, size_t n);
+collectN(InputIterator first, InputIterator last, size_t n);
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::conditional<

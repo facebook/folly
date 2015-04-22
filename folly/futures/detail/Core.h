@@ -333,7 +333,7 @@ struct VariadicContext {
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) == 0, void>::type
-whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
+collectAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
   head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
@@ -345,7 +345,7 @@ whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) != 0, void>::type
-whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
+collectAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
   head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
     if (++ctx->count == ctx->total) {
@@ -354,7 +354,7 @@ whenAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
     }
   });
   // template tail-recursion
-  whenAllVariadicHelper(ctx, std::forward<Fs>(tail)...);
+  collectAllVariadicHelper(ctx, std::forward<Fs>(tail)...);
 }
 
 template <typename T>

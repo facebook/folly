@@ -42,10 +42,10 @@ typename std::vector<
         typename std::iterator_traits<InputIterator>::value_type()>::type>
     >::type
   >
-inline whenN(InputIterator first, InputIterator last, size_t n);
+inline collectN(InputIterator first, InputIterator last, size_t n);
 
 /**
- * whenN specialization for functions returning void
+ * collectN specialization for functions returning void
  *
  * @param first Range of tasks to be scheduled
  * @param last
@@ -59,7 +59,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, std::vector<size_t>>::type
-inline whenN(InputIterator first, InputIterator last, size_t n);
+inline collectN(InputIterator first, InputIterator last, size_t n);
 
 /**
  * Schedules several tasks and blocks until all of these tasks are completed.
@@ -82,10 +82,10 @@ typename std::vector<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type>::type
   >
-inline whenAll(InputIterator first, InputIterator last);
+inline collectAll(InputIterator first, InputIterator last);
 
 /**
- * whenAll specialization for functions returning void
+ * collectAll specialization for functions returning void
  *
  * @param first Range of tasks to be scheduled
  * @param last
@@ -96,7 +96,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, void>::type
-inline whenAll(InputIterator first, InputIterator last);
+inline collectAll(InputIterator first, InputIterator last);
 
 /**
  * Schedules several tasks and blocks until one of them is completed.
@@ -119,7 +119,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type>
   >::type
-inline whenAny(InputIterator first, InputIterator last);
+inline collectAny(InputIterator first, InputIterator last);
 
 /**
  * WhenAny specialization for functions returning void.
@@ -135,7 +135,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, size_t>::type
-inline whenAny(InputIterator first, InputIterator last);
+inline collectAny(InputIterator first, InputIterator last);
 
 }}
 

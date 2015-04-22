@@ -2,7 +2,7 @@
 
 Futures is a futures-based async framework inspired by [Twitter's Finagle](http://twitter.github.io/finagle/) (which is in scala), and (loosely) building upon the existing (but anemic) Futures code found in the C++11 standard ([`std::future`](http://en.cppreference.com/w/cpp/thread/future)) and [`boost::future`](http://www.boost.org/doc/libs/1_53_0/boost/thread/future.hpp) (especially >= 1.53.0). Although inspired by the std::future interface, it is not syntactically drop-in compatible because some ideas didn't translate well enough and we decided to break from the API. But semantically, it should be straightforward to translate from existing std::future code to Futures.
 
-The primary semantic differences are that folly's Futures and Promises are not threadsafe; and as does `boost::future`, folly::Futures support continuing callbacks (`then()`) and there are helper methods `whenAll()` and `whenAny()` which are important compositional building blocks.
+The primary semantic differences are that folly's Futures and Promises are not threadsafe; and as does `boost::future`, folly::Futures support continuing callbacks (`then()`) and there are helper methods `collectAll()` and `collectAny()` which are important compositional building blocks.
 
 ## Brief Synopsis
 
@@ -117,16 +117,16 @@ vector<Future<GetReply>> futs;
 for (auto& key : keys) {
   futs.push_back(mc.get(key));
 }
-auto all = whenAll(futs.begin(), futs.end());
+auto all = collectAll(futs.begin(), futs.end());
 
 vector<Future<GetReply>> futs;
 for (auto& key : keys) {
   futs.push_back(mc.get(key));
 }
-auto any = whenAny(futs.begin(), futs.end());
+auto any = collectAny(futs.begin(), futs.end());
 ```
 
-`all` and `any` are Futures (for the exact type and usage see the header files).  They will be complete when all/one of `futs` are complete, respectively. (There is also `whenN()` for when you need *some*.)
+`all` and `any` are Futures (for the exact type and usage see the header files).  They will be complete when all/one of `futs` are complete, respectively. (There is also `collectN()` for when you need *some*.)
 
 Second, we can attach callbacks to a Future, and chain them together monadically. An example will clarify:
 

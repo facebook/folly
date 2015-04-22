@@ -602,7 +602,7 @@ TEST(FiberManager, forEach) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenN) {
+TEST(FiberManager, collectN) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -626,7 +626,7 @@ TEST(FiberManager, whenN) {
             );
           }
 
-          auto results = whenN(funcs.begin(), funcs.end(), 2);
+          auto results = collectN(funcs.begin(), funcs.end(), 2);
           EXPECT_EQ(2, results.size());
           EXPECT_EQ(1, pendingFibers.size());
           for (size_t i = 0; i < 2; ++i) {
@@ -646,7 +646,7 @@ TEST(FiberManager, whenN) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenNThrow) {
+TEST(FiberManager, collectNThrow) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -672,7 +672,7 @@ TEST(FiberManager, whenNThrow) {
           }
 
           try {
-            whenN(funcs.begin(), funcs.end(), 2);
+            collectN(funcs.begin(), funcs.end(), 2);
           } catch (...) {
             EXPECT_EQ(1, pendingFibers.size());
           }
@@ -690,7 +690,7 @@ TEST(FiberManager, whenNThrow) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenNVoid) {
+TEST(FiberManager, collectNVoid) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -713,7 +713,7 @@ TEST(FiberManager, whenNVoid) {
             );
           }
 
-          auto results = whenN(funcs.begin(), funcs.end(), 2);
+          auto results = collectN(funcs.begin(), funcs.end(), 2);
           EXPECT_EQ(2, results.size());
           EXPECT_EQ(1, pendingFibers.size());
         }
@@ -730,7 +730,7 @@ TEST(FiberManager, whenNVoid) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenNVoidThrow) {
+TEST(FiberManager, collectNVoidThrow) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -755,7 +755,7 @@ TEST(FiberManager, whenNVoidThrow) {
           }
 
           try {
-            whenN(funcs.begin(), funcs.end(), 2);
+            collectN(funcs.begin(), funcs.end(), 2);
           } catch (...) {
             EXPECT_EQ(1, pendingFibers.size());
           }
@@ -773,7 +773,7 @@ TEST(FiberManager, whenNVoidThrow) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenAll) {
+TEST(FiberManager, collectAll) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -797,7 +797,7 @@ TEST(FiberManager, whenAll) {
             );
           }
 
-          auto results = whenAll(funcs.begin(), funcs.end());
+          auto results = collectAll(funcs.begin(), funcs.end());
           EXPECT_TRUE(pendingFibers.empty());
           for (size_t i = 0; i < 3; ++i) {
             EXPECT_EQ(i*2+1, results[i]);
@@ -816,7 +816,7 @@ TEST(FiberManager, whenAll) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenAllVoid) {
+TEST(FiberManager, collectAllVoid) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -839,7 +839,7 @@ TEST(FiberManager, whenAllVoid) {
             );
           }
 
-          whenAll(funcs.begin(), funcs.end());
+          collectAll(funcs.begin(), funcs.end());
           EXPECT_TRUE(pendingFibers.empty());
         }
       );
@@ -855,7 +855,7 @@ TEST(FiberManager, whenAllVoid) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, whenAny) {
+TEST(FiberManager, collectAny) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -882,7 +882,7 @@ TEST(FiberManager, whenAny) {
             );
           }
 
-          auto result = whenAny(funcs.begin(), funcs.end());
+          auto result = collectAny(funcs.begin(), funcs.end());
           EXPECT_EQ(2, pendingFibers.size());
           EXPECT_EQ(2, result.first);
           EXPECT_EQ(2*2+1, result.second);
@@ -1255,7 +1255,7 @@ void testFiberLocal() {
         local<Data>().value = 44;
       };
       std::vector<std::function<void()>> tasks{task};
-      whenAny(tasks.begin(), tasks.end());
+      collectAny(tasks.begin(), tasks.end());
 
       EXPECT_EQ(43, local<Data>().value);
     });

@@ -33,7 +33,7 @@ typename std::vector<
         typename std::iterator_traits<InputIterator>::value_type()>::type>
     >::type
   >
-whenN(InputIterator first, InputIterator last, size_t n) {
+collectN(InputIterator first, InputIterator last, size_t n) {
   typedef typename std::result_of<
     typename std::iterator_traits<InputIterator>::value_type()>::type Result;
   assert(n > 0);
@@ -96,7 +96,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, std::vector<size_t>>::type
-whenN(InputIterator first, InputIterator last, size_t n) {
+collectN(InputIterator first, InputIterator last, size_t n) {
   assert(n > 0);
   assert(n <= std::distance(first, last));
 
@@ -160,7 +160,7 @@ typename std::vector<
       >::value,
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type>::type>
-inline whenAll(InputIterator first, InputIterator last) {
+inline collectAll(InputIterator first, InputIterator last) {
   typedef typename std::result_of<
     typename std::iterator_traits<InputIterator>::value_type()>::type Result;
   size_t n = std::distance(first, last);
@@ -191,7 +191,7 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, void>::type
-inline whenAll(InputIterator first, InputIterator last) {
+inline collectAll(InputIterator first, InputIterator last) {
   forEach(first, last, [] (size_t id) {});
 }
 
@@ -206,8 +206,8 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type>
   >::type
-inline whenAny(InputIterator first, InputIterator last) {
-  auto result = whenN(first, last, 1);
+inline collectAny(InputIterator first, InputIterator last) {
+  auto result = collectN(first, last, 1);
   assert(result.size() == 1);
   return std::move(result[0]);
 }
@@ -218,8 +218,8 @@ typename std::enable_if<
     typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, size_t>::type
-inline whenAny(InputIterator first, InputIterator last) {
-  auto result = whenN(first, last, 1);
+inline collectAny(InputIterator first, InputIterator last) {
+  auto result = collectN(first, last, 1);
   assert(result.size() == 1);
   return std::move(result[0]);
 }
