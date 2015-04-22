@@ -640,6 +640,14 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return clientHelloInfo_.get();
   }
 
+  void setMinWriteSize(size_t minWriteSize) {
+    minWriteSize_ = minWriteSize;
+  }
+
+  size_t getMinWriteSize() {
+    return minWriteSize_;
+  }
+
  protected:
 
   /**
@@ -729,6 +737,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // The app byte num that we are tracking for the MSG_EOR
   // Only one app EOR byte can be tracked.
   size_t appEorByteNo_{0};
+
+  // Try to avoid calling SSL_write() for buffers smaller than this.
+  // It doesn't take effect when it is 0.
+  size_t minWriteSize_{1500};
 
   // When openssl is about to sendmsg() across the minEorRawBytesNo_,
   // it will pass MSG_EOR to sendmsg().

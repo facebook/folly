@@ -1206,6 +1206,24 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   EXPECT_FALSE(server.handshakeSuccess_);
   EXPECT_TRUE(server.handshakeError_);
 }
+
+TEST(AsyncSSLSocketTest, MinWriteSizeTest) {
+  EventBase eb;
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  // create SSL socket
+  AsyncSSLSocket::UniquePtr socket(new AsyncSSLSocket(sslContext, &eb));
+
+  EXPECT_EQ(1500, socket->getMinWriteSize());
+
+  socket->setMinWriteSize(0);
+  EXPECT_EQ(0, socket->getMinWriteSize());
+  socket->setMinWriteSize(50000);
+  EXPECT_EQ(50000, socket->getMinWriteSize());
+}
 }
 
 ///////////////////////////////////////////////////////////////////////////
