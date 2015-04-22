@@ -217,8 +217,7 @@ TLSTicketKeyManager::insertNewKey(TLSTicketSeed* seed, uint32_t hashCount,
   newKey->hashCount_ = hashCount;
   newKey->keyName_ = makeKeyName(seed, hashCount, nameBuf);
   newKey->type_ = seed->type_;
-  auto it = ticketKeys_.insert(std::make_pair(newKey->keyName_,
-        std::move(newKey)));
+  auto it = ticketKeys_.emplace(newKey->keyName_, std::move(newKey));
 
   auto key = it.first->second.get();
   if (key->type_ == SEED_CURRENT) {
