@@ -28,6 +28,15 @@ public:
       unsigned prefixLen):
     addr_(addr), prefixLen_(prefixLen) {}
 
+ /**
+   * Create a NetworkAddress for an addr/prefixLen
+   * @param addr         IPv4 or IPv6 address of the network, we can move it
+   * @param prefixLen    Prefix length, in bits
+   */
+  NetworkAddress(folly::SocketAddress&& addr,
+      unsigned prefixLen):
+    addr_{std::move(addr)}, prefixLen_{prefixLen} {}
+
   /** Get the network address */
   const folly::SocketAddress& getAddress() const {
     return addr_;
