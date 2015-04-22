@@ -213,14 +213,9 @@ class Future {
   Future(Future&&) noexcept;
   Future& operator=(Future&&) noexcept;
 
-  // makeFuture
-  template <class F = T>
+  /// Construct a Future from a value (perfect forwarding)
   /* implicit */
-  Future(const typename std::enable_if<!std::is_void<F>::value, F>::type& val);
-
-  template <class F = T>
-  /* implicit */
-  Future(typename std::enable_if<!std::is_void<F>::value, F>::type&& val);
+  template <class T2 = T> Future(T2&& val);
 
   template <class F = T,
             typename std::enable_if<std::is_void<F>::value, int>::type = 0>

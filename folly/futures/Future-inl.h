@@ -44,22 +44,10 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-template <class F>
-Future<T>::Future(
-  const typename std::enable_if<!std::is_void<F>::value, F>::type& val)
-    : core_(nullptr) {
-  Promise<F> p;
-  p.setValue(val);
-  *this = p.getFuture();
-}
-
-template <class T>
-template <class F>
-Future<T>::Future(
-  typename std::enable_if<!std::is_void<F>::value, F>::type&& val)
-    : core_(nullptr) {
-  Promise<F> p;
-  p.setValue(std::forward<F>(val));
+template <class T2>
+Future<T>::Future(T2&& val) : core_(nullptr) {
+  Promise<T> p;
+  p.setValue(std::forward<T2>(val));
   *this = p.getFuture();
 }
 
