@@ -15,7 +15,7 @@
  */
 #include "ThreadWheelTimekeeper.h"
 
-#include <folly/experimental/Singleton.h>
+#include <folly/Singleton.h>
 #include <folly/futures/Future.h>
 #include <future>
 

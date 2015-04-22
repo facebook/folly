@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/Singleton.h>
+#include <folly/Singleton.h>
 
 #include <string>
 

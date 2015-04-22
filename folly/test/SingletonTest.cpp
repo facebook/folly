@@ -16,7 +16,7 @@
 
 #include <thread>
 
-#include <folly/experimental/Singleton.h>
+#include <folly/Singleton.h>
 
 #include <folly/Benchmark.h>
 

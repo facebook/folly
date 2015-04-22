@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/Singleton.h>
+#include <folly/Singleton.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 namespace folly {

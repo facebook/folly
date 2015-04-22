@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/Singleton.h>
+#include <folly/Singleton.h>
 #include <folly/wangle/concurrent/IOExecutor.h>
 #include <folly/wangle/concurrent/IOThreadPoolExecutor.h>
 #include <folly/futures/InlineExecutor.h>

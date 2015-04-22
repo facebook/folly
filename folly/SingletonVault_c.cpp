@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/SingletonVault_c.h>
-#include <folly/experimental/Singleton.h>
+#include <folly/SingletonVault_c.h>
+#include <folly/Singleton.h>
 
 #ifdef __cplusplus
 extern "C" {

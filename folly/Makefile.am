@@ -105,8 +105,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/JSONSchema.h \
 	experimental/Select64.h \
 	experimental/SharedMutex.h \
-	experimental/Singleton.h \
-	experimental/Singleton-inl.h \
 	experimental/StringKeyedCommon.h \
 	experimental/StringKeyedUnorderedMap.h \
 	experimental/StringKeyedUnorderedSet.h \
@@ -227,6 +225,8 @@ nobase_follyinclude_HEADERS = \
 	Range.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
+	Singleton.h \
+	Singleton-inl.h \
 	SmallLocks.h \
 	small_vector.h \
 	SocketAddress.h \
@@ -377,6 +377,7 @@ libfolly_la_SOURCES = \
 	Random.cpp \
 	SafeAssert.cpp \
 	SocketAddress.cpp \
+	Singleton.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
 	stats/Instantiations.cpp \
@@ -395,7 +396,6 @@ libfolly_la_SOURCES = \
 	experimental/JSONSchema.cpp \
 	experimental/Select64.cpp \
 	experimental/SharedMutex.cpp \
-	experimental/Singleton.cpp \
 	experimental/TestUtil.cpp \
 	wangle/acceptor/Acceptor.cpp \
 	wangle/acceptor/ConnectionManager.cpp \

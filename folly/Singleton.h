@@ -514,4 +514,4 @@ class Singleton {
 
 }
 
-#include <folly/experimental/Singleton-inl.h>
+#include <folly/Singleton-inl.h>
