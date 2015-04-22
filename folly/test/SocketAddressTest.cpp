@@ -60,6 +60,23 @@ TEST(SocketAddress, IPv4ToStringConversion) {
   }
 }
 
+TEST(SocketAddress, SetFromIpAddressPort) {
+  SocketAddress addr;
+  folly::IPAddress ipAddr("123.234.0.23");
+  addr.setFromIpAddrPort(ipAddr, 8888);
+  EXPECT_EQ(addr.getFamily(), AF_INET);
+  EXPECT_EQ(addr.getAddressStr(), "123.234.0.23");
+  EXPECT_EQ(addr.getIPAddress(), ipAddr);
+  EXPECT_EQ(addr.getPort(), 8888);
+
+  folly::IPAddress ip6Addr("2620:0:1cfe:face:b00c::3");
+  SocketAddress addr6(ip6Addr, 8888);
+  EXPECT_EQ(addr6.getFamily(), AF_INET6);
+  EXPECT_EQ(addr6.getAddressStr(), "2620:0:1cfe:face:b00c::3");
+  EXPECT_EQ(addr6.getIPAddress(), ip6Addr);
+  EXPECT_EQ(addr6.getPort(), 8888);
+}
+
 TEST(SocketAddress, SetFromIpv4) {
   SocketAddress addr;
   addr.setFromIpPort("255.254.253.252", 8888);

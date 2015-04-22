@@ -73,6 +73,10 @@ class SocketAddress {
     }
   }
 
+  SocketAddress(const IPAddress& ipAddr, uint16_t port) {
+    setFromIpAddrPort(ipAddr, port);
+  }
+
   SocketAddress(const SocketAddress& addr) {
     port_ = addr.port_;
     if (addr.getFamily() == AF_UNIX) {
@@ -189,6 +193,14 @@ class SocketAddress {
   void setFromIpPort(const std::string& ip, uint16_t port) {
     setFromIpPort(ip.c_str(), port);
   }
+
+  /**
+   * Initialize this SocketAddress from an IPAddress struct and port.
+   *
+   * @param ip The IP address in IPAddress format
+   * @param port The port (in host byte order)
+   */
+  void setFromIpAddrPort(const IPAddress& ip, uint16_t port);
 
   /**
    * Initialize this SocketAddress from a local port number.
