@@ -29,6 +29,7 @@
 #include <folly/futures/ManualExecutor.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/dynamic.h>
+#include <folly/Baton.h>
 #include <folly/MPMCQueue.h>
 
 #include <folly/io/async/EventBase.h>
