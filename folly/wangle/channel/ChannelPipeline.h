@@ -242,7 +242,7 @@ class ChannelPipeline<R, W, Handler, Handlers...>
 
   template <class H>
   ChannelPipeline& addBack(H&& handler) {
-    ChannelPipeline<R, W>::addBack(std::move(handler));
+    ChannelPipeline<R, W>::addBack(std::forward<H>(handler));
     return *this;
   }
 
@@ -252,7 +252,7 @@ class ChannelPipeline<R, W, Handler, Handlers...>
         ctxs_.begin(),
         folly::make_unique<ContextImpl<ChannelPipeline, H>>(
             this,
-            std::move(handler)));
+            std::forward<H>(handler)));
     return *this;
   }
 
