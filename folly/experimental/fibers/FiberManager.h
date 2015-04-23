@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <folly/AtomicLinkedList.h>
+#include <folly/Executor.h>
 #include <folly/Likely.h>
 #include <folly/IntrusiveList.h>
 #include <folly/futures/Try.h>
@@ -57,7 +58,7 @@ class LocalType {
  * call. This will pause execution of this task and it will be resumed only
  * when it is unblocked (via setData()).
  */
-class FiberManager {
+class FiberManager : public ::folly::Executor {
  public:
   struct Options {
 #ifdef FOLLY_SANITIZE_ADDRESS
@@ -169,6 +170,11 @@ class FiberManager {
    */
   template <typename F>
   void addTaskRemote(F&& func);
+
+  // Executor interface calls addTaskRemote
+  void add(std::function<void()> f) {
+    addTaskRemote(std::move(f));
+  }
 
   /**
    * Add a new task. When the task is complete, execute finally(Try<Result>&&)
