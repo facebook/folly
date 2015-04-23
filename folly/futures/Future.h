@@ -581,14 +581,14 @@ Future<void> makeFuture();
 /** Make a completed Future by executing a function. If the function throws
   we capture the exception, otherwise we capture the result. */
 template <class F>
-auto makeFutureTry(
+auto makeFutureWith(
   F&& func,
   typename std::enable_if<
     !std::is_reference<F>::value, bool>::type sdf = false)
   -> Future<decltype(func())>;
 
 template <class F>
-auto makeFutureTry(
+auto makeFutureWith(
   F const& func)
   -> Future<decltype(func())>;
 

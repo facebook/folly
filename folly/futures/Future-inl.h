@@ -469,7 +469,7 @@ Future<void> makeFuture() {
 }
 
 template <class F>
-auto makeFutureTry(
+auto makeFutureWith(
     F&& func,
     typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
     -> Future<decltype(func())> {
@@ -482,9 +482,9 @@ auto makeFutureTry(
 }
 
 template <class F>
-auto makeFutureTry(F const& func) -> Future<decltype(func())> {
+auto makeFutureWith(F const& func) -> Future<decltype(func())> {
   F copy = func;
-  return makeFutureTry(std::move(copy));
+  return makeFutureWith(std::move(copy));
 }
 
 template <class T>

@@ -57,13 +57,13 @@ class MockChannelHandler : public ChannelHandler<Rin, Rout, Win, Wout> {
   }
 
   Future<void> write(Context* ctx, Win msg) override {
-    return makeFutureTry([&](){
+    return makeFutureWith([&](){
       write_(ctx, msg);
     });
   }
 
   Future<void> close(Context* ctx) override {
-    return makeFutureTry([&](){
+    return makeFutureWith([&](){
       close_(ctx);
     });
   }

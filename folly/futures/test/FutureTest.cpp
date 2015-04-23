@@ -536,12 +536,12 @@ TEST(Future, makeFuture) {
   EXPECT_EQ(42, makeFuture<float>(42).value());
 
   auto fun = [] { return 42; };
-  EXPECT_TYPE(makeFutureTry(fun), Future<int>);
-  EXPECT_EQ(42, makeFutureTry(fun).value());
+  EXPECT_TYPE(makeFutureWith(fun), Future<int>);
+  EXPECT_EQ(42, makeFutureWith(fun).value());
 
   auto failfun = []() -> int { throw eggs; };
-  EXPECT_TYPE(makeFutureTry(failfun), Future<int>);
-  EXPECT_THROW(makeFutureTry(failfun).value(), eggs_t);
+  EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
+  EXPECT_THROW(makeFutureWith(failfun).value(), eggs_t);
 
   EXPECT_TYPE(makeFuture(), Future<void>);
 }
