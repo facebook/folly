@@ -82,6 +82,10 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   // Binary prefix for 6to4 networks
   static const uint32_t PREFIX_6TO4;
 
+  // Size of std::string returned by toFullyQualified.
+  static constexpr size_t kToFullyQualifiedSize =
+    8 /*words*/ * 4 /*hex chars per word*/ + 7 /*separators*/;
+
   /**
    * Create a new IPAddress instance from the provided binary data.
    * @throws IPAddressFormatException if the input length is not 16 bytes.

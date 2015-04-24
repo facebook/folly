@@ -409,6 +409,11 @@ TEST(IPAddress, ToFullyQualifiedLocal) {
   EXPECT_EQ("0000:0000:0000:0000:0000:0000:0000:0001", ip.toFullyQualified())
       << ip;
 }
+TEST(IPAddress, ToFullyQualifiedSize) {
+  auto actual = IPAddressV6::kToFullyQualifiedSize;
+  auto expected = IPAddress("::").toFullyQualified().size();
+  EXPECT_EQ(expected, actual);
+}
 
 // test v4-v6 mapped addresses
 TEST_P(IPAddressMappedTest, MappedEqual) {
