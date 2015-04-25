@@ -24,6 +24,7 @@
 #include <folly/Memory.h>
 #include <folly/futures/Deprecated.h>
 #include <folly/futures/FutureException.h>
+#include <folly/futures/Unit.h>
 
 namespace folly {
 
