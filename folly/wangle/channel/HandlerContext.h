@@ -22,8 +22,26 @@
 
 namespace folly { namespace wangle {
 
+namespace detail {
+
+template <class HandlerContext>
+class HandlerContextBase {
+ protected:
+  template <class H>
+  void attachContext(H* handler, HandlerContext* ctx) {
+    if (++handler->attachCount_ == 1) {
+      handler->ctx_ = ctx;
+    } else {
+      handler->ctx_ = nullptr;
+    }
+  }
+};
+
+} // detail
+
 template <class In, class Out>
-class HandlerContext {
+class HandlerContext
+  : public detail::HandlerContextBase<HandlerContext<In, Out>> {
  public:
   virtual ~HandlerContext() {}
 
@@ -125,6 +143,7 @@ class ContextImpl : public HandlerContext<typename H::rout,
   // PipelineContext overrides
   void attachPipeline() override {
     if (!attached_) {
+      this->attachContext(handler_.get(), this);
       handler_->attachPipeline(this);
       attached_ = true;
     }

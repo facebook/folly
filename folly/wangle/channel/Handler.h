@@ -23,8 +23,33 @@
 
 namespace folly { namespace wangle {
 
+template <class Context>
+class HandlerBase {
+ public:
+  virtual ~HandlerBase() {}
+
+  virtual void attachPipeline(Context* ctx) {}
+  virtual void attachTransport(Context* ctx) {}
+
+  virtual void detachPipeline(Context* ctx) {}
+  virtual void detachTransport(Context* ctx) {}
+
+  Context* getContext() {
+    if (attachCount_ != 1) {
+      return nullptr;
+    }
+    CHECK(ctx_);
+    return ctx_;
+  }
+
+ private:
+  friend detail::HandlerContextBase<Context>;
+  uint64_t attachCount_{0};
+  Context* ctx_{nullptr};
+};
+
 template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>
-class Handler {
+class Handler : public HandlerBase<HandlerContext<Rout, Wout>> {
  public:
   typedef Rin rin;
   typedef Rout rout;
@@ -45,12 +70,6 @@ class Handler {
   virtual Future<void> close(Context* ctx) {
     return ctx->fireClose();
   }
-
-  virtual void attachPipeline(Context* ctx) {}
-  virtual void attachTransport(Context* ctx) {}
-
-  virtual void detachPipeline(Context* ctx) {}
-  virtual void detachTransport(Context* ctx) {}
 
   /*
   // Other sorts of things we might want, all shamelessly stolen from Netty

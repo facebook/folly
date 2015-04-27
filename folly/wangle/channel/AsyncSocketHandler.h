@@ -25,6 +25,7 @@
 
 namespace folly { namespace wangle {
 
+// This handler may only be used in a single Pipeline
 class AsyncSocketHandler
   : public folly::wangle::BytesToBytesHandler,
     public AsyncSocket::ReadCallback {
@@ -65,8 +66,6 @@ class AsyncSocketHandler
   }
 
   void attachPipeline(Context* ctx) override {
-    CHECK(!ctx_);
-    ctx_ = ctx;
     attachReadCallback();
   }
 
@@ -105,7 +104,7 @@ class AsyncSocketHandler
   }
 
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
-    const auto readBufferSettings = ctx_->getReadBufferSettings();
+    const auto readBufferSettings = getContext()->getReadBufferSettings();
     const auto ret = bufQueue_.preallocate(
         readBufferSettings.first,
         readBufferSettings.second);
@@ -115,16 +114,17 @@ class AsyncSocketHandler
 
   void readDataAvailable(size_t len) noexcept override {
     bufQueue_.postallocate(len);
-    ctx_->fireRead(bufQueue_);
+    getContext()->fireRead(bufQueue_);
   }
 
   void readEOF() noexcept override {
-    ctx_->fireReadEOF();
+    getContext()->fireReadEOF();
   }
 
   void readErr(const AsyncSocketException& ex)
     noexcept override {
-    ctx_->fireReadException(make_exception_wrapper<AsyncSocketException>(ex));
+    getContext()->fireReadException(
+        make_exception_wrapper<AsyncSocketException>(ex));
   }
 
  private:
@@ -146,7 +146,6 @@ class AsyncSocketHandler
     folly::Promise<void> promise_;
   };
 
-  Context* ctx_{nullptr};
   folly::IOBufQueue bufQueue_{folly::IOBufQueue::cacheChainLength()};
   std::shared_ptr<AsyncSocket> socket_{nullptr};
 };

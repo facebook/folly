@@ -225,11 +225,20 @@ TEST(PipelineTest, DynamicAttachDetachOrder) {
   }
 }
 
+TEST(PipelineTest, GetContext) {
+  IntHandler handler;
+  EXPECT_CALL(handler, attachPipeline(_));
+  StaticPipeline<int, int, IntHandler> pipeline(&handler);
+  EXPECT_TRUE(handler.getContext());
+  EXPECT_CALL(handler, detachPipeline(_));
+}
+
 TEST(PipelineTest, HandlerInMultiplePipelines) {
   IntHandler handler;
   EXPECT_CALL(handler, attachPipeline(_)).Times(2);
   StaticPipeline<int, int, IntHandler> pipeline1(&handler);
   StaticPipeline<int, int, IntHandler> pipeline2(&handler);
+  EXPECT_FALSE(handler.getContext());
   EXPECT_CALL(handler, detachPipeline(_)).Times(2);
 }
 
@@ -237,6 +246,7 @@ TEST(PipelineTest, HandlerInPipelineTwice) {
   IntHandler handler;
   EXPECT_CALL(handler, attachPipeline(_)).Times(2);
   StaticPipeline<int, int, IntHandler, IntHandler> pipeline(&handler, &handler);
+  EXPECT_FALSE(handler.getContext());
   EXPECT_CALL(handler, detachPipeline(_)).Times(2);
 }
 

@@ -27,6 +27,8 @@ namespace folly { namespace wangle {
 /*
  * OutputBufferingHandler buffers writes in order to minimize syscalls. The
  * transport will be written to once per event loop instead of on every write.
+ *
+ * This handler may only be used in a single Pipeline.
  */
 class OutputBufferingHandler : public BytesToBytesHandler,
                                protected EventBase::LoopCallback {
@@ -36,7 +38,6 @@ class OutputBufferingHandler : public BytesToBytesHandler,
     if (!queueSends_) {
       return ctx->fireWrite(std::move(buf));
     } else {
-      ctx_ = ctx;
       // Delay sends to optimize for fewer syscalls
       if (!sends_) {
         DCHECK(!isLoopCallbackScheduled());
@@ -56,11 +57,12 @@ class OutputBufferingHandler : public BytesToBytesHandler,
 
   void runLoopCallback() noexcept override {
     MoveWrapper<std::vector<Promise<void>>> promises(std::move(promises_));
-    ctx_->fireWrite(std::move(sends_)).then([promises](Try<void> t) mutable {
-      for (auto& p : *promises) {
-        p.setTry(t);
-      }
-    });
+    getContext()->fireWrite(std::move(sends_))
+      .then([promises](Try<void> t) mutable {
+        for (auto& p : *promises) {
+          p.setTry(t);
+        }
+      });
   }
 
   Future<void> close(Context* ctx) override {
@@ -82,7 +84,6 @@ class OutputBufferingHandler : public BytesToBytesHandler,
   std::vector<Promise<void>> promises_;
   std::unique_ptr<IOBuf> sends_{nullptr};
   bool queueSends_{true};
-  Context* ctx_;
 };
 
 }}
