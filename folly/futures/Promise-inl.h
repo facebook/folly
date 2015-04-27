@@ -124,14 +124,6 @@ void Promise<T>::setValue(M&& v) {
 }
 
 template <class T>
-void Promise<T>::setValue() {
-  static_assert(std::is_same<T, void>::value,
-                "Use setValue(value) instead");
-
-  setTry(Try<void>());
-}
-
-template <class T>
 template <class F>
 void Promise<T>::setWith(F&& func) {
   throwIfFulfilled();

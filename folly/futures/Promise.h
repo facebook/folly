@@ -70,8 +70,19 @@ public:
   /// handled.
   void setInterruptHandler(std::function<void(exception_wrapper const&)>);
 
-  /** Fulfill this Promise (only for Promise<void>) */
-  void setValue();
+  /// Fulfill this Promise<void>
+  template <class B = T>
+  typename std::enable_if<std::is_void<B>::value, void>::type
+  setValue() {
+    setTry(Try<T>());
+  }
+
+  /// Sugar to fulfill this Promise<Unit>
+  template <class B = T>
+  typename std::enable_if<std::is_same<Unit, B>::value, void>::type
+  setValue() {
+    setTry(Try<T>(T()));
+  }
 
   /** Set the value (use perfect forwarding for both move and copy) */
   template <class M>
