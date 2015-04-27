@@ -625,24 +625,24 @@ Until until(Predicate pred = Predicate()) {
   return Until(std::move(pred));
 }
 
-template<class Selector,
+template<class Selector = Identity,
          class Comparer = Less,
          class Order = detail::Order<Selector, Comparer>>
-Order orderBy(Selector selector = Identity(),
+Order orderBy(Selector selector = Selector(),
               Comparer comparer = Comparer()) {
   return Order(std::move(selector),
                std::move(comparer));
 }
 
-template<class Selector,
+template<class Selector = Identity,
          class Order = detail::Order<Selector, Greater>>
-Order orderByDescending(Selector selector = Identity()) {
+Order orderByDescending(Selector selector = Selector()) {
   return Order(std::move(selector));
 }
 
-template<class Selector,
+template<class Selector = Identity,
          class Distinct = detail::Distinct<Selector>>
-Distinct distinctBy(Selector selector = Identity()) {
+Distinct distinctBy(Selector selector = Selector()) {
   return Distinct(std::move(selector));
 }
 

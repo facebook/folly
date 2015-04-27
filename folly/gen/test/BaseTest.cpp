@@ -610,6 +610,14 @@ TEST(Gen, OrderBy) {
     | orderBy([](int x) { return (5.1 - x) * (5.1 - x); })
     | as<vector>();
   EXPECT_EQ(expected, actual);
+
+  expected = seq(1, 10) | as<vector>();
+  actual =
+      from(expected)
+    | map([] (int x) { return 11 - x; })
+    | orderBy()
+    | as<vector>();
+  EXPECT_EQ(expected, actual);
 }
 
 TEST(Gen, Foldl) {
