@@ -67,6 +67,7 @@ class AsyncSocketHandler
   void attachPipeline(Context* ctx) override {
     CHECK(!ctx_);
     ctx_ = ctx;
+    attachReadCallback();
   }
 
   folly::Future<void> write(

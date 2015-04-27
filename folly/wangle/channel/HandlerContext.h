@@ -59,6 +59,7 @@ class PipelineContext {
  public:
   virtual ~PipelineContext() {}
 
+  virtual void attachPipeline() = 0;
   virtual void detachPipeline() = 0;
 
   virtual void attachTransport() = 0;
@@ -107,24 +108,31 @@ class ContextImpl : public HandlerContext<typename H::rout,
     initialize(pipeline, std::move(handler));
   }
 
-  void initialize(P* pipeline, std::shared_ptr<H> handler) {
-    pipeline_ = pipeline;
-    handler_ = std::move(handler);
-    handler_->attachPipeline(this);
-  }
-
   // For StaticPipeline
   ContextImpl() {}
 
   ~ContextImpl() {}
+
+  void initialize(P* pipeline, std::shared_ptr<H> handler) {
+    pipeline_ = pipeline;
+    handler_ = std::move(handler);
+  }
 
   H* getHandler() {
     return handler_.get();
   }
 
   // PipelineContext overrides
+  void attachPipeline() override {
+    if (!attached_) {
+      handler_->attachPipeline(this);
+      attached_ = true;
+    }
+  }
+
   void detachPipeline() override {
     handler_->detachPipeline(this);
+    attached_ = false;
   }
 
   void setNextIn(PipelineContext* ctx) override {
@@ -257,6 +265,7 @@ class ContextImpl : public HandlerContext<typename H::rout,
   std::shared_ptr<H> handler_;
   InboundHandlerContext<Rout>* nextIn_{nullptr};
   OutboundHandlerContext<Wout>* nextOut_{nullptr};
+  bool attached_{false};
 };
 
 }}

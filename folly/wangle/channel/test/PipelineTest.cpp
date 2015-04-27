@@ -79,8 +79,11 @@ TEST(PipelineTest, FireActions) {
   IntHandler handler1;
   IntHandler handler2;
 
-  EXPECT_CALL(handler1, attachPipeline(_));
-  EXPECT_CALL(handler2, attachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler2, attachPipeline(_));
+    EXPECT_CALL(handler1, attachPipeline(_));
+  }
 
   StaticPipeline<int, int, IntHandler, IntHandler>
   pipeline(&handler1, &handler2);
@@ -105,8 +108,11 @@ TEST(PipelineTest, FireActions) {
   EXPECT_CALL(handler1, close_(_)).Times(1);
   EXPECT_NO_THROW(pipeline.close().value());
 
-  EXPECT_CALL(handler1, detachPipeline(_));
-  EXPECT_CALL(handler2, detachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler1, detachPipeline(_));
+    EXPECT_CALL(handler2, detachPipeline(_));
+  }
 }
 
 // Test that nothing bad happens when actions reach the end of the pipeline
@@ -140,8 +146,11 @@ TEST(PipelineTest, TurnAround) {
   IntHandler handler1;
   IntHandler handler2;
 
-  EXPECT_CALL(handler1, attachPipeline(_));
-  EXPECT_CALL(handler2, attachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler2, attachPipeline(_));
+    EXPECT_CALL(handler1, attachPipeline(_));
+  }
 
   StaticPipeline<int, int, IntHandler, IntHandler>
   pipeline(&handler1, &handler2);
@@ -151,8 +160,11 @@ TEST(PipelineTest, TurnAround) {
   EXPECT_CALL(handler1, write_(_, _)).Times(1);
   pipeline.read(1);
 
-  EXPECT_CALL(handler1, detachPipeline(_));
-  EXPECT_CALL(handler2, detachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler1, detachPipeline(_));
+    EXPECT_CALL(handler2, detachPipeline(_));
+  }
 }
 
 TEST(PipelineTest, DynamicFireActions) {
@@ -161,8 +173,11 @@ TEST(PipelineTest, DynamicFireActions) {
   StaticPipeline<int, int, IntHandler>
   pipeline(&handler2);
 
-  EXPECT_CALL(handler1, attachPipeline(_));
-  EXPECT_CALL(handler3, attachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler3, attachPipeline(_));
+    EXPECT_CALL(handler1, attachPipeline(_));
+  }
 
   pipeline
     .addFront(&handler1)
@@ -183,9 +198,46 @@ TEST(PipelineTest, DynamicFireActions) {
   EXPECT_CALL(handler1, write_(_, _)).Times(1);
   EXPECT_NO_THROW(pipeline.write(1).value());
 
-  EXPECT_CALL(handler1, detachPipeline(_));
-  EXPECT_CALL(handler2, detachPipeline(_));
-  EXPECT_CALL(handler3, detachPipeline(_));
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler1, detachPipeline(_));
+    EXPECT_CALL(handler2, detachPipeline(_));
+    EXPECT_CALL(handler3, detachPipeline(_));
+  }
+}
+
+TEST(PipelineTest, DynamicAttachDetachOrder) {
+  IntHandler handler1, handler2;
+  Pipeline<int, int> pipeline;
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler2, attachPipeline(_));
+    EXPECT_CALL(handler1, attachPipeline(_));
+  }
+  pipeline
+    .addBack(&handler1)
+    .addBack(&handler2)
+    .finalize();
+  {
+    InSequence sequence;
+    EXPECT_CALL(handler1, detachPipeline(_));
+    EXPECT_CALL(handler2, detachPipeline(_));
+  }
+}
+
+TEST(PipelineTest, HandlerInMultiplePipelines) {
+  IntHandler handler;
+  EXPECT_CALL(handler, attachPipeline(_)).Times(2);
+  StaticPipeline<int, int, IntHandler> pipeline1(&handler);
+  StaticPipeline<int, int, IntHandler> pipeline2(&handler);
+  EXPECT_CALL(handler, detachPipeline(_)).Times(2);
+}
+
+TEST(PipelineTest, HandlerInPipelineTwice) {
+  IntHandler handler;
+  EXPECT_CALL(handler, attachPipeline(_)).Times(2);
+  StaticPipeline<int, int, IntHandler, IntHandler> pipeline(&handler, &handler);
+  EXPECT_CALL(handler, detachPipeline(_)).Times(2);
 }
 
 template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>

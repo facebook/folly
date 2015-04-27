@@ -33,7 +33,13 @@ namespace folly { namespace wangle {
 template <class R, class W>
 class Pipeline : public DelayedDestruction {
  public:
-  Pipeline() {}
+  Pipeline() : isStatic_(false) {}
+
+  ~Pipeline() {
+    if (!isStatic_) {
+      detachHandlers();
+    }
+  }
 
   std::shared_ptr<AsyncTransport> getTransport() {
     return transport_;
@@ -136,6 +142,10 @@ class Pipeline : public DelayedDestruction {
     if (!front_) {
       throw std::invalid_argument("wrong type for first handler");
     }
+
+    for (auto it = ctxs_.rbegin(); it != ctxs_.rend(); it++) {
+      (*it)->attachPipeline();
+    }
   }
 
   // If one of the handlers owns the pipeline itself, use setOwner to ensure
@@ -170,6 +180,10 @@ class Pipeline : public DelayedDestruction {
   }
 
  protected:
+  explicit Pipeline(bool isStatic) : isStatic_(isStatic) {
+    CHECK(isStatic_);
+  }
+
   template <class Context>
   void addContextFront(Context* context) {
     ctxs_.insert(
@@ -190,6 +204,7 @@ class Pipeline : public DelayedDestruction {
   WriteFlags writeFlags_{WriteFlags::NONE};
   std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
 
+  bool isStatic_{false};
   InboundHandlerContext<R>* front_{nullptr};
   OutboundHandlerContext<W>* back_{nullptr};
   std::vector<std::shared_ptr<PipelineContext>> ctxs_;

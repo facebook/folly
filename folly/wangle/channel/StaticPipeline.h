@@ -47,7 +47,7 @@ class StaticPipeline;
 template <class R, class W>
 class StaticPipeline<R, W> : public Pipeline<R, W> {
  protected:
-  explicit StaticPipeline(bool) : Pipeline<R, W>() {}
+  explicit StaticPipeline(bool) : Pipeline<R, W>(true) {}
 };
 
 template <class R, class W, class Handler, class... Handlers>

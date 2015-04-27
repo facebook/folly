@@ -52,7 +52,6 @@ class ServerPipelineFactory
     pipeline->addBack(StringCodec());
     pipeline->addBack(SerialServerDispatcher<Req, Resp>(&service_));
     pipeline->finalize();
-    pipeline->template getHandler<AsyncSocketHandler>(0)->attachReadCallback();
     return pipeline;
   }
 
@@ -69,8 +68,6 @@ class ClientPipelineFactory : public PipelineFactory<ServicePipeline> {
     auto pipeline = new ServicePipeline();
     pipeline->addBack(AsyncSocketHandler(socket));
     pipeline->addBack(StringCodec());
-    pipeline->template getHandler<AsyncSocketHandler>(0)->attachReadCallback();
-
     return pipeline;
    }
 };
