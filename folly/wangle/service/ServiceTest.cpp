@@ -24,7 +24,7 @@ namespace folly {
 
 using namespace wangle;
 
-typedef ChannelPipeline<IOBufQueue&, std::string> Pipeline;
+typedef Pipeline<IOBufQueue&, std::string> ServicePipeline;
 
 class EchoService : public Service<std::string, std::string> {
  public:
@@ -42,12 +42,12 @@ class EchoIntService : public Service<std::string, int> {
 
 template <typename Req, typename Resp>
 class ServerPipelineFactory
-    : public PipelineFactory<Pipeline> {
+    : public PipelineFactory<ServicePipeline> {
  public:
 
-  Pipeline* newPipeline(
+  ServicePipeline* newPipeline(
       std::shared_ptr<AsyncSocket> socket) override {
-    auto pipeline = new Pipeline();
+    auto pipeline = new ServicePipeline();
     pipeline->addBack(AsyncSocketHandler(socket));
     pipeline->addBack(StringCodec());
     pipeline->addBack(SerialServerDispatcher<Req, Resp>(&service_));
@@ -61,12 +61,12 @@ class ServerPipelineFactory
 };
 
 template <typename Req, typename Resp>
-class ClientPipelineFactory : public PipelineFactory<Pipeline> {
+class ClientPipelineFactory : public PipelineFactory<ServicePipeline> {
  public:
 
-  Pipeline* newPipeline(
+  ServicePipeline* newPipeline(
       std::shared_ptr<AsyncSocket> socket) override {
-    auto pipeline = new Pipeline();
+    auto pipeline = new ServicePipeline();
     pipeline->addBack(AsyncSocketHandler(socket));
     pipeline->addBack(StringCodec());
     pipeline->template getHandler<AsyncSocketHandler>(0)->attachReadCallback();
@@ -101,14 +101,14 @@ TEST(Wangle, ClientServerTest) {
   int port = 1234;
   // server
 
-  ServerBootstrap<Pipeline> server;
+  ServerBootstrap<ServicePipeline> server;
   server.childPipeline(
     std::make_shared<ServerPipelineFactory<std::string, std::string>>());
   server.bind(port);
 
   // client
-  auto client = std::make_shared<ClientBootstrap<Pipeline>>();
-  ClientServiceFactory<Pipeline, std::string, std::string> serviceFactory;
+  auto client = std::make_shared<ClientBootstrap<ServicePipeline>>();
+  ClientServiceFactory<ServicePipeline, std::string, std::string> serviceFactory;
   client->pipelineFactory(
     std::make_shared<ClientPipelineFactory<std::string, std::string>>());
   SocketAddress addr("127.0.0.1", port);

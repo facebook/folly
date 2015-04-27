@@ -15,7 +15,7 @@
  */
 #include <folly/wangle/bootstrap/ServerBootstrap.h>
 #include <folly/wangle/concurrent/NamedThreadFactory.h>
-#include <folly/wangle/channel/ChannelHandler.h>
+#include <folly/wangle/channel/Handler.h>
 #include <folly/io/async/EventBaseManager.h>
 
 namespace folly {

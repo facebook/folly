@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/wangle/channel/ChannelHandler.h>
+#include <folly/wangle/channel/Handler.h>
 #include <folly/wangle/service/Service.h>
 
 namespace folly { namespace wangle {
@@ -25,10 +25,10 @@ namespace folly { namespace wangle {
  * Concurrent requests are queued in the pipeline.
  */
 template <typename Req, typename Resp = Req>
-class SerialServerDispatcher : public ChannelHandlerAdapter<Req, Resp> {
+class SerialServerDispatcher : public HandlerAdapter<Req, Resp> {
  public:
 
-  typedef typename ChannelHandlerAdapter<Req, Resp>::Context Context;
+  typedef typename HandlerAdapter<Req, Resp>::Context Context;
 
   explicit SerialServerDispatcher(Service<Req, Resp>* service)
       : service_(service) {}

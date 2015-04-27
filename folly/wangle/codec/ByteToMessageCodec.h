@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include <folly/wangle/channel/ChannelHandler.h>
+#include <folly/wangle/channel/Handler.h>
 
 namespace folly { namespace wangle {
 
 /**
- * A ChannelHandler which decodes bytes in a stream-like fashion from
+ * A Handler which decodes bytes in a stream-like fashion from
  * IOBufQueue to a  Message type.
  *
  * Frame detection

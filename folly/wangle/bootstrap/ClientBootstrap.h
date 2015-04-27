@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include <folly/wangle/channel/ChannelPipeline.h>
+#include <folly/wangle/channel/Pipeline.h>
 
 namespace folly {
 
 /*
- * A thin wrapper around ChannelPipeline and AsyncSocket to match
+ * A thin wrapper around Pipeline and AsyncSocket to match
  * ServerBootstrap.  On connect() a new pipeline is created.
  */
 template <typename Pipeline>

@@ -23,9 +23,9 @@
 namespace folly { namespace wangle {
 
 template <class In, class Out>
-class ChannelHandlerContext {
+class HandlerContext {
  public:
-  virtual ~ChannelHandlerContext() {}
+  virtual ~HandlerContext() {}
 
   virtual void fireRead(In msg) = 0;
   virtual void fireReadEOF() = 0;
@@ -73,27 +73,27 @@ class PipelineContext {
 };
 
 template <class In>
-class InboundChannelHandlerContext {
+class InboundHandlerContext {
  public:
-  virtual ~InboundChannelHandlerContext() {}
+  virtual ~InboundHandlerContext() {}
   virtual void read(In msg) = 0;
   virtual void readEOF() = 0;
   virtual void readException(exception_wrapper e) = 0;
 };
 
 template <class Out>
-class OutboundChannelHandlerContext {
+class OutboundHandlerContext {
  public:
-  virtual ~OutboundChannelHandlerContext() {}
+  virtual ~OutboundHandlerContext() {}
   virtual Future<void> write(Out msg) = 0;
   virtual Future<void> close() = 0;
 };
 
 template <class P, class H>
-class ContextImpl : public ChannelHandlerContext<typename H::rout,
+class ContextImpl : public HandlerContext<typename H::rout,
                                                  typename H::wout>,
-                    public InboundChannelHandlerContext<typename H::rin>,
-                    public OutboundChannelHandlerContext<typename H::win>,
+                    public InboundHandlerContext<typename H::rin>,
+                    public OutboundHandlerContext<typename H::win>,
                     public PipelineContext {
  public:
   typedef typename H::rin Rin;
@@ -118,7 +118,7 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
 
   // PipelineContext overrides
   void setNextIn(PipelineContext* ctx) override {
-    auto nextIn = dynamic_cast<InboundChannelHandlerContext<Rout>*>(ctx);
+    auto nextIn = dynamic_cast<InboundHandlerContext<Rout>*>(ctx);
     if (nextIn) {
       nextIn_ = nextIn;
     } else {
@@ -127,7 +127,7 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
   }
 
   void setNextOut(PipelineContext* ctx) override {
-    auto nextOut = dynamic_cast<OutboundChannelHandlerContext<Wout>*>(ctx);
+    auto nextOut = dynamic_cast<OutboundHandlerContext<Wout>*>(ctx);
     if (nextOut) {
       nextOut_ = nextOut;
     } else {
@@ -145,7 +145,7 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
     handler_.detachTransport(this);
   }
 
-  // ChannelHandlerContext overrides
+  // HandlerContext overrides
   void fireRead(Rout msg) override {
     typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
     if (nextIn_) {
@@ -215,7 +215,7 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
     return pipeline_->getReadBufferSettings();
   }
 
-  // InboundChannelHandlerContext overrides
+  // InboundHandlerContext overrides
   void read(Rin msg) override {
     typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
     handler_.read(this, std::forward<Rin>(msg));
@@ -231,7 +231,7 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
     handler_.readException(this, std::move(e));
   }
 
-  // OutboundChannelHandlerContext overrides
+  // OutboundHandlerContext overrides
   Future<void> write(Win msg) override {
     typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
     return handler_.write(this, std::forward<Win>(msg));
@@ -245,8 +245,8 @@ class ContextImpl : public ChannelHandlerContext<typename H::rout,
  private:
   P* pipeline_;
   H handler_;
-  InboundChannelHandlerContext<Rout>* nextIn_{nullptr};
-  OutboundChannelHandlerContext<Wout>* nextOut_{nullptr};
+  InboundHandlerContext<Rout>* nextIn_{nullptr};
+  OutboundHandlerContext<Wout>* nextOut_{nullptr};
 };
 
 }}

@@ -17,11 +17,11 @@
 
 #include <folly/wangle/bootstrap/ServerBootstrap-inl.h>
 #include <folly/Baton.h>
-#include <folly/wangle/channel/ChannelPipeline.h>
+#include <folly/wangle/channel/Pipeline.h>
 
 namespace folly {
 
-typedef folly::wangle::ChannelPipeline<
+typedef folly::wangle::Pipeline<
   folly::IOBufQueue&, std::unique_ptr<folly::IOBuf>> DefaultPipeline;
 
 /*
@@ -30,7 +30,7 @@ typedef folly::wangle::ChannelPipeline<
  * accepting threads, any number of accepting sockets, a pool of
  * IO-worker threads, and connection pool for each IO thread for you.
  *
- * The output is given as a ChannelPipeline template: given a
+ * The output is given as a Pipeline template: given a
  * PipelineFactory, it will create a new pipeline for each connection,
  * and your server can handle the incoming bytes.
  *
@@ -52,7 +52,7 @@ class ServerBootstrap {
     join();
   }
 
-  typedef wangle::ChannelPipeline<
+  typedef wangle::Pipeline<
    void*,
    std::exception> AcceptPipeline;
   /*

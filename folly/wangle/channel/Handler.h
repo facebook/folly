@@ -17,21 +17,21 @@
 #pragma once
 
 #include <folly/futures/Future.h>
-#include <folly/wangle/channel/ChannelPipeline.h>
+#include <folly/wangle/channel/Pipeline.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
 
 namespace folly { namespace wangle {
 
 template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>
-class ChannelHandler {
+class Handler {
  public:
   typedef Rin rin;
   typedef Rout rout;
   typedef Win win;
   typedef Wout wout;
-  typedef ChannelHandlerContext<Rout, Wout> Context;
-  virtual ~ChannelHandler() {}
+  typedef HandlerContext<Rout, Wout> Context;
+  virtual ~Handler() {}
 
   virtual void read(Context* ctx, Rin msg) = 0;
   virtual void readEOF(Context* ctx) {
@@ -56,34 +56,34 @@ class ChannelHandler {
   // Other sorts of things we might want, all shamelessly stolen from Netty
   // inbound
   virtual void exceptionCaught(
-      ChannelHandlerContext* ctx,
+      HandlerContext* ctx,
       exception_wrapper e) {}
-  virtual void channelRegistered(ChannelHandlerContext* ctx) {}
-  virtual void channelUnregistered(ChannelHandlerContext* ctx) {}
-  virtual void channelActive(ChannelHandlerContext* ctx) {}
-  virtual void channelInactive(ChannelHandlerContext* ctx) {}
-  virtual void channelReadComplete(ChannelHandlerContext* ctx) {}
-  virtual void userEventTriggered(ChannelHandlerContext* ctx, void* evt) {}
-  virtual void channelWritabilityChanged(ChannelHandlerContext* ctx) {}
+  virtual void channelRegistered(HandlerContext* ctx) {}
+  virtual void channelUnregistered(HandlerContext* ctx) {}
+  virtual void channelActive(HandlerContext* ctx) {}
+  virtual void channelInactive(HandlerContext* ctx) {}
+  virtual void channelReadComplete(HandlerContext* ctx) {}
+  virtual void userEventTriggered(HandlerContext* ctx, void* evt) {}
+  virtual void channelWritabilityChanged(HandlerContext* ctx) {}
 
   // outbound
   virtual Future<void> bind(
-      ChannelHandlerContext* ctx,
+      HandlerContext* ctx,
       SocketAddress localAddress) {}
   virtual Future<void> connect(
-          ChannelHandlerContext* ctx,
+          HandlerContext* ctx,
           SocketAddress remoteAddress, SocketAddress localAddress) {}
-  virtual Future<void> disconnect(ChannelHandlerContext* ctx) {}
-  virtual Future<void> deregister(ChannelHandlerContext* ctx) {}
-  virtual Future<void> read(ChannelHandlerContext* ctx) {}
-  virtual void flush(ChannelHandlerContext* ctx) {}
+  virtual Future<void> disconnect(HandlerContext* ctx) {}
+  virtual Future<void> deregister(HandlerContext* ctx) {}
+  virtual Future<void> read(HandlerContext* ctx) {}
+  virtual void flush(HandlerContext* ctx) {}
   */
 };
 
 template <class R, class W = R>
-class ChannelHandlerAdapter : public ChannelHandler<R, R, W, W> {
+class HandlerAdapter : public Handler<R, R, W, W> {
  public:
-  typedef typename ChannelHandler<R, R, W, W>::Context Context;
+  typedef typename Handler<R, R, W, W>::Context Context;
 
   void read(Context* ctx, R msg) override {
     ctx->fireRead(std::forward<R>(msg));
@@ -94,32 +94,32 @@ class ChannelHandlerAdapter : public ChannelHandler<R, R, W, W> {
   }
 };
 
-typedef ChannelHandlerAdapter<IOBufQueue&, std::unique_ptr<IOBuf>>
+typedef HandlerAdapter<IOBufQueue&, std::unique_ptr<IOBuf>>
 BytesToBytesHandler;
 
-template <class Handler, bool Shared = true>
-class ChannelHandlerPtr : public ChannelHandler<
-                                   typename Handler::rin,
-                                   typename Handler::rout,
-                                   typename Handler::win,
-                                   typename Handler::wout> {
+template <class HandlerT, bool Shared = true>
+class HandlerPtr : public Handler<
+                            typename HandlerT::rin,
+                            typename HandlerT::rout,
+                            typename HandlerT::win,
+                            typename HandlerT::wout> {
  public:
   typedef typename std::conditional<
     Shared,
-    std::shared_ptr<Handler>,
-    Handler*>::type
-  HandlerPtr;
+    std::shared_ptr<HandlerT>,
+    HandlerT*>::type
+  Ptr;
 
-  typedef typename Handler::Context Context;
+  typedef typename HandlerT::Context Context;
 
-  explicit ChannelHandlerPtr(HandlerPtr handler)
+  explicit HandlerPtr(Ptr handler)
     : handler_(std::move(handler)) {}
 
-  HandlerPtr getHandler() {
+  Ptr getHandler() {
     return handler_;
   }
 
-  void setHandler(HandlerPtr handler) {
+  void setHandler(Ptr handler) {
     if (handler == handler_) {
       return;
     }
@@ -163,9 +163,9 @@ class ChannelHandlerPtr : public ChannelHandler<
     }
   }
 
-  void read(Context* ctx, typename Handler::rin msg) override {
+  void read(Context* ctx, typename HandlerT::rin msg) override {
     DCHECK(handler_);
-    handler_->read(ctx, std::forward<typename Handler::rin>(msg));
+    handler_->read(ctx, std::forward<typename HandlerT::rin>(msg));
   }
 
   void readEOF(Context* ctx) override {
@@ -178,9 +178,9 @@ class ChannelHandlerPtr : public ChannelHandler<
     handler_->readException(ctx, std::move(e));
   }
 
-  Future<void> write(Context* ctx, typename Handler::win msg) override {
+  Future<void> write(Context* ctx, typename HandlerT::win msg) override {
     DCHECK(handler_);
-    return handler_->write(ctx, std::forward<typename Handler::win>(msg));
+    return handler_->write(ctx, std::forward<typename HandlerT::win>(msg));
   }
 
   Future<void> close(Context* ctx) override {
@@ -190,7 +190,7 @@ class ChannelHandlerPtr : public ChannelHandler<
 
  private:
   Context* ctx_;
-  HandlerPtr handler_;
+  Ptr handler_;
 };
 
 }}

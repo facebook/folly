@@ -55,7 +55,7 @@ class BytesReflector
 };
 
 TEST(FixedLengthFrameDecoder, FailWhenLengthFieldEndOffset) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -90,7 +90,7 @@ TEST(FixedLengthFrameDecoder, FailWhenLengthFieldEndOffset) {
 }
 
 TEST(LengthFieldFramePipeline, SimpleTest) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -111,7 +111,7 @@ TEST(LengthFieldFramePipeline, SimpleTest) {
 }
 
 TEST(LengthFieldFramePipeline, LittleEndian) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -132,7 +132,7 @@ TEST(LengthFieldFramePipeline, LittleEndian) {
 }
 
 TEST(LengthFieldFrameDecoder, Simple) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -163,7 +163,7 @@ TEST(LengthFieldFrameDecoder, Simple) {
 }
 
 TEST(LengthFieldFrameDecoder, NoStrip) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -194,7 +194,7 @@ TEST(LengthFieldFrameDecoder, NoStrip) {
 }
 
 TEST(LengthFieldFrameDecoder, Adjustment) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -225,7 +225,7 @@ TEST(LengthFieldFrameDecoder, Adjustment) {
 }
 
 TEST(LengthFieldFrameDecoder, PreHeader) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -257,7 +257,7 @@ TEST(LengthFieldFrameDecoder, PreHeader) {
 }
 
 TEST(LengthFieldFrameDecoder, PostHeader) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -289,7 +289,7 @@ TEST(LengthFieldFrameDecoder, PostHeader) {
 }
 
 TEST(LengthFieldFrameDecoderStrip, PrePostHeader) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -322,7 +322,7 @@ TEST(LengthFieldFrameDecoderStrip, PrePostHeader) {
 }
 
 TEST(LengthFieldFrameDecoder, StripPrePostHeaderFrameInclHeader) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -355,7 +355,7 @@ TEST(LengthFieldFrameDecoder, StripPrePostHeaderFrameInclHeader) {
 }
 
 TEST(LengthFieldFrameDecoder, FailTestLengthFieldEndOffset) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -380,7 +380,7 @@ TEST(LengthFieldFrameDecoder, FailTestLengthFieldEndOffset) {
 }
 
 TEST(LengthFieldFrameDecoder, FailTestLengthFieldFrameSize) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -407,7 +407,7 @@ TEST(LengthFieldFrameDecoder, FailTestLengthFieldFrameSize) {
 }
 
 TEST(LengthFieldFrameDecoder, FailTestLengthFieldInitialBytes) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -434,7 +434,7 @@ TEST(LengthFieldFrameDecoder, FailTestLengthFieldInitialBytes) {
 }
 
 TEST(LineBasedFrameDecoder, Simple) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -485,7 +485,7 @@ TEST(LineBasedFrameDecoder, Simple) {
 }
 
 TEST(LineBasedFrameDecoder, SaveDelimiter) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -534,7 +534,7 @@ TEST(LineBasedFrameDecoder, SaveDelimiter) {
 }
 
 TEST(LineBasedFrameDecoder, Fail) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -582,7 +582,7 @@ TEST(LineBasedFrameDecoder, Fail) {
 }
 
 TEST(LineBasedFrameDecoder, NewLineOnly) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline
@@ -609,7 +609,7 @@ TEST(LineBasedFrameDecoder, NewLineOnly) {
 }
 
 TEST(LineBasedFrameDecoder, CarriageNewLineOnly) {
-  ChannelPipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
+  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>> pipeline;
   int called = 0;
 
   pipeline

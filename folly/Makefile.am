@@ -273,10 +273,10 @@ nobase_follyinclude_HEADERS = \
 	wangle/bootstrap/ServerSocketFactory.h \
 	wangle/bootstrap/ClientBootstrap.h \
 	wangle/channel/AsyncSocketHandler.h \
-	wangle/channel/ChannelHandler.h \
-	wangle/channel/ChannelHandlerContext.h \
-	wangle/channel/ChannelPipeline.h \
+	wangle/channel/Handler.h \
+	wangle/channel/HandlerContext.h \
 	wangle/channel/OutputBufferingHandler.h \
+	wangle/channel/Pipeline.h \
 	wangle/concurrent/BlockingQueue.h \
 	wangle/concurrent/Codel.h \
 	wangle/concurrent/CPUThreadPoolExecutor.h \

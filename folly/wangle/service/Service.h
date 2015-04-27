@@ -20,7 +20,7 @@
 
 #include <folly/wangle/bootstrap/ServerBootstrap.h>
 #include <folly/wangle/bootstrap/ClientBootstrap.h>
-#include <folly/wangle/channel/ChannelPipeline.h>
+#include <folly/wangle/channel/Pipeline.h>
 #include <folly/wangle/channel/AsyncSocketHandler.h>
 
 namespace folly {
