@@ -34,9 +34,7 @@ class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
 
   void setPipeline(Pipeline* pipeline) {
     pipeline_ = pipeline;
-    pipeline->addBack(
-      HandlerPtr<SerialClientDispatcher<Pipeline, Req, Resp>, false>(
-        this));
+    pipeline->addBack(this);
     pipeline->finalize();
   }
 

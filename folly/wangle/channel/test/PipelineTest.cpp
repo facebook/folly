@@ -16,6 +16,7 @@
 
 #include <folly/wangle/channel/Handler.h>
 #include <folly/wangle/channel/Pipeline.h>
+#include <folly/wangle/channel/StaticPipeline.h>
 #include <folly/wangle/channel/AsyncSocketHandler.h>
 #include <folly/wangle/channel/OutputBufferingHandler.h>
 #include <folly/wangle/channel/test/MockHandler.h>
@@ -27,7 +28,6 @@ using namespace folly::wangle;
 using namespace testing;
 
 typedef StrictMock<MockHandlerAdapter<int, int>> IntHandler;
-typedef HandlerPtr<IntHandler, false> IntHandlerPtr;
 
 ACTION(FireRead) {
   arg0->fireRead(arg1);
@@ -55,7 +55,7 @@ TEST(PipelineTest, RealHandlersCompile) {
   auto socket = AsyncSocket::newSocket(&eb);
   // static
   {
-    Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
+    StaticPipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
       AsyncSocketHandler,
       OutputBufferingHandler>
     pipeline{AsyncSocketHandler(socket), OutputBufferingHandler()};
@@ -82,7 +82,7 @@ TEST(PipelineTest, FireActions) {
   EXPECT_CALL(handler1, attachPipeline(_));
   EXPECT_CALL(handler2, attachPipeline(_));
 
-  Pipeline<int, int, IntHandlerPtr, IntHandlerPtr>
+  StaticPipeline<int, int, IntHandler, IntHandler>
   pipeline(&handler1, &handler2);
 
   EXPECT_CALL(handler1, read_(_, _)).WillOnce(FireRead());
@@ -114,7 +114,7 @@ TEST(PipelineTest, FireActions) {
 TEST(PipelineTest, ReachEndOfPipeline) {
   IntHandler handler;
   EXPECT_CALL(handler, attachPipeline(_));
-  Pipeline<int, int, IntHandlerPtr>
+  StaticPipeline<int, int, IntHandler>
   pipeline(&handler);
 
   EXPECT_CALL(handler, read_(_, _)).WillOnce(FireRead());
@@ -143,7 +143,7 @@ TEST(PipelineTest, TurnAround) {
   EXPECT_CALL(handler1, attachPipeline(_));
   EXPECT_CALL(handler2, attachPipeline(_));
 
-  Pipeline<int, int, IntHandlerPtr, IntHandlerPtr>
+  StaticPipeline<int, int, IntHandler, IntHandler>
   pipeline(&handler1, &handler2);
 
   EXPECT_CALL(handler1, read_(_, _)).WillOnce(FireRead());
@@ -158,20 +158,20 @@ TEST(PipelineTest, TurnAround) {
 TEST(PipelineTest, DynamicFireActions) {
   IntHandler handler1, handler2, handler3;
   EXPECT_CALL(handler2, attachPipeline(_));
-  Pipeline<int, int, IntHandlerPtr>
+  StaticPipeline<int, int, IntHandler>
   pipeline(&handler2);
 
   EXPECT_CALL(handler1, attachPipeline(_));
   EXPECT_CALL(handler3, attachPipeline(_));
 
   pipeline
-    .addFront(IntHandlerPtr(&handler1))
-    .addBack(IntHandlerPtr(&handler3))
+    .addFront(&handler1)
+    .addBack(&handler3)
     .finalize();
 
-  EXPECT_TRUE(pipeline.getHandler<IntHandlerPtr>(0));
-  EXPECT_TRUE(pipeline.getHandler<IntHandlerPtr>(1));
-  EXPECT_TRUE(pipeline.getHandler<IntHandlerPtr>(2));
+  EXPECT_TRUE(pipeline.getHandler<IntHandler>(0));
+  EXPECT_TRUE(pipeline.getHandler<IntHandler>(1));
+  EXPECT_TRUE(pipeline.getHandler<IntHandler>(2));
 
   EXPECT_CALL(handler1, read_(_, _)).WillOnce(FireRead());
   EXPECT_CALL(handler2, read_(_, _)).WillOnce(FireRead());
@@ -217,7 +217,7 @@ TEST(Pipeline, DynamicConstruction) {
       std::invalid_argument);
   }
   {
-    Pipeline<std::string, std::string, StringHandler, StringHandler>
+    StaticPipeline<std::string, std::string, StringHandler, StringHandler>
     pipeline{StringHandler(), StringHandler()};
 
     // Exercise both addFront and addBack. Final pipeline is
@@ -235,7 +235,7 @@ TEST(Pipeline, DynamicConstruction) {
 TEST(Pipeline, AttachTransport) {
   IntHandler handler;
   EXPECT_CALL(handler, attachPipeline(_));
-  Pipeline<int, int, IntHandlerPtr>
+  StaticPipeline<int, int, IntHandler>
   pipeline(&handler);
 
   EventBase eb;

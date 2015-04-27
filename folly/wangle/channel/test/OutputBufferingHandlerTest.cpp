@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/wangle/channel/Pipeline.h>
+#include <folly/wangle/channel/StaticPipeline.h>
 #include <folly/wangle/channel/OutputBufferingHandler.h>
 #include <folly/wangle/channel/test/MockHandler.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -35,8 +35,8 @@ MATCHER_P(IOBufContains, str, "") { return arg->moveToFbString() == str; }
 TEST(OutputBufferingHandlerTest, Basic) {
   MockBytesHandler mockHandler;
   EXPECT_CALL(mockHandler, attachPipeline(_));
-  Pipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
-    HandlerPtr<MockBytesHandler, false>,
+  StaticPipeline<IOBufQueue&, std::unique_ptr<IOBuf>,
+    MockBytesHandler,
     OutputBufferingHandler>
   pipeline(&mockHandler, OutputBufferingHandler{});
 

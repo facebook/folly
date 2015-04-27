@@ -70,7 +70,7 @@ class ServerAcceptor
     Acceptor::init(nullptr, base_);
     CHECK(acceptorPipeline_);
 
-    acceptorPipeline_->addBack(folly::wangle::HandlerPtr<ServerAcceptor, false>(this));
+    acceptorPipeline_->addBack(this);
     acceptorPipeline_->finalize();
   }
 

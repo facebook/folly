@@ -279,6 +279,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/channel/HandlerContext.h \
 	wangle/channel/OutputBufferingHandler.h \
 	wangle/channel/Pipeline.h \
+	wangle/channel/StaticPipeline.h \
 	wangle/concurrent/BlockingQueue.h \
 	wangle/concurrent/Codel.h \
 	wangle/concurrent/CPUThreadPoolExecutor.h \

@@ -287,8 +287,7 @@ class TestHandlerPipelineFactory
  public:
   ServerBootstrap<BytesPipeline>::AcceptPipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
     auto pipeline = new ServerBootstrap<BytesPipeline>::AcceptPipeline;
-    auto handler = std::make_shared<HandlerPipeline>();
-      pipeline->addBack(HandlerPtr<HandlerPipeline>(handler));
+    pipeline->addBack(HandlerPipeline());
     return pipeline;
   }
 };
