@@ -17,6 +17,7 @@
 #ifndef FOLLY_BENCHMARK_H_
 #define FOLLY_BENCHMARK_H_
 
+#include <folly/ScopeGuard.h>
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
 #include <cassert>
@@ -26,6 +27,7 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <limits>
+#include <type_traits>
 
 DECLARE_bool(benchmark);
 
@@ -147,6 +149,13 @@ struct BenchmarkSuspender {
   void rehire() {
     assert(start.tv_nsec == 0 || start.tv_sec == 0);
     CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &start));
+  }
+
+  template <class F>
+  auto dismissing(F f) -> typename std::result_of<F()>::type {
+    SCOPE_EXIT { rehire(); };
+    dismiss();
+    return f();
   }
 
   /**
