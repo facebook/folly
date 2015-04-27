@@ -135,6 +135,7 @@ nobase_follyinclude_HEADERS = \
 	futures/Timekeeper.h \
 	futures/Try-inl.h \
 	futures/Try.h \
+	futures/Unit.h \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
 	futures/detail/ThreadWheelTimekeeper.h \
