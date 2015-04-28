@@ -25,6 +25,7 @@
 #include <folly/ThreadLocal.h>
 #include <folly/small_vector.h>
 #include <folly/Executor.h>
+#include <folly/Memory.h>
 #include <map>
 #include <memory>
 
