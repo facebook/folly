@@ -87,6 +87,16 @@ class LoadShedConfiguration {
   }
   double getMaxCpuUsage() const { return maxCpuUsage_; }
 
+  /**
+   * Set/get the minium actual free memory on the system.
+   */
+  void setMinFreeMem(uint64_t min) {
+    minFreeMem_ = min;
+  }
+  uint64_t getMinFreeMem() const {
+    return minFreeMem_;
+  }
+
   void setLoadUpdatePeriod(std::chrono::milliseconds period) {
     period_ = period;
   }
@@ -99,6 +109,7 @@ class LoadShedConfiguration {
   AddressSet whitelistAddrs_;
   NetworkSet whitelistNetworks_;
   uint64_t maxConnections_{0};
+  uint64_t minFreeMem_{0};
   double maxMemUsage_;
   double maxCpuUsage_;
   std::chrono::milliseconds period_;
