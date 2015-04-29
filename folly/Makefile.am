@@ -83,6 +83,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/ExecutionObserver.h \
 	experimental/fibers/Fiber.h \
 	experimental/fibers/Fiber-inl.h \
+	experimental/fibers/FiberIOExecutor.h \
 	experimental/fibers/FiberManager.h \
 	experimental/fibers/FiberManager-inl.h \
 	experimental/fibers/FiberManagerMap.h \
