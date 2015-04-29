@@ -404,17 +404,6 @@ class Future {
 };
 
 
-// Sugar for the most common case
-template <class Collection, class T, class F>
-auto reduce(Collection&& c, T&& initial, F&& func)
-    -> decltype(reduce(c.begin(), c.end(), initial, func)) {
-  return reduce(
-      c.begin(),
-      c.end(),
-      std::forward<T>(initial),
-      std::forward<F>(func));
-}
-
 } // folly
 
 #include <folly/futures/Future-inl.h>

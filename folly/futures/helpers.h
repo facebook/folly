@@ -153,7 +153,7 @@ Future<std::vector<Try<
   typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAll(InputIterator first, InputIterator last);
 
-// Sugar for the most common case
+/// Sugar for the most common case
 template <class Collection>
 auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
   return collectAll(c.begin(), c.end());
@@ -177,7 +177,7 @@ Future<typename detail::CollectContext<
 >::result_type>
 collect(InputIterator first, InputIterator last);
 
-// Sugar for the most common case
+/// Sugar for the most common case
 template <class Collection>
 auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
   return collect(c.begin(), c.end());
@@ -195,7 +195,7 @@ Future<std::pair<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
 
-// Sugar for the most common case
+/// Sugar for the most common case
 template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
@@ -213,7 +213,7 @@ Future<std::vector<std::pair<
   Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>>
 collectN(InputIterator first, InputIterator last, size_t n);
 
-// Sugar for the most common case
+/// Sugar for the most common case
 template <class Collection>
 auto collectN(Collection&& c, size_t n)
     -> decltype(collectN(c.begin(), c.end(), n)) {
@@ -245,5 +245,16 @@ template <class It, class T, class F,
           class Arg = MaybeTryArg<F, T, ItT>>
 typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
 reduce(It first, It last, T initial, F func);
+
+/// Sugar for the most common case
+template <class Collection, class T, class F>
+auto reduce(Collection&& c, T&& initial, F&& func)
+    -> decltype(reduce(c.begin(), c.end(), initial, func)) {
+  return reduce(
+      c.begin(),
+      c.end(),
+      std::forward<T>(initial),
+      std::forward<F>(func));
+}
 
 } // namespace folly
