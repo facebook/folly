@@ -29,6 +29,28 @@ TEST(MapUtil, get_default) {
   EXPECT_EQ(0, get_default(m, 3));
 }
 
+TEST(MapUtil, get_or_throw) {
+  std::map<int, int> m;
+  m[1] = 2;
+  EXPECT_EQ(2, get_or_throw(m, 1));
+  EXPECT_THROW(get_or_throw(m, 2), std::out_of_range);
+}
+
+TEST(MapUtil, get_or_throw_specified) {
+  std::map<int, int> m;
+  m[1] = 2;
+  EXPECT_EQ(2, get_or_throw<std::runtime_error>(m, 1));
+  EXPECT_THROW(get_or_throw<std::runtime_error>(m, 2), std::runtime_error);
+}
+
+TEST(MapUtil, get_optional) {
+  std::map<int, int> m;
+  m[1] = 2;
+  EXPECT_TRUE(get_optional(m, 1));
+  EXPECT_EQ(2, get_optional(m, 1).value());
+  EXPECT_FALSE(get_optional(m, 2));
+}
+
 TEST(MapUtil, get_ref_default) {
   std::map<int, int> m;
   m[1] = 2;
