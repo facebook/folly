@@ -22,26 +22,8 @@
 
 namespace folly { namespace wangle {
 
-namespace detail {
-
-template <class HandlerContext>
-class HandlerContextBase {
- protected:
-  template <class H>
-  void attachContext(H* handler, HandlerContext* ctx) {
-    if (++handler->attachCount_ == 1) {
-      handler->ctx_ = ctx;
-    } else {
-      handler->ctx_ = nullptr;
-    }
-  }
-};
-
-} // detail
-
 template <class In, class Out>
-class HandlerContext
-  : public detail::HandlerContextBase<HandlerContext<In, Out>> {
+class HandlerContext {
  public:
   virtual ~HandlerContext() {}
 
@@ -83,6 +65,15 @@ class PipelineContext {
   virtual void attachTransport() = 0;
   virtual void detachTransport() = 0;
 
+  template <class H, class HandlerContext>
+  void attachContext(H* handler, HandlerContext* ctx) {
+    if (++handler->attachCount_ == 1) {
+      handler->ctx_ = ctx;
+    } else {
+      handler->ctx_ = nullptr;
+    }
+  }
+
   void link(PipelineContext* other) {
     setNextIn(other);
     other->setNextOut(this);
@@ -94,68 +85,62 @@ class PipelineContext {
 };
 
 template <class In>
-class InboundHandlerContext {
+class InboundLink {
  public:
-  virtual ~InboundHandlerContext() {}
+  virtual ~InboundLink() {}
   virtual void read(In msg) = 0;
   virtual void readEOF() = 0;
   virtual void readException(exception_wrapper e) = 0;
 };
 
 template <class Out>
-class OutboundHandlerContext {
+class OutboundLink {
  public:
-  virtual ~OutboundHandlerContext() {}
+  virtual ~OutboundLink() {}
   virtual Future<void> write(Out msg) = 0;
   virtual Future<void> close() = 0;
 };
 
-template <class P, class H>
-class ContextImpl : public HandlerContext<typename H::rout,
-                                                 typename H::wout>,
-                    public InboundHandlerContext<typename H::rin>,
-                    public OutboundHandlerContext<typename H::win>,
-                    public PipelineContext {
+template <class P, class H, class Context>
+class ContextImplBase : public PipelineContext {
  public:
-  typedef typename H::rin Rin;
-  typedef typename H::rout Rout;
-  typedef typename H::win Win;
-  typedef typename H::wout Wout;
+  ~ContextImplBase() {}
 
-  explicit ContextImpl(P* pipeline, std::shared_ptr<H> handler) {
-    initialize(pipeline, std::move(handler));
+  H* getHandler() {
+    return handler_.get();
   }
-
-  // For StaticPipeline
-  ContextImpl() {}
-
-  ~ContextImpl() {}
 
   void initialize(P* pipeline, std::shared_ptr<H> handler) {
     pipeline_ = pipeline;
     handler_ = std::move(handler);
   }
 
-  H* getHandler() {
-    return handler_.get();
-  }
-
   // PipelineContext overrides
   void attachPipeline() override {
     if (!attached_) {
-      this->attachContext(handler_.get(), this);
-      handler_->attachPipeline(this);
+      this->attachContext(handler_.get(), impl_);
+      handler_->attachPipeline(impl_);
       attached_ = true;
     }
   }
 
   void detachPipeline() override {
-    handler_->detachPipeline(this);
+    handler_->detachPipeline(impl_);
     attached_ = false;
   }
 
+  void attachTransport() override {
+    DestructorGuard dg(pipeline_);
+    handler_->attachTransport(impl_);
+  }
+
+  void detachTransport() override {
+    DestructorGuard dg(pipeline_);
+    handler_->detachTransport(impl_);
+  }
+
   void setNextIn(PipelineContext* ctx) override {
-    auto nextIn = dynamic_cast<InboundHandlerContext<Rout>*>(ctx);
+    auto nextIn = dynamic_cast<InboundLink<typename H::rout>*>(ctx);
     if (nextIn) {
       nextIn_ = nextIn;
     } else {
@@ -164,7 +149,7 @@ class ContextImpl : public HandlerContext<typename H::rout,
   }
 
   void setNextOut(PipelineContext* ctx) override {
-    auto nextOut = dynamic_cast<OutboundHandlerContext<Wout>*>(ctx);
+    auto nextOut = dynamic_cast<OutboundLink<typename H::wout>*>(ctx);
     if (nextOut) {
       nextOut_ = nextOut;
     } else {
@@ -172,48 +157,74 @@ class ContextImpl : public HandlerContext<typename H::rout,
     }
   }
 
-  void attachTransport() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    handler_->attachTransport(this);
+ protected:
+  Context* impl_;
+  P* pipeline_;
+  std::shared_ptr<H> handler_;
+  InboundLink<typename H::rout>* nextIn_{nullptr};
+  OutboundLink<typename H::wout>* nextOut_{nullptr};
+
+ private:
+  bool attached_{false};
+  using DestructorGuard = typename P::DestructorGuard;
+};
+
+template <class P, class H>
+class ContextImpl : public HandlerContext<typename H::rout,
+                                                 typename H::wout>,
+                    public InboundLink<typename H::rin>,
+                    public OutboundLink<typename H::win>,
+                    public ContextImplBase<P, H, HandlerContext<typename H::rout, typename H::wout>> {
+ public:
+  typedef typename H::rin Rin;
+  typedef typename H::rout Rout;
+  typedef typename H::win Win;
+  typedef typename H::wout Wout;
+
+  explicit ContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+    this->impl_ = this;
+    this->initialize(pipeline, std::move(handler));
   }
 
-  void detachTransport() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    handler_->detachTransport(this);
+  // For StaticPipeline
+  ContextImpl() {
+    this->impl_ = this;
   }
+
+  ~ContextImpl() {}
 
   // HandlerContext overrides
   void fireRead(Rout msg) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    if (nextIn_) {
-      nextIn_->read(std::forward<Rout>(msg));
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->read(std::forward<Rout>(msg));
     } else {
       LOG(WARNING) << "read reached end of pipeline";
     }
   }
 
   void fireReadEOF() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    if (nextIn_) {
-      nextIn_->readEOF();
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->readEOF();
     } else {
       LOG(WARNING) << "readEOF reached end of pipeline";
     }
   }
 
   void fireReadException(exception_wrapper e) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    if (nextIn_) {
-      nextIn_->readException(std::move(e));
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->readException(std::move(e));
     } else {
       LOG(WARNING) << "readException reached end of pipeline";
     }
   }
 
   Future<void> fireWrite(Wout msg) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    if (nextOut_) {
-      return nextOut_->write(std::forward<Wout>(msg));
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextOut_) {
+      return this->nextOut_->write(std::forward<Wout>(msg));
     } else {
       LOG(WARNING) << "write reached end of pipeline";
       return makeFuture();
@@ -221,9 +232,9 @@ class ContextImpl : public HandlerContext<typename H::rout,
   }
 
   Future<void> fireClose() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    if (nextOut_) {
-      return nextOut_->close();
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextOut_) {
+      return this->nextOut_->close();
     } else {
       LOG(WARNING) << "close reached end of pipeline";
       return makeFuture();
@@ -231,60 +242,56 @@ class ContextImpl : public HandlerContext<typename H::rout,
   }
 
   std::shared_ptr<AsyncTransport> getTransport() override {
-    return pipeline_->getTransport();
+    return this->pipeline_->getTransport();
   }
 
   void setWriteFlags(WriteFlags flags) override {
-    pipeline_->setWriteFlags(flags);
+    this->pipeline_->setWriteFlags(flags);
   }
 
   WriteFlags getWriteFlags() override {
-    return pipeline_->getWriteFlags();
+    return this->pipeline_->getWriteFlags();
   }
 
   void setReadBufferSettings(
       uint64_t minAvailable,
       uint64_t allocationSize) override {
-    pipeline_->setReadBufferSettings(minAvailable, allocationSize);
+    this->pipeline_->setReadBufferSettings(minAvailable, allocationSize);
   }
 
   std::pair<uint64_t, uint64_t> getReadBufferSettings() override {
-    return pipeline_->getReadBufferSettings();
+    return this->pipeline_->getReadBufferSettings();
   }
 
-  // InboundHandlerContext overrides
+  // InboundLink overrides
   void read(Rin msg) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    handler_->read(this, std::forward<Rin>(msg));
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->read(this, std::forward<Rin>(msg));
   }
 
   void readEOF() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    handler_->readEOF(this);
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->readEOF(this);
   }
 
   void readException(exception_wrapper e) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    handler_->readException(this, std::move(e));
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->readException(this, std::move(e));
   }
 
-  // OutboundHandlerContext overrides
+  // OutboundLink overrides
   Future<void> write(Win msg) override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    return handler_->write(this, std::forward<Win>(msg));
+    DestructorGuard dg(this->pipeline_);
+    return this->handler_->write(this, std::forward<Win>(msg));
   }
 
   Future<void> close() override {
-    typename P::DestructorGuard dg(static_cast<DelayedDestruction*>(pipeline_));
-    return handler_->close(this);
+    DestructorGuard dg(this->pipeline_);
+    return this->handler_->close(this);
   }
 
  private:
-  P* pipeline_;
-  std::shared_ptr<H> handler_;
-  InboundHandlerContext<Rout>* nextIn_{nullptr};
-  OutboundHandlerContext<Wout>* nextOut_{nullptr};
-  bool attached_{false};
+  using DestructorGuard = typename P::DestructorGuard;
 };
 
 }}

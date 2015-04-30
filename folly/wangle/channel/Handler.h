@@ -43,7 +43,7 @@ class HandlerBase {
   }
 
  private:
-  friend detail::HandlerContextBase<Context>;
+  friend PipelineContext;
   uint64_t attachCount_{0};
   Context* ctx_{nullptr};
 };

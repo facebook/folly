@@ -133,12 +133,12 @@ class Pipeline : public DelayedDestruction {
       ctxs_[i]->link(ctxs_[i+1].get());
     }
 
-    back_ = dynamic_cast<OutboundHandlerContext<W>*>(ctxs_.back().get());
+    back_ = dynamic_cast<OutboundLink<W>*>(ctxs_.back().get());
     if (!back_) {
       throw std::invalid_argument("wrong type for last handler");
     }
 
-    front_ = dynamic_cast<InboundHandlerContext<R>*>(ctxs_.front().get());
+    front_ = dynamic_cast<InboundLink<R>*>(ctxs_.front().get());
     if (!front_) {
       throw std::invalid_argument("wrong type for first handler");
     }
@@ -205,8 +205,8 @@ class Pipeline : public DelayedDestruction {
   std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
 
   bool isStatic_{false};
-  InboundHandlerContext<R>* front_{nullptr};
-  OutboundHandlerContext<W>* back_{nullptr};
+  InboundLink<R>* front_{nullptr};
+  OutboundLink<W>* back_{nullptr};
   std::vector<std::shared_ptr<PipelineContext>> ctxs_;
   std::shared_ptr<PipelineContext> owner_;
 };
