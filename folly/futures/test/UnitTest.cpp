@@ -28,3 +28,8 @@ TEST(Unit, voidOrUnit) {
   EXPECT_TRUE(is_void_or_unit<Unit>::value);
   EXPECT_FALSE(is_void_or_unit<int>::value);
 }
+
+TEST(Unit, PromiseSetValue) {
+  Promise<Unit> p;
+  p.setValue();
+}

@@ -1779,8 +1779,3 @@ TEST(Map, Basic) {
 
   EXPECT_TRUE(collect(fs2).isReady());
 }
-
-TEST(Promise, defaultConstructedUnit) {
-  Promise<Unit> p;
-  p.setValue();
-}
