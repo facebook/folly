@@ -26,11 +26,32 @@
 
 namespace folly { namespace wangle {
 
+// See Pipeline docblock for purpose
+struct Nothing{};
+
+namespace detail {
+
+template <class T>
+inline void logWarningIfNotNothing(const std::string& warning) {
+  LOG(WARNING) << warning;
+}
+
+template <>
+inline void logWarningIfNotNothing<Nothing>(const std::string& warning) {
+  // do nothing
+}
+
+} // detail
+
 /*
  * R is the inbound type, i.e. inbound calls start with pipeline.read(R)
  * W is the outbound type, i.e. outbound calls start with pipeline.write(W)
+ *
+ * Use Nothing for one of the types if your pipeline is unidirectional.
+ * If R is Nothing, read(), readEOF(), and readException() will be disabled.
+ * If W is Nothing, write() and close() will be disabled.
  */
-template <class R, class W>
+template <class R, class W = Nothing>
 class Pipeline : public DelayedDestruction {
  public:
   Pipeline() : isStatic_(false) {}
@@ -61,21 +82,27 @@ class Pipeline : public DelayedDestruction {
     return readBufferSettings_;
   }
 
-  void read(R msg) {
+  template <class T = R>
+  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  read(R msg) {
     if (!front_) {
       throw std::invalid_argument("read(): no inbound handler in Pipeline");
     }
     front_->read(std::forward<R>(msg));
   }
 
-  void readEOF() {
+  template <class T = R>
+  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  readEOF() {
     if (!front_) {
       throw std::invalid_argument("readEOF(): no inbound handler in Pipeline");
     }
     front_->readEOF();
   }
 
-  void readException(exception_wrapper e) {
+  template <class T = R>
+  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  readException(exception_wrapper e) {
     if (!front_) {
       throw std::invalid_argument(
           "readException(): no inbound handler in Pipeline");
@@ -83,14 +110,18 @@ class Pipeline : public DelayedDestruction {
     front_->readException(std::move(e));
   }
 
-  Future<void> write(W msg) {
+  template <class T = W>
+  typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+  write(W msg) {
     if (!back_) {
       throw std::invalid_argument("write(): no outbound handler in Pipeline");
     }
     return back_->write(std::forward<W>(msg));
   }
 
-  Future<void> close() {
+  template <class T = W>
+  typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+  close() {
     if (!back_) {
       throw std::invalid_argument("close(): no outbound handler in Pipeline");
     }
@@ -154,12 +185,14 @@ class Pipeline : public DelayedDestruction {
     }
 
     if (!front_) {
-      LOG(WARNING) << "No inbound handler in Pipeline, "
-                      "inbound operations will throw std::invalid_argument";
+      detail::logWarningIfNotNothing<R>(
+          "No inbound handler in Pipeline, inbound operations will throw "
+          "std::invalid_argument");
     }
     if (!back_) {
-      LOG(WARNING) << "No outbound handler in Pipeline, "
-                      "outbound operations will throw std::invalid_argument";
+      detail::logWarningIfNotNothing<W>(
+          "No outbound handler in Pipeline, outbound operations will throw "
+          "std::invalid_argument");
     }
 
     for (auto it = ctxs_.rbegin(); it != ctxs_.rend(); it++) {

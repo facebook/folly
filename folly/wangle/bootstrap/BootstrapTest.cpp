@@ -267,17 +267,11 @@ TEST(Bootstrap, ExistingSocket) {
 
 std::atomic<int> connections{0};
 
-class TestHandlerPipeline
-    : public HandlerAdapter<void*,
-                                   std::exception> {
+class TestHandlerPipeline : public InboundHandler<void*> {
  public:
   void read(Context* ctx, void* conn) {
     connections++;
     return ctx->fireRead(conn);
-  }
-
-  Future<void> write(Context* ctx, std::exception e) {
-    return ctx->fireWrite(e);
   }
 };
 
@@ -316,16 +310,10 @@ TEST(Bootstrap, LoadBalanceHandler) {
   CHECK(connections == 1);
 }
 
-class TestUDPPipeline
-    : public HandlerAdapter<void*,
-                                   std::exception> {
+class TestUDPPipeline : public InboundHandler<void*> {
  public:
   void read(Context* ctx, void* conn) {
     connections++;
-  }
-
-  Future<void> write(Context* ctx, std::exception e) {
-    return ctx->fireWrite(e);
   }
 };
 

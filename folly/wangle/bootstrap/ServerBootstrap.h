@@ -52,9 +52,7 @@ class ServerBootstrap {
     join();
   }
 
-  typedef wangle::Pipeline<
-   void*,
-   std::exception> AcceptPipeline;
+  typedef wangle::Pipeline<void*> AcceptPipeline;
   /*
    * Pipeline used to add connections to event bases.
    * This is used for UDP or for load balancing

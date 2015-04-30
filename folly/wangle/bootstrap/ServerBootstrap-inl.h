@@ -60,8 +60,7 @@ class ServerAcceptor
  public:
   explicit ServerAcceptor(
         std::shared_ptr<PipelineFactory<Pipeline>> pipelineFactory,
-        std::shared_ptr<folly::wangle::Pipeline<
-                          void*, std::exception>> acceptorPipeline,
+        std::shared_ptr<folly::wangle::Pipeline<void*>> acceptorPipeline,
         EventBase* base)
       : Acceptor(ServerSocketConfig())
       , base_(base)
@@ -105,8 +104,7 @@ class ServerAcceptor
   EventBase* base_;
 
   std::shared_ptr<PipelineFactory<Pipeline>> childPipelineFactory_;
-  std::shared_ptr<folly::wangle::Pipeline<
-    void*, std::exception>> acceptorPipeline_;
+  std::shared_ptr<folly::wangle::Pipeline<void*>> acceptorPipeline_;
 };
 
 template <typename Pipeline>
@@ -114,22 +112,19 @@ class ServerAcceptorFactory : public AcceptorFactory {
  public:
   explicit ServerAcceptorFactory(
     std::shared_ptr<PipelineFactory<Pipeline>> factory,
-    std::shared_ptr<PipelineFactory<folly::wangle::Pipeline<
-    void*, std::exception>>> pipeline)
+    std::shared_ptr<PipelineFactory<folly::wangle::Pipeline<void*>>> pipeline)
     : factory_(factory)
     , pipeline_(pipeline) {}
 
   std::shared_ptr<Acceptor> newAcceptor(EventBase* base) {
-    std::shared_ptr<folly::wangle::Pipeline<
-                      void*, std::exception>> pipeline(
-                        pipeline_->newPipeline(nullptr));
+    std::shared_ptr<folly::wangle::Pipeline<void*>> pipeline(
+        pipeline_->newPipeline(nullptr));
     return std::make_shared<ServerAcceptor<Pipeline>>(factory_, pipeline, base);
   }
  private:
   std::shared_ptr<PipelineFactory<Pipeline>> factory_;
   std::shared_ptr<PipelineFactory<
-    folly::wangle::Pipeline<
-      void*, std::exception>>> pipeline_;
+    folly::wangle::Pipeline<void*>>> pipeline_;
 };
 
 class ServerWorkerPool : public folly::wangle::ThreadPoolExecutor::Observer {
@@ -179,10 +174,8 @@ void ServerWorkerPool::forEachWorker(F&& f) const {
 }
 
 class DefaultAcceptPipelineFactory
-    : public PipelineFactory<wangle::Pipeline<void*, std::exception>> {
-  typedef wangle::Pipeline<
-      void*,
-      std::exception> AcceptPipeline;
+    : public PipelineFactory<wangle::Pipeline<void*>> {
+  typedef wangle::Pipeline<void*> AcceptPipeline;
 
  public:
   AcceptPipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
