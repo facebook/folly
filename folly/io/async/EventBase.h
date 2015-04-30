@@ -575,7 +575,7 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
 
   void detachTimeoutManager(AsyncTimeout* obj) override;
 
-  bool scheduleTimeout(AsyncTimeout* obj, std::chrono::milliseconds timeout)
+  bool scheduleTimeout(AsyncTimeout* obj, TimeoutManager::timeout_type timeout)
     override;
 
   void cancelTimeout(AsyncTimeout* obj) override;

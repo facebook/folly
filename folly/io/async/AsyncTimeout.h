@@ -25,6 +25,7 @@
 #include <boost/noncopyable.hpp>
 #include <event.h>
 #include <memory>
+#include <utility>
 
 namespace folly {
 
@@ -98,7 +99,7 @@ class AsyncTimeout : private boost::noncopyable {
    *         rescheduling an existing timeout.
    */
   bool scheduleTimeout(uint32_t milliseconds);
-  bool scheduleTimeout(std::chrono::milliseconds timeout);
+  bool scheduleTimeout(TimeoutManager::timeout_type timeout);
 
   /**
    * Cancel the timeout, if it is running.
@@ -151,6 +152,72 @@ class AsyncTimeout : private boost::noncopyable {
     return &event_;
   }
 
+  /**
+   * Convenience function that wraps a function object as
+   * an AsyncTimeout instance and returns the wrapper.
+   *
+   * Specially useful when using lambdas as AsyncTimeout
+   * observers.
+   *
+   * Example:
+   *
+   *  void foo(TimeoutManager &manager) {
+   *    std::atomic_bool done = false;
+   *
+   *    auto observer = AsyncTimeout::make(manager, [&] {
+   *      std::cout << "hello, world!" << std::endl;
+   *      done = true;
+   *    });
+   *
+   *    observer->scheduleTimeout(std::chrono::seconds(5));
+   *
+   *    while (!done); // busy wait
+   *  }
+   *
+   * @author: Marcelo Juchem <marcelo@fb.com>
+   */
+  template <typename TCallback>
+  static std::unique_ptr<AsyncTimeout> make(
+    TimeoutManager &manager,
+    TCallback &&callback
+  );
+
+  /**
+   * Convenience function that wraps a function object as
+   * an AsyncTimeout instance and returns the wrapper
+   * after scheduling it using the given TimeoutManager.
+   *
+   * This is equivalent to calling `make_async_timeout`
+   * followed by a `scheduleTimeout` on the resulting
+   * wrapper.
+   *
+   * Specially useful when using lambdas as AsyncTimeout
+   * observers.
+   *
+   * Example:
+   *
+   *  void foo(TimeoutManager &manager) {
+   *    std::atomic_bool done = false;
+   *
+   *    auto observer = AsyncTimeout::schedule(
+   *      std::chrono::seconds(5), manager, [&] {
+   *        std::cout << "hello, world!" << std::endl;
+   *        done = true;
+   *      }
+   *    );
+   *
+   *    while (!done); // busy wait
+   *  }
+   *
+   * @author: Marcelo Juchem <marcelo@fb.com>
+   */
+  template <typename TCallback>
+  static std::unique_ptr<AsyncTimeout> schedule(
+    TimeoutManager::timeout_type timeout,
+    TimeoutManager &manager,
+    TCallback &&callback
+  );
+
  private:
   static void libeventCallback(int fd, short events, void* arg);
 
@@ -166,5 +233,60 @@ class AsyncTimeout : private boost::noncopyable {
   // Save the request context for when the timeout fires.
   std::shared_ptr<RequestContext> context_;
 };
+
+namespace detail {
+
+/**
+ * Wraps a function object as an AsyncTimeout instance.
+ *
+ * @author: Marcelo Juchem <marcelo@fb.com>
+ */
+template <typename TCallback>
+struct async_timeout_wrapper:
+  public AsyncTimeout
+{
+  template <typename UCallback>
+  async_timeout_wrapper(TimeoutManager *manager, UCallback &&callback):
+    AsyncTimeout(manager),
+    callback_(std::forward<UCallback>(callback))
+  {}
+
+  void timeoutExpired() noexcept {
+    static_assert(
+      noexcept(std::declval<TCallback>()()),
+      "callback must be declared noexcept, e.g.: `[]() noexcept {}`"
+    );
+    callback_();
+  }
+
+private:
+  TCallback callback_;
+};
+
+} // namespace detail {
+
+template <typename TCallback>
+std::unique_ptr<AsyncTimeout> AsyncTimeout::make(
+  TimeoutManager &manager,
+  TCallback &&callback
+) {
+  return std::unique_ptr<AsyncTimeout>(
+    new detail::async_timeout_wrapper<typename std::decay<TCallback>::type>(
+      std::addressof(manager),
+      std::forward<TCallback>(callback)
+    )
+  );
+}
+
+template <typename TCallback>
+std::unique_ptr<AsyncTimeout> AsyncTimeout::schedule(
+  TimeoutManager::timeout_type timeout,
+  TimeoutManager &manager,
+  TCallback &&callback
+) {
+  auto wrapper = AsyncTimeout::make(manager, std::forward<TCallback>(callback));
+  wrapper->scheduleTimeout(timeout);
+  return wrapper;
+}
 
 } // folly

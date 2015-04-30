@@ -781,7 +781,7 @@ void EventBase::detachTimeoutManager(AsyncTimeout* obj) {
 }
 
 bool EventBase::scheduleTimeout(AsyncTimeout* obj,
-                                 std::chrono::milliseconds timeout) {
+                                 TimeoutManager::timeout_type timeout) {
   assert(isInEventBaseThread());
   // Set up the timeval and add the event
   struct timeval tv;

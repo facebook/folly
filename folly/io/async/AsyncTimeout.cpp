@@ -81,14 +81,14 @@ AsyncTimeout::~AsyncTimeout() {
   cancelTimeout();
 }
 
-bool AsyncTimeout::scheduleTimeout(std::chrono::milliseconds timeout) {
+bool AsyncTimeout::scheduleTimeout(TimeoutManager::timeout_type timeout) {
   assert(timeoutManager_ != nullptr);
   context_ = RequestContext::saveContext();
   return timeoutManager_->scheduleTimeout(this, timeout);
 }
 
 bool AsyncTimeout::scheduleTimeout(uint32_t milliseconds) {
-  return scheduleTimeout(std::chrono::milliseconds(milliseconds));
+  return scheduleTimeout(TimeoutManager::timeout_type(milliseconds));
 }
 
 void AsyncTimeout::cancelTimeout() {
