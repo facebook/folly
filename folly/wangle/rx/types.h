@@ -25,7 +25,7 @@ namespace folly { namespace wangle {
   // alias it.
   typedef std::shared_ptr<folly::Executor> SchedulerPtr;
 
-  template <class T, size_t InlineObservers = 3> struct Observable;
+  template <class T, size_t InlineObservers = 3> class Observable;
   template <class T> struct Observer;
   template <class T> struct Subject;
 
