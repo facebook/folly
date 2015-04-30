@@ -25,13 +25,13 @@ using namespace folly::wangle;
 using namespace folly::io;
 
 class FrameTester
-    : public BytesToBytesHandler {
+    : public InboundHandler<std::unique_ptr<IOBuf>> {
  public:
-  FrameTester(std::function<void(std::unique_ptr<IOBuf>)> test)
+  explicit FrameTester(std::function<void(std::unique_ptr<IOBuf>)> test)
     : test_(test) {}
 
-  void read(Context* ctx, IOBufQueue& q) {
-    test_(q.move());
+  void read(Context* ctx, std::unique_ptr<IOBuf> buf) {
+    test_(std::move(buf));
   }
 
   void readException(Context* ctx, exception_wrapper w) {

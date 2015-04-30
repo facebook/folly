@@ -159,7 +159,7 @@ class HandlerAdapter : public Handler<R, R, W, W> {
 typedef HandlerAdapter<IOBufQueue&, std::unique_ptr<IOBuf>>
 BytesToBytesHandler;
 
-typedef InboundHandler<IOBufQueue&>
+typedef InboundHandler<IOBufQueue&, std::unique_ptr<IOBuf>>
 InboundBytesToBytesHandler;
 
 typedef OutboundHandler<std::unique_ptr<IOBuf>>

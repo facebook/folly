@@ -62,22 +62,38 @@ class Pipeline : public DelayedDestruction {
   }
 
   void read(R msg) {
+    if (!front_) {
+      throw std::invalid_argument("read(): no inbound handler in Pipeline");
+    }
     front_->read(std::forward<R>(msg));
   }
 
   void readEOF() {
+    if (!front_) {
+      throw std::invalid_argument("readEOF(): no inbound handler in Pipeline");
+    }
     front_->readEOF();
   }
 
   void readException(exception_wrapper e) {
+    if (!front_) {
+      throw std::invalid_argument(
+          "readException(): no inbound handler in Pipeline");
+    }
     front_->readException(std::move(e));
   }
 
   Future<void> write(W msg) {
+    if (!back_) {
+      throw std::invalid_argument("write(): no outbound handler in Pipeline");
+    }
     return back_->write(std::forward<W>(msg));
   }
 
   Future<void> close() {
+    if (!back_) {
+      throw std::invalid_argument("close(): no outbound handler in Pipeline");
+    }
     return back_->close();
   }
 
@@ -138,10 +154,12 @@ class Pipeline : public DelayedDestruction {
     }
 
     if (!front_) {
-      throw std::invalid_argument("no inbound handler in Pipeline");
+      LOG(WARNING) << "No inbound handler in Pipeline, "
+                      "inbound operations will throw std::invalid_argument";
     }
     if (!back_) {
-      throw std::invalid_argument("no outbound handler in Pipeline");
+      LOG(WARNING) << "No outbound handler in Pipeline, "
+                      "outbound operations will throw std::invalid_argument";
     }
 
     for (auto it = ctxs_.rbegin(); it != ctxs_.rend(); it++) {

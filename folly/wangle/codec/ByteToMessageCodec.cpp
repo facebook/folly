@@ -23,8 +23,7 @@ void ByteToMessageCodec::read(Context* ctx, IOBufQueue& q) {
   while (true) {
     result = decode(ctx, q, needed);
     if (result) {
-      q_.append(std::move(result));
-      ctx->fireRead(q_);
+      ctx->fireRead(std::move(result));
     } else {
       break;
     }

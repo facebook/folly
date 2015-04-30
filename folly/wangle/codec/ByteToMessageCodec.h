@@ -47,9 +47,6 @@ class ByteToMessageCodec
     Context* ctx, IOBufQueue& buf, size_t&) = 0;
 
   void read(Context* ctx, IOBufQueue& q);
-
- private:
-  IOBufQueue q_;
 };
 
 }}

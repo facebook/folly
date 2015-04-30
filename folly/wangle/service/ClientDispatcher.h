@@ -26,11 +26,11 @@ namespace folly { namespace wangle {
  * only one request is allowed at a time.
  */
 template <typename Pipeline, typename Req, typename Resp = Req>
-class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
+class SerialClientDispatcher : public InboundHandler<Req>
                              , public Service<Req, Resp> {
  public:
 
-  typedef typename HandlerAdapter<Req, Resp>::Context Context;
+  typedef typename InboundHandler<Req>::Context Context;
 
   void setPipeline(Pipeline* pipeline) {
     pipeline_ = pipeline;

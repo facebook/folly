@@ -250,6 +250,13 @@ TEST(PipelineTest, HandlerInPipelineTwice) {
   EXPECT_CALL(handler, detachPipeline(_)).Times(2);
 }
 
+TEST(PipelineTest, NoDetachOnOwner) {
+  IntHandler handler;
+  EXPECT_CALL(handler, attachPipeline(_));
+  StaticPipeline<int, int, IntHandler> pipeline(&handler);
+  pipeline.setOwner(&handler);
+}
+
 template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>
 class ConcreteHandler : public Handler<Rin, Rout, Win, Wout> {
   typedef typename Handler<Rin, Rout, Win, Wout>::Context Context;
@@ -262,22 +269,21 @@ typedef HandlerAdapter<std::string, std::string> StringHandler;
 typedef ConcreteHandler<int, std::string> IntToStringHandler;
 typedef ConcreteHandler<std::string, int> StringToIntHandler;
 
-TEST(Pipeline, DynamicConstruction) {
-  {
-    Pipeline<int, int> pipeline;
-    EXPECT_THROW(
-      pipeline
-        .addBack(HandlerAdapter<std::string, std::string>{})
-        .finalize(), std::invalid_argument);
-  }
-  {
-    Pipeline<int, int> pipeline;
-    EXPECT_THROW(
-      pipeline
-        .addFront(HandlerAdapter<std::string, std::string>{})
-        .finalize(),
+TEST(Pipeline, MissingInboundOrOutbound) {
+  Pipeline<int, int> pipeline;
+  pipeline
+    .addBack(HandlerAdapter<std::string, std::string>{})
+    .finalize();
+  EXPECT_THROW(pipeline.read(0), std::invalid_argument);
+  EXPECT_THROW(pipeline.readEOF(), std::invalid_argument);
+  EXPECT_THROW(
+      pipeline.readException(exception_wrapper(std::runtime_error("blah"))),
       std::invalid_argument);
-  }
+  EXPECT_THROW(pipeline.write(0), std::invalid_argument);
+  EXPECT_THROW(pipeline.close(), std::invalid_argument);
+}
+
+TEST(Pipeline, DynamicConstruction) {
   {
     StaticPipeline<std::string, std::string, StringHandler, StringHandler>
     pipeline{StringHandler(), StringHandler()};

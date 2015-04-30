@@ -28,7 +28,7 @@ namespace folly {
 template <typename Pipeline>
 class ServerAcceptor
     : public Acceptor
-    , public folly::wangle::HandlerAdapter<void*, std::exception> {
+    , public folly::wangle::InboundHandler<void*> {
   typedef std::unique_ptr<Pipeline,
                           folly::DelayedDestruction::Destructor> PipelinePtr;
 
@@ -84,10 +84,6 @@ class ServerAcceptor
           folly::DelayedDestruction::Destructor())));
     auto connection = new ServerConnection(std::move(pipeline));
     Acceptor::addConnection(connection);
-  }
-
-  folly::Future<void> write(Context* ctx, std::exception e) {
-    return ctx->fireWrite(e);
   }
 
   /* See Acceptor::onNewConnection for details */
