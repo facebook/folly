@@ -58,7 +58,8 @@ namespace futures {
    */
   template <class It, class F,
             class ItT = typename std::iterator_traits<It>::value_type,
-            class Result = decltype(std::declval<ItT>().then(std::declval<F>()))>
+            class Result
+      = typename decltype(std::declval<ItT>().then(std::declval<F>()))::value_type>
   std::vector<Future<Result>> map(It first, It last, F func);
 
   // Sugar for the most common case

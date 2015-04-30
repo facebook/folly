@@ -1765,7 +1765,7 @@ TEST(Map, Basic) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  auto fs2 = futures::map(fs, [&](int i){
+  std::vector<Future<void>> fs2 = futures::map(fs, [&](int i){
     c += i;
   });
 
