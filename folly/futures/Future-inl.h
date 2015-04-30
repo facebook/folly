@@ -620,13 +620,13 @@ struct CollectContext {
     Optional<T>
    >::type VecT;
 
-  explicit CollectContext(int n) : count(0), threw(false) {
+  explicit CollectContext(int n) : count(0), success_count(0), threw(false) {
     results.resize(n);
   }
 
   Promise<std::vector<T>> p;
   std::vector<VecT> results;
-  std::atomic<size_t> count;
+  std::atomic<size_t> count, success_count;
   std::atomic_bool threw;
 
   typedef std::vector<T> result_type;
@@ -647,10 +647,10 @@ struct CollectContext {
 template <>
 struct CollectContext<void> {
 
-  explicit CollectContext(int n) : count(0), threw(false) {}
+  explicit CollectContext(int n) : count(0), success_count(0), threw(false) {}
 
   Promise<void> p;
-  std::atomic<size_t> count;
+  std::atomic<size_t> count, success_count;
   std::atomic_bool threw;
 
   typedef void result_type;
@@ -690,7 +690,6 @@ collect(InputIterator first, InputIterator last) {
      assert(i < n);
      auto& f = *first;
      f.setCallback_([ctx, i, n](Try<T> t) {
-       auto c = ++ctx->count;
 
        if (t.hasException()) {
          if (!ctx->threw.exchange(true)) {
@@ -698,12 +697,12 @@ collect(InputIterator first, InputIterator last) {
          }
        } else if (!ctx->threw) {
          ctx->addResult(i, t);
-         if (c == n) {
+         if (++ctx->success_count == n) {
            ctx->setValue();
          }
        }
 
-       if (c == n) {
+       if (++ctx->count == n) {
          delete ctx;
        }
      });
