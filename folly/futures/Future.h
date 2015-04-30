@@ -58,8 +58,10 @@ class Future {
   /* implicit */
   template <class T2 = T> Future(T2&& val);
 
-  template <class F = T,
-            typename std::enable_if<std::is_void<F>::value, int>::type = 0>
+  template <class T2 = T,
+            typename std::enable_if<
+              folly::is_void_or_unit<T2>::value,
+              int>::type = 0>
   Future();
 
   ~Future();

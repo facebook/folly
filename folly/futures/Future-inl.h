@@ -51,11 +51,13 @@ Future<T>::Future(T2&& val) : core_(nullptr) {
   *this = p.getFuture();
 }
 
-template <>
-template <class F,
-          typename std::enable_if<std::is_void<F>::value, int>::type>
-Future<void>::Future() : core_(nullptr) {
-  Promise<void> p;
+template <class T>
+template <class T2,
+          typename std::enable_if<
+            folly::is_void_or_unit<T2>::value,
+            int>::type>
+Future<T>::Future() : core_(nullptr) {
+  Promise<T> p;
   p.setValue();
   *this = p.getFuture();
 }

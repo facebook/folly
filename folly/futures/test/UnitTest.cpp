@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
-namespace folly {
 
-struct Unit {};
+#include <folly/futures/Future.h>
+#include <gtest/gtest.h>
 
-template <class T>
-struct is_void_or_unit : public std::conditional<
-  std::is_void<T>::value || std::is_same<Unit, T>::value,
-  std::true_type,
-  std::false_type>::type
-{};
+using namespace folly;
 
+TEST(Unit, FutureDefaultCtor) {
+  Future<Unit>();
+}
+
+TEST(Unit, voidOrUnit) {
+  EXPECT_TRUE(is_void_or_unit<void>::value);
+  EXPECT_TRUE(is_void_or_unit<Unit>::value);
+  EXPECT_FALSE(is_void_or_unit<int>::value);
 }
