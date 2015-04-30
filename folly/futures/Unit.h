@@ -16,7 +16,16 @@
 #pragma once
 namespace folly {
 
-struct Unit {};
+struct Unit {
+  template <class T> struct Lift : public std::false_type {
+    using type = T;
+  };
+};
+
+template <>
+struct Unit::Lift<void> : public std::true_type {
+  using type = Unit;
+};
 
 template <class T>
 struct is_void_or_unit : public std::conditional<

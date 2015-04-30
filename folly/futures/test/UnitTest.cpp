@@ -33,3 +33,17 @@ TEST(Unit, PromiseSetValue) {
   Promise<Unit> p;
   p.setValue();
 }
+
+TEST(Unit, LiftInt) {
+  using Lifted = Unit::Lift<int>;
+  EXPECT_FALSE(Lifted::value);
+  auto v = std::is_same<int, Lifted::type>::value;
+  EXPECT_TRUE(v);
+}
+
+TEST(Unit, LiftVoid) {
+  using Lifted = Unit::Lift<void>;
+  EXPECT_TRUE(Lifted::value);
+  auto v = std::is_same<Unit, Lifted::type>::value;
+  EXPECT_TRUE(v);
+}
