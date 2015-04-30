@@ -47,7 +47,7 @@ namespace folly { namespace wangle {
  *
  */
 class LengthFieldPrepender
-: public BytesToBytesHandler {
+: public OutboundBytesToBytesHandler {
  public:
   LengthFieldPrepender(
     int lengthFieldLength = 4,

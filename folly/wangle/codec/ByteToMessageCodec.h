@@ -40,7 +40,7 @@ namespace folly { namespace wangle {
  * IOBufQueue.front(), without split() or pop_front().
  */
 class ByteToMessageCodec
-    : public BytesToBytesHandler {
+    : public InboundBytesToBytesHandler {
  public:
 
   virtual std::unique_ptr<IOBuf> decode(

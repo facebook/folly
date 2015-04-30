@@ -55,6 +55,39 @@ class HandlerContext {
   */
 };
 
+template <class In>
+class InboundHandlerContext {
+ public:
+  virtual ~InboundHandlerContext() {}
+
+  virtual void fireRead(In msg) = 0;
+  virtual void fireReadEOF() = 0;
+  virtual void fireReadException(exception_wrapper e) = 0;
+
+  virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
+
+  // TODO Need get/set writeFlags, readBufferSettings? Probably not.
+  // Do we even really need them stored in the pipeline at all?
+  // Could just always delegate to the socket impl
+};
+
+template <class Out>
+class OutboundHandlerContext {
+ public:
+  virtual ~OutboundHandlerContext() {}
+
+  virtual Future<void> fireWrite(Out msg) = 0;
+  virtual Future<void> fireClose() = 0;
+
+  virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
+};
+
+enum class HandlerDir {
+  IN,
+  OUT,
+  BOTH
+};
+
 class PipelineContext {
  public:
   virtual ~PipelineContext() {}
@@ -74,12 +107,6 @@ class PipelineContext {
     }
   }
 
-  void link(PipelineContext* other) {
-    setNextIn(other);
-    other->setNextOut(this);
-  }
-
- protected:
   virtual void setNextIn(PipelineContext* ctx) = 0;
   virtual void setNextOut(PipelineContext* ctx) = 0;
 };
@@ -144,7 +171,7 @@ class ContextImplBase : public PipelineContext {
     if (nextIn) {
       nextIn_ = nextIn;
     } else {
-      throw std::invalid_argument("wrong type in setNextIn");
+      throw std::invalid_argument("inbound type mismatch");
     }
   }
 
@@ -153,7 +180,7 @@ class ContextImplBase : public PipelineContext {
     if (nextOut) {
       nextOut_ = nextOut;
     } else {
-      throw std::invalid_argument("wrong type in setNextOut");
+      throw std::invalid_argument("outbound type mismatch");
     }
   }
 
@@ -170,16 +197,19 @@ class ContextImplBase : public PipelineContext {
 };
 
 template <class P, class H>
-class ContextImpl : public HandlerContext<typename H::rout,
-                                                 typename H::wout>,
-                    public InboundLink<typename H::rin>,
-                    public OutboundLink<typename H::win>,
-                    public ContextImplBase<P, H, HandlerContext<typename H::rout, typename H::wout>> {
+class ContextImpl
+  : public HandlerContext<typename H::rout,
+                          typename H::wout>,
+    public InboundLink<typename H::rin>,
+    public OutboundLink<typename H::win>,
+    public ContextImplBase<P, H, HandlerContext<typename H::rout,
+                                                typename H::wout>> {
  public:
   typedef typename H::rin Rin;
   typedef typename H::rout Rout;
   typedef typename H::win Win;
   typedef typename H::wout Wout;
+  static const HandlerDir dir = HandlerDir::BOTH;
 
   explicit ContextImpl(P* pipeline, std::shared_ptr<H> handler) {
     this->impl_ = this;
@@ -292,6 +322,159 @@ class ContextImpl : public HandlerContext<typename H::rout,
 
  private:
   using DestructorGuard = typename P::DestructorGuard;
+};
+
+template <class P, class H>
+class InboundContextImpl
+  : public InboundHandlerContext<typename H::rout>,
+    public InboundLink<typename H::rin>,
+    public ContextImplBase<P, H, InboundHandlerContext<typename H::rout>> {
+ public:
+  typedef typename H::rin Rin;
+  typedef typename H::rout Rout;
+  typedef typename H::win Win;
+  typedef typename H::wout Wout;
+  static const HandlerDir dir = HandlerDir::IN;
+
+  explicit InboundContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+    this->impl_ = this;
+    this->initialize(pipeline, std::move(handler));
+  }
+
+  // For StaticPipeline
+  InboundContextImpl() {
+    this->impl_ = this;
+  }
+
+  ~InboundContextImpl() {}
+
+  // InboundHandlerContext overrides
+  void fireRead(Rout msg) override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->read(std::forward<Rout>(msg));
+    } else {
+      LOG(WARNING) << "read reached end of pipeline";
+    }
+  }
+
+  void fireReadEOF() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->readEOF();
+    } else {
+      LOG(WARNING) << "readEOF reached end of pipeline";
+    }
+  }
+
+  void fireReadException(exception_wrapper e) override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->readException(std::move(e));
+    } else {
+      LOG(WARNING) << "readException reached end of pipeline";
+    }
+  }
+
+  std::shared_ptr<AsyncTransport> getTransport() override {
+    return this->pipeline_->getTransport();
+  }
+
+  // InboundLink overrides
+  void read(Rin msg) override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->read(this, std::forward<Rin>(msg));
+  }
+
+  void readEOF() override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->readEOF(this);
+  }
+
+  void readException(exception_wrapper e) override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->readException(this, std::move(e));
+  }
+
+ private:
+  using DestructorGuard = typename P::DestructorGuard;
+};
+
+template <class P, class H>
+class OutboundContextImpl
+  : public OutboundHandlerContext<typename H::wout>,
+    public OutboundLink<typename H::win>,
+    public ContextImplBase<P, H, OutboundHandlerContext<typename H::wout>> {
+ public:
+  typedef typename H::rin Rin;
+  typedef typename H::rout Rout;
+  typedef typename H::win Win;
+  typedef typename H::wout Wout;
+  static const HandlerDir dir = HandlerDir::OUT;
+
+  explicit OutboundContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+    this->impl_ = this;
+    this->initialize(pipeline, std::move(handler));
+  }
+
+  // For StaticPipeline
+  OutboundContextImpl() {
+    this->impl_ = this;
+  }
+
+  ~OutboundContextImpl() {}
+
+  // OutboundHandlerContext overrides
+  Future<void> fireWrite(Wout msg) override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextOut_) {
+      return this->nextOut_->write(std::forward<Wout>(msg));
+    } else {
+      LOG(WARNING) << "write reached end of pipeline";
+      return makeFuture();
+    }
+  }
+
+  Future<void> fireClose() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextOut_) {
+      return this->nextOut_->close();
+    } else {
+      LOG(WARNING) << "close reached end of pipeline";
+      return makeFuture();
+    }
+  }
+
+  std::shared_ptr<AsyncTransport> getTransport() override {
+    return this->pipeline_->getTransport();
+  }
+
+  // OutboundLink overrides
+  Future<void> write(Win msg) override {
+    DestructorGuard dg(this->pipeline_);
+    return this->handler_->write(this, std::forward<Win>(msg));
+  }
+
+  Future<void> close() override {
+    DestructorGuard dg(this->pipeline_);
+    return this->handler_->close(this);
+  }
+
+ private:
+  using DestructorGuard = typename P::DestructorGuard;
+};
+
+template <class Handler, class Pipeline>
+struct ContextType {
+  typedef typename std::conditional<
+    Handler::dir == HandlerDir::BOTH,
+    ContextImpl<Pipeline, Handler>,
+    typename std::conditional<
+      Handler::dir == HandlerDir::IN,
+      InboundContextImpl<Pipeline, Handler>,
+      OutboundContextImpl<Pipeline, Handler>
+    >::type>::type
+  type;
 };
 
 }}

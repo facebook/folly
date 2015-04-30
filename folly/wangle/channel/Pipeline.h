@@ -83,15 +83,8 @@ class Pipeline : public DelayedDestruction {
 
   template <class H>
   Pipeline& addBack(std::shared_ptr<H> handler) {
-    ctxs_.push_back(std::make_shared<ContextImpl<Pipeline, H>>(
-        this,
-        std::move(handler)));
-    return *this;
-  }
-
-  template <class H>
-  Pipeline& addBack(H* handler) {
-    return addBack(std::shared_ptr<H>(handler, [](H*){}));
+    typedef typename ContextType<H, Pipeline>::type Context;
+    return addHelper(std::make_shared<Context>(this, std::move(handler)), false);
   }
 
   template <class H>
@@ -100,16 +93,14 @@ class Pipeline : public DelayedDestruction {
   }
 
   template <class H>
-  Pipeline& addFront(std::shared_ptr<H> handler) {
-    ctxs_.insert(
-        ctxs_.begin(),
-        std::make_shared<ContextImpl<Pipeline, H>>(this, std::move(handler)));
-    return *this;
+  Pipeline& addBack(H* handler) {
+    return addBack(std::shared_ptr<H>(handler, [](H*){}));
   }
 
   template <class H>
-  Pipeline& addFront(H* handler) {
-    return addFront(std::shared_ptr<H>(handler, [](H*){}));
+  Pipeline& addFront(std::shared_ptr<H> handler) {
+    typedef typename ContextType<H, Pipeline>::type Context;
+    return addHelper(std::make_shared<Context>(this, std::move(handler)), true);
   }
 
   template <class H>
@@ -118,29 +109,39 @@ class Pipeline : public DelayedDestruction {
   }
 
   template <class H>
+  Pipeline& addFront(H* handler) {
+    return addFront(std::shared_ptr<H>(handler, [](H*){}));
+  }
+
+  template <class H>
   H* getHandler(int i) {
-    auto ctx = dynamic_cast<ContextImpl<Pipeline, H>*>(ctxs_[i].get());
+    typedef typename ContextType<H, Pipeline>::type Context;
+    auto ctx = dynamic_cast<Context*>(ctxs_[i].get());
     CHECK(ctx);
     return ctx->getHandler();
   }
 
+  // TODO Have read/write/etc check that pipeline has been finalized
   void finalize() {
-    if (ctxs_.empty()) {
-      return;
+    if (!inCtxs_.empty()) {
+      front_ = dynamic_cast<InboundLink<R>*>(inCtxs_.front());
+      for (size_t i = 0; i < inCtxs_.size() - 1; i++) {
+        inCtxs_[i]->setNextIn(inCtxs_[i+1]);
+      }
     }
 
-    for (size_t i = 0; i < ctxs_.size() - 1; i++) {
-      ctxs_[i]->link(ctxs_[i+1].get());
+    if (!outCtxs_.empty()) {
+      back_ = dynamic_cast<OutboundLink<W>*>(outCtxs_.back());
+      for (size_t i = outCtxs_.size() - 1; i > 0; i--) {
+        outCtxs_[i]->setNextOut(outCtxs_[i-1]);
+      }
     }
 
-    back_ = dynamic_cast<OutboundLink<W>*>(ctxs_.back().get());
-    if (!back_) {
-      throw std::invalid_argument("wrong type for last handler");
-    }
-
-    front_ = dynamic_cast<InboundLink<R>*>(ctxs_.front().get());
     if (!front_) {
-      throw std::invalid_argument("wrong type for first handler");
+      throw std::invalid_argument("no inbound handler in Pipeline");
+    }
+    if (!back_) {
+      throw std::invalid_argument("no outbound handler in Pipeline");
     }
 
     for (auto it = ctxs_.rbegin(); it != ctxs_.rend(); it++) {
@@ -154,8 +155,9 @@ class Pipeline : public DelayedDestruction {
   // See thrift/lib/cpp2/async/Cpp2Channel.cpp for an example
   template <class H>
   bool setOwner(H* handler) {
+    typedef typename ContextType<H, Pipeline>::type Context;
     for (auto& ctx : ctxs_) {
-      auto ctxImpl = dynamic_cast<ContextImpl<Pipeline, H>*>(ctx.get());
+      auto ctxImpl = dynamic_cast<Context*>(ctx.get());
       if (ctxImpl && ctxImpl->getHandler() == handler) {
         owner_ = ctx;
         return true;
@@ -185,10 +187,8 @@ class Pipeline : public DelayedDestruction {
   }
 
   template <class Context>
-  void addContextFront(Context* context) {
-    ctxs_.insert(
-        ctxs_.begin(),
-        std::shared_ptr<Context>(context, [](Context*){}));
+  void addContextFront(Context* ctx) {
+    addHelper(std::shared_ptr<Context>(ctx, [](Context*){}), true);
   }
 
   void detachHandlers() {
@@ -200,15 +200,29 @@ class Pipeline : public DelayedDestruction {
   }
 
  private:
+  template <class Context>
+  Pipeline& addHelper(std::shared_ptr<Context>&& ctx, bool front) {
+    ctxs_.insert(front ? ctxs_.begin() : ctxs_.end(), ctx);
+    if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::IN) {
+      inCtxs_.insert(front ? inCtxs_.begin() : inCtxs_.end(), ctx.get());
+    }
+    if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::OUT) {
+      outCtxs_.insert(front ? outCtxs_.begin() : outCtxs_.end(), ctx.get());
+    }
+    return *this;
+  }
+
   std::shared_ptr<AsyncTransport> transport_;
   WriteFlags writeFlags_{WriteFlags::NONE};
   std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
 
   bool isStatic_{false};
+  std::shared_ptr<PipelineContext> owner_;
+  std::vector<std::shared_ptr<PipelineContext>> ctxs_;
+  std::vector<PipelineContext*> inCtxs_;
+  std::vector<PipelineContext*> outCtxs_;
   InboundLink<R>* front_{nullptr};
   OutboundLink<W>* back_{nullptr};
-  std::vector<std::shared_ptr<PipelineContext>> ctxs_;
-  std::shared_ptr<PipelineContext> owner_;
 };
 
 }}

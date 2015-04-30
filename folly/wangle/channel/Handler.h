@@ -51,6 +51,8 @@ class HandlerBase {
 template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>
 class Handler : public HandlerBase<HandlerContext<Rout, Wout>> {
  public:
+  static const HandlerDir dir = HandlerDir::BOTH;
+
   typedef Rin rin;
   typedef Rout rout;
   typedef Win win;
@@ -99,6 +101,47 @@ class Handler : public HandlerBase<HandlerContext<Rout, Wout>> {
   */
 };
 
+struct Unit{};
+
+template <class Rin, class Rout = Rin>
+class InboundHandler : public HandlerBase<InboundHandlerContext<Rout>> {
+ public:
+  static const HandlerDir dir = HandlerDir::IN;
+
+  typedef Rin rin;
+  typedef Rout rout;
+  typedef Unit win;
+  typedef Unit wout;
+  typedef InboundHandlerContext<Rout> Context;
+  virtual ~InboundHandler() {}
+
+  virtual void read(Context* ctx, Rin msg) = 0;
+  virtual void readEOF(Context* ctx) {
+    ctx->fireReadEOF();
+  }
+  virtual void readException(Context* ctx, exception_wrapper e) {
+    ctx->fireReadException(std::move(e));
+  }
+};
+
+template <class Win, class Wout = Win>
+class OutboundHandler : public HandlerBase<OutboundHandlerContext<Wout>> {
+ public:
+  static const HandlerDir dir = HandlerDir::OUT;
+
+  typedef Unit rin;
+  typedef Unit rout;
+  typedef Win win;
+  typedef Wout wout;
+  typedef OutboundHandlerContext<Wout> Context;
+  virtual ~OutboundHandler() {}
+
+  virtual Future<void> write(Context* ctx, Win msg) = 0;
+  virtual Future<void> close(Context* ctx) {
+    return ctx->fireClose();
+  }
+};
+
 template <class R, class W = R>
 class HandlerAdapter : public Handler<R, R, W, W> {
  public:
@@ -115,5 +158,11 @@ class HandlerAdapter : public Handler<R, R, W, W> {
 
 typedef HandlerAdapter<IOBufQueue&, std::unique_ptr<IOBuf>>
 BytesToBytesHandler;
+
+typedef InboundHandler<IOBufQueue&>
+InboundBytesToBytesHandler;
+
+typedef OutboundHandler<std::unique_ptr<IOBuf>>
+OutboundBytesToBytesHandler;
 
 }}

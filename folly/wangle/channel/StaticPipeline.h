@@ -67,8 +67,6 @@ class StaticPipeline<R, W, Handler, Handlers...>
   }
 
  protected:
-  typedef ContextImpl<Pipeline<R, W>, Handler> Context;
-
   template <class HandlerArg, class... HandlerArgs>
   StaticPipeline(
       bool isFirst,
@@ -119,7 +117,7 @@ class StaticPipeline<R, W, Handler, Handlers...>
   bool isFirst_;
   folly::Optional<Handler> handler_;
   std::shared_ptr<Handler> handlerPtr_;
-  ContextImpl<Pipeline<R, W>, Handler> ctx_;
+  typename ContextType<Handler, Pipeline<R, W>>::type ctx_;
 };
 
 }} // folly::wangle

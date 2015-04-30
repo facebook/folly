@@ -95,13 +95,13 @@ TEST(LengthFieldFramePipeline, SimpleTest) {
 
   pipeline
     .addBack(BytesReflector())
+    .addBack(LengthFieldPrepender())
     .addBack(LengthFieldBasedFrameDecoder())
     .addBack(FrameTester([&](std::unique_ptr<IOBuf> buf) {
         auto sz = buf->computeChainDataLength();
         called++;
         EXPECT_EQ(sz, 2);
       }))
-    .addBack(LengthFieldPrepender())
     .finalize();
 
   auto buf = IOBuf::create(2);

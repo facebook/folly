@@ -30,7 +30,7 @@ namespace folly { namespace wangle {
  *
  * This handler may only be used in a single Pipeline.
  */
-class OutputBufferingHandler : public BytesToBytesHandler,
+class OutputBufferingHandler : public OutboundBytesToBytesHandler,
                                protected EventBase::LoopCallback {
  public:
   Future<void> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
