@@ -56,7 +56,9 @@ class Future {
 
   /// Construct a Future from a value (perfect forwarding)
   /* implicit */
-  template <class T2 = T> Future(T2&& val);
+  template <class T2 = T,
+            typename std::enable_if<!isFuture<T2>::value, void*>::type = nullptr>
+  Future(T2&& val);
 
   template <class T2 = T,
             typename std::enable_if<
