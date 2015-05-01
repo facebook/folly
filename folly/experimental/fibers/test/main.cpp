@@ -23,7 +23,7 @@ namespace google { using namespace gflags; }
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   auto rc = RUN_ALL_TESTS();
   folly::runBenchmarksOnFlag();
