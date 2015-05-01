@@ -407,7 +407,6 @@ class Future {
   void setExecutor(Executor* x) { core_->setExecutor(x); }
 };
 
-
 } // folly
 
 #include <folly/futures/Future-inl.h>

@@ -235,22 +235,14 @@ using isFutureResult = isFuture<typename std::result_of<F(T&&, Arg&&)>::type>;
 
     Func can either return a T, or a Future<T>
   */
-template <class It, class T, class F,
-          class ItT = typename std::iterator_traits<It>::value_type::value_type,
-          class Arg = MaybeTryArg<F, T, ItT>>
-typename std::enable_if<!isFutureResult<F, T, Arg>::value, Future<T>>::type
-reduce(It first, It last, T initial, F func);
-
-template <class It, class T, class F,
-          class ItT = typename std::iterator_traits<It>::value_type::value_type,
-          class Arg = MaybeTryArg<F, T, ItT>>
-typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
-reduce(It first, It last, T initial, F func);
+template <class It, class T, class F>
+Future<T> reduce(It first, It last, T&& initial, F&& func);
 
 /// Sugar for the most common case
 template <class Collection, class T, class F>
 auto reduce(Collection&& c, T&& initial, F&& func)
-    -> decltype(reduce(c.begin(), c.end(), initial, func)) {
+    -> decltype(reduce(c.begin(), c.end(), std::forward<T>(initial),
+                std::forward<F>(func))) {
   return reduce(
       c.begin(),
       c.end(),

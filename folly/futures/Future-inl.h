@@ -782,44 +782,28 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
-template <class It, class T, class F, class ItT, class Arg>
-typename std::enable_if<!isFutureResult<F, T, Arg>::value, Future<T>>::type
-reduce(It first, It last, T initial, F func) {
+template <class It, class T, class F>
+Future<T> reduce(It first, It last, T&& initial, F&& func) {
   if (first == last) {
     return makeFuture(std::move(initial));
   }
 
+  typedef typename std::iterator_traits<It>::value_type::value_type ItT;
+  typedef typename std::conditional<
+    detail::callableWith<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type Arg;
   typedef isTry<Arg> IsTry;
 
-  return collectAll(first, last)
-    .then([initial, func](std::vector<Try<ItT>>& vals) mutable {
-      for (auto& val : vals) {
-        initial = func(std::move(initial),
-                       // Either return a ItT&& or a Try<ItT>&& depending
-                       // on the type of the argument of func.
-                       val.template get<IsTry::value, Arg&&>());
-      }
-      return initial;
-    });
-}
+  folly::MoveWrapper<T> minitial(std::move(initial));
+  auto sfunc = std::make_shared<F>(std::move(func));
 
-template <class It, class T, class F, class ItT, class Arg>
-typename std::enable_if<isFutureResult<F, T, Arg>::value, Future<T>>::type
-reduce(It first, It last, T initial, F func) {
-  if (first == last) {
-    return makeFuture(std::move(initial));
-  }
-
-  typedef isTry<Arg> IsTry;
-
-  auto f = first->then([initial, func](Try<ItT>& head) mutable {
-    return func(std::move(initial),
+  auto f = first->then([minitial, sfunc](Try<ItT>& head) mutable {
+    return (*sfunc)(std::move(*minitial),
                 head.template get<IsTry::value, Arg&&>());
   });
 
   for (++first; first != last; ++first) {
-    f = collectAll(f, *first).then([func](std::tuple<Try<T>, Try<ItT>>& t) {
-      return func(std::move(std::get<0>(t).value()),
+    f = collectAll(f, *first).then([sfunc](std::tuple<Try<T>, Try<ItT>>& t) {
+      return (*sfunc)(std::move(std::get<0>(t).value()),
                   // Either return a ItT&& or a Try<ItT>&& depending
                   // on the type of the argument of func.
                   std::get<1>(t).template get<IsTry::value, Arg&&>());
