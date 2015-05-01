@@ -648,6 +648,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return minWriteSize_;
   }
 
+ private:
+
+  void init();
+
  protected:
 
   /**

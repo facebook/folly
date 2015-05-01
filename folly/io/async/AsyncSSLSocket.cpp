@@ -224,8 +224,7 @@ void setup_SSL_CTX(SSL_CTX *ctx) {
 
 BIO_METHOD eorAwareBioMethod;
 
-__attribute__((__constructor__))
-void initEorBioMethod(void) {
+void* initEorBioMethod(void) {
   memcpy(&eorAwareBioMethod, BIO_s_socket(), sizeof(eorAwareBioMethod));
   // override the bwrite method for MSG_EOR support
   eorAwareBioMethod.bwrite = AsyncSSLSocket::eorAwareBioWrite;
@@ -234,6 +233,10 @@ void initEorBioMethod(void) {
   // set here. openssl code seems to be checking ".type == BIO_TYPE_SOCKET" and
   // then have specific handlings. The eorAwareBioWrite should be compatible
   // with the one in openssl.
+
+  // Return something here to enable AsyncSSLSocket to call this method using
+  // a function-scoped static.
+  return nullptr;
 }
 
 } // anonymous namespace
@@ -254,7 +257,7 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
     AsyncSocket(evb),
     ctx_(ctx),
     handshakeTimeout_(this, evb) {
-  setup_SSL_CTX(ctx_->getSSLCtx());
+  init();
 }
 
 /**
@@ -266,7 +269,7 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
     server_(server),
     ctx_(ctx),
     handshakeTimeout_(this, evb) {
-  setup_SSL_CTX(ctx_->getSSLCtx());
+  init();
   if (server) {
     SSL_CTX_set_info_callback(ctx_->getSSLCtx(),
                               AsyncSSLSocket::sslInfoCallback);
@@ -281,11 +284,8 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
                                  EventBase* evb,
                                  const std::string& serverName) :
-    AsyncSocket(evb),
-    ctx_(ctx),
-    handshakeTimeout_(this, evb),
-    tlsextHostname_(serverName) {
-  setup_SSL_CTX(ctx_->getSSLCtx());
+    AsyncSSLSocket(ctx, evb) {
+  tlsextHostname_ = serverName;
 }
 
 /**
@@ -295,11 +295,8 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
                                  EventBase* evb, int fd,
                                  const std::string& serverName) :
-    AsyncSocket(evb, fd),
-    ctx_(ctx),
-    handshakeTimeout_(this, evb),
-    tlsextHostname_(serverName) {
-  setup_SSL_CTX(ctx_->getSSLCtx());
+    AsyncSSLSocket(ctx, evb, fd, false) {
+  tlsextHostname_ = serverName;
 }
 #endif
 
@@ -308,6 +305,13 @@ AsyncSSLSocket::~AsyncSSLSocket() {
           << ", evb=" << eventBase_ << ", fd=" << fd_
           << ", state=" << int(state_) << ", sslState="
           << sslState_ << ", events=" << eventFlags_ << ")";
+}
+
+void AsyncSSLSocket::init() {
+  // Do this here to ensure we initialize this once before any use of
+  // AsyncSSLSocket instances and not as part of library load.
+  static const auto eorAwareBioMethodInitializer = initEorBioMethod();
+  setup_SSL_CTX(ctx_->getSSLCtx());
 }
 
 void AsyncSSLSocket::closeNow() {
