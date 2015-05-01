@@ -814,6 +814,20 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 }
 
 template <class T>
+template <class I, class F>
+Future<I> Future<T>::reduce(I&& initial, F&& func) {
+  folly::MoveWrapper<I> minitial(std::move(initial));
+  folly::MoveWrapper<F> mfunc(std::move(func));
+  return then([minitial, mfunc](T& vals) mutable {
+    auto ret = std::move(*minitial);
+    for (auto& val : vals) {
+      ret = (*mfunc)(std::move(ret), std::move(val));
+    }
+    return ret;
+  });
+}
+
+template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
 }

@@ -1754,6 +1754,29 @@ TEST(Reduce, Basic) {
   }
 }
 
+TEST(Reduce, Chain) {
+  auto makeFutures = [](int count) {
+    std::vector<Future<int>> fs;
+    for (int i = 1; i <= count; ++i) {
+      fs.emplace_back(makeFuture(i));
+    }
+    return fs;
+  };
+
+  {
+    auto f = collectAll(makeFutures(3)).reduce(0, [](int a, Try<int>&& b){
+      return a + *b;
+    });
+    EXPECT_EQ(6, f.get());
+  }
+  {
+    auto f = collect(makeFutures(3)).reduce(0, [](int a, int&& b){
+      return a + b;
+    });
+    EXPECT_EQ(6, f.get());
+  }
+}
+
 TEST(Map, Basic) {
   Promise<int> p1;
   Promise<int> p2;

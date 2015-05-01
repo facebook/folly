@@ -375,6 +375,11 @@ class Future {
   template <class F>
   Future<T> filter(F predicate);
 
+  /// Like reduce, but works on a Future<std::vector<T / Try<T>>>, for example
+  /// the result of collect or collectAll
+  template <class I, class F>
+  Future<I> reduce(I&& initial, F&& func);
+
  protected:
   typedef detail::Core<T>* corePtr;
 
