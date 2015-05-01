@@ -698,7 +698,7 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
     return;
   }
 
-  size_t newAllocatedCapacity = goodExtBufferSize(newCapacity);
+  size_t newAllocatedCapacity = 0;
   uint8_t* newBuffer = nullptr;
   uint64_t newHeadroom = 0;
   uint64_t oldHeadroom = headroom();
@@ -708,8 +708,9 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
   SharedInfo* info = sharedInfo();
   if (info && (info->freeFn == nullptr) && length_ != 0 &&
       oldHeadroom >= minHeadroom) {
+    size_t headSlack = oldHeadroom - minHeadroom;
+    newAllocatedCapacity = goodExtBufferSize(newCapacity + headSlack);
     if (usingJEMalloc()) {
-      size_t headSlack = oldHeadroom - minHeadroom;
       // We assume that tailroom is more useful and more important than
       // headroom (not least because realloc / xallocx allow us to grow the
       // buffer at the tail, but not at the head)  So, if we have more headroom
@@ -743,6 +744,7 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
   // None of the previous reallocation strategies worked (or we're using
   // an internal buffer).  malloc/copy/free.
   if (newBuffer == nullptr) {
+    newAllocatedCapacity = goodExtBufferSize(newCapacity);
     void* p = malloc(newAllocatedCapacity);
     if (UNLIKELY(p == nullptr)) {
       throw std::bad_alloc();

@@ -1081,6 +1081,33 @@ TEST(IOBuf, HashAndEqual) {
   EXPECT_EQ(hash(e), hash(f));
 }
 
+// reserveSlow() had a bug when reallocating the buffer in place. It would
+// preserve old headroom if it's not too much (heuristically) but wouldn't
+// adjust the requested amount of memory to account for that; the end result
+// would be that reserve() would return with less tailroom than requested.
+TEST(IOBuf, ReserveWithHeadroom) {
+  // This is assuming jemalloc, where we know that 4096 and 8192 bytes are
+  // valid (and consecutive) allocation sizes. We're hoping that our
+  // 4096-byte buffer can be expanded in place to 8192 (in practice, this
+  // usually happens).
+  const char data[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit";
+  constexpr size_t reservedSize = 24;  // sizeof(SharedInfo)
+  // chosen carefully so that the buffer is exactly 4096 bytes
+  IOBuf buf(IOBuf::CREATE, 4096 - reservedSize);
+  buf.advance(10);
+  memcpy(buf.writableData(), data, sizeof(data));
+  buf.append(sizeof(data));
+  EXPECT_EQ(sizeof(data), buf.length());
+
+  // Grow the buffer (hopefully in place); this would incorrectly reserve
+  // the 10 bytes of headroom, giving us 10 bytes less than requested.
+  size_t tailroom = 8192 - reservedSize - sizeof(data);
+  buf.reserve(0, tailroom);
+  EXPECT_LE(tailroom, buf.tailroom());
+  EXPECT_EQ(sizeof(data), buf.length());
+  EXPECT_EQ(0, memcmp(data, buf.data(), sizeof(data)));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
