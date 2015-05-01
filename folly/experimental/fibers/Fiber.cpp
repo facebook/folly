@@ -23,6 +23,7 @@
 #include <cstring>
 #include <stdexcept>
 
+#include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
@@ -77,6 +78,8 @@ Fiber::Fiber(FiberManager& fiberManager) :
   fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
 }
 
+// It is necessary to disable ASAN because this function changes fiber's stack.
+FOLLY_DISABLE_ADDRESS_SANITIZER
 void Fiber::init(bool recordStackUsed) {
   recordStackUsed_ = recordStackUsed;
   if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
