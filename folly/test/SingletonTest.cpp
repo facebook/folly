@@ -531,7 +531,7 @@ BENCHMARK_RELATIVE(FollySingletonWeak, n) {
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   SingletonVault::singleton()->registrationComplete();
 
