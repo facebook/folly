@@ -226,18 +226,17 @@ Future<T>::then(R(Caller::*func)(Args...), Caller *instance) {
   });
 }
 
-// TODO(6838553)
-#ifndef __clang__
 template <class T>
-template <class... Args>
-auto Future<T>::then(Executor* x, Args&&... args)
-  -> decltype(this->then(std::forward<Args>(args)...))
+template <class Executor, class Arg, class... Args>
+auto Future<T>::then(Executor* x, Arg&& arg, Args&&... args)
+  -> decltype(this->then(std::forward<Arg>(arg),
+                         std::forward<Args>(args)...))
 {
   auto oldX = getExecutor();
   setExecutor(x);
-  return this->then(std::forward<Args>(args)...).via(oldX);
+  return this->then(std::forward<Arg>(arg), std::forward<Args>(args)...).
+               via(oldX);
 }
-#endif
 
 template <class T>
 Future<void> Future<T>::then() {
@@ -424,7 +423,6 @@ Optional<Try<T>> Future<T>::poll() {
 }
 
 template <class T>
-template <typename Executor>
 inline Future<T> Future<T>::via(Executor* executor) && {
   throwIfInvalid();
 
@@ -434,7 +432,6 @@ inline Future<T> Future<T>::via(Executor* executor) && {
 }
 
 template <class T>
-template <typename Executor>
 inline Future<T> Future<T>::via(Executor* executor) & {
   throwIfInvalid();
 
@@ -530,8 +527,7 @@ inline Future<void> makeFuture(Try<void>&& t) {
 }
 
 // via
-template <typename Executor>
-Future<void> via(Executor* executor) {
+inline Future<void> via(Executor* executor) {
   return makeFuture().via(executor);
 }
 

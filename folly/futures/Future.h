@@ -97,14 +97,12 @@ class Future {
   // The ref-qualifier allows for `this` to be moved out so we
   // don't get access-after-free situations in chaining.
   // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  template <typename Executor>
-  Future<T> via(Executor* executor) &&;
+  inline Future<T> via(Executor* executor) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
   /// when "return f.via(x);" fails.
-  template <typename Executor>
-  Future<T> via(Executor* executor) &;
+  inline Future<T> via(Executor* executor) &;
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -182,8 +180,6 @@ class Future {
   Future<typename isFuture<R>::Inner>
   then(R(Caller::*func)(Args...), Caller *instance);
 
-// TODO(6838553)
-#ifndef __clang__
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
   /// Contrast
@@ -196,10 +192,10 @@ class Future {
   ///
   /// In the former both b and c execute via x. In the latter, only b executes
   /// via x, and c executes via the same executor (if any) that f had.
-  template <class... Args>
-  auto then(Executor* x, Args&&... args)
-    -> decltype(this->then(std::forward<Args>(args)...));
-#endif
+  template <class Executor, class Arg, class... Args>
+  auto then(Executor* x, Arg&& arg, Args&&... args)
+    -> decltype(this->then(std::forward<Arg>(arg),
+                           std::forward<Args>(args)...));
 
   /// Convenience method for ignoring the value and creating a Future<void>.
   /// Exceptions still propagate.

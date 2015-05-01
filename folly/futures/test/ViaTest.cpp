@@ -185,11 +185,9 @@ TEST(Via, chain3) {
   EXPECT_EQ(3, count);
 }
 
-// TODO(6838553)
-#ifndef __clang__
 TEST(Via, then2) {
   ManualExecutor x1, x2;
-  bool a,b,c;
+  bool a = false, b = false, c = false;
   via(&x1)
     .then([&]{ a = true; })
     .then(&x2, [&]{ b = true; })
@@ -212,8 +210,11 @@ TEST(Via, then2) {
 }
 
 TEST(Via, then2Variadic) {
-  struct Foo { void foo(Try<void>) {} };
+  struct Foo { bool a = false; void foo(Try<void>) { a = true; } };
   Foo f;
-  makeFuture().then(nullptr, &Foo::foo, &f);
+  ManualExecutor x;
+  makeFuture().then(&x, &Foo::foo, &f);
+  EXPECT_FALSE(f.a);
+  x.run();
+  EXPECT_TRUE(f.a);
 }
-#endif
