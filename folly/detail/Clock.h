@@ -34,6 +34,7 @@
 #else
 typedef uint8_t clockid_t;
 #define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC 0
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts);
 int clock_getres(clockid_t clk_id, struct timespec* ts);
