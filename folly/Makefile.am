@@ -278,8 +278,10 @@ nobase_follyinclude_HEADERS = \
 	wangle/channel/AsyncSocketHandler.h \
 	wangle/channel/Handler.h \
 	wangle/channel/HandlerContext.h \
+	wangle/channel/HandlerContext-inl.h \
 	wangle/channel/OutputBufferingHandler.h \
 	wangle/channel/Pipeline.h \
+	wangle/channel/Pipeline-inl.h \
 	wangle/channel/StaticPipeline.h \
 	wangle/concurrent/BlockingQueue.h \
 	wangle/concurrent/Codel.h \
