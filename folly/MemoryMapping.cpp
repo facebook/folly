@@ -311,7 +311,7 @@ void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
   }
 
   length = (length + options_.pageSize - 1) & ~(options_.pageSize - 1);
-  length = std::min(length, mapLength_ - offset);
+  length = std::min<size_t>(length, mapLength_ - offset);
 
   char* mapStart = static_cast<char*>(mapStart_) + offset;
   PLOG_IF(WARNING, ::madvise(mapStart, length, advice)) << "madvise";
