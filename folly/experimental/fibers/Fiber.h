@@ -21,6 +21,7 @@
 #include <boost/context/all.hpp>
 #include <boost/version.hpp>
 #include <folly/AtomicLinkedList.h>
+#include <folly/CPortability.h>
 #include <folly/IntrusiveList.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 
@@ -69,7 +70,9 @@ class Fiber {
   friend class FiberManager;
 
   explicit Fiber(FiberManager& fiberManager);
-  void init(bool recordStackUsed);
+
+  // It is necessary to disable ASAN because init() changes the fiber's stack.
+  void init(bool recordStackUsed) FOLLY_DISABLE_ADDRESS_SANITIZER;
 
   template <typename F>
   void setFunction(F&& func);
