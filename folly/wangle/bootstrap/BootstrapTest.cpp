@@ -34,10 +34,9 @@ class TestClientPipelineFactory : public PipelineFactory<BytesPipeline> {
  public:
   std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>
   newPipeline(std::shared_ptr<AsyncSocket> sock) {
-    CHECK(sock->good());
-
     // We probably aren't connected immedately, check after a small delay
     EventBaseManager::get()->getEventBase()->tryRunAfterDelay([sock](){
+      CHECK(sock->good());
       CHECK(sock->readable());
     }, 100);
     return nullptr;
