@@ -1001,11 +1001,27 @@ inline void Future<void>::getVia(DrivableExecutor* e) {
   waitVia(e).value();
 }
 
+namespace detail {
+  template <class T>
+  struct TryEquals {
+    static bool equals(const Try<T>& t1, const Try<T>& t2) {
+      return t1.value() == t2.value();
+    }
+  };
+
+  template <>
+  struct TryEquals<void> {
+    static bool equals(const Try<void>& t1, const Try<void>& t2) {
+      return true;
+    }
+  };
+}
+
 template <class T>
 Future<bool> Future<T>::willEqual(Future<T>& f) {
   return collectAll(*this, f).then([](const std::tuple<Try<T>, Try<T>>& t) {
     if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
-      return std::get<0>(t).value() == std::get<1>(t).value();
+      return detail::TryEquals<T>::equals(std::get<0>(t), std::get<1>(t));
     } else {
       return false;
       }
@@ -1058,6 +1074,14 @@ namespace futures {
     return results;
   }
 }
+
+// Instantiate the most common Future types to save compile time
+extern template class Future<void>;
+extern template class Future<bool>;
+extern template class Future<int>;
+extern template class Future<int64_t>;
+extern template class Future<std::string>;
+extern template class Future<double>;
 
 } // namespace folly
 

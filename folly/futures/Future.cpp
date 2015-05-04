@@ -17,6 +17,18 @@
 #include <folly/futures/detail/ThreadWheelTimekeeper.h>
 #include <folly/Likely.h>
 
+namespace folly {
+
+// Instantiate the most common Future types to save compile time
+template class Future<void>;
+template class Future<bool>;
+template class Future<int>;
+template class Future<int64_t>;
+template class Future<std::string>;
+template class Future<double>;
+
+}
+
 namespace folly { namespace futures {
 
 Future<void> sleep(Duration dur, Timekeeper* tk) {
