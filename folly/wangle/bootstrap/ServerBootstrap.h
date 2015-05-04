@@ -284,6 +284,13 @@ class ServerBootstrap {
       }
       sockets_->clear();
     }
+    if (!stopped_) {
+      stopped_ = true;
+      // stopBaton_ may be null if ServerBootstrap has been std::move'd
+      if (stopBaton_) {
+        stopBaton_->post();
+      }
+    }
   }
 
   void join() {
@@ -292,6 +299,13 @@ class ServerBootstrap {
     }
     if (io_group_) {
       io_group_->join();
+    }
+  }
+
+  void waitForStop() {
+    if (!stopped_) {
+      CHECK(stopBaton_);
+      stopBaton_->wait();
     }
   }
 
@@ -328,6 +342,10 @@ class ServerBootstrap {
     std::make_shared<DefaultAcceptPipelineFactory>()};
   std::shared_ptr<ServerSocketFactory> socketFactory_{
     std::make_shared<AsyncServerSocketFactory>()};
+
+  std::unique_ptr<folly::Baton<>> stopBaton_{
+    folly::make_unique<folly::Baton<>>()};
+  bool stopped_{false};
 };
 
 } // namespace

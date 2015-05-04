@@ -32,27 +32,35 @@ class ServerAcceptor
   typedef std::unique_ptr<Pipeline,
                           folly::DelayedDestruction::Destructor> PipelinePtr;
 
-  class ServerConnection : public wangle::ManagedConnection {
+  class ServerConnection : public wangle::ManagedConnection,
+                           public wangle::PipelineManager {
    public:
     explicit ServerConnection(PipelinePtr pipeline)
-        : pipeline_(std::move(pipeline)) {}
-
-    ~ServerConnection() {
+        : pipeline_(std::move(pipeline)) {
+      pipeline_->setPipelineManager(this);
     }
 
-    void timeoutExpired() noexcept {
+    ~ServerConnection() {}
+
+    void timeoutExpired() noexcept override {
     }
 
-    void describe(std::ostream& os) const {}
-    bool isBusy() const {
+    void describe(std::ostream& os) const override {}
+    bool isBusy() const override {
       return false;
     }
-    void notifyPendingShutdown() {}
-    void closeWhenIdle() {}
-    void dropConnection() {
+    void notifyPendingShutdown() override {}
+    void closeWhenIdle() override {}
+    void dropConnection() override {
       delete this;
     }
-    void dumpConnectionState(uint8_t loglevel) {}
+    void dumpConnectionState(uint8_t loglevel) override {}
+
+    void deletePipeline(wangle::PipelineBase* p) override {
+      CHECK(p == pipeline_.get());
+      delete this;
+    }
+
    private:
     PipelinePtr pipeline_;
   };
@@ -178,8 +186,11 @@ class DefaultAcceptPipelineFactory
   typedef wangle::Pipeline<void*> AcceptPipeline;
 
  public:
-  AcceptPipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
-    return new AcceptPipeline;
+  std::unique_ptr<AcceptPipeline, folly::DelayedDestruction::Destructor>
+    newPipeline(std::shared_ptr<AsyncSocket>) {
+
+    return std::unique_ptr<AcceptPipeline, folly::DelayedDestruction::Destructor>
+      (new AcceptPipeline);
   }
 };
 

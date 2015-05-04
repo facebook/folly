@@ -34,10 +34,10 @@ class ClientBootstrap {
   }
   ClientBootstrap* connect(SocketAddress address) {
     DCHECK(pipelineFactory_);
-    pipeline_.reset(
+    pipeline_=
       pipelineFactory_->newPipeline(
-        AsyncSocket::newSocket(EventBaseManager::get()->getEventBase(), address)
-      ));
+        AsyncSocket::newSocket(
+          EventBaseManager::get()->getEventBase(), address));
     return this;
   }
 

@@ -201,6 +201,10 @@ class ContextImpl
     }
   }
 
+  PipelineBase* getPipeline() override {
+    return this->pipeline_;
+  }
+
   std::shared_ptr<AsyncTransport> getTransport() override {
     return this->pipeline_->getTransport();
   }
@@ -306,6 +310,10 @@ class InboundContextImpl
     }
   }
 
+  PipelineBase* getPipeline() override {
+    return this->pipeline_;
+  }
+
   std::shared_ptr<AsyncTransport> getTransport() override {
     return this->pipeline_->getTransport();
   }
@@ -373,6 +381,10 @@ class OutboundContextImpl
       LOG(WARNING) << "close reached end of pipeline";
       return makeFuture();
     }
+  }
+
+  PipelineBase* getPipeline() override {
+    return this->pipeline_;
   }
 
   std::shared_ptr<AsyncTransport> getTransport() override {

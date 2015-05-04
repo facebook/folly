@@ -32,7 +32,8 @@ typedef ClientBootstrap<BytesPipeline> TestClient;
 
 class TestClientPipelineFactory : public PipelineFactory<BytesPipeline> {
  public:
-  BytesPipeline* newPipeline(std::shared_ptr<AsyncSocket> sock) {
+  std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket> sock) {
     CHECK(sock->good());
 
     // We probably aren't connected immedately, check after a small delay
@@ -45,9 +46,12 @@ class TestClientPipelineFactory : public PipelineFactory<BytesPipeline> {
 
 class TestPipelineFactory : public PipelineFactory<BytesPipeline> {
  public:
-  BytesPipeline* newPipeline(std::shared_ptr<AsyncSocket> sock) {
+  std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor> newPipeline(
+    std::shared_ptr<AsyncSocket> sock) {
+
     pipelines++;
-    return new BytesPipeline();
+    return std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>(
+      new BytesPipeline());
   }
   std::atomic<int> pipelines{0};
 };
@@ -279,8 +283,13 @@ template <typename HandlerPipeline>
 class TestHandlerPipelineFactory
     : public PipelineFactory<ServerBootstrap<BytesPipeline>::AcceptPipeline> {
  public:
-  ServerBootstrap<BytesPipeline>::AcceptPipeline* newPipeline(std::shared_ptr<AsyncSocket>) {
-    auto pipeline = new ServerBootstrap<BytesPipeline>::AcceptPipeline;
+  std::unique_ptr<ServerBootstrap<BytesPipeline>::AcceptPipeline,
+                  folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket>) {
+
+    std::unique_ptr<ServerBootstrap<BytesPipeline>::AcceptPipeline,
+                    folly::DelayedDestruction::Destructor> pipeline(
+                      new ServerBootstrap<BytesPipeline>::AcceptPipeline);
     pipeline->addBack(HandlerPipeline());
     return pipeline;
   }

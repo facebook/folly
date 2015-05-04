@@ -25,6 +25,28 @@
 
 namespace folly { namespace wangle {
 
+class PipelineManager {
+ public:
+  virtual ~PipelineManager() {}
+  virtual void deletePipeline(PipelineBase* pipeline) = 0;
+};
+
+class PipelineBase {
+ public:
+  void setPipelineManager(PipelineManager* manager) {
+    manager_ = manager;
+  }
+
+  void deletePipeline() {
+    if (manager_) {
+      manager_->deletePipeline(this);
+    }
+  }
+
+ private:
+  PipelineManager* manager_{nullptr};
+};
+
 struct Nothing{};
 
 /*
@@ -36,7 +58,7 @@ struct Nothing{};
  * If W is Nothing, write() and close() will be disabled.
  */
 template <class R, class W = Nothing>
-class Pipeline : public DelayedDestruction {
+class Pipeline : public PipelineBase, public DelayedDestruction {
  public:
   Pipeline();
   ~Pipeline();
@@ -137,7 +159,9 @@ class AsyncSocket;
 template <typename Pipeline>
 class PipelineFactory {
  public:
-  virtual Pipeline* newPipeline(std::shared_ptr<AsyncSocket>) = 0;
+  virtual std::unique_ptr<Pipeline, folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket>) = 0;
+
   virtual ~PipelineFactory() {}
 };
 

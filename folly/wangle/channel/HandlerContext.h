@@ -22,6 +22,8 @@
 
 namespace folly { namespace wangle {
 
+class PipelineBase;
+
 template <class In, class Out>
 class HandlerContext {
  public:
@@ -33,6 +35,8 @@ class HandlerContext {
 
   virtual Future<void> fireWrite(Out msg) = 0;
   virtual Future<void> fireClose() = 0;
+
+  virtual PipelineBase* getPipeline() = 0;
 
   virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
 
@@ -64,6 +68,8 @@ class InboundHandlerContext {
   virtual void fireReadEOF() = 0;
   virtual void fireReadException(exception_wrapper e) = 0;
 
+  virtual PipelineBase* getPipeline() = 0;
+
   virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
 
   // TODO Need get/set writeFlags, readBufferSettings? Probably not.
@@ -78,6 +84,8 @@ class OutboundHandlerContext {
 
   virtual Future<void> fireWrite(Out msg) = 0;
   virtual Future<void> fireClose() = 0;
+
+  virtual PipelineBase* getPipeline() = 0;
 
   virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
 };

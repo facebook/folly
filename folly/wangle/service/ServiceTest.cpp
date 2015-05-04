@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/wangle/codec/StringCodec.h>
+#include <folly/wangle/codec/ByteToMessageCodec.h>
 #include <folly/wangle/service/ClientDispatcher.h>
 #include <folly/wangle/service/ServerDispatcher.h>
 #include <folly/wangle/service/Service.h>
@@ -25,6 +26,14 @@ namespace folly {
 using namespace wangle;
 
 typedef Pipeline<IOBufQueue&, std::string> ServicePipeline;
+
+class SimpleDecode : public ByteToMessageCodec {
+ public:
+  virtual std::unique_ptr<IOBuf> decode(
+    Context* ctx, IOBufQueue& buf, size_t&) {
+    return buf.move();
+  }
+};
 
 class EchoService : public Service<std::string, std::string> {
  public:
@@ -45,10 +54,12 @@ class ServerPipelineFactory
     : public PipelineFactory<ServicePipeline> {
  public:
 
-  ServicePipeline* newPipeline(
-      std::shared_ptr<AsyncSocket> socket) override {
-    auto pipeline = new ServicePipeline();
+  std::unique_ptr<ServicePipeline, folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket> socket) override {
+    std::unique_ptr<ServicePipeline, folly::DelayedDestruction::Destructor> pipeline(
+      new ServicePipeline());
     pipeline->addBack(AsyncSocketHandler(socket));
+    pipeline->addBack(SimpleDecode());
     pipeline->addBack(StringCodec());
     pipeline->addBack(SerialServerDispatcher<Req, Resp>(&service_));
     pipeline->finalize();
@@ -63,11 +74,14 @@ template <typename Req, typename Resp>
 class ClientPipelineFactory : public PipelineFactory<ServicePipeline> {
  public:
 
-  ServicePipeline* newPipeline(
-      std::shared_ptr<AsyncSocket> socket) override {
-    auto pipeline = new ServicePipeline();
+  std::unique_ptr<ServicePipeline, folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket> socket) override {
+    std::unique_ptr<ServicePipeline, folly::DelayedDestruction::Destructor> pipeline(
+      new ServicePipeline());
     pipeline->addBack(AsyncSocketHandler(socket));
+    pipeline->addBack(SimpleDecode());
     pipeline->addBack(StringCodec());
+    pipeline->finalize();
     return pipeline;
    }
 };

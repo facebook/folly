@@ -94,6 +94,7 @@ class AsyncSocketHandler
       detachReadCallback();
       socket_->closeNow();
     }
+    ctx->getPipeline()->deletePipeline();
     return folly::makeFuture();
   }
 
