@@ -423,7 +423,6 @@ libfolly_la_SOURCES += \
 endif
 
 if !HAVE_LINUX
-nobase_follyinclude_HEADERS += detail/Clock.h
 libfollybase_la_SOURCES += detail/Clock.cpp
 endif
 
