@@ -98,7 +98,7 @@ inline void EventBaseLoopController::timedSchedule(std::function<void()> func,
   auto delay_ms = std::chrono::duration_cast<
     std::chrono::milliseconds>(time - Clock::now()).count() + 1;
   // If clock is not monotonic
-  delay_ms = std::max<long long int>(delay_ms, 0L);
+  delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0L);
   eventBase_->tryRunAfterDelay(func, delay_ms);
 }
 
