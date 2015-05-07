@@ -19,26 +19,9 @@
 #include <folly/Conv.h>
 #include <folly/String.h>
 
-#ifdef _POSIX_MONOTONIC_CLOCK
-#define FOLLY_TIME_MONOTONIC_CLOCK CLOCK_MONOTONIC
-#else
-#define FOLLY_TIME_MONOTONIC_CLOCK CLOCK_REALTIME
-#endif
-
 using namespace std;
-using std::chrono::seconds;
 using std::chrono::milliseconds;
-
-static milliseconds nowInMS() {
-  struct timespec ts /*= void*/;
-  if (clock_gettime(FOLLY_TIME_MONOTONIC_CLOCK, &ts)) {
-    // Only possible failures are EFAULT or EINVAL, both practically
-    // impossible. But an assert can't hurt.
-    assert(false);
-  }
-  return milliseconds(
-    static_cast<int64_t>(ts.tv_sec * 1000.0 + ts.tv_nsec / 1000000.0 + 0.5));
-}
+using std::chrono::steady_clock;
 
 namespace folly {
 
@@ -91,7 +74,7 @@ void FunctionScheduler::addFunctionInternal(const std::function<void()>& cb,
   functions_.emplace_back(cb, interval, nameID.str(), startDelay,
                           latencyDistr.isPoisson, latencyDistr.poissonMean);
   if (running_) {
-    functions_.back().setNextRunTime(nowInMS() + startDelay);
+    functions_.back().setNextRunTime(steady_clock::now() + startDelay);
     std::push_heap(functions_.begin(), functions_.end(), fnCmp_);
     // Signal the running thread to wake up and see if it needs to change it's
     // current scheduling decision.
@@ -154,7 +137,7 @@ bool FunctionScheduler::start() {
 
   VLOG(1) << "Starting FunctionScheduler with " << functions_.size()
           << " functions.";
-  milliseconds now(nowInMS());
+  auto now = steady_clock::now();
   // Reset the next run time. for all functions.
   // note: this is needed since one can shutdown() and start() again
   for (auto& f : functions_) {
@@ -198,7 +181,7 @@ void FunctionScheduler::run() {
       continue;
     }
 
-    milliseconds now(nowInMS());
+    auto now = steady_clock::now();
 
     // Move the next function to run to the end of functions_
     std::pop_heap(functions_.begin(), functions_.end(), fnCmp_);
@@ -224,7 +207,7 @@ void FunctionScheduler::run() {
 }
 
 void FunctionScheduler::runOneFunction(std::unique_lock<std::mutex>& lock,
-                                       std::chrono::milliseconds now) {
+                                       steady_clock::time_point now) {
   DCHECK(lock.mutex() == &mutex_);
   DCHECK(lock.owns_lock());
 

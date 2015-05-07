@@ -135,7 +135,7 @@ class FunctionScheduler {
   struct RepeatFunc {
     std::function<void()> cb;
     std::chrono::milliseconds timeInterval;
-    std::chrono::milliseconds lastRunTime;
+    std::chrono::steady_clock::time_point lastRunTime;
     std::string name;
     std::chrono::milliseconds startDelay;
     bool isPoissonDistr;
@@ -150,17 +150,17 @@ class FunctionScheduler {
                double meanPoisson = 1.0)
       : cb(cback),
         timeInterval(interval),
-        lastRunTime(0),
+        lastRunTime(),
         name(nameID),
         startDelay(delay),
         isPoissonDistr(poisson),
         poisson_random(meanPoisson) {
     }
 
-    std::chrono::milliseconds getNextRunTime() const {
+    std::chrono::steady_clock::time_point getNextRunTime() const {
       return lastRunTime + timeInterval;
     }
-    void setNextRunTime(std::chrono::milliseconds time) {
+    void setNextRunTime(std::chrono::steady_clock::time_point time) {
       lastRunTime = time - timeInterval;
     }
     void setTimeIntervalPoissonDistr() {
@@ -185,7 +185,7 @@ class FunctionScheduler {
 
   void run();
   void runOneFunction(std::unique_lock<std::mutex>& lock,
-                      std::chrono::milliseconds now);
+                      std::chrono::steady_clock::time_point now);
   void cancelFunction(const std::unique_lock<std::mutex> &lock,
                       FunctionHeap::iterator it);
 
