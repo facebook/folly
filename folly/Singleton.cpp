@@ -45,7 +45,12 @@ struct FatalHelper {
   std::vector<detail::TypeDescriptor> leakedSingletons_;
 };
 
+#ifdef __APPLE__
+// OS X doesn't support constructor priorities.
+FatalHelper fatalHelper;
+#else
 FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
+#endif
 
 }
 
