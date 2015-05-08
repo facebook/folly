@@ -444,3 +444,21 @@ TEST(CommunicateSubprocessTest, Chatty) {
     EXPECT_EQ(0, proc.wait().exitStatus());
   });
 }
+
+TEST(CommunicateSubprocessTest, TakeOwnershipOfPipes) {
+  std::vector<Subprocess::ChildPipe> pipes;
+  {
+    Subprocess proc(
+      "echo $'oh\\nmy\\ncat' | wc -l &", Subprocess::pipeStdout()
+    );
+    pipes = proc.takeOwnershipOfPipes();
+    proc.waitChecked();
+  }
+  EXPECT_EQ(1, pipes.size());
+  EXPECT_EQ(1, pipes[0].childFd);
+
+  char buf[10];
+  EXPECT_EQ(2, readFull(pipes[0].pipe.fd(), buf, 10));
+  buf[2] = 0;
+  EXPECT_EQ("3\n", std::string(buf));
+}
