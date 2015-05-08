@@ -39,3 +39,19 @@ Future<void> sleep(Duration dur, Timekeeper* tk) {
 }
 
 }}
+
+namespace folly { namespace detail {
+
+template <>
+CollectContext<void>::~CollectContext() {
+  if (!threw.exchange(true)) {
+    p.setValue();
+  }
+}
+
+template <>
+void CollectContext<void>::setPartialResult(size_t i, Try<void>& t) {
+  // Nothing to do for void
+}
+
+}}

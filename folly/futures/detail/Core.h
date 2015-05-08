@@ -319,59 +319,33 @@ class Core {
 
 template <typename... Ts>
 struct VariadicContext {
-  VariadicContext() : total(0), count(0) {}
-  Promise<std::tuple<Try<Ts>... > > p;
+  VariadicContext() {}
+  ~VariadicContext() {
+    p.setValue(std::move(results));
+  }
+  Promise<std::tuple<Try<Ts>... >> p;
   std::tuple<Try<Ts>... > results;
-  size_t total;
-  std::atomic<size_t> count;
   typedef Future<std::tuple<Try<Ts>...>> type;
 };
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) == 0, void>::type
-collectAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
+collectAllVariadicHelper(std::shared_ptr<VariadicContext<Ts...>> ctx,
+                         THead&& head, Fs&&... tail) {
   head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
-    if (++ctx->count == ctx->total) {
-      ctx->p.setValue(std::move(ctx->results));
-      delete ctx;
-    }
   });
 }
 
 template <typename... Ts, typename THead, typename... Fs>
 typename std::enable_if<sizeof...(Fs) != 0, void>::type
-collectAllVariadicHelper(VariadicContext<Ts...> *ctx, THead&& head, Fs&&... tail) {
+collectAllVariadicHelper(std::shared_ptr<VariadicContext<Ts...>> ctx,
+                         THead&& head, Fs&&... tail) {
   head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
     std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
-    if (++ctx->count == ctx->total) {
-      ctx->p.setValue(std::move(ctx->results));
-      delete ctx;
-    }
   });
   // template tail-recursion
   collectAllVariadicHelper(ctx, std::forward<Fs>(tail)...);
 }
-
-template <typename T>
-struct WhenAllContext {
-  WhenAllContext() : count(0) {}
-  Promise<std::vector<Try<T> > > p;
-  std::vector<Try<T> > results;
-  std::atomic<size_t> count;
-};
-
-template <typename T>
-struct WhenAnyContext {
-  explicit WhenAnyContext(size_t n) : done(false), ref_count(n) {};
-  Promise<std::pair<size_t, Try<T>>> p;
-  std::atomic<bool> done;
-  std::atomic<size_t> ref_count;
-  void decref() {
-    if (--ref_count == 0) {
-      delete this;
-    }
-  }
-};
 
 }} // folly::detail
