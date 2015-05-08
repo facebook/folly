@@ -22,6 +22,8 @@
 
 #include <folly/Portability.h>
 #include <folly/FBString.h>
+#include <folly/SpookyHashV2.h>
+
 #include <algorithm>
 #include <boost/operators.hpp>
 #include <climits>
@@ -1121,6 +1123,16 @@ inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
   return detail::qfind_first_byte_of(StringPiece(haystack),
                                      StringPiece(needles));
 }
+
+template<class Key>
+struct hasher;
+
+template <class T> struct hasher<folly::Range<T*>> {
+  size_t operator()(folly::Range<T*> r) const {
+    return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
+  }
+};
+
 }  // !namespace folly
 
 #pragma GCC diagnostic pop

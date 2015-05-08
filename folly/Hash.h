@@ -338,6 +338,13 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 template<class Key>
 struct hasher;
 
+struct Hash {
+  template <class T>
+  size_t operator()(const T& v) const {
+    return hasher<T>()(v);
+  }
+};
+
 template<> struct hasher<int32_t> {
   size_t operator()(int32_t key) const {
     return hash::jenkins_rev_mix32(uint32_t(key));

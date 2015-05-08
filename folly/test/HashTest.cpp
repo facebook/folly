@@ -262,3 +262,31 @@ TEST(Hash, std_tuple_different_hash) {
   EXPECT_NE(std::hash<tuple3>()(t1),
             std::hash<tuple3>()(t3));
 }
+
+TEST(Range, Hash) {
+  using namespace folly;
+
+  StringPiece a1 = "10050517", b1 = "51107032",
+              a2 = "10050518", b2 = "51107033",
+              a3 = "10050519", b3 = "51107034",
+              a4 = "10050525", b4 = "51107040";
+  Range<const wchar_t*> w1 = range(L"10050517"), w2 = range(L"51107032"),
+                        w3 = range(L"10050518"), w4 = range(L"51107033");
+  StringPieceHash h1;
+  Hash h2;
+  EXPECT_EQ(h1(a1), h1(b1));
+  EXPECT_EQ(h1(a2), h1(b2));
+  EXPECT_EQ(h1(a3), h1(b3));
+  EXPECT_EQ(h1(a4), h1(b4));
+  EXPECT_NE(h2(a1), h2(b1));
+  EXPECT_NE(h2(a1), h2(b1));
+  EXPECT_NE(h2(a2), h2(b2));
+  EXPECT_NE(h2(a3), h2(b3));
+  EXPECT_NE(h2(ByteRange(a1)), h2(ByteRange(b1)));
+  EXPECT_NE(h2(ByteRange(a2)), h2(ByteRange(b2)));
+  EXPECT_NE(h2(ByteRange(a3)), h2(ByteRange(b3)));
+  EXPECT_NE(h2(ByteRange(a4)), h2(ByteRange(b4)));
+  EXPECT_NE(h2(w1), h2(w2));
+  EXPECT_NE(h2(w1), h2(w3));
+  EXPECT_NE(h2(w2), h2(w4));
+}
