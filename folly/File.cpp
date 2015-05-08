@@ -65,7 +65,11 @@ File& File::operator=(File&& other) {
 }
 
 File::~File() {
-  closeNoThrow();  // ignore error
+  auto fd = fd_;
+  if (!closeNoThrow()) {  // ignore most errors
+    DCHECK_NE(errno, EBADF) << "closing fd " << fd << ", it may already "
+      << "have been closed. Another time, this might close the wrong FD.";
+  }
 }
 
 /* static */ File File::temporary() {
