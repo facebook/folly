@@ -61,15 +61,8 @@ class LocalType {
 class FiberManager : public ::folly::Executor {
  public:
   struct Options {
-#ifdef FOLLY_SANITIZE_ADDRESS
-    /* ASAN needs a lot of extra stack space.
-       16x is a conservative estimate, 8x also worked with tests
-       where it mattered.  Note that overallocating here does not necessarily
-       increase RSS, since unused memory is pretty much free. */
-    static constexpr size_t kDefaultStackSize{16 * 16 * 1024};
-#else
     static constexpr size_t kDefaultStackSize{16 * 1024};
-#endif
+
     /**
      * Maximum stack size for fibers which will be used for executing all the
      * tasks.

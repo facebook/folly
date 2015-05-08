@@ -17,17 +17,33 @@
 
 #include <cassert>
 
+#include <folly/CPortability.h>
+#include <folly/experimental/fibers/Baton.h>
+#include <folly/experimental/fibers/Fiber.h>
+#include <folly/experimental/fibers/LoopController.h>
+#include <folly/experimental/fibers/Promise.h>
+#include <folly/futures/Try.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
-#include <folly/experimental/fibers/Baton.h>
-#include <folly/experimental/fibers/Fiber.h>
-#include <folly/experimental/fibers/Promise.h>
-#include <folly/experimental/fibers/LoopController.h>
-#include <folly/futures/Try.h>
 
 namespace folly { namespace fibers {
+
+namespace {
+
+inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
+#ifdef FOLLY_SANITIZE_ADDRESS
+  /* ASAN needs a lot of extra stack space.
+     16x is a conservative estimate, 8x also worked with tests
+     where it mattered.  Note that overallocating here does not necessarily
+     increase RSS, since unused memory is pretty much free. */
+  opts.stackSize *= 16;
+#endif
+  return opts;
+}
+
+}  // anonymous
 
 inline void FiberManager::ensureLoopScheduled() {
   if (isLoopScheduled_) {
@@ -441,7 +457,7 @@ FiberManager::FiberManager(
   std::unique_ptr<LoopController> loopController__,
   Options options)  :
     loopController_(std::move(loopController__)),
-    options_(std::move(options)),
+    options_(preprocessOptions(std::move(options))),
     exceptionCallback_([](std::exception_ptr eptr, std::string context) {
         try {
           std::rethrow_exception(eptr);
