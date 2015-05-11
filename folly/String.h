@@ -569,6 +569,9 @@ inline void toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
 
+// glibc doesn't have strlcpy
+size_t strlcpy(char* dest, const char* const src, size_t size);
+
 } // namespace folly
 
 // Hook into boost's type traits
