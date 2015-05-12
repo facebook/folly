@@ -60,7 +60,7 @@ class OutputBufferingHandler : public OutboundBytesToBytesHandler,
     getContext()->fireWrite(std::move(sends_))
       .then([promises](Try<void> t) mutable {
         for (auto& p : *promises) {
-          p.setTry(t);
+          p.setTry(Try<void>(t));
         }
       });
   }

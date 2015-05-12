@@ -101,14 +101,14 @@ class Try {
   }
 
   // Move constructor
-  Try(Try<T>&& t);
+  Try(Try<T>&& t) noexcept;
   // Move assigner
-  Try& operator=(Try<T>&& t);
+  Try& operator=(Try<T>&& t) noexcept;
 
-  // Non-copyable
-  Try(const Try<T>& t) = delete;
-  // Non-copyable
-  Try& operator=(const Try<T>& t) = delete;
+  // Copy constructor
+  Try(const Try& t);
+  // Copy assigner
+  Try& operator=(const Try& t);
 
   ~Try();
 

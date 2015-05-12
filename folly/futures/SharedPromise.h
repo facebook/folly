@@ -16,37 +16,46 @@
 
 #pragma once
 
-#include <folly/futures/Deprecated.h>
-#include <folly/futures/Try.h>
-#include <functional>
+#include <folly/futures/Promise.h>
 
 namespace folly {
 
-// forward declaration
-template <class T> class Future;
-
+/*
+ * SharedPromise provides the same interface as Promise, but you can extract
+ * multiple Futures from it, i.e. you can call getFuture() as many times as
+ * you'd like. When the SharedPromise is fulfilled, all of the Futures will be
+ * called back. Calls to getFuture() after the SharedPromise is fulfilled return
+ * a completed Future. If you find yourself constructing collections of Promises
+ * and fulfilling them simultaneously with the same value, consider this
+ * utility instead. Likewise, if you find yourself in need of setting multiple
+ * callbacks on the same Future (which is indefinitely unsupported), consider
+ * refactoring to use SharedPromise to "split" the Future.
+ */
 template <class T>
-class Promise {
+class SharedPromise {
 public:
-  Promise();
-  ~Promise();
+  SharedPromise() = default;
+  ~SharedPromise() = default;
 
   // not copyable
-  Promise(Promise const&) = delete;
-  Promise& operator=(Promise const&) = delete;
+  SharedPromise(SharedPromise const&) = delete;
+  SharedPromise& operator=(SharedPromise const&) = delete;
 
   // movable
-  Promise(Promise<T>&&) noexcept;
-  Promise& operator=(Promise<T>&&) noexcept;
+  SharedPromise(SharedPromise<T>&&) noexcept;
+  SharedPromise& operator=(SharedPromise<T>&&) noexcept;
 
   /** Return a Future tied to the shared core state. This can be called only
     once, thereafter Future already retrieved exception will be raised. */
   Future<T> getFuture();
 
-  /** Fulfill the Promise with an exception_wrapper */
+  /** Return the number of Futures associated with this SharedPromise */
+  size_t size();
+
+  /** Fulfill the SharedPromise with an exception_wrapper */
   void setException(exception_wrapper ew);
 
-  /** Fulfill the Promise with an exception_ptr, e.g.
+  /** Fulfill the SharedPromise with an exception_ptr, e.g.
     try {
       ...
     } catch (...) {
@@ -55,7 +64,7 @@ public:
     */
   void setException(std::exception_ptr const&) DEPRECATED;
 
-  /** Fulfill the Promise with an exception type E, which can be passed to
+  /** Fulfill the SharedPromise with an exception type E, which can be passed to
     std::make_exception_ptr(). Useful for originating exceptions. If you
     caught an exception the exception_wrapper form is more appropriate.
     */
@@ -65,23 +74,23 @@ public:
 
   /// Set an interrupt handler to handle interrupts. See the documentation for
   /// Future::raise(). Your handler can do whatever it wants, but if you
-  /// bother to set one then you probably will want to fulfill the promise with
+  /// bother to set one then you probably will want to fulfill the SharedPromise with
   /// an exception (or special value) indicating how the interrupt was
   /// handled.
   void setInterruptHandler(std::function<void(exception_wrapper const&)>);
 
-  /// Fulfill this Promise<void>
+  /// Fulfill this SharedPromise<void>
   template <class B = T>
   typename std::enable_if<std::is_void<B>::value, void>::type
   setValue() {
-    setTry(Try<T>());
+    set(Try<T>());
   }
 
-  /// Sugar to fulfill this Promise<Unit>
+  /// Sugar to fulfill this SharedPromise<Unit>
   template <class B = T>
   typename std::enable_if<std::is_same<Unit, B>::value, void>::type
   setValue() {
-    setTry(Try<T>(T()));
+    set(Try<T>(T()));
   }
 
   /** Set the value (use perfect forwarding for both move and copy) */
@@ -90,7 +99,7 @@ public:
 
   void setTry(Try<T>&& t);
 
-  /** Fulfill this Promise with the result of a function that takes no
+  /** Fulfill this SharedPromise with the result of a function that takes no
     arguments and returns something implicitly convertible to T.
     Captures exceptions. e.g.
 
@@ -100,20 +109,14 @@ public:
   void setWith(F&& func);
 
 private:
-  typedef typename Future<T>::corePtr corePtr;
-
-  // Whether the Future has been retrieved (a one-time operation).
-  bool retrieved_;
-
-  // shared core state object
-  corePtr core_;
-
-  void throwIfFulfilled();
-  void throwIfRetrieved();
-  void detach();
+  std::mutex mutex_;
+  size_t size_{0};
+  bool hasValue_{false};
+  Try<T> try_;
+  std::vector<Promise<T>> promises_;
 };
 
 }
 
 #include <folly/futures/Future.h>
-#include <folly/futures/Promise-inl.h>
+#include <folly/futures/SharedPromise-inl.h>

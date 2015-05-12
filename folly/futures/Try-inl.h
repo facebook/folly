@@ -23,7 +23,7 @@
 namespace folly {
 
 template <class T>
-Try<T>::Try(Try<T>&& t) : contains_(t.contains_) {
+Try<T>::Try(Try<T>&& t) noexcept : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
@@ -32,13 +32,47 @@ Try<T>::Try(Try<T>&& t) : contains_(t.contains_) {
 }
 
 template <class T>
-Try<T>& Try<T>::operator=(Try<T>&& t) {
+Try<T>& Try<T>::operator=(Try<T>&& t) noexcept {
+  if (this == &t) {
+    return *this;
+  }
+
   this->~Try();
   contains_ = t.contains_;
   if (contains_ == Contains::VALUE) {
     new (&value_)T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_)std::unique_ptr<exception_wrapper>(std::move(t.e_));
+  }
+  return *this;
+}
+
+template <class T>
+Try<T>::Try(const Try<T>& t) {
+  static_assert(
+      std::is_copy_constructible<T>::value,
+      "T must be copyable for Try<T> to be copyable");
+  contains_ = t.contains_;
+  if (contains_ == Contains::VALUE) {
+    new (&value_)T(t.value_);
+  } else if (contains_ == Contains::EXCEPTION) {
+    new (&e_)std::unique_ptr<exception_wrapper>();
+    e_ = folly::make_unique<exception_wrapper>(*(t.e_));
+  }
+}
+
+template <class T>
+Try<T>& Try<T>::operator=(const Try<T>& t) {
+  static_assert(
+      std::is_copy_constructible<T>::value,
+      "T must be copyable for Try<T> to be copyable");
+  this->~Try();
+  contains_ = t.contains_;
+  if (contains_ == Contains::VALUE) {
+    new (&value_)T(t.value_);
+  } else if (contains_ == Contains::EXCEPTION) {
+    new (&e_)std::unique_ptr<exception_wrapper>();
+    e_ = folly::make_unique<exception_wrapper>(*(t.e_));
   }
   return *this;
 }

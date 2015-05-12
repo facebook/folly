@@ -21,6 +21,19 @@
 
 using namespace folly;
 
+// Make sure we can copy Trys for copyable types
+TEST(Try, copy) {
+  Try<int> t;
+  auto t2 = t;
+}
+
+// But don't choke on move-only types
+TEST(Try, moveOnly) {
+  Try<std::unique_ptr<int>> t;
+  std::vector<Try<std::unique_ptr<int>>> v;
+  v.reserve(10);
+}
+
 TEST(Try, makeTryFunction) {
   auto func = []() {
     return folly::make_unique<int>(1);

@@ -109,7 +109,7 @@ void Promise<T>::setInterruptHandler(
 }
 
 template <class T>
-void Promise<T>::setTry(Try<T> t) {
+void Promise<T>::setTry(Try<T>&& t) {
   throwIfFulfilled();
   core_->setResult(std::move(t));
 }
