@@ -64,16 +64,23 @@ class FunctionScheduler {
    */
   void setSteady(bool steady) { steady_ = steady; }
 
+  /*
+   * Parameters to control the function interval.
+   *
+   * If isPoisson is true, then use std::poisson_distribution to pick the
+   * interval between each invocation of the function.
+   *
+   * If isPoisson os false, then always use fixed the interval specified to
+   * addFunction().
+   */
   struct LatencyDistribution {
     bool isPoisson;
     double poissonMean;
 
-    LatencyDistribution(bool poisson,
-                 double mean)
+    LatencyDistribution(bool poisson, double mean)
       : isPoisson(poisson),
         poissonMean(mean) {
     }
-
   };
 
   /**
@@ -92,6 +99,17 @@ class FunctionScheduler {
                    StringPiece nameID = StringPiece(),
                    std::chrono::milliseconds startDelay =
                      std::chrono::milliseconds(0));
+
+  /*
+   * Add a new function to the FunctionScheduler with a specified
+   * LatencyDistribution
+   */
+  void addFunction(const std::function<void()>& cb,
+                   std::chrono::milliseconds interval,
+                   const LatencyDistribution& latencyDistr,
+                   StringPiece nameID = StringPiece(),
+                   std::chrono::milliseconds startDelay =
+                      std::chrono::milliseconds(0));
 
   /**
    * Cancels the function with the specified name, so it will no longer be run.
@@ -126,12 +144,6 @@ class FunctionScheduler {
 
 
  private:
-  void addFunctionInternal(const std::function<void()>& cb,
-                   std::chrono::milliseconds interval,
-                   const LatencyDistribution& latencyDistr,
-                   StringPiece nameID = StringPiece(),
-                   std::chrono::milliseconds startDelay =
-                      std::chrono::milliseconds(0));
   struct RepeatFunc {
     std::function<void()> cb;
     std::chrono::milliseconds timeInterval;

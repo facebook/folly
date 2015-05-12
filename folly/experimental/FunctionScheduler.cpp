@@ -38,11 +38,10 @@ void FunctionScheduler::addFunction(const std::function<void()>& cb,
                                     StringPiece nameID,
                                     milliseconds startDelay) {
   LatencyDistribution latencyDistr(false, 0.0);
-  addFunctionInternal(cb, interval,
-                      latencyDistr, nameID, startDelay);
+  addFunction(cb, interval, latencyDistr, nameID, startDelay);
 }
 
-void FunctionScheduler::addFunctionInternal(const std::function<void()>& cb,
+void FunctionScheduler::addFunction(const std::function<void()>& cb,
                                     milliseconds interval,
                                     const LatencyDistribution& latencyDistr,
                                     StringPiece nameID,
