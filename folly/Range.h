@@ -836,8 +836,17 @@ typedef Range<char*> MutableStringPiece;
 typedef Range<const unsigned char*> ByteRange;
 typedef Range<unsigned char*> MutableByteRange;
 
-std::ostream& operator<<(std::ostream& os, const StringPiece piece);
-std::ostream& operator<<(std::ostream& os, const MutableStringPiece piece);
+inline std::ostream& operator<<(std::ostream& os,
+                                const StringPiece piece) {
+  os.write(piece.start(), piece.size());
+  return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os,
+                                const MutableStringPiece piece) {
+  os.write(piece.start(), piece.size());
+  return os;
+}
 
 /**
  * Templated comparison operators

@@ -607,33 +607,6 @@ TEST(System, errnoStr) {
   EXPECT_EQ(EACCES, errno);
 }
 
-namespace folly_test {
-struct ThisIsAVeryLongStructureName {
-};
-}  // namespace folly_test
-
-#if FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
-TEST(System, demangle) {
-  char expected[] = "folly_test::ThisIsAVeryLongStructureName";
-  EXPECT_STREQ(
-      expected,
-      demangle(typeid(folly_test::ThisIsAVeryLongStructureName)).c_str());
-
-  {
-    char buf[sizeof(expected)];
-    EXPECT_EQ(sizeof(expected) - 1,
-              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
-                       buf, sizeof(buf)));
-    EXPECT_STREQ(expected, buf);
-
-    EXPECT_EQ(sizeof(expected) - 1,
-              demangle(typeid(folly_test::ThisIsAVeryLongStructureName),
-                       buf, 11));
-    EXPECT_STREQ("folly_test", buf);
-  }
-}
-#endif
-
 namespace {
 
 template<template<class,class> class VectorType>

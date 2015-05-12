@@ -16,14 +16,8 @@
 
 #include <folly/Format.h>
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
-
-#include <folly/FBVector.h>
-#include <folly/FileUtil.h>
-#include <folly/dynamic.h>
-#include <folly/json.h>
 
 #include <string>
 
@@ -36,7 +30,8 @@ void compareOctal(Uint u) {
   char* p = buf1 + detail::uintToOctal(buf1, detail::kMaxOctalLength, u);
 
   char buf2[detail::kMaxOctalLength + 1];
-  sprintf(buf2, "%jo", static_cast<uintmax_t>(u));
+  EXPECT_LT(snprintf(buf2, sizeof(buf2), "%jo", static_cast<uintmax_t>(u)),
+            sizeof(buf2));
 
   EXPECT_EQ(std::string(buf2), std::string(p));
 }
@@ -48,7 +43,8 @@ void compareHex(Uint u) {
   char* p = buf1 + detail::uintToHexLower(buf1, detail::kMaxHexLength, u);
 
   char buf2[detail::kMaxHexLength + 1];
-  sprintf(buf2, "%jx", static_cast<uintmax_t>(u));
+  EXPECT_LT(snprintf(buf2, sizeof(buf2), "%jx", static_cast<uintmax_t>(u)),
+            sizeof(buf2));
 
   EXPECT_EQ(std::string(buf2), std::string(p));
 }
@@ -195,26 +191,6 @@ TEST(Format, Simple) {
   format(&s, "{} {}", 42, 23);
   format(&s, " hello {:X<7}", "world");
   EXPECT_EQ("42 23 hello worldXX", s);
-
-  // Test writing to FILE. I'd use open_memstream but that's not available
-  // outside of Linux (even though it's in POSIX.1-2008).
-  {
-    int fds[2];
-    CHECK_ERR(pipe(fds));
-    SCOPE_EXIT { closeNoInt(fds[1]); };
-    {
-      FILE* fp = fdopen(fds[1], "wb");
-      PCHECK(fp);
-      SCOPE_EXIT { fclose(fp); };
-      writeTo(fp, format("{} {}", 42, 23));  // <= 512 bytes (PIPE_BUF)
-    }
-
-    char buf[512];
-    ssize_t n = readFull(fds[0], buf, sizeof(buf));
-    CHECK_GE(n, 0);
-
-    EXPECT_EQ("42 23", std::string(buf, n));
-  }
 }
 
 TEST(Format, Float) {
@@ -257,34 +233,6 @@ TEST(Format, MultiLevel) {
   };
 
   EXPECT_EQ("world", sformat("{[0.hello]}", v));
-}
-
-TEST(Format, dynamic) {
-  auto dyn = parseJson(
-      "{\n"
-      "  \"hello\": \"world\",\n"
-      "  \"x\": [20, 30],\n"
-      "  \"y\": {\"a\" : 42}\n"
-      "}");
-
-  EXPECT_EQ("world", sformat("{0[hello]}", dyn));
-  EXPECT_THROW(sformat("{0[none]}", dyn), std::out_of_range);
-  EXPECT_EQ("world", sformat("{0[hello]}", defaulted(dyn, "meow")));
-  EXPECT_EQ("meow", sformat("{0[none]}", defaulted(dyn, "meow")));
-
-  EXPECT_EQ("20", sformat("{0[x.0]}", dyn));
-  EXPECT_THROW(sformat("{0[x.2]}", dyn), std::out_of_range);
-
-  // No support for "deep" defaulting (dyn["x"] is not defaulted)
-  auto v = dyn.at("x");
-  EXPECT_EQ("20", sformat("{0[0]}", v));
-  EXPECT_THROW(sformat("{0[2]}", v), std::out_of_range);
-  EXPECT_EQ("20", sformat("{0[0]}", defaulted(v, 42)));
-  EXPECT_EQ("42", sformat("{0[2]}", defaulted(v, 42)));
-
-  EXPECT_EQ("42", sformat("{0[y.a]}", dyn));
-
-  EXPECT_EQ("(null)", sformat("{}", dynamic(nullptr)));
 }
 
 TEST(Format, separatorDecimalInteger) {
@@ -350,8 +298,8 @@ TEST(Format, separatorNumber) {
 // insertThousandsGroupingUnsafe requires non-const params
 static void testGrouping(const char* a_str, const char* expected) {
   char str[256];
-  strcpy(str, a_str);
-  char * end_ptr = str + strlen(str);
+  char* end_ptr = str + snprintf(str, sizeof(str), "%s", a_str);
+  ASSERT_LT(end_ptr, str + sizeof(str));
   folly::detail::insertThousandsGroupingUnsafe(str, &end_ptr);
   ASSERT_STREQ(expected, str);
 }

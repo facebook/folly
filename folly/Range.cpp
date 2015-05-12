@@ -32,16 +32,6 @@ namespace folly {
 const AsciiCaseSensitive asciiCaseSensitive = AsciiCaseSensitive();
 const AsciiCaseInsensitive asciiCaseInsensitive = AsciiCaseInsensitive();
 
-std::ostream& operator<<(std::ostream& os, const StringPiece piece) {
-  os.write(piece.start(), piece.size());
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const MutableStringPiece piece) {
-  os.write(piece.start(), piece.size());
-  return os;
-}
-
 namespace {
 
 // It's okay if pages are bigger than this (as powers of two), but they should

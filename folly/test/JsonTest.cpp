@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/FileUtil.h>
 #include <folly/json.h>
+
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
-#include <cmath>
 #include <limits>
-#include <iostream>
 #include <boost/next_prior.hpp>
-#include <folly/Benchmark.h>
 
 using folly::dynamic;
 using folly::parseJson;
@@ -380,127 +377,8 @@ TEST(Json, SortKeys) {
   EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
 }
 
-TEST(Json, StripComments) {
-  const std::string kTestDir = "folly/test/";
-  const std::string kTestFile = "json_test_data/commented.json";
-  const std::string kTestExpected = "json_test_data/commented.json.exp";
-
-  std::string testStr;
-  std::string expectedStr;
-  if (!folly::readFile(kTestFile.data(), testStr) &&
-      !folly::readFile((kTestDir + kTestFile).data(), testStr)) {
-    FAIL() << "can not read test file " << kTestFile;
-  }
-  if (!folly::readFile(kTestExpected.data(), expectedStr) &&
-      !folly::readFile((kTestDir + kTestExpected).data(), expectedStr)) {
-    FAIL() << "can not read test file " << kTestExpected;
-  }
-  EXPECT_EQ(expectedStr, folly::json::stripComments(testStr));
-}
-
-BENCHMARK(jsonSerialize, iters) {
-  folly::json::serialization_opts opts;
-  for (size_t i = 0; i < iters; ++i) {
-    folly::json::serialize(
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy",
-      opts);
-  }
-}
-
-BENCHMARK(jsonSerializeWithNonAsciiEncoding, iters) {
-  folly::json::serialization_opts opts;
-  opts.encode_non_ascii = true;
-
-  for (size_t i = 0; i < iters; ++i) {
-    folly::json::serialize(
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy",
-      opts);
-  }
-}
-
-BENCHMARK(jsonSerializeWithUtf8Validation, iters) {
-  folly::json::serialization_opts opts;
-  opts.validate_utf8 = true;
-
-  for (size_t i = 0; i < iters; ++i) {
-    folly::json::serialize(
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy"
-      "qwerty \xc2\x80 \xef\xbf\xbf poiuy",
-      opts);
-  }
-}
-
-BENCHMARK(parseSmallStringWithUtf, iters) {
-  for (size_t i = 0; i < iters << 4; ++i) {
-    parseJson("\"I \\u2665 UTF-8 thjasdhkjh blah blah blah\"");
-  }
-}
-
-BENCHMARK(parseNormalString, iters) {
-  for (size_t i = 0; i < iters << 4; ++i) {
-    parseJson("\"akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk\"");
-  }
-}
-
-BENCHMARK(parseBigString, iters) {
-  for (size_t i = 0; i < iters; ++i) {
-    parseJson("\""
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "akjhfk jhkjlakjhfk jhkjlakjhfk jhkjl akjhfk"
-      "\"");
-  }
-}
-
-BENCHMARK(toJson, iters) {
-  dynamic something = parseJson(
-    "{\"old_value\":40,\"changed\":true,\"opened\":false,\"foo\":[1,2,3,4,5,6]}"
-  );
-
-  for (size_t i = 0; i < iters; i++) {
-    toJson(something);
-  }
-}
-
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
   return RUN_ALL_TESTS();
 }

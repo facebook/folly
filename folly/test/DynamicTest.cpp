@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
+#include <folly/dynamic.h>
+
 #include <boost/next_prior.hpp>
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include <folly/Benchmark.h>
-#include <folly/dynamic.h>
-#include <folly/gen/Base.h>
-#include <folly/json.h>
-
 using folly::dynamic;
-using folly::TypeError;
+
+// This test runs without any external dependencies, including json.
+// This means that if there's a test failure, there's no way to print
+// a useful runtime representation of the folly::dynamic.  We will
+// live with this in order to test dependencies.  This method is
+// normally provided by json.cpp.
+void dynamic::print_as_pseudo_json(std::ostream& out) const {
+  out << "<folly::dynamic object of type " << type_ << ">";
+}
 
 TEST(Dynamic, ObjectBasics) {
   dynamic obj = dynamic::object("a", false);
@@ -233,50 +238,6 @@ TEST(Dynamic, Conversions) {
   EXPECT_EQ(12.0, num.asDouble());
 }
 
-TEST(Dynamic, StringPtrs) {
-  dynamic str = "12.0";
-  dynamic num = 12.0;
-  dynamic nullStr = folly::parseJson("\"foo\\u0000bar\"");
-
-  EXPECT_EQ(0, strcmp(str.c_str(), "12.0"));
-  EXPECT_EQ(0, strncmp(str.data(), "12.0", str.asString().length()));
-  EXPECT_EQ(str.stringPiece(), "12.0");
-
-  EXPECT_THROW(num.c_str(), TypeError);
-  EXPECT_THROW(num.data(), TypeError);
-  EXPECT_THROW(num.stringPiece(), TypeError);
-
-  EXPECT_EQ(nullStr.stringPiece(), folly::StringPiece("foo\0bar", 7));
-
-  nullStr.getString()[3] = '|';
-  EXPECT_EQ(nullStr.stringPiece(), "foo|bar");
-}
-
-TEST(Dynamic, FormattedIO) {
-  std::ostringstream out;
-  dynamic doubl = 123.33;
-  dynamic dint = 12;
-  out << "0x" << std::hex << ++dint << ' ' << std::setprecision(1)
-      << doubl << '\n';
-  EXPECT_EQ(out.str(), "0xd 1e+02\n");
-
-  out.str("");
-  dynamic arrr = { 1, 2, 3 };
-  out << arrr;
-  EXPECT_EQ(out.str(), "[1,2,3]");
-
-  out.str("");
-  dynamic objy = dynamic::object("a", 12);
-  out << objy;
-  EXPECT_EQ(out.str(), R"({"a":12})");
-
-  out.str("");
-  dynamic objy2 = { objy, dynamic::object(12, "str"),
-                          dynamic::object(true, false) };
-  out << objy2;
-  EXPECT_EQ(out.str(), R"([{"a":12},{12:"str"},{true:false}])");
-}
-
 TEST(Dynamic, GetSetDefaultTest) {
   dynamic d1 = dynamic::object("foo", "bar");
   EXPECT_EQ(d1.getDefault("foo", "baz"), "bar");
@@ -324,58 +285,8 @@ TEST(Dynamic, GetPtr) {
   EXPECT_EQ(dynamic(2), *cobject.get_ptr("two"));
 }
 
-TEST(Dynamic, ArrayGenerator) {
-  // Make sure arrays can be used with folly::gen.
-  using namespace folly::gen;
-  dynamic arr { 1, 2, 3, 4 };
-  EXPECT_EQ(from(arr) | take(3) | member(&dynamic::asInt) | sum, 6);
-}
-
-TEST(Dynamic, Getters) {
-  dynamic dStr = folly::parseJson("\"foo\\u0000bar\"");
-  dynamic dInt = 1;
-  dynamic dDouble = 0.5;
-  dynamic dBool = true;
-
-  EXPECT_EQ(dStr.getString(), std::string("foo\0bar", 7));
-  EXPECT_EQ(dInt.getInt(), 1);
-  EXPECT_EQ(dDouble.getDouble(), 0.5);
-  EXPECT_EQ(dBool.getBool(), true);
-
-  dStr.getString()[3] = '|';
-  EXPECT_EQ(dStr.getString(), "foo|bar");
-
-  dInt.getInt() = 2;
-  EXPECT_EQ(dInt.getInt(), 2);
-
-  dDouble.getDouble() = 0.7;
-  EXPECT_EQ(dDouble.getDouble(), 0.7);
-
-  dBool.getBool() = false;
-  EXPECT_EQ(dBool.getBool(), false);
-
-  EXPECT_THROW(dStr.getInt(), TypeError);
-  EXPECT_THROW(dStr.getDouble(), TypeError);
-  EXPECT_THROW(dStr.getBool(), TypeError);
-
-  EXPECT_THROW(dInt.getString(), TypeError);
-  EXPECT_THROW(dInt.getDouble(), TypeError);
-  EXPECT_THROW(dInt.getBool(), TypeError);
-
-  EXPECT_THROW(dDouble.getString(), TypeError);
-  EXPECT_THROW(dDouble.getInt(), TypeError);
-  EXPECT_THROW(dDouble.getBool(), TypeError);
-
-  EXPECT_THROW(dBool.getString(), TypeError);
-  EXPECT_THROW(dBool.getInt(), TypeError);
-  EXPECT_THROW(dBool.getDouble(), TypeError);
-}
-
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
   return RUN_ALL_TESTS();
 }
