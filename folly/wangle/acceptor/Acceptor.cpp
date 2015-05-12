@@ -69,30 +69,30 @@ class AcceptorHandshakeHelper :
     socket_->sslAccept(this);
   }
 
-  virtual void timeoutExpired() noexcept {
+  virtual void timeoutExpired() noexcept override {
     VLOG(4) << "SSL handshake timeout expired";
     sslError_ = SSLErrorEnum::TIMEOUT;
     dropConnection();
   }
-  virtual void describe(std::ostream& os) const {
+  virtual void describe(std::ostream& os) const override {
     os << "pending handshake on " << clientAddr_;
   }
-  virtual bool isBusy() const {
+  virtual bool isBusy() const override {
     return true;
   }
-  virtual void notifyPendingShutdown() {}
-  virtual void closeWhenIdle() {}
+  virtual void notifyPendingShutdown() override {}
+  virtual void closeWhenIdle() override {}
 
-  virtual void dropConnection() {
+  virtual void dropConnection() override {
     VLOG(10) << "Dropping in progress handshake for " << clientAddr_;
     socket_->closeNow();
   }
-  virtual void dumpConnectionState(uint8_t loglevel) {
+  virtual void dumpConnectionState(uint8_t loglevel) override {
   }
 
  private:
   // AsyncSSLSocket::HandshakeCallback API
-  virtual void handshakeSuc(AsyncSSLSocket* sock) noexcept {
+  virtual void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
 
     const unsigned char* nextProto = nullptr;
     unsigned nextProtoLength = 0;
@@ -147,7 +147,7 @@ class AcceptorHandshakeHelper :
   }
 
   virtual void handshakeErr(AsyncSSLSocket* sock,
-                            const AsyncSocketException& ex) noexcept {
+                            const AsyncSocketException& ex) noexcept override {
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - acceptTime_);
     VLOG(3) << "SSL handshake error after " << elapsedTime.count() <<
         " ms; " << sock->getRawBytesReceived() << " bytes received & " <<

@@ -31,7 +31,8 @@ ConnectionManager::ConnectionManager(EventBase* eventBase,
     eventBase_(eventBase),
     idleIterator_(conns_.end()),
     idleLoopCallback_(this),
-    timeout_(timeout) {
+    timeout_(timeout),
+    idleConnEarlyDropThreshold_(timeout_ / 2) {
 
 }
 
@@ -46,7 +47,12 @@ ConnectionManager::addConnection(ManagedConnection* connection,
       // We must remove it from that manager before adding it to this one.
       oldMgr->removeConnection(connection);
     }
-    conns_.push_back(*connection);
+
+    // put the connection into busy part first.  This should not matter at all
+    // because the last callback for an idle connection must be onDeactivated(),
+    // so the connection must be moved to idle part then.
+    conns_.push_front(*connection);
+
     connection->setConnectionManager(this);
     if (callback_) {
       callback_->onConnectionAdded(*this);
@@ -172,5 +178,56 @@ ConnectionManager::dropAllConnections() {
     callback_->onEmpty(*this);
   }
 }
+
+void
+ConnectionManager::onActivated(ManagedConnection& conn) {
+  auto it = conns_.iterator_to(conn);
+  if (it == idleIterator_) {
+    idleIterator_++;
+  }
+  conns_.erase(it);
+  conns_.push_front(conn);
+}
+
+void
+ConnectionManager::onDeactivated(ManagedConnection& conn) {
+  auto it = conns_.iterator_to(conn);
+  conns_.erase(it);
+  conns_.push_back(conn);
+  if (idleIterator_ == conns_.end()) {
+    idleIterator_--;
+  }
+}
+
+size_t
+ConnectionManager::dropIdleConnections(size_t num) {
+  VLOG(4) << "attempt to drop " << num << " idle connections";
+  if (idleConnEarlyDropThreshold_ >= timeout_) {
+    return 0;
+  }
+
+  size_t count = 0;
+  while(count < num) {
+    auto it = idleIterator_;
+    if (it == conns_.end()) {
+      return count; // no more idle session
+    }
+    auto idleTime = it->getIdleTime();
+    if (idleTime == std::chrono::milliseconds(0) ||
+          idleTime <= idleConnEarlyDropThreshold_) {
+      VLOG(4) << "conn's idletime: " << idleTime.count()
+              << ", earlyDropThreshold: " << idleConnEarlyDropThreshold_.count()
+              << ", attempt to drop " << count << "/" << num;
+      return count; // idleTime cannot be further reduced
+    }
+    ManagedConnection& conn = *it;
+    idleIterator_++;
+    conn.timeoutExpired();
+    count++;
+  }
+
+  return count;
+}
+
 
 }} // folly::wangle

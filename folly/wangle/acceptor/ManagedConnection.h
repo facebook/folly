@@ -36,6 +36,17 @@ class ManagedConnection:
 
   ManagedConnection();
 
+  class Callback {
+  public:
+    virtual ~Callback() {}
+
+    /* Invoked when this connection becomes busy */
+    virtual void onActivated(ManagedConnection& conn) = 0;
+
+    /* Invoked when a connection becomes idle */
+    virtual void onDeactivated(ManagedConnection& conn) = 0;
+  };
+
   // HHWheelTimer::Callback API (left for subclasses to implement).
   virtual void timeoutExpired() noexcept = 0;
 
@@ -49,6 +60,14 @@ class ManagedConnection:
    * Check whether the connection has any requests outstanding.
    */
   virtual bool isBusy() const = 0;
+
+  /**
+   * Get the idle time of the connection. If it returning 0, that means the idle
+   * connections will never be dropped during pre load shedding stage.
+   */
+  virtual std::chrono::milliseconds getIdleTime() const {
+    return std::chrono::milliseconds(0);
+  }
 
   /**
    * Notify the connection that a shutdown is pending. This method will be

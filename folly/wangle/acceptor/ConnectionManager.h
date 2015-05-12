@@ -30,7 +30,8 @@ namespace folly { namespace wangle {
 /**
  * A ConnectionManager keeps track of ManagedConnections.
  */
-class ConnectionManager: public folly::DelayedDestruction {
+class ConnectionManager: public folly::DelayedDestruction,
+                         private ManagedConnection::Callback {
  public:
 
   /**
@@ -135,6 +136,25 @@ class ConnectionManager: public folly::DelayedDestruction {
     return timeout_;
   }
 
+  void setLoweredIdleTimeout(std::chrono::milliseconds timeout) {
+    CHECK(timeout >= std::chrono::milliseconds(0));
+    CHECK(timeout <= timeout_);
+    idleConnEarlyDropThreshold_ = timeout;
+  }
+
+  /**
+   * try to drop num idle connections to release system resources.  Return the
+   * actual number of dropped idle connections
+   */
+  size_t dropIdleConnections(size_t num);
+
+  /**
+   * ManagedConnection::Callbacks
+   */
+  void onActivated(ManagedConnection& conn);
+
+  void onDeactivated(ManagedConnection& conn);
+
  private:
   class CloseIdleConnsCallback :
       public folly::EventBase::LoopCallback,
@@ -181,7 +201,11 @@ class ConnectionManager: public folly::DelayedDestruction {
    */
   void drainAllConnections();
 
-  /** All connections */
+  /**
+   * All the managed connections. idleIterator_ seperates them into two parts:
+   * idle and busy ones.  [conns_.begin(), idleIterator_) are the busy ones,
+   * while [idleIterator_, conns_.end()) are the idle one. Moreover, the idle
+   * ones are organized in the decreasing idle time order. */
   folly::CountedIntrusiveList<
     ManagedConnection,&ManagedConnection::listHook_> conns_;
 
@@ -199,7 +223,23 @@ class ConnectionManager: public folly::DelayedDestruction {
     ManagedConnection,&ManagedConnection::listHook_>::iterator idleIterator_;
   CloseIdleConnsCallback idleLoopCallback_;
   ShutdownAction action_{ShutdownAction::DRAIN1};
+
+  /**
+   * the default idle timeout for downstream sessions when no system resource
+   * limit is reached
+   */
   std::chrono::milliseconds timeout_;
+
+  /**
+   * The idle connections can be closed earlier that their idle timeout when any
+   * system resource limit is reached.  This feature can be considerred as a pre
+   * load shedding stage for the system, and can be easily disabled by setting
+   * idleConnEarlyDropThreshold_ to defaultIdleTimeout_. Also,
+   * idleConnEarlyDropThreshold_ can be used to bottom the idle timeout. That
+   * is, connection manager will not early drop the idle connections whose idle
+   * time is less than idleConnEarlyDropThreshold_.
+   */
+  std::chrono::milliseconds idleConnEarlyDropThreshold_;
 };
 
 }} // folly::wangle
