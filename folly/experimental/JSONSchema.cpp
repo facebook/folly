@@ -62,7 +62,7 @@ struct IValidator {
   virtual ~IValidator() {}
 
  private:
-  friend class ValidationContext;
+  friend struct ValidationContext;
 
   virtual Optional<SchemaError> validate(ValidationContext&,
                                          const dynamic& value) const = 0;

@@ -375,7 +375,7 @@ class SingletonVault {
 
  private:
   template <typename T>
-  friend class detail::SingletonHolder;
+  friend struct detail::SingletonHolder;
 
   // The two stages of life for a vault, as mentioned in the class comment.
   enum class SingletonVaultState {

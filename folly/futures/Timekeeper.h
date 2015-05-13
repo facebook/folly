@@ -20,7 +20,7 @@
 
 namespace folly {
 
-template <class> struct Future;
+template <class> class Future;
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay
 /// promises. The returned Future<void> will either complete after the

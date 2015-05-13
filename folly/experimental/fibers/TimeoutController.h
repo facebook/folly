@@ -45,7 +45,7 @@ class TimeoutController :
  private:
   void scheduleRun();
 
-  class TimeoutHandle;
+  struct TimeoutHandle;
   typedef std::queue<TimeoutHandle> TimeoutHandleList;
   typedef std::unique_ptr<TimeoutHandleList> TimeoutHandleListPtr;
 

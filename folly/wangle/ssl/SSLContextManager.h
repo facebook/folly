@@ -26,10 +26,10 @@ namespace folly {
 class SocketAddress;
 class SSLContext;
 class ClientHelloExtStats;
-class SSLCacheOptions;
+struct SSLCacheOptions;
 class SSLStats;
 class TLSTicketKeyManager;
-class TLSTicketKeySeeds;
+struct TLSTicketKeySeeds;
 
 class SSLContextManager {
  public:
