@@ -83,14 +83,14 @@ public:
   template <class B = T>
   typename std::enable_if<std::is_void<B>::value, void>::type
   setValue() {
-    set(Try<T>());
+    setTry(Try<T>());
   }
 
   /// Sugar to fulfill this SharedPromise<Unit>
   template <class B = T>
   typename std::enable_if<std::is_same<Unit, B>::value, void>::type
   setValue() {
-    set(Try<T>(T()));
+    setTry(Try<T>(T()));
   }
 
   /** Set the value (use perfect forwarding for both move and copy) */

@@ -56,4 +56,11 @@ TEST(OutputBufferingHandlerTest, Basic) {
   EXPECT_TRUE(f1.isReady());
   EXPECT_TRUE(f2.isReady());
   EXPECT_CALL(mockHandler, detachPipeline(_));
+
+ // Make sure the SharedPromise resets correctly
+  auto f = pipeline.write(IOBuf::copyBuffer("foo"));
+  EXPECT_FALSE(f.isReady());
+  EXPECT_CALL(mockHandler, write_(_, IOBufContains("foo")));
+  eb.loopOnce();
+  EXPECT_TRUE(f.isReady());
 }

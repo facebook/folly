@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/futures/SharedPromise.h>
 #include <folly/wangle/channel/Handler.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
@@ -48,20 +49,16 @@ class OutputBufferingHandler : public OutboundBytesToBytesHandler,
         DCHECK(isLoopCallbackScheduled());
         sends_->prependChain(std::move(buf));
       }
-      Promise<void> p;
-      auto f = p.getFuture();
-      promises_.push_back(std::move(p));
-      return f;
+      return sharedPromise_.getFuture();
     }
   }
 
   void runLoopCallback() noexcept override {
-    MoveWrapper<std::vector<Promise<void>>> promises(std::move(promises_));
+    MoveWrapper<SharedPromise<void>> sharedPromise;
+    std::swap(*sharedPromise, sharedPromise_);
     getContext()->fireWrite(std::move(sends_))
-      .then([promises](Try<void> t) mutable {
-        for (auto& p : *promises) {
-          p.setTry(Try<void>(t));
-        }
+      .then([sharedPromise](Try<void> t) mutable {
+        sharedPromise->setTry(std::move(t));
       });
   }
 
@@ -71,17 +68,15 @@ class OutputBufferingHandler : public OutboundBytesToBytesHandler,
     }
 
     // If there are sends queued, cancel them
-    for (auto& promise : promises_) {
-      promise.setException(
-        folly::make_exception_wrapper<std::runtime_error>(
-          "close() called while sends still pending"));
-    }
+    sharedPromise_.setException(
+      folly::make_exception_wrapper<std::runtime_error>(
+        "close() called while sends still pending"));
     sends_.reset();
-    promises_.clear();
+    sharedPromise_ = SharedPromise<void>();
     return ctx->fireClose();
   }
 
-  std::vector<Promise<void>> promises_;
+  SharedPromise<void> sharedPromise_;
   std::unique_ptr<IOBuf> sends_{nullptr};
   bool queueSends_{true};
 };
