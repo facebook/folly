@@ -78,6 +78,9 @@ Fiber::Fiber(FiberManager& fiberManager) :
 }
 
 void Fiber::init(bool recordStackUsed) {
+// It is necessary to disable the logic for ASAN because we change
+// the fiber's stack.
+#ifndef FOLLY_SANITIZE_ADDRESS
   recordStackUsed_ = recordStackUsed;
   if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
     auto limit = fcontext_.stackLimit();
@@ -94,6 +97,7 @@ void Fiber::init(bool recordStackUsed) {
 
     stackFilledWithMagic_ = true;
   }
+#endif
 }
 
 Fiber::~Fiber() {

@@ -71,8 +71,7 @@ class Fiber {
 
   explicit Fiber(FiberManager& fiberManager);
 
-  // It is necessary to disable ASAN because init() changes the fiber's stack.
-  void init(bool recordStackUsed) FOLLY_DISABLE_ADDRESS_SANITIZER;
+  void init(bool recordStackUsed);
 
   template <typename F>
   void setFunction(F&& func);
