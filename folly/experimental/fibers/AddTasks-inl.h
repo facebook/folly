@@ -115,7 +115,7 @@ addTasks(InputIterator first, InputIterator last) {
 #endif
     addTask(
       [i, context, f = std::move(*first)]() {
-        context->results.emplace_back(i, folly::makeTryFunction(std::move(f)));
+        context->results.emplace_back(i, folly::makeTryWith(std::move(f)));
 
         // Check for awaiting iterator.
         if (context->promise.hasValue()) {

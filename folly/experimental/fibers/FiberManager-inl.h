@@ -309,7 +309,7 @@ struct FiberManager::AddTaskFinallyHelper {
         func_(std::move(func)), result_(finally.result_) {}
 
     void operator()() {
-      result_ = folly::makeTryFunction(std::move(func_));
+      result_ = folly::makeTryWith(std::move(func_));
 
       if (allocateInBuffer) {
         this->~Func();
@@ -387,7 +387,7 @@ FiberManager::runInMainContextHelper(F&& func) {
 
   folly::Try<Result> result;
   auto f = [&func, &result]() mutable {
-    result = folly::makeTryFunction(std::forward<F>(func));
+    result = folly::makeTryWith(std::forward<F>(func));
   };
 
   immediateFunc_ = std::ref(f);

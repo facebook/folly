@@ -127,7 +127,7 @@ template <class T>
 template <class F>
 void Promise<T>::setWith(F&& func) {
   throwIfFulfilled();
-  setTry(makeTryFunction(std::forward<F>(func)));
+  setTry(makeTryWith(std::forward<F>(func)));
 }
 
 }

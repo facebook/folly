@@ -87,7 +87,7 @@ void Promise<T>::setValue() {
 template <class T>
 template <class F>
 void Promise<T>::setWith(F&& func) {
-  setTry(makeTryFunction(std::forward<F>(func)));
+  setTry(makeTryWith(std::forward<F>(func)));
 }
 
 }}

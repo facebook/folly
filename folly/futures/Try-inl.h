@@ -128,7 +128,7 @@ template <typename F>
 typename std::enable_if<
   !std::is_same<typename std::result_of<F()>::type, void>::value,
   Try<typename std::result_of<F()>::type>>::type
-makeTryFunction(F&& f) {
+makeTryWith(F&& f) {
   typedef typename std::result_of<F()>::type ResultType;
   try {
     return Try<ResultType>(f());
@@ -143,7 +143,7 @@ template <typename F>
 typename std::enable_if<
   std::is_same<typename std::result_of<F()>::type, void>::value,
   Try<void>>::type
-makeTryFunction(F&& f) {
+makeTryWith(F&& f) {
   try {
     f();
     return Try<void>();
