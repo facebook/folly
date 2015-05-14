@@ -739,6 +739,53 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
   return f;
 }
 
+template <class Collection, class F, class ItT, class Result>
+std::vector<Future<Result>>
+window(Collection input, F func, size_t n) {
+  struct WindowContext {
+    WindowContext(Collection&& i, F&& fn)
+        : i_(0), input_(std::move(i)), promises_(input_.size()),
+          func_(std::move(fn))
+      {}
+    std::atomic<size_t> i_;
+    Collection input_;
+    std::vector<Promise<Result>> promises_;
+    F func_;
+
+    static inline void spawn(const std::shared_ptr<WindowContext>& ctx) {
+      size_t i = ctx->i_++;
+      if (i < ctx->input_.size()) {
+        // Using setCallback_ directly since we don't need the Future
+        ctx->func_(std::move(ctx->input_[i])).setCallback_(
+          // ctx is captured by value
+          [ctx, i](Try<ItT>&& t) {
+            ctx->promises_[i].setTry(std::move(t));
+            // Chain another future onto this one
+            spawn(std::move(ctx));
+          });
+      }
+    }
+  };
+
+  auto max = std::min(n, input.size());
+
+  auto ctx = std::make_shared<WindowContext>(
+    std::move(input), std::move(func));
+
+  for (size_t i = 0; i < max; ++i) {
+    // Start the first n Futures
+    WindowContext::spawn(ctx);
+  }
+
+  std::vector<Future<Result>> futures;
+  futures.reserve(ctx->promises_.size());
+  for (auto& promise : ctx->promises_) {
+    futures.emplace_back(promise.getFuture());
+  }
+
+  return futures;
+}
+
 template <class T>
 template <class I, class F>
 Future<I> Future<T>::reduce(I&& initial, F&& func) {

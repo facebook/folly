@@ -224,6 +224,21 @@ auto collectN(Collection&& c, size_t n)
   return collectN(c.begin(), c.end(), n);
 }
 
+/** window creates up to n Futures using the values
+    in the collection, and then another Future for each Future
+    that completes
+
+    this is basically a sliding window of Futures of size n
+
+    func must return a Future for each value in input
+  */
+template <class Collection, class F,
+          class ItT = typename std::iterator_traits<
+            typename Collection::iterator>::value_type,
+          class Result = typename detail::resultOf<F, ItT&&>::value_type>
+std::vector<Future<Result>>
+window(Collection input, F func, size_t n);
+
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::conditional<
   detail::callableWith<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type;
