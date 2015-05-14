@@ -55,10 +55,10 @@ class Future {
   Future& operator=(Future&&) noexcept;
 
   /// Construct a Future from a value (perfect forwarding)
-  /* implicit */
-  template <class T2 = T,
-            typename std::enable_if<!isFuture<T2>::value, void*>::type = nullptr>
-  Future(T2&& val);
+  template <class T2 = T, typename =
+            typename std::enable_if<
+              !isFuture<typename std::decay<T2>::type>::value>::type>
+  /* implicit */ Future(T2&& val);
 
   template <class T2 = T,
             typename std::enable_if<

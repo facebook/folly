@@ -44,8 +44,7 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-template <class T2,
-          typename std::enable_if<!isFuture<T2>::value, void*>::type>
+template <class T2, typename>
 Future<T>::Future(T2&& val) : core_(nullptr) {
   Promise<T> p;
   p.setValue(std::forward<T2>(val));
