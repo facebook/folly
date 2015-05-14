@@ -227,17 +227,20 @@ class Core {
   bool isActive() { return active_; }
 
   /// Call only from Future thread
-  void setExecutor(Executor* x) {
+  void setExecutor(Executor* x, int8_t priority) {
+    folly::MSLGuard g(executorLock_);
     executor_ = x;
+    priority_ = priority;
   }
 
   Executor* getExecutor() {
+    folly::MSLGuard g(executorLock_);
     return executor_;
   }
 
   /// Call only from Future thread
   void raise(exception_wrapper e) {
-    std::lock_guard<decltype(interruptLock_)> guard(interruptLock_);
+    folly::MSLGuard guard(interruptLock_);
     if (!interrupt_ && !hasResult()) {
       interrupt_ = folly::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
@@ -248,7 +251,7 @@ class Core {
 
   /// Call only from Promise thread
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
-    std::lock_guard<decltype(interruptLock_)> guard(interruptLock_);
+    folly::MSLGuard guard(interruptLock_);
     if (!hasResult()) {
       if (interrupt_) {
         fn(*interrupt_);
@@ -277,14 +280,28 @@ class Core {
     RequestContext::setContext(context_);
 
     // TODO(6115514) semantic race on reading executor_ and setExecutor()
-    Executor* x = executor_;
+    Executor* x;
+    int8_t priority;
+    {
+      folly::MSLGuard g(executorLock_);
+      x = executor_;
+      priority = priority_;
+    }
+
     if (x) {
       ++attached_; // keep Core alive until executor did its thing
       try {
-        x->add([this]() mutable {
-          SCOPE_EXIT { detachOne(); };
-          callback_(std::move(*result_));
-        });
+        if (LIKELY(x->getNumPriorities() == 1)) {
+          x->add([this]() mutable {
+            SCOPE_EXIT { detachOne(); };
+            callback_(std::move(*result_));
+          });
+        } else {
+          x->addWithPriority([this]() mutable {
+            SCOPE_EXIT { detachOne(); };
+            callback_(std::move(*result_));
+          }, priority);
+        }
       } catch (...) {
         result_ = Try<T>(exception_wrapper(std::current_exception()));
         callback_(std::move(*result_));
@@ -307,12 +324,14 @@ class Core {
   std::atomic<unsigned char> attached_ {2};
   std::atomic<bool> active_ {true};
   folly::MicroSpinLock interruptLock_ {0};
+  folly::MicroSpinLock executorLock_ {0};
+  int8_t priority_ {-1};
+  Executor* executor_ {nullptr};
   folly::Optional<Try<T>> result_ {};
   std::function<void(Try<T>&&)> callback_ {nullptr};
   static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
   char lambdaBuf_[lambdaBufSize];
   std::shared_ptr<RequestContext> context_ {nullptr};
-  std::atomic<Executor*> executor_ {nullptr};
   std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};
 };

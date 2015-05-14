@@ -24,26 +24,29 @@ namespace folly { namespace wangle {
 template <class T>
 class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
  public:
-  explicit PriorityLifoSemMPMCQueue(uint32_t numPriorities, size_t capacity) {
-    CHECK(numPriorities > 0);
+  explicit PriorityLifoSemMPMCQueue(uint8_t numPriorities, size_t capacity) {
     queues_.reserve(numPriorities);
-    for (uint32_t i = 0; i < numPriorities; i++) {
+    for (int8_t i = 0; i < numPriorities; i++) {
       queues_.push_back(MPMCQueue<T>(capacity));
     }
   }
 
-  uint32_t getNumPriorities() override {
+  uint8_t getNumPriorities() override {
     return queues_.size();
   }
 
-  // Add at lowest priority by default
+  // Add at medium priority by default
   void add(T item) override {
-    addWithPriority(std::move(item), 0);
+    addWithPriority(std::move(item), Executor::MID_PRI);
   }
 
-  void addWithPriority(T item, uint32_t priority) override {
-    CHECK(priority < queues_.size());
-    if (!queues_[priority].write(std::move(item))) {
+  void addWithPriority(T item, int8_t priority) override {
+    int mid = getNumPriorities() / 2;
+    size_t queue = priority < 0 ?
+                   std::max(0, mid + priority) :
+                   std::min(getNumPriorities() - 1, mid + priority);
+    CHECK(queue < queues_.size());
+    if (!queues_[queue].write(std::move(item))) {
       throw std::runtime_error("LifoSemMPMCQueue full, can't add item");
     }
     sem_.post();

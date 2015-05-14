@@ -128,10 +128,14 @@ Future<T> makeFuture(Try<T>&& t);
  * This is just syntactic sugar for makeFuture().via(executor)
  *
  * @param executor the Executor to call back on
+ * @param priority optionally, the priority to add with. Defaults to 0 which
+ * represents medium priority.
  *
  * @returns a void Future that will call back on the given executor
  */
-inline Future<void> via(Executor* executor);
+inline Future<void> via(
+    Executor* executor,
+    int8_t priority = Executor::MID_PRI);
 
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed

@@ -25,14 +25,12 @@ class BlockingQueue {
  public:
   virtual ~BlockingQueue() {}
   virtual void add(T item) = 0;
-  virtual void addWithPriority(T item, uint32_t priority) {
+  virtual void addWithPriority(T item, int8_t priority) {
     LOG_FIRST_N(WARNING, 1) <<
       "add(item, priority) called on a non-priority queue";
     add(std::move(item));
   }
-  virtual uint32_t getNumPriorities() {
-    LOG_FIRST_N(WARNING, 1) <<
-      "getNumPriorities() called on a non-priority queue";
+  virtual uint8_t getNumPriorities() {
     return 1;
   }
   virtual T take() = 0;

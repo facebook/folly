@@ -310,10 +310,10 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
   };
   CPUThreadPoolExecutor pool(0, 2);
   for (int i = 0; i < 50; i++) {
-    pool.add(lopri, 0);
+    pool.addWithPriority(lopri, Executor::LO_PRI);
   }
   for (int i = 0; i < 50; i++) {
-    pool.add(hipri, 1);
+    pool.addWithPriority(hipri, Executor::HI_PRI);
   }
   pool.setNumThreads(1);
   pool.join();
@@ -371,4 +371,25 @@ TEST(ThreadPoolExecutorTest, CPUObserver) {
   }
 
   observer->checkCalls();
+}
+
+TEST(ThreadPoolExecutorTest, AddWithPriority) {
+  std::atomic_int c{0};
+  auto f = [&]{ c++; };
+
+  // IO exe doesn't support priorities
+  IOThreadPoolExecutor ioExe(10);
+  EXPECT_THROW(ioExe.addWithPriority(f, 0), std::runtime_error);
+
+  CPUThreadPoolExecutor cpuExe(10, 3);
+  cpuExe.addWithPriority(f, -1);
+  cpuExe.addWithPriority(f, 0);
+  cpuExe.addWithPriority(f, 1);
+  cpuExe.addWithPriority(f, -2); // will add at the lowest priority
+  cpuExe.addWithPriority(f, 2);  // will add at the highest priority
+  cpuExe.addWithPriority(f, Executor::LO_PRI);
+  cpuExe.addWithPriority(f, Executor::HI_PRI);
+  cpuExe.join();
+
+  EXPECT_EQ(7, c);
 }

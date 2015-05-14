@@ -24,27 +24,26 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  public:
   struct CPUTask;
 
-  explicit CPUThreadPoolExecutor(
+  CPUThreadPoolExecutor(
       size_t numThreads,
       std::unique_ptr<BlockingQueue<CPUTask>> taskQueue,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
   explicit CPUThreadPoolExecutor(size_t numThreads);
-
-  explicit CPUThreadPoolExecutor(
+CPUThreadPoolExecutor(
       size_t numThreads,
       std::shared_ptr<ThreadFactory> threadFactory);
 
-  explicit CPUThreadPoolExecutor(
+  CPUThreadPoolExecutor(
       size_t numThreads,
-      uint32_t numPriorities,
+      int8_t numPriorities,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
 
-  explicit CPUThreadPoolExecutor(
+  CPUThreadPoolExecutor(
       size_t numThreads,
-      uint32_t numPriorities,
+      int8_t numPriorities,
       size_t maxQueueSize,
       std::shared_ptr<ThreadFactory> threadFactory =
           std::make_shared<NamedThreadFactory>("CPUThreadPool"));
@@ -57,14 +56,14 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr) override;
 
-  void add(Func func, uint32_t priority);
+  void addWithPriority(Func func, int8_t priority) override;
   void add(
       Func func,
-      uint32_t priority,
+      int8_t priority,
       std::chrono::milliseconds expiration,
       Func expireCallback = nullptr);
 
-  uint32_t getNumPriorities() const;
+  uint8_t getNumPriorities() const override;
 
   struct CPUTask : public ThreadPoolExecutor::Task {
     // Must be noexcept move constructible so it can be used in MPMCQueue
@@ -84,7 +83,6 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   };
 
   static const size_t kDefaultMaxQueueSize;
-  static const size_t kDefaultNumPriorities;
 
  protected:
   BlockingQueue<CPUTask>* getTaskQueue();

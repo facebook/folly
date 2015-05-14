@@ -97,12 +97,16 @@ class Future {
   // The ref-qualifier allows for `this` to be moved out so we
   // don't get access-after-free situations in chaining.
   // https://akrzemi1.wordpress.com/2014/06/02/ref-qualifiers/
-  inline Future<T> via(Executor* executor) &&;
+  inline Future<T> via(
+      Executor* executor,
+      int8_t priority = Executor::MID_PRI) &&;
 
   /// This variant creates a new future, where the ref-qualifier && version
   /// moves `this` out. This one is less efficient but avoids confusing users
   /// when "return f.via(x);" fails.
-  inline Future<T> via(Executor* executor) &;
+  inline Future<T> via(
+      Executor* executor,
+      int8_t priority = Executor::MID_PRI) &;
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
@@ -405,7 +409,9 @@ class Future {
   thenImplementation(F func, detail::argResult<isTry, F, Args...>);
 
   Executor* getExecutor() { return core_->getExecutor(); }
-  void setExecutor(Executor* x) { core_->setExecutor(x); }
+  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
+    core_->setExecutor(x, priority);
+  }
 };
 
 } // folly

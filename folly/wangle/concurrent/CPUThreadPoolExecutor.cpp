@@ -20,7 +20,6 @@
 namespace folly { namespace wangle {
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
-const size_t CPUThreadPoolExecutor::kDefaultNumPriorities = 2;
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
@@ -48,7 +47,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
-    uint32_t numPriorities,
+    int8_t numPriorities,
     std::shared_ptr<ThreadFactory> threadFactory)
     : CPUThreadPoolExecutor(
           numThreads,
@@ -59,7 +58,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
-    uint32_t numPriorities,
+    int8_t numPriorities,
     size_t maxQueueSize,
     std::shared_ptr<ThreadFactory> threadFactory)
     : CPUThreadPoolExecutor(
@@ -87,22 +86,22 @@ void CPUThreadPoolExecutor::add(
       CPUTask(std::move(func), expiration, std::move(expireCallback)));
 }
 
-void CPUThreadPoolExecutor::add(Func func, uint32_t priority) {
+void CPUThreadPoolExecutor::addWithPriority(Func func, int8_t priority) {
   add(std::move(func), priority, std::chrono::milliseconds(0));
 }
 
 void CPUThreadPoolExecutor::add(
     Func func,
-    uint32_t priority,
+    int8_t priority,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  CHECK(priority < getNumPriorities());
+  CHECK(getNumPriorities() > 0);
   taskQueue_->addWithPriority(
       CPUTask(std::move(func), expiration, std::move(expireCallback)),
       priority);
 }
 
-uint32_t CPUThreadPoolExecutor::getNumPriorities() const {
+uint8_t CPUThreadPoolExecutor::getNumPriorities() const {
   return taskQueue_->getNumPriorities();
 }
 
@@ -142,7 +141,7 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
   CHECK(stoppedThreads_.size() == 0);
   threadsToStop_ = n;
   for (size_t i = 0; i < n; i++) {
-    taskQueue_->add(CPUTask());
+    taskQueue_->addWithPriority(CPUTask(), Executor::LO_PRI);
   }
 }
 

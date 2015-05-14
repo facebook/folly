@@ -185,6 +185,49 @@ TEST(Via, chain3) {
   EXPECT_EQ(3, count);
 }
 
+struct PriorityExecutor : public Executor {
+  void add(Func f) override {}
+
+  void addWithPriority(Func, int8_t priority) override {
+    int mid = getNumPriorities() / 2;
+    int p = priority < 0 ?
+            std::max(0, mid + priority) :
+            std::min(getNumPriorities() - 1, mid + priority);
+    EXPECT_LT(p, 3);
+    EXPECT_GE(p, 0);
+    if (p == 0) {
+      count0++;
+    } else if (p == 1) {
+      count1++;
+    } else if (p == 2) {
+      count2++;
+    }
+  }
+
+  uint8_t getNumPriorities() const override {
+    return 3;
+  }
+
+  int count0{0};
+  int count1{0};
+  int count2{0};
+};
+
+TEST(Via, priority) {
+  PriorityExecutor exe;
+  via(&exe, -1).then([]{});
+  via(&exe, 0).then([]{});
+  via(&exe, 1).then([]{});
+  via(&exe, 42).then([]{});  // overflow should go to max priority
+  via(&exe, -42).then([]{}); // underflow should go to min priority
+  via(&exe).then([]{});      // default to mid priority
+  via(&exe, Executor::LO_PRI).then([]{});
+  via(&exe, Executor::HI_PRI).then([]{});
+  EXPECT_EQ(3, exe.count0);
+  EXPECT_EQ(2, exe.count1);
+  EXPECT_EQ(3, exe.count2);
+}
+
 TEST(Via, then2) {
   ManualExecutor x1, x2;
   bool a = false, b = false, c = false;

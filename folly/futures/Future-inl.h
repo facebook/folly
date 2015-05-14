@@ -422,22 +422,22 @@ Optional<Try<T>> Future<T>::poll() {
 }
 
 template <class T>
-inline Future<T> Future<T>::via(Executor* executor) && {
+inline Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
   throwIfInvalid();
 
-  setExecutor(executor);
+  setExecutor(executor, priority);
 
   return std::move(*this);
 }
 
 template <class T>
-inline Future<T> Future<T>::via(Executor* executor) & {
+inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
   throwIfInvalid();
 
   MoveWrapper<Promise<T>> p;
   auto f = p->getFuture();
   then([p](Try<T>&& t) mutable { p->setTry(std::move(t)); });
-  return std::move(f).via(executor);
+  return std::move(f).via(executor, priority);
 }
 
 template <class T>
@@ -526,8 +526,8 @@ inline Future<void> makeFuture(Try<void>&& t) {
 }
 
 // via
-inline Future<void> via(Executor* executor) {
-  return makeFuture().via(executor);
+Future<void> via(Executor* executor, int8_t priority) {
+  return makeFuture().via(executor, priority);
 }
 
 // mapSetCallback calls func(i, Try<T>) when every future completes
