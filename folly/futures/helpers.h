@@ -239,6 +239,9 @@ using isFutureResult = isFuture<typename std::result_of<F(T&&, Arg&&)>::type>;
     The type of the final result is a Future of the type of the initial value.
 
     Func can either return a T, or a Future<T>
+
+    func is called in order of the input, see unorderedReduce if that is not
+    a requirement
   */
 template <class It, class T, class F>
 Future<T> reduce(It first, It last, T&& initial, F&& func);
@@ -249,6 +252,26 @@ auto reduce(Collection&& c, T&& initial, F&& func)
     -> decltype(reduce(c.begin(), c.end(), std::forward<T>(initial),
                 std::forward<F>(func))) {
   return reduce(
+      c.begin(),
+      c.end(),
+      std::forward<T>(initial),
+      std::forward<F>(func));
+}
+
+/** like reduce, but calls func on finished futures as they complete
+    does NOT keep the order of the input
+  */
+template <class It, class T, class F,
+          class ItT = typename std::iterator_traits<It>::value_type::value_type,
+          class Arg = MaybeTryArg<F, T, ItT>>
+Future<T> unorderedReduce(It first, It last, T initial, F func);
+
+/// Sugar for the most common case
+template <class Collection, class T, class F>
+auto unorderedReduce(Collection&& c, T&& initial, F&& func)
+    -> decltype(unorderedReduce(c.begin(), c.end(), std::forward<T>(initial),
+                std::forward<F>(func))) {
+  return unorderedReduce(
       c.begin(),
       c.end(),
       std::forward<T>(initial),

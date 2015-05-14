@@ -800,6 +800,54 @@ Future<I> Future<T>::reduce(I&& initial, F&& func) {
   });
 }
 
+template <class It, class T, class F, class ItT, class Arg>
+Future<T> unorderedReduce(It first, It last, T initial, F func) {
+  if (first == last) {
+    return makeFuture(std::move(initial));
+  }
+
+  typedef isTry<Arg> IsTry;
+
+  struct UnorderedReduceContext {
+    UnorderedReduceContext(T&& memo, F&& fn, size_t n)
+        : lock_(), memo_(makeFuture<T>(std::move(memo))),
+          func_(std::move(fn)), numThens_(0), numFutures_(n), promise_()
+      {};
+    folly::MicroSpinLock lock_; // protects memo_ and numThens_
+    Future<T> memo_;
+    F func_;
+    size_t numThens_; // how many Futures completed and called .then()
+    size_t numFutures_; // how many Futures in total
+    Promise<T> promise_;
+  };
+
+  auto ctx = std::make_shared<UnorderedReduceContext>(
+    std::move(initial), std::move(func), std::distance(first, last));
+
+  mapSetCallback<ItT>(first, last, [ctx](size_t i, Try<ItT>&& t) {
+    folly::MoveWrapper<Try<ItT>> mt(std::move(t));
+    // Futures can be completed in any order, simultaneously.
+    // To make this non-blocking, we create a new Future chain in
+    // the order of completion to reduce the values.
+    // The spinlock just protects chaining a new Future, not actually
+    // executing the reduce, which should be really fast.
+    folly::MSLGuard lock(ctx->lock_);
+    ctx->memo_ = ctx->memo_.then([ctx, mt](T&& v) mutable {
+      // Either return a ItT&& or a Try<ItT>&& depending
+      // on the type of the argument of func.
+      return ctx->func_(std::move(v), mt->template get<IsTry::value, Arg&&>());
+    });
+    if (++ctx->numThens_ == ctx->numFutures_) {
+      // After reducing the value of the last Future, fulfill the Promise
+      ctx->memo_.setCallback_([ctx](Try<T>&& t2) {
+        ctx->promise_.setValue(std::move(t2));
+      });
+    }
+  });
+
+  return ctx->promise_.getFuture();
+}
+
 template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
