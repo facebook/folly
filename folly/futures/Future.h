@@ -380,6 +380,42 @@ class Future {
   template <class I, class F>
   Future<I> reduce(I&& initial, F&& func);
 
+  /// Create a Future chain from a sequence of callbacks. i.e.
+  ///
+  ///   f.then(a).then(b).then(c)
+  ///
+  /// where f is a Future<A> and the result of the chain is a Future<D>
+  /// becomes
+  ///
+  ///   f.thenMulti(a, b, c);
+  template <class Callback, class... Callbacks>
+  auto thenMulti(Callback&& fn, Callbacks&&... fns)
+    -> decltype(this->then(std::forward<Callback>(fn)).
+                      thenMulti(std::forward<Callbacks>(fns)...));
+
+  // Nothing to see here, just thenMulti's base case
+  template <class Callback>
+  auto thenMulti(Callback&& fn)
+    -> decltype(this->then(std::forward<Callback>(fn)));
+
+  /// Create a Future chain from a sequence of callbacks. i.e.
+  ///
+  ///   f.via(executor).then(a).then(b).then(c).via(oldExecutor)
+  ///
+  /// where f is a Future<A> and the result of the chain is a Future<D>
+  /// becomes
+  ///
+  ///   f.thenMultiWithExecutor(executor, a, b, c);
+  template <class Callback, class... Callbacks>
+  auto thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns)
+    -> decltype(this->then(std::forward<Callback>(fn)).
+                      thenMulti(std::forward<Callbacks>(fns)...));
+
+  // Nothing to see here, just thenMultiWithExecutor's base case
+  template <class Callback>
+  auto thenMultiWithExecutor(Executor* x, Callback&& fn)
+    -> decltype(this->then(std::forward<Callback>(fn)));
+
  protected:
   typedef detail::Core<T>* corePtr;
 

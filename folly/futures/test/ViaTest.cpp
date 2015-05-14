@@ -171,16 +171,16 @@ TEST_F(ViaFixture, viaAssignment) {
 TEST(Via, chain1) {
   EXPECT_EQ(42,
             makeFuture()
-            .then(futures::chain<void, int>([] { return 42; }))
+            .thenMulti([] { return 42; })
             .get());
 }
 
 TEST(Via, chain3) {
   int count = 0;
-  auto f = makeFuture().then(futures::chain<void, int>(
+  auto f = makeFuture().thenMulti(
       [&]{ count++; return 3.14159; },
       [&](double) { count++; return std::string("hello"); },
-      [&]{ count++; return makeFuture(42); }));
+      [&]{ count++; return makeFuture(42); });
   EXPECT_EQ(42, f.get());
   EXPECT_EQ(3, count);
 }
@@ -226,6 +226,32 @@ TEST(Via, priority) {
   EXPECT_EQ(3, exe.count0);
   EXPECT_EQ(2, exe.count1);
   EXPECT_EQ(3, exe.count2);
+}
+
+TEST_F(ViaFixture, chainX1) {
+  EXPECT_EQ(42,
+            makeFuture()
+            .thenMultiWithExecutor(eastExecutor.get(),[] { return 42; })
+            .get());
+}
+
+TEST_F(ViaFixture, chainX3) {
+  auto westThreadId = std::this_thread::get_id();
+  int count = 0;
+  auto f = via(westExecutor.get()).thenMultiWithExecutor(
+      eastExecutor.get(),
+      [&]{
+        EXPECT_NE(std::this_thread::get_id(), westThreadId);
+        count++; return 3.14159;
+      },
+      [&](double) { count++; return std::string("hello"); },
+      [&]{ count++; })
+    .then([&](){
+        EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+        return makeFuture(42);
+    });
+  EXPECT_EQ(42, f.getVia(waiter.get()));
+  EXPECT_EQ(3, count);
 }
 
 TEST(Via, then2) {

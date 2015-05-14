@@ -1018,30 +1018,47 @@ Future<T> Future<T>::filter(F predicate) {
   });
 }
 
+template <class T>
+template <class Callback>
+auto Future<T>::thenMulti(Callback&& fn)
+    -> decltype(this->then(std::forward<Callback>(fn))) {
+  // thenMulti with one callback is just a then
+  return then(std::forward<Callback>(fn));
+}
+
+template <class T>
+template <class Callback, class... Callbacks>
+auto Future<T>::thenMulti(Callback&& fn, Callbacks&&... fns)
+    -> decltype(this->then(std::forward<Callback>(fn)).
+                      thenMulti(std::forward<Callbacks>(fns)...)) {
+  // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
+  return then(std::forward<Callback>(fn)).
+         thenMulti(std::forward<Callbacks>(fns)...);
+}
+
+template <class T>
+template <class Callback, class... Callbacks>
+auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn,
+                                      Callbacks&&... fns)
+    -> decltype(this->then(std::forward<Callback>(fn)).
+                      thenMulti(std::forward<Callbacks>(fns)...)) {
+  // thenMultiExecutor with two callbacks is
+  // via(x).then(a).thenMulti(b, ...).via(oldX)
+  auto oldX = getExecutor();
+  setExecutor(x);
+  return then(std::forward<Callback>(fn)).
+         thenMulti(std::forward<Callbacks>(fns)...).via(oldX);
+}
+
+template <class T>
+template <class Callback>
+auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn)
+    -> decltype(this->then(std::forward<Callback>(fn))) {
+  // thenMulti with one callback is just a then with an executor
+  return then(x, std::forward<Callback>(fn));
+}
+
 namespace futures {
-  namespace {
-    template <class Z>
-    Future<Z> chainHelper(Future<Z> f) {
-      return f;
-    }
-
-    template <class Z, class F, class Fn, class... Callbacks>
-    Future<Z> chainHelper(F f, Fn fn, Callbacks... fns) {
-      return chainHelper<Z>(f.then(fn), fns...);
-    }
-  }
-
-  template <class A, class Z, class... Callbacks>
-  std::function<Future<Z>(Try<A>)>
-  chain(Callbacks... fns) {
-    MoveWrapper<Promise<A>> pw;
-    MoveWrapper<Future<Z>> fw(chainHelper<Z>(pw->getFuture(), fns...));
-    return [=](Try<A> t) mutable {
-      pw->setTry(std::move(t));
-      return std::move(*fw);
-    };
-  }
-
   template <class It, class F, class ItT, class Result>
   std::vector<Future<Result>> map(It first, It last, F func) {
     std::vector<Future<Result>> results;
