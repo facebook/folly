@@ -29,10 +29,7 @@ class HandlerBase {
   virtual ~HandlerBase() {}
 
   virtual void attachPipeline(Context* ctx) {}
-  virtual void attachTransport(Context* ctx) {}
-
   virtual void detachPipeline(Context* ctx) {}
-  virtual void detachTransport(Context* ctx) {}
 
   Context* getContext() {
     if (attachCount_ != 1) {
@@ -67,6 +64,12 @@ class Handler : public HandlerBase<HandlerContext<Rout, Wout>> {
   virtual void readException(Context* ctx, exception_wrapper e) {
     ctx->fireReadException(std::move(e));
   }
+  virtual void transportActive(Context* ctx) {
+    ctx->fireTransportActive();
+  }
+  virtual void transportInactive(Context* ctx) {
+    ctx->fireTransportInactive();
+  }
 
   virtual Future<void> write(Context* ctx, Win msg) = 0;
   virtual Future<void> close(Context* ctx) {
@@ -81,8 +84,6 @@ class Handler : public HandlerBase<HandlerContext<Rout, Wout>> {
       exception_wrapper e) {}
   virtual void channelRegistered(HandlerContext* ctx) {}
   virtual void channelUnregistered(HandlerContext* ctx) {}
-  virtual void channelActive(HandlerContext* ctx) {}
-  virtual void channelInactive(HandlerContext* ctx) {}
   virtual void channelReadComplete(HandlerContext* ctx) {}
   virtual void userEventTriggered(HandlerContext* ctx, void* evt) {}
   virtual void channelWritabilityChanged(HandlerContext* ctx) {}
@@ -119,6 +120,12 @@ class InboundHandler : public HandlerBase<InboundHandlerContext<Rout>> {
   }
   virtual void readException(Context* ctx, exception_wrapper e) {
     ctx->fireReadException(std::move(e));
+  }
+  virtual void transportActive(Context* ctx) {
+    ctx->fireTransportActive();
+  }
+  virtual void transportInactive(Context* ctx) {
+    ctx->fireTransportInactive();
   }
 };
 

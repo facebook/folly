@@ -89,6 +89,7 @@ class ServerAcceptor
         std::shared_ptr<AsyncSocket>(
           transport.release(),
           folly::DelayedDestruction::Destructor())));
+    pipeline->transportActive();
     auto connection = new ServerConnection(std::move(pipeline));
     Acceptor::addConnection(connection);
   }

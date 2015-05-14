@@ -299,21 +299,3 @@ TEST(Pipeline, DynamicConstruction) {
         .finalize());
   }
 }
-
-TEST(Pipeline, AttachTransport) {
-  IntHandler handler;
-  EXPECT_CALL(handler, attachPipeline(_));
-  StaticPipeline<int, int, IntHandler>
-  pipeline(&handler);
-
-  EventBase eb;
-  auto socket = AsyncSocket::newSocket(&eb);
-
-  EXPECT_CALL(handler, attachTransport(_));
-  pipeline.attachTransport(socket);
-
-  EXPECT_CALL(handler, detachTransport(_));
-  pipeline.detachTransport();
-
-  EXPECT_CALL(handler, detachPipeline(_));
-}

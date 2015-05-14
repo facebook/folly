@@ -36,11 +36,6 @@ Pipeline<R, W>::~Pipeline() {
 }
 
 template <class R, class W>
-std::shared_ptr<AsyncTransport> Pipeline<R, W>::getTransport() {
-  return transport_;
-}
-
-template <class R, class W>
 void Pipeline<R, W>::setWriteFlags(WriteFlags flags) {
   writeFlags_ = flags;
 }
@@ -80,6 +75,24 @@ Pipeline<R, W>::readEOF() {
     throw std::invalid_argument("readEOF(): no inbound handler in Pipeline");
   }
   front_->readEOF();
+}
+
+template <class R, class W>
+template <class T>
+typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+Pipeline<R, W>::transportActive() {
+  if (front_) {
+    front_->transportActive();
+  }
+}
+
+template <class R, class W>
+template <class T>
+typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+Pipeline<R, W>::transportInactive() {
+  if (front_) {
+    front_->transportInactive();
+  }
 }
 
 template <class R, class W>
@@ -219,23 +232,6 @@ bool Pipeline<R, W>::setOwner(H* handler) {
     }
   }
   return false;
-}
-
-template <class R, class W>
-void Pipeline<R, W>::attachTransport(
-    std::shared_ptr<AsyncTransport> transport) {
-  transport_ = std::move(transport);
-  for (auto& ctx : ctxs_) {
-    ctx->attachTransport();
-  }
-}
-
-template <class R, class W>
-void Pipeline<R, W>::detachTransport() {
-  transport_ = nullptr;
-  for (auto& ctx : ctxs_) {
-    ctx->detachTransport();
-  }
 }
 
 template <class R, class W>

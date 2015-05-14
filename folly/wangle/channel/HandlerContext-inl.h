@@ -25,9 +25,6 @@ class PipelineContext {
   virtual void attachPipeline() = 0;
   virtual void detachPipeline() = 0;
 
-  virtual void attachTransport() = 0;
-  virtual void detachTransport() = 0;
-
   template <class H, class HandlerContext>
   void attachContext(H* handler, HandlerContext* ctx) {
     if (++handler->attachCount_ == 1) {
@@ -48,6 +45,8 @@ class InboundLink {
   virtual void read(In msg) = 0;
   virtual void readEOF() = 0;
   virtual void readException(exception_wrapper e) = 0;
+  virtual void transportActive() = 0;
+  virtual void transportInactive() = 0;
 };
 
 template <class Out>
@@ -84,16 +83,6 @@ class ContextImplBase : public PipelineContext {
   void detachPipeline() override {
     handler_->detachPipeline(impl_);
     attached_ = false;
-  }
-
-  void attachTransport() override {
-    DestructorGuard dg(pipeline_);
-    handler_->attachTransport(impl_);
-  }
-
-  void detachTransport() override {
-    DestructorGuard dg(pipeline_);
-    handler_->detachTransport(impl_);
   }
 
   void setNextIn(PipelineContext* ctx) override {
@@ -181,6 +170,20 @@ class ContextImpl
     }
   }
 
+  void fireTransportActive() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->transportActive();
+    }
+  }
+
+  void fireTransportInactive() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->transportInactive();
+    }
+  }
+
   Future<void> fireWrite(Wout msg) override {
     DestructorGuard dg(this->pipeline_);
     if (this->nextOut_) {
@@ -203,10 +206,6 @@ class ContextImpl
 
   PipelineBase* getPipeline() override {
     return this->pipeline_;
-  }
-
-  std::shared_ptr<AsyncTransport> getTransport() override {
-    return this->pipeline_->getTransport();
   }
 
   void setWriteFlags(WriteFlags flags) override {
@@ -241,6 +240,16 @@ class ContextImpl
   void readException(exception_wrapper e) override {
     DestructorGuard dg(this->pipeline_);
     this->handler_->readException(this, std::move(e));
+  }
+
+  void transportActive() override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->transportActive(this);
+  }
+
+  void transportInactive() override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->transportInactive(this);
   }
 
   // OutboundLink overrides
@@ -310,12 +319,22 @@ class InboundContextImpl
     }
   }
 
-  PipelineBase* getPipeline() override {
-    return this->pipeline_;
+  void fireTransportActive() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->transportActive();
+    }
   }
 
-  std::shared_ptr<AsyncTransport> getTransport() override {
-    return this->pipeline_->getTransport();
+  void fireTransportInactive() override {
+    DestructorGuard dg(this->pipeline_);
+    if (this->nextIn_) {
+      this->nextIn_->transportInactive();
+    }
+  }
+
+  PipelineBase* getPipeline() override {
+    return this->pipeline_;
   }
 
   // InboundLink overrides
@@ -332,6 +351,16 @@ class InboundContextImpl
   void readException(exception_wrapper e) override {
     DestructorGuard dg(this->pipeline_);
     this->handler_->readException(this, std::move(e));
+  }
+
+  void transportActive() override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->transportActive(this);
+  }
+
+  void transportInactive() override {
+    DestructorGuard dg(this->pipeline_);
+    this->handler_->transportInactive(this);
   }
 
  private:
@@ -385,10 +414,6 @@ class OutboundContextImpl
 
   PipelineBase* getPipeline() override {
     return this->pipeline_;
-  }
-
-  std::shared_ptr<AsyncTransport> getTransport() override {
-    return this->pipeline_->getTransport();
   }
 
   // OutboundLink overrides

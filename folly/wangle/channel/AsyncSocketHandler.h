@@ -37,9 +37,7 @@ class AsyncSocketHandler
   AsyncSocketHandler(AsyncSocketHandler&&) = default;
 
   ~AsyncSocketHandler() {
-    if (socket_) {
-      detachReadCallback();
-    }
+    detachReadCallback();
   }
 
   void attachReadCallback() {
@@ -47,8 +45,13 @@ class AsyncSocketHandler
   }
 
   void detachReadCallback() {
-    if (socket_->getReadCallback() == this) {
+    if (socket_ && socket_->getReadCallback() == this) {
       socket_->setReadCB(nullptr);
+    }
+    auto ctx = getContext();
+    if (ctx && !firedInactive_) {
+      firedInactive_ = true;
+      ctx->fireTransportInactive();
     }
   }
 
@@ -65,8 +68,14 @@ class AsyncSocketHandler
     }
   }
 
-  void attachPipeline(Context* ctx) override {
+  void transportActive(Context* ctx) override {
+    ctx->getPipeline()->setTransport(socket_);
     attachReadCallback();
+    ctx->fireTransportActive();
+  }
+
+  void detachPipeline(Context* ctx) override {
+    detachReadCallback();
   }
 
   folly::Future<void> write(
@@ -149,6 +158,7 @@ class AsyncSocketHandler
 
   folly::IOBufQueue bufQueue_{folly::IOBufQueue::cacheChainLength()};
   std::shared_ptr<AsyncSocket> socket_{nullptr};
+  bool firedInactive_{false};
 };
 
 }}

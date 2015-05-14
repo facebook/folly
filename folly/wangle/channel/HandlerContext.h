@@ -32,13 +32,16 @@ class HandlerContext {
   virtual void fireRead(In msg) = 0;
   virtual void fireReadEOF() = 0;
   virtual void fireReadException(exception_wrapper e) = 0;
+  virtual void fireTransportActive() = 0;
+  virtual void fireTransportInactive() = 0;
 
   virtual Future<void> fireWrite(Out msg) = 0;
   virtual Future<void> fireClose() = 0;
 
   virtual PipelineBase* getPipeline() = 0;
-
-  virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
+  std::shared_ptr<AsyncTransport> getTransport() {
+    return getPipeline()->getTransport();
+  }
 
   virtual void setWriteFlags(WriteFlags flags) = 0;
   virtual WriteFlags getWriteFlags() = 0;
@@ -67,10 +70,13 @@ class InboundHandlerContext {
   virtual void fireRead(In msg) = 0;
   virtual void fireReadEOF() = 0;
   virtual void fireReadException(exception_wrapper e) = 0;
+  virtual void fireTransportActive() = 0;
+  virtual void fireTransportInactive() = 0;
 
   virtual PipelineBase* getPipeline() = 0;
-
-  virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
+  std::shared_ptr<AsyncTransport> getTransport() {
+    return getPipeline()->getTransport();
+  }
 
   // TODO Need get/set writeFlags, readBufferSettings? Probably not.
   // Do we even really need them stored in the pipeline at all?
@@ -86,8 +92,9 @@ class OutboundHandlerContext {
   virtual Future<void> fireClose() = 0;
 
   virtual PipelineBase* getPipeline() = 0;
-
-  virtual std::shared_ptr<AsyncTransport> getTransport() = 0;
+  std::shared_ptr<AsyncTransport> getTransport() {
+    return getPipeline()->getTransport();
+  }
 };
 
 enum class HandlerDir {

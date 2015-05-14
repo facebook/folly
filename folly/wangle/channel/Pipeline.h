@@ -43,8 +43,17 @@ class PipelineBase {
     }
   }
 
+  void setTransport(std::shared_ptr<AsyncTransport> transport) {
+    transport_ = transport;
+  }
+
+  std::shared_ptr<AsyncTransport> getTransport() {
+    return transport_;
+  }
+
  private:
   PipelineManager* manager_{nullptr};
+  std::shared_ptr<AsyncTransport> transport_;
 };
 
 struct Nothing{};
@@ -63,8 +72,6 @@ class Pipeline : public PipelineBase, public DelayedDestruction {
   Pipeline();
   ~Pipeline();
 
-  std::shared_ptr<AsyncTransport> getTransport();
-
   void setWriteFlags(WriteFlags flags);
   WriteFlags getWriteFlags();
 
@@ -82,6 +89,14 @@ class Pipeline : public PipelineBase, public DelayedDestruction {
   template <class T = R>
   typename std::enable_if<!std::is_same<T, Nothing>::value>::type
   readException(exception_wrapper e);
+
+  template <class T = R>
+  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  transportActive();
+
+  template <class T = R>
+  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  transportInactive();
 
   template <class T = W>
   typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
@@ -121,10 +136,6 @@ class Pipeline : public PipelineBase, public DelayedDestruction {
   template <class H>
   bool setOwner(H* handler);
 
-  void attachTransport(std::shared_ptr<AsyncTransport> transport);
-
-  void detachTransport();
-
  protected:
   explicit Pipeline(bool isStatic);
 
@@ -137,7 +148,6 @@ class Pipeline : public PipelineBase, public DelayedDestruction {
   template <class Context>
   Pipeline& addHelper(std::shared_ptr<Context>&& ctx, bool front);
 
-  std::shared_ptr<AsyncTransport> transport_;
   WriteFlags writeFlags_{WriteFlags::NONE};
   std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
 

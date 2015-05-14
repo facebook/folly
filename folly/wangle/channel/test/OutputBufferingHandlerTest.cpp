@@ -42,8 +42,7 @@ TEST(OutputBufferingHandlerTest, Basic) {
 
   EventBase eb;
   auto socket = AsyncSocket::newSocket(&eb);
-  EXPECT_CALL(mockHandler, attachTransport(_));
-  pipeline.attachTransport(socket);
+  pipeline.setTransport(socket);
 
   // Buffering should prevent writes until the EB loops, and the writes should
   // be batched into one write call.

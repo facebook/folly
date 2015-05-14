@@ -36,6 +36,9 @@ class ClientBootstrap {
         , bootstrap_(bootstrap) {}
 
     void connectSuccess() noexcept override {
+      if (bootstrap_->getPipeline()) {
+        bootstrap_->getPipeline()->transportActive();
+      }
       promise_.setValue(bootstrap_->getPipeline());
       delete this;
     }
@@ -77,9 +80,6 @@ class ClientBootstrap {
       socket->connect(
         new ConnectCallback(std::move(promise), this), address);
       pipeline_ = pipelineFactory_->newPipeline(socket);
-      if (pipeline_) {
-        pipeline_->attachTransport(socket);
-      }
     });
     return retval;
   }
