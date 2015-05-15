@@ -599,8 +599,10 @@ bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
       SCOPE_EXIT {
         std::unique_lock<std::mutex> l(m);
         ready = true;
-        l.unlock();
         cv.notify_one();
+        // We cannot release the lock before notify_one, because a spurious
+        // wakeup in the waiting thread may lead to cv and m going out of scope
+        // prematurely.
       };
       fn();
   });
