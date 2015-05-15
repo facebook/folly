@@ -33,6 +33,8 @@ class PipelineManager {
 
 class PipelineBase {
  public:
+  virtual ~PipelineBase() {}
+
   void setPipelineManager(PipelineManager* manager) {
     manager_ = manager;
   }
