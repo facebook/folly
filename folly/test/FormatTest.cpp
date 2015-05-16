@@ -419,11 +419,37 @@ struct Opaque {
 
 } // namespace
 
+#define EXPECT_THROW_STR(code, type, str) \
+  do { \
+    bool caught = false; \
+    try { \
+      code; \
+    } catch (const type& e) { \
+      caught = true; \
+      EXPECT_TRUE(strstr(e.what(), (str)) != nullptr) << \
+        "Expected message [" << (str) << "], actual message [" << \
+        e.what(); \
+    } catch (const std::exception& e) { \
+      caught = true; \
+      ADD_FAILURE() << "Caught different exception type; expected " #type \
+        ", caught " << folly::demangle(typeid(e)); \
+    } catch (...) { \
+      caught = true; \
+      ADD_FAILURE() << "Caught unknown exception type; expected " #type; \
+    } \
+    if (!caught) { \
+      ADD_FAILURE() << "Expected exception " #type ", caught nothing"; \
+    } \
+  } while (false)
+
+#define EXPECT_FORMAT_ERROR(code, str) \
+  EXPECT_THROW_STR(code, folly::BadFormatArg, (str))
+
 TEST(Format, Unformatted) {
   Opaque o;
   EXPECT_NE("", sformat("{}", &o));
-  EXPECT_DEATH(sformat("{0[0]}", &o), "No formatter available for this type");
-  EXPECT_THROW(sformatChecked("{0[0]}", &o), std::invalid_argument);
+  EXPECT_FORMAT_ERROR(sformat("{0[0]}", &o),
+                      "No formatter available for this type");
 }
 
 TEST(Format, Nested) {
@@ -438,39 +464,28 @@ TEST(Format, OutOfBounds) {
   std::vector<int> ints{1, 2, 3, 4, 5};
   EXPECT_EQ("1 3 5", sformat("{0[0]} {0[2]} {0[4]}", ints));
   EXPECT_THROW(sformat("{[5]}", ints), std::out_of_range);
-  EXPECT_THROW(sformatChecked("{[5]}", ints), std::out_of_range);
 
   std::map<std::string, int> map{{"hello", 0}, {"world", 1}};
   EXPECT_EQ("hello = 0", sformat("hello = {[hello]}", map));
   EXPECT_THROW(sformat("{[nope]}", map), std::out_of_range);
   EXPECT_THROW(svformat("{nope}", map), std::out_of_range);
-  EXPECT_THROW(svformatChecked("{nope}", map), std::out_of_range);
 }
 
 TEST(Format, BogusFormatString) {
   // format() will crash the program if the format string is invalid.
-  EXPECT_DEATH(sformat("}"), "single '}' in format string");
-  EXPECT_DEATH(sformat("foo}bar"), "single '}' in format string");
-  EXPECT_DEATH(sformat("foo{bar"), "missing ending '}'");
-  EXPECT_DEATH(sformat("{[test]"), "missing ending '}'");
-  EXPECT_DEATH(sformat("{-1.3}"), "argument index must be non-negative");
-  EXPECT_DEATH(sformat("{1.3}", 0, 1, 2), "index not allowed");
-  EXPECT_DEATH(sformat("{0} {} {1}", 0, 1, 2),
+  EXPECT_FORMAT_ERROR(sformat("}"), "single '}' in format string");
+  EXPECT_FORMAT_ERROR(sformat("foo}bar"), "single '}' in format string");
+  EXPECT_FORMAT_ERROR(sformat("foo{bar"), "missing ending '}'");
+  EXPECT_FORMAT_ERROR(sformat("{[test]"), "missing ending '}'");
+  EXPECT_FORMAT_ERROR(sformat("{-1.3}"), "argument index must be non-negative");
+  EXPECT_FORMAT_ERROR(sformat("{1.3}", 0, 1, 2), "index not allowed");
+  EXPECT_FORMAT_ERROR(sformat("{0} {} {1}", 0, 1, 2),
                "may not have both default and explicit arg indexes");
-
-  // formatChecked() should throw exceptions rather than crashing the program
-  EXPECT_THROW(sformatChecked("}"), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("foo}bar"), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("foo{bar"), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("{[test]"), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("{-1.3}"), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("{1.3}", 0, 1, 2), std::invalid_argument);
-  EXPECT_THROW(sformatChecked("{0} {} {1}", 0, 1, 2), std::invalid_argument);
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error
-  EXPECT_DEATH(sformat("{0[test}"), "Non-whitespace: \\[");
-  EXPECT_THROW(sformatChecked("{0[test}"), std::exception);
+  EXPECT_THROW_STR(sformat("{0[test}"), std::range_error,
+                   "Non-whitespace: [");
 }
 
 template <bool containerMode, class... Args>
