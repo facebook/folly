@@ -24,6 +24,7 @@
 #include <folly/CPortability.h>
 #include <folly/IntrusiveList.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
+#include <folly/Portability.h>
 
 namespace folly { namespace fibers {
 
@@ -125,11 +126,20 @@ class Fiber {
     LocalData& operator=(const LocalData& other);
 
     template <typename T>
-    T& get();
+    T& get() {
+      if (data_) {
+        assert(*dataType_ == typeid(T));
+        return *reinterpret_cast<T*>(data_);
+      }
+      return getSlow<T>();
+    }
 
     void reset();
 
     //private:
+    template <typename T>
+    FOLLY_NOINLINE T& getSlow();
+
     static void* allocateHeapBuffer(size_t size);
     static void freeHeapBuffer(void* buffer);
 

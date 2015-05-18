@@ -40,12 +40,7 @@ inline void* Fiber::getUserBuffer() {
 }
 
 template <typename T>
-T& Fiber::LocalData::get() {
-  if (data_) {
-    assert(*dataType_ == typeid(T));
-    return *reinterpret_cast<T*>(data_);
-  }
-
+T& Fiber::LocalData::getSlow() {
   dataSize_ = sizeof(T);
   dataType_ = &typeid(T);
   if (sizeof(T) <= kBufferSize) {
