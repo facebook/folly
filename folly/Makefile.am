@@ -101,6 +101,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/WhenN.h \
 	experimental/fibers/WhenN-inl.h \
 	experimental/FunctionScheduler.h \
+	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
 	experimental/JSONSchema.h \
 	experimental/Select64.h \
