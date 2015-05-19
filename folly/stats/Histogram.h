@@ -143,6 +143,18 @@ class HistogramBuckets {
   }
 
   /**
+   * Computes the total number of values stored across all buckets.
+   *
+   * Runs in O(numBuckets)
+   *
+   * @param countFn A function that takes a const BucketType&, and returns the
+   *                number of values in that bucket
+   * @return Returns the total number of values stored across all buckets
+   */
+  template <typename CountFn>
+  const uint64_t computeTotalCount(CountFn countFromBucket) const;
+
+  /**
    * Determine which bucket the specified percentile falls into.
    *
    * Looks for the bucket that contains the Nth percentile data point.
@@ -374,6 +386,16 @@ class Histogram {
    */
   ValueType getBucketMax(unsigned int idx) const {
     return buckets_.getBucketMax(idx);
+  }
+
+  /**
+   * Computes the total number of values stored across all buckets.
+   *
+   * Runs in O(numBuckets)
+   */
+  const uint64_t computeTotalCount() const {
+    CountFromBucket countFn;
+    return buckets_.computeTotalCount(countFn);
   }
 
   /*

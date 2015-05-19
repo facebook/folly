@@ -63,6 +63,17 @@ unsigned int HistogramBuckets<T, BucketType>::getBucketIdx(
 
 template <typename T, typename BucketType>
 template <typename CountFn>
+const uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
+    CountFn countFromBucket) const {
+  uint64_t count = 0;
+  for (unsigned int n = 0; n < buckets_.size(); ++n) {
+    count += countFromBucket(const_cast<const BucketType&>(buckets_[n]));
+  }
+  return count;
+}
+
+template <typename T, typename BucketType>
+template <typename CountFn>
 unsigned int HistogramBuckets<T, BucketType>::getPercentileBucketIdx(
     double pct,
     CountFn countFromBucket,

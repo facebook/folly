@@ -203,3 +203,22 @@ TEST(Histogram, TestDoubleWidthTooBig) {
   EXPECT_EQ(1, h.getBucketByIndex(2).count);
   EXPECT_EQ(3.0, h.getPercentileEstimate(0.5));
 }
+
+// Test that we get counts right
+TEST(Histogram, Counts) {
+  Histogram<int32_t> h(1, 0, 10);
+  EXPECT_EQ(12, h.getNumBuckets());
+  EXPECT_EQ(0, h.computeTotalCount());
+
+  // Add one to each bucket, make sure the counts match
+  for (int32_t i = 0; i < 10; i++) {
+    h.addValue(i);
+    EXPECT_EQ(i+1, h.computeTotalCount());
+  }
+
+  // Add a lot to one bucket, make sure the counts still make sense
+  for (int32_t i = 0; i < 100; i++) {
+    h.addValue(0);
+  }
+  EXPECT_EQ(110, h.computeTotalCount());
+}
