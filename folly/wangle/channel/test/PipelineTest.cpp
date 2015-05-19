@@ -28,6 +28,7 @@ using namespace folly::wangle;
 using namespace testing;
 
 typedef StrictMock<MockHandlerAdapter<int, int>> IntHandler;
+class IntHandler2 : public StrictMock<MockHandlerAdapter<int, int>> {};
 
 ACTION(FireRead) {
   arg0->fireRead(arg1);
@@ -77,7 +78,7 @@ TEST(PipelineTest, RealHandlersCompile) {
 // Test that handlers correctly fire the next handler when directed
 TEST(PipelineTest, FireActions) {
   IntHandler handler1;
-  IntHandler handler2;
+  IntHandler2 handler2;
 
   {
     InSequence sequence;
@@ -85,7 +86,7 @@ TEST(PipelineTest, FireActions) {
     EXPECT_CALL(handler1, attachPipeline(_));
   }
 
-  StaticPipeline<int, int, IntHandler, IntHandler>
+  StaticPipeline<int, int, IntHandler, IntHandler2>
   pipeline(&handler1, &handler2);
 
   EXPECT_CALL(handler1, read_(_, _)).WillOnce(FireRead());
@@ -144,7 +145,7 @@ TEST(PipelineTest, ReachEndOfPipeline) {
 // Test having the last read handler turn around and write
 TEST(PipelineTest, TurnAround) {
   IntHandler handler1;
-  IntHandler handler2;
+  IntHandler2 handler2;
 
   {
     InSequence sequence;
@@ -152,7 +153,7 @@ TEST(PipelineTest, TurnAround) {
     EXPECT_CALL(handler1, attachPipeline(_));
   }
 
-  StaticPipeline<int, int, IntHandler, IntHandler>
+  StaticPipeline<int, int, IntHandler, IntHandler2>
   pipeline(&handler1, &handler2);
 
   EXPECT_CALL(handler1, read_(_, _)).WillOnce(FireRead());
@@ -243,11 +244,14 @@ TEST(PipelineTest, HandlerInMultiplePipelines) {
 }
 
 TEST(PipelineTest, HandlerInPipelineTwice) {
-  IntHandler handler;
-  EXPECT_CALL(handler, attachPipeline(_)).Times(2);
-  StaticPipeline<int, int, IntHandler, IntHandler> pipeline(&handler, &handler);
-  EXPECT_FALSE(handler.getContext());
-  EXPECT_CALL(handler, detachPipeline(_)).Times(2);
+  auto handler = std::make_shared<IntHandler>();
+  EXPECT_CALL(*handler, attachPipeline(_)).Times(2);
+  Pipeline<int, int> pipeline;
+  pipeline.addBack(handler);
+  pipeline.addBack(handler);
+  pipeline.finalize();
+  EXPECT_FALSE(handler->getContext());
+  EXPECT_CALL(*handler, detachPipeline(_)).Times(2);
 }
 
 TEST(PipelineTest, NoDetachOnOwner) {
@@ -285,8 +289,9 @@ TEST(Pipeline, MissingInboundOrOutbound) {
 
 TEST(Pipeline, DynamicConstruction) {
   {
-    StaticPipeline<std::string, std::string, StringHandler, StringHandler>
-    pipeline{StringHandler(), StringHandler()};
+    Pipeline<std::string, std::string> pipeline;
+    pipeline.addBack(StringHandler());
+    pipeline.addBack(StringHandler());
 
     // Exercise both addFront and addBack. Final pipeline is
     // StI <-> ItS <-> StS <-> StS <-> StI <-> ItS

@@ -87,6 +87,8 @@ class Optional {
  public:
   static_assert(!std::is_reference<Value>::value,
                 "Optional may not be used with reference types");
+  static_assert(!std::is_abstract<Value>::value,
+                "Optional may not be used with abstract types");
 
   Optional()
     : hasValue_(false) {

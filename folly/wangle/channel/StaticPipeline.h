@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <folly/wangle/channel/Pipeline.h>
 
 namespace folly { namespace wangle {
@@ -50,9 +52,22 @@ class StaticPipeline<R, W> : public Pipeline<R, W> {
   explicit StaticPipeline(bool) : Pipeline<R, W>(true) {}
 };
 
+template <class Handler>
+class BaseWithOptional {
+ protected:
+  folly::Optional<Handler> handler_;
+};
+
+template <class Handler>
+class BaseWithoutOptional {
+};
+
 template <class R, class W, class Handler, class... Handlers>
 class StaticPipeline<R, W, Handler, Handlers...>
-    : public StaticPipeline<R, W, Handlers...> {
+    : public StaticPipeline<R, W, Handlers...>
+    , public std::conditional<std::is_abstract<Handler>::value,
+                              BaseWithoutOptional<Handler>,
+                              BaseWithOptional<Handler>>::type {
  public:
   template <class... HandlerArgs>
   explicit StaticPipeline(HandlerArgs&&... handlers)
@@ -92,8 +107,8 @@ class StaticPipeline<R, W, Handler, Handlers...>
     Handler
   >::value>::type
   setHandler(HandlerArg&& arg) {
-    handler_.emplace(std::forward<HandlerArg>(arg));
-    handlerPtr_ = std::shared_ptr<Handler>(&(*handler_), [](Handler*){});
+    BaseWithOptional<Handler>::handler_.emplace(std::forward<HandlerArg>(arg));
+    handlerPtr_ = std::shared_ptr<Handler>(&(*BaseWithOptional<Handler>::handler_), [](Handler*){});
   }
 
   template <class HandlerArg>
@@ -115,7 +130,6 @@ class StaticPipeline<R, W, Handler, Handlers...>
   }
 
   bool isFirst_;
-  folly::Optional<Handler> handler_;
   std::shared_ptr<Handler> handlerPtr_;
   typename ContextType<Handler, Pipeline<R, W>>::type ctx_;
 };
