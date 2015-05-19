@@ -107,7 +107,6 @@
 
 #include <boost/container/flat_map.hpp>
 #include <boost/operators.hpp>
-#include <boost/noncopyable.hpp>
 
 #include <folly/File.h>
 #include <folly/FileUtil.h>
@@ -132,6 +131,14 @@ class ProcessReturnCode {
     EXITED,
     KILLED
   };
+
+  // Trivially copyable
+  ProcessReturnCode(const ProcessReturnCode& p) = default;
+  ProcessReturnCode& operator=(const ProcessReturnCode& p) = default;
+  // Non-default move: In order for Subprocess to be movable, the "moved
+  // out" state must not be "running", or ~Subprocess() will abort.
+  ProcessReturnCode(ProcessReturnCode&& p) noexcept;
+  ProcessReturnCode& operator=(ProcessReturnCode&& p) noexcept;
 
   /**
    * Process state.  One of:
@@ -227,7 +234,7 @@ class SubprocessSpawnError : public SubprocessError {
 /**
  * Subprocess.
  */
-class Subprocess : private boost::noncopyable {
+class Subprocess {
  public:
   static const int CLOSE = -1;
   static const int PIPE = -2;
@@ -348,6 +355,12 @@ class Subprocess : private boost::noncopyable {
   static Options pipeStdin() { return Options().stdin(PIPE); }
   static Options pipeStdout() { return Options().stdout(PIPE); }
   static Options pipeStderr() { return Options().stderr(PIPE); }
+
+  // Non-copiable, but movable
+  Subprocess(const Subprocess&) = delete;
+  Subprocess& operator=(const Subprocess&) = delete;
+  Subprocess(Subprocess&&) = default;
+  Subprocess& operator=(Subprocess&&) = default;
 
   /**
    * Create a subprocess from the given arguments.  argv[0] must be listed.

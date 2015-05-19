@@ -50,6 +50,18 @@ constexpr int kChildFailure = 126;
 
 namespace folly {
 
+ProcessReturnCode::ProcessReturnCode(ProcessReturnCode&& p) noexcept
+  : rawStatus_(p.rawStatus_) {
+  p.rawStatus_ = ProcessReturnCode::RV_NOT_STARTED;
+}
+
+ProcessReturnCode& ProcessReturnCode::operator=(ProcessReturnCode&& p)
+    noexcept {
+  rawStatus_ = p.rawStatus_;
+  p.rawStatus_ = ProcessReturnCode::RV_NOT_STARTED;
+  return *this;
+}
+
 ProcessReturnCode::State ProcessReturnCode::state() const {
   if (rawStatus_ == RV_NOT_STARTED) return NOT_STARTED;
   if (rawStatus_ == RV_RUNNING) return RUNNING;

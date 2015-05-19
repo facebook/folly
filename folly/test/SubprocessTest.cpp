@@ -55,6 +55,16 @@ TEST(SimpleSubprocessTest, ExitsWithErrorChecked) {
   EXPECT_THROW(proc.waitChecked(), CalledProcessError);
 }
 
+TEST(SimpleSubprocessTest, MoveSubprocess) {
+  Subprocess old_proc(std::vector<std::string>{ "/bin/true" });
+  EXPECT_TRUE(old_proc.returnCode().running());
+  auto new_proc = std::move(old_proc);
+  EXPECT_TRUE(old_proc.returnCode().notStarted());
+  EXPECT_TRUE(new_proc.returnCode().running());
+  EXPECT_EQ(0, new_proc.wait().exitStatus());
+  // Now old_proc is destroyed, but we don't crash.
+}
+
 #define EXPECT_SPAWN_ERROR(err, errMsg, cmd, ...) \
   do { \
     try { \
