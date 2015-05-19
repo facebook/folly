@@ -646,7 +646,12 @@ struct TurnSequencer {
       // the first effectSpinCutoff tries are spins, after that we will
       // record ourself as a waiter and block with futexWait
       if (tries < effectiveSpinCutoff) {
+#if FOLLY_X64
         asm volatile ("pause");
+#endif
+#if FOLLY_PPC64LE
+        asm volatile("isync");
+#endif
         continue;
       }
 

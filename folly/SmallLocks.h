@@ -47,8 +47,8 @@
 #include <glog/logging.h>
 #include <folly/Portability.h>
 
-#if !FOLLY_X64
-# error "SmallLocks.h is currently x64-only."
+#if !FOLLY_X64 && !FOLLY_PPC64LE
+# error "SmallLocks.h is currently x64 and POWER only."
 #endif
 
 namespace folly {
@@ -72,7 +72,12 @@ namespace detail {
     void wait() {
       if (spinCount < kMaxActiveSpin) {
         ++spinCount;
+#if FOLLY_X64
         asm volatile("pause");
+#endif
+#if FOLLY_PPC64LE
+        asm volatile("isync");
+#endif
       } else {
         /*
          * Always sleep 0.5ms, assuming this will make the kernel put
