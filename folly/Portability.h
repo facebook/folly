@@ -120,6 +120,11 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # define FOLLY_X64 0
 #endif
 
+#if defined(__powerpc64__) && defined(__LITTLE_ENDIAN__)
+# define FOLLY_PPC64LE 1
+#else
+# define FOLLY_PPC64LE 0
+#endif
 // packing is very ugly in msvc
 #ifdef _MSC_VER
 # define FOLLY_PACK_ATTR /**/
