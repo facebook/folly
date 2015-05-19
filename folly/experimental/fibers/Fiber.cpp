@@ -60,6 +60,10 @@ void Fiber::setData(intptr_t data) {
   data_ = data;
   state_ = READY_TO_RUN;
 
+  if (fiberManager_.observer_) {
+    fiberManager_.observer_->runnable(reinterpret_cast<uintptr_t>(this));
+  }
+
   if (LIKELY(threadId_ == localThreadId())) {
     fiberManager_.readyFibers_.push_back(*this);
     fiberManager_.ensureLoopScheduled();

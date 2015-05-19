@@ -64,7 +64,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
          fiber->state_ == Fiber::READY_TO_RUN);
   currentFiber_ = fiber;
   if (observer_) {
-    observer_->starting();
+    observer_->starting(reinterpret_cast<uintptr_t>(fiber));
   }
 
   while (fiber->state_ == Fiber::NOT_STARTED ||
@@ -86,7 +86,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     awaitFunc_(*fiber);
     awaitFunc_ = nullptr;
     if (observer_) {
-      observer_->stopped();
+      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
   } else if (fiber->state_ == Fiber::INVALID) {
@@ -107,7 +107,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
     // Make sure LocalData is not accessible from its destructor
     if (observer_) {
-      observer_->stopped();
+      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
     fiber->localData_.reset();
@@ -122,7 +122,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
   } else if (fiber->state_ == Fiber::YIELDED) {
     if (observer_) {
-      observer_->stopped();
+      observer_->stopped(reinterpret_cast<uintptr_t>(fiber));
     }
     currentFiber_ = nullptr;
     fiber->state_ = Fiber::READY_TO_RUN;
@@ -168,12 +168,20 @@ inline bool FiberManager::loopUntilNoReady() {
 
         fiber->setFunction(std::move(task->func));
         fiber->data_ = reinterpret_cast<intptr_t>(fiber);
+        if (observer_) {
+          observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
+        }
         runReadyFiber(fiber);
         hadRemoteFiber = true;
       }
     );
   }
 
+  if (observer_) {
+    for (auto& yielded : yieldedFibers_) {
+      observer_->runnable(reinterpret_cast<uintptr_t>(&yielded));
+    }
+  }
   readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
 
   return fibersActive_ > 0;
@@ -233,6 +241,9 @@ void FiberManager::addTask(F&& func) {
 
   fiber->data_ = reinterpret_cast<intptr_t>(fiber);
   readyFibers_.push_back(*fiber);
+  if (observer_) {
+    observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
+  }
 
   ensureLoopScheduled();
 }
@@ -364,6 +375,9 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
 
   fiber->data_ = reinterpret_cast<intptr_t>(fiber);
   readyFibers_.push_back(*fiber);
+  if (observer_) {
+    observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
+  }
 
   ensureLoopScheduled();
 }

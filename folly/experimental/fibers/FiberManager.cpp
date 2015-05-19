@@ -104,6 +104,9 @@ size_t FiberManager::stackHighWatermark() const {
 }
 
 void FiberManager::remoteReadyInsert(Fiber* fiber) {
+  if (observer_) {
+    observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
+  }
   if (remoteReadyQueue_.insertHead(fiber)) {
     loopController_->scheduleThreadSafe();
   }
