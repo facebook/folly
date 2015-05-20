@@ -758,7 +758,7 @@ window(Collection input, F func, size_t n) {
         // Using setCallback_ directly since we don't need the Future
         ctx->func_(std::move(ctx->input_[i])).setCallback_(
           // ctx is captured by value
-          [ctx, i](Try<ItT>&& t) {
+          [ctx, i](Try<Result>&& t) {
             ctx->promises_[i].setTry(std::move(t));
             // Chain another future onto this one
             spawn(std::move(ctx));

@@ -690,7 +690,8 @@ TEST(Future, unwrap) {
   EXPECT_EQ(7, f.value());
 }
 
-TEST(Future, stream) {
+TEST(Future, window) {
+  // int -> Future<int>
   auto fn = [](vector<int> input, size_t window_size, size_t expect) {
     auto res = reduce(
       window(
@@ -704,12 +705,12 @@ TEST(Future, stream) {
     EXPECT_EQ(expect, res);
   };
   {
-    // streaming 2 at a time
+    // 2 in-flight at a time
     vector<int> input = {1, 2, 3};
     fn(input, 2, 6);
   }
   {
-    // streaming 4 at a time
+    // 4 in-flight at a time
     vector<int> input = {1, 2, 3};
     fn(input, 4, 6);
   }
@@ -717,6 +718,33 @@ TEST(Future, stream) {
     // empty inpt
     vector<int> input;
     fn(input, 1, 0);
+  }
+  {
+    // int -> Future<void>
+    auto res = reduce(
+      window(
+        std::vector<int>({1, 2, 3}),
+        [](int i) { return makeFuture(); },
+        2),
+      0,
+      [](int sum, const Try<void>& b) {
+        EXPECT_TRUE(b.hasValue());
+        return sum + 1;
+      }).get();
+    EXPECT_EQ(3, res);
+  }
+  {
+    // string -> return Future<int>
+    auto res = reduce(
+      window(
+        std::vector<std::string>{"1", "2", "3"},
+        [](std::string s) { return makeFuture<int>(folly::to<int>(s)); },
+        2),
+      0,
+      [](int sum, const Try<int>& b) {
+        return sum + *b;
+      }).get();
+    EXPECT_EQ(6, res);
   }
 }
 
@@ -1807,7 +1835,7 @@ TEST(Reduce, Chain) {
   }
 }
 
-TEST(Reduce, Streaming) {
+TEST(Reduce, UnorderedReduce) {
   {
     std::vector<Future<int>> fs;
     fs.push_back(makeFuture(1));
@@ -1841,7 +1869,7 @@ TEST(Reduce, Streaming) {
   }
 }
 
-TEST(Reduce, StreamingException) {
+TEST(Reduce, UnorderedReduceException) {
   Promise<int> p1;
   Promise<int> p2;
   Promise<int> p3;
