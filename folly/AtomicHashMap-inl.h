@@ -32,14 +32,14 @@ AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::defaultConfig;
 template <typename KeyT, typename ValueT,
           typename HashFcn, typename EqualFcn, typename Allocator>
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-AtomicHashMap(size_t size, const Config& config)
+AtomicHashMap(size_t finalSizeEst, const Config& config)
   : kGrowthFrac_(config.growthFactor < 0 ?
                  1.0 - config.maxLoadFactor : config.growthFactor) {
   CHECK(config.maxLoadFactor > 0.0 && config.maxLoadFactor < 1.0);
-  subMaps_[0].store(SubMap::create(size, config).release(),
+  subMaps_[0].store(SubMap::create(finalSizeEst, config).release(),
     std::memory_order_relaxed);
-  auto numSubMaps = kNumSubMaps_;
-  FOR_EACH_RANGE(i, 1, numSubMaps) {
+  auto subMapCount = kNumSubMaps_;
+  FOR_EACH_RANGE(i, 1, subMapCount) {
     subMaps_[i].store(nullptr, std::memory_order_relaxed);
   }
   numMapsAllocated_.store(1, std::memory_order_relaxed);

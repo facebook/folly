@@ -28,8 +28,9 @@ template <class KeyT, class ValueT,
           class HashFcn, class EqualFcn, class Allocator>
 AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
 AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
-                KeyT erasedKey, double maxLoadFactor, size_t cacheSize)
-    : capacity_(capacity), maxEntries_(size_t(maxLoadFactor * capacity_ + 0.5)),
+                KeyT erasedKey, double _maxLoadFactor, size_t cacheSize)
+    : capacity_(capacity),
+      maxEntries_(size_t(_maxLoadFactor * capacity_ + 0.5)),
       kEmptyKey_(emptyKey), kLockedKey_(lockedKey), kErasedKey_(erasedKey),
       kAnchorMask_(nextPowTwo(capacity_) - 1), numEntries_(0, cacheSize),
       numPendingEntries_(0, cacheSize), isFull_(0), numErases_(0) {
