@@ -517,6 +517,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   };
 
   class WriteRequest;
+  class BytesWriteRequest;
 
   class WriteTimeout : public AsyncTimeout {
    public:
