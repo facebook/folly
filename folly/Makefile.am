@@ -110,6 +110,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/StringKeyedUnorderedMap.h \
 	experimental/StringKeyedUnorderedSet.h \
 	experimental/TestUtil.h \
+	experimental/TupleOps.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
