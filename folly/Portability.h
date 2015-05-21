@@ -273,4 +273,10 @@ inline size_t malloc_usable_size(void* ptr) {
 }
 #endif
 
+#if defined(__x86_64__)
+#define FOLLY_PAUSE() asm volatile ("pause")
+#elif defined(__aarch64__)
+#define FOLLY_PAUSE() asm volatile ("wfe")
+#endif
+
 #endif // FOLLY_PORTABILITY_H_

@@ -587,7 +587,7 @@ class RWTicketSpinLockT : boost::noncopyable {
     int count = 0;
     QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
     while (val != load_acquire(&ticket.write)) {
-      asm volatile("pause");
+      FOLLY_PAUSE();
       if (UNLIKELY(++count > 1000)) sched_yield();
     }
   }
@@ -636,7 +636,7 @@ class RWTicketSpinLockT : boost::noncopyable {
     // need to let threads that already have a shared lock complete
     int count = 0;
     while (!LIKELY(try_lock_shared())) {
-      asm volatile("pause");
+      FOLLY_PAUSE();
       if (UNLIKELY((++count & 1023) == 0)) sched_yield();
     }
   }

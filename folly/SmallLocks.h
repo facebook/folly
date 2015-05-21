@@ -47,8 +47,8 @@
 #include <glog/logging.h>
 #include <folly/Portability.h>
 
-#if !FOLLY_X64
-# error "SmallLocks.h is currently x64-only."
+#if !FOLLY_X64 && !defined(__aarch64__)
+# error "SmallLocks.h is currently x64 and aarch64-only."
 #endif
 
 namespace folly {
@@ -72,7 +72,7 @@ namespace detail {
     void wait() {
       if (spinCount < kMaxActiveSpin) {
         ++spinCount;
-        asm volatile("pause");
+	FOLLY_PAUSE();
       } else {
         /*
          * Always sleep 0.5ms, assuming this will make the kernel put
@@ -217,6 +217,7 @@ struct PicoSpinLock {
   bool try_lock() const {
     bool ret = false;
 
+#if FOLLY_X64
 #define FB_DOBTS(size)                                  \
   asm volatile("lock; bts" #size " %1, (%2); setnc %0"  \
                : "=r" (ret)                             \
@@ -231,6 +232,9 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTS
+#else
+    ret = __atomic_fetch_or(&lock_, 1 << Bit, __ATOMIC_SEQ_CST);
+#endif
 
     return ret;
   }
@@ -250,6 +254,7 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
+#if FOLLY_X64
 #define FB_DOBTR(size)                          \
   asm volatile("lock; btr" #size " %0, (%1)"    \
                :                                \
@@ -267,6 +272,9 @@ struct PicoSpinLock {
     }
 
 #undef FB_DOBTR
+#else
+    __atomic_fetch_and(&lock_, ~(1 << Bit), __ATOMIC_SEQ_CST);
+#endif
   }
 };
 
