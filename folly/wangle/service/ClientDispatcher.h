@@ -26,11 +26,11 @@ namespace folly { namespace wangle {
  * only one request is allowed at a time.
  */
 template <typename Pipeline, typename Req, typename Resp = Req>
-class SerialClientDispatcher : public InboundHandler<Req>
+class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
                              , public Service<Req, Resp> {
  public:
 
-  typedef typename InboundHandler<Req>::Context Context;
+  typedef typename HandlerAdapter<Req, Resp>::Context Context;
 
   void setPipeline(Pipeline* pipeline) {
     pipeline_ = pipeline;
@@ -54,6 +54,13 @@ class SerialClientDispatcher : public InboundHandler<Req>
     return f;
   }
 
+  virtual Future<void> close() override {
+    return HandlerAdapter<Req, Resp>::close(nullptr);
+  }
+
+  virtual Future<void> close(Context* ctx) override {
+    return HandlerAdapter<Req, Resp>::close(ctx);
+  }
  private:
   Pipeline* pipeline_{nullptr};
   folly::Optional<Promise<Resp>> p_;

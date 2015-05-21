@@ -34,6 +34,12 @@ class Service {
  public:
   virtual Future<Resp> operator()(Req request) = 0;
   virtual ~Service() {}
+  virtual Future<void> close() {
+    return makeFuture();
+  }
+  virtual bool isAvailable() {
+    return true;
+  }
 };
 
 /**
@@ -57,40 +63,23 @@ class Service {
  */
 template <typename ReqA, typename RespA,
           typename ReqB = ReqA, typename RespB = RespA>
-class Filter {
+class ServiceFilter : public Service<ReqA, RespA> {
   public:
-  virtual Future<RespA> operator()(
-    Service<ReqB, RespB>* service, ReqA request) = 0;
-  std::unique_ptr<Service<ReqA, RespA>> compose(
-    Service<ReqB, RespB>* service);
-  virtual ~Filter() {}
-};
+  explicit ServiceFilter(std::shared_ptr<Service<ReqB, RespB>> service)
+      : service_(service) {}
+  virtual ~ServiceFilter() {}
 
-template <typename ReqA, typename RespA,
-          typename ReqB = ReqA, typename RespB = RespA>
-class ComposedService : public Service<ReqA, RespA> {
-  public:
-  ComposedService(Service<ReqB, RespB>* service,
-                  Filter<ReqA, RespA, ReqB, RespB>* filter)
-    : service_(service)
-    , filter_(filter) {}
-  virtual Future<RespA> operator()(ReqA request) override {
-    return (*filter_)(service_, request);
+  virtual Future<void> close() override {
+    return service_->close();
   }
 
-  ~ComposedService(){}
-  private:
-  Service<ReqB, RespB>* service_;
-  Filter<ReqA, RespA, ReqB, RespB>* filter_;
-};
+  virtual bool isAvailable() override {
+    return service_->isAvailable();
+  }
 
-template <typename ReqA, typename RespA,
-          typename ReqB, typename RespB>
-  std::unique_ptr<Service<ReqA, RespA>>
-    Filter<ReqA, RespA, ReqB, RespB>::compose(Service<ReqB, RespB>* service) {
-  return  folly::make_unique<ComposedService<ReqA, RespA, ReqB, RespB>>(
-    service, this);
-}
+ protected:
+  std::shared_ptr<Service<ReqB, RespB>> service_;
+};
 
 /**
  * A factory that creates services, given a client.  This lets you
@@ -101,10 +90,65 @@ template <typename ReqA, typename RespA,
 template <typename Pipeline, typename Req, typename Resp>
 class ServiceFactory {
  public:
-  virtual Future<Service<Req, Resp>*> operator()(
-    ClientBootstrap<Pipeline>* client) = 0;
+  virtual Future<std::shared_ptr<Service<Req, Resp>>> operator()(
+    std::shared_ptr<ClientBootstrap<Pipeline>> client) = 0;
 
   virtual ~ServiceFactory() = default;
+
 };
+
+
+template <typename Pipeline, typename Req, typename Resp>
+class ConstFactory : public ServiceFactory<Pipeline, Req, Resp> {
+ public:
+  explicit ConstFactory(std::shared_ptr<Service<Req, Resp>> service)
+      : service_(service) {}
+
+  virtual Future<std::shared_ptr<Service<Req, Resp>>> operator()(
+    std::shared_ptr<ClientBootstrap<Pipeline>> client) {
+    return service_;
+  }
+ private:
+  std::shared_ptr<Service<Req, Resp>> service_;
+};
+
+template <typename Pipeline, typename ReqA, typename RespA,
+          typename ReqB = ReqA, typename RespB = RespA>
+class ServiceFactoryFilter : public ServiceFactory<Pipeline, ReqA, RespA> {
+ public:
+  explicit ServiceFactoryFilter(
+    std::shared_ptr<ServiceFactory<Pipeline, ReqB, RespB>> serviceFactory)
+      : serviceFactory_(std::move(serviceFactory)) {}
+
+  virtual ~ServiceFactoryFilter() = default;
+
+ protected:
+  std::shared_ptr<ServiceFactory<Pipeline, ReqB, RespB>> serviceFactory_;
+};
+
+template <typename Pipeline, typename Req, typename Resp = Req>
+class FactoryToService : public Service<Req, Resp> {
+ public:
+  explicit FactoryToService(
+    std::shared_ptr<ServiceFactory<Pipeline, Req, Resp>> factory)
+      : factory_(factory) {}
+  virtual ~FactoryToService() {}
+
+  virtual Future<Resp> operator()(Req request) override {
+    DCHECK(factory_);
+    return ((*factory_)(nullptr)).then(
+      [=](std::shared_ptr<Service<Req, Resp>> service)
+      {
+        return (*service)(std::move(request)).ensure(
+          [this]() {
+            this->close();
+          });
+      });
+  }
+
+ private:
+  std::shared_ptr<ServiceFactory<Pipeline, Req, Resp>> factory_;
+};
+
 
 } // namespace

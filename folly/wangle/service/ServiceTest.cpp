@@ -38,14 +38,14 @@ class SimpleDecode : public ByteToMessageCodec {
 class EchoService : public Service<std::string, std::string> {
  public:
   virtual Future<std::string> operator()(std::string req) override {
-    return makeFuture<std::string>(std::move(req));
+    return req;
   }
 };
 
 class EchoIntService : public Service<std::string, int> {
  public:
   virtual Future<int> operator()(std::string req) override {
-    return makeFuture<int>(folly::to<int>(req));
+    return folly::to<int>(req);
   }
 };
 
@@ -101,10 +101,10 @@ class ClientServiceFactory : public ServiceFactory<Pipeline, Req, Resp> {
     SerialClientDispatcher<Pipeline, Req, Resp> dispatcher_;
   };
 
-  Future<Service<Req, Resp>*> operator()(
-      ClientBootstrap<Pipeline>* client) override {
-    return makeFuture<Service<Req, Resp>*>(
-      new ClientService(client->getPipeline()));
+  Future<std::shared_ptr<Service<Req, Resp>>> operator() (
+    std::shared_ptr<ClientBootstrap<Pipeline>> client) override {
+    return Future<std::shared_ptr<Service<Req, Resp>>>(
+      std::make_shared<ClientService>(client->getPipeline()));
   }
 };
 
@@ -124,8 +124,7 @@ TEST(Wangle, ClientServerTest) {
     std::make_shared<ClientPipelineFactory<std::string, std::string>>());
   SocketAddress addr("127.0.0.1", port);
   client->connect(addr);
-  auto service = std::shared_ptr<Service<std::string, std::string>>(
-    serviceFactory(client.get()).value());
+  auto service = serviceFactory(client).value();
   auto rep = (*service)("test");
 
   rep.then([&](std::string value) {
@@ -138,68 +137,114 @@ TEST(Wangle, ClientServerTest) {
   client.reset();
 }
 
-class AppendFilter : public Filter<std::string, std::string> {
+class AppendFilter : public ServiceFilter<std::string, std::string> {
  public:
-  virtual Future<std::string> operator()(
-    Service<std::string, std::string>* service, std::string req) {
-    return (*service)(req + "\n");
+  explicit AppendFilter(
+    std::shared_ptr<Service<std::string, std::string>> service) :
+      ServiceFilter<std::string, std::string>(service) {}
+
+  virtual Future<std::string> operator()(std::string req) {
+    return (*service_)(req + "\n");
   }
 };
 
-class IntToStringFilter : public Filter<int, int, std::string, std::string> {
+class IntToStringFilter
+    : public ServiceFilter<int, int, std::string, std::string> {
  public:
-  virtual Future<int> operator()(
-    Service<std::string, std::string>* service, int req) {
-    return (*service)(folly::to<std::string>(req)).then([](std::string resp) {
+  explicit IntToStringFilter(
+    std::shared_ptr<Service<std::string, std::string>> service) :
+      ServiceFilter<int, int, std::string, std::string>(service) {}
+
+  virtual Future<int> operator()(int req) {
+    return (*service_)(folly::to<std::string>(req)).then([](std::string resp) {
       return folly::to<int>(resp);
     });
   }
 };
 
 TEST(Wangle, FilterTest) {
-  auto service = folly::make_unique<EchoService>();
-  auto filter = folly::make_unique<AppendFilter>();
-  auto result = (*filter)(service.get(), "test");
+  auto service = std::make_shared<EchoService>();
+  auto filter = std::make_shared<AppendFilter>(service);
+  auto result = (*filter)("test");
   EXPECT_EQ(result.value(), "test\n");
-
-  // Check composition
-  auto composed_service = filter->compose(service.get());
-  auto result2 = (*composed_service)("test");
-  EXPECT_EQ(result2.value(), "test\n");
 }
 
 TEST(Wangle, ComplexFilterTest) {
-  auto service = folly::make_unique<EchoService>();
-  auto filter = folly::make_unique<IntToStringFilter>();
-  auto result = (*filter)(service.get(), 1);
+  auto service = std::make_shared<EchoService>();
+  auto filter = std::make_shared<IntToStringFilter>(service);
+  auto result = (*filter)(1);
   EXPECT_EQ(result.value(), 1);
-
-  // Check composition
-  auto composed_service = filter->compose(service.get());
-  auto result2 = (*composed_service)(2);
-  EXPECT_EQ(result2.value(), 2);
 }
 
-class ChangeTypeFilter : public Filter<int, std::string, std::string, int> {
+class ChangeTypeFilter
+    : public ServiceFilter<int, std::string, std::string, int> {
  public:
-  virtual Future<std::string> operator()(
-    Service<std::string, int>* service, int req) {
-    return (*service)(folly::to<std::string>(req)).then([](int resp) {
+  explicit ChangeTypeFilter(
+    std::shared_ptr<Service<std::string, int>> service) :
+      ServiceFilter<int, std::string, std::string, int>(service) {}
+
+  virtual Future<std::string> operator()(int req) {
+    return (*service_)(folly::to<std::string>(req)).then([](int resp) {
       return folly::to<std::string>(resp);
     });
   }
 };
 
 TEST(Wangle, SuperComplexFilterTest) {
-  auto service = folly::make_unique<EchoIntService>();
-  auto filter = folly::make_unique<ChangeTypeFilter>();
-  auto result = (*filter)(service.get(), 1);
+  auto service = std::make_shared<EchoIntService>();
+  auto filter = std::make_shared<ChangeTypeFilter>(service);
+  auto result = (*filter)(1);
   EXPECT_EQ(result.value(), "1");
+}
 
-  // Check composition
-  auto composed_service = filter->compose(service.get());
-  auto result2 = (*composed_service)(2);
-  EXPECT_EQ(result2.value(), "2");
+template <typename Pipeline, typename Req, typename Resp>
+class ConnectionCountFilter : public ServiceFactoryFilter<Pipeline, Req, Resp> {
+ public:
+  explicit ConnectionCountFilter(
+    std::shared_ptr<ServiceFactory<Pipeline, Req, Resp>> factory)
+      : ServiceFactoryFilter<Pipeline, Req, Resp>(factory) {}
+
+    virtual Future<std::shared_ptr<Service<Req, Resp>>> operator()(
+      std::shared_ptr<ClientBootstrap<Pipeline>> client) {
+      connectionCount++;
+      return (*this->serviceFactory_)(client);
+    }
+
+  int connectionCount{0};
+};
+
+TEST(Wangle, ServiceFactoryFilter) {
+  auto clientFactory =
+    std::make_shared<
+    ClientServiceFactory<ServicePipeline, std::string, std::string>>();
+  auto countingFactory =
+    std::make_shared<
+    ConnectionCountFilter<ServicePipeline, std::string, std::string>>(
+      clientFactory);
+
+  auto client = std::make_shared<ClientBootstrap<ServicePipeline>>();
+
+  client->pipelineFactory(
+    std::make_shared<ClientPipelineFactory<std::string, std::string>>());
+  // It doesn't matter if connect succeds or not, but it needs to be called
+  // to create a pipeline
+  client->connect(folly::SocketAddress("::1", 8090));
+
+  auto service = (*countingFactory)(client).value();
+
+  // After the first service goes away, the client can be reused
+  service = (*countingFactory)(client).value();
+  EXPECT_EQ(2, countingFactory->connectionCount);
+}
+
+TEST(Wangle, FactoryToService) {
+  auto constfactory =
+    std::make_shared<ConstFactory<ServicePipeline, std::string, std::string>>(
+    std::make_shared<EchoService>());
+  FactoryToService<ServicePipeline, std::string, std::string> service(
+    constfactory);
+
+  EXPECT_EQ("test", service("test").value());
 }
 
 int main(int argc, char** argv) {
