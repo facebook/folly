@@ -16,6 +16,7 @@
 #pragma once
 
 #include <memory>
+#include <atomic>
 #include <folly/experimental/fibers/LoopController.h>
 
 namespace folly {
