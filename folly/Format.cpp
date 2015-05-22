@@ -287,7 +287,6 @@ void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
   uint32_t buffer_read_index = remaining_digits - 1;
   start_buffer[buffer_write_index + 1] = 0;
 
-  uint32_t count = 0;
   bool done = false;
   uint32_t next_group_size = 3;
 
