@@ -492,16 +492,6 @@ void toLowerAscii(char* str, size_t length) {
   }
 }
 
-size_t strlcpy(char* dest, const char* const src, size_t size) {
-  size_t len = strlen(src);
-  if (size != 0) {
-    size_t n = std::min(len, size - 1);  // always null terminate!
-    memcpy(dest, src, n);
-    dest[n] = '\0';
-  }
-  return len;
-}
-
 namespace detail {
 
 size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
