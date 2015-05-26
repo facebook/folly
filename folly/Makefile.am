@@ -83,7 +83,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/ExecutionObserver.h \
 	experimental/fibers/Fiber.h \
 	experimental/fibers/Fiber-inl.h \
-	experimental/fibers/FiberIOExecutor.h \
 	experimental/fibers/FiberManager.h \
 	experimental/fibers/FiberManager-inl.h \
 	experimental/fibers/FiberManagerMap.h \
@@ -291,6 +290,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/concurrent/BlockingQueue.h \
 	wangle/concurrent/Codel.h \
 	wangle/concurrent/CPUThreadPoolExecutor.h \
+	wangle/concurrent/FiberIOExecutor.h \
 	wangle/concurrent/FutureExecutor.h \
 	wangle/concurrent/IOExecutor.h \
 	wangle/concurrent/IOThreadPoolExecutor.h \
