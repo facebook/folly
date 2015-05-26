@@ -374,7 +374,6 @@ libfolly_la_SOURCES = \
 	io/async/EventBase.cpp \
 	io/async/EventBaseManager.cpp \
 	io/async/EventHandler.cpp \
-	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
 	io/async/HHWheelTimer.cpp \
 	io/async/test/TimeUtil.cpp \
