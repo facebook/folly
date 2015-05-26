@@ -280,6 +280,14 @@ struct Baton : boost::noncopyable {
       // its other hyperthreads for a dozen cycles or so
       asm volatile ("pause");
 #endif
+#if FOLLY_PPC64LE
+      // We would like to pause and tell the other cores CPU that we are spinning.
+      // There seems to be not straight 'pause' instruction, but the usual 'isync'
+      // instruction, that ensures that the loads following entry into the critical
+      // section are not performed (because of aggressive out-of-order or
+      // speculative execution in the processor) until the lock is granted.
+      asm volatile("isync");
+#endif
     }
 
     return false;
