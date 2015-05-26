@@ -306,7 +306,7 @@ class SingletonVault {
   // Mark registration is complete; no more singletons can be
   // registered at this point.
   void registrationComplete() {
-    RequestContext::getStaticContext();
+    RequestContext::saveContext();
     std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
     RWSpinLock::WriteHolder wh(&stateMutex_);

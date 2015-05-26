@@ -102,7 +102,7 @@ void SingletonVault::reenableInstances() {
 }
 
 void SingletonVault::scheduleDestroyInstances() {
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 
   class SingletonVaultDestructor {
    public:

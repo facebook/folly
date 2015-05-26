@@ -41,8 +41,6 @@ class RequestContext;
 // If you do not call create() to create a unique request context,
 // this default request context will always be returned, and is never
 // copied between threads.
-extern RequestContext* defaultContext;
-
 class RequestContext {
  public:
   // Create a unique requext context for this request.
@@ -54,13 +52,12 @@ class RequestContext {
 
   // Get the current context.
   static RequestContext* get() {
-    if (getStaticContext() == nullptr) {
-      if (defaultContext == nullptr) {
-        defaultContext = new RequestContext;
-      }
-      return defaultContext;
+    auto context = getStaticContext();
+    if (!context) {
+      static RequestContext defaultContext;
+      return std::addressof(defaultContext);
     }
-    return getStaticContext().get();
+    return context.get();
   }
 
   // The following API may be used to set per-request data in a thread-safe way.
@@ -108,31 +105,27 @@ class RequestContext {
 
   static std::shared_ptr<RequestContext>
   setContext(std::shared_ptr<RequestContext> ctx) {
-    std::shared_ptr<RequestContext> old_ctx;
-    if (getStaticContext()) {
-      old_ctx = getStaticContext();
-    }
-    getStaticContext() = ctx;
-    return old_ctx;
+    using std::swap;
+    swap(ctx, getStaticContext());
+    return ctx;
   }
 
   static std::shared_ptr<RequestContext> saveContext() {
     return getStaticContext();
   }
 
+ private:
   // Used to solve static destruction ordering issue.  Any static object
   // that uses RequestContext must call this function in its constructor.
   //
   // See below link for more details.
   // http://stackoverflow.com/questions/335369/
   // finding-c-static-initialization-order-problems#335746
-  static std::shared_ptr<RequestContext>&
-  getStaticContext() {
+  static std::shared_ptr<RequestContext> &getStaticContext() {
     static folly::ThreadLocal<std::shared_ptr<RequestContext> > context;
     return *context;
   }
 
- private:
   folly::RWSpinLock lock;
   std::map<std::string, std::unique_ptr<RequestData>> data_;
 };

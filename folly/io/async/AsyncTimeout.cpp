@@ -36,7 +36,7 @@ AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager)
   timeoutManager_->attachTimeoutManager(
       this,
       TimeoutManager::InternalEnum::NORMAL);
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 }
 
 AsyncTimeout::AsyncTimeout(EventBase* eventBase)
@@ -49,7 +49,7 @@ AsyncTimeout::AsyncTimeout(EventBase* eventBase)
       this,
       TimeoutManager::InternalEnum::NORMAL);
   }
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 }
 
 AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager,
@@ -59,7 +59,7 @@ AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager,
   event_set(&event_, -1, EV_TIMEOUT, &AsyncTimeout::libeventCallback, this);
   event_.ev_base = nullptr;
   timeoutManager_->attachTimeoutManager(this, internal);
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 }
 
 AsyncTimeout::AsyncTimeout(EventBase* eventBase, InternalEnum internal)
@@ -68,13 +68,13 @@ AsyncTimeout::AsyncTimeout(EventBase* eventBase, InternalEnum internal)
   event_set(&event_, -1, EV_TIMEOUT, &AsyncTimeout::libeventCallback, this);
   event_.ev_base = nullptr;
   timeoutManager_->attachTimeoutManager(this, internal);
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 }
 
 AsyncTimeout::AsyncTimeout(): timeoutManager_(nullptr) {
   event_set(&event_, -1, EV_TIMEOUT, &AsyncTimeout::libeventCallback, this);
   event_.ev_base = nullptr;
-  RequestContext::getStaticContext();
+  RequestContext::saveContext();
 }
 
 AsyncTimeout::~AsyncTimeout() {
