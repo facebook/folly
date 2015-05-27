@@ -552,6 +552,26 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   void init();
 
+  class ImmediateReadCB : public folly::EventBase::LoopCallback {
+   public:
+    explicit ImmediateReadCB(AsyncSocket* socket) : socket_(socket) {}
+    void runLoopCallback() noexcept override {
+      socket_->checkForImmediateRead();
+    }
+   private:
+    AsyncSocket* socket_;
+  };
+
+  /**
+   * Schedule checkForImmediateRead to be executed in the next loop
+   * iteration.
+   */
+  void scheduleImmediateRead() noexcept {
+    if (good()) {
+      eventBase_->runInLoop(&immediateReadHandler_);
+    }
+  }
+
   // event notification methods
   void ioReady(uint16_t events) noexcept;
   virtual void checkForImmediateRead() noexcept;
@@ -673,6 +693,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   EventBase* eventBase_;               ///< The EventBase
   WriteTimeout writeTimeout_;           ///< A timeout for connect and write
   IoHandler ioHandler_;                 ///< A EventHandler to monitor the fd
+  ImmediateReadCB immediateReadHandler_; ///< LoopCallback for checking read
 
   ConnectCallback* connectCallback_;    ///< ConnectCallback
   ReadCallback* readCallback_;          ///< ReadCallback

@@ -52,6 +52,9 @@ const char* testCert = "folly/io/async/test/certs/tests-cert.pem";
 const char* testKey = "folly/io/async/test/certs/tests-key.pem";
 const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
 
+constexpr size_t SSLClient::kMaxReadBufferSz;
+constexpr size_t SSLClient::kMaxReadsPerEvent;
+
 TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase *acb) :
 ctx_(new folly::SSLContext),
     acb_(acb),

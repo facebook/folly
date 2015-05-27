@@ -980,10 +980,18 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   uint32_t errors_;
   uint32_t writeAfterConnectErrors_;
 
+  // These settings test that we eventually drain the
+  // socket, even if the maxReadsPerEvent_ is hit during
+  // a event loop iteration.
+  static constexpr size_t kMaxReadsPerEvent = 2;
+  static constexpr size_t kMaxReadBufferSz =
+    sizeof(readbuf_) / kMaxReadsPerEvent / 2;  // 2 event loop iterations
+
  public:
   SSLClient(EventBase *eventBase,
             const folly::SocketAddress& address,
-            uint32_t requests, uint32_t timeout = 0)
+            uint32_t requests,
+            uint32_t timeout = 0)
       : eventBase_(eventBase),
         session_(nullptr),
         requests_(requests),
@@ -1046,6 +1054,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
     }
 
     // write()
+    sslSocket_->setMaxReadsPerEvent(kMaxReadsPerEvent);
     sslSocket_->write(this, buf_, sizeof(buf_));
     sslSocket_->setReadCB(this);
     memset(readbuf_, 'b', sizeof(readbuf_));
@@ -1075,7 +1084,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
 
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
     *bufReturn = readbuf_ + bytesRead_;
-    *lenReturn = sizeof(readbuf_) - bytesRead_;
+    *lenReturn = std::min(kMaxReadBufferSz, sizeof(readbuf_) - bytesRead_);
   }
 
   void readEOF() noexcept override {
@@ -1090,7 +1099,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   void readDataAvailable(size_t len) noexcept override {
     std::cerr << "client read data: " << len << std::endl;
     bytesRead_ += len;
-    if (len == sizeof(buf_)) {
+    if (bytesRead_ == sizeof(buf_)) {
       EXPECT_EQ(memcmp(buf_, readbuf_, bytesRead_), 0);
       sslSocket_->closeNow();
       sslSocket_.reset();

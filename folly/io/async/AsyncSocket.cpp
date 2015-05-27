@@ -221,7 +221,8 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
 AsyncSocket::AsyncSocket()
   : eventBase_(nullptr)
   , writeTimeout_(this, nullptr)
-  , ioHandler_(this, nullptr) {
+  , ioHandler_(this, nullptr)
+  , immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket()";
   init();
 }
@@ -229,7 +230,8 @@ AsyncSocket::AsyncSocket()
 AsyncSocket::AsyncSocket(EventBase* evb)
   : eventBase_(evb)
   , writeTimeout_(this, evb)
-  , ioHandler_(this, evb) {
+  , ioHandler_(this, evb)
+  , immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ")";
   init();
 }
@@ -252,7 +254,8 @@ AsyncSocket::AsyncSocket(EventBase* evb,
 AsyncSocket::AsyncSocket(EventBase* evb, int fd)
   : eventBase_(evb)
   , writeTimeout_(this, evb)
-  , ioHandler_(this, evb, fd) {
+  , ioHandler_(this, evb, fd)
+  , immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd="
           << fd << ")";
   init();
@@ -852,6 +855,10 @@ void AsyncSocket::closeNow() {
         }
       }
 
+      if (immediateReadHandler_.isLoopCallbackScheduled()) {
+        immediateReadHandler_.cancelLoopCallback();
+      }
+
       if (fd_ >= 0) {
         ioHandler_.changeHandlerFD(-1);
         doClose();
@@ -1357,6 +1364,9 @@ void AsyncSocket::handleRead() noexcept {
       return;
     }
     if (maxReadsPerEvent_ && (++numReads >= maxReadsPerEvent_)) {
+      // We might still have data in the socket.
+      // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
+      scheduleImmediateRead();
       return;
     }
   }
