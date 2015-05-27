@@ -53,7 +53,7 @@ class MemoryMapping : boost::noncopyable {
    * likely become inaccessible) when the MemoryMapping object is destroyed.
    */
   struct Options {
-    Options() { }
+    Options() {}
 
     // Convenience methods; return *this for chaining.
     Options& setPageSize(off_t v) { pageSize = v; return *this; }

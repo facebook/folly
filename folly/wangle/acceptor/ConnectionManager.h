@@ -40,7 +40,7 @@ class ConnectionManager: public folly::DelayedDestruction,
    */
   class Callback {
   public:
-    virtual ~Callback() {}
+    virtual ~Callback() = default;
 
     /**
      * Invoked when the number of connections managed by the
@@ -189,7 +189,7 @@ class ConnectionManager: public folly::DelayedDestruction,
     DRAIN2 = 1,
   };
 
-  ~ConnectionManager() {}
+  ~ConnectionManager() = default;
 
   ConnectionManager(const ConnectionManager&) = delete;
   ConnectionManager& operator=(ConnectionManager&) = delete;

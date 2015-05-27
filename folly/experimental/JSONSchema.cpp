@@ -59,7 +59,7 @@ Optional<SchemaError> makeError(Args&&... args) {
 struct ValidationContext;
 
 struct IValidator {
-  virtual ~IValidator() {}
+  virtual ~IValidator() = default;
 
  private:
   friend struct ValidationContext;
@@ -102,7 +102,7 @@ struct SchemaValidatorContext final {
  * Root validator for a schema.
  */
 struct SchemaValidator final : IValidator, public Validator {
-  SchemaValidator() {}
+  SchemaValidator() = default;
   void loadSchema(SchemaValidatorContext& context, const dynamic& schema);
 
   Optional<SchemaError> validate(ValidationContext&,
@@ -1011,7 +1011,7 @@ folly::Singleton<Validator> schemaValidator([]() {
 });
 }
 
-Validator::~Validator() {}
+Validator::~Validator() = default;
 
 std::unique_ptr<Validator> makeValidator(const dynamic& schema) {
   auto v = make_unique<SchemaValidator>();

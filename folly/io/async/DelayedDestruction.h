@@ -143,7 +143,7 @@ class DelayedDestruction : private boost::noncopyable {
    * shared_ptr using a DelayedDestruction::Destructor as the second argument
    * to the shared_ptr constructor.
    */
-  virtual ~DelayedDestruction() {}
+  virtual ~DelayedDestruction() = default;
 
   /**
    * Get the number of DestructorGuards currently protecting this object.

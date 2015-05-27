@@ -91,7 +91,7 @@ class AsyncSocket::WriteRequest {
 
  protected:
   // protected destructor, to ensure callers use destroy()
-  virtual ~WriteRequest() {}
+  virtual ~WriteRequest() = default;
 
   AsyncSocket* socket_;         ///< parent socket
   WriteRequest* next_;          ///< pointer to next WriteRequest
@@ -193,7 +193,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   // private destructor, to ensure callers use destroy()
-  virtual ~BytesWriteRequest() {}
+  virtual ~BytesWriteRequest() = default;
 
   const struct iovec* getOps() const {
     assert(opCount_ > opIndex_);

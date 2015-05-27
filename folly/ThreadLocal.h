@@ -59,7 +59,7 @@ template<class T, class Tag> class ThreadLocalPtr;
 template<class T, class Tag=void>
 class ThreadLocal {
  public:
-  ThreadLocal() { }
+  ThreadLocal() = default;
 
   T* get() const {
     T* ptr = tlp_.get();

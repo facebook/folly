@@ -66,7 +66,7 @@ class AsyncServerSocket : public DelayedDestruction
 
   class AcceptCallback {
    public:
-    virtual ~AcceptCallback() {}
+    virtual ~AcceptCallback() = default;
 
     /**
      * connectionAccepted() is called whenever a new client connection is
@@ -614,7 +614,7 @@ class AsyncServerSocket : public DelayedDestruction
     explicit RemoteAcceptor(AcceptCallback *callback)
       : callback_(callback) {}
 
-    ~RemoteAcceptor() {}
+    ~RemoteAcceptor() = default;
 
     void start(EventBase *eventBase, uint32_t maxAtOnce, uint32_t maxInQueue);
     void stop(EventBase* eventBase, AcceptCallback* callback);

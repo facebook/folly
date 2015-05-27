@@ -83,7 +83,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   class HandshakeCB {
    public:
-    virtual ~HandshakeCB() {}
+    virtual ~HandshakeCB() = default;
 
     /**
      * handshakeVer() is invoked during handshaking to give the

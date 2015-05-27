@@ -59,7 +59,7 @@ public:
   typedef typename Base::size_type size_type;
   typedef typename Base::difference_type difference_type;
 
-  explicit StringKeyedUnorderedMap() {}
+  explicit StringKeyedUnorderedMap() = default;
 
   explicit StringKeyedUnorderedMap(
     size_type n,

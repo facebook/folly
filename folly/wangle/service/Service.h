@@ -33,7 +33,7 @@ template <typename Req, typename Resp = Req>
 class Service {
  public:
   virtual Future<Resp> operator()(Req request) = 0;
-  virtual ~Service() {}
+  virtual ~Service() = default;
 };
 
 /**
@@ -63,7 +63,7 @@ class Filter {
     Service<ReqB, RespB>* service, ReqA request) = 0;
   std::unique_ptr<Service<ReqA, RespA>> compose(
     Service<ReqB, RespB>* service);
-  virtual ~Filter() {}
+  virtual ~Filter() = default;
 };
 
 template <typename ReqA, typename RespA,
