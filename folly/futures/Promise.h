@@ -99,6 +99,8 @@ public:
   template <class F>
   void setWith(F&& func);
 
+  bool isFulfilled();
+
 private:
   typedef typename Future<T>::corePtr corePtr;
 

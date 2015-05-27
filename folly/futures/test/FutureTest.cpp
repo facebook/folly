@@ -1914,3 +1914,20 @@ TEST(Map, Basic) {
 
   EXPECT_TRUE(collect(fs2).isReady());
 }
+
+TEST(Promise, isFulfilled) {
+  Promise<int> p;
+
+  EXPECT_FALSE(p.isFulfilled());
+  p.setValue(42);
+  EXPECT_TRUE(p.isFulfilled());
+}
+
+TEST(Promise, isFulfilledWithFuture) {
+  Promise<int> p;
+  auto f = p.getFuture(); // so core_ will become null
+
+  EXPECT_FALSE(p.isFulfilled());
+  p.setValue(42); // after here
+  EXPECT_TRUE(p.isFulfilled());
+}

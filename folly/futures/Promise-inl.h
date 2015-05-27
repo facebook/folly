@@ -130,4 +130,12 @@ void Promise<T>::setWith(F&& func) {
   setTry(makeTryWith(std::forward<F>(func)));
 }
 
+template <class T>
+bool Promise<T>::isFulfilled() {
+  if (core_) {
+    return core_->hasResult();
+  }
+  return true;
+}
+
 }
