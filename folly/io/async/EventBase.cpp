@@ -155,7 +155,8 @@ EventBase::EventBase(bool enableTimeMeasurement)
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
   , observer_(nullptr)
-  , observerSampleCount_(0) {
+  , observerSampleCount_(0)
+  , executionObserver_(nullptr) {
   {
     std::lock_guard<std::mutex> lock(libevent_mutex_);
 
@@ -193,7 +194,8 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
   , observer_(nullptr)
-  , observerSampleCount_(0) {
+  , observerSampleCount_(0)
+  , executionObserver_(nullptr) {
   if (UNLIKELY(evb_ == nullptr)) {
     LOG(ERROR) << "EventBase(): Pass nullptr as event base.";
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");

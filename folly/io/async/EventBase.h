@@ -21,6 +21,7 @@
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/Request.h>
 #include <folly/Executor.h>
+#include <folly/experimental/ExecutionObserver.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <memory>
 #include <stack>
@@ -546,6 +547,23 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
   }
 
   /**
+   * Setup execution observation/instrumentation for every EventHandler
+   * executed in this EventBase.
+   *
+   * @param executionObserver   EventHandle's execution observer.
+   */
+  void setExecutionObserver(ExecutionObserver* observer) {
+    executionObserver_ = observer;
+  }
+
+  /**
+   * Gets the execution observer associated with this EventBase.
+   */
+  ExecutionObserver* getExecutionObserver() {
+    return executionObserver_;
+  }
+
+  /**
    * Set the name of the thread that runs this event base.
    */
   void setName(const std::string& name);
@@ -701,6 +719,9 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
   // Observer to export counters
   std::shared_ptr<EventBaseObserver> observer_;
   uint32_t observerSampleCount_;
+
+  // EventHandler's execution observer.
+  ExecutionObserver* executionObserver_;
 
   // Name of the thread running this EventBase
   std::string name_;

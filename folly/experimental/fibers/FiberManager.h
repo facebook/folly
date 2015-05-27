@@ -29,8 +29,8 @@
 #include <folly/IntrusiveList.h>
 #include <folly/futures/Try.h>
 
+#include <folly/experimental/ExecutionObserver.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
-#include <folly/experimental/fibers/ExecutionObserver.h>
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/traits.h>
 

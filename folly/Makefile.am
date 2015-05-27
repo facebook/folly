@@ -71,6 +71,7 @@ nobase_follyinclude_HEADERS = \
 	EvictingCacheMap.h \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
+	experimental/ExecutionObserver.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
 	experimental/fibers/AddTasks.h \
@@ -80,7 +81,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/BoostContextCompatibility.h \
 	experimental/fibers/EventBaseLoopController.h \
 	experimental/fibers/EventBaseLoopController-inl.h \
-	experimental/fibers/ExecutionObserver.h \
 	experimental/fibers/Fiber.h \
 	experimental/fibers/Fiber-inl.h \
 	experimental/fibers/FiberManager.h \

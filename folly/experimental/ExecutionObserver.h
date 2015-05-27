@@ -17,7 +17,7 @@
 
 #include <cstdint>
 
-namespace folly { namespace fibers {
+namespace folly {
 
 /**
  * Observes the execution of a task.
@@ -29,23 +29,23 @@ class ExecutionObserver {
   /**
    * Called when a task is about to start executing.
    *
-   * @param id Unique id for the fiber which is starting.
+   * @param id Unique id for the task which is starting.
    */
   virtual void starting(uintptr_t id) noexcept = 0;
 
   /**
    * Called when a task is ready to run.
    *
-   * @param id Unique id for the fiber which is ready to run.
+   * @param id Unique id for the task which is ready to run.
    */
   virtual void runnable(uintptr_t id) noexcept = 0;
 
   /**
    * Called just after a task stops executing.
    *
-   * @param id Unique id for the fiber which is stopping.
+   * @param id Unique id for the task which stopped.
    */
   virtual void stopped(uintptr_t id) noexcept = 0;
 };
 
-}} // namespace folly::fibers
+} // namespace folly

@@ -147,10 +147,19 @@ void EventHandler::libeventCallback(int fd, short events, void* arg) {
   EventHandler* handler = reinterpret_cast<EventHandler*>(arg);
   assert(fd == handler->event_.ev_fd);
 
+  auto observer = handler->eventBase_->getExecutionObserver();
+  if (observer) {
+    observer->starting(reinterpret_cast<uintptr_t>(handler));
+  }
+
   // this can't possibly fire if handler->eventBase_ is nullptr
   (void) handler->eventBase_->bumpHandlingTime();
 
   handler->handlerReady(events);
+
+  if (observer) {
+    observer->stopped(reinterpret_cast<uintptr_t>(handler));
+  }
 }
 
 void EventHandler::setEventBase(EventBase* eventBase) {
