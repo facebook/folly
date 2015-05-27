@@ -25,6 +25,7 @@ using Duration = folly::Duration;
 
 std::chrono::milliseconds const one_ms(1);
 std::chrono::milliseconds const awhile(10);
+std::chrono::seconds const too_long(10);
 
 std::chrono::steady_clock::time_point now() {
   return std::chrono::steady_clock::now();
@@ -152,6 +153,11 @@ TEST(Timekeeper, onTimeoutVoid) {
        return makeFuture<void>(std::runtime_error("expected"));
      });
   // just testing compilation here
+}
+
+TEST(Timekeeper, interruptDoesntCrash) {
+  auto f = futures::sleep(too_long);
+  f.cancel();
 }
 
 // TODO(5921764)

@@ -27,9 +27,9 @@ namespace {
   // Our Callback object for HHWheelTimer
   struct WTCallback : public folly::HHWheelTimer::Callback {
     // Only allow creation by this factory, to ensure heap allocation.
-    static WTCallback* create() {
+    static WTCallback* create(EventBase* base) {
       // optimization opportunity: memory pool
-      return new WTCallback();
+      return new WTCallback(base);
     }
 
     Future<void> getFuture() {
@@ -37,9 +37,11 @@ namespace {
     }
 
    protected:
+    EventBase* base_;
     Promise<void> promise_;
 
-    explicit WTCallback() {
+    explicit WTCallback(EventBase* base)
+        : base_(base) {
       promise_.setInterruptHandler(
         std::bind(&WTCallback::interruptHandler, this));
     }
@@ -50,8 +52,10 @@ namespace {
     }
 
     void interruptHandler() {
-      cancelTimeout();
-      delete this;
+      base_->runInEventBaseThread([=] {
+        cancelTimeout();
+        delete this;
+      });
     }
   };
 
@@ -78,7 +82,7 @@ ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
 }
 
 Future<void> ThreadWheelTimekeeper::after(Duration dur) {
-  auto cob = WTCallback::create();
+  auto cob = WTCallback::create(&eventBase_);
   auto f = cob->getFuture();
   eventBase_.runInEventBaseThread([=]{
     wheelTimer_->scheduleTimeout(cob, dur);
