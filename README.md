@@ -84,7 +84,7 @@ of by the bootstrap script.)
 Other Linux distributions
 -------------------------
 
-- double-conversion (https://github.com/floitsch/double-conversion/)
+- double-conversion (https://github.com/google/double-conversion)
 
   Download and build double-conversion.
   You may need to tell configure where to find it.
