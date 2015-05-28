@@ -176,7 +176,7 @@ template <class In, class... Stages> class MPMCPipeline {
    * Default-construct pipeline. Useful to move-assign later,
    * just like MPMCQueue, see MPMCQueue.h for more details.
    */
-  MPMCPipeline() { }
+  MPMCPipeline() = default;
 
   /**
    * Construct a pipeline with N+1 queue sizes.

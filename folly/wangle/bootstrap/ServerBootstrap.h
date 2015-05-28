@@ -45,7 +45,7 @@ class ServerBootstrap {
   ServerBootstrap(const ServerBootstrap& that) = delete;
   ServerBootstrap(ServerBootstrap&& that) = default;
 
-  ServerBootstrap() {}
+  ServerBootstrap() = default;
 
   ~ServerBootstrap() {
     stop();

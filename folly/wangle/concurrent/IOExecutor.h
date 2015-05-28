@@ -40,7 +40,7 @@ namespace folly { namespace wangle {
 // IOThreadPoolExecutor will be created and returned.
 class IOExecutor : public virtual Executor {
  public:
-  virtual ~IOExecutor() {}
+  virtual ~IOExecutor() = default;
   virtual EventBase* getEventBase() = 0;
 };
 

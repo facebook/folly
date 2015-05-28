@@ -385,7 +385,7 @@ class ChunkedRangeSource
   Range<Iterator> range_;
 
  public:
-  ChunkedRangeSource() {}
+  ChunkedRangeSource() = default;
   ChunkedRangeSource(int chunkSize, Range<Iterator> range)
       : chunkSize_(chunkSize), range_(std::move(range)) {}
 

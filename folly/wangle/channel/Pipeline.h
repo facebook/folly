@@ -27,13 +27,13 @@ namespace folly { namespace wangle {
 
 class PipelineManager {
  public:
-  virtual ~PipelineManager() {}
+  virtual ~PipelineManager() = default;
   virtual void deletePipeline(PipelineBase* pipeline) = 0;
 };
 
 class PipelineBase {
  public:
-  virtual ~PipelineBase() {}
+  virtual ~PipelineBase() = default;
 
   void setPipelineManager(PipelineManager* manager) {
     manager_ = manager;
@@ -174,7 +174,7 @@ class PipelineFactory {
   virtual std::unique_ptr<Pipeline, folly::DelayedDestruction::Destructor>
   newPipeline(std::shared_ptr<AsyncSocket>) = 0;
 
-  virtual ~PipelineFactory() {}
+  virtual ~PipelineFactory() = default;
 };
 
 }

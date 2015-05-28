@@ -158,7 +158,7 @@ class RangeSource : public GenImpl<typename Range<Iterator>::reference,
                                    RangeSource<Iterator>> {
   Range<Iterator> range_;
  public:
-  RangeSource() {}
+  RangeSource() = default;
   explicit RangeSource(Range<Iterator> range)
     : range_(std::move(range))
   {}
@@ -382,7 +382,7 @@ template<class Predicate>
 class Map : public Operator<Map<Predicate>> {
   Predicate pred_;
  public:
-  Map() {}
+  Map() = default;
 
   explicit Map(Predicate pred)
     : pred_(std::move(pred))
@@ -448,7 +448,7 @@ template<class Predicate>
 class Filter : public Operator<Filter<Predicate>> {
   Predicate pred_;
  public:
-  Filter() {}
+  Filter() = default;
   explicit Filter(Predicate pred)
     : pred_(std::move(pred))
   { }
@@ -512,7 +512,7 @@ template<class Predicate>
 class Until : public Operator<Until<Predicate>> {
   Predicate pred_;
  public:
-  Until() {}
+  Until() = default;
   explicit Until(Predicate pred)
     : pred_(std::move(pred))
   {}
@@ -850,7 +850,7 @@ class Order : public Operator<Order<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  Order() {}
+  Order() = default;
 
   explicit Order(Selector selector)
     : selector_(std::move(selector))
@@ -984,7 +984,7 @@ template<class Selector>
 class Distinct : public Operator<Distinct<Selector>> {
   Selector selector_;
  public:
-  Distinct() {}
+  Distinct() = default;
 
   explicit Distinct(Selector selector)
     : selector_(std::move(selector))
@@ -1165,7 +1165,7 @@ class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
   Seed seed_;
   Fold fold_;
  public:
-  FoldLeft() {}
+  FoldLeft() = default;
   FoldLeft(Seed seed,
            Fold fold)
     : seed_(std::move(seed))
@@ -1193,7 +1193,7 @@ class FoldLeft : public Operator<FoldLeft<Seed, Fold>> {
  */
 class First : public Operator<First> {
  public:
-  First() { }
+  First() = default;
 
   template<class Source,
            class Value,
@@ -1226,7 +1226,7 @@ class First : public Operator<First> {
  */
 class Any : public Operator<Any> {
  public:
-  Any() { }
+  Any() = default;
 
   template<class Source,
            class Value>
@@ -1265,7 +1265,7 @@ template<class Predicate>
 class All : public Operator<All<Predicate>> {
   Predicate pred_;
  public:
-  All() {}
+  All() = default;
   explicit All(Predicate pred)
     : pred_(std::move(pred))
   { }
@@ -1302,7 +1302,7 @@ template<class Reducer>
 class Reduce : public Operator<Reduce<Reducer>> {
   Reducer reducer_;
  public:
-  Reduce() {}
+  Reduce() = default;
   explicit Reduce(Reducer reducer)
     : reducer_(std::move(reducer))
   {}
@@ -1335,7 +1335,7 @@ class Reduce : public Operator<Reduce<Reducer>> {
  */
 class Count : public Operator<Count> {
  public:
-  Count() { }
+  Count() = default;
 
   template<class Source,
            class Value>
@@ -1418,7 +1418,7 @@ class Min : public Operator<Min<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
  public:
-  Min() {}
+  Min() = default;
 
   explicit Min(Selector selector)
     : selector_(std::move(selector))
@@ -1494,7 +1494,7 @@ class Append : public Operator<Append<Collection>> {
 template<class Collection>
 class Collect : public Operator<Collect<Collection>> {
  public:
-  Collect() { }
+  Collect() = default;
 
   template<class Value,
            class Source,
@@ -1528,7 +1528,7 @@ template<template<class, class> class Container,
          template<class> class Allocator>
 class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
  public:
-  CollectTemplate() { }
+  CollectTemplate() = default;
 
   template<class Value,
            class Source,
@@ -1561,7 +1561,7 @@ class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
  */
 class Concat : public Operator<Concat> {
  public:
-  Concat() { }
+  Concat() = default;
 
   template<class Inner,
            class Source,
@@ -1619,7 +1619,7 @@ class Concat : public Operator<Concat> {
  */
 class RangeConcat : public Operator<RangeConcat> {
  public:
-  RangeConcat() { }
+  RangeConcat() = default;
 
   template<class Range,
            class Source,
@@ -1824,7 +1824,7 @@ class Cycle : public Operator<Cycle> {
  */
 class Dereference : public Operator<Dereference> {
  public:
-  Dereference() {}
+  Dereference() = default;
 
   template<class Value,
            class Source,
@@ -1883,7 +1883,7 @@ class Dereference : public Operator<Dereference> {
  */
 class Indirect : public Operator<Indirect> {
  public:
-  Indirect() {}
+  Indirect() = default;
 
   template <class Value,
             class Source,
@@ -1997,11 +1997,11 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
  * non-template operators, statically defined to avoid the need for anything but
  * the header.
  */
-static const detail::Sum sum;
+static const detail::Sum sum{};
 
-static const detail::Count count;
+static const detail::Count count{};
 
-static const detail::First first;
+static const detail::First first{};
 
 /**
  * Use directly for detecting any values, or as a function to detect values
@@ -2010,21 +2010,21 @@ static const detail::First first;
  *  auto nonempty = g | any;
  *  auto evens = g | any(even);
  */
-static const detail::Any any;
+static const detail::Any any{};
 
-static const detail::Min<Identity, Less> min;
+static const detail::Min<Identity, Less> min{};
 
-static const detail::Min<Identity, Greater> max;
+static const detail::Min<Identity, Greater> max{};
 
-static const detail::Order<Identity> order;
+static const detail::Order<Identity> order{};
 
-static const detail::Distinct<Identity> distinct;
+static const detail::Distinct<Identity> distinct{};
 
-static const detail::Map<Move> move;
+static const detail::Map<Move> move{};
 
-static const detail::Concat concat;
+static const detail::Concat concat{};
 
-static const detail::RangeConcat rconcat;
+static const detail::RangeConcat rconcat{};
 
 /**
  * Use directly for infinite sequences, or as a function to limit cycle count.
@@ -2032,11 +2032,11 @@ static const detail::RangeConcat rconcat;
  *  auto forever = g | cycle;
  *  auto thrice = g | cycle(3);
  */
-static const detail::Cycle cycle;
+static const detail::Cycle cycle{};
 
-static const detail::Dereference dereference;
+static const detail::Dereference dereference{};
 
-static const detail::Indirect indirect;
+static const detail::Indirect indirect{};
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);

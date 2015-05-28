@@ -39,9 +39,9 @@ class LoadShedConfiguration {
   typedef std::set<SocketAddress, AddressOnlyCompare> AddressSet;
   typedef std::set<NetworkAddress> NetworkSet;
 
-  LoadShedConfiguration() {}
+  LoadShedConfiguration() = default;
 
-  ~LoadShedConfiguration() {}
+  ~LoadShedConfiguration() = default;
 
   void addWhitelistAddr(folly::StringPiece);
 

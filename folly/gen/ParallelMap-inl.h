@@ -45,7 +45,7 @@ class PMap : public Operator<PMap<Predicate>> {
   Predicate pred_;
   size_t nThreads_;
  public:
-  PMap() {}
+  PMap() = default;
 
   PMap(Predicate pred, size_t nThreads)
     : pred_(std::move(pred)),

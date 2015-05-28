@@ -51,7 +51,7 @@
 namespace folly { namespace compression {
 
 struct EliasFanoCompressedList {
-  EliasFanoCompressedList() { }
+  EliasFanoCompressedList() = default;
 
   void free() {
     ::free(const_cast<unsigned char*>(lower.data()));
