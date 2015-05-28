@@ -37,7 +37,7 @@ void toLower(String& s) {
 
 }  // namespace
 
-Uri::Uri(StringPiece str) : port_(0) {
+Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
   static const boost::regex uriRegex(
       "([a-zA-Z][a-zA-Z0-9+.-]*):"  // scheme:
       "([^?#]*)"                    // authority and path
@@ -60,6 +60,7 @@ Uri::Uri(StringPiece str) : port_(0) {
                           authorityAndPathMatch,
                           authorityAndPathRegex)) {
     // Does not start with //, doesn't have authority
+    hasAuthority_ = false;
     path_ = authorityAndPath.fbstr();
   } else {
     static const boost::regex authorityRegex(
@@ -84,6 +85,7 @@ Uri::Uri(StringPiece str) : port_(0) {
       port_ = to<uint16_t>(port);
     }
 
+    hasAuthority_ = true;
     username_ = submatch(authorityMatch, 1);
     password_ = submatch(authorityMatch, 2);
     host_ = submatch(authorityMatch, 3);

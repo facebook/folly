@@ -25,15 +25,19 @@ namespace folly {
 template <class String>
 String Uri::toString() const {
   String str;
-  toAppend(scheme_, "://", &str);
-  if (!password_.empty()) {
-    toAppend(username_, ":", password_, "@", &str);
-  } else if (!username_.empty()) {
-    toAppend(username_, "@", &str);
-  }
-  toAppend(host_, &str);
-  if (port_ != 0) {
-    toAppend(":", port_, &str);
+  if (hasAuthority_) {
+    toAppend(scheme_, "://", &str);
+    if (!password_.empty()) {
+      toAppend(username_, ":", password_, "@", &str);
+    } else if (!username_.empty()) {
+      toAppend(username_, "@", &str);
+    }
+    toAppend(host_, &str);
+    if (port_ != 0) {
+      toAppend(":", port_, &str);
+    }
+  } else {
+    toAppend(scheme_, ":", &str);
   }
   toAppend(path_, &str);
   if (!query_.empty()) {

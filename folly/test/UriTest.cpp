@@ -239,7 +239,7 @@ TEST(Uri, Simple) {
     EXPECT_EQ("/etc/motd", u.path());
     EXPECT_EQ("", u.query());
     EXPECT_EQ("", u.fragment());
-    EXPECT_EQ("file:///etc/motd", u.fbstr());
+    EXPECT_EQ("file:/etc/motd", u.fbstr());
   }
 
   {
@@ -388,6 +388,29 @@ TEST(Uri, Simple) {
     } catch (const std::invalid_argument& ex) {
       // success
     }
+  }
+
+  // No authority (no "//") is valid
+  {
+    fbstring s("this:is/a/valid/uri");
+    Uri u(s);
+    EXPECT_EQ("this", u.scheme());
+    EXPECT_EQ("is/a/valid/uri", u.path());
+    EXPECT_EQ(s, u.fbstr());
+  }
+  {
+    fbstring s("this:is:another:valid:uri");
+    Uri u(s);
+    EXPECT_EQ("this", u.scheme());
+    EXPECT_EQ("is:another:valid:uri", u.path());
+    EXPECT_EQ(s, u.fbstr());
+  }
+  {
+    fbstring s("this:is@another:valid:uri");
+    Uri u(s);
+    EXPECT_EQ("this", u.scheme());
+    EXPECT_EQ("is@another:valid:uri", u.path());
+    EXPECT_EQ(s, u.fbstr());
   }
 }
 

@@ -76,7 +76,10 @@ class Uri {
   std::string str() const { return toString<std::string>(); }
   fbstring fbstr() const { return toString<fbstring>(); }
 
-  void setPort(uint16_t port) {port_ = port;}
+  void setPort(uint16_t port) {
+    hasAuthority_ = true;
+    port_ = port;
+  }
 
   /**
    * Get query parameters as key-value pairs.
@@ -105,6 +108,7 @@ class Uri {
   fbstring username_;
   fbstring password_;
   fbstring host_;
+  bool hasAuthority_;
   uint16_t port_;
   fbstring path_;
   fbstring query_;
