@@ -45,7 +45,7 @@ class NotificationQueue;
 
 class EventBaseObserver {
  public:
-  virtual ~EventBaseObserver() {}
+  virtual ~EventBaseObserver() = default;
 
   virtual uint32_t getSampleRate() const = 0;
 
@@ -113,7 +113,7 @@ class EventBase : private boost::noncopyable,
    */
   class LoopCallback {
    public:
-    virtual ~LoopCallback() {}
+    virtual ~LoopCallback() = default;
 
     virtual void runLoopCallback() noexcept = 0;
     void cancelLoopCallback() {

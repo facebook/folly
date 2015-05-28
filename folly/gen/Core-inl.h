@@ -304,7 +304,7 @@ class Composed : public Operator<Composed<First, Second>> {
   First first_;
   Second second_;
  public:
-  Composed() {}
+  Composed() = default;
 
   Composed(First first, Second second)
     : first_(std::move(first))

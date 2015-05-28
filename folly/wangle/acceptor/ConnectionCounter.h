@@ -31,7 +31,7 @@ class IConnectionCounter {
    * Decrement the count of client-side connections.
    */
   virtual void onConnectionRemoved() = 0;
-  virtual ~IConnectionCounter() {}
+  virtual ~IConnectionCounter() = default;
 };
 
 class SimpleConnectionCounter: public IConnectionCounter {
@@ -44,7 +44,7 @@ class SimpleConnectionCounter: public IConnectionCounter {
 
   void onConnectionAdded() override { numConnections_++; }
   void onConnectionRemoved() override { numConnections_--; }
-  virtual ~SimpleConnectionCounter() {}
+  virtual ~SimpleConnectionCounter() = default;
 
  protected:
   uint64_t maxConnections_{0};

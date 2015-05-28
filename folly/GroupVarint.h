@@ -512,7 +512,7 @@ class GroupVarintDecoder {
   typedef GroupVarint<T> Base;
   typedef T type;
 
-  GroupVarintDecoder() { }
+  GroupVarintDecoder() = default;
 
   explicit GroupVarintDecoder(StringPiece data,
                               size_t maxCount = (size_t)-1)

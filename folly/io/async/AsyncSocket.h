@@ -67,7 +67,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   class ConnectCallback {
    public:
-    virtual ~ConnectCallback() {}
+    virtual ~ConnectCallback() = default;
 
     /**
      * connectSuccess() will be invoked when the connection has been

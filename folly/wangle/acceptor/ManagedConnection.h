@@ -38,7 +38,7 @@ class ManagedConnection:
 
   class Callback {
   public:
-    virtual ~Callback() {}
+    virtual ~Callback() = default;
 
     /* Invoked when this connection becomes busy */
     virtual void onActivated(ManagedConnection& conn) = 0;

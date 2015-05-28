@@ -74,7 +74,7 @@ class AsyncUDPSocket : public EventHandler {
      */
     virtual void onReadClosed() noexcept = 0;
 
-    virtual ~ReadCallback() {}
+    virtual ~ReadCallback() = default;
   };
 
   /**

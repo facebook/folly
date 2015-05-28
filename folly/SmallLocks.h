@@ -295,7 +295,7 @@ struct SpinLockArray {
 
  private:
   struct PaddedSpinLock {
-    PaddedSpinLock() : lock() { }
+    PaddedSpinLock() : lock() {}
     T lock;
     char padding[FOLLY_CACHE_LINE_SIZE - sizeof(T)];
   };

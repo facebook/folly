@@ -144,7 +144,7 @@ std::string flattenList(const std::list<std::string>& list) {
 
 }
 
-SSLContextManager::~SSLContextManager() {}
+SSLContextManager::~SSLContextManager() = default;
 
 SSLContextManager::SSLContextManager(
   EventBase* eventBase,

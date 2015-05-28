@@ -232,7 +232,7 @@ class AtomicHashArray : boost::noncopyable {
 
   struct SimpleRetT { size_t idx; bool success;
     SimpleRetT(size_t i, bool s) : idx(i), success(s) {}
-    SimpleRetT() {}
+    SimpleRetT() = default;
   };
 
   template <class T>
@@ -277,7 +277,7 @@ class AtomicHashArray : boost::noncopyable {
   AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
                   KeyT erasedKey, double maxLoadFactor, size_t cacheSize);
 
-  ~AtomicHashArray() {}
+  ~AtomicHashArray() = default;
 
   inline void unlockCell(value_type* const cell, KeyT newKey) {
     cellKeyPtr(*cell)->store(newKey, std::memory_order_release);

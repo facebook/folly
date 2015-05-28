@@ -24,7 +24,7 @@ namespace folly { namespace wangle {
 template <class T>
 class Subscription {
  public:
-  Subscription() {}
+  Subscription() = default;
 
   Subscription(const Subscription&) = delete;
 

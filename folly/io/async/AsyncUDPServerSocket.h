@@ -62,7 +62,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
       std::unique_ptr<folly::IOBuf> buf,
       bool truncated) noexcept = 0;
 
-    virtual ~Callback() {}
+    virtual ~Callback() = default;
   };
 
   /**

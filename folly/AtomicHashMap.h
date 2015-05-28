@@ -389,7 +389,7 @@ class AtomicHashMap : boost::noncopyable {
 
   struct SimpleRetT { uint32_t i; size_t j; bool success;
     SimpleRetT(uint32_t ii, size_t jj, bool s) : i(ii), j(jj), success(s) {}
-    SimpleRetT() {}
+    SimpleRetT() = default;
   };
 
   template <class T>

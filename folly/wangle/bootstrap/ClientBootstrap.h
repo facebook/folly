@@ -94,7 +94,7 @@ class ClientBootstrap {
     return pipeline_.get();
   }
 
-  virtual ~ClientBootstrap() {}
+  virtual ~ClientBootstrap() = default;
 
  protected:
   std::unique_ptr<Pipeline,

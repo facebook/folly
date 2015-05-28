@@ -434,7 +434,7 @@ class try_and_catch<LastException, Exceptions...> :
 template<>
 class try_and_catch<> : public exception_wrapper {
  public:
-  try_and_catch() {}
+  try_and_catch() = default;
 
  protected:
   template <typename F>
