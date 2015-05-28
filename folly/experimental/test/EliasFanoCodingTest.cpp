@@ -26,67 +26,53 @@
 
 using namespace folly::compression;
 
-#if defined(EF_TEST_NEHALEM)
-#define EF_TEST_ARCH Nehalem
-#elif defined(EF_TEST_HASWELL)
-#define EF_TEST_ARCH Haswell
-#else
+#ifndef EF_TEST_ARCH
 #define EF_TEST_ARCH Default
-#endif
+#endif  // EF_TEST_ARCH
 
-template <size_t kVersion>
-struct TestType {
-  static constexpr size_t Version = kVersion;
-};
-
-template <class T>
 class EliasFanoCodingTest : public ::testing::Test {
  public:
   void doTestEmpty() {
-    typedef EliasFanoEncoder<uint32_t, size_t, 0, 0, T::Version> Encoder;
+    typedef EliasFanoEncoderV2<uint32_t, size_t> Encoder;
     typedef EliasFanoReader<Encoder> Reader;
     testEmpty<Reader, Encoder>();
   }
 
   template <size_t kSkipQuantum, size_t kForwardQuantum>
   void doTestAll() {
-    typedef EliasFanoEncoder<
-      uint32_t, uint32_t, kSkipQuantum, kForwardQuantum, T::Version> Encoder;
+    typedef EliasFanoEncoderV2<
+      uint32_t, uint32_t, kSkipQuantum, kForwardQuantum> Encoder;
     typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
   }
 };
 
-typedef ::testing::Types<TestType<0>, TestType<1>> TestTypes;
-TYPED_TEST_CASE(EliasFanoCodingTest, TestTypes);
-
-TYPED_TEST(EliasFanoCodingTest, Empty) {
-  TestFixture::doTestEmpty();
+TEST_F(EliasFanoCodingTest, Empty) {
+  doTestEmpty();
 }
 
-TYPED_TEST(EliasFanoCodingTest, Simple) {
-  TestFixture::template doTestAll<0, 0>();
+TEST_F(EliasFanoCodingTest, Simple) {
+  doTestAll<0, 0>();
 }
 
-TYPED_TEST(EliasFanoCodingTest, SkipPointers) {
-  TestFixture::template doTestAll<128, 0>();
+TEST_F(EliasFanoCodingTest, SkipPointers) {
+  doTestAll<128, 0>();
 }
 
-TYPED_TEST(EliasFanoCodingTest, ForwardPointers) {
-  TestFixture::template doTestAll<0, 128>();
+TEST_F(EliasFanoCodingTest, ForwardPointers) {
+  doTestAll<0, 128>();
 }
 
-TYPED_TEST(EliasFanoCodingTest, SkipForwardPointers) {
-  TestFixture::template doTestAll<128, 128>();
+TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
+  doTestAll<128, 128>();
 }
 
 namespace bm {
 
 constexpr size_t k1M = 1000000;
-constexpr size_t kVersion = 1;
 
-typedef EliasFanoEncoder<uint32_t, uint32_t, 128, 128, kVersion> Encoder;
+typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
 typedef EliasFanoReader<Encoder> Reader;
 
 std::vector<uint32_t> data;

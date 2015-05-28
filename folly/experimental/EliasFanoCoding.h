@@ -74,16 +74,11 @@ struct EliasFanoCompressedList {
   folly::ByteRange forwardPointers;
 };
 
-// Version history:
-// In version 1 skip / forward pointers encoding has been changed,
-// so SkipValue = uint32_t is able to address up to ~4B elements,
-// instead of only ~2B.
 template <class Value,
           class SkipValue = size_t,
           size_t kSkipQuantum = 0,     // 0 = disabled
-          size_t kForwardQuantum = 0,  // 0 = disabled
-          size_t kVersion = 0>
-struct EliasFanoEncoder {
+          size_t kForwardQuantum = 0>  // 0 = disabled
+struct EliasFanoEncoderV2 {
   static_assert(std::is_integral<Value>::value &&
                 std::is_unsigned<Value>::value,
                 "Value should be unsigned integral");
@@ -95,7 +90,6 @@ struct EliasFanoEncoder {
 
   static constexpr size_t skipQuantum = kSkipQuantum;
   static constexpr size_t forwardQuantum = kForwardQuantum;
-  static constexpr size_t version = kVersion;
 
   static uint8_t defaultNumLowerBits(size_t upperBound, size_t size) {
     if (size == 0 || upperBound < size) {
@@ -116,14 +110,14 @@ struct EliasFanoEncoder {
     if (begin == end) {
       return EliasFanoCompressedList();
     }
-    EliasFanoEncoder encoder(end - begin, *(end - 1));
+    EliasFanoEncoderV2 encoder(end - begin, *(end - 1));
     for (; begin != end; ++begin) {
       encoder.add(*begin);
     }
     return encoder.finish();
   }
 
-  EliasFanoEncoder(size_t size, ValueType upperBound) {
+  EliasFanoEncoderV2(size_t size, ValueType upperBound) {
     if (size == 0) {
       return;
     }
@@ -160,11 +154,8 @@ struct EliasFanoEncoder {
     // 0-bit in upper bits sequence.
     size_t numSkipPointers = 0;
     /* static */ if (skipQuantum != 0) {
-      /* static */ if (kVersion > 0) {
-        CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
-      } else {
-        CHECK_LT(upperSizeBits, std::numeric_limits<SkipValueType>::max());
-      }
+      CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
+
       // 8 * upperSize is used here instead of upperSizeBits, as that is
       // more serialization-friendly way (upperSizeBits isn't known outside of
       // this function, unlike upperSize; thus numSkipPointers could easily be
@@ -181,12 +172,8 @@ struct EliasFanoEncoder {
     // 1-bit in upper bits sequence.
     size_t numForwardPointers = 0;
     /* static */ if (forwardQuantum != 0) {
-      /* static */ if (kVersion > 0) {
-        CHECK_LT(upperBound >> numLowerBits,
-                 std::numeric_limits<SkipValueType>::max());
-      } else {
-        CHECK_LT(upperSizeBits, std::numeric_limits<SkipValueType>::max());
-      }
+      CHECK_LT(upperBound >> numLowerBits,
+               std::numeric_limits<SkipValueType>::max());
 
       // '?: 1' is a workaround for false 'division by zero' compile-time error.
       numForwardPointers = size / (forwardQuantum ?: 1);
@@ -226,26 +213,16 @@ struct EliasFanoEncoder {
 
     /* static */ if (skipQuantum != 0) {
       while ((skipPointersSize_ + 1) * skipQuantum <= upperBits) {
-        /* static */ if (kVersion > 0) {
-          // Since version 1, just the number of preceding 1-bits is stored.
-          skipPointers_[skipPointersSize_] = size_;
-        } else {
-          skipPointers_[skipPointersSize_] =
-            size_ + (skipPointersSize_ + 1) * skipQuantum;
-        }
-        ++skipPointersSize_;
+        // Store the number of preceding 1-bits.
+        skipPointers_[skipPointersSize_++] = size_;
       }
     }
 
     /* static */ if (forwardQuantum != 0) {
       if ((size_ + 1) % forwardQuantum == 0) {
         const auto pos = size_ / forwardQuantum;
-        /* static */ if (kVersion > 0) {
-          // Since version 1, just the number of preceding 0-bits is stored.
-          forwardPointers_[pos] = upperBits;
-        } else {
-          forwardPointers_[pos] = upperBits + size_ + 1;
-        }
+        // Store the number of preceding 0-bits.
+        forwardPointers_[pos] = upperBits;
       }
     }
 
@@ -389,13 +366,9 @@ class UpperBitsReader {
         folly::loadUnaligned<SkipValueType>(
             forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      /* static */ if (Encoder::version > 0) {
-        reposition(dest + steps * q);
-      } else {
-        reposition(dest);
-      }
+      reposition(dest + steps * q);
       n = position_ + 1 - steps * q;  // n is > 0.
-      // correct inner_ will be set at the end.
+      // Correct inner_ will be set at the end.
     }
 
     size_t cnt;
@@ -429,13 +402,9 @@ class UpperBitsReader {
         folly::loadUnaligned<SkipValueType>(
             skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      /* static */ if (Encoder::version > 0) {
-        reposition(dest + q * steps);
-        position_ = dest - 1;
-      } else {
-        reposition(dest);
-        position_ = dest - q * steps - 1;
-      }
+      reposition(dest + q * steps);
+      position_ = dest - 1;
+
       // Correct inner_ and value_ will be set during the next()
       // call at the end.
 
