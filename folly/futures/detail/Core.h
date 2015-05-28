@@ -249,6 +249,11 @@ class Core {
     }
   }
 
+  std::function<void(exception_wrapper const&)> getInterruptHandler() {
+    folly::MSLGuard guard(interruptLock_);
+    return interruptHandler_;
+  }
+
   /// Call only from Promise thread
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
     folly::MSLGuard guard(interruptLock_);

@@ -116,6 +116,7 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 
   // wrap these so we can move them into the lambda
   folly::MoveWrapper<Promise<B>> p;
+  p->setInterruptHandler(core_->getInterruptHandler());
   folly::MoveWrapper<F> funcm(std::forward<F>(func));
 
   // grab the Future now before we lose our handle on the Promise

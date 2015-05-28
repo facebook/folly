@@ -160,6 +160,15 @@ TEST(Timekeeper, interruptDoesntCrash) {
   f.cancel();
 }
 
+TEST(Timekeeper, chainedInterruptTest) {
+  bool test = false;
+  auto f = futures::sleep(Duration(100)).then([&](){
+    test = true;
+  });
+  f.cancel();
+  f.wait();
+  EXPECT_FALSE(test);
+}
 // TODO(5921764)
 /*
 TEST(Timekeeper, onTimeoutPropagates) {
