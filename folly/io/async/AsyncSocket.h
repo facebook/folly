@@ -556,6 +556,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    public:
     explicit ImmediateReadCB(AsyncSocket* socket) : socket_(socket) {}
     void runLoopCallback() noexcept override {
+      DestructorGuard dg(socket_);
       socket_->checkForImmediateRead();
     }
    private:
