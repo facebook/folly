@@ -59,6 +59,7 @@ nobase_follyinclude_HEADERS = \
 	detail/SpinLockImpl.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
+	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	Demangle.h \
 	DiscriminatedPtr.h \
