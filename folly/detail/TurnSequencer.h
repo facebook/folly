@@ -78,6 +78,16 @@ struct TurnSequencer {
     return decodeCurrentSturn(state) == (turn << kTurnShift);
   }
 
+  /// See tryWaitForTurn
+  /// Requires that `turn` is not a turn in the past.
+  void waitForTurn(const uint32_t turn,
+                Atom<uint32_t>& spinCutoff,
+                const bool updateSpinCutoff) noexcept {
+    bool success = tryWaitForTurn(turn, spinCutoff, updateSpinCutoff);
+    (void) success;
+    assert(success);
+  }
+
   // Internally we always work with shifted turn values, which makes the
   // truncation and wraparound work correctly.  This leaves us bits at
   // the bottom to store the number of waiters.  We call shifted turns
@@ -87,7 +97,8 @@ struct TurnSequencer {
   /// updateSpinCutoff is true then this will spin for up to kMaxSpins tries
   /// before blocking and will adjust spinCutoff based on the results,
   /// otherwise it will spin for at most spinCutoff spins.
-  void waitForTurn(const uint32_t turn,
+  /// Returns true if the wait succeeded, false if the turn is in the past
+  bool tryWaitForTurn(const uint32_t turn,
                    Atom<uint32_t>& spinCutoff,
                    const bool updateSpinCutoff) noexcept {
     uint32_t prevThresh = spinCutoff.load(std::memory_order_relaxed);
@@ -103,8 +114,11 @@ struct TurnSequencer {
         break;
       }
 
-      // wrap-safe version of assert(current_sturn < sturn)
-      assert(sturn - current_sturn < std::numeric_limits<uint32_t>::max() / 2);
+      // wrap-safe version of (current_sturn >= sturn)
+      if(sturn - current_sturn >= std::numeric_limits<uint32_t>::max() / 2) {
+        // turn is in the past
+        return false;
+      }
 
       // the first effectSpinCutoff tries are spins, after that we will
       // record ourself as a waiter and block with futexWait
@@ -154,6 +168,8 @@ struct TurnSequencer {
             prevThresh, prevThresh + int(target - prevThresh) / 8);
       }
     }
+
+    return true;
   }
 
   /// Unblocks a thread running waitForTurn(turn + 1)

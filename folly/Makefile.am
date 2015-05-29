@@ -104,6 +104,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
 	experimental/JSONSchema.h \
+	experimental/LockFreeRingBuffer.h \
 	experimental/Select64.h \
 	experimental/SharedMutex.h \
 	experimental/StringKeyedCommon.h \
