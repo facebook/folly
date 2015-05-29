@@ -13,11 +13,11 @@ It is basically the plural of Futures (a la Wangle).
 
 For more on Rx, I recommend these resources:
 
-Netflix blog post (RxJava): http://techblog.netflix.com/2013/02/rxjava-netflix-api.html
-Introduction to Rx eBook (C#): http://www.introtorx.com/content/v1.0.10621.0/01_WhyRx.html
-The RxJava wiki: https://github.com/Netflix/RxJava/wiki
-Netflix QCon presentation: http://www.infoq.com/presentations/netflix-functional-rx
-https://rx.codeplex.com/
+- Netflix blog post (RxJava): http://techblog.netflix.com/2013/02/rxjava-netflix-api.html
+- Introduction to Rx eBook (C#): http://www.introtorx.com/content/v1.0.10621.0/01_WhyRx.html
+- The RxJava wiki: https://github.com/Netflix/RxJava/wiki
+- Netflix QCon presentation: http://www.infoq.com/presentations/netflix-functional-rx
+- https://rx.codeplex.com/
 
 There are open source C++ implementations, I haven't looked at them. They
 might be the best way to go rather than writing it NIH-style. I mostly did it
