@@ -559,7 +559,10 @@ bool AsyncSSLSocket::isServerNameMatch() const {
     return false;
   }
 
-  return (ss->tlsext_hostname ? true : false);
+  if(!ss->tlsext_hostname) {
+    return false;
+  }
+  return (tlsextHostname_.compare(ss->tlsext_hostname) ? false : true);
 }
 
 void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
