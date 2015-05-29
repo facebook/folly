@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include <folly/detail/Futex.h>
+#include <folly/Portability.h>
 
 namespace folly {
 
@@ -123,7 +124,9 @@ struct TurnSequencer {
       // the first effectSpinCutoff tries are spins, after that we will
       // record ourself as a waiter and block with futexWait
       if (tries < effectiveSpinCutoff) {
+#if defined(__i386__) || FOLLY_X64
         asm volatile ("pause");
+#endif
         continue;
       }
 
