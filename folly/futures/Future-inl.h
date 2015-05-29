@@ -887,7 +887,7 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     }
   });
 
-  return ctx->promise.getFuture();
+  return ctx->promise.getFuture().via(getExecutor());
 }
 
 template <class T>
