@@ -37,14 +37,14 @@ class TestTimeout : public HHWheelTimer::Callback {
   }
 
   void timeoutExpired() noexcept override {
-    timestamps.push_back(TimePoint());
+    timestamps.emplace_back();
     if (fn) {
       fn();
     }
   }
 
   void callbackCanceled() noexcept override {
-    canceledTimestamps.push_back(TimePoint());
+    canceledTimestamps.emplace_back();
     if (fn) {
       fn();
     }

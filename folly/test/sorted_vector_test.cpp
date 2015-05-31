@@ -280,7 +280,7 @@ TEST(SortedVectorTypes, GrowthPolicy) {
 
   std::list<CountCopyCtor> v;
   for (int i = 0; i < 20; ++i) {
-    v.push_back(CountCopyCtor(20 + i));
+    v.emplace_back(20 + i);
   }
   a.insert(v.begin(), v.end());
   check_invariant(a);

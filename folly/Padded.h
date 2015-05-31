@@ -426,7 +426,7 @@ class Adaptor {
 
   void push_back(value_type x) {
     if (lastCount_ == Node::kElementCount) {
-      c_.push_back(Node());
+      c_.emplace_back();
       lastCount_ = 0;
     }
     c_.back().data()[lastCount_++] = std::move(x);

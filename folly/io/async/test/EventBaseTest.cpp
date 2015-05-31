@@ -155,7 +155,7 @@ class TestHandler : public EventHandler {
       bytesWritten = writeUntilFull(fd_);
     }
 
-    log.push_back(EventRecord(events, bytesRead, bytesWritten));
+    log.emplace_back(events, bytesRead, bytesWritten);
   }
 
   struct EventRecord {
@@ -648,7 +648,7 @@ class PartialReadHandler : public TestHandler {
   virtual void handlerReady(uint16_t events) noexcept {
     assert(events == EventHandler::READ);
     ssize_t bytesRead = readFromFD(fd_, readLength_);
-    log.push_back(EventRecord(events, bytesRead, 0));
+    log.emplace_back(events, bytesRead, 0);
   }
 
  private:
@@ -713,7 +713,7 @@ class PartialWriteHandler : public TestHandler {
   virtual void handlerReady(uint16_t events) noexcept {
     assert(events == EventHandler::WRITE);
     ssize_t bytesWritten = writeToFD(fd_, writeLength_);
-    log.push_back(EventRecord(events, 0, bytesWritten));
+    log.emplace_back(events, 0, bytesWritten);
   }
 
  private:
@@ -934,7 +934,7 @@ class ReschedulingTimeout : public AsyncTimeout {
   }
 
   virtual void timeoutExpired() noexcept {
-    timestamps.push_back(TimePoint());
+    timestamps.emplace_back();
     reschedule();
   }
 
