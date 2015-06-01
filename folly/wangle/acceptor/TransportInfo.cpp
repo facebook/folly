@@ -26,10 +26,27 @@ bool TransportInfo::initWithSocket(const AsyncSocket* sock) {
     return false;
   }
   rtt = microseconds(tcpinfo.tcpi_rtt);
+  /* The ratio of packet retransmission (rtx) is a good indicator of network
+   * bandwidth condition. Unfortunately, the number of segmentOut is not
+   * available in current tcpinfo.  To workaround this limitation, totalBytes
+   * and MSS are used to estimate it.
+   */
+  if (tcpinfo.tcpi_total_retrans == 0) {
+    rtx = 0;
+  } else if (tcpinfo.tcpi_total_retrans > 0 && tcpinfo.tcpi_snd_mss > 0 &&
+      totalBytes > 0) {
+    // numSegmentOut is the underestimation of the number of tcp packets sent
+    double numSegmentOut = double(totalBytes) / tcpinfo.tcpi_snd_mss;
+    // so rtx is the overestimation of actual packet retransmission rate
+    rtx = tcpinfo.tcpi_total_retrans / numSegmentOut;
+  } else {
+    rtx = -1;
+  }
   validTcpinfo = true;
 #else
   tcpinfoErrno = EINVAL;
   rtt = microseconds(-1);
+  rtx = -1;
 #endif
   return true;
 }

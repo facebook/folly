@@ -47,6 +47,11 @@ struct TransportInfo {
    */
   std::chrono::microseconds rtt{0};
 
+  /*
+   *  the estimated ratio of packet retransmisions in current socket
+   */
+  double rtx{-1};
+
 #if defined(__linux__) || defined(__FreeBSD__)
   /*
    * TCP information as fetched from getsockopt(2)
