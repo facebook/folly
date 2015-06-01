@@ -32,7 +32,7 @@ extern "C" {
 FOLLY_NORETURN void __cxa_throw(void* thrownException,
                                 std::type_info* type,
                                 void (*destructor)(void*));
-void* __cxa_begin_catch(void* excObj);
+void* __cxa_begin_catch(void* excObj) throw();
 FOLLY_NORETURN void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }
@@ -142,7 +142,7 @@ void __cxa_rethrow() {
   orig_cxa_rethrow();
 }
 
-void* __cxa_begin_catch(void *excObj) {
+void* __cxa_begin_catch(void *excObj) throw() {
   // excObj is a pointer to the unwindHeader in __cxa_exception
   moveTopException(activeExceptions, caughtExceptions);
   return orig_cxa_begin_catch(excObj);
