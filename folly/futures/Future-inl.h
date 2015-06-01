@@ -688,7 +688,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   };
   auto ctx = std::make_shared<CollectNContext>();
 
-  if (std::distance(first, last) < n) {
+  if (size_t(std::distance(first, last)) < n) {
     ctx->p.setException(std::runtime_error("Not enough futures"));
   } else {
     // for each completed Future, increase count and add to vector, until we

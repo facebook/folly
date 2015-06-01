@@ -486,7 +486,7 @@ static void runContendedReaders(size_t numOps,
   vector<thread> threads(numThreads);
 
   BENCHMARK_SUSPEND {
-    for (int t = 0; t < numThreads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       threads[t] = DSched::thread([&, t, numThreads] {
         Lock privateLock;
         Lock* lock = useSeparateLocks ? &privateLock : &globalLock;
@@ -583,7 +583,7 @@ static void runMixed(size_t numOps,
   vector<thread> threads(numThreads);
 
   BENCHMARK_SUSPEND {
-    for (int t = 0; t < numThreads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       threads[t] = DSched::thread([&, t, numThreads] {
         struct drand48_data buffer;
         srand48_r(t, &buffer);
@@ -712,7 +712,7 @@ static void runAllAndValidate(size_t numOps, size_t numThreads) {
   vector<thread> threads(numThreads);
 
   BENCHMARK_SUSPEND {
-    for (int t = 0; t < numThreads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       threads[t] = DSched::thread([&, t, numThreads] {
         struct drand48_data buffer;
         srand48_r(t, &buffer);
@@ -1098,7 +1098,7 @@ static void runRemoteUnlock(size_t numOps,
   vector<thread> threads(numSendingThreads + numReceivingThreads);
 
   BENCHMARK_SUSPEND {
-    for (int t = 0; t < threads.size(); ++t) {
+    for (size_t t = 0; t < threads.size(); ++t) {
       threads[t] = DSched::thread([&, t, numSendingThreads] {
         if (t >= numSendingThreads) {
           // we're a receiver
@@ -1246,7 +1246,7 @@ static void runPingPong(size_t numRounds, size_t burnCount) {
       while (!goPtr->load()) {
         this_thread::yield();
       }
-      for (int i = 0; i < numRounds; ++i) {
+      for (size_t i = 0; i < numRounds; ++i) {
         locks[i % 3].first.unlock();
         locks[(i + 2) % 3].first.lock();
         burn(burnCount);
@@ -1257,7 +1257,7 @@ static void runPingPong(size_t numRounds, size_t burnCount) {
       while (!goPtr->load()) {
         this_thread::yield();
       }
-      for (int i = 0; i < numRounds; ++i) {
+      for (size_t i = 0; i < numRounds; ++i) {
         locks[i % 3].first.lock_shared();
         burn(burnCount);
         locks[(i + 2) % 3].first.unlock_shared();
