@@ -396,7 +396,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     }
   };
 
-  const int kNumTries = 5;
+  const int kNumTries = 25;
   for (int tries = 1; true; tries++) {
     // Prefer AF_INET6 addresses. RFC 3484 mandates that getaddrinfo
     // should return IPv6 first and then IPv4 addresses, but glibc's
