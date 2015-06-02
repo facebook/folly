@@ -19,6 +19,10 @@
 #include <folly/wangle/concurrent/IOThreadPoolExecutor.h>
 #include <folly/futures/InlineExecutor.h>
 
+#ifdef _MSC_VER
+#include <thread>
+#endif
+
 using namespace folly;
 using namespace folly::wangle;
 
@@ -46,7 +50,11 @@ Singleton<std::shared_ptr<IOThreadPoolExecutor>> globalIOThreadPool(
     []{
       return new std::shared_ptr<IOThreadPoolExecutor>(
           std::make_shared<IOThreadPoolExecutor>(
+#ifdef _MSC_VER
+              std::thread::hardware_concurrency(),
+#else
               sysconf(_SC_NPROCESSORS_ONLN),
+#endif
               std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));
     });
 

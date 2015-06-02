@@ -374,13 +374,13 @@ inline dynamic::IterableProxy<dynamic::const_item_iterator> dynamic::items()
   return &(get<ObjectImpl>());
 }
 
-inline bool dynamic::isString() const { return get_nothrow<fbstring>(); }
-inline bool dynamic::isObject() const { return get_nothrow<ObjectImpl>(); }
-inline bool dynamic::isBool()   const { return get_nothrow<bool>(); }
-inline bool dynamic::isArray()  const { return get_nothrow<Array>(); }
-inline bool dynamic::isDouble() const { return get_nothrow<double>(); }
-inline bool dynamic::isInt()    const { return get_nothrow<int64_t>(); }
-inline bool dynamic::isNull()   const { return get_nothrow<void*>(); }
+inline bool dynamic::isString() const { return get_nothrow<fbstring>() != nullptr; }
+inline bool dynamic::isObject() const { return get_nothrow<ObjectImpl>() != nullptr; }
+inline bool dynamic::isBool()   const { return get_nothrow<bool>() != nullptr; }
+inline bool dynamic::isArray()  const { return get_nothrow<Array>() != nullptr; }
+inline bool dynamic::isDouble() const { return get_nothrow<double>() != nullptr; }
+inline bool dynamic::isInt()    const { return get_nothrow<int64_t>() != nullptr; }
+inline bool dynamic::isNull()   const { return get_nothrow<void*>() != nullptr; }
 inline bool dynamic::isNumber() const { return isInt() || isDouble(); }
 
 inline dynamic::Type dynamic::type() const {
@@ -737,6 +737,8 @@ template<class T> struct dynamic::TypeInfo {
   static Type const type;
 };
 
+#ifndef _MSC_VER
+// MSVC doesn't like these for some reason.
 #define FB_DEC_TYPE(T)                                      \
   template<> char const dynamic::TypeInfo<T>::name[];       \
   template<> dynamic::Type const dynamic::TypeInfo<T>::type
@@ -750,6 +752,7 @@ FB_DEC_TYPE(int64_t);
 FB_DEC_TYPE(dynamic::ObjectImpl);
 
 #undef FB_DEC_TYPE
+#endif
 
 template<class T>
 T dynamic::asImpl() const {

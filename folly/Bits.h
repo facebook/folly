@@ -448,14 +448,15 @@ class BitIterator
    * Construct a BitIterator that points at a given bit offset (default 0)
    * in iter.
    */
-  #pragma GCC diagnostic push // bitOffset shadows a member
-  #pragma GCC diagnostic ignored "-Wshadow"
+  FOLLY_PUSH_WARNING
+  // bitOffset shadows a member
+  FOLLY_GCC_DISABLE_WARNING(shadow)
   explicit BitIterator(const BaseIter& iter, size_t bitOffset=0)
     : bititerator_detail::BitIteratorBase<BaseIter>::type(iter),
       bitOffset_(bitOffset) {
     assert(bitOffset_ < bitsPerBlock());
   }
-  #pragma GCC diagnostic pop
+  FOLLY_POP_WARNING
 
   size_t bitOffset() const {
     return bitOffset_;

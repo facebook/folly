@@ -36,7 +36,9 @@ int32_t TLSTicketKeyManager::sExDataIndex_ = -1;
 
 TLSTicketKeyManager::TLSTicketKeyManager(SSLContext* ctx, SSLStats* stats)
   : ctx_(ctx),
+#ifndef _MSC_VER
     randState_(0),
+#endif
     stats_(stats) {
   SSLUtil::getSSLCtxExIndex(&sExDataIndex_);
   SSL_CTX_set_ex_data(ctx_->getSSLCtx(), sExDataIndex_, this);
@@ -272,7 +274,11 @@ TLSTicketKeyManager::findEncryptionKey() {
   // likely only 1.
   size_t numKeys = activeKeys_.size();
   if (numKeys > 0) {
+#ifdef _MSC_VER
+    result = activeKeys_[rand() % numKeys];
+#else
     result = activeKeys_[rand_r(&randState_) % numKeys];
+#endif
   }
   return result;
 }

@@ -17,8 +17,8 @@
 #ifndef FOLLY_GROUPVARINT_H_
 #define FOLLY_GROUPVARINT_H_
 
-#ifndef __GNUC__
-#error GroupVarint.h requires GCC
+#if !defined(__GNUC__) && !defined(_MSC_VER)
+#error GroupVarint.h requires GCC or MSVC
 #endif
 
 #include <folly/Portability.h>
@@ -242,8 +242,14 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
 
  private:
   static uint8_t key(uint32_t x) {
+#ifdef _MSC_VER
+    unsigned long tmp;
+    _BitScanReverse(&tmp, x | 1);
+    return (uint8_t)(3 - (tmp / 8));
+#else
     // __builtin_clz is undefined for the x==0 case
     return 3 - (__builtin_clz(x|1) / 8);
+#endif
   }
   static size_t b0key(size_t x) { return x & 3; }
   static size_t b1key(size_t x) { return (x >> 2) & 3; }
@@ -406,8 +412,14 @@ class GroupVarint<uint64_t> : public detail::GroupVarintBase<uint64_t> {
   enum { kHeaderBytes = 2 };
 
   static uint8_t key(uint64_t x) {
+#ifdef _MSC_VER
+    unsigned long tmp;
+    _BitScanReverse64(&tmp, x | 1);
+    return (uint8_t)(7 - (tmp / 8));
+#else
     // __builtin_clzll is undefined for the x==0 case
     return 7 - (__builtin_clzll(x|1) / 8);
+#endif
   }
 
   static uint8_t b0key(uint16_t x) { return x & 7; }

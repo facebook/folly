@@ -9,8 +9,10 @@
  */
 #include <folly/wangle/acceptor/SocketOptions.h>
 
+#ifndef _MSC_VER
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#endif
 
 namespace folly {
 

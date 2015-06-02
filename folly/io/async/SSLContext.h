@@ -23,11 +23,17 @@
 #include <memory>
 #include <string>
 
+#ifdef _MSC_VER
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#endif
+
 #include <openssl/ssl.h>
 #include <openssl/tls1.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
 
 #include <glog/logging.h>
 

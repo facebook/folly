@@ -23,9 +23,12 @@
 #include <thread>
 #include <type_traits>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
+#ifdef RUSAGE_THREAD
 #include <sys/resource.h>
+#endif
 
 // SharedMutex is a reader-writer lock.  It is small, very fast, scalable
 // on multi-core, and suitable for use when readers or writers may block.
@@ -645,6 +648,10 @@ class SharedMutexImpl {
   // futexWaitUntil, which has a capricious but deterministic back end).
   static constexpr uint32_t kMaxSoftYieldCount = !BlockImmediately ? 1000 : 0;
 
+#ifdef _MSC_VER
+// MSVC doesn't like these being private.
+public:
+#endif
   // If AccessSpreader assigns indexes from 0..k*n-1 on a system where some
   // level of the memory hierarchy is symmetrically divided into k pieces
   // (NUMA nodes, last-level caches, L1 caches, ...), then slot indexes
@@ -674,6 +681,10 @@ class SharedMutexImpl {
   static_assert(!(kDeferredSearchDistance & (kDeferredSearchDistance - 1)),
                 "kDeferredSearchDistance must be a power of 2");
 
+#ifdef _MSC_VER
+private:
+#endif
+
   // The number of deferred locks that can be simultaneously acquired
   // by a thread via the token-less methods without performing any heap
   // allocations.  Each of these costs 3 pointers (24 bytes, probably)
@@ -695,14 +706,20 @@ class SharedMutexImpl {
   // This is the starting location for Token-less unlock_shared().
   static FOLLY_TLS uint32_t tls_lastTokenlessSlot;
 
+#ifdef _MSC_VER
+public:
+#endif
   // Only indexes divisible by kDeferredSeparationFactor are used.
   // If any of those elements points to a SharedMutexImpl, then it
   // should be considered that there is a shared lock on that instance.
   // See kTokenless.
   typedef Atom<uintptr_t> DeferredReaderSlot;
-  static DeferredReaderSlot deferredReaders
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING static DeferredReaderSlot deferredReaders
       [kMaxDeferredReaders *
-       kDeferredSeparationFactor] FOLLY_ALIGN_TO_AVOID_FALSE_SHARING;
+       kDeferredSeparationFactor];
+#ifdef _MSC_VER
+private:
+#endif
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first
@@ -796,9 +813,7 @@ class SharedMutexImpl {
       if ((state & goal) == 0) {
         return true;
       }
-#if FOLLY_X64
-      asm volatile("pause");
-#endif
+      FOLLY_PAUSE();
       ++spinCount;
       if (UNLIKELY(spinCount >= kMaxSpinCount)) {
         return ctx.canBlock() &&

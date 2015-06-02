@@ -465,7 +465,10 @@ template<class Value, class Impl = detail::InfiniteImpl<Value>,
 Gen seq(Value first) {
   return Gen{std::move(first), Impl{}};
 }
-
+#if defined(_MSC_VER) && defined(Yield)
+// Pesky pesky MSVC.
+#undef Yield
+#endif
 template<class Value,
          class Source,
          class Yield = detail::Yield<Value, Source>>

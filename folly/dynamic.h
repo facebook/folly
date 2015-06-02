@@ -528,7 +528,11 @@ private:
      * incomplete type right now).  (Note that in contrast we know it
      * is ok to do this with fbvector because we own it.)
      */
-    typename std::aligned_storage<
+#ifndef _MSC_VER
+    // MSVC doesn't like the typename here.
+    typename
+#endif
+    std::aligned_storage<
       sizeof(std::unordered_map<int,int>),
       alignof(std::unordered_map<int,int>)
     >::type objectBuffer;

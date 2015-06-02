@@ -54,7 +54,10 @@
 #endif
 
 // MaxAlign: max_align_t isn't supported by gcc
-#ifdef __GNUC__
+#if defined(_MSC_VER)
+#include <cstddef>
+typedef std::max_align_t MaxAlign;
+#elif defined(__GNUC__)
 struct MaxAlign { char c; } __attribute__((__aligned__));
 #else /* !__GNUC__ */
 # error Cannot define MaxAlign on this platform
@@ -62,6 +65,14 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
+
+#ifdef _MSC_VER
+# define FOLLY_ALIGNED(size) __declspec(align(size))
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_ALIGNED(size) __attribute__((__aligned__(size)))
+#else
+# error Cannot defined FOLLY_ALIGNED on this platform
+#endif
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER
@@ -80,7 +91,9 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 #endif
 
 // deprecated
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(_MSC_VER)
+# define FOLLY_DEPRECASTED(msg) __declspec(deprecated(msg))
+#elif defined(__clang__) || defined(__GNUC__)
 # define FOLLY_DEPRECATED(msg) __attribute__((__deprecated__(msg)))
 #else
 # define FOLLY_DEPRECATED
@@ -135,6 +148,46 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # define FOLLY_PACK_POP /**/
 #endif
 
+// Generalize warning push/pop.
+#if defined(_MSC_VER)
+# define FOLLY_PUSH_WARNING __pragma(warning(push))
+# define FOLLY_POP_WARNING __pragma(warning(pop))
+// Disable the GCC warnings.
+# define FOLLY_GCC_DISABLE_WARNING(warningName)
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber) __pragma(warning(disable: warningNumber))
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
+# define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
+# define FOLLY_GCC_DISABLE_WARNING(warningName) _Pragma("GCC diagnostic ignored \"-W ## warningName\"")
+// Disable the MSVC warnings.
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#else
+# define FOLLY_PUSH_WARNING
+# define FOLLY_POP_WARNING
+# define FOLLY_GCC_DISABLE_WARNING(warningName)
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#endif
+
+// Pausing
+#ifdef _MSC_VER
+#include <intrin.h>
+#define FOLLY_PAUSE() ::_mm_pause()
+#elif (defined(__clang__) || defined(__GNUC__)) && FOLLY_X64
+#define FOLLY_PAUSE() asm volatile("pause")
+#else
+#define FOLLY_PAUSE()
+#endif
+
+// Memory Barrier
+#ifdef _MSC_VER
+#include <intrin.h>
+#define FOLLY_ASM_MEMORY() ::_ReadWriteBarrier()
+#elif defined(__clang__) || defined(__GNUC__)
+#define FOLLY_ASM_MEMORY() asm volatile("" : : : "memory")
+#else
+#define FOLLY_ASM_MEMORY()
+#endif
+
 // portable version check
 #ifndef __GNUC_PREREQ
 # if defined __GNUC__ && defined __GNUC_MINOR__
@@ -151,7 +204,10 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 /* Define macro wrappers for C++11's "final" and "override" keywords, which
  * are supported in gcc 4.7 but not gcc 4.6. */
 #if !defined(FOLLY_FINAL) && !defined(FOLLY_OVERRIDE)
-# if defined(__clang__) || __GNUC_PREREQ(4, 7)
+# if defined(_MSC_VER) && _MSC_VER >= 1600
+#  define FOLLY_FINAL final
+#  define FOLLY_OVERRIDE override
+# elif defined(__clang__) || __GNUC_PREREQ(4, 7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
 # else
@@ -252,6 +308,19 @@ typedef SSIZE_T ssize_t;
 // compiler specific to compiler specific
 // nolint
 # define __PRETTY_FUNCTION__ __FUNCSIG__
+
+// Hide a GCC specific thing
+# define __extension__
+
+#ifdef _M_IX86_FP
+#if _M_IX86_FP == 1
+# define __SSE__
+#elif _M_IX86_FP == 2
+# define __SSE__
+# define __SSE2__
+#endif
+#endif
+
 #endif
 
 #if FOLLY_UNUSUAL_GFLAGS_NAMESPACE

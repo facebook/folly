@@ -27,7 +27,11 @@
 #endif
 
 #include <fcntl.h>
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <sys/mman.h>
+#endif
 #include <sys/types.h>
 #include <system_error>
 #include <gflags/gflags.h>

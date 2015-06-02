@@ -67,7 +67,11 @@ class AtomicLinkedList {
   }
 
   bool empty() const {
+#ifdef _MSC_VER
+    return head_.load() == nullptr;
+#else
     return head_ == nullptr;
+#endif
   }
 
   /**

@@ -195,7 +195,12 @@ class SingletonHolderBase {
   virtual void destroyInstance() = 0;
 
  protected:
+#if _MSC_VER <= 1900
+  // These versions of MSVC don't support constexpr on instance methods (constructors).
+  static const std::chrono::seconds kDestroyWaitTime;
+#else
   static constexpr std::chrono::seconds kDestroyWaitTime{5};
+#endif
 };
 
 // An actual instance of a singleton, tracking the instance itself,
@@ -453,12 +458,12 @@ class Singleton {
   T* operator->() { return get(); }
 
   explicit Singleton(std::nullptr_t _ = nullptr,
-                     Singleton::TeardownFunc t = nullptr) :
+                     typename Singleton::TeardownFunc t = nullptr) :
       Singleton ([]() { return new T; }, std::move(t)) {
   }
 
-  explicit Singleton(Singleton::CreateFunc c,
-                     Singleton::TeardownFunc t = nullptr) {
+  explicit Singleton(typename Singleton::CreateFunc c,
+                     typename Singleton::TeardownFunc t = nullptr) {
     if (c == nullptr) {
       throw std::logic_error(
         "nullptr_t should be passed if you want T to be default constructed");

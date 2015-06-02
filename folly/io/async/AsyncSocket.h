@@ -17,9 +17,14 @@
 #pragma once
 
 #include <sys/types.h>
+#ifdef _MSC_VER
+#include <winsock2.h>
+#else
 #include <sys/socket.h>
+#endif
 #include <glog/logging.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -132,7 +137,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param evb EventBase that will manage this socket.
    * @param fd  File descriptor to take over (should be a connected socket).
    */
-  AsyncSocket(EventBase* evb, int fd);
+  AsyncSocket(EventBase* evb, sid_t fd);
 
   /**
    * Helper function to create a shared_ptr<AsyncSocket>.
@@ -173,7 +178,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   /**
    * Helper function to create a shared_ptr<AsyncSocket>.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(EventBase* evb, int fd) {
+  static std::shared_ptr<AsyncSocket> newSocket(EventBase* evb, sid_t fd) {
     return std::shared_ptr<AsyncSocket>(new AsyncSocket(evb, fd),
                                            Destructor());
   }
@@ -198,7 +203,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   /**
    * Get the file descriptor used by the AsyncSocket.
    */
-  virtual int getFd() const {
+  virtual sid_t getFd() const {
     return fd_;
   }
 
@@ -212,7 +217,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * Returns the file descriptor.  The caller assumes ownership of the
    * descriptor, and it will not be closed when the AsyncSocket is destroyed.
    */
-  virtual int detachFd();
+  virtual sid_t detachFd();
 
   /**
    * Uniquely identifies a handle to a socket option value. Each
@@ -227,8 +232,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       }
       return level < other.level;
     }
-    int apply(int fd, int val) const {
-      return setsockopt(fd, level, optname, &val, sizeof(val));
+    int apply(sid_t fd, int val) const {
+      return setsockopt(fd, level, optname, (char*)&val, sizeof(val));
     }
     int level;
     int optname;
@@ -328,8 +333,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   void write(WriteCallback* callback, const void* buf, size_t bytes,
              WriteFlags flags = WriteFlags::NONE) override;
+#ifndef _MSC_VER
   void writev(WriteCallback* callback, const iovec* vec, size_t count,
               WriteFlags flags = WriteFlags::NONE) override;
+#endif
   void writeChain(WriteCallback* callback,
                   std::unique_ptr<folly::IOBuf>&& buf,
                   WriteFlags flags = WriteFlags::NONE) override;
@@ -453,7 +460,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   template <typename T>
   int getSockOpt(int level, int optname, T* optval, socklen_t* optlen) {
-    return getsockopt(fd_, level, optname, (void*) optval, optlen);
+    return getsockopt(fd_, level, optname, (char*)optval, optlen);
   }
 
   /**
@@ -468,6 +475,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   int setSockOpt(int  level,  int  optname,  const T *optval) {
     return setsockopt(fd_, level, optname, optval, sizeof(T));
   }
+
+#if defined(_MSC_VER) && defined(ERROR)
+// Because, for some absurd reason,
+// ERROR is defined as a macro in the
+// GDI interface -_-...
+#undef ERROR
+#endif
 
   enum class StateEnum : uint8_t {
     UNINIT,
@@ -572,6 +586,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   virtual ssize_t performRead(void* buf, size_t buflen);
 
+#ifndef _MSC_VER
   /**
    * Populate an iovec array from an IOBuf and attempt to write it.
    *
@@ -625,6 +640,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   virtual ssize_t performWrite(const iovec* vec, uint32_t count,
                                WriteFlags flags, uint32_t* countWritten,
                                uint32_t* partialWritten);
+#endif
 
   bool updateEventRegistration();
 
@@ -664,12 +680,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   StateEnum state_;                     ///< StateEnum describing current state
   uint8_t shutdownFlags_;               ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_;                 ///< EventBase::HandlerFlags settings
-  int fd_;                              ///< The socket file descriptor
+  sid_t fd_;                            ///< The socket file descriptor
   mutable
-    folly::SocketAddress addr_;    ///< The address we tried to connect to
+    folly::SocketAddress addr_;         ///< The address we tried to connect to
   uint32_t sendTimeout_;                ///< The send timeout, in milliseconds
   uint16_t maxReadsPerEvent_;           ///< Max reads per event loop iteration
-  EventBase* eventBase_;               ///< The EventBase
+  EventBase* eventBase_;                ///< The EventBase
   WriteTimeout writeTimeout_;           ///< A timeout for connect and write
   IoHandler ioHandler_;                 ///< A EventHandler to monitor the fd
 

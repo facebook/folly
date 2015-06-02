@@ -18,6 +18,10 @@
 #include <functional>
 #include <typeinfo>
 
+#ifdef _MSC_VER
+#include <pthread.h>
+#endif
+
 #include <boost/context/all.hpp>
 #include <boost/version.hpp>
 #include <folly/AtomicLinkedList.h>

@@ -20,15 +20,19 @@
 #include <type_traits>
 #include <stdint.h>
 #include <assert.h>
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <sys/mman.h>
+#endif
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
 #include <folly/detail/CacheLocality.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(shadow)
 
 namespace folly {
 
@@ -99,7 +103,7 @@ struct IndexedMemPool : boost::noncopyable {
   static_assert(LocalListLimit_ <= 255, "LocalListLimit must fit in 8 bits");
   enum {
     NumLocalLists = NumLocalLists_,
-    LocalListLimit = LocalListLimit_
+    LocalListLimit = LocalListLimit_,
   };
 
 
@@ -130,11 +134,24 @@ struct IndexedMemPool : boost::noncopyable {
     , globalHead_(TaggedPtr{})
   {
     const size_t needed = sizeof(Slot) * (actualCapacity_ + 1);
+#ifdef _MSC_VER
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    DWORD pagesize = sysInfo.dwPageSize;
+#else
     long pagesize = sysconf(_SC_PAGESIZE);
+#endif
     mmapLength_ = ((needed - 1) & ~(pagesize - 1)) + pagesize;
     assert(needed <= mmapLength_ && mmapLength_ < needed + pagesize);
     assert((mmapLength_ % pagesize) == 0);
 
+#ifdef _MSC_VER
+    slots_ = static_cast<Slot*>(VirtualAlloc(nullptr, mmapLength_, MEM_COMMIT, PAGE_READWRITE));
+    if (slots_ == nullptr) {
+        assert(errno == ENOMEM);
+        throw std::bad_alloc();
+    }
+#else
     slots_ = static_cast<Slot*>(mmap(nullptr, mmapLength_,
                                      PROT_READ | PROT_WRITE,
                                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
@@ -142,6 +159,7 @@ struct IndexedMemPool : boost::noncopyable {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
     }
+#endif
   }
 
   /// Destroys all of the contained elements
@@ -151,7 +169,11 @@ struct IndexedMemPool : boost::noncopyable {
         slots_[i].~Slot();
       }
     }
+#ifdef _MSC_VER
+    VirtualFree(slots_, mmapLength_, MEM_RELEASE);
+#else
     munmap(slots_, mmapLength_);
+#endif
   }
 
   /// Returns a lower bound on the number of elements that may be
@@ -284,7 +306,7 @@ struct IndexedMemPool : boost::noncopyable {
     }
   };
 
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING LocalList {
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING struct LocalList {
     AtomicStruct<TaggedPtr,Atom> head;
 
     LocalList() : head(TaggedPtr{}) {}
@@ -310,7 +332,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// raw storage, only 1..min(size_,actualCapacity_) (inclusive) are
   /// actually constructed.  Note that slots_[0] is not constructed or used
-  Slot* FOLLY_ALIGN_TO_AVOID_FALSE_SHARING slots_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Slot* slots_;
 
   /// use AccessSpreader to find your list.  We use stripes instead of
   /// thread-local to avoid the need to grow or shrink on thread start
@@ -319,7 +341,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// this is the head of a list of node chained by globalNext, that are
   /// themselves each the head of a list chained by localNext
-  AtomicStruct<TaggedPtr,Atom> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING globalHead_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING AtomicStruct<TaggedPtr,Atom> globalHead_;
 
   ///////////// private methods
 
@@ -465,5 +487,6 @@ struct IndexedMemPoolRecycler {
 
 } // namespace folly
 
-# pragma GCC diagnostic pop
+FOLLY_WARNING_POP
+
 #endif

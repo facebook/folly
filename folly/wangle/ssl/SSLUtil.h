@@ -27,6 +27,10 @@ enum class SSLResumeEnum : uint8_t {
   NA = 2
 };
 
+#if defined(_MSC_VER) && defined(NO_ERROR)
+// Windows is evil.
+#undef NO_ERROR
+#endif
 enum class SSLErrorEnum {
   NO_ERROR,
   TIMEOUT,

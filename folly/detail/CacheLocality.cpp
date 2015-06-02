@@ -16,8 +16,12 @@
 
 #include <folly/detail/CacheLocality.h>
 
+#ifdef _MSC_VER
+#include <thread>
+#else
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
+#endif
 #include <fstream>
 
 #include <folly/Conv.h>
@@ -40,7 +44,11 @@ static CacheLocality getSystemLocalityInfo() {
   }
 #endif
 
+#ifdef _MSC_VER
+  long numCpus = std::thread::hardware_concurrency();
+#else
   long numCpus = sysconf(_SC_NPROCESSORS_CONF);
+#endif
   if (numCpus <= 0) {
     // This shouldn't happen, but if it does we should try to keep
     // going.  We are probably not going to be able to parse /sys on
@@ -151,7 +159,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
     // it won't crash
     auto& lhsEquiv = equivClassesByCpu[lhs];
     auto& rhsEquiv = equivClassesByCpu[rhs];
-    for (int i = std::min(lhsEquiv.size(), rhsEquiv.size()) - 1; i >= 0; --i) {
+    for (size_t i = std::min(lhsEquiv.size(), rhsEquiv.size()) - 1; i >= 0; --i) {
       if (lhsEquiv[i] != rhsEquiv[i]) {
         return lhsEquiv[i] < rhsEquiv[i];
       }
@@ -204,6 +212,9 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 /// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
 /// on failure
 static Getcpu::Func loadVdsoGetcpu() {
+#ifdef _MSC_VER
+  return nullptr;
+#else
   void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
   if (h == nullptr) {
     return nullptr;
@@ -219,6 +230,7 @@ static Getcpu::Func loadVdsoGetcpu() {
   }
 
   return func;
+#endif
 }
 
 Getcpu::Func Getcpu::vdsoFunc() {

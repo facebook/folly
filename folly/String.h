@@ -366,6 +366,8 @@ inline fbstring exceptionStr(const std::exception& e) {
   return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_MSVC_DISABLE_WARNING(4715) // Not all control paths return a value.
 inline fbstring exceptionStr(std::exception_ptr ep) {
   try {
     std::rethrow_exception(ep);
@@ -375,6 +377,7 @@ inline fbstring exceptionStr(std::exception_ptr ep) {
     return "<unknown exception>";
   }
 }
+FOLLY_POP_WARNING
 
 template<typename E>
 auto exceptionStr(const E& e)

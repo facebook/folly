@@ -17,16 +17,24 @@
 #pragma once
 
 #include <sys/types.h>
+#ifdef _MSC_VER
+#include <winsock2.h>
+#include <ws2tcpip.h>
+ // missing in socket headers
+#define sa_family_t ADDRESS_FAMILY
+#else
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#endif
 #include <cstddef>
 #include <iostream>
 #include <string>
 
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
+#include <folly/SocketPortability.h>
 
 namespace folly {
 
@@ -80,7 +88,11 @@ class SocketAddress {
   SocketAddress(const SocketAddress& addr) {
     port_ = addr.port_;
     if (addr.getFamily() == AF_UNIX) {
+#ifdef _MSC_VER
+      assert(0);
+#else
       storage_.un.init(addr.storage_.un);
+#endif
     } else {
       storage_ = addr.storage_;
     }
@@ -92,14 +104,24 @@ class SocketAddress {
       if (addr.getFamily() != AF_UNIX) {
         storage_ = addr.storage_;
       } else {
+#ifdef _MSC_VER
+        assert(0);
+#else
         storage_ = addr.storage_;
         storage_.un.init(addr.storage_.un);
+#endif
       }
     } else {
       if (addr.getFamily() == AF_UNIX) {
+#ifdef _MSC_VER
+        assert(0);
+#else
         storage_.un.copy(addr.storage_.un);
+#endif
       } else {
+#ifndef _MSC_VER
         storage_.un.free();
+#endif
         storage_ = addr.storage_;
       }
     }
@@ -124,7 +146,9 @@ class SocketAddress {
 
   ~SocketAddress() {
     if (external_) {
+#ifndef _MSC_VER
       storage_.un.free();
+#endif
     }
   }
 
@@ -293,14 +317,14 @@ class SocketAddress {
    *
    * Raises std::system_error on error.
    */
-  void setFromPeerAddress(int socket);
+  void setFromPeerAddress(sid_t socket);
 
   /**
    * Initialize this SocketAddress from a socket's local address.
    *
    * Raises std::system_error on error.
    */
-  void setFromLocalAddress(int socket);
+  void setFromLocalAddress(sid_t socket);
 
   /**
    * Initialize this TSocketAddress from a struct sockaddr.
@@ -338,6 +362,7 @@ class SocketAddress {
    */
   void setFromSockaddr(const struct sockaddr_in6* address);
 
+#ifndef _MSC_VER
   /**
    * Initialize this SocketAddress from a struct sockaddr_un.
    *
@@ -352,7 +377,7 @@ class SocketAddress {
    */
   void setFromSockaddr(const struct sockaddr_un* address,
                        socklen_t addrlen);
-
+#endif
 
   /**
    * Fill in a given sockaddr_storage with the ip or unix address.
@@ -363,8 +388,12 @@ class SocketAddress {
     if (!external_) {
       return storage_.addr.toSockaddrStorage(addr, htons(port_));
     } else {
+#ifdef _MSC_VER
+      assert(0);
+#else
       memcpy(addr, storage_.un.addr, sizeof(*storage_.un.addr));
       return storage_.un.len;
+#endif
     }
   }
 
@@ -507,6 +536,7 @@ class SocketAddress {
   size_t hash() const;
 
  private:
+#ifndef _MSC_VER
   /**
    * Unix socket addresses require more storage than IPv4 and IPv6 addresses,
    * and are comparatively little-used.
@@ -555,12 +585,13 @@ class SocketAddress {
       magic = 0;
     }
   };
+#endif
 
   struct addrinfo* getAddrInfo(const char* host, uint16_t port, int flags);
   struct addrinfo* getAddrInfo(const char* host, const char* port, int flags);
   void setFromAddrInfo(const struct addrinfo* results);
   void setFromLocalAddr(const struct addrinfo* results);
-  void setFromSocket(int socket, int (*fn)(int, struct sockaddr*, socklen_t*));
+  void setFromSocket(sid_t socket, int (*fn)(sid_t, struct sockaddr*, socklen_t*));
   std::string getIpString(int flags) const;
   void getIpString(char *buf, size_t buflen, int flags) const;
 
@@ -569,15 +600,21 @@ class SocketAddress {
   void prepFamilyChange(sa_family_t newFamily) {
     if (newFamily != AF_UNIX) {
       if (external_) {
+#ifndef _MSC_VER
         storage_.un.free();
+#endif
         storage_.addr = folly::IPAddress();
       }
       external_ = false;
     } else {
+#ifdef _MSC_VER
+      assert(0);
+#else
       if (!external_) {
         storage_.un.init();
       }
       external_ = true;
+#endif
     }
   }
 
@@ -589,10 +626,18 @@ class SocketAddress {
    * track a struct sockaddr_un allocated separately on the heap.
    */
   union {
-    folly::IPAddress addr{};
+    folly::IPAddress addr
+#if _MSC_VER <= 1900
+    // Something doesn't like the initializer in MSVC
+    ;
+#else
+    {};
+#endif
+#ifndef _MSC_VER
     ExternalUnixAddr un;
+#endif
   } storage_{};
-  // IPAddress class does nto save zone or port, and must be saved here
+  // IPAddress class does not save zone or port, and must be saved here
   uint16_t port_;
 
   bool external_{false};

@@ -44,8 +44,15 @@
 #include <mutex>
 #include <atomic>
 
+#ifdef _MSC_VER
+ // Because of no nanosleep
+#include <thread>
+#include <chrono>
+#endif
+
 #include <glog/logging.h>
 #include <folly/Portability.h>
+
 
 #if !FOLLY_X64
 # error "SmallLocks.h is currently x64-only."
@@ -72,15 +79,19 @@ namespace detail {
     void wait() {
       if (spinCount < kMaxActiveSpin) {
         ++spinCount;
-        asm volatile("pause");
+        FOLLY_PAUSE();
       } else {
         /*
          * Always sleep 0.5ms, assuming this will make the kernel put
          * us down for whatever its minimum timer resolution is (in
          * linux this varies by kernel version from 1ms to 10ms).
          */
+#if _MSC_VER
+        std::this_thread::sleep_for(std::chrono::nanoseconds(500000));
+#else
         struct timespec ts = { 0, 500000 };
         nanosleep(&ts, nullptr);
+#endif
       }
     }
   };
@@ -282,7 +293,7 @@ struct PicoSpinLock {
 #define FOLLY_CACHE_LINE_SIZE 64
 
 template <class T, size_t N>
-struct SpinLockArray {
+struct FOLLY_ALIGNED(sizeof(MaxAlign)) SpinLockArray {
   T& operator[](size_t i) {
     return data_[i].lock;
   }
@@ -312,7 +323,7 @@ struct SpinLockArray {
 
   char padding_[FOLLY_CACHE_LINE_SIZE];
   std::array<PaddedSpinLock, N> data_;
-} __attribute__((__aligned__));
+};
 
 //////////////////////////////////////////////////////////////////////
 

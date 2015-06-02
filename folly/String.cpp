@@ -331,6 +331,7 @@ fbstring errnoStr(int err) {
   // http://www.kernel.org/doc/man-pages/online/pages/man3/strerror.3.html
 #if defined(__APPLE__) || defined(__FreeBSD__) ||\
     defined(__CYGWIN__) || defined(__ANDROID__) ||\
+    defined(_MSC_VER) ||\
     ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE)
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));

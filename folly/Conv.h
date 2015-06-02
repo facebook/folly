@@ -777,7 +777,7 @@ typename std::enable_if<sizeof...(Ts) >= 3
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppend(const Ts&... vs) {
-  detail::toAppendStrImpl(vs...);
+  ::folly::detail::toAppendStrImpl(vs...);
 }
 
 /**
@@ -796,7 +796,7 @@ typename std::enable_if<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppendFit(const Ts&... vs) {
-  detail::reserveInTarget(vs...);
+  ::folly::detail::reserveInTarget(vs...);
   toAppend(vs...);
 }
 
@@ -948,7 +948,7 @@ namespace detail {
 // still not overflow uint16_t.
 constexpr int32_t OOR = 10000;
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift1[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -977,7 +977,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift10[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -1006,7 +1006,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift100[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -1035,7 +1035,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift1000[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift1000[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20

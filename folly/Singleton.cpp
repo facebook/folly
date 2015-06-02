@@ -21,8 +21,11 @@
 namespace folly {
 
 namespace detail {
-
+#if _MSC_VERSION <= 1900
+    const std::chrono::seconds SingletonHolderBase::kDestroyWaitTime {5};
+#else
 constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
+#endif
 
 }
 
@@ -45,7 +48,12 @@ struct FatalHelper {
   std::vector<detail::TypeDescriptor> leakedSingletons_;
 };
 
-FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
+// MSVC doesn't support init priority, so just hope it
+// works without it.
+#ifndef _MSC_VER
+__attribute__((__init_priority__(101)))
+#endif
+FatalHelper fatalHelper;
 
 }
 

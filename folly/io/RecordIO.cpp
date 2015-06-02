@@ -17,7 +17,9 @@
 #include <folly/io/RecordIO.h>
 
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>

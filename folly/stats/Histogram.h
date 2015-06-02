@@ -416,7 +416,10 @@ class Histogram {
    */
   void toTSV(std::ostream& out, bool skipEmptyBuckets = true) const;
 
+#ifndef _MSC_VER
+// MSVC doesn't like these being private...
  private:
+#endif
   struct CountFromBucket {
     uint64_t operator()(const Bucket& bucket) const {
       return bucket.count;

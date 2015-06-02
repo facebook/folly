@@ -23,8 +23,10 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef _MSC_VER
 #include <unistd.h>
 #include <sys/mman.h>
+#endif
 #include <utility>
 
 
@@ -80,7 +82,7 @@ void MemoryIdler::flushLocalMallocCaches() {
 }
 
 
-#if FOLLY_X64
+#if defined(FOLLY_X64) && !defined(_MSC_VER)
 
 static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
 static FOLLY_TLS uintptr_t tls_stackLimit;

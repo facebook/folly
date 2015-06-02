@@ -17,7 +17,9 @@
 #pragma once
 
 #include <memory>
+#ifndef _MSC_VER
 #include <sys/uio.h>
+#endif
 
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
@@ -431,8 +433,10 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
 
   virtual void write(WriteCallback* callback, const void* buf, size_t bytes,
                      WriteFlags flags = WriteFlags::NONE) = 0;
+#ifndef _MSC_VER
   virtual void writev(WriteCallback* callback, const iovec* vec, size_t count,
                       WriteFlags flags = WriteFlags::NONE) = 0;
+#endif
   virtual void writeChain(WriteCallback* callback,
                           std::unique_ptr<IOBuf>&& buf,
                           WriteFlags flags = WriteFlags::NONE) = 0;

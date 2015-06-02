@@ -48,8 +48,8 @@
 #include <folly/Likely.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(shadow)
 
 namespace folly {
 
@@ -1123,7 +1123,7 @@ inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
 }
 }  // !namespace folly
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range);
 

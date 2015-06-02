@@ -16,7 +16,9 @@
 
 #include <folly/io/ShutdownSocketSet.h>
 
+#ifndef _MSC_VER
 #include <sys/socket.h>
+#endif
 #include <sys/types.h>
 
 #include <chrono>

@@ -14,29 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_CLOCK_H_
-#define FOLLY_DETAIL_CLOCK_H_
+#pragma once
 
-#include <ctime>
-#include <cstdint>
-
-#include <folly/Portability.h>
-
-#if FOLLY_HAVE_CLOCK_GETTIME
-#error This should only be used as a workaround for platforms \
-          that do not support clock_gettime(2).
-#endif
-
-/* For windows, we'll use pthread's time implementations */
+// Make socket work significantly more sane by using a central typedef.
 #ifdef _MSC_VER
-#include <pthread.h>
-#include <pthread_clock.h>
+#include <WinSock2.h>
+typedef SOCKET sid_t;
 #else
-typedef uint8_t clockid_t;
-#define CLOCK_REALTIME 0
-
-int clock_gettime(clockid_t clk_id, struct timespec* ts);
-int clock_getres(clockid_t clk_id, struct timespec* ts);
+typedef int sid_t;
 #endif
-
-#endif /* FOLLY_DETAIL_CLOCK_H_ */

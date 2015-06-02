@@ -867,6 +867,7 @@ IOBuf::Iterator IOBuf::cend() const {
   return Iterator(nullptr, nullptr);
 }
 
+#ifndef _MSC_VER
 folly::fbvector<struct iovec> IOBuf::getIov() const {
   folly::fbvector<struct iovec> iov;
   iov.reserve(countChainElements());
@@ -902,6 +903,7 @@ size_t IOBuf::fillIov(struct iovec* iov, size_t len) const {
   }
   return 0;
 }
+#endif
 
 size_t IOBufHash::operator()(const IOBuf& buf) const {
   folly::hash::SpookyHashV2 hasher;

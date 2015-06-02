@@ -312,13 +312,43 @@ struct is_negative_impl<T, false> {
   constexpr static bool check(T x) { return false; }
 };
 
+// Early versions of MSVC choke on the template
+// constraints.
+#if _MSC_VER <= 1900
+
+FOLLY_PUSH_WARNING
+// Sign comparison
+FOLLY_MSVC_DISABLE_WARNING(4804)
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than_impl(LHS const lhs) {
+    if (rhs <= std::numeric_limits<LHS>::max() && rhs > std::numeric_limits<LHS>::min())
+        return lhs < rhs;
+    else if (rhs > std::numeric_limits<LHS>::max())
+        return true;
+    else // if (rhs <= std::numeric_limits<LHS>::min())
+        return false;
+}
+
+template <typename RHS, RHS rhs, typename LHS>
+bool greater_than_impl(LHS const lhs) {
+    if (rhs <= std::numeric_limits<LHS>::max() && rhs >= std::numeric_limits<LHS>::min())
+        return lhs > rhs;
+    else if (rhs > std::numeric_limits<LHS>::max())
+        return false;
+    else // if (rhs < std::numeric_limits<LHS>::min())
+        return true;
+}
+FOLLY_POP_WARNING
+
+#else
+
 // folly::to integral specializations can end up generating code
 // inside what are really static ifs (not executed because of the templated
 // types) that violate -Wsign-compare so suppress them in order to not prevent
 // all calling code from using it.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(sign-compare)
+FOLLY_MSVC_DISABLE_WARNING(4804)
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(
   typename std::enable_if<
@@ -350,7 +380,7 @@ bool less_than_impl(
   return false;
 }
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(
@@ -382,6 +412,8 @@ bool greater_than_impl(
 ) {
   return true;
 }
+
+#endif
 
 } // namespace detail {
 
@@ -495,6 +527,14 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
  *
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
+#if _MSCVER <= 1900
+
+// MSVC doesn't like the const, volatile, and volatile const qualifiers on function types.
+#define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(classname, func_name) \
+  template <typename, typename> class classname; \
+  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, )
+
+#else
 #define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(classname, func_name) \
   template <typename, typename> class classname; \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, ); \
@@ -503,5 +543,5 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
       classname, func_name, /* nolint */ volatile); \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL( \
       classname, func_name, /* nolint */ volatile const)
-
+#endif
 #endif //FOLLY_BASE_TRAITS_H_

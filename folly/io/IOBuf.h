@@ -25,7 +25,9 @@
 #include <cstring>
 #include <memory>
 #include <limits>
+#ifndef _MSC_VER
 #include <sys/uio.h>
+#endif
 #include <type_traits>
 
 #include <boost/iterator/iterator_facade.hpp>
@@ -1030,6 +1032,7 @@ class IOBuf {
    */
   void cloneOneInto(IOBuf& other) const;
 
+#ifndef _MSC_VER
   /**
    * Return an iovector suitable for e.g. writev()
    *
@@ -1063,6 +1066,7 @@ class IOBuf {
    * buffer chain.
    */
   size_t fillIov(struct iovec* iov, size_t len) const;
+#endif
 
   /*
    * Overridden operator new and delete.

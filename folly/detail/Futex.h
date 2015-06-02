@@ -20,7 +20,9 @@
 #include <chrono>
 #include <limits>
 #include <assert.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 #include <boost/noncopyable.hpp>
 
 namespace folly { namespace detail {

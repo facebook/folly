@@ -28,7 +28,9 @@
 #include <fcntl.h>
 #include <mutex>
 #include <pthread.h>
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 namespace {
 

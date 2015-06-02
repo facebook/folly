@@ -18,6 +18,9 @@
 #include <folly/ThreadName.h>
 #include <folly/Conv.h>
 #include <folly/String.h>
+#ifdef _MSC_VER
+#include <pthread_clock.h>
+#endif
 
 #ifdef _POSIX_MONOTONIC_CLOCK
 #define FOLLY_TIME_MONOTONIC_CLOCK CLOCK_MONOTONIC

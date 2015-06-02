@@ -12,7 +12,9 @@
 #include <folly/wangle/ssl/SSLUtil.h>
 
 #include <chrono>
+#ifndef _MSC_VER
 #include <netinet/tcp.h>
+#endif
 #include <string>
 
 namespace folly {

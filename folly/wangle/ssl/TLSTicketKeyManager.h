@@ -189,7 +189,9 @@ class TLSTicketKeyManager : private boost::noncopyable {
   TLSActiveKeyList activeKeys_;
 
   folly::SSLContext* ctx_;
+#ifndef _MSC_VER
   uint32_t randState_;
+#endif
   SSLStats* stats_{nullptr};
 
   static int32_t sExDataIndex_;

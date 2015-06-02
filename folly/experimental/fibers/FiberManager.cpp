@@ -15,8 +15,10 @@
  */
 #include "FiberManager.h"
 
+#ifndef _MSC_VER
 #include <sys/syscall.h>
 #include <unistd.h>
+#endif
 
 #include <cassert>
 #include <stdexcept>
@@ -28,7 +30,7 @@
 
 namespace folly { namespace fibers {
 
-__thread FiberManager* FiberManager::currentFiberManager_ = nullptr;
+FOLLY_TLS FiberManager* FiberManager::currentFiberManager_ = nullptr;
 
 FiberManager::FiberManager(std::unique_ptr<LoopController> loopController,
                            Options options) :

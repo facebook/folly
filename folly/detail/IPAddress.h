@@ -32,6 +32,7 @@ extern "C" {
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #else
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -40,7 +41,6 @@ extern "C" {
 #endif
 
 #include <sys/types.h>
-#include <netdb.h>
 }
 
 #include <folly/Conv.h>
@@ -250,7 +250,7 @@ template<class IntegralType,
       } else {
         value += ('a'-10);
       }
-      *(buf++) = value;
+      *(buf++) = (char)value;
       val %= powerToPrint;
       found = true;
     }
@@ -279,7 +279,11 @@ inline std::string fastIpv4ToString(
 }
 
 inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
+#ifdef _MSC_VER
+  const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
+#else
   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
+#endif
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   char* buf = str;
 

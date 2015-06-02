@@ -16,7 +16,11 @@
 
 #pragma once
 
+#ifdef _MSC_VER
+#include <WinSock2.h>
+#else
 #include <arpa/inet.h>
+#endif
 #include <iomanip>
 #include <openssl/ssl.h>
 
@@ -675,9 +679,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void handleInitialReadWrite() noexcept override {}
 
   ssize_t performRead(void* buf, size_t buflen) override;
+#ifndef _MSC_VER
   ssize_t performWrite(const iovec* vec, uint32_t count, WriteFlags flags,
                        uint32_t* countWritten, uint32_t* partialWritten)
     override;
+#endif
 
   // This virtual wrapper around SSL_write exists solely for testing/mockability
   virtual int sslWriteImpl(SSL *ssl, const void *buf, int n) {

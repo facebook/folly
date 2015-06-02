@@ -29,7 +29,9 @@
 #include <vector>
 #include <limits.h>
 #include <stddef.h>
+#ifndef _MSC_VER
 #include <sys/socket.h>
+#endif
 
 
 // Due to the way kernel headers are included, this may or may not be defined.
