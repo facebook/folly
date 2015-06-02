@@ -271,8 +271,7 @@ class Core {
     FSM_START(fsm_)
       case State::Armed:
         if (active_) {
-          FSM_UPDATE2(fsm_, State::Done, []{},
-                                         std::bind(&Core::doCallback, this));
+          FSM_UPDATE2(fsm_, State::Done, []{}, [this]{ this->doCallback(); });
         }
         FSM_BREAK
 
