@@ -1290,6 +1290,53 @@ BENCHMARK(joinInt, iters) {
   }
 }
 
+TEST(String, whitespace) {
+  // trimWhitespace:
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("kavabanga"));
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("kavabanga \t \n  "));
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("   \t \r \n \n kavabanga"));
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("\t \r \n   kavabanga \t \n  "));
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("   \t \r \n \n kavabanga"));
+  EXPECT_EQ("kavabanga",
+        trimWhitespace("\t \r \n   kavabanga \t \n  "));
+  EXPECT_EQ(
+    ltrimWhitespace(rtrimWhitespace("kavabanga")),
+    rtrimWhitespace(ltrimWhitespace("kavabanga")));
+  EXPECT_EQ(
+    ltrimWhitespace(rtrimWhitespace("kavabanga  \r\t\n")),
+    rtrimWhitespace(ltrimWhitespace("kavabanga  \r\t\n")));
+  EXPECT_EQ("", trimWhitespace("\t \r \n   \t \n  "));
+  EXPECT_EQ("", trimWhitespace(""));
+  EXPECT_EQ("", trimWhitespace("\t"));
+  EXPECT_EQ("", trimWhitespace("\r"));
+  EXPECT_EQ("", trimWhitespace("\n"));
+  EXPECT_EQ("", trimWhitespace("\t "));
+  EXPECT_EQ("", trimWhitespace("\r  "));
+  EXPECT_EQ("", trimWhitespace("\n   "));
+  EXPECT_EQ("", trimWhitespace("    \t"));
+  EXPECT_EQ("", trimWhitespace("    \r"));
+  EXPECT_EQ("", trimWhitespace("    \n"));
+
+  // ltrimWhitespace:
+  EXPECT_EQ("kavabanga", ltrimWhitespace("\t kavabanga"));
+  EXPECT_EQ("kavabanga \r\n", ltrimWhitespace("\t kavabanga \r\n"));
+  EXPECT_EQ("", ltrimWhitespace("\r "));
+  EXPECT_EQ("", ltrimWhitespace("\n   "));
+  EXPECT_EQ("", ltrimWhitespace("\r   "));
+
+  // rtrimWhitespace:
+  EXPECT_EQ("\t kavabanga", rtrimWhitespace("\t kavabanga"));
+  EXPECT_EQ("\t kavabanga", rtrimWhitespace("\t kavabanga \r\n"));
+  EXPECT_EQ("", rtrimWhitespace("\r "));
+  EXPECT_EQ("", rtrimWhitespace("\n   "));
+  EXPECT_EQ("", rtrimWhitespace("\r   "));
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

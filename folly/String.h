@@ -554,7 +554,30 @@ std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
  * Returns a subpiece with all whitespace removed from the front of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  */
-StringPiece skipWhitespace(StringPiece sp);
+StringPiece ltrimWhitespace(StringPiece sp);
+
+/**
+ * Returns a subpiece with all whitespace removed from the back of @sp.
+ * Whitespace means any of [' ', '\n', '\r', '\t'].
+ */
+StringPiece rtrimWhitespace(StringPiece sp);
+
+/**
+ * Returns a subpiece with all whitespace removed from the back and front of @sp.
+ * Whitespace means any of [' ', '\n', '\r', '\t'].
+ */
+inline StringPiece trimWhitespace(StringPiece sp) {
+  return ltrimWhitespace(rtrimWhitespace(sp));
+}
+
+/**
+ * Returns a subpiece with all whitespace removed from the front of @sp.
+ * Whitespace means any of [' ', '\n', '\r', '\t'].
+ * DEPRECATED: @see ltrimWhitespace @see rtrimWhitespace
+ */
+inline StringPiece skipWhitespace(StringPiece sp) {
+  return ltrimWhitespace(sp);
+}
 
 /**
  * Fast, in-place lowercasing of ASCII alphabetic characters in strings.

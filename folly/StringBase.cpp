@@ -18,19 +18,36 @@
 
 namespace folly {
 
-StringPiece skipWhitespace(StringPiece sp) {
+static inline bool is_oddspace(char c) {
+  return c == '\n' || c == '\t' || c == '\r';
+}
+
+StringPiece ltrimWhitespace(StringPiece sp) {
   // Spaces other than ' ' characters are less common but should be
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
-  auto oddspace = [] (char c) {
-    return c == '\n' || c == '\t' || c == '\r';
-  };
 
 loop:
   for (; !sp.empty() && sp.front() == ' '; sp.pop_front()) {
   }
-  if (!sp.empty() && oddspace(sp.front())) {
+  if (!sp.empty() && is_oddspace(sp.front())) {
     sp.pop_front();
+    goto loop;
+  }
+
+  return sp;
+}
+
+StringPiece rtrimWhitespace(StringPiece sp) {
+  // Spaces other than ' ' characters are less common but should be
+  // checked.  This configuration where we loop on the ' '
+  // separately from oddspaces was empirically fastest.
+
+loop:
+  for (; !sp.empty() && sp.back() == ' '; sp.pop_back()) {
+  }
+  if (!sp.empty() && is_oddspace(sp.back())) {
+    sp.pop_back();
     goto loop;
   }
 
