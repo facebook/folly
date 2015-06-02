@@ -20,6 +20,7 @@
 #include <boost/noncopyable.hpp>
 #include <iostream>
 #include <cmath>
+#include <memory>
 #include <string.h>
 #include <type_traits>
 #include <unistd.h>
@@ -129,7 +130,7 @@ public:
     assert(skipFraction >= 0.0 && skipFraction <= 1.0);
     uint64_t ticket = ticket_.load();
 
-    uint64_t backStep = std::llround((1.0 - skipFraction) * capacity_);
+    uint64_t backStep = llround((1.0 - skipFraction) * capacity_);
 
     // always try to move at least one step backward to something readable
     backStep = std::max<uint64_t>(1, backStep);
