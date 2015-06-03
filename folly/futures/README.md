@@ -259,3 +259,6 @@ C++ doesn't directly support continuations very well. But there are some ways to
 The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster and the code might read cleaner.
 
 Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn't claim to be the best model for all situations. Use your tools wisely.
+
+## Additional Documentation
+[This documentation](DEX.md) is more in-depth, generated from Facebook internal documentation of Futures. We are in the process of merging our Open Source documentation (this file and others) with that.
