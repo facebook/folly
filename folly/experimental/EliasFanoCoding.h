@@ -50,29 +50,45 @@
 
 namespace folly { namespace compression {
 
-struct EliasFanoCompressedList {
-  EliasFanoCompressedList() { }
+template <class Pointer>
+struct EliasFanoCompressedListBase {
+  EliasFanoCompressedListBase() = default;
+
+  template <class OtherPointer>
+  EliasFanoCompressedListBase(
+    const EliasFanoCompressedListBase<OtherPointer>& other)
+      : size(other.size),
+        numLowerBits(other.numLowerBits),
+        data(other.data),
+        skipPointers(reinterpret_cast<Pointer>(other.skipPointers)),
+        forwardPointers(reinterpret_cast<Pointer>(other.forwardPointers)),
+        lower(reinterpret_cast<Pointer>(other.lower)),
+        upper(reinterpret_cast<Pointer>(other.upper)) {
+  }
 
   void free() {
-    ::free(const_cast<unsigned char*>(lower.data()));
-    ::free(const_cast<unsigned char*>(upper.data()));
-    ::free(const_cast<unsigned char*>(skipPointers.data()));
-    ::free(const_cast<unsigned char*>(forwardPointers.data()));
+    ::free(const_cast<unsigned char*>(data.data()));
+  }
+
+  size_t upperSize() const {
+    return data.end() - upper;
   }
 
   size_t size = 0;
   uint8_t numLowerBits = 0;
 
-  // WARNING: EliasFanoCompressedList has no ownership of
-  // lower, upper, skipPointers and forwardPointers.
-  // The 7 bytes following the last byte of lower and upper
-  // sequences should be readable.
-  folly::ByteRange lower;
-  folly::ByteRange upper;
+  // WARNING: EliasFanoCompressedList has no ownership of data. The 7
+  // bytes following the last byte should be readable.
+  folly::Range<Pointer> data;
 
-  folly::ByteRange skipPointers;
-  folly::ByteRange forwardPointers;
+  Pointer skipPointers = nullptr;
+  Pointer forwardPointers = nullptr;
+  Pointer lower = nullptr;
+  Pointer upper = nullptr;
 };
+
+typedef EliasFanoCompressedListBase<const uint8_t*> EliasFanoCompressedList;
+typedef EliasFanoCompressedListBase<uint8_t*> MutableEliasFanoCompressedList;
 
 template <class Value,
           class SkipValue = size_t,
@@ -87,6 +103,7 @@ struct EliasFanoEncoderV2 {
 
   typedef Value ValueType;
   typedef SkipValue SkipValueType;
+  struct Layout;
 
   static constexpr size_t skipQuantum = kSkipQuantum;
   static constexpr size_t forwardQuantum = kForwardQuantum;
@@ -117,83 +134,19 @@ struct EliasFanoEncoderV2 {
     return encoder.finish();
   }
 
-  EliasFanoEncoderV2(size_t size, ValueType upperBound) {
-    if (size == 0) {
-      return;
-    }
+  explicit EliasFanoEncoderV2(const MutableEliasFanoCompressedList& result)
+      : lower_(result.lower),
+        upper_(result.upper),
+        skipPointers_(reinterpret_cast<SkipValueType*>(
+                        result.skipPointers)),
+        forwardPointers_(reinterpret_cast<SkipValueType*>(
+                           result.forwardPointers)),
+        result_(result) {
+  }
 
-    uint8_t numLowerBits = defaultNumLowerBits(upperBound, size);
-
-    // This is detail::writeBits56 limitation.
-    numLowerBits = std::min<uint8_t>(numLowerBits, 56);
-    CHECK_LT(numLowerBits, 8 * sizeof(Value));  // As we shift by numLowerBits.
-
-    // WARNING: Current read/write logic assumes that the 7 bytes
-    // following the last byte of lower and upper sequences are
-    // readable (stored value doesn't matter and won't be changed),
-    // so we allocate additional 7B, but do not include them in size
-    // of returned value.
-
-    // *** Lower bits.
-    const size_t lowerSize = (numLowerBits * size + 7) / 8;
-    if (lowerSize > 0) {  // numLowerBits != 0
-      lower_ = static_cast<unsigned char*>(calloc(lowerSize + 7, 1));
-    }
-
-    // *** Upper bits.
-    // Upper bits are stored using unary delta encoding.
-    // For example, (3 5 5 9) will be encoded as 1000011001000_2.
-    const size_t upperSizeBits =
-      (upperBound >> numLowerBits) +  // Number of 0-bits to be stored.
-      size;                           // 1-bits.
-    const size_t upperSize = (upperSizeBits + 7) / 8;
-    upper_ = static_cast<unsigned char*>(calloc(upperSize + 7, 1));
-
-    // *** Skip pointers.
-    // Store (1-indexed) position of every skipQuantum-th
-    // 0-bit in upper bits sequence.
-    size_t numSkipPointers = 0;
-    /* static */ if (skipQuantum != 0) {
-      CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
-
-      // 8 * upperSize is used here instead of upperSizeBits, as that is
-      // more serialization-friendly way (upperSizeBits isn't known outside of
-      // this function, unlike upperSize; thus numSkipPointers could easily be
-      // deduced from upperSize).
-      numSkipPointers = (8 * upperSize - size) / (skipQuantum ?: 1);
-      skipPointers_ = static_cast<SkipValueType*>(
-          numSkipPointers == 0
-            ? nullptr
-            : calloc(numSkipPointers, sizeof(SkipValueType)));
-    }
-
-    // *** Forward pointers.
-    // Store (1-indexed) position of every forwardQuantum-th
-    // 1-bit in upper bits sequence.
-    size_t numForwardPointers = 0;
-    /* static */ if (forwardQuantum != 0) {
-      CHECK_LT(upperBound >> numLowerBits,
-               std::numeric_limits<SkipValueType>::max());
-
-      // '?: 1' is a workaround for false 'division by zero' compile-time error.
-      numForwardPointers = size / (forwardQuantum ?: 1);
-      forwardPointers_ = static_cast<SkipValueType*>(
-        numForwardPointers == 0
-          ? nullptr
-          : malloc(numForwardPointers * sizeof(SkipValueType)));
-    }
-
-    // *** Result.
-    result_.size = size;
-    result_.numLowerBits = numLowerBits;
-    result_.lower.reset(lower_, lowerSize);
-    result_.upper.reset(upper_, upperSize);
-    result_.skipPointers.reset(
-        reinterpret_cast<unsigned char*>(skipPointers_),
-        numSkipPointers * sizeof(SkipValueType));
-    result_.forwardPointers.reset(
-        reinterpret_cast<unsigned char*>(forwardPointers_),
-        numForwardPointers * sizeof(SkipValueType));
+  EliasFanoEncoderV2(size_t size, ValueType upperBound)
+      : EliasFanoEncoderV2(
+            Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {
   }
 
   void add(ValueType value) {
@@ -259,6 +212,122 @@ struct EliasFanoEncoderV2 {
   EliasFanoCompressedList result_;
 };
 
+template <class Value,
+          class SkipValue,
+          size_t kSkipQuantum,
+          size_t kForwardQuantum>
+struct EliasFanoEncoderV2<Value,
+                          SkipValue,
+                          kSkipQuantum,
+                          kForwardQuantum>::Layout {
+  static Layout fromUpperBoundAndSize(size_t upperBound, size_t size) {
+    // numLowerBits can be at most 56 because of detail::writeBits56.
+    const uint8_t numLowerBits = std::min(defaultNumLowerBits(upperBound,
+                                                              size),
+                                          uint8_t(56));
+    // *** Upper bits.
+    // Upper bits are stored using unary delta encoding.
+    // For example, (3 5 5 9) will be encoded as 1000011001000_2.
+    const size_t upperSizeBits =
+      (upperBound >> numLowerBits) +  // Number of 0-bits to be stored.
+      size;                           // 1-bits.
+    const size_t upper = (upperSizeBits + 7) / 8;
+
+    // *** Validity checks.
+    // Shift by numLowerBits must be valid.
+    CHECK_LT(numLowerBits, 8 * sizeof(Value));
+    CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
+    CHECK_LT(upperBound >> numLowerBits,
+             std::numeric_limits<SkipValueType>::max());
+
+    return fromInternalSizes(numLowerBits, upper, size);
+  }
+
+  static Layout fromInternalSizes(uint8_t numLowerBits,
+                                  size_t upper,
+                                  size_t size) {
+    Layout layout;
+    layout.size = size;
+    layout.numLowerBits = numLowerBits;
+
+    layout.lower = (numLowerBits * size + 7) / 8;
+    layout.upper = upper;
+
+    // *** Skip pointers.
+    // Store (1-indexed) position of every skipQuantum-th
+    // 0-bit in upper bits sequence.
+    /* static */ if (skipQuantum != 0) {
+      // 8 * upper is used here instead of upperSizeBits, as that is
+      // more serialization-friendly way (upperSizeBits doesn't need
+      // to be known by this function, unlike upper).
+
+      // '?: 1' is a workaround for false 'division by zero'
+      // compile-time error.
+      size_t numSkipPointers = (8 * upper - size) / (skipQuantum ?: 1);
+      layout.skipPointers = numSkipPointers * sizeof(SkipValueType);
+    }
+
+    // *** Forward pointers.
+    // Store (1-indexed) position of every forwardQuantum-th
+    // 1-bit in upper bits sequence.
+    /* static */ if (forwardQuantum != 0) {
+      size_t numForwardPointers = size / (forwardQuantum ?: 1);
+      layout.forwardPointers = numForwardPointers * sizeof(SkipValueType);
+    }
+
+    return layout;
+  }
+
+  size_t bytes() const {
+    return lower + upper + skipPointers + forwardPointers;
+  }
+
+  template <typename Range>
+  EliasFanoCompressedListBase<typename Range::iterator>
+  openList(Range& buf) const {
+    EliasFanoCompressedListBase<typename Range::iterator> result;
+    result.size = size;
+    result.numLowerBits = numLowerBits;
+    result.data = buf.subpiece(0, bytes());
+
+    auto advance = [&] (size_t n) {
+      auto begin = buf.data();
+      buf.advance(n);
+      return begin;
+    };
+
+    result.skipPointers = advance(skipPointers);
+    result.forwardPointers = advance(forwardPointers);
+    result.lower = advance(lower);
+    result.upper = advance(upper);
+
+    return result;
+  }
+
+  MutableEliasFanoCompressedList allocList() const {
+    uint8_t* buf = nullptr;
+    // WARNING: Current read/write logic assumes that the 7 bytes
+    // following the last byte of lower and upper sequences are
+    // readable (stored value doesn't matter and won't be changed),
+    // so we allocate additional 7B, but do not include them in size
+    // of returned value.
+    if (size > 0) {
+      buf = static_cast<uint8_t*>(calloc(bytes() + 7, 1));
+    }
+    folly::MutableByteRange bufRange(buf, bytes());
+    return openList(bufRange);
+  }
+
+  size_t size = 0;
+  uint8_t numLowerBits = 0;
+
+  // Sizes in bytes.
+  size_t lower = 0;
+  size_t upper = 0;
+  size_t skipPointers = 0;
+  size_t forwardPointers = 0;
+};
+
 // NOTE: It's recommended to compile EF coding with -msse4.2, starting
 // with Nehalem, Intel CPUs support POPCNT instruction and gcc will emit
 // it for __builtin_popcountll intrinsic.
@@ -320,9 +389,9 @@ class UpperBitsReader {
   typedef typename Encoder::ValueType ValueType;
 
   explicit UpperBitsReader(const EliasFanoCompressedList& list)
-    : forwardPointers_(list.forwardPointers.data()),
-      skipPointers_(list.skipPointers.data()),
-      start_(list.upper.data()) {
+    : forwardPointers_(list.forwardPointers),
+      skipPointers_(list.skipPointers),
+      start_(list.upper) {
     reset();
   }
 
@@ -496,8 +565,8 @@ class EliasFanoReader : private boost::noncopyable {
       lastValue_ = 0;
       return;
     }
-    ValueType lastUpperValue = 8 * list_.upper.size() - list_.size;
-    auto it = list_.upper.end() - 1;
+    ValueType lastUpperValue = 8 * list_.upperSize() - list_.size;
+    auto it = list_.upper + list_.upperSize() - 1;
     DCHECK_NE(*it, 0);
     lastUpperValue -= 8 - folly::findLastSet(*it);
     lastValue_ = readLowerPart(list_.size - 1) |
@@ -602,7 +671,7 @@ class EliasFanoReader : private boost::noncopyable {
   ValueType readLowerPart(size_t i) const {
     DCHECK_LT(i, list_.size);
     const size_t pos = i * list_.numLowerBits;
-    const unsigned char* ptr = list_.lower.data() + (pos / 8);
+    const unsigned char* ptr = list_.lower + (pos / 8);
     const uint64_t ptrv = folly::loadUnaligned<uint64_t>(ptr);
     return lowerMask_ & (ptrv >> (pos % 8));
   }
