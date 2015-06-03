@@ -521,7 +521,7 @@ void EventBase::runInLoop(Cob&& cob, bool thisIteration) {
 }
 
 void EventBase::runOnDestruction(LoopCallback* callback) {
-  DCHECK(isInEventBaseThread());
+  std::lock_guard<std::mutex> lg(onDestructionCallbacksMutex_);
   callback->cancelLoopCallback();
   onDestructionCallbacks_.push_back(*callback);
 }

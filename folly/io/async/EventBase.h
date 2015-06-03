@@ -725,6 +725,9 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
 
   // Name of the thread running this EventBase
   std::string name_;
+
+  // allow runOnDestruction() to be called from any threads
+  std::mutex onDestructionCallbacksMutex_;
 };
 
 } // folly

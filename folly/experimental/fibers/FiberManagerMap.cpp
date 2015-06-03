@@ -13,20 +13,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/fibers/FiberManagerMap.h>
+#include "FiberManagerMap.h"
 
+#include <cassert>
 #include <memory>
 #include <unordered_map>
+
+#include <folly/ThreadLocal.h>
 
 namespace folly { namespace fibers {
 
 namespace detail {
 
-thread_local std::unordered_map<folly::EventBase*, FiberManager*>
-    localFiberManagerMap;
+class LocalFiberManagerMapTag;
+folly::ThreadLocal<std::unordered_map<folly::EventBase*, FiberManager*>,
+  LocalFiberManagerMapTag> localFiberManagerMap;
 std::unordered_map<folly::EventBase*, std::unique_ptr<FiberManager>>
     fiberManagerMap;
 std::mutex fiberManagerMapMutex;
+
+class OnEventBaseDestructionCallback : public folly::EventBase::LoopCallback {
+ public:
+  explicit OnEventBaseDestructionCallback(folly::EventBase& evb)
+           : evb_(&evb) {}
+  void runLoopCallback() noexcept override {
+    for (auto& localMap : localFiberManagerMap.accessAllThreads()) {
+      localMap.erase(evb_);
+    }
+    std::unique_ptr<FiberManager> fm;
+    {
+      std::lock_guard<std::mutex> lg(fiberManagerMapMutex);
+      auto it = fiberManagerMap.find(evb_);
+      assert(it != fiberManagerMap.end());
+      fm = std::move(it->second);
+      fiberManagerMap.erase(it);
+    }
+    assert(fm.get() != nullptr);
+    fm->loopUntilNoReady();
+    delete this;
+  }
+ private:
+  folly::EventBase* evb_;
+};
 
 FiberManager* getFiberManagerThreadSafe(folly::EventBase& evb,
                                         const FiberManager::Options& opts) {
@@ -42,6 +70,7 @@ FiberManager* getFiberManagerThreadSafe(folly::EventBase& evb,
   auto fiberManager =
       folly::make_unique<FiberManager>(std::move(loopController), opts);
   auto result = fiberManagerMap.emplace(&evb, std::move(fiberManager));
+  evb.runOnDestruction(new OnEventBaseDestructionCallback(evb));
   return result.first->second.get();
 }
 
@@ -49,13 +78,14 @@ FiberManager* getFiberManagerThreadSafe(folly::EventBase& evb,
 
 FiberManager& getFiberManager(folly::EventBase& evb,
                               const FiberManager::Options& opts) {
-  auto it = detail::localFiberManagerMap.find(&evb);
-  if (LIKELY(it != detail::localFiberManagerMap.end())) {
+  auto it = detail::localFiberManagerMap->find(&evb);
+  if (LIKELY(it != detail::localFiberManagerMap->end())) {
     return *(it->second);
   }
 
-  return *(detail::localFiberManagerMap[&evb] =
-               detail::getFiberManagerThreadSafe(evb, opts));
+  auto fm = detail::getFiberManagerThreadSafe(evb, opts);
+  detail::localFiberManagerMap->emplace(&evb, fm);
+  return *fm;
 }
 
 }}
