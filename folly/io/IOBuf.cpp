@@ -723,7 +723,6 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
           if (xallocx(p, newAllocatedCapacity, 0, 0) == newAllocatedCapacity) {
             newBuffer = static_cast<uint8_t*>(p);
             newHeadroom = oldHeadroom;
-            newAllocatedCapacity = newAllocatedCapacity;
           }
           // if xallocx failed, do nothing, fall back to malloc/memcpy/free
         }
