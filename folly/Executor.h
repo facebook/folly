@@ -19,6 +19,7 @@
 #include <atomic>
 #include <climits>
 #include <functional>
+#include <stdexcept>
 
 namespace folly {
 
