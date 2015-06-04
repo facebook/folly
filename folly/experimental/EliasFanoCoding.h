@@ -522,6 +522,10 @@ class UpperBitsReader {
     return skipToNext(v);
   }
 
+  void setDone(size_t endPos) {
+    position_ = endPos;
+  }
+
  private:
   ValueType setValue() {
     value_ = static_cast<ValueType>(8 * outer_ + inner_ - position_);
@@ -555,52 +559,51 @@ class EliasFanoReader : private boost::noncopyable {
   typedef typename Encoder::ValueType ValueType;
 
   explicit EliasFanoReader(const EliasFanoCompressedList& list)
-    : list_(list),
-      lowerMask_((ValueType(1) << list_.numLowerBits) - 1),
-      upper_(list_) {
+      : size_(list.size),
+        lower_(list.lower),
+        upper_(list),
+        lowerMask_((ValueType(1) << list.numLowerBits) - 1),
+        numLowerBits_(list.numLowerBits) {
     DCHECK(Instructions::supported());
     // To avoid extra branching during skipTo() while reading
     // upper sequence we need to know the last element.
-    if (UNLIKELY(list_.size == 0)) {
+    if (UNLIKELY(list.size == 0)) {
       lastValue_ = 0;
       return;
     }
-    ValueType lastUpperValue = 8 * list_.upperSize() - list_.size;
-    auto it = list_.upper + list_.upperSize() - 1;
+    ValueType lastUpperValue = 8 * list.upperSize() - size_;
+    auto it = list.upper + list.upperSize() - 1;
     DCHECK_NE(*it, 0);
     lastUpperValue -= 8 - folly::findLastSet(*it);
-    lastValue_ = readLowerPart(list_.size - 1) |
-                 (lastUpperValue << list_.numLowerBits);
+    lastValue_ = readLowerPart(size_ - 1) | (lastUpperValue << numLowerBits_);
   }
 
   void reset() {
     upper_.reset();
-    progress_ = 0;
     value_ = 0;
   }
 
   bool next() {
-    if (UNLIKELY(progress_ >= list_.size)) {
+    if (UNLIKELY(position() + 1 >= size_)) {
       return setDone();
     }
-    value_ = readLowerPart(progress_) |
-             (upper_.next() << list_.numLowerBits);
-    ++progress_;
+    upper_.next();
+    value_ = readLowerPart(upper_.position()) |
+             (upper_.value() << numLowerBits_);
     return true;
   }
 
   bool skip(size_t n) {
     CHECK_GT(n, 0);
 
-    progress_ += n;
-    if (LIKELY(progress_ <= list_.size)) {
+    if (LIKELY(position() + n < size_)) {
       if (LIKELY(n < kLinearScanThreshold)) {
         for (size_t i = 0; i < n; ++i) upper_.next();
       } else {
         upper_.skip(n);
       }
-      value_ = readLowerPart(progress_ - 1) |
-        (upper_.value() << list_.numLowerBits);
+      value_ = readLowerPart(upper_.position()) |
+        (upper_.value() << numLowerBits_);
       return true;
     }
 
@@ -615,7 +618,7 @@ class EliasFanoReader : private boost::noncopyable {
       return setDone();
     }
 
-    size_t upperValue = (value >> list_.numLowerBits);
+    size_t upperValue = (value >> numLowerBits_);
     size_t upperSkip = upperValue - upper_.value();
     // The average density of ones in upper bits is 1/2.
     // LIKELY here seems to make things worse, even for small skips.
@@ -632,9 +635,8 @@ class EliasFanoReader : private boost::noncopyable {
   }
 
   bool jump(size_t n) {
-    if (LIKELY(n - 1 < list_.size)) {  // n > 0 && n <= list_.size
-      progress_ = n;
-      value_ = readLowerPart(n - 1) | (upper_.jump(n) << list_.numLowerBits);
+    if (LIKELY(n - 1 < size_)) {  // n > 0 && n <= size_
+      value_ = readLowerPart(n - 1) | (upper_.jump(n) << numLowerBits_);
       return true;
     } else if (n == 0) {
       reset();
@@ -651,27 +653,27 @@ class EliasFanoReader : private boost::noncopyable {
       return setDone();
     }
 
-    upper_.jumpToNext(value >> list_.numLowerBits);
+    upper_.jumpToNext(value >> numLowerBits_);
     iterateTo(value);
     return true;
   }
 
-  size_t size() const { return list_.size; }
+  size_t size() const { return size_; }
 
-  size_t position() const { return progress_ - 1; }
+  size_t position() const { return upper_.position(); }
   ValueType value() const { return value_; }
 
  private:
   bool setDone() {
     value_ = std::numeric_limits<ValueType>::max();
-    progress_ = list_.size + 1;
+    upper_.setDone(size_);
     return false;
   }
 
   ValueType readLowerPart(size_t i) const {
-    DCHECK_LT(i, list_.size);
-    const size_t pos = i * list_.numLowerBits;
-    const unsigned char* ptr = list_.lower + (pos / 8);
+    DCHECK_LT(i, size_);
+    const size_t pos = i * numLowerBits_;
+    const unsigned char* ptr = lower_ + (pos / 8);
     const uint64_t ptrv = folly::loadUnaligned<uint64_t>(ptr);
     return lowerMask_ & (ptrv >> (pos % 8));
   }
@@ -679,21 +681,21 @@ class EliasFanoReader : private boost::noncopyable {
   void iterateTo(ValueType value) {
     while (true) {
       value_ = readLowerPart(upper_.position()) |
-        (upper_.value() << list_.numLowerBits);
+        (upper_.value() << numLowerBits_);
       if (LIKELY(value_ >= value)) break;
       upper_.next();
     }
-    progress_ = upper_.position() + 1;
   }
 
   constexpr static size_t kLinearScanThreshold = 8;
 
-  const EliasFanoCompressedList list_;
-  const ValueType lowerMask_;
+  size_t size_;
+  const uint8_t* lower_;
   detail::UpperBitsReader<Encoder, Instructions> upper_;
-  size_t progress_ = 0;
+  const ValueType lowerMask_;
   ValueType value_ = 0;
   ValueType lastValue_;
+  uint8_t numLowerBits_;
 };
 
 }}  // namespaces
