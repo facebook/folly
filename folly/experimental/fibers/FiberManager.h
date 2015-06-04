@@ -32,11 +32,8 @@
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 #include <folly/experimental/fibers/Fiber.h>
-#include <folly/experimental/fibers/traits.h>
-
-#ifdef USE_GUARD_ALLOCATOR
 #include <folly/experimental/fibers/GuardPageAllocator.h>
-#endif
+#include <folly/experimental/fibers/traits.h>
 
 namespace folly { namespace fibers {
 
@@ -317,13 +314,7 @@ class FiberManager : public ::folly::Executor {
    * Allocator used to allocate stack for Fibers in the pool.
    * Allocates stack on the stack of the main context.
    */
-#ifdef USE_GUARD_ALLOCATOR
-  /* This is too slow for production use; can be fixed
-     if we allocated all stack storage once upfront */
   GuardPageAllocator stackAllocator_;
-#else
-  std::allocator<unsigned char> stackAllocator_;
-#endif
 
   const Options options_;       /**< FiberManager options */
 

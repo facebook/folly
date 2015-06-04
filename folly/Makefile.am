@@ -91,7 +91,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/ForEach-inl.h \
 	experimental/fibers/GenericBaton.h \
 	experimental/fibers/GuardPageAllocator.h \
-	experimental/fibers/GuardPageAllocator-inl.h \
 	experimental/fibers/LoopController.h \
 	experimental/fibers/Promise.h \
 	experimental/fibers/Promise-inl.h \
@@ -400,6 +399,7 @@ libfolly_la_SOURCES = \
 	experimental/fibers/Fiber.cpp \
 	experimental/fibers/FiberManager.cpp \
 	experimental/fibers/FiberManagerMap.cpp \
+	experimental/fibers/GuardPageAllocator.cpp \
 	experimental/fibers/TimeoutController.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
