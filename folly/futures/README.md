@@ -1,264 +1,1065 @@
-# folly::Futures
+<section class="dex_guide"><h1 class="dex_title">Futures</h1><section class="dex_document"><h1></h1><p class="dex_introduction">Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.</p><h2 id="overview">Overview <a href="#overview" class="headerLink">#</a></h2>
 
-Futures is a futures-based async framework inspired by [Twitter's Finagle](http://twitter.github.io/finagle/) (which is in scala), and (loosely) building upon the existing (but anemic) Futures code found in the C++11 standard ([`std::future`](http://en.cppreference.com/w/cpp/thread/future)) and [`boost::future`](http://www.boost.org/doc/libs/1_53_0/boost/thread/future.hpp) (especially >= 1.53.0). Although inspired by the std::future interface, it is not syntactically drop-in compatible because some ideas didn't translate well enough and we decided to break from the API. But semantically, it should be straightforward to translate from existing std::future code to Futures.
+<p>Folly Futures is an async C++ framework inspired by <a href="https://twitter.github.io/finagle/guide/Futures.html" target="_blank">Twitter&#039;s Futures</a> implementation in Scala (see also <a href="https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Future.scala" target="_blank">Future.scala</a>, <a href="https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Promise.scala" target="_blank">Promise.scala</a>, and friends), and loosely builds upon the existing but anemic Futures code found in the C++11 standard (<a href="http://en.cppreference.com/w/cpp/thread/future" target="_blank">std::future</a>) and <a href="http://www.boost.org/doc/libs/1_53_0/doc/html/thread/synchronization.html#thread.synchronization.futures" target="_blank">boost::future</a> (especially &gt;= 1.53.0). 
+Although inspired by the C++11 std::future interface, it is not a drop-in replacement because some ideas don&#039;t translate well enough to maintain API compatibility.</p>
 
-The primary semantic differences are that folly's Futures and Promises are not threadsafe; and as does `boost::future`, folly::Futures support continuing callbacks (`then()`) and there are helper methods `collectAll()` and `collectAny()` which are important compositional building blocks.
+<p>The primary difference from std::future is that you can attach callbacks to Futures (with <tt>then()</tt>), which enables sequential and parallel composition of Futures for cleaner asynchronous code.</p>
 
-## Brief Synopsis
+<h2 id="brief-synopsis">Brief Synopsis <a href="#brief-synopsis" class="headerLink">#</a></h2>
 
-```C++
-#include <folly/futures/Future.h>
-using namespace folly;
-using namespace std;
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="cp">#include &lt;folly/futures/Future.h&gt;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">folly</span><span class="p">;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 
-void foo(int x) {
-  // do something with x
-  cout << "foo(" << x << ")" << endl;
-}
+<span class="kt">void</span> <span class="nf">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// do something with x</span>
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;foo(&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;)&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
 
-// ...
+<span class="c1">// ...</span>
 
-  cout << "making Promise" << endl;
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  f.then(
-    [](Try<int>&& t) {
-      foo(t.value());
-    });
-  cout << "Future chain made" << endl;
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;making Promise&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+  <span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+  <span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+  <span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">foo</span><span class="p">);</span>
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Future chain made&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
 
-// ... now perhaps in another event callback
+<span class="c1">// ... now perhaps in another event callback</span>
 
-  cout << "fulfilling Promise" << endl;
-  p.setValue(42);
-  cout << "Promise fulfilled" << endl;
-```
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;fulfilling Promise&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+  <span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Promise fulfilled&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span></pre></div>
 
-This would print:
+<p>This would print:</p>
+
+<div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="no">making</span> <span class="no">Promise</span>
+<span class="no">Future</span> <span class="no">chain</span> <span class="no">made</span>
+<span class="no">fulfilling</span> <span class="no">Promise</span>
+<span class="nf" data-symbol-name="foo">foo</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+<span class="no">Promise</span> <span class="no">fulfilled</span></pre></div></section><section class="dex_document"><h1>Brief Guide</h1><p class="dex_introduction"></p><p>This brief guide covers the basics. For a more in-depth coverage skip to <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=19649">More Details</a> or the appropriate section.</p>
+
+<p>Let&#039;s begin with an example using an imaginary simplified Memcache client interface:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">using</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">MemcacheClient</span> <span class="p">{</span>
+ <span class="nl">public:</span>
+  <span class="k">struct</span> <span class="n">GetReply</span> <span class="p">{</span>
+    <span class="k">enum</span> <span class="k">class</span> <span class="nc">Result</span> <span class="p">{</span>
+      <span class="n">FOUND</span><span class="p">,</span>
+      <span class="n">NOT_FOUND</span><span class="p">,</span>
+      <span class="n">SERVER_ERROR</span><span class="p">,</span>
+    <span class="p">};</span>
+
+    <span class="n">Result</span> <span class="n">result</span><span class="p">;</span>
+    <span class="c1">// The value when result is FOUND,</span>
+    <span class="c1">// The error message when result is SERVER_ERROR or CLIENT_ERROR</span>
+    <span class="c1">// undefined otherwise</span>
+    <span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+  <span class="p">};</span>
+
+  <span class="n">GetReply</span> <span class="nf">get</span><span class="p">(</span><span class="n">string</span> <span class="n">key</span><span class="p">);</span>
+<span class="p">};</span></pre></div>
+
+<p>This API is synchronous, i.e. when you call <tt>get()</tt> you have to wait for the result. This is very simple, but unfortunately it is also very easy to write very slow code using synchronous APIs.</p>
+
+<p>Now, consider this traditional asynchronous signature for <tt>get()</tt>:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="kt">int</span> <span class="nf">get</span><span class="p">(</span><span class="n">string</span> <span class="n">key</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="n">GetReply</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">callback</span><span class="p">);</span></pre></div>
+
+<p>When you call <tt>get()</tt>, your asynchronous operation begins and when it finishes your callback will be called with the result. Very performant code can be written with an API like this, but for nontrivial applications the code devolves into a special kind of spaghetti code affectionately referred to as &quot;callback hell&quot;.</p>
+
+<p>The Future-based API looks like this:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="n">GetReply</span><span class="o">&gt;</span> <span class="n">get</span><span class="p">(</span><span class="n">string</span> <span class="n">key</span><span class="p">);</span></pre></div>
+
+<p>A <tt>Future&lt;GetReply&gt;</tt> is a placeholder for the <tt>GetReply</tt> that we will eventually get. A Future usually starts life out &quot;unfulfilled&quot;, or incomplete, i.e.:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">fut</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">false</span>
+<span class="n">fut</span><span class="p">.</span><span class="n">value</span><span class="p">()</span>  <span class="c1">// will throw an exception because the Future is not ready</span></pre></div>
+
+<p>At some point in the future, the Future will have been fulfilled, and we can access its value.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">fut</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">true</span>
+<span class="n">GetReply</span><span class="o">&amp;</span> <span class="n">reply</span> <span class="o">=</span> <span class="n">fut</span><span class="p">.</span><span class="n">value</span><span class="p">();</span></pre></div>
+
+<p>Futures support exceptions. If something exceptional happened, your Future may represent an exception instead of a value. In that case:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">fut</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">true</span>
+<span class="n">fut</span><span class="p">.</span><span class="n">value</span><span class="p">()</span> <span class="c1">// will rethrow the exception</span></pre></div>
+
+<p>Just what is exceptional depends on the API. In our example we have chosen not to raise exceptions for <tt>SERVER_ERROR</tt>, but represent this explicitly in the <tt>GetReply</tt> object. On the other hand, an astute Memcache veteran would notice that we left <tt>CLIENT_ERROR</tt> out of <tt>GetReply::Result</tt>, and perhaps a <tt>CLIENT_ERROR</tt> would have been raised as an exception, because <tt>CLIENT_ERROR</tt> means there&#039;s a bug in the library and this would be truly exceptional. These decisions are judgement calls by the API designer. The important thing is that exceptional conditions (including and especially spurious exceptions that nobody expects) get captured and can be handled higher up the &quot;stack&quot;.</p>
+
+<p>So far we have described a way to initiate an asynchronous operation via an API that returns a Future, and then sometime later after it is fulfilled, we get its value. This is slightly more useful than a synchronous API, but it&#039;s not yet ideal. There are two more very important pieces to the puzzle.</p>
+
+<p>First, we can aggregate Futures, to define a new Future that completes after some or all of the aggregated Futures complete. Consider two examples: fetching a batch of requests and waiting for all of them, and fetching a group of requests and waiting for only one of them.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">vector</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">GetReply</span><span class="o">&gt;&gt;</span> <span class="n">futs</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">key</span> <span class="o">:</span> <span class="n">keys</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">futs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">mc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">));</span>
+<span class="p">}</span>
+<span class="k">auto</span> <span class="n">all</span> <span class="o">=</span> <span class="n">collectAll</span><span class="p">(</span><span class="n">futs</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">futs</span><span class="p">.</span><span class="n">end</span><span class="p">());</span>
+
+<span class="n">vector</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">GetReply</span><span class="o">&gt;&gt;</span> <span class="n">futs</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">key</span> <span class="o">:</span> <span class="n">keys</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">futs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">mc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">));</span>
+<span class="p">}</span>
+<span class="k">auto</span> <span class="n">any</span> <span class="o">=</span> <span class="n">collectAny</span><span class="p">(</span><span class="n">futs</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">futs</span><span class="p">.</span><span class="n">end</span><span class="p">());</span></pre></div>
+
+<p><tt>all</tt> and <tt>any</tt> are Futures (for the exact type and usage see the header files). They will be complete when all/one of futs are complete, respectively. (There is also <tt>collectN()</tt> for when you need some.)</p>
+
+<p>Second, we can attach callbacks to a Future, and chain them together monadically. An example will clarify:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="n">GetReply</span><span class="o">&gt;</span> <span class="n">fut1</span> <span class="o">=</span> <span class="n">mc</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;foo&quot;</span><span class="p">);</span>
+
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">fut2</span> <span class="o">=</span> <span class="n">fut1</span><span class="p">.</span><span class="n">then</span><span class="p">(</span>
+  <span class="p">[](</span><span class="n">GetReply</span> <span class="n">reply</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">reply</span><span class="p">.</span><span class="n">result</span> <span class="o">==</span> <span class="n">MemcacheClient</span><span class="o">::</span><span class="n">GetReply</span><span class="o">::</span><span class="n">Result</span><span class="o">::</span><span class="n">FOUND</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">reply</span><span class="p">.</span><span class="n">value</span><span class="p">;</span>
+    <span class="k">throw</span> <span class="nf">SomeException</span><span class="p">(</span><span class="s">&quot;No value&quot;</span><span class="p">);</span>
+  <span class="p">});</span>
+
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">fut3</span> <span class="o">=</span> <span class="n">fut2</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">string</span> <span class="n">str</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">str</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="n">std</span><span class="o">::</span><span class="n">exception</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+  <span class="p">});</span></pre></div>
+
+<p>That example is a little contrived but the idea is that you can transform a result from one type to another, potentially in a chain, and unhandled errors propagate. Of course, the intermediate variables are optional.</p>
+
+<p>Using then to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell.</p>
+
+<p>Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future. Futures have a blocking method called <tt>wait()</tt> that does exactly that and optionally takes a timeout.</p>
+
+<p>Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there&#039;s a full memory barrier of some sort. <tt>Future::then</tt> and <tt>Promise::setValue</tt> (and all variants that boil down to those two calls) can be called from different threads. <strong>But</strong>, be warned that you might be surprised about which thread your callback executes on. Let&#039;s consider an example.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Thread A</span>
+<span class="n">Promise</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+
+<span class="c1">// Thread B</span>
+<span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">z</span><span class="p">);</span>
+
+<span class="c1">// Thread A</span>
+<span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">();</span></pre></div>
+
+<p>This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread <tt>x</tt>, <tt>y</tt>, and/or <tt>z</tt> will execute. Maybe they will execute in Thread A when <tt>p.setValue()</tt> is called. Or, maybe they will execute in Thread B when <tt>f.then</tt> is called. Or, maybe <tt>x</tt> will execute in Thread B, but <tt>y</tt> and/or <tt>z</tt> will execute in Thread A. There&#039;s a race between <tt>setValue</tt> and <tt>then</tt>&#x2014;whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.</p>
+
+<p>Naturally, you will want some control over which thread executes callbacks. We have a few mechanisms to help.</p>
+
+<p>The first and most useful is <tt>via</tt>, which passes execution through an <tt>Executor</tt>, which usually has the effect of running the callback in a new thread.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">aFuture</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">e1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">e2</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">z</span><span class="p">);</span></pre></div>
+
+<p><tt>x</tt> will execute in the current thread. <tt>y1</tt> and <tt>y2</tt> will execute in the thread on the other side of <tt>e1</tt>, and <tt>z</tt> will execute in the thread on the other side of <tt>e2</tt>. If after <tt>z</tt> you want to get back to the current thread, you need to get there via an executor. Another way to express this is using an overload of <tt>then</tt> that takes an Executor:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">aFuture</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">z</span><span class="p">);</span></pre></div>
+
+<p>Either way, there is no ambiguity about which thread will execute <tt>y1</tt>, <tt>y2</tt>, or <tt>z</tt>.</p>
+
+<p>You can still have a race after <tt>via</tt> if you break it into multiple statements, e.g. in this counterexample:</p>
+
+<div class="remarkup-code-block remarkup-counterexample" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">f</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">e1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y2</span><span class="p">);</span> <span class="c1">// nothing racy here</span>
+<span class="n">f2</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">y3</span><span class="p">);</span> <span class="c1">// racy</span></pre></div>
+
+<h2 id="you-make-me-promises-pro">You make me Promises, Promises <a href="#you-make-me-promises-pro" class="headerLink">#</a></h2>
+
+<p>If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make <tt>Promise</tt>s. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with <tt>makeFuture()</tt>). Promises are simple: you make one, you extract the Future, and you fulfill it with a value or an exception. Example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+
+<span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">false</span>
+
+<span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+
+<span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">true</span>
+<span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">()</span> <span class="o">==</span> <span class="mi">42</span></pre></div>
+
+<p>and an exception example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+
+<span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">false</span>
+
+<span class="n">p</span><span class="p">.</span><span class="n">setException</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;Fail&quot;</span><span class="p">));</span>
+
+<span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">()</span> <span class="o">==</span> <span class="nb">true</span>
+<span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">()</span> <span class="c1">// throws the exception</span></pre></div>
+
+<p>It&#039;s good practice to use setWith which takes a function and automatically captures exceptions, e.g.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">setWith</span><span class="p">([]{</span>
+  <span class="n">try</span> <span class="p">{</span>
+    <span class="c1">// do stuff that may throw</span>
+    <span class="k">return</span> <span class="mi">42</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="n">MySpecialException</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// handle it</span>
+    <span class="k">return</span> <span class="mi">7</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="c1">// Any exceptions that we didn&#39;t catch, will be caught for us</span>
+<span class="p">});</span></pre></div></section><section class="dex_document"><h1>More Details</h1><p class="dex_introduction"></p><p>Let&#039;s look at a contrived and synchronous example of Futures.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+<span class="c1">// ...</span>
+<span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span> <span class="c1">// or setException(...)</span>
+<span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">();</span> <span class="c1">// prints 42</span></pre></div>
+
+<p>First, we create a <a href="https://github.com/facebook/folly/blob/master/folly/futures/Promise.h" target="_blank">Promise</a> object of type <tt>int</tt>. This object is exactly what it sounds like&#x2014;a pledge to provide an <tt>int</tt> (or an exception) at some point in the future.</p>
+
+<p>Next, we extract a <a href="https://github.com/facebook/folly/blob/master/folly/futures/Future.h" target="_blank">Future</a> object from that promise. You can think of futures as handles on promises - they provide a way to access that <tt>int</tt> when the promise is fulfilled.</p>
+
+<p>Later, when the promise is fulfilled via <tt>setValue()</tt> or <tt>setException()</tt>, that <tt>int</tt> is accessible via the future&#039;s <tt>value()</tt> method. That method will throw if the future contains an exception.</p>
+
+<h2 id="setting-callbacks-with-t">Setting callbacks with then() <a href="#setting-callbacks-with-t" class="headerLink">#</a></h2>
+
+<p>Ok, great, so now you&#039;re wondering what these are actually useful for. Let&#039;s consider another way to follow up on the result of a <tt>Future</tt> once its corresponding <tt>Promise</tt> is fulfilled&#x2014;callbacks! Here&#039;s a snippet that is functionally equivalent to the one above:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+
+<span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">int</span> <span class="n">i</span><span class="p">){</span>
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">i</span><span class="p">;</span>
+<span class="p">});</span>
+
+<span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span></pre></div>
+
+<p>That <tt>then()</tt> method on futures is the real bread and butter of Futures code. It allows you to provide a callback which will be executed when that <tt>Future</tt> is complete. Note that while we fulfill the promise after setting the callback here, those operations could be swapped. Setting a callback on an already completed future executes the callback immediately.</p>
+
+<p>In this case, the callback takes a value directly. If the Future contained an exception, the callback will be passed over and the exception will be propagated to the resultant Future - more on that in a second. Your callback may also take a <a href="https://github.com/facebook/folly/blob/master/folly/futures/Try.h" target="_blank">Try</a>, which encapsulates either an exception or a value of its templated type.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+<span class="p">});</span></pre></div>
+
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> Do not use Try unless you are actually going to do exception handling in your callback. It is much cleaner and often more performant to take the value directly when you can. If you want to do exception handling, there still might be better options than Try. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14604">Error Handling</a>.</div>
+
+<p>The real power of <tt>then()</tt> is that it <em>returns a <tt>Future</tt> of the type that the callback returns</em> and can therefore be chained and nested with ease. Let&#039;s consider another example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">int</span> <span class="n">i</span><span class="p">){</span>
+  <span class="k">return</span> <span class="n">folly</span><span class="o">::</span><span class="n">to</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="n">f2</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">string</span> <span class="n">s</span><span class="p">){</span> <span class="cm">/* ... */</span> <span class="p">});</span></pre></div>
+
+<p>Here, we convert that <tt>int</tt> to a <tt>string</tt> in the callback and return the result, which results in a <tt>Future&lt;string&gt;</tt> that we can set further callbacks on. I&#039;ve created a named variable <tt>f2</tt> to demonstrate types but don&#039;t hesitate to chain futures directly:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">finalFuture</span> <span class="o">=</span> <span class="n">getSomeFuture</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(...)</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(...)</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(...);</span></pre></div>
+
+<p>That&#039;s all great, but this code is still synchronous. These constructs truly become useful when you start to chain, nest, and compose asynchronous operations. Let&#039;s say you instead have some <em>remote</em> service that converts your integers to strings for you, and that you also have a client with Future interfaces (i.e. interfaces that return Futures). Now let&#039;s leverage the fact that <tt>then()</tt> also allows you to return <tt>Future&lt;T&gt;</tt> from inside your callbacks as well as just <tt>T</tt>:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">f2</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">int</span> <span class="n">i</span><span class="p">){</span>
+  <span class="k">return</span> <span class="n">getClient</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">future_intToString</span><span class="p">(</span><span class="n">i</span><span class="p">);</span> <span class="c1">// returns Future&lt;string&gt;</span>
+<span class="p">});</span>
+
+<span class="n">f2</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">Try</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">s</span><span class="p">){</span> <span class="p">...</span> <span class="p">});</span></pre></div>
+
+<p>In general, your code will be cleaner if you return <tt>T</tt> from your callbacks and only switch to returning <tt>Future&lt;T&gt;</tt> when necessary (i.e. when there is a nested call to a future-returning function).</p>
+
+<h2 id="futures-promises-and-mov">Futures, Promises, and move semantics <a href="#futures-promises-and-mov" class="headerLink">#</a></h2>
+
+<p><tt>Futures</tt> and <tt>Promises</tt> are movable but non-copyable. This preserves the invariant of a one-to-one mapping between a Promise and a Future and as a side effect encourages performant code. There is a piece of heap-allocated shared state underlying each promise-future pair&#x2014;keep this in mind as a bare minimum performance cost.</p>
+
+<h2 id="synchronously-creating-a">Synchronously creating and completing futures <a href="#synchronously-creating-a" class="headerLink">#</a></h2>
+
+<p>Synchronously entering and exiting the futures paradigm can be useful, especially in tests, so the following utilities are available:</p>
+
+<ul>
+<li>Create already-completed futures with <tt>makeFuture&lt;T&gt;()</tt>, which takes a <tt>T&amp;&amp;</tt> (or an exception, more info <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14604">here</a>). If you pass <tt>T&amp;&amp;</tt> the type is inferred and you don&#039;t have to specify it.</li>
+<li>Extract a future&#039;s <tt>T</tt> value with <tt>Future&lt;T&gt;::get()</tt>. This method is blocking, so make sure that either your future is already completed or that another thread will complete the future while the calling thread blocks. <tt>get()</tt> can also take a timeout&#x2014;see <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>.</li>
+<li>Perform a blocking wait on a Future with <tt>Future&lt;T&gt;::wait()</tt>. This is just like <tt>get()</tt> but it instead of extracting the value or throwing the exception, <tt>wait()</tt> returns a new Future with the result of the input Future. Like <tt>get()</tt>, <tt>wait()</tt> can also take a timeout&#x2014;see <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>.</li>
+<li><tt>getVia()</tt> and <tt>waitVia()</tt>, which are like <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor (say, an <tt>EventBase</tt>) until the Future is complete. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> for more.</li>
+</ul>
+
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> <tt>makeFuture()</tt>, <tt>get()</tt>, <tt>wait()</tt>, and friends are especially handy in tests and are documented further in the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> article.</div>
+
+<h2 id="overloads-of-then">Overloads of then() <a href="#overloads-of-then" class="headerLink">#</a></h2>
+
+<p>Above are demonstrations of variants of <tt>then()</tt> whose callbacks</p>
+
+<ul>
+<li>return <tt>Future&lt;T&gt;</tt> or <tt>T</tt></li>
+<li>take <tt>T const&amp;</tt> or <tt>Try&lt;T&gt; const&amp;</tt> (also possible are <tt>T</tt>, <tt>Try&lt;T&gt;</tt>, <tt>T&amp;&amp;</tt>, and <tt>Try&lt;T&gt;&amp;&amp;</tt>)</li>
+</ul>
+
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> The preferred pattern is&#x2014;when possible&#x2014;to use value semantics (take a <tt>T</tt> or <tt>Try&lt;T&gt;</tt>). If your type is expensive to copy or can&#039;t be copied, take a reference. (e.g. <tt>T const&amp;</tt> or <tt>Try&lt;T&gt; const&amp;</tt>) If you need move semantics, an lvalue reference or rvalue reference is the same in this situation. Use whichever you stylistically prefer.</div>
+
+<p>The flexibility doesn&#039;t end there. There are also overloads so that you can bind global functions, member functions, and static member functions to <tt>then()</tt>:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="kt">void</span> <span class="nf">globalFunction</span><span class="p">(</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">);</span>
+
+<span class="k">struct</span> <span class="n">Foo</span> <span class="p">{</span>
+  <span class="kt">void</span> <span class="n">memberMethod</span><span class="p">(</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">);</span>
+  <span class="k">static</span> <span class="kt">void</span> <span class="nf">staticMemberMethod</span><span class="p">(</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="k">const</span><span class="o">&amp;</span> <span class="n">t</span><span class="p">);</span>
+<span class="p">};</span>
+<span class="n">Foo</span> <span class="n">foo</span><span class="p">;</span>
+
+<span class="c1">// bind global function</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">globalFunction</span><span class="p">);</span>
+<span class="c1">// bind member method</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">2</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Foo</span><span class="o">::</span><span class="n">memberMethod</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">foo</span><span class="p">);</span>
+<span class="c1">// bind static member method</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Foo</span><span class="o">::</span><span class="n">staticMemberMethod</span><span class="p">);</span></pre></div>
+
+<h2 id="a-note-on-promises">A note on Promises <a href="#a-note-on-promises" class="headerLink">#</a></h2>
+
+<p>Generally speaking, the majority of your futures-based code will deal with <tt>Futures</tt> alone and not <tt>Promises</tt>&#x2014;calling <tt>Future</tt>-returning interfaces, composing callbacks on them, and eventually returning another <tt>Future</tt>. <tt>Promises</tt> are most useful when you&#039;re wrapping some lower level asynchronous interface so that you can return a <tt>Future</tt>:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="kt">void</span> <span class="nf">fooOldFashioned</span><span class="p">(</span><span class="kt">int</span> <span class="n">arg</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">callback</span><span class="p">);</span>
+
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">arg</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">auto</span> <span class="n">promise</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;</span><span class="p">();</span>
+
+  <span class="n">fooOldFashioned</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="p">[</span><span class="n">promise</span><span class="p">](</span><span class="kt">int</span> <span class="n">result</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">promise</span><span class="o">-&gt;</span><span class="n">setValue</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+  <span class="p">});</span>
+
+  <span class="k">return</span> <span class="n">promise</span><span class="o">-&gt;</span><span class="n">getFuture</span><span class="p">();</span>
+<span class="p">}</span></pre></div>
+
+<p>Though not a hard-and-fast rule, using promises heavily in your code might indicate</p>
+
+<ul>
+<li>an opportunity for a cleaner futures-based version</li>
+<li>a missing abstraction in our library. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14607">Compositional Building Blocks</a>, <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>, <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14616">Interrupts</a>, etc. Let us know if you think this is the case.</li>
+</ul>
+
+<h2 id="sharedpromise">SharedPromise <a href="#sharedpromise" class="headerLink">#</a></h2>
+
+<p><a href="https://github.com/facebook/folly/blob/master/folly/futures/SharedPromise.h" target="_blank">SharedPromise</a> provides the same interface as Promise, but you can extract multiple Futures from it, i.e. you can call <tt>getFuture()</tt> as many times as you&#039;d like. When the SharedPromise is fulfilled, all of the Futures will be called back. Calls to getFuture() after the SharedPromise is fulfilled return a completed Future. If you find yourself constructing collections of Promises and fulfilling them simultaneously with the same value, consider this utility instead. Likewise, if you find yourself in need of setting multiple callbacks on the same Future (which is indefinitely unsupported), consider refactoring to use SharedPromise to &quot;split&quot; the Future.</p></section><section class="dex_document"><h1>Error Handling</h1><p class="dex_introduction">Asynchronous code can't employ try/catch exception handling universally, so Futures provides facilities to make error handling as easy and natural as possible. Here's an overview.</p><h2 id="throwing-exceptions">Throwing Exceptions <a href="#throwing-exceptions" class="headerLink">#</a></h2>
+
+<p>There are several ways to introduce exceptions into your Futures flow. First, <tt>makeFuture&lt;T&gt;()</tt> and <tt>Promise&lt;T&gt;::setException()</tt> can create a failed future from any <tt>std::exception</tt>, from a <tt>folly::exception_wrapper</tt>, or from an <tt>std::exception_ptr</tt> (deprecated):</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;oh no!&quot;</span><span class="p">));</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">folly</span><span class="o">::</span><span class="n">make_exception_wrapper</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;oh no!&quot;</span><span class="p">));</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">current_exception</span><span class="p">());</span>
+
+<span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">p3</span><span class="p">;</span>
+<span class="n">p1</span><span class="p">.</span><span class="n">setException</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;oh no!&quot;</span><span class="p">));</span>
+<span class="n">p2</span><span class="p">.</span><span class="n">setException</span><span class="p">(</span><span class="n">folly</span><span class="o">::</span><span class="n">make_exception_wrapper</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;oh no!&quot;</span><span class="p">));</span>
+<span class="n">p3</span><span class="p">.</span><span class="n">setException</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">current_exception</span><span class="p">());</span></pre></div>
+
+<p>In general, any time you pass a function to a method that returns a <tt>Future</tt> or fulfills a <tt>Promise</tt>, you can rest assured that any thrown exceptions (including non-<tt>std::exceptions</tt>) will be caught and stored. For instance,</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">makeFuture</span><span class="p">().</span><span class="n">then</span><span class="p">([]{</span>
+  <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">);</span>
+<span class="p">});</span></pre></div>
+
+<p>is perfectly valid code. The exception will be caught and stored in the resultant <tt>Future</tt>.</p>
+
+<p>Methods that behave this way include</p>
+
+<ul>
+<li><tt>Future&lt;T&gt;::then()</tt> and all its variants</li>
+<li><tt>Future&lt;T&gt;::onError()</tt>: more on this below</li>
+<li><tt>makeFutureTry()</tt>: takes a function, executes it, and creates a Future with the result or any thrown exception</li>
+<li><tt>Promise&lt;T&gt;::setWith()</tt>: similar to <tt>makeFutureTry</tt> except it fulfills a Promise instead of creating a completed Future</li>
+</ul>
+
+<h2 id="catching-exceptions">Catching Exceptions <a href="#catching-exceptions" class="headerLink">#</a></h2>
+
+<p>There are also several ways to handle exceptions in Futures code.</p>
+
+<h3 id="using-try">Using Try <a href="#using-try" class="headerLink">#</a></h3>
+
+<p>First, there&#039;s the <tt>Try</tt> abstraction which multiplexes values and exceptions so they can be handled simultaneously in a <tt>then()</tt> callback:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">)).</span><span class="n">then</span><span class="p">([](</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="n">try</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">i</span> <span class="o">=</span> <span class="n">t</span><span class="p">.</span><span class="n">value</span><span class="p">();</span> <span class="c1">// will rethrow</span>
+    <span class="c1">// handle success</span>
+  <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// handle failure</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// Try is also integrated with exception_wrapper</span>
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">)).</span><span class="n">then</span><span class="p">([](</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">t</span><span class="p">.</span><span class="n">hasException</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&gt;</span><span class="p">())</span> <span class="p">{</span>
+    <span class="c1">// this is enough if we only care whether the given exception is present</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+
+<span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">)).</span><span class="n">then</span><span class="p">([](</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="c1">// we can also extract and handle the exception object</span>
+  <span class="c1">// TODO(jsedgwick) infer exception type from the type of the function</span>
+  <span class="kt">bool</span> <span class="n">caught</span> <span class="o">=</span> <span class="n">t</span><span class="p">.</span><span class="n">withException</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&gt;</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
+    <span class="c1">// do something with e</span>
+  <span class="p">});</span>
+<span class="p">});</span></pre></div>
+
+<p>Unfortunately, <tt>Try</tt> encourages both intertwining success and error logic as well as excessive rethrowing. Thankfully, there&#039;s another option.</p>
+
+<h3 id="using-onerror">Using onError() <a href="#using-onerror" class="headerLink">#</a></h3>
+
+<p><tt>Future&lt;T&gt;::onError()</tt> allows you to have individual exception handlers as separate callbacks. The parameter you specify for your callback is exactly what <tt>onError()</tt> will try to catch. The callback will be passed over if the future doesn&#039;t contain that exception, otherwise, it will be executed and the T or Future&lt;T&gt; that it returns will become the resultant Future instead.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">intGeneratorThatMaybeThrows</span><span class="p">()</span> <span class="c1">// returns Future&lt;int&gt;</span>
+  <span class="c1">// This is a good opportunity to use the plain value (no Try)</span>
+  <span class="c1">// variant of then()</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">int</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span> 
+    <span class="k">return</span> <span class="mi">10</span> <span class="o">*</span> <span class="n">i</span><span class="p">;</span> <span class="c1">// maybe we throw here instead</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ... runtime_error handling ...</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// ... all other exception handling ...</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">2</span><span class="p">;</span>
+  <span class="p">});</span></pre></div>
+
+<p>You can also use <tt>onError()</tt> directly with <tt>exception_wrapper</tt>. One use case for this variant is if you want to handle non-<tt>std::exception</tt> exceptions.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">().</span><span class="n">then</span><span class="p">([]{</span>
+  <span class="k">throw</span> <span class="mi">42</span><span class="p">;</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="n">exception_wrapper</span> <span class="n">ew</span><span class="p">){</span>
+  <span class="c1">// ...</span>
+<span class="p">});</span></pre></div>
+
+<h2 id="ensure">ensure() <a href="#ensure" class="headerLink">#</a></h2>
+
+<p><tt>Future&lt;T&gt;::ensure(F func)</tt> is similar to the <tt>finally</tt> block in languages like Java. That is, it takes a void function and will execute regardless of whether the Future contains a value or an exception. The resultant Future will contain the exception/value of the original Future, unless the function provided to ensure throws, in which case that exception will be caught and propagated instead. For instance:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(...);</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">makeFuture</span><span class="p">().</span><span class="n">then</span><span class="p">([</span><span class="n">fd</span><span class="p">]{</span>
+  <span class="c1">// do some stuff with the file descriptor</span>
+  <span class="c1">// maybe we throw, maybe we don&#39;t</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="n">ensure</span><span class="p">([</span><span class="n">fd</span><span class="p">]{</span>
+  <span class="c1">// either way, let&#39;s release that fd</span>
+  <span class="n">close</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+<span class="p">});</span>
+
+<span class="c1">// f now contains the result of the then() callback, unless the ensure()</span>
+<span class="c1">// callback threw, in which case f will contain that exception</span></pre></div>
+
+<h2 id="performant-exception-han">Performant Exception Handling <a href="#performant-exception-han" class="headerLink">#</a></h2>
+
+<p>Under the hood, the Futures use <tt>folly::exception_wrapper</tt> to store exceptions in a way that minimizes costly rethrows. However, the effectiveness of this mechanism depends on whether exceptions are supplied in a way that enables our library (and <tt>exception_wrapper</tt>) to maintain type information about your exception. Practically speaking, this means constructing exceptional futures directly instead of throwing. For instance:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// This version will throw the exception twice</span>
+<span class="n">makeFuture</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">([]{</span>
+    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">);</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
+    <span class="c1">// ...</span>
+  <span class="p">});</span>
+<span class="c1">// This version won&#39;t throw at all!</span>
+<span class="n">makeFuture</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">([]{</span>
+    <span class="c1">// This will properly wrap the exception</span>
+    <span class="k">return</span> <span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">));</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
+    <span class="c1">// ...</span>
+  <span class="p">});</span></pre></div>
+
+<p>Likewise, using <tt>onError</tt> instead of throwing via <tt>Try</tt> will often reduce rethrows. If you want to use <tt>Try</tt>, look at <tt>Try&lt;T&gt;::hasException()</tt> and <tt>Try&lt;T&gt;::withException()</tt> for ways to inspect and handle exceptions without rethrows.</p>
+
+<p>Be wary of premature optimization, and err towards clean code over minimizing rethrows unless you&#039;re sure you need the performance. That said, we will continue to strive to make the cleanest option the most performant one as well.</p></section><section class="dex_document"><h1>Compositional Building Blocks</h1><p class="dex_introduction">Sometimes chaining and nesting with then() is not enough. Here are some utilities for composing futures.</p><div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> For maximum flexibility, many of the helpers documented below take start and end iterators on a collection. All such functions have overloads that take just the collection by reference and automatically operate on the <tt>begin()</tt> and <tt>end()</tt> iterators. You will almost always want to take advantage of this sugar. For instance, <tt>collect(futures.begin(), futures.end())</tt> can be written as simply  <tt>collect(futures)</tt>.</div>
+
+<h2 id="collectall">collectAll() <a href="#collectall" class="headerLink">#</a></h2>
+
+<p><tt>collectAll()</tt> takes an iterable collection of <tt>Future&lt;T&gt;</tt>s (or start and end iterators on such a collection) and returns a <tt>Future&lt;std::vector&lt;Try&lt;T&gt;&gt;&gt;</tt> that will complete once all of the input futures complete. The resultant Future&#039;s vector will contain the results of each in the same order in which they were passed. Errors in any component Future will not cause early termination. Input Futures are moved in and are no longer valid. For example, we could fan out and fan in a bunch of RPCs like so:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">someRPC</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">fs</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">fs</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">someRPC</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="n">collectAll</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Try</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&amp;</span> <span class="n">tries</span><span class="p">){</span>
+  <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">t</span> <span class="o">:</span> <span class="n">tries</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// handle each response</span>
+  <span class="p">}</span>
+<span class="p">});</span></pre></div>
+
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> Just as with any then() callback, you could take a Try instead and it would compile. But you shouldn&#039;t, because the only way the outer Future can fail is if there&#039;s a bug in our library. Save yourself some typing and skip the Try. This advice also applies to all of the compositional operations below whose Future types contain inner Trys (i.e. everything except for <tt>collect()</tt> and <tt>map()</tt>).</div>
+
+<h2 id="collectall-variadic">collectAll() variadic <a href="#collectall-variadic" class="headerLink">#</a></h2>
+
+<p>There is also a variadically templated flavor of <tt>collectAll()</tt> that allows you to mix and match different types of Futures. It returns a <tt>Future&lt;std::tuple&lt;Try&lt;T1&gt;, Try&lt;T2&gt;, ...&gt;&gt;</tt>. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f1</span> <span class="o">=</span> <span class="p">...;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">f2</span> <span class="o">=</span> <span class="p">...;</span>
+<span class="n">collectAll</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">tup</span><span class="p">).</span><span class="n">value</span><span class="p">();</span>
+  <span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">tup</span><span class="p">).</span><span class="n">value</span><span class="p">();</span>
+  <span class="c1">// ...</span>
+<span class="p">});</span></pre></div>
+
+<h2 id="collect">collect() <a href="#collect" class="headerLink">#</a></h2>
+
+<p><tt>collect()</tt> is similar to <tt>collectAll()</tt>, but will terminate early if an exception is raised by any of the input Futures. Therefore, the returned Future is of type <tt>std::vector&lt;T&gt;</tt>, unless <tt>T</tt> is <tt>void</tt>, in which case the returned Future is <tt>void</tt>. Like <tt>collectAll()</tt>, input Futures are moved in and are no longer valid, and the resulting Future&#039;s vector will contain the results of each input Future in the same order they were passed in (if all are successful). For instance:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&amp;</span> <span class="n">vals</span><span class="p">){</span>
+  <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">val</span> <span class="o">:</span> <span class="n">vals</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// handle each response</span>
+  <span class="p">}</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// drat, one of them failed</span>
+<span class="p">});</span>
+
+<span class="c1">// Or using a Try:</span>
+<span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">){</span>
+ <span class="c1">// ...</span>
+<span class="p">});</span>
+
+<span class="c1">// If fs are void Futures, there&#39;s nothing to take in your callback:</span>
+<span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([]{</span>
+  <span class="c1">// ...</span>
+<span class="p">});</span></pre></div>
+
+<h2 id="collectn">collectN() <a href="#collectn" class="headerLink">#</a></h2>
+
+<p><tt>collectN</tt>, like <tt>collectAll()</tt>, takes a collection of Futures, or a pair of iterators thereof, but it also takes a <tt>size_t</tt> N and will complete once N of the input futures are complete. It returns a <tt>Future&lt;std::vector&lt;std::pair&lt;size_t, Try&lt;T&gt;&gt;&gt;&gt;</tt>. Each pair holds the index of the corresponding Future in the original collection as well as its result, though the pairs themselves will be in arbitrary order. Like <tt>collectAll()</tt>, <tt>collectN()</tt> moves in the input Futures, so your copies are no longer valid. If multiple input futures complete &quot;simultaneously&quot; or are already completed, winners are chosen but the choice is undefined.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Wait for 5 of the input futures to complete</span>
+<span class="n">collectN</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span>
+  <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&gt;&amp;</span> <span class="n">tries</span><span class="p">){</span>
+    <span class="c1">// there will be 5 pairs</span>
+    <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">pair</span> <span class="o">:</span> <span class="n">tries</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kt">size_t</span> <span class="n">index</span> <span class="o">=</span> <span class="n">pair</span><span class="p">.</span><span class="n">first</span><span class="p">;</span>
+      <span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">pair</span><span class="p">.</span><span class="n">second</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+      <span class="c1">// ...</span>
+    <span class="p">}</span>
+  <span class="p">});</span></pre></div>
+
+<h2 id="collectany">collectAny() <a href="#collectany" class="headerLink">#</a></h2>
+
+<p><tt>collectAny()</tt> also takes a collection of Futures (or a pair of iterators thereof), but it completes as soon as any of the input Futures completes. It returns a <tt>Future&lt;std::pair&lt;size_t, Try&lt;T&gt;&gt;&gt;</tt> which holds the index of the first completed Future along with its result. The input futures are moved in, so your copies are no longer valid. If multiple input futures complete &quot;simultaneously&quot; or are already completed, a winner is chosen but the choice is undefined. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">collectAny</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;&gt;&amp;</span> <span class="n">p</span><span class="p">){</span>
+  <span class="kt">size_t</span> <span class="n">index</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">first</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">second</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+  <span class="c1">// ...</span>
+<span class="p">});</span></pre></div>
+
+<h2 id="map">map() <a href="#map" class="headerLink">#</a></h2>
+
+<p><tt>map()</tt> is the Futures equivalent of the higher order function <a href="http://en.wikipedia.org/wiki/Map_%28higher-order_function%29" target="_blank">map</a>. It takes a collection of <tt>Future&lt;A&gt;</tt> (or a pair of iterators thereof) and a function that can be passed to Future&lt;A&gt;::then(), and in turn calls then() with the function on each input Future. It returns a vector of the resultant Futures in the order they were passed in. This is simple sugar for:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;&gt;</span> <span class="n">fs</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">B</span><span class="o">&gt;&gt;</span> <span class="n">fs2</span><span class="p">;</span>
+<span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">it</span> <span class="o">=</span> <span class="n">fs</span><span class="p">.</span><span class="n">begin</span><span class="p">();</span> <span class="n">it</span> <span class="o">&lt;</span> <span class="n">fs</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span class="n">it</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">fs2</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">it</span><span class="o">-&gt;</span><span class="n">then</span><span class="p">(</span><span class="n">func</span><span class="p">));</span>
+<span class="p">}</span></pre></div>
+
+<p>For instance, say you have some expensive RPC that fetches an <tt>int</tt> and you&#039;d like to do expensive processing on each of many calls to this RPC. <tt>collect()</tt> or <tt>collectAll()</tt> might not be wise since they wait for all the results to be ready, while you&#039;d rather process the integers as they arrive. You could use <tt>map()</tt> in this scenario:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">fs2</span> <span class="o">=</span> <span class="n">map</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="n">expensiveProcessingFunc</span><span class="p">);</span>
+<span class="c1">// You probably now want to wait for all of these to complete. Call</span>
+<span class="c1">// collect() or collectAll() on fs2 to obtain such a Future.</span></pre></div>
+
+<h2 id="reduce">reduce() <a href="#reduce" class="headerLink">#</a></h2>
+
+<p><tt>reduce()</tt> is the Futures equivalent of the higher order function <a href="http://en.wikipedia.org/wiki/Fold_%28higher-order_function%29" target="_blank">fold</a> (foldl, specifically). It takes a collection of <tt>Future&lt;A&gt;</tt> (or a pair of iterators thereof), an initial value of type <tt>B</tt>, and a function taking two arguments - the reduced value of type <tt>B</tt> and the next result from the collection of <tt>Future&lt;A&gt;</tt>. The function must return either <tt>B</tt> or <tt>Future&lt;B&gt;</tt>. <tt>reduce()</tt>, in turn, returns a <tt>Future&lt;B&gt;</tt>. The function will be applied to the initial value and the result of the first Future, and then to the result of that initial application and the result of the second Future, and so on until the whole collection of Futures has been reduced or an unhandled exception is hit.</p>
+
+<p>The second argument to the reducing function can be either <tt>A</tt> or <tt>Try&lt;A&gt;</tt>, depending on whether you want to handle exceptions from the input Futures. If there is an exception in an input Future and you don&#039;t take a <tt>Try</tt>, the reduce operation will short circuit with that exception. Any exception thrown in the reducing function will similarly short circuit the whole operation.</p>
+
+<p>For instance, if you have a collection of <tt>Future&lt;int&gt;</tt> and you want a <tt>Future&lt;bool&gt;</tt> that contains true if and only if all the input <tt>ints</tt> are equal to zero, you might write:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">reduce</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="nb">true</span><span class="p">,</span> <span class="p">[](</span><span class="kt">bool</span> <span class="n">b</span><span class="p">,</span> <span class="kt">int</span> <span class="n">i</span><span class="p">){</span>
+  <span class="c1">// You could also return a Future&lt;bool&gt; if you needed to</span>
+  <span class="k">return</span> <span class="n">b</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">);</span> 
+<span class="p">})</span>
+<span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">bool</span> <span class="n">result</span><span class="p">){</span>
+  <span class="c1">// result is true if all inputs were zero</span>
+<span class="p">});</span>
+<span class="c1">// You could use onError or Try here in case one of your input Futures</span>
+<span class="c1">// contained an exception or if your reducing function threw an exception </span></pre></div>
+
+<p>To demonstrate the exception handling case, suppose you have a collection of <tt>Future&lt;T&gt;</tt> and you want a <tt>Future&lt;bool&gt;</tt> that contains true if all the input Futures are non-exceptional:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">reduce</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="nb">true</span><span class="p">,</span> <span class="p">[](</span><span class="kt">bool</span> <span class="n">b</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">t</span><span class="p">){</span>
+  <span class="k">return</span> <span class="n">b</span> <span class="o">&amp;&amp;</span> <span class="n">t</span><span class="p">.</span><span class="n">hasValue</span><span class="p">();</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">bool</span> <span class="n">result</span><span class="p">){</span>
+  <span class="c1">// result is true if all inputs were non-exceptional</span>
+<span class="p">});</span></pre></div>
+
+<p>And finally one example where we&#039;re not reducing to a <tt>bool</tt> - here&#039;s how you might calculate the sum of a collection of <tt>Future&lt;int&gt;</tt>:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">reduce</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[](</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">){</span>
+  <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+<span class="p">})</span>
+<span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="kt">int</span> <span class="n">sum</span><span class="p">){</span>
+  <span class="c1">// ...</span>
+<span class="p">});</span></pre></div>
+
+<p>See the <tt>reduce()</tt> tests in <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp" target="_blank">the Future tests</a> for a more complete catalog of possibilities.</p>
+
+<h2 id="unorderedreduce">unorderedReduce() <a href="#unorderedreduce" class="headerLink">#</a></h2>
+
+<p>Like <tt>reduce()</tt>, but consumes Futures in the collection as soon as they become ready. Use this if your function doesn&#039;t depend on the order of the Futures in the input collection. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp;3a9e894f24a459cbbe626cd23f2ac9e8b4d24e66$1810" target="_blank">tests</a> for examples.</p>
+
+<h2 id="window">window() <a href="#window" class="headerLink">#</a></h2>
+
+<p><tt>window()</tt> is a sliding window implementation for Futures. It takes a collection of <tt>T</tt> (or a pair of iterators thereof), a function taking a <tt>T&amp;&amp;</tt> and returning a <tt>Future&lt;S&gt;</tt>, and a window size <tt>n</tt>. <tt>window()</tt> will create up to <tt>n</tt> Futures at a time using the function. As Futures complete, new Futures are created until the collection is exhausted.</p>
+
+<p>It ensures that at any given time, no more than <tt>n</tt> Futures are being processed.</p>
+
+<p>Combine with <tt>collectAll</tt>, <tt>reduce</tt> or <tt>unorderedReduce</tt>. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp;3a9e894f24a459cbbe626cd23f2ac9e8b4d24e66$693" target="_blank">tests</a> for examples.</p>
+
+<h2 id="other-possibilities">Other Possibilities <a href="#other-possibilities" class="headerLink">#</a></h2>
+
+<p>There are a number of other possibilities for composing multiple Futures which we&#039;ll probably get around to at some point. If any of these seem like they would come in handy, let us know or better yet submit a diff:</p>
+
+<ul>
+<li><tt>filter()</tt></li>
+<li>&lt;your suggestion here&gt;</li>
+</ul></section><section class="dex_document"><h1>Multithreading and via()</h1><p class="dex_introduction">What to know and what to watch out for when using futures in a multithreaded environment, and how to control your threading model.</p><h2 id="futures-are-thread-safe">Futures are thread safe... with a catch. <a href="#futures-are-thread-safe" class="headerLink">#</a></h2>
+
+<p>The core mutating operations on Futures and Promises are thread safe, insofar as they will throw exceptions if misused (usually, this means being called more than once, including simultaneous calls from different threads). For example, <tt>then()</tt>, <tt>onError()</tt> and other methods that set callbacks on Futures will throw exceptions if called twice. The same goes for fulfilling Promises via <tt>setValue()</tt> and <tt>setException()</tt>.</p>
+
+<p>So what&#039;s the catch? Let&#039;s look at the following example of multithreaded Futures code:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Thread A</span>
+<span class="n">Promise</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+
+<span class="c1">// Thread B</span>
+<span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y</span><span class="p">);</span>
+
+<span class="c1">// Thread A</span>
+<span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">();</span></pre></div>
+
+<p>In which thread are x and y executed? Unfortunately, it depends. There is a race between setting the callbacks and fulfilling the promise. If setting the callbacks wins, they will be executed in thread A when the Promise is fulfilled. If setting the value wins, they will be executed in thread B as soon as they are set. If <tt>setValue()</tt> sneaks in at just the right time between the two <tt>then()</tt> calls, then x will be executed in thread A and y will be executed in thread B. You could imagine that this nondeterminism might become unwieldy or downright unacceptable. Thankfully, there&#039;s a mechanism to resolve this race and give you fine-grained control over your execution model.</p>
+
+<h2 id="via-to-the-rescue">via() to the rescue <a href="#via-to-the-rescue" class="headerLink">#</a></h2>
+
+<p>Futures have a method called <tt>via()</tt> which takes an <a href="https://github.com/facebook/folly/blob/master/folly/Executor.h$27" target="_blank">Executor</a>. Executor is a simple interface that requires only the existence of an <tt>add(std::function&lt;void()&gt; func)</tt> method which must be thread safe and must execute the provided function somehow, though not necessarily immediately. <tt>via()</tt> guarantees that a callback set on the Future will be executed on the given Executor. For instance:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">exe1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+  <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">exe2</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">z</span><span class="p">);</span></pre></div>
+
+<p>In this example, <tt>y</tt> will be executed on <tt>exe1</tt>, and <tt>z</tt> will be executed on <tt>exe2</tt>. This is a fairly powerful abstraction. It not only solves the above race, but gives you clear, concise, and self-documenting control over your execution model. One common pattern is having different executors for different types of work (e.g. an IO-bound pool spinning on event bases doing your network IO and a CPU-bound thread pool for expensive work) and switching between them with <tt>via()</tt>.</p>
+
+<p>There is also a static function <tt>via()</tt> that creates a completed <tt>Future&lt;void&gt;</tt> that is already set up to call back on the provided Executor.</p>
+
+<h2 id="or-pass-an-executor-to-t">Or, pass an Executor to <tt>then()</tt> <a href="#or-pass-an-executor-to-t" class="headerLink">#</a></h2>
+
+<p>An alternative to <tt>via()</tt> is to pass an Executor as the first parameter to <tt>then()</tt>, which causes the callback to be executed via that Executor. Unlike <tt>via()</tt> the Executor is not sticky, it only applies for this callback. See the docblock for more details and caveats.</p>
+
+<h2 id="executor-implementations">Executor implementations <a href="#executor-implementations" class="headerLink">#</a></h2>
+
+<p><tt>via()</tt> wouldn&#039;t be of much use without practical implementations around. We have a handful, and here&#039;s a (possibly incomplete) list.</p>
+
+<ul>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/ThreadPoolExecutor.h" target="_blank">ThreadPoolExecutor</a> is an abstract thread pool implementation that supports resizing, custom thread factories, pool and per-task stats, NUMA awareness, user-defined task expiration, and Codel task expiration. It and its subclasses are under active development. It currently has two implementations:<ul>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/CPUThreadPoolExecutor.h" target="_blank">CPUThreadPoolExecutor</a> is a general purpose thread pool. In addition to the above features, it also supports task priorities.</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBaseManager.h" target="_blank">EventBaseManager</a>)</li>
+</ul></li>
+<li>folly&#039;s <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBase.h" target="_blank">EventBase</a> is an Executor and executes work as a callback in the event loop</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank">ManualExecutor</a> only executes work when manually cranked. This is useful for testing.</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/futures/InlineExecutor.h" target="_blank">InlineExecutor</a> executes work immediately inline</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/futures/QueuedImmediateExecutor.h" target="_blank">QueuedImmediateExecutor</a> is similar to InlineExecutor, but work added during callback execution will be queued instead of immediately executed</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ScheduledExecutor.h" target="_blank">ScheduledExecutor</a> is a subinterface of Executor that supports scheduled (i.e. delayed) execution. There aren&#039;t many implementations yet, see <a class="remarkup-task" href="https://our.intern.facebook.com/intern/tasks/?t=5924392" target="_blank">T5924392</a></li>
+<li>Thrift&#039;s <a href="https://github.com/facebook/fbthrift/blob/master/thrift/lib/cpp/concurrency/ThreadManager.h" target="_blank">ThreadManager</a> is an Executor but we aim to deprecate it in favor of the aforementioned CPUThreadPoolExecutor</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/FutureExecutor.h" target="_blank">FutureExecutor</a> wraps another Executor and provides <tt>Future&lt;T&gt; addFuture(F func)</tt> which returns a Future representing the result of func. This is equivalent to <tt>via(executor).then(func)</tt> and the latter should probably be preferred.</li>
+</ul></section><section class="dex_document"><h1>Timeouts and related features</h1><p class="dex_introduction">Futures provide a number of timing-related features. Here's an overview.</p><h2 id="timing-implementation">Timing implementation <a href="#timing-implementation" class="headerLink">#</a></h2>
+
+<h3 id="timing-resolution">Timing resolution <a href="#timing-resolution" class="headerLink">#</a></h3>
+
+<p>The functions and methods documented below all take a <tt>Duration</tt>, <a href="https://github.com/facebook/folly/blob/master/folly/futures/detail/Types.h" target="_blank">which is an alias for <tt>std::chrono::milliseconds</tt></a>. Why not allow more granularity? Simply put, we can&#039;t guarantee sub-millisecond resolution and we don&#039;t want to lie to you.</p>
+
+<h3 id="the-timekeeper-interface">The TimeKeeper interface <a href="#the-timekeeper-interface" class="headerLink">#</a></h3>
+
+<p>Most timing-related methods also optionally take a <a href="https://github.com/facebook/folly/blob/master/folly/futures/detail/ThreadWheelTimekeeper.h" target="_blank">default implementation</a> uses a folly::HHWheelTimer in a dedicated EventBase thread to manage timeouts.</p>
+
+<h2 id="within">within() <a href="#within" class="headerLink">#</a></h2>
+
+<p><tt>Future&lt;T&gt;::within()</tt> returns a new Future that will complete with the provided exception (by default, a TimedOut exception) if it does not complete within the specified duration. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
+
+<span class="c1">// f will complete with a TimedOut exception if the Future returned by foo()</span>
+<span class="c1">// does not complete within 500 ms</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">));</span>
+
+<span class="c1">// Same deal, but a timeout will trigger the provided exception instead</span>
+<span class="n">f2</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;you took too long!&quot;</span><span class="p">));</span></pre></div>
+
+<h2 id="ontimeout">onTimeout() <a href="#ontimeout" class="headerLink">#</a></h2>
+
+<p><tt>Future&lt;T&gt;::onTimeout()</tt> lets you simultaneously set up a timeout and a timeout handler. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
+<span class="n">foo</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">onTimeout</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="p">[]{</span>
+    <span class="c1">// You must maintain the resultant future&#39;s type</span>
+    <span class="c1">// ... handle timeout ...</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(...);</span></pre></div>
+
+<p>The astute reader might notice that this is effectively syntactic sugar for</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">foo</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">))</span>
+  <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">TimedOut</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// handle timeout</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+  <span class="p">})</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">(...);</span></pre></div>
+
+<h2 id="get-and-wait-with-timeou">get() and wait() with timeouts <a href="#get-and-wait-with-timeou" class="headerLink">#</a></h2>
+
+<p><tt>get()</tt> and <tt>wait()</tt>, which are detailed in the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> article, optionally take timeouts:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
+<span class="c1">// Will throw TimedOut if the Future doesn&#39;t complete within one second of</span>
+<span class="c1">// the get() call</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">get</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span>
+
+<span class="c1">// If the Future doesn&#39;t complete within one second, f will remain</span>
+<span class="c1">// incomplete. That is, if a timeout occurs, it&#39;s as if wait() was</span>
+<span class="c1">// never called.</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">wait</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span></pre></div>
+
+<h2 id="delayed">delayed() <a href="#delayed" class="headerLink">#</a></h2>
+
+<p><tt>Future&lt;T&gt;::delayed()</tt> returns a new Future whose completion is delayed for at least the specified duration. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">()</span>
+  <span class="p">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">))</span>
+  <span class="p">.</span><span class="n">then</span><span class="p">([]{</span>
+    <span class="c1">// This will be executed when the original Future has completed or when</span>
+    <span class="c1">// 1000ms has elapsed, whichever comes last.</span>
+  <span class="p">});</span></pre></div>
+
+<h2 id="futures-sleep">futures::sleep() <a href="#futures-sleep" class="headerLink">#</a></h2>
+
+<p><tt>sleep()</tt> returns a void Future that will complete after the specified duration. For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">futures</span><span class="o">::</span><span class="n">sleep</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">)).</span><span class="n">then</span><span class="p">([]{</span>
+  <span class="c1">// This will be executed after 1000ms</span>
+<span class="p">});</span></pre></div></section><section class="dex_document"><h1>Interrupts and Cancellations</h1><p class="dex_introduction">Interrupts are a mechanism for Future holders to send a signal to Promise holders. Here's how to use them.</p><p>Let&#039;s say that your Futures code kicks off some long, expensive operation in another thread. A short while later, something comes up that obviates the need for the result of that operation. Are those resources gone forever? Not necessarily. Enter interrupts.</p>
+
+<p>Interrupts allow Future holders to send signals in the form of exceptions to Promise holders, who are free to handle the interrupt as they please (or not at all). For example:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">p</span><span class="p">.</span><span class="n">setInterruptHandler</span><span class="p">([](</span><span class="k">const</span> <span class="n">exception_wrapper</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
+  <span class="c1">// Handle the interrupt. For instance, we could just fulfill the Promise</span>
+  <span class="c1">// with the given exception:</span>
+  <span class="n">p</span><span class="p">.</span><span class="n">setException</span><span class="p">(</span><span class="n">e</span><span class="p">);</span>
   
-```
-making Promise
-Future chain made
-fulfilling Promise
-foo(42)
-Promise fulfilled
-```
+  <span class="c1">// Or maybe we want the Future to complete with some special value</span>
+  <span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
 
-## User Guide
+  <span class="c1">// Or maybe we don&#39;t want to do anything at all! Including not setting</span>
+  <span class="c1">// this handler in the first place.</span>
+<span class="p">});</span>
 
-Let's begin with an example. Consider a simplified Memcache client class with this interface:
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
+<span class="c1">// The Future holder can now send an interrupt whenever it wants via raise().</span>
+<span class="c1">// If the interrupt beats out the fulfillment of the Promise *and* there is</span>
+<span class="c1">// an interrupt handler set on the Promise, that handler will be called with</span>
+<span class="c1">// the provided exception</span>
+<span class="n">f</span><span class="p">.</span><span class="n">raise</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;Something went awry! Abort!&quot;</span><span class="p">));</span>
 
-```C++
-class MemcacheClient {
- public:
-  struct GetReply {
-    enum class Result {
-      FOUND,
-      NOT_FOUND,
-      SERVER_ERROR,
-    };
+<span class="c1">// cancel() is syntactic sugar for raise(FutureCancellation())</span>
+<span class="n">f</span><span class="p">.</span><span class="n">cancel</span><span class="p">();</span></pre></div>
 
-    Result result;
-    // The value when result is FOUND,
-    // The error message when result is SERVER_ERROR or CLIENT_ERROR
-    // undefined otherwise
-    std::string value;
-  };
+<p>Going forward, we&#039;d like to integrate interrupts with major Future interface provides as a way to cancel RPCs and the like, but that&#039;s not in place yet. This is a bleeding edge feature&#x2014;please let us know your use cases so that we can iterate!</p></section><section class="dex_document"><h1>Testing</h1><p class="dex_introduction">Testing futures-based code does not have to be a pain. Here are some tips and idiomatic approaches.</p><h2 id="extracting-values-synchr">Extracting values synchronously <a href="#extracting-values-synchr" class="headerLink">#</a></h2>
 
-  GetReply get(std::string key);
-};
-```
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> The tests in this article are written using the <a href="https://code.google.com/p/googletest/wiki/Primer" target="_blank">gtest</a> framework.</div>
 
-This API is synchronous, i.e. when you call `get()` you have to wait for the result. This is very simple, but unfortunately it is also very easy to write very slow code using synchronous APIs.
+<p>Let&#039;s say we want to test the following interface:</p>
 
-Now, consider this traditional asynchronous signature for `get()`:
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span> <span class="n">isPrime</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">);</span></pre></div>
 
-```C++
-int get(std::string key, std::function<void(GetReply)> callback);
-```
+<p>We could make a couple of calls and set expectations on the resultant futures via <tt>value()</tt>:</p>
 
-When you call `get()`, your asynchronous operation begins and when it finishes your callback will be called with the result. (Unless something goes drastically wrong and you get an error code from `get()`.) Very performant code can be written with an API like this, but for nontrivial applications the code descends into a special kind of spaghetti code affectionately referred to as "callback hell".
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">).</span><span class="n">value</span><span class="p">());</span>
+<span class="n">EXPECT_FALSE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">8</span><span class="p">).</span><span class="n">value</span><span class="p">());</span></pre></div>
 
-The Future-based API looks like this:
+<p>But what if <tt>isPrime()</tt> is asynchronous (e.g. makes an async call to another service that computes primeness)? It&#039;s now likely that you&#039;ll call <tt>value()</tt> before the Future is complete, which will throw a <a href="https://github.com/facebook/folly/blob/master/folly/futures/FutureException.h$66" target="_blank"><tt>FutureNotReady</tt></a> exception.</p>
 
-```C++
-Future<GetReply> get(std::string key);
-```
+<p>A naive approach is to spin until the Future is complete:</p>
 
-A `Future<GetReply>` is a placeholder for the `GetReply` that we will eventually get. A Future usually starts life out "unfulfilled", or incomplete, i.e.:
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Spin until ready. Gross. Don&#39;t do this.</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">);</span>
+<span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">())</span> <span class="p">{}</span>
+<span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">());</span></pre></div>
 
-```C++
-fut.isReady() == false
-fut.value()  // will throw an exception because the Future is not ready
-```
+<p>Thankfully, we have some better options in the form of <tt>Future&lt;T&gt;::get()</tt> and <tt>Future&lt;T&gt;::wait()</tt>.</p>
 
-At some point in the future, the Future will have been fulfilled, and we can access its value.
+<h3 id="get">get() <a href="#get" class="headerLink">#</a></h3>
 
-```C++
-fut.isReady() == true
-GetReply& reply = fut.value();
-```
+<p><tt>T Future&lt;T&gt;::get()</tt> blocks until the Future is complete and either returns a moved out copy of the value or throws any contained exception. You can use it like so.</p>
 
-Futures support exceptions. If something exceptional happened, your Future may represent an exception instead of a value. In that case:
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">).</span><span class="n">get</span><span class="p">());</span></pre></div>
 
-```C++
-fut.isReady() == true
-fut.value() // will rethrow the exception
-```
+<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a> article for more information.</p>
 
-Just what is exceptional depends on the API. In our example we have chosen not to raise exceptions for `SERVER_ERROR`, but represent this explicitly in the `GetReply` object. On the other hand, an astute Memcache veteran would notice that we left `CLIENT_ERROR` out of `GetReply::Result`, and perhaps a `CLIENT_ERROR` would have been raised as an exception, because `CLIENT_ERROR` means there's a bug in the library and this would be truly exceptional. These decisions are judgement calls by the API designer. The important thing is that exceptional conditions (including and especially spurious exceptions that nobody expects) get captured and can be handled higher up the "stack".
+<h3 id="wait">wait() <a href="#wait" class="headerLink">#</a></h3>
 
-So far we have described a way to initiate an asynchronous operation via an API that returns a Future, and then sometime later after it is fulfilled, we get its value. This is slightly more useful than a synchronous API, but it's not yet ideal. There are two more very important pieces to the puzzle.
+<p><tt>Future&lt;T&gt; Future&lt;T&gt;::wait()</tt> is similar to <tt>get()</tt> in that it blocks until the Future is complete. However, instead of returning a value or throwing an exception, it returns a new completed Future with the result of the original Future. One use case is when you&#039;d rather not have the throwing behavior of <tt>get()</tt> so that you can check for exceptions separately without a try/catch. For example:</p>
 
-First, we can aggregate Futures, to define a new Future that completes after some or all of the aggregated Futures complete.  Consider two examples: fetching a batch of requests and waiting for all of them, and fetching a group of requests and waiting for only one of them.
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">).</span><span class="n">wait</span><span class="p">();</span>
+<span class="n">EXPECT_FALSE</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">getTry</span><span class="p">().</span><span class="n">hasException</span><span class="p">());</span>
+<span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">());</span></pre></div>
 
-```C++
-vector<Future<GetReply>> futs;
-for (auto& key : keys) {
-  futs.push_back(mc.get(key));
-}
-auto all = collectAll(futs.begin(), futs.end());
+<p>Like <tt>get()</tt>, <tt>wait()</tt> optionally takes a timeout. Again, see the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a> article.</p>
 
-vector<Future<GetReply>> futs;
-for (auto& key : keys) {
-  futs.push_back(mc.get(key));
-}
-auto any = collectAny(futs.begin(), futs.end());
-```
+<h3 id="getvia-and-waitvia">getVia() and waitVia() <a href="#getvia-and-waitvia" class="headerLink">#</a></h3>
 
-`all` and `any` are Futures (for the exact type and usage see the header files).  They will be complete when all/one of `futs` are complete, respectively. (There is also `collectN()` for when you need *some*.)
+<p><tt>T Future&lt;T&gt;::getVia(DrivableExecutor*)</tt> and <tt>Future&lt;T&gt; Future&lt;T&gt;::waitVia(DrivableExecutor*)</tt> have the same semantics as <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor until the Future is complete. <a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank"><tt>ManualExecutor</tt></a>. These are simple but useful sugar for the following common pattern:</p>
 
-Second, we can attach callbacks to a Future, and chain them together monadically. An example will clarify:
+<p>Given this:</p>
 
-```C++
-Future<GetReply> fut1 = mc.get("foo");
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">doAsyncWorkOnEventBase</span><span class="p">(</span><span class="o">&amp;</span><span class="n">eventBase</span><span class="p">);</span></pre></div>
 
-Future<string> fut2 = fut1.then(
-  [](Try<GetReply>&& t) {
-    if (t.value().result == MemcacheClient::GetReply::Result::FOUND)
-      return t.value().value;
-    throw SomeException("No value");
-  });
+<p>Don&#039;t do this:</p>
 
-Future<void> fut3 = fut2.then(
-  [](Try<string>&& t) {
-    try {
-      cout << t.value() << endl;
-    } catch (std::exception const& e) {
-      cerr << e.what() << endl;
-    }
-  });
-```
+<div class="remarkup-code-block remarkup-counterexample" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">f</span><span class="p">.</span><span class="n">isReady</span><span class="p">())</span> <span class="p">{</span>
+  <span class="n">eb</span><span class="p">.</span><span class="n">loop</span><span class="p">();</span>
+<span class="p">}</span></pre></div>
 
-That example is a little contrived but the idea is that you can transform a result from one type to another, potentially in a chain, and unhandled errors propagate. Of course, the intermediate variables are optional. `Try<T>` is the object wrapper that supports both value and exception.
+<p>Do one of these instead:</p>
 
-Using `then` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell.
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">val</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="n">getVia</span><span class="p">(</span><span class="o">&amp;</span><span class="n">eventBase</span><span class="p">);</span>
+<span class="c1">// or</span>
+<span class="n">f</span><span class="p">.</span><span class="n">waitVia</span><span class="p">(</span><span class="o">&amp;</span><span class="n">eb</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="n">Value</span> <span class="n">val</span><span class="p">){</span> <span class="p">...</span> <span class="p">});</span></pre></div>
 
-Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future. Futures have a blocking method called wait() that does exactly that and optionally takes a timeout.
+<h2 id="using-gmock">Using gmock <a href="#using-gmock" class="headerLink">#</a></h2>
 
-Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::then` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. BUT, be warned that you might be surprised about which thread your callback executes on. Let's consider an example.
+<p><a href="https://code.google.com/p/googlemock/" target="_blank">Google Mock</a> is a powerful mocking framework for writing and using C++ mock classes. Unfortunately, Gmock requires that the parameters and return types of mocked functions and methods are copyable. You&#039;re likely to hit this issue when mocking Futures code because Futures (and, less importantly, Promises) are noncopyable, and many of your interfaces will return Futures and some will even be passed Futures.</p>
 
-```C++
-// Thread A
-Promise<void> p;
-auto f = p.getFuture();
+<p>The canonical approach to mocking interfaces that involve noncopyable objects is to override your interface with a dummy method that simply calls a mock method that has had the noncopyable components stripped or replaced. For Futures, this usually means returning/passing contained values directly and synchronously, which shouldn&#039;t be a problem since your mocks won&#039;t actually be asynchronous. Here is a very contrived but demonstrative example:</p>
 
-// Thread B
-f.then(x).then(y).then(z);
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// The async interface we want to mock</span>
+<span class="k">class</span> <span class="nc">AsyncClient</span> <span class="p">{</span>
+ <span class="nl">public:</span>
+  <span class="k">virtual</span> <span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">);</span>
+<span class="p">};</span>
 
-// Thread A
-p.setValue();
-```
+<span class="c1">// The mock implementation</span>
+<span class="k">class</span> <span class="nc">MockAsyncClient</span> <span class="o">:</span> <span class="k">public</span> <span class="n">AsyncClient</span> <span class="p">{</span>
+ <span class="nl">public:</span>
+  <span class="c1">// Declare a mock method foo_ that takes an int and returns an int</span>
+  <span class="n">MOCK_METHOD1</span><span class="p">(</span><span class="n">foo_</span><span class="p">,</span> <span class="kt">int</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
 
-This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread `x`, `y`, and/or `z` will execute. Maybe they will execute in Thread A when `p.setValue()` is called. Or, maybe they will execute in Thread B when `f.then` is called. Or, maybe `x` will execute in Thread B, but `y` and/or `z` will execute in Thread A. There's a race between `setValue` and `then`—whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.
+  <span class="c1">// Plug the mock into an override of the interface</span>
+  <span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">)</span> <span class="n">override</span> <span class="p">{</span>
+    <span class="c1">// Lift the result back into a Future before returning</span>
+    <span class="k">return</span> <span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">foo_</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+  <span class="p">}</span>
+<span class="p">};</span>
 
-Naturally, you will want some control over which thread executes callbacks. We have a few mechanisms to help.
+<span class="c1">// Let&#39;s say that we&#39;re testing a class MyProxy that simply forwards foo()</span>
+<span class="c1">// calls to AsyncClient and returns the result</span>
+<span class="k">class</span> <span class="nc">MyProxy</span> <span class="p">{</span>
+ <span class="nl">public:</span>
+  <span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">client</span><span class="o">-&gt;</span><span class="n">foo</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="kt">void</span> <span class="n">setClient</span><span class="p">(</span><span class="n">AsyncClient</span><span class="o">*</span> <span class="n">client</span><span class="p">);</span>
+ <span class="nl">private:</span>
+  <span class="n">AsyncClient</span><span class="o">*</span> <span class="n">client</span><span class="p">;</span>
+<span class="p">};</span>
 
-The first and most useful is `via`, which passes execution through an `Executor`, which usually has the effect of running the callback in a new thread.
-```C++
-aFuture
-  .then(x)
-  .via(e1).then(y1).then(y2)
-  .via(e2).then(z);
-```
-`x` will execute in the current thread. `y1` and `y2` will execute in the thread on the other side of `e1`, and `z` will execute in the thread on the other side of `e2`. `y1` and `y2` will execute on the same thread, whichever thread that is. If `e1` and `e2` execute in different threads than the current thread, then the final callback does not happen in the current thread. If you want to get back to the current thread, you need to get there via an executor.
+<span class="c1">// Now, in our testing code</span>
+<span class="n">MyProxy</span> <span class="n">proxy</span><span class="p">;</span>
+<span class="n">MockAsyncClient</span> <span class="n">mockClient</span><span class="p">;</span>
+<span class="c1">// Inject the mock</span>
+<span class="n">proxy</span><span class="p">.</span><span class="n">setClient</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mockClient</span><span class="p">)</span>
+<span class="c1">// Set an expectation on the mock to be called with 42 and return 84</span>
+<span class="n">EXPECT_CALL</span><span class="p">(</span><span class="n">mockClient</span><span class="p">,</span> <span class="n">foo_</span><span class="p">(</span><span class="mi">42</span><span class="p">)).</span><span class="n">WillOnce</span><span class="p">(</span><span class="n">Return</span><span class="p">(</span><span class="mi">84</span><span class="p">));</span>
+<span class="c1">// Trigger the call</span>
+<span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">MyProxy</span><span class="p">.</span><span class="n">foo</span><span class="p">(</span><span class="mi">42</span><span class="p">);</span>
+<span class="c1">// If everything has been mocked out synchronously, we can just check the</span>
+<span class="c1">// value of the future directly</span>
+<span class="n">EXPECT_EQ</span><span class="p">(</span><span class="mi">84</span><span class="p">,</span> <span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">());</span></pre></div></section><section class="dex_document"><h1>Pitfalls</h1><p class="dex_introduction"></p><h2 id="eventbase-eventbasemanag">EventBase, EventBaseManager, Executor <a href="#eventbase-eventbasemanag" class="headerLink">#</a></h2>
 
-This works because `via` returns a deactivated ("cold") Future, which blocks the propagation of callbacks until it is activated. Activation happens either explicitly (`activate`) or implicitly when the Future returned by `via` is destructed. In this example, there is no ambiguity about in which context any of the callbacks happen (including `y2`), because propagation is blocked at the `via` callsites until after everything is wired up (temporaries are destructed after the calls to `then` have completed).
+<p>It&#039;s not uncommon to hit a snag (especially when using via()) where you&#039;re hanging for (a) being on the wrong thread (b) talking to an EventBase which is not actually spinning (loopForever).</p>
 
-You can still have a race after `via` if you break it into multiple statements, e.g. in this counterexample:
-```C++
-f = f.via(e1).then(y1).then(y2); // nothing racy here
-f2.then(y3); // racy
-```
+<p>Some tips:</p>
 
-## You make me Promises, Promises
+<ul>
+<li>evb-&gt;isInRunningEventBase()</li>
+<li>evb-&gt;isRunning()</li>
+</ul>
 
-If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make Promises. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with `makeFuture()`). Promises are simple, you make one, you extract the Future, and you fulfill it with a value or an exception. Example:
+<h2 id="lambda-arguments">Lambda Arguments <a href="#lambda-arguments" class="headerLink">#</a></h2>
 
-```C++
-Promise<int> p;
-Future<int> f = p.getFuture();
+<p>The danger with lambdas is you&#039;ll try to read a variable that&#039;s gone</p>
 
-f.isReady() == false
+<div class="remarkup-code-block remarkup-counterexample" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">...;</span>
+<span class="k">return</span> <span class="n">future1</span><span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="o">&amp;</span><span class="p">]</span> <span class="p">{</span>
+    <span class="c1">// ..work..</span>
+    <span class="n">obj</span><span class="p">.</span><span class="n">method</span><span class="p">();</span>
+      <span class="c1">// woops object is gone from the </span>
+      <span class="c1">// stack when this actually runs</span>
+<span class="p">});</span></pre></div>
 
-p.setValue(42);
+<p>Sometimes it makes sense to copy inputs. Sometimes that&#039;s too expensive and a shared_ptr is best. Sometimes the nature of things lends itself to the contract &quot;this won&#039;t go away&quot; and you take a raw pointer, but this should only be used when it&#039;s a very natural fit. In particular, you don&#039;t want people wishing you took a shared pointer and having to do something like this to work around it:</p>
 
-f.isReady() == true
-f.value() == 42
-```
+<div class="remarkup-code-block remarkup-counterexample" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">foo</span> <span class="o">=</span> <span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Foo</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">yourFunction</span><span class="p">(</span><span class="n">foo</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span>
+  <span class="p">[</span><span class="n">foo</span><span class="p">]{</span> 
+     <span class="cm">/* callback doesn&#39;t use foo, but captures the </span>
+<span class="cm">      * shared pointer to keep it alive </span>
+<span class="cm">      */</span>
+<span class="p">});</span></pre></div>
 
-and an exception example:
+<p>In general:
+prefer taking inputs by value if they&#039;re small enough
+if inputs are big (measurably expensive to copy), then keep them on the heap and prefer a shared_ptr
+if you are really sure you need to get more fancy, put on your wizard hat and go to it ;)</p>
 
-```C++
-Promise<int> p;
-Future<int> f = p.getFuture();
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Object</span> <span class="n">obj</span> <span class="o">=</span> <span class="p">...;</span>
+<span class="k">return</span> <span class="n">future1</span><span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="n">obj</span><span class="p">]</span> <span class="p">{</span>  <span class="c1">// capture by value</span>
+    <span class="c1">// ..work..</span>
+    <span class="n">obj</span><span class="p">.</span><span class="n">method</span><span class="p">();</span>
+      <span class="c1">// works on copy of obj</span>
+<span class="p">});</span></pre></div>
 
-f.isReady() == false
+<p>If Object is large:</p>
 
-p.setException(std::runtime_error("Fail"));
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span> <span class="n">optr</span> <span class="o">=</span> <span class="n">makeShared</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">&gt;</span><span class="p">(...);</span>
+<span class="k">return</span> <span class="n">future1</span><span class="p">.</span><span class="n">then</span><span class="p">([</span><span class="n">optr</span><span class="p">]</span> <span class="p">{</span>  <span class="c1">// copy ptr, use count = 2</span>
+    <span class="c1">// ..work..</span>
+    <span class="n">optr</span><span class="o">-&gt;</span><span class="n">method</span><span class="p">();</span>
+      <span class="c1">// works on original object</span>
+    <span class="c1">// use-count for optr goes to 0 and object destructs</span>
+<span class="p">});</span></pre></div></section><section class="dex_document"><h1>Future as a Monad</h1><p class="dex_introduction">A semi-formal and totally optional analysis of Future as a monad.</p><p>Future is a monad. You don&#039;t need to know this or what it means to use Futures, but if you are curious, want to understand monads better, or eat functional flakes for breakfast, then keep reading this extremely extracurricular document.</p>
 
-f.isReady() == true
-f.value() // throws the exception
-```
+<p>Let&#039;s review the definition of a monad. Formal definitions are mathematical and/or in Haskellese and therefore opaque to imperative mortals. But here&#039;s a simplified description using a subset of Haskell type notation that is useful but not confusing:</p>
 
-It's good practice to use setWith which takes a function and automatically captures exceptions, e.g.
+<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code"><span class="c1">-- &quot;unit&quot; is a function that takes a value and wraps it in the monad type.</span>
+<span class="c1">-- Haskellers call this &quot;return&quot; as some kind of sick inside joke.</span>
+<span class="nf">unit</span> <span class="ow">::</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">a</span>
 
-```C++
-Promise<int> p;
-p.setWith([]{
-  try {
-    // do stuff that may throw
-    return 42;
-  } catch (MySpecialException const& e) {
-    // handle it
-    return 7;
-  }
-  // Any exceptions that we didn't catch, will be caught for us
-});
-```
+<span class="c1">-- &quot;bind&quot; is a function that takes a monad, and a function that takes a value</span>
+<span class="c1">-- and returns another monad. Haskellers call this &quot;&gt;&gt;=&quot; because they are</span>
+<span class="c1">-- vying to unseat perl from the throne of illegibility.</span>
+<span class="nf">bind</span> <span class="ow">::</span> <span class="n">m</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">b</span><span class="p">)</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">b</span></pre></div>
 
-## FAQ
+<p>Monads must also satisfy these three axioms:</p>
 
-### Why not use std::future?
-No callback support.
-See also http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf
+<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code">-- Left Identity
+unit a `bind` f &#x2261; f a
+-- Right Identity
+m `bind` unit &#x2261; m
+-- Associativity
+(m `bind` f) `bind` g &#x2261; m `bind` (\x -&gt; f x `bind` g)</pre></div>
 
-### Why not use boost::future?
-- 1.53 is brand new, and not in fbcode
-- It's still a bit buggy/bleeding-edge
-- They haven't fleshed out the threading model very well yet, e.g. every single `then` currently spawns a new thread unless you explicitly ask it to work on this thread only, and there is no support for executors yet.
+<p>I won&#039;t try to explain that, there are <a href="http://lmgtfy.com/?q=what+the+hell+is+a+monad%3F" target="_blank">many blog posts and wiki pages that try to do that</a>. Instead, I&#039;ll substitute the equivalent Future monad expressions, and the whole thing will (probably) start to make sense. First, a simplified Future type:</p>
 
-### Why use heap-allocated shared state? Why is Promise not a subclass of Future?
-C++. It boils down to wanting to return a Future by value for performance (move semantics and compiler optimizations), and programmer sanity, and needing a reference to the shared state by both the user (which holds the Future) and the asynchronous operation (which holds the Promise), and allowing either to go out of scope.
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">A</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">Future</span> <span class="p">{</span>
+  <span class="c1">// The constructor that takes a value is &quot;unit&quot;</span>
+  <span class="n">Future</span><span class="p">(</span><span class="n">A</span><span class="p">);</span>
 
-### What about proper continuations? Futures suck.
-People mean two things here, they either mean using continuations (as in CSP) or they mean using generators which require continuations. It's important to know those are two distinct questions, but in our context the answer is the same because continuations are a prerequisite for generators.
+  <span class="c1">// &quot;then&quot; is &quot;bind&quot;</span>
+  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">B</span><span class="o">&gt;</span>
+  <span class="n">Future</span><span class="o">&lt;</span><span class="n">B</span><span class="o">&gt;</span> <span class="n">then</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">B</span><span class="o">&gt;</span><span class="p">(</span><span class="n">A</span><span class="p">));</span>
 
-C++ doesn't directly support continuations very well. But there are some ways to do them in C/C++ that rely on some rather low-level facilities like `setjmp` and `longjmp` (among others). So yes, they are possible (cf. [Mordor](https://github.com/ccutrer/mordor)).
+  <span class="p">...</span>
+<span class="p">};</span>
 
-The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster and the code might read cleaner.
+<span class="c1">// &quot;makeFuture&quot; is also &quot;unit&quot;, and we will need it because constructors can&#39;t</span>
+<span class="c1">// really be converted to std::function (AFAIK)</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">A</span><span class="o">&gt;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;</span> <span class="n">makeFuture</span><span class="p">(</span><span class="n">A</span><span class="p">);</span></pre></div>
 
-Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn't claim to be the best model for all situations. Use your tools wisely.
+<p>Now, the three axioms (Futures don&#039;t define <tt>operator==</tt> but you get the idea):</p>
 
-## Additional Documentation
-[This documentation](DEX.md) is more in-depth, generated from Facebook internal documentation of Futures. We are in the process of merging our Open Source documentation (this file and others) with that.
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Left Identity</span>
+<span class="n">A</span> <span class="n">a</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;</span><span class="p">(</span><span class="n">a</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">==</span> <span class="n">f</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+<span class="c1">// Right Identity</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;</span> <span class="n">m</span><span class="p">;</span>
+<span class="n">m</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">makeFuture</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;</span><span class="p">)</span> <span class="o">==</span> <span class="n">m</span>
+
+<span class="c1">// Associativity</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">A</span><span class="o">&gt;</span> <span class="n">m</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">B</span><span class="o">&gt;</span><span class="p">(</span><span class="n">A</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">f</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">Future</span><span class="o">&lt;</span><span class="n">C</span><span class="o">&gt;</span><span class="p">(</span><span class="n">B</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">g</span><span class="p">;</span>
+<span class="n">m</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">==</span> <span class="n">m</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">A</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">g</span><span class="p">);</span> <span class="p">})</span></pre></div>
+
+<p>So, in plain english this says a monad like Future has a way to get stuff in the monad (unit/makeFuture), and a way to chain things together (bind/then). unit semantics are unsurprising, and chaining is the same as nesting. Something that behaves this way is a monad, and Future is a monad.</p>
+
+<div class="remarkup-note">Remember how Futures do more than just hold values? The nature of the underlying asynchronous operations (usually I/O) generally includes side effects, and this breaks our pure formalism. You may or may not be able to make your async operations (observable) side-effect free, but you can make your intermediate Future callbacks functionally pure (aka value semantics), and if you do you will be happier than if you mutate state. But I won&#039;t beat that dead horse here&#x2014;I know you will probably mutate state anyway because you&#039;re a perf-conscious C++ developer and speed trumps safety. But do try to minimize it.</div>
+
+<p>Ok, so now we know Future is a monad. What can we do with this newfound power? Knowledge is power, right? Well, you can brag to your friends, for one thing. C++ doesn&#039;t really provide any concrete reusable tools for things that are monads. There&#039;s no do-blocks, or some generic monad-aware functional toolkit that includes map, filter, fold, etc. But what you do get is a way of thinking about and reasoning about your Futures that transcends our own little implementation, and doesn&#039;t require that you grok all the opaque internals of the implementation to do it.</p>
+
+<p>But mostly it makes you cool.</p>
+
+<h3 id="kleisli-composition-extr">Kleisli Composition (extra extra credit) <a href="#kleisli-composition-extr" class="headerLink">#</a></h3>
+
+<p>If &quot;associative&quot; doesn&#039;t look associative to you, then you are very astute. Congratulations! You win a maths unicorn.
+The three laws refer to a different formulation of the axioms, in terms of the Kleisli Composition operator (<tt>&gt;=&gt;</tt>), which basically says compose two monad-making functions in the obvious way.</p>
+
+<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code">(&gt;=&gt;) :: Monad m =&gt; (a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+
+-- Left Identity
+unit &gt;=&gt; g &#x2261; g
+-- Right Identity
+f &gt;=&gt; unit &#x2261; f
+-- Associativity
+(f &gt;=&gt; g) &gt;=&gt; h &#x2261; f &gt;=&gt; (g &gt;=&gt; h)</pre></div>
+
+<p>We accidentally implemented this operator, and called it <tt>chain</tt>. Then we removed it in favor of <tt>Future::thenMulti</tt>. But it totally existed, so use your imagination:</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code">// Left Identity
+chain(makeFuture, g) &#x2261; g
+// Right Identity
+chain(f, makeFuture) &#x2261; f
+// Associativity
+chain(chain(f, g), h) &#x2261; chain(f, chain(g, h)) // and chain(f, g, h)</pre></div>
+
+<h3 id="further-reading">Further reading <a href="#further-reading" class="headerLink">#</a></h3>
+
+<ul>
+<li><a href="https://wiki.haskell.org/Monad_laws" target="_blank">https://wiki.haskell.org/Monad_laws</a></li>
+<li><a href="http://learnyouahaskell.com/a-fistful-of-monads" target="_blank">http://learnyouahaskell.com/a-fistful-of-monads</a></li>
+</ul></section><section class="dex_document"><h1>FAQ</h1><p class="dex_introduction"></p><h2 id="why-not-use-std-future">Why not use <tt>std::future</tt>? <a href="#why-not-use-std-future" class="headerLink">#</a></h2>
+
+<p>No callback support. See also <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf" target="_blank">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf</a></p>
+
+<h2 id="why-not-use-boost-future">Why not use boost::future? <a href="#why-not-use-boost-future" class="headerLink">#</a></h2>
+
+<ul>
+<li>At the time of writing, 1.53 (the first version with the requisite features) was brand new, not well-tested, and not available to Facebook developers.</li>
+<li>It is still a bit buggy/bleeding-edge</li>
+<li>They haven&#039;t fleshed out the threading model very well yet, e.g. every single then currently spawns a new thread unless you explicitly ask it to work on this thread only, and executor support was nonexistent (and now, is still experimental).</li>
+</ul>
+
+<h2 id="why-use-heap-allocated-s">Why use heap-allocated shared state? Why is Promise not a subclass of Future (like Twitter&#039;s)? <a href="#why-use-heap-allocated-s" class="headerLink">#</a></h2>
+
+<p>C++. It boils down to wanting to return a Future by value for performance (move semantics and compiler optimizations), and programmer sanity, and needing a reference to the shared state by both the user (which holds the Future) and the asynchronous operation (which holds the Promise), and allowing either to go out of scope.</p>
+
+<h2 id="what-about-proper-contin">What about proper continuations (fibers)? Futures suck. <a href="#what-about-proper-contin" class="headerLink">#</a></h2>
+
+<p>People mean two things here, they either mean using continuations (as in CSP) or they mean using generators which require continuations. It&#039;s important to know those are two distinct questions, but in our context the answer is the same because continuations are a prerequisite for generators.</p>
+
+<p>C++ doesn&#039;t directly support continuations very well. But there are some ways to do them in C/C++ that rely on some rather low-level facilities like <tt>setjmp</tt> and <tt>longjmp</tt> (among others). So yes, they are possible (cf. <a href="https://github.com/ccutrer/mordor" target="_blank">Mordor</a> and [[folly/experimental/fibers|
+<a href="https://github.com/facebook/folly/tree/master/folly/experimental/fibers]]" target="_blank">https://github.com/facebook/folly/tree/master/folly/experimental/fibers]]</a>).</p>
+
+<p>The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster, the code might read cleaner, and debugging stack traces might be much easier.</p>
+
+<p>Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn&#039;t claim to be the best model for all situations. Use your tools wisely.</p></section>
