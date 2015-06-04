@@ -232,6 +232,7 @@ class IOBuf {
   enum WrapBufferOp { WRAP_BUFFER };
   enum TakeOwnershipOp { TAKE_OWNERSHIP };
   enum CopyBufferOp { COPY_BUFFER };
+  enum CloneOp { CLONE };
 
   typedef ByteRange value_type;
   typedef Iterator iterator;
@@ -396,6 +397,13 @@ class IOBuf {
         uint64_t headroom=0, uint64_t minTailroom=0);
   IOBuf(CopyBufferOp op, ByteRange br,
         uint64_t headroom=0, uint64_t minTailroom=0);
+
+  /**
+   * Clone an IOBuf. See the notes for cloneInto().
+   */
+  IOBuf(CloneOp, const IOBuf& src) : IOBuf() {
+    src.cloneInto(*this);
+  }
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
