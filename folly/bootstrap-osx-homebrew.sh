@@ -19,7 +19,7 @@ brewget glog gflags boost libevent
 # NB their install target installs the libs but not the headers, hence the
 # CPPFLAGS and link shenanigans.
 test -d double-conversion || {
-    git clone https://github.com/floitsch/double-conversion.git
+    git clone https://github.com/google/double-conversion.git
     pushd double-conversion/src
     ln -s . double-conversion
     popd
