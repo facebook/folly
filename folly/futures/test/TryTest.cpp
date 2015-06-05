@@ -21,6 +21,26 @@
 
 using namespace folly;
 
+TEST(Try, basic) {
+  class A {
+   public:
+    A(int x) : x_(x) {}
+
+    int x() const {
+      return x_;
+    }
+   private:
+    int x_;
+  };
+
+  A a(5);
+  Try<A> t_a(std::move(a));
+
+  Try<void> t_void;
+
+  EXPECT_EQ(5, t_a.value().x());
+}
+
 // Make sure we can copy Trys for copyable types
 TEST(Try, copy) {
   Try<int> t;

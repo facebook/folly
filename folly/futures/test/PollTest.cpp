@@ -20,38 +20,22 @@
 
 using namespace folly;
 
-TEST(Sugar, pollReady) {
+TEST(Poll, ready) {
   Promise<int> p;
   auto f = p.getFuture();
   p.setValue(42);
   EXPECT_EQ(42, f.poll().value().value());
 }
 
-TEST(Sugar, pollNotReady) {
+TEST(Poll, notReady) {
   Promise<int> p;
   auto f = p.getFuture();
   EXPECT_FALSE(f.poll().hasValue());
 }
 
-TEST(Sugar, pollException) {
+TEST(Poll, exception) {
   Promise<void> p;
   auto f = p.getFuture();
   p.setWith([] { throw std::runtime_error("Runtime"); });
   EXPECT_TRUE(f.poll().value().hasException());
-}
-
-TEST(Sugar, filterTrue) {
-  EXPECT_EQ(42, makeFuture(42).filter([](int){ return true; }).get());
-}
-
-TEST(Sugar, filterFalse) {
-  EXPECT_THROW(makeFuture(42).filter([](int){ return false; }).get(),
-               folly::PredicateDoesNotObtain);
-}
-
-TEST(Sugar, filterMoveonly) {
-  EXPECT_EQ(42,
-    *makeFuture(folly::make_unique<int>(42))
-     .filter([](std::unique_ptr<int> const&) { return true; })
-     .get());
 }

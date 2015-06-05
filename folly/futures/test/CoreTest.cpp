@@ -17,34 +17,12 @@
 #include <gtest/gtest.h>
 
 #include <folly/futures/Future.h>
+#include <folly/futures/detail/Core.h>
 
 using namespace folly;
 
-TEST(Unit, futureDefaultCtor) {
-  Future<Unit>();
-}
-
-TEST(Unit, voidOrUnit) {
-  EXPECT_TRUE(is_void_or_unit<void>::value);
-  EXPECT_TRUE(is_void_or_unit<Unit>::value);
-  EXPECT_FALSE(is_void_or_unit<int>::value);
-}
-
-TEST(Unit, promiseSetValue) {
-  Promise<Unit> p;
-  p.setValue();
-}
-
-TEST(Unit, liftInt) {
-  using Lifted = Unit::Lift<int>;
-  EXPECT_FALSE(Lifted::value);
-  auto v = std::is_same<int, Lifted::type>::value;
-  EXPECT_TRUE(v);
-}
-
-TEST(Unit, liftVoid) {
-  using Lifted = Unit::Lift<void>;
-  EXPECT_TRUE(Lifted::value);
-  auto v = std::is_same<Unit, Lifted::type>::value;
-  EXPECT_TRUE(v);
+TEST(Core, size) {
+  // If this number goes down, it's fine!
+  // If it goes up, please seek professional advice ;-)
+  EXPECT_EQ(192, sizeof(detail::Core<void>));
 }

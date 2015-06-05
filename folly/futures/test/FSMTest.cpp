@@ -15,6 +15,7 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <folly/futures/detail/FSM.h>
 
 using namespace folly::detail;

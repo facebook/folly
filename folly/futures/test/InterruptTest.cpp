@@ -20,9 +20,8 @@
 #include <folly/futures/Promise.h>
 
 using namespace folly;
-using folly::exception_wrapper;
 
-TEST(Interrupts, raise) {
+TEST(Interrupt, raise) {
   std::runtime_error eggs("eggs");
   Promise<void> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
@@ -31,7 +30,7 @@ TEST(Interrupts, raise) {
   p.getFuture().raise(eggs);
 }
 
-TEST(Interrupts, cancel) {
+TEST(Interrupt, cancel) {
   Promise<void> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
     EXPECT_THROW(e.throwException(), FutureCancellation);
@@ -39,7 +38,7 @@ TEST(Interrupts, cancel) {
   p.getFuture().cancel();
 }
 
-TEST(Interrupts, handleThenInterrupt) {
+TEST(Interrupt, handleThenInterrupt) {
   Promise<int> p;
   bool flag = false;
   p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
@@ -47,7 +46,7 @@ TEST(Interrupts, handleThenInterrupt) {
   EXPECT_TRUE(flag);
 }
 
-TEST(Interrupts, interruptThenHandle) {
+TEST(Interrupt, interruptThenHandle) {
   Promise<int> p;
   bool flag = false;
   p.getFuture().cancel();
@@ -55,7 +54,7 @@ TEST(Interrupts, interruptThenHandle) {
   EXPECT_TRUE(flag);
 }
 
-TEST(Interrupts, interruptAfterFulfilNoop) {
+TEST(Interrupt, interruptAfterFulfilNoop) {
   Promise<void> p;
   bool flag = false;
   p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
@@ -64,7 +63,7 @@ TEST(Interrupts, interruptAfterFulfilNoop) {
   EXPECT_FALSE(flag);
 }
 
-TEST(Interrupts, secondInterruptNoop) {
+TEST(Interrupt, secondInterruptNoop) {
   Promise<void> p;
   int count = 0;
   p.setInterruptHandler([&](const exception_wrapper& e) { count++; });

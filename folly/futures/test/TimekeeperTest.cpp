@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <gtest/gtest.h>
 
 #include <folly/futures/Timekeeper.h>
+
 #include <unistd.h>
 
 using namespace folly;
-using namespace std::chrono;
-using folly::Timekeeper;
-using Duration = folly::Duration;
 
 std::chrono::milliseconds const one_ms(1);
 std::chrono::milliseconds const awhile(10);
@@ -66,7 +65,7 @@ TEST(Timekeeper, futureGetBeforeTimeout) {
   // runs it by hand they're not sitting there forever wondering why it's
   // blocked, and get a useful error message instead. If it does get flaky,
   // empirically increase the timeout to the point where it's very improbable.
-  EXPECT_EQ(42, p.getFuture().get(seconds(2)));
+  EXPECT_EQ(42, p.getFuture().get(std::chrono::seconds(2)));
   t.join();
 }
 

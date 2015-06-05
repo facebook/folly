@@ -14,9 +14,24 @@
  * limitations under the License.
  */
 
-// amazing what things can go wrong if you include things in an unexpected
-// order.
-#include <folly/futures/Try.h>
-#include <folly/futures/Promise.h>
+#include <gtest/gtest.h>
+
 #include <folly/futures/Future.h>
-int main() { return 0; }
+
+using namespace folly;
+
+TEST(Filter, alwaysTrye) {
+  EXPECT_EQ(42, makeFuture(42).filter([](int){ return true; }).get());
+}
+
+TEST(Filter, alwaysFalse) {
+  EXPECT_THROW(makeFuture(42).filter([](int){ return false; }).get(),
+               folly::PredicateDoesNotObtain);
+}
+
+TEST(Filter, moveOnlyValue) {
+  EXPECT_EQ(42,
+    *makeFuture(folly::make_unique<int>(42))
+     .filter([](std::unique_ptr<int> const&) { return true; })
+     .get());
+}

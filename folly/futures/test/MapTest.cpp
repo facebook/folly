@@ -20,31 +20,28 @@
 
 using namespace folly;
 
-TEST(Unit, futureDefaultCtor) {
-  Future<Unit>();
-}
+TEST(Map, basic) {
+  Promise<int> p1;
+  Promise<int> p2;
+  Promise<int> p3;
 
-TEST(Unit, voidOrUnit) {
-  EXPECT_TRUE(is_void_or_unit<void>::value);
-  EXPECT_TRUE(is_void_or_unit<Unit>::value);
-  EXPECT_FALSE(is_void_or_unit<int>::value);
-}
+  std::vector<Future<int>> fs;
+  fs.push_back(p1.getFuture());
+  fs.push_back(p2.getFuture());
+  fs.push_back(p3.getFuture());
 
-TEST(Unit, promiseSetValue) {
-  Promise<Unit> p;
-  p.setValue();
-}
+  int c = 0;
+  std::vector<Future<void>> fs2 = futures::map(fs, [&](int i){
+    c += i;
+  });
 
-TEST(Unit, liftInt) {
-  using Lifted = Unit::Lift<int>;
-  EXPECT_FALSE(Lifted::value);
-  auto v = std::is_same<int, Lifted::type>::value;
-  EXPECT_TRUE(v);
-}
+  // Ensure we call the callbacks as the futures complete regardless of order
+  p2.setValue(1);
+  EXPECT_EQ(1, c);
+  p3.setValue(1);
+  EXPECT_EQ(2, c);
+  p1.setValue(1);
+  EXPECT_EQ(3, c);
 
-TEST(Unit, liftVoid) {
-  using Lifted = Unit::Lift<void>;
-  EXPECT_TRUE(Lifted::value);
-  auto v = std::is_same<Unit, Lifted::type>::value;
-  EXPECT_TRUE(v);
+  EXPECT_TRUE(collect(fs2).isReady());
 }

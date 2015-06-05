@@ -20,31 +20,14 @@
 
 using namespace folly;
 
-TEST(Unit, futureDefaultCtor) {
-  Future<Unit>();
-}
+TEST(Ensure, basic) {
+  size_t count = 0;
+  auto cob = [&]{ count++; };
+  auto f = makeFuture(42)
+    .ensure(cob)
+    .then([](int) { throw std::runtime_error("ensure"); })
+    .ensure(cob);
 
-TEST(Unit, voidOrUnit) {
-  EXPECT_TRUE(is_void_or_unit<void>::value);
-  EXPECT_TRUE(is_void_or_unit<Unit>::value);
-  EXPECT_FALSE(is_void_or_unit<int>::value);
-}
-
-TEST(Unit, promiseSetValue) {
-  Promise<Unit> p;
-  p.setValue();
-}
-
-TEST(Unit, liftInt) {
-  using Lifted = Unit::Lift<int>;
-  EXPECT_FALSE(Lifted::value);
-  auto v = std::is_same<int, Lifted::type>::value;
-  EXPECT_TRUE(v);
-}
-
-TEST(Unit, liftVoid) {
-  using Lifted = Unit::Lift<void>;
-  EXPECT_TRUE(Lifted::value);
-  auto v = std::is_same<Unit, Lifted::type>::value;
-  EXPECT_TRUE(v);
+  EXPECT_THROW(f.get(), std::runtime_error);
+  EXPECT_EQ(2, count);
 }

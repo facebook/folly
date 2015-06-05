@@ -15,12 +15,15 @@
  */
 
 #include <gtest/gtest.h>
-#include <thread>
 
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
 #include <folly/futures/DrivableExecutor.h>
+#include <folly/Baton.h>
+#include <folly/MPMCQueue.h>
+
+#include <thread>
 
 using namespace folly;
 
@@ -73,12 +76,12 @@ struct ViaFixture : public testing::Test {
   std::thread t;
 };
 
-TEST(Via, exception_on_launch) {
+TEST(Via, exceptionOnLaunch) {
   auto future = makeFuture<int>(std::runtime_error("E"));
   EXPECT_THROW(future.value(), std::runtime_error);
 }
 
-TEST(Via, then_value) {
+TEST(Via, thenValue) {
   auto future = makeFuture(std::move(1))
     .then([](Try<int>&& t) {
       return t.value() == 1;
@@ -88,7 +91,7 @@ TEST(Via, then_value) {
   EXPECT_TRUE(future.value());
 }
 
-TEST(Via, then_future) {
+TEST(Via, thenFuture) {
   auto future = makeFuture(1)
     .then([](Try<int>&& t) {
       return makeFuture(t.value() == 1);
@@ -100,7 +103,7 @@ static Future<std::string> doWorkStatic(Try<std::string>&& t) {
   return makeFuture(t.value() + ";static");
 }
 
-TEST(Via, then_function) {
+TEST(Via, thenFunction) {
   struct Worker {
     Future<std::string> doWork(Try<std::string>&& t) {
       return makeFuture(t.value() + ";class");
@@ -119,7 +122,7 @@ TEST(Via, then_function) {
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
 
-TEST_F(ViaFixture, thread_hops) {
+TEST_F(ViaFixture, threadHops) {
   auto westThreadId = std::this_thread::get_id();
   auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
@@ -132,7 +135,7 @@ TEST_F(ViaFixture, thread_hops) {
   EXPECT_EQ(f.getVia(waiter.get()), 1);
 }
 
-TEST_F(ViaFixture, chain_vias) {
+TEST_F(ViaFixture, chainVias) {
   auto westThreadId = std::this_thread::get_id();
   auto f = via(eastExecutor.get()).then([=]() {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
@@ -286,4 +289,128 @@ TEST(Via, then2Variadic) {
   EXPECT_FALSE(f.a);
   x.run();
   EXPECT_TRUE(f.a);
+}
+
+/// Simple executor that does work in another thread
+class ThreadExecutor : public Executor {
+  folly::MPMCQueue<Func> funcs;
+  std::atomic<bool> done {false};
+  std::thread worker;
+  folly::Baton<> baton;
+
+  void work() {
+    baton.post();
+    Func fn;
+    while (!done) {
+      while (!funcs.isEmpty()) {
+        funcs.blockingRead(fn);
+        fn();
+      }
+    }
+  }
+
+ public:
+  explicit ThreadExecutor(size_t n = 1024)
+    : funcs(n) {
+    worker = std::thread(std::bind(&ThreadExecutor::work, this));
+  }
+
+  ~ThreadExecutor() {
+    done = true;
+    funcs.write([]{});
+    worker.join();
+  }
+
+  void add(Func fn) override {
+    funcs.blockingWrite(std::move(fn));
+  }
+
+  void waitForStartup() {
+    baton.wait();
+  }
+};
+
+TEST(Via, viaThenGetWasRacy) {
+  ThreadExecutor x;
+  std::unique_ptr<int> val = folly::via(&x)
+    .then([] { return folly::make_unique<int>(42); })
+    .get();
+  ASSERT_TRUE(!!val);
+  EXPECT_EQ(42, *val);
+}
+
+class DummyDrivableExecutor : public DrivableExecutor {
+ public:
+  void add(Func f) override {}
+  void drive() override { ran = true; }
+  bool ran{false};
+};
+
+TEST(Via, getVia) {
+  {
+    // non-void
+    ManualExecutor x;
+    auto f = via(&x).then([]{ return true; });
+    EXPECT_TRUE(f.getVia(&x));
+  }
+
+  {
+    // void
+    ManualExecutor x;
+    auto f = via(&x).then();
+    f.getVia(&x);
+  }
+
+  {
+    DummyDrivableExecutor x;
+    auto f = makeFuture(true);
+    EXPECT_TRUE(f.getVia(&x));
+    EXPECT_FALSE(x.ran);
+  }
+}
+
+TEST(Via, waitVia) {
+  {
+    ManualExecutor x;
+    auto f = via(&x).then();
+    EXPECT_FALSE(f.isReady());
+    f.waitVia(&x);
+    EXPECT_TRUE(f.isReady());
+  }
+
+  {
+    // try rvalue as well
+    ManualExecutor x;
+    auto f = via(&x).then().waitVia(&x);
+    EXPECT_TRUE(f.isReady());
+  }
+
+  {
+    DummyDrivableExecutor x;
+    makeFuture(true).waitVia(&x);
+    EXPECT_FALSE(x.ran);
+  }
+}
+
+TEST(Via, viaRaces) {
+  ManualExecutor x;
+  Promise<void> p;
+  auto tid = std::this_thread::get_id();
+  bool done = false;
+
+  std::thread t1([&] {
+    p.getFuture()
+      .via(&x)
+      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<void>&&) { done = true; });
+  });
+
+  std::thread t2([&] {
+    p.setValue();
+  });
+
+  while (!done) x.run();
+  t1.join();
+  t2.join();
 }

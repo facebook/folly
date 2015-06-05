@@ -15,15 +15,14 @@
  */
 
 #include <gtest/gtest.h>
+
+#include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
 #include <folly/futures/ManualExecutor.h>
 #include <folly/futures/QueuedImmediateExecutor.h>
-#include <folly/futures/Future.h>
 #include <folly/Baton.h>
 
 using namespace folly;
-using namespace std::chrono;
-using namespace testing;
 
 TEST(ManualExecutor, runIsStable) {
   ManualExecutor x;
@@ -37,7 +36,7 @@ TEST(ManualExecutor, runIsStable) {
 TEST(ManualExecutor, scheduleDur) {
   ManualExecutor x;
   size_t count = 0;
-  milliseconds dur {10};
+  std::chrono::milliseconds dur {10};
   x.schedule([&]{ count++; }, dur);
   EXPECT_EQ(count, 0);
   x.run();
@@ -56,38 +55,38 @@ TEST(ManualExecutor, clockStartsAt0) {
 TEST(ManualExecutor, scheduleAbs) {
   ManualExecutor x;
   size_t count = 0;
-  x.scheduleAt([&]{ count++; }, x.now() + milliseconds(10));
+  x.scheduleAt([&]{ count++; }, x.now() + std::chrono::milliseconds(10));
   EXPECT_EQ(count, 0);
-  x.advance(milliseconds(10));
+  x.advance(std::chrono::milliseconds(10));
   EXPECT_EQ(count, 1);
 }
 
 TEST(ManualExecutor, advanceTo) {
   ManualExecutor x;
   size_t count = 0;
-  x.scheduleAt([&]{ count++; }, steady_clock::now());
+  x.scheduleAt([&]{ count++; }, std::chrono::steady_clock::now());
   EXPECT_EQ(count, 0);
-  x.advanceTo(steady_clock::now());
+  x.advanceTo(std::chrono::steady_clock::now());
   EXPECT_EQ(count, 1);
 }
 
 TEST(ManualExecutor, advanceBack) {
   ManualExecutor x;
   size_t count = 0;
-  x.advance(microseconds(5));
-  x.schedule([&]{ count++; }, microseconds(6));
+  x.advance(std::chrono::microseconds(5));
+  x.schedule([&]{ count++; }, std::chrono::microseconds(6));
   EXPECT_EQ(count, 0);
-  x.advanceTo(x.now() - microseconds(1));
+  x.advanceTo(x.now() - std::chrono::microseconds(1));
   EXPECT_EQ(count, 0);
 }
 
 TEST(ManualExecutor, advanceNeg) {
   ManualExecutor x;
   size_t count = 0;
-  x.advance(microseconds(5));
-  x.schedule([&]{ count++; }, microseconds(6));
+  x.advance(std::chrono::microseconds(5));
+  x.schedule([&]{ count++; }, std::chrono::microseconds(6));
   EXPECT_EQ(count, 0);
-  x.advance(microseconds(-1));
+  x.advance(std::chrono::microseconds(-1));
   EXPECT_EQ(count, 0);
 }
 

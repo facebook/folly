@@ -15,16 +15,16 @@
  */
 
 #pragma once
+
 #include <gtest/gtest.h>
-#include <memory>
+
 #include <folly/futures/Future.h>
-#include <folly/Executor.h>
 
-using namespace folly;
-using namespace std;
-using namespace testing;
+#include <memory>
 
-typedef unique_ptr<int> A;
+namespace folly {
+
+typedef std::unique_ptr<int> A;
 struct B {};
 
 template <class T>
@@ -95,3 +95,5 @@ public:
     return makeFuture(T());
   }
 };
+
+}

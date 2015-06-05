@@ -15,15 +15,16 @@
  */
 
 #include <gflags/gflags.h>
+
 #include <folly/Baton.h>
 #include <folly/Benchmark.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+
 #include <semaphore.h>
 #include <vector>
 
 using namespace folly;
-using namespace std;
 
 namespace {
 
@@ -89,8 +90,8 @@ BENCHMARK_RELATIVE(hundredThens) {
 BENCHMARK_DRAW_LINE()
 
 BENCHMARK(no_contention) {
-  vector<Promise<int>> promises(10000);
-  vector<Future<int>> futures;
+  std::vector<Promise<int>> promises(10000);
+  std::vector<Future<int>> futures;
   std::thread producer, consumer;
 
   BENCHMARK_SUSPEND {
@@ -118,8 +119,8 @@ BENCHMARK(no_contention) {
 }
 
 BENCHMARK_RELATIVE(contention) {
-  vector<Promise<int>> promises(10000);
-  vector<Future<int>> futures;
+  std::vector<Promise<int>> promises(10000);
+  std::vector<Future<int>> futures;
   std::thread producer, consumer;
   sem_t sem;
   sem_init(&sem, 0, 0);

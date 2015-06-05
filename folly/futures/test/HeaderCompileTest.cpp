@@ -15,11 +15,13 @@
  */
 
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
-#include <folly/Portability.h>
 
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  ::gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
+// amazing what things can go wrong if you include things in an unexpected
+// order.
+#include <folly/futures/Try.h>
+#include <folly/futures/Promise.h>
+#include <folly/futures/Future.h>
+
+TEST(Basic, compiles) {
+  EXPECT_TRUE(true);
 }

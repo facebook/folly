@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/futures/SharedPromise.h>
+
 #include <gtest/gtest.h>
+
+#include <folly/futures/SharedPromise.h>
 
 using namespace folly;
 
-TEST(SharedPromise, SetGet) {
+TEST(SharedPromise, setGet) {
   SharedPromise<int> p;
   p.setValue(1);
   auto f1 = p.getFuture();
@@ -26,25 +28,25 @@ TEST(SharedPromise, SetGet) {
   EXPECT_EQ(1, f1.value());
   EXPECT_EQ(1, f2.value());
 }
-TEST(SharedPromise, GetSet) {
+TEST(SharedPromise, getSet) {
   SharedPromise<int> p;
   auto f1 = p.getFuture();
   auto f2 = p.getFuture();
   p.setValue(1);
-  EXPECT_EQ(1, f1.value());
-  EXPECT_EQ(1, f2.value());
-}
-
-TEST(SharedPromise, GetSetGet) {
-  SharedPromise<int> p;
-  auto f1 = p.getFuture();
-  p.setValue(1);
-  auto f2 = p.getFuture();
   EXPECT_EQ(1, f1.value());
   EXPECT_EQ(1, f2.value());
 }
 
-TEST(SharedPromise, Reset) {
+TEST(SharedPromise, getSetGet) {
+  SharedPromise<int> p;
+  auto f1 = p.getFuture();
+  p.setValue(1);
+  auto f2 = p.getFuture();
+  EXPECT_EQ(1, f1.value());
+  EXPECT_EQ(1, f2.value());
+}
+
+TEST(SharedPromise, reset) {
   SharedPromise<int> p;
 
   auto f1 = p.getFuture();
@@ -58,7 +60,7 @@ TEST(SharedPromise, Reset) {
   EXPECT_EQ(2, f2.value());
 }
 
-TEST(SharedPromise, GetMoveSet) {
+TEST(SharedPromise, getMoveSet) {
   SharedPromise<int> p;
   auto f = p.getFuture();
   auto p2 = std::move(p);
@@ -66,7 +68,7 @@ TEST(SharedPromise, GetMoveSet) {
   EXPECT_EQ(1, f.value());
 }
 
-TEST(SharedPromise, SetMoveGet) {
+TEST(SharedPromise, setMoveGet) {
   SharedPromise<int> p;
   p.setValue(1);
   auto p2 = std::move(p);
@@ -74,7 +76,7 @@ TEST(SharedPromise, SetMoveGet) {
   EXPECT_EQ(1, f.value());
 }
 
-TEST(SharedPromise, MoveSetGet) {
+TEST(SharedPromise, moveSetGet) {
   SharedPromise<int> p;
   auto p2 = std::move(p);
   p2.setValue(1);
@@ -82,7 +84,7 @@ TEST(SharedPromise, MoveSetGet) {
   EXPECT_EQ(1, f.value());
 }
 
-TEST(SharedPromise, MoveGetSet) {
+TEST(SharedPromise, moveGetSet) {
   SharedPromise<int> p;
   auto p2 = std::move(p);
   auto f = p2.getFuture();
@@ -90,7 +92,7 @@ TEST(SharedPromise, MoveGetSet) {
   EXPECT_EQ(1, f.value());
 }
 
-TEST(SharedPromise, MoveMove) {
+TEST(SharedPromise, moveMove) {
   SharedPromise<std::shared_ptr<int>> p;
   auto f1 = p.getFuture();
   auto f2 = p.getFuture();
