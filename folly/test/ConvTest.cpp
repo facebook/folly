@@ -34,6 +34,60 @@ static uint32_t u32;
 static int64_t s64;
 static uint64_t u64;
 
+TEST(Conv, digits10Minimal) {
+  // Not much of a test (and it's included in the test below anyway).
+  // I just want to inspect the generated assembly for this function.
+  folly::doNotOptimizeAway(digits10(random() * random()));
+}
+
+TEST(Conv, digits10) {
+  char buffer[100];
+  uint64_t power;
+
+  // first, some basic sniff tests
+  EXPECT_EQ( 1, digits10(0));
+  EXPECT_EQ( 1, digits10(1));
+  EXPECT_EQ( 1, digits10(9));
+  EXPECT_EQ( 2, digits10(10));
+  EXPECT_EQ( 2, digits10(99));
+  EXPECT_EQ( 3, digits10(100));
+  EXPECT_EQ( 3, digits10(999));
+  EXPECT_EQ( 4, digits10(1000));
+  EXPECT_EQ( 4, digits10(9999));
+  EXPECT_EQ(20, digits10(18446744073709551615ULL));
+
+  // try the first X nonnegatives.
+  // Covers some more cases of 2^p, 10^p
+  for (uint64_t i = 0; i < 100000; i++) {
+    snprintf(buffer, sizeof(buffer), "%lu", i);
+    EXPECT_EQ(strlen(buffer), digits10(i));
+  }
+
+  // try powers of 2
+  power = 1;
+  for (int p = 0; p < 64; p++) {
+    snprintf(buffer, sizeof(buffer), "%lu", power);
+    EXPECT_EQ(strlen(buffer), digits10(power));
+    snprintf(buffer, sizeof(buffer), "%lu", power - 1);
+    EXPECT_EQ(strlen(buffer), digits10(power - 1));
+    snprintf(buffer, sizeof(buffer), "%lu", power + 1);
+    EXPECT_EQ(strlen(buffer), digits10(power + 1));
+    power *= 2;
+  }
+
+  // try powers of 10
+  power = 1;
+  for (int p = 0; p < 20; p++) {
+    snprintf(buffer, sizeof(buffer), "%lu", power);
+    EXPECT_EQ(strlen(buffer), digits10(power));
+    snprintf(buffer, sizeof(buffer), "%lu", power - 1);
+    EXPECT_EQ(strlen(buffer), digits10(power - 1));
+    snprintf(buffer, sizeof(buffer), "%lu", power + 1);
+    EXPECT_EQ(strlen(buffer), digits10(power + 1));
+    power *= 10;
+  }
+}
+
 // Test to<T>(T)
 TEST(Conv, Type2Type) {
   int intV = 42;

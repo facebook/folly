@@ -228,6 +228,43 @@ unsafeTelescope128(char * buffer, size_t room, unsigned __int128 x) {
  */
 
 inline uint32_t digits10(uint64_t v) {
+#ifdef __x86_64__
+
+  // For this arch we can get a little help from specialized CPU instructions
+  // which can count leading zeroes; 64 minus that is appx. log (base 2).
+  // Use that to approximate base-10 digits (log_10) and then adjust if needed.
+
+  // 10^i, defined for i 0 through 19.
+  // This is 20 * 8 == 160 bytes, which fits neatly into 5 cache lines
+  // (assuming a cache line size of 64).
+  static const uint64_t powersOf10[20] __attribute__((__aligned__(64))) = {
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000,
+    10000000000, 100000000000, 1000000000000, 10000000000000, 100000000000000,
+    1000000000000000, 10000000000000000, 100000000000000000,
+    1000000000000000000, 10000000000000000000UL
+  };
+
+  // "count leading zeroes" operation not valid; for 0; special case this.
+  if UNLIKELY (! v) {
+    return 1;
+  }
+
+  // bits is in the ballpark of log_2(v).
+  const uint8_t leadingZeroes = __builtin_clzll(v);
+  const auto bits = 63 - leadingZeroes;
+
+  // approximate log_10(v) == log_10(2) * bits.
+  // Integer magic below: 77/256 is appx. 0.3010 (log_10(2)).
+  // The +1 is to make this the ceiling of the log_10 estimate.
+  const auto minLength = 1 + ((bits * 77) >> 8);
+
+  // return that log_10 lower bound, plus adjust if input >= 10^(that bound)
+  // in case there's a small error and we misjudged length.
+  return minLength +
+         (UNLIKELY (v >= powersOf10[minLength]));
+
+#else
+
   uint32_t result = 1;
   for (;;) {
     if (LIKELY(v < 10)) return result;
@@ -238,6 +275,8 @@ inline uint32_t digits10(uint64_t v) {
     v /= 10000U;
     result += 4;
   }
+
+#endif
 }
 
 /**
