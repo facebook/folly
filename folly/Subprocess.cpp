@@ -819,7 +819,7 @@ void Subprocess::closeParentFd(int childFd) {
 std::vector<Subprocess::ChildPipe> Subprocess::takeOwnershipOfPipes() {
   std::vector<Subprocess::ChildPipe> pipes;
   for (auto& p : pipes_) {
-    pipes.emplace_back(ChildPipe{p.childFd, std::move(p.pipe)});
+    pipes.emplace_back(p.childFd, std::move(p.pipe));
   }
   pipes_.clear();
   return pipes;

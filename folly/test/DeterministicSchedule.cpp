@@ -247,7 +247,7 @@ Futex<DeterministicAtomic>::futexWaitImpl(
   futexLock.lock();
   if (data == expected) {
     auto& queue = futexQueues[this];
-    queue.push_back(std::make_pair(waitMask, &awoken));
+    queue.emplace_back(waitMask, &awoken);
     auto ours = queue.end();
     ours--;
     while (!awoken) {

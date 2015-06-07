@@ -251,8 +251,7 @@ SSL_SESSION* SSLSessionCacheManager::getSession(SSL* ssl,
             SSLUtil::hexlify(sessionId);
           std::unique_ptr<DelayedDestruction::DestructorGuard> dg(
             new DelayedDestruction::DestructorGuard(sslSocket));
-          pit->second.waiters.push_back(
-            std::make_pair(sslSocket, std::move(dg)));
+          pit->second.waiters.emplace_back(sslSocket, std::move(dg));
           *copyflag = SSL_SESSION_CB_WOULD_BLOCK;
           return nullptr;
         }
