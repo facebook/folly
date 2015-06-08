@@ -256,12 +256,11 @@ inline uint32_t digits10(uint64_t v) {
   // approximate log_10(v) == log_10(2) * bits.
   // Integer magic below: 77/256 is appx. 0.3010 (log_10(2)).
   // The +1 is to make this the ceiling of the log_10 estimate.
-  const auto minLength = 1 + ((bits * 77) >> 8);
+  const uint32_t minLength = 1 + ((bits * 77) >> 8);
 
   // return that log_10 lower bound, plus adjust if input >= 10^(that bound)
   // in case there's a small error and we misjudged length.
-  return minLength +
-         (UNLIKELY (v >= powersOf10[minLength]));
+  return minLength + (uint32_t) (UNLIKELY (v >= powersOf10[minLength]));
 
 #else
 
