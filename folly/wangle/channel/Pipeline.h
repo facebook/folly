@@ -31,7 +31,7 @@ class PipelineManager {
   virtual void deletePipeline(PipelineBase* pipeline) = 0;
 };
 
-class PipelineBase {
+class PipelineBase : public DelayedDestruction {
  public:
   virtual ~PipelineBase() {}
 
@@ -69,7 +69,7 @@ struct Nothing{};
  * If W is Nothing, write() and close() will be disabled.
  */
 template <class R, class W = Nothing>
-class Pipeline : public PipelineBase, public DelayedDestruction {
+class Pipeline : public PipelineBase {
  public:
   Pipeline();
   ~Pipeline();
