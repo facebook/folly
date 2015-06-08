@@ -156,6 +156,9 @@ void IOThreadPoolExecutor::threadRun(ThreadPtr thread) {
     }
   }
   stoppedThreads_.add(ioThread);
+
+  ioThread->eventBase = nullptr;
+  eventBaseManager_->clearEventBase();
 }
 
 // threadListLock_ is writelocked
