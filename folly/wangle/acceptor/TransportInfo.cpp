@@ -31,6 +31,7 @@ bool TransportInfo::initWithSocket(const AsyncSocket* sock) {
    * available in current tcpinfo.  To workaround this limitation, totalBytes
    * and MSS are used to estimate it.
    */
+#if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 17
   if (tcpinfo.tcpi_total_retrans == 0) {
     rtx = 0;
   } else if (tcpinfo.tcpi_total_retrans > 0 && tcpinfo.tcpi_snd_mss > 0 &&
@@ -42,6 +43,9 @@ bool TransportInfo::initWithSocket(const AsyncSocket* sock) {
   } else {
     rtx = -1;
   }
+#else
+    rtx = -1;
+#endif  // __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 17
   validTcpinfo = true;
 #else
   tcpinfoErrno = EINVAL;
