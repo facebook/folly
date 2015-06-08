@@ -76,8 +76,9 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
 }
 
 HHWheelTimer::HHWheelTimer(folly::EventBase* eventBase,
-                           std::chrono::milliseconds intervalMS)
-  : AsyncTimeout(eventBase)
+                           std::chrono::milliseconds intervalMS,
+                           AsyncTimeout::InternalEnum internal)
+  : AsyncTimeout(eventBase, internal)
   , interval_(intervalMS)
   , nextTick_(1)
   , count_(0)
