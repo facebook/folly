@@ -334,6 +334,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                   std::unique_ptr<folly::IOBuf>&& buf,
                   WriteFlags flags = WriteFlags::NONE) override;
 
+  class WriteRequest;
+  virtual void writeRequest(WriteRequest* req);
+  void writeRequestReady() {
+    handleWrite();
+  }
+
   // Methods inherited from AsyncTransport
   void close() override;
   void closeNow() override;
@@ -477,6 +483,60 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     ERROR
   };
 
+  /**
+   * A WriteRequest object tracks information about a pending write operation.
+   */
+  class WriteRequest {
+   public:
+    WriteRequest(AsyncSocket* socket, WriteCallback* callback) :
+      socket_(socket), callback_(callback) {}
+
+    virtual void start() {};
+
+    virtual void destroy() = 0;
+
+    virtual bool performWrite() = 0;
+
+    virtual void consume() = 0;
+
+    virtual bool isComplete() = 0;
+
+    WriteRequest* getNext() const {
+      return next_;
+    }
+
+    WriteCallback* getCallback() const {
+      return callback_;
+    }
+
+    uint32_t getTotalBytesWritten() const {
+      return totalBytesWritten_;
+    }
+
+    void append(WriteRequest* next) {
+      assert(next_ == nullptr);
+      next_ = next;
+    }
+
+    void fail(const char* fn, const AsyncSocketException& ex) {
+      socket_->failWrite(fn, ex);
+    }
+
+    void bytesWritten(size_t count) {
+      totalBytesWritten_ += count;
+      socket_->appBytesWritten_ += count;
+    }
+
+   protected:
+    // protected destructor, to ensure callers use destroy()
+    virtual ~WriteRequest() {}
+
+    AsyncSocket* socket_;         ///< parent socket
+    WriteRequest* next_{nullptr};          ///< pointer to next WriteRequest
+    WriteCallback* callback_;     ///< completion callback
+    uint32_t totalBytesWritten_{0};  ///< total bytes written
+  };
+
  protected:
   enum ReadResultEnum {
     READ_EOF = 0,
@@ -516,7 +576,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     SHUT_READ = 0x04,
   };
 
-  class WriteRequest;
   class BytesWriteRequest;
 
   class WriteTimeout : public AsyncTimeout {

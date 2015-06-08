@@ -282,6 +282,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/bootstrap/ClientBootstrap.h \
 	wangle/channel/AsyncSocketHandler.h \
 	wangle/channel/EventBaseHandler.h \
+	wangle/channel/FileRegion.h \
 	wangle/channel/Handler.h \
 	wangle/channel/HandlerContext.h \
 	wangle/channel/HandlerContext-inl.h \
