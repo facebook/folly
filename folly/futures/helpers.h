@@ -155,7 +155,7 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 /// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-typename detail::VariadicContext<
+typename detail::CollectAllVariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
 collectAll(Fs&&... fs);
 
@@ -173,6 +173,14 @@ template <class Collection>
 auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
   return collect(c.begin(), c.end());
 }
+
+/// Like collectAll, but will short circuit on the first exception. Thus, the
+/// type of the returned Future is std::tuple<T1, T2, ...> instead of
+/// std::tuple<Try<T1>, Try<T2>, ...>
+template <typename... Fs>
+typename detail::CollectVariadicContext<
+  typename std::decay<Fs>::type::value_type...>::type
+collect(Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
   the Try. If multiple Futures complete at the same time (or are already

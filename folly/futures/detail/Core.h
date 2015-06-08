@@ -341,34 +341,59 @@ class Core {
 };
 
 template <typename... Ts>
-struct VariadicContext {
-  VariadicContext() {}
-  ~VariadicContext() {
+struct CollectAllVariadicContext {
+  CollectAllVariadicContext() {}
+  template <typename T, size_t I>
+  inline void setPartialResult(Try<T>& t) {
+    std::get<I>(results) = std::move(t);
+  }
+  ~CollectAllVariadicContext() {
     p.setValue(std::move(results));
   }
-  Promise<std::tuple<Try<Ts>... >> p;
-  std::tuple<Try<Ts>... > results;
+  Promise<std::tuple<Try<Ts>...>> p;
+  std::tuple<Try<Ts>...> results;
   typedef Future<std::tuple<Try<Ts>...>> type;
 };
 
-template <typename... Ts, typename THead, typename... Fs>
-typename std::enable_if<sizeof...(Fs) == 0, void>::type
-collectAllVariadicHelper(std::shared_ptr<VariadicContext<Ts...>> ctx,
-                         THead&& head, Fs&&... tail) {
-  head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
-    std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
-  });
+template <typename... Ts>
+struct CollectVariadicContext {
+  CollectVariadicContext() {}
+  template <typename T, size_t I>
+  inline void setPartialResult(Try<T>& t) {
+    if (t.hasException()) {
+       if (!threw.exchange(true)) {
+         p.setException(std::move(t.exception()));
+       }
+     } else if (!threw) {
+       std::get<I>(results) = std::move(t.value());
+     }
+  }
+  ~CollectVariadicContext() {
+    if (!threw.exchange(true)) {
+      p.setValue(std::move(results));
+    }
+  }
+  Promise<std::tuple<Ts...>> p;
+  std::tuple<Ts...> results;
+  std::atomic<bool> threw;
+  typedef Future<std::tuple<Ts...>> type;
+};
+
+template <template <typename ...> class T, typename... Ts>
+void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx) {
+  // base case
 }
 
-template <typename... Ts, typename THead, typename... Fs>
-typename std::enable_if<sizeof...(Fs) != 0, void>::type
-collectAllVariadicHelper(std::shared_ptr<VariadicContext<Ts...>> ctx,
-                         THead&& head, Fs&&... tail) {
+template <template <typename ...> class T, typename... Ts,
+          typename THead, typename... TTail>
+void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx,
+                           THead&& head, TTail&&... tail) {
   head.setCallback_([ctx](Try<typename THead::value_type>&& t) {
-    std::get<sizeof...(Ts) - sizeof...(Fs) - 1>(ctx->results) = std::move(t);
+    ctx->template setPartialResult<typename THead::value_type,
+                                   sizeof...(Ts) - sizeof...(TTail) - 1>(t);
   });
   // template tail-recursion
-  collectAllVariadicHelper(ctx, std::forward<Fs>(tail)...);
+  collectVariadicHelper(ctx, std::forward<TTail>(tail)...);
 }
 
 }} // folly::detail

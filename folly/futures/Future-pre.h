@@ -41,7 +41,8 @@ struct isTry<Try<T>> : std::true_type {};
 namespace detail {
 
 template <class> class Core;
-template <class...> struct VariadicContext;
+template <class...> struct CollectAllVariadicContext;
+template <class...> struct CollectVariadicContext;
 template <class> struct CollectContext;
 
 template<typename F, typename... Args>

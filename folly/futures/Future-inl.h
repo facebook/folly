@@ -545,13 +545,13 @@ void mapSetCallback(InputIterator first, InputIterator last, F func) {
 // collectAll (variadic)
 
 template <typename... Fs>
-typename detail::VariadicContext<
+typename detail::CollectAllVariadicContext<
   typename std::decay<Fs>::type::value_type...>::type
 collectAll(Fs&&... fs) {
-  auto ctx = std::make_shared<detail::VariadicContext<
+  auto ctx = std::make_shared<detail::CollectAllVariadicContext<
     typename std::decay<Fs>::type::value_type...>>();
-  detail::collectAllVariadicHelper(ctx,
-    std::forward<typename std::decay<Fs>::type>(fs)...);
+  detail::collectVariadicHelper<detail::CollectAllVariadicContext>(
+    ctx, std::forward<typename std::decay<Fs>::type>(fs)...);
   return ctx->p.getFuture();
 }
 
@@ -580,6 +580,8 @@ collectAll(InputIterator first, InputIterator last) {
   });
   return ctx->p.getFuture();
 }
+
+// collect (iterator)
 
 namespace detail {
 
@@ -648,6 +650,21 @@ collect(InputIterator first, InputIterator last) {
   return ctx->p.getFuture();
 }
 
+// collect (variadic)
+
+template <typename... Fs>
+typename detail::CollectVariadicContext<
+  typename std::decay<Fs>::type::value_type...>::type
+collect(Fs&&... fs) {
+  auto ctx = std::make_shared<detail::CollectVariadicContext<
+    typename std::decay<Fs>::type::value_type...>>();
+  detail::collectVariadicHelper<detail::CollectVariadicContext>(
+    ctx, std::forward<typename std::decay<Fs>::type>(fs)...);
+  return ctx->p.getFuture();
+}
+
+// collectAny (iterator)
+
 template <class InputIterator>
 Future<
   std::pair<size_t,
@@ -672,6 +689,8 @@ collectAny(InputIterator first, InputIterator last) {
   });
   return ctx->p.getFuture();
 }
+
+// collectN (iterator)
 
 template <class InputIterator>
 Future<std::vector<std::pair<size_t, Try<typename
@@ -709,6 +728,8 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   return ctx->p.getFuture();
 }
 
+// reduce (iterator)
+
 template <class It, class T, class F>
 Future<T> reduce(It first, It last, T&& initial, F&& func) {
   if (first == last) {
@@ -739,6 +760,8 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
 
   return f;
 }
+
+// window (collection)
 
 template <class Collection, class F, class ItT, class Result>
 std::vector<Future<Result>>
@@ -787,6 +810,8 @@ window(Collection input, F func, size_t n) {
   return futures;
 }
 
+// reduce
+
 template <class T>
 template <class I, class F>
 Future<I> Future<T>::reduce(I&& initial, F&& func) {
@@ -800,6 +825,8 @@ Future<I> Future<T>::reduce(I&& initial, F&& func) {
     return ret;
   });
 }
+
+// unorderedReduce (iterator)
 
 template <class It, class T, class F, class ItT, class Arg>
 Future<T> unorderedReduce(It first, It last, T initial, F func) {
@@ -849,6 +876,8 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
   return ctx->promise_.getFuture();
 }
 
+// within
+
 template <class T>
 Future<T> Future<T>::within(Duration dur, Timekeeper* tk) {
   return within(dur, TimedOut(), tk);
@@ -889,6 +918,8 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
   return ctx->promise.getFuture().via(getExecutor());
 }
+
+// delayed
 
 template <class T>
 Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) {

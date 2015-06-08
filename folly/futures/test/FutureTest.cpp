@@ -413,6 +413,31 @@ TEST(Future, thenFunctionFuture) {
   EXPECT_EQ(f.value(), "start;static;class-static;class");
 }
 
+TEST(Future, thenStdFunction) {
+  {
+    std::function<int()> fn = [](){ return 42; };
+    auto f = makeFuture().then(std::move(fn));
+    EXPECT_EQ(f.value(), 42);
+  }
+  {
+    std::function<int(int)> fn = [](int i){ return i + 23; };
+    auto f = makeFuture(19).then(std::move(fn));
+    EXPECT_EQ(f.value(), 42);
+  }
+  {
+    std::function<int(Try<int>&)> fn = [](Try<int>& t){ return t.value() + 2; };
+    auto f = makeFuture(1).then(std::move(fn));
+    EXPECT_EQ(f.value(), 3);
+  }
+  {
+    bool flag = false;
+    std::function<void()> fn = [&flag](){ flag = true; };
+    auto f = makeFuture().then(std::move(fn));
+    EXPECT_TRUE(f.isReady());
+    EXPECT_TRUE(flag);
+  }
+}
+
 TEST(Future, thenBind) {
   auto l = []() {
     return makeFuture("bind");

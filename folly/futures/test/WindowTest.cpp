@@ -16,11 +16,16 @@
 
 #include <gtest/gtest.h>
 
+#include <boost/thread/barrier.hpp>
+
 #include <folly/futures/Future.h>
 
 #include <vector>
 
 using namespace folly;
+
+typedef FutureException eggs_t;
+static eggs_t eggs("eggs");
 
 TEST(Window, basic) {
   // int -> Future<int>
@@ -77,5 +82,109 @@ TEST(Window, basic) {
         return sum + *b;
       }).get();
     EXPECT_EQ(6, res);
+  }
+}
+
+TEST(Window, parallel) {
+  std::vector<int> input;
+  std::vector<Promise<int>> ps(10);
+  for (size_t i = 0; i < ps.size(); i++) {
+    input.emplace_back(i);
+  }
+  auto f = collect(window(input, [&](int i) {
+    return ps[i].getFuture();
+  }, 3));
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      ps[i].setValue(i);
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  for (size_t i = 0; i < ps.size(); i++) {
+    EXPECT_EQ(i, f.value()[i]);
+  }
+}
+
+TEST(Window, parallelWithError) {
+  std::vector<int> input;
+  std::vector<Promise<int>> ps(10);
+  for (size_t i = 0; i < ps.size(); i++) {
+    input.emplace_back(i);
+  }
+  auto f = collect(window(input, [&](int i) {
+    return ps[i].getFuture();
+  }, 3));
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      if (i == (ps.size()/2)) {
+        ps[i].setException(eggs);
+      } else {
+        ps[i].setValue(i);
+      }
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_THROW(f.value(), eggs_t);
+}
+
+TEST(Window, allParallelWithError) {
+  std::vector<int> input;
+  std::vector<Promise<int>> ps(10);
+  for (size_t i = 0; i < ps.size(); i++) {
+    input.emplace_back(i);
+  }
+  auto f = collectAll(window(input, [&](int i) {
+    return ps[i].getFuture();
+  }, 3));
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      if (i == (ps.size()/2)) {
+        ps[i].setException(eggs);
+      } else {
+        ps[i].setValue(i);
+      }
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  for (size_t i = 0; i < ps.size(); i++) {
+    if (i == (ps.size()/2)) {
+      EXPECT_THROW(f.value()[i].value(), eggs_t);
+    } else {
+      EXPECT_TRUE(f.value()[i].hasValue());
+      EXPECT_EQ(i, f.value()[i].value());
+    }
   }
 }

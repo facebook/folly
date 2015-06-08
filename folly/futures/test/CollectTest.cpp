@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include <boost/thread/barrier.hpp>
+
 #include <folly/futures/Future.h>
 #include <folly/Random.h>
 #include <folly/small_vector.h>
@@ -353,6 +355,134 @@ TEST(Collect, alreadyCompleted) {
   }
 }
 
+TEST(Collect, parallel) {
+  std::vector<Promise<int>> ps(10);
+  std::vector<Future<int>> fs;
+  for (size_t i = 0; i < ps.size(); i++) {
+    fs.emplace_back(ps[i].getFuture());
+  }
+  auto f = collect(fs);
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      ps[i].setValue(i);
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  for (size_t i = 0; i < ps.size(); i++) {
+    EXPECT_EQ(i, f.value()[i]);
+  }
+}
+
+TEST(Collect, parallelWithError) {
+  std::vector<Promise<int>> ps(10);
+  std::vector<Future<int>> fs;
+  for (size_t i = 0; i < ps.size(); i++) {
+    fs.emplace_back(ps[i].getFuture());
+  }
+  auto f = collect(fs);
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      if (i == (ps.size()/2)) {
+        ps[i].setException(eggs);
+      } else {
+        ps[i].setValue(i);
+      }
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_THROW(f.value(), eggs_t);
+}
+
+TEST(Collect, allParallel) {
+  std::vector<Promise<int>> ps(10);
+  std::vector<Future<int>> fs;
+  for (size_t i = 0; i < ps.size(); i++) {
+    fs.emplace_back(ps[i].getFuture());
+  }
+  auto f = collectAll(fs);
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      ps[i].setValue(i);
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  for (size_t i = 0; i < ps.size(); i++) {
+    EXPECT_TRUE(f.value()[i].hasValue());
+    EXPECT_EQ(i, f.value()[i].value());
+  }
+}
+
+TEST(Collect, allParallelWithError) {
+  std::vector<Promise<int>> ps(10);
+  std::vector<Future<int>> fs;
+  for (size_t i = 0; i < ps.size(); i++) {
+    fs.emplace_back(ps[i].getFuture());
+  }
+  auto f = collectAll(fs);
+
+  std::vector<std::thread> ts;
+  boost::barrier barrier(ps.size() + 1);
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts.emplace_back([&ps, &barrier, i]() {
+      barrier.wait();
+      if (i == (ps.size()/2)) {
+        ps[i].setException(eggs);
+      } else {
+        ps[i].setValue(i);
+      }
+    });
+  }
+
+  barrier.wait();
+
+  for (size_t i = 0; i < ps.size(); i++) {
+    ts[i].join();
+  }
+
+  EXPECT_TRUE(f.isReady());
+  for (size_t i = 0; i < ps.size(); i++) {
+    if (i == (ps.size()/2)) {
+      EXPECT_THROW(f.value()[i].value(), eggs_t);
+    } else {
+      EXPECT_TRUE(f.value()[i].hasValue());
+      EXPECT_EQ(i, f.value()[i].value());
+    }
+  }
+}
+
 TEST(Collect, collectN) {
   std::vector<Promise<void>> promises(10);
   std::vector<Future<void>> futures;
@@ -441,6 +571,59 @@ TEST(Collect, collectAllVariadicReferences) {
   EXPECT_FALSE(flag);
   pi.setValue(42);
   EXPECT_TRUE(flag);
+}
+
+TEST(Collect, collectAllVariadicWithException) {
+  Promise<bool> pb;
+  Promise<int> pi;
+  Future<bool> fb = pb.getFuture();
+  Future<int> fi = pi.getFuture();
+  bool flag = false;
+  collectAll(std::move(fb), std::move(fi))
+    .then([&](std::tuple<Try<bool>, Try<int>> tup) {
+      flag = true;
+      EXPECT_TRUE(std::get<0>(tup).hasValue());
+      EXPECT_EQ(std::get<0>(tup).value(), true);
+      EXPECT_TRUE(std::get<1>(tup).hasException());
+      EXPECT_THROW(std::get<1>(tup).value(), eggs_t);
+    });
+  pb.setValue(true);
+  EXPECT_FALSE(flag);
+  pi.setException(eggs);
+  EXPECT_TRUE(flag);
+}
+
+TEST(Collect, collectVariadic) {
+  Promise<bool> pb;
+  Promise<int> pi;
+  Future<bool> fb = pb.getFuture();
+  Future<int> fi = pi.getFuture();
+  bool flag = false;
+  collect(std::move(fb), std::move(fi))
+    .then([&](std::tuple<bool, int> tup) {
+      flag = true;
+      EXPECT_EQ(std::get<0>(tup), true);
+      EXPECT_EQ(std::get<1>(tup), 42);
+    });
+  pb.setValue(true);
+  EXPECT_FALSE(flag);
+  pi.setValue(42);
+  EXPECT_TRUE(flag);
+}
+
+TEST(Collect, collectVariadicWithException) {
+  Promise<bool> pb;
+  Promise<int> pi;
+  Future<bool> fb = pb.getFuture();
+  Future<int> fi = pi.getFuture();
+  bool flag = false;
+  auto f = collect(std::move(fb), std::move(fi));
+  pb.setValue(true);
+  EXPECT_FALSE(f.isReady());
+  pi.setException(eggs);
+  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.getTry().hasException());
+  EXPECT_THROW(f.get(), eggs_t);
 }
 
 TEST(Collect, collectAllNone) {
