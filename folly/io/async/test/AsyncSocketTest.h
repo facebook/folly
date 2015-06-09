@@ -93,10 +93,11 @@ class WriteCallback : public AsyncTransportWrapper::WriteCallback {
 
 class ReadCallback : public AsyncTransportWrapper::ReadCallback {
  public:
-  ReadCallback()
+  explicit ReadCallback(size_t _maxBufferSz = 4096)
     : state(STATE_WAITING)
     , exception(AsyncSocketException::UNKNOWN, "none")
-    , buffers() {}
+    , buffers()
+    , maxBufferSz(_maxBufferSz) {}
 
   ~ReadCallback() {
     for (std::vector<Buffer>::iterator it = buffers.begin();
@@ -109,7 +110,7 @@ class ReadCallback : public AsyncTransportWrapper::ReadCallback {
 
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
     if (!currentBuffer.buffer) {
-      currentBuffer.allocate(4096);
+      currentBuffer.allocate(maxBufferSz);
     }
     *bufReturn = currentBuffer.buffer;
     *lenReturn = currentBuffer.length;
@@ -145,6 +146,14 @@ class ReadCallback : public AsyncTransportWrapper::ReadCallback {
     CHECK_EQ(offset, expectedLen);
   }
 
+  size_t dataRead() const {
+    size_t ret = 0;
+    for (const auto& buf : buffers) {
+      ret += buf.length;
+    }
+    return ret;
+  }
+
   class Buffer {
    public:
     Buffer() : buffer(nullptr), length(0) {}
@@ -173,6 +182,7 @@ class ReadCallback : public AsyncTransportWrapper::ReadCallback {
   std::vector<Buffer> buffers;
   Buffer currentBuffer;
   VoidCallback dataAvailableCallback;
+  const size_t maxBufferSz;
 };
 
 class ReadVerifier {

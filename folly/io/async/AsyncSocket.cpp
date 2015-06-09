@@ -527,6 +527,12 @@ void AsyncSocket::setReadCB(ReadCallback *callback) {
     return;
   }
 
+  /* We are removing a read callback */
+  if (callback == nullptr &&
+      immediateReadHandler_.isLoopCallbackScheduled()) {
+    immediateReadHandler_.cancelLoopCallback();
+  }
+
   if (shutdownFlags_ & SHUT_READ) {
     // Reads have already been shut down on this socket.
     //
@@ -1330,9 +1336,11 @@ void AsyncSocket::handleRead() noexcept {
       return;
     }
     if (maxReadsPerEvent_ && (++numReads >= maxReadsPerEvent_)) {
-      // We might still have data in the socket.
-      // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
-      scheduleImmediateRead();
+      if (readCallback_ != nullptr) {
+        // We might still have data in the socket.
+        // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
+        scheduleImmediateRead();
+      }
       return;
     }
   }
