@@ -1262,7 +1262,89 @@ TEST(AsyncSSLSocketTest, MinWriteSizeTest) {
   socket->setMinWriteSize(50000);
   EXPECT_EQ(50000, socket->getMinWriteSize());
 }
+
+class ReadCallbackTerminator : public ReadCallback {
+ public:
+  ReadCallbackTerminator(EventBase* base, WriteCallbackBase *wcb)
+      : ReadCallback(wcb)
+      , base_(base) {}
+
+  // Do not write data back, terminate the loop.
+  void readDataAvailable(size_t len) noexcept override {
+    std::cerr << "readDataAvailable, len " << len << std::endl;
+
+    currentBuffer.length = len;
+
+    buffers.push_back(currentBuffer);
+    currentBuffer.reset();
+    state = STATE_SUCCEEDED;
+
+    socket_->setReadCB(nullptr);
+    base_->terminateLoopSoon();
+  }
+ private:
+  EventBase* base_;
+};
+
+
+/**
+ * Test a full unencrypted codepath
+ */
+TEST(AsyncSSLSocketTest, UnencryptedTest) {
+  EventBase base;
+
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  int fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+  auto client = AsyncSSLSocket::newSocket(
+                  clientCtx, &base, fds[0], false, true);
+  auto server = AsyncSSLSocket::newSocket(
+                  serverCtx, &base, fds[1], true, true);
+
+  ReadCallbackTerminator readCallback(&base, nullptr);
+  server->setReadCB(&readCallback);
+  readCallback.setSocket(server);
+
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  client->write(nullptr, buf, sizeof(buf));
+
+  // Check that bytes are unencrypted
+  char c;
+  EXPECT_EQ(1, recv(fds[1], &c, 1, MSG_PEEK));
+  EXPECT_EQ('a', c);
+
+  EventBaseAborter eba(&base, 3000);
+  base.loop();
+
+  EXPECT_EQ(1, readCallback.buffers.size());
+  EXPECT_EQ(AsyncSSLSocket::STATE_UNENCRYPTED, client->getSSLState());
+
+  server->setReadCB(&readCallback);
+
+  // Unencrypted
+  server->sslAccept(nullptr);
+  client->sslConn(nullptr);
+
+  // Do NOT wait for handshake, writing should be queued and happen after
+
+  client->write(nullptr, buf, sizeof(buf));
+
+  // Check that bytes are *not* unencrypted
+  char c2;
+  EXPECT_EQ(1, recv(fds[1], &c2, 1, MSG_PEEK));
+  EXPECT_NE('a', c2);
+
+
+  base.loop();
+
+  EXPECT_EQ(2, readCallback.buffers.size());
+  EXPECT_EQ(AsyncSSLSocket::STATE_ESTABLISHED, client->getSSLState());
 }
+
+} // namespace
 
 ///////////////////////////////////////////////////////////////////////////
 // init_unit_test_suite

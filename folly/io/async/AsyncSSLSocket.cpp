@@ -253,18 +253,22 @@ SSLException::SSLException(int sslError, int errno_copy):
  * Create a client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
-                                 EventBase* evb) :
+                               EventBase* evb, bool deferSecurityNegotiation) :
     AsyncSocket(evb),
     ctx_(ctx),
     handshakeTimeout_(this, evb) {
   init();
+  if (deferSecurityNegotiation) {
+    sslState_ = STATE_UNENCRYPTED;
+  }
 }
 
 /**
  * Create a server/client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
-                                 EventBase* evb, int fd, bool server) :
+                               EventBase* evb, int fd, bool server,
+                               bool deferSecurityNegotiation) :
     AsyncSocket(evb, fd),
     server_(server),
     ctx_(ctx),
@@ -273,6 +277,9 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
   if (server) {
     SSL_CTX_set_info_callback(ctx_->getSSLCtx(),
                               AsyncSSLSocket::sslInfoCallback);
+  }
+  if (deferSecurityNegotiation) {
+    sslState_ = STATE_UNENCRYPTED;
   }
 }
 
@@ -283,8 +290,9 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
  */
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
                                  EventBase* evb,
-                                 const std::string& serverName) :
-    AsyncSSLSocket(ctx, evb) {
+                               const std::string& serverName,
+                               bool deferSecurityNegotiation) :
+    AsyncSSLSocket(ctx, evb, deferSecurityNegotiation) {
   tlsextHostname_ = serverName;
 }
 
@@ -294,8 +302,9 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
  */
 AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
                                  EventBase* evb, int fd,
-                                 const std::string& serverName) :
-    AsyncSSLSocket(ctx, evb, fd, false) {
+                               const std::string& serverName,
+                               bool deferSecurityNegotiation) :
+    AsyncSSLSocket(ctx, evb, fd, false, deferSecurityNegotiation) {
   tlsextHostname_ = serverName;
 }
 #endif
@@ -374,7 +383,7 @@ void AsyncSSLSocket::shutdownWriteNow() {
 bool AsyncSSLSocket::good() const {
   return (AsyncSocket::good() &&
           (sslState_ == STATE_ACCEPTING || sslState_ == STATE_CONNECTING ||
-           sslState_ == STATE_ESTABLISHED));
+           sslState_ == STATE_ESTABLISHED || sslState_ == STATE_UNENCRYPTED));
 }
 
 // The TAsyncTransport definition of 'good' states that the transport is
@@ -468,7 +477,9 @@ void AsyncSSLSocket::sslAccept(HandshakeCB* callback, uint32_t timeout,
   verifyPeer_ = verifyPeer;
 
   // Make sure we're in the uninitialized state
-  if (!server_ || sslState_ != STATE_UNINIT || handshakeCallback_ != nullptr) {
+  if (!server_ || (sslState_ != STATE_UNINIT &&
+                   sslState_ != STATE_UNENCRYPTED) ||
+      handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
 
@@ -674,7 +685,9 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
   verifyPeer_ = verifyPeer;
 
   // Make sure we're in the uninitialized state
-  if (server_ || sslState_ != STATE_UNINIT || handshakeCallback_ != nullptr) {
+  if (server_ || (sslState_ != STATE_UNINIT && sslState_ !=
+                  STATE_UNENCRYPTED) ||
+      handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
 
@@ -1078,6 +1091,10 @@ AsyncSSLSocket::handleRead() noexcept {
 
 ssize_t
 AsyncSSLSocket::performRead(void* buf, size_t buflen) {
+  if (sslState_ == STATE_UNENCRYPTED) {
+    return AsyncSocket::performRead(buf, buflen);
+  }
+
   errno = 0;
   ssize_t bytes = SSL_read(ssl_, buf, buflen);
   if (server_ && renegotiateAttempted_) {
@@ -1169,6 +1186,10 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
                                       WriteFlags flags,
                                       uint32_t* countWritten,
                                       uint32_t* partialWritten) {
+  if (sslState_ == STATE_UNENCRYPTED) {
+    return AsyncSocket::performWrite(
+      vec, count, flags, countWritten, partialWritten);
+  }
   if (sslState_ != STATE_ESTABLISHED) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
                << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "

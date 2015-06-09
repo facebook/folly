@@ -162,7 +162,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Create a client AsyncSSLSocket
    */
   AsyncSSLSocket(const std::shared_ptr<folly::SSLContext> &ctx,
-                  EventBase* evb);
+                 EventBase* evb, bool deferSecurityNegotiation = false);
 
   /**
    * Create a server/client AsyncSSLSocket from an already connected
@@ -178,9 +178,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * @param evb EventBase that will manage this socket.
    * @param fd  File descriptor to take over (should be a connected socket).
    * @param server Is socket in server mode?
+   * @param deferSecurityNegotiation
+   *          unencrypted data can be sent before sslConn/Accept
    */
   AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
-                  EventBase* evb, int fd, bool server = true);
+                 EventBase* evb, int fd,
+                 bool server = true, bool deferSecurityNegotiation = false);
 
 
   /**
@@ -188,9 +191,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   static std::shared_ptr<AsyncSSLSocket> newSocket(
     const std::shared_ptr<folly::SSLContext>& ctx,
-    EventBase* evb, int fd, bool server=true) {
+    EventBase* evb, int fd, bool server=true,
+    bool deferSecurityNegotiation = false) {
     return std::shared_ptr<AsyncSSLSocket>(
-      new AsyncSSLSocket(ctx, evb, fd, server),
+      new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation),
       Destructor());
   }
 
@@ -199,9 +203,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   static std::shared_ptr<AsyncSSLSocket> newSocket(
     const std::shared_ptr<folly::SSLContext>& ctx,
-    EventBase* evb) {
+    EventBase* evb, bool deferSecurityNegotiation = false) {
     return std::shared_ptr<AsyncSSLSocket>(
-      new AsyncSSLSocket(ctx, evb),
+      new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation),
       Destructor());
   }
 
@@ -213,7 +217,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   AsyncSSLSocket(const std::shared_ptr<folly::SSLContext> &ctx,
                   EventBase* evb,
-                  const std::string& serverName);
+                 const std::string& serverName,
+                bool deferSecurityNegotiation = false);
 
   /**
    * Create a client AsyncSSLSocket from an already connected
@@ -233,14 +238,16 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
                   EventBase* evb,
                   int fd,
-                  const std::string& serverName);
+                 const std::string& serverName,
+                bool deferSecurityNegotiation = false);
 
   static std::shared_ptr<AsyncSSLSocket> newSocket(
     const std::shared_ptr<folly::SSLContext>& ctx,
     EventBase* evb,
-    const std::string& serverName) {
+    const std::string& serverName,
+    bool deferSecurityNegotiation = false) {
     return std::shared_ptr<AsyncSSLSocket>(
-      new AsyncSSLSocket(ctx, evb, serverName),
+      new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation),
       Destructor());
   }
 #endif
@@ -336,6 +343,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   enum SSLStateEnum {
     STATE_UNINIT,
+    STATE_UNENCRYPTED,
     STATE_ACCEPTING,
     STATE_CACHE_LOOKUP,
     STATE_RSA_ASYNC_PENDING,
