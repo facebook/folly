@@ -17,15 +17,11 @@ brewget glog gflags boost libevent
 
 # Install the double-conversion library.
 # NB their install target installs the libs but not the headers, hence the
-# CPPFLAGS and link shenanigans.
-test -d double-conversion || {
+# CPPFLAGS
+test -d double-conversion ||
     git clone https://github.com/floitsch/double-conversion.git
-    pushd double-conversion/src
-    ln -s . double-conversion
-    popd
-}
 pushd double-conversion
-scons
+make
 # fool libtool into using static linkage
 # (this won't work if you've already installed libdouble-conversion into a
 # default search path)
@@ -34,7 +30,7 @@ DOUBLE_CONVERSION_HOME=$(pwd)
 popd
 
 autoreconf -i
-./configure CPPFLAGS=-I"$DOUBLE_CONVERSION_HOME/src" LDFLAGS=-L"$DOUBLE_CONVERSION_HOME"
+./configure CPPFLAGS=-I"$DOUBLE_CONVERSION_HOME" LDFLAGS=-L"$DOUBLE_CONVERSION_HOME"
 
 pushd test
 test -e gtest-1.7.0.zip || {
