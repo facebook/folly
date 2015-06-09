@@ -45,8 +45,10 @@ public:
   SharedPromise(SharedPromise<T>&&) noexcept;
   SharedPromise& operator=(SharedPromise<T>&&) noexcept;
 
-  /** Return a Future tied to the shared core state. This can be called only
-    once, thereafter Future already retrieved exception will be raised. */
+  /**
+   * Return a Future tied to the shared core state. Unlike Promise::getFuture,
+   * this can be called an unlimited number of times per SharedPromise.
+   */
   Future<T> getFuture();
 
   /** Return the number of Futures associated with this SharedPromise */
