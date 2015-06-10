@@ -46,7 +46,6 @@ BENCHMARK(constantFuture) {
   makeFuture(42);
 }
 
-// This shouldn't get too far below 100%
 BENCHMARK_RELATIVE(promiseAndFuture) {
   Promise<int> p;
   Future<int> f = p.getFuture();
@@ -54,7 +53,6 @@ BENCHMARK_RELATIVE(promiseAndFuture) {
   f.value();
 }
 
-// The higher the better. At the time of writing, it's only about 40% :(
 BENCHMARK_RELATIVE(withThen) {
   Promise<int> p;
   Future<int> f = p.getFuture().then(incr<int>);

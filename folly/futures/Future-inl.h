@@ -45,22 +45,16 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 
 template <class T>
 template <class T2, typename>
-Future<T>::Future(T2&& val) : core_(nullptr) {
-  Promise<T> p;
-  p.setValue(std::forward<T2>(val));
-  *this = p.getFuture();
-}
+Future<T>::Future(T2&& val)
+  : core_(new detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}
 
 template <class T>
 template <class T2,
           typename std::enable_if<
             folly::is_void_or_unit<T2>::value,
             int>::type>
-Future<T>::Future() : core_(nullptr) {
-  Promise<T> p;
-  p.setValue();
-  *this = p.getFuture();
-}
+Future<T>::Future()
+  : core_(new detail::Core<T>(Try<T>())) {}
 
 
 template <class T>
@@ -456,16 +450,12 @@ void Future<T>::raise(exception_wrapper exception) {
 
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
-  Promise<typename std::decay<T>::type> p;
-  p.setValue(std::forward<T>(t));
-  return p.getFuture();
+  return makeFuture(Try<typename std::decay<T>::type>(std::forward<T>(t)));
 }
 
 inline // for multiple translation units
 Future<void> makeFuture() {
-  Promise<void> p;
-  p.setValue();
-  return p.getFuture();
+  return makeFuture(Try<void>());
 }
 
 template <class F>
@@ -473,57 +463,37 @@ auto makeFutureWith(
     F&& func,
     typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
     -> Future<decltype(func())> {
-  Promise<decltype(func())> p;
-  p.setWith(
-    [&func]() {
-      return (func)();
-    });
-  return p.getFuture();
+  return makeFuture(makeTryWith([&func]() {
+    return (func)();
+  }));
 }
 
 template <class F>
 auto makeFutureWith(F const& func) -> Future<decltype(func())> {
   F copy = func;
-  return makeFutureWith(std::move(copy));
+  return makeFuture(makeTryWith(std::move(copy)));
 }
 
 template <class T>
 Future<T> makeFuture(std::exception_ptr const& e) {
-  Promise<T> p;
-  p.setException(e);
-  return p.getFuture();
+  return makeFuture(Try<T>(e));
 }
 
 template <class T>
 Future<T> makeFuture(exception_wrapper ew) {
-  Promise<T> p;
-  p.setException(std::move(ew));
-  return p.getFuture();
+  return makeFuture(Try<T>(std::move(ew)));
 }
 
 template <class T, class E>
 typename std::enable_if<std::is_base_of<std::exception, E>::value,
                         Future<T>>::type
 makeFuture(E const& e) {
-  Promise<T> p;
-  p.setException(make_exception_wrapper<E>(e));
-  return p.getFuture();
+  return makeFuture(Try<T>(make_exception_wrapper<E>(e)));
 }
 
 template <class T>
 Future<T> makeFuture(Try<T>&& t) {
-  Promise<typename std::decay<T>::type> p;
-  p.setTry(std::move(t));
-  return p.getFuture();
-}
-
-template <>
-inline Future<void> makeFuture(Try<void>&& t) {
-  if (t.hasException()) {
-    return makeFuture<void>(std::move(t.exception()));
-  } else {
-    return makeFuture();
-  }
+  return Future<T>(new detail::Core<T>(std::move(t)));
 }
 
 // via

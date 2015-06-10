@@ -432,6 +432,9 @@ class Future {
   friend class Promise<T>;
   template <class> friend class Future;
 
+  template <class T2>
+  friend Future<T2> makeFuture(Try<T2>&&);
+
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>

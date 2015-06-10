@@ -79,6 +79,12 @@ class Core {
   /// code but since this is just internal detail code and I don't know how
   /// off-hand, I'm punting.
   Core() {}
+
+  explicit Core(Try<T>&& t)
+    : fsm_(State::OnlyResult),
+      attached_(1),
+      result_(std::move(t)) {}
+
   ~Core() {
     assert(attached_ == 0);
   }
