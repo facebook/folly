@@ -414,3 +414,30 @@ TEST(Via, viaRaces) {
   t1.join();
   t2.join();
 }
+
+TEST(Future, callbackRace) {
+  ThreadExecutor x;
+
+  auto fn = [&x]{
+    auto promises = std::make_shared<std::vector<Promise<void>>>(4);
+    std::vector<Future<void>> futures;
+
+    for (auto& p : *promises) {
+      futures.emplace_back(
+        p.getFuture()
+        .via(&x)
+        .then([](Try<void>&&){}));
+    }
+
+    x.waitForStartup();
+    x.add([promises]{
+      for (auto& p : *promises) {
+        p.setValue();
+      }
+    });
+
+    return collectAll(futures);
+  };
+
+  fn().wait();
+}
