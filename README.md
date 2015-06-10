@@ -91,9 +91,9 @@ Other Linux distributions
 
   [double-conversion/] `ln -s src double-conversion`
 
-  [folly/] `./configure LDFLAGS=-L$DOUBLE_CONVERISON_HOME/ CPPFLAGS=-I$DOUBLE_CONVERISON_HOME/`
+  [folly/] `./configure LDFLAGS=-L$DOUBLE_CONVERSION_HOME/ CPPFLAGS=-I$DOUBLE_CONVERSION_HOME/`
 
-  [folly/] `LD_LIBRARY_PATH=$DOUBLE_CONVERISON_HOME/ make`
+  [folly/] `LD_LIBRARY_PATH=$DOUBLE_CONVERSION_HOME/ make`
 
 - additional platform specific dependencies:
 
