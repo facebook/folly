@@ -727,7 +727,7 @@ void AsyncServerSocket::handlerReady(
     std::chrono::time_point<std::chrono::steady_clock> nowMs =
       std::chrono::steady_clock::now();
     int64_t timeSinceLastAccept = std::max(
-      int64_t(0),
+      decltype(nowMs.time_since_epoch().count()){0},
       nowMs.time_since_epoch().count() -
       lastAccepTimestamp_.time_since_epoch().count());
     lastAccepTimestamp_ = nowMs;
