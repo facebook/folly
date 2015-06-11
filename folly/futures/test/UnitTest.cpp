@@ -20,6 +20,8 @@
 
 using namespace folly;
 
+std::runtime_error eggs("eggs");
+
 TEST(Unit, futureDefaultCtor) {
   Future<Unit>();
 }
@@ -47,4 +49,30 @@ TEST(Unit, liftVoid) {
   EXPECT_TRUE(Lifted::value);
   auto v = std::is_same<Unit, Lifted::type>::value;
   EXPECT_TRUE(v);
+}
+
+TEST(Unit, futureToUnit) {
+  Future<Unit> fu = makeFuture(42).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<int>(eggs).unit().hasException());
+}
+
+TEST(Unit, voidFutureToUnit) {
+  Future<Unit> fu = makeFuture().unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<void>(eggs).unit().hasException());
+}
+
+TEST(Unit, unitFutureToUnitIdentity) {
+  Future<Unit> fu = makeFuture(Unit{}).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
+}
+
+TEST(Unit, toUnitWhileInProgress) {
+  Promise<int> p;
+  Future<Unit> fu = p.getFuture().unit();
+  EXPECT_FALSE(fu.isReady());
+  p.setValue(42);
+  EXPECT_TRUE(fu.isReady());
 }

@@ -60,10 +60,9 @@ class Future {
               !isFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ Future(T2&& val);
 
-  template <class T2 = T,
+  template <class T2 = T, typename =
             typename std::enable_if<
-              folly::is_void_or_unit<T2>::value,
-              int>::type = 0>
+              folly::is_void_or_unit<T2>::value>::type>
   Future();
 
   ~Future();
@@ -110,6 +109,12 @@ class Future {
 
   /** True when the result (or exception) is ready. */
   bool isReady() const;
+
+  /// sugar for getTry().hasValue()
+  bool hasValue();
+
+  /// sugar for getTry().hasException()
+  bool hasException();
 
   /** A reference to the Try of the value */
   Try<T>& getTry();
@@ -415,6 +420,11 @@ class Future {
   template <class Callback>
   auto thenMultiWithExecutor(Executor* x, Callback&& fn)
     -> decltype(this->then(std::forward<Callback>(fn)));
+
+  /// Discard a result, but propagate an exception.
+  Future<Unit> unit() {
+    return then([]{ return Unit{}; });
+  }
 
  protected:
   typedef detail::Core<T>* corePtr;

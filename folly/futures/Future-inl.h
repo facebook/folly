@@ -49,13 +49,9 @@ Future<T>::Future(T2&& val)
   : core_(new detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}
 
 template <class T>
-template <class T2,
-          typename std::enable_if<
-            folly::is_void_or_unit<T2>::value,
-            int>::type>
+template <typename, typename>
 Future<T>::Future()
   : core_(new detail::Core<T>(Try<T>())) {}
-
 
 template <class T>
 Future<T>::~Future() {
@@ -450,6 +446,16 @@ template <class T>
 bool Future<T>::isReady() const {
   throwIfInvalid();
   return core_->ready();
+}
+
+template <class T>
+bool Future<T>::hasValue() {
+  return getTry().hasValue();
+}
+
+template <class T>
+bool Future<T>::hasException() {
+  return getTry().hasException();
 }
 
 template <class T>
