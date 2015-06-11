@@ -27,7 +27,13 @@ namespace folly {
  */
 class QueuedImmediateExecutor : public Executor {
  public:
-  void add(Func) override;
+  /// There's really only one queue per thread, no matter how many
+  /// QueuedImmediateExecutor objects you may have.
+  static void addStatic(Func);
+
+  void add(Func func) override {
+    addStatic(std::move(func));
+  }
 };
 
 } // folly

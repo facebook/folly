@@ -34,7 +34,12 @@ namespace {
 static const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
 
 pid_t localThreadId() {
-  static thread_local pid_t threadId = syscall(SYS_gettid);
+  // __thread doesn't allow non-const initialization.
+  // OSX doesn't support thread_local.
+  static FOLLY_TLS pid_t threadId = 0;
+  if (UNLIKELY(threadId == 0)) {
+    threadId = syscall(SYS_gettid);
+  }
   return threadId;
 }
 

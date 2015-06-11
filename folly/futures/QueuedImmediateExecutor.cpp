@@ -20,17 +20,17 @@
 
 namespace folly {
 
-void QueuedImmediateExecutor::add(Func callback) {
-  thread_local std::queue<Func> q;
+void QueuedImmediateExecutor::addStatic(Func callback) {
+  static folly::ThreadLocal<std::queue<Func>> q_;
 
-  if (q.empty()) {
-    q.push(std::move(callback));
-    while (!q.empty()) {
-      q.front()();
-      q.pop();
+  if (q_->empty()) {
+    q_->push(std::move(callback));
+    while (!q_->empty()) {
+      q_->front()();
+      q_->pop();
     }
   } else {
-    q.push(callback);
+    q_->push(callback);
   }
 }
 
