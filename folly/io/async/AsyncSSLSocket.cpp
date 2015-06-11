@@ -220,6 +220,13 @@ void setup_SSL_CTX(SSL_CTX *ctx) {
                    SSL_MODE_ENABLE_PARTIAL_WRITE
                    );
 #endif
+// SSL_CTX_set_mode is a Macro
+#ifdef SSL_MODE_WRITE_IOVEC
+  SSL_CTX_set_mode(ctx,
+                   SSL_CTX_get_mode(ctx)
+                   | SSL_MODE_WRITE_IOVEC);
+#endif
+
 }
 
 BIO_METHOD eorAwareBioMethod;
@@ -1099,8 +1106,8 @@ AsyncSSLSocket::performRead(void* buf, size_t buflen) {
   ssize_t bytes = SSL_read(ssl_, buf, buflen);
   if (server_ && renegotiateAttempted_) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-               << ", sslstate=" << sslState_ << ", events=" << eventFlags_ << "): "
-               << "client intitiated SSL renegotiation not permitted";
+               << ", sslstate=" << sslState_ << ", events=" << eventFlags_
+               << "): client intitiated SSL renegotiation not permitted";
     // We pack our own SSLerr here with a dummy function
     errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_READ,
                      SSL_CLIENT_RENEGOTIATION_ATTEMPT);
@@ -1117,8 +1124,8 @@ AsyncSSLSocket::performRead(void* buf, size_t buflen) {
       // need to write data if renegotiation is being performed.  We currently
       // don't support this and just fail the read.
       LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-                 << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
-                 << "unsupported SSL renegotiation during read",
+                 << ", sslState=" << sslState_ << ", events=" << eventFlags_
+                 << "): unsupported SSL renegotiation during read",
       errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_READ,
                        SSL_INVALID_RENEGOTIATION);
       ERR_clear_error();
@@ -1242,6 +1249,12 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
   bool cork = isSet(flags, WriteFlags::CORK);
   CorkGuard guard(fd_, count > 1, cork, &corked_);
 
+#ifdef SSL_MODE_WRITE_IOVEC
+  if (ssl_->mode & SSL_MODE_WRITE_IOVEC) {
+    return performWriteIovec(vec, count, flags, countWritten, partialWritten);
+  }
+#endif
+
   // Declare a buffer used to hold small write requests.  It could point to a
   // memory block either on stack or on heap. If it is on heap, we release it
   // manually when scope exits
@@ -1356,6 +1369,43 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
 
   return totalWritten;
 }
+
+#ifdef SSL_MODE_WRITE_IOVEC
+ssize_t AsyncSSLSocket::performWriteIovec(const iovec* vec,
+                                          uint32_t count,
+                                          WriteFlags flags,
+                                          uint32_t* countWritten,
+                                          uint32_t* partialWritten) {
+  size_t tot = 0;
+  for (uint32_t j = 0; j < count; j++) {
+    tot += vec[j].iov_len;
+  }
+
+  ssize_t totalWritten = SSL_write_iovec(ssl_, vec, count);
+
+  *countWritten = 0;
+  *partialWritten = 0;
+  if (totalWritten <= 0) {
+    return interpretSSLError(totalWritten, SSL_get_error(ssl_, totalWritten));
+  } else {
+    ssize_t bytes = totalWritten, i = 0;
+    while (i < count && bytes >= (ssize_t)vec[i].iov_len) {
+      // we managed to write all of this buf
+      bytes -= vec[i].iov_len;
+      (*countWritten)++;
+      i++;
+    }
+    *partialWritten = bytes;
+
+    VLOG(4) << "SSL_write_iovec() writes " << tot
+            << ", returns " << totalWritten << " bytes"
+            << ", max_send_fragment=" << ssl_->max_send_fragment
+            << ", count=" << count << ", countWritten=" << *countWritten;
+
+    return totalWritten;
+  }
+}
+#endif
 
 int AsyncSSLSocket::eorAwareSSLWrite(SSL *ssl, const void *buf, int n,
                                       bool eor) {

@@ -692,6 +692,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                        uint32_t* countWritten, uint32_t* partialWritten)
     override;
 
+  ssize_t performWriteIovec(const iovec* vec, uint32_t count,
+                            WriteFlags flags, uint32_t* countWritten,
+                            uint32_t* partialWritten);
+
   // This virtual wrapper around SSL_write exists solely for testing/mockability
   virtual int sslWriteImpl(SSL *ssl, const void *buf, int n) {
     return SSL_write(ssl, buf, n);
