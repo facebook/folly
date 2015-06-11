@@ -295,6 +295,7 @@ nobase_follyinclude_HEADERS = \
 	wangle/concurrent/FiberIOExecutor.h \
 	wangle/concurrent/FutureExecutor.h \
 	wangle/concurrent/IOExecutor.h \
+	wangle/concurrent/IOObjectCache.h \
 	wangle/concurrent/IOThreadPoolExecutor.h \
 	wangle/concurrent/GlobalExecutor.h \
 	wangle/concurrent/LifoSemMPMCQueue.h \
