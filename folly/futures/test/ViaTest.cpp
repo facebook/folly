@@ -291,6 +291,7 @@ TEST(Via, then2Variadic) {
   EXPECT_TRUE(f.a);
 }
 
+#ifndef __APPLE__ // TODO #7372389
 /// Simple executor that does work in another thread
 class ThreadExecutor : public Executor {
   folly::MPMCQueue<Func> funcs;
@@ -338,6 +339,34 @@ TEST(Via, viaThenGetWasRacy) {
   ASSERT_TRUE(!!val);
   EXPECT_EQ(42, *val);
 }
+
+TEST(Via, callbackRace) {
+  ThreadExecutor x;
+
+  auto fn = [&x]{
+    auto promises = std::make_shared<std::vector<Promise<void>>>(4);
+    std::vector<Future<void>> futures;
+
+    for (auto& p : *promises) {
+      futures.emplace_back(
+        p.getFuture()
+        .via(&x)
+        .then([](Try<void>&&){}));
+    }
+
+    x.waitForStartup();
+    x.add([promises]{
+      for (auto& p : *promises) {
+        p.setValue();
+      }
+    });
+
+    return collectAll(futures);
+  };
+
+  fn().wait();
+}
+#endif
 
 class DummyDrivableExecutor : public DrivableExecutor {
  public:
@@ -413,33 +442,6 @@ TEST(Via, viaRaces) {
   while (!done) x.run();
   t1.join();
   t2.join();
-}
-
-TEST(Via, callbackRace) {
-  ThreadExecutor x;
-
-  auto fn = [&x]{
-    auto promises = std::make_shared<std::vector<Promise<void>>>(4);
-    std::vector<Future<void>> futures;
-
-    for (auto& p : *promises) {
-      futures.emplace_back(
-        p.getFuture()
-        .via(&x)
-        .then([](Try<void>&&){}));
-    }
-
-    x.waitForStartup();
-    x.add([promises]{
-      for (auto& p : *promises) {
-        p.setValue();
-      }
-    });
-
-    return collectAll(futures);
-  };
-
-  fn().wait();
 }
 
 TEST(ViaFunc, liftsVoid) {
