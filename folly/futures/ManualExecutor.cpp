@@ -24,16 +24,10 @@
 
 namespace folly {
 
-ManualExecutor::ManualExecutor() {
-  if (sem_init(&sem_, 0, 0) == -1) {
-    throw std::runtime_error(std::string("sem_init: ") + strerror(errno));
-  }
-}
-
 void ManualExecutor::add(Func callback) {
   std::lock_guard<std::mutex> lock(lock_);
   funcs_.push(std::move(callback));
-  sem_post(&sem_);
+  sem_.post();
 }
 
 size_t ManualExecutor::run() {
@@ -65,7 +59,7 @@ size_t ManualExecutor::run() {
       // Balance the semaphore so it doesn't grow without bound
       // if nobody is calling wait().
       // This may fail (with EAGAIN), that's fine.
-      sem_trywait(&sem_);
+      sem_.tryWait();
 
       func = std::move(funcs_.front());
       funcs_.pop();
@@ -84,13 +78,7 @@ void ManualExecutor::wait() {
         break;
     }
 
-    auto ret = sem_wait(&sem_);
-    if (ret == 0) {
-      break;
-    }
-    if (errno != EINVAL) {
-      throw std::runtime_error(std::string("sem_wait: ") + strerror(errno));
-    }
+    sem_.wait();
   }
 }
 

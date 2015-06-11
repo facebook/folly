@@ -15,9 +15,9 @@
  */
 
 #pragma once
+#include <folly/LifoSem.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/ScheduledExecutor.h>
-#include <semaphore.h>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -35,8 +35,6 @@ namespace folly {
   class ManualExecutor : public DrivableExecutor,
                          public ScheduledExecutor {
    public:
-    ManualExecutor();
-
     void add(Func) override;
 
     /// Do work. Returns the number of functions that were executed (maybe 0).
@@ -78,7 +76,7 @@ namespace folly {
     virtual void scheduleAt(Func&& f, TimePoint const& t) override {
       std::lock_guard<std::mutex> lock(lock_);
       scheduledFuncs_.emplace(t, std::move(f));
-      sem_post(&sem_);
+      sem_.post();
     }
 
     /// Advance the clock. The clock never advances on its own.
@@ -98,7 +96,7 @@ namespace folly {
    private:
     std::mutex lock_;
     std::queue<Func> funcs_;
-    sem_t sem_;
+    LifoSem sem_;
 
     // helper class to enable ordering of scheduled events in the priority
     // queue
