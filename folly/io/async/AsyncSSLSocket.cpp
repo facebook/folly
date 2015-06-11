@@ -1181,6 +1181,44 @@ void AsyncSSLSocket::handleWrite() noexcept {
   AsyncSocket::handleWrite();
 }
 
+int AsyncSSLSocket::interpretSSLError(int rc, int error) {
+  if (error == SSL_ERROR_WANT_READ) {
+    // TODO: Even though we are attempting to write data, SSL_write() may
+    // need to read data if renegotiation is being performed.  We currently
+    // don't support this and just fail the write.
+    LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
+               << ", sslState=" << sslState_ << ", events=" << eventFlags_
+               << "): " << "unsupported SSL renegotiation during write",
+      errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_WRITE,
+                       SSL_INVALID_RENEGOTIATION);
+    ERR_clear_error();
+    return -1;
+  } else {
+    // TODO: Fix this code so that it can return a proper error message
+    // to the callback, rather than relying on AsyncSocket code which
+    // can't handle SSL errors.
+    long lastError = ERR_get_error();
+    VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
+            << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
+            << "SSL error: " << error << ", errno: " << errno
+            << ", func: " << ERR_func_error_string(lastError)
+            << ", reason: " << ERR_reason_error_string(lastError);
+    if (error != SSL_ERROR_SYSCALL) {
+      if ((unsigned long)lastError < 0x8000) {
+        errno = ENOSYS;
+      } else {
+        errno = lastError;
+      }
+    }
+    ERR_clear_error();
+    if (!zero_return(error, rc)) {
+      return -1;
+    } else {
+      return 0;
+    }
+  }
+}
+
 ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
                                       uint32_t count,
                                       WriteFlags flags,
@@ -1192,7 +1230,8 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
   }
   if (sslState_ != STATE_ESTABLISHED) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-               << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
+               << ", sslState=" << sslState_
+               << ", events=" << eventFlags_ << "): "
                << "TODO: AsyncSSLSocket currently does not support calling "
                << "write() before the handshake has fully completed";
       errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_WRITE,
@@ -1286,40 +1325,11 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
         // The caller will register for write event if not already.
         *partialWritten = offset;
         return totalWritten;
-      } else if (error == SSL_ERROR_WANT_READ) {
-        // TODO: Even though we are attempting to write data, SSL_write() may
-        // need to read data if renegotiation is being performed.  We currently
-        // don't support this and just fail the write.
-        LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-                   << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
-                   << "unsupported SSL renegotiation during write",
-        errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_WRITE,
-                         SSL_INVALID_RENEGOTIATION);
-        ERR_clear_error();
-        return -1;
-      } else {
-        // TODO: Fix this code so that it can return a proper error message
-        // to the callback, rather than relying on AsyncSocket code which
-        // can't handle SSL errors.
-        long lastError = ERR_get_error();
-        VLOG(3) <<
-          "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
-                << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
-                << "SSL error: " << error << ", errno: " << errno
-                << ", func: " << ERR_func_error_string(lastError)
-                << ", reason: " << ERR_reason_error_string(lastError);
-        if (error != SSL_ERROR_SYSCALL) {
-          if ((unsigned long)lastError < 0x8000) {
-            errno = ENOSYS;
-          } else {
-            errno = lastError;
-          }
-        }
-        ERR_clear_error();
-        if (!zero_return(error, bytes)) {
-          return -1;
-        } // else fall through to below to correctly record totalWritten
       }
+      int rc = interpretSSLError(bytes, error);
+      if (rc < 0) {
+        return rc;
+      } // else fall through to below to correctly record totalWritten
     }
 
     totalWritten += bytes;

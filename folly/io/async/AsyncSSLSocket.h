@@ -686,6 +686,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // AsyncSocket calls this at the wrong time for SSL
   void handleInitialReadWrite() noexcept override {}
 
+  int interpretSSLError(int rc, int error);
   ssize_t performRead(void* buf, size_t buflen) override;
   ssize_t performWrite(const iovec* vec, uint32_t count, WriteFlags flags,
                        uint32_t* countWritten, uint32_t* partialWritten)
