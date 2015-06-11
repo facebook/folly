@@ -39,6 +39,9 @@ void setCPUExecutor(std::shared_ptr<Executor> executor);
 // one or more EventBases.
 std::shared_ptr<IOExecutor> getIOExecutor();
 
+// Retrieve an event base from the global IOExecutor
+EventBase* getEventBase();
+
 // Set an IOExecutor to be the global IOExecutor which will be returned by
 // subsequent calls to getIOExecutor(). Takes a non-owning (weak) reference.
 void setIOExecutor(std::shared_ptr<IOExecutor> executor);
