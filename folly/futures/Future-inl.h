@@ -435,6 +435,17 @@ inline Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
   return std::move(f).via(executor, priority);
 }
 
+
+template <class Func>
+auto via(Executor* x, Func func)
+  -> Future<typename isFuture<decltype(func())>::Inner>
+// this would work, if not for Future<void> :-/
+// -> decltype(via(x).then(func))
+{
+  // TODO make this actually more performant. :-P #7260175
+  return via(x).then(func);
+}
+
 template <class T>
 bool Future<T>::isReady() const {
   throwIfInvalid();

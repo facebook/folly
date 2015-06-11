@@ -56,7 +56,7 @@ namespace futures {
     return map(c.begin(), c.end(), std::forward<F>(func));
   }
 
-}
+} // namespace futures
 
 /**
   Make a completed Future by moving in a value. e.g.
@@ -123,6 +123,13 @@ Future<T> makeFuture(Try<T>&& t);
 inline Future<void> via(
     Executor* executor,
     int8_t priority = Executor::MID_PRI);
+
+/// Execute a function via the given executor and return a future.
+/// This is semantically equivalent to via(executor).then(func), but
+/// easier to read and slightly more efficient.
+template <class Func>
+auto via(Executor*, Func func)
+  -> Future<typename isFuture<decltype(func())>::Inner>;
 
 /** When all the input Futures complete, the returned Future will complete.
   Errors do not cause early termination; this Future will always succeed
@@ -286,4 +293,4 @@ auto unorderedReduce(Collection&& c, T&& initial, F&& func)
       std::forward<F>(func));
 }
 
-} // namespace folly
+} // namespace

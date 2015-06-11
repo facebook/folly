@@ -415,7 +415,7 @@ TEST(Via, viaRaces) {
   t2.join();
 }
 
-TEST(Future, callbackRace) {
+TEST(Via, callbackRace) {
   ThreadExecutor x;
 
   auto fn = [&x]{
@@ -440,4 +440,53 @@ TEST(Future, callbackRace) {
   };
 
   fn().wait();
+}
+
+TEST(ViaFunc, liftsVoid) {
+  ManualExecutor x;
+  int count = 0;
+  Future<void> f = via(&x, [&]{ count++; });
+
+  EXPECT_EQ(0, count);
+  x.run();
+  EXPECT_EQ(1, count);
+}
+
+TEST(ViaFunc, value) {
+  ManualExecutor x;
+  EXPECT_EQ(42, via(&x, []{ return 42; }).getVia(&x));
+}
+
+TEST(ViaFunc, exception) {
+  ManualExecutor x;
+  EXPECT_THROW(
+    via(&x, []() -> int { throw std::runtime_error("expected"); })
+      .getVia(&x),
+    std::runtime_error);
+}
+
+TEST(ViaFunc, future) {
+  ManualExecutor x;
+  EXPECT_EQ(42, via(&x, []{ return makeFuture(42); })
+            .getVia(&x));
+}
+
+TEST(ViaFunc, voidFuture) {
+  ManualExecutor x;
+  int count = 0;
+  via(&x, [&]{ count++; }).getVia(&x);
+  EXPECT_EQ(1, count);
+}
+
+TEST(ViaFunc, isSticky) {
+  ManualExecutor x;
+  int count = 0;
+
+  auto f = via(&x, [&]{ count++; });
+  x.run();
+
+  f.then([&]{ count++; });
+  EXPECT_EQ(1, count);
+  x.run();
+  EXPECT_EQ(2, count);
 }
