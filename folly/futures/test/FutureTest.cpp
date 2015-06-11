@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <atomic>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -648,7 +649,7 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
 
   ptr.reset();
 
-  promise.setWith([]{return 1l;});
+  promise.setValue(1);
 }
 
 TEST(Future, Constructor) {
