@@ -189,13 +189,9 @@ namespace folly {
  * an IOBuf chain must be heap allocated.  (All functions to add nodes to a
  * chain require a std::unique_ptr<IOBuf>, which enforces this requrement.)
  *
- * Additionally, no copy-constructor or assignment operator currently exists,
- * so stack-allocated IOBufs may only be moved, not copied.  (Technically
- * nothing is preventing us from adding a copy constructor and assignment
- * operator.  However, it seems like this would add the possibility for some
- * confusion.  We would need to determine if these functions would copy just a
- * single buffer, or the entire chain.)
- *
+ * Copying IOBufs is only meaningful for the head of a chain. The entire chain
+ * is cloned; the IOBufs will become shared, and the old and new IOBufs will
+ * refer to the same underlying memory.
  *
  * IOBuf Sharing
  * -------------
@@ -232,7 +228,6 @@ class IOBuf {
   enum WrapBufferOp { WRAP_BUFFER };
   enum TakeOwnershipOp { TAKE_OWNERSHIP };
   enum CopyBufferOp { COPY_BUFFER };
-  enum CloneOp { CLONE };
 
   typedef ByteRange value_type;
   typedef Iterator iterator;
@@ -397,13 +392,6 @@ class IOBuf {
         uint64_t headroom=0, uint64_t minTailroom=0);
   IOBuf(CopyBufferOp op, ByteRange br,
         uint64_t headroom=0, uint64_t minTailroom=0);
-
-  /**
-   * Clone an IOBuf. See the notes for cloneInto().
-   */
-  IOBuf(CloneOp, const IOBuf& src) : IOBuf() {
-    src.cloneInto(*this);
-  }
 
   /**
    * Convenience function to create a new IOBuf object that copies data from a
@@ -1124,13 +1112,12 @@ class IOBuf {
    * the head of an IOBuf chain or a solitary IOBuf not part of a chain.  If
    * the move destination is part of a chain, all other IOBufs in the chain
    * will be deleted.
-   *
-   * (We currently don't provide a copy constructor or assignment operator.
-   * The main reason is because it is not clear these operations should copy
-   * the entire chain or just the single IOBuf.)
    */
   IOBuf(IOBuf&& other) noexcept;
   IOBuf& operator=(IOBuf&& other) noexcept;
+
+  IOBuf(const IOBuf& other);
+  IOBuf& operator=(const IOBuf& other);
 
  private:
   enum FlagsEnum : uintptr_t {
@@ -1156,10 +1143,6 @@ class IOBuf {
   struct HeapPrefix;
   struct HeapStorage;
   struct HeapFullStorage;
-
-  // Forbidden copy constructor and assignment opererator
-  IOBuf(IOBuf const &);
-  IOBuf& operator=(IOBuf const &);
 
   /**
    * Create a new IOBuf pointing to an external buffer.

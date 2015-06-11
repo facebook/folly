@@ -1108,6 +1108,50 @@ TEST(IOBuf, ReserveWithHeadroom) {
   EXPECT_EQ(0, memcmp(data, buf.data(), sizeof(data)));
 }
 
+TEST(IOBuf, CopyConstructorAndAssignmentOperator) {
+  auto buf = IOBuf::create(4096);
+  append(buf, "hello world");
+  auto buf2 = IOBuf::create(4096);
+  append(buf2, " goodbye");
+  buf->prependChain(std::move(buf2));
+  EXPECT_FALSE(buf->isShared());
+
+  {
+    auto copy = *buf;
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_EQ((void*)buf->data(), (void*)copy.data());
+    EXPECT_NE(buf->next(), copy.next());  // actually different buffers
+
+    auto copy2 = *buf;
+    copy2.coalesce();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_FALSE(copy2.isShared());
+
+    auto p = reinterpret_cast<const char*>(copy2.data());
+    EXPECT_EQ("hello world goodbye", std::string(p, copy2.length()));
+  }
+
+  EXPECT_FALSE(buf->isShared());
+
+  {
+    folly::IOBuf newBuf(folly::IOBuf::CREATE, 4096);
+    EXPECT_FALSE(newBuf.isShared());
+
+    auto newBufCopy = newBuf;
+    EXPECT_TRUE(newBuf.isShared());
+    EXPECT_TRUE(newBufCopy.isShared());
+
+    newBufCopy = *buf;
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_FALSE(newBuf.isShared());
+    EXPECT_TRUE(newBufCopy.isShared());
+  }
+
+  EXPECT_FALSE(buf->isShared());
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

@@ -336,6 +336,10 @@ IOBuf::IOBuf(IOBuf&& other) noexcept {
   *this = std::move(other);
 }
 
+IOBuf::IOBuf(const IOBuf& other) {
+  other.cloneInto(*this);
+}
+
 IOBuf::IOBuf(InternalConstructor,
              uintptr_t flagsAndSharedInfo,
              uint8_t* buf,
@@ -410,6 +414,13 @@ IOBuf& IOBuf::operator=(IOBuf&& other) noexcept {
   DCHECK_EQ(other.prev_, &other);
   DCHECK_EQ(other.next_, &other);
 
+  return *this;
+}
+
+IOBuf& IOBuf::operator=(const IOBuf& other) {
+  if (this != &other) {
+    *this = IOBuf(other);
+  }
   return *this;
 }
 
