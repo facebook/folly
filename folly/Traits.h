@@ -19,6 +19,9 @@
 #ifndef FOLLY_BASE_TRAITS_H_
 #define FOLLY_BASE_TRAITS_H_
 
+#include <list>
+#include <string>
+
 #include <memory>
 #include <limits>
 #include <type_traits>
@@ -239,19 +242,10 @@ FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
   struct pair;
-#ifndef _GLIBCXX_USE_FB
-template <class T, class R, class A>
-  class basic_string;
-#else
-template <class T, class R, class A, class S>
-  class basic_string;
-#endif
 template <class T, class A>
   class vector;
 template <class T, class A>
   class deque;
-template <class T, class A>
-  class list;
 template <class T, class C, class A>
   class set;
 template <class K, class V, class C, class A>
