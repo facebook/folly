@@ -95,6 +95,9 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/Promise.h \
 	experimental/fibers/Promise-inl.h \
 	experimental/fibers/SimpleLoopController.h \
+	experimental/fibers/TimedMutex.h \
+	experimental/fibers/TimedMutex-inl.h \
+	experimental/fibers/TimeoutController.h \
 	experimental/fibers/TimeoutController.h \
 	experimental/fibers/traits.h \
 	experimental/fibers/WhenN.h \
