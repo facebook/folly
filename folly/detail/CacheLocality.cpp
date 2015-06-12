@@ -84,7 +84,7 @@ static size_t parseLeadingNumber(const std::string& line) {
   auto raw = line.c_str();
   char *end;
   unsigned long val = strtoul(raw, &end, 10);
-  if (end == raw || (*end != ',' && *end != '-' && *end != '\n')) {
+  if (end == raw || (*end != ',' && *end != '-' && *end != '\n' && *end != 0)) {
     throw std::runtime_error(to<std::string>(
         "error parsing list '", line, "'").c_str());
   }
