@@ -1249,7 +1249,8 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
   bool cork = isSet(flags, WriteFlags::CORK);
   CorkGuard guard(fd_, count > 1, cork, &corked_);
 
-#ifdef SSL_MODE_WRITE_IOVEC
+#if 0
+//#ifdef SSL_MODE_WRITE_IOVEC
   if (ssl_->mode & SSL_MODE_WRITE_IOVEC) {
     return performWriteIovec(vec, count, flags, countWritten, partialWritten);
   }
@@ -1370,7 +1371,8 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
   return totalWritten;
 }
 
-#ifdef SSL_MODE_WRITE_IOVEC
+#if 0
+//#ifdef SSL_MODE_WRITE_IOVEC
 ssize_t AsyncSSLSocket::performWriteIovec(const iovec* vec,
                                           uint32_t count,
                                           WriteFlags flags,
