@@ -350,7 +350,7 @@ class Adaptor {
 
   Adaptor(const Adaptor&) = default;
   Adaptor& operator=(const Adaptor&) = default;
-  Adaptor(Adaptor&& other)
+  Adaptor(Adaptor&& other) /* may throw */
     : c_(std::move(other.c_)),
       lastCount_(other.lastCount_) {
     other.lastCount_ = Node::kElementCount;
@@ -426,7 +426,7 @@ class Adaptor {
 
   void push_back(value_type x) {
     if (lastCount_ == Node::kElementCount) {
-      c_.push_back(Node());
+      c_.emplace_back();
       lastCount_ = 0;
     }
     c_.back().data()[lastCount_++] = std::move(x);
