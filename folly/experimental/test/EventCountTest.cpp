@@ -68,7 +68,7 @@ void randomPartition(Random& random, T key, int n,
     int m = std::min(n, 1000);
     std::uniform_int_distribution<uint32_t> u(1, m);
     int cut = u(random);
-    out.push_back(std::make_pair(key, cut));
+    out.emplace_back(key, cut);
     n -= cut;
   }
 }

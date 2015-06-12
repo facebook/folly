@@ -52,17 +52,15 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(*newObject.keys().begin(), newObject.items().begin()->first);
   EXPECT_EQ(*newObject.values().begin(), newObject.items().begin()->second);
   std::vector<std::pair<folly::fbstring, dynamic>> found;
-  found.push_back(std::make_pair(
-     newObject.keys().begin()->asString(),
-     *newObject.values().begin()));
+  found.emplace_back(newObject.keys().begin()->asString(),
+                     *newObject.values().begin());
 
   EXPECT_EQ(*boost::next(newObject.keys().begin()),
             boost::next(newObject.items().begin())->first);
   EXPECT_EQ(*boost::next(newObject.values().begin()),
             boost::next(newObject.items().begin())->second);
-  found.push_back(std::make_pair(
-      boost::next(newObject.keys().begin())->asString(),
-      *boost::next(newObject.values().begin())));
+  found.emplace_back(boost::next(newObject.keys().begin())->asString(),
+                     *boost::next(newObject.values().begin()));
 
   std::sort(found.begin(), found.end());
 

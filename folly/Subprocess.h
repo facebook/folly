@@ -714,6 +714,7 @@ class Subprocess {
    * No, you may NOT call this from a communicate() callback.
    */
   struct ChildPipe {
+	ChildPipe(int fd, folly::File&& ppe) : childFd(fd), pipe(std::move(ppe)) {}
     int childFd;
     folly::File pipe;  // Owns the parent FD
   };
