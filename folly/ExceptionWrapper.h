@@ -112,10 +112,12 @@ class exception_wrapper {
   // Implicitly construct an exception_wrapper from a qualifying exception.
   // See the optimize struct for details.
   template <typename Ex, typename =
-    typename std::enable_if<optimize<Ex>::value>::type>
+    typename std::enable_if<optimize<typename std::decay<Ex>::type>::value>
+    ::type>
   /* implicit */ exception_wrapper(Ex&& exn) {
-    item_ = std::make_shared<Ex>(std::forward<Ex>(exn));
-    throwfn_ = folly::detail::Thrower<Ex>::doThrow;
+    typedef typename std::decay<Ex>::type DEx;
+    item_ = std::make_shared<DEx>(std::forward<Ex>(exn));
+    throwfn_ = folly::detail::Thrower<DEx>::doThrow;
   }
 
   // The following two constructors are meant to emulate the behavior of

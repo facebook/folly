@@ -227,3 +227,17 @@ TEST(ExceptionWrapper, exceptionStr) {
   auto ew = make_exception_wrapper<std::runtime_error>("argh");
   EXPECT_EQ("std::runtime_error: argh", exceptionStr(ew));
 }
+
+namespace {
+class TestException : public std::exception { };
+void testEW(const exception_wrapper& ew) {
+  EXPECT_THROW(ew.throwException(), TestException);
+}
+}  // namespace
+
+TEST(ExceptionWrapper, implicitConstruction) {
+  // Try with both lvalue and rvalue references
+  TestException e;
+  testEW(e);
+  testEW(TestException());
+}
