@@ -523,7 +523,7 @@ private:
 
   static void
   S_uninitialized_copy_bits(T* dest, const T* first, const T* last) {
-    std::memcpy(dest, first, (last - first) * sizeof(T));
+    std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
   }
 
   static void
@@ -531,7 +531,7 @@ private:
                        std::move_iterator<T*> last) {
     T* bFirst = first.base();
     T* bLast = last.base();
-    std::memcpy(dest, bFirst, (bLast - bFirst) * sizeof(T));
+    std::memcpy((void*)dest, (void*)bFirst, (bLast - bFirst) * sizeof(T));
   }
 
   template <typename It>
@@ -556,7 +556,7 @@ private:
 
   static const T* S_copy_n(T* dest, const T* first, size_type n) {
     if (folly::IsTriviallyCopyable<T>::value) {
-      std::memcpy(dest, first, n * sizeof(T));
+      std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return first + n;
     } else {
       return S_copy_n<const T*>(dest, first, n);
@@ -567,7 +567,7 @@ private:
   S_copy_n(T* dest, std::move_iterator<T*> mIt, size_type n) {
     if (folly::IsTriviallyCopyable<T>::value) {
       T* first = mIt.base();
-      std::memcpy(dest, first, n * sizeof(T));
+      std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return std::make_move_iterator(first + n);
     } else {
       return S_copy_n<std::move_iterator<T*>>(dest, mIt, n);
@@ -637,7 +637,7 @@ private:
   }
 
   void relocate_move_or_memcpy(T* dest, T* first, T* last, std::true_type) {
-    std::memcpy(dest, first, (last - first) * sizeof(T));
+    std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
   }
 
   void relocate_move_or_memcpy(T* dest, T* first, T* last, std::false_type) {
@@ -1176,7 +1176,7 @@ public:
         if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
           D_destroy_range_a((iterator)first, (iterator)last);
           if (last - first >= cend() - last) {
-            std::memcpy((iterator)first, last, (cend() - last) * sizeof(T));
+            std::memcpy((void*)first, (void*)last, (cend() - last) * sizeof(T));
           } else {
             std::memmove((iterator)first, last, (cend() - last) * sizeof(T));
           }
