@@ -52,7 +52,7 @@ TypeError::TypeError(const std::string& expected,
       '\''))
 {}
 
-TypeError::~TypeError() {}
+TypeError::~TypeError() = default;
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.

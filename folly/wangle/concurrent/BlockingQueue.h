@@ -23,7 +23,7 @@ namespace folly { namespace wangle {
 template <class T>
 class BlockingQueue {
  public:
-  virtual ~BlockingQueue() {}
+  virtual ~BlockingQueue() = default;
   virtual void add(T item) = 0;
   virtual void addWithPriority(T item, int8_t priority) {
     add(std::move(item));

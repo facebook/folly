@@ -41,7 +41,7 @@ class TimeoutManager {
     NORMAL
   };
 
-  virtual ~TimeoutManager() {}
+  virtual ~TimeoutManager() = default;
 
   /**
    * Attaches/detaches TimeoutManager to AsyncTimeout

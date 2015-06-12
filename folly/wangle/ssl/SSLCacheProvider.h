@@ -33,7 +33,7 @@ public:
       folly::DelayedDestruction::DestructorGuard> guard;
   } CacheContext;
 
-  virtual ~SSLCacheProvider() {}
+  virtual ~SSLCacheProvider() = default;
 
   /**
    * Store a session in the external cache.

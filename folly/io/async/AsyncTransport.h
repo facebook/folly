@@ -318,7 +318,7 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual size_t getRawBytesReceived() const = 0;
 
  protected:
-  virtual ~AsyncTransport() {}
+  virtual ~AsyncTransport() = default;
 };
 
 // Transitional intermediate interface. This is deprecated.
@@ -329,7 +329,7 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
 
   class ReadCallback {
    public:
-    virtual ~ReadCallback() {}
+    virtual ~ReadCallback() = default;
 
     /**
      * When data becomes available, getReadBuffer() will be invoked to get the
@@ -400,7 +400,7 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
 
   class WriteCallback {
    public:
-    virtual ~WriteCallback() {}
+    virtual ~WriteCallback() = default;
 
     /**
      * writeSuccess() will be invoked when all of the data has been

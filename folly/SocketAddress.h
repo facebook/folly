@@ -32,7 +32,7 @@ namespace folly {
 
 class SocketAddress {
  public:
-  SocketAddress() {}
+  SocketAddress() = default;
 
   /**
    * Construct a SocketAddress from a hostname and port.

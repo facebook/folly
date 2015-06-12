@@ -188,7 +188,7 @@ class TypeDescriptorHasher {
 // SingletonHolders.
 class SingletonHolderBase {
  public:
-  virtual ~SingletonHolderBase() {}
+  virtual ~SingletonHolderBase() = default;
 
   virtual TypeDescriptor type() = 0;
   virtual bool hasLiveInstance() = 0;

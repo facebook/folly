@@ -40,7 +40,7 @@ class ServerAcceptor
       pipeline_->setPipelineManager(this);
     }
 
-    ~ServerConnection() {}
+    ~ServerConnection() = default;
 
     void timeoutExpired() noexcept override {
     }

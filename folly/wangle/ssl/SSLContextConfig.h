@@ -27,8 +27,8 @@
 namespace folly {
 
 struct SSLContextConfig {
-  SSLContextConfig() {}
-  ~SSLContextConfig() {}
+  SSLContextConfig() = default;
+  ~SSLContextConfig() = default;
 
   struct CertificateInfo {
     CertificateInfo(const std::string& crtPath,

@@ -23,7 +23,7 @@ namespace folly { namespace wangle {
 
 class ThreadFactory {
  public:
-  virtual ~ThreadFactory() {}
+  virtual ~ThreadFactory() = default;
   virtual std::thread newThread(Func&& func) = 0;
 };
 

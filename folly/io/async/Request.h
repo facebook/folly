@@ -33,7 +33,7 @@ namespace folly {
 
 class RequestData {
  public:
-  virtual ~RequestData() {}
+  virtual ~RequestData() = default;
 };
 
 class RequestContext;

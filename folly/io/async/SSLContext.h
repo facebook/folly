@@ -42,7 +42,7 @@ namespace folly {
  */
 class PasswordCollector {
  public:
-  virtual ~PasswordCollector() {}
+  virtual ~PasswordCollector() = default;
   /**
    * Interface for customizing how to collect private key password.
    *

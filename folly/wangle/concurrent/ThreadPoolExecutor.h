@@ -129,7 +129,7 @@ class ThreadPoolExecutor : public virtual Executor {
         idle(true),
         taskStatsSubject(pool->taskStatsSubject_) {}
 
-    virtual ~Thread() {}
+    virtual ~Thread() = default;
 
     static std::atomic<uint64_t> nextId;
     uint64_t id;
