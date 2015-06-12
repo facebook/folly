@@ -381,8 +381,8 @@ struct PropertiesValidator final : IValidator {
       for (const auto& pair : patternProperties->items()) {
         if (pair.first.isString()) {
           patternPropertyValidators_.emplace_back(
-              make_pair(boost::regex(pair.first.getString().toStdString()),
-                        SchemaValidator::make(context, pair.second)));
+              boost::regex(pair.first.getString().toStdString()),
+              SchemaValidator::make(context, pair.second));
         }
       }
     }
@@ -466,9 +466,8 @@ struct DependencyValidator final : IValidator {
         propertyDep_.emplace_back(std::move(p));
       }
       if (pair.second.isObject()) {
-        schemaDep_.emplace_back(
-            make_pair(pair.first.getString(),
-                      SchemaValidator::make(context, pair.second)));
+        schemaDep_.emplace_back(pair.first.getString(),
+                                SchemaValidator::make(context, pair.second));
       }
     }
   }

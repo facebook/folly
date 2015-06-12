@@ -77,7 +77,7 @@ class SimpleLoopController : public LoopController {
   }
 
   void timedSchedule(std::function<void()> func, TimePoint time) override {
-    scheduledFuncs_.push_back({time, std::move(func)});
+    scheduledFuncs_.emplace_back(time, std::move(func));
   }
 
  private:

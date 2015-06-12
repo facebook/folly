@@ -704,7 +704,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
       auto c = ++ctx->completed;
       if (c <= n) {
         assert(ctx->v.size() < n);
-        ctx->v.push_back(std::make_pair(i, std::move(t)));
+        ctx->v.emplace_back(i, std::move(t));
         if (c == n) {
           ctx->p.setTry(Try<V>(std::move(ctx->v)));
         }

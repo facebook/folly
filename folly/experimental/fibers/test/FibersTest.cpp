@@ -581,7 +581,7 @@ TEST(FiberManager, forEach) {
           std::vector<std::pair<size_t, int>> results;
           forEach(funcs.begin(), funcs.end(),
             [&results](size_t id, int result) {
-              results.push_back(std::make_pair(id, result));
+              results.emplace_back(id, result);
             });
           EXPECT_EQ(3, results.size());
           EXPECT_TRUE(pendingFibers.empty());

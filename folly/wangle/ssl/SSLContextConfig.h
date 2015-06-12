@@ -31,6 +31,10 @@ struct SSLContextConfig {
   ~SSLContextConfig() {}
 
   struct CertificateInfo {
+    CertificateInfo(const std::string& crtPath,
+                    const std::string& kyPath,
+                    const std::string& passwdPath)
+        : certPath(crtPath), keyPath(kyPath), passwordPath(passwdPath) {}
     std::string certPath;
     std::string keyPath;
     std::string passwordPath;
@@ -49,7 +53,7 @@ struct SSLContextConfig {
   void addCertificate(const std::string& certPath,
                       const std::string& keyPath,
                       const std::string& passwordPath) {
-    certificates.emplace_back(CertificateInfo{certPath, keyPath, passwordPath});
+    certificates.emplace_back(certPath, keyPath, passwordPath);
   }
 
   /**
@@ -58,7 +62,7 @@ struct SSLContextConfig {
    */
   void setNextProtocols(const std::list<std::string>& inNextProtocols) {
     nextProtocols.clear();
-    nextProtocols.push_back({1, inNextProtocols});
+    nextProtocols.emplace_back(1, inNextProtocols);
   }
 
   typedef std::function<bool(char const* server_name)> SNINoMatchFn;

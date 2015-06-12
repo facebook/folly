@@ -1106,7 +1106,7 @@ struct RunInThreadArg {
 };
 
 void runInThreadTestFunc(RunInThreadArg* arg) {
-  arg->data->values.push_back(make_pair(arg->thread, arg->value));
+  arg->data->values.emplace_back(arg->thread, arg->value);
   RunInThreadData* data = arg->data;
   delete arg;
 
