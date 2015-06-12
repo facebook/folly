@@ -285,6 +285,29 @@ TEST(Dynamic, GetPtr) {
   EXPECT_EQ(dynamic(2), *cobject.get_ptr("two"));
 }
 
+TEST(Dynamic, Assignment) {
+  const dynamic ds[] = { { 1, 2, 3 },
+                         dynamic::object("a", true),
+                         24,
+                         26.5,
+                         true,
+                         "hello", };
+  const dynamic dd[] = { { 5, 6 },
+                         dynamic::object("t", "T")(1, 7),
+                         9000,
+                         3.14159,
+                         false,
+                         "world", };
+  for (const auto& source : ds) {
+    for (const auto& dest : dd) {
+      dynamic tmp(dest);
+      EXPECT_EQ(tmp, dest);
+      tmp = source;
+      EXPECT_EQ(tmp, source);
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

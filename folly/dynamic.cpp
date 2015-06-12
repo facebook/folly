@@ -100,22 +100,34 @@ bool dynamic::operator==(dynamic const& o) const {
 
 dynamic& dynamic::operator=(dynamic const& o) {
   if (&o != this) {
-    destroy();
-#define FB_X(T) new (getAddress<T>()) T(*o.getAddress<T>())
-    FB_DYNAMIC_APPLY(o.type_, FB_X);
+    if (type_ == o.type_) {
+#define FB_X(T) *getAddress<T>() = *o.getAddress<T>()
+      FB_DYNAMIC_APPLY(type_, FB_X);
 #undef FB_X
-    type_ = o.type_;
+    } else {
+      destroy();
+#define FB_X(T) new (getAddress<T>()) T(*o.getAddress<T>())
+      FB_DYNAMIC_APPLY(o.type_, FB_X);
+#undef FB_X
+      type_ = o.type_;
+    }
   }
   return *this;
 }
 
 dynamic& dynamic::operator=(dynamic&& o) noexcept {
   if (&o != this) {
-    destroy();
-#define FB_X(T) new (getAddress<T>()) T(std::move(*o.getAddress<T>()))
-    FB_DYNAMIC_APPLY(o.type_, FB_X);
+    if (type_ == o.type_) {
+#define FB_X(T) *getAddress<T>() = std::move(*o.getAddress<T>())
+      FB_DYNAMIC_APPLY(type_, FB_X);
 #undef FB_X
-    type_ = o.type_;
+    } else {
+      destroy();
+#define FB_X(T) new (getAddress<T>()) T(std::move(*o.getAddress<T>()))
+      FB_DYNAMIC_APPLY(o.type_, FB_X);
+#undef FB_X
+      type_ = o.type_;
+    }
   }
   return *this;
 }
