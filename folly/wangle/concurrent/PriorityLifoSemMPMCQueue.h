@@ -27,7 +27,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
   explicit PriorityLifoSemMPMCQueue(uint8_t numPriorities, size_t capacity) {
     queues_.reserve(numPriorities);
     for (int8_t i = 0; i < numPriorities; i++) {
-      queues_.emplace_back(capacity);
+      queues_.push_back(MPMCQueue<T>(capacity));
     }
   }
 

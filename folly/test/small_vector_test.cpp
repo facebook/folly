@@ -159,7 +159,7 @@ struct TestBasicGuarantee {
   {
     throwCounter = 1000;
     for (int i = 0; i < prepopulate; ++i) {
-      vec.emplace_back();
+      vec.push_back(Thrower());
     }
   }
 
@@ -203,7 +203,7 @@ TEST(small_vector, BasicGuarantee) {
     (TestBasicGuarantee(prepop))( // parens or a mildly vexing parse :(
       1,
       [&] (folly::small_vector<Thrower,3>& v) {
-        v.emplace_back();
+        v.push_back(Thrower());
       }
     );
 
@@ -232,9 +232,9 @@ TEST(small_vector, BasicGuarantee) {
     3,
     [&] (folly::small_vector<Thrower,3>& v) {
       std::vector<Thrower> b;
-      b.emplace_back();
-      b.emplace_back();
-      b.emplace_back();
+      b.push_back(Thrower());
+      b.push_back(Thrower());
+      b.push_back(Thrower());
 
       /*
        * Apparently if you do the following initializer_list instead
@@ -251,7 +251,7 @@ TEST(small_vector, BasicGuarantee) {
     [&] (folly::small_vector<Thrower,3>& v) {
       std::vector<Thrower> b;
       for (int i = 0; i < 6; ++i) {
-        b.emplace_back();
+        b.push_back(Thrower());
       }
 
       v.insert(v.begin() + 1, b.begin(), b.end());

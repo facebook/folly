@@ -1443,28 +1443,28 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
 
   void connectionAccepted(int fd, const folly::SocketAddress& clientAddr)
       noexcept {
-    events_.emplace_back(fd, clientAddr);
+    events_.push_back(EventInfo(fd, clientAddr));
 
     if (connectionAcceptedFn_) {
       connectionAcceptedFn_(fd, clientAddr);
     }
   }
   void acceptError(const std::exception& ex) noexcept {
-    events_.emplace_back(ex.what());
+    events_.push_back(EventInfo(ex.what()));
 
     if (acceptErrorFn_) {
       acceptErrorFn_(ex);
     }
   }
   void acceptStarted() noexcept {
-    events_.emplace_back(TYPE_START);
+    events_.push_back(EventInfo(TYPE_START));
 
     if (acceptStartedFn_) {
       acceptStartedFn_();
     }
   }
   void acceptStopped() noexcept {
-    events_.emplace_back(TYPE_STOP);
+    events_.push_back(EventInfo(TYPE_STOP));
 
     if (acceptStoppedFn_) {
       acceptStoppedFn_();
