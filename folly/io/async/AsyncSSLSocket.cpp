@@ -1251,7 +1251,9 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
 
 #if 0
 //#ifdef SSL_MODE_WRITE_IOVEC
-  if (ssl_->mode & SSL_MODE_WRITE_IOVEC) {
+  if (ssl_->expand == nullptr &&
+      ssl_->compress == nullptr &&
+      (ssl_->mode & SSL_MODE_WRITE_IOVEC)) {
     return performWriteIovec(vec, count, flags, countWritten, partialWritten);
   }
 #endif
