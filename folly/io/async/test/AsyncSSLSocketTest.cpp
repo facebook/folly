@@ -58,7 +58,7 @@ constexpr size_t SSLClient::kMaxReadsPerEvent;
 TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase *acb) :
 ctx_(new folly::SSLContext),
     acb_(acb),
-  socket_(new folly::AsyncServerSocket(&evb_)) {
+  socket_(folly::AsyncServerSocket::newSocket(&evb_)) {
   // Set up the SSL context
   ctx_->loadCertificate(testCert);
   ctx_->loadPrivateKey(testKey);
@@ -841,6 +841,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -880,6 +881,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -926,6 +928,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();

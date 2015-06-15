@@ -557,7 +557,7 @@ class TestSSLServer {
   EventBase evb_;
   std::shared_ptr<folly::SSLContext> ctx_;
   SSLServerAcceptCallbackBase *acb_;
-  folly::AsyncServerSocket *socket_;
+  std::shared_ptr<folly::AsyncServerSocket> socket_;
   folly::SocketAddress address_;
   pthread_t thread_;
 

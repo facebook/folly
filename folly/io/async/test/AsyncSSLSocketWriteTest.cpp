@@ -85,8 +85,8 @@ class AsyncSSLSocketWriteTest : public testing::Test {
 
   // Make an iovec containing chunks of the reference text with requested sizes
   // for each chunk
-  iovec *makeVec(std::vector<uint32_t> sizes) {
-    iovec *vec = new iovec[sizes.size()];
+  std::unique_ptr<iovec[]> makeVec(std::vector<uint32_t> sizes) {
+    std::unique_ptr<iovec[]> vec(new iovec[sizes.size()]);
     int i = 0;
     int pos = 0;
     for (auto size: sizes) {
@@ -119,14 +119,14 @@ class AsyncSSLSocketWriteTest : public testing::Test {
 // The entire vec fits in one packet
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing1) {
   int n = 3;
-  iovec *vec = makeVec({3, 3, 3});
+  auto vec = makeVec({3, 3, 3});
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 9))
     .WillOnce(Invoke([this] (SSL *, const void *buf, int n) {
           verifyVec(buf, n, 0);
           return 9; }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, n);
   EXPECT_EQ(partialWritten, 0);
@@ -135,7 +135,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing1) {
 // First packet is full, second two go in one packet
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing2) {
   int n = 3;
-  iovec *vec = makeVec({1500, 3, 3});
+  auto vec = makeVec({1500, 3, 3});
   int pos = 0;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
@@ -149,7 +149,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing2) {
           return n; }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, n);
   EXPECT_EQ(partialWritten, 0);
@@ -158,7 +158,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing2) {
 // Two exactly full packets (coalesce ends midway through second chunk)
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing3) {
   int n = 3;
-  iovec *vec = makeVec({1000, 1000, 1000});
+  auto vec = makeVec({1000, 1000, 1000});
   int pos = 0;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .Times(2)
@@ -168,7 +168,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing3) {
           return n; }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, n);
   EXPECT_EQ(partialWritten, 0);
@@ -177,7 +177,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing3) {
 // Partial write success midway through a coalesced vec
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing4) {
   int n = 5;
-  iovec *vec = makeVec({300, 300, 300, 300, 300});
+  auto vec = makeVec({300, 300, 300, 300, 300});
   int pos = 0;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
@@ -186,17 +186,17 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing4) {
           return 1000; /* 500 bytes "pending" */ }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, 3);
   EXPECT_EQ(partialWritten, 100);
-  consumeVec(vec, countWritten, partialWritten);
+  consumeVec(vec.get(), countWritten, partialWritten);
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 500))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
           verifyVec(buf, n, pos);
           pos += n;
           return 500; }));
-  sock_->testPerformWrite(vec + countWritten, n - countWritten,
+  sock_->testPerformWrite(vec.get() + countWritten, n - countWritten,
                           WriteFlags::NONE,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, 2);
@@ -206,7 +206,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing4) {
 // coalesce ends exactly on a buffer boundary
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing5) {
   int n = 3;
-  iovec *vec = makeVec({1000, 500, 500});
+  auto vec = makeVec({1000, 500, 500});
   int pos = 0;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
@@ -220,7 +220,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing5) {
           return n; }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, 3);
   EXPECT_EQ(partialWritten, 0);
@@ -229,7 +229,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing5) {
 // partial write midway through first chunk
 TEST_F(AsyncSSLSocketWriteTest, write_coalescing6) {
   int n = 2;
-  iovec *vec = makeVec({1000, 500});
+  auto vec = makeVec({1000, 500});
   int pos = 0;
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
@@ -238,17 +238,17 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing6) {
           return 700; }));
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::NONE, &countWritten,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::NONE, &countWritten,
                           &partialWritten);
   EXPECT_EQ(countWritten, 0);
   EXPECT_EQ(partialWritten, 700);
-  consumeVec(vec, countWritten, partialWritten);
+  consumeVec(vec.get(), countWritten, partialWritten);
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 800))
     .WillOnce(Invoke([this, &pos] (SSL *, const void *buf, int n) {
           verifyVec(buf, n, pos);
           pos += n;
           return n; }));
-  sock_->testPerformWrite(vec + countWritten, n - countWritten,
+  sock_->testPerformWrite(vec.get() + countWritten, n - countWritten,
                           WriteFlags::NONE,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, 2);
@@ -258,7 +258,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_coalescing6) {
 // Repeat coalescing2 with WriteFlags::EOR
 TEST_F(AsyncSSLSocketWriteTest, write_with_eor1) {
   int n = 3;
-  iovec *vec = makeVec({1500, 3, 3});
+  auto vec = makeVec({1500, 3, 3});
   int pos = 0;
   const size_t initAppBytesWritten = 500;
   const size_t appEor = initAppBytesWritten + 1506;
@@ -291,7 +291,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor1) {
 
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n , WriteFlags::EOR,
+  sock_->testPerformWrite(vec.get(), n , WriteFlags::EOR,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, n);
   EXPECT_EQ(partialWritten, 0);
@@ -302,7 +302,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor1) {
 // WriteFlags::EOR turned on
 TEST_F(AsyncSSLSocketWriteTest, write_with_eor2) {
   int n = 3;
-  iovec *vec = makeVec({600, 600, 600});
+  auto vec = makeVec({600, 600, 600});
   int pos = 0;
   const size_t initAppBytesWritten = 500;
   const size_t appEor = initAppBytesWritten + 1800;
@@ -333,7 +333,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor2) {
 
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::EOR,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::EOR,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, n);
   EXPECT_EQ(partialWritten, 0);
@@ -345,7 +345,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor2) {
 // Partial write at 1000-th byte
 TEST_F(AsyncSSLSocketWriteTest, write_with_eor3) {
   int n = 1;
-  iovec *vec = makeVec({1600});
+  auto vec = makeVec({1600});
   int pos = 0;
   const size_t initAppBytesWritten = 500;
   const size_t appEor = initAppBytesWritten + 1600;
@@ -369,12 +369,12 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor3) {
 
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  sock_->testPerformWrite(vec, n, WriteFlags::EOR,
+  sock_->testPerformWrite(vec.get(), n, WriteFlags::EOR,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, 0);
   EXPECT_EQ(partialWritten, 1000);
   sock_->checkEor(appEor, 2000 + 1600);
-  consumeVec(vec, countWritten, partialWritten);
+  consumeVec(vec.get(), countWritten, partialWritten);
 
   EXPECT_CALL(*(sock_.get()), getRawBytesWritten())
     .WillOnce(Return(3100))
@@ -385,7 +385,7 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor3) {
           verifyVec(buf, n, pos);
           pos += n;
           return n; }));
-  sock_->testPerformWrite(vec + countWritten, n - countWritten,
+  sock_->testPerformWrite(vec.get() + countWritten, n - countWritten,
                           WriteFlags::EOR,
                           &countWritten, &partialWritten);
   EXPECT_EQ(countWritten, n);
