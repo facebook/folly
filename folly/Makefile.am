@@ -98,7 +98,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/fibers/TimedMutex.h \
 	experimental/fibers/TimedMutex-inl.h \
 	experimental/fibers/TimeoutController.h \
-	experimental/fibers/TimeoutController.h \
 	experimental/fibers/traits.h \
 	experimental/fibers/WhenN.h \
 	experimental/fibers/WhenN-inl.h \
