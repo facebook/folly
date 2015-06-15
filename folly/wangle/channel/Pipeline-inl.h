@@ -166,6 +166,80 @@ Pipeline<R, W>& Pipeline<R, W>::addFront(H* handler) {
 
 template <class R, class W>
 template <class H>
+Pipeline<R, W>& Pipeline<R, W>::removeHelper(H* handler, bool checkEqual) {
+  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
+  bool removed = false;
+  for (auto it = ctxs_.begin(); it != ctxs_.end(); it++) {
+    auto ctx = std::dynamic_pointer_cast<Context>(*it);
+    if (ctx && (!checkEqual || ctx->getHandler() == handler)) {
+      it = removeAt(it);
+      removed = true;
+      if (it == ctxs_.end()) {
+        break;
+      }
+    }
+  }
+
+  if (!removed) {
+    throw std::invalid_argument("No such handler in pipeline");
+  }
+
+  return *this;
+}
+
+template <class R, class W>
+template <class H>
+Pipeline<R, W>& Pipeline<R, W>::remove() {
+  return removeHelper<H>(nullptr, false);
+}
+
+template <class R, class W>
+template <class H>
+Pipeline<R, W>& Pipeline<R, W>::remove(H* handler) {
+  return removeHelper<H>(handler, true);
+}
+
+template <class R, class W>
+typename Pipeline<R, W>::ContextIterator Pipeline<R, W>::removeAt(
+    const typename Pipeline<R, W>::ContextIterator& it) {
+  (*it)->detachPipeline();
+
+  const auto dir = (*it)->getDirection();
+  if (dir == HandlerDir::BOTH || dir == HandlerDir::IN) {
+    auto it2 = std::find(inCtxs_.begin(), inCtxs_.end(), it->get());
+    CHECK(it2 != inCtxs_.end());
+    inCtxs_.erase(it2);
+  }
+
+  if (dir == HandlerDir::BOTH || dir == HandlerDir::OUT) {
+    auto it2 = std::find(outCtxs_.begin(), outCtxs_.end(), it->get());
+    CHECK(it2 != outCtxs_.end());
+    outCtxs_.erase(it2);
+  }
+
+  return ctxs_.erase(it);
+}
+
+template <class R, class W>
+Pipeline<R, W>& Pipeline<R, W>::removeFront() {
+  if (ctxs_.empty()) {
+    throw std::invalid_argument("No handlers in pipeline");
+  }
+  removeAt(ctxs_.begin());
+  return *this;
+}
+
+template <class R, class W>
+Pipeline<R, W>& Pipeline<R, W>::removeBack() {
+  if (ctxs_.empty()) {
+    throw std::invalid_argument("No handlers in pipeline");
+  }
+  removeAt(--ctxs_.end());
+  return *this;
+}
+
+template <class R, class W>
+template <class H>
 H* Pipeline<R, W>::getHandler(int i) {
   typedef typename ContextType<H, Pipeline<R, W>>::type Context;
   auto ctx = dynamic_cast<Context*>(ctxs_[i].get());
@@ -190,18 +264,22 @@ inline void logWarningIfNotNothing<Nothing>(const std::string& warning) {
 // TODO Have read/write/etc check that pipeline has been finalized
 template <class R, class W>
 void Pipeline<R, W>::finalize() {
+  front_ = nullptr;
   if (!inCtxs_.empty()) {
     front_ = dynamic_cast<InboundLink<R>*>(inCtxs_.front());
     for (size_t i = 0; i < inCtxs_.size() - 1; i++) {
       inCtxs_[i]->setNextIn(inCtxs_[i+1]);
     }
+    inCtxs_.back()->setNextIn(nullptr);
   }
 
+  back_ = nullptr;
   if (!outCtxs_.empty()) {
     back_ = dynamic_cast<OutboundLink<W>*>(outCtxs_.back());
     for (size_t i = outCtxs_.size() - 1; i > 0; i--) {
       outCtxs_[i]->setNextOut(outCtxs_[i-1]);
     }
+    outCtxs_.front()->setNextOut(nullptr);
   }
 
   if (!front_) {

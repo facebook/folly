@@ -29,13 +29,27 @@ template <typename Pipeline, typename Req, typename Resp = Req>
 class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
                              , public Service<Req, Resp> {
  public:
-
   typedef typename HandlerAdapter<Req, Resp>::Context Context;
 
+  ~SerialClientDispatcher() {
+    if (pipeline_) {
+      try {
+        pipeline_->remove(this).finalize();
+      } catch (const std::invalid_argument& e) {
+        // not in pipeline; this is fine
+      }
+    }
+  }
+
   void setPipeline(Pipeline* pipeline) {
+    try {
+      pipeline->template remove<SerialClientDispatcher>();
+    } catch (const std::invalid_argument& e) {
+      // no existing dispatcher; this is fine
+    }
     pipeline_ = pipeline;
-    pipeline->addBack(this);
-    pipeline->finalize();
+    pipeline_->addBack(this);
+    pipeline_->finalize();
   }
 
   void read(Context* ctx, Req in) override {
@@ -61,6 +75,11 @@ class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
   virtual Future<void> close(Context* ctx) override {
     return HandlerAdapter<Req, Resp>::close(ctx);
   }
+
+  void detachPipeline(Context* ctx) override {
+    pipeline_ = nullptr;
+  }
+
  private:
   Pipeline* pipeline_{nullptr};
   folly::Optional<Promise<Resp>> p_;

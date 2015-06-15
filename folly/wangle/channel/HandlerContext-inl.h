@@ -36,6 +36,8 @@ class PipelineContext {
 
   virtual void setNextIn(PipelineContext* ctx) = 0;
   virtual void setNextOut(PipelineContext* ctx) = 0;
+
+  virtual HandlerDir getDirection() = 0;
 };
 
 template <class In>
@@ -86,6 +88,10 @@ class ContextImplBase : public PipelineContext {
   }
 
   void setNextIn(PipelineContext* ctx) override {
+    if (!ctx) {
+      nextIn_ = nullptr;
+      return;
+    }
     auto nextIn = dynamic_cast<InboundLink<typename H::rout>*>(ctx);
     if (nextIn) {
       nextIn_ = nextIn;
@@ -95,12 +101,20 @@ class ContextImplBase : public PipelineContext {
   }
 
   void setNextOut(PipelineContext* ctx) override {
+    if (!ctx) {
+      nextOut_ = nullptr;
+      return;
+    }
     auto nextOut = dynamic_cast<OutboundLink<typename H::wout>*>(ctx);
     if (nextOut) {
       nextOut_ = nextOut;
     } else {
       throw std::invalid_argument("outbound type mismatch");
     }
+  }
+
+  HandlerDir getDirection() override {
+    return H::dir;
   }
 
  protected:

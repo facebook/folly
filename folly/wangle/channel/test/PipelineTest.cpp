@@ -304,3 +304,88 @@ TEST(Pipeline, DynamicConstruction) {
         .finalize());
   }
 }
+
+TEST(Pipeline, RemovePointer) {
+  IntHandler handler1, handler2;
+  EXPECT_CALL(handler1, attachPipeline(_));
+  EXPECT_CALL(handler2, attachPipeline(_));
+  Pipeline<int, int> pipeline;
+  pipeline
+    .addBack(&handler1)
+    .addBack(&handler2)
+    .finalize();
+
+  EXPECT_CALL(handler1, detachPipeline(_));
+  pipeline
+    .remove(&handler1)
+    .finalize();
+
+  EXPECT_CALL(handler2, read_(_, _));
+  pipeline.read(1);
+
+  EXPECT_CALL(handler2, detachPipeline(_));
+}
+
+TEST(Pipeline, RemoveFront) {
+  IntHandler handler1, handler2;
+  EXPECT_CALL(handler1, attachPipeline(_));
+  EXPECT_CALL(handler2, attachPipeline(_));
+  Pipeline<int, int> pipeline;
+  pipeline
+    .addBack(&handler1)
+    .addBack(&handler2)
+    .finalize();
+
+  EXPECT_CALL(handler1, detachPipeline(_));
+  pipeline
+    .removeFront()
+    .finalize();
+
+  EXPECT_CALL(handler2, read_(_, _));
+  pipeline.read(1);
+
+  EXPECT_CALL(handler2, detachPipeline(_));
+}
+
+TEST(Pipeline, RemoveBack) {
+  IntHandler handler1, handler2;
+  EXPECT_CALL(handler1, attachPipeline(_));
+  EXPECT_CALL(handler2, attachPipeline(_));
+  Pipeline<int, int> pipeline;
+  pipeline
+    .addBack(&handler1)
+    .addBack(&handler2)
+    .finalize();
+
+  EXPECT_CALL(handler2, detachPipeline(_));
+  pipeline
+    .removeBack()
+    .finalize();
+
+  EXPECT_CALL(handler1, read_(_, _));
+  pipeline.read(1);
+
+  EXPECT_CALL(handler1, detachPipeline(_));
+}
+
+TEST(Pipeline, RemoveType) {
+  IntHandler handler1;
+  IntHandler2 handler2;
+  EXPECT_CALL(handler1, attachPipeline(_));
+  EXPECT_CALL(handler2, attachPipeline(_));
+  Pipeline<int, int> pipeline;
+  pipeline
+    .addBack(&handler1)
+    .addBack(&handler2)
+    .finalize();
+
+  EXPECT_CALL(handler1, detachPipeline(_));
+  pipeline
+    .remove<IntHandler>()
+    .finalize();
+
+  EXPECT_CALL(handler2, read_(_, _));
+  pipeline.read(1);
+
+  EXPECT_CALL(handler2, detachPipeline(_));
+}

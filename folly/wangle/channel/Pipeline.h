@@ -127,6 +127,16 @@ class Pipeline : public PipelineBase {
   Pipeline& addFront(H* handler);
 
   template <class H>
+  Pipeline& remove(H* handler);
+
+  template <class H>
+  Pipeline& remove();
+
+  Pipeline& removeFront();
+
+  Pipeline& removeBack();
+
+  template <class H>
   H* getHandler(int i);
 
   void finalize();
@@ -149,6 +159,14 @@ class Pipeline : public PipelineBase {
  private:
   template <class Context>
   Pipeline& addHelper(std::shared_ptr<Context>&& ctx, bool front);
+
+  template <class H>
+  Pipeline& removeHelper(H* handler, bool checkEqual);
+
+  typedef std::vector<std::shared_ptr<PipelineContext>>::iterator
+    ContextIterator;
+
+  ContextIterator removeAt(const ContextIterator& it);
 
   WriteFlags writeFlags_{WriteFlags::NONE};
   std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
