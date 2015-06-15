@@ -24,6 +24,18 @@
 #ifndef FOLLY_EXPERIMENTAL_ELIAS_FANO_CODING_H
 #define FOLLY_EXPERIMENTAL_ELIAS_FANO_CODING_H
 
+#include <cstdlib>
+#include <limits>
+#include <type_traits>
+#include <glog/logging.h>
+
+#include <folly/Bits.h>
+#include <folly/CpuId.h>
+#include <folly/Likely.h>
+#include <folly/Portability.h>
+#include <folly/Range.h>
+#include <folly/experimental/Select64.h>
+
 #ifndef __GNUC__
 #error EliasFanoCoding.h requires GCC
 #endif
@@ -31,18 +43,6 @@
 #if !FOLLY_X64
 #error EliasFanoCoding.h requires x86_64
 #endif
-
-#include <cstdlib>
-#include <limits>
-#include <type_traits>
-#include <boost/noncopyable.hpp>
-#include <glog/logging.h>
-
-#include <folly/Bits.h>
-#include <folly/CpuId.h>
-#include <folly/Likely.h>
-#include <folly/Range.h>
-#include <folly/experimental/Select64.h>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error EliasFanoCoding.h requires little endianness
@@ -118,9 +118,9 @@ struct EliasFanoEncoderV2 {
 
   // Requires: input range (begin, end) is sorted (encoding
   // crashes if it's not).
-  // WARNING: encode() mallocates lower, upper, skipPointers
-  // and forwardPointers. As EliasFanoCompressedList has
-  // no ownership of them, you need to call free() explicitly.
+  // WARNING: encode() mallocates EliasFanoCompressedList::data. As
+  // EliasFanoCompressedList has no ownership of it, you need to call
+  // free() explicitly.
   template <class RandomAccessIterator>
   static EliasFanoCompressedList encode(RandomAccessIterator begin,
                                         RandomAccessIterator end) {
@@ -142,6 +142,7 @@ struct EliasFanoEncoderV2 {
         forwardPointers_(reinterpret_cast<SkipValueType*>(
                            result.forwardPointers)),
         result_(result) {
+    memset(result.data.data(), 0, result.data.size());
   }
 
   EliasFanoEncoderV2(size_t size, ValueType upperBound)
@@ -308,11 +309,11 @@ struct EliasFanoEncoderV2<Value,
     uint8_t* buf = nullptr;
     // WARNING: Current read/write logic assumes that the 7 bytes
     // following the last byte of lower and upper sequences are
-    // readable (stored value doesn't matter and won't be changed),
-    // so we allocate additional 7B, but do not include them in size
+    // readable (stored value doesn't matter and won't be changed), so
+    // we allocate additional 7 bytes, but do not include them in size
     // of returned value.
     if (size > 0) {
-      buf = static_cast<uint8_t*>(calloc(bytes() + 7, 1));
+      buf = static_cast<uint8_t*>(malloc(bytes() + 7));
     }
     folly::MutableByteRange bufRange(buf, bytes());
     return openList(bufRange);
@@ -347,6 +348,10 @@ struct Default {
   static inline int ctz(uint64_t value) {
     DCHECK_GT(value, 0);
     return __builtin_ctzll(value);
+  }
+  static inline int clz(uint64_t value) {
+    DCHECK_GT(value, 0);
+    return __builtin_clzll(value);
   }
   static inline uint64_t blsr(uint64_t value) {
     return value & (value - 1);
@@ -522,6 +527,24 @@ class UpperBitsReader {
     return skipToNext(v);
   }
 
+  ValueType previousValue() const {
+    DCHECK_NE(position(), -1);
+    DCHECK_GT(position(), 0);
+
+    size_t outer = outer_;
+    block_t block = folly::loadUnaligned<block_t>(start_ + outer);
+    block &= (block_t(1) << inner_) - 1;
+
+    while (UNLIKELY(block == 0)) {
+      DCHECK_GE(outer, sizeof(block_t));
+      outer -= sizeof(block_t);
+      block = folly::loadUnaligned<block_t>(start_ + outer);
+    }
+
+    auto inner = 8 * sizeof(block_t) - 1 - Instructions::clz(block);
+    return static_cast<ValueType>(8 * outer + inner - (position_ - 1));
+  }
+
   void setDone(size_t endPos) {
     position_ = endPos;
   }
@@ -538,7 +561,7 @@ class UpperBitsReader {
     block_ &= ~((block_t(1) << (dest % 8)) - 1);
   }
 
-  typedef unsigned long long block_t;
+  typedef uint64_t block_t;
   const unsigned char* const forwardPointers_;
   const unsigned char* const skipPointers_;
   const unsigned char* const start_;
@@ -551,9 +574,13 @@ class UpperBitsReader {
 
 }  // namespace detail
 
+// If kUnchecked = true the caller must guarantee that all the
+// operations return valid elements, i.e., they would never return
+// false if checked.
 template <class Encoder,
-          class Instructions = instructions::Default>
-class EliasFanoReader : private boost::noncopyable {
+          class Instructions = instructions::Default,
+          bool kUnchecked = false>
+class EliasFanoReader {
  public:
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
@@ -567,7 +594,9 @@ class EliasFanoReader : private boost::noncopyable {
     DCHECK(Instructions::supported());
     // To avoid extra branching during skipTo() while reading
     // upper sequence we need to know the last element.
-    if (UNLIKELY(list.size == 0)) {
+    // If kUnchecked == true, we do not check that skipTo() is called
+    // within the bounds, so we can avoid initializing lastValue_.
+    if (kUnchecked || UNLIKELY(list.size == 0)) {
       lastValue_ = 0;
       return;
     }
@@ -584,7 +613,7 @@ class EliasFanoReader : private boost::noncopyable {
   }
 
   bool next() {
-    if (UNLIKELY(position() + 1 >= size_)) {
+    if (!kUnchecked && UNLIKELY(position() + 1 >= size_)) {
       return setDone();
     }
     upper_.next();
@@ -596,7 +625,7 @@ class EliasFanoReader : private boost::noncopyable {
   bool skip(size_t n) {
     CHECK_GT(n, 0);
 
-    if (LIKELY(position() + n < size_)) {
+    if (kUnchecked || LIKELY(position() + n < size_)) {
       if (LIKELY(n < kLinearScanThreshold)) {
         for (size_t i = 0; i < n; ++i) upper_.next();
       } else {
@@ -614,7 +643,7 @@ class EliasFanoReader : private boost::noncopyable {
     DCHECK_GE(value, value_);
     if (value <= value_) {
       return true;
-    } else if (value > lastValue_) {
+    } else if (!kUnchecked && value > lastValue_) {
       return setDone();
     }
 
@@ -649,13 +678,20 @@ class EliasFanoReader : private boost::noncopyable {
     if (value <= 0) {
       reset();
       return true;
-    } else if (value > lastValue_) {
+    } else if (!kUnchecked && value > lastValue_) {
       return setDone();
     }
 
     upper_.jumpToNext(value >> numLowerBits_);
     iterateTo(value);
     return true;
+  }
+
+  ValueType previousValue() const {
+    DCHECK_GT(position(), 0);
+    DCHECK_LT(position(), size());
+    return readLowerPart(upper_.position() - 1) |
+      (upper_.previousValue() << numLowerBits_);
   }
 
   size_t size() const { return size_; }

@@ -73,6 +73,21 @@ inline std::vector<uint32_t> loadList(const std::string& filename) {
   return result;
 }
 
+// Test previousValue only if Reader has it.
+template <class... Args>
+void maybeTestPreviousValue(Args&&...) { }
+
+// Make all the arguments template because if the types are not exact,
+// the above overload will be picked (for example i could be size_t or
+// ssize_t).
+template <class Vector, class Reader, class Index>
+auto maybeTestPreviousValue(const Vector& data, Reader& reader, Index i)
+  -> decltype(reader.previousValue(), void()) {
+  if (i != 0) {
+    EXPECT_EQ(reader.previousValue(), data[i - 1]);
+  }
+}
+
 template <class Reader, class List>
 void testNext(const std::vector<uint32_t>& data, const List& list) {
   Reader reader(list);
@@ -81,6 +96,7 @@ void testNext(const std::vector<uint32_t>& data, const List& list) {
     EXPECT_TRUE(reader.next());
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
+    maybeTestPreviousValue(data, reader, i);
   }
   EXPECT_FALSE(reader.next());
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
@@ -97,6 +113,7 @@ void testSkip(const std::vector<uint32_t>& data, const List& list,
     EXPECT_TRUE(reader.skip(skipStep));
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
+    maybeTestPreviousValue(data, reader, i);
   }
   EXPECT_FALSE(reader.skip(skipStep));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
@@ -134,6 +151,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list,
     EXPECT_TRUE(reader.skipTo(value));
     EXPECT_EQ(reader.value(), *it);
     value = reader.value() + delta;
+    maybeTestPreviousValue(data, reader, std::distance(data.begin(), it));
   }
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
   EXPECT_EQ(reader.position(), reader.size());
@@ -177,6 +195,7 @@ void testJump(const std::vector<uint32_t>& data, const List& list) {
     EXPECT_TRUE(reader.jump(i + 1));
     EXPECT_EQ(reader.value(), data[i]);
     EXPECT_EQ(reader.position(), i);
+    maybeTestPreviousValue(data, reader, i);
   }
   EXPECT_FALSE(reader.jump(data.size() + 1));
   EXPECT_EQ(reader.value(), std::numeric_limits<uint32_t>::max());
