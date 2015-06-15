@@ -28,6 +28,7 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashMap-inl.h \
 	AtomicLinkedList.h \
 	AtomicStruct.h \
+	AtomicUnorderedMap.h \
 	Baton.h \
 	Benchmark.h \
 	Bits.h \
@@ -39,6 +40,7 @@ nobase_follyinclude_HEADERS = \
 	CpuId.h \
 	CPortability.h \
 	detail/AtomicHashUtils.h \
+	detail/AtomicUnorderedMapUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
