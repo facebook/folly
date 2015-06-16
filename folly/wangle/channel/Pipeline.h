@@ -18,6 +18,7 @@
 
 #include <folly/wangle/channel/HandlerContext.h>
 #include <folly/futures/Future.h>
+#include <folly/futures/Unit.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/ExceptionWrapper.h>
@@ -58,17 +59,15 @@ class PipelineBase : public DelayedDestruction {
   std::shared_ptr<AsyncTransport> transport_;
 };
 
-struct Nothing{};
-
 /*
  * R is the inbound type, i.e. inbound calls start with pipeline.read(R)
  * W is the outbound type, i.e. outbound calls start with pipeline.write(W)
  *
- * Use Nothing for one of the types if your pipeline is unidirectional.
- * If R is Nothing, read(), readEOF(), and readException() will be disabled.
- * If W is Nothing, write() and close() will be disabled.
+ * Use Unit for one of the types if your pipeline is unidirectional.
+ * If R is Unit, read(), readEOF(), and readException() will be disabled.
+ * If W is Unit, write() and close() will be disabled.
  */
-template <class R, class W = Nothing>
+template <class R, class W = Unit>
 class Pipeline : public PipelineBase {
  public:
   Pipeline();
@@ -81,31 +80,31 @@ class Pipeline : public PipelineBase {
   std::pair<uint64_t, uint64_t> getReadBufferSettings();
 
   template <class T = R>
-  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value>::type
   read(R msg);
 
   template <class T = R>
-  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value>::type
   readEOF();
 
   template <class T = R>
-  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value>::type
   readException(exception_wrapper e);
 
   template <class T = R>
-  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value>::type
   transportActive();
 
   template <class T = R>
-  typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value>::type
   transportInactive();
 
   template <class T = W>
-  typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
   write(W msg);
 
   template <class T = W>
-  typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
   close();
 
   template <class H>

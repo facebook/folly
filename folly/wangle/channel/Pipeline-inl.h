@@ -59,7 +59,7 @@ std::pair<uint64_t, uint64_t> Pipeline<R, W>::getReadBufferSettings() {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+typename std::enable_if<!std::is_same<T, Unit>::value>::type
 Pipeline<R, W>::read(R msg) {
   if (!front_) {
     throw std::invalid_argument("read(): no inbound handler in Pipeline");
@@ -69,7 +69,7 @@ Pipeline<R, W>::read(R msg) {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+typename std::enable_if<!std::is_same<T, Unit>::value>::type
 Pipeline<R, W>::readEOF() {
   if (!front_) {
     throw std::invalid_argument("readEOF(): no inbound handler in Pipeline");
@@ -79,7 +79,7 @@ Pipeline<R, W>::readEOF() {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+typename std::enable_if<!std::is_same<T, Unit>::value>::type
 Pipeline<R, W>::transportActive() {
   if (front_) {
     front_->transportActive();
@@ -88,7 +88,7 @@ Pipeline<R, W>::transportActive() {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+typename std::enable_if<!std::is_same<T, Unit>::value>::type
 Pipeline<R, W>::transportInactive() {
   if (front_) {
     front_->transportInactive();
@@ -97,7 +97,7 @@ Pipeline<R, W>::transportInactive() {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value>::type
+typename std::enable_if<!std::is_same<T, Unit>::value>::type
 Pipeline<R, W>::readException(exception_wrapper e) {
   if (!front_) {
     throw std::invalid_argument(
@@ -108,7 +108,7 @@ Pipeline<R, W>::readException(exception_wrapper e) {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
 Pipeline<R, W>::write(W msg) {
   if (!back_) {
     throw std::invalid_argument("write(): no outbound handler in Pipeline");
@@ -118,7 +118,7 @@ Pipeline<R, W>::write(W msg) {
 
 template <class R, class W>
 template <class T>
-typename std::enable_if<!std::is_same<T, Nothing>::value, Future<void>>::type
+typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
 Pipeline<R, W>::close() {
   if (!back_) {
     throw std::invalid_argument("close(): no outbound handler in Pipeline");
@@ -250,12 +250,12 @@ H* Pipeline<R, W>::getHandler(int i) {
 namespace detail {
 
 template <class T>
-inline void logWarningIfNotNothing(const std::string& warning) {
+inline void logWarningIfNotUnit(const std::string& warning) {
   LOG(WARNING) << warning;
 }
 
 template <>
-inline void logWarningIfNotNothing<Nothing>(const std::string& warning) {
+inline void logWarningIfNotUnit<Unit>(const std::string& warning) {
   // do nothing
 }
 
@@ -283,12 +283,12 @@ void Pipeline<R, W>::finalize() {
   }
 
   if (!front_) {
-    detail::logWarningIfNotNothing<R>(
+    detail::logWarningIfNotUnit<R>(
         "No inbound handler in Pipeline, inbound operations will throw "
         "std::invalid_argument");
   }
   if (!back_) {
-    detail::logWarningIfNotNothing<W>(
+    detail::logWarningIfNotUnit<W>(
         "No outbound handler in Pipeline, outbound operations will throw "
         "std::invalid_argument");
   }

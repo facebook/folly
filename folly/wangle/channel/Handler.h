@@ -109,8 +109,8 @@ class InboundHandler : public HandlerBase<InboundHandlerContext<Rout>> {
 
   typedef Rin rin;
   typedef Rout rout;
-  typedef Nothing win;
-  typedef Nothing wout;
+  typedef Unit win;
+  typedef Unit wout;
   typedef InboundHandlerContext<Rout> Context;
   virtual ~InboundHandler() = default;
 
@@ -134,8 +134,8 @@ class OutboundHandler : public HandlerBase<OutboundHandlerContext<Wout>> {
  public:
   static const HandlerDir dir = HandlerDir::OUT;
 
-  typedef Nothing rin;
-  typedef Nothing rout;
+  typedef Unit rin;
+  typedef Unit rout;
   typedef Win win;
   typedef Wout wout;
   typedef OutboundHandlerContext<Wout> Context;
