@@ -79,9 +79,9 @@ Try<T>& Try<T>::operator=(const Try<T>& t) {
 
 template <class T>
 Try<T>::~Try() {
-  if (contains_ == Contains::VALUE) {
+  if (LIKELY(contains_ == Contains::VALUE)) {
     value_.~T();
-  } else if (contains_ == Contains::EXCEPTION) {
+  } else if (UNLIKELY(contains_ == Contains::EXCEPTION)) {
     e_.~unique_ptr<exception_wrapper>();
   }
 }

@@ -106,14 +106,12 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 
   // wrap these so we can move them into the lambda
   folly::MoveWrapper<Promise<B>> p;
-  p->setInterruptHandler(core_->getInterruptHandler());
+  p->core_->setInterruptHandlerNoLock(core_->getInterruptHandler());
   folly::MoveWrapper<F> funcm(std::forward<F>(func));
 
   // grab the Future now before we lose our handle on the Promise
   auto f = p->getFuture();
-  if (getExecutor()) {
-    f.setExecutor(getExecutor());
-  }
+  f.core_->setExecutorNoLock(getExecutor());
 
   /* This is a bit tricky.
 
@@ -174,13 +172,12 @@ Future<T>::thenImplementation(F func, detail::argResult<isTry, F, Args...>) {
 
   // wrap these so we can move them into the lambda
   folly::MoveWrapper<Promise<B>> p;
+  p->core_->setInterruptHandlerNoLock(core_->getInterruptHandler());
   folly::MoveWrapper<F> funcm(std::forward<F>(func));
 
   // grab the Future now before we lose our handle on the Promise
   auto f = p->getFuture();
-  if (getExecutor()) {
-    f.setExecutor(getExecutor());
-  }
+  f.core_->setExecutorNoLock(getExecutor());
 
   setCallback_(
     [p, funcm](Try<T>&& t) mutable {

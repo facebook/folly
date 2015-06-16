@@ -81,12 +81,12 @@ class Core {
   Core() {}
 
   explicit Core(Try<T>&& t)
-    : fsm_(State::OnlyResult),
-      attached_(1),
-      result_(std::move(t)) {}
+    : result_(std::move(t)),
+      fsm_(State::OnlyResult),
+      attached_(1) {}
 
   ~Core() {
-    assert(attached_ == 0);
+    DCHECK(attached_ == 0);
   }
 
   // not copyable
@@ -212,7 +212,7 @@ class Core {
   void detachPromise() {
     // detachPromise() and setResult() should never be called in parallel
     // so we don't need to protect this.
-    if (!result_) {
+    if (UNLIKELY(!result_)) {
       setResult(Try<T>(exception_wrapper(BrokenPromise())));
     }
     detachOne();
@@ -220,63 +220,89 @@ class Core {
 
   /// May call from any thread
   void deactivate() {
-    active_ = false;
+    active_.store(false, std::memory_order_release);
   }
 
   /// May call from any thread
   void activate() {
-    active_ = true;
+    active_.store(true, std::memory_order_release);
     maybeCallback();
   }
 
   /// May call from any thread
-  bool isActive() { return active_; }
+  bool isActive() { return active_.load(std::memory_order_acquire); }
 
   /// Call only from Future thread
-  void setExecutor(Executor* x, int8_t priority) {
-    folly::MSLGuard g(executorLock_);
+  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
+    if (!executorLock_.try_lock()) {
+      executorLock_.lock();
+    }
+    executor_ = x;
+    priority_ = priority;
+    executorLock_.unlock();
+  }
+
+  void setExecutorNoLock(Executor* x, int8_t priority = Executor::MID_PRI) {
     executor_ = x;
     priority_ = priority;
   }
 
   Executor* getExecutor() {
-    folly::MSLGuard g(executorLock_);
     return executor_;
   }
 
   /// Call only from Future thread
   void raise(exception_wrapper e) {
-    folly::MSLGuard guard(interruptLock_);
+    if (!interruptLock_.try_lock()) {
+      interruptLock_.lock();
+    }
     if (!interrupt_ && !hasResult()) {
       interrupt_ = folly::make_unique<exception_wrapper>(std::move(e));
       if (interruptHandler_) {
         interruptHandler_(*interrupt_);
       }
     }
+    interruptLock_.unlock();
   }
 
   std::function<void(exception_wrapper const&)> getInterruptHandler() {
-    folly::MSLGuard guard(interruptLock_);
-    return interruptHandler_;
+    if (!interruptHandlerSet_.load(std::memory_order_acquire)) {
+      return nullptr;
+    }
+    if (!interruptLock_.try_lock()) {
+      interruptLock_.lock();
+    }
+    auto handler = interruptHandler_;
+    interruptLock_.unlock();
+    return handler;
   }
 
   /// Call only from Promise thread
   void setInterruptHandler(std::function<void(exception_wrapper const&)> fn) {
-    folly::MSLGuard guard(interruptLock_);
+    if (!interruptLock_.try_lock()) {
+      interruptLock_.lock();
+    }
     if (!hasResult()) {
       if (interrupt_) {
         fn(*interrupt_);
       } else {
-        interruptHandler_ = std::move(fn);
+        setInterruptHandlerNoLock(std::move(fn));
       }
     }
+    interruptLock_.unlock();
+  }
+
+  void setInterruptHandlerNoLock(
+      std::function<void(exception_wrapper const&)> fn) {
+    interruptHandlerSet_.store(true, std::memory_order_relaxed);
+    interruptHandler_ = std::move(fn);
   }
 
  protected:
   void maybeCallback() {
     FSM_START(fsm_)
       case State::Armed:
-        if (active_) {
+        if (active_.load(std::memory_order_acquire)) {
           FSM_UPDATE2(fsm_, State::Done, []{}, [this]{ this->doCallback(); });
         }
         FSM_BREAK
@@ -289,17 +315,20 @@ class Core {
   void doCallback() {
     RequestContext::setContext(context_);
 
-    // TODO(6115514) semantic race on reading executor_ and setExecutor()
-    Executor* x;
+    Executor* x = executor_;
     int8_t priority;
-    {
-      folly::MSLGuard g(executorLock_);
+    if (x) {
+      if (!executorLock_.try_lock()) {
+        executorLock_.lock();
+      }
       x = executor_;
       priority = priority_;
+      executorLock_.unlock();
     }
 
     if (x) {
-      ++attached_; // keep Core alive until executor did its thing
+      // keep Core alive until executor did its thing
+      ++attached_;
       try {
         if (LIKELY(x->getNumPriorities() == 1)) {
           x->add([this]() mutable {
@@ -330,17 +359,21 @@ class Core {
     }
   }
 
+  // lambdaBuf occupies exactly one cache line
+  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
+  char lambdaBuf_[lambdaBufSize];
+  // place result_ next to increase the likelihood that the value will be
+  // contained entirely in one cache line
+  folly::Optional<Try<T>> result_ {};
+  std::function<void(Try<T>&&)> callback_ {nullptr};
   FSM<State> fsm_ {State::Start};
   std::atomic<unsigned char> attached_ {2};
   std::atomic<bool> active_ {true};
+  std::atomic<bool> interruptHandlerSet_ {false};
   folly::MicroSpinLock interruptLock_ {0};
   folly::MicroSpinLock executorLock_ {0};
   int8_t priority_ {-1};
   Executor* executor_ {nullptr};
-  folly::Optional<Try<T>> result_ {};
-  std::function<void(Try<T>&&)> callback_ {nullptr};
-  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
-  char lambdaBuf_[lambdaBufSize];
   std::shared_ptr<RequestContext> context_ {nullptr};
   std::unique_ptr<exception_wrapper> interrupt_ {};
   std::function<void(exception_wrapper const&)> interruptHandler_ {nullptr};

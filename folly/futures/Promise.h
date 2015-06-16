@@ -103,6 +103,7 @@ public:
 
 private:
   typedef typename Future<T>::corePtr corePtr;
+  template <class> friend class Future;
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;
