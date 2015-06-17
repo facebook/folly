@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/SharedMutex.h>
+#include <folly/SharedMutex.h>
 
 #include <stdlib.h>
 #include <thread>
