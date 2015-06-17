@@ -157,6 +157,7 @@ TEST(Dynamic, ArrayBasics) {
   EXPECT_EQ(array.at(1), 2);
   EXPECT_EQ(array.at(2), 3);
 
+  EXPECT_ANY_THROW(array.at(-1));
   EXPECT_ANY_THROW(array.at(3));
 
   array.push_back("foo");

@@ -185,7 +185,7 @@ dynamic const& dynamic::at(dynamic const& idx) const {
     if (!idx.isInt()) {
       throw TypeError("int64", idx.type());
     }
-    if (idx >= parray->size()) {
+    if (idx < 0 || idx >= parray->size()) {
       throw std::out_of_range("out of range in dynamic array");
     }
     return (*parray)[idx.asInt()];
