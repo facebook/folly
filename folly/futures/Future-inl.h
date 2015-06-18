@@ -227,7 +227,7 @@ auto Future<T>::then(Executor* x, Arg&& arg, Args&&... args)
 
 template <class T>
 Future<void> Future<T>::then() {
-  return then([] (Try<T>&& t) {});
+  return then([] () {});
 }
 
 // onError where the callback returns T
