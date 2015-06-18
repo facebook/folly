@@ -77,6 +77,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/ExecutionObserver.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
+	experimental/Instructions.h \
 	experimental/fibers/AddTasks.h \
 	experimental/fibers/AddTasks-inl.h \
 	experimental/fibers/Baton.h \

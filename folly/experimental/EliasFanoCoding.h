@@ -34,8 +34,8 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
-
 #ifndef __GNUC__
 #error EliasFanoCoding.h requires GCC
 #endif
@@ -328,62 +328,6 @@ struct EliasFanoEncoderV2<Value,
   size_t skipPointers = 0;
   size_t forwardPointers = 0;
 };
-
-// NOTE: It's recommended to compile EF coding with -msse4.2, starting
-// with Nehalem, Intel CPUs support POPCNT instruction and gcc will emit
-// it for __builtin_popcountll intrinsic.
-// But we provide an alternative way for the client code: it can switch to
-// the appropriate version of EliasFanoReader<> in realtime (client should
-// implement this switching logic itself) by specifying instruction set to
-// use explicitly.
-namespace instructions {
-
-struct Default {
-  static bool supported(const folly::CpuId& cpuId = {}) {
-    return true;
-  }
-  static inline uint64_t popcount(uint64_t value) {
-    return __builtin_popcountll(value);
-  }
-  static inline int ctz(uint64_t value) {
-    DCHECK_GT(value, 0);
-    return __builtin_ctzll(value);
-  }
-  static inline int clz(uint64_t value) {
-    DCHECK_GT(value, 0);
-    return __builtin_clzll(value);
-  }
-  static inline uint64_t blsr(uint64_t value) {
-    return value & (value - 1);
-  }
-};
-
-struct Nehalem : public Default {
-  static bool supported(const folly::CpuId& cpuId = {}) {
-    return cpuId.popcnt();
-  }
-  static inline uint64_t popcount(uint64_t value) {
-    // POPCNT is supported starting with Intel Nehalem, AMD K10.
-    uint64_t result;
-    asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
-    return result;
-  }
-};
-
-struct Haswell : public Nehalem {
-  static bool supported(const folly::CpuId& cpuId = {}) {
-    return Nehalem::supported(cpuId) && cpuId.bmi1();
-  }
-  static inline uint64_t blsr(uint64_t value) {
-    // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
-    // BLSR combines two instuctions into one and reduces register pressure.
-    uint64_t result;
-    asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
-    return result;
-  }
-};
-
-}  // namespace instructions
 
 namespace detail {
 
