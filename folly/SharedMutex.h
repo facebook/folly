@@ -796,9 +796,7 @@ class SharedMutexImpl {
       if ((state & goal) == 0) {
         return true;
       }
-#if FOLLY_X64
-      asm volatile("pause");
-#endif
+      asm_volatile_pause();
       ++spinCount;
       if (UNLIKELY(spinCount >= kMaxSpinCount)) {
         return ctx.canBlock() &&
@@ -956,9 +954,7 @@ class SharedMutexImpl {
           return;
         }
       }
-#if FOLLY_X64
-      asm("pause");
-#endif
+      asm_pause();
       if (UNLIKELY(++spinCount >= kMaxSpinCount)) {
         applyDeferredReaders(state, ctx, slot);
         return;

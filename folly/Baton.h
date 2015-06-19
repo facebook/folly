@@ -273,13 +273,11 @@ struct Baton : boost::noncopyable {
         // hooray!
         return true;
       }
-#if FOLLY_X64
       // The pause instruction is the polite way to spin, but it doesn't
       // actually affect correctness to omit it if we don't have it.
       // Pausing donates the full capabilities of the current core to
       // its other hyperthreads for a dozen cycles or so
-      asm volatile ("pause");
-#endif
+      asm_volatile_pause();
     }
 
     return false;

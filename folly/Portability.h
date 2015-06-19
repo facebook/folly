@@ -120,6 +120,12 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # define FOLLY_X64 0
 #endif
 
+#if defined(__aarch64__)
+# define FOLLY_A64 1
+#else
+# define FOLLY_A64 0
+#endif
+
 // packing is very ugly in msvc
 #ifdef _MSC_VER
 # define FOLLY_PACK_ATTR /**/
@@ -277,5 +283,24 @@ inline size_t malloc_usable_size(void* ptr) {
 #if defined(__GXX_RTTI) || defined(__cpp_rtti)
 # define FOLLY_HAS_RTTI 1
 #endif
+
+namespace folly {
+
+inline void asm_volatile_pause() {
+#if defined(__i386__) || FOLLY_X64
+  asm volatile ("pause");
+#elif FOLLY_A64
+  asm volatile ("wfe");
+#endif
+}
+inline void asm_pause() {
+#if defined(__i386__) || FOLLY_X64
+  asm ("pause");
+#elif FOLLY_A64
+  asm ("wfe");
+#endif
+}
+
+}
 
 #endif // FOLLY_PORTABILITY_H_

@@ -60,7 +60,7 @@ void splock_test() {
   const int max = 1000;
   unsigned int seed = (uintptr_t)pthread_self();
   for (int i = 0; i < max; i++) {
-    asm("pause");
+    folly::asm_pause();
     MSLGuard g(v.lock);
 
     int first = v.ar[0];
@@ -84,7 +84,7 @@ template<class T> struct PslTest {
       std::lock_guard<PicoSpinLock<T>> guard(lock);
       lock.setData(ourVal);
       for (int n = 0; n < 10; ++n) {
-        asm volatile("pause");
+        folly::asm_volatile_pause();
         EXPECT_EQ(lock.getData(), ourVal);
       }
     }
