@@ -733,3 +733,72 @@ TEST(small_vector, SelfInsert) {
     EXPECT_EQ(vec[i], "abc");
   }
 }
+
+struct CheckedInt {
+  static const int DEFAULT_VALUE = (int)0xdeadbeef;
+  CheckedInt(): value(DEFAULT_VALUE) {}
+  explicit CheckedInt(int value): value(value) {}
+  CheckedInt(const CheckedInt& rhs): value(rhs.value) {}
+  CheckedInt(CheckedInt&& rhs) noexcept: value(rhs.value) {
+    rhs.value = DEFAULT_VALUE;
+  }
+  CheckedInt& operator= (const CheckedInt& rhs) {
+    value = rhs.value;
+    return *this;
+  }
+  CheckedInt& operator= (CheckedInt&& rhs) noexcept {
+    value = rhs.value;
+    rhs.value = DEFAULT_VALUE;
+    return *this;
+  }
+  ~CheckedInt() {}
+  int value;
+};
+
+TEST(small_vector, LVEmplaceInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(1));
+  for (int i = 1; i < 20; ++i) {
+    v.emplace_back(v[0]);
+    ASSERT_EQ(1, v.back().value);
+  }
+}
+
+TEST(small_vector, CLVEmplaceInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  const folly::small_vector<CheckedInt>& cv = v;
+  v.push_back(CheckedInt(1));
+  for (int i = 1; i < 20; ++i) {
+    v.emplace_back(cv[0]);
+    ASSERT_EQ(1, v.back().value);
+  }
+}
+
+TEST(small_vector, RVEmplaceInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(0));
+  for (int i = 1; i < 20; ++i) {
+    v[0] = CheckedInt(1);
+    v.emplace_back(std::move(v[0]));
+    ASSERT_EQ(1, v.back().value);
+  }
+}
+
+TEST(small_vector, LVPushValueInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(1));
+  for (int i = 1; i < 20; ++i) {
+    v.push_back(v[0]);
+    ASSERT_EQ(1, v.back().value);
+  }
+}
+
+TEST(small_vector, RVPushValueInsideVector) {
+  folly::small_vector<CheckedInt> v;
+  v.push_back(CheckedInt(0));
+  for (int i = 1; i < 20; ++i) {
+    v[0] = CheckedInt(1);
+    v.push_back(v[0]);
+    ASSERT_EQ(1, v.back().value);
+  }
+}

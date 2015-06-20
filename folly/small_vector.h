@@ -658,6 +658,17 @@ public:
     emplaceBack(std::forward<Args>(args)...);
   }
 
+  void emplace_back(const value_type& t) {
+    push_back(t);
+  }
+  void emplace_back(value_type& t) {
+    push_back(t);
+  }
+
+  void emplace_back(value_type&& t) {
+    push_back(std::move(t));
+  }
+
   void push_back(value_type&& t) {
     if (capacity() == size()) {
       makeSize(std::max(size_type(2), 3 * size() / 2), &t, size());
@@ -668,9 +679,17 @@ public:
   }
 
   void push_back(value_type const& t) {
-    // Make a copy and forward to the rvalue value_type&& overload
-    // above.
-    push_back(value_type(t));
+    // TODO: we'd like to make use of makeSize (it can be optimized better,
+    // because it manipulates the internals)
+    // unfortunately the current implementation only supports moving from
+    // a supplied rvalue, and doing an extra move just to reuse it is a perf
+    // net loss
+    if (size() == capacity()) {// && isInside(&t)) {
+      value_type tmp(t);
+      emplaceBack(std::move(tmp));
+    } else {
+      emplaceBack(t);
+    }
   }
 
   void pop_back() {
@@ -807,13 +826,6 @@ private:
     makeSize(size() + 1);
     new (end()) value_type(std::forward<Args>(args)...);
     this->setSize(size() + 1);
-  }
-
-  /*
-   * Special case of emplaceBack for rvalue
-   */
-  void emplaceBack(value_type&& t) {
-    push_back(std::move(t));
   }
 
   static iterator unconst(const_iterator it) {
