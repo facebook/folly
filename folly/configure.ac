@@ -253,6 +253,25 @@ if test "$folly_cv_prog_cc_weak_symbols" = yes; then
             [Define to 1 if the linker supports weak symbols.])
 fi
 
+AC_CACHE_CHECK(
+  [for vsnprintf reporting bad format strings],
+  [folly_cv_prog_vsnprintf_bad_format],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <stdio.h>
+
+      int main(int argc, char** argv) {
+          char buf[256];
+          return vsnprintf(buf, sizeof(buf), "%", 1) < 0 ? 0 : 1;
+      }]],
+    [folly_cv_prog_vsnprintf_bad_format="yes"],
+    [folly_cv_prog_vsnprintf_bad_format="no"])])
+
+if test "$folly_cv_prog_vsnprintf_bad_format" = yes; then
+  AC_DEFINE([HAVE_VSNPRINTF_ERRORS], [1],
+            [Define to 1 if the vsnprintf supports returning errors on bad format strings.])
+fi
+
 AC_SEARCH_LIBS([cplus_demangle_v3_callback], [iberty_pic iberty])
 if test "$ac_cv_search_cplus_demangle_v3_callback" != "no" ; then
   AC_DEFINE([HAVE_CPLUS_DEMANGLE_V3_CALLBACK], [1],
