@@ -44,7 +44,7 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
   explicit FunctionLoopCallback(const Cob& function)
       : function_(function) {}
 
-  virtual void runLoopCallback() noexcept {
+  void runLoopCallback() noexcept override {
     function_();
     delete this;
   }
@@ -66,7 +66,7 @@ const int kNoFD = -1;
 class EventBase::FunctionRunner
     : public NotificationQueue<std::pair<void (*)(void*), void*>>::Consumer {
  public:
-  void messageAvailable(std::pair<void (*)(void*), void*>&& msg) {
+  void messageAvailable(std::pair<void (*)(void*), void*>&& msg) override {
 
     // In libevent2, internal events do not break the loop.
     // Most users would expect loop(), followed by runInEventBaseThread(),

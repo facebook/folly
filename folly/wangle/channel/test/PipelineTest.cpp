@@ -265,8 +265,8 @@ template <class Rin, class Rout = Rin, class Win = Rout, class Wout = Rin>
 class ConcreteHandler : public Handler<Rin, Rout, Win, Wout> {
   typedef typename Handler<Rin, Rout, Win, Wout>::Context Context;
  public:
-  void read(Context* ctx, Rin msg) {}
-  Future<void> write(Context* ctx, Win msg) { return makeFuture(); }
+  void read(Context* ctx, Rin msg) override {}
+  Future<void> write(Context* ctx, Win msg) override { return makeFuture(); }
 };
 
 typedef HandlerAdapter<std::string, std::string> StringHandler;

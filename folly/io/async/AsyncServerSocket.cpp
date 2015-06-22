@@ -121,9 +121,7 @@ class AsyncServerSocket::BackoffTimeout : public AsyncTimeout {
   BackoffTimeout(AsyncServerSocket* socket)
       : AsyncTimeout(socket->getEventBase()), socket_(socket) {}
 
-  virtual void timeoutExpired() noexcept {
-    socket_->backoffTimeoutExpired();
-  }
+  void timeoutExpired() noexcept override { socket_->backoffTimeoutExpired(); }
 
  private:
   AsyncServerSocket* socket_;

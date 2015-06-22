@@ -56,7 +56,7 @@ struct ViaFixture : public testing::Test {
       });
   }
 
-  ~ViaFixture() {
+  ~ViaFixture() override {
     done = true;
     eastExecutor->add([=]() { });
     t.join();
@@ -316,7 +316,7 @@ class ThreadExecutor : public Executor {
     worker = std::thread(std::bind(&ThreadExecutor::work, this));
   }
 
-  ~ThreadExecutor() {
+  ~ThreadExecutor() override {
     done = true;
     funcs.write([]{});
     worker.join();

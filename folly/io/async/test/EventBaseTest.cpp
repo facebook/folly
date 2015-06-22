@@ -141,7 +141,7 @@ class TestHandler : public EventHandler {
   TestHandler(EventBase* eventBase, int fd)
     : EventHandler(eventBase, fd), fd_(fd) {}
 
-  virtual void handlerReady(uint16_t events) noexcept {
+  void handlerReady(uint16_t events) noexcept override {
     ssize_t bytesRead = 0;
     ssize_t bytesWritten = 0;
     if (events & READ) {
@@ -645,7 +645,7 @@ class PartialReadHandler : public TestHandler {
   PartialReadHandler(EventBase* eventBase, int fd, size_t readLength)
     : TestHandler(eventBase, fd), fd_(fd), readLength_(readLength) {}
 
-  virtual void handlerReady(uint16_t events) noexcept {
+  void handlerReady(uint16_t events) noexcept override {
     assert(events == EventHandler::READ);
     ssize_t bytesRead = readFromFD(fd_, readLength_);
     log.emplace_back(events, bytesRead, 0);
@@ -710,7 +710,7 @@ class PartialWriteHandler : public TestHandler {
   PartialWriteHandler(EventBase* eventBase, int fd, size_t writeLength)
     : TestHandler(eventBase, fd), fd_(fd), writeLength_(writeLength) {}
 
-  virtual void handlerReady(uint16_t events) noexcept {
+  void handlerReady(uint16_t events) noexcept override {
     assert(events == EventHandler::WRITE);
     ssize_t bytesWritten = writeToFD(fd_, writeLength_);
     log.emplace_back(events, 0, bytesWritten);
@@ -780,9 +780,7 @@ TEST(EventBaseTest, DestroyHandler) {
       : AsyncTimeout(eb)
       , handler_(h) {}
 
-    virtual void timeoutExpired() noexcept {
-      delete handler_;
-    }
+    void timeoutExpired() noexcept override { delete handler_; }
 
    private:
     EventHandler* handler_;
@@ -895,9 +893,7 @@ class TestTimeout : public AsyncTimeout {
     : AsyncTimeout(eventBase)
     , timestamp(false) {}
 
-  virtual void timeoutExpired() noexcept {
-    timestamp.reset();
-  }
+  void timeoutExpired() noexcept override { timestamp.reset(); }
 
   TimePoint timestamp;
 };
@@ -933,7 +929,7 @@ class ReschedulingTimeout : public AsyncTimeout {
     reschedule();
   }
 
-  virtual void timeoutExpired() noexcept {
+  void timeoutExpired() noexcept override {
     timestamps.emplace_back();
     reschedule();
   }
@@ -1052,9 +1048,7 @@ TEST(EventBaseTest, DestroyTimeout) {
       : AsyncTimeout(eb)
       , timeout_(t) {}
 
-    virtual void timeoutExpired() noexcept {
-      delete timeout_;
-    }
+    void timeoutExpired() noexcept override { delete timeout_; }
 
    private:
     AsyncTimeout* timeout_;
@@ -1269,7 +1263,7 @@ class CountedLoopCallback : public EventBase::LoopCallback {
     , count_(count)
     , action_(action) {}
 
-  virtual void runLoopCallback() noexcept {
+  void runLoopCallback() noexcept override {
     --count_;
     if (count_ > 0) {
       eventBase_->runInLoop(this);
@@ -1437,7 +1431,7 @@ class TerminateTestCallback : public EventBase::LoopCallback,
     unregisterHandler();
   }
 
-  virtual void handlerReady(uint16_t events) noexcept {
+  void handlerReady(uint16_t events) noexcept override {
     // We didn't register with PERSIST, so we will have been automatically
     // unregistered already.
     ASSERT_FALSE(isHandlerRegistered());
@@ -1449,7 +1443,7 @@ class TerminateTestCallback : public EventBase::LoopCallback,
 
     eventBase_->runInLoop(this);
   }
-  virtual void runLoopCallback() noexcept {
+  void runLoopCallback() noexcept override {
     ++loopInvocations_;
     if (loopInvocations_ >= maxLoopInvocations_) {
       return;
@@ -1526,9 +1520,9 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
       scheduleTimeout(1);
     }
 
-  virtual ~IdleTimeTimeoutSeries() {}
+    ~IdleTimeTimeoutSeries() override {}
 
-  void timeoutExpired() noexcept {
+    void timeoutExpired() noexcept override {
     ++timeouts_;
 
     if(timeout_.empty()){
@@ -1696,9 +1690,7 @@ public:
   PipeHandler(EventBase* eventBase, int fd)
     : EventHandler(eventBase, fd) {}
 
-  void handlerReady(uint16_t events) noexcept {
-    abort();
-  }
+  void handlerReady(uint16_t events) noexcept override { abort(); }
 };
 
 TEST(EventBaseTest, StopBeforeLoop) {

@@ -1263,7 +1263,7 @@ class AsyncSocketImmediateRead : public folly::AsyncSocket {
   bool immediateReadCalled = false;
   explicit AsyncSocketImmediateRead(folly::EventBase* evb) : AsyncSocket(evb) {}
  protected:
-  virtual void checkForImmediateRead() noexcept override {
+  void checkForImmediateRead() noexcept override {
     immediateReadCalled = true;
     AsyncSocket::handleRead();
   }
@@ -1441,29 +1441,29 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
     acceptStoppedFn_ = fn;
   }
 
-  void connectionAccepted(int fd, const folly::SocketAddress& clientAddr)
-      noexcept {
+  void connectionAccepted(
+      int fd, const folly::SocketAddress& clientAddr) noexcept override {
     events_.emplace_back(fd, clientAddr);
 
     if (connectionAcceptedFn_) {
       connectionAcceptedFn_(fd, clientAddr);
     }
   }
-  void acceptError(const std::exception& ex) noexcept {
+  void acceptError(const std::exception& ex) noexcept override {
     events_.emplace_back(ex.what());
 
     if (acceptErrorFn_) {
       acceptErrorFn_(ex);
     }
   }
-  void acceptStarted() noexcept {
+  void acceptStarted() noexcept override {
     events_.emplace_back(TYPE_START);
 
     if (acceptStartedFn_) {
       acceptStartedFn_();
     }
   }
-  void acceptStopped() noexcept {
+  void acceptStopped() noexcept override {
     events_.emplace_back(TYPE_STOP);
 
     if (acceptStoppedFn_) {

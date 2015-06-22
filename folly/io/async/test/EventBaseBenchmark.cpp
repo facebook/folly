@@ -27,7 +27,7 @@ class CountedLoopCallback : public EventBase::LoopCallback {
     : eventBase_(eventBase)
     , count_(count) {}
 
-  virtual void runLoopCallback() noexcept {
+  void runLoopCallback() noexcept override {
     --count_;
     if (count_ > 0) {
       eventBase_->runInLoop(this);

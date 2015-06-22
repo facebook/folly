@@ -322,16 +322,12 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
 
 class TestObserver : public ThreadPoolExecutor::Observer {
  public:
-  void threadStarted(ThreadPoolExecutor::ThreadHandle*) {
+  void threadStarted(ThreadPoolExecutor::ThreadHandle*) override { threads_++; }
+  void threadStopped(ThreadPoolExecutor::ThreadHandle*) override { threads_--; }
+  void threadPreviouslyStarted(ThreadPoolExecutor::ThreadHandle*) override {
     threads_++;
   }
-  void threadStopped(ThreadPoolExecutor::ThreadHandle*) {
-    threads_--;
-  }
-  void threadPreviouslyStarted(ThreadPoolExecutor::ThreadHandle*) {
-    threads_++;
-  }
-  void threadNotYetStopped(ThreadPoolExecutor::ThreadHandle*) {
+  void threadNotYetStopped(ThreadPoolExecutor::ThreadHandle*) override {
     threads_--;
   }
   void checkCalls() {

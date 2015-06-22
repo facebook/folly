@@ -38,7 +38,7 @@ struct FileRegionTest : public Test {
     EXPECT_EQ(0, unlink(path));
   }
 
-  ~FileRegionTest() {
+  ~FileRegionTest() override {
     // Close up shop
     close(fd);
     acceptedSocket->close();

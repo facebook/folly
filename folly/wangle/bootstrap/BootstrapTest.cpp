@@ -33,7 +33,7 @@ typedef ClientBootstrap<BytesPipeline> TestClient;
 class TestClientPipelineFactory : public PipelineFactory<BytesPipeline> {
  public:
   std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>
-  newPipeline(std::shared_ptr<AsyncSocket> sock) {
+  newPipeline(std::shared_ptr<AsyncSocket> sock) override {
     // We probably aren't connected immedately, check after a small delay
     EventBaseManager::get()->getEventBase()->tryRunAfterDelay([sock](){
       CHECK(sock->good());
@@ -45,8 +45,8 @@ class TestClientPipelineFactory : public PipelineFactory<BytesPipeline> {
 
 class TestPipelineFactory : public PipelineFactory<BytesPipeline> {
  public:
-  std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor> newPipeline(
-    std::shared_ptr<AsyncSocket> sock) {
+  std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>
+  newPipeline(std::shared_ptr<AsyncSocket> sock) override {
 
     pipelines++;
     return std::unique_ptr<BytesPipeline, folly::DelayedDestruction::Destructor>(
@@ -61,17 +61,15 @@ EventBase base_;
   TestAcceptor() : Acceptor(ServerSocketConfig()) {
     Acceptor::init(nullptr, &base_);
   }
-  void onNewConnection(
-      AsyncSocket::UniquePtr sock,
-      const folly::SocketAddress* address,
-      const std::string& nextProtocolName,
-        const TransportInfo& tinfo) {
-  }
+  void onNewConnection(AsyncSocket::UniquePtr sock,
+                       const folly::SocketAddress* address,
+                       const std::string& nextProtocolName,
+                       const TransportInfo& tinfo) override {}
 };
 
 class TestAcceptorFactory : public AcceptorFactory {
  public:
-  std::shared_ptr<Acceptor> newAcceptor(EventBase* base) {
+  std::shared_ptr<Acceptor> newAcceptor(EventBase* base) override {
     return std::make_shared<TestAcceptor>();
   }
 };
@@ -272,7 +270,7 @@ std::atomic<int> connections{0};
 
 class TestHandlerPipeline : public InboundHandler<void*> {
  public:
-  void read(Context* ctx, void* conn) {
+  void read(Context* ctx, void* conn) override {
     connections++;
     return ctx->fireRead(conn);
   }
@@ -284,7 +282,7 @@ class TestHandlerPipelineFactory
  public:
   std::unique_ptr<ServerBootstrap<BytesPipeline>::AcceptPipeline,
                   folly::DelayedDestruction::Destructor>
-  newPipeline(std::shared_ptr<AsyncSocket>) {
+      newPipeline(std::shared_ptr<AsyncSocket>) override {
 
     std::unique_ptr<ServerBootstrap<BytesPipeline>::AcceptPipeline,
                     folly::DelayedDestruction::Destructor> pipeline(
@@ -320,9 +318,7 @@ TEST(Bootstrap, LoadBalanceHandler) {
 
 class TestUDPPipeline : public InboundHandler<void*> {
  public:
-  void read(Context* ctx, void* conn) {
-    connections++;
-  }
+  void read(Context* ctx, void* conn) override { connections++; }
 };
 
 TEST(Bootstrap, UDP) {

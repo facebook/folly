@@ -84,7 +84,7 @@ class IntPaddedTestBase : public ::testing::Test {
 
 class IntPaddedConstTest : public IntPaddedTestBase {
  protected:
-  void SetUp() {
+  void SetUp() override {
     v_.resize(4);
     n_ = 0;
     for (int i = 0; i < 4; i++) {
@@ -181,7 +181,7 @@ class StructPaddedTestBase : public ::testing::Test {
 
 class StructPaddedConstTest : public StructPaddedTestBase {
  protected:
-  void SetUp() {
+  void SetUp() override {
     v_.resize(4);
     n_ = 0;
     for (int i = 0; i < 4; i++) {

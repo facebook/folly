@@ -29,22 +29,21 @@ typedef Pipeline<IOBufQueue&, std::string> ServicePipeline;
 
 class SimpleDecode : public ByteToMessageCodec {
  public:
-  virtual std::unique_ptr<IOBuf> decode(
-    Context* ctx, IOBufQueue& buf, size_t&) {
+  std::unique_ptr<IOBuf> decode(Context* ctx,
+                                IOBufQueue& buf,
+                                size_t&) override {
     return buf.move();
   }
 };
 
 class EchoService : public Service<std::string, std::string> {
  public:
-  virtual Future<std::string> operator()(std::string req) override {
-    return req;
-  }
+  Future<std::string> operator()(std::string req) override { return req; }
 };
 
 class EchoIntService : public Service<std::string, int> {
  public:
-  virtual Future<int> operator()(std::string req) override {
+  Future<int> operator()(std::string req) override {
     return folly::to<int>(req);
   }
 };
@@ -143,7 +142,7 @@ class AppendFilter : public ServiceFilter<std::string, std::string> {
     std::shared_ptr<Service<std::string, std::string>> service) :
       ServiceFilter<std::string, std::string>(service) {}
 
-  virtual Future<std::string> operator()(std::string req) {
+  Future<std::string> operator()(std::string req) override {
     return (*service_)(req + "\n");
   }
 };
@@ -155,7 +154,7 @@ class IntToStringFilter
     std::shared_ptr<Service<std::string, std::string>> service) :
       ServiceFilter<int, int, std::string, std::string>(service) {}
 
-  virtual Future<int> operator()(int req) {
+  Future<int> operator()(int req) override {
     return (*service_)(folly::to<std::string>(req)).then([](std::string resp) {
       return folly::to<int>(resp);
     });
@@ -183,7 +182,7 @@ class ChangeTypeFilter
     std::shared_ptr<Service<std::string, int>> service) :
       ServiceFilter<int, std::string, std::string, int>(service) {}
 
-  virtual Future<std::string> operator()(int req) {
+  Future<std::string> operator()(int req) override {
     return (*service_)(folly::to<std::string>(req)).then([](int resp) {
       return folly::to<std::string>(resp);
     });
@@ -204,8 +203,8 @@ class ConnectionCountFilter : public ServiceFactoryFilter<Pipeline, Req, Resp> {
     std::shared_ptr<ServiceFactory<Pipeline, Req, Resp>> factory)
       : ServiceFactoryFilter<Pipeline, Req, Resp>(factory) {}
 
-    virtual Future<std::shared_ptr<Service<Req, Resp>>> operator()(
-      std::shared_ptr<ClientBootstrap<Pipeline>> client) {
+  Future<std::shared_ptr<Service<Req, Resp>>> operator()(
+      std::shared_ptr<ClientBootstrap<Pipeline>> client) override {
       connectionCount++;
       return (*this->serviceFactory_)(client);
     }

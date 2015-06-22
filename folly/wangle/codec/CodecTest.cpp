@@ -30,11 +30,11 @@ class FrameTester
   explicit FrameTester(std::function<void(std::unique_ptr<IOBuf>)> test)
     : test_(test) {}
 
-  void read(Context* ctx, std::unique_ptr<IOBuf> buf) {
+  void read(Context* ctx, std::unique_ptr<IOBuf> buf) override {
     test_(std::move(buf));
   }
 
-  void readException(Context* ctx, exception_wrapper w) {
+  void readException(Context* ctx, exception_wrapper w) override {
     test_(nullptr);
   }
  private:
@@ -44,8 +44,7 @@ class FrameTester
 class BytesReflector
     : public BytesToBytesHandler {
  public:
-
-  Future<void> write(Context* ctx, std::unique_ptr<IOBuf> buf) {
+  Future<void> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
     IOBufQueue q_(IOBufQueue::cacheChainLength());
     q_.append(std::move(buf));
     ctx->fireRead(q_);

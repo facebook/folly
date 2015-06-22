@@ -84,8 +84,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
   int64_t startTime_;
 
  protected:
-  virtual ~AsyncSSLSocketConnector() {
-  }
+  ~AsyncSSLSocketConnector() override {}
 
  public:
   AsyncSSLSocketConnector(AsyncSSLSocket *sslSocket,
@@ -98,7 +97,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
                    std::chrono::steady_clock::now().time_since_epoch()).count()) {
   }
 
-  virtual void connectSuccess() noexcept {
+  void connectSuccess() noexcept override {
     VLOG(7) << "client socket connected";
 
     int64_t timeoutLeft = 0;
@@ -118,13 +117,13 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
     sslSocket_->sslConn(this, timeoutLeft);
   }
 
-  virtual void connectErr(const AsyncSocketException& ex) noexcept {
+  void connectErr(const AsyncSocketException& ex) noexcept override {
     LOG(ERROR) << "TCP connect failed: " <<  ex.what();
     fail(ex);
     delete this;
   }
 
-  virtual void handshakeSuc(AsyncSSLSocket *sock) noexcept {
+  void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
     VLOG(7) << "client handshake success";
     if (callback_) {
       callback_->connectSuccess();
@@ -132,8 +131,8 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
     delete this;
   }
 
-  virtual void handshakeErr(AsyncSSLSocket *socket,
-                              const AsyncSocketException& ex) noexcept {
+  void handshakeErr(AsyncSSLSocket* socket,
+                    const AsyncSocketException& ex) noexcept override {
     LOG(ERROR) << "client handshakeErr: " << ex.what();
     fail(ex);
     delete this;

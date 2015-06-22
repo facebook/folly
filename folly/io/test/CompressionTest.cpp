@@ -133,7 +133,7 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
 class CompressionTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
   protected:
-   void SetUp() {
+   void SetUp() override {
      auto tup = GetParam();
      uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
      codec_ = getCodec(std::tr1::get<1>(tup));
@@ -185,7 +185,7 @@ INSTANTIATE_TEST_CASE_P(
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
  protected:
-  void SetUp() {
+  void SetUp() override {
     auto tup = GetParam();
     uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
     codec_ = getCodec(std::tr1::get<1>(tup));
@@ -237,9 +237,7 @@ INSTANTIATE_TEST_CASE_P(
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
-  void SetUp() {
-    codec_ = getCodec(GetParam());
-  }
+  void SetUp() override { codec_ = getCodec(GetParam()); }
 
   void runSimpleTest(const DataHolder& dh);
 

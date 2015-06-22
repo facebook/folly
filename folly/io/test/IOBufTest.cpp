@@ -832,7 +832,7 @@ enum BufType {
 class MoveToFbStringTest
   : public ::testing::TestWithParam<std::tr1::tuple<int, int, bool, BufType>> {
  protected:
-  void SetUp() {
+  void SetUp() override {
     elementSize_ = std::tr1::get<0>(GetParam());
     elementCount_ = std::tr1::get<1>(GetParam());
     shared_ = std::tr1::get<2>(GetParam());

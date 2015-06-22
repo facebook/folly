@@ -148,7 +148,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   // private destructor, to ensure callers use destroy()
-  virtual ~BytesWriteRequest() = default;
+  ~BytesWriteRequest() override = default;
 
   const struct iovec* getOps() const {
     assert(opCount_ > opIndex_);

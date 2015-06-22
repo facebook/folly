@@ -33,11 +33,9 @@ class MemoryIdlerTimeout
  public:
   explicit MemoryIdlerTimeout(EventBase* b) : AsyncTimeout(b), base_(b) {}
 
-  virtual void timeoutExpired() noexcept {
-    idled = true;
-  }
+  void timeoutExpired() noexcept override { idled = true; }
 
-  virtual void runLoopCallback() noexcept {
+  void runLoopCallback() noexcept override {
     if (idled) {
       MemoryIdler::flushLocalMallocCaches();
       MemoryIdler::unmapUnusedStack(MemoryIdler::kDefaultStackToRetain);

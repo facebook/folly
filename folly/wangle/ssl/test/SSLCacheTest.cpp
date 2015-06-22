@@ -60,7 +60,7 @@ private:
 
 public:
   SSLCacheClient(EventBase* eventBase, SSL_SESSION **pSess, ClientRunner* cr);
-  ~SSLCacheClient() {
+  ~SSLCacheClient() override {
     if (session_ && !FLAGS_global)
       SSL_SESSION_free(session_);
     if (socket_ != nullptr) {
@@ -75,17 +75,14 @@ public:
 
   void start();
 
-  virtual void connectSuccess() noexcept;
+  void connectSuccess() noexcept override;
 
-  virtual void connectErr(const AsyncSocketException& ex)
-    noexcept ;
+  void connectErr(const AsyncSocketException& ex) noexcept override;
 
-  virtual void handshakeSuc(AsyncSSLSocket* sock) noexcept;
+  void handshakeSuc(AsyncSSLSocket* sock) noexcept override;
 
-  virtual void handshakeErr(
-    AsyncSSLSocket* sock,
-    const AsyncSocketException& ex) noexcept;
-
+  void handshakeErr(AsyncSSLSocket* sock,
+                    const AsyncSocketException& ex) noexcept override;
 };
 
 int

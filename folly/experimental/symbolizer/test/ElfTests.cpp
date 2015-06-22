@@ -32,8 +32,7 @@ class ElfTest : public ::testing::Test {
 
   ElfTest() : elfFile_(binaryPath.c_str()) {
   }
-  virtual ~ElfTest() {
-  }
+  ~ElfTest() override {}
 
  protected:
   ElfFile elfFile_;

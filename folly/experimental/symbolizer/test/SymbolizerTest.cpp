@@ -64,7 +64,7 @@ void bar() {
 
 class ElfCacheTest : public testing::Test {
  protected:
-  void SetUp();
+  void SetUp() override;
 };
 
 // Capture "golden" stack trace with default-configured Symbolizer

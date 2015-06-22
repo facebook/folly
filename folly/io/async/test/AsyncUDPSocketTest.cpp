@@ -41,16 +41,14 @@ class UDPAcceptor
   UDPAcceptor(EventBase* evb, int n): evb_(evb), n_(n) {
   }
 
-  void onListenStarted() noexcept {
-  }
+  void onListenStarted() noexcept override {}
 
-  void onListenStopped() noexcept {
-  }
+  void onListenStopped() noexcept override {}
 
   void onDataAvailable(std::shared_ptr<folly::AsyncUDPSocket> socket,
                        const folly::SocketAddress& client,
                        std::unique_ptr<folly::IOBuf> data,
-                       bool truncated) noexcept {
+                       bool truncated) noexcept override {
 
     lastClient_ = client;
     lastMsg_ = data->moveToFbString().toStdString();
@@ -206,14 +204,14 @@ class UDPClient
         folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
   }
 
-  void getReadBuffer(void** buf, size_t* len) noexcept {
+  void getReadBuffer(void** buf, size_t* len) noexcept override {
     *buf = buf_;
     *len = 1024;
   }
 
   void onDataAvailable(const folly::SocketAddress& client,
                        size_t len,
-                       bool truncated) noexcept {
+                       bool truncated) noexcept override {
     VLOG(4) << "Read " << len << " bytes (trun:" << truncated << ") from "
               << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
@@ -223,18 +221,18 @@ class UDPClient
     sendPing();
   }
 
-  void onReadError(const folly::AsyncSocketException& ex) noexcept {
+  void onReadError(const folly::AsyncSocketException& ex) noexcept override {
     VLOG(4) << ex.what();
 
     // Start listening for next PONG
     socket_->resumeRead(this);
   }
 
-  void onReadClosed() noexcept {
+  void onReadClosed() noexcept override {
     CHECK(false) << "We unregister reads before closing";
   }
 
-  void timeoutExpired() noexcept {
+  void timeoutExpired() noexcept override {
     VLOG(4) << "Timeout expired";
     sendPing();
   }

@@ -31,7 +31,7 @@ class ThreadWheelTimekeeper : public Timekeeper {
  public:
   /// But it doesn't *have* to be a singleton.
   ThreadWheelTimekeeper();
-  ~ThreadWheelTimekeeper();
+  ~ThreadWheelTimekeeper() override;
 
   /// Implement the Timekeeper interface
   /// This future *does* complete on the timer thread. You should almost
