@@ -815,6 +815,19 @@ TEST(IPAddress, InvalidBBitAccess) {
   EXPECT_THROW(asV6.getNthLSBit(-1), std::invalid_argument);
 }
 
+TEST(IPAddress, StringFormat) {
+  in6_addr a6;
+  for (int i = 0; i < 8; ++i) {
+    a6.s6_addr16[i] = htons(0x0123 + ((i%4) * 0x4444));
+  }
+  EXPECT_EQ("0123:4567:89ab:cdef:0123:4567:89ab:cdef",
+            detail::fastIpv6ToString(a6));
+
+  in_addr a4;
+  a4.s_addr = htonl(0x01020304);
+  EXPECT_EQ("1.2.3.4", detail::fastIpv4ToString(a4));
+}
+
 TEST(IPAddress, LongestCommonPrefix) {
   IPAddress ip10("10.0.0.0");
   IPAddress ip11("11.0.0.0");
