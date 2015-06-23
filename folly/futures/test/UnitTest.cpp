@@ -26,6 +26,14 @@ TEST(Unit, futureDefaultCtor) {
   Future<Unit>();
 }
 
+TEST(Unit, operatorEq) {
+  EXPECT_TRUE(Unit{} == Unit{});
+}
+
+TEST(Unit, operatorNe) {
+  EXPECT_FALSE(Unit{} != Unit{});
+}
+
 TEST(Unit, voidOrUnit) {
   EXPECT_TRUE(is_void_or_unit<void>::value);
   EXPECT_TRUE(is_void_or_unit<Unit>::value);

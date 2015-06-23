@@ -29,6 +29,8 @@ struct Unit {
   template <class T> struct Lift : public std::false_type {
     using type = T;
   };
+  bool operator==(const Unit& other) const { return true; }
+  bool operator!=(const Unit& other) const { return false; }
 };
 
 // Lift void into Unit.
