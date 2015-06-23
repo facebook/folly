@@ -131,7 +131,7 @@ class StaticPipeline<R, W, Handler, Handlers...>
 
   bool isFirst_;
   std::shared_ptr<Handler> handlerPtr_;
-  typename ContextType<Handler, Pipeline<R, W>>::type ctx_;
+  typename ContextType<Handler>::type ctx_;
 };
 
 }} // folly::wangle

@@ -420,6 +420,7 @@ libfolly_la_SOURCES = \
 	wangle/acceptor/SocketOptions.cpp \
 	wangle/acceptor/TransportInfo.cpp \
 	wangle/bootstrap/ServerBootstrap.cpp \
+	wangle/channel/Pipeline.cpp \
 	wangle/concurrent/CPUThreadPoolExecutor.cpp \
 	wangle/concurrent/Codel.cpp \
 	wangle/concurrent/IOThreadPoolExecutor.cpp \

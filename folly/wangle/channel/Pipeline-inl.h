@@ -35,27 +35,123 @@ Pipeline<R, W>::~Pipeline() {
   }
 }
 
-template <class R, class W>
-void Pipeline<R, W>::setWriteFlags(WriteFlags flags) {
-  writeFlags_ = flags;
+template <class H>
+PipelineBase& PipelineBase::addBack(std::shared_ptr<H> handler) {
+  typedef typename ContextType<H>::type Context;
+  return addHelper(std::make_shared<Context>(this, std::move(handler)), false);
 }
 
-template <class R, class W>
-WriteFlags Pipeline<R, W>::getWriteFlags() {
-  return writeFlags_;
+template <class H>
+PipelineBase& PipelineBase::addBack(H&& handler) {
+  return addBack(std::make_shared<H>(std::forward<H>(handler)));
 }
 
-template <class R, class W>
-void Pipeline<R, W>::setReadBufferSettings(
-    uint64_t minAvailable,
-    uint64_t allocationSize) {
-  readBufferSettings_ = std::make_pair(minAvailable, allocationSize);
+template <class H>
+PipelineBase& PipelineBase::addBack(H* handler) {
+  return addBack(std::shared_ptr<H>(handler, [](H*){}));
 }
 
-template <class R, class W>
-std::pair<uint64_t, uint64_t> Pipeline<R, W>::getReadBufferSettings() {
-  return readBufferSettings_;
+template <class H>
+PipelineBase& PipelineBase::addFront(std::shared_ptr<H> handler) {
+  typedef typename ContextType<H>::type Context;
+  return addHelper(std::make_shared<Context>(this, std::move(handler)), true);
 }
+
+template <class H>
+PipelineBase& PipelineBase::addFront(H&& handler) {
+  return addFront(std::make_shared<H>(std::forward<H>(handler)));
+}
+
+template <class H>
+PipelineBase& PipelineBase::addFront(H* handler) {
+  return addFront(std::shared_ptr<H>(handler, [](H*){}));
+}
+
+template <class H>
+PipelineBase& PipelineBase::removeHelper(H* handler, bool checkEqual) {
+  typedef typename ContextType<H>::type Context;
+  bool removed = false;
+  for (auto it = ctxs_.begin(); it != ctxs_.end(); it++) {
+    auto ctx = std::dynamic_pointer_cast<Context>(*it);
+    if (ctx && (!checkEqual || ctx->getHandler() == handler)) {
+      it = removeAt(it);
+      removed = true;
+      if (it == ctxs_.end()) {
+        break;
+      }
+    }
+  }
+
+  if (!removed) {
+    throw std::invalid_argument("No such handler in pipeline");
+  }
+
+  return *this;
+}
+
+template <class H>
+PipelineBase& PipelineBase::remove() {
+  return removeHelper<H>(nullptr, false);
+}
+
+template <class H>
+PipelineBase& PipelineBase::remove(H* handler) {
+  return removeHelper<H>(handler, true);
+}
+
+template <class H>
+H* PipelineBase::getHandler(int i) {
+  typedef typename ContextType<H>::type Context;
+  auto ctx = dynamic_cast<Context*>(ctxs_[i].get());
+  CHECK(ctx);
+  return ctx->getHandler();
+}
+
+template <class H>
+bool PipelineBase::setOwner(H* handler) {
+  typedef typename ContextType<H>::type Context;
+  for (auto& ctx : ctxs_) {
+    auto ctxImpl = dynamic_cast<Context*>(ctx.get());
+    if (ctxImpl && ctxImpl->getHandler() == handler) {
+      owner_ = ctx;
+      return true;
+    }
+  }
+  return false;
+}
+
+template <class Context>
+void PipelineBase::addContextFront(Context* ctx) {
+  addHelper(std::shared_ptr<Context>(ctx, [](Context*){}), true);
+}
+
+template <class Context>
+PipelineBase& PipelineBase::addHelper(
+    std::shared_ptr<Context>&& ctx,
+    bool front) {
+  ctxs_.insert(front ? ctxs_.begin() : ctxs_.end(), ctx);
+  if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::IN) {
+    inCtxs_.insert(front ? inCtxs_.begin() : inCtxs_.end(), ctx.get());
+  }
+  if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::OUT) {
+    outCtxs_.insert(front ? outCtxs_.begin() : outCtxs_.end(), ctx.get());
+  }
+  return *this;
+}
+
+namespace detail {
+
+template <class T>
+inline void logWarningIfNotUnit(const std::string& warning) {
+  LOG(WARNING) << warning;
+}
+
+template <>
+inline void logWarningIfNotUnit<Unit>(const std::string& warning) {
+  // do nothing
+}
+
+} // detail
 
 template <class R, class W>
 template <class T>
@@ -126,141 +222,6 @@ Pipeline<R, W>::close() {
   return back_->close();
 }
 
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addBack(std::shared_ptr<H> handler) {
-  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
-  return addHelper(std::make_shared<Context>(this, std::move(handler)), false);
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addBack(H&& handler) {
-  return addBack(std::make_shared<H>(std::forward<H>(handler)));
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addBack(H* handler) {
-  return addBack(std::shared_ptr<H>(handler, [](H*){}));
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addFront(std::shared_ptr<H> handler) {
-  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
-  return addHelper(std::make_shared<Context>(this, std::move(handler)), true);
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addFront(H&& handler) {
-  return addFront(std::make_shared<H>(std::forward<H>(handler)));
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::addFront(H* handler) {
-  return addFront(std::shared_ptr<H>(handler, [](H*){}));
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::removeHelper(H* handler, bool checkEqual) {
-  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
-  bool removed = false;
-  for (auto it = ctxs_.begin(); it != ctxs_.end(); it++) {
-    auto ctx = std::dynamic_pointer_cast<Context>(*it);
-    if (ctx && (!checkEqual || ctx->getHandler() == handler)) {
-      it = removeAt(it);
-      removed = true;
-      if (it == ctxs_.end()) {
-        break;
-      }
-    }
-  }
-
-  if (!removed) {
-    throw std::invalid_argument("No such handler in pipeline");
-  }
-
-  return *this;
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::remove() {
-  return removeHelper<H>(nullptr, false);
-}
-
-template <class R, class W>
-template <class H>
-Pipeline<R, W>& Pipeline<R, W>::remove(H* handler) {
-  return removeHelper<H>(handler, true);
-}
-
-template <class R, class W>
-typename Pipeline<R, W>::ContextIterator Pipeline<R, W>::removeAt(
-    const typename Pipeline<R, W>::ContextIterator& it) {
-  (*it)->detachPipeline();
-
-  const auto dir = (*it)->getDirection();
-  if (dir == HandlerDir::BOTH || dir == HandlerDir::IN) {
-    auto it2 = std::find(inCtxs_.begin(), inCtxs_.end(), it->get());
-    CHECK(it2 != inCtxs_.end());
-    inCtxs_.erase(it2);
-  }
-
-  if (dir == HandlerDir::BOTH || dir == HandlerDir::OUT) {
-    auto it2 = std::find(outCtxs_.begin(), outCtxs_.end(), it->get());
-    CHECK(it2 != outCtxs_.end());
-    outCtxs_.erase(it2);
-  }
-
-  return ctxs_.erase(it);
-}
-
-template <class R, class W>
-Pipeline<R, W>& Pipeline<R, W>::removeFront() {
-  if (ctxs_.empty()) {
-    throw std::invalid_argument("No handlers in pipeline");
-  }
-  removeAt(ctxs_.begin());
-  return *this;
-}
-
-template <class R, class W>
-Pipeline<R, W>& Pipeline<R, W>::removeBack() {
-  if (ctxs_.empty()) {
-    throw std::invalid_argument("No handlers in pipeline");
-  }
-  removeAt(--ctxs_.end());
-  return *this;
-}
-
-template <class R, class W>
-template <class H>
-H* Pipeline<R, W>::getHandler(int i) {
-  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
-  auto ctx = dynamic_cast<Context*>(ctxs_[i].get());
-  CHECK(ctx);
-  return ctx->getHandler();
-}
-
-namespace detail {
-
-template <class T>
-inline void logWarningIfNotUnit(const std::string& warning) {
-  LOG(WARNING) << warning;
-}
-
-template <>
-inline void logWarningIfNotUnit<Unit>(const std::string& warning) {
-  // do nothing
-}
-
-} // detail
-
 // TODO Have read/write/etc check that pipeline has been finalized
 template <class R, class W>
 void Pipeline<R, W>::finalize() {
@@ -296,50 +257,6 @@ void Pipeline<R, W>::finalize() {
   for (auto it = ctxs_.rbegin(); it != ctxs_.rend(); it++) {
     (*it)->attachPipeline();
   }
-}
-
-template <class R, class W>
-template <class H>
-bool Pipeline<R, W>::setOwner(H* handler) {
-  typedef typename ContextType<H, Pipeline<R, W>>::type Context;
-  for (auto& ctx : ctxs_) {
-    auto ctxImpl = dynamic_cast<Context*>(ctx.get());
-    if (ctxImpl && ctxImpl->getHandler() == handler) {
-      owner_ = ctx;
-      return true;
-    }
-  }
-  return false;
-}
-
-template <class R, class W>
-template <class Context>
-void Pipeline<R, W>::addContextFront(Context* ctx) {
-  addHelper(std::shared_ptr<Context>(ctx, [](Context*){}), true);
-}
-
-template <class R, class W>
-void Pipeline<R, W>::detachHandlers() {
-  for (auto& ctx : ctxs_) {
-    if (ctx != owner_) {
-      ctx->detachPipeline();
-    }
-  }
-}
-
-template <class R, class W>
-template <class Context>
-Pipeline<R, W>& Pipeline<R, W>::addHelper(
-    std::shared_ptr<Context>&& ctx,
-    bool front) {
-  ctxs_.insert(front ? ctxs_.begin() : ctxs_.end(), ctx);
-  if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::IN) {
-    inCtxs_.insert(front ? inCtxs_.begin() : inCtxs_.end(), ctx.get());
-  }
-  if (Context::dir == HandlerDir::BOTH || Context::dir == HandlerDir::OUT) {
-    outCtxs_.insert(front ? outCtxs_.begin() : outCtxs_.end(), ctx.get());
-  }
-  return *this;
 }
 
 }} // folly::wangle

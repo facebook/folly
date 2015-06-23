@@ -59,7 +59,7 @@ class OutboundLink {
   virtual Future<void> close() = 0;
 };
 
-template <class P, class H, class Context>
+template <class H, class Context>
 class ContextImplBase : public PipelineContext {
  public:
   ~ContextImplBase() = default;
@@ -68,7 +68,7 @@ class ContextImplBase : public PipelineContext {
     return handler_.get();
   }
 
-  void initialize(P* pipeline, std::shared_ptr<H> handler) {
+  void initialize(PipelineBase* pipeline, std::shared_ptr<H> handler) {
     pipeline_ = pipeline;
     handler_ = std::move(handler);
   }
@@ -119,24 +119,24 @@ class ContextImplBase : public PipelineContext {
 
  protected:
   Context* impl_;
-  P* pipeline_;
+  PipelineBase* pipeline_;
   std::shared_ptr<H> handler_;
   InboundLink<typename H::rout>* nextIn_{nullptr};
   OutboundLink<typename H::wout>* nextOut_{nullptr};
 
  private:
   bool attached_{false};
-  using DestructorGuard = typename P::DestructorGuard;
+  using DestructorGuard = typename DelayedDestruction::DestructorGuard;
 };
 
-template <class P, class H>
+template <class H>
 class ContextImpl
   : public HandlerContext<typename H::rout,
                           typename H::wout>,
     public InboundLink<typename H::rin>,
     public OutboundLink<typename H::win>,
-    public ContextImplBase<P, H, HandlerContext<typename H::rout,
-                                                typename H::wout>> {
+    public ContextImplBase<H, HandlerContext<typename H::rout,
+                                             typename H::wout>> {
  public:
   typedef typename H::rin Rin;
   typedef typename H::rout Rout;
@@ -144,7 +144,7 @@ class ContextImpl
   typedef typename H::wout Wout;
   static const HandlerDir dir = HandlerDir::BOTH;
 
-  explicit ContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+  explicit ContextImpl(PipelineBase* pipeline, std::shared_ptr<H> handler) {
     this->impl_ = this;
     this->initialize(pipeline, std::move(handler));
   }
@@ -278,14 +278,14 @@ class ContextImpl
   }
 
  private:
-  using DestructorGuard = typename P::DestructorGuard;
+  using DestructorGuard = typename DelayedDestruction::DestructorGuard;
 };
 
-template <class P, class H>
+template <class H>
 class InboundContextImpl
   : public InboundHandlerContext<typename H::rout>,
     public InboundLink<typename H::rin>,
-    public ContextImplBase<P, H, InboundHandlerContext<typename H::rout>> {
+    public ContextImplBase<H, InboundHandlerContext<typename H::rout>> {
  public:
   typedef typename H::rin Rin;
   typedef typename H::rout Rout;
@@ -293,7 +293,9 @@ class InboundContextImpl
   typedef typename H::wout Wout;
   static const HandlerDir dir = HandlerDir::IN;
 
-  explicit InboundContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+  explicit InboundContextImpl(
+      PipelineBase* pipeline,
+      std::shared_ptr<H> handler) {
     this->impl_ = this;
     this->initialize(pipeline, std::move(handler));
   }
@@ -378,14 +380,14 @@ class InboundContextImpl
   }
 
  private:
-  using DestructorGuard = typename P::DestructorGuard;
+  using DestructorGuard = typename DelayedDestruction::DestructorGuard;
 };
 
-template <class P, class H>
+template <class H>
 class OutboundContextImpl
   : public OutboundHandlerContext<typename H::wout>,
     public OutboundLink<typename H::win>,
-    public ContextImplBase<P, H, OutboundHandlerContext<typename H::wout>> {
+    public ContextImplBase<H, OutboundHandlerContext<typename H::wout>> {
  public:
   typedef typename H::rin Rin;
   typedef typename H::rout Rout;
@@ -393,7 +395,9 @@ class OutboundContextImpl
   typedef typename H::wout Wout;
   static const HandlerDir dir = HandlerDir::OUT;
 
-  explicit OutboundContextImpl(P* pipeline, std::shared_ptr<H> handler) {
+  explicit OutboundContextImpl(
+      PipelineBase* pipeline,
+      std::shared_ptr<H> handler) {
     this->impl_ = this;
     this->initialize(pipeline, std::move(handler));
   }
@@ -442,18 +446,18 @@ class OutboundContextImpl
   }
 
  private:
-  using DestructorGuard = typename P::DestructorGuard;
+  using DestructorGuard = typename DelayedDestruction::DestructorGuard;
 };
 
-template <class Handler, class Pipeline>
+template <class Handler>
 struct ContextType {
   typedef typename std::conditional<
     Handler::dir == HandlerDir::BOTH,
-    ContextImpl<Pipeline, Handler>,
+    ContextImpl<Handler>,
     typename std::conditional<
       Handler::dir == HandlerDir::IN,
-      InboundContextImpl<Pipeline, Handler>,
-      OutboundContextImpl<Pipeline, Handler>
+      InboundContextImpl<Handler>,
+      OutboundContextImpl<Handler>
     >::type>::type
   type;
 };

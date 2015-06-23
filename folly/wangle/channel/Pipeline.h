@@ -16,15 +16,17 @@
 
 #pragma once
 
-#include <folly/wangle/channel/HandlerContext.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Unit.h>
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
+#include <folly/wangle/channel/HandlerContext.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Memory.h>
 
 namespace folly { namespace wangle {
+
+class PipelineBase;
 
 class PipelineManager {
  public:
@@ -54,9 +56,81 @@ class PipelineBase : public DelayedDestruction {
     return transport_;
   }
 
+  void setWriteFlags(WriteFlags flags);
+  WriteFlags getWriteFlags();
+
+  void setReadBufferSettings(uint64_t minAvailable, uint64_t allocationSize);
+  std::pair<uint64_t, uint64_t> getReadBufferSettings();
+
+  template <class H>
+  PipelineBase& addBack(std::shared_ptr<H> handler);
+
+  template <class H>
+  PipelineBase& addBack(H&& handler);
+
+  template <class H>
+  PipelineBase& addBack(H* handler);
+
+  template <class H>
+  PipelineBase& addFront(std::shared_ptr<H> handler);
+
+  template <class H>
+  PipelineBase& addFront(H&& handler);
+
+  template <class H>
+  PipelineBase& addFront(H* handler);
+
+  template <class H>
+  PipelineBase& remove(H* handler);
+
+  template <class H>
+  PipelineBase& remove();
+
+  PipelineBase& removeFront();
+
+  PipelineBase& removeBack();
+
+  template <class H>
+  H* getHandler(int i);
+
+  // If one of the handlers owns the pipeline itself, use setOwner to ensure
+  // that the pipeline doesn't try to detach the handler during destruction,
+  // lest destruction ordering issues occur.
+  // See thrift/lib/cpp2/async/Cpp2Channel.cpp for an example
+  template <class H>
+  bool setOwner(H* handler);
+
+  virtual void finalize() = 0;
+
+ protected:
+  template <class Context>
+  void addContextFront(Context* ctx);
+
+  void detachHandlers();
+
+  std::vector<std::shared_ptr<PipelineContext>> ctxs_;
+  std::vector<PipelineContext*> inCtxs_;
+  std::vector<PipelineContext*> outCtxs_;
+
  private:
   PipelineManager* manager_{nullptr};
   std::shared_ptr<AsyncTransport> transport_;
+
+  template <class Context>
+  PipelineBase& addHelper(std::shared_ptr<Context>&& ctx, bool front);
+
+  template <class H>
+  PipelineBase& removeHelper(H* handler, bool checkEqual);
+
+  typedef std::vector<std::shared_ptr<PipelineContext>>::iterator
+    ContextIterator;
+
+  ContextIterator removeAt(const ContextIterator& it);
+
+  WriteFlags writeFlags_{WriteFlags::NONE};
+  std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
+
+  std::shared_ptr<PipelineContext> owner_;
 };
 
 /*
@@ -72,12 +146,6 @@ class Pipeline : public PipelineBase {
  public:
   Pipeline();
   ~Pipeline();
-
-  void setWriteFlags(WriteFlags flags);
-  WriteFlags getWriteFlags();
-
-  void setReadBufferSettings(uint64_t minAvailable, uint64_t allocationSize);
-  std::pair<uint64_t, uint64_t> getReadBufferSettings();
 
   template <class T = R>
   typename std::enable_if<!std::is_same<T, Unit>::value>::type
@@ -107,74 +175,14 @@ class Pipeline : public PipelineBase {
   typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
   close();
 
-  template <class H>
-  Pipeline& addBack(std::shared_ptr<H> handler);
-
-  template <class H>
-  Pipeline& addBack(H&& handler);
-
-  template <class H>
-  Pipeline& addBack(H* handler);
-
-  template <class H>
-  Pipeline& addFront(std::shared_ptr<H> handler);
-
-  template <class H>
-  Pipeline& addFront(H&& handler);
-
-  template <class H>
-  Pipeline& addFront(H* handler);
-
-  template <class H>
-  Pipeline& remove(H* handler);
-
-  template <class H>
-  Pipeline& remove();
-
-  Pipeline& removeFront();
-
-  Pipeline& removeBack();
-
-  template <class H>
-  H* getHandler(int i);
-
-  void finalize();
-
-  // If one of the handlers owns the pipeline itself, use setOwner to ensure
-  // that the pipeline doesn't try to detach the handler during destruction,
-  // lest destruction ordering issues occur.
-  // See thrift/lib/cpp2/async/Cpp2Channel.cpp for an example
-  template <class H>
-  bool setOwner(H* handler);
+  void finalize() override;
 
  protected:
   explicit Pipeline(bool isStatic);
 
-  template <class Context>
-  void addContextFront(Context* ctx);
-
-  void detachHandlers();
-
  private:
-  template <class Context>
-  Pipeline& addHelper(std::shared_ptr<Context>&& ctx, bool front);
-
-  template <class H>
-  Pipeline& removeHelper(H* handler, bool checkEqual);
-
-  typedef std::vector<std::shared_ptr<PipelineContext>>::iterator
-    ContextIterator;
-
-  ContextIterator removeAt(const ContextIterator& it);
-
-  WriteFlags writeFlags_{WriteFlags::NONE};
-  std::pair<uint64_t, uint64_t> readBufferSettings_{2048, 2048};
-
   bool isStatic_{false};
-  std::shared_ptr<PipelineContext> owner_;
-  std::vector<std::shared_ptr<PipelineContext>> ctxs_;
-  std::vector<PipelineContext*> inCtxs_;
-  std::vector<PipelineContext*> outCtxs_;
+
   InboundLink<R>* front_{nullptr};
   OutboundLink<W>* back_{nullptr};
 };
