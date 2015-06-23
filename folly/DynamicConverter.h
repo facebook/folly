@@ -54,12 +54,19 @@ BOOST_MPL_HAS_XXX_TRAIT_DEF(value_type);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(iterator);
 BOOST_MPL_HAS_XXX_TRAIT_DEF(mapped_type);
 
-template <typename T> struct class_is_container {
-  typedef std::reverse_iterator<T*> some_iterator;
+template <typename T> struct iterator_class_is_container {
+  typedef std::reverse_iterator<typename T::iterator> some_iterator;
   enum { value = has_value_type<T>::value &&
-                 has_iterator<T>::value &&
               std::is_constructible<T, some_iterator, some_iterator>::value };
 };
+
+template <typename T>
+using class_is_container = typename
+  std::conditional<
+    has_iterator<T>::value,
+    iterator_class_is_container<T>,
+    std::false_type
+  >::type;
 
 template <typename T> struct class_is_range {
   enum { value = has_value_type<T>::value &&

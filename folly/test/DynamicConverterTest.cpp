@@ -35,17 +35,21 @@ TEST(DynamicConverter, template_metaprogramming) {
   bool c1f = is_container<int>::value;
   bool c2f = is_container<std::pair<int, int>>::value;
   bool c3f = is_container<A>::value;
+  bool c4f = class_is_container<A>::value;
 
   bool c1t = is_container<std::vector<int>>::value;
   bool c2t = is_container<std::set<int>>::value;
   bool c3t = is_container<std::map<int, int>>::value;
+  bool c4t = class_is_container<std::vector<A>>::value;
 
   EXPECT_EQ(c1f, false);
   EXPECT_EQ(c2f, false);
   EXPECT_EQ(c3f, false);
+  EXPECT_EQ(c4f, false);
   EXPECT_EQ(c1t, true);
   EXPECT_EQ(c2t, true);
   EXPECT_EQ(c3t, true);
+  EXPECT_EQ(c4t, true);
 
 
   bool m1f = is_map<int>::value;
