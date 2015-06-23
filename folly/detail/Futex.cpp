@@ -65,8 +65,13 @@ int nativeFutexWake(void* addr, int count, uint32_t wakeMask) {
                    nullptr, /* addr2 */
                    wakeMask); /* val3 */
 
-  assert(rv >= 0);
-
+  /* NOTE: we ignore errors on wake for the case of a futex
+     guarding its own destruction, similar to this
+     glibc bug with sem_post/sem_wait:
+     https://sourceware.org/bugzilla/show_bug.cgi?id=12674 */
+  if (rv < 0) {
+    return 0;
+  }
   return rv;
 }
 
