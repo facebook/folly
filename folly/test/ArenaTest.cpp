@@ -157,6 +157,17 @@ TEST(Arena, SizeLimit) {
   EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
 }
 
+TEST(Arena, MoveArena) {
+  SysArena arena(sizeof(size_t) * 2);
+  arena.allocate(sizeof(size_t));
+  auto totalSize = arena.totalSize();
+  auto bytesUsed = arena.bytesUsed();
+
+  SysArena moved(std::move(arena));
+  EXPECT_EQ(totalSize, moved.totalSize());
+  EXPECT_EQ(bytesUsed, moved.bytesUsed());
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

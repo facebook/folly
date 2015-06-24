@@ -119,7 +119,6 @@ class Arena {
     return bytesUsed_;
   }
 
- private:
   // not copyable
   Arena(const Arena&) = delete;
   Arena& operator=(const Arena&) = delete;
@@ -128,6 +127,7 @@ class Arena {
   Arena(Arena&&) = default;
   Arena& operator=(Arena&&) = default;
 
+ private:
   struct Block;
   typedef boost::intrusive::slist_member_hook<
     boost::intrusive::tag<Arena>> BlockLink;
