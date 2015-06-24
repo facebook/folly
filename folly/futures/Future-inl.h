@@ -660,12 +660,12 @@ collectAny(InputIterator first, InputIterator last) {
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   struct CollectAnyContext {
-    CollectAnyContext(size_t n) {};
+    CollectAnyContext() {};
     Promise<std::pair<size_t, Try<T>>> p;
     std::atomic<bool> done {false};
   };
 
-  auto ctx = std::make_shared<CollectAnyContext>(std::distance(first, last));
+  auto ctx = std::make_shared<CollectAnyContext>();
   mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
     if (!ctx->done.exchange(true)) {
       ctx->p.setValue(std::make_pair(i, std::move(t)));
