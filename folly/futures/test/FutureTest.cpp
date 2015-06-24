@@ -680,3 +680,57 @@ TEST(Future, thenDynamic) {
   p.setValue(2);
   EXPECT_EQ(f.get(), 5);
 }
+
+TEST(Future, RequestContext) {
+  class NewThreadExecutor : public Executor {
+   public:
+    ~NewThreadExecutor() override {
+      std::for_each(v_.begin(), v_.end(), [](std::thread& t){ t.join(); });
+    }
+    void add(Func f) override {
+      if (throwsOnAdd_) { throw std::exception(); }
+      v_.emplace_back(std::move(f));
+    }
+    void addWithPriority(Func f, int8_t prio) override { add(std::move(f)); }
+    uint8_t getNumPriorities() const override { return numPriorities_; }
+
+    void setHandlesPriorities() { numPriorities_ = 2; }
+    void setThrowsOnAdd() { throwsOnAdd_ = true; }
+   private:
+    std::vector<std::thread> v_;
+    uint8_t numPriorities_ = 1;
+    bool throwsOnAdd_ = false;
+  };
+
+  struct MyRequestData : RequestData {
+    MyRequestData(bool value = false) : value(value) {}
+    bool value;
+  };
+
+  NewThreadExecutor e;
+  RequestContext::create();
+  RequestContext::get()->setContextData("key",
+      folly::make_unique<MyRequestData>(true));
+  auto checker = [](int lineno) {
+    return [lineno](Try<int>&& t) {
+      auto d = static_cast<MyRequestData*>(
+        RequestContext::get()->getContextData("key"));
+      EXPECT_TRUE(d && d->value) << "on line " << lineno;
+    };
+  };
+
+  makeFuture(1).via(&e).then(checker(__LINE__));
+
+  e.setHandlesPriorities();
+  makeFuture(2).via(&e).then(checker(__LINE__));
+
+  Promise<int> p1, p2;
+  p1.getFuture().then(checker(__LINE__));
+
+  e.setThrowsOnAdd();
+  p2.getFuture().via(&e).then(checker(__LINE__));
+
+  RequestContext::create();
+  p1.setValue(3);
+  p2.setValue(4);
+}

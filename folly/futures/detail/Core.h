@@ -313,8 +313,6 @@ class Core {
   }
 
   void doCallback() {
-    RequestContext::setContext(context_);
-
     Executor* x = executor_;
     int8_t priority;
     if (x) {
@@ -333,20 +331,24 @@ class Core {
         if (LIKELY(x->getNumPriorities() == 1)) {
           x->add([this]() mutable {
             SCOPE_EXIT { detachOne(); };
+            RequestContext::setContext(context_);
             callback_(std::move(*result_));
           });
         } else {
           x->addWithPriority([this]() mutable {
             SCOPE_EXIT { detachOne(); };
+            RequestContext::setContext(context_);
             callback_(std::move(*result_));
           }, priority);
         }
       } catch (...) {
         --attached_; // Account for extra ++attached_ before try
+        RequestContext::setContext(context_);
         result_ = Try<T>(exception_wrapper(std::current_exception()));
         callback_(std::move(*result_));
       }
     } else {
+      RequestContext::setContext(context_);
       callback_(std::move(*result_));
     }
   }
