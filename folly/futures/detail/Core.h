@@ -414,7 +414,7 @@ struct CollectVariadicContext {
   }
   Promise<std::tuple<Ts...>> p;
   std::tuple<Ts...> results;
-  std::atomic<bool> threw;
+  std::atomic<bool> threw {false};
   typedef Future<std::tuple<Ts...>> type;
 };
 

@@ -600,7 +600,7 @@ struct CollectContext {
   }
   Promise<Result> p;
   InternalResult result;
-  std::atomic<bool> threw;
+  std::atomic<bool> threw {false};
 };
 
 // Specialize for void (implementations in Future.cpp)
@@ -660,9 +660,9 @@ collectAny(InputIterator first, InputIterator last) {
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   struct CollectAnyContext {
-    CollectAnyContext(size_t n) : done(false) {};
+    CollectAnyContext(size_t n) {};
     Promise<std::pair<size_t, Try<T>>> p;
-    std::atomic<bool> done;
+    std::atomic<bool> done {false};
   };
 
   auto ctx = std::make_shared<CollectAnyContext>(std::distance(first, last));
@@ -752,10 +752,10 @@ std::vector<Future<Result>>
 window(Collection input, F func, size_t n) {
   struct WindowContext {
     WindowContext(Collection&& i, F&& fn)
-        : i_(0), input_(std::move(i)), promises_(input_.size()),
+        : input_(std::move(i)), promises_(input_.size()),
           func_(std::move(fn))
       {}
-    std::atomic<size_t> i_;
+    std::atomic<size_t> i_ {0};
     Collection input_;
     std::vector<Promise<Result>> promises_;
     F func_;
@@ -872,10 +872,10 @@ template <class E>
 Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
   struct Context {
-    Context(E ex) : exception(std::move(ex)), promise(), token(false) {}
+    Context(E ex) : exception(std::move(ex)), promise() {}
     E exception;
     Promise<T> promise;
-    std::atomic<bool> token;
+    std::atomic<bool> token {false};
   };
   auto ctx = std::make_shared<Context>(std::move(e));
 
