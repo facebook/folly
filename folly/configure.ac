@@ -52,11 +52,53 @@ fi
 
 CXXFLAGS="$STD $CXXFLAGS"
 
-# Checks for libraries.
-AC_CHECK_LIB([glog],[openlog],[],[AC_MSG_ERROR(
-             [Please install google-glog library])])
-AC_CHECK_LIB([gflags],[getenv],[],[AC_MSG_ERROR(
-             [Please install google-gflags library])])
+# Checks for glog and gflags
+# There are no symbols with C linkage, so we do a try-run
+AC_HAVE_LIBRARY([glog],[],[AC_MSG_ERROR(
+                [Please install google-glog library])])
+AC_CACHE_CHECK(
+  [for glog viability],
+  [folly_cv_prog_cc_glog],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <glog/logging.h>
+      int main(int argc, char** argv) {
+        google::InitGoogleLogging(argv[0]);
+        google::ShutdownGoogleLogging();
+        return 0;
+      }
+    ]],
+    [folly_cv_prog_cc_glog=yes],
+    [folly_cv_prog_cc_glog=no]
+  )]
+)
+
+if test "$folly_cv_prog_cc_glog" != "yes"; then
+  AC_MSG_ERROR(["libglog invalid, see config.log for details"])
+fi
+
+AC_HAVE_LIBRARY([gflags],[],[AC_MSG_ERROR(
+                [Please install google-gflags library])])
+AC_CACHE_CHECK(
+  [for gflags viability],
+  [folly_cv_prog_cc_gflags],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <gflags/gflags.h>
+      DEFINE_bool(folly_truthy, true, "Sample truthy flag");
+      DEFINE_bool(folly_falsey, false, "Sample falsey flag");
+      int main(int argc, char** argv) {
+        return (FLAGS_folly_truthy && !FLAGS_folly_falsey) ? 0 : 1;
+      }
+    ]],
+    [folly_cv_prog_cc_gflags=yes],
+    [folly_cv_prog_cc_gflags=no]
+  )]
+)
+
+if test "$folly_cv_prog_cc_gflags" != "yes"; then
+  AC_MSG_ERROR(["libgflags invalid, see config.log for details"])
+fi
 
 AC_CHECK_LIB(ssl,
         SSL_ctrl,
