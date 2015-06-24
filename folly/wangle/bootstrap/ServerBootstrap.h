@@ -120,8 +120,13 @@ class ServerBootstrap {
         1, std::make_shared<wangle::NamedThreadFactory>("Acceptor Thread"));
     }
     if (!io_group) {
+      auto threads = std::thread::hardware_concurrency();
+      if (threads <= 0) {
+        // Reasonable mid-point for concurrency when actual value unknown
+        threads = 8;
+      }
       io_group = std::make_shared<folly::wangle::IOThreadPoolExecutor>(
-        32, std::make_shared<wangle::NamedThreadFactory>("IO Thread"));
+        threads, std::make_shared<wangle::NamedThreadFactory>("IO Thread"));
     }
 
     // TODO better config checking
