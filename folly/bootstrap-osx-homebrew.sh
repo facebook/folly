@@ -10,27 +10,13 @@ brewget() {
 }
 
 # tool dependencies: autotools and scons (for double-conversion)
-brewget autoconf automake libtool scons
+brewget autoconf automake libtool
 
 # dependencies
-brewget glog gflags boost libevent
-
-# Install the double-conversion library.
-# NB their install target installs the libs but not the headers, hence the
-# CPPFLAGS
-test -d double-conversion ||
-    git clone https://github.com/google/double-conversion.git
-pushd double-conversion
-make
-# fool libtool into using static linkage
-# (this won't work if you've already installed libdouble-conversion into a
-# default search path)
-rm -f libdouble-conversion*dylib
-DOUBLE_CONVERSION_HOME=$(pwd)
-popd
+brewget glog gflags boost libevent double-conversion
 
 autoreconf -i
-./configure CPPFLAGS=-I"$DOUBLE_CONVERSION_HOME" LDFLAGS=-L"$DOUBLE_CONVERSION_HOME"
+./configure
 
 pushd test
 test -e gtest-1.7.0.zip || {
