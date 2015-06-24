@@ -63,7 +63,7 @@ std::cout << format("The only {0[what]} is {0[value]}", m);
 // And if you just want the string,
 std::string result = svformat("The only {what} is {value}", m);
 // => "The only answer is 42"
-std::string result = svformat("The only {0[what]} is {0[value]}", m);
+std::string result = sformat("The only {0[what]} is {0[value]}", m);
 // => "The only answer is 42"
 
 // {} works for vformat too
