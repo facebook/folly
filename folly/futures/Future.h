@@ -165,10 +165,6 @@ class Future {
     value(), which may rethrow if this has captured an exception. If func
     throws, the exception will be captured in the Future that is returned.
     */
-  /* TODO n3428 and other async frameworks have something like then(scheduler,
-     Future), we might want to support a similar API which could be
-     implemented a little more efficiently than
-     f.via(executor).then(callback) */
   template <typename F, typename R = detail::callableResult<T, F>>
   typename R::Return then(F func) {
     typedef typename R::Arg Arguments;
