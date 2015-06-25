@@ -1106,6 +1106,28 @@ TEST(Gen, Just) {
   }
 }
 
+TEST(Gen, GroupBy) {
+  vector<string> strs{"zero", "one", "two",   "three", "four",
+                      "five", "six", "seven", "eight", "nine"};
+
+  auto gb = from(strs) | groupBy([](const string& str) { return str.size(); });
+
+  EXPECT_EQ(10, gb | mapOp(count) | sum);
+  EXPECT_EQ(3, gb | count);
+
+  vector<string> mode{"zero", "four", "five", "nine"};
+  EXPECT_EQ(
+      mode,
+      gb | maxBy([](const Group<size_t, string>& g) { return g.size(); })
+         | as<vector>());
+
+  vector<string> largest{"three", "seven", "eight"};
+  EXPECT_EQ(
+      largest,
+      gb | maxBy([](const Group<size_t, string>& g) { return g.key(); })
+         | as<vector>());
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

@@ -17,18 +17,19 @@
 #ifndef FOLLY_GEN_BASE_H
 #define FOLLY_GEN_BASE_H
 
+#include <algorithm>
 #include <functional>
 #include <memory>
-#include <type_traits>
-#include <utility>
-#include <algorithm>
 #include <random>
-#include <vector>
+#include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
-#include <folly/Range.h>
-#include <folly/Optional.h>
 #include <folly/Conv.h>
+#include <folly/Optional.h>
+#include <folly/Range.h>
 #include <folly/gen/Core.h>
 
 /**
@@ -241,6 +242,9 @@ class To<StringPiece> {
   }
 };
 
+template<class Key, class Value>
+class Group;
+
 namespace detail {
 
 template<class Self>
@@ -325,6 +329,9 @@ class Skip;
 
 template<class Selector, class Comparer = Less>
 class Order;
+
+template<class Selector>
+class GroupBy;
 
 template<class Selector>
 class Distinct;
@@ -638,6 +645,12 @@ template<class Selector = Identity,
          class Order = detail::Order<Selector, Greater>>
 Order orderByDescending(Selector selector = Selector()) {
   return Order(std::move(selector));
+}
+
+template<class Selector,
+         class GroupBy = detail::GroupBy<Selector>>
+GroupBy groupBy(Selector selector = Identity()) {
+  return GroupBy(std::move(selector));
 }
 
 template<class Selector = Identity,

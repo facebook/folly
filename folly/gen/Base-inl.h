@@ -37,6 +37,56 @@ struct ArgumentReference
                                     T&& // int -> int&&
                                     >::type> {};
 
+template <class Key, class Value>
+class Group : public GenImpl<Value&&, Group<Key, Value>> {
+ public:
+  static_assert(!std::is_reference<Key>::value &&
+                    !std::is_reference<Value>::value,
+                "Key and Value must be decayed types");
+
+  typedef std::vector<Value> VectorType;
+  typedef Key KeyType;
+  typedef Value ValueType;
+
+  Group(Key key, VectorType values)
+      : key_(std::move(key)), values_(std::move(values)) {}
+
+  const Key& key() const { return key_; }
+
+  size_t size() const { return values_.size(); }
+  const VectorType& values() const { return values_; }
+  VectorType& values() { return values_; }
+
+  VectorType operator|(const detail::Collect<VectorType>&) const {
+    return values();
+  }
+
+  VectorType operator|(const detail::CollectTemplate<std::vector>&) const {
+    return values();
+  }
+
+  template <class Body>
+  void foreach(Body&& body) const {
+    for (auto& value : values_) {
+      body(std::move(value));
+    }
+  }
+
+  template <class Handler>
+  bool apply(Handler&& handler) const {
+    for (auto& value : values_) {
+      if (!handler(std::move(value))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+ private:
+  Key key_;
+  mutable VectorType values_;
+};
+
 namespace detail {
 
 /*
@@ -938,6 +988,79 @@ class Order : public Operator<Order<Selector, Comparer>> {
            class Gen = Generator<Value, Source>>
   Gen compose(const GenImpl<Value, Source>& source) const {
     return Gen(source.self(), selector_, comparer_);
+  }
+};
+
+/**
+ * GroupBy - Group values by a given key selector, producing a sequence of
+ * groups.
+ *
+ * This type is usually used through the 'groupBy' helper function, like:
+ *
+ *   auto bests
+ *     = from(places)
+ *     | groupBy([](const Place& p) {
+ *         return p.city;
+ *       })
+ *     | [](Group<std::string, Place>&& g) {
+ *         cout << g.key() << ": " << (g | first).description;
+ *       };
+ */
+template <class Selector>
+class GroupBy : public Operator<GroupBy<Selector>> {
+  Selector selector_;
+
+ public:
+  GroupBy() {}
+
+  explicit GroupBy(Selector selector) : selector_(std::move(selector)) {}
+
+  template <class Value,
+            class Source,
+            class ValueDecayed = typename std::decay<Value>::type,
+            class Key = typename std::result_of<Selector(Value)>::type,
+            class KeyDecayed = typename std::decay<Key>::type>
+  class Generator
+      : public GenImpl<
+            Group<KeyDecayed, ValueDecayed>&&,
+            Generator<Value, Source, ValueDecayed, Key, KeyDecayed>> {
+    static_assert(!Source::infinite, "Cannot group infinite source!");
+    Source source_;
+    Selector selector_;
+
+   public:
+    Generator(Source source, Selector selector)
+        : source_(std::move(source)), selector_(std::move(selector)) {}
+
+    typedef Group<KeyDecayed, ValueDecayed> GroupType;
+
+    template <class Handler>
+    bool apply(Handler&& handler) const {
+      std::unordered_map<KeyDecayed, typename GroupType::VectorType> groups;
+      source_ | [&](Value value) {
+        const Value& cv = value;
+        auto& group = groups[selector_(cv)];
+        group.push_back(std::forward<Value>(value));
+      };
+      for (auto& kg : groups) {
+        GroupType group(kg.first, std::move(kg.second));
+        if (!handler(std::move(group))) {
+          return false;
+        }
+        kg.second.clear();
+      }
+      return true;
+    }
+  };
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(GenImpl<Value, Source>&& source) const {
+    return Gen(std::move(source.self()), selector_);
+  }
+
+  template <class Source, class Value, class Gen = Generator<Value, Source>>
+  Gen compose(const GenImpl<Value, Source>& source) const {
+    return Gen(source.self(), selector_);
   }
 };
 
@@ -1897,7 +2020,7 @@ class Indirect : public Operator<Indirect> {
     explicit Generator(Source source) : source_(std::move(source)) {}
 
     template <class Body>
-    void foreach (Body&& body) const {
+    void foreach(Body&& body) const {
       source_.foreach([&](Value value) {
         return body(&value);
       });
