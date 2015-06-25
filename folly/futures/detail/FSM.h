@@ -55,12 +55,12 @@ public:
     if (!mutex_.try_lock()) {
       mutex_.lock();
     }
-    if (state_.load(std::memory_order_relaxed) != A) {
+    if (state_.load(std::memory_order_acquire) != A) {
       mutex_.unlock();
       return false;
     }
     action();
-    state_.store(B, std::memory_order_relaxed);
+    state_.store(B, std::memory_order_release);
     mutex_.unlock();
     return true;
   }
