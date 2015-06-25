@@ -76,8 +76,8 @@ ThreadWheelTimekeeper::ThreadWheelTimekeeper() :
 ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
   eventBase_.runInEventBaseThreadAndWait([this]{
     wheelTimer_->cancelAll();
+    eventBase_.terminateLoopSoon();
   });
-  eventBase_.terminateLoopSoon();
   thread_.join();
 }
 

@@ -52,8 +52,9 @@ TEST_F(TimekeeperFixture, after) {
 
 TEST(Timekeeper, futureGet) {
   Promise<int> p;
-  std::thread([&]{ p.setValue(42); }).detach();
+  auto t = std::thread([&]{ p.setValue(42); });
   EXPECT_EQ(42, p.getFuture().get());
+  t.join();
 }
 
 TEST(Timekeeper, futureGetBeforeTimeout) {

@@ -72,7 +72,7 @@ struct ViaFixture : public testing::Test {
   std::shared_ptr<ManualExecutor> eastExecutor;
   std::shared_ptr<ManualWaiter> waiter;
   InlineExecutor inlineExecutor;
-  bool done;
+  std::atomic<bool> done;
   std::thread t;
 };
 
