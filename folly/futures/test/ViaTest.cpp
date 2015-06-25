@@ -191,7 +191,7 @@ TEST(Via, chain3) {
 struct PriorityExecutor : public Executor {
   void add(Func f) override {}
 
-  void addWithPriority(Func, int8_t priority) override {
+  void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
     int p = priority < 0 ?
             std::max(0, mid + priority) :
@@ -205,6 +205,7 @@ struct PriorityExecutor : public Executor {
     } else if (p == 2) {
       count2++;
     }
+    f();
   }
 
   uint8_t getNumPriorities() const override {
