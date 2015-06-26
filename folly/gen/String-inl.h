@@ -231,7 +231,7 @@ class StringResplitter : public Operator<StringResplitter> {
             // The stream ended with a delimiter; our contract is to swallow
             // the final empty piece.
             if (s.empty()) {
-              return false;
+              return true;
             }
             if (s.back() != this->delimiter_) {
               return body(s);

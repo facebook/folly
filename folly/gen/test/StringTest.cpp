@@ -348,6 +348,20 @@ TEST(StringGen, Unsplit) {
   EXPECT_EQ("1, 2, 3", seq(1, 3) | unsplit(", "));
 }
 
+TEST(StringGen, Batch) {
+  std::vector<std::string> chunks{
+      "on", "e\nt", "w", "o", "\nthr", "ee\nfo", "ur\n",
+  };
+  std::vector<std::string> lines{
+      "one", "two", "three", "four",
+  };
+  EXPECT_EQ(4, from(chunks) | resplit('\n') | count);
+  EXPECT_EQ(4, from(chunks) | resplit('\n') | batch(2) | rconcat | count);
+  EXPECT_EQ(4, from(chunks) | resplit('\n') | batch(3) | rconcat | count);
+  EXPECT_EQ(lines, from(chunks) | resplit('\n') | eachTo<std::string>() |
+                       batch(3) | rconcat | as<vector>());
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
