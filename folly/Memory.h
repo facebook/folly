@@ -57,6 +57,29 @@ typename std::enable_if<
 make_unique(Args&&...) = delete;
 
 /**
+ *  to_shared_ptr
+ *
+ *  Convert unique_ptr to shared_ptr without specifying the template type
+ *  parameter and letting the compiler deduce it.
+ *
+ *  So you can write this:
+ *
+ *      auto sptr = to_shared_ptr(getSomethingUnique<T>());
+ *
+ *  Instead of this:
+ *
+ *      auto sptr = shared_ptr<T>(getSomethingUnique<T>());
+ *
+ *  Useful when `T` is long, such as:
+ *
+ *      using T = foobar::cpp2::FooBarServiceAsyncClient;
+ */
+template <typename T>
+std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T>&& ptr) {
+  return std::shared_ptr<T>(std::move(ptr));
+}
+
+/**
  * A SimpleAllocator must provide two methods:
  *
  *    void* allocate(size_t size);

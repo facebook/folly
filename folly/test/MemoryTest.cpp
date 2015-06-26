@@ -25,6 +25,13 @@
 
 using namespace folly;
 
+TEST(shared_ptr, example) {
+  auto uptr = make_unique<std::string>("hello");
+  auto sptr = to_shared_ptr(std::move(uptr));
+  EXPECT_EQ(nullptr, uptr);
+  EXPECT_EQ("hello", *sptr);
+}
+
 template <std::size_t> struct T {};
 template <std::size_t> struct S {};
 template <std::size_t> struct P {};
