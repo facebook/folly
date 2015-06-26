@@ -315,8 +315,7 @@ bool EventBase::loopBody(int flags) {
       std::chrono::steady_clock::now().time_since_epoch()).count();
   }
 
-  // TODO: Read stop_ atomically with an acquire barrier.
-  while (!stop_) {
+  while (!stop_.load(std::memory_order_acquire)) {
     ++nextLoopCnt_;
 
     // Run the before loop callbacks

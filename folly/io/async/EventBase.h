@@ -671,7 +671,7 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
 
   // stop_ is set by terminateLoopSoon() and is used by the main loop
   // to determine if it should exit
-  bool stop_;
+  std::atomic<bool> stop_;
 
   // The ID of the thread running the main loop.
   // 0 if loop is not running.
