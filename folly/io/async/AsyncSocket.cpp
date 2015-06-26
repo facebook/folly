@@ -1231,8 +1231,11 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   }
 }
 
-ssize_t AsyncSocket::performRead(void* buf, size_t buflen) {
-  ssize_t bytes = recv(fd_, buf, buflen, MSG_DONTWAIT);
+ssize_t AsyncSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
+  VLOG(5) << "AsyncSocket::performRead() this=" << this
+          << ", buf=" << *buf << ", buflen=" << *buflen;
+
+  ssize_t bytes = recv(fd_, *buf, *buflen, MSG_DONTWAIT);
   if (bytes < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // No more data to read right now.
@@ -1244,6 +1247,12 @@ ssize_t AsyncSocket::performRead(void* buf, size_t buflen) {
     appBytesReceived_ += bytes;
     return bytes;
   }
+}
+
+void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {
+  // no matter what, buffer should be preapared for non-ssl socket
+  CHECK(readCallback_);
+  readCallback_->getReadBuffer(buf, buflen);
 }
 
 void AsyncSocket::handleRead() noexcept {
@@ -1277,9 +1286,10 @@ void AsyncSocket::handleRead() noexcept {
   while (readCallback_ && eventBase_ == originalEventBase) {
     // Get the buffer to read into.
     void* buf = nullptr;
-    size_t buflen = 0;
+    size_t buflen = 0, offset = 0;
     try {
-      readCallback_->getReadBuffer(&buf, &buflen);
+      prepareReadBuffer(&buf, &buflen);
+      VLOG(5) << "prepareReadBuffer() buf=" << buf << ", buflen=" << buflen;
     } catch (const AsyncSocketException& ex) {
       return failRead(__func__, ex);
     } catch (const std::exception& ex) {
@@ -1294,7 +1304,7 @@ void AsyncSocket::handleRead() noexcept {
                              "non-exception type");
       return failRead(__func__, ex);
     }
-    if (buf == nullptr || buflen == 0) {
+    if (!isBufferMovable_ && (buf == nullptr || buflen == 0)) {
       AsyncSocketException ex(AsyncSocketException::BAD_ARGS,
                              "ReadCallback::getReadBuffer() returned "
                              "empty buffer");
@@ -1302,9 +1312,23 @@ void AsyncSocket::handleRead() noexcept {
     }
 
     // Perform the read
-    ssize_t bytesRead = performRead(buf, buflen);
+    ssize_t bytesRead = performRead(&buf, &buflen, &offset);
+    VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got "
+            << bytesRead << " bytes";
     if (bytesRead > 0) {
-      readCallback_->readDataAvailable(bytesRead);
+      if (!isBufferMovable_) {
+        readCallback_->readDataAvailable(bytesRead);
+      } else {
+        CHECK(kOpenSslModeMoveBufferOwnership);
+        VLOG(5) << "this=" << this << ", AsyncSocket::handleRead() got "
+                << "buf=" << buf << ", " << bytesRead << "/" << buflen
+                << ", offset=" << offset;
+        auto readBuf = folly::IOBuf::takeOwnership(buf, buflen);
+        readBuf->trimStart(offset);
+        readBuf->trimEnd(buflen - offset - bytesRead);
+        readCallback_->readBufferAvailable(std::move(readBuf));
+      }
+
       // Fall through and continue around the loop if the read
       // completely filled the available buffer.
       // Note that readCallback_ may have been uninstalled or changed inside

@@ -636,6 +636,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void ioReady(uint16_t events) noexcept;
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
+  virtual void prepareReadBuffer(void** buf, size_t* buflen) noexcept;
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
@@ -651,7 +652,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * READ_ERROR on error, or READ_BLOCKING if the operation will
    * block.
    */
-  virtual ssize_t performRead(void* buf, size_t buflen);
+  virtual ssize_t performRead(void** buf, size_t* buflen, size_t* offset);
 
   /**
    * Populate an iovec array from an IOBuf and attempt to write it.
@@ -762,6 +763,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   ShutdownSocketSet* shutdownSocketSet_;
   size_t appBytesReceived_;             ///< Num of bytes received from socket
   size_t appBytesWritten_;              ///< Num of bytes written to socket
+  bool isBufferMovable_{false};
 };
 
 

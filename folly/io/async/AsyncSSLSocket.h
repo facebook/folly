@@ -673,7 +673,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   // Inherit event notification methods from AsyncSocket except
   // the following.
-
+  void prepareReadBuffer(void** buf, size_t* buflen) noexcept override;
   void handleRead() noexcept override;
   void handleWrite() noexcept override;
   void handleAccept() noexcept;
@@ -687,7 +687,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void handleInitialReadWrite() noexcept override {}
 
   int interpretSSLError(int rc, int error);
-  ssize_t performRead(void* buf, size_t buflen) override;
+  ssize_t performRead(void** buf, size_t* buflen, size_t* offset) override;
   ssize_t performWrite(const iovec* vec, uint32_t count, WriteFlags flags,
                        uint32_t* countWritten, uint32_t* partialWritten)
     override;

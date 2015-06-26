@@ -23,6 +23,16 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/AsyncSocketBase.h>
 
+#include <openssl/ssl.h>
+
+constexpr bool kOpenSslModeMoveBufferOwnership =
+#ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
+  true
+#else
+  false
+#endif
+;
+
 namespace folly {
 
 class AsyncSocketException;
@@ -376,7 +386,52 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
      *
      * @param len       The number of bytes placed in the buffer.
      */
+
     virtual void readDataAvailable(size_t len) noexcept = 0;
+
+    /**
+     * When data becomes available, isBufferMovable() will be invoked to figure
+     * out which API will be used, readBufferAvailable() or
+     * readDataAvailable(). If isBufferMovable() returns true, that means
+     * ReadCallback supports the IOBuf ownership transfer and
+     * readBufferAvailable() will be used.  Otherwise, not.
+
+     * By default, isBufferMovable() always return false. If
+     * readBufferAvailable() is implemented and to be invoked, You should
+     * overwrite isBufferMovable() and return true in the inherited class.
+     *
+     * This method allows the AsyncSocket/AsyncSSLSocket do buffer allocation by
+     * itself until data becomes available.  Compared with the pre/post buffer
+     * allocation in getReadBuffer()/readDataAvailabe(), readBufferAvailable()
+     * has two advantages.  First, this can avoid memcpy. E.g., in
+     * AsyncSSLSocket, the decrypted data was copied from the openssl internal
+     * buffer to the readbuf buffer.  With the buffer ownership transfer, the
+     * internal buffer can be directly "moved" to ReadCallback. Second, the
+     * memory allocation can be more precise.  The reason is
+     * AsyncSocket/AsyncSSLSocket can allocate the memory of precise size
+     * because they have more context about the available data than
+     * ReadCallback.  Think about the getReadBuffer() pre-allocate 4072 bytes
+     * buffer, but the available data is always 16KB (max OpenSSL record size).
+     */
+
+    virtual bool isBufferMovable() noexcept {
+      return false;
+    }
+
+    /**
+     * readBufferAvailable() will be invoked when data has been successfully
+     * read.
+     *
+     * Note that only either readBufferAvailable() or readDataAvailable() will
+     * be invoked according to the return value of isBufferMovable(). The timing
+     * and aftereffect of readBufferAvailable() are the same as
+     * readDataAvailable()
+     *
+     * @param readBuf The unique pointer of read buffer.
+     */
+
+    virtual void readBufferAvailable(std::unique_ptr<IOBuf> readBuf)
+      noexcept {};
 
     /**
      * readEOF() will be invoked when the transport is closed.
