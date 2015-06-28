@@ -123,6 +123,7 @@ nobase_follyinclude_HEADERS = \
 	folly-config.h \
 	Foreach.h \
 	FormatArg.h \
+	FormatTraits.h \
 	Format.h \
 	Format-inl.h \
 	futures/Deprecated.h \

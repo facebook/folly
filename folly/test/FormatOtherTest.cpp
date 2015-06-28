@@ -16,9 +16,11 @@
 
 #include <folly/Format.h>
 
+#include <folly/FBVector.h>
 #include <folly/FileUtil.h>
-#include <folly/json.h>
 #include <folly/dynamic.h>
+#include <folly/json.h>
+#include <folly/small_vector.h>
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
@@ -74,6 +76,28 @@ TEST(FormatOther, dynamic) {
   EXPECT_EQ("42", sformat("{0[y.a]}", dyn));
 
   EXPECT_EQ("(null)", sformat("{}", dynamic(nullptr)));
+}
+
+namespace {
+
+template <class T>
+void testFormatSeq() {
+  T v{10, 20, 30};
+  EXPECT_EQ("30 10", sformat("{0[2]} {0[0]}", v));
+  EXPECT_EQ("0020", sformat("{0[1]:04}", v));
+  EXPECT_EQ("0020", svformat("{1:04}", v));
+  EXPECT_EQ("10 20", svformat("{} {}", v));
+  EXPECT_EQ("10 20 0030", svformat("{} {} {:04}", v));
+}
+
+}  // namespace
+
+TEST(FormatOther, fbvector) {
+  testFormatSeq<fbvector<int>>();
+}
+
+TEST(FormatOther, small_vector) {
+  testFormatSeq<small_vector<int, 2>>();
 }
 
 int main(int argc, char *argv[]) {

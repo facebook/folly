@@ -23,8 +23,6 @@
 #ifndef FOLLY_SMALL_VECTOR_H_
 #define FOLLY_SMALL_VECTOR_H_
 
-#include <folly/Portability.h>
-
 #include <stdexcept>
 #include <cstdlib>
 #include <type_traits>
@@ -46,7 +44,9 @@
 #include <boost/mpl/count.hpp>
 #include <boost/mpl/max.hpp>
 
+#include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
+#include <folly/Portability.h>
 
 #if defined(__GNUC__) && FOLLY_X64
 # include <folly/SmallLocks.h>
@@ -1141,7 +1141,17 @@ void swap(small_vector<T,MaxInline,A,B,C>& a,
 
 //////////////////////////////////////////////////////////////////////
 
-}
+namespace detail {
+
+// Format support.
+template <class T, size_t M, class A, class B, class C>
+struct IndexableTraits<small_vector<T, M, A, B, C>>
+  : public IndexableTraitsSeq<small_vector<T, M, A, B, C>> {
+};
+
+}  // namespace detail
+
+}  // namespace folly
 
 #pragma GCC diagnostic pop
 

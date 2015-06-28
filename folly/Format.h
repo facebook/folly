@@ -17,22 +17,14 @@
 #ifndef FOLLY_FORMAT_H_
 #define FOLLY_FORMAT_H_
 
-#include <array>
 #include <cstdio>
 #include <tuple>
 #include <type_traits>
-#include <vector>
-#include <deque>
-#include <map>
-#include <unordered_map>
 
-#include <folly/FBVector.h>
 #include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
-#include <folly/Likely.h>
 #include <folly/String.h>
-#include <folly/small_vector.h>
 #include <folly/FormatArg.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
