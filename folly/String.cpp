@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <iterator>
 #include <cctype>
+#include <string.h>
 #include <glog/logging.h>
 
 namespace folly {
@@ -329,7 +330,19 @@ fbstring errnoStr(int err) {
 
   // https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/strerror_r.3.html
   // http://www.kernel.org/doc/man-pages/online/pages/man3/strerror.3.html
-#if defined(__APPLE__) || defined(__FreeBSD__) ||\
+#if defined(_WIN32) && defined(__MINGW32__)
+  // mingw64 has no strerror_r, but Windows has strerror_s, which C11 added
+  // as well. So maybe we should use this across all platforms (together
+  // with strerrorlen_s). Note strerror_r and _s have swapped args.
+  int r = strerror_s(buf, sizeof(buf), err);
+  if (r != 0) {
+    result = to<fbstring>(
+      "Unknown error ", err,
+      " (strerror_r failed with error ", errno, ")");
+  } else {
+    result.assign(buf);
+  }
+#elif defined(__APPLE__) || defined(__FreeBSD__) ||\
     defined(__CYGWIN__) || defined(__ANDROID__) ||\
     ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE)
   // Using XSI-compatible strerror_r

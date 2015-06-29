@@ -288,19 +288,22 @@ class SocketAddress {
 
   void setFromPath(const char* path, size_t length);
 
+  // a typedef that allow us to compile against both winsock & POSIX sockets:
+  using SocketDesc = decltype(socket(0,0,0)); // POSIX: int, winsock: unsigned
+
   /**
    * Initialize this SocketAddress from a socket's peer address.
    *
    * Raises std::system_error on error.
    */
-  void setFromPeerAddress(int socket);
+  void setFromPeerAddress(SocketDesc socket);
 
   /**
    * Initialize this SocketAddress from a socket's local address.
    *
    * Raises std::system_error on error.
    */
-  void setFromLocalAddress(int socket);
+  void setFromLocalAddress(SocketDesc socket);
 
   /**
    * Initialize this TSocketAddress from a struct sockaddr.
@@ -556,11 +559,19 @@ class SocketAddress {
     }
   };
 
+  // a typedef that allow us to compile against both winsock & POSIX sockets:
+  // (both arg types and calling conventions differ for both)
+  // POSIX: void setFromSocket(int socket,
+  //                  int(*fn)(int, struct sockaddr*, socklen_t*));
+  // mingw: void setFromSocket(unsigned socket,
+  //                  int(*fn)(unsigned, struct sockaddr*, socklen_t*));
+  using GetPeerNameFunc = decltype(getpeername);
+
   struct addrinfo* getAddrInfo(const char* host, uint16_t port, int flags);
   struct addrinfo* getAddrInfo(const char* host, const char* port, int flags);
   void setFromAddrInfo(const struct addrinfo* results);
   void setFromLocalAddr(const struct addrinfo* results);
-  void setFromSocket(int socket, int (*fn)(int, struct sockaddr*, socklen_t*));
+  void setFromSocket(SocketDesc socket, GetPeerNameFunc fn);
   std::string getIpString(int flags) const;
   void getIpString(char *buf, size_t buflen, int flags) const;
 
