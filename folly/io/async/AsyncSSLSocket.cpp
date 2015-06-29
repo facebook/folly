@@ -1070,20 +1070,27 @@ AsyncSSLSocket::handleConnect() noexcept {
   AsyncSocket::handleInitialReadWrite();
 }
 
-void AsyncSSLSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {
-  CHECK(readCallback_);
+void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
   // turn on the buffer movable in openssl
   if (!isBufferMovable_ && readCallback_->isBufferMovable()) {
     SSL_set_mode(ssl_, SSL_get_mode(ssl_) | SSL_MODE_MOVE_BUFFER_OWNERSHIP);
-    *buf = nullptr;
-    *buflen = 0;
     isBufferMovable_ = true;
-    return;
   }
 #endif
-  // buf is necessary for SSLSocket without SSL_MODE_MOVE_BUFFER_OWNERSHIP
-  readCallback_->getReadBuffer(buf, buflen);
+
+  AsyncSocket::setReadCB(callback);
+}
+
+void AsyncSSLSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {
+  CHECK(readCallback_);
+  if (isBufferMovable_) {
+    *buf = nullptr;
+    *buflen = 0;
+  } else {
+    // buf is necessary for SSLSocket without SSL_MODE_MOVE_BUFFER_OWNERSHIP
+    readCallback_->getReadBuffer(buf, buflen);
+  }
 }
 
 void

@@ -673,6 +673,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   // Inherit event notification methods from AsyncSocket except
   // the following.
+  void setReadCB(ReadCallback* callback) override;
   void prepareReadBuffer(void** buf, size_t* buflen) noexcept override;
   void handleRead() noexcept override;
   void handleWrite() noexcept override;
