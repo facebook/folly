@@ -19,6 +19,8 @@
 
 #include <folly/Portability.h>
 
+#if !FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+
 FOLLY_NAMESPACE_STD_BEGIN
 
 FOLLY_NORETURN void __throw_length_error(const char* msg);
@@ -30,5 +32,9 @@ FOLLY_NORETURN void __throw_bad_alloc();
 #endif
 
 FOLLY_NAMESPACE_STD_END
+
+#else
+#error This file should never be included if FOLLY_HAVE_BITS_FUNCTEXCEPT_H is set
+#endif
 
 #endif

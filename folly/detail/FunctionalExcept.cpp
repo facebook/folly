@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
+#include <folly/Portability.h>
+
+// If FOLLY_HAVE_BITS_FUNCTEXCEPT_H is set, this file compiles to
+// nothing.
+
+#if !FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+
 #include <folly/detail/FunctionalExcept.h>
 
 #include <stdexcept>
@@ -39,3 +46,5 @@ void __throw_bad_alloc() {
 #endif
 
 FOLLY_NAMESPACE_STD_END
+
+#endif
