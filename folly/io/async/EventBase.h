@@ -29,6 +29,9 @@
 #include <queue>
 #include <cstdlib>
 #include <set>
+#include <unordered_set>
+#include <unordered_map>
+#include <mutex>
 #include <utility>
 #include <boost/intrusive/list.hpp>
 #include <boost/utility.hpp>
@@ -43,6 +46,12 @@ namespace folly {
 typedef std::function<void()> Cob;
 template <typename MessageT>
 class NotificationQueue;
+
+namespace detail {
+class EventBaseLocalBase;
+}
+template <typename T>
+class EventBaseLocal;
 
 class EventBaseObserver {
  public:
@@ -402,11 +411,11 @@ class EventBase : private boost::noncopyable,
     return runImmediatelyOrRunInEventBaseThreadAndWait(std::bind(fn, arg));
   }
 
-    /*
+  /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
-bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
+  bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
 
   /**
    * Runs the given Cob at some time after the specified number of
@@ -728,6 +737,13 @@ bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
 
   // allow runOnDestruction() to be called from any threads
   std::mutex onDestructionCallbacksMutex_;
+
+  // see EventBaseLocal
+  friend class detail::EventBaseLocalBase;
+  template <typename T> friend class EventBaseLocal;
+  std::mutex localStorageMutex_;
+  std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
+  std::unordered_set<detail::EventBaseLocalBase*> localStorageToDtor_;
 };
 
 } // folly

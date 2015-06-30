@@ -199,6 +199,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/DelayedDestructionBase.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
+	io/async/EventBaseLocal.h \
 	io/async/EventBaseManager.h \
 	io/async/EventFDWrapper.h \
 	io/async/EventHandler.h \
@@ -340,6 +341,7 @@ libfolly_la_SOURCES = \
 	io/async/AsyncSocket.cpp \
 	io/async/AsyncSSLSocket.cpp \
 	io/async/EventBase.cpp \
+	io/async/EventBaseLocal.cpp \
 	io/async/EventBaseManager.cpp \
 	io/async/EventHandler.cpp \
 	io/async/SSLContext.cpp \

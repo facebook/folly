@@ -21,6 +21,7 @@
 #include <folly/io/async/EventBase.h>
 
 #include <folly/ThreadName.h>
+#include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/NotificationQueue.h>
 
 #include <boost/static_assert.hpp>
@@ -236,6 +237,13 @@ EventBase::~EventBase() {
   {
     std::lock_guard<std::mutex> lock(libevent_mutex_);
     event_base_free(evb_);
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(localStorageMutex_);
+    for (auto storage : localStorageToDtor_) {
+      storage->onEventBaseDestruction(*this);
+    }
   }
   VLOG(5) << "EventBase(): Destroyed.";
 }
