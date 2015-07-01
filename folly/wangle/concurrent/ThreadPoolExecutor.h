@@ -18,7 +18,7 @@
 #include <folly/Executor.h>
 #include <folly/wangle/concurrent/LifoSemMPMCQueue.h>
 #include <folly/wangle/concurrent/NamedThreadFactory.h>
-#include <folly/wangle/rx/Observable.h>
+#include <folly/wangle/deprecated/rx/Observable.h>
 #include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>

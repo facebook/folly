@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/wangle/rx/types.h> // must come first
-#include <folly/wangle/rx/Subject.h>
-#include <folly/wangle/rx/Subscription.h>
+#include <folly/wangle/deprecated/rx/types.h> // must come first
+#include <folly/wangle/deprecated/rx/Subject.h>
+#include <folly/wangle/deprecated/rx/Subscription.h>
 
 #include <folly/RWSpinLock.h>
 #include <folly/SmallLocks.h>

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/wangle/rx/Observer.h>
-#include <folly/wangle/rx/Subject.h>
+#include <folly/wangle/deprecated/rx/Observer.h>
+#include <folly/wangle/deprecated/rx/Subject.h>
 #include <gtest/gtest.h>
 
 using namespace folly::wangle;

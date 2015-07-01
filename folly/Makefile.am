@@ -308,11 +308,11 @@ nobase_follyinclude_HEADERS = \
 	wangle/concurrent/NamedThreadFactory.h \
 	wangle/concurrent/ThreadFactory.h \
 	wangle/concurrent/ThreadPoolExecutor.h \
-	wangle/rx/Observable.h \
-	wangle/rx/Observer.h \
-	wangle/rx/Subject.h \
-	wangle/rx/Subscription.h \
-	wangle/rx/types.h \
+	wangle/deprecated/rx/Observable.h \
+	wangle/deprecated/rx/Observer.h \
+	wangle/deprecated/rx/Subject.h \
+	wangle/deprecated/rx/Subscription.h \
+	wangle/deprecated/rx/types.h \
 	wangle/ssl/ClientHelloExtStats.h \
 	wangle/ssl/DHParam.h \
 	wangle/ssl/PasswordInFile.h \
