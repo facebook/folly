@@ -346,6 +346,28 @@ if test "$folly_cv_prog_cc_pthread_atfork" = "yes"; then
   AC_DEFINE([HAVE_PTHREAD_ATFORK], [1], [Define to 1 if the compiler supports pthread_atfork])
 fi
 
+# Check for XSI-compatible strerror_r as default implementation
+AC_CACHE_CHECK(
+  [for XSI style strerror_r support],
+  [folly_cv_prog_cc_xsi_strerror_r],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <string.h>
+      #include <errno.h>
+      int main(int argc, char** argv) {
+        char buf[1024];
+        buf[0] = 0;
+        int ret = strerror_r(ENOMEM, buf, sizeof(buf));
+        return ret;
+      }
+    ]],
+    [folly_cv_prog_cc_xsi_strerror_r=yes],
+    [folly_cv_prog_cc_xsi_strerror_r=no])])
+
+if test "$folly_cv_prog_cc_xsi_strerror_r" = "yes"; then
+  AC_DEFINE([HAVE_XSI_STRERROR_R], [1], [Define to 1 if the runtime supports XSI-style strerror_r])
+fi
+
 # Checks for library functions.
 AC_CHECK_FUNCS([getdelim \
                 gettimeofday \

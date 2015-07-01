@@ -342,9 +342,7 @@ fbstring errnoStr(int err) {
   } else {
     result.assign(buf);
   }
-#elif defined(__APPLE__) || defined(__FreeBSD__) ||\
-    defined(__CYGWIN__) || defined(__ANDROID__) ||\
-    ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && !_GNU_SOURCE)
+#elif defined(HAVE_XSI_STRERROR_R)
   // Using XSI-compatible strerror_r
   int r = strerror_r(err, buf, sizeof(buf));
 
