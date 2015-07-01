@@ -22,14 +22,14 @@ using namespace std;
 
 struct StubLogger {
   void operator()(StringPiece msg, double sec) {
-    m = msg;
+    m = msg.str();
     t = sec;
   }
-  static StringPiece m;
+  static std::string m;
   static double t;
 };
 
-StringPiece StubLogger::m = "";
+std::string StubLogger::m = "";
 double StubLogger::t = 0;
 
 struct StubClock {
