@@ -68,11 +68,11 @@ class SerialClientDispatcher : public HandlerAdapter<Req, Resp>
     return f;
   }
 
-  virtual Future<void> close() override {
+  virtual Future<Unit> close() override {
     return HandlerAdapter<Req, Resp>::close(nullptr);
   }
 
-  virtual Future<void> close(Context* ctx) override {
+  virtual Future<Unit> close(Context* ctx) override {
     return HandlerAdapter<Req, Resp>::close(ctx);
   }
 

@@ -34,7 +34,7 @@ namespace folly { namespace wangle {
 class OutputBufferingHandler : public OutboundBytesToBytesHandler,
                                protected EventBase::LoopCallback {
  public:
-  Future<void> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
+  Future<Unit> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
     CHECK(buf);
     if (!queueSends_) {
       return ctx->fireWrite(std::move(buf));
@@ -54,15 +54,15 @@ class OutputBufferingHandler : public OutboundBytesToBytesHandler,
   }
 
   void runLoopCallback() noexcept override {
-    MoveWrapper<SharedPromise<void>> sharedPromise;
+    MoveWrapper<SharedPromise<Unit>> sharedPromise;
     std::swap(*sharedPromise, sharedPromise_);
     getContext()->fireWrite(std::move(sends_))
-      .then([sharedPromise](Try<void> t) mutable {
+      .then([sharedPromise](Try<Unit> t) mutable {
         sharedPromise->setTry(std::move(t));
       });
   }
 
-  Future<void> close(Context* ctx) override {
+  Future<Unit> close(Context* ctx) override {
     if (isLoopCallbackScheduled()) {
       cancelLoopCallback();
     }
@@ -72,11 +72,11 @@ class OutputBufferingHandler : public OutboundBytesToBytesHandler,
       folly::make_exception_wrapper<std::runtime_error>(
         "close() called while sends still pending"));
     sends_.reset();
-    sharedPromise_ = SharedPromise<void>();
+    sharedPromise_ = SharedPromise<Unit>();
     return ctx->fireClose();
   }
 
-  SharedPromise<void> sharedPromise_;
+  SharedPromise<Unit> sharedPromise_;
   std::unique_ptr<IOBuf> sends_{nullptr};
   bool queueSends_{true};
 };

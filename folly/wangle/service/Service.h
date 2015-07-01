@@ -34,7 +34,7 @@ class Service {
  public:
   virtual Future<Resp> operator()(Req request) = 0;
   virtual ~Service() = default;
-  virtual Future<void> close() {
+  virtual Future<Unit> close() {
     return makeFuture();
   }
   virtual bool isAvailable() {
@@ -69,7 +69,7 @@ class ServiceFilter : public Service<ReqA, RespA> {
       : service_(service) {}
   virtual ~ServiceFilter() = default;
 
-  virtual Future<void> close() override {
+  virtual Future<Unit> close() override {
     return service_->close();
   }
 

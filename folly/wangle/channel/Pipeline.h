@@ -168,11 +168,11 @@ class Pipeline : public PipelineBase {
   transportInactive();
 
   template <class T = W>
-  typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value, Future<Unit>>::type
   write(W msg);
 
   template <class T = W>
-  typename std::enable_if<!std::is_same<T, Unit>::value, Future<void>>::type
+  typename std::enable_if<!std::is_same<T, Unit>::value, Future<Unit>>::type
   close();
 
   void finalize() override;

@@ -62,9 +62,9 @@ class FutureExecutor : public ExecutorImpl {
    */
   template <typename F>
   typename std::enable_if<!isFuture<typename std::result_of<F()>::type>::value,
-                          Future<typename std::result_of<F()>::type>>::type
+                          Future<typename Unit::Lift<typename std::result_of<F()>::type>::type>>::type
   addFuture(F func) {
-    typedef typename std::result_of<F()>::type T;
+    using T = typename Unit::Lift<typename std::result_of<F()>::type>::type;
     Promise<T> promise;
     auto future = promise.getFuture();
     auto movePromise = folly::makeMoveWrapper(std::move(promise));

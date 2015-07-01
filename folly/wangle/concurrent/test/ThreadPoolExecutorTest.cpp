@@ -255,17 +255,17 @@ static void futureExecutor() {
       EXPECT_EQ(100, t.value());
     });
   fe.addFuture([] () { return makeFuture(); }).then(
-    [&] (Try<void>&& t) {
+    [&] (Try<Unit>&& t) {
       c++;
       EXPECT_NO_THROW(t.value());
     });
   fe.addFuture([] () { return; }).then(
-    [&] (Try<void>&& t) {
+    [&] (Try<Unit>&& t) {
       c++;
       EXPECT_NO_THROW(t.value());
     });
   fe.addFuture([] () { throw std::runtime_error("oops"); }).then(
-    [&] (Try<void>&& t) {
+    [&] (Try<Unit>&& t) {
       c++;
       EXPECT_THROW(t.value(), std::runtime_error);
     });

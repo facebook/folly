@@ -78,7 +78,7 @@ class AsyncSocketHandler
     detachReadCallback();
   }
 
-  folly::Future<void> write(
+  folly::Future<Unit> write(
       Context* ctx,
       std::unique_ptr<folly::IOBuf> buf) override {
     if (UNLIKELY(!buf)) {
@@ -87,7 +87,7 @@ class AsyncSocketHandler
 
     if (!socket_->good()) {
       VLOG(5) << "socket is closed in write()";
-      return folly::makeFuture<void>(AsyncSocketException(
+      return folly::makeFuture<Unit>(AsyncSocketException(
           AsyncSocketException::AsyncSocketExceptionType::NOT_OPEN,
           "socket is closed in write()"));
     }
@@ -98,7 +98,7 @@ class AsyncSocketHandler
     return future;
   };
 
-  folly::Future<void> close(Context* ctx) override {
+  folly::Future<Unit> close(Context* ctx) override {
     if (socket_) {
       detachReadCallback();
       socket_->closeNow();
@@ -153,7 +153,7 @@ class AsyncSocketHandler
 
    private:
     friend class AsyncSocketHandler;
-    folly::Promise<void> promise_;
+    folly::Promise<Unit> promise_;
   };
 
   folly::IOBufQueue bufQueue_{folly::IOBufQueue::cacheChainLength()};

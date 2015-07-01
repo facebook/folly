@@ -30,7 +30,7 @@ class FileRegion {
   FileRegion(int fd, off_t offset, size_t count)
     : fd_(fd), offset_(offset), count_(count) {}
 
-  Future<void> transferTo(std::shared_ptr<AsyncTransport> transport) {
+  Future<Unit> transferTo(std::shared_ptr<AsyncTransport> transport) {
     auto socket = std::dynamic_pointer_cast<AsyncSocket>(
         transport);
     CHECK(socket);
@@ -56,7 +56,7 @@ class FileRegion {
     }
 
     friend class FileRegion;
-    folly::Promise<void> promise_;
+    folly::Promise<Unit> promise_;
   };
 
   const int fd_;

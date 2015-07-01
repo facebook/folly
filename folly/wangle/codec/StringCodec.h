@@ -37,7 +37,7 @@ class StringCodec : public Handler<std::unique_ptr<IOBuf>, std::string,
     ctx->fireRead(data);
   }
 
-  Future<void> write(Context* ctx, std::string msg) override {
+  Future<Unit> write(Context* ctx, std::string msg) override {
     auto buf = IOBuf::copyBuffer(msg.data(), msg.length());
     return ctx->fireWrite(std::move(buf));
   }

@@ -45,13 +45,13 @@ class MockHandler : public Handler<Rin, Rout, Win, Wout> {
     read_(ctx, msg);
   }
 
-  Future<void> write(Context* ctx, Win msg) override {
+  Future<Unit> write(Context* ctx, Win msg) override {
     return makeFutureWith([&](){
       write_(ctx, msg);
     });
   }
 
-  Future<void> close(Context* ctx) override {
+  Future<Unit> close(Context* ctx) override {
     return makeFutureWith([&](){
       close_(ctx);
     });

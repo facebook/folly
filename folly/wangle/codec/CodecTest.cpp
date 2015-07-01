@@ -44,7 +44,7 @@ class FrameTester
 class BytesReflector
     : public BytesToBytesHandler {
  public:
-  Future<void> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
+  Future<Unit> write(Context* ctx, std::unique_ptr<IOBuf> buf) override {
     IOBufQueue q_(IOBufQueue::cacheChainLength());
     q_.append(std::move(buf));
     ctx->fireRead(q_);

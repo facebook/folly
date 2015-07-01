@@ -53,7 +53,7 @@ struct FutureDAGTest : public testing::Test {
     explicit TestNode(FutureDAGTest* test) {
       func = [this, test] {
         test->order.push_back(handle);
-        return Future<void>();
+        return Future<Unit>();
       };
       handle = test->dag->add(func);
     }
@@ -150,7 +150,7 @@ FutureDAG::FutureFunc makeFutureFunc = []{
 };
 
 FutureDAG::FutureFunc throwFunc = []{
-  return makeFuture<void>(std::runtime_error("oops"));
+  return makeFuture<Unit>(std::runtime_error("oops"));
 };
 
 TEST_F(FutureDAGTest, ThrowBegin) {
@@ -193,11 +193,11 @@ TEST_F(FutureDAGTest, Cycle3) {
 
 TEST_F(FutureDAGTest, DestroyBeforeComplete) {
   auto barrier = std::make_shared<boost::barrier>(2);
-  Future<void> f;
+  Future<Unit> f;
   {
     auto dag = FutureDAG::create();
     auto h1 = dag->add([barrier] {
-      auto p = std::make_shared<Promise<void>>();
+      auto p = std::make_shared<Promise<Unit>>();
       std::thread t([p, barrier]{
         barrier->wait();
         p->setValue();

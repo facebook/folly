@@ -19,10 +19,10 @@ namespace folly { namespace wangle {
 
 class EventBaseHandler : public OutboundBytesToBytesHandler {
  public:
-  folly::Future<void> write(
+  folly::Future<Unit> write(
       Context* ctx,
       std::unique_ptr<folly::IOBuf> buf) override {
-    folly::Future<void> retval;
+    folly::Future<Unit> retval;
     DCHECK(ctx->getTransport());
     DCHECK(ctx->getTransport()->getEventBase());
     ctx->getTransport()->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait([&](){
@@ -31,10 +31,10 @@ class EventBaseHandler : public OutboundBytesToBytesHandler {
     return retval;
   }
 
-  Future<void> close(Context* ctx) override {
+  Future<Unit> close(Context* ctx) override {
     DCHECK(ctx->getTransport());
     DCHECK(ctx->getTransport()->getEventBase());
-    Future<void> retval;
+    Future<Unit> retval;
     ctx->getTransport()->getEventBase()->runImmediatelyOrRunInEventBaseThreadAndWait([&](){
         retval = ctx->fireClose();
     });

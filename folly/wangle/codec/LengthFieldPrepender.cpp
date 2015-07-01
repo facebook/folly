@@ -32,7 +32,7 @@ LengthFieldPrepender::LengthFieldPrepender(
           lengthFieldLength == 8 );
   }
 
-Future<void> LengthFieldPrepender::write(
+Future<Unit> LengthFieldPrepender::write(
     Context* ctx, std::unique_ptr<IOBuf> buf) {
   int length = lengthAdjustment_ + buf->computeChainDataLength();
   if (lengthIncludesLengthField_) {

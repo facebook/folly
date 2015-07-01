@@ -27,7 +27,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   }
 
   typedef size_t Handle;
-  typedef std::function<Future<void>()> FutureFunc;
+  typedef std::function<Future<Unit>()> FutureFunc;
 
   Handle add(FutureFunc func, Executor* executor = nullptr) {
     nodes.emplace_back(std::move(func), executor);
@@ -39,9 +39,9 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
     nodes[a].hasDependents = true;
   }
 
-  Future<void> go() {
+  Future<Unit> go() {
     if (hasCycle()) {
-      return makeFuture<void>(std::runtime_error("Cycle in FutureDAG graph"));
+      return makeFuture<Unit>(std::runtime_error("Cycle in FutureDAG graph"));
     }
     std::vector<Handle> rootNodes;
     std::vector<Handle> leafNodes;
@@ -54,7 +54,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
       }
     }
 
-    auto sinkHandle = add([] { return Future<void>(); });
+    auto sinkHandle = add([] { return Future<Unit>(); });
     for (auto handle : leafNodes) {
       dependency(handle, sinkHandle);
     }
@@ -65,7 +65,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
     }
 
     for (Handle handle = 0; handle < nodes.size() - 1; handle++) {
-      std::vector<Future<void>> dependencies;
+      std::vector<Future<Unit>> dependencies;
       for (auto depHandle : nodes[handle].dependencies) {
         dependencies.push_back(nodes[depHandle].promise.getFuture());
       }
@@ -74,7 +74,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
         .via(nodes[handle].executor)
         .then([this, handle] {
           nodes[handle].func()
-            .then([this, handle] (Try<void>&& t) {
+            .then([this, handle] (Try<Unit>&& t) {
               nodes[handle].promise.setTry(std::move(t));
             });
         })
@@ -139,7 +139,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
 
     FutureFunc func{nullptr};
     Executor* executor{nullptr};
-    SharedPromise<void> promise;
+    SharedPromise<Unit> promise;
     std::vector<Handle> dependencies;
     bool hasDependents{false};
     bool visited{false};
