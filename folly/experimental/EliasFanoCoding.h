@@ -27,15 +27,15 @@
 #include <cstdlib>
 #include <limits>
 #include <type_traits>
-#include <glog/logging.h>
 
 #include <folly/Bits.h>
-#include <folly/CpuId.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
+#include <glog/logging.h>
+
 #ifndef __GNUC__
 #error EliasFanoCoding.h requires GCC
 #endif

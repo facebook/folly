@@ -17,6 +17,8 @@
 #ifndef FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
 #define FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
 
+#include <folly/CpuId.h>
+
 namespace folly { namespace compression { namespace instructions {
 
 // NOTE: It's recommended to compile EF coding with -msse4.2, starting

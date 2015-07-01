@@ -20,51 +20,51 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
-#include <folly/experimental/EliasFanoCoding.h>
+#include <folly/experimental/BitVectorCoding.h>
 #include <folly/experimental/Select64.h>
 #include <folly/experimental/test/CodingTestUtils.h>
 
 using namespace folly::compression;
 
-#ifndef EF_TEST_ARCH
-#define EF_TEST_ARCH Default
-#endif  // EF_TEST_ARCH
+#ifndef BV_TEST_ARCH
+#define BV_TEST_ARCH Default
+#endif // BV_TEST_ARCH
 
-class EliasFanoCodingTest : public ::testing::Test {
+class BitVectorCodingTest : public ::testing::Test {
  public:
   void doTestEmpty() {
-    typedef EliasFanoEncoderV2<uint32_t, size_t> Encoder;
-    typedef EliasFanoReader<Encoder> Reader;
+    typedef BitVectorEncoder<uint32_t, size_t> Encoder;
+    typedef BitVectorReader<Encoder, instructions::BV_TEST_ARCH> Reader;
     testEmpty<Reader, Encoder>();
   }
 
   template <size_t kSkipQuantum, size_t kForwardQuantum>
   void doTestAll() {
-    typedef EliasFanoEncoderV2<
-      uint32_t, uint32_t, kSkipQuantum, kForwardQuantum> Encoder;
-    typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;
+    typedef BitVectorEncoder<uint32_t, uint32_t, kSkipQuantum, kForwardQuantum>
+        Encoder;
+    typedef BitVectorReader<Encoder> Reader;
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
   }
 };
 
-TEST_F(EliasFanoCodingTest, Empty) {
+TEST_F(BitVectorCodingTest, Empty) {
   doTestEmpty();
 }
 
-TEST_F(EliasFanoCodingTest, Simple) {
+TEST_F(BitVectorCodingTest, Simple) {
   doTestAll<0, 0>();
 }
 
-TEST_F(EliasFanoCodingTest, SkipPointers) {
+TEST_F(BitVectorCodingTest, SkipPointers) {
   doTestAll<128, 0>();
 }
 
-TEST_F(EliasFanoCodingTest, ForwardPointers) {
+TEST_F(BitVectorCodingTest, ForwardPointers) {
   doTestAll<0, 128>();
 }
 
-TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
+TEST_F(BitVectorCodingTest, SkipForwardPointers) {
   doTestAll<128, 128>();
 }
 
@@ -72,8 +72,8 @@ namespace bm {
 
 constexpr size_t k1M = 1000000;
 
-typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
-typedef EliasFanoReader<Encoder> Reader;
+typedef BitVectorEncoder<uint32_t, uint32_t, 128, 128> Encoder;
+typedef BitVectorReader<Encoder> Reader;
 
 std::vector<uint32_t> data;
 std::vector<size_t> order;
@@ -97,15 +97,11 @@ void init() {
   encodeLargeData = generateRandomList(1000 * 1000, 100 * 1000 * 1000, gen);
 }
 
-void free() {
-  list.free();
-}
+void free() { list.free(); }
 
-}  // namespace bm
+} // namespace bm
 
-BENCHMARK(Next, iters) {
-  bmNext<bm::Reader>(bm::list, bm::data, iters);
-}
+BENCHMARK(Next, iters) { bmNext<bm::Reader>(bm::list, bm::data, iters); }
 
 size_t Skip_ForwardQ128(size_t iters, size_t logAvgSkip) {
   bmSkip<bm::Reader>(bm::list, bm::data, logAvgSkip, iters);
@@ -157,46 +153,33 @@ BENCHMARK(Encode) {
   list.free();
 }
 
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(Select64, iters) {
-  typedef instructions::EF_TEST_ARCH instr;
-  constexpr uint64_t kPrime = uint64_t(-59);
-  for (uint64_t x = kPrime, i = 0; i < iters; x *= kPrime, i += 1) {
-    size_t w = instr::popcount(x);
-    folly::doNotOptimizeAway(folly::select64<instr>(x, w - 1));
-  }
-}
-
 #if 0
 Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz (turbo off),
-using instructions::Haswell and GCC 4.9 with --bm_min_usec 100000.
+using instructions::Default and GCC 4.8 with --bm_min_usec 100000.
 ============================================================================
-folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
+folly/experimental/test/BitVectorCodingTest.cpp relative  time/iter  iters/s
 ============================================================================
-Next                                                         2.52ns  397.28M
-Skip_ForwardQ128(1)                                          3.92ns  255.28M
-Skip_ForwardQ128(2)                                          5.08ns  197.04M
-Skip_ForwardQ128(4_pm_1)                                     7.04ns  142.02M
-Skip_ForwardQ128(16_pm_4)                                   19.68ns   50.82M
-Skip_ForwardQ128(64_pm_16)                                  27.58ns   36.26M
-Skip_ForwardQ128(256_pm_64)                                 32.49ns   30.78M
-Skip_ForwardQ128(1024_pm_256)                               33.39ns   29.95M
-Jump_ForwardQ128                                            34.05ns   29.37M
+Next                                                         9.59ns  104.25M
+Skip_ForwardQ128(1)                                         11.56ns   86.53M
+Skip_ForwardQ128(2)                                         23.30ns   42.93M
+Skip_ForwardQ128(4_pm_1)                                    52.99ns   18.87M
+Skip_ForwardQ128(16_pm_4)                                  200.85ns    4.98M
+Skip_ForwardQ128(64_pm_16)                                 733.20ns    1.36M
+Skip_ForwardQ128(256_pm_64)                                748.35ns    1.34M
+Skip_ForwardQ128(1024_pm_256)                              742.77ns    1.35M
+Jump_ForwardQ128                                           752.98ns    1.33M
 ----------------------------------------------------------------------------
-SkipTo_SkipQ128(1)                                           4.42ns  226.49M
-SkipTo_SkipQ128(2)                                           8.58ns  116.55M
-SkipTo_SkipQ128(4_pm_1)                                     11.43ns   87.50M
-SkipTo_SkipQ128(16_pm_4)                                    31.19ns   32.06M
-SkipTo_SkipQ128(64_pm_16)                                   43.88ns   22.79M
-SkipTo_SkipQ128(256_pm_64)                                  49.08ns   20.37M
-SkipTo_SkipQ128(1024_pm_256)                                52.24ns   19.14M
-JumpTo_SkipQ128                                             54.61ns   18.31M
+SkipTo_SkipQ128(1)                                          23.47ns   42.62M
+SkipTo_SkipQ128(2)                                          24.48ns   40.85M
+SkipTo_SkipQ128(4_pm_1)                                     22.16ns   45.13M
+SkipTo_SkipQ128(16_pm_4)                                    28.43ns   35.17M
+SkipTo_SkipQ128(64_pm_16)                                   45.51ns   21.97M
+SkipTo_SkipQ128(256_pm_64)                                  44.03ns   22.71M
+SkipTo_SkipQ128(1024_pm_256)                                45.84ns   21.81M
+JumpTo_SkipQ128                                             15.33ns   65.25M
 ----------------------------------------------------------------------------
-Encode_10                                                  117.24ns    8.53M
-Encode                                                       5.64ms   177.15
-----------------------------------------------------------------------------
-Select64                                                     8.04ns  124.35M
+Encode_10                                                    1.60us  624.33K
+Encode                                                      16.98ms    58.89
 ============================================================================
 #endif
 
