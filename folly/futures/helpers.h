@@ -77,13 +77,7 @@ Future<Unit> makeFuture();
 /** Make a completed Future by executing a function. If the function throws
   we capture the exception, otherwise we capture the result. */
 template <class F>
-auto makeFutureWith(
-    F&& func,
-    typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
-    -> Future<typename Unit::Lift<decltype(func())>::type>;
-
-template <class F>
-auto makeFutureWith(F const& func)
+auto makeFutureWith(F&& func)
     -> Future<typename Unit::Lift<decltype(func())>::type>;
 
 /// Make a failed Future from an exception_ptr.

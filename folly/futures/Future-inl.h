@@ -470,25 +470,13 @@ Future<Unit> makeFuture() {
   return makeFuture(Unit{});
 }
 
-// XXX why is the dual necessary here? Can't we just use perfect forwarding
-// and capture func by reference always?
 template <class F>
-auto makeFutureWith(
-    F&& func,
-    typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
+auto makeFutureWith(F&& func)
     -> Future<typename Unit::Lift<decltype(func())>::type> {
   using LiftedResult = typename Unit::Lift<decltype(func())>::type;
-  return makeFuture<LiftedResult>(makeTryWith([&func]() {
-    return (func)();
+  return makeFuture<LiftedResult>(makeTryWith([&func]() mutable {
+    return func();
   }));
-}
-
-template <class F>
-auto makeFutureWith(F const& func)
-    -> Future<typename Unit::Lift<decltype(func())>::type> {
-  F copy = func;
-  using LiftedResult = typename Unit::Lift<decltype(func())>::type;
-  return makeFuture<LiftedResult>(makeTryWith(std::move(copy)));
 }
 
 template <class T>
