@@ -24,7 +24,7 @@ template <class> class Promise;
 
 template <typename T>
 struct isFuture : std::false_type {
-  typedef T Inner;
+  using Inner = typename Unit::Lift<T>::type;
 };
 
 template <typename T>
@@ -63,7 +63,7 @@ struct ArgType<> {
 
 template <bool isTry, typename F, typename... Args>
 struct argResult {
-  typedef resultOf<F, Args...> Result;
+  using Result = resultOf<F, Args...>;
 };
 
 template<typename F, typename... Args>
@@ -96,19 +96,6 @@ struct callableResult {
           callableWith<F, Try<T>&&>::value,
           detail::argResult<true, F, Try<T>&&>,
           detail::argResult<true, F, Try<T>&>>::type>::type>::type>::type Arg;
-  typedef isFuture<typename Arg::Result> ReturnsFuture;
-  typedef Future<typename ReturnsFuture::Inner> Return;
-};
-
-template<typename F>
-struct callableResult<void, F> {
-  typedef typename std::conditional<
-    callableWith<F>::value,
-    detail::argResult<false, F>,
-    typename std::conditional<
-      callableWith<F, Try<void>&&>::value,
-      detail::argResult<true, F, Try<void>&&>,
-      detail::argResult<true, F, Try<void>&>>::type>::type Arg;
   typedef isFuture<typename Arg::Result> ReturnsFuture;
   typedef Future<typename ReturnsFuture::Inner> Return;
 };

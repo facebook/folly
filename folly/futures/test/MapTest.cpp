@@ -31,7 +31,7 @@ TEST(Map, basic) {
   fs.push_back(p3.getFuture());
 
   int c = 0;
-  std::vector<Future<void>> fs2 = futures::map(fs, [&](int i){
+  std::vector<Future<Unit>> fs2 = futures::map(fs, [&](int i){
     c += i;
   });
 

@@ -24,5 +24,5 @@ using namespace folly;
 TEST(Core, size) {
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_EQ(192, sizeof(detail::Core<void>));
+  EXPECT_EQ(192, sizeof(detail::Core<Unit>));
 }

@@ -87,14 +87,14 @@ TEST(Collect, collectAll) {
 
   // check that futures are ready in then()
   {
-    std::vector<Promise<void>> promises(10);
-    std::vector<Future<void>> futures;
+    std::vector<Promise<Unit>> promises(10);
+    std::vector<Future<Unit>> futures;
 
     for (auto& p : promises)
       futures.push_back(p.getFuture());
 
     auto allf = collectAll(futures)
-      .then([](Try<std::vector<Try<void>>>&& ts) {
+      .then([](Try<std::vector<Try<Unit>>>&& ts) {
         for (auto& f : ts.value())
           f.value();
       });
@@ -166,8 +166,8 @@ TEST(Collect, collect) {
 
   // void futures success case
   {
-    std::vector<Promise<void>> promises(10);
-    std::vector<Future<void>> futures;
+    std::vector<Promise<Unit>> promises(10);
+    std::vector<Future<Unit>> futures;
 
     for (auto& p : promises)
       futures.push_back(p.getFuture());
@@ -185,8 +185,8 @@ TEST(Collect, collect) {
 
   // void futures failure case
   {
-    std::vector<Promise<void>> promises(10);
-    std::vector<Future<void>> futures;
+    std::vector<Promise<Unit>> promises(10);
+    std::vector<Future<Unit>> futures;
 
     for (auto& p : promises)
       futures.push_back(p.getFuture());
@@ -294,8 +294,8 @@ TEST(Collect, collectAny) {
 
   // error
   {
-    std::vector<Promise<void>> promises(10);
-    std::vector<Future<void>> futures;
+    std::vector<Promise<Unit>> promises(10);
+    std::vector<Future<Unit>> futures;
 
     for (auto& p : promises)
       futures.push_back(p.getFuture());
@@ -334,12 +334,12 @@ TEST(Collect, collectAny) {
 
 TEST(Collect, alreadyCompleted) {
   {
-    std::vector<Future<void>> fs;
+    std::vector<Future<Unit>> fs;
     for (int i = 0; i < 10; i++)
       fs.push_back(makeFuture());
 
     collectAll(fs)
-      .then([&](std::vector<Try<void>> ts) {
+      .then([&](std::vector<Try<Unit>> ts) {
         EXPECT_EQ(fs.size(), ts.size());
       });
   }
@@ -484,8 +484,8 @@ TEST(Collect, allParallelWithError) {
 }
 
 TEST(Collect, collectN) {
-  std::vector<Promise<void>> promises(10);
-  std::vector<Future<void>> futures;
+  std::vector<Promise<Unit>> promises(10);
+  std::vector<Future<Unit>> futures;
 
   for (auto& p : promises)
     futures.push_back(p.getFuture());
@@ -493,7 +493,7 @@ TEST(Collect, collectN) {
   bool flag = false;
   size_t n = 3;
   collectN(futures, n)
-    .then([&](std::vector<std::pair<size_t, Try<void>>> v) {
+    .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
       flag = true;
       EXPECT_EQ(n, v.size());
       for (auto& tt : v)
@@ -510,13 +510,13 @@ TEST(Collect, collectN) {
 
 /// Ensure that we can compile collectAll/Any with folly::small_vector
 TEST(Collect, smallVector) {
-  static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<void>),
+  static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<Unit>),
                 "Futures should not be trivially copyable");
   static_assert(!FOLLY_IS_TRIVIALLY_COPYABLE(Future<int>),
                 "Futures should not be trivially copyable");
 
   {
-    folly::small_vector<Future<void>> futures;
+    folly::small_vector<Future<Unit>> futures;
 
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());
@@ -524,7 +524,7 @@ TEST(Collect, smallVector) {
     auto anyf = collectAny(futures);
   }
   {
-    folly::small_vector<Future<void>> futures;
+    folly::small_vector<Future<Unit>> futures;
 
     for (int i = 0; i < 10; i++)
       futures.push_back(makeFuture());

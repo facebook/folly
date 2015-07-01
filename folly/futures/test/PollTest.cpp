@@ -34,7 +34,7 @@ TEST(Poll, notReady) {
 }
 
 TEST(Poll, exception) {
-  Promise<void> p;
+  Promise<Unit> p;
   auto f = p.getFuture();
   p.setWith([] { throw std::runtime_error("Runtime"); });
   EXPECT_TRUE(f.poll().value().hasException());

@@ -34,7 +34,7 @@ TEST(Wait, waitImmediate) {
   EXPECT_EQ(v.size(), done_v.size());
   EXPECT_EQ(v, done_v);
 
-  vector<Future<void>> v_f;
+  vector<Future<Unit>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
   auto done_v_f = collectAll(v_f).wait().value();
@@ -169,7 +169,7 @@ TEST(Wait, waitWithDuration) {
  }
 
  {
-   Promise<void> p;
+   Promise<Unit> p;
    auto start = std::chrono::steady_clock::now();
    auto f = p.getFuture().wait(milliseconds(100));
    auto elapsed = std::chrono::steady_clock::now() - start;
@@ -182,7 +182,7 @@ TEST(Wait, waitWithDuration) {
  {
    // Try to trigger the race where the resultant Future is not yet complete
    // even if we didn't hit the timeout, and make sure we deal with it properly
-   Promise<void> p;
+   Promise<Unit> p;
    folly::Baton<> b;
    auto t = std::thread([&]{
      b.post();

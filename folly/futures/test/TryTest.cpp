@@ -36,7 +36,7 @@ TEST(Try, basic) {
   A a(5);
   Try<A> t_a(std::move(a));
 
-  Try<void> t_void;
+  Try<Unit> t_void;
 
   EXPECT_EQ(5, t_a.value().x());
 }

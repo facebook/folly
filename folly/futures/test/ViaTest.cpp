@@ -124,7 +124,7 @@ TEST(Via, thenFunction) {
 
 TEST_F(ViaFixture, threadHops) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get()).then([=](Try<void>&& t) {
+  auto f = via(eastExecutor.get()).then([=](Try<Unit>&& t) {
     EXPECT_NE(std::this_thread::get_id(), westThreadId);
     return makeFuture<int>(1);
   }).via(westExecutor.get()
@@ -283,7 +283,7 @@ TEST(Via, then2) {
 }
 
 TEST(Via, then2Variadic) {
-  struct Foo { bool a = false; void foo(Try<void>) { a = true; } };
+  struct Foo { bool a = false; void foo(Try<Unit>) { a = true; } };
   Foo f;
   ManualExecutor x;
   makeFuture().then(&x, &Foo::foo, &f);
@@ -345,14 +345,14 @@ TEST(Via, callbackRace) {
   ThreadExecutor x;
 
   auto fn = [&x]{
-    auto promises = std::make_shared<std::vector<Promise<void>>>(4);
-    std::vector<Future<void>> futures;
+    auto promises = std::make_shared<std::vector<Promise<Unit>>>(4);
+    std::vector<Future<Unit>> futures;
 
     for (auto& p : *promises) {
       futures.emplace_back(
         p.getFuture()
         .via(&x)
-        .then([](Try<void>&&){}));
+        .then([](Try<Unit>&&){}));
     }
 
     x.waitForStartup();
@@ -424,16 +424,16 @@ TEST(Via, waitVia) {
 
 TEST(Via, viaRaces) {
   ManualExecutor x;
-  Promise<void> p;
+  Promise<Unit> p;
   auto tid = std::this_thread::get_id();
   bool done = false;
 
   std::thread t1([&] {
     p.getFuture()
       .via(&x)
-      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
-      .then([&](Try<void>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
-      .then([&](Try<void>&&) { done = true; });
+      .then([&](Try<Unit>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<Unit>&&) { EXPECT_EQ(tid, std::this_thread::get_id()); })
+      .then([&](Try<Unit>&&) { done = true; });
   });
 
   std::thread t2([&] {
@@ -448,7 +448,7 @@ TEST(Via, viaRaces) {
 TEST(ViaFunc, liftsVoid) {
   ManualExecutor x;
   int count = 0;
-  Future<void> f = via(&x, [&]{ count++; });
+  Future<Unit> f = via(&x, [&]{ count++; });
 
   EXPECT_EQ(0, count);
   x.run();

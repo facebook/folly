@@ -62,7 +62,7 @@ class Future {
 
   template <class T2 = T, typename =
             typename std::enable_if<
-              folly::is_void_or_unit<T2>::value>::type>
+              std::is_same<Unit, T2>::value>::type>
   Future();
 
   ~Future();
@@ -202,9 +202,9 @@ class Future {
     -> decltype(this->then(std::forward<Arg>(arg),
                            std::forward<Args>(args)...));
 
-  /// Convenience method for ignoring the value and creating a Future<void>.
+  /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
-  Future<void> then();
+  Future<Unit> then();
 
   /// Set an error callback for this Future. The callback should take a single
   /// argument of the type that you want to catch, and should return a value of

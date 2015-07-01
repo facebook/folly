@@ -320,11 +320,11 @@ TEST(Future, thenTry) {
     .then([&](Try<int>&& t) { flag = true; EXPECT_EQ(42, t.value()); });
   EXPECT_TRUE(flag); flag = false;
 
-  makeFuture().then([&](Try<void>&& t) { flag = true; t.value(); });
+  makeFuture().then([&](Try<Unit>&& t) { flag = true; t.value(); });
   EXPECT_TRUE(flag); flag = false;
 
-  Promise<void> p;
-  auto f = p.getFuture().then([&](Try<void>&& t) { flag = true; });
+  Promise<Unit> p;
+  auto f = p.getFuture().then([&](Try<Unit>&& t) { flag = true; });
   EXPECT_FALSE(flag);
   EXPECT_FALSE(f.isReady());
   p.setValue();
@@ -353,7 +353,7 @@ TEST(Future, thenValue) {
   auto f = makeFuture<int>(eggs).then([&](int i){});
   EXPECT_THROW(f.value(), eggs_t);
 
-  f = makeFuture<void>(eggs).then([&]{});
+  f = makeFuture<Unit>(eggs).then([&]{});
   EXPECT_THROW(f.value(), eggs_t);
 }
 
@@ -366,7 +366,7 @@ TEST(Future, thenValueFuture) {
 
   makeFuture()
     .then([]{ return makeFuture(); })
-    .then([&](Try<void>&& t) { flag = true; });
+    .then([&](Try<Unit>&& t) { flag = true; });
   EXPECT_TRUE(flag); flag = false;
 }
 
@@ -505,7 +505,7 @@ TEST(Future, makeFuture) {
   EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
   EXPECT_THROW(makeFutureWith(failfun).value(), eggs_t);
 
-  EXPECT_TYPE(makeFuture(), Future<void>);
+  EXPECT_TYPE(makeFuture(), Future<Unit>);
 }
 
 TEST(Future, finish) {
@@ -568,18 +568,18 @@ TEST(Future, unwrap) {
 TEST(Future, throwCaughtInImmediateThen) {
   // Neither of these should throw "Promise already satisfied"
   makeFuture().then(
-    [=](Try<void>&&) -> int { throw std::exception(); });
+    [=](Try<Unit>&&) -> int { throw std::exception(); });
   makeFuture().then(
-    [=](Try<void>&&) -> Future<int> { throw std::exception(); });
+    [=](Try<Unit>&&) -> Future<int> { throw std::exception(); });
 }
 
 TEST(Future, throwIfFailed) {
-  makeFuture<void>(eggs)
-    .then([=](Try<void>&& t) {
+  makeFuture<Unit>(eggs)
+    .then([=](Try<Unit>&& t) {
       EXPECT_THROW(t.throwIfFailed(), eggs_t);
     });
   makeFuture()
-    .then([=](Try<void>&& t) {
+    .then([=](Try<Unit>&& t) {
       EXPECT_NO_THROW(t.throwIfFailed());
     });
 
@@ -600,7 +600,7 @@ TEST(Future, getFutureAfterSetValue) {
 }
 
 TEST(Future, getFutureAfterSetException) {
-  Promise<void> p;
+  Promise<Unit> p;
   p.setWith([]() -> void { throw std::logic_error("foo"); });
   EXPECT_THROW(p.getFuture().value(), std::logic_error);
 }
@@ -655,7 +655,7 @@ TEST(Future, CircularDependencySharedPtrSelfReset) {
 TEST(Future, Constructor) {
   auto f1 = []() -> Future<int> { return Future<int>(3); }();
   EXPECT_EQ(f1.value(), 3);
-  auto f2 = []() -> Future<void> { return Future<void>(); }();
+  auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
   EXPECT_NO_THROW(f2.value());
 }
 
@@ -664,7 +664,7 @@ TEST(Future, ImplicitConstructor) {
   EXPECT_EQ(f1.value(), 3);
   // Unfortunately, the C++ standard does not allow the
   // following implicit conversion to work:
-  //auto f2 = []() -> Future<void> { }();
+  //auto f2 = []() -> Future<Unit> { }();
 }
 
 TEST(Future, thenDynamic) {
@@ -733,4 +733,8 @@ TEST(Future, RequestContext) {
   RequestContext::create();
   p1.setValue(3);
   p2.setValue(4);
+}
+
+TEST(Future, makeFutureNoThrow) {
+  makeFuture().value();
 }

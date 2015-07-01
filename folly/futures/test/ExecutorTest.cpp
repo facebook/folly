@@ -95,7 +95,7 @@ TEST(ManualExecutor, waitForDoesNotDeadlock) {
   folly::Baton<> baton;
   auto f = makeFuture()
     .via(&east)
-    .then([](Try<void>){ return makeFuture(); })
+    .then([](Try<Unit>){ return makeFuture(); })
     .via(&west);
   std::thread t([&]{
     baton.post();
@@ -162,7 +162,7 @@ TEST(Executor, RunnablePtr) {
 
 TEST(Executor, ThrowableThen) {
   InlineExecutor x;
-  auto f = Future<void>().via(&x).then([](){
+  auto f = Future<Unit>().via(&x).then([](){
     throw std::runtime_error("Faildog");
   });
   EXPECT_THROW(f.value(), std::exception);

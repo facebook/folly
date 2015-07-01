@@ -170,8 +170,8 @@ BENCHMARK_DRAW_LINE();
 // The old way. Throw an exception, and rethrow to access it upstream.
 void throwAndCatchImpl() {
   makeFuture()
-      .then([](Try<void>&&){ throw std::runtime_error("oh no"); })
-      .then([](Try<void>&& t) {
+      .then([](Try<Unit>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<Unit>&& t) {
         try {
           t.value();
         } catch(const std::runtime_error& e) {
@@ -190,8 +190,8 @@ void throwAndCatchImpl() {
 // will try to wrap, so no exception_ptrs/rethrows are necessary.
 void throwAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<void>&&){ throw std::runtime_error("oh no"); })
-      .then([](Try<void>&& t) {
+      .then([](Try<Unit>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<Unit>&& t) {
         auto caught = t.withException<std::runtime_error>(
             [](const std::runtime_error& e){
               // ...
@@ -203,10 +203,10 @@ void throwAndCatchWrappedImpl() {
 // Better. Wrap an exception, and rethrow to access it upstream.
 void throwWrappedAndCatchImpl() {
   makeFuture()
-      .then([](Try<void>&&){
-        return makeFuture<void>(std::runtime_error("oh no"));
+      .then([](Try<Unit>&&){
+        return makeFuture<Unit>(std::runtime_error("oh no"));
       })
-      .then([](Try<void>&& t) {
+      .then([](Try<Unit>&& t) {
         try {
           t.value();
         } catch(const std::runtime_error& e) {
@@ -220,10 +220,10 @@ void throwWrappedAndCatchImpl() {
 // The new way. Wrap an exception, and access it via the wrapper upstream
 void throwWrappedAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<void>&&){
-        return makeFuture<void>(std::runtime_error("oh no"));
+      .then([](Try<Unit>&&){
+        return makeFuture<Unit>(std::runtime_error("oh no"));
       })
-      .then([](Try<void>&& t){
+      .then([](Try<Unit>&& t){
         auto caught = t.withException<std::runtime_error>(
             [](const std::runtime_error& e){
               // ...

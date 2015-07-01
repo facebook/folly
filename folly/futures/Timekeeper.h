@@ -17,13 +17,14 @@
 #pragma once
 
 #include <folly/futures/detail/Types.h>
+#include <folly/futures/Unit.h>
 
 namespace folly {
 
 template <class> class Future;
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay
-/// promises. The returned Future<void> will either complete after the
+/// promises. The returned Future<Unit> will either complete after the
 /// elapsed time, or in the event of some kind of exceptional error may hold
 /// an exception. These Futures respond to cancellation. If you use a lot of
 /// Delays and many of them ultimately are unneeded (as would be the case for
@@ -34,7 +35,7 @@ template <class> class Future;
 /// use them implicitly behind the scenes by passing a timeout to some Future
 /// operation.
 ///
-/// Although we don't formally alias Delay = Future<void>,
+/// Although we don't formally alias Delay = Future<Unit>,
 /// that's an appropriate term for it. People will probably also call these
 /// Timeouts, and that's ok I guess, but that term is so overloaded I thought
 /// it made sense to introduce a cleaner term.
@@ -54,7 +55,7 @@ class Timekeeper {
   /// This future probably completes on the timer thread. You should almost
   /// certainly follow it with a via() call or the accuracy of other timers
   /// will suffer.
-  virtual Future<void> after(Duration) = 0;
+  virtual Future<Unit> after(Duration) = 0;
 
   /// Returns a future that will complete at the requested time.
   ///
@@ -65,7 +66,7 @@ class Timekeeper {
   /// the system clock but rather execute that many milliseconds in the future
   /// according to the steady clock.
   template <class Clock>
-  Future<void> at(std::chrono::time_point<Clock> when);
+  Future<Unit> at(std::chrono::time_point<Clock> when);
 };
 
 } // namespace folly
@@ -77,7 +78,7 @@ class Timekeeper {
 namespace folly {
 
 template <class Clock>
-Future<void> Timekeeper::at(std::chrono::time_point<Clock> when) {
+Future<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
   auto now = Clock::now();
 
   if (when <= now) {

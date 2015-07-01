@@ -70,7 +70,7 @@ TEST(Promise, setValue) {
   unique_ptr<int> ptr = std::move(fmov.value());
   EXPECT_EQ(42, *ptr);
 
-  Promise<void> v;
+  Promise<Unit> v;
   auto fv = v.getFuture();
   v.setValue();
   EXPECT_TRUE(fv.isReady());
@@ -78,13 +78,13 @@ TEST(Promise, setValue) {
 
 TEST(Promise, setException) {
   {
-    Promise<void> p;
+    Promise<Unit> p;
     auto f = p.getFuture();
     p.setException(eggs);
     EXPECT_THROW(f.value(), eggs_t);
   }
   {
-    Promise<void> p;
+    Promise<Unit> p;
     auto f = p.getFuture();
     try {
       throw eggs;

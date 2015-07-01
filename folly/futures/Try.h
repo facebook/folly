@@ -35,8 +35,7 @@ namespace folly {
  * context. Exceptions are stored as exception_wrappers so that the user can
  * minimize rethrows if so desired.
  *
- * There is a specialization, Try<void>, which represents either success
- * or an exception.
+ * To represent success or a captured exception, use Try<Unit>
  */
 template <class T>
 class Try {
@@ -73,6 +72,12 @@ class Try {
    * @param v The value to move in
    */
   explicit Try(T&& v) : contains_(Contains::VALUE), value_(std::move(v)) {}
+
+  /// Implicit conversion from Try<void> to Try<Unit>
+  template <class T2 = T>
+  /* implicit */
+  Try(typename std::enable_if<std::is_same<Unit, T2>::value,
+                              Try<void> const&>::type t);
 
   /*
    * Construct a Try with an exception_wrapper
@@ -364,7 +369,7 @@ typename std::enable_if<
 makeTryWith(F&& f);
 
 /*
- * Specialization of makeTryWith for void
+ * Specialization of makeTryWith for void return
  *
  * @param f a function to execute and capture the result of
  *

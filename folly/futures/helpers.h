@@ -37,7 +37,7 @@ namespace futures {
   /// The Timekeeper thread will be lazily created the first time it is
   /// needed. If your program never uses any timeouts or other time-based
   /// Futures you will pay no Timekeeper thread overhead.
-  Future<void> sleep(Duration, Timekeeper* = nullptr);
+  Future<Unit> sleep(Duration, Timekeeper* = nullptr);
 
   /**
    * Set func as the callback for each input Future and return a vector of
@@ -72,21 +72,19 @@ template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t);
 
 /** Make a completed void Future. */
-Future<void> makeFuture();
+Future<Unit> makeFuture();
 
 /** Make a completed Future by executing a function. If the function throws
   we capture the exception, otherwise we capture the result. */
 template <class F>
 auto makeFutureWith(
-  F&& func,
-  typename std::enable_if<
-    !std::is_reference<F>::value, bool>::type sdf = false)
-  -> Future<decltype(func())>;
+    F&& func,
+    typename std::enable_if<!std::is_reference<F>::value, bool>::type sdf)
+    -> Future<typename Unit::Lift<decltype(func())>::type>;
 
 template <class F>
-auto makeFutureWith(
-  F const& func)
-  -> Future<decltype(func())>;
+auto makeFutureWith(F const& func)
+    -> Future<typename Unit::Lift<decltype(func())>::type>;
 
 /// Make a failed Future from an exception_ptr.
 /// Because the Future's type cannot be inferred you have to specify it, e.g.
@@ -120,7 +118,7 @@ Future<T> makeFuture(Try<T>&& t);
  *
  * @returns a void Future that will call back on the given executor
  */
-inline Future<void> via(
+inline Future<Unit> via(
     Executor* executor,
     int8_t priority = Executor::MID_PRI);
 

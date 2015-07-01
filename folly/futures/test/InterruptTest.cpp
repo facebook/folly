@@ -23,7 +23,7 @@ using namespace folly;
 
 TEST(Interrupt, raise) {
   std::runtime_error eggs("eggs");
-  Promise<void> p;
+  Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
     EXPECT_THROW(e.throwException(), decltype(eggs));
   });
@@ -31,7 +31,7 @@ TEST(Interrupt, raise) {
 }
 
 TEST(Interrupt, cancel) {
-  Promise<void> p;
+  Promise<Unit> p;
   p.setInterruptHandler([&](const exception_wrapper& e) {
     EXPECT_THROW(e.throwException(), FutureCancellation);
   });
@@ -55,7 +55,7 @@ TEST(Interrupt, interruptThenHandle) {
 }
 
 TEST(Interrupt, interruptAfterFulfilNoop) {
-  Promise<void> p;
+  Promise<Unit> p;
   bool flag = false;
   p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
   p.setValue();
@@ -64,7 +64,7 @@ TEST(Interrupt, interruptAfterFulfilNoop) {
 }
 
 TEST(Interrupt, secondInterruptNoop) {
-  Promise<void> p;
+  Promise<Unit> p;
   int count = 0;
   p.setInterruptHandler([&](const exception_wrapper& e) { count++; });
   auto f = p.getFuture();

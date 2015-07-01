@@ -22,8 +22,6 @@ namespace folly {
 /// metaprogramming. So, instead of e.g. Future<void>, we have Future<Unit>.
 /// You can ignore the actual value, and we port some of the syntactic
 /// niceties like setValue() instead of setValue(Unit{}).
-// We will soon return Future<Unit> wherever we currently return Future<void>
-// #6847876
 struct Unit {
   /// Lift type T into Unit. This is the definition for all non-void types.
   template <class T> struct Lift : public std::false_type {

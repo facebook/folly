@@ -57,14 +57,14 @@ TEST(Window, basic) {
     fn(input, 1, 0);
   }
   {
-    // int -> Future<void>
+    // int -> Future<Unit>
     auto res = reduce(
       window(
         std::vector<int>({1, 2, 3}),
         [](int i) { return makeFuture(); },
         2),
       0,
-      [](int sum, const Try<void>& b) {
+      [](int sum, const Try<Unit>& b) {
         EXPECT_TRUE(b.hasValue());
         return sum + 1;
       }).get();

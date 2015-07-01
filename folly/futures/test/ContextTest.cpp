@@ -40,7 +40,7 @@ TEST(Context, basic) {
     std::unique_ptr<TestData>(new TestData(10)));
 
   // Start a future
-  Promise<void> p;
+  Promise<Unit> p;
   auto future = p.getFuture().then([&]{
     // Check that the context followed the future
     EXPECT_TRUE(RequestContext::get() != nullptr);

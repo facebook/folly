@@ -20,7 +20,7 @@
 namespace folly {
 
 // Instantiate the most common Future types to save compile time
-template class Future<void>;
+template class Future<Unit>;
 template class Future<bool>;
 template class Future<int>;
 template class Future<int64_t>;
@@ -31,27 +31,11 @@ template class Future<double>;
 
 namespace folly { namespace futures {
 
-Future<void> sleep(Duration dur, Timekeeper* tk) {
+Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   if (LIKELY(!tk)) {
     tk = detail::getTimekeeperSingleton();
   }
   return tk->after(dur);
-}
-
-}}
-
-namespace folly { namespace detail {
-
-template <>
-CollectContext<void>::~CollectContext() {
-  if (!threw.exchange(true)) {
-    p.setValue();
-  }
-}
-
-template <>
-void CollectContext<void>::setPartialResult(size_t i, Try<void>& t) {
-  // Nothing to do for void
 }
 
 }}
