@@ -169,7 +169,7 @@ TEST(Then, constValue) {
   EXPECT_EQ(future.value(), 23);
 }
 
-TEST(Future, voidThenShouldPropagateExceptions) {
+TEST(Then, voidThenShouldPropagateExceptions) {
   EXPECT_FALSE(makeFuture(42).then().hasException());
   EXPECT_TRUE(makeFuture<int>(std::runtime_error("err"))
              .then().hasException());
