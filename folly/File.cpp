@@ -18,6 +18,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/file.h>
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
