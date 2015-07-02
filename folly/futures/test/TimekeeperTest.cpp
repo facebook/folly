@@ -198,3 +198,16 @@ TEST(Timekeeper, onTimeoutPropagates) {
   EXPECT_TRUE(flag);
 }
 */
+
+TEST_F(TimekeeperFixture, atBeforeNow) {
+  auto f = timeLord_->at(now() - too_long);
+  EXPECT_TRUE(f.isReady());
+  EXPECT_FALSE(f.hasException());
+}
+
+TEST_F(TimekeeperFixture, howToCastDuration) {
+  // I'm not sure whether this rounds up or down but it's irrelevant for the
+  // purpose of this example.
+  auto f = timeLord_->after(std::chrono::duration_cast<Duration>(
+      std::chrono::nanoseconds(1)));
+}

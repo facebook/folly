@@ -46,6 +46,9 @@ template <class> class Future;
 /// over Duration. This makes the code more legible and means you won't be
 /// unpleasantly surprised if we redefine Duration to microseconds, or
 /// something.
+///
+///    timekeeper.after(std::chrono::duration_cast<Duration>(
+///      someNanoseconds))
 class Timekeeper {
  public:
   virtual ~Timekeeper() = default;
@@ -89,7 +92,7 @@ Future<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
     return makeFuture();
   }
 
-  return after(when - now);
+  return after(std::chrono::duration_cast<Duration>(when - now));
 }
 
 } // namespace folly
