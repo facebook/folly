@@ -74,6 +74,8 @@ enum class State : uint8_t {
 /// time there won't be any problems.
 template<typename T>
 class Core {
+  static_assert(!std::is_void<T>::value,
+                "void futures are not supported. Use Unit instead.");
  public:
   /// This must be heap-constructed. There's probably a way to enforce that in
   /// code but since this is just internal detail code and I don't know how
