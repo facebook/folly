@@ -59,6 +59,24 @@ TEST(Unit, liftVoid) {
   EXPECT_TRUE(v);
 }
 
+TEST(Unit, dropInt) {
+  using dropped = typename Unit::Drop<int>;
+  EXPECT_FALSE(dropped::value);
+  EXPECT_TRUE((std::is_same<int, dropped::type>::value));
+}
+
+TEST(Unit, dropUnit) {
+  using dropped = typename Unit::Drop<Unit>;
+  EXPECT_TRUE(dropped::value);
+  EXPECT_TRUE((std::is_void<dropped::type>::value));
+}
+
+TEST(Unit, dropVoid) {
+  using dropped = typename Unit::Drop<void>;
+  EXPECT_TRUE(dropped::value);
+  EXPECT_TRUE((std::is_void<dropped::type>::value));
+}
+
 TEST(Unit, futureToUnit) {
   Future<Unit> fu = makeFuture(42).unit();
   fu.value();

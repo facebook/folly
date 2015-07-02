@@ -27,6 +27,9 @@ struct Unit {
   template <class T> struct Lift : public std::false_type {
     using type = T;
   };
+  template <class T> struct Drop : public std::false_type {
+    using type = T;
+  };
   bool operator==(const Unit& other) const { return true; }
   bool operator!=(const Unit& other) const { return false; }
 };
@@ -41,6 +44,18 @@ struct Unit::Lift<void> : public std::true_type {
 template <>
 struct Unit::Lift<Unit> : public std::true_type {
   using type = Unit;
+};
+
+// Drop Unit into void.
+template <>
+struct Unit::Drop<Unit> : public std::true_type {
+  using type = void;
+};
+
+// Drop void into void (identity).
+template <>
+struct Unit::Drop<void> : public std::true_type {
+  using type = void;
 };
 
 template <class T>
