@@ -1,3 +1,4 @@
+<!-- This file is generated from the Dex guide by fbcode/folly/facebook/futures-update-readme.sh. -->
 <section class="dex_guide"><h1 class="dex_title">Futures</h1><section class="dex_document"><h1></h1><p class="dex_introduction">Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.</p><h2 id="overview">Overview <a href="#overview" class="headerLink">#</a></h2>
 
 <p>Folly Futures is an async C++ framework inspired by <a href="https://twitter.github.io/finagle/guide/Futures.html" target="_blank">Twitter&#039;s Futures</a> implementation in Scala (see also <a href="https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Future.scala" target="_blank">Future.scala</a>, <a href="https://github.com/twitter/util/blob/master/util-core/src/main/scala/com/twitter/util/Promise.scala" target="_blank">Promise.scala</a>, and friends), and loosely builds upon the existing but anemic Futures code found in the C++11 standard (<a href="http://en.cppreference.com/w/cpp/thread/future" target="_blank">std::future</a>) and <a href="http://www.boost.org/doc/libs/1_53_0/doc/html/thread/synchronization.html#thread.synchronization.futures" target="_blank">boost::future</a> (especially &gt;= 1.53.0). 
@@ -36,7 +37,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="no">Future</span> <span class="no">chain</span> <span class="no">made</span>
 <span class="no">fulfilling</span> <span class="no">Promise</span>
 <span class="nf" data-symbol-name="foo">foo</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="no">Promise</span> <span class="no">fulfilled</span></pre></div></section><section class="dex_document"><h1>Brief Guide</h1><p class="dex_introduction"></p><p>This brief guide covers the basics. For a more in-depth coverage skip to <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=19649">More Details</a> or the appropriate section.</p>
+<span class="no">Promise</span> <span class="no">fulfilled</span></pre></div></section><section class="dex_document"><h1>Brief Guide</h1><p class="dex_introduction"></p><p>This brief guide covers the basics. For a more in-depth coverage skip to the appropriate section.</p>
 
 <p>Let&#039;s begin with an example using an imaginary simplified Memcache client interface:</p>
 
@@ -118,7 +119,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
     <span class="k">throw</span> <span class="nf">SomeException</span><span class="p">(</span><span class="s">&quot;No value&quot;</span><span class="p">);</span>
   <span class="p">});</span>
 
-<span class="n">Future</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">fut3</span> <span class="o">=</span> <span class="n">fut2</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span> <span class="n">fut3</span> <span class="o">=</span> <span class="n">fut2</span>
   <span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">string</span> <span class="n">str</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">str</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
   <span class="p">})</span>
@@ -135,7 +136,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p>Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there&#039;s a full memory barrier of some sort. <tt>Future::then</tt> and <tt>Promise::setValue</tt> (and all variants that boil down to those two calls) can be called from different threads. <strong>But</strong>, be warned that you might be surprised about which thread your callback executes on. Let&#039;s consider an example.</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Thread A</span>
-<span class="n">Promise</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Promise</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
 <span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
 
 <span class="c1">// Thread B</span>
@@ -464,7 +465,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="n">makeFuture</span><span class="p">()</span>
   <span class="p">.</span><span class="n">then</span><span class="p">([]{</span>
     <span class="c1">// This will properly wrap the exception</span>
-    <span class="k">return</span> <span class="n">makeFuture</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">));</span>
+    <span class="k">return</span> <span class="n">makeFuture</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;ugh&quot;</span><span class="p">));</span>
   <span class="p">})</span>
   <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">){</span>
     <span class="c1">// ...</span>
@@ -507,7 +508,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="collect">collect() <a href="#collect" class="headerLink">#</a></h2>
 
-<p><tt>collect()</tt> is similar to <tt>collectAll()</tt>, but will terminate early if an exception is raised by any of the input Futures. Therefore, the returned Future is of type <tt>std::vector&lt;T&gt;</tt>, unless <tt>T</tt> is <tt>void</tt>, in which case the returned Future is <tt>void</tt>. Like <tt>collectAll()</tt>, input Futures are moved in and are no longer valid, and the resulting Future&#039;s vector will contain the results of each input Future in the same order they were passed in (if all are successful). For instance:</p>
+<p><tt>collect()</tt> is similar to <tt>collectAll()</tt>, but will terminate early if an exception is raised by any of the input Futures. Therefore, the returned Future is of type <tt>std::vector&lt;T&gt;</tt>. Like <tt>collectAll()</tt>, input Futures are moved in and are no longer valid, and the resulting Future&#039;s vector will contain the results of each input Future in the same order they were passed in (if all are successful). For instance:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&amp;</span> <span class="n">vals</span><span class="p">){</span>
   <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">val</span> <span class="o">:</span> <span class="n">vals</span><span class="p">)</span> <span class="p">{</span>
@@ -521,12 +522,11 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="c1">// Or using a Try:</span>
 <span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">){</span>
  <span class="c1">// ...</span>
-<span class="p">});</span>
-
-<span class="c1">// If fs are void Futures, there&#39;s nothing to take in your callback:</span>
-<span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([]{</span>
-  <span class="c1">// ...</span>
 <span class="p">});</span></pre></div>
+
+<h2 id="collect-variadic">collect() variadic <a href="#collect-variadic" class="headerLink">#</a></h2>
+
+<p>There is also a variadically templated flavor of <tt>collect()</tt> that allows you to mix and match different types of Futures. It returns a <tt>Future&lt;std::tuple&lt;T1, T2, ...&gt;&gt;</tt>.</p>
 
 <h2 id="collectn">collectN() <a href="#collectn" class="headerLink">#</a></h2>
 
@@ -609,7 +609,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="unorderedreduce">unorderedReduce() <a href="#unorderedreduce" class="headerLink">#</a></h2>
 
-<p>Like <tt>reduce()</tt>, but consumes Futures in the collection as soon as they become ready. Use this if your function doesn&#039;t depend on the order of the Futures in the input collection. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp;3a9e894f24a459cbbe626cd23f2ac9e8b4d24e66$1810" target="_blank">tests</a> for examples.</p>
+<p>Like <tt>reduce()</tt>, but consumes Futures in the collection as soon as they become ready. Use this if your function doesn&#039;t depend on the order of the Futures in the input collection. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp#L1810" target="_blank">tests</a> for examples.</p>
 
 <h2 id="window">window() <a href="#window" class="headerLink">#</a></h2>
 
@@ -617,7 +617,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <p>It ensures that at any given time, no more than <tt>n</tt> Futures are being processed.</p>
 
-<p>Combine with <tt>collectAll</tt>, <tt>reduce</tt> or <tt>unorderedReduce</tt>. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp;3a9e894f24a459cbbe626cd23f2ac9e8b4d24e66$693" target="_blank">tests</a> for examples.</p>
+<p>Combine with <tt>collectAll</tt>, <tt>reduce</tt> or <tt>unorderedReduce</tt>. See the <a href="https://github.com/facebook/folly/blob/master/folly/futures/test/FutureTest.cpp#L693" target="_blank">tests</a> for examples.</p>
 
 <h2 id="other-possibilities">Other Possibilities <a href="#other-possibilities" class="headerLink">#</a></h2>
 
@@ -633,7 +633,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p>So what&#039;s the catch? Let&#039;s look at the following example of multithreaded Futures code:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Thread A</span>
-<span class="n">Promise</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
+<span class="n">Promise</span><span class="o">&lt;</span><span class="n">Unit</span><span class="o">&gt;</span> <span class="n">p</span><span class="p">;</span>
 <span class="k">auto</span> <span class="n">f</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">();</span>
 
 <span class="c1">// Thread B</span>
@@ -646,16 +646,18 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="via-to-the-rescue">via() to the rescue <a href="#via-to-the-rescue" class="headerLink">#</a></h2>
 
-<p>Futures have a method called <tt>via()</tt> which takes an <a href="https://github.com/facebook/folly/blob/master/folly/Executor.h$27" target="_blank">Executor</a>. Executor is a simple interface that requires only the existence of an <tt>add(std::function&lt;void()&gt; func)</tt> method which must be thread safe and must execute the provided function somehow, though not necessarily immediately. <tt>via()</tt> guarantees that a callback set on the Future will be executed on the given Executor. For instance:</p>
+<p>Futures have a method called <tt>via()</tt> which takes an <a href="https://github.com/facebook/folly/blob/master/folly/Executor.h#L27" target="_blank">Executor</a>. Executor is a simple interface that requires only the existence of an <tt>add(std::function&lt;void()&gt; func)</tt> method which must be thread safe and must execute the provided function somehow, though not necessarily immediately. <tt>via()</tt> guarantees that a callback set on the Future will be executed on the given Executor. For instance:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">()</span>
-  <span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFutureWith</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
   <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">exe1</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
   <span class="p">.</span><span class="n">via</span><span class="p">(</span><span class="n">exe2</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">z</span><span class="p">);</span></pre></div>
 
 <p>In this example, <tt>y</tt> will be executed on <tt>exe1</tt>, and <tt>z</tt> will be executed on <tt>exe2</tt>. This is a fairly powerful abstraction. It not only solves the above race, but gives you clear, concise, and self-documenting control over your execution model. One common pattern is having different executors for different types of work (e.g. an IO-bound pool spinning on event bases doing your network IO and a CPU-bound thread pool for expensive work) and switching between them with <tt>via()</tt>.</p>
 
-<p>There is also a static function <tt>via()</tt> that creates a completed <tt>Future&lt;void&gt;</tt> that is already set up to call back on the provided Executor.</p>
+<p>There is also a static function <tt>via()</tt> that creates a completed <tt>Future&lt;Unit&gt;</tt> that is already set up to call back on the provided Executor, and <tt>via(Executor&amp;,Func)</tt> returns a Future for executing a function via an executor.</p>
+
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">via</span><span class="p">(</span><span class="n">exe</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">a</span><span class="p">);</span>
+<span class="n">via</span><span class="p">(</span><span class="n">exe</span><span class="p">,</span> <span class="n">a</span><span class="p">).</span><span class="n">then</span><span class="p">(</span><span class="n">b</span><span class="p">);</span></pre></div>
 
 <h2 id="or-pass-an-executor-to-t">Or, pass an Executor to <tt>then()</tt> <a href="#or-pass-an-executor-to-t" class="headerLink">#</a></h2>
 
@@ -668,7 +670,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <ul>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/ThreadPoolExecutor.h" target="_blank">ThreadPoolExecutor</a> is an abstract thread pool implementation that supports resizing, custom thread factories, pool and per-task stats, NUMA awareness, user-defined task expiration, and Codel task expiration. It and its subclasses are under active development. It currently has two implementations:<ul>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/CPUThreadPoolExecutor.h" target="_blank">CPUThreadPoolExecutor</a> is a general purpose thread pool. In addition to the above features, it also supports task priorities.</li>
-<li><a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBaseManager.h" target="_blank">EventBaseManager</a>)</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/IOThreadPoolExecutor.h" target="_blank">IOThreadPoolExecutor</a> is similar to CPUThreadPoolExecutor, but each thread spins on an EventBase (accessible to callbacks via <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBaseManager.h" target="_blank">EventBaseManager</a>)</li>
 </ul></li>
 <li>folly&#039;s <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBase.h" target="_blank">EventBase</a> is an Executor and executes work as a callback in the event loop</li>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank">ManualExecutor</a> only executes work when manually cranked. This is useful for testing.</li>
@@ -676,29 +678,32 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/QueuedImmediateExecutor.h" target="_blank">QueuedImmediateExecutor</a> is similar to InlineExecutor, but work added during callback execution will be queued instead of immediately executed</li>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ScheduledExecutor.h" target="_blank">ScheduledExecutor</a> is a subinterface of Executor that supports scheduled (i.e. delayed) execution. There aren&#039;t many implementations yet, see <a class="remarkup-task" href="https://our.intern.facebook.com/intern/tasks/?t=5924392" target="_blank">T5924392</a></li>
 <li>Thrift&#039;s <a href="https://github.com/facebook/fbthrift/blob/master/thrift/lib/cpp/concurrency/ThreadManager.h" target="_blank">ThreadManager</a> is an Executor but we aim to deprecate it in favor of the aforementioned CPUThreadPoolExecutor</li>
-<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/FutureExecutor.h" target="_blank">FutureExecutor</a> wraps another Executor and provides <tt>Future&lt;T&gt; addFuture(F func)</tt> which returns a Future representing the result of func. This is equivalent to <tt>via(executor).then(func)</tt> and the latter should probably be preferred.</li>
+<li><a href="https://github.com/facebook/folly/blob/master/folly/wangle/concurrent/FutureExecutor.h" target="_blank">FutureExecutor</a> wraps another Executor and provides <tt>Future&lt;T&gt; addFuture(F func)</tt> which returns a Future representing the result of func. This is equivalent to <tt>futures::async(executor, func)</tt> and the latter should probably be preferred.</li>
 </ul></section><section class="dex_document"><h1>Timeouts and related features</h1><p class="dex_introduction">Futures provide a number of timing-related features. Here's an overview.</p><h2 id="timing-implementation">Timing implementation <a href="#timing-implementation" class="headerLink">#</a></h2>
 
 <h3 id="timing-resolution">Timing resolution <a href="#timing-resolution" class="headerLink">#</a></h3>
 
 <p>The functions and methods documented below all take a <tt>Duration</tt>, <a href="https://github.com/facebook/folly/blob/master/folly/futures/detail/Types.h" target="_blank">which is an alias for <tt>std::chrono::milliseconds</tt></a>. Why not allow more granularity? Simply put, we can&#039;t guarantee sub-millisecond resolution and we don&#039;t want to lie to you.</p>
 
+<p>Do not use the <tt>Duration</tt> type directly, that defeats the point of using a <tt>std::chrono::duration</tt> type. Rather, use the appropriate <tt>std::chrono::duration</tt>, e.g. <tt>std::chrono::seconds</tt> or <tt>std::chrono::milliseconds</tt>.</p>
+
 <h3 id="the-timekeeper-interface">The TimeKeeper interface <a href="#the-timekeeper-interface" class="headerLink">#</a></h3>
 
-<p>Most timing-related methods also optionally take a <a href="https://github.com/facebook/folly/blob/master/folly/futures/detail/ThreadWheelTimekeeper.h" target="_blank">default implementation</a> uses a folly::HHWheelTimer in a dedicated EventBase thread to manage timeouts.</p>
+<p>Most timing-related methods also optionally take a <a href="https://github.com/facebook/folly/blob/master/folly/futures/Timekeeper.h#L44" target="_blank"><tt>TimeKeeper</tt></a>. Implement that interface if you&#039;d like control over how Futures timing works under the hood. If you don&#039;t provide a <tt>TimeKeeper</tt>, a default singleton will be lazily created and employed. The <a href="https://github.com/facebook/folly/blob/master/folly/futures/detail/ThreadWheelTimekeeper.h" target="_blank">default implementation</a> uses a folly::HHWheelTimer in a dedicated EventBase thread to manage timeouts.</p>
 
 <h2 id="within">within() <a href="#within" class="headerLink">#</a></h2>
 
 <p><tt>Future&lt;T&gt;::within()</tt> returns a new Future that will complete with the provided exception (by default, a TimedOut exception) if it does not complete within the specified duration. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">using</span> <span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">;</span>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
 
 <span class="c1">// f will complete with a TimedOut exception if the Future returned by foo()</span>
 <span class="c1">// does not complete within 500 ms</span>
-<span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">));</span>
+<span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">));</span>
 
 <span class="c1">// Same deal, but a timeout will trigger the provided exception instead</span>
-<span class="n">f2</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;you took too long!&quot;</span><span class="p">));</span></pre></div>
+<span class="n">f2</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">millseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;you took too long!&quot;</span><span class="p">));</span></pre></div>
 
 <h2 id="ontimeout">onTimeout() <a href="#ontimeout" class="headerLink">#</a></h2>
 
@@ -706,7 +711,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
 <span class="n">foo</span><span class="p">()</span>
-  <span class="p">.</span><span class="n">onTimeout</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="p">[]{</span>
+  <span class="p">.</span><span class="n">onTimeout</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="p">[]{</span>
     <span class="c1">// You must maintain the resultant future&#39;s type</span>
     <span class="c1">// ... handle timeout ...</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
@@ -716,7 +721,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p>The astute reader might notice that this is effectively syntactic sugar for</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">foo</span><span class="p">()</span>
-  <span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">500</span><span class="p">))</span>
+  <span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">))</span>
   <span class="p">.</span><span class="n">onError</span><span class="p">([](</span><span class="k">const</span> <span class="n">TimedOut</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
     <span class="c1">// handle timeout</span>
     <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
@@ -730,19 +735,19 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">foo</span><span class="p">();</span>
 <span class="c1">// Will throw TimedOut if the Future doesn&#39;t complete within one second of</span>
 <span class="c1">// the get() call</span>
-<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">get</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span>
+<span class="kt">int</span> <span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">get</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span>
 
 <span class="c1">// If the Future doesn&#39;t complete within one second, f will remain</span>
 <span class="c1">// incomplete. That is, if a timeout occurs, it&#39;s as if wait() was</span>
 <span class="c1">// never called.</span>
-<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">wait</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span></pre></div>
+<span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">wait</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span></pre></div>
 
 <h2 id="delayed">delayed() <a href="#delayed" class="headerLink">#</a></h2>
 
 <p><tt>Future&lt;T&gt;::delayed()</tt> returns a new Future whose completion is delayed for at least the specified duration. For example:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">()</span>
-  <span class="p">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">))</span>
+  <span class="p">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">))</span>
   <span class="p">.</span><span class="n">then</span><span class="p">([]{</span>
     <span class="c1">// This will be executed when the original Future has completed or when</span>
     <span class="c1">// 1000ms has elapsed, whichever comes last.</span>
@@ -750,9 +755,9 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="futures-sleep">futures::sleep() <a href="#futures-sleep" class="headerLink">#</a></h2>
 
-<p><tt>sleep()</tt> returns a void Future that will complete after the specified duration. For example:</p>
+<p><tt>sleep()</tt> returns a <tt>Future&lt;Unit&gt;</tt> that will complete after the specified duration. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">futures</span><span class="o">::</span><span class="n">sleep</span><span class="p">(</span><span class="n">Duration</span><span class="p">(</span><span class="mi">1000</span><span class="p">)).</span><span class="n">then</span><span class="p">([]{</span>
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">futures</span><span class="o">::</span><span class="n">sleep</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)).</span><span class="n">then</span><span class="p">([]{</span>
   <span class="c1">// This will be executed after 1000ms</span>
 <span class="p">});</span></pre></div></section><section class="dex_document"><h1>Interrupts and Cancellations</h1><p class="dex_introduction">Interrupts are a mechanism for Future holders to send a signal to Promise holders. Here's how to use them.</p><p>Let&#039;s say that your Futures code kicks off some long, expensive operation in another thread. A short while later, something comes up that obviates the need for the result of that operation. Are those resources gone forever? Not necessarily. Enter interrupts.</p>
 
@@ -794,7 +799,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">).</span><span class="n">value</span><span class="p">());</span>
 <span class="n">EXPECT_FALSE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">8</span><span class="p">).</span><span class="n">value</span><span class="p">());</span></pre></div>
 
-<p>But what if <tt>isPrime()</tt> is asynchronous (e.g. makes an async call to another service that computes primeness)? It&#039;s now likely that you&#039;ll call <tt>value()</tt> before the Future is complete, which will throw a <a href="https://github.com/facebook/folly/blob/master/folly/futures/FutureException.h$66" target="_blank"><tt>FutureNotReady</tt></a> exception.</p>
+<p>But what if <tt>isPrime()</tt> is asynchronous (e.g. makes an async call to another service that computes primeness)? It&#039;s now likely that you&#039;ll call <tt>value()</tt> before the Future is complete, which will throw a <a href="https://github.com/facebook/folly/blob/master/folly/futures/FutureException.h#L66" target="_blank"><tt>FutureNotReady</tt></a> exception.</p>
 
 <p>A naive approach is to spin until the Future is complete:</p>
 
@@ -825,7 +830,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h3 id="getvia-and-waitvia">getVia() and waitVia() <a href="#getvia-and-waitvia" class="headerLink">#</a></h3>
 
-<p><tt>T Future&lt;T&gt;::getVia(DrivableExecutor*)</tt> and <tt>Future&lt;T&gt; Future&lt;T&gt;::waitVia(DrivableExecutor*)</tt> have the same semantics as <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor until the Future is complete. <a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank"><tt>ManualExecutor</tt></a>. These are simple but useful sugar for the following common pattern:</p>
+<p><tt>T Future&lt;T&gt;::getVia(DrivableExecutor*)</tt> and <tt>Future&lt;T&gt; Future&lt;T&gt;::waitVia(DrivableExecutor*)</tt> have the same semantics as <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor until the Future is complete. <a href="https://github.com/facebook/folly/blob/master/folly/futures/DrivableExecutor.h" target="_blank"><tt>DrivableExecutor</tt></a> is a simple subinterface of <tt>Executor</tt> that requires the presence of a method <tt>drive()</tt> which can somehow make progress on the Executor&#039;s work. Two commonly helpful implementations are <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBase.h" target="_blank"><tt>EventBase</tt></a> (where <tt>drive()</tt> loops on the EventBase) and <a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank"><tt>ManualExecutor</tt></a>. These are simple but useful sugar for the following common pattern:</p>
 
 <p>Given this:</p>
 
@@ -959,12 +964,12 @@ if you are really sure you need to get more fancy, put on your wizard hat and go
 
 <p>Monads must also satisfy these three axioms:</p>
 
-<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code">-- Left Identity
-unit a `bind` f &#x2261; f a
--- Right Identity
-m `bind` unit &#x2261; m
--- Associativity
-(m `bind` f) `bind` g &#x2261; m `bind` (\x -&gt; f x `bind` g)</pre></div>
+<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code"><span class="c1">-- Left Identity</span>
+<span class="nf">unit</span> <span class="n">a</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="n">f</span> <span class="err">≡</span> <span class="n">f</span> <span class="n">a</span>
+<span class="c1">-- Right Identity</span>
+<span class="nf">m</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="n">unit</span> <span class="err">≡</span> <span class="n">m</span>
+<span class="c1">-- Associativity</span>
+<span class="p">(</span><span class="n">m</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="n">f</span><span class="p">)</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="n">g</span> <span class="err">≡</span> <span class="n">m</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="p">(</span><span class="nf">\</span><span class="n">x</span> <span class="ow">-&gt;</span> <span class="n">f</span> <span class="n">x</span> <span class="p">`</span><span class="n">bind</span><span class="p">`</span> <span class="n">g</span><span class="p">)</span></pre></div>
 
 <p>I won&#039;t try to explain that, there are <a href="http://lmgtfy.com/?q=what+the+hell+is+a+monad%3F" target="_blank">many blog posts and wiki pages that try to do that</a>. Instead, I&#039;ll substitute the equivalent Future monad expressions, and the whole thing will (probably) start to make sense. First, a simplified Future type:</p>
 
@@ -1014,30 +1019,34 @@ m `bind` unit &#x2261; m
 <p>If &quot;associative&quot; doesn&#039;t look associative to you, then you are very astute. Congratulations! You win a maths unicorn.
 The three laws refer to a different formulation of the axioms, in terms of the Kleisli Composition operator (<tt>&gt;=&gt;</tt>), which basically says compose two monad-making functions in the obvious way.</p>
 
-<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code">(&gt;=&gt;) :: Monad m =&gt; (a -&gt; m b) -&gt; (b -&gt; m c) -&gt; a -&gt; m c
+<div class="remarkup-code-block" data-code-lang="hs"><pre class="remarkup-code"><span class="p">(</span><span class="o">&gt;=&gt;</span><span class="p">)</span> <span class="ow">::</span> <span class="kt">Monad</span> <span class="n">m</span> <span class="ow">=&gt;</span> <span class="p">(</span><span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">b</span><span class="p">)</span> <span class="ow">-&gt;</span> <span class="p">(</span><span class="n">b</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">c</span><span class="p">)</span> <span class="ow">-&gt;</span> <span class="n">a</span> <span class="ow">-&gt;</span> <span class="n">m</span> <span class="n">c</span>
 
--- Left Identity
-unit &gt;=&gt; g &#x2261; g
--- Right Identity
-f &gt;=&gt; unit &#x2261; f
--- Associativity
-(f &gt;=&gt; g) &gt;=&gt; h &#x2261; f &gt;=&gt; (g &gt;=&gt; h)</pre></div>
+<span class="c1">-- Left Identity</span>
+<span class="nf">unit</span> <span class="o">&gt;=&gt;</span> <span class="n">g</span> <span class="err">≡</span> <span class="n">g</span>
+<span class="c1">-- Right Identity</span>
+<span class="nf">f</span> <span class="o">&gt;=&gt;</span> <span class="n">unit</span> <span class="err">≡</span> <span class="n">f</span>
+<span class="c1">-- Associativity</span>
+<span class="p">(</span><span class="n">f</span> <span class="o">&gt;=&gt;</span> <span class="n">g</span><span class="p">)</span> <span class="o">&gt;=&gt;</span> <span class="n">h</span> <span class="err">≡</span> <span class="n">f</span> <span class="o">&gt;=&gt;</span> <span class="p">(</span><span class="n">g</span> <span class="o">&gt;=&gt;</span> <span class="n">h</span><span class="p">)</span></pre></div>
 
 <p>We accidentally implemented this operator, and called it <tt>chain</tt>. Then we removed it in favor of <tt>Future::thenMulti</tt>. But it totally existed, so use your imagination:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code">// Left Identity
-chain(makeFuture, g) &#x2261; g
-// Right Identity
-chain(f, makeFuture) &#x2261; f
-// Associativity
-chain(chain(f, g), h) &#x2261; chain(f, chain(g, h)) // and chain(f, g, h)</pre></div>
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="c1">// Left Identity</span>
+<span class="n">chain</span><span class="p">(</span><span class="n">makeFuture</span><span class="p">,</span> <span class="n">g</span><span class="p">)</span> <span class="err">≡</span> <span class="n">g</span>
+<span class="c1">// Right Identity</span>
+<span class="n">chain</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">makeFuture</span><span class="p">)</span> <span class="err">≡</span> <span class="n">f</span>
+<span class="c1">// Associativity</span>
+<span class="n">chain</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">g</span><span class="p">),</span> <span class="n">h</span><span class="p">)</span> <span class="err">≡</span> <span class="n">chain</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">chain</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span> <span class="c1">// and chain(f, g, h)</span></pre></div>
 
 <h3 id="further-reading">Further reading <a href="#further-reading" class="headerLink">#</a></h3>
 
 <ul>
 <li><a href="https://wiki.haskell.org/Monad_laws" target="_blank">https://wiki.haskell.org/Monad_laws</a></li>
 <li><a href="http://learnyouahaskell.com/a-fistful-of-monads" target="_blank">http://learnyouahaskell.com/a-fistful-of-monads</a></li>
-</ul></section><section class="dex_document"><h1>FAQ</h1><p class="dex_introduction"></p><h2 id="why-not-use-std-future">Why not use <tt>std::future</tt>? <a href="#why-not-use-std-future" class="headerLink">#</a></h2>
+</ul></section><section class="dex_document"><h1>FAQ</h1><p class="dex_introduction"></p><h2 id="what-s-this-unit-thing-i">What&#039;s this <tt>Unit</tt> thing? I&#039;m confused. <a href="#what-s-this-unit-thing-i" class="headerLink">#</a></h2>
+
+<p>If your callback returns <tt>void</tt>, it will result in a <tt>Future&lt;Unit&gt;</tt>. <tt>Future&lt;void&gt;</tt> is illegal. All you need to know is, if you would expect a <tt>Future&lt;void&gt;</tt> or <tt>Promise&lt;void&gt;</tt> or <tt>Try&lt;void&gt;</tt>, type <tt>Unit</tt> instead of <tt>void</tt>.</p>
+
+<h2 id="why-not-use-std-future">Why not use <tt>std::future</tt>? <a href="#why-not-use-std-future" class="headerLink">#</a></h2>
 
 <p>No callback support. See also <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf" target="_blank">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3428.pdf</a></p>
 
@@ -1057,9 +1066,8 @@ chain(chain(f, g), h) &#x2261; chain(f, chain(g, h)) // and chain(f, g, h)</pre>
 
 <p>People mean two things here, they either mean using continuations (as in CSP) or they mean using generators which require continuations. It&#039;s important to know those are two distinct questions, but in our context the answer is the same because continuations are a prerequisite for generators.</p>
 
-<p>C++ doesn&#039;t directly support continuations very well. But there are some ways to do them in C/C++ that rely on some rather low-level facilities like <tt>setjmp</tt> and <tt>longjmp</tt> (among others). So yes, they are possible (cf. <a href="https://github.com/ccutrer/mordor" target="_blank">Mordor</a> and [[folly/experimental/fibers|
-<a href="https://github.com/facebook/folly/tree/master/folly/experimental/fibers]]" target="_blank">https://github.com/facebook/folly/tree/master/folly/experimental/fibers]]</a>).</p>
+<p>C++ doesn&#039;t directly support continuations very well. But there are some ways to do them in C/C++ that rely on some rather low-level facilities like <tt>setjmp</tt> and <tt>longjmp</tt> (among others). So yes, they are possible (cf. <a href="https://github.com/ccutrer/mordor" target="_blank">Mordor</a> and <a href="https://github.com/facebook/folly/tree/master/folly/experimental/fibers" target="_blank">folly/experimental/fibers</a>).</p>
 
 <p>The tradeoff is memory. Each continuation has a stack, and that stack is usually fixed-size and has to be big enough to support whatever ordinary computation you might want to do on it. So each living continuation requires a relatively large amount of memory. If you know the number of continuations will be small, this might be a good fit. In particular, it might be faster, the code might read cleaner, and debugging stack traces might be much easier.</p>
 
-<p>Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn&#039;t claim to be the best model for all situations. Use your tools wisely.</p></section>
+<p>Futures takes the middle road between callback hell and continuations, one which has been trodden and proved useful in other languages. It doesn&#039;t claim to be the best model for all situations. Use your tools wisely.</p></section></section>
