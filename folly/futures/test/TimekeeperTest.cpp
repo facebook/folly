@@ -21,7 +21,9 @@
 #include <unistd.h>
 
 using namespace folly;
+using std::chrono::milliseconds;
 
+std::chrono::milliseconds const zero_ms(0);
 std::chrono::milliseconds const one_ms(1);
 std::chrono::milliseconds const awhile(10);
 std::chrono::seconds const too_long(10);
@@ -39,8 +41,6 @@ struct TimekeeperFixture : public testing::Test {
 };
 
 TEST_F(TimekeeperFixture, after) {
-  Duration waited(0);
-
   auto t1 = now();
   auto f = timeLord_->after(awhile);
   EXPECT_FALSE(f.isReady());
@@ -72,7 +72,7 @@ TEST(Timekeeper, futureGetBeforeTimeout) {
 
 TEST(Timekeeper, futureGetTimeout) {
   Promise<int> p;
-  EXPECT_THROW(p.getFuture().get(Duration(1)), folly::TimedOut);
+  EXPECT_THROW(p.getFuture().get(one_ms), folly::TimedOut);
 }
 
 TEST(Timekeeper, futureSleep) {
@@ -131,7 +131,7 @@ TEST(Timekeeper, futureWithinException) {
 TEST(Timekeeper, onTimeout) {
   bool flag = false;
   makeFuture(42).delayed(one_ms)
-    .onTimeout(Duration(0), [&]{ flag = true; return -1; })
+    .onTimeout(zero_ms, [&]{ flag = true; return -1; })
     .get();
   EXPECT_TRUE(flag);
 }
@@ -139,17 +139,17 @@ TEST(Timekeeper, onTimeout) {
 TEST(Timekeeper, onTimeoutReturnsFuture) {
   bool flag = false;
   makeFuture(42).delayed(one_ms)
-    .onTimeout(Duration(0), [&]{ flag = true; return makeFuture(-1); })
+    .onTimeout(zero_ms, [&]{ flag = true; return makeFuture(-1); })
     .get();
   EXPECT_TRUE(flag);
 }
 
 TEST(Timekeeper, onTimeoutVoid) {
   makeFuture().delayed(one_ms)
-    .onTimeout(Duration(0), [&]{
+    .onTimeout(zero_ms, [&]{
      });
   makeFuture().delayed(one_ms)
-    .onTimeout(Duration(0), [&]{
+    .onTimeout(zero_ms, [&]{
        return makeFuture<Unit>(std::runtime_error("expected"));
      });
   // just testing compilation here
@@ -162,7 +162,7 @@ TEST(Timekeeper, interruptDoesntCrash) {
 
 TEST(Timekeeper, chainedInterruptTest) {
   bool test = false;
-  auto f = futures::sleep(Duration(100)).then([&](){
+  auto f = futures::sleep(milliseconds(100)).then([&](){
     test = true;
   });
   f.cancel();
@@ -182,16 +182,17 @@ TEST(Timekeeper, executor) {
 
   auto f = makeFuture();
   ExecutorTester tester;
-  f.via(&tester).within(std::chrono::milliseconds(1)).then([&](){}).wait();
+  f.via(&tester).within(one_ms).then([&](){}).wait();
   EXPECT_EQ(2, tester.count);
 }
+
 // TODO(5921764)
 /*
 TEST(Timekeeper, onTimeoutPropagates) {
   bool flag = false;
   EXPECT_THROW(
     makeFuture(42).delayed(one_ms)
-      .onTimeout(Duration(0), [&]{ flag = true; })
+      .onTimeout(zero_ms, [&]{ flag = true; })
       .get(),
     TimedOut);
   EXPECT_TRUE(flag);

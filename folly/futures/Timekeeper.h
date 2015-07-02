@@ -41,7 +41,11 @@ template <class> class Future;
 /// it made sense to introduce a cleaner term.
 ///
 /// Remember that Duration is a std::chrono duration (millisecond resolution
-/// at the time of writing).
+/// at the time of writing). When writing code that uses specific durations,
+/// prefer using the explicit std::chrono type, e.g. std::chrono::milliseconds
+/// over Duration. This makes the code more legible and means you won't be
+/// unpleasantly surprised if we redefine Duration to microseconds, or
+/// something.
 class Timekeeper {
  public:
   virtual ~Timekeeper() = default;
