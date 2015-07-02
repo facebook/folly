@@ -201,6 +201,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/HHWheelTimer.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
+	io/async/ScopedEventBaseThread.h \
 	io/async/TimeoutManager.h \
 	io/async/test/AsyncSSLSocketTest.h \
 	io/async/test/BlockingSocket.h \
@@ -385,6 +386,7 @@ libfolly_la_SOURCES = \
 	io/async/EventBaseManager.cpp \
 	io/async/EventHandler.cpp \
 	io/async/SSLContext.cpp \
+	io/async/ScopedEventBaseThread.cpp \
 	io/async/HHWheelTimer.cpp \
 	io/async/test/TimeUtil.cpp \
 	json.cpp \
