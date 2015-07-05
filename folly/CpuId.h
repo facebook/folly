@@ -56,7 +56,7 @@ class CpuId {
 #endif
   }
 
-#define X(name, r, bit) bool name() const { return (r) & (1U << bit); }
+#define X(name, r, bit) bool name() const { return ((r) & (1U << bit)) != 0; }
 
   // cpuid(1): Processor Info and Feature Bits.
 #define C(name, bit) X(name, f1c_, bit)
