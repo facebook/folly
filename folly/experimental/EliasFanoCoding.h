@@ -56,23 +56,21 @@ struct EliasFanoCompressedListBase {
 
   template <class OtherPointer>
   EliasFanoCompressedListBase(
-    const EliasFanoCompressedListBase<OtherPointer>& other)
+      const EliasFanoCompressedListBase<OtherPointer>& other)
       : size(other.size),
         numLowerBits(other.numLowerBits),
         data(other.data),
         skipPointers(reinterpret_cast<Pointer>(other.skipPointers)),
         forwardPointers(reinterpret_cast<Pointer>(other.forwardPointers)),
         lower(reinterpret_cast<Pointer>(other.lower)),
-        upper(reinterpret_cast<Pointer>(other.upper)) {
+        upper(reinterpret_cast<Pointer>(other.upper)) { }
+
+  template <class T = Pointer>
+  auto free() -> decltype(::free(T(nullptr))) {
+    return ::free(data.data());
   }
 
-  void free() {
-    ::free(const_cast<unsigned char*>(data.data()));
-  }
-
-  size_t upperSize() const {
-    return data.end() - upper;
-  }
+  size_t upperSize() const { return data.end() - upper; }
 
   size_t size = 0;
   uint8_t numLowerBits = 0;
@@ -96,10 +94,11 @@ template <class Value,
           size_t kForwardQuantum = 0>  // 0 = disabled
 struct EliasFanoEncoderV2 {
   static_assert(std::is_integral<Value>::value &&
-                std::is_unsigned<Value>::value,
+                    std::is_unsigned<Value>::value,
                 "Value should be unsigned integral");
 
   typedef EliasFanoCompressedList CompressedList;
+  typedef MutableEliasFanoCompressedList MutableCompressedList;
 
   typedef Value ValueType;
   typedef SkipValue SkipValueType;
@@ -122,10 +121,10 @@ struct EliasFanoEncoderV2 {
   // EliasFanoCompressedList has no ownership of it, you need to call
   // free() explicitly.
   template <class RandomAccessIterator>
-  static EliasFanoCompressedList encode(RandomAccessIterator begin,
-                                        RandomAccessIterator end) {
+  static MutableCompressedList encode(RandomAccessIterator begin,
+                                      RandomAccessIterator end) {
     if (begin == end) {
-      return EliasFanoCompressedList();
+      return MutableCompressedList();
     }
     EliasFanoEncoderV2 encoder(end - begin, *(end - 1));
     for (; begin != end; ++begin) {
@@ -134,21 +133,20 @@ struct EliasFanoEncoderV2 {
     return encoder.finish();
   }
 
-  explicit EliasFanoEncoderV2(const MutableEliasFanoCompressedList& result)
+  explicit EliasFanoEncoderV2(const MutableCompressedList& result)
       : lower_(result.lower),
         upper_(result.upper),
         skipPointers_(reinterpret_cast<SkipValueType*>(
-                        result.skipPointers)),
+              result.skipPointers)),
         forwardPointers_(reinterpret_cast<SkipValueType*>(
-                           result.forwardPointers)),
+              result.forwardPointers)),
         result_(result) {
     memset(result.data.data(), 0, result.data.size());
   }
 
   EliasFanoEncoderV2(size_t size, ValueType upperBound)
       : EliasFanoEncoderV2(
-            Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {
-  }
+            Layout::fromUpperBoundAndSize(upperBound, size).allocList()) { }
 
   void add(ValueType value) {
     CHECK_GE(value, lastValue_);
@@ -184,7 +182,7 @@ struct EliasFanoEncoderV2 {
     ++size_;
   }
 
-  const EliasFanoCompressedList& finish() const {
+  const MutableCompressedList& finish() const {
     CHECK_EQ(size_, result_.size);
     return result_;
   }
@@ -210,7 +208,7 @@ struct EliasFanoEncoderV2 {
   size_t size_ = 0;
   size_t skipPointersSize_ = 0;
 
-  EliasFanoCompressedList result_;
+  MutableCompressedList result_;
 };
 
 template <class Value,
@@ -283,7 +281,7 @@ struct EliasFanoEncoderV2<Value,
     return lower + upper + skipPointers + forwardPointers;
   }
 
-  template <typename Range>
+  template <class Range>
   EliasFanoCompressedListBase<typename Range::iterator>
   openList(Range& buf) const {
     EliasFanoCompressedListBase<typename Range::iterator> result;
@@ -305,7 +303,7 @@ struct EliasFanoEncoderV2<Value,
     return result;
   }
 
-  MutableEliasFanoCompressedList allocList() const {
+  MutableCompressedList allocList() const {
     uint8_t* buf = nullptr;
     // WARNING: Current read/write logic assumes that the 7 bytes
     // following the last byte of lower and upper sequences are
@@ -337,10 +335,10 @@ class UpperBitsReader {
  public:
   typedef typename Encoder::ValueType ValueType;
 
-  explicit UpperBitsReader(const EliasFanoCompressedList& list)
-    : forwardPointers_(list.forwardPointers),
-      skipPointers_(list.skipPointers),
-      start_(list.upper) {
+  explicit UpperBitsReader(const typename Encoder::CompressedList& list)
+      : forwardPointers_(list.forwardPointers),
+        skipPointers_(list.skipPointers),
+        start_(list.upper) {
     reset();
   }
 
@@ -529,7 +527,7 @@ class EliasFanoReader {
   typedef Encoder EncoderType;
   typedef typename Encoder::ValueType ValueType;
 
-  explicit EliasFanoReader(const EliasFanoCompressedList& list)
+  explicit EliasFanoReader(const typename Encoder::CompressedList& list)
       : size_(list.size),
         lower_(list.lower),
         upper_(list),

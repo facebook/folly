@@ -58,9 +58,10 @@ struct BitVectorCompressedListBase {
         skipPointers(reinterpret_cast<Pointer>(other.skipPointers)),
         forwardPointers(reinterpret_cast<Pointer>(other.forwardPointers)) {}
 
-  void free() { ::free(const_cast<unsigned char*>(data.data())); }
-
-  size_t getUpperBound() const { return upperBound; }
+  template <class T = Pointer>
+  auto free() -> decltype(::free(T(nullptr))) {
+    return ::free(data.data());
+  }
 
   size_t size = 0;
   size_t upperBound = 0;
@@ -85,6 +86,7 @@ struct BitVectorEncoder {
                 "Value should be unsigned integral");
 
   typedef BitVectorCompressedList CompressedList;
+  typedef MutableBitVectorCompressedList MutableCompressedList;
 
   typedef Value ValueType;
   typedef SkipValue SkipValueType;
@@ -94,10 +96,10 @@ struct BitVectorEncoder {
   static constexpr size_t forwardQuantum = kForwardQuantum;
 
   template <class RandomAccessIterator>
-  static BitVectorCompressedList encode(RandomAccessIterator begin,
-                                        RandomAccessIterator end) {
+  static MutableCompressedList encode(RandomAccessIterator begin,
+                                      RandomAccessIterator end) {
     if (begin == end) {
-      return BitVectorCompressedList();
+      return MutableCompressedList();
     }
     BitVectorEncoder encoder(end - begin, *(end - 1));
     for (; begin != end; ++begin) {
@@ -106,7 +108,7 @@ struct BitVectorEncoder {
     return encoder.finish();
   }
 
-  explicit BitVectorEncoder(const MutableBitVectorCompressedList& result)
+  explicit BitVectorEncoder(const MutableCompressedList& result)
       : bits_(result.bits),
         skipPointers_(result.skipPointers),
         forwardPointers_(result.forwardPointers),
@@ -130,15 +132,15 @@ struct BitVectorEncoder {
       while (skipPointersSize_ < nextSkipPointerSize) {
         auto pos = skipPointersSize_++;
         folly::storeUnaligned<SkipValueType>(
-          skipPointers_ + pos * sizeof(SkipValueType), size_);
+            skipPointers_ + pos * sizeof(SkipValueType), size_);
       }
     }
 
     if (forwardQuantum != 0) {
-      if ( size_ != 0  && (size_ % (forwardQuantum ?: 1) == 0)) {
+      if (size_ != 0 && (size_ % (forwardQuantum ?: 1) == 0)) {
         const auto pos = size_ / (forwardQuantum ?: 1) - 1;
         folly::storeUnaligned<SkipValueType>(
-          forwardPointers_ + pos * sizeof(SkipValueType), value);
+            forwardPointers_ + pos * sizeof(SkipValueType), value);
       }
     }
 
@@ -146,10 +148,10 @@ struct BitVectorEncoder {
     ++size_;
   }
 
-  const BitVectorCompressedList& finish() const {
+  const MutableCompressedList& finish() const {
     CHECK_EQ(size_, result_.size);
     // TODO(ott): Relax this assumption.
-    CHECK_EQ(result_.getUpperBound(), lastValue_);
+    CHECK_EQ(result_.upperBound, lastValue_);
     return result_;
   }
 
@@ -162,7 +164,7 @@ struct BitVectorEncoder {
   size_t size_ = 0;
   size_t skipPointersSize_ = 0;
 
-  BitVectorCompressedList result_;
+  MutableCompressedList result_;
 };
 
 template <class Value,
@@ -195,7 +197,7 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
 
   size_t bytes() const { return bits + skipPointers + forwardPointers; }
 
-  template <typename Range>
+  template <class Range>
   BitVectorCompressedListBase<typename Range::iterator> openList(
       Range& buf) const {
     BitVectorCompressedListBase<typename Range::iterator> result;
@@ -216,7 +218,7 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     return result;
   }
 
-  MutableBitVectorCompressedList allocList() const {
+  MutableCompressedList allocList() const {
     uint8_t* buf = nullptr;
     if (size > 0) {
       buf = static_cast<uint8_t*>(malloc(bytes() + 7));
@@ -243,7 +245,7 @@ class BitVectorReader {
   typedef typename Encoder::ValueType ValueType;
   typedef typename Encoder::SkipValueType SkipValueType;
 
-  explicit BitVectorReader(const BitVectorCompressedList& list)
+  explicit BitVectorReader(const typename Encoder::CompressedList& list)
       : size_(list.size),
         bits_(list.bits),
         skipPointers_(list.skipPointers),
@@ -255,7 +257,7 @@ class BitVectorReader {
       return;
     }
 
-    upperBound_ = list.getUpperBound();
+    upperBound_ = list.upperBound;
   }
 
   void reset() {
@@ -383,7 +385,6 @@ class BitVectorReader {
   size_t size() const { return size_; }
 
   size_t position() const { return position_; }
-
   ValueType value() const { return value_; }
 
   bool jump(size_t n) {
@@ -434,6 +435,6 @@ class BitVectorReader {
   const uint8_t* const forwardPointers_;
 };
 
-}} // namespaces
+}}  // namespaces
 
-#endif // FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H
+#endif  // FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H

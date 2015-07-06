@@ -81,7 +81,7 @@ std::vector<size_t> order;
 std::vector<uint32_t> encodeSmallData;
 std::vector<uint32_t> encodeLargeData;
 
-typename Encoder::CompressedList list;
+typename Encoder::MutableCompressedList list;
 
 void init() {
   std::mt19937 gen;
