@@ -13,11 +13,11 @@ It is basically the plural of Futures (a la Wangle).
 
 For more on Rx, I recommend these resources:
 
-Netflix blog post (RxJava): http://techblog.netflix.com/2013/02/rxjava-netflix-api.html
-Introduction to Rx eBook (C#): http://www.introtorx.com/content/v1.0.10621.0/01_WhyRx.html
-The RxJava wiki: https://github.com/Netflix/RxJava/wiki
-Netflix QCon presentation: http://www.infoq.com/presentations/netflix-functional-rx
-https://rx.codeplex.com/
+- Netflix blog post (RxJava): http://techblog.netflix.com/2013/02/rxjava-netflix-api.html
+- Introduction to Rx eBook (C#): http://www.introtorx.com/content/v1.0.10621.0/01_WhyRx.html
+- The RxJava wiki: https://github.com/Netflix/RxJava/wiki
+- Netflix QCon presentation: http://www.infoq.com/presentations/netflix-functional-rx
+- https://rx.codeplex.com/
 
 I haven't even tried to support move-only data in this version. I'm on the
 fence about the usage of shared_ptr. Subject is underdeveloped. A whole rich
