@@ -46,8 +46,12 @@ struct SetStackTraceGetter {
   }
 };
 
+#ifdef __APPLE__
+// OS X doesn't support constructor priorities.
 SetStackTraceGetter setStackTraceGetter;
-
+#else
+SetStackTraceGetter __attribute__((__init_priority__(101))) setStackTraceGetter;
+#endif
 }
 
 }

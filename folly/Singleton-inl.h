@@ -32,7 +32,7 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
   std::lock_guard<std::mutex> entry_lock(mutex_);
 
   if (state_ != SingletonHolderState::NotRegistered) {
-    throw std::logic_error("Double registration");
+    LOG(FATAL) << "Double registration of singleton: " << type_.name();
   }
 
   create_ = std::move(c);
@@ -44,7 +44,8 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
 template <typename T>
 void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   if (state_ == SingletonHolderState::NotRegistered) {
-    throw std::logic_error("Registering mock before singleton was registered");
+    LOG(FATAL)
+        << "Registering mock before singleton was registered: " << type_.name();
   }
   destroyInstance();
 
@@ -119,8 +120,7 @@ void SingletonHolder<T>::createInstance() {
   // for creating_thread if it was set by other thread, but we only care about
   // it if it was set by current thread anyways.
   if (creating_thread_ == std::this_thread::get_id()) {
-    throw std::out_of_range(std::string("circular singleton dependency: ") +
-                            type_.name());
+    LOG(FATAL) << "circular singleton dependency: " << type_.name();
   }
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
@@ -128,7 +128,11 @@ void SingletonHolder<T>::createInstance() {
     return;
   }
   if (state_ == SingletonHolderState::NotRegistered) {
-    throw std::out_of_range("Creating instance for unregistered singleton");
+    auto ptr = SingletonVault::stackTraceGetter().load();
+    LOG(FATAL) << "Creating instance for unregistered singleton: "
+               << type_.name() << "\n"
+               << "Stacktrace:"
+               << "\n" << (ptr ? (*ptr)() : "(not available)");
   }
 
   if (state_ == SingletonHolderState::Living) {

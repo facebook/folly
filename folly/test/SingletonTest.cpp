@@ -79,8 +79,7 @@ TEST(Singleton, BasicGlobalUsage) {
 }
 
 TEST(Singleton, MissingSingleton) {
-  EXPECT_THROW([]() { auto u = Singleton<UnregisteredWatchdog>::get(); }(),
-               std::out_of_range);
+  EXPECT_DEATH([]() { auto u = Singleton<UnregisteredWatchdog>::get(); }(), "");
 }
 
 struct BasicUsageTag {};
@@ -204,26 +203,24 @@ TEST(Singleton, NaughtyUsage) {
   vault.registrationComplete();
 
   // Unregistered.
-  EXPECT_THROW(Singleton<Watchdog>::get(), std::out_of_range);
-  EXPECT_THROW(SingletonNaughtyUsage<Watchdog>::get(), std::out_of_range);
+  EXPECT_DEATH(Singleton<Watchdog>::get(), "");
+  EXPECT_DEATH(SingletonNaughtyUsage<Watchdog>::get(), "");
 
   vault.destroyInstances();
 
   auto& vault2 = *SingletonVault::singleton<NaughtyUsageTag2>();
 
-  EXPECT_THROW(SingletonNaughtyUsage2<Watchdog>::get(), std::logic_error);
+  EXPECT_DEATH(SingletonNaughtyUsage2<Watchdog>::get(), "");
   SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
+
   // double registration
-  EXPECT_THROW([]() {
-      SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
-    }(),
-    std::logic_error);
+  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> watchdog_singleton; }(),
+               "");
   vault2.destroyInstances();
+
   // double registration after destroy
-  EXPECT_THROW([]() {
-      SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
-    }(),
-    std::logic_error);
+  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> watchdog_singleton; }(),
+               "");
 }
 
 struct SharedPtrUsageTag {};
@@ -374,10 +371,7 @@ TEST(Singleton, SingletonDependencies) {
   auto& self_needy_vault = *SingletonVault::singleton<SelfNeedyTag>();
 
   self_needy_vault.registrationComplete();
-  EXPECT_THROW([]() {
-      SingletonSelfNeedy<SelfNeedySingleton>::get();
-    }(),
-    std::out_of_range);
+  EXPECT_DEATH([]() { SingletonSelfNeedy<SelfNeedySingleton>::get(); }(), "");
 }
 
 // A test to ensure multiple threads contending on singleton creation
