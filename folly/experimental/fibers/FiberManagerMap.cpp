@@ -23,30 +23,49 @@
 
 namespace folly { namespace fibers {
 
-namespace detail {
+namespace {
 
+// Leak these intentionally.  During shutdown, we may call getFiberManager, and
+// want access to the fiber managers during that time.
 class LocalFiberManagerMapTag;
-folly::ThreadLocal<std::unordered_map<folly::EventBase*, FiberManager*>,
-  LocalFiberManagerMapTag> localFiberManagerMap;
-std::unordered_map<folly::EventBase*, std::unique_ptr<FiberManager>>
-    fiberManagerMap;
-std::mutex fiberManagerMapMutex;
+typedef folly::ThreadLocal<
+    std::unordered_map<folly::EventBase*, FiberManager*>,
+    LocalFiberManagerMapTag>
+  LocalMapType;
+LocalMapType* localFiberManagerMap() {
+  static auto ret = new LocalMapType();
+  return ret;
+}
+
+typedef
+  std::unordered_map<folly::EventBase*, std::unique_ptr<FiberManager>>
+  MapType;
+MapType* fiberManagerMap() {
+  static auto ret = new MapType();
+  return ret;
+}
+
+std::mutex* fiberManagerMapMutex() {
+  static auto ret = new std::mutex();
+  return ret;
+}
+
 
 class OnEventBaseDestructionCallback : public folly::EventBase::LoopCallback {
  public:
   explicit OnEventBaseDestructionCallback(folly::EventBase& evb)
            : evb_(&evb) {}
   void runLoopCallback() noexcept override {
-    for (auto& localMap : localFiberManagerMap.accessAllThreads()) {
+    for (auto& localMap : localFiberManagerMap()->accessAllThreads()) {
       localMap.erase(evb_);
     }
     std::unique_ptr<FiberManager> fm;
     {
-      std::lock_guard<std::mutex> lg(fiberManagerMapMutex);
-      auto it = fiberManagerMap.find(evb_);
-      assert(it != fiberManagerMap.end());
+      std::lock_guard<std::mutex> lg(*fiberManagerMapMutex());
+      auto it = fiberManagerMap()->find(evb_);
+      assert(it != fiberManagerMap()->end());
       fm = std::move(it->second);
-      fiberManagerMap.erase(it);
+      fiberManagerMap()->erase(it);
     }
     assert(fm.get() != nullptr);
     fm->loopUntilNoReady();
@@ -58,10 +77,10 @@ class OnEventBaseDestructionCallback : public folly::EventBase::LoopCallback {
 
 FiberManager* getFiberManagerThreadSafe(folly::EventBase& evb,
                                         const FiberManager::Options& opts) {
-  std::lock_guard<std::mutex> lg(fiberManagerMapMutex);
+  std::lock_guard<std::mutex> lg(*fiberManagerMapMutex());
 
-  auto it = fiberManagerMap.find(&evb);
-  if (LIKELY(it != fiberManagerMap.end())) {
+  auto it = fiberManagerMap()->find(&evb);
+  if (LIKELY(it != fiberManagerMap()->end())) {
     return it->second.get();
   }
 
@@ -69,22 +88,22 @@ FiberManager* getFiberManagerThreadSafe(folly::EventBase& evb,
   loopController->attachEventBase(evb);
   auto fiberManager =
       folly::make_unique<FiberManager>(std::move(loopController), opts);
-  auto result = fiberManagerMap.emplace(&evb, std::move(fiberManager));
+  auto result = fiberManagerMap()->emplace(&evb, std::move(fiberManager));
   evb.runOnDestruction(new OnEventBaseDestructionCallback(evb));
   return result.first->second.get();
 }
 
-} // detail namespace
+} // namespace
 
 FiberManager& getFiberManager(folly::EventBase& evb,
                               const FiberManager::Options& opts) {
-  auto it = detail::localFiberManagerMap->find(&evb);
-  if (LIKELY(it != detail::localFiberManagerMap->end())) {
+  auto it = (*localFiberManagerMap())->find(&evb);
+  if (LIKELY(it != (*localFiberManagerMap())->end())) {
     return *(it->second);
   }
 
-  auto fm = detail::getFiberManagerThreadSafe(evb, opts);
-  detail::localFiberManagerMap->emplace(&evb, fm);
+  auto fm = getFiberManagerThreadSafe(evb, opts);
+  (*localFiberManagerMap())->emplace(&evb, fm);
   return *fm;
 }
 
