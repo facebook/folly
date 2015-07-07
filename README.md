@@ -18,6 +18,13 @@ Please download googletest from
 https://googletest.googlecode.com/files/gtest-1.7.0.zip and unzip it in the
 folly/test subdirectory.
 
+Ubuntu 12.04
+------------
+
+This release is old, requiring many upgrades. However, since Travis CI runs
+on 12.04, `folly/build/deps_ubuntu_12.04.sh` is provided, and upgrades all
+the required packages.
+
 Ubuntu 13.10
 ------------
 
@@ -71,11 +78,11 @@ OS X (Homebrew)
 ----
 folly is available as a Formula and releases may be built via `brew install folly`.
 
-You may also use `folly/bootstrap-osx-homebrew.sh` to build against `master`:
+You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `master`:
 
 ```
   cd folly
-  ./bootstrap-osx-homebrew.sh
+  ./build/bootstrap-osx-homebrew.sh
   make
   make check
 ```

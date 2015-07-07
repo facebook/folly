@@ -5,6 +5,9 @@
 # fail fast
 set -e
 
+BASE_DIR="$(cd "$(dirname -- "$0")"/.. ; pwd)"  # folly/folly
+cd "$BASE_DIR"
+
 brewget() {
     brew install $@ || brew upgrade $@
 }
