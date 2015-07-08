@@ -1152,6 +1152,91 @@ TEST(IOBuf, CopyConstructorAndAssignmentOperator) {
   EXPECT_FALSE(buf->isShared());
 }
 
+namespace {
+// Use with string literals only
+std::unique_ptr<IOBuf> wrap(const char* str) {
+  return IOBuf::wrapBuffer(str, strlen(str));
+}
+
+std::unique_ptr<IOBuf> copy(const char* str) {
+  // At least 1KiB of tailroom, to ensure an external buffer
+  return IOBuf::copyBuffer(str, strlen(str), 0, 1024);
+}
+
+std::string toString(const folly::IOBuf& buf) {
+  std::string result;
+  result.reserve(buf.computeChainDataLength());
+  for (auto& b : buf) {
+    result.append(reinterpret_cast<const char*>(b.data()), b.size());
+  }
+  return result;
+}
+
+char* writableStr(folly::IOBuf& buf) {
+  return reinterpret_cast<char*>(buf.writableData());
+}
+
+}  // namespace
+
+TEST(IOBuf, Managed) {
+  auto hello = "hello";
+  auto buf1UP = wrap(hello);
+  auto buf1 = buf1UP.get();
+  EXPECT_FALSE(buf1->isManagedOne());
+  auto buf2UP = copy("world");
+  auto buf2 = buf2UP.get();
+  EXPECT_TRUE(buf2->isManagedOne());
+  auto buf3UP = wrap(hello);
+  auto buf3 = buf3UP.get();
+  auto buf4UP = buf2->clone();
+  auto buf4 = buf4UP.get();
+
+  // buf1 and buf3 share the same memory (but are unmanaged)
+  EXPECT_FALSE(buf1->isManagedOne());
+  EXPECT_FALSE(buf3->isManagedOne());
+  EXPECT_TRUE(buf1->isSharedOne());
+  EXPECT_TRUE(buf3->isSharedOne());
+  EXPECT_EQ(buf1->data(), buf3->data());
+
+  // buf2 and buf4 share the same memory (but are managed)
+  EXPECT_TRUE(buf2->isManagedOne());
+  EXPECT_TRUE(buf4->isManagedOne());
+  EXPECT_TRUE(buf2->isSharedOne());
+  EXPECT_TRUE(buf4->isSharedOne());
+  EXPECT_EQ(buf2->data(), buf4->data());
+
+  buf1->prependChain(std::move(buf2UP));
+  buf1->prependChain(std::move(buf3UP));
+  buf1->prependChain(std::move(buf4UP));
+
+  EXPECT_EQ("helloworldhelloworld", toString(*buf1));
+  EXPECT_FALSE(buf1->isManaged());
+
+  buf1->makeManaged();
+  EXPECT_TRUE(buf1->isManaged());
+
+  // buf1 and buf3 are now unshared (because they were unmanaged)
+  EXPECT_TRUE(buf1->isManagedOne());
+  EXPECT_TRUE(buf3->isManagedOne());
+  EXPECT_FALSE(buf1->isSharedOne());
+  EXPECT_FALSE(buf3->isSharedOne());
+  EXPECT_NE(buf1->data(), buf3->data());
+
+  // buf2 and buf4 are still shared
+  EXPECT_TRUE(buf2->isManagedOne());
+  EXPECT_TRUE(buf4->isManagedOne());
+  EXPECT_TRUE(buf2->isSharedOne());
+  EXPECT_TRUE(buf4->isSharedOne());
+  EXPECT_EQ(buf2->data(), buf4->data());
+
+  // And verify that the truth is what we expect: modify a byte in buf1 and
+  // buf2, see that the change from buf1 is *not* reflected in buf3, but the
+  // change from buf2 is reflected in buf4.
+  writableStr(*buf1)[0] = 'j';
+  writableStr(*buf2)[0] = 'x';
+  EXPECT_EQ("jelloxorldhelloxorld", toString(*buf1));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

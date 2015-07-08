@@ -872,6 +872,33 @@ class IOBuf {
   }
 
   /**
+   * Return true if all IOBufs in this chain are managed by the usual
+   * refcounting mechanism (and so the lifetime of the underlying memory
+   * can be extended by clone()).
+   */
+  bool isManaged() const {
+    const IOBuf* current = this;
+    while (true) {
+      if (!current->isManagedOne()) {
+        return false;
+      }
+      current = current->next_;
+      if (current == this) {
+        return true;
+      }
+    }
+  }
+
+  /**
+   * Return true if this IOBuf is managed by the usual refcounting mechanism
+   * (and so the lifetime of the underlying memory can be extended by
+   * cloneOne()).
+   */
+  bool isManagedOne() const {
+    return sharedInfo();
+  }
+
+  /**
    * Return true if other IOBufs are also pointing to the buffer used by this
    * IOBuf, and false otherwise.
    *
@@ -942,6 +969,39 @@ class IOBuf {
    */
   void unshareOne() {
     if (isSharedOne()) {
+      unshareOneSlow();
+    }
+  }
+
+  /**
+   * Ensure that the memory that IOBufs in this chain refer to will continue to
+   * be allocated for as long as the IOBufs of the chain (or any clone()s
+   * created from this point onwards) is alive.
+   *
+   * This only has an effect for user-owned buffers (created with the
+   * WRAP_BUFFER constructor or wrapBuffer factory function), in which case
+   * those buffers are unshared.
+   */
+  void makeManaged() {
+    if (isChained()) {
+      makeManagedChained();
+    } else {
+      makeManagedOne();
+    }
+  }
+
+  /**
+   * Ensure that the memory that this IOBuf refers to will continue to be
+   * allocated for as long as this IOBuf (or any clone()s created from this
+   * point onwards) is alive.
+   *
+   * This only has an effect for user-owned buffers (created with the
+   * WRAP_BUFFER constructor or wrapBuffer factory function), in which case
+   * those buffers are unshared.
+   */
+  void makeManagedOne() {
+    if (!isManagedOne()) {
+      // We can call the internal function directly; unmanaged implies shared.
       unshareOneSlow();
     }
   }
@@ -1158,6 +1218,7 @@ class IOBuf {
 
   void unshareOneSlow();
   void unshareChained();
+  void makeManagedChained();
   void coalesceSlow();
   void coalesceSlow(size_t maxLength);
   // newLength must be the entire length of the buffers between this and

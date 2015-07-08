@@ -552,6 +552,19 @@ void IOBuf::unshareChained() {
   coalesceSlow();
 }
 
+void IOBuf::makeManagedChained() {
+  assert(isChained());
+
+  IOBuf* current = this;
+  while (true) {
+    current->makeManagedOne();
+    current = current->next_;
+    if (current == this) {
+      break;
+    }
+  }
+}
+
 void IOBuf::coalesceSlow() {
   // coalesceSlow() should only be called if we are part of a chain of multiple
   // IOBufs.  The caller should have already verified this.
