@@ -128,6 +128,7 @@ nobase_follyinclude_HEADERS = \
 	Format.h \
 	Format-inl.h \
 	futures/Deprecated.h \
+	futures/ThreadedExecutor.h \
 	futures/DrivableExecutor.h \
 	futures/Future-pre.h \
 	futures/helpers.h \
@@ -306,6 +307,7 @@ libfolly_la_SOURCES = \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
 	futures/detail/ThreadWheelTimekeeper.cpp \
+	futures/ThreadedExecutor.cpp \
 	futures/Future.cpp \
 	futures/InlineExecutor.cpp \
 	futures/ManualExecutor.cpp \
