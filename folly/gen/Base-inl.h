@@ -483,7 +483,6 @@ class Map : public Operator<Map<Predicate>> {
   }
 };
 
-
 /**
  * Filter - For filtering values from a source sequence by a predicate.
  *
@@ -493,6 +492,13 @@ class Map : public Operator<Map<Predicate>> {
  *                 | filter([](const string& str) -> bool {
  *                     return !str.empty();
  *                   });
+ *
+ * Note that if no predicate is provided, the values are casted to bool and
+ * filtered based on that. So if pointers is a vector of pointers,
+ *
+ *   auto nonNull = from(pointers) | filter();
+ *
+ * will give a vector of all the pointers != nullptr.
  */
 template<class Predicate>
 class Filter : public Operator<Filter<Predicate>> {

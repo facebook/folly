@@ -255,6 +255,40 @@ TEST(Gen, Filter) {
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, FilterDefault) {
+  {
+    // Default filter should remove 0s
+    const auto expected = vector<int>{1, 1, 2, 3};
+    auto actual =
+        from({0, 1, 1, 0, 2, 3, 0})
+      | filter()
+      | as<vector>();
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // Default filter should remove nullptrs
+    int a = 5;
+    int b = 3;
+    int c = 0;
+    const auto expected = vector<int*>{&a, &b, &c};
+    auto actual =
+        from({(int*)nullptr, &a, &b, &c, (int*)nullptr})
+      | filter()
+      | as<vector>();
+    EXPECT_EQ(expected, actual);
+  }
+  {
+    // Default filter on Optionals should remove folly::null
+    const auto expected =
+        vector<Optional<int>>{Optional<int>(5), Optional<int>(0)};
+    const auto actual =
+        from({Optional<int>(5), Optional<int>(), Optional<int>(0)})
+      | filter()
+      | as<vector>();
+    EXPECT_EQ(expected, actual);
+  }
+}
+
 TEST(Gen, Contains) {
   {
     auto gen =

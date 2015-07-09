@@ -614,8 +614,8 @@ Map field(FieldType Class::*field) {
   return Map(Field(field));
 }
 
-template<class Predicate,
-         class Filter = detail::Filter<Predicate>>
+template <class Predicate = Identity,
+          class Filter = detail::Filter<Predicate>>
 Filter filter(Predicate pred = Predicate()) {
   return Filter(std::move(pred));
 }
