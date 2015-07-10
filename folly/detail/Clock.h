@@ -30,7 +30,7 @@
 /* For windows, we'll use pthread's time implementations */
 #ifdef _MSC_VER
 #include <pthread.h>
-#include <pthread_time.h>
+#include <pthread_clock.h>
 #else
 typedef uint8_t clockid_t;
 #define CLOCK_REALTIME 0

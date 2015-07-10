@@ -20,9 +20,9 @@
 #ifdef __APPLE__
 #include <fcntl.h>
 #endif
-#include <sys/file.h>
-#include <sys/socket.h>
 
+#include <folly/FilePortability.h>
+#include <folly/SocketPortability.h>
 #include <folly/detail/FileUtilDetail.h>
 
 namespace folly {
@@ -65,7 +65,7 @@ int dup2NoInt(int oldfd, int newfd) {
 int fdatasyncNoInt(int fd) {
 #if defined(__APPLE__)
   return wrapNoInt(fcntl, fd, F_FULLFSYNC);
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(_MSC_VER)
   return wrapNoInt(fsync, fd);
 #else
   return wrapNoInt(fdatasync, fd);
@@ -85,7 +85,7 @@ int flockNoInt(int fd, int operation) {
 }
 
 int shutdownNoInt(int fd, int how) {
-  return wrapNoInt(shutdown, fd, how);
+  return wrapNoInt(fsp::shutdown, fd, how);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {

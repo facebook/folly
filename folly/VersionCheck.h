@@ -68,11 +68,18 @@
  * ... and then commpile your file with -DMYLIB_VERSION=\"1\"
  */
 
-#ifdef __APPLE__
+#if defined(_MSC_VER)
+// MSVC doesn't support constructor priorities. Just pray it works, I guess.
+#define FOLLY_VERSION_CHECK_PRIORITY \
+    __pragma(section(".CRT$XCU",read)) \
+    static void __cdecl versionCheck(void); \
+    __declspec(allocate(".CRT$XCU")) void (__cdecl*versionCheck##_)(void) = versionCheck; \
+    void __cdecl
+#elif defined(__APPLE__)
 // OS X doesn't support constructor priorities. Just pray it works, I guess.
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__))
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__)) void
 #else
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__(101)))
+#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__(101))) void
 #endif
 
 // Note that this is carefully crafted: PRODUCT##Version must have external
@@ -83,7 +90,7 @@
 #define FOLLY_VERSION_CHECK(PRODUCT, VERSION) \
   const char* PRODUCT##Version = VERSION; \
   namespace { \
-  FOLLY_VERSION_CHECK_PRIORITY void versionCheck() { \
+  FOLLY_VERSION_CHECK_PRIORITY versionCheck() { \
     if (strcmp(PRODUCT##Version, VERSION)) { \
       fprintf(stderr, \
               "Invalid %s version: desired [%s], currently loaded [%s]\n", \

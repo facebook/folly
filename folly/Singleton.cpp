@@ -22,7 +22,11 @@ namespace folly {
 
 namespace detail {
 
+#ifdef MSVC_NO_CONSTEXPR_CONSTRUCTOR
+const std::chrono::seconds SingletonHolderBase::kDestroyWaitTime{5};
+#else
 constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
+#endif
 
 }
 
@@ -45,7 +49,7 @@ struct FatalHelper {
   std::vector<detail::TypeDescriptor> leakedSingletons_;
 };
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(_MSC_VER)
 // OS X doesn't support constructor priorities.
 FatalHelper fatalHelper;
 #else

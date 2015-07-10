@@ -17,8 +17,8 @@
 #ifndef FOLLY_GROUPVARINT_H_
 #define FOLLY_GROUPVARINT_H_
 
-#ifndef __GNUC__
-#error GroupVarint.h requires GCC
+#if !defined(__GNUC__) && !defined(_MSC_VER)
+#error GroupVarint.h requires GCC or MSVC
 #endif
 
 #include <folly/Portability.h>

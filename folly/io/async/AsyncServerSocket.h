@@ -24,12 +24,12 @@
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <memory>
 #include <exception>
 #include <vector>
 #include <limits.h>
 #include <stddef.h>
-#include <sys/socket.h>
 
 
 // Due to the way kernel headers are included, this may or may not be defined.
@@ -517,7 +517,7 @@ class AsyncServerSocket : public DelayedDestruction
       }
 
       int val = (enabled) ? 1 : 0;
-      if (setsockopt(handler.socket_, SOL_SOCKET,
+      if (fsp::setsockopt(handler.socket_, SOL_SOCKET,
                      SO_KEEPALIVE, &val, sizeof(val)) != 0) {
         LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: %s" <<
                 strerror(errno);
@@ -545,7 +545,7 @@ class AsyncServerSocket : public DelayedDestruction
       }
 
       int val = (enabled) ? 1 : 0;
-      if (setsockopt(handler.socket_, SOL_SOCKET,
+      if (fsp::setsockopt(handler.socket_, SOL_SOCKET,
                      SO_REUSEPORT, &val, sizeof(val)) != 0) {
         LOG(ERROR) <<
           "failed to set SO_REUSEPORT on async server socket " << errno;

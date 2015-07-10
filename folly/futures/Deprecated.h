@@ -15,4 +15,10 @@
  */
 
 #pragma once
-#define DEPRECATED __attribute__((__deprecated__))
+#ifdef _MSC_VER
+// Unfortunately, these are all in the wrong places, so we can't use the MSVC version :(
+//# define DEPRECATED __declspec(deprecated)
+# define DEPRECATED
+#else
+# define DEPRECATED __attribute__((__deprecated__))
+#endif

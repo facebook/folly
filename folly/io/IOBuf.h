@@ -25,11 +25,11 @@
 #include <cstring>
 #include <memory>
 #include <limits>
-#include <sys/uio.h>
 #include <type_traits>
 
 #include <boost/iterator/iterator_facade.hpp>
 
+#include <folly/FilePortability.h>
 #include <folly/FBString.h>
 #include <folly/Range.h>
 #include <folly/FBVector.h>

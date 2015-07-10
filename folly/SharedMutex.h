@@ -22,10 +22,10 @@
 #include <atomic>
 #include <thread>
 #include <type_traits>
+#include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
-#include <sys/resource.h>
 
 // SharedMutex is a reader-writer lock.  It is small, very fast, scalable
 // on multi-core, and suitable for use when readers or writers may block.
@@ -665,9 +665,15 @@ class SharedMutexImpl {
   // guarantees we won't have inter-L1 contention.  We give ourselves
   // a factor of 2 on the core count, which should hold us for a couple
   // processor generations.  deferredReaders[] is 2048 bytes currently.
+#ifdef _MSC_VER
+public:
+#endif
   static constexpr uint32_t kMaxDeferredReaders = 64;
   static constexpr uint32_t kDeferredSearchDistance = 2;
   static constexpr uint32_t kDeferredSeparationFactor = 4;
+#ifdef _MSC_VER
+private:
+#endif
 
   static_assert(!(kMaxDeferredReaders & (kMaxDeferredReaders - 1)),
                 "kMaxDeferredReaders must be a power of 2");
@@ -699,10 +705,16 @@ class SharedMutexImpl {
   // If any of those elements points to a SharedMutexImpl, then it
   // should be considered that there is a shared lock on that instance.
   // See kTokenless.
+#ifdef _MSC_VER
+public:
+#endif
   typedef Atom<uintptr_t> DeferredReaderSlot;
-  static DeferredReaderSlot deferredReaders
+#ifdef _MSC_VER
+private:
+#endif
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING static DeferredReaderSlot deferredReaders
       [kMaxDeferredReaders *
-       kDeferredSeparationFactor] FOLLY_ALIGN_TO_AVOID_FALSE_SHARING;
+       kDeferredSeparationFactor];
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first

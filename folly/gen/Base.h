@@ -473,6 +473,9 @@ Gen seq(Value first) {
   return Gen{std::move(first), Impl{}};
 }
 
+#ifdef Yield
+# undef Yield
+#endif
 template<class Value,
          class Source,
          class Yield = detail::Yield<Value, Source>>

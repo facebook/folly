@@ -17,8 +17,8 @@
 #pragma once
 
 #include <memory>
-#include <sys/uio.h>
 
+#include <folly/FilePortability.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/AsyncSocketBase.h>

@@ -10,9 +10,9 @@
 #pragma once
 
 #include <folly/wangle/ssl/SSLUtil.h>
+#include <folly/SocketPortability.h>
 
 #include <chrono>
-#include <netinet/tcp.h>
 #include <string>
 
 namespace folly {

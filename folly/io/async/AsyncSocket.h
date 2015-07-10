@@ -17,9 +17,10 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <glog/logging.h>
+#include <folly/FilePortability.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -228,7 +229,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       return level < other.level;
     }
     int apply(int fd, int val) const {
-      return setsockopt(fd, level, optname, &val, sizeof(val));
+      return fsp::setsockopt(fd, level, optname, &val, sizeof(val));
     }
     int level;
     int optname;
@@ -459,7 +460,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   template <typename T>
   int getSockOpt(int level, int optname, T* optval, socklen_t* optlen) {
-    return getsockopt(fd_, level, optname, (void*) optval, optlen);
+    return fsp::getsockopt(fd_, level, optname, (void*) optval, optlen);
   }
 
   /**
@@ -472,9 +473,15 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   template <typename T>
   int setSockOpt(int  level,  int  optname,  const T *optval) {
-    return setsockopt(fd_, level, optname, optval, sizeof(T));
+    return fsp::setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
+#ifdef ERROR
+// Because, for some absurd reason,
+// ERROR is defined as a macro in the
+// GDI interface -_-...
+#undef ERROR
+#endif
   enum class StateEnum : uint8_t {
     UNINIT,
     CONNECTING,

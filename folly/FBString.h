@@ -81,8 +81,8 @@
 #endif
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(shadow)
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use std::__throw_*
@@ -810,7 +810,8 @@ private:
     MediumLarge ml_;
   };
 
-  enum {
+  // Because MSVC will try to use a 32-bit value otherwise, which isn't right.
+  enum : size_t {
     lastChar = sizeof(MediumLarge) - 1,
     maxSmallSize = lastChar / sizeof(Char),
     maxMediumSize = 254 / sizeof(Char),            // coincides with the small
@@ -2370,6 +2371,9 @@ operator<<(
       os.setstate(std::ios_base::badbit | std::ios_base::failbit);
     }
   }
+#elif defined(_MSC_VER)
+  // MSVC doesn't define __ostream_insert
+  os.write(str.data(), str.size());
 #else
   std::__ostream_insert(os, str.data(), str.size());
 #endif
@@ -2520,7 +2524,7 @@ FOLLY_FBSTRING_HASH
 
 #endif // _LIBSTDCXX_FBSTRING
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 #undef FBSTRING_DISABLE_ADDRESS_SANITIZER
 #undef throw

@@ -438,7 +438,6 @@ class Histogram {
    */
   void toTSV(std::ostream& out, bool skipEmptyBuckets = true) const;
 
- private:
   struct CountFromBucket {
     uint64_t operator()(const Bucket& bucket) const {
       return bucket.count;
@@ -462,6 +461,7 @@ class Histogram {
     }
   };
 
+ private:
   detail::HistogramBuckets<ValueType, Bucket> buckets_;
 };
 

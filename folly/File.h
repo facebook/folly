@@ -20,8 +20,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h>
 
+#include <folly/FilePortability.h>
 #include <folly/Portability.h>
 
 namespace folly {

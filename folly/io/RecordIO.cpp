@@ -17,9 +17,9 @@
 #include <folly/io/RecordIO.h>
 
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <folly/Exception.h>
+#include <folly/FilePortability.h>
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
