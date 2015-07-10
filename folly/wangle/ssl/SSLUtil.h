@@ -27,6 +27,9 @@ enum class SSLResumeEnum : uint8_t {
   NA = 2
 };
 
+#ifdef NO_ERROR
+# undef NO_ERROR
+#endif
 enum class SSLErrorEnum {
   NO_ERROR,
   TIMEOUT,

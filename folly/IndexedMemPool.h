@@ -20,15 +20,16 @@
 #include <type_traits>
 #include <stdint.h>
 #include <assert.h>
-#include <unistd.h>
-#include <sys/mman.h>
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
+#include <folly/Portability.h>
 #include <folly/detail/CacheLocality.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(shadow)
 
 namespace folly {
 
@@ -130,7 +131,7 @@ struct IndexedMemPool : boost::noncopyable {
     , globalHead_(TaggedPtr{})
   {
     const size_t needed = sizeof(Slot) * (actualCapacity_ + 1);
-    long pagesize = sysconf(_SC_PAGESIZE);
+    size_t pagesize = sysconf(_SC_PAGESIZE);
     mmapLength_ = ((needed - 1) & ~(pagesize - 1)) + pagesize;
     assert(needed <= mmapLength_ && mmapLength_ < needed + pagesize);
     assert((mmapLength_ % pagesize) == 0);
@@ -284,7 +285,7 @@ struct IndexedMemPool : boost::noncopyable {
     }
   };
 
-  struct FOLLY_ALIGN_TO_AVOID_FALSE_SHARING LocalList {
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING struct LocalList {
     AtomicStruct<TaggedPtr,Atom> head;
 
     LocalList() : head(TaggedPtr{}) {}
@@ -310,7 +311,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// raw storage, only 1..min(size_,actualCapacity_) (inclusive) are
   /// actually constructed.  Note that slots_[0] is not constructed or used
-  Slot* FOLLY_ALIGN_TO_AVOID_FALSE_SHARING slots_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING Slot* slots_;
 
   /// use AccessSpreader to find your list.  We use stripes instead of
   /// thread-local to avoid the need to grow or shrink on thread start
@@ -319,7 +320,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   /// this is the head of a list of node chained by globalNext, that are
   /// themselves each the head of a list chained by localNext
-  AtomicStruct<TaggedPtr,Atom> FOLLY_ALIGN_TO_AVOID_FALSE_SHARING globalHead_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING AtomicStruct<TaggedPtr,Atom> globalHead_;
 
   ///////////// private methods
 
@@ -465,5 +466,6 @@ struct IndexedMemPoolRecycler {
 
 } // namespace folly
 
-# pragma GCC diagnostic pop
+FOLLY_POP_WARNING
+
 #endif

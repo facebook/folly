@@ -95,11 +95,25 @@ class EvictingCacheMap : private boost::noncopyable {
 
  private:
   // typedefs for brevity
-  struct Node;
+  // MSVC doesn't like this being down below.
   typedef boost::intrusive::link_mode<boost::intrusive::safe_link> link_mode;
+  typedef std::pair<const TKey, TValue> TPair;
+  struct Node
+    : public boost::intrusive::unordered_set_base_hook<link_mode>,
+      public boost::intrusive::list_base_hook<link_mode> {
+    Node(const TKey& key, TValue&& value)
+      : pr(std::make_pair(key, std::move(value))) {
+    }
+    TPair pr;
+    friend bool operator==(const Node& lhs, const Node& rhs) {
+      return lhs.pr.first == rhs.pr.first;
+    }
+    friend std::size_t hash_value(const Node& node) {
+      return THash()(node.pr.first);
+    }
+  };
   typedef boost::intrusive::unordered_set<Node> NodeMap;
   typedef boost::intrusive::list<Node> NodeList;
-  typedef std::pair<const TKey, TValue> TPair;
 
  public:
   typedef std::function<void(TKey, TValue&&)> PruneHookCall;
@@ -404,21 +418,6 @@ class EvictingCacheMap : private boost::noncopyable {
   }
 
  private:
-  struct Node
-    : public boost::intrusive::unordered_set_base_hook<link_mode>,
-      public boost::intrusive::list_base_hook<link_mode> {
-    Node(const TKey& key, TValue&& value)
-        : pr(std::make_pair(key, std::move(value))) {
-    }
-    TPair pr;
-    friend bool operator==(const Node& lhs, const Node& rhs) {
-      return lhs.pr.first == rhs.pr.first;
-    }
-    friend std::size_t hash_value(const Node& node) {
-      return THash()(node.pr.first);
-    }
-  };
-
   struct KeyHasher {
     std::size_t operator()(const Node& node) {
       return THash()(node.pr.first);

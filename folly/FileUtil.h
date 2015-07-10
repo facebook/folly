@@ -18,6 +18,7 @@
 #define FOLLY_FILEUTIL_H_
 
 #include <folly/Conv.h>
+#include <folly/FilePortability.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 
@@ -25,9 +26,7 @@
 #include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 namespace folly {
 

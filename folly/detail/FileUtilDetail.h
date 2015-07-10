@@ -18,9 +18,7 @@
 #define FOLLY_DETAIL_FILEUTILDETAIL_H_
 
 #include <cerrno>
-#include <unistd.h>
-
-#include <sys/uio.h>
+#include <folly/FilePortability.h>
 
 /**
  * Helper functions and templates for FileUtil.cpp.  Declared here so

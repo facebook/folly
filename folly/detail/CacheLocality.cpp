@@ -16,11 +16,14 @@
 
 #include <folly/detail/CacheLocality.h>
 
+#ifndef _MSC_VER
 #define _GNU_SOURCE 1 // for RTLD_NOLOAD
 #include <dlfcn.h>
+#endif
 #include <fstream>
 
 #include <folly/Conv.h>
+#include <folly/CPortability.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>
@@ -204,6 +207,9 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 /// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
 /// on failure
 static Getcpu::Func loadVdsoGetcpu() {
+#ifdef _MSC_VER
+  return nullptr;
+#else
   void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
   if (h == nullptr) {
     return nullptr;
@@ -219,6 +225,7 @@ static Getcpu::Func loadVdsoGetcpu() {
   }
 
   return func;
+#endif
 }
 
 Getcpu::Func Getcpu::vdsoFunc() {

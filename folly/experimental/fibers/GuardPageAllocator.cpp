@@ -15,11 +15,10 @@
  */
 #include "GuardPageAllocator.h"
 
-#include <sys/mman.h>
-#include <unistd.h>
-
 #include <mutex>
 
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
 #include <folly/Singleton.h>
 #include <folly/SpinLock.h>
 

@@ -74,7 +74,7 @@ class Fingerprint {
  public:
   Fingerprint() {
     // Use a non-zero starting value. We'll use (1 << (BITS-1))
-    fp_[0] = 1UL << 63;
+    fp_[0] = 1ULL << 63;
     for (int i = 1; i < size(); i++)
       fp_[i] = 0;
   }

@@ -663,7 +663,7 @@ void escapeString(StringPiece input,
         // checking that utf8 encodings are valid
         char32_t v = decodeUtf8(q, e, opts.skip_invalid_utf8);
         if (opts.skip_invalid_utf8 && v == U'\ufffd') {
-          out.append("\ufffd");
+          out.append(u8"\ufffd");
           p = q;
           continue;
         }

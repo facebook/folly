@@ -22,16 +22,14 @@
 
 #include <folly/FileUtil.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/tcp.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 namespace folly {
 
@@ -279,7 +277,7 @@ void AsyncServerSocket::bindSocket(
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(fd, saddr, address.getActualSize()) != 0) {
+  if (fsp::bind(fd, saddr, address.getActualSize()) != 0) {
     if (!isExistingSocket) {
       closeNoInt(fd);
     }
@@ -361,7 +359,7 @@ void AsyncServerSocket::bind(uint16_t port) {
   SCOPE_EXIT { freeaddrinfo(res0); };
 
   auto setupAddress = [&] (struct addrinfo* res) {
-    int s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    int s = fsp::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     // IPv6/IPv4 may not be supported by the kernel
     if (s < 0 && errno == EAFNOSUPPORT) {
       return;
@@ -377,7 +375,7 @@ void AsyncServerSocket::bind(uint16_t port) {
 
     if (res->ai_family == AF_INET6) {
       int v6only = 1;
-      CHECK(0 == setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY,
+      CHECK(0 == fsp::setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY,
                             &v6only, sizeof(v6only)));
     }
 
@@ -387,7 +385,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     sockets_.emplace_back(eventBase_, s, this, address.getFamily());
 
     // Bind to the socket
-    if (::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
+    if (fsp::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
       folly::throwSystemError(
         errno,
         "failed to bind to async server socket for port");
@@ -462,7 +460,7 @@ void AsyncServerSocket::listen(int backlog) {
 
   // Start listening
   for (auto& handler : sockets_) {
-    if (::listen(handler.socket_, backlog) == -1) {
+    if (fsp::listen(handler.socket_, backlog) == -1) {
       folly::throwSystemError(errno,
                                     "failed to listen on async server socket");
     }
@@ -618,7 +616,7 @@ void AsyncServerSocket::pauseAccepting() {
 }
 
 int AsyncServerSocket::createSocket(int family) {
-  int fd = socket(family, SOCK_STREAM, 0);
+  int fd = fsp::socket(family, SOCK_STREAM, 0);
   if (fd == -1) {
     folly::throwSystemError(errno, "error creating async server socket");
   }
@@ -646,7 +644,7 @@ void AsyncServerSocket::setupSocket(int fd) {
 
   // Set reuseaddr to avoid 2MSL delay on server restart
   int one = 1;
-  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) != 0) {
+  if (fsp::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) != 0) {
     // This isn't a fatal error; just log an error message and continue
     LOG(ERROR) << "failed to set SO_REUSEADDR on async server socket " << errno;
   }
@@ -654,7 +652,7 @@ void AsyncServerSocket::setupSocket(int fd) {
   // Set reuseport to support multiple accept threads
   int zero = 0;
   if (reusePortEnabled_ &&
-      setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) != 0) {
+    fsp::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
                << strerror(errno);
     folly::throwSystemError(errno,
@@ -663,7 +661,7 @@ void AsyncServerSocket::setupSocket(int fd) {
   }
 
   // Set keepalive as desired
-  if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
+  if (fsp::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
                  (keepAliveEnabled_) ? &one : &zero, sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: " <<
             strerror(errno);
@@ -680,7 +678,7 @@ void AsyncServerSocket::setupSocket(int fd) {
   // See http://lists.danga.com/pipermail/memcached/2005-March/001240.html
 #ifndef TCP_NOPUSH
   if (family != AF_UNIX) {
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
+    if (fsp::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
       // This isn't a fatal error; just log an error message and continue
       LOG(ERROR) << "failed to set TCP_NODELAY on async server socket: " <<
               strerror(errno);
@@ -709,15 +707,17 @@ void AsyncServerSocket::handlerReady(
 
     // In some cases, accept() doesn't seem to update these correctly.
     saddr->sa_family = addressFamily;
+#ifndef _MSC_VER
     if (addressFamily == AF_UNIX) {
       addrLen = sizeof(struct sockaddr_un);
     }
+#endif
 
     // Accept a new client socket
 #ifdef SOCK_NONBLOCK
     int clientSocket = accept4(fd, saddr, &addrLen, SOCK_NONBLOCK);
 #else
-    int clientSocket = accept(fd, saddr, &addrLen);
+    int clientSocket = fsp::accept(fd, saddr, &addrLen);
 #endif
 
     address.setFromSockaddr(saddr, addrLen);

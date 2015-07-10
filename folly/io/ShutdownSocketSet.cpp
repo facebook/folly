@@ -16,7 +16,6 @@
 
 #include <folly/io/ShutdownSocketSet.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <chrono>
@@ -26,6 +25,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/Malloc.h>
+#include <folly/SocketPortability.h>
 
 namespace folly {
 
@@ -167,7 +167,7 @@ void ShutdownSocketSet::doShutdown(int fd, bool abortive) {
   // close.
   if (abortive) {
     struct linger l = {1, 0};
-    if (setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) != 0) {
+    if (fsp::setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)) != 0) {
       // Probably not a socket, ignore.
       return;
     }

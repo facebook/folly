@@ -39,7 +39,23 @@ template <class... Args>
 Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
 template <class C>
 Formatter<true, C> vformat(StringPiece fmt, C&& container);
+#ifdef MSVC_NO_ABSTRACT_DECLARATOR_PTRS
+template <class T, class Enable = void>
+class FormatValue {
+public:
+  explicit FormatValue(const T& val) : val_(val) { }
+
+  template <class FormatCallback>
+  void format(FormatArg& arg, FormatCallback& cb) const {
+    format_value::formatString("Something", arg, cb);
+  }
+
+private:
+  const T& val_;
+};
+#else
 template <class T, class Enable=void> class FormatValue;
+#endif
 
 // meta-attribute to identify formatters in this sea of template weirdness
 namespace detail {

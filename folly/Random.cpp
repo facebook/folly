@@ -17,25 +17,34 @@
 #include <folly/Random.h>
 
 #include <atomic>
-#include <unistd.h>
-#include <sys/time.h>
 #include <random>
 #include <array>
 
-#include <glog/logging.h>
 #include <folly/File.h>
+#include <folly/FilePortability.h>
 #include <folly/FileUtil.h>
+
+#include <glog/logging.h>
 
 namespace folly {
 
 namespace {
 
 void readRandomDevice(void* data, size_t size) {
+#ifdef _MSC_VER
+  static std::uniform_int_distribution<int> dist(0, 255);
+  static std::mt19937_64 randEng;
+  uint8_t* data2 = (uint8_t*)data;
+  for (size_t i = 0; i < size; i++) {
+    data2[i] = (uint8_t)dist(randEng);
+  }
+#else
   // Keep the random device open for the duration of the program.
   static int randomFd = ::open("/dev/urandom", O_RDONLY);
   PCHECK(randomFd >= 0);
   auto bytesRead = readFull(randomFd, data, size);
   PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);
+#endif
 }
 
 class BufferedRandomDevice {

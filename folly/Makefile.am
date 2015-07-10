@@ -119,6 +119,7 @@ nobase_follyinclude_HEADERS = \
 	FBString.h \
 	FBVector.h \
 	File.h \
+	FilePortability.h \
 	FileUtil.h \
 	Fingerprint.h \
 	folly-config.h \
@@ -243,6 +244,7 @@ nobase_follyinclude_HEADERS = \
 	SmallLocks.h \
 	small_vector.h \
 	SocketAddress.h \
+	SocketPortability.h \
 	sorted_vector_types.h \
 	SpinLock.h \
 	SpookyHashV1.h \

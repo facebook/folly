@@ -569,6 +569,7 @@ template<class T> struct dynamic::TypeInfo {
   static Type const type;
 };
 
+#ifndef _MSC_VER
 #define FB_DEC_TYPE(T)                                      \
   template<> char const dynamic::TypeInfo<T>::name[];       \
   template<> dynamic::Type const dynamic::TypeInfo<T>::type
@@ -582,6 +583,7 @@ FB_DEC_TYPE(int64_t);
 FB_DEC_TYPE(dynamic::ObjectImpl);
 
 #undef FB_DEC_TYPE
+#endif
 
 template<class T>
 T dynamic::asImpl() const {

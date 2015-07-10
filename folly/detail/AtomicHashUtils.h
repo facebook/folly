@@ -26,7 +26,7 @@
      if (counter < 10000) continue;               \
      pthread_yield();                             \
    }
-#else
+#elif defined(__clang__) || defined(__GNUC__)
 #define FOLLY_SPIN_WAIT(condition)              \
   for (int counter = 0; condition; ++counter) { \
     if (counter < 10000) {                      \
@@ -34,5 +34,16 @@
       continue;                                 \
     }                                           \
     pthread_yield();                            \
+  }
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#include <sched.h>
+#define FOLLY_SPIN_WAIT(condition)              \
+  for (int counter = 0; condition; ++counter) { \
+    if (counter < 10000) {                      \
+      ::_mm_pause();                            \
+      continue;                                 \
+    }                                           \
+    sched_yield();                              \
   }
 #endif

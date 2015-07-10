@@ -16,19 +16,17 @@
 
 #include <folly/io/async/AsyncSSLSocket.h>
 
+#include <folly/FilePortability.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/async/EventBase.h>
 
 #include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <openssl/err.h>
 #include <openssl/asn1.h>
 #include <openssl/ssl.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <chrono>
 
 #include <folly/Bits.h>
@@ -1487,7 +1485,7 @@ AsyncSSLSocket::sslInfoCallback(const SSL *ssl, int where, int ret) {
 
 int AsyncSSLSocket::eorAwareBioWrite(BIO *b, const char *in, int inl) {
   int ret;
-  struct msghdr msg;
+  struct fsp::msghdr msg;
   struct iovec iov;
   int flags = 0;
   AsyncSSLSocket *tsslSock;
@@ -1507,7 +1505,7 @@ int AsyncSSLSocket::eorAwareBioWrite(BIO *b, const char *in, int inl) {
   }
 
   errno = 0;
-  ret = sendmsg(b->num, &msg, flags);
+  ret = fsp::sendmsg(b->num, &msg, flags);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {
     if (BIO_sock_should_retry(ret))

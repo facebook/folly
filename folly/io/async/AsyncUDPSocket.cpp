@@ -16,11 +16,11 @@
 
 #include <folly/io/async/AsyncUDPSocket.h>
 
+#include <folly/FilePortability.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/Likely.h>
 
 #include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
 
 // Due to the way kernel headers are included, this may or may not be defined.
@@ -46,7 +46,7 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  int socket = ::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
+  int socket = fsp::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
   if (socket == -1) {
     throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                               "error creating async udp socket",
@@ -65,7 +65,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 
   // put the socket in reuse mode
   int value = 1;
-  if (setsockopt(socket,
+  if (fsp::setsockopt(socket,
                  SOL_SOCKET,
                  SO_REUSEADDR,
                  &value,
@@ -78,7 +78,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   if (reusePort_) {
     // put the socket in port reuse mode
     int value = 1;
-    if (setsockopt(socket,
+    if (fsp::setsockopt(socket,
                    SOL_SOCKET,
                    SO_REUSEPORT,
                    &value,
@@ -95,7 +95,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(socket, saddr, address.getActualSize()) != 0) {
+  if (fsp::bind(socket, saddr, address.getActualSize()) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "failed to bind the async udp socket for:" + address.describe(),
@@ -152,7 +152,7 @@ ssize_t AsyncUDPSocket::writev(const folly::SocketAddress& address,
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
 
-  struct msghdr msg;
+  struct fsp::msghdr msg;
   msg.msg_name = reinterpret_cast<void*>(&addrStorage);
   msg.msg_namelen = address.getActualSize();
   msg.msg_iov = const_cast<struct iovec*>(vec);
@@ -161,7 +161,7 @@ ssize_t AsyncUDPSocket::writev(const folly::SocketAddress& address,
   msg.msg_controllen = 0;
   msg.msg_flags = 0;
 
-  return ::sendmsg(fd_, &msg, 0);
+  return fsp::sendmsg(fd_, &msg, 0);
 }
 
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
@@ -237,7 +237,7 @@ void AsyncUDPSocket::handleRead() noexcept {
   struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
-  ssize_t bytesRead = ::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  ssize_t bytesRead = fsp::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 

@@ -15,20 +15,19 @@
  */
 #include "FiberManager.h"
 
-#include <sys/syscall.h>
-#include <unistd.h>
-
 #include <cassert>
 #include <stdexcept>
 
 #include <glog/logging.h>
 
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/LoopController.h>
 
 namespace folly { namespace fibers {
 
-__thread FiberManager* FiberManager::currentFiberManager_ = nullptr;
+FOLLY_TLS FiberManager* FiberManager::currentFiberManager_ = nullptr;
 
 FiberManager::FiberManager(std::unique_ptr<LoopController> loopController,
                            Options options) :
