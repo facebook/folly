@@ -110,6 +110,15 @@ TEST(Traits, relational) {
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
 }
 
+struct membership_no {};
+struct membership_yes { using x = void; };
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
+
+TEST(Traits, has_member_type) {
+  EXPECT_FALSE(bool(has_member_type_x<membership_no>::value));
+  EXPECT_TRUE(bool(has_member_type_x<membership_yes>::value));
+}
+
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

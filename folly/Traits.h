@@ -432,6 +432,16 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function);
 // Boost
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
 
+#define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name) \
+  template <typename T> \
+  struct classname { \
+    template <typename C> \
+    constexpr static bool test(typename C::type_name*) { return true; } \
+    template <typename> \
+    constexpr static bool test(...) { return false; } \
+    constexpr static bool value = test<T>(nullptr); \
+  }
+
 #define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, cv_qual) \
   template <typename TTheClass_, typename RTheReturn_, typename... TTheArgs_> \
   class classname<TTheClass_, RTheReturn_(TTheArgs_...) cv_qual> { \
