@@ -57,6 +57,7 @@ nobase_follyinclude_HEADERS = \
 	detail/Malloc.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
+	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SpinLockImpl.h \
 	detail/Stats.h \
@@ -223,12 +224,14 @@ nobase_follyinclude_HEADERS = \
 	MapUtil.h \
 	Memory.h \
 	MemoryMapping.h \
+	MicroSpinLock.h \
 	MoveWrapper.h \
 	MPMCPipeline.h \
 	MPMCQueue.h \
 	Optional.h \
 	PackedSyncPtr.h \
 	Padded.h \
+	PicoSpinLock.h \
 	Portability.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \

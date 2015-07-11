@@ -18,7 +18,7 @@
 
 #include <atomic>
 #include <mutex>
-#include <folly/SmallLocks.h>
+#include <folly/MicroSpinLock.h>
 
 namespace folly { namespace detail {
 

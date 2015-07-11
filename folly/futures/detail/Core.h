@@ -22,7 +22,7 @@
 #include <vector>
 
 #include <folly/Optional.h>
-#include <folly/SmallLocks.h>
+#include <folly/MicroSpinLock.h>
 
 #include <folly/futures/Try.h>
 #include <folly/futures/Promise.h>

@@ -131,7 +131,7 @@ Sample usage:
 #include <folly/ConcurrentSkipList-inl.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
-#include <folly/SmallLocks.h>
+#include <folly/MicroSpinLock.h>
 
 namespace folly {
 
