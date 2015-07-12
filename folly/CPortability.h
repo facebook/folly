@@ -53,4 +53,15 @@
 # define FOLLY_DISABLE_ADDRESS_SANITIZER
 #endif
 
+
+#ifdef _MSC_VER
+// TODO: Implement.
+#else
+#include <dirent.h>
+#include <libgen.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#endif
+
 #endif
