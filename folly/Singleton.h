@@ -53,9 +53,9 @@
 // namespace {
 // struct Tag1 {};
 // struct Tag2 {};
-// folly::Singleton<MyExpensiveService> s_default();
-// folly::Singleton<MyExpensiveService, Tag1> s1();
-// folly::Singleton<MyExpensiveService, Tag2> s2();
+// folly::Singleton<MyExpensiveService> s_default;
+// folly::Singleton<MyExpensiveService, Tag1> s1;
+// folly::Singleton<MyExpensiveService, Tag2> s2;
 // }
 // ...
 // MyExpensiveService* svc_default = s_default.get();
