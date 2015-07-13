@@ -55,6 +55,15 @@ TEST(File, Simple) {
   }
 }
 
+TEST(File, SimpleStringPiece) {
+  char buf = 'x';
+  File f(StringPiece("/etc/hosts"));
+  EXPECT_NE(-1, f.fd());
+  EXPECT_EQ(1, ::read(f.fd(), &buf, 1));
+  f.close();
+  EXPECT_EQ(-1, f.fd());
+}
+
 TEST(File, OwnsFd) {
   // Wrap a file descriptor, make sure that ownsFd works
   // We'll test that the file descriptor is closed by closing the writing

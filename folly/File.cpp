@@ -53,6 +53,12 @@ File::File(const char* name, int flags, mode_t mode)
   ownsFd_ = true;
 }
 
+File::File(const std::string& name, int flags, mode_t mode)
+  : File(name.c_str(), flags, mode) {}
+
+File::File(StringPiece name, int flags, mode_t mode)
+  : File(name.str(), flags, mode) {}
+
 File::File(File&& other) noexcept
   : fd_(other.fd_)
   , ownsFd_(other.ownsFd_) {
