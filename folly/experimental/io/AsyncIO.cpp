@@ -368,7 +368,11 @@ std::ostream& operator<<(std::ostream& os, const AsyncIOOp& op) {
   }
 
   if (op.state_ == AsyncIOOp::State::COMPLETED) {
-    os << "result=" << op.result_ << ", ";
+    os << "result=" << op.result_;
+    if (op.result_ < 0) {
+      os << " (" << errnoStr(-op.result_) << ')';
+    }
+    os << ", ";
   }
 
   return os << "}";
