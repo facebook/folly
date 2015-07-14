@@ -215,6 +215,30 @@ public:
   }
 };
 
+/**
+ * Class and helper function for negating a boolean Predicate
+ */
+template <class Predicate>
+class Negate {
+  Predicate pred_;
+
+ public:
+  Negate() = default;
+
+  explicit Negate(Predicate pred)
+    : pred_(std::move(pred))
+  {}
+
+  template <class Arg>
+  bool operator()(Arg&& arg) const {
+    return !pred_(std::forward<Arg>(arg));
+  }
+};
+template <class Predicate>
+Negate<Predicate> negate(Predicate pred) {
+  return Negate<Predicate>(std::move(pred));
+}
+
 template <class Dest>
 class Cast {
  public:
@@ -346,6 +370,7 @@ class Concat;
 
 class RangeConcat;
 
+template <bool forever>
 class Cycle;
 
 class Batch;
@@ -363,10 +388,8 @@ class FoldLeft;
 
 class First;
 
-class Any;
-
-template<class Predicate>
-class All;
+template <bool result>
+class IsEmpty;
 
 template<class Reducer>
 class Reduce;
@@ -621,12 +644,6 @@ Filter filter(Predicate pred = Predicate()) {
 }
 
 template<class Predicate,
-         class All = detail::All<Predicate>>
-All all(Predicate pred = Predicate()) {
-  return All(std::move(pred));
-}
-
-template<class Predicate,
          class Until = detail::Until<Predicate>>
 Until until(Predicate pred = Predicate()) {
   return Until(std::move(pred));
@@ -647,9 +664,9 @@ Order orderByDescending(Selector selector = Selector()) {
   return Order(std::move(selector));
 }
 
-template<class Selector,
-         class GroupBy = detail::GroupBy<Selector>>
-GroupBy groupBy(Selector selector = Identity()) {
+template <class Selector = Identity,
+          class GroupBy = detail::GroupBy<Selector>>
+GroupBy groupBy(Selector selector = Selector()) {
   return GroupBy(std::move(selector));
 }
 
@@ -687,6 +704,63 @@ detail::TypeAssertion<Value> assert_type() {
 /*
  * Sink Factories
  */
+
+/**
+ * any() - For determining if any value in a sequence satisfies a predicate.
+ *
+ * The following is an example for checking if any computer is broken:
+ *
+ *   bool schrepIsMad = from(computers) | any(isBroken);
+ *
+ * (because everyone knows Schrep hates broken computers).
+ *
+ * Note that if no predicate is provided, 'any()' checks if any of the values
+ * are true when cased to bool. To check if any of the scores are nonZero:
+ *
+ *   bool somebodyScored = from(scores) | any();
+ *
+ * Note: Passing an empty sequence through 'any()' will always return false. In
+ * fact, 'any()' is equivilent to the composition of 'filter()' and 'notEmpty'.
+ *
+ *   from(source) | any(pred) == from(source) | filter(pred) | notEmpty
+ */
+
+template <class Predicate = Identity,
+          class Filter = detail::Filter<Predicate>,
+          class NotEmpty = detail::IsEmpty<false>,
+          class Composed = detail::Composed<Filter, NotEmpty>>
+Composed any(Predicate pred = Predicate()) {
+  return Composed(Filter(std::move(pred)), NotEmpty());
+}
+
+/**
+ * all() - For determining whether all values in a sequence satisfy a predicate.
+ *
+ * The following is an example for checking if all members of a team are cool:
+ *
+ *   bool isAwesomeTeam = from(team) | all(isCool);
+ *
+ * Note that if no predicate is provided, 'all()'' checks if all of the values
+ * are true when cased to bool.
+ * The following makes sure none of 'pointers' are nullptr:
+ *
+ *   bool allNonNull = from(pointers) | all();
+ *
+ * Note: Passing an empty sequence through 'all()' will always return true. In
+ * fact, 'all()' is equivilent to the composition of 'filter()' with the
+ * reversed predicate and 'isEmpty'.
+ *
+ *   from(source) | all(pred) == from(source) | filter(negate(pred)) | isEmpty
+ */
+
+template <class Predicate = Identity,
+          class Filter = detail::Filter<Negate<Predicate>>,
+          class IsEmpty = detail::IsEmpty<true>,
+          class Composed = detail::Composed<Filter, IsEmpty>>
+Composed all(Predicate pred = Predicate()) {
+  return Composed(Filter(std::move(negate(pred))), IsEmpty());
+}
+
 template<class Seed,
          class Fold,
          class FoldLeft = detail::FoldLeft<Seed, Fold>>

@@ -591,6 +591,18 @@ TEST(Gen, MaxBy) {
   EXPECT_EQ("eleven", gen | maxBy(&strlen));
 }
 
+TEST(Gen, Min) {
+  auto odds = seq(2,10) | filter([](int i){ return i % 2; });
+
+  EXPECT_EQ(3, odds | min);
+}
+
+TEST(Gen, Max) {
+  auto odds = seq(2,10) | filter([](int i){ return i % 2; });
+
+  EXPECT_EQ(9, odds | max);
+}
+
 TEST(Gen, Append) {
   string expected = "facebook";
   string actual = "face";
@@ -730,15 +742,27 @@ TEST(Gen, Get) {
   EXPECT_EQ(36, from(tuples) | get<2>() | sum);
 }
 
+TEST(Gen, notEmpty) {
+  EXPECT_TRUE(seq(0) | notEmpty);
+  EXPECT_TRUE(seq(0, 1) | notEmpty);
+  EXPECT_TRUE(just(1) | notEmpty);
+  EXPECT_FALSE(gen::range(0, 0) | notEmpty);
+  EXPECT_FALSE(from({1}) | take(0) | notEmpty);
+  EXPECT_TRUE(seq(1, 3) | cycle | notEmpty);
+}
+
+TEST(Gen, isEmpty) {
+  EXPECT_FALSE(seq(0) | isEmpty);
+  EXPECT_FALSE(seq(0, 1) | isEmpty);
+  EXPECT_FALSE(just(1) | isEmpty);
+  EXPECT_TRUE(gen::range(0, 0) | isEmpty);
+  EXPECT_TRUE(from({1}) | take(0) | isEmpty);
+  EXPECT_FALSE(seq(1, 3) | cycle | isEmpty);
+}
+
 TEST(Gen, Any) {
-  EXPECT_TRUE(seq(0) | any);
-  EXPECT_TRUE(seq(0, 1) | any);
   EXPECT_TRUE(seq(0, 10) | any([](int i) { return i == 7; }));
   EXPECT_FALSE(seq(0, 10) | any([](int i) { return i == 11; }));
-
-  EXPECT_TRUE(from({1}) | any);
-  EXPECT_FALSE(gen::range(0, 0) | any);
-  EXPECT_FALSE(from({1}) | take(0) | any);
 }
 
 TEST(Gen, All) {

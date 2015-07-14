@@ -1340,78 +1340,32 @@ class First : public Operator<First> {
   }
 };
 
-
 /**
- * Any - For determining whether any values in a sequence satisfy a predicate.
+ * IsEmpty - a helper class for isEmpty and notEmpty
  *
- * This type is primarily used through the 'any' static value, like:
- *
- *   bool any20xPrimes = seq(200, 210) | filter(isPrime) | any;
- *
- * Note that it may also be used like so:
- *
- *   bool any20xPrimes = seq(200, 210) | any(isPrime);
- *
+ * Essentially returns 'result' if the source is empty. Note that this cannot be
+ * called on an infinite source, because then there is only one possible return
+ * value.
  */
-class Any : public Operator<Any> {
+template <bool emptyResult>
+class IsEmpty : public Operator<IsEmpty<emptyResult>> {
  public:
-  Any() = default;
+  IsEmpty() = default;
 
   template<class Source,
            class Value>
   bool compose(const GenImpl<Value, Source>& source) const {
-    bool any = false;
+    static_assert(!Source::infinite,
+                  "Cannot call 'all', 'any', 'isEmpty', or 'notEmpty' on "
+                  "infinite source. 'all' and 'isEmpty' will either return "
+                  "false or hang. 'any' or 'notEmpty' will either return true "
+                  "or hang.");
+    bool ans = emptyResult;
     source | [&](Value v) -> bool {
-      any = true;
+      ans = !emptyResult;
       return false;
     };
-    return any;
-  }
-
-  /**
-   * Convenience function for use like:
-   *
-   *  bool found = gen | any([](int i) { return i * i > 100; });
-   */
-  template<class Predicate,
-           class Filter = Filter<Predicate>,
-           class Composed = Composed<Filter, Any>>
-  Composed operator()(Predicate pred) const {
-    return Composed(Filter(std::move(pred)), Any());
-  }
-};
-
-/**
- * All - For determining whether all values in a sequence satisfy a predicate.
- *
- * This type is primarily used through the 'any' static value, like:
- *
- *   bool valid = from(input) | all(validate);
- *
- * Note: Passing an empty sequence through 'all()' will always return true.
- */
-template<class Predicate>
-class All : public Operator<All<Predicate>> {
-  Predicate pred_;
- public:
-  All() = default;
-  explicit All(Predicate pred)
-    : pred_(std::move(pred))
-  { }
-
-  template<class Source,
-           class Value>
-  bool compose(const GenImpl<Value, Source>& source) const {
-    static_assert(!Source::infinite, "Cannot call 'all' on infinite source");
-    bool all = true;
-    source | [&](Value v) -> bool {
-      if (!pred_(std::forward<Value>(v))) {
-        all = false;
-        return false;
-      }
-      return true;
-    };
-    return all;
+    return ans;
   }
 };
 
@@ -1486,7 +1440,7 @@ class Count : public Operator<Count> {
  */
 class Sum : public Operator<Sum> {
  public:
-  Sum() : Operator<Sum>() {}
+  Sum() = default;
 
   template<class Source,
            class Value,
@@ -1878,21 +1832,29 @@ class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {
  *     = from(samples)
  *     | cycle
  *     | take(100);
+ *
+ * or in the finite case:
+ *
+ *   auto thrice = g | cycle(3);
  */
-class Cycle : public Operator<Cycle> {
-  off_t limit_; // -1 for infinite
+template <bool forever>
+class Cycle : public Operator<Cycle<forever>> {
+  off_t limit_; // not used if forever == true
  public:
-  Cycle()
-    : limit_(-1) { }
+  Cycle() = default;
 
   explicit Cycle(off_t limit)
-    : limit_(limit) { }
+    : limit_(limit) {
+      static_assert(
+          !forever,
+          "Cycle limit consturctor should not be used when forever == true.");
+    }
 
   template<class Value,
            class Source>
   class Generator : public GenImpl<Value, Generator<Value, Source>> {
     Source source_;
-    off_t limit_; // -1 for infinite
+    off_t limit_;
   public:
     explicit Generator(Source source, off_t limit)
       : source_(std::move(source))
@@ -1905,7 +1867,8 @@ class Cycle : public Operator<Cycle> {
         cont = handler(std::forward<Value>(value));
         return cont;
       };
-      for (off_t count = 0; count != limit_; ++count) {
+      // Becomes an infinte loop if forever == true
+      for (off_t count = 0; (forever || count != limit_); ++count) {
         cont = false;
         source_.apply(handler2);
         if (!cont) {
@@ -1934,12 +1897,12 @@ class Cycle : public Operator<Cycle> {
   }
 
   /**
-   * Convenience function for use like:
+   * Convenience function for finite cycles used like:
    *
    *  auto tripled = gen | cycle(3);
    */
-  Cycle operator()(off_t limit) const {
-    return Cycle(limit);
+  Cycle<false> operator()(off_t limit) const {
+    return Cycle<false>(limit);
   }
 };
 
@@ -2126,46 +2089,41 @@ class VirtualGen : public GenImpl<Value, VirtualGen<Value>> {
  * non-template operators, statically defined to avoid the need for anything but
  * the header.
  */
-static const detail::Sum sum{};
+constexpr detail::Sum sum{};
 
-static const detail::Count count{};
+constexpr detail::Count count{};
 
-static const detail::First first{};
-
-/**
- * Use directly for detecting any values, or as a function to detect values
- * which pass a predicate:
- *
- *  auto nonempty = g | any;
- *  auto evens = g | any(even);
- */
-static const detail::Any any{};
-
-static const detail::Min<Identity, Less> min{};
-
-static const detail::Min<Identity, Greater> max{};
-
-static const detail::Order<Identity> order{};
-
-static const detail::Distinct<Identity> distinct{};
-
-static const detail::Map<Move> move{};
-
-static const detail::Concat concat{};
-
-static const detail::RangeConcat rconcat{};
+constexpr detail::First first{};
 
 /**
- * Use directly for infinite sequences, or as a function to limit cycle count.
+ * Use 'isEmpty' and 'notEmpty' for detecting if there are any values or not.
  *
- *  auto forever = g | cycle;
- *  auto thrice = g | cycle(3);
+ *  bool hasPrimes = g | filter(prime) | notEmpty;
+ *  bool lacksEvens = g | filter(even) | isEmpty;
  */
-static const detail::Cycle cycle{};
+constexpr detail::IsEmpty<true> isEmpty{};
 
-static const detail::Dereference dereference{};
+constexpr detail::IsEmpty<false> notEmpty{};
 
-static const detail::Indirect indirect{};
+constexpr detail::Min<Identity, Less> min{};
+
+constexpr detail::Min<Identity, Greater> max{};
+
+constexpr detail::Order<Identity> order{};
+
+constexpr detail::Distinct<Identity> distinct{};
+
+constexpr detail::Map<Move> move{};
+
+constexpr detail::Concat concat{};
+
+constexpr detail::RangeConcat rconcat{};
+
+constexpr detail::Cycle<true> cycle{};
+
+constexpr detail::Dereference dereference{};
+
+constexpr detail::Indirect indirect{};
 
 inline detail::Take take(size_t count) {
   return detail::Take(count);

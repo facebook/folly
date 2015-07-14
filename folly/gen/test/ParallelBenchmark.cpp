@@ -56,10 +56,10 @@ static auto primes =
     seq(1, 1 << 20) | filter(isPrimeSlow) | as<vector>();
 
 static auto isPrime = [](int n) {
-  return !(from(primes)
+  return from(primes)
          | until([&](int d) { return d * d > n; })
          | filter([&](int d) { return 0 == n % d; })
-         | any);
+         | isEmpty;
 };
 
 static auto factors = [](int n) {
