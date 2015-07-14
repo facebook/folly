@@ -181,6 +181,13 @@ class GenImpl : public FBounded<Self> {
   // Child classes should override if the sequence generated is *definitely*
   // infinite. 'infinite' may be false_type for some infinite sequences
   // (due the the Halting Problem).
+  //
+  // In general, almost all sources are finite (only seq(n) produces an infinite
+  // source), almost all operators keep the finiteness of the source (only cycle
+  // makes an infinite generator from a finite one, only until and take make a
+  // finite generator from an infinite one, and concat needs both the inner and
+  // outer generators to be finite to make a finite one), and most sinks
+  // cannot accept and infinite generators (first being the expection).
   static constexpr bool infinite = false;
 };
 

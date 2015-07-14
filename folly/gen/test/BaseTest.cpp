@@ -577,6 +577,37 @@ TEST(Gen, DistinctMove) {   //  0  1  4  9  6  5  6  9  4  1  0
   EXPECT_EQ(expected, actual);
 }
 
+TEST(Gen, DistinctInfinite) {
+  // distinct should be able to handle an infinite sequence, provided that, of
+  // of cource, is it eventually made finite before returning the result.
+  auto expected = seq(0) | take(5) | as<vector>(); // 0 1 2 3 4
+
+  auto actual =
+      seq(0)                              // 0 1 2 3 4 5 6 7 ...
+    | mapped([](int i) { return i / 2; }) // 0 0 1 1 2 2 3 3 ...
+    | distinct                            // 0 1 2 3 4 5 6 7 ...
+    | take(5)                             // 0 1 2 3 4
+    | as<vector>();
+
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(Gen, DistinctByInfinite) {
+  // Similarly to the DistinctInfinite test case, distinct by should be able to
+  // handle infinite sequences. Note that depending on how many values we take()
+  // at the end, the sequence may infinite loop. This is fine becasue we cannot
+  // solve the halting problem.
+  auto expected = vector<int>{1, 2};
+  auto actual =
+      seq(1)                                    // 1 2 3 4 5 6 7 8 ...
+    | distinctBy([](int i) { return i % 2; })   // 1 2 (but might by infinite)
+    | take(2)                                   // 1 2
+    | as<vector>();
+  // Note that if we had take(3), this would infinite loop
+
+  EXPECT_EQ(expected, actual);
+}
+
 TEST(Gen, MinBy) {
   EXPECT_EQ(7, seq(1, 10)
              | minBy([](int i) -> double {
@@ -743,21 +774,17 @@ TEST(Gen, Get) {
 }
 
 TEST(Gen, notEmpty) {
-  EXPECT_TRUE(seq(0) | notEmpty);
   EXPECT_TRUE(seq(0, 1) | notEmpty);
   EXPECT_TRUE(just(1) | notEmpty);
   EXPECT_FALSE(gen::range(0, 0) | notEmpty);
   EXPECT_FALSE(from({1}) | take(0) | notEmpty);
-  EXPECT_TRUE(seq(1, 3) | cycle | notEmpty);
 }
 
 TEST(Gen, isEmpty) {
-  EXPECT_FALSE(seq(0) | isEmpty);
   EXPECT_FALSE(seq(0, 1) | isEmpty);
   EXPECT_FALSE(just(1) | isEmpty);
   EXPECT_TRUE(gen::range(0, 0) | isEmpty);
   EXPECT_TRUE(from({1}) | take(0) | isEmpty);
-  EXPECT_FALSE(seq(1, 3) | cycle | isEmpty);
 }
 
 TEST(Gen, Any) {
@@ -1018,7 +1045,8 @@ TEST(Gen, Cycle) {
     };
     auto s = countdown;
     EXPECT_EQ((vector<int> { 1, 2, 3, 1, 2, 1}),
-              s | cycle | as<vector>());
+              s | cycle | take(7) | as<vector>());
+    // take necessary as cycle returns an infinite generator
   }
 }
 
