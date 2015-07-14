@@ -68,8 +68,8 @@ TEST_F(ScopedEventBaseThreadTest, move) {
 }
 
 TEST_F(ScopedEventBaseThreadTest, self_move) {
-  ScopedEventBaseThread sebt;
-  sebt = std::move(sebt);
+  ScopedEventBaseThread sebt0;
+  auto sebt = std::move(sebt0);
 
   EXPECT_NE(nullptr, sebt.getEventBase());
 
