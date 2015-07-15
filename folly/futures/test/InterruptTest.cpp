@@ -18,6 +18,7 @@
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/Baton.h>
 
 using namespace folly;
 
@@ -71,4 +72,45 @@ TEST(Interrupt, secondInterruptNoop) {
   f.cancel();
   f.cancel();
   EXPECT_EQ(1, count);
+}
+
+TEST(Interrupt, withinTimedOut) {
+  Promise<int> p;
+  Baton<> done;
+  p.setInterruptHandler([&](const exception_wrapper& e) { done.post(); });
+  p.getFuture().within(std::chrono::milliseconds(1));
+  // Give it 100ms to time out and call the interrupt handler
+  auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  EXPECT_TRUE(done.timed_wait(t));
+}
+
+class DummyTimeKeeper : public Timekeeper {
+ public:
+  explicit DummyTimeKeeper() : interrupted() {}
+
+  Future<Unit> after(Duration) override {
+    promise.setInterruptHandler(
+      [this](const exception_wrapper& e) {
+        EXPECT_THROW(e.throwException(), CancelTimer);
+        interrupted.post();
+      }
+    );
+    return promise.getFuture();
+  }
+
+  Baton<> interrupted;
+
+ private:
+  Promise<Unit> promise;
+};
+
+TEST(Interrupt, withinCancelTimer) {
+  DummyTimeKeeper tk;
+  Promise<int> p;
+  Baton<> done;
+  p.getFuture().within(std::chrono::milliseconds(10), TimedOut(), &tk);
+  p.setValue(1); // this should cancel the timer
+  // Give it 100ms to interrupt the timer Future
+  auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  EXPECT_TRUE(tk.interrupted.timed_wait(t));
 }
