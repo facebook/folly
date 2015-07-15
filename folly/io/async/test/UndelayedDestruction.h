@@ -57,7 +57,18 @@ class UndelayedDestruction : public TDD {
   // behavior for non-destructible types, which is unfortunate.)
   template<typename ...Args>
   explicit UndelayedDestruction(Args&& ...args)
-    : TDD(std::forward<Args>(args)...) {}
+    : TDD(std::forward<Args>(args)...) {
+      this->TDD::onDestroy_ = [&, this] (bool delayed) {
+        if (delayed && !this->TDD::getDestroyPending()) {
+          return;
+        }
+        // Do nothing.  This will always be invoked from the call to destroy
+        // inside our destructor.
+        assert(!delayed);
+        // prevent unused variable warnings when asserts are compiled out.
+        (void)delayed;
+      };
+  }
 
   /**
    * Public destructor.
@@ -87,14 +98,6 @@ class UndelayedDestruction : public TDD {
    */
   virtual void destroy() {
     this->TDD::destroy();
-  }
-
-  virtual void destroyNow(bool delayed) {
-    // Do nothing.  This will always be invoked from the call to destroy inside
-    // our destructor.
-    assert(!delayed);
-    // prevent unused variable warnings when asserts are compiled out.
-    (void)delayed;
   }
 
  private:

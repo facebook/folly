@@ -193,6 +193,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncSocketBase.h \
 	io/async/AsyncSSLSocket.h \
 	io/async/AsyncSocketException.h \
+	io/async/DelayedDestructionBase.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
 	io/async/EventBaseManager.h \
