@@ -122,11 +122,13 @@ void FileRegion::FileWriteRequest::start() {
       return;
     }
 
+#ifdef F_SETPIPE_SZ
     // Max size for unprevileged processes as set in /proc/sys/fs/pipe-max-size
     // Ignore failures and just roll with it
     // TODO maybe read max size from /proc?
     fcntl(pipeFds[0], F_SETPIPE_SZ, 1048576);
     fcntl(pipeFds[1], F_SETPIPE_SZ, 1048576);
+#endif
 
     pipe_out_ = pipeFds[0];
 
