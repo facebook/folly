@@ -213,6 +213,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/MockAsyncServerSocket.h \
 	io/async/test/MockAsyncSSLSocket.h \
 	io/async/test/MockAsyncTransport.h \
+	io/async/test/SocketPair.h \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \
@@ -342,6 +343,7 @@ libfolly_la_SOURCES = \
 	io/async/SSLContext.cpp \
 	io/async/ScopedEventBaseThread.cpp \
 	io/async/HHWheelTimer.cpp \
+	io/async/test/SocketPair.cpp \
 	io/async/test/TimeUtil.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
