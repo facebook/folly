@@ -84,6 +84,11 @@ class FiberManager : public ::folly::Executor {
      */
     size_t maxFibersPoolSize{1000};
 
+    /**
+     * Protect limited amount of fiber stacks with guard pages.
+     */
+    bool useGuardPages{true};
+
     constexpr Options() {}
   };
 

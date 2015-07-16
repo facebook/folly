@@ -194,11 +194,14 @@ class StackCacheEntry {
   std::unique_ptr<StackCache> stackCache_;
 };
 
-GuardPageAllocator::GuardPageAllocator() = default;
+GuardPageAllocator::GuardPageAllocator(bool useGuardPages)
+  : useGuardPages_(useGuardPages) {
+}
+
 GuardPageAllocator::~GuardPageAllocator() = default;
 
 unsigned char* GuardPageAllocator::allocate(size_t size) {
-  if (!stackCache_) {
+  if (useGuardPages_ && !stackCache_) {
     stackCache_ = CacheManager::instance().getStackCache(size);
   }
 

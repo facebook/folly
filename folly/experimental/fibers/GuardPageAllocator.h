@@ -29,7 +29,11 @@ class StackCacheEntry;
  */
 class GuardPageAllocator {
  public:
-  GuardPageAllocator();
+  /**
+   * @param useGuardPages if true, protect limited amount of stacks with guard
+   *                      pages, otherwise acts as std::allocator.
+   */
+  explicit GuardPageAllocator(bool useGuardPages);
   ~GuardPageAllocator();
 
   /**
@@ -45,6 +49,7 @@ class GuardPageAllocator {
  private:
   std::unique_ptr<StackCacheEntry> stackCache_;
   std::allocator<unsigned char> fallbackAllocator_;
+  bool useGuardPages_{true};
 };
 
 }}  // folly::fibers

@@ -486,6 +486,7 @@ FiberManager::FiberManager(
   std::unique_ptr<LoopController> loopController__,
   Options options)  :
     loopController_(std::move(loopController__)),
+    stackAllocator_(options.useGuardPages),
     options_(preprocessOptions(std::move(options))),
     exceptionCallback_([](std::exception_ptr eptr, std::string context) {
         try {
