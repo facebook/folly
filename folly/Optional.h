@@ -54,8 +54,8 @@
  *    cout << *v << endl;
  *  }
  */
-#include <cassert>
 #include <cstddef>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -81,6 +81,12 @@ const None none = nullptr;
 # pragma GCC diagnostic ignored "-Wpragmas"
 # pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif // __GNUC__
+
+class OptionalEmptyException : public std::runtime_error {
+ public:
+  OptionalEmptyException()
+      : std::runtime_error("Empty Optional cannot be unwrapped") {}
+};
 
 template<class Value>
 class Optional {
@@ -206,14 +212,17 @@ class Optional {
   }
 
   const Value& value() const {
-    assert(hasValue());
+    require_value();
     return value_;
   }
 
   Value& value() {
-    assert(hasValue());
+    require_value();
     return value_;
   }
+
+  Value* get_pointer() { return hasValue_ ? &value_ : nullptr; }
+  const Value* get_pointer() const { return hasValue_ ? &value_ : nullptr; }
 
   bool hasValue() const { return hasValue_; }
 
@@ -239,6 +248,12 @@ class Optional {
   }
 
  private:
+  void require_value() const {
+    if (!hasValue_) {
+      throw OptionalEmptyException();
+    }
+  }
+
   template<class... Args>
   void construct(Args&&... args) {
     const void* ptr = &value_;
@@ -258,12 +273,12 @@ class Optional {
 
 template<class T>
 const T* get_pointer(const Optional<T>& opt) {
-  return opt ? &opt.value() : nullptr;
+  return opt.get_pointer();
 }
 
 template<class T>
 T* get_pointer(Optional<T>& opt) {
-  return opt ? &opt.value() : nullptr;
+  return opt.get_pointer();
 }
 
 template<class T>

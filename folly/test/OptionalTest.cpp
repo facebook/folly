@@ -497,4 +497,9 @@ TEST(Optional, AssignmentContained) {
   }
 }
 
+TEST(Optional, Exceptions) {
+  Optional<int> empty;
+  EXPECT_THROW(empty.value(), OptionalEmptyException);
+}
+
 }
