@@ -212,7 +212,7 @@ size_t HHWheelTimer::cancelAll() {
 // http://llvm.org/bugs/show_bug.cgi?id=22106
 #if FOLLY_USE_LIBCPP
   for (size_t i = 0; i < WHEEL_BUCKETS; ++i) {
-    for (size_t ii = 0; i < WHEEL_SIZE; ++ii) {
+    for (size_t ii = 0; ii < WHEEL_SIZE; ++ii) {
       std::swap(buckets_[i][ii], buckets[i][ii]);
     }
   }
