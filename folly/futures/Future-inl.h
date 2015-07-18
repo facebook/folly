@@ -855,38 +855,31 @@ template <class E>
 Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
 
   struct Context {
-    Context(E ex, Future<Unit>&& f)
-        : exception(std::move(ex)), afterFuture(std::move(f)), promise() {}
+    Context(E ex) : exception(std::move(ex)), promise() {}
     E exception;
-    Future<Unit> afterFuture;
-    Future<Unit> thisFuture;
     Promise<T> promise;
     std::atomic<bool> token {false};
   };
+  auto ctx = std::make_shared<Context>(std::move(e));
 
   if (!tk) {
     tk = folly::detail::getTimekeeperSingleton();
   }
 
-  auto ctx = std::make_shared<Context>(std::move(e), tk->after(dur));
+  tk->after(dur)
+    .then([ctx](Try<Unit> const& t) {
+      if (ctx->token.exchange(true) == false) {
+        if (t.hasException()) {
+          ctx->promise.setException(std::move(t.exception()));
+        } else {
+          ctx->promise.setException(std::move(ctx->exception));
+        }
+      }
+    });
 
-  ctx->thisFuture = this->then([ctx](Try<T>&& t) mutable {
-    // "this" completed first, cancel "after"
-    ctx->afterFuture.raise(CancelTimer());
+  this->then([ctx](Try<T>&& t) {
     if (ctx->token.exchange(true) == false) {
       ctx->promise.setTry(std::move(t));
-    }
-  });
-
-  ctx->afterFuture.then([ctx](Try<Unit> const& t) mutable {
-    // "after" completed first, cancel "this"
-    ctx->thisFuture.raise(TimedOut());
-    if (ctx->token.exchange(true) == false) {
-      if (t.hasException()) {
-        ctx->promise.setException(std::move(t.exception()));
-      } else {
-        ctx->promise.setException(std::move(ctx->exception));
-      }
     }
   });
 

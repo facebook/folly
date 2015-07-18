@@ -91,11 +91,6 @@ class TimedOut : public FutureException {
   TimedOut() : FutureException("Timed out") {}
 };
 
-class CancelTimer : public FutureException {
- public:
-  CancelTimer() : FutureException("Timer should be cancelled") {}
-};
-
 class PredicateDoesNotObtain : public FutureException {
  public:
   PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
