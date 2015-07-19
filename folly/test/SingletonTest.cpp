@@ -414,6 +414,32 @@ TEST(Singleton, SingletonConcurrency) {
   EXPECT_EQ(vault.livingSingletonCount(), 1);
 }
 
+struct ErrorConstructor {
+  static size_t constructCount_;
+  ErrorConstructor() {
+    if ((constructCount_++) == 0) {
+      throw std::runtime_error("first time fails");
+    }
+  }
+};
+size_t ErrorConstructor::constructCount_(0);
+
+struct CreationErrorTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonCreationError = Singleton<T, Tag, CreationErrorTag>;
+
+TEST(Singleton, SingletonCreationError) {
+  auto& vault = *SingletonVault::singleton<CreationErrorTag>();
+  SingletonCreationError<ErrorConstructor> error_once_singleton;
+
+  // first time should error out
+  EXPECT_THROW(error_once_singleton.get_weak().lock(), std::runtime_error);
+
+  // second time it'll work fine
+  error_once_singleton.get_weak().lock();
+  SUCCEED();
+}
+
 struct ConcurrencyStressTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonConcurrencyStress = Singleton <T, Tag, ConcurrencyStressTag>;

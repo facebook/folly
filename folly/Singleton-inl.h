@@ -139,11 +139,17 @@ void SingletonHolder<T>::createInstance() {
     return;
   }
 
+  SCOPE_EXIT {
+    // Clean up creator thread when complete, and also, in case of errors here,
+    // so that subsequent attempts don't think this is still in the process of
+    // being built.
+    creating_thread_ = std::thread::id();
+  };
+
   creating_thread_ = std::this_thread::get_id();
 
   RWSpinLock::ReadHolder rh(&vault_.stateMutex_);
   if (vault_.state_ == SingletonVault::SingletonVaultState::Quiescing) {
-    creating_thread_ = std::thread::id();
     return;
   }
 
@@ -184,7 +190,6 @@ void SingletonHolder<T>::createInstance() {
 
   instance_weak_ = instance_;
   instance_ptr_ = instance_.get();
-  creating_thread_ = std::thread::id();
   destroy_baton_ = std::move(destroy_baton);
   print_destructor_stack_trace_ = std::move(print_destructor_stack_trace);
 
