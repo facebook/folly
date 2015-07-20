@@ -51,7 +51,6 @@ class DelayedDestruction : public DelayedDestructionBase {
   virtual void destroy() {
     // If guardCount_ is not 0, just set destroyPending_ to delay
     // actual destruction.
-    VLOG(4) << "DelayedDestruction::destroy()";
     if (getDestructorGuardCount() != 0) {
       destroyPending_ = true;
     } else {
@@ -105,7 +104,6 @@ class DelayedDestruction : public DelayedDestructionBase {
       if (delayed && !destroyPending_) {
         return;
       }
-      VLOG(4) << "DelayedDestruction::onDestroy_ delayed=" << delayed;
       delete this;
       (void)delayed; // prevent unused variable warnings
     };
