@@ -225,6 +225,13 @@ class FiberManager : public ::folly::Executor {
   bool hasActiveFiber() const;
 
   /**
+   * @return The currently running fiber or null if no fiber is executing.
+   */
+  Fiber* currentFiber() const {
+    return currentFiber_;
+  }
+
+  /**
    * @return What was the most observed fiber stack usage (in bytes).
    */
   size_t stackHighWatermark() const;
