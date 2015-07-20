@@ -33,7 +33,7 @@ namespace folly { namespace futures {
 
 Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   if (LIKELY(!tk)) {
-    tk = detail::getTimekeeperSingleton();
+    tk = folly::detail::getTimekeeperSingleton();
   }
   return tk->after(dur);
 }
