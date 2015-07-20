@@ -159,6 +159,41 @@ TEST(Optional, value_or_noncopyable) {
   EXPECT_EQ(42, *std::move(opt).value_or(std::move(dflt)));
 }
 
+struct ExpectingDeleter {
+  explicit ExpectingDeleter(int expected) : expected(expected) { }
+  int expected;
+  void operator()(const int* ptr) {
+    EXPECT_EQ(*ptr, expected);
+    delete ptr;
+  }
+};
+
+TEST(Optional, value_life_extention) {
+  // Extends the life of the value.
+  const auto& ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
+      {new int(42), ExpectingDeleter{1337}}).value();
+  *ptr = 1337;
+}
+
+TEST(Optional, value_move) {
+  auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
+      {new int(42), ExpectingDeleter{1337}}).value();
+  *ptr = 1337;
+}
+
+TEST(Optional, dereference_life_extention) {
+  // Extends the life of the value.
+  const auto& ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
+      {new int(42), ExpectingDeleter{1337}});
+  *ptr = 1337;
+}
+
+TEST(Optional, dereference_move) {
+  auto ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
+      {new int(42), ExpectingDeleter{1337}});
+  *ptr = 1337;
+}
+
 TEST(Optional, EmptyConstruct) {
   Optional<int> opt;
   EXPECT_FALSE(bool(opt));
