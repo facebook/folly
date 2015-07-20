@@ -1678,7 +1678,7 @@ class Cycle : public Operator<Cycle<forever>> {
   explicit Cycle(off_t limit) : limit_(limit) {
     static_assert(
         !forever,
-        "Cycle limit consturctor should not be used when forever == true.");
+        "Cycle limit constructor should not be used when forever == true.");
   }
 
   template <class Value, class Source>
@@ -1790,16 +1790,13 @@ class First : public Operator<First> {
   template <class Source,
             class Value,
             class StorageType = typename std::decay<Value>::type>
-  StorageType compose(const GenImpl<Value, Source>& source) const {
+  Optional<StorageType> compose(const GenImpl<Value, Source>& source) const {
     Optional<StorageType> accum;
     source | [&](Value v) -> bool {
       accum = std::forward<Value>(v);
       return false;
     };
-    if (!accum.hasValue()) {
-      throw EmptySequence();
-    }
-    return std::move(accum.value());
+    return accum;
   }
 };
 
@@ -1862,7 +1859,7 @@ class Reduce : public Operator<Reduce<Reducer>> {
   template <class Source,
             class Value,
             class StorageType = typename std::decay<Value>::type>
-  StorageType compose(const GenImpl<Value, Source>& source) const {
+  Optional<StorageType> compose(const GenImpl<Value, Source>& source) const {
     static_assert(!Source::infinite, "Cannot reduce infinite source");
     Optional<StorageType> accum;
     source | [&](Value v) {
@@ -1872,10 +1869,7 @@ class Reduce : public Operator<Reduce<Reducer>> {
         accum = std::forward<Value>(v);
       }
     };
-    if (!accum.hasValue()) {
-      throw EmptySequence();
-    }
-    return accum.value();
+    return accum;
   }
 };
 
@@ -1981,7 +1975,7 @@ class Min : public Operator<Min<Selector, Comparer>> {
             class StorageType = typename std::decay<Value>::type,
             class Key = typename std::decay<
                 typename std::result_of<Selector(Value)>::type>::type>
-  StorageType compose(const GenImpl<Value, Source>& source) const {
+  Optional<StorageType> compose(const GenImpl<Value, Source>& source) const {
     static_assert(!Source::infinite,
                   "Calling min or max on an infinite source will cause "
                   "an infinite loop.");
@@ -1994,10 +1988,7 @@ class Min : public Operator<Min<Selector, Comparer>> {
         min = std::forward<Value>(v);
       }
     };
-    if (!min.hasValue()) {
-      throw EmptySequence();
-    }
-    return min.value();
+    return min;
   }
 };
 
@@ -2066,7 +2057,7 @@ class Collect : public Operator<Collect<Collection>> {
  * The allocator defaults to std::allocator, so this may be used for the STL
  * containers by simply using operators like 'as<set>', 'as<deque>',
  * 'as<vector>'. 'as', here is the helper method which is the usual means of
- * consturcting this operator.
+ * constructing this operator.
  *
  * Example:
  *
@@ -2092,6 +2083,126 @@ class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
     return collection;
   }
 };
+
+/**
+ * UnwrapOr - For unwrapping folly::Optional values, or providing the given
+ * fallback value. Usually used through the 'unwrapOr' helper like so:
+ *
+ *   auto best = from(scores) | max | unwrapOr(-1);
+ *
+ * Note that the fallback value needn't match the value in the Optional it is
+ * unwrapping. If mis-matched types are supported, the common type of the two is
+ * returned by value. If the types match, a reference (T&& > T& > const T&) is
+ * returned.
+ */
+template <class T>
+class UnwrapOr {
+ public:
+  explicit UnwrapOr(T&& value) : value_(std::move(value)) {}
+  explicit UnwrapOr(const T& value) : value_(value) {}
+
+  T& value() { return value_; }
+  const T& value() const { return value_; }
+
+ private:
+  T value_;
+};
+
+template <class T>
+T&& operator|(Optional<T>&& opt, UnwrapOr<T>&& fallback) {
+  if (T* p = opt.get_pointer()) {
+    return std::move(*p);
+  }
+  return std::move(fallback.value());
+}
+
+template <class T>
+T& operator|(Optional<T>& opt, UnwrapOr<T>& fallback) {
+  if (T* p = opt.get_pointer()) {
+    return *p;
+  }
+  return fallback.value();
+}
+
+template <class T>
+const T& operator|(const Optional<T>& opt, const UnwrapOr<T>& fallback) {
+  if (const T* p = opt.get_pointer()) {
+    return *p;
+  }
+  return fallback.value();
+}
+
+// Mixed type unwrapping always returns values, moving where possible
+template <class T,
+          class U,
+          class R = typename std::enable_if<
+              !std::is_same<T, U>::value,
+              typename std::common_type<T, U>::type>::type>
+R operator|(Optional<T>&& opt, UnwrapOr<U>&& fallback) {
+  if (T* p = opt.get_pointer()) {
+    return std::move(*p);
+  }
+  return std::move(fallback.value());
+}
+
+template <class T,
+          class U,
+          class R = typename std::enable_if<
+              !std::is_same<T, U>::value,
+              typename std::common_type<T, U>::type>::type>
+R operator|(const Optional<T>& opt, UnwrapOr<U>&& fallback) {
+  if (const T* p = opt.get_pointer()) {
+    return *p;
+  }
+  return std::move(fallback.value());
+}
+
+template <class T,
+          class U,
+          class R = typename std::enable_if<
+              !std::is_same<T, U>::value,
+              typename std::common_type<T, U>::type>::type>
+R operator|(Optional<T>&& opt, const UnwrapOr<U>& fallback) {
+  if (T* p = opt.get_pointer()) {
+    return std::move(*p);
+  }
+  return fallback.value();
+}
+
+template <class T,
+          class U,
+          class R = typename std::enable_if<
+              !std::is_same<T, U>::value,
+              typename std::common_type<T, U>::type>::type>
+R operator|(const Optional<T>& opt, const UnwrapOr<U>& fallback) {
+  if (const T* p = opt.get_pointer()) {
+    return *p;
+  }
+  return fallback.value();
+}
+
+/**
+ * Unwrap - For unwrapping folly::Optional values in a folly::gen style. Usually
+ * used through the 'unwrap' instace like so:
+ *
+ *   auto best = from(scores) | max | unwrap; // may throw
+ */
+class Unwrap {};
+
+template <class T>
+T&& operator|(Optional<T>&& opt, const Unwrap&) {
+  return std::move(opt.value());
+}
+
+template <class T>
+T& operator|(Optional<T>& opt, const Unwrap&) {
+  return opt.value();
+}
+
+template <class T>
+const T& operator|(const Optional<T>& opt, const Unwrap&) {
+  return opt.value();
+}
 
 } //::detail
 
@@ -2192,6 +2303,8 @@ constexpr detail::Cycle<true> cycle{};
 constexpr detail::Dereference dereference{};
 
 constexpr detail::Indirect indirect{};
+
+constexpr detail::Unwrap unwrap{};
 
 inline detail::Take take(size_t count) { return detail::Take(count); }
 

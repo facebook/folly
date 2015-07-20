@@ -165,16 +165,16 @@ TEST(Gen, Field) {
   std::vector<X> xs(1);
   EXPECT_EQ(2, from(xs)
              | field(&X::a)
-             | first);
+             | sum);
   EXPECT_EQ(3, from(xs)
              | field(&X::b)
-             | first);
+             | sum);
   EXPECT_EQ(4, from(xs)
              | field(&X::c)
-             | first);
+             | sum);
   EXPECT_EQ(2, seq(&xs[0], &xs[0])
              | field(&X::a)
-             | first);
+             | sum);
   // type-verification
   empty<X&>() | field(&X::a) | assert_type<const int&>();
   empty<X*>() | field(&X::a) | assert_type<const int&>();
@@ -613,13 +613,14 @@ TEST(Gen, MinBy) {
              | minBy([](int i) -> double {
                  double d = i - 6.8;
                  return d * d;
-               }));
+               })
+             | unwrap);
 }
 
 TEST(Gen, MaxBy) {
   auto gen = from({"three", "eleven", "four"});
 
-  EXPECT_EQ("eleven", gen | maxBy(&strlen));
+  EXPECT_EQ("eleven", gen | maxBy(&strlen) | unwrap);
 }
 
 TEST(Gen, Min) {
@@ -708,17 +709,13 @@ TEST(Gen, Foldl) {
 TEST(Gen, Reduce) {
   int expected = 2 + 3 + 4 + 5;
   auto actual = seq(2, 5) | reduce(add);
-  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(expected, actual | unwrap);
 }
 
 TEST(Gen, ReduceBad) {
   auto gen = seq(1) | take(0);
-  try {
-    EXPECT_TRUE(true);
-    gen | reduce(add);
-    EXPECT_TRUE(false);
-  } catch (...) {
-  }
+  auto actual = gen | reduce(add);
+  EXPECT_FALSE(actual); // Empty sequences are okay, they just yeild 'none'
 }
 
 TEST(Gen, Moves) {
@@ -731,10 +728,8 @@ TEST(Gen, Moves) {
 }
 
 TEST(Gen, First) {
-  auto gen =
-      seq(0)
-    | filter([](int x) { return x > 3; });
-  EXPECT_EQ(4, gen | first);
+  auto gen = seq(0) | filter([](int x) { return x > 3; });
+  EXPECT_EQ(4, gen | first | unwrap);
 }
 
 TEST(Gen, FromCopy) {
@@ -1106,7 +1101,7 @@ TEST(Gen, Dereference) {
 
 TEST(Gen, Indirect) {
   vector<int> vs{1};
-  EXPECT_EQ(&vs[0], from(vs) | indirect | first);
+  EXPECT_EQ(&vs[0], from(vs) | indirect | first | unwrap);
 }
 
 TEST(Gen, Guard) {
@@ -1171,24 +1166,24 @@ TEST(Gen, Just) {
   {
     int x = 3;
     auto j = just(x);
-    EXPECT_EQ(&x, j | indirect | first);
+    EXPECT_EQ(&x, j | indirect | first | unwrap);
     x = 4;
-    EXPECT_EQ(4, j | first);
+    EXPECT_EQ(4, j | sum);
   }
   {
     int x = 3;
     const int& cx = x;
     auto j = just(cx);
-    EXPECT_EQ(&x, j | indirect | first);
+    EXPECT_EQ(&x, j | indirect | first | unwrap);
     x = 5;
-    EXPECT_EQ(5, j | first);
+    EXPECT_EQ(5, j | sum);
   }
   {
     int x = 3;
     auto j = just(std::move(x));
-    EXPECT_NE(&x, j | indirect | first);
+    EXPECT_NE(&x, j | indirect | first | unwrap);
     x = 5;
-    EXPECT_EQ(3, j | first);
+    EXPECT_EQ(3, j | sum);
   }
 }
 
@@ -1202,16 +1197,115 @@ TEST(Gen, GroupBy) {
   EXPECT_EQ(3, gb | count);
 
   vector<string> mode{"zero", "four", "five", "nine"};
-  EXPECT_EQ(
-      mode,
-      gb | maxBy([](const Group<size_t, string>& g) { return g.size(); })
-         | as<vector>());
+  EXPECT_EQ(mode,
+            gb | maxBy([](const Group<size_t, string>& g) { return g.size(); })
+               | unwrap
+               | as<vector>());
 
   vector<string> largest{"three", "seven", "eight"};
-  EXPECT_EQ(
-      largest,
-      gb | maxBy([](const Group<size_t, string>& g) { return g.key(); })
-         | as<vector>());
+  EXPECT_EQ(largest,
+            gb | maxBy([](const Group<size_t, string>& g) { return g.key(); })
+               | unwrap
+               | as<vector>());
+}
+
+TEST(Gen, Unwrap) {
+  Optional<int> o(4);
+  Optional<int> e;
+  EXPECT_EQ(4, o | unwrap);
+  EXPECT_THROW(e | unwrap, OptionalEmptyException);
+
+  auto oup = folly::make_optional(folly::make_unique<int>(5));
+  // optional has a value, and that value is non-null
+  EXPECT_TRUE(oup | unwrap);
+  EXPECT_EQ(5, *(oup | unwrap));
+  EXPECT_TRUE(oup.hasValue()); // still has a pointer (null or not)
+  EXPECT_TRUE(oup.value()); // that value isn't null
+
+  auto moved1 = std::move(oup) | unwrapOr(folly::make_unique<int>(6));
+  // oup still has a value, but now it's now nullptr since the pointer was moved
+  // into moved1
+  EXPECT_TRUE(oup.hasValue());
+  EXPECT_FALSE(oup.value());
+  EXPECT_TRUE(moved1);
+  EXPECT_EQ(5, *moved1);
+
+  auto moved2 = std::move(oup) | unwrapOr(folly::make_unique<int>(7));
+  // oup's still-valid nullptr value wins here, the pointer to 7 doesn't apply
+  EXPECT_FALSE(moved2);
+
+  oup.clear();
+  auto moved3 = std::move(oup) | unwrapOr(folly::make_unique<int>(8));
+  // oup is empty now, so the unwrapOr comes into play.
+  EXPECT_TRUE(moved3);
+  EXPECT_EQ(8, *moved3);
+
+  {
+  // mixed types, with common type matching optional
+    Optional<double> full(3.3);
+    decltype(full) empty;
+    auto fallback = unwrapOr(4);
+    EXPECT_EQ(3.3, full | fallback);
+    EXPECT_EQ(3.3, std::move(full) | fallback);
+    EXPECT_EQ(3.3, full | std::move(fallback));
+    EXPECT_EQ(3.3, std::move(full) | std::move(fallback));
+    EXPECT_EQ(4.0, empty | fallback);
+    EXPECT_EQ(4.0, std::move(empty) | fallback);
+    EXPECT_EQ(4.0, empty | std::move(fallback));
+    EXPECT_EQ(4.0, std::move(empty) | std::move(fallback));
+  }
+
+  {
+  // mixed types, with common type matching fallback
+    Optional<int> full(3);
+    decltype(full) empty;
+    auto fallback = unwrapOr(5.0); // type: double
+    // if we chose 'int' as the common type, we'd see truncation here
+    EXPECT_EQ(1.5, (full | fallback) / 2);
+    EXPECT_EQ(1.5, (std::move(full) | fallback) / 2);
+    EXPECT_EQ(1.5, (full | std::move(fallback)) / 2);
+    EXPECT_EQ(1.5, (std::move(full) | std::move(fallback)) / 2);
+    EXPECT_EQ(2.5, (empty | fallback) / 2);
+    EXPECT_EQ(2.5, (std::move(empty) | fallback) / 2);
+    EXPECT_EQ(2.5, (empty | std::move(fallback)) / 2);
+    EXPECT_EQ(2.5, (std::move(empty) | std::move(fallback)) / 2);
+  }
+
+  {
+    auto opt = folly::make_optional(std::make_shared<int>(8));
+    auto fallback = unwrapOr(folly::make_unique<int>(9));
+    // fallback must be std::move'd to be used
+    EXPECT_EQ(8, *(opt | std::move(fallback)));
+    EXPECT_TRUE(opt.value()); // shared_ptr copied out, not moved
+    EXPECT_TRUE(opt); // value still present
+    EXPECT_TRUE(fallback.value()); // fallback value not needed
+
+    EXPECT_EQ(8, *(std::move(opt) | std::move(fallback)));
+    EXPECT_FALSE(opt.value()); // shared_ptr moved out
+    EXPECT_TRUE(opt); // gutted value still present
+    EXPECT_TRUE(fallback.value()); // fallback value not needed
+
+    opt.clear();
+
+    EXPECT_FALSE(opt); // opt is empty now
+    EXPECT_EQ(9, *(std::move(opt) | std::move(fallback)));
+    EXPECT_FALSE(fallback.value()); // fallback moved out!
+  }
+
+  {
+    // test with nullptr
+    vector<int> v{1, 2};
+    EXPECT_EQ(&v[1], from(v) | indirect | max | unwrap);
+    v.clear();
+    EXPECT_FALSE(from(v) | indirect | max | unwrapOr(nullptr));
+  }
+
+  {
+    // mixed type determined by fallback
+    Optional<std::nullptr_t> empty;
+    int x = 3;
+    EXPECT_EQ(&x, empty | unwrapOr(&x));
+  }
 }
 
 int main(int argc, char *argv[]) {

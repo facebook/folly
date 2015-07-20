@@ -81,13 +81,6 @@
 
 namespace folly { namespace gen {
 
-class EmptySequence : public std::exception {
-public:
-  virtual const char* what() const noexcept {
-    return "This operation cannot be called on an empty sequence";
-  }
-};
-
 class Less {
 public:
   template<class First,
@@ -419,6 +412,11 @@ class Contains;
 template<class Exception,
          class ErrorHandler>
 class GuardImpl;
+
+template <class T>
+class UnwrapOr;
+
+class Unwrap;
 
 }
 
@@ -821,6 +819,12 @@ template<class Exception,
              typename std::decay<ErrorHandler>::type>>
 GuardImpl guard(ErrorHandler&& handler) {
   return GuardImpl(std::forward<ErrorHandler>(handler));
+}
+
+template<class Fallback,
+         class UnwrapOr = detail::UnwrapOr<typename std::decay<Fallback>::type>>
+UnwrapOr unwrapOr(Fallback&& fallback) {
+  return UnwrapOr(std::forward<Fallback>(fallback));
 }
 
 }} // folly::gen
