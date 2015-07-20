@@ -108,7 +108,7 @@ class BaseFormatter {
 
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
+  doFormatFrom(size_t i, FormatArg& arg, Callback& /*cb*/) const {
     arg.error("argument index out of range, max=", i);
   }
 

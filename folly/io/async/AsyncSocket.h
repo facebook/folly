@@ -363,7 +363,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   bool isEorTrackingEnabled() const override { return false; }
 
-  void setEorTracking(bool track) override {}
+  void setEorTracking(bool /*track*/) override {}
 
   bool connecting() const override {
     return (state_ == StateEnum::CONNECTING);

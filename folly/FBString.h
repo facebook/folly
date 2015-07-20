@@ -999,7 +999,7 @@ private:
 
 public:
   // C++11 21.4.2 construct/copy/destroy
-  explicit basic_fbstring(const A& a = A()) noexcept {
+  explicit basic_fbstring(const A& /*a*/ = A()) noexcept {
   }
 
   basic_fbstring(const basic_fbstring& str)
@@ -1023,7 +1023,7 @@ public:
     assign(str, pos, n);
   }
 
-  /* implicit */ basic_fbstring(const value_type* s, const A& a = A())
+  /* implicit */ basic_fbstring(const value_type* s, const A& /*a*/ = A())
       : store_(s, s
           ? traits_type::length(s)
           : (std::__throw_logic_error(
@@ -1031,7 +1031,7 @@ public:
              0)) {
   }
 
-  basic_fbstring(const value_type* s, size_type n, const A& a = A())
+  basic_fbstring(const value_type* s, size_type n, const A& /*a*/ = A())
       : store_(s, n) {
   }
 

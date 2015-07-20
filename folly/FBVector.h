@@ -654,7 +654,7 @@ private:
   }
 
   // done
-  void relocate_done(T* dest, T* first, T* last) noexcept {
+  void relocate_done(T* /*dest*/, T* first, T* last) noexcept {
     if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
       // used memcpy; data has been relocated, do not call destructor
     } else {

@@ -414,7 +414,7 @@ class try_and_catch<LastException, Exceptions...> :
 
   template <typename Ex>
   typename std::enable_if<exception_wrapper::optimize<Ex>::value>::type
-  assign_exception(Ex& e, std::exception_ptr eptr) {
+  assign_exception(Ex& e, std::exception_ptr /*eptr*/) {
     this->item_ = std::make_shared<Ex>(e);
     this->throwfn_ = folly::detail::Thrower<Ex>::doThrow;
   }

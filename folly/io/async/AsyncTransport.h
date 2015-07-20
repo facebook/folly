@@ -430,7 +430,7 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
      * @param readBuf The unique pointer of read buffer.
      */
 
-    virtual void readBufferAvailable(std::unique_ptr<IOBuf> readBuf)
+    virtual void readBufferAvailable(std::unique_ptr<IOBuf> /*readBuf*/)
       noexcept {};
 
     /**
