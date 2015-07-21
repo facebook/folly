@@ -17,11 +17,8 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 #include <folly/io/async/EventBase.h>
-
-namespace std {
-class thread;
-}
 
 namespace folly {
 
