@@ -269,6 +269,7 @@ TEST(Dynamic, ObjectForwarding) {
 TEST(Dynamic, GetPtr) {
   dynamic array = { 1, 2, "three" };
   EXPECT_TRUE(array.get_ptr(0));
+  EXPECT_FALSE(array.get_ptr(-1));
   EXPECT_FALSE(array.get_ptr(3));
   EXPECT_EQ(dynamic("three"), *array.get_ptr(2));
   const dynamic& carray = array;

@@ -165,7 +165,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const {
     if (!idx.isInt()) {
       throw TypeError("int64", idx.type());
     }
-    if (idx >= parray->size()) {
+    if (idx < 0 || idx >= parray->size()) {
       return nullptr;
     }
     return &(*parray)[idx.asInt()];
