@@ -18,6 +18,7 @@
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/Baton.h>
 
 using namespace folly;
 
@@ -71,4 +72,14 @@ TEST(Interrupt, secondInterruptNoop) {
   f.cancel();
   f.cancel();
   EXPECT_EQ(1, count);
+}
+
+TEST(Interrupt, withinTimedOut) {
+  Promise<int> p;
+  Baton<> done;
+  p.setInterruptHandler([&](const exception_wrapper& e) { done.post(); });
+  p.getFuture().within(std::chrono::milliseconds(1));
+  // Give it 100ms to time out and call the interrupt handler
+  auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+  EXPECT_TRUE(done.timed_wait(t));
 }

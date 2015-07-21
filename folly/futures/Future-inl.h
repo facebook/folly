@@ -857,29 +857,33 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
   struct Context {
     Context(E ex) : exception(std::move(ex)), promise() {}
     E exception;
+    Future<Unit> thisFuture;
     Promise<T> promise;
     std::atomic<bool> token {false};
   };
-  auto ctx = std::make_shared<Context>(std::move(e));
 
   if (!tk) {
     tk = folly::detail::getTimekeeperSingleton();
   }
 
-  tk->after(dur)
-    .then([ctx](Try<Unit> const& t) {
-      if (ctx->token.exchange(true) == false) {
-        if (t.hasException()) {
-          ctx->promise.setException(std::move(t.exception()));
-        } else {
-          ctx->promise.setException(std::move(ctx->exception));
-        }
-      }
-    });
+  auto ctx = std::make_shared<Context>(std::move(e));
 
-  this->then([ctx](Try<T>&& t) {
+  ctx->thisFuture = this->then([ctx](Try<T>&& t) mutable {
+    // TODO: "this" completed first, cancel "after"
     if (ctx->token.exchange(true) == false) {
       ctx->promise.setTry(std::move(t));
+    }
+  });
+
+  tk->after(dur).then([ctx](Try<Unit> const& t) mutable {
+    // "after" completed first, cancel "this"
+    ctx->thisFuture.raise(TimedOut());
+    if (ctx->token.exchange(true) == false) {
+      if (t.hasException()) {
+        ctx->promise.setException(std::move(t.exception()));
+      } else {
+        ctx->promise.setException(std::move(ctx->exception));
+      }
     }
   });
 
