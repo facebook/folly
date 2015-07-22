@@ -1205,13 +1205,13 @@ TEST(SharedMutex, deterministic_remote_read_prio) {
 }
 
 TEST(SharedMutex, remote_write_prio) {
-  for (int pass = 0; pass < 1; ++pass) {
+  for (int pass = 0; pass < 10; ++pass) {
     runRemoteUnlock<SharedMutexWritePriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
 
 TEST(SharedMutex, remote_read_prio) {
-  for (int pass = 0; pass < 1; ++pass) {
+  for (int pass = 0; pass < 100; ++pass) {
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }

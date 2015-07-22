@@ -253,16 +253,19 @@ class SharedMutexImpl {
   // See https://sourceware.org/bugzilla/show_bug.cgi?id=13690 for a
   // description about why this property needs to be explicitly mentioned.
   ~SharedMutexImpl() {
-#ifndef NDEBUG
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = state_.load(std::memory_order_relaxed);
+    if (UNLIKELY((state & kHasS) != 0)) {
+      cleanupTokenlessSharedDeferred(state);
+    }
 
+#ifndef NDEBUG
     // if a futexWait fails to go to sleep because the value has been
     // changed, we don't necessarily clean up the wait bits, so it is
     // possible they will be set here in a correct system
     assert((state & ~(kWaitingAny | kMayDefer)) == 0);
     if ((state & kMayDefer) != 0) {
       for (uint32_t slot = 0; slot < kMaxDeferredReaders; ++slot) {
-        auto slotValue = deferredReader(slot)->load(std::memory_order_acquire);
+        auto slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
         assert(!slotValueIsThis(slotValue));
       }
     }
@@ -361,7 +364,7 @@ class SharedMutexImpl {
     // kPrevDefer so we can tell if the pre-lock() lock_shared() might
     // have deferred
     if ((state & (kMayDefer | kPrevDefer)) == 0 ||
-        !tryUnlockAnySharedDeferred()) {
+        !tryUnlockTokenlessSharedDeferred()) {
       // Matching lock_shared() couldn't have deferred, or the deferred
       // lock has already been inlined by applyDeferredReaders()
       unlockSharedInline();
@@ -441,7 +444,7 @@ class SharedMutexImpl {
 
   void unlock_upgrade_and_lock_shared() {
     auto state = (state_ -= kHasU - kIncrHasS);
-    assert((state & (kWaitingNotS | kHasSolo)) == 0 && (state & kHasS) != 0);
+    assert((state & (kWaitingNotS | kHasSolo)) == 0);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
   }
 
@@ -545,6 +548,14 @@ class SharedMutexImpl {
   // 32 bits of state
   Futex state_;
 
+  // S count needs to be on the end, because we explicitly allow it to
+  // underflow.  This can occur while we are in the middle of applying
+  // deferred locks (we remove them from deferredReaders[] before
+  // inlining them), or during token-less unlock_shared() if a racing
+  // lock_shared();unlock_shared() moves the deferredReaders slot while
+  // the first unlock_shared() is scanning.  The former case is cleaned
+  // up before we finish applying the locks.  The latter case can persist
+  // until destruction, when it is cleaned up.
   static constexpr uint32_t kIncrHasS = 1 << 10;
   static constexpr uint32_t kHasS = ~(kIncrHasS - 1);
 
@@ -1147,7 +1158,7 @@ class SharedMutexImpl {
         // (that's the whole reason we're undoing it) so there might have
         // subsequently been an unlock() and lock() with no intervening
         // transition to deferred mode.
-        if (!tryUnlockAnySharedDeferred()) {
+        if (!tryUnlockTokenlessSharedDeferred()) {
           unlockSharedInline();
         }
       } else {
@@ -1163,7 +1174,23 @@ class SharedMutexImpl {
     }
   }
 
-  bool tryUnlockAnySharedDeferred() {
+  // Updates the state in/out argument as if the locks were made inline,
+  // but does not update state_
+  void cleanupTokenlessSharedDeferred(uint32_t& state) {
+    for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
+      auto slotPtr = deferredReader(i);
+      auto slotValue = slotPtr->load(std::memory_order_relaxed);
+      if (slotValue == tokenlessSlotValue()) {
+        slotPtr->store(0, std::memory_order_relaxed);
+        state += kIncrHasS;
+        if ((state & kHasS) == 0) {
+          break;
+        }
+      }
+    }
+  }
+
+  bool tryUnlockTokenlessSharedDeferred() {
     auto bestSlot = tls_lastTokenlessSlot;
     for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
       auto slotPtr = deferredReader(bestSlot ^ i);
@@ -1185,7 +1212,8 @@ class SharedMutexImpl {
 
   uint32_t unlockSharedInline() {
     uint32_t state = (state_ -= kIncrHasS);
-    assert((state & (kHasE | kBegunE)) != 0 || state < state + kIncrHasS);
+    assert((state & (kHasE | kBegunE | kMayDefer)) != 0 ||
+           state < state + kIncrHasS);
     if ((state & kHasS) == 0) {
       // Only the second half of lock() can be blocked by a non-zero
       // reader count, so that's the only thing we need to wake
