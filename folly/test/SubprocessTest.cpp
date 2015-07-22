@@ -31,6 +31,7 @@
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/gen/String.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 
 using namespace folly;
@@ -189,15 +190,8 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
 
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   // Find out where we are.
-  static constexpr size_t pathLength = 2048;
-  char buf[pathLength + 1];
-  int r = readlink("/proc/self/exe", buf, pathLength);
-  CHECK_ERR(r);
-  buf[r] = '\0';
-
-  fs::path helper(buf);
-  helper.remove_filename();
-  helper /= "subprocess_test_parent_death_helper";
+  auto helper = fs::executable_path();
+  helper.remove_filename() /= "subprocess_test_parent_death_helper";
 
   fs::path tempFile(fs::temp_directory_path() / fs::unique_path());
 

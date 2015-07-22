@@ -16,6 +16,9 @@
 
 #include <folly/experimental/io/FsUtil.h>
 
+#include <unistd.h>
+#include <folly/Exception.h>
+
 namespace bsys = ::boost::system;
 
 namespace folly {
@@ -64,6 +67,10 @@ path remove_prefix(const path& pth, const path& prefix) {
 
 path canonical_parent(const path& pth, const path& base) {
   return canonical(pth.parent_path(), base) / pth.filename();
+}
+
+path executable_path() {
+  return read_symlink("/proc/self/exe");
 }
 
 }  // namespace fs

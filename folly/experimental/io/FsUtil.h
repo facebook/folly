@@ -52,6 +52,20 @@ path remove_prefix(const path& p, const path& prefix);
  */
 path canonical_parent(const path& p, const path& basePath = current_path());
 
+/**
+ * Get the path to the current executable.
+ *
+ * Note that this is not reliable and not recommended in general; it may not be
+ * implemented on your platform (in which case it will throw), the executable
+ * might have been moved or replaced while running, and applications comprising
+ * of multiple executables should use some form of configuration system to
+ * find the other executables rather than relying on relative paths from one
+ * to another.
+ *
+ * So this should only be used for tests, logging, or other innocuous purposes.
+ */
+path executable_path();
+
 }  // namespace fs
 }  // namespace folly
 
