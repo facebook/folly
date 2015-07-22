@@ -34,7 +34,7 @@ TEST(Window, basic) {
       window(
         input,
         [](int i) { return makeFuture(i); },
-        2),
+        window_size),
       0,
       [](int sum, const Try<int>& b) {
         return sum + *b;
@@ -52,7 +52,7 @@ TEST(Window, basic) {
     fn(input, 4, 6);
   }
   {
-    // empty inpt
+    // empty input
     std::vector<int> input;
     fn(input, 1, 0);
   }
