@@ -295,7 +295,7 @@ class AtomicHashArray : boost::noncopyable {
     return LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
   }
 
-  inline size_t probeNext(size_t idx, size_t numProbes) {
+  inline size_t probeNext(size_t idx, size_t /*numProbes*/) {
     //idx += numProbes; // quadratic probing
     idx += 1; // linear probing
     // Avoid modulus because it's slow

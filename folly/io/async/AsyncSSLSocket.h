@@ -99,9 +99,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
      * See the passages on verify_callback in SSL_CTX_set_verify(3)
      * for more details.
      */
-    virtual bool handshakeVer(AsyncSSLSocket* sock,
+    virtual bool handshakeVer(AsyncSSLSocket* /*sock*/,
                                  bool preverifyOk,
-                                 X509_STORE_CTX* ctx) noexcept {
+                                 X509_STORE_CTX* /*ctx*/) noexcept {
       return preverifyOk;
     }
 

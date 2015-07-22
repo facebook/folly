@@ -1035,7 +1035,7 @@ public:
       : store_(s, n) {
   }
 
-  basic_fbstring(size_type n, value_type c, const A& a = A()) {
+  basic_fbstring(size_type n, value_type c, const A& /*a*/ = A()) {
     auto const data = store_.expand_noinit(n);
     fbstring_detail::pod_fill(data, data + n, c);
     store_.writeTerminator();
@@ -1045,7 +1045,7 @@ public:
   basic_fbstring(InIt begin, InIt end,
                  typename std::enable_if<
                  !std::is_same<typename std::remove_const<InIt>::type,
-                 value_type*>::value, const A>::type & a = A()) {
+                 value_type*>::value, const A>::type & /*a*/ = A()) {
     assign(begin, end);
   }
 

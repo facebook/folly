@@ -47,7 +47,7 @@ class IsCompatibleSignature<Candidate, ExpectedReturn(ArgTypes...)> {
            class ActualReturn =
              decltype(std::declval<F>()(std::declval<ArgTypes>()...)),
            bool good = std::is_same<ExpectedReturn, ActualReturn>::value>
-  static constexpr bool testArgs(int* p) {
+  static constexpr bool testArgs(int*) {
     return good;
   }
 

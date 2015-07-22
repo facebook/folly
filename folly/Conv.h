@@ -153,7 +153,7 @@ template <class T, class... Ts>
 typename std::tuple_element<
   sizeof...(Ts),
   std::tuple<T, Ts...> >::type const&
-  getLastElement(const T& v, const Ts&... vs) {
+  getLastElement(const T&, const Ts&... vs) {
   return getLastElement(vs...);
 }
 

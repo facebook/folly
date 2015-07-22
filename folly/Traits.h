@@ -309,7 +309,7 @@ struct is_negative_impl {
 
 template <typename T>
 struct is_negative_impl<T, false> {
-  constexpr static bool check(T x) { return false; }
+  constexpr static bool check(T) { return false; }
 };
 
 // folly::to integral specializations can end up generating code

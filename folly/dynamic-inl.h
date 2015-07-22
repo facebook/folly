@@ -404,7 +404,7 @@ struct dynamic::CompareOp {
 };
 template<>
 struct dynamic::CompareOp<dynamic::ObjectImpl> {
-  static bool comp(ObjectImpl const& a, ObjectImpl const& b) {
+  static bool comp(ObjectImpl const&, ObjectImpl const&) {
     // This code never executes; it is just here for the compiler.
     return false;
   }

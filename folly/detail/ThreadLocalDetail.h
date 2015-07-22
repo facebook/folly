@@ -60,7 +60,7 @@ class DeleterBase {
 template <class Ptr>
 class SimpleDeleter : public DeleterBase {
  public:
-  virtual void dispose(void* ptr, TLPDestructionMode mode) const {
+  virtual void dispose(void* ptr, TLPDestructionMode /*mode*/) const {
     delete static_cast<Ptr>(ptr);
   }
 };

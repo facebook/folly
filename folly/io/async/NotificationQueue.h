@@ -588,7 +588,7 @@ NotificationQueue<MessageT>::Consumer::~Consumer() {
 }
 
 template<typename MessageT>
-void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t events)
+void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t /*events*/)
     noexcept {
   consumeMessages(false);
 }
