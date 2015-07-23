@@ -107,8 +107,9 @@ AC_CHECK_LIB(ssl,
 
 # check for boost libs
 AX_BOOST_BASE([1.51.0], [], [AC_MSG_ERROR(
-              [Please install boost >= 1.51.0 (context, thread, regex, and system)])])
+              [Please install boost >= 1.51.0 (context, thread, program_options, regex, and system)])])
 AX_BOOST_CONTEXT
+AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
