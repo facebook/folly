@@ -111,6 +111,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/io/FsUtil.h \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
+	experimental/NestedCommandLineApp.h \
 	experimental/ProgramOptions.h \
 	experimental/Select64.h \
 	experimental/StringKeyedCommon.h \
@@ -372,6 +373,7 @@ libfolly_la_SOURCES = \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \
+	experimental/NestedCommandLineApp.cpp \
 	experimental/ProgramOptions.cpp \
 	experimental/Select64.cpp \
 	experimental/TestUtil.cpp
