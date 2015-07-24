@@ -17,14 +17,13 @@
 #include <folly/Random.h>
 
 #include <atomic>
-#include <unistd.h>
-#include <sys/time.h>
 #include <mutex>
 #include <random>
 #include <array>
 
 #include <glog/logging.h>
 #include <folly/File.h>
+#include <folly/FilePortability.h>
 #include <folly/FileUtil.h>
 
 #ifdef _MSC_VER

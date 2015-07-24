@@ -17,9 +17,10 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <glog/logging.h>
+#include <folly/FilePortability.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>

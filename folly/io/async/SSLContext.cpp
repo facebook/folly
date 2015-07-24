@@ -16,6 +16,9 @@
 
 #include "SSLContext.h"
 
+// Winsock has to be included before ssl.
+#include <folly/SocketPortability.h>
+
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>

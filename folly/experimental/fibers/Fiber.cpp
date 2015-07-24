@@ -15,14 +15,13 @@
  */
 #include "Fiber.h"
 
-#include <sys/syscall.h>
-#include <unistd.h>
-
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
 #include <glog/logging.h>
 
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>

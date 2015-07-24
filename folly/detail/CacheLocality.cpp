@@ -23,6 +23,7 @@
 #include <fstream>
 
 #include <folly/Conv.h>
+#include <folly/CPortability.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Format.h>

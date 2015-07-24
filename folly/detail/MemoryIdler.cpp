@@ -15,6 +15,8 @@
  */
 
 #include <folly/detail/MemoryIdler.h>
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
 #include <folly/Logging.h>
 #include <folly/Malloc.h>
 #include <folly/ScopeGuard.h>
@@ -23,8 +25,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/mman.h>
 #include <utility>
 
 

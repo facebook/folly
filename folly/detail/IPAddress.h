@@ -27,24 +27,11 @@
 #include <type_traits>
 #include <vector>
 
-extern "C" {
-#ifndef _MSC_VER
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#else
-#include <winsock2.h>
-#include <ws2tcpip.h>
-// missing in socket headers
-#define sa_family_t ADDRESS_FAMILY
-#endif
-
 #include <sys/types.h>
-#include <netdb.h>
-}
 
 #include <folly/Conv.h>
 #include <folly/Format.h>
+#include <folly/SocketPortability.h>
 
 // BSDish platforms don't provide standard access to s6_addr16
 #ifndef s6_addr16

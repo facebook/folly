@@ -15,14 +15,13 @@
  */
 #include "FiberManager.h"
 
-#include <sys/syscall.h>
-#include <unistd.h>
-
 #include <cassert>
 #include <stdexcept>
 
 #include <glog/logging.h>
 
+#include <folly/CPortability.h>
+#include <folly/FilePortability.h>
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/LoopController.h>
 

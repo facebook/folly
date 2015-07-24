@@ -25,7 +25,6 @@
 #include <cstring>
 #include <memory>
 #include <limits>
-#include <sys/uio.h>
 #include <type_traits>
 
 #include <boost/iterator/iterator_facade.hpp>
@@ -33,6 +32,7 @@
 #include <folly/FBString.h>
 #include <folly/Range.h>
 #include <folly/FBVector.h>
+#include <folly/FilePortability.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push

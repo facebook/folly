@@ -16,7 +16,6 @@
 
 #include <folly/io/ShutdownSocketSet.h>
 
-#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <chrono>
@@ -26,6 +25,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/Malloc.h>
+#include <folly/SocketPortability.h>
 
 namespace folly {
 
