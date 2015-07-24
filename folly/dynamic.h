@@ -528,7 +528,7 @@ private:
      * incomplete type right now).  (Note that in contrast we know it
      * is ok to do this with fbvector because we own it.)
      */
-    typename std::aligned_storage<
+    std::aligned_storage<
       sizeof(std::unordered_map<int,int>),
       alignof(std::unordered_map<int,int>)
     >::type objectBuffer;
