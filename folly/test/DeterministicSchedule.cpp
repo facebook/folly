@@ -23,21 +23,22 @@
 #include <unordered_map>
 #include <assert.h>
 
-namespace folly { namespace test {
+namespace folly {
+namespace test {
 
 FOLLY_TLS sem_t* DeterministicSchedule::tls_sem;
 FOLLY_TLS DeterministicSchedule* DeterministicSchedule::tls_sched;
+FOLLY_TLS unsigned DeterministicSchedule::tls_threadId;
 
 // access is protected by futexLock
 static std::unordered_map<detail::Futex<DeterministicAtomic>*,
-                          std::list<std::pair<uint32_t,bool*>>> futexQueues;
+                          std::list<std::pair<uint32_t, bool*>>> futexQueues;
 
 static std::mutex futexLock;
 
 DeterministicSchedule::DeterministicSchedule(
-        const std::function<int(int)>& scheduler)
-  : scheduler_(scheduler)
-{
+    const std::function<int(int)>& scheduler)
+    : scheduler_(scheduler), nextThreadId_(1) {
   assert(tls_sem == nullptr);
   assert(tls_sched == nullptr);
 
@@ -55,8 +56,7 @@ DeterministicSchedule::~DeterministicSchedule() {
   beforeThreadExit();
 }
 
-std::function<int(int)>
-DeterministicSchedule::uniform(long seed) {
+std::function<int(int)> DeterministicSchedule::uniform(long seed) {
   auto rand = std::make_shared<std::ranlux48>(seed);
   return [rand](size_t numActive) {
     auto dist = std::uniform_int_distribution<int>(0, numActive - 1);
@@ -66,12 +66,10 @@ DeterministicSchedule::uniform(long seed) {
 
 struct UniformSubset {
   UniformSubset(long seed, int subsetSize, int stepsBetweenSelect)
-    : uniform_(DeterministicSchedule::uniform(seed))
-    , subsetSize_(subsetSize)
-    , stepsBetweenSelect_(stepsBetweenSelect)
-    , stepsLeft_(0)
-  {
-  }
+      : uniform_(DeterministicSchedule::uniform(seed)),
+        subsetSize_(subsetSize),
+        stepsBetweenSelect_(stepsBetweenSelect),
+        stepsLeft_(0) {}
 
   size_t operator()(size_t numActive) {
     adjustPermSize(numActive);
@@ -93,8 +91,9 @@ struct UniformSubset {
 
   void adjustPermSize(size_t numActive) {
     if (perm_.size() > numActive) {
-      perm_.erase(std::remove_if(perm_.begin(), perm_.end(),
-              [=](size_t x){ return x >= numActive; }), perm_.end());
+      perm_.erase(std::remove_if(perm_.begin(), perm_.end(), [=](size_t x) {
+        return x >= numActive;
+      }), perm_.end());
     } else {
       while (perm_.size() < numActive) {
         perm_.push_back(perm_.size());
@@ -111,21 +110,20 @@ struct UniformSubset {
   }
 };
 
-std::function<int(int)>
-DeterministicSchedule::uniformSubset(long seed, int n, int m) {
+std::function<int(int)> DeterministicSchedule::uniformSubset(long seed,
+                                                             int n,
+                                                             int m) {
   auto gen = std::make_shared<UniformSubset>(seed, n, m);
   return [=](size_t numActive) { return (*gen)(numActive); };
 }
 
-void
-DeterministicSchedule::beforeSharedAccess() {
+void DeterministicSchedule::beforeSharedAccess() {
   if (tls_sem) {
     sem_wait(tls_sem);
   }
 }
 
-void
-DeterministicSchedule::afterSharedAccess() {
+void DeterministicSchedule::afterSharedAccess() {
   auto sched = tls_sched;
   if (!sched) {
     return;
@@ -134,16 +132,29 @@ DeterministicSchedule::afterSharedAccess() {
   sem_post(sched->sems_[sched->scheduler_(sched->sems_.size())]);
 }
 
-int
-DeterministicSchedule::getRandNumber(int n) {
+int DeterministicSchedule::getRandNumber(int n) {
   if (tls_sched) {
     return tls_sched->scheduler_(n);
   }
   return std::rand() % n;
 }
 
-sem_t*
-DeterministicSchedule::beforeThreadCreate() {
+int DeterministicSchedule::getcpu(unsigned* cpu, unsigned* node, void* unused) {
+  if (!tls_threadId && tls_sched) {
+    beforeSharedAccess();
+    tls_threadId = tls_sched->nextThreadId_++;
+    afterSharedAccess();
+  }
+  if (cpu) {
+    *cpu = tls_threadId;
+  }
+  if (node) {
+    *node = tls_threadId;
+  }
+  return 0;
+}
+
+sem_t* DeterministicSchedule::beforeThreadCreate() {
   sem_t* s = new sem_t;
   sem_init(s, 0, 0);
   beforeSharedAccess();
@@ -152,8 +163,7 @@ DeterministicSchedule::beforeThreadCreate() {
   return s;
 }
 
-void
-DeterministicSchedule::afterThreadCreate(sem_t* sem) {
+void DeterministicSchedule::afterThreadCreate(sem_t* sem) {
   assert(tls_sem == nullptr);
   assert(tls_sched == nullptr);
   tls_sem = sem;
@@ -168,13 +178,13 @@ DeterministicSchedule::afterThreadCreate(sem_t* sem) {
   }
 }
 
-void
-DeterministicSchedule::beforeThreadExit() {
+void DeterministicSchedule::beforeThreadExit() {
   assert(tls_sched == this);
   beforeSharedAccess();
   sems_.erase(std::find(sems_.begin(), sems_.end(), tls_sem));
   active_.erase(std::this_thread::get_id());
   if (sems_.size() > 0) {
+    FOLLY_TEST_DSCHED_VLOG("exiting");
     afterSharedAccess();
   }
   sem_destroy(tls_sem);
@@ -183,67 +193,73 @@ DeterministicSchedule::beforeThreadExit() {
   tls_sched = nullptr;
 }
 
-void
-DeterministicSchedule::join(std::thread& child) {
+void DeterministicSchedule::join(std::thread& child) {
   auto sched = tls_sched;
   if (sched) {
     bool done = false;
     while (!done) {
       beforeSharedAccess();
       done = !sched->active_.count(child.get_id());
+      if (done) {
+        FOLLY_TEST_DSCHED_VLOG("joined " << std::hex << child.get_id());
+      }
       afterSharedAccess();
     }
   }
   child.join();
 }
 
-void
-DeterministicSchedule::post(sem_t* sem) {
+void DeterministicSchedule::post(sem_t* sem) {
   beforeSharedAccess();
   sem_post(sem);
+  FOLLY_TEST_DSCHED_VLOG("sem_post(" << sem << ")");
   afterSharedAccess();
 }
 
-bool
-DeterministicSchedule::tryWait(sem_t* sem) {
+bool DeterministicSchedule::tryWait(sem_t* sem) {
   beforeSharedAccess();
   int rv = sem_trywait(sem);
+  int e = rv == 0 ? 0 : errno;
+  FOLLY_TEST_DSCHED_VLOG("sem_trywait(" << sem << ") = " << rv
+                                        << " errno=" << e);
   afterSharedAccess();
   if (rv == 0) {
     return true;
   } else {
-    assert(errno == EAGAIN);
+    assert(e == EAGAIN);
     return false;
   }
 }
 
-void
-DeterministicSchedule::wait(sem_t* sem) {
+void DeterministicSchedule::wait(sem_t* sem) {
   while (!tryWait(sem)) {
     // we're not busy waiting because this is a deterministic schedule
   }
 }
+}
+}
 
-}}
-
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 using namespace test;
 using namespace std::chrono;
 
 template <>
-FutexResult
-Futex<DeterministicAtomic>::futexWaitImpl(
-        uint32_t expected,
-        time_point<system_clock>* absSystemTimeout,
-        time_point<steady_clock>* absSteadyTimeout,
-        uint32_t waitMask) {
+FutexResult Futex<DeterministicAtomic>::futexWaitImpl(
+    uint32_t expected,
+    time_point<system_clock>* absSystemTimeout,
+    time_point<steady_clock>* absSteadyTimeout,
+    uint32_t waitMask) {
   bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
   bool awoken = false;
   FutexResult result = FutexResult::AWOKEN;
   int futexErrno = 0;
 
   DeterministicSchedule::beforeSharedAccess();
+  FOLLY_TEST_DSCHED_VLOG(this << ".futexWait(" << std::hex << expected
+                              << ", .., " << std::hex << waitMask
+                              << ") beginning..");
   futexLock.lock();
   if (data == expected) {
     auto& queue = futexQueues[this];
@@ -260,17 +276,16 @@ Futex<DeterministicAtomic>::futexWaitImpl(
       // a 10% probability if we haven't been woken up already
       if (!awoken && hasTimeout &&
           DeterministicSchedule::getRandNumber(100) < 10) {
-        assert(futexQueues.count(this) != 0 &&
-               &futexQueues[this] == &queue);
+        assert(futexQueues.count(this) != 0 && &futexQueues[this] == &queue);
         queue.erase(ours);
         if (queue.empty()) {
           futexQueues.erase(this);
         }
         // Simulate ETIMEDOUT 90% of the time and other failures
         // remaining time
-        result =
-          DeterministicSchedule::getRandNumber(100) >= 10
-              ? FutexResult::TIMEDOUT : FutexResult::INTERRUPTED;
+        result = DeterministicSchedule::getRandNumber(100) >= 10
+                     ? FutexResult::TIMEDOUT
+                     : FutexResult::INTERRUPTED;
         break;
       }
     }
@@ -278,13 +293,31 @@ Futex<DeterministicAtomic>::futexWaitImpl(
     result = FutexResult::VALUE_CHANGED;
   }
   futexLock.unlock();
+
+  char const* resultStr = "?";
+  switch (result) {
+  case FutexResult::AWOKEN:
+    resultStr = "AWOKEN";
+    break;
+  case FutexResult::TIMEDOUT:
+    resultStr = "TIMEDOUT";
+    break;
+  case FutexResult::INTERRUPTED:
+    resultStr = "INTERRUPTED";
+    break;
+  case FutexResult::VALUE_CHANGED:
+    resultStr = "VALUE_CHANGED";
+    break;
+  }
+  FOLLY_TEST_DSCHED_VLOG(this << ".futexWait(" << std::hex << expected
+                              << ", .., " << std::hex << waitMask << ") -> "
+                              << resultStr);
   DeterministicSchedule::afterSharedAccess();
   return result;
 }
 
-template<>
-int
-Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
+template <>
+int Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
   int rv = 0;
   DeterministicSchedule::beforeSharedAccess();
   futexLock.lock();
@@ -304,44 +337,36 @@ Futex<DeterministicAtomic>::futexWake(int count, uint32_t wakeMask) {
     }
   }
   futexLock.unlock();
+  FOLLY_TEST_DSCHED_VLOG(this << ".futexWake(" << count << ", " << std::hex
+                              << wakeMask << ") -> " << rv);
   DeterministicSchedule::afterSharedAccess();
   return rv;
 }
 
-
-template<>
+template <>
 CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
   static CacheLocality cache(CacheLocality::uniform(16));
   return cache;
 }
 
-template<>
-test::DeterministicAtomic<size_t>
-    SequentialThreadId<test::DeterministicAtomic>::prevId(0);
-
-template<>
-FOLLY_TLS size_t
-    SequentialThreadId<test::DeterministicAtomic>::currentId(0);
-
-template<>
+template <>
 const AccessSpreader<test::DeterministicAtomic>
-AccessSpreader<test::DeterministicAtomic>::stripeByCore(
-    CacheLocality::system<>().numCachesByLevel.front());
+    AccessSpreader<test::DeterministicAtomic>::stripeByCore(
+        CacheLocality::system<>().numCachesByLevel.front());
 
-template<>
+template <>
 const AccessSpreader<test::DeterministicAtomic>
-AccessSpreader<test::DeterministicAtomic>::stripeByChip(
-    CacheLocality::system<>().numCachesByLevel.back());
+    AccessSpreader<test::DeterministicAtomic>::stripeByChip(
+        CacheLocality::system<>().numCachesByLevel.back());
 
-template<>
-AccessSpreaderArray<test::DeterministicAtomic,128>
-AccessSpreaderArray<test::DeterministicAtomic,128>::sharedInstance = {};
+template <>
+AccessSpreaderArray<test::DeterministicAtomic, 128>
+    AccessSpreaderArray<test::DeterministicAtomic, 128>::sharedInstance = {};
 
-
-template<>
-Getcpu::Func
-AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(size_t numStripes) {
-  return &SequentialThreadId<test::DeterministicAtomic>::getcpu;
+template <>
+Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(
+    size_t numStripes) {
+  return &DeterministicSchedule::getcpu;
 }
-
-}}
+}
+}
