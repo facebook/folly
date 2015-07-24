@@ -298,8 +298,10 @@ public:
    *
    * These will throw a TypeError if the dynamic is not a string.
    */
-  const char* data()  const;
-  const char* c_str() const;
+  const char* data()  const&;
+  const char* data()  && = delete;
+  const char* c_str() const&;
+  const char* c_str() && = delete;
   StringPiece stringPiece() const;
 
   /*
@@ -374,8 +376,9 @@ public:
    * Using these with dynamic objects that are not arrays or objects
    * will throw a TypeError.
    */
-  const dynamic* get_ptr(dynamic const&) const;
-  dynamic* get_ptr(dynamic const&);
+  const dynamic* get_ptr(dynamic const&) const&;
+  dynamic* get_ptr(dynamic const&) &;
+  dynamic* get_ptr(dynamic const&) && = delete;
 
   /*
    * This works for access to both objects and arrays.
@@ -494,8 +497,9 @@ private:
 
   template<class T> T const& get() const;
   template<class T> T&       get();
-  template<class T> T*       get_nothrow() noexcept;
-  template<class T> T const* get_nothrow() const noexcept;
+  template<class T> T*       get_nothrow() & noexcept;
+  template<class T> T const* get_nothrow() const& noexcept;
+  template<class T> T*       get_nothrow() && noexcept = delete;
   template<class T> T*       getAddress() noexcept;
   template<class T> T const* getAddress() const noexcept;
 

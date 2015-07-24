@@ -160,7 +160,7 @@ dynamic&& dynamic::getDefault(const dynamic& k, dynamic&& v) const {
   return std::move(v);
 }
 
-const dynamic* dynamic::get_ptr(dynamic const& idx) const {
+const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
       throw TypeError("int64", idx.type());
