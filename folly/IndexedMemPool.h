@@ -306,7 +306,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// To allow use of atomic ++ instead of CAS, we let this overflow.
   /// The actual number of constructed elements is min(actualCapacity_,
   /// size_)
-  std::atomic<uint32_t> size_;
+  Atom<uint32_t> size_;
 
   /// raw storage, only 1..min(size_,actualCapacity_) (inclusive) are
   /// actually constructed.  Note that slots_[0] is not constructed or used
