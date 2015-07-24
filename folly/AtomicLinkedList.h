@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <folly/Portability.h>
 
 namespace folly {
 
@@ -63,11 +64,19 @@ class AtomicLinkedList {
    * Note: list must be empty on destruction.
    */
   ~AtomicLinkedList() {
+#ifdef MSVC_NO_NONVOID_ATOMIC_IF
+    assert(head_.load() == nullptr);
+#else
     assert(head_ == nullptr);
+#endif
   }
 
   bool empty() const {
+#ifdef MSVC_NO_NONVOID_ATOMIC_IF
+    return head_.load() == nullptr;
+#else
     return head_ == nullptr;
+#endif
   }
 
   /**

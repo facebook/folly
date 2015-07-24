@@ -22,7 +22,11 @@ namespace folly {
 
 namespace detail {
 
+#ifdef MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION
+const std::chrono::seconds SingletonHolderBase::kDestroyWaitTime{5};
+#else
 constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
+#endif
 
 }
 
