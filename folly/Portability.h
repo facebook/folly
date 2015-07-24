@@ -334,6 +334,25 @@ inline size_t malloc_usable_size(void* ptr) {
 # define FOLLY_HAS_RTTI 1
 #endif
 
+#if defined(_MSC_VER) && _MSC_FULL_VER <= 190023026 // 2015 RTM or below
+// MSVC2015's initial release produces errors if you try
+// to do `if (std::atomic<char*>)`, while `if (std::atomic<void*>)`
+// works just fine.
+// Bug Report: https://connect.microsoft.com/VisualStudio/feedback/details/1464842
+# define MSVC_NO_NONVOID_ATOMIC_IF 1
+// 2015 RTM doesn't support in-class initialization of static constexpr members.
+// Attempting to do this produces an error informing you that this is not yet supported.
+# define MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION 1
+// 2015 RTM doesn't like it when you try to cast anything other than NULL to a
+// pointer type in anything but the root constexpr scope, so we move a couple
+// of initial values around to make it still work for MSVC. See AtomicHashArray::Config
+//
+// I believe this is a deliberate limitation of MSVC, and is unlikely to change,
+// but, in case it does, this will allow us to easily find where the code that can
+// be removed is.
+# define MSVC_NO_CONSTEXPR_EASY_POINTER_CASTS 1
+#endif
+
 #ifdef _MSC_VER
 # include <intrin.h>
 #endif

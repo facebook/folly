@@ -200,7 +200,11 @@ class SingletonHolderBase {
   virtual void destroyInstance() = 0;
 
  protected:
+#ifdef MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION
+  static const std::chrono::seconds kDestroyWaitTime;
+#else
   static constexpr std::chrono::seconds kDestroyWaitTime{5};
+#endif
 };
 
 // An actual instance of a singleton, tracking the instance itself,
