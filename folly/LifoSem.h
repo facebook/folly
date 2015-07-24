@@ -504,8 +504,8 @@ struct LifoSemBase : boost::noncopyable {
 
  private:
 
-  folly::AtomicStruct<LifoSemHead,Atom> head_
-      FOLLY_ALIGN_TO_AVOID_FALSE_SHARING;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
+  folly::AtomicStruct<LifoSemHead,Atom> head_;
 
   char padding_[folly::detail::CacheLocality::kFalseSharingRange -
       sizeof(LifoSemHead)];

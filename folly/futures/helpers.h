@@ -85,7 +85,7 @@ auto makeFutureWith(F&& func)
 ///
 ///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
-Future<T> makeFuture(std::exception_ptr const& e) DEPRECATED;
+DEPRECATED Future<T> makeFuture(std::exception_ptr const& e);
 
 /// Make a failed Future from an exception_wrapper.
 template <class T>
