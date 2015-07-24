@@ -290,7 +290,7 @@ class FiberManager : public ::folly::Executor {
    * When we are inside FiberManager loop this points to FiberManager. Otherwise
    * it's nullptr
    */
-  static __thread FiberManager* currentFiberManager_;
+  static FOLLY_TLS FiberManager* currentFiberManager_;
 
   /**
    * runInMainContext implementation for non-void functions.
