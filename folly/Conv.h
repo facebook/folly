@@ -815,7 +815,7 @@ typename std::enable_if<sizeof...(Ts) >= 3
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppend(const Ts&... vs) {
-  detail::toAppendStrImpl(vs...);
+  ::folly::detail::toAppendStrImpl(vs...);
 }
 
 /**
@@ -834,7 +834,7 @@ typename std::enable_if<
     typename detail::last_element<Ts...>::type
   >::type>::value>::type
 toAppendFit(const Ts&... vs) {
-  detail::reserveInTarget(vs...);
+  ::folly::detail::reserveInTarget(vs...);
   toAppend(vs...);
 }
 
