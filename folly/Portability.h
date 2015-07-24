@@ -80,7 +80,9 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 #endif
 
 // deprecated
-#if defined(__clang__) || defined(__GNUC__)
+#if defined(_MSC_VER)
+# define FOLLY_DEPRECATED(msg) __declspec(deprecated(msg))
+#elif defined(__clang__) || defined(__GNUC__)
 # define FOLLY_DEPRECATED(msg) __attribute__((__deprecated__(msg)))
 #else
 # define FOLLY_DEPRECATED
