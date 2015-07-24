@@ -17,16 +17,14 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#include <cassert>
 #include <cstddef>
 #include <iostream>
 #include <string>
 
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
+#include <folly/SocketPortability.h>
 
 namespace folly {
 
@@ -80,7 +78,11 @@ class SocketAddress {
   SocketAddress(const SocketAddress& addr) {
     port_ = addr.port_;
     if (addr.getFamily() == AF_UNIX) {
+#if !HAVE_UNIX_SOCKETS
+      assert(0);
+#else
       storage_.un.init(addr.storage_.un);
+#endif
     } else {
       storage_ = addr.storage_;
     }
@@ -92,16 +94,24 @@ class SocketAddress {
       if (addr.getFamily() != AF_UNIX) {
         storage_ = addr.storage_;
       } else {
+#if !HAVE_UNIX_SOCKETS
+        assert(0);
+#else
         storage_ = addr.storage_;
         storage_.un.init(addr.storage_.un);
+#endif
       }
     } else {
+#if !HAVE_UNIX_SOCKETS
+      assert(0);
+#else
       if (addr.getFamily() == AF_UNIX) {
         storage_.un.copy(addr.storage_.un);
       } else {
         storage_.un.free();
         storage_ = addr.storage_;
       }
+#endif
     }
     port_ = addr.port_;
     external_ = addr.external_;
@@ -124,7 +134,11 @@ class SocketAddress {
 
   ~SocketAddress() {
     if (external_) {
+#if !HAVE_UNIX_SOCKETS
+      assert(0);
+#else
       storage_.un.free();
+#endif
     }
   }
 
@@ -288,22 +302,19 @@ class SocketAddress {
 
   void setFromPath(const char* path, size_t length);
 
-  // a typedef that allow us to compile against both winsock & POSIX sockets:
-  using SocketDesc = decltype(socket(0,0,0)); // POSIX: int, winsock: unsigned
-
   /**
    * Initialize this SocketAddress from a socket's peer address.
    *
    * Raises std::system_error on error.
    */
-  void setFromPeerAddress(SocketDesc socket);
+  void setFromPeerAddress(int socket);
 
   /**
    * Initialize this SocketAddress from a socket's local address.
    *
    * Raises std::system_error on error.
    */
-  void setFromLocalAddress(SocketDesc socket);
+  void setFromLocalAddress(int socket);
 
   /**
    * Initialize this folly::SocketAddress from a struct sockaddr.
@@ -341,6 +352,7 @@ class SocketAddress {
    */
   void setFromSockaddr(const struct sockaddr_in6* address);
 
+#if HAVE_UNIX_SOCKETS
   /**
    * Initialize this SocketAddress from a struct sockaddr_un.
    *
@@ -355,7 +367,7 @@ class SocketAddress {
    */
   void setFromSockaddr(const struct sockaddr_un* address,
                        socklen_t addrlen);
-
+#endif
 
   /**
    * Fill in a given sockaddr_storage with the ip or unix address.
@@ -366,8 +378,13 @@ class SocketAddress {
     if (!external_) {
       return storage_.addr.toSockaddrStorage(addr, htons(port_));
     } else {
+#if !HAVE_UNIX_SOCKETS
+      assert(0);
+      return 0;
+#else
       memcpy(addr, storage_.un.addr, sizeof(*storage_.un.addr));
       return storage_.un.len;
+#endif
     }
   }
 
@@ -510,6 +527,7 @@ class SocketAddress {
   size_t hash() const;
 
  private:
+#if HAVE_UNIX_SOCKETS
   /**
    * Unix socket addresses require more storage than IPv4 and IPv6 addresses,
    * and are comparatively little-used.
@@ -558,20 +576,13 @@ class SocketAddress {
       magic = 0;
     }
   };
-
-  // a typedef that allow us to compile against both winsock & POSIX sockets:
-  // (both arg types and calling conventions differ for both)
-  // POSIX: void setFromSocket(int socket,
-  //                  int(*fn)(int, struct sockaddr*, socklen_t*));
-  // mingw: void setFromSocket(unsigned socket,
-  //                  int(*fn)(unsigned, struct sockaddr*, socklen_t*));
-  using GetPeerNameFunc = decltype(getpeername);
+#endif
 
   struct addrinfo* getAddrInfo(const char* host, uint16_t port, int flags);
   struct addrinfo* getAddrInfo(const char* host, const char* port, int flags);
   void setFromAddrInfo(const struct addrinfo* results);
   void setFromLocalAddr(const struct addrinfo* results);
-  void setFromSocket(SocketDesc socket, GetPeerNameFunc fn);
+  void setFromSocket(int socket, int (*fn)(int, struct sockaddr*, socklen_t*));
   std::string getIpString(int flags) const;
   void getIpString(char *buf, size_t buflen, int flags) const;
 
@@ -580,13 +591,21 @@ class SocketAddress {
   void prepFamilyChange(sa_family_t newFamily) {
     if (newFamily != AF_UNIX) {
       if (external_) {
+#if !HAVE_UNIX_SOCKETS
+        assert(0);
+#else
         storage_.un.free();
         storage_.addr = folly::IPAddress();
+#endif
       }
       external_ = false;
     } else {
       if (!external_) {
+#if !HAVE_UNIX_SOCKETS
+        assert(0);
+#else
         storage_.un.init();
+#endif
       }
       external_ = true;
     }
@@ -600,8 +619,10 @@ class SocketAddress {
    * track a struct sockaddr_un allocated separately on the heap.
    */
   union {
-    folly::IPAddress addr{};
+    folly::IPAddress addr;
+#if HAVE_UNIX_SOCKETS
     ExternalUnixAddr un;
+#endif
   } storage_{};
   // IPAddress class does nto save zone or port, and must be saved here
   uint16_t port_;

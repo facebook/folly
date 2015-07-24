@@ -16,7 +16,8 @@
 
 #pragma once
 
-#include <arpa/inet.h>
+#include <folly/SocketPortability.h>
+
 #include <iomanip>
 #include <openssl/ssl.h>
 

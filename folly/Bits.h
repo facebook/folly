@@ -62,6 +62,7 @@
 #define FOLLY_INTRINSIC_CONSTEXPR const
 #endif
 
+#include <folly/CPortability.h> // Implements quite a few GCC builtins.
 #include <folly/Portability.h>
 
 #include <folly/detail/BitsDetail.h>

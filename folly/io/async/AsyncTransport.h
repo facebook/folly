@@ -17,7 +17,6 @@
 #pragma once
 
 #include <memory>
-#include <sys/uio.h>
 
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/DelayedDestruction.h>

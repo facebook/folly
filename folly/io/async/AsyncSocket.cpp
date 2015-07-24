@@ -18,19 +18,16 @@
 
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/FilePortability.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/IOBuf.h>
 
-#include <poll.h>
 #include <errno.h>
 #include <limits.h>
-#include <unistd.h>
 #include <thread>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 
 using std::string;
 using std::unique_ptr;
@@ -330,7 +327,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // constant (PF_xxx) rather than an address family (AF_xxx), but the
     // distinction is mainly just historical.  In pretty much all
     // implementations the PF_foo and AF_foo constants are identical.
-    fd_ = socket(address.getFamily(), SOCK_STREAM, 0);
+    fd_ = fsp::socket(address.getFamily(), SOCK_STREAM, 0);
     if (fd_ < 0) {
       throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
                                 withAddr("failed to create socket"), errno);
@@ -380,7 +377,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // bind the socket
     if (bindAddr != anyAddress()) {
       int one = 1;
-      if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+      if (setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
         doClose();
         throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
@@ -390,7 +387,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
 
       bindAddr.getAddress(&addrStorage);
 
-      if (::bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
+      if (bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
         doClose();
         throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                                   "failed to bind to async socket: " +
@@ -412,7 +409,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // Perform the connect()
     address.getAddress(&addrStorage);
 
-    rv = ::connect(fd_, saddr, address.getActualSize());
+    rv = fsp::connect(fd_, saddr, address.getActualSize());
     if (rv < 0) {
       if (errno == EINPROGRESS) {
         // Connection in progress.
@@ -946,7 +943,7 @@ void AsyncSocket::shutdownWriteNow() {
       }
 
       // Shutdown writes on the file descriptor
-      ::shutdown(fd_, SHUT_WR);
+      shutdown(fd_, SHUT_WR);
 
       // Immediately fail all write requests
       failAllWrites(socketShutdownForWritesEx);
@@ -1459,7 +1456,7 @@ void AsyncSocket::handleWrite() noexcept {
             }
           } else {
             // Reads are still enabled, so we are only doing a half-shutdown
-            ::shutdown(fd_, SHUT_WR);
+            shutdown(fd_, SHUT_WR);
           }
         }
       }
@@ -1602,7 +1599,7 @@ void AsyncSocket::handleConnect() noexcept {
     // are still connecting we just abort the connect rather than waiting for
     // it to complete.
     assert((shutdownFlags_ & SHUT_READ) == 0);
-    ::shutdown(fd_, SHUT_WR);
+    shutdown(fd_, SHUT_WR);
     shutdownFlags_ |= SHUT_WRITE;
   }
 
@@ -1694,7 +1691,7 @@ ssize_t AsyncSocket::performWrite(const iovec* vec,
     // marks that this is the last byte of a record (response)
     msg_flags |= MSG_EOR;
   }
-  ssize_t totalWritten = ::sendmsg(fd_, &msg, msg_flags);
+  ssize_t totalWritten = sendmsg(fd_, &msg, msg_flags);
   if (totalWritten < 0) {
     if (errno == EAGAIN) {
       // TCP buffer is full; we can't write any more data right now.

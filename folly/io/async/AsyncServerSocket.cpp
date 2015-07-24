@@ -22,16 +22,14 @@
 
 #include <folly/FileUtil.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/tcp.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 namespace folly {
 
@@ -279,7 +277,7 @@ void AsyncServerSocket::bindSocket(
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(fd, saddr, address.getActualSize()) != 0) {
+  if (fsp::bind(fd, saddr, address.getActualSize()) != 0) {
     if (!isExistingSocket) {
       closeNoInt(fd);
     }
@@ -361,7 +359,7 @@ void AsyncServerSocket::bind(uint16_t port) {
   SCOPE_EXIT { freeaddrinfo(res0); };
 
   auto setupAddress = [&] (struct addrinfo* res) {
-    int s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    int s = fsp::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     // IPv6/IPv4 may not be supported by the kernel
     if (s < 0 && errno == EAFNOSUPPORT) {
       return;
@@ -387,7 +385,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     sockets_.emplace_back(eventBase_, s, this, address.getFamily());
 
     // Bind to the socket
-    if (::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
+    if (fsp::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
       folly::throwSystemError(
         errno,
         "failed to bind to async server socket for port");
@@ -462,7 +460,7 @@ void AsyncServerSocket::listen(int backlog) {
 
   // Start listening
   for (auto& handler : sockets_) {
-    if (::listen(handler.socket_, backlog) == -1) {
+    if (fsp::listen(handler.socket_, backlog) == -1) {
       folly::throwSystemError(errno,
                                     "failed to listen on async server socket");
     }
@@ -618,7 +616,7 @@ void AsyncServerSocket::pauseAccepting() {
 }
 
 int AsyncServerSocket::createSocket(int family) {
-  int fd = socket(family, SOCK_STREAM, 0);
+  int fd = fsp::socket(family, SOCK_STREAM, 0);
   if (fd == -1) {
     folly::throwSystemError(errno, "error creating async server socket");
   }
@@ -709,9 +707,11 @@ void AsyncServerSocket::handlerReady(
 
     // In some cases, accept() doesn't seem to update these correctly.
     saddr->sa_family = addressFamily;
+#if HAVE_UNIX_SOCKETS
     if (addressFamily == AF_UNIX) {
       addrLen = sizeof(struct sockaddr_un);
     }
+#endif
 
     // Accept a new client socket
 #ifdef SOCK_NONBLOCK
