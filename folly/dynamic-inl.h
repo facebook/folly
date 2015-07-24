@@ -612,12 +612,15 @@ inline void dynamic::pop_back() {
 
 //////////////////////////////////////////////////////////////////////
 
-#define FOLLY_DYNAMIC_DEC_TYPEINFO(T, str, val) \
-  template <> struct dynamic::TypeInfo<T> { \
-    static constexpr const char* name = str; \
-    static constexpr dynamic::Type type = val; \
-  }; \
-  //
+template<class T> struct dynamic::TypeInfo {
+  static char const name[];
+  static Type const type;
+};
+
+#ifndef _MSC_VER
+#define FB_DEC_TYPE(T)                                      \
+  template<> char const dynamic::TypeInfo<T>::name[];       \
+  template<> dynamic::Type const dynamic::TypeInfo<T>::type
 
 FOLLY_DYNAMIC_DEC_TYPEINFO(void*,               "null",    dynamic::NULLT)
 FOLLY_DYNAMIC_DEC_TYPEINFO(bool,                "boolean", dynamic::BOOL)
@@ -627,7 +630,12 @@ FOLLY_DYNAMIC_DEC_TYPEINFO(double,              "double",  dynamic::DOUBLE)
 FOLLY_DYNAMIC_DEC_TYPEINFO(int64_t,             "int64",   dynamic::INT64)
 FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::ObjectImpl, "object",  dynamic::OBJECT)
 
+<<<<<<< HEAD
 #undef FOLLY_DYNAMIC_DEC_TYPEINFO
+=======
+#undef FB_DEC_TYPE
+#endif
+>>>>>>> 8861311... Exclude the FB_DEC_TYPE section in dynamic-inl.h under MSVC
 
 template<class T>
 T dynamic::asImpl() const {
