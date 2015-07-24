@@ -230,7 +230,7 @@ class NotificationQueue {
     : eventfd_(-1),
       pipeFds_{-1, -1},
       advisoryMaxQueueSize_(maxSize),
-      pid_(getpid()),
+      pid_((pid_t)getpid()),
       queue_() {
 
     RequestContext::saveContext();
@@ -426,7 +426,7 @@ class NotificationQueue {
    * code, and crash before signalling the parent process.
    */
   void checkPid() const {
-    CHECK_EQ(pid_, getpid());
+    CHECK_EQ(pid_, (pid_t)getpid());
   }
 
  private:

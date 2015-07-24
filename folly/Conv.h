@@ -818,6 +818,14 @@ toAppend(const Ts&... vs) {
   ::folly::detail::toAppendStrImpl(vs...);
 }
 
+#ifdef _MSC_VER
+// Special case pid_t on windows.
+template<class Tgt>
+void toAppend(const pid_t a, Tgt* res) {
+  toAppend((uint64_t)a, res);
+}
+#endif
+
 /**
  * Special version of the call that preallocates exaclty as much memory
  * as need for arguments to be stored in target. This means we are
