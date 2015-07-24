@@ -64,7 +64,9 @@ T* SingletonHolder<T>::get() {
 
   if (instance_weak_.expired()) {
     throw std::runtime_error(
-      "Raw pointer to a singleton requested after its destruction.");
+        "Raw pointer to a singleton requested after its destruction."
+        " Singleton type is: " +
+        type_.name());
   }
 
   return instance_ptr_;
