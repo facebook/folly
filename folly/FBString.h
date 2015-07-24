@@ -81,8 +81,8 @@
 #endif
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wshadow"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(shadow)
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use std::__throw_*
@@ -2523,7 +2523,7 @@ FOLLY_FBSTRING_HASH
 
 #endif // _LIBSTDCXX_FBSTRING
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 #undef FBSTRING_DISABLE_ADDRESS_SANITIZER
 #undef throw
