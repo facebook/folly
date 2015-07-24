@@ -286,6 +286,14 @@ inline size_t malloc_usable_size(void* ptr) {
 
 namespace folly {
 
+inline void asm_volatile_memory() {
+#ifdef _MSC_VER
+  ::_ReadWriteBarrier();
+#elif defined(__clang__) || defined(__GNUC__)
+  asm volatile("" : : : "memory");
+#endif
+}
+
 inline void asm_volatile_pause() {
 #if defined(__i386__) || FOLLY_X64
   asm volatile ("pause");
