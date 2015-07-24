@@ -652,6 +652,8 @@ static unsigned long callbackThreadID() {
   return static_cast<unsigned long>(
 #ifdef __APPLE__
     pthread_mach_thread_np(pthread_self())
+#elif _MSC_VER
+    pthread_getw32threadid_np(pthread_self())
 #else
     pthread_self()
 #endif
