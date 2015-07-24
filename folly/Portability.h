@@ -157,7 +157,10 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 /* Define macro wrappers for C++11's "final" and "override" keywords, which
  * are supported in gcc 4.7 but not gcc 4.6. */
 #if !defined(FOLLY_FINAL) && !defined(FOLLY_OVERRIDE)
-# if defined(__clang__) || __GNUC_PREREQ(4, 7)
+# if defined(_MSC_VER) && _MSC_VER >= 1600
+#  define FOLLY_FINAL final
+#  define FOLLY_OVERRIDE override
+# elif defined(__clang__) || __GNUC_PREREQ(4, 7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
 # else
