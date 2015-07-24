@@ -41,8 +41,6 @@ FiberManager::~FiberManager() {
     loopController_->cancel();
   }
 
-  Fiber* fiberIt;
-  Fiber* fiberItNext;
   while (!fibersPool_.empty()) {
     fibersPool_.pop_front_and_dispose([] (Fiber* fiber) {
       delete fiber;

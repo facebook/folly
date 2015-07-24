@@ -636,7 +636,6 @@ void AsyncServerSocket::setupSocket(int fd) {
   // Get the address family
   SocketAddress address;
   address.setFromLocalAddress(fd);
-  auto family = address.getFamily();
 
   // Put the socket in non-blocking mode
   if (fcntl(fd, F_SETFL, O_NONBLOCK) != 0) {
@@ -679,6 +678,7 @@ void AsyncServerSocket::setupSocket(int fd) {
   // Set TCP nodelay if available, MAC OS X Hack
   // See http://lists.danga.com/pipermail/memcached/2005-March/001240.html
 #ifndef TCP_NOPUSH
+  auto family = address.getFamily();
   if (family != AF_UNIX) {
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
       // This isn't a fatal error; just log an error message and continue
