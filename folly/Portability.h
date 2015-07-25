@@ -340,30 +340,30 @@ inline size_t malloc_usable_size(void* ptr) {
 // pthread_t and an integer so that it may be
 // compared agains 0.
 
-inline bool operator ==(pthread_t ptA, unsigned int b)
-{
+inline bool operator ==(pthread_t ptA, unsigned int b) {
   if (ptA.p == NULL) {
     return b == 0;
   }
   return pthread_getw32threadid_np(ptA) == b;
 }
 
-inline bool operator !=(pthread_t ptA, unsigned int b)
-{
+inline bool operator !=(pthread_t ptA, unsigned int b) {
   if (ptA.p == NULL) {
     return b != 0;
   }
   return pthread_getw32threadid_np(ptA) != b;
 }
 
-inline bool operator ==(pthread_t ptA, pthread_t ptB)
-{
+inline bool operator ==(pthread_t ptA, pthread_t ptB) {
   return pthread_equal(ptA, ptB) != 0;
 }
 
-inline bool operator !=(pthread_t ptA, pthread_t ptB)
-{
+inline bool operator !=(pthread_t ptA, pthread_t ptB) {
   return pthread_equal(ptA, ptB) == 0;
+}
+
+inline bool operator !(pthread_t ptA) {
+  return ptA == 0;
 }
 
 #define pthread_t_init (pthread_t{NULL, 0})
