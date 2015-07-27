@@ -810,7 +810,7 @@ private:
     MediumLarge ml_;
   };
 
-  enum {
+  enum : size_t {
     lastChar = sizeof(MediumLarge) - 1,
     maxSmallSize = lastChar / sizeof(Char),
     maxMediumSize = 254 / sizeof(Char),            // coincides with the small
