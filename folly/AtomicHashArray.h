@@ -128,28 +128,19 @@ class AtomicHashArray : boost::noncopyable {
     int    entryCountThreadCacheSize;
     size_t capacity; // if positive, overrides maxLoadFactor
 
-#ifdef MSVC_NO_CONSTEXPR_EASY_POINTER_CASTS
   private:
     static constexpr KeyT k_emptyKey = (KeyT)-1;
     static constexpr KeyT k_lockedKey = (KeyT)-2;
     static constexpr KeyT k_erasedKey = (KeyT)-3;
+    
   public:
-#endif
-
-    constexpr Config() :
-#ifdef MSVC_NO_CONSTEXPR_EASY_POINTER_CASTS
-      emptyKey(k_emptyKey),
-      lockedKey(k_lockedKey),
-      erasedKey(k_erasedKey),
-#else
-      emptyKey((KeyT)-1),
-      lockedKey((KeyT)-2),
-      erasedKey((KeyT)-3),
-#endif
-      maxLoadFactor(0.8),
-      growthFactor(-1),
-      entryCountThreadCacheSize(1000),
-      capacity(0) {}
+    constexpr Config() : emptyKey(k_emptyKey),
+                         lockedKey(k_lockedKey),
+                         erasedKey(k_erasedKey),
+                         maxLoadFactor(0.8),
+                         growthFactor(-1),
+                         entryCountThreadCacheSize(1000),
+                         capacity(0) {}
   };
 
   static const Config defaultConfig;

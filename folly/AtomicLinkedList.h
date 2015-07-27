@@ -64,11 +64,7 @@ class AtomicLinkedList {
    * Note: list must be empty on destruction.
    */
   ~AtomicLinkedList() {
-#ifdef MSVC_NO_NONVOID_ATOMIC_IF
-    assert(head_.load() == nullptr);
-#else
-    assert(head_ == nullptr);
-#endif
+    assert(empty());
   }
 
   bool empty() const {
