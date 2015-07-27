@@ -88,7 +88,6 @@ TEST_F(DelayedDestructionBaseTest, basic) {
   int32_t state;
   d->onComplete(3, state);
   EXPECT_EQ(state, 10); // 10 = 6 + 3 + 1
-  EXPECT_EQ(d->deleted(), true);
 }
 
 TEST_F(DelayedDestructionBaseTest, destructFromContainer) {
