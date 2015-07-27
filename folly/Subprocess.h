@@ -410,11 +410,12 @@ class Subprocess {
   ProcessReturnCode returnCode() const { return returnCode_; }
 
   /**
-   * Poll the child's status and return it, return -1 if the process
-   * is still running.  NOTE that it is illegal to call poll again after
-   * poll indicated that the process has terminated, or to call poll on a
-   * process that hasn't been successfully started (the constructor threw an
-   * exception).
+   * Poll the child's status and return it. Return the exit status if the
+   * subprocess had quit, or RUNNING otherwise.  Throws an std::logic_error
+   * if called on a Subprocess whose status is no longer RUNNING.  No other
+   * exceptions are possible.  Aborts on egregious violations of contract,
+   * e.g. if you wait for the underlying process without going through this
+   * Subprocess instance.
    */
   ProcessReturnCode poll();
 
@@ -426,9 +427,10 @@ class Subprocess {
   bool pollChecked();
 
   /**
-   * Wait for the process to terminate and return its status.
-   * Similarly to poll, it is illegal to call wait after the process
-   * has already been reaped or if the process has not successfully started.
+   * Wait for the process to terminate and return its status.  Like poll(),
+   * the only exception this can throw is std::logic_error if you call this
+   * on a Subprocess whose status is RUNNING.  Aborts on egregious
+   * violations of contract, like an out-of-band waitpid(p.pid(), 0, 0).
    */
   ProcessReturnCode wait();
 
