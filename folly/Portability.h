@@ -258,6 +258,19 @@ typedef SSIZE_T ssize_t;
 // compiler specific to compiler specific
 // nolint
 # define __PRETTY_FUNCTION__ __FUNCSIG__
+
+// Hide a GCC specific thing that breaks MSVC if left alone.
+# define __extension__
+
+#ifdef _M_IX86_FP
+# if _M_IX86_FP == 1
+#  define __SSE__
+# elif _M_IX86_FP == 2
+#  define __SSE__
+#  define __SSE2__
+# endif
+#endif
+
 #endif
 
 #if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
