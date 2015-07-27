@@ -284,6 +284,17 @@ inline size_t malloc_usable_size(void* ptr) {
 # define FOLLY_HAS_RTTI 1
 #endif
 
+#if defined(_MSC_VER) && _MSC_FULL_VER <= 190023026 // 2015 RTM or below
+// MSVC2015's initial release produces errors if you try
+// to do `if (std::atomic<char*>)`, while `if (std::atomic<void*>)`
+// works just fine.
+// Bug Report: https://connect.microsoft.com/VisualStudio/feedback/details/1464842
+# define MSVC_NO_NONVOID_ATOMIC_IF 1
+// 2015 RTM doesn't support in-class initialization of static constexpr members.
+// Attempting to do this produces an error informing you that this is not yet supported.
+# define MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION 1
+#endif
+
 namespace folly {
 
 inline void asm_volatile_pause() {
