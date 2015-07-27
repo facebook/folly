@@ -107,11 +107,7 @@ StateSize<std::subtract_with_carry_engine<UIntType, w, s, r>>::value;
 template <class RNG>
 struct SeedData {
   SeedData() {
-#ifdef _MSC_VER
-    Random::secureRandom((void*)seedData.begin()._Ptr, seedData.size() * sizeof(uint32_t));
-#else
-    Random::secureRandom(seedData.begin(), seedData.size() * sizeof(uint32_t));
-#endif
+    Random::secureRandom(seedData.data(), seedData.size() * sizeof(uint32_t));
   }
 
   static constexpr size_t stateSize = StateSize<RNG>::value;
