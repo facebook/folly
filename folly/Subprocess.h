@@ -126,11 +126,17 @@ class ProcessReturnCode {
   friend class Subprocess;
  public:
   enum State {
+    // Subprocess starts in the constructor, so this state designates only
+    // default-initialized or moved-out ProcessReturnCodes.
     NOT_STARTED,
     RUNNING,
     EXITED,
     KILLED
   };
+
+  // Default-initialized for convenience. Subprocess::returnCode() will
+  // never produce this value.
+  ProcessReturnCode() : ProcessReturnCode(RV_NOT_STARTED) {}
 
   // Trivially copyable
   ProcessReturnCode(const ProcessReturnCode& p) = default;

@@ -56,6 +56,11 @@ TEST(SimpleSubprocessTest, ExitsWithErrorChecked) {
   EXPECT_THROW(proc.waitChecked(), CalledProcessError);
 }
 
+TEST(SimpleSubprocessTest, DefaultConstructibleProcessReturnCode) {
+  ProcessReturnCode retcode;
+  EXPECT_TRUE(retcode.notStarted());
+}
+
 TEST(SimpleSubprocessTest, MoveSubprocess) {
   Subprocess old_proc(std::vector<std::string>{ "/bin/true" });
   EXPECT_TRUE(old_proc.returnCode().running());
