@@ -450,8 +450,8 @@ struct StaticMeta {
 
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
 template <class Tag>
-FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_{nullptr, 0,
-                                                    nullptr, nullptr};
+FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_ = {nullptr, 0,
+                                                       nullptr, nullptr};
 #endif
 template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 
