@@ -256,7 +256,7 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
     if (!(flags & MAP_ANONYMOUS))
       h = (HANDLE)_get_osfhandle(fd);
 
-    HANDLE fmh = CreateFileMapping(h, nullptr, prot | SEC_COMMIT | SEC_RESERVE,
+    HANDLE fmh = CreateFileMapping(h, nullptr, newProt | SEC_COMMIT | SEC_RESERVE,
       (DWORD)((length >> 32) & 0xFFFFFFFF), (DWORD)(length & 0xFFFFFFFF), nullptr);
     // Depending on specifics, off_t may be 32-bit, so get MSVC to be quiet about
     // it.
@@ -268,7 +268,9 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
     CloseHandle(fmh);
   }
   else {
-    ret = VirtualAlloc(NULL, length, MEM_COMMIT | MEM_RESERVE, prot);
+    ret = VirtualAlloc(NULL, length, MEM_COMMIT | MEM_RESERVE, newProt);
+    if (ret == NULL)
+      return MAP_FAILED;
   }
 
   // TODO: Could technically implement MAP_POPULATE via PrefetchVirtualMemory
