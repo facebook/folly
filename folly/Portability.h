@@ -280,7 +280,8 @@ inline size_t malloc_usable_size(void* ptr) {
 #endif
 
 // RTTI may not be enabled for this compilation unit.
-#if defined(__GXX_RTTI) || defined(__cpp_rtti)
+#if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
+    (defined(_MSC_VER) && defined(_CPPRTTI))
 # define FOLLY_HAS_RTTI 1
 #endif
 
