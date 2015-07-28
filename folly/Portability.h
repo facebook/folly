@@ -160,6 +160,9 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # if defined(__clang__) || __GNUC_PREREQ(4, 7)
 #  define FOLLY_FINAL final
 #  define FOLLY_OVERRIDE override
+# elif defined(_MSC_VER) && _MSC_VER >= 1600
+#  define FOLLY_FINAL final
+#  define FOLLY_OVERRIDE override
 # else
 #  define FOLLY_FINAL /**/
 #  define FOLLY_OVERRIDE /**/
