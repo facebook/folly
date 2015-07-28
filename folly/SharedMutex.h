@@ -711,9 +711,9 @@ class SharedMutexImpl {
   // should be considered that there is a shared lock on that instance.
   // See kTokenless.
   typedef Atom<uintptr_t> DeferredReaderSlot;
-  static DeferredReaderSlot deferredReaders
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING static DeferredReaderSlot deferredReaders
       [kMaxDeferredReaders *
-       kDeferredSeparationFactor] FOLLY_ALIGN_TO_AVOID_FALSE_SHARING;
+       kDeferredSeparationFactor];
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first
