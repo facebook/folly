@@ -123,10 +123,12 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #if defined(__GNUC__) && \
   (defined(__i386) || FOLLY_X64 || \
    defined(ARCH_K8))
-#define RW_SPINLOCK_USE_X86_INTRINSIC_
-#include <x86intrin.h>
+# define RW_SPINLOCK_USE_X86_INTRINSIC_
+# include <x86intrin.h>
+#elif defined(_MSC_VER) && defined(FOLLY_X64)
+# define RW_SPINLOCK_USE_X86_INTRINSIC_
 #else
-#undef RW_SPINLOCK_USE_X86_INTRINSIC_
+# undef RW_SPINLOCK_USE_X86_INTRINSIC_
 #endif
 
 // iOS doesn't define _mm_cvtsi64_si128 and friends
