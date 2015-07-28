@@ -37,7 +37,11 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="no">Future</span> <span class="no">chain</span> <span class="no">made</span>
 <span class="no">fulfilling</span> <span class="no">Promise</span>
 <span class="nf" data-symbol-name="foo">foo</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="no">Promise</span> <span class="no">fulfilled</span></pre></div></section><section class="dex_document"><h1>Brief Guide</h1><p class="dex_introduction"></p><p>This brief guide covers the basics. For a more in-depth coverage skip to the appropriate section.</p>
+<span class="no">Promise</span> <span class="no">fulfilled</span></pre></div>
+
+<h3 id="blog-post">Blog Post <a href="#blog-post" class="headerLink">#</a></h3>
+
+<p>In addition to this document, there is <a href="https://code.facebook.com/posts/1661982097368498/futures-for-c-11-at-facebook/" target="_blank">a blog post on code.facebook.com (June 2015)</a>.</p></section><section class="dex_document"><h1>Brief Guide</h1><p class="dex_introduction"></p><p>This brief guide covers the basics. For a more in-depth coverage skip to the appropriate section.</p>
 
 <p>Let&#039;s begin with an example using an imaginary simplified Memcache client interface:</p>
 
@@ -408,6 +412,8 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <p><tt>Future&lt;T&gt;::onError()</tt> allows you to have individual exception handlers as separate callbacks. The parameter you specify for your callback is exactly what <tt>onError()</tt> will try to catch. The callback will be passed over if the future doesn&#039;t contain that exception, otherwise, it will be executed and the T or Future&lt;T&gt; that it returns will become the resultant Future instead.</p>
 
+<div class="remarkup-warning"><span class="remarkup-note-word">WARNING:</span> Chaining together multiple calls to onError will NOT necessarily behave in the same way as multiple catch &#123;&#125; blocks after a try. Namely, if you throw an exception in one call to onError, the next onError will catch it.</div>
+
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">intGeneratorThatMaybeThrows</span><span class="p">()</span> <span class="c1">// returns Future&lt;int&gt;</span>
   <span class="c1">// This is a good opportunity to use the plain value (no Try)</span>
   <span class="c1">// variant of then()</span>
@@ -500,7 +506,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">f1</span> <span class="o">=</span> <span class="p">...;</span>
 <span class="n">Future</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">f2</span> <span class="o">=</span> <span class="p">...;</span>
-<span class="n">collectAll</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">){</span>
+<span class="n">collectAll</span><span class="p">(</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">Try</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">string</span><span class="o">&gt;&gt;&amp;</span> <span class="n">tup</span><span class="p">)</span> <span class="p">{</span>
   <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="mi">0</span><span class="o">&gt;</span><span class="p">(</span><span class="n">tup</span><span class="p">).</span><span class="n">value</span><span class="p">();</span>
   <span class="n">string</span> <span class="n">s</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">get</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">(</span><span class="n">tup</span><span class="p">).</span><span class="n">value</span><span class="p">();</span>
   <span class="c1">// ...</span>
@@ -510,7 +516,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <p><tt>collect()</tt> is similar to <tt>collectAll()</tt>, but will terminate early if an exception is raised by any of the input Futures. Therefore, the returned Future is of type <tt>std::vector&lt;T&gt;</tt>. Like <tt>collectAll()</tt>, input Futures are moved in and are no longer valid, and the resulting Future&#039;s vector will contain the results of each input Future in the same order they were passed in (if all are successful). For instance:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&amp;</span> <span class="n">vals</span><span class="p">){</span>
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&amp;</span> <span class="n">vals</span><span class="p">)</span> <span class="p">{</span>
   <span class="k">for</span> <span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">val</span> <span class="o">:</span> <span class="n">vals</span><span class="p">)</span> <span class="p">{</span>
     <span class="c1">// handle each response</span>
   <span class="p">}</span>
@@ -520,7 +526,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="p">});</span>
 
 <span class="c1">// Or using a Try:</span>
-<span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">){</span>
+<span class="n">collect</span><span class="p">(</span><span class="n">fs</span><span class="p">).</span><span class="n">then</span><span class="p">([](</span><span class="k">const</span> <span class="n">Try</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;&gt;&amp;</span> <span class="n">t</span><span class="p">)</span> <span class="p">{</span>
  <span class="c1">// ...</span>
 <span class="p">});</span></pre></div>
 
@@ -668,9 +674,9 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p><tt>via()</tt> wouldn&#039;t be of much use without practical implementations around. We have a handful, and here&#039;s a (possibly incomplete) list.</p>
 
 <ul>
-<li><a href="https://github.com/facebook/folly/blob/master/wangle/concurrent/ThreadPoolExecutor.h" target="_blank">ThreadPoolExecutor</a> is an abstract thread pool implementation that supports resizing, custom thread factories, pool and per-task stats, NUMA awareness, user-defined task expiration, and Codel task expiration. It and its subclasses are under active development. It currently has two implementations:<ul>
-<li><a href="https://github.com/facebook/folly/blob/master/wangle/concurrent/CPUThreadPoolExecutor.h" target="_blank">CPUThreadPoolExecutor</a> is a general purpose thread pool. In addition to the above features, it also supports task priorities.</li>
-<li><a href="https://github.com/facebook/folly/blob/master/wangle/concurrent/IOThreadPoolExecutor.h" target="_blank">IOThreadPoolExecutor</a> is similar to CPUThreadPoolExecutor, but each thread spins on an EventBase (accessible to callbacks via <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBaseManager.h" target="_blank">EventBaseManager</a>)</li>
+<li><a href="https://github.com/facebook/wangle/blob/master/wangle/concurrent/ThreadPoolExecutor.h" target="_blank">ThreadPoolExecutor</a> is an abstract thread pool implementation that supports resizing, custom thread factories, pool and per-task stats, NUMA awareness, user-defined task expiration, and Codel task expiration. It and its subclasses are under active development. It currently has two implementations:<ul>
+<li><a href="https://github.com/facebook/wangle/blob/master/wangle/concurrent/CPUThreadPoolExecutor.h" target="_blank">CPUThreadPoolExecutor</a> is a general purpose thread pool. In addition to the above features, it also supports task priorities.</li>
+<li><a href="https://github.com/facebook/wangle/blob/master/wangle/concurrent/IOThreadPoolExecutor.h" target="_blank">IOThreadPoolExecutor</a> is similar to CPUThreadPoolExecutor, but each thread spins on an EventBase (accessible to callbacks via <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBaseManager.h" target="_blank">EventBaseManager</a>)</li>
 </ul></li>
 <li>folly&#039;s <a href="https://github.com/facebook/folly/blob/master/folly/io/async/EventBase.h" target="_blank">EventBase</a> is an Executor and executes work as a callback in the event loop</li>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ManualExecutor.h" target="_blank">ManualExecutor</a> only executes work when manually cranked. This is useful for testing.</li>
@@ -678,7 +684,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/QueuedImmediateExecutor.h" target="_blank">QueuedImmediateExecutor</a> is similar to InlineExecutor, but work added during callback execution will be queued instead of immediately executed</li>
 <li><a href="https://github.com/facebook/folly/blob/master/folly/futures/ScheduledExecutor.h" target="_blank">ScheduledExecutor</a> is a subinterface of Executor that supports scheduled (i.e. delayed) execution. There aren&#039;t many implementations yet, see <a class="remarkup-task" href="https://our.intern.facebook.com/intern/tasks/?t=5924392" target="_blank">T5924392</a></li>
 <li>Thrift&#039;s <a href="https://github.com/facebook/fbthrift/blob/master/thrift/lib/cpp/concurrency/ThreadManager.h" target="_blank">ThreadManager</a> is an Executor but we aim to deprecate it in favor of the aforementioned CPUThreadPoolExecutor</li>
-<li><a href="https://github.com/facebook/folly/blob/master/wangle/concurrent/FutureExecutor.h" target="_blank">FutureExecutor</a> wraps another Executor and provides <tt>Future&lt;T&gt; addFuture(F func)</tt> which returns a Future representing the result of func. This is equivalent to <tt>futures::async(executor, func)</tt> and the latter should probably be preferred.</li>
+<li><a href="https://github.com/facebook/wangle/blob/master/wangle/concurrent/FutureExecutor.h" target="_blank">FutureExecutor</a> wraps another Executor and provides <tt>Future&lt;T&gt; addFuture(F func)</tt> which returns a Future representing the result of func. This is equivalent to <tt>futures::async(executor, func)</tt> and the latter should probably be preferred.</li>
 </ul></section><section class="dex_document"><h1>Timeouts and related features</h1><p class="dex_introduction">Futures provide a number of timing-related features. Here's an overview.</p><h2 id="timing-implementation">Timing implementation <a href="#timing-implementation" class="headerLink">#</a></h2>
 
 <h3 id="timing-resolution">Timing resolution <a href="#timing-resolution" class="headerLink">#</a></h3>
@@ -703,7 +709,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <span class="n">f</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">));</span>
 
 <span class="c1">// Same deal, but a timeout will trigger the provided exception instead</span>
-<span class="n">f2</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">millseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;you took too long!&quot;</span><span class="p">));</span></pre></div>
+<span class="n">f2</span> <span class="o">=</span> <span class="n">foo</span><span class="p">().</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;you took too long!&quot;</span><span class="p">));</span></pre></div>
 
 <h2 id="ontimeout">onTimeout() <a href="#ontimeout" class="headerLink">#</a></h2>
 
