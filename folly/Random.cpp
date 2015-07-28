@@ -26,18 +26,26 @@
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 
+#ifdef _MSC_VER
+#include <wincrypt.h>
+#endif
+
 namespace folly {
 
 namespace {
 
 void readRandomDevice(void* data, size_t size) {
 #ifdef _MSC_VER
-  static std::uniform_int_distribution<int> dist(0, 255);
-  static std::mt19937_64 randEng;
-  uint8_t* data2 = (uint8_t*)data;
-  for (size_t i = 0; i < size; i++) {
-    data2[i] = (uint8_t)dist(randEng);
+  static bool initialized = false;
+  static HCRYPTPROV cryptoProv;
+  if (!initialized) {
+    bool bcac = CryptAcquireContext(&cryptoProv, nullptr, nullptr, PROV_RSA_FULL, 0);
+    PCHECK(bcac);
+    initialized = true;
   }
+  PCHECK((size_t)(DWORD)size == size);
+  bool gen = CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data);
+  PCHECK(gen);
 #else
   // Keep the random device open for the duration of the program.
   static int randomFd = ::open("/dev/urandom", O_RDONLY);
