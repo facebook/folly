@@ -471,7 +471,12 @@ class FormatValue<
 
       valBufBegin = valBuf + 3;  // room for sign and base prefix
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
-                         "%'ju", static_cast<uintmax_t>(uval));
+#ifdef _MSC_VER
+                         "%ju",
+#else
+                         "%'ju",
+#endif
+                         static_cast<uintmax_t>(uval));
       // valBufSize should always be big enough, so this should never
       // happen.
       assert(len < valBuf + valBufSize - valBufBegin);
@@ -741,9 +746,7 @@ class TryFormatValue {
 
 template <class T>
 class TryFormatValue<
-  T,
-  typename std::enable_if<
-      0 < sizeof(FormatValue<typename std::decay<T>::type>)>::type>
+  T, typename FormatValue<typename std::decay<T>::type>::type>
   {
  public:
   template <class FormatCallback>
