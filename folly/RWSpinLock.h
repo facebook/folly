@@ -523,13 +523,13 @@ class RWTicketSpinLockT : boost::noncopyable {
  private: // Some x64-specific utilities for atomic access to ticket.
   template<class T> static T load_acquire(T* addr) {
     T t = *addr; // acquire barrier
-    asm volatile("" : : : "memory");
+    asm_volatile_memory();
     return t;
   }
 
   template<class T>
   static void store_release(T* addr, T v) {
-    asm volatile("" : : : "memory");
+    asm_volatile_memory();
     *addr = v; // release barrier
   }
 
