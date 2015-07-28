@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
+#include <memory>
+#include <unordered_set>
+
 #include <gtest/gtest.h>
 
+#include <folly/MoveWrapper.h>
 #include <folly/futures/Future.h>
 
 using namespace folly;
 
 TEST(Ensure, basic) {
   size_t count = 0;
-  auto cob = [&]{ count++; };
+  auto cob = [&] { count++; };
   auto f = makeFuture(42)
     .ensure(cob)
     .then([](int) { throw std::runtime_error("ensure"); })
@@ -30,4 +34,17 @@ TEST(Ensure, basic) {
 
   EXPECT_THROW(f.get(), std::runtime_error);
   EXPECT_EQ(2, count);
+}
+
+TEST(Ensure, mutableLambda) {
+  auto set = std::make_shared<std::unordered_set<int>>();
+  set->insert(1);
+  set->insert(2);
+
+  auto f = makeFuture(4)
+    .ensure([set]() mutable { set->clear(); })
+    .then([]() { throw std::runtime_error("ensure"); });
+
+  EXPECT_EQ(0, set->size());
+  EXPECT_THROW(f.get(), std::runtime_error);
 }

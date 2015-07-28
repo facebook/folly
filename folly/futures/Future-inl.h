@@ -301,7 +301,7 @@ template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F func) {
   MoveWrapper<F> funcw(std::move(func));
-  return this->then([funcw](Try<T>&& t) {
+  return this->then([funcw](Try<T>&& t) mutable {
     (*funcw)();
     return makeFuture(std::move(t));
   });
