@@ -33,7 +33,7 @@
 #include <folly/Range.h>
 #include <glog/logging.h>
 
-#ifdef __SSSE3__
+#if FOLLY_SSE >= 3
 #include <x86intrin.h>
 namespace folly {
 namespace detail {
@@ -188,7 +188,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     return decode_simple(p, dest, dest+1, dest+2, dest+3);
   }
 
-#ifdef __SSSE3__
+#if FOLLY_SSE >= 3
   /**
    * Just like the non-SSSE3 decode below, but with the additional constraint
    * that we must be able to read at least 17 bytes from the input pointer, p.
@@ -214,7 +214,7 @@ class GroupVarint<uint32_t> : public detail::GroupVarintBase<uint32_t> {
     __m128i r = _mm_shuffle_epi8(val, mask);
 
     // Extracting 32 bits at a time out of an XMM register is a SSE4 feature
-#ifdef __SSE4__
+#if FOLLY_SSE >= 4
     *a = _mm_extract_epi32(r, 0);
     *b = _mm_extract_epi32(r, 1);
     *c = _mm_extract_epi32(r, 2);
