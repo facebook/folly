@@ -86,7 +86,7 @@ struct GuardObj : GuardObjBase {
     : f_(std::move(f))
     , args_(std::move(args))
   {}
-  GuardObj(GuardObj&& g)
+  GuardObj(GuardObj&& g) noexcept
     : GuardObjBase(std::move(g))
     , f_(std::move(g.f_))
     , args_(std::move(g.args_))
@@ -163,4 +163,6 @@ TEST(ApplyTuple, Test) {
   Mover m;
   folly::applyTuple(move_only_func,
                     std::forward_as_tuple(std::forward<Mover>(Mover())));
+  const auto tuple3 = std::make_tuple(1, 2, 3.0);
+  folly::applyTuple(func, tuple3);
 }

@@ -91,7 +91,7 @@ struct CallTuple {
 
 // The point of this meta function is to extract the contents of the
 // tuple as a parameter pack so we can pass it into std::result_of<>.
-template<class F, class Args> struct ReturnValue {};
+template<class F, class Args> struct ReturnValue;
 template<class F, class ...Args>
 struct ReturnValue<F,std::tuple<Args...>> {
   typedef typename std::result_of<F (Args...)>::type type;
@@ -104,12 +104,12 @@ struct ReturnValue<F,std::tuple<Args...>> {
 template<class Callable, class Tuple>
 typename detail::ReturnValue<
   typename std::decay<Callable>::type,
-  typename std::remove_reference<Tuple>::type
+  typename std::decay<Tuple>::type
 >::type
 applyTuple(const Callable& c, Tuple&& t) {
   typedef typename detail::ReturnValue<
     typename std::decay<Callable>::type,
-    typename std::remove_reference<Tuple>::type
+    typename std::decay<Tuple>::type
   >::type RetT;
   return detail::CallTuple<RetT>::call(c, std::forward<Tuple>(t));
 }
