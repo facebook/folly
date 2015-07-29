@@ -4,6 +4,20 @@
 #include <folly/SocketPortability.h>
 
 namespace folly { namespace socket_portability {
+  namespace {
+    // We have to startup WSA.
+    struct FSPInit {
+      FSPInit() {
+        WSADATA dat;
+        WSAStartup(MAKEWORD(2, 2), &dat);
+      }
+      ~FSPInit() {
+        WSACleanup();
+      }
+    };
+    static FSPInit fspInit;
+  }
+
   SOCKET fd_to_socket(int fd) {
     // We do this in a roundabout way to enable us to
     // do a bit of trickery to ensure that things aren't
