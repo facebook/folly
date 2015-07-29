@@ -164,21 +164,21 @@ struct ComparisonValidator final : IValidator {
     if (type_ == Type::MIN) {
       if (exclusive_) {
         if (v <= s) {
-          return makeError("greater than", schema_, value);
+          return makeError("greater than ", schema_, value);
         }
       } else {
         if (v < s) {
-          return makeError("greater than or equal to", schema_, value);
+          return makeError("greater than or equal to ", schema_, value);
         }
       }
     } else if (type_ == Type::MAX) {
       if (exclusive_) {
         if (v >= s) {
-          return makeError("less than", schema_, value);
+          return makeError("less than ", schema_, value);
         }
       } else {
         if (v > s) {
-          return makeError("less than or equal to", schema_, value);
+          return makeError("less than or equal to ", schema_, value);
         }
       }
     }
@@ -352,7 +352,7 @@ struct RequiredValidator final : IValidator {
     if (value.isObject()) {
       for (const auto& prop : properties_) {
         if (!value.get_ptr(prop)) {
-          return makeError("to have property", prop, value);
+          return makeError("property ", prop, value);
         }
       }
     }
@@ -481,7 +481,7 @@ struct DependencyValidator final : IValidator {
       if (value.count(pair.first)) {
         for (const auto& prop : pair.second) {
           if (!value.count(prop)) {
-            return makeError("property", prop, value);
+            return makeError("property ", prop, value);
           }
         }
       }
