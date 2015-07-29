@@ -41,7 +41,8 @@ std::string guessProgramName() {
 ProgramExit::ProgramExit(int status, const std::string& msg)
   : std::runtime_error(msg),
     status_(status) {
-  CHECK_NE(status, 0);
+  // Message is only allowed for non-zero exit status
+  CHECK(status_ != 0 || msg.empty());
 }
 
 NestedCommandLineApp::NestedCommandLineApp(

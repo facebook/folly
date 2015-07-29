@@ -26,10 +26,10 @@ namespace folly {
 
 /**
  * Exception that commands may throw to force the program to exit cleanly
- * with a non-zero exit code. NestedCommandLineApp::run() catches this and
+ * with a given exit code. NestedCommandLineApp::run() catches this and
  * makes run() print the given message on stderr (followed by a newline, unless
- * empty), and return the exit code. (Other exceptions will propagate out of
- * run())
+ * empty; the message is only allowed when exiting with a non-zero status), and
+ * return the exit code. (Other exceptions will propagate out of run())
  */
 class ProgramExit : public std::runtime_error {
  public:
@@ -114,6 +114,11 @@ class NestedCommandLineApp {
    * Run the command and return; the return code is 0 on success or
    * non-zero on error, so it is idiomatic to call this at the end of main():
    * return app.run(argc, argv);
+   *
+   * On successful exit, run() will check for errors on stdout (and flush
+   * it) to help command-line applications that need to write to stdout
+   * (failing to write to stdout is an error). If there is an error on stdout,
+   * we'll print a helpful message on stderr and return an error status (1).
    */
   int run(int argc, const char* const argv[]);
   int run(const std::vector<std::string>& args);
