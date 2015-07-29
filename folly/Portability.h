@@ -269,25 +269,33 @@ typedef SSIZE_T ssize_t;
 
 #ifdef _M_IX86_FP
 # define FOLLY_SSE _M_IX86_FP
+# define FOLLY_SSE_MINOR 0
 #endif
 
 #endif
 
 #ifndef FOLLY_SSE
 # if defined(__SSE4_2__)
-#  define FOLLY_SSE 4.2
+#  define FOLLY_SSE 4
+#  define FOLLY_SSE_MINOR 2
 # elif defined(__SSE4_1__)
-#  define FOLLY_SSE 4.1
+#  define FOLLY_SSE 4
+#  define FOLLY_SSE_MINOR 1
 # elif defined(__SSE4__)
 #  define FOLLY_SSE 4
+#  define FOLLY_SSE_MINOR 0
 # elif defined(__SSE3__)
 #  define FOLLY_SSE 3
+#  define FOLLY_SSE_MINOR 0
 # elif defined(__SSE2__)
 #  define FOLLY_SSE 2
+#  define FOLLY_SSE_MINOR 0
 # elif defined(__SSE__)
 #  define FOLLY_SSE 1
+#  define FOLLY_SSE_MINOR 0
 # else
 #  define FOLLY_SSE 0
+#  define FOLLY_SSE_MINOR 0
 # endif
 #endif
 
