@@ -23,6 +23,7 @@
 #include <utility>
 #include <tuple>
 
+#include <folly/ApplyTuple.h>
 #include <folly/SpookyHashV1.h>
 #include <folly/SpookyHashV2.h>
 
@@ -335,13 +336,18 @@ inline uint32_t hsieh_hash32_str(const std::string& str) {
 
 } // namespace hash
 
-template<class Key>
+template<class Key, class Enable = void>
 struct hasher;
 
 struct Hash {
   template <class T>
   size_t operator()(const T& v) const {
     return hasher<T>()(v);
+  }
+
+  template <class T, class... Ts>
+  size_t operator()(const T& t, const Ts&... ts) const {
+    return hash::hash_128_to_64((*this)(t), (*this)(ts...));
   }
 };
 
@@ -366,6 +372,27 @@ template<> struct hasher<int64_t> {
 template<> struct hasher<uint64_t> {
   size_t operator()(uint64_t key) const {
     return hash::twang_mix64(key);
+  }
+};
+
+template <class T>
+struct hasher<T, typename std::enable_if<std::is_enum<T>::value, void>::type> {
+  size_t operator()(T key) const {
+    return Hash()(static_cast<typename std::underlying_type<T>::type>(key));
+  }
+};
+
+template <class T1, class T2>
+struct hasher<std::pair<T1, T2>> {
+  size_t operator()(const std::pair<T1, T2>& key) const {
+    return Hash()(key.first, key.second);
+  }
+};
+
+template <typename... Ts>
+struct hasher<std::tuple<Ts...>> {
+  size_t operator() (const std::tuple<Ts...>& key) const {
+    return applyTuple(Hash(), key);
   }
 };
 

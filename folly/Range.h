@@ -1133,10 +1133,12 @@ inline size_t qfind_first_of(const Range<const unsigned char*>& haystack,
                                      StringPiece(needles));
 }
 
-template<class Key>
+template<class Key, class Enable>
 struct hasher;
 
-template <class T> struct hasher<folly::Range<T*>> {
+template <class T>
+struct hasher<folly::Range<T*>,
+              typename std::enable_if<std::is_pod<T>::value, void>::type> {
   size_t operator()(folly::Range<T*> r) const {
     return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
   }
