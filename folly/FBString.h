@@ -2370,6 +2370,9 @@ operator<<(
       os.setstate(std::ios_base::badbit | std::ios_base::failbit);
     }
   }
+#elif defined(_MSC_VER)
+  // MSVC doesn't define __ostream_insert
+  os.write(str.data(), str.size());
 #else
   std::__ostream_insert(os, str.data(), str.size());
 #endif
