@@ -68,11 +68,26 @@
  * ... and then commpile your file with -DMYLIB_VERSION=\"1\"
  */
 
-#ifdef __APPLE__
+#if defined(_MSC_VER)
+// MSVC doesn't support constructor priorities. Just pray it works, I guess.
+// We could implement a link-time mechanism for MSVC,
+// via #pragma detect_mismatch but that would only handle
+// static library linking.
+# define FOLLY_VERSION_CHECK_PRIORITY(Ret, name) \
+    __pragma(section(".CRT$XCU",read)) \
+    static Ret __cdecl name(void); \
+    __declspec(allocate(".CRT$XCU")) \
+    Ret (__cdecl*name##_)(void) = name; \
+    Ret __cdecl name()
+
+#elif defined(__APPLE__)
 // OS X doesn't support constructor priorities. Just pray it works, I guess.
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__))
+# define FOLLY_VERSION_CHECK_PRIORITY(Ret, name) \
+  __attribute__((__constructor__)) Ret name()
+
 #else
-#define FOLLY_VERSION_CHECK_PRIORITY __attribute__((__constructor__(101)))
+# define FOLLY_VERSION_CHECK_PRIORITY(Ret, name) \
+  __attribute__((__constructor__(101))) Ret name()
 #endif
 
 // Note that this is carefully crafted: PRODUCT##Version must have external
@@ -83,7 +98,7 @@
 #define FOLLY_VERSION_CHECK(PRODUCT, VERSION) \
   const char* PRODUCT##Version = VERSION; \
   namespace { \
-  FOLLY_VERSION_CHECK_PRIORITY void versionCheck() { \
+  FOLLY_VERSION_CHECK_PRIORITY(void, versionCheck) { \
     if (strcmp(PRODUCT##Version, VERSION)) { \
       fprintf(stderr, \
               "Invalid %s version: desired [%s], currently loaded [%s]\n", \
