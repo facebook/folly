@@ -102,7 +102,7 @@ struct MicroSpinLock {
 #define FOLLY_CACHE_LINE_SIZE 64
 
 template <class T, size_t N>
-struct SpinLockArray {
+struct FOLLY_ALIGNED_MAX SpinLockArray {
   T& operator[](size_t i) {
     return data_[i].lock;
   }
@@ -132,7 +132,7 @@ struct SpinLockArray {
 
   char padding_[FOLLY_CACHE_LINE_SIZE];
   std::array<PaddedSpinLock, N> data_;
-} __attribute__((__aligned__));
+};
 
 //////////////////////////////////////////////////////////////////////
 

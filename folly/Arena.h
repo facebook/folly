@@ -132,7 +132,7 @@ class Arena {
   typedef boost::intrusive::slist_member_hook<
     boost::intrusive::tag<Arena>> BlockLink;
 
-  struct Block {
+  struct FOLLY_ALIGNED_MAX Block {
     BlockLink link;
 
     // Allocate a block with at least size bytes of storage.
@@ -150,9 +150,7 @@ class Arena {
    private:
     Block() = default;
     ~Block() = default;
-  } __attribute__((__aligned__));
-  // This should be alignas(std::max_align_t) but neither alignas nor
-  // max_align_t are supported by gcc 4.6.2.
+  };
 
  public:
   static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);

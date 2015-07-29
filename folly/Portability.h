@@ -63,6 +63,15 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
+#if defined(__clang__) || defined(__GNUC__)
+# define FOLLY_ALIGNED(size) __attribute__((__aligned__(size)))
+#elif defined(_MSC_VER)
+# define FOLLY_ALIGNED(size) __declspec(align(size))
+#else
+# error Cannot define FOLLY_ALIGNED on this platform
+#endif
+#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(alignof(MaxAlign))
+
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER
 # ifdef _USE_ATTRIBUTES_FOR_SAL

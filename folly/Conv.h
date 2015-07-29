@@ -237,7 +237,7 @@ inline uint32_t digits10(uint64_t v) {
   // 10^i, defined for i 0 through 19.
   // This is 20 * 8 == 160 bytes, which fits neatly into 5 cache lines
   // (assuming a cache line size of 64).
-  static const uint64_t powersOf10[20] __attribute__((__aligned__(64))) = {
+  static const uint64_t powersOf10[20] FOLLY_ALIGNED(64) = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000,
     10000000000, 100000000000, 1000000000000, 10000000000000, 100000000000000,
     1000000000000000, 10000000000000000, 100000000000000000,
@@ -986,7 +986,7 @@ namespace detail {
 // still not overflow uint16_t.
 constexpr int32_t OOR = 10000;
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift1[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -1015,7 +1015,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift1[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift10[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -1044,7 +1044,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift10[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift100[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
@@ -1073,7 +1073,7 @@ __attribute__((__aligned__(16))) constexpr uint16_t shift100[] = {
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
 
-__attribute__((__aligned__(16))) constexpr uint16_t shift1000[] = {
+FOLLY_ALIGNED(16) constexpr uint16_t shift1000[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 0-9
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  10
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  //  20
