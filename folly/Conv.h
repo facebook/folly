@@ -636,7 +636,7 @@ toAppend(
   using namespace double_conversion;
   DoubleToStringConverter
     conv(DoubleToStringConverter::NO_FLAGS,
-         "infinity", "NaN", 'E',
+         "Infinity", "NaN", 'E',
          detail::kConvMaxDecimalInShortestLow,
          detail::kConvMaxDecimalInShortestHigh,
          6,   // max leading padding zeros

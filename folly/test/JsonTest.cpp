@@ -77,7 +77,10 @@ TEST(Json, Parse) {
   // case matters
   EXPECT_THROW(parseJson("infinity"), std::runtime_error);
   EXPECT_THROW(parseJson("inf"), std::runtime_error);
+  EXPECT_THROW(parseJson("Inf"), std::runtime_error);
+  EXPECT_THROW(parseJson("INF"), std::runtime_error);
   EXPECT_THROW(parseJson("nan"), std::runtime_error);
+  EXPECT_THROW(parseJson("NAN"), std::runtime_error);
 
   auto array = parseJson(
     "[12,false, false  , null , [12e4,32, [], 12]]");
@@ -169,6 +172,14 @@ TEST(Json, Produce) {
   // We're not allowed to have non-string keys in json.
   EXPECT_THROW(toJson(dynamic::object("abc", "xyz")(42.33, "asd")),
                std::runtime_error);
+
+  // Check Infinity/Nan
+  folly::json::serialization_opts opts;
+  opts.allow_nan_inf = true;
+  EXPECT_EQ("Infinity",
+            folly::json::serialize(parseJson("Infinity"), opts).toStdString());
+  EXPECT_EQ("NaN",
+            folly::json::serialize(parseJson("NaN"), opts).toStdString());
 }
 
 TEST(Json, JsonEscape) {
