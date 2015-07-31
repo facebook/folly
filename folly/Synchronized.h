@@ -49,8 +49,9 @@ struct HasLockUnlock {
   enum { value = IsOneOf<T,
          std::mutex, std::recursive_mutex,
          boost::mutex, boost::recursive_mutex, boost::shared_mutex
-// OSX and Cygwin don't have timed mutexes
-#if !defined(__APPLE__) && !defined(__CYGWIN__)
+// Android, OSX, and Cygwin don't have timed mutexes
+#if !defined(ANDROID) && !defined(__ANDROID__) && \
+  !defined(__APPLE__) && !defined(__CYGWIN__)
         ,std::timed_mutex, std::recursive_timed_mutex,
          boost::timed_mutex, boost::recursive_timed_mutex
 #endif
@@ -98,8 +99,9 @@ acquireReadWrite(T& mutex) {
   mutex.lock();
 }
 
-// OSX and Cygwin don't have timed mutexes
-#if !defined(__APPLE__) && !defined(__CYGWIN__)
+// Android, OSX, and Cygwin don't have timed mutexes
+#if !defined(ANDROID) && !defined(__ANDROID__) && \
+  !defined(__APPLE__) && !defined(__CYGWIN__)
 /**
  * Acquires a mutex for reading and writing with timeout by calling
  * .try_lock_for(). This applies to two of the std mutex classes as
@@ -131,7 +133,7 @@ acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
   return mutex.timed_lock(boost::posix_time::milliseconds(milliseconds));
 }
-#endif // __APPLE__
+#endif // !__ANDROID__ && !__APPLE__ && !__CYGWIN__
 
 /**
  * Releases a mutex previously acquired for reading by calling
