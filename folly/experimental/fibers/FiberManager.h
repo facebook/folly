@@ -252,6 +252,14 @@ class FiberManager : public ::folly::Executor {
    */
   void setObserver(ExecutionObserver* observer);
 
+  /**
+   * Returns an estimate of the number of fibers which are waiting to run (does
+   * not include fibers or tasks scheduled remotely).
+   */
+  size_t runQueueSize() const {
+    return readyFibers_.size() + yieldedFibers_.size();
+  }
+
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
