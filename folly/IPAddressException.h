@@ -32,7 +32,7 @@ class IPAddressFormatException : public std::exception {
   explicit IPAddressFormatException(const std::string& msg)
       : msg_(msg) {}
   IPAddressFormatException(
-    const IPAddressFormatException& exception_) = default;
+    const IPAddressFormatException&) = default;
   template<typename... Args>
   explicit IPAddressFormatException(Args&&... args)
       : msg_(to<std::string>(std::forward<Args>(args)...)) {}
@@ -51,7 +51,7 @@ class InvalidAddressFamilyException : public IPAddressFormatException {
   explicit InvalidAddressFamilyException(const std::string& msg)
       : IPAddressFormatException(msg) {}
   InvalidAddressFamilyException(
-    const InvalidAddressFamilyException& ex) = default;
+    const InvalidAddressFamilyException&) = default;
   explicit InvalidAddressFamilyException(sa_family_t family)
       : IPAddressFormatException("Address family " +
                                  detail::familyNameStr(family) +
