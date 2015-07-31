@@ -16,11 +16,15 @@
 
 #pragma once
 
+#include <algorithm>
 #include <chrono>
+#include <random>
 #include <thread>
 
 #include <folly/experimental/fibers/Baton.h>
 #include <folly/Optional.h>
+#include <folly/Random.h>
+#include <folly/Traits.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
@@ -1091,6 +1095,197 @@ namespace futures {
     }
     return results;
   }
+}
+
+namespace futures {
+
+namespace detail {
+
+struct retrying_policy_raw_tag {};
+struct retrying_policy_fut_tag {};
+
+template <class Policy>
+struct retrying_policy_traits {
+  using ew = exception_wrapper;
+  FOLLY_CREATE_HAS_MEMBER_FN_TRAITS(has_op_call, operator());
+  template <class Ret>
+  using has_op = typename std::integral_constant<bool,
+        has_op_call<Policy, Ret(size_t, const ew&)>::value ||
+        has_op_call<Policy, Ret(size_t, const ew&) const>::value>;
+  using is_raw = has_op<bool>;
+  using is_fut = has_op<Future<bool>>;
+  using tag = typename std::conditional<
+        is_raw::value, retrying_policy_raw_tag, typename std::conditional<
+        is_fut::value, retrying_policy_fut_tag, void>::type>::type;
+};
+
+template <class Policy, class FF>
+typename std::result_of<FF(size_t)>::type
+retrying(size_t k, Policy&& p, FF&& ff) {
+  using F = typename std::result_of<FF(size_t)>::type;
+  using T = typename F::value_type;
+  auto f = ff(k++);
+  auto pm = makeMoveWrapper(p);
+  auto ffm = makeMoveWrapper(ff);
+  return f.onError([=](exception_wrapper x) mutable {
+      auto q = (*pm)(k, x);
+      auto xm = makeMoveWrapper(std::move(x));
+      return q.then([=](bool r) mutable {
+          return r
+            ? retrying(k, pm.move(), ffm.move())
+            : makeFuture<T>(xm.move());
+      });
+  });
+}
+
+template <class Policy, class FF>
+typename std::result_of<FF(size_t)>::type
+retrying(Policy&& p, FF&& ff, retrying_policy_raw_tag) {
+  auto pm = makeMoveWrapper(std::move(p));
+  auto q = [=](size_t k, exception_wrapper x) {
+    return makeFuture<bool>((*pm)(k, x));
+  };
+  return retrying(0, std::move(q), std::forward<FF>(ff));
+}
+
+template <class Policy, class FF>
+typename std::result_of<FF(size_t)>::type
+retrying(Policy&& p, FF&& ff, retrying_policy_fut_tag) {
+  return retrying(0, std::forward<Policy>(p), std::forward<FF>(ff));
+}
+
+//  jittered exponential backoff, clamped to [backoff_min, backoff_max]
+template <class URNG>
+Duration retryingJitteredExponentialBackoffDur(
+    size_t n,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG& rng) {
+  using d = Duration;
+  auto dist = std::normal_distribution<double>(0.0, jitter_param);
+  auto jitter = std::exp(dist(rng));
+  auto backoff = d(d::rep(jitter * backoff_min.count() * std::pow(2, n - 1)));
+  return std::max(backoff_min, std::min(backoff_max, backoff));
+}
+
+template <class Policy, class URNG>
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG rng,
+    Policy&& p) {
+  auto pm = makeMoveWrapper(std::move(p));
+  auto rngp = std::make_shared<URNG>(std::move(rng));
+  return [=](size_t n, const exception_wrapper& ex) mutable {
+    if (n == max_tries) { return makeFuture(false); }
+    return (*pm)(n, ex).then([=](bool v) {
+        if (!v) { return makeFuture(false); }
+        auto backoff = detail::retryingJitteredExponentialBackoffDur(
+            n, backoff_min, backoff_max, jitter_param, *rngp);
+        return futures::sleep(backoff).then([] { return true; });
+    });
+  };
+}
+
+template <class Policy, class URNG>
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG rng,
+    Policy&& p,
+    retrying_policy_raw_tag) {
+  auto pm = makeMoveWrapper(std::move(p));
+  auto q = [=](size_t n, const exception_wrapper& e) {
+    return makeFuture((*pm)(n, e));
+  };
+  return retryingPolicyCappedJitteredExponentialBackoff(
+      max_tries,
+      backoff_min,
+      backoff_max,
+      jitter_param,
+      std::move(rng),
+      std::move(q));
+}
+
+template <class Policy, class URNG>
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG rng,
+    Policy&& p,
+    retrying_policy_fut_tag) {
+  return retryingPolicyCappedJitteredExponentialBackoff(
+      max_tries,
+      backoff_min,
+      backoff_max,
+      jitter_param,
+      std::move(rng),
+      std::move(p));
+}
+
+}
+
+template <class Policy, class FF>
+typename std::result_of<FF(size_t)>::type
+retrying(Policy&& p, FF&& ff) {
+  using tag = typename detail::retrying_policy_traits<Policy>::tag;
+  return detail::retrying(std::forward<Policy>(p), std::forward<FF>(ff), tag());
+}
+
+inline
+std::function<bool(size_t, const exception_wrapper&)>
+retryingPolicyBasic(
+    size_t max_tries) {
+  return [=](size_t n, const exception_wrapper&) { return n < max_tries; };
+}
+
+template <class Policy, class URNG>
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG rng,
+    Policy&& p) {
+  using tag = typename detail::retrying_policy_traits<Policy>::tag;
+  return detail::retryingPolicyCappedJitteredExponentialBackoff(
+      max_tries,
+      backoff_min,
+      backoff_max,
+      jitter_param,
+      std::move(rng),
+      std::move(p),
+      tag());
+}
+
+inline
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param) {
+  auto p = [](size_t, const exception_wrapper&) { return true; };
+  return retryingPolicyCappedJitteredExponentialBackoff(
+      max_tries,
+      backoff_min,
+      backoff_max,
+      jitter_param,
+      ThreadLocalPRNG(),
+      std::move(p));
+}
+
 }
 
 // Instantiate the most common Future types to save compile time

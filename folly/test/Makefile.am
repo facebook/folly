@@ -198,6 +198,7 @@ futures_test_SOURCES = \
     ../futures/test/PollTest.cpp \
     ../futures/test/PromiseTest.cpp \
     ../futures/test/ReduceTest.cpp \
+    ../futures/test/RetryingTest.cpp \
     ../futures/test/SharedPromiseTest.cpp \
     ../futures/test/ThenCompileTest.cpp \
     ../futures/test/ThenTest.cpp \

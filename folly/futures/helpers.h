@@ -285,4 +285,72 @@ auto unorderedReduce(Collection&& c, T&& initial, F&& func)
       std::forward<F>(func));
 }
 
+namespace futures {
+
+/**
+ *  retrying
+ *
+ *  Given a policy and a future-factory, creates futures according to the
+ *  policy.
+ *
+ *  The policy must be moveable - retrying will move it a lot - and callable of
+ *  either of the two forms:
+ *  - Future<bool>(size_t, exception_wrapper)
+ *  - bool(size_t, exception_wrapper)
+ *  Internally, the latter is transformed into the former in the obvious way.
+ *  The first parameter is the attempt number of the next prospective attempt;
+ *  the second parameter is the most recent exception. The policy returns a
+ *  Future<bool> which, when completed with true, indicates that a retry is
+ *  desired.
+ *
+ *  We provide a few generic policies:
+ *  - Basic
+ *  - CappedJitteredexponentialBackoff
+ *
+ *  Custom policies may use the most recent try number and exception to decide
+ *  whether to retry and optionally to do something interesting like delay
+ *  before the retry. Users may pass inline lambda expressions as policies, or
+ *  may define their own data types meeting the above requirements. Users are
+ *  responsible for managing the lifetimes of anything pointed to or referred to
+ *  from inside the policy.
+ *
+ *  For example, one custom policy may try up to k times, but only if the most
+ *  recent exception is one of a few types or has one of a few error codes
+ *  indicating that the failure was transitory.
+ *
+ *  Cancellation is not supported.
+ */
+template <class Policy, class FF>
+typename std::result_of<FF(size_t)>::type
+retrying(Policy&& p, FF&& ff);
+
+/**
+ *  generic retrying policies
+ */
+
+inline
+std::function<bool(size_t, const exception_wrapper&)>
+retryingPolicyBasic(
+    size_t max_tries);
+
+template <class Policy, class URNG>
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param,
+    URNG rng,
+    Policy&& p);
+
+inline
+std::function<Future<bool>(size_t, const exception_wrapper&)>
+retryingPolicyCappedJitteredExponentialBackoff(
+    size_t max_tries,
+    Duration backoff_min,
+    Duration backoff_max,
+    double jitter_param);
+
+}
+
 } // namespace
