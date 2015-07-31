@@ -195,8 +195,12 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
 
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   // Find out where we are.
+  const auto basename = "subprocess_test_parent_death_helper";
   auto helper = fs::executable_path();
-  helper.remove_filename() /= "subprocess_test_parent_death_helper";
+  helper.remove_filename() /= basename;
+  if (!fs::exists(helper)) {
+    helper = helper.parent_path().parent_path() / basename / basename;
+  }
 
   fs::path tempFile(fs::temp_directory_path() / fs::unique_path());
 
