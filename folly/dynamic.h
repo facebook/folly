@@ -283,14 +283,18 @@ public:
    *
    * These will throw a TypeError if the dynamic has a different type.
    */
-  const fbstring& getString() const;
-  double          getDouble() const;
-  int64_t         getInt() const;
-  bool            getBool() const;
-  fbstring& getString();
-  double&   getDouble();
-  int64_t&  getInt();
-  bool&     getBool();
+  const fbstring& getString() const&;
+  double          getDouble() const&;
+  int64_t         getInt() const&;
+  bool            getBool() const&;
+  fbstring& getString() &;
+  double&   getDouble() &;
+  int64_t&  getInt() &;
+  bool&     getBool() &;
+  fbstring getString() &&;
+  double   getDouble() &&;
+  int64_t  getInt() &&;
+  bool     getBool() &&;
 
   /*
    * It is occasionally useful to access a string's internal pointer
@@ -362,8 +366,9 @@ public:
    * will throw a TypeError.  Using an index that is out of range or
    * object-element that's not present throws std::out_of_range.
    */
-  dynamic const& at(dynamic const&) const;
-  dynamic&       at(dynamic const&);
+  dynamic const& at(dynamic const&) const&;
+  dynamic&       at(dynamic const&) &;
+  dynamic        at(dynamic const&) &&;
 
   /*
    * Like 'at', above, except it returns either a pointer to the contained
@@ -392,8 +397,9 @@ public:
    *
    * These functions do not invalidate iterators.
    */
-  dynamic&       operator[](dynamic const&);
-  dynamic const& operator[](dynamic const&) const;
+  dynamic&       operator[](dynamic const&) &;
+  dynamic const& operator[](dynamic const&) const&;
+  dynamic        operator[](dynamic const&) &&;
 
   /*
    * Only defined for objects, throws TypeError otherwise.
@@ -404,8 +410,10 @@ public:
    * a reference to the existing value if present, the new value otherwise.
    */
   dynamic
-  getDefault(const dynamic& k, const dynamic& v = dynamic::object) const;
-  dynamic&& getDefault(const dynamic& k, dynamic&& v) const;
+  getDefault(const dynamic& k, const dynamic& v = dynamic::object) const&;
+  dynamic getDefault(const dynamic& k, dynamic&& v) const&;
+  dynamic getDefault(const dynamic& k, const dynamic& v = dynamic::object) &&;
+  dynamic getDefault(const dynamic& k, dynamic&& v) &&;
   template<class K, class V = dynamic>
   dynamic& setDefault(K&& k, V&& v = dynamic::object);
 

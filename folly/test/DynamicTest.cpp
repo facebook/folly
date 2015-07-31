@@ -308,6 +308,124 @@ TEST(Dynamic, Assignment) {
   }
 }
 
+folly::fbstring make_long_string() {
+  return folly::fbstring(100, 'a');
+}
+
+TEST(Dynamic, GetDefault) {
+  const auto s = make_long_string();
+  dynamic ds(s);
+  dynamic tmp(s);
+  dynamic d1 = dynamic::object("key1", s);
+  dynamic d2 = dynamic::object("key2", s);
+  dynamic d3 = dynamic::object("key3", s);
+  dynamic d4 = dynamic::object("key4", s);
+  // lvalue - lvalue
+  dynamic ayy("ayy");
+  EXPECT_EQ(ds, d1.getDefault("key1", ayy));
+  EXPECT_EQ(ds, d1.getDefault("key1", ayy));
+  EXPECT_EQ(ds, d1.getDefault("not-a-key", tmp));
+  EXPECT_EQ(ds, tmp);
+  // lvalue - rvalue
+  EXPECT_EQ(ds, d1.getDefault("key1", "ayy"));
+  EXPECT_EQ(ds, d1.getDefault("key1", "ayy"));
+  EXPECT_EQ(ds, d1.getDefault("not-a-key", std::move(tmp)));
+  EXPECT_NE(ds, tmp);
+  // rvalue - lvalue
+  tmp = s;
+  EXPECT_EQ(ds, std::move(d1).getDefault("key1", ayy));
+  EXPECT_NE(ds, d1["key1"]);
+  EXPECT_EQ(ds, std::move(d2).getDefault("not-a-key", tmp));
+  EXPECT_EQ(dynamic(dynamic::object("key2", s)), d2);
+  EXPECT_EQ(ds, tmp);
+  // rvalue - rvalue
+  EXPECT_EQ(ds, std::move(d3).getDefault("key3", std::move(tmp)));
+  EXPECT_NE(ds, d3["key3"]);
+  EXPECT_EQ(ds, tmp);
+  EXPECT_EQ(ds, std::move(d4).getDefault("not-a-key", std::move(tmp)));
+  EXPECT_EQ(dynamic(dynamic::object("key4", s)), d4);
+  EXPECT_NE(ds, tmp);
+}
+
+TEST(Dynamic, GetString) {
+  const dynamic c(make_long_string());
+  dynamic d(make_long_string());
+  dynamic m(make_long_string());
+
+  auto s = make_long_string();
+
+  EXPECT_EQ(s, c.getString());
+  EXPECT_EQ(s, c.getString());
+
+  d.getString() += " hello";
+  EXPECT_EQ(s + " hello", d.getString());
+  EXPECT_EQ(s + " hello", d.getString());
+
+  EXPECT_EQ(s, std::move(m).getString());
+  EXPECT_NE(dynamic(s), m);
+}
+
+TEST(Dynamic, GetSmallThings) {
+  const dynamic cint(5);
+  const dynamic cdouble(5.0);
+  const dynamic cbool(true);
+  dynamic dint(5);
+  dynamic ddouble(5.0);
+  dynamic dbool(true);
+  dynamic mint(5);
+  dynamic mdouble(5.0);
+  dynamic mbool(true);
+
+  EXPECT_EQ(5, cint.getInt());
+  dint.getInt() = 6;
+  EXPECT_EQ(6, dint.getInt());
+  EXPECT_EQ(5, std::move(mint).getInt());
+
+  EXPECT_EQ(5.0, cdouble.getDouble());
+  ddouble.getDouble() = 6.0;
+  EXPECT_EQ(6.0, ddouble.getDouble());
+  EXPECT_EQ(5.0, std::move(mdouble).getDouble());
+
+  EXPECT_EQ(true, cbool.getBool());
+  dbool.getBool() = false;
+  EXPECT_FALSE(dbool.getBool());
+  EXPECT_EQ(true, std::move(mbool).getBool());
+}
+
+TEST(Dynamic, At) {
+  const dynamic cd = dynamic::object("key1", make_long_string());
+  dynamic dd = dynamic::object("key1", make_long_string());
+  dynamic md = dynamic::object("key1", make_long_string());
+
+  dynamic ds(make_long_string());
+  EXPECT_EQ(ds, cd.at("key1"));
+  EXPECT_EQ(ds, cd.at("key1"));
+
+  dd.at("key1").getString() += " hello";
+  EXPECT_EQ(dynamic(make_long_string() + " hello"), dd.at("key1"));
+  EXPECT_EQ(dynamic(make_long_string() + " hello"), dd.at("key1"));
+
+  EXPECT_EQ(ds, std::move(md).at("key1"));
+  EXPECT_NE(ds, md.at("key1"));
+}
+
+TEST(Dynamic, Brackets) {
+  const dynamic cd = dynamic::object("key1", make_long_string());
+  dynamic dd = dynamic::object("key1", make_long_string());
+  dynamic md = dynamic::object("key1", make_long_string());
+
+  dynamic ds(make_long_string());
+  EXPECT_EQ(ds, cd["key1"]);
+  EXPECT_EQ(ds, cd["key1"]);
+
+  dd["key1"].getString() += " hello";
+  EXPECT_EQ(dynamic(make_long_string() + " hello"), dd["key1"]);
+  EXPECT_EQ(dynamic(make_long_string() + " hello"), dd["key1"]);
+
+  EXPECT_EQ(ds, std::move(md)["key1"]);
+  EXPECT_NE(ds, md["key1"]);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

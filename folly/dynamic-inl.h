@@ -384,15 +384,20 @@ inline double   dynamic::asDouble() const { return asImpl<double>(); }
 inline int64_t  dynamic::asInt()    const { return asImpl<int64_t>(); }
 inline bool     dynamic::asBool()   const { return asImpl<bool>(); }
 
-inline const fbstring& dynamic::getString() const { return get<fbstring>(); }
-inline double          dynamic::getDouble() const { return get<double>(); }
-inline int64_t         dynamic::getInt()    const { return get<int64_t>(); }
-inline bool            dynamic::getBool()   const { return get<bool>(); }
+inline const fbstring& dynamic::getString() const& { return get<fbstring>(); }
+inline double          dynamic::getDouble() const& { return get<double>(); }
+inline int64_t         dynamic::getInt()    const& { return get<int64_t>(); }
+inline bool            dynamic::getBool()   const& { return get<bool>(); }
 
-inline fbstring& dynamic::getString() { return get<fbstring>(); }
-inline double&   dynamic::getDouble() { return get<double>(); }
-inline int64_t&  dynamic::getInt()    { return get<int64_t>(); }
-inline bool&     dynamic::getBool()   { return get<bool>(); }
+inline fbstring& dynamic::getString() & { return get<fbstring>(); }
+inline double&   dynamic::getDouble() & { return get<double>(); }
+inline int64_t&  dynamic::getInt()    & { return get<int64_t>(); }
+inline bool&     dynamic::getBool()   & { return get<bool>(); }
+
+inline fbstring dynamic::getString() && { return std::move(get<fbstring>()); }
+inline double   dynamic::getDouble() && { return get<double>(); }
+inline int64_t  dynamic::getInt()    && { return get<int64_t>(); }
+inline bool     dynamic::getBool()   && { return get<bool>(); }
 
 inline const char* dynamic::data()  const& { return get<fbstring>().data();  }
 inline const char* dynamic::c_str() const& { return get<fbstring>().c_str(); }
@@ -460,8 +465,12 @@ inline dynamic& dynamic::operator--() {
   return *this;
 }
 
-inline dynamic const& dynamic::operator[](dynamic const& idx) const {
+inline dynamic const& dynamic::operator[](dynamic const& idx) const& {
   return at(idx);
+}
+
+inline dynamic dynamic::operator[](dynamic const& idx) && {
+  return std::move((*this)[idx]);
 }
 
 template<class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
@@ -474,8 +483,12 @@ inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
-inline dynamic& dynamic::at(dynamic const& idx) {
+inline dynamic& dynamic::at(dynamic const& idx) & {
   return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
+}
+
+inline dynamic dynamic::at(dynamic const& idx) && {
+  return std::move(at(idx));
 }
 
 inline bool dynamic::empty() const {

@@ -132,7 +132,7 @@ dynamic& dynamic::operator=(dynamic&& o) noexcept {
   return *this;
 }
 
-dynamic& dynamic::operator[](dynamic const& k) {
+dynamic& dynamic::operator[](dynamic const& k) & {
   if (!isObject() && !isArray()) {
     throw TypeError("object/array", type());
   }
@@ -144,20 +144,38 @@ dynamic& dynamic::operator[](dynamic const& k) {
   return ret.first->second;
 }
 
-dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) const {
+dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
   return it == obj.end() ? v : it->second;
 }
 
-dynamic&& dynamic::getDefault(const dynamic& k, dynamic&& v) const {
+dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) const& {
   auto& obj = get<ObjectImpl>();
   auto it = obj.find(k);
-  if (it != obj.end()) {
-    v = it->second;
+  // Avoid clang bug with ternary
+  if (it == obj.end()) {
+    return std::move(v);
+  } else {
+    return it->second;
   }
+}
 
-  return std::move(v);
+dynamic dynamic::getDefault(const dynamic& k, const dynamic& v) && {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(k);
+  // Avoid clang bug with ternary
+  if (it == obj.end()) {
+    return v;
+  } else {
+    return std::move(it->second);
+  }
+}
+
+dynamic dynamic::getDefault(const dynamic& k, dynamic&& v) && {
+  auto& obj = get<ObjectImpl>();
+  auto it = obj.find(k);
+  return std::move(it == obj.end() ? v : it->second);
 }
 
 const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
@@ -180,7 +198,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
   }
 }
 
-dynamic const& dynamic::at(dynamic const& idx) const {
+dynamic const& dynamic::at(dynamic const& idx) const& {
   if (auto* parray = get_nothrow<Array>()) {
     if (!idx.isInt()) {
       throw TypeError("int64", idx.type());
