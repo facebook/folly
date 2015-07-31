@@ -105,7 +105,6 @@ class DelayedDestruction : public DelayedDestructionBase {
         return;
       }
       delete this;
-      (void)delayed; // prevent unused variable warnings
     };
   }
 
