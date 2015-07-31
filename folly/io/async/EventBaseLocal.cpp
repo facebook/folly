@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
+
 #include <folly/io/async/EventBaseLocal.h>
 #include <atomic>
 #include <thread>
@@ -96,3 +98,5 @@ void EventBaseLocalBase::setVoidUnlocked(
 
 std::atomic<uint64_t> EventBaseLocalBase::keyCounter_{0};
 }}
+
+#endif // !__ANDROID__ && !ANDROID && !__APPLE__

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
+
 #include <boost/noncopyable.hpp>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
@@ -126,3 +128,5 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
 
 
 }
+
+#endif // !__ANDROID__ && !ANDROID && !__APPLE__

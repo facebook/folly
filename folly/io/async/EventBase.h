@@ -47,11 +47,13 @@ typedef std::function<void()> Cob;
 template <typename MessageT>
 class NotificationQueue;
 
+#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
 namespace detail {
 class EventBaseLocalBase;
 }
 template <typename T>
 class EventBaseLocal;
+#endif
 
 class EventBaseObserver {
  public:
@@ -738,12 +740,14 @@ class EventBase : private boost::noncopyable,
   // allow runOnDestruction() to be called from any threads
   std::mutex onDestructionCallbacksMutex_;
 
+#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
   // see EventBaseLocal
   friend class detail::EventBaseLocalBase;
   template <typename T> friend class EventBaseLocal;
   std::mutex localStorageMutex_;
   std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
   std::unordered_set<detail::EventBaseLocalBase*> localStorageToDtor_;
+#endif
 };
 
 } // folly
