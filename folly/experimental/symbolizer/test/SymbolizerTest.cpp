@@ -34,13 +34,23 @@ TEST(Symbolizer, Single) {
   ASSERT_TRUE(symbolizer.symbolize(reinterpret_cast<uintptr_t>(foo), a));
   EXPECT_EQ("folly::symbolizer::test::foo()", a.demangledName());
 
-  auto path = a.location.file.toString();
-  folly::StringPiece basename(path);
-  auto pos = basename.rfind('/');
-  if (pos != folly::StringPiece::npos) {
-    basename.advance(pos + 1);
+  // The version of clang we use doesn't generate a `.debug_aranges` section,
+  // which the symbolizer needs to lookup the filename.
+  constexpr bool built_with_clang =
+    #ifdef __clang__
+      true;
+    #else
+      false;
+    #endif
+  if (!built_with_clang) {
+    auto path = a.location.file.toString();
+    folly::StringPiece basename(path);
+    auto pos = basename.rfind('/');
+    if (pos != folly::StringPiece::npos) {
+      basename.advance(pos + 1);
+    }
+    EXPECT_EQ("SymbolizerTest.cpp", basename.str());
   }
-  EXPECT_EQ("SymbolizerTest.cpp", basename.str());
 }
 
 FrameArray<100> goldenFrames;

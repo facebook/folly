@@ -27,8 +27,12 @@ namespace folly { namespace test {
 namespace {
 
 std::string getHelperPath() {
+  const auto basename = "program_options_test_helper";
   auto path = fs::executable_path();
-  path.remove_filename() /= "program_options_test_helper";
+  path.remove_filename() /= basename;
+  if (!fs::exists(path)) {
+    path = path.parent_path().parent_path() / basename / basename;
+  }
   return path.native();
 }
 

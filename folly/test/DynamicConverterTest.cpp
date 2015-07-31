@@ -243,7 +243,7 @@ TEST(DynamicConverter, crazy) {
   dynamic
     dv1 = {},
     dv2 = { ds1, ds2 },
-    dv3 = { ds3 };
+    dv3({ ds3 });
 
   dynamic
     dm1 = dynamic::object(true, dv1)(false, dv2),
