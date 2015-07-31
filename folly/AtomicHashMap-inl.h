@@ -130,9 +130,9 @@ insertInternal(key_type key, T&& value) {
   } else {
     // If we lost the race, we'll have to wait for the next map to get
     // allocated before doing any insertion here.
-    FOLLY_SPIN_WAIT(
-      nextMapIdx >= numMapsAllocated_.load(std::memory_order_acquire)
-    );
+    detail::atomic_hash_spin_wait([&] {
+      return nextMapIdx >= numMapsAllocated_.load(std::memory_order_acquire);
+    });
   }
 
   // Relaxed is ok here because either we just created this map, or we
@@ -427,5 +427,3 @@ struct AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::ahm_iterator
 }; // ahm_iterator
 
 } // namespace folly
-
-#undef FOLLY_SPIN_WAIT

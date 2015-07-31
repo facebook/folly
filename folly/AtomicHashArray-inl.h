@@ -114,10 +114,11 @@ insertInternal(KeyT key_in, T&& value) {
         // another thread now does ++numPendingEntries_, we expect it
         // to pass the isFull_.load() test above. (It shouldn't insert
         // a new entry.)
-        FOLLY_SPIN_WAIT(
-          isFull_.load(std::memory_order_acquire) != NO_PENDING_INSERTS
-            && numPendingEntries_.readFull() != 0
-        );
+        detail::atomic_hash_spin_wait([&] {
+          return
+            (isFull_.load(std::memory_order_acquire) != NO_PENDING_INSERTS) &&
+            (numPendingEntries_.readFull() != 0);
+        });
         isFull_.store(NO_PENDING_INSERTS, std::memory_order_release);
 
         if (relaxedLoadKey(*cell) == kEmptyKey_) {
@@ -161,9 +162,9 @@ insertInternal(KeyT key_in, T&& value) {
     }
     DCHECK(relaxedLoadKey(*cell) != kEmptyKey_);
     if (kLockedKey_ == acquireLoadKey(*cell)) {
-      FOLLY_SPIN_WAIT(
-        kLockedKey_ == acquireLoadKey(*cell)
-      );
+      detail::atomic_hash_spin_wait([&] {
+        return kLockedKey_ == acquireLoadKey(*cell);
+      });
     }
 
     const KeyT thisKey = acquireLoadKey(*cell);
@@ -397,5 +398,3 @@ struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::aha_iterator
 }; // aha_iterator
 
 } // namespace folly
-
-#undef FOLLY_SPIN_WAIT
