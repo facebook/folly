@@ -262,11 +262,13 @@ bool MemoryMapping::mlock(LockMode lock) {
     PLOG(FATAL) << msg;
   }
 
+#ifndef _MSC_VER
   // only part of the buffer was mlocked, unlock it back
   if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, options_.pageSize,
                      amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
+#endif
 
   return false;
 }
