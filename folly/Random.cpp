@@ -19,6 +19,7 @@
 #include <atomic>
 #include <unistd.h>
 #include <sys/time.h>
+#include <mutex>
 #include <random>
 #include <array>
 
@@ -36,16 +37,13 @@ namespace {
 
 void readRandomDevice(void* data, size_t size) {
 #ifdef _MSC_VER
-  static bool initialized = false;
+  static std::once_flag flag;
   static HCRYPTPROV cryptoProv;
-  if (!initialized) {
-    bool bcac = CryptAcquireContext(&cryptoProv, nullptr, nullptr, PROV_RSA_FULL, 0);
-    PCHECK(bcac);
-    initialized = true;
-  }
-  PCHECK((size_t)(DWORD)size == size);
-  bool gen = CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data);
-  PCHECK(gen);
+  std::call_once(flag, [&] {
+    PCHECK(CryptAcquireContext(&cryptoProv, nullptr, nullptr, PROV_RSA_FULL, 0));
+  });
+  CHECK(size <= std::numeric_limits<DWORD>::max());
+  PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
 #else
   // Keep the random device open for the duration of the program.
   static int randomFd = ::open("/dev/urandom", O_RDONLY);
