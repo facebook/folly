@@ -470,13 +470,21 @@ class FormatValue<
                   "' specifier");
 
       valBufBegin = valBuf + 3;  // room for sign and base prefix
-      int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
 #ifdef _MSC_VER
-                         "%ju",
+      char valBuf2[valBufSize];
+      snprintf(valBuf2, valBufSize, "%ju", static_cast<uintmax_t>(uval));
+      int len = GetNumberFormat(
+        LOCALE_USER_DEFAULT,
+        0,
+        valBuf2,
+        nullptr,
+        valBufBegin,
+        (int)((valBuf + valBufSize) - valBufBegin)
+      );
 #else
-                         "%'ju",
+      int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
+                         "%'ju", static_cast<uintmax_t>(uval));
 #endif
-                         static_cast<uintmax_t>(uval));
       // valBufSize should always be big enough, so this should never
       // happen.
       assert(len < valBuf + valBufSize - valBufBegin);
