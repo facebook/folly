@@ -360,15 +360,16 @@ void QueueTest::destroyCallback() {
   // avoid destroying the function object.
   class DestroyTestConsumer : public IntQueue::Consumer {
    public:
-    DestroyTestConsumer() {}
-
     void messageAvailable(int&& value) override {
+      DestructorGuard g(this);
       if (fn && *fn) {
         (*fn)(value);
       }
     }
 
     std::function<void(int)> *fn;
+   protected:
+    virtual ~DestroyTestConsumer() = default;
   };
 
   EventBase eventBase;
@@ -381,11 +382,13 @@ void QueueTest::destroyCallback() {
   // This way one consumer will be destroyed from inside its messageAvailable()
   // callback, and one consume will be destroyed when it isn't inside
   // messageAvailable().
-  std::unique_ptr<DestroyTestConsumer> consumer1(new DestroyTestConsumer);
-  std::unique_ptr<DestroyTestConsumer> consumer2(new DestroyTestConsumer);
+  std::unique_ptr<DestroyTestConsumer, DelayedDestruction::Destructor>
+    consumer1(new DestroyTestConsumer);
+  std::unique_ptr<DestroyTestConsumer, DelayedDestruction::Destructor>
+    consumer2(new DestroyTestConsumer);
   std::function<void(int)> fn = [&](int) {
-    consumer1.reset();
-    consumer2.reset();
+    consumer1 = nullptr;
+    consumer2 = nullptr;
   };
   consumer1->fn = &fn;
   consumer2->fn = &fn;
@@ -617,6 +620,7 @@ TEST(NotificationQueueTest, UseAfterFork) {
       // We shouldn't reach here.
       _exit(0);
     }
+    PCHECK(pid > 0);
 
     // Parent.  Wait for the child to exit.
     auto waited = waitpid(pid, &childStatus, 0);

@@ -21,6 +21,7 @@
 
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/Request.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
@@ -60,7 +61,7 @@ class NotificationQueue {
   /**
    * A callback interface for consuming messages from the queue as they arrive.
    */
-  class Consumer : private EventHandler {
+  class Consumer : public DelayedDestruction, private EventHandler {
    public:
     enum : uint16_t { kDefaultMaxReadAtOnce = 10 };
 
@@ -68,8 +69,6 @@ class NotificationQueue {
       : queue_(nullptr),
         destroyedFlagPtr_(nullptr),
         maxReadAtOnce_(kDefaultMaxReadAtOnce) {}
-
-    virtual ~Consumer();
 
     /**
      * messageAvailable() will be invoked whenever a new
@@ -152,7 +151,13 @@ class NotificationQueue {
       return base_;
     }
 
-    virtual void handlerReady(uint16_t events) noexcept;
+    void handlerReady(uint16_t events) noexcept override;
+
+   protected:
+
+    void destroy() override;
+
+    virtual ~Consumer() {}
 
    private:
     /**
@@ -577,7 +582,7 @@ class NotificationQueue {
 };
 
 template<typename MessageT>
-NotificationQueue<MessageT>::Consumer::~Consumer() {
+void NotificationQueue<MessageT>::Consumer::destroy() {
   // If we are in the middle of a call to handlerReady(), destroyedFlagPtr_
   // will be non-nullptr.  Mark the value that it points to, so that
   // handlerReady() will know the callback is destroyed, and that it cannot
@@ -585,6 +590,8 @@ NotificationQueue<MessageT>::Consumer::~Consumer() {
   if (destroyedFlagPtr_) {
     *destroyedFlagPtr_ = true;
   }
+  stopConsuming();
+  DelayedDestruction::destroy();
 }
 
 template<typename MessageT>
@@ -596,6 +603,7 @@ void NotificationQueue<MessageT>::Consumer::handlerReady(uint16_t /*events*/)
 template<typename MessageT>
 void NotificationQueue<MessageT>::Consumer::consumeMessages(
     bool isDrain, size_t* numConsumed) noexcept {
+  DestructorGuard dg(this);
   uint32_t numProcessed = 0;
   bool firstRun = true;
   setActive(true);
@@ -661,6 +669,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       CHECK(destroyedFlagPtr_ == nullptr);
       destroyedFlagPtr_ = &callbackDestroyed;
       messageAvailable(std::move(msg));
+      destroyedFlagPtr_ = nullptr;
 
       RequestContext::setContext(old_ctx);
 
@@ -668,7 +677,6 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       if (callbackDestroyed) {
         return;
       }
-      destroyedFlagPtr_ = nullptr;
 
       // If the callback is no longer installed, we are done.
       if (queue_ == nullptr) {
@@ -767,6 +775,7 @@ void NotificationQueue<MessageT>::Consumer::stopConsuming() {
 template<typename MessageT>
 bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
     size_t* numConsumed) noexcept {
+  DestructorGuard dg(this);
   {
     folly::SpinLockGuard g(queue_->spinlock_);
     if (queue_->draining_) {
