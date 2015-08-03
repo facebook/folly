@@ -45,7 +45,7 @@ namespace folly {
  *   // If the db insertion that follows fails, we should
  *   // remove it from memory.
  *   // (You could also declare this as "auto guard = makeGuard(...)")
- *   ScopeGuard guard = makeGuard([&] { friends_.pop_back(); });
+ *   ScopeGuard guard = makeGuard([&]() { friends_.pop_back(); });
  *
  *   // this will throw an exception upon error, which
  *   // makes the ScopeGuard execute UserCont::pop_back()
