@@ -94,7 +94,7 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 #elif defined(_MSC_VER)
 # define FOLLY_DEPRECATED(msg) __declspec(deprecated(msg))
 #else
-# define FOLLY_DEPRECATED
+# define FOLLY_DEPRECATED(msg)
 #endif
 
 // noreturn

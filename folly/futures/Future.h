@@ -24,8 +24,8 @@
 #include <vector>
 
 #include <folly/Optional.h>
+#include <folly/Portability.h>
 #include <folly/MoveWrapper.h>
-#include <folly/futures/Deprecated.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
@@ -287,19 +287,19 @@ class Future {
   /// by then), and it is active (active by default).
   ///
   /// Inactive Futures will activate upon destruction.
-  DEPRECATED Future<T>& activate() & {
+  FOLLY_DEPRECATED("do not use") Future<T>& activate() & {
     core_->activate();
     return *this;
   }
-  DEPRECATED Future<T>& deactivate() & {
+  FOLLY_DEPRECATED("do not use") Future<T>& deactivate() & {
     core_->deactivate();
     return *this;
   }
-  DEPRECATED Future<T> activate() && {
+  FOLLY_DEPRECATED("do not use") Future<T> activate() && {
     core_->activate();
     return std::move(*this);
   }
-  DEPRECATED Future<T> deactivate() && {
+  FOLLY_DEPRECATED("do not use") Future<T> deactivate() && {
     core_->deactivate();
     return std::move(*this);
   }

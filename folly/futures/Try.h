@@ -22,7 +22,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
-#include <folly/futures/Deprecated.h>
+#include <folly/Portability.h>
 #include <folly/futures/FutureException.h>
 #include <folly/futures/Unit.h>
 
@@ -94,7 +94,8 @@ class Try {
    *
    * @param ep The exception_pointer. Will be rethrown.
    */
-  DEPRECATED explicit Try(std::exception_ptr ep)
+  FOLLY_DEPRECATED("use Try(exception_wrapper)")
+  explicit Try(std::exception_ptr ep)
     : contains_(Contains::EXCEPTION) {
     try {
       std::rethrow_exception(ep);
@@ -254,7 +255,8 @@ class Try<void> {
    *
    * @param ep The exception_pointer. Will be rethrown.
    */
-  DEPRECATED explicit Try(std::exception_ptr ep) : hasValue_(false) {
+  FOLLY_DEPRECATED("use Try(exception_wrapper)")
+  explicit Try(std::exception_ptr ep) : hasValue_(false) {
     try {
       std::rethrow_exception(ep);
     } catch (const std::exception& e) {

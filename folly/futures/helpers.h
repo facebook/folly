@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/futures/Future.h>
+#include <folly/Portability.h>
 
 namespace folly {
 
@@ -85,7 +86,8 @@ auto makeFutureWith(F&& func)
 ///
 ///   auto f = makeFuture<string>(std::current_exception());
 template <class T>
-DEPRECATED Future<T> makeFuture(std::exception_ptr const& e);
+FOLLY_DEPRECATED("use makeFuture(exception_wrapper)")
+Future<T> makeFuture(std::exception_ptr const& e);
 
 /// Make a failed Future from an exception_wrapper.
 template <class T>

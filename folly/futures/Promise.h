@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/futures/Deprecated.h>
+#include <folly/Portability.h>
 #include <folly/futures/Try.h>
 #include <functional>
 
@@ -53,7 +53,8 @@ public:
       p.setException(std::current_exception());
     }
     */
-  DEPRECATED void setException(std::exception_ptr const&);
+  FOLLY_DEPRECATED("use setException(exception_wrapper)")
+  void setException(std::exception_ptr const&);
 
   /** Fulfill the Promise with an exception type E, which can be passed to
     std::make_exception_ptr(). Useful for originating exceptions. If you

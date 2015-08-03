@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/futures/Promise.h>
+#include <folly/Portability.h>
 
 namespace folly {
 
@@ -64,7 +65,8 @@ public:
       p.setException(std::current_exception());
     }
     */
-  DEPRECATED void setException(std::exception_ptr const&);
+  FOLLY_DEPRECATED("use setException(exception_wrapper)")
+  void setException(std::exception_ptr const&);
 
   /** Fulfill the SharedPromise with an exception type E, which can be passed to
     std::make_exception_ptr(). Useful for originating exceptions. If you

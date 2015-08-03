@@ -131,7 +131,6 @@ nobase_follyinclude_HEADERS = \
 	Format.h \
 	Format-inl.h \
 	futures/Barrier.h \
-	futures/Deprecated.h \
 	futures/ThreadedExecutor.h \
 	futures/DrivableExecutor.h \
 	futures/Future-pre.h \
