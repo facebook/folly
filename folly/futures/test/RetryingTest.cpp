@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <atomic>
 #include <exception>
+#include <vector>
 #include <folly/futures/Future.h>
 
 #include <gtest/gtest.h>
@@ -23,6 +25,33 @@
 using namespace std;
 using namespace std::chrono;
 using namespace folly;
+
+// Runs func num_times in parallel, expects that all of them will take
+// at least min_duration and at least 1 execution will take less than
+// max_duration.
+template <typename D, typename F>
+void multiAttemptExpectDurationWithin(size_t num_tries,
+                                      D min_duration,
+                                      D max_duration,
+                                      const F& func) {
+  vector<thread> threads(num_tries);
+  vector<D> durations(num_tries, D::min());
+  for (size_t i = 0; i < num_tries; ++i) {
+    threads[i] = thread([&,i]{
+      auto start = steady_clock::now();
+      func();
+      durations[i] = duration_cast<D>(steady_clock::now() - start);
+    });
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+  sort(durations.begin(), durations.end());
+  for (auto d : durations) {
+    EXPECT_GE(d, min_duration);
+  }
+  EXPECT_LE(durations[0], max_duration);
+}
 
 TEST(RetryingTest, has_op_call) {
   using ew = exception_wrapper;
@@ -76,72 +105,57 @@ TEST(RetryingTest, policy_basic) {
 }
 
 TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
-  using ms = milliseconds;
-  auto start = steady_clock::now();
-  auto r = futures::retrying(
-      futures::retryingPolicyCappedJitteredExponentialBackoff(
-        3, ms(100), ms(1000), 0.1, mt19937_64(0),
-        [](size_t, const exception_wrapper&) { return true; }),
-      [](size_t n) {
-          return n < 2
-            ? makeFuture<size_t>(runtime_error("ha"))
-            : makeFuture(n);
-      }
-  ).wait();
-  auto finish = steady_clock::now();
-  auto duration = duration_cast<milliseconds>(finish - start);
-  EXPECT_EQ(2, r.value());
-  EXPECT_NEAR(
-      milliseconds(300).count(),
-      duration.count(),
-      milliseconds(25).count());
+  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), []{
+    using ms = milliseconds;
+    auto r = futures::retrying(
+        futures::retryingPolicyCappedJitteredExponentialBackoff(
+          3, ms(100), ms(1000), 0.1, mt19937_64(0),
+          [](size_t, const exception_wrapper&) { return true; }),
+        [](size_t n) {
+            return n < 2
+              ? makeFuture<size_t>(runtime_error("ha"))
+              : makeFuture(n);
+        }
+    ).wait();
+    EXPECT_EQ(2, r.value());
+  });
 }
 
 TEST(RetryingTest, policy_sleep_defaults) {
-  //  To ensure that this compiles with default params.
-  using ms = milliseconds;
-  auto start = steady_clock::now();
-  auto r = futures::retrying(
-      futures::retryingPolicyCappedJitteredExponentialBackoff(
-        3, ms(100), ms(1000), 0.1),
-      [](size_t n) {
-          return n < 2
-            ? makeFuture<size_t>(runtime_error("ha"))
-            : makeFuture(n);
-      }
-  ).wait();
-  auto finish = steady_clock::now();
-  auto duration = duration_cast<milliseconds>(finish - start);
-  EXPECT_EQ(2, r.value());
-  EXPECT_NEAR(
-      milliseconds(300).count(),
-      duration.count(),
-      milliseconds(100).count());
+  multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), []{
+    //  To ensure that this compiles with default params.
+    using ms = milliseconds;
+    auto r = futures::retrying(
+        futures::retryingPolicyCappedJitteredExponentialBackoff(
+          3, ms(100), ms(1000), 0.1),
+        [](size_t n) {
+            return n < 2
+              ? makeFuture<size_t>(runtime_error("ha"))
+              : makeFuture(n);
+        }
+    ).wait();
+    EXPECT_EQ(2, r.value());
+  });
 }
 
 /*
 TEST(RetryingTest, policy_sleep_cancel) {
-  mt19937_64 rng(0);
-  using ms = milliseconds;
-  auto start = steady_clock::now();
-  auto r = futures::retrying(
-      futures::retryingPolicyCappedJitteredExponentialBackoff(
-        5, ms(100), ms(1000), 0.1, rng,
-        [](size_t n, const exception_wrapper&) { return true; }),
-      [](size_t n) {
-          return n < 4
-            ? makeFuture<size_t>(runtime_error("ha"))
-            : makeFuture(n);
-      }
-  );
-  r.cancel();
-  r.wait();
-  auto finish = steady_clock::now();
-  auto duration = duration_cast<milliseconds>(finish - start);
-  EXPECT_EQ(2, r.value());
-  EXPECT_NEAR(
-      milliseconds(0).count(),
-      duration.count(),
-      milliseconds(10).count());
+  multiAttemptExpectDurationWithin(5, milliseconds(0), milliseconds(10), []{
+    mt19937_64 rng(0);
+    using ms = milliseconds;
+    auto r = futures::retrying(
+        futures::retryingPolicyCappedJitteredExponentialBackoff(
+          5, ms(100), ms(1000), 0.1, rng,
+          [](size_t n, const exception_wrapper&) { return true; }),
+        [](size_t n) {
+            return n < 4
+              ? makeFuture<size_t>(runtime_error("ha"))
+              : makeFuture(n);
+        }
+    );
+    r.cancel();
+    r.wait();
+    EXPECT_EQ(2, r.value());
+  });
 }
 */
