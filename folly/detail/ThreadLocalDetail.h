@@ -267,6 +267,12 @@ struct StaticMeta {
     DCHECK_EQ(ptr, &meta);
     DCHECK_GT(threadEntry->elementsCapacity, 0);
 #else
+    // pthread sets the thread-specific value corresponding
+    // to meta.pthreadKey_ to NULL before calling onThreadExit.
+    // We need to set it back to ptr to enable the correct behaviour
+    // of the subsequent calls of getThreadEntry
+    // (which may happen in user-provided custom deleters)
+    pthread_setspecific(meta.pthreadKey_, ptr);
     ThreadEntry* threadEntry = static_cast<ThreadEntry*>(ptr);
 #endif
     {
