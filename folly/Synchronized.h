@@ -39,6 +39,14 @@ enum InternalDoNotUse {};
  * Free function adaptors for std:: and boost::
  */
 
+// Android, OSX, and Cygwin don't have timed mutexes
+#if defined(ANDROID) || defined(__ANDROID__) || \
+    defined(__APPLE__) || defined(__CYGWIN__)
+# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 0
+#else
+# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 1
+#endif
+
 /**
  * Yields true iff T has .lock() and .unlock() member functions. This
  * is done by simply enumerating the mutexes with this interface in
@@ -49,9 +57,7 @@ struct HasLockUnlock {
   enum { value = IsOneOf<T,
          std::mutex, std::recursive_mutex,
          boost::mutex, boost::recursive_mutex, boost::shared_mutex
-// Android, OSX, and Cygwin don't have timed mutexes
-#if !defined(ANDROID) && !defined(__ANDROID__) && \
-  !defined(__APPLE__) && !defined(__CYGWIN__)
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
         ,std::timed_mutex, std::recursive_timed_mutex,
          boost::timed_mutex, boost::recursive_timed_mutex
 #endif
@@ -99,9 +105,7 @@ acquireReadWrite(T& mutex) {
   mutex.lock();
 }
 
-// Android, OSX, and Cygwin don't have timed mutexes
-#if !defined(ANDROID) && !defined(__ANDROID__) && \
-  !defined(__APPLE__) && !defined(__CYGWIN__)
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
 /**
  * Acquires a mutex for reading and writing with timeout by calling
  * .try_lock_for(). This applies to two of the std mutex classes as
@@ -133,7 +137,7 @@ acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
   return mutex.timed_lock(boost::posix_time::milliseconds(milliseconds));
 }
-#endif // !__ANDROID__ && !__APPLE__ && !__CYGWIN__
+#endif // FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
 
 /**
  * Releases a mutex previously acquired for reading by calling
