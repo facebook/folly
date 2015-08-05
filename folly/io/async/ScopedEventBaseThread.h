@@ -19,11 +19,12 @@
 #include <memory>
 #include <thread>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseManager.h>
 
 namespace folly {
 
 /**
- * A helper class to start a new thread running a TEventBase loop.
+ * A helper class to start a new thread running a EventBase loop.
  *
  * The new thread will be started by the ScopedEventBaseThread constructor.
  * When the ScopedEventBaseThread object is destroyed, the thread will be
@@ -31,14 +32,18 @@ namespace folly {
  */
 class ScopedEventBaseThread {
  public:
-  explicit ScopedEventBaseThread(bool autostart = true);
+  explicit ScopedEventBaseThread(
+      bool autostart = true,
+      EventBaseManager* ebm = nullptr);
+  explicit ScopedEventBaseThread(
+      EventBaseManager* ebm);
   ~ScopedEventBaseThread();
 
   ScopedEventBaseThread(ScopedEventBaseThread&& other) noexcept;
   ScopedEventBaseThread &operator=(ScopedEventBaseThread&& other) noexcept;
 
   /**
-   * Get a pointer to the TEventBase driving this thread.
+   * Get a pointer to the EventBase driving this thread.
    */
   EventBase* getEventBase() const {
     return eventBase_.get();
@@ -52,6 +57,7 @@ class ScopedEventBaseThread {
   ScopedEventBaseThread(const ScopedEventBaseThread& other) = delete;
   ScopedEventBaseThread& operator=(const ScopedEventBaseThread& other) = delete;
 
+  EventBaseManager* ebm_;
   std::unique_ptr<EventBase> eventBase_;
   std::unique_ptr<std::thread> thread_;
 };

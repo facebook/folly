@@ -77,3 +77,14 @@ TEST_F(ScopedEventBaseThreadTest, self_move) {
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
   done.timed_wait(steady_clock::now() + milliseconds(100));
 }
+
+TEST_F(ScopedEventBaseThreadTest, manager) {
+  EventBaseManager ebm;
+  ScopedEventBaseThread sebt(&ebm);
+  auto sebt_eb = sebt.getEventBase();
+  auto ebm_eb = (EventBase*)nullptr;
+  sebt_eb->runInEventBaseThreadAndWait([&] {
+      ebm_eb = ebm.getEventBase();
+  });
+  EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
+}

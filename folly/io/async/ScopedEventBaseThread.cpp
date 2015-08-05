@@ -23,11 +23,28 @@ using namespace std;
 
 namespace folly {
 
-ScopedEventBaseThread::ScopedEventBaseThread(bool autostart) {
+static void run(EventBaseManager* ebm, EventBase* eb) {
+  if (ebm) {
+    ebm->setEventBase(eb, false);
+  }
+  CHECK_NOTNULL(eb)->loopForever();
+  if (ebm) {
+    ebm->clearEventBase();
+  }
+}
+
+ScopedEventBaseThread::ScopedEventBaseThread(
+    bool autostart,
+    EventBaseManager* ebm) :
+  ebm_(ebm) {
   if (autostart) {
     start();
   }
 }
+
+ScopedEventBaseThread::ScopedEventBaseThread(
+    EventBaseManager* ebm) :
+  ScopedEventBaseThread(true, ebm) {}
 
 ScopedEventBaseThread::~ScopedEventBaseThread() {
   stop();
@@ -44,7 +61,7 @@ void ScopedEventBaseThread::start() {
     return;
   }
   eventBase_ = make_unique<EventBase>();
-  thread_ = make_unique<thread>(&EventBase::loopForever, &*eventBase_);
+  thread_ = make_unique<thread>(run, ebm_, eventBase_.get());
   eventBase_->waitUntilRunning();
 }
 
