@@ -191,3 +191,7 @@ TEST(Aha, InsertErase_i64_str) {
   testMap<int64_t, string>();
   testMap<int64_t, string, MmapAllocator<char>>();
 }
+
+TEST(Aha, Create_cstr_i64) {
+  auto obj = AtomicHashArray<const char*, int64_t>::create(12);
+}

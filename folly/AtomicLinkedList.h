@@ -63,7 +63,7 @@ class AtomicLinkedList {
    * Note: list must be empty on destruction.
    */
   ~AtomicLinkedList() {
-    assert(head_ == nullptr);
+    assert(empty());
   }
 
   bool empty() const {
