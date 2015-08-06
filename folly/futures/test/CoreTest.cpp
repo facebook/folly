@@ -22,7 +22,23 @@
 using namespace folly;
 
 TEST(Core, size) {
+  struct Gold {
+    char lambdaBuf_[8 * sizeof(void*)];
+    folly::Optional<Try<Unit>> result_;
+    std::function<void(Try<Unit>&&)> callback_;
+    detail::FSM<detail::State> fsm_;
+    std::atomic<unsigned char> attached_;
+    std::atomic<bool> active_;
+    std::atomic<bool> interruptHandlerSet_;
+    folly::MicroSpinLock interruptLock_;
+    folly::MicroSpinLock executorLock_;
+    int8_t priority_;
+    Executor* executor_;
+    std::shared_ptr<RequestContext> context_;
+    std::unique_ptr<exception_wrapper> interrupt_;
+    std::function<void(exception_wrapper const&)> interruptHandler_;
+  };
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_EQ(192, sizeof(detail::Core<Unit>));
+  EXPECT_GE(sizeof(Gold), sizeof(detail::Core<Unit>));
 }
