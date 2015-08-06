@@ -203,7 +203,6 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
   // this is faster than calling push_back repeatedly.
   while (p != str.end()) {
     char c = *p;
-    unsigned char v = static_cast<unsigned char>(v);
     switch (c) {
     case '%':
       {
