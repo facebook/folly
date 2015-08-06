@@ -309,6 +309,7 @@ libfollybase_la_SOURCES = \
 
 libfolly_la_SOURCES = \
 	Bits.cpp \
+	Checksum.cpp \
 	detail/CacheLocality.cpp \
 	dynamic.cpp \
 	File.cpp \
