@@ -87,7 +87,7 @@ class FiberManager : public ::folly::Executor {
     /**
      * Protect limited amount of fiber stacks with guard pages.
      */
-    bool useGuardPages{true};
+    bool useGuardPages{false};
 
     constexpr Options() {}
   };
