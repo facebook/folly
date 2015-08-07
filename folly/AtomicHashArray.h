@@ -134,13 +134,13 @@ class AtomicHashArray : boost::noncopyable {
     static const KeyT kErasedKey;
 
   public:
-    constexpr Config() : emptyKey(kEmptyKey),
-                         lockedKey(kLockedKey),
-                         erasedKey(kErasedKey),
-                         maxLoadFactor(0.8),
-                         growthFactor(-1),
-                         entryCountThreadCacheSize(1000),
-                         capacity(0) {}
+    Config() : emptyKey(kEmptyKey),
+               lockedKey(kLockedKey),
+               erasedKey(kErasedKey),
+               maxLoadFactor(0.8),
+               growthFactor(-1),
+               entryCountThreadCacheSize(1000),
+               capacity(0) {}
   };
 
   static const Config defaultConfig;
