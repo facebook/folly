@@ -127,6 +127,39 @@ class BaseFormatter {
     return doFormatFrom<0>(i, arg, cb);
   }
 
+  template <size_t K>
+  typename std::enable_if<K == valueCount, int>::type
+  getSizeArgFrom(size_t i, const FormatArg& arg) const {
+    arg.error("argument index out of range, max=", i);
+  }
+
+  template <class T>
+  typename std::enable_if<std::is_integral<T>::value &&
+                          !std::is_same<T, bool>::value, int>::type
+  getValue(const FormatValue<T>& format, const FormatArg&) const {
+    return static_cast<int>(format.getValue());
+  }
+
+  template <class T>
+  typename std::enable_if<!std::is_integral<T>::value ||
+                          std::is_same<T, bool>::value, int>::type
+  getValue(const FormatValue<T>&, const FormatArg& arg) const {
+    arg.error("dynamic field width argument must be integral");
+  }
+
+  template <size_t K>
+  typename std::enable_if<K < valueCount, int>::type
+  getSizeArgFrom(size_t i, const FormatArg& arg) const {
+    if (i == K) {
+      return getValue(std::get<K>(values_), arg);
+    }
+    return getSizeArgFrom<K+1>(i, arg);
+  }
+
+  int getSizeArg(size_t i, const FormatArg& arg) const {
+    return getSizeArgFrom<0>(i, arg);
+  }
+
   StringPiece str_;
 
  protected:

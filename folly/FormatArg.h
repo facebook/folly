@@ -48,6 +48,7 @@ struct FormatArg {
       thousandsSeparator(false),
       trailingDot(false),
       width(kDefaultWidth),
+      widthIndex(kNoIndex),
       precision(kDefaultPrecision),
       presentation(kDefaultPresentation),
       nextKeyMode_(NextKeyMode::NONE) {
@@ -135,10 +136,13 @@ struct FormatArg {
   bool trailingDot;
 
   /**
-   * Field width
+   * Field width and optional argument index
    */
   static constexpr int kDefaultWidth = -1;
+  static constexpr int kDynamicWidth = -2;
+  static constexpr int kNoIndex = -1;
   int width;
+  int widthIndex;
 
   /**
    * Precision

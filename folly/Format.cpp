@@ -209,12 +209,25 @@ void FormatArg::initSlow() {
       if (++p == end) return;
     }
 
-    if (*p >= '0' && *p <= '9') {
-      auto b = p;
+    auto readInt = [&] {
+      auto const b = p;
       do {
         ++p;
       } while (p != end && *p >= '0' && *p <= '9');
-      width = to<int>(StringPiece(b, p));
+      return to<int>(StringPiece(b, p));
+    };
+
+    if (*p == '*') {
+      width = kDynamicWidth;
+      ++p;
+
+      if (p == end) return;
+
+      if (*p >= '0' && *p <= '9') widthIndex = readInt();
+
+      if (p == end) return;
+    } else if (*p >= '0' && *p <= '9') {
+      width = readInt();
 
       if (p == end) return;
     }

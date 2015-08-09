@@ -225,6 +225,8 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
     int argIndex = 0;
     auto piece = arg.splitKey<true>();  // empty key component is okay
     if (containerMode) {  // static
+      arg.enforce(arg.width != FormatArg::kDynamicWidth,
+                  "dynamic field width not supported in vformat()");
       if (piece.empty()) {
         arg.setNextIntKey(nextArg++);
         hasDefaultArgIndex = true;
@@ -234,9 +236,22 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
       }
     } else {
       if (piece.empty()) {
+        if (arg.width == FormatArg::kDynamicWidth) {
+          arg.enforce(arg.widthIndex == FormatArg::kNoIndex,
+                      "cannot provide width arg index without value arg index");
+          int sizeArg = nextArg++;
+          arg.width = getSizeArg(sizeArg, arg);
+        }
+
         argIndex = nextArg++;
         hasDefaultArgIndex = true;
       } else {
+        if (arg.width == FormatArg::kDynamicWidth) {
+          arg.enforce(arg.widthIndex != FormatArg::kNoIndex,
+                      "cannot provide value arg index without width arg index");
+          arg.width = getSizeArg(arg.widthIndex, arg);
+        }
+
         try {
           argIndex = to<int>(piece);
         } catch (const std::out_of_range& e) {
@@ -402,6 +417,11 @@ class FormatValue<
   {
  public:
   explicit FormatValue(T val) : val_(val) { }
+
+  T getValue() const {
+    return val_;
+  }
+
   template <class FormatCallback>
   void format(FormatArg& arg, FormatCallback& cb) const {
     arg.validate(FormatArg::Type::INTEGER);

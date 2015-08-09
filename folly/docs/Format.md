@@ -82,6 +82,16 @@ std::cout << vformat("{0} {2} {1}", t);
 std::cout << format("{:X<10} {}", "hello", "world");
 // => "helloXXXXX world"
 
+// Field width may be a runtime value rather than part of the format string
+int x = 6;
+std::cout << format("{:-^*}", x, "hi");
+// => "--hi--"
+
+// Explicit arguments work with dynamic field width, as long as indexes are
+// given for both the value and the field width.
+std::cout << format("{2:+^*0}",
+9, "unused", 456); // => "+++456+++"
+
 // Format supports printf-style format specifiers
 std::cout << format("{0:05d} decimal = {0:04x} hex", 42);
 // => "00042 decimal = 002a hex"
@@ -142,7 +152,10 @@ Format specification:
   `0X` for hexadecimal; only valid for integers)
 - '`0`': 0-pad after sign, same as specifying "`0=`" as the `fill` and
   `align` parameters (only valid for numbers)
-- `width`: minimum field width
+- `width`: minimum field width. May be '`*`' to indicate that the field width
+  is given by an argument. Defaults to the next argument (preceding the value
+  to be formatted) but an explicit argument index may be given following the
+  '`*`'. Not supported in `vformat()`.
 - '`,`' (comma): output comma as thousands' separator (only valid for integers,
   and only for decimal output)
 - `precision` (not allowed for integers):

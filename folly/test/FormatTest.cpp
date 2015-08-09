@@ -105,6 +105,13 @@ TEST(Format, Simple) {
   EXPECT_EQ("hello  ", sformat("{:<7}", "hello"));
   EXPECT_EQ("  hello", sformat("{:>7}", "hello"));
 
+  EXPECT_EQ("  hi", sformat("{:>*}", 4, "hi"));
+  EXPECT_EQ("   hi!", sformat("{:*}{}", 3, "", "hi!"));
+  EXPECT_EQ("    123", sformat("{:*}", 7, 123));
+  EXPECT_EQ("123    ", sformat("{:<*}", 7, 123));
+  EXPECT_EQ("----<=>----", sformat("{:-^*}", 11, "<=>"));
+  EXPECT_EQ("+++456+++", sformat("{2:+^*0}", 9, "unused", 456));
+
   std::vector<int> v1 {10, 20, 30};
   EXPECT_EQ("0020", sformat("{0[1]:04}", v1));
   EXPECT_EQ("0020", svformat("{1:04}", v1));
@@ -420,7 +427,6 @@ TEST(Format, OutOfBounds) {
 }
 
 TEST(Format, BogusFormatString) {
-  // format() will crash the program if the format string is invalid.
   EXPECT_FORMAT_ERROR(sformat("}"), "single '}' in format string");
   EXPECT_FORMAT_ERROR(sformat("foo}bar"), "single '}' in format string");
   EXPECT_FORMAT_ERROR(sformat("foo{bar"), "missing ending '}'");
@@ -429,6 +435,22 @@ TEST(Format, BogusFormatString) {
   EXPECT_FORMAT_ERROR(sformat("{1.3}", 0, 1, 2), "index not allowed");
   EXPECT_FORMAT_ERROR(sformat("{0} {} {1}", 0, 1, 2),
                "may not have both default and explicit arg indexes");
+  EXPECT_FORMAT_ERROR(sformat("{:*}", 1.2),
+                      "dynamic field width argument must be integral");
+  EXPECT_FORMAT_ERROR(sformat("{} {:*}", "hi"),
+                      "argument index out of range, max=1");
+  EXPECT_FORMAT_ERROR(
+    sformat("{:*0}", 12, "ok"),
+    "cannot provide width arg index without value arg index"
+  );
+  EXPECT_FORMAT_ERROR(
+    sformat("{0:*}", 12, "ok"),
+    "cannot provide value arg index without width arg index"
+  );
+
+  std::vector<int> v{1, 2, 3};
+  EXPECT_FORMAT_ERROR(svformat("{:*}", v),
+                      "dynamic field width not supported in vformat()");
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error
