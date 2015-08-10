@@ -29,7 +29,7 @@
 using folly::small_vector;
 using namespace folly::small_vector_policy;
 
-#if FOLLY_X64
+#if FOLLY_X64 || FOLLY_PPC64
 
 static_assert(sizeof(small_vector<int>) == 16,
               "Object size is not what we expect for small_vector<int>");

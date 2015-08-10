@@ -48,7 +48,7 @@
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
 
-#if defined(__GNUC__) && FOLLY_X64
+#if defined(__GNUC__) && (FOLLY_X64 || FOLLY_PPC64)
 # include <folly/SmallLocks.h>
 # define FB_PACK_ATTR FOLLY_PACK_ATTR
 # define FB_PACK_PUSH FOLLY_PACK_PUSH
@@ -1058,7 +1058,7 @@ private:
     }
   } FB_PACK_ATTR;
 
-#if FOLLY_X64
+#if (FOLLY_X64 || FOLLY_PPC64)
   typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<

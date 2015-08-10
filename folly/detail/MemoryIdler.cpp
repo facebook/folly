@@ -83,7 +83,7 @@ void MemoryIdler::flushLocalMallocCaches() {
 // Stack madvise isn't Linux or glibc specific, but the system calls
 // and arithmetic (and bug compatibility) are not portable.  The set of
 // platforms could be increased if it was useful.
-#if FOLLY_X64 && defined(_GNU_SOURCE) && defined(__linux__)
+#if (FOLLY_X64 || FOLLY_PPC64 ) && defined(_GNU_SOURCE) && defined(__linux__)
 
 static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
 static FOLLY_TLS uintptr_t tls_stackLimit;

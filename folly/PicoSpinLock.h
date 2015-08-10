@@ -33,8 +33,8 @@
 #include <folly/detail/Sleeper.h>
 #include <folly/Portability.h>
 
-#if !FOLLY_X64 && !FOLLY_A64
-# error "PicoSpinLock.h is currently x64 and aarch64 only."
+#if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
+# error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
 #endif
 
 namespace folly {
@@ -128,8 +128,34 @@ struct PicoSpinLock {
 #undef FB_DOBTS
 #elif FOLLY_A64
     ret = __atomic_fetch_or(&lock_, 1 << Bit, __ATOMIC_SEQ_CST);
+#elif FOLLY_PPC64
+#define FB_DOBTS(size)                                 \
+    asm volatile("\teieio\n"                           \
+                 "\tl" #size "arx 14,0,%[lockPtr]\n"   \
+                 "\tli 15,1\n"                         \
+                 "\tsldi 15,15,%[bit]\n"               \
+                 "\tand. 16,15,14\n"                   \
+                 "\tbne 0f\n"                          \
+                 "\tor 14,14,15\n"                     \
+                 "\tst" #size "cx. 14,0,%[lockPtr]\n"  \
+                 "\tbne 0f\n"                          \
+                 "\tori %[output],%[output],1\n"       \
+                 "\tisync\n"                           \
+                 "0:\n"                                \
+                 : [output] "+r" (ret)                 \
+                 : [lockPtr] "r"(&lock_),              \
+                   [bit] "i" (Bit)                     \
+                 : "cr0", "memory", "r14", "r15", "r16")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTS(h); break;
+    case 4: FB_DOBTS(w); break;
+    case 8: FB_DOBTS(d); break;
+    }
+
+#undef FB_DOBTS
 #else
-#error "x86 aarch64 only"
+#error "x86 aarch64 ppc64 only"
 #endif
 
     return ret;
@@ -170,8 +196,30 @@ struct PicoSpinLock {
 #undef FB_DOBTR
 #elif FOLLY_A64
     __atomic_fetch_and(&lock_, ~(1 << Bit), __ATOMIC_SEQ_CST);
+#elif FOLLY_PPC64
+#define FB_DOBTR(size)                                 \
+    asm volatile("\teieio\n"                           \
+                 "0:  l" #size "arx 14,0,%[lockPtr]\n" \
+                 "\tli 15,1\n"                         \
+                 "\tsldi 15,15,%[bit]\n"               \
+                 "\txor 14,14,15\n"                    \
+                 "\tst" #size "cx. 14,0,%[lockPtr]\n"  \
+                 "\tbne 0b\n"                          \
+                 "\tisync\n"                           \
+                 :                                     \
+                 : [lockPtr] "r"(&lock_),              \
+                   [bit] "i" (Bit)                     \
+                 : "cr0", "memory", "r14", "r15")
+
+    switch (sizeof(IntType)) {
+    case 2: FB_DOBTR(h); break;
+    case 4: FB_DOBTR(w); break;
+    case 8: FB_DOBTR(d); break;
+    }
+
+#undef FB_DOBTR
 #else
-# error "x64 aarch64 only"
+# error "x64 aarch64 ppc64 only"
 #endif
   }
 };
