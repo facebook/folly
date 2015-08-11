@@ -130,7 +130,8 @@ class Core {
   template <typename F>
   class LambdaBufHelper {
    public:
-    explicit LambdaBufHelper(F&& func) : func_(std::forward<F>(func)) {}
+    template <typename FF>
+    explicit LambdaBufHelper(FF&& func) : func_(std::forward<FF>(func)) {}
     void operator()(Try<T>&& t) {
       SCOPE_EXIT { this->~LambdaBufHelper(); };
       func_(std::move(t));
