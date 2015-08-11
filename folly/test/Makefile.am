@@ -203,13 +203,16 @@ futures_test_SOURCES = \
     ../futures/test/ThenCompileTest.cpp \
     ../futures/test/ThenTest.cpp \
     ../futures/test/TimekeeperTest.cpp \
+    ../futures/test/TimesTest.cpp \
     ../futures/test/TryTest.cpp \
     ../futures/test/UnitTest.cpp \
     ../futures/test/UnwrapTest.cpp \
     ../futures/test/ViaTest.cpp \
     ../futures/test/WaitTest.cpp \
     ../futures/test/WillEqualTest.cpp \
-    ../futures/test/WindowTest.cpp
+    ../futures/test/WindowTest.cpp \
+    ../futures/test/WhenTest.cpp \
+    ../futures/test/WhileDoTest.cpp
 
 futures_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += futures_test

@@ -441,6 +441,29 @@ class Future {
   template <class T2>
   friend Future<T2> makeFuture(Try<T2>&&);
 
+  /// Repeat the given future (i.e., the computation it contains)
+  /// n times.
+  ///
+  /// thunk behaves like std::function<Future<T2>(void)>
+  template <class F>
+  friend Future<Unit> times(const int n, F thunk);
+
+  /// Carry out the computation contained in the given future if
+  /// the predicate holds.
+  ///
+  /// thunk behaves like std::function<Future<T2>(void)>
+  template <class F>
+  friend Future<Unit> when(bool p, F thunk);
+
+  /// Carry out the computation contained in the given future if
+  /// while the predicate continues to hold.
+  ///
+  /// thunk behaves like std::function<Future<T2>(void)>
+  ///
+  /// predicate behaves like std::function<bool(void)>
+  template <class P, class F>
+  friend Future<Unit> whileDo(P predicate, F thunk);
+
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>

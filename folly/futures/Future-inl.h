@@ -248,6 +248,7 @@ Future<T>::onError(F&& func) {
       "Return type of onError callback must be T or Future<T>");
 
   Promise<T> p;
+  p.core_->setInterruptHandlerNoLock(core_->getInterruptHandler());
   auto f = p.getFuture();
   auto pm = folly::makeMoveWrapper(std::move(p));
   auto funcm = folly::makeMoveWrapper(std::move(func));
@@ -1084,6 +1085,31 @@ auto Future<T>::thenMultiWithExecutor(Executor* x, Callback&& fn)
     -> decltype(this->then(std::forward<Callback>(fn))) {
   // thenMulti with one callback is just a then with an executor
   return then(x, std::forward<Callback>(fn));
+}
+
+template <class F>
+inline Future<Unit> when(bool p, F thunk) {
+  return p ? thunk().unit() : makeFuture();
+}
+
+template <class P, class F>
+Future<Unit> whileDo(P predicate, F thunk) {
+  if (predicate()) {
+    return thunk().then([=] {
+      return whileDo(predicate, thunk);
+    });
+  }
+  return makeFuture();
+}
+
+template <class F>
+Future<Unit> times(const int n, F thunk) {
+  auto count = folly::makeMoveWrapper(
+    std::unique_ptr<std::atomic<int>>(new std::atomic<int>(0))
+  );
+  return folly::whileDo([=]() mutable {
+      return (*count)->fetch_add(1) < n;
+    }, thunk);
 }
 
 namespace futures {
