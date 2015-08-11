@@ -148,7 +148,7 @@ class Core {
 
       // Move the lambda into the Core if it fits
       if (sizeof(LambdaBufHelper<F>) <= lambdaBufSize) {
-        auto funcLoc = static_cast<LambdaBufHelper<F>*>((void*)lambdaBuf_);
+        auto funcLoc = reinterpret_cast<LambdaBufHelper<F>*>(&lambdaBuf_);
         new (funcLoc) LambdaBufHelper<F>(std::forward<F>(func));
         callback_ = std::ref(*funcLoc);
       } else {
@@ -366,7 +366,7 @@ class Core {
 
   // lambdaBuf occupies exactly one cache line
   static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
-  char lambdaBuf_[lambdaBufSize];
+  typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;
