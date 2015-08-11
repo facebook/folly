@@ -239,3 +239,24 @@ TEST_F(IntAdaptorTest, ResizeConstructor) {
     EXPECT_EQ(42, a[i]);
   }
 }
+
+TEST_F(IntAdaptorTest, SimpleEmplaceBack) {
+  for (int i = 0; i < n_; ++i) {
+    EXPECT_EQ((i == 0), a_.empty());
+    EXPECT_EQ(i, a_.size());
+    a_.emplace_back(i);
+  }
+  EXPECT_EQ(n_, a_.size());
+
+  int k = 0;
+  for (auto it = a_.begin(); it != a_.end(); ++it, ++k) {
+    EXPECT_EQ(k, a_[k]);
+    EXPECT_EQ(k, *it);
+  }
+  EXPECT_EQ(n_, k);
+
+  auto p = a_.move();
+  EXPECT_TRUE(a_.empty());
+  EXPECT_EQ(16, p.second);
+  EXPECT_TRUE(v_ == p.first);
+}
