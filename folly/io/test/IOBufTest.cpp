@@ -24,6 +24,8 @@
 #include <folly/Malloc.h>
 #include <folly/Range.h>
 
+#include <cstddef>
+
 using folly::fbstring;
 using folly::fbvector;
 using folly::IOBuf;
@@ -792,11 +794,7 @@ TEST(IOBuf, takeOwnershipUniquePtr) {
 }
 
 TEST(IOBuf, Alignment) {
-  // max_align_t doesn't exist in gcc 4.6.2
-  struct MaxAlign {
-    char c;
-  } __attribute__((__aligned__));
-  size_t alignment = alignof(MaxAlign);
+  size_t alignment = alignof(std::max_align_t);
 
   std::vector<size_t> sizes {0, 1, 64, 256, 1024, 1 << 10};
   for (size_t size : sizes) {

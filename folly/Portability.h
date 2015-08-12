@@ -17,6 +17,8 @@
 #ifndef FOLLY_PORTABILITY_H_
 #define FOLLY_PORTABILITY_H_
 
+#include <cstddef>
+
 #ifndef FOLLY_NO_CONFIG
 #include <folly/folly-config.h>
 #endif
@@ -53,13 +55,6 @@
   #endif
 #endif
 
-// MaxAlign: max_align_t isn't supported by gcc
-#ifdef __GNUC__
-struct MaxAlign { char c; } __attribute__((__aligned__));
-#else /* !__GNUC__ */
-# error Cannot define MaxAlign on this platform
-#endif
-
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
@@ -70,7 +65,7 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 #else
 # error Cannot define FOLLY_ALIGNED on this platform
 #endif
-#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(alignof(MaxAlign))
+#define FOLLY_ALIGNED_MAX FOLLY_ALIGNED(alignof(std::max_align_t))
 
 // NOTE: this will only do checking in msvc with versions that support /analyze
 #if _MSC_VER
@@ -164,6 +159,12 @@ struct MaxAlign { char c; } __attribute__((__aligned__));
 # endif
 #endif
 
+#if defined(__GNUC__) && !__GNUC_PREREQ(4,9)
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
+// gcc 4.8.x incorrectly placed max_align_t in the root namespace
+// Alias it into std (where it's found in 4.9 and later)
+namespace std { typedef ::max_align_t max_align_t; }
+#endif
 
 /* Define macro wrappers for C++11's "final" and "override" keywords, which
  * are supported in gcc 4.7 but not gcc 4.6. */

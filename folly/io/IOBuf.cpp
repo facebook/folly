@@ -112,7 +112,7 @@ struct IOBuf::HeapFullStorage {
 
   HeapStorage hs;
   SharedInfo shared;
-  MaxAlign align;
+  std::max_align_t align;
 };
 
 IOBuf::SharedInfo::SharedInfo()
