@@ -306,7 +306,7 @@ class SocketAddress {
   void setFromLocalAddress(SocketDesc socket);
 
   /**
-   * Initialize this TSocketAddress from a struct sockaddr.
+   * Initialize this folly::SocketAddress from a struct sockaddr.
    *
    * Raises std::system_error on error.
    *

@@ -80,7 +80,7 @@ class AsyncServerSocket : public DelayedDestruction
      *                    for closing it when done.  The newly accepted file
      *                    descriptor will have already been put into
      *                    non-blocking mode.
-     * @param clientAddr  A reference to a TSocketAddress struct containing the
+     * @param clientAddr  A reference to a SocketAddress struct containing the
      *                    client's address.  This struct is only guaranteed to
      *                    remain valid until connectionAccepted() returns.
      */
