@@ -212,7 +212,7 @@ struct StaticMeta {
                          /*parent*/ &StaticMeta::onForkParent,
                          /*child*/ &StaticMeta::onForkChild);
     checkPosixError(ret, "pthread_atfork failed");
-#elif !__ANDROID__
+#elif !__ANDROID__ && !defined(_MSC_VER)
     // pthread_atfork is not part of the Android NDK at least as of n9d. If
     // something is trying to call native fork() directly at all with Android's
     // process management model, this is probably the least of the problems.
