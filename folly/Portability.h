@@ -159,7 +159,7 @@
 # endif
 #endif
 
-#if defined(__GNUC__) && !__GNUC_PREREQ(4,9)
+#if defined(__GNUC__) && !defined(__APPLE__) && !__GNUC_PREREQ(4,9)
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
 // gcc 4.8.x incorrectly placed max_align_t in the root namespace
 // Alias it into std (where it's found in 4.9 and later)
