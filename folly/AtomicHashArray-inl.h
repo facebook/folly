@@ -23,19 +23,6 @@
 
 namespace folly {
 
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-const KeyT AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::Config::
-kEmptyKey = (KeyT)-1;
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-const KeyT AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::Config::
-kLockedKey = (KeyT)-2;
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-const KeyT AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::Config::
-kErasedKey = (KeyT)-3;
-
 // AtomicHashArray private constructor --
 template <class KeyT, class ValueT,
           class HashFcn, class EqualFcn, class Allocator>
@@ -256,12 +243,6 @@ erase(KeyT key_in) {
     }
   }
 }
-
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-const typename AtomicHashArray<KeyT, ValueT,
-      HashFcn, EqualFcn, Allocator>::Config
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::defaultConfig;
 
 template <class KeyT, class ValueT,
          class HashFcn, class EqualFcn, class Allocator>

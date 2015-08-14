@@ -191,8 +191,7 @@ class AtomicHashMap : boost::noncopyable {
   // The constructor takes a finalSizeEst which is the optimal
   // number of elements to maximize space utilization and performance,
   // and a Config object to specify more advanced options.
-  static const Config defaultConfig;
-  explicit AtomicHashMap(size_t finalSizeEst, const Config& = defaultConfig);
+  explicit AtomicHashMap(size_t finalSizeEst, const Config& c = Config());
 
   ~AtomicHashMap() {
     const int numMaps = numMapsAllocated_.load(std::memory_order_relaxed);

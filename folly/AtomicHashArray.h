@@ -128,23 +128,19 @@ class AtomicHashArray : boost::noncopyable {
     int    entryCountThreadCacheSize;
     size_t capacity; // if positive, overrides maxLoadFactor
 
-  private:
-    static const KeyT kEmptyKey;
-    static const KeyT kLockedKey;
-    static const KeyT kErasedKey;
-
   public:
-    Config() : emptyKey(kEmptyKey),
-               lockedKey(kLockedKey),
-               erasedKey(kErasedKey),
+    //  Cannot have constexpr ctor because some compilers rightly complain.
+    Config() : emptyKey((KeyT)-1),
+               lockedKey((KeyT)-2),
+               erasedKey((KeyT)-3),
                maxLoadFactor(0.8),
                growthFactor(-1),
                entryCountThreadCacheSize(1000),
                capacity(0) {}
   };
 
-  static const Config defaultConfig;
-  static SmartPtr create(size_t maxSize, const Config& = defaultConfig);
+  //  Cannot have pre-instantiated const Config instance because of SIOF.
+  static SmartPtr create(size_t maxSize, const Config& c = Config());
 
   iterator find(KeyT k) {
     return iterator(this, findInternal(k).idx);

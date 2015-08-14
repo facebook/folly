@@ -22,11 +22,6 @@
 
 namespace folly {
 
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-const typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::Config
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::defaultConfig;
-
 // AtomicHashMap constructor -- Atomic wrapper that allows growth
 // This class has a lot of overhead (184 Bytes) so only use for big maps
 template <typename KeyT, typename ValueT,
