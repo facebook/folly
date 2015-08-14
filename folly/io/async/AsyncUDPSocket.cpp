@@ -63,16 +63,18 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
                               errno);
   }
 
-  // put the socket in reuse mode
-  int value = 1;
-  if (setsockopt(socket,
-                 SOL_SOCKET,
-                 SO_REUSEADDR,
-                 &value,
-                 sizeof(value)) != 0) {
-    throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                              "failed to put socket in reuse mode",
-                              errno);
+  if (reuseAddr_) {
+    // put the socket in reuse mode
+    int value = 1;
+    if (setsockopt(socket,
+                  SOL_SOCKET,
+                  SO_REUSEADDR,
+                  &value,
+                  sizeof(value)) != 0) {
+      throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
+                                "failed to put socket in reuse mode",
+                                errno);
+    }
   }
 
   if (reusePort_) {

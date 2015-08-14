@@ -150,6 +150,14 @@ class AsyncUDPSocket : public EventHandler {
   void setReusePort(bool reusePort) {
     reusePort_ = reusePort;
   }
+
+  /**
+   * Set SO_REUSEADDR flag on the socket. Default is ON.
+   */
+  void setReuseAddr(bool reuseAddr) {
+    reuseAddr_ = reuseAddr;
+  }
+
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
@@ -172,6 +180,7 @@ class AsyncUDPSocket : public EventHandler {
   // Non-null only when we are reading
   ReadCallback* readCallback_;
 
+  bool reuseAddr_{true};
   bool reusePort_{false};
 };
 
