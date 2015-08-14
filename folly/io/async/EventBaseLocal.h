@@ -16,8 +16,6 @@
 
 #pragma once
 
-#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
-
 #include <boost/noncopyable.hpp>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
@@ -30,12 +28,12 @@ namespace folly {
 
 namespace detail {
 
-class EventBaseLocalBase : boost::noncopyable {
+class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
  public:
   EventBaseLocalBase() {}
   virtual ~EventBaseLocalBase();
   void erase(EventBase& evb);
-  void onEventBaseDestruction(EventBase& evb);
+  void onEventBaseDestruction(EventBase& evb) override;
 
  protected:
   void setVoid(EventBase& evb, std::shared_ptr<void>&& ptr);
@@ -128,5 +126,3 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
 
 
 }
-
-#endif // !__ANDROID__ && !ANDROID && !__APPLE__

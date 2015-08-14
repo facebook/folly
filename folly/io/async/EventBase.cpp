@@ -21,7 +21,6 @@
 #include <folly/io/async/EventBase.h>
 
 #include <folly/ThreadName.h>
-#include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/NotificationQueue.h>
 
 #include <boost/static_assert.hpp>
@@ -239,14 +238,12 @@ EventBase::~EventBase() {
     event_base_free(evb_);
   }
 
-#if !defined(ANDROID) && !defined(__ANDROID__) && !defined(__APPLE__)
   {
     std::lock_guard<std::mutex> lock(localStorageMutex_);
     for (auto storage : localStorageToDtor_) {
       storage->onEventBaseDestruction(*this);
     }
   }
-#endif
   VLOG(5) << "EventBase(): Destroyed.";
 }
 
