@@ -19,6 +19,7 @@
 #include <atomic>
 #include <unistd.h>
 #include <sys/time.h>
+#include <mutex>
 #include <random>
 #include <array>
 
@@ -26,16 +27,30 @@
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 
+#ifdef _MSC_VER
+#include <wincrypt.h>
+#endif
+
 namespace folly {
 
 namespace {
 
 void readRandomDevice(void* data, size_t size) {
+#ifdef _MSC_VER
+  static std::once_flag flag;
+  static HCRYPTPROV cryptoProv;
+  std::call_once(flag, [&] {
+    PCHECK(CryptAcquireContext(&cryptoProv, nullptr, nullptr, PROV_RSA_FULL, 0));
+  });
+  CHECK(size <= std::numeric_limits<DWORD>::max());
+  PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
+#else
   // Keep the random device open for the duration of the program.
   static int randomFd = ::open("/dev/urandom", O_RDONLY);
   PCHECK(randomFd >= 0);
   auto bytesRead = readFull(randomFd, data, size);
   PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);
+#endif
 }
 
 class BufferedRandomDevice {
