@@ -32,7 +32,26 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
   std::lock_guard<std::mutex> entry_lock(mutex_);
 
   if (state_ != SingletonHolderState::NotRegistered) {
-    LOG(FATAL) << "Double registration of singleton: " << type_.name();
+    /* Possible causes:
+     *
+     * You have two instances of the same
+     * folly::Singleton<Class>. Probably because you define the
+     * singleton in a header included in multiple places? In general,
+     * folly::Singleton shouldn't be in the header, only off in some
+     * anonymous namespace in a cpp file. Code needing the singleton
+     * will find it when that code references folly::Singleton<Class>.
+     *
+     * Alternatively, you could have 2 singletons with the same type
+     * defined with a different name in a .cpp (source) file. For
+     * example:
+     *
+     * Singleton<int> a([] { return new int(3); });
+     * Singleton<int> b([] { return new int(4); });
+     *
+     */
+    LOG(FATAL) << "Double registration of singletons of the same "
+               << "underlying type; check for multiple definitions "
+               << "of type folly::Singleton<" + type_.name() + ">";
   }
 
   create_ = std::move(c);
