@@ -130,8 +130,8 @@ void NestedCommandLineApp::displayHelp(
     // Help for a given command
     auto& p = findCommand(args.front());
     if (p.first != args.front()) {
-      printf("`%1$s' is an alias for `%2$s'; showing help for `%2$s'\n",
-             args.front().c_str(), p.first.c_str());
+      printf("`%s' is an alias for `%s'; showing help for `%s'\n",
+             args.front().c_str(), p.first.c_str(), p.first.c_str());
     }
     auto& info = p.second;
 
