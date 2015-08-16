@@ -20,6 +20,7 @@
 
 #include <folly/io/async/EventBase.h>
 
+#include <folly/EventPortability.h>
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 

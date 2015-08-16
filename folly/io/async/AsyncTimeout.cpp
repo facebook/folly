@@ -23,6 +23,8 @@
 #include <folly/io/async/EventUtil.h>
 #include <folly/io/async/Request.h>
 
+#include <folly/EventPortability.h>
+
 #include <assert.h>
 #include <glog/logging.h>
 

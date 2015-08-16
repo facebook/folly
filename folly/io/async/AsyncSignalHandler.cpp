@@ -18,6 +18,7 @@
 #include <folly/io/async/EventBase.h>
 
 #include <folly/Conv.h>
+#include <folly/EventPortability.h>
 
 using std::make_pair;
 using std::pair;
