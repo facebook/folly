@@ -475,6 +475,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
+  virtual void setPeek(bool peek) {
+    peek_ = peek;
+  }
+
   enum class StateEnum : uint8_t {
     UNINIT,
     CONNECTING,
@@ -764,6 +768,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   size_t appBytesReceived_;             ///< Num of bytes received from socket
   size_t appBytesWritten_;              ///< Num of bytes written to socket
   bool isBufferMovable_{false};
+
+  bool peek_{false}; // Peek bytes.
 };
 
 

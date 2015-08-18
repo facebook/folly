@@ -24,8 +24,9 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
  public:
   MockAsyncSSLSocket(
    const std::shared_ptr<SSLContext>& ctx,
-   EventBase* base) :
-    AsyncSSLSocket(ctx, base) {
+   EventBase* base,
+   bool deferSecurityNegotiation = false) :
+    AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {
   }
 
   GMOCK_METHOD5_(, noexcept, ,
@@ -47,6 +48,8 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   MOCK_CONST_METHOD2(
    getSelectedNextProtocolNoThrow,
    bool(const unsigned char**, unsigned*));
+  MOCK_METHOD1(setPeek, void(bool));
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
 
   void sslConn(
     AsyncSSLSocket::HandshakeCB* cb,
@@ -63,9 +66,31 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
 
     sslConnectMockable(cb, timeout, verify);
   }
+
+  void sslAccept(
+    AsyncSSLSocket::HandshakeCB* cb,
+    uint32_t timeout,
+    const SSLContext::SSLVerifyPeerEnum& verify)
+      override {
+    if (timeout > 0) {
+      handshakeTimeout_.scheduleTimeout(timeout);
+    }
+
+    state_ = StateEnum::ESTABLISHED;
+    sslState_ = STATE_ACCEPTING;
+    handshakeCallback_ = cb;
+
+    sslAcceptMockable(cb, timeout, verify);
+  }
+
   MOCK_METHOD3(
    sslConnectMockable,
    void(AsyncSSLSocket::HandshakeCB*, uint64_t,
+     const SSLContext::SSLVerifyPeerEnum&));
+
+  MOCK_METHOD3(
+   sslAcceptMockable,
+   void(AsyncSSLSocket::HandshakeCB*, uint32_t,
      const SSLContext::SSLVerifyPeerEnum&));
 };
 

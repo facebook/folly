@@ -1235,7 +1235,12 @@ ssize_t AsyncSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
   VLOG(5) << "AsyncSocket::performRead() this=" << this
           << ", buf=" << *buf << ", buflen=" << *buflen;
 
-  ssize_t bytes = recv(fd_, *buf, *buflen, MSG_DONTWAIT);
+  int recvFlags = 0;
+  if (peek_) {
+    recvFlags |= MSG_PEEK;
+  }
+
+  ssize_t bytes = recv(fd_, *buf, *buflen, MSG_DONTWAIT | recvFlags);
   if (bytes < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // No more data to read right now.
