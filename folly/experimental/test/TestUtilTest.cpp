@@ -23,6 +23,7 @@
 #include <system_error>
 
 #include <boost/algorithm/string.hpp>
+#include <folly/Memory.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -133,6 +134,43 @@ TEST(CaptureFD, GlogPatterns) {
     EXPECT_PCRE_MATCH(glogWarningPattern(), s);
     EXPECT_PCRE_MATCH(glogErrOrWarnPattern(), s);
   }
+}
+
+class EnvVarSaverTest : public testing::Test {};
+
+TEST_F(EnvVarSaverTest, ExampleNew) {
+  auto key = "hahahahaha";
+  EXPECT_EQ(nullptr, getenv(key));
+
+  auto saver = make_unique<EnvVarSaver>();
+  PCHECK(0 == setenv(key, "blah", true));
+  EXPECT_EQ("blah", std::string{getenv(key)});
+  saver = nullptr;
+  EXPECT_EQ(nullptr, getenv(key));
+}
+
+TEST_F(EnvVarSaverTest, ExampleExisting) {
+  auto key = "USER";
+  EXPECT_NE(nullptr, getenv(key));
+  auto value = std::string{getenv(key)};
+
+  auto saver = make_unique<EnvVarSaver>();
+  PCHECK(0 == setenv(key, "blah", true));
+  EXPECT_EQ("blah", std::string{getenv(key)});
+  saver = nullptr;
+  EXPECT_TRUE(value == getenv(key));
+}
+
+TEST_F(EnvVarSaverTest, ExampleDeleting) {
+  auto key = "USER";
+  EXPECT_NE(nullptr, getenv(key));
+  auto value = std::string{getenv(key)};
+
+  auto saver = make_unique<EnvVarSaver>();
+  PCHECK(0 == unsetenv(key));
+  EXPECT_EQ(nullptr, getenv(key));
+  saver = nullptr;
+  EXPECT_TRUE(value == getenv(key));
 }
 
 int main(int argc, char *argv[]) {

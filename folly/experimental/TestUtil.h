@@ -17,6 +17,7 @@
 #ifndef FOLLY_TESTUTIL_H_
 #define FOLLY_TESTUTIL_H_
 
+#include <map>
 #include <string>
 #include <folly/Range.h>
 #include <folly/experimental/io/FsUtil.h>
@@ -189,6 +190,14 @@ private:
   int oldFDCopy_;  // equal to fd_ after restore()
 
   off_t readOffset_;  // for incremental reading
+};
+
+class EnvVarSaver {
+public:
+  EnvVarSaver();
+  ~EnvVarSaver();
+private:
+  std::map<std::string, std::string> saved_;
 };
 
 }  // namespace test
