@@ -559,8 +559,7 @@ class Filter : public Operator<Filter<Predicate>> {
     template <class Body>
     void foreach(Body&& body) const {
       source_.foreach([&](Value value) {
-        // NB: Argument not forwarded to avoid accidental move-construction
-        if (pred_(value)) {
+        if (pred_(std::forward<Value>(value))) {
           body(std::forward<Value>(value));
         }
       });
@@ -569,8 +568,7 @@ class Filter : public Operator<Filter<Predicate>> {
     template <class Handler>
     bool apply(Handler&& handler) const {
       return source_.apply([&](Value value) -> bool {
-        // NB: Argument not forwarded to avoid accidental move-construction
-        if (pred_(value)) {
+        if (pred_(std::forward<Value>(value))) {
           return handler(std::forward<Value>(value));
         }
         return true;

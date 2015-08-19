@@ -289,15 +289,6 @@ TEST(Gen, FilterDefault) {
   }
 }
 
-TEST(Gen, FilterSink) {
-  auto actual
-    = seq(1, 2)
-    | map([](int x) { return vector<int>{x}; })
-    | filter([](vector<int> v) { return !v.empty(); })
-    | as<vector>();
-  EXPECT_FALSE(from(actual) | rconcat | isEmpty);
-}
-
 TEST(Gen, Contains) {
   {
     auto gen =
