@@ -104,6 +104,11 @@
 
 #include <glog/logging.h>
 
+// use this guard to handleSingleton breaking change in 3rd party code
+#ifndef FOLLY_SINGLETON_TRY_GET
+#define FOLLY_SINGLETON_TRY_GET
+#endif
+
 namespace folly {
 
 // For actual usage, please see the Singleton<T> class at the bottom
@@ -423,7 +428,7 @@ class SingletonVault {
 // It allows for simple access to registering and instantiating
 // singletons.  Create instances of this class in the global scope of
 // type Singleton<T> to register your singleton for later access via
-// Singleton<T>::get().
+// Singleton<T>::try_get().
 template <typename T,
           typename Tag = detail::DefaultTag,
           typename VaultTag = detail::DefaultTag /* for testing */>
@@ -435,7 +440,7 @@ class Singleton {
   // Generally your program life cycle should be fine with calling
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
-  static T* get() {
+  static T* get() __attribute__ ((__deprecated__("Replaced by try_get"))) {
     return getEntry().get();
   }
 
@@ -447,10 +452,20 @@ class Singleton {
     return getEntry().get_weak();
   }
 
-  // Allow the Singleton<t> instance to also retrieve the underlying
-  // singleton, if desired.
-  T& operator*() { return *get(); }
-  T* operator->() { return get(); }
+  // Preferred alternative to get_weak, it returns shared_ptr that can be
+  // stored; a singleton won't be destroyed unless shared_ptr is destroyed.
+  // Avoid holding these shared_ptrs beyond the scope of a function;
+  // don't put them in member variables, always use try_get() instead
+  static std::shared_ptr<T> try_get() {
+    auto ret = get_weak().lock();
+    if (!ret) {
+      LOG(DFATAL) <<
+        "folly::Singleton<" << getEntry().type().name() <<
+        ">::get_weak() called on destructed singleton; "
+        "returning nullptr, possible segfault coming";
+    }
+    return ret;
+  }
 
   explicit Singleton(std::nullptr_t _ = nullptr,
                      typename Singleton::TeardownFunc t = nullptr) :

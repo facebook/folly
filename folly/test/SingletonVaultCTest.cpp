@@ -48,7 +48,7 @@ TEST(SingletonVault, singletonsAreCreatedAndDestroyed) {
   auto vault = folly::SingletonVault::singleton<TestTag>();
   SingletonTest<InstanceCounter> counter_singleton;
   SingletonVault_registrationComplete((SingletonVault_t*) vault);
-  InstanceCounter *counter = SingletonTest<InstanceCounter>::get();
+  SingletonTest<InstanceCounter>::try_get();
   EXPECT_EQ(instance_counter_instances, 1);
   SingletonVault_destroyInstances((SingletonVault_t*) vault);
   EXPECT_EQ(instance_counter_instances, 0);
