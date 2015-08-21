@@ -145,7 +145,7 @@ Other Linux distributions
 
 - additional platform specific dependencies:
 
-  Fedora 17 64-bit
+  Fedora 21 64-bit
     - gcc
     - gcc-c++
     - autoconf
@@ -159,4 +159,7 @@ Other Linux distributions
     - zlib-devel
     - glog-devel
     - gflags-devel
-    - scons (for double-conversion)
+    - scons
+    - double-conversion-devel
+    - openssl-devel
+    - libevent-devel
