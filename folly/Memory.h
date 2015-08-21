@@ -57,6 +57,21 @@ typename std::enable_if<
 make_unique(Args&&...) = delete;
 
 /**
+ * static_function_deleter
+ *
+ * So you can write this:
+ *
+ *      using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free>;
+ *      auto buf = std::unique_ptr<BIO, BIO_deleter>(BIO_new(BIO_s_mem()));
+ *      buf = nullptr;  // calls BIO_free(buf.get())
+ */
+
+template <typename T, void(*f)(T*)>
+struct static_function_deleter {
+  void operator()(T* t) { f(t); }
+};
+
+/**
  *  to_shared_ptr
  *
  *  Convert unique_ptr to shared_ptr without specifying the template type
