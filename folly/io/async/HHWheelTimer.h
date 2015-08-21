@@ -148,14 +148,22 @@ class HHWheelTimer : private folly::AsyncTimeout,
   };
 
   /**
-   * Create a new HHWheelTimer with the specified interval.
+   * Create a new HHWheelTimer with the specified interval and the
+   * default timeout value set.
+   *
+   * Objects created using this version of constructor can be used
+   * to schedule both variable interval timeouts using
+   * scheduleTimeout(callback, timeout) method, and default
+   * interval timeouts using scheduleTimeout(callback) method.
    */
   static int DEFAULT_TICK_INTERVAL;
   explicit HHWheelTimer(folly::EventBase* eventBase,
                         std::chrono::milliseconds intervalMS =
                         std::chrono::milliseconds(DEFAULT_TICK_INTERVAL),
                         AsyncTimeout::InternalEnum internal =
-                        AsyncTimeout::InternalEnum::NORMAL);
+                        AsyncTimeout::InternalEnum::NORMAL,
+                        std::chrono::milliseconds defaultTimeoutMS =
+                        std::chrono::milliseconds(-1));
 
   /**
    * Destroy the HHWheelTimer.
@@ -183,6 +191,15 @@ class HHWheelTimer : private folly::AsyncTimeout,
   }
 
   /**
+   * Get the default timeout interval for this HHWheelTimer.
+   *
+   * Returns the timeout interval in milliseconds.
+   */
+  std::chrono::milliseconds getDefaultTimeout() const {
+    return defaultTimeout_;
+  }
+
+  /**
    * Schedule the specified Callback to be invoked after the
    * specified timeout interval.
    *
@@ -193,6 +210,18 @@ class HHWheelTimer : private folly::AsyncTimeout,
                        std::chrono::milliseconds timeout);
   void scheduleTimeoutImpl(Callback* callback,
                        std::chrono::milliseconds timeout);
+
+  /**
+   * Schedule the specified Callback to be invoked after the
+   * fefault timeout interval.
+   *
+   * If the callback is already scheduled, this cancels the existing timeout
+   * before scheduling the new timeout.
+   *
+   * This method uses CHECK() to make sure that the default timeout was
+   * specified on the object initialization.
+   */
+  void scheduleTimeout(Callback* callback);
 
   template <class F>
   void scheduleTimeoutFn(F fn, std::chrono::milliseconds timeout) {
@@ -262,6 +291,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   virtual void timeoutExpired() noexcept;
 
   std::chrono::milliseconds interval_;
+  std::chrono::milliseconds defaultTimeout_;
 
   static constexpr int WHEEL_BUCKETS = 4;
   static constexpr int WHEEL_BITS = 8;

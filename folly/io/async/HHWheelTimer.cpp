@@ -77,9 +77,11 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
 
 HHWheelTimer::HHWheelTimer(folly::EventBase* eventBase,
                            std::chrono::milliseconds intervalMS,
-                           AsyncTimeout::InternalEnum internal)
+                           AsyncTimeout::InternalEnum internal,
+                           std::chrono::milliseconds defaultTimeoutMS)
   : AsyncTimeout(eventBase, internal)
   , interval_(intervalMS)
+  , defaultTimeout_(defaultTimeoutMS)
   , nextTick_(1)
   , count_(0)
   , catchupEveryN_(DEFAULT_CATCHUP_EVERY_N)
@@ -135,6 +137,12 @@ void HHWheelTimer::scheduleTimeout(Callback* callback,
   callback->setScheduled(this, timeout);
   scheduleTimeoutImpl(callback, timeout);
   count_++;
+}
+
+void HHWheelTimer::scheduleTimeout(Callback* callback) {
+  CHECK(std::chrono::milliseconds(-1) != defaultTimeout_)
+      << "Default timeout was not initialized";
+  scheduleTimeout(callback, defaultTimeout_);
 }
 
 bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
