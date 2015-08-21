@@ -363,8 +363,8 @@ class IPAddress : boost::totally_ordered<IPAddress> {
    * @return IPAddress instance with bits set to 0
    */
   IPAddress mask(uint8_t numBits) const {
-    return isV4() ? IPAddress(std::move(asV4().mask(numBits)))
-                  : IPAddress(std::move(asV6().mask(numBits)));
+    return isV4() ? IPAddress(asV4().mask(numBits))
+                  : IPAddress(asV6().mask(numBits));
   }
 
   /**

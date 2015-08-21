@@ -180,7 +180,7 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
   ByteArray4 toByteArray() const {
     ByteArray4 ba{{0}};
     std::memcpy(ba.data(), bytes(), 4);
-    return std::move(ba);
+    return ba;
   }
 
   // @see IPAddress#toFullyQualified
