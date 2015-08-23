@@ -572,11 +572,11 @@ TEST(NotificationQueueTest, DestroyCallbackPipe) {
 }
 
 /*
- * Test code that creates a TNotificationQueue, then forks, and incorrectly
+ * Test code that creates a NotificationQueue, then forks, and incorrectly
  * tries to send a message to the queue from the child process.
  *
  * The child process should crash in this scenario, since the child code has a
- * bug.  (Older versions of TNotificationQueue didn't catch this in the child,
+ * bug.  (Older versions of NotificationQueue didn't catch this in the child,
  * resulting in a crash in the parent process.)
  */
 TEST(NotificationQueueTest, UseAfterFork) {
@@ -631,7 +631,7 @@ TEST(NotificationQueueTest, UseAfterFork) {
   }
 
   // The child process should have crashed when it tried to call putMessage()
-  // on our TNotificationQueue.
+  // on our NotificationQueue.
   EXPECT_TRUE(WIFSIGNALED(childStatus));
   EXPECT_EQ(SIGABRT, WTERMSIG(childStatus));
 
