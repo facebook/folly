@@ -668,7 +668,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Protected destructor.
    *
    * Users of AsyncSSLSocket must never delete it directly.  Instead, invoke
-   * destroy() instead.  (See the documentation in TDelayedDestruction.h for
+   * destroy() instead.  (See the documentation in DelayedDestruction.h for
    * more details.)
    */
   ~AsyncSSLSocket();

@@ -29,7 +29,7 @@ public:
   typedef std::unique_ptr<MockAsyncServerSocket, Destructor> UniquePtr;
 
   // We explicitly do not mock destroy(), since the base class implementation
-  // in TDelayedDestruction is what actually deletes the object.
+  // in DelayedDestruction is what actually deletes the object.
   //MOCK_METHOD0(destroy,
   //             void());
   MOCK_METHOD1(bind,
