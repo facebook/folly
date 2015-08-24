@@ -76,3 +76,10 @@ TEST(SignalHandler, Simple) {
 
 
 }}}  // namespaces
+
+// Can't use initFacebookLight since that would install its own signal handlers
+// Can't use initFacebookNoSignals since we cannot depend on common
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
