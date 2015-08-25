@@ -774,9 +774,7 @@ class TryFormatValue {
 
 template <class T>
 class TryFormatValue<
-  T,
-  typename std::enable_if<
-      0 < sizeof(FormatValue<typename std::decay<T>::type>)>::type>
+  T, typename FormatValue<typename std::decay<T>::type>::type>
   {
  public:
   template <class FormatCallback>
