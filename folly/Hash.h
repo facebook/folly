@@ -23,10 +23,6 @@
 #include <utility>
 #include <tuple>
 
-#ifdef _MSC_VER
-#include <pthread.h>
-#endif
-
 #include <folly/ApplyTuple.h>
 #include <folly/SpookyHashV1.h>
 #include <folly/SpookyHashV2.h>
@@ -93,14 +89,6 @@ size_t hash_combine_generic(const T& t, const Ts&... ts) {
 // strings or pairs
 class StdHasher {
  public:
-#ifdef _MSC_VER
-  // std::hash doesn't support structs, but, on windows,
-  // pthread_t is a struct, so combine the hash of the
-  // two members.
-  static size_t hash(const pthread_t& t) {
-    return hash_combine_generic<StdHasher>(t.p, t.x);
-  }
-#endif
   template <typename T>
   static size_t hash(const T& t) {
     return std::hash<T>()(t);
