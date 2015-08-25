@@ -389,6 +389,41 @@ TEST_F(HHWheelTimerTest, SlowLoop) {
   T_CHECK_TIMEOUT(start2, end2, milliseconds(10), milliseconds(1));
 }
 
+/*
+ * Test scheduling a mix of timers with default timeout and variable timeout.
+ */
+TEST_F(HHWheelTimerTest, DefaultTimeout) {
+  milliseconds defaultTimeout(milliseconds(5));
+  StackWheelTimer t(&eventBase,
+                    milliseconds(1),
+                    AsyncTimeout::InternalEnum::NORMAL,
+                    defaultTimeout);
+
+  TestTimeout t1;
+  TestTimeout t2;
+
+  ASSERT_EQ(t.count(), 0);
+  ASSERT_EQ(t.getDefaultTimeout(), defaultTimeout);
+
+  t.scheduleTimeout(&t1);
+  t.scheduleTimeout(&t2, milliseconds(10));
+
+  ASSERT_EQ(t.count(), 2);
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 1);
+
+  ASSERT_EQ(t.count(), 0);
+
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], defaultTimeout);
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(10));
+  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+}
+
 TEST_F(HHWheelTimerTest, lambda) {
   StackWheelTimer t(&eventBase, milliseconds(1));
   size_t count = 0;
