@@ -5,7 +5,6 @@
 extern "C" {
 
 // Do nothing for the system log for now.
-// Do nothing for the system log for now.
 void openlog(const char*, int, int) {}
 void closelog() {}
 void syslog(int, const char*, ...) {}
@@ -28,6 +27,10 @@ char* asctime_r(const tm* tm, char* buf) {
 
 void bzero(void* s, size_t n) {
   ZeroMemory(s, n);
+}
+
+int chdir(const char* path) {
+  return _chdir(path);
 }
 
 int closedir(DIR* dir) {
@@ -99,6 +102,10 @@ int dprintf(
 
 int finite(double d) {
   return isfinite(d) ? 1 : 0;
+}
+
+char* getcwd(char* buf, int sz) {
+  return _getcwd(buf, sz);
 }
 
 int getgid() {
@@ -205,16 +212,14 @@ void* memrchr(const void* s, int c, size_t n) {
   return NULL;
 }
 
-namespace {
-int mkdir(const char* fn, int mode) {
-  return _mkdir(fn);
-}
-}
-
 int mlock(const void* addr, size_t len) {
   if (!VirtualLock((void*)addr, len))
     return -1;
   return 0;
+}
+
+int mkdir(const char* fn, int mode) {
+  return _mkdir(fn);
 }
 
 void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
@@ -426,6 +431,10 @@ void rewinddir(DIR* dir) {
     dir->dir.d_type = DT_REG;
 }
 
+int rmdir(const char* path) {
+  return _rmdir(path);
+}
+
 void* sbrk(intptr_t i) {
   return (void*)-1;
 }
@@ -514,6 +523,15 @@ size_t sysconf(int tp) {
       return (size_t)inf.dwNumberOfProcessors;
     }
     default: return (size_t)-1;
+  }
+}
+
+void timeradd(timeval* a, timeval* b, timeval* res) {
+  res->tv_sec = a->tv_sec + b->tv_sec;
+  res->tv_usec = a->tv_usec + b->tv_usec;
+  if (res->tv_usec >= 1000000) {
+    res->tv_sec++;
+    res->tv_usec -= 1000000;
   }
 }
 

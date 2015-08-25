@@ -18,11 +18,6 @@
 #ifdef _MSC_VER
 #include <folly/Portability.h>
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <folly/WindowsPortability.h>
-
 #ifndef __STDC__
 #define __STDC__ 1
 #include <io.h>
@@ -30,6 +25,11 @@
 #else
 #include <io.h>
 #endif
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <folly/WindowsPortability.h>
 
 // Next up, we define our own version of the normal posix
 // names, to prevent windows from being annoying about it's
@@ -145,6 +145,7 @@ int umask(int md);
 int write(int fh, void const* buf, unsigned int mcc);
 ssize_t writev(int fd, const iovec* iov, int count);
 }}
+
 using namespace folly::file_portability;
 #else
 #include <unistd.h>

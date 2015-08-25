@@ -35,7 +35,9 @@ namespace folly { namespace socket_portability {
   template<class R, class F, class... Args>
   R wrapSocketFunction(F f, int s, Args... args) {
     SOCKET h = fd_to_socket(s);
-    return f(h, args...);
+    R ret = f(h, args...);
+    errno = WSAGetLastError();
+    return ret;
   }
 
   int accept(int s, struct sockaddr* addr, int* addrlen) {
@@ -56,6 +58,10 @@ namespace folly { namespace socket_portability {
 
   int getsockname(int s, struct sockaddr* name, int* namelen) {
     return wrapSocketFunction<int>(::getsockname, s, name, namelen);
+  }
+
+  int getsockopt(int s, int level, int optname, char* optval, int* optlen) {
+    return wrapSocketFunction<int>(::getsockopt, s, level, optname, (char*)optval, optlen);
   }
 
   int getsockopt(int s, int level, int optname, void* optval, int* optlen) {
@@ -88,6 +94,10 @@ namespace folly { namespace socket_portability {
 
   int recv(int s, void* buf, int len, int flags) {
     return wrapSocketFunction<int>(::recv, s, (char*)buf, len, flags);
+  }
+
+  int recvfrom(int s, char* buf, int len, int flags, struct sockaddr* from, int* fromlen) {
+    return wrapSocketFunction<int>(::recvfrom, s, (char*)buf, len, flags, from, fromlen);
   }
 
   int recvfrom(int s, void* buf, int len, int flags, struct sockaddr* from, int* fromlen) {
@@ -129,6 +139,10 @@ namespace folly { namespace socket_portability {
     return -1;
   }
 
+  int send(int s, const char* buf, int len, int flags) {
+    return wrapSocketFunction<int>(::send, s, (char*)buf, len, flags);
+  }
+
   int send(int s, const void* buf, int len, int flags) {
     return wrapSocketFunction<int>(::send, s, (char*)buf, len, flags);
   }
@@ -158,6 +172,10 @@ namespace folly { namespace socket_portability {
     if (res == 0)
       return (ssize_t)bytesSent;
     return -1;
+  }
+
+  int sendto(int s, const char* buf, int len, int flags, const sockaddr* to, int tolen) {
+    return wrapSocketFunction<int>(::sendto, s, (char*)buf, len, flags, to, tolen);
   }
 
   int sendto(int s, const void* buf, int len, int flags, const sockaddr* to, int tolen) {

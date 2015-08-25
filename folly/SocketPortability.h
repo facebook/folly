@@ -24,7 +24,7 @@
 #endif
 
 #ifdef _MSC_VER
-#include <fcntl.h>
+
 #ifndef __STDC__
 #define __STDC__ 1
 #include <io.h>
@@ -32,6 +32,8 @@
 #else
 #include <io.h>
 #endif
+
+#include <fcntl.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <ws2def.h>
@@ -71,6 +73,7 @@ namespace folly { namespace socket_portability {
   int connect(int s, const struct sockaddr* name, int namelen);
   int getpeername(int s, struct sockaddr* name, int* namelen);
   int getsockname(int s, struct sockaddr* name, int* namelen);
+  int getsockopt(int s, int level, int optname, char* optval, int* optlen);
   int getsockopt(int s, int level, int optname, void* optval, int* optlen);
   int inet_aton(const char *cp, struct in_addr *inp);
   const char* inet_ntop(int af, const void* src, char* dst, socklen_t size);
@@ -78,10 +81,13 @@ namespace folly { namespace socket_portability {
   int poll(pollfd* fds, int nfds, int timeout);
   int recv(int s, char* buf, int len, int flags);
   int recv(int s, void* buf, int len, int flags);
+  int recvfrom(int s, char* buf, int len, int flags, struct sockaddr* from, int* fromlen);
   int recvfrom(int s, void* buf, int len, int flags, struct sockaddr* from, int* fromlen);
   ssize_t recvmsg(int s, struct msghdr* message, int fl);
+  int send(int s, const char* buf, int len, int flags);
   int send(int s, const void* buf, int len, int flags);
   ssize_t sendmsg(int s, const struct msghdr *message, int fl);
+  int sendto(int s, const char* buf, int len, int flags, const sockaddr* to, int tolen);
   int sendto(int s, const void* buf, int len, int flags, const sockaddr* to, int tolen);
   // We use this first overload to convince MSVC to use our overloads, rather than the
   // winsock ones, when optval is a const char*.
