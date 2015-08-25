@@ -96,7 +96,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (address.getFamily() == AF_INET6) {
     int flag = 1;
-    if (::setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
+    if (setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
                      &flag, sizeof(flag))) {
       throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
