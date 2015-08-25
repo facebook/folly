@@ -180,6 +180,7 @@ std::string CaptureFD::readIncremental() {
   return std::string(buf.get(), size);
 }
 
+#ifndef _MSC_VER
 static std::map<std::string, std::string> getEnvVarMap() {
   std::map<std::string, std::string> data;
   for (auto it = environ; *it != nullptr; ++it) {
@@ -209,6 +210,7 @@ EnvVarSaver::~EnvVarSaver() {
     PCHECK(0 == setenv(kvp.first.c_str(), kvp.second.c_str(), (int)true));
   }
 }
+#endif
 
 }  // namespace test
 }  // namespace folly
