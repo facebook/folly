@@ -58,15 +58,16 @@
 #ifndef __STDC__
 #define __STDC__ 1
 #include <io.h>
+#include <direct.h>
 #undef __STDC__
 #else
 #include <io.h>
+#include <direct.h>
 #endif
 
 #include <folly/WindowsPortability.h>
 
 #include <assert.h>
-#include <direct.h>
 #include <intrin.h>
 #include <inttypes.h>
 #include <malloc.h>
@@ -100,8 +101,17 @@ extern "C" {
 #define S_IXOTH S_IXUSR
 #define S_IWOTH S_IWUSR
 #define S_IROTH S_IRUSR
+#define S_IRWXU (S_IRUSR | S_IWUSR | S_IXUSR)
+#define S_IRWXG (S_IRGRP | S_IWGRP | S_IXGRP)
 
-
+#define LOG_EMERG 1
+#define LOG_ALERT 1
+#define LOG_CRIT 1
+#define LOG_ERR 4
+#define LOG_WARNING 5
+#define LOG_NOTICE 6
+#define LOG_INFO 6
+#define LOG_DEBUG 6
 void openlog(const char*, int, int);
 void closelog();
 void syslog(int, const char*, ...);
@@ -120,11 +130,12 @@ void syslog(int, const char*, ...);
 unsigned int alarm(unsigned int seconds);
 char* asctime_r(const tm* tm, _Out_writes_z_(64) char* buf);
 void bzero(void* s, size_t n);
+int chdir(const char* path);
 
 #define DT_UNKNOWN 0
-#define DT_DIR     1
-#define DT_REG     2
-#define DT_LNK     3
+#define DT_DIR 1
+#define DT_REG 2
+#define DT_LNK 3
 struct dirent {
   unsigned char d_type;
   char* d_name;
@@ -145,6 +156,7 @@ int dprintf(
   _Printf_format_string_ const char *fmt,
   ...);
 int finite(double d);
+char* getcwd(char* buf, int sz);
 int getgid();
 pid_t getppid();
 
@@ -156,7 +168,7 @@ struct rlimit {
 #define RLIMIT_CORE 0
 #define RLIMIT_NOFILE 0
 #define RLIMIT_DATA 0
-#define	RLIMIT_STACK 3
+#define RLIMIT_STACK 3
 #define RLIM_INFINITY SIZE_MAX
 int getrlimit(int type, rlimit* dst);
 
@@ -204,12 +216,7 @@ int madvise(const void* addr, size_t len, int advise);
 size_t malloc_usable_size(void* addr);
 void* memmem(const void* haystack, size_t hlen, const void* needle, size_t nlen);
 void* memrchr(const void* s, int c, size_t n);
-#ifdef __cplusplus
-// This has to be in a namespace to allow overloading.
-namespace {
-  int mkdir(const char* fn, int mode);
-}
-#endif
+int mkdir(const char* fn, int mode);
 int mlock(const void* addr, size_t len);
 
 #define MAP_ANONYMOUS 1
@@ -239,6 +246,7 @@ int posix_memalign(void** memptr, size_t alignment, size_t size);
 dirent* readdir(DIR* dir);
 int readdir_r(DIR* dir, dirent* buf, dirent** ent);
 void rewinddir(DIR* dir);
+int rmdir(const char* path);
 void* sbrk(intptr_t i);
 void setbuffer(FILE* f, char* buf, size_t size);
 int setrlimit(int type, rlimit* src);
@@ -259,6 +267,7 @@ pid_t syscall(int num, ...);
 #define _SC_NPROCESSORS_CONF 2
 size_t sysconf(int tp);
 
+void timeradd(timeval* a, timeval* b, timeval* res);
 void timersub(timeval* a, timeval* b, timeval* res);
 int usleep(unsigned int ms);
 
@@ -338,6 +347,7 @@ inline void* __builtin_return_address(unsigned int frame) {
 #else
 #include <dirent.h>
 #include <libgen.h>
+#include <syslog.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>

@@ -4,12 +4,12 @@
 
 namespace folly { namespace file_portability {
 
-inline bool is_fh_socket(int fh) {
+bool is_fh_socket(int fh) {
   SOCKET h = ::fsp::fd_to_socket(fh);
   WSANETWORKEVENTS e;
   e.lNetworkEvents = 0xABCDEF12;
   WSAEnumNetworkEvents(h, nullptr, &e);
-  return e.lNetworkEvents == 0xABCDEF12;
+  return e.lNetworkEvents != 0xABCDEF12;
 }
 
 // Generic wrapper for the p* family of functions.
@@ -118,10 +118,16 @@ int fcntl(int fd, int cmd, ...) {
     case F_SETFL: {
       int flags = va_arg(args, int);
       if (flags & O_NONBLOCK) {
-        SOCKET s = (SOCKET)_get_osfhandle(fd);
-        if (s != INVALID_SOCKET) {
-          u_long nonBlockingEnabled = 1;
-          res = ioctlsocket(s, FIONBIO, &nonBlockingEnabled);
+        // If it's not a socket, it's probably a pipe, and
+        // those are non-blocking by default with Windows.
+        if (is_fh_socket(fd)) {
+          SOCKET s = (SOCKET)_get_osfhandle(fd);
+          if (s != INVALID_SOCKET) {
+            u_long nonBlockingEnabled = 1;
+            res = ioctlsocket(s, FIONBIO, &nonBlockingEnabled);
+          }
+        } else {
+          res = 0;
         }
       }
       break;
