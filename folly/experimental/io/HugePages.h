@@ -21,12 +21,12 @@
 #include <sys/types.h>
 #include <cstddef>
 #include <string>
-#include <unistd.h>
 #include <utility>
 #include <vector>
 
 #include <boost/operators.hpp>
 
+#include <folly/FilePortability.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/FsUtil.h>
 
