@@ -257,11 +257,19 @@ void doNotOptimizeAway(T&& datum) {
 
 #pragma optimize("", on)
 
+#elif defined(__clang__)
+
+template <class T>
+__attribute__((__optnone__)) void doNotOptimizeAway(T&& datum) {
+}
+
 #else
+
 template <class T>
 void doNotOptimizeAway(T&& datum) {
   asm volatile("" : "+r" (datum));
 }
+
 #endif
 
 } // namespace folly
