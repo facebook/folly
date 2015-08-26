@@ -61,7 +61,17 @@ make_unique(Args&&...) = delete;
  *
  * So you can write this:
  *
- *      using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free>;
+ *      using RSA_deleter = folly::static_function_deleter<RSA, &RSA_free>;
+ *      auto rsa = std::unique_ptr<RSA, RSA_deleter>(RSA_new());
+ *      RSA_generate_key_ex(rsa.get(), bits, exponent, nullptr);
+ *      rsa = nullptr;  // calls RSA_free(rsa.get())
+ *
+ * This would be sweet as well for BIO, but unfortunately BIO_free has signature
+ * int(BIO*) while we require signature void(BIO*). So you would need to make a
+ * wrapper for it:
+ *
+ *      inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
+ *      using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free_fb>;
  *      auto buf = std::unique_ptr<BIO, BIO_deleter>(BIO_new(BIO_s_mem()));
  *      buf = nullptr;  // calls BIO_free(buf.get())
  */
