@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <thread>
 #include <pthread.h>
 #include <folly/Range.h>
 
@@ -27,6 +28,12 @@ namespace folly {
 #if __GLIBC_PREREQ(2, 12)
 # define FOLLY_HAS_PTHREAD_SETNAME_NP
 #endif
+#endif
+
+#ifdef _MSC_VER
+inline bool setThreadName(std::thread::native_handle_type id, StringPiece name) {
+  return false;
+}
 #endif
 
 inline bool setThreadName(pthread_t id, StringPiece name) {
