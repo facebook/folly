@@ -1604,13 +1604,30 @@ AsyncSSLSocket::clientHelloParsingCallback(int written, int version,
     if (cursor.totalLength() > 0) {
       uint16_t extensionsLength = cursor.readBE<uint16_t>();
       while (extensionsLength) {
+        TLSExtension extensionType = static_cast<TLSExtension>(
+            cursor.readBE<uint16_t>());
         sock->clientHelloInfo_->
-          clientHelloExtensions_.push_back(cursor.readBE<uint16_t>());
+          clientHelloExtensions_.push_back(extensionType);
         extensionsLength -= 2;
         uint16_t extensionDataLength = cursor.readBE<uint16_t>();
         extensionsLength -= 2;
-        cursor.skip(extensionDataLength);
-        extensionsLength -= extensionDataLength;
+
+        if (extensionType == TLSExtension::SIGNATURE_ALGORITHMS) {
+          cursor.skip(2);
+          extensionDataLength -= 2;
+          while (extensionDataLength) {
+            HashAlgorithm hashAlg = static_cast<HashAlgorithm>(
+                cursor.readBE<uint8_t>());
+            SignatureAlgorithm sigAlg = static_cast<SignatureAlgorithm>(
+                cursor.readBE<uint8_t>());
+            extensionDataLength -= 2;
+            sock->clientHelloInfo_->
+              clientHelloSigAlgs_.emplace_back(hashAlg, sigAlg);
+          }
+        } else {
+          cursor.skip(extensionDataLength);
+          extensionsLength -= extensionDataLength;
+        }
       }
     }
   } catch (std::out_of_range& e) {
