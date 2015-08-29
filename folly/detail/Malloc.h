@@ -32,6 +32,9 @@ void dallocx(void*, int) __attribute__((__weak__));
 size_t nallocx(size_t, int) __attribute__((__weak__));
 int mallctl(const char*, void*, size_t*, void*, size_t)
       __attribute__((__weak__));
+int mallctlnametomib(const char*, size_t*, size_t*) __attribute__((__weak__));
+int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
+      __attribute__((__weak__));
 #else
 extern void* (*mallocx)(size_t, int);
 extern void* (*rallocx)(void*, size_t, int);
@@ -40,6 +43,9 @@ extern size_t (*sallocx)(const void*, int);
 extern void (*dallocx)(void*, int);
 extern size_t (*nallocx)(size_t, int);
 extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
+extern int (*mallctlnametomib)(const char*, size_t*, size_t*);
+extern int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*,
+                           size_t);
 #endif
 
 }

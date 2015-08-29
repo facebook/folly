@@ -58,7 +58,7 @@ namespace folly {
 #pragma GCC system_header
 
 /**
- * Declare *allocx() and mallctl() as weak symbols. These will be provided by
+ * Declare *allocx() and mallctl*() as weak symbols. These will be provided by
  * jemalloc if we are using jemalloc, or will be NULL if we are using another
  * malloc implementation.
  */
@@ -75,6 +75,11 @@ __attribute__((__weak__));
 extern "C" size_t nallocx(size_t, int)
 __attribute__((__weak__));
 extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
+__attribute__((__weak__));
+extern "C" int mallctlnametomib(const char*, size_t*, size_t*)
+__attribute__((__weak__));
+extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
+                            size_t)
 __attribute__((__weak__));
 
 #include <bits/functexcept.h>

@@ -51,8 +51,8 @@ static unsigned mallctlWrapper(const char* cmd, const unsigned* in,
 
 void MemoryIdler::flushLocalMallocCaches() {
   if (usingJEMalloc()) {
-    if (!mallctl) {
-      FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl weak link failed";
+    if (!mallctl || !mallctlnametomib || !mallctlbymib) {
+      FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
       return;
     }
 
@@ -69,12 +69,15 @@ void MemoryIdler::flushLocalMallocCaches() {
     // purging the arenas is counter-productive.  We use the heuristic
     // that if narenas <= 2 * num_cpus then we shouldn't do anything here,
     // which detects when the narenas has been reduced from the default
-    unsigned narenas;
-    unsigned arenaForCurrent;
-    if (mallctlWrapper("arenas.narenas", nullptr, &narenas) == 0 &&
+    unsigned narenas, arenaForCurrent;
+    size_t mib[3];
+    size_t miblen = 3;
+    if (mallctlWrapper("opt.narenas", nullptr, &narenas) == 0 &&
         narenas > 2 * CacheLocality::system().numCpus &&
-        mallctlWrapper("thread.arena", nullptr, &arenaForCurrent) == 0) {
-      (void)mallctlWrapper("arenas.purge", &arenaForCurrent, nullptr);
+        mallctlWrapper("thread.arena", nullptr, &arenaForCurrent) == 0 &&
+        mallctlnametomib("arena.0.purge", mib, &miblen) == 0) {
+      mib[1] = size_t(arenaForCurrent);
+      mallctlbymib(mib, miblen, nullptr, nullptr, nullptr, 0);
     }
   }
 }
