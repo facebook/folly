@@ -26,6 +26,9 @@ size_t (*sallocx)(const void*, int) = nullptr;
 void (*dallocx)(void*, int) = nullptr;
 size_t (*nallocx)(size_t, int) = nullptr;
 int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
+int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;
+int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t) =
+    nullptr;
 #endif
 
 }

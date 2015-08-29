@@ -269,7 +269,7 @@ TEST(small_vector, BasicGuarantee) {
 
 // Run this with.
 // MALLOC_CONF=prof_leak:true
-// LD_PRELOAD=${JEMALLOC_PATH}/lib/libjemalloc.so.1
+// LD_PRELOAD=${JEMALLOC_PATH}/lib/libjemalloc.so.2
 // LD_PRELOAD="$LD_PRELOAD:"${UNWIND_PATH}/lib/libunwind.so.7
 TEST(small_vector, leak_test) {
   for (int j = 0; j < 1000; ++j) {

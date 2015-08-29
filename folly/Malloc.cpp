@@ -31,7 +31,8 @@ bool usingJEMallocSlow() {
   // (!!). http://goo.gl/xpmctm
   if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr
       || sallocx == nullptr || dallocx == nullptr || nallocx == nullptr
-      || mallctl == nullptr) {
+      || mallctl == nullptr || mallctlnametomib == nullptr
+      || mallctlbymib == nullptr) {
     return false;
   }
 
