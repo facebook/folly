@@ -182,6 +182,11 @@ spooky_hash_v2_test_SOURCES = SpookyHashV2Test.cpp
 spooky_hash_v2_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += spooky_hash_v2_test
 
+token_bucket_test_SOURCES = TokenBucketTest.cpp
+token_bucket_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+TESTS += token_bucket_test
+
+
 futures_test_SOURCES = \
     ../futures/test/CollectTest.cpp \
     ../futures/test/ContextTest.cpp \
