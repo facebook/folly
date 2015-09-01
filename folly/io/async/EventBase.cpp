@@ -238,6 +238,12 @@ EventBase::~EventBase() {
     event_base_free(evb_);
   }
 
+  while (!runAfterDrainCallbacks_.empty()) {
+    LoopCallback* callback = &runAfterDrainCallbacks_.front();
+    runAfterDrainCallbacks_.pop_front();
+    callback->runLoopCallback();
+  }
+
   {
     std::lock_guard<std::mutex> lock(localStorageMutex_);
     for (auto storage : localStorageToDtor_) {
@@ -524,6 +530,13 @@ void EventBase::runInLoop(Cob&& cob, bool thisIteration) {
   } else {
     loopCallbacks_.push_back(*wrapper);
   }
+}
+
+void EventBase::runAfterDrain(Cob&& cob) {
+  auto callback = new FunctionLoopCallback<Cob>(std::move(cob));
+  std::lock_guard<std::mutex> lg(runAfterDrainCallbacksMutex_);
+  callback->cancelLoopCallback();
+  runAfterDrainCallbacks_.push_back(*callback);
 }
 
 void EventBase::runOnDestruction(LoopCallback* callback) {

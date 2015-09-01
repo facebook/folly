@@ -318,6 +318,15 @@ class EventBase : private boost::noncopyable,
   void runOnDestruction(LoopCallback* callback);
 
   /**
+   * Adds the given callback to a queue of things run after the notification
+   * queue is drained before the destruction of current EventBase.
+   *
+   * Note: will be called from the thread that invoked EventBase destructor,
+   *       after the final run of loop callbacks.
+   */
+  void runAfterDrain(Cob&& cob);
+
+  /**
    * Adds a callback that will run immediately *before* the event loop.
    * This is very similar to runInLoop(), but will not cause the loop to break:
    * For example, this callback could be used to get loop times.
@@ -677,6 +686,7 @@ class EventBase : private boost::noncopyable,
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
   LoopCallbackList onDestructionCallbacks_;
+  LoopCallbackList runAfterDrainCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks
   // if we are in the middle of running loop callbacks, such that
@@ -743,6 +753,9 @@ class EventBase : private boost::noncopyable,
 
   // allow runOnDestruction() to be called from any threads
   std::mutex onDestructionCallbacksMutex_;
+
+  // allow runAfterDrain() to be called from any threads
+  std::mutex runAfterDrainCallbacksMutex_;
 
   // see EventBaseLocal
   friend class detail::EventBaseLocalBase;
