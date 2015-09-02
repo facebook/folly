@@ -501,9 +501,19 @@ TEST(Future, makeFuture) {
   EXPECT_TYPE(makeFutureWith(fun), Future<int>);
   EXPECT_EQ(42, makeFutureWith(fun).value());
 
+  auto funf = [] { return makeFuture<int>(43); };
+  EXPECT_TYPE(makeFutureWith(funf), Future<int>);
+  EXPECT_EQ(43, makeFutureWith(funf).value());
+
   auto failfun = []() -> int { throw eggs; };
   EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
+  EXPECT_NO_THROW(makeFutureWith(failfun));
   EXPECT_THROW(makeFutureWith(failfun).value(), eggs_t);
+
+  auto failfunf = []() -> Future<int> { throw eggs; };
+  EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
+  EXPECT_NO_THROW(makeFutureWith(failfunf));
+  EXPECT_THROW(makeFutureWith(failfunf).value(), eggs_t);
 
   EXPECT_TYPE(makeFuture(), Future<Unit>);
 }

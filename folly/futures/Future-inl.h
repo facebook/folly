@@ -475,10 +475,32 @@ Future<Unit> makeFuture() {
   return makeFuture(Unit{});
 }
 
+// makeFutureWith(Future<T>()) -> Future<T>
 template <class F>
-auto makeFutureWith(F&& func)
-    -> Future<typename Unit::Lift<decltype(func())>::type> {
-  using LiftedResult = typename Unit::Lift<decltype(func())>::type;
+typename std::enable_if<isFuture<typename std::result_of<F()>::type>::value,
+                        typename std::result_of<F()>::type>::type
+makeFutureWith(F&& func) {
+  using InnerType =
+      typename isFuture<typename std::result_of<F()>::type>::Inner;
+  try {
+    return func();
+  } catch (std::exception& e) {
+    return makeFuture<InnerType>(
+        exception_wrapper(std::current_exception(), e));
+  } catch (...) {
+    return makeFuture<InnerType>(exception_wrapper(std::current_exception()));
+  }
+}
+
+// makeFutureWith(T()) -> Future<T>
+// makeFutureWith(void()) -> Future<Unit>
+template <class F>
+typename std::enable_if<
+    !(isFuture<typename std::result_of<F()>::type>::value),
+    Future<typename Unit::Lift<typename std::result_of<F()>::type>::type>>::type
+makeFutureWith(F&& func) {
+  using LiftedResult =
+      typename Unit::Lift<typename std::result_of<F()>::type>::type;
   return makeFuture<LiftedResult>(makeTryWith([&func]() mutable {
     return func();
   }));
