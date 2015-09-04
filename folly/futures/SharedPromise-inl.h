@@ -102,7 +102,7 @@ void SharedPromise<T>::setValue(M&& v) {
 template <class T>
 template <class F>
 void SharedPromise<T>::setWith(F&& func) {
-  setTry(makeTryFunction(std::forward<F>(func)));
+  setTry(makeTryWith(std::forward<F>(func)));
 }
 
 template <class T>
