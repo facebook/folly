@@ -33,7 +33,6 @@ nobase_follyinclude_HEADERS = \
 	Benchmark.h \
 	Bits.h \
 	Checksum.h \
-	Chrono.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
 	ContainerTraits.h \
