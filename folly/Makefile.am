@@ -21,6 +21,7 @@ nobase_follyinclude_HEADERS = \
 	ApplyTuple.h \
 	Arena.h \
 	Arena-inl.h \
+	Assume.h \
 	AtomicBitSet.h \
 	AtomicHashArray.h \
 	AtomicHashArray-inl.h \
