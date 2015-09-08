@@ -55,10 +55,11 @@
 #ifndef FOLLY_BITS_H_
 #define FOLLY_BITS_H_
 
-#if !defined(__clang__) && !defined(_MSC_VER)
+#if !defined(__clang__) && (_MSC_VER >= 1900)
 #define FOLLY_INTRINSIC_CONSTEXPR constexpr
 #else
-// GCC is the only compiler with intrinsics constexpr.
+// GCC and MSVC 2015+ are the only compilers with
+// intrinsics constexpr.
 #define FOLLY_INTRINSIC_CONSTEXPR const
 #endif
 
@@ -70,14 +71,6 @@
 
 #if FOLLY_HAVE_BYTESWAP_H
 # include <byteswap.h>
-#endif
-
-#ifdef _MSC_VER
-# include <intrin.h>
-# pragma intrinsic(_BitScanForward)
-# pragma intrinsic(_BitScanForward64)
-# pragma intrinsic(_BitScanReverse)
-# pragma intrinsic(_BitScanReverse64)
 #endif
 
 #include <cassert>
@@ -100,12 +93,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward(&index, x) ? index : 0;
-#else
   return __builtin_ffs(x);
-#endif
 }
 
 template <class T>
@@ -117,12 +105,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward(&index, x) ? index : 0;
-#else
   return __builtin_ffsl(x);
-#endif
 }
 
 template <class T>
@@ -134,12 +117,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findFirstSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  return _BitScanForward64(&index, x) ? index : 0;
-#else
   return __builtin_ffsll(x);
-#endif
 }
 
 template <class T>
@@ -164,18 +142,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  int clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<int>(31 - index);
-  } else {
-    clz = 32;
-  }
-  return x ? 8 * sizeof(unsigned int) - clz : 0;
-#else
   return x ? 8 * sizeof(unsigned int) - __builtin_clz(x) : 0;
-#endif
 }
 
 template <class T>
@@ -187,18 +154,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  int clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<int>(31 - index);
-  } else {
-    clz = 32;
-  }
-  return x ? 8 * sizeof(unsigned int) - clz : 0;
-#else
   return x ? 8 * sizeof(unsigned long) - __builtin_clzl(x) : 0;
-#endif
 }
 
 template <class T>
@@ -210,18 +166,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findLastSet(T x) {
-#ifdef _MSC_VER
-  unsigned long index;
-  unsigned long long clz;
-  if (_BitScanReverse(&index, x)) {
-    clz = static_cast<unsigned long long>(63 - index);
-  } else {
-    clz = 64;
-  }
-  return x ? 8 * sizeof(unsigned long long) - clz : 0;
-#else
   return x ? 8 * sizeof(unsigned long long) - __builtin_clzll(x) : 0;
-#endif
 }
 
 template <class T>
