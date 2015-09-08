@@ -1477,7 +1477,7 @@ to(const Src & value) {
  * Enum to anything and back
  ******************************************************************************/
 
-#if defined(__clang__) || __GNUC_PREREQ(4, 7)
+#if defined(__clang__) || __GNUC_PREREQ(4, 7) || defined(_MSC_VER)
 // std::underlying_type became available by gcc 4.7.0
 
 template <class Tgt, class Src>
