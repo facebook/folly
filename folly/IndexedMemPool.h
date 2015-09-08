@@ -129,7 +129,7 @@ struct IndexedMemPool : boost::noncopyable {
     , globalHead_(TaggedPtr{})
   {
     const size_t needed = sizeof(Slot) * (actualCapacity_ + 1);
-    long pagesize = sysconf(_SC_PAGESIZE);
+    size_t pagesize = sysconf(_SC_PAGESIZE);
     mmapLength_ = ((needed - 1) & ~(pagesize - 1)) + pagesize;
     assert(needed <= mmapLength_ && mmapLength_ < needed + pagesize);
     assert((mmapLength_ % pagesize) == 0);
