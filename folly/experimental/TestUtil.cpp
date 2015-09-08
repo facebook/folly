@@ -28,6 +28,10 @@
 #include <folly/FileUtil.h>
 #include <folly/String.h>
 
+#ifndef _MSC_VER
+extern char** environ;
+#endif
+
 namespace folly {
 namespace test {
 
