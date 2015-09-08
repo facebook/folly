@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <boost/version.hpp>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <folly/Conv.h>
@@ -80,6 +81,9 @@ class GFlagValueSemanticBase : public po::value_semantic {
     : info_(std::move(info)) { }
 
   std::string name() const override { return "arg"; }
+#if BOOST_VERSION >= 105900
+  bool adjacent_tokens_only() const override { return false; }
+#endif
   bool is_composing() const override { return false; }
   bool is_required() const override { return false; }
   // We handle setting the GFlags from parse(), so notify() does nothing.
