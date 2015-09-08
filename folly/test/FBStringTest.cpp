@@ -1291,15 +1291,12 @@ TEST(FBString, testFrontBack) {
 
 TEST(FBString, noexcept) {
   EXPECT_TRUE(noexcept(fbstring()));
-  // std::move is not marked noexcept in gcc 4.6, sigh
-#if __GNUC_PREREQ(4, 7)
   fbstring x;
   EXPECT_FALSE(noexcept(fbstring(x)));
   EXPECT_TRUE(noexcept(fbstring(std::move(x))));
   fbstring y;
   EXPECT_FALSE(noexcept(y = x));
   EXPECT_TRUE(noexcept(y = std::move(x)));
-#endif
 }
 
 TEST(FBString, iomanip) {
