@@ -116,7 +116,7 @@
 #elif defined(__clang__) || defined(__GNUC__)
 # define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
 #else
-# define FOLLY_ALWAYS_INLINE
+# define FOLLY_ALWAYS_INLINE inline
 #endif
 
 // detection for 64 bit
