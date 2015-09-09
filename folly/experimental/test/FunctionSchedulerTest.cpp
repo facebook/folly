@@ -15,7 +15,11 @@
  */
 #include <folly/experimental/FunctionScheduler.h>
 
+#include <algorithm>
 #include <atomic>
+#include <cassert>
+#include <random>
+#include <folly/Random.h>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -31,8 +35,12 @@ namespace {
  * to run.
  */
 static const auto timeFactor = std::chrono::milliseconds(100);
-std::chrono::milliseconds testInterval(int n) {
-  return n * timeFactor;
+std::chrono::milliseconds testInterval(int n) { return n * timeFactor; }
+int getTicksWithinRange(int n, int min, int max) {
+  assert(min <= max);
+  n = std::max(min, n);
+  n = std::min(max, n);
+  return n;
 }
 void delay(int n) {
   std::chrono::microseconds usec(n * timeFactor);
@@ -320,4 +328,87 @@ TEST(FunctionScheduler, SteadyCatchup) {
   // tick every 5ms. Despite tick == 2 is slow, later ticks should be fast
   // enough to catch back up to schedule
   EXPECT_NEAR(100, ticks.load(), 10);
+}
+
+TEST(FunctionScheduler, UniformDistribution) {
+  int total = 0;
+  const int kTicks = 2;
+  std::chrono::milliseconds minInterval =
+      testInterval(kTicks) - (timeFactor / 5);
+  std::chrono::milliseconds maxInterval =
+      testInterval(kTicks) + (timeFactor / 5);
+  FunctionScheduler fs;
+  fs.addFunctionUniformDistribution([&] { total += 2; },
+                                    minInterval,
+                                    maxInterval,
+                                    "UniformDistribution",
+                                    std::chrono::milliseconds(0));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+  delay(kTicks);
+  EXPECT_EQ(4, total);
+  delay(kTicks);
+  EXPECT_EQ(6, total);
+  fs.shutdown();
+  delay(2);
+  EXPECT_EQ(6, total);
+}
+
+TEST(FunctionScheduler, ExponentialBackoff) {
+  int total = 0;
+  int expectedInterval = 0;
+  int nextInterval = 2;
+  FunctionScheduler fs;
+  fs.addFunctionGenericDistribution(
+      [&] { total += 2; },
+      [&expectedInterval, nextInterval]() mutable {
+        expectedInterval = nextInterval;
+        nextInterval *= nextInterval;
+        return testInterval(expectedInterval);
+      },
+      "ExponentialBackoff",
+      "2^n * 100ms",
+      std::chrono::milliseconds(0));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+  delay(expectedInterval);
+  EXPECT_EQ(4, total);
+  delay(expectedInterval);
+  EXPECT_EQ(6, total);
+  fs.shutdown();
+  delay(2);
+  EXPECT_EQ(6, total);
+}
+
+TEST(FunctionScheduler, GammaIntervalDistribution) {
+  int total = 0;
+  int expectedInterval = 0;
+  FunctionScheduler fs;
+  std::default_random_engine generator(folly::Random::rand32());
+  // The alpha and beta arguments are selected, somewhat randomly, to be 2.0.
+  // These values do not matter much in this test, as we are not testing the
+  // std::gamma_distribution itself...
+  std::gamma_distribution<double> gamma(2.0, 2.0);
+  fs.addFunctionGenericDistribution(
+      [&] { total += 2; },
+      [&expectedInterval, generator, gamma]() mutable {
+        expectedInterval =
+            getTicksWithinRange(static_cast<int>(gamma(generator)), 2, 10);
+        return testInterval(expectedInterval);
+      },
+      "GammaDistribution",
+      "gamma(2.0,2.0)*100ms",
+      std::chrono::milliseconds(0));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+  delay(expectedInterval);
+  EXPECT_EQ(4, total);
+  delay(expectedInterval);
+  EXPECT_EQ(6, total);
+  fs.shutdown();
+  delay(2);
+  EXPECT_EQ(6, total);
 }
