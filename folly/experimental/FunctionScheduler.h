@@ -23,7 +23,6 @@
 #include <mutex>
 #include <thread>
 #include <vector>
-#include <random>
 
 namespace folly {
 
@@ -104,12 +103,45 @@ class FunctionScheduler {
    * Add a new function to the FunctionScheduler with a specified
    * LatencyDistribution
    */
-  void addFunction(const std::function<void()>& cb,
-                   std::chrono::milliseconds interval,
-                   const LatencyDistribution& latencyDistr,
-                   StringPiece nameID = StringPiece(),
-                   std::chrono::milliseconds startDelay =
-                      std::chrono::milliseconds(0));
+  void addFunction(
+      const std::function<void()>& cb,
+      std::chrono::milliseconds interval,
+      const LatencyDistribution& latencyDistr,
+      StringPiece nameID = StringPiece(),
+      std::chrono::milliseconds startDelay = std::chrono::milliseconds(0));
+
+  /**
+    * Add a new function to the FunctionScheduler with the time
+    * interval being distributed uniformly within the given interval
+    * [minInterval, maxInterval].
+    */
+  void addFunctionUniformDistribution(const std::function<void()>& cb,
+                                      std::chrono::milliseconds minInterval,
+                                      std::chrono::milliseconds maxInterval,
+                                      StringPiece nameID,
+                                      std::chrono::milliseconds startDelay);
+
+  /**
+   * A type alias for function that is called to determine the time
+   * interval for the next scheduled run.
+   */
+  using IntervalDistributionFunc = std::function<std::chrono::milliseconds()>;
+
+  /**
+   * Add a new function to the FunctionScheduler. The scheduling interval
+   * is determined by the interval distribution functor, which is called
+   * every time the next function execution is scheduled. This allows
+   * for supporting custom interval distribution algorithms in addition
+   * to built in constant interval; and Poisson and jitter distributions
+   * (@see FunctionScheduler::addFunction and
+   * @see FunctionScheduler::addFunctionJitterInterval).
+   */
+  void addFunctionGenericDistribution(
+      const std::function<void()>& cb,
+      const IntervalDistributionFunc& intervalFunc,
+      const std::string& nameID,
+      const std::string& intervalDescr,
+      std::chrono::milliseconds startDelay);
 
   /**
    * Cancels the function with the specified name, so it will no longer be run.
@@ -142,63 +174,56 @@ class FunctionScheduler {
    */
   void setThreadName(StringPiece threadName);
 
-
  private:
   struct RepeatFunc {
     std::function<void()> cb;
-    std::chrono::milliseconds timeInterval;
-    std::chrono::steady_clock::time_point lastRunTime;
+    IntervalDistributionFunc intervalFunc;
+    std::chrono::steady_clock::time_point nextRunTime;
     std::string name;
     std::chrono::milliseconds startDelay;
-    bool isPoissonDistr;
-    std::default_random_engine generator;
-    std::poisson_distribution<int> poisson_random;
+    std::string intervalDescr;
 
     RepeatFunc(const std::function<void()>& cback,
-               std::chrono::milliseconds interval,
+               const IntervalDistributionFunc& intervalFn,
                const std::string& nameID,
-               std::chrono::milliseconds delay,
-               bool poisson = false,
-               double meanPoisson = 1.0)
-      : cb(cback),
-        timeInterval(interval),
-        lastRunTime(),
-        name(nameID),
-        startDelay(delay),
-        isPoissonDistr(poisson),
-        poisson_random(meanPoisson) {
-    }
+               const std::string& intervalDistDescription,
+               std::chrono::milliseconds delay)
+        : cb(cback),
+          intervalFunc(intervalFn),
+          nextRunTime(),
+          name(nameID),
+          startDelay(delay),
+          intervalDescr(intervalDistDescription) {}
 
     std::chrono::steady_clock::time_point getNextRunTime() const {
-      return lastRunTime + timeInterval;
+      return nextRunTime;
     }
-    void setNextRunTime(std::chrono::steady_clock::time_point time) {
-      lastRunTime = time - timeInterval;
+    void setNextRunTimeStrict(std::chrono::steady_clock::time_point curTime) {
+      nextRunTime = curTime + intervalFunc();
     }
-    void setTimeIntervalPoissonDistr() {
-      if (isPoissonDistr) {
-        timeInterval = std::chrono::milliseconds(poisson_random(generator));
-      }
+    void setNextRunTimeSteady() { nextRunTime += intervalFunc(); }
+    void resetNextRunTime(std::chrono::steady_clock::time_point curTime) {
+      nextRunTime = curTime + startDelay;
     }
     void cancel() {
       // Simply reset cb to an empty function.
       cb = std::function<void()>();
     }
-    bool isValid() const {
-      return bool(cb);
-    }
+    bool isValid() const { return bool(cb); }
   };
+
   struct RunTimeOrder {
     bool operator()(const RepeatFunc& f1, const RepeatFunc& f2) const {
       return f1.getNextRunTime() > f2.getNextRunTime();
     }
   };
+
   typedef std::vector<RepeatFunc> FunctionHeap;
 
   void run();
   void runOneFunction(std::unique_lock<std::mutex>& lock,
                       std::chrono::steady_clock::time_point now);
-  void cancelFunction(const std::unique_lock<std::mutex> &lock,
+  void cancelFunction(const std::unique_lock<std::mutex>& lock,
                       FunctionHeap::iterator it);
 
   std::thread thread_;
