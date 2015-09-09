@@ -699,9 +699,6 @@ TEST(Conv, UnsignedEnum) {
   }
 }
 
-#if defined(__clang__) || __GNUC_PREREQ(4, 7)
-// to<enum class> and to(enum class) only supported in gcc 4.7 onwards
-
 TEST(Conv, UnsignedEnumClass) {
   enum class E : uint32_t { x = 3000000000U };
   auto u = to<uint32_t>(E::x);
@@ -727,8 +724,6 @@ TEST(Conv, EnumClassToString) {
   EXPECT_EQ("foo.420", to<string>("foo.", A::y));
   EXPECT_EQ("foo.65", to<string>("foo.", A::z));
 }
-
-#endif // gcc 4.7 onwards
 
 template<typename Src>
 void testStr2Bool() {

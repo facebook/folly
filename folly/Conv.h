@@ -547,9 +547,6 @@ estimateSpaceNeeded(Src value) {
   return estimateSpaceNeeded(static_cast<Intermediate>(value));
 }
 
-#if defined(__clang__) || __GNUC_PREREQ(4, 7)
-// std::underlying_type became available by gcc 4.7.0
-
 /**
  * Enumerated values get appended as integers.
  */
@@ -568,51 +565,6 @@ estimateSpaceNeeded(Src value) {
   return estimateSpaceNeeded(
       static_cast<typename std::underlying_type<Src>::type>(value));
 }
-
-#else
-
-/**
- * Enumerated values get appended as integers.
- */
-template <class Tgt, class Src>
-typename std::enable_if<
-  std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
-toAppend(Src value, Tgt * result) {
-  /* static */ if (Src(-1) < 0) {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      toAppend(static_cast<int>(value), result);
-    } else {
-      toAppend(static_cast<long>(value), result);
-    }
-  } else {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      toAppend(static_cast<unsigned int>(value), result);
-    } else {
-      toAppend(static_cast<unsigned long>(value), result);
-    }
-  }
-}
-
-template <class Src>
-typename std::enable_if<
-  std::is_enum<Src>::value, size_t>::type
-estimateSpaceNeeded(Src value) {
-  /* static */ if (Src(-1) < 0) {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      return estimateSpaceNeeded(static_cast<int>(value));
-    } else {
-      return estimateSpaceNeeded(static_cast<long>(value));
-    }
-  } else {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      return estimateSpaceNeeded(static_cast<unsigned int>(value));
-    } else {
-      return estimateSpaceNeeded(static_cast<unsigned long>(value));
-    }
-  }
-}
-
-#endif // gcc 4.7 onwards
 
 /*******************************************************************************
  * Conversions from floating-point types to string types.
@@ -1477,9 +1429,6 @@ to(const Src & value) {
  * Enum to anything and back
  ******************************************************************************/
 
-#if defined(__clang__) || __GNUC_PREREQ(4, 7)
-// std::underlying_type became available by gcc 4.7.0
-
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
@@ -1493,48 +1442,6 @@ typename std::enable_if<
 to(const Src & value) {
   return static_cast<Tgt>(to<typename std::underlying_type<Tgt>::type>(value));
 }
-
-#else
-
-template <class Tgt, class Src>
-typename std::enable_if<
-  std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
-to(const Src & value) {
-  /* static */ if (Src(-1) < 0) {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      return to<Tgt>(static_cast<int>(value));
-    } else {
-      return to<Tgt>(static_cast<long>(value));
-    }
-  } else {
-    /* static */ if (sizeof(Src) <= sizeof(int)) {
-      return to<Tgt>(static_cast<unsigned int>(value));
-    } else {
-      return to<Tgt>(static_cast<unsigned long>(value));
-    }
-  }
-}
-
-template <class Tgt, class Src>
-typename std::enable_if<
-  std::is_enum<Tgt>::value && !std::is_same<Src, Tgt>::value, Tgt>::type
-to(const Src & value) {
-  /* static */ if (Tgt(-1) < 0) {
-    /* static */ if (sizeof(Tgt) <= sizeof(int)) {
-      return static_cast<Tgt>(to<int>(value));
-    } else {
-      return static_cast<Tgt>(to<long>(value));
-    }
-  } else {
-    /* static */ if (sizeof(Tgt) <= sizeof(int)) {
-      return static_cast<Tgt>(to<unsigned int>(value));
-    } else {
-      return static_cast<Tgt>(to<unsigned long>(value));
-    }
-  }
-}
-
-#endif // gcc 4.7 onwards
 
 } // namespace folly
 
