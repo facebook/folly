@@ -2308,7 +2308,13 @@ constexpr detail::Indirect indirect{};
 
 constexpr detail::Unwrap unwrap{};
 
-inline detail::Take take(size_t count) { return detail::Take(count); }
+template <class Number>
+inline detail::Take take(Number count) {
+  if (count < 0) {
+    throw std::invalid_argument("Negative value passed to take()");
+  }
+  return detail::Take(static_cast<size_t>(count));
+}
 
 inline detail::Stride stride(size_t s) { return detail::Stride(s); }
 
