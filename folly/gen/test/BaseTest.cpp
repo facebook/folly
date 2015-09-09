@@ -349,6 +349,11 @@ TEST(Gen, Take) {
       | as<vector>();
     EXPECT_EQ(expected, actual);
   }
+  {
+    int64_t limit = 5;
+    take(limit - 5);
+    EXPECT_THROW(take(limit - 6), std::invalid_argument);
+  }
 }
 
 
