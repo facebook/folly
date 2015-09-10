@@ -149,6 +149,7 @@ struct EliasFanoEncoderV2 {
             Layout::fromUpperBoundAndSize(upperBound, size).allocList()) { }
 
   void add(ValueType value) {
+    CHECK_LT(value, std::numeric_limits<ValueType>::max());
     CHECK_GE(value, lastValue_);
 
     const auto numLowerBits = result_.numLowerBits;
@@ -551,7 +552,7 @@ class EliasFanoReader {
 
   void reset() {
     upper_.reset();
-    value_ = 0;
+    value_ = kInvalidValue;
   }
 
   bool next() {
@@ -582,11 +583,13 @@ class EliasFanoReader {
   }
 
   bool skipTo(ValueType value) {
-    DCHECK_GE(value, value_);
-    if (value <= value_) {
-      return true;
-    } else if (!kUnchecked && value > lastValue_) {
+    // Also works when value_ == kInvalidValue.
+    if (value != kInvalidValue) { DCHECK_GE(value + 1, value_ + 1); }
+
+    if (!kUnchecked && value > lastValue_) {
       return setDone();
+    } else if (value == value_) {
+      return true;
     }
 
     size_t upperValue = (value >> numLowerBits_);
@@ -606,21 +609,15 @@ class EliasFanoReader {
   }
 
   bool jump(size_t n) {
-    if (LIKELY(n - 1 < size_)) {  // n > 0 && n <= size_
-      value_ = readLowerPart(n - 1) | (upper_.jump(n) << numLowerBits_);
-      return true;
-    } else if (n == 0) {
-      reset();
+    if (LIKELY(n < size_)) {  // Also checks that n != -1.
+      value_ = readLowerPart(n) | (upper_.jump(n + 1) << numLowerBits_);
       return true;
     }
     return setDone();
   }
 
   bool jumpTo(ValueType value) {
-    if (value <= 0) {
-      reset();
-      return true;
-    } else if (!kUnchecked && value > lastValue_) {
+    if (!kUnchecked && value > lastValue_) {
       return setDone();
     }
 
@@ -638,12 +635,22 @@ class EliasFanoReader {
 
   size_t size() const { return size_; }
 
+  bool valid() const {
+    return position() < size(); // Also checks that position() != -1.
+  }
+
   size_t position() const { return upper_.position(); }
-  ValueType value() const { return value_; }
+  ValueType value() const {
+    DCHECK(valid());
+    return value_;
+  }
 
  private:
+  constexpr static ValueType kInvalidValue =
+    std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
+
   bool setDone() {
-    value_ = std::numeric_limits<ValueType>::max();
+    value_ = kInvalidValue;
     upper_.setDone(size_);
     return false;
   }
@@ -671,7 +678,7 @@ class EliasFanoReader {
   const uint8_t* lower_;
   detail::UpperBitsReader<Encoder, Instructions> upper_;
   const ValueType lowerMask_;
-  ValueType value_ = 0;
+  ValueType value_ = kInvalidValue;
   ValueType lastValue_;
   uint8_t numLowerBits_;
 };
