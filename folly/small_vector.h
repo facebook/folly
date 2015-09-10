@@ -883,7 +883,7 @@ private:
       // With iterators that only allow a single pass, we can't really
       // do anything sane here.
       while (first != last) {
-        push_back(*first++);
+        emplace_back(*first++);
       }
       return;
     }
