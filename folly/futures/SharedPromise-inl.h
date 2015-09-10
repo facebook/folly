@@ -124,4 +124,9 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
   }
 }
 
+template <class T>
+bool SharedPromise<T>::isFulfilled() {
+  return hasValue_;
+}
+
 }

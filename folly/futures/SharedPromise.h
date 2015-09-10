@@ -105,6 +105,8 @@ public:
   template <class F>
   void setWith(F&& func);
 
+  bool isFulfilled();
+
 private:
   std::mutex mutex_;
   size_t size_{0};
