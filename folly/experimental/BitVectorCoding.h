@@ -121,7 +121,11 @@ struct BitVectorEncoder {
             Layout::fromUpperBoundAndSize(upperBound, size).allocList()) {}
 
   void add(ValueType value) {
-    CHECK_GE(value, lastValue_);
+    CHECK_LT(value, std::numeric_limits<ValueType>::max());
+    // Also works when lastValue_ == -1.
+    CHECK_GT(value + 1, lastValue_ + 1)
+      << "BitVectorCoding only supports stricly monotone lists";
+
     auto block = bits_ + (value / 64) * sizeof(uint64_t);
     size_t inner = value % 64;
     folly::Bits<folly::Unaligned<uint64_t>>::set(
@@ -160,7 +164,7 @@ struct BitVectorEncoder {
   uint8_t* const skipPointers_ = nullptr;
   uint8_t* const forwardPointers_ = nullptr;
 
-  ValueType lastValue_ = 0;
+  ValueType lastValue_ = -1;
   size_t size_ = 0;
   size_t skipPointersSize_ = 0;
 
@@ -265,7 +269,7 @@ class BitVectorReader {
     outer_ = 0;
     inner_ = -1;
     position_ = -1;
-    value_ = 0;
+    value_ = kInvalidValue;
   }
 
   bool next() {
@@ -332,11 +336,13 @@ class BitVectorReader {
   }
 
   bool skipTo(ValueType v) {
-    DCHECK_GE(v, value_);
-    if (v <= value_) {
-      return true;
-    } else if (!kUnchecked && v > upperBound_) {
+    // Also works when value_ == kInvalidValue.
+    if (v != kInvalidValue) { DCHECK_GE(v + 1, value_ + 1); }
+
+    if (!kUnchecked && v > upperBound_) {
       return setDone();
+    } else if (v == value_) {
+      return true;
     }
 
     // Small skip optimization.
@@ -384,16 +390,19 @@ class BitVectorReader {
 
   size_t size() const { return size_; }
 
+  bool valid() const {
+    return position() < size(); // Also checks that position() != -1.
+  }
+
   size_t position() const { return position_; }
-  ValueType value() const { return value_; }
+  ValueType value() const {
+    DCHECK(valid());
+    return value_;
+  }
 
   bool jump(size_t n) {
     reset();
-    if (n > 0) {
-      return skip(n);
-    } else {
-      return true;
-    }
+    return skip(n + 1);
   }
 
   bool jumpTo(ValueType v) {
@@ -402,12 +411,15 @@ class BitVectorReader {
   }
 
   bool setDone() {
-    value_ = std::numeric_limits<ValueType>::max();
+    value_ = kInvalidValue;
     position_ = size_;
     return false;
   }
 
  private:
+  constexpr static ValueType kInvalidValue =
+    std::numeric_limits<ValueType>::max();  // Must hold kInvalidValue + 1 == 0.
+
   bool setValue() {
     value_ = static_cast<ValueType>(8 * outer_ + inner_);
     return true;
@@ -426,7 +438,7 @@ class BitVectorReader {
   size_t inner_;
   size_t position_;
   uint64_t block_;
-  ValueType value_ = 0;
+  ValueType value_;
 
   size_t size_;
   ValueType upperBound_;

@@ -43,6 +43,7 @@ class EliasFanoCodingTest : public ::testing::Test {
     typedef EliasFanoEncoderV2<
       uint32_t, uint32_t, kSkipQuantum, kForwardQuantum> Encoder;
     typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;
+    testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
   }
