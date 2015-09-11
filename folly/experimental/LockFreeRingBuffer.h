@@ -87,7 +87,7 @@ public:
     friend class LockFreeRingBuffer;
   };
 
-  explicit LockFreeRingBuffer(size_t capacity) noexcept
+  explicit LockFreeRingBuffer(uint32_t capacity) noexcept
     : capacity_(capacity)
     , slots_(new detail::RingBufferSlot<T,Atom>[capacity])
     , ticket_(0)
@@ -145,7 +145,7 @@ public:
   }
 
 private:
-  const size_t capacity_;
+  const uint32_t capacity_;
 
   const std::unique_ptr<detail::RingBufferSlot<T,Atom>[]> slots_;
 
@@ -156,7 +156,7 @@ private:
   }
 
   uint32_t turn(uint64_t ticket) noexcept {
-    return (ticket / capacity_);
+    return (uint32_t)(ticket / capacity_);
   }
 }; // LockFreeRingBuffer
 
