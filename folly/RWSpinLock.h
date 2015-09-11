@@ -740,11 +740,6 @@ class RWTicketSpinLockT : boost::noncopyable {
   friend void acquireReadWrite(RWTicketSpinLockT& mutex) {
     mutex.lock();
   }
-  friend bool acquireReadWrite(RWTicketSpinLockT& mutex,
-                               unsigned int milliseconds) {
-    mutex.lock();
-    return true;
-  }
   friend void releaseRead(RWTicketSpinLockT& mutex) {
     mutex.unlock_shared();
   }
