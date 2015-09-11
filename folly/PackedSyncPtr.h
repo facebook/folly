@@ -19,8 +19,8 @@
 
 #include <folly/Portability.h>
 
-#if !FOLLY_X64
-# error "PackedSyncPtr is x64-specific code."
+#if !FOLLY_X64 && !FOLLY_PPC64
+# error "PackedSyncPtr is x64 and ppc64 specific code."
 #endif
 
 /*
