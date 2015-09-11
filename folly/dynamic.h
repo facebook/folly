@@ -437,6 +437,23 @@ public:
   template<class K, class V> void insert(K&&, V&& val);
 
   /*
+   * These functions merge two folly dynamic objects.
+   * The "update" and "update_missing" functions extend the object by
+   *  inserting the key/value pairs of mergeObj into the current object.
+   *  For update, if key is duplicated between the two objects, it
+   *  will overwrite with the value of the object being inserted (mergeObj).
+   *  For "update_missing", it will prefer the value in the original object
+   *
+   * The "merge" function creates a new object consisting of the key/value
+   * pairs of both mergeObj1 and mergeObj2
+   * If the key is duplicated between the two objects,
+   *  it will prefer value in the second object (mergeObj2)
+   */
+  void update(const dynamic& mergeObj);
+  void update_missing(const dynamic& other);
+  static dynamic merge(const dynamic& mergeObj1, const dynamic& mergeObj2);
+
+  /*
    * Erase an element from a dynamic object, by key.
    *
    * Invalidates iterators to the element being erased.

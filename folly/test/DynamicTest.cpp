@@ -98,6 +98,27 @@ TEST(Dynamic, ObjectBasics) {
 
   // We don't allow objects as keys in objects.
   EXPECT_ANY_THROW(newObject[d3] = 12);
+
+  // Merge two objects
+  dynamic origMergeObj1 = folly::dynamic::object();
+  dynamic mergeObj1 = origMergeObj1 = folly::dynamic::object
+    ("key1", "value1")
+    ("key2", "value2");
+  dynamic mergeObj2 = folly::dynamic::object
+    ("key2", "value3")
+    ("key3", "value4");
+  dynamic combinedObj = folly::dynamic::object
+    ("key1", "value1")
+    ("key2", "value3")
+    ("key3", "value4");
+  auto newMergeObj = dynamic::merge(mergeObj1, mergeObj2);
+  EXPECT_EQ(newMergeObj, combinedObj);
+  EXPECT_EQ(mergeObj1, origMergeObj1); // mergeObj1 should be unchanged
+
+  mergeObj1.update(mergeObj2);
+  EXPECT_EQ(mergeObj1, combinedObj);
+  dynamic arr = { 1, 2, 3, 4, 5, 6 };
+  EXPECT_THROW(mergeObj1.update(arr), std::exception);
 }
 
 TEST(Dynamic, ObjectErase) {

@@ -512,6 +512,41 @@ template<class K, class V> inline void dynamic::insert(K&& key, V&& val) {
   rv.first->second = std::forward<V>(val);
 }
 
+inline void dynamic::update(const dynamic& mergeObj) {
+  if (!isObject() || !mergeObj.isObject()) {
+    throw TypeError("object", type(), mergeObj.type());
+  }
+
+  for (const auto& pair : mergeObj.items()) {
+    (*this)[pair.first] = pair.second;
+  }
+}
+
+inline void dynamic::update_missing(const dynamic& mergeObj1) {
+  if (!isObject() || !mergeObj1.isObject()) {
+    throw TypeError("object", type(), mergeObj1.type());
+  }
+
+  // Only add if not already there
+  for (const auto& pair : mergeObj1.items()) {
+    if ((*this).find(pair.first) == (*this).items().end()) {
+      (*this)[pair.first] = pair.second;
+    }
+  }
+}
+
+inline dynamic dynamic::merge(
+    const dynamic& mergeObj1,
+    const dynamic& mergeObj2) {
+
+  // No checks on type needed here because they are done in update_missing
+  // Note that we do update_missing here instead of update() because
+  // it will prevent the extra writes that would occur with update()
+  auto ret = mergeObj2;
+  ret.update_missing(mergeObj1);
+  return ret;
+}
+
 inline std::size_t dynamic::erase(dynamic const& key) {
   auto& obj = get<ObjectImpl>();
   return obj.erase(key);
