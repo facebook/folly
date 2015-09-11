@@ -107,13 +107,18 @@ void BufferedRandomDevice::getSlow(unsigned char* data, size_t size) {
   ptr_ += size;
 }
 
+
 }  // namespace
 
 void Random::secureRandom(void* data, size_t size) {
-  static thread_local BufferedRandomDevice bufferedRandomDevice;
-  bufferedRandomDevice.get(data, size);
+  static ThreadLocal<BufferedRandomDevice> bufferedRandomDevice;
+  bufferedRandomDevice->get(data, size);
 }
 
+ThreadLocalPRNG::ThreadLocalPRNG() {
+  static folly::ThreadLocal<ThreadLocalPRNG::LocalInstancePRNG> localInstance;
+  local_ = localInstance.get();
+}
 
 class ThreadLocalPRNG::LocalInstancePRNG {
  public:
@@ -121,11 +126,6 @@ class ThreadLocalPRNG::LocalInstancePRNG {
 
   Random::DefaultGenerator rng;
 };
-
-ThreadLocalPRNG::ThreadLocalPRNG() {
-  static thread_local ThreadLocalPRNG::LocalInstancePRNG localInstance;
-  local_ = &localInstance;
-}
 
 uint32_t ThreadLocalPRNG::getImpl(LocalInstancePRNG* local) {
   return local->rng();
