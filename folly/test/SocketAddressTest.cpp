@@ -19,12 +19,14 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
+#include <folly/test/SocketAddressTestHelper.h>
 
 using namespace boost;
 using std::string;
 using std::cerr;
 using std::endl;
 using folly::SocketAddress;
+using folly::SocketAddressTestHelper;
 
 TEST(SocketAddress, Size) {
   SocketAddress addr;
@@ -138,9 +140,16 @@ TEST(SocketAddress, SetFromStrings) {
   EXPECT_EQ(addr.getPort(), 80);
 
   // Call setFromLocalIpPort() with an IP and port.
-  addr.setFromLocalIpPort("127.0.0.1:4321");
-  EXPECT_EQ(addr.getAddressStr(), "127.0.0.1");
-  EXPECT_EQ(addr.getPort(), 4321);
+  if (SocketAddressTestHelper::isIPv4Enabled()) {
+    addr.setFromLocalIpPort("127.0.0.1:4321");
+    EXPECT_EQ(addr.getAddressStr(), "127.0.0.1");
+    EXPECT_EQ(addr.getPort(), 4321);
+  }
+  if (SocketAddressTestHelper::isIPv6Enabled()) {
+    addr.setFromLocalIpPort("::1:4321");
+    EXPECT_EQ(addr.getAddressStr(), "::1");
+    EXPECT_EQ(addr.getPort(), 4321);
+  }
 
   // setFromIpPort() without an address should fail
   EXPECT_THROW(addr.setFromIpPort("4321"), std::invalid_argument);
