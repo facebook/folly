@@ -811,7 +811,7 @@ TEST(small_vector, EmplaceIterCtor) {
   std::vector<std::unique_ptr<int>> uv(v.begin(), v.end());
 
   std::vector<int*> w{new int(1), new int(2)};
-  small_vector<std::unique_ptr<int>> uw(v.begin(), v.end());
+  small_vector<std::unique_ptr<int>> uw(w.begin(), w.end());
 }
 
 TEST(small_vector, InputIterator) {
