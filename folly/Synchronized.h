@@ -54,46 +54,53 @@ enum InternalDoNotUse {};
  */
 template <class T>
 struct HasLockUnlock {
-  enum { value = IsOneOf<T,
-         std::mutex, std::recursive_mutex,
-         boost::mutex, boost::recursive_mutex, boost::shared_mutex
+  enum { value = IsOneOf<T
+      , std::mutex
+      , std::recursive_mutex
+      , boost::mutex
+      , boost::recursive_mutex
+      , boost::shared_mutex
 #if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-        ,std::timed_mutex, std::recursive_timed_mutex,
-         boost::timed_mutex, boost::recursive_timed_mutex
+      , std::timed_mutex
+      , std::recursive_timed_mutex
+      , boost::timed_mutex
+      , boost::recursive_timed_mutex
 #endif
-         >::value };
+      >::value };
 };
 
 /**
- * Acquires a mutex for reading by calling .lock(). The exception is
- * boost::shared_mutex, which has a special read-lock primitive called
- * .lock_shared().
+ * Yields true iff T has .lock_shared() and .unlock_shared() member functions.
+ * This is done by simply enumerating the mutexes with this interface.
+ */
+template <class T>
+struct HasLockSharedUnlockShared {
+  enum { value = IsOneOf<T
+      , boost::shared_mutex
+      >::value };
+};
+
+/**
+ * Acquires a mutex for reading by calling .lock().
+ *
+ * This variant is not appropriate for shared mutexes.
  */
 template <class T>
 typename std::enable_if<
-  HasLockUnlock<T>::value && !std::is_same<T, boost::shared_mutex>::value>::type
+  HasLockUnlock<T>::value && !HasLockSharedUnlockShared<T>::value>::type
 acquireRead(T& mutex) {
   mutex.lock();
 }
 
 /**
- * Special case for boost::shared_mutex.
+ * Acquires a mutex for reading by calling .lock_shared().
+ *
+ * This variant is not appropriate for nonshared mutexes.
  */
 template <class T>
-typename std::enable_if<std::is_same<T, boost::shared_mutex>::value>::type
+typename std::enable_if<HasLockSharedUnlockShared<T>::value>::type
 acquireRead(T& mutex) {
   mutex.lock_shared();
-}
-
-/**
- * Acquires a mutex for reading with timeout by calling .timed_lock(). This
- * applies to three of the boost mutex classes as enumerated below.
- */
-template <class T>
-typename std::enable_if<std::is_same<T, boost::shared_mutex>::value, bool>::type
-acquireRead(T& mutex,
-            unsigned int milliseconds) {
-  return mutex.timed_lock_shared(boost::posix_time::milliseconds(milliseconds));
 }
 
 /**
@@ -107,17 +114,35 @@ acquireReadWrite(T& mutex) {
 
 #if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
 /**
+ * Acquires a mutex for reading by calling .try_lock_shared_for(). This applies
+ * to boost::shared_mutex.
+ */
+template <class T>
+typename std::enable_if<
+  IsOneOf<T
+      , boost::shared_mutex
+      >::value, bool>::type
+acquireRead(T& mutex,
+            unsigned int milliseconds) {
+  return mutex.try_lock_shared_for(boost::chrono::milliseconds(milliseconds));
+}
+
+/**
  * Acquires a mutex for reading and writing with timeout by calling
  * .try_lock_for(). This applies to two of the std mutex classes as
  * enumerated below.
  */
 template <class T>
 typename std::enable_if<
-  IsOneOf<T, std::timed_mutex, std::recursive_timed_mutex>::value, bool>::type
+  IsOneOf<T
+      , std::timed_mutex
+      , std::recursive_timed_mutex
+      >::value, bool>::type
 acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
   // work around try_lock_for bug in some gcc versions, see
   // http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54562
+  // TODO: Fixed in gcc-4.9.0.
   return mutex.try_lock()
       || (milliseconds > 0 &&
           mutex.try_lock_until(std::chrono::system_clock::now() +
@@ -126,16 +151,19 @@ acquireReadWrite(T& mutex,
 
 /**
  * Acquires a mutex for reading and writing with timeout by calling
- * .timed_lock(). This applies to three of the boost mutex classes as
+ * .try_lock_for(). This applies to three of the boost mutex classes as
  * enumerated below.
  */
 template <class T>
 typename std::enable_if<
-  IsOneOf<T, boost::shared_mutex, boost::timed_mutex,
-          boost::recursive_timed_mutex>::value, bool>::type
+  IsOneOf<T
+      , boost::shared_mutex
+      , boost::timed_mutex
+      , boost::recursive_timed_mutex
+      >::value, bool>::type
 acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
-  return mutex.timed_lock(boost::posix_time::milliseconds(milliseconds));
+  return mutex.try_lock_for(boost::chrono::milliseconds(milliseconds));
 }
 #endif // FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
 
@@ -146,7 +174,7 @@ acquireReadWrite(T& mutex,
  */
 template <class T>
 typename std::enable_if<
-  HasLockUnlock<T>::value && !std::is_same<T, boost::shared_mutex>::value>::type
+  HasLockUnlock<T>::value && !HasLockSharedUnlockShared<T>::value>::type
 releaseRead(T& mutex) {
   mutex.unlock();
 }
@@ -155,7 +183,7 @@ releaseRead(T& mutex) {
  * Special case for boost::shared_mutex.
  */
 template <class T>
-typename std::enable_if<std::is_same<T, boost::shared_mutex>::value>::type
+typename std::enable_if<HasLockSharedUnlockShared<T>::value>::type
 releaseRead(T& mutex) {
   mutex.unlock_shared();
 }
@@ -454,8 +482,10 @@ struct Synchronized {
       acquire();
     }
     ConstLockedPtr(const Synchronized* parent, unsigned int milliseconds) {
-      if (parent->mutex_.timed_lock_shared(
-            boost::posix_time::milliseconds(milliseconds))) {
+      using namespace detail;
+      if (acquireRead(
+            parent->mutex_,
+            milliseconds)) {
         parent_ = parent;
         return;
       }

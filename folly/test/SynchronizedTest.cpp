@@ -20,117 +20,101 @@
 
 #include <folly/Synchronized.h>
 #include <folly/RWSpinLock.h>
+#include <folly/SharedMutex.h>
 #include <folly/test/SynchronizedTestLib.h>
 #include <gtest/gtest.h>
 
+namespace {
 
-TEST(Synchronized, Basic) {
-  testBasic<std::mutex>();
-  testBasic<std::recursive_mutex>();
-#ifndef __APPLE__
-  testBasic<std::timed_mutex>();
-  testBasic<std::recursive_timed_mutex>();
+template <class Mutex>
+class SynchronizedTest : public testing::Test {};
+
+using SynchronizedTestTypes = testing::Types
+  < folly::SharedMutexReadPriority
+  , folly::SharedMutexWritePriority
+  , std::mutex
+  , std::recursive_mutex
+#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+  , std::timed_mutex
+  , std::recursive_timed_mutex
 #endif
-
+  , boost::mutex
+  , boost::recursive_mutex
+#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+  , boost::timed_mutex
+  , boost::recursive_timed_mutex
+#endif
+  , boost::shared_mutex
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  testBasic<folly::RWTicketSpinLock32>();
+  , folly::RWTicketSpinLock32
+  , folly::RWTicketSpinLock64
 #endif
+  >;
+TYPED_TEST_CASE(SynchronizedTest, SynchronizedTestTypes);
 
-  testBasic<boost::mutex>();
-  testBasic<boost::recursive_mutex>();
-  testBasic<boost::shared_mutex>();
-#ifndef __APPLE__
-  testBasic<boost::timed_mutex>();
-  testBasic<boost::recursive_timed_mutex>();
-#endif
+TYPED_TEST(SynchronizedTest, Basic) {
+  testBasic<TypeParam>();
 }
 
-TEST(Synchronized, Concurrency) {
-  testConcurrency<std::mutex>();
-  testConcurrency<std::recursive_mutex>();
-#ifndef __APPLE__
-  testConcurrency<std::timed_mutex>();
-  testConcurrency<std::recursive_timed_mutex>();
-#endif
+TYPED_TEST(SynchronizedTest, Concurrency) {
+  testConcurrency<TypeParam>();
+}
 
+TYPED_TEST(SynchronizedTest, DualLocking) {
+  testDualLocking<TypeParam>();
+}
+
+TYPED_TEST(SynchronizedTest, DualLockingWithConst) {
+  testDualLockingWithConst<TypeParam>();
+}
+
+TYPED_TEST(SynchronizedTest, ConstCopy) {
+  testConstCopy<TypeParam>();
+}
+
+template <class Mutex>
+class SynchronizedTimedTest : public testing::Test {};
+
+using SynchronizedTimedTestTypes = testing::Types
+  < folly::SharedMutexReadPriority
+  , folly::SharedMutexWritePriority
+#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+  , std::timed_mutex
+  , std::recursive_timed_mutex
+  , boost::timed_mutex
+  , boost::recursive_timed_mutex
+  , boost::shared_mutex
+#endif
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  testConcurrency<folly::RWTicketSpinLock32>();
+  , folly::RWTicketSpinLock32
+  , folly::RWTicketSpinLock64
 #endif
+  >;
+TYPED_TEST_CASE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
 
-  testConcurrency<boost::mutex>();
-  testConcurrency<boost::recursive_mutex>();
-  testConcurrency<boost::shared_mutex>();
-#ifndef __APPLE__
-  testConcurrency<boost::timed_mutex>();
-  testConcurrency<boost::recursive_timed_mutex>();
-#endif
+TYPED_TEST(SynchronizedTimedTest, TimedSynchronized) {
+  testTimedSynchronized<TypeParam>();
 }
 
+template <class Mutex>
+class SynchronizedTimedWithConstTest : public testing::Test {};
 
-TEST(Synchronized, DualLocking) {
-  testDualLocking<std::mutex>();
-  testDualLocking<std::recursive_mutex>();
-#ifndef __APPLE__
-  testDualLocking<std::timed_mutex>();
-  testDualLocking<std::recursive_timed_mutex>();
+using SynchronizedTimedWithConstTestTypes = testing::Types
+  < folly::SharedMutexReadPriority
+  , folly::SharedMutexWritePriority
+#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+  , boost::shared_mutex
 #endif
-
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  testDualLocking<folly::RWTicketSpinLock32>();
+  , folly::RWTicketSpinLock32
+  , folly::RWTicketSpinLock64
 #endif
+  >;
+TYPED_TEST_CASE(
+    SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
 
-  testDualLocking<boost::mutex>();
-  testDualLocking<boost::recursive_mutex>();
-  testDualLocking<boost::shared_mutex>();
-#ifndef __APPLE__
-  testDualLocking<boost::timed_mutex>();
-  testDualLocking<boost::recursive_timed_mutex>();
-#endif
+TYPED_TEST(SynchronizedTimedWithConstTest, TimedSynchronizeWithConst) {
+  testTimedSynchronizedWithConst<TypeParam>();
 }
 
-
-TEST(Synchronized, DualLockingWithConst) {
-  testDualLockingWithConst<std::mutex>();
-  testDualLockingWithConst<std::recursive_mutex>();
-#ifndef __APPLE__
-  testDualLockingWithConst<std::timed_mutex>();
-  testDualLockingWithConst<std::recursive_timed_mutex>();
-#endif
-
-#ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  testDualLockingWithConst<folly::RWTicketSpinLock32>();
-#endif
-
-  testDualLockingWithConst<boost::mutex>();
-  testDualLockingWithConst<boost::recursive_mutex>();
-  testDualLockingWithConst<boost::shared_mutex>();
-#ifndef __APPLE__
-  testDualLockingWithConst<boost::timed_mutex>();
-  testDualLockingWithConst<boost::recursive_timed_mutex>();
-#endif
-}
-
-
-#ifndef __APPLE__
-TEST(Synchronized, TimedSynchronized) {
-  testTimedSynchronized<std::timed_mutex>();
-  testTimedSynchronized<std::recursive_timed_mutex>();
-
-  testTimedSynchronized<boost::timed_mutex>();
-  testTimedSynchronized<boost::recursive_timed_mutex>();
-  testTimedSynchronized<boost::shared_mutex>();
-
-  testTimedSynchronizedWithConst<boost::shared_mutex>();
-}
-#endif
-
-TEST(Synchronized, ConstCopy) {
-#ifndef __APPLE__
-  testConstCopy<std::timed_mutex>();
-  testConstCopy<std::recursive_timed_mutex>();
-
-  testConstCopy<boost::timed_mutex>();
-  testConstCopy<boost::recursive_timed_mutex>();
-#endif
-  testConstCopy<boost::shared_mutex>();
 }
