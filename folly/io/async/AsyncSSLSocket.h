@@ -541,7 +541,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Get the list of supported ciphers sent by the client in the client's
    * preference order.
    */
-  void getSSLClientCiphers(std::string& clientCiphers) {
+  void getSSLClientCiphers(std::string& clientCiphers) const {
     std::stringstream ciphersStream;
     std::string cipherName;
 
@@ -585,7 +585,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Get the list of compression methods sent by the client in TLS Hello.
    */
-  std::string getSSLClientComprMethods() {
+  std::string getSSLClientComprMethods() const {
     if (!parseClientHello_) {
       return "";
     }
@@ -595,14 +595,14 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Get the list of TLS extensions sent by the client in the TLS Hello.
    */
-  std::string getSSLClientExts() {
+  std::string getSSLClientExts() const {
     if (!parseClientHello_) {
       return "";
     }
     return folly::join(":", clientHelloInfo_->clientHelloExtensions_);
   }
 
-  std::string getSSLClientSigAlgs() {
+  std::string getSSLClientSigAlgs() const {
     if (!parseClientHello_) {
       return "";
     }
@@ -627,7 +627,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Get the list of shared ciphers between the server and the client.
    * Works well for only SSLv2, not so good for SSLv3 or TLSv1.
    */
-  void getSSLSharedCiphers(std::string& sharedCiphers) {
+  void getSSLSharedCiphers(std::string& sharedCiphers) const {
     char ciphersBuffer[1024];
     ciphersBuffer[0] = '\0';
     SSL_get_shared_ciphers(ssl_, ciphersBuffer, sizeof(ciphersBuffer) - 1);
@@ -638,7 +638,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Get the list of ciphers supported by the server in the server's
    * preference order.
    */
-  void getSSLServerCiphers(std::string& serverCiphers) {
+  void getSSLServerCiphers(std::string& serverCiphers) const {
     serverCiphers = SSL_get_cipher_list(ssl_, 0);
     int i = 1;
     const char *cipher;
@@ -717,7 +717,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   };
 
   // For unit-tests
-  ClientHelloInfo* getClientHelloInfo() {
+  ClientHelloInfo* getClientHelloInfo() const {
     return clientHelloInfo_.get();
   }
 
@@ -725,7 +725,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     minWriteSize_ = minWriteSize;
   }
 
-  size_t getMinWriteSize() {
+  size_t getMinWriteSize() const {
     return minWriteSize_;
   }
 
