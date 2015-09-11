@@ -22,6 +22,7 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/test/SocketAddressTestHelper.h>
 
 #include <gtest/gtest.h>
 #include <boost/scoped_array.hpp>
@@ -130,7 +131,13 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   // Hopefully this IP will be routable but unresponsive.
   // (Alternatively, we could try listening on a local raw socket, but that
   // normally requires root privileges.)
-  folly::SocketAddress addr("8.8.8.8", 65535);
+  auto host =
+      SocketAddressTestHelper::isIPv6Enabled() ?
+      SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6 :
+      SocketAddressTestHelper::isIPv4Enabled() ?
+      SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4 :
+      nullptr;
+  SocketAddress addr(host, 65535);
   ConnCallback cb;
   socket->connect(&cb, addr, 1); // also set a ridiculously small timeout
 
