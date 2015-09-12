@@ -375,6 +375,12 @@ template<> struct hasher<uint64_t> {
   }
 };
 
+template<> struct hasher<std::string> {
+  size_t operator()(const std::string& key) const {
+    return hash::SpookyHashV2::Hash64(key.data(), key.size(), 0);
+  }
+};
+
 template <class T>
 struct hasher<T, typename std::enable_if<std::is_enum<T>::value, void>::type> {
   size_t operator()(T key) const {
