@@ -303,7 +303,7 @@ TEST(Hash, std_tuple_different_hash) {
             std::hash<tuple3>()(t3));
 }
 
-TEST(Range, Hash) {
+TEST(Hash, Strings) {
   using namespace folly;
 
   StringPiece a1 = "10050517", b1 = "51107032",
@@ -329,4 +329,10 @@ TEST(Range, Hash) {
   EXPECT_NE(h2(w1), h2(w2));
   EXPECT_NE(h2(w1), h2(w3));
   EXPECT_NE(h2(w2), h2(w4));
+
+  // Check compatibility with std::string.
+  EXPECT_EQ(h2(a1), h2(a1.str()));
+  EXPECT_EQ(h2(a2), h2(a2.str()));
+  EXPECT_EQ(h2(a3), h2(a3.str()));
+  EXPECT_EQ(h2(a4), h2(a4.str()));
 }
