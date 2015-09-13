@@ -404,6 +404,8 @@ AC_SUBST([AM_LDFLAGS])
 
 AM_CONDITIONAL([HAVE_STD_THREAD], [test "$ac_cv_header_features" = "yes"])
 AM_CONDITIONAL([HAVE_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([HAVE_PPC64], [test "$build_cpu" = "powerpc64le"])
+AM_CONDITIONAL([RUN_ARCH_SPECIFIC_TESTS], [test "$build_cpu" = "x86_64" || test "$build_cpu" = "powerpc64le"])
 AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
 AM_CONDITIONAL([HAVE_WEAK_SYMBOLS],
                [test "$folly_cv_prog_cc_weak_symbols" = "yes"])

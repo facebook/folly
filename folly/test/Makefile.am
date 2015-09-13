@@ -30,7 +30,7 @@ spin_lock_test_SOURCES = SpinLockTest.cpp
 spin_lock_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += spin_lock_test
 
-if HAVE_X86_64
+if RUN_ARCH_SPECIFIC_TESTS
 small_locks_test_SOURCES = SmallLocksTest.cpp
 small_locks_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += small_locks_test
@@ -48,9 +48,11 @@ discriminated_ptr_test_SOURCES = DiscriminatedPtrTest.cpp
 discriminated_ptr_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += discriminated_ptr_test
 
+if !HAVE_PPC64
 cpuid_test_SOURCES = CpuIdTest.cpp
 cpuid_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += cpuid_test
+endif
 endif
 
 sorted_vector_types_test_SOURCES = sorted_vector_test.cpp
