@@ -57,8 +57,7 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   static T loadRMW(const Unaligned<T>& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-// make sure we compile without warning on gcc 4.6 with -Wpragmas
-#if __GNUC_PREREQ(4, 7)
+#if !__clang__ // for gcc version [4.8, ?)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
     return x.value;
@@ -79,8 +78,7 @@ struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
   loadRMW(const UnalignedNoASan<T>& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-// make sure we compile without warning on gcc 4.6 with -Wpragmas
-#if __GNUC_PREREQ(4, 7)
+#if !__clang__ // for gcc version [4.8, ?)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
     return x.value;
@@ -98,7 +96,7 @@ struct BitsTraits<T, typename std::enable_if<
   static T loadRMW(const T& x) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-#if __GNUC_PREREQ(4, 7)
+#if !__clang__ // for gcc version [4.8, ?)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
     return x;
@@ -205,7 +203,7 @@ struct Bits {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
-#if __GNUC_PREREQ(4, 7)
+#if !__clang__ // for gcc version [4.8, ?)
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
