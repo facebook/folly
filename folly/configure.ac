@@ -228,7 +228,7 @@ AC_CACHE_CHECK(
     [folly_cv_lib_libcpp=no])])
 
 if test "$folly_cv_lib_libcpp" = yes; then
-  AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we're using libc++.])
+  AC_DEFINE([USE_LIBCPP], [1], [Define to 1 if we are using libc++.])
 fi
 
 AC_CACHE_CHECK(
