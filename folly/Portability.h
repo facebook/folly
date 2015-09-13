@@ -132,6 +132,12 @@
 # define FOLLY_A64 0
 #endif
 
+#if defined (__powerpc64__)
+# define FOLLY_PPC64 1
+#else
+# define FOLLY_PPC64 0
+#endif
+
 // packing is very ugly in msvc
 #ifdef _MSC_VER
 # define FOLLY_PACK_ATTR /**/
@@ -465,6 +471,8 @@ inline void asm_volatile_pause() {
   asm volatile ("pause");
 #elif FOLLY_A64
   asm volatile ("wfe");
+#elif FOLLY_PPC64
+  asm volatile("or 27,27,27");
 #endif
 }
 inline void asm_pause() {
@@ -474,6 +482,8 @@ inline void asm_pause() {
   asm ("pause");
 #elif FOLLY_A64
   asm ("wfe");
+#elif FOLLY_PPC64
+  asm ("or 31,31,31");
 #endif
 }
 
