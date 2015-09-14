@@ -67,7 +67,7 @@ constexpr size_t
 StateSize<std::mersenne_twister_engine<UIntType, w, n, m, r,
                                        a, u, d, s, b, t, c, l, f>>::value;
 
-#if FOLLY_USE_SIMD_PRNG
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
 
 template <class UIntType, size_t m, size_t pos1, size_t sl1, size_t sl2,
           size_t sr1, size_t sr2, uint32_t msk1, uint32_t msk2, uint32_t msk3,
