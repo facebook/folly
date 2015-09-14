@@ -28,12 +28,17 @@
 #endif
 
 /* For windows, we'll use pthread's time implementations */
-#ifdef _MSC_VER
+#if defined(__CYGWIN__) || defined(__MINGW__)
 #include <pthread.h>
 #include <pthread_time.h>
 #else
 typedef uint8_t clockid_t;
 #define CLOCK_REALTIME 0
+#ifdef _MSC_VER
+#define CLOCK_MONOTONIC 1
+#define CLOCK_PROCESS_CPUTIME_ID 2
+#define CLOCK_THREAD_CPUTIME_ID 3
+#endif
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts);
 int clock_getres(clockid_t clk_id, struct timespec* ts);
