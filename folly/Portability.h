@@ -172,21 +172,6 @@
 namespace std { typedef ::max_align_t max_align_t; }
 #endif
 
-/* Define macro wrappers for C++11's "final" and "override" keywords, which
- * are supported in gcc 4.7 but not gcc 4.6. */
-#if !defined(FOLLY_FINAL) && !defined(FOLLY_OVERRIDE)
-# if defined(__clang__) || __GNUC_PREREQ(4, 7)
-#  define FOLLY_FINAL final
-#  define FOLLY_OVERRIDE override
-# elif defined(_MSC_VER) && _MSC_VER >= 1600
-#  define FOLLY_FINAL final
-#  define FOLLY_OVERRIDE override
-# else
-#  define FOLLY_FINAL /**/
-#  define FOLLY_OVERRIDE /**/
-# endif
-#endif
-
 /* Platform specific TLS support
  * gcc implements __thread
  * msvc implements __declspec(thread)
