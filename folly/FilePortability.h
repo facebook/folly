@@ -19,11 +19,12 @@
 #include <folly/Portability.h>
 
 #ifndef __STDC__
+/* nolint */
 #define __STDC__ 1
-#include <io.h>
+#include <io.h> // nolint
 #undef __STDC__
 #else
-#include <io.h>
+#include <io.h> // nolint
 #endif
 
 #include <fcntl.h>
@@ -146,6 +147,7 @@ int write(int fh, void const* buf, unsigned int mcc);
 ssize_t writev(int fd, const iovec* iov, int count);
 }}
 
+/* using override */
 using namespace folly::file_portability;
 #else
 #include <unistd.h>
