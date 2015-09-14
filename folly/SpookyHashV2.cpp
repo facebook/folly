@@ -323,7 +323,7 @@ void SpookyHashV2::Update(const void *message, size_t length)
 
 
 // report the hash for the concatenation of all message fragments so far
-void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2)
+void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2) const
 {
     // init the variables
     if (m_length < sc_bufSize)
@@ -334,7 +334,9 @@ void SpookyHashV2::Final(uint64_t *hash1, uint64_t *hash2)
         return;
     }
 
-    const uint64_t *data = (const uint64_t *)m_data;
+    uint64_t buf[2*sc_numVars];
+    memcpy(buf, m_data, sizeof(buf));
+    uint64_t *data = buf;
     uint8_t remainder = m_remainder;
 
     uint64_t h0 = m_state[0];
