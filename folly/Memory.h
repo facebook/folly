@@ -99,8 +99,8 @@ struct static_function_deleter {
  *
  *      using T = foobar::cpp2::FooBarServiceAsyncClient;
  */
-template <typename T>
-std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T>&& ptr) {
+template <typename T, typename D>
+std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
   return std::shared_ptr<T>(std::move(ptr));
 }
 

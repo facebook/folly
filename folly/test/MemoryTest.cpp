@@ -54,11 +54,24 @@ TEST(static_function_deleter, nullptr) {
   std::unique_ptr<disposable, disposable_deleter>(nullptr);
 }
 
-TEST(shared_ptr, example) {
+TEST(to_shared_ptr, example) {
   auto uptr = make_unique<std::string>("hello");
   auto sptr = to_shared_ptr(std::move(uptr));
   EXPECT_EQ(nullptr, uptr);
   EXPECT_EQ("hello", *sptr);
+}
+
+TEST(to_shared_ptr, example_with_dtor) {
+  bool disposed = false;
+  using disposable_deleter =
+    static_function_deleter<disposable, &disposable::dispose>;
+  auto uptr =
+    make_unique<disposable, disposable_deleter>([&] { disposed = true; });
+  EXPECT_FALSE(disposed);
+  auto sptr = to_shared_ptr(std::move(uptr));
+  EXPECT_FALSE(disposed);
+  sptr = nullptr;
+  EXPECT_TRUE(disposed);
 }
 
 template <std::size_t> struct T {};
