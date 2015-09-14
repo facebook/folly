@@ -1,3 +1,18 @@
+/*
+* Copyright 2015 Facebook, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 #ifdef _MSC_VER
 #include <folly/CPortability.h>
@@ -14,14 +29,14 @@ void __stdcall __alarm_callback_func(HWND, UINT, UINT_PTR, DWORD) {
 }
 
 unsigned int alarm(unsigned int seconds) {
-  SetTimer(NULL, 0, (UINT)(seconds * 1000), __alarm_callback_func);
+  SetTimer(nullptr, 0, (UINT)(seconds * 1000), __alarm_callback_func);
   return 0;
 }
 
 char* asctime_r(const tm* tm, char* buf) {
   char tmpBuf[64];
   if (asctime_s(tmpBuf, sizeof(tmpBuf), tm))
-    return NULL;
+    return nullptr;
   return strcpy(buf, tmpBuf);
 }
 
@@ -43,19 +58,19 @@ int closedir(DIR* dir) {
 char* ctime_r(const time_t* t, char* buf) {
   char tmpBuf[64];
   if (ctime_s(tmpBuf, sizeof(tmpBuf), t))
-    return NULL;
+    return nullptr;
   return strcpy(buf, tmpBuf);
 }
 
 char* dirname(char* path) {
-  if (path == NULL || !strcmp(path, ""))
+  if (path == nullptr || !strcmp(path, ""))
     return ".";
 
   size_t len = strlen(path);
   char* pos = strrchr(path, '/');
   if (strrchr(path, '\\') > pos)
     pos = strrchr(path, '\\');
-  if (pos == NULL)
+  if (pos == nullptr)
     return ".";
 
   // Final slash with no name.
@@ -65,7 +80,7 @@ char* dirname(char* path) {
     char* pos2 = strrchr(path, '/');
     if (strrchr(path, '\\') > pos2)
       pos2 = strrchr(path, '\\');
-    if (pos2 == NULL)
+    if (pos2 == nullptr)
       return ".";
 
     *pos2 = '\0';
@@ -84,7 +99,7 @@ int dprintf(
   va_list args;
   va_start(args, fmt);
 
-  int len = vsnprintf(NULL, 0, fmt, args);
+  int len = vsnprintf(nullptr, 0, fmt, args);
   if (len <= 0)
     return -1;
   char* buf = (char*)malloc(len + 1);
@@ -121,7 +136,8 @@ pid_t getppid() {
 int getrlimit(int type, rlimit* dst) {
   if (type == RLIMIT_STACK) {
     NT_TIB* tib = (NT_TIB*)NtCurrentTeb();
-    dst->rlim_max = dst->rlim_cur = (size_t)tib->StackBase - (size_t)tib->StackLimit;
+    dst->rlim_cur = (size_t)tib->StackBase - (size_t)tib->StackLimit;
+    dst->rlim_max = dst->rlim_cur;
     return 0;
   }
   return -1;
@@ -150,7 +166,7 @@ int getuid() {
 tm* gmtime_r(const time_t* t, tm* res) {
   if (!gmtime_s(res, t))
     return res;
-  return NULL;
+  return nullptr;
 }
 
 int kill(pid_t p, int sig) {
@@ -166,7 +182,7 @@ tm* localtime_r(const time_t* t, tm* o) {
     *o = *tmp;
     return o;
   }
-  return NULL;
+  return nullptr;
 }
 
 int madvise(const void* addr, size_t len, int advise) {
@@ -180,17 +196,19 @@ size_t malloc_usable_size(void* addr) {
   return _msize(addr);
 }
 
-void* memmem(const void* haystack, size_t hlen, const void* needle, size_t nlen) {
+void* memmem(const void* haystack, size_t hlen,
+             const void* needle, size_t nlen) {
   int needle_first;
   const char* p = (const char*)haystack;
   size_t plen = hlen;
 
   if (!nlen)
-    return NULL;
+    return nullptr;
 
   needle_first = *(unsigned char*)needle;
 
-  while (plen >= nlen && (p = (const char*)memchr(p, needle_first, plen - nlen + 1))) {
+  while (plen >= nlen &&
+         (p = (const char*)memchr(p, needle_first, plen - nlen + 1))) {
     if (!memcmp(p, needle, nlen))
       return (void *)p;
 
@@ -198,7 +216,7 @@ void* memmem(const void* haystack, size_t hlen, const void* needle, size_t nlen)
     plen = hlen - (p - (const char*)haystack);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void* memrchr(const void* s, int c, size_t n) {
@@ -209,7 +227,7 @@ void* memrchr(const void* s, int c, size_t n) {
     }
     p--;
   }
-  return NULL;
+  return nullptr;
 }
 
 int mlock(const void* addr, size_t len) {
@@ -222,12 +240,10 @@ int mkdir(const char* fn, int mode) {
   return _mkdir(fn);
 }
 
-void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset) {
+void* mmap(void* addr, size_t length, int prot,
+           int flags, int fd, off_t offset) {
   // Make sure it's something we support first.
 
-  // Might be reasonable to ignore addr entirely.
-  if (addr != NULL)
-    return MAP_FAILED;
   // No Anon shared.
   if ((flags & (MAP_ANONYMOUS | MAP_SHARED)) == (MAP_ANONYMOUS | MAP_SHARED))
     return MAP_FAILED;
@@ -261,20 +277,25 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
     if (!(flags & MAP_ANONYMOUS))
       h = (HANDLE)_get_osfhandle(fd);
 
-    HANDLE fmh = CreateFileMapping(h, nullptr, newProt | SEC_COMMIT | SEC_RESERVE,
-      (DWORD)((length >> 32) & 0xFFFFFFFF), (DWORD)(length & 0xFFFFFFFF), nullptr);
-    // Depending on specifics, off_t may be 32-bit, so get MSVC to be quiet about
-    // it.
+    HANDLE fmh = CreateFileMapping(h, nullptr,
+                                   newProt | SEC_COMMIT | SEC_RESERVE,
+                                   (DWORD)((length >> 32) & 0xFFFFFFFF),
+                                   (DWORD)(length & 0xFFFFFFFF), nullptr);
+    // Depending on specifics, off_t may be 32-bit,
+    // so get MSVC to be quiet about it.
 #pragma warning(push)
 #pragma warning(disable: 4293)
     ret = MapViewOfFileEx(fmh, FILE_MAP_ALL_ACCESS,
-      (DWORD)((offset >> 32) & 0xFFFFFFFF), (DWORD)(offset & 0xFFFFFFFF), 0, addr);
+                          (DWORD)((offset >> 32) & 0xFFFFFFFF),
+                          (DWORD)(offset & 0xFFFFFFFF), 0, addr);
 #pragma warning(pop)
+    if (ret == nullptr)
+      ret = MAP_FAILED;
     CloseHandle(fmh);
   }
   else {
-    ret = VirtualAlloc(NULL, length, MEM_COMMIT | MEM_RESERVE, newProt);
-    if (ret == NULL)
+    ret = VirtualAlloc(addr, length, MEM_COMMIT | MEM_RESERVE, newProt);
+    if (ret == nullptr)
       return MAP_FAILED;
   }
 
@@ -336,7 +357,7 @@ DIR* opendir(const char* name) {
   size_t len;
 
   if (mbstowcs_s(&len, pattern, MAX_PATH, name, MAX_PATH - 2))
-    return NULL;
+    return nullptr;
 
   if (len && pattern[len - 1] != '/' && pattern[len - 1] != '\\')
     pattern[len++] = '\\';
@@ -346,7 +367,7 @@ DIR* opendir(const char* name) {
   WIN32_FIND_DATAW fdata;
   HANDLE h = FindFirstFileW(pattern, &fdata);
   if (h == INVALID_HANDLE_VALUE)
-    return NULL;
+    return nullptr;
 
   DIR* dir = (DIR*)malloc(sizeof(DIR));
   dir->dir.d_name = dir->name;
@@ -382,7 +403,7 @@ dirent* readdir(DIR* dir) {
   if (dir->cnt) {
     WIN32_FIND_DATAW fdata;
     if (!FindNextFileW(dir->hand, &fdata))
-      return NULL;
+      return nullptr;
 
     wcstombs(dir->name, fdata.cFileName, MAX_PATH * 3);
     if (fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -399,7 +420,7 @@ int readdir_r(DIR* dir, dirent* buf, dirent** ent) {
   if (dir->cnt) {
     WIN32_FIND_DATAW fdata;
     if (!FindNextFileW(dir->hand, &fdata)) {
-      *ent = NULL;
+      *ent = nullptr;
       return 0;
     }
 
@@ -464,7 +485,7 @@ char* strcasestr(const char* a, const char* b) {
   if (!tmp) {
     free(a2);
     free(b2);
-    return NULL;
+    return nullptr;
   }
   char* ret = (char*)a + (tmp - a2);
   free(a2);
@@ -567,7 +588,7 @@ int uname(utsname* buf) {
 }
 
 int vasprintf(char** dest, const char* format, va_list ap) {
-  int len = vsnprintf(NULL, 0, format, ap);
+  int len = vsnprintf(nullptr, 0, format, ap);
   if (len <= 0)
     return -1;
   char* buf = *dest = (char*)malloc(len + 1);

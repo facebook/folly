@@ -56,13 +56,14 @@
 #ifdef _MSC_VER
 
 #ifndef __STDC__
+ /* nolint */
 #define __STDC__ 1
-#include <io.h>
-#include <direct.h>
+#include <io.h> // nolint
+#include <direct.h> // nolint
 #undef __STDC__
 #else
-#include <io.h>
-#include <direct.h>
+#include <io.h> // nolint
+#include <direct.h> // nolint
 #endif
 
 #include <folly/WindowsPortability.h>
@@ -214,7 +215,8 @@ tm* localtime_r(const time_t* t, tm* o);
 #define MADV_SEQUENTIAL 0
 int madvise(const void* addr, size_t len, int advise);
 size_t malloc_usable_size(void* addr);
-void* memmem(const void* haystack, size_t hlen, const void* needle, size_t nlen);
+void* memmem(const void* haystack, size_t hlen,
+             const void* needle, size_t nlen);
 void* memrchr(const void* s, int c, size_t n);
 int mkdir(const char* fn, int mode);
 int mlock(const void* addr, size_t len);
@@ -233,7 +235,8 @@ int mlock(const void* addr, size_t len);
 #define PROT_READ 1
 #define PROT_WRITE 2
 #define PROT_EXEC 4
-void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset);
+void* mmap(void* addr, size_t length, int prot,
+           int flags, int fd, off_t offset);
 
 int mprotect(void* addr, size_t size, int prot);
 int munlock(const void* addr, size_t length);
@@ -294,7 +297,9 @@ int vasprintf(char** dest, const char* format, va_list ap);
 inline int __builtin_clz(unsigned int x, unsigned long index = 0) {
   return (int)(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
 }
-inline int __builtin_clzl(unsigned long x) { return __builtin_clz((unsigned int)x); }
+inline int __builtin_clzl(unsigned long x) {
+  return __builtin_clz((unsigned int)x);
+}
 inline int __builtin_clzll(unsigned long long x, unsigned long index = 0) {
   return (int)(_BitScanReverse64(&index, x) ? 63 - index : 64);
 }
@@ -303,7 +308,9 @@ inline int __builtin_clz(unsigned int x) {
   unsigned long index;
   return (int)(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
 }
-inline int __builtin_clzl(unsigned long x) { return __builtin_clz((unsigned int)x); }
+inline int __builtin_clzl(unsigned long x) {
+  return __builtin_clz((unsigned int)x);
+}
 inline int __builtin_clzll(unsigned long long x) {
   unsigned long index;
   return (int)(_BitScanReverse64(&index, x) ? 63 - index : 64);

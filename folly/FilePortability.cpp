@@ -1,3 +1,18 @@
+/*
+* Copyright 2015 Facebook, Inc.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 #ifdef _MSC_VER
 #include <folly/FilePortability.h>
@@ -105,7 +120,8 @@ int fcntl(int fd, int cmd, ...) {
       int flags = va_arg(args, int);
       HANDLE h = (HANDLE)_get_osfhandle(fd);
       if (h != INVALID_HANDLE_VALUE) {
-        if (SetHandleInformation(h, HANDLE_FLAG_INHERIT, (DWORD)(flags & FD_CLOEXEC)))
+        if (SetHandleInformation(h, HANDLE_FLAG_INHERIT,
+                                 (DWORD)(flags & FD_CLOEXEC)))
           res = 0;
       }
       break;
@@ -157,7 +173,8 @@ int flock(int fd, int operation) {
       flags |= LOCKFILE_FAIL_IMMEDIATELY;
     if (operation & LOCK_EX)
       flags |= LOCKFILE_EXCLUSIVE_LOCK;
-    if (!LockFileEx(h, flags, 0, fileSize.LowPart, (DWORD)fileSize.HighPart, &ov))
+    if (!LockFileEx(h, flags, 0, fileSize.LowPart,
+                    (DWORD)fileSize.HighPart, &ov))
       return -1;
   }
   return 0;
@@ -213,7 +230,8 @@ char* mkdtemp(char* tn) {
 }
 
 int mkstemp(char* tn) {
-  return _open(_mktemp(tn), _O_RDWR | _O_EXCL | _O_CREAT | _O_TEMPORARY | _O_BINARY | _O_RANDOM);
+  char *ptr = mktemp(tn);
+  return open(ptr, O_RDWR | O_TRUNC | O_EXCL | O_CREAT, 0600);
 }
 
 char* mktemp(char* tn) { 
@@ -237,19 +255,19 @@ int posix_fallocate(int fd, off_t offset, off_t len) {
 }
 
 int pread(int fd, void* buf, size_t count, off_t offset) {
-  return ::folly::file_portability::wrapPositional(_read, fd, offset, buf, (unsigned int)count);
+  return wrapPositional(_read, fd, offset, buf, (unsigned int)count);
 }
 
 ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
-  return ::folly::file_portability::wrapPositional(readv, fd, offset, iov, count);
+  return wrapPositional(readv, fd, offset, iov, count);
 }
 
 int pwrite(int fd, const void* buf, size_t count, off_t offset) {
-  return ::folly::file_portability::wrapPositional(_write, fd, offset, buf, (unsigned int)count);
+  return wrapPositional(_write, fd, offset, buf, (unsigned int)count);
 }
 
 ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
-  return ::folly::file_portability::wrapPositional(writev, fd, offset, iov, count);
+  return wrapPositional(writev, fd, offset, iov, count);
 }
 
 int read(int fh, void* buf, unsigned int mcc) {
@@ -266,11 +284,11 @@ ssize_t readlink(const char* path, char* buf, size_t buflen) {
 
   auto pFunc = (DWORD (WINAPI*)(HANDLE, LPTSTR, DWORD, DWORD))
     GetProcAddress(lib, "GetFinalPathNameByHandleA");
-  if (pFunc == NULL)
+  if (pFunc == nullptr)
     return -1;
 
-  HANDLE h = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  HANDLE h = CreateFile(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
+    OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
   if (h == INVALID_HANDLE_VALUE)
     return -1;
 

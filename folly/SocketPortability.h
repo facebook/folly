@@ -26,11 +26,12 @@
 #ifdef _MSC_VER
 
 #ifndef __STDC__
+/* nolint */
 #define __STDC__ 1
-#include <io.h>
+#include <io.h> // nolint
 #undef __STDC__
 #else
-#include <io.h>
+#include <io.h> // nolint
 #endif
 
 #include <fcntl.h>
@@ -61,6 +62,8 @@ struct msghdr {
 #define SHUT_WR SD_SEND
 #define SHUT_RDWR SD_BOTH
 
+typedef int nfds_t;
+
 namespace folly { namespace socket_portability {
   SOCKET fd_to_socket(int fd);
   int socket_to_fd(SOCKET s);
@@ -68,31 +71,44 @@ namespace folly { namespace socket_portability {
   // Unless you have a case where you would normally have
   // to reference the function as being explicitly in the
   // global scope, then you shouldn't be calling these directly.
-  int accept(int s, struct sockaddr* addr, int* addrlen);
-  int bind(int s, const struct sockaddr* name, int namelen);
-  int connect(int s, const struct sockaddr* name, int namelen);
-  int getpeername(int s, struct sockaddr* name, int* namelen);
-  int getsockname(int s, struct sockaddr* name, int* namelen);
-  int getsockopt(int s, int level, int optname, char* optval, int* optlen);
-  int getsockopt(int s, int level, int optname, void* optval, int* optlen);
+  //
+  // Note that the use of 'int' rather than 'size_t' for the 'len'
+  // parameters is needed to make the signature match exactly as
+  // it's used, otherwise MSVC will complain that it can't figure
+  // out which overload to use, as multiple match just as well.
+  int accept(int s, struct sockaddr* addr, socklen_t* addrlen);
+  int bind(int s, const struct sockaddr* name, socklen_t namelen);
+  int connect(int s, const struct sockaddr* name, socklen_t namelen);
+  int getpeername(int s, struct sockaddr* name, socklen_t* namelen);
+  int getsockname(int s, struct sockaddr* name, socklen_t* namelen);
+  int getsockopt(int s, int level, int optname,
+                 char* optval, socklen_t* optlen);
+  int getsockopt(int s, int level, int optname,
+                 void* optval, socklen_t* optlen);
   int inet_aton(const char *cp, struct in_addr *inp);
   const char* inet_ntop(int af, const void* src, char* dst, socklen_t size);
   int listen(int s, int backlog);
-  int poll(pollfd* fds, int nfds, int timeout);
+  int poll(pollfd* fds, nfds_t nfds, int timeout);
   int recv(int s, char* buf, int len, int flags);
   int recv(int s, void* buf, int len, int flags);
-  int recvfrom(int s, char* buf, int len, int flags, struct sockaddr* from, int* fromlen);
-  int recvfrom(int s, void* buf, int len, int flags, struct sockaddr* from, int* fromlen);
+  int recvfrom(int s, char* buf, int len, int flags,
+               struct sockaddr* from, socklen_t* fromlen);
+  int recvfrom(int s, void* buf, int len, int flags,
+               struct sockaddr* from, socklen_t* fromlen);
   ssize_t recvmsg(int s, struct msghdr* message, int fl);
   int send(int s, const char* buf, int len, int flags);
   int send(int s, const void* buf, int len, int flags);
   ssize_t sendmsg(int s, const struct msghdr *message, int fl);
-  int sendto(int s, const char* buf, int len, int flags, const sockaddr* to, int tolen);
-  int sendto(int s, const void* buf, int len, int flags, const sockaddr* to, int tolen);
-  // We use this first overload to convince MSVC to use our overloads, rather than the
-  // winsock ones, when optval is a const char*.
-  int setsockopt(int s, int level, int optname, const char* optval, int optlen);
-  int setsockopt(int s, int level, int optname, const void* optval, int optlen);
+  int sendto(int s, const char* buf, int len, int flags,
+             const sockaddr* to, socklen_t tolen);
+  int sendto(int s, const void* buf, int len, int flags,
+             const sockaddr* to, socklen_t tolen);
+  // We use this first overload to convince MSVC to use our overloads,
+  // rather than the winsock ones, when optval is a const char*.
+  int setsockopt(int s, int level, int optname,
+                 const char* optval, socklen_t optlen);
+  int setsockopt(int s, int level, int optname,
+                 const void* optval, socklen_t optlen);
   int shutdown(int s, int how);
   int socketpair(int domain, int type, int protocol, int sockot[2]);
 
@@ -102,6 +118,7 @@ namespace folly { namespace socket_portability {
   int socket(int af, int type, int protocol);
 }}
 
+/* using override */
 using namespace folly::socket_portability;
 
 // And a few things that have different names in posix.
@@ -121,27 +138,66 @@ namespace folly { namespace socket_portability {
   // Unless you have a case where you would normally have
   // to reference the function as being explicitly in the
   // global scope, then you shouldn't be calling these directly.
-  inline int bind(int s, const struct sockaddr* name, int namelen) { return ::bind(s, name, namelen); }
-  inline int connect(int s, const struct sockaddr* name, int namelen) { return ::connect(s, name, namelen); }
-  inline int getpeername(int s, struct sockaddr* name, int* namelen) { return ::getpeername(s, name, namelen); }
-  inline int getsockname(int s, struct sockaddr* name, int* namelen) { return ::getsockname(s, name, namelen); }
-  inline int getsockopt(int s, int level, int optname, void* optval, int* optlen) { return ::getsockopt(s, level, optname, optval, optlen); }
-  inline const char* inet_ntop(int af, const void* src, char* dst, socklen_t size) { return ::inet_ntop(af, src, dst, size); }
-  inline int listen(int s, int backlog) { return ::listen(s, backlog); }
-  inline int poll(struct pollfd fds[], nfds_t nfds, int timeout) { return ::poll(fds, nfds, timeout); }
-  inline int recv(int s, void* buf, int len, int flags) { return ::recv(s, buf, len, flags); }
-  inline int recvfrom(int s, void* buf, int len, int flags, struct sockaddr* from, int* fromlen) { return ::recvfrom(s, buf, len, flags, from, fromlen); }
-  inline int send(int s, const void* buf, int len, int flags) { return ::send(s, buf, len, flags); }
-  inline int sendto(int s, const void* buf, int len, int flags, const sockaddr* to, int tolen) { return ::sendto(s, buf, len, flags, to, tolen); }
-  inline ssize_t sendmsg(int socket, const struct msghdr* message, int flags) { return ::sendmsg(socket, message, flags); }
-  inline int setsockopt(int s, int level, int optname, const void* optval, int optlen) { return ::setsockopt(s, level, optname, optval, optlen); }
-  inline int shutdown(int s, int how) { return ::shutdown(s, how); }
-  inline int socketpair(int domain, int type, int protocol, int sockot[2]) { return ::socketpair(domain, type, protocol, sockot); }
+  inline int bind(int s, const struct sockaddr* name, socklen_t namelen) {
+    return ::bind(s, name, namelen);
+  }
+  inline int connect(int s, const struct sockaddr* name, socklen_t namelen) {
+    return ::connect(s, name, namelen);
+  }
+  inline int getpeername(int s, struct sockaddr* name, socklen_t* namelen) {
+    return ::getpeername(s, name, namelen);
+  }
+  inline int getsockname(int s, struct sockaddr* name, socklen_t* namelen) {
+    return ::getsockname(s, name, namelen);
+  }
+  inline int getsockopt(int s, int level, int optname,
+                        void* optval, socklen_t* optlen) {
+    return ::getsockopt(s, level, optname, optval, optlen);
+  }
+  inline const char* inet_ntop(int af, const void* src,
+                               char* dst, socklen_t size) {
+    return ::inet_ntop(af, src, dst, size);
+  }
+  inline int listen(int s, int backlog) {
+    return ::listen(s, backlog);
+  }
+  inline int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
+    return ::poll(fds, nfds, timeout);
+  }
+  inline int recv(int s, void* buf, size_t len, int flags) {
+    return ::recv(s, buf, len, flags);
+  }
+  inline int recvfrom(int s, void* buf, size_t len, int flags,
+                      struct sockaddr* from, socklen_t* fromlen) {
+    return ::recvfrom(s, buf, len, flags, from, fromlen);
+  }
+  inline int send(int s, const void* buf, size_t len, int flags) {
+    return ::send(s, buf, len, flags);
+  }
+  inline int sendto(int s, const void* buf, size_t len, int flags,
+                    const sockaddr* to, socklen_t tolen) {
+    return ::sendto(s, buf, len, flags, to, tolen);
+  }
+  inline ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
+    return ::sendmsg(socket, message, flags);
+  }
+  inline int setsockopt(int s, int level, int optname,
+                        const void* optval, socklen_t optlen) {
+    return ::setsockopt(s, level, optname, optval, optlen);
+  }
+  inline int shutdown(int s, int how) {
+    return ::shutdown(s, how);
+  }
+  inline int socketpair(int domain, int type, int protocol, int sockot[2]) {
+    return ::socketpair(domain, type, protocol, sockot);
+  }
 
   // This is the only function that _must_ be referenced via fsp::
   // because there is no difference in parameter types to overload
   // on.
-  inline int socket(int af, int type, int protocol) { return ::socket(af, type, protocol); }
+  inline int socket(int af, int type, int protocol) {
+    return ::socket(af, type, protocol);
+  }
 }}
 #endif
 
