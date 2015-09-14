@@ -283,7 +283,11 @@ inline std::string fastIpv4ToString(
 }
 
 inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
+#ifdef _MSC_VER
+  const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
+#else
   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.s6_addr16);
+#endif
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   char* buf = str;
 
