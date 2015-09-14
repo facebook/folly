@@ -266,8 +266,8 @@ private:
 
 /**
  * This is the core of the string. The code should work on 32- and
- * 64-bit architectures and with any Char size. Porting to big endian
- * architectures would require some changes.
+ * 64-bit and both big- and little-endianan architectures with any
+ * Char size.
  *
  * The storage is selected as follows (assuming we store one-byte
  * characters on a 64-bit machine): (a) "small" strings between 0 and
@@ -279,19 +279,29 @@ private:
  * reference-counted and copied lazily. the reference count is
  * allocated right before the character array.
  *
- * The discriminator between these three strategies sits in the two
- * most significant bits of the rightmost char of the storage. If
- * neither is set, then the string is small (and its length sits in
- * the lower-order bits of that rightmost character). If the MSb is
- * set, the string is medium width. If the second MSb is set, then the
- * string is large.
+ * The discriminator between these three strategies sits in two
+ * bits of the rightmost char of the storage. If neither is set, then the
+ * string is small (and its length sits in the lower-order bits on
+ * little-endian or the high-order bits on big-endian of that
+ * rightmost character). If the MSb is set, the string is medium width.
+ * If the second MSb is set, then the string is large. On little-endian,
+ * these 2 bits are the 2 MSbs of MediumLarge::capacity_, while on
+ * big-endian, these 2 bits are the 2 LSbs. This keeps both little-endian
+ * and big-endian fbstring_core equivalent with merely different ops used
+ * to extract capacity/category.
  */
 template <class Char> class fbstring_core {
 public:
   fbstring_core() noexcept {
     // Only initialize the tag, will set the MSBs (i.e. the small
     // string size) to zero too
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    ml_.capacity_ = maxSmallSize << 2;
+#else
+#error Unable to identify target endianness
+#endif
     // or: setSmallSize(0);
     writeTerminator();
     assert(category() == Category::isSmall && size() == 0);
@@ -338,8 +348,7 @@ public:
       // No need for writeTerminator() here, we copied one extra
       // element just above.
       ml_.size_ = rhs.ml_.size_;
-      ml_.capacity_ = (allocSize / sizeof(Char) - 1)
-                      | static_cast<category_type>(Category::isMedium);
+      ml_.setCapacity(allocSize / sizeof(Char) - 1, Category::isMedium);
       assert(category() == Category::isMedium);
     }
     assert(size() == rhs.size());
@@ -414,16 +423,14 @@ public:
       ml_.data_ = static_cast<Char*>(checkedMalloc(allocSize));
       fbstring_detail::pod_copy(data, data + size, ml_.data_);
       ml_.size_ = size;
-      ml_.capacity_ = (allocSize / sizeof(Char) - 1)
-                      | static_cast<category_type>(Category::isMedium);
+      ml_.setCapacity(allocSize / sizeof(Char) - 1, Category::isMedium);
     } else {
       // Large strings are allocated differently
       size_t effectiveCapacity = size;
       auto const newRC = RefCounted::create(data, & effectiveCapacity);
       ml_.data_ = newRC->data_;
       ml_.size_ = size;
-      ml_.capacity_ = effectiveCapacity
-                      | static_cast<category_type>(Category::isLarge);
+      ml_.setCapacity(effectiveCapacity, Category::isLarge);
     }
     writeTerminator();
   }
@@ -458,8 +465,7 @@ public:
       ml_.data_ = data;
       ml_.size_ = size;
       // Don't forget about null terminator
-      ml_.capacity_ = (allocatedSize - 1)
-                      | static_cast<category_type>(Category::isMedium);
+      ml_.setCapacity(allocatedSize - 1, Category::isMedium);
     } else {
       // No need for the memory
       free(data);
@@ -556,8 +562,7 @@ public:
         // we have + 1 above.
         RefCounted::decrementRefs(ml_.data_);
         ml_.data_ = newRC->data_;
-        ml_.capacity_ = minCapacity
-                        | static_cast<category_type>(Category::isLarge);
+        ml_.setCapacity(minCapacity, Category::isLarge);
         // size remains unchanged
       } else {
         // String is not shared, so let's try to realloc (if needed)
@@ -567,8 +572,7 @@ public:
                RefCounted::reallocate(ml_.data_, ml_.size_,
                                       ml_.capacity(), minCapacity);
           ml_.data_ = newRC->data_;
-          ml_.capacity_ = minCapacity
-                          | static_cast<category_type>(Category::isLarge);
+          ml_.setCapacity(minCapacity, Category::isLarge);
           writeTerminator();
         }
         assert(capacity() >= minCapacity);
@@ -589,8 +593,7 @@ public:
             (ml_.capacity() + 1) * sizeof(Char),
             capacityBytes));
         writeTerminator();
-        ml_.capacity_ = (capacityBytes / sizeof(Char) - 1)
-                        | static_cast<category_type>(Category::isMedium);
+        ml_.setCapacity(capacityBytes / sizeof(Char) - 1, Category::isMedium);
       } else {
         // Conversion from medium to large string
         fbstring_core nascent;
@@ -613,8 +616,7 @@ public:
         // No need for writeTerminator(), we wrote it above with + 1.
         ml_.data_ = newRC->data_;
         ml_.size_ = size;
-        ml_.capacity_ = minCapacity
-                        | static_cast<category_type>(Category::isLarge);
+        ml_.setCapacity(minCapacity, Category::isLarge);
         assert(capacity() >= minCapacity);
       } else if (minCapacity > maxSmallSize) {
         // medium
@@ -627,8 +629,7 @@ public:
         // No need for writeTerminator(), we wrote it above with + 1.
         ml_.data_ = data;
         ml_.size_ = size;
-        ml_.capacity_ = (allocSizeBytes / sizeof(Char) - 1)
-                        | static_cast<category_type>(Category::isMedium);
+        ml_.setCapacity(allocSizeBytes / sizeof(Char) - 1, Category::isMedium);
       } else {
         // small
         // Nothing to do, everything stays put
@@ -728,16 +729,6 @@ private:
   // Disabled
   fbstring_core & operator=(const fbstring_core & rhs);
 
-  struct MediumLarge {
-    Char * data_;
-    size_t size_;
-    size_t capacity_;
-
-    size_t capacity() const {
-      return capacity_ & capacityExtractMask;
-    }
-  };
-
   struct RefCounted {
     std::atomic<size_t> refCount_;
     Char data_[1];
@@ -805,6 +796,53 @@ private:
     }
   };
 
+  typedef std::conditional<sizeof(size_t) == 4, uint32_t, uint64_t>::type
+          category_type;
+
+  enum class Category : category_type {
+    isSmall = 0,
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    isMedium = sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000,
+    isLarge =  sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000,
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    isMedium = 0x2,
+    isLarge =  0x1,
+#else
+#error Unable to identify target endianness
+#endif
+  };
+
+  Category category() const {
+    // works for both big-endian and little-endian
+    return static_cast<Category>(ml_.capacity_ & categoryExtractMask);
+  }
+
+  struct MediumLarge {
+    Char * data_;
+    size_t size_;
+    size_t capacity_;
+
+    size_t capacity() const {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      return capacity_ & capacityExtractMask;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+      return capacity_ >> 2;
+#else
+#error Unable to identify target endianness
+#endif
+    }
+
+    void setCapacity(size_t cap, Category cat) {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        capacity_ = cap | static_cast<category_type>(cat);
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        capacity_ = (cap << 2) | static_cast<category_type>(cat);
+#else
+#error Unable to identify target endianness
+#endif
+    }
+  };
+
   union {
     Char small_[sizeof(MediumLarge) / sizeof(Char)];
     MediumLarge ml_;
@@ -815,32 +853,34 @@ private:
     maxSmallSize = lastChar / sizeof(Char),
     maxMediumSize = 254 / sizeof(Char),            // coincides with the small
                                                    // bin size in dlmalloc
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     categoryExtractMask = sizeof(size_t) == 4 ? 0xC0000000 : 0xC000000000000000,
     capacityExtractMask = ~categoryExtractMask,
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    categoryExtractMask = 0x3,
+#else
+#error Unable to identify target endianness
+#endif
   };
   static_assert(!(sizeof(MediumLarge) % sizeof(Char)),
                 "Corrupt memory layout for fbstring.");
 
-  typedef std::conditional<sizeof(size_t) == 4, uint32_t, uint64_t>::type
-          category_type;
-
-  enum class Category : category_type {
-    isSmall = 0,
-    isMedium = sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000,
-    isLarge =  sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000,
-  };
-
-  Category category() const {
-    // Assumes little endian
-    return static_cast<Category>(ml_.capacity_ & categoryExtractMask);
-  }
-
   size_t smallSize() const {
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     assert(category() == Category::isSmall &&
            static_cast<size_t>(small_[maxSmallSize])
            <= static_cast<size_t>(maxSmallSize));
     return static_cast<size_t>(maxSmallSize)
       - static_cast<size_t>(small_[maxSmallSize]);
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    assert(category() == Category::isSmall &&
+           (static_cast<size_t>(small_[maxSmallSize]) >> 2)
+           <= static_cast<size_t>(maxSmallSize));
+    return static_cast<size_t>(maxSmallSize)
+      - (static_cast<size_t>(small_[maxSmallSize]) >> 2);
+#else
+#error Unable to identify target endianness
+#endif
   }
 
   void setSmallSize(size_t s) {
@@ -848,7 +888,13 @@ private:
     // so don't assume anything about the previous value of
     // small_[maxSmallSize].
     assert(s <= maxSmallSize);
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     small_[maxSmallSize] = maxSmallSize - s;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    small_[maxSmallSize] = (maxSmallSize - s) << 2;
+#else
+#error Unable to identify target endianness
+#endif
     writeTerminator();
   }
 };
