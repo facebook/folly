@@ -19,6 +19,7 @@
 #include <memory>
 #include <sys/uio.h>
 
+#include <folly/io/IOBuf.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/AsyncSocketBase.h>
@@ -37,7 +38,6 @@ namespace folly {
 
 class AsyncSocketException;
 class EventBase;
-class IOBuf;
 class SocketAddress;
 
 /*

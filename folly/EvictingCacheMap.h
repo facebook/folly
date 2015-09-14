@@ -407,6 +407,7 @@ class EvictingCacheMap : private boost::noncopyable {
   struct Node
     : public boost::intrusive::unordered_set_base_hook<link_mode>,
       public boost::intrusive::list_base_hook<link_mode> {
+    template<class TKey, class TValue>
     Node(const TKey& key, TValue&& value)
         : pr(std::make_pair(key, std::move(value))) {
     }
