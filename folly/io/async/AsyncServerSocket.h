@@ -653,7 +653,7 @@ class AsyncServerSocket : public DelayedDestruction
     uint16_t events, int socket, sa_family_t family) noexcept;
 
   int createSocket(int family);
-  void setupSocket(int fd);
+  void setupSocket(int fd, int family);
   void bindSocket(int fd, const SocketAddress& address, bool isExistingSocket);
   void dispatchSocket(int socket, SocketAddress&& address);
   void dispatchError(const char *msg, int errnoValue);
