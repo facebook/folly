@@ -28,7 +28,7 @@ class Base {
 
 class Derived : public Base {
  public:
-  int foo() const FOLLY_FINAL { return 2; }
+  int foo() const final { return 2; }
 };
 
 // A compiler that supports final will likely inline the call to p->foo()

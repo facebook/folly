@@ -215,7 +215,7 @@ class CalledProcessError : public SubprocessError {
  public:
   explicit CalledProcessError(ProcessReturnCode rc);
   ~CalledProcessError() throw() = default;
-  const char* what() const throw() FOLLY_OVERRIDE { return what_.c_str(); }
+  const char* what() const throw() override { return what_.c_str(); }
   ProcessReturnCode returnCode() const { return returnCode_; }
  private:
   ProcessReturnCode returnCode_;
@@ -229,7 +229,7 @@ class SubprocessSpawnError : public SubprocessError {
  public:
   SubprocessSpawnError(const char* executable, int errCode, int errnoValue);
   ~SubprocessSpawnError() throw() = default;
-  const char* what() const throw() FOLLY_OVERRIDE { return what_.c_str(); }
+  const char* what() const throw() override { return what_.c_str(); }
   int errnoValue() const { return errnoValue_; }
 
  private:
