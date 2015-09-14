@@ -36,7 +36,7 @@ TEST(Random, StateSize) {
   EXPECT_EQ(sizeof(uint_fast32_t) / 4 + 3,
             StateSize<std::minstd_rand0>::value);
   EXPECT_EQ(624, StateSize<std::mt19937>::value);
-#if FOLLY_USE_SIMD_PRNG
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
   EXPECT_EQ(624, StateSize<__gnu_cxx::sfmt19937>::value);
 #endif
   EXPECT_EQ(24, StateSize<std::ranlux24_base>::value);

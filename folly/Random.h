@@ -22,9 +22,8 @@
 #include <stdint.h>
 #include <folly/ThreadLocal.h>
 
-#if __GNUC_PREREQ(4, 8) && !defined(ANDROID)
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
-#define FOLLY_USE_SIMD_PRNG 1
 #endif
 
 namespace folly {
@@ -84,7 +83,7 @@ class Random {
 
  public:
   // Default generator type.
-#if FOLLY_USE_SIMD_PRNG
+#if FOLLY_HAVE_EXTRANDOM_SFMT19937
   typedef __gnu_cxx::sfmt19937 DefaultGenerator;
 #else
   typedef std::mt19937 DefaultGenerator;

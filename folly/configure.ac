@@ -365,6 +365,20 @@ AC_CACHE_CHECK(
     [folly_cv_prog_cc_xsi_strerror_r=yes],
     [folly_cv_prog_cc_xsi_strerror_r=no])])
 
+AC_CACHE_CHECK(
+  [for ext/random and __gnu_cxx::sfmt19937],
+  [folly_cv_prog_cc_have_extrandom_sfmt19937],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <ext/random>
+      int main(int argc, char** argv) {
+        __gnu_cxx::sfmt19937 rng;
+        return 0;
+      }
+    ]],
+    [folly_cv_prog_cc_have_extrandom_sfmt19937=yes],
+    [folly_cv_prog_cc_have_extrandom_sfmt19937=no])])
+
 if test "$folly_cv_prog_cc_xsi_strerror_r" = "yes"; then
   AC_DEFINE([HAVE_XSI_STRERROR_R], [1], [Define to 1 if the runtime supports XSI-style strerror_r])
 fi
@@ -410,6 +424,8 @@ AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
 AM_CONDITIONAL([HAVE_WEAK_SYMBOLS],
                [test "$folly_cv_prog_cc_weak_symbols" = "yes"])
 AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT], [test "$ac_cv_header_bits_functexcept_h" = "yes"])
+AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
+               [test "$folly_cv_prog_cc_have_extrandom_sfmt19937" = "yes"])
 
 # Output
 AC_CONFIG_FILES([Makefile
