@@ -282,17 +282,20 @@ private:
  * to extract capacity/category.
  */
 template <class Char> class fbstring_core {
+protected:
+  static constexpr bool kIsLittleEndian =
+    __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
+  static constexpr bool kIsBigEndian =
+    __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__;
+  static_assert(
+      kIsLittleEndian || kIsBigEndian, "unable to identify endianness");
 public:
   fbstring_core() noexcept {
     // Only initialize the tag, will set the MSBs (i.e. the small
     // string size) to zero too
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    ml_.capacity_ = maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)));
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    ml_.capacity_ = maxSmallSize << 2;
-#else
-#error Unable to identify target endianness
-#endif
+    ml_.capacity_ = kIsLittleEndian
+      ? maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)))
+      : ml_.capacity_ = maxSmallSize << 2;
     // or: setSmallSize(0);
     writeTerminator();
     assert(category() == Category::isSmall && size() == 0);
@@ -792,15 +795,12 @@ private:
 
   enum class Category : category_type {
     isSmall = 0,
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    isMedium = sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000,
-    isLarge =  sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000,
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    isMedium = 0x2,
-    isLarge =  0x1,
-#else
-#error Unable to identify target endianness
-#endif
+    isMedium = kIsLittleEndian
+      ? sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000
+      : 0x2,
+    isLarge =  kIsLittleEndian
+      ? sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000
+      : 0x1,
   };
 
   Category category() const {
@@ -814,23 +814,15 @@ private:
     size_t capacity_;
 
     size_t capacity() const {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-      return capacity_ & capacityExtractMask;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-      return capacity_ >> 2;
-#else
-#error Unable to identify target endianness
-#endif
+      return kIsLittleEndian
+        ? capacity_ & capacityExtractMask
+        : capacity_ >> 2;
     }
 
     void setCapacity(size_t cap, Category cat) {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        capacity_ = cap | static_cast<category_type>(cat);
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        capacity_ = (cap << 2) | static_cast<category_type>(cat);
-#else
-#error Unable to identify target endianness
-#endif
+        capacity_ = kIsLittleEndian
+          ? cap | static_cast<category_type>(cat)
+          : (cap << 2) | static_cast<category_type>(cat);
     }
   };
 
@@ -844,34 +836,22 @@ private:
     maxSmallSize = lastChar / sizeof(Char),
     maxMediumSize = 254 / sizeof(Char),            // coincides with the small
                                                    // bin size in dlmalloc
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    categoryExtractMask = sizeof(size_t) == 4 ? 0xC0000000 : 0xC000000000000000,
-    capacityExtractMask = ~categoryExtractMask,
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    categoryExtractMask = 0x3,
-#else
-#error Unable to identify target endianness
-#endif
+    categoryExtractMask = kIsLittleEndian
+      ? sizeof(size_t) == 4 ? 0xC0000000 : 0xC000000000000000
+      : 0x3,
+    capacityExtractMask = kIsLittleEndian
+      ? ~categoryExtractMask
+      : 0x0 /*unused*/,
   };
   static_assert(!(sizeof(MediumLarge) % sizeof(Char)),
                 "Corrupt memory layout for fbstring.");
 
   size_t smallSize() const {
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    assert(category() == Category::isSmall &&
-           static_cast<size_t>(small_[maxSmallSize])
-           <= static_cast<size_t>(maxSmallSize));
-    return static_cast<size_t>(maxSmallSize)
-      - static_cast<size_t>(small_[maxSmallSize]);
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    assert(category() == Category::isSmall &&
-           (static_cast<size_t>(small_[maxSmallSize]) >> 2)
-           <= static_cast<size_t>(maxSmallSize));
-    return static_cast<size_t>(maxSmallSize)
-      - (static_cast<size_t>(small_[maxSmallSize]) >> 2);
-#else
-#error Unable to identify target endianness
-#endif
+    assert(category() == Category::isSmall);
+    auto shift = kIsLittleEndian ? 0 : 2;
+    auto smallShifted = static_cast<size_t>(small_[maxSmallSize]) >> shift;
+    assert(static_cast<size_t>(maxSmallSize) >= smallShifted);
+    return static_cast<size_t>(maxSmallSize) - smallShifted;
   }
 
   void setSmallSize(size_t s) {
@@ -879,13 +859,9 @@ private:
     // so don't assume anything about the previous value of
     // small_[maxSmallSize].
     assert(s <= maxSmallSize);
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    small_[maxSmallSize] = maxSmallSize - s;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    small_[maxSmallSize] = (maxSmallSize - s) << 2;
-#else
-#error Unable to identify target endianness
-#endif
+    small_[maxSmallSize] = kIsLittleEndian
+      ? maxSmallSize - s
+      : (maxSmallSize - s) << 2;
     writeTerminator();
   }
 };
