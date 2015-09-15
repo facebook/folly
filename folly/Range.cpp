@@ -26,12 +26,6 @@
 
 namespace folly {
 
-/**
- * Predicates that can be used with qfind and startsWith
- */
-const AsciiCaseSensitive asciiCaseSensitive = AsciiCaseSensitive();
-const AsciiCaseInsensitive asciiCaseInsensitive = AsciiCaseInsensitive();
-
 namespace {
 
 // It's okay if pages are bigger than this (as powers of two), but they should
@@ -216,7 +210,7 @@ size_t qfind_first_byte_of_sse42(const StringPiece haystack,
       PAGE_FOR(haystack.end() - 1) != PAGE_FOR(haystack.data() + 16)) {
     // We can't safely SSE-load haystack. Use a different approach.
     if (haystack.size() <= 2) {
-      return qfind_first_of(haystack, needles, asciiCaseSensitive);
+      return qfind_first_of(haystack, needles, AsciiCaseSensitive());
     }
     return qfind_first_byte_of_byteset(haystack, needles);
   }
@@ -251,7 +245,7 @@ size_t qfind_first_byte_of_nosse(const StringPiece haystack,
              needles.size() >= 32) {
     return qfind_first_byte_of_byteset(haystack, needles);
   }
-  return qfind_first_of(haystack, needles, asciiCaseSensitive);
+  return qfind_first_of(haystack, needles, AsciiCaseSensitive());
 }
 
 }  // namespace detail

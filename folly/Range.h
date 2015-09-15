@@ -1055,9 +1055,6 @@ struct AsciiCaseInsensitive {
   }
 };
 
-extern const AsciiCaseSensitive asciiCaseSensitive;
-extern const AsciiCaseInsensitive asciiCaseInsensitive;
-
 template <class T>
 size_t qfind(const Range<T>& haystack,
              const typename Range<T>::value_type& needle) {
@@ -1115,7 +1112,7 @@ inline size_t rfind(const Range<const unsigned char*>& haystack,
 template <class T>
 size_t qfind_first_of(const Range<T>& haystack,
                       const Range<T>& needles) {
-  return qfind_first_of(haystack, needles, asciiCaseSensitive);
+  return qfind_first_of(haystack, needles, AsciiCaseSensitive());
 }
 
 // specialization for StringPiece
