@@ -20,6 +20,7 @@
 
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/SSLContext.h>
 
 using std::string;
 using std::vector;
@@ -127,21 +128,15 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
   eventBase.loop();
 }
 
-}
-///////////////////////////////////////////////////////////////////////////
-// init_unit_test_suite
-///////////////////////////////////////////////////////////////////////////
+}  // folly
 
-namespace {
-using folly::SSLContext;
-struct Initializer {
-  Initializer() {
-    signal(SIGPIPE, SIG_IGN);
-    SSLContext::setSSLLockTypes({
-        {CRYPTO_LOCK_EVP_PKEY, SSLContext::LOCK_NONE},
-        {CRYPTO_LOCK_SSL_SESSION, SSLContext::LOCK_SPINLOCK},
-        {CRYPTO_LOCK_SSL_CTX, SSLContext::LOCK_NONE}});
-  }
-};
-Initializer initializer;
-} // anonymous
+int main(int argc, char *argv[]) {
+  signal(SIGPIPE, SIG_IGN);
+  folly::SSLContext::setSSLLockTypes({
+      {CRYPTO_LOCK_EVP_PKEY, folly::SSLContext::LOCK_NONE},
+      {CRYPTO_LOCK_SSL_SESSION, folly::SSLContext::LOCK_SPINLOCK},
+      {CRYPTO_LOCK_SSL_CTX, folly::SSLContext::LOCK_NONE}});
+  testing::InitGoogleTest(&argc, argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  return RUN_ALL_TESTS();
+}

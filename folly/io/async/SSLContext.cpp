@@ -626,17 +626,13 @@ struct SSLLock {
 // SSLContext runs in such environments.
 // Instead of declaring a static member we "new" the static
 // member so that it won't be destructed on exit().
-static std::map<int, SSLContext::SSLLockType>* lockTypesInst =
-  new std::map<int, SSLContext::SSLLockType>();
-
-static std::unique_ptr<SSLLock[]>* locksInst =
-  new std::unique_ptr<SSLLock[]>();
-
 static std::unique_ptr<SSLLock[]>& locks() {
+  static auto locksInst = new std::unique_ptr<SSLLock[]>();
   return *locksInst;
 }
 
 static std::map<int, SSLContext::SSLLockType>& lockTypes() {
+  static auto lockTypesInst = new std::map<int, SSLContext::SSLLockType>();
   return *lockTypesInst;
 }
 
