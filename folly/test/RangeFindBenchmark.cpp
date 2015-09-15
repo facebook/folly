@@ -144,7 +144,7 @@ BENCHMARK_DRAW_LINE();
 // it's useful to compare our custom implementations vs. the standard library
 inline size_t qfind_first_byte_of_std(const StringPiece haystack,
                                       const StringPiece needles) {
-  return qfind_first_of(haystack, needles, asciiCaseSensitive);
+  return qfind_first_of(haystack, needles, AsciiCaseSensitive());
 }
 
 template <class Func>
