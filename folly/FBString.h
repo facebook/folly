@@ -256,15 +256,6 @@ private:
 */
 
 /**
- * gcc-4.7 throws what appears to be some false positive uninitialized
- * warnings for the members of the MediumLarge struct.  So, mute them here.
- */
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wuninitialized"
-#endif
-
-/**
  * This is the core of the string. The code should work on 32- and
  * 64-bit and both big- and little-endianan architectures with any
  * Char size.
@@ -898,10 +889,6 @@ private:
     writeTerminator();
   }
 };
-
-#if defined(__GNUC__) && !defined(__clang__)
-# pragma GCC diagnostic pop
-#endif
 
 #ifndef _LIBSTDCXX_FBSTRING
 /**
