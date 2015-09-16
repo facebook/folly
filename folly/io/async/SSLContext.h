@@ -431,7 +431,6 @@ class SSLContext {
   std::vector<ClientHelloCallback> clientHelloCbs_;
 #endif
 
-  static std::mutex mutex_;
   static bool initialized_;
 
 #ifdef OPENSSL_NPN_NEGOTIATED
