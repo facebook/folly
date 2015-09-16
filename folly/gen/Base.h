@@ -272,13 +272,9 @@ struct FBounded;
  */
 template<class Container>
 struct ValueTypeOfRange {
- private:
-  static Container container_;
  public:
-  typedef decltype(*std::begin(container_))
-    RefType;
-  typedef typename std::decay<decltype(*std::begin(container_))>::type
-    StorageType;
+  using RefType = decltype(*std::begin(std::declval<Container&>()));
+  using StorageType = typename std::decay<RefType>::type;
 };
 
 
