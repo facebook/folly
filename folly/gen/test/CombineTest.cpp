@@ -30,6 +30,9 @@ using std::string;
 using std::vector;
 using std::tuple;
 
+const folly::gen::detail::Map<
+  folly::gen::detail::MergeTuples> gTupleFlatten{};
+
 auto even = [](int i) -> bool { return i % 2 == 0; };
 auto odd = [](int i) -> bool { return i % 2 == 1; };
 
@@ -118,7 +121,7 @@ TEST(CombineGen, TupleFlatten) {
   EXPECT_EQ(std::get<1>(zipped1[0]), std::make_tuple('A'));
 
   auto zipped2 = from(zipped1)
-    | tuple_flatten
+    | gTupleFlatten
     | assert_type<tuple<int, string, char>&&>()
     | as<vector>();
   ASSERT_EQ(zipped2.size(), 3);
@@ -126,7 +129,7 @@ TEST(CombineGen, TupleFlatten) {
 
   auto zipped3 = from(charTupleVec)
     | zip(intStringTupleVec)
-    | tuple_flatten
+    | gTupleFlatten
     | assert_type<tuple<char, int, string>&&>()
     | as<vector>();
   ASSERT_EQ(zipped3.size(), 3);
@@ -134,7 +137,7 @@ TEST(CombineGen, TupleFlatten) {
 
   auto zipped4 = from(intStringTupleVec)
     | zip(doubleVec)
-    | tuple_flatten
+    | gTupleFlatten
     | assert_type<tuple<int, string, double>&&>()
     | as<vector>();
   ASSERT_EQ(zipped4.size(), 3);
@@ -143,7 +146,7 @@ TEST(CombineGen, TupleFlatten) {
   auto zipped5 = from(doubleVec)
     | zip(doubleVec)
     | assert_type<tuple<double, double>>()
-    | tuple_flatten  // essentially a no-op
+    | gTupleFlatten  // essentially a no-op
     | assert_type<tuple<double, double>&&>()
     | as<vector>();
   ASSERT_EQ(zipped5.size(), 5);
@@ -151,9 +154,9 @@ TEST(CombineGen, TupleFlatten) {
 
   auto zipped6 = from(intStringTupleVec)
     | zip(charTupleVec)
-    | tuple_flatten
+    | gTupleFlatten
     | zip(doubleVec)
-    | tuple_flatten
+    | gTupleFlatten
     | assert_type<tuple<int, string, char, double>&&>()
     | as<vector>();
   ASSERT_EQ(zipped6.size(), 3);
