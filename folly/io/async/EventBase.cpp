@@ -797,7 +797,7 @@ void EventBase::attachTimeoutManager(AsyncTimeout* obj,
   event_base_set(getLibeventBase(), ev);
   if (internal == AsyncTimeout::InternalEnum::INTERNAL) {
     // Set the EVLIST_INTERNAL flag
-    ev->ev_flags |= EVLIST_INTERNAL;
+    event_ref_flags(ev) |= EVLIST_INTERNAL;
   }
 }
 

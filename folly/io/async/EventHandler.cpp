@@ -49,8 +49,9 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
   if (isHandlerRegistered()) {
     // If the new events are the same are the same as the already registered
     // flags, we don't have to do anything.  Just return.
+    auto flags = event_ref_flags(&event_);
     if (events == event_.ev_events &&
-        static_cast<bool>(event_.ev_flags & EVLIST_INTERNAL) == internal) {
+        static_cast<bool>(flags & EVLIST_INTERNAL) == internal) {
       return true;
     }
 
@@ -67,7 +68,7 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
 
   // Set EVLIST_INTERNAL if this is an internal event
   if (internal) {
-    event_.ev_flags |= EVLIST_INTERNAL;
+    event_ref_flags(&event_) |= EVLIST_INTERNAL;
   }
 
   // Add the event.
@@ -168,7 +169,7 @@ void EventHandler::setEventBase(EventBase* eventBase) {
 }
 
 bool EventHandler::isPending() const {
-  if (event_.ev_flags & EVLIST_ACTIVE) {
+  if (event_ref_flags(&event_) & EVLIST_ACTIVE) {
     if (event_.ev_res & EV_READ) {
       return true;
     }
