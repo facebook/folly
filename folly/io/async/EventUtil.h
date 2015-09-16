@@ -20,9 +20,29 @@
  */
 #pragma once
 
+#include <functional>
 #include <event.h>  // libevent
 
 namespace folly {
+
+# if LIBEVENT_VERSION_NUMBER <= 0x02010101
+#   define FOLLY_LIBEVENT_COMPAT_PLUCK(name) ev_##name
+# else
+#   define FOLLY_LIBEVENT_COMPAT_PLUCK(name) ev_evcallback.evcb_##name
+# endif
+# define FOLLY_LIBEVENT_DEF_ACCESSORS(name) \
+    inline auto event_ref_##name(struct event* ev) -> \
+      decltype(std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) \
+      { return std::ref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name)); } \
+    inline auto event_ref_##name(struct event const* ev) -> \
+      decltype(std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name))) \
+      { return std::cref(ev->FOLLY_LIBEVENT_COMPAT_PLUCK(name)); } \
+    //
+
+FOLLY_LIBEVENT_DEF_ACCESSORS(flags)
+
+# undef FOLLY_LIBEVENT_COMPAT_PLUCK
+# undef FOLLY_LIBEVENT_DEF_ACCESSORS
 
 /**
  * low-level libevent utility functions
@@ -35,7 +55,7 @@ class EventUtil {
       EVLIST_REGISTERED = (EVLIST_INSERTED | EVLIST_ACTIVE |
                            EVLIST_TIMEOUT | EVLIST_SIGNAL)
     };
-    return (ev->ev_flags & EVLIST_REGISTERED);
+    return (event_ref_flags(ev) & EVLIST_REGISTERED);
   }
 };
 
