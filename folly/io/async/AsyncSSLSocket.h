@@ -804,8 +804,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   static void sslInfoCallback(const SSL *ssl, int type, int val);
 
-  static std::mutex mutex_;
-  static int sslExDataIndex_;
   // Whether we've applied the TCP_CORK option to the socket
   bool corked_{false};
   // SSL related members.

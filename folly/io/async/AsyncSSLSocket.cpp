@@ -605,18 +605,10 @@ void AsyncSSLSocket::timeoutExpired() noexcept {
   }
 }
 
-int AsyncSSLSocket::sslExDataIndex_ = -1;
-std::mutex AsyncSSLSocket::mutex_;
-
 int AsyncSSLSocket::getSSLExDataIndex() {
-  if (sslExDataIndex_ < 0) {
-    std::lock_guard<std::mutex> g(mutex_);
-    if (sslExDataIndex_ < 0) {
-      sslExDataIndex_ = SSL_get_ex_new_index(0,
-          (void*)"AsyncSSLSocket data index", nullptr, nullptr, nullptr);
-    }
-  }
-  return sslExDataIndex_;
+  static auto index = SSL_get_ex_new_index(
+      0, (void*)"AsyncSSLSocket data index", nullptr, nullptr, nullptr);
+  return index;
 }
 
 AsyncSSLSocket* AsyncSSLSocket::getFromSSL(const SSL *ssl) {

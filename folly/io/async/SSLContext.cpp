@@ -38,7 +38,16 @@ struct CRYPTO_dynlock_value {
 namespace folly {
 
 bool SSLContext::initialized_ = false;
-std::mutex    SSLContext::mutex_;
+
+namespace {
+
+std::mutex& initMutex() {
+  static std::mutex m;
+  return m;
+}
+
+}  // anonymous namespace
+
 #ifdef OPENSSL_NPN_NEGOTIATED
 int SSLContext::sNextProtocolsExDataIndex_ = -1;
 #endif
@@ -46,7 +55,7 @@ int SSLContext::sNextProtocolsExDataIndex_ = -1;
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
   {
-    std::lock_guard<std::mutex> g(mutex_);
+    std::lock_guard<std::mutex> g(initMutex());
     initializeOpenSSLLocked();
   }
 
@@ -684,12 +693,12 @@ void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
 }
 
 void SSLContext::markInitialized() {
-  std::lock_guard<std::mutex> g(mutex_);
+  std::lock_guard<std::mutex> g(initMutex());
   initialized_ = true;
 }
 
 void SSLContext::initializeOpenSSL() {
-  std::lock_guard<std::mutex> g(mutex_);
+  std::lock_guard<std::mutex> g(initMutex());
   initializeOpenSSLLocked();
 }
 
@@ -720,7 +729,7 @@ void SSLContext::initializeOpenSSLLocked() {
 }
 
 void SSLContext::cleanupOpenSSL() {
-  std::lock_guard<std::mutex> g(mutex_);
+  std::lock_guard<std::mutex> g(initMutex());
   cleanupOpenSSLLocked();
 }
 
