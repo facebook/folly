@@ -54,7 +54,7 @@ def generate(f):
     f.write("""
 #include <folly/Portability.h>
 
-#if FOLLY_X64 || defined(__i386__)
+#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
 #include <stdint.h>
 #include <x86intrin.h>
 
@@ -98,7 +98,7 @@ extern const __m128i groupVarintSSEMasks[] = {
 
 }  // namespace detail
 }  // namespace folly
-#endif /* FOLLY_X64 || defined(__i386__) */
+#endif /* (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2) */
 """)
 
 def main():
