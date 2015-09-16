@@ -166,29 +166,11 @@ class NegativeBoolGFlagValueSemantic : public BoolGFlagValueSemantic {
   }
 };
 
-static const std::unordered_set<std::string> gSkipFlags {
-  "flagfile",
-  "fromenv",
-  "tryfromenv",
-  "undefok",
-  "help",
-  "helpfull",
-  "helpshort",
-  "helpon",
-  "helpmatch",
-  "helppackage",
-  "helpxml",
-  "version",
-  "tab_completion_columns",
-  "tab_completion_word",
-};
-
-static const std::unordered_map<std::string, std::string> gFlagOverrides {
-  // Allow -v in addition to --v
-  {"v", "v,v"},
-};
-
 const std::string& getName(const std::string& name) {
+  static const std::unordered_map<std::string, std::string> gFlagOverrides{
+      // Allow -v in addition to --v
+      {"v", "v,v"},
+  };
   auto pos = gFlagOverrides.find(name);
   return pos != gFlagOverrides.end() ? pos->second : name;
 }
@@ -261,6 +243,23 @@ const std::unordered_map<std::string, FlagAdder> gFlagAdders = {
 }  // namespace
 
 po::options_description getGFlags(ProgramOptionsStyle style) {
+  static const std::unordered_set<std::string> gSkipFlags{
+      "flagfile",
+      "fromenv",
+      "tryfromenv",
+      "undefok",
+      "help",
+      "helpfull",
+      "helpshort",
+      "helpon",
+      "helpmatch",
+      "helppackage",
+      "helpxml",
+      "version",
+      "tab_completion_columns",
+      "tab_completion_word",
+  };
+
   po::options_description desc("GFlags");
 
   std::vector<gflags::CommandLineFlagInfo> allFlags;
