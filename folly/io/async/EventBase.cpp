@@ -123,7 +123,13 @@ void EventBase::CobTimeout::timeoutExpired() noexcept {
   }
 
   // The CobTimeout object was allocated on the heap by runAfterDelay(),
-  // so delete it now that the it has fired.
+  // so delete it now that it has fired.
+  delete this;
+}
+
+void EventBase::CobTimeout::callbackCanceled() noexcept {
+  // The CobTimeout object was allocated on the heap by runAfterDelay(),
+  // so delete it now that it has been canceled.
   delete this;
 }
 
@@ -175,6 +181,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
   }
   VLOG(5) << "EventBase(): Created.";
   initNotificationQueue();
+  wheelTimer_ = HHWheelTimer::UniquePtr(new HHWheelTimer(this));
   RequestContext::saveContext();
 }
 
@@ -201,6 +208,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
     throw std::invalid_argument("EventBase(): event base cannot be nullptr");
   }
   initNotificationQueue();
+  wheelTimer_ = HHWheelTimer::UniquePtr(new HHWheelTimer(this));
   RequestContext::saveContext();
 }
 
@@ -216,10 +224,7 @@ EventBase::~EventBase() {
   // (Note that we don't fire them.  The caller is responsible for cleaning up
   // its own data structures if it destroys the EventBase with unfired events
   // remaining.)
-  while (!pendingCobTimeouts_.empty()) {
-    CobTimeout* timeout = &pendingCobTimeouts_.front();
-    delete timeout;
-  }
+  wheelTimer_->cancelAll();
 
   while (!runBeforeLoopCallbacks_.empty()) {
     delete &runBeforeLoopCallbacks_.front();
@@ -654,12 +659,11 @@ void EventBase::runAfterDelay(const Cob& cob,
 bool EventBase::tryRunAfterDelay(const Cob& cob,
                                  int milliseconds,
                                  TimeoutManager::InternalEnum in) {
-  CobTimeout* timeout = new CobTimeout(this, cob, in);
-  if (!timeout->scheduleTimeout(milliseconds)) {
-    delete timeout;
-    return false;
-  }
-  pendingCobTimeouts_.push_back(*timeout);
+  // A previous implementation could fail, and the API is retained for
+  // backwards compatibility.
+  wheelTimer_->scheduleTimeout(
+      new CobTimeout(cob),
+      std::chrono::milliseconds(milliseconds));
   return true;
 }
 
