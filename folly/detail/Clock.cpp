@@ -20,17 +20,27 @@
 #include <errno.h>
 #include <mach/mach_time.h>
 
-static mach_timebase_info_data_t tb_info;
-static bool tb_init = mach_timebase_info(&tb_info) == KERN_SUCCESS;
+namespace {
+
+const mach_timebase_info_data_t* tbInfo() {
+  static auto info = [] {
+    static mach_timebase_info_data_t info;
+    return (mach_timebase_info(&info) == KERN_SUCCESS) ? &info : nullptr;
+  }();
+  return info;
+};
+
+}  // anonymous namespace
 
 int clock_gettime(clockid_t clk_id, struct timespec* ts) {
-  if (!tb_init) {
+  auto tb_info = tbInfo();
+  if (tb_info == nullptr) {
     errno = EINVAL;
     return -1;
   }
 
   uint64_t now_ticks = mach_absolute_time();
-  uint64_t now_ns = (now_ticks * tb_info.numer) / tb_info.denom;
+  uint64_t now_ns = (now_ticks * tb_info->numer) / tb_info->denom;
   ts->tv_sec = now_ns / 1000000000;
   ts->tv_nsec = now_ns % 1000000000;
 
@@ -38,13 +48,14 @@ int clock_gettime(clockid_t clk_id, struct timespec* ts) {
 }
 
 int clock_getres(clockid_t clk_id, struct timespec* ts) {
-  if (!tb_init) {
+  auto tb_info = tbInfo();
+  if (tb_info == nullptr) {
     errno = EINVAL;
     return -1;
   }
 
   ts->tv_sec = 0;
-  ts->tv_nsec = tb_info.numer / tb_info.denom;
+  ts->tv_nsec = tb_info->numer / tb_info->denom;
 
   return 0;
 }
