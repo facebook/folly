@@ -17,11 +17,13 @@
 #include <thread>
 
 #include <folly/Singleton.h>
+#include <folly/io/async/EventBase.h>
 
 #include <folly/Benchmark.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <boost/thread/barrier.hpp>
 
 using namespace folly;
 
@@ -479,6 +481,129 @@ TEST(Singleton, SingletonConcurrencyStress) {
 
   for (auto& t : ts) {
     t.join();
+  }
+}
+
+namespace {
+struct EagerInitSyncTag {};
+}
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonEagerInitSync = Singleton<T, Tag, EagerInitSyncTag>;
+TEST(Singleton, SingletonEagerInitSync) {
+  auto& vault = *SingletonVault::singleton<EagerInitSyncTag>();
+  bool didEagerInit = false;
+  auto sing = SingletonEagerInitSync<std::string>(
+                  [&] {didEagerInit = true; return new std::string("foo"); })
+              .shouldEagerInit();
+  vault.registrationComplete();
+  EXPECT_TRUE(didEagerInit);
+  sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
+}
+
+namespace {
+struct EagerInitAsyncTag {};
+}
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonEagerInitAsync = Singleton<T, Tag, EagerInitAsyncTag>;
+TEST(Singleton, SingletonEagerInitAsync) {
+  auto& vault = *SingletonVault::singleton<EagerInitAsyncTag>();
+  bool didEagerInit = false;
+  auto sing = SingletonEagerInitAsync<std::string>(
+                  [&] {didEagerInit = true; return new std::string("foo"); })
+              .shouldEagerInit();
+  folly::EventBase eb;
+  vault.setEagerInitExecutor(&eb);
+  vault.registrationComplete();
+  EXPECT_FALSE(didEagerInit);
+  eb.loop();
+  EXPECT_TRUE(didEagerInit);
+  sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
+}
+
+namespace {
+class TestEagerInitParallelExecutor : public folly::Executor {
+ public:
+  explicit TestEagerInitParallelExecutor(const size_t threadCount) {
+    eventBases_.reserve(threadCount);
+    threads_.reserve(threadCount);
+    for (size_t i = 0; i < threadCount; i++) {
+      eventBases_.push_back(std::make_shared<folly::EventBase>());
+      auto eb = eventBases_.back();
+      threads_.emplace_back(std::make_shared<std::thread>(
+          [eb] { eb->loopForever(); }));
+    }
+  }
+
+  virtual ~TestEagerInitParallelExecutor() override {
+    for (auto eb : eventBases_) {
+      eb->runInEventBaseThread([eb] { eb->terminateLoopSoon(); });
+    }
+    for (auto thread : threads_) {
+      thread->join();
+    }
+  }
+
+  virtual void add(folly::Func func) override {
+    const auto index = (counter_ ++) % eventBases_.size();
+    eventBases_[index]->add(func);
+  }
+
+ private:
+  std::vector<std::shared_ptr<folly::EventBase>> eventBases_;
+  std::vector<std::shared_ptr<std::thread>> threads_;
+  std::atomic<size_t> counter_ {0};
+};
+}  // namespace
+
+namespace {
+struct EagerInitParallelTag {};
+}
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonEagerInitParallel = Singleton<T, Tag, EagerInitParallelTag>;
+TEST(Singleton, SingletonEagerInitParallel) {
+  const static size_t kIters = 1000;
+  const static size_t kThreads = 20;
+
+  std::atomic<size_t> initCounter;
+
+  auto& vault = *SingletonVault::singleton<EagerInitParallelTag>();
+
+  auto sing = SingletonEagerInitParallel<std::string>(
+                  [&] {++initCounter; return new std::string(""); })
+              .shouldEagerInit();
+
+  for (size_t i = 0; i < kIters; i++) {
+    SCOPE_EXIT {
+      // clean up each time
+      vault.destroyInstances();
+      vault.reenableInstances();
+    };
+
+    initCounter.store(0);
+
+    {
+      boost::barrier barrier(kThreads + 1);
+      TestEagerInitParallelExecutor exe(kThreads);
+      vault.setEagerInitExecutor(&exe);
+      vault.registrationComplete(false);
+
+      EXPECT_EQ(0, initCounter.load());
+
+      for (size_t j = 0; j < kThreads; j++) {
+        exe.add([&] {
+          barrier.wait();
+          vault.startEagerInit();
+          barrier.wait();
+        });
+      }
+
+      barrier.wait();  // to await all threads' readiness
+      barrier.wait();  // to await all threads' completion
+    }
+
+    EXPECT_EQ(1, initCounter.load());
+
+    sing.get_weak();  // (avoid compile error complaining about unused var)
   }
 }
 

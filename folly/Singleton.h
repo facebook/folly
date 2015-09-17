@@ -71,6 +71,26 @@
 // Where create and destroy are functions, Singleton<T>::CreateFunc
 // Singleton<T>::TeardownFunc.
 //
+// The above examples detail a situation where an expensive singleton is loaded
+// on-demand (thus only if needed).  However if there is an expensive singleton
+// that will likely be needed, and initialization takes a potentially long time,
+// e.g. while initializing, parsing some files, talking to remote services,
+// making uses of other singletons, and so on, the initialization of those can
+// be scheduled up front, or "eagerly".
+//
+// In that case the singleton can be declared this way:
+//
+// namespace {
+// auto the_singleton =
+//     folly::Singleton<MyExpensiveService>(/* optional create, destroy args */)
+//     .shouldEagerInit();
+// }
+//
+// This way the singleton's instance is built at program initialization
+// time, or more accurately, when "registrationComplete()" or
+// "startEagerInit()" is called. (More about that below; see the
+// section starting with "A vault goes through a few stages of life".)
+//
 // What if you need to destroy all of your singletons?  Say, some of
 // your singletons manage threads, but you need to fork?  Or your unit
 // test wants to clean up all global state?  Then you can call
@@ -89,6 +109,7 @@
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
 #include <folly/Demangle.h>
+#include <folly/Executor.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
@@ -98,6 +119,7 @@
 #include <condition_variable>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <functional>
 #include <typeinfo>
 #include <typeindex>
@@ -197,6 +219,8 @@ class SingletonHolderBase {
 
   virtual TypeDescriptor type() = 0;
   virtual bool hasLiveInstance() = 0;
+  virtual void createInstance() = 0;
+  virtual bool creationStarted() = 0;
   virtual void destroyInstance() = 0;
 
  protected:
@@ -224,14 +248,14 @@ struct SingletonHolder : public SingletonHolderBase {
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
-  virtual TypeDescriptor type();
-  virtual bool hasLiveInstance();
-  virtual void destroyInstance();
+  virtual TypeDescriptor type() override;
+  virtual bool hasLiveInstance() override;
+  virtual void createInstance() override;
+  virtual bool creationStarted() override;
+  virtual void destroyInstance() override;
 
  private:
   SingletonHolder(TypeDescriptor type, SingletonVault& vault);
-
-  void createInstance();
 
   enum class SingletonHolderState {
     NotRegistered,
@@ -250,7 +274,7 @@ struct SingletonHolder : public SingletonHolderBase {
   std::atomic<SingletonHolderState> state_{SingletonHolderState::NotRegistered};
 
   // the thread creating the singleton (only valid while creating an object)
-  std::thread::id creating_thread_;
+  std::atomic<std::thread::id> creating_thread_;
 
   // The singleton itself and related functions.
 
@@ -312,26 +336,99 @@ class SingletonVault {
     singletons_[entry->type()] = entry;
   }
 
-  // Mark registration is complete; no more singletons can be
-  // registered at this point.
-  void registrationComplete() {
-    RequestContext::saveContext();
-    std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
-
-    RWSpinLock::WriteHolder wh(&stateMutex_);
+  /**
+   * Called by `Singleton<T>.shouldEagerInit()` to ensure the instance
+   * is built when registrationComplete() is called; see that method
+   * for more info.
+   */
+  void addEagerInitSingleton(detail::SingletonHolderBase* entry) {
+    RWSpinLock::ReadHolder rh(&stateMutex_);
 
     stateCheck(SingletonVaultState::Running);
 
-    if (type_ == Type::Strict) {
-      for (const auto& p: singletons_) {
-        if (p.second->hasLiveInstance()) {
-          throw std::runtime_error(
-            "Singleton created before registration was complete.");
-        }
-      }
+    if (UNLIKELY(registrationComplete_)) {
+      throw std::logic_error(
+        "Registering for eager-load after registrationComplete().");
     }
 
-    registrationComplete_ = true;
+    RWSpinLock::ReadHolder rhMutex(&mutex_);
+    CHECK_THROW(singletons_.find(entry->type()) != singletons_.end(),
+                std::logic_error);
+
+    RWSpinLock::UpgradedHolder wh(&mutex_);
+    eagerInitSingletons_.insert(entry);
+  }
+
+  // Mark registration is complete; no more singletons can be
+  // registered at this point.  Kicks off eagerly-initialized singletons
+  // (if requested; default behavior is to do so).
+  void registrationComplete(bool autoStartEagerInit = true) {
+    RequestContext::saveContext();
+    std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
+
+    {
+      RWSpinLock::WriteHolder wh(&stateMutex_);
+
+      stateCheck(SingletonVaultState::Running);
+
+      if (type_ == Type::Strict) {
+        for (const auto& p: singletons_) {
+          if (p.second->hasLiveInstance()) {
+            throw std::runtime_error(
+              "Singleton created before registration was complete.");
+          }
+        }
+      }
+
+      registrationComplete_ = true;
+    }
+
+    if (autoStartEagerInit) {
+      startEagerInit();
+    }
+  }
+
+ /**
+  * If eagerInitExecutor_ is non-nullptr (default is nullptr) then
+  * schedule eager singletons' initializations through it.
+  * Otherwise, initializes them synchronously, in a loop.
+  */
+  void startEagerInit() {
+    std::unordered_set<detail::SingletonHolderBase*> singletonSet;
+    {
+      RWSpinLock::ReadHolder rh(&stateMutex_);
+      stateCheck(SingletonVaultState::Running);
+      if (UNLIKELY(!registrationComplete_)) {
+        throw std::logic_error(
+          "registrationComplete() not yet called");
+      }
+      singletonSet = eagerInitSingletons_;  // copy set of pointers
+    }
+
+    auto *exe = eagerInitExecutor_;  // default value is nullptr
+    for (auto *single : singletonSet) {
+      if (exe) {
+        eagerInitExecutor_->add([single] {
+          if (!single->creationStarted()) {
+            single->createInstance();
+          }
+        });
+      } else {
+        single->createInstance();
+      }
+    }
+  }
+
+  /**
+   * Provide an executor through which startEagerInit would run tasks.
+   * If there are several singletons which may be independently initialized,
+   * and their construction takes long, they could possibly be run in parallel
+   * to cut down on startup time.  Unusual; default (synchronous initialization
+   * in a loop) is probably fine for most use cases, and most apps can most
+   * likely avoid using this.
+   */
+  void setEagerInitExecutor(folly::Executor *exe) {
+    eagerInitExecutor_ = exe;
   }
 
   // Destroy all singletons; when complete, the vault can't create
@@ -421,6 +518,8 @@ class SingletonVault {
 
   mutable folly::RWSpinLock mutex_;
   SingletonMap singletons_;
+  std::unordered_set<detail::SingletonHolderBase*> eagerInitSingletons_;
+  folly::Executor* eagerInitExecutor_{nullptr};
   std::vector<detail::TypeDescriptor> creation_order_;
   SingletonVaultState state_{SingletonVaultState::Running};
   bool registrationComplete_{false};
@@ -487,6 +586,30 @@ class Singleton {
     auto vault = SingletonVault::singleton<VaultTag>();
     getEntry().registerSingleton(std::move(c), getTeardownFunc(std::move(t)));
     vault->registerSingleton(&getEntry());
+  }
+
+  /**
+   * Should be instantiated as soon as "registrationComplete()" is called.
+   * Singletons are usually lazy-loaded (built on-demand) but for those which
+   * are known to be needed, to avoid the potential lag for objects that take
+   * long to construct during runtime, there is an option to make sure these
+   * are built up-front.
+   *
+   * Use like:
+   *   Singleton<Foo> gFooInstance = Singleton<Foo>(...).shouldEagerInit();
+   *
+   * Or alternately, define the singleton as usual, and say
+   *   gFooInstance.shouldEagerInit()
+   *
+   * at some point prior to calling registrationComplete().
+   * Then registrationComplete can be called (by default it will kick off
+   * init of the eager singletons); alternately, you can use
+   * startEagerInit().
+   */
+  Singleton& shouldEagerInit() {
+    auto vault = SingletonVault::singleton<VaultTag>();
+    vault->addEagerInitSingleton(&getEntry());
+    return *this;
   }
 
   /**
