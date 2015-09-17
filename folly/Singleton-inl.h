@@ -136,19 +136,34 @@ SingletonHolder<T>::SingletonHolder(TypeDescriptor type__,
 }
 
 template <typename T>
+bool SingletonHolder<T>::creationStarted() {
+  // If alive, then creation was of course started.
+  // This is flipped after creating_thread_ was set, and before it was reset.
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
+    return true;
+  }
+
+  // Not yet built.  Is it currently in progress?
+  if (creating_thread_.load(std::memory_order_acquire) != std::thread::id()) {
+    return true;
+  }
+
+  return false;
+}
+
+template <typename T>
 void SingletonHolder<T>::createInstance() {
-  // There's no synchronization here, so we may not see the current value
-  // for creating_thread if it was set by other thread, but we only care about
-  // it if it was set by current thread anyways.
-  if (creating_thread_ == std::this_thread::get_id()) {
+  if (creating_thread_.load(std::memory_order_acquire) ==
+        std::this_thread::get_id()) {
     LOG(FATAL) << "circular singleton dependency: " << type_.name();
   }
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
-  if (state_ == SingletonHolderState::Living) {
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
   }
-  if (state_ == SingletonHolderState::NotRegistered) {
+  if (state_.load(std::memory_order_acquire) ==
+        SingletonHolderState::NotRegistered) {
     auto ptr = SingletonVault::stackTraceGetter().load();
     LOG(FATAL) << "Creating instance for unregistered singleton: "
                << type_.name() << "\n"
@@ -156,7 +171,7 @@ void SingletonHolder<T>::createInstance() {
                << "\n" << (ptr ? (*ptr)() : "(not available)");
   }
 
-  if (state_ == SingletonHolderState::Living) {
+  if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
     return;
   }
 
@@ -164,10 +179,10 @@ void SingletonHolder<T>::createInstance() {
     // Clean up creator thread when complete, and also, in case of errors here,
     // so that subsequent attempts don't think this is still in the process of
     // being built.
-    creating_thread_ = std::thread::id();
+    creating_thread_.store(std::thread::id(), std::memory_order_release);
   };
 
-  creating_thread_ = std::this_thread::get_id();
+  creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
   RWSpinLock::ReadHolder rh(&vault_.stateMutex_);
   if (vault_.state_ == SingletonVault::SingletonVaultState::Quiescing) {
@@ -216,7 +231,7 @@ void SingletonHolder<T>::createInstance() {
 
   // This has to be the last step, because once state is Living other threads
   // may access instance and instance_weak w/o synchronization.
-  state_.store(SingletonHolderState::Living);
+  state_.store(SingletonHolderState::Living, std::memory_order_release);
 
   {
     RWSpinLock::WriteHolder wh(&vault_.mutex_);
