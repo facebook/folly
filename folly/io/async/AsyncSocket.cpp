@@ -28,6 +28,10 @@
 #include <thread>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <boost/preprocessor/control/if.hpp>
 
 using std::string;
 using std::unique_ptr;
@@ -619,9 +623,10 @@ void AsyncSocket::writev(WriteCallback* callback,
 
 void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,
                               WriteFlags flags) {
+  constexpr size_t kSmallSizeMax = 64;
   size_t count = buf->countChainElements();
-  if (count <= 64) {
-    iovec vec[count];
+  if (count <= kSmallSizeMax) {
+    iovec vec[BOOST_PP_IF(FOLLY_HAVE_VLA, count, kSmallSizeMax)];
     writeChainImpl(callback, vec, count, std::move(buf), flags);
   } else {
     iovec* vec = new iovec[count];
