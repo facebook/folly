@@ -149,13 +149,13 @@ nobase_follyinclude_HEADERS = \
 	futures/ScheduledExecutor.h \
 	futures/SharedPromise.h \
 	futures/SharedPromise-inl.h \
+	futures/ThreadWheelTimekeeper.h \
 	futures/Timekeeper.h \
 	futures/Try-inl.h \
 	futures/Try.h \
 	futures/Unit.h \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
-	futures/detail/ThreadWheelTimekeeper.h \
 	futures/detail/Types.h \
 	gen/Base.h \
 	gen/Base-inl.h \
@@ -322,13 +322,13 @@ libfolly_la_SOURCES = \
 	FilePortability.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
-	futures/detail/ThreadWheelTimekeeper.cpp \
 	futures/Barrier.cpp \
 	futures/ThreadedExecutor.cpp \
 	futures/Future.cpp \
 	futures/InlineExecutor.cpp \
 	futures/ManualExecutor.cpp \
 	futures/QueuedImmediateExecutor.cpp \
+	futures/ThreadWheelTimekeeper.cpp \
 	detail/Futex.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \
