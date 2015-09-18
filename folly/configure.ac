@@ -365,6 +365,10 @@ AC_CACHE_CHECK(
     [folly_cv_prog_cc_xsi_strerror_r=yes],
     [folly_cv_prog_cc_xsi_strerror_r=no])])
 
+if test "$folly_cv_prog_cc_xsi_strerror_r" = "yes"; then
+  AC_DEFINE([HAVE_XSI_STRERROR_R], [1], [Define to 1 if the runtime supports XSI-style strerror_r])
+fi
+
 AC_CACHE_CHECK(
   [for ext/random and __gnu_cxx::sfmt19937],
   [folly_cv_prog_cc_have_extrandom_sfmt19937],
@@ -379,9 +383,26 @@ AC_CACHE_CHECK(
     [folly_cv_prog_cc_have_extrandom_sfmt19937=yes],
     [folly_cv_prog_cc_have_extrandom_sfmt19937=no])])
 
-if test "$folly_cv_prog_cc_xsi_strerror_r" = "yes"; then
-  AC_DEFINE([HAVE_XSI_STRERROR_R], [1], [Define to 1 if the runtime supports XSI-style strerror_r])
-fi
+AC_CACHE_CHECK(
+  [for VLA (variable-length array) support],
+  [folly_cv_prog_cc_have_vla],
+  [AC_COMPILE_IFELSE(
+    [AC_LANG_SOURCE[
+      int main(int argc, char** argv) {
+        unsigned size = argc;
+        char data[size];
+        return 0;
+      }
+    ]],
+    [folly_cv_prog_cc_have_vla=yes],
+    [folly_cv_prog_cc_have_vla=no])])
+
+test "$folly_cv_prog_cc_have_vla" = yes && have_vla=1 || have_vla=0
+AC_DEFINE_UNQUOTED(
+  [HAVE_VLA],
+  [$have_vla],
+  [Define to 1 if the compiler has VLA (variable-length array) support,
+   otherwise define to 0])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([getdelim \
