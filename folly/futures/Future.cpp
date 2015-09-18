@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <folly/futures/Future.h>
-#include <folly/futures/detail/ThreadWheelTimekeeper.h>
+#include <folly/futures/ThreadWheelTimekeeper.h>
 #include <folly/Likely.h>
 
 namespace folly {
