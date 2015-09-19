@@ -63,7 +63,7 @@ sudo apt-get install \
     libiberty-dev
 ```
 
-The above packages are sufficient for Ubuntu 13.10 and Ubuntu 14.04.
+The above packages are sufficient for Ubuntu 13.10 and Ubuntu 14.04 .
 
 In the folly directory, run
 ```
