@@ -16,6 +16,8 @@
 
 #include <folly/ThreadCachedArena.h>
 
+#include <memory>
+
 namespace folly {
 
 ThreadCachedArena::ThreadCachedArena(size_t minBlockSize, size_t maxAlign)
@@ -36,8 +38,16 @@ SysArena* ThreadCachedArena::allocateThreadLocalArena() {
 }
 
 void ThreadCachedArena::zombify(SysArena&& arena) {
-  std::lock_guard<std::mutex> lock(zombiesMutex_);
-  zombies_.merge(std::move(arena));
+  zombies_->merge(std::move(arena));
+}
+
+size_t ThreadCachedArena::totalSize() const {
+  size_t result = sizeof(ThreadCachedArena);
+  for (const auto& arena : arena_.accessAllThreads()) {
+    result += arena.totalSize();
+  }
+  result += zombies_->totalSize() - sizeof(SysArena);
+  return result;
 }
 
 }  // namespace folly

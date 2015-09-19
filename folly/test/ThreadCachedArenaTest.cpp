@@ -119,9 +119,13 @@ TEST(ThreadCachedArena, BlockSize) {
 TEST(ThreadCachedArena, SingleThreaded) {
   static const size_t requestedBlockSize = 64;
   ThreadCachedArena arena(requestedBlockSize);
+  EXPECT_EQ(arena.totalSize(), sizeof(ThreadCachedArena));
+
   ArenaTester tester(arena);
   tester.allocate(100, 100 << 10);
   tester.verify();
+
+  EXPECT_GT(arena.totalSize(), sizeof(ThreadCachedArena));
 }
 
 TEST(ThreadCachedArena, MultiThreaded) {
