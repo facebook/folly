@@ -55,8 +55,8 @@ BenchmarkSuspender::NanosecondsSpent BenchmarkSuspender::nsSpent;
 typedef function<detail::TimeIterPair(unsigned int)> BenchmarkFun;
 
 
-vector<tuple<const char*, const char*, BenchmarkFun>>& benchmarks() {
-  static vector<tuple<const char*, const char*, BenchmarkFun>> _benchmarks;
+vector<tuple<string, string, BenchmarkFun>>& benchmarks() {
+  static vector<tuple<string, string, BenchmarkFun>> _benchmarks;
   return _benchmarks;
 }
 
@@ -77,8 +77,8 @@ int getGlobalBenchmarkBaselineIndex() {
   auto it = std::find_if(
     benchmarks().begin(),
     benchmarks().end(),
-    [global](const tuple<const char*, const char*, BenchmarkFun> &v) {
-      return std::strcmp(get<1>(v), global) == 0;
+    [global](const tuple<string, string, BenchmarkFun> &v) {
+      return get<1>(v) == global;
     }
   );
   CHECK(it != benchmarks().end());
@@ -347,14 +347,14 @@ static string metricReadable(double n, unsigned int decimals) {
 }
 
 static void printBenchmarkResultsAsTable(
-  const vector<tuple<const char*, const char*, double> >& data) {
+  const vector<tuple<string, string, double> >& data) {
   // Width available
   static const unsigned int columns = 76;
 
   // Compute the longest benchmark name
   size_t longestName = 0;
   FOR_EACH_RANGE (i, 1, benchmarks().size()) {
-    longestName = max(longestName, strlen(get<1>(benchmarks()[i])));
+    longestName = max(longestName, get<1>(benchmarks()[i]).size());
   }
 
   // Print a horizontal rule
@@ -363,19 +363,19 @@ static void printBenchmarkResultsAsTable(
   };
 
   // Print header for a file
-  auto header = [&](const char* file) {
+  auto header = [&](const string& file) {
     separator('=');
     printf("%-*srelative  time/iter  iters/s\n",
-           columns - 28, file);
+           columns - 28, file.c_str());
     separator('=');
   };
 
   double baselineNsPerIter = numeric_limits<double>::max();
-  const char* lastFile = "";
+  string lastFile;
 
   for (auto& datum : data) {
     auto file = get<0>(datum);
-    if (strcmp(file, lastFile)) {
+    if (file != lastFile) {
       // New file starting
       header(file);
       lastFile = file;
@@ -418,7 +418,7 @@ static void printBenchmarkResultsAsTable(
 }
 
 static void printBenchmarkResultsAsJson(
-  const vector<tuple<const char*, const char*, double> >& data) {
+  const vector<tuple<string, string, double> >& data) {
   dynamic d = dynamic::object;
   for (auto& datum: data) {
     d[std::get<1>(datum)] = std::get<2>(datum) * 1000.;
@@ -428,7 +428,7 @@ static void printBenchmarkResultsAsJson(
 }
 
 static void printBenchmarkResults(
-  const vector<tuple<const char*, const char*, double> >& data) {
+  const vector<tuple<string, string, double> >& data) {
 
   if (FLAGS_json) {
     printBenchmarkResultsAsJson(data);
@@ -440,7 +440,7 @@ static void printBenchmarkResults(
 void runBenchmarks() {
   CHECK(!benchmarks().empty());
 
-  vector<tuple<const char*, const char*, double>> results;
+  vector<tuple<string, string, double>> results;
   results.reserve(benchmarks().size() - 1);
 
   std::unique_ptr<boost::regex> bmRegex;
@@ -459,7 +459,7 @@ void runBenchmarks() {
       continue;
     }
     double elapsed = 0.0;
-    if (strcmp(get<1>(benchmarks()[i]), "-") != 0) { // skip separators
+    if (get<1>(benchmarks()[i]) != "-") { // skip separators
       if (bmRegex && !boost::regex_search(get<1>(benchmarks()[i]), *bmRegex)) {
         continue;
       }
