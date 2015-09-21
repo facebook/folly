@@ -104,6 +104,7 @@ class DelayedDestruction : public DelayedDestructionBase {
       if (delayed && !destroyPending_) {
         return;
       }
+      destroyPending_ = false;
       delete this;
     };
   }
@@ -111,7 +112,7 @@ class DelayedDestruction : public DelayedDestructionBase {
  private:
   /**
    * destroyPending_ is set to true if destoy() is called while guardCount_ is
-   * non-zero.
+   * non-zero. It is set to false before the object is deleted.
    *
    * If destroyPending_ is true, the object will be destroyed the next time
    * guardCount_ drops to 0.
