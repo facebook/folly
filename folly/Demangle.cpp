@@ -91,16 +91,6 @@ void demangleCallback(const char* str, size_t size, void* p) {
 
 }  // namespace
 
-size_t strlcpy(char* dest, const char* const src, size_t size) {
-  size_t len = strlen(src);
-  if (size != 0) {
-    size_t n = std::min(len, size - 1);  // always null terminate!
-    memcpy(dest, src, n);
-    dest[n] = '\0';
-  }
-  return len;
-}
-
 size_t demangle(const char* name, char* out, size_t outSize) {
   DemangleBuf dbuf;
   dbuf.dest = out;
@@ -133,5 +123,15 @@ size_t demangle(const char* name, char* out, size_t outSize) {
 }
 
 #endif
+
+size_t strlcpy(char* dest, const char* const src, size_t size) {
+  size_t len = strlen(src);
+  if (size != 0) {
+    size_t n = std::min(len, size - 1);  // always null terminate!
+    memcpy(dest, src, n);
+    dest[n] = '\0';
+  }
+  return len;
+}
 
 } // folly
