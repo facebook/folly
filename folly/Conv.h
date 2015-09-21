@@ -87,6 +87,21 @@ to(Src && value) {
  ******************************************************************************/
 
 /**
+ * Unchecked conversion from integral to boolean. This is different from the
+ * other integral conversions because we use the C convention of treating any
+ * non-zero value as true, instead of range checking.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<
+  std::is_integral<Src>::value
+  && !std::is_same<Tgt, Src>::value
+  && std::is_same<Tgt, bool>::value,
+  Tgt>::type
+to(const Src & value) {
+  return value != 0;
+}
+
+/**
  * Checked conversion from integral to integral. The checks are only
  * performed when meaningful, e.g. conversion from int to long goes
  * unchecked.
@@ -94,8 +109,9 @@ to(Src && value) {
 template <class Tgt, class Src>
 typename std::enable_if<
   std::is_integral<Src>::value
-  && std::is_integral<Tgt>::value
-  && !std::is_same<Tgt, Src>::value,
+  && !std::is_same<Tgt, Src>::value
+  && !std::is_same<Tgt, bool>::value
+  && std::is_integral<Tgt>::value,
   Tgt>::type
 to(const Src & value) {
   /* static */ if (std::numeric_limits<Tgt>::max()

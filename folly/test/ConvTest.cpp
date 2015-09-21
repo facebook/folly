@@ -90,6 +90,9 @@ TEST(Conv, digits10) {
 
 // Test to<T>(T)
 TEST(Conv, Type2Type) {
+  bool boolV = true;
+  EXPECT_EQ(to<bool>(boolV), true);
+
   int intV = 42;
   EXPECT_EQ(to<int>(intV), 42);
 
@@ -109,6 +112,7 @@ TEST(Conv, Type2Type) {
   EXPECT_EQ(to<folly::StringPiece>(spV), "StringPiece");
 
   // Rvalues
+  EXPECT_EQ(to<bool>(true), true);
   EXPECT_EQ(to<int>(42), 42);
   EXPECT_EQ(to<float>(4.2f), 4.2f);
   EXPECT_EQ(to<double>(.42), .42);
@@ -723,6 +727,17 @@ TEST(Conv, EnumClassToString) {
   EXPECT_EQ("foo.4", to<string>("foo.", A::x));
   EXPECT_EQ("foo.420", to<string>("foo.", A::y));
   EXPECT_EQ("foo.65", to<string>("foo.", A::z));
+}
+
+TEST(Conv, IntegralToBool) {
+  EXPECT_FALSE(to<bool>(0));
+  EXPECT_FALSE(to<bool>(0ul));
+
+  EXPECT_TRUE(to<bool>(1));
+  EXPECT_TRUE(to<bool>(1ul));
+
+  EXPECT_TRUE(to<bool>(-42));
+  EXPECT_TRUE(to<bool>(42ul));
 }
 
 template<typename Src>
