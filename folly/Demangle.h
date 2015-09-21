@@ -59,4 +59,7 @@ inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
   return demangle(type.name(), buf, bufSize);
 }
 
+// glibc doesn't have strlcpy
+size_t strlcpy(char* dest, const char* const src, size_t size);
+
 }
