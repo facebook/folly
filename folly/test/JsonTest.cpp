@@ -150,6 +150,10 @@ TEST(Json, ParseTrailingComma) {
   EXPECT_THROW(parseJson("{\"a\":1,}", off), std::runtime_error);
 }
 
+TEST(Json, BoolConversion) {
+  EXPECT_TRUE(parseJson("42").asBool());
+}
+
 TEST(Json, JavascriptSafe) {
   auto badDouble = (1ll << 63ll) + 1;
   dynamic badDyn = badDouble;
