@@ -43,8 +43,11 @@ std::vector<StringPiece> vstrp;
 std::string file;
 
 void initStr(int len) {
-  cout << "string length " << len << ':' << endl;
   str.clear();
+  vstr.clear();
+  vstrp.clear();
+
+  cout << "string length " << len << ':' << endl;
   str.reserve(len + 1);
   str.append(len, 'a');
   str.append(1, 'b');
