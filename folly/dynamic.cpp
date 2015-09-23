@@ -20,19 +20,20 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-#define DEF_TYPE(T, str, typen)                                 \
-  template<> char const dynamic::TypeInfo<T>::name[] = str;       \
-  template<> dynamic::Type const dynamic::TypeInfo<T>::type = typen
+#define FOLLY_DYNAMIC_DEF_TYPEINFO(T) \
+  constexpr const char* dynamic::TypeInfo<T>::name; \
+  constexpr dynamic::Type dynamic::TypeInfo<T>::type; \
+  //
 
-DEF_TYPE(void*,               "null",    dynamic::NULLT);
-DEF_TYPE(bool,                "boolean", dynamic::BOOL);
-DEF_TYPE(fbstring,            "string",  dynamic::STRING);
-DEF_TYPE(dynamic::Array,      "array",   dynamic::ARRAY);
-DEF_TYPE(double,              "double",  dynamic::DOUBLE);
-DEF_TYPE(int64_t,             "int64",   dynamic::INT64);
-DEF_TYPE(dynamic::ObjectImpl, "object",  dynamic::OBJECT);
+FOLLY_DYNAMIC_DEF_TYPEINFO(void*)
+FOLLY_DYNAMIC_DEF_TYPEINFO(bool)
+FOLLY_DYNAMIC_DEF_TYPEINFO(fbstring)
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array)
+FOLLY_DYNAMIC_DEF_TYPEINFO(double)
+FOLLY_DYNAMIC_DEF_TYPEINFO(int64_t)
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::ObjectImpl)
 
-#undef DEF_TYPE
+#undef FOLLY_DYNAMIC_DEF_TYPEINFO
 
 const char* dynamic::typeName() const {
   return typeName(type_);
