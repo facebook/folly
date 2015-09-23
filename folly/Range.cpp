@@ -22,6 +22,7 @@
 #if FOLLY_HAVE_EMMINTRIN_H
 #include <emmintrin.h>  // __v16qi
 #endif
+#include <bitset>
 #include <iostream>
 
 namespace folly {
@@ -130,6 +131,20 @@ size_t qfind_first_byte_of_byteset(const StringPiece haystack,
   }
   for (size_t index = 0; index < haystack.size(); ++index) {
     if (s.contains(haystack[index])) {
+      return index;
+    }
+  }
+  return StringPiece::npos;
+}
+
+size_t qfind_first_byte_of_bitset(const StringPiece haystack,
+                                  const StringPiece needles) {
+  std::bitset<256> s;
+  for (auto needle : needles) {
+    s[(uint8_t)needle] = true;
+  }
+  for (size_t index = 0; index < haystack.size(); ++index) {
+    if (s[(uint8_t)haystack[index]]) {
       return index;
     }
   }
