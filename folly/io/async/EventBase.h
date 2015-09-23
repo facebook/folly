@@ -18,7 +18,6 @@
 
 #include <glog/logging.h>
 #include <folly/io/async/AsyncTimeout.h>
-#include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/Request.h>
 #include <folly/Executor.h>
@@ -650,16 +649,26 @@ class EventBase : private boost::noncopyable,
 
   // small object used as a callback arg with enough info to execute the
   // appropriate client-provided Cob
-  class CobTimeout : public HHWheelTimer::Callback {
+  class CobTimeout : public AsyncTimeout {
    public:
-    explicit CobTimeout(const Cob& c) : cob_(c) {}
+    CobTimeout(EventBase* b, const Cob& c, TimeoutManager::InternalEnum in)
+        : AsyncTimeout(b, in), cob_(c) {}
 
-    void timeoutExpired() noexcept override;
-
-    void callbackCanceled() noexcept override;
+    virtual void timeoutExpired() noexcept;
 
    private:
     Cob cob_;
+
+   public:
+    typedef boost::intrusive::list_member_hook<
+      boost::intrusive::link_mode<boost::intrusive::auto_unlink> > ListHook;
+
+    ListHook hook;
+
+    typedef boost::intrusive::list<
+      CobTimeout,
+      boost::intrusive::member_hook<CobTimeout, ListHook, &CobTimeout::hook>,
+      boost::intrusive::constant_time_size<false> > List;
   };
 
   typedef LoopCallback::List LoopCallbackList;
@@ -672,7 +681,7 @@ class EventBase : private boost::noncopyable,
 
   void initNotificationQueue();
 
-  HHWheelTimer::UniquePtr wheelTimer_;
+  CobTimeout::List pendingCobTimeouts_;
 
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
