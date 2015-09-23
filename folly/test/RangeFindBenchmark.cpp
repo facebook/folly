@@ -167,7 +167,7 @@ void countHits(Func func, size_t n) {
 template <class Func>
 void findFirstOfRange(StringPiece needles, Func func, size_t n) {
   FOR_EACH_RANGE (i, 0, n) {
-    const StringPiece haystack = vstr[i % kVstrSize];
+    const StringPiece haystack = vstrp[i % kVstrSize];
     doNotOptimizeAway(func(haystack, needles));
     char x = haystack[0];
     doNotOptimizeAway(&x);
