@@ -161,11 +161,21 @@ class AtomicHashArray : boost::noncopyable {
    *   iterator is set to the existing entry.
    */
   std::pair<iterator,bool> insert(const value_type& r) {
-    SimpleRetT ret = insertInternal(r.first, r.second);
-    return std::make_pair(iterator(this, ret.idx), ret.success);
+    return emplace(r.first, r.second);
   }
   std::pair<iterator,bool> insert(value_type&& r) {
-    SimpleRetT ret = insertInternal(r.first, std::move(r.second));
+    return emplace(r.first, std::move(r.second));
+  }
+
+  /*
+   * emplace --
+   *
+   *   Same contract as insert(), but performs in-place construction
+   *   of the value type using the specified arguments.
+   */
+  template <typename... ArgTs>
+  std::pair<iterator,bool> emplace(KeyT key_in, ArgTs&&... vCtorArgs) {
+    SimpleRetT ret = insertInternal(key_in, std::forward<ArgTs>(vCtorArgs)...);
     return std::make_pair(iterator(this, ret.idx), ret.success);
   }
 
@@ -237,8 +247,8 @@ class AtomicHashArray : boost::noncopyable {
     SimpleRetT() = default;
   };
 
-  template <class T>
-  SimpleRetT insertInternal(KeyT key, T&& value);
+  template <typename... ArgTs>
+  SimpleRetT insertInternal(KeyT key, ArgTs&&... vCtorArgs);
 
   SimpleRetT findInternal(const KeyT key);
 

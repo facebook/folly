@@ -78,13 +78,19 @@ TEST(Ahm, BasicNoncopyable) {
   for (int i = 50; i < 100; ++i) {
     myMap.insert(i, std::unique_ptr<int>(new int (i)));
   }
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 100; i < 150; ++i) {
+    myMap.emplace(i, new int (i));
+  }
+  for (int i = 150; i < 200; ++i) {
+    myMap.emplace(i, new int (i), std::default_delete<int>());
+  }
+  for (int i = 0; i < 200; ++i) {
     EXPECT_EQ(*(myMap.find(i)->second), i);
   }
-  for (int i = 0; i < 100; i+=4) {
+  for (int i = 0; i < 200; i+=4) {
     myMap.erase(i);
   }
-  for (int i = 0; i < 100; i+=4) {
+  for (int i = 0; i < 200; i+=4) {
     EXPECT_EQ(myMap.find(i), myMap.end());
   }
 }
