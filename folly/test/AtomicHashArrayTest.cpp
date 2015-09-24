@@ -148,11 +148,17 @@ template<class KeyT, class ValueT, class Allocator = std::allocator<char>>
 void testNoncopyableMap() {
   typedef AtomicHashArray<KeyT, std::unique_ptr<ValueT>, std::hash<KeyT>,
                           std::equal_to<KeyT>, Allocator> MyArr;
-  auto arr = MyArr::create(150);
+  auto arr = MyArr::create(250);
   for (int i = 0; i < 100; i++) {
     arr->insert(make_pair(i,std::unique_ptr<ValueT>(new ValueT(i))));
   }
-  for (int i = 0; i < 100; i++) {
+  for (int i = 100; i < 150; i++) {
+    arr->emplace(i,new ValueT(i));
+  }
+  for (int i = 150; i < 200; i++) {
+    arr->emplace(i,new ValueT(i),std::default_delete<ValueT>());
+  }
+  for (int i = 0; i < 200; i++) {
     auto ret = arr->find(i);
     EXPECT_EQ(*(ret->second), i);
   }

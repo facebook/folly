@@ -40,26 +40,15 @@ AtomicHashMap(size_t finalSizeEst, const Config& config)
   numMapsAllocated_.store(1, std::memory_order_relaxed);
 }
 
-// insert --
+// emplace --
 template <typename KeyT, typename ValueT,
           typename HashFcn, typename EqualFcn, typename Allocator>
+template <typename... ArgTs>
 std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn,
                                  EqualFcn, Allocator>::iterator, bool>
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insert(key_type k, const mapped_type& v) {
-  SimpleRetT ret = insertInternal(k,v);
-  SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
-  return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
-                        ret.success);
-}
-
-template <typename KeyT, typename ValueT,
-          typename HashFcn, typename EqualFcn, typename Allocator>
-std::pair<typename AtomicHashMap<KeyT, ValueT, HashFcn,
-                                 EqualFcn, Allocator>::iterator, bool>
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insert(key_type k, mapped_type&& v) {
-  SimpleRetT ret = insertInternal(k, std::move(v));
+emplace(key_type k, ArgTs&&... vCtorArgs) {
+  SimpleRetT ret = insertInternal(k, std::forward<ArgTs>(vCtorArgs)...);
   SubMap* subMap = subMaps_[ret.i].load(std::memory_order_relaxed);
   return std::make_pair(iterator(this, ret.i, subMap->makeIter(ret.j)),
                         ret.success);
@@ -68,10 +57,10 @@ insert(key_type k, mapped_type&& v) {
 // insertInternal -- Allocates new sub maps as existing ones fill up.
 template <typename KeyT, typename ValueT,
           typename HashFcn, typename EqualFcn, typename Allocator>
-template <class T>
+template <typename... ArgTs>
 typename AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::SimpleRetT
 AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insertInternal(key_type key, T&& value) {
+insertInternal(key_type key, ArgTs&&... vCtorArgs) {
  beginInsertInternal:
   auto nextMapIdx = // this maintains our state
     numMapsAllocated_.load(std::memory_order_acquire);
@@ -79,7 +68,7 @@ insertInternal(key_type key, T&& value) {
   FOR_EACH_RANGE(i, 0, nextMapIdx) {
     // insert in each map successively.  If one succeeds, we're done!
     SubMap* subMap = subMaps_[i].load(std::memory_order_relaxed);
-    ret = subMap->insertInternal(key, std::forward<T>(value));
+    ret = subMap->insertInternal(key, std::forward<ArgTs>(vCtorArgs)...);
     if (ret.idx == subMap->capacity_) {
       continue;  //map is full, so try the next one
     }
@@ -134,7 +123,7 @@ insertInternal(key_type key, T&& value) {
   // just did a spin wait with an acquire load on numMapsAllocated_.
   SubMap* loadedMap = subMaps_[nextMapIdx].load(std::memory_order_relaxed);
   DCHECK(loadedMap && loadedMap != (SubMap*)kLockedPtr_);
-  ret = loadedMap->insertInternal(key, std::forward<T>(value));
+  ret = loadedMap->insertInternal(key, std::forward<ArgTs>(vCtorArgs)...);
   if (ret.idx != loadedMap->capacity_) {
     return SimpleRetT(nextMapIdx, ret.idx, ret.success);
   }

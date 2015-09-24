@@ -205,8 +205,6 @@ class AtomicHashMap : boost::noncopyable {
   key_equal key_eq() const { return key_equal(); }
   hasher hash_function() const { return hasher(); }
 
-  // TODO: emplace() support would be nice.
-
   /*
    * insert --
    *
@@ -223,13 +221,26 @@ class AtomicHashMap : boost::noncopyable {
    *   AtomicHashMapFullError is thrown.
    */
   std::pair<iterator,bool> insert(const value_type& r) {
-    return insert(r.first, r.second);
+    return emplace(r.first, r.second);
   }
-  std::pair<iterator,bool> insert(key_type k, const mapped_type& v);
+  std::pair<iterator,bool> insert(key_type k, const mapped_type& v) {
+    return emplace(k, v);
+  }
   std::pair<iterator,bool> insert(value_type&& r) {
-    return insert(r.first, std::move(r.second));
+    return emplace(r.first, std::move(r.second));
   }
-  std::pair<iterator,bool> insert(key_type k, mapped_type&& v);
+  std::pair<iterator,bool> insert(key_type k, mapped_type&& v) {
+    return emplace(k, std::move(v));
+  }
+
+  /*
+   * emplace --
+   *
+   *   Same contract as insert(), but performs in-place construction
+   *   of the value type using the specified arguments.
+   */
+  template <typename... ArgTs>
+  std::pair<iterator,bool> emplace(key_type k, ArgTs&&... vCtorArg);
 
   /*
    * find --
@@ -391,8 +402,8 @@ class AtomicHashMap : boost::noncopyable {
     SimpleRetT() = default;
   };
 
-  template <class T>
-  SimpleRetT insertInternal(KeyT key, T&& value);
+  template <typename... ArgTs>
+  SimpleRetT insertInternal(KeyT key, ArgTs&&... value);
 
   SimpleRetT findInternal(const KeyT k) const;
 

@@ -83,11 +83,11 @@ findInternal(const KeyT key_in) {
  */
 template <class KeyT, class ValueT,
           class HashFcn, class EqualFcn, class Allocator>
-template <class T>
+template <typename... ArgTs>
 typename AtomicHashArray<KeyT, ValueT,
          HashFcn, EqualFcn, Allocator>::SimpleRetT
 AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
-insertInternal(KeyT key_in, T&& value) {
+insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
   const short NO_NEW_INSERTS = 1;
   const short NO_PENDING_INSERTS = 2;
   CHECK_NE(key_in, kEmptyKey_);
@@ -133,12 +133,7 @@ insertInternal(KeyT key_in, T&& value) {
           // Write the value - done before unlocking
           try {
             DCHECK(relaxedLoadKey(*cell) == kLockedKey_);
-            /*
-             * This happens using the copy constructor because we won't have
-             * constructed a lhs to use an assignment operator on when
-             * values are being set.
-             */
-            new (&cell->second) ValueT(std::forward<T>(value));
+            new (&cell->second) ValueT(std::forward<ArgTs>(vCtorArgs)...);
             unlockCell(cell, key_in); // Sets the new key
           } catch (...) {
             // Transition back to empty key---requires handling
