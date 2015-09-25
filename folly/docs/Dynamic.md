@@ -29,7 +29,7 @@ folly::dynamic;` was used):
     dynamic array = { "array ", "of ", 4, " elements" };
     assert(array.size() == 4);
     dynamic emptyArray = {};
-    assert(array.empty());
+    assert(emptyArray.empty());
 
     // Maps from dynamics to dynamics are called objects.  The
     // dynamic::object constant is how you make an empty map from dynamics
