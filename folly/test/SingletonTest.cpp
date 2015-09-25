@@ -18,7 +18,7 @@
 
 #include <folly/Singleton.h>
 #include <folly/io/async/EventBase.h>
-
+#include <folly/test/SingletonTestStructs.h>
 #include <folly/Benchmark.h>
 
 #include <glog/logging.h>
@@ -26,63 +26,6 @@
 #include <boost/thread/barrier.hpp>
 
 using namespace folly;
-
-// A simple class that tracks how often instances of the class and
-// subclasses are created, and the ordering.  Also tracks a global
-// unique counter for each object.
-std::atomic<size_t> global_counter(19770326);
-struct Watchdog {
-  static std::vector<Watchdog*> creation_order;
-  Watchdog() : serial_number(++global_counter) {
-    creation_order.push_back(this);
-  }
-
-  ~Watchdog() {
-    if (creation_order.back() != this) {
-      throw std::out_of_range("Watchdog destruction order mismatch");
-    }
-    creation_order.pop_back();
-  }
-
-  const size_t serial_number;
-  size_t livingWatchdogCount() const { return creation_order.size(); }
-
-  Watchdog(const Watchdog&) = delete;
-  Watchdog& operator=(const Watchdog&) = delete;
-  Watchdog(Watchdog&&) noexcept = default;
-};
-
-std::vector<Watchdog*> Watchdog::creation_order;
-
-// Some basic types we use for tracking.
-struct ChildWatchdog : public Watchdog {};
-struct GlobalWatchdog : public Watchdog {};
-struct UnregisteredWatchdog : public Watchdog {};
-
-namespace {
-Singleton<GlobalWatchdog> global_watchdog;
-}
-
-// Test basic global usage (the default way singletons will generally
-// be used).
-TEST(Singleton, BasicGlobalUsage) {
-  EXPECT_EQ(Watchdog::creation_order.size(), 0);
-  EXPECT_EQ(SingletonVault::singleton()->registeredSingletonCount(), 1);
-  EXPECT_EQ(SingletonVault::singleton()->livingSingletonCount(), 0);
-
-  {
-    std::shared_ptr<GlobalWatchdog> wd1 = Singleton<GlobalWatchdog>::try_get();
-    EXPECT_NE(wd1, nullptr);
-    EXPECT_EQ(Watchdog::creation_order.size(), 1);
-    std::shared_ptr<GlobalWatchdog> wd2 = Singleton<GlobalWatchdog>::try_get();
-    EXPECT_NE(wd2, nullptr);
-    EXPECT_EQ(wd1.get(), wd2.get());
-    EXPECT_EQ(Watchdog::creation_order.size(), 1);
-  }
-
-  SingletonVault::singleton()->destroyInstances();
-  EXPECT_EQ(Watchdog::creation_order.size(), 0);
-}
 
 TEST(Singleton, MissingSingleton) {
   EXPECT_DEATH([]() { auto u = Singleton<UnregisteredWatchdog>::try_get(); }(),
@@ -496,6 +439,8 @@ TEST(Singleton, SingletonEagerInitSync) {
                   [&] {didEagerInit = true; return new std::string("foo"); })
               .shouldEagerInit();
   vault.registrationComplete();
+  EXPECT_FALSE(didEagerInit);
+  vault.doEagerInit();
   EXPECT_TRUE(didEagerInit);
   sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
 }
@@ -512,10 +457,11 @@ TEST(Singleton, SingletonEagerInitAsync) {
                   [&] {didEagerInit = true; return new std::string("foo"); })
               .shouldEagerInit();
   folly::EventBase eb;
-  vault.setEagerInitExecutor(&eb);
   vault.registrationComplete();
   EXPECT_FALSE(didEagerInit);
+  auto result = vault.doEagerInitVia(&eb); // a Future<Unit> is returned
   eb.loop();
+  result.get(); // ensure this completed successfully and didn't hang forever
   EXPECT_TRUE(didEagerInit);
   sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
 }
@@ -582,23 +528,23 @@ TEST(Singleton, SingletonEagerInitParallel) {
     initCounter.store(0);
 
     {
-      boost::barrier barrier(kThreads + 1);
+      std::vector<std::shared_ptr<std::thread>> threads;
+      boost::barrier barrier(kThreads);
       TestEagerInitParallelExecutor exe(kThreads);
-      vault.setEagerInitExecutor(&exe);
-      vault.registrationComplete(false);
+      vault.registrationComplete();
 
       EXPECT_EQ(0, initCounter.load());
 
       for (size_t j = 0; j < kThreads; j++) {
-        exe.add([&] {
+        threads.push_back(std::make_shared<std::thread>([&] {
           barrier.wait();
-          vault.startEagerInit();
-          barrier.wait();
-        });
+          vault.doEagerInitVia(&exe).get();
+        }));
       }
 
-      barrier.wait();  // to await all threads' readiness
-      barrier.wait();  // to await all threads' completion
+      for (auto thread : threads) {
+        thread->join();
+      }
     }
 
     EXPECT_EQ(1, initCounter.load());
