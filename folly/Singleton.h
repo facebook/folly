@@ -86,10 +86,9 @@
 //     .shouldEagerInit();
 // }
 //
-// This way the singleton's instance is built at program initialization
-// time, or more accurately, when "registrationComplete()" or
-// "startEagerInit()" is called. (More about that below; see the
-// section starting with "A vault goes through a few stages of life".)
+// This way the singleton's instance is built at program initialization,
+// if the program opted-in to that feature by calling "doEagerInit" or
+// "doEagerInitVia" during its startup.
 //
 // What if you need to destroy all of your singletons?  Say, some of
 // your singletons manage threads, but you need to fork?  Or your unit
@@ -110,6 +109,7 @@
 #include <folly/RWSpinLock.h>
 #include <folly/Demangle.h>
 #include <folly/Executor.h>
+#include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
@@ -334,7 +334,7 @@ class SingletonVault {
 
   /**
    * Called by `Singleton<T>.shouldEagerInit()` to ensure the instance
-   * is built when registrationComplete() is called; see that method
+   * is built when `doEagerInit[Via]` is called; see those methods
    * for more info.
    */
   void addEagerInitSingleton(detail::SingletonHolderBase* entry) {
@@ -344,7 +344,7 @@ class SingletonVault {
 
     if (UNLIKELY(registrationComplete_)) {
       throw std::logic_error(
-        "Registering for eager-load after registrationComplete().");
+          "Registering for eager-load after registrationComplete().");
     }
 
     RWSpinLock::ReadHolder rhMutex(&mutex_);
@@ -356,75 +356,75 @@ class SingletonVault {
   }
 
   // Mark registration is complete; no more singletons can be
-  // registered at this point.  Kicks off eagerly-initialized singletons
-  // (if requested; default behavior is to do so).
-  void registrationComplete(bool autoStartEagerInit = true) {
+  // registered at this point.
+  void registrationComplete() {
     RequestContext::saveContext();
     std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
-    {
-      RWSpinLock::WriteHolder wh(&stateMutex_);
+    RWSpinLock::WriteHolder wh(&stateMutex_);
 
-      stateCheck(SingletonVaultState::Running);
+    stateCheck(SingletonVaultState::Running);
 
-      if (type_ == Type::Strict) {
-        for (const auto& p: singletons_) {
-          if (p.second->hasLiveInstance()) {
-            throw std::runtime_error(
+    if (type_ == Type::Strict) {
+      for (const auto& p : singletons_) {
+        if (p.second->hasLiveInstance()) {
+          throw std::runtime_error(
               "Singleton created before registration was complete.");
-          }
         }
       }
-
-      registrationComplete_ = true;
     }
 
-    if (autoStartEagerInit) {
-      startEagerInit();
-    }
+    registrationComplete_ = true;
   }
 
- /**
-  * If eagerInitExecutor_ is non-nullptr (default is nullptr) then
-  * schedule eager singletons' initializations through it.
-  * Otherwise, initializes them synchronously, in a loop.
-  */
-  void startEagerInit() {
+  /**
+   * Initialize all singletons which were marked as eager-initialized
+   * (using `shouldEagerInit()`).  No return value.  Propagates exceptions
+   * from constructors / create functions, as is the usual case when calling
+   * for example `Singleton<Foo>::get_weak()`.
+   */
+  void doEagerInit() {
     std::unordered_set<detail::SingletonHolderBase*> singletonSet;
     {
       RWSpinLock::ReadHolder rh(&stateMutex_);
       stateCheck(SingletonVaultState::Running);
       if (UNLIKELY(!registrationComplete_)) {
-        throw std::logic_error(
-          "registrationComplete() not yet called");
+        throw std::logic_error("registrationComplete() not yet called");
       }
-      singletonSet = eagerInitSingletons_;  // copy set of pointers
+      singletonSet = eagerInitSingletons_; // copy set of pointers
     }
 
-    auto *exe = eagerInitExecutor_;  // default value is nullptr
     for (auto *single : singletonSet) {
-      if (exe) {
-        eagerInitExecutor_->add([single] {
-          if (!single->creationStarted()) {
-            single->createInstance();
-          }
-        });
-      } else {
-        single->createInstance();
-      }
+      single->createInstance();
     }
   }
 
   /**
-   * Provide an executor through which startEagerInit would run tasks.
-   * If there are several singletons which may be independently initialized,
-   * and their construction takes long, they could possibly be run in parallel
-   * to cut down on startup time.  Unusual; default (synchronous initialization
-   * in a loop) is probably fine for most use cases, and most apps can most
-   * likely avoid using this.
+   * Schedule eager singletons' initializations through the given executor.
+   * Return a future which is fulfilled after all the initialization functions
+   * complete.
    */
-  void setEagerInitExecutor(folly::Executor *exe) {
-    eagerInitExecutor_ = exe;
+  Future<Unit> doEagerInitVia(Executor* exe) {
+    std::unordered_set<detail::SingletonHolderBase*> singletonSet;
+    {
+      RWSpinLock::ReadHolder rh(&stateMutex_);
+      stateCheck(SingletonVaultState::Running);
+      if (UNLIKELY(!registrationComplete_)) {
+        throw std::logic_error("registrationComplete() not yet called");
+      }
+      singletonSet = eagerInitSingletons_; // copy set of pointers
+    }
+
+    std::vector<Future<Unit>> resultFutures;
+    for (auto* single : singletonSet) {
+      resultFutures.emplace_back(via(exe).then([single] {
+        if (!single->creationStarted()) {
+          single->createInstance();
+        }
+      }));
+    }
+
+    return collectAll(resultFutures).via(exe).then();
   }
 
   // Destroy all singletons; when complete, the vault can't create
@@ -515,7 +515,6 @@ class SingletonVault {
   mutable folly::RWSpinLock mutex_;
   SingletonMap singletons_;
   std::unordered_set<detail::SingletonHolderBase*> eagerInitSingletons_;
-  folly::Executor* eagerInitExecutor_{nullptr};
   std::vector<detail::TypeDescriptor> creation_order_;
   SingletonVaultState state_{SingletonVaultState::Running};
   bool registrationComplete_{false};
@@ -584,7 +583,7 @@ class Singleton {
   }
 
   /**
-   * Should be instantiated as soon as "registrationComplete()" is called.
+   * Should be instantiated as soon as "doEagerInit[Via]" is called.
    * Singletons are usually lazy-loaded (built on-demand) but for those which
    * are known to be needed, to avoid the potential lag for objects that take
    * long to construct during runtime, there is an option to make sure these
@@ -594,12 +593,10 @@ class Singleton {
    *   Singleton<Foo> gFooInstance = Singleton<Foo>(...).shouldEagerInit();
    *
    * Or alternately, define the singleton as usual, and say
-   *   gFooInstance.shouldEagerInit()
+   *   gFooInstance.shouldEagerInit();
    *
    * at some point prior to calling registrationComplete().
-   * Then registrationComplete can be called (by default it will kick off
-   * init of the eager singletons); alternately, you can use
-   * startEagerInit().
+   * Then doEagerInit() or doEagerInitVia(Executor*) can be called.
    */
   Singleton& shouldEagerInit() {
     auto vault = SingletonVault::singleton<VaultTag>();
