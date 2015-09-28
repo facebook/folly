@@ -29,6 +29,10 @@
 #include <Windows.h>
 #include <WinSock2.h>
 
+#ifdef CAL_GREGORIAN
+# undef CAL_GREGORIAN
+#endif
+
 // Defined in winnt.h
 #ifdef DELETE
 # undef DELETE
