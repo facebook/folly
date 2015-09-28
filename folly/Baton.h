@@ -19,7 +19,6 @@
 
 #include <stdint.h>
 #include <atomic>
-#include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <assert.h>
 
@@ -44,8 +43,11 @@ namespace folly {
 /// a much more restrictive lifecycle we can also add a bunch of assertions
 /// that can help to catch race conditions ahead of time.
 template <template<typename> class Atom = std::atomic>
-struct Baton : boost::noncopyable {
-  Baton() : state_(INIT) {}
+struct Baton {
+  constexpr Baton() : state_(INIT) {}
+
+  Baton(Baton const&) = delete;
+  Baton& operator=(Baton const&) = delete;
 
   /// It is an error to destroy a Baton on which a thread is currently
   /// wait()ing.  In practice this means that the waiter usually takes

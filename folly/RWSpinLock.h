@@ -141,7 +141,6 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #include <atomic>
 #include <string>
 #include <algorithm>
-#include <boost/noncopyable.hpp>
 
 #include <sched.h>
 #include <glog/logging.h>
@@ -165,10 +164,13 @@ namespace folly {
  * UpgradeLockable concepts except the TimedLockable related locking/unlocking
  * interfaces.
  */
-class RWSpinLock : boost::noncopyable {
+class RWSpinLock {
   enum : int32_t { READER = 4, UPGRADED = 2, WRITER = 1 };
  public:
-  RWSpinLock() : bits_(0) {}
+  constexpr RWSpinLock() : bits_(0) {}
+
+  RWSpinLock(RWSpinLock const&) = delete;
+  RWSpinLock& operator=(RWSpinLock const&) = delete;
 
   // Lockable Concept
   void lock() {
@@ -505,7 +507,7 @@ struct RWTicketIntTrait<32> {
 
 
 template<size_t kBitWidth, bool kFavorWriter=false>
-class RWTicketSpinLockT : boost::noncopyable {
+class RWTicketSpinLockT {
   typedef detail::RWTicketIntTrait<kBitWidth> IntTraitType;
   typedef typename detail::RWTicketIntTrait<kBitWidth>::FullInt FullInt;
   typedef typename detail::RWTicketIntTrait<kBitWidth>::HalfInt HalfInt;
@@ -513,6 +515,7 @@ class RWTicketSpinLockT : boost::noncopyable {
     QuarterInt;
 
   union RWTicket {
+    constexpr RWTicket() : whole(0) {}
     FullInt whole;
     HalfInt readWrite;
     __extension__ struct {
@@ -537,9 +540,10 @@ class RWTicketSpinLockT : boost::noncopyable {
 
  public:
 
-  RWTicketSpinLockT() {
-    store_release(&ticket.whole, FullInt(0));
-  }
+  constexpr RWTicketSpinLockT() {}
+
+  RWTicketSpinLockT(RWTicketSpinLockT const&) = delete;
+  RWTicketSpinLockT& operator=(RWTicketSpinLockT const&) = delete;
 
   void lock() {
     if (kFavorWriter) {
