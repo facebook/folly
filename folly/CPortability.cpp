@@ -571,7 +571,7 @@ int usleep(unsigned int ms) {
 }
 
 int uname(utsname* buf) {
-  buf->sysname = "Windows";
+  buf->sysname = "WINDOWS";
   buf->nodename = "";
   buf->machine = "";
   OSVERSIONINFO verInf;
