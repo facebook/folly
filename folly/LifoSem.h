@@ -313,11 +313,14 @@ class LifoSemHead {
 /// See LifoSemNode for more information on how to make your own.
 template <typename Handoff,
           template<typename> class Atom = std::atomic>
-struct LifoSemBase : boost::noncopyable {
+struct LifoSemBase {
 
   /// Constructor
-  explicit LifoSemBase(uint32_t initialValue = 0)
+  constexpr explicit LifoSemBase(uint32_t initialValue = 0)
     : head_(LifoSemHead::fresh(initialValue)) {}
+
+  LifoSemBase(LifoSemBase const&) = delete;
+  LifoSemBase& operator=(LifoSemBase const&) = delete;
 
   /// Silently saturates if value is already 2^32-1
   void post() {
@@ -591,7 +594,7 @@ struct LifoSemBase : boost::noncopyable {
 
 template <template<typename> class Atom, class BatonType>
 struct LifoSemImpl : public detail::LifoSemBase<BatonType, Atom> {
-  explicit LifoSemImpl(uint32_t v = 0)
+  constexpr explicit LifoSemImpl(uint32_t v = 0)
     : detail::LifoSemBase<BatonType, Atom>(v) {}
 };
 
