@@ -415,6 +415,47 @@ TEST(IOBuf, cloneAndInsert) {
   }
 }
 
+TEST(IOBuf, cloneWithEmptyBufAtStart) {
+  folly::IOBufEqual eq;
+  auto empty = IOBuf::create(0);
+  auto hel = IOBuf::create(3);
+  append(hel, "hel");
+  auto lo = IOBuf::create(2);
+  append(lo, "lo");
+
+  auto iobuf = empty->clone();
+  iobuf->prependChain(hel->clone());
+  iobuf->prependChain(lo->clone());
+  iobuf->prependChain(empty->clone());
+  iobuf->prependChain(hel->clone());
+  iobuf->prependChain(lo->clone());
+  iobuf->prependChain(empty->clone());
+  iobuf->prependChain(lo->clone());
+  iobuf->prependChain(hel->clone());
+  iobuf->prependChain(lo->clone());
+  iobuf->prependChain(lo->clone());
+
+  Cursor cursor(iobuf.get());
+  std::unique_ptr<IOBuf> cloned;
+  char data[3];
+  cursor.pull(&data, 3);
+  cursor.clone(cloned, 2);
+  EXPECT_EQ(1, cloned->countChainElements());
+  EXPECT_EQ(2, cloned->length());
+  EXPECT_TRUE(eq(lo, cloned));
+
+  cursor.pull(&data, 3);
+  EXPECT_EQ("hel", std::string(data, sizeof(data)));
+
+  cursor.skip(2);
+  cursor.clone(cloned, 2);
+  EXPECT_TRUE(eq(lo, cloned));
+
+  std::string hello = cursor.readFixedString(5);
+  cursor.clone(cloned, 2);
+  EXPECT_TRUE(eq(lo, cloned));
+}
+
 TEST(IOBuf, Appender) {
   std::unique_ptr<IOBuf> head(IOBuf::create(10));
   append(head, "hello");
