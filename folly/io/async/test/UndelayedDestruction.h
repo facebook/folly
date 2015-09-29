@@ -79,7 +79,7 @@ class UndelayedDestruction : public TDD {
    * The exact conditions for meeting this may be dependant upon your class
    * semantics.  Typically you are only guaranteed that it is safe to destroy
    * the object directly from the event loop (e.g., directly from a
-   * TEventBase::LoopCallback), or when the event loop is stopped.
+   * EventBase::LoopCallback), or when the event loop is stopped.
    */
   virtual ~UndelayedDestruction() {
     // Crash if the caller is destroying us with outstanding destructor guards.

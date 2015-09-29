@@ -33,7 +33,7 @@ namespace folly {
  * Hashed Hierarchical Wheel Timer
  *
  * Comparison:
- * TAsyncTimeout - a single timeout.
+ * AsyncTimeout - a single timeout.
  * HHWheelTimer - a set of efficient timeouts with different interval,
  *    but timeouts are not exact.
  *
@@ -287,7 +287,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   HHWheelTimer(HHWheelTimer const &) = delete;
   HHWheelTimer& operator=(HHWheelTimer const &) = delete;
 
-  // Methods inherited from TAsyncTimeout
+  // Methods inherited from AsyncTimeout
   virtual void timeoutExpired() noexcept;
 
   std::chrono::milliseconds interval_;
