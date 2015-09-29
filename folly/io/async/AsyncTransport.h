@@ -330,12 +330,8 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual ~AsyncTransport() = default;
 };
 
-// Transitional intermediate interface. This is deprecated.
-// Wrapper around folly::AsyncTransport, that includes read/write callbacks
-class AsyncTransportWrapper : virtual public AsyncTransport {
+class AsyncReader {
  public:
-  typedef std::unique_ptr<AsyncTransportWrapper, Destructor> UniquePtr;
-
   class ReadCallback {
    public:
     virtual ~ReadCallback() = default;
@@ -452,6 +448,16 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
     virtual void readErr(const AsyncSocketException& ex) noexcept = 0;
   };
 
+  // Read methods that aren't part of AsyncTransport.
+  virtual void setReadCB(ReadCallback* callback) = 0;
+  virtual ReadCallback* getReadCallback() const = 0;
+
+ protected:
+  virtual ~AsyncReader() = default;
+};
+
+class AsyncWriter {
+ public:
   class WriteCallback {
    public:
     virtual ~WriteCallback() = default;
@@ -479,10 +485,7 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
                           const AsyncSocketException& ex) noexcept = 0;
   };
 
-  // Read/write methods that aren't part of AsyncTransport
-  virtual void setReadCB(ReadCallback* callback) = 0;
-  virtual ReadCallback* getReadCallback() const = 0;
-
+  // Write methods that aren't part of AsyncTransport
   virtual void write(WriteCallback* callback, const void* buf, size_t bytes,
                      WriteFlags flags = WriteFlags::NONE) = 0;
   virtual void writev(WriteCallback* callback, const iovec* vec, size_t count,
@@ -490,6 +493,32 @@ class AsyncTransportWrapper : virtual public AsyncTransport {
   virtual void writeChain(WriteCallback* callback,
                           std::unique_ptr<IOBuf>&& buf,
                           WriteFlags flags = WriteFlags::NONE) = 0;
+
+ protected:
+  virtual ~AsyncWriter() = default;
+};
+
+// Transitional intermediate interface. This is deprecated.
+// Wrapper around folly::AsyncTransport, that includes read/write callbacks
+class AsyncTransportWrapper : virtual public AsyncTransport,
+                              virtual public AsyncReader,
+                              virtual public AsyncWriter {
+ public:
+  using UniquePtr = std::unique_ptr<AsyncTransportWrapper, Destructor>;
+
+  // Alias for inherited members from AsyncReader and AsyncWriter
+  // to keep compatibility.
+  using ReadCallback    = AsyncReader::ReadCallback;
+  using WriteCallback   = AsyncWriter::WriteCallback;
+  virtual void setReadCB(ReadCallback* callback) override = 0;
+  virtual ReadCallback* getReadCallback() const override = 0;
+  virtual void write(WriteCallback* callback, const void* buf, size_t bytes,
+                     WriteFlags flags = WriteFlags::NONE) override = 0;
+  virtual void writev(WriteCallback* callback, const iovec* vec, size_t count,
+                      WriteFlags flags = WriteFlags::NONE) override = 0;
+  virtual void writeChain(WriteCallback* callback,
+                          std::unique_ptr<IOBuf>&& buf,
+                          WriteFlags flags = WriteFlags::NONE) override = 0;
 };
 
 } // folly
