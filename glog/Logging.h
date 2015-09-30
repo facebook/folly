@@ -32,7 +32,7 @@ namespace libslack
     enum LogSeverity
     {
         NEVER = -1,
-        LOG_DEBUG = 0,
+        LS_DEBUG = 0,
         TESTS,
         INFO,
         WARNING,

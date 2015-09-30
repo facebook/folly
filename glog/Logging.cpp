@@ -91,7 +91,7 @@ static const char* GetLogSeverityName(LogSeverity severity) {
     switch  (severity) {
         case LogSeverity::TESTS:        return "T";
         case LogSeverity::NEVER:        return "N";
-        case LogSeverity::LOG_DEBUG:        return "D";
+        case LogSeverity::LS_DEBUG:     return "D";
         case LogSeverity::INFO:         return "I";
         case LogSeverity::WARNING:      return "W";
         case LogSeverity::ERROR:        return "E";
