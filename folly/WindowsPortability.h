@@ -27,7 +27,7 @@
 */
 
 #include <Windows.h>
-#include <WinSock2.h>
+// #include <WinSock2.h>
 
 #ifdef CAL_GREGORIAN
 # undef CAL_GREGORIAN
