@@ -253,4 +253,5 @@ namespace libslack
 #define DCHECK_NE               CHECK_NE
 #define DCHECK_GT               CHECK_GT
 #define DCHECK                  CHECK
+#define DCHECK_EQ               CHECK_EQ
 
