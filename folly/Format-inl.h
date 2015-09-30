@@ -428,6 +428,8 @@ class FormatValue<
     doFormat(arg, cb);
   }
 
+#define LS_ABS(a,b) ((a<0) ? (-(a))) : (a)
+
   template <class FormatCallback>
   void doFormat(FormatArg& arg, FormatCallback& cb) const {
     char presentation = arg.presentation;
@@ -442,7 +444,7 @@ class FormatValue<
     char sign;
     if (std::is_signed<T>::value) {
       if (folly::is_negative(val_)) {
-        uval = static_cast<UT>(-val_);
+        uval = static_cast<UT>((-1 * ((T)val_)));
         sign = '-';
       } else {
         uval = static_cast<UT>(val_);
@@ -490,21 +492,21 @@ class FormatValue<
                   "' specifier");
 
       valBufBegin = valBuf + 3;  // room for sign and base prefix
-#ifdef _MSC_VER
-      char valBuf2[valBufSize];
-      snprintf(valBuf2, valBufSize, "%ju", static_cast<uintmax_t>(uval));
-      int len = GetNumberFormat(
-        LOCALE_USER_DEFAULT,
-        0,
-        valBuf2,
-        nullptr,
-        valBufBegin,
-        (int)((valBuf + valBufSize) - valBufBegin)
-      );
-#else
+// #ifdef _MSC_VER
+//       char valBuf2[valBufSize];
+//       snprintf(valBuf2, valBufSize, "%ju", static_cast<uintmax_t>(uval));
+//       int len = GetNumberFormat(
+//         LOCALE_USER_DEFAULT,
+//         0,
+//         valBuf2,
+//         nullptr,
+//         valBufBegin,
+//         (int)((valBuf + valBufSize) - valBufBegin)
+//       );
+// #else
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
                          "%'ju", static_cast<uintmax_t>(uval));
-#endif
+// #endif
       // valBufSize should always be big enough, so this should never
       // happen.
       assert(len < valBuf + valBufSize - valBufBegin);
