@@ -48,11 +48,15 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  char buf[2 + std::max({
-      (2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-       DoubleToStringConverter::kMaxFixedDigitsAfterPoint),
-      (8 + DoubleToStringConverter::kMaxExponentialDigits),
-      (7 + DoubleToStringConverter::kMaxPrecisionDigits)})];
+  const auto a = (2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+		              DoubleToStringConverter::kMaxFixedDigitsAfterPoint);
+  const auto b = (8 + DoubleToStringConverter::kMaxExponentialDigits);
+  const auto c = (7 + DoubleToStringConverter::kMaxPrecisionDigits);
+
+  static constexpr const size_t buf_size =
+     std::max(a, std::max(b,c));
+
+  char buf[2 + buf_size];
   StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
 
   char plusSign;
