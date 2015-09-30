@@ -19,7 +19,11 @@
 #include <random>
 
 #include <folly/Conv.h>
+
+#ifndef _MSC_VER
 #include <folly/Random.h>
+#endif
+
 #include <folly/String.h>
 #include <folly/ThreadName.h>
 
@@ -61,27 +65,29 @@ struct PoissonDistributionFunctor {
   milliseconds operator()() { return milliseconds(poissonRandom(generator)); }
 };
 
-struct UniformDistributionFunctor {
-  std::default_random_engine generator;
-  std::uniform_int_distribution<> dist;
+#ifndef _MSC_VER
+  struct UniformDistributionFunctor {
+    std::default_random_engine generator;
+    std::uniform_int_distribution<> dist;
 
-  UniformDistributionFunctor(milliseconds minInterval, milliseconds maxInterval)
-      : generator(Random::rand32()),
-        dist(minInterval.count(), maxInterval.count()) {
-    if (minInterval > maxInterval) {
-      throw std::invalid_argument(
-          "FunctionScheduler: "
-          "min time interval must be less or equal than max interval");
+    UniformDistributionFunctor(milliseconds minInterval, milliseconds maxInterval)
+        : generator(Random::rand32()),
+          dist(minInterval.count(), maxInterval.count()) {
+      if (minInterval > maxInterval) {
+        throw std::invalid_argument(
+            "FunctionScheduler: "
+            "min time interval must be less or equal than max interval");
+      }
+      if (minInterval < milliseconds::zero()) {
+        throw std::invalid_argument(
+            "FunctionScheduler: "
+            "time interval must be non-negative");
+      }
     }
-    if (minInterval < milliseconds::zero()) {
-      throw std::invalid_argument(
-          "FunctionScheduler: "
-          "time interval must be non-negative");
-    }
-  }
 
-  milliseconds operator()() { return milliseconds(dist(generator)); }
-};
+    milliseconds operator()() { return milliseconds(dist(generator)); }
+  };
+#endif
 
 } // anonymous namespace
 
@@ -127,7 +133,11 @@ void FunctionScheduler::addFunctionUniformDistribution(
     milliseconds minInterval,
     milliseconds maxInterval,
     StringPiece nameID,
-    milliseconds startDelay) {
+    milliseconds startDelay)
+{
+#ifdef _MSC_VER
+  assert(false);
+#else
   addFunctionGenericDistribution(
       cb,
       IntervalDistributionFunc(
@@ -136,6 +146,7 @@ void FunctionScheduler::addFunctionUniformDistribution(
       to<std::string>(
           "[", minInterval.count(), " , ", maxInterval.count(), "] ms"),
       startDelay);
+#endif
 }
 
 void FunctionScheduler::addFunctionGenericDistribution(
