@@ -356,7 +356,7 @@ inline size_t malloc_usable_size(void* ptr) {
 # define MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION 1
 #endif
 
-#ifdef _MSC_VER
+#if 0
 #include <pthread.h>
 // We implement a sane comparison operand for
 // pthread_t and an integer so that it may be
