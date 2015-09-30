@@ -259,10 +259,10 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
 }
 
 namespace {
-const char kHexChars[] = "0123456789abcdef";
-const SymbolizePrinter::Color kAddressColor = SymbolizePrinter::Color::BLUE;
-const SymbolizePrinter::Color kFunctionColor = SymbolizePrinter::Color::PURPLE;
-const SymbolizePrinter::Color kFileColor = SymbolizePrinter::Color::DEFAULT;
+constexpr char kHexChars[] = "0123456789abcdef";
+constexpr auto kAddressColor = SymbolizePrinter::Color::BLUE;
+constexpr auto kFunctionColor = SymbolizePrinter::Color::PURPLE;
+constexpr auto kFileColor = SymbolizePrinter::Color::DEFAULT;
 }  // namespace
 
 constexpr char AddressFormatter::bufTemplate[];
@@ -347,22 +347,18 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
   }
 }
 
-namespace {
-
-const std::map<SymbolizePrinter::Color, std::string> kColorMap = {
-  { SymbolizePrinter::Color::DEFAULT,  "\x1B[0m" },
-  { SymbolizePrinter::Color::RED,  "\x1B[31m" },
-  { SymbolizePrinter::Color::GREEN,  "\x1B[32m" },
-  { SymbolizePrinter::Color::YELLOW,  "\x1B[33m" },
-  { SymbolizePrinter::Color::BLUE,  "\x1B[34m" },
-  { SymbolizePrinter::Color::CYAN,  "\x1B[36m" },
-  { SymbolizePrinter::Color::WHITE,  "\x1B[37m" },
-  { SymbolizePrinter::Color::PURPLE,  "\x1B[35m" },
-};
-
-}
-
 void SymbolizePrinter::color(SymbolizePrinter::Color color) {
+  static const std::map<SymbolizePrinter::Color, std::string> kColorMap = {
+    { SymbolizePrinter::Color::DEFAULT,  "\x1B[0m" },
+    { SymbolizePrinter::Color::RED,  "\x1B[31m" },
+    { SymbolizePrinter::Color::GREEN,  "\x1B[32m" },
+    { SymbolizePrinter::Color::YELLOW,  "\x1B[33m" },
+    { SymbolizePrinter::Color::BLUE,  "\x1B[34m" },
+    { SymbolizePrinter::Color::CYAN,  "\x1B[36m" },
+    { SymbolizePrinter::Color::WHITE,  "\x1B[37m" },
+    { SymbolizePrinter::Color::PURPLE,  "\x1B[35m" },
+  };
+
   if ((options_ & COLOR) == 0 &&
       ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
     return;
