@@ -653,9 +653,8 @@ estimateSpaceNeeded(Src value) {
   // e.g. 10.0/9 is 17 digits and 18 characters, including the decimal point.
   constexpr int kMaxMantissaSpace =
     double_conversion::DoubleToStringConverter::kBase10MaximalLength + 1;
-  // strlen("E-") + digits10(numeric_limits<double>::max_exponent10)
   constexpr int kMaxExponentSpace = 2 + 3;
-  static const int kMaxPositiveSpace = std::max({
+  auto v = {
       // E.g. 1.1111111111111111E-100.
       kMaxMantissaSpace + kMaxExponentSpace,
       // E.g. 0.000001.1111111111111111, if kConvMaxDecimalInShortestLow is -6.
@@ -664,8 +663,10 @@ estimateSpaceNeeded(Src value) {
       // number > 1 which ToShortest outputs in exponential notation,
       // so 21 is the longest non-exponential number > 1.
       detail::kConvMaxDecimalInShortestHigh
-    });
-  return kMaxPositiveSpace + (value < 0);  // +1 for minus sign, if negative
+  };
+  const int kMaxPositiveSpace = std::max(v);
+  assert(false); // libslack
+  return kMaxPositiveSpace + (value < 0);
 }
 
 /**
