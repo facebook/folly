@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <iterator>
 #include <cctype>
+#include <algorithm>
 #include <string.h>
 #include <glog/logging.h>
 
