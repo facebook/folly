@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
@@ -1150,6 +1151,13 @@ private:
       return capacity() * 2;
     }
     if (capacity() > 4096 * 32 / sizeof(T)) {
+      size_type m = std::numeric_limits<size_type>::max();
+      if capacity() >= m / 2 {
+        if capacity() == m {
+          throw std::bad_alloc();
+        }
+        return m;
+      }
       return capacity() * 2;
     }
     return (capacity() * 3 + 1) / 2;
