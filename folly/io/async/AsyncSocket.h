@@ -369,6 +369,16 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return (state_ == StateEnum::CONNECTING);
   }
 
+  virtual bool isClosedByPeer() const {
+    return (state_ == StateEnum::CLOSED &&
+            (readErr_ == READ_EOF || readErr_ == READ_ERROR));
+  }
+
+  virtual bool isClosedBySelf() const {
+    return (state_ == StateEnum::CLOSED &&
+            (readErr_ != READ_EOF && readErr_ != READ_ERROR));
+  }
+
   size_t getAppBytesWritten() const override {
     return appBytesWritten_;
   }
@@ -546,6 +556,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     READ_EOF = 0,
     READ_ERROR = -1,
     READ_BLOCKING = -2,
+    READ_NO_ERROR = -3,
   };
 
   /**
@@ -770,6 +781,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool isBufferMovable_{false};
 
   bool peek_{false}; // Peek bytes.
+
+  int8_t readErr_{READ_NO_ERROR};      ///< The read error encountered, if any.
 };
 
 

@@ -183,6 +183,9 @@ TEST(AsyncSocketTest, ConnectAndWrite) {
   // Make sure the server got a connection and received the data
   socket->close();
   server.verifyConnection(buf, sizeof(buf));
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -210,6 +213,9 @@ TEST(AsyncSocketTest, ConnectNullCallback) {
   // Make sure the server got a connection and received the data
   socket->close();
   server.verifyConnection(buf, sizeof(buf));
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -245,6 +251,9 @@ TEST(AsyncSocketTest, ConnectWriteAndClose) {
 
   // Make sure the server got a connection and received the data
   server.verifyConnection(buf, sizeof(buf));
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -274,6 +283,9 @@ TEST(AsyncSocketTest, ConnectAndClose) {
 
   // Make sure the connection was aborted
   CHECK_EQ(ccb.state, STATE_FAILED);
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -305,6 +317,9 @@ TEST(AsyncSocketTest, ConnectAndCloseNow) {
 
   // Make sure the connection was aborted
   CHECK_EQ(ccb.state, STATE_FAILED);
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -344,6 +359,9 @@ TEST(AsyncSocketTest, ConnectWriteAndCloseNow) {
 
   CHECK_EQ(ccb.state, STATE_FAILED);
   CHECK_EQ(wcb.state, STATE_FAILED);
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -378,6 +396,9 @@ TEST(AsyncSocketTest, ConnectAndRead) {
   CHECK_EQ(rcb.buffers.size(), 1);
   CHECK_EQ(rcb.buffers[0].length, sizeof(buf));
   CHECK_EQ(memcmp(rcb.buffers[0].buffer, buf, sizeof(buf)), 0);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -413,6 +434,9 @@ TEST(AsyncSocketTest, ConnectReadAndClose) {
   CHECK_EQ(ccb.state, STATE_FAILED); // we aborted the close attempt
   CHECK_EQ(rcb.buffers.size(), 0);
   CHECK_EQ(rcb.state, STATE_SUCCEEDED); // this indicates EOF
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -471,6 +495,9 @@ TEST(AsyncSocketTest, ConnectWriteAndRead) {
   CHECK_EQ(memcmp(buf1, readbuf, sizeof(buf1)), 0);
   uint32_t bytesRead = acceptedSocket->read(readbuf, sizeof(readbuf));
   CHECK_EQ(bytesRead, 0);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_TRUE(socket->isClosedByPeer());
 }
 
 /**
@@ -556,6 +583,9 @@ TEST(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
   CHECK_EQ(rcb.buffers[0].length, sizeof(acceptedWbuf));
   CHECK_EQ(memcmp(rcb.buffers[0].buffer,
                            acceptedWbuf, sizeof(acceptedWbuf)), 0);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -641,6 +671,9 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
   // Fully close both sockets
   acceptedSocket->close();
   socket->close();
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_TRUE(socket->isClosedByPeer());
 }
 
 /**
@@ -729,6 +762,9 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
   // Fully close both sockets
   acceptedSocket->close();
   socket->close();
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_TRUE(socket->isClosedByPeer());
 }
 
 // Helper function for use in testConnectOptWrite()
@@ -902,6 +938,9 @@ TEST(AsyncSocketTest, WriteNullCallback) {
   // Make sure the server got a connection and received the data
   socket->close();
   server.verifyConnection(buf, sizeof(buf));
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -988,6 +1027,9 @@ TEST(AsyncSocketTest, WritePipeError) {
   CHECK_EQ(wcb.state, STATE_FAILED);
   CHECK_EQ(wcb.exception.getType(),
                     AsyncSocketException::INTERNAL_ERROR);
+
+  ASSERT_FALSE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -1062,6 +1104,9 @@ TEST(AsyncSocketTest, WriteIOBuf) {
 
   acceptedSocket->close();
   socket->close();
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 TEST(AsyncSocketTest, WriteIOBufCorked) {
@@ -1120,6 +1165,9 @@ TEST(AsyncSocketTest, WriteIOBufCorked) {
 
   acceptedSocket->close();
   socket->close();
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 /**
@@ -1161,6 +1209,9 @@ TEST(AsyncSocketTest, ZeroLengthWrite) {
   CHECK_EQ(wcb3.state, STATE_SUCCEEDED);
   CHECK_EQ(wcb4.state, STATE_SUCCEEDED);
   rcb.verifyData(buf.get(), len1 + len2);
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 TEST(AsyncSocketTest, ZeroLengthWritev) {
@@ -1200,6 +1251,9 @@ TEST(AsyncSocketTest, ZeroLengthWritev) {
 
   CHECK_EQ(wcb.state, STATE_SUCCEEDED);
   rcb.verifyData(buf.get(), len1 + len2);
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1258,6 +1312,9 @@ TEST(AsyncSocketTest, ClosePendingWritesWhileClosing) {
        ++it) {
     CHECK_EQ((*it)->state, STATE_FAILED);
   }
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1317,6 +1374,9 @@ TEST(AsyncSocket, ConnectReadImmediateRead) {
   CHECK_EQ(wcb1.state, STATE_SUCCEEDED);
   rcb.verifyData(expectedData, expectedDataSz);
   CHECK_EQ(socket.immediateReadCalled, true);
+
+  ASSERT_FALSE(socket.isClosedBySelf());
+  ASSERT_FALSE(socket.isClosedByPeer());
 }
 
 TEST(AsyncSocket, ConnectReadUninstallRead) {
@@ -1368,6 +1428,9 @@ TEST(AsyncSocket, ConnectReadUninstallRead) {
    * was reset in dataAvailableCallback */
   CHECK_EQ(rcb.dataRead(), maxBufferSz);
   CHECK_EQ(socket.immediateReadCalled, false);
+
+  ASSERT_FALSE(socket.isClosedBySelf());
+  ASSERT_FALSE(socket.isClosedByPeer());
 }
 
 // TODO:

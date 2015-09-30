@@ -1347,11 +1347,13 @@ void AsyncSocket::handleRead() noexcept {
         // No more data to read right now.
         return;
     } else if (bytesRead == READ_ERROR) {
+      readErr_ = READ_ERROR;
       AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
                              withAddr("recv() failed"), errno);
       return failRead(__func__, ex);
     } else {
       assert(bytesRead == READ_EOF);
+      readErr_ = READ_EOF;
       // EOF
       shutdownFlags_ |= SHUT_READ;
       if (!updateEventRegistration(0, EventHandler::READ)) {
