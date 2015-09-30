@@ -26,7 +26,9 @@
 * any similar structures in other projects.
 */
 
-#include <Windows.h>
+// http://stackoverflow.com/questions/5004858/stdmin-gives-error
+#define NOMINMAX
+#include <windows.h>
 // #include <WinSock2.h>
 
 #ifdef CAL_GREGORIAN
