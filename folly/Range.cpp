@@ -18,6 +18,7 @@
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
 #include <folly/Range.h>
+#include <folly/SparseByteSet.h>
 
 #if FOLLY_HAVE_EMMINTRIN_H
 #include <emmintrin.h>  // __v16qi
@@ -93,39 +94,13 @@ size_t qfind_first_byte_of_needles16(const StringPiece haystack,
 }
 #endif // FOLLY_HAVE_EMMINTRIN_H && GCC 4.6+
 
-// Aho, Hopcroft, and Ullman refer to this trick in "The Design and Analysis
-// of Computer Algorithms" (1974), but the best description is here:
-// http://research.swtch.com/sparse
-class FastByteSet {
- public:
-  FastByteSet() : size_(0) { }  // no init of arrays required!
-
-  inline void add(uint8_t i) {
-    if (!contains(i)) {
-      dense_[size_] = i;
-      sparse_[i] = size_;
-      size_++;
-    }
-  }
-  inline bool contains(uint8_t i) const {
-    DCHECK_LE(size_, 256);
-    return sparse_[i] < size_ && dense_[sparse_[i]] == i;
-  }
-
- private:
-  uint16_t size_;  // can't use uint8_t because it would overflow if all
-                   // possible values were inserted.
-  uint8_t sparse_[256];
-  uint8_t dense_[256];
-};
-
 }  // namespace
 
 namespace detail {
 
 size_t qfind_first_byte_of_byteset(const StringPiece haystack,
                                    const StringPiece needles) {
-  FastByteSet s;
+  SparseByteSet s;
   for (auto needle: needles) {
     s.add(needle);
   }
