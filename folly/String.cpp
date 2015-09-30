@@ -15,6 +15,7 @@
  */
 
 #include <folly/String.h>
+#include <slack/Logging.h>
 
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
@@ -27,7 +28,6 @@
 #include <cctype>
 #include <algorithm>
 #include <string.h>
-#include <glog/logging.h>
 
 namespace folly {
 

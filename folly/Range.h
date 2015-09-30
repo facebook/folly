@@ -28,7 +28,7 @@
 #include <boost/operators.hpp>
 #include <climits>
 #include <cstring>
-#include <glog/logging.h>
+#include <slack/logging.h>
 #include <iosfwd>
 #include <stdexcept>
 #include <string>

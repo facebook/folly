@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "glog/Logging.h"
+#include "slack/Logging.h"
 #include "folly/Format.h"
 #include "folly/json.h"
 #include "folly/experimental/FunctionScheduler.h"
