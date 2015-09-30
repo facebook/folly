@@ -225,6 +225,7 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual bool isPending() const {
     return readable();
   }
+
   /**
    * Determine if transport is connected to the endpoint
    *
