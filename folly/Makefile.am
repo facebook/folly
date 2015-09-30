@@ -120,6 +120,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/StringKeyedUnorderedSet.h \
 	experimental/TestUtil.h \
 	experimental/TupleOps.h \
+	SparseByteSet.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
