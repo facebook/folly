@@ -516,13 +516,21 @@ int SSLContext::selectNextProtocolCallback(
   }
 
   unsigned char *client;
-  int client_len;
-  if (ctx->advertisedNextProtocols_.empty()) {
-    client = (unsigned char *) "";
-    client_len = 0;
-  } else {
-    client = ctx->advertisedNextProtocols_[0].protocols;
-    client_len = ctx->advertisedNextProtocols_[0].length;
+  unsigned int client_len;
+  bool filtered = false;
+  auto cpf = ctx->getClientProtocolFilterCallback();
+  if (cpf) {
+    filtered = (*cpf)(&client, &client_len, server, server_len);
+  }
+
+  if (!filtered) {
+    if (ctx->advertisedNextProtocols_.empty()) {
+      client = (unsigned char *) "";
+      client_len = 0;
+    } else {
+      client = ctx->advertisedNextProtocols_[0].protocols;
+      client_len = ctx->advertisedNextProtocols_[0].length;
+    }
   }
 
   int retval = SSL_select_next_proto(out, outlen, server, server_len,

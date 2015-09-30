@@ -127,6 +127,21 @@ void sslsocketpair(
   // (*serverSock)->setSendTimeout(100);
 }
 
+// client protocol filters
+bool clientProtoFilterPickPony(unsigned char** client,
+  unsigned int* client_len, const unsigned char*, unsigned int ) {
+  //the protocol string in length prefixed byte string. the
+  //length byte is not included in the length
+  static unsigned char p[7] = {6,'p','o','n','i','e','s'};
+  *client = p;
+  *client_len = 7;
+  return true;
+}
+
+bool clientProtoFilterPickNone(unsigned char**, unsigned int*,
+  const unsigned char*, unsigned int) {
+  return false;
+}
 
 /**
  * Test connecting to, writing to, reading from, and closing the
@@ -368,6 +383,64 @@ TEST(AsyncSSLSocketTest, NpnTestNoOverlap) {
   getctx(clientCtx, serverCtx);
 
   clientCtx->setAdvertisedNextProtocols({"blub"});
+  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
+
+  AsyncSSLSocket::UniquePtr clientSock(
+    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+  NpnClient client(std::move(clientSock));
+  NpnServer server(std::move(serverSock));
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.nextProtoLength != 0);
+  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
+  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
+                           server.nextProtoLength), 0);
+  string selected((const char*)client.nextProto, client.nextProtoLength);
+  EXPECT_EQ(selected.compare("blub"), 0);
+}
+
+TEST(AsyncSSLSocketTest, NpnTestClientProtoFilterHit) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  int fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  clientCtx->setAdvertisedNextProtocols({"blub"});
+  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
+  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
+
+  AsyncSSLSocket::UniquePtr clientSock(
+    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+  NpnClient client(std::move(clientSock));
+  NpnServer server(std::move(serverSock));
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.nextProtoLength != 0);
+  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
+  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
+                           server.nextProtoLength), 0);
+  string selected((const char*)client.nextProto, client.nextProtoLength);
+  EXPECT_EQ(selected.compare("ponies"), 0);
+}
+
+TEST(AsyncSSLSocketTest, NpnTestClientProtoFilterMiss) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  int fds[2];
+  getfds(fds);
+  getctx(clientCtx, serverCtx);
+
+  clientCtx->setAdvertisedNextProtocols({"blub"});
+  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
   serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
 
   AsyncSSLSocket::UniquePtr clientSock(

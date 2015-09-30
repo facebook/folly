@@ -91,6 +91,10 @@ class SSLContext {
     double probability;
   };
 
+  // Function that selects a client protocol given the server's list
+  using ClientProtocolFilterCallback = bool (*)(unsigned char**, unsigned int*,
+                                        const unsigned char*, unsigned int);
+
   /**
    * Convenience function to call getErrors() with the current errno value.
    *
@@ -325,6 +329,13 @@ class SSLContext {
   bool setRandomizedAdvertisedNextProtocols(
       const std::list<NextProtocolsItem>& items);
 
+  void setClientProtocolFilterCallback(ClientProtocolFilterCallback cb) {
+    clientProtoFilter_ = cb;
+  }
+
+  ClientProtocolFilterCallback getClientProtocolFilterCallback() {
+    return clientProtoFilter_;
+  }
   /**
    * Disables NPN on this SSL context.
    */
@@ -428,6 +439,8 @@ class SSLContext {
   ServerNameCallback serverNameCb_;
   std::vector<ClientHelloCallback> clientHelloCbs_;
 #endif
+
+  ClientProtocolFilterCallback clientProtoFilter_{nullptr};
 
   static bool initialized_;
 
