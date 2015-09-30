@@ -82,13 +82,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <WinSock2.h>
+// #include <WinSock2.h>
 #include <sys/stat.h>
 
-#include <pthread.h>
+// #include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifndef pid_t
+#define pid_t int
 #endif
 
 // Some permission constants for stat.
@@ -294,6 +298,27 @@ int vasprintf(char** dest, const char* format, va_list ap);
 // to make the functions constexpr evaluatable.
 
 #ifdef __cplusplus
+unsigned char _BitScanReverse(
+	unsigned long * Index,
+	unsigned long Mask
+	);
+
+unsigned char _BitScanReverse64(
+	unsigned long * Index,
+	unsigned __int64 Mask
+	);
+unsigned char _BitScanForward(
+	unsigned long * Index,
+	unsigned long Mask
+	);
+unsigned char _BitScanForward64(
+	unsigned long * Index,
+	unsigned __int64 Mask
+	);
+#endif
+
+#ifdef __cplusplus
+
 inline int __builtin_clz(unsigned int x, unsigned long index = 0) {
   return (int)(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
 }
@@ -336,6 +361,16 @@ inline int __builtin_ffsll(long long x) {
   return (int)(_BitScanForward64(&index, (unsigned long long)x) ? index : 0);
 }
 #endif
+
+unsigned short __popcnt16(
+	unsigned short value
+	);
+unsigned int __popcnt(
+	unsigned int value
+	);
+unsigned __int64 __popcnt64(
+	unsigned __int64 value
+	);
 
 inline int __builtin_popcountll(unsigned long long x) {
   return (int)__popcnt64(x);
