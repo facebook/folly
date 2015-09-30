@@ -786,7 +786,7 @@ toAppend(const Ts&... vs) {
   ::folly::detail::toAppendStrImpl(vs...);
 }
 
-#ifdef _MSC_VER
+#if 0
 // Special case pid_t on windows.
 template<class Tgt>
 void toAppend(const pid_t a, Tgt* res) {
