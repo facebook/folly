@@ -24,8 +24,6 @@
 #include <sys/time.h>
 #endif
 
-#include "Logging.h"
-
 using std::string;
 using std::vector;
 using std::setw;
