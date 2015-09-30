@@ -19,10 +19,12 @@
 #include <vector>
 #include <errno.h>
 #include <sstream>
+
+#ifndef _MSC_VER
 #include <sys/time.h>
+#endif
 
 #include "Logging.h"
-
 
 using std::string;
 using std::vector;
@@ -136,12 +138,14 @@ void LogMessage::Init(const char* file,
     data_->line_ = line;
     data_->send_method_ = send_method;
     data_->basename_ = const_basename(file);
+
+#ifndef _MSC_VER
     time( &data_->timestamp_ );
     localtime_r(&data_->timestamp_, &data_->tm_time_);
-
     struct timeval tv;
     gettimeofday(&tv, NULL);
-
+#else
+#endif
     data_->num_chars_to_log_ = 0;
     data_->num_chars_to_syslog_ = 0;
     data_->fullname_ = file;
@@ -149,21 +153,27 @@ void LogMessage::Init(const char* file,
 
     const auto thread_id = std::this_thread::get_id();
 
-    this->stream()
-        << "[["
-        << GetLogSeverityName(severity)
-        << setw(2) << 1+data_->tm_time_.tm_mon
-        << setw(2) << data_->tm_time_.tm_mday
-        << ' '
-        << setw(2) << data_->tm_time_.tm_mday  << '/'
-        << setw(2) << data_->tm_time_.tm_mon
-        << ' '
-        << setw(2) << data_->tm_time_.tm_hour  << ':'
-        << setw(2) << data_->tm_time_.tm_min   << ':'
-        << setw(2) << data_->tm_time_.tm_sec
-        << ' '
-        << tv.tv_sec << '.'
-        << tv.tv_usec
+	this->stream()
+		<< "[["
+		<< GetLogSeverityName(severity)
+		<< setw(2) << 1 + data_->tm_time_.tm_mon
+		<< setw(2) << data_->tm_time_.tm_mday
+		<< ' '
+		<< setw(2) << data_->tm_time_.tm_mday << '/'
+		<< setw(2) << data_->tm_time_.tm_mon
+		<< ' '
+		<< setw(2) << data_->tm_time_.tm_hour << ':'
+		<< setw(2) << data_->tm_time_.tm_min << ':'
+		<< setw(2) << data_->tm_time_.tm_sec;
+
+#ifndef _MSC_VER
+	this->stream()
+		<< ' '
+		<< tv.tv_sec << '.'
+		<< tv.tv_usec;
+#endif
+
+	this->stream()
         << ' '
         << setfill(' ') << setw(5)
         << thread_id << setfill('0')
