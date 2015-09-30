@@ -495,10 +495,9 @@ toAppend(Src value, Tgt * result) {
   char buffer[20];
   if (value < 0) {
     result->push_back('-');
-    result->append(buffer, uint64ToBufferUnsafe(-uint64_t(value), buffer));
-  } else {
-    result->append(buffer, uint64ToBufferUnsafe(value, buffer));
+	  value = (uint64_t)(-1 * (int64_t)value);
   }
+  result->append(buffer, uint64ToBufferUnsafe(value, buffer));
 }
 
 template <class Src>
@@ -1251,7 +1250,7 @@ to(StringPiece * src) {
   } else {
     auto t = detail::digits_to<typename std::make_unsigned<Tgt>::type>(b, m);
     if (negative) {
-      result = -t;
+      result = -1 * ((Tgt)t);
       FOLLY_RANGE_CHECK_STRINGPIECE(is_non_positive(result),
                                     "Negative overflow", *src);
     } else {
