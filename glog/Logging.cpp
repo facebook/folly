@@ -48,7 +48,7 @@ const double DELTA_DOUBLE = 0.000001;
 const double DELTA_FLOAT  = 0.000001;
 
 const std::string SEP = "=======================================================";
-static enum LogSeverity FLAGS_minlogSeverity = LogSeverity::INFO;
+static enum LogSeverity FLAGS_minlogSeverity = LogSeverity::TESTS;
 static const size_t kMaxLogMessageLen = 30000;
 static std::mutex g_cout_mutex;
 
@@ -155,7 +155,12 @@ void LogMessage::Init(const char* file,
 
 	this->stream()
 		<< "[["
-		<< GetLogSeverityName(severity)
+		<< GetLogSeverityName(severity);
+
+#ifndef _MSC_VER
+
+  // print date / time
+  this->stream()
 		<< setw(2) << 1 + data_->tm_time_.tm_mon
 		<< setw(2) << data_->tm_time_.tm_mday
 		<< ' '
@@ -166,11 +171,12 @@ void LogMessage::Init(const char* file,
 		<< setw(2) << data_->tm_time_.tm_min << ':'
 		<< setw(2) << data_->tm_time_.tm_sec;
 
-#ifndef _MSC_VER
+  // print abs time (usec)
 	this->stream()
 		<< ' '
 		<< tv.tv_sec << '.'
 		<< tv.tv_usec;
+
 #endif
 
 	this->stream()
