@@ -1,7 +1,7 @@
 Folly & MSVC 2015:
 ------------------
 
-a folly branch with a few patches on top of: 
+a folly branch with a few patches on top of:
 https://github.com/facebook/folly
 
 Which enables folly to partially compile with MSVC 2015 on Windows 10.
@@ -25,7 +25,7 @@ set(FOLLY_SOURCES
       folly/experimental/FunctionScheduler.cpp)
 
 Assuming double-conversion and boost are already in place.
-
+(No other dependencies)
 
 Folly: Facebook Open-source Library
 -----------------------------------
