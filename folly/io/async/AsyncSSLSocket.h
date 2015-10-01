@@ -80,6 +80,7 @@ class SSLException: public folly::AsyncSocketException {
 class AsyncSSLSocket : public virtual AsyncSocket {
  public:
   typedef std::unique_ptr<AsyncSSLSocket, Destructor> UniquePtr;
+  using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
 
   class HandshakeCB {
    public:
@@ -729,6 +730,18 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   }
 
   void setReadCB(ReadCallback* callback) override;
+
+  /**
+   * Returns the peer certificate, or nullptr if no peer certificate received.
+   */
+  std::unique_ptr<X509, X509_deleter> getPeerCert() const {
+    if (!ssl_) {
+      return nullptr;
+    }
+
+    X509* cert = SSL_get_peer_certificate(ssl_);
+    return std::unique_ptr<X509, X509_deleter>(cert);
+  }
 
  private:
 
