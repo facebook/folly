@@ -2,14 +2,13 @@
 #define _PTHREAD_H    1
 
 //////////////////////////////////////////////////////////
+// a mocjed pthread.h file for MSVC to use:
 //
-// HAIMG: LIBSLACK: temp hack for WinMo: libslack 
-typedef int pthread_t;
 
+typedef int pthread_t;
 
 inline pthread_t pthread_self(void) {
   return 0;
 }
 
 #endif // _PTHREAD_H
-
