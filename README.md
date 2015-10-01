@@ -1,3 +1,32 @@
+Folly & MSVC 2015:
+------------------
+
+a folly branch with a few patches on top of: 
+https://github.com/facebook/folly
+
+Which enables folly to partially compile with MSVC 2015 on Windows 10.
+
+set(FOLLY_SOURCES
+      slack/FollyTests.cpp
+      folly//File.cpp
+      folly//FileUtil.cpp
+      folly/Malloc.cpp
+      folly/detail/MallocImpl.cpp
+      folly/detail/FunctionalExcept.cpp
+      folly/Unicode.cpp
+      folly/Conv.cpp
+      folly/dynamic.cpp
+      folly/FormatTables.cpp
+      folly/Format.cpp
+      folly/String.cpp
+      folly/StringBase.cpp
+      folly/json.cpp
+      folly/Demangle.cpp
+      folly/experimental/FunctionScheduler.cpp)
+
+Assuming double-conversion and boost are already in place.
+
+
 Folly: Facebook Open-source Library
 -----------------------------------
 
