@@ -91,7 +91,7 @@ inline void TaskIterator<T>::reserve(size_t n) {
 
 template <typename T>
 inline size_t TaskIterator<T>::getTaskID() const {
-  assert(id_ != -1);
+  assert(id_ != static_cast<size_t>(-1));
   return id_;
 }
 

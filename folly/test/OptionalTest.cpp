@@ -117,7 +117,11 @@ public:
     other.s_ = "";
   }
   MoveTester& operator=(const MoveTester&) = default;
-  MoveTester& operator=(MoveTester&&) = default;
+  MoveTester& operator=(MoveTester&& other) noexcept {
+    s_ = std::move(other.s_);
+    other.s_ = "";
+    return *this;
+  }
 private:
   friend bool operator==(const MoveTester& o1, const MoveTester& o2);
   std::string s_;
@@ -398,6 +402,7 @@ TEST(Optional, Conversions) {
 
   // intended explicit operator bool, for if (opt).
   bool b(mbool);
+  EXPECT_FALSE(b);
 
   // Truthy tests work and are not ambiguous
   if (mbool && mshort && mstr && mint) { // only checks not-empty

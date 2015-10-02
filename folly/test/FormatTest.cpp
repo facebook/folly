@@ -201,7 +201,6 @@ TEST(Format, Simple) {
 }
 
 TEST(Format, Float) {
-  double d = 1;
   EXPECT_EQ("1", sformat("{}", 1.0));
   EXPECT_EQ("0.1", sformat("{}", 0.1));
   EXPECT_EQ("0.01", sformat("{}", 0.01));

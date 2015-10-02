@@ -19,9 +19,9 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <cassert>
 #include <cstring>
 #include <stdexcept>
+#include <glog/logging.h>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -61,7 +61,7 @@ static size_t nonMagicInBytes(const FContext& context) {
 }  // anonymous namespace
 
 void Fiber::setData(intptr_t data) {
-  assert(state_ == AWAITING);
+  DCHECK_EQ(state_, AWAITING);
   data_ = data;
   state_ = READY_TO_RUN;
 
@@ -142,19 +142,19 @@ static constexpr bool loopForever = true;
 
 void Fiber::fiberFunc() {
   while (loopForever) {
-    assert(state_ == NOT_STARTED);
+    DCHECK_EQ(state_, NOT_STARTED);
 
     threadId_ = localThreadId();
     state_ = RUNNING;
 
     try {
       if (resultFunc_) {
-        assert(finallyFunc_);
-        assert(!func_);
+        DCHECK(finallyFunc_);
+        DCHECK(!func_);
 
         resultFunc_();
       } else {
-        assert(func_);
+        DCHECK(func_);
         func_();
       }
     } catch (...) {
@@ -175,16 +175,15 @@ void Fiber::fiberFunc() {
 
     fiberManager_.activeFiber_ = nullptr;
 
-    auto fiber = reinterpret_cast<Fiber*>(
-      jumpContext(&fcontext_, &fiberManager_.mainContext_, 0));
-    assert(fiber == this);
+    auto context = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
+    DCHECK_EQ(reinterpret_cast<Fiber*>(context), this);
   }
 }
 
 intptr_t Fiber::preempt(State state) {
-  assert(fiberManager_.activeFiber_ == this);
-  assert(state_ == RUNNING);
-  assert(state != RUNNING);
+  DCHECK_EQ(fiberManager_.activeFiber_, this);
+  DCHECK_EQ(state_, RUNNING);
+  DCHECK_NE(state, RUNNING);
 
   fiberManager_.activeFiber_ = nullptr;
   state_ = state;
@@ -193,8 +192,8 @@ intptr_t Fiber::preempt(State state) {
 
   auto ret = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
 
-  assert(fiberManager_.activeFiber_ == this);
-  assert(state_ == READY_TO_RUN);
+  DCHECK_EQ(fiberManager_.activeFiber_, this);
+  DCHECK_EQ(state_, READY_TO_RUN);
   state_ = RUNNING;
 
   return ret;

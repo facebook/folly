@@ -235,6 +235,9 @@ TEST(Dynamic, Operator) {
     dynamic d1 = dynamic::object;
     dynamic d2 = dynamic::object;
     auto foo = d1 < d2;
+    LOG(ERROR) << "operator < returned "
+               << static_cast<int>(foo)
+               << " instead of throwing";
   } catch (std::exception const& e) {
     caught = true;
   }

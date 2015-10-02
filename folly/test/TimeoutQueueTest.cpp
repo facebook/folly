@@ -102,7 +102,6 @@ TEST(TimeoutQueue, RunOnceReschedule) {
 
   EXPECT_EQ(1, q.add(0, 0, cb));
 
-  int64_t now = 0;
   EXPECT_EQ(0, q.runOnce(0));
   EXPECT_EQ(1, count);
   EXPECT_EQ(0, q.runOnce(0));

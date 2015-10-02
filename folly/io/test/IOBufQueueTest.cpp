@@ -156,7 +156,6 @@ TEST(IOBufQueue, Split) {
   queue.append(stringToIOBuf(SCL("Hello,")));
   queue.append(stringToIOBuf(SCL(" World")));
   checkConsistency(queue);
-  bool exceptionFired = false;
   EXPECT_THROW({prefix = queue.split(13);}, std::underflow_error);
   checkConsistency(queue);
 }

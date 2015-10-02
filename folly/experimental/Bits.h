@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <type_traits>
 #include <limits>
+#include <glog/logging.h>
 
 #include <folly/Bits.h>
 #include <folly/Portability.h>
@@ -222,9 +223,9 @@ inline void Bits<T, Traits>::clear(T* p, size_t bit) {
 template <class T, class Traits>
 inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
                                  UnderlyingType value) {
-  assert(count <= sizeof(UnderlyingType) * 8);
+  DCHECK_LE(count, sizeof(UnderlyingType) * 8);
   size_t cut = bitsPerBlock - count;
-  assert(value == (value << cut >> cut));
+  DCHECK_EQ(value, value << cut >> cut);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
   if (std::is_signed<UnderlyingType>::value) {
@@ -266,7 +267,7 @@ inline bool Bits<T, Traits>::test(const T* p, size_t bit) {
 template <class T, class Traits>
 inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
   -> UnderlyingType {
-  assert(count <= sizeof(UnderlyingType) * 8);
+  DCHECK_LE(count, sizeof(UnderlyingType) * 8);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
   UnderlyingType ret;

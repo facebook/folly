@@ -428,7 +428,6 @@ TEST(TimeseriesHistogram, QueryByInterval) {
 
   for (int i = 0; i < 12; i++) {
     const auto& itv = intervals[i];
-    int c = mhts.count(itv.start, itv.end);
     // Some of the older intervals that fall in the alltime bucket
     // are off by 1 or 2 in their estimated counts.
     size_t tolerance = 0;

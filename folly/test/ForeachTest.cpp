@@ -188,8 +188,6 @@ BENCHMARK(ForEachKVNoMacroAssign, iters) {
 
   BENCHMARK_SUSPEND {
     setupBenchmark(iters);
-    int sumKeys = 0;
-    std::string sumValues = "";
   }
 
   FOR_EACH (iter, bmMap) {
@@ -215,11 +213,12 @@ BENCHMARK(ForEachKVNoMacroNoAssign, iters) {
 }
 
 BENCHMARK(ManualLoopNoAssign, iters) {
+  int sumKeys = 0;
+  std::string sumValues;
+
   BENCHMARK_SUSPEND {
     setupBenchmark(iters);
   }
-  int sumKeys = 0;
-  std::string sumValues;
 
   for (auto iter = bmMap.begin(); iter != bmMap.end(); ++iter) {
     sumKeys += iter->first;
@@ -228,11 +227,12 @@ BENCHMARK(ManualLoopNoAssign, iters) {
 }
 
 BENCHMARK(ForEachKVMacro, iters) {
+  int sumKeys = 0;
+  std::string sumValues;
+
   BENCHMARK_SUSPEND {
     setupBenchmark(iters);
   }
-  int sumKeys = 0;
-  std::string sumValues;
 
   FOR_EACH_KV (k, v, bmMap) {
     sumKeys += k;

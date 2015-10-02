@@ -345,8 +345,6 @@ TEST(CommunicateSubprocessTest, Duplex2) {
 namespace {
 
 bool readToString(int fd, std::string& buf, size_t maxSize) {
-  size_t bytesRead = 0;
-
   buf.resize(maxSize);
   char* dest = &buf.front();
   size_t remaining = maxSize;

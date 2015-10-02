@@ -205,8 +205,6 @@ TEST(FiberManager, batonTimedWaitPostEvb) {
 TEST(FiberManager, batonTryWait) {
 
   FiberManager manager(folly::make_unique<SimpleLoopController>());
-  auto& loopController =
-    dynamic_cast<SimpleLoopController&>(manager.loopController());
 
   // Check if try_wait and post work as expected
   Baton b;
@@ -1334,8 +1332,6 @@ TEST(FiberManager, yieldTest) {
 
 TEST(FiberManager, RequestContext) {
   FiberManager fm(folly::make_unique<SimpleLoopController>());
-  auto& loopController =
-    dynamic_cast<SimpleLoopController&>(fm.loopController());
 
   bool checkRun1 = false;
   bool checkRun2 = false;
@@ -1433,7 +1429,7 @@ void runBenchmark(size_t numAwaits, size_t toSend) {
               [&pendingRequests](Promise<int> promise) {
                 pendingRequests.push(std::move(promise));
               });
-            assert(result == 0);
+            DCHECK_EQ(result, 0);
           }
         });
 

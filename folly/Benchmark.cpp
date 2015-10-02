@@ -226,7 +226,7 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   // They key here is accuracy; too low numbers means the accuracy was
   // coarse. We up the ante until we get to at least minNanoseconds
   // timings.
-  static uint64_t resolutionInNs = 0, coarseResolutionInNs = 0;
+  static uint64_t resolutionInNs = 0;
   if (!resolutionInNs) {
     timespec ts;
     CHECK_EQ(0, clock_getres(detail::DEFAULT_CLOCK_ID, &ts));

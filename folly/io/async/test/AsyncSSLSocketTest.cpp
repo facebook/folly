@@ -76,6 +76,7 @@ ctx_(new folly::SSLContext),
 
   int ret = pthread_create(&thread_, nullptr, Main, this);
   assert(ret == 0);
+  (void)ret;
 
   std::cerr << "Accepting connections on " << address_ << std::endl;
 }
@@ -208,6 +209,7 @@ TEST(AsyncSSLSocketTest, HandshakeError) {
 
     uint8_t readbuf[128];
     uint32_t bytesRead = socket->readAll(readbuf, sizeof(readbuf));
+    LOG(ERROR) << "readAll returned " << bytesRead << " instead of throwing";
   } catch (AsyncSocketException &e) {
     ex = true;
   }

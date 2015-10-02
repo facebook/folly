@@ -35,11 +35,11 @@ namespace {
 void expectWouldBlock(ssize_t r) {
   int savedErrno = errno;
   EXPECT_EQ(-1, r);
-  EXPECT_EQ(EAGAIN, savedErrno) << errnoStr(errno);
+  EXPECT_EQ(EAGAIN, savedErrno) << errnoStr(savedErrno);
 }
 void expectOK(ssize_t r) {
   int savedErrno = errno;
-  EXPECT_LE(0, r) << ": errno=" << errnoStr(errno);
+  EXPECT_LE(0, r) << ": errno=" << errnoStr(savedErrno);
 }
 }  // namespace
 

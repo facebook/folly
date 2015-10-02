@@ -25,14 +25,7 @@
 using namespace std;
 using namespace folly;
 
-static int8_t s8;
-static uint8_t u8;
-static int16_t s16;
-static uint16_t u16;
-static int32_t s32;
-static uint32_t u32;
-static int64_t s64;
-static uint64_t u64;
+
 
 TEST(Conv, digits10Minimal) {
   // Not much of a test (and it's included in the test below anyway).
@@ -124,7 +117,7 @@ TEST(Conv, Type2Type) {
 
 TEST(Conv, Integral2Integral) {
   // Same size, different signs
-  s64 = numeric_limits<uint8_t>::max();
+  int64_t s64 = numeric_limits<uint8_t>::max();
   EXPECT_EQ(to<uint8_t>(s64), s64);
 
   s64 = numeric_limits<int8_t>::max();
@@ -644,6 +637,7 @@ TEST(Conv, DoubleToInt) {
   EXPECT_EQ(i, 42);
   try {
     auto i = to<int>(42.1);
+    LOG(ERROR) << "to<int> returned " << i << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
     //LOG(INFO) << e.what();
@@ -658,7 +652,9 @@ TEST(Conv, EnumToInt) {
   EXPECT_EQ(j, 42);
   try {
     auto i = to<char>(y);
-    LOG(ERROR) << static_cast<unsigned int>(i);
+    LOG(ERROR) << "to<char> returned "
+               << static_cast<unsigned int>(i)
+               << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
     //LOG(INFO) << e.what();
@@ -681,6 +677,9 @@ TEST(Conv, IntToEnum) {
   EXPECT_EQ(j, 100);
   try {
     auto i = to<A>(5000000000L);
+    LOG(ERROR) << "to<A> returned "
+               << static_cast<unsigned int>(i)
+               << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
     //LOG(INFO) << e.what();
@@ -697,7 +696,7 @@ TEST(Conv, UnsignedEnum) {
   EXPECT_EQ(e, x);
   try {
     auto i = to<int32_t>(x);
-    LOG(ERROR) << to<uint32_t>(x);
+    LOG(ERROR) << "to<int32_t> returned " << i << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
   }
@@ -714,7 +713,7 @@ TEST(Conv, UnsignedEnumClass) {
   EXPECT_EQ(e, E::x);
   try {
     auto i = to<int32_t>(E::x);
-    LOG(ERROR) << to<uint32_t>(E::x);
+    LOG(ERROR) << "to<int32_t> returned " << i << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
   }

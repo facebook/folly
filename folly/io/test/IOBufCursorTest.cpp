@@ -40,7 +40,7 @@ TEST(IOBuf, RWCursor) {
   unique_ptr<IOBuf> iobuf2(IOBuf::create(20));
   iobuf2->append(20);
 
-  IOBuf* iob2ptr = iobuf2.get();
+  iobuf2.get();
   iobuf1->prependChain(std::move(iobuf2));
 
   EXPECT_TRUE(iobuf1->isChained());
@@ -772,7 +772,6 @@ BENCHMARK(cursorBenchmark, iters) {
 }
 
 BENCHMARK(skipBenchmark, iters) {
-  uint8_t buf;
   while (iters--) {
     Cursor c(iobuf_read_benchmark.get());
     for(int i = 0; i < benchmark_size ; i++) {

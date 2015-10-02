@@ -628,7 +628,6 @@ TEST(IOBuf, Reserve) {
     EXPECT_EQ(0, iob->headroom());
     EXPECT_EQ(100, iob->length());
     const void* p1 = iob->buffer();
-    const uint8_t* d1 = iob->data();
     iob->reserve(100, 2512);  // allocation sizes are multiples of 256
     EXPECT_LE(100, iob->headroom());
     if (folly::usingJEMalloc()) {

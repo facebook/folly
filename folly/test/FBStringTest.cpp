@@ -119,9 +119,7 @@ template <class String> void clause11_21_4_2_e(String & test) {
 }
 template <class String> void clause11_21_4_2_f(String & test) {
   // Constructor from char*
-  const size_t
-    pos = random(0, test.size()),
-    n = random(0, test.size() - pos);
+  const size_t pos = random(0, test.size());
   String before(test.data(), test.size());
   String s(test.c_str() + pos);
   String after(test.data(), test.size());

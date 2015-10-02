@@ -326,6 +326,8 @@ void AsyncSSLSocket::init() {
   // Do this here to ensure we initialize this once before any use of
   // AsyncSSLSocket instances and not as part of library load.
   static const auto eorAwareBioMethodInitializer = initEorBioMethod();
+  (void)eorAwareBioMethodInitializer;
+
   setup_SSL_CTX(ctx_->getSSLCtx());
 }
 

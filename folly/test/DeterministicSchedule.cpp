@@ -254,7 +254,6 @@ FutexResult Futex<DeterministicAtomic>::futexWaitImpl(
   bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
   bool awoken = false;
   FutexResult result = FutexResult::AWOKEN;
-  int futexErrno = 0;
 
   DeterministicSchedule::beforeSharedAccess();
   FOLLY_TEST_DSCHED_VLOG(this << ".futexWait(" << std::hex << expected

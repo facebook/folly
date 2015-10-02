@@ -37,7 +37,8 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   typedef typename std::result_of<
     typename std::iterator_traits<InputIterator>::value_type()>::type Result;
   assert(n > 0);
-  assert(n <= std::distance(first, last));
+  assert(std::distance(first, last) >= 0);
+  assert(n <= static_cast<size_t>(std::distance(first, last)));
 
   struct Context {
     std::vector<std::pair<size_t, Result>> results;
@@ -98,7 +99,8 @@ typename std::enable_if<
     >::value, std::vector<size_t>>::type
 collectN(InputIterator first, InputIterator last, size_t n) {
   assert(n > 0);
-  assert(n <= std::distance(first, last));
+  assert(std::distance(first, last) >= 0);
+  assert(n <= static_cast<size_t>(std::distance(first, last)));
 
   struct Context {
     std::vector<size_t> taskIndices;

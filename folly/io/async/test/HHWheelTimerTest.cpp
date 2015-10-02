@@ -75,8 +75,6 @@ struct HHWheelTimerTest : public ::testing::Test {
 TEST_F(HHWheelTimerTest, FireOnce) {
   StackWheelTimer t(&eventBase, milliseconds(1));
 
-  const HHWheelTimer::Callback* nullCallback = nullptr;
-
   TestTimeout t1;
   TestTimeout t2;
   TestTimeout t3;
@@ -113,7 +111,6 @@ TEST_F(HHWheelTimerTest, FireOnce) {
  */
 TEST_F(HHWheelTimerTest, TestSchedulingWithinCallback) {
   StackWheelTimer t(&eventBase, milliseconds(10));
-  const HHWheelTimer::Callback* nullCallback = nullptr;
 
   TestTimeout t1;
   // Delayed to simulate the steady_clock counter lagging

@@ -163,7 +163,6 @@ void generateRandomValues() {
 BENCHMARK(VarintEncoding, iters) {
   uint8_t* start = &(*gEncoded.begin());
   uint8_t* p = start;
-  bool empty = (iters == 0);
   while (iters--) {
     p = start;
     for (auto& v : gValues) {

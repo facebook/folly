@@ -61,7 +61,6 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
   VLOG(5) << "AsyncPipeReader::handlerReady() this=" << this << ", fd=" << fd_;
   assert(readCallback_ != nullptr);
 
-  uint16_t numReads = 0;
   while (readCallback_) {
     // Get the buffer to read into.
     void* buf = nullptr;

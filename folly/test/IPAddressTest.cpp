@@ -506,7 +506,6 @@ static vector<pair<string, uint8_t> > invalidMasks = {
 };
 TEST(IPAddress, InvalidMask) {
   for (auto& tc : invalidMasks) {
-    uint8_t mask = tc.second;
     auto ip = IPAddress(tc.first);
     EXPECT_THROW(ip.mask(tc.second), IPAddressFormatException);
   }

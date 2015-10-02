@@ -138,8 +138,6 @@ TEST(Ahm, grow) {
   EXPECT_TRUE(success);
 
   // check correctness
-  size_t cap = m->capacity();
-  ValueT val;
   EXPECT_GT(m->numSubMaps(), 1);  // make sure we grew
   success = true;
   EXPECT_EQ(m->size(), numEntries);
@@ -150,7 +148,6 @@ TEST(Ahm, grow) {
 
   // Check findAt
   success = true;
-  KeyT key(0);
   AHMapT::const_iterator retIt;
   for (int32_t i = 0; i < int32_t(numEntries); i++) {
     retIt = m->find(i);
@@ -431,7 +428,6 @@ TEST(Ahm, collision_test) {
   // check correctness
   EXPECT_EQ(sizeAHM, numInserts);
   bool success = true;
-  ValueT val;
   for (int i = 0; i < numInserts; ++i) {
     KeyT key = randomizeKey(i);
     success &= (globalAHM->find(key)->second == genVal(key));
@@ -459,8 +455,7 @@ namespace {
 const int kInsertPerThread = 100000;
 int raceFinalSizeEstimate;
 
-void* raceIterateThread(void* jj) {
-  int64_t j = (int64_t) jj;
+void* raceIterateThread(void*) {
   int count = 0;
 
   AHMapT::iterator it = globalAHM->begin();
@@ -475,8 +470,7 @@ void* raceIterateThread(void* jj) {
   return nullptr;
 }
 
-void* raceInsertRandomThread(void* jj) {
-  int64_t j = (int64_t) jj;
+void* raceInsertRandomThread(void*) {
   for (int i = 0; i < kInsertPerThread; ++i) {
     KeyT key = rand();
     globalAHM->insert(key, genVal(key));
@@ -499,11 +493,11 @@ TEST(Ahm, race_insert_iterate_thread_test) {
   globalAHM.reset(new AHMapT(raceFinalSizeEstimate / 9, config));
 
   vector<pthread_t> threadIds;
-  for (int64_t j = 0; j < kInsertThreads + kIterateThreads; j++) {
+  for (int j = 0; j < kInsertThreads + kIterateThreads; j++) {
     pthread_t tid;
     void *(*thread)(void*) =
       (j < kInsertThreads ? raceInsertRandomThread : raceIterateThread);
-    if (pthread_create(&tid, nullptr, thread, (void*) j) != 0) {
+    if (pthread_create(&tid, nullptr, thread, nullptr) != 0) {
       LOG(ERROR) << "Could not start thread";
     } else {
       threadIds.push_back(tid);

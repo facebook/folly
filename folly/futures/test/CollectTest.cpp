@@ -616,7 +616,6 @@ TEST(Collect, collectVariadicWithException) {
   Promise<int> pi;
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
-  bool flag = false;
   auto f = collect(std::move(fb), std::move(fi));
   pb.setValue(true);
   EXPECT_FALSE(f.isReady());
