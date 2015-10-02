@@ -31,14 +31,6 @@
 #include <boost/range/concepts.hpp>
 #include <gtest/gtest.h>
 
-namespace folly { namespace detail {
-
-// declaration of functions in Range.cpp
-size_t qfind_first_byte_of_byteset(const StringPiece haystack,
-                                   const StringPiece needles);
-
-}}  // namespaces
-
 using namespace folly;
 using namespace std;
 

@@ -48,6 +48,8 @@
 #include <folly/CpuId.h>
 #include <folly/Traits.h>
 #include <folly/Likely.h>
+#include <folly/detail/RangeCommon.h>
+#include <folly/detail/RangeSse42.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
@@ -1000,13 +1002,6 @@ size_t qfind(const Range<T>& haystack,
 
 namespace detail {
 
-size_t qfind_first_byte_of_nosse(const StringPiece haystack,
-                                 const StringPiece needles);
-
-#if FOLLY_HAVE_EMMINTRIN_H && __GNUC_PREREQ(4, 6)
-size_t qfind_first_byte_of_sse42(const StringPiece haystack,
-                                 const StringPiece needles);
-
 inline size_t qfind_first_byte_of(const StringPiece haystack,
                                   const StringPiece needles) {
   static auto const qfind_first_byte_of_fn =
@@ -1014,13 +1009,6 @@ inline size_t qfind_first_byte_of(const StringPiece haystack,
                            : qfind_first_byte_of_nosse;
   return qfind_first_byte_of_fn(haystack, needles);
 }
-
-#else
-inline size_t qfind_first_byte_of(const StringPiece haystack,
-                                  const StringPiece needles) {
-  return qfind_first_byte_of_nosse(haystack, needles);
-}
-#endif // FOLLY_HAVE_EMMINTRIN_H
 
 } // namespace detail
 

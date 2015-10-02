@@ -22,18 +22,6 @@
 #include <random>
 #include <string>
 
-namespace folly { namespace detail {
-// declaration of functions in Range.cpp
-size_t qfind_first_byte_of_byteset(const StringPiece haystack,
-                                   const StringPiece needles);
-
-size_t qfind_first_byte_of_bitset(const StringPiece haystack,
-                                  const StringPiece needles);
-
-size_t qfind_first_byte_of_nosse(const StringPiece haystack,
-                                 const StringPiece needles);
-}}
-
 using namespace folly;
 using namespace std;
 
@@ -147,12 +135,6 @@ BENCHMARK_RELATIVE(FindSingleCharRange, n) {
 
 BENCHMARK_DRAW_LINE();
 
-// it's useful to compare our custom implementations vs. the standard library
-inline size_t qfind_first_byte_of_std(const StringPiece haystack,
-                                      const StringPiece needles) {
-  return qfind_first_of(haystack, needles, AsciiCaseSensitive());
-}
-
 template <class Func>
 void countHits(Func func, size_t n) {
   StringPiece needles = "\r\n\1";
@@ -188,7 +170,7 @@ BENCHMARK_RELATIVE(FindFirstOf1NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf1NeedlesStd, n) {
-  findFirstOfRange(delims1, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims1, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf1NeedlesByteSet, n) {
@@ -212,7 +194,7 @@ BENCHMARK_RELATIVE(FindFirstOf2NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf2NeedlesStd, n) {
-  findFirstOfRange(delims2, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims2, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf2NeedlesByteSet, n) {
@@ -236,7 +218,7 @@ BENCHMARK_RELATIVE(FindFirstOf4NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf4NeedlesStd, n) {
-  findFirstOfRange(delims4, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims4, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf4NeedlesByteSet, n) {
@@ -260,7 +242,7 @@ BENCHMARK_RELATIVE(FindFirstOf8NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf8NeedlesStd, n) {
-  findFirstOfRange(delims8, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims8, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf8NeedlesByteSet, n) {
@@ -284,7 +266,7 @@ BENCHMARK_RELATIVE(FindFirstOf16NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf16NeedlesStd, n) {
-  findFirstOfRange(delims16, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims16, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf16NeedlesByteSet, n) {
@@ -308,7 +290,7 @@ BENCHMARK_RELATIVE(FindFirstOf32NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf32NeedlesStd, n) {
-  findFirstOfRange(delims32, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims32, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf32NeedlesByteSet, n) {
@@ -333,7 +315,7 @@ BENCHMARK_RELATIVE(FindFirstOf64NeedlesNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOf64NeedlesStd, n) {
-  findFirstOfRange(delims64, qfind_first_byte_of_std, n);
+  findFirstOfRange(delims64, detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOf64NeedlesByteSet, n) {
@@ -364,7 +346,7 @@ BENCHMARK_RELATIVE(FindFirstOfRandomNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(FindFirstOfRandomStd, n) {
-  findFirstOfRandom(qfind_first_byte_of_std, n);
+  findFirstOfRandom(detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(FindFirstOfRandomByteSet, n) {
@@ -386,7 +368,7 @@ BENCHMARK_RELATIVE(CountDelimsNoSSE, n) {
 }
 
 BENCHMARK_RELATIVE(CountDelimsStd, n) {
-  countHits(qfind_first_byte_of_std, n);
+  countHits(detail::qfind_first_byte_of_std, n);
 }
 
 BENCHMARK_RELATIVE(CountDelimsByteSet, n) {

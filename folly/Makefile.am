@@ -247,6 +247,8 @@ nobase_follyinclude_HEADERS = \
 	Random.h \
 	Random-inl.h \
 	Range.h \
+	RangeCommon.h \
+	RangeSse42.h \
 	ReadMostlySharedPtr.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
@@ -308,6 +310,8 @@ libfollybase_la_SOURCES = \
 	FormatTables.cpp \
 	Malloc.cpp \
 	Range.cpp \
+	RangeCommon.cpp \
+	RangeSse42.cpp \
 	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
