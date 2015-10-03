@@ -257,7 +257,6 @@ clarity, we don't reuse the same fd as a socket to receive signals.
 ### AsyncPipe
 
 Async reads/writes to a unix pipe, to send data between processes.
-Why don't you just use AsyncSocket for now?
 
 ## Helper Classes
 
