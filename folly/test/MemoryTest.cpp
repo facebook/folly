@@ -25,53 +25,12 @@
 
 using namespace folly;
 
-namespace {
-class disposable {
- public:
-  explicit disposable(std::function<void()> onDispose) :
-    onDispose_(std::move(onDispose)) {}
-  static void dispose(disposable* f) {
-    ASSERT_NE(nullptr, f);
-    f->onDispose_();
-    delete f;
-  }
- private:
-  std::function<void()> onDispose_;
-};
-}
+TEST(make_unique, compatible_with_std_make_unique) {
+  //  HACK: To enforce that `folly::` is imported here.
+  to_shared_ptr(std::unique_ptr<std::string>());
 
-TEST(static_function_deleter, example) {
-  size_t count = 0;
-  using disposable_deleter =
-    static_function_deleter<disposable, &disposable::dispose>;
-  make_unique<disposable, disposable_deleter>([&] { ++count; });
-  EXPECT_EQ(1, count);
-}
-
-TEST(static_function_deleter, nullptr) {
-  using disposable_deleter =
-    static_function_deleter<disposable, &disposable::dispose>;
-  std::unique_ptr<disposable, disposable_deleter>(nullptr);
-}
-
-TEST(to_shared_ptr, example) {
-  auto uptr = make_unique<std::string>("hello");
-  auto sptr = to_shared_ptr(std::move(uptr));
-  EXPECT_EQ(nullptr, uptr);
-  EXPECT_EQ("hello", *sptr);
-}
-
-TEST(to_shared_ptr, example_with_dtor) {
-  bool disposed = false;
-  using disposable_deleter =
-    static_function_deleter<disposable, &disposable::dispose>;
-  auto uptr =
-    make_unique<disposable, disposable_deleter>([&] { disposed = true; });
-  EXPECT_FALSE(disposed);
-  auto sptr = to_shared_ptr(std::move(uptr));
-  EXPECT_FALSE(disposed);
-  sptr = nullptr;
-  EXPECT_TRUE(disposed);
+  using namespace std;
+  make_unique<string>("hello, world");
 }
 
 template <std::size_t> struct T {};

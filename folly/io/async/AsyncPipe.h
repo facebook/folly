@@ -37,6 +37,11 @@ class AsyncPipeReader : public EventHandler,
   typedef std::unique_ptr<AsyncPipeReader,
                           folly::DelayedDestruction::Destructor> UniquePtr;
 
+  template <typename... Args>
+  static UniquePtr newReader(Args&&... args) {
+    return UniquePtr(new AsyncPipeReader(std::forward<Args>(args)...));
+  }
+
   AsyncPipeReader(folly::EventBase* eventBase, int pipeFd)
     : EventHandler(eventBase, pipeFd),
     fd_(pipeFd) {}
@@ -92,6 +97,11 @@ class AsyncPipeWriter : public EventHandler,
  public:
   typedef std::unique_ptr<AsyncPipeWriter,
                           folly::DelayedDestruction::Destructor> UniquePtr;
+
+  template <typename... Args>
+  static UniquePtr newWriter(Args&&... args) {
+    return UniquePtr(new AsyncPipeWriter(std::forward<Args>(args)...));
+  }
 
   AsyncPipeWriter(folly::EventBase* eventBase, int pipeFd)
     : EventHandler(eventBase, pipeFd),

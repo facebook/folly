@@ -73,11 +73,9 @@ class AsyncPipeTest: public Test {
 
     EXPECT_EQ(::fcntl(pipeFds_[0], F_SETFL, O_NONBLOCK), 0);
     EXPECT_EQ(::fcntl(pipeFds_[1], F_SETFL, O_NONBLOCK), 0);
-    reader_ = folly::make_unique<folly::AsyncPipeReader,
-                                 folly::DelayedDestruction::Destructor>(
+    reader_ = folly::AsyncPipeReader::newReader(
       &eventBase_, pipeFds_[0]);
-    writer_ = folly::make_unique<folly::AsyncPipeWriter,
-                                 folly::DelayedDestruction::Destructor>(
+    writer_ = folly::AsyncPipeWriter::newWriter(
       &eventBase_, pipeFds_[1]);
   }
 

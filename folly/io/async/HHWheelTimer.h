@@ -60,6 +60,11 @@ class HHWheelTimer : private folly::AsyncTimeout,
  public:
   typedef std::unique_ptr<HHWheelTimer, Destructor> UniquePtr;
 
+  template <typename... Args>
+  static UniquePtr newTimer(Args&&... args) {
+    return UniquePtr(new HHWheelTimer(std::forward<Args>(args)...));
+  }
+
   /**
    * A callback to be notified when a timeout has expired.
    */
