@@ -14,16 +14,50 @@
  * limitations under the License.
  */
 
+
+
 #include "RangeSse42.h"
+
+#include <glog/logging.h>
+#include <folly/Portability.h>
+
+
+
+//  Essentially, two versions of this file: one with an SSE42 implementation
+//  and one with a fallback implementation. We determine which version to use by
+//  testing for the presence of the required headers.
+//
+//  TODO: Maybe this should be done by the build system....
+#if !FOLLY_SSE_PREREQ(4, 2)
+
+
+
+namespace folly {
+
+namespace detail {
+
+size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
+                                 const StringPieceLite needles) {
+  CHECK(false) << "Function " << __func__ << " only works with SSE42!";
+  return qfind_first_byte_of_nosse(haystack, needles);
+}
+
+}
+
+}
+
+
+
+# else
+
+
 
 #include <cstdint>
 #include <limits>
 #include <string>
 #include <emmintrin.h>
 #include <smmintrin.h>
-#include <glog/logging.h>
 #include <folly/Likely.h>
-#include <folly/Portability.h>
 
 namespace folly {
 
@@ -188,3 +222,7 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
 }
 
 }
+
+
+
+#endif

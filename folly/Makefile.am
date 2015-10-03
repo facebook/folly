@@ -309,7 +309,6 @@ libfollybase_la_SOURCES = \
 	Format.cpp \
 	FormatTables.cpp \
 	Malloc.cpp \
-	Range.cpp \
 	RangeCommon.cpp \
 	RangeSse42.cpp \
 	StringBase.cpp \

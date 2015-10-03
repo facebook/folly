@@ -300,6 +300,9 @@ typedef SSIZE_T ssize_t;
 # endif
 #endif
 
+#define FOLLY_SSE_PREREQ(major, minor) \
+  (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
+
 #if FOLLY_UNUSUAL_GFLAGS_NAMESPACE
 namespace FOLLY_GFLAGS_NAMESPACE { }
 namespace gflags {
