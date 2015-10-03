@@ -142,7 +142,8 @@ bool hasNoPCREPatternMatch(StringPiece pattern, StringPiece target) {
 
 }  // namespace detail
 
-CaptureFD::CaptureFD(int fd) : fd_(fd), readOffset_(0) {
+CaptureFD::CaptureFD(int fd, ChunkCob chunk_cob)
+    : chunkCob_(std::move(chunk_cob)), fd_(fd), readOffset_(0) {
   oldFDCopy_ = dup(fd_);
   PCHECK(oldFDCopy_ != -1) << "Could not copy FD " << fd_;
 
@@ -154,6 +155,7 @@ CaptureFD::CaptureFD(int fd) : fd_(fd), readOffset_(0) {
 
 void CaptureFD::release() {
   if (oldFDCopy_ != fd_) {
+    readIncremental();  // Feed chunkCob_
     PCHECK(dup2(oldFDCopy_, fd_) != -1) << "Could not restore old FD "
       << oldFDCopy_ << " into " << fd_;
     PCHECK(close(oldFDCopy_) != -1) << "Could not close " << oldFDCopy_;
@@ -165,7 +167,7 @@ CaptureFD::~CaptureFD() {
   release();
 }
 
-std::string CaptureFD::read() {
+std::string CaptureFD::read() const {
   std::string contents;
   std::string filename = file_.path().string();
   PCHECK(folly::readFile(filename.c_str(), contents));
@@ -181,6 +183,7 @@ std::string CaptureFD::readIncremental() {
   auto bytes_read = folly::preadFull(f.fd(), buf.get(), size, readOffset_);
   PCHECK(size == bytes_read);
   readOffset_ += size;
+  chunkCob_(StringPiece(buf.get(), buf.get() + size));
   return std::string(buf.get(), size);
 }
 

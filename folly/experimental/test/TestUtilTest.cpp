@@ -136,6 +136,34 @@ TEST(CaptureFD, GlogPatterns) {
   }
 }
 
+TEST(CaptureFD, ChunkCob) {
+  std::vector<std::string> chunks;
+  {
+    CaptureFD stderr(2, [&](StringPiece p) {
+      chunks.emplace_back(p.str());
+      switch (chunks.size()) {
+        case 1:
+          EXPECT_PCRE_MATCH(".*foo.*bar.*", p);
+          break;
+        case 2:
+          EXPECT_PCRE_MATCH("[^\n]*baz.*", p);
+          break;
+        default:
+          FAIL() << "Got too many chunks: " << chunks.size();
+      }
+    });
+    LOG(INFO) << "foo";
+    LOG(INFO) << "bar";
+    EXPECT_PCRE_MATCH(".*foo.*bar.*", stderr.read());
+    auto chunk = stderr.readIncremental();
+    EXPECT_EQ(chunks.at(0), chunk);
+    LOG(INFO) << "baz";
+    EXPECT_PCRE_MATCH(".*foo.*bar.*baz.*", stderr.read());
+  }
+  EXPECT_EQ(2, chunks.size());
+}
+
+
 class EnvVarSaverTest : public testing::Test {};
 
 TEST_F(EnvVarSaverTest, ExampleNew) {
