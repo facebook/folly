@@ -58,6 +58,8 @@ nobase_follyinclude_HEADERS = \
 	detail/Malloc.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
+	detail/RangeCommon.h \
+	detail/RangeSse42.h \
 	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SpinLockImpl.h \
@@ -247,8 +249,6 @@ nobase_follyinclude_HEADERS = \
 	Random.h \
 	Random-inl.h \
 	Range.h \
-	RangeCommon.h \
-	RangeSse42.h \
 	ReadMostlySharedPtr.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
@@ -305,12 +305,12 @@ CLEANFILES += GroupVarintTables.cpp
 libfollybase_la_SOURCES = \
 	Conv.cpp \
 	Demangle.cpp \
+	detail/RangeCommon.cpp \
+	detail/RangeSse42.cpp \
 	EscapeTables.cpp \
 	Format.cpp \
 	FormatTables.cpp \
 	Malloc.cpp \
-	RangeCommon.cpp \
-	RangeSse42.cpp \
 	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
