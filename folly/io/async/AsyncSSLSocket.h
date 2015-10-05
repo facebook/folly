@@ -323,10 +323,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   /**
    * Initiate an SSL connection on the socket
-   * THe callback will be invoked and uninstalled when an SSL connection
+   * The callback will be invoked and uninstalled when an SSL connection
    * has been establshed on the underlying socket.
-   * The verification option verifyPeer is applied if its passed explicitly.
-   * If its not, the options in SSLContext set on the underying SSLContext
+   * The verification option verifyPeer is applied if it's passed explicitly.
+   * If it's not, the options in SSLContext set on the underlying SSLContext
    * are applied.
    *
    * @param callback callback object to invoke on success/failure
@@ -486,6 +486,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual void detachEventBase() override {
     AsyncSocket::detachEventBase();
     handshakeTimeout_.detachEventBase();
+  }
+
+  virtual bool isDetachable() const override {
+    return AsyncSocket::isDetachable() && !handshakeTimeout_.isScheduled();
   }
 
   virtual void attachTimeoutManager(TimeoutManager* manager) {
