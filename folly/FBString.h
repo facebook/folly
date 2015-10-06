@@ -101,7 +101,10 @@ namespace folly {
 // has issues when inlining is used, so disable that as well.
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
-#  if __has_attribute(__no_address_safety_analysis__)
+#  if __has_attribute(__no_sanitize__)
+#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
+      __attribute__((__no_sanitize__("address"), __noinline__))
+#  elif __has_attribute(__no_address_safety_analysis__)
 #   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
       __attribute__((__no_address_safety_analysis__, __noinline__))
 #  elif __has_attribute(__no_sanitize_address__)
