@@ -144,8 +144,9 @@ namespace folly {
 //
 // A vault goes through a few stages of life:
 //
-//   1. Registration phase; singletons can be registered, but no
-//      singleton can be created.
+//   1. Registration phase; singletons can be registered:
+//      a) Strict: no singleton can be created in this stage.
+//      b) Relaxed: singleton can be created (the default vault is Relaxed).
 //   2. registrationComplete() has been called; singletons can no
 //      longer be registered, but they can be created.
 //   3. A vault can return to stage 1 when destroyInstances is called.
@@ -300,7 +301,10 @@ struct SingletonHolder : public SingletonHolderBase {
 
 class SingletonVault {
  public:
-  enum class Type { Strict, Relaxed };
+  enum class Type {
+    Strict, // Singletons can't be created before registrationComplete()
+    Relaxed, // Singletons can be created before registrationComplete()
+  };
 
   explicit SingletonVault(Type type = Type::Relaxed) : type_(type) {}
 
