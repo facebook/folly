@@ -31,9 +31,6 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/Cursor.h>
 
-using folly::io::Cursor;
-using std::unique_ptr;
-
 namespace folly {
 
 class SSLException: public folly::AsyncSocketException {
@@ -862,7 +859,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static int sslVerifyCallback(int preverifyOk, X509_STORE_CTX* ctx);
 
   bool parseClientHello_{false};
-  unique_ptr<ClientHelloInfo> clientHelloInfo_;
+  std::unique_ptr<ClientHelloInfo> clientHelloInfo_;
 };
 
 } // namespace
