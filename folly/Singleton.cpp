@@ -128,7 +128,7 @@ void SingletonVault::doEagerInit() {
   }
 }
 
-Future<Unit> SingletonVault::doEagerInitVia(Executor* exe) {
+void SingletonVault::doEagerInitVia(Executor* exe) {
   std::unordered_set<detail::SingletonHolderBase*> singletonSet;
   {
     RWSpinLock::ReadHolder rh(&stateMutex_);
@@ -139,16 +139,13 @@ Future<Unit> SingletonVault::doEagerInitVia(Executor* exe) {
     singletonSet = eagerInitSingletons_; // copy set of pointers
   }
 
-  std::vector<Future<Unit>> resultFutures;
   for (auto* single : singletonSet) {
-    resultFutures.emplace_back(via(exe).then([single] {
+    exe->add([single] {
       if (!single->creationStarted()) {
         single->createInstance();
       }
-    }));
+    });
   }
-
-  return collectAll(resultFutures).via(exe).then();
 }
 
 void SingletonVault::destroyInstances() {

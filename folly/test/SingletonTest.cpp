@@ -459,9 +459,8 @@ TEST(Singleton, SingletonEagerInitAsync) {
   folly::EventBase eb;
   vault.registrationComplete();
   EXPECT_FALSE(didEagerInit);
-  auto result = vault.doEagerInitVia(&eb); // a Future<Unit> is returned
+  vault.doEagerInitVia(&eb);
   eb.loop();
-  result.get(); // ensure this completed successfully and didn't hang forever
   EXPECT_TRUE(didEagerInit);
   sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
 }
@@ -538,7 +537,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
       for (size_t j = 0; j < kThreads; j++) {
         threads.push_back(std::make_shared<std::thread>([&] {
           barrier.wait();
-          vault.doEagerInitVia(&exe).get();
+          vault.doEagerInitVia(&exe);
         }));
       }
 

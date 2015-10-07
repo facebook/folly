@@ -109,7 +109,6 @@
 #include <folly/RWSpinLock.h>
 #include <folly/Demangle.h>
 #include <folly/Executor.h>
-#include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
@@ -341,10 +340,8 @@ class SingletonVault {
 
   /**
    * Schedule eager singletons' initializations through the given executor.
-   * Return a future which is fulfilled after all the initialization functions
-   * complete.
    */
-  Future<Unit> doEagerInitVia(Executor* exe);
+  void doEagerInitVia(Executor* exe);
 
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.
