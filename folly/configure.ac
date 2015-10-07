@@ -232,6 +232,26 @@ if test "$folly_cv_lib_libcpp" = yes; then
 fi
 
 AC_CACHE_CHECK(
+  [for c++11 atomic support without GNU Atomic library],
+  [folly_cv_lib_libatomic],
+  [AC_LINK_IFELSE(
+    [AC_LANG_PROGRAM[
+      #include <atomic>
+      int main() {
+        struct Test { int val; };
+        std::atomic<Test> s;
+        s.is_lock_free();
+      }
+    ]],
+    [folly_cv_lib_libatomic=yes],
+    [folly_cv_lib_libatomic=no])])
+
+if test "$folly_cv_lib_libatomic" = no; then
+  AC_HAVE_LIBRARY([atomic],[],[AC_MSG_ERROR(
+                  [Please install the GNU Atomic library])])
+fi
+
+AC_CACHE_CHECK(
   [for usable std::is_trivially_copyable],
   [folly_cv_decl_std_is_trivially_copyable],
   [AC_COMPILE_IFELSE(
