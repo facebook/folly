@@ -318,68 +318,18 @@ class SingletonVault {
   // registration is not complete. If validations succeeds,
   // register a singleton of a given type with the create and teardown
   // functions.
-  void registerSingleton(detail::SingletonHolderBase* entry) {
-    RWSpinLock::ReadHolder rh(&stateMutex_);
-
-    stateCheck(SingletonVaultState::Running);
-
-    if (UNLIKELY(registrationComplete_)) {
-      throw std::logic_error(
-        "Registering singleton after registrationComplete().");
-    }
-
-    RWSpinLock::ReadHolder rhMutex(&mutex_);
-    CHECK_THROW(singletons_.find(entry->type()) == singletons_.end(),
-                std::logic_error);
-
-    RWSpinLock::UpgradedHolder wh(&mutex_);
-    singletons_[entry->type()] = entry;
-  }
+  void registerSingleton(detail::SingletonHolderBase* entry);
 
   /**
    * Called by `Singleton<T>.shouldEagerInit()` to ensure the instance
    * is built when `doEagerInit[Via]` is called; see those methods
    * for more info.
    */
-  void addEagerInitSingleton(detail::SingletonHolderBase* entry) {
-    RWSpinLock::ReadHolder rh(&stateMutex_);
-
-    stateCheck(SingletonVaultState::Running);
-
-    if (UNLIKELY(registrationComplete_)) {
-      throw std::logic_error(
-          "Registering for eager-load after registrationComplete().");
-    }
-
-    RWSpinLock::ReadHolder rhMutex(&mutex_);
-    CHECK_THROW(singletons_.find(entry->type()) != singletons_.end(),
-                std::logic_error);
-
-    RWSpinLock::UpgradedHolder wh(&mutex_);
-    eagerInitSingletons_.insert(entry);
-  }
+  void addEagerInitSingleton(detail::SingletonHolderBase* entry);
 
   // Mark registration is complete; no more singletons can be
   // registered at this point.
-  void registrationComplete() {
-    RequestContext::saveContext();
-    std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
-
-    RWSpinLock::WriteHolder wh(&stateMutex_);
-
-    stateCheck(SingletonVaultState::Running);
-
-    if (type_ == Type::Strict) {
-      for (const auto& p : singletons_) {
-        if (p.second->hasLiveInstance()) {
-          throw std::runtime_error(
-              "Singleton created before registration was complete.");
-        }
-      }
-    }
-
-    registrationComplete_ = true;
-  }
+  void registrationComplete();
 
   /**
    * Initialize all singletons which were marked as eager-initialized
@@ -387,49 +337,14 @@ class SingletonVault {
    * from constructors / create functions, as is the usual case when calling
    * for example `Singleton<Foo>::get_weak()`.
    */
-  void doEagerInit() {
-    std::unordered_set<detail::SingletonHolderBase*> singletonSet;
-    {
-      RWSpinLock::ReadHolder rh(&stateMutex_);
-      stateCheck(SingletonVaultState::Running);
-      if (UNLIKELY(!registrationComplete_)) {
-        throw std::logic_error("registrationComplete() not yet called");
-      }
-      singletonSet = eagerInitSingletons_; // copy set of pointers
-    }
-
-    for (auto *single : singletonSet) {
-      single->createInstance();
-    }
-  }
+  void doEagerInit();
 
   /**
    * Schedule eager singletons' initializations through the given executor.
    * Return a future which is fulfilled after all the initialization functions
    * complete.
    */
-  Future<Unit> doEagerInitVia(Executor* exe) {
-    std::unordered_set<detail::SingletonHolderBase*> singletonSet;
-    {
-      RWSpinLock::ReadHolder rh(&stateMutex_);
-      stateCheck(SingletonVaultState::Running);
-      if (UNLIKELY(!registrationComplete_)) {
-        throw std::logic_error("registrationComplete() not yet called");
-      }
-      singletonSet = eagerInitSingletons_; // copy set of pointers
-    }
-
-    std::vector<Future<Unit>> resultFutures;
-    for (auto* single : singletonSet) {
-      resultFutures.emplace_back(via(exe).then([single] {
-        if (!single->creationStarted()) {
-          single->createInstance();
-        }
-      }));
-    }
-
-    return collectAll(resultFutures).via(exe).then();
-  }
+  Future<Unit> doEagerInitVia(Executor* exe);
 
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.

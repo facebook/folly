@@ -56,6 +56,101 @@ FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
 
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
+void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
+  RWSpinLock::ReadHolder rh(&stateMutex_);
+
+  stateCheck(SingletonVaultState::Running);
+
+  if (UNLIKELY(registrationComplete_)) {
+    throw std::logic_error(
+      "Registering singleton after registrationComplete().");
+  }
+
+  RWSpinLock::ReadHolder rhMutex(&mutex_);
+  CHECK_THROW(singletons_.find(entry->type()) == singletons_.end(),
+              std::logic_error);
+
+  RWSpinLock::UpgradedHolder wh(&mutex_);
+  singletons_[entry->type()] = entry;
+}
+
+void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
+  RWSpinLock::ReadHolder rh(&stateMutex_);
+
+  stateCheck(SingletonVaultState::Running);
+
+  if (UNLIKELY(registrationComplete_)) {
+    throw std::logic_error(
+        "Registering for eager-load after registrationComplete().");
+  }
+
+  RWSpinLock::ReadHolder rhMutex(&mutex_);
+  CHECK_THROW(singletons_.find(entry->type()) != singletons_.end(),
+              std::logic_error);
+
+  RWSpinLock::UpgradedHolder wh(&mutex_);
+  eagerInitSingletons_.insert(entry);
+}
+
+void SingletonVault::registrationComplete() {
+  RequestContext::saveContext();
+  std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
+
+  RWSpinLock::WriteHolder wh(&stateMutex_);
+
+  stateCheck(SingletonVaultState::Running);
+
+  if (type_ == Type::Strict) {
+    for (const auto& p : singletons_) {
+      if (p.second->hasLiveInstance()) {
+        throw std::runtime_error(
+            "Singleton created before registration was complete.");
+      }
+    }
+  }
+
+  registrationComplete_ = true;
+}
+
+void SingletonVault::doEagerInit() {
+  std::unordered_set<detail::SingletonHolderBase*> singletonSet;
+  {
+    RWSpinLock::ReadHolder rh(&stateMutex_);
+    stateCheck(SingletonVaultState::Running);
+    if (UNLIKELY(!registrationComplete_)) {
+      throw std::logic_error("registrationComplete() not yet called");
+    }
+    singletonSet = eagerInitSingletons_; // copy set of pointers
+  }
+
+  for (auto *single : singletonSet) {
+    single->createInstance();
+  }
+}
+
+Future<Unit> SingletonVault::doEagerInitVia(Executor* exe) {
+  std::unordered_set<detail::SingletonHolderBase*> singletonSet;
+  {
+    RWSpinLock::ReadHolder rh(&stateMutex_);
+    stateCheck(SingletonVaultState::Running);
+    if (UNLIKELY(!registrationComplete_)) {
+      throw std::logic_error("registrationComplete() not yet called");
+    }
+    singletonSet = eagerInitSingletons_; // copy set of pointers
+  }
+
+  std::vector<Future<Unit>> resultFutures;
+  for (auto* single : singletonSet) {
+    resultFutures.emplace_back(via(exe).then([single] {
+      if (!single->creationStarted()) {
+        single->createInstance();
+      }
+    }));
+  }
+
+  return collectAll(resultFutures).via(exe).then();
+}
+
 void SingletonVault::destroyInstances() {
   RWSpinLock::WriteHolder state_wh(&stateMutex_);
 
