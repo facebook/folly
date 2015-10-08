@@ -312,108 +312,21 @@ struct is_negative_impl<T, false> {
   constexpr static bool check(T) { return false; }
 };
 
-// Early versions of MSVC choke on the template
-// constraints.
-#if _MSC_FULL_VER <= 200022816 // 2015 RC or below
-
-FOLLY_PUSH_WARNING
-// Sign comparison
-FOLLY_MSVC_DISABLE_WARNING(4804)
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(LHS const lhs) {
-    if (rhs <= std::numeric_limits<LHS>::max() && rhs > std::numeric_limits<LHS>::min())
-        return lhs < rhs;
-    else if (rhs > std::numeric_limits<LHS>::max())
-        return true;
-    else // if (rhs <= std::numeric_limits<LHS>::min())
-        return false;
+  return
+    rhs > std::numeric_limits<LHS>::max() ? true :
+    rhs <= std::numeric_limits<LHS>::min() ? false :
+    lhs < rhs;
 }
 
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(LHS const lhs) {
-    if (rhs <= std::numeric_limits<LHS>::max() && rhs >= std::numeric_limits<LHS>::min())
-        return lhs > rhs;
-    else if (rhs > std::numeric_limits<LHS>::max())
-        return false;
-    else // if (rhs < std::numeric_limits<LHS>::min())
-        return true;
+  return
+    rhs > std::numeric_limits<LHS>::max() ? false :
+    rhs < std::numeric_limits<LHS>::min() ? true :
+    lhs > rhs;
 }
-FOLLY_POP_WARNING
-
-#else
-
-// folly::to integral specializations can end up generating code
-// inside what are really static ifs (not executed because of the templated
-// types) that violate -Wsign-compare so suppress them in order to not prevent
-// all calling code from using it.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs > std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const lhs
-) {
-  return lhs < rhs;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
-    LHS
-  >::type const
-) {
-  return true;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const
-) {
-  return false;
-}
-
-#pragma GCC diagnostic pop
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs >= std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const lhs
-) {
-  return lhs > rhs;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
-    LHS
-  >::type const
-) {
-  return false;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs < std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const
-) {
-  return true;
-}
-
-#endif
 
 } // namespace detail {
 
