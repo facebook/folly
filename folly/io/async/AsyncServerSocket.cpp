@@ -653,8 +653,7 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
     LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
                << strerror(errno);
     folly::throwSystemError(errno,
-                            "failed to bind to async server socket: " +
-                            fd);
+                            "failed to bind to the async server socket");
   }
 
   // Set keepalive as desired
