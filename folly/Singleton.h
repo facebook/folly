@@ -112,16 +112,18 @@
 #include <folly/io/async/Request.h>
 
 #include <algorithm>
-#include <vector>
-#include <mutex>
-#include <thread>
+#include <atomic>
 #include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
+#include <typeindex>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
-#include <functional>
-#include <typeinfo>
-#include <typeindex>
+#include <vector>
 
 #include <glog/logging.h>
 
@@ -340,8 +342,23 @@ class SingletonVault {
 
   /**
    * Schedule eager singletons' initializations through the given executor.
+   * If baton ptr is not null, its `post` method is called after all
+   * early initialization has completed.
+   *
+   * If exceptions are thrown during initialization, this method will still
+   * `post` the baton to indicate completion.  The exception will not propagate
+   * and future attempts to `try_get` or `get_weak` the failed singleton will
+   * retry initialization.
+   *
+   * Sample usage:
+   *
+   *   wangle::IOThreadPoolExecutor executor(max_concurrency_level);
+   *   folly::Baton<> done;
+   *   doEagerInitVia(executor, &done);
+   *   done.wait();  // or 'timed_wait', or spin with 'try_wait'
+   *
    */
-  void doEagerInitVia(Executor* exe);
+  void doEagerInitVia(Executor& exe, folly::Baton<>* done = nullptr);
 
   // Destroy all singletons; when complete, the vault can't create
   // singletons once again until reenableInstances() is called.
@@ -356,6 +373,12 @@ class SingletonVault {
 
     return singletons_.size();
   }
+
+  /**
+   * Flips to true if eager initialization was used, and has completed.
+   * Never set to true if "doEagerInit()" or "doEagerInitVia" never called.
+   */
+  bool eagerInitComplete() const;
 
   size_t livingSingletonCount() const {
     RWSpinLock::ReadHolder rh(&mutex_);

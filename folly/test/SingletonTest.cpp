@@ -457,10 +457,12 @@ TEST(Singleton, SingletonEagerInitAsync) {
                   [&] {didEagerInit = true; return new std::string("foo"); })
               .shouldEagerInit();
   folly::EventBase eb;
+  folly::Baton<> done;
   vault.registrationComplete();
   EXPECT_FALSE(didEagerInit);
-  vault.doEagerInitVia(&eb);
+  vault.doEagerInitVia(eb, &done);
   eb.loop();
+  done.wait();
   EXPECT_TRUE(didEagerInit);
   sing.get_weak();  // (avoid compile error complaining about unused var 'sing')
 }
@@ -537,7 +539,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
       for (size_t j = 0; j < kThreads; j++) {
         threads.push_back(std::make_shared<std::thread>([&] {
           barrier.wait();
-          vault.doEagerInitVia(&exe);
+          vault.doEagerInitVia(exe);
         }));
       }
 

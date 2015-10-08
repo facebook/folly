@@ -16,7 +16,10 @@
 
 #include <folly/Singleton.h>
 
+#include <atomic>
 #include <string>
+
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 
@@ -128,7 +131,7 @@ void SingletonVault::doEagerInit() {
   }
 }
 
-void SingletonVault::doEagerInitVia(Executor* exe) {
+void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
   std::unordered_set<detail::SingletonHolderBase*> singletonSet;
   {
     RWSpinLock::ReadHolder rh(&stateMutex_);
@@ -139,8 +142,25 @@ void SingletonVault::doEagerInitVia(Executor* exe) {
     singletonSet = eagerInitSingletons_; // copy set of pointers
   }
 
+  auto countdown = std::make_shared<std::atomic<size_t>>(singletonSet.size());
   for (auto* single : singletonSet) {
-    exe->add([single] {
+    // countdown is retained by shared_ptr, and will be alive until last lambda
+    // is done.  notifyBaton is provided by the caller, and expected to remain
+    // present (if it's non-nullptr).  singletonSet can go out of scope but
+    // its values, which are SingletonHolderBase pointers, are alive as long as
+    // SingletonVault is not being destroyed.
+    exe.add([=] {
+      // decrement counter and notify if requested, whether initialization
+      // was successful, was skipped (already initialized), or exception thrown.
+      SCOPE_EXIT {
+        if (--(*countdown) == 0) {
+          if (done != nullptr) {
+            done->post();
+          }
+        }
+      };
+      // if initialization is in progress in another thread, don't try to init
+      // here.  Otherwise the current thread will block on 'createInstance'.
       if (!single->creationStarted()) {
         single->createInstance();
       }
