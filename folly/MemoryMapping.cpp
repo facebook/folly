@@ -215,8 +215,9 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   // MSVC doesn't have this problem, and calling munmap many times
   // with the same address is a bad idea with the windows implementation.
   int ret = op(mem, bufSize);
-  if (ret == 0)
+  if (ret == 0) {
     amountSucceeded = bufSize;
+  }
   return ret == 0;
 #else
   // unmap/mlock/munlock take a kernel semaphore and block other threads from
