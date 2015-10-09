@@ -240,8 +240,14 @@ FOLLY_NAMESPACE_STD_BEGIN
 template <class T, class U>
   struct pair;
 #ifndef _GLIBCXX_USE_FB
+# if _GLIBCXX_USE_CXX11_ABI
+_GLIBCXX_BEGIN_NAMESPACE_CXX11
+# endif
 template <class T, class R, class A>
   class basic_string;
+# if _GLIBCXX_USE_CXX11_ABI
+_GLIBCXX_END_NAMESPACE_CXX11
+# endif
 #else
 template <class T, class R, class A, class S>
   class basic_string;
@@ -250,8 +256,14 @@ template <class T, class A>
   class vector;
 template <class T, class A>
   class deque;
+# if _GLIBCXX_USE_CXX11_ABI
+_GLIBCXX_BEGIN_NAMESPACE_CXX11
+# endif
 template <class T, class A>
   class list;
+# if _GLIBCXX_USE_CXX11_ABI
+_GLIBCXX_END_NAMESPACE_CXX11
+# endif
 template <class T, class C, class A>
   class set;
 template <class K, class V, class C, class A>
