@@ -19,7 +19,7 @@ brewget autoconf automake libtool
 brewget glog gflags boost libevent double-conversion
 
 autoreconf -i
-./configure
+./configure CXXFLAGS="$CXXFLAGS -I/usr/local/opt/openssl/include" LDFLAGS="$LDFLAGS -L/usr/local/opt/openssl/lib"
 
 pushd test
 test -e gtest-1.7.0.zip || {
