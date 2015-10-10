@@ -37,7 +37,8 @@ namespace folly {
  * @author Xu Ning (xning@fb.com)
  */
 
-#if __cplusplus >= 201402L
+#if __cplusplus >= 201402L || \
+    defined __cpp_lib_make_unique && __cpp_lib_make_unique >= 201304L
 
 /* using override */ using std::make_unique;
 
