@@ -59,7 +59,7 @@ template<class T, class Tag> class ThreadLocalPtr;
 template<class T, class Tag=void>
 class ThreadLocal {
  public:
-  ThreadLocal() = default;
+  constexpr ThreadLocal() {}
 
   T* get() const {
     T* ptr = tlp_.get();
@@ -134,18 +134,19 @@ class ThreadLocal {
 
 template<class T, class Tag=void>
 class ThreadLocalPtr {
+ private:
+  typedef threadlocal_detail::StaticMeta<Tag> StaticMeta;
  public:
-  ThreadLocalPtr() : id_(threadlocal_detail::StaticMeta<Tag>::create()) { }
+  constexpr ThreadLocalPtr() : id_() {}
 
-  ThreadLocalPtr(ThreadLocalPtr&& other) noexcept : id_(other.id_) {
-    other.id_ = 0;
+  ThreadLocalPtr(ThreadLocalPtr&& other) noexcept :
+    id_(std::move(other.id_)) {
   }
 
   ThreadLocalPtr& operator=(ThreadLocalPtr&& other) {
     assert(this != &other);
     destroy();
-    id_ = other.id_;
-    other.id_ = 0;
+    id_ = std::move(other.id_);
     return *this;
   }
 
@@ -154,7 +155,8 @@ class ThreadLocalPtr {
   }
 
   T* get() const {
-    return static_cast<T*>(threadlocal_detail::StaticMeta<Tag>::get(id_).ptr);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    return static_cast<T*>(w.ptr);
   }
 
   T* operator->() const {
@@ -166,15 +168,14 @@ class ThreadLocalPtr {
   }
 
   T* release() {
-    threadlocal_detail::ElementWrapper& w =
-      threadlocal_detail::StaticMeta<Tag>::get(id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
 
     return static_cast<T*>(w.release());
   }
 
   void reset(T* newPtr = nullptr) {
-    threadlocal_detail::ElementWrapper& w =
-      threadlocal_detail::StaticMeta<Tag>::get(id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+
     if (w.ptr != newPtr) {
       w.dispose(TLPDestructionMode::THIS_THREAD);
       w.set(newPtr);
@@ -194,8 +195,7 @@ class ThreadLocalPtr {
    */
   template <class Deleter>
   void reset(T* newPtr, Deleter deleter) {
-    threadlocal_detail::ElementWrapper& w =
-      threadlocal_detail::StaticMeta<Tag>::get(id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
     if (w.ptr != newPtr) {
       w.dispose(TLPDestructionMode::THIS_THREAD);
       w.set(newPtr, deleter);
@@ -330,21 +330,19 @@ class ThreadLocalPtr {
   Accessor accessAllThreads() const {
     static_assert(!std::is_same<Tag, void>::value,
                   "Must use a unique Tag to use the accessAllThreads feature");
-    return Accessor(id_);
+    return Accessor(id_.getOrAllocate());
   }
 
  private:
   void destroy() {
-    if (id_) {
-      threadlocal_detail::StaticMeta<Tag>::destroy(id_);
-    }
+    StaticMeta::destroy(&id_);
   }
 
   // non-copyable
   ThreadLocalPtr(const ThreadLocalPtr&) = delete;
   ThreadLocalPtr& operator=(const ThreadLocalPtr&) = delete;
 
-  uint32_t id_;  // every instantiation has a unique id
+  mutable typename StaticMeta::EntryID id_;
 };
 
 }  // namespace folly

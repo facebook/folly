@@ -161,6 +161,8 @@ struct ThreadEntry {
   ThreadEntry* prev;
 };
 
+
+
 // Held in a singleton to track our global instances.
 // We have one of these per "Tag", by default one for the whole system
 // (Tag=void).
@@ -170,6 +172,50 @@ struct ThreadEntry {
 // StaticMeta; you can specify multiple Tag types to break that lock.
 template <class Tag>
 struct StaticMeta {
+  // Represents an ID of a thread local object. Initially set to the maximum
+  // uint. This representation allows us to avoid a branch in accessing TLS data
+  // (because if you test capacity > id if id = maxint then the test will always
+  // fail). It allows us to keep a constexpr constructor and avoid SIOF.
+  class EntryID {
+   public:
+    static constexpr uint32_t kInvalid = std::numeric_limits<uint32_t>::max();
+    std::atomic<uint32_t> value;
+
+    constexpr EntryID() : value(kInvalid) {
+    }
+
+    EntryID(EntryID&& other) noexcept : value(other.value.load()) {
+      other.value = kInvalid;
+    }
+
+    EntryID& operator=(EntryID&& other) {
+      assert(this != &other);
+      value = other.value.load();
+      other.value = kInvalid;
+      return *this;
+    }
+
+    EntryID(const EntryID& other) = delete;
+    EntryID& operator=(const EntryID& other) = delete;
+
+    uint32_t getOrInvalid() {
+      // It's OK for this to be relaxed, even though we're effectively doing
+      // double checked locking in using this value. We only care about the
+      // uniqueness of IDs, getOrAllocate does not modify any other memory
+      // this thread will use.
+      return value.load(std::memory_order_relaxed);
+    }
+
+    uint32_t getOrAllocate() {
+      uint32_t id = getOrInvalid();
+      if (id != kInvalid) {
+        return id;
+      }
+      // The lock inside allocate ensures that a single value is allocated
+      return instance().allocate(this);
+    }
+  };
+
   static StaticMeta<Tag>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
@@ -303,26 +349,40 @@ struct StaticMeta {
 #endif
   }
 
-  static uint32_t create() {
+  static uint32_t allocate(EntryID* ent) {
     uint32_t id;
     auto & meta = instance();
     std::lock_guard<std::mutex> g(meta.lock_);
+
+    id = ent->value.load();
+    if (id != EntryID::kInvalid) {
+      return id;
+    }
+
     if (!meta.freeIds_.empty()) {
       id = meta.freeIds_.back();
       meta.freeIds_.pop_back();
     } else {
       id = meta.nextId_++;
     }
+
+    uint32_t old_id = ent->value.exchange(id);
+    DCHECK_EQ(old_id, EntryID::kInvalid);
     return id;
   }
 
-  static void destroy(uint32_t id) {
+  static void destroy(EntryID* ent) {
     try {
       auto & meta = instance();
       // Elements in other threads that use this id.
       std::vector<ElementWrapper> elements;
       {
         std::lock_guard<std::mutex> g(meta.lock_);
+        uint32_t id = ent->value.exchange(EntryID::kInvalid);
+        if (id == EntryID::kInvalid) {
+          return;
+        }
+
         for (ThreadEntry* e = meta.head_.next; e != &meta.head_; e = e->next) {
           if (id < e->elementsCapacity && e->elements[id].ptr) {
             elements.push_back(e->elements[id]);
@@ -358,13 +418,18 @@ struct StaticMeta {
    * Reserve enough space in the ThreadEntry::elements for the item
    * @id to fit in.
    */
-  static void reserve(uint32_t id) {
+  static void reserve(EntryID* id) {
     auto& meta = instance();
     ThreadEntry* threadEntry = getThreadEntry();
     size_t prevCapacity = threadEntry->elementsCapacity;
+
+    uint32_t idval = id->getOrAllocate();
+    if (prevCapacity > idval) {
+      return;
+    }
     // Growth factor < 2, see folly/docs/FBVector.md; + 5 to prevent
     // very slow start.
-    size_t newCapacity = static_cast<size_t>((id + 5) * 1.7);
+    size_t newCapacity = static_cast<size_t>((idval + 5) * 1.7);
     assert(newCapacity > prevCapacity);
     ElementWrapper* reallocated = nullptr;
 
@@ -444,10 +509,14 @@ struct StaticMeta {
 #endif
   }
 
-  static ElementWrapper& get(uint32_t id) {
+  static ElementWrapper& get(EntryID* ent) {
     ThreadEntry* threadEntry = getThreadEntry();
+    uint32_t id = ent->getOrInvalid();
+    // if id is invalid, it is equal to uint32_t's max value.
+    // x <= max value is always true
     if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
-      reserve(id);
+      reserve(ent);
+      id = ent->getOrInvalid();
       assert(threadEntry->elementsCapacity > id);
     }
     return threadEntry->elements[id];
