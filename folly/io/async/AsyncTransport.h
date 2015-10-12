@@ -56,6 +56,10 @@ enum class WriteFlags : uint32_t {
    * will be acknowledged.
    */
   EOR = 0x02,
+  /*
+   * this indicates that only the write side of socket should be shutdown
+   */
+  WRITE_SHUTDOWN = 0x04,
 };
 
 /*
