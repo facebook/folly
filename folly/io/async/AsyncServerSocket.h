@@ -577,6 +577,13 @@ class AsyncServerSocket : public DelayedDestruction
     return closeOnExec_;
   }
 
+  /**
+   * Get whether or not the socket is accepting new connections
+   */
+  bool getAccepting() const {
+    return accepting_;
+  }
+
  protected:
   /**
    * Protected destructor.
