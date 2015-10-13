@@ -201,7 +201,7 @@ void benchReadsWhenWriting(int n) {
     });
   }
 
-  for (uint64_t i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
     auto val = ptr.load();
     folly::doNotOptimizeAway(val.get());
   }
@@ -229,7 +229,7 @@ void benchWritesWhenReading(int n) {
   }
 
 
-  for (uint64_t i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) {
     ptr.store(folly::make_unique<int>(3));
   }
 
