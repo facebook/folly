@@ -275,11 +275,12 @@ struct StaticMeta {
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
     return &threadEntry_;
 #else
+    auto key = instance().pthreadKey_;
     ThreadEntry* threadEntry =
-        static_cast<ThreadEntry*>(pthread_getspecific(inst_->pthreadKey_));
+      static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
         threadEntry = new ThreadEntry();
-        int ret = pthread_setspecific(inst_->pthreadKey_, threadEntry);
+        int ret = pthread_setspecific(key, threadEntry);
         checkPosixError(ret, "pthread_setspecific failed");
     }
     return threadEntry;
