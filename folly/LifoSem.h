@@ -131,15 +131,21 @@ struct LifoSemRawNode {
   typedef folly::IndexedMemPool<LifoSemRawNode<Atom>,32,200,Atom> Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
-  static Pool pool;
+  static Pool& pool();
 };
 
 /// Use this macro to declare the static storage that backs the raw nodes
 /// for the specified atomic type
-#define LIFOSEM_DECLARE_POOL(Atom, capacity)                       \
-    template<>                                                     \
-    folly::detail::LifoSemRawNode<Atom>::Pool                      \
-        folly::detail::LifoSemRawNode<Atom>::pool((capacity));
+#define LIFOSEM_DECLARE_POOL(Atom, capacity)                 \
+  namespace folly {                                          \
+  namespace detail {                                         \
+  template <>                                                \
+  LifoSemRawNode<Atom>::Pool& LifoSemRawNode<Atom>::pool() { \
+    static Pool* instance = new Pool((capacity));            \
+    return *instance;                                        \
+  }                                                          \
+  }                                                          \
+  }
 
 /// Handoff is a type not bigger than a void* that knows how to perform a
 /// single post() -> wait() communication.  It must have a post() method.
@@ -180,8 +186,8 @@ template <typename Handoff, template<typename> class Atom>
 struct LifoSemNodeRecycler {
   void operator()(LifoSemNode<Handoff,Atom>* elem) const {
     elem->destroy();
-    auto idx = LifoSemRawNode<Atom>::pool.locateElem(elem);
-    LifoSemRawNode<Atom>::pool.recycleIndex(idx);
+    auto idx = LifoSemRawNode<Atom>::pool().locateElem(elem);
+    LifoSemRawNode<Atom>::pool().recycleIndex(idx);
   }
 };
 
@@ -478,14 +484,14 @@ struct LifoSemBase {
   /// Returns a node that can be passed to decrOrLink
   template <typename... Args>
   UniquePtr allocateNode(Args&&... args) {
-    auto idx = LifoSemRawNode<Atom>::pool.allocIndex();
+    auto idx = LifoSemRawNode<Atom>::pool().allocIndex();
     if (idx != 0) {
       auto& node = idxToNode(idx);
       node.clearShutdownNotice();
       try {
         node.init(std::forward<Args>(args)...);
       } catch (...) {
-        LifoSemRawNode<Atom>::pool.recycleIndex(idx);
+        LifoSemRawNode<Atom>::pool().recycleIndex(idx);
         throw;
       }
       return UniquePtr(&node);
@@ -515,12 +521,12 @@ struct LifoSemBase {
 
 
   static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
-    auto raw = &LifoSemRawNode<Atom>::pool[idx];
+    auto raw = &LifoSemRawNode<Atom>::pool()[idx];
     return *static_cast<LifoSemNode<Handoff, Atom>*>(raw);
   }
 
   static uint32_t nodeToIdx(const LifoSemNode<Handoff, Atom>& node) {
-    return LifoSemRawNode<Atom>::pool.locateElem(&node);
+    return LifoSemRawNode<Atom>::pool().locateElem(&node);
   }
 
   /// Either increments by n and returns 0, or pops a node and returns it.

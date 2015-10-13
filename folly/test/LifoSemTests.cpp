@@ -401,31 +401,40 @@ static void contendedUse(uint n, int posters, int waiters) {
 
 BENCHMARK_DRAW_LINE()
 BENCHMARK_NAMED_PARAM(contendedUse, 1_to_1, 1, 1)
+BENCHMARK_NAMED_PARAM(contendedUse, 1_to_4, 1, 4)
 BENCHMARK_NAMED_PARAM(contendedUse, 1_to_32, 1, 32)
+BENCHMARK_NAMED_PARAM(contendedUse, 4_to_1, 4, 1)
+BENCHMARK_NAMED_PARAM(contendedUse, 4_to_24, 4, 24)
+BENCHMARK_NAMED_PARAM(contendedUse, 8_to_100, 8, 100)
 BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1, 31, 1)
 BENCHMARK_NAMED_PARAM(contendedUse, 16_to_16, 16, 16)
 BENCHMARK_NAMED_PARAM(contendedUse, 32_to_32, 32, 32)
 BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1000, 32, 1000)
 
-// sudo nice -n -20 folly/test/LifoSemTests --benchmark --bm_min_iters=10000000
+// sudo nice -n -20 _build/opt/folly/test/LifoSemTests \
+//     --benchmark --bm_min_iters=10000000 --gtest_filter=-\*
 // ============================================================================
 // folly/test/LifoSemTests.cpp                     relative  time/iter  iters/s
 // ============================================================================
-// lifo_sem_pingpong                                          396.84ns    2.52M
-// lifo_sem_oneway                                             88.52ns   11.30M
-// single_thread_lifo_post                                     14.78ns   67.67M
-// single_thread_lifo_wait                                     13.53ns   73.90M
-// single_thread_lifo_postwait                                 28.91ns   34.59M
-// single_thread_lifo_trywait                                 670.13ps    1.49G
-// single_thread_posix_postwait                                24.12ns   41.46M
-// single_thread_posix_trywait                                  6.76ns  147.88M
+// lifo_sem_pingpong                                            1.31us  762.40K
+// lifo_sem_oneway                                            193.89ns    5.16M
+// single_thread_lifo_post                                     15.37ns   65.08M
+// single_thread_lifo_wait                                     13.60ns   73.53M
+// single_thread_lifo_postwait                                 29.43ns   33.98M
+// single_thread_lifo_trywait                                 677.69ps    1.48G
+// single_thread_posix_postwait                                25.03ns   39.95M
+// single_thread_posix_trywait                                  7.30ns  136.98M
 // ----------------------------------------------------------------------------
-// contendedUse(1_to_1)                                       143.60ns    6.96M
-// contendedUse(1_to_32)                                      244.06ns    4.10M
-// contendedUse(32_to_1)                                      131.99ns    7.58M
-// contendedUse(16_to_16)                                     210.64ns    4.75M
-// contendedUse(32_to_32)                                     222.91ns    4.49M
-// contendedUse(32_to_1000)                                   453.39ns    2.21M
+// contendedUse(1_to_1)                                       158.22ns    6.32M
+// contendedUse(1_to_4)                                       574.73ns    1.74M
+// contendedUse(1_to_32)                                      592.94ns    1.69M
+// contendedUse(4_to_1)                                       118.28ns    8.45M
+// contendedUse(4_to_24)                                      667.62ns    1.50M
+// contendedUse(8_to_100)                                     701.46ns    1.43M
+// contendedUse(32_to_1)                                      165.06ns    6.06M
+// contendedUse(16_to_16)                                     238.57ns    4.19M
+// contendedUse(32_to_32)                                     219.82ns    4.55M
+// contendedUse(32_to_1000)                                   777.42ns    1.29M
 // ============================================================================
 
 int main(int argc, char ** argv) {
