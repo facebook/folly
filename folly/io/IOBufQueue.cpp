@@ -150,9 +150,9 @@ IOBufQueue::append(const void* buf, size_t len) {
   while (len != 0) {
     if ((head_ == nullptr) || head_->prev()->isSharedOne() ||
         (head_->prev()->tailroom() == 0)) {
-      appendToChain(head_, std::move(
+      appendToChain(head_,
           IOBuf::create(std::max(MIN_ALLOC_SIZE,
-              std::min(len, MAX_ALLOC_SIZE)))),
+              std::min(len, MAX_ALLOC_SIZE))),
           false);
     }
     IOBuf* last = head_->prev();
@@ -209,7 +209,7 @@ IOBufQueue::split(size_t n) {
       break;
     }
   }
-  return std::move(result);
+  return result;
 }
 
 void IOBufQueue::trimStart(size_t amount) {

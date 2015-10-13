@@ -338,7 +338,7 @@ string IPAddressV6::str() const {
         buffer, INET6_ADDRSTRLEN,
         nullptr, 0, NI_NUMERICHOST)) {
     string ip(buffer);
-    return std::move(ip);
+    return ip;
   } else {
     throw IPAddressFormatException("Invalid address with hex ",
                                    "'", detail::Bytes::toHex(bytes(), 16), "'");

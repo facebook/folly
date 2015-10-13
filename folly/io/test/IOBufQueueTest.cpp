@@ -49,7 +49,7 @@ stringToIOBuf(const char* s, uint32_t len) {
   unique_ptr<IOBuf> buf = IOBuf::create(len);
   memcpy(buf->writableTail(), s, len);
   buf->append(len);
-  return std::move(buf);
+  return buf;
 }
 
 void checkConsistency(const IOBufQueue& queue) {

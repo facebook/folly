@@ -611,14 +611,14 @@ void AsyncSocket::write(WriteCallback* callback,
   iovec op;
   op.iov_base = const_cast<void*>(buf);
   op.iov_len = bytes;
-  writeImpl(callback, &op, 1, std::move(unique_ptr<IOBuf>()), flags);
+  writeImpl(callback, &op, 1, unique_ptr<IOBuf>(), flags);
 }
 
 void AsyncSocket::writev(WriteCallback* callback,
                           const iovec* vec,
                           size_t count,
                           WriteFlags flags) {
-  writeImpl(callback, vec, count, std::move(unique_ptr<IOBuf>()), flags);
+  writeImpl(callback, vec, count, unique_ptr<IOBuf>(), flags);
 }
 
 void AsyncSocket::writeChain(WriteCallback* callback, unique_ptr<IOBuf>&& buf,

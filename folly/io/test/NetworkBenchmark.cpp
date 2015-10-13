@@ -57,18 +57,18 @@ inline unique_ptr<IOBuf> poolGetIOBuf() {
   if (bufPool.size() > 0) {
     unique_ptr<IOBuf> ret = std::move(bufPool.back());
     bufPool.pop_back();
-    return std::move(ret);
+    return ret;
   } else {
     unique_ptr<IOBuf> iobuf(IOBuf::create(buf_size));
     iobuf->append(buf_size);
-    return std::move(iobuf);
+    return iobuf;
   }
 }
 
 inline void poolPutIOBuf(unique_ptr<IOBuf>&& buf) {
   unique_ptr<IOBuf> head = std::move(buf);
   while (head) {
-    unique_ptr<IOBuf> next = std::move(head->pop());
+    unique_ptr<IOBuf> next = head->pop();
     bufPool.push_back(std::move(head));
     head = std::move(next);
   }
@@ -76,9 +76,9 @@ inline void poolPutIOBuf(unique_ptr<IOBuf>&& buf) {
 
 BENCHMARK(poolBenchmark, iters) {
   while (iters--) {
-    unique_ptr<IOBuf> head = std::move(poolGetIOBuf());
+    unique_ptr<IOBuf> head = poolGetIOBuf();
     for (size_t bufs = num_bufs; bufs > 1; bufs --) {
-      unique_ptr<IOBuf> iobufNext = std::move(poolGetIOBuf());
+      unique_ptr<IOBuf> iobufNext = poolGetIOBuf();
       head->prependChain(std::move(iobufNext));
     }
     // cleanup
