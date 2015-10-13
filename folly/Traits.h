@@ -312,6 +312,13 @@ struct is_negative_impl<T, false> {
   constexpr static bool check(T) { return false; }
 };
 
+// folly::to integral specializations can end up generating code
+// inside what are really static ifs (not executed because of the templated
+// types) that violate -Wsign-compare so suppress them in order to not prevent
+// all calling code from using it.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(LHS const lhs) {
   return
@@ -319,6 +326,8 @@ bool less_than_impl(LHS const lhs) {
     rhs <= std::numeric_limits<LHS>::min() ? false :
     lhs < rhs;
 }
+
+#pragma GCC diagnostic pop
 
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(LHS const lhs) {
