@@ -350,14 +350,14 @@ class Try<void> {
  * @returns value contained in t
  */
 template <typename T>
-T moveFromTry(Try<T>&& t);
+T moveFromTry(Try<T>& t);
 
 /*
  * Throws if try contained an exception.
  *
  * @param t Try to move from
  */
-void moveFromTry(Try<void>&& t);
+void moveFromTry(Try<void>& t);
 
 /*
  * @param f a function to execute and capture the result of (value or exception)

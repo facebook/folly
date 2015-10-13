@@ -519,7 +519,7 @@ inline await(F&& func) {
       func(Promise<Result>(result, baton));
     });
 
-  return folly::moveFromTry(std::move(result));
+  return folly::moveFromTry(result);
 }
 
 }}

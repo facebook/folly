@@ -131,11 +131,11 @@ void Try<void>::throwIfFailed() const {
 }
 
 template <typename T>
-inline T moveFromTry(Try<T>&& t) {
+inline T moveFromTry(Try<T>& t) {
   return std::move(t.value());
 }
 
-inline void moveFromTry(Try<void>&& t) {
+inline void moveFromTry(Try<void>& t) {
   return t.value();
 }
 
