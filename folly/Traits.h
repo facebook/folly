@@ -320,67 +320,21 @@ struct is_negative_impl<T, false> {
 #pragma GCC diagnostic ignored "-Wsign-compare"
 
 template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs > std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const lhs
-) {
-  return lhs < rhs;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
-    LHS
-  >::type const
-) {
-  return true;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const
-) {
-  return false;
+bool less_than_impl(LHS const lhs) {
+  return
+    rhs > std::numeric_limits<LHS>::max() ? true :
+    rhs <= std::numeric_limits<LHS>::min() ? false :
+    lhs < rhs;
 }
 
 #pragma GCC diagnostic pop
 
 template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs <= std::numeric_limits<LHS>::max()
-      && rhs >= std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const lhs
-) {
-  return lhs > rhs;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs > std::numeric_limits<LHS>::max()),
-    LHS
-  >::type const
-) {
-  return false;
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(
-  typename std::enable_if<
-    (rhs < std::numeric_limits<LHS>::min()),
-    LHS
-  >::type const
-) {
-  return true;
+bool greater_than_impl(LHS const lhs) {
+  return
+    rhs > std::numeric_limits<LHS>::max() ? false :
+    rhs < std::numeric_limits<LHS>::min() ? true :
+    lhs > rhs;
 }
 
 } // namespace detail {
