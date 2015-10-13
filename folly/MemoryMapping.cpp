@@ -211,6 +211,15 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
 bool memOpInChunks(std::function<int(void*, size_t)> op,
                    void* mem, size_t bufSize, off_t pageSize,
                    size_t& amountSucceeded) {
+#ifdef _MSC_VER
+  // MSVC doesn't have this problem, and calling munmap many times
+  // with the same address is a bad idea with the windows implementation.
+  int ret = op(mem, bufSize);
+  if (ret == 0) {
+    amountSucceeded = bufSize;
+  }
+  return ret == 0;
+#else
   // unmap/mlock/munlock take a kernel semaphore and block other threads from
   // doing other memory operations. If the size of the buffer is big the
   // semaphore can be down for seconds (for benchmarks see
@@ -232,6 +241,7 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   }
 
   return true;
+#endif
 }
 
 }  // anonymous namespace
@@ -253,11 +263,13 @@ bool MemoryMapping::mlock(LockMode lock) {
     PLOG(FATAL) << msg;
   }
 
+#ifndef _MSC_VER
   // only part of the buffer was mlocked, unlock it back
   if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, options_.pageSize,
                      amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
+#endif
 
   return false;
 }
