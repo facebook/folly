@@ -208,6 +208,16 @@ namespace std { typedef ::max_align_t max_align_t; }
 #define FOLLY_NAMESPACE_STD_END       }
 #endif
 
+// If the new c++ ABI is used, __cxx11 inline namespace needs to be added to
+// some types, e.g. std::list.
+#if _GLIBCXX_USE_CXX11_ABI
+# define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN	_GLIBCXX_BEGIN_NAMESPACE_CXX11
+# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END	_GLIBCXX_END_NAMESPACE_CXX11
+#else
+# define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
+# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
+#endif
+
 // Some platforms lack clock_gettime(2) and clock_getres(2). Inject our own
 // versions of these into the global namespace.
 #if FOLLY_HAVE_CLOCK_GETTIME
