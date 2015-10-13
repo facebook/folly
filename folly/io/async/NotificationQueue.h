@@ -17,7 +17,15 @@
 #pragma once
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <deque>
+#include <iterator>
+#include <memory>
+#include <stdexcept>
+#include <utility>
 
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
@@ -28,7 +36,6 @@
 #include <folly/SpinLock.h>
 
 #include <glog/logging.h>
-#include <deque>
 
 #if __linux__ && !__ANDROID__
 #define FOLLY_HAVE_EVENTFD
