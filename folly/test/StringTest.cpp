@@ -532,7 +532,7 @@ TEST(PrettyToDouble, Basic) {
     PrettyType formatType = testCase.prettyType;
     double x = testCase.realValue;
     std::string testString = testCase.prettyString;
-    double recoveredX;
+    double recoveredX = 0;
     try{
       recoveredX = prettyToDouble(testString, formatType);
     } catch (std::range_error &ex){
@@ -549,7 +549,7 @@ TEST(PrettyToDouble, Basic) {
     for (double x = 1e-18; x < 1e40; x *= 1.9){
       bool addSpace = static_cast<PrettyType> (i) == PRETTY_SI;
       for (int it = 0; it < 2; ++it, addSpace = true){
-        double recoveredX;
+        double recoveredX = 0;
         try{
           recoveredX = prettyToDouble(prettyPrint(x, formatType, addSpace),
                                              formatType);
@@ -1009,7 +1009,7 @@ TEST(Split, std_string_fixed) {
 TEST(Split, fixed_convert) {
   StringPiece a, d;
   int b;
-  double c;
+  double c = 0;
 
   EXPECT_TRUE(folly::split(':', "a:13:14.7:b", a, b, c, d));
   EXPECT_EQ("a", a);
