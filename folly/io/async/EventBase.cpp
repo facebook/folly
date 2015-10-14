@@ -312,7 +312,7 @@ bool EventBase::loopBody(int flags) {
 
   // time-measurement variables.
   std::chrono::steady_clock::time_point prev;
-  int64_t idleStart;
+  int64_t idleStart = 0;
   int64_t busy;
   int64_t idle;
 
