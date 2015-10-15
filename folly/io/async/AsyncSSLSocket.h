@@ -722,6 +722,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return clientHelloInfo_.get();
   }
 
+  /**
+   * Returns the time taken to complete a handshake.
+   */
+  std::chrono::nanoseconds getHandshakeTime() const {
+    return handshakeEndTime_ - handshakeStartTime_;
+  }
+
   void setMinWriteSize(size_t minWriteSize) {
     minWriteSize_ = minWriteSize;
   }
@@ -813,6 +820,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // Inherit error handling methods from AsyncSocket, plus the following.
   void failHandshake(const char* fn, const AsyncSocketException& ex);
 
+  void invokeHandshakeErr(const AsyncSocketException& ex);
   void invokeHandshakeCB();
 
   static void sslInfoCallback(const SSL *ssl, int type, int val);
@@ -860,6 +868,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   bool parseClientHello_{false};
   std::unique_ptr<ClientHelloInfo> clientHelloInfo_;
+
+  // Time taken to complete the ssl handshake.
+  std::chrono::steady_clock::time_point handshakeStartTime_;
+  std::chrono::steady_clock::time_point handshakeEndTime_;
 };
 
 } // namespace

@@ -96,6 +96,7 @@ TEST(AsyncSocketTest, Connect) {
   evb.loop();
 
   CHECK_EQ(cb.state, STATE_SUCCEEDED);
+  EXPECT_LE(0, socket->getConnectTime().count());
 }
 
 /**
@@ -115,6 +116,7 @@ TEST(AsyncSocketTest, ConnectRefused) {
 
   CHECK_EQ(cb.state, STATE_FAILED);
   CHECK_EQ(cb.exception.getType(), AsyncSocketException::NOT_OPEN);
+  EXPECT_LE(0, socket->getConnectTime().count());
 }
 
 /**
@@ -152,6 +154,7 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   folly::SocketAddress peer;
   socket->getPeerAddress(&peer);
   CHECK_EQ(peer, addr);
+  EXPECT_LE(0, socket->getConnectTime().count());
 }
 
 /**

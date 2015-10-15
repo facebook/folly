@@ -356,13 +356,10 @@ void AsyncSSLSocket::closeNow() {
 
   DestructorGuard dg(this);
 
-  if (handshakeCallback_) {
-    AsyncSocketException ex(AsyncSocketException::END_OF_FILE,
-                           "SSL connection closed locally");
-    HandshakeCB* callback = handshakeCallback_;
-    handshakeCallback_ = nullptr;
-    callback->handshakeErr(this, ex);
-  }
+  invokeHandshakeErr(
+      AsyncSocketException(
+        AsyncSocketException::END_OF_FILE,
+        "SSL connection closed locally"));
 
   if (ssl_ != nullptr) {
     SSL_free(ssl_);
@@ -468,6 +465,7 @@ void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
   AsyncSocketException ex(AsyncSocketException::INVALID_STATE,
                          "sslAccept() called with socket in invalid state");
 
+  handshakeEndTime_ = std::chrono::steady_clock::now();
   if (callback) {
     callback->handshakeErr(this, ex);
   }
@@ -490,6 +488,9 @@ void AsyncSSLSocket::sslAccept(HandshakeCB* callback, uint32_t timeout,
       handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
+  handshakeStartTime_ = std::chrono::steady_clock::now();
+  // Make end time at least >= start time.
+  handshakeEndTime_ = handshakeStartTime_;
 
   sslState_ = STATE_ACCEPTING;
   handshakeCallback_ = callback;
@@ -623,20 +624,24 @@ AsyncSSLSocket* AsyncSSLSocket::getFromSSL(const SSL *ssl) {
 void AsyncSSLSocket::failHandshake(const char* fn,
                                     const AsyncSocketException& ex) {
   startFail();
-
   if (handshakeTimeout_.isScheduled()) {
     handshakeTimeout_.cancelTimeout();
   }
+  invokeHandshakeErr(ex);
+  finishFail();
+}
+
+void AsyncSSLSocket::invokeHandshakeErr(const AsyncSocketException& ex) {
+  handshakeEndTime_ = std::chrono::steady_clock::now();
   if (handshakeCallback_ != nullptr) {
     HandshakeCB* callback = handshakeCallback_;
     handshakeCallback_ = nullptr;
     callback->handshakeErr(this, ex);
   }
-
-  finishFail();
 }
 
 void AsyncSSLSocket::invokeHandshakeCB() {
+  handshakeEndTime_ = std::chrono::steady_clock::now();
   if (handshakeTimeout_.isScheduled()) {
     handshakeTimeout_.cancelTimeout();
   }
@@ -690,6 +695,10 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
       handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
+
+  handshakeStartTime_ = std::chrono::steady_clock::now();
+  // Make end time at least >= start time.
+  handshakeEndTime_ = handshakeStartTime_;
 
   sslState_ = STATE_CONNECTING;
   handshakeCallback_ = callback;

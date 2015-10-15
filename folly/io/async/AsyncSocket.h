@@ -28,6 +28,7 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/DelayedDestruction.h>
 
+#include <chrono>
 #include <memory>
 #include <map>
 
@@ -395,6 +396,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return getAppBytesReceived();
   }
 
+  std::chrono::nanoseconds getConnectTime() const {
+    return connectEndTime_ - connectStartTime_;
+  }
+
   // Methods controlling socket options
 
   /**
@@ -752,6 +757,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                  const AsyncSocketException& ex);
   void failWrite(const char* fn, const AsyncSocketException& ex);
   void failAllWrites(const AsyncSocketException& ex);
+  void invokeConnectErr(const AsyncSocketException& ex);
+  void invokeConnectSuccess();
   void invalidState(ConnectCallback* callback);
   void invalidState(ReadCallback* callback);
   void invalidState(WriteCallback* callback);
@@ -783,6 +790,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool peek_{false}; // Peek bytes.
 
   int8_t readErr_{READ_NO_ERROR};      ///< The read error encountered, if any.
+
+  std::chrono::steady_clock::time_point connectStartTime_;
+  std::chrono::steady_clock::time_point connectEndTime_;
 };
 
 

@@ -318,6 +318,10 @@ void AsyncSocket::connect(ConnectCallback* callback,
     return invalidState(callback);
   }
 
+  connectStartTime_ = std::chrono::steady_clock::now();
+  // Make connect end time at least >= connectStartTime.
+  connectEndTime_ = connectStartTime_;
+
   assert(fd_ == -1);
   state_ = StateEnum::CONNECTING;
   connectCallback_ = callback;
@@ -463,10 +467,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
   state_ = StateEnum::ESTABLISHED;
-  if (callback) {
-    connectCallback_ = nullptr;
-    callback->connectSuccess();
-  }
+  invokeConnectSuccess();
 }
 
 void AsyncSocket::connect(ConnectCallback* callback,
@@ -838,11 +839,7 @@ void AsyncSocket::closeNow() {
         doClose();
       }
 
-      if (connectCallback_) {
-        ConnectCallback* callback = connectCallback_;
-        connectCallback_ = nullptr;
-        callback->connectErr(socketClosedLocallyEx);
-      }
+      invokeConnectErr(socketClosedLocallyEx);
 
       failAllWrites(socketClosedLocallyEx);
 
@@ -1617,13 +1614,7 @@ void AsyncSocket::handleConnect() noexcept {
   // callbacks (since the callbacks may call detachEventBase()).
   EventBase* originalEventBase = eventBase_;
 
-  // Call the connect callback.
-  if (connectCallback_) {
-    ConnectCallback* callback = connectCallback_;
-    connectCallback_ = nullptr;
-    callback->connectSuccess();
-  }
-
+  invokeConnectSuccess();
   // Note that the connect callback may have changed our state.
   // (set or unset the read callback, called write(), closed the socket, etc.)
   // The following code needs to handle these situations correctly.
@@ -1805,12 +1796,7 @@ void AsyncSocket::finishFail() {
 
   AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
                          withAddr("socket closing after error"));
-  if (connectCallback_) {
-    ConnectCallback* callback = connectCallback_;
-    connectCallback_ = nullptr;
-    callback->connectErr(ex);
-  }
-
+  invokeConnectErr(ex);
   failAllWrites(ex);
 
   if (readCallback_) {
@@ -1836,12 +1822,7 @@ void AsyncSocket::failConnect(const char* fn, const AsyncSocketException& ex) {
                << ex.what();
   startFail();
 
-  if (connectCallback_ != nullptr) {
-    ConnectCallback* callback = connectCallback_;
-    connectCallback_ = nullptr;
-    callback->connectErr(ex);
-  }
-
+  invokeConnectErr(ex);
   finishFail();
 }
 
@@ -1931,6 +1912,7 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
 
   AsyncSocketException ex(AsyncSocketException::ALREADY_OPEN,
                          "connect() called with socket in invalid state");
+  connectEndTime_ = std::chrono::steady_clock::now();
   if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
     if (callback) {
       callback->connectErr(ex);
@@ -1944,6 +1926,24 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
       callback->connectErr(ex);
     }
     finishFail();
+  }
+}
+
+void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
+  connectEndTime_ = std::chrono::steady_clock::now();
+  if (connectCallback_) {
+    ConnectCallback* callback = connectCallback_;
+    connectCallback_ = nullptr;
+    callback->connectErr(ex);
+  }
+}
+
+void AsyncSocket::invokeConnectSuccess() {
+  connectEndTime_ = std::chrono::steady_clock::now();
+  if (connectCallback_) {
+    ConnectCallback* callback = connectCallback_;
+    connectCallback_ = nullptr;
+    callback->connectSuccess();
   }
 }
 

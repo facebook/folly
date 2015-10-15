@@ -1054,9 +1054,11 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(!server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(!server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1090,9 +1092,11 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(!client.handshakeSuccess_);
   EXPECT_TRUE(client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(!server.handshakeVerify_);
   EXPECT_TRUE(!server.handshakeSuccess_);
   EXPECT_TRUE(server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1128,9 +1132,11 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxDisableVerify) {
   EXPECT_TRUE(!client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(!server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(!server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1171,9 +1177,11 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxEnableVerify) {
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_FALSE(client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_FALSE(server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1205,9 +1213,11 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationOverride) {
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(!server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(!server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1240,9 +1250,11 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSkip) {
   EXPECT_TRUE(!client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(!server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(!server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 /**
@@ -1282,9 +1294,11 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_FALSE(client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_TRUE(server.handshakeVerify_);
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_FALSE(server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 
@@ -1321,6 +1335,8 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   EXPECT_FALSE(server.handshakeVerify_);
   EXPECT_FALSE(server.handshakeSuccess_);
   EXPECT_TRUE(server.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
+  EXPECT_LE(0, server.handshakeTime.count());
 }
 
 TEST(AsyncSSLSocketTest, MinWriteSizeTest) {

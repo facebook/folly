@@ -1130,6 +1130,7 @@ class SSLHandshakeBase :
   bool handshakeVerify_;
   bool handshakeSuccess_;
   bool handshakeError_;
+  std::chrono::nanoseconds handshakeTime;
 
  protected:
   AsyncSSLSocket::UniquePtr socket_;
@@ -1149,12 +1150,14 @@ class SSLHandshakeBase :
 
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     handshakeSuccess_ = true;
+    handshakeTime = socket_->getHandshakeTime();
   }
 
   void handshakeErr(
    AsyncSSLSocket*,
    const AsyncSocketException& ex) noexcept override {
     handshakeError_ = true;
+    handshakeTime = socket_->getHandshakeTime();
   }
 
   // WriteCallback
