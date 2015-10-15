@@ -59,6 +59,17 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
 #include <smmintrin.h>
 #include <folly/Likely.h>
 
+//  GCC 4.9 with ASAN has a problem: a function with no_sanitize_address calling
+//  a function with always_inline fails to build. The _mm_* functions are marked
+//  always_inline.
+//  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368
+#if defined FOLLY_SANITIZE_ADDRESS && \
+    FOLLY_SANITIZE_ADDRESS == 1 && \
+    __GNUC_PREREQ(4, 9)
+# define _mm_load_si128(p) (*(p))
+# define _mm_loadu_si128(p) ((__m128i)__builtin_ia32_loaddqu((const char*)(p)))
+#endif
+
 namespace folly {
 
 namespace detail {
@@ -100,10 +111,10 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
     return detail::qfind_first_byte_of_nosse(haystack, needles);
   }
 
-  auto arr2 = ::_mm_loadu_si128(
+  auto arr2 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(needles.data()));
   // do an unaligned load for first block of haystack
-  auto arr1 = ::_mm_loadu_si128(
+  auto arr1 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(haystack.data()));
   auto index = __builtin_ia32_pcmpestri128((__v16qi)arr2, needles.size(),
                                            (__v16qi)arr1, haystack.size(), 0);
@@ -114,7 +125,7 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   // Now, we can do aligned loads hereafter...
   size_t i = nextAlignedIndex(haystack.data());
   for (; i < haystack.size(); i+= 16) {
-    auto arr1 = ::_mm_load_si128(
+    auto arr1 = _mm_load_si128(
         reinterpret_cast<const __m128i*>(haystack.data() + i));
     auto index = __builtin_ia32_pcmpestri128(
         (__v16qi)arr2, needles.size(),
@@ -151,22 +162,22 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
 
   __m128i arr1;
   if (HAYSTACK_ALIGNED) {
-    arr1 = ::_mm_load_si128(
+    arr1 = _mm_load_si128(
         reinterpret_cast<const __m128i*>(haystack.data() + blockStartIdx));
   } else {
-    arr1 = ::_mm_loadu_si128(
+    arr1 = _mm_loadu_si128(
         reinterpret_cast<const __m128i*>(haystack.data() + blockStartIdx));
   }
 
   // This load is safe because needles.size() >= 16
-  auto arr2 = ::_mm_loadu_si128(
+  auto arr2 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(needles.data()));
   size_t b = __builtin_ia32_pcmpestri128(
     (__v16qi)arr2, 16, (__v16qi)arr1, haystack.size() - blockStartIdx, 0);
 
   size_t j = nextAlignedIndex(needles.data());
   for (; j < needles.size(); j += 16) {
-    arr2 = ::_mm_load_si128(
+    arr2 = _mm_load_si128(
         reinterpret_cast<const __m128i*>(needles.data() + j));
 
     auto index = __builtin_ia32_pcmpestri128(
