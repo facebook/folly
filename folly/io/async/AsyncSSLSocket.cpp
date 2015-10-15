@@ -807,6 +807,15 @@ int AsyncSSLSocket::getSSLVersion() const {
   return (ssl_ != nullptr) ? SSL_version(ssl_) : 0;
 }
 
+const char *AsyncSSLSocket::getSSLCertSigAlgName() const {
+  X509 *cert = (ssl_ != nullptr) ? SSL_get_certificate(ssl_) : nullptr;
+  if (cert) {
+    int nid = OBJ_obj2nid(cert->sig_alg->algorithm);
+    return OBJ_nid2ln(nid);
+  }
+  return nullptr;
+}
+
 int AsyncSSLSocket::getSSLCertSize() const {
   int certSize = 0;
   X509 *cert = (ssl_ != nullptr) ? SSL_get_certificate(ssl_) : nullptr;
