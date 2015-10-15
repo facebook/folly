@@ -31,8 +31,7 @@ sudo apt-get install -y git gcc-4.8 g++-4.8 libboost1.54-dev autoconf git \
 #  automake autoconf-archive libboost-all-dev liblz4-dev liblzma-dev
 #  zlib1g-dev libjemalloc-dev
 
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 50
-sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 50
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 50 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
 
 CMAKE_NAME=cmake-2.8.12.1
 GFLAGS_VER=2.1.1
