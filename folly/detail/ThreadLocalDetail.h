@@ -524,6 +524,9 @@ struct StaticMeta {
   }
 };
 
+template <class Tag>
+constexpr uint32_t StaticMeta<Tag>::EntryID::kInvalid;
+
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
 template <class Tag>
 FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_ = {nullptr, 0,
