@@ -341,14 +341,14 @@ inline size_t malloc_usable_size(void* ptr) {
 // compared against 0.
 
 inline bool operator ==(pthread_t ptA, unsigned int b) {
-  if (ptA.p == NULL) {
+  if (ptA.p == nullptr) {
     return b == 0;
   }
   return pthread_getw32threadid_np(ptA) == b;
 }
 
 inline bool operator !=(pthread_t ptA, unsigned int b) {
-  if (ptA.p == NULL) {
+  if (ptA.p == nullptr) {
     return b != 0;
   }
   return pthread_getw32threadid_np(ptA) != b;
@@ -370,16 +370,16 @@ inline bool operator !(pthread_t ptA) {
   return ptA == 0;
 }
 
-#define pthread_zero (pthread_t{NULL, 0})
-
 inline int pthread_attr_getstack(
   pthread_attr_t* attr,
   void** stackaddr,
   size_t* stacksize) {
-  if (pthread_attr_getstackaddr(attr, stackaddr) != 0)
+  if (pthread_attr_getstackaddr(attr, stackaddr) != 0) {
     return -1;
-  if (pthread_attr_getstacksize(attr, stacksize) != 0)
+  }
+  if (pthread_attr_getstacksize(attr, stacksize) != 0) {
     return -1;
+  }
   return 0;
 }
 
@@ -387,10 +387,12 @@ inline int pthread_attr_setstack(
   pthread_attr_t* attr,
   void* stackaddr,
   size_t stacksize) {
-  if (pthread_attr_setstackaddr(attr, stackaddr) != 0)
+  if (pthread_attr_setstackaddr(attr, stackaddr) != 0) {
     return -1;
-  if (pthread_attr_setstacksize(attr, stacksize) != 0)
+  }
+  if (pthread_attr_setstacksize(attr, stacksize) != 0) {
     return -1;
+  }
   return 0;
 }
 
@@ -408,9 +410,6 @@ struct hash<pthread_t> {
   }
 };
 }
-
-#else
-#define pthread_zero ((pthread_t)0)
 #endif
 
 #ifdef _MSC_VER
