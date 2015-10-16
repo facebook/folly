@@ -116,7 +116,7 @@ void SingletonHolder<T>::destroyInstance() {
   instance_.reset();
   if (destroy_baton_) {
     auto wait_result = destroy_baton_->timed_wait(
-      std::chrono::steady_clock::now() + kDestroyWaitTime);
+      std::chrono::steady_clock::now() + kSingletonHolderBaseDestroyWaitTime);
     if (!wait_result) {
       print_destructor_stack_trace_->store(true);
       LOG(ERROR) << "Singleton of type " << type_.name() << " has a "

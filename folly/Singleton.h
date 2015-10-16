@@ -198,14 +198,12 @@ class SingletonHolderBase {
   virtual TypeDescriptor type() = 0;
   virtual bool hasLiveInstance() = 0;
   virtual void destroyInstance() = 0;
-
- protected:
-#ifdef MSVC_NO_STATIC_INCLASS_CONSTEXPR_INITIALIZATION
-  static const std::chrono::seconds kDestroyWaitTime;
-#else
-  static constexpr std::chrono::seconds kDestroyWaitTime{5};
-#endif
 };
+
+// This is out here rather than in the class because, as of MSVC 2015's
+// initial release, in-class initialization of static non-scalar constexpr
+// members is not implemented. It works just fine outside of a class though.
+constexpr std::chrono::seconds kSingletonHolderBaseDestroyWaitTime{ 5 };
 
 // An actual instance of a singleton, tracking the instance itself,
 // its state as described above, and the create and teardown
