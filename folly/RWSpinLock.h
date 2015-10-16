@@ -141,7 +141,6 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #include <atomic>
 #include <string>
 #include <algorithm>
-#include <boost/noncopyable.hpp>
 
 #include <sched.h>
 #include <glog/logging.h>
@@ -672,8 +671,11 @@ class RWTicketSpinLockT {
   class WriteHolder;
 
   typedef RWTicketSpinLockT<kBitWidth, kFavorWriter> RWSpinLock;
-  class ReadHolder : boost::noncopyable {
+  class ReadHolder {
    public:
+    ReadHolder(ReadHolder const&) = delete;
+    ReadHolder& operator=(ReadHolder const&) = delete;
+
     explicit ReadHolder(RWSpinLock *lock = nullptr) :
       lock_(lock) {
       if (lock_) lock_->lock_shared();
@@ -709,8 +711,11 @@ class RWTicketSpinLockT {
     RWSpinLock *lock_;
   };
 
-  class WriteHolder : boost::noncopyable {
+  class WriteHolder {
    public:
+    WriteHolder(WriteHolder const&) = delete;
+    WriteHolder& operator=(WriteHolder const&) = delete;
+
     explicit WriteHolder(RWSpinLock *lock = nullptr) : lock_(lock) {
       if (lock_) lock_->lock();
     }
