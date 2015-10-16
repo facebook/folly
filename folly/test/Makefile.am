@@ -188,6 +188,10 @@ token_bucket_test_SOURCES = TokenBucketTest.cpp
 token_bucket_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += token_bucket_test
 
+thread_name_test_SOURCES = ThreadNameTest.cpp
+thread_name_test_LDADD = ligtest.la $(top_builddir)/libfolly.la
+TESTS += thread_name_test
+
 
 futures_test_SOURCES = \
     ../futures/test/CollectTest.cpp \
