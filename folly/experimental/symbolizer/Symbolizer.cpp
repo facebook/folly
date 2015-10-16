@@ -16,9 +16,10 @@
 
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
-#include <limits.h>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
+#include <limits.h>
 
 #ifdef __GNUC__
 #include <ext/stdio_filebuf.h>
@@ -417,16 +418,20 @@ int getFD(const std::ios& stream) {
   return -1;
 }
 
-bool isTty(int options, int fd) {
-  return ((options & SymbolizePrinter::TERSE) == 0 &&
-          (options & SymbolizePrinter::COLOR_IF_TTY) != 0 &&
-          fd >= 0 && ::isatty(fd));
+bool isColorfulTty(int options, int fd) {
+  if ((options & SymbolizePrinter::TERSE) != 0 ||
+      (options & SymbolizePrinter::COLOR_IF_TTY) == 0 ||
+      fd < 0 || !::isatty(fd)) {
+    return false;
+  }
+  auto term = ::getenv("TERM");
+  return !(term == nullptr || term[0] == '\0' || strcmp(term, "dumb") == 0);
 }
 
 }  // anonymous namespace
 
 OStreamSymbolizePrinter::OStreamSymbolizePrinter(std::ostream& out, int options)
-  : SymbolizePrinter(options, isTty(options, getFD(out))),
+  : SymbolizePrinter(options, isColorfulTty(options, getFD(out))),
     out_(out) {
 }
 
@@ -435,7 +440,7 @@ void OStreamSymbolizePrinter::doPrint(StringPiece sp) {
 }
 
 FDSymbolizePrinter::FDSymbolizePrinter(int fd, int options, size_t bufferSize)
-  : SymbolizePrinter(options, isTty(options, fd)),
+  : SymbolizePrinter(options, isColorfulTty(options, fd)),
     fd_(fd),
     buffer_(bufferSize ? IOBuf::create(bufferSize) : nullptr) {
 }
@@ -466,7 +471,7 @@ void FDSymbolizePrinter::flush() {
 }
 
 FILESymbolizePrinter::FILESymbolizePrinter(FILE* file, int options)
-  : SymbolizePrinter(options, isTty(options, fileno(file))),
+  : SymbolizePrinter(options, isColorfulTty(options, fileno(file))),
     file_(file) {
 }
 
