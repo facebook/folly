@@ -94,9 +94,13 @@ void MemoryIdler::flushLocalMallocCaches() {
 // platforms could be increased if it was useful.
 #if (FOLLY_X64 || FOLLY_PPC64 ) && defined(_GNU_SOURCE) && defined(__linux__)
 
-static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
 static FOLLY_TLS uintptr_t tls_stackLimit;
 static FOLLY_TLS size_t tls_stackSize;
+
+static size_t pageSize() {
+  static const size_t s_pageSize = sysconf(_SC_PAGESIZE);
+  return s_pageSize;
+}
 
 static void fetchStackLimits() {
   pthread_attr_t attr;
@@ -128,7 +132,7 @@ static void fetchStackLimits() {
   tls_stackLimit = uintptr_t(addr) + guardSize;
   tls_stackSize = rawSize - guardSize;
 
-  assert((tls_stackLimit & (s_pageSize - 1)) == 0);
+  assert((tls_stackLimit & (pageSize() - 1)) == 0);
 }
 
 FOLLY_NOINLINE static uintptr_t getStackPtr() {
@@ -150,14 +154,14 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
   assert(sp >= tls_stackLimit);
   assert(sp - tls_stackLimit < tls_stackSize);
 
-  auto end = (sp - retain) & ~(s_pageSize - 1);
+  auto end = (sp - retain) & ~(pageSize() - 1);
   if (end <= tls_stackLimit) {
     // no pages are eligible for unmapping
     return;
   }
 
   size_t len = end - tls_stackLimit;
-  assert((len & (s_pageSize - 1)) == 0);
+  assert((len & (pageSize() - 1)) == 0);
   if (madvise((void*)tls_stackLimit, len, MADV_DONTNEED) != 0) {
     // It is likely that the stack vma hasn't been fully grown.  In this
     // case madvise will apply dontneed to the present vmas, then return
