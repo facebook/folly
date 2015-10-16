@@ -73,7 +73,14 @@ enum class CodecType {
   LZMA2 = 6,
   LZMA2_VARINT_SIZE = 7,
 
-  NUM_CODEC_TYPES = 8,
+  /**
+   * Use ZSTD_BETA compression.
+   * This format is not yet final; please do not rely on it for anything other
+   * than testing purposes yet.
+   */
+  ZSTD_BETA = 8,
+
+  NUM_CODEC_TYPES = 9,
 };
 
 class Codec {
