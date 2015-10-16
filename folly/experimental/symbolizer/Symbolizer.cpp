@@ -19,7 +19,6 @@
 #include <limits.h>
 #include <cstdio>
 #include <iostream>
-#include <map>
 
 #ifdef __GNUC__
 #include <ext/stdio_filebuf.h>
@@ -266,6 +265,8 @@ constexpr auto kFileColor = SymbolizePrinter::Color::DEFAULT;
 }  // namespace
 
 constexpr char AddressFormatter::bufTemplate[];
+constexpr std::array<const char*, SymbolizePrinter::Color::NUM>
+    SymbolizePrinter::kColorMap;
 
 AddressFormatter::AddressFormatter() {
   memcpy(buf_, bufTemplate, sizeof(buf_));
@@ -348,26 +349,14 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
 }
 
 void SymbolizePrinter::color(SymbolizePrinter::Color color) {
-  static const std::map<SymbolizePrinter::Color, std::string> kColorMap = {
-    { SymbolizePrinter::Color::DEFAULT,  "\x1B[0m" },
-    { SymbolizePrinter::Color::RED,  "\x1B[31m" },
-    { SymbolizePrinter::Color::GREEN,  "\x1B[32m" },
-    { SymbolizePrinter::Color::YELLOW,  "\x1B[33m" },
-    { SymbolizePrinter::Color::BLUE,  "\x1B[34m" },
-    { SymbolizePrinter::Color::CYAN,  "\x1B[36m" },
-    { SymbolizePrinter::Color::WHITE,  "\x1B[37m" },
-    { SymbolizePrinter::Color::PURPLE,  "\x1B[35m" },
-  };
-
   if ((options_ & COLOR) == 0 &&
       ((options_ & COLOR_IF_TTY) == 0 || !isTty_)) {
     return;
   }
-  auto it = kColorMap.find(color);
-  if (it == kColorMap.end()) {
+  if (color < 0 || color >= kColorMap.size()) {
     return;
   }
-  doPrint(it->second);
+  doPrint(kColorMap[color]);
 }
 
 void SymbolizePrinter::println(uintptr_t address,
