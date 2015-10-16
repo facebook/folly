@@ -451,6 +451,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   int getSSLVersion() const;
 
   /**
+   * Get the signature algorithm used in the cert that is used for this
+   * connection.
+   */
+  const char *getSSLCertSigAlgName() const;
+
+  /**
    * Get the certificate size used for this SSL connection.
    */
   int getSSLCertSize() const;
