@@ -250,14 +250,6 @@ TEST(ThreadLocal, InterleavedDestructors) {
   EXPECT_EQ(wVersionMax * 10, Widget::totalVal_);
 }
 
-TEST(ThreadLocalPtr, ODRUseEntryIDkInvalid) {
-  // EntryID::kInvalid is odr-used
-  // see http://en.cppreference.com/w/cpp/language/static
-  const uint32_t* pInvalid =
-    &(threadlocal_detail::StaticMeta<void>::EntryID::kInvalid);
-  EXPECT_EQ(std::numeric_limits<uint32_t>::max(), *pInvalid);
-}
-
 class SimpleThreadCachedInt {
 
   class NewTag;

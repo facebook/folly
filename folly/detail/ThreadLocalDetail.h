@@ -161,7 +161,7 @@ struct ThreadEntry {
   ThreadEntry* prev;
 };
 
-
+constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
 // Held in a singleton to track our global instances.
 // We have one of these per "Tag", by default one for the whole system
@@ -178,20 +178,19 @@ struct StaticMeta {
   // fail). It allows us to keep a constexpr constructor and avoid SIOF.
   class EntryID {
    public:
-    static constexpr uint32_t kInvalid = std::numeric_limits<uint32_t>::max();
     std::atomic<uint32_t> value;
 
-    constexpr EntryID() : value(kInvalid) {
+    constexpr EntryID() : value(kEntryIDInvalid) {
     }
 
     EntryID(EntryID&& other) noexcept : value(other.value.load()) {
-      other.value = kInvalid;
+      other.value = kEntryIDInvalid;
     }
 
     EntryID& operator=(EntryID&& other) {
       assert(this != &other);
       value = other.value.load();
-      other.value = kInvalid;
+      other.value = kEntryIDInvalid;
       return *this;
     }
 
@@ -208,7 +207,7 @@ struct StaticMeta {
 
     uint32_t getOrAllocate() {
       uint32_t id = getOrInvalid();
-      if (id != kInvalid) {
+      if (id != kEntryIDInvalid) {
         return id;
       }
       // The lock inside allocate ensures that a single value is allocated
@@ -356,7 +355,7 @@ struct StaticMeta {
     std::lock_guard<std::mutex> g(meta.lock_);
 
     id = ent->value.load();
-    if (id != EntryID::kInvalid) {
+    if (id != kEntryIDInvalid) {
       return id;
     }
 
@@ -368,7 +367,7 @@ struct StaticMeta {
     }
 
     uint32_t old_id = ent->value.exchange(id);
-    DCHECK_EQ(old_id, EntryID::kInvalid);
+    DCHECK_EQ(old_id, kEntryIDInvalid);
     return id;
   }
 
@@ -379,8 +378,8 @@ struct StaticMeta {
       std::vector<ElementWrapper> elements;
       {
         std::lock_guard<std::mutex> g(meta.lock_);
-        uint32_t id = ent->value.exchange(EntryID::kInvalid);
-        if (id == EntryID::kInvalid) {
+        uint32_t id = ent->value.exchange(kEntryIDInvalid);
+        if (id == kEntryIDInvalid) {
           return;
         }
 
@@ -523,9 +522,6 @@ struct StaticMeta {
     return threadEntry->elements[id];
   }
 };
-
-template <class Tag>
-constexpr uint32_t StaticMeta<Tag>::EntryID::kInvalid;
 
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
 template <class Tag>
