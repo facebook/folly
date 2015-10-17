@@ -506,7 +506,7 @@ class NotificationQueue {
     if (rc < 0) {
       // EAGAIN should pretty much be the only error we can ever get.
       // This means someone else already processed the only available message.
-      assert(errno == EAGAIN);
+      CHECK_EQ(errno, EAGAIN);
       return false;
     }
     assert(value == 1);
