@@ -26,8 +26,6 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include <boost/noncopyable.hpp>
-#include <boost/type_traits.hpp>
 
 namespace folly {
 
@@ -36,8 +34,11 @@ namespace folly {
  * without locks.
  */
 template<class T>
-struct ProducerConsumerQueue : private boost::noncopyable {
+struct ProducerConsumerQueue {
   typedef T value_type;
+
+  ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
+  ProducerConsumerQueue& operator = (const ProducerConsumerQueue&) = delete;
 
   // size must be >= 2.
   //
@@ -60,7 +61,7 @@ struct ProducerConsumerQueue : private boost::noncopyable {
     // We need to destruct anything that may still exist in our queue.
     // (No real synchronization needed at destructor time: only one
     // thread can be doing this.)
-    if (!boost::has_trivial_destructor<T>::value) {
+    if (!std::is_trivially_destructible<T>::value) {
       size_t read = readIndex_;
       size_t end = writeIndex_;
       while (read != end) {
