@@ -98,6 +98,11 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
   // Return the V6 mapped representation of the address.
   IPAddressV6 createIPv6() const;
 
+  /**
+   * Return a V6 address in the format of an 6To4 address.
+   */
+  IPAddressV6 getIPv6For6To4() const;
+
   // Return the long (network byte order) representation of the address.
   uint32_t toLong() const {
     return toAddr().s_addr;
