@@ -644,3 +644,21 @@ TEST(NotificationQueueTest, UseAfterFork) {
   EXPECT_EQ(5678, consumer.messages.front());
   consumer.messages.pop_front();
 }
+
+TEST(NotificationQueueConsumer, make) {
+  int value = 0;
+  EventBase evb;
+  NotificationQueue<int> queue(32);
+
+  auto consumer = decltype(queue)::Consumer::make([&](
+      int&& msg) noexcept { value = msg; });
+
+  consumer->startConsuming(&evb, &queue);
+
+  int const newValue = 10;
+  queue.tryPutMessage(newValue);
+
+  evb.loopOnce();
+
+  EXPECT_EQ(newValue, value);
+}

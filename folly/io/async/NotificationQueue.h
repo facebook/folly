@@ -77,6 +77,11 @@ class NotificationQueue {
         destroyedFlagPtr_(nullptr),
         maxReadAtOnce_(kDefaultMaxReadAtOnce) {}
 
+    // create a consumer in-place, without the need to build new class
+    template <typename TCallback>
+    static std::unique_ptr<Consumer, DelayedDestruction::Destructor> make(
+        TCallback&& callback);
+
     /**
      * messageAvailable() will be invoked whenever a new
      * message is available from the pipe.
@@ -796,6 +801,51 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
     queue_->draining_ = false;
   }
   return true;
+}
+
+/**
+ * Creates a NotificationQueue::Consumer wrapping a function object
+ * Modeled after AsyncTimeout::make
+ *
+ */
+
+namespace detail {
+
+template <typename MessageT, typename TCallback>
+struct notification_queue_consumer_wrapper
+    : public NotificationQueue<MessageT>::Consumer {
+
+  template <typename UCallback>
+  explicit notification_queue_consumer_wrapper(UCallback&& callback)
+      : callback_(std::forward<UCallback>(callback)) {}
+
+  // we are being stricter here and requiring noexcept for callback
+  void messageAvailable(MessageT&& message) override {
+    static_assert(
+      noexcept(std::declval<TCallback>()(std::forward<MessageT>(message))),
+      "callback must be declared noexcept, e.g.: `[]() noexcept {}`"
+    );
+
+    callback_(std::forward<MessageT>(message));
+  }
+
+ private:
+  TCallback callback_;
+};
+
+} // namespace detail
+
+template <typename MessageT>
+template <typename TCallback>
+std::unique_ptr<typename NotificationQueue<MessageT>::Consumer,
+                DelayedDestruction::Destructor>
+NotificationQueue<MessageT>::Consumer::make(TCallback&& callback) {
+  return std::unique_ptr<NotificationQueue<MessageT>::Consumer,
+                         DelayedDestruction::Destructor>(
+      new detail::notification_queue_consumer_wrapper<
+          MessageT,
+          typename std::decay<TCallback>::type>(
+          std::forward<TCallback>(callback)));
 }
 
 } // folly
