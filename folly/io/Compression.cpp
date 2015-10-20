@@ -36,6 +36,10 @@
 #include <lzma.h>
 #endif
 
+#if FOLLY_HAVE_LIBZSTD
+#include <zstd.h>
+#endif
+
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
@@ -919,6 +923,83 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 
 #endif  // FOLLY_HAVE_LIBLZMA
 
+#ifdef FOLLY_HAVE_LIBZSTD
+
+/**
+ * ZSTD_BETA compression
+ */
+class ZSTDCodec final : public Codec {
+ public:
+  static std::unique_ptr<Codec> create(int level, CodecType);
+  explicit ZSTDCodec(int level, CodecType type);
+
+ private:
+  bool doNeedsUncompressedLength() const override;
+  std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
+  std::unique_ptr<IOBuf> doUncompress(
+      const IOBuf* data,
+      uint64_t uncompressedLength) override;
+};
+
+std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
+  return make_unique<ZSTDCodec>(level, type);
+}
+
+ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
+  DCHECK(type == CodecType::ZSTD_BETA);
+}
+
+bool ZSTDCodec::doNeedsUncompressedLength() const {
+  return true;
+}
+
+std::unique_ptr<IOBuf> ZSTDCodec::doCompress(const IOBuf* data) {
+  size_t rc;
+  size_t maxCompressedLength = ZSTD_compressBound(data->length());
+  auto out = IOBuf::createCombined(maxCompressedLength);
+
+  CHECK_EQ(out->length(), 0);
+
+  rc = ZSTD_compress(
+      out->writableTail(), out->capacity(), data->data(), data->length());
+
+  if (ZSTD_isError(rc)) {
+    throw std::runtime_error(to<std::string>(
+          "ZSTD compression returned an error: ",
+          ZSTD_getErrorName(rc)));
+  }
+
+  out->append(rc);
+  CHECK_EQ(out->length(), rc);
+
+  return out;
+}
+
+std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(const IOBuf* data,
+                                               uint64_t uncompressedLength) {
+  size_t rc;
+  auto out = IOBuf::createCombined(uncompressedLength);
+
+  CHECK_GE(out->capacity(), uncompressedLength);
+  CHECK_EQ(out->length(), 0);
+
+  rc = ZSTD_decompress(
+      out->writableTail(), out->capacity(), data->data(), data->length());
+
+  if (ZSTD_isError(rc)) {
+    throw std::runtime_error(to<std::string>(
+          "ZSTD decompression returned an error: ",
+          ZSTD_getErrorName(rc)));
+  }
+
+  out->append(rc);
+  CHECK_EQ(out->length(), rc);
+
+  return out;
+}
+
+#endif  // FOLLY_HAVE_LIBZSTD
+
 }  // namespace
 
 std::unique_ptr<Codec> getCodec(CodecType type, int level) {
@@ -958,6 +1039,12 @@ std::unique_ptr<Codec> getCodec(CodecType type, int level) {
     LZMA2Codec::create,
 #else
     nullptr,
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBZSTD
+    ZSTDCodec::create,
+#else
     nullptr,
 #endif
   };
