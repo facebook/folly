@@ -243,6 +243,7 @@ struct SingletonHolder : public SingletonHolderBase {
 
   inline T* get();
   inline std::weak_ptr<T> get_weak();
+  inline std::shared_ptr<T> try_get();
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
@@ -494,7 +495,7 @@ class Singleton {
   // Avoid holding these shared_ptrs beyond the scope of a function;
   // don't put them in member variables, always use try_get() instead
   static std::shared_ptr<T> try_get() {
-    auto ret = get_weak().lock();
+    auto ret = getEntry().try_get();
     if (!ret) {
       LOG(DFATAL) <<
         "folly::Singleton<" << getEntry().type().name() <<

@@ -76,7 +76,8 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
 
 template <typename T>
 T* SingletonHolder<T>::get() {
-  if (LIKELY(state_ == SingletonHolderState::Living)) {
+  if (LIKELY(state_.load(std::memory_order_acquire) ==
+             SingletonHolderState::Living)) {
     return instance_ptr_;
   }
   createInstance();
@@ -93,11 +94,22 @@ T* SingletonHolder<T>::get() {
 
 template <typename T>
 std::weak_ptr<T> SingletonHolder<T>::get_weak() {
-  if (UNLIKELY(state_ != SingletonHolderState::Living)) {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
     createInstance();
   }
 
   return instance_weak_;
+}
+
+template <typename T>
+std::shared_ptr<T> SingletonHolder<T>::try_get() {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
+    createInstance();
+  }
+
+  return instance_weak_.lock();
 }
 
 template <typename T>
