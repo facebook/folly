@@ -240,8 +240,10 @@ FOLLY_NAMESPACE_STD_BEGIN
 template <class T, class U>
   struct pair;
 #ifndef _GLIBCXX_USE_FB
+FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
 template <class T, class R, class A>
   class basic_string;
+FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 #else
 template <class T, class R, class A, class S>
   class basic_string;
@@ -250,8 +252,10 @@ template <class T, class A>
   class vector;
 template <class T, class A>
   class deque;
+FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
 template <class T, class A>
   class list;
+FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 template <class T, class C, class A>
   class set;
 template <class K, class V, class C, class A>
