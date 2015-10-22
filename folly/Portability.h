@@ -17,6 +17,8 @@
 #ifndef FOLLY_PORTABILITY_H_
 #define FOLLY_PORTABILITY_H_
 
+#include <string.h>
+
 #include <cstddef>
 
 #ifndef FOLLY_NO_CONFIG
@@ -375,6 +377,13 @@ inline void asm_pause() {
 #endif
 }
 
+constexpr size_t constexpr_strlen(const char* s) {
+#if defined(__clang__)
+  return __builtin_strlen(s);
+#else
+  return strlen(s);
+#endif
 }
 
+} // namespace folly
 #endif // FOLLY_PORTABILITY_H_

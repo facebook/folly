@@ -200,15 +200,10 @@ public:
   constexpr Range(Iter start, size_t size)
       : b_(start), e_(start + size) { }
 
-#if FOLLY_HAVE_CONSTEXPR_STRLEN
   template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   constexpr /* implicit */ Range(Iter str)
-      : b_(str), e_(str + strlen(str)) {}
-#else
-  template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
-  /* implicit */ Range(Iter str)
-      : b_(str), e_(str + strlen(str)) {}
-#endif
+      : b_(str), e_(str + constexpr_strlen(str)) {}
+
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   /* implicit */ Range(const std::string& str)
       : b_(str.data()), e_(b_ + str.size()) {}

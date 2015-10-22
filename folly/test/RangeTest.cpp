@@ -290,7 +290,6 @@ TEST(StringPiece, InvalidRange) {
   EXPECT_THROW(a.subpiece(6), std::out_of_range);
 }
 
-#if FOLLY_HAVE_CONSTEXPR_STRLEN
 constexpr char helloArray[] = "hello";
 
 TEST(StringPiece, Constexpr) {
@@ -300,7 +299,6 @@ TEST(StringPiece, Constexpr) {
   constexpr StringPiece hello2(helloArray);
   EXPECT_EQ("hello", hello2);
 }
-#endif
 
 TEST(StringPiece, Prefix) {
   StringPiece a("hello");
