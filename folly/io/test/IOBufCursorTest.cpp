@@ -683,6 +683,33 @@ TEST(IOBuf, StringOperations) {
     EXPECT_STREQ("hello", curs.readTerminatedString().c_str());
   }
 
+  // Test reading a null-terminated string from a chain that doesn't contain the
+  // terminator
+  {
+    std::unique_ptr<IOBuf> buf(IOBuf::create(8));
+    Appender app(buf.get(), 0);
+    app.push(reinterpret_cast<const uint8_t*>("hello"), 5);
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(std::move(buf));
+
+    Cursor curs(chain.get());
+    EXPECT_THROW(curs.readTerminatedString(),
+                 std::out_of_range);
+  }
+
+  // Test reading a null-terminated string past the maximum length
+  {
+    std::unique_ptr<IOBuf> buf(IOBuf::create(8));
+    Appender app(buf.get(), 0);
+    app.push(reinterpret_cast<const uint8_t*>("hello\0"), 6);
+    std::unique_ptr<IOBuf> chain(IOBuf::create(8));
+    chain->prependChain(std::move(buf));
+
+    Cursor curs(chain.get());
+    EXPECT_THROW(curs.readTerminatedString('\0', 3),
+                 std::length_error);
+  }
+
   // Test reading a two fixed-length strings from a single buffer with an extra
   // uint8_t at the end
   {

@@ -212,7 +212,7 @@ class CursorBase {
       size_t maxLength = std::numeric_limits<size_t>::max()) {
     std::string str;
 
-    for (;;) {
+    while (!isAtEnd()) {
       const uint8_t* buf = data();
       size_t buflen = length();
 
@@ -235,6 +235,7 @@ class CursorBase {
 
       skip(i);
     }
+    throw std::out_of_range("terminator not found");
   }
 
   size_t skipAtMost(size_t len) {
