@@ -54,13 +54,16 @@ def generate(f):
     f.write("""
 #include <folly/Portability.h>
 
-#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
 #include <stdint.h>
+
+#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
 #include <x86intrin.h>
+#endif
 
 namespace folly {
 namespace detail {
 
+#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
 extern const __m128i groupVarintSSEMasks[] = {
 """)
 
@@ -82,6 +85,7 @@ extern const __m128i groupVarintSSEMasks[] = {
             "static_cast<int64_t>(0x{3:08x}{2:08x})}},\n".format(*vals))
 
     f.write("};\n"
+            "#endif /*#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)*/\n"
             "\n"
             "extern const uint8_t groupVarintLengths[] = {\n")
 
@@ -98,7 +102,6 @@ extern const __m128i groupVarintSSEMasks[] = {
 
 }  // namespace detail
 }  // namespace folly
-#endif /* (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2) */
 """)
 
 def main():
