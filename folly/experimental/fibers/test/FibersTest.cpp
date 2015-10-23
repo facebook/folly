@@ -1449,3 +1449,58 @@ BENCHMARK(FiberManagerBasicOneAwait, iters) {
 BENCHMARK(FiberManagerBasicFiveAwaits, iters) {
   runBenchmark(5, iters);
 }
+
+BENCHMARK(FiberManagerAllocateDeallocatePattern, iters) {
+  static const size_t kNumAllocations = 10000;
+
+  FiberManager::Options opts;
+  opts.maxFibersPoolSize = 0;
+
+  FiberManager fiberManager(folly::make_unique<SimpleLoopController>(), opts);
+
+  for (size_t iter = 0; iter < iters; ++iter) {
+    EXPECT_EQ(0, fiberManager.fibersPoolSize());
+
+    size_t fibersRun = 0;
+
+    for (size_t i = 0; i < kNumAllocations; ++i) {
+      fiberManager.addTask(
+        [&fibersRun] {
+          ++fibersRun;
+        }
+      );
+      fiberManager.loopUntilNoReady();
+    }
+
+    EXPECT_EQ(10000, fibersRun);
+    EXPECT_EQ(0, fiberManager.fibersPoolSize());
+  }
+}
+
+BENCHMARK(FiberManagerAllocateLargeChunk, iters) {
+  static const size_t kNumAllocations = 10000;
+
+  FiberManager::Options opts;
+  opts.maxFibersPoolSize = 0;
+
+  FiberManager fiberManager(folly::make_unique<SimpleLoopController>(), opts);
+
+  for (size_t iter = 0; iter < iters; ++iter) {
+    EXPECT_EQ(0, fiberManager.fibersPoolSize());
+
+    size_t fibersRun = 0;
+
+    for (size_t i = 0; i < kNumAllocations; ++i) {
+      fiberManager.addTask(
+        [&fibersRun] {
+          ++fibersRun;
+        }
+      );
+    }
+
+    fiberManager.loopUntilNoReady();
+
+    EXPECT_EQ(10000, fibersRun);
+    EXPECT_EQ(0, fiberManager.fibersPoolSize());
+  }
+}
