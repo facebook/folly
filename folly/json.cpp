@@ -482,10 +482,23 @@ dynamic parseNumber(Input& in) {
   }
 
   auto const wasE = *in == 'e' || *in == 'E';
+
+  constexpr const char* maxInt = "9223372036854775807";
+  constexpr const char* minInt = "9223372036854775808";
+  constexpr auto maxIntLen = __builtin_strlen(maxInt);
+
   if (*in != '.' && !wasE) {
-    auto val = to<int64_t>(integral);
-    in.skipWhitespace();
-    return val;
+    if (LIKELY(!in.getOpts().double_fallback || integral.size() < maxIntLen) ||
+         (integral.size() == maxIntLen &&
+           (integral <= maxInt || (integral == minInt && negative)))) {
+      auto val = to<int64_t>(integral);
+      in.skipWhitespace();
+      return val;
+    } else {
+      auto val = to<double>(integral);
+      in.skipWhitespace();
+      return val;
+    }
   }
 
   auto end = !wasE ? (++in, in.skipDigits().end()) : in.begin();

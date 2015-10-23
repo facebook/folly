@@ -64,6 +64,7 @@ namespace json {
       , allow_nan_inf(false)
       , double_mode(double_conversion::DoubleToStringConverter::SHORTEST)
       , double_num_digits(0) // ignored when mode is SHORTEST
+      , double_fallback(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -104,6 +105,10 @@ namespace json {
     // toAppend implementation for floating point for more info
     double_conversion::DoubleToStringConverter::DtoaMode double_mode;
     unsigned int double_num_digits;
+
+    // Fallback to double when a value that looks like integer is too big to
+    // fit in an int64_t. Can result in loss a of precision.
+    bool double_fallback;
   };
 
   /*
