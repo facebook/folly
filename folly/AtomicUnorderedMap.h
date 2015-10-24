@@ -210,7 +210,7 @@ struct AtomicUnorderedInsertMap {
       const Allocator& alloc = Allocator())
     : allocator_(alloc)
   {
-    size_t capacity = maxSize / std::max(1.0f, maxLoadFactor) + 128;
+    size_t capacity = maxSize / std::min(1.0f, maxLoadFactor) + 128;
     size_t avail = size_t{1} << (8 * sizeof(IndexType) - 2);
     if (capacity > avail && maxSize < avail) {
       // we'll do our best

@@ -134,6 +134,26 @@ TYPED_TEST(AtomicUnorderedInsertMapTest, basic) {
   EXPECT_TRUE(a != b);
 }
 
+TEST(AtomicUnorderedInsertMap, load_factor) {
+  AtomicUnorderedInsertMap<int, bool> m(5000, 0.5f);
+
+  // we should be able to put in much more than 5000 things because of
+  // our load factor request
+  for (int i = 0; i < 10000; ++i) {
+    m.emplace(i, true);
+  }
+}
+
+TEST(AtomicUnorderedInsertMap, capacity_exceeded) {
+  AtomicUnorderedInsertMap<int, bool> m(5000, 1.0f);
+
+  EXPECT_THROW({
+    for (int i = 0; i < 6000; ++i) {
+      m.emplace(i, false);
+    }
+  }, std::bad_alloc);
+}
+
 TYPED_TEST(AtomicUnorderedInsertMapTest, value_mutation) {
   UIM<int, MutableAtom<int>, TypeParam> m(100);
 
