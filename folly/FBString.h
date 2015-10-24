@@ -113,8 +113,6 @@ namespace folly {
 #  endif
 # endif
 #elif defined (__GNUC__) && \
-      (__GNUC__ == 4) && \
-      (__GNUC_MINOR__ >= 8) && \
       __SANITIZE_ADDRESS__
 # define FBSTRING_DISABLE_ADDRESS_SANITIZER \
     __attribute__((__no_address_safety_analysis__, __noinline__))
