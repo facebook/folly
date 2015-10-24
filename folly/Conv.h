@@ -819,7 +819,10 @@ toAppend(const Ts&... vs) {
 }
 
 #ifdef _MSC_VER
-// Special case pid_t on windows.
+// Special case pid_t on MSVC, because it's a void* rather than an
+// integral type. We can't do a global special case because this is already
+// dangerous enough (as most pointers will implicitly convert to a void*)
+// just doing it for MSVC.
 template<class Tgt>
 void toAppend(const pid_t a, Tgt* res) {
   toAppend((uint64_t)a, res);
