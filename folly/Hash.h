@@ -17,11 +17,12 @@
 #ifndef FOLLY_BASE_HASH_H_
 #define FOLLY_BASE_HASH_H_
 
+#include <cstdint>
 #include <cstring>
-#include <stdint.h>
 #include <string>
-#include <utility>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 #include <folly/ApplyTuple.h>
 #include <folly/SpookyHashV1.h>
@@ -73,6 +74,8 @@ uint64_t hash_range(Iter begin,
   return hash;
 }
 
+inline uint32_t twang_32from64(uint64_t key);
+
 template <class Hasher, typename T, typename... Ts>
 size_t hash_combine_generic(const T& t, const Ts&... ts) {
   size_t seed = Hasher::hash(t);
@@ -80,7 +83,11 @@ size_t hash_combine_generic(const T& t, const Ts&... ts) {
     return seed;
   }
   size_t remainder = hash_combine_generic<Hasher>(ts...);
-  return hash_128_to_64(seed, remainder);
+  /* static */ if (sizeof(size_t) == sizeof(uint32_t)) {
+    return twang_32from64((uint64_t(seed) << 32) | remainder);
+  } else {
+    return static_cast<size_t>(hash_128_to_64(seed, remainder));
+  }
 }
 
 // Simply uses std::hash to hash.  Note that std::hash is not guaranteed
@@ -368,19 +375,20 @@ template<> struct hasher<uint32_t> {
 
 template<> struct hasher<int64_t> {
   size_t operator()(int64_t key) const {
-    return hash::twang_mix64(uint64_t(key));
+    return static_cast<size_t>(hash::twang_mix64(uint64_t(key)));
   }
 };
 
 template<> struct hasher<uint64_t> {
   size_t operator()(uint64_t key) const {
-    return hash::twang_mix64(key);
+    return static_cast<size_t>(hash::twang_mix64(key));
   }
 };
 
 template<> struct hasher<std::string> {
   size_t operator()(const std::string& key) const {
-    return hash::SpookyHashV2::Hash64(key.data(), key.size(), 0);
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(key.data(), key.size(), 0));
   }
 };
 
