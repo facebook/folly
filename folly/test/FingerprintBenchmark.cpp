@@ -124,25 +124,24 @@ void fastFingerprintTerms128(int num_iterations, int num_ids) {
 // the benchmark without providing any useful data.
 
 int main(int argc, char** argv) {
+  # define BM(name, min, max) \
+  for (size_t i = min; i <= max; i *= 2) { \
+    addBenchmark( \
+        __FILE__, \
+        sformat("{}_{}", #name, i).c_str(), \
+        [=](int iters) { name(iters, i); return iters; }); \
+  }
+  BM(fastFingerprintIds64, 1, kMaxIds)
+  BM(slowFingerprintIds64, 1, kMaxIds)
+  BM(fastFingerprintIds96, 1, kMaxIds)
+  BM(fastFingerprintIds128, 1, kMaxIds)
+  BM(fastFingerprintTerms64, 1, kMaxTerms)
+  BM(slowFingerprintTerms64, 1, kMaxTerms)
+  BM(fastFingerprintTerms96, 1, kMaxTerms)
+  BM(fastFingerprintTerms128, 1, kMaxTerms)
+  # undef BM
+
   initialize();
-    # define BM(name, min, max) \
-    for (size_t i = min; i <= max; i *= 2) { \
-      addBenchmark( \
-          __FILE__, \
-          sformat("{}_{}", #name, i).c_str(), \
-          [=](int iters) { name(iters, i); return iters; }); \
-    }
-
-      BM(fastFingerprintIds64, 1, kMaxIds)
-      BM(slowFingerprintIds64, 1, kMaxIds)
-      BM(fastFingerprintIds96, 1, kMaxIds)
-      BM(fastFingerprintIds128, 1, kMaxIds)
-      BM(fastFingerprintTerms64, 1, kMaxTerms)
-      BM(slowFingerprintTerms64, 1, kMaxTerms)
-      BM(fastFingerprintTerms96, 1, kMaxTerms)
-      BM(fastFingerprintTerms128, 1, kMaxTerms)
-      # undef BM
-
-    runBenchmarks();
-    return 0;
+  runBenchmarks();
+  return 0;
 }
