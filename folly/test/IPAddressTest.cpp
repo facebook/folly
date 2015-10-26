@@ -631,6 +631,22 @@ TEST(IPAddress, fromBinaryV4) {
                IPAddressFormatException);
 }
 
+TEST(IPAddress, toBinaryV4) {
+  for (auto& tc : provideToLong) {
+    SCOPED_TRACE(tc.first);
+    union {
+      uint8_t u8[4];
+      uint32_t u32;
+    } data;
+    data.u32 = Endian::big(tc.second);
+    ByteRange bytes(data.u8, 4);
+
+    auto fromBin = IPAddressV4::fromBinary(bytes);
+    auto toBin = fromBin.toBinary();
+    EXPECT_EQ(bytes, toBin);
+  }
+}
+
 static const vector<pair<string, vector<uint8_t> > > provideBinary16Bytes = {
   {"::0",
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -675,6 +691,17 @@ TEST(IPAddress, fromBinaryV6) {
                IPAddressFormatException);
   EXPECT_THROW(IPAddressV6::fromBinary(ByteRange(data, 20)),
                IPAddressFormatException);
+}
+
+TEST(IPAddress, toBinaryV6) {
+  for (auto& tc : provideBinary16Bytes) {
+    SCOPED_TRACE(tc.first);
+    ByteRange bytes(&tc.second.front(), tc.second.size());
+
+    auto fromBin = IPAddressV6::fromBinary(bytes);
+    auto toBin = fromBin.toBinary();
+    EXPECT_EQ(bytes, toBin);
+  }
 }
 
 TEST_P(IPAddressFlagTest, IsLoopback) {

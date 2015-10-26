@@ -97,6 +97,13 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   }
 
   /**
+   * Returns the address as a Range.
+   */
+  ByteRange toBinary() const {
+    return ByteRange((const unsigned char *) &addr_.in6Addr_.s6_addr, 16);
+  }
+
+  /**
    * Default constructor for IPAddressV6.
    *
    * The address value will be ::0
