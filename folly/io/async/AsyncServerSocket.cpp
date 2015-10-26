@@ -92,7 +92,7 @@ void AsyncServerSocket::RemoteAcceptor::messageAvailable(
     case MessageType::MSG_NEW_CONN:
     {
       if (connectionEventCallback_) {
-        connectionEventCallback_->onConnectionDequeuedByAcceptCallback(
+        connectionEventCallback_->onConnectionDequeuedByAcceptorCallback(
             msg.fd, msg.address);
       }
       callback_->connectionAccepted(msg.fd, msg.address);
@@ -824,8 +824,9 @@ void AsyncServerSocket::dispatchSocket(int socket,
   while (true) {
     if (info->consumer->getQueue()->tryPutMessageNoThrow(std::move(msg))) {
       if (connectionEventCallback_) {
-        connectionEventCallback_->onConnectionEnqueuedForAcceptCallback(socket,
-                                                                        addr);
+        connectionEventCallback_->onConnectionEnqueuedForAcceptorCallback(
+            socket,
+            addr);
       }
       // Success! return.
       return;

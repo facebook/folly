@@ -95,18 +95,18 @@ class AsyncServerSocket : public DelayedDestruction
                                      const SocketAddress& addr) noexcept = 0;
 
     /**
-     * onConnectionEnqueuedForAcceptCallback() is called when the
+     * onConnectionEnqueuedForAcceptorCallback() is called when the
      * connection is successfully enqueued for an AcceptCallback to pick up.
      */
-    virtual void onConnectionEnqueuedForAcceptCallback(
+    virtual void onConnectionEnqueuedForAcceptorCallback(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
 
     /**
-     * onConnectionDequeuedByAcceptCallback() is called when the
+     * onConnectionDequeuedByAcceptorCallback() is called when the
      * connection is successfully dequeued by an AcceptCallback.
      */
-    virtual void onConnectionDequeuedByAcceptCallback(
+    virtual void onConnectionDequeuedByAcceptorCallback(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
 

@@ -1480,14 +1480,14 @@ class TestConnectionEventCallback :
     connectionDropped_++;
   }
 
-  virtual void onConnectionEnqueuedForAcceptCallback(
+  virtual void onConnectionEnqueuedForAcceptorCallback(
       const int socket,
       const SocketAddress& addr) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionEnqueuedForAcceptCallback_++;
   }
 
-  virtual void onConnectionDequeuedByAcceptCallback(
+  virtual void onConnectionDequeuedByAcceptorCallback(
       const int socket,
       const SocketAddress& addr) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
