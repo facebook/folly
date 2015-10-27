@@ -200,7 +200,7 @@ class AsyncServerSocket : public DelayedDestruction
 
   static const uint32_t kDefaultMaxAcceptAtOnce = 30;
   static const uint32_t kDefaultCallbackAcceptAtOnce = 5;
-  static const uint32_t kDefaultMaxMessagesInQueue = 0;
+  static const uint32_t kDefaultMaxMessagesInQueue = 1024;
   /**
    * Create a new AsyncServerSocket with the specified EventBase.
    *
@@ -562,6 +562,23 @@ class AsyncServerSocket : public DelayedDestruction
    */
   uint64_t getNumDroppedConnections() const {
     return numDroppedConnections_;
+  }
+
+  /**
+   * Get the current number of unprocessed messages in NotificationQueue.
+   *
+   * This method must be invoked from the AsyncServerSocket's primary
+   * EventBase thread.  Use EventBase::runInEventBaseThread() to schedule the
+   * operation in the correct EventBase if your code is not in the server
+   * socket's primary EventBase.
+   */
+  int64_t getNumPendingMessagesInQueue() const {
+    assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
+    int64_t numMsgs = 0;
+    for (const auto& callback : callbacks_) {
+      numMsgs += callback.consumer->getQueue()->size();
+    }
+    return numMsgs;
   }
 
   /**

@@ -2195,3 +2195,46 @@ TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
   ASSERT_EQ(connectionEventCallback.getBackoffEnded(), 0);
   ASSERT_EQ(connectionEventCallback.getBackoffError(), 0);
 }
+
+/**
+ * Test AsyncServerSocket::getNumPendingMessagesInQueue()
+ */
+TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
+  EventBase eventBase;
+
+  // Counter of how many connections have been accepted
+  int count = 0;
+
+  // Create a server socket
+  auto serverSocket(AsyncServerSocket::newSocket(&eventBase));
+  serverSocket->bind(0);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  // Add a callback to accept connections
+  TestAcceptCallback acceptCallback;
+  acceptCallback.setConnectionAcceptedFn(
+      [&](int fd, const folly::SocketAddress& addr) {
+        count++;
+        CHECK_EQ(4 - count, serverSocket->getNumPendingMessagesInQueue());
+
+        if (count == 4) {
+          // all messages are processed, remove accept callback
+          serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+        }
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+    serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
+  });
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  // Connect to the server socket, 4 clients, there are 4 connections
+  auto socket1(AsyncSocket::newSocket(&eventBase, serverAddress));
+  auto socket2(AsyncSocket::newSocket(&eventBase, serverAddress));
+  auto socket3(AsyncSocket::newSocket(&eventBase, serverAddress));
+  auto socket4(AsyncSocket::newSocket(&eventBase, serverAddress));
+
+  eventBase.loop();
+}
