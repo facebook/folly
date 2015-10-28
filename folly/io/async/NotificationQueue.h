@@ -419,7 +419,7 @@ class NotificationQueue {
     return true;
   }
 
-  int size() {
+  size_t size() {
     folly::SpinLockGuard g(spinlock_);
     return queue_.size();
   }
