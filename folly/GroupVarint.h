@@ -23,7 +23,7 @@
 
 #include <folly/Portability.h>
 
-#if FOLLY_X64 || defined(__i386__)
+#if FOLLY_X64 || defined(__i386__) || FOLLY_PPC64
 #define HAVE_GROUP_VARINT 1
 
 #include <cstdint>
@@ -617,5 +617,5 @@ typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
 
 }  // namespace folly
 
-#endif /* FOLLY_X64 || defined(__i386__) */
+#endif /* FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 */
 #endif /* FOLLY_GROUPVARINT_H_ */
