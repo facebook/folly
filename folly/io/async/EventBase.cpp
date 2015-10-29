@@ -459,12 +459,14 @@ bool EventBase::bumpHandlingTime() {
     " (loop) latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
   if(nothingHandledYet()) {
     latestLoopCnt_ = nextLoopCnt_;
-    // set the time
-    startWork_ = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (enableTimeMeasurement_) {
+      // set the time
+      startWork_ = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
 
-    VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__ <<
-      " (loop) startWork_ " << startWork_;
+      VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__ <<
+        " (loop) startWork_ " << startWork_;
+    }
     return true;
   }
   return false;
