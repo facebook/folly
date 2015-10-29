@@ -101,10 +101,12 @@ typedef int32_t     ValueT;
 typedef AtomicHashMap<KeyT,ValueT> AHMapT;
 typedef AHMapT::value_type RecordT;
 typedef AtomicHashArray<KeyT,ValueT> AHArrayT;
-
 AHArrayT::Config config;
+typedef folly::QuadraticProbingAtomicHashMap<KeyT,ValueT> QPAHMapT;
+QPAHMapT::Config qpConfig;
 static AHArrayT::SmartPtr globalAHA(nullptr);
 static std::unique_ptr<AHMapT> globalAHM;
+static std::unique_ptr<QPAHMapT> globalQPAHM;
 
 // Generate a deterministic value based on an input key
 static int genVal(int key) {
@@ -349,6 +351,15 @@ void* insertThread(void* jj) {
   for (int i = 0; i < numOpsPerThread; ++i) {
     KeyT key = randomizeKey(i + j * numOpsPerThread);
     globalAHM->insert(key, genVal(key));
+  }
+  return nullptr;
+}
+
+void* qpInsertThread(void* jj) {
+  int64_t j = (int64_t) jj;
+  for (int i = 0; i < numOpsPerThread; ++i) {
+    KeyT key = randomizeKey(i + j * numOpsPerThread);
+    globalQPAHM->insert(key, genVal(key));
   }
   return nullptr;
 }
@@ -715,6 +726,19 @@ void loadGlobalAhm() {
   EXPECT_EQ(globalAHM->size(), FLAGS_numBMElements);
 }
 
+void loadGlobalQPAhm() {
+  std::cout << "loading global QPAHM with " << FLAGS_numThreads
+            << " threads...\n";
+  uint64_t start = nowInUsec();
+  globalQPAHM.reset(new QPAHMapT(maxBMElements, qpConfig));
+  numOpsPerThread = FLAGS_numBMElements / FLAGS_numThreads;
+  runThreads(qpInsertThread);
+  uint64_t elapsed = nowInUsec() - start;
+  std::cout << "  took " << elapsed / 1000 << " ms (" <<
+    (elapsed * 1000 / FLAGS_numBMElements) << " ns/insert).\n";
+  EXPECT_EQ(globalQPAHM->size(), FLAGS_numBMElements);
+}
+
 }
 
 BENCHMARK(st_aha_find, iters) {
@@ -730,6 +754,14 @@ BENCHMARK(st_ahm_find, iters) {
   for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i);
     folly::doNotOptimizeAway(globalAHM->find(key)->second);
+  }
+}
+
+BENCHMARK(st_qpahm_find, iters) {
+  CHECK_LE(iters, FLAGS_numBMElements);
+  for (size_t i = 0; i < iters; i++) {
+    KeyT key = randomizeKey(i);
+    folly::doNotOptimizeAway(globalQPAHM->find(key)->second);
   }
 }
 
@@ -749,11 +781,33 @@ BENCHMARK(mt_ahm_miss, iters) {
   });
 }
 
+BENCHMARK(mt_qpahm_miss, iters) {
+  CHECK_LE(iters, FLAGS_numBMElements);
+  numOpsPerThread = iters / FLAGS_numThreads;
+  runThreads([](void* jj) -> void* {
+    int64_t j = (int64_t) jj;
+    while (!runThreadsCreatedAllThreads.load());
+    for (int i = 0; i < numOpsPerThread; ++i) {
+      KeyT key = i + j * numOpsPerThread * 100;
+      folly::doNotOptimizeAway(globalQPAHM->find(key) == globalQPAHM->end());
+    }
+    return nullptr;
+  });
+}
+
 BENCHMARK(st_ahm_miss, iters) {
   CHECK_LE(iters, FLAGS_numBMElements);
   for (size_t i = 0; i < iters; i++) {
     KeyT key = randomizeKey(i + iters * 100);
     folly::doNotOptimizeAway(globalAHM->find(key) == globalAHM->end());
+  }
+}
+
+BENCHMARK(st_qpahm_miss, iters) {
+  CHECK_LE(iters, FLAGS_numBMElements);
+  for (size_t i = 0; i < iters; i++) {
+    KeyT key = randomizeKey(i + iters * 100);
+    folly::doNotOptimizeAway(globalQPAHM->find(key) == globalQPAHM->end());
   }
 }
 
@@ -770,6 +824,26 @@ BENCHMARK(mt_ahm_find_insert_mix, iters) {
       } else {
         KeyT key = randomizeKey(i + j * numOpsPerThread * 100);
         globalAHM->insert(key, genVal(key));
+      }
+    }
+    return nullptr;
+  });
+}
+
+
+BENCHMARK(mt_qpahm_find_insert_mix, iters) {
+  CHECK_LE(iters, FLAGS_numBMElements);
+  numOpsPerThread = iters / FLAGS_numThreads;
+  runThreads([](void* jj) -> void* {
+    int64_t j = (int64_t) jj;
+    while (!runThreadsCreatedAllThreads.load());
+    for (int i = 0; i < numOpsPerThread; ++i) {
+      if (i % 128) {  // ~1% insert mix
+        KeyT key = randomizeKey(i + j * numOpsPerThread);
+        folly::doNotOptimizeAway(globalQPAHM->find(key)->second);
+      } else {
+        KeyT key = randomizeKey(i + j * numOpsPerThread * 100);
+        globalQPAHM->insert(key, genVal(key));
       }
     }
     return nullptr;
@@ -804,6 +878,20 @@ BENCHMARK(mt_ahm_find, iters) {
   });
 }
 
+BENCHMARK(mt_qpahm_find, iters) {
+  CHECK_LE(iters, FLAGS_numBMElements);
+  numOpsPerThread = iters / FLAGS_numThreads;
+  runThreads([](void* jj) -> void* {
+    int64_t j = (int64_t) jj;
+    while (!runThreadsCreatedAllThreads.load());
+    for (int i = 0; i < numOpsPerThread; ++i) {
+      KeyT key = randomizeKey(i + j * numOpsPerThread);
+      folly::doNotOptimizeAway(globalQPAHM->find(key)->second);
+    }
+    return nullptr;
+  });
+}
+
 KeyT k;
 BENCHMARK(st_baseline_modulus_and_random, iters) {
   for (size_t i = 0; i < iters; ++i) {
@@ -821,6 +909,14 @@ BENCHMARK(mt_ahm_insert, iters) {
   runThreads(insertThread);
 }
 
+BENCHMARK(mt_qpahm_insert, iters) {
+  BENCHMARK_SUSPEND {
+    globalQPAHM.reset(new QPAHMapT(int(iters * LF), qpConfig));
+    numOpsPerThread = iters / FLAGS_numThreads;
+  }
+  runThreads(qpInsertThread);
+}
+
 BENCHMARK(st_ahm_insert, iters) {
   folly::BenchmarkSuspender susp;
   std::unique_ptr<AHMapT> ahm(new AHMapT(int(iters * LF), config));
@@ -832,12 +928,25 @@ BENCHMARK(st_ahm_insert, iters) {
   }
 }
 
+BENCHMARK(st_qpahm_insert, iters) {
+  folly::BenchmarkSuspender susp;
+  std::unique_ptr<QPAHMapT> ahm(new QPAHMapT(int(iters * LF), qpConfig));
+  susp.dismiss();
+
+  for (size_t i = 0; i < iters; i++) {
+    KeyT key = randomizeKey(i);
+    ahm->insert(key, genVal(key));
+  }
+}
+
 void benchmarkSetup() {
   config.maxLoadFactor = FLAGS_maxLoadFactor;
+  qpConfig.maxLoadFactor = FLAGS_maxLoadFactor;
   configRace.maxLoadFactor = 0.5;
   int numCores = sysconf(_SC_NPROCESSORS_ONLN);
   loadGlobalAha();
   loadGlobalAhm();
+  loadGlobalQPAhm();
   string numIters = folly::to<string>(
     std::min(1000000, int(FLAGS_numBMElements)));
 
@@ -871,28 +980,38 @@ int main(int argc, char** argv) {
 }
 
 /*
-Benchmarks run on dual Xeon X5650's @ 2.67GHz w/hyperthreading enabled
-  (12 physical cores, 12 MB cache, 72 GB RAM)
+loading global AHA with 8 threads...
+  took 487 ms (40 ns/insert).
+loading global AHM with 8 threads...
+  took 478 ms (39 ns/insert).
+loading global QPAHM with 8 threads...
+  took 478 ms (39 ns/insert).
 
 Running AHM benchmarks on machine with 24 logical cores.
   num elements per map: 12000000
   num threads for mt tests: 24
   AHM load factor: 0.75
 
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-Comparing benchmarks: BM_mt_aha_find,BM_mt_ahm_find
-*       BM_mt_aha_find                1000000  7.767 ms  7.767 ns  122.8 M
- +0.81% BM_mt_ahm_find                1000000   7.83 ms   7.83 ns  121.8 M
-------------------------------------------------------------------------------
-Comparing benchmarks: BM_st_aha_find,BM_st_ahm_find
-*       BM_st_aha_find                1000000  57.83 ms  57.83 ns  16.49 M
- +77.9% BM_st_ahm_find                1000000  102.9 ms  102.9 ns   9.27 M
-------------------------------------------------------------------------------
-BM_mt_ahm_miss                        1000000  2.937 ms  2.937 ns  324.7 M
-BM_st_ahm_miss                        1000000  164.2 ms  164.2 ns  5.807 M
-BM_mt_ahm_find_insert_mix             1000000  8.797 ms  8.797 ns  108.4 M
-BM_mt_ahm_insert                      1000000  17.39 ms  17.39 ns  54.83 M
-BM_st_ahm_insert                      1000000  106.8 ms  106.8 ns   8.93 M
-BM_st_baseline_modulus_and_rando      1000000  6.223 ms  6.223 ns  153.2 M
+============================================================================
+folly/test/AtomicHashMapTest.cpp                relative  time/iter  iters/s
+============================================================================
+st_aha_find                                                 92.63ns   10.80M
+st_ahm_find                                                107.78ns    9.28M
+st_qpahm_find                                               90.69ns   11.03M
+----------------------------------------------------------------------------
+mt_ahm_miss                                                  2.09ns  477.36M
+mt_qpahm_miss                                                1.37ns  728.82M
+st_ahm_miss                                                241.07ns    4.15M
+st_qpahm_miss                                              223.17ns    4.48M
+mt_ahm_find_insert_mix                                       8.05ns  124.24M
+mt_qpahm_find_insert_mix                                     9.10ns  109.85M
+mt_aha_find                                                  6.82ns  146.68M
+mt_ahm_find                                                  7.95ns  125.77M
+mt_qpahm_find                                                6.81ns  146.83M
+st_baseline_modulus_and_random                               6.02ns  166.03M
+mt_ahm_insert                                               14.29ns   69.97M
+mt_qpahm_insert                                             11.68ns   85.61M
+st_ahm_insert                                              125.39ns    7.98M
+st_qpahm_insert                                            128.76ns    7.77M
+============================================================================
 */

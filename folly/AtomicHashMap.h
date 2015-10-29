@@ -156,9 +156,10 @@ struct AtomicHashMapFullError : std::runtime_error {
 };
 
 template<class KeyT, class ValueT,
-         class HashFcn, class EqualFcn, class Allocator>
+         class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
 class AtomicHashMap : boost::noncopyable {
-  typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator> SubMap;
+typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>
+    SubMap;
 
  public:
   typedef KeyT                key_type;
@@ -422,6 +423,18 @@ class AtomicHashMap : boost::noncopyable {
 
 }; // AtomicHashMap
 
+template <class KeyT,
+          class ValueT,
+          class HashFcn = std::hash<KeyT>,
+          class EqualFcn = std::equal_to<KeyT>,
+          class Allocator = std::allocator<char>>
+using QuadraticProbingAtomicHashMap =
+    AtomicHashMap<KeyT,
+                  ValueT,
+                  HashFcn,
+                  EqualFcn,
+                  Allocator,
+                  AtomicHashArrayQuadraticProbeFcn>;
 } // namespace folly
 
 #include <folly/AtomicHashMap-inl.h>

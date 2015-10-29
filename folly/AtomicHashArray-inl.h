@@ -25,8 +25,8 @@ namespace folly {
 
 // AtomicHashArray private constructor --
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
                 KeyT erasedKey, double _maxLoadFactor, size_t cacheSize)
     : capacity_(capacity),
@@ -44,17 +44,17 @@ AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
  *   ret.index is set to capacity_.
  */
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
 typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+         HashFcn, EqualFcn, Allocator, ProbeFcn>::SimpleRetT
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 findInternal(const KeyT key_in) {
   DCHECK_NE(key_in, kEmptyKey_);
   DCHECK_NE(key_in, kLockedKey_);
   DCHECK_NE(key_in, kErasedKey_);
   for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
        ;
-       idx = probeNext(idx, numProbes)) {
+       idx = ProbeFcn()(idx, numProbes, capacity_)) {
     const KeyT key = acquireLoadKey(cells_[idx]);
     if (LIKELY(EqualFcn()(key, key_in))) {
       return SimpleRetT(idx, true);
@@ -63,6 +63,8 @@ findInternal(const KeyT key_in) {
       // if we hit an empty element, this key does not exist
       return SimpleRetT(capacity_, false);
     }
+    // NOTE: the way we count numProbes must be same in find(), insert(),
+    // and erase(). Otherwise it may break probing.
     ++numProbes;
     if (UNLIKELY(numProbes >= capacity_)) {
       // probed every cell...fail
@@ -82,11 +84,11 @@ findInternal(const KeyT key_in) {
  *   default.
  */
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
 template <typename... ArgTs>
 typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+         HashFcn, EqualFcn, Allocator, ProbeFcn>::SimpleRetT
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
   const short NO_NEW_INSERTS = 1;
   const short NO_PENDING_INSERTS = 2;
@@ -174,13 +176,16 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
       continue;
     }
 
+
+    // NOTE: the way we count numProbes must be same in find(),
+    // insert(), and erase(). Otherwise it may break probing.
     ++numProbes;
     if (UNLIKELY(numProbes >= capacity_)) {
       // probed every cell...fail
       return SimpleRetT(capacity_, false);
     }
 
-    idx = probeNext(idx, numProbes);
+    idx = ProbeFcn()(idx, numProbes, capacity_);
   }
 }
 
@@ -196,15 +201,16 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
  *   touch it either.
  */
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-size_t AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+size_t AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 erase(KeyT key_in) {
   CHECK_NE(key_in, kEmptyKey_);
   CHECK_NE(key_in, kLockedKey_);
   CHECK_NE(key_in, kErasedKey_);
+
   for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
        ;
-       idx = probeNext(idx, numProbes)) {
+       idx = ProbeFcn()(idx, numProbes, capacity_)) {
     DCHECK_LT(idx, capacity_);
     value_type* cell = &cells_[idx];
     KeyT currentKey = acquireLoadKey(*cell);
@@ -231,6 +237,9 @@ erase(KeyT key_in) {
       // If another thread succeeds in erasing our key, we'll stop our search.
       return 0;
     }
+
+    // NOTE: the way we count numProbes must be same in find(), insert(),
+    // and erase(). Otherwise it may break probing.
     ++numProbes;
     if (UNLIKELY(numProbes >= capacity_)) {
       // probed every cell...fail
@@ -240,10 +249,10 @@ erase(KeyT key_in) {
 }
 
 template <class KeyT, class ValueT,
-         class HashFcn, class EqualFcn, class Allocator>
+         class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
 typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator>::SmartPtr
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+         HashFcn, EqualFcn, Allocator, ProbeFcn>::SmartPtr
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 create(size_t maxSize, const Config& c) {
   CHECK_LE(c.maxLoadFactor, 1.0);
   CHECK_GT(c.maxLoadFactor, 0.0);
@@ -282,8 +291,8 @@ create(size_t maxSize, const Config& c) {
 }
 
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 destroy(AtomicHashArray* p) {
   assert(p);
 
@@ -301,8 +310,8 @@ destroy(AtomicHashArray* p) {
 
 // clear -- clears all keys and values in the map and resets all counters
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
 clear() {
   FOR_EACH_RANGE(i, 0, capacity_) {
     if (cells_[i].first != kEmptyKey_) {
@@ -321,9 +330,10 @@ clear() {
 // Iterator implementation
 
 template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator>
+          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
 template <class ContT, class IterVal>
-struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator>::aha_iterator
+struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+    aha_iterator
     : boost::iterator_facade<aha_iterator<ContT,IterVal>,
                              IterVal,
                              boost::forward_traversal_tag>

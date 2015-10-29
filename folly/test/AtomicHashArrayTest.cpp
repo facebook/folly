@@ -96,10 +96,13 @@ pair<KeyT,ValueT> createEntry(int i) {
                            to<ValueT>(i + 3));
 }
 
-template<class KeyT, class ValueT, class Allocator = std::allocator<char>>
+template <class KeyT,
+          class ValueT,
+          class Allocator = std::allocator<char>,
+          class ProbeFcn = AtomicHashArrayLinearProbeFcn>
 void testMap() {
   typedef AtomicHashArray<KeyT, ValueT, std::hash<KeyT>,
-                          std::equal_to<KeyT>, Allocator> MyArr;
+                          std::equal_to<KeyT>, Allocator, ProbeFcn> MyArr;
   auto arr = MyArr::create(150);
   map<KeyT, ValueT> ref;
   for (int i = 0; i < 100; ++i) {
@@ -144,10 +147,13 @@ void testMap() {
   }
 }
 
-template<class KeyT, class ValueT, class Allocator = std::allocator<char>>
+template<class KeyT, class ValueT,
+    class Allocator = std::allocator<char>,
+    class ProbeFcn = AtomicHashArrayLinearProbeFcn>
 void testNoncopyableMap() {
   typedef AtomicHashArray<KeyT, std::unique_ptr<ValueT>, std::hash<KeyT>,
-                          std::equal_to<KeyT>, Allocator> MyArr;
+                          std::equal_to<KeyT>, Allocator, ProbeFcn> MyArr;
+
   auto arr = MyArr::create(250);
   for (int i = 0; i < 100; i++) {
     arr->insert(make_pair(i,std::unique_ptr<ValueT>(new ValueT(i))));
@@ -168,34 +174,74 @@ void testNoncopyableMap() {
 TEST(Aha, InsertErase_i32_i32) {
   testMap<int32_t, int32_t>();
   testMap<int32_t, int32_t, MmapAllocator<char>>();
+  testMap<int32_t, int32_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int32_t, int32_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
   testNoncopyableMap<int32_t, int32_t>();
   testNoncopyableMap<int32_t, int32_t, MmapAllocator<char>>();
+  testNoncopyableMap<int32_t, int32_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testNoncopyableMap<int32_t, int32_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 TEST(Aha, InsertErase_i64_i32) {
   testMap<int64_t, int32_t>();
   testMap<int64_t, int32_t, MmapAllocator<char>>();
+  testMap<int64_t, int32_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int64_t, int32_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
   testNoncopyableMap<int64_t, int32_t>();
   testNoncopyableMap<int64_t, int32_t, MmapAllocator<char>>();
+  testNoncopyableMap<int64_t, int32_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testNoncopyableMap<int64_t, int32_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 TEST(Aha, InsertErase_i64_i64) {
   testMap<int64_t, int64_t>();
   testMap<int64_t, int64_t, MmapAllocator<char>>();
+  testMap<int64_t, int64_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int64_t, int64_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
   testNoncopyableMap<int64_t, int64_t>();
   testNoncopyableMap<int64_t, int64_t, MmapAllocator<char>>();
+  testNoncopyableMap<int64_t, int64_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testNoncopyableMap<int64_t, int64_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 TEST(Aha, InsertErase_i32_i64) {
   testMap<int32_t, int64_t>();
   testMap<int32_t, int64_t, MmapAllocator<char>>();
+  testMap<int32_t, int64_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int32_t, int64_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
   testNoncopyableMap<int32_t, int64_t>();
   testNoncopyableMap<int32_t, int64_t, MmapAllocator<char>>();
+  testNoncopyableMap<int32_t, int64_t,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testNoncopyableMap<int32_t, int64_t,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 TEST(Aha, InsertErase_i32_str) {
   testMap<int32_t, string>();
   testMap<int32_t, string, MmapAllocator<char>>();
+  testMap<int32_t, string,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int32_t, string,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 TEST(Aha, InsertErase_i64_str) {
   testMap<int64_t, string>();
   testMap<int64_t, string, MmapAllocator<char>>();
+  testMap<int64_t, string,
+      std::allocator<char>, AtomicHashArrayQuadraticProbeFcn>();
+  testMap<int64_t, string,
+      MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn>();
 }
 
 TEST(Aha, Create_cstr_i64) {
