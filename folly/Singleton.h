@@ -494,15 +494,11 @@ class Singleton {
   // stored; a singleton won't be destroyed unless shared_ptr is destroyed.
   // Avoid holding these shared_ptrs beyond the scope of a function;
   // don't put them in member variables, always use try_get() instead
+  //
+  // try_get() can return nullptr if the singleton was destroyed, caller is
+  // responsible for handling nullptr return
   static std::shared_ptr<T> try_get() {
-    auto ret = getEntry().try_get();
-    if (!ret) {
-      LOG(DFATAL) <<
-        "folly::Singleton<" << getEntry().type().name() <<
-        ">::get_weak() called on destructed singleton; "
-        "returning nullptr, possible segfault coming";
-    }
-    return ret;
+    return getEntry().try_get();
   }
 
   explicit Singleton(std::nullptr_t _ = nullptr,
