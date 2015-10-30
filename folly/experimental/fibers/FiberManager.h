@@ -34,6 +34,7 @@
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/GuardPageAllocator.h>
+#include <folly/experimental/fibers/TimeoutController.h>
 #include <folly/experimental/fibers/traits.h>
 
 namespace folly { namespace fibers {
@@ -88,6 +89,13 @@ class FiberManager : public ::folly::Executor {
      * Protect limited amount of fiber stacks with guard pages.
      */
     bool useGuardPages{false};
+
+    /**
+     * Free unnecessary fibers in the fibers pool every fibersPoolResizePeriodMs
+     * milliseconds. If value is 0, periodic resizing of the fibers pool is
+     * disabled.
+     */
+    uint32_t fibersPoolResizePeriodMs{0};
 
     constexpr Options() {}
   };
@@ -306,6 +314,12 @@ class FiberManager : public ::folly::Executor {
   size_t fibersActive_{0};      /**< number of running or blocked fibers */
   size_t fiberId_{0};           /**< id of last fiber used */
 
+  /**
+   * Maximum number of active fibers in the last period lasting
+   * Options::fibersPoolResizePeriod milliseconds.
+   */
+  size_t maxFibersActiveLastPeriod_{0};
+
   FContext::ContextStruct mainContext_;  /**< stores loop function context */
 
   std::unique_ptr<LoopController> loopController_;
@@ -386,6 +400,19 @@ class FiberManager : public ::folly::Executor {
       remoteTaskQueue_;
 
   std::shared_ptr<TimeoutController> timeoutManager_;
+
+  struct FibersPoolResizer {
+    explicit FibersPoolResizer(FiberManager& fm) :
+      fiberManager_(fm) {}
+    void operator()();
+   private:
+    FiberManager& fiberManager_;
+  };
+
+  FibersPoolResizer fibersPoolResizer_;
+  bool fibersPoolResizerScheduled_{false};
+
+  void doFibersPoolResizing();
 
   /**
    * Only local of this type will be available for fibers.

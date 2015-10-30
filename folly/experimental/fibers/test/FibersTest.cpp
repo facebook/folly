@@ -1403,6 +1403,68 @@ TEST(FiberManager, RequestContext) {
   EXPECT_EQ(rcontext, folly::RequestContext::get());
 }
 
+TEST(FiberManager, resizePeriodically) {
+  FiberManager::Options opts;
+  opts.fibersPoolResizePeriodMs = 300;
+  opts.maxFibersPoolSize = 5;
+
+  FiberManager manager(folly::make_unique<EventBaseLoopController>(), opts);
+
+  folly::EventBase evb;
+  dynamic_cast<EventBaseLoopController&>(manager.loopController())
+    .attachEventBase(evb);
+
+  std::vector<Baton> batons(10);
+
+  size_t tasksRun = 0;
+  for (size_t i = 0; i < 30; ++i) {
+    manager.addTask([i, &batons, &tasksRun]() {
+      ++tasksRun;
+      // Keep some fibers active indefinitely
+      if (i < batons.size()) {
+        batons[i].wait();
+      }
+    });
+  }
+
+  EXPECT_EQ(0, tasksRun);
+  EXPECT_EQ(30, manager.fibersAllocated());
+  EXPECT_EQ(0, manager.fibersPoolSize());
+
+  evb.loopOnce();
+  EXPECT_EQ(30, tasksRun);
+  EXPECT_EQ(30, manager.fibersAllocated());
+  // Can go over maxFibersPoolSize, 10 of 30 fibers still active
+  EXPECT_EQ(20, manager.fibersPoolSize());
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  evb.loopOnce(); // no fibers active in this period
+  EXPECT_EQ(30, manager.fibersAllocated());
+  EXPECT_EQ(20, manager.fibersPoolSize());
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  evb.loopOnce(); // should shrink fibers pool to maxFibersPoolSize
+  EXPECT_EQ(15, manager.fibersAllocated());
+  EXPECT_EQ(5, manager.fibersPoolSize());
+
+  for (size_t i = 0; i < batons.size(); ++i) {
+    batons[i].post();
+  }
+  evb.loopOnce();
+  EXPECT_EQ(15, manager.fibersAllocated());
+  EXPECT_EQ(15, manager.fibersPoolSize());
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  evb.loopOnce(); // 10 fibers active in last period
+  EXPECT_EQ(10, manager.fibersAllocated());
+  EXPECT_EQ(10, manager.fibersPoolSize());
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  evb.loopOnce();
+  EXPECT_EQ(5, manager.fibersAllocated());
+  EXPECT_EQ(5, manager.fibersPoolSize());
+}
+
 static size_t sNumAwaits;
 
 void runBenchmark(size_t numAwaits, size_t toSend) {

@@ -119,7 +119,8 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     fiber->localData_.reset();
     fiber->rcontext_.reset();
 
-    if (fibersPoolSize_ < options_.maxFibersPoolSize) {
+    if (fibersPoolSize_ < options_.maxFibersPoolSize ||
+        options_.fibersPoolResizePeriodMs > 0) {
       fibersPool_.push_front(*fiber);
       ++fibersPoolSize_;
     } else {
@@ -503,6 +504,7 @@ FiberManager::FiberManager(
         }
       }),
     timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
+    fibersPoolResizer_(*this),
     localType_(typeid(LocalT)) {
   loopController_->setFiberManager(this);
 }
