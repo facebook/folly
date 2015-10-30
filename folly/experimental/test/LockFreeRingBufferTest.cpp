@@ -226,4 +226,21 @@ TEST(LockFreeRingBuffer, currentTailRange) {
   EXPECT_TRUE(midvalue == 1 || midvalue == 2);
 }
 
+TEST(LockFreeRingBuffer, cursorFromWrites) {
+  const int capacity = 3;
+  LockFreeRingBuffer<int> rb(capacity);
+
+  // Workaround for template deduction failure
+  auto (&cursorValue)(value<int, std::atomic>);
+
+  int val = 0xfaceb00c;
+  EXPECT_EQ(0, cursorValue(rb.writeAndGetCursor(val)));
+  EXPECT_EQ(1, cursorValue(rb.writeAndGetCursor(val)));
+  EXPECT_EQ(2, cursorValue(rb.writeAndGetCursor(val)));
+
+  // Check that rb is giving out actual cursors and not just
+  // pointing to the current slot.
+  EXPECT_EQ(3, cursorValue(rb.writeAndGetCursor(val)));
+}
+
 } // namespace folly

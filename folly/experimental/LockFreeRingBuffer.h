@@ -101,6 +101,16 @@ public:
     slots_[idx(ticket)].write(turn(ticket), value);
   }
 
+  /// Perform a single write of an object of type T.
+  /// Writes can block iff a previous writer has not yet completed a write
+  /// for the same slot (before the most recent wrap-around).
+  /// Returns a Cursor pointing to the just-written T.
+  Cursor writeAndGetCursor(T& value) noexcept {
+    uint64_t ticket = ticket_.fetch_add(1);
+    slots_[idx(ticket)].write(turn(ticket), value);
+    return Cursor(ticket);
+  }
+
   /// Read the value at the cursor.
   /// Returns true if the read succeeded, false otherwise. If the return
   /// value is false, dest is to be considered partially read and in an
