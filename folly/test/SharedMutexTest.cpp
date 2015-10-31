@@ -1708,7 +1708,7 @@ BENCH_REL (boost_shared_ping_pong, burn1M, 1000, 1000000)
 BENCH_REL (pthrd_rwlock_ping_pong, burn1M, 1000, 1000000)
 
 // Reproduce with 10 minutes and
-//   sudo nice -n -20 \
+//   sudo nice -n -20
 //     shared_mutex_test --benchmark --bm_min_iters=1000000
 //
 // Comparison use folly::RWSpinLock as the baseline, with the

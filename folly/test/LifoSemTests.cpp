@@ -411,7 +411,7 @@ BENCHMARK_NAMED_PARAM(contendedUse, 16_to_16, 16, 16)
 BENCHMARK_NAMED_PARAM(contendedUse, 32_to_32, 32, 32)
 BENCHMARK_NAMED_PARAM(contendedUse, 32_to_1000, 32, 1000)
 
-// sudo nice -n -20 _build/opt/folly/test/LifoSemTests \
+// sudo nice -n -20 _build/opt/folly/test/LifoSemTests
 //     --benchmark --bm_min_iters=10000000 --gtest_filter=-\*
 // ============================================================================
 // folly/test/LifoSemTests.cpp                     relative  time/iter  iters/s
