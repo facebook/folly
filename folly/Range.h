@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <boost/operators.hpp>
 #include <climits>
+#include <cstddef>
 #include <cstring>
 #include <glog/logging.h>
 #include <iosfwd>
@@ -199,6 +200,12 @@ public:
   // Works only for random-access iterators
   constexpr Range(Iter start, size_t size)
       : b_(start), e_(start + size) { }
+
+# if !defined(__clang__) || __clang_major__ > 3 || \
+  (__clang_major__ == 3 && __clang_minor__ > 6)
+  // Clang 3.6 crashes on this line
+  /* implicit */ Range(std::nullptr_t) = delete;
+# endif
 
   template <class T = Iter, typename detail::IsCharPointer<T>::type = 0>
   constexpr /* implicit */ Range(Iter str)

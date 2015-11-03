@@ -388,6 +388,11 @@ estimateSpaceNeeded(Src value) {
   return folly::StringPiece(value).size();
 }
 
+template<>
+inline size_t estimateSpaceNeeded(std::nullptr_t value) {
+  return 0;
+}
+
 template<class Src>
 typename std::enable_if<
   std::is_pointer<Src>::value &&
