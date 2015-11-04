@@ -94,8 +94,8 @@ using UIM =
                              (boost::has_trivial_destructor<Key>::value &&
                               boost::has_trivial_destructor<Value>::value),
                              Atom,
-                             Allocator,
-                             IndexType>;
+                             IndexType,
+                             Allocator>;
 
 namespace {
 template <typename T>

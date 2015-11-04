@@ -135,8 +135,8 @@ template <typename Key,
               (boost::has_trivial_destructor<Key>::value &&
                boost::has_trivial_destructor<Value>::value),
           template<typename> class Atom = std::atomic,
-          typename Allocator = folly::detail::MMapAlloc,
-          typename IndexType = uint32_t>
+          typename IndexType = uint32_t,
+          typename Allocator = folly::detail::MMapAlloc>
 
 struct AtomicUnorderedInsertMap {
 
@@ -493,9 +493,8 @@ using AtomicUnorderedInsertMap64 =
                              KeyEqual,
                              SkipKeyValueDeletion,
                              Atom,
-                             Allocator,
-                             uint64_t>;
-
+                             uint64_t,
+                             Allocator>;
 
 /// MutableAtom is a tiny wrapper than gives you the option of atomically
 /// updating values inserted into an AtomicUnorderedInsertMap<K,
