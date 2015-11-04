@@ -533,6 +533,15 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
   virtual AsyncTransportWrapper* getWrappedTransport() {
     return nullptr;
   }
+
+  /**
+   * Return the application protocol being used by the underlying transport
+   * protocol. This is useful for transports which are used to tunnel other
+   * protocols.
+   */
+  virtual std::string getApplicationProtocol() noexcept {
+    return "";
+  }
 };
 
 } // folly

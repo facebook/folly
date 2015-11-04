@@ -402,6 +402,15 @@ bool AsyncSSLSocket::connecting() const {
                                      sslState_ == STATE_CONNECTING))));
 }
 
+std::string AsyncSSLSocket::getApplicationProtocol() noexcept {
+  const unsigned char* protoName = nullptr;
+  unsigned protoLength;
+  if (getSelectedNextProtocolNoThrow(&protoName, &protoLength)) {
+    return std::string(reinterpret_cast<const char*>(protoName), protoLength);
+  }
+  return "";
+}
+
 bool AsyncSSLSocket::isEorTrackingEnabled() const {
   const BIO *wb = SSL_get_wbio(ssl_);
   return wb && wb->method == &eorAwareBioMethod;

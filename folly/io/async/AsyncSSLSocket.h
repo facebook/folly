@@ -273,6 +273,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual void shutdownWriteNow() override;
   virtual bool good() const override;
   virtual bool connecting() const override;
+  virtual std::string getApplicationProtocol() noexcept override;
 
   bool isEorTrackingEnabled() const override;
   virtual void setEorTracking(bool track) override;
