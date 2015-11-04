@@ -17,6 +17,7 @@
 #ifndef FOLLY_PADDED_H_
 #define FOLLY_PADDED_H_
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstring>

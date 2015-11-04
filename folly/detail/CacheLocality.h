@@ -18,6 +18,7 @@
 #define FOLLY_DETAIL_CACHELOCALITY_H_
 
 #include <sched.h>
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <functional>

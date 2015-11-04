@@ -17,6 +17,7 @@
 #ifndef FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
 #define FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
 
+#include <algorithm>
 #include <glog/logging.h>
 #include <folly/Likely.h>
 

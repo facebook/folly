@@ -17,6 +17,7 @@
 #ifndef FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
 #define FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
 
+#include <utility>
 #include <type_traits>
 
 namespace folly {
