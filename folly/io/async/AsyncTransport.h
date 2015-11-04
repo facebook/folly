@@ -525,6 +525,14 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
   virtual void writeChain(WriteCallback* callback,
                           std::unique_ptr<IOBuf>&& buf,
                           WriteFlags flags = WriteFlags::NONE) override = 0;
+  /**
+   * The transport wrapper may wrap another transport. This returns the
+   * transport that is wrapped. It returns nullptr if there is no wrapped
+   * transport.
+   */
+  virtual AsyncTransportWrapper* getWrappedTransport() {
+    return nullptr;
+  }
 };
 
 } // folly
