@@ -41,6 +41,7 @@ SharedPromise<T>& SharedPromise<T>::operator=(
   std::swap(size_, other.size_);
   std::swap(hasValue_, other.hasValue_);
   std::swap(try_, other.try_);
+  std::swap(interruptHandler_, other.interruptHandler_);
   std::swap(promises_, other.promises_);
 
   return *this;
@@ -60,6 +61,9 @@ Future<T> SharedPromise<T>::getFuture() {
     return makeFuture<T>(Try<T>(try_));
   } else {
     promises_.emplace_back();
+    if (interruptHandler_) {
+      promises_.back().setInterruptHandler(interruptHandler_);
+    }
     return promises_.back().getFuture();
   }
 }
@@ -88,6 +92,7 @@ void SharedPromise<T>::setInterruptHandler(
   if (hasValue_) {
     return;
   }
+  interruptHandler_ = fn;
   for (auto& p : promises_) {
     p.setInterruptHandler(fn);
   }

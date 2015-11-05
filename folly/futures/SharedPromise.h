@@ -113,6 +113,7 @@ private:
   bool hasValue_{false};
   Try<T> try_;
   std::vector<Promise<T>> promises_;
+  std::function<void(exception_wrapper const&)> interruptHandler_;
 };
 
 }

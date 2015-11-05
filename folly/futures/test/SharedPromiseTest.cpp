@@ -117,3 +117,12 @@ TEST(SharedPromise, isFulfilled) {
   p = std::move(p2);
   EXPECT_TRUE(p.isFulfilled());
 }
+
+TEST(SharedPromise, interruptHandler) {
+  SharedPromise<int> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper&) { flag = true; });
+  auto f = p.getFuture();
+  f.cancel();
+  EXPECT_TRUE(flag);
+}
