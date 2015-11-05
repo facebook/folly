@@ -1465,6 +1465,38 @@ TEST(FiberManager, resizePeriodically) {
   EXPECT_EQ(5, manager.fibersPoolSize());
 }
 
+TEST(FiberManager, batonWaitTimeoutHandler) {
+  FiberManager manager(folly::make_unique<EventBaseLoopController>());
+
+  folly::EventBase evb;
+  dynamic_cast<EventBaseLoopController&>(manager.loopController())
+    .attachEventBase(evb);
+
+  size_t fibersRun = 0;
+  Baton baton;
+  Baton::TimeoutHandler timeoutHandler;
+
+  manager.addTask([&]() {
+    baton.wait(timeoutHandler);
+    ++fibersRun;
+  });
+  manager.loopUntilNoReady();
+
+  EXPECT_FALSE(baton.try_wait());
+  EXPECT_EQ(0, fibersRun);
+
+  timeoutHandler.scheduleTimeout(250);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+  EXPECT_FALSE(baton.try_wait());
+  EXPECT_EQ(0, fibersRun);
+
+  evb.loopOnce();
+  manager.loopUntilNoReady();
+
+  EXPECT_EQ(1, fibersRun);
+}
+
 static size_t sNumAwaits;
 
 void runBenchmark(size_t numAwaits, size_t toSend) {

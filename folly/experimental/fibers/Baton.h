@@ -23,6 +23,7 @@
 namespace folly { namespace fibers {
 
 class Fiber;
+class FiberManager;
 
 /**
  * @class Baton
@@ -32,6 +33,8 @@ class Fiber;
  */
 class Baton {
  public:
+  class TimeoutHandler;
+
   Baton();
 
   ~Baton() {}
@@ -40,6 +43,15 @@ class Baton {
    * Puts active fiber to sleep. Returns when post is called.
    */
   void wait();
+
+  /**
+   * Put active fiber to sleep indefinitely. However, timeoutHandler may
+   * be used elsewhere on the same thread in order to schedule a wakeup
+   * for the active fiber.  Users of timeoutHandler must be on the same thread
+   * as the active fiber and may only schedule one timeout, which must occur
+   * after the active fiber calls wait.
+   */
+  void wait(TimeoutHandler& timeoutHandler);
 
   /**
    * Puts active fiber to sleep. Returns when post is called.
@@ -97,6 +109,35 @@ class Baton {
    * baton when reset() is called.
    */
   void reset();
+
+  /**
+   * Provides a way to schedule a wakeup for a wait()ing fiber.
+   * A TimeoutHandler must be passed to Baton::wait(TimeoutHandler&)
+   * before timeouts are scheduled/cancelled.  It is only safe to use the
+   * TimeoutHandler on the same thread as the wait()ing fiber.
+   * scheduleTimeout() may only be called once prior to the end of the
+   * associated Baton's life.
+   */
+  class TimeoutHandler {
+   public:
+    void scheduleTimeout(uint32_t timeoutMs);
+    void cancelTimeout();
+
+   private:
+    friend class Baton;
+
+    void setFiberManager(FiberManager* fiberManager) {
+      fiberManager_ = fiberManager;
+    }
+    void setBaton(Baton* baton) {
+      baton_ = baton;
+    }
+
+    FiberManager* fiberManager_{nullptr};
+    Baton* baton_{nullptr};
+
+    intptr_t timeoutPtr_{0};
+  };
 
  private:
   enum {
