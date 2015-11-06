@@ -27,8 +27,14 @@ void Baton::wait() {
 }
 
 void Baton::wait(TimeoutHandler& timeoutHandler) {
-  timeoutHandler.setBaton(this);
-  timeoutHandler.setFiberManager(FiberManager::getFiberManagerUnsafe());
+  auto timeoutFunc = [this, &timeoutHandler] {
+    if (!try_wait()) {
+      postHelper(TIMEOUT);
+    }
+    timeoutHandler.timeoutPtr_ = 0;
+  };
+  timeoutHandler.timeoutFunc_ = std::ref(timeoutFunc);
+  timeoutHandler.fiberManager_ = FiberManager::getFiberManagerUnsafe();
   wait();
   timeoutHandler.cancelTimeout();
 }
@@ -163,17 +169,15 @@ void Baton::reset() {
   waitingFiber_.store(NO_WAITER, std::memory_order_relaxed);;
 }
 
-void Baton::TimeoutHandler::scheduleTimeout(uint32_t timeoutMs) {
+void Baton::TimeoutHandler::scheduleTimeout(
+    TimeoutController::Duration timeout) {
   assert(fiberManager_ != nullptr);
-  assert(baton_ != nullptr);
-  if (timeoutMs > 0) {
+  assert(timeoutFunc_ != nullptr);
+  assert(timeoutPtr_ == 0);
+
+  if (timeout.count() > 0) {
     timeoutPtr_ = fiberManager_->timeoutManager_->registerTimeout(
-      [baton = baton_]() {
-        if (!baton->try_wait()) {
-          baton->postHelper(TIMEOUT);
-        }
-      },
-      std::chrono::milliseconds(timeoutMs));
+        timeoutFunc_, timeout);
   }
 }
 

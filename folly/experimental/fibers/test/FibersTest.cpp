@@ -1485,7 +1485,7 @@ TEST(FiberManager, batonWaitTimeoutHandler) {
   EXPECT_FALSE(baton.try_wait());
   EXPECT_EQ(0, fibersRun);
 
-  timeoutHandler.scheduleTimeout(250);
+  timeoutHandler.scheduleTimeout(std::chrono::milliseconds(250));
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   EXPECT_FALSE(baton.try_wait());
@@ -1495,6 +1495,36 @@ TEST(FiberManager, batonWaitTimeoutHandler) {
   manager.loopUntilNoReady();
 
   EXPECT_EQ(1, fibersRun);
+}
+
+TEST(FiberManager, batonWaitTimeoutMany) {
+  FiberManager manager(folly::make_unique<EventBaseLoopController>());
+
+  folly::EventBase evb;
+  dynamic_cast<EventBaseLoopController&>(manager.loopController())
+    .attachEventBase(evb);
+
+  constexpr size_t kNumTimeoutTasks = 10000;
+  size_t tasksCount = kNumTimeoutTasks;
+
+  // We add many tasks to hit timeout queue deallocation logic.
+  for (size_t i = 0; i < kNumTimeoutTasks; ++i) {
+    manager.addTask([&]() {
+      Baton baton;
+      Baton::TimeoutHandler timeoutHandler;
+
+      folly::fibers::addTask([&] {
+        timeoutHandler.scheduleTimeout(std::chrono::milliseconds(1000));
+      });
+
+      baton.wait(timeoutHandler);
+      if (--tasksCount == 0) {
+        evb.terminateLoopSoon();
+      }
+    });
+  }
+
+  evb.loopForever();
 }
 
 static size_t sNumAwaits;

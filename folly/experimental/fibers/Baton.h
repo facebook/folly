@@ -113,28 +113,22 @@ class Baton {
   /**
    * Provides a way to schedule a wakeup for a wait()ing fiber.
    * A TimeoutHandler must be passed to Baton::wait(TimeoutHandler&)
-   * before timeouts are scheduled/cancelled.  It is only safe to use the
+   * before a timeout is scheduled. It is only safe to use the
    * TimeoutHandler on the same thread as the wait()ing fiber.
    * scheduleTimeout() may only be called once prior to the end of the
    * associated Baton's life.
    */
   class TimeoutHandler {
    public:
-    void scheduleTimeout(uint32_t timeoutMs);
-    void cancelTimeout();
+    void scheduleTimeout(TimeoutController::Duration timeoutMs);
 
    private:
     friend class Baton;
 
-    void setFiberManager(FiberManager* fiberManager) {
-      fiberManager_ = fiberManager;
-    }
-    void setBaton(Baton* baton) {
-      baton_ = baton;
-    }
+    void cancelTimeout();
 
+    std::function<void()> timeoutFunc_{nullptr};
     FiberManager* fiberManager_{nullptr};
-    Baton* baton_{nullptr};
 
     intptr_t timeoutPtr_{0};
   };
