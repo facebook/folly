@@ -21,6 +21,7 @@
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 
+#include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 
 #include <cassert>
@@ -54,6 +55,7 @@ void HHWheelTimer::Callback::setScheduled(HHWheelTimer* wheel,
   assert(wheel_ == nullptr);
   assert(expiration_ == milliseconds(0));
 
+  wheelGuard_ = DestructorGuard(wheel);
   wheel_ = wheel;
 
   // Only update the now_ time if we're not in a timeout expired callback
@@ -72,6 +74,7 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
   hook_.unlink();
 
   wheel_ = nullptr;
+  wheelGuard_ = folly::none;
   expiration_ = milliseconds(0);
 }
 
