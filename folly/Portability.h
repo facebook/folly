@@ -174,6 +174,18 @@
 namespace std { typedef ::max_align_t max_align_t; }
 #endif
 
+// portable version check for clang
+#ifndef __CLANG_PREREQ
+# if defined __clang__ && defined __clang_major__ && defined __clang_minor__
+/* nolint */
+#  define __CLANG_PREREQ(maj, min) \
+    ((__clang_major__ << 16) + __clang_minor__ >= ((maj) << 16) + (min))
+# else
+/* nolint */
+#  define __CLANG_PREREQ(maj, min) 0
+# endif
+#endif
+
 /* Platform specific TLS support
  * gcc implements __thread
  * msvc implements __declspec(thread)
