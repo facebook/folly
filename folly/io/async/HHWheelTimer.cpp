@@ -94,10 +94,12 @@ HHWheelTimer::HHWheelTimer(folly::EventBase* eventBase,
 }
 
 HHWheelTimer::~HHWheelTimer() {
+  CHECK(count_ == 0);
 }
 
 void HHWheelTimer::destroy() {
   assert(count_ == 0);
+  cancelAll();
   DelayedDestruction::destroy();
 }
 
