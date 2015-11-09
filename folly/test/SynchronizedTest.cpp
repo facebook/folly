@@ -117,4 +117,8 @@ TYPED_TEST(SynchronizedTimedWithConstTest, TimedSynchronizeWithConst) {
   testTimedSynchronizedWithConst<TypeParam>();
 }
 
+TYPED_TEST(SynchronizedTest, InPlaceConstruction) {
+  testInPlaceConstruction<TypeParam>();
+}
+
 }

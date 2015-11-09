@@ -339,5 +339,20 @@ template <class Mutex> void testConstCopy() {
   EXPECT_EQ(result, input);
 }
 
+struct NotCopiableNotMovable {
+  NotCopiableNotMovable(int, const char*) {}
+  NotCopiableNotMovable(const NotCopiableNotMovable&) = delete;
+  NotCopiableNotMovable& operator=(const NotCopiableNotMovable&) = delete;
+  NotCopiableNotMovable(NotCopiableNotMovable&&) = delete;
+  NotCopiableNotMovable& operator=(NotCopiableNotMovable&&) = delete;
+};
+
+template <class Mutex> void testInPlaceConstruction() {
+  // This won't compile without construct_in_place
+  folly::Synchronized<NotCopiableNotMovable> a(
+    folly::construct_in_place, 5, "a"
+  );
+}
+
 
 #endif  /* FOLLY_TEST_SYNCHRONIZEDTESTLIB_INL_H */

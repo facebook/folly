@@ -283,6 +283,14 @@ struct Synchronized {
       : datum_(std::move(rhs)) {}
 
   /**
+   * Lets you construct non-movable types in-place. Use the constexpr
+   * instance `construct_in_place` as the first argument.
+   */
+  template <typename... Args>
+  explicit Synchronized(construct_in_place_t, Args&&... args)
+      : datum_(std::forward<Args>(args)...) {}
+
+  /**
    * The canonical assignment operator only assigns the data, NOT the
    * mutex. It locks the two objects in ascending order of their
    * addresses.

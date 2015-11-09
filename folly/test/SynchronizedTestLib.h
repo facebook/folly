@@ -44,6 +44,8 @@ template <class Mutex> void testTimedSynchronizedWithConst();
 
 template <class Mutex> void testConstCopy();
 
+template <class Mutex> void testInPlaceConstruction();
+
 #include <folly/test/SynchronizedTestLib-inl.h>
 
 #endif /* FOLLY_TEST_SYNCHRONIZEDTESTLIB_H */

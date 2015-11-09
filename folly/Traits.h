@@ -377,6 +377,13 @@ bool greater_than(LHS const lhs) {
   >(lhs);
 }
 
+/**
+ * Like std::piecewise_construct, a tag type & instance used for in-place
+ * construction of non-movable contained types, e.g. by Synchronized.
+ */
+struct construct_in_place_t {};
+constexpr construct_in_place_t construct_in_place{};
+
 } // namespace folly
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string);
