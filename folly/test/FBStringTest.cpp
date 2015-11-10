@@ -19,6 +19,7 @@
 
 #include <folly/FBString.h>
 
+#include <atomic>
 #include <cstdlib>
 
 #include <list>
@@ -1347,6 +1348,51 @@ TEST(FBString, moveTerminator) {
 
   EXPECT_EQ(0, s.size());
   EXPECT_EQ('\0', *s.c_str());
+}
+
+namespace {
+/*
+ * t8968589: Clang 3.7 refused to compile w/ certain constructors (specifically
+ * those that were "explicit" and had a defaulted parameter, if they were used
+ * in structs which were default-initialized).  Exercise these just to ensure
+ * they compile.
+ *
+ * In diff D2632953 the old constructor:
+ *   explicit basic_fbstring(const A& a = A()) noexcept;
+ *
+ * was split into these two, as a workaround:
+ *   basic_fbstring() noexcept;
+ *   explicit basic_fbstring(const A& a) noexcept;
+ */
+
+struct TestStructDefaultAllocator {
+  folly::basic_fbstring<char> stringMember;
+};
+
+template <class A>
+struct TestStructWithAllocator {
+  folly::basic_fbstring<char, std::char_traits<char>, A> stringMember;
+};
+
+std::atomic<size_t> allocatorConstructedCount(0);
+struct TestStructStringAllocator : std::allocator<char> {
+  TestStructStringAllocator() {
+    ++ allocatorConstructedCount;
+  }
+};
+
+}  // anon namespace
+
+TEST(FBStringCtorTest, DefaultInitStructDefaultAlloc) {
+  TestStructDefaultAllocator t1 { };
+  EXPECT_TRUE(t1.stringMember.empty());
+}
+
+TEST(FBStringCtorTest, DefaultInitStructAlloc) {
+  EXPECT_EQ(allocatorConstructedCount.load(), 0);
+  TestStructWithAllocator<TestStructStringAllocator> t2;
+  EXPECT_TRUE(t2.stringMember.empty());
+  EXPECT_EQ(allocatorConstructedCount.load(), 1);
 }
 
 int main(int argc, char** argv) {
