@@ -936,18 +936,8 @@ void waitImpl(Future<T>& f) {
   if (f.isReady()) return;
 
   folly::fibers::Baton baton;
-  f = f.then([&](Try<T> t) {
-    baton.post();
-    return makeFuture(std::move(t));
-  });
+  f.setCallback_([&](const Try<T>& t) { baton.post(); });
   baton.wait();
-
-  // There's a race here between the return here and the actual finishing of
-  // the future. f is completed, but the setup may not have finished on done
-  // after the baton has posted.
-  while (!f.isReady()) {
-    std::this_thread::yield();
-  }
 }
 
 template <class T>
@@ -956,19 +946,10 @@ void waitImpl(Future<T>& f, Duration dur) {
   if (f.isReady()) return;
 
   auto baton = std::make_shared<folly::fibers::Baton>();
-  f = f.then([baton](Try<T> t) {
+  f.setCallback_([baton](const Try<T>& t) {
     baton->post();
-    return makeFuture(std::move(t));
   });
-
-  // Let's preserve the invariant that if we did not timeout (timed_wait returns
-  // true), then the returned Future is complete when it is returned to the
-  // caller. We need to wait out the race for that Future to complete.
-  if (baton->timed_wait(dur)) {
-    while (!f.isReady()) {
-      std::this_thread::yield();
-    }
-  }
+  baton->timed_wait(dur);
 }
 
 template <class T>
