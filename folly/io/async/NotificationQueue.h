@@ -511,9 +511,7 @@ class NotificationQueue {
     if (rc < 0) {
       // EAGAIN should pretty much be the only error we can ever get.
       // This means someone else already processed the only available message.
-      if (rc != EAGAIN) {
-        LOG(ERROR) << "non-EAGAIN error returned on pipe read: " << errno;
-      }
+      CHECK_EQ(errno, EAGAIN);
       return false;
     }
     assert(value == 1);
