@@ -121,4 +121,110 @@ TYPED_TEST(SynchronizedTest, InPlaceConstruction) {
   testInPlaceConstruction<TypeParam>();
 }
 
+using CountPair = std::pair<int, int>;
+// This class is specialized only to be uesed in SynchronizedLockTest
+class FakeMutex {
+ public:
+  bool lock() {
+    ++lockCount_;
+    return true;
+  }
+
+  bool unlock() {
+    ++unlockCount_;
+    return true;
+  }
+
+  static CountPair getLockUnlockCount() {
+    return CountPair{lockCount_, unlockCount_};
+  }
+
+  static void resetLockUnlockCount() {
+    lockCount_ = 0;
+    unlockCount_ = 0;
+  }
+ private:
+  // Keep these two static for test access
+  // Keep them thread_local in case of tests are run in parallel within one
+  // process
+  static thread_local int lockCount_;
+  static thread_local int unlockCount_;
+
+  // Adapters for Synchronized<>
+  friend void acquireReadWrite(FakeMutex& lock) { lock.lock(); }
+  friend void releaseReadWrite(FakeMutex& lock) { lock.unlock(); }
+};
+thread_local int FakeMutex::lockCount_{0};
+thread_local int FakeMutex::unlockCount_{0};
+
+// SynchronizedLockTest is used to verify the correct lock unlock behavior
+// happens per design
+class SynchronizedLockTest : public testing::Test {
+ public:
+  void SetUp() override {
+    FakeMutex::resetLockUnlockCount();
+  }
+};
+
+// Single level of SYNCHRONIZED and UNSYNCHRONIZED, although nested test are
+// super set of it, it is possible single level test passes while nested tests
+// fail
+TEST_F(SynchronizedLockTest, SyncUnSync) {
+  folly::Synchronized<std::vector<int>, FakeMutex> obj;
+  EXPECT_EQ((CountPair{0, 0}), FakeMutex::getLockUnlockCount());
+  SYNCHRONIZED(obj) {
+    EXPECT_EQ((CountPair{1, 0}), FakeMutex::getLockUnlockCount());
+    UNSYNCHRONIZED(obj) {
+      EXPECT_EQ((CountPair{1, 1}), FakeMutex::getLockUnlockCount());
+    }
+    EXPECT_EQ((CountPair{2, 1}), FakeMutex::getLockUnlockCount());
+  }
+  EXPECT_EQ((CountPair{2, 2}), FakeMutex::getLockUnlockCount());
+}
+
+// Nested SYNCHRONIZED UNSYNCHRONIZED test, 2 levels for each are used here
+TEST_F(SynchronizedLockTest, NestedSyncUnSync) {
+  folly::Synchronized<std::vector<int>, FakeMutex> obj;
+  EXPECT_EQ((CountPair{0, 0}), FakeMutex::getLockUnlockCount());
+  SYNCHRONIZED(objCopy, obj) {
+    EXPECT_EQ((CountPair{1, 0}), FakeMutex::getLockUnlockCount());
+    SYNCHRONIZED(obj) {
+      EXPECT_EQ((CountPair{2, 0}), FakeMutex::getLockUnlockCount());
+      UNSYNCHRONIZED(obj) {
+        EXPECT_EQ((CountPair{2, 1}), FakeMutex::getLockUnlockCount());
+        UNSYNCHRONIZED(obj) {
+          EXPECT_EQ((CountPair{2, 2}),
+                    FakeMutex::getLockUnlockCount());
+        }
+        EXPECT_EQ((CountPair{3, 2}), FakeMutex::getLockUnlockCount());
+      }
+      EXPECT_EQ((CountPair{4, 2}), FakeMutex::getLockUnlockCount());
+    }
+    EXPECT_EQ((CountPair{4, 3}), FakeMutex::getLockUnlockCount());
+  }
+  EXPECT_EQ((CountPair{4, 4}), FakeMutex::getLockUnlockCount());
+}
+
+// Different nesting behavior, UNSYNCHRONIZED called on differen depth of
+// SYNCHRONIZED
+TEST_F(SynchronizedLockTest, NestedSyncUnSync2) {
+  folly::Synchronized<std::vector<int>, FakeMutex> obj;
+  EXPECT_EQ((CountPair{0, 0}), FakeMutex::getLockUnlockCount());
+  SYNCHRONIZED(objCopy, obj) {
+    EXPECT_EQ((CountPair{1, 0}), FakeMutex::getLockUnlockCount());
+    SYNCHRONIZED(obj) {
+      EXPECT_EQ((CountPair{2, 0}), FakeMutex::getLockUnlockCount());
+      UNSYNCHRONIZED(obj) {
+        EXPECT_EQ((CountPair{2, 1}), FakeMutex::getLockUnlockCount());
+      }
+      EXPECT_EQ((CountPair{3, 1}), FakeMutex::getLockUnlockCount());
+    }
+    EXPECT_EQ((CountPair{3, 2}), FakeMutex::getLockUnlockCount());
+    UNSYNCHRONIZED(obj) {
+      EXPECT_EQ((CountPair{3, 3}), FakeMutex::getLockUnlockCount());
+    }
+    EXPECT_EQ((CountPair{4, 3}), FakeMutex::getLockUnlockCount());
+  }
+  EXPECT_EQ((CountPair{4, 4}), FakeMutex::getLockUnlockCount());
+}
 }

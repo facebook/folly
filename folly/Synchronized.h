@@ -722,7 +722,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
   for (decltype(SYNCHRONIZED_lockedPtr.typeHackDoNotUse())      \
          SYNCHRONIZED_state3(&SYNCHRONIZED_lockedPtr);          \
        !SYNCHRONIZED_state; SYNCHRONIZED_state = true)          \
-    for (auto name = *SYNCHRONIZED_state3.operator->();         \
+    for (auto& name = *SYNCHRONIZED_state3.operator->();        \
          !SYNCHRONIZED_state; SYNCHRONIZED_state = true)
 
 /**
