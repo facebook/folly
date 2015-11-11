@@ -59,11 +59,16 @@ namespace folly {
 class HHWheelTimer : private folly::AsyncTimeout,
                      public folly::DelayedDestruction {
  public:
-  typedef std::unique_ptr<HHWheelTimer, Destructor> UniquePtr;
+  // This type has always been a misnomer, because it is not a unique pointer.
+  using UniquePtr = IntrusivePtr<HHWheelTimer>;
 
   template <typename... Args>
   static UniquePtr newTimer(Args&&... args) {
-    return UniquePtr(new HHWheelTimer(std::forward<Args>(args)...));
+    std::unique_ptr<HHWheelTimer, Destructor> instance(
+        new HHWheelTimer(std::forward<Args>(args)...));
+    // Avoid the weird semantics of the Destructor by managing ownership
+    // entirely from the IntrusivePtr.
+    return UniquePtr(instance);
   }
 
   /**
