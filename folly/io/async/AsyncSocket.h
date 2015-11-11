@@ -328,12 +328,15 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   ReadCallback* getReadCallback() const override;
 
   void write(WriteCallback* callback, const void* buf, size_t bytes,
-             WriteFlags flags = WriteFlags::NONE) override;
+             WriteFlags flags = WriteFlags::NONE,
+             BufferCallback* bufCallback = nullptr) override;
   void writev(WriteCallback* callback, const iovec* vec, size_t count,
-              WriteFlags flags = WriteFlags::NONE) override;
+              WriteFlags flags = WriteFlags::NONE,
+              BufferCallback* bufCallback = nullptr) override;
   void writeChain(WriteCallback* callback,
                   std::unique_ptr<folly::IOBuf>&& buf,
-                  WriteFlags flags = WriteFlags::NONE) override;
+                  WriteFlags flags = WriteFlags::NONE,
+                  BufferCallback* bufCallback = nullptr) override;
 
   class WriteRequest;
   virtual void writeRequest(WriteRequest* req);
@@ -507,8 +510,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   class WriteRequest {
    public:
-    WriteRequest(AsyncSocket* socket, WriteCallback* callback) :
-      socket_(socket), callback_(callback) {}
+    WriteRequest(
+        AsyncSocket* socket,
+        WriteCallback* callback,
+        BufferCallback* bufferCallback = nullptr) :
+      socket_(socket), callback_(callback), bufferCallback_(bufferCallback) {}
 
     virtual void start() {};
 
@@ -546,6 +552,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       socket_->appBytesWritten_ += count;
     }
 
+    BufferCallback* getBufferCallback() const {
+      return bufferCallback_;
+    }
+
    protected:
     // protected destructor, to ensure callers use destroy()
     virtual ~WriteRequest() {}
@@ -554,6 +564,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     WriteRequest* next_{nullptr};          ///< pointer to next WriteRequest
     WriteCallback* callback_;     ///< completion callback
     uint32_t totalBytesWritten_{0};  ///< total bytes written
+    BufferCallback* bufferCallback_{nullptr};
   };
 
  protected:
@@ -677,36 +688,39 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   /**
    * Populate an iovec array from an IOBuf and attempt to write it.
    *
-   * @param callback Write completion/error callback.
-   * @param vec      Target iovec array; caller retains ownership.
-   * @param count    Number of IOBufs to write, beginning at start of buf.
-   * @param buf      Chain of iovecs.
-   * @param flags    set of flags for the underlying write calls, like cork
+   * @param callback    Write completion/error callback.
+   * @param vec         Target iovec array; caller retains ownership.
+   * @param count       Number of IOBufs to write, beginning at start of buf.
+   * @param buf         Chain of iovecs.
+   * @param flags       set of flags for the underlying write calls, like cork
+   * @param bufCallback Callback when egress data begins to buffer
    */
   void writeChainImpl(WriteCallback* callback, iovec* vec,
                       size_t count, std::unique_ptr<folly::IOBuf>&& buf,
-                      WriteFlags flags);
+                      WriteFlags flags, BufferCallback* bufCallback = nullptr);
 
   /**
    * Write as much data as possible to the socket without blocking,
    * and queue up any leftover data to send when the socket can
    * handle writes again.
    *
-   * @param callback The callback to invoke when the write is completed.
-   * @param vec      Array of buffers to write; this method will make a
-   *                 copy of the vector (but not the buffers themselves)
-   *                 if the write has to be completed asynchronously.
-   * @param count    Number of elements in vec.
-   * @param buf      The IOBuf that manages the buffers referenced by
-   *                 vec, or a pointer to nullptr if the buffers are not
-   *                 associated with an IOBuf.  Note that ownership of
-   *                 the IOBuf is transferred here; upon completion of
-   *                 the write, the AsyncSocket deletes the IOBuf.
-   * @param flags    Set of write flags.
+   * @param callback    The callback to invoke when the write is completed.
+   * @param vec         Array of buffers to write; this method will make a
+   *                    copy of the vector (but not the buffers themselves)
+   *                    if the write has to be completed asynchronously.
+   * @param count       Number of elements in vec.
+   * @param buf         The IOBuf that manages the buffers referenced by
+   *                    vec, or a pointer to nullptr if the buffers are not
+   *                    associated with an IOBuf.  Note that ownership of
+   *                    the IOBuf is transferred here; upon completion of
+   *                    the write, the AsyncSocket deletes the IOBuf.
+   * @param flags       Set of write flags.
+   * @param bufCallback Callback when egress data buffers up
    */
   void writeImpl(WriteCallback* callback, const iovec* vec, size_t count,
                  std::unique_ptr<folly::IOBuf>&& buf,
-                 WriteFlags flags = WriteFlags::NONE);
+                 WriteFlags flags = WriteFlags::NONE,
+                 BufferCallback* bufCallback = nullptr);
 
   /**
    * Attempt to write to the socket.

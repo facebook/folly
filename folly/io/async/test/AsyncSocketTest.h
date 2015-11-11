@@ -60,6 +60,23 @@ class ConnCallback : public AsyncSocket::ConnectCallback {
   VoidCallback errorCallback;
 };
 
+class BufferCallback : public AsyncTransportWrapper::BufferCallback {
+ public:
+  BufferCallback()
+    : buffered_(false) {}
+
+  void onEgressBuffered() override {
+    buffered_ = true;
+  }
+
+  bool hasBuffered() const {
+    return buffered_;
+  }
+
+ private:
+  bool buffered_{false};
+};
+
 class WriteCallback : public AsyncTransportWrapper::WriteCallback {
  public:
   WriteCallback()

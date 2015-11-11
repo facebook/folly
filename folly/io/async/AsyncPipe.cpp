@@ -148,7 +148,8 @@ void AsyncPipeWriter::write(unique_ptr<folly::IOBuf> buf,
 
 void AsyncPipeWriter::writeChain(folly::AsyncWriter::WriteCallback* callback,
                                  std::unique_ptr<folly::IOBuf>&& buf,
-                                 WriteFlags) {
+                                 WriteFlags,
+                                 BufferCallback*) {
   write(std::move(buf), callback);
 }
 

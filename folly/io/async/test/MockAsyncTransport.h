@@ -27,23 +27,31 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
   MOCK_CONST_METHOD0(getReadCB, ReadCallback*());
-  MOCK_METHOD4(write, void(WriteCallback*,
+  MOCK_METHOD5(write, void(WriteCallback*,
                            const void*, size_t,
-                           WriteFlags));
-  MOCK_METHOD4(writev, void(WriteCallback*,
+                           WriteFlags,
+                           BufferCallback*));
+  MOCK_METHOD5(writev, void(WriteCallback*,
                             const iovec*, size_t,
-                            WriteFlags));
-  MOCK_METHOD3(writeChain,
+                            WriteFlags,
+                            BufferCallback*));
+  MOCK_METHOD4(writeChain,
                void(WriteCallback*,
                     std::shared_ptr<folly::IOBuf>,
-                    WriteFlags));
+                    WriteFlags,
+                    BufferCallback*));
 
 
   void writeChain(WriteCallback* callback,
                   std::unique_ptr<folly::IOBuf>&& iob,
                   WriteFlags flags =
-                  WriteFlags::NONE) override {
-    writeChain(callback, std::shared_ptr<folly::IOBuf>(iob.release()), flags);
+                  WriteFlags::NONE,
+                  BufferCallback* bufCB = nullptr) override {
+    writeChain(
+        callback,
+        std::shared_ptr<folly::IOBuf>(iob.release()),
+        flags,
+        bufCB);
   }
 
   MOCK_METHOD0(close, void());
