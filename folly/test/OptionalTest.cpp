@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <string>
+#include <type_traits>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -540,6 +541,10 @@ TEST(Optional, AssignmentContained) {
 TEST(Optional, Exceptions) {
   Optional<int> empty;
   EXPECT_THROW(empty.value(), OptionalEmptyException);
+}
+
+TEST(Optional, NoThrowDefaultConstructible) {
+  EXPECT_TRUE(std::is_nothrow_default_constructible<Optional<bool>>::value);
 }
 
 }

@@ -96,7 +96,7 @@ class Optional {
   static_assert(!std::is_abstract<Value>::value,
                 "Optional may not be used with abstract types");
 
-  Optional()
+  Optional() noexcept
     : hasValue_(false) {
   }
 
