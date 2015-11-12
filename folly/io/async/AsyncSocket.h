@@ -462,6 +462,14 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   #define SO_SET_NAMESPACE        41
   int setTCPProfile(int profd);
 
+  /**
+   * Set TCP_CORK on the socket, and turn on/off the persistentCork_ flag
+   *
+   * When persistentCork_ is true, CorkGuard in AsyncSSLSocket will not be
+   * able to toggle TCP_CORK
+   *
+   */
+  void setPersistentCork(bool cork);
 
   /**
    * Generic API for reading a socket option.
@@ -779,6 +787,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   std::string withAddr(const std::string& s);
 
+  /**
+   * Set TCP_CORK on this socket
+   *
+   * @return 0 if Cork is turned on, or non-zero errno on error
+   */
+  int setCork(bool cork);
+
   StateEnum state_;                     ///< StateEnum describing current state
   uint8_t shutdownFlags_;               ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_;                 ///< EventBase::HandlerFlags settings
@@ -807,6 +822,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;
+
+  // Whether this connection is persistently corked
+  bool persistentCork_{false};
+  // Whether we've applied the TCP_CORK option to the socket
+  bool corked_{false};
 };
 
 
