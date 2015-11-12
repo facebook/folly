@@ -32,8 +32,9 @@
 #define MALLOCX_ZERO (static_cast<int>(0x40))
 #endif
 
-// If using fbstring from libstdc++, then just define stub code
-// here to typedef the fbstring type into the folly namespace.
+// If using fbstring from libstdc++ (see comment in FBString.h), then
+// just define stub code here to typedef the fbstring type into the
+// folly namespace.
 // This provides backwards compatibility for code that explicitly
 // includes and uses fbstring.
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
@@ -86,7 +87,6 @@ __attribute__((__weak__));
 #define FOLLY_HAVE_MALLOC_H 1
 #else
 #include <folly/detail/Malloc.h> /* nolint */
-#include <folly/Portability.h>
 #endif
 
 // for malloc_usable_size
@@ -100,6 +100,7 @@ __attribute__((__weak__));
 
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 
@@ -112,17 +113,62 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 namespace folly {
 #endif
 
-bool usingJEMallocSlow();
+// Cannot depend on Portability.h when _LIBSTDCXX_FBSTRING.
+#ifdef __GNUC__
+#define FOLLY_MALLOC_NOINLINE __attribute__((__noinline__))
+#else
+#define FOLLY_MALLOC_NOINLINE
+#endif
 
 /**
  * Determine if we are using jemalloc or not.
  */
-inline bool usingJEMalloc() {
+inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != NULL is not sufficient; we may be in a dlopen()ed
   // module that depends on libjemalloc, so rallocx is resolved, but the main
-  // program might be using a different memory allocator. Look at the
-  // implementation of usingJEMallocSlow() for the (hacky) details.
-  static const bool result = usingJEMallocSlow();
+  // program might be using a different memory allocator.
+  // How do we determine that we're using jemalloc? In the hackiest
+  // way possible. We allocate memory using malloc() and see if the
+  // per-thread counter of allocated memory increases. This makes me
+  // feel dirty inside. Also note that this requires jemalloc to have
+  // been compiled with --enable-stats.
+  static const bool result = [] () FOLLY_MALLOC_NOINLINE noexcept {
+    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
+    // (!!). http://goo.gl/xpmctm
+    if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr
+        || sallocx == nullptr || dallocx == nullptr || nallocx == nullptr
+        || mallctl == nullptr || mallctlnametomib == nullptr
+        || mallctlbymib == nullptr) {
+      return false;
+    }
+
+    // "volatile" because gcc optimizes out the reads from *counter, because
+    // it "knows" malloc doesn't modify global state...
+    /* nolint */ volatile uint64_t* counter;
+    size_t counterLen = sizeof(uint64_t*);
+
+    if (mallctl("thread.allocatedp", static_cast<void*>(&counter), &counterLen,
+                nullptr, 0) != 0) {
+      return false;
+    }
+
+    if (counterLen != sizeof(uint64_t*)) {
+      return false;
+    }
+
+    uint64_t origAllocated = *counter;
+
+    void* ptr = malloc(1);
+    if (!ptr) {
+      // wtf, failing to allocate 1 byte
+      return false;
+    }
+    free(ptr);
+
+    return (origAllocated != *counter);
+  }();
+
   return result;
 }
 

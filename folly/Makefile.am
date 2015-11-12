@@ -310,7 +310,6 @@ libfollybase_la_SOURCES = \
 	EscapeTables.cpp \
 	Format.cpp \
 	FormatTables.cpp \
-	Malloc.cpp \
 	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
