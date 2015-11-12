@@ -32,6 +32,12 @@
 
 #pragma GCC system_header
 
+// When used as std::string replacement always disable assertions.
+#ifndef NDEBUG
+#define NDEBUG
+#define FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
+#endif // NDEBUG
+
 // Handle the cases where the fbcode version (folly/Malloc.h) is included
 // either before or after this inclusion.
 #ifdef FOLLY_MALLOC_H_
@@ -2552,5 +2558,10 @@ FOLLY_FBSTRING_HASH
 #undef throw
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
+
+#ifdef FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
+#undef NDEBUG
+#undef FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
+#endif // FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
 
 #endif // FOLLY_BASE_FBSTRING_H_
