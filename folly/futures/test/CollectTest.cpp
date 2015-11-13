@@ -630,3 +630,14 @@ TEST(Collect, collectAllNone) {
   auto f = collectAll(fs);
   EXPECT_TRUE(f.isReady());
 }
+
+TEST(Collect, noDefaultConstructor) {
+  struct A {
+    explicit A(size_t x) {}
+  };
+
+  auto f1 = makeFuture(A(1));
+  auto f2 = makeFuture(A(2));
+
+  auto f = collect(std::move(f1), std::move(f2));
+}
