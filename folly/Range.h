@@ -201,9 +201,7 @@ public:
   constexpr Range(Iter start, size_t size)
       : b_(start), e_(start + size) { }
 
-# if !defined(__clang__) || __clang_major__ > 3 || \
-  (__clang_major__ == 3 && __clang_minor__ > 6)
-  // Clang 3.6 crashes on this line
+# if !__clang__ || __CLANG_PREREQ(3, 7) // Clang 3.6 crashes on this line
   /* implicit */ Range(std::nullptr_t) = delete;
 # endif
 
