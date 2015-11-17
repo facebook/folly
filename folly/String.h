@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <string>
 #include <boost/type_traits.hpp>
+#include <boost/regex/pending/unicode_iterator.hpp>
 
 #ifdef FOLLY_HAVE_DEPRECATED_ASSOC
 #ifdef _GLIBCXX_SYMVER
@@ -591,6 +592,19 @@ void toLowerAscii(char* str, size_t length);
 inline void toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
+
+template <class Iterator = const char*,
+          class Base = folly::Range<boost::u8_to_u32_iterator<Iterator>>>
+class UTF8Range : public Base {
+ public:
+  /* implicit */ UTF8Range(const folly::Range<Iterator> baseRange)
+      : Base(boost::u8_to_u32_iterator<Iterator>(
+                 baseRange.begin(), baseRange.begin(), baseRange.end()),
+             boost::u8_to_u32_iterator<Iterator>(
+                 baseRange.end(), baseRange.begin(), baseRange.end())) {}
+};
+
+using UTF8StringPiece = UTF8Range<const char*>;
 
 } // namespace folly
 

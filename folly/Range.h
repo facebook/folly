@@ -357,7 +357,6 @@ public:
     return e_ - b_;
   }
   size_type walk_size() const {
-    assert(b_ <= e_);
     return std::distance(b_, e_);
   }
   bool empty() const { return b_ == e_; }

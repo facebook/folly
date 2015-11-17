@@ -1337,6 +1337,29 @@ TEST(String, whitespace) {
   EXPECT_EQ("", rtrimWhitespace("\r   "));
 }
 
+const folly::StringPiece kTestUTF8 = "This is \U0001F602 stuff!";
+
+TEST(UTF8StringPiece, valid_utf8) {
+  folly::StringPiece sp = kTestUTF8;
+  UTF8StringPiece utf8 = sp;
+  // utf8.size() not available since it's not a random-access range
+  EXPECT_EQ(16, utf8.walk_size());
+}
+
+TEST(UTF8StringPiece, valid_suffix) {
+  UTF8StringPiece utf8 = kTestUTF8.subpiece(8);
+  EXPECT_EQ(8, utf8.walk_size());
+}
+
+TEST(UTF8StringPiece, empty_mid_codepoint) {
+  UTF8StringPiece utf8 = kTestUTF8.subpiece(9, 0); // okay since it's empty
+  EXPECT_EQ(0, utf8.walk_size());
+}
+
+TEST(UTF8StringPiece, invalid_mid_codepoint) {
+  EXPECT_THROW(UTF8StringPiece(kTestUTF8.subpiece(9, 1)), std::out_of_range);
+}
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
