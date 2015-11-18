@@ -548,6 +548,24 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
   }
 
   /**
+   * In many cases when we need to set socket properties or otherwise access the
+   * underlying transport from a wrapped transport. This method allows access to
+   * the derived classes of the underlying transport.
+   */
+  template <class T>
+  T* getUnderlyingTransport() {
+    AsyncTransportWrapper* current = this;
+    while (current) {
+      auto sock = dynamic_cast<T*>(current);
+      if (sock) {
+        return sock;
+      }
+      current = current->getWrappedTransport();
+    }
+    return nullptr;
+  }
+
+  /**
    * Return the application protocol being used by the underlying transport
    * protocol. This is useful for transports which are used to tunnel other
    * protocols.
