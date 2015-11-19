@@ -159,12 +159,14 @@ inline bool usingJEMalloc() noexcept {
 
     uint64_t origAllocated = *counter;
 
-    void* ptr = malloc(1);
+    // Static because otherwise clever compilers will find out that
+    // the ptr is not used and does not escape the scope, so they will
+    // just optimize away the malloc.
+    static void* ptr = malloc(1);
     if (!ptr) {
       // wtf, failing to allocate 1 byte
       return false;
     }
-    free(ptr);
 
     return (origAllocated != *counter);
   }();
