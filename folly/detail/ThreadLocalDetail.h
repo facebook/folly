@@ -220,6 +220,7 @@ struct StaticMeta {
     // worry about synchronization with exiting threads.
     static bool constructed = (inst_ = new StaticMeta<Tag>());
     (void)constructed; // suppress unused warning
+
     return *inst_;
   }
 
@@ -247,10 +248,27 @@ struct StaticMeta {
 #endif
   static StaticMeta<Tag>* inst_;
 
+  /**
+   * We want to disable onThreadExit call at the end of shutdown, we don't care
+   * about leaking memory at that point.
+   *
+   * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
+   * called after dlclose().
+   */
+  struct PthreadKeyUnregister {
+    ~PthreadKeyUnregister() {
+      if (inst_) {
+        pthread_key_delete(inst_->pthreadKey_);
+      }
+    }
+  };
+  static PthreadKeyUnregister pthreadKeyUnregister_;
+
   StaticMeta() : nextId_(1) {
     head_.next = head_.prev = &head_;
     int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
     checkPosixError(ret, "pthread_key_create failed");
+    (void)pthreadKeyUnregister_; // suppress unused warning
 
 #if FOLLY_HAVE_PTHREAD_ATFORK
     ret = pthread_atfork(/*prepare*/ &StaticMeta::preFork,
@@ -529,6 +547,10 @@ FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_ = {nullptr, 0,
                                                        nullptr, nullptr};
 #endif
 template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
+
+template <class Tag> typename StaticMeta<Tag>::PthreadKeyUnregister
+MAX_STATIC_CONSTRUCTOR_PRIORITY
+StaticMeta<Tag>::pthreadKeyUnregister_;
 
 }  // namespace threadlocal_detail
 }  // namespace folly

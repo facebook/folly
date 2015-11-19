@@ -16,6 +16,7 @@
 
 #include <folly/ThreadLocal.h>
 
+#include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -37,6 +38,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
+#include <folly/Baton.h>
 
 using namespace folly;
 
@@ -537,6 +539,47 @@ TEST(ThreadLocal, Fork2) {
   } else {
     EXPECT_TRUE(false) << "fork failed";
   }
+}
+
+TEST(ThreadLocal, SharedLibrary)
+{
+  auto handle = dlopen("./_bin/folly/test/lib_thread_local_test.so",
+                       RTLD_LAZY);
+  EXPECT_NE(nullptr, handle);
+
+  typedef void (*useA_t)();
+  dlerror();
+  useA_t useA = (useA_t) dlsym(handle, "useA");
+
+  const char *dlsym_error = dlerror();
+  EXPECT_EQ(nullptr, dlsym_error);
+
+  useA();
+
+  folly::Baton<> b11, b12, b21, b22;
+
+  std::thread t1([&]() {
+      useA();
+      b11.post();
+      b12.wait();
+    });
+
+  std::thread t2([&]() {
+      useA();
+      b21.post();
+      b22.wait();
+    });
+
+  b11.wait();
+  b21.wait();
+
+  dlclose(handle);
+
+  b12.post();
+  b22.post();
+
+  t1.join();
+  t2.join();
 }
 
 // clang is unable to compile this code unless in c++14 mode.
