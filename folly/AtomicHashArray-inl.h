@@ -144,9 +144,11 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
             --numPendingEntries_;
             throw;
           }
+          // An erase() can race here and delete right after our insertion
           // Direct comparison rather than EqualFcn ok here
           // (we just inserted it)
-          DCHECK(relaxedLoadKey(*cell) == key_in);
+          DCHECK(relaxedLoadKey(*cell) == key_in ||
+                 relaxedLoadKey(*cell) == kErasedKey_);
           --numPendingEntries_;
           ++numEntries_;  // This is a thread cached atomic increment :)
           if (numEntries_.readFast() >= maxEntries_) {

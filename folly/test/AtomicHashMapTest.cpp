@@ -667,6 +667,34 @@ TEST(Ahm, erase_find_race) {
   write_thread.join();
 }
 
+// Erase right after insert race bug repro (t9130653)
+TEST(Ahm, erase_after_insert_race) {
+  const uint64_t limit = 10000;
+  const size_t num_threads = 100;
+  const size_t num_iters = 500;
+  AtomicHashMap<uint64_t, uint64_t> map(limit + 10);
+
+  std::atomic<bool> go{false};
+  std::vector<std::thread> ts;
+  for (size_t i = 0; i < num_threads; ++i) {
+    ts.emplace_back([&]() {
+        while (!go) {
+          continue;
+        }
+        for (size_t n = 0; n < num_iters; ++n) {
+          map.erase(1);
+          map.insert(1, 1);
+        }
+      });
+  }
+
+  go = true;
+
+  for (auto& t : ts) {
+    t.join();
+  }
+}
+
 // Repro for a bug when iterator didn't skip empty submaps.
 TEST(Ahm, iterator_skips_empty_submaps) {
   AtomicHashMap<uint64_t, uint64_t>::Config config;
