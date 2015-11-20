@@ -70,16 +70,24 @@ public:
   struct Cursor {
     explicit Cursor(uint64_t initialTicket) noexcept : ticket(initialTicket) {}
 
-    void moveForward(uint64_t steps = 1) noexcept {
+    /// Returns true if this cursor now points to a different
+    /// write, false otherwise.
+    bool moveForward(uint64_t steps = 1) noexcept {
+      uint64_t prevTicket = ticket;
       ticket += steps;
+      return prevTicket != ticket;
     }
 
-    void moveBackward(uint64_t steps = 1) noexcept {
+    /// Returns true if this cursor now points to a previous
+    /// write, false otherwise.
+    bool moveBackward(uint64_t steps = 1) noexcept {
+      uint64_t prevTicket = ticket;
       if (steps > ticket) {
         ticket = 0;
       } else {
         ticket -= steps;
       }
+      return prevTicket != ticket;
     }
 
   protected: // for test visibility reasons
