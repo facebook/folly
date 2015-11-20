@@ -195,3 +195,16 @@ TEST(Wait, waitWithDuration) {
    t.join();
  }
 }
+
+TEST(Wait, multipleWait) {
+  auto f = futures::sleep(milliseconds(100));
+  for (size_t i = 0; i < 5; ++i) {
+    EXPECT_FALSE(f.isReady());
+    f.wait(milliseconds(3));
+  }
+  EXPECT_FALSE(f.isReady());
+  f.wait();
+  EXPECT_TRUE(f.isReady());
+  f.wait();
+  EXPECT_TRUE(f.isReady());
+}

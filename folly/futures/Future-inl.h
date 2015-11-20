@@ -17,10 +17,10 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <random>
 #include <thread>
-
 #include <folly/experimental/fibers/Baton.h>
 #include <folly/Optional.h>
 #include <folly/Random.h>
@@ -936,18 +936,9 @@ void waitImpl(Future<T>& f) {
   if (f.isReady()) return;
 
   folly::fibers::Baton baton;
-  f = f.then([&](Try<T> t) {
-    baton.post();
-    return makeFuture(std::move(t));
-  });
+  f.setCallback_([&](const Try<T>& t) { baton.post(); });
   baton.wait();
-
-  // There's a race here between the return here and the actual finishing of
-  // the future. f is completed, but the setup may not have finished on done
-  // after the baton has posted.
-  while (!f.isReady()) {
-    std::this_thread::yield();
-  }
+  assert(f.isReady());
 }
 
 template <class T>
@@ -955,19 +946,16 @@ void waitImpl(Future<T>& f, Duration dur) {
   // short-circuit if there's nothing to do
   if (f.isReady()) return;
 
+  folly::MoveWrapper<Promise<T>> promise;
+  auto ret = promise->getFuture();
   auto baton = std::make_shared<folly::fibers::Baton>();
-  f = f.then([baton](Try<T> t) {
+  f.setCallback_([baton, promise](Try<T>&& t) mutable {
+    promise->setTry(std::move(t));
     baton->post();
-    return makeFuture(std::move(t));
   });
-
-  // Let's preserve the invariant that if we did not timeout (timed_wait returns
-  // true), then the returned Future is complete when it is returned to the
-  // caller. We need to wait out the race for that Future to complete.
+  f = std::move(ret);
   if (baton->timed_wait(dur)) {
-    while (!f.isReady()) {
-      std::this_thread::yield();
-    }
+    assert(f.isReady());
   }
 }
 
