@@ -539,7 +539,7 @@ class AsyncServerSocket : public DelayedDestruction
    *
    * Only works if called before addAcceptCallback.
    */
-  void setMaxNumPendingConnectionsPerWorker(uint32_t num) {
+  void setMaxNumMessagesInQueue(uint32_t num) {
     maxNumMsgsInQueue_ = num;
   }
 
