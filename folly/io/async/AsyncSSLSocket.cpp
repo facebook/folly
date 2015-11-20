@@ -977,8 +977,8 @@ AsyncSSLSocket::handleAccept() noexcept {
   }
 
   if (server_ && parseClientHello_) {
-    SSL_set_msg_callback_arg(ssl_, this);
     SSL_set_msg_callback(ssl_, &AsyncSSLSocket::clientHelloParsingCallback);
+    SSL_set_msg_callback_arg(ssl_, this);
   }
 
   errno = 0;
@@ -1575,7 +1575,6 @@ AsyncSSLSocket::clientHelloParsingCallback(int written, int version,
     return;
   }
   if (contentType != SSL3_RT_HANDSHAKE) {
-    sock->resetClientHelloParsing(ssl);
     return;
   }
   if (len == 0) {
