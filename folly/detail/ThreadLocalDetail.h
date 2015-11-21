@@ -163,6 +163,43 @@ struct ThreadEntry {
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
+/**
+ * We want to disable onThreadExit call at the end of shutdown, we don't care
+ * about leaking memory at that point.
+ *
+ * Otherwise if ThreadLocal is used in a shared library, onThreadExit may be
+ * called after dlclose().
+ */
+class PthreadKeyUnregister {
+ public:
+  ~PthreadKeyUnregister() {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    for (const auto& key: keys_) {
+      pthread_key_delete(key);
+    }
+  }
+
+  static void registerKey(pthread_key_t key) {
+    instance_.registerKeyImpl(key);
+  }
+
+ private:
+  PthreadKeyUnregister() {}
+
+  void registerKeyImpl(pthread_key_t key) {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    keys_.push_back(key);
+  }
+
+  std::mutex mutex_;
+  std::vector<pthread_key_t> keys_;
+
+  static PthreadKeyUnregister instance_;
+};
+
+
 // Held in a singleton to track our global instances.
 // We have one of these per "Tag", by default one for the whole system
 // (Tag=void).
@@ -251,6 +288,7 @@ struct StaticMeta {
     head_.next = head_.prev = &head_;
     int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
     checkPosixError(ret, "pthread_key_create failed");
+    PthreadKeyUnregister::registerKey(pthreadKey_);
 
 #if FOLLY_HAVE_PTHREAD_ATFORK
     ret = pthread_atfork(/*prepare*/ &StaticMeta::preFork,

@@ -397,5 +397,14 @@ constexpr size_t constexpr_strlen(const char* s) {
 #endif
 }
 
+#if defined(__APPLE__) || defined(_MSC_VER)
+#define MAX_STATIC_CONSTRUCTOR_PRIORITY
+#else
+// 101 is the highest priority allowed by the init_priority attribute.
+// This priority is already used by JEMalloc and other memory allocators so
+// we will take the next one.
+#define MAX_STATIC_CONSTRUCTOR_PRIORITY __attribute__ ((__init_priority__(102)))
+#endif
+
 } // namespace folly
 #endif // FOLLY_PORTABILITY_H_
