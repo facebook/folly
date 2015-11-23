@@ -214,8 +214,8 @@ class exception_wrapper {
     } else if (eptr_) {
       try {
         std::rethrow_exception(eptr_);
-      } catch (std::exception& e) {
-        return dynamic_cast<const Ex*>(&e);
+      } catch (typename std::decay<Ex>::type&) {
+        return true;
       } catch (...) {
         // fall through
       }
@@ -323,11 +323,9 @@ private:
     } else if (that->eptr_) {
       try {
         std::rethrow_exception(that->eptr_);
-      } catch (std::exception& e) {
-        if (auto ex = dynamic_cast<Ex*>(&e)) {
-          f(*ex);
-          return true;
-        }
+      } catch (Ex& e) {
+        f(e);
+        return true;
       } catch (...) {
         // fall through
       }
