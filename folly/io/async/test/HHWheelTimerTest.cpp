@@ -265,7 +265,7 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
   StackWheelTimer t(&eventBase, atMostEveryN);
   t.setCatchupEveryN(70);
 
-  // Create 60 timeouts to be added to ts10 at 1ms intervals.
+  // Create 60 timeouts to be added to ts1 at 1ms intervals.
   uint32_t numTimeouts = 60;
   std::vector<TestTimeout> timeouts(numTimeouts);
 
@@ -280,7 +280,7 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
     // Call timeoutExpired() on the timeout so it will record a timestamp.
     // This is done only so we can record when we scheduled the timeout.
     // This way if ts1 starts to fall behind a little over time we will still
-    // be comparing the ts10 timeouts to when they were first scheduled (rather
+    // be comparing the ts1 timeouts to when they were first scheduled (rather
     // than when we intended to schedule them).  The scheduler may fall behind
     // eventually since we don't really schedule it once every millisecond.
     // Each time it finishes we schedule it for 1 millisecond in the future.
@@ -301,6 +301,14 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
   TimePoint start;
   eventBase.loop();
   TimePoint end;
+
+  // This should take roughly 2*60 + 25 ms to finish. If it takes more than
+  // 250 ms to finish the system is probably heavily loaded, so skip.
+  if (std::chrono::duration_cast<std::chrono::milliseconds>(
+        end.getTime() - start.getTime()).count() > 250) {
+    LOG(WARNING) << "scheduling all timeouts takes too long";
+    return;
+  }
 
   // We scheduled timeouts 1ms apart, when the HHWheelTimer is only allowed
   // to wake up at most once every 3ms.  It will therefore wake up every 3ms
