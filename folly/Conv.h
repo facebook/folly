@@ -1229,7 +1229,7 @@ to(StringPiece src) {
  ******************************************************************************/
 
 /**
- * Checked conversion from integral to flating point and back. The
+ * Checked conversion from integral to floating point and back. The
  * result must be convertible back to the source type without loss of
  * precision. This seems Draconian but sometimes is what's needed, and
  * complements existing routines nicely. For various rounding
