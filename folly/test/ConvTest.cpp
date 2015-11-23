@@ -1021,6 +1021,22 @@ void u64ToAsciiFollyBM(unsigned int n, uint64_t value) {
   }
 }
 
+// Benchmark unsigned to string conversion
+
+void u64ToStringClibMeasure(unsigned int n, uint64_t value) {
+  // FOLLY_RANGE_CHECK_TO_STRING expands to std::to_string, except on Android
+  // where std::to_string is not supported
+  FOR_EACH_RANGE (i, 0, n) {
+    FOLLY_RANGE_CHECK_TO_STRING(value + n);
+  }
+}
+
+void u64ToStringFollyMeasure(unsigned int n, uint64_t value) {
+  FOR_EACH_RANGE (i, 0, n) {
+    to<std::string>(value + n);
+  }
+}
+
 // Benchmark uitoa with string append
 
 void u2aAppendClassicBM(unsigned int n, uint64_t value) {
@@ -1105,6 +1121,34 @@ static const StringVariadicToBM<fbstring> fbstringVariadicToBM;
   BENCHMARK_PARAM(u64ToAsciiClassicBM, n);              \
   BENCHMARK_RELATIVE_PARAM(u64ToAsciiTableBM, n);       \
   BENCHMARK_RELATIVE_PARAM(u64ToAsciiFollyBM, n);       \
+  BENCHMARK_DRAW_LINE();
+
+DEFINE_BENCHMARK_GROUP(1);
+DEFINE_BENCHMARK_GROUP(12);
+DEFINE_BENCHMARK_GROUP(123);
+DEFINE_BENCHMARK_GROUP(1234);
+DEFINE_BENCHMARK_GROUP(12345);
+DEFINE_BENCHMARK_GROUP(123456);
+DEFINE_BENCHMARK_GROUP(1234567);
+DEFINE_BENCHMARK_GROUP(12345678);
+DEFINE_BENCHMARK_GROUP(123456789);
+DEFINE_BENCHMARK_GROUP(1234567890);
+DEFINE_BENCHMARK_GROUP(12345678901);
+DEFINE_BENCHMARK_GROUP(123456789012);
+DEFINE_BENCHMARK_GROUP(1234567890123);
+DEFINE_BENCHMARK_GROUP(12345678901234);
+DEFINE_BENCHMARK_GROUP(123456789012345);
+DEFINE_BENCHMARK_GROUP(1234567890123456);
+DEFINE_BENCHMARK_GROUP(12345678901234567);
+DEFINE_BENCHMARK_GROUP(123456789012345678);
+DEFINE_BENCHMARK_GROUP(1234567890123456789);
+DEFINE_BENCHMARK_GROUP(12345678901234567890U);
+
+#undef DEFINE_BENCHMARK_GROUP
+
+#define DEFINE_BENCHMARK_GROUP(n)                        \
+  BENCHMARK_PARAM(u64ToStringClibMeasure, n);            \
+  BENCHMARK_RELATIVE_PARAM(u64ToStringFollyMeasure, n);  \
   BENCHMARK_DRAW_LINE();
 
 DEFINE_BENCHMARK_GROUP(1);
