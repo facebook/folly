@@ -73,6 +73,8 @@ extern "C" size_t sallocx(const void*, int)
 __attribute__((__weak__));
 extern "C" void dallocx(void*, int)
 __attribute__((__weak__));
+extern "C" void sdallocx(void*, size_t, int)
+__attribute__((__weak__));
 extern "C" size_t nallocx(size_t, int)
 __attribute__((__weak__));
 extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
@@ -137,9 +139,9 @@ inline bool usingJEMalloc() noexcept {
     // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
     // (!!). http://goo.gl/xpmctm
     if (mallocx == nullptr || rallocx == nullptr || xallocx == nullptr
-        || sallocx == nullptr || dallocx == nullptr || nallocx == nullptr
-        || mallctl == nullptr || mallctlnametomib == nullptr
-        || mallctlbymib == nullptr) {
+        || sallocx == nullptr || dallocx == nullptr || sdallocx == nullptr
+        || nallocx == nullptr || mallctl == nullptr
+        || mallctlnametomib == nullptr || mallctlbymib == nullptr) {
       return false;
     }
 

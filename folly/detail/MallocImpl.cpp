@@ -24,6 +24,7 @@ void* (*rallocx)(void*, size_t, int) = nullptr;
 size_t (*xallocx)(void*, size_t, size_t, int) = nullptr;
 size_t (*sallocx)(const void*, int) = nullptr;
 void (*dallocx)(void*, int) = nullptr;
+void (*sdallocx)(void*, size_t, int) = nullptr;
 size_t (*nallocx)(size_t, int) = nullptr;
 int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
 int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;
