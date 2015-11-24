@@ -39,6 +39,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Baton.h>
+#include <folly/experimental/io/FsUtil.h>
 
 using namespace folly;
 
@@ -541,10 +542,10 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
-TEST(ThreadLocal, SharedLibrary)
-{
-  auto handle = dlopen("./_bin/folly/test/lib_thread_local_test.so",
-                       RTLD_LAZY);
+TEST(ThreadLocal, SharedLibrary) {
+  auto exe = fs::executable_path();
+  auto lib = exe.parent_path() / "lib_thread_local_test.so";
+  auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);
   EXPECT_NE(nullptr, handle);
 
   typedef void (*useA_t)();
