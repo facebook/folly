@@ -203,6 +203,34 @@ TEST(ExceptionWrapper, with_exception_test) {
 */
 }
 
+TEST(ExceptionWrapper, with_exception_deduction) {
+  auto ew = make_exception_wrapper<std::runtime_error>("hi");
+  EXPECT_TRUE(ew.with_exception([](std::runtime_error&) {}));
+  EXPECT_TRUE(ew.with_exception([](std::exception&) {}));
+  EXPECT_FALSE(ew.with_exception([](std::logic_error&) {}));
+}
+
+TEST(ExceptionWrapper, with_exception_deduction_const) {
+  auto ew = make_exception_wrapper<std::runtime_error>("hi");
+  EXPECT_TRUE(ew.with_exception([](const std::runtime_error&) {}));
+  EXPECT_TRUE(ew.with_exception([](const std::exception&) {}));
+  EXPECT_FALSE(ew.with_exception([](const std::logic_error&) {}));
+}
+
+TEST(ExceptionWrapper, with_exception_deduction_const_const) {
+  const auto cew = make_exception_wrapper<std::runtime_error>("hi");
+  EXPECT_TRUE(cew.with_exception([](const std::runtime_error&) {}));
+  EXPECT_TRUE(cew.with_exception([](const std::exception&) {}));
+  EXPECT_FALSE(cew.with_exception([](const std::logic_error&) {}));
+}
+
+TEST(ExceptionWrapper, with_exception_deduction_returning) {
+  auto ew = make_exception_wrapper<std::runtime_error>("hi");
+  EXPECT_TRUE(ew.with_exception([](std::runtime_error&) { return 3; }));
+  EXPECT_TRUE(ew.with_exception([](std::exception&) { return "hello"; }));
+  EXPECT_FALSE(ew.with_exception([](std::logic_error&) { return nullptr; }));
+}
+
 TEST(ExceptionWrapper, non_std_exception_test) {
   int expected = 17;
 

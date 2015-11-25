@@ -223,6 +223,18 @@ class exception_wrapper {
     return false;
   }
 
+  template <class F>
+  bool with_exception(F&& f) {
+    using arg_type = typename functor_traits<F>::arg_type_decayed;
+    return with_exception<arg_type>(std::forward<F>(f));
+  }
+
+  template <class F>
+  bool with_exception(F&& f) const {
+    using arg_type = typename functor_traits<F>::arg_type_decayed;
+    return with_exception<const arg_type>(std::forward<F>(f));
+  }
+
   // If this exception wrapper wraps an exception of type Ex, with_exception
   // will call f with the wrapped exception as an argument and return true, and
   // will otherwise return false.
@@ -310,6 +322,18 @@ protected:
   friend exception_wrapper make_exception_wrapper(Args&&... args);
 
 private:
+  template <typename F>
+  struct functor_traits {
+    template <typename T>
+    struct impl;
+    template <typename C, typename R, typename A>
+    struct impl<R(C::*)(A)> { using arg_type = A; };
+    template <typename C, typename R, typename A>
+    struct impl<R(C::*)(A) const> { using arg_type = A; };
+    using arg_type = typename impl<decltype(&F::operator())>::arg_type;
+    using arg_type_decayed = typename std::decay<arg_type>::type;
+  };
+
   // What makes this useful is that T can be exception_wrapper* or
   // const exception_wrapper*, and the compiler will use the
   // instantiation which works with F.
