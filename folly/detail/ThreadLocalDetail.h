@@ -530,10 +530,11 @@ struct StaticMeta {
         * destructing a ThreadLocal and writing to the elements vector
         * of this thread.
         */
-        memcpy(reallocated, threadEntry->elements,
-               sizeof(ElementWrapper) * prevCapacity);
-        using std::swap;
-        swap(reallocated, threadEntry->elements);
+        if (prevCapacity != 0) {
+          memcpy(reallocated, threadEntry->elements,
+                 sizeof(*reallocated) * prevCapacity);
+        }
+        std::swap(reallocated, threadEntry->elements);
       }
       threadEntry->elementsCapacity = newCapacity;
     }
