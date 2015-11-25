@@ -280,6 +280,7 @@ nobase_follyinclude_HEADERS = \
 	test/function_benchmark/test_functions.h \
 	test/SynchronizedTestLib.h \
 	test/SynchronizedTestLib-inl.h \
+	test/TestUtils.h \
 	ThreadCachedArena.h \
 	ThreadCachedInt.h \
 	ThreadLocal.h \
