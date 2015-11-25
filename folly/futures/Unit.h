@@ -62,4 +62,6 @@ template <class T>
 struct is_void_or_unit : public Unit::Lift<T>
 {};
 
+constexpr Unit unit {};
+
 }
