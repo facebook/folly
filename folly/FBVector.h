@@ -966,6 +966,12 @@ public:
   }
 
   void shrink_to_fit() noexcept {
+    if (empty()) {
+      // Just skip reallocation.
+      *this = fbvector();
+      return;
+    }
+
     auto const newCapacityBytes = folly::goodMallocSize(size() * sizeof(T));
     auto const newCap = newCapacityBytes / sizeof(T);
     auto const oldCap = capacity();
