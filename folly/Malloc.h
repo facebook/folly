@@ -177,6 +177,10 @@ inline bool usingJEMalloc() noexcept {
 }
 
 inline size_t goodMallocSize(size_t minSize) noexcept {
+  if (minSize == 0) {
+    return 0;
+  }
+
   if (!usingJEMalloc()) {
     // Not using jemalloc - no smarts
     return minSize;

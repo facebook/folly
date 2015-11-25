@@ -274,6 +274,16 @@ TEST(FBVector, vector_of_maps) {
   EXPECT_EQ(1, v[1].size());
 }
 
+TEST(FBVector, shrink_to_fit_after_clear) {
+  fbvector<int> fb1;
+  fb1.push_back(42);
+  fb1.push_back(1337);
+  fb1.clear();
+  fb1.shrink_to_fit();
+  EXPECT_EQ(fb1.size(), 0);
+  EXPECT_EQ(fb1.capacity(), 0);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
