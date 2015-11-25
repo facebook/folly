@@ -17,6 +17,8 @@
 #ifndef FOLLY_PORTABILITY_H_
 #define FOLLY_PORTABILITY_H_
 
+// @nocommit invalidate ccache 20151125 (see #8764509)
+
 #include <string.h>
 
 #include <cstddef>
