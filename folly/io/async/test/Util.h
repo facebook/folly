@@ -19,6 +19,7 @@
 #pragma once
 
 #include <folly/io/async/test/TimeUtil.h>
+#include <folly/test/TestUtils.h>
 #include <gtest/gtest.h>
 
 /**
@@ -36,10 +37,12 @@
  * @param expectedMS            The timeout duration, in milliseconds
  * @param tolerance             The tolerance, in milliseconds.
  */
-#define T_CHECK_TIMEOUT(start, end, expectedMS, ...) \
-  EXPECT_TRUE(::folly::checkTimeout((start), (end),  \
-                                    (expectedMS), false,  \
-                                    ##__VA_ARGS__))
+#define T_CHECK_TIMEOUT(start, end, expectedMS, ...)     \
+  if (!::folly::checkTimeout((start), (end),             \
+                             (expectedMS), false,        \
+                             ##__VA_ARGS__)) {           \
+    SKIP() << "T_CHECK_TIMEOUT lapsed";                  \
+  }
 
 /**
  * Verify that an event took less than a specified amount of time.
@@ -47,7 +50,9 @@
  * This is similar to T_CHECK_TIMEOUT, but does not fail if the event took less
  * than the allowed time.
  */
-#define T_CHECK_TIME_LT(start, end, expectedMS, ...) \
-  EXPECT_TRUE(::folly::checkTimeout((start), (end),  \
-                                    (expectedMS), true, \
-                                    ##__VA_ARGS__))
+#define T_CHECK_TIME_LT(start, end, expectedMS, ...)     \
+  if (!::folly::checkTimeout((start), (end),             \
+                             (expectedMS), true,         \
+                             ##__VA_ARGS__)) {           \
+    SKIP() << "T_CHECK_TIMEOUT_LT lapsed";               \
+  }
