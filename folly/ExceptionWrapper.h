@@ -330,7 +330,9 @@ private:
     struct impl<R(C::*)(A)> { using arg_type = A; };
     template <typename C, typename R, typename A>
     struct impl<R(C::*)(A) const> { using arg_type = A; };
-    using arg_type = typename impl<decltype(&F::operator())>::arg_type;
+    using functor_decayed = typename std::decay<F>::type;
+    using functor_op = decltype(&functor_decayed::operator());
+    using arg_type = typename impl<functor_op>::arg_type;
     using arg_type_decayed = typename std::decay<arg_type>::type;
   };
 

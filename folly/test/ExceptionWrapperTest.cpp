@@ -210,14 +210,14 @@ TEST(ExceptionWrapper, with_exception_deduction) {
   EXPECT_FALSE(ew.with_exception([](std::logic_error&) {}));
 }
 
-TEST(ExceptionWrapper, with_exception_deduction_const) {
+TEST(ExceptionWrapper, with_exception_deduction_exn_const) {
   auto ew = make_exception_wrapper<std::runtime_error>("hi");
   EXPECT_TRUE(ew.with_exception([](const std::runtime_error&) {}));
   EXPECT_TRUE(ew.with_exception([](const std::exception&) {}));
   EXPECT_FALSE(ew.with_exception([](const std::logic_error&) {}));
 }
 
-TEST(ExceptionWrapper, with_exception_deduction_const_const) {
+TEST(ExceptionWrapper, with_exception_deduction_wrap_const_exn_const) {
   const auto cew = make_exception_wrapper<std::runtime_error>("hi");
   EXPECT_TRUE(cew.with_exception([](const std::runtime_error&) {}));
   EXPECT_TRUE(cew.with_exception([](const std::exception&) {}));
@@ -229,6 +229,18 @@ TEST(ExceptionWrapper, with_exception_deduction_returning) {
   EXPECT_TRUE(ew.with_exception([](std::runtime_error&) { return 3; }));
   EXPECT_TRUE(ew.with_exception([](std::exception&) { return "hello"; }));
   EXPECT_FALSE(ew.with_exception([](std::logic_error&) { return nullptr; }));
+}
+
+namespace {
+template <typename T>
+T& r_to_l(T v) { return std::ref(v); }
+}
+
+TEST(ExceptionWrapper, with_exception_deduction_functor_lvalue) {
+  auto ew = make_exception_wrapper<std::runtime_error>("hi");
+  EXPECT_TRUE(ew.with_exception(r_to_l([](std::runtime_error&) {})));
+  EXPECT_TRUE(ew.with_exception(r_to_l([](std::exception&) {})));
+  EXPECT_FALSE(ew.with_exception(r_to_l([](std::logic_error&) {})));
 }
 
 TEST(ExceptionWrapper, non_std_exception_test) {
