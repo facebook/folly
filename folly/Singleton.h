@@ -486,7 +486,8 @@ class Singleton {
   // singleton, you can try to do so with a weak_ptr.  Avoid this when
   // possible but the inability to lock the weak pointer can be a
   // signal that the vault has been destroyed.
-  static std::weak_ptr<T> get_weak() {
+  static std::weak_ptr<T>
+  get_weak() __attribute__ ((__deprecated__("Replaced by try_get")))  {
     return getEntry().get_weak();
   }
 

@@ -391,10 +391,10 @@ TEST(Singleton, SingletonCreationError) {
   SingletonCreationError<ErrorConstructor> error_once_singleton;
 
   // first time should error out
-  EXPECT_THROW(error_once_singleton.get_weak().lock(), std::runtime_error);
+  EXPECT_THROW(error_once_singleton.try_get(), std::runtime_error);
 
   // second time it'll work fine
-  error_once_singleton.get_weak().lock();
+  error_once_singleton.try_get();
   SUCCEED();
 }
 
@@ -409,7 +409,7 @@ TEST(Singleton, SingletonConcurrencyStress) {
   std::vector<std::thread> ts;
   for (size_t i = 0; i < 100; ++i) {
     ts.emplace_back([&]() {
-        slowpoke_singleton.get_weak().lock();
+        slowpoke_singleton.try_get();
       });
   }
 
