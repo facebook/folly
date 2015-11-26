@@ -59,7 +59,13 @@ template<class T, class Tag> class ThreadLocalPtr;
 template<class T, class Tag=void>
 class ThreadLocal {
  public:
-  constexpr ThreadLocal() {}
+  constexpr ThreadLocal() : constructor_([]() {
+      return new T();
+    }) {}
+
+  explicit ThreadLocal(std::function<T*()> constructor) :
+      constructor_(constructor) {
+  }
 
   T* get() const {
     T* ptr = tlp_.get();
@@ -98,12 +104,13 @@ class ThreadLocal {
   ThreadLocal& operator=(const ThreadLocal&) = delete;
 
   T* makeTlp() const {
-    T* ptr = new T();
+    auto ptr = constructor_();
     tlp_.reset(ptr);
     return ptr;
   }
 
   mutable ThreadLocalPtr<T,Tag> tlp_;
+  std::function<T*()> constructor_;
 };
 
 /*

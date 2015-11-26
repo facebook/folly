@@ -249,7 +249,6 @@ nobase_follyinclude_HEADERS = \
 	Random.h \
 	Random-inl.h \
 	Range.h \
-	ReadMostlySharedPtr.h \
 	RWSpinLock.h \
 	ScopeGuard.h \
 	SharedMutex.h \
