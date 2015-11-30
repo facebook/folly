@@ -138,8 +138,8 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
 
 namespace detail {
 
-Timekeeper* getTimekeeperSingleton() {
-  return timekeeperSingleton_.get();
+std::shared_ptr<Timekeeper> getTimekeeperSingleton() {
+  return timekeeperSingleton_.try_get();
 }
 
 } // detail

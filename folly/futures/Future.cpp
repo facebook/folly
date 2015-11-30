@@ -32,8 +32,10 @@ template class Future<double>;
 namespace folly { namespace futures {
 
 Future<Unit> sleep(Duration dur, Timekeeper* tk) {
+  std::shared_ptr<Timekeeper> tks;
   if (LIKELY(!tk)) {
-    tk = folly::detail::getTimekeeperSingleton();
+    tks = folly::detail::getTimekeeperSingleton();
+    tk = DCHECK_NOTNULL(tks.get());
   }
   return tk->after(dur);
 }

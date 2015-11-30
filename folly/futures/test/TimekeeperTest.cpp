@@ -37,7 +37,7 @@ struct TimekeeperFixture : public testing::Test {
     timeLord_(folly::detail::getTimekeeperSingleton())
   {}
 
-  Timekeeper* timeLord_;
+  std::shared_ptr<Timekeeper> timeLord_;
 };
 
 TEST_F(TimekeeperFixture, after) {

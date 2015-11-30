@@ -33,7 +33,7 @@ namespace folly {
 class Timekeeper;
 
 namespace detail {
-  Timekeeper* getTimekeeperSingleton();
+  std::shared_ptr<Timekeeper> getTimekeeperSingleton();
 }
 
 template <class T>
@@ -889,8 +889,10 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) {
     std::atomic<bool> token {false};
   };
 
+  std::shared_ptr<Timekeeper> tks;
   if (!tk) {
-    tk = folly::detail::getTimekeeperSingleton();
+    tks = folly::detail::getTimekeeperSingleton();
+    tk = DCHECK_NOTNULL(tks.get());
   }
 
   auto ctx = std::make_shared<Context>(std::move(e));
