@@ -209,7 +209,7 @@ class Try {
     if (!hasException()) {
       return false;
     }
-    return e_->with_exception<Ex>(std::move(func));
+    return e_->with_exception(std::move(func));
   }
 
   template <bool isTry, typename R>
@@ -329,7 +329,7 @@ class Try<void> {
     if (!hasException()) {
       return false;
     }
-    return e_->with_exception<Ex>(std::move(func));
+    return e_->with_exception(std::move(func));
   }
 
   template <bool, typename R>

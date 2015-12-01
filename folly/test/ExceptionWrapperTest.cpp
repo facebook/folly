@@ -162,7 +162,7 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), "IntException: int == 23");
   EXPECT_EQ(ew.class_name(), "IntException");
-  ew.with_exception<IntException>([&](const IntException& ie) {
+  ew.with_exception([&](const IntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
     });
 
@@ -175,7 +175,7 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_TRUE(bool(ew2));
   EXPECT_EQ(ew2.what(), "IntException: int == 23");
   EXPECT_EQ(ew2.class_name(), "IntException");
-  ew2.with_exception<AbstractIntException>([&](AbstractIntException& ie) {
+  ew2.with_exception([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
 #if __CLANG_PREREQ(3, 6)
 # pragma clang diagnostic push
@@ -190,14 +190,14 @@ TEST(ExceptionWrapper, with_exception_test) {
   // Test with const this.  If this compiles and does not crash due to
   // infinite loop when it runs, it succeeds.
   const exception_wrapper& cew = ew;
-  cew.with_exception<IntException>([&](const IntException& ie) {
+  cew.with_exception([&](const IntException& ie) {
       SUCCEED();
     });
 
   // This won't even compile.  You can't use a function which takes a
   // non-const reference with a const exception_wrapper.
 /*
-  cew.with_exception<IntException>([&](IntException& ie) {
+  cew.with_exception([&](IntException& ie) {
       SUCCEED();
     });
 */

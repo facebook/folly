@@ -89,11 +89,11 @@ namespace folly {
  * // Thread2: Exceptions are bad!
  * void processResult() {
  *   auto ep = globalExceptionWrapper.get();
- *   if (!ep.with_exception<FacePlantException>([&](
+ *   if (!ep.with_exception([&](
  *     FacePlantException& faceplant) {
  *       LOG(ERROR) << "FACEPLANT";
  *     })) {
- *     ep.with_exception<FailWhaleException>([&](
+ *     ep.with_exception([&](
  *       FailWhaleException& failwhale) {
  *         LOG(ERROR) << "FAILWHALE!";
  *       });
