@@ -177,14 +177,7 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_EQ(ew2.class_name(), "IntException");
   ew2.with_exception([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
-#if __CLANG_PREREQ(3, 6)
-# pragma clang diagnostic push
-# pragma clang diagnostic ignored "-Wunevaluated-expression"
-#endif
-      EXPECT_EQ(typeid(ie), typeid(IntException));
-#if __CLANG_PREREQ(3, 6)
-# pragma clang diagnostic pop
-#endif
+      EXPECT_TRUE(dynamic_cast<IntException*>(&ie));
     });
 
   // Test with const this.  If this compiles and does not crash due to
