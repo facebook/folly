@@ -247,3 +247,91 @@ TEST(Aha, InsertErase_i64_str) {
 TEST(Aha, Create_cstr_i64) {
   auto obj = AtomicHashArray<const char*, int64_t>::create(12);
 }
+
+static bool legalKey(char* a);
+
+// Support two additional key lookup types (char and StringPiece) using
+// one set of traits.
+struct EqTraits {
+  bool operator()(char* a, char* b) {
+    return legalKey(a) && (strcmp(a, b) == 0);
+  }
+  bool operator()(char* a, const char& b) {
+    return legalKey(a) && (a[0] != '\0') && (a[0] == b);
+  }
+  bool operator()(char* a, const StringPiece b) {
+    return legalKey(a) &&
+      (strlen(a) == b.size()) && (strncmp(a, b.begin(), b.size()) == 0);
+  }
+};
+
+struct HashTraits {
+  size_t operator()(char* a) {
+    size_t result = 0;
+    while (a[0] != 0) result += static_cast<size_t>(*(a++));
+    return result;
+  }
+  size_t operator()(const char& a) {
+    return static_cast<size_t>(a);
+  }
+  size_t operator()(const StringPiece a) {
+    size_t result = 0;
+    for (const auto& ch : a) result += static_cast<size_t>(ch);
+    return result;
+  }
+};
+
+// Creates malloc'ed null-terminated strings.
+struct KeyConvertTraits {
+  char* operator()(const char& a) {
+    return strndup(&a, 1);
+  }
+  char* operator()(const StringPiece a) {
+    return strndup(a.begin(), a.size());
+  }
+};
+
+typedef AtomicHashArray<char*, int64_t, HashTraits, EqTraits,
+                        MmapAllocator<char>, AtomicHashArrayQuadraticProbeFcn,
+                        KeyConvertTraits>
+  AHACstrInt;
+AHACstrInt::Config cstrIntCfg;
+
+static bool legalKey(char* a) {
+  return a != cstrIntCfg.emptyKey &&
+    a != cstrIntCfg.lockedKey &&
+    a != cstrIntCfg.erasedKey;
+}
+
+TEST(Aha, LookupAny) {
+  auto arr = AHACstrInt::create(12);
+
+  arr->insert(std::make_pair(strdup("f"), 42));
+  EXPECT_EQ(42, arr->find("f")->second);
+  {
+    // Look up a single char, successfully.
+    auto it = arr->find('f');
+    EXPECT_EQ(42, it->second);
+  }
+  {
+    // Look up a single char, unsuccessfully.
+    auto it = arr->find('g');
+    EXPECT_TRUE(it == arr->end());
+  }
+  {
+    // Insert a new char key.
+    auto res = arr->emplace('h', static_cast<int64_t>(123));
+    EXPECT_TRUE(res.second);
+    EXPECT_TRUE(res.first != arr->end());
+    // Look up the string version.
+    EXPECT_EQ(123, arr->find("h")->second);
+  }
+  {
+    // Fail to emplace an existing key.
+    auto res = arr->emplace('f', static_cast<int64_t>(123));
+    EXPECT_FALSE(res.second);
+    EXPECT_TRUE(res.first != arr->end());
+  }
+
+  for (auto it : *arr) free(it.first);
+}

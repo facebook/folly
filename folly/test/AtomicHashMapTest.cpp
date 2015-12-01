@@ -29,6 +29,7 @@ using std::vector;
 using std::string;
 using folly::AtomicHashMap;
 using folly::AtomicHashArray;
+using folly::StringPiece;
 
 // Tunables:
 DEFINE_double(targetLoadFactor, 0.75, "Target memory utilization fraction.");
@@ -111,6 +112,69 @@ static std::unique_ptr<QPAHMapT> globalQPAHM;
 // Generate a deterministic value based on an input key
 static int genVal(int key) {
   return key / 3;
+}
+
+static bool legalKey(const char* a);
+
+struct EqTraits {
+  bool operator()(const char* a, const char* b) {
+    return legalKey(a) && (strcmp(a, b) == 0);
+  }
+  bool operator()(const char* a, const char& b) {
+    return legalKey(a) && (a[0] != '\0') && (a[0] == b);
+  }
+  bool operator()(const char* a, const StringPiece b) {
+    return legalKey(a) &&
+      (strlen(a) == b.size()) && (strcmp(a, b.begin()) == 0);
+  }
+};
+
+struct HashTraits {
+  size_t operator()(const char* a) {
+    size_t result = 0;
+    while (a[0] != 0) result += static_cast<size_t>(*(a++));
+    return result;
+  }
+  size_t operator()(const char& a) {
+    return static_cast<size_t>(a);
+  }
+  size_t operator()(const StringPiece a) {
+    size_t result = 0;
+    for (const auto& ch : a) result += static_cast<size_t>(ch);
+    return result;
+  }
+};
+
+typedef AtomicHashMap<const char*, int64_t, HashTraits, EqTraits> AHMCstrInt;
+AHMCstrInt::Config cstrIntCfg;
+
+static bool legalKey(const char* a) {
+  return a != cstrIntCfg.emptyKey &&
+    a != cstrIntCfg.lockedKey &&
+    a != cstrIntCfg.erasedKey;
+}
+
+TEST(Ahm, BasicLookup) {
+  AHMCstrInt myMap(1024, cstrIntCfg);
+  EXPECT_TRUE(myMap.begin() == myMap.end());
+  myMap.insert(std::make_pair("f", 42));
+  EXPECT_EQ(42, myMap.find("f")->second);
+  {
+    // Look up a single char, successfully.
+    auto it = myMap.find<char>('f');
+    EXPECT_EQ(42, it->second);
+  }
+  {
+    // Look up a single char, unsuccessfully.
+    auto it = myMap.find<char>('g');
+    EXPECT_TRUE(it == myMap.end());
+  }
+  {
+    // Look up a string piece, successfully.
+    const StringPiece piece("f");
+    auto it = myMap.find(piece);
+    EXPECT_EQ(42, it->second);
+  }
 }
 
 TEST(Ahm, grow) {

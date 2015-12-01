@@ -18,15 +18,18 @@
 #error "This should only be included by AtomicHashArray.h"
 #endif
 
+#include <type_traits>
+
 #include <folly/Bits.h>
 #include <folly/detail/AtomicHashUtils.h>
 
 namespace folly {
 
 // AtomicHashArray private constructor --
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                Allocator, ProbeFcn, KeyConvertFcn>::
 AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
                 KeyT erasedKey, double _maxLoadFactor, size_t cacheSize)
     : capacity_(capacity),
@@ -43,20 +46,22 @@ AtomicHashArray(size_t capacity, KeyT emptyKey, KeyT lockedKey,
  *   of key and returns true, or if key does not exist returns false and
  *   ret.index is set to capacity_.
  */
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator, ProbeFcn>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
-findInternal(const KeyT key_in) {
-  DCHECK_NE(key_in, kEmptyKey_);
-  DCHECK_NE(key_in, kLockedKey_);
-  DCHECK_NE(key_in, kErasedKey_);
-  for (size_t idx = keyToAnchorIdx(key_in), numProbes = 0;
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+template <class LookupKeyT, class LookupHashFcn, class LookupEqualFcn>
+typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                         Allocator, ProbeFcn, KeyConvertFcn>::SimpleRetT
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                Allocator, ProbeFcn, KeyConvertFcn>::
+findInternal(const LookupKeyT key_in) {
+  checkLegalKeyIfKey<LookupKeyT>(key_in);
+
+  for (size_t idx = keyToAnchorIdx<LookupKeyT, LookupHashFcn>(key_in),
+       numProbes = 0;
        ;
        idx = ProbeFcn()(idx, numProbes, capacity_)) {
     const KeyT key = acquireLoadKey(cells_[idx]);
-    if (LIKELY(EqualFcn()(key, key_in))) {
+    if (LIKELY(LookupEqualFcn()(key, key_in))) {
       return SimpleRetT(idx, true);
     }
     if (UNLIKELY(key == kEmptyKey_)) {
@@ -83,20 +88,23 @@ findInternal(const KeyT key_in) {
  *   this will be the previously inserted value, and if the map is full it is
  *   default.
  */
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-template <typename... ArgTs>
-typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator, ProbeFcn>::SimpleRetT
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
-insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+template <typename LookupKeyT,
+          typename LookupHashFcn,
+          typename LookupEqualFcn,
+          typename LookupKeyToKeyFcn,
+          typename... ArgTs>
+typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                         Allocator, ProbeFcn, KeyConvertFcn>::SimpleRetT
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                Allocator, ProbeFcn, KeyConvertFcn>::
+insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
   const short NO_NEW_INSERTS = 1;
   const short NO_PENDING_INSERTS = 2;
-  CHECK_NE(key_in, kEmptyKey_);
-  CHECK_NE(key_in, kLockedKey_);
-  CHECK_NE(key_in, kErasedKey_);
+  checkLegalKeyIfKey<LookupKeyT>(key_in);
 
-  size_t idx = keyToAnchorIdx(key_in);
+  size_t idx = keyToAnchorIdx<LookupKeyT, LookupHashFcn>(key_in);
   size_t numProbes = 0;
   for (;;) {
     DCHECK_LT(idx, capacity_);
@@ -132,11 +140,20 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
         // If we fail, fall through to comparison below; maybe the insert that
         // just beat us was for this very key....
         if (tryLockCell(cell)) {
+          KeyT key_new;
           // Write the value - done before unlocking
           try {
+            key_new = LookupKeyToKeyFcn()(key_in);
+            typedef typename std::remove_const<LookupKeyT>::type
+              LookupKeyTNoConst;
+            constexpr bool kAlreadyChecked =
+              std::is_same<KeyT, LookupKeyTNoConst>::value;
+            if (!kAlreadyChecked) {
+              checkLegalKeyIfKey(key_new);
+            }
             DCHECK(relaxedLoadKey(*cell) == kLockedKey_);
             new (&cell->second) ValueT(std::forward<ArgTs>(vCtorArgs)...);
-            unlockCell(cell, key_in); // Sets the new key
+            unlockCell(cell, key_new); // Sets the new key
           } catch (...) {
             // Transition back to empty key---requires handling
             // locked->empty below.
@@ -147,7 +164,7 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
           // An erase() can race here and delete right after our insertion
           // Direct comparison rather than EqualFcn ok here
           // (we just inserted it)
-          DCHECK(relaxedLoadKey(*cell) == key_in ||
+          DCHECK(relaxedLoadKey(*cell) == key_new ||
                  relaxedLoadKey(*cell) == kErasedKey_);
           --numPendingEntries_;
           ++numEntries_;  // This is a thread cached atomic increment :)
@@ -167,7 +184,7 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
     }
 
     const KeyT thisKey = acquireLoadKey(*cell);
-    if (EqualFcn()(thisKey, key_in)) {
+    if (LookupEqualFcn()(thisKey, key_in)) {
       // Found an existing entry for our key, but we don't overwrite the
       // previous value.
       return SimpleRetT(idx, false);
@@ -191,7 +208,6 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
   }
 }
 
-
 /*
  * erase --
  *
@@ -202,9 +218,10 @@ insertInternal(KeyT key_in, ArgTs&&... vCtorArgs) {
  *   erased key will never be reused. If there's an associated value, we won't
  *   touch it either.
  */
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-size_t AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+size_t AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
 erase(KeyT key_in) {
   CHECK_NE(key_in, kEmptyKey_);
   CHECK_NE(key_in, kLockedKey_);
@@ -250,11 +267,12 @@ erase(KeyT key_in) {
   }
 }
 
-template <class KeyT, class ValueT,
-         class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-typename AtomicHashArray<KeyT, ValueT,
-         HashFcn, EqualFcn, Allocator, ProbeFcn>::SmartPtr
-AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+         class Allocator, class ProbeFcn, class KeyConvertFcn>
+typename AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                         Allocator, ProbeFcn, KeyConvertFcn>::SmartPtr
+AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                Allocator, ProbeFcn, KeyConvertFcn>::
 create(size_t maxSize, const Config& c) {
   CHECK_LE(c.maxLoadFactor, 1.0);
   CHECK_GT(c.maxLoadFactor, 0.0);
@@ -292,9 +310,10 @@ create(size_t maxSize, const Config& c) {
   return map;
 }
 
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
 destroy(AtomicHashArray* p) {
   assert(p);
 
@@ -311,9 +330,10 @@ destroy(AtomicHashArray* p) {
 }
 
 // clear -- clears all keys and values in the map and resets all counters
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
-void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
+void AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                     Allocator, ProbeFcn, KeyConvertFcn>::
 clear() {
   FOR_EACH_RANGE(i, 0, capacity_) {
     if (cells_[i].first != kEmptyKey_) {
@@ -331,10 +351,11 @@ clear() {
 
 // Iterator implementation
 
-template <class KeyT, class ValueT,
-          class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+template <class KeyT, class ValueT, class HashFcn, class EqualFcn,
+          class Allocator, class ProbeFcn, class KeyConvertFcn>
 template <class ContT, class IterVal>
-struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>::
+struct AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                       Allocator, ProbeFcn, KeyConvertFcn>::
     aha_iterator
     : boost::iterator_facade<aha_iterator<ContT,IterVal>,
                              IterVal,

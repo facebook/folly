@@ -62,18 +62,46 @@ struct AtomicHashArrayQuadraticProbeFcn
   }
 };
 
+// Enables specializing checkLegalKey without specializing its class.
+namespace detail {
+// Local copy of folly::gen::Identity, to avoid heavy dependencies.
+class AHAIdentity {
+ public:
+  template<class Value>
+  auto operator()(Value&& value) const ->
+    decltype(std::forward<Value>(value)) {
+    return std::forward<Value>(value);
+  }
+};
+
+template <typename NotKeyT, typename KeyT>
+inline void checkLegalKeyIfKeyTImpl(NotKeyT ignored, KeyT emptyKey,
+                                    KeyT lockedKey, KeyT erasedKey) {
+}
+
+template <typename KeyT>
+inline void checkLegalKeyIfKeyTImpl(KeyT key_in, KeyT emptyKey,
+                                    KeyT lockedKey, KeyT erasedKey) {
+  DCHECK_NE(key_in, emptyKey);
+  DCHECK_NE(key_in, lockedKey);
+  DCHECK_NE(key_in, erasedKey);
+}
+}  // namespace detail
+
 template <class KeyT, class ValueT,
           class HashFcn = std::hash<KeyT>,
           class EqualFcn = std::equal_to<KeyT>,
           class Allocator = std::allocator<char>,
-          class ProbeFcn = AtomicHashArrayLinearProbeFcn>
+          class ProbeFcn = AtomicHashArrayLinearProbeFcn,
+          class KeyConvertFcn = detail::AHAIdentity>
 class AtomicHashMap;
 
 template <class KeyT, class ValueT,
           class HashFcn = std::hash<KeyT>,
           class EqualFcn = std::equal_to<KeyT>,
           class Allocator = std::allocator<char>,
-          class ProbeFcn = AtomicHashArrayLinearProbeFcn>
+          class ProbeFcn = AtomicHashArrayLinearProbeFcn,
+          class KeyConvertFcn = detail::AHAIdentity>
 class AtomicHashArray : boost::noncopyable {
   static_assert((std::is_convertible<KeyT,int32_t>::value ||
                  std::is_convertible<KeyT,int64_t>::value ||
@@ -84,6 +112,9 @@ class AtomicHashArray : boost::noncopyable {
  public:
   typedef KeyT                key_type;
   typedef ValueT              mapped_type;
+  typedef HashFcn             hasher;
+  typedef EqualFcn            key_equal;
+  typedef KeyConvertFcn       key_convert;
   typedef std::pair<const KeyT, ValueT> value_type;
   typedef std::size_t         size_type;
   typedef std::ptrdiff_t      difference_type;
@@ -164,11 +195,37 @@ class AtomicHashArray : boost::noncopyable {
   //  Cannot have pre-instantiated const Config instance because of SIOF.
   static SmartPtr create(size_t maxSize, const Config& c = Config());
 
-  iterator find(KeyT k) {
-    return iterator(this, findInternal(k).idx);
+  /*
+   * find --
+   *
+   *
+   *   Returns the iterator to the element if found, otherwise end().
+   *
+   *   As an optional feature, the type of the key to look up (LookupKeyT) is
+   *   allowed to be different from the type of keys actually stored (KeyT).
+   *
+   *   This enables use cases where materializing the key is costly and usually
+   *   redudant, e.g., canonicalizing/interning a set of strings and being able
+   *   to look up by StringPiece. To use this feature, LookupHashFcn must take
+   *   a LookupKeyT, and LookupEqualFcn must take KeyT and LookupKeyT as first
+   *   and second parameter, respectively.
+   *
+   *   See folly/test/ArrayHashArrayTest.cpp for sample usage.
+   */
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  iterator find(LookupKeyT k) {
+    return iterator(this,
+        findInternal<LookupKeyT, LookupHashFcn, LookupEqualFcn>(k).idx);
   }
-  const_iterator find(KeyT k) const {
-    return const_cast<AtomicHashArray*>(this)->find(k);
+
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  const_iterator find(LookupKeyT k) const {
+    return const_cast<AtomicHashArray*>(this)->
+      find<LookupKeyT, LookupHashFcn, LookupEqualFcn>(k);
   }
 
   /*
@@ -194,10 +251,24 @@ class AtomicHashArray : boost::noncopyable {
    *
    *   Same contract as insert(), but performs in-place construction
    *   of the value type using the specified arguments.
+   *
+   *   Also, like find(), this method optionally allows 'key_in' to have a type
+   *   different from that stored in the table; see find(). If and only if no
+   *   equal key is already present, this method converts 'key_in' to a key of
+   *   type KeyT using the provided LookupKeyToKeyFcn.
    */
-  template <typename... ArgTs>
-  std::pair<iterator,bool> emplace(KeyT key_in, ArgTs&&... vCtorArgs) {
-    SimpleRetT ret = insertInternal(key_in, std::forward<ArgTs>(vCtorArgs)...);
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal,
+            typename LookupKeyToKeyFcn = key_convert,
+            typename... ArgTs>
+  std::pair<iterator,bool> emplace(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
+    SimpleRetT ret = insertInternal<LookupKeyT,
+                                    LookupHashFcn,
+                                    LookupEqualFcn,
+                                    LookupKeyToKeyFcn>(
+                                      key_in,
+                                      std::forward<ArgTs>(vCtorArgs)...);
     return std::make_pair(iterator(this, ret.idx), ret.success);
   }
 
@@ -276,10 +347,22 @@ friend class AtomicHashMap<KeyT,
 
 
 
-  template <typename... ArgTs>
-  SimpleRetT insertInternal(KeyT key, ArgTs&&... vCtorArgs);
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal,
+            typename LookupKeyToKeyFcn = detail::AHAIdentity,
+            typename... ArgTs>
+  SimpleRetT insertInternal(LookupKeyT key, ArgTs&&... vCtorArgs);
 
-  SimpleRetT findInternal(const KeyT key);
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  SimpleRetT findInternal(const LookupKeyT key);
+
+  template <typename MaybeKeyT>
+  void checkLegalKeyIfKey(MaybeKeyT key) {
+    detail::checkLegalKeyIfKeyTImpl(key, kEmptyKey_, kLockedKey_, kErasedKey_);
+  }
 
   static std::atomic<KeyT>* cellKeyPtr(const value_type& r) {
     // We need some illegal casting here in order to actually store
@@ -330,8 +413,9 @@ friend class AtomicHashMap<KeyT,
       std::memory_order_acq_rel);
   }
 
-  inline size_t keyToAnchorIdx(const KeyT k) const {
-    const size_t hashVal = HashFcn()(k);
+  template <class LookupKeyT = key_type, class LookupHashFcn = hasher>
+  inline size_t keyToAnchorIdx(const LookupKeyT k) const {
+    const size_t hashVal = LookupHashFcn()(k);
     const size_t probe = hashVal & kAnchorMask_;
     return LIKELY(probe < capacity_) ? probe : hashVal % capacity_;
   }

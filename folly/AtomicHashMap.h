@@ -155,10 +155,11 @@ struct AtomicHashMapFullError : std::runtime_error {
   {}
 };
 
-template<class KeyT, class ValueT,
-         class HashFcn, class EqualFcn, class Allocator, class ProbeFcn>
+template<class KeyT, class ValueT, class HashFcn, class EqualFcn,
+         class Allocator, class ProbeFcn, class KeyConvertFcn>
 class AtomicHashMap : boost::noncopyable {
-typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>
+typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
+                        Allocator, ProbeFcn, KeyConvertFcn>
     SubMap;
 
  public:
@@ -167,6 +168,7 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>
   typedef std::pair<const KeyT, ValueT> value_type;
   typedef HashFcn             hasher;
   typedef EqualFcn            key_equal;
+  typedef KeyConvertFcn       key_convert;
   typedef value_type*         pointer;
   typedef value_type&         reference;
   typedef const value_type&   const_reference;
@@ -239,19 +241,44 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>
    *
    *   Same contract as insert(), but performs in-place construction
    *   of the value type using the specified arguments.
+   *
+   *   Also, like find(), this method optionally allows 'key_in' to have a type
+   *   different from that stored in the table; see find(). If and only if no
+   *   equal key is already present, this method converts 'key_in' to a key of
+   *   type KeyT using the provided LookupKeyToKeyFcn.
    */
-  template <typename... ArgTs>
-  std::pair<iterator,bool> emplace(key_type k, ArgTs&&... vCtorArg);
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal,
+            typename LookupKeyToKeyFcn = key_convert,
+            typename... ArgTs>
+  std::pair<iterator,bool> emplace(LookupKeyT k, ArgTs&&... vCtorArg);
 
   /*
    * find --
    *
-   *   Returns an iterator into the map.
+   *   Returns the iterator to the element if found, otherwise end().
    *
-   *   If the key is not found, returns end().
+   *   As an optional feature, the type of the key to look up (LookupKeyT) is
+   *   allowed to be different from the type of keys actually stored (KeyT).
+   *
+   *   This enables use cases where materializing the key is costly and usually
+   *   redudant, e.g., canonicalizing/interning a set of strings and being able
+   *   to look up by StringPiece. To use this feature, LookupHashFcn must take
+   *   a LookupKeyT, and LookupEqualFcn must take KeyT and LookupKeyT as first
+   *   and second parameter, respectively.
+   *
+   *   See folly/test/ArrayHashMapTest.cpp for sample usage.
    */
-  iterator find(key_type k);
-  const_iterator find(key_type k) const;
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  iterator find(LookupKeyT k);
+
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  const_iterator find(LookupKeyT k) const;
 
   /*
    * erase --
@@ -403,10 +430,17 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn, Allocator, ProbeFcn>
     SimpleRetT() = default;
   };
 
-  template <typename... ArgTs>
-  SimpleRetT insertInternal(KeyT key, ArgTs&&... value);
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal,
+            typename LookupKeyToKeyFcn = key_convert,
+            typename... ArgTs>
+  SimpleRetT insertInternal(LookupKeyT key, ArgTs&&... value);
 
-  SimpleRetT findInternal(const KeyT k) const;
+  template <typename LookupKeyT = key_type,
+            typename LookupHashFcn = hasher,
+            typename LookupEqualFcn = key_equal>
+  SimpleRetT findInternal(const LookupKeyT k) const;
 
   SimpleRetT findAtInternal(uint32_t idx) const;
 
