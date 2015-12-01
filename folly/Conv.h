@@ -202,7 +202,7 @@ namespace detail {
 template <typename IntegerType>
 constexpr unsigned int
 digitsEnough() {
-  return ceil((double(sizeof(IntegerType) * CHAR_BIT) * M_LN2) / M_LN10);
+  return (unsigned int)(ceil(sizeof(IntegerType) * CHAR_BIT * M_LN2 / M_LN10));
 }
 
 inline size_t
@@ -1222,7 +1222,7 @@ typename std::enable_if<
   std::is_floating_point<Tgt>::value,
   Tgt>::type
 to(StringPiece src) {
-  Tgt result = to<double>(&src);
+  Tgt result = Tgt(to<double>(&src));
   detail::enforceWhitespace(src.data(), src.data() + src.size());
   return result;
 }
@@ -1245,7 +1245,7 @@ typename std::enable_if<
   (std::is_floating_point<Src>::value && std::is_integral<Tgt>::value),
   Tgt>::type
 to(const Src & value) {
-  Tgt result = value;
+  Tgt result = Tgt(value);
   auto witness = static_cast<Src>(result);
   if (value != witness) {
     throw std::range_error(
