@@ -513,7 +513,10 @@ typename std::enable_if<
   size_t>::type
 estimateSpaceNeeded(Src value) {
   if (value < 0) {
-    return 1 + digits10(static_cast<uint64_t>(-value));
+    // When "value" is the smallest negative, negating it would evoke
+    // undefined behavior, so, instead of writing "-value" below, we write
+    // "~static_cast<uint64_t>(value) + 1"
+    return 1 + digits10(~static_cast<uint64_t>(value) + 1);
   }
 
   return digits10(static_cast<uint64_t>(value));
