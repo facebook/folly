@@ -91,6 +91,8 @@ class OptionalEmptyException : public std::runtime_error {
 template<class Value>
 class Optional {
  public:
+  typedef Value value_type;
+
   static_assert(!std::is_reference<Value>::value,
                 "Optional may not be used with reference types");
   static_assert(!std::is_abstract<Value>::value,
