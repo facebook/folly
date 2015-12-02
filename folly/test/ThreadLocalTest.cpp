@@ -583,6 +583,19 @@ TEST(ThreadLocal, SharedLibrary) {
   t2.join();
 }
 
+namespace folly { namespace threadlocal_detail {
+struct PthreadKeyUnregisterTester {
+  PthreadKeyUnregister p;
+  constexpr PthreadKeyUnregisterTester() = default;
+};
+}}
+
+TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
+  folly::threadlocal_detail::PthreadKeyUnregisterTester x;
+  // yep!
+  SUCCEED();
+}
+
 // clang is unable to compile this code unless in c++14 mode.
 #if __cplusplus >= 201402L
 namespace {
