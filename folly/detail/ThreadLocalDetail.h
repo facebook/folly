@@ -184,8 +184,8 @@ class PthreadKeyUnregister {
 
   ~PthreadKeyUnregister() {
     std::lock_guard<std::mutex> lg(mutex_);
-    while (size_--) {
-      pthread_key_delete(keys_[size_]);
+    while (size_) {
+      pthread_key_delete(keys_[--size_]);
     }
   }
 
