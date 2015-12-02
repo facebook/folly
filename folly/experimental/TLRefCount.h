@@ -159,7 +159,7 @@ class TLRefCount {
 
     std::mutex collectMutex_;
     Int collectCount_{0};
-    bool collectDone_;
+    bool collectDone_{false};
   };
 
   std::atomic<State> state_{State::LOCAL};
