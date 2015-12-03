@@ -29,6 +29,7 @@
 #include <folly/Foreach.h>
 #include <folly/Exception.h>
 #include <folly/Malloc.h>
+#include <folly/MicroSpinLock.h>
 
 // In general, emutls cleanup is not guaranteed to play nice with the way
 // StaticMeta mixes direct pthread calls and the use of __thread. This has
@@ -163,7 +164,7 @@ struct ThreadEntry {
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
-struct PthreadKeyUnregisterTester;
+class PthreadKeyUnregisterTester;
 
 /**
  * We want to disable onThreadExit call at the end of shutdown, we don't care
@@ -183,7 +184,7 @@ class PthreadKeyUnregister {
   static constexpr size_t kMaxKeys = 1UL << 16;
 
   ~PthreadKeyUnregister() {
-    std::lock_guard<std::mutex> lg(mutex_);
+    MSLGuard lg(lock_);
     while (size_) {
       pthread_key_delete(keys_[--size_]);
     }
@@ -199,16 +200,18 @@ class PthreadKeyUnregister {
    * See also the important note at the top of this class about `constexpr`
    * usage.
    */
-  constexpr PthreadKeyUnregister() : mutex_(), size_(0), keys_() { }
+  constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() { }
   friend class folly::threadlocal_detail::PthreadKeyUnregisterTester;
 
   void registerKeyImpl(pthread_key_t key) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    CHECK_LT(size_, kMaxKeys);
+    MSLGuard lg(lock_);
+    if (size_ == kMaxKeys) {
+      throw std::logic_error("pthread_key limit has already been reached");
+    }
     keys_[size_++] = key;
   }
 
-  std::mutex mutex_;
+  MicroSpinLock lock_;
   size_t size_;
   pthread_key_t keys_[kMaxKeys];
 
