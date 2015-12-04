@@ -470,8 +470,10 @@ dynamic parseArray(Input& in) {
 
 dynamic parseNumber(Input& in) {
   bool const negative = (*in == '-');
-  if (negative) {
-    if (in.consume("-Infinity")) {
+  if (negative && in.consume("-Infinity")) {
+    if (in.getOpts().parse_numbers_as_strings) {
+      return "-Infinity";
+    } else {
       return -std::numeric_limits<double>::infinity();
     }
   }
@@ -486,6 +488,11 @@ dynamic parseNumber(Input& in) {
   constexpr const char* maxInt = "9223372036854775807";
   constexpr const char* minInt = "9223372036854775808";
   constexpr auto maxIntLen = __builtin_strlen(maxInt);
+
+
+  if (*in != '.' && !wasE && in.getOpts().parse_numbers_as_strings) {
+    return integral;
+  }
 
   if (*in != '.' && !wasE) {
     if (LIKELY(!in.getOpts().double_fallback || integral.size() < maxIntLen) ||
@@ -511,7 +518,9 @@ dynamic parseNumber(Input& in) {
     end = expPart.end();
   }
   auto fullNum = range(integral.begin(), end);
-
+  if (in.getOpts().parse_numbers_as_strings) {
+    return fullNum;
+  }
   auto val = to<double>(fullNum);
   return val;
 }
@@ -626,8 +635,12 @@ dynamic parseValue(Input& in) {
          in.consume("true") ? true :
          in.consume("false") ? false :
          in.consume("null") ? nullptr :
-         in.consume("Infinity") ? std::numeric_limits<double>::infinity() :
-         in.consume("NaN") ? std::numeric_limits<double>::quiet_NaN() :
+         in.consume("Infinity") ?
+          (in.getOpts().parse_numbers_as_strings ? (dynamic)"Infinity" :
+            (dynamic)std::numeric_limits<double>::infinity()) :
+         in.consume("NaN") ?
+           (in.getOpts().parse_numbers_as_strings ? (dynamic)"NaN" :
+             (dynamic)std::numeric_limits<double>::quiet_NaN()) :
          in.error("expected json value");
 }
 

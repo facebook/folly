@@ -401,6 +401,39 @@ TEST(Json, ParseDoubleFallback) {
         opts).items().begin()->second.asDouble());
 }
 
+TEST(Json, ParseNumbersAsStrings) {
+  folly::json::serialization_opts opts;
+  opts.parse_numbers_as_strings = true;
+  auto parse = [&](folly::fbstring number) {
+    return parseJson(number, opts).asString();
+  };
+
+  EXPECT_EQ("0", parse("0"));
+  EXPECT_EQ("1234", parse("1234"));
+  EXPECT_EQ("3.00", parse("3.00"));
+  EXPECT_EQ("3.14", parse("3.14"));
+  EXPECT_EQ("0.1234", parse("0.1234"));
+  EXPECT_EQ("0.0", parse("0.0"));
+  EXPECT_EQ("46845131213548676854213265486468451312135486768542132",
+      parse("46845131213548676854213265486468451312135486768542132"));
+  EXPECT_EQ("-468451312135486768542132654864684513121354867685.5e4",
+      parse("-468451312135486768542132654864684513121354867685.5e4"));
+  EXPECT_EQ("6.62607004e-34", parse("6.62607004e-34"));
+  EXPECT_EQ("6.62607004E+34", parse("6.62607004E+34"));
+  EXPECT_EQ("Infinity", parse("Infinity"));
+  EXPECT_EQ("-Infinity", parse("-Infinity"));
+  EXPECT_EQ("NaN", parse("NaN"));
+
+  EXPECT_THROW(parse("ThisIsWrong"), std::runtime_error);
+  EXPECT_THROW(parse("34-2"), std::runtime_error);
+  EXPECT_THROW(parse(""), std::runtime_error);
+  EXPECT_THROW(parse("-"), std::runtime_error);
+  EXPECT_THROW(parse("34-e2"), std::runtime_error);
+  EXPECT_THROW(parse("34e2.4"), std::runtime_error);
+  EXPECT_THROW(parse("infinity"), std::runtime_error);
+  EXPECT_THROW(parse("nan"), std::runtime_error);
+}
+
 TEST(Json, SortKeys) {
   folly::json::serialization_opts opts_on, opts_off;
   opts_on.sort_keys = true;

@@ -65,6 +65,7 @@ namespace json {
       , double_mode(double_conversion::DoubleToStringConverter::SHORTEST)
       , double_num_digits(0) // ignored when mode is SHORTEST
       , double_fallback(false)
+      , parse_numbers_as_strings(false)
     {}
 
     // If true, keys in an object can be non-strings.  (In strict
@@ -109,6 +110,10 @@ namespace json {
     // Fallback to double when a value that looks like integer is too big to
     // fit in an int64_t. Can result in loss a of precision.
     bool double_fallback;
+
+    // Do not parse numbers. Instead, store them as strings and leave the
+    // conversion up to the user.
+    bool parse_numbers_as_strings;
   };
 
   /*
