@@ -462,26 +462,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   int getSSLCertSize() const;
 
-  /* Get the number of bytes read from the wire (including protocol
-   * overhead). Returns 0 once the connection has been closed.
-   */
-  unsigned long getBytesRead() const {
-    if (ssl_ != nullptr) {
-      return BIO_number_read(SSL_get_rbio(ssl_));
-    }
-    return 0;
-  }
-
-  /* Get the number of bytes written to the wire (including protocol
-   * overhead).  Returns 0 once the connection has been closed.
-   */
-  unsigned long getBytesWritten() const {
-    if (ssl_ != nullptr) {
-      return BIO_number_written(SSL_get_wbio(ssl_));
-    }
-    return 0;
-  }
-
   virtual void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);
