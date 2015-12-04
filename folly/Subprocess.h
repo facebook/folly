@@ -248,6 +248,23 @@ class Subprocess {
   static const int PIPE_OUT = -4;
 
   /**
+   * See Subprocess::Options::dangerousPostForkPreExecCallback() for usage.
+   * Every derived class should include the following warning:
+   *
+   * DANGER: This class runs after fork in a child processes. Be fast, the
+   * parent thread is waiting, but remember that other parent threads are
+   * running and may mutate your state.  Avoid mutating any data belonging to
+   * the parent.  Avoid interacting with non-POD data that originated in the
+   * parent.  Avoid any libraries that may internally reference non-POD data.
+   * Especially beware parent mutexes -- for example, glog's LOG() uses one.
+   */
+  struct DangerousPostForkPreExecCallback {
+    virtual ~DangerousPostForkPreExecCallback() {}
+    // This must return 0 on success, or an `errno` error code.
+    virtual int operator()() = 0;
+  };
+
+  /**
    * Class representing various options: file descriptor behavior, and
    * whether to use $PATH for searching for the executable,
    *
@@ -342,6 +359,43 @@ class Subprocess {
     }
 
     /**
+     * *** READ THIS WHOLE DOCBLOCK BEFORE USING ***
+     *
+     * Run this callback in the child after the fork, just before the
+     * exec(), and after the child's state has been completely set up:
+     *  - signal handlers have been reset to default handling and unblocked
+     *  - the working directory was set
+     *  - closed any file descriptors specified via Options()
+     *  - set child process flags (see code)
+     *
+     * This is EXTREMELY DANGEROUS. For example, this innocuous-looking code
+     * can cause a fraction of your Subprocess launches to hang forever:
+     *
+     *   LOG(INFO) << "Hello from the child";
+     *
+     * The reason is that glog has an internal mutex. If your fork() happens
+     * when the parent has the mutex locked, the child will wait forever.
+     *
+     * == GUIDELINES ==
+     *
+     * - Be quick -- the parent thread is blocked until you exit.
+     * - Remember that other parent threads are running, and may mutate your
+     *   state.
+     * - Avoid mutating any data belonging to the parent.
+     * - Avoid interacting with non-POD data that came from the parent.
+     * - Avoid any libraries that may internally reference non-POD state.
+     * - Especially beware parent mutexes, e.g. LOG() uses a global mutex.
+     * - Avoid invoking the parent's destructors (you can accidentally
+     *   delete files, terminate network connections, etc).
+     * - Read http://ewontfix.com/7/
+     */
+    Options& dangerousPostForkPreExecCallback(
+        DangerousPostForkPreExecCallback* cob) {
+      dangerousPostForkPreExecCallback_ = cob;
+      return *this;
+    }
+
+    /**
      * Helpful way to combine Options.
      */
     Options& operator|=(const Options& other);
@@ -356,6 +410,8 @@ class Subprocess {
     int parentDeathSignal_{0};
 #endif
     bool processGroupLeader_{false};
+    DangerousPostForkPreExecCallback*
+      dangerousPostForkPreExecCallback_{nullptr};
   };
 
   static Options pipeStdin() { return Options().stdin(PIPE); }

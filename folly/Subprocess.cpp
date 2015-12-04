@@ -493,6 +493,13 @@ int Subprocess::prepareChild(const Options& options,
     }
   }
 
+  // The user callback comes last, so that the child is otherwise all set up.
+  if (options.dangerousPostForkPreExecCallback_) {
+    if (int error = (*options.dangerousPostForkPreExecCallback_)()) {
+      return error;
+    }
+  }
+
   return 0;
 }
 

@@ -232,6 +232,52 @@ TEST(PopenSubprocessTest, PopenRead) {
   proc.waitChecked();
 }
 
+// DANGER: This class runs after fork in a child processes. Be fast, the
+// parent thread is waiting, but remember that other parent threads are
+// running and may mutate your state.  Avoid mutating any data belonging to
+// the parent.  Avoid interacting with non-POD data that originated in the
+// parent.  Avoid any libraries that may internally reference non-POD data.
+// Especially beware parent mutexes -- for example, glog's LOG() uses one.
+struct WriteFileAfterFork
+    : public Subprocess::DangerousPostForkPreExecCallback {
+  explicit WriteFileAfterFork(std::string filename)
+    : filename_(std::move(filename)) {}
+  virtual ~WriteFileAfterFork() {}
+  int operator()() override {
+    return writeFile(std::string("ok"), filename_.c_str()) ? 0 : errno;
+  }
+  const std::string filename_;
+};
+
+TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackSuccess) {
+  test::ChangeToTempDir td;
+  // Trigger a file write from the child.
+  WriteFileAfterFork write_cob("good_file");
+  Subprocess proc(
+    std::vector<std::string>{"/bin/echo"},
+    Subprocess::Options().dangerousPostForkPreExecCallback(&write_cob)
+  );
+  // The file gets written immediately.
+  std::string s;
+  EXPECT_TRUE(readFile(write_cob.filename_.c_str(), s));
+  EXPECT_EQ("ok", s);
+  proc.waitChecked();
+}
+
+TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackError) {
+  test::ChangeToTempDir td;
+  // The child will try to write to a file, whose directory does not exist.
+  WriteFileAfterFork write_cob("bad/file");
+  EXPECT_THROW(
+    Subprocess proc(
+      std::vector<std::string>{"/bin/echo"},
+      Subprocess::Options().dangerousPostForkPreExecCallback(&write_cob)
+    ),
+    SubprocessSpawnError
+  );
+  EXPECT_FALSE(fs::exists(write_cob.filename_));
+}
+
 TEST(CommunicateSubprocessTest, SimpleRead) {
   Subprocess proc(std::vector<std::string>{ "/bin/echo", "-n", "foo", "bar"},
                   Subprocess::pipeStdout());
