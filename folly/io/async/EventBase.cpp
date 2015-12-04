@@ -645,7 +645,7 @@ bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn) {
 }
 
 void EventBase::runAfterDelay(const Cob& cob,
-                              int milliseconds,
+                              uint32_t milliseconds,
                               TimeoutManager::InternalEnum in) {
   if (!tryRunAfterDelay(cob, milliseconds, in)) {
     folly::throwSystemError(
@@ -654,7 +654,7 @@ void EventBase::runAfterDelay(const Cob& cob,
 }
 
 bool EventBase::tryRunAfterDelay(const Cob& cob,
-                                 int milliseconds,
+                                 uint32_t milliseconds,
                                  TimeoutManager::InternalEnum in) {
   CobTimeout* timeout = new CobTimeout(this, cob, in);
   if (!timeout->scheduleTimeout(milliseconds)) {

@@ -440,7 +440,7 @@ class EventBase : private boost::noncopyable,
    */
   void runAfterDelay(
       const Cob& c,
-      int milliseconds,
+      uint32_t milliseconds,
       TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
 
   /**
@@ -451,7 +451,7 @@ class EventBase : private boost::noncopyable,
    * */
   bool tryRunAfterDelay(
       const Cob& cob,
-      int milliseconds,
+      uint32_t milliseconds,
       TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
 
   /**
