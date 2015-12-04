@@ -543,7 +543,7 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
    * transport that is wrapped. It returns nullptr if there is no wrapped
    * transport.
    */
-  virtual AsyncTransportWrapper* getWrappedTransport() {
+  virtual const AsyncTransportWrapper* getWrappedTransport() const {
     return nullptr;
   }
 
@@ -553,16 +553,22 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
    * the derived classes of the underlying transport.
    */
   template <class T>
-  T* getUnderlyingTransport() {
-    AsyncTransportWrapper* current = this;
+  const T* getUnderlyingTransport() const {
+    const AsyncTransportWrapper* current = this;
     while (current) {
-      auto sock = dynamic_cast<T*>(current);
+      auto sock = dynamic_cast<const T*>(current);
       if (sock) {
         return sock;
       }
       current = current->getWrappedTransport();
     }
     return nullptr;
+  }
+
+  template <class T>
+  T* getUnderlyingTransport() {
+    return const_cast<T*>(static_cast<const AsyncTransportWrapper*>(this)
+        ->getUnderlyingTransport<T>());
   }
 
   /**

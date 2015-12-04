@@ -77,7 +77,7 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
-  MOCK_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
+  MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
 
 };
 
