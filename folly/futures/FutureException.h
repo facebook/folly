@@ -48,8 +48,9 @@ public:
 
 class BrokenPromise : public FutureException {
   public:
-    explicit BrokenPromise() :
-      FutureException("Broken promise") { }
+    explicit BrokenPromise(std::string type) :
+      FutureException(
+          (std::string("Broken promise for type name `") + type) + '`') { }
 };
 
 class NoState : public FutureException {

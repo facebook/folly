@@ -216,7 +216,7 @@ class Core {
     // detachPromise() and setResult() should never be called in parallel
     // so we don't need to protect this.
     if (UNLIKELY(!result_)) {
-      setResult(Try<T>(exception_wrapper(BrokenPromise())));
+      setResult(Try<T>(exception_wrapper(BrokenPromise(typeid(T).name()))));
     }
     detachOne();
   }

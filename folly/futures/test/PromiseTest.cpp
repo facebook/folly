@@ -126,3 +126,34 @@ TEST(Promise, isFulfilledWithFuture) {
   p.setValue(42); // after here
   EXPECT_TRUE(p.isFulfilled());
 }
+
+TEST(Promise, brokenOnDelete) {
+  auto p = folly::make_unique<Promise<int>>();
+  auto f = p->getFuture();
+
+  EXPECT_FALSE(f.isReady());
+
+  p.reset();
+
+  EXPECT_TRUE(f.isReady());
+
+  auto t = f.getTry();
+
+  EXPECT_TRUE(t.hasException<BrokenPromise>());
+}
+
+TEST(Promise, brokenPromiseHasTypeInfo) {
+  auto pInt = folly::make_unique<Promise<int>>();
+  auto fInt = pInt->getFuture();
+
+  auto pFloat = folly::make_unique<Promise<float>>();
+  auto fFloat = pFloat->getFuture();
+
+  pInt.reset();
+  pFloat.reset();
+
+  auto whatInt = fInt.getTry().exception().what();
+  auto whatFloat = fFloat.getTry().exception().what();
+
+  EXPECT_NE(whatInt, whatFloat);
+}
