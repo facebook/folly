@@ -412,6 +412,9 @@ std::string AsyncSSLSocket::getApplicationProtocol() noexcept {
 }
 
 bool AsyncSSLSocket::isEorTrackingEnabled() const {
+  if (ssl_ == nullptr) {
+    return false;
+  }
   const BIO *wb = SSL_get_wbio(ssl_);
   return wb && wb->method == &eorAwareBioMethod;
 }
@@ -1094,7 +1097,8 @@ AsyncSSLSocket::handleConnect() noexcept {
 void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
   // turn on the buffer movable in openssl
-  if (!isBufferMovable_ && callback != nullptr && callback->isBufferMovable()) {
+  if (ssl_ != nullptr && !isBufferMovable_ &&
+      callback != nullptr && callback->isBufferMovable()) {
     SSL_set_mode(ssl_, SSL_get_mode(ssl_) | SSL_MODE_MOVE_BUFFER_OWNERSHIP);
     isBufferMovable_ = true;
   }
