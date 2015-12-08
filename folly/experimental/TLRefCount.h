@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/Baton.h>
 #include <folly/ThreadLocal.h>
 
 namespace folly {
@@ -26,6 +27,10 @@ class TLRefCount {
   TLRefCount() :
       localCount_([&]() {
           return new LocalRefCount(*this);
+        }),
+      collectGuard_(&collectBaton_, [](void* p) {
+          auto baton = reinterpret_cast<folly::Baton<>*>(p);
+          baton->post();
         }) {
   }
 
@@ -91,6 +96,9 @@ class TLRefCount {
       count.collect();
     }
 
+    collectGuard_.reset();
+    collectBaton_.wait();
+
     state_ = State::GLOBAL;
   }
 
@@ -106,7 +114,11 @@ class TLRefCount {
   class LocalRefCount {
    public:
     explicit LocalRefCount(TLRefCount& refCount) :
-        refCount_(refCount) {}
+        refCount_(refCount) {
+      std::lock_guard<std::mutex> lg(refCount.globalMutex_);
+
+      collectGuard_ = refCount.collectGuard_;
+    }
 
     ~LocalRefCount() {
       collect();
@@ -115,13 +127,13 @@ class TLRefCount {
     void collect() {
       std::lock_guard<std::mutex> lg(collectMutex_);
 
-      if (collectDone_) {
+      if (!collectGuard_) {
         return;
       }
 
       collectCount_ = count_;
       refCount_.globalCount_ += collectCount_;
-      collectDone_ = true;
+      collectGuard_.reset();
     }
 
     bool operator++() {
@@ -143,7 +155,7 @@ class TLRefCount {
       if (UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
         std::lock_guard<std::mutex> lg(collectMutex_);
 
-        if (!collectDone_) {
+        if (collectGuard_) {
           return true;
         }
         if (collectCount_ != count) {
@@ -159,13 +171,15 @@ class TLRefCount {
 
     std::mutex collectMutex_;
     Int collectCount_{0};
-    bool collectDone_{false};
+    std::shared_ptr<void> collectGuard_;
   };
 
   std::atomic<State> state_{State::LOCAL};
   folly::ThreadLocal<LocalRefCount, TLRefCount> localCount_;
   std::atomic<int64_t> globalCount_{1};
   std::mutex globalMutex_;
+  folly::Baton<> collectBaton_;
+  std::shared_ptr<void> collectGuard_;
 };
 
 }
