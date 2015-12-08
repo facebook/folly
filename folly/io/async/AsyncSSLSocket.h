@@ -409,7 +409,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Determine if the session specified during setSSLSession was reused
    * or if the server rejected it and issued a new session.
    */
-  bool getSSLSessionReused() const;
+  virtual bool getSSLSessionReused() const;
 
   /**
    * true if the session was resumed using session ID
@@ -425,7 +425,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Returns the cipher used or the constant value "NONE" when no SSL session
    * has been established.
    */
-  const char *getNegotiatedCipherName() const;
+  virtual const char* getNegotiatedCipherName() const;
 
   /**
    * Get the server name for this SSL connection.
@@ -712,7 +712,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Returns the time taken to complete a handshake.
    */
-  std::chrono::nanoseconds getHandshakeTime() const {
+  virtual std::chrono::nanoseconds getHandshakeTime() const {
     return handshakeEndTime_ - handshakeStartTime_;
   }
 
@@ -729,7 +729,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
-  std::unique_ptr<X509, X509_deleter> getPeerCert() const {
+  virtual std::unique_ptr<X509, X509_deleter> getPeerCert() const {
     if (!ssl_) {
       return nullptr;
     }
