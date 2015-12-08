@@ -939,6 +939,8 @@ class ZSTDCodec final : public Codec {
   std::unique_ptr<IOBuf> doUncompress(
       const IOBuf* data,
       uint64_t uncompressedLength) override;
+
+  int level_{1};
 };
 
 std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
@@ -947,6 +949,17 @@ std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
 
 ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
   DCHECK(type == CodecType::ZSTD_BETA);
+  switch (level) {
+    case COMPRESSION_LEVEL_FASTEST:
+      level_ = 1;
+      break;
+    case COMPRESSION_LEVEL_DEFAULT:
+      level_ = 1;
+      break;
+    case COMPRESSION_LEVEL_BEST:
+      level_ = 19;
+      break;
+  }
 }
 
 bool ZSTDCodec::doNeedsUncompressedLength() const {
@@ -960,8 +973,11 @@ std::unique_ptr<IOBuf> ZSTDCodec::doCompress(const IOBuf* data) {
 
   CHECK_EQ(out->length(), 0);
 
-  rc = ZSTD_compress(
-      out->writableTail(), out->capacity(), data->data(), data->length());
+  rc = ZSTD_compress(out->writableTail(),
+                     out->capacity(),
+                     data->data(),
+                     data->length(),
+                     level_);
 
   if (ZSTD_isError(rc)) {
     throw std::runtime_error(to<std::string>(
