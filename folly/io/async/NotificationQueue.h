@@ -27,6 +27,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <folly/FileUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/DelayedDestruction.h>
@@ -502,10 +503,10 @@ class NotificationQueue {
     uint64_t value = 0;
     ssize_t rc = -1;
     if (eventfd_ >= 0) {
-      rc = ::read(eventfd_, &value, sizeof(value));
+      rc = readNoInt(eventfd_, &value, sizeof(value));
     } else {
       uint8_t value8;
-      rc = ::read(pipeFds_[0], &value8, sizeof(value8));
+      rc = readNoInt(pipeFds_[0], &value8, sizeof(value8));
       value = value8;
     }
     if (rc < 0) {
