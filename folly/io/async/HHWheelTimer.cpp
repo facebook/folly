@@ -218,30 +218,32 @@ void HHWheelTimer::timeoutExpired() noexcept {
 }
 
 size_t HHWheelTimer::cancelAll() {
-  decltype(buckets_) buckets;
+  size_t count = 0;
+
+  if (count_ != 0) {
+    decltype(buckets_) buckets;
 
 // Work around std::swap() bug in libc++
 //
 // http://llvm.org/bugs/show_bug.cgi?id=22106
 #if FOLLY_USE_LIBCPP
-  for (size_t i = 0; i < WHEEL_BUCKETS; ++i) {
-    for (size_t ii = 0; ii < WHEEL_SIZE; ++ii) {
-      std::swap(buckets_[i][ii], buckets[i][ii]);
+    for (size_t i = 0; i < WHEEL_BUCKETS; ++i) {
+      for (size_t ii = 0; ii < WHEEL_SIZE; ++ii) {
+        std::swap(buckets_[i][ii], buckets[i][ii]);
+      }
     }
-  }
 #else
-  std::swap(buckets, buckets_);
+    std::swap(buckets, buckets_);
 #endif
 
-  size_t count = 0;
-
-  for (auto& tick : buckets) {
-    for (auto& bucket : tick) {
-      while (!bucket.empty()) {
-        auto& cb = bucket.front();
-        cb.cancelTimeout();
-        cb.callbackCanceled();
-        count++;
+    for (auto& tick : buckets) {
+      for (auto& bucket : tick) {
+        while (!bucket.empty()) {
+          auto& cb = bucket.front();
+          cb.cancelTimeout();
+          cb.callbackCanceled();
+          count++;
+        }
       }
     }
   }
