@@ -110,6 +110,7 @@
 #include <folly/Demangle.h>
 #include <folly/Executor.h>
 #include <folly/io/async/Request.h>
+#include <folly/experimental/ReadMostlySharedPtr.h>
 
 #include <algorithm>
 #include <atomic>
@@ -244,6 +245,7 @@ struct SingletonHolder : public SingletonHolderBase {
   inline T* get();
   inline std::weak_ptr<T> get_weak();
   inline std::shared_ptr<T> try_get();
+  inline folly::ReadMostlySharedPtr<T> try_get_fast();
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
@@ -277,14 +279,16 @@ struct SingletonHolder : public SingletonHolderBase {
 
   // The singleton itself and related functions.
 
-  // holds a shared_ptr to singleton instance, set when state is changed from
-  // Dead to Living. Reset when state is changed from Living to Dead.
-  std::shared_ptr<T> instance_;
+  // holds a ReadMostlyMainPtr to singleton instance, set when state is changed
+  // from Dead to Living. Reset when state is changed from Living to Dead.
+  folly::ReadMostlyMainPtr<T> instance_;
   // weak_ptr to the singleton instance, set when state is changed from Dead
   // to Living. We never write to this object after initialization, so it is
   // safe to read it from different threads w/o synchronization if we know
   // that state is set to Living
   std::weak_ptr<T> instance_weak_;
+  // Fast equivalent of instance_weak_
+  folly::ReadMostlyWeakPtr<T> instance_weak_fast_;
   // Time we wait on destroy_baton after releasing Singleton shared_ptr.
   std::shared_ptr<folly::Baton<>> destroy_baton_;
   T* instance_ptr_ = nullptr;
@@ -500,6 +504,10 @@ class Singleton {
   // responsible for handling nullptr return
   static std::shared_ptr<T> try_get() {
     return getEntry().try_get();
+  }
+
+  static folly::ReadMostlySharedPtr<T> try_get_fast() {
+    return getEntry().try_get_fast();
   }
 
   explicit Singleton(std::nullptr_t _ = nullptr,

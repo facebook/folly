@@ -113,6 +113,16 @@ std::shared_ptr<T> SingletonHolder<T>::try_get() {
 }
 
 template <typename T>
+folly::ReadMostlySharedPtr<T> SingletonHolder<T>::try_get_fast() {
+  if (UNLIKELY(state_.load(std::memory_order_acquire) !=
+               SingletonHolderState::Living)) {
+    createInstance();
+  }
+
+  return instance_weak_fast_.lock();
+}
+
+template <typename T>
 TypeDescriptor SingletonHolder<T>::type() {
   return type_;
 }
@@ -208,7 +218,7 @@ void SingletonHolder<T>::createInstance() {
   auto type_name = type_.name();
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
-  instance_ = std::shared_ptr<T>(
+  std::shared_ptr<T> instance(
     create_(),
     [destroy_baton, print_destructor_stack_trace, teardown, type_name]
     (T* instance_ptr) mutable {
@@ -236,8 +246,11 @@ void SingletonHolder<T>::createInstance() {
   // constructor
   SingletonVault::scheduleDestroyInstances();
 
-  instance_weak_ = instance_;
-  instance_ptr_ = instance_.get();
+  instance_weak_ = instance;
+  instance_ptr_ = instance.get();
+  instance_.reset(std::move(instance));
+  instance_weak_fast_ = instance_;
+
   destroy_baton_ = std::move(destroy_baton);
   print_destructor_stack_trace_ = std::move(print_destructor_stack_trace);
 

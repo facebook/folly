@@ -18,7 +18,6 @@
 
 #include <atomic>
 
-#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/TLRefCount.h>
 
 namespace folly {
@@ -60,7 +59,7 @@ class ReadMostlySharedPtrCore {
 
   void increfWeak() {
     auto value = ++weakCount_;
-    assert(value > 0);
+    DCHECK_GT(value, 0);
   }
 
   void decrefWeak() {
@@ -197,12 +196,21 @@ class ReadMostlyWeakPtr {
     reset(mainPtr.impl_);
   }
 
+  explicit ReadMostlyWeakPtr(const ReadMostlySharedPtr<T, RefCount>& ptr) {
+    reset(ptr.impl_);
+  }
+
   ReadMostlyWeakPtr(const ReadMostlyWeakPtr& other) {
     *this = other;
   }
 
   ReadMostlyWeakPtr& operator=(const ReadMostlyWeakPtr& other) {
     reset(other.impl_);
+    return *this;
+  }
+
+  ReadMostlyWeakPtr& operator=(const ReadMostlyMainPtr<T, RefCount>& mainPtr) {
+    reset(mainPtr.impl_);
     return *this;
   }
 
@@ -335,6 +343,8 @@ class ReadMostlySharedPtr {
   }
 
  private:
+  friend class ReadMostlyWeakPtr<T, RefCount>;
+
   void reset(detail::ReadMostlySharedPtrCore<T, RefCount>* impl) {
     if (impl_) {
       impl_->decref();

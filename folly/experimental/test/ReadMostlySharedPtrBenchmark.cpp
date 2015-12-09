@@ -21,6 +21,7 @@
 #include <folly/Memory.h>
 #include <gflags/gflags.h>
 
+#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 
 template <template<typename> class MainPtr,

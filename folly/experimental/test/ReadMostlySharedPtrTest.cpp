@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/Baton.h>
+#include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 
 using folly::ReadMostlyMainPtr;

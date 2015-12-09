@@ -19,7 +19,6 @@
 #include <folly/Singleton.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/test/SingletonTestStructs.h>
-#include <folly/Benchmark.h>
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -60,6 +59,7 @@ TEST(Singleton, BasicUsage) {
     EXPECT_NE(s2, nullptr);
 
     EXPECT_EQ(s1, s2);
+    EXPECT_EQ(s1.get(), SingletonBasicUsage<Watchdog>::try_get_fast().get());
 
     std::shared_ptr<ChildWatchdog> s3 =
       SingletonBasicUsage<ChildWatchdog>::try_get();
@@ -554,20 +554,6 @@ TEST(Singleton, SingletonEagerInitParallel) {
   }
 }
 
-// Benchmarking a normal singleton vs a Meyers singleton vs a Folly
-// singleton.  Meyers are insanely fast, but (hopefully) Folly
-// singletons are fast "enough."
-int* getMeyersSingleton() {
-  static auto ret = new int(0);
-  return ret;
-}
-
-int normal_singleton_value = 0;
-int* getNormalSingleton() {
-  doNotOptimizeAway(&normal_singleton_value);
-  return &normal_singleton_value;
-}
-
 struct MockTag {};
 template <typename T, typename Tag = detail::DefaultTag>
 using SingletonMock = Singleton <T, Tag, MockTag>;
@@ -595,114 +581,6 @@ TEST(Singleton, MockTest) {
   EXPECT_NE(serial_count_first, serial_count_mock);
 }
 
-struct BenchmarkSingleton {
-  int val = 0;
-};
-
-void run4Threads(std::function<void()> f) {
-  std::vector<std::thread> threads;
-  for (size_t i = 0; i < 4; ++ i) {
-    threads.emplace_back(f);
-  }
-  for (auto& thread : threads) {
-    thread.join();
-  }
-}
-
-void normalSingleton(size_t n) {
-  for (size_t i = 0; i < n; ++ i) {
-    doNotOptimizeAway(getNormalSingleton());
-  }
-}
-
-BENCHMARK(NormalSingleton, n) {
-  normalSingleton(n);
-}
-
-BENCHMARK(NormalSingleton4Threads, n) {
-  run4Threads([=]() {
-      normalSingleton(n);
-    });
-}
-
-void meyersSingleton(size_t n) {
-  for (size_t i = 0; i < n; ++i) {
-    doNotOptimizeAway(getMeyersSingleton());
-  }
-}
-
-
-BENCHMARK_RELATIVE(MeyersSingleton, n) {
-  meyersSingleton(n);
-}
-
-BENCHMARK_RELATIVE(MeyersSingleton4Threads, n) {
-  run4Threads([=]() {
-      meyersSingleton(n);
-    });
-}
-
-struct BenchmarkTag {};
-template <typename T, typename Tag = detail::DefaultTag>
-using SingletonBenchmark = Singleton <T, Tag, BenchmarkTag>;
-
-struct GetTag{};
-struct GetSharedTag{};
-struct GetWeakTag{};
-
-SingletonBenchmark<BenchmarkSingleton, GetTag> benchmark_singleton_get;
-SingletonBenchmark<BenchmarkSingleton, GetSharedTag>
-benchmark_singleton_get_shared;
-SingletonBenchmark<BenchmarkSingleton, GetWeakTag> benchmark_singleton_get_weak;
-
-void follySingletonRaw(size_t n) {
-  for (size_t i = 0; i < n; ++i) {
-    SingletonBenchmark<BenchmarkSingleton, GetTag>::get();
-  }
-}
-
-BENCHMARK_RELATIVE(FollySingletonRaw, n) {
-  follySingletonRaw(n);
-}
-
-BENCHMARK_RELATIVE(FollySingletonRaw4Threads, n) {
-  run4Threads([=]() {
-      follySingletonRaw(n);
-    });
-}
-
-void follySingletonSharedPtr(size_t n) {
-  for (size_t i = 0; i < n; ++i) {
-    SingletonBenchmark<BenchmarkSingleton, GetSharedTag>::try_get();
-  }
-}
-
-BENCHMARK_RELATIVE(FollySingletonSharedPtr, n) {
-  follySingletonSharedPtr(n);
-}
-
-BENCHMARK_RELATIVE(FollySingletonSharedPtr4Threads, n) {
-  run4Threads([=]() {
-      follySingletonSharedPtr(n);
-    });
-}
-
-void follySingletonWeakPtr(size_t n) {
-  for (size_t i = 0; i < n; ++i) {
-    SingletonBenchmark<BenchmarkSingleton, GetWeakTag>::get_weak();
-  }
-}
-
-BENCHMARK_RELATIVE(FollySingletonWeakPtr, n) {
-  follySingletonWeakPtr(n);
-}
-
-BENCHMARK_RELATIVE(FollySingletonWeakPtr4Threads, n) {
-  run4Threads([=]() {
-      follySingletonWeakPtr(n);
-    });
-}
-
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
@@ -711,8 +589,6 @@ int main(int argc, char* argv[]) {
   SingletonVault::singleton()->registrationComplete();
 
   auto ret = RUN_ALL_TESTS();
-  if (!ret) {
-    folly::runBenchmarksOnFlag();
-  }
+
   return ret;
 }
