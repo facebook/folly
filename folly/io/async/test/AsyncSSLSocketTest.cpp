@@ -315,191 +315,214 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
   cerr << "SocketWithDelay test completed" << endl;
 }
 
-TEST(AsyncSSLSocketTest, NpnTestOverlap) {
-  EventBase eventBase;
-  std::shared_ptr<SSLContext> clientCtx(new SSLContext);
-  std::shared_ptr<SSLContext> serverCtx(new SSLContext);;
-  int fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
+using NextProtocolTypePair =
+    std::pair<SSLContext::NextProtocolType, SSLContext::NextProtocolType>;
 
-  clientCtx->setAdvertisedNextProtocols({"blub","baz"});
-  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
+class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
+  // For matching protos
+ public:
+  void SetUp() override { getctx(clientCtx, serverCtx); }
 
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
-  AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-  NpnClient client(std::move(clientSock));
-  NpnServer server(std::move(serverSock));
-
-  eventBase.loop();
-
-  EXPECT_TRUE(client.nextProtoLength != 0);
-  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
-  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
-                           server.nextProtoLength), 0);
-  string selected((const char*)client.nextProto, client.nextProtoLength);
-  EXPECT_EQ(selected.compare("baz"), 0);
-}
-
-TEST(AsyncSSLSocketTest, NpnTestUnset) {
-  // Identical to above test, except that we want unset NPN before
-  // looping.
-  EventBase eventBase;
-  std::shared_ptr<SSLContext> clientCtx(new SSLContext);
-  std::shared_ptr<SSLContext> serverCtx(new SSLContext);;
-  int fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-
-  clientCtx->setAdvertisedNextProtocols({"blub","baz"});
-  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
-
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
-  AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-
-  // unsetting NPN for any of [client, server] is enought to make NPN not
-  // work
-  clientCtx->unsetNextProtocols();
-
-  NpnClient client(std::move(clientSock));
-  NpnServer server(std::move(serverSock));
-
-  eventBase.loop();
-
-  EXPECT_TRUE(client.nextProtoLength == 0);
-  EXPECT_TRUE(server.nextProtoLength == 0);
-  EXPECT_TRUE(client.nextProto == nullptr);
-  EXPECT_TRUE(server.nextProto == nullptr);
-}
-
-TEST(AsyncSSLSocketTest, NpnTestNoOverlap) {
-  EventBase eventBase;
-  std::shared_ptr<SSLContext> clientCtx(new SSLContext);
-  std::shared_ptr<SSLContext> serverCtx(new SSLContext);;
-  int fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-
-  clientCtx->setAdvertisedNextProtocols({"blub"});
-  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
-
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
-  AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-  NpnClient client(std::move(clientSock));
-  NpnServer server(std::move(serverSock));
-
-  eventBase.loop();
-
-  EXPECT_TRUE(client.nextProtoLength != 0);
-  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
-  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
-                           server.nextProtoLength), 0);
-  string selected((const char*)client.nextProto, client.nextProtoLength);
-  EXPECT_EQ(selected.compare("blub"), 0);
-}
-
-TEST(AsyncSSLSocketTest, NpnTestClientProtoFilterHit) {
-  EventBase eventBase;
-  auto clientCtx = std::make_shared<SSLContext>();
-  auto serverCtx = std::make_shared<SSLContext>();
-  int fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-
-  clientCtx->setAdvertisedNextProtocols({"blub"});
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
-  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
-
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
-  AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-  NpnClient client(std::move(clientSock));
-  NpnServer server(std::move(serverSock));
-
-  eventBase.loop();
-
-  EXPECT_TRUE(client.nextProtoLength != 0);
-  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
-  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
-                           server.nextProtoLength), 0);
-  string selected((const char*)client.nextProto, client.nextProtoLength);
-  EXPECT_EQ(selected.compare("ponies"), 0);
-}
-
-TEST(AsyncSSLSocketTest, NpnTestClientProtoFilterMiss) {
-  EventBase eventBase;
-  auto clientCtx = std::make_shared<SSLContext>();
-  auto serverCtx = std::make_shared<SSLContext>();
-  int fds[2];
-  getfds(fds);
-  getctx(clientCtx, serverCtx);
-
-  clientCtx->setAdvertisedNextProtocols({"blub"});
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
-  serverCtx->setAdvertisedNextProtocols({"foo","bar","baz"});
-
-  AsyncSSLSocket::UniquePtr clientSock(
-    new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
-  AsyncSSLSocket::UniquePtr serverSock(
-    new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-  NpnClient client(std::move(clientSock));
-  NpnServer server(std::move(serverSock));
-
-  eventBase.loop();
-
-  EXPECT_TRUE(client.nextProtoLength != 0);
-  EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
-  EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
-                           server.nextProtoLength), 0);
-  string selected((const char*)client.nextProto, client.nextProtoLength);
-  EXPECT_EQ(selected.compare("blub"), 0);
-}
-
-TEST(AsyncSSLSocketTest, RandomizedNpnTest) {
-  // Probability that this test will fail is 2^-64, which could be considered
-  // as negligible.
-  const int kTries = 64;
-
-  std::set<string> selectedProtocols;
-  for (int i = 0; i < kTries; ++i) {
-    EventBase eventBase;
-    std::shared_ptr<SSLContext> clientCtx = std::make_shared<SSLContext>();
-    std::shared_ptr<SSLContext> serverCtx = std::make_shared<SSLContext>();
-    int fds[2];
+  void connect(bool unset = false) {
     getfds(fds);
-    getctx(clientCtx, serverCtx);
 
-    clientCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
-    serverCtx->setRandomizedAdvertisedNextProtocols({{1, {"foo"}},
-        {1, {"bar"}}});
-
+    if (unset) {
+      // unsetting NPN for any of [client, server] is enough to make NPN not
+      // work
+      clientCtx->unsetNextProtocols();
+    }
 
     AsyncSSLSocket::UniquePtr clientSock(
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
     AsyncSSLSocket::UniquePtr serverSock(
       new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-    NpnClient client(std::move(clientSock));
-    NpnServer server(std::move(serverSock));
+    client = folly::make_unique<NpnClient>(std::move(clientSock));
+    server = folly::make_unique<NpnServer>(std::move(serverSock));
 
     eventBase.loop();
+  }
 
-    EXPECT_TRUE(client.nextProtoLength != 0);
-    EXPECT_EQ(client.nextProtoLength, server.nextProtoLength);
-    EXPECT_EQ(memcmp(client.nextProto, server.nextProto,
-                             server.nextProtoLength), 0);
-    string selected((const char*)client.nextProto, client.nextProtoLength);
+  void expectProtocol(const std::string& proto) {
+    EXPECT_NE(client->nextProtoLength, 0);
+    EXPECT_EQ(client->nextProtoLength, server->nextProtoLength);
+    EXPECT_EQ(
+        memcmp(client->nextProto, server->nextProto, server->nextProtoLength),
+        0);
+    string selected((const char*)client->nextProto, client->nextProtoLength);
+    EXPECT_EQ(proto, selected);
+  }
+
+  void expectNoProtocol() {
+    EXPECT_EQ(client->nextProtoLength, 0);
+    EXPECT_EQ(server->nextProtoLength, 0);
+    EXPECT_EQ(client->nextProto, nullptr);
+    EXPECT_EQ(server->nextProto, nullptr);
+  }
+
+  void expectProtocolType() {
+    if (GetParam().first == SSLContext::NextProtocolType::ANY &&
+        GetParam().second == SSLContext::NextProtocolType::ANY) {
+      EXPECT_EQ(client->protocolType, server->protocolType);
+    } else if (GetParam().first == SSLContext::NextProtocolType::ANY ||
+               GetParam().second == SSLContext::NextProtocolType::ANY) {
+      // Well not much we can say
+    } else {
+      expectProtocolType(GetParam());
+    }
+  }
+
+  void expectProtocolType(NextProtocolTypePair expected) {
+    EXPECT_EQ(client->protocolType, expected.first);
+    EXPECT_EQ(server->protocolType, expected.second);
+  }
+
+  EventBase eventBase;
+  std::shared_ptr<SSLContext> clientCtx{std::make_shared<SSLContext>()};
+  std::shared_ptr<SSLContext> serverCtx{std::make_shared<SSLContext>()};
+  int fds[2];
+  std::unique_ptr<NpnClient> client;
+  std::unique_ptr<NpnServer> server;
+};
+
+class NextProtocolNPNOnlyTest : public NextProtocolTest {
+  // For mismatching protos
+};
+
+class NextProtocolMismatchTest : public NextProtocolTest {
+  // For mismatching protos
+};
+
+TEST_P(NextProtocolTest, NpnTestOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect();
+
+  expectProtocol("baz");
+  expectProtocolType();
+}
+
+TEST_P(NextProtocolTest, NpnTestUnset) {
+  // Identical to above test, except that we want unset NPN before
+  // looping.
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect(true /* unset */);
+
+  // if alpn negotiation fails, type will appear as npn
+  expectNoProtocol();
+  EXPECT_EQ(client->protocolType, server->protocolType);
+}
+
+TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"foo"}, GetParam().first);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect();
+
+  expectNoProtocol();
+  expectProtocolType(
+      {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
+}
+
+TEST_P(NextProtocolNPNOnlyTest, NpnTestNoOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect();
+
+  expectProtocol("blub");
+  expectProtocolType();
+}
+
+TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
+  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
+  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect();
+
+  expectProtocol("ponies");
+  expectProtocolType();
+}
+
+TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterMiss) {
+  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
+  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().second);
+
+  connect();
+
+  expectProtocol("blub");
+  expectProtocolType();
+}
+
+TEST_P(NextProtocolTest, RandomizedNpnTest) {
+  // Probability that this test will fail is 2^-64, which could be considered
+  // as negligible.
+  const int kTries = 64;
+
+  clientCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
+                                        GetParam().first);
+  serverCtx->setRandomizedAdvertisedNextProtocols({{1, {"foo"}}, {1, {"bar"}}},
+                                                  GetParam().second);
+
+  std::set<string> selectedProtocols;
+  for (int i = 0; i < kTries; ++i) {
+    connect();
+
+    EXPECT_NE(client->nextProtoLength, 0);
+    EXPECT_EQ(client->nextProtoLength, server->nextProtoLength);
+    EXPECT_EQ(
+        memcmp(client->nextProto, server->nextProto, server->nextProtoLength),
+        0);
+    string selected((const char*)client->nextProto, client->nextProtoLength);
     selectedProtocols.insert(selected);
+    expectProtocolType();
   }
   EXPECT_EQ(selectedProtocols.size(), 2);
 }
 
+INSTANTIATE_TEST_CASE_P(
+    AsyncSSLSocketTest,
+    NextProtocolTest,
+    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
+                                           SSLContext::NextProtocolType::NPN),
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
+                                           SSLContext::NextProtocolType::ALPN),
+#endif
+                      NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
+                                           SSLContext::NextProtocolType::ANY),
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
+                                           SSLContext::NextProtocolType::ANY),
+#endif
+                      NextProtocolTypePair(SSLContext::NextProtocolType::ANY,
+                                           SSLContext::NextProtocolType::ANY)));
+
+INSTANTIATE_TEST_CASE_P(
+    AsyncSSLSocketTest,
+    NextProtocolNPNOnlyTest,
+    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
+                                           SSLContext::NextProtocolType::NPN)));
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+INSTANTIATE_TEST_CASE_P(
+    AsyncSSLSocketTest,
+    NextProtocolMismatchTest,
+    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
+                                           SSLContext::NextProtocolType::ALPN),
+                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
+                                           SSLContext::NextProtocolType::NPN)));
+#endif
 
 #ifndef OPENSSL_NO_TLSEXT
 /**
@@ -657,8 +680,7 @@ TEST(AsyncSSLSocketTest, SSLClientTest) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             1));
+  auto client = std::make_shared<SSLClient>(&eventBase, server.getAddress(), 1);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -684,8 +706,8 @@ TEST(AsyncSSLSocketTest, SSLClientTestReuse) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             10));
+  auto client =
+      std::make_shared<SSLClient>(&eventBase, server.getAddress(), 10);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -710,8 +732,8 @@ TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             1, 10));
+  auto client =
+      std::make_shared<SSLClient>(&eventBase, server.getAddress(), 1, 10);
   client->connect(true /* write before connect completes */);
   EventBaseAborter eba(&eventBase, 3000);
   eventBase.loop();
@@ -741,8 +763,8 @@ TEST(AsyncSSLSocketTest, SSLServerAsyncCacheTest) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             10, 500));
+  auto client =
+      std::make_shared<SSLClient>(&eventBase, server.getAddress(), 10, 500);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -798,8 +820,7 @@ TEST(AsyncSSLSocketTest, SSLServerAsyncCacheTimeoutTest) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             2));
+  auto client = std::make_shared<SSLClient>(&eventBase, server.getAddress(), 2);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);
@@ -828,8 +849,8 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
 
   // Set up SSL client
   EventBase eventBase;
-  std::shared_ptr<SSLClient> client(new SSLClient(&eventBase, server.getAddress(),
-                                             2, 100));
+  auto client =
+      std::make_shared<SSLClient>(&eventBase, server.getAddress(), 2, 100);
 
   client->connect();
   EventBaseAborter eba(&eventBase, 3000);

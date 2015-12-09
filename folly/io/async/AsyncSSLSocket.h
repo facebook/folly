@@ -376,7 +376,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   /**
    * Get the name of the protocol selected by the client during
-   * Next Protocol Negotiation (NPN)
+   * Next Protocol Negotiation (NPN) or Application Layer Protocol Negotiation
+   * (ALPN)
    *
    * Throw an exception if openssl does not support NPN
    *
@@ -386,13 +387,17 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    *                       Note: the AsyncSSLSocket retains ownership
    *                       of this string.
    * @param protoNameLen   Length of the name.
+   * @param protoType      Whether this was an NPN or ALPN negotiation
    */
-  virtual void getSelectedNextProtocol(const unsigned char** protoName,
-      unsigned* protoLen) const;
+  virtual void getSelectedNextProtocol(
+      const unsigned char** protoName,
+      unsigned* protoLen,
+      SSLContext::NextProtocolType* protoType = nullptr) const;
 
   /**
    * Get the name of the protocol selected by the client during
-   * Next Protocol Negotiation (NPN)
+   * Next Protocol Negotiation (NPN) or Application Layer Protocol Negotiation
+   * (ALPN)
    *
    * @param protoName      Name of the protocol (not guaranteed to be
    *                       null terminated); will be set to nullptr if
@@ -400,10 +405,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    *                       Note: the AsyncSSLSocket retains ownership
    *                       of this string.
    * @param protoNameLen   Length of the name.
+   * @param protoType      Whether this was an NPN or ALPN negotiation
    * @return false if openssl does not support NPN
    */
-  virtual bool getSelectedNextProtocolNoThrow(const unsigned char** protoName,
-      unsigned* protoLen) const;
+  virtual bool getSelectedNextProtocolNoThrow(
+      const unsigned char** protoName,
+      unsigned* protoLen,
+      SSLContext::NextProtocolType* protoType = nullptr) const;
 
   /**
    * Determine if the session specified during setSSLSession was reused

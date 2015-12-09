@@ -290,33 +290,42 @@ class SSLContext {
    */
   void setOptions(long options);
 
+  enum class NextProtocolType : uint8_t {
+    NPN = 0x1,
+    ALPN = 0x2,
+    ANY = NPN | ALPN
+  };
+
 #ifdef OPENSSL_NPN_NEGOTIATED
   /**
    * Set the list of protocols that this SSL context supports. In server
    * mode, this is the list of protocols that will be advertised for Next
-   * Protocol Negotiation (NPN). In client mode, the first protocol
-   * advertised by the server that is also on this list is
-   * chosen. Invoking this function with a list of length zero causes NPN
-   * to be disabled.
+   * Protocol Negotiation (NPN) or Application Layer Protocol Negotiation
+   * (ALPN). In client mode, the first protocol advertised by the server
+   * that is also on this list is chosen. Invoking this function with a list
+   * of length zero causes NPN to be disabled.
    *
    * @param protocols   List of protocol names. This method makes a copy,
    *                    so the caller needn't keep the list in scope after
    *                    the call completes. The list must have at least
    *                    one element to enable NPN. Each element must have
    *                    a string length < 256.
-   * @return true if NPN has been activated. False if NPN is disabled.
+   * @param protocolType  What type of protocol negotiation to support.
+   * @return true if NPN/ALPN has been activated. False if NPN/ALPN is disabled.
    */
-  bool setAdvertisedNextProtocols(const std::list<std::string>& protocols);
+  bool setAdvertisedNextProtocols(
+      const std::list<std::string>& protocols,
+      NextProtocolType protocolType = NextProtocolType::ANY);
   /**
    * Set weighted list of lists of protocols that this SSL context supports.
    * In server mode, each element of the list contains a list of protocols that
-   * could be advertised for Next Protocol Negotiation (NPN). The list of
-   * protocols that will be advertised to a client is selected randomly, based
-   * on weights of elements. Client mode doesn't support randomized NPN, so
-   * this list should contain only 1 element. The first protocol advertised
-   * by the server that is also on the list of protocols of this element is
-   * chosen. Invoking this function with a list of length zero causes NPN
-   * to be disabled.
+   * could be advertised for Next Protocol Negotiation (NPN) or Application
+   * Layer Protocol Negotiation (ALPN). The list of protocols that will be
+   * advertised to a client is selected randomly, based on weights of elements.
+   * Client mode doesn't support randomized NPN/ALPN, so this list should
+   * contain only 1 element. The first protocol advertised by the server that
+   * is also on the list of protocols of this element is chosen. Invoking this
+   * function with a list of length zero causes NPN/ALPN to be disabled.
    *
    * @param items  List of NextProtocolsItems, Each item contains a list of
    *               protocol names and weight. After the call of this fucntion
@@ -326,10 +335,12 @@ class SSLContext {
    *               completes. The list must have at least one element with
    *               non-zero weight and non-empty protocols list to enable NPN.
    *               Each name of the protocol must have a string length < 256.
-   * @return true if NPN has been activated. False if NPN is disabled.
+   * @param protocolType  What type of protocol negotiation to support.
+   * @return true if NPN/ALPN has been activated. False if NPN/ALPN is disabled.
    */
   bool setRandomizedAdvertisedNextProtocols(
-      const std::list<NextProtocolsItem>& items);
+      const std::list<NextProtocolsItem>& items,
+      NextProtocolType protocolType = NextProtocolType::ANY);
 
   void setClientProtocolFilterCallback(ClientProtocolFilterCallback cb) {
     clientProtoFilter_ = cb;
@@ -458,6 +469,16 @@ class SSLContext {
   static int selectNextProtocolCallback(
     SSL* ssl, unsigned char **out, unsigned char *outlen,
     const unsigned char *server, unsigned int server_len, void *args);
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+  static int alpnSelectCallback(SSL* ssl,
+                                const unsigned char** out,
+                                unsigned char* outlen,
+                                const unsigned char* in,
+                                unsigned int inlen,
+                                void* data);
+#endif
+  size_t pickNextProtocols();
 
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
   FOLLY_SSLCONTEXT_USE_TLS_FALSE_START

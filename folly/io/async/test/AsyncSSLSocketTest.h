@@ -804,10 +804,12 @@ class NpnClient :
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
+  SSLContext::NextProtocolType protocolType;
+
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
-    socket_->getSelectedNextProtocol(&nextProto,
-                                     &nextProtoLength);
+    socket_->getSelectedNextProtocol(
+        &nextProto, &nextProtoLength, &protocolType);
   }
   void handshakeErr(
     AsyncSSLSocket*,
@@ -838,10 +840,12 @@ class NpnServer :
 
   const unsigned char* nextProto;
   unsigned nextProtoLength;
+  SSLContext::NextProtocolType protocolType;
+
  private:
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
-    socket_->getSelectedNextProtocol(&nextProto,
-                                     &nextProtoLength);
+    socket_->getSelectedNextProtocol(
+        &nextProto, &nextProtoLength, &protocolType);
   }
   void handshakeErr(
     AsyncSSLSocket*,
