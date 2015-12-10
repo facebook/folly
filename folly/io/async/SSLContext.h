@@ -22,7 +22,6 @@
 #include <vector>
 #include <memory>
 #include <string>
-#include <random>
 
 #include <openssl/ssl.h>
 #include <openssl/tls1.h>
@@ -35,8 +34,6 @@
 #ifndef FOLLY_NO_CONFIG
 #include <folly/folly-config.h>
 #endif
-
-#include <folly/Random.h>
 
 namespace folly {
 
@@ -88,6 +85,12 @@ class SSLContext {
       weight(wt), protocols(ptcls) {}
     int weight;
     std::list<std::string> protocols;
+  };
+
+  struct AdvertisedNextProtocolsItem {
+    unsigned char* protocols;
+    unsigned length;
+    double probability;
   };
 
   // Function that selects a client protocol given the server's list
@@ -455,20 +458,10 @@ class SSLContext {
   static bool initialized_;
 
 #ifdef OPENSSL_NPN_NEGOTIATED
-
-  struct AdvertisedNextProtocolsItem {
-    unsigned char* protocols;
-    unsigned length;
-  };
-
   /**
    * Wire-format list of advertised protocols for use in NPN.
    */
   std::vector<AdvertisedNextProtocolsItem> advertisedNextProtocols_;
-  std::vector<int> advertisedNextProtocolWeights_;
-  std::discrete_distribution<int> nextProtocolDistribution_;
-  Random::DefaultGenerator nextProtocolPicker_;
-
   static int sNextProtocolsExDataIndex_;
 
   static int advertisedNextProtocolCallback(SSL* ssl,
