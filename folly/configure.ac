@@ -107,13 +107,14 @@ AC_CHECK_LIB(ssl,
 
 # check for boost libs
 AX_BOOST_BASE([1.51.0], [], [AC_MSG_ERROR(
-              [Please install boost >= 1.51.0 (context, thread, program_options, regex, and system)])])
+              [Please install boost >= 1.51.0 (context, thread, program_options, regex, system and chrono)])])
 AX_BOOST_CONTEXT
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_THREAD
 AX_BOOST_REGEX
 AX_BOOST_SYSTEM
 AX_BOOST_FILESYSTEM
+AX_BOOST_CHRONO
 
 # Check for python interpreter
 AM_PATH_PYTHON
@@ -454,6 +455,7 @@ AM_CPPFLAGS="$AM_CPPFLAGS $BOOST_CPPFLAGS"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_CONTEXT_LIB $BOOST_PROGRAM_OPTIONS_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread"
+AM_LDFLAGS="$AM_LDFLAGS $BOOST_CHRONO_LIB"
 
 AC_SUBST([AM_CPPFLAGS])
 AC_SUBST([AM_LDFLAGS])

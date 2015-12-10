@@ -75,7 +75,7 @@ thread_cached_int_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark
 
 thread_local_test_SOURCES = ThreadLocalTest.cpp
 thread_local_test_LDADD = libgtestmain.la $(top_builddir)/libfollybenchmark.la $(top_builddir)/libfolly.la
-
+thread_local_test_LDFLAGS = -ldl
 TESTS += thread_cached_int_test thread_local_test
 
 fbvector_test_SOURCES = FBVectorTest.cpp
@@ -185,11 +185,11 @@ spooky_hash_v2_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la $(top_bu
 TESTS += spooky_hash_v2_test
 
 token_bucket_test_SOURCES = TokenBucketTest.cpp
-token_bucket_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+token_bucket_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
 TESTS += token_bucket_test
 
 thread_name_test_SOURCES = ThreadNameTest.cpp
-thread_name_test_LDADD = ligtest.la $(top_builddir)/libfolly.la
+thread_name_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += thread_name_test
 
 
