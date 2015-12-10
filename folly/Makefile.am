@@ -116,11 +116,13 @@ nobase_follyinclude_HEADERS = \
 	experimental/LockFreeRingBuffer.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/ProgramOptions.h \
+	experimental/ReadMostlySharedPtr.h \
 	experimental/Select64.h \
 	experimental/StringKeyedCommon.h \
 	experimental/StringKeyedUnorderedMap.h \
 	experimental/StringKeyedUnorderedSet.h \
 	experimental/TestUtil.h \
+	experimental/TLRefCount.h \
 	experimental/TupleOps.h \
 	SparseByteSet.h \
 	FBString.h \
