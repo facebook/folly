@@ -229,6 +229,16 @@ TEST(Dynamic, DeepCopy) {
   EXPECT_EQ(obj2.at("a"), expected);
 }
 
+TEST(Dynamic, ArrayReassignment) {
+  dynamic o = 1;
+
+  dynamic d1 = {o};
+  EXPECT_EQ(dynamic::ARRAY, d1.type());
+
+  d1 = {o};
+  EXPECT_EQ(dynamic::ARRAY, d1.type());
+}
+
 TEST(Dynamic, Operator) {
   bool caught = false;
   try {
