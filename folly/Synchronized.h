@@ -28,6 +28,7 @@
 #include <mutex>
 #include <boost/thread.hpp>
 #include <folly/Preprocessor.h>
+#include <folly/SharedMutex.h>
 #include <folly/Traits.h>
 
 namespace folly {
@@ -224,7 +225,7 @@ releaseReadWrite(T& mutex) {
  * refer to the namespace detail below, which implements the
  * primitives for mutexes in std and boost.
  */
-template <class T, class Mutex = boost::shared_mutex>
+template <class T, class Mutex = SharedMutex>
 struct Synchronized {
   /**
    * Default constructor leaves both members call their own default
