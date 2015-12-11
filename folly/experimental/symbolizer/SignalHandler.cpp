@@ -322,7 +322,12 @@ void installFatalSignalHandler() {
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sigemptyset(&sa.sa_mask);
-  sa.sa_flags |= SA_SIGINFO;
+  // By default signal handlers are run on the signaled thread's stack.
+  // In case of stack overflow running the SIGSEGV signal handler on
+  // the same stack leads to another SIGSEGV and crashes the program.
+  // Use SA_ONSTACK, so alternate stack is used (only if configured via
+  // sigaltstack).
+  sa.sa_flags |= SA_SIGINFO | SA_ONSTACK;
   sa.sa_sigaction = &signalHandler;
 
   for (auto p = kFatalSignals; p->name; ++p) {
