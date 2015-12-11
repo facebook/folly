@@ -167,6 +167,7 @@ public:
    *   dynamic v = { 1, 2, 3, "foo" };
    */
   /* implicit */ dynamic(std::initializer_list<dynamic> il);
+  dynamic& operator=(std::initializer_list<dynamic> il);
 
   /*
    * Conversion constructors from most of the other types.

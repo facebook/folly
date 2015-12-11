@@ -282,6 +282,11 @@ inline dynamic::dynamic(fbstring&& s)
   new (&u_.string) fbstring(std::move(s));
 }
 
+inline dynamic& dynamic::operator=(std::initializer_list<dynamic> il) {
+  (*this) = dynamic(il);
+  return *this;
+}
+
 inline dynamic::dynamic(std::initializer_list<dynamic> il)
   : type_(ARRAY)
 {
