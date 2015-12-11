@@ -69,7 +69,9 @@ void basicTest() {
   b.wait();
 
   count.useGlobal();
-  --count;
+  if (--count == 0) {
+    ++got0;
+  }
 
   for (auto& t: ts) {
     t.join();

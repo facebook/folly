@@ -40,12 +40,13 @@ class RCURefCount {
     auto& localCount = *localCount_;
 
     std::lock_guard<RCUReadLock> lg(RCUReadLock::instance());
+    auto state = state_.load();
 
-    if (LIKELY(state_ == State::LOCAL)) {
+    if (LIKELY(state == State::LOCAL)) {
       ++localCount;
 
       return 42;
-    } else if (state_ == State::GLOBAL_TRANSITION) {
+    } else if (state == State::GLOBAL_TRANSITION) {
       ++globalCount_;
 
       return 42;
@@ -67,15 +68,16 @@ class RCURefCount {
     auto& localCount = *localCount_;
 
     std::lock_guard<RCUReadLock> lg(RCUReadLock::instance());
+    auto state = state_.load();
 
-    if (LIKELY(state_ == State::LOCAL)) {
+    if (LIKELY(state == State::LOCAL)) {
       --localCount;
 
       return 42;
     } else {
       auto value = --globalCount_;
 
-      if (state_ == State::GLOBAL) {
+      if (state == State::GLOBAL) {
         assert(value >= 0);
         return value;
       } else {
