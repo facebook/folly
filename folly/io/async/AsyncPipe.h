@@ -147,20 +147,21 @@ class AsyncPipeWriter : public EventHandler,
   }
 
   // AsyncWriter methods
-  void write(folly::AsyncWriter::WriteCallback* callback, const void* buf,
-             size_t bytes, WriteFlags flags = WriteFlags::NONE,
-             BufferCallback* bufCallback = nullptr) override {
-    writeChain(callback, IOBuf::wrapBuffer(buf, bytes), flags, bufCallback);
+  void write(folly::AsyncWriter::WriteCallback* callback,
+             const void* buf,
+             size_t bytes,
+             WriteFlags flags = WriteFlags::NONE) override {
+    writeChain(callback, IOBuf::wrapBuffer(buf, bytes), flags);
   }
-  void writev(folly::AsyncWriter::WriteCallback*, const iovec*,
-              size_t, WriteFlags = WriteFlags::NONE,
-              BufferCallback* = nullptr) override {
+  void writev(folly::AsyncWriter::WriteCallback*,
+              const iovec*,
+              size_t,
+              WriteFlags = WriteFlags::NONE) override {
     throw std::runtime_error("writev is not supported. Please use writeChain.");
   }
   void writeChain(folly::AsyncWriter::WriteCallback* callback,
                   std::unique_ptr<folly::IOBuf>&& buf,
-                  WriteFlags flags = WriteFlags::NONE,
-                  BufferCallback* bufCallback = nullptr) override;
+                  WriteFlags flags = WriteFlags::NONE) override;
 
  private:
   void handlerReady(uint16_t events) noexcept override;

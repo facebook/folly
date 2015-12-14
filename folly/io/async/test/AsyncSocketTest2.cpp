@@ -2238,32 +2238,3 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
 
   eventBase.loop();
 }
-
-TEST(AsyncSocketTest, BufferTest) {
-  TestServer server;
-
-  EventBase evb;
-  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
-  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
-  ConnCallback ccb;
-  socket->connect(&ccb, server.getAddress(), 30, option);
-
-
-  char buf[100 * 1024];
-  memset(buf, 'c', sizeof(buf));
-  WriteCallback wcb;
-  BufferCallback bcb;
-  socket->write(&wcb, buf, sizeof(buf), WriteFlags::NONE, &bcb);
-
-  evb.loop();
-  CHECK_EQ(ccb.state, STATE_SUCCEEDED);
-  CHECK_EQ(wcb.state, STATE_SUCCEEDED);
-
-  ASSERT_TRUE(bcb.hasBuffered());
-
-  socket->close();
-  server.verifyConnection(buf, sizeof(buf));
-
-  ASSERT_TRUE(socket->isClosedBySelf());
-  ASSERT_FALSE(socket->isClosedByPeer());
-}
