@@ -185,6 +185,23 @@ class ReadCallback : public AsyncTransportWrapper::ReadCallback {
   const size_t maxBufferSz;
 };
 
+class BufferCallback : public AsyncTransport::BufferCallback {
+ public:
+  BufferCallback() : buffered_(false), bufferCleared_(false) {}
+
+  void onEgressBuffered() override { buffered_ = true; }
+
+  void onEgressBufferCleared() override { bufferCleared_ = true; }
+
+  bool hasBuffered() const { return buffered_; }
+
+  bool hasBufferCleared() const { return bufferCleared_; }
+
+ private:
+  bool buffered_{false};
+  bool bufferCleared_{false};
+};
+
 class ReadVerifier {
 };
 

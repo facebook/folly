@@ -510,6 +510,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     ERROR
   };
 
+  void setBufferCallback(BufferCallback* cb);
+
   /**
    * A WriteRequest object tracks information about a pending write operation.
    */
@@ -813,6 +815,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool persistentCork_{false};
   // Whether we've applied the TCP_CORK option to the socket
   bool corked_{false};
+
+  BufferCallback* bufferCallback_{nullptr};
 };
 
 

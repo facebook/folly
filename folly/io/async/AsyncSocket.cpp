@@ -688,7 +688,11 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
           callback->writeSuccess();
         }
         return;
-      } // else { continue writing the next writeReq }
+      } else { // continue writing the next writeReq
+        if (bufferCallback_) {
+          bufferCallback_->onEgressBuffered();
+        }
+      }
       mustRegister = true;
     }
   } else if (!connecting()) {
@@ -1505,6 +1509,9 @@ void AsyncSocket::handleWrite() noexcept {
       // We'll continue around the loop, trying to write another request
     } else {
       // Partial write.
+      if (bufferCallback_) {
+        bufferCallback_->onEgressBuffered();
+      }
       writeReqHead_->consume();
       // Stop after a partial write; it's highly likely that a subsequent write
       // attempt will just return EAGAIN.
@@ -1527,6 +1534,9 @@ void AsyncSocket::handleWrite() noexcept {
       }
       return;
     }
+  }
+  if (!writeReqHead_ && bufferCallback_) {
+    bufferCallback_->onEgressBufferCleared();
   }
 }
 
@@ -2047,6 +2057,10 @@ std::string AsyncSocket::withAddr(const std::string& s) {
     // ignore
   }
   return s + " (peer=" + peer.describe() + ", local=" + local.describe() + ")";
+}
+
+void AsyncSocket::setBufferCallback(BufferCallback* cb) {
+  bufferCallback_ = cb;
 }
 
 } // folly

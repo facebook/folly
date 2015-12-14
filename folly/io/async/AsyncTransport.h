@@ -332,6 +332,13 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual size_t getAppBytesReceived() const = 0;
   virtual size_t getRawBytesReceived() const = 0;
 
+  class BufferCallback {
+   public:
+    virtual ~BufferCallback() {}
+    virtual void onEgressBuffered() = 0;
+    virtual void onEgressBufferCleared() = 0;
+  };
+
  protected:
   virtual ~AsyncTransport() = default;
 };
