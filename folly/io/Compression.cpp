@@ -469,7 +469,7 @@ std::unique_ptr<Codec> ZlibCodec::create(int level, CodecType type) {
 }
 
 ZlibCodec::ZlibCodec(int level, CodecType type) : Codec(type) {
-  DCHECK(type == CodecType::ZLIB);
+  DCHECK(type == CodecType::ZLIB || type == CodecType::GZIP);
   switch (level) {
   case COMPRESSION_LEVEL_FASTEST:
     level = 1;
@@ -534,7 +534,22 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   stream.zfree = nullptr;
   stream.opaque = nullptr;
 
-  int rc = deflateInit(&stream, level_);
+  // Using deflateInit2() to support gzip.  "The windowBits parameter is the
+  // base two logarithm of the maximum window size (...) The default value is
+  // 15 (...) Add 16 to windowBits to write a simple gzip header and trailer
+  // around the compressed data instead of a zlib wrapper. The gzip header
+  // will have no file name, no extra data, no comment, no modification time
+  // (set to zero), no header crc, and the operating system will be set to 255
+  // (unknown)."
+  int windowBits = 15 + (type() == CodecType::GZIP ? 16 : 0);
+  // All other parameters (method, memLevel, strategy) get default values from
+  // the zlib manual.
+  int rc = deflateInit2(&stream,
+                        level_,
+                        Z_DEFLATED,
+                        windowBits,
+                        /* memLevel */ 8,
+                        Z_DEFAULT_STRATEGY);
   if (rc != Z_OK) {
     throw std::runtime_error(to<std::string>(
         "ZlibCodec: deflateInit error: ", rc, ": ", stream.msg));
@@ -614,7 +629,11 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
   stream.zfree = nullptr;
   stream.opaque = nullptr;
 
-  int rc = inflateInit(&stream);
+  // "The windowBits parameter is the base two logarithm of the maximum window
+  // size (...) The default value is 15 (...) add 16 to decode only the gzip
+  // format (the zlib format will return a Z_DATA_ERROR)."
+  int windowBits = 15 + (type() == CodecType::GZIP ? 16 : 0);
+  int rc = inflateInit2(&stream, windowBits);
   if (rc != Z_OK) {
     throw std::runtime_error(to<std::string>(
         "ZlibCodec: inflateInit error: ", rc, ": ", stream.msg));
@@ -1060,6 +1079,12 @@ std::unique_ptr<Codec> getCodec(CodecType type, int level) {
 
 #if FOLLY_HAVE_LIBZSTD
     ZSTDCodec::create,
+#else
+    nullptr,
+#endif
+
+#if FOLLY_HAVE_LIBZ
+    ZlibCodec::create,
 #else
     nullptr,
 #endif

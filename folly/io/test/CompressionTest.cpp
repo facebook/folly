@@ -129,6 +129,7 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
   EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
     ->needsUncompressedLength());
   EXPECT_TRUE(getCodec(CodecType::ZSTD_BETA)->needsUncompressedLength());
+  EXPECT_FALSE(getCodec(CodecType::GZIP)->needsUncompressedLength());
 }
 
 class CompressionTest
@@ -182,7 +183,8 @@ INSTANTIATE_TEST_CASE_P(
                                      CodecType::LZ4_VARINT_SIZE,
                                      CodecType::LZMA2,
                                      CodecType::LZMA2_VARINT_SIZE,
-                                     CodecType::ZSTD_BETA)));
+                                     CodecType::ZSTD_BETA,
+                                     CodecType::GZIP)));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {

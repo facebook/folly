@@ -80,7 +80,14 @@ enum class CodecType {
    */
   ZSTD_BETA = 8,
 
-  NUM_CODEC_TYPES = 9,
+  /**
+   * Use gzip compression.  This is the same compression algorithm as ZLIB but
+   * gzip-compressed files tend to be easier to work with from the command line.
+   * Levels supported: 0 = no compression, 1 = fast, ..., 9 = best; default = 6
+   */
+  GZIP = 9,
+
+  NUM_CODEC_TYPES = 10,
 };
 
 class Codec {
