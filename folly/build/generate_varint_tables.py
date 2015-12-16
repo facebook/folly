@@ -85,9 +85,9 @@ extern const __m128i groupVarintSSEMasks[] = {
             "static_cast<int64_t>(0x{3:08x}{2:08x})}},\n".format(*vals))
 
     f.write("};\n"
-            "#endif /*#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)*/\n"
-            "\n"
-            "extern const uint8_t groupVarintLengths[] = {\n")
+        "#endif /*#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)*/\n"
+        "\n"
+        "extern const uint8_t groupVarintLengths[] = {\n")
 
     # Also compute total encoded lengths, including key byte
     for i in range(0, 256):
