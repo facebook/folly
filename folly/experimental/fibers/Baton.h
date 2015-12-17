@@ -28,8 +28,8 @@ class FiberManager;
 /**
  * @class Baton
  *
- * Primitive which allows to put current Fiber to sleep and wake it from another
- * Fiber/thread.
+ * Primitive which allows one to put current Fiber to sleep and wake it from
+ * another Fiber/thread.
  */
 class Baton {
  public:

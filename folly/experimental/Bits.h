@@ -66,7 +66,7 @@ struct BitsTraits<Unaligned<T>, typename std::enable_if<
   }
 };
 
-// Special version that allows to disable address sanitizer on demand.
+// Special version that allows one to disable address sanitizer on demand.
 template <class T>
 struct BitsTraits<UnalignedNoASan<T>, typename std::enable_if<
     (std::is_integral<T>::value)>::type> {

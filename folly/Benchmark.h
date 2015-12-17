@@ -375,7 +375,7 @@ void doNotOptimizeAway(T&& datum) {
   BENCHMARK_NAMED_PARAM(name, param, param)
 
 /**
- * Same as BENCHMARK_PARAM, but allows to return the actual number of
+ * Same as BENCHMARK_PARAM, but allows one to return the actual number of
  * iterations that have been run.
  */
 #define BENCHMARK_PARAM_MULTI(name, param)                              \
@@ -415,7 +415,7 @@ void doNotOptimizeAway(T&& datum) {
   }
 
 /**
- * Same as BENCHMARK_NAMED_PARAM, but allows to return the actual number
+ * Same as BENCHMARK_NAMED_PARAM, but allows one to return the actual number
  * of iterations that have been run.
  */
 #define BENCHMARK_NAMED_PARAM_MULTI(name, param_name, ...)              \
@@ -460,7 +460,7 @@ void doNotOptimizeAway(T&& datum) {
     __VA_ARGS__)
 
 /**
- * Same as BENCHMARK_RELATIVE, but allows to return the actual number
+ * Same as BENCHMARK_RELATIVE, but allows one to return the actual number
  * of iterations that have been run.
  */
 #define BENCHMARK_RELATIVE_MULTI(name, ...)                     \
@@ -477,7 +477,7 @@ void doNotOptimizeAway(T&& datum) {
   BENCHMARK_RELATIVE_NAMED_PARAM(name, param, param)
 
 /**
- * Same as BENCHMARK_RELATIVE_PARAM, but allows to return the actual
+ * Same as BENCHMARK_RELATIVE_PARAM, but allows one to return the actual
  * number of iterations that have been run.
  */
 #define BENCHMARK_RELATIVE_PARAM_MULTI(name, param)                     \
@@ -497,7 +497,7 @@ void doNotOptimizeAway(T&& datum) {
   }
 
 /**
- * Same as BENCHMARK_RELATIVE_NAMED_PARAM, but allows to return the
+ * Same as BENCHMARK_RELATIVE_NAMED_PARAM, but allows one to return the
  * actual number of iterations that have been run.
  */
 #define BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(name, param_name, ...)     \
