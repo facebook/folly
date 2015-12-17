@@ -18,6 +18,7 @@
 #include <memory>
 #include <atomic>
 #include <folly/experimental/fibers/LoopController.h>
+#include <folly/io/async/EventBase.h>
 
 namespace folly {
 class EventBase;
@@ -42,13 +43,47 @@ class EventBaseLoopController : public LoopController {
   }
 
  private:
-  class ControllerCallback;
+  class ControllerCallback : public folly::EventBase::LoopCallback {
+   public:
+    explicit ControllerCallback(EventBaseLoopController& controller)
+        : controller_(controller) {}
+
+    void runLoopCallback() noexcept override { controller_.runLoop(); }
+
+   private:
+    EventBaseLoopController& controller_;
+  };
+
+  class DestructionCallback : public folly::EventBase::LoopCallback {
+   public:
+    DestructionCallback() : alive_(new int(42)) {}
+    ~DestructionCallback() { reset(); }
+
+    void runLoopCallback() noexcept override { reset(); }
+
+    std::weak_ptr<void> getWeak() { return {alive_}; }
+
+   private:
+    void reset() {
+      std::weak_ptr<void> aliveWeak(alive_);
+      alive_.reset();
+
+      while (!aliveWeak.expired()) {
+        // Spin until all operations requiring EventBaseLoopController to be
+        // alive are complete.
+      }
+    }
+
+    std::shared_ptr<void> alive_;
+  };
 
   bool awaitingScheduling_{false};
   folly::EventBase* eventBase_{nullptr};
-  std::unique_ptr<ControllerCallback> callback_;
+  ControllerCallback callback_;
+  DestructionCallback destructionCallback_;
   FiberManager* fm_{nullptr};
   std::atomic<bool> eventBaseAttached_{false};
+  std::weak_ptr<void> aliveWeak_;
 
   /* LoopController interface */
 
@@ -56,7 +91,7 @@ class EventBaseLoopController : public LoopController {
   void schedule() override;
   void cancel() override;
   void runLoop();
-  void scheduleThreadSafe() override;
+  void scheduleThreadSafe(std::function<bool()> func) override;
   void timedSchedule(std::function<void()> func, TimePoint time) override;
 
   friend class FiberManager;

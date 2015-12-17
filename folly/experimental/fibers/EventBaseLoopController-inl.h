@@ -16,29 +16,14 @@
 #include <folly/Memory.h>
 #include <folly/experimental/fibers/EventBaseLoopController.h>
 #include <folly/experimental/fibers/FiberManager.h>
-#include <folly/io/async/EventBase.h>
 
 namespace folly { namespace fibers {
 
-class EventBaseLoopController::ControllerCallback :
-      public folly::EventBase::LoopCallback {
- public:
-  explicit ControllerCallback(EventBaseLoopController& controller)
-     : controller_(controller) {}
-
-  void runLoopCallback() noexcept override {
-    controller_.runLoop();
-  }
- private:
-  EventBaseLoopController& controller_;
-};
-
 inline EventBaseLoopController::EventBaseLoopController()
-  : callback_(folly::make_unique<ControllerCallback>(*this)) {
-}
+    : callback_(*this), aliveWeak_(destructionCallback_.getWeak()) {}
 
 inline EventBaseLoopController::~EventBaseLoopController() {
-  callback_->cancelLoopCallback();
+  callback_.cancelLoopCallback();
 }
 
 inline void EventBaseLoopController::attachEventBase(
@@ -49,6 +34,7 @@ inline void EventBaseLoopController::attachEventBase(
   }
 
   eventBase_ = &eventBase;
+  eventBase_->runOnDestruction(&destructionCallback_);
 
   eventBaseAttached_ = true;
 
@@ -67,27 +53,38 @@ inline void EventBaseLoopController::schedule() {
     awaitingScheduling_ = true;
   } else {
     // Schedule it to run in current iteration.
-    eventBase_->runInLoop(callback_.get(), true);
+    eventBase_->runInLoop(&callback_, true);
     awaitingScheduling_ = false;
   }
 }
 
 inline void EventBaseLoopController::cancel() {
-  callback_->cancelLoopCallback();
+  callback_.cancelLoopCallback();
 }
 
 inline void EventBaseLoopController::runLoop() {
   fm_->loopUntilNoReady();
 }
 
-inline void EventBaseLoopController::scheduleThreadSafe() {
+inline void EventBaseLoopController::scheduleThreadSafe(
+    std::function<bool()> func) {
   /* The only way we could end up here is if
      1) Fiber thread creates a fiber that awaits (which means we must
         have already attached, fiber thread wouldn't be running).
      2) We move the promise to another thread (this move is a memory fence)
      3) We fulfill the promise from the other thread. */
   assert(eventBaseAttached_);
-  eventBase_->runInEventBaseThread([this] () { runLoop(); });
+
+  auto alive = aliveWeak_.lock();
+
+  if (func() && alive) {
+    auto aliveWeak = aliveWeak_;
+    eventBase_->runInEventBaseThread([this, aliveWeak]() {
+      if (!aliveWeak.expired()) {
+        runLoop();
+      }
+    });
+  }
 }
 
 inline void EventBaseLoopController::timedSchedule(std::function<void()> func,

@@ -113,9 +113,8 @@ void FiberManager::remoteReadyInsert(Fiber* fiber) {
   if (observer_) {
     observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
   }
-  if (remoteReadyQueue_.insertHead(fiber)) {
-    loopController_->scheduleThreadSafe();
-  }
+  auto insertHead = [&]() { return remoteReadyQueue_.insertHead(fiber); };
+  loopController_->scheduleThreadSafe(std::ref(insertHead));
 }
 
 void FiberManager::setObserver(ExecutionObserver* observer) {

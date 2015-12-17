@@ -271,9 +271,9 @@ void FiberManager::addTaskRemote(F&& func) {
     }
     return folly::make_unique<RemoteTask>(std::forward<F>(func));
   }();
-  if (remoteTaskQueue_.insertHead(task.release())) {
-    loopController_->scheduleThreadSafe();
-  }
+  auto insertHead =
+      [&]() { return remoteTaskQueue_.insertHead(task.release()); };
+  loopController_->scheduleThreadSafe(std::ref(insertHead));
 }
 
 template <typename X>

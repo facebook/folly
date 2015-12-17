@@ -42,8 +42,9 @@ class LoopController {
 
   /**
    * Same as schedule(), but safe to call from any thread.
+   * Runs func and only schedules if func returned true.
    */
-  virtual void scheduleThreadSafe() = 0;
+  virtual void scheduleThreadSafe(std::function<bool()> func) = 0;
 
   /**
    * Called by FiberManager to cancel a previously scheduled
