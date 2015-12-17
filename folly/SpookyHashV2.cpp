@@ -28,12 +28,14 @@
 
 #include <folly/SpookyHashV2.h>
 
-#include <cstring>
+#include <folly/Portability.h>
 
-#define ALLOW_UNALIGNED_READS 1
+#include <cstring>
 
 namespace folly {
 namespace hash {
+
+static constexpr auto kAllowUnalignedReads = bool(FOLLY_HAVE_UNALIGNED_READS);
 
 //
 // short hash ... it could be used on any message,
@@ -56,7 +58,7 @@ void SpookyHashV2::Short(
 
     u.p8 = (const uint8_t *)message;
 
-    if (!ALLOW_UNALIGNED_READS && (u.i & 0x7))
+    if (!kAllowUnalignedReads && (u.i & 0x7))
     {
         memcpy(buf, message, length);
         u.p64 = buf;
@@ -176,7 +178,7 @@ void SpookyHashV2::Hash128(
     end = u.p64 + (length/sc_blockSize)*sc_numVars;
 
     // handle all whole sc_blockSize blocks of bytes
-    if (ALLOW_UNALIGNED_READS || ((u.i & 0x7) == 0))
+    if (kAllowUnalignedReads || ((u.i & 0x7) == 0))
     {
         while (u.p64 < end)
         {
@@ -284,7 +286,7 @@ void SpookyHashV2::Update(const void *message, size_t length)
     // handle all whole blocks of sc_blockSize bytes
     end = u.p64 + (length/sc_blockSize)*sc_numVars;
     remainder = (uint8_t)(length-((const uint8_t *)end-u.p8));
-    if (ALLOW_UNALIGNED_READS || (u.i & 0x7) == 0)
+    if (kAllowUnalignedReads || (u.i & 0x7) == 0)
     {
         while (u.p64 < end)
         {

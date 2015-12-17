@@ -317,6 +317,26 @@ if test "$folly_cv_prog_cc_weak_symbols" = yes; then
             [Define to 1 if the linker supports weak symbols.])
 fi
 
+# Figure out whether the architecture supports unaligned reads
+AC_CACHE_CHECK(
+  [for unaligned reads support],
+  [folly_cv_prog_cc_unaligned_reads],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      int main(int argc, char** argv) {
+        char buf[64] = {0};
+        unsigned long *ptr = (unsigned long *)(buf + 1);
+        *ptr = 0xdeadbeef;
+        return (*ptr & 0xff) == 0xef ? 0 : 1;
+      }
+    ]],
+    [folly_cv_prog_cc_unaligned_reads=yes],
+    [folly_cv_prog_cc_unaligned_reads=no])])
+
+if test "$folly_cv_prog_cc_unaligned_reads" = "yes"; then
+  AC_DEFINE([HAVE_UNALIGNED_READS], [1], [Define to 1 if the architecture allows unaligned reads])
+fi
+
 AC_CACHE_CHECK(
   [for vsnprintf reporting bad format strings],
   [folly_cv_prog_vsnprintf_bad_format],

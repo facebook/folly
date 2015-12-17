@@ -48,6 +48,10 @@
  #endif
 #endif
 
+#ifndef FOLLY_HAVE_UNALIGNED_READS
+#define FOLLY_HAVE_UNALIGNED_READS 0
+#endif
+
 // A change in folly/MemoryMapping.cpp uses MAP_ANONYMOUS, which is named
 // MAP_ANON on OSX/BSD.
 #if defined(__APPLE__) || defined(__FreeBSD__)
