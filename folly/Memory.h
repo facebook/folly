@@ -65,6 +65,15 @@ make_unique(Args&&...) = delete;
 
 #endif
 
+// Allows 'make_unique' for the inherited class to use polymorphism
+template<typename A, typename B, typename... Args>
+typename std::enable_if<!std::is_array<A>::value &&
+  !std::is_array<B>::value && std::is_base_of<A,B>::value,
+  std::unique_ptr<A>>::type
+make_unique_inherit(Args&&... args) {
+  return std::unique_ptr<A>(new B(std::forward<Args>(args)...));
+}
+
 /**
  * static_function_deleter
  *
