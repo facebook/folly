@@ -17,6 +17,7 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
+#include <folly/Foreach.h>
 #include <folly/Traits.h>
 #include <folly/Random.h>
 #include <folly/FBString.h>

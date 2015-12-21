@@ -26,6 +26,7 @@
 #include <glog/logging.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include <folly/ThreadLocal.h>
 
 #ifdef _MSC_VER
 # include <wincrypt.h>

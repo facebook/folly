@@ -18,6 +18,8 @@
 #error This file may only be included from folly/Random.h
 #endif
 
+#include <array>
+
 namespace folly {
 
 namespace detail {

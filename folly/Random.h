@@ -20,7 +20,7 @@
 #include <type_traits>
 #include <random>
 #include <stdint.h>
-#include <folly/ThreadLocal.h>
+#include <folly/Portability.h>
 
 #if FOLLY_HAVE_EXTRANDOM_SFMT19937
 #include <ext/random>
