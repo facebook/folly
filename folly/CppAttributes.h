@@ -29,6 +29,12 @@
 #define FOLLY_HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
 #endif
 
+#ifndef __has_extension
+#define FOLLY_HAS_EXTENSION(x) 0
+#else
+#define FOLLY_HAS_EXTENSION(x) __has_extension(x)
+#endif
+
 /**
  * Fallthrough to indicate that `break` was left out on purpose in a switch
  * statement, e.g.
@@ -46,6 +52,29 @@
 #define FOLLY_FALLTHROUGH [[clang::fallthrough]]
 #else
 #define FOLLY_FALLTHROUGH
+#endif
+
+/**
+ * Nullable indicates that a return value or a parameter may be a `nullptr`,
+ * e.g.
+ *
+ * int* FOLLY_NULLABLE foo(int* a, int* FOLLY_NULLABLE b) {
+ *   if (*a > 0) {  // safe dereference
+ *     return nullptr;
+ *   }
+ *   if (*b < 0) {  // unsafe dereference
+ *     return *a;
+ *   }
+ *   if (b != nullptr && *b == 1) {  // safe checked dereference
+ *     return new int(1);
+ *   }
+ *   return nullptr;
+ * }
+ */
+#if FOLLY_HAS_EXTENSION(nullability)
+#define FOLLY_NULLABLE _Nullable
+#else
+#define FOLLY_NULLABLE
 #endif
 
 #endif /* FOLLY_BASE_ATTRIBUTES_H_ */
