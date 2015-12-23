@@ -38,7 +38,7 @@ pid_t localThreadId() {
   // OSX doesn't support thread_local.
   static FOLLY_TLS pid_t threadId = 0;
   if (UNLIKELY(threadId == 0)) {
-    threadId = syscall(SYS_gettid);
+    threadId = syscall(__NR_gettid);
   }
   return threadId;
 }
