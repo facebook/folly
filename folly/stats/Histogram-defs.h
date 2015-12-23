@@ -63,7 +63,7 @@ unsigned int HistogramBuckets<T, BucketType>::getBucketIdx(
 
 template <typename T, typename BucketType>
 template <typename CountFn>
-const uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
+uint64_t HistogramBuckets<T, BucketType>::computeTotalCount(
     CountFn countFromBucket) const {
   uint64_t count = 0;
   for (unsigned int n = 0; n < buckets_.size(); ++n) {

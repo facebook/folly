@@ -152,7 +152,7 @@ class HistogramBuckets {
    * @return Returns the total number of values stored across all buckets
    */
   template <typename CountFn>
-  const uint64_t computeTotalCount(CountFn countFromBucket) const;
+  uint64_t computeTotalCount(CountFn countFromBucket) const;
 
   /**
    * Determine which bucket the specified percentile falls into.
@@ -393,7 +393,7 @@ class Histogram {
    *
    * Runs in O(numBuckets)
    */
-  const uint64_t computeTotalCount() const {
+  uint64_t computeTotalCount() const {
     CountFromBucket countFn;
     return buckets_.computeTotalCount(countFn);
   }
