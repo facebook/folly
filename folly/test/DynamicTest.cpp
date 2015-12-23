@@ -232,7 +232,9 @@ TEST(Dynamic, DeepCopy) {
 TEST(Dynamic, ArrayReassignment) {
   dynamic o = 1;
 
-  dynamic d1 = {o};
+  // After DR95 the single braces dispatch to the copy constructor.
+  // http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html#1467
+  dynamic d1 = {{o}};
   EXPECT_EQ(dynamic::ARRAY, d1.type());
 
   d1 = {o};
