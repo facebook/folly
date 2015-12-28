@@ -374,6 +374,7 @@ bool EventBase::loopBody(int flags) {
         " avgLoopTime: "        << avgLoopTime_.get() <<
         " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
         " maxLatency_: "        << maxLatency_ <<
+        " notificationQueueSize: " << getNotificationQueueSize() <<
         " nothingHandledYet(): "<< nothingHandledYet();
 
       // see if our average loop time has exceeded our limit
