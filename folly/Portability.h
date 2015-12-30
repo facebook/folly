@@ -63,6 +63,12 @@
   #endif
 #endif
 
+#if defined(__APPLE__)
+  #if !defined(__NR_gettid)
+    #define __NR_gettid SYS_gettid
+  #endif
+#endif
+
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
