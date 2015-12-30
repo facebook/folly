@@ -181,10 +181,15 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   }
   assert(eventBase_ == nullptr || eventBase_->isInEventBaseThread());
 
-  // When destroy is called, unregister and close the socket immediately
+  // When destroy is called, unregister and close the socket immediately.
   accepting_ = false;
 
-  for (auto& handler : sockets_) {
+  // Close the sockets in reverse order as they were opened to avoid
+  // the condition where another process concurrently tries to open
+  // the same port, succeed to bind the first socket but fails on the
+  // second because it hasn't been closed yet.
+  for (; !sockets_.empty(); sockets_.pop_back()) {
+    auto& handler = sockets_.back();
     handler.unregisterHandler();
     if (shutdownSocketSet_) {
       shutdownSocketSet_->close(handler.socket_);
@@ -195,7 +200,6 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
       closeNoInt(handler.socket_);
     }
   }
-  sockets_.clear();
 
   // Destroy the backoff timout.  This will cancel it if it is running.
   delete backoffTimeout_;
@@ -413,8 +417,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     }
 
     // If port == 0, then we should try to bind to the same port on ipv4 and
-    // ipv6.  So if we did bind to ipv6, figure out that port and use it,
-    // except for the last attempt when we just use any port available.
+    // ipv6.  So if we did bind to ipv6, figure out that port and use it.
     if (sockets_.size() == 1 && port == 0) {
       SocketAddress address;
       address.setFromLocalAddress(sockets_.back().socket_);
@@ -430,9 +433,10 @@ void AsyncServerSocket::bind(uint16_t port) {
         }
       }
     } catch (const std::system_error& e) {
-      // if we can't bind to the same port on ipv4 as ipv6 when using port=0
-      // then we will try again another 2 times before giving up.  We do this
-      // by closing the sockets that were opened, then redoing the whole thing
+      // If we can't bind to the same port on ipv4 as ipv6 when using
+      // port=0 then we will retry again before giving up after
+      // kNumTries attempts.  We do this by closing the sockets that
+      // were opened, then restarting from scratch.
       if (port == 0 && !sockets_.empty() && tries != kNumTries) {
         for (const auto& socket : sockets_) {
           if (socket.socket_ <= 0) {
@@ -449,6 +453,7 @@ void AsyncServerSocket::bind(uint16_t port) {
         CHECK_EQ(0, getaddrinfo(nullptr, sport, &hints, &res0));
         continue;
       }
+
       throw;
     }
 
