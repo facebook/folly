@@ -27,6 +27,7 @@
 #include <folly/Portability.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 #include <folly/experimental/fibers/FiberManager.h>
+#include <folly/portability/Syscall.h>
 
 namespace folly { namespace fibers {
 
@@ -38,7 +39,7 @@ pid_t localThreadId() {
   // OSX doesn't support thread_local.
   static FOLLY_TLS pid_t threadId = 0;
   if (UNLIKELY(threadId == 0)) {
-    threadId = syscall(__NR_gettid);
+    threadId = syscall(FOLLY_SYS_gettid);
   }
   return threadId;
 }
