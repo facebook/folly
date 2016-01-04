@@ -16,7 +16,6 @@
 
 #include <folly/Format.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <string>
@@ -507,10 +506,4 @@ TEST(Format, Extending) {
                        texsformat("a {}", "formatter"),
                        "another formatter"),
             "Extending {a {formatter}} in {another formatter}");
-}
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }
