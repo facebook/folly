@@ -341,6 +341,34 @@ bool greater_than_impl(LHS const lhs) {
     lhs > rhs;
 }
 
+struct has_custom_growth_strategy_tag { };
+struct no_custom_growth_strategy_tag  { };
+
+template<bool Flag>
+struct select_custom_growth_tag_if 
+  : no_custom_growth_strategy_tag { };
+
+template<>
+struct select_custom_growth_tag_if<true> 
+  : has_custom_growth_strategy_tag { };
+
+template<typename _Alloc, typename size_type>
+struct allocator_implements_growth_strategy
+{
+  typedef char yes_t[2];
+  typedef char no_t;
+
+  template<typename U, size_type (U::*)(size_type) const = 
+    &U::calculate_capacity>
+  static yes_t const& test(U const*);
+
+  static no_t const&  test(...);
+
+  typedef detail::select_custom_growth_tag_if<
+    sizeof(test(static_cast<_Alloc const*>(nullptr))) ==
+    sizeof(yes_t)> result_type;
+};
+
 } // namespace detail {
 
 // same as `x < 0`

@@ -285,6 +285,41 @@ TEST(FBVector, shrink_to_fit_after_clear) {
   EXPECT_EQ(fb1.capacity(), 0);
 }
 
+namespace {
+
+  template<typename T>
+  struct growth_policy_allocator
+  {
+    typedef T value_type;
+
+    T* allocate(size_t n)
+    {
+      return static_cast<T*>(malloc(sizeof(T) * n));
+    }
+
+    void deallocate(void *p, size_t n)
+    {
+      free(p);
+    }
+
+    size_t calculate_capacity(size_t current) const
+    {
+      return current + 1;
+    }
+  };
+}
+
+TEST(FBVector, vector_growth_honours_growth_policy) {
+  
+  growth_policy_allocator<int> alloc;
+
+  fbvector<int, decltype(alloc)> v;
+  v.push_back(1);
+  EXPECT_EQ(v.capacity(), 1);
+  v.push_back(1);
+  EXPECT_EQ(v.capacity(), 2);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
