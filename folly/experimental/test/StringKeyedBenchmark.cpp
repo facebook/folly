@@ -139,6 +139,7 @@ BENCHMARK_RELATIVE(sk_unordered_set_benchmark_erase_emplace) {
 }
 
 int main(int argc, char **argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   initBenchmarks();
   folly::runBenchmarks();
 }
