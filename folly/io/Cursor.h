@@ -108,6 +108,27 @@ class CursorBase {
     return end - *this;
   }
 
+  /**
+   * Return true if the cursor could advance the specified number of bytes
+   * from its current position.
+   * This is useful for applications that want to do checked reads instead of
+   * catching exceptions and is more efficient than using totalLength as it
+   * walks the minimal set of buffers in the chain to determine the result.
+   */
+  bool canAdvance(size_t amount) const {
+    const IOBuf* nextBuf = crtBuf_;
+    size_t available = length();
+    do {
+      if (available >= amount) {
+        return true;
+      }
+      amount -= available;
+      nextBuf = nextBuf->next();
+      available = nextBuf->length();
+    } while (nextBuf != buffer_);
+    return false;
+  }
+
   /*
    * Return true if the cursor is at the end of the entire IOBuf chain.
    */

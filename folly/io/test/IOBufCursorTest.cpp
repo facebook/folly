@@ -618,6 +618,24 @@ TEST(IOBuf, CursorOperators) {
     c.skip(5);
     EXPECT_TRUE(c.isAtEnd());
   }
+
+  // Test canAdvance with a chain of items
+  {
+    auto chain = IOBuf::create(10);
+    chain->append(10);
+    chain->appendChain(chain->clone());
+    EXPECT_EQ(2, chain->countChainElements());
+    EXPECT_EQ(20, chain->computeChainDataLength());
+
+    Cursor c(chain.get());
+    for (size_t i = 0; i <= 20; ++i) {
+      EXPECT_TRUE(c.canAdvance(i));
+    }
+    EXPECT_FALSE(c.canAdvance(21));
+    c.skip(10);
+    EXPECT_TRUE(c.canAdvance(10));
+    EXPECT_FALSE(c.canAdvance(11));
+  }
 }
 
 TEST(IOBuf, StringOperations) {
