@@ -124,6 +124,7 @@ void fastFingerprintTerms128(int num_iterations, int num_ids) {
 // the benchmark without providing any useful data.
 
 int main(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   # define BM(name, min, max) \
   for (size_t i = min; i <= max; i *= 2) { \
     addBenchmark( \
