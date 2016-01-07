@@ -1003,11 +1003,10 @@ namespace detail {
 
 inline size_t qfind_first_byte_of(const StringPiece haystack,
                                   const StringPiece needles) {
-#if FOLLY_SSE_PREREQ(4, 2)
-  return qfind_first_byte_of_sse42(haystack, needles);
-#else
-  return qfind_first_byte_of_nosse(haystack, needles);
-#endif
+  static auto const qfind_first_byte_of_fn =
+    folly::CpuId().sse42() ? qfind_first_byte_of_sse42
+                           : qfind_first_byte_of_nosse;
+  return qfind_first_byte_of_fn(haystack, needles);
 }
 
 } // namespace detail
