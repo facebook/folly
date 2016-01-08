@@ -1259,6 +1259,17 @@ TEST(FBString, testFixedBugs) {
     copy.push_back('b');
     EXPECT_GE(copy.capacity(), 1);
   }
+  { // D2813713
+    fbstring s1("a");
+    s1.reserve(8); // Trigger the optimized code path.
+    auto test1 = '\0' + std::move(s1);
+    EXPECT_EQ(2, test1.size());
+
+    fbstring s2(1, '\0');
+    s2.reserve(8);
+    auto test2 = "a" + std::move(s2);
+    EXPECT_EQ(2, test2.size());
+  }
 }
 
 TEST(FBString, findWithNpos) {

@@ -2121,7 +2121,8 @@ basic_fbstring<E, T, A, S> operator+(
   const auto len = basic_fbstring<E, T, A, S>::traits_type::length(lhs);
   if (rhs.capacity() >= len + rhs.size()) {
     // Good, at least we don't need to reallocate
-    return std::move(rhs.insert(rhs.begin(), lhs, lhs + len));
+    rhs.insert(rhs.begin(), lhs, lhs + len);
+    return rhs;
   }
   // Meh, no go. Do it by hand since we have len already.
   basic_fbstring<E, T, A, S> result;
@@ -2153,7 +2154,8 @@ basic_fbstring<E, T, A, S> operator+(
   //
   if (rhs.capacity() > rhs.size()) {
     // Good, at least we don't need to reallocate
-    return std::move(rhs.insert(rhs.begin(), lhs));
+    rhs.insert(rhs.begin(), lhs);
+    return rhs;
   }
   // Meh, no go. Forward to operator+(E, const&).
   auto const& rhsC = rhs;
