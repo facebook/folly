@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits.h>
+#include <unistd.h>
 
 #ifdef __GNUC__
 #include <ext/stdio_filebuf.h>
@@ -86,8 +87,12 @@ void skipWS(StringPiece& sp) {
  * Parse a line from /proc/self/maps
  */
 bool parseProcMapsLine(StringPiece line,
-                       uintptr_t& from, uintptr_t& to,
+                       uintptr_t& from,
+                       uintptr_t& to,
+                       uintptr_t& fileOff,
+                       bool& isSelf,
                        StringPiece& fileName) {
+  isSelf = false;
   // from     to       perm offset   dev   inode             path
   // 00400000-00405000 r-xp 00000000 08:03 35291182          /bin/cat
   if (line.empty()) {
@@ -125,9 +130,15 @@ bool parseProcMapsLine(StringPiece line,
     return false;
   }
   line.pop_front();
-  if (fileOffset != 0) {
-    return false;  // main mapping starts at 0
-  }
+  // main mapping starts at 0 but there can be multi-segment binary
+  // such as
+  // from     to       perm offset   dev   inode             path
+  // 00400000-00405000 r-xp 00000000 08:03 54011424          /bin/foo
+  // 00600000-00605000 r-xp 00020000 08:03 54011424          /bin/foo
+  // 00800000-00805000 r-xp 00040000 08:03 54011424          /bin/foo
+  // if the offset > 0, this indicates to the caller that the baseAddress
+  // need to be used for undo relocation step.
+  fileOff = fileOffset;
 
   // dev
   skipNS(line);
@@ -142,8 +153,14 @@ bool parseProcMapsLine(StringPiece line,
     return false;
   }
 
+  // if inode is 0, such as in case of ANON pages, there should be atleast
+  // one white space before EOL
   skipWS(line);
   if (line.empty()) {
+    // There will be no fileName for ANON text pages
+    // if the parsing came this far without a fileName, then from/to address
+    // may contain text in ANON pages.
+    isSelf = true;
     fileName.clear();
     return true;
   }
@@ -203,6 +220,14 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     return;
   }
 
+  char selfFile[PATH_MAX + 8];
+  ssize_t selfSize;
+  if ((selfSize = readlink("/proc/self/exe", selfFile, PATH_MAX + 1)) == -1) {
+    // something terribly wrong
+    return;
+  }
+  selfFile[selfSize] = '\0';
+
   char buf[PATH_MAX + 100];  // Long enough for any line
   LineReader reader(fd, buf, sizeof(buf));
 
@@ -215,13 +240,32 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     // Parse line
     uintptr_t from;
     uintptr_t to;
+    uintptr_t fileOff;
+    uintptr_t base;
+    bool isSelf = false; // fileName can potentially be '/proc/self/exe'
     StringPiece fileName;
-    if (!parseProcMapsLine(line, from, to, fileName)) {
+    if (!parseProcMapsLine(line, from, to, fileOff, isSelf, fileName)) {
       continue;
     }
 
+    base = from;
     bool first = true;
     std::shared_ptr<ElfFile> elfFile;
+
+    // case of text on ANON?
+    // Recompute from/to/base from the executable
+    if (isSelf && fileName.empty()) {
+      elfFile = cache_->getFile(selfFile);
+
+      if (elfFile != nullptr) {
+        auto textSection = elfFile->getSectionByName(".text");
+        base = elfFile->getBaseAddress();
+        from = textSection->sh_addr;
+        to = from + textSection->sh_size;
+        fileName = selfFile;
+        first = false; // no need to get this file again from the cache
+      }
+    }
 
     // See if any addresses are here
     for (size_t i = 0; i < addressCount; ++i) {
@@ -244,6 +288,12 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
       if (first) {
         first = false;
         elfFile = cache_->getFile(fileName);
+
+        // Need to get the correct base address as from
+        // when fileOff > 0
+        if (fileOff && elfFile != nullptr) {
+          base = elfFile->getBaseAddress();
+        }
       }
 
       if (!elfFile) {
@@ -251,7 +301,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
       }
 
       // Undo relocation
-      frame.set(elfFile, address - from);
+      frame.set(elfFile, address - base);
     }
   }
 
