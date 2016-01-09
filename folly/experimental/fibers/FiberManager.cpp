@@ -121,6 +121,10 @@ void FiberManager::setObserver(ExecutionObserver* observer) {
   observer_ = observer;
 }
 
+void FiberManager::setPreemptRunner(InlineFunctionRunner* preemptRunner) {
+  preemptRunner_ = preemptRunner;
+}
+
 void FiberManager::doFibersPoolResizing() {
   while (fibersAllocated_ > maxFibersActiveLastPeriod_ &&
          fibersPoolSize_ > options_.maxFibersPoolSize) {

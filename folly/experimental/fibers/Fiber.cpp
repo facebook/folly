@@ -182,20 +182,30 @@ void Fiber::fiberFunc() {
 }
 
 intptr_t Fiber::preempt(State state) {
-  DCHECK_EQ(fiberManager_.activeFiber_, this);
-  DCHECK_EQ(state_, RUNNING);
-  DCHECK_NE(state, RUNNING);
+  intptr_t ret;
 
-  fiberManager_.activeFiber_ = nullptr;
-  state_ = state;
+  auto preemptImpl = [&]() mutable {
+    DCHECK_EQ(fiberManager_.activeFiber_, this);
+    DCHECK_EQ(state_, RUNNING);
+    DCHECK_NE(state, RUNNING);
 
-  recordStackPosition();
+    fiberManager_.activeFiber_ = nullptr;
+    state_ = state;
 
-  auto ret = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
+    recordStackPosition();
 
-  DCHECK_EQ(fiberManager_.activeFiber_, this);
-  DCHECK_EQ(state_, READY_TO_RUN);
-  state_ = RUNNING;
+    ret = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
+
+    DCHECK_EQ(fiberManager_.activeFiber_, this);
+    DCHECK_EQ(state_, READY_TO_RUN);
+    state_ = RUNNING;
+  };
+
+  if (fiberManager_.preemptRunner_) {
+    fiberManager_.preemptRunner_->run(std::ref(preemptImpl));
+  } else {
+    preemptImpl();
+  }
 
   return ret;
 }

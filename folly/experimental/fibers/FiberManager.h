@@ -48,6 +48,16 @@ template <typename T>
 class LocalType {
 };
 
+class InlineFunctionRunner {
+ public:
+  virtual ~InlineFunctionRunner() {}
+
+  /**
+   * func must be executed inline and only once.
+   */
+  virtual void run(std::function<void()> func) = 0;
+};
+
 /**
  * @class FiberManager
  * @brief Single-threaded task execution engine.
@@ -261,6 +271,11 @@ class FiberManager : public ::folly::Executor {
   void setObserver(ExecutionObserver* observer);
 
   /**
+   * Setup fibers preempt runner.
+   */
+  void setPreemptRunner(InlineFunctionRunner* preemptRunner);
+
+  /**
    * Returns an estimate of the number of fibers which are waiting to run (does
    * not include fibers or tasks scheduled remotely).
    */
@@ -386,6 +401,11 @@ class FiberManager : public ::folly::Executor {
    * Function passed to the runInMainContext call.
    */
   std::function<void()> immediateFunc_;
+
+  /**
+   * Preempt runner.
+   */
+  InlineFunctionRunner* preemptRunner_{nullptr};
 
   /**
    * Fiber's execution observer.
