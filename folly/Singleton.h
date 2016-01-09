@@ -312,6 +312,27 @@ class SingletonVault {
     Relaxed, // Singletons can be created before registrationComplete()
   };
 
+  /**
+   * Clears all singletons in the given vault at ctor and dtor times.
+   * Useful for unit-tests that need to clear the world.
+   *
+   * This need can arise when a unit-test needs to swap out an object used by a
+   * singleton for a test-double, but the singleton needing its dependency to be
+   * swapped has a type or a tag local to some other translation unit and
+   * unavailable in the current translation unit.
+   *
+   * Other, better approaches to this need are "plz 2 refactor" ....
+   */
+  struct ScopedExpunger {
+    SingletonVault* vault;
+    explicit ScopedExpunger(SingletonVault* v) : vault(v) { expunge(); }
+    ~ScopedExpunger() { expunge(); }
+    void expunge() {
+      vault->destroyInstances();
+      vault->reenableInstances();
+    }
+  };
+
   explicit SingletonVault(Type type = Type::Relaxed) : type_(type) {}
 
   // Destructor is only called by unit tests to check destroyInstances.
