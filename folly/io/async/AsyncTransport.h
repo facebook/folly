@@ -573,6 +573,11 @@ class AsyncTransportWrapper : virtual public AsyncTransport,
   virtual std::string getApplicationProtocol() noexcept {
     return "";
   }
+
+  /**
+   * Returns the name of the security protocol being used.
+   */
+  virtual std::string getSecurityProtocol() const { return ""; }
 };
 
 } // folly

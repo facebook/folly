@@ -275,6 +275,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual bool connecting() const override;
   virtual std::string getApplicationProtocol() noexcept override;
 
+  virtual std::string getSecurityProtocol() const override { return "TLS"; }
+
   bool isEorTrackingEnabled() const override;
   virtual void setEorTracking(bool track) override;
   virtual size_t getRawBytesWritten() const override;
