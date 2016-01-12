@@ -183,6 +183,158 @@ void dumpTimeInfo() {
   print("') ***\n");
 }
 
+const char* sigill_reason(int si_code) {
+  switch (si_code) {
+    case ILL_ILLOPC:
+      return "illegal opcode";
+    case ILL_ILLOPN:
+      return "illegal operand";
+    case ILL_ILLADR:
+      return "illegal addressing mode";
+    case ILL_ILLTRP:
+      return "illegal trap";
+    case ILL_PRVOPC:
+      return "privileged opcode";
+    case ILL_PRVREG:
+      return "privileged register";
+    case ILL_COPROC:
+      return "coprocessor error";
+    case ILL_BADSTK:
+      return "internal stack error";
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigfpe_reason(int si_code) {
+  switch (si_code) {
+    case FPE_INTDIV:
+      return "integer divide by zero";
+    case FPE_INTOVF:
+      return "integer overflow";
+    case FPE_FLTDIV:
+      return "floating-point divide by zero";
+    case FPE_FLTOVF:
+      return "floating-point overflow";
+    case FPE_FLTUND:
+      return "floating-point underflow";
+    case FPE_FLTRES:
+      return "floating-point inexact result";
+    case FPE_FLTINV:
+      return "floating-point invalid operation";
+    case FPE_FLTSUB:
+      return "subscript out of range";
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigsegv_reason(int si_code) {
+  switch (si_code) {
+    case SEGV_MAPERR:
+      return "address not mapped to object";
+    case SEGV_ACCERR:
+      return "invalid permissions for mapped object";
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigbus_reason(int si_code) {
+  switch (si_code) {
+    case BUS_ADRALN:
+      return "invalid address alignment";
+    case BUS_ADRERR:
+      return "nonexistent physical address";
+    case BUS_OBJERR:
+      return "object-specific hardware error";
+
+    // MCEERR_AR and MCEERR_AO: in sigaction(2) but not in headers.
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigtrap_reason(int si_code) {
+  switch (si_code) {
+    case TRAP_BRKPT:
+      return "process breakpoint";
+    case TRAP_TRACE:
+      return "process trace trap";
+
+    // TRAP_BRANCH and TRAP_HWBKPT: in sigaction(2) but not in headers.
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigchld_reason(int si_code) {
+  switch (si_code) {
+    case CLD_EXITED:
+      return "child has exited";
+    case CLD_KILLED:
+      return "child was killed";
+    case CLD_DUMPED:
+      return "child terminated abnormally";
+    case CLD_TRAPPED:
+      return "traced child has trapped";
+    case CLD_STOPPED:
+      return "child has stopped";
+    case CLD_CONTINUED:
+      return "stopped child has continued";
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* sigio_reason(int si_code) {
+  switch (si_code) {
+    case POLL_IN:
+      return "data input available";
+    case POLL_OUT:
+      return "output buffers available";
+    case POLL_MSG:
+      return "input message available";
+    case POLL_ERR:
+      return "I/O error";
+    case POLL_PRI:
+      return "high priority input available";
+    case POLL_HUP:
+      return "device disconnected";
+
+    default:
+      return nullptr;
+  }
+}
+
+const char* signal_reason(int signum, int si_code) {
+  switch (signum) {
+    case SIGILL:
+      return sigill_reason(si_code);
+    case SIGFPE:
+      return sigfpe_reason(si_code);
+    case SIGSEGV:
+      return sigsegv_reason(si_code);
+    case SIGBUS:
+      return sigbus_reason(si_code);
+    case SIGTRAP:
+      return sigtrap_reason(si_code);
+    case SIGCHLD:
+      return sigchld_reason(si_code);
+    case SIGIO:
+      return sigio_reason(si_code); // aka SIGPOLL
+
+    default:
+      return nullptr;
+  }
+}
+
 void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   SCOPE_EXIT { flush(); };
   // Get the signal name, if possible.
@@ -210,6 +362,22 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printHex((uint64_t)pthread_self());
   print(") (linux TID ");
   printDec(syscall(__NR_gettid));
+
+  // Kernel-sourced signals don't give us useful info for pid/uid.
+  if (siginfo->si_code != SI_KERNEL) {
+    print(") (maybe from PID ");
+    printDec(siginfo->si_pid);
+    print(", UID ");
+    printDec(siginfo->si_uid);
+  }
+
+  auto reason = signal_reason(signum, siginfo->si_code);
+
+  if (reason != nullptr) {
+    print(") (code: ");
+    print(reason);
+  }
+
   print("), stack trace: ***\n");
 }
 
