@@ -19,6 +19,7 @@
 #endif
 
 #include <array>
+#include <cinttypes>
 #include <deque>
 #include <map>
 #include <unordered_map>
@@ -501,6 +502,9 @@ class FormatValue<
         valBufBegin,
         (int)((valBuf + valBufSize) - valBufBegin)
       );
+#elif defined(__ANDROID__)
+      int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
+                         "%" PRIuMAX, static_cast<uintmax_t>(uval));
 #else
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
                          "%'ju", static_cast<uintmax_t>(uval));
