@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
+#endif
 
 #include <folly/io/IOBuf.h>
 
