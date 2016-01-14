@@ -217,6 +217,13 @@ struct Baton {
     }
   }
 
+  /// Similar to timed_wait, but with a duration.
+  template <typename Clock = std::chrono::steady_clock, typename Duration>
+  bool timed_wait(const Duration& duration) {
+    auto deadline = Clock::now() + duration;
+    return timed_wait(deadline);
+  }
+
   /// Similar to wait, but doesn't block the thread if it hasn't been posted.
   ///
   /// try_wait has the following semantics:

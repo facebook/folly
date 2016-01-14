@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <mutex>
+#include <queue>
 
 #include <gtest/gtest.h>
 #include <glog/logging.h>

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <queue>
+
 #include <gtest/gtest.h>
 
 #include <folly/futures/Future.h>

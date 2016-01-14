@@ -21,16 +21,31 @@
 #include <chrono>
 #include <random>
 #include <thread>
-#include <folly/experimental/fibers/Baton.h>
+#include <folly/Baton.h>
 #include <folly/Optional.h>
 #include <folly/Random.h>
 #include <folly/Traits.h>
 #include <folly/futures/detail/Core.h>
 #include <folly/futures/Timekeeper.h>
 
+#if defined(__ANDROID__) || defined(__APPLE__)
+#define FOLLY_FUTURE_USING_FIBER 0
+#else
+#define FOLLY_FUTURE_USING_FIBER 1
+#include <folly/experimental/fibers/Baton.h>
+#endif
+
 namespace folly {
 
 class Timekeeper;
+
+namespace detail {
+#if FOLLY_FUTURE_USING_FIBER
+typedef folly::fibers::Baton FutureBatonType;
+#else
+typedef folly::Baton<> FutureBatonType;
+#endif
+}
 
 namespace detail {
   std::shared_ptr<Timekeeper> getTimekeeperSingleton();
@@ -937,7 +952,7 @@ void waitImpl(Future<T>& f) {
   // short-circuit if there's nothing to do
   if (f.isReady()) return;
 
-  folly::fibers::Baton baton;
+  FutureBatonType baton;
   f.setCallback_([&](const Try<T>& t) { baton.post(); });
   baton.wait();
   assert(f.isReady());
@@ -950,7 +965,7 @@ void waitImpl(Future<T>& f, Duration dur) {
 
   folly::MoveWrapper<Promise<T>> promise;
   auto ret = promise->getFuture();
-  auto baton = std::make_shared<folly::fibers::Baton>();
+  auto baton = std::make_shared<FutureBatonType>();
   f.setCallback_([baton, promise](Try<T>&& t) mutable {
     promise->setTry(std::move(t));
     baton->post();
