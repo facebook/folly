@@ -37,6 +37,7 @@
 #endif
 
 #include <folly/Random.h>
+#include <folly/Range.h>
 
 namespace folly {
 
@@ -186,12 +187,24 @@ class SSLContext {
    */
   virtual void loadCertificate(const char* path, const char* format = "PEM");
   /**
+   * Load server certificate from memory.
+   *
+   * @param cert  A PEM formatted certificate
+   */
+  virtual void loadCertificateFromBufferPEM(folly::StringPiece cert);
+  /**
    * Load private key.
    *
    * @param path   Path to the private key file
    * @param format Private key file format
    */
   virtual void loadPrivateKey(const char* path, const char* format = "PEM");
+  /**
+   * Load private key from memory.
+   *
+   * @param pkey  A PEM formatted key
+   */
+  virtual void loadPrivateKeyFromBufferPEM(folly::StringPiece pkey);
   /**
    * Load trusted certificates from specified file.
    *

@@ -22,6 +22,7 @@
 #include <openssl/x509v3.h>
 
 #include <folly/Format.h>
+#include <folly/Memory.h>
 #include <folly/SpinLock.h>
 
 // ---------------------------------------------------------------------
@@ -43,7 +44,13 @@ std::mutex& initMutex() {
   return m;
 }
 
-}  // anonymous namespace
+inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
+using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free_fb>;
+using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
+using EVP_PKEY_deleter =
+    folly::static_function_deleter<EVP_PKEY, &EVP_PKEY_free>;
+
+} // anonymous namespace
 
 #ifdef OPENSSL_NPN_NEGOTIATED
 int SSLContext::sNextProtocolsExDataIndex_ = -1;
@@ -186,10 +193,36 @@ void SSLContext::loadCertificate(const char* path, const char* format) {
   }
 }
 
+void SSLContext::loadCertificateFromBufferPEM(folly::StringPiece cert) {
+  if (cert.data() == nullptr) {
+    throw std::invalid_argument("loadCertificate: <cert> is nullptr");
+  }
+
+  std::unique_ptr<BIO, BIO_deleter> bio(BIO_new(BIO_s_mem()));
+  if (bio == nullptr) {
+    throw std::runtime_error("BIO_new: " + getErrors());
+  }
+
+  int written = BIO_write(bio.get(), cert.data(), cert.size());
+  if (written != cert.size()) {
+    throw std::runtime_error("BIO_write: " + getErrors());
+  }
+
+  std::unique_ptr<X509, X509_deleter> x509(
+      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  if (x509 == nullptr) {
+    throw std::runtime_error("PEM_read_bio_X509: " + getErrors());
+  }
+
+  if (SSL_CTX_use_certificate(ctx_, x509.get()) == 0) {
+    throw std::runtime_error("SSL_CTX_use_certificate: " + getErrors());
+  }
+}
+
 void SSLContext::loadPrivateKey(const char* path, const char* format) {
   if (path == nullptr || format == nullptr) {
     throw std::invalid_argument(
-         "loadPrivateKey: either <path> or <format> is nullptr");
+        "loadPrivateKey: either <path> or <format> is nullptr");
   }
   if (strcmp(format, "PEM") == 0) {
     if (SSL_CTX_use_PrivateKey_file(ctx_, path, SSL_FILETYPE_PEM) == 0) {
@@ -200,10 +233,35 @@ void SSLContext::loadPrivateKey(const char* path, const char* format) {
   }
 }
 
+void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
+  if (pkey.data() == nullptr) {
+    throw std::invalid_argument("loadPrivateKey: <pkey> is nullptr");
+  }
+
+  std::unique_ptr<BIO, BIO_deleter> bio(BIO_new(BIO_s_mem()));
+  if (bio == nullptr) {
+    throw std::runtime_error("BIO_new: " + getErrors());
+  }
+
+  int written = BIO_write(bio.get(), pkey.data(), pkey.size());
+  if (written != pkey.size()) {
+    throw std::runtime_error("BIO_write: " + getErrors());
+  }
+
+  std::unique_ptr<EVP_PKEY, EVP_PKEY_deleter> key(
+      PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+  if (key == nullptr) {
+    throw std::runtime_error("PEM_read_bio_PrivateKey: " + getErrors());
+  }
+
+  if (SSL_CTX_use_PrivateKey(ctx_, key.get()) == 0) {
+    throw std::runtime_error("SSL_CTX_use_PrivateKey: " + getErrors());
+  }
+}
+
 void SSLContext::loadTrustedCertificates(const char* path) {
   if (path == nullptr) {
-    throw std::invalid_argument(
-         "loadTrustedCertificates: <path> is nullptr");
+    throw std::invalid_argument("loadTrustedCertificates: <path> is nullptr");
   }
   if (SSL_CTX_load_verify_locations(ctx_, path, nullptr) == 0) {
     throw std::runtime_error("SSL_CTX_load_verify_locations: " + getErrors());

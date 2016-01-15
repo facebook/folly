@@ -24,12 +24,14 @@
 
 #include <folly/io/async/test/BlockingSocket.h>
 
+#include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <list>
 #include <set>
 #include <unistd.h>
 #include <fcntl.h>
+#include <openssl/bio.h>
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -55,10 +57,17 @@ const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
 constexpr size_t SSLClient::kMaxReadBufferSz;
 constexpr size_t SSLClient::kMaxReadsPerEvent;
 
-TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase *acb) :
-ctx_(new folly::SSLContext),
-    acb_(acb),
-  socket_(folly::AsyncServerSocket::newSocket(&evb_)) {
+inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
+using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free_fb>;
+using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
+using SSL_deleter = folly::static_function_deleter<SSL, &SSL_free>;
+using EVP_PKEY_deleter =
+    folly::static_function_deleter<EVP_PKEY, &EVP_PKEY_free>;
+
+TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb)
+    : ctx_(new folly::SSLContext),
+      acb_(acb),
+      socket_(folly::AsyncServerSocket::newSocket(&evb_)) {
   // Set up the SSL context
   ctx_->loadCertificate(testCert);
   ctx_->loadPrivateKey(testKey);
@@ -142,6 +151,21 @@ bool clientProtoFilterPickPony(unsigned char** client,
 bool clientProtoFilterPickNone(unsigned char**, unsigned int*,
   const unsigned char*, unsigned int) {
   return false;
+}
+
+std::string getFileAsBuf(const char* fileName) {
+  std::string buffer;
+  folly::readFile(fileName, buffer);
+  return buffer;
+}
+
+std::string getCommonName(X509* cert) {
+  X509_NAME* subject = X509_get_subject_name(cert);
+  std::string cn;
+  cn.resize(ub_common_name);
+  X509_NAME_get_text_by_NID(
+      subject, NID_commonName, const_cast<char*>(cn.data()), ub_common_name);
+  return cn;
 }
 
 /**
@@ -1358,6 +1382,47 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   EXPECT_TRUE(server.handshakeError_);
   EXPECT_LE(0, client.handshakeTime.count());
   EXPECT_LE(0, server.handshakeTime.count());
+}
+
+TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
+  auto cert = getFileAsBuf(testCert);
+  auto key = getFileAsBuf(testKey);
+
+  std::unique_ptr<BIO, BIO_deleter> certBio(BIO_new(BIO_s_mem()));
+  BIO_write(certBio.get(), cert.data(), cert.size());
+  std::unique_ptr<BIO, BIO_deleter> keyBio(BIO_new(BIO_s_mem()));
+  BIO_write(keyBio.get(), key.data(), key.size());
+
+  // Create SSL structs from buffers to get properties
+  std::unique_ptr<X509, X509_deleter> certStruct(
+      PEM_read_bio_X509(certBio.get(), nullptr, nullptr, nullptr));
+  std::unique_ptr<EVP_PKEY, EVP_PKEY_deleter> keyStruct(
+      PEM_read_bio_PrivateKey(keyBio.get(), nullptr, nullptr, nullptr));
+  certBio = nullptr;
+  keyBio = nullptr;
+
+  auto origCommonName = getCommonName(certStruct.get());
+  auto origKeySize = EVP_PKEY_bits(keyStruct.get());
+  certStruct = nullptr;
+  keyStruct = nullptr;
+
+  auto ctx = std::make_shared<SSLContext>();
+  ctx->loadPrivateKeyFromBufferPEM(key);
+  ctx->loadCertificateFromBufferPEM(cert);
+  ctx->loadTrustedCertificates(testCA);
+
+  std::unique_ptr<SSL, SSL_deleter> ssl(ctx->createSSL());
+
+  auto newCert = SSL_get_certificate(ssl.get());
+  auto newKey = SSL_get_privatekey(ssl.get());
+
+  // Get properties from SSL struct
+  auto newCommonName = getCommonName(newCert);
+  auto newKeySize = EVP_PKEY_bits(newKey);
+
+  // Check that the key and cert have the expected properties
+  EXPECT_EQ(origCommonName, newCommonName);
+  EXPECT_EQ(origKeySize, newKeySize);
 }
 
 TEST(AsyncSSLSocketTest, MinWriteSizeTest) {
