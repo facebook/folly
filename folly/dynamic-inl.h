@@ -728,6 +728,14 @@ struct dynamic::PrintImpl {
     out << t;
   }
 };
+// Otherwise, null, being (void*)0, would print as 0.
+template <>
+struct dynamic::PrintImpl<void*> {
+  static void print(dynamic const& d, std::ostream& out, void* const& nul) {
+    DCHECK_EQ((void*)0, nul);
+    out << "null";
+  }
+};
 template<>
 struct dynamic::PrintImpl<dynamic::ObjectImpl> {
   static void print(dynamic const& d,

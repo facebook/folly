@@ -475,6 +475,12 @@ TEST(Dynamic, Brackets) {
   EXPECT_NE(ds, md["key1"]);
 }
 
+TEST(Dynamic, PrintNull) {
+  std::stringstream ss;
+  ss << folly::dynamic(nullptr);
+  EXPECT_EQ("null", ss.str());
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
