@@ -204,7 +204,7 @@ void SSLContext::loadCertificateFromBufferPEM(folly::StringPiece cert) {
   }
 
   int written = BIO_write(bio.get(), cert.data(), cert.size());
-  if (written != cert.size()) {
+  if (written <= 0 || static_cast<unsigned>(written) != cert.size()) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
 
@@ -244,7 +244,7 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
   }
 
   int written = BIO_write(bio.get(), pkey.data(), pkey.size());
-  if (written != pkey.size()) {
+  if (written <= 0 || static_cast<unsigned>(written) != pkey.size()) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
 
