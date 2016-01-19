@@ -595,6 +595,22 @@ public:
   }
 
   /**
+   * Remove the items in [b, e), as long as this subrange is at the beginning
+   * or end of the Range.
+   *
+   * Required for boost::algorithm::trim()
+   */
+  void erase(Iter b, Iter e) {
+    if (b == b_) {
+      b_ = e;
+    } else if (e == e_) {
+      e_ = b;
+    } else {
+      throw std::out_of_range("index out of range");
+    }
+  }
+
+  /**
    * Remove the given prefix and return true if the range starts with the given
    * prefix; return false otherwise.
    */

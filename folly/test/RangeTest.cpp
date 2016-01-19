@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <vector>
 #include <boost/range/concepts.hpp>
+#include <boost/algorithm/string/trim.hpp>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -418,6 +419,43 @@ TEST(StringPiece, SuffixEmpty) {
   EXPECT_EQ("", a);
   EXPECT_FALSE(a.removeSuffix('a'));
   EXPECT_EQ("", a);
+}
+
+TEST(StringPiece, erase) {
+  StringPiece a("hello");
+  auto b = a.begin();
+  auto e = b + 1;
+  a.erase(b, e);
+  EXPECT_EQ("ello", a);
+
+  e = a.end();
+  b = e - 1;
+  a.erase(b, e);
+  EXPECT_EQ("ell", a);
+
+  b = a.end() - 1;
+  e = a.end() - 1;
+  EXPECT_THROW(a.erase(b, e), std::out_of_range);
+
+  b = a.begin();
+  e = a.end();
+  a.erase(b, e);
+  EXPECT_EQ("", a);
+
+  a = "hello";
+  b = a.begin();
+  e = b + 2;
+  a.erase(b, e);
+  EXPECT_EQ("llo", a);
+
+  b = a.end() - 2;
+  e = a.end();
+  a.erase(b, e);
+  EXPECT_EQ("l", a);
+
+  a = "      hello  ";
+  boost::algorithm::trim(a);
+  EXPECT_EQ(a, "hello");
 }
 
 TEST(StringPiece, split_step_char_delimiter) {
