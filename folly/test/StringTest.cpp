@@ -16,12 +16,7 @@
 
 #include <folly/String.h>
 
-#include <cstdarg>
-#include <random>
-#include <boost/algorithm/string.hpp>
 #include <gtest/gtest.h>
-
-#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace std;
@@ -155,39 +150,6 @@ TEST(StringPrintf, oldStringAppendf) {
   EXPECT_EQ(string("helloa/b/c/d"), s);
 }
 
-// A simple benchmark that tests various output sizes for a simple
-// input; the goal is to measure the output buffer resize code cost.
-void stringPrintfOutputSize(int iters, int param) {
-  string buffer;
-  BENCHMARK_SUSPEND { buffer.resize(param, 'x'); }
-
-  for (int64_t i = 0; i < iters; ++i) {
-    string s = stringPrintf("msg: %d, %d, %s", 10, 20, buffer.c_str());
-  }
-}
-
-// The first few of these tend to fit in the inline buffer, while the
-// subsequent ones cross that limit, trigger a second vsnprintf, and
-// exercise a different codepath.
-BENCHMARK_PARAM(stringPrintfOutputSize, 1)
-BENCHMARK_PARAM(stringPrintfOutputSize, 4)
-BENCHMARK_PARAM(stringPrintfOutputSize, 16)
-BENCHMARK_PARAM(stringPrintfOutputSize, 64)
-BENCHMARK_PARAM(stringPrintfOutputSize, 256)
-BENCHMARK_PARAM(stringPrintfOutputSize, 1024)
-
-// Benchmark simple stringAppendf behavior to show a pathology Lovro
-// reported (t5735468).
-BENCHMARK(stringPrintfAppendfBenchmark, iters) {
-  for (unsigned int i = 0; i < iters; ++i) {
-    string s;
-    BENCHMARK_SUSPEND { s.reserve(300000); }
-    for (int j = 0; j < 300000; ++j) {
-      stringAppendf(&s, "%d", 1);
-    }
-  }
-}
-
 TEST(Escape, cEscape) {
   EXPECT_EQ("hello world", cEscape<std::string>("hello world"));
   EXPECT_EQ("hello \\\\world\\\" goodbye",
@@ -302,96 +264,6 @@ TEST(Escape, uriUnescapePercentDecoding) {
     }
   }
 }
-
-namespace {
-fbstring cbmString;
-fbstring cbmEscapedString;
-fbstring cEscapedString;
-fbstring cUnescapedString;
-const size_t kCBmStringLength = 64 << 10;
-const uint32_t kCPrintablePercentage = 90;
-
-fbstring uribmString;
-fbstring uribmEscapedString;
-fbstring uriEscapedString;
-fbstring uriUnescapedString;
-const size_t kURIBmStringLength = 256;
-const uint32_t kURIPassThroughPercentage = 50;
-
-void initBenchmark() {
-  std::mt19937 rnd;
-
-  // C escape
-  std::uniform_int_distribution<uint32_t> printable(32, 126);
-  std::uniform_int_distribution<uint32_t> nonPrintable(0, 160);
-  std::uniform_int_distribution<uint32_t> percentage(0, 99);
-
-  cbmString.reserve(kCBmStringLength);
-  for (size_t i = 0; i < kCBmStringLength; ++i) {
-    unsigned char c;
-    if (percentage(rnd) < kCPrintablePercentage) {
-      c = printable(rnd);
-    } else {
-      c = nonPrintable(rnd);
-      // Generate characters in both non-printable ranges:
-      // 0..31 and 127..255
-      if (c >= 32) {
-        c += (126 - 32) + 1;
-      }
-    }
-    cbmString.push_back(c);
-  }
-
-  cbmEscapedString = cEscape<fbstring>(cbmString);
-
-  // URI escape
-  std::uniform_int_distribution<uint32_t> passthrough('a', 'z');
-  std::string encodeChars = " ?!\"',+[]";
-  std::uniform_int_distribution<uint32_t> encode(0, encodeChars.size() - 1);
-
-  uribmString.reserve(kURIBmStringLength);
-  for (size_t i = 0; i < kURIBmStringLength; ++i) {
-    unsigned char c;
-    if (percentage(rnd) < kURIPassThroughPercentage) {
-      c = passthrough(rnd);
-    } else {
-      c = encodeChars[encode(rnd)];
-    }
-    uribmString.push_back(c);
-  }
-
-  uribmEscapedString = uriEscape<fbstring>(uribmString);
-}
-
-BENCHMARK(BM_cEscape, iters) {
-  while (iters--) {
-    cEscapedString = cEscape<fbstring>(cbmString);
-    doNotOptimizeAway(cEscapedString.size());
-  }
-}
-
-BENCHMARK(BM_cUnescape, iters) {
-  while (iters--) {
-    cUnescapedString = cUnescape<fbstring>(cbmEscapedString);
-    doNotOptimizeAway(cUnescapedString.size());
-  }
-}
-
-BENCHMARK(BM_uriEscape, iters) {
-  while (iters--) {
-    uriEscapedString = uriEscape<fbstring>(uribmString);
-    doNotOptimizeAway(uriEscapedString.size());
-  }
-}
-
-BENCHMARK(BM_uriUnescape, iters) {
-  while (iters--) {
-    uriUnescapedString = uriUnescape<fbstring>(uribmEscapedString);
-    doNotOptimizeAway(uriUnescapedString.size());
-  }
-}
-
-}  // namespace
 
 namespace {
 
@@ -1212,84 +1084,6 @@ TEST(String, toLowerAsciiUnaligned) {
   }
 }
 
-//////////////////////////////////////////////////////////////////////
-
-BENCHMARK(splitOnSingleChar, iters) {
-  static const std::string line = "one:two:three:four";
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::vector<StringPiece> pieces;
-    folly::split(':', line, pieces);
-  }
-}
-
-BENCHMARK(splitOnSingleCharFixed, iters) {
-  static const std::string line = "one:two:three:four";
-  for (size_t i = 0; i < iters << 4; ++i) {
-    StringPiece a, b, c, d;
-    folly::split(':', line, a, b, c, d);
-  }
-}
-
-BENCHMARK(splitOnSingleCharFixedAllowExtra, iters) {
-  static const std::string line = "one:two:three:four";
-  for (size_t i = 0; i < iters << 4; ++i) {
-    StringPiece a, b, c, d;
-    folly::split<false>(':', line, a, b, c, d);
-  }
-}
-
-BENCHMARK(splitStr, iters) {
-  static const std::string line = "one-*-two-*-three-*-four";
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::vector<StringPiece> pieces;
-    folly::split("-*-", line, pieces);
-  }
-}
-
-BENCHMARK(splitStrFixed, iters) {
-  static const std::string line = "one-*-two-*-three-*-four";
-  for (size_t i = 0; i < iters << 4; ++i) {
-    StringPiece a, b, c, d;
-    folly::split("-*-", line, a, b, c, d);
-  }
-}
-
-BENCHMARK(boost_splitOnSingleChar, iters) {
-  static const std::string line = "one:two:three:four";
-  bool(*pred)(char) = [] (char c) -> bool { return c == ':'; };
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::vector<boost::iterator_range<std::string::const_iterator> > pieces;
-    boost::split(pieces, line, pred);
-  }
-}
-
-BENCHMARK(joinCharStr, iters) {
-  static const std::vector<std::string> input = {
-    "one", "two", "three", "four", "five", "six", "seven" };
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::string output;
-    folly::join(':', input, output);
-  }
-}
-
-BENCHMARK(joinStrStr, iters) {
-  static const std::vector<std::string> input = {
-    "one", "two", "three", "four", "five", "six", "seven" };
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::string output;
-    folly::join(":", input, output);
-  }
-}
-
-BENCHMARK(joinInt, iters) {
-  static const auto input = {
-    123, 456, 78910, 1112, 1314, 151, 61718 };
-  for (size_t i = 0; i < iters << 4; ++i) {
-    std::string output;
-    folly::join(":", input, output);
-  }
-}
-
 TEST(String, whitespace) {
   // trimWhitespace:
   EXPECT_EQ("kavabanga",
@@ -1358,17 +1152,4 @@ TEST(UTF8StringPiece, empty_mid_codepoint) {
 
 TEST(UTF8StringPiece, invalid_mid_codepoint) {
   EXPECT_THROW(UTF8StringPiece(kTestUTF8.subpiece(9, 1)), std::out_of_range);
-}
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  if (!ret) {
-    initBenchmark();
-    if (FLAGS_benchmark) {
-      folly::runBenchmarks();
-    }
-  }
-  return ret;
 }

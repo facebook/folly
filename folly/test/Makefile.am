@@ -149,7 +149,7 @@ map_util_test_LDADD = libgtestmain.la $(top_builddir)/libfolly.la
 TESTS += map_util_test
 
 string_test_SOURCES = StringTest.cpp
-string_test_LDADD = libgtest.la $(top_builddir)/libfolly.la $(top_builddir)/libfollybenchmark.la
+string_test_LDADD = libgtest.la $(top_builddir)/libfolly.la
 TESTS += string_test
 
 producer_consumer_queue_test_SOURCES = ProducerConsumerQueueTest.cpp
