@@ -29,8 +29,6 @@
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
 
-#include <gflags/gflags.h>
-
 #include <folly/Foreach.h>
 #include <folly/Portability.h>
 #include <folly/Random.h>
@@ -1404,10 +1402,4 @@ TEST(FBStringCtorTest, DefaultInitStructAlloc) {
   TestStructWithAllocator<TestStructStringAllocator> t2;
   EXPECT_TRUE(t2.stringMember.empty());
   EXPECT_EQ(allocatorConstructedCount.load(), 1);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }
