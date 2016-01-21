@@ -27,11 +27,13 @@ struct __cxa_eh_globals;
 // declared in cxxabi.h from libstdc++-v3
 extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
 }
-#elif defined(_MSC_VER) && (_MSC_VER >= 1400) // MSVC++ 8.0 or greater
+#elif defined(_MSC_VER) && (_MSC_VER >= 1400) && (_MSC_VER < 1900)// MSVC++ 8.0 or greater
 #define FOLLY_EXCEPTION_COUNT_USE_GETPTD
 // forward declaration (originally defined in mtdll.h from MSVCRT)
 struct _tiddata;
 extern "C" _tiddata* _getptd(); // declared in mtdll.h from MSVCRT
+#elif defined(_MSC_VER) && (_MSC_VER >= 1900) //MSVC++ 2015 Update 1
+#define FOLLY_EXCEPTION_COUNT_USE_STD
 #else
 // Raise an error when trying to use this on unsupported platforms.
 #error "Unsupported platform, don't include this header."
@@ -84,6 +86,8 @@ inline int UncaughtExceptionCounter::getUncaughtExceptionCount() noexcept {
   // The offset below returns _tiddata::_ProcessingThrow.
   return *(reinterpret_cast<int*>(static_cast<char*>(
       static_cast<void*>(_getptd())) + sizeof(void*) * 28 + 0x4 * 8));
+#elif defined(FOLLY_EXCEPTION_COUNT_USE_STD)
+	return std::uncaught_exceptions();
 #endif
 }
 
