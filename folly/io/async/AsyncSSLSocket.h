@@ -740,7 +740,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
-  virtual X509_UniquePtr getPeerCert() const {
+  virtual X509_UniquePtr getPeerCert() const override {
     if (!ssl_) {
       return nullptr;
     }

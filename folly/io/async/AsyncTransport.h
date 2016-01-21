@@ -22,6 +22,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/AsyncSocketBase.h>
+#include <folly/io/async/OpenSSLPtrTypes.h>
 
 #include <openssl/ssl.h>
 
@@ -319,6 +320,11 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
    *                 specified SocketAddress.
    */
   virtual void getPeerAddress(SocketAddress* address) const = 0;
+
+  /**
+   * Get the certificate used to authenticate the peer.
+   */
+  virtual X509_UniquePtr getPeerCert() const { return nullptr; }
 
   /**
    * @return True iff end of record tracking is enabled
