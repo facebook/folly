@@ -213,6 +213,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/EventUtil.h \
 	io/async/NotificationQueue.h \
 	io/async/HHWheelTimer.h \
+	io/async/OpenSSLPtrTypes.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/ScopedEventBaseThread.h \

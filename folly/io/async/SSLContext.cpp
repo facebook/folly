@@ -24,6 +24,7 @@
 #include <folly/Format.h>
 #include <folly/Memory.h>
 #include <folly/SpinLock.h>
+#include <folly/io/async/OpenSSLPtrTypes.h>
 
 // ---------------------------------------------------------------------
 // SSLContext implementation
@@ -46,9 +47,6 @@ std::mutex& initMutex() {
 
 inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
 using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free_fb>;
-using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
-using EVP_PKEY_deleter =
-    folly::static_function_deleter<EVP_PKEY, &EVP_PKEY_free>;
 
 } // anonymous namespace
 
@@ -208,8 +206,7 @@ void SSLContext::loadCertificateFromBufferPEM(folly::StringPiece cert) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
 
-  std::unique_ptr<X509, X509_deleter> x509(
-      PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+  X509_UniquePtr x509(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
   if (x509 == nullptr) {
     throw std::runtime_error("PEM_read_bio_X509: " + getErrors());
   }
@@ -248,7 +245,7 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
 
-  std::unique_ptr<EVP_PKEY, EVP_PKEY_deleter> key(
+  EVP_PKEY_UniquePtr key(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
   if (key == nullptr) {
     throw std::runtime_error("PEM_read_bio_PrivateKey: " + getErrors());

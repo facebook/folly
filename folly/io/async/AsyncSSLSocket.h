@@ -25,6 +25,7 @@
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/SSLContext.h>
 #include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/OpenSSLPtrTypes.h>
 #include <folly/io/async/TimeoutManager.h>
 
 #include <folly/Bits.h>
@@ -739,13 +740,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
-  virtual std::unique_ptr<X509, X509_deleter> getPeerCert() const {
+  virtual X509_UniquePtr getPeerCert() const {
     if (!ssl_) {
       return nullptr;
     }
 
     X509* cert = SSL_get_peer_certificate(ssl_);
-    return std::unique_ptr<X509, X509_deleter>(cert);
+    return X509_UniquePtr(cert);
   }
 
  private:
