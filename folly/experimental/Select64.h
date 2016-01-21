@@ -19,6 +19,8 @@
 
 #include <glog/logging.h>
 
+#include <folly/experimental/Instructions.h>
+
 namespace folly {
 
 namespace detail {
@@ -61,5 +63,19 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   return place + detail::kSelectInByte[((x >> place) & 0xFF) | (byteRank << 8)];
 }
 
+template <>
+inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
+                                                             uint64_t k) {
+  uint64_t result = uint64_t(1) << k;
+
+  asm("pdep %1, %0, %0\n\t"
+      "tzcnt %0, %0"
+      : "+r"(result)
+      : "r"(x));
+
+  return result;
 }
+
+} // namespace folly
+
 #endif

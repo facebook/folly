@@ -69,6 +69,19 @@ TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
   doTestAll<128, 128>();
 }
 
+TEST_F(EliasFanoCodingTest, Select64) {
+  typedef instructions::EF_TEST_ARCH instr;
+  constexpr uint64_t kPrime = uint64_t(-59);
+  for (uint64_t x = kPrime, i = 0; i < (1 << 20); x *= kPrime, i += 1) {
+    size_t w = instr::popcount(x);
+    for (size_t k = 0; k < w; ++k) {
+      auto pos = folly::select64<instr>(x, k);
+      CHECK_EQ((x >> pos) & 1, 1);
+      CHECK_EQ(instr::popcount(x & ((uint64_t(1) << pos) - 1)), k);
+    }
+  }
+}
+
 namespace bm {
 
 constexpr size_t k1M = 1000000;
@@ -158,46 +171,33 @@ BENCHMARK(Encode) {
   list.free();
 }
 
-BENCHMARK_DRAW_LINE();
-
-BENCHMARK(Select64, iters) {
-  typedef instructions::EF_TEST_ARCH instr;
-  constexpr uint64_t kPrime = uint64_t(-59);
-  for (uint64_t x = kPrime, i = 0; i < iters; x *= kPrime, i += 1) {
-    size_t w = instr::popcount(x);
-    folly::doNotOptimizeAway(folly::select64<instr>(x, w - 1));
-  }
-}
-
 #if 0
 Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz (turbo off),
 using instructions::Haswell and GCC 4.9 with --bm_min_usec 100000.
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
 ============================================================================
-Next                                                         2.52ns  397.28M
-Skip_ForwardQ128(1)                                          3.92ns  255.28M
-Skip_ForwardQ128(2)                                          5.08ns  197.04M
-Skip_ForwardQ128(4_pm_1)                                     7.04ns  142.02M
-Skip_ForwardQ128(16_pm_4)                                   19.68ns   50.82M
-Skip_ForwardQ128(64_pm_16)                                  27.58ns   36.26M
-Skip_ForwardQ128(256_pm_64)                                 32.49ns   30.78M
-Skip_ForwardQ128(1024_pm_256)                               33.39ns   29.95M
-Jump_ForwardQ128                                            34.05ns   29.37M
+Next                                                         2.59ns  386.60M
+Skip_ForwardQ128(1)                                          4.03ns  248.16M
+Skip_ForwardQ128(2)                                          5.28ns  189.39M
+Skip_ForwardQ128(4_pm_1)                                     7.48ns  133.75M
+Skip_ForwardQ128(16_pm_4)                                   20.28ns   49.32M
+Skip_ForwardQ128(64_pm_16)                                  28.19ns   35.47M
+Skip_ForwardQ128(256_pm_64)                                 31.99ns   31.26M
+Skip_ForwardQ128(1024_pm_256)                               32.51ns   30.76M
+Jump_ForwardQ128                                            33.77ns   29.61M
 ----------------------------------------------------------------------------
-SkipTo_SkipQ128(1)                                           4.42ns  226.49M
-SkipTo_SkipQ128(2)                                           8.58ns  116.55M
-SkipTo_SkipQ128(4_pm_1)                                     11.43ns   87.50M
-SkipTo_SkipQ128(16_pm_4)                                    31.19ns   32.06M
-SkipTo_SkipQ128(64_pm_16)                                   43.88ns   22.79M
-SkipTo_SkipQ128(256_pm_64)                                  49.08ns   20.37M
-SkipTo_SkipQ128(1024_pm_256)                                52.24ns   19.14M
-JumpTo_SkipQ128                                             54.61ns   18.31M
+SkipTo_SkipQ128(1)                                           4.34ns  230.66M
+SkipTo_SkipQ128(2)                                           8.90ns  112.38M
+SkipTo_SkipQ128(4_pm_1)                                     12.12ns   82.49M
+SkipTo_SkipQ128(16_pm_4)                                    32.52ns   30.75M
+SkipTo_SkipQ128(64_pm_16)                                   44.82ns   22.31M
+SkipTo_SkipQ128(256_pm_64)                                  49.52ns   20.19M
+SkipTo_SkipQ128(1024_pm_256)                                52.88ns   18.91M
+JumpTo_SkipQ128                                             54.65ns   18.30M
 ----------------------------------------------------------------------------
-Encode_10                                                  117.24ns    8.53M
-Encode                                                       5.64ms   177.15
-----------------------------------------------------------------------------
-Select64                                                     8.04ns  124.35M
+Encode_10                                                   98.70ns   10.13M
+Encode                                                       5.48ms   182.33
 ============================================================================
 #endif
 
