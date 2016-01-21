@@ -41,6 +41,8 @@
 #ifndef FOLLY_JSON_H_
 #define FOLLY_JSON_H_
 
+#include <iosfwd>
+
 #include <folly/dynamic.h>
 #include <folly/FBString.h>
 #include <folly/Range.h>
@@ -158,6 +160,11 @@ fbstring toJson(dynamic const&);
  */
 fbstring toPrettyJson(dynamic const&);
 
+/*
+ * Printer for GTest.
+ * Uppercase name to fill GTest's API, which calls this method through ADL.
+ */
+void PrintTo(const dynamic&, std::ostream*);
 //////////////////////////////////////////////////////////////////////
 
 }

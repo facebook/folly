@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <folly/json.h>
-
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
 #include <limits>
+#include <strstream>
+
 #include <boost/next_prior.hpp>
+#include <folly/json.h>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 using folly::dynamic;
 using folly::parseJson;
@@ -463,6 +463,63 @@ TEST(Json, SortKeys) {
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_off)));
 
   EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
+}
+
+TEST(Json, PrintTo) {
+  std::ostrstream oss;
+
+  dynamic value = dynamic::object
+    ("foo", "bar")
+    ("junk", 12)
+    ("another", 32.2)
+    (true, false) // include non-string keys
+    (false, true)
+    (2, 3)
+    (0, 1)
+    (1, 2)
+    (1.5, 2.25)
+    (0.5, 0.25)
+    (0, 1)
+    (1, 2)
+    ("a",
+      {
+        dynamic::object("a", "b")
+                       ("c", "d"),
+        12.5,
+        "Yo Dawg",
+        { "heh" },
+        nullptr
+      }
+    )
+    ;
+
+  std::string expected =
+      R"({
+  false : true,
+  true : false,
+  0.5 : 0.25,
+  1.5 : 2.25,
+  0 : 1,
+  1 : 2,
+  2 : 3,
+  "a" : [
+    {
+      "a" : "b",
+      "c" : "d"
+    },
+    12.5,
+    "Yo Dawg",
+    [
+      "heh"
+    ],
+    null
+  ],
+  "another" : 32.2,
+  "foo" : "bar",
+  "junk" : 12
+})";
+  PrintTo(value, &oss);
+  EXPECT_EQ(expected, oss.str());
 }
 
 int main(int argc, char** argv) {

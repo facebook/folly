@@ -833,6 +833,15 @@ void dynamic::print_as_pseudo_json(std::ostream& out) const {
   out << json::serialize(*this, opts);
 }
 
+void PrintTo(const dynamic& dyn, std::ostream* os) {
+  json::serialization_opts opts;
+  opts.allow_nan_inf = true;
+  opts.allow_non_string_keys = true;
+  opts.pretty_formatting = true;
+  opts.sort_keys = true;
+  *os << json::serialize(dyn, opts);
+}
+
 //////////////////////////////////////////////////////////////////////
 
 }
