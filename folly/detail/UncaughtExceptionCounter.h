@@ -32,7 +32,7 @@ extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
 // forward declaration (originally defined in mtdll.h from MSVCRT)
 struct _tiddata;
 extern "C" _tiddata* _getptd(); // declared in mtdll.h from MSVCRT
-#elif defined(_MSC_VER) && (_MSC_VER >= 1900) //MSVC++ 2015 Update 1
+#elif defined(_MSC_VER) && (_MSC_VER >= 1900) //MSVC++ 2015
 #define FOLLY_EXCEPTION_COUNT_USE_STD
 #else
 // Raise an error when trying to use this on unsupported platforms.
