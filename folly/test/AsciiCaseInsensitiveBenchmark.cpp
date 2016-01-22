@@ -100,6 +100,7 @@ inline void test_operator_on_search(int iters) {
       cmp
     ) - lorem_ipsum.begin();
   }
+  doNotOptimizeAway(dummy);
 }
 
 BENCHMARK(LegacyCaseInsensitiveCheck, iters) {
