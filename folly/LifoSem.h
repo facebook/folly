@@ -323,7 +323,7 @@ struct LifoSemBase {
 
   /// Constructor
   constexpr explicit LifoSemBase(uint32_t initialValue = 0)
-    : head_(LifoSemHead::fresh(initialValue)) {}
+      : head_(LifoSemHead::fresh(initialValue)), padding_() {}
 
   LifoSemBase(LifoSemBase const&) = delete;
   LifoSemBase& operator=(LifoSemBase const&) = delete;
