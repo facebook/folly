@@ -76,6 +76,20 @@ class RequestContext {
     }
   }
 
+  // Unlike setContextData, this method does not panic if the key is already
+  // present. Returns true iff the new value has been inserted.
+  bool setContextDataIfAbsent(const std::string& val,
+                              std::unique_ptr<RequestData> data) {
+    folly::RWSpinLock::UpgradedHolder guard(lock);
+    if (data_.find(val) != data_.end()) {
+      return false;
+    }
+
+    folly::RWSpinLock::WriteHolder writeGuard(std::move(guard));
+    data_[val] = std::move(data);
+    return true;
+  }
+
   bool hasContextData(const std::string& val) {
     folly::RWSpinLock::ReadHolder guard(lock);
     return data_.find(val) != data_.end();

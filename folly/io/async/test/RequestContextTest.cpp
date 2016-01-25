@@ -73,6 +73,27 @@ TEST(RequestContext, SimpleTest) {
   EXPECT_TRUE(nullptr != RequestContext::get());
 }
 
+TEST(RequestContext, setIfAbsentTest) {
+  EXPECT_TRUE(RequestContext::get() != nullptr);
+
+  RequestContext::get()->setContextData(
+      "test", std::unique_ptr<TestData>(new TestData(10)));
+  EXPECT_FALSE(RequestContext::get()->setContextDataIfAbsent(
+      "test", std::unique_ptr<TestData>(new TestData(20))));
+  EXPECT_EQ(10,
+            dynamic_cast<TestData*>(
+                RequestContext::get()->getContextData("test"))->data_);
+
+  EXPECT_TRUE(RequestContext::get()->setContextDataIfAbsent(
+      "test2", std::unique_ptr<TestData>(new TestData(20))));
+  EXPECT_EQ(20,
+            dynamic_cast<TestData*>(
+                RequestContext::get()->getContextData("test2"))->data_);
+
+  RequestContext::setContext(std::shared_ptr<RequestContext>());
+  EXPECT_TRUE(nullptr != RequestContext::get());
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
