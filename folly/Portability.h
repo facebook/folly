@@ -359,6 +359,84 @@ inline size_t malloc_usable_size(void* ptr) {
 #endif
 
 #ifdef _MSC_VER
+#include <pthread.h>
+// We implement a sane comparison operand for
+// pthread_t and an integer so that it may be
+// compared against 0.
+
+inline bool operator ==(pthread_t ptA, unsigned int b) {
+  if (ptA.p == nullptr) {
+    return b == 0;
+  }
+  return pthread_getw32threadid_np(ptA) == b;
+}
+
+inline bool operator !=(pthread_t ptA, unsigned int b) {
+  if (ptA.p == nullptr) {
+    return b != 0;
+  }
+  return pthread_getw32threadid_np(ptA) != b;
+}
+
+inline bool operator ==(pthread_t ptA, pthread_t ptB) {
+  return pthread_equal(ptA, ptB) != 0;
+}
+
+inline bool operator !=(pthread_t ptA, pthread_t ptB) {
+  return pthread_equal(ptA, ptB) == 0;
+}
+
+inline bool operator <(pthread_t ptA, pthread_t ptB) {
+  return ptA.p < ptB.p;
+}
+
+inline bool operator !(pthread_t ptA) {
+  return ptA == 0;
+}
+
+inline int pthread_attr_getstack(
+  pthread_attr_t* attr,
+  void** stackaddr,
+  size_t* stacksize) {
+  if (pthread_attr_getstackaddr(attr, stackaddr) != 0) {
+    return -1;
+  }
+  if (pthread_attr_getstacksize(attr, stacksize) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+inline int pthread_attr_setstack(
+  pthread_attr_t* attr,
+  void* stackaddr,
+  size_t stacksize) {
+  if (pthread_attr_setstackaddr(attr, stackaddr) != 0) {
+    return -1;
+  }
+  if (pthread_attr_setstacksize(attr, stacksize) != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+inline int pthread_attr_getguardsize(pthread_attr_t* attr, size_t* guardsize) {
+  *guardsize = 0;
+  return 0;
+}
+
+#include <xstddef>
+namespace std {
+template <>
+struct hash<pthread_t> {
+  std::size_t operator()(const pthread_t& k) const {
+    return std::hash<void*>()(k.p) ^ (std::hash<unsigned int>()(k.x) << 1);
+  }
+};
+}
+#endif
+
+#ifdef _MSC_VER
 # include <intrin.h>
 #endif
 
