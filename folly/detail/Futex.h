@@ -20,7 +20,7 @@
 #include <chrono>
 #include <limits>
 #include <assert.h>
-#include <unistd.h>
+#include <folly/FilePortability.h>
 #include <boost/noncopyable.hpp>
 
 namespace folly { namespace detail {

@@ -24,12 +24,12 @@
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 #include <memory>
 #include <exception>
 #include <vector>
 #include <limits.h>
 #include <stddef.h>
-#include <sys/socket.h>
 
 
 // Due to the way kernel headers are included, this may or may not be defined.

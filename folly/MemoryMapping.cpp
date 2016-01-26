@@ -20,6 +20,7 @@
 #include <functional>
 #include <utility>
 
+#include <folly/CPortability.h>
 #include <folly/Format.h>
 
 #ifdef __linux__
@@ -27,7 +28,6 @@
 #endif
 
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <system_error>
 #include <gflags/gflags.h>

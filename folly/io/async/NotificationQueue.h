@@ -18,7 +18,6 @@
 
 #include <fcntl.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <deque>
@@ -32,6 +31,7 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/Request.h>
+#include <folly/FilePortability.h>
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SpinLock.h>

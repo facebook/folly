@@ -28,7 +28,7 @@
 #include <fcntl.h>
 #include <mutex>
 #include <pthread.h>
-#include <unistd.h>
+#include <folly/FilePortability.h>
 
 namespace {
 

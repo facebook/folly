@@ -23,8 +23,8 @@
 #include <limits>
 #include <string.h>
 #include <type_traits>
-#include <unistd.h>
 
+#include <folly/FilePortability.h>
 #include <folly/Traits.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/TurnSequencer.h>

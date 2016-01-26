@@ -19,6 +19,7 @@
 #endif
 
 #include <folly/SocketAddress.h>
+#include <folly/SocketPortability.h>
 
 #include <folly/Hash.h>
 
@@ -144,8 +145,12 @@ void SocketAddress::setFromIpPort(const char* ip, uint16_t port) {
 
 void SocketAddress::setFromIpAddrPort(const IPAddress& ipAddr, uint16_t port) {
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     storage_.un.free();
     external_ = false;
+#endif
   }
   storage_.addr = ipAddr;
   port_ = port;
@@ -181,6 +186,9 @@ void SocketAddress::setFromHostPort(const char* hostAndPort) {
 }
 
 void SocketAddress::setFromPath(const char* path, size_t len) {
+#if !HAVE_UNIX_SOCKETS
+  assert(0);
+#else
   if (!external_) {
     storage_.un.init();
     external_ = true;
@@ -199,13 +207,14 @@ void SocketAddress::setFromPath(const char* path, size_t len) {
   } else {
     memcpy(storage_.un.addr->sun_path, path, len + 1);
   }
+#endif
 }
 
-void SocketAddress::setFromPeerAddress(SocketDesc socket) {
+void SocketAddress::setFromPeerAddress(int socket) {
   setFromSocket(socket, getpeername);
 }
 
-void SocketAddress::setFromLocalAddress(SocketDesc socket) {
+void SocketAddress::setFromLocalAddress(int socket) {
   setFromSocket(socket, getsockname);
 }
 
@@ -258,8 +267,12 @@ void SocketAddress::setFromSockaddr(const struct sockaddr* address,
     }
     setFromSockaddr(reinterpret_cast<const struct sockaddr_in6*>(address));
   } else if (address->sa_family == AF_UNIX) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     setFromSockaddr(reinterpret_cast<const struct sockaddr_un*>(address),
                     addrlen);
+#endif
   } else {
     throw std::invalid_argument(
       "SocketAddress::setFromSockaddr() called "
@@ -277,6 +290,7 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_in6* address) {
   setFromSockaddr((sockaddr*)address);
 }
 
+#if HAVE_UNIX_SOCKETS
 void SocketAddress::setFromSockaddr(const struct sockaddr_un* address,
                                      socklen_t addrlen) {
   assert(address->sun_family == AF_UNIX);
@@ -296,6 +310,7 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_un* address,
     memset(p + addrlen, 0, sizeof(struct sockaddr_un) - addrlen);
   }
 }
+#endif
 
 const folly::IPAddress& SocketAddress::getIPAddress() const {
   auto family = getFamily();
@@ -307,7 +322,11 @@ const folly::IPAddress& SocketAddress::getIPAddress() const {
 
 socklen_t SocketAddress::getActualSize() const {
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     return storage_.un.len;
+#endif
   }
   switch (getFamily()) {
     case AF_UNSPEC:
@@ -403,6 +422,11 @@ std::string SocketAddress::getHostStr() const {
 }
 
 std::string SocketAddress::getPath() const {
+#if !HAVE_UNIX_SOCKETS
+  throw std::invalid_argument(
+    "SocketAddress: attempting to get path "
+    "for a non-Unix address");
+#else
   if (!external_) {
     throw std::invalid_argument(
       "SocketAddress: attempting to get path "
@@ -421,10 +445,14 @@ std::string SocketAddress::getPath() const {
   return std::string(storage_.un.addr->sun_path,
                      strnlen(storage_.un.addr->sun_path,
                              storage_.un.pathLength()));
+#endif
 }
 
 std::string SocketAddress::describe() const {
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     if (storage_.un.pathLength() == 0) {
       return "<anonymous unix address>";
     }
@@ -437,6 +465,7 @@ std::string SocketAddress::describe() const {
     return std::string(storage_.un.addr->sun_path,
                        strnlen(storage_.un.addr->sun_path,
                                storage_.un.pathLength()));
+#endif
   }
   switch (getFamily()) {
     case AF_UNSPEC:
@@ -473,6 +502,9 @@ bool SocketAddress::operator==(const SocketAddress& other) const {
     return false;
   }
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     // anonymous addresses are never equal to any other addresses
     if (storage_.un.pathLength() == 0 ||
         other.storage_.un.pathLength() == 0) {
@@ -486,6 +518,7 @@ bool SocketAddress::operator==(const SocketAddress& other) const {
                      other.storage_.un.addr->sun_path,
                      storage_.un.pathLength());
     return cmp == 0;
+#endif
   }
 
   switch (getFamily()) {
@@ -527,6 +560,9 @@ size_t SocketAddress::hash() const {
   size_t seed = folly::hash::twang_mix64(getFamily());
 
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     enum { kUnixPathMax = sizeof(storage_.un.addr->sun_path) };
     const char *path = storage_.un.addr->sun_path;
     size_t pathLength = storage_.un.pathLength();
@@ -534,6 +570,7 @@ size_t SocketAddress::hash() const {
     for (unsigned int n = 0; n < pathLength; ++n) {
       boost::hash_combine(seed, folly::hash::twang_mix64(path[n]));
     }
+#endif
   }
 
   switch (getFamily()) {
@@ -605,7 +642,8 @@ void SocketAddress::setFromLocalAddr(const struct addrinfo* info) {
   setFromSockaddr(info->ai_addr, info->ai_addrlen);
 }
 
-void SocketAddress::setFromSocket(SocketDesc socket, GetPeerNameFunc fn) {
+void SocketAddress::setFromSocket(int socket,
+                                  int (*fn)(int, sockaddr*, socklen_t*)) {
   // Try to put the address into a local storage buffer.
   sockaddr_storage tmp_sock;
   socklen_t addrLen = sizeof(tmp_sock);
@@ -644,6 +682,9 @@ void SocketAddress::getIpString(char *buf, size_t buflen, int flags) const {
 }
 
 void SocketAddress::updateUnixAddressLength(socklen_t addrlen) {
+#if !HAVE_UNIX_SOCKETS
+  assert(0);
+#else
   if (addrlen < offsetof(struct sockaddr_un, sun_path)) {
     throw std::invalid_argument(
       "SocketAddress: attempted to set a Unix socket "
@@ -664,6 +705,7 @@ void SocketAddress::updateUnixAddressLength(socklen_t addrlen) {
     size_t pathLength = strnlen(storage_.un.addr->sun_path, maxLength);
     storage_.un.len = offsetof(struct sockaddr_un, sun_path) + pathLength;
   }
+#endif
 }
 
 bool SocketAddress::operator<(const SocketAddress& other) const {
@@ -672,6 +714,9 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
   }
 
   if (external_) {
+#if !HAVE_UNIX_SOCKETS
+    assert(0);
+#else
     // Anonymous addresses can't be compared to anything else.
     // Return that they are never less than anything.
     //
@@ -694,6 +739,7 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
                      other.storage_.un.addr->sun_path,
                      thisPathLength);
     return cmp < 0;
+#endif
   }
   switch (getFamily()) {
     case AF_INET:
