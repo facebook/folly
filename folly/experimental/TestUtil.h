@@ -203,6 +203,7 @@ private:
   off_t readOffset_;  // for incremental reading
 };
 
+#ifndef _MSC_VER
 class EnvVarSaver {
 public:
   EnvVarSaver();
@@ -210,6 +211,7 @@ public:
 private:
   std::map<std::string, std::string> saved_;
 };
+#endif
 
 }  // namespace test
 }  // namespace folly

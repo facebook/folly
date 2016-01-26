@@ -131,6 +131,7 @@ class BaseFormatter {
   typename std::enable_if<K == valueCount, int>::type
   getSizeArgFrom(size_t i, const FormatArg& arg) const {
     arg.error("argument index out of range, max=", i);
+    return 0;
   }
 
   template <class T>
@@ -145,6 +146,7 @@ class BaseFormatter {
                           std::is_same<T, bool>::value, int>::type
   getValue(const FormatValue<T>&, const FormatArg& arg) const {
     arg.error("dynamic field width argument must be integral");
+    return 0;
   }
 
   template <size_t K>

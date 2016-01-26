@@ -503,7 +503,8 @@ class Singleton {
   // Generally your program life cycle should be fine with calling
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
-  static T* get() __attribute__ ((__deprecated__("Replaced by try_get"))) {
+  FOLLY_DEPRECATED("Replaced by try_get")
+  static T* get() {
     return getEntry().get();
   }
 
