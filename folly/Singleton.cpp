@@ -23,12 +23,6 @@
 
 namespace folly {
 
-namespace detail {
-
-constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
-
-}
-
 namespace {
 
 struct FatalHelper {

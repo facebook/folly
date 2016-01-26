@@ -67,7 +67,7 @@ class AtomicLinkedList {
   }
 
   bool empty() const {
-    return head_ == nullptr;
+    return head_.load() == nullptr;
   }
 
   /**
