@@ -503,18 +503,15 @@ class Singleton {
   // Generally your program life cycle should be fine with calling
   // get() repeatedly rather than saving the reference, and then not
   // call get() during process shutdown.
-  static T* get() __attribute__ ((__deprecated__("Replaced by try_get"))) {
-    return getEntry().get();
-  }
+  FOLLY_DEPRECATED("Replaced by try_get")
+  static T* get() { return getEntry().get(); }
 
   // If, however, you do need to hold a reference to the specific
   // singleton, you can try to do so with a weak_ptr.  Avoid this when
   // possible but the inability to lock the weak pointer can be a
   // signal that the vault has been destroyed.
-  static std::weak_ptr<T>
-  get_weak() __attribute__ ((__deprecated__("Replaced by try_get")))  {
-    return getEntry().get_weak();
-  }
+  FOLLY_DEPRECATED("Replaced by try_get")
+  static std::weak_ptr<T> get_weak() { return getEntry().get_weak(); }
 
   // Preferred alternative to get_weak, it returns shared_ptr that can be
   // stored; a singleton won't be destroyed unless shared_ptr is destroyed.
