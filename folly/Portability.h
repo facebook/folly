@@ -217,7 +217,7 @@ namespace std { typedef ::max_align_t max_align_t; }
 #endif
 
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
-// the 'std' namespace; the latter uses inline namepsaces. Wrap this decision
+// the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
 #if FOLLY_USE_LIBCPP
 #include <__config>
