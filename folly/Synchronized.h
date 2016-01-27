@@ -682,8 +682,8 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  * examples.
  */
 #define SYNCHRONIZED(...)                                       \
-  _Pragma("GCC diagnostic push")                                \
-  _Pragma("GCC diagnostic ignored \"-Wshadow\"")                \
+  FOLLY_PUSH_WARNING                                            \
+  FOLLY_GCC_DISABLE_WARNING(shadow)                             \
   if (bool SYNCHRONIZED_state = false) {} else                  \
     for (auto SYNCHRONIZED_lockedPtr =                          \
            (FB_ARG_2_OR_1(__VA_ARGS__)).operator->();           \
@@ -691,7 +691,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
       for (auto& FB_ARG_1(__VA_ARGS__) =                        \
              *SYNCHRONIZED_lockedPtr.operator->();              \
            !SYNCHRONIZED_state; SYNCHRONIZED_state = true)      \
-  _Pragma("GCC diagnostic pop")
+  FOLLY_POP_WARNING
 
 #define TIMED_SYNCHRONIZED(timeout, ...)                           \
   if (bool SYNCHRONIZED_state = false) {} else                     \

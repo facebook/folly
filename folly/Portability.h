@@ -161,6 +161,31 @@
 # define FOLLY_PACK_POP /**/
 #endif
 
+// Generalize warning push/pop.
+#if defined(_MSC_VER)
+# define FOLLY_PUSH_WARNING __pragma(warning(push))
+# define FOLLY_POP_WARNING __pragma(warning(pop))
+// Disable the GCC warnings.
+# define FOLLY_GCC_DISABLE_WARNING(warningName)
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber) __pragma(warning(disable: warningNumber))
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
+# define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
+#define FOLLY_GCC_DISABLE_WARNING_INTERNAL3(warningName) #warningName
+#define FOLLY_GCC_DISABLE_WARNING_INTERNAL2(warningName) \
+  FOLLY_GCC_DISABLE_WARNING_INTERNAL3(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)                       \
+  _Pragma(FOLLY_GCC_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored \
+          FOLLY_GCC_DISABLE_WARNING_INTERNAL3(-W##warningName)))
+// Disable the MSVC warnings.
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#else
+# define FOLLY_PUSH_WARNING
+# define FOLLY_POP_WARNING
+# define FOLLY_GCC_DISABLE_WARNING(warningName)
+# define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#endif
+
 // portable version check
 #ifndef __GNUC_PREREQ
 # if defined __GNUC__ && defined __GNUC_MINOR__
