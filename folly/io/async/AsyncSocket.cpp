@@ -1066,7 +1066,10 @@ bool AsyncSocket::isDetachable() const {
 }
 
 void AsyncSocket::getLocalAddress(folly::SocketAddress* address) const {
-  address->setFromLocalAddress(fd_);
+  if (!localAddr_.isInitialized()) {
+    localAddr_.setFromLocalAddress(fd_);
+  }
+  *address = localAddr_;
 }
 
 void AsyncSocket::getPeerAddress(folly::SocketAddress* address) const {

@@ -18,7 +18,6 @@
 
 #include <arpa/inet.h>
 #include <iomanip>
-#include <openssl/ssl.h>
 
 #include <folly/Optional.h>
 #include <folly/String.h>
@@ -749,6 +748,15 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return X509_UniquePtr(cert);
   }
 
+  /**
+   * Force AsyncSSLSocket object to cache local and peer socket addresses.
+   * If called with "true" before connect() this function forces full local
+   * and remote socket addresses to be cached in the socket object and available
+   * through getLocalAddress()/getPeerAddress() methods even after the socket is
+   * closed.
+   */
+  void forceCacheAddrOnFailure(bool force) { cacheAddrOnFailure_ = force; }
+
  private:
 
   void init();
@@ -821,6 +829,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void invokeHandshakeErr(const AsyncSocketException& ex);
   void invokeHandshakeCB();
 
+  void cacheLocalPeerAddr();
+
   static void sslInfoCallback(const SSL *ssl, int type, int val);
 
   // SSL related members.
@@ -863,6 +873,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static int sslVerifyCallback(int preverifyOk, X509_STORE_CTX* ctx);
 
   bool parseClientHello_{false};
+  bool cacheAddrOnFailure_{false};
   std::unique_ptr<ClientHelloInfo> clientHelloInfo_;
 
   // Time taken to complete the ssl handshake.

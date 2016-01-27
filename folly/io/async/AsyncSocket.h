@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <glog/logging.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/IOBuf.h>
@@ -786,11 +785,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   uint8_t shutdownFlags_;               ///< Shutdown state (ShutdownFlags)
   uint16_t eventFlags_;                 ///< EventBase::HandlerFlags settings
   int fd_;                              ///< The socket file descriptor
-  mutable
-    folly::SocketAddress addr_;    ///< The address we tried to connect to
+  mutable folly::SocketAddress addr_;    ///< The address we tried to connect to
+  mutable folly::SocketAddress localAddr_;
+                                        ///< The address we are connecting from
   uint32_t sendTimeout_;                ///< The send timeout, in milliseconds
   uint16_t maxReadsPerEvent_;           ///< Max reads per event loop iteration
-  EventBase* eventBase_;               ///< The EventBase
+  EventBase* eventBase_;                ///< The EventBase
   WriteTimeout writeTimeout_;           ///< A timeout for connect and write
   IoHandler ioHandler_;                 ///< A EventHandler to monitor the fd
   ImmediateReadCB immediateReadHandler_; ///< LoopCallback for checking read

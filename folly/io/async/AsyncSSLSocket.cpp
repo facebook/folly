@@ -501,6 +501,13 @@ void AsyncSSLSocket::sslAccept(HandshakeCB* callback, uint32_t timeout,
       handshakeCallback_ != nullptr) {
     return invalidState(callback);
   }
+
+  // Cache local and remote socket addresses to keep them available
+  // after socket file descriptor is closed.
+  if (cacheAddrOnFailure_ && -1 != getFd()) {
+    cacheLocalPeerAddr();
+  }
+
   handshakeStartTime_ = std::chrono::steady_clock::now();
   // Make end time at least >= start time.
   handshakeEndTime_ = handshakeStartTime_;
@@ -665,6 +672,19 @@ void AsyncSSLSocket::invokeHandshakeCB() {
   }
 }
 
+void AsyncSSLSocket::cacheLocalPeerAddr() {
+  SocketAddress address;
+  try {
+    getLocalAddress(&address);
+    getPeerAddress(&address);
+  } catch (const std::system_error& e) {
+    // The handle can be still valid while the connection is already closed.
+    if (e.code() != std::error_code(ENOTCONN, std::system_category())) {
+      throw;
+    }
+  }
+}
+
 void AsyncSSLSocket::connect(ConnectCallback* callback,
                               const folly::SocketAddress& address,
                               int timeout,
@@ -699,6 +719,12 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
         const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
   DestructorGuard dg(this);
   assert(eventBase_->isInEventBaseThread());
+
+  // Cache local and remote socket addresses to keep them available
+  // after socket file descriptor is closed.
+  if (cacheAddrOnFailure_ && -1 != getFd()) {
+    cacheLocalPeerAddr();
+  }
 
   verifyPeer_ = verifyPeer;
 
