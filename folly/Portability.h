@@ -305,6 +305,21 @@ typedef SSIZE_T ssize_t;
 
 #endif
 
+// Endianness
+namespace folly {
+#ifdef _MSC_VER
+// It's MSVC, so we just have to guess ... and allow an override
+#ifdef FOLLY_ENDIAN_BE
+constexpr auto kIsLittleEndian = false;
+#else
+constexpr auto kIsLittleEndian = true;
+#endif
+#else
+constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
+#endif
+constexpr auto kIsBigEndian = !kIsLittleEndian;
+}
+
 #ifndef FOLLY_SSE
 # if defined(__SSE4_2__)
 #  define FOLLY_SSE 4

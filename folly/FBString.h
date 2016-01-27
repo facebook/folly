@@ -289,13 +289,6 @@ private:
  * to extract capacity/category.
  */
 template <class Char> class fbstring_core {
-protected:
-  static constexpr bool kIsLittleEndian =
-    __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
-  static constexpr bool kIsBigEndian =
-    __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__;
-  static_assert(
-      kIsLittleEndian || kIsBigEndian, "unable to identify endianness");
 public:
   fbstring_core() noexcept { reset(); }
 
