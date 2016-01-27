@@ -663,7 +663,7 @@ TEST(small_vector, Capacity) {
 
   // Test capacity heapifying logic
   folly::small_vector<unsigned char, 1> vec3;
-  const size_t hc_size = 1000000;
+  const size_t hc_size = 100000;
   for (size_t i = 0; i < hc_size; ++i) {
     auto v = (unsigned char)i;
     vec3.push_back(v);
