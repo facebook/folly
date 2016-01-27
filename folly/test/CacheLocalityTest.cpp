@@ -317,13 +317,30 @@ TEST(Getcpu, VdsoGetcpu) {
   EXPECT_TRUE(cpu < CPU_SETSIZE);
 }
 
-TEST(SequentialThreadId, Simple) {
+#ifdef FOLLY_TLS
+TEST(ThreadId, SimpleTls) {
   unsigned cpu = 0;
-  auto rv = SequentialThreadId<std::atomic>::getcpu(&cpu, nullptr, nullptr);
+  auto rv =
+      folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
+          &cpu, nullptr, nullptr);
   EXPECT_EQ(rv, 0);
   EXPECT_TRUE(cpu > 0);
   unsigned again;
-  SequentialThreadId<std::atomic>::getcpu(&again, nullptr, nullptr);
+  folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu(
+      &again, nullptr, nullptr);
+  EXPECT_EQ(cpu, again);
+}
+#endif
+
+TEST(ThreadId, SimplePthread) {
+  unsigned cpu = 0;
+  auto rv = folly::detail::FallbackGetcpu<HashingThreadId>::getcpu(
+      &cpu, nullptr, nullptr);
+  EXPECT_EQ(rv, 0);
+  EXPECT_TRUE(cpu > 0);
+  unsigned again;
+  folly::detail::FallbackGetcpu<HashingThreadId>::getcpu(
+      &again, nullptr, nullptr);
   EXPECT_EQ(cpu, again);
 }
 
@@ -434,7 +451,7 @@ BENCHMARK(AccessSpreaderConstruction, iters) {
   }
 }
 
-enum class SpreaderType { GETCPU, SHARED, TLS_RR };
+enum class SpreaderType { GETCPU, SHARED, TLS_RR, PTHREAD_SELF };
 
 // Benchmark scores here reflect the time for 32 threads to perform an
 // atomic increment on a dual-socket E5-2660 @ 2.2Ghz.  Surprisingly,
@@ -472,42 +489,52 @@ enum class SpreaderType { GETCPU, SHARED, TLS_RR };
 // ============================================================================
 // folly/test/CacheLocalityTest.cpp                relative  time/iter  iters/s
 // ============================================================================
-// contentionAtWidth(1_stripe_0_work_stub)                      1.14us  873.64K
-// contentionAtWidth(2_stripe_0_work_getcpu)                  495.58ns    2.02M
-// contentionAtWidth(4_stripe_0_work_getcpu)                  232.99ns    4.29M
-// contentionAtWidth(8_stripe_0_work_getcpu)                  101.16ns    9.88M
-// contentionAtWidth(16_stripe_0_work_getcpu)                  41.93ns   23.85M
-// contentionAtWidth(32_stripe_0_work_getcpu)                  42.04ns   23.79M
-// contentionAtWidth(64_stripe_0_work_getcpu)                  41.94ns   23.84M
-// contentionAtWidth(2_stripe_0_work_tls_rr)                    1.00us  997.41K
-// contentionAtWidth(4_stripe_0_work_tls_rr)                  694.41ns    1.44M
-// contentionAtWidth(8_stripe_0_work_tls_rr)                  590.27ns    1.69M
-// contentionAtWidth(16_stripe_0_work_tls_rr)                 222.13ns    4.50M
-// contentionAtWidth(32_stripe_0_work_tls_rr)                 169.49ns    5.90M
-// contentionAtWidth(64_stripe_0_work_tls_rr)                 162.20ns    6.17M
-// contentionAtWidth(2_stripe_0_work_shared)                  495.54ns    2.02M
-// contentionAtWidth(4_stripe_0_work_shared)                  236.27ns    4.23M
-// contentionAtWidth(8_stripe_0_work_shared)                  114.81ns    8.71M
-// contentionAtWidth(16_stripe_0_work_shared)                  44.65ns   22.40M
-// contentionAtWidth(32_stripe_0_work_shared)                  41.76ns   23.94M
-// contentionAtWidth(64_stripe_0_work_shared)                  43.47ns   23.00M
-// atomicIncrBaseline(local_incr_0_work)                       20.39ns   49.06M
+// LocalAccessSpreaderUse                                      13.00ns   76.94M
+// SharedAccessSpreaderUse                                     13.04ns   76.66M
+// AccessSpreaderConstruction                                 366.00ns    2.73M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_500_work_stub)                    2.04us  491.13K
-// contentionAtWidth(2_stripe_500_work_getcpu)                610.98ns    1.64M
-// contentionAtWidth(4_stripe_500_work_getcpu)                507.72ns    1.97M
-// contentionAtWidth(8_stripe_500_work_getcpu)                542.53ns    1.84M
-// contentionAtWidth(16_stripe_500_work_getcpu)               496.55ns    2.01M
-// contentionAtWidth(32_stripe_500_work_getcpu)               500.67ns    2.00M
-// atomicIncrBaseline(local_incr_500_work)                    484.69ns    2.06M
+// contentionAtWidth(1_stripe_0_work_stub)                    891.04ns    1.12M
+// contentionAtWidth(2_stripe_0_work_getcpu)                  403.45ns    2.48M
+// contentionAtWidth(4_stripe_0_work_getcpu)                  198.02ns    5.05M
+// contentionAtWidth(8_stripe_0_work_getcpu)                   90.54ns   11.04M
+// contentionAtWidth(16_stripe_0_work_getcpu)                  31.21ns   32.04M
+// contentionAtWidth(32_stripe_0_work_getcpu)                  29.15ns   34.31M
+// contentionAtWidth(64_stripe_0_work_getcpu)                  32.41ns   30.86M
+// contentionAtWidth(2_stripe_0_work_tls_rr)                  958.06ns    1.04M
+// contentionAtWidth(4_stripe_0_work_tls_rr)                  494.31ns    2.02M
+// contentionAtWidth(8_stripe_0_work_tls_rr)                  362.34ns    2.76M
+// contentionAtWidth(16_stripe_0_work_tls_rr)                 231.37ns    4.32M
+// contentionAtWidth(32_stripe_0_work_tls_rr)                 128.26ns    7.80M
+// contentionAtWidth(64_stripe_0_work_tls_rr)                 115.08ns    8.69M
+// contentionAtWidth(2_stripe_0_work_pthread_self)            856.63ns    1.17M
+// contentionAtWidth(4_stripe_0_work_pthread_self)            623.43ns    1.60M
+// contentionAtWidth(8_stripe_0_work_pthread_self)            419.69ns    2.38M
+// contentionAtWidth(16_stripe_0_work_pthread_self            217.32ns    4.60M
+// contentionAtWidth(32_stripe_0_work_pthread_self            157.69ns    6.34M
+// contentionAtWidth(64_stripe_0_work_pthread_self            140.94ns    7.10M
+// contentionAtWidth(2_stripe_0_work_shared)                  406.55ns    2.46M
+// contentionAtWidth(4_stripe_0_work_shared)                  198.28ns    5.04M
+// contentionAtWidth(8_stripe_0_work_shared)                   90.11ns   11.10M
+// contentionAtWidth(16_stripe_0_work_shared)                  34.53ns   28.96M
+// contentionAtWidth(32_stripe_0_work_shared)                  30.08ns   33.25M
+// contentionAtWidth(64_stripe_0_work_shared)                  34.60ns   28.90M
+// atomicIncrBaseline(local_incr_0_work)                       17.51ns   57.12M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_1000_work_stub)                   2.11us  473.78K
-// contentionAtWidth(2_stripe_1000_work_getcpu)               970.64ns    1.03M
-// contentionAtWidth(4_stripe_1000_work_getcpu)               987.31ns    1.01M
-// contentionAtWidth(8_stripe_1000_work_getcpu)                 1.01us  985.52K
-// contentionAtWidth(16_stripe_1000_work_getcpu)              986.09ns    1.01M
-// contentionAtWidth(32_stripe_1000_work_getcpu)              960.23ns    1.04M
-// atomicIncrBaseline(local_incr_1000_work)                   950.63ns    1.05M
+// contentionAtWidth(1_stripe_500_work_stub)                    1.87us  534.36K
+// contentionAtWidth(2_stripe_500_work_getcpu)                542.31ns    1.84M
+// contentionAtWidth(4_stripe_500_work_getcpu)                409.18ns    2.44M
+// contentionAtWidth(8_stripe_500_work_getcpu)                511.05ns    1.96M
+// contentionAtWidth(16_stripe_500_work_getcpu)               399.14ns    2.51M
+// contentionAtWidth(32_stripe_500_work_getcpu)               399.05ns    2.51M
+// atomicIncrBaseline(local_incr_500_work)                    399.41ns    2.50M
+// ----------------------------------------------------------------------------
+// contentionAtWidth(1_stripe_1000_work_stub)                   1.90us  525.73K
+// contentionAtWidth(2_stripe_1000_work_getcpu)               792.91ns    1.26M
+// contentionAtWidth(4_stripe_1000_work_getcpu)               788.14ns    1.27M
+// contentionAtWidth(8_stripe_1000_work_getcpu)               794.16ns    1.26M
+// contentionAtWidth(16_stripe_1000_work_getcpu)              785.33ns    1.27M
+// contentionAtWidth(32_stripe_1000_work_getcpu)              786.56ns    1.27M
+// atomicIncrBaseline(local_incr_1000_work)                   784.69ns    1.27M
 // ============================================================================
 static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
                               SpreaderType spreaderType,
@@ -515,11 +542,18 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
                               size_t numThreads = 32) {
   folly::BenchmarkSuspender braces;
 
+  folly::detail::Getcpu::Func getcpuFunc = nullptr;
+
+  if (spreaderType == SpreaderType::TLS_RR) {
+    getcpuFunc =
+        folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu;
+  }
+  if (spreaderType == SpreaderType::PTHREAD_SELF) {
+    getcpuFunc = folly::detail::FallbackGetcpu<HashingThreadId>::getcpu;
+  }
+
   AccessSpreader<> spreader(
-      stripes,
-      CacheLocality::system<std::atomic>(),
-      spreaderType == SpreaderType::TLS_RR
-          ? SequentialThreadId<std::atomic>::getcpu : nullptr);
+      stripes, CacheLocality::system<std::atomic>(), getcpuFunc);
 
   std::atomic<size_t> ready(0);
   std::atomic<bool> go(false);
@@ -651,6 +685,36 @@ BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_0_work_tls_rr,
                       32, 0, SpreaderType::TLS_RR)
 BENCHMARK_NAMED_PARAM(contentionAtWidth, 64_stripe_0_work_tls_rr,
                       64, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      2_stripe_0_work_pthread_self,
+                      2,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      4_stripe_0_work_pthread_self,
+                      4,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      8_stripe_0_work_pthread_self,
+                      8,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      16_stripe_0_work_pthread_self,
+                      16,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      32_stripe_0_work_pthread_self,
+                      32,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      64_stripe_0_work_pthread_self,
+                      64,
+                      0,
+                      SpreaderType::PTHREAD_SELF)
 BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_0_work_shared,
                       2, 0, SpreaderType::SHARED)
 BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_0_work_shared,

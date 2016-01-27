@@ -223,7 +223,9 @@ namespace std { typedef ::max_align_t max_align_t; }
  * the semantics are the same
  * (but remember __thread has different semantics when using emutls (ex. apple))
  */
-#if defined(_MSC_VER)
+#if defined(__APPLE__)
+#undef FOLLY_TLS
+#elif defined(_MSC_VER)
 # define FOLLY_TLS __declspec(thread)
 #elif defined(__GNUC__) || defined(__clang__)
 # define FOLLY_TLS __thread

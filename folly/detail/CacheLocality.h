@@ -26,6 +26,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <folly/Hash.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 
@@ -141,10 +142,7 @@ struct Getcpu {
   static Func vdsoFunc();
 };
 
-/// A class that lazily binds a unique (for each implementation of Atom)
-/// identifier to a thread.  This is a fallback mechanism for the access
-/// spreader if we are in testing (using DeterministicAtomic) or if
-/// __vdso_getcpu can't be dynamically loaded
+#ifdef FOLLY_TLS
 template <template<typename> class Atom>
 struct SequentialThreadId {
 
@@ -157,11 +155,32 @@ struct SequentialThreadId {
     return rv;
   }
 
+ private:
+  static Atom<size_t> prevId;
+
+  static FOLLY_TLS size_t currentId;
+};
+#endif
+
+struct HashingThreadId {
+  static size_t get() {
+    pthread_t pid = pthread_self();
+    uint64_t id = 0;
+    memcpy(&id, &pid, std::min(sizeof(pid), sizeof(id)));
+    return hash::twang_32from64(id);
+  }
+};
+
+/// A class that lazily binds a unique (for each implementation of Atom)
+/// identifier to a thread.  This is a fallback mechanism for the access
+/// spreader if __vdso_getcpu can't be loaded
+template <typename ThreadId>
+struct FallbackGetcpu {
   /// Fills the thread id into the cpu and node out params (if they
   /// are non-null).  This method is intended to act like getcpu when a
   /// fast-enough form of getcpu isn't available or isn't desired
   static int getcpu(unsigned* cpu, unsigned* node, void* unused) {
-    auto id = get();
+    auto id = ThreadId::get();
     if (cpu) {
       *cpu = id;
     }
@@ -170,12 +189,13 @@ struct SequentialThreadId {
     }
     return 0;
   }
-
- private:
-  static Atom<size_t> prevId;
-
-  static FOLLY_TLS size_t currentId;
 };
+
+#ifdef FOLLY_TLS
+typedef FallbackGetcpu<SequentialThreadId<std::atomic>> FallbackGetcpuType;
+#else
+typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
+#endif
 
 template <template<typename> class Atom, size_t kMaxCpus>
 struct AccessSpreaderArray;

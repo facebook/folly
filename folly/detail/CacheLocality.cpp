@@ -232,6 +232,7 @@ Getcpu::Func Getcpu::vdsoFunc() {
   return func;
 }
 
+#ifdef FOLLY_TLS
 /////////////// SequentialThreadId
 
 template<>
@@ -239,6 +240,7 @@ std::atomic<size_t> SequentialThreadId<std::atomic>::prevId(0);
 
 template<>
 FOLLY_TLS size_t SequentialThreadId<std::atomic>::currentId(0);
+#endif
 
 /////////////// AccessSpreader
 
@@ -277,7 +279,7 @@ Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t numStripes) {
     return &degenerateGetcpu;
   } else {
     auto best = Getcpu::vdsoFunc();
-    return best ? best : &SequentialThreadId<std::atomic>::getcpu;
+    return best ? best : &FallbackGetcpuType::getcpu;
   }
 }
 
