@@ -570,13 +570,13 @@ bool SSLContext::canUseFalseStartWithCipher(const SSL_CIPHER *cipher) {
 }
 #endif
 
-int SSLContext::selectNextProtocolCallback(SSL* /* ssl */,
+int SSLContext::selectNextProtocolCallback(SSL* ssl,
                                            unsigned char** out,
                                            unsigned char* outlen,
                                            const unsigned char* server,
                                            unsigned int server_len,
                                            void* data) {
-
+  (void)ssl; // Make -Wunused-parameters happy
   SSLContext* ctx = (SSLContext*)data;
   if (ctx->advertisedNextProtocols_.size() > 1) {
     VLOG(3) << "SSLContext::selectNextProcolCallback() "
