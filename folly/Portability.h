@@ -223,14 +223,16 @@ namespace std { typedef ::max_align_t max_align_t; }
  * the semantics are the same
  * (but remember __thread has different semantics when using emutls (ex. apple))
  */
-#if defined(__APPLE__)
-#undef FOLLY_TLS
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 # define FOLLY_TLS __declspec(thread)
 #elif defined(__GNUC__) || defined(__clang__)
 # define FOLLY_TLS __thread
 #else
 # error cannot define platform specific thread local storage
+#endif
+
+#if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+#undef FOLLY_TLS
 #endif
 
 // Define to 1 if you have the `preadv' and `pwritev' functions, respectively
