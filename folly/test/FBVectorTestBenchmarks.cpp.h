@@ -302,7 +302,7 @@ TESTFUN(clause_23_3_6_4_clear) {
   EXPECT_EQ(v.capacity(), c);
 }
 
-BENCHMARK(BENCHFUN(zzInitRNG), iters) {
+BENCHMARK(BENCHFUN(zzInitRNG)) {
   //LOG(INFO) << "\nTesting with type " << typeid(VECTOR).name() << "\n";
   srand(seed);
 }
