@@ -41,8 +41,7 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
   explicit FunctionLoopCallback(Cob&& function)
       : function_(std::move(function)) {}
 
-  explicit FunctionLoopCallback(const Cob& function)
-      : function_(function) {}
+  explicit FunctionLoopCallback(const Cob& function) : function_(function) {}
 
   void runLoopCallback() noexcept override {
     function_();
@@ -52,7 +51,6 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
  private:
   Callback function_;
 };
-
 }
 
 namespace folly {
@@ -63,10 +61,9 @@ const int kNoFD = -1;
  * EventBase::FunctionRunner
  */
 
-class EventBase::FunctionRunner
-    : public NotificationQueue<std::pair<void (*)(void*), void*>>::Consumer {
+class EventBase::FunctionRunner : public NotificationQueue<Cob>::Consumer {
  public:
-  void messageAvailable(std::pair<void (*)(void*), void*>&& msg) override {
+  void messageAvailable(Cob&& msg) override {
 
     // In libevent2, internal events do not break the loop.
     // Most users would expect loop(), followed by runInEventBaseThread(),
@@ -76,16 +73,9 @@ class EventBase::FunctionRunner
     // stop_ flag as well as runInLoop callbacks, etc.
     event_base_loopbreak(getEventBase()->evb_);
 
-    if (msg.first == nullptr && msg.second == nullptr) {
+    if (!msg) {
       // terminateLoopSoon() sends a null message just to
       // wake up the loop.  We can ignore these messages.
-      return;
-    }
-
-    // If function is nullptr, just log and move on
-    if (!msg.first) {
-      LOG(ERROR) << "nullptr callback registered to be run in "
-                 << "event base thread";
       return;
     }
 
@@ -94,7 +84,7 @@ class EventBase::FunctionRunner
     //
     // If it does throw, log a message and abort the program.
     try {
-      msg.first(msg.second);
+      msg();
     } catch (const std::exception& ex) {
       LOG(ERROR) << "runInEventBaseThread() function threw a "
                  << typeid(ex).name() << " exception: " << ex.what();
@@ -495,7 +485,7 @@ void EventBase::terminateLoopSoon() {
   // this likely means the EventBase already has lots of events waiting
   // anyway.
   try {
-    queue_->putMessage(std::make_pair(nullptr, nullptr));
+    queue_->putMessage(nullptr);
   } catch (...) {
     // We don't care if putMessage() fails.  This likely means
     // the EventBase already has lots of events waiting anyway.
@@ -554,7 +544,7 @@ void EventBase::runBeforeLoop(LoopCallback* callback) {
   runBeforeLoopCallbacks_.push_back(*callback);
 }
 
-bool EventBase::runInEventBaseThread(void (*fn)(void*), void* arg) {
+bool EventBase::runInEventBaseThread(const Cob& fn) {
   // Send the message.
   // It will be received by the FunctionRunner in the EventBase's thread.
 
@@ -567,42 +557,16 @@ bool EventBase::runInEventBaseThread(void (*fn)(void*), void* arg) {
 
   // Short-circuit if we are already in our event base
   if (inRunningEventBaseThread()) {
-    runInLoop(new RunInLoopCallback(fn, arg));
-    return true;
-
-  }
-
-  try {
-    queue_->putMessage(std::make_pair(fn, arg));
-  } catch (const std::exception& ex) {
-    LOG(ERROR) << "EventBase " << this << ": failed to schedule function "
-               << fn << "for EventBase thread: " << ex.what();
-    return false;
-  }
-
-  return true;
-}
-
-bool EventBase::runInEventBaseThread(const Cob& fn) {
-  // Short-circuit if we are already in our event base
-  if (inRunningEventBaseThread()) {
     runInLoop(fn);
     return true;
+
   }
 
-  Cob* fnCopy;
-  // Allocate a copy of the function so we can pass it to the other thread
-  // The other thread will delete this copy once the function has been run
   try {
-    fnCopy = new Cob(fn);
-  } catch (const std::bad_alloc& ex) {
-    LOG(ERROR) << "failed to allocate tr::function copy "
-               << "for runInEventBaseThread()";
-    return false;
-  }
-
-  if (!runInEventBaseThread(&EventBase::runFunctionPtr, fnCopy)) {
-    delete fnCopy;
+    queue_->putMessage(fn);
+  } catch (const std::exception& ex) {
+    LOG(ERROR) << "EventBase " << this << ": failed to schedule function "
+               << "for EventBase thread: " << ex.what();
     return false;
   }
 
@@ -698,7 +662,7 @@ bool EventBase::runLoopCallbacks(bool setContext) {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_.reset(new NotificationQueue<std::pair<void (*)(void*), void*>>());
+  queue_.reset(new NotificationQueue<Cob>());
 
   // We allocate fnRunner_ separately, rather than declaring it directly
   // as a member of EventBase solely so that we don't need to include
@@ -776,15 +740,6 @@ void EventBase::runFunctionPtr(Cob* fn) {
   // The function object was allocated by runInEventBaseThread().
   // Delete it once it has been run.
   delete fn;
-}
-
-EventBase::RunInLoopCallback::RunInLoopCallback(void (*fn)(void*), void* arg)
-    : fn_(fn)
-    , arg_(arg) {}
-
-void EventBase::RunInLoopCallback::runLoopCallback() noexcept {
-  fn_(arg_);
-  delete this;
 }
 
 void EventBase::attachTimeoutManager(AsyncTimeout* obj,

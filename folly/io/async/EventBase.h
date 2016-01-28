@@ -16,30 +16,33 @@
 
 #pragma once
 
-#include <glog/logging.h>
-#include <folly/io/async/AsyncTimeout.h>
-#include <folly/io/async/TimeoutManager.h>
-#include <folly/io/async/Request.h>
-#include <folly/Executor.h>
-#include <folly/experimental/ExecutionObserver.h>
-#include <folly/futures/DrivableExecutor.h>
-#include <memory>
-#include <stack>
-#include <list>
-#include <queue>
+#include <atomic>
 #include <cstdlib>
-#include <set>
-#include <unordered_set>
-#include <unordered_map>
+#include <errno.h>
+#include <functional>
+#include <list>
+#include <math.h>
+#include <memory>
 #include <mutex>
+#include <queue>
+#include <set>
+#include <stack>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
+
 #include <boost/intrusive/list.hpp>
 #include <boost/utility.hpp>
-#include <functional>
+#include <folly/Executor.h>
+#include <folly/Portability.h>
+#include <folly/experimental/ExecutionObserver.h>
+#include <folly/futures/DrivableExecutor.h>
+#include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/Request.h>
+#include <folly/io/async/TimeoutManager.h>
+#include <glog/logging.h>
+
 #include <event.h>  // libevent
-#include <errno.h>
-#include <math.h>
-#include <atomic>
 
 namespace folly {
 
@@ -359,13 +362,8 @@ class EventBase : private boost::noncopyable,
    * @return Returns true if the function was successfully scheduled, or false
    *         if there was an error scheduling the function.
    */
-  template<typename T>
-  bool runInEventBaseThread(void (*fn)(T*), T* arg) {
-    return runInEventBaseThread(reinterpret_cast<void (*)(void*)>(fn),
-                                reinterpret_cast<void*>(arg));
-  }
-
-  bool runInEventBaseThread(void (*fn)(void*), void* arg);
+  template <typename T>
+  bool runInEventBaseThread(void (*fn)(T*), T* arg);
 
   /**
    * Run the specified function in the EventBase's thread
@@ -387,19 +385,8 @@ class EventBase : private boost::noncopyable,
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
-  template<typename T>
-  bool runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
-    return runInEventBaseThreadAndWait(reinterpret_cast<void (*)(void*)>(fn),
-                                       reinterpret_cast<void*>(arg));
-  }
-
-  /*
-   * Like runInEventBaseThread, but the caller waits for the callback to be
-   * executed.
-   */
-  bool runInEventBaseThreadAndWait(void (*fn)(void*), void* arg) {
-    return runInEventBaseThreadAndWait(std::bind(fn, arg));
-  }
+  template <typename T>
+  bool runInEventBaseThreadAndWait(void (*fn)(T*), T* arg);
 
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
@@ -411,20 +398,8 @@ class EventBase : private boost::noncopyable,
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
-  template<typename T>
-  bool runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
-    return runImmediatelyOrRunInEventBaseThreadAndWait(
-        reinterpret_cast<void (*)(void*)>(fn), reinterpret_cast<void*>(arg));
-  }
-
-  /*
-   * Like runInEventBaseThreadAndWait, except if the caller is already in the
-   * event base thread, the functor is simply run inline.
-   */
-  bool runImmediatelyOrRunInEventBaseThreadAndWait(
-      void (*fn)(void*), void* arg) {
-    return runImmediatelyOrRunInEventBaseThreadAndWait(std::bind(fn, arg));
-  }
+  template <typename T>
+  bool runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*), T* arg);
 
   /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
@@ -610,7 +585,6 @@ class EventBase : private boost::noncopyable,
   }
 
  private:
-
   // TimeoutManager
   void attachTimeoutManager(AsyncTimeout* obj,
                             TimeoutManager::InternalEnum internal) override;
@@ -626,17 +600,6 @@ class EventBase : private boost::noncopyable,
     return isInEventBaseThread();
   }
 
-  // Helper class used to short circuit runInEventBaseThread
-  class RunInLoopCallback : public LoopCallback {
-   public:
-    RunInLoopCallback(void (*fn)(void*), void* arg);
-    void runLoopCallback() noexcept;
-
-   private:
-    void (*fn_)(void*);
-    void* arg_;
-  };
-
   /*
    * Helper function that tells us whether we have already handled
    * some event/timeout/callback in this loop iteration.
@@ -645,7 +608,7 @@ class EventBase : private boost::noncopyable,
 
   // --------- libevent callbacks (not for client use) ------------
 
-  static void runFunctionPtr(std::function<void()>* fn);
+  static void runFunctionPtr(Cob* fn);
 
   // small object used as a callback arg with enough info to execute the
   // appropriate client-provided Cob
@@ -710,7 +673,7 @@ class EventBase : private boost::noncopyable,
 
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
-  std::unique_ptr<NotificationQueue<std::pair<void (*)(void*), void*>>> queue_;
+  std::unique_ptr<NotificationQueue<Cob>> queue_;
   std::unique_ptr<FunctionRunner> fnRunner_;
 
   // limit for latency in microseconds (0 disables)
@@ -765,4 +728,80 @@ class EventBase : private boost::noncopyable,
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 };
 
+namespace detail {
+
+/**
+ * Define a small functor (2 pointers) and specialize
+ * std::__is_location_invariant so that std::function does not require
+ * memory allocation.
+ *
+ *   std::function<void()> func = SmallFunctor{f, p};
+ *
+ * TODO(lucian): remove this hack once GCC <= 4.9 are deprecated.
+ * In GCC >= 5.0 just use a lambda like:
+ *
+ *   std::function<void()> func = [=] { f(p); };
+ *
+ * See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61909
+ */
+template <class T>
+struct SmallFunctor {
+  void (*fn)(T*);
+  T* p;
+  void operator()() { fn(p); }
+};
+
+} // detail
+
+template <typename T>
+bool EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) {
+  return runInEventBaseThread(detail::SmallFunctor<T>{fn, arg});
+}
+
+template <typename T>
+bool EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
+  return runInEventBaseThreadAndWait(detail::SmallFunctor<T>{fn, arg});
+}
+
+template <typename T>
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*),
+                                                            T* arg) {
+  return runImmediatelyOrRunInEventBaseThreadAndWait(
+      detail::SmallFunctor<T>{fn, arg});
+}
+
 } // folly
+
+FOLLY_NAMESPACE_STD_BEGIN
+
+/**
+ * GCC's libstdc++ uses __is_location_invariant to decide wether to
+ * use small object optimization and embed the functor's contents in
+ * the std::function object.
+ *
+ * (gcc 4.9) $ libstdc++-v3/include/std/functional
+ * template<typename _Tp>
+ *   struct __is_location_invariant
+ *   : integral_constant<bool, (is_pointer<_Tp>::value
+ *                              || is_member_pointer<_Tp>::value)>
+ *   { };
+ *
+ * (gcc 5.0) $ libstdc++-v3/include/std/functional
+ *
+ * template<typename _Tp>
+ *      struct __is_location_invariant
+ *      : is_trivially_copyable<_Tp>::type
+ *      { };
+ *
+ *
+ *  NOTE: Forward declare so this doesn't break when using other
+ *  standard libraries: it just wont have any effect.
+ */
+template <typename T>
+struct __is_location_invariant;
+
+template <typename T>
+struct __is_location_invariant<folly::detail::SmallFunctor<T>>
+    : public std::true_type {};
+
+FOLLY_NAMESPACE_STD_END
