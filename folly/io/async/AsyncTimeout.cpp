@@ -142,6 +142,9 @@ void AsyncTimeout::libeventCallback(int fd, short events, void* arg) {
   AsyncTimeout* timeout = reinterpret_cast<AsyncTimeout*>(arg);
   assert(fd == -1);
   assert(events == EV_TIMEOUT);
+  // prevent unused variable warnings
+  (void)fd;
+  (void)events;
 
   // double check that ev_flags gets reset when the timeout is not running
   assert((event_ref_flags(&timeout->event_) & ~EVLIST_INTERNAL) == EVLIST_INIT);
