@@ -50,7 +50,10 @@ sudo apt-get install \
     zlib1g-dev \
     binutils-dev \
     libjemalloc-dev \
-    libssl-dev
+    libssl-dev \
+    libunwind8-dev \
+    libelf-dev \
+    libdwarf-dev
 ```
 
 Ubuntu 14.04 LTS
@@ -163,3 +166,6 @@ Other Linux distributions
     - double-conversion-devel
     - openssl-devel
     - libevent-devel
+    - libdwarf-dev
+    - libelf-dev
+    - libunwind8-dev

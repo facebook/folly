@@ -468,6 +468,9 @@ AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
 AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 AC_CHECK_HEADER([zstd.h], AC_CHECK_LIB([zstd], [main]))
+AC_CHECK_HEADERS([libdwarf.h dwarf.h],, AC_MSG_ERROR([Please install libdwarf development package]))
+AC_CHECK_HEADERS([libelf.h elf.h],, AC_MSG_ERROR([Please install libelf development package]))
+AC_CHECK_HEADERS(libunwind.h, ac_cv_have_libunwind_h=1, ac_cv_have_libunwind_h=0)
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
@@ -494,5 +497,8 @@ AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
 # Output
 AC_CONFIG_FILES([Makefile
                  test/Makefile
-                 test/function_benchmark/Makefile])
+                 test/function_benchmark/Makefile
+                 experimental/Makefile
+                 experimental/symbolizer/Makefile
+                 init/Makefile])
 AC_OUTPUT

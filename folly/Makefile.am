@@ -1,4 +1,8 @@
+if HAVE_LINUX
+SUBDIRS = . experimental init test
+else
 SUBDIRS = . test
+endif
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -119,6 +123,13 @@ nobase_follyinclude_HEADERS = \
 	experimental/NestedCommandLineApp.h \
 	experimental/ProgramOptions.h \
 	experimental/ReadMostlySharedPtr.h \
+	experimental/symbolizer/Elf.h \
+	experimental/symbolizer/ElfCache.h \
+	experimental/symbolizer/Dwarf.h \
+	experimental/symbolizer/LineReader.h \
+	experimental/symbolizer/SignalHandler.h \
+	experimental/symbolizer/StackTrace.cpp \
+	experimental/symbolizer/Symbolizer.h \
 	experimental/Select64.h \
 	experimental/StringKeyedCommon.h \
 	experimental/StringKeyedUnorderedMap.h \
@@ -184,6 +195,7 @@ nobase_follyinclude_HEADERS = \
 	IPAddressV6.h \
 	IPAddressException.h \
 	IndexedMemPool.h \
+	init/Init.h \
 	IntrusiveList.h \
 	io/Compression.h \
 	io/Cursor.h \
