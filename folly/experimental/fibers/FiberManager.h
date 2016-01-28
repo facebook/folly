@@ -23,7 +23,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <folly/AtomicLinkedList.h>
+#include <folly/AtomicIntrusiveLinkedList.h>
 #include <folly/Executor.h>
 #include <folly/Likely.h>
 #include <folly/IntrusiveList.h>
@@ -307,7 +307,7 @@ class FiberManager : public ::folly::Executor {
     std::function<void()> func;
     std::unique_ptr<Fiber::LocalData> localData;
     std::shared_ptr<RequestContext> rcontext;
-    AtomicLinkedListHook<RemoteTask> nextRemoteTask;
+    AtomicIntrusiveLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
@@ -414,9 +414,10 @@ class FiberManager : public ::folly::Executor {
 
   ExceptionCallback exceptionCallback_; /**< task exception callback */
 
-  folly::AtomicLinkedList<Fiber, &Fiber::nextRemoteReady_> remoteReadyQueue_;
+  folly::AtomicIntrusiveLinkedList<Fiber, &Fiber::nextRemoteReady_>
+      remoteReadyQueue_;
 
-  folly::AtomicLinkedList<RemoteTask, &RemoteTask::nextRemoteTask>
+  folly::AtomicIntrusiveLinkedList<RemoteTask, &RemoteTask::nextRemoteTask>
       remoteTaskQueue_;
 
   std::shared_ptr<TimeoutController> timeoutManager_;

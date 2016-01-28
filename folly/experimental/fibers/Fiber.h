@@ -20,7 +20,7 @@
 
 #include <boost/context/all.hpp>
 #include <boost/version.hpp>
-#include <folly/AtomicLinkedList.h>
+#include <folly/AtomicIntrusiveLinkedList.h>
 #include <folly/CPortability.h>
 #include <folly/IntrusiveList.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
@@ -126,7 +126,7 @@ class Fiber {
   /**
    * Points to next fiber in remote ready list
    */
-  folly::AtomicLinkedListHook<Fiber> nextRemoteReady_;
+  folly::AtomicIntrusiveLinkedListHook<Fiber> nextRemoteReady_;
 
   static constexpr size_t kUserBufferSize = 256;
   std::aligned_storage<kUserBufferSize>::type userBuffer_;
