@@ -633,7 +633,7 @@ TEST(Collect, collectAllNone) {
 
 TEST(Collect, noDefaultConstructor) {
   struct A {
-    explicit A(size_t x) {}
+    explicit A(size_t /* x */) {}
   };
 
   auto f1 = makeFuture(A(1));

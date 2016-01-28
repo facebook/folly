@@ -38,7 +38,7 @@ ssize_t wrapNoInt(F f, Args... args) {
   return r;
 }
 
-inline void incr(ssize_t n) { }
+inline void incr(ssize_t /* n */) {}
 inline void incr(ssize_t n, off_t& offset) { offset += n; }
 
 // Wrap call to read/pread/write/pwrite(fd, buf, count, offset?) to retry on

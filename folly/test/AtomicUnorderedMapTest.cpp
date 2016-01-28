@@ -35,27 +35,30 @@ struct non_atomic {
 
   T operator+=(T arg) { value += arg; return load();}
 
-  T load(std::memory_order order= std::memory_order_seq_cst) const {
+  T load(std::memory_order /* order */ = std::memory_order_seq_cst) const {
     return value;
   }
 
   /* implicit */
   operator T() const {return load();}
 
-  void store(T desired, std::memory_order order = std::memory_order_seq_cst) {
+  void store(T desired,
+             std::memory_order /* order */ = std::memory_order_seq_cst) {
     value = desired;
   }
 
-  T exchange(T desired, std::memory_order order = std::memory_order_seq_cst) {
+  T exchange(T desired,
+             std::memory_order /* order */ = std::memory_order_seq_cst) {
     T old = load();
     store(desired);
     return old;
   }
 
   bool compare_exchange_weak(
-      T& expected, T desired,
-      std::memory_order success = std::memory_order_seq_cst,
-      std::memory_order failure = std::memory_order_seq_cst) {
+      T& expected,
+      T desired,
+      std::memory_order /* success */ = std::memory_order_seq_cst,
+      std::memory_order /* failure */ = std::memory_order_seq_cst) {
     if (value == expected) {
       value = desired;
       return true;
@@ -66,9 +69,10 @@ struct non_atomic {
   }
 
   bool compare_exchange_strong(
-      T& expected, T desired,
-      std::memory_order success = std::memory_order_seq_cst,
-      std::memory_order failure = std::memory_order_seq_cst) {
+      T& expected,
+      T desired,
+      std::memory_order /* success */ = std::memory_order_seq_cst,
+      std::memory_order /* failure */ = std::memory_order_seq_cst) {
     if (value == expected) {
       value = desired;
       return true;

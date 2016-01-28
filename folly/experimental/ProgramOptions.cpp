@@ -87,7 +87,7 @@ class GFlagValueSemanticBase : public po::value_semantic {
   bool is_composing() const override { return false; }
   bool is_required() const override { return false; }
   // We handle setting the GFlags from parse(), so notify() does nothing.
-  void notify(const boost::any& valueStore) const override { }
+  void notify(const boost::any& /* valueStore */) const override {}
   bool apply_default(boost::any& valueStore) const override {
     // We're using the *current* rather than *default* value here, and
     // this is intentional; GFlags-using programs assign to FLAGS_foo
@@ -101,11 +101,11 @@ class GFlagValueSemanticBase : public po::value_semantic {
 
   void parse(boost::any& valueStore,
              const std::vector<std::string>& tokens,
-             bool utf8) const override;
+             bool /* utf8 */) const override;
 
  private:
   virtual T parseValue(const std::vector<std::string>& tokens) const = 0;
-  virtual void transform(T& val) const { }
+  virtual void transform(T& /* val */) const {}
 
   mutable std::shared_ptr<GFlagInfo<T>> info_;
 };
@@ -113,7 +113,7 @@ class GFlagValueSemanticBase : public po::value_semantic {
 template <class T>
 void GFlagValueSemanticBase<T>::parse(boost::any& valueStore,
                                       const std::vector<std::string>& tokens,
-                                      bool utf8) const {
+                                      bool /* utf8 */) const {
   T val;
   try {
     val = this->parseValue(tokens);

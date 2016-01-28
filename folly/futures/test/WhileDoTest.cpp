@@ -42,9 +42,8 @@ inline std::function<Future<Unit>(void)> makeThunk(
     std::mutex& ps_mutex) {
   return [&]() mutable {
     auto p = std::make_shared<Promise<Unit>>();
-    p->setInterruptHandler([&](exception_wrapper const& e) {
-      ++interrupt;
-    });
+    p->setInterruptHandler(
+        [&](exception_wrapper const& /* e */) { ++interrupt; });
     ps_mutex.lock();
     ps.push(p);
     ps_mutex.unlock();
@@ -72,8 +71,8 @@ TEST(WhileDo, success) {
   auto pred = makePred(i);
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::whileDo(pred, thunk)
-    .then([&]() mutable { complete = true; })
-    .onError([&] (FutureException& e) { failure = true; });
+               .then([&]() mutable { complete = true; })
+               .onError([&](FutureException& /* e */) { failure = true; });
 
   popAndFulfillPromise(ps, ps_mutex);
   EXPECT_FALSE(complete);
@@ -100,8 +99,8 @@ TEST(WhileDo, failure) {
   auto pred = makePred(i);
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::whileDo(pred, thunk)
-    .then([&]() mutable { complete = true; })
-    .onError([&] (FutureException& e) { failure = true; });
+               .then([&]() mutable { complete = true; })
+               .onError([&](FutureException& /* e */) { failure = true; });
 
   popAndFulfillPromise(ps, ps_mutex);
   EXPECT_FALSE(complete);
@@ -130,8 +129,8 @@ TEST(WhileDo, interrupt) {
   auto pred = makePred(i);
   auto thunk = makeThunk(ps, interrupt, ps_mutex);
   auto f = folly::whileDo(pred, thunk)
-    .then([&]() mutable { complete = true; })
-    .onError([&] (FutureException& e) { failure = true; });
+               .then([&]() mutable { complete = true; })
+               .onError([&](FutureException& /* e */) { failure = true; });
 
   EXPECT_EQ(0, interrupt);
 

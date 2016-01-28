@@ -1268,7 +1268,9 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   }
 }
 
-ssize_t AsyncSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
+ssize_t AsyncSocket::performRead(void** buf,
+                                 size_t* buflen,
+                                 size_t* /* offset */) {
   VLOG(5) << "AsyncSocket::performRead() this=" << this
           << ", buf=" << *buf << ", buflen=" << *buflen;
 

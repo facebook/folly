@@ -259,7 +259,7 @@ AccessSpreaderArray<std::atomic,128>
 AccessSpreaderArray<std::atomic,128>::sharedInstance = {};
 
 /// Always claims to be on CPU zero, node zero
-static int degenerateGetcpu(unsigned* cpu, unsigned* node, void* unused) {
+static int degenerateGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   if (cpu != nullptr) {
     *cpu = 0;
   }

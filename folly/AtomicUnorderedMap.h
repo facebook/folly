@@ -178,7 +178,7 @@ struct AtomicUnorderedInsertMap {
     }
 
     // post-increment
-    ConstIterator operator++ (int dummy) {
+    ConstIterator operator++(int /* dummy */) {
       auto prev = *this;
       ++*this;
       return prev;

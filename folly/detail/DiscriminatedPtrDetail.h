@@ -115,7 +115,7 @@ template <typename V, typename R, typename... Types> struct ApplyVisitor1;
 
 template <typename V, typename R>
 struct ApplyVisitor1<V, R> {
-  R operator()(size_t index, V&& visitor, void* ptr) const {
+  R operator()(size_t /* index */, V&& /* visitor */, void* /* ptr */) const {
     CHECK(false);  // NOTREACHED
   }
 };
@@ -133,7 +133,7 @@ template <typename V, typename R, typename... Types> struct ApplyConstVisitor1;
 
 template <typename V, typename R>
 struct ApplyConstVisitor1<V, R> {
-  R operator()(size_t index, V&& visitor, void* ptr) const {
+  R operator()(size_t /* index */, V&& /* visitor */, void* /* ptr */) const {
     CHECK(false);  // NOTREACHED
   }
 };

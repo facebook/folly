@@ -51,10 +51,10 @@ ScopedEventBaseThread::~ScopedEventBaseThread() {
 }
 
 ScopedEventBaseThread::ScopedEventBaseThread(
-    ScopedEventBaseThread&& other) noexcept = default;
+    ScopedEventBaseThread&& /* other */) noexcept = default;
 
 ScopedEventBaseThread& ScopedEventBaseThread::operator=(
-    ScopedEventBaseThread&& other) noexcept = default;
+    ScopedEventBaseThread&& /* other */) noexcept = default;
 
 void ScopedEventBaseThread::start() {
   if (running()) {

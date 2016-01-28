@@ -496,7 +496,9 @@ class SharedMutexImpl {
     bool canTimeOut() { return true; }
     bool shouldTimeOut() { return true; }
 
-    bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
+    bool doWait(Futex& /* futex */,
+                uint32_t /* expected */,
+                uint32_t /* waitMask */) {
       return false;
     }
   };

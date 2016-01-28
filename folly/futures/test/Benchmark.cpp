@@ -190,10 +190,10 @@ void throwAndCatchImpl() {
 // will try to wrap, so no exception_ptrs/rethrows are necessary.
 void throwAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<Unit>&&){ throw std::runtime_error("oh no"); })
+      .then([](Try<Unit>&&) { throw std::runtime_error("oh no"); })
       .then([](Try<Unit>&& t) {
         auto caught = t.withException<std::runtime_error>(
-            [](const std::runtime_error& e){
+            [](const std::runtime_error& /* e */) {
               // ...
             });
         CHECK(caught);
@@ -220,12 +220,12 @@ void throwWrappedAndCatchImpl() {
 // The new way. Wrap an exception, and access it via the wrapper upstream
 void throwWrappedAndCatchWrappedImpl() {
   makeFuture()
-      .then([](Try<Unit>&&){
+      .then([](Try<Unit>&&) {
         return makeFuture<Unit>(std::runtime_error("oh no"));
       })
-      .then([](Try<Unit>&& t){
+      .then([](Try<Unit>&& t) {
         auto caught = t.withException<std::runtime_error>(
-            [](const std::runtime_error& e){
+            [](const std::runtime_error& /* e */) {
               // ...
             });
         CHECK(caught);

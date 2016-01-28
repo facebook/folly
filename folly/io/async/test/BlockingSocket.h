@@ -98,7 +98,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     err_ = ex;
   }
   void writeSuccess() noexcept override {}
-  void writeErr(size_t bytesWritten,
+  void writeErr(size_t /* bytesWritten */,
                 const folly::AsyncSocketException& ex) noexcept override {
     err_ = ex;
   }

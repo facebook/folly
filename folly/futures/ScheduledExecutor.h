@@ -45,7 +45,7 @@ namespace folly {
 
      /// Schedule a Func to be executed at time t, or as soon afterward as
      /// possible. Expect millisecond resolution at best. Must be threadsafe.
-     virtual void scheduleAt(Func&& a, TimePoint const& t) {
+     virtual void scheduleAt(Func&& /* a */, TimePoint const& /* t */) {
        throw std::logic_error("unimplemented");
      }
 

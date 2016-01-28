@@ -145,9 +145,7 @@ void* IOBuf::operator new(size_t size) {
   return &(storage->buf);
 }
 
-void* IOBuf::operator new(size_t size, void* ptr) {
-  return ptr;
-}
+void* IOBuf::operator new(size_t /* size */, void* ptr) { return ptr; }
 
 void IOBuf::operator delete(void* ptr) {
   auto* storageAddr = static_cast<uint8_t*>(ptr) - offsetof(HeapStorage, buf);
@@ -188,7 +186,7 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) {
   }
 }
 
-void IOBuf::freeInternalBuf(void* buf, void* userData) {
+void IOBuf::freeInternalBuf(void* /* buf */, void* userData) {
   auto* storage = static_cast<HeapStorage*>(userData);
   releaseStorage(storage, kDataInUse);
 }
@@ -205,9 +203,12 @@ IOBuf::IOBuf(CreateOp, uint64_t capacity)
   data_ = buf_;
 }
 
-IOBuf::IOBuf(CopyBufferOp op, const void* buf, uint64_t size,
-             uint64_t headroom, uint64_t minTailroom)
-  : IOBuf(CREATE, headroom + size + minTailroom) {
+IOBuf::IOBuf(CopyBufferOp /* op */,
+             const void* buf,
+             uint64_t size,
+             uint64_t headroom,
+             uint64_t minTailroom)
+    : IOBuf(CREATE, headroom + size + minTailroom) {
   advance(headroom);
   memcpy(writableData(), buf, size);
   append(size);

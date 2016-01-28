@@ -163,7 +163,7 @@ class CacheManager {
 
   friend class StackCacheEntry;
 
-  void giveBack(std::unique_ptr<StackCache> stackCache_) {
+  void giveBack(std::unique_ptr<StackCache> /* stackCache_ */) {
     assert(inUse_ > 0);
     --inUse_;
     /* Note: we can add a free list for each size bucket

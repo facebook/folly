@@ -349,7 +349,7 @@ BENCHMARK_PARAM(BENCHFUN(pushBack), 10240);
 BENCHMARK_PARAM(BENCHFUN(pushBack), 102400);
 BENCHMARK_PARAM(BENCHFUN(pushBack), 512000);
 
-void BENCHFUN(reserve)(int iters, int size) {
+void BENCHFUN(reserve)(int iters, int /* size */) {
   auto const obj = randomObject<VECTOR::value_type>();
   VECTOR v(random(0U, 10000U), obj);
   FOR_EACH_RANGE (i, 0, iters) {
@@ -360,7 +360,7 @@ BENCHMARK_PARAM(BENCHFUN(reserve), 128);
 BENCHMARK_PARAM(BENCHFUN(reserve), 1024);
 BENCHMARK_PARAM(BENCHFUN(reserve), 10240);
 
-void BENCHFUN(insert)(int iters, int size) {
+void BENCHFUN(insert)(int iters, int /* size */) {
   auto const obj1 = randomObject<VECTOR::value_type>();
   auto const obj2 = randomObject<VECTOR::value_type>();
   VECTOR v(random(0U, 1U), obj1);
@@ -370,7 +370,7 @@ void BENCHFUN(insert)(int iters, int size) {
 }
 BENCHMARK_PARAM(BENCHFUN(insert), 100);
 
-void BENCHFUN(erase)(int iters, int size) {
+void BENCHFUN(erase)(int iters, int /* size */) {
   auto const obj1 = randomObject<VECTOR::value_type>();
   VECTOR v(random(0U, 100U), obj1);
   FOR_EACH_RANGE (i, 0, iters) {

@@ -21,9 +21,7 @@
  * override-include-guard
  */
 
-void BENCHFUN(initRNG)(size_t iters, size_t) {
-  srand(seed);
-}
+void BENCHFUN(initRNG)(size_t /* iters */, size_t) { srand(seed); }
 BENCHMARK_PARAM(BENCHFUN(initRNG), 0);
 
 void BENCHFUN(defaultCtor)(size_t iters, size_t) {
@@ -119,7 +117,7 @@ void BENCHFUN(resize)(size_t iters, size_t arg) {
 }
 BENCHMARK_PARAM(BENCHFUN(resize), 524288);
 
-void BENCHFUN(findSuccessful)(size_t iters, size_t arg) {
+void BENCHFUN(findSuccessful)(size_t iters, size_t /* arg */) {
   size_t pos, len;
   STRING s;
 
@@ -158,7 +156,7 @@ expect to get a call for an interview.";
 }
 BENCHMARK_PARAM(BENCHFUN(findSuccessful), 524288);
 
-void BENCHFUN(findUnsuccessful)(size_t iters, size_t arg) {
+void BENCHFUN(findUnsuccessful)(size_t iters, size_t /* arg */) {
   STRING s, s1;
 
   BENCHMARK_SUSPEND {

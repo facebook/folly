@@ -97,9 +97,8 @@ public:
     : Base(std::move(other)) {
   }
 
-  StringKeyedMap(StringKeyedMap&& other, const allocator_type& a) noexcept
-      : Base(std::move(other)/*, a*/ /* not supported by gcc */) {
-  }
+  StringKeyedMap(StringKeyedMap&& other, const allocator_type& /* a */) noexcept
+      : Base(std::move(other) /*, a*/ /* not supported by gcc */) {}
 
   StringKeyedMap(std::initializer_list<value_type> il,
      const key_compare& comp = key_compare(),

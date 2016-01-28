@@ -139,7 +139,9 @@ int DeterministicSchedule::getRandNumber(int n) {
   return std::rand() % n;
 }
 
-int DeterministicSchedule::getcpu(unsigned* cpu, unsigned* node, void* unused) {
+int DeterministicSchedule::getcpu(unsigned* cpu,
+                                  unsigned* node,
+                                  void* /* unused */) {
   if (!tls_threadId && tls_sched) {
     beforeSharedAccess();
     tls_threadId = tls_sched->nextThreadId_++;
@@ -364,7 +366,7 @@ AccessSpreaderArray<test::DeterministicAtomic, 128>
 
 template <>
 Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(
-    size_t numStripes) {
+    size_t /* numStripes */) {
   return &DeterministicSchedule::getcpu;
 }
 }

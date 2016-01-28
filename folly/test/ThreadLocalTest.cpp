@@ -111,14 +111,15 @@ TEST(ThreadLocalPtr, CreateOnThreadExit) {
   ThreadLocalPtr<int> tl;
 
   std::thread([&] {
-      tl.reset(new int(1), [&] (int* ptr, TLPDestructionMode mode) {
-        delete ptr;
-        // This test ensures Widgets allocated here are not leaked.
-        ++w.get()->val_;
-        ThreadLocal<Widget> wl;
-        ++wl.get()->val_;
-      });
-    }).join();
+    tl.reset(new int(1),
+             [&](int* ptr, TLPDestructionMode /* mode */) {
+               delete ptr;
+               // This test ensures Widgets allocated here are not leaked.
+               ++w.get()->val_;
+               ThreadLocal<Widget> wl;
+               ++wl.get()->val_;
+             });
+  }).join();
   EXPECT_EQ(2, Widget::totalVal_);
 }
 

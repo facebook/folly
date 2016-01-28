@@ -302,8 +302,10 @@ void bmNext(const List& list, const std::vector<uint32_t>& data, size_t iters) {
 }
 
 template <class Reader, class List>
-void bmSkip(const List& list, const std::vector<uint32_t>& data,
-            size_t logAvgSkip, size_t iters) {
+void bmSkip(const List& list,
+            const std::vector<uint32_t>& /* data */,
+            size_t logAvgSkip,
+            size_t iters) {
   size_t avg = (size_t(1) << logAvgSkip);
   size_t base = avg - (avg >> 2);
   size_t mask = (avg > 1) ? (avg >> 1) - 1 : 0;

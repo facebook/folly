@@ -81,8 +81,8 @@ class AttachDetachClient : public AsyncSocket::ConnectCallback,
     cerr << "client write success" << endl;
   }
 
-  void writeErr(size_t bytesWritten, const AsyncSocketException& ex)
-    noexcept override {
+  void writeErr(size_t /* bytesWritten */,
+                const AsyncSocketException& ex) noexcept override {
     cerr << "client writeError: " << ex.what() << endl;
   }
 

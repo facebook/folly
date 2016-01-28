@@ -99,7 +99,7 @@ class Arena {
     return r;
   }
 
-  void deallocate(void* p) {
+  void deallocate(void* /* p */) {
     // Deallocate? Never!
   }
 
@@ -215,14 +215,12 @@ struct IsArenaAllocator<Arena<Alloc>> : std::true_type { };
  */
 template <class Alloc>
 struct ArenaAllocatorTraits {
-  static size_t goodSize(const Alloc& alloc, size_t size) {
-    return size;
-  }
+  static size_t goodSize(const Alloc& /* alloc */, size_t size) { return size; }
 };
 
 template <>
 struct ArenaAllocatorTraits<SysAlloc> {
-  static size_t goodSize(const SysAlloc& alloc, size_t size) {
+  static size_t goodSize(const SysAlloc& /* alloc */, size_t size) {
     return goodMallocSize(size);
   }
 };

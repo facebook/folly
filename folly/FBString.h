@@ -1038,8 +1038,10 @@ public:
   }
 #endif
 
-  basic_fbstring(const basic_fbstring& str, size_type pos,
-                 size_type n = npos, const A& a = A()) {
+  basic_fbstring(const basic_fbstring& str,
+                 size_type pos,
+                 size_type n = npos,
+                 const A& /* a */ = A()) {
     assign(str, pos, n);
   }
 
@@ -1682,9 +1684,12 @@ private:
   }
 
 private:
-  template <class FwdIterator>
-  bool replaceAliased(iterator i1, iterator i2,
-                      FwdIterator s1, FwdIterator s2, std::false_type) {
+ template <class FwdIterator>
+ bool replaceAliased(iterator /* i1 */,
+                     iterator /* i2 */,
+                     FwdIterator /* s1 */,
+                     FwdIterator /* s2 */,
+                     std::false_type) {
     return false;
   }
 

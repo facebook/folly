@@ -205,7 +205,7 @@ void correctnessTestType(const std::string& type) {
 struct DtorChecker {
   static unsigned int numInstances;
   DtorChecker() { ++numInstances; }
-  DtorChecker(const DtorChecker& o) { ++numInstances; }
+  DtorChecker(const DtorChecker& /* o */) { ++numInstances; }
   ~DtorChecker() { --numInstances; }
 };
 

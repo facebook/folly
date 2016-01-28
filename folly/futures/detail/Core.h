@@ -437,14 +437,14 @@ struct CollectVariadicContext {
                   std::move(*std::get<sizeof...(ts2)>(o)));
   }
 
-  static std::tuple<Ts...> unwrap(std::tuple<folly::Try<Ts>...>&& o,
+  static std::tuple<Ts...> unwrap(std::tuple<folly::Try<Ts>...>&& /* o */,
                                   Ts&&... ts) {
     return std::tuple<Ts...>(std::forward<Ts>(ts)...);
   }
 };
 
-template <template <typename ...> class T, typename... Ts>
-void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& ctx) {
+template <template <typename...> class T, typename... Ts>
+void collectVariadicHelper(const std::shared_ptr<T<Ts...>>& /* ctx */) {
   // base case
 }
 

@@ -44,7 +44,9 @@ namespace folly {
 
 struct AtomicHashArrayLinearProbeFcn
 {
-  inline size_t operator()(size_t idx, size_t numProbes, size_t capacity) const{
+  inline size_t operator()(size_t idx,
+                           size_t /* numProbes */,
+                           size_t capacity) const {
     idx += 1; // linear probing
 
     // Avoid modulus because it's slow
@@ -75,9 +77,10 @@ class AHAIdentity {
 };
 
 template <typename NotKeyT, typename KeyT>
-inline void checkLegalKeyIfKeyTImpl(NotKeyT ignored, KeyT emptyKey,
-                                    KeyT lockedKey, KeyT erasedKey) {
-}
+inline void checkLegalKeyIfKeyTImpl(NotKeyT /* ignored */,
+                                    KeyT /* emptyKey */,
+                                    KeyT /* lockedKey */,
+                                    KeyT /* erasedKey */) {}
 
 template <typename KeyT>
 inline void checkLegalKeyIfKeyTImpl(KeyT key_in, KeyT emptyKey,

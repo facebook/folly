@@ -42,7 +42,7 @@ TEST(Interrupt, cancel) {
 TEST(Interrupt, handleThenInterrupt) {
   Promise<int> p;
   bool flag = false;
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   p.getFuture().cancel();
   EXPECT_TRUE(flag);
 }
@@ -51,14 +51,14 @@ TEST(Interrupt, interruptThenHandle) {
   Promise<int> p;
   bool flag = false;
   p.getFuture().cancel();
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   EXPECT_TRUE(flag);
 }
 
 TEST(Interrupt, interruptAfterFulfilNoop) {
   Promise<Unit> p;
   bool flag = false;
-  p.setInterruptHandler([&](const exception_wrapper& e) { flag = true; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
   p.setValue();
   p.getFuture().cancel();
   EXPECT_FALSE(flag);
@@ -67,7 +67,7 @@ TEST(Interrupt, interruptAfterFulfilNoop) {
 TEST(Interrupt, secondInterruptNoop) {
   Promise<Unit> p;
   int count = 0;
-  p.setInterruptHandler([&](const exception_wrapper& e) { count++; });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { count++; });
   auto f = p.getFuture();
   f.cancel();
   f.cancel();
@@ -77,7 +77,7 @@ TEST(Interrupt, secondInterruptNoop) {
 TEST(Interrupt, withinTimedOut) {
   Promise<int> p;
   Baton<> done;
-  p.setInterruptHandler([&](const exception_wrapper& e) { done.post(); });
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
   p.getFuture().within(std::chrono::milliseconds(1));
   // Give it 100ms to time out and call the interrupt handler
   auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);

@@ -260,8 +260,7 @@ void doNotOptimizeAway(T&& datum) {
 #elif defined(__clang__)
 
 template <class T>
-__attribute__((__optnone__)) void doNotOptimizeAway(T&& datum) {
-}
+__attribute__((__optnone__)) void doNotOptimizeAway(T&& /* datum */) {}
 
 #else
 

@@ -24,8 +24,8 @@ namespace po = ::boost::program_options;
 namespace {
 
 void init(const std::string& cmd,
-          const po::variables_map& options,
-          const std::vector<std::string>& args) {
+          const po::variables_map& /* options */,
+          const std::vector<std::string>& /* args */) {
   printf("running %s\n", cmd.c_str());
 }
 

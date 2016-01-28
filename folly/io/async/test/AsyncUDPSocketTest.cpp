@@ -45,7 +45,7 @@ class UDPAcceptor
 
   void onListenStopped() noexcept override {}
 
-  void onDataAvailable(std::shared_ptr<folly::AsyncUDPSocket> socket,
+  void onDataAvailable(std::shared_ptr<folly::AsyncUDPSocket> /* socket */,
                        const folly::SocketAddress& client,
                        std::unique_ptr<folly::IOBuf> data,
                        bool truncated) noexcept override {

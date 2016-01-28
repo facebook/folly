@@ -257,7 +257,7 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T operator++(int postDummy) noexcept {
+  T operator++(int /* postDummy */) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data++;
     FOLLY_TEST_DSCHED_VLOG(this << " post++ -> " << std::hex << rv);
@@ -273,7 +273,7 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T operator--(int postDummy) noexcept {
+  T operator--(int /* postDummy */) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data--;
     FOLLY_TEST_DSCHED_VLOG(this << " post-- -> " << std::hex << rv);
@@ -290,7 +290,8 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_add(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_add(T v,
+              std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     data += v;
@@ -309,7 +310,8 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_sub(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_sub(T v,
+              std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     data -= v;
@@ -328,7 +330,8 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_and(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_and(T v,
+              std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     data &= v;
@@ -347,7 +350,8 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_or(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_or(T v,
+             std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     data |= v;
@@ -366,7 +370,8 @@ struct DeterministicAtomic {
     return rv;
   }
 
-  T fetch_xor(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+  T fetch_xor(T v,
+              std::memory_order /* mo */ = std::memory_order_seq_cst) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     data ^= v;

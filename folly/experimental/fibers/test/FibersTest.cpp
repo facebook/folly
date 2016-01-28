@@ -1366,17 +1366,18 @@ TEST(FiberManager, RequestContext) {
 
   folly::RequestContext::create();
   auto rcontext3 = folly::RequestContext::get();
-  fm.addTaskFinally([&]() {
-      EXPECT_EQ(rcontext3, folly::RequestContext::get());
-      baton3.wait();
-      EXPECT_EQ(rcontext3, folly::RequestContext::get());
+  fm.addTaskFinally(
+      [&]() {
+        EXPECT_EQ(rcontext3, folly::RequestContext::get());
+        baton3.wait();
+        EXPECT_EQ(rcontext3, folly::RequestContext::get());
 
-      return folly::Unit();
-    },
-    [&](Try<folly::Unit>&& t) {
-      EXPECT_EQ(rcontext3, folly::RequestContext::get());
-      checkRun3 = true;
-    });
+        return folly::Unit();
+      },
+      [&](Try<folly::Unit>&& /* t */) {
+        EXPECT_EQ(rcontext3, folly::RequestContext::get());
+        checkRun3 = true;
+      });
 
   folly::RequestContext::create();
   auto rcontext = folly::RequestContext::get();

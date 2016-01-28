@@ -194,7 +194,7 @@ typename std::enable_if<
       typename std::iterator_traits<InputIterator>::value_type()>::type, void
     >::value, void>::type
 inline collectAll(InputIterator first, InputIterator last) {
-  forEach(first, last, [] (size_t id) {});
+  forEach(first, last, [](size_t /* id */) {});
 }
 
 template <class InputIterator>

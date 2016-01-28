@@ -1462,34 +1462,34 @@ class TestConnectionEventCallback :
   public AsyncServerSocket::ConnectionEventCallback {
  public:
   virtual void onConnectionAccepted(
-      const int socket,
-      const SocketAddress& addr) noexcept override {
+      const int /* socket */,
+      const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionAccepted_++;
   }
 
-  virtual void onConnectionAcceptError(const int err) noexcept override {
+  virtual void onConnectionAcceptError(const int /* err */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionAcceptedError_++;
   }
 
   virtual void onConnectionDropped(
-      const int socket,
-      const SocketAddress& addr) noexcept override {
+      const int /* socket */,
+      const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDropped_++;
   }
 
   virtual void onConnectionEnqueuedForAcceptorCallback(
-      const int socket,
-      const SocketAddress& addr) noexcept override {
+      const int /* socket */,
+      const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionEnqueuedForAcceptCallback_++;
   }
 
   virtual void onConnectionDequeuedByAcceptorCallback(
-      const int socket,
-      const SocketAddress& addr) noexcept override {
+      const int /* socket */,
+      const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDequeuedByAcceptCallback_++;
   }
@@ -1679,10 +1679,10 @@ TEST(AsyncSocketTest, ServerAcceptOptions) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
-    });
-  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
@@ -1746,53 +1746,56 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   // Have callback 2 remove callback 3 and callback 5 the first time it is
   // called.
   int cb2Count = 0;
-  cb1.setConnectionAcceptedFn([&](int fd, const folly::SocketAddress& addr){
-      std::shared_ptr<AsyncSocket> sock2(
+  cb1.setConnectionAcceptedFn([&](int /* fd */,
+                                  const folly::SocketAddress& /* addr */) {
+    std::shared_ptr<AsyncSocket> sock2(
         AsyncSocket::newSocket(&eventBase, serverAddress)); // cb2: -cb3 -cb5
+  });
+  cb3.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {});
+  cb4.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        std::shared_ptr<AsyncSocket> sock3(
+            AsyncSocket::newSocket(&eventBase, serverAddress)); // cb4
       });
-  cb3.setConnectionAcceptedFn([&](int fd, const folly::SocketAddress& addr){
-    });
-  cb4.setConnectionAcceptedFn([&](int fd, const folly::SocketAddress& addr){
-      std::shared_ptr<AsyncSocket> sock3(
-        AsyncSocket::newSocket(&eventBase, serverAddress)); // cb4
-    });
-  cb5.setConnectionAcceptedFn([&](int fd, const folly::SocketAddress& addr){
-  std::shared_ptr<AsyncSocket> sock5(
-      AsyncSocket::newSocket(&eventBase, serverAddress)); // cb7: -cb7
+  cb5.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        std::shared_ptr<AsyncSocket> sock5(
+            AsyncSocket::newSocket(&eventBase, serverAddress)); // cb7: -cb7
 
-    });
+      });
   cb2.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      if (cb2Count == 0) {
-        serverSocket->removeAcceptCallback(&cb3, nullptr);
-        serverSocket->removeAcceptCallback(&cb5, nullptr);
-      }
-      ++cb2Count;
-    });
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        if (cb2Count == 0) {
+          serverSocket->removeAcceptCallback(&cb3, nullptr);
+          serverSocket->removeAcceptCallback(&cb5, nullptr);
+        }
+        ++cb2Count;
+      });
   // Have callback 6 remove callback 4 the first time it is called,
   // and destroy the server socket the second time it is called
   int cb6Count = 0;
   cb6.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      if (cb6Count == 0) {
-        serverSocket->removeAcceptCallback(&cb4, nullptr);
-        std::shared_ptr<AsyncSocket> sock6(
-          AsyncSocket::newSocket(&eventBase, serverAddress)); // cb1
-        std::shared_ptr<AsyncSocket> sock7(
-          AsyncSocket::newSocket(&eventBase, serverAddress)); // cb2
-        std::shared_ptr<AsyncSocket> sock8(
-          AsyncSocket::newSocket(&eventBase, serverAddress)); // cb6: stop
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        if (cb6Count == 0) {
+          serverSocket->removeAcceptCallback(&cb4, nullptr);
+          std::shared_ptr<AsyncSocket> sock6(
+              AsyncSocket::newSocket(&eventBase, serverAddress)); // cb1
+          std::shared_ptr<AsyncSocket> sock7(
+              AsyncSocket::newSocket(&eventBase, serverAddress)); // cb2
+          std::shared_ptr<AsyncSocket> sock8(
+              AsyncSocket::newSocket(&eventBase, serverAddress)); // cb6: stop
 
-      } else {
-        serverSocket.reset();
-      }
-      ++cb6Count;
-    });
+        } else {
+          serverSocket.reset();
+        }
+        ++cb6Count;
+      });
   // Have callback 7 remove itself
   cb7.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      serverSocket->removeAcceptCallback(&cb7, nullptr);
-    });
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&cb7, nullptr);
+      });
 
   serverSocket->addAcceptCallback(&cb1, nullptr);
   serverSocket->addAcceptCallback(&cb2, nullptr);
@@ -1900,10 +1903,11 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
     CHECK_NE(thread_id, pthread_self());
     thread_id = pthread_self();
   });
-  cb1.setConnectionAcceptedFn([&](int fd, const folly::SocketAddress& addr){
-    CHECK_EQ(thread_id, pthread_self());
-    serverSocket->removeAcceptCallback(&cb1, nullptr);
-  });
+  cb1.setConnectionAcceptedFn(
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        CHECK_EQ(thread_id, pthread_self());
+        serverSocket->removeAcceptCallback(&cb1, nullptr);
+      });
   cb1.setAcceptStoppedFn([&](){
     CHECK_EQ(thread_id, pthread_self());
   });
@@ -1945,10 +1949,10 @@ void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
   // Add a callback to accept one connection then stop accepting
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
-    });
-  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
@@ -2123,10 +2127,10 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
-    });
-  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
@@ -2169,10 +2173,10 @@ TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-    [&](int fd, const folly::SocketAddress& addr) {
-      serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
-    });
-  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+        serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
+      });
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
     serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
   });
   serverSocket->addAcceptCallback(&acceptCallback, nullptr);
@@ -2215,7 +2219,7 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
   // Add a callback to accept connections
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int fd, const folly::SocketAddress& addr) {
+      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
         count++;
         CHECK_EQ(4 - count, serverSocket->getNumPendingMessagesInQueue());
 
@@ -2224,7 +2228,7 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
           serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
         }
       });
-  acceptCallback.setAcceptErrorFn([&](const std::exception& ex) {
+  acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
     serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
   });
   serverSocket->addAcceptCallback(&acceptCallback, &eventBase);

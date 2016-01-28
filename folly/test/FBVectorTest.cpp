@@ -56,7 +56,7 @@ void randomString(String* toFill, unsigned int maxSize = 1000) {
 }
 
 template <class String, class Integral>
-void Num2String(String& str, Integral n) {
+void Num2String(String& str, Integral /* n */) {
   str.resize(10, '\0');
   sprintf(&str[0], "%ul", 10);
   str.resize(strlen(str.c_str()));

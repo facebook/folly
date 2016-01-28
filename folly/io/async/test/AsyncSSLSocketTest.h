@@ -209,7 +209,7 @@ public:
     *lenReturn = 0;
   }
 
-  void readDataAvailable(size_t len) noexcept override {
+  void readDataAvailable(size_t /* len */) noexcept override {
     // This should never to called.
     FAIL();
   }
@@ -311,9 +311,8 @@ public:
     sock->setReadCB(rcb_);
     state = (expect_ == EXPECT_SUCCESS) ? STATE_SUCCEEDED : STATE_FAILED;
   }
-  void handshakeErr(
-    AsyncSSLSocket *sock,
-    const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket* /* sock */,
+                    const AsyncSocketException& ex) noexcept override {
     std::cerr << "HandshakeCallback::handshakeError " << ex.what() << std::endl;
     state = (expect_ == EXPECT_ERROR) ? STATE_SUCCEEDED : STATE_FAILED;
     if (expect_ == EXPECT_ERROR) {
@@ -353,8 +352,8 @@ public:
     state = STATE_FAILED;
   }
 
-  void connectionAccepted(int fd, const folly::SocketAddress& clientAddr)
-    noexcept override{
+  void connectionAccepted(
+      int fd, const folly::SocketAddress& /* clientAddr */) noexcept override {
     printf("Connection accepted\n");
     std::shared_ptr<AsyncSSLSocket> sslSock;
     try {
@@ -612,10 +611,10 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
   static uint32_t asyncLookups_;
   static uint32_t lookupDelay_;
 
-  static SSL_SESSION *getSessionCallback(SSL *ssl,
-                                         unsigned char *sess_id,
-                                         int id_len,
-                                         int *copyflag) {
+  static SSL_SESSION* getSessionCallback(SSL* ssl,
+                                         unsigned char* /* sess_id */,
+                                         int /* id_len */,
+                                         int* copyflag) {
     *copyflag = 0;
     asyncCallbacks_++;
 #ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
@@ -852,11 +851,10 @@ class NpnServer :
     const AsyncSocketException& ex) noexcept override {
     ADD_FAILURE() << "server handshake error: " << ex.what();
   }
-  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+  void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
     *lenReturn = 0;
   }
-  void readDataAvailable(size_t len) noexcept override {
-  }
+  void readDataAvailable(size_t /* len */) noexcept override {}
   void readEOF() noexcept override {
     socket_->close();
   }
@@ -922,17 +920,16 @@ class SNIServer :
   bool serverNameMatch;
 
  private:
-  void handshakeSuc(AsyncSSLSocket* ssl) noexcept override {}
+  void handshakeSuc(AsyncSSLSocket* /* ssl */) noexcept override {}
   void handshakeErr(
     AsyncSSLSocket*,
     const AsyncSocketException& ex) noexcept override {
     ADD_FAILURE() << "server handshake error: " << ex.what();
   }
-  void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
+  void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
     *lenReturn = 0;
   }
-  void readDataAvailable(size_t len) noexcept override {
-  }
+  void readDataAvailable(size_t /* len */) noexcept override {}
   void readEOF() noexcept override {
     socket_->close();
   }
@@ -1076,10 +1073,8 @@ class SSLClient : public AsyncSocket::ConnectCallback,
     std::cerr << "client write success" << std::endl;
   }
 
-  void writeErr(
-    size_t bytesWritten,
-    const AsyncSocketException& ex)
-    noexcept override {
+  void writeErr(size_t /* bytesWritten */,
+                const AsyncSocketException& ex) noexcept override {
     std::cerr << "client writeError: " << ex.what() << std::endl;
     if (!sslSocket_) {
       writeAfterConnectErrors_++;
@@ -1142,10 +1137,9 @@ class SSLHandshakeBase :
   bool verifyResult_;
 
   // HandshakeCallback
-  bool handshakeVer(
-   AsyncSSLSocket* sock,
-   bool preverifyOk,
-   X509_STORE_CTX* ctx) noexcept override {
+  bool handshakeVer(AsyncSSLSocket* /* sock */,
+                    bool preverifyOk,
+                    X509_STORE_CTX* /* ctx */) noexcept override {
     handshakeVerify_ = true;
 
     EXPECT_EQ(preverifyResult_, preverifyOk);
@@ -1157,9 +1151,8 @@ class SSLHandshakeBase :
     handshakeTime = socket_->getHandshakeTime();
   }
 
-  void handshakeErr(
-   AsyncSSLSocket*,
-   const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*,
+                    const AsyncSocketException& /* ex */) noexcept override {
     handshakeError_ = true;
     handshakeTime = socket_->getHandshakeTime();
   }

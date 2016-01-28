@@ -71,9 +71,7 @@ struct NontrivialType {
     ++ctored;
   }
 
-  NontrivialType(NontrivialType const& s) {
-    ++ctored;
-  }
+  NontrivialType(NontrivialType const& /* s */) { ++ctored; }
 
   NontrivialType& operator=(NontrivialType const& o) {
     a = o.a;
@@ -116,7 +114,7 @@ struct Thrower {
     --alive;
   }
 
-  Thrower& operator=(Thrower const& other) {
+  Thrower& operator=(Thrower const& /* other */) {
     EXPECT_EQ(magic, kMagic);
     MaybeThrow();
     return *this;

@@ -29,10 +29,12 @@ struct Widget {
     : v_(other.v_), copied_(other.copied_ + 1), moved_(other.moved_) {}
   Widget(Widget&& other) noexcept
     : v_(other.v_), copied_(other.copied_), moved_(other.moved_ + 1) {}
-  Widget& operator=(const Widget& other)
-    { throw std::logic_error("unexpected copy assignment"); }
-  Widget& operator=(Widget&& other)
-    { throw std::logic_error("unexpected move assignment"); }
+  Widget& operator=(const Widget& /* other */) {
+    throw std::logic_error("unexpected copy assignment");
+  }
+  Widget& operator=(Widget&& /* other */) {
+    throw std::logic_error("unexpected move assignment");
+  }
 };
 
 TEST(Then, tryConstructor) {

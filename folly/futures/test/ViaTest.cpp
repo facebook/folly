@@ -124,14 +124,16 @@ TEST(Via, thenFunction) {
 
 TEST_F(ViaFixture, threadHops) {
   auto westThreadId = std::this_thread::get_id();
-  auto f = via(eastExecutor.get()).then([=](Try<Unit>&& t) {
-    EXPECT_NE(std::this_thread::get_id(), westThreadId);
-    return makeFuture<int>(1);
-  }).via(westExecutor.get()
-  ).then([=](Try<int>&& t) {
-    EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-    return t.value();
-  });
+  auto f = via(eastExecutor.get())
+               .then([=](Try<Unit>&& /* t */) {
+                 EXPECT_NE(std::this_thread::get_id(), westThreadId);
+                 return makeFuture<int>(1);
+               })
+               .via(westExecutor.get())
+               .then([=](Try<int>&& t) {
+                 EXPECT_EQ(std::this_thread::get_id(), westThreadId);
+                 return t.value();
+               });
   EXPECT_EQ(f.getVia(waiter.get()), 1);
 }
 
@@ -189,7 +191,7 @@ TEST(Via, chain3) {
 }
 
 struct PriorityExecutor : public Executor {
-  void add(Func f) override {}
+  void add(Func /* f */) override {}
 
   void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
@@ -371,7 +373,7 @@ TEST(Via, callbackRace) {
 
 class DummyDrivableExecutor : public DrivableExecutor {
  public:
-  void add(Func f) override {}
+  void add(Func /* f */) override {}
   void drive() override { ran = true; }
   bool ran{false};
 };

@@ -604,7 +604,9 @@ namespace detail {
 
 template <typename T>
 struct CollectContext {
-  struct Nothing { explicit Nothing(int n) {} };
+  struct Nothing {
+    explicit Nothing(int /* n */) {}
+  };
 
   using Result = typename std::conditional<
     std::is_void<T>::value,
@@ -861,26 +863,29 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
   auto ctx = std::make_shared<UnorderedReduceContext>(
     std::move(initial), std::move(func), std::distance(first, last));
 
-  mapSetCallback<ItT>(first, last, [ctx](size_t i, Try<ItT>&& t) {
-    folly::MoveWrapper<Try<ItT>> mt(std::move(t));
-    // Futures can be completed in any order, simultaneously.
-    // To make this non-blocking, we create a new Future chain in
-    // the order of completion to reduce the values.
-    // The spinlock just protects chaining a new Future, not actually
-    // executing the reduce, which should be really fast.
-    folly::MSLGuard lock(ctx->lock_);
-    ctx->memo_ = ctx->memo_.then([ctx, mt](T&& v) mutable {
-      // Either return a ItT&& or a Try<ItT>&& depending
-      // on the type of the argument of func.
-      return ctx->func_(std::move(v), mt->template get<IsTry::value, Arg&&>());
-    });
-    if (++ctx->numThens_ == ctx->numFutures_) {
-      // After reducing the value of the last Future, fulfill the Promise
-      ctx->memo_.setCallback_([ctx](Try<T>&& t2) {
-        ctx->promise_.setValue(std::move(t2));
+  mapSetCallback<ItT>(
+      first,
+      last,
+      [ctx](size_t /* i */, Try<ItT>&& t) {
+        folly::MoveWrapper<Try<ItT>> mt(std::move(t));
+        // Futures can be completed in any order, simultaneously.
+        // To make this non-blocking, we create a new Future chain in
+        // the order of completion to reduce the values.
+        // The spinlock just protects chaining a new Future, not actually
+        // executing the reduce, which should be really fast.
+        folly::MSLGuard lock(ctx->lock_);
+        ctx->memo_ = ctx->memo_.then([ctx, mt](T&& v) mutable {
+          // Either return a ItT&& or a Try<ItT>&& depending
+          // on the type of the argument of func.
+          return ctx->func_(std::move(v),
+                            mt->template get<IsTry::value, Arg&&>());
+        });
+        if (++ctx->numThens_ == ctx->numFutures_) {
+          // After reducing the value of the last Future, fulfill the Promise
+          ctx->memo_.setCallback_(
+              [ctx](Try<T>&& t2) { ctx->promise_.setValue(std::move(t2)); });
+        }
       });
-    }
-  });
 
   return ctx->promise_.getFuture();
 }
@@ -953,7 +958,7 @@ void waitImpl(Future<T>& f) {
   if (f.isReady()) return;
 
   FutureBatonType baton;
-  f.setCallback_([&](const Try<T>& t) { baton.post(); });
+  f.setCallback_([&](const Try<T>& /* t */) { baton.post(); });
   baton.wait();
   assert(f.isReady());
 }

@@ -113,8 +113,8 @@ public:
   }
 
   BasicStringKeyedUnorderedSet(BasicStringKeyedUnorderedSet&& rhs,
-                               const allocator_type& a) noexcept
-      : Base(std::move(rhs)/* , a */ /* not supported by gcc */) {
+                               const allocator_type& /* a */) noexcept
+      : Base(std::move(rhs) /* , a */ /* not supported by gcc */) {
     assert(rhs.empty());
   }
 

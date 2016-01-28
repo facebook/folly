@@ -89,7 +89,7 @@ void testExceptionPtr2() {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int /* argc */, char* /* argv */ []) {
   foo();
   testExceptionPtr1();
   testExceptionPtr2();

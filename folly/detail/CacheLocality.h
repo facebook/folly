@@ -179,7 +179,7 @@ struct FallbackGetcpu {
   /// Fills the thread id into the cpu and node out params (if they
   /// are non-null).  This method is intended to act like getcpu when a
   /// fast-enough form of getcpu isn't available or isn't desired
-  static int getcpu(unsigned* cpu, unsigned* node, void* unused) {
+  static int getcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
     auto id = ThreadId::get();
     if (cpu) {
       *cpu = id;

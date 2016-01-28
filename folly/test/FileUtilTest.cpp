@@ -83,7 +83,7 @@ ssize_t Reader::nextSize() {
   return n;
 }
 
-ssize_t Reader::operator()(int fd, void* buf, size_t count) {
+ssize_t Reader::operator()(int /* fd */, void* buf, size_t count) {
   ssize_t n = nextSize();
   if (n <= 0) {
     return n;
@@ -101,7 +101,7 @@ ssize_t Reader::operator()(int fd, void* buf, size_t count, off_t offset) {
   return operator()(fd, buf, count);
 }
 
-ssize_t Reader::operator()(int fd, const iovec* iov, int count) {
+ssize_t Reader::operator()(int /* fd */, const iovec* iov, int count) {
   ssize_t n = nextSize();
   if (n <= 0) {
     return n;

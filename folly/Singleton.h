@@ -528,10 +528,9 @@ class Singleton {
     return getEntry().try_get_fast();
   }
 
-  explicit Singleton(std::nullptr_t _ = nullptr,
-                     typename Singleton::TeardownFunc t = nullptr) :
-      Singleton ([]() { return new T; }, std::move(t)) {
-  }
+  explicit Singleton(std::nullptr_t /* _ */ = nullptr,
+                     typename Singleton::TeardownFunc t = nullptr)
+      : Singleton([]() { return new T; }, std::move(t)) {}
 
   explicit Singleton(typename Singleton::CreateFunc c,
                      typename Singleton::TeardownFunc t = nullptr) {
@@ -577,7 +576,7 @@ class Singleton {
   * the injection. The returned mock singleton is functionality identical to
   * regular singletons.
   */
-  static void make_mock(std::nullptr_t c = nullptr,
+  static void make_mock(std::nullptr_t /* c */ = nullptr,
                         typename Singleton<T>::TeardownFunc t = nullptr) {
     make_mock([]() { return new T; }, t);
   }

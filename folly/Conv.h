@@ -388,8 +388,8 @@ estimateSpaceNeeded(Src value) {
   return folly::StringPiece(value).size();
 }
 
-template<>
-inline size_t estimateSpaceNeeded(std::nullptr_t value) {
+template <>
+inline size_t estimateSpaceNeeded(std::nullptr_t /* value */) {
   return 0;
 }
 
@@ -754,9 +754,8 @@ toAppendStrImpl(const T& v, const Ts&... vs) {
 
 template <class Delimiter, class T, class Tgt>
 typename std::enable_if<
-  IsSomeString<typename std::remove_pointer<Tgt>::type>
-  ::value>::type
-toAppendDelimStrImpl(const Delimiter& delim, const T& v, Tgt result) {
+    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
+toAppendDelimStrImpl(const Delimiter& /* delim */, const T& v, Tgt result) {
   toAppend(v, result);
 }
 
@@ -821,24 +820,22 @@ void toAppendFit(const Ts&) {}
  * Variadic base case: do nothing.
  */
 template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type
-toAppend(Tgt* result) {
-}
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+    Tgt* /* result */) {}
 
 /**
  * Variadic base case: do nothing.
  */
 template <class Delimiter, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type
-toAppendDelim(const Delimiter& delim, Tgt* result) {
-}
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
+    const Delimiter& /* delim */, Tgt* /* result */) {}
 
 /**
  * 1 element: same as toAppend.
  */
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type
-toAppendDelim(const Delimiter& delim, const T& v, Tgt* tgt) {
+typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
+    const Delimiter& /* delim */, const T& v, Tgt* tgt) {
   toAppend(v, tgt);
 }
 
@@ -893,10 +890,10 @@ to(const Ts&... vs) {
  * toDelim<SomeString>(SomeString str) returns itself.
  */
 template <class Tgt, class Delim, class Src>
-typename std::enable_if<
-  IsSomeString<Tgt>::value && std::is_same<Tgt, Src>::value,
-  Tgt>::type
-toDelim(const Delim& delim, const Src & value) {
+typename std::enable_if<IsSomeString<Tgt>::value &&
+                            std::is_same<Tgt, Src>::value,
+                        Tgt>::type
+toDelim(const Delim& /* delim */, const Src& value) {
   return value;
 }
 

@@ -422,7 +422,7 @@ std::atomic<pthread_t> gSignalThread(kInvalidThreadId);
 std::atomic<bool> gInRecursiveSignalHandler(false);
 
 // Here be dragons.
-void innerSignalHandler(int signum, siginfo_t* info, void* uctx) {
+void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
   // First, let's only let one thread in here at a time.
   pthread_t myId = pthread_self();
 

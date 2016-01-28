@@ -58,16 +58,14 @@ TEST(Window, basic) {
   }
   {
     // int -> Future<Unit>
-    auto res = reduce(
-      window(
-        std::vector<int>({1, 2, 3}),
-        [](int i) { return makeFuture(); },
-        2),
-      0,
-      [](int sum, const Try<Unit>& b) {
-        EXPECT_TRUE(b.hasValue());
-        return sum + 1;
-      }).get();
+    auto res = reduce(window(std::vector<int>({1, 2, 3}),
+                             [](int /* i */) { return makeFuture(); },
+                             2),
+                      0,
+                      [](int sum, const Try<Unit>& b) {
+                        EXPECT_TRUE(b.hasValue());
+                        return sum + 1;
+                      }).get();
     EXPECT_EQ(3, res);
   }
   {

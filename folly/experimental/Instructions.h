@@ -30,9 +30,7 @@ namespace folly { namespace compression { namespace instructions {
 // use explicitly.
 
 struct Default {
-  static bool supported(const folly::CpuId& cpuId = {}) {
-    return true;
-  }
+  static bool supported(const folly::CpuId& /* cpuId */ = {}) { return true; }
   static inline uint64_t popcount(uint64_t value) {
     return __builtin_popcountll(value);
   }

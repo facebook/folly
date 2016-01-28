@@ -115,8 +115,8 @@ namespace dynamicconverter_detail {
 
 template<typename T>
 struct Dereferencer {
-  static inline void
-  derefToCache(T* mem, const dynamic::const_item_iterator& it) {
+  static inline void derefToCache(
+      T* /* mem */, const dynamic::const_item_iterator& /* it */) {
     throw TypeError("array", dynamic::Type::OBJECT);
   }
 

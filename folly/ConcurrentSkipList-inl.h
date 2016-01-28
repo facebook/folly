@@ -322,7 +322,7 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
   void addRef() { }
   void releaseRef() { }
 
-  void add(NodeType* node) { }
+  void add(NodeType* /* node */) {}
 
   NodeAlloc& alloc() { return alloc_; }
 

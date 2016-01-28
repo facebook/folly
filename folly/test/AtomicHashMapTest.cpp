@@ -668,7 +668,7 @@ TEST(Ahm, thread_erase_insert_race) {
 typedef AtomicHashArray<int32_t, int32_t> AHA;
 AHA::Config configRace;
 auto atomicHashArrayInsertRaceArray = AHA::create(2, configRace);
-void* atomicHashArrayInsertRaceThread(void* j) {
+void* atomicHashArrayInsertRaceThread(void* /* j */) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
   uintptr_t numInserted = 0;
   while (!runThreadsCreatedAllThreads.load());

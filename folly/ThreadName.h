@@ -31,7 +31,7 @@ namespace folly {
 #endif
 
 template <typename T>
-inline bool setThreadName(T id, StringPiece name) {
+inline bool setThreadName(T /* id */, StringPiece /* name */) {
   static_assert(
       std::is_same<T, pthread_t>::value ||
       std::is_same<T, std::thread::native_handle_type>::value,

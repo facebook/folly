@@ -202,13 +202,11 @@ class StlAllocator {
   template <class U> StlAllocator(const StlAllocator<Alloc, U>& other)
     : alloc_(other.alloc()) { }
 
-  T* allocate(size_t n, const void* hint = nullptr) {
+  T* allocate(size_t n, const void* /* hint */ = nullptr) {
     return static_cast<T*>(alloc_->allocate(n * sizeof(T)));
   }
 
-  void deallocate(T* p, size_t n) {
-    alloc_->deallocate(p);
-  }
+  void deallocate(T* p, size_t /* n */) { alloc_->deallocate(p); }
 
   size_t max_size() const {
     return std::numeric_limits<size_t>::max();

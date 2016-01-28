@@ -96,7 +96,7 @@ void NestedCommandLineApp::addAlias(std::string newName,
 }
 
 void NestedCommandLineApp::displayHelp(
-    const po::variables_map& globalOptions,
+    const po::variables_map& /* globalOptions */,
     const std::vector<std::string>& args) {
   if (args.empty()) {
     // General help

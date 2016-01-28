@@ -347,7 +347,7 @@ class SeqWithStepImpl {
 template <class Value>
 class InfiniteImpl {
  public:
-  bool test(const Value& current) const { return true; }
+  bool test(const Value& /* current */) const { return true; }
   void step(Value& current) const { ++current; }
   static constexpr bool infinite = true;
 };
@@ -1830,10 +1830,11 @@ class IsEmpty : public Operator<IsEmpty<emptyResult>> {
                   "false or hang. 'any' or 'notEmpty' will either return true "
                   "or hang.");
     bool ans = emptyResult;
-    source | [&](Value v) -> bool {
-      ans = !emptyResult;
-      return false;
-    };
+    source |
+        [&](Value /* v */) -> bool {
+          ans = !emptyResult;
+          return false;
+        };
     return ans;
   }
 };
@@ -1890,9 +1891,8 @@ class Count : public Operator<Count> {
   size_t compose(const GenImpl<Value, Source>& source) const {
     static_assert(!Source::infinite, "Cannot count infinite source");
     return foldl(size_t(0),
-                 [](size_t accum, Value v) {
-                   return accum + 1;
-                 }).compose(source);
+                 [](size_t accum, Value /* v */) { return accum + 1; })
+        .compose(source);
   }
 };
 

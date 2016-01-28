@@ -702,8 +702,9 @@ void AsyncServerSocket::setupSocket(int fd) {
   }
 }
 
-void AsyncServerSocket::handlerReady(
-  uint16_t events, int fd, sa_family_t addressFamily) noexcept {
+void AsyncServerSocket::handlerReady(uint16_t /* events */,
+                                     int fd,
+                                     sa_family_t addressFamily) noexcept {
   assert(!callbacks_.empty());
   DestructorGuard dg(this);
 

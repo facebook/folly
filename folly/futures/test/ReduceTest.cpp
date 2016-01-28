@@ -126,10 +126,11 @@ TEST(Reduce, unorderedReduce) {
     fs.push_back(makeFuture(2));
     fs.push_back(makeFuture(3));
 
-    Future<double> f = unorderedReduce(fs.begin(), fs.end(), 0.0,
-      [](double a, int&& b){
-        return double(b);
-      });
+    Future<double> f =
+        unorderedReduce(fs.begin(),
+                        fs.end(),
+                        0.0,
+                        [](double /* a */, int&& b) { return double(b); });
     EXPECT_EQ(3.0, f.get());
   }
   {
@@ -142,10 +143,11 @@ TEST(Reduce, unorderedReduce) {
     fs.push_back(p2.getFuture());
     fs.push_back(p3.getFuture());
 
-    Future<double> f = unorderedReduce(fs.begin(), fs.end(), 0.0,
-      [](double a, int&& b){
-        return double(b);
-      });
+    Future<double> f =
+        unorderedReduce(fs.begin(),
+                        fs.end(),
+                        0.0,
+                        [](double /* a */, int&& b) { return double(b); });
     p3.setValue(3);
     p2.setValue(2);
     p1.setValue(1);
@@ -163,10 +165,11 @@ TEST(Reduce, unorderedReduceException) {
   fs.push_back(p2.getFuture());
   fs.push_back(p3.getFuture());
 
-  Future<double> f = unorderedReduce(fs.begin(), fs.end(), 0.0,
-    [](double a, int&& b){
-      return b + 0.0;
-    });
+  Future<double> f =
+      unorderedReduce(fs.begin(),
+                      fs.end(),
+                      0.0,
+                      [](double /* a */, int&& b) { return b + 0.0; });
   p3.setValue(3);
   p2.setException(exception_wrapper(std::runtime_error("blah")));
   p1.setValue(1);

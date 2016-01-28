@@ -436,9 +436,7 @@ TEST(NotificationQueueTest, ConsumeUntilDrained) {
 
   // Make sure there can only be one drainer at once
   folly::Baton<> callbackBaton, threadStartBaton;
-  consumer.fn = [&](int i) {
-    callbackBaton.wait();
-  };
+  consumer.fn = [&](int /* i */) { callbackBaton.wait(); };
   QueueConsumer competingConsumer;
   competingConsumer.startConsuming(&eventBase, &queue);
   queue.putMessage(1);
@@ -487,9 +485,7 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
 
     // Make sure there can only be one drainer at once
     folly::Baton<> callbackBaton, threadStartBaton;
-    consumer.fn = [&](int i) {
-      callbackBaton.wait();
-    };
+    consumer.fn = [&](int /* i */) { callbackBaton.wait(); };
     QueueConsumer competingConsumer;
     competingConsumer.startConsuming(&eventBase, &queue);
     queue.putMessage(1);

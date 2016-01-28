@@ -124,7 +124,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
     delete this;
   }
 
-  void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
+  void handshakeSuc(AsyncSSLSocket* /* sock */) noexcept override {
     VLOG(7) << "client handshake success";
     if (callback_) {
       callback_->connectSuccess();
@@ -132,7 +132,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
     delete this;
   }
 
-  void handshakeErr(AsyncSSLSocket* socket,
+  void handshakeErr(AsyncSSLSocket* /* socket */,
                     const AsyncSocketException& ex) noexcept override {
     LOG(ERROR) << "client handshakeErr: " << ex.what();
     fail(ex);
@@ -641,8 +641,8 @@ AsyncSSLSocket* AsyncSSLSocket::getFromSSL(const SSL *ssl) {
       getSSLExDataIndex()));
 }
 
-void AsyncSSLSocket::failHandshake(const char* fn,
-                                    const AsyncSocketException& ex) {
+void AsyncSSLSocket::failHandshake(const char* /* fn */,
+                                   const AsyncSocketException& ex) {
   startFail();
   if (handshakeTimeout_.isScheduled()) {
     handshakeTimeout_.cancelTimeout();
@@ -1548,8 +1548,7 @@ int AsyncSSLSocket::eorAwareSSLWrite(SSL *ssl, const void *buf, int n,
   return n;
 }
 
-void
-AsyncSSLSocket::sslInfoCallback(const SSL *ssl, int where, int ret) {
+void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int /* ret */) {
   AsyncSSLSocket *sslSocket = AsyncSSLSocket::getFromSSL(ssl);
   if (sslSocket->handshakeComplete_ && (where & SSL_CB_HANDSHAKE_START)) {
     sslSocket->renegotiateAttempted_ = true;
@@ -1611,10 +1610,13 @@ void AsyncSSLSocket::resetClientHelloParsing(SSL *ssl)  {
   clientHelloInfo_->clientHelloBuf_.clear();
 }
 
-void
-AsyncSSLSocket::clientHelloParsingCallback(int written, int version,
-    int contentType, const void *buf, size_t len, SSL *ssl, void *arg)
-{
+void AsyncSSLSocket::clientHelloParsingCallback(int written,
+                                                int /* version */,
+                                                int contentType,
+                                                const void* buf,
+                                                size_t len,
+                                                SSL* ssl,
+                                                void* arg) {
   AsyncSSLSocket *sock = static_cast<AsyncSSLSocket*>(arg);
   if (written != 0) {
     sock->resetClientHelloParsing(ssl);

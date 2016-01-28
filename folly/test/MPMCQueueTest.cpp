@@ -536,24 +536,25 @@ struct Lifecycle {
     ++lc_counts[DEFAULT_CONSTRUCTOR];
   }
 
-  explicit Lifecycle(int n, char const* s) noexcept : constructed(true) {
+  explicit Lifecycle(int /* n */, char const* /* s */) noexcept
+      : constructed(true) {
     ++lc_counts[TWO_ARG_CONSTRUCTOR];
   }
 
-  Lifecycle(const Lifecycle& rhs) noexcept : constructed(true) {
+  Lifecycle(const Lifecycle& /* rhs */) noexcept : constructed(true) {
     ++lc_counts[COPY_CONSTRUCTOR];
   }
 
-  Lifecycle(Lifecycle&& rhs) noexcept : constructed(true) {
+  Lifecycle(Lifecycle&& /* rhs */) noexcept : constructed(true) {
     ++lc_counts[MOVE_CONSTRUCTOR];
   }
 
-  Lifecycle& operator= (const Lifecycle& rhs) noexcept {
+  Lifecycle& operator=(const Lifecycle& /* rhs */) noexcept {
     ++lc_counts[COPY_OPERATOR];
     return *this;
   }
 
-  Lifecycle& operator= (Lifecycle&& rhs) noexcept {
+  Lifecycle& operator=(Lifecycle&& /* rhs */) noexcept {
     ++lc_counts[MOVE_OPERATOR];
     return *this;
   }

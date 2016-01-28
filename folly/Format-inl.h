@@ -771,7 +771,9 @@ template <class T, class = void>
 class TryFormatValue {
  public:
   template <class FormatCallback>
-  static void formatOrFail(T& value, FormatArg& arg, FormatCallback& cb) {
+  static void formatOrFail(T& /* value */,
+                           FormatArg& arg,
+                           FormatCallback& /* cb */) {
     arg.error("No formatter available for this type");
   }
 };
@@ -1047,8 +1049,8 @@ class FormatValue<std::tuple<Args...>> {
   static constexpr size_t valueCount = std::tuple_size<Tuple>::value;
 
   template <size_t K, class Callback>
-  typename std::enable_if<K == valueCount>::type
-  doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
+  typename std::enable_if<K == valueCount>::type doFormatFrom(
+      size_t i, FormatArg& arg, Callback& /* cb */) const {
     arg.enforce("tuple index out of range, max=", i);
   }
 

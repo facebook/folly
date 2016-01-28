@@ -81,10 +81,10 @@ struct CallTuple {
     );
   }
 
-  template<class F, class Tuple, class ...Unpacked>
+  template <class F, class Tuple, class... Unpacked>
   static typename std::enable_if<ExprIsUnpacked<Tuple, Unpacked...>::value,
-    Ret
-  >::type call(const F& f, Tuple&& t, Unpacked&&... unp) {
+                                 Ret>::type
+  call(const F& f, Tuple&& /* t */, Unpacked&&... unp) {
     return makeCallable(f)(std::forward<Unpacked>(unp)...);
   }
 };

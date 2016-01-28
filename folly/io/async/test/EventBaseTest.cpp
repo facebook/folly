@@ -1431,7 +1431,7 @@ class TerminateTestCallback : public EventBase::LoopCallback,
     unregisterHandler();
   }
 
-  void handlerReady(uint16_t events) noexcept override {
+  void handlerReady(uint16_t /* events */) noexcept override {
     // We didn't register with PERSIST, so we will have been automatically
     // unregistered already.
     ASSERT_FALSE(isHandlerRegistered());
@@ -1690,7 +1690,7 @@ public:
   PipeHandler(EventBase* eventBase, int fd)
     : EventHandler(eventBase, fd) {}
 
-  void handlerReady(uint16_t events) noexcept override { abort(); }
+  void handlerReady(uint16_t /* events */) noexcept override { abort(); }
 };
 
 TEST(EventBaseTest, StopBeforeLoop) {

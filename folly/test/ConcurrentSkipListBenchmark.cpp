@@ -384,13 +384,13 @@ class ConcurrentAccessData {
     FOR_EACH(lock, locks_) delete *lock;
   }
 
-  inline bool skipListFind(int idx, ValueType val) {
+  inline bool skipListFind(int /* idx */, ValueType val) {
     return skipList_.contains(val);
   }
-  inline void skipListInsert(int idx, ValueType val) {
+  inline void skipListInsert(int /* idx */, ValueType val) {
     skipList_.add(val);
   }
-  inline void skipListErase(int idx, ValueType val) {
+  inline void skipListErase(int /* idx */, ValueType val) {
     skipList_.remove(val);
   }
 

@@ -80,7 +80,7 @@ template <class U, class T> struct TupleTo;
 // Base case: empty typle -> empty tuple
 template <>
 struct TupleTo<std::tuple<>, std::tuple<>> {
-  static std::tuple<> convert(const std::tuple<>& input) {
+  static std::tuple<> convert(const std::tuple<>& /* input */) {
     return std::make_tuple();
   }
 };

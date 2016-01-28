@@ -277,9 +277,7 @@ void AsyncIOQueue::submit(OpFactory op) {
   maybeDequeue();
 }
 
-void AsyncIOQueue::onCompleted(AsyncIOOp* op) {
-  maybeDequeue();
-}
+void AsyncIOQueue::onCompleted(AsyncIOOp* /* op */) { maybeDequeue(); }
 
 void AsyncIOQueue::maybeDequeue() {
   while (!queue_.empty() && asyncIO_->pending() < asyncIO_->capacity()) {

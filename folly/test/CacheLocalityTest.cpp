@@ -346,7 +346,7 @@ TEST(ThreadId, SimplePthread) {
 
 static FOLLY_TLS unsigned testingCpu = 0;
 
-static int testingGetcpu(unsigned* cpu, unsigned* node, void* unused) {
+static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   if (cpu != nullptr) {
     *cpu = testingCpu;
   }

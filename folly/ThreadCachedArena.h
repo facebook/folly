@@ -52,7 +52,7 @@ class ThreadCachedArena {
     return arena->allocate(size);
   }
 
-  void deallocate(void* p) {
+  void deallocate(void* /* p */) {
     // Deallocate? Never!
   }
 

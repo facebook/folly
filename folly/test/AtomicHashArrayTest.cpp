@@ -65,9 +65,7 @@ class MmapAllocator {
     return !(*this == other);
   }
 
-  bool operator==(const MmapAllocator<T>& other) const {
-    return true;
-  }
+  bool operator==(const MmapAllocator<T>& /* other */) const { return true; }
 
   template <class... Args>
   void construct(T* p, Args&&... args) {

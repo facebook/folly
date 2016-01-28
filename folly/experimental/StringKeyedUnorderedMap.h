@@ -108,9 +108,8 @@ public:
   }
 
   StringKeyedUnorderedMap(StringKeyedUnorderedMap&& other,
-                          const allocator_type& a) noexcept
-      : Base(std::move(other)/*, a*/ /* not supported by gcc */) {
-  }
+                          const allocator_type& /* a */) noexcept
+      : Base(std::move(other) /*, a*/ /* not supported by gcc */) {}
 
   StringKeyedUnorderedMap(std::initializer_list<value_type> il)
       : StringKeyedUnorderedMap(il.begin(), il.end()) {

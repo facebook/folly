@@ -204,7 +204,7 @@ void BM_ProducerConsumerAffinity(int iters, int size) {
   delete test;
 }
 
-void BM_ProducerConsumerLatency(int iters, int size) {
+void BM_ProducerConsumerLatency(int /* iters */, int size) {
   BenchmarkSuspender susp;
   CHECK_GT(size, 0);
   LatencyTest<LatencyQueueType> *test =

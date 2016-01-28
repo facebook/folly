@@ -365,7 +365,7 @@ void SSLContext::switchCiphersIfTLS11(
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
-int SSLContext::alpnSelectCallback(SSL* ssl,
+int SSLContext::alpnSelectCallback(SSL* /* ssl */,
                                    const unsigned char** out,
                                    unsigned char* outlen,
                                    const unsigned char* in,
@@ -570,9 +570,12 @@ bool SSLContext::canUseFalseStartWithCipher(const SSL_CIPHER *cipher) {
 }
 #endif
 
-int SSLContext::selectNextProtocolCallback(
-  SSL* ssl, unsigned char **out, unsigned char *outlen,
-  const unsigned char *server, unsigned int server_len, void *data) {
+int SSLContext::selectNextProtocolCallback(SSL* /* ssl */,
+                                           unsigned char** out,
+                                           unsigned char* outlen,
+                                           const unsigned char* server,
+                                           unsigned int server_len,
+                                           void* data) {
 
   SSLContext* ctx = (SSLContext*)data;
   if (ctx->advertisedNextProtocols_.size() > 1) {
@@ -883,7 +886,7 @@ bool OpenSSLUtils::getPeerAddressFromX509StoreCtx(X509_STORE_CTX* ctx,
 
 bool OpenSSLUtils::validatePeerCertNames(X509* cert,
                                          const sockaddr* addr,
-                                         socklen_t addrLen) {
+                                         socklen_t /* addrLen */) {
   // Try to extract the names within the SAN extension from the certificate
   auto altNames =
     reinterpret_cast<STACK_OF(GENERAL_NAME)*>(

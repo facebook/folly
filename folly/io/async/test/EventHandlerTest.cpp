@@ -89,13 +89,13 @@ TEST_F(EventHandlerTest, simple) {
   EventHandlerMock eh(&eb, efd);
   eh.registerHandler(EventHandler::READ | EventHandler::PERSIST);
   EXPECT_CALL(eh, _handlerReady(_))
-    .Times(writes)
-    .WillRepeatedly(Invoke([&](uint16_t events) {
-      efd_read();
-      if (--readsRemaining == 0) {
-        eh.unregisterHandler();
-      }
-    }));
+      .Times(writes)
+      .WillRepeatedly(Invoke([&](uint16_t /* events */) {
+        efd_read();
+        if (--readsRemaining == 0) {
+          eh.unregisterHandler();
+        }
+      }));
   efd_write(writes);
   eb.loop();
 
@@ -108,28 +108,29 @@ TEST_F(EventHandlerTest, many_concurrent_producers) {
   size_t readsRemaining = writes;
 
   runInThreadsAndWait({
-    [&] {
-      EventBase eb;
-      EventHandlerMock eh(&eb, efd);
-      eh.registerHandler(EventHandler::READ | EventHandler::PERSIST);
-      EXPECT_CALL(eh, _handlerReady(_))
-        .Times(writes)
-        .WillRepeatedly(Invoke([&](uint16_t events) {
-          efd_read();
-          if (--readsRemaining == 0) {
-            eh.unregisterHandler();
-          }
-        }));
-      eb.loop();
-    },
-    [&] {
-      runInThreadsAndWait(nproducers, [&](size_t k) {
-        for (size_t i = 0; i < writes / nproducers; ++i) {
-          this_thread::sleep_for(chrono::milliseconds(1));
-          efd_write(1);
-        }
-      });
-    },
+      [&] {
+        EventBase eb;
+        EventHandlerMock eh(&eb, efd);
+        eh.registerHandler(EventHandler::READ | EventHandler::PERSIST);
+        EXPECT_CALL(eh, _handlerReady(_))
+            .Times(writes)
+            .WillRepeatedly(Invoke([&](uint16_t /* events */) {
+              efd_read();
+              if (--readsRemaining == 0) {
+                eh.unregisterHandler();
+              }
+            }));
+        eb.loop();
+      },
+      [&] {
+        runInThreadsAndWait(nproducers,
+                            [&](size_t /* k */) {
+                              for (size_t i = 0; i < writes / nproducers; ++i) {
+                                this_thread::sleep_for(chrono::milliseconds(1));
+                                efd_write(1);
+                              }
+                            });
+      },
   });
 
   EXPECT_EQ(0, readsRemaining);
@@ -145,37 +146,40 @@ TEST_F(EventHandlerTest, many_concurrent_consumers) {
   MPMCQueue<nullptr_t> queue(writes / 10);
 
   runInThreadsAndWait({
-    [&] {
-      runInThreadsAndWait(nconsumers, [&](size_t k) {
-        size_t thReadsRemaining = writes / nconsumers;
-        EventBase eb;
-        EventHandlerMock eh(&eb, efd);
-        eh.registerHandler(EventHandler::READ | EventHandler::PERSIST);
-        EXPECT_CALL(eh, _handlerReady(_))
-          .WillRepeatedly(Invoke([&](uint16_t events) {
-            nullptr_t val;
-            if (!queue.readIfNotEmpty(val)) {
-              return;
-            }
-            efd_read();
-            --readsRemaining;
-            if (--thReadsRemaining == 0) {
-              eh.unregisterHandler();
-            }
-          }));
-        eb.loop();
-      });
-    },
-    [&] {
-      runInThreadsAndWait(nproducers, [&](size_t k) {
-        for (size_t i = 0; i < writes / nproducers; ++i) {
-          this_thread::sleep_for(chrono::milliseconds(1));
-          queue.blockingWrite(nullptr);
-          efd_write(1);
-          --writesRemaining;
-        }
-      });
-    },
+      [&] {
+        runInThreadsAndWait(
+            nconsumers,
+            [&](size_t /* k */) {
+              size_t thReadsRemaining = writes / nconsumers;
+              EventBase eb;
+              EventHandlerMock eh(&eb, efd);
+              eh.registerHandler(EventHandler::READ | EventHandler::PERSIST);
+              EXPECT_CALL(eh, _handlerReady(_))
+                  .WillRepeatedly(Invoke([&](uint16_t /* events */) {
+                    nullptr_t val;
+                    if (!queue.readIfNotEmpty(val)) {
+                      return;
+                    }
+                    efd_read();
+                    --readsRemaining;
+                    if (--thReadsRemaining == 0) {
+                      eh.unregisterHandler();
+                    }
+                  }));
+              eb.loop();
+            });
+      },
+      [&] {
+        runInThreadsAndWait(nproducers,
+                            [&](size_t /* k */) {
+                              for (size_t i = 0; i < writes / nproducers; ++i) {
+                                this_thread::sleep_for(chrono::milliseconds(1));
+                                queue.blockingWrite(nullptr);
+                                efd_write(1);
+                                --writesRemaining;
+                              }
+                            });
+      },
   });
 
   EXPECT_EQ(0, writesRemaining);

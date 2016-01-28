@@ -170,9 +170,7 @@ TEST(Executor, ThrowableThen) {
 
 class CrappyExecutor : public Executor {
  public:
-  void add(Func f) override {
-    throw std::runtime_error("bad");
-  }
+  void add(Func /* f */) override { throw std::runtime_error("bad"); }
 };
 
 TEST(Executor, CrappyExecutor) {
