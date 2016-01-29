@@ -250,3 +250,27 @@ void BENCHFUN(short_append)(size_t iters, size_t arg) {
 }
 BENCHMARK_PARAM(BENCHFUN(short_append), 23);
 BENCHMARK_PARAM(BENCHFUN(short_append), 1024);
+
+void BENCHFUN(getline)(size_t iters, size_t arg) {
+  string lines;
+
+  BENCHMARK_SUSPEND {
+    string line;
+    FOR_EACH_RANGE(i, 0, 512) {
+      randomString(&line, arg);
+      lines += line;
+      lines += '\n';
+    }
+  }
+
+  STRING line;
+  while (iters) {
+    std::istringstream is(lines);
+    while (iters && getline(is, line)) {
+      folly::doNotOptimizeAway(line.size());
+      iters--;
+    }
+  }
+}
+BENCHMARK_PARAM(BENCHFUN(getline), 23);
+BENCHMARK_PARAM(BENCHFUN(getline), 1000);

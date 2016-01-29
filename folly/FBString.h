@@ -1333,10 +1333,8 @@ public:
   }
 
   basic_fbstring& append(const value_type* s, size_type n) {
-#ifndef NDEBUG
     Invariant checker(*this);
-    (void) checker;
-#endif
+
     if (FBSTRING_UNLIKELY(!n)) {
       // Unlikely but must be done
       return *this;
@@ -1411,7 +1409,7 @@ public:
 
   basic_fbstring& assign(const value_type* s, const size_type n) {
     Invariant checker(*this);
-    (void) checker;
+
     if (size() >= n) {
       std::copy(s, s + n, begin());
       resize(n);
@@ -1473,13 +1471,56 @@ public:
     return begin() + pos;
   }
 
+#ifndef _LIBSTDCXX_FBSTRING
+ private:
+  typedef std::basic_istream<value_type, traits_type> istream_type;
+
+ public:
+  friend inline istream_type& getline(istream_type& is,
+                                      basic_fbstring& str,
+                                      value_type delim) {
+    Invariant checker(str);
+
+    str.clear();
+    size_t size = 0;
+    while (true) {
+      size_t avail = str.capacity() - size;
+      // fbstring has 1 byte extra capacity for the null terminator,
+      // and getline null-terminates the read string.
+      is.getline(str.store_.expand_noinit(avail), avail + 1, delim);
+      size += is.gcount();
+
+      if (is.bad() || is.eof() || !is.fail()) {
+        // Done by either failure, end of file, or normal read.
+        if (!is.bad() && !is.eof()) {
+          --size; // gcount() also accounts for the delimiter.
+        }
+        str.resize(size);
+        break;
+      }
+
+      assert(size == str.size());
+      assert(size == str.capacity());
+      // Start at minimum allocation 63 + terminator = 64.
+      str.reserve(std::max<size_t>(63, 3 * size / 2));
+      // Clear the error so we can continue reading.
+      is.clear();
+    }
+    return is;
+  }
+
+  friend inline istream_type& getline(istream_type& is, basic_fbstring& str) {
+    return getline(is, str, '\n');
+  }
+#endif
+
 private:
   template <int i> class Selector {};
 
   iterator insertImplDiscr(const_iterator p,
                            size_type n, value_type c, Selector<1>) {
     Invariant checker(*this);
-    (void) checker;
+
     auto const pos = p - begin();
     assert(p >= begin() && p <= end());
     if (capacity() - size() < n) {
@@ -1517,7 +1558,7 @@ private:
   iterator insertImpl(const_iterator i,
                   FwdIterator s1, FwdIterator s2, std::forward_iterator_tag) {
     Invariant checker(*this);
-    (void) checker;
+
     const size_type pos = i - begin();
     const typename std::iterator_traits<FwdIterator>::difference_type n2 =
       std::distance(s1, s2);
@@ -1581,7 +1622,7 @@ public:
 
   basic_fbstring& erase(size_type pos = 0, size_type n = npos) {
     Invariant checker(*this);
-    (void) checker;
+
     enforce(pos <= length(), std::__throw_out_of_range, "");
     procrustes(n, length() - pos);
     std::copy(begin() + pos + n, end(), begin() + pos);
@@ -1635,7 +1676,7 @@ public:
   basic_fbstring& replace(size_type pos, size_type n1,
                           StrOrLength s_or_n2, NumOrChar n_or_c) {
     Invariant checker(*this);
-    (void) checker;
+
     enforce(pos <= size(), std::__throw_out_of_range, "");
     procrustes(n1, length() - pos);
     const iterator b = begin() + pos;
@@ -1714,7 +1755,6 @@ private:
   void replaceImpl(iterator i1, iterator i2,
                    FwdIterator s1, FwdIterator s2, std::forward_iterator_tag) {
     Invariant checker(*this);
-    (void) checker;
 
     // Handle aliased replace
     if (replaceAliased(i1, i2, s1, s2,
@@ -2405,57 +2445,6 @@ operator<<(
 #endif
   return os;
 }
-
-#ifndef _LIBSTDCXX_FBSTRING
-
-template <typename E, class T, class A, class S>
-inline
-std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-                   typename basic_fbstring<E, T, A, S>::traits_type>&
-getline(
-  std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-  typename basic_fbstring<E, T, A, S>::traits_type>& is,
-    basic_fbstring<E, T, A, S>& str,
-  typename basic_fbstring<E, T, A, S>::value_type delim) {
-  // Use the nonstandard getdelim()
-  char * buf = nullptr;
-  size_t size = 0;
-  for (;;) {
-    // This looks quadratic but it really depends on realloc
-    auto const newSize = size + 128;
-    buf = static_cast<char*>(checkedRealloc(buf, newSize));
-    is.getline(buf + size, newSize - size, delim);
-    if (is.bad() || is.eof() || !is.fail()) {
-      // done by either failure, end of file, or normal read
-      size += std::strlen(buf + size);
-      break;
-    }
-    // Here we have failed due to too short a buffer
-    // Minus one to discount the terminating '\0'
-    size = newSize - 1;
-    assert(buf[size] == 0);
-    // Clear the error so we can continue reading
-    is.clear();
-  }
-  basic_fbstring<E, T, A, S> result(buf, size, size + 1,
-                                    AcquireMallocatedString());
-  result.swap(str);
-  return is;
-}
-
-template <typename E, class T, class A, class S>
-inline
-std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-                   typename basic_fbstring<E, T, A, S>::traits_type>&
-getline(
-  std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-  typename basic_fbstring<E, T, A, S>::traits_type>& is,
-  basic_fbstring<E, T, A, S>& str) {
-  // Just forward to the version with a delimiter
-  return getline(is, str, '\n');
-}
-
-#endif
 
 template <typename E1, class T, class A, class S>
 const typename basic_fbstring<E1, T, A, S>::size_type

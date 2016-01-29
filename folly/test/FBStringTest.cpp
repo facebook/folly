@@ -22,9 +22,9 @@
 #include <atomic>
 #include <cstdlib>
 
-#include <list>
-#include <fstream>
 #include <iomanip>
+#include <list>
+#include <sstream>
 #include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
@@ -1114,7 +1114,7 @@ TEST(FBString, testAllClauses) {
 }
 
 TEST(FBString, testGetline) {
-  fbstring s1 = "\
+  string s1 = "\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Cras accumsan \n\
 elit ut urna consectetur in sagittis mi auctor. Nulla facilisi. In nec \n\
 dolor leo, vitae imperdiet neque. Donec ut erat mauris, a faucibus \n\
@@ -1132,28 +1132,17 @@ massa, ut accumsan magna. Donec imperdiet tempor nisi et \n\
 laoreet. Phasellus lectus quam, ultricies ut tincidunt in, dignissim \n\
 id eros. Mauris vulputate tortor nec neque pellentesque sagittis quis \n\
 sed nisl. In diam lacus, lobortis ut posuere nec, ornare id quam.";
-  char f[] = "/tmp/fbstring_testing.XXXXXX";
-  int fd = mkstemp(f);
-  EXPECT_TRUE(fd > 0);
-  if (fd > 0) {
-    close(fd);  // Yeah
-    std::ofstream out(f);
-    if (!(out << s1)) {
-      EXPECT_TRUE(0) << "Couldn't write to temp file.";
-      return;
-    }
-  }
+
   vector<fbstring> v;
   boost::split(v, s1, boost::is_any_of("\n"));
   {
-    ifstream input(f);
+    istringstream input(s1);
     fbstring line;
     FOR_EACH (i, v) {
       EXPECT_TRUE(!getline(input, line).fail());
       EXPECT_EQ(line, *i);
     }
   }
-  unlink(f);
 }
 
 TEST(FBString, testMoveCtor) {
