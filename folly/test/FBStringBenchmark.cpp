@@ -39,8 +39,6 @@ using namespace folly;
 static const int seed = folly::randomNumberSeed();
 typedef boost::mt19937 RandomT;
 static RandomT rng(seed);
-static const size_t maxString = 100;
-static const bool avoidAliasing = true;
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {

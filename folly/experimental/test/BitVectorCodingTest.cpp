@@ -70,8 +70,6 @@ TEST_F(BitVectorCodingTest, SkipForwardPointers) {
 
 namespace bm {
 
-constexpr size_t k1M = 1000000;
-
 typedef BitVectorEncoder<uint32_t, uint32_t, 128, 128> Encoder;
 typedef BitVectorReader<Encoder> Reader;
 

@@ -84,8 +84,6 @@ TEST_F(EliasFanoCodingTest, Select64) {
 
 namespace bm {
 
-constexpr size_t k1M = 1000000;
-
 typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
 typedef EliasFanoReader<Encoder> Reader;
 
