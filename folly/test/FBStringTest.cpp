@@ -591,7 +591,7 @@ template <class String> void clause11_21_4_7_1(String & test) {
   // exercise get_allocator()
   String s;
   randomString(&s, maxString);
-  assert(test.get_allocator() == s.get_allocator());
+  DCHECK(test.get_allocator() == s.get_allocator());
 }
 
 template <class String> void clause11_21_4_7_2_a(String & test) {

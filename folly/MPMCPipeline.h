@@ -161,12 +161,15 @@ template <class In, class... Stages> class MPMCPipeline {
 #endif
         remainingUses_(amplification),
         value_(value * amplification) {
+      (void)owner; // -Wunused-parameter
     }
 
     uint64_t use(MPMCPipeline* owner) {
       CHECK_GT(remainingUses_--, 0);
 #ifndef NDEBUG
       CHECK(owner == owner_);
+#else
+      (void)owner; // -Wunused-parameter
 #endif
       return value_++;
     }
