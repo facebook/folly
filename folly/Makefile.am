@@ -1,4 +1,4 @@
-if HAVE_LINUX
+if FOLLY_TESTMAIN
 SUBDIRS = . experimental init test
 else
 SUBDIRS = . test

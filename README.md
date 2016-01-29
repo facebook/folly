@@ -50,7 +50,13 @@ sudo apt-get install \
     zlib1g-dev \
     binutils-dev \
     libjemalloc-dev \
-    libssl-dev \
+    libssl-dev 
+```
+
+If advanced dubugging functionality for tests are required
+
+```
+sudo apt-get install \
     libunwind8-dev \
     libelf-dev \
     libdwarf-dev
@@ -166,6 +172,8 @@ Other Linux distributions
     - double-conversion-devel
     - openssl-devel
     - libevent-devel
+
+  Optional
     - libdwarf-dev
     - libelf-dev
     - libunwind8-dev

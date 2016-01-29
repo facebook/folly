@@ -468,9 +468,21 @@ AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
 AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 AC_CHECK_HEADER([zstd.h], AC_CHECK_LIB([zstd], [main]))
-AC_CHECK_HEADERS([libdwarf.h dwarf.h],, AC_MSG_ERROR([Please install libdwarf development package]))
-AC_CHECK_HEADERS([libelf.h elf.h],, AC_MSG_ERROR([Please install libelf development package]))
-AC_CHECK_HEADERS(libunwind.h, ac_cv_have_libunwind_h=1, ac_cv_have_libunwind_h=0)
+
+AC_ARG_ENABLE([follytestmain],
+   AS_HELP_STRING([--enable-follytestmain], [enables using main function from folly for tests]),
+   [follytestmain=${enableval}], [follytestmain=no])
+
+use_follytestmain=yes
+if test "x${follytestmain}" = "xyes"; then
+   AC_CHECK_HEADERS([libdwarf.h dwarf.h],, AC_MSG_ERROR([Please install libdwarf development package]))
+   AC_CHECK_HEADERS([libelf.h elf.h],, AC_MSG_ERROR([Please install libelf development package]))
+   AC_CHECK_HEADERS([libunwind.h],, AC_MSG_ERROR([Please install libinwind development package]))
+else
+   AC_CHECK_HEADERS([libdwarf.h dwarf.h],, [use_follytestmain=no])
+   AC_CHECK_HEADERS([libelf.h elf.h],, [use_follytestmain=no])
+   AC_CHECK_HEADERS([libunwind.h],, [use_follytestmain=no])
+fi
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
@@ -493,6 +505,7 @@ AM_CONDITIONAL([HAVE_WEAK_SYMBOLS],
 AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT], [test "$ac_cv_header_bits_functexcept_h" = "yes"])
 AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
                [test "$folly_cv_prog_cc_have_extrandom_sfmt19937" = "yes"])
+AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
 
 # Output
 AC_CONFIG_FILES([Makefile

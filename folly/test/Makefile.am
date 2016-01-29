@@ -20,7 +20,7 @@ check_PROGRAMS =
 libgtest_la_CPPFLAGS = -Igtest-1.7.0 -Igtest-1.7.0/src
 libgtest_la_SOURCES = gtest-1.7.0/src/gtest-all.cc
 
-if HAVE_LINUX
+if FOLLY_TESTMAIN
 libfollytestmain_la_CPPFLAGS = $(AM_CPPFLAGS) $(libgtest_la_CPPFLAGS)
 libfollytestmain_la_SOURCES = $(libgtest_la_SOURCES) common/TestMain.cpp
 libfollytestmain_la_LIBADD = $(top_builddir)/init/libfollyinit.la $(top_builddir)/libfolly.la
