@@ -270,7 +270,7 @@ void AsyncServerSocket::useExistingSockets(const std::vector<int>& fds) {
     SocketAddress address;
     address.setFromLocalAddress(fd);
 
-    setupSocket(fd);
+    setupSocket(fd, address.getFamily());
     sockets_.emplace_back(eventBase_, fd, this, address.getFamily());
     sockets_.back().changeHandlerFD(fd);
   }
@@ -377,7 +377,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     CHECK_GE(s, 0);
 
     try {
-      setupSocket(s);
+      setupSocket(s, res->ai_family);
     } catch (...) {
       closeNoInt(s);
       throw;
@@ -633,7 +633,7 @@ int AsyncServerSocket::createSocket(int family) {
   }
 
   try {
-    setupSocket(fd);
+    setupSocket(fd, family);
   } catch (...) {
     closeNoInt(fd);
     throw;
@@ -641,11 +641,7 @@ int AsyncServerSocket::createSocket(int family) {
   return fd;
 }
 
-void AsyncServerSocket::setupSocket(int fd) {
-  // Get the address family
-  SocketAddress address;
-  address.setFromLocalAddress(fd);
-
+void AsyncServerSocket::setupSocket(int fd, int family) {
   // Put the socket in non-blocking mode
   if (fcntl(fd, F_SETFL, O_NONBLOCK) != 0) {
     folly::throwSystemError(errno,
@@ -665,9 +661,15 @@ void AsyncServerSocket::setupSocket(int fd) {
       setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) != 0) {
     LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
                << strerror(errno);
+#ifdef WIN32
+    folly::throwSystemError(errno, "failed to bind to the async server socket");
+#else
+    SocketAddress address;
+    address.setFromLocalAddress(fd);
     folly::throwSystemError(errno,
                             "failed to bind to async server socket: " +
                             address.describe());
+#endif
   }
 
   // Set keepalive as desired
@@ -687,7 +689,6 @@ void AsyncServerSocket::setupSocket(int fd) {
   // Set TCP nodelay if available, MAC OS X Hack
   // See http://lists.danga.com/pipermail/memcached/2005-March/001240.html
 #ifndef TCP_NOPUSH
-  auto family = address.getFamily();
   if (family != AF_UNIX) {
     if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) != 0) {
       // This isn't a fatal error; just log an error message and continue
