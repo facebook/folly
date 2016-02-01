@@ -15,6 +15,7 @@
  */
 
 #include <folly/Optional.h>
+#include <folly/Portability.h>
 
 #include <memory>
 #include <vector>
