@@ -122,9 +122,9 @@ void checkTWang(uint64_t r) {
 TEST(Hash, TWang_Unmix64) {
   // We'll try (1 << i), (1 << i) + 1, (1 << i) - 1
   for (int i = 1; i < 64; i++) {
-    checkTWang((1U << i) - 1);
-    checkTWang(1U << i);
-    checkTWang((1U << i) + 1);
+    checkTWang((uint64_t(1) << i) - 1);
+    checkTWang(uint64_t(1) << i);
+    checkTWang((uint64_t(1) << i) + 1);
   }
 }
 
