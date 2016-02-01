@@ -77,10 +77,22 @@ class SSLContext {
      TLSv1
   };
 
-  enum SSLVerifyPeerEnum{
+  /**
+   * Defines the way that peers are verified.
+   **/
+  enum SSLVerifyPeerEnum {
+    // Used by AsyncSSLSocket to delegate to the SSLContext's setting
     USE_CTX,
+    // For server side - request a client certificate and verify the
+    // certificate if it is sent.  Does not fail if the client does not present
+    // a certificate.
+    // For client side - validates the server certificate or fails.
     VERIFY,
+    // For server side - same as VERIFY but will fail if no certificate
+    // is sent.
+    // For client side - same as VERIFY.
     VERIFY_REQ_CLIENT_CERT,
+    // No verification is done for both server and client side.
     NO_VERIFY
   };
 
