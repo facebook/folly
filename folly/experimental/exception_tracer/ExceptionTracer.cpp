@@ -55,12 +55,12 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       << ")\n";
   try {
     size_t frameCount = info.frames.size();
-    // Skip our own internal frames
-    static constexpr size_t skip = 3;
 
-    if (frameCount > skip) {
-      auto addresses = info.frames.data() + skip;
-      frameCount -= skip;
+    // Skip our own internal frames
+    static constexpr size_t kInternalFramesNumber = 3;
+    if (frameCount > kInternalFramesNumber) {
+      auto addresses = info.frames.data() + kInternalFramesNumber;
+      frameCount -= kInternalFramesNumber;
 
       std::vector<SymbolizedFrame> frames;
       frames.resize(frameCount);

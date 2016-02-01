@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-#include <dlfcn.h>
-#include <pthread.h>
-#include <stdlib.h>
+#include <folly/experimental/exception_tracer/ExceptionTracerLib.h>
 
-#include <glog/logging.h>
+#include <dlfcn.h>
+
+#include <vector>
 
 #include <folly/Portability.h>
-#include <folly/experimental/exception_tracer/StackTrace.h>
-#include <folly/experimental/exception_tracer/ExceptionAbi.h>
-#include <folly/experimental/exception_tracer/ExceptionTracer.h>
-#include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/SharedMutex.h>
+#include <folly/Synchronized.h>
 
 namespace __cxxabiv1 {
 
@@ -34,102 +32,70 @@ FOLLY_NORETURN void __cxa_throw(void* thrownException,
                                 void (*destructor)(void*));
 void* __cxa_begin_catch(void* excObj) throw();
 FOLLY_NORETURN void __cxa_rethrow(void);
+void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }
 
-}  // namespace __cxxabiv1
+} // namespace __cxxabiv1
 
 using namespace folly::exception_tracer;
 
 namespace {
 
-FOLLY_TLS bool invalid;
-FOLLY_TLS StackTraceStack activeExceptions;
-FOLLY_TLS StackTraceStack caughtExceptions;
-pthread_once_t initialized = PTHREAD_ONCE_INIT;
-
-extern "C" {
-FOLLY_NORETURN typedef void (*CxaThrowType)(void*,
-                                            std::type_info*,
-                                            void (*)(void*));
-typedef void* (*CxaBeginCatchType)(void*);
-FOLLY_NORETURN typedef void (*CxaRethrowType)(void);
-typedef void (*CxaEndCatchType)(void);
-
-CxaThrowType orig_cxa_throw;
-CxaBeginCatchType orig_cxa_begin_catch;
-CxaRethrowType orig_cxa_rethrow;
-CxaEndCatchType orig_cxa_end_catch;
-}  // extern "C"
-
-FOLLY_NORETURN typedef void (*RethrowExceptionType)(std::exception_ptr);
-RethrowExceptionType orig_rethrow_exception;
-
-void initialize() {
-  orig_cxa_throw = (CxaThrowType)dlsym(RTLD_NEXT, "__cxa_throw");
-  orig_cxa_begin_catch =
-    (CxaBeginCatchType)dlsym(RTLD_NEXT, "__cxa_begin_catch");
-  orig_cxa_rethrow =
-    (CxaRethrowType)dlsym(RTLD_NEXT, "__cxa_rethrow");
-  orig_cxa_end_catch = (CxaEndCatchType)dlsym(RTLD_NEXT, "__cxa_end_catch");
-  // Mangled name for std::rethrow_exception
-  // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
-  // is typedef'ed to a type in namespace __exception_ptr
-  orig_rethrow_exception =
-    (RethrowExceptionType)dlsym(
-        RTLD_NEXT,
-        "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE");
-
-  if (!orig_cxa_throw || !orig_cxa_begin_catch || !orig_cxa_rethrow ||
-      !orig_cxa_end_catch || !orig_rethrow_exception) {
-    abort();  // what else can we do?
+template <typename Function>
+class CallbackHolder {
+ public:
+  void registerCallback(Function f) {
+    SYNCHRONIZED(callbacks_) { callbacks_.push_back(std::move(f)); }
   }
-}
 
-}  // namespace
-
-// This function is exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" StackTraceStack* getExceptionStackTraceStack() {
-  return invalid ? nullptr : &caughtExceptions;
-}
-
-namespace {
-
-// Make sure we're counting stack frames correctly, don't inline.
-FOLLY_NOINLINE void addActiveException();
-
-void addActiveException() {
-  pthread_once(&initialized, initialize);
-  // Capture stack trace
-  if (!invalid) {
-    if (!activeExceptions.pushCurrent()) {
-      activeExceptions.clear();
-      caughtExceptions.clear();
-      invalid = true;
+  // always inline to enforce kInternalFramesNumber
+  template <typename... Args>
+  FOLLY_ALWAYS_INLINE void invoke(Args... args) {
+    SYNCHRONIZED_CONST(callbacks_) {
+      for (auto& cb : callbacks_) {
+        cb(args...);
+      }
     }
   }
-}
 
-void moveTopException(StackTraceStack& from, StackTraceStack& to) {
-  if (invalid) {
-    return;
-  }
-  if (!to.moveTopFrom(from)) {
-    from.clear();
-    to.clear();
-    invalid = true;
-  }
-}
+ private:
+  folly::Synchronized<std::vector<Function>> callbacks_;
+};
 
-}  // namespace
+} // namespace
+
+namespace folly {
+namespace exception_tracer {
+
+#define DECLARE_CALLBACK(NAME)                         \
+  CallbackHolder<NAME##Type>& get##NAME##Callbacks() { \
+    static CallbackHolder<NAME##Type> Callbacks;       \
+    return Callbacks;                                  \
+  }                                                    \
+  void register##NAME##Callback(NAME##Type callback) { \
+    get##NAME##Callbacks().registerCallback(callback); \
+  }
+
+DECLARE_CALLBACK(CxaThrow);
+DECLARE_CALLBACK(CxaBeginCatch);
+DECLARE_CALLBACK(CxaRethrow);
+DECLARE_CALLBACK(CxaEndCatch);
+DECLARE_CALLBACK(RethrowException);
+
+} // exception_tracer
+} // folly
 
 namespace __cxxabiv1 {
 
 void __cxa_throw(void* thrownException,
                  std::type_info* type,
                  void (*destructor)(void*)) {
-  addActiveException();
+  static auto orig_cxa_throw =
+      reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
+  getCxaThrowCallbacks().invoke(thrownException, type, destructor);
   orig_cxa_throw(thrownException, type, destructor);
+  __builtin_unreachable(); // orig_cxa_throw never returns
 }
 
 void __cxa_rethrow() {
@@ -138,57 +104,44 @@ void __cxa_rethrow() {
   // we'll implement something simpler (and slower): we pop the exception from
   // the caught stack, and push it back onto the active stack; this way, our
   // implementation of __cxa_begin_catch doesn't have to do anything special.
-  moveTopException(caughtExceptions, activeExceptions);
+  static auto orig_cxa_rethrow = reinterpret_cast<decltype(&__cxa_rethrow)>(
+      dlsym(RTLD_NEXT, "__cxa_rethrow"));
+  getCxaRethrowCallbacks().invoke();
   orig_cxa_rethrow();
+  __builtin_unreachable(); // orig_cxa_rethrow never returns
 }
 
-void* __cxa_begin_catch(void *excObj) throw() {
+void* __cxa_begin_catch(void* excObj) throw() {
   // excObj is a pointer to the unwindHeader in __cxa_exception
-  moveTopException(activeExceptions, caughtExceptions);
+  static auto orig_cxa_begin_catch =
+      reinterpret_cast<decltype(&__cxa_begin_catch)>(
+          dlsym(RTLD_NEXT, "__cxa_begin_catch"));
+  getCxaBeginCatchCallbacks().invoke(excObj);
   return orig_cxa_begin_catch(excObj);
 }
 
 void __cxa_end_catch() {
-  if (!invalid) {
-    __cxa_exception* top = __cxa_get_globals_fast()->caughtExceptions;
-    // This is gcc specific and not specified in the ABI:
-    // abs(handlerCount) is the number of active handlers, it's negative
-    // for rethrown exceptions and positive (always 1) for regular exceptions.
-    // In the rethrow case, we've already popped the exception off the
-    // caught stack, so we don't do anything here.
-    if (top->handlerCount == 1) {
-      if (!caughtExceptions.pop()) {
-        activeExceptions.clear();
-        invalid = true;
-      }
-    }
-  }
+  static auto orig_cxa_end_catch = reinterpret_cast<decltype(&__cxa_end_catch)>(
+      dlsym(RTLD_NEXT, "__cxa_end_catch"));
+  getCxaEndCatchCallbacks().invoke();
   orig_cxa_end_catch();
 }
 
-}  // namespace __cxxabiv1
+} // namespace __cxxabiv1
 
 namespace std {
 
 void rethrow_exception(std::exception_ptr ep) {
-  addActiveException();
+  // Mangled name for std::rethrow_exception
+  // TODO(tudorb): Dicey, as it relies on the fact that std::exception_ptr
+  // is typedef'ed to a type in namespace __exception_ptr
+  static auto orig_rethrow_exception =
+      reinterpret_cast<decltype(&rethrow_exception)>(
+          dlsym(RTLD_NEXT,
+                "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
+  getRethrowExceptionCallbacks().invoke(ep);
   orig_rethrow_exception(ep);
+  __builtin_unreachable(); // orig_rethrow_exception never returns
 }
 
-}  // namespace std
-
-
-namespace {
-
-struct Initializer {
-  Initializer() {
-    try {
-      ::folly::exception_tracer::installHandlers();
-    } catch (...) {
-    }
-  }
-};
-
-Initializer initializer;
-
-}  // namespace
+} // namespace std
