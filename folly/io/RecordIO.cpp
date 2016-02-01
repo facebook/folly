@@ -174,7 +174,7 @@ size_t prependHeader(std::unique_ptr<IOBuf>& buf, uint32_t fileId) {
 
 RecordInfo validateRecord(ByteRange range, uint32_t fileId) {
   if (range.size() <= headerSize()) {  // records may not be empty
-    return {0};
+    return {0, {}};
   }
   const Header* header = reinterpret_cast<const Header*>(range.begin());
   range.advance(sizeof(Header));
@@ -184,14 +184,14 @@ RecordInfo validateRecord(ByteRange range, uint32_t fileId) {
       header->flags != 0 ||
       (fileId != 0 && header->fileId != fileId) ||
       header->dataLength > range.size()) {
-    return {0};
+    return {0, {}};
   }
   if (headerHash(*header) != header->headerHash) {
-    return {0};
+    return {0, {}};
   }
   range.reset(range.begin(), header->dataLength);
   if (dataHash(range) != header->dataHash) {
-    return {0};
+    return {0, {}};
   }
   return {header->fileId, range};
 }
@@ -226,7 +226,7 @@ RecordInfo findRecord(ByteRange searchRange,
     start += sizeof(magic);
   }
 
-  return {0};
+  return {0, {}};
 }
 
 }  // namespace

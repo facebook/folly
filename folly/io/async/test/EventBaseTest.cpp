@@ -190,9 +190,9 @@ TEST(EventBaseTest, ReadEvent) {
 
   // Register timeouts to perform two write events
   ScheduledEvent events[] = {
-    { 10, EventHandler::WRITE, 2345 },
-    { 160, EventHandler::WRITE, 99 },
-    { 0, 0, 0 },
+    { 10, EventHandler::WRITE, 2345, 0 },
+    { 160, EventHandler::WRITE, 99, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -231,11 +231,11 @@ TEST(EventBaseTest, ReadPersist) {
 
   // Register several timeouts to perform writes
   ScheduledEvent events[] = {
-    { 10,  EventHandler::WRITE, 1024 },
-    { 20,  EventHandler::WRITE, 2211 },
-    { 30,  EventHandler::WRITE, 4096 },
-    { 100, EventHandler::WRITE, 100 },
-    { 0, 0 },
+    { 10,  EventHandler::WRITE, 1024, 0 },
+    { 20,  EventHandler::WRITE, 2211, 0 },
+    { 30,  EventHandler::WRITE, 4096, 0 },
+    { 100, EventHandler::WRITE, 100,  0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -282,8 +282,8 @@ TEST(EventBaseTest, ReadImmediate) {
 
   // Register a timeout to perform another write
   ScheduledEvent events[] = {
-    { 10, EventHandler::WRITE, 2345 },
-    { 0, 0, 0 },
+    { 10, EventHandler::WRITE, 2345, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -329,9 +329,9 @@ TEST(EventBaseTest, WriteEvent) {
 
   // Register timeouts to perform two reads
   ScheduledEvent events[] = {
-    { 10, EventHandler::READ, 0 },
-    { 60, EventHandler::READ, 0 },
-    { 0, 0, 0 },
+    { 10, EventHandler::READ, 0, 0 },
+    { 60, EventHandler::READ, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -370,11 +370,11 @@ TEST(EventBaseTest, WritePersist) {
 
   // Register several timeouts to read from the socket at several intervals
   ScheduledEvent events[] = {
-    { 10,  EventHandler::READ, 0 },
-    { 40,  EventHandler::READ, 0 },
-    { 70,  EventHandler::READ, 0 },
-    { 100, EventHandler::READ, 0 },
-    { 0, 0 },
+    { 10,  EventHandler::READ, 0, 0 },
+    { 40,  EventHandler::READ, 0, 0 },
+    { 70,  EventHandler::READ, 0, 0 },
+    { 100, EventHandler::READ, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -414,8 +414,8 @@ TEST(EventBaseTest, WriteImmediate) {
 
   // Register a timeout to perform a read
   ScheduledEvent events[] = {
-    { 10, EventHandler::READ, 0 },
-    { 0, 0, 0 },
+    { 10, EventHandler::READ, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -464,9 +464,9 @@ TEST(EventBaseTest, ReadWrite) {
 
   // Register timeouts to perform a write then a read.
   ScheduledEvent events[] = {
-    { 10, EventHandler::WRITE, 2345 },
-    { 40, EventHandler::READ, 0 },
-    { 0, 0, 0 },
+    { 10, EventHandler::WRITE, 2345, 0 },
+    { 40, EventHandler::READ, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -505,9 +505,9 @@ TEST(EventBaseTest, WriteRead) {
   // Register timeouts to perform a read then a write.
   size_t sock1WriteLength = 2345;
   ScheduledEvent events[] = {
-    { 10, EventHandler::READ, 0 },
-    { 40, EventHandler::WRITE, sock1WriteLength },
-    { 0, 0, 0 },
+    { 10, EventHandler::READ, 0, 0 },
+    { 40, EventHandler::WRITE, sock1WriteLength, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -551,8 +551,8 @@ TEST(EventBaseTest, ReadWriteSimultaneous) {
 
   // Register a timeout to perform a read and write together
   ScheduledEvent events[] = {
-    { 10, EventHandler::READ | EventHandler::WRITE, 0 },
-    { 0, 0, 0 },
+    { 10, EventHandler::READ | EventHandler::WRITE, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -590,13 +590,13 @@ TEST(EventBaseTest, ReadWritePersist) {
 
   // Register timeouts to perform several reads and writes
   ScheduledEvent events[] = {
-    { 10, EventHandler::WRITE, 2345 },
-    { 20, EventHandler::READ, 0 },
-    { 35, EventHandler::WRITE, 200 },
-    { 45, EventHandler::WRITE, 15 },
-    { 55, EventHandler::READ, 0 },
-    { 120, EventHandler::WRITE, 2345 },
-    { 0, 0, 0 },
+    { 10, EventHandler::WRITE, 2345, 0 },
+    { 20, EventHandler::READ, 0, 0 },
+    { 35, EventHandler::WRITE, 200, 0 },
+    { 45, EventHandler::WRITE, 15, 0 },
+    { 55, EventHandler::READ, 0, 0 },
+    { 120, EventHandler::WRITE, 2345, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -673,8 +673,8 @@ TEST(EventBaseTest, ReadPartial) {
   // Register a timeout to perform a single write,
   // with more data than PartialReadHandler will read at once
   ScheduledEvent events[] = {
-    { 10, EventHandler::WRITE, (3*readLength) + (readLength / 2) },
-    { 0, 0, 0 },
+    { 10, EventHandler::WRITE, (3*readLength) + (readLength / 2), 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 
@@ -740,8 +740,8 @@ TEST(EventBaseTest, WritePartial) {
 
   // Register a timeout to read, so that more data can be written
   ScheduledEvent events[] = {
-    { 10, EventHandler::READ, 0 },
-    { 0, 0, 0 },
+    { 10, EventHandler::READ, 0, 0 },
+    { 0, 0, 0, 0 },
   };
   scheduleEvents(&eb, sp[1], events);
 

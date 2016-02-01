@@ -107,6 +107,8 @@ void Fiber::init(bool recordStackUsed) {
 
     stackFilledWithMagic_ = true;
   }
+#else
+  (void)recordStackUsed;
 #endif
 }
 

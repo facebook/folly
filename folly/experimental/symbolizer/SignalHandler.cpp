@@ -95,13 +95,13 @@ struct {
   const char* name;
   struct sigaction oldAction;
 } kFatalSignals[] = {
-  { SIGSEGV, "SIGSEGV" },
-  { SIGILL,  "SIGILL"  },
-  { SIGFPE,  "SIGFPE"  },
-  { SIGABRT, "SIGABRT" },
-  { SIGBUS,  "SIGBUS"  },
-  { SIGTERM, "SIGTERM" },
-  { 0,       nullptr   }
+  { SIGSEGV, "SIGSEGV", {} },
+  { SIGILL,  "SIGILL",  {} },
+  { SIGFPE,  "SIGFPE",  {} },
+  { SIGABRT, "SIGABRT", {} },
+  { SIGBUS,  "SIGBUS",  {} },
+  { SIGTERM, "SIGTERM", {} },
+  { 0,       nullptr,   {} }
 };
 
 void callPreviousSignalHandler(int signum) {
