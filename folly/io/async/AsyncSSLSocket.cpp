@@ -824,6 +824,7 @@ bool AsyncSSLSocket::getSelectedNextProtocolNoThrow(
   }
   return true;
 #else
+  (void)protoType;
   return false;
 #endif
 }
