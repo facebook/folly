@@ -20,6 +20,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/Unicode.h>
@@ -487,7 +488,7 @@ dynamic parseNumber(Input& in) {
 
   constexpr const char* maxInt = "9223372036854775807";
   constexpr const char* minInt = "9223372036854775808";
-  constexpr auto maxIntLen = __builtin_strlen(maxInt);
+  constexpr auto maxIntLen = constexpr_strlen(maxInt);
 
 
   if (*in != '.' && !wasE && in.getOpts().parse_numbers_as_strings) {

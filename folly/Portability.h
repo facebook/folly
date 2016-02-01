@@ -439,9 +439,19 @@ inline void asm_pause() {
 #endif
 }
 
+#ifdef _MSC_VER
+constexpr size_t constexpr_strlen_internal(const char* s, size_t len) {
+  return *s == '\0' ? len : constexpr_strlen_internal(s + 1, len + 1);
+}
+static_assert(constexpr_strlen_internal("123456789", 0) == 9,
+              "Someone appears to have broken constexpr_strlen...");
+#endif
+
 constexpr size_t constexpr_strlen(const char* s) {
 #if defined(__clang__)
   return __builtin_strlen(s);
+#elif defined(_MSC_VER)
+  return s == nullptr ? 0 : constexpr_strlen_internal(s, 0);
 #else
   return strlen(s);
 #endif
