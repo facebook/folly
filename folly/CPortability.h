@@ -56,4 +56,21 @@
 # define FOLLY_DISABLE_ADDRESS_SANITIZER
 #endif
 
-#endif
+
+/**
+ * ASAN/MSAN/TSAN define pre-processor symbols:
+ * ADDRESS_SANITIZER/MEMORY_SANITIZER/THREAD_SANITIZER.
+ *
+ * UBSAN doesn't define anything and makes it hard to
+ * conditionally compile.
+ *
+ * The build system should define UNDEFINED_SANITIZER=1 when UBSAN is
+ * used as folly whitelists some functions.
+ */
+#if UNDEFINED_SANITIZER
+# define UBSAN_DISABLE(x) __attribute__((no_sanitize(x)))
+#else
+# define UBSAN_DISABLE(x)
+#endif // UNDEFINED_SANITIZER
+
+#endif // CPORTABILITY_H

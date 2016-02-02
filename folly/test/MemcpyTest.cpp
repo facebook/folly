@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/Portability.h>
+
 #include <gtest/gtest.h>
 
 namespace {
@@ -30,7 +32,7 @@ void init() {
 }
 }
 
-TEST(memcpy, zero_len) {
+TEST(memcpy, zero_len) UBSAN_DISABLE("nonnull-attribute") {
   // If length is 0, we shouldn't touch any memory.  So this should
   // not crash.
   char* srcNull = nullptr;
