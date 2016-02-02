@@ -89,6 +89,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
+	experimental/bser/Bser.h \
 	experimental/fibers/AddTasks.h \
 	experimental/fibers/AddTasks-inl.h \
 	experimental/fibers/Baton.h \
@@ -395,6 +396,8 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
+	experimental/bser/Dump.cpp \
+	experimental/bser/Load.cpp \
 	experimental/fibers/Baton.cpp \
 	experimental/fibers/Fiber.cpp \
 	experimental/fibers/FiberManager.cpp \
