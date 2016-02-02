@@ -22,9 +22,10 @@ sudo add-apt-repository -y ppa:boost-latest/ppa
 sudo apt-get update
 
 sudo apt-get install -y git gcc-4.8 g++-4.8 libboost1.54-dev autoconf git \
-  libboost-thread1.54-dev libboost-filesystem1.54-dev libssl-dev cmake \
+  libboost-thread1.54-dev libboost-filesystem1.54-dev libssl-dev \
   libsnappy-dev libboost-system1.54-dev libboost-regex1.54-dev make \
-  libboost-context1.54-dev libtool libevent-dev libgtest-dev binutils-dev
+  libboost-context1.54-dev libtool libevent-dev libgtest-dev binutils-dev \
+  libboost-program-options1.54-dev
 
 # TODO: According to the folly docs, these system dependencies might be
 # missing.  However, things seem to build fine...
@@ -37,27 +38,31 @@ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 50
 CMAKE_NAME=cmake-2.8.12.1
 GFLAGS_VER=2.1.1
 GLOG_NAME=glog-0.3.3
-
-# double-conversion
-pushd .
-git clone https://github.com/google/double-conversion
-cd double-conversion
-cmake -DBUILD_SHARED_LIBS=ON .  # Don't use scons instead, it's broken.
-make
-sudo make install
-sudo ldconfig
-popd
+DC_VER=1.1.5
+DC_NAME=double-conversion-${DC_VER}
 
 # Newer cmake, since the system's 2.8.7 cmake is too old for gflags:
 # https://groups.google.com/forum/#!topic/google-gflags/bu1iIDKn-ok
 pushd .
-wget http://www.cmake.org/files/v2.8/${CMAKE_NAME}.tar.gz \
-  -O ${CMAKE_NAME}.tar.gz
+wget --no-check-certificate http://www.cmake.org/files/v2.8/${CMAKE_NAME}.tar.gz \
+    -O ${CMAKE_NAME}.tar.gz
 tar xzf ${CMAKE_NAME}.tar.gz
 cd ${CMAKE_NAME}
 cmake .
 make
 CMAKE="$(readlink -f bin/cmake)"
+popd
+
+# double-conversion
+pushd .
+wget https://github.com/google/double-conversion/archive/v${DC_VER}.tar.gz \
+    -O ${DC_NAME}.tar.gz
+tar xzf ${DC_NAME}.tar.gz
+cd ${DC_NAME}
+"$CMAKE" -DBUILD_SHARED_LIBS=ON .  # Don't use scons instead, it's broken.
+make
+sudo make install
+sudo ldconfig
 popd
 
 # gflags
