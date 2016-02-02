@@ -47,18 +47,18 @@ Integral2 random(Integral1 low, Integral2 up) {
 }
 
 template <class String>
-void randomString(String* toFill, unsigned int maxSize = 1000) {
+void randomString(String* toFill, size_t size = 1000) {
   assert(toFill);
-  toFill->resize(random(0, maxSize));
+  toFill->resize(size);
   FOR_EACH (i, *toFill) {
     *i = random('a', 'z');
   }
 }
 
 template <class String>
-void randomBinaryString(String* toFill, unsigned int maxSize = 1000) {
+void randomBinaryString(String* toFill, size_t size = 1000) {
   assert(toFill);
-  toFill->resize(random(0, maxSize));
+  toFill->resize(size);
   FOR_EACH (i, *toFill) {
     *i = random('0', '1');
   }
