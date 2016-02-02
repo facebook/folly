@@ -47,6 +47,8 @@ constexpr size_t kMaxInUse = 100;
 
 /**
  * A cache for kNumGuarded stacks of a given size
+ *
+ * Thread safe.
  */
 class StackCache {
  public:
@@ -176,6 +178,10 @@ class CacheManager {
   }
 };
 
+/*
+ * RAII Wrapper around a StackCache that calls
+ * CacheManager::giveBack() on destruction.
+ */
 class StackCacheEntry {
  public:
   explicit StackCacheEntry(size_t stackSize)
