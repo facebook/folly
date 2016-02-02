@@ -239,6 +239,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/MockAsyncSSLSocket.h \
 	io/async/test/MockAsyncTransport.h \
 	io/async/test/MockAsyncUDPSocket.h \
+	io/async/test/MockTimeoutManager.h \
 	io/async/test/SocketPair.h \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
