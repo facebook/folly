@@ -166,13 +166,13 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * interval timeouts using scheduleTimeout(callback) method.
    */
   static int DEFAULT_TICK_INTERVAL;
-  explicit HHWheelTimer(folly::EventBase* eventBase,
-                        std::chrono::milliseconds intervalMS =
-                        std::chrono::milliseconds(DEFAULT_TICK_INTERVAL),
-                        AsyncTimeout::InternalEnum internal =
-                        AsyncTimeout::InternalEnum::NORMAL,
-                        std::chrono::milliseconds defaultTimeoutMS =
-                        std::chrono::milliseconds(-1));
+  explicit HHWheelTimer(
+      folly::TimeoutManager* timeoutManager,
+      std::chrono::milliseconds intervalMS =
+          std::chrono::milliseconds(DEFAULT_TICK_INTERVAL),
+      AsyncTimeout::InternalEnum internal = AsyncTimeout::InternalEnum::NORMAL,
+      std::chrono::milliseconds defaultTimeoutMS =
+          std::chrono::milliseconds(-1));
 
   /**
    * Destroy the HHWheelTimer.

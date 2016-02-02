@@ -78,20 +78,18 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
   expiration_ = milliseconds(0);
 }
 
-HHWheelTimer::HHWheelTimer(folly::EventBase* eventBase,
+HHWheelTimer::HHWheelTimer(folly::TimeoutManager* timeoutMananger,
                            std::chrono::milliseconds intervalMS,
                            AsyncTimeout::InternalEnum internal,
                            std::chrono::milliseconds defaultTimeoutMS)
-  : AsyncTimeout(eventBase, internal)
-  , interval_(intervalMS)
-  , defaultTimeout_(defaultTimeoutMS)
-  , nextTick_(1)
-  , count_(0)
-  , catchupEveryN_(DEFAULT_CATCHUP_EVERY_N)
-  , expirationsSinceCatchup_(0)
-  , processingCallbacksGuard_(false)
-{
-}
+    : AsyncTimeout(timeoutMananger, internal),
+      interval_(intervalMS),
+      defaultTimeout_(defaultTimeoutMS),
+      nextTick_(1),
+      count_(0),
+      catchupEveryN_(DEFAULT_CATCHUP_EVERY_N),
+      expirationsSinceCatchup_(0),
+      processingCallbacksGuard_(false) {}
 
 HHWheelTimer::~HHWheelTimer() {
   CHECK(count_ == 0);
