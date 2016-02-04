@@ -25,6 +25,7 @@
 #include <glog/logging.h>
 #include <folly/ThreadLocal.h>
 #include <folly/RWSpinLock.h>
+#include <folly/SingletonThreadLocal.h>
 
 namespace folly {
 
@@ -129,15 +130,10 @@ class RequestContext {
   }
 
  private:
-  // Used to solve static destruction ordering issue.  Any static object
-  // that uses RequestContext must call this function in its constructor.
-  //
-  // See below link for more details.
-  // http://stackoverflow.com/questions/335369/
-  // finding-c-static-initialization-order-problems#335746
-  static std::shared_ptr<RequestContext> &getStaticContext() {
-    static folly::ThreadLocal<std::shared_ptr<RequestContext> > context;
-    return *context;
+  static std::shared_ptr<RequestContext>& getStaticContext() {
+    using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
+    static SingletonT singleton;
+    return singleton.get();
   }
 
   folly::RWSpinLock lock;

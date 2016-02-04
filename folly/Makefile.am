@@ -274,6 +274,7 @@ nobase_follyinclude_HEADERS = \
 	SharedMutex.h \
 	Singleton.h \
 	Singleton-inl.h \
+	SingletonThreadLocal.h \
 	SmallLocks.h \
 	small_vector.h \
 	SocketAddress.h \

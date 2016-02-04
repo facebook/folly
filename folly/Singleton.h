@@ -109,7 +109,6 @@
 #include <folly/RWSpinLock.h>
 #include <folly/Demangle.h>
 #include <folly/Executor.h>
-#include <folly/io/async/Request.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 
 #include <algorithm>
@@ -609,6 +608,75 @@ class Singleton {
   }
 };
 
+template <typename T, typename Tag = detail::DefaultTag>
+class LeakySingleton {
+ public:
+  using CreateFunc = std::function<T*()>;
+
+  LeakySingleton() : LeakySingleton([] { return new T(); }) {}
+
+  explicit LeakySingleton(CreateFunc createFunc) {
+    auto& entry = entryInstance();
+    if (entry.state != State::NotRegistered) {
+      LOG(FATAL) << "Double registration of singletons of the same "
+                 << "underlying type; check for multiple definitions "
+                 << "of type folly::LeakySingleton<" + entry.type_.name() + ">";
+    }
+    entry.createFunc = createFunc;
+    entry.state = State::Dead;
+  }
+
+  static T& get() { return instance(); }
+
+ private:
+  enum class State { NotRegistered, Dead, Living };
+
+  struct Entry {
+    Entry() {}
+    Entry(const Entry&) = delete;
+    Entry& operator=(const Entry&) = delete;
+
+    std::atomic<State> state{State::NotRegistered};
+    T* ptr{nullptr};
+    CreateFunc createFunc;
+    std::mutex mutex;
+    detail::TypeDescriptor type_{typeid(T), typeid(Tag)};
+  };
+
+  static Entry& entryInstance() {
+    static auto entry = new Entry();
+    return *entry;
+  }
+
+  static T& instance() {
+    auto& entry = entryInstance();
+    if (UNLIKELY(entry.state != State::Living)) {
+      createInstance();
+    }
+
+    return *entry.ptr;
+  }
+
+  static void createInstance() {
+    auto& entry = entryInstance();
+
+    std::lock_guard<std::mutex> lg(entry.mutex);
+    if (entry.state == State::Living) {
+      return;
+    }
+
+    if (entry.state == State::NotRegistered) {
+      auto ptr = SingletonVault::stackTraceGetter().load();
+      LOG(FATAL) << "Creating instance for unregistered singleton: "
+                 << entry.type_.name() << "\n"
+                 << "Stacktrace:"
+                 << "\n" << (ptr ? (*ptr)() : "(not available)");
+    }
+
+    entry.ptr = entry.createFunc();
+    entry.state = State::Living;
+  }
+};
 }
 
 #include <folly/Singleton-inl.h>

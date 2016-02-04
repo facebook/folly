@@ -96,7 +96,6 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
 }
 
 void SingletonVault::registrationComplete() {
-  RequestContext::saveContext();
   std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
   RWSpinLock::WriteHolder wh(&stateMutex_);
@@ -214,8 +213,6 @@ void SingletonVault::reenableInstances() {
 }
 
 void SingletonVault::scheduleDestroyInstances() {
-  RequestContext::saveContext();
-
   class SingletonVaultDestructor {
    public:
     ~SingletonVaultDestructor() {
