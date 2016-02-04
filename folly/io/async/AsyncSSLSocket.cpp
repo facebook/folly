@@ -840,22 +840,29 @@ const char *AsyncSSLSocket::getNegotiatedCipherName() const {
   return (ssl_ != nullptr) ? SSL_get_cipher_name(ssl_) : nullptr;
 }
 
+/* static */
+const char* AsyncSSLSocket::getSSLServerNameFromSSL(SSL* ssl) {
+  if (ssl == nullptr) {
+    return nullptr;
+  }
+#ifdef SSL_CTRL_SET_TLSEXT_SERVERNAME_CB
+  return SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+#else
+  return nullptr;
+#endif
+}
+
 const char *AsyncSSLSocket::getSSLServerName() const {
 #ifdef SSL_CTRL_SET_TLSEXT_SERVERNAME_CB
-  return (ssl_ != nullptr) ? SSL_get_servername(ssl_, TLSEXT_NAMETYPE_host_name)
-        : nullptr;
+  return getSSLServerNameFromSSL(ssl_);
 #else
   throw AsyncSocketException(AsyncSocketException::NOT_SUPPORTED,
-                            "SNI not supported");
+                             "SNI not supported");
 #endif
 }
 
 const char *AsyncSSLSocket::getSSLServerNameNoThrow() const {
-  try {
-    return getSSLServerName();
-  } catch (AsyncSocketException& ex) {
-    return nullptr;
-  }
+  return getSSLServerNameFromSSL(ssl_);
 }
 
 int AsyncSSLSocket::getSSLVersion() const {

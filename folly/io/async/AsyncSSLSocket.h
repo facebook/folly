@@ -653,6 +653,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void resetClientHelloParsing(SSL *ssl);
   static void clientHelloParsingCallback(int write_p, int version,
       int content_type, const void *buf, size_t len, SSL *ssl, void *arg);
+  static const char* getSSLServerNameFromSSL(SSL* ssl);
 
   // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
   enum class TLSExtension: uint16_t {
