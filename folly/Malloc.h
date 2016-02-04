@@ -116,7 +116,8 @@ namespace folly {
 #endif
 
 // Cannot depend on Portability.h when _LIBSTDCXX_FBSTRING.
-#ifdef __GNUC__
+// Disabled for nvcc because it fails on attributes on lambdas.
+#if defined(__GNUC__) && !defined(__NVCC__)
 #define FOLLY_MALLOC_NOINLINE __attribute__((__noinline__))
 #else
 #define FOLLY_MALLOC_NOINLINE
