@@ -206,7 +206,7 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 /// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
 /// on failure
 static Getcpu::Func loadVdsoGetcpu() {
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__BIONIC__)
   return nullptr;
 #else
   void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
