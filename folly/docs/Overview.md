@@ -1,57 +1,6 @@
-`folly/`
-------
+### `folly/`
 
-### Introduction
-
-Folly (acronymed loosely after Facebook Open Source Library) is a
-library of C++11 components designed with practicality and efficiency
-in mind. It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
-does not meet the needed performance profile.
-
-Performance concerns permeate much of Folly, sometimes leading to
-designs that are more idiosyncratic than they would otherwise be (see
-e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
-scale is a unifying theme in all of Folly.
-
-### Logical Design
-
-Folly is a collection of relatively independent components, some as
-simple as a few symbols. There is no restriction on internal
-dependencies, meaning that a given folly module may use any other
-folly components.
-
-All symbols are defined in the top-level namespace `folly`, except of
-course macros. Macro names are ALL_UPPERCASE. Namespace `folly`
-defines other internal namespaces such as `internal` or `detail`. User
-code should not depend on symbols in those namespaces.
-
-### Physical Design
-
-At the top level Folly uses the classic "stuttering" scheme
-`folly/folly` used by Boost and others. The first directory serves as
-an installation root of the library (with possible versioning a la
-`folly-1.0/`), and the second is to distinguish the library when
-including files, e.g. `#include <folly/FBString.h>`.
-
-The directory structure is flat (mimicking the namespace structure),
-i.e. we don't have an elaborate directory hierarchy (it is possible
-this will change in future versions). The subdirectory `experimental`
-contains files that are used inside folly and possibly at Facebook but
-not considered stable enough for client use. Your code should not use
-files in `folly/experimental` lest it may break when you update Folly.
-
-The `folly/folly/test` subdirectory includes the unittests for all
-components, usually named `ComponentXyzTest.cpp` for each
-`ComponentXyz.*`. The `folly/folly/docs` directory contains
-documentation.
-
-### Compatibility
-
-Currently, `folly` has been tested on gcc 4.6 on 64-bit installations
-of Fedora 17, Ubuntu 12.04, and Debian wheezy. It might work unmodified
-on other 64-bit Linux platforms.
+For a high level overview see the [README](folly/README.md)
 
 ### Components
 
