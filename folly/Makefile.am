@@ -31,7 +31,6 @@ nobase_follyinclude_HEADERS = \
 	AtomicHashArray-inl.h \
 	AtomicHashMap.h \
 	AtomicHashMap-inl.h \
-	AtomicIntrusiveLinkedList.h \
 	AtomicLinkedList.h \
 	AtomicStruct.h \
 	AtomicUnorderedMap.h \

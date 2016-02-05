@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+
+#ifndef FOLLY_ATOMIC_LINKED_LIST_H_
+#define FOLLY_ATOMIC_LINKED_LIST_H_
 
 #include <atomic>
 #include <cassert>
-
-#include <folly/AtomicIntrusiveLinkedList.h>
-#include <folly/Memory.h>
 
 namespace folly {
 
@@ -28,59 +27,112 @@ namespace folly {
  *
  * Usage:
  *
- * AtomicLinkedList<MyClass> list;
- * list.insert(a);
- * list.sweep([] (MyClass& c) { doSomething(c); }
+ * class MyClass {
+ *   AtomicLinkedListHook<MyClass> hook_;
+ * }
+ *
+ * AtomicLinkedList<MyClass, &MyClass::hook_> list;
+ * list.insert(&a);
+ * list.sweep([] (MyClass* c) { doSomething(c); }
  */
-
 template <class T>
+struct AtomicLinkedListHook {
+  T* next{nullptr};
+};
+
+template <class T, AtomicLinkedListHook<T> T::* HookMember>
 class AtomicLinkedList {
  public:
   AtomicLinkedList() {}
   AtomicLinkedList(const AtomicLinkedList&) = delete;
   AtomicLinkedList& operator=(const AtomicLinkedList&) = delete;
-  AtomicLinkedList(AtomicLinkedList&& other) noexcept = default;
-  AtomicLinkedList& operator=(AtomicLinkedList&& other) = default;
+  AtomicLinkedList(AtomicLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
+  }
+  AtomicLinkedList& operator=(AtomicLinkedList&& other) noexcept {
+    auto tmp = other.head_.load();
+    other.head_ = head_.load();
+    head_ = tmp;
 
-  ~AtomicLinkedList() {
-    sweep([](T&&) {});
+    return *this;
   }
 
-  bool empty() const { return list_.empty(); }
+  /**
+   * Note: list must be empty on destruction.
+   */
+  ~AtomicLinkedList() {
+    assert(empty());
+  }
+
+  bool empty() const {
+    return head_ == nullptr;
+  }
 
   /**
    * Atomically insert t at the head of the list.
    * @return True if the inserted element is the only one in the list
    *         after the call.
    */
-  bool insertHead(T t) {
-    auto wrapper = folly::make_unique<Wrapper>(std::move(t));
+  bool insertHead(T* t) {
+    assert(next(t) == nullptr);
 
-    return list_.insertHead(wrapper.release());
+    auto oldHead = head_.load(std::memory_order_relaxed);
+    do {
+      next(t) = oldHead;
+      /* oldHead is updated by the call below.
+
+         NOTE: we don't use next(t) instead of oldHead directly due to
+         compiler bugs (GCC prior to 4.8.3 (bug 60272), clang (bug 18899),
+         MSVC (bug 819819); source:
+         http://en.cppreference.com/w/cpp/atomic/atomic/compare_exchange */
+    } while (!head_.compare_exchange_weak(oldHead, t,
+                                          std::memory_order_release,
+                                          std::memory_order_relaxed));
+
+    return oldHead == nullptr;
   }
 
   /**
-   * Repeatedly pops element from head,
+   * Repeatedly replaces the head with nullptr,
    * and calls func() on the removed elements in the order from tail to head.
    * Stops when the list is empty.
    */
   template <typename F>
   void sweep(F&& func) {
-    list_.sweep([&](Wrapper* wrapperPtr) mutable {
-      std::unique_ptr<Wrapper> wrapper(wrapperPtr);
-
-      func(std::move(wrapper->data));
-    });
+    while (auto head = head_.exchange(nullptr)) {
+      auto rhead = reverse(head);
+      while (rhead != nullptr) {
+        auto t = rhead;
+        rhead = next(t);
+        next(t) = nullptr;
+        func(t);
+      }
+    }
   }
 
  private:
-  struct Wrapper {
-    explicit Wrapper(T&& t) : data(std::move(t)) {}
+  std::atomic<T*> head_{nullptr};
 
-    AtomicIntrusiveLinkedListHook<Wrapper> hook;
-    T data;
-  };
-  AtomicIntrusiveLinkedList<Wrapper, &Wrapper::hook> list_;
+  static T*& next(T* t) {
+    return (t->*HookMember).next;
+  }
+
+  /* Reverses a linked list, returning the pointer to the new head
+     (old tail) */
+  static T* reverse(T* head) {
+    T* rhead = nullptr;
+    while (head != nullptr) {
+      auto t = head;
+      head = next(t);
+      next(t) = rhead;
+      rhead = t;
+    }
+    return rhead;
+  }
 };
 
 } // namespace folly
+
+#endif
