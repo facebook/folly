@@ -20,6 +20,7 @@
 #include <queue>
 #include <thread>
 #include <typeindex>
+#include <type_traits>
 #include <unordered_set>
 #include <vector>
 
@@ -37,7 +38,12 @@
 #include <folly/experimental/fibers/TimeoutController.h>
 #include <folly/experimental/fibers/traits.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+
+template <class T>
+class Future;
+
+namespace fibers {
 
 class Baton;
 class Fiber;
@@ -177,6 +183,16 @@ class FiberManager : public ::folly::Executor {
   void addTask(F&& func);
 
   /**
+   * Add a new task to be executed and return a future that will be set on
+   * return from func. Must be called from FiberManager's thread.
+   *
+   * @param func Task functor; must have a signature of `void func()`.
+   *             The object will be destroyed once task execution is complete.
+   */
+  template <typename F>
+  auto addTaskFuture(F&& func)
+      -> folly::Future<typename std::result_of<F()>::type>;
+  /**
    * Add a new task to be executed. Safe to call from other threads.
    *
    * @param func Task function; must have a signature of `void func()`.
@@ -184,6 +200,17 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   void addTaskRemote(F&& func);
+
+  /**
+   * Add a new task to be executed and return a future that will be set on
+   * return from func. Safe to call from other threads.
+   *
+   * @param func Task function; must have a signature of `void func()`.
+   *             The object will be destroyed once task execution is complete.
+   */
+  template <typename F>
+  auto addTaskRemoteFuture(F&& func)
+      -> folly::Future<typename std::result_of<F()>::type>;
 
   // Executor interface calls addTaskRemote
   void add(std::function<void()> f) {

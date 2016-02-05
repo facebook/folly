@@ -29,6 +29,7 @@
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/LoopController.h>
 #include <folly/experimental/fibers/Promise.h>
+#include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
 
 namespace folly { namespace fibers {
@@ -259,21 +260,54 @@ void FiberManager::addTask(F&& func) {
 }
 
 template <typename F>
+auto FiberManager::addTaskFuture(F&& func)
+    -> folly::Future<typename std::result_of<F()>::type> {
+  using T = typename std::result_of<F()>::type;
+  folly::Promise<T> p;
+  auto f = p.getFuture();
+  addTaskFinally([func = std::forward<F>(func)]() mutable { return func(); },
+                 [p = std::move(p)](folly::Try<T> && t) mutable {
+                   p.setTry(std::move(t));
+                 });
+  return f;
+}
+
+template <typename F>
 void FiberManager::addTaskRemote(F&& func) {
+  // addTaskRemote indirectly requires wrapping the function in a
+  // std::function, which must be copyable. As move-only lambdas may be
+  // passed in we wrap it first in a move wrapper and then capture the wrapped
+  // version.
+  auto functionWrapper = [f = folly::makeMoveWrapper(
+                              std::forward<F>(func))]() mutable {
+    return (*f)();
+  };
   auto task = [&]() {
     auto currentFm = getFiberManagerUnsafe();
     if (currentFm &&
         currentFm->currentFiber_ &&
         currentFm->localType_ == localType_) {
       return folly::make_unique<RemoteTask>(
-        std::forward<F>(func),
-        currentFm->currentFiber_->localData_);
+          std::move(functionWrapper), currentFm->currentFiber_->localData_);
     }
-    return folly::make_unique<RemoteTask>(std::forward<F>(func));
+    return folly::make_unique<RemoteTask>(std::move(functionWrapper));
   }();
   auto insertHead =
       [&]() { return remoteTaskQueue_.insertHead(task.release()); };
   loopController_->scheduleThreadSafe(std::ref(insertHead));
+}
+
+template <typename F>
+auto FiberManager::addTaskRemoteFuture(F&& func)
+    -> folly::Future<typename std::result_of<F()>::type> {
+  folly::Promise<typename std::result_of<F()>::type> p;
+  auto f = p.getFuture();
+  addTaskRemote(
+      [ p = std::move(p), func = std::forward<F>(func), this ]() mutable {
+        auto t = folly::makeTryWith(std::forward<F>(func));
+        runInMainContext([&]() { p.setTry(std::move(t)); });
+      });
+  return f;
 }
 
 template <typename X>

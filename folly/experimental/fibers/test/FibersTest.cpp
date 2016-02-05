@@ -21,6 +21,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Memory.h>
+#include <folly/futures/Future.h>
 
 #include <folly/experimental/fibers/AddTasks.h>
 #include <folly/experimental/fibers/EventBaseLoopController.h>
@@ -1526,6 +1527,23 @@ TEST(FiberManager, batonWaitTimeoutMany) {
   }
 
   evb.loopForever();
+}
+
+TEST(FiberManager, remoteFutureTest) {
+  FiberManager fiberManager(folly::make_unique<SimpleLoopController>());
+  auto& loopController =
+      dynamic_cast<SimpleLoopController&>(fiberManager.loopController());
+
+  int testValue1 = 5;
+  int testValue2 = 7;
+  auto f1 = fiberManager.addTaskFuture([&]() { return testValue1; });
+  auto f2 = fiberManager.addTaskRemoteFuture([&]() { return testValue2; });
+  loopController.loop([&]() { loopController.stop(); });
+  auto v1 = f1.get();
+  auto v2 = f2.get();
+
+  EXPECT_EQ(v1, testValue1);
+  EXPECT_EQ(v2, testValue2);
 }
 
 static size_t sNumAwaits;
