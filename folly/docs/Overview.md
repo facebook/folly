@@ -4,7 +4,7 @@ For a high level overview see the [README](folly/README.md)
 
 ### Components
 
-Below is a list of Folly components in alphabetical order, along with
+Below is a list of (some) Folly components in alphabetical order, along with
 a brief description of each.
 
 #### `Arena.h`, `ThreadCachedArena.h`
@@ -12,9 +12,17 @@ a brief description of each.
 Simple arena for memory allocation: multiple allocations get freed all
 at once. With threaded version.
 
-#### [`AtomicHashMap.h`, `AtomicHashArray.h`](AtomicHashMap.md)
+#### [`AtomicHashMap.h`, `AtomicHashArray.h`](AtomicHashMap.md), `AtomicHashArray.h`, `AtomicLinkedList.h`, ...
 
-High-performance atomic hash map with almost lock-free operation.
+High-performance atomic data-structures. Many of these are built with very specific
+tradeoffs and constraints in mind that make them faster than their more general
+counterparts. Each header should contain information about what these tradeoffs are.
+
+#### `Baton.h`
+
+A Baton allows a thread to block once and be awoken: it captures a single handoff. It is
+essentially a (very small, very fast) semaphore that supports only a single call to `sem_call`
+and `sem_wait`.
 
 #### [`Benchmark.h`](Benchmark.md)
 
@@ -43,6 +51,10 @@ by Herlihy et al.
 A variety of data conversion routines (notably to and from string),
 optimized for speed and safety.
 
+#### `Demangle.h`
+
+Pretty-printing C++ types.
+
 #### `DiscriminatedPtr.h`
 
 Similar to `boost::variant`, but restricted to pointers only. Uses the
@@ -51,21 +63,13 @@ highest-order unused 16 bits in a pointer as discriminator. So
 
 #### [`dynamic.h`](Dynamic.md)
 
-Dynamically-typed object, created with JSON objects in mind.
+Dynamically-typed object, created with JSON objects in mind. `DynamicConverter.h` is
+a utility for effeciently converting from a `dynamic` to a more concrete structure when
+the scheme is known (e.g. json -> `map<int,int>`).
 
-#### `Endian.h`
+#### `EvictingCacheMap.h`
 
-Endian conversion primitives.
-
-####`Escape.h`
-
-Escapes a string in C style.
-
-####`eventfd.h`
-
-Wrapper around the
-[`eventfd`](http://www.kernel.org/doc/man-pages/online/pages/man2/eventfd.2.html)
-system call.
+A simple LRU hash map.
 
 ####[`FBString.h`](FBString.md)
 
@@ -76,19 +80,41 @@ A drop-in implementation of `std::string` with a variety of optimizations.
 A mostly drop-in implementation of `std::vector` with a variety of
 optimizations.
 
-####`Foreach.h`
+#### `File.h`
 
-Pseudo-statements (implemented as macros) for iteration.
+A C++ abstraction around files.
+
+#### `Fingerprint.h`
+
+Rabin fingerprinting.
+
+### [`futures/`](folly/futures/Readme.md)
+
+Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.
 
 ####[`Format.h`](Format.md)
 
 Python-style formatting utilities.
+
+#### `gen/`
+
+This library makes it possible to write declarative comprehensions for
+processing sequences of values efficiently in C++ akin to C#'s LINQ.
 
 ####[`GroupVarint.h`](GroupVarint.md)
 
 [Group Varint
 encoding](http://www.ir.uwaterloo.ca/book/addenda-06-index-compression.html)
 for 32-bit values.
+
+####`IpAddress.h`
+
+A collection of utilities to deal with IPAddresses, including ipv4 and ipv6.
+
+#### `io/`
+
+A collection of useful of abstractions for high-performance io. This is heavily relied upon
+in Facebook's internally networking code.
 
 ####`Hash.h`
 
@@ -110,14 +136,23 @@ JSON serializer and deserializer. Uses `dynamic.h`.
 
 Wrappers around [`__builtin_expect`](http://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html).
 
-####`Malloc.h`
+####`Malloc.h`, `Memory.h`
 
 Memory allocation helpers, particularly when using jemalloc.
 
-####`MapUtil.h`
+####`MicroSpinLock.h`
 
-Helpers for finding items in associative containers (such as
-`std::map` and `std::unordered_map`).
+A really, *really* small spinlock for fine-grained locking of lots of teeny-tiny data.
+
+####`MPMCQueue.h`
+
+MPMCQueue<typename> is a high-performance bounded concurrent queue that
+supports multiple producers, multiple consumers, and optional blocking.
+The queue has a fixed capacity, for which all memory will be allocated
+ up front.
+
+The additional utility `MPMCPipeline.h` is an extension that lets you
+chain several queues together with processing steps in between.
 
 ####[`PackedSyncPtr.h`](PackedSyncPtr.md)
 
@@ -127,12 +162,6 @@ spin lock, and a 15-bit integral, all inside one 64-bit word.
 ####`Preprocessor.h`
 
 Necessarily evil stuff.
-
-####`PrettyPrint.h`
-
-Pretty-printer for numbers that appends suffixes of unit used: bytes
-(kb, MB, ...), metric suffixes (k, M, G, ...), and time (s, ms, us,
-ns, ...).
 
 ####[`ProducerConsumerQueue.h`](ProducerConsumerQueue.md)
 
@@ -154,6 +183,14 @@ Fast and compact reader-writer spin lock.
 
 C++11 incarnation of the old [ScopeGuard](http://drdobbs.com/184403758) idiom.
 
+####`Singleton.h`
+
+A singleton to rule the singletons. This is an attempt to insert a layer between
+C++ statics and the fiasco that ensues, so that things can be created, and destroyed,
+correctly upon program creation, program end and sometimes `dlopen` and `fork`.
+
+Singletons are bad for you, but this may help.
+
 ####[`SmallLocks.h`](SmallLocks.md)
 
 Very small spin locks (1 byte and 1 bit).
@@ -166,6 +203,11 @@ Vector with the small buffer optimization and an optional embedded
 ####`sorted_vector_types.h`
 
 Collections similar to `std::map` but implemented as sorted vectors.
+
+#### `stats/`
+
+A collection of efficient utilities for collecting statistics (often of
+time series data).
 
 ####`StlAllocator.h`
 
@@ -207,3 +249,7 @@ Type traits that complement those defined in the standard C++11 header
 ####`Unicode.h`
 
 Defines the `codePointToUtf8` function.
+
+####`Uri.h`
+
+A collection of utilities to deal with URIs.
