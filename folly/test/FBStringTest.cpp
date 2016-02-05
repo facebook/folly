@@ -981,9 +981,13 @@ template <class String> void clause11_21_4_8_9_a(String & test) {
 TEST(FBString, testAllClauses) {
   EXPECT_TRUE(1) << "Starting with seed: " << seed;
   std::string r;
-  std::wstring wr;
   folly::fbstring c;
+#ifndef __ANDROID__
+  // Disabled on Android: wchar support is not recommended and does not
+  // always behave as expected
+  std::wstring wr;
   folly::basic_fbstring<wchar_t> wc;
+#endif
   int count = 0;
 
   auto l = [&](const char * const clause,
@@ -995,8 +999,10 @@ TEST(FBString, testAllClauses) {
       randomString(&r);
       c = r;
       EXPECT_EQ(c, r);
+#ifndef __ANDROID__
       wr = std::wstring(r.begin(), r.end());
       wc = folly::basic_fbstring<wchar_t>(wr.c_str());
+#endif
       auto localSeed = seed + count;
       rng = RandomT(localSeed);
       f_string(r);
@@ -1006,6 +1012,7 @@ TEST(FBString, testAllClauses) {
         << "Lengths: " << r.size() << " vs. " << c.size()
         << "\nReference: '" << r << "'"
         << "\nActual:    '" << c.data()[0] << "'";
+#ifndef __ANDROID__
       rng = RandomT(localSeed);
       f_wfbstring(wc);
       int wret = wcslen(wc.c_str());
@@ -1016,6 +1023,7 @@ TEST(FBString, testAllClauses) {
       std::string one(mb);
       std::string two(mc);
       EXPECT_EQ(one, two);
+#endif
     } while (++count % 100 != 0);
   };
 
