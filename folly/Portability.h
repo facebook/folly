@@ -334,6 +334,15 @@ typedef SSIZE_T ssize_t;
 
 #endif
 
+// Debug
+namespace folly {
+#ifdef NDEBUG
+constexpr auto kIsDebug = false;
+#else
+constexpr auto kIsDebug = true;
+#endif
+}
+
 // Endianness
 namespace folly {
 #ifdef _MSC_VER

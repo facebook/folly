@@ -263,6 +263,7 @@ nobase_follyinclude_HEADERS = \
 	PicoSpinLock.h \
 	Portability.h \
 	portability/Syscall.h \
+	ConditionallyExistent.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
 	Random.h \
