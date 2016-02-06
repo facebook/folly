@@ -16,6 +16,7 @@
 
 // @author: Xin Liu <xliux@fb.com>
 
+#include <atomic>
 #include <memory>
 #include <set>
 #include <vector>
@@ -24,12 +25,45 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+
+#include <folly/Arena.h>
 #include <folly/ConcurrentSkipList.h>
 #include <folly/Foreach.h>
+#include <folly/Memory.h>
 #include <folly/String.h>
+
 #include <gtest/gtest.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
+
+namespace {
+
+template <typename ParentAlloc>
+struct ParanoidArenaAlloc {
+  explicit ParanoidArenaAlloc(ParentAlloc* arena) : arena_(arena) {}
+
+  void* allocate(size_t size) {
+    void* result = arena_->allocate(size);
+    allocated_.insert(result);
+    return result;
+  }
+
+  void deallocate(void* ptr) {
+    EXPECT_EQ(1, allocated_.erase(ptr));
+    arena_->deallocate(ptr);
+  }
+
+  bool isEmpty() const { return allocated_.empty(); }
+
+  ParentAlloc* arena_;
+  std::set<void*> allocated_;
+};
+}
+
+namespace folly {
+template <>
+struct IsArenaAllocator<ParanoidArenaAlloc<SysArena>> : std::true_type {};
+}
 
 namespace {
 
@@ -382,6 +416,80 @@ TEST(ConcurrentSkipList, ConcurrentAccess) {
   testConcurrentAccess(10000, 100, kMaxValue);
   testConcurrentAccess(100000, 10000, kMaxValue * 10);
   testConcurrentAccess(1000000, 100000, kMaxValue);
+}
+
+struct NonTrivialValue {
+  static std::atomic<int> InstanceCounter;
+  static const int kBadPayLoad;
+
+  NonTrivialValue() : payload_(kBadPayLoad) { ++InstanceCounter; }
+
+  explicit NonTrivialValue(int payload) : payload_(payload) {
+    ++InstanceCounter;
+  }
+
+  NonTrivialValue(const NonTrivialValue& rhs) : payload_(rhs.payload_) {
+    ++InstanceCounter;
+  }
+
+  NonTrivialValue& operator=(const NonTrivialValue& rhs) {
+    payload_ = rhs.payload_;
+    return *this;
+  }
+
+  ~NonTrivialValue() { --InstanceCounter; }
+
+  bool operator<(const NonTrivialValue& rhs) const {
+    EXPECT_NE(kBadPayLoad, payload_);
+    EXPECT_NE(kBadPayLoad, rhs.payload_);
+    return payload_ < rhs.payload_;
+  }
+
+ private:
+  int payload_;
+};
+
+std::atomic<int> NonTrivialValue::InstanceCounter(0);
+const int NonTrivialValue::kBadPayLoad = 0xDEADBEEF;
+
+template <typename SkipListPtrType>
+void TestNonTrivialDeallocation(SkipListPtrType& list) {
+  {
+    auto accessor = typename SkipListPtrType::element_type::Accessor(list);
+    static const size_t N = 10000;
+    for (size_t i = 0; i < N; ++i) {
+      accessor.add(NonTrivialValue(i));
+    }
+    list.reset();
+  }
+  EXPECT_EQ(0, NonTrivialValue::InstanceCounter);
+}
+
+template <typename ParentAlloc>
+void NonTrivialDeallocationWithParanoid() {
+  using Alloc = ParanoidArenaAlloc<ParentAlloc>;
+  using SkipListType =
+      ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, Alloc>;
+  ParentAlloc parentAlloc;
+  Alloc paranoidAlloc(&parentAlloc);
+  auto list = SkipListType::createInstance(10, paranoidAlloc);
+  TestNonTrivialDeallocation(list);
+  EXPECT_TRUE(paranoidAlloc.isEmpty());
+}
+
+TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysAlloc) {
+  NonTrivialDeallocationWithParanoid<SysAlloc>();
+}
+
+TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysArena) {
+  NonTrivialDeallocationWithParanoid<SysArena>();
+}
+
+TEST(ConcurrentSkipList, NonTrivialDeallocationWithSysArena) {
+  using SkipListType =
+      ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, SysArena>;
+  auto list = SkipListType::createInstance(10);
+  TestNonTrivialDeallocation(list);
 }
 
 }  // namespace
