@@ -558,21 +558,51 @@ TEST(Future, makeFuture) {
 
 TEST(Future, finish) {
   auto x = std::make_shared<int>(0);
-  {
-    Promise<int> p;
-    auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-    // The callback hasn't executed
-    EXPECT_EQ(0, *x);
+  Promise<int> p;
+  auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.value(); });
 
-    // The callback has a reference to x
-    EXPECT_EQ(2, x.use_count());
+  // The callback hasn't executed
+  EXPECT_EQ(0, *x);
 
-    p.setValue(42);
+  // The callback has a reference to x
+  EXPECT_EQ(2, x.use_count());
 
-    // the callback has executed
-    EXPECT_EQ(42, *x);
-  }
+  p.setValue(42);
+
+  // the callback has executed
+  EXPECT_EQ(42, *x);
+
+  // the callback has been destructed
+  // and has released its reference to x
+  EXPECT_EQ(1, x.use_count());
+}
+
+TEST(Future, finishBigLambda) {
+  auto x = std::make_shared<int>(0);
+
+  // bulk_data, to be captured in the lambda passed to Future::then.
+  // This is meant to force that the lambda can't be stored inside
+  // the Future object.
+  std::array<char, sizeof(detail::Core<int>)> bulk_data = {0};
+
+  // suppress gcc warning about bulk_data not being used
+  EXPECT_EQ(bulk_data[0], 0);
+
+  Promise<int> p;
+  auto f = p.getFuture().then([x, bulk_data](Try<int>&& t) { *x = t.value(); });
+
+  // The callback hasn't executed
+  EXPECT_EQ(0, *x);
+
+  // The callback has a reference to x
+  EXPECT_EQ(2, x.use_count());
+
+  p.setValue(42);
+
+  // the callback has executed
+  EXPECT_EQ(42, *x);
+
   // the callback has been destructed
   // and has released its reference to x
   EXPECT_EQ(1, x.use_count());

@@ -335,12 +335,14 @@ class Core {
           x->add([this]() mutable {
             SCOPE_EXIT { detachOne(); };
             RequestContext::setContext(context_);
+            SCOPE_EXIT { callback_ = {}; };
             callback_(std::move(*result_));
           });
         } else {
           x->addWithPriority([this]() mutable {
             SCOPE_EXIT { detachOne(); };
             RequestContext::setContext(context_);
+            SCOPE_EXIT { callback_ = {}; };
             callback_(std::move(*result_));
           }, priority);
         }
@@ -348,10 +350,12 @@ class Core {
         --attached_; // Account for extra ++attached_ before try
         RequestContext::setContext(context_);
         result_ = Try<T>(exception_wrapper(std::current_exception()));
+        SCOPE_EXIT { callback_ = {}; };
         callback_(std::move(*result_));
       }
     } else {
       RequestContext::setContext(context_);
+      SCOPE_EXIT { callback_ = {}; };
       callback_(std::move(*result_));
     }
   }
