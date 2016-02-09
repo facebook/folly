@@ -453,3 +453,40 @@ TEST_F(HHWheelTimerTest, cancelAll) {
   EXPECT_EQ(1, t.cancelAll());
   EXPECT_EQ(1, tt.canceledTimestamps.size());
 }
+
+TEST_F(HHWheelTimerTest, SharedPtr) {
+  HHWheelTimer::UniquePtr t(new HHWheelTimer(&eventBase, milliseconds(1)));
+
+  TestTimeout t1;
+  TestTimeout t2;
+  TestTimeout t3;
+
+  ASSERT_EQ(t->count(), 0);
+
+  t->scheduleTimeout(&t1, milliseconds(5));
+  t->scheduleTimeout(&t2, milliseconds(5));
+
+  HHWheelTimer::SharedPtr s(t);
+
+  s->scheduleTimeout(&t3, milliseconds(10));
+
+  ASSERT_EQ(t->count(), 3);
+
+  // Kill the UniquePtr, but the SharedPtr keeps it alive
+  t.reset();
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 1);
+  ASSERT_EQ(t3.timestamps.size(), 1);
+
+  ASSERT_EQ(s->count(), 0);
+
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
+  T_CHECK_TIMEOUT(start, t3.timestamps[0], milliseconds(10));
+  T_CHECK_TIMEOUT(start, end, milliseconds(10));
+}

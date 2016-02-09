@@ -180,6 +180,9 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * A HHWheelTimer should only be destroyed when there are no more
    * callbacks pending in the set. (If it helps you may use cancelAll() to
    * cancel all pending timeouts explicitly before calling this.)
+   *
+   * However, it is OK to invoke this function (or via UniquePtr dtor) while
+   * there are outstanding DestructorGuard's or HHWheelTimer::SharedPtr's.
    */
   virtual void destroy();
 

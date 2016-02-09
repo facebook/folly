@@ -96,8 +96,18 @@ HHWheelTimer::~HHWheelTimer() {
 }
 
 void HHWheelTimer::destroy() {
-  assert(count_ == 0);
-  cancelAll();
+  if (getDestructorGuardCount() == count_) {
+    // Every callback holds a DestructorGuard.  In this simple case,
+    // All timeouts should already be gone.
+    assert(count_ == 0);
+
+    // Clean them up in opt builds and move on
+    cancelAll();
+  }
+  // else, we are only marking pending destruction, but one or more
+  // HHWheelTimer::SharedPtr's (and possibly their timeouts) are still holding
+  // this HHWheelTimer.  We cannot assert that all timeouts have been cancelled,
+  // and will just have to wait for them all to complete on their own.
   DelayedDestruction::destroy();
 }
 
