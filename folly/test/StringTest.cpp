@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2016 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include <folly/String.h>
 
+#include <boost/regex.hpp>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -1129,6 +1130,112 @@ TEST(String, whitespace) {
   EXPECT_EQ("", rtrimWhitespace("\r "));
   EXPECT_EQ("", rtrimWhitespace("\n   "));
   EXPECT_EQ("", rtrimWhitespace("\r   "));
+}
+
+TEST(String, stripLeftMargin_empty) {
+  auto input = R"TEXT(
+  )TEXT";
+  auto expected = "";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_one_line) {
+  auto input = R"TEXT(
+    hi there bob!
+  )TEXT";
+  auto expected = "hi there bob!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_two_lines) {
+  auto input = R"TEXT(
+    hi there bob!
+    nice weather today!
+  )TEXT";
+  auto expected = "hi there bob!\nnice weather today!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_three_lines_uneven) {
+  auto input = R"TEXT(
+      hi there bob!
+    nice weather today!
+      so long!
+  )TEXT";
+  auto expected = "  hi there bob!\nnice weather today!\n  so long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_preceding_blank_lines) {
+  auto input = R"TEXT(
+
+
+    hi there bob!
+  )TEXT";
+  auto expected = "\n\nhi there bob!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_succeeding_blank_lines) {
+  auto input = R"TEXT(
+    hi there bob!
+
+
+  )TEXT";
+  auto expected = "hi there bob!\n\n\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_interstitial_undented_whiteline) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+      hi there bob!
+    ~
+      so long!
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex(" +~"), "");
+  EXPECT_EQ("\n      hi there bob!\n\n      so long!\n  ", input);
+  auto expected = "hi there bob!\n\nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_interstitial_dedented_whiteline) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+      hi there bob!
+    ~
+      so long!
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n      hi there bob!\n    \n      so long!\n  ", input);
+  auto expected = "hi there bob!\n\nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_interstitial_equidented_whiteline) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+      hi there bob!
+      ~
+      so long!
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n      hi there bob!\n      \n      so long!\n  ", input);
+  auto expected = "hi there bob!\n\nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_interstitial_indented_whiteline) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+      hi there bob!
+        ~
+      so long!
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n      hi there bob!\n        \n      so long!\n  ", input);
+  auto expected = "hi there bob!\n  \nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
 }
 
 const folly::StringPiece kTestUTF8 = "This is \U0001F602 stuff!";

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2016 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -579,6 +579,17 @@ inline StringPiece trimWhitespace(StringPiece sp) {
 inline StringPiece skipWhitespace(StringPiece sp) {
   return ltrimWhitespace(sp);
 }
+
+/**
+ *  Strips the leading and the trailing whitespace-only lines. Then looks for
+ *  the least indented non-whitespace-only line and removes its amount of
+ *  leading whitespace from every line. Assumes leading whitespace is either all
+ *  spaces or all tabs.
+ *
+ *  Purpose: including a multiline string literal in source code, indented to
+ *  the level expected from context.
+ */
+std::string stripLeftMargin(std::string s);
 
 /**
  * Fast, in-place lowercasing of ASCII alphabetic characters in strings.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Facebook, Inc.
+ * Copyright 2016 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 #include <folly/String.h>
 
+#include <boost/regex.hpp>
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
@@ -547,6 +548,25 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
 }
 
 } // namespace detail
+
+std::string stripLeftMargin(std::string s) {
+  using namespace boost;
+  static const auto kPre = regex(R"(\A[ \t]*\n)");
+  static const auto kPost = regex(R"([ \t]+\z)");
+  static const auto kScan = regex(R"(^[ \t]*(?=\S))");
+  s = regex_replace(s, kPre, "");
+  s = regex_replace(s, kPost, "");
+  const auto sentinel = std::numeric_limits<size_t>::max();
+  auto indent = sentinel;
+  sregex_iterator it(s.cbegin(), s.cend(), kScan);
+  sregex_iterator itend;
+  for (; it != itend; ++it) {
+    indent = std::min<size_t>(indent, it->length());
+  }
+  indent = indent == sentinel ? 0 : indent;
+  s = regex_replace(s, regex(sformat(R"(^[ \t]{{0,{0}}})", indent)), "");
+  return s;
+}
 
 }   // namespace folly
 
