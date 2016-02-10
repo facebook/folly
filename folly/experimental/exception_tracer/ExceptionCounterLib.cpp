@@ -19,7 +19,9 @@
 #include <iosfwd>
 #include <unordered_map>
 
+#include <folly/Range.h>
 #include <folly/RWSpinLock.h>
+#include <folly/SpookyHashV2.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 
@@ -31,8 +33,9 @@ using namespace folly::exception_tracer;
 
 namespace {
 
-// We are using hash of the stack trace to uniquely identify the exception
-using ExceptionId = uintptr_t;
+// We use the hash of stack trace and exception type to uniquely
+// identify the exception.
+using ExceptionId = uint64_t;
 
 using ExceptionStatsHolderType =
     std::unordered_map<ExceptionId, ExceptionStats>;
@@ -40,19 +43,12 @@ using ExceptionStatsHolderType =
 struct ExceptionStatsStorage {
   void appendTo(ExceptionStatsHolderType& data) {
     ExceptionStatsHolderType tempHolder;
-    SYNCHRONIZED(statsHolder) {
-      using std::swap;
-      swap(statsHolder, tempHolder);
-    }
+    statsHolder->swap(tempHolder);
 
     for (const auto& myData : tempHolder) {
-      const auto& myStat = myData.second;
-
-      auto it = data.find(myData.first);
-      if (it != data.end()) {
-        it->second.count += myStat.count;
-      } else {
-        data.insert(myData);
+      auto inserted = data.insert(myData);
+      if (!inserted.second) {
+        inserted.first->second.count += myData.second.count;
       }
     }
   }
@@ -77,23 +73,23 @@ std::vector<ExceptionStats> getExceptionStatistics() {
 
   std::vector<ExceptionStats> result;
   result.reserve(accumulator.size());
-  for (const auto& item : accumulator) {
-    result.push_back(item.second);
+  for (auto& item : accumulator) {
+    result.push_back(std::move(item.second));
   }
 
   std::sort(result.begin(),
             result.end(),
             [](const ExceptionStats& lhs, const ExceptionStats& rhs) {
-              return (lhs.count > rhs.count);
+              return lhs.count > rhs.count;
             });
 
   return result;
 }
 
 std::ostream& operator<<(std::ostream& out, const ExceptionStats& stats) {
-  out << "Exception report: " << std::endl;
-  out << "Exception count: " << stats.count << std::endl;
-  out << stats.info;
+  out << "Exception report: \n"
+      << "Exception count: " << stats.count << "\n"
+      << stats.info;
 
   return out;
 }
@@ -108,26 +104,29 @@ namespace {
  * Information is being stored in thread local storage.
  */
 void throwHandler(void*, std::type_info* exType, void (*)(void*)) noexcept {
-  ExceptionInfo info;
-  info.type = exType;
-  auto& frames = info.frames;
-
-  frames.resize(kMaxFrames);
-  auto n = folly::symbolizer::getStackTrace(frames.data(), kMaxFrames);
+  // This array contains the exception type and the stack frame
+  // pointers so they get all hashed together.
+  uintptr_t frames[kMaxFrames + 1];
+  frames[0] = reinterpret_cast<uintptr_t>(exType);
+  auto n = folly::symbolizer::getStackTrace(frames + 1, kMaxFrames);
 
   if (n == -1) {
-    LOG(ERROR) << "Invalid stack frame";
-    return;
+    // If we fail to collect the stack trace for this exception we
+    // just log it under empty stack trace.
+    n = 0;
   }
 
-  frames.resize(n);
-  auto exceptionId = folly::hash::hash_range(frames.begin(), frames.end());
+  auto exceptionId =
+      folly::hash::SpookyHashV2::Hash64(frames, (n + 1) * sizeof(frames[0]), 0);
 
   SYNCHRONIZED(holder, gExceptionStats->statsHolder) {
     auto it = holder.find(exceptionId);
     if (it != holder.end()) {
       ++it->second.count;
     } else {
+      ExceptionInfo info;
+      info.type = exType;
+      info.frames.assign(frames + 1, frames + 1 + n);
       holder.emplace(exceptionId, ExceptionStats{1, std::move(info)});
     }
   }
