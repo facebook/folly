@@ -16,7 +16,6 @@
 
 #include <folly/String.h>
 
-#include <boost/regex.hpp>
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
@@ -550,22 +549,47 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
 } // namespace detail
 
 std::string stripLeftMargin(std::string s) {
-  using namespace boost;
-  static const auto kPre = regex(R"(\A[ \t]*\n)");
-  static const auto kPost = regex(R"([ \t]+\z)");
-  static const auto kScan = regex(R"(^[ \t]*(?=\S))");
-  s = regex_replace(s, kPre, "");
-  s = regex_replace(s, kPost, "");
+  std::vector<StringPiece> pieces;
+  split("\n", s, pieces);
+  auto piecer = range(pieces);
+
+  auto piece = (piecer.end() - 1);
+  auto needle = std::find_if(piece->begin(),
+                             piece->end(),
+                             [](char c) { return c != ' ' && c != '\t'; });
+  if (needle == piece->end()) {
+    (piecer.end() - 1)->clear();
+  }
+  piece = piecer.begin();
+  needle = std::find_if(piece->begin(),
+                        piece->end(),
+                        [](char c) { return c != ' ' && c != '\t'; });
+  if (needle == piece->end()) {
+    piecer.erase(piecer.begin(), piecer.begin() + 1);
+  }
+
   const auto sentinel = std::numeric_limits<size_t>::max();
   auto indent = sentinel;
-  sregex_iterator it(s.cbegin(), s.cend(), kScan);
-  sregex_iterator itend;
-  for (; it != itend; ++it) {
-    indent = std::min<size_t>(indent, it->length());
+  size_t max_length = 0;
+  for (auto piece = piecer.begin(); piece != piecer.end(); piece++) {
+    needle = std::find_if(piece->begin(),
+                          piece->end(),
+                          [](char c) { return c != ' ' && c != '\t'; });
+    if (needle != piece->end()) {
+      indent = std::min<size_t>(indent, needle - piece->begin());
+    } else {
+      max_length = std::max<size_t>(piece->size(), max_length);
+    }
   }
-  indent = indent == sentinel ? 0 : indent;
-  s = regex_replace(s, regex(sformat(R"(^[ \t]{{0,{0}}})", indent)), "");
-  return s;
+  indent = indent == sentinel ? max_length : indent;
+  for (auto& piece : piecer) {
+    if (piece.size() < indent) {
+      piece.clear();
+    } else {
+      piece.erase(piece.begin(), piece.begin() + indent);
+    }
+  }
+  return join("\n", piecer);
 }
 
 }   // namespace folly

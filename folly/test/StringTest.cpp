@@ -1135,10 +1135,40 @@ TEST(String, whitespace) {
   EXPECT_EQ("", rtrimWhitespace("\r   "));
 }
 
+TEST(String, stripLeftMargin_really_empty) {
+  auto input = "";
+  auto expected = "";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
 TEST(String, stripLeftMargin_empty) {
   auto input = R"TEXT(
   )TEXT";
   auto expected = "";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_only_whitespace) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+    ~
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n    \n  ", input);
+  auto expected = "\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_only_uneven_whitespace) {
+  //  using ~ as a marker1
+  string input = R"TEXT(
+    ~
+      ~
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n    \n      \n  ", input);
+  auto expected = "\n\n";
+
   EXPECT_EQ(expected, stripLeftMargin(input));
 }
 
@@ -1238,6 +1268,30 @@ TEST(String, stripLeftMargin_interstitial_indented_whiteline) {
   input = boost::regex_replace(input, boost::regex("~"), "");
   EXPECT_EQ("\n      hi there bob!\n        \n      so long!\n  ", input);
   auto expected = "hi there bob!\n  \nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_no_pre_whitespace) {
+  //  using ~ as a marker
+  string input = R"TEXT(      hi there bob!
+        ~
+      so long!
+  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("      hi there bob!\n        \n      so long!\n  ", input);
+  auto expected = "hi there bob!\n  \nso long!\n";
+  EXPECT_EQ(expected, stripLeftMargin(input));
+}
+
+TEST(String, stripLeftMargin_no_post_whitespace) {
+  //  using ~ as a marker
+  string input = R"TEXT(
+      hi there bob!
+        ~
+      so long!  )TEXT";
+  input = boost::regex_replace(input, boost::regex("~"), "");
+  EXPECT_EQ("\n      hi there bob!\n        \n      so long!  ", input);
+  auto expected = "hi there bob!\n  \nso long!  ";
   EXPECT_EQ(expected, stripLeftMargin(input));
 }
 
