@@ -17,6 +17,7 @@
 
 namespace folly { namespace threadlocal_detail {
 
+MAX_STATIC_CONSTRUCTOR_PRIORITY
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
 
 }}
