@@ -159,7 +159,7 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   template <typename ReturnType=double, typename Interval=TimeType>
-  ValueType rate(int level) const {
+  ReturnType rate(int level) const {
     return getLevel(level).template rate<ReturnType, Interval>();
   }
 

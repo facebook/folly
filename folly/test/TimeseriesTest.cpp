@@ -859,10 +859,12 @@ TEST(MinuteHourTimeSeries, Basic) {
   EXPECT_EQ(mhts.avg(IntMHTS::MINUTE), 100);
   EXPECT_EQ(mhts.avg(IntMHTS::HOUR), 100);
   EXPECT_EQ(mhts.avg(IntMHTS::ALLTIME), 32.5);
+  EXPECT_EQ(mhts.avg<int>(IntMHTS::ALLTIME), 32);
 
   EXPECT_EQ(mhts.rate(IntMHTS::MINUTE), 100);
   EXPECT_EQ(mhts.rate(IntMHTS::HOUR), 100);
-  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 32);
+  EXPECT_EQ(mhts.rate(IntMHTS::ALLTIME), 32.5);
+  EXPECT_EQ(mhts.rate<int>(IntMHTS::ALLTIME), 32);
 
   for (int i = 0; i < 1800; ++i) {
     mhts.addValue(cur_time++, 120);
