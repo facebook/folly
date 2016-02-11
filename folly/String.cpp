@@ -571,7 +571,7 @@ std::string stripLeftMargin(std::string s) {
   const auto sentinel = std::numeric_limits<size_t>::max();
   auto indent = sentinel;
   size_t max_length = 0;
-  for (auto piece = piecer.begin(); piece != piecer.end(); piece++) {
+  for (piece = piecer.begin(); piece != piecer.end(); piece++) {
     needle = std::find_if(piece->begin(),
                           piece->end(),
                           [](char c) { return c != ' ' && c != '\t'; });
@@ -582,11 +582,11 @@ std::string stripLeftMargin(std::string s) {
     }
   }
   indent = indent == sentinel ? max_length : indent;
-  for (auto& piece : piecer) {
-    if (piece.size() < indent) {
-      piece.clear();
+  for (piece = piecer.begin(); piece != piecer.end(); piece++) {
+    if (piece->size() < indent) {
+      piece->clear();
     } else {
-      piece.erase(piece.begin(), piece.begin() + indent);
+      piece->erase(piece->begin(), piece->begin() + indent);
     }
   }
   return join("\n", piecer);
