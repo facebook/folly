@@ -33,7 +33,7 @@ TEST(StringPrintf, BasicTest) {
 
 TEST(StringPrintf, NumericFormats) {
   EXPECT_EQ("12", stringPrintf("%d", 12));
-  EXPECT_EQ("2000000000", stringPrintf("%ld", 2000000000ULL));
+  EXPECT_EQ("2000000000", stringPrintf("%ld", 2000000000UL));
   EXPECT_EQ("2000000000", stringPrintf("%ld", 2000000000L));
   EXPECT_EQ("-2000000000", stringPrintf("%ld", -2000000000L));
   EXPECT_EQ("5000000000", stringPrintf("%lld", 5000000000ULL));
