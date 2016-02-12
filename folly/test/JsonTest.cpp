@@ -466,7 +466,7 @@ TEST(Json, SortKeys) {
 }
 
 TEST(Json, PrintTo) {
-  std::ostrstream oss;
+  std::ostringstream oss;
 
   dynamic value = dynamic::object
     ("foo", "bar")
