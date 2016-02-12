@@ -168,7 +168,9 @@ void EventBaseOnDestructionCallback::runLoopCallback() noexcept {
   DCHECK(fm.get() != nullptr);
   ThreadLocalCache::erase(evb_);
 
-  fm->loopUntilNoReady();
+  while (fm->hasTasks()) {
+    evb_.loopOnce();
+  }
 
   delete this;
 }
