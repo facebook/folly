@@ -17,6 +17,7 @@
 #ifndef FOLLY_DETAIL_CACHELOCALITY_H_
 #define FOLLY_DETAIL_CACHELOCALITY_H_
 
+#include <pthread.h>
 #include <sched.h>
 #include <algorithm>
 #include <atomic>
