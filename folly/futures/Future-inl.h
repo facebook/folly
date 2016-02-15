@@ -983,9 +983,16 @@ void waitImpl(Future<T>& f, Duration dur) {
 
 template <class T>
 void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
+  // Set callback so to ensure that the via executor has something on it
+  // so that once the preceding future triggers this callback, drive will
+  // always have a callback to satisfy it
+  if (f.isReady())
+    return;
+  f = f.then([](T&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();
   }
+  assert(f.isReady());
 }
 
 } // detail

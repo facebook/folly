@@ -106,6 +106,21 @@ TEST(ManualExecutor, waitForDoesNotDeadlock) {
   t.join();
 }
 
+TEST(ManualExecutor, getViaDoesNotDeadlock) {
+  ManualExecutor east, west;
+  folly::Baton<> baton;
+  auto f = makeFuture().via(&east).then([](Try<Unit>) {
+    return makeFuture();
+  }).via(&west);
+  std::thread t([&] {
+    baton.post();
+    f.getVia(&west);
+  });
+  baton.wait();
+  east.run();
+  t.join();
+}
+
 TEST(Executor, InlineExecutor) {
   InlineExecutor x;
   size_t counter = 0;
