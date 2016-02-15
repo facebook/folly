@@ -21,17 +21,10 @@
 
 using namespace folly;
 
-// On android, we see a different way of memory alignment of this structure.
-// Adding some extra padding to make it pass.
-#ifdef __ANDROID_
-constexpr size_t extraPadding = 8;
-#else
-constexpr size_t extraPadding = 0;
-#endif
-
 TEST(Core, size) {
+  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
   struct Gold {
-    char lambdaBuf_[8 * sizeof(void*)];
+    typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
     folly::Optional<Try<Unit>> result_;
     std::function<void(Try<Unit>&&)> callback_;
     detail::FSM<detail::State> fsm_;
@@ -48,5 +41,5 @@ TEST(Core, size) {
   };
   // If this number goes down, it's fine!
   // If it goes up, please seek professional advice ;-)
-  EXPECT_GE(sizeof(Gold) + extraPadding, sizeof(detail::Core<Unit>));
+  EXPECT_GE(sizeof(Gold), sizeof(detail::Core<Unit>));
 }
