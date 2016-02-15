@@ -124,14 +124,21 @@ class Try {
    *
    * @returns mutable reference to the contained value
    */
-  T& value();
+  T& value()&;
+  /*
+   * Get a rvalue reference to the contained value. If the Try contains an
+   * exception it will be rethrown.
+   *
+   * @returns rvalue reference to the contained value
+   */
+  T&& value()&&;
   /*
    * Get a const reference to the contained value. If the Try contains an
    * exception it will be rethrown.
    *
    * @returns const reference to the contained value
    */
-  const T& value() const;
+  const T& value() const&;
 
   /*
    * If the Try contains an exception, rethrow it. Otherwise do nothing.

@@ -429,14 +429,6 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
 template <typename F>
 typename std::result_of<F()>::type
 FiberManager::runInMainContext(F&& func) {
-  return runInMainContextHelper(std::forward<F>(func));
-}
-
-template <typename F>
-inline typename std::enable_if<
-  !std::is_same<typename std::result_of<F()>::type, void>::value,
-  typename std::result_of<F()>::type>::type
-FiberManager::runInMainContextHelper(F&& func) {
   if (UNLIKELY(activeFiber_ == nullptr)) {
     return func();
   }
@@ -451,21 +443,7 @@ FiberManager::runInMainContextHelper(F&& func) {
   immediateFunc_ = std::ref(f);
   activeFiber_->preempt(Fiber::AWAITING_IMMEDIATE);
 
-  return std::move(result.value());
-}
-
-template <typename F>
-inline typename std::enable_if<
-  std::is_same<typename std::result_of<F()>::type, void>::value,
-  void>::type
-FiberManager::runInMainContextHelper(F&& func) {
-  if (UNLIKELY(activeFiber_ == nullptr)) {
-    func();
-    return;
-  }
-
-  immediateFunc_ = std::ref(func);
-  activeFiber_->preempt(Fiber::AWAITING_IMMEDIATE);
+  return std::move(result).value();
 }
 
 inline FiberManager& FiberManager::getFiberManager() {

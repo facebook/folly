@@ -937,16 +937,22 @@ TEST(FiberManager, runInMainContext) {
 
   checkRan = false;
 
-  manager.addTask(
-    [&]() {
-      int stackLocation;
-      runInMainContext(
-        [&]() {
-          expectMainContext(checkRan, &mainLocation, &stackLocation);
-        });
-      EXPECT_TRUE(checkRan);
-    }
-  );
+  manager.addTask([&]() {
+    struct A {
+      explicit A(int value_) : value(value_) {}
+      A(const A&) = delete;
+      A(A&&) = default;
+
+      int value;
+    };
+    int stackLocation;
+    auto ret = runInMainContext([&]() {
+      expectMainContext(checkRan, &mainLocation, &stackLocation);
+      return A(42);
+    });
+    EXPECT_TRUE(checkRan);
+    EXPECT_EQ(42, ret.value);
+  });
 
   loopController.loop(
     [&]() {

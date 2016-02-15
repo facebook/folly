@@ -374,24 +374,6 @@ class FiberManager : public ::folly::Executor {
   static FOLLY_TLS FiberManager* currentFiberManager_;
 
   /**
-   * runInMainContext implementation for non-void functions.
-   */
-  template <typename F>
-  typename std::enable_if<
-    !std::is_same<typename std::result_of<F()>::type, void>::value,
-    typename std::result_of<F()>::type>::type
-  runInMainContextHelper(F&& func);
-
-  /**
-   * runInMainContext implementation for void functions
-   */
-  template <typename F>
-  typename std::enable_if<
-    std::is_same<typename std::result_of<F()>::type, void>::value,
-    void>::type
-  runInMainContextHelper(F&& func);
-
-  /**
    * Allocator used to allocate stack for Fibers in the pool.
    * Allocates stack on the stack of the main context.
    */

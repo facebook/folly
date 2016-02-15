@@ -102,13 +102,19 @@ Try<T>::~Try() {
 }
 
 template <class T>
-T& Try<T>::value() {
+T& Try<T>::value() & {
   throwIfFailed();
   return value_;
 }
 
 template <class T>
-const T& Try<T>::value() const {
+T&& Try<T>::value() && {
+  throwIfFailed();
+  return std::move(value_);
+}
+
+template <class T>
+const T& Try<T>::value() const & {
   throwIfFailed();
   return value_;
 }
