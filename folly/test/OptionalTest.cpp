@@ -174,23 +174,9 @@ struct ExpectingDeleter {
   }
 };
 
-TEST(Optional, value_life_extention) {
-  // Extends the life of the value.
-  const auto& ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
-      {new int(42), ExpectingDeleter{1337}}).value();
-  *ptr = 1337;
-}
-
 TEST(Optional, value_move) {
   auto ptr = Optional<std::unique_ptr<int, ExpectingDeleter>>(
       {new int(42), ExpectingDeleter{1337}}).value();
-  *ptr = 1337;
-}
-
-TEST(Optional, dereference_life_extention) {
-  // Extends the life of the value.
-  const auto& ptr = *Optional<std::unique_ptr<int, ExpectingDeleter>>(
-      {new int(42), ExpectingDeleter{1337}});
   *ptr = 1337;
 }
 

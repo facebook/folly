@@ -219,10 +219,16 @@ class Optional {
     return value_;
   }
 
-  Value value() && {
+  Value&& value() && {
     require_value();
     return std::move(value_);
   }
+
+  const Value&& value() const&& {
+    require_value();
+    return std::move(value_);
+  }
+
 
   const Value* get_pointer() const&  { return hasValue_ ? &value_ : nullptr; }
         Value* get_pointer()      &  { return hasValue_ ? &value_ : nullptr; }
@@ -234,9 +240,10 @@ class Optional {
     return hasValue();
   }
 
-  const Value& operator*() const&  { return value(); }
-        Value& operator*()      &  { return value(); }
-        Value  operator*()      && { return std::move(value()); }
+  const Value& operator*()     const& { return value(); }
+        Value& operator*()          & { return value(); }
+        Value&& operator*()        && { return std::move(value()); }
+  const Value&& operator*()  const && { return std::move(value()); }
 
   const Value* operator->() const { return &value(); }
         Value* operator->()       { return &value(); }
