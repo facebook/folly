@@ -76,7 +76,7 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
   size_t r;
   do {
-    r = f(fd, iov, count, offset...);
+    r = f(fd, iov, std::min(count, IOV_MAX), offset...);
     if (r == (size_t)-1) {
       if (errno == EINTR) {
         continue;
