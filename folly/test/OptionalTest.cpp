@@ -546,4 +546,17 @@ TEST(Optional, NoThrowDefaultConstructible) {
   EXPECT_TRUE(std::is_nothrow_default_constructible<Optional<bool>>::value);
 }
 
+struct NoDestructor {};
+
+struct WithDestructor {
+  ~WithDestructor();
+};
+
+TEST(Optional, TriviallyDestructible) {
+  // These could all be static_asserts but EXPECT_* give much nicer output on
+  // failure.
+  EXPECT_TRUE(std::is_trivially_destructible<Optional<NoDestructor>>::value);
+  EXPECT_TRUE(std::is_trivially_destructible<Optional<int>>::value);
+  EXPECT_FALSE(std::is_trivially_destructible<Optional<WithDestructor>>::value);
+}
 }

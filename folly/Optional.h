@@ -94,8 +94,7 @@ class Optional {
   static_assert(!std::is_abstract<Value>::value,
                 "Optional may not be used with abstract types");
 
-  Optional() noexcept
-    : hasValue_(false) {
+  Optional() noexcept {
   }
 
   Optional(const Optional& src)
@@ -103,8 +102,6 @@ class Optional {
 
     if (src.hasValue()) {
       construct(src.value());
-    } else {
-      hasValue_ = false;
     }
   }
 
@@ -114,13 +111,10 @@ class Optional {
     if (src.hasValue()) {
       construct(std::move(src.value()));
       src.clear();
-    } else {
-      hasValue_ = false;
     }
   }
 
-  /* implicit */ Optional(const None&) noexcept
-    : hasValue_(false) {
+  /* implicit */ Optional(const None&) noexcept {
   }
 
   /* implicit */ Optional(Value&& newValue)
@@ -131,10 +125,6 @@ class Optional {
   /* implicit */ Optional(const Value& newValue)
     noexcept(std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
-  }
-
-  ~Optional() noexcept {
-    clear();
   }
 
   void assign(const None&) {
@@ -162,7 +152,7 @@ class Optional {
 
   void assign(Value&& newValue) {
     if (hasValue()) {
-      value_ = std::move(newValue);
+      storage_.value = std::move(newValue);
     } else {
       construct(std::move(newValue));
     }
@@ -170,7 +160,7 @@ class Optional {
 
   void assign(const Value& newValue) {
     if (hasValue()) {
-      value_ = newValue;
+      storage_.value = newValue;
     } else {
       construct(newValue);
     }
@@ -203,32 +193,33 @@ class Optional {
   }
 
   void clear() {
-    if (hasValue()) {
-      hasValue_ = false;
-      value_.~Value();
-    }
+    storage_.clear();
   }
 
   const Value& value() const& {
     require_value();
-    return value_;
+    return storage_.value;
   }
 
   Value& value() & {
     require_value();
-    return value_;
+    return storage_.value;
   }
 
   Value value() && {
     require_value();
-    return std::move(value_);
+    return std::move(storage_.value);
   }
 
-  const Value* get_pointer() const&  { return hasValue_ ? &value_ : nullptr; }
-        Value* get_pointer()      &  { return hasValue_ ? &value_ : nullptr; }
-        Value* get_pointer()      && = delete;
+  const Value* get_pointer() const&  {
+    return storage_.hasValue ? &storage_.value : nullptr;
+  }
+  Value* get_pointer() & {
+    return storage_.hasValue ? &storage_.value : nullptr;
+  }
+  Value* get_pointer() && = delete;
 
-  bool hasValue() const { return hasValue_; }
+  bool hasValue() const { return storage_.hasValue; }
 
   explicit operator bool() const {
     return hasValue();
@@ -244,32 +235,74 @@ class Optional {
   // Return a copy of the value if set, or a given default if not.
   template <class U>
   Value value_or(U&& dflt) const& {
-    return hasValue_ ? value_ : std::forward<U>(dflt);
+    if (storage_.hasValue) {
+      return storage_.value;
+    }
+
+    return std::forward<U>(dflt);
   }
 
   template <class U>
   Value value_or(U&& dflt) && {
-    return hasValue_ ? std::move(value_) : std::forward<U>(dflt);
+    if (storage_.hasValue) {
+      return std::move(storage_.value);
+    }
+
+    return std::forward<U>(dflt);
   }
 
  private:
   void require_value() const {
-    if (!hasValue_) {
+    if (!storage_.hasValue) {
       throw OptionalEmptyException();
     }
   }
 
   template<class... Args>
   void construct(Args&&... args) {
-    const void* ptr = &value_;
+    const void* ptr = &storage_.value;
     // for supporting const types
     new(const_cast<void*>(ptr)) Value(std::forward<Args>(args)...);
-    hasValue_ = true;
+    storage_.hasValue = true;
   }
 
-  // uninitialized
-  union { Value value_; };
-  bool hasValue_;
+  struct StorageTriviallyDestructible {
+    // uninitialized
+    union { Value value; };
+    bool hasValue;
+
+    StorageTriviallyDestructible() : hasValue{false} {}
+
+    void clear() {
+      hasValue = false;
+    }
+  };
+
+  struct StorageNonTriviallyDestructible {
+    // uninitialized
+    union { Value value; };
+    bool hasValue;
+
+    StorageNonTriviallyDestructible() : hasValue{false} {}
+
+    ~StorageNonTriviallyDestructible() {
+      clear();
+    }
+
+    void clear() {
+      if (hasValue) {
+        hasValue = false;
+        value.~Value();
+      }
+    }
+  };
+
+  using Storage =
+    typename std::conditional<std::is_trivially_destructible<Value>::value,
+                              StorageTriviallyDestructible,
+                              StorageNonTriviallyDestructible>::type;
+
+  Storage storage_;
 };
 
 #if defined(__GNUC__) && !defined(__clang__)
