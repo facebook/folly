@@ -31,272 +31,314 @@ using namespace folly::detail;
 /// think this map is ugly you should see the version of this test that
 /// used a real directory tree.  To reduce the chance of testing error
 /// I haven't tried to remove the common prefix
-static std::unordered_map<std::string,std::string> fakeSysfsTree = {
-  { "/sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu0/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu0/cache/index1/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu0/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu0/cache/index2/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu0/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu0/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu0/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu1/cache/index0/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu1/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu1/cache/index1/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu1/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu1/cache/index2/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu1/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu1/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu1/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu2/cache/index0/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu2/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu2/cache/index1/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu2/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu2/cache/index2/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu2/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu2/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu2/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu3/cache/index0/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu3/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu3/cache/index1/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu3/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu3/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu3/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu3/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu4/cache/index0/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu4/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu4/cache/index1/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu4/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu4/cache/index2/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu4/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu4/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu4/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu5/cache/index0/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu5/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu5/cache/index1/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu5/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu5/cache/index2/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu5/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu5/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu5/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu6/cache/index0/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu6/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu6/cache/index1/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu6/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu6/cache/index2/shared_cpu_list", "5-6" },
-  { "/sys/devices/system/cpu/cpu6/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu6/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu6/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu7/cache/index0/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu7/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu7/cache/index1/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu7/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu7/cache/index2/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu7/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu7/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu7/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu8/cache/index0/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu8/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu8/cache/index1/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu8/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu8/cache/index2/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu8/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu8/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu8/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu9/cache/index0/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu9/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu9/cache/index1/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu9/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu9/cache/index2/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu9/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu9/cache/index3/shared_cpu_list", "9-16,24-31" },
-  { "/sys/devices/system/cpu/cpu9/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu10/cache/index0/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu10/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu10/cache/index1/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu10/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu10/cache/index2/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu10/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu10/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu10/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu11/cache/index0/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu11/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu11/cache/index1/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu11/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu11/cache/index2/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu11/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu11/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu11/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu12/cache/index0/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu12/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu12/cache/index1/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu12/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu12/cache/index2/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu12/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu12/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu12/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu13/cache/index0/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu13/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu13/cache/index1/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu13/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu13/cache/index2/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu13/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu13/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu13/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu14/cache/index0/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu14/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu14/cache/index1/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu14/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu14/cache/index2/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu14/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu14/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu15/cache/index0/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu15/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu15/cache/index1/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu15/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu15/cache/index2/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu15/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu15/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu15/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu16/cache/index0/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu16/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu16/cache/index1/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu16/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu16/cache/index2/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu16/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu16/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu16/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu17/cache/index0/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu17/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu17/cache/index1/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu17/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu17/cache/index2/shared_cpu_list", "0,17" },
-  { "/sys/devices/system/cpu/cpu17/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu17/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu17/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu18/cache/index0/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu18/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu18/cache/index1/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu18/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu18/cache/index2/shared_cpu_list", "1,18" },
-  { "/sys/devices/system/cpu/cpu18/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu18/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu18/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu19/cache/index0/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu19/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu19/cache/index1/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu19/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu19/cache/index2/shared_cpu_list", "2,19" },
-  { "/sys/devices/system/cpu/cpu19/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu19/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu19/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu20/cache/index0/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu20/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu20/cache/index1/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu20/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu20/cache/index2/shared_cpu_list", "3,20" },
-  { "/sys/devices/system/cpu/cpu20/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu20/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu20/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu21/cache/index0/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu21/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu21/cache/index1/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu21/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu21/cache/index2/shared_cpu_list", "4,21" },
-  { "/sys/devices/system/cpu/cpu21/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu21/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu21/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu22/cache/index0/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu22/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu22/cache/index1/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu22/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu22/cache/index2/shared_cpu_list", "7,22" },
-  { "/sys/devices/system/cpu/cpu22/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu22/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu22/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu23/cache/index0/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu23/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu23/cache/index1/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu23/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu23/cache/index2/shared_cpu_list", "8,23" },
-  { "/sys/devices/system/cpu/cpu23/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu23/cache/index3/shared_cpu_list", "0-8,17-23" },
-  { "/sys/devices/system/cpu/cpu23/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu24/cache/index0/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu24/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu24/cache/index1/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu24/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu24/cache/index2/shared_cpu_list", "9,24" },
-  { "/sys/devices/system/cpu/cpu24/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu24/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu24/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu25/cache/index0/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu25/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu25/cache/index1/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu25/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu25/cache/index2/shared_cpu_list", "10,25" },
-  { "/sys/devices/system/cpu/cpu25/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu25/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu25/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu26/cache/index0/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu26/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu26/cache/index1/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu26/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu26/cache/index2/shared_cpu_list", "11,26" },
-  { "/sys/devices/system/cpu/cpu26/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu26/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu26/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu27/cache/index0/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu27/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu27/cache/index1/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu27/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu27/cache/index2/shared_cpu_list", "12,27" },
-  { "/sys/devices/system/cpu/cpu27/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu27/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu27/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu28/cache/index0/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu28/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu28/cache/index1/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu28/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu28/cache/index2/shared_cpu_list", "13,28" },
-  { "/sys/devices/system/cpu/cpu28/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu28/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu28/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu29/cache/index0/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu29/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu29/cache/index1/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu29/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu29/cache/index2/shared_cpu_list", "14,29" },
-  { "/sys/devices/system/cpu/cpu29/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu29/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu29/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu30/cache/index0/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu30/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu30/cache/index1/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu30/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu30/cache/index2/shared_cpu_list", "15,30" },
-  { "/sys/devices/system/cpu/cpu30/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu30/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu30/cache/index3/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu31/cache/index0/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu31/cache/index0/type", "Data" },
-  { "/sys/devices/system/cpu/cpu31/cache/index1/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu31/cache/index1/type", "Instruction" },
-  { "/sys/devices/system/cpu/cpu31/cache/index2/shared_cpu_list", "16,31" },
-  { "/sys/devices/system/cpu/cpu31/cache/index2/type", "Unified" },
-  { "/sys/devices/system/cpu/cpu31/cache/index3/shared_cpu_list", "9-16,24-31"},
-  { "/sys/devices/system/cpu/cpu31/cache/index3/type", "Unified" }
-};
+static std::unordered_map<std::string, std::string> fakeSysfsTree = {
+    {"/sys/devices/system/cpu/cpu0/cache/index0/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu0/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu0/cache/index1/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu0/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu0/cache/index2/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu0/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu0/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu0/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu1/cache/index0/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu1/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu1/cache/index1/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu1/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu1/cache/index2/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu1/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu1/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu1/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu2/cache/index0/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu2/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu2/cache/index1/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu2/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu2/cache/index2/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu2/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu2/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu2/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu3/cache/index0/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu3/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu3/cache/index1/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu3/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu3/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu3/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu3/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu4/cache/index0/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu4/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu4/cache/index1/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu4/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu4/cache/index2/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu4/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu4/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu4/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu5/cache/index0/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu5/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu5/cache/index1/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu5/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu5/cache/index2/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu5/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu5/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu5/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu6/cache/index0/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu6/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu6/cache/index1/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu6/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu6/cache/index2/shared_cpu_list", "5-6"},
+    {"/sys/devices/system/cpu/cpu6/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu6/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu6/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu7/cache/index0/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu7/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu7/cache/index1/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu7/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu7/cache/index2/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu7/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu7/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu7/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu8/cache/index0/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu8/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu8/cache/index1/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu8/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu8/cache/index2/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu8/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu8/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu8/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu9/cache/index0/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu9/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu9/cache/index1/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu9/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu9/cache/index2/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu9/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu9/cache/index3/shared_cpu_list", "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu9/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu10/cache/index0/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu10/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu10/cache/index1/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu10/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu10/cache/index2/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu10/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu10/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu10/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu11/cache/index0/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu11/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu11/cache/index1/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu11/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu11/cache/index2/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu11/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu11/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu11/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu12/cache/index0/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu12/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu12/cache/index1/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu12/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu12/cache/index2/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu12/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu12/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu12/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu13/cache/index0/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu13/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu13/cache/index1/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu13/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu13/cache/index2/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu13/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu13/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu13/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu14/cache/index0/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu14/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu14/cache/index1/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu14/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu14/cache/index2/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu14/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu14/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu14/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu15/cache/index0/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu15/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu15/cache/index1/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu15/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu15/cache/index2/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu15/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu15/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu15/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu16/cache/index0/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu16/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu16/cache/index1/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu16/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu16/cache/index2/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu16/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu16/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu16/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu17/cache/index0/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu17/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu17/cache/index1/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu17/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu17/cache/index2/shared_cpu_list", "0,17"},
+    {"/sys/devices/system/cpu/cpu17/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu17/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu17/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu18/cache/index0/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu18/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu18/cache/index1/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu18/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu18/cache/index2/shared_cpu_list", "1,18"},
+    {"/sys/devices/system/cpu/cpu18/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu18/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu18/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu19/cache/index0/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu19/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu19/cache/index1/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu19/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu19/cache/index2/shared_cpu_list", "2,19"},
+    {"/sys/devices/system/cpu/cpu19/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu19/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu19/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu20/cache/index0/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu20/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu20/cache/index1/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu20/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu20/cache/index2/shared_cpu_list", "3,20"},
+    {"/sys/devices/system/cpu/cpu20/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu20/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu20/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu21/cache/index0/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu21/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu21/cache/index1/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu21/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu21/cache/index2/shared_cpu_list", "4,21"},
+    {"/sys/devices/system/cpu/cpu21/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu21/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu21/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu22/cache/index0/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu22/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu22/cache/index1/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu22/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu22/cache/index2/shared_cpu_list", "7,22"},
+    {"/sys/devices/system/cpu/cpu22/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu22/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu22/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu23/cache/index0/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu23/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu23/cache/index1/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu23/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu23/cache/index2/shared_cpu_list", "8,23"},
+    {"/sys/devices/system/cpu/cpu23/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu23/cache/index3/shared_cpu_list", "0-8,17-23"},
+    {"/sys/devices/system/cpu/cpu23/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu24/cache/index0/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu24/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu24/cache/index1/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu24/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu24/cache/index2/shared_cpu_list", "9,24"},
+    {"/sys/devices/system/cpu/cpu24/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu24/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu24/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu25/cache/index0/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu25/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu25/cache/index1/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu25/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu25/cache/index2/shared_cpu_list", "10,25"},
+    {"/sys/devices/system/cpu/cpu25/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu25/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu25/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu26/cache/index0/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu26/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu26/cache/index1/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu26/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu26/cache/index2/shared_cpu_list", "11,26"},
+    {"/sys/devices/system/cpu/cpu26/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu26/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu26/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu27/cache/index0/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu27/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu27/cache/index1/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu27/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu27/cache/index2/shared_cpu_list", "12,27"},
+    {"/sys/devices/system/cpu/cpu27/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu27/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu27/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu28/cache/index0/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu28/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu28/cache/index1/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu28/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu28/cache/index2/shared_cpu_list", "13,28"},
+    {"/sys/devices/system/cpu/cpu28/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu28/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu28/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu29/cache/index0/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu29/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu29/cache/index1/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu29/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu29/cache/index2/shared_cpu_list", "14,29"},
+    {"/sys/devices/system/cpu/cpu29/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu29/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu29/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu30/cache/index0/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu30/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu30/cache/index1/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu30/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu30/cache/index2/shared_cpu_list", "15,30"},
+    {"/sys/devices/system/cpu/cpu30/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu30/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu30/cache/index3/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu31/cache/index0/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu31/cache/index0/type", "Data"},
+    {"/sys/devices/system/cpu/cpu31/cache/index1/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu31/cache/index1/type", "Instruction"},
+    {"/sys/devices/system/cpu/cpu31/cache/index2/shared_cpu_list", "16,31"},
+    {"/sys/devices/system/cpu/cpu31/cache/index2/type", "Unified"},
+    {"/sys/devices/system/cpu/cpu31/cache/index3/shared_cpu_list",
+     "9-16,24-31"},
+    {"/sys/devices/system/cpu/cpu31/cache/index3/type", "Unified"}};
 
 /// This is the expected CacheLocality structure for fakeSysfsTree
-static const CacheLocality nonUniformExampleLocality = {
-  32,
-  { 16, 16, 2 },
-  { 0, 2, 4, 6, 8, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28,
-    30, 1, 3, 5, 7, 9, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31 }
-};
+static const CacheLocality nonUniformExampleLocality = {32,
+                                                        {16, 16, 2},
+                                                        {0,
+                                                         2,
+                                                         4,
+                                                         6,
+                                                         8,
+                                                         10,
+                                                         11,
+                                                         12,
+                                                         14,
+                                                         16,
+                                                         18,
+                                                         20,
+                                                         22,
+                                                         24,
+                                                         26,
+                                                         28,
+                                                         30,
+                                                         1,
+                                                         3,
+                                                         5,
+                                                         7,
+                                                         9,
+                                                         13,
+                                                         15,
+                                                         17,
+                                                         19,
+                                                         21,
+                                                         23,
+                                                         25,
+                                                         27,
+                                                         29,
+                                                         31}};
 
 TEST(CacheLocality, FakeSysfs) {
   auto parsed = CacheLocality::readFromSysfsTree([](std::string name) {
@@ -359,12 +401,12 @@ static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
 TEST(AccessSpreader, Stubbed) {
   std::vector<std::unique_ptr<AccessSpreader<>>> spreaders(100);
   for (size_t s = 1; s < spreaders.size(); ++s) {
-    spreaders[s].reset(new AccessSpreader<>(
-        s, nonUniformExampleLocality, &testingGetcpu));
+    spreaders[s].reset(
+        new AccessSpreader<>(s, nonUniformExampleLocality, &testingGetcpu));
   }
   std::vector<size_t> cpusInLocalityOrder = {
-      0, 17, 1, 18, 2, 19, 3, 20, 4, 21, 5, 6, 7, 22, 8, 23, 9, 24, 10, 25,
-      11, 26, 12, 27, 13, 28, 14, 29, 15, 30, 16, 31 };
+      0, 17, 1,  18, 2,  19, 3,  20, 4,  21, 5,  6,  7,  22, 8,  23,
+      9, 24, 10, 25, 11, 26, 12, 27, 13, 28, 14, 29, 15, 30, 16, 31};
   for (size_t i = 0; i < 32; ++i) {
     // extra i * 32 is to check wrapping behavior of impl
     testingCpu = cpusInLocalityOrder[i] + i * 64;
@@ -407,8 +449,8 @@ TEST(AccessSpreader, Wrapping) {
       auto observed = spreader.current();
       testingCpu = c % numCpus;
       auto expected = spreader.current();
-      EXPECT_EQ(expected, observed)
-          << "numCpus=" << numCpus << ", s=" << s << ", c=" << c;
+      EXPECT_EQ(expected, observed) << "numCpus=" << numCpus << ", s=" << s
+                                    << ", c=" << c;
     }
   }
 }
@@ -536,7 +578,9 @@ enum class SpreaderType { GETCPU, SHARED, TLS_RR, PTHREAD_SELF };
 // contentionAtWidth(32_stripe_1000_work_getcpu)              786.56ns    1.27M
 // atomicIncrBaseline(local_incr_1000_work)                   784.69ns    1.27M
 // ============================================================================
-static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
+static void contentionAtWidth(size_t iters,
+                              size_t stripes,
+                              size_t work,
                               SpreaderType spreaderType,
                               size_t counterAlignment = 128,
                               size_t numThreads = 32) {
@@ -574,11 +618,11 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
 
   std::vector<std::thread> threads;
   while (threads.size() < numThreads) {
-    threads.push_back(std::thread([&,iters,stripes,work]() {
+    threads.push_back(std::thread([&, iters, stripes, work]() {
       std::atomic<size_t>* counters[stripes];
       for (size_t i = 0; i < stripes; ++i) {
-        counters[i]
-          = new (raw.data() + counterAlignment * i) std::atomic<size_t>();
+        counters[i] =
+            new (raw.data() + counterAlignment * i) std::atomic<size_t>();
       }
 
       spreader.current();
@@ -604,13 +648,10 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
       }
     }));
 
-    if (threads.size() == numThreads / 15 ||
-        threads.size() == numThreads / 5) {
+    if (threads.size() == numThreads / 15 || threads.size() == numThreads / 5) {
       // create a few dummy threads to wrap back around to 0 mod numCpus
       for (size_t i = threads.size(); i != numThreads; ++i) {
-        std::thread([&]() {
-          spreader.current();
-        }).join();
+        std::thread([&]() { spreader.current(); }).join();
       }
     }
   }
@@ -626,7 +667,8 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work,
   }
 }
 
-static void atomicIncrBaseline(size_t iters, size_t work,
+static void atomicIncrBaseline(size_t iters,
+                               size_t work,
                                size_t numThreads = 32) {
   folly::BenchmarkSuspender braces;
 
@@ -659,32 +701,32 @@ static void atomicIncrBaseline(size_t iters, size_t work,
 
 BENCHMARK_DRAW_LINE()
 
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 1_stripe_0_work_stub,
-                      1, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_0_work_getcpu,
-                      2, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_0_work_getcpu,
-                      4, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 8_stripe_0_work_getcpu,
-                      8, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 16_stripe_0_work_getcpu,
-                      16, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_0_work_getcpu,
-                      32, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 64_stripe_0_work_getcpu,
-                      64, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_0_work_tls_rr,
-                      2, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_0_work_tls_rr,
-                      4, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 8_stripe_0_work_tls_rr,
-                      8, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 16_stripe_0_work_tls_rr,
-                      16, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_0_work_tls_rr,
-                      32, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 64_stripe_0_work_tls_rr,
-                      64, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 1_stripe_0_work_stub, 1, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 2_stripe_0_work_getcpu, 2, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 4_stripe_0_work_getcpu, 4, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 8_stripe_0_work_getcpu, 8, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 16_stripe_0_work_getcpu, 16, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 32_stripe_0_work_getcpu, 32, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 64_stripe_0_work_getcpu, 64, 0, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 2_stripe_0_work_tls_rr, 2, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 4_stripe_0_work_tls_rr, 4, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 8_stripe_0_work_tls_rr, 8, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 16_stripe_0_work_tls_rr, 16, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 32_stripe_0_work_tls_rr, 32, 0, SpreaderType::TLS_RR)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 64_stripe_0_work_tls_rr, 64, 0, SpreaderType::TLS_RR)
 BENCHMARK_NAMED_PARAM(contentionAtWidth,
                       2_stripe_0_work_pthread_self,
                       2,
@@ -715,48 +757,53 @@ BENCHMARK_NAMED_PARAM(contentionAtWidth,
                       64,
                       0,
                       SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_0_work_shared,
-                      2, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_0_work_shared,
-                      4, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 8_stripe_0_work_shared,
-                      8, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 16_stripe_0_work_shared,
-                      16, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_0_work_shared,
-                      32, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 64_stripe_0_work_shared,
-                      64, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 2_stripe_0_work_shared, 2, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 4_stripe_0_work_shared, 4, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 8_stripe_0_work_shared, 8, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 16_stripe_0_work_shared, 16, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 32_stripe_0_work_shared, 32, 0, SpreaderType::SHARED)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 64_stripe_0_work_shared, 64, 0, SpreaderType::SHARED)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_0_work, 0)
 BENCHMARK_DRAW_LINE()
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 1_stripe_500_work_stub,
-                      1, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_500_work_getcpu,
-                      2, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_500_work_getcpu,
-                      4, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 8_stripe_500_work_getcpu,
-                      8, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 16_stripe_500_work_getcpu,
-                      16, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_500_work_getcpu,
-                      32, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 1_stripe_500_work_stub, 1, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 2_stripe_500_work_getcpu, 2, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 4_stripe_500_work_getcpu, 4, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 8_stripe_500_work_getcpu, 8, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 16_stripe_500_work_getcpu, 16, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 32_stripe_500_work_getcpu, 32, 500, SpreaderType::GETCPU)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_500_work, 500)
 BENCHMARK_DRAW_LINE()
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 1_stripe_1000_work_stub,
-                      1, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 2_stripe_1000_work_getcpu,
-                      2, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 4_stripe_1000_work_getcpu,
-                      4, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 8_stripe_1000_work_getcpu,
-                      8, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 16_stripe_1000_work_getcpu,
-                      16, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth, 32_stripe_1000_work_getcpu,
-                      32, 1000, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 1_stripe_1000_work_stub, 1, 1000, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 2_stripe_1000_work_getcpu, 2, 1000, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 4_stripe_1000_work_getcpu, 4, 1000, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(
+    contentionAtWidth, 8_stripe_1000_work_getcpu, 8, 1000, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      16_stripe_1000_work_getcpu,
+                      16,
+                      1000,
+                      SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(contentionAtWidth,
+                      32_stripe_1000_work_getcpu,
+                      32,
+                      1000,
+                      SpreaderType::GETCPU)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_1000_work, 1000)
-
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

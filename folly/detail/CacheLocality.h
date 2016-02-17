@@ -30,7 +30,8 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 
-namespace folly { namespace detail {
+namespace folly {
+namespace detail {
 
 // This file contains several classes that might be useful if you are
 // trying to dynamically optimize cache locality: CacheLocality reads
@@ -73,7 +74,6 @@ struct CacheLocality {
   /// cache and cpus with a locality index >= 16 will share the other.
   std::vector<size_t> localityIndexByCpu;
 
-
   /// Returns the best CacheLocality information available for the current
   /// system, cached for fast access.  This will be loaded from sysfs if
   /// possible, otherwise it will be correct in the number of CPUs but
@@ -88,9 +88,8 @@ struct CacheLocality {
   /// that transitively uses it, all components select between the default
   /// sysfs implementation and a deterministic implementation by keying
   /// off the type of the underlying atomic.  See DeterministicScheduler.
-  template <template<typename> class Atom = std::atomic>
+  template <template <typename> class Atom = std::atomic>
   static const CacheLocality& system();
-
 
   /// Reads CacheLocality information from a tree structured like
   /// the sysfs filesystem.  The provided function will be evaluated
@@ -121,7 +120,8 @@ struct CacheLocality {
     kFalseSharingRange = 128
   };
 
-  static_assert(kFalseSharingRange == 128,
+  static_assert(
+      kFalseSharingRange == 128,
       "FOLLY_ALIGN_TO_AVOID_FALSE_SHARING should track kFalseSharingRange");
 };
 
@@ -143,7 +143,7 @@ struct Getcpu {
 };
 
 #ifdef FOLLY_TLS
-template <template<typename> class Atom>
+template <template <typename> class Atom>
 struct SequentialThreadId {
 
   /// Returns the thread id assigned to the current thread
@@ -197,7 +197,7 @@ typedef FallbackGetcpu<SequentialThreadId<std::atomic>> FallbackGetcpuType;
 typedef FallbackGetcpu<HashingThreadId> FallbackGetcpuType;
 #endif
 
-template <template<typename> class Atom, size_t kMaxCpus>
+template <template <typename> class Atom, size_t kMaxCpus>
 struct AccessSpreaderArray;
 
 /// AccessSpreader arranges access to a striped data structure in such a
@@ -239,7 +239,7 @@ struct AccessSpreaderArray;
 /// testing.  See DeterministicScheduler for more.  If you aren't using
 /// DeterministicScheduler, you can just use the default template parameter
 /// all of the time.
-template <template<typename> class Atom = std::atomic>
+template <template <typename> class Atom = std::atomic>
 struct AccessSpreader {
 
   /// Returns a never-destructed shared AccessSpreader instance.
@@ -249,8 +249,8 @@ struct AccessSpreader {
     assert(numStripes > 0);
 
     // the last shared element handles all large sizes
-    return AccessSpreaderArray<Atom,kMaxCpus>::sharedInstance[
-        std::min(size_t(kMaxCpus), numStripes)];
+    return AccessSpreaderArray<Atom, kMaxCpus>::sharedInstance[std::min(
+        size_t(kMaxCpus), numStripes)];
   }
 
   /// Returns the stripe associated with the current CPU, assuming
@@ -271,19 +271,18 @@ struct AccessSpreader {
   /// to see its width, or stripeByChip.current() to get the current stripe
   static const AccessSpreader stripeByChip;
 
-
   /// Constructs an AccessSpreader that will return values from
   /// 0 to numStripes-1 (inclusive), precomputing the mapping
   /// from CPU to stripe.  There is no use in having more than
   /// CacheLocality::system<Atom>().localityIndexByCpu.size() stripes or
   /// kMaxCpus stripes
-  explicit AccessSpreader(size_t spreaderNumStripes,
-                          const CacheLocality& cacheLocality =
-                              CacheLocality::system<Atom>(),
-                          Getcpu::Func getcpuFunc = nullptr)
-    : getcpuFunc_(getcpuFunc ? getcpuFunc : pickGetcpuFunc(spreaderNumStripes))
-    , numStripes_(spreaderNumStripes)
-  {
+  explicit AccessSpreader(
+      size_t spreaderNumStripes,
+      const CacheLocality& cacheLocality = CacheLocality::system<Atom>(),
+      Getcpu::Func getcpuFunc = nullptr)
+      : getcpuFunc_(getcpuFunc ? getcpuFunc
+                               : pickGetcpuFunc(spreaderNumStripes)),
+        numStripes_(spreaderNumStripes) {
     auto n = cacheLocality.numCpus;
     for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
       auto index = cacheLocality.localityIndexByCpu[cpu];
@@ -300,9 +299,7 @@ struct AccessSpreader {
 
   /// Returns 1 more than the maximum value that can be returned from
   /// current()
-  size_t numStripes() const {
-    return numStripes_;
-  }
+  size_t numStripes() const { return numStripes_; }
 
   /// Returns the stripe associated with the current CPU
   size_t current() const {
@@ -312,7 +309,6 @@ struct AccessSpreader {
   }
 
  private:
-
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
   enum { kMaxCpus = 128 };
@@ -320,10 +316,9 @@ struct AccessSpreader {
   typedef uint8_t CompactStripe;
 
   static_assert((kMaxCpus & (kMaxCpus - 1)) == 0,
-      "kMaxCpus should be a power of two so modulo is fast");
+                "kMaxCpus should be a power of two so modulo is fast");
   static_assert(kMaxCpus - 1 <= std::numeric_limits<CompactStripe>::max(),
-      "stripeByCpu element type isn't wide enough");
-
+                "stripeByCpu element type isn't wide enough");
 
   /// Points to the getcpu-like function we are using to obtain the
   /// current cpu.  It should not be assumed that the returned cpu value
@@ -343,13 +338,12 @@ struct AccessSpreader {
   static Getcpu::Func pickGetcpuFunc(size_t numStripes);
 };
 
-template<>
+template <>
 Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t);
-
 
 /// An array of kMaxCpus+1 AccessSpreader<Atom> instances constructed
 /// with default params, with the zero-th element having 1 stripe
-template <template<typename> class Atom, size_t kMaxStripe>
+template <template <typename> class Atom, size_t kMaxStripe>
 struct AccessSpreaderArray {
 
   AccessSpreaderArray() {
@@ -365,18 +359,16 @@ struct AccessSpreaderArray {
     }
   }
 
-  AccessSpreader<Atom> const& operator[] (size_t index) const {
+  AccessSpreader<Atom> const& operator[](size_t index) const {
     return *static_cast<AccessSpreader<Atom> const*>(
-        static_cast<void const*>(raw + index));
+               static_cast<void const*>(raw + index));
   }
 
  private:
-
   // AccessSpreader uses sharedInstance
   friend AccessSpreader<Atom>;
 
-  static AccessSpreaderArray<Atom,kMaxStripe> sharedInstance;
-
+  static AccessSpreaderArray<Atom, kMaxStripe> sharedInstance;
 
   /// aligned_storage is uninitialized, we use placement new since there
   /// is no AccessSpreader default constructor
@@ -384,7 +376,7 @@ struct AccessSpreaderArray {
                                 CacheLocality::kFalseSharingRange>::type
       raw[kMaxStripe + 1];
 };
-
-} }
+}
+}
 
 #endif /* FOLLY_DETAIL_CacheLocality_H_ */

@@ -91,9 +91,10 @@ struct UniformSubset {
 
   void adjustPermSize(size_t numActive) {
     if (perm_.size() > numActive) {
-      perm_.erase(std::remove_if(perm_.begin(), perm_.end(), [=](size_t x) {
-        return x >= numActive;
-      }), perm_.end());
+      perm_.erase(std::remove_if(perm_.begin(),
+                                 perm_.end(),
+                                 [=](size_t x) { return x >= numActive; }),
+                  perm_.end());
     } else {
       while (perm_.size() < numActive) {
         perm_.push_back(perm_.size());
@@ -297,18 +298,18 @@ FutexResult Futex<DeterministicAtomic>::futexWaitImpl(
 
   char const* resultStr = "?";
   switch (result) {
-  case FutexResult::AWOKEN:
-    resultStr = "AWOKEN";
-    break;
-  case FutexResult::TIMEDOUT:
-    resultStr = "TIMEDOUT";
-    break;
-  case FutexResult::INTERRUPTED:
-    resultStr = "INTERRUPTED";
-    break;
-  case FutexResult::VALUE_CHANGED:
-    resultStr = "VALUE_CHANGED";
-    break;
+    case FutexResult::AWOKEN:
+      resultStr = "AWOKEN";
+      break;
+    case FutexResult::TIMEDOUT:
+      resultStr = "TIMEDOUT";
+      break;
+    case FutexResult::INTERRUPTED:
+      resultStr = "INTERRUPTED";
+      break;
+    case FutexResult::VALUE_CHANGED:
+      resultStr = "VALUE_CHANGED";
+      break;
   }
   FOLLY_TEST_DSCHED_VLOG(this << ".futexWait(" << std::hex << expected
                               << ", .., " << std::hex << waitMask << ") -> "
