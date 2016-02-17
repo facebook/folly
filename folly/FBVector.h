@@ -1133,7 +1133,7 @@ private:
   // std::vector implements a similar function with a different growth
   //  strategy: empty() ? 1 : capacity() * 2.
   //
-  // fbvector grows differently on two counts:
+  // fbvector grows differently on three counts:
   //
   // (1) initial size
   //     Instead of grwoing to size 1 from empty, and fbvector allocates at
@@ -1144,11 +1144,14 @@ private:
   //     for details.
   //     This does not apply to very small or very large fbvectors. This is a
   //     heuristic.
-  //     A nice addition to fbvector would be the capability of having a user-
-  //     defined growth strategy, probably as part of the allocator.
+  // (3) allocator-controlled
+  //     if the allocator implements a calculate_capacity member function
+  //     then it is called to determine the next capacity value
+  //     *NOTE*: Under this condition, the custom calculate_capacity member
+  //     is *ALWAYS* used to determine capacity requirements
   //
 
-  size_type computePushBackCapacity() const {
+  size_type computePushBackCapacityDispatch(detail::no_custom_growth_strategy_tag) const {
     if (capacity() == 0) {
       return std::max(64 / sizeof(T), size_type(1));
     }
@@ -1159,6 +1162,16 @@ private:
       return capacity() * 2;
     }
     return (capacity() * 3 + 1) / 2;
+  }
+
+  size_type computePushBackCapacityDispatch(detail::has_custom_growth_strategy_tag) const {
+    return impl_.calculate_capacity(capacity());
+  }
+
+  size_type computePushBackCapacity() const {
+    return computePushBackCapacityDispatch(
+      typename detail::allocator_implements_growth_strategy<
+        allocator_type, size_type>::result_type());
   }
 
   template <class... Args>
