@@ -24,6 +24,7 @@
 #include <array>
 
 #include <glog/logging.h>
+#include <folly/CallOnce.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/ThreadLocal.h>
@@ -38,9 +39,9 @@ namespace {
 
 void readRandomDevice(void* data, size_t size) {
 #ifdef _MSC_VER
-  static std::once_flag flag;
+  static folly::once_flag flag;
   static HCRYPTPROV cryptoProv;
-  std::call_once(flag, [&] {
+  folly::call_once(flag, [&] {
     PCHECK(CryptAcquireContext(&cryptoProv, nullptr, nullptr,
                                PROV_RSA_FULL, 0));
   });

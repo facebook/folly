@@ -38,6 +38,7 @@ nobase_follyinclude_HEADERS = \
 	Baton.h \
 	Benchmark.h \
 	Bits.h \
+	CallOnce.h \
 	Checksum.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
