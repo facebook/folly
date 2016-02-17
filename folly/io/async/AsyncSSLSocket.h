@@ -347,7 +347,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     STATE_UNENCRYPTED,
     STATE_ACCEPTING,
     STATE_CACHE_LOOKUP,
-    STATE_RSA_ASYNC_PENDING,
+    STATE_ASYNC_PENDING,
     STATE_CONNECTING,
     STATE_ESTABLISHED,
     STATE_REMOTE_CLOSED, /// remote end closed; we can still write

@@ -614,7 +614,7 @@ void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
 void AsyncSSLSocket::timeoutExpired() noexcept {
   if (state_ == StateEnum::ESTABLISHED &&
       (sslState_ == STATE_CACHE_LOOKUP ||
-       sslState_ == STATE_RSA_ASYNC_PENDING)) {
+       sslState_ == STATE_ASYNC_PENDING)) {
     sslState_ = STATE_ERROR;
     // We are expecting a callback in restartSSLAccept.  The cache lookup
     // and rsa-call necessarily have pointers to this ssl socket, so delay
@@ -919,12 +919,18 @@ bool AsyncSSLSocket::willBlock(int ret, int *errorOut) noexcept {
     // The timeout (if set) keeps running here
     return true;
 #endif
+  } else if (0
 #ifdef SSL_ERROR_WANT_RSA_ASYNC_PENDING
-  } else if (error == SSL_ERROR_WANT_RSA_ASYNC_PENDING) {
+      || error == SSL_ERROR_WANT_RSA_ASYNC_PENDING
+#endif
+#ifdef SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
+      || error == SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
+#endif
+      ) {
     // Our custom openssl function has kicked off an async request to do
-    // modular exponentiation.  When that call returns, a callback will
+    // rsa/ecdsa private key operation.  When that call returns, a callback will
     // be invoked that will re-call handleAccept.
-    sslState_ = STATE_RSA_ASYNC_PENDING;
+    sslState_ = STATE_ASYNC_PENDING;
 
     // Unregister for all events while blocked here
     updateEventRegistration(
@@ -934,7 +940,6 @@ bool AsyncSSLSocket::willBlock(int ret, int *errorOut) noexcept {
 
     // The timeout (if set) keeps running here
     return true;
-#endif
   } else {
     // SSL_ERROR_ZERO_RETURN is processed here so we can get some detail
     // in the log
@@ -983,7 +988,7 @@ AsyncSSLSocket::restartSSLAccept()
   DestructorGuard dg(this);
   assert(
     sslState_ == STATE_CACHE_LOOKUP ||
-    sslState_ == STATE_RSA_ASYNC_PENDING ||
+    sslState_ == STATE_ASYNC_PENDING ||
     sslState_ == STATE_ERROR ||
     sslState_ == STATE_CLOSED
   );
