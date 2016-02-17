@@ -20,7 +20,7 @@
 #include <cerrno>
 #include <unistd.h>
 
-#include <sys/uio.h>
+#include <folly/portability/SysUio.h>
 
 /**
  * Helper functions and templates for FileUtil.cpp.  Declared here so
@@ -76,7 +76,7 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
   size_t r;
   do {
-    r = f(fd, iov, std::min(count, IOV_MAX), offset...);
+    r = f(fd, iov, std::min<int>(count, kIovMax), offset...);
     if (r == (size_t)-1) {
       if (errno == EINTR) {
         continue;

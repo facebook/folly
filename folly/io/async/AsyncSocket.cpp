@@ -20,6 +20,7 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
+#include <folly/portability/SysUio.h>
 
 #include <poll.h>
 #include <errno.h>
@@ -1711,11 +1712,7 @@ ssize_t AsyncSocket::performWrite(const iovec* vec,
   msg.msg_name = nullptr;
   msg.msg_namelen = 0;
   msg.msg_iov = const_cast<iovec *>(vec);
-#ifdef IOV_MAX // not defined on Android
-  msg.msg_iovlen = std::min(count, (uint32_t)IOV_MAX);
-#else
-  msg.msg_iovlen = std::min(count, (uint32_t)UIO_MAXIOV);
-#endif
+  msg.msg_iovlen = std::min<size_t>(count, kIovMax);
   msg.msg_control = nullptr;
   msg.msg_controllen = 0;
   msg.msg_flags = 0;
