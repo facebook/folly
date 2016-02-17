@@ -34,7 +34,6 @@ nobase_follyinclude_HEADERS = \
 	AtomicLinkedList.h \
 	AtomicStruct.h \
 	AtomicUnorderedMap.h \
-	CppAttributes.h \
 	Baton.h \
 	Benchmark.h \
 	Bits.h \
@@ -42,8 +41,10 @@ nobase_follyinclude_HEADERS = \
 	Checksum.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
+	ConditionallyExistent.h \
 	ContainerTraits.h \
 	Conv.h \
+	CppAttributes.h \
 	CpuId.h \
 	CPortability.h \
 	detail/AtomicHashUtils.h \
@@ -138,7 +139,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/TestUtil.h \
 	experimental/TLRefCount.h \
 	experimental/TupleOps.h \
-	SparseByteSet.h \
 	FBString.h \
 	FBVector.h \
 	File.h \
@@ -265,7 +265,6 @@ nobase_follyinclude_HEADERS = \
 	Portability.h \
 	portability/Syscall.h \
 	portability/SysUio.h \
-	ConditionallyExistent.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
 	Random.h \
@@ -281,6 +280,7 @@ nobase_follyinclude_HEADERS = \
 	small_vector.h \
 	SocketAddress.h \
 	sorted_vector_types.h \
+	SparseByteSet.h \
 	SpinLock.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
