@@ -16,6 +16,8 @@
 
 #include <folly/Format.h>
 
+#include <folly/portability/Constexpr.h>
+
 #include <double-conversion/double-conversion.h>
 
 namespace folly {
@@ -48,11 +50,13 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  char buf[2 + std::max(
-      2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
-       DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
-      std::max(8 + DoubleToStringConverter::kMaxExponentialDigits,
-      7 + DoubleToStringConverter::kMaxPrecisionDigits))];
+  constexpr size_t bufLen =
+      2 + constexpr_max(
+              2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
+                  DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
+              constexpr_max(8 + DoubleToStringConverter::kMaxExponentialDigits,
+                            7 + DoubleToStringConverter::kMaxPrecisionDigits));
+  char buf[bufLen];
   StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
 
   char plusSign;

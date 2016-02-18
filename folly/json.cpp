@@ -24,6 +24,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/Unicode.h>
+#include <folly/portability/Constexpr.h>
 
 namespace folly {
 

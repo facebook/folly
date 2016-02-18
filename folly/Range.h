@@ -23,6 +23,7 @@
 #include <folly/Portability.h>
 #include <folly/FBString.h>
 #include <folly/SpookyHashV2.h>
+#include <folly/portability/Constexpr.h>
 
 #include <algorithm>
 #include <boost/operators.hpp>
