@@ -203,6 +203,10 @@ thread_name_test_SOURCES = ThreadNameTest.cpp
 thread_name_test_LDADD = libfollytestmain.la
 TESTS += thread_name_test
 
+indestructible_test_SOURCES = IndestructibleTest.cpp
+indestructible_test_LDADD = libfollytestmain.la
+TESTS += indestructible_test
+
 
 futures_test_SOURCES = \
     ../futures/test/CollectTest.cpp \

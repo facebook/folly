@@ -195,6 +195,7 @@ nobase_follyinclude_HEADERS = \
 	IPAddressV4.h \
 	IPAddressV6.h \
 	IPAddressException.h \
+	Indestructible.h \
 	IndexedMemPool.h \
 	init/Init.h \
 	IntrusiveList.h \
