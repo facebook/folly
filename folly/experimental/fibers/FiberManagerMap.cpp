@@ -169,6 +169,7 @@ void EventBaseOnDestructionCallback::runLoopCallback() noexcept {
   ThreadLocalCache::erase(evb_);
 
   while (fm->hasTasks()) {
+    fm->loopUntilNoReady();
     evb_.loopOnce();
   }
 
