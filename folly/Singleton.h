@@ -160,6 +160,47 @@ class SingletonVault;
 
 namespace detail {
 
+// This internal-use-only class is used to create all leaked Meyers singletons.
+// It guarantees that only one instance of every such singleton will ever be
+// created, even when requested from different compilation units linked
+// dynamically.
+class StaticSingletonManager {
+ public:
+  static StaticSingletonManager& instance();
+
+  template <typename T, typename Tag, typename F>
+  inline T* create(F&& creator) {
+    std::lock_guard<std::mutex> lg(mutex_);
+
+    auto& id = typeid(TypePair<T, Tag>);
+    auto& ptr = reinterpret_cast<T*&>(map_[id]);
+    if (!ptr) {
+      ptr = creator();
+    }
+    return ptr;
+  }
+
+ private:
+  template <typename A, typename B>
+  class TypePair {};
+
+  StaticSingletonManager() {}
+
+  std::unordered_map<std::type_index, intptr_t> map_;
+  std::mutex mutex_;
+};
+
+template <typename T, typename Tag, typename F>
+inline T* createGlobal(F&& creator) {
+  return StaticSingletonManager::instance().create<T, Tag>(
+      std::forward<F>(creator));
+}
+
+template <typename T, typename Tag>
+inline T* createGlobal() {
+  return createGlobal<T, Tag>([]() { return new T(); });
+}
+
 struct DefaultTag {};
 
 // A TypeDescriptor is the unique handle for a given singleton.  It is
@@ -428,15 +469,18 @@ class SingletonVault {
   // tests only.
   template <typename VaultTag = detail::DefaultTag>
   static SingletonVault* singleton() {
-    static SingletonVault* vault = new SingletonVault();
+    static SingletonVault* vault =
+        detail::createGlobal<SingletonVault, VaultTag>();
     return vault;
   }
 
   typedef std::string(*StackTraceGetterPtr)();
 
   static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
-    static std::atomic<StackTraceGetterPtr> stackTraceGetterPtr;
-    return stackTraceGetterPtr;
+    static std::atomic<StackTraceGetterPtr>* stackTraceGetterPtr =
+        detail::createGlobal<std::atomic<StackTraceGetterPtr>,
+                             SingletonVault>();
+    return *stackTraceGetterPtr;
   }
 
  private:
@@ -644,7 +688,7 @@ class LeakySingleton {
   };
 
   static Entry& entryInstance() {
-    static auto entry = new Entry();
+    static auto entry = detail::createGlobal<Entry, Tag>();
     return *entry;
   }
 

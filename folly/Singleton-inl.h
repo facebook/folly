@@ -21,9 +21,11 @@ namespace detail {
 template <typename T>
 template <typename Tag, typename VaultTag>
 SingletonHolder<T>& SingletonHolder<T>::singleton() {
-  static auto entry = new SingletonHolder<T>(
-    {typeid(T), typeid(Tag)},
-    *SingletonVault::singleton<VaultTag>());
+  static auto entry =
+      createGlobal<SingletonHolder<T>, std::pair<Tag, VaultTag>>([]() {
+        return new SingletonHolder<T>({typeid(T), typeid(Tag)},
+                                      *SingletonVault::singleton<VaultTag>());
+      });
   return *entry;
 }
 
