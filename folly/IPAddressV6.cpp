@@ -374,8 +374,8 @@ const ByteArray16 IPAddressV6::fetchMask(size_t numBits) {
 // protected
 bool IPAddressV6::inBinarySubnet(const std::array<uint8_t, 2> addr,
                                  size_t numBits) const {
-  const unsigned char* subbytes = mask(numBits).bytes();
-  return (std::memcmp(addr.data(), subbytes, 2) == 0);
+  auto masked = mask(numBits);
+  return (std::memcmp(addr.data(), masked.bytes(), 2) == 0);
 }
 
 // static private
