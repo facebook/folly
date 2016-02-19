@@ -117,6 +117,12 @@ class Dwarf {
 
  private:
   void init();
+  static bool findDebugInfoOffset(uintptr_t address,
+                                  StringPiece aranges,
+                                  uint64_t& offset);
+  bool findLocation(uintptr_t address,
+                    StringPiece& infoEntry,
+                    LocationInfo& info) const;
 
   const ElfFile* elf_;
 
