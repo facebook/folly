@@ -23,7 +23,6 @@
 #include <map>
 #include <memory>
 #include <glog/logging.h>
-#include <folly/ThreadLocal.h>
 #include <folly/RWSpinLock.h>
 #include <folly/SingletonThreadLocal.h>
 
@@ -130,11 +129,7 @@ class RequestContext {
   }
 
  private:
-  static std::shared_ptr<RequestContext>& getStaticContext() {
-    using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
-    static SingletonT singleton;
-    return singleton.get();
-  }
+  static std::shared_ptr<RequestContext>& getStaticContext();
 
   folly::RWSpinLock lock;
   std::map<std::string, std::unique_ptr<RequestData>> data_;
