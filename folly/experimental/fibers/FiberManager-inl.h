@@ -141,15 +141,18 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 }
 
 inline bool FiberManager::loopUntilNoReady() {
+  // Support nested FiberManagers
+  auto originalFiberManager = this;
+  std::swap(currentFiberManager_, originalFiberManager);
+
   SCOPE_EXIT {
     isLoopScheduled_ = false;
     if (!readyFibers_.empty()) {
       ensureLoopScheduled();
     }
-    currentFiberManager_ = nullptr;
+    std::swap(currentFiberManager_, originalFiberManager);
+    CHECK_EQ(this, originalFiberManager);
   };
-
-  currentFiberManager_ = this;
 
   bool hadRemoteFiber = true;
   while (hadRemoteFiber) {

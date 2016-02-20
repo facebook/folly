@@ -26,6 +26,7 @@
 #include <folly/experimental/fibers/AddTasks.h>
 #include <folly/experimental/fibers/EventBaseLoopController.h>
 #include <folly/experimental/fibers/FiberManager.h>
+#include <folly/experimental/fibers/FiberManagerMap.h>
 #include <folly/experimental/fibers/GenericBaton.h>
 #include <folly/experimental/fibers/SimpleLoopController.h>
 #include <folly/experimental/fibers/WhenN.h>
@@ -1550,6 +1551,34 @@ TEST(FiberManager, remoteFutureTest) {
 
   EXPECT_EQ(v1, testValue1);
   EXPECT_EQ(v2, testValue2);
+}
+
+TEST(FiberManager, nestedFiberManagers) {
+  folly::EventBase outerEvb;
+  folly::EventBase innerEvb;
+
+  getFiberManager(outerEvb).addTask([&]() {
+    EXPECT_EQ(&getFiberManager(outerEvb),
+              FiberManager::getFiberManagerUnsafe());
+
+    runInMainContext([&]() {
+      getFiberManager(innerEvb).addTask([&]() {
+        EXPECT_EQ(&getFiberManager(innerEvb),
+                  FiberManager::getFiberManagerUnsafe());
+
+        innerEvb.terminateLoopSoon();
+      });
+
+      innerEvb.loopForever();
+    });
+
+    EXPECT_EQ(&getFiberManager(outerEvb),
+              FiberManager::getFiberManagerUnsafe());
+
+    outerEvb.terminateLoopSoon();
+  });
+
+  outerEvb.loopForever();
 }
 
 static size_t sNumAwaits;
