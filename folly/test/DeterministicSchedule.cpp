@@ -23,6 +23,8 @@
 #include <unordered_map>
 #include <assert.h>
 
+DECLARE_ACCESS_SPREADER_TYPE(folly::test::DeterministicAtomic)
+
 namespace folly {
 namespace test {
 
@@ -352,22 +354,7 @@ CacheLocality const& CacheLocality::system<test::DeterministicAtomic>() {
 }
 
 template <>
-const AccessSpreader<test::DeterministicAtomic>
-    AccessSpreader<test::DeterministicAtomic>::stripeByCore(
-        CacheLocality::system<>().numCachesByLevel.front());
-
-template <>
-const AccessSpreader<test::DeterministicAtomic>
-    AccessSpreader<test::DeterministicAtomic>::stripeByChip(
-        CacheLocality::system<>().numCachesByLevel.back());
-
-template <>
-AccessSpreaderArray<test::DeterministicAtomic, 128>
-    AccessSpreaderArray<test::DeterministicAtomic, 128>::sharedInstance = {};
-
-template <>
-Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(
-    size_t /* numStripes */) {
+Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc() {
   return &DeterministicSchedule::getcpu;
 }
 }

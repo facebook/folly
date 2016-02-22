@@ -400,7 +400,6 @@ FutexResult Futex<test::DeterministicAtomic>::futexWaitImpl(
     uint32_t waitMask);
 
 template <>
-Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc(
-    size_t numStripes);
+Getcpu::Func AccessSpreader<test::DeterministicAtomic>::pickGetcpuFunc();
 }
 } // namespace folly::detail

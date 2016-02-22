@@ -354,7 +354,7 @@ TEST(CacheLocality, FakeSysfs) {
 
 TEST(Getcpu, VdsoGetcpu) {
   unsigned cpu;
-  Getcpu::vdsoFunc()(&cpu, nullptr, nullptr);
+  Getcpu::resolveVdsoFunc()(&cpu, nullptr, nullptr);
 
   EXPECT_TRUE(cpu < CPU_SETSIZE);
 }
@@ -398,102 +398,63 @@ static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   return 0;
 }
 
-TEST(AccessSpreader, Stubbed) {
-  std::vector<std::unique_ptr<AccessSpreader<>>> spreaders(100);
-  for (size_t s = 1; s < spreaders.size(); ++s) {
-    spreaders[s].reset(
-        new AccessSpreader<>(s, nonUniformExampleLocality, &testingGetcpu));
-  }
-  std::vector<size_t> cpusInLocalityOrder = {
-      0, 17, 1,  18, 2,  19, 3,  20, 4,  21, 5,  6,  7,  22, 8,  23,
-      9, 24, 10, 25, 11, 26, 12, 27, 13, 28, 14, 29, 15, 30, 16, 31};
-  for (size_t i = 0; i < 32; ++i) {
-    // extra i * 32 is to check wrapping behavior of impl
-    testingCpu = cpusInLocalityOrder[i] + i * 64;
-    for (size_t s = 1; s < spreaders.size(); ++s) {
-      EXPECT_EQ((i * s) / 32, spreaders[s]->current())
-          << "i=" << i << ", cpu=" << testingCpu << ", s=" << s;
-    }
-  }
-}
-
-TEST(AccessSpreader, Default) {
-  AccessSpreader<> spreader(16);
-  EXPECT_LT(spreader.current(), 16);
-}
-
-TEST(AccessSpreader, Shared) {
-  for (size_t s = 1; s < 200; ++s) {
-    EXPECT_LT(AccessSpreader<>::shared(s).current(), s);
-  }
-}
-
-TEST(AccessSpreader, Statics) {
-  LOG(INFO) << "stripeByCore.numStripes() = "
-            << AccessSpreader<>::stripeByCore.numStripes();
-  LOG(INFO) << "stripeByChip.numStripes() = "
-            << AccessSpreader<>::stripeByChip.numStripes();
+TEST(AccessSpreader, Simple) {
   for (size_t s = 1; s < 200; ++s) {
     EXPECT_LT(AccessSpreader<>::current(s), s);
   }
 }
 
+#define DECLARE_SPREADER_TAG(tag, locality, func)      \
+  namespace {                                          \
+  template <typename dummy>                            \
+  struct tag {};                                       \
+  }                                                    \
+  DECLARE_ACCESS_SPREADER_TYPE(tag)                    \
+  namespace folly {                                    \
+  namespace detail {                                   \
+  template <>                                          \
+  const CacheLocality& CacheLocality::system<tag>() {  \
+    static auto* inst = new CacheLocality(locality);   \
+    return *inst;                                      \
+  }                                                    \
+  template <>                                          \
+  Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
+    return func;                                       \
+  }                                                    \
+  }                                                    \
+  }
+
+DECLARE_SPREADER_TAG(ManualTag, CacheLocality::uniform(16), testingGetcpu)
+DECLARE_SPREADER_TAG(
+    ThreadLocalTag,
+    CacheLocality::system<>(),
+    folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu)
+DECLARE_SPREADER_TAG(PthreadSelfTag,
+                     CacheLocality::system<>(),
+                     folly::detail::FallbackGetcpu<HashingThreadId>::getcpu)
+
 TEST(AccessSpreader, Wrapping) {
   // this test won't pass unless locality.numCpus divides kMaxCpus
-  auto numCpus = 16;
-  auto locality = CacheLocality::uniform(numCpus);
+  auto numCpus = CacheLocality::system<ManualTag>().numCpus;
+  EXPECT_EQ(0, 128 % numCpus);
   for (size_t s = 1; s < 200; ++s) {
-    AccessSpreader<> spreader(s, locality, &testingGetcpu);
     for (size_t c = 0; c < 400; ++c) {
       testingCpu = c;
-      auto observed = spreader.current();
+      auto observed = AccessSpreader<ManualTag>::current(s);
       testingCpu = c % numCpus;
-      auto expected = spreader.current();
+      auto expected = AccessSpreader<ManualTag>::current(s);
       EXPECT_EQ(expected, observed) << "numCpus=" << numCpus << ", s=" << s
                                     << ", c=" << c;
     }
   }
 }
 
-// Benchmarked at ~21 nanos on fbk35 (2.6) and fbk18 (3.2) kernels with
-// a 2.2Ghz Xeon
-// ============================================================================
-// folly/test/CacheLocalityTest.cpp                relative  time/iter  iters/s
-// ============================================================================
-// LocalAccessSpreaderUse                                      20.77ns   48.16M
-// SharedAccessSpreaderUse                                     21.95ns   45.55M
-// AccessSpreaderConstruction                                 466.56ns    2.14M
-// ============================================================================
-
-BENCHMARK(LocalAccessSpreaderUse, iters) {
-  folly::BenchmarkSuspender braces;
-  AccessSpreader<> spreader(16);
-  braces.dismiss();
-
-  for (unsigned long i = 0; i < iters; ++i) {
-    auto x = spreader.current();
-    folly::doNotOptimizeAway(x);
-  }
-}
-
-BENCHMARK(SharedAccessSpreaderUse, iters) {
+BENCHMARK(AccessSpreaderUse, iters) {
   for (unsigned long i = 0; i < iters; ++i) {
     auto x = AccessSpreader<>::current(16);
     folly::doNotOptimizeAway(x);
   }
 }
-
-BENCHMARK(AccessSpreaderConstruction, iters) {
-  std::aligned_storage<sizeof(AccessSpreader<>),
-                       std::alignment_of<AccessSpreader<>>::value>::type raw;
-  for (unsigned long i = 0; i < iters; ++i) {
-    auto x = new (&raw) AccessSpreader<>(16);
-    folly::doNotOptimizeAway(x);
-    x->~AccessSpreader();
-  }
-}
-
-enum class SpreaderType { GETCPU, SHARED, TLS_RR, PTHREAD_SELF };
 
 // Benchmark scores here reflect the time for 32 threads to perform an
 // atomic increment on a dual-socket E5-2660 @ 2.2Ghz.  Surprisingly,
@@ -501,103 +462,79 @@ enum class SpreaderType { GETCPU, SHARED, TLS_RR, PTHREAD_SELF };
 // 1_stripe and 2_stripe results are identical, even though the L3 is
 // claimed to have 64 byte cache lines.
 //
-// _stub means there was no call to getcpu or the tls round-robin
-// implementation, because for a single stripe the cpu doesn't matter.
-// _getcpu refers to the vdso getcpu implementation with a locally
-// constructed AccessSpreader.  _tls_rr refers to execution using
-// SequentialThreadId, the fallback if the vdso getcpu isn't available.
-// _shared refers to calling AccessSpreader<>::current(numStripes)
-// inside the hot loop.
+// Getcpu refers to the vdso getcpu implementation.  ThreadLocal refers
+// to execution using SequentialThreadId, the fallback if the vdso
+// getcpu isn't available.  PthreadSelf hashes the value returned from
+// pthread_self() as a fallback-fallback for systems that don't have
+// thread-local support.
 //
 // At 16_stripe_0_work and 32_stripe_0_work there is only L1 traffic,
-// so since the stripe selection is 21 nanos the atomic increments in
-// the L1 is ~15 nanos.  At width 8_stripe_0_work the line is expected
+// so since the stripe selection is 12 nanos the atomic increments in
+// the L1 is ~17 nanos.  At width 8_stripe_0_work the line is expected
 // to ping-pong almost every operation, since the loops have the same
 // duration.  Widths 4 and 2 have the same behavior, but each tour of the
 // cache line is 4 and 8 cores long, respectively.  These all suggest a
 // lower bound of 60 nanos for intra-chip handoff and increment between
 // the L1s.
 //
-// With 455 nanos (1K cycles) of busywork per contended increment, the
-// system can hide all of the latency of a tour of length 4, but not
-// quite one of length 8.  I was a bit surprised at how much worse the
-// non-striped version got.  It seems that the inter-chip traffic also
-// interferes with the L1-only localWork.load().  When the local work is
-// doubled to about 1 microsecond we see that the inter-chip contention
-// is still very important, but subdivisions on the same chip don't matter.
+// With 420 nanos of busywork per contended increment, the system can
+// hide all of the latency of a tour of length 4, but not quite one of
+// length 8.  I was a bit surprised at how much worse the non-striped
+// version got.  It seems that the inter-chip traffic also interferes
+// with the L1-only localWork.load().  When the local work is doubled
+// to about 1 microsecond we see that the inter-chip contention is still
+// very important, but subdivisions on the same chip don't matter.
 //
-// sudo nice -n -20
-//   _bin/folly/test/cache_locality_test --benchmark --bm_min_iters=1000000
+// sudo nice -n -20 buck-out/gen/folly/test/cache_locality_test
+//     --benchmark --bm_min_iters=1000000
 // ============================================================================
 // folly/test/CacheLocalityTest.cpp                relative  time/iter  iters/s
 // ============================================================================
-// LocalAccessSpreaderUse                                      13.00ns   76.94M
-// SharedAccessSpreaderUse                                     13.04ns   76.66M
-// AccessSpreaderConstruction                                 366.00ns    2.73M
+// AccessSpreaderUse                                           11.94ns   83.79M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_0_work_stub)                    891.04ns    1.12M
-// contentionAtWidth(2_stripe_0_work_getcpu)                  403.45ns    2.48M
-// contentionAtWidth(4_stripe_0_work_getcpu)                  198.02ns    5.05M
-// contentionAtWidth(8_stripe_0_work_getcpu)                   90.54ns   11.04M
-// contentionAtWidth(16_stripe_0_work_getcpu)                  31.21ns   32.04M
-// contentionAtWidth(32_stripe_0_work_getcpu)                  29.15ns   34.31M
-// contentionAtWidth(64_stripe_0_work_getcpu)                  32.41ns   30.86M
-// contentionAtWidth(2_stripe_0_work_tls_rr)                  958.06ns    1.04M
-// contentionAtWidth(4_stripe_0_work_tls_rr)                  494.31ns    2.02M
-// contentionAtWidth(8_stripe_0_work_tls_rr)                  362.34ns    2.76M
-// contentionAtWidth(16_stripe_0_work_tls_rr)                 231.37ns    4.32M
-// contentionAtWidth(32_stripe_0_work_tls_rr)                 128.26ns    7.80M
-// contentionAtWidth(64_stripe_0_work_tls_rr)                 115.08ns    8.69M
-// contentionAtWidth(2_stripe_0_work_pthread_self)            856.63ns    1.17M
-// contentionAtWidth(4_stripe_0_work_pthread_self)            623.43ns    1.60M
-// contentionAtWidth(8_stripe_0_work_pthread_self)            419.69ns    2.38M
-// contentionAtWidth(16_stripe_0_work_pthread_self            217.32ns    4.60M
-// contentionAtWidth(32_stripe_0_work_pthread_self            157.69ns    6.34M
-// contentionAtWidth(64_stripe_0_work_pthread_self            140.94ns    7.10M
-// contentionAtWidth(2_stripe_0_work_shared)                  406.55ns    2.46M
-// contentionAtWidth(4_stripe_0_work_shared)                  198.28ns    5.04M
-// contentionAtWidth(8_stripe_0_work_shared)                   90.11ns   11.10M
-// contentionAtWidth(16_stripe_0_work_shared)                  34.53ns   28.96M
-// contentionAtWidth(32_stripe_0_work_shared)                  30.08ns   33.25M
-// contentionAtWidth(64_stripe_0_work_shared)                  34.60ns   28.90M
-// atomicIncrBaseline(local_incr_0_work)                       17.51ns   57.12M
+// contentionAtWidthGetcpu(1_stripe_0_work)                   985.75ns    1.01M
+// contentionAtWidthGetcpu(2_stripe_0_work)                   424.02ns    2.36M
+// contentionAtWidthGetcpu(4_stripe_0_work)                   190.13ns    5.26M
+// contentionAtWidthGetcpu(8_stripe_0_work)                    91.86ns   10.89M
+// contentionAtWidthGetcpu(16_stripe_0_work)                   29.31ns   34.12M
+// contentionAtWidthGetcpu(32_stripe_0_work)                   29.53ns   33.86M
+// contentionAtWidthGetcpu(64_stripe_0_work)                   29.93ns   33.41M
+// contentionAtWidthThreadLocal(2_stripe_0_work)              609.21ns    1.64M
+// contentionAtWidthThreadLocal(4_stripe_0_work)              303.60ns    3.29M
+// contentionAtWidthThreadLocal(8_stripe_0_work)              246.57ns    4.06M
+// contentionAtWidthThreadLocal(16_stripe_0_work)             154.84ns    6.46M
+// contentionAtWidthThreadLocal(32_stripe_0_work)              24.14ns   41.43M
+// contentionAtWidthThreadLocal(64_stripe_0_work)              23.95ns   41.75M
+// contentionAtWidthPthreadSelf(2_stripe_0_work)              722.01ns    1.39M
+// contentionAtWidthPthreadSelf(4_stripe_0_work)              501.56ns    1.99M
+// contentionAtWidthPthreadSelf(8_stripe_0_work)              474.58ns    2.11M
+// contentionAtWidthPthreadSelf(16_stripe_0_work)             300.90ns    3.32M
+// contentionAtWidthPthreadSelf(32_stripe_0_work)             175.77ns    5.69M
+// contentionAtWidthPthreadSelf(64_stripe_0_work)             174.88ns    5.72M
+// atomicIncrBaseline(local_incr_0_work)                       16.81ns   59.51M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_500_work_stub)                    1.87us  534.36K
-// contentionAtWidth(2_stripe_500_work_getcpu)                542.31ns    1.84M
-// contentionAtWidth(4_stripe_500_work_getcpu)                409.18ns    2.44M
-// contentionAtWidth(8_stripe_500_work_getcpu)                511.05ns    1.96M
-// contentionAtWidth(16_stripe_500_work_getcpu)               399.14ns    2.51M
-// contentionAtWidth(32_stripe_500_work_getcpu)               399.05ns    2.51M
-// atomicIncrBaseline(local_incr_500_work)                    399.41ns    2.50M
+// contentionAtWidthGetcpu(1_stripe_500_work)                   1.82us  549.97K
+// contentionAtWidthGetcpu(2_stripe_500_work)                 533.71ns    1.87M
+// contentionAtWidthGetcpu(4_stripe_500_work)                 424.64ns    2.35M
+// contentionAtWidthGetcpu(8_stripe_500_work)                 451.85ns    2.21M
+// contentionAtWidthGetcpu(16_stripe_500_work)                425.54ns    2.35M
+// contentionAtWidthGetcpu(32_stripe_500_work)                501.66ns    1.99M
+// atomicIncrBaseline(local_incr_500_work)                    438.46ns    2.28M
 // ----------------------------------------------------------------------------
-// contentionAtWidth(1_stripe_1000_work_stub)                   1.90us  525.73K
-// contentionAtWidth(2_stripe_1000_work_getcpu)               792.91ns    1.26M
-// contentionAtWidth(4_stripe_1000_work_getcpu)               788.14ns    1.27M
-// contentionAtWidth(8_stripe_1000_work_getcpu)               794.16ns    1.26M
-// contentionAtWidth(16_stripe_1000_work_getcpu)              785.33ns    1.27M
-// contentionAtWidth(32_stripe_1000_work_getcpu)              786.56ns    1.27M
-// atomicIncrBaseline(local_incr_1000_work)                   784.69ns    1.27M
+// contentionAtWidthGetcpu(1_stripe_1000_work)                  1.88us  532.20K
+// contentionAtWidthGetcpu(2_stripe_1000_work)                824.62ns    1.21M
+// contentionAtWidthGetcpu(4_stripe_1000_work)                803.56ns    1.24M
+// contentionAtWidthGetcpu(8_stripe_1000_work)                926.65ns    1.08M
+// contentionAtWidthGetcpu(16_stripe_1000_work)               900.10ns    1.11M
+// contentionAtWidthGetcpu(32_stripe_1000_work)               890.75ns    1.12M
+// atomicIncrBaseline(local_incr_1000_work)                   774.47ns    1.29M
 // ============================================================================
-static void contentionAtWidth(size_t iters,
-                              size_t stripes,
-                              size_t work,
-                              SpreaderType spreaderType,
-                              size_t counterAlignment = 128,
-                              size_t numThreads = 32) {
+template <template <typename> class Tag>
+static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
+  const size_t counterAlignment = 128;
+  const size_t numThreads = 32;
+
   folly::BenchmarkSuspender braces;
-
-  folly::detail::Getcpu::Func getcpuFunc = nullptr;
-
-  if (spreaderType == SpreaderType::TLS_RR) {
-    getcpuFunc =
-        folly::detail::FallbackGetcpu<SequentialThreadId<std::atomic>>::getcpu;
-  }
-  if (spreaderType == SpreaderType::PTHREAD_SELF) {
-    getcpuFunc = folly::detail::FallbackGetcpu<HashingThreadId>::getcpu;
-  }
-
-  AccessSpreader<> spreader(
-      stripes, CacheLocality::system<std::atomic>(), getcpuFunc);
 
   std::atomic<size_t> ready(0);
   std::atomic<bool> go(false);
@@ -625,25 +562,15 @@ static void contentionAtWidth(size_t iters,
             new (raw.data() + counterAlignment * i) std::atomic<size_t>();
       }
 
-      spreader.current();
       ready++;
       while (!go.load()) {
         sched_yield();
       }
       std::atomic<int> localWork(0);
-      if (spreaderType == SpreaderType::SHARED) {
-        for (size_t i = iters; i > 0; --i) {
-          ++*(counters[AccessSpreader<>::current(stripes)]);
-          for (size_t j = work; j > 0; --j) {
-            localWork.load();
-          }
-        }
-      } else {
-        for (size_t i = iters; i > 0; --i) {
-          ++*(counters[spreader.current()]);
-          for (size_t j = work; j > 0; --j) {
-            localWork.load();
-          }
+      for (size_t i = iters; i > 0; --i) {
+        ++*(counters[AccessSpreader<Tag>::current(stripes)]);
+        for (size_t j = work; j > 0; --j) {
+          localWork.load();
         }
       }
     }));
@@ -651,7 +578,7 @@ static void contentionAtWidth(size_t iters,
     if (threads.size() == numThreads / 15 || threads.size() == numThreads / 5) {
       // create a few dummy threads to wrap back around to 0 mod numCpus
       for (size_t i = threads.size(); i != numThreads; ++i) {
-        std::thread([&]() { spreader.current(); }).join();
+        std::thread([&]() { AccessSpreader<Tag>::current(stripes); }).join();
       }
     }
   }
@@ -699,110 +626,58 @@ static void atomicIncrBaseline(size_t iters,
   }
 }
 
-BENCHMARK_DRAW_LINE()
+static void contentionAtWidthGetcpu(size_t iters, size_t stripes, size_t work) {
+  contentionAtWidth<std::atomic>(iters, stripes, work);
+}
 
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 1_stripe_0_work_stub, 1, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 2_stripe_0_work_getcpu, 2, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 4_stripe_0_work_getcpu, 4, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 8_stripe_0_work_getcpu, 8, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 16_stripe_0_work_getcpu, 16, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 32_stripe_0_work_getcpu, 32, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 64_stripe_0_work_getcpu, 64, 0, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 2_stripe_0_work_tls_rr, 2, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 4_stripe_0_work_tls_rr, 4, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 8_stripe_0_work_tls_rr, 8, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 16_stripe_0_work_tls_rr, 16, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 32_stripe_0_work_tls_rr, 32, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 64_stripe_0_work_tls_rr, 64, 0, SpreaderType::TLS_RR)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      2_stripe_0_work_pthread_self,
-                      2,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      4_stripe_0_work_pthread_self,
-                      4,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      8_stripe_0_work_pthread_self,
-                      8,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      16_stripe_0_work_pthread_self,
-                      16,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      32_stripe_0_work_pthread_self,
-                      32,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      64_stripe_0_work_pthread_self,
-                      64,
-                      0,
-                      SpreaderType::PTHREAD_SELF)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 2_stripe_0_work_shared, 2, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 4_stripe_0_work_shared, 4, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 8_stripe_0_work_shared, 8, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 16_stripe_0_work_shared, 16, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 32_stripe_0_work_shared, 32, 0, SpreaderType::SHARED)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 64_stripe_0_work_shared, 64, 0, SpreaderType::SHARED)
+static void contentionAtWidthThreadLocal(size_t iters,
+                                         size_t stripes,
+                                         size_t work) {
+  contentionAtWidth<ThreadLocalTag>(iters, stripes, work);
+}
+
+static void contentionAtWidthPthreadSelf(size_t iters,
+                                         size_t stripes,
+                                         size_t work) {
+  contentionAtWidth<PthreadSelfTag>(iters, stripes, work);
+}
+
+BENCHMARK_DRAW_LINE()
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 1_stripe_0_work, 1, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 2_stripe_0_work, 2, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 4_stripe_0_work, 4, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 8_stripe_0_work, 8, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 16_stripe_0_work, 16, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 32_stripe_0_work, 32, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 64_stripe_0_work, 64, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 2_stripe_0_work, 2, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 4_stripe_0_work, 4, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 8_stripe_0_work, 8, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 16_stripe_0_work, 16, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 32_stripe_0_work, 32, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthThreadLocal, 64_stripe_0_work, 64, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 2_stripe_0_work, 2, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 4_stripe_0_work, 4, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 8_stripe_0_work, 8, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 16_stripe_0_work, 16, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 32_stripe_0_work, 32, 0)
+BENCHMARK_NAMED_PARAM(contentionAtWidthPthreadSelf, 64_stripe_0_work, 64, 0)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_0_work, 0)
 BENCHMARK_DRAW_LINE()
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 1_stripe_500_work_stub, 1, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 2_stripe_500_work_getcpu, 2, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 4_stripe_500_work_getcpu, 4, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 8_stripe_500_work_getcpu, 8, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 16_stripe_500_work_getcpu, 16, 500, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 32_stripe_500_work_getcpu, 32, 500, SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 1_stripe_500_work, 1, 500)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 2_stripe_500_work, 2, 500)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 4_stripe_500_work, 4, 500)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 8_stripe_500_work, 8, 500)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 16_stripe_500_work, 16, 500)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 32_stripe_500_work, 32, 500)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_500_work, 500)
 BENCHMARK_DRAW_LINE()
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 1_stripe_1000_work_stub, 1, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 2_stripe_1000_work_getcpu, 2, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 4_stripe_1000_work_getcpu, 4, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(
-    contentionAtWidth, 8_stripe_1000_work_getcpu, 8, 1000, SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      16_stripe_1000_work_getcpu,
-                      16,
-                      1000,
-                      SpreaderType::GETCPU)
-BENCHMARK_NAMED_PARAM(contentionAtWidth,
-                      32_stripe_1000_work_getcpu,
-                      32,
-                      1000,
-                      SpreaderType::GETCPU)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 1_stripe_1000_work, 1, 1000)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 2_stripe_1000_work, 2, 1000)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 4_stripe_1000_work, 4, 1000)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 8_stripe_1000_work, 8, 1000)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 16_stripe_1000_work, 16, 1000)
+BENCHMARK_NAMED_PARAM(contentionAtWidthGetcpu, 32_stripe_1000_work, 32, 1000)
 BENCHMARK_NAMED_PARAM(atomicIncrBaseline, local_incr_1000_work, 1000)
 
 int main(int argc, char** argv) {

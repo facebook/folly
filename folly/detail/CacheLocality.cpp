@@ -28,6 +28,8 @@
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
+DECLARE_ACCESS_SPREADER_TYPE(std::atomic)
+
 namespace folly {
 namespace detail {
 
@@ -60,8 +62,8 @@ static CacheLocality getSystemLocalityInfo() {
 
 template <>
 const CacheLocality& CacheLocality::system<std::atomic>() {
-  static CacheLocality cache(getSystemLocalityInfo());
-  return cache;
+  static auto* cache = new CacheLocality(getSystemLocalityInfo());
+  return *cache;
 }
 
 // Each level of cache has sharing sets, which are the set of cpus
@@ -110,8 +112,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
     std::vector<size_t> levels;
     for (size_t index = 0;; ++index) {
       auto dir =
-          format("/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index)
-              .str();
+          sformat("/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
       auto cacheType = mapping(dir + "type");
       auto equivStr = mapping(dir + "shared_cpu_list");
       if (cacheType.size() == 0 || equivStr.size() == 0) {
@@ -208,9 +209,7 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 
 ////////////// Getcpu
 
-/// Resolves the dynamically loaded symbol __vdso_getcpu, returning null
-/// on failure
-static Getcpu::Func loadVdsoGetcpu() {
+Getcpu::Func Getcpu::resolveVdsoFunc() {
 #if defined(_MSC_VER) || defined(__BIONIC__)
   return nullptr;
 #else
@@ -232,11 +231,6 @@ static Getcpu::Func loadVdsoGetcpu() {
 #endif
 }
 
-Getcpu::Func Getcpu::vdsoFunc() {
-  static Func func = loadVdsoGetcpu();
-  return func;
-}
-
 #ifdef FOLLY_TLS
 /////////////// SequentialThreadId
 
@@ -250,40 +244,10 @@ FOLLY_TLS size_t SequentialThreadId<std::atomic>::currentId(0);
 /////////////// AccessSpreader
 
 template <>
-const AccessSpreader<std::atomic> AccessSpreader<std::atomic>::stripeByCore(
-    CacheLocality::system<>().numCachesByLevel.front());
-
-template <>
-const AccessSpreader<std::atomic> AccessSpreader<std::atomic>::stripeByChip(
-    CacheLocality::system<>().numCachesByLevel.back());
-
-template <>
-AccessSpreaderArray<std::atomic, 128>
-    AccessSpreaderArray<std::atomic, 128>::sharedInstance = {};
-
-/// Always claims to be on CPU zero, node zero
-static int degenerateGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
-  if (cpu != nullptr) {
-    *cpu = 0;
-  }
-  if (node != nullptr) {
-    *node = 0;
-  }
-  return 0;
+Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc() {
+  auto best = Getcpu::resolveVdsoFunc();
+  return best ? best : &FallbackGetcpuType::getcpu;
 }
 
-template <>
-Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc(size_t numStripes) {
-  if (numStripes == 1) {
-    // there's no need to call getcpu if there is only one stripe.
-    // This should not be common, so we don't want to waste a test and
-    // branch in the main code path, but we might as well use a faster
-    // function pointer
-    return &degenerateGetcpu;
-  } else {
-    auto best = Getcpu::vdsoFunc();
-    return best ? best : &FallbackGetcpuType::getcpu;
-  }
-}
-}
-} // namespace folly::detail
+} // namespace detail
+} // namespace folly
