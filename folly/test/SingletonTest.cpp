@@ -580,15 +580,3 @@ TEST(Singleton, MockTest) {
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock);
 }
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  SingletonVault::singleton()->registrationComplete();
-
-  auto ret = RUN_ALL_TESTS();
-
-  return ret;
-}

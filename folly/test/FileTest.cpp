@@ -22,7 +22,6 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <folly/Benchmark.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>

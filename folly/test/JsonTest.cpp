@@ -18,7 +18,6 @@
 
 #include <boost/next_prior.hpp>
 #include <folly/json.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using folly::dynamic;
@@ -520,10 +519,4 @@ TEST(Json, PrintTo) {
 })";
   PrintTo(value, &oss);
   EXPECT_EQ(expected, oss.str());
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

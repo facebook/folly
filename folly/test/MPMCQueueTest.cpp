@@ -28,7 +28,6 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr);
@@ -714,11 +713,4 @@ TEST(MPMCQueue, queue_moving) {
 
 TEST(MPMCQueue, explicit_zero_capacity_fail) {
   ASSERT_THROW(MPMCQueue<int> cq(0), std::invalid_argument);
-}
-
-
-int main(int argc, char ** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

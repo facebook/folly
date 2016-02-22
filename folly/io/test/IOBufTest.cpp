@@ -1233,10 +1233,3 @@ TEST(IOBuf, Managed) {
   writableStr(*buf2)[0] = 'x';
   EXPECT_EQ("jelloxorldhelloxorld", toString(*buf1));
 }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  return RUN_ALL_TESTS();
-}

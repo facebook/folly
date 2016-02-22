@@ -23,8 +23,6 @@
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
 
-#include <gflags/gflags.h>
-
 #include <gtest/gtest.h>
 #include <list>
 #include <map>
@@ -281,10 +279,4 @@ TEST(FBVector, shrink_to_fit_after_clear) {
   fb1.shrink_to_fit();
   EXPECT_EQ(fb1.size(), 0);
   EXPECT_EQ(fb1.capacity(), 0);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

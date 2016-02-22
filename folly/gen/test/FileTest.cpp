@@ -93,9 +93,3 @@ INSTANTIATE_TEST_CASE_P(
     DifferentBufferSizes,
     FileGenBufferedTest,
     ::testing::Values(0, 1, 2, 4, 8, 64, 4096));
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

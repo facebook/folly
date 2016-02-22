@@ -20,7 +20,6 @@
 #include <thread>
 #include <unistd.h>
 #include <semaphore.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -215,10 +214,4 @@ TEST(IndexedMemPool, late_recycle) {
     }
   }
   EXPECT_EQ(NonTrivialStruct::count, 0);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

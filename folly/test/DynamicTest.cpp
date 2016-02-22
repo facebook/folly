@@ -17,7 +17,6 @@
 #include <folly/dynamic.h>
 
 #include <boost/next_prior.hpp>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using folly::dynamic;
@@ -479,10 +478,4 @@ TEST(Dynamic, PrintNull) {
   std::stringstream ss;
   ss << folly::dynamic(nullptr);
   EXPECT_EQ("null", ss.str());
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

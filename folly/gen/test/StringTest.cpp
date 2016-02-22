@@ -361,9 +361,3 @@ TEST(StringGen, Batch) {
   EXPECT_EQ(lines, from(chunks) | resplit('\n') | eachTo<std::string>() |
                        batch(3) | rconcat | as<vector>());
 }
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

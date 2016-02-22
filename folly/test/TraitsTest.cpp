@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
 #include <folly/Traits.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -117,13 +115,4 @@ FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
 TEST(Traits, has_member_type) {
   EXPECT_FALSE(bool(has_member_type_x<membership_no>::value));
   EXPECT_TRUE(bool(has_member_type_x<membership_yes>::value));
-}
-
-int main(int argc, char ** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
 }

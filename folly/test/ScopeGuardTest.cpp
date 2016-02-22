@@ -17,7 +17,6 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Portability.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <glog/logging.h>
 
@@ -289,10 +288,4 @@ TEST(ScopeGuard, TEST_SCOPE_SUCCESS_THROW) {
     SCOPE_SUCCESS { throw std::runtime_error("ehm"); };
   };
   EXPECT_THROW(lambda(), std::runtime_error);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

@@ -22,7 +22,6 @@
 #include <ratio>
 #include <thread>
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <time.h>
@@ -206,10 +205,4 @@ TEST(Futex, basic_deterministic) {
   DSched sched(DSched::uniform(0));
   run_basic_tests<DeterministicAtomic>();
   run_wait_until_tests<DeterministicAtomic>();
-}
-
-int main(int argc, char ** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

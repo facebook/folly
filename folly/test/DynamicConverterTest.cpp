@@ -19,12 +19,9 @@
 #include <folly/DynamicConverter.h>
 
 #include <algorithm>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <map>
 #include <vector>
-
-#include <folly/Benchmark.h>
 
 using namespace folly;
 using namespace folly::dynamicconverter_detail;
@@ -363,13 +360,4 @@ TEST(DynamicConverter, errors) {
 
   dynamic d2 = floatOver;
   EXPECT_THROW(convertTo<float>(d2), std::range_error);
-}
-
-int main(int argc, char ** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
 }

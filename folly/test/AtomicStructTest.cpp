@@ -16,7 +16,6 @@
 
 #include <folly/AtomicStruct.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -67,10 +66,4 @@ TEST(AtomicStruct, size_selection) {
   EXPECT_EQ(sizeof(AtomicStruct<S6>), 8);
   EXPECT_EQ(sizeof(AtomicStruct<S7>), 8);
   EXPECT_EQ(sizeof(AtomicStruct<S8>), 8);
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }

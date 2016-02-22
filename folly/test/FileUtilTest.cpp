@@ -21,10 +21,8 @@
 #include <deque>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
-#include <folly/Benchmark.h>
 #include <folly/Range.h>
 #include <folly/String.h>
 
@@ -308,9 +306,3 @@ TEST(String, readFile) {
 }
 
 }}  // namespaces
-
-int main(int argc, char *argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}
