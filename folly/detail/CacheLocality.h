@@ -26,6 +26,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <pthread.h>
 #include <folly/Hash.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
