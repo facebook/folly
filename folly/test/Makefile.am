@@ -67,7 +67,11 @@ sorted_vector_types_test_LDADD = libfollytestmain.la
 
 
 foreach_test_SOURCES = ForeachTest.cpp
-foreach_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+foreach_test_LDADD = libfollytestmain.la
+
+foreach_benchmark_SOURCES = ForeachBenchmark.cpp
+foreach_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+check_PROGRAMS += foreach_benchmark
 
 hash_test_SOURCES = HashTest.cpp
 hash_test_LDADD = libfollytestmain.la

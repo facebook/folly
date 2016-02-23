@@ -24,11 +24,15 @@
 #include <thread>
 
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <folly/RWSpinLock.h>
 
+#if FOLLY_HAVE_LIBGFLAGS
+#include <gflags/gflags.h>
 DEFINE_int32(num_threads, 8, "num threads");
+#else
+constexpr int FLAGS_num_threads = 8;
+#endif
 
 namespace {
 
@@ -233,10 +237,4 @@ TEST(RWSpinLock, concurrent_holder_test) {
     << "; upgrades: " << upgrades.load(std::memory_order_acquire);
 }
 
-}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
 }
