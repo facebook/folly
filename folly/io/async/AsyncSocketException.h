@@ -40,10 +40,13 @@ class AsyncSocketException : public std::runtime_error {
   , SASL_HANDSHAKE_TIMEOUT = 14
   };
 
-  AsyncSocketException(
-    AsyncSocketExceptionType type, const std::string& message) :
-      std::runtime_error(message),
-      type_(type), errno_(0) {}
+  AsyncSocketException(AsyncSocketExceptionType type,
+                       const std::string& message,
+                       int errno_copy = 0)
+      : std::runtime_error(
+            AsyncSocketException::getMessage(type, message, errno_copy)),
+        type_(type),
+        errno_(errno_copy) {}
 
   /** Error code */
   AsyncSocketExceptionType type_;
@@ -51,28 +54,67 @@ class AsyncSocketException : public std::runtime_error {
   /** A copy of the errno. */
   int errno_;
 
-  AsyncSocketException(AsyncSocketExceptionType type,
-                      const std::string& message,
-                      int errno_copy) :
-      std::runtime_error(getMessage(message, errno_copy)),
-      type_(type), errno_(errno_copy) {}
-
   AsyncSocketExceptionType getType() const noexcept { return type_; }
   int getErrno() const noexcept { return errno_; }
 
  protected:
   /** Just like strerror_r but returns a C++ string object. */
-  std::string strerror_s(int errno_copy) {
-    return "errno = " + folly::to<std::string>(errno_copy);
+  static std::string strerror_s(int errno_copy) {
+    return folly::sformat("errno = {} ({})", errno_copy, strerror(errno_copy));
+  }
+
+  /** get the string of exception type */
+  static folly::StringPiece getExceptionTypeString(
+      AsyncSocketExceptionType type) {
+    switch (type) {
+      case UNKNOWN:
+        return "Unknown async socket exception";
+      case NOT_OPEN:
+        return "Socket not open";
+      case ALREADY_OPEN:
+        return "Socket already open";
+      case TIMED_OUT:
+        return "Timed out";
+      case END_OF_FILE:
+        return "End of file";
+      case INTERRUPTED:
+        return "Interrupted";
+      case BAD_ARGS:
+        return "Invalid arguments";
+      case CORRUPTED_DATA:
+        return "Corrupted Data";
+      case INTERNAL_ERROR:
+        return "Internal error";
+      case NOT_SUPPORTED:
+        return "Not supported";
+      case INVALID_STATE:
+        return "Invalid state";
+      case SSL_ERROR:
+        return "SSL error";
+      case COULD_NOT_BIND:
+        return "Could not bind";
+      case SASL_HANDSHAKE_TIMEOUT:
+        return "SASL handshake timeout";
+      default:
+        return "(Invalid exception type)";
+    }
   }
 
   /** Return a message based on the input. */
-  std::string getMessage(const std::string &message,
+  static std::string getMessage(AsyncSocketExceptionType type,
+                                const std::string& message,
                                 int errno_copy) {
     if (errno_copy != 0) {
-      return message + ": " + strerror_s(errno_copy);
+      return folly::sformat(
+          "AsyncSocketException: {}, type = {}, errno = {} ({})",
+          message,
+          AsyncSocketException::getExceptionTypeString(type),
+          errno_copy,
+          strerror(errno_copy));
     } else {
-      return message;
+      return folly::sformat("AsyncSocketException: {}, type = {}",
+                            message,
+                            AsyncSocketException::getExceptionTypeString(type));
     }
   }
 };
