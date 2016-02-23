@@ -573,19 +573,22 @@ bool Dwarf::findAddress(uintptr_t address, LocationInfo& locationInfo) const {
     // Fast path: find the right .debug_info entry by looking up the
     // address in .debug_aranges.
     uint64_t offset = 0;
-    if (findDebugInfoOffset(address, aranges_, offset)) {
-      // Read compilation unit header from .debug_info
-      folly::StringPiece infoEntry(info_);
-      infoEntry.advance(offset);
-      findLocation(address, infoEntry, locationInfo);
-      return true;
+    if (!findDebugInfoOffset(address, aranges_, offset)) {
+      // NOTE: clang doesn't generate entries in .debug_aranges for
+      // some functions, but always generates .debug_info entries.
+      // We could read them from .debug_info but that's too slow.
+      // If .debug_aranges is present fast address lookup is assumed.
+      return false;
     }
+    // Read compilation unit header from .debug_info
+    folly::StringPiece infoEntry(info_);
+    infoEntry.advance(offset);
+    findLocation(address, infoEntry, locationInfo);
+    return true;
   }
 
   // Slow path (linear scan): Iterate over all .debug_info entries
   // and look for the address in each compilation unit.
-  // NOTE: clang doesn't generate entries in .debug_aranges for some
-  // functions, but always generates .debug_info entries.
   folly::StringPiece infoEntry(info_);
   while (!infoEntry.empty() && !locationInfo.hasFileAndLine) {
     findLocation(address, infoEntry, locationInfo);
