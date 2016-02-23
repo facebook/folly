@@ -22,13 +22,10 @@
 
 namespace folly {
 
-namespace {
-
-using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
-SingletonT singleton;
-}
-
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
+  using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;
+  static SingletonT singleton;
+
   return singleton.get();
 }
 }
