@@ -327,9 +327,10 @@ class Core {
       executorLock_.unlock();
     }
 
+    // keep Core alive until callback did its thing
+    ++attached_;
+
     if (x) {
-      // keep Core alive until executor did its thing
-      ++attached_;
       try {
         if (LIKELY(x->getNumPriorities() == 1)) {
           x->add([this]() mutable {
@@ -354,6 +355,7 @@ class Core {
         callback_(std::move(*result_));
       }
     } else {
+      SCOPE_EXIT { detachOne(); };
       RequestContext::setContext(context_);
       SCOPE_EXIT { callback_ = {}; };
       callback_(std::move(*result_));
