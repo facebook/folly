@@ -170,14 +170,23 @@ class StaticSingletonManager {
 
   template <typename T, typename Tag, typename F>
   inline T* create(F&& creator) {
-    std::lock_guard<std::mutex> lg(mutex_);
+    auto& entry = [&]() mutable -> Entry<T>& {
+      std::lock_guard<std::mutex> lg(mutex_);
 
-    auto& id = typeid(TypePair<T, Tag>);
-    auto& ptr = reinterpret_cast<T*&>(map_[id]);
-    if (!ptr) {
-      ptr = creator();
+      auto& id = typeid(TypePair<T, Tag>);
+      auto& entryPtr = reinterpret_cast<Entry<T>*&>(map_[id]);
+      if (!entryPtr) {
+        entryPtr = new Entry<T>();
+      }
+      return *entryPtr;
+    }();
+
+    std::lock_guard<std::mutex> lg(entry.mutex);
+
+    if (!entry.ptr) {
+      entry.ptr = creator();
     }
-    return ptr;
+    return entry.ptr;
   }
 
  private:
@@ -185,6 +194,12 @@ class StaticSingletonManager {
   class TypePair {};
 
   StaticSingletonManager() {}
+
+  template <typename T>
+  struct Entry {
+    T* ptr{nullptr};
+    std::mutex mutex;
+  };
 
   std::unordered_map<std::type_index, intptr_t> map_;
   std::mutex mutex_;
