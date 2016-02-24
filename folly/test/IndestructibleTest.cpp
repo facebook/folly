@@ -49,7 +49,7 @@ class IndestructibleTest : public testing::Test {};
 }
 
 TEST_F(IndestructibleTest, access) {
-  const Indestructible<map<string, int>> data{
+  static const Indestructible<map<string, int>> data{
       map<string, int>{{"key1", 17}, {"key2", 19}, {"key3", 23}}};
 
   auto& m = *data;
@@ -60,7 +60,7 @@ TEST_F(IndestructibleTest, no_destruction) {
   int state = 0;
   int value = 0;
 
-  auto sing = make_unique<Indestructible<Magic>>(
+  static Indestructible<Magic> sing(
       [&] {
         ++state;
         value = 7;
@@ -70,7 +70,7 @@ TEST_F(IndestructibleTest, no_destruction) {
   EXPECT_EQ(1, state);
   EXPECT_EQ(7, value);
 
-  sing = nullptr;
+  sing.~Indestructible();
   EXPECT_EQ(1, state);
 }
 
@@ -79,7 +79,7 @@ TEST_F(IndestructibleTest, move) {
   int value = 0;
   int moves = 0;
 
-  Indestructible<Magic> sing( // move assignment
+  static Indestructible<Magic> sing( // move assignment
       [&] {
         ++state;
         value = 7;
@@ -91,11 +91,13 @@ TEST_F(IndestructibleTest, move) {
   EXPECT_EQ(7, value);
   EXPECT_EQ(0, moves);
 
-  Indestructible<Magic> move_ctor(std::move(sing)); // move constructor
+  // move constructor
+  static Indestructible<Magic> move_ctor(std::move(sing));
   EXPECT_EQ(1, state);
   EXPECT_EQ(1, moves);
 
-  Indestructible<Magic> move_assign = std::move(move_ctor); // move assignment
+  // move assignment
+  static Indestructible<Magic> move_assign = std::move(move_ctor);
   EXPECT_EQ(1, state);
   EXPECT_EQ(2, moves);
 }
