@@ -61,6 +61,13 @@ namespace folly {
  * responding and no further progress can be made sending the data.
  */
 
+#ifdef _MSC_VER
+// We do a dynamic_cast on this, in
+// AsyncTransportWrapper::getUnderlyingTransport so be safe and
+// force displacements for it. See:
+// https://msdn.microsoft.com/en-us/library/7sf3txa8.aspx
+#pragma vtordisp(push, 2)
+#endif
 class AsyncSocket : virtual public AsyncTransportWrapper {
  public:
   typedef std::unique_ptr<AsyncSocket, Destructor> UniquePtr;
@@ -818,6 +825,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   BufferCallback* bufferCallback_{nullptr};
 };
-
+#ifdef _MSC_VER
+#pragma vtordisp(pop)
+#endif
 
 } // folly
