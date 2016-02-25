@@ -32,12 +32,9 @@
 #include <thread>
 #include <unordered_map>
 
-#include <boost/thread/tss.hpp>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <folly/Benchmark.h>
 #include <folly/Baton.h>
 #include <folly/experimental/io/FsUtil.h>
 
@@ -596,91 +593,3 @@ TEST(ThreadLocal, UnregisterClassHasConstExprCtor) {
   // yep!
   SUCCEED();
 }
-
-// clang is unable to compile this code unless in c++14 mode.
-#if __cplusplus >= 201402L
-namespace {
-// This will fail to compile unless ThreadLocal{Ptr} has a constexpr
-// default constructor. This ensures that ThreadLocal is safe to use in
-// static constructors without worrying about initialization order
-class ConstexprThreadLocalCompile {
-  ThreadLocal<int> a_;
-  ThreadLocalPtr<int> b_;
-
-  constexpr ConstexprThreadLocalCompile() {}
-};
-}
-#endif
-
-// Simple reference implementation using pthread_get_specific
-template<typename T>
-class PThreadGetSpecific {
- public:
-  PThreadGetSpecific() : key_(0) {
-    pthread_key_create(&key_, OnThreadExit);
-  }
-
-  T* get() const {
-    return static_cast<T*>(pthread_getspecific(key_));
-  }
-
-  void reset(T* t) {
-    delete get();
-    pthread_setspecific(key_, t);
-  }
-  static void OnThreadExit(void* obj) {
-    delete static_cast<T*>(obj);
-  }
- private:
-  pthread_key_t key_;
-};
-
-DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
-
-#define REG(var)                                                \
-  BENCHMARK(FB_CONCATENATE(BM_mt_, var), iters) {               \
-    const int itersPerThread = iters / FLAGS_numThreads;        \
-    std::vector<std::thread> threads;                           \
-    for (int i = 0; i < FLAGS_numThreads; ++i) {                \
-      threads.push_back(std::thread([&]() {                     \
-        var.reset(new int(0));                                  \
-        for (int i = 0; i < itersPerThread; ++i) {              \
-          ++(*var.get());                                       \
-        }                                                       \
-      }));                                                      \
-    }                                                           \
-    for (auto& t : threads) {                                   \
-      t.join();                                                 \
-    }                                                           \
-  }
-
-ThreadLocalPtr<int> tlp;
-REG(tlp);
-PThreadGetSpecific<int> pthread_get_specific;
-REG(pthread_get_specific);
-boost::thread_specific_ptr<int> boost_tsp;
-REG(boost_tsp);
-BENCHMARK_DRAW_LINE();
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  gflags::SetCommandLineOptionWithMode(
-    "bm_max_iters", "100000000", gflags::SET_FLAG_IF_DEFAULT
-  );
-  if (FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return RUN_ALL_TESTS();
-}
-
-/*
-Ran with 24 threads on dual 12-core Xeon(R) X5650 @ 2.67GHz with 12-MB caches
-
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-*       BM_mt_tlp                   100000000  39.88 ms  398.8 ps  2.335 G
- +5.91% BM_mt_pthread_get_specific  100000000  42.23 ms  422.3 ps  2.205 G
- + 295% BM_mt_boost_tsp             100000000  157.8 ms  1.578 ns  604.5 M
-------------------------------------------------------------------------------
-*/

@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
+#include <folly/CallOnce.h>
+
 #include <deque>
 #include <mutex>
 #include <thread>
 
-#include <folly/CallOnce.h>
-#include <folly/portability/GFlags.h>
+#include <folly/Benchmark.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 DEFINE_int32(threads, 16, "benchmark concurrency");
 
@@ -41,20 +41,22 @@ void bm_impl(CallOnceFunc&& fn, int64_t iters) {
   }
 }
 
-TEST(FollyCallOnce, Simple) {
-  folly::once_flag flag;
-  auto fn = [&](int* outp) { ++*outp; };
+BENCHMARK(StdCallOnceBench, iters) {
+  std::once_flag flag;
   int out = 0;
-  folly::call_once(flag, fn, &out);
-  folly::call_once(flag, fn, &out);
-  ASSERT_EQ(1, out);
+  bm_impl([&] { std::call_once(flag, [&] { ++out; }); }, iters);
+  CHECK_EQ(1, out);
 }
 
-TEST(FollyCallOnce, Stress) {
-  for (int i = 0; i < 100; ++i) {
-    folly::once_flag flag;
-    int out = 0;
-    bm_impl([&] { folly::call_once(flag, [&] { ++out; }); }, 100);
-    ASSERT_EQ(1, out);
-  }
+BENCHMARK(FollyCallOnceBench, iters) {
+  folly::once_flag flag;
+  int out = 0;
+  bm_impl([&] { folly::call_once(flag, [&] { ++out; }); }, iters);
+  CHECK_EQ(1, out);
+}
+
+int main(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::runBenchmarks();
+  return 0;
 }

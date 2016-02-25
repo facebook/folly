@@ -15,9 +15,9 @@
  */
 
 #include <folly/Logging.h>
-#include <gflags/gflags.h>
+
 #include <gtest/gtest.h>
-#include <folly/Benchmark.h>
+
 #include <vector>
 
 TEST(LogEveryMs, basic) {
@@ -49,44 +49,4 @@ TEST(LogEveryMs, zero) {
   }
 
   EXPECT_EQ(10, count);
-}
-
-BENCHMARK(skip_overhead, iter) {
-  auto prev = FLAGS_minloglevel;
-  FLAGS_minloglevel = 2;
-
-  for (unsigned i = 0; i < iter; ++i) {
-    FB_LOG_EVERY_MS(INFO, 1000) << "every 1s";
-  }
-
-  FLAGS_minloglevel = prev;
-}
-
-BENCHMARK(dev_null_log_overhead, iter) {
-  auto prev = FLAGS_minloglevel;
-  FLAGS_minloglevel = 2;
-
-  for (unsigned i = 0; i < iter; ++i) {
-    FB_LOG_EVERY_MS(INFO, -1) << "every -1ms";
-  }
-
-  FLAGS_minloglevel = prev;
-}
-
-// ============================================================================
-// folly/test/LoggingTest.cpp                      relative  time/iter  iters/s
-// ============================================================================
-// skip_overhead                                               36.37ns   27.49M
-// dev_null_log_overhead                                        2.61us  382.57K
-// ============================================================================
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  auto rv = RUN_ALL_TESTS();
-  if (!rv && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return rv;
 }

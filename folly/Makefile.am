@@ -266,6 +266,7 @@ nobase_follyinclude_HEADERS = \
 	Portability.h \
 	portability/Constexpr.h \
 	portability/Environment.h \
+	portability/GFlags.h \
 	portability/Syscall.h \
 	portability/SysUio.h \
 	Preprocessor.h \

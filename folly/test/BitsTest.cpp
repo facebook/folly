@@ -16,9 +16,8 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
-#include <gflags/gflags.h>
 #include <folly/Bits.h>
-#include <folly/Benchmark.h>
+
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -117,13 +116,6 @@ TEST(Bits, nextPowTwoClz) {
   testPowTwo(nextPowTwo);
 }
 
-BENCHMARK(nextPowTwoClz, iters) {
-  for (unsigned long i = 0; i < iters; ++i) {
-    auto x = folly::nextPowTwo(iters);
-    folly::doNotOptimizeAway(x);
-  }
-}
-
 TEST(Bits, isPowTwo) {
   EXPECT_FALSE(isPowTwo(0u));
   EXPECT_TRUE(isPowTwo(1ul));
@@ -146,37 +138,9 @@ TEST(Bits, isPowTwo) {
   EXPECT_FALSE(isPowTwo((1ull<<63) + 1));
 }
 
-BENCHMARK_DRAW_LINE();
-BENCHMARK(isPowTwo, iters) {
-  bool b;
-  for (unsigned long i = 0; i < iters; ++i) {
-    b = folly::isPowTwo(i);
-    folly::doNotOptimizeAway(b);
-  }
-}
-
 TEST(Bits, popcount) {
   EXPECT_EQ(0, popcount(0U));
   EXPECT_EQ(1, popcount(1U));
   EXPECT_EQ(32, popcount(uint32_t(-1)));
   EXPECT_EQ(64, popcount(uint64_t(-1)));
 }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  if (!ret && FLAGS_benchmark) {
-    folly::runBenchmarks();
-  }
-  return ret;
-}
-
-/*
-Benchmarks run on dual Xeon X5650's @ 2.67GHz w/hyperthreading enabled
-  (12 physical cores, 12 MB cache, 72 GB RAM)
-
-Benchmark                               Iters   Total t    t/iter iter/sec
-------------------------------------------------------------------------------
-*       nextPowTwoClz                 1000000  1.659 ms  1.659 ns  574.8 M
-*/
