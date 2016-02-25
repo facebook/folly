@@ -42,8 +42,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
-
-extern char** environ;
+#include <folly/portability/Environment.h>
 
 constexpr int kExecFailure = 127;
 constexpr int kChildFailure = 126;

@@ -265,6 +265,7 @@ nobase_follyinclude_HEADERS = \
 	PicoSpinLock.h \
 	Portability.h \
 	portability/Constexpr.h \
+	portability/Environment.h \
 	portability/Syscall.h \
 	portability/SysUio.h \
 	Preprocessor.h \
@@ -390,6 +391,7 @@ libfolly_la_SOURCES = \
 	detail/MemoryIdler.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
+	portability/Environment.cpp \
 	Random.cpp \
 	SafeAssert.cpp \
 	SharedMutex.cpp \
