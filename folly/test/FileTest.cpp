@@ -16,19 +16,11 @@
 
 #include <folly/File.h>
 
-#include <mutex>
+#include <folly/String.h>
 
-#include <boost/thread/locks.hpp>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <folly/String.h>
-#include <folly/Subprocess.h>
-#include <folly/experimental/io/FsUtil.h>
-#include <folly/experimental/TestUtil.h>
-
 using namespace folly;
-using namespace folly::test;
 
 namespace {
 void expectWouldBlock(ssize_t r) {
@@ -141,91 +133,5 @@ TEST(File, Truthy) {
   }
   if (File notOpened = File()) {
     EXPECT_TRUE(false);
-  }
-}
-
-TEST(File, Locks) {
-  typedef std::unique_lock<File> Lock;
-  typedef boost::shared_lock<File> SharedLock;
-
-  // Find out where we are.
-  static constexpr size_t pathLength = 2048;
-  char buf[pathLength + 1];
-  int r = readlink("/proc/self/exe", buf, pathLength);
-  CHECK_ERR(r);
-  buf[r] = '\0';
-
-  // NOTE(agallagher): Our various internal build systems layout built
-  // binaries differently, so the two layouts below.
-  fs::path me(buf);
-  auto helper_basename = "file_test_lock_helper";
-  fs::path helper;
-  if (fs::exists(me.parent_path() / helper_basename)) {
-    helper = me.parent_path() / helper_basename;
-  } else if (fs::exists(
-      me.parent_path().parent_path() / helper_basename / helper_basename)) {
-    helper = me.parent_path().parent_path()
-      / helper_basename / helper_basename;
-  } else {
-    throw std::runtime_error(
-      folly::to<std::string>("cannot find helper ", helper_basename));
-  }
-
-  TemporaryFile tempFile;
-  File f(tempFile.fd());
-
-  enum LockMode { EXCLUSIVE, SHARED };
-  auto testLock = [&] (LockMode mode, bool expectedSuccess) {
-    auto ret =
-      Subprocess({helper.native(),
-                  mode == SHARED ? "-s" : "-x",
-                  tempFile.path().native()}).wait();
-    EXPECT_TRUE(ret.exited());
-    if (ret.exited()) {
-      EXPECT_EQ(expectedSuccess ? 0 : 42, ret.exitStatus());
-    }
-  };
-
-  // Make sure nothing breaks and things compile.
-  {
-    Lock lock(f);
-  }
-
-  {
-    SharedLock lock(f);
-  }
-
-  {
-    Lock lock(f, std::defer_lock);
-    EXPECT_TRUE(lock.try_lock());
-  }
-
-  {
-    SharedLock lock(f, boost::defer_lock);
-    EXPECT_TRUE(lock.try_lock());
-  }
-
-  // X blocks X
-  {
-    Lock lock(f);
-    testLock(EXCLUSIVE, false);
-  }
-
-  // X blocks S
-  {
-    Lock lock(f);
-    testLock(SHARED, false);
-  }
-
-  // S blocks X
-  {
-    SharedLock lock(f);
-    testLock(EXCLUSIVE, false);
-  }
-
-  // S does not block S
-  {
-    SharedLock lock(f);
-    testLock(SHARED, true);
   }
 }
