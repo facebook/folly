@@ -304,7 +304,10 @@ static bool legalKey(char* a) {
 TEST(Aha, LookupAny) {
   auto arr = AHACstrInt::create(12);
 
-  arr->insert(std::make_pair(strdup("f"), 42));
+  char* f_char = strdup("f");
+  SCOPE_EXIT { free(f_char); };
+  arr->insert(std::make_pair(f_char, 42));
+
   EXPECT_EQ(42, arr->find("f")->second);
   {
     // Look up a single char, successfully.
@@ -331,5 +334,7 @@ TEST(Aha, LookupAny) {
     EXPECT_TRUE(res.first != arr->end());
   }
 
-  for (auto it : *arr) free(it.first);
+  for (auto it : *arr) {
+    free(it.first);
+  }
 }
