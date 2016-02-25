@@ -1001,14 +1001,14 @@ TEST(SharedMutex, deterministic_mixed_mostly_read_write_prio) {
 TEST(SharedMutex, mixed_mostly_read_read_prio) {
   for (int pass = 0; pass < 5; ++pass) {
     runMixed<atomic, SharedMutexReadPriority, TokenLocker>(
-        50000, 32, 0.1, false);
+        10000, 32, 0.1, false);
   }
 }
 
 TEST(SharedMutex, mixed_mostly_read_write_prio) {
   for (int pass = 0; pass < 5; ++pass) {
     runMixed<atomic, SharedMutexWritePriority, TokenLocker>(
-        50000, 32, 0.1, false);
+        10000, 32, 0.1, false);
   }
 }
 
