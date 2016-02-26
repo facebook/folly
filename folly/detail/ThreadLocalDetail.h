@@ -31,6 +31,8 @@
 #include <folly/Malloc.h>
 #include <folly/MicroSpinLock.h>
 
+#include <folly/detail/StaticSingletonManager.h>
+
 // In general, emutls cleanup is not guaranteed to play nice with the way
 // StaticMeta mixes direct pthread calls and the use of __thread. This has
 // caused problems on multiple platforms so don't use __thread there.
@@ -156,10 +158,10 @@ struct ElementWrapper {
  * (under the lock).
  */
 struct ThreadEntry {
-  ElementWrapper* elements;
-  size_t elementsCapacity;
-  ThreadEntry* next;
-  ThreadEntry* prev;
+  ElementWrapper* elements{nullptr};
+  size_t elementsCapacity{0};
+  ThreadEntry* next{nullptr};
+  ThreadEntry* prev{nullptr};
 };
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
@@ -273,9 +275,8 @@ struct StaticMeta {
   static StaticMeta<Tag>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
-    static bool constructed = (inst_ = new StaticMeta<Tag>());
-    (void)constructed; // suppress unused warning
-    return *inst_;
+    static auto instance = detail::createGlobal<StaticMeta<Tag>, void>();
+    return *instance;
   }
 
   uint32_t nextId_;
@@ -296,11 +297,6 @@ struct StaticMeta {
     t->prev->next = t->next;
     t->next = t->prev = t;
   }
-
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-  static FOLLY_TLS ThreadEntry threadEntry_;
-#endif
-  static StaticMeta<Tag>* inst_;
 
   StaticMeta() : nextId_(1) {
     head_.next = head_.prev = &head_;
@@ -326,10 +322,7 @@ struct StaticMeta {
     LOG(FATAL) << "StaticMeta lives forever!";
   }
 
-  static ThreadEntry* getThreadEntry() {
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-    return &threadEntry_;
-#else
+  static ThreadEntry* getThreadEntrySlow() {
     auto key = instance().pthreadKey_;
     ThreadEntry* threadEntry =
       static_cast<ThreadEntry*>(pthread_getspecific(key));
@@ -339,6 +332,17 @@ struct StaticMeta {
         checkPosixError(ret, "pthread_setspecific failed");
     }
     return threadEntry;
+  }
+
+  static ThreadEntry* getThreadEntry() {
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
+    static FOLLY_TLS ThreadEntry* threadEntryCache{nullptr};
+    if (UNLIKELY(threadEntryCache == nullptr)) {
+      threadEntryCache = getThreadEntrySlow();
+    }
+    return threadEntryCache;
+#else
+    return getThreadEntrySlow();
 #endif
   }
 
@@ -346,37 +350,32 @@ struct StaticMeta {
     instance().lock_.lock();  // Make sure it's created
   }
 
-  static void onForkParent(void) {
-    inst_->lock_.unlock();
-  }
+  static void onForkParent(void) { instance().lock_.unlock(); }
 
   static void onForkChild(void) {
     // only the current thread survives
-    inst_->head_.next = inst_->head_.prev = &inst_->head_;
+    instance().head_.next = instance().head_.prev = &instance().head_;
     ThreadEntry* threadEntry = getThreadEntry();
     // If this thread was in the list before the fork, add it back.
     if (threadEntry->elementsCapacity != 0) {
-      inst_->push_back(threadEntry);
+      instance().push_back(threadEntry);
     }
-    inst_->lock_.unlock();
+    instance().lock_.unlock();
   }
 
   static void onThreadExit(void* ptr) {
     auto& meta = instance();
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-    ThreadEntry* threadEntry = getThreadEntry();
 
-    DCHECK_EQ(ptr, &meta);
-    DCHECK_GT(threadEntry->elementsCapacity, 0);
-#else
     // pthread sets the thread-specific value corresponding
     // to meta.pthreadKey_ to NULL before calling onThreadExit.
     // We need to set it back to ptr to enable the correct behaviour
     // of the subsequent calls of getThreadEntry
     // (which may happen in user-provided custom deleters)
     pthread_setspecific(meta.pthreadKey_, ptr);
-    ThreadEntry* threadEntry = static_cast<ThreadEntry*>(ptr);
-#endif
+
+    ThreadEntry* threadEntry = getThreadEntry();
+    DCHECK_GT(threadEntry->elementsCapacity, 0);
+
     {
       std::lock_guard<std::mutex> g(meta.lock_);
       meta.erase(threadEntry);
@@ -399,10 +398,7 @@ struct StaticMeta {
     threadEntry->elements = nullptr;
     pthread_setspecific(meta.pthreadKey_, nullptr);
 
-#ifndef FOLLY_TLD_USE_FOLLY_TLS
-    // Allocated in getThreadEntry() when not using folly TLS; free it
     delete threadEntry;
-#endif
   }
 
   static uint32_t allocate(EntryID* ent) {
@@ -558,12 +554,6 @@ struct StaticMeta {
     }
 
     free(reallocated);
-
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-    if (prevCapacity == 0) {
-      pthread_setspecific(meta.pthreadKey_, &meta);
-    }
-#endif
   }
 
   static ElementWrapper& get(EntryID* ent) {
@@ -579,13 +569,6 @@ struct StaticMeta {
     return threadEntry->elements[id];
   }
 };
-
-#ifdef FOLLY_TLD_USE_FOLLY_TLS
-template <class Tag>
-FOLLY_TLS ThreadEntry StaticMeta<Tag>::threadEntry_ = {nullptr, 0,
-                                                       nullptr, nullptr};
-#endif
-template <class Tag> StaticMeta<Tag>* StaticMeta<Tag>::inst_ = nullptr;
 
 }  // namespace threadlocal_detail
 }  // namespace folly

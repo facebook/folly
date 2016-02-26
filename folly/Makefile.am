@@ -70,6 +70,7 @@ nobase_follyinclude_HEADERS = \
 	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SpinLockImpl.h \
+	detail/StaticSingletonManager.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
 	detail/TurnSequencer.h \
@@ -360,6 +361,7 @@ libfolly_la_SOURCES = \
 	futures/QueuedImmediateExecutor.cpp \
 	futures/ThreadWheelTimekeeper.cpp \
 	detail/Futex.cpp \
+	detail/StaticSingletonManager.cpp \
 	detail/ThreadLocalDetail.cpp \
 	GroupVarint.cpp \
 	GroupVarintTables.cpp \

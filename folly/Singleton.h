@@ -110,6 +110,7 @@
 #include <folly/Demangle.h>
 #include <folly/Executor.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/detail/StaticSingletonManager.h>
 
 #include <algorithm>
 #include <atomic>
@@ -159,62 +160,6 @@ namespace folly {
 class SingletonVault;
 
 namespace detail {
-
-// This internal-use-only class is used to create all leaked Meyers singletons.
-// It guarantees that only one instance of every such singleton will ever be
-// created, even when requested from different compilation units linked
-// dynamically.
-class StaticSingletonManager {
- public:
-  static StaticSingletonManager& instance();
-
-  template <typename T, typename Tag, typename F>
-  inline T* create(F&& creator) {
-    auto& entry = [&]() mutable -> Entry<T>& {
-      std::lock_guard<std::mutex> lg(mutex_);
-
-      auto& id = typeid(TypePair<T, Tag>);
-      auto& entryPtr = reinterpret_cast<Entry<T>*&>(map_[id]);
-      if (!entryPtr) {
-        entryPtr = new Entry<T>();
-      }
-      return *entryPtr;
-    }();
-
-    std::lock_guard<std::mutex> lg(entry.mutex);
-
-    if (!entry.ptr) {
-      entry.ptr = creator();
-    }
-    return entry.ptr;
-  }
-
- private:
-  template <typename A, typename B>
-  class TypePair {};
-
-  StaticSingletonManager() {}
-
-  template <typename T>
-  struct Entry {
-    T* ptr{nullptr};
-    std::mutex mutex;
-  };
-
-  std::unordered_map<std::type_index, intptr_t> map_;
-  std::mutex mutex_;
-};
-
-template <typename T, typename Tag, typename F>
-inline T* createGlobal(F&& creator) {
-  return StaticSingletonManager::instance().create<T, Tag>(
-      std::forward<F>(creator));
-}
-
-template <typename T, typename Tag>
-inline T* createGlobal() {
-  return createGlobal<T, Tag>([]() { return new T(); });
-}
 
 struct DefaultTag {};
 

@@ -25,12 +25,6 @@ namespace folly {
 
 namespace detail {
 
-// This implementation should always live in .cpp file.
-StaticSingletonManager& StaticSingletonManager::instance() {
-  static StaticSingletonManager* instance = new StaticSingletonManager();
-  return *instance;
-}
-
 constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
 
 }
