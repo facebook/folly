@@ -430,8 +430,8 @@ inline void asm_volatile_pause() {
   ::_mm_pause();
 #elif defined(__i386__) || FOLLY_X64
   asm volatile ("pause");
-#elif FOLLY_A64
-  asm volatile ("wfe");
+#elif FOLLY_A64 || defined(__arm__)
+  asm volatile ("yield");
 #elif FOLLY_PPC64
   asm volatile("or 27,27,27");
 #endif
@@ -441,8 +441,8 @@ inline void asm_pause() {
   ::_mm_pause();
 #elif defined(__i386__) || FOLLY_X64
   asm ("pause");
-#elif FOLLY_A64
-  asm ("wfe");
+#elif FOLLY_A64 || defined(__arm__)
+  asm ("yield");
 #elif FOLLY_PPC64
   asm ("or 31,31,31");
 #endif
