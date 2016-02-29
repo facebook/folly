@@ -38,7 +38,6 @@ class SingletonThreadLocal {
 
   static T& get() {
 #ifdef FOLLY_TLS
-    *localPtr() = nullptr;
     if (UNLIKELY(*localPtr() == nullptr)) {
       *localPtr() = &(**SingletonT::get());
     }
