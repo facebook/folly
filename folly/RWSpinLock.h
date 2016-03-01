@@ -14,6 +14,37 @@
  * limitations under the License.
  */
 
+/*************************************************
+
+IF YOU HAVE TO ASK, NO, YOU DO NOT WANT A SPINLOCK.
+
+Yes, even if a microbench shows that a spinlock is faster, you still probably
+don't want one.
+
+Spinlocks in general are a big problem on systems for which you cannot disable
+preemption, like normal user-space code running on POXIX and Windows 
+platforms. If the thread holding a spinlock is preempted, another thread
+trying to acquire the lock and pounding the lock variable 
+has no idea that it's spinning in vain. Some spinlock implementations use
+sched_yield or similar to try to make this problem less severe --- we don't
+use the rest of our timeslice to pointlessly read a variable --- 
+but the overall result is still poor, especially if the thread locking the lock
+sleeps (which any thread can do on a demand-paging system), then we'll
+sched_yield over and over again, still pointlessly, pounding on the lock.
+
+You really want a plain old mutex. Regular mutexes will spin for a little while,
+then go to sleep.  While sleeping, threads use no CPU resources and do
+not cause scheduler contention.
+
+There are exceptions to the above warning.  If you have to ask, no, your 
+code doesn't qualify.
+
+
+STOP USING SPINLOCKS IN ORDINARY CODE.
+
+
+**************************************************/
+
 /*
  * Two Read-Write spin lock implementations.
  *
