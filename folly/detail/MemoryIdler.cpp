@@ -74,11 +74,11 @@ void MemoryIdler::flushLocalMallocCaches() {
     // purging the arenas is counter-productive.  We use the heuristic
     // that if narenas <= 2 * num_cpus then we shouldn't do anything here,
     // which detects when the narenas has been reduced from the default
-    size_t narenas;
+    unsigned narenas;
     unsigned arenaForCurrent;
     size_t mib[3];
     size_t miblen = 3;
-    if (mallctlRead<size_t>("opt.narenas", &narenas) == 0 &&
+    if (mallctlRead<unsigned>("opt.narenas", &narenas) == 0 &&
         narenas > 2 * CacheLocality::system().numCpus &&
         mallctlRead<unsigned>("thread.arena", &arenaForCurrent) == 0 &&
         mallctlnametomib("arena.0.purge", mib, &miblen) == 0) {
