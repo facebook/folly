@@ -26,5 +26,9 @@ struct timezone {
   int tz_dsttime;
 };
 
-extern "C" int gettimeofday(timeval* tv, timezone*);
+extern "C" {
+int gettimeofday(timeval* tv, timezone*);
+void timeradd(timeval* a, timeval* b, timeval* res);
+void timersub(timeval* a, timeval* b, timeval* res);
+}
 #endif
