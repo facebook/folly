@@ -32,6 +32,8 @@
 using namespace std;
 using namespace folly;
 
+namespace {
+
 auto static const seed = randomNumberSeed();
 typedef boost::mt19937 RandomT;
 static RandomT rng(seed);
@@ -58,25 +60,11 @@ void Num2String(String& str, Integral /* n */) {
   str.resize(strlen(str.c_str()));
 }
 
-std::list<char> RandomList(unsigned int maxSize) {
-  std::list<char> lst(random(0u, maxSize));
-  std::list<char>::iterator i = lst.begin();
-  for (; i != lst.end(); ++i) {
-    *i = random('a', 'z');
-  }
-  return lst;
-}
-
 template<class T> T randomObject();
 
 template<> int randomObject<int>() {
   return random(0, 1024);
 }
-
-template<> folly::fbstring randomObject<folly::fbstring>() {
-  folly::fbstring result;
-  randomString(&result);
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

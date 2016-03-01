@@ -37,6 +37,8 @@
 using namespace std;
 using namespace folly;
 
+namespace {
+
 static const int seed = folly::randomNumberSeed();
 typedef boost::mt19937 RandomT;
 static RandomT rng(seed);
@@ -72,6 +74,7 @@ std::list<char> RandomList(unsigned int maxSize) {
     *i = random('a', 'z');
  }
   return lst;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
