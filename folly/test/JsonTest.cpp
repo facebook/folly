@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include <limits>
-#include <strstream>
 
 #include <boost/next_prior.hpp>
 #include <folly/json.h>

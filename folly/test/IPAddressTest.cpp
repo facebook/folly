@@ -444,8 +444,8 @@ TEST_P(IPAddressMaskTest, Masks) {
   IPAddress ip(param.address);
   IPAddress masked = ip.mask(param.mask);
   EXPECT_EQ(param.subnet, masked.str())
-      << param.address << "/" << to_string(param.mask)
-      << " -> " << param.subnet;
+      << param.address << "/" << folly::to<std::string>(param.mask) << " -> "
+      << param.subnet;
 }
 
 // Test inSubnet calculations
@@ -567,7 +567,7 @@ TEST(IPAddress, V6Types) {
         break;
       default:
         throw std::range_error("Invalid expected type: " +
-                               to_string(tc.second));
+                               folly::to<std::string>(tc.second));
     }
   }
 }
