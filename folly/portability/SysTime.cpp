@@ -26,8 +26,13 @@ int gettimeofday(timeval* tv, timezone*) {
 
   if (tv) {
     FILETIME ft;
+    ULARGE_INTEGER lft;
     GetSystemTimeAsFileTime(&ft);
-    uint64_t ns = *(uint64_t*)&ft;
+    // As per the docs of FILETIME, don't just do an indirect
+    // pointer cast, to avoid alignment faults.
+    lft.HighPart = ft.dwHighDateTime;
+    lft.LowPart = ft.dwLowDateTime;
+    uint64_t ns = lft.QuadPart;
     tv->tv_usec = (long)((ns / 10ULL) % 1000000ULL);
     tv->tv_sec = (long)((ns - posixWinFtOffset) / 10000000ULL);
   }
