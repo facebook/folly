@@ -99,6 +99,26 @@ class Core {
   Core(Core&&) noexcept = delete;
   Core& operator=(Core&&) = delete;
 
+  // Core is assumed to be convertible only if the type is convertible
+  // and the size is the same. This is a compromise for the complexity
+  // of having to make Core truly have a conversion constructor which
+  // would cause various other problems.
+  // If we made Core move constructible then we would need to update the
+  // Promise and Future with the location of the new Core. This is complex
+  // and may be inefficient.
+  // Core should only be modified so that for size(T) == size(U),
+  // sizeof(Core<T>) == size(Core<U>).
+  // This assumption is used as a proxy to make sure that
+  // the members of Core<T> and Core<U> line up so that we can use a
+  // reinterpret cast.
+  template <
+      class U,
+      typename = typename std::enable_if<std::is_convertible<U, T>::value &&
+                                         sizeof(U) == sizeof(T)>::type>
+  static Core<T>* convert(Core<U>* from) {
+    return reinterpret_cast<Core<T>*>(from);
+  }
+
   /// May call from any thread
   bool hasResult() const {
     switch (fsm_.getState()) {
@@ -370,6 +390,10 @@ class Core {
       delete this;
     }
   }
+
+  // Core should only be modified so that for size(T) == size(U),
+  // sizeof(Core<T>) == size(Core<U>).
+  // See Core::convert for details.
 
   // lambdaBuf occupies exactly one cache line
   static constexpr size_t lambdaBufSize = 8 * sizeof(void*);

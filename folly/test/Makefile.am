@@ -215,6 +215,7 @@ TESTS += indestructible_test
 futures_test_SOURCES = \
     ../futures/test/CollectTest.cpp \
     ../futures/test/ContextTest.cpp \
+    ../futures/test/ConversionTest.cpp \
     ../futures/test/CoreTest.cpp \
     ../futures/test/ThreadedExecutorTest.cpp \
     ../futures/test/EnsureTest.cpp \
