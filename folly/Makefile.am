@@ -271,6 +271,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Syscall.h \
 	portability/SysTime.h \
 	portability/SysUio.h \
+	portability/Time.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
 	Random.h \
@@ -397,6 +398,7 @@ libfolly_la_SOURCES = \
 	MemoryMapping.cpp \
 	portability/Environment.cpp \
 	portability/SysTime.cpp \
+	portability/Time.cpp \
 	Random.cpp \
 	SafeAssert.cpp \
 	SharedMutex.cpp \
