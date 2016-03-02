@@ -19,9 +19,10 @@
 
 #include <folly/Range.h>
 
+#include <folly/portability/Stdlib.h>
+
 #include <sys/mman.h>
 #include <array>
-#include <cstdlib>
 #include <iterator>
 #include <limits>
 #include <random>
