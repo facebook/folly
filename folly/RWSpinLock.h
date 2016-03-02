@@ -14,38 +14,23 @@
  * limitations under the License.
  */
 
-/*************************************************
-
-IF YOU HAVE TO ASK, NO, YOU DO NOT WANT A SPINLOCK.
-
-Yes, even if a microbench shows that a spinlock is faster, you still probably
-don't want one.
-
-Spinlocks in general are a big problem on systems for which you cannot disable
-preemption, like normal user-space code running on POXIX and Windows 
-platforms. If the thread holding a spinlock is preempted, another thread
-trying to acquire the lock and pounding the lock variable 
-has no idea that it's spinning in vain. Some spinlock implementations use
-sched_yield or similar to try to make this problem less severe --- we don't
-use the rest of our timeslice to pointlessly read a variable --- 
-but the overall result is still poor, especially if the thread locking the lock
-sleeps (which any thread can do on a demand-paging system), then we'll
-sched_yield over and over again, still pointlessly, pounding on the lock.
-
-You really want a plain old mutex. Regular mutexes will spin for a little while,
-then go to sleep.  While sleeping, threads use no CPU resources and do
-not cause scheduler contention.
-
-There are exceptions to the above warning.  If you have to ask, no, your 
-code doesn't qualify.
-
-
-STOP USING SPINLOCKS IN ORDINARY CODE.
-
-
-**************************************************/
-
 /*
+ * N.B. You most likely do _not_ want to use RWSpinLock or any other
+ * kind of spinlock.  Use SharedMutex instead.
+ *
+ * In short, spinlocks in preemptive multi-tasking operating systems
+ * have serious problems and fast mutexes like SharedMutex are almost
+ * certainly the better choice, because letting the OS scheduler put a
+ * thread to sleep is better for system responsiveness and throughput
+ * than wasting a timeslice repeatedly querying a lock held by a
+ * thread that's blocked, and you can't prevent userspace
+ * programs blocking.
+ *
+ * Spinlocks in an operating system kernel make much more sense than
+ * they do in userspace.
+ *
+ * -------------------------------------------------------------------
+ *
  * Two Read-Write spin lock implementations.
  *
  *  Ref: http://locklessinc.com/articles/locks
@@ -55,12 +40,14 @@ STOP USING SPINLOCKS IN ORDINARY CODE.
  *  are very compact (4/8 bytes), so are suitable for per-instance
  *  based locking, particularly when contention is not expected.
  *
- *  In most cases, RWSpinLock is a reasonable choice.  It has minimal
- *  overhead, and comparable contention performance when the number of
- *  competing threads is less than or equal to the number of logical
- *  CPUs.  Even as the number of threads gets larger, RWSpinLock can
- *  still be very competitive in READ, although it is slower on WRITE,
- *  and also inherently unfair to writers.
+ *  For a spinlock, RWSpinLock is a reasonable choice.  (See the note
+ *  about for why a spin lock is frequently a bad idea generally.)
+ *  RWSpinLock has minimal overhead, and comparable contention
+ *  performance when the number of competing threads is less than or
+ *  equal to the number of logical CPUs.  Even as the number of
+ *  threads gets larger, RWSpinLock can still be very competitive in
+ *  READ, although it is slower on WRITE, and also inherently unfair
+ *  to writers.
  *
  *  RWTicketSpinLock shows more balanced READ/WRITE performance.  If
  *  your application really needs a lot more threads, and a
