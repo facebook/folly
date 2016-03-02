@@ -44,6 +44,38 @@ class CpuId {
       f7b_ = reg[1];
       f7c_ = reg[2];
     }
+#elif defined(__i386__) && defined(__PIC__) && !defined(__clang__) && \
+    defined(__GNUC__)
+    // The following block like the normal cpuid branch below, but gcc
+    // reserves ebx for use of it's pic register so we must specially
+    // handle the save and restore to avoid clobbering the register
+    uint32_t n;
+    __asm__(
+        "pushl %%ebx\n\t"
+        "cpuid\n\t"
+        "popl %%ebx\n\t"
+        : "=a"(n)
+        : "a"(0)
+        : "edx", "ecx");
+    if (n >= 1) {
+      __asm__(
+          "pushl %%ebx\n\t"
+          "cpuid\n\t"
+          "popl %%ebx\n\t"
+          : "=c"(f1c_), "=d"(f1d_)
+          : "a"(1)
+          :);
+    }
+    if (n >= 7) {
+      __asm__(
+          "pushl %%ebx\n\t"
+          "cpuid\n\t"
+          "movl %%ebx, %%eax\n\r"
+          "popl %%ebx"
+          : "=a"(f7b_), "=c"(f7c_)
+          : "a"(7), "c"(0)
+          : "edx");
+    }
 #elif FOLLY_X64 || defined(__i386__)
     uint32_t n;
     __asm__("cpuid" : "=a"(n) : "a"(0) : "ebx", "edx", "ecx");
