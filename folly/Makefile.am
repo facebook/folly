@@ -269,6 +269,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Environment.h \
 	portability/GFlags.h \
 	portability/Stdlib.h \
+	portability/Strings.h \
 	portability/Syscall.h \
 	portability/SysTime.h \
 	portability/SysUio.h \
@@ -399,6 +400,7 @@ libfolly_la_SOURCES = \
 	MemoryMapping.cpp \
 	portability/Environment.cpp \
 	portability/Stdlib.cpp \
+	portability/Strings.cpp \
 	portability/SysTime.cpp \
 	portability/Time.cpp \
 	Random.cpp \
