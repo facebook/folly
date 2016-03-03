@@ -45,6 +45,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
   void close() {
     sock_->close();
   }
+  void closeWithReset() { sock_->closeWithReset(); }
 
   int32_t write(uint8_t const* buf, size_t len) {
     sock_->write(this, buf, len);

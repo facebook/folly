@@ -35,13 +35,10 @@ namespace folly {
 
 class SSLException: public folly::AsyncSocketException {
  public:
-  SSLException(int sslError, int errno_copy);
-
-  int getSSLError() const { return error_; }
-
- protected:
-  int error_;
-  char msg_[256];
+  SSLException(int sslError,
+               unsigned long errError,
+               int sslOperationReturnValue,
+               int errno_copy);
 };
 
 /**
@@ -782,7 +779,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void handleConnect() noexcept override;
 
   void invalidState(HandshakeCB* callback);
-  bool willBlock(int ret, int *errorOut) noexcept;
+  bool willBlock(int ret,
+                 int* sslErrorOut,
+                 unsigned long* errErrorOut) noexcept;
 
   virtual void checkForImmediateRead() noexcept override;
   // AsyncSocket calls this at the wrong time for SSL

@@ -879,7 +879,7 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
   server.getEventBase().runInEventBaseThread([&handshakeCallback]{
       handshakeCallback.closeSocket();});
   // give time for the cache lookup to come back and find it closed
-  usleep(500000);
+  handshakeCallback.waitForHandshake();
 
   EXPECT_EQ(server.getAsyncCallbacks(), 1);
   EXPECT_EQ(server.getAsyncLookups(), 1);
@@ -1518,6 +1518,71 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
 
   EXPECT_EQ(2, readCallback.buffers.size());
   EXPECT_EQ(AsyncSSLSocket::STATE_ESTABLISHED, client->getSSLState());
+}
+
+TEST(AsyncSSLSocketTest, ConnResetErrorString) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  WriteErrorCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback,
+                                      HandshakeCallback::EXPECT_ERROR);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  auto socket = std::make_shared<BlockingSocket>(server.getAddress(), nullptr);
+  socket->open();
+  uint8_t buf[3] = {0x16, 0x03, 0x01};
+  socket->write(buf, sizeof(buf));
+  socket->closeWithReset();
+
+  handshakeCallback.waitForHandshake();
+  EXPECT_NE(handshakeCallback.errorString_.find("SSL_ERROR_SYSCALL"),
+            std::string::npos);
+  EXPECT_NE(handshakeCallback.errorString_.find("104"), std::string::npos);
+}
+
+TEST(AsyncSSLSocketTest, ConnEOFErrorString) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  WriteErrorCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback,
+                                      HandshakeCallback::EXPECT_ERROR);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  auto socket = std::make_shared<BlockingSocket>(server.getAddress(), nullptr);
+  socket->open();
+  uint8_t buf[3] = {0x16, 0x03, 0x01};
+  socket->write(buf, sizeof(buf));
+  socket->close();
+
+  handshakeCallback.waitForHandshake();
+  EXPECT_NE(handshakeCallback.errorString_.find("SSL_ERROR_SYSCALL"),
+            std::string::npos);
+  EXPECT_NE(handshakeCallback.errorString_.find("EOF"), std::string::npos);
+}
+
+TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  WriteErrorCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback,
+                                      HandshakeCallback::EXPECT_ERROR);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  auto socket = std::make_shared<BlockingSocket>(server.getAddress(), nullptr);
+  socket->open();
+  uint8_t buf[256] = {0x16, 0x03};
+  memset(buf + 2, 'a', sizeof(buf) - 2);
+  socket->write(buf, sizeof(buf));
+  socket->close();
+
+  handshakeCallback.waitForHandshake();
+  EXPECT_NE(handshakeCallback.errorString_.find("SSL routines"),
+            std::string::npos);
+  EXPECT_NE(handshakeCallback.errorString_.find("unknown protocol"),
+            std::string::npos);
 }
 
 } // namespace

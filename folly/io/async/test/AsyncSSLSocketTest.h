@@ -305,6 +305,8 @@ public:
 
   // Functions inherited from AsyncSSLSocketHandshakeCallback
   void handshakeSuc(AsyncSSLSocket *sock) noexcept override {
+    std::lock_guard<std::mutex> g(mutex_);
+    cv_.notify_all();
     EXPECT_EQ(sock, socket_.get());
     std::cerr << "HandshakeCallback::connectionAccepted" << std::endl;
     rcb_->setSocket(socket_);
@@ -313,12 +315,20 @@ public:
   }
   void handshakeErr(AsyncSSLSocket* /* sock */,
                     const AsyncSocketException& ex) noexcept override {
+    std::lock_guard<std::mutex> g(mutex_);
+    cv_.notify_all();
     std::cerr << "HandshakeCallback::handshakeError " << ex.what() << std::endl;
     state = (expect_ == EXPECT_ERROR) ? STATE_SUCCEEDED : STATE_FAILED;
     if (expect_ == EXPECT_ERROR) {
       // rcb will never be invoked
       rcb_->setState(STATE_SUCCEEDED);
     }
+    errorString_ = ex.what();
+  }
+
+  void waitForHandshake() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [this] { return state != STATE_WAITING; });
   }
 
   ~HandshakeCallback() {
@@ -334,6 +344,9 @@ public:
   std::shared_ptr<AsyncSSLSocket> socket_;
   ReadCallbackBase *rcb_;
   ExpectType expect_;
+  std::mutex mutex_;
+  std::condition_variable cv_;
+  std::string errorString_;
 };
 
 class SSLServerAcceptCallbackBase:

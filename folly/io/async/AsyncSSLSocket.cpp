@@ -246,15 +246,38 @@ void* initEorBioMethod(void) {
   return nullptr;
 }
 
+std::string decodeOpenSSLError(int sslError,
+                               unsigned long errError,
+                               int sslOperationReturnValue) {
+  if (sslError == SSL_ERROR_SYSCALL && errError == 0) {
+    if (sslOperationReturnValue == 0) {
+      return "SSL_ERROR_SYSCALL: EOF";
+    } else {
+      // In this case errno is set, AsyncSocketException will add it.
+      return "SSL_ERROR_SYSCALL";
+    }
+  } else if (sslError == SSL_ERROR_ZERO_RETURN) {
+    // This signifies a TLS closure alert.
+    return "SSL_ERROR_ZERO_RETURN";
+  } else {
+    char buf[256];
+    std::string msg(ERR_error_string(errError, buf));
+    return msg;
+  }
+}
+
 } // anonymous namespace
 
 namespace folly {
 
-SSLException::SSLException(int sslError, int errno_copy):
-    AsyncSocketException(
-      AsyncSocketException::SSL_ERROR,
-      ERR_error_string(sslError, msg_),
-      sslError == SSL_ERROR_SYSCALL ? errno_copy : 0), error_(sslError) {}
+SSLException::SSLException(int sslError,
+                           unsigned long errError,
+                           int sslOperationReturnValue,
+                           int errno_copy)
+    : AsyncSocketException(
+          AsyncSocketException::SSL_ERROR,
+          decodeOpenSSLError(sslError, errError, sslOperationReturnValue),
+          sslError == SSL_ERROR_SYSCALL ? errno_copy : 0) {}
 
 /**
  * Create a client AsyncSSLSocket
@@ -889,8 +912,11 @@ int AsyncSSLSocket::getSSLCertSize() const {
   return certSize;
 }
 
-bool AsyncSSLSocket::willBlock(int ret, int *errorOut) noexcept {
-  int error = *errorOut = SSL_get_error(ssl_, ret);
+bool AsyncSSLSocket::willBlock(int ret,
+                               int* sslErrorOut,
+                               unsigned long* errErrorOut) noexcept {
+  *errErrorOut = 0;
+  int error = *sslErrorOut = SSL_get_error(ssl_, ret);
   if (error == SSL_ERROR_WANT_READ) {
     // Register for read event if not already.
     updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
@@ -943,7 +969,7 @@ bool AsyncSSLSocket::willBlock(int ret, int *errorOut) noexcept {
   } else {
     // SSL_ERROR_ZERO_RETURN is processed here so we can get some detail
     // in the log
-    long lastError = ERR_get_error();
+    unsigned long lastError = *errErrorOut = ERR_get_error();
     VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
             << "state=" << state_ << ", "
             << "sslState=" << sslState_ << ", "
@@ -955,16 +981,6 @@ bool AsyncSSLSocket::willBlock(int ret, int *errorOut) noexcept {
             << "written: " << BIO_number_written(SSL_get_wbio(ssl_)) << ", "
             << "func: " << ERR_func_error_string(lastError) << ", "
             << "reason: " << ERR_reason_error_string(lastError);
-    if (error != SSL_ERROR_SYSCALL) {
-      if (error == SSL_ERROR_SSL) {
-        *errorOut = lastError;
-      }
-      if ((unsigned long)lastError < 0x8000) {
-        errno = ENOSYS;
-      } else {
-        errno = lastError;
-      }
-    }
     ERR_clear_error();
     return false;
   }
@@ -1042,12 +1058,14 @@ AsyncSSLSocket::handleAccept() noexcept {
   errno = 0;
   int ret = SSL_accept(ssl_);
   if (ret <= 0) {
-    int error;
-    if (willBlock(ret, &error)) {
+    int sslError;
+    unsigned long errError;
+    int errnoCopy = errno;
+    if (willBlock(ret, &sslError, &errError)) {
       return;
     } else {
       sslState_ = STATE_ERROR;
-      SSLException ex(error, errno);
+      SSLException ex(sslError, errError, ret, errnoCopy);
       return failHandshake(__func__, ex);
     }
   }
@@ -1104,12 +1122,14 @@ AsyncSSLSocket::handleConnect() noexcept {
   errno = 0;
   int ret = SSL_connect(ssl_);
   if (ret <= 0) {
-    int error;
-    if (willBlock(ret, &error)) {
+    int sslError;
+    unsigned long errError;
+    int errnoCopy = errno;
+    if (willBlock(ret, &sslError, &errError)) {
       return;
     } else {
       sslState_ = STATE_ERROR;
-      SSLException ex(error, errno);
+      SSLException ex(sslError, errError, ret, errnoCopy);
       return failHandshake(__func__, ex);
     }
   }
