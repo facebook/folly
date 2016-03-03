@@ -376,11 +376,6 @@ class SSLContext {
    */
   void unsetNextProtocols();
   void deleteNextProtocolsStrings();
-
-#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
-  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
-  bool canUseFalseStartWithCipher(const SSL_CIPHER *cipher);
-#endif
 #endif // OPENSSL_NPN_NEGOTIATED
 
   /**
@@ -436,6 +431,15 @@ class SSLContext {
 
   bool checkPeerName() { return checkPeerName_; }
   std::string peerFixedName() { return peerFixedName_; }
+
+#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
+  /**
+   * Enable TLS false start, saving a roundtrip for full handshakes. Will only
+   * be used if the server uses NPN or ALPN, and a strong forward-secure cipher
+   * is negotiated.
+   */
+  void enableFalseStart();
+#endif
 
   /**
    * Helper to match a hostname versus a pattern.
@@ -511,28 +515,6 @@ class SSLContext {
                                 void* data);
 #endif
   size_t pickNextProtocols();
-
-#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
-  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
-  // This class contains all allowed ciphers for SSL false start. Call its
-  // `canUseFalseStartWithCipher` to check for cipher qualification.
-  class SSLFalseStartChecker {
-   public:
-    SSLFalseStartChecker();
-
-    bool canUseFalseStartWithCipher(const SSL_CIPHER *cipher);
-
-   private:
-    static int compare_ulong(const void *x, const void *y);
-
-    // All ciphers that are allowed to use false start.
-    unsigned long ciphers_[47];
-    unsigned int length_;
-    unsigned int width_;
-  };
-
-  SSLFalseStartChecker falseStartChecker_;
-#endif
 
 #endif // OPENSSL_NPN_NEGOTIATED
 

@@ -510,66 +510,6 @@ int SSLContext::advertisedNextProtocolCallback(SSL* ssl,
   return SSL_TLSEXT_ERR_OK;
 }
 
-#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
-  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
-SSLContext::SSLFalseStartChecker::SSLFalseStartChecker() :
-  ciphers_{
-    TLS1_CK_DHE_DSS_WITH_AES_128_SHA,
-    TLS1_CK_DHE_RSA_WITH_AES_128_SHA,
-    TLS1_CK_DHE_DSS_WITH_AES_256_SHA,
-    TLS1_CK_DHE_RSA_WITH_AES_256_SHA,
-    TLS1_CK_DHE_DSS_WITH_AES_128_SHA256,
-    TLS1_CK_DHE_RSA_WITH_AES_128_SHA256,
-    TLS1_CK_DHE_DSS_WITH_AES_256_SHA256,
-    TLS1_CK_DHE_RSA_WITH_AES_256_SHA256,
-    TLS1_CK_DHE_RSA_WITH_AES_128_GCM_SHA256,
-    TLS1_CK_DHE_RSA_WITH_AES_256_GCM_SHA384,
-    TLS1_CK_DHE_DSS_WITH_AES_128_GCM_SHA256,
-    TLS1_CK_DHE_DSS_WITH_AES_256_GCM_SHA384,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-    TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-    TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_128_SHA256,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_256_SHA384,
-    TLS1_CK_ECDH_ECDSA_WITH_AES_128_SHA256,
-    TLS1_CK_ECDH_ECDSA_WITH_AES_256_SHA384,
-    TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-    TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-    TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-    TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-    TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-  } {
-  length_ = sizeof(ciphers_)/sizeof(ciphers_[0]);
-  width_ = sizeof(ciphers_[0]);
-  qsort(ciphers_, length_, width_, compare_ulong);
-}
-
-bool SSLContext::SSLFalseStartChecker::canUseFalseStartWithCipher(
-  const SSL_CIPHER *cipher) {
-  unsigned long cid = cipher->id;
-  unsigned long *r =
-    (unsigned long*)bsearch(&cid, ciphers_, length_, width_, compare_ulong);
-  return r != nullptr;
-}
-
-int
-SSLContext::SSLFalseStartChecker::compare_ulong(const void *x, const void *y) {
-  if (*(unsigned long *)x < *(unsigned long *)y) {
-    return -1;
-  }
-  if (*(unsigned long *)x > *(unsigned long *)y) {
-    return 1;
-  }
-  return 0;
-};
-
-bool SSLContext::canUseFalseStartWithCipher(const SSL_CIPHER *cipher) {
-  return falseStartChecker_.canUseFalseStartWithCipher(cipher);
-}
-#endif
-
 int SSLContext::selectNextProtocolCallback(SSL* ssl,
                                            unsigned char** out,
                                            unsigned char* outlen,
@@ -606,14 +546,6 @@ int SSLContext::selectNextProtocolCallback(SSL* ssl,
   if (retval != OPENSSL_NPN_NEGOTIATED) {
     VLOG(3) << "SSLContext::selectNextProcolCallback() "
             << "unable to pick a next protocol.";
-#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH) && \
-  FOLLY_SSLCONTEXT_USE_TLS_FALSE_START
-  } else {
-    const SSL_CIPHER *cipher = ssl->s3->tmp.new_cipher;
-    if (cipher && ctx->canUseFalseStartWithCipher(cipher)) {
-      SSL_set_mode(ssl, SSL_MODE_HANDSHAKE_CUTTHROUGH);
-    }
-#endif
   }
   return SSL_TLSEXT_ERR_OK;
 }
@@ -765,6 +697,12 @@ static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
 void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
   lockTypes() = inLockTypes;
 }
+
+#if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
+void SSLContext::enableFalseStart() {
+  SSL_CTX_set_mode(ctx_, SSL_MODE_HANDSHAKE_CUTTHROUGH);
+}
+#endif
 
 void SSLContext::markInitialized() {
   std::lock_guard<std::mutex> g(initMutex());
