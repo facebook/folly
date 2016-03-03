@@ -15,6 +15,8 @@
  */
 #include <folly/SpinLock.h>
 
+#include <folly/Random.h>
+
 #include <gtest/gtest.h>
 #include <thread>
 
@@ -35,7 +37,7 @@ struct LockedVal {
 template <typename LOCK>
 void spinlockTestThread(LockedVal<LOCK>* v) {
   const int max = 1000;
-  unsigned int seed = (uintptr_t)pthread_self();
+  auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
     folly::asm_pause();
     SpinLockGuardImpl<LOCK> g(v->lock);
@@ -45,7 +47,7 @@ void spinlockTestThread(LockedVal<LOCK>* v) {
       EXPECT_EQ(first, v->ar[i]);
     }
 
-    int byte = rand_r(&seed);
+    int byte = folly::Random::rand32(rng);
     memset(v->ar, char(byte), sizeof v->ar);
   }
 }

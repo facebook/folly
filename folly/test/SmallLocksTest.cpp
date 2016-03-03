@@ -15,6 +15,9 @@
  */
 
 #include <folly/SmallLocks.h>
+
+#include <folly/Random.h>
+
 #include <cassert>
 #include <cstdio>
 #include <mutex>
@@ -58,7 +61,7 @@ LockedVal v;
 void splock_test() {
 
   const int max = 1000;
-  unsigned int seed = (uintptr_t)pthread_self();
+  auto rng = folly::ThreadLocalPRNG();
   for (int i = 0; i < max; i++) {
     folly::asm_pause();
     MSLGuard g(v.lock);
@@ -68,7 +71,7 @@ void splock_test() {
       EXPECT_EQ(first, v.ar[i]);
     }
 
-    int byte = rand_r(&seed);
+    int byte = folly::Random::rand32(rng);
     memset(v.ar, char(byte), sizeof v.ar);
   }
 }
