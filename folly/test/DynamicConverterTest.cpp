@@ -99,6 +99,28 @@ TEST(DynamicConverter, arithmetic_types) {
   EXPECT_EQ(i8, false);
 }
 
+TEST(DynamicConverter, enums) {
+  enum enum1 { foo = 1, bar = 2 };
+
+  dynamic d1 = 1;
+  auto i1 = convertTo<enum1>(d1);
+  EXPECT_EQ(i1, foo);
+
+  dynamic d2 = 2;
+  auto i2 = convertTo<enum1>(d2);
+  EXPECT_EQ(i2, bar);
+
+  enum class enum2 { FOO = 1, BAR = 2 };
+
+  dynamic d3 = 1;
+  auto i3 = convertTo<enum2>(d3);
+  EXPECT_EQ(i3, enum2::FOO);
+
+  dynamic d4 = 2;
+  auto i4 = convertTo<enum2>(d4);
+  EXPECT_EQ(i4, enum2::BAR);
+}
+
 TEST(DynamicConverter, simple_builtins) {
   dynamic d1 = "Haskell";
   auto i1 = convertTo<folly::fbstring>(d1);

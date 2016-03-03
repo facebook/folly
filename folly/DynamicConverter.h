@@ -211,6 +211,16 @@ struct DynamicConverter<T,
   }
 };
 
+// enums
+template <typename T>
+struct DynamicConverter<T,
+                        typename std::enable_if<std::is_enum<T>::value>::type> {
+  static T convert(const dynamic& d) {
+    using type = typename std::underlying_type<T>::type;
+    return static_cast<T>(DynamicConverter<type>::convert(d));
+  }
+};
+
 // floating point
 template <typename T>
 struct DynamicConverter<T,
