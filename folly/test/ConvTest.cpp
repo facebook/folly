@@ -44,18 +44,18 @@ TEST(Conv, digits10) {
   // try the first X nonnegatives.
   // Covers some more cases of 2^p, 10^p
   for (uint64_t i = 0; i < 100000; i++) {
-    snprintf(buffer, sizeof(buffer), "%lu", i);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, i);
     EXPECT_EQ(strlen(buffer), digits10(i));
   }
 
   // try powers of 2
   power = 1;
   for (int p = 0; p < 64; p++) {
-    snprintf(buffer, sizeof(buffer), "%lu", power);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power);
     EXPECT_EQ(strlen(buffer), digits10(power));
-    snprintf(buffer, sizeof(buffer), "%lu", power - 1);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power - 1);
     EXPECT_EQ(strlen(buffer), digits10(power - 1));
-    snprintf(buffer, sizeof(buffer), "%lu", power + 1);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power + 1);
     EXPECT_EQ(strlen(buffer), digits10(power + 1));
     power *= 2;
   }
@@ -63,11 +63,11 @@ TEST(Conv, digits10) {
   // try powers of 10
   power = 1;
   for (int p = 0; p < 20; p++) {
-    snprintf(buffer, sizeof(buffer), "%lu", power);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power);
     EXPECT_EQ(strlen(buffer), digits10(power));
-    snprintf(buffer, sizeof(buffer), "%lu", power - 1);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power - 1);
     EXPECT_EQ(strlen(buffer), digits10(power - 1));
-    snprintf(buffer, sizeof(buffer), "%lu", power + 1);
+    snprintf(buffer, sizeof(buffer), "%" PRIu64, power + 1);
     EXPECT_EQ(strlen(buffer), digits10(power + 1));
     power *= 10;
   }
