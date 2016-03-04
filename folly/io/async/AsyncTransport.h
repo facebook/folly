@@ -345,6 +345,38 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
     virtual void onEgressBufferCleared() = 0;
   };
 
+  /**
+   * Callback class to signal when a transport that did not have replay
+   * protection gains replay protection. This is needed for 0-RTT security
+   * protocols.
+   */
+  class ReplaySafetyCallback {
+   public:
+    virtual ~ReplaySafetyCallback() = default;
+
+    /**
+     * Called when the transport becomes replay safe.
+     */
+    virtual void onReplaySafe() = 0;
+  };
+
+  /**
+   * False if the transport does not have replay protection, but will in the
+   * future.
+   */
+  virtual bool isReplaySafe() const { return true; }
+
+  /**
+   * Set the ReplaySafeCallback on this transport.
+   *
+   * This should only be called if isReplaySafe() returns false.
+   */
+  virtual void setReplaySafetyCallback(ReplaySafetyCallback* callback) {
+    if (callback) {
+      CHECK(false) << "setReplaySafetyCallback() not supported";
+    }
+  }
+
  protected:
   virtual ~AsyncTransport() = default;
 };

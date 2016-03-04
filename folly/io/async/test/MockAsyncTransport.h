@@ -65,6 +65,11 @@ class MockAsyncTransport: public AsyncTransportWrapper {
 
 };
 
+class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
+ public:
+  GMOCK_METHOD0_(, noexcept, , onReplaySafe, void());
+};
+
 class MockReadCallback: public AsyncTransportWrapper::ReadCallback {
  public:
   MOCK_METHOD2(getReadBuffer, void(void**, size_t*));
