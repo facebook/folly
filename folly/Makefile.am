@@ -273,6 +273,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Strings.h \
 	portability/Syscall.h \
 	portability/SysTime.h \
+	portability/SysTypes.h \
 	portability/SysUio.h \
 	portability/Time.h \
 	Preprocessor.h \

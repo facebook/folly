@@ -307,11 +307,7 @@ namespace std { typedef ::max_align_t max_align_t; }
 // MSVC specific defines
 // mainly for posix compat
 #ifdef _MSC_VER
-
-// this definition is in a really silly place with a silly name
-// and ifdefing it every time we want it is painful
-#include <basetsd.h>
-typedef SSIZE_T ssize_t;
+#include <folly/portability/SysTypes.h>
 
 // sprintf semantics are not exactly identical
 // but current usage is not a problem
