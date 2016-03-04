@@ -110,11 +110,11 @@ inline detail::Futex<>* MicroLockCore::word() const {
 
 inline unsigned MicroLockCore::baseShift(unsigned slot) const {
   assert(slot < CHAR_BIT / 2);
-  uintptr_t offset_bytes = (uintptr_t)&lock_ - (uintptr_t)word();
-  assert(offset_bytes < sizeof(uint32_t));
+
+  unsigned offset_bytes = (unsigned)((uintptr_t)&lock_ - (uintptr_t)word());
 
   return kIsLittleEndian
-             ? (unsigned)offset_bytes * CHAR_BIT + slot * 2
+             ? offset_bytes * CHAR_BIT + slot * 2
              : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) + slot * 2;
 }
 
