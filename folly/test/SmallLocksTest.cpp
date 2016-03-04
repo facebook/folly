@@ -21,6 +21,7 @@
 #include <cassert>
 #include <cstdio>
 #include <mutex>
+#include <condition_variable>
 #include <string>
 #include <vector>
 #include <pthread.h>
@@ -30,10 +31,11 @@
 
 #include <gtest/gtest.h>
 
-using std::string;
+using folly::MSLGuard;
+using folly::MicroLock;
 using folly::MicroSpinLock;
 using folly::PicoSpinLock;
-using folly::MSLGuard;
+using std::string;
 
 namespace {
 
@@ -165,4 +167,123 @@ TEST(SmallLocks, PicoSpinSigned) {
 
 TEST(SmallLocks, RegClobber) {
   TestClobber().go();
+}
+
+FOLLY_PACK_PUSH
+static_assert(sizeof(MicroLock) == 1, "Size check failed");
+FOLLY_PACK_POP
+
+namespace {
+
+struct SimpleBarrier {
+
+  SimpleBarrier() : lock_(), cv_(), ready_(false) {}
+
+  void wait() {
+    std::unique_lock<std::mutex> lockHeld(lock_);
+    while (!ready_) {
+      cv_.wait(lockHeld);
+    }
+  }
+
+  void run() {
+    {
+      std::unique_lock<std::mutex> lockHeld(lock_);
+      ready_ = true;
+    }
+
+    cv_.notify_all();
+  }
+
+ private:
+  std::mutex lock_;
+  std::condition_variable cv_;
+  bool ready_;
+};
+}
+
+static void runMicroLockTest() {
+  volatile uint64_t counters[4] = {0, 0, 0, 0};
+  std::vector<std::thread> threads;
+  static const unsigned nrThreads = 20;
+  static const unsigned iterPerThread = 10000;
+  SimpleBarrier startBarrier;
+
+  assert(iterPerThread % 4 == 0);
+
+  // Embed the lock in a larger structure to ensure that we do not
+  // affect bits outside the ones MicroLock is defined to affect.
+  struct {
+    uint8_t a;
+    volatile uint8_t b;
+    union {
+      MicroLock alock;
+      uint8_t c;
+    };
+    volatile uint8_t d;
+  } x;
+
+  uint8_t origB = 'b';
+  uint8_t origD = 'd';
+
+  x.a = 'a';
+  x.b = origB;
+  x.c = 0;
+  x.d = origD;
+
+  // This thread touches other parts of the host word to show that
+  // MicroLock does not interfere with memory outside of the byte
+  // it owns.
+  std::thread adjacentMemoryToucher = std::thread([&] {
+    startBarrier.wait();
+    for (unsigned iter = 0; iter < iterPerThread; ++iter) {
+      if (iter % 2) {
+        x.b++;
+      } else {
+        x.d++;
+      }
+    }
+  });
+
+  for (unsigned i = 0; i < nrThreads; ++i) {
+    threads.emplace_back([&] {
+      startBarrier.wait();
+      for (unsigned iter = 0; iter < iterPerThread; ++iter) {
+        unsigned slotNo = iter % 4;
+        x.alock.lock(slotNo);
+        counters[slotNo] += 1;
+        // The occasional sleep makes it more likely that we'll
+        // exercise the futex-wait path inside MicroLock.
+        if (iter % 1000 == 0) {
+          struct timespec ts = {0, 10000};
+          (void)nanosleep(&ts, nullptr);
+        }
+        x.alock.unlock(slotNo);
+      }
+    });
+  }
+
+  startBarrier.run();
+
+  for (auto it = threads.begin(); it != threads.end(); ++it) {
+    it->join();
+  }
+
+  adjacentMemoryToucher.join();
+
+  EXPECT_EQ(x.a, 'a');
+  EXPECT_EQ(x.b, (uint8_t)(origB + iterPerThread / 2));
+  EXPECT_EQ(x.c, 0);
+  EXPECT_EQ(x.d, (uint8_t)(origD + iterPerThread / 2));
+  for (unsigned i = 0; i < 4; ++i) {
+    EXPECT_EQ(counters[i], ((uint64_t)nrThreads * iterPerThread) / 4);
+  }
+}
+
+TEST(SmallLocks, MicroLock) { runMicroLockTest(); }
+TEST(SmallLocks, MicroLockTryLock) {
+  MicroLock lock;
+  lock.init();
+  EXPECT_TRUE(lock.try_lock());
+  EXPECT_FALSE(lock.try_lock());
 }

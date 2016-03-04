@@ -16,7 +16,7 @@
 
 /*
  * N.B. You most likely do _not_ want to use PicoSpinLock or any other
- * kind of spinlock.
+ * kind of spinlock.  Consider MicroLock instead.
  *
  * In short, spinlocks in preemptive multi-tasking operating systems
  * have serious problems and fast mutexes like std::mutex are almost

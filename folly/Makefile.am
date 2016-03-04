@@ -257,6 +257,7 @@ nobase_follyinclude_HEADERS = \
 	Memory.h \
 	MemoryMapping.h \
 	MicroSpinLock.h \
+	MicroLock.h \
 	MoveWrapper.h \
 	MPMCPipeline.h \
 	MPMCQueue.h \
@@ -406,6 +407,7 @@ libfolly_la_SOURCES = \
 	Random.cpp \
 	SafeAssert.cpp \
 	SharedMutex.cpp \
+	MicroLock.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
 	SpookyHashV1.cpp \

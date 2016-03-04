@@ -34,6 +34,7 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
+#include <folly/MicroLock.h>
 #include <folly/MicroSpinLock.h>
 #include <folly/PicoSpinLock.h>
 
