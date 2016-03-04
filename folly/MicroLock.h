@@ -17,7 +17,7 @@
 #pragma once
 
 #include <assert.h>
-#include <limits>
+#include <climits>
 #include <stdint.h>
 #include <folly/detail/Futex.h>
 #include <folly/Portability.h>
@@ -114,7 +114,7 @@ inline unsigned MicroLockCore::baseShift(unsigned slot) const {
   assert(offset_bytes < sizeof(uint32_t));
 
   return kIsLittleEndian
-             ? offset_bytes * CHAR_BIT + slot * 2
+             ? (unsigned)offset_bytes * CHAR_BIT + slot * 2
              : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) + slot * 2;
 }
 
