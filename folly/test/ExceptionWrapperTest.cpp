@@ -22,6 +22,34 @@
 
 using namespace folly;
 
+class AbstractIntException : public std::exception {
+ public:
+  virtual int getInt() const = 0;
+};
+
+class IntException : public AbstractIntException {
+ public:
+  explicit IntException(int i) : i_(i) {}
+
+  int getInt() const override { return i_; }
+  const char* what() const noexcept override {
+    what_ = folly::to<std::string>("int == ", i_);
+    return what_.c_str();
+  }
+
+ private:
+  int i_;
+  mutable std::string what_;
+};
+
+const static std::string kExceptionClassName =
+    demangle(typeid(std::exception)).toStdString();
+const static std::string kRuntimeErrorClassName =
+    demangle(typeid(std::runtime_error)).toStdString();
+const static std::string kIntExceptionClassName =
+    demangle(typeid(IntException)).toStdString();
+const static std::string kIntClassName = demangle(typeid(int)).toStdString();
+
 // Tests that when we call throwException, the proper type is thrown (derived)
 TEST(ExceptionWrapper, throw_test) {
   std::runtime_error e("payload");
@@ -46,8 +74,8 @@ TEST(ExceptionWrapper, members) {
   EXPECT_EQ(ew.class_name(), "");
   ew = make_exception_wrapper<std::runtime_error>("payload");
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(ew.what(), "std::runtime_error: payload");
-  EXPECT_EQ(ew.class_name(), "std::runtime_error");
+  EXPECT_EQ(ew.what(), kRuntimeErrorClassName + ": payload");
+  EXPECT_EQ(ew.class_name(), kRuntimeErrorClassName);
 }
 
 TEST(ExceptionWrapper, equals) {
@@ -95,8 +123,8 @@ TEST(ExceptionWrapper, try_and_catch_test) {
     });
   EXPECT_TRUE(bool(ew));
   EXPECT_TRUE(ew.getCopied());
-  EXPECT_EQ(ew.what(), "std::runtime_error: payload");
-  EXPECT_EQ(ew.class_name(), "std::runtime_error");
+  EXPECT_EQ(ew.what(), kRuntimeErrorClassName + ": payload");
+  EXPECT_EQ(ew.class_name(), kRuntimeErrorClassName);
   auto rep = ew.is_compatible_with<std::runtime_error>();
   EXPECT_TRUE(rep);
 
@@ -117,8 +145,8 @@ TEST(ExceptionWrapper, try_and_catch_test) {
     throw std::exception();
   });
   EXPECT_TRUE(bool(ew3));
-  EXPECT_EQ(ew3.what(), "std::exception: std::exception");
-  EXPECT_EQ(ew3.class_name(), "std::exception");
+  EXPECT_EQ(ew3.what(), kExceptionClassName + ": std::exception");
+  EXPECT_EQ(ew3.class_name(), kExceptionClassName);
   rep = ew3.is_compatible_with<std::runtime_error>();
   EXPECT_FALSE(rep);
 
@@ -130,27 +158,6 @@ TEST(ExceptionWrapper, try_and_catch_test) {
     std::exception);
 }
 
-class AbstractIntException : public std::exception {
-public:
-  virtual int getInt() const = 0;
-};
-
-class IntException : public AbstractIntException {
-public:
-  explicit IntException(int i)
-    : i_(i) {}
-
-  int getInt() const override { return i_; }
-  const char* what() const noexcept override {
-    what_ = folly::to<std::string>("int == ", i_);
-    return what_.c_str();
-  }
-
-private:
-  int i_;
-  mutable std::string what_;
-};
-
 TEST(ExceptionWrapper, with_exception_test) {
   int expected = 23;
 
@@ -160,8 +167,8 @@ TEST(ExceptionWrapper, with_exception_test) {
       throw IntException(expected);
     });
   EXPECT_TRUE(bool(ew));
-  EXPECT_EQ(ew.what(), "IntException: int == 23");
-  EXPECT_EQ(ew.class_name(), "IntException");
+  EXPECT_EQ(ew.what(), kIntExceptionClassName + ": int == 23");
+  EXPECT_EQ(ew.class_name(), kIntExceptionClassName);
   ew.with_exception([&](const IntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
     });
@@ -173,8 +180,8 @@ TEST(ExceptionWrapper, with_exception_test) {
       throw IntException(expected);
     });
   EXPECT_TRUE(bool(ew2));
-  EXPECT_EQ(ew2.what(), "IntException: int == 23");
-  EXPECT_EQ(ew2.class_name(), "IntException");
+  EXPECT_EQ(ew2.what(), kIntExceptionClassName + ": int == 23");
+  EXPECT_EQ(ew2.class_name(), kIntExceptionClassName);
   ew2.with_exception([&](AbstractIntException& ie) {
       EXPECT_EQ(ie.getInt(), expected);
       EXPECT_TRUE(dynamic_cast<IntException*>(&ie));
@@ -243,8 +250,8 @@ TEST(ExceptionWrapper, non_std_exception_test) {
     });
   EXPECT_TRUE(bool(ew));
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
-  EXPECT_EQ(ew.what(), "int");
-  EXPECT_EQ(ew.class_name(), "int");
+  EXPECT_EQ(ew.what(), kIntClassName);
+  EXPECT_EQ(ew.class_name(), kIntClassName);
   // non-std::exception types are supported, but the only way to
   // access their value is to explicity rethrow and catch it.
   try {
@@ -257,7 +264,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
 
 TEST(ExceptionWrapper, exceptionStr) {
   auto ew = make_exception_wrapper<std::runtime_error>("argh");
-  EXPECT_EQ("std::runtime_error: argh", exceptionStr(ew));
+  EXPECT_EQ(kRuntimeErrorClassName + ": argh", exceptionStr(ew));
 }
 
 namespace {
