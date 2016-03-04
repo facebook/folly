@@ -1384,7 +1384,7 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
       return -1;
   }
 
-  bool cork = isSet(flags, WriteFlags::CORK) || persistentCork_;
+  bool cork = isSet(flags, WriteFlags::CORK);
   CorkGuard guard(fd_, count > 1, cork, &corked_);
 
 #if 0

@@ -1203,37 +1203,6 @@ int AsyncSocket::setTCPProfile(int profd) {
   return 0;
 }
 
-void AsyncSocket::setPersistentCork(bool cork) {
-  if (setCork(cork) == 0) {
-    persistentCork_ = cork;
-  }
-}
-
-int AsyncSocket::setCork(bool cork) {
-#ifdef TCP_CORK
-  if (fd_ < 0) {
-    VLOG(4) << "AsyncSocket::setCork() called on non-open socket "
-            << this << "(stats=" << state_ << ")";
-    return EINVAL;
-  }
-
-  if (corked_ == cork) {
-    return 0;
-  }
-
-  int flag = cork ? 1 : 0;
-  if (setsockopt(fd_, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag)) != 0) {
-    int errnoCopy = errno;
-    VLOG(2) << "faield to turn on TCP_CORK option on AsyncSocket"
-            << this << "(fd=" << fd_ << ", state=" << state_ << "):"
-            << folly::errnoStr(errnoCopy);
-    return errnoCopy;
-  }
-  corked_ = cork;
-#endif
-  return 0;
-}
-
 void AsyncSocket::ioReady(uint16_t events) noexcept {
   VLOG(7) << "AsyncSocket::ioRead() this=" << this << ", fd" << fd_
           << ", events=" << std::hex << events << ", state=" << state_;
