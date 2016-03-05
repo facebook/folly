@@ -16,6 +16,8 @@
 
 #include <folly/Exception.h>
 
+#include <folly/experimental/TestUtil.h>
+
 #include <cstdio>
 #include <memory>
 
@@ -72,15 +74,18 @@ TEST(ExceptionTest, Simple) {
   EXPECT_SYSTEM_ERROR({checkUnixErrorExplicit(-1, EIO, "hello", " world");},
                       EIO, "hello world");
 
-  std::shared_ptr<FILE> fp(tmpfile(), fclose);
+  TemporaryDirectory tmpdir;
+  auto exnpath = tmpdir.path() / "ExceptionTest";
+  auto fp = fopen(exnpath.c_str(), "w+b");
   ASSERT_TRUE(fp != nullptr);
+  SCOPE_EXIT { fclose(fp); };
 
-  EXPECT_NO_THROW({checkFopenError(fp.get(), "hello", " world");});
+  EXPECT_NO_THROW({ checkFopenError(fp, "hello", " world"); });
   errno = ERANGE;
   EXPECT_SYSTEM_ERROR({checkFopenError(nullptr, "hello", " world");},
                       ERANGE, "hello world");
 
-  EXPECT_NO_THROW({checkFopenErrorExplicit(fp.get(), EIO, "hello", " world");});
+  EXPECT_NO_THROW({ checkFopenErrorExplicit(fp, EIO, "hello", " world"); });
   errno = ERANGE;
   EXPECT_SYSTEM_ERROR({checkFopenErrorExplicit(nullptr, EIO,
                                                "hello", " world");},
