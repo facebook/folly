@@ -276,6 +276,7 @@ nobase_follyinclude_HEADERS = \
 	portability/SysTypes.h \
 	portability/SysUio.h \
 	portability/Time.h \
+	portability/Windows.h \
 	Preprocessor.h \
 	ProducerConsumerQueue.h \
 	Random.h \
