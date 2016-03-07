@@ -351,12 +351,14 @@ TEST(CacheLocality, FakeSysfs) {
   EXPECT_EQ(expected.localityIndexByCpu, parsed.localityIndexByCpu);
 }
 
+#if FOLLY_HAVE_LINUX_VDSO
 TEST(Getcpu, VdsoGetcpu) {
   unsigned cpu;
   Getcpu::resolveVdsoFunc()(&cpu, nullptr, nullptr);
 
   EXPECT_TRUE(cpu < CPU_SETSIZE);
 }
+#endif
 
 #ifdef FOLLY_TLS
 TEST(ThreadId, SimpleTls) {

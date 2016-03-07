@@ -210,7 +210,7 @@ CacheLocality CacheLocality::uniform(size_t numCpus) {
 ////////////// Getcpu
 
 Getcpu::Func Getcpu::resolveVdsoFunc() {
-#if defined(_MSC_VER) || defined(__BIONIC__)
+#if !FOLLY_HAVE_LINUX_VDSO
   return nullptr;
 #else
   void* h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);

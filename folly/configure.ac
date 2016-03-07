@@ -253,6 +253,28 @@ if test "$folly_cv_lib_libatomic" = no; then
 fi
 
 AC_CACHE_CHECK(
+  [for liblinux-vdso support],
+  [folly_cv_lib_liblinux_vdso],
+  [AC_RUN_IFELSE(
+    [AC_LANG_PROGRAM[
+      #include <dlfcn.h>
+      int main() {
+        void *h = dlopen("linux-vdso.so.1", RTLD_LAZY | RTLD_LOCAL | RTLD_NOLOAD);
+        if (h == nullptr) {
+          return -1;
+        }
+        dlclose(h);
+        return 0;
+      }
+    ]],
+    [folly_cv_lib_liblinux_vdso=yes],
+    [folly_cv_lib_liblinux_vdso=no])])
+
+if test "$folly_cv_lib_liblinux_vdso" = yes; then
+  AC_DEFINE([HAVE_LINUX_VDSO], [1], [Define to 1 if liblinux-vdso is available])
+fi
+
+AC_CACHE_CHECK(
   [for usable std::is_trivially_copyable],
   [folly_cv_decl_std_is_trivially_copyable],
   [AC_COMPILE_IFELSE(
