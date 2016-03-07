@@ -193,7 +193,7 @@ void MicroLockBase<MaxSpins, MaxYields>::lock(unsigned slot) {
                                      oldWord | heldBit(slot),
                                      std::memory_order_acquire,
                                      std::memory_order_relaxed)) {
-    // Fast uncontended case: seq_cst above is our memory barrier
+    // Fast uncontended case: memory_order_acquire above is our barrier
   } else {
     // lockSlowPath doesn't have any slot-dependent computation; it
     // just shifts the input bit.  Make sure its shifting produces the

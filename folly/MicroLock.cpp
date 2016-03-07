@@ -15,6 +15,7 @@
  */
 
 #include <folly/MicroLock.h>
+#include <thread>
 
 namespace folly {
 
@@ -45,7 +46,10 @@ retry:
       }
       (void)wordPtr->futexWait(newWord, slotHeldBit);
     } else if (spins > maxSpins) {
-      sched_yield();
+      // sched_yield(), but more portable
+      std::this_thread::yield();
+    } else {
+      folly::asm_pause();
     }
     oldWord = wordPtr->load(std::memory_order_relaxed);
     goto retry;
@@ -54,14 +58,9 @@ retry:
   newWord = oldWord | slotHeldBit;
   if (!wordPtr->compare_exchange_weak(oldWord,
                                       newWord,
-                                      std::memory_order_relaxed,
+                                      std::memory_order_acquire,
                                       std::memory_order_relaxed)) {
     goto retry;
   }
-
-  // Locks are traditionally memory barriers, so we emit a full fence
-  // even though we were happy using relaxed atomics for the
-  // lock itself.
-  std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 }
