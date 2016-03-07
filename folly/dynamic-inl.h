@@ -189,9 +189,20 @@ private:
   dynamic val_;
 };
 
+inline void dynamic::array(EmptyArrayTag) {}
+
+template <class... Args>
+inline dynamic dynamic::array(Args&& ...args) {
+  return dynamic(std::initializer_list<dynamic>{std::forward<Args>(args)...},
+                 PrivateTag());
+}
+
 // This looks like a case for perfect forwarding, but our use of
 // std::initializer_list for constructing dynamic arrays makes it less
 // functional than doing this manually.
+
+// TODO(ott, 10300209): When the initializer_list constructor is gone,
+// simplify this.
 inline dynamic::ObjectMaker dynamic::object() { return ObjectMaker(); }
 inline dynamic::ObjectMaker dynamic::object(dynamic&& a, dynamic&& b) {
   return ObjectMaker(std::move(a), std::move(b));
@@ -246,6 +257,12 @@ struct dynamic::const_value_iterator
 
 //////////////////////////////////////////////////////////////////////
 
+inline dynamic::dynamic(void (*)(EmptyArrayTag))
+  : type_(ARRAY)
+{
+  new (&u_.array) Array();
+}
+
 inline dynamic::dynamic(ObjectMaker (*)())
   : type_(OBJECT)
 {
@@ -282,15 +299,19 @@ inline dynamic::dynamic(fbstring&& s)
   new (&u_.string) fbstring(std::move(s));
 }
 
-inline dynamic& dynamic::operator=(std::initializer_list<dynamic> il) {
-  (*this) = dynamic(il);
-  return *this;
+inline dynamic::dynamic(std::initializer_list<dynamic> il)
+  : dynamic(std::move(il), PrivateTag()) {
 }
 
-inline dynamic::dynamic(std::initializer_list<dynamic> il)
+inline dynamic::dynamic(std::initializer_list<dynamic> il, PrivateTag)
   : type_(ARRAY)
 {
   new (&u_.array) Array(il.begin(), il.end());
+}
+
+inline dynamic& dynamic::operator=(std::initializer_list<dynamic> il) {
+  (*this) = dynamic(il, PrivateTag());
+  return *this;
 }
 
 inline dynamic::dynamic(ObjectMaker&& maker)
@@ -596,23 +617,23 @@ inline dynamic::const_item_iterator dynamic::erase(const_item_iterator first,
 }
 
 inline void dynamic::resize(std::size_t sz, dynamic const& c) {
-  auto& array = get<Array>();
-  array.resize(sz, c);
+  auto& arr = get<Array>();
+  arr.resize(sz, c);
 }
 
 inline void dynamic::push_back(dynamic const& v) {
-  auto& array = get<Array>();
-  array.push_back(v);
+  auto& arr = get<Array>();
+  arr.push_back(v);
 }
 
 inline void dynamic::push_back(dynamic&& v) {
-  auto& array = get<Array>();
-  array.push_back(std::move(v));
+  auto& arr = get<Array>();
+  arr.push_back(std::move(v));
 }
 
 inline void dynamic::pop_back() {
-  auto& array = get<Array>();
-  array.pop_back();
+  auto& arr = get<Array>();
+  arr.pop_back();
 }
 
 //////////////////////////////////////////////////////////////////////

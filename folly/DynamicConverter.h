@@ -30,7 +30,9 @@ namespace folly {
  *
  * Example:
  *
- *   dynamic d = { { 1, 2, 3 }, { 4, 5 } }; // a vector of vector of int
+ *   dynamic d = dynamic::array(
+ *       dynamic::array(1, 2, 3),
+ *       dynamic::array(4, 5)); // a vector of vector of int
  *   auto vvi = convertTo<fbvector<fbvector<int>>>(d);
  *
  * See docs/DynamicConverter.md for supported types and customization
@@ -319,7 +321,7 @@ struct DynamicConstructor<C,
       !std::is_constructible<StringPiece, const C&>::value &&
       dynamicconverter_detail::is_range<C>::value>::type> {
   static dynamic construct(const C& x) {
-    dynamic d = {};
+    dynamic d = dynamic::array;
     for (auto& item : x) {
       d.push_back(toDynamic(item));
     }
@@ -331,7 +333,7 @@ struct DynamicConstructor<C,
 template<typename A, typename B>
 struct DynamicConstructor<std::pair<A, B>, void> {
   static dynamic construct(const std::pair<A, B>& x) {
-    dynamic d = {};
+    dynamic d = dynamic::array;
     d.push_back(toDynamic(x.first));
     d.push_back(toDynamic(x.second));
     return d;

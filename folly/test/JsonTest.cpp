@@ -101,14 +101,14 @@ TEST(Json, Parse) {
     ("junk", 12)
     ("another", 32.2)
     ("a",
-      {
+      dynamic::array(
         dynamic::object("a", "b")
                        ("c", "d"),
         12.5,
         "Yo Dawg",
-        { "heh" },
+        dynamic::array("heh"),
         nullptr
-      }
+      )
     )
     ;
 
@@ -131,7 +131,7 @@ TEST(Json, ParseTrailingComma) {
   on.allow_trailing_comma = true;
   off.allow_trailing_comma = false;
 
-  dynamic arr { 1, 2 };
+  dynamic arr = dynamic::array(1, 2);
   EXPECT_EQ(arr, parseJson("[1, 2]", on));
   EXPECT_EQ(arr, parseJson("[1, 2,]", on));
   EXPECT_EQ(arr, parseJson("[1, 2, ]", on));
@@ -442,14 +442,14 @@ TEST(Json, SortKeys) {
     ("junk", 12)
     ("another", 32.2)
     ("a",
-      {
+      dynamic::array(
         dynamic::object("a", "b")
                        ("c", "d"),
         12.5,
         "Yo Dawg",
-        { "heh" },
+        dynamic::array("heh"),
         nullptr
-      }
+      )
     )
     ;
 
@@ -480,14 +480,14 @@ TEST(Json, PrintTo) {
     (0, 1)
     (1, 2)
     ("a",
-      {
+      dynamic::array(
         dynamic::object("a", "b")
                        ("c", "d"),
         12.5,
         "Yo Dawg",
-        { "heh" },
+        dynamic::array("heh"),
         nullptr
-      }
+      )
     )
     ;
 

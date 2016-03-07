@@ -445,7 +445,7 @@ dynamic parseArray(Input& in) {
   assert(*in == '[');
   ++in;
 
-  dynamic ret = {};
+  dynamic ret = dynamic::array;
 
   in.skipWhitespace();
   if (*in == ']') {

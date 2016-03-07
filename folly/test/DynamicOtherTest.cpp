@@ -30,7 +30,7 @@ using folly::TypeError;
 TEST(Dynamic, ArrayGenerator) {
   // Make sure arrays can be used with folly::gen.
   using namespace folly::gen;
-  dynamic arr { 1, 2, 3, 4 };
+  dynamic arr = dynamic::array(1, 2, 3, 4);
   EXPECT_EQ(from(arr) | take(3) | member(&dynamic::asInt) | sum, 6);
 }
 
@@ -102,7 +102,7 @@ TEST(Dynamic, FormattedIO) {
   EXPECT_EQ(out.str(), "0xd 1e+02\n");
 
   out.str("");
-  dynamic arrr = { 1, 2, 3 };
+  dynamic arrr = dynamic::array(1, 2, 3);
   out << arrr;
   EXPECT_EQ(out.str(), "[1,2,3]");
 
@@ -112,8 +112,9 @@ TEST(Dynamic, FormattedIO) {
   EXPECT_EQ(out.str(), R"({"a":12})");
 
   out.str("");
-  dynamic objy2 = { objy, dynamic::object(12, "str"),
-                          dynamic::object(true, false) };
+  dynamic objy2 = dynamic::array(objy,
+                                 dynamic::object(12, "str"),
+                                 dynamic::object(true, false));
   out << objy2;
   EXPECT_EQ(out.str(), R"([{"a":12},{12:"str"},{true:false}])");
 }

@@ -31,7 +31,7 @@
  *   dynamic str = "string";
  *   dynamic map = dynamic::object;
  *   map[str] = twelve;
- *   map[str + "another_str"] = { "array", "of", 4, "elements" };
+ *   map[str + "another_str"] = dynamic::array("array", "of", 4, "elements");
  *   map.insert("null_element", nullptr);
  *   ++map[str];
  *   assert(map[str] == 13);
@@ -39,7 +39,7 @@
  *   // Building a complex object with a sub array inline:
  *   dynamic d = dynamic::object
  *     ("key", "value")
- *     ("key2", { "a", "array" })
+ *     ("key2", dynamic::array("a", "array"))
  *     ;
  *
  * Also see folly/json.h for the serialization and deserialization
@@ -118,24 +118,34 @@ public:
   struct const_item_iterator;
 
   /*
-   * Creation routines for making dynamic objects.  Objects are maps
-   * from key to value (so named due to json-related origins here).
+   * Creation routines for making dynamic objects and arrays.  Objects
+   * are maps from key to value (so named due to json-related origins
+   * here).
    *
    * Example:
    *
    *   // Make a fairly complex dynamic:
    *   dynamic d = dynamic::object("key", "value1")
-   *                              ("key2", { "value", "with", 4, "words" });
+   *                              ("key2", dynamic::array("value",
+   *                                                      "with",
+   *                                                      4,
+   *                                                      "words"));
    *
    *   // Build an object in a few steps:
    *   dynamic d = dynamic::object;
    *   d["key"] = 12;
-   *   d["something_else"] = { 1, 2, 3, nullptr };
+   *   d["something_else"] = dynamic::array(1, 2, 3, nullptr);
    */
 private:
+  struct PrivateTag {};
+  struct EmptyArrayTag {};
   struct ObjectMaker;
 
 public:
+  static void array(EmptyArrayTag);
+  template <class... Args>
+  static dynamic array(Args&& ...args);
+
   static ObjectMaker object();
   static ObjectMaker object(dynamic&&, dynamic&&);
   static ObjectMaker object(dynamic const&, dynamic&&);
@@ -152,9 +162,10 @@ public:
   /* implicit */ dynamic(fbstring&& val);
 
   /*
-   * This is part of the plumbing for object(), above.  Used to create
-   * a new object dynamic.
+   * This is part of the plumbing for array() and object(), above.
+   * Used to create a new array or object dynamic.
    */
+  /* implicit */ dynamic(void (*)(EmptyArrayTag));
   /* implicit */ dynamic(ObjectMaker (*)());
   /* implicit */ dynamic(ObjectMaker const&) = delete;
   /* implicit */ dynamic(ObjectMaker&&);
@@ -166,7 +177,14 @@ public:
    *
    *   dynamic v = { 1, 2, 3, "foo" };
    */
+  // TODO(ott, 10300209): Remove once all uses have been eradicated.
+
+  FOLLY_DEPRECATED(
+      "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
   /* implicit */ dynamic(std::initializer_list<dynamic> il);
+  dynamic(std::initializer_list<dynamic> il, PrivateTag);
+  FOLLY_DEPRECATED(
+      "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
   dynamic& operator=(std::initializer_list<dynamic> il);
 
   /*
