@@ -1634,7 +1634,7 @@ int AsyncSSLSocket::sslVerifyCallback(int preverifyOk,
 
 void AsyncSSLSocket::enableClientHelloParsing()  {
     parseClientHello_ = true;
-    clientHelloInfo_.reset(new ClientHelloInfo());
+    clientHelloInfo_.reset(new ssl::ClientHelloInfo());
 }
 
 void AsyncSSLSocket::resetClientHelloParsing(SSL *ssl)  {
@@ -1711,22 +1711,22 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
     if (cursor.totalLength() > 0) {
       uint16_t extensionsLength = cursor.readBE<uint16_t>();
       while (extensionsLength) {
-        TLSExtension extensionType = static_cast<TLSExtension>(
-            cursor.readBE<uint16_t>());
+        ssl::TLSExtension extensionType =
+            static_cast<ssl::TLSExtension>(cursor.readBE<uint16_t>());
         sock->clientHelloInfo_->
           clientHelloExtensions_.push_back(extensionType);
         extensionsLength -= 2;
         uint16_t extensionDataLength = cursor.readBE<uint16_t>();
         extensionsLength -= 2;
 
-        if (extensionType == TLSExtension::SIGNATURE_ALGORITHMS) {
+        if (extensionType == ssl::TLSExtension::SIGNATURE_ALGORITHMS) {
           cursor.skip(2);
           extensionDataLength -= 2;
           while (extensionDataLength) {
-            HashAlgorithm hashAlg = static_cast<HashAlgorithm>(
-                cursor.readBE<uint8_t>());
-            SignatureAlgorithm sigAlg = static_cast<SignatureAlgorithm>(
-                cursor.readBE<uint8_t>());
+            ssl::HashAlgorithm hashAlg =
+                static_cast<ssl::HashAlgorithm>(cursor.readBE<uint8_t>());
+            ssl::SignatureAlgorithm sigAlg =
+                static_cast<ssl::SignatureAlgorithm>(cursor.readBE<uint8_t>());
             extensionDataLength -= 2;
             sock->clientHelloInfo_->
               clientHelloSigAlgs_.emplace_back(hashAlg, sigAlg);

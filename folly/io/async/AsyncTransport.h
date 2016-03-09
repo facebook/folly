@@ -20,10 +20,10 @@
 #include <sys/uio.h>
 
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/io/async/AsyncSocketBase.h>
-#include <folly/io/async/OpenSSLPtrTypes.h>
+#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 
 #include <openssl/ssl.h>
 
@@ -324,7 +324,7 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get the certificate used to authenticate the peer.
    */
-  virtual X509_UniquePtr getPeerCert() const { return nullptr; }
+  virtual ssl::X509UniquePtr getPeerCert() const { return nullptr; }
 
   /**
    * @return True iff end of record tracking is enabled

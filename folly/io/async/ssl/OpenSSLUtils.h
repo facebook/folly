@@ -1,0 +1,61 @@
+/*
+ * Copyright 2016 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#pragma once
+
+#include <openssl/x509v3.h>
+
+#include <netinet/in.h>
+#include <sys/socket.h>
+
+namespace folly {
+namespace ssl {
+
+class OpenSSLUtils {
+ public:
+  /**
+   * Validate that the peer certificate's common name or subject alt names
+   * match what we expect.  Currently this only checks for IPs within
+   * subject alt names but it could easily be expanded to check common name
+   * and hostnames as well.
+   *
+   * @param cert    X509* peer certificate
+   * @param addr    sockaddr object containing sockaddr to verify
+   * @param addrLen length of sockaddr as returned by getpeername or accept
+   * @return true iff a subject altname IP matches addr
+   */
+  // TODO(agartrell): Add support for things like common name when
+  // necessary.
+  static bool validatePeerCertNames(X509* cert,
+                                    const sockaddr* addr,
+                                    socklen_t addrLen);
+
+  /**
+   * Get the peer socket address from an X509_STORE_CTX*.  Unlike the
+   * accept, getsockname, getpeername, etc family of operations, addrLen's
+   * initial value is ignored and reset.
+   *
+   * @param ctx         Context from which to retrieve peer sockaddr
+   * @param addrStorage out param for address
+   * @param addrLen     out param for length of address
+   * @return true on success, false on failure
+   */
+  static bool getPeerAddressFromX509StoreCtx(X509_STORE_CTX* ctx,
+                                             sockaddr_storage* addrStorage,
+                                             socklen_t* addrLen);
+};
+
+} // ssl
+} // folly

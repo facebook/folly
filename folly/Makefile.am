@@ -229,7 +229,9 @@ nobase_follyinclude_HEADERS = \
 	io/async/EventUtil.h \
 	io/async/NotificationQueue.h \
 	io/async/HHWheelTimer.h \
-	io/async/OpenSSLPtrTypes.h \
+	io/async/ssl/OpenSSLPtrTypes.h \
+	io/async/ssl/OpenSSLUtils.h \
+	io/async/ssl/TLSDefinitions.h \
 	io/async/Request.h \
 	io/async/SSLContext.h \
 	io/async/ScopedEventBaseThread.h \
@@ -397,6 +399,7 @@ libfolly_la_SOURCES = \
 	io/async/HHWheelTimer.cpp \
 	io/async/test/SocketPair.cpp \
 	io/async/test/TimeUtil.cpp \
+	io/async/ssl/OpenSSLUtils.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
 	MacAddress.cpp \

@@ -57,9 +57,6 @@ const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
 constexpr size_t SSLClient::kMaxReadBufferSz;
 constexpr size_t SSLClient::kMaxReadsPerEvent;
 
-inline void BIO_free_fb(BIO* bio) { CHECK_EQ(1, BIO_free(bio)); }
-using BIO_deleter = folly::static_function_deleter<BIO, &BIO_free_fb>;
-
 TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb)
     : ctx_(new folly::SSLContext),
       acb_(acb),
@@ -1384,15 +1381,15 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   auto cert = getFileAsBuf(testCert);
   auto key = getFileAsBuf(testKey);
 
-  std::unique_ptr<BIO, BIO_deleter> certBio(BIO_new(BIO_s_mem()));
+  ssl::BioUniquePtr certBio(BIO_new(BIO_s_mem()));
   BIO_write(certBio.get(), cert.data(), cert.size());
-  std::unique_ptr<BIO, BIO_deleter> keyBio(BIO_new(BIO_s_mem()));
+  ssl::BioUniquePtr keyBio(BIO_new(BIO_s_mem()));
   BIO_write(keyBio.get(), key.data(), key.size());
 
   // Create SSL structs from buffers to get properties
-  X509_UniquePtr certStruct(
+  ssl::X509UniquePtr certStruct(
       PEM_read_bio_X509(certBio.get(), nullptr, nullptr, nullptr));
-  EVP_PKEY_UniquePtr keyStruct(
+  ssl::EvpPkeyUniquePtr keyStruct(
       PEM_read_bio_PrivateKey(keyBio.get(), nullptr, nullptr, nullptr));
   certBio = nullptr;
   keyBio = nullptr;
@@ -1407,7 +1404,7 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   ctx->loadCertificateFromBufferPEM(cert);
   ctx->loadTrustedCertificates(testCA);
 
-  SSL_UniquePtr ssl(ctx->createSSL());
+  ssl::SSLUniquePtr ssl(ctx->createSSL());
 
   auto newCert = SSL_get_certificate(ssl.get());
   auto newKey = SSL_get_privatekey(ssl.get());
