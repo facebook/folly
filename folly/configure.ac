@@ -339,10 +339,10 @@ if test "$folly_cv_prog_cc_weak_symbols" = yes; then
             [Define to 1 if the linker supports weak symbols.])
 fi
 
-# Figure out whether the architecture supports unaligned reads
+# Figure out whether the architecture supports unaligned accesses
 AC_CACHE_CHECK(
-  [for unaligned reads support],
-  [folly_cv_prog_cc_unaligned_reads],
+  [for unaligned access support],
+  [folly_cv_prog_cc_unaligned_access],
   [AC_RUN_IFELSE(
     [AC_LANG_SOURCE[
       int main(int argc, char** argv) {
@@ -352,11 +352,11 @@ AC_CACHE_CHECK(
         return (*ptr & 0xff) == 0xef ? 0 : 1;
       }
     ]],
-    [folly_cv_prog_cc_unaligned_reads=yes],
-    [folly_cv_prog_cc_unaligned_reads=no])])
+    [folly_cv_prog_cc_unaligned_access=yes],
+    [folly_cv_prog_cc_unaligned_access=no])])
 
-if test "$folly_cv_prog_cc_unaligned_reads" = "yes"; then
-  AC_DEFINE([HAVE_UNALIGNED_READS], [1], [Define to 1 if the architecture allows unaligned reads])
+if test "$folly_cv_prog_cc_unaligned_access" = "yes"; then
+  AC_DEFINE([HAVE_UNALIGNED_ACCESS], [1], [Define to 1 if the architecture allows unaligned accesses])
 fi
 
 AC_CACHE_CHECK(

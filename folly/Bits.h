@@ -550,7 +550,13 @@ template <class T>
 inline T loadUnaligned(const void* p) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  return static_cast<const Unaligned<T>*>(p)->value;
+  if (kHasUnalignedAccess) {
+    return static_cast<const Unaligned<T>*>(p)->value;
+  } else {
+    T value;
+    memcpy(&value, p, sizeof(T));
+    return value;
+  }
 }
 
 /**
@@ -560,7 +566,11 @@ template <class T>
 inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
-  new (p) Unaligned<T>(value);
+  if (kHasUnalignedAccess) {
+    new (p) Unaligned<T>(value);
+  } else {
+    memcpy(p, &value, sizeof(T));
+  }
 }
 
 }  // namespace folly

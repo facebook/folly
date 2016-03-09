@@ -48,9 +48,14 @@
  #endif
 #endif
 
-#ifndef FOLLY_HAVE_UNALIGNED_READS
-#define FOLLY_HAVE_UNALIGNED_READS 0
+// Unaligned loads and stores
+namespace folly {
+#if FOLLY_HAVE_UNALIGNED_ACCESS
+constexpr bool kHasUnalignedAccess = true;
+#else
+constexpr bool kHasUnalignedAccess = false;
 #endif
+}
 
 // A change in folly/MemoryMapping.cpp uses MAP_ANONYMOUS, which is named
 // MAP_ANON on OSX/BSD.
