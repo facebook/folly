@@ -998,7 +998,7 @@ TEST(Gen, CopyCount) {
 
 // test dynamics with various layers of nested arrays.
 TEST(Gen, Dynamic) {
-  dynamic array1 = {1, 2};
+  dynamic array1 = dynamic::array(1, 2);
   EXPECT_EQ(dynamic(3), from(array1) | sum);
   dynamic array2 = {{1}, {1, 2}};
   EXPECT_EQ(dynamic(4), from(array2) | rconcat | sum);
