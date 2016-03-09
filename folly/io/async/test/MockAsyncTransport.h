@@ -62,7 +62,9 @@ class MockAsyncTransport: public AsyncTransportWrapper {
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
   MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
-
+  MOCK_CONST_METHOD0(isReplaySafe, bool());
+  MOCK_METHOD1(setReplaySafetyCallback,
+               void(AsyncTransport::ReplaySafetyCallback*));
 };
 
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
