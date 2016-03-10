@@ -51,11 +51,11 @@ namespace folly { namespace detail {
  */
 class UncaughtExceptionCounter {
  public:
-  UncaughtExceptionCounter()
-    : exceptionCount_(getUncaughtExceptionCount()) {}
+  UncaughtExceptionCounter() noexcept
+      : exceptionCount_(getUncaughtExceptionCount()) {}
 
-  UncaughtExceptionCounter(const UncaughtExceptionCounter& other)
-    : exceptionCount_(other.exceptionCount_) {}
+  UncaughtExceptionCounter(const UncaughtExceptionCounter& other) noexcept
+      : exceptionCount_(other.exceptionCount_) {}
 
   bool isNewUncaughtException() noexcept {
     return getUncaughtExceptionCount() > exceptionCount_;

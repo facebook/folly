@@ -289,3 +289,22 @@ TEST(ScopeGuard, TEST_SCOPE_SUCCESS_THROW) {
   };
   EXPECT_THROW(lambda(), std::runtime_error);
 }
+
+TEST(ScopeGuard, TEST_THROWING_CLEANUP_ACTION) {
+  struct ThrowingCleanupAction {
+    explicit ThrowingCleanupAction(int& scopeExitExecuted)
+        : scopeExitExecuted_(scopeExitExecuted) {}
+    ThrowingCleanupAction(const ThrowingCleanupAction& other)
+        : scopeExitExecuted_(other.scopeExitExecuted_) {
+      throw std::runtime_error("whoa");
+    }
+    void operator()() { ++scopeExitExecuted_; }
+
+   private:
+    int& scopeExitExecuted_;
+  };
+  int scopeExitExecuted = 0;
+  ThrowingCleanupAction onExit(scopeExitExecuted);
+  EXPECT_THROW(makeGuard(onExit), std::runtime_error);
+  EXPECT_EQ(scopeExitExecuted, 1);
+}
