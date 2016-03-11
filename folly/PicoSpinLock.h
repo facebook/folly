@@ -31,6 +31,7 @@
  */
 
 #pragma once
+#define FOLLY_PICO_SPIN_LOCK_H_
 
 /*
  * @author Keith Adams <kma@fb.com>
@@ -38,16 +39,16 @@
  */
 
 #include <array>
-#include <cinttypes>
-#include <type_traits>
-#include <cstdlib>
-#include <pthread.h>
-#include <mutex>
 #include <atomic>
+#include <cinttypes>
+#include <cstdlib>
+#include <folly/Portability.h>
+#include <mutex>
+#include <pthread.h>
+#include <type_traits>
 
 #include <glog/logging.h>
 #include <folly/detail/Sleeper.h>
-#include <folly/Portability.h>
 
 #if !FOLLY_X64 && !FOLLY_A64 && !FOLLY_PPC64
 # error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
