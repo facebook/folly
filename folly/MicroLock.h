@@ -43,6 +43,10 @@ namespace folly {
  * limit yourself to MicroLock slot zero, which will use the two
  * least-significant bits in the bottom byte.
  *
+ * (Note that such a union is safe only because MicroLock is based on
+ * a character type, and even under a strict interpretation of C++'s
+ * aliasing rules, character types may alias anything.)
+ *
  * MicroLock uses a dirty trick: it actually operates on the full
  * word-size, word-aligned bit of memory into which it is embedded.
  * It never modifies bits outside the ones it's defined to modify, but
