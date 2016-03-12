@@ -18,4 +18,11 @@
 
 #include <cstdlib>
 
-extern int posix_memalign(void** memptr, size_t alignment, size_t size);
+namespace folly {
+namespace detail {
+
+void* aligned_malloc(size_t size, size_t align);
+
+void aligned_free(void* aligned_ptr);
+}
+}

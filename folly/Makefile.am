@@ -271,7 +271,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Constexpr.h \
 	portability/Environment.h \
 	portability/GFlags.h \
-	portability/Stdlib.h \
+	portability/Memory.h \
 	portability/Strings.h \
 	portability/Syscall.h \
 	portability/SysStat.h \
@@ -406,7 +406,6 @@ libfolly_la_SOURCES = \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
 	portability/Environment.cpp \
-	portability/Stdlib.cpp \
 	portability/Strings.cpp \
 	portability/SysStat.cpp \
 	portability/SysTime.cpp \

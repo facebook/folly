@@ -19,7 +19,7 @@
 
 #include <folly/Range.h>
 
-#include <folly/portability/Stdlib.h>
+#include <folly/portability/Memory.h>
 
 #include <sys/mman.h>
 #include <array>
@@ -34,6 +34,7 @@
 #include <gtest/gtest.h>
 
 using namespace folly;
+using namespace folly::detail;
 using namespace std;
 
 static_assert(std::is_literal_type<StringPiece>::value, "");
@@ -977,18 +978,19 @@ const size_t kPageSize = 4096;
 void createProtectedBuf(StringPiece& contents, char** buf) {
   ASSERT_LE(contents.size(), kPageSize);
   const size_t kSuccess = 0;
-  if (kSuccess != posix_memalign((void**)buf, kPageSize, 4 * kPageSize)) {
-    ASSERT_FALSE(true);
-  }
-  mprotect(*buf + kPageSize, kPageSize, PROT_NONE);
+  char* pageAlignedBuf = (char*)aligned_malloc(2 * kPageSize, kPageSize);
+  // Protect the page after the first full page-aligned region of the
+  // malloc'ed buffer
+  mprotect(pageAlignedBuf + kPageSize, kPageSize, PROT_NONE);
   size_t newBegin = kPageSize - contents.size();
-  memcpy(*buf + newBegin, contents.data(), contents.size());
-  contents.reset(*buf + newBegin, contents.size());
+  memcpy(pageAlignedBuf + newBegin, contents.data(), contents.size());
+  contents.reset(pageAlignedBuf + newBegin, contents.size());
+  *buf = pageAlignedBuf;
 }
 
 void freeProtectedBuf(char* buf) {
   mprotect(buf + kPageSize, kPageSize, PROT_READ | PROT_WRITE);
-  free(buf);
+  aligned_free(buf);
 }
 
 TYPED_TEST(NeedleFinderTest, NoSegFault) {
