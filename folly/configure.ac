@@ -54,29 +54,6 @@ CXXFLAGS="$STD $CXXFLAGS"
 
 # Checks for glog and gflags
 # There are no symbols with C linkage, so we do a try-run
-AC_HAVE_LIBRARY([glog],[],[AC_MSG_ERROR(
-                [Please install google-glog library])])
-AC_CACHE_CHECK(
-  [for glog viability],
-  [folly_cv_prog_cc_glog],
-  [AC_RUN_IFELSE(
-    [AC_LANG_SOURCE[
-      #include <glog/logging.h>
-      int main(int argc, char** argv) {
-        google::InitGoogleLogging(argv[0]);
-        google::ShutdownGoogleLogging();
-        return 0;
-      }
-    ]],
-    [folly_cv_prog_cc_glog=yes],
-    [folly_cv_prog_cc_glog=no]
-  )]
-)
-
-if test "$folly_cv_prog_cc_glog" != "yes"; then
-  AC_MSG_ERROR(["libglog invalid, see config.log for details"])
-fi
-
 AC_HAVE_LIBRARY([gflags],[],[AC_MSG_ERROR(
                 [Please install google-gflags library])])
 AC_CACHE_CHECK(
@@ -98,6 +75,29 @@ AC_CACHE_CHECK(
 
 if test "$folly_cv_prog_cc_gflags" != "yes"; then
   AC_MSG_ERROR(["libgflags invalid, see config.log for details"])
+fi
+
+AC_HAVE_LIBRARY([glog],[],[AC_MSG_ERROR(
+                [Please install google-glog library])])
+AC_CACHE_CHECK(
+  [for glog viability],
+  [folly_cv_prog_cc_glog],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <glog/logging.h>
+      int main(int argc, char** argv) {
+        google::InitGoogleLogging(argv[0]);
+        google::ShutdownGoogleLogging();
+        return 0;
+      }
+    ]],
+    [folly_cv_prog_cc_glog=yes],
+    [folly_cv_prog_cc_glog=no]
+  )]
+)
+
+if test "$folly_cv_prog_cc_glog" != "yes"; then
+  AC_MSG_ERROR(["libglog invalid, see config.log for details"])
 fi
 
 AC_CHECK_LIB(ssl,
