@@ -102,8 +102,8 @@ class MicroLockCore {
  public:
   inline void unlock(unsigned slot);
   inline void unlock() { unlock(0); }
-  inline void init(unsigned slot) { lock_ &= ~(3U << (2 * slot)); }
-  inline void init() { init(0); }
+  // Initializes all the slots.
+  inline void init() { lock_ = 0; }
 };
 
 inline detail::Futex<>* MicroLockCore::word() const {

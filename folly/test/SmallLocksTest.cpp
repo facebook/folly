@@ -211,7 +211,7 @@ struct SimpleBarrier {
 };
 }
 
-static void runMicroLockTest() {
+TEST(SmallLocks, MicroLock) {
   volatile uint64_t counters[4] = {0, 0, 0, 0};
   std::vector<std::thread> threads;
   static const unsigned nrThreads = 20;
@@ -225,10 +225,7 @@ static void runMicroLockTest() {
   struct {
     uint8_t a;
     volatile uint8_t b;
-    union {
-      MicroLock alock;
-      uint8_t c;
-    };
+    MicroLock alock;
     volatile uint8_t d;
   } x;
 
@@ -237,7 +234,7 @@ static void runMicroLockTest() {
 
   x.a = 'a';
   x.b = origB;
-  x.c = 0;
+  x.alock.init();
   x.d = origD;
 
   // This thread touches other parts of the host word to show that
@@ -282,17 +279,16 @@ static void runMicroLockTest() {
 
   EXPECT_EQ(x.a, 'a');
   EXPECT_EQ(x.b, (uint8_t)(origB + iterPerThread / 2));
-  EXPECT_EQ(x.c, 0);
   EXPECT_EQ(x.d, (uint8_t)(origD + iterPerThread / 2));
   for (unsigned i = 0; i < 4; ++i) {
     EXPECT_EQ(counters[i], ((uint64_t)nrThreads * iterPerThread) / 4);
   }
 }
 
-TEST(SmallLocks, MicroLock) { runMicroLockTest(); }
 TEST(SmallLocks, MicroLockTryLock) {
   MicroLock lock;
   lock.init();
   EXPECT_TRUE(lock.try_lock());
   EXPECT_FALSE(lock.try_lock());
+  lock.unlock();
 }
