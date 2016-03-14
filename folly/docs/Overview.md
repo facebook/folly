@@ -1,6 +1,6 @@
 ### `folly/`
 
-For a high level overview see the [README](folly/README.md)
+For a high level overview see the [README](../../README.md)
 
 ### Components
 
@@ -92,7 +92,7 @@ Rabin fingerprinting.
 
 A polymorphic wrapper for callables similar to `std::function` but not copyable and therefore able to wrap non-copyable callables, such as lambdas that capture move-only types like `std::unique_ptr` or `folly::Promise`.
 
-### [`futures/`](folly/futures/Readme.md)
+### [`futures/`](../futures/README.md)
 
 Futures is a framework for expressing asynchronous code in C++ using the Promise/Future pattern.
 
