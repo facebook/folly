@@ -156,6 +156,17 @@ class FunctionScheduler {
   void cancelAllFunctions();
 
   /**
+   * Resets the specified function's timer.
+   * When resetFunctionTimer is called, the specified function's timer will
+   * be reset with the same parameters it was passed initially, including
+   * its startDelay. If the startDelay was 0, the function will be invoked
+   * immediately.
+   *
+   * Returns false if no function exists with the specified name.
+   */
+  bool resetFunctionTimer(StringPiece nameID);
+
+  /**
    * Starts the scheduler.
    *
    * Returns false if the scheduler was already running.
@@ -225,6 +236,8 @@ class FunctionScheduler {
                       std::chrono::steady_clock::time_point now);
   void cancelFunction(const std::unique_lock<std::mutex>& lock,
                       FunctionHeap::iterator it);
+  void addFunctionToHeap(const std::unique_lock<std::mutex>& lock,
+                         RepeatFunc&& func);
 
   std::thread thread_;
 
