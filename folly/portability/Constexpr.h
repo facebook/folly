@@ -18,6 +18,7 @@
 #define FOLLY_CONSTEXPR_H_
 
 #include <cstdint>
+#include <cstring>
 
 namespace folly {
 
@@ -45,7 +46,7 @@ constexpr size_t constexpr_strlen(const char* s) {
 #elif defined(_MSC_VER)
   return s == nullptr ? 0 : constexpr_strlen_internal(s, 0);
 #else
-  return strlen(s);
+  return std::strlen(s);
 #endif
 }
 }
