@@ -26,13 +26,11 @@
 namespace folly {
 namespace detail {
 
-#ifdef _WIN32
-void* aligned_malloc(size_t size, size_t align) { return nullptr; }
+#if defined(__ANDROID__) && (__ANDROID_API__ <= 15)
 
-void aligned_free(void* aligned_ptr) {}
-#elif defined(__ANDROID__) && (__ANDROID_API__ <= 15)
-
-void* aligned_malloc(size_t size, size_t align) { return memalign(align, size) }
+void* aligned_malloc(size_t size, size_t align) {
+  return memalign(align, size);
+}
 
 void aligned_free(void* aligned_ptr) { free(aligned_ptr); }
 
