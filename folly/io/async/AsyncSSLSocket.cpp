@@ -1172,7 +1172,7 @@ AsyncSSLSocket::handleConnect() noexcept {
 void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
   // turn on the buffer movable in openssl
-  if (ssl_ != nullptr && !isBufferMovable_ &&
+  if (bufferMovableEnabled_ && ssl_ != nullptr && !isBufferMovable_ &&
       callback != nullptr && callback->isBufferMovable()) {
     SSL_set_mode(ssl_, SSL_get_mode(ssl_) | SSL_MODE_MOVE_BUFFER_OWNERSHIP);
     isBufferMovable_ = true;
@@ -1180,6 +1180,10 @@ void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
 #endif
 
   AsyncSocket::setReadCB(callback);
+}
+
+void AsyncSSLSocket::setBufferMovableEnabled(bool enabled) {
+  bufferMovableEnabled_ = enabled;
 }
 
 void AsyncSSLSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {

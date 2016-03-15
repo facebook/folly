@@ -677,6 +677,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void setReadCB(ReadCallback* callback) override;
 
   /**
+   * Tries to enable the buffer movable experimental feature in openssl.
+   * This is not guaranteed to succeed in case openssl does not have
+   * the experimental feature built in.
+   */
+  void setBufferMovableEnabled(bool enabled);
+
+  /**
    * Returns the peer certificate, or nullptr if no peer certificate received.
    */
   virtual ssl::X509UniquePtr getPeerCert() const override {
@@ -828,6 +835,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   bool parseClientHello_{false};
   bool cacheAddrOnFailure_{false};
+  bool bufferMovableEnabled_{false};
   std::unique_ptr<ssl::ClientHelloInfo> clientHelloInfo_;
 
   // Time taken to complete the ssl handshake.
