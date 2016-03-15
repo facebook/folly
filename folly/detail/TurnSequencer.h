@@ -82,10 +82,10 @@ struct TurnSequencer {
   /// See tryWaitForTurn
   /// Requires that `turn` is not a turn in the past.
   void waitForTurn(const uint32_t turn,
-                Atom<uint32_t>& spinCutoff,
-                const bool updateSpinCutoff) noexcept {
+                   Atom<uint32_t>& spinCutoff,
+                   const bool updateSpinCutoff) noexcept {
     bool success = tryWaitForTurn(turn, spinCutoff, updateSpinCutoff);
-    (void) success;
+    (void)success;
     assert(success);
   }
 
@@ -99,9 +99,15 @@ struct TurnSequencer {
   /// before blocking and will adjust spinCutoff based on the results,
   /// otherwise it will spin for at most spinCutoff spins.
   /// Returns true if the wait succeeded, false if the turn is in the past
+  /// or the absTime time value is not nullptr and is reached before the turn
+  /// arrives
+  template <class Clock = std::chrono::steady_clock,
+            class Duration = typename Clock::duration>
   bool tryWaitForTurn(const uint32_t turn,
-                   Atom<uint32_t>& spinCutoff,
-                   const bool updateSpinCutoff) noexcept {
+                      Atom<uint32_t>& spinCutoff,
+                      const bool updateSpinCutoff,
+                      const std::chrono::time_point<Clock, Duration>* absTime =
+                          nullptr) noexcept {
     uint32_t prevThresh = spinCutoff.load(std::memory_order_relaxed);
     const uint32_t effectiveSpinCutoff =
         updateSpinCutoff || prevThresh == 0 ? kMaxSpins : prevThresh;
@@ -142,7 +148,15 @@ struct TurnSequencer {
           continue;
         }
       }
-      state_.futexWait(new_state, futexChannel(turn));
+      if (absTime) {
+        auto futexResult =
+            state_.futexWaitUntil(new_state, *absTime, futexChannel(turn));
+        if (futexResult == FutexResult::TIMEDOUT) {
+          return false;
+        }
+      } else {
+        state_.futexWait(new_state, futexChannel(turn));
+      }
     }
 
     if (updateSpinCutoff || prevThresh == 0) {
@@ -179,9 +193,9 @@ struct TurnSequencer {
     while (true) {
       assert(state == encode(turn << kTurnShift, decodeMaxWaitersDelta(state)));
       uint32_t max_waiter_delta = decodeMaxWaitersDelta(state);
-      uint32_t new_state = encode(
-              (turn + 1) << kTurnShift,
-              max_waiter_delta == 0 ? 0 : max_waiter_delta - 1);
+      uint32_t new_state =
+          encode((turn + 1) << kTurnShift,
+                 max_waiter_delta == 0 ? 0 : max_waiter_delta - 1);
       if (state_.compare_exchange_strong(state, new_state)) {
         if (max_waiter_delta != 0) {
           state_.futexWake(std::numeric_limits<int>::max(),
@@ -227,9 +241,7 @@ struct TurnSequencer {
 
   /// Returns the bitmask to pass futexWait or futexWake when communicating
   /// about the specified turn
-  int futexChannel(uint32_t turn) const noexcept {
-    return 1 << (turn & 31);
-  }
+  int futexChannel(uint32_t turn) const noexcept { return 1 << (turn & 31); }
 
   uint32_t decodeCurrentSturn(uint32_t state) const noexcept {
     return state & ~kWaitersMask;
@@ -240,7 +252,7 @@ struct TurnSequencer {
   }
 
   uint32_t encode(uint32_t currentSturn, uint32_t maxWaiterD) const noexcept {
-    return currentSturn | std::min(uint32_t{ kWaitersMask }, maxWaiterD);
+    return currentSturn | std::min(uint32_t{kWaitersMask}, maxWaiterD);
   }
 };
 
