@@ -387,6 +387,7 @@ TEST(ThreadId, SimplePthread) {
   EXPECT_EQ(cpu, again);
 }
 
+#ifdef FOLLY_TLS
 static FOLLY_TLS unsigned testingCpu = 0;
 
 static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
@@ -398,6 +399,7 @@ static int testingGetcpu(unsigned* cpu, unsigned* node, void* /* unused */) {
   }
   return 0;
 }
+#endif
 
 TEST(AccessSpreader, Simple) {
   for (size_t s = 1; s < 200; ++s) {
@@ -405,6 +407,7 @@ TEST(AccessSpreader, Simple) {
   }
 }
 
+#ifdef FOLLY_TLS
 #define DECLARE_SPREADER_TAG(tag, locality, func)      \
   namespace {                                          \
   template <typename dummy>                            \
@@ -442,3 +445,4 @@ TEST(AccessSpreader, Wrapping) {
     }
   }
 }
+#endif

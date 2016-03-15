@@ -19,6 +19,7 @@
 #include <folly/ApplyTuple.h>
 #include <gtest/gtest.h>
 
+#include <array>
 #include <memory>
 
 // this placates visual studio stupidity - see
