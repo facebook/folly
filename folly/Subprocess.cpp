@@ -480,7 +480,9 @@ int Subprocess::prepareChild(const Options& options,
 #if __linux__
   // Opt to receive signal on parent death, if requested
   if (options.parentDeathSignal_ != 0) {
-    if (prctl(PR_SET_PDEATHSIG, options.parentDeathSignal_, 0, 0, 0) == -1) {
+    const auto parentDeathSignal =
+        static_cast<unsigned long>(options.parentDeathSignal_);
+    if (prctl(PR_SET_PDEATHSIG, parentDeathSignal, 0, 0, 0) == -1) {
       return errno;
     }
   }
