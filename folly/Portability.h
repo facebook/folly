@@ -21,13 +21,7 @@
 
 #include <cstddef>
 
-#ifndef FOLLY_NO_CONFIG
-#include <folly/folly-config.h>
-#endif
-
-#ifdef FOLLY_PLATFORM_CONFIG
-#include FOLLY_PLATFORM_CONFIG
-#endif
+#include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_FEATURES_H
 #include <features.h>
