@@ -162,7 +162,7 @@ class ThreadLocalPtr {
   }
 
   T* get() const {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
     return static_cast<T*>(w.ptr);
   }
 
@@ -175,13 +175,13 @@ class ThreadLocalPtr {
   }
 
   T* release() {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
 
     return static_cast<T*>(w.release());
   }
 
   void reset(T* newPtr = nullptr) {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
 
     if (w.ptr != newPtr) {
       w.dispose(TLPDestructionMode::THIS_THREAD);
@@ -202,7 +202,7 @@ class ThreadLocalPtr {
    */
   template <class Deleter>
   void reset(T* newPtr, Deleter deleter) {
-    threadlocal_detail::ElementWrapper& w = StaticMeta::get(&id_);
+    threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
     if (w.ptr != newPtr) {
       w.dispose(TLPDestructionMode::THIS_THREAD);
       w.set(newPtr, deleter);
@@ -215,7 +215,7 @@ class ThreadLocalPtr {
   class Accessor {
     friend class ThreadLocalPtr<T,Tag>;
 
-    threadlocal_detail::StaticMeta<Tag>& meta_;
+    threadlocal_detail::StaticMetaBase& meta_;
     std::mutex* lock_;
     uint32_t id_;
 
@@ -230,7 +230,7 @@ class ThreadLocalPtr {
           boost::bidirectional_traversal_tag> {   // traversal
       friend class Accessor;
       friend class boost::iterator_core_access;
-      const Accessor* const accessor_;
+      const Accessor* accessor_;
       threadlocal_detail::ThreadEntry* e_;
 
       void increment() {
@@ -337,12 +337,12 @@ class ThreadLocalPtr {
   Accessor accessAllThreads() const {
     static_assert(!std::is_same<Tag, void>::value,
                   "Must use a unique Tag to use the accessAllThreads feature");
-    return Accessor(id_.getOrAllocate());
+    return Accessor(id_.getOrAllocate(StaticMeta::instance()));
   }
 
  private:
   void destroy() {
-    StaticMeta::destroy(&id_);
+    StaticMeta::instance().destroy(&id_);
   }
 
   // non-copyable
