@@ -121,7 +121,7 @@ AM_PATH_PYTHON
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h byteswap.h bits/functexcept.h bits/c++config.h])
+AC_CHECK_HEADERS([fcntl.h features.h inttypes.h limits.h sched.h stdint.h stdlib.h string.h sys/time.h unistd.h mutex.h malloc.h byteswap.h bits/functexcept.h bits/c++config.h])
 
 AC_CHECK_HEADER(double-conversion/double-conversion.h, [], [AC_MSG_ERROR(
                 [Couldn't find double-conversion.h, please download from \
@@ -474,16 +474,11 @@ AC_CHECK_FUNCS([getdelim \
                 memset \
                 pow \
                 strerror \
-                pthread_yield \
+                sched_yield \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \
                 pipe2])
-
-if test "$ac_cv_func_pthread_yield" = "no"; then
-   AC_CHECK_HEADERS([sched.h])
-   AC_CHECK_FUNCS([sched_yield])
-fi
 
 AC_CHECK_HEADER([lz4.h], AC_CHECK_LIB([lz4], [LZ4_decompress_safe]))
 AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))

@@ -35,9 +35,6 @@
 
 #if FOLLY_HAVE_SCHED_H
  #include <sched.h>
- #ifndef FOLLY_HAVE_PTHREAD_YIELD
-  #define pthread_yield sched_yield
- #endif
 #endif
 
 // Unaligned loads and stores
