@@ -310,6 +310,11 @@ class SSLContext {
   SSL* createSSL() const;
 
   /**
+   * Sets the namespace to use for sessions created from this context.
+   */
+  void setSessionCacheContext(const std::string& context);
+
+  /**
    * Set the options on the SSL_CTX object.
    */
   void setOptions(long options);
@@ -373,6 +378,7 @@ class SSLContext {
   ClientProtocolFilterCallback getClientProtocolFilterCallback() {
     return clientProtoFilter_;
   }
+
   /**
    * Disables NPN on this SSL context.
    */

@@ -556,6 +556,14 @@ SSL* SSLContext::createSSL() const {
   return ssl;
 }
 
+void SSLContext::setSessionCacheContext(const std::string& context) {
+  SSL_CTX_set_session_id_context(
+      ctx_,
+      reinterpret_cast<const unsigned char*>(context.data()),
+      std::min(
+          static_cast<int>(context.length()), SSL_MAX_SSL_SESSION_ID_LENGTH));
+}
+
 /**
  * Match a name with a pattern. The pattern may include wildcard. A single
  * wildcard "*" can match up to one component in the domain name.
