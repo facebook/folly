@@ -58,6 +58,28 @@ inline void FiberManager::ensureLoopScheduled() {
   loopController_->schedule();
 }
 
+inline intptr_t FiberManager::activateFiber(Fiber* fiber) {
+  DCHECK_EQ(activeFiber_, (Fiber*)nullptr);
+
+#ifdef FOLLY_SANITIZE_ADDRESS
+  registerFiberActivationWithAsan(fiber);
+#endif
+
+  activeFiber_ = fiber;
+  return jumpContext(&mainContext_, &fiber->fcontext_, fiber->data_);
+}
+
+inline intptr_t FiberManager::deactivateFiber(Fiber* fiber) {
+  DCHECK_EQ(activeFiber_, fiber);
+
+#ifdef FOLLY_SANITIZE_ADDRESS
+  registerFiberDeactivationWithAsan(fiber);
+#endif
+
+  activeFiber_ = nullptr;
+  return jumpContext(&fiber->fcontext_, &mainContext_, 0);
+}
+
 inline void FiberManager::runReadyFiber(Fiber* fiber) {
   SCOPE_EXIT {
     assert(currentFiber_ == nullptr);
@@ -74,8 +96,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 
   while (fiber->state_ == Fiber::NOT_STARTED ||
          fiber->state_ == Fiber::READY_TO_RUN) {
-    activeFiber_ = fiber;
-    jumpContext(&mainContext_, &fiber->fcontext_, fiber->data_);
+    activateFiber(fiber);
     if (fiber->state_ == Fiber::AWAITING_IMMEDIATE) {
       try {
         immediateFunc_();

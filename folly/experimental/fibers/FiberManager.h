@@ -337,6 +337,9 @@ class FiberManager : public ::folly::Executor {
     AtomicLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
+  intptr_t activateFiber(Fiber* fiber);
+  intptr_t deactivateFiber(Fiber* fiber);
+
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
 
   Fiber* activeFiber_{nullptr}; /**< active fiber, nullptr on main context */
@@ -450,6 +453,16 @@ class FiberManager : public ::folly::Executor {
 
   void runReadyFiber(Fiber* fiber);
   void remoteReadyInsert(Fiber* fiber);
+
+#ifdef FOLLY_SANITIZE_ADDRESS
+
+  // These methods notify ASAN when a fiber is entered/exited so that ASAN can
+  // find the right stack extents when it needs to poison/unpoison the stack.
+
+  void registerFiberActivationWithAsan(Fiber* fiber);
+  void registerFiberDeactivationWithAsan(Fiber* fiber);
+
+#endif // FOLLY_SANITIZE_ADDRESS
 };
 
 /**

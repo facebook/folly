@@ -132,19 +132,8 @@ void Fiber::fiberFuncHelper(intptr_t fiber) {
   reinterpret_cast<Fiber*>(fiber)->fiberFunc();
 }
 
-/*
- * Some weird bug in ASAN causes fiberFunc to allocate boundless amounts of
- * memory inside __asan_handle_no_return.  Work around this in ASAN builds by
- * tricking the compiler into thinking it may, someday, return.
- */
-#ifdef FOLLY_SANITIZE_ADDRESS
-volatile bool loopForever = true;
-#else
-static constexpr bool loopForever = true;
-#endif
-
 void Fiber::fiberFunc() {
-  while (loopForever) {
+  while (true) {
     DCHECK_EQ(state_, NOT_STARTED);
 
     threadId_ = localThreadId();
@@ -176,9 +165,8 @@ void Fiber::fiberFunc() {
 
     state_ = INVALID;
 
-    fiberManager_.activeFiber_ = nullptr;
+    auto context = fiberManager_.deactivateFiber(this);
 
-    auto context = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
     DCHECK_EQ(reinterpret_cast<Fiber*>(context), this);
   }
 }
@@ -191,12 +179,11 @@ intptr_t Fiber::preempt(State state) {
     DCHECK_EQ(state_, RUNNING);
     DCHECK_NE(state, RUNNING);
 
-    fiberManager_.activeFiber_ = nullptr;
     state_ = state;
 
     recordStackPosition();
 
-    ret = jumpContext(&fcontext_, &fiberManager_.mainContext_, 0);
+    ret = fiberManager_.deactivateFiber(this);
 
     DCHECK_EQ(fiberManager_.activeFiber_, this);
     DCHECK_EQ(state_, READY_TO_RUN);
