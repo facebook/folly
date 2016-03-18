@@ -173,7 +173,8 @@ typedef ScopeGuardImplBase&& ScopeGuard;
 namespace detail {
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
-    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
+    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD) || \
+	defined(FOLLY_EXCEPTION_COUNT_USE_STD)
 
 /**
  * ScopeGuard used for executing a function when leaving the current scope
@@ -265,7 +266,8 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
   = ::folly::detail::ScopeGuardOnExit() + [&]() noexcept
 
 #if defined(FOLLY_EXCEPTION_COUNT_USE_CXA_GET_GLOBALS) || \
-    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD)
+    defined(FOLLY_EXCEPTION_COUNT_USE_GETPTD) || \
+	defined(FOLLY_EXCEPTION_COUNT_USE_STD)
 #define SCOPE_FAIL \
   auto FB_ANONYMOUS_VARIABLE(SCOPE_FAIL_STATE) \
   = ::folly::detail::ScopeGuardOnFail() + [&]() noexcept
