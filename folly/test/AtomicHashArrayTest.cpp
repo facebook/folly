@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-#include <sys/mman.h>
-
 #include <cstddef>
 #include <map>
 #include <stdexcept>
 
 #include <folly/AtomicHashArray.h>
-#include <folly/Hash.h>
 #include <folly/Conv.h>
+#include <folly/Hash.h>
 #include <folly/Memory.h>
+#include <folly/portability/SysMman.h>
 #include <gtest/gtest.h>
-
-#if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
-#define MAP_ANONYMOUS MAP_ANON
-#endif
 
 using namespace std;
 using namespace folly;

@@ -21,13 +21,13 @@
 #include <utility>
 
 #include <folly/Format.h>
+#include <folly/portability/SysMman.h>
 
 #ifdef __linux__
 #include <folly/experimental/io/HugePages.h>
 #endif
 
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <system_error>
 #include <gflags/gflags.h>

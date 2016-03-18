@@ -46,17 +46,6 @@ constexpr bool kHasUnalignedAccess = false;
 #endif
 }
 
-// A change in folly/MemoryMapping.cpp uses MAP_ANONYMOUS, which is named
-// MAP_ANON on OSX/BSD.
-#if defined(__APPLE__) || defined(__FreeBSD__)
-  #include <sys/mman.h>
-  #ifndef MAP_ANONYMOUS
-    #ifdef MAP_ANON
-      #define MAP_ANONYMOUS MAP_ANON
-    #endif
-  #endif
-#endif
-
 // compiler specific attribute translation
 // msvc should come first, so if clang is in msvc mode it gets the right defines
 
