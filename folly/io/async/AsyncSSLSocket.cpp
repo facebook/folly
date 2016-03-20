@@ -1141,7 +1141,8 @@ AsyncSSLSocket::handleConnect() noexcept {
   // STATE_CONNECTING.
   sslState_ = STATE_ESTABLISHED;
 
-  VLOG(3) << "AsyncSSLSocket %p: fd %d successfully connected; "
+  VLOG(3) << "AsyncSSLSocket " << this << ": "
+          << "fd " << fd_ << " successfully connected; "
           << "state=" << int(state_) << ", sslState=" << sslState_
           << ", events=" << eventFlags_;
 
