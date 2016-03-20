@@ -23,3 +23,11 @@
 #ifdef FOLLY_PLATFORM_CONFIG
 #include FOLLY_PLATFORM_CONFIG
 #endif
+
+#if FOLLY_HAVE_FEATURES_H
+#include <features.h>
+#endif
+
+#ifdef __ANDROID__
+#include <android/api-level.h>
+#endif

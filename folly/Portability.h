@@ -23,10 +23,6 @@
 
 #include <folly/portability/Config.h>
 
-#if FOLLY_HAVE_FEATURES_H
-#include <features.h>
-#endif
-
 #include <folly/CPortability.h>
 
 #ifdef __APPLE__
