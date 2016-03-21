@@ -40,8 +40,8 @@ TEST(StringPrintf, NumericFormats) {
   EXPECT_EQ("5000000000", stringPrintf("%lld", 5000000000LL));
   EXPECT_EQ("-5000000000", stringPrintf("%lld", -5000000000LL));
   EXPECT_EQ("-1", stringPrintf("%d", 0xffffffff));
-  EXPECT_EQ("-1", stringPrintf("%ld", 0xffffffffffffffff));
-  EXPECT_EQ("-1", stringPrintf("%ld", 0xffffffffffffffffUL));
+  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffff));
+  EXPECT_EQ("-1", stringPrintf("%" PRId64, 0xffffffffffffffffUL));
 
   EXPECT_EQ("7.7", stringPrintf("%1.1f", 7.7));
   EXPECT_EQ("7.7", stringPrintf("%1.1lf", 7.7));
