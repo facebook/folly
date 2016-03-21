@@ -16,26 +16,15 @@
 
 #include <folly/portability/Memory.h>
 
-#include <cerrno>
-#include <cstdlib>
-
-#ifdef __ANDROID__
-#include <android/api-level.h>
-#endif
+#include <folly/portability/Config.h>
 
 namespace folly {
 namespace detail {
+#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || \
+    (defined(__ANDROID__) && (__ANDROID_API__ > 15))
+#include <errno.h>
 
-#if defined(__ANDROID__) && (__ANDROID_API__ <= 15)
-
-void* aligned_malloc(size_t size, size_t align) {
-  return memalign(align, size);
-}
-
-void aligned_free(void* aligned_ptr) { free(aligned_ptr); }
-
-#else
-// Use poxis_memalign, but mimic the behavior of memalign
+// Use posix_memalign, but mimic the behaviour of memalign
 void* aligned_malloc(size_t size, size_t align) {
   void* ptr = nullptr;
   int rc = posix_memalign(&ptr, align, size);
@@ -46,8 +35,29 @@ void* aligned_malloc(size_t size, size_t align) {
   return nullptr;
 }
 
-void aligned_free(void* aligned_ptr) { free(aligned_ptr); }
+void aligned_free(void* aligned_ptr) {
+  free(aligned_ptr);
+}
+#elif defined(_WIN32)
+#include <malloc.h> // nolint
 
+void* aligned_malloc(size_t size, size_t align) {
+  return _aligned_malloc(size, alignment);
+}
+
+void aligned_free(void* aligned_ptr) {
+  _aligned_free(aligned_ptr);
+}
+#else
+#include <malloc.h> // nolint
+
+void* aligned_malloc(size_t size, size_t align) {
+  return memalign(align, size);
+}
+
+void aligned_free(void* aligned_ptr) {
+  free(aligned_ptr);
+}
 #endif
 }
 }
