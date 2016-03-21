@@ -86,9 +86,7 @@ SSLContext::SSLContext(SSLVersion version) {
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);
 #endif
 
-#ifdef OPENSSL_NPN_NEGOTIATED
-  Random::seed(nextProtocolPicker_);
-#endif
+  Random::seed(randomGenerator_);
 }
 
 SSLContext::~SSLContext() {
@@ -338,20 +336,44 @@ int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
 
 void SSLContext::switchCiphersIfTLS11(
     SSL* ssl,
-    const std::string& tls11CipherString) {
-
-  CHECK(!tls11CipherString.empty()) << "Shouldn't call if empty alt ciphers";
+    const std::string& tls11CipherString,
+    const std::vector<std::pair<std::string, int>>& tls11AltCipherlist) {
+  CHECK(!(tls11CipherString.empty() && tls11AltCipherlist.empty()))
+      << "Shouldn't call if empty ciphers / alt ciphers";
 
   if (TLS1_get_client_version(ssl) <= TLS1_VERSION) {
     // We only do this for TLS v 1.1 and later
     return;
   }
 
+  const std::string* ciphers = &tls11CipherString;
+  if (!tls11AltCipherlist.empty()) {
+    if (!cipherListPicker_) {
+      std::vector<int> weights;
+      std::for_each(
+          tls11AltCipherlist.begin(),
+          tls11AltCipherlist.end(),
+          [&](const std::pair<std::string, int>& e) {
+            weights.push_back(e.second);
+          });
+      cipherListPicker_.reset(
+          new std::discrete_distribution<int>(weights.begin(), weights.end()));
+    }
+    auto index = (*cipherListPicker_)(randomGenerator_);
+    if ((size_t)index >= tls11AltCipherlist.size()) {
+      LOG(ERROR) << "Trying to pick alt TLS11 cipher index " << index
+                 << ", but tls11AltCipherlist is of length "
+                 << tls11AltCipherlist.size();
+    } else {
+      ciphers = &tls11AltCipherlist[index].first;
+    }
+  }
+
   // Prefer AES for TLS versions 1.1 and later since these are not
   // vulnerable to BEAST attacks on AES.  Note that we're setting the
   // cipher list on the SSL object, not the SSL_CTX object, so it will
   // only last for this request.
-  int rc = SSL_set_cipher_list(ssl, tls11CipherString.c_str());
+  int rc = SSL_set_cipher_list(ssl, ciphers->c_str());
   if ((rc == 0) || ERR_peek_error() != 0) {
     // This shouldn't happen since we checked for this when proxygen
     // started up.
@@ -477,7 +499,7 @@ void SSLContext::unsetNextProtocols() {
 
 size_t SSLContext::pickNextProtocols() {
   CHECK(!advertisedNextProtocols_.empty()) << "Failed to pickNextProtocols";
-  return nextProtocolDistribution_(nextProtocolPicker_);
+  return nextProtocolDistribution_(randomGenerator_);
 }
 
 int SSLContext::advertisedNextProtocolCallback(SSL* ssl,

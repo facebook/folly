@@ -431,11 +431,14 @@ class SSLContext {
 
   /**
    * We want to vary which cipher we'll use based on the client's TLS version.
+   *
+   * XXX: The refernces to tls11CipherString and tls11AltCipherlist are reused
+   * for * each >= TLS 1.1 handshake, so we expect these fields to not change.
    */
   void switchCiphersIfTLS11(
-    SSL* ssl,
-    const std::string& tls11CipherString
-  );
+      SSL* ssl,
+      const std::string& tls11CipherString,
+      const std::vector<std::pair<std::string, int>>& tls11AltCipherlist);
 
   bool checkPeerName() { return checkPeerName_; }
   std::string peerFixedName() { return peerFixedName_; }
@@ -491,6 +494,11 @@ class SSLContext {
 
   static bool initialized_;
 
+  // Used in randomized next-proto pick / randomized cipherlist
+  Random::DefaultGenerator randomGenerator_;
+  // To provide control over choice of server ciphersuites
+  std::unique_ptr<std::discrete_distribution<int>> cipherListPicker_;
+
 #ifdef OPENSSL_NPN_NEGOTIATED
 
   struct AdvertisedNextProtocolsItem {
@@ -504,7 +512,6 @@ class SSLContext {
   std::vector<AdvertisedNextProtocolsItem> advertisedNextProtocols_;
   std::vector<int> advertisedNextProtocolWeights_;
   std::discrete_distribution<int> nextProtocolDistribution_;
-  Random::DefaultGenerator nextProtocolPicker_;
 
   static int sNextProtocolsExDataIndex_;
 
