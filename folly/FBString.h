@@ -243,7 +243,8 @@ public:
   // zero-terminated. Returns a pointer to the memory to be
   // initialized (the beginning of the expanded portion). The caller
   // is expected to fill the expanded area appropriately.
-  Char* expand_noinit(size_t delta);
+  // If expGrowth is true, exponential growth is guaranteed.
+  Char* expand_noinit(size_t delta, bool expGrowth);
   // Expands the string by one character and sets the last character
   // to c.
   void push_back(Char c);
@@ -613,23 +614,24 @@ public:
     assert(capacity() >= minCapacity);
   }
 
-  Char * expand_noinit(const size_t delta) {
+  Char * expand_noinit(const size_t delta, bool expGrowth = false) {
     // Strategy is simple: make room, then change size
     assert(capacity() >= size());
     size_t sz, newSz;
     if (category() == Category::isSmall) {
       sz = smallSize();
       newSz = sz + delta;
-      if (newSz <= maxSmallSize) {
+      if (FBSTRING_LIKELY(newSz <= maxSmallSize)) {
         setSmallSize(newSz);
         return small_ + sz;
       }
-      reserve(newSz);
+      reserve(expGrowth ? std::max(newSz, 2 * maxSmallSize) : newSz);
     } else {
       sz = ml_.size_;
-      newSz = ml_.size_ + delta;
-      if (newSz > capacity()) {
-        reserve(newSz);
+      newSz = sz + delta;
+      if (FBSTRING_UNLIKELY(newSz > capacity())) {
+        // ensures not shared
+        reserve(expGrowth ? std::max(newSz, 1 + capacity() * 3 / 2) : newSz);
       }
     }
     assert(capacity() >= newSz);
@@ -642,29 +644,7 @@ public:
   }
 
   void push_back(Char c) {
-    assert(capacity() >= size());
-    size_t sz;
-    if (category() == Category::isSmall) {
-      sz = smallSize();
-      if (FBSTRING_LIKELY(sz < maxSmallSize)) {
-        small_[sz] = c;
-        setSmallSize(sz + 1);
-        return;
-      }
-      reserve(maxSmallSize * 2);
-    } else {
-      sz = ml_.size_;
-      if (sz == capacity()) {  // always true for isShared()
-        reserve(1 + sz * 3 / 2);  // ensures not shared
-      }
-    }
-    assert(!isShared());
-    assert(capacity() >= sz + 1);
-    // Category can't be small - we took care of that above
-    assert(category() == Category::isMedium || category() == Category::isLarge);
-    ml_.size_ = sz + 1;
-    ml_.data_[sz] = c;
-    ml_.data_[sz + 1] = '\0';
+    *expand_noinit(1, /* expGrowth */ true) = c;
   }
 
   size_t size() const {
@@ -1330,15 +1310,10 @@ public:
       // Restore the source
       s = data() + offset;
     }
-    // Warning! Repeated appends with short strings may actually incur
-    // practically quadratic performance. Avoid that by pushing back
-    // the first character (which ensures exponential growth) and then
-    // appending the rest normally. Worst case the append may incur a
-    // second allocation but that will be rare.
-    push_back(*s++);
-    --n;
-    memcpy(store_.expand_noinit(n), s, n * sizeof(value_type));
-    assert(size() == oldSize + n + 1);
+
+    fbstring_detail::pod_copy(
+        s, s + n, store_.expand_noinit(n, /* expGrowth */ true));
+    assert(size() == oldSize + n);
     return *this;
   }
 
