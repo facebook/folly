@@ -329,6 +329,9 @@ nobase_follyinclude_HEADERS = \
 	TimeoutQueue.h \
 	Traits.h \
 	Unicode.h \
+	Function.h \
+	Function-inl.h \
+	Function-pre.h \
 	Uri.h \
 	Uri-inl.h \
 	Varint.h \

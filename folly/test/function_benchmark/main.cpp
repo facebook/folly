@@ -45,6 +45,11 @@ BENCHMARK(std_function_invoke, iters) {
   BM_std_function_invoke_impl(iters, doNothing);
 }
 
+// Invoking a function through a folly::Function object
+BENCHMARK(Function_invoke, iters) {
+  BM_Function_invoke_impl(iters, doNothing);
+}
+
 // Invoking a member function through a member function pointer
 BENCHMARK(mem_fn_invoke, iters) {
   TestClass tc;
@@ -111,6 +116,15 @@ BENCHMARK(std_function_create_invoke, iters) {
   }
 }
 
+// Creating a folly::Function object from a function pointer, and
+// invoking it
+BENCHMARK(Function_create_invoke, iters) {
+  for (size_t n = 0; n < iters; ++n) {
+    folly::Function<void()> fn = doNothing;
+    fn();
+  }
+}
+
 // Creating a pointer-to-member and invoking it
 BENCHMARK(mem_fn_create_invoke, iters) {
   TestClass tc;
@@ -152,6 +166,14 @@ BENCHMARK(scope_guard_std_function, iters) {
 BENCHMARK(scope_guard_std_function_rvalue, iters) {
   for (size_t n = 0; n < iters; ++n) {
     ScopeGuard g = makeGuard(std::function<void()>(doNothing));
+  }
+}
+
+// Using ScopeGuard to invoke a folly::Function,
+// but create the ScopeGuard with an rvalue to a folly::Function
+BENCHMARK(scope_guard_Function_rvalue, iters) {
+  for (size_t n = 0; n < iters; ++n) {
+    ScopeGuard g = makeGuard(folly::Function<void()>(doNothing));
   }
 }
 
