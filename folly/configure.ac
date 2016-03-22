@@ -236,7 +236,7 @@ AC_CACHE_CHECK(
   [for c++11 atomic support without GNU Atomic library],
   [folly_cv_lib_libatomic],
   [AC_LINK_IFELSE(
-    [AC_LANG_SOURCE[
+    [AC_LANG_PROGRAM[
       #include <atomic>
       int main() {
         struct Test { int val; };
