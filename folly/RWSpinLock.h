@@ -150,7 +150,7 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #endif
 
 // iOS doesn't define _mm_cvtsi64_si128 and friends
-#if (FOLLY_SSE >= 2) && !TARGET_OS_IPHONE
+#if (FOLLY_SSE >= 2) && !FOLLY_MOBILE
 #define RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
 #else
 #undef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_

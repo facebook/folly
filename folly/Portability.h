@@ -210,7 +210,7 @@ namespace std { typedef ::max_align_t max_align_t; }
 # error cannot define platform specific thread local storage
 #endif
 
-#if defined(__APPLE__) && (TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE)
+#if FOLLY_MOBILE
 #undef FOLLY_TLS
 #endif
 

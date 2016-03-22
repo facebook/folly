@@ -28,10 +28,11 @@
 
 #include <glog/logging.h>
 
-#include <folly/Foreach.h>
 #include <folly/Exception.h>
+#include <folly/Foreach.h>
 #include <folly/Malloc.h>
 #include <folly/MicroSpinLock.h>
+#include <folly/Portability.h>
 
 #include <folly/detail/StaticSingletonManager.h>
 
@@ -41,7 +42,7 @@
 //
 // XXX: Ideally we would instead determine if emutls is in use at runtime as it
 // is possible to configure glibc on Linux to use emutls regardless.
-#if !__APPLE__ && !__ANDROID__
+#if !FOLLY_MOBILE && !defined(__APPLE__)
 #define FOLLY_TLD_USE_FOLLY_TLS 1
 #else
 #undef FOLLY_TLD_USE_FOLLY_TLS

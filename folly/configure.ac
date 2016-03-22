@@ -236,7 +236,7 @@ AC_CACHE_CHECK(
   [for c++11 atomic support without GNU Atomic library],
   [folly_cv_lib_libatomic],
   [AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM[
+    [AC_LANG_SOURCE[
       #include <atomic>
       int main() {
         struct Test { int val; };
@@ -500,6 +500,15 @@ else
    AC_CHECK_HEADERS([libelf.h elf.h],, [use_follytestmain=no])
    AC_CHECK_HEADERS([libunwind.h],, [use_follytestmain=no])
 fi
+
+AC_ARG_ENABLE([mobile],
+   AS_HELP_STRING([--enable-mobile],
+                  [enables using main function from folly for tests]),
+                  [mobile=${enableval}], [mobile=no])
+AS_IF([test "x${mobile}" = "xyes"], [
+    AC_DEFINE([MOBILE], [1],
+              [Define to 1 for compiler guards for mobile targets.])
+])
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
