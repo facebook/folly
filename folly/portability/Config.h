@@ -31,3 +31,7 @@
 #ifdef __ANDROID__
 #include <android/api-level.h>
 #endif
+
+#ifdef __APPLE__
+#include <Availability.h>
+#endif

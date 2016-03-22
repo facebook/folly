@@ -20,8 +20,10 @@
 
 namespace folly {
 namespace detail {
-#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || \
-    (defined(__ANDROID__) && (__ANDROID_API__ > 15))
+#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 ||                    \
+    (defined(__ANDROID__) && (__ANDROID_API__ > 15)) ||                      \
+    (defined(__APPLE__) && (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 || \
+                            __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0))
 #include <errno.h>
 
 // Use posix_memalign, but mimic the behaviour of memalign
