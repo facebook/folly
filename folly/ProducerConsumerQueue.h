@@ -27,6 +27,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/detail/CacheLocality.h>
+
 namespace folly {
 
 /*
@@ -47,7 +49,7 @@ struct ProducerConsumerQueue {
   // isFull() will return true after size-1 insertions.
   explicit ProducerConsumerQueue(uint32_t size)
     : size_(size)
-    , records_(static_cast<T*>(std::malloc(sizeof(T) * size)))
+    , records_(static_cast<T*>(std::malloc(sizeof(T) * size + detail::CacheLocality::kFalseSharingRange)))
     , readIndex_(0)
     , writeIndex_(0)
   {
@@ -169,8 +171,12 @@ private:
   const uint32_t size_;
   T* const records_;
 
-  std::atomic<unsigned int> readIndex_;
-  std::atomic<unsigned int> writeIndex_;
+  // Align to avoid false sharing between readIndex_ and writeIndex_
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> readIndex_;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<unsigned int> writeIndex_;
+
+  // Padding to avoid adjacent allocations to share cache line with writeIndex_
+  char padding_[detail::CacheLocality::kFalseSharingRange - sizeof(writeIndex_)];
 };
 
 }
