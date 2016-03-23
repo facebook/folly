@@ -79,15 +79,6 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_DEPRECATED(msg)
 #endif
 
-// noreturn
-#if defined(_MSC_VER)
-# define FOLLY_NORETURN __declspec(noreturn)
-#elif defined(__clang__) || defined(__GNUC__)
-# define FOLLY_NORETURN __attribute__((__noreturn__))
-#else
-# define FOLLY_NORETURN
-#endif
-
 // noinline
 #ifdef _MSC_VER
 # define FOLLY_NOINLINE __declspec(noinline)

@@ -55,11 +55,11 @@ class Concatenator {
   size_t lineNumber_ = 0;
 };
 
-FOLLY_NORETURN void throwOutputError() {
+[[noreturn]] void throwOutputError() {
   throw OutputError(folly::errnoStr(errno).toStdString());
 }
 
-FOLLY_NORETURN void throwInputError() {
+[[noreturn]] void throwInputError() {
   throw InputError(folly::errnoStr(errno).toStdString());
 }
 

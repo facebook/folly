@@ -27,11 +27,12 @@
 namespace __cxxabiv1 {
 
 extern "C" {
-FOLLY_NORETURN void __cxa_throw(void* thrownException,
-                                std::type_info* type,
-                                void (*destructor)(void*));
+void __cxa_throw(
+    void* thrownException,
+    std::type_info* type,
+    void (*destructor)(void*)) __attribute__((__noreturn__));
 void* __cxa_begin_catch(void* excObj) throw();
-FOLLY_NORETURN void __cxa_rethrow(void);
+void __cxa_rethrow(void) __attribute__((__noreturn__));
 void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }

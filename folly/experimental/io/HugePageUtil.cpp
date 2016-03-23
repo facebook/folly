@@ -41,9 +41,7 @@ using namespace folly;
 
 namespace {
 
-FOLLY_NORETURN void usage(const char* name);
-
-void usage(const char* name) {
+[[noreturn]] void usage(const char* name) {
   std::cerr << folly::format(
       "Usage: {0}\n"
       "         list all huge page sizes and their mount points\n"

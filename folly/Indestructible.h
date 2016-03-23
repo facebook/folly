@@ -101,7 +101,7 @@ class Indestructible final {
     }
   }
 
-  FOLLY_NORETURN FOLLY_NOINLINE static void fail() {
+  [[noreturn]] FOLLY_NOINLINE static void fail() {
     LOG(FATAL) << "Indestructible is not initialized";
   }
 

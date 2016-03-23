@@ -210,8 +210,7 @@ struct ChildErrorInfo {
   int errnoValue;
 };
 
-FOLLY_NORETURN void childError(int errFd, int errCode, int errnoValue);
-void childError(int errFd, int errCode, int errnoValue) {
+[[noreturn]] void childError(int errFd, int errCode, int errnoValue) {
   ChildErrorInfo info = {errCode, errnoValue};
   // Write the error information over the pipe to our parent process.
   // We can't really do anything else if this write call fails.

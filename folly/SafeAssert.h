@@ -43,10 +43,12 @@
 
 namespace folly { namespace detail {
 
-FOLLY_NORETURN void assertionFailure(const char* expr, const char* msg,
-                      const char* file, unsigned int line,
-                      const char* function);
-
+[[noreturn]] void assertionFailure(
+    const char* expr,
+    const char* msg,
+    const char* file,
+    unsigned int line,
+    const char* function);
 }}  // namespace folly
 
 #endif /* FOLLY_SAFEASSERT_H_ */

@@ -25,7 +25,7 @@ namespace bser {
 static dynamic parseBser(Cursor& curs);
 
 template <typename... ARGS>
-static FOLLY_NORETURN void throwDecodeError(Cursor& curs, ARGS&&... args) {
+[[noreturn]] static void throwDecodeError(Cursor& curs, ARGS&&... args) {
   throw BserDecodeError(folly::to<std::string>(std::forward<ARGS>(args)...,
                                                " with ",
                                                curs.length(),
