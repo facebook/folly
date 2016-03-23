@@ -246,14 +246,6 @@ namespace std { typedef ::max_align_t max_align_t; }
 # define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 #endif
 
-// Some platforms lack clock_gettime(2) and clock_getres(2). Inject our own
-// versions of these into the global namespace.
-#if FOLLY_HAVE_CLOCK_GETTIME
-#include <time.h>
-#else
-#include <folly/detail/Clock.h>
-#endif
-
 // Provide our own std::__throw_* wrappers for platforms that don't have them
 #if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
 #include <bits/functexcept.h>

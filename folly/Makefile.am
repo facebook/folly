@@ -53,7 +53,6 @@ nobase_follyinclude_HEADERS = \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
 	detail/ChecksumDetail.h \
-	detail/Clock.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/ExceptionWrapper.h \
 	detail/FileUtilDetail.h \
@@ -454,10 +453,6 @@ nobase_follyinclude_HEADERS += \
 	experimental/io/HugePages.h
 libfolly_la_SOURCES += \
 	experimental/io/HugePages.cpp
-endif
-
-if !HAVE_LINUX
-libfollybase_la_SOURCES += detail/Clock.cpp
 endif
 
 if !HAVE_WEAK_SYMBOLS
