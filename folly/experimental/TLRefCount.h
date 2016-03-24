@@ -76,7 +76,7 @@ class TLRefCount {
 
     assert(state_.load() == State::GLOBAL);
 
-    return --globalCount_;
+    return globalCount_-- - 1;
   }
 
   Int operator*() const {
@@ -132,7 +132,7 @@ class TLRefCount {
       }
 
       collectCount_ = count_;
-      refCount_.globalCount_ += collectCount_;
+      refCount_.globalCount_.fetch_add(collectCount_);
       collectGuard_.reset();
     }
 
