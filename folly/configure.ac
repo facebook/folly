@@ -528,7 +528,7 @@ AM_CONDITIONAL([RUN_ARCH_SPECIFIC_TESTS], [test "$build_cpu" = "x86_64" || test 
 AM_CONDITIONAL([HAVE_LINUX], [test "$build_os" == "linux-gnu"])
 AM_CONDITIONAL([HAVE_WEAK_SYMBOLS],
                [test "$folly_cv_prog_cc_weak_symbols" = "yes"])
-AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT], [test "$ac_cv_header_bits_functexcept_h" = "yes"])
+AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT_H], [test "$ac_cv_header_bits_functexcept_h" = "yes"])
 AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
                [test "$folly_cv_prog_cc_have_extrandom_sfmt19937" = "yes"])
 AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
