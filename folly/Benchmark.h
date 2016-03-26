@@ -17,9 +17,11 @@
 #ifndef FOLLY_BENCHMARK_H_
 #define FOLLY_BENCHMARK_H_
 
-#include <folly/ScopeGuard.h>
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
+#include <folly/ScopeGuard.h>
+#include <folly/portability/Time.h>
+
 #include <cassert>
 #include <ctime>
 #include <boost/function_types/function_arity.hpp>
