@@ -308,10 +308,14 @@ class Function final
       typename OtherFunctionType,
       FunctionMoveCtor OtherNTM,
       size_t OtherEmbedFunctorSize>
-  Function(Function<OtherFunctionType, OtherNTM, OtherEmbedFunctorSize>&& other)
-  noexcept(
-      OtherNTM == FunctionMoveCtor::NO_THROW &&
-      EmbedFunctorSize >= OtherEmbedFunctorSize);
+  Function(
+      Function<OtherFunctionType, OtherNTM, OtherEmbedFunctorSize>&& other,
+      typename std::enable_if<std::is_same<
+          typename Traits::NonConstFunctionType,
+          typename detail::function::FunctionTypeTraits<
+              OtherFunctionType>::NonConstFunctionType>::value>::type* =
+          0) noexcept(OtherNTM == FunctionMoveCtor::NO_THROW &&
+          EmbedFunctorSize >= OtherEmbedFunctorSize);
 
   /**
    * Moves a `Function` with different template parameters with regards

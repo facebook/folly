@@ -34,6 +34,15 @@ struct SelectNonConstFunctionTag {
   using QualifiedPointer = T*;
 };
 
+// Helper to check whether the return type of a callable matches that of
+// a folly::Function object. Either because the former is convertible to
+// the latter, or the latter is void (possibly cv-qualified)
+template <typename CallableR, typename FollyFunctionR>
+using ReturnTypeMatches = std::integral_constant<
+    bool,
+    std::is_convertible<CallableR, FollyFunctionR>::value ||
+        std::is_same<typename std::decay<FollyFunctionR>::type, void>::value>;
+
 // Helper class to extract properties from a function type
 template <typename T>
 struct FunctionTypeTraits;
@@ -71,7 +80,7 @@ struct FunctionTypeTraits<R(Args...)> {
   using DefaultSelectFunctionTag = SelectNonConstFunctionTag;
   template <typename F>
   using IsCallable =
-      std::is_convertible<typename std::result_of<F&(Args...)>::type, R>;
+      ReturnTypeMatches<typename std::result_of<F&(Args...)>::type, R>;
   template <typename T>
   using QualifiedPointer = T*;
   template <typename Obj>
@@ -111,7 +120,7 @@ struct FunctionTypeTraits<R(Args...) const> {
   using DefaultSelectFunctionTag = SelectConstFunctionTag;
   template <typename F>
   using IsCallable =
-      std::is_convertible<typename std::result_of<F const&(Args...)>::type, R>;
+      ReturnTypeMatches<typename std::result_of<F const&(Args...)>::type, R>;
   template <typename T>
   using QualifiedPointer = T const*;
   template <typename Obj>
@@ -138,17 +147,27 @@ struct FunctionTypeTraits<R(Args...) const> {
   class ExecutorMixin;
 };
 
-// Helper template for checking if a type is a Function
-template <typename T>
-struct IsFunction : public std::false_type {};
+// Helper template for checking if a type T is a Function with the same
+// function type as OtherFunctionType (except for const-ness which may differ)
+template <typename T, typename OtherFunctionType>
+struct IsFunction : std::false_type {};
 
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-struct IsFunction<::folly::Function<FunctionType, NTM, EmbedFunctorSize>>
-    : public std::true_type {};
+template <
+    typename FunctionType,
+    FunctionMoveCtor NTM,
+    size_t EmbedFunctorSize,
+    typename OtherFunctionType>
+struct IsFunction<
+    ::folly::Function<FunctionType, NTM, EmbedFunctorSize>,
+    OtherFunctionType>
+    : std::is_same<
+          typename FunctionTypeTraits<FunctionType>::NonConstFunctionType,
+          typename FunctionTypeTraits<
+              OtherFunctionType>::NonConstFunctionType> {};
 
 // Helper template to check if a functor can be called with arguments of type
-// Args..., if it returns a type convertible to R, and also is not a
-// Function.
+// Args..., if it returns a type convertible to R (or R is void), and also is
+// not a folly::Function.
 // Function objects can constructed or assigned from types for which
 // IsCallableHelper is true_type.
 template <typename FunctionType>
@@ -163,11 +182,12 @@ struct IsCallableHelper {
 };
 
 template <typename F, typename FunctionType>
-struct IsCallable : public std::integral_constant<
-                        bool,
-                        (!IsFunction<typename std::decay<F>::type>::value &&
-                         decltype(IsCallableHelper<FunctionType>::template test<
-                                  typename std::decay<F>::type>(0))::value)> {};
+struct IsCallable
+    : public std::integral_constant<
+          bool,
+          (!IsFunction<typename std::decay<F>::type, FunctionType>::value &&
+           decltype(IsCallableHelper<FunctionType>::template test<
+                    typename std::decay<F>::type>(0))::value)> {};
 
 // MaybeUnaryOrBinaryFunction: helper template class for deriving
 // Function from std::unary_function or std::binary_function
@@ -245,8 +265,8 @@ class FunctionTypeTraits<R(Args...)>::ExecutorMixin {
 
   template <typename Ex>
   static R invokeFunctor(ExecutorIf* executor, Args&&... args) {
-    return folly::detail::function::invoke(
-        *Ex::getFunctor(executor), std::forward<Args>(args)...);
+    return static_cast<R>(folly::detail::function::invoke(
+        *Ex::getFunctor(executor), std::forward<Args>(args)...));
   }
 
   // invokePtr is of type
@@ -282,8 +302,8 @@ class FunctionTypeTraits<R(Args...) const>::ExecutorMixin {
 
   template <typename Ex>
   static R invokeFunctor(ExecutorIf const* executor, Args&&... args) {
-    return folly::detail::function::invoke(
-        *Ex::getFunctor(executor), std::forward<Args>(args)...);
+    return static_cast<R>(folly::detail::function::invoke(
+        *Ex::getFunctor(executor), std::forward<Args>(args)...));
   }
 
   // invokePtr is of type

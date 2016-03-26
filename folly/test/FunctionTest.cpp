@@ -1081,3 +1081,124 @@ TEST(Function, SafeCaptureByReference) {
 
   EXPECT_EQ(sum, 999);
 }
+
+// TEST =====================================================================
+// IgnoreReturnValue
+
+TEST(Function, IgnoreReturnValue) {
+  int x = 95;
+
+  // Assign a lambda that return int to a folly::Function that returns void.
+  Function<void()> f = [&]() -> int { return ++x; };
+
+  EXPECT_EQ(x, 95);
+  f();
+  EXPECT_EQ(x, 96);
+
+  Function<int()> g = [&]() -> int { return ++x; };
+  Function<void()> cg = std::move(g);
+
+  EXPECT_EQ(x, 96);
+  cg();
+  EXPECT_EQ(x, 97);
+}
+
+// TEST =====================================================================
+// ReturnConvertible, ConvertReturnType
+
+TEST(Function, ReturnConvertible) {
+  struct CBase {
+    int x;
+  };
+  struct CDerived : CBase {};
+
+  Function<double()> f1 = []() -> int { return 5; };
+  EXPECT_EQ(f1(), 5.0);
+
+  Function<int()> f2 = []() -> double { return 5.2; };
+  EXPECT_EQ(f2(), 5);
+
+  CDerived derived;
+  derived.x = 55;
+
+  Function<CBase const&()> f3 = [&]() -> CDerived const& { return derived; };
+  EXPECT_EQ(f3().x, 55);
+
+  Function<CBase const&()> f4 = [&]() -> CDerived& { return derived; };
+  EXPECT_EQ(f4().x, 55);
+
+  Function<CBase&()> f5 = [&]() -> CDerived& { return derived; };
+  EXPECT_EQ(f5().x, 55);
+
+  Function<CBase const*()> f6 = [&]() -> CDerived const* { return &derived; };
+  EXPECT_EQ(f6()->x, 55);
+
+  Function<CBase const*()> f7 = [&]() -> CDerived* { return &derived; };
+  EXPECT_EQ(f7()->x, 55);
+
+  Function<CBase*()> f8 = [&]() -> CDerived* { return &derived; };
+  EXPECT_EQ(f8()->x, 55);
+
+  Function<CBase()> f9 = [&]() -> CDerived {
+    auto d = derived;
+    d.x = 66;
+    return d;
+  };
+  EXPECT_EQ(f9().x, 66);
+}
+
+TEST(Function, ConvertReturnType) {
+  struct CBase {
+    int x;
+  };
+  struct CDerived : CBase {};
+
+  Function<int()> f1 = []() -> int { return 5; };
+  Function<double()> cf1 = std::move(f1);
+  EXPECT_EQ(cf1(), 5.0);
+  Function<int()> ccf1 = std::move(cf1);
+  EXPECT_EQ(ccf1(), 5);
+
+  Function<double()> f2 = []() -> double { return 5.2; };
+  Function<int()> cf2 = std::move(f2);
+  EXPECT_EQ(cf2(), 5);
+  Function<double()> ccf2 = std::move(cf2);
+  EXPECT_EQ(ccf2(), 5.0);
+
+  CDerived derived;
+  derived.x = 55;
+
+  Function<CDerived const&()> f3 = [&]() -> CDerived const& { return derived; };
+  Function<CBase const&()> cf3 = std::move(f3);
+  EXPECT_EQ(cf3().x, 55);
+
+  Function<CDerived&()> f4 = [&]() -> CDerived& { return derived; };
+  Function<CBase const&()> cf4 = std::move(f4);
+  EXPECT_EQ(cf4().x, 55);
+
+  Function<CDerived&()> f5 = [&]() -> CDerived& { return derived; };
+  Function<CBase&()> cf5 = std::move(f5);
+  EXPECT_EQ(cf5().x, 55);
+
+  Function<CDerived const*()> f6 = [&]() -> CDerived const* {
+    return &derived;
+  };
+  Function<CBase const*()> cf6 = std::move(f6);
+  EXPECT_EQ(cf6()->x, 55);
+
+  Function<CDerived const*()> f7 = [&]() -> CDerived* { return &derived; };
+  Function<CBase const*()> cf7 = std::move(f7);
+  EXPECT_EQ(cf7()->x, 55);
+
+  Function<CDerived*()> f8 = [&]() -> CDerived* { return &derived; };
+  Function<CBase*()> cf8 = std::move(f8);
+  EXPECT_EQ(cf8()->x, 55);
+
+  Function<CDerived()> f9 = [&]() -> CDerived {
+    auto d = derived;
+    d.x = 66;
+    return d;
+  };
+  Function<CBase()> cf9 = std::move(f9);
+  EXPECT_EQ(cf9().x, 66);
+}

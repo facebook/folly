@@ -271,22 +271,17 @@ template <
     typename OtherFunctionType,
     FunctionMoveCtor OtherNTM,
     size_t OtherEmbedFunctorSize>
-Function<FunctionType, NTM, EmbedFunctorSize>::
-    Function(
-        Function<OtherFunctionType,
-        OtherNTM,
-        OtherEmbedFunctorSize>&& other) noexcept(
-        OtherNTM == FunctionMoveCtor::NO_THROW &&
+Function<FunctionType, NTM, EmbedFunctorSize>::Function(
+    Function<OtherFunctionType, OtherNTM, OtherEmbedFunctorSize>&& other,
+    typename std::enable_if<std::is_same<
+        typename Traits::NonConstFunctionType,
+        typename detail::function::FunctionTypeTraits<
+            OtherFunctionType>::NonConstFunctionType>::value>::
+        type*) noexcept(OtherNTM == FunctionMoveCtor::NO_THROW &&
         EmbedFunctorSize >= OtherEmbedFunctorSize) {
   using OtherFunction =
       Function<OtherFunctionType, OtherNTM, OtherEmbedFunctorSize>;
 
-  static_assert(
-      std::is_same<
-          typename Traits::NonConstFunctionType,
-          typename OtherFunction::Traits::NonConstFunctionType>::value,
-      "Function: cannot move into a Function with different "
-      "parameter signature");
   static_assert(
       !Traits::IsConst::value || OtherFunction::Traits::IsConst::value,
       "Function: cannot move Function<R(Args...)> into "
