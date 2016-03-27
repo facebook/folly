@@ -145,6 +145,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
   , observer_(nullptr)
   , observerSampleCount_(0)
   , executionObserver_(nullptr) {
+  struct event ev;
   {
     std::lock_guard<std::mutex> lock(libevent_mutex_);
 
@@ -153,10 +154,16 @@ EventBase::EventBase(bool enableTimeMeasurement)
     // allowing examination of its value without an explicit reference here.
     // If ev.ev_base is NULL, then event_init() must be called, otherwise
     // call event_base_new().
-    struct event ev;
     event_set(&ev, 0, 0, nullptr, nullptr);
-    evb_ = (ev.ev_base) ? event_base_new() : event_init();
+    if (!ev.ev_base) {
+      evb_ = event_init();
+    }
   }
+
+  if (ev.ev_base) {
+    evb_ = event_base_new();
+  }
+
   if (UNLIKELY(evb_ == nullptr)) {
     LOG(ERROR) << "EventBase(): Failed to init event base.";
     folly::throwSystemError("error in EventBase::EventBase()");
