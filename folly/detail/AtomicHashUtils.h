@@ -17,8 +17,8 @@
 #ifndef incl_FOLLY_ATOMIC_HASH_UTILS_H
 #define incl_FOLLY_ATOMIC_HASH_UTILS_H
 
-#include <folly/Portability.h>
 #include <thread>
+#include <folly/portability/Asm.h>
 
 // Some utilities used by AtomicHashArray and AtomicHashMap
 //

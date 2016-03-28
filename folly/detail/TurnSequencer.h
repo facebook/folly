@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include <folly/detail/Futex.h>
-#include <folly/Portability.h>
+#include <folly/portability/Asm.h>
 
 namespace folly {
 

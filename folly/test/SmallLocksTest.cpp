@@ -31,6 +31,8 @@
 
 #include <gtest/gtest.h>
 
+#include <folly/portability/Asm.h>
+
 using folly::MSLGuard;
 using folly::MicroLock;
 using folly::MicroSpinLock;

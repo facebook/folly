@@ -17,6 +17,8 @@
 #include <folly/MicroLock.h>
 #include <thread>
 
+#include <folly/portability/Asm.h>
+
 namespace folly {
 
 void MicroLockCore::lockSlowPath(uint32_t oldWord,

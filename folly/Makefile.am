@@ -267,6 +267,7 @@ nobase_follyinclude_HEADERS = \
 	Padded.h \
 	PicoSpinLock.h \
 	Portability.h \
+	portability/Asm.h \
 	portability/Config.h \
 	portability/Constexpr.h \
 	portability/Environment.h \

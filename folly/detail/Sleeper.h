@@ -24,7 +24,7 @@
 #include <cinttypes>
 #include <ctime>
 
-#include <folly/Portability.h>
+#include <folly/portability/Asm.h>
 
 namespace folly {
 

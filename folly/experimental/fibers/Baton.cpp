@@ -19,6 +19,7 @@
 
 #include <folly/detail/MemoryIdler.h>
 #include <folly/experimental/fibers/FiberManager.h>
+#include <folly/portability/Asm.h>
 
 namespace folly { namespace fibers {
 

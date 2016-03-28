@@ -24,6 +24,7 @@
 
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
+#include <folly/portability/Asm.h>
 
 namespace folly {
 

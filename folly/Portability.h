@@ -369,43 +369,6 @@ inline size_t malloc_usable_size(void* ptr) {
 # define FOLLY_HAS_RTTI 1
 #endif
 
-#ifdef _MSC_VER
-# include <intrin.h>
-#endif
-
-namespace folly {
-
-inline void asm_volatile_memory() {
-#if defined(__clang__) || defined(__GNUC__)
-  asm volatile("" : : : "memory");
-#elif defined(_MSC_VER)
-  ::_ReadWriteBarrier();
-#endif
-}
-
-inline void asm_volatile_pause() {
-#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-  ::_mm_pause();
-#elif defined(__i386__) || FOLLY_X64
-  asm volatile ("pause");
-#elif FOLLY_A64 || defined(__arm__)
-  asm volatile ("yield");
-#elif FOLLY_PPC64
-  asm volatile("or 27,27,27");
-#endif
-}
-inline void asm_pause() {
-#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-  ::_mm_pause();
-#elif defined(__i386__) || FOLLY_X64
-  asm ("pause");
-#elif FOLLY_A64 || defined(__arm__)
-  asm ("yield");
-#elif FOLLY_PPC64
-  asm ("or 31,31,31");
-#endif
-}
-
 #if defined(__APPLE__) || defined(_MSC_VER)
 #define MAX_STATIC_CONSTRUCTOR_PRIORITY
 #else
@@ -415,5 +378,4 @@ inline void asm_pause() {
 #define MAX_STATIC_CONSTRUCTOR_PRIORITY __attribute__ ((__init_priority__(102)))
 #endif
 
-} // namespace folly
 #endif // FOLLY_PORTABILITY_H_

@@ -20,6 +20,8 @@
 #include <gtest/gtest.h>
 #include <thread>
 
+#include <folly/portability/Asm.h>
+
 using folly::SpinLockGuardImpl;
 
 namespace {
