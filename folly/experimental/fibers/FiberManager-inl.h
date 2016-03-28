@@ -355,7 +355,7 @@ struct FiberManager::AddTaskFinallyHelper {
    public:
     Finally(G&& finally,
             FiberManager& fm) :
-        finally_(std::move(finally)),
+        finally_(std::forward<G>(finally)),
         fm_(fm) {
     }
 
@@ -430,12 +430,13 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
     auto finallyLoc = static_cast<typename Helper::Finally*>(
       static_cast<void*>(funcLoc + 1));
 
-    new (finallyLoc) typename Helper::Finally(std::move(finally), *this);
+    new (finallyLoc) typename Helper::Finally(std::forward<G>(finally), *this);
     new (funcLoc) typename Helper::Func(std::move(func), *finallyLoc);
 
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));
   } else {
-    auto finallyLoc = new typename Helper::Finally(std::move(finally), *this);
+    auto finallyLoc =
+        new typename Helper::Finally(std::forward<G>(finally), *this);
     auto funcLoc = new typename Helper::Func(std::move(func), *finallyLoc);
 
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));

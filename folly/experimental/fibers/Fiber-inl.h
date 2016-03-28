@@ -22,7 +22,7 @@ namespace folly { namespace fibers {
 template <typename F>
 void Fiber::setFunction(F&& func) {
   assert(state_ == INVALID);
-  func_ = std::move(func);
+  func_ = std::forward<F>(func);
   state_ = NOT_STARTED;
 }
 
@@ -30,8 +30,8 @@ template <typename F, typename G>
 void Fiber::setFunctionFinally(F&& resultFunc,
                                G&& finallyFunc) {
   assert(state_ == INVALID);
-  resultFunc_ = std::move(resultFunc);
-  finallyFunc_ = std::move(finallyFunc);
+  resultFunc_ = std::forward<F>(resultFunc);
+  finallyFunc_ = std::forward<G>(finallyFunc);
   state_ = NOT_STARTED;
 }
 
