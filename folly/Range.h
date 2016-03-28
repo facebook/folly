@@ -20,10 +20,11 @@
 #ifndef FOLLY_RANGE_H_
 #define FOLLY_RANGE_H_
 
-#include <folly/Portability.h>
 #include <folly/FBString.h>
+#include <folly/Portability.h>
 #include <folly/SpookyHashV2.h>
 #include <folly/portability/Constexpr.h>
+#include <folly/portability/String.h>
 
 #include <algorithm>
 #include <boost/operators.hpp>
@@ -1085,14 +1086,12 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
-#if FOLLY_HAVE_MEMRCHR
 template <>
 inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
   auto pos = static_cast<const char*>(
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
-#endif
 
 // specialization for ByteRange
 template <>
@@ -1103,7 +1102,6 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
-#if FOLLY_HAVE_MEMRCHR
 template <>
 inline size_t rfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
@@ -1111,7 +1109,6 @@ inline size_t rfind(const Range<const unsigned char*>& haystack,
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
-#endif
 
 template <class T>
 size_t qfind_first_of(const Range<T>& haystack,
