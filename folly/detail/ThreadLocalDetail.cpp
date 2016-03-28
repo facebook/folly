@@ -223,6 +223,6 @@ ElementWrapper& StaticMetaBase::get(EntryID* ent) {
   return threadEntry->elements[id];
 }
 
-MAX_STATIC_CONSTRUCTOR_PRIORITY
+FOLLY_STATIC_CTOR_PRIORITY_MAX
 PthreadKeyUnregister PthreadKeyUnregister::instance_;
 }}
