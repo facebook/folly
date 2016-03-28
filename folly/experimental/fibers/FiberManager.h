@@ -104,7 +104,7 @@ class FiberManager : public ::folly::Executor {
     /**
      * Protect limited amount of fiber stacks with guard pages.
      */
-    bool useGuardPages{false};
+    bool useGuardPages{true};
 
     /**
      * Free unnecessary fibers in the fibers pool every fibersPoolResizePeriodMs
