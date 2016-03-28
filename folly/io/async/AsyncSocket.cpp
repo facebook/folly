@@ -298,9 +298,11 @@ void AsyncSocket::setShutdownSocketSet(ShutdownSocketSet* newSS) {
 void AsyncSocket::setCloseOnExec() {
   int rv = fcntl(fd_, F_SETFD, FD_CLOEXEC);
   if (rv != 0) {
-    throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                               withAddr("failed to set close-on-exec flag"),
-                               errno);
+    auto errnoCopy = errno;
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("failed to set close-on-exec flag"),
+        errnoCopy);
   }
 }
 
@@ -338,8 +340,11 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // implementations the PF_foo and AF_foo constants are identical.
     fd_ = socket(address.getFamily(), SOCK_STREAM, 0);
     if (fd_ < 0) {
-      throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                                withAddr("failed to create socket"), errno);
+      auto errnoCopy = errno;
+      throw AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to create socket"),
+          errnoCopy);
     }
     if (shutdownSocketSet_) {
       shutdownSocketSet_->add(fd_);
@@ -351,25 +356,30 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // Put the socket in non-blocking mode
     int flags = fcntl(fd_, F_GETFL, 0);
     if (flags == -1) {
-      throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                                withAddr("failed to get socket flags"), errno);
+      auto errnoCopy = errno;
+      throw AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to get socket flags"),
+          errnoCopy);
     }
     int rv = fcntl(fd_, F_SETFL, flags | O_NONBLOCK);
     if (rv == -1) {
+      auto errnoCopy = errno;
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           withAddr("failed to put socket in non-blocking mode"),
-          errno);
+          errnoCopy);
     }
 
 #if !defined(MSG_NOSIGNAL) && defined(F_SETNOSIGPIPE)
     // iOS and OS X don't support MSG_NOSIGNAL; set F_SETNOSIGPIPE instead
     rv = fcntl(fd_, F_SETNOSIGPIPE, 1);
     if (rv == -1) {
+      auto errnoCopy = errno;
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           "failed to enable F_SETNOSIGPIPE on socket",
-          errno);
+          errnoCopy);
     }
 #endif
 
@@ -387,21 +397,23 @@ void AsyncSocket::connect(ConnectCallback* callback,
     if (bindAddr != anyAddress()) {
       int one = 1;
       if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+        auto errnoCopy = errno;
         doClose();
         throw AsyncSocketException(
-          AsyncSocketException::NOT_OPEN,
-          "failed to setsockopt prior to bind on " + bindAddr.describe(),
-          errno);
+            AsyncSocketException::NOT_OPEN,
+            "failed to setsockopt prior to bind on " + bindAddr.describe(),
+            errnoCopy);
       }
 
       bindAddr.getAddress(&addrStorage);
 
       if (::bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
+        auto errnoCopy = errno;
         doClose();
-        throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                  "failed to bind to async socket: " +
-                                  bindAddr.describe(),
-                                  errno);
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "failed to bind to async socket: " + bindAddr.describe(),
+            errnoCopy);
       }
     }
 
@@ -409,9 +421,11 @@ void AsyncSocket::connect(ConnectCallback* callback,
     for (const auto& opt: options) {
       int rv = opt.first.apply(fd_, opt.second);
       if (rv != 0) {
-        throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                                  withAddr("failed to set socket option"),
-                                  errno);
+        auto errnoCopy = errno;
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to set socket option"),
+            errnoCopy);
       }
     }
 
@@ -420,7 +434,8 @@ void AsyncSocket::connect(ConnectCallback* callback,
 
     rv = ::connect(fd_, saddr, address.getActualSize());
     if (rv < 0) {
-      if (errno == EINPROGRESS) {
+      auto errnoCopy = errno;
+      if (errnoCopy == EINPROGRESS) {
         // Connection in progress.
         if (timeout > 0) {
           // Start a timer in case the connection takes too long.
@@ -441,8 +456,10 @@ void AsyncSocket::connect(ConnectCallback* callback,
         }
         return;
       } else {
-        throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
-                                  "connect failed (immediately)", errno);
+        throw AsyncSocketException(
+            AsyncSocketException::NOT_OPEN,
+            "connect failed (immediately)",
+            errnoCopy);
       }
     }
 
@@ -679,8 +696,11 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
       bytesWritten = performWrite(vec, count, flags,
                                   &countWritten, &partialWritten);
       if (bytesWritten < 0) {
-        AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                               withAddr("writev failed"), errno);
+        auto errnoCopy = errno;
+        AsyncSocketException ex(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("writev failed"),
+            errnoCopy);
         return failWrite(__func__, callback, 0, ex);
       } else if (countWritten == count) {
         // We successfully wrote everything.
@@ -1355,8 +1375,11 @@ void AsyncSocket::handleRead() noexcept {
         return;
     } else if (bytesRead == READ_ERROR) {
       readErr_ = READ_ERROR;
-      AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                             withAddr("recv() failed"), errno);
+      auto errnoCopy = errno;
+      AsyncSocketException ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("recv() failed"),
+          errnoCopy);
       return failRead(__func__, ex);
     } else {
       assert(bytesRead == READ_EOF);
@@ -1416,8 +1439,11 @@ void AsyncSocket::handleWrite() noexcept {
   EventBase* originalEventBase = eventBase_;
   while (writeReqHead_ != nullptr && eventBase_ == originalEventBase) {
     if (!writeReqHead_->performWrite()) {
-      AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                             withAddr("writev() failed"), errno);
+      auto errnoCopy = errno;
+      AsyncSocketException ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("writev() failed"),
+          errnoCopy);
       return failWrite(__func__, ex);
     } else if (writeReqHead_->isComplete()) {
       // We finished this request
@@ -1591,9 +1617,11 @@ void AsyncSocket::handleConnect() noexcept {
   socklen_t len = sizeof(error);
   int rv = getsockopt(fd_, SOL_SOCKET, SO_ERROR, &error, &len);
   if (rv != 0) {
-    AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                           withAddr("error calling getsockopt() after connect"),
-                           errno);
+    auto errnoCopy = errno;
+    AsyncSocketException ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("error calling getsockopt() after connect"),
+        errnoCopy);
     VLOG(4) << "AsyncSocket::handleConnect(this=" << this << ", fd="
                << fd_ << " host=" << addr_.describe()
                << ") exception:" << ex.what();
