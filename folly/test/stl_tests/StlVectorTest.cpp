@@ -590,7 +590,7 @@ struct Alloc : AllocTracker, Ticker {
 
   std::allocator<T> a;
   int id;
-  explicit Alloc(int i = 8) : a(a), id(i) {}
+  explicit Alloc(int i = 8) : a(), id(i) {}
   Alloc(const Alloc& o) : a(o.a), id(o.id) {}
   Alloc(Alloc&& o) : a(move(o.a)), id(o.id) {}
   Alloc& operator=(const Alloc&) = default;
