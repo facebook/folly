@@ -36,7 +36,6 @@
 #include <folly/folly-config.h>
 #endif
 
-#include <folly/Random.h>
 #include <folly/Range.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
@@ -494,8 +493,6 @@ class SSLContext {
 
   static bool initialized_;
 
-  // Used in randomized next-proto pick / randomized cipherlist
-  Random::DefaultGenerator randomGenerator_;
   // To provide control over choice of server ciphersuites
   std::unique_ptr<std::discrete_distribution<int>> cipherListPicker_;
 

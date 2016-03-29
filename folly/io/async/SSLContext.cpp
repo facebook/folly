@@ -23,6 +23,7 @@
 
 #include <folly/Format.h>
 #include <folly/Memory.h>
+#include <folly/Random.h>
 #include <folly/SpinLock.h>
 
 // ---------------------------------------------------------------------
@@ -85,8 +86,6 @@ SSLContext::SSLContext(SSLVersion version) {
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);
 #endif
-
-  Random::seed(randomGenerator_);
 }
 
 SSLContext::~SSLContext() {
@@ -359,7 +358,8 @@ void SSLContext::switchCiphersIfTLS11(
       cipherListPicker_.reset(
           new std::discrete_distribution<int>(weights.begin(), weights.end()));
     }
-    auto index = (*cipherListPicker_)(randomGenerator_);
+    auto rng = ThreadLocalPRNG();
+    auto index = (*cipherListPicker_)(rng);
     if ((size_t)index >= tls11AltCipherlist.size()) {
       LOG(ERROR) << "Trying to pick alt TLS11 cipher index " << index
                  << ", but tls11AltCipherlist is of length "
@@ -499,7 +499,8 @@ void SSLContext::unsetNextProtocols() {
 
 size_t SSLContext::pickNextProtocols() {
   CHECK(!advertisedNextProtocols_.empty()) << "Failed to pickNextProtocols";
-  return nextProtocolDistribution_(randomGenerator_);
+  auto rng = ThreadLocalPRNG();
+  return nextProtocolDistribution_(rng);
 }
 
 int SSLContext::advertisedNextProtocolCallback(SSL* ssl,
