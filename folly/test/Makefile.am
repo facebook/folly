@@ -226,6 +226,7 @@ futures_test_SOURCES = \
     ../futures/test/HeaderCompileTest.cpp \
     ../futures/test/InterruptTest.cpp \
     ../futures/test/MapTest.cpp \
+    ../futures/test/NonCopyableLambdaTest.cpp \
     ../futures/test/PollTest.cpp \
     ../futures/test/PromiseTest.cpp \
     ../futures/test/ReduceTest.cpp \

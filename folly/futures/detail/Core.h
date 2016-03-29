@@ -21,13 +21,13 @@
 #include <stdexcept>
 #include <vector>
 
-#include <folly/Optional.h>
-#include <folly/MicroSpinLock.h>
-
-#include <folly/futures/Try.h>
-#include <folly/futures/Promise.h>
-#include <folly/futures/Future.h>
 #include <folly/Executor.h>
+#include <folly/Function.h>
+#include <folly/MicroSpinLock.h>
+#include <folly/Optional.h>
+#include <folly/futures/Future.h>
+#include <folly/futures/Promise.h>
+#include <folly/futures/Try.h>
 #include <folly/futures/detail/FSM.h>
 
 #include <folly/io/async/Request.h>
@@ -147,34 +147,13 @@ class Core {
     }
   }
 
-  template <typename F>
-  class LambdaBufHelper {
-   public:
-    template <typename FF>
-    explicit LambdaBufHelper(FF&& func) : func_(std::forward<FF>(func)) {}
-    void operator()(Try<T>&& t) {
-      SCOPE_EXIT { this->~LambdaBufHelper(); };
-      func_(std::move(t));
-    }
-   private:
-    F func_;
-  };
-
   /// Call only from Future thread.
   template <typename F>
   void setCallback(F func) {
     bool transitionToArmed = false;
     auto setCallback_ = [&]{
       context_ = RequestContext::saveContext();
-
-      // Move the lambda into the Core if it fits
-      if (sizeof(LambdaBufHelper<F>) <= lambdaBufSize) {
-        auto funcLoc = reinterpret_cast<LambdaBufHelper<F>*>(&lambdaBuf_);
-        new (funcLoc) LambdaBufHelper<F>(std::forward<F>(func));
-        callback_ = std::ref(*funcLoc);
-      } else {
-        callback_ = std::move(func);
-      }
+      callback_ = std::move(func);
     };
 
     FSM_START(fsm_)
@@ -395,13 +374,14 @@ class Core {
   // sizeof(Core<T>) == size(Core<U>).
   // See Core::convert for details.
 
-  // lambdaBuf occupies exactly one cache line
-  static constexpr size_t lambdaBufSize = 8 * sizeof(void*);
-  typename std::aligned_storage<lambdaBufSize>::type lambdaBuf_;
+  folly::Function<
+      void(Try<T>&&),
+      folly::FunctionMoveCtor::MAY_THROW,
+      8 * sizeof(void*)>
+      callback_;
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;
-  std::function<void(Try<T>&&)> callback_ {nullptr};
   FSM<State> fsm_;
   std::atomic<unsigned char> attached_;
   std::atomic<bool> active_ {true};
