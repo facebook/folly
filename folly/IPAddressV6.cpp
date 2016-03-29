@@ -48,6 +48,20 @@ void toAppend(IPAddressV6 addr, fbstring* result) {
   result->append(addr.str());
 }
 
+bool IPAddressV6::validate(StringPiece ip) {
+  if (ip.size() > 0 && ip.front() == '[' && ip.back() == ']') {
+    ip = ip.subpiece(1, ip.size() - 2);
+  }
+
+  constexpr size_t kStrMaxLen = INET6_ADDRSTRLEN;
+  std::array<char, kStrMaxLen + 1> ip_cstr;
+  const size_t len = std::min(ip.size(), kStrMaxLen);
+  std::memcpy(ip_cstr.data(), ip.data(), len);
+  ip_cstr[len] = 0;
+  struct in6_addr addr;
+  return 1 == inet_pton(AF_INET6, ip_cstr.data(), &addr);
+}
+
 // public default constructor
 IPAddressV6::IPAddressV6() {
 }

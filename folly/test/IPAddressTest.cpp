@@ -219,6 +219,22 @@ TEST(IPAddress, CtorDefault) {
   EXPECT_EQ(IPAddressV6("::0"), v6);
 }
 
+TEST(IPAddressV4, validate) {
+  EXPECT_TRUE(IPAddressV4::validate("0.0.0.0"));
+  EXPECT_FALSE(IPAddressV4::validate("0.0.0."));
+  EXPECT_TRUE(IPAddressV4::validate("127.127.127.127"));
+}
+
+TEST(IPAddressV6, validate) {
+  EXPECT_TRUE(IPAddressV6::validate("2620:0:1cfe:face:b00c::3"));
+  EXPECT_FALSE(IPAddressV6::validate("0.0.0.0"));
+  EXPECT_TRUE(IPAddressV6::validate("[2620:0:1cfe:face:b00c::3]"));
+  EXPECT_TRUE(IPAddressV6::validate("::ffff:0.1.1.1"));
+  EXPECT_TRUE(IPAddressV6::validate("2620:0000:1cfe:face:b00c:0000:0000:0003"));
+  EXPECT_TRUE(
+      IPAddressV6::validate("2620:0000:1cfe:face:b00c:0000:127.127.127.127"));
+}
+
 // Test addresses constructed using a in[6]_addr value
 TEST_P(IPAddressTest, CtorAddress) {
   AddressData param = GetParam();

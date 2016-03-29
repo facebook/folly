@@ -86,6 +86,8 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   static constexpr size_t kToFullyQualifiedSize =
     8 /*words*/ * 4 /*hex chars per word*/ + 7 /*separators*/;
 
+  static bool validate(StringPiece ip);
+
   /**
    * Create a new IPAddress instance from the provided binary data.
    * @throws IPAddressFormatException if the input length is not 16 bytes.

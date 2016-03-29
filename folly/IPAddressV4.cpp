@@ -44,6 +44,15 @@ void toAppend(IPAddressV4 addr, fbstring* result) {
   result->append(addr.str());
 }
 
+bool IPAddressV4::validate(StringPiece ip) {
+  constexpr size_t kStrMaxLen = INET_ADDRSTRLEN;
+  std::array<char, kStrMaxLen + 1> ip_cstr;
+  const size_t len = std::min(ip.size(), kStrMaxLen);
+  std::memcpy(ip_cstr.data(), ip.data(), len);
+  ip_cstr[len] = 0;
+  struct in_addr addr;
+  return 1 == inet_pton(AF_INET, ip_cstr.data(), &addr);
+}
 
 // public static
 IPAddressV4 IPAddressV4::fromLong(uint32_t src) {
