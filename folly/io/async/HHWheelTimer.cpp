@@ -229,29 +229,31 @@ size_t HHWheelTimer::cancelAll() {
   size_t count = 0;
 
   if (count_ != 0) {
-    decltype(buckets_) buckets;
-
-// Work around std::swap() bug in libc++
-//
-// http://llvm.org/bugs/show_bug.cgi?id=22106
-#if FOLLY_USE_LIBCPP
-    for (size_t i = 0; i < WHEEL_BUCKETS; ++i) {
-      for (size_t ii = 0; ii < WHEEL_SIZE; ++ii) {
-        std::swap(buckets_[i][ii], buckets[i][ii]);
-      }
-    }
-#else
-    std::swap(buckets, buckets_);
-#endif
-
-    for (auto& tick : buckets) {
+    const size_t numElements = WHEEL_BUCKETS * WHEEL_SIZE;
+    size_t maxBuckets = std::min(numElements, count_);
+    auto buckets = folly::make_unique<CallbackList[]>(maxBuckets);
+    size_t countBuckets = 0;
+    for (auto& tick : buckets_) {
       for (auto& bucket : tick) {
-        while (!bucket.empty()) {
-          auto& cb = bucket.front();
-          cb.cancelTimeout();
-          cb.callbackCanceled();
+        if (bucket.empty()) {
+          continue;
+        }
+        for (auto& cb : bucket) {
           count++;
         }
+        std::swap(bucket, buckets[countBuckets++]);
+        if (count >= count_) {
+          break;
+        }
+      }
+    }
+
+    for (size_t i = 0; i < countBuckets; ++i) {
+      auto& bucket = buckets[i];
+      while (!bucket.empty()) {
+        auto& cb = bucket.front();
+        cb.cancelTimeout();
+        cb.callbackCanceled();
       }
     }
   }
