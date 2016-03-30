@@ -229,8 +229,8 @@ size_t HHWheelTimer::cancelAll() {
   size_t count = 0;
 
   if (count_ != 0) {
-    const size_t numElements = WHEEL_BUCKETS * WHEEL_SIZE;
-    size_t maxBuckets = std::min(numElements, count_);
+    const uint64_t numElements = WHEEL_BUCKETS * WHEEL_SIZE;
+    auto maxBuckets = std::min(numElements, count_);
     auto buckets = folly::make_unique<CallbackList[]>(maxBuckets);
     size_t countBuckets = 0;
     for (auto& tick : buckets_) {
