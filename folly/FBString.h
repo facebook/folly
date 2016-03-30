@@ -106,29 +106,24 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 namespace folly {
 #endif
 
-// Different versions of gcc/clang support different versions of
-// the address sanitizer attribute.  Unfortunately, this attribute
-// has issues when inlining is used, so disable that as well.
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
-#  if __has_attribute(__no_sanitize__)
-#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-      __attribute__((__no_sanitize__("address"), __noinline__))
-#  elif __has_attribute(__no_address_safety_analysis__)
-#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-      __attribute__((__no_address_safety_analysis__, __noinline__))
-#  elif __has_attribute(__no_sanitize_address__)
-#   define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-      __attribute__((__no_sanitize_address__, __noinline__))
-#  endif
+#  define FBSTRING_SANITIZE_ADDRESS
 # endif
 #elif defined (__GNUC__) && \
+      (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ >= 5)) && \
       __SANITIZE_ADDRESS__
-# define FBSTRING_DISABLE_ADDRESS_SANITIZER \
-    __attribute__((__no_address_safety_analysis__, __noinline__))
+# define FBSTRING_SANITIZE_ADDRESS
 #endif
-#ifndef FBSTRING_DISABLE_ADDRESS_SANITIZER
-# define FBSTRING_DISABLE_ADDRESS_SANITIZER
+
+// When compiling with ASan, always heap-allocate the string even if
+// it would fit in-situ, so that ASan can detect access to the string
+// buffer after it has been invalidated (destroyed, resized, etc.).
+// Note that this flag doesn't remove support for in-situ strings, as
+// that would break ABI-compatibility and wouldn't allow linking code
+// compiled with this flag with code compiled without.
+#ifdef FBSTRING_SANITIZE_ADDRESS
+# define FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
 #endif
 
 namespace fbstring_detail {
@@ -341,17 +336,11 @@ public:
   fbstring_core(fbstring_core&& goner) noexcept {
     // Take goner's guts
     ml_ = goner.ml_;
-    if (goner.category() != Category::isSmall) {
-      // Clean goner's carcass
-      goner.reset();
-    }
+    // Clean goner's carcass
+    goner.reset();
   }
 
-  // NOTE(agallagher): The word-aligned copy path copies bytes which are
-  // outside the range of the string, and makes address sanitizer unhappy,
-  // so just disable it on this function.
-  fbstring_core(const Char *const data, const size_t size)
-      FBSTRING_DISABLE_ADDRESS_SANITIZER {
+  fbstring_core(const Char *const data, const size_t size) {
 #ifndef NDEBUG
 #ifndef _LIBSTDCXX_FBSTRING
     SCOPE_EXIT {
@@ -361,6 +350,7 @@ public:
 #endif
 #endif
 
+#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
     // Simplest case first: small strings are bitblitted
     if (size <= maxSmallSize) {
       // Layout is: Char* data_, size_t size_, size_t capacity_
@@ -377,7 +367,11 @@ public:
       if (reinterpret_cast<size_t>(data) & (sizeof(size_t) - 1)) {
         fbstring_detail::pod_copy(data, data + size, small_);
       } else {
-        // Copy one word at a time
+        // Copy one word at a time.
+        // NOTE: This reads bytes which are outside the range of the
+        // string, and makes ASan unhappy, but the small case is
+        // disabled under ASan.
+
         const size_t byteSize = size * sizeof(Char);
         constexpr size_t wordWidth = sizeof(size_t);
         switch ((byteSize + wordWidth - 1) / wordWidth) { // Number of words.
@@ -392,7 +386,9 @@ public:
         }
       }
       setSmallSize(size);
-    } else {
+    } else
+#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+    {
       if (size <= maxMediumSize) {
         // Medium strings are allocated normally. Don't forget to
         // allocate one extra Char for the terminating null.
@@ -584,17 +580,13 @@ public:
       }
     } else {
       assert(category() == Category::isSmall);
-      if (minCapacity > maxMediumSize) {
-        // large
-        auto const newRC = RefCounted::create(& minCapacity);
-        auto const size = smallSize();
-        // Also copies terminator.
-        fbstring_detail::pod_copy(small_, small_ + size + 1, newRC->data_);
-        ml_.data_ = newRC->data_;
-        ml_.size_ = size;
-        ml_.setCapacity(minCapacity, Category::isLarge);
-        assert(capacity() >= minCapacity);
-      } else if (minCapacity > maxSmallSize) {
+#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+      if (minCapacity <= maxSmallSize) {
+        // small
+        // Nothing to do, everything stays put
+      } else
+#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+      if (minCapacity <= maxMediumSize) {
         // medium
         // Don't forget to allocate one extra Char for the terminating null
         auto const allocSizeBytes =
@@ -607,8 +599,15 @@ public:
         ml_.size_ = size;
         ml_.setCapacity(allocSizeBytes / sizeof(Char) - 1, Category::isMedium);
       } else {
-        // small
-        // Nothing to do, everything stays put
+        // large
+        auto const newRC = RefCounted::create(& minCapacity);
+        auto const size = smallSize();
+        // Also copies terminator.
+        fbstring_detail::pod_copy(small_, small_ + size + 1, newRC->data_);
+        ml_.data_ = newRC->data_;
+        ml_.size_ = size;
+        ml_.setCapacity(minCapacity, Category::isLarge);
+        assert(capacity() >= minCapacity);
       }
     }
     assert(capacity() >= minCapacity);
@@ -621,10 +620,12 @@ public:
     if (category() == Category::isSmall) {
       sz = smallSize();
       newSz = sz + delta;
+#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
       if (FBSTRING_LIKELY(newSz <= maxSmallSize)) {
         setSmallSize(newSz);
         return small_ + sz;
       }
+#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
       reserve(expGrowth ? std::max(newSz, 2 * maxSmallSize) : newSz);
     } else {
       sz = ml_.size_;
@@ -2485,7 +2486,8 @@ FOLLY_FBSTRING_HASH
 
 #pragma GCC diagnostic pop
 
-#undef FBSTRING_DISABLE_ADDRESS_SANITIZER
+#undef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+#undef FBSTRING_SANITIZE_ADDRESS
 #undef throw
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
