@@ -16,6 +16,11 @@
 
 #include <folly/Traits.h>
 
+#include <cstring>
+#include <string>
+#include <utility>
+
+#include <folly/ScopeGuard.h>
 #include <gtest/gtest.h>
 
 using namespace folly;
@@ -106,6 +111,42 @@ TEST(Traits, relational) {
   EXPECT_TRUE( (folly::greater_than<uint8_t, 0u,   uint8_t>(254u)));
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(255u)));
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
+}
+
+template <typename T, typename... Args>
+void testIsRelocatable(Args&&... args) {
+  if (!IsRelocatable<T>::value) return;
+
+  // We use placement new on zeroed memory to avoid garbage subsections
+  char vsrc[sizeof(T)] = { 0 };
+  char vdst[sizeof(T)] = { 0 };
+  char vcpy[sizeof(T)];
+
+  T* src = new (vsrc) T(std::forward<Args>(args)...);
+  SCOPE_EXIT { src->~T(); };
+  std::memcpy(vcpy, vsrc, sizeof(T));
+  T deep(*src);
+  T* dst = new (vdst) T(std::move(*src));
+  SCOPE_EXIT { dst->~T(); };
+
+  EXPECT_EQ(deep, *dst);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+  EXPECT_EQ(deep, *reinterpret_cast<T*>(vcpy));
+#pragma GCC diagnostic pop
+
+  // This test could technically fail; however, this is what relocation
+  // almost always means, so it's a good test to have
+  EXPECT_EQ(std::memcmp(vcpy, vdst, sizeof(T)), 0);
+}
+
+TEST(Traits, actuallyRelocatable) {
+  // Ensure that we test stack and heap allocation for strings with in-situ
+  // capacity
+  testIsRelocatable<std::string>("1");
+  testIsRelocatable<std::string>(sizeof(std::string) + 1, 'x');
+
+  testIsRelocatable<std::vector<char>>(5, 'g');
 }
 
 struct membership_no {};

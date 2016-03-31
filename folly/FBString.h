@@ -975,6 +975,7 @@ public:
                                 > const_reverse_iterator;
 
   static const size_type npos;                     // = size_type(-1)
+  typedef std::true_type IsRelocatable;
 
 private:
   static void procrustes(size_type& n, size_type nmax) {

@@ -386,7 +386,10 @@ constexpr construct_in_place_t construct_in_place{};
 
 } // namespace folly
 
+// gcc-5.0 changed string's implementation in libgcc to be non-relocatable
+#if __GNUC__ < 5
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string);
+#endif
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector);
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::list);
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque);
