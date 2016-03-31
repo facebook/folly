@@ -239,6 +239,8 @@ public:
   // initialized (the beginning of the expanded portion). The caller
   // is expected to fill the expanded area appropriately.
   // If expGrowth is true, exponential growth is guaranteed.
+  // It is not guaranteed not to reallocate even if size() + delta <
+  // capacity(), so all references to the buffer are invalidated.
   Char* expand_noinit(size_t delta, bool expGrowth);
   // Expands the string by one character and sets the last character
   // to c.
@@ -290,6 +292,18 @@ private:
  * to extract capacity/category.
  */
 template <class Char> class fbstring_core {
+protected:
+// It's MSVC, so we just have to guess ... and allow an override
+#ifdef _MSC_VER
+# ifdef FOLLY_ENDIAN_BE
+  static constexpr auto kIsLittleEndian = false;
+# else
+  static constexpr auto kIsLittleEndian = true;
+# endif
+#else
+  static constexpr auto kIsLittleEndian =
+      __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
+#endif
 public:
   fbstring_core() noexcept { reset(); }
 
@@ -645,7 +659,7 @@ public:
   }
 
   void push_back(Char c) {
-    *expand_noinit(1, /* expGrowth */ true) = c;
+    *expand_noinit(1, /* expGrowth = */ true) = c;
   }
 
   size_t size() const {
@@ -1313,7 +1327,7 @@ public:
     }
 
     fbstring_detail::pod_copy(
-        s, s + n, store_.expand_noinit(n, /* expGrowth */ true));
+        s, s + n, store_.expand_noinit(n, /* expGrowth = */ true));
     assert(size() == oldSize + n);
     return *this;
   }
@@ -1502,42 +1516,23 @@ private:
 
   template <class FwdIterator>
   iterator insertImpl(const_iterator i,
-                  FwdIterator s1, FwdIterator s2, std::forward_iterator_tag) {
+                      FwdIterator s1,
+                      FwdIterator s2,
+                      std::forward_iterator_tag) {
     Invariant checker(*this);
 
     const size_type pos = i - begin();
-    const typename std::iterator_traits<FwdIterator>::difference_type n2 =
-      std::distance(s1, s2);
-    assert(n2 >= 0);
-    using namespace fbstring_detail;
+    auto n = std::distance(s1, s2);
+    assert(n >= 0);
     assert(pos <= size());
 
-    const typename std::iterator_traits<FwdIterator>::difference_type maxn2 =
-      capacity() - size();
-    if (maxn2 < n2) {
-      // realloc the string
-      reserve(size() + n2);
-      i = begin() + pos;
-    }
-    if (pos + n2 <= size()) {
-      const iterator tailBegin = end() - n2;
-      store_.expand_noinit(n2);
-      fbstring_detail::pod_copy(tailBegin, tailBegin + n2, end() - n2);
-      std::copy(const_reverse_iterator(tailBegin), const_reverse_iterator(i),
-                reverse_iterator(tailBegin + n2));
-      std::copy(s1, s2, begin() + pos);
-    } else {
-      FwdIterator t = s1;
-      const size_type old_size = size();
-      std::advance(t, old_size - pos);
-      const size_t newElems = std::distance(t, s2);
-      store_.expand_noinit(n2);
-      std::copy(t, s2, begin() + old_size);
-      fbstring_detail::pod_copy(data() + pos, data() + old_size,
-                                 begin() + old_size + newElems);
-      std::copy(s1, t, begin() + pos);
-    }
-    return begin() + pos;
+    auto oldSize = size();
+    store_.expand_noinit(n, /* expGrowth = */ true);
+    auto b = begin();
+    fbstring_detail::pod_move(b + pos, b + oldSize, b + pos + n);
+    std::copy(s1, s2, b + pos);
+
+    return b + pos;
   }
 
   template <class InputIterator>
