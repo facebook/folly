@@ -1586,10 +1586,18 @@ int AsyncSSLSocket::eorAwareSSLWrite(SSL *ssl, const void *buf, int n,
   return n;
 }
 
-void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int /* ret */) {
+void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int ret) {
   AsyncSSLSocket *sslSocket = AsyncSSLSocket::getFromSSL(ssl);
   if (sslSocket->handshakeComplete_ && (where & SSL_CB_HANDSHAKE_START)) {
     sslSocket->renegotiateAttempted_ = true;
+  }
+  if (where & SSL_CB_READ_ALERT) {
+    const char* type = SSL_alert_type_string(ret);
+    if (type) {
+      const char* desc = SSL_alert_desc_string(ret);
+      sslSocket->alertsReceived_.emplace_back(
+          *type, StringPiece(desc, std::strlen(desc)));
+    }
   }
 }
 

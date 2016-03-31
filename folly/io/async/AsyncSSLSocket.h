@@ -625,6 +625,19 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return sigAlgs;
   }
 
+  std::string getSSLAlertsReceived() const {
+    std::string ret;
+
+    for (const auto& alert : alertsReceived_) {
+      if (!ret.empty()) {
+        ret.append(",");
+      }
+      ret.append(folly::to<std::string>(alert.first, ": ", alert.second));
+    }
+
+    return ret;
+  }
+
   /**
    * Get the list of shared ciphers between the server and the client.
    * Works well for only SSLv2, not so good for SSLv3 or TLSv1.
@@ -842,6 +855,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool cacheAddrOnFailure_{false};
   bool bufferMovableEnabled_{false};
   std::unique_ptr<ssl::ClientHelloInfo> clientHelloInfo_;
+  std::vector<std::pair<char, StringPiece>> alertsReceived_;
 
   // Time taken to complete the ssl handshake.
   std::chrono::steady_clock::time_point handshakeStartTime_;
