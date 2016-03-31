@@ -17,17 +17,18 @@
 #pragma once
 
 #include <string.h>
+#include <stdlib.h>
 
 #include <folly/portability/Config.h>
 
-#if !FOLLY_HAVE_MEMRCHR || defined(_WIN32) || defined(__APPLE__)
-#include <stdint.h>
+#if !FOLLY_HAVE_MEMRCHR
 extern "C" void* memrchr(const void* s, int c, size_t n);
 #endif
 
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+extern "C" char* strndup(const char* a, size_t len);
+#endif
+
 #ifdef _WIN32
-extern "C" {
-char* strndup(const char* a, size_t len);
-char* strtok_r(char* str, char const* delim, char** ctx);
-}
+extern "C" char* strtok_r(char* str, char const* delim, char** ctx);
 #endif

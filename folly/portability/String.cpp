@@ -16,7 +16,7 @@
 
 #include <folly/portability/String.h>
 
-#if !FOLLY_HAVE_MEMRCHR || defined(_WIN32) || defined(__APPLE__)
+#if !FOLLY_HAVE_MEMRCHR
 extern "C" void* memrchr(const void* s, int c, size_t n) {
   for (auto p = ((const char*)s) + n - 1; p >= (const char*)s; p--) {
     if (*p == (char)c) {
@@ -27,23 +27,24 @@ extern "C" void* memrchr(const void* s, int c, size_t n) {
 }
 #endif
 
-#ifdef _WIN32
-#include <stdlib.h>
-
-extern "C" {
-char* strndup(const char* a, size_t len) {
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+extern "C" char* strndup(const char* a, size_t len) {
   auto neededLen = strlen(a);
   if (neededLen > len) {
-    neededLen = len - 1;
+    neededLen = len;
   }
   char* buf = (char*)malloc((neededLen + 1) * sizeof(char));
+  if (!buf) {
+    return nullptr;
+  }
   memcpy(buf, a, neededLen);
   buf[neededLen] = '\0';
   return buf;
 }
+#endif
 
-char* strtok_r(char* str, char const* delim, char** ctx) {
+#ifdef _WIN32
+extern "C" char* strtok_r(char* str, char const* delim, char** ctx) {
   return strtok_s(str, delim, ctx);
-}
 }
 #endif
