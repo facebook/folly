@@ -76,3 +76,18 @@ VirtualClass::~VirtualClass() {
 
 void VirtualClass::doNothing() {
 };
+
+LargeClass::LargeClass() {
+  // Suppress unused field warning
+  data[0] = 42;
+}
+
+void LargeClass::operator()() const {}
+
+void invoke(std::function<void()> f) {
+  f();
+}
+
+void invoke(folly::Function<void()> f) {
+  f();
+}

@@ -282,6 +282,40 @@ BENCHMARK(return_code_noexcept, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(std_function_create_move_invoke, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    std::function<void()> f(a);
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(Function_create_move_invoke, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    folly::Function<void()> f(a);
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(std_function_create_move_invoke_ref, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    std::function<void()> f(std::ref(a));
+    invoke(std::move(f));
+  }
+}
+
+BENCHMARK(Function_create_move_invoke_ref, iters) {
+  LargeClass a;
+  for (size_t i = 0; i < iters; ++i) {
+    folly::Function<void()> f(std::ref(a));
+    invoke(std::move(f));
+  }
+}
+
 // main()
 
 int main(int argc, char** argv) {

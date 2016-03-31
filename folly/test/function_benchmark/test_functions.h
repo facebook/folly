@@ -18,7 +18,10 @@
 #define TEST_FUNCTIONS_H_
 
 #include <exception>
+#include <functional>
 #include <string>
+
+#include <folly/Function.h>
 
 void doNothing();
 
@@ -29,6 +32,8 @@ std::string returnString();
 std::string returnStringNoExcept() noexcept;
 int returnCode(int value);
 int returnCodeNoExcept(int value) noexcept;
+void invoke(std::function<void()>);
+void invoke(folly::Function<void()>);
 
 class TestClass {
  public:
@@ -39,6 +44,15 @@ class VirtualClass {
  public:
   virtual ~VirtualClass();
   virtual void doNothing();
+};
+
+class LargeClass {
+ public:
+  LargeClass();
+  void operator()() const; // do nothing
+ private:
+  // Avoid small object optimization.
+  char data[1024];
 };
 
 #endif // TEST_FUNCTIONS_H_
