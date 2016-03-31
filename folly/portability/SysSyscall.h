@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYSCALL_H_
-#define FOLLY_SYSCALL_H_
+#pragma once
 
+#ifndef _WIN32
 #include <sys/syscall.h>
 
 #if defined(__APPLE__)
@@ -26,5 +26,4 @@
 #else
 #define FOLLY_SYS_gettid __NR_gettid
 #endif
-
 #endif

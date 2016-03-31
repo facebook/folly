@@ -27,7 +27,7 @@
 #include <folly/Portability.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 #include <folly/experimental/fibers/FiberManager.h>
-#include <folly/portability/Syscall.h>
+#include <folly/portability/SysSyscall.h>
 
 namespace folly { namespace fibers {
 

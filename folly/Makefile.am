@@ -276,10 +276,10 @@ nobase_follyinclude_HEADERS = \
 	portability/Memory.h \
 	portability/String.h \
 	portability/Strings.h \
-	portability/Syscall.h \
 	portability/SysFile.h \
 	portability/SysMman.h \
 	portability/SysStat.h \
+	portability/SysSyscall.h \
 	portability/SysTime.h \
 	portability/SysTypes.h \
 	portability/SysUio.h \
