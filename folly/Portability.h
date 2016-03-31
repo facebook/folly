@@ -285,10 +285,9 @@ namespace std { typedef ::max_align_t max_align_t; }
 // Hide a GCC specific thing that breaks MSVC if left alone.
 # define __extension__
 
-#ifdef _M_IX86_FP
-# define FOLLY_SSE _M_IX86_FP
-# define FOLLY_SSE_MINOR 0
-#endif
+// We have compiler support for the newest of the new, but
+// MSVC doesn't tell us that.
+#define __SSE4_2__ 1
 
 #endif
 

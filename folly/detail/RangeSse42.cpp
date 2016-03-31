@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-
-
 #include "RangeSse42.h"
 
 #include <glog/logging.h>
 #include <folly/Portability.h>
-
-
 
 //  Essentially, two versions of this file: one with an SSE42 implementation
 //  and one with a fallback implementation. We determine which version to use by
@@ -29,34 +25,24 @@
 //
 //  TODO: Maybe this should be done by the build system....
 #if !FOLLY_SSE_PREREQ(4, 2)
-
-
-
 namespace folly {
-
 namespace detail {
-
 size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
                                  const StringPieceLite needles) {
   CHECK(false) << "Function " << __func__ << " only works with SSE42!";
   return qfind_first_byte_of_nosse(haystack, needles);
 }
-
 }
-
 }
-
-
-
 # else
-
-
-
 #include <cstdint>
 #include <limits>
 #include <string>
+
 #include <emmintrin.h>
+#include <nmmintrin.h>
 #include <smmintrin.h>
+
 #include <folly/Likely.h>
 
 //  GCC 4.9 with ASAN has a problem: a function with no_sanitize_address calling
@@ -68,10 +54,14 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
     __GNUC_PREREQ(4, 9)
 # define _mm_load_si128(p) (*(p))
 # define _mm_loadu_si128(p) ((__m128i)__builtin_ia32_loaddqu((const char*)(p)))
+# ifdef _mm_cmpestri
+#  undef _mm_cmpestri
+# endif
+# define _mm_cmpestri(a, b, c, d, e) \
+  __builtin_ia32_pcmpestri128((__v16qi)(a), b, (__v16qi)(c), d, e)
 #endif
 
 namespace folly {
-
 namespace detail {
 
 // It's okay if pages are bigger than this (as powers of two), but they should
@@ -116,8 +106,8 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   // do an unaligned load for first block of haystack
   auto arr1 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(haystack.data()));
-  auto index = __builtin_ia32_pcmpestri128((__v16qi)arr2, needles.size(),
-                                           (__v16qi)arr1, haystack.size(), 0);
+  auto index = _mm_cmpestri(arr2, needles.size(),
+                            arr1, haystack.size(), 0);
   if (index < 16) {
     return index;
   }
@@ -127,9 +117,9 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   for (; i < haystack.size(); i+= 16) {
     auto arr1 = _mm_load_si128(
         reinterpret_cast<const __m128i*>(haystack.data() + i));
-    auto index = __builtin_ia32_pcmpestri128(
-        (__v16qi)arr2, needles.size(),
-        (__v16qi)arr1, haystack.size() - i, 0);
+    auto index = _mm_cmpestri(
+        arr2, needles.size(),
+        arr1, haystack.size() - i, 0);
     if (index < 16) {
       return i + index;
     }
@@ -172,17 +162,17 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
   // This load is safe because needles.size() >= 16
   auto arr2 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(needles.data()));
-  size_t b = __builtin_ia32_pcmpestri128(
-    (__v16qi)arr2, 16, (__v16qi)arr1, haystack.size() - blockStartIdx, 0);
+  size_t b = _mm_cmpestri(
+      arr2, 16, arr1, haystack.size() - blockStartIdx, 0);
 
   size_t j = nextAlignedIndex(needles.data());
   for (; j < needles.size(); j += 16) {
     arr2 = _mm_load_si128(
         reinterpret_cast<const __m128i*>(needles.data() + j));
 
-    auto index = __builtin_ia32_pcmpestri128(
-      (__v16qi)arr2, needles.size() - j,
-      (__v16qi)arr1, haystack.size() - blockStartIdx, 0);
+    auto index = _mm_cmpestri(
+      arr2, needles.size() - j,
+      arr1, haystack.size() - blockStartIdx, 0);
     b = std::min<size_t>(index, b);
   }
 
@@ -229,11 +219,6 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
 
   return std::string::npos;
 }
-
 }
-
 }
-
-
-
 #endif
