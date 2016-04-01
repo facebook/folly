@@ -180,24 +180,29 @@ void SocketAddress::setFromHostPort(const char* hostAndPort) {
   setFromAddrInfo(results.info);
 }
 
-void SocketAddress::setFromPath(const char* path, size_t len) {
+void SocketAddress::setFromPath(StringPiece path) {
+  // Before we touch storage_, check to see if the length is too big.
+  // Note that "storage_.un.addr->sun_path" may not be safe to evaluate here,
+  // but sizeof() just uses its type, and does't evaluate it.
+  if (path.size() > sizeof(storage_.un.addr->sun_path)) {
+    throw std::invalid_argument(
+        "socket path too large to fit into sockaddr_un");
+  }
+
   if (!external_) {
     storage_.un.init();
     external_ = true;
   }
 
+  size_t len = path.size();
   storage_.un.len = offsetof(struct sockaddr_un, sun_path) + len;
-  if (len > sizeof(storage_.un.addr->sun_path)) {
-    throw std::invalid_argument(
-      "socket path too large to fit into sockaddr_un");
-  } else if (len == sizeof(storage_.un.addr->sun_path)) {
-    // Note that there will be no terminating NUL in this case.
-    // We allow this since getsockname() and getpeername() may return
-    // Unix socket addresses with paths that fit exactly in sun_path with no
-    // terminating NUL.
-    memcpy(storage_.un.addr->sun_path, path, len);
-  } else {
-    memcpy(storage_.un.addr->sun_path, path, len + 1);
+  memcpy(storage_.un.addr->sun_path, path.data(), len);
+  // If there is room, put a terminating NUL byte in sun_path.  In general the
+  // path should be NUL terminated, although getsockname() and getpeername()
+  // may return Unix socket addresses with paths that fit exactly in sun_path
+  // with no terminating NUL.
+  if (len < sizeof(storage_.un.addr->sun_path)) {
+    storage_.un.addr->sun_path[len] = '\0';
   }
 }
 

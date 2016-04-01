@@ -27,6 +27,7 @@
 
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
+#include <folly/Range.h>
 
 namespace folly {
 
@@ -278,15 +279,11 @@ class SocketAddress {
    *
    * Raises std::invalid_argument on error.
    */
-  void setFromPath(const char* path) {
-    setFromPath(path, strlen(path));
-  }
+  void setFromPath(StringPiece path);
 
-  void setFromPath(const std::string& path) {
-    setFromPath(path.data(), path.length());
+  void setFromPath(const char* path, size_t length) {
+    setFromPath(StringPiece{path, length});
   }
-
-  void setFromPath(const char* path, size_t length);
 
   // a typedef that allow us to compile against both winsock & POSIX sockets:
   using SocketDesc = decltype(socket(0,0,0)); // POSIX: int, winsock: unsigned
