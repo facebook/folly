@@ -26,8 +26,10 @@
  * type of the embedded callable. E.g. a `folly::Function<int(int)>`
  * can wrap callables that return an `int` when passed an `int`. This can be a
  * function pointer or any class object implementing one or both of
+ *
  *     int operator(int);
  *     int operator(int) const;
+ *
  * If both are defined, the non-const one takes precedence.
  *
  * Unlike `std::function`, a `folly::Function` can wrap objects that are not
@@ -42,6 +44,7 @@
  * const-reference.
  *
  * For example:
+ *
  *     class Foo {
  *      public:
  *       void operator()() {
@@ -57,6 +60,7 @@
  *         foo_();
  *       }
  *     };
+ *
  * Even though `mutateFoo` is a const-method, so it can only reference `foo_`
  * as const, it is able to call the non-const `operator()` of the Foo
  * object that is embedded in the foo_ function.
@@ -151,7 +155,7 @@
  * Casting from a non-const to a const signature is potentially dangerous,
  * as it means that a function that may change its inner state when invoked
  * is made possible to call from a const context. Therefore this cast does
- * not happen implicitly. The function `folly::constCastfolly::Function` can
+ * not happen implicitly. The function `folly::constCastFunction` can
  * be used to perform the cast.
  *
  *     // Mutable lambda: can only be stored in a non-const folly::Function:
@@ -161,7 +165,7 @@
  *
  *     // const-cast to a const folly::Function:
  *     folly::Function<void() const> print_number_const =
- *       constCastfolly::Function(std::move(print_number));
+ *       constCastFunction(std::move(print_number));
  *
  * When to use const function types?
  * Generally, only when you need them. When you use a `folly::Function` as a
@@ -180,32 +184,32 @@
  *
  *     std::function<void(void)> stdfunc = someCallable;
  *
- *     folly::Function<void(void) const> uniqfunc = constCastfolly::Function(
+ *     folly::Function<void(void) const> uniqfunc = constCastFunction(
  *       folly::Function<void(void)>(someCallable)
  *     );
  *
  * You need to wrap the callable first in a non-const `folly::Function` to
  * select a non-const invoke operator (or the const one if no non-const one is
  * present), and then move it into a const `folly::Function` using
- * `constCastfolly::Function`.
- * The name of `constCastfolly::Function` should warn you that something
+ * `constCastFunction`.
+ * The name of `constCastFunction` should warn you that something
  * potentially dangerous is happening. As a matter of fact, using
  * `std::function` always involves this potentially dangerous aspect, which
  * is why it is not considered fully const-safe or even const-correct.
  * However, in most of the cases you will not need the dangerous aspect at all.
  * Either you do not require invokation of the function from a const context,
- * in which case you do not need to use `constCastfolly::Function` and just
+ * in which case you do not need to use `constCastFunction` and just
  * use the inner `folly::Function` in the example above, i.e. just use a
  * non-const `folly::Function`. Or, you may need invokation from const, but
  * the callable you are wrapping does not mutate its state (e.g. it is a class
  * object and implements `operator() const`, or it is a normal,
  * non-mutable lambda), in which case you can wrap the callable in a const
- * `folly::Function` directly, without using `constCastfolly::Function`.
+ * `folly::Function` directly, without using `constCastFunction`.
  * Only if you require invokation from a const context of a callable that
  * may mutate itself when invoked you have to go through the above procedure.
  * However, in that case what you do is potentially dangerous and requires
  * the equivalent of a `const_cast`, hence you need to call
- * `constCastfolly::Function`.
+ * `constCastFunction`.
  *
  * `folly::Function` also has two additional template paremeters:
  *   * `NTM`: if set to `folly::FunctionMoveCtor::NO_THROW`, the
