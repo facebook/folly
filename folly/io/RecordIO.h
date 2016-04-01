@@ -22,7 +22,8 @@
  * or deleted chunks of the file, or modified data.  When reading, you may lose
  * corrupted records, but the stream will resynchronize automatically.
  */
-#ifndef FOLLY_IO_RECORDIO_H_
+
+#pragma once
 #define FOLLY_IO_RECORDIO_H_
 
 #include <atomic>
@@ -176,5 +177,3 @@ RecordInfo validateRecord(ByteRange range, uint32_t fileId);
 }  // namespaces
 
 #include <folly/io/RecordIO-inl.h>
-
-#endif /* FOLLY_IO_RECORDIO_H_ */

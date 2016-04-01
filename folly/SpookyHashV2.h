@@ -43,8 +43,7 @@
 // slower than MD5.
 //
 
-#ifndef FOLLY_SPOOKYHASHV2_H_
-#define FOLLY_SPOOKYHASHV2_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -307,5 +306,3 @@ private:
 
 }  // namespace hash
 }  // namespace folly
-
-#endif

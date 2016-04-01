@@ -17,8 +17,7 @@
 // @author Bo Hu (bhu@fb.com)
 // @author Jordan DeLong (delong.j@fb.com)
 
-#ifndef PRODUCER_CONSUMER_QUEUE_H_
-#define PRODUCER_CONSUMER_QUEUE_H_
+#pragma once
 
 #include <atomic>
 #include <cassert>
@@ -174,5 +173,3 @@ private:
 };
 
 }
-
-#endif

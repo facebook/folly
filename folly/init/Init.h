@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef INIT_LIGHT_BASE_H
-#define INIT_LIGHT_BASE_H
+
+#pragma once
 
 /*
  * Calls common init functions in the necessary order
@@ -31,5 +31,3 @@ namespace folly {
 void init(int* argc, char*** argv, bool removeFlags = true);
 
 } // folly
-
-#endif

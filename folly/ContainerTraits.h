@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_CONTAINER_TRAITS_H_
-#define FOLLY_BASE_CONTAINER_TRAITS_H_
+#pragma once
 
 #include <folly/Traits.h>
 
@@ -41,5 +40,3 @@ container_emplace_back_or_push_back(Container& container, Args&&... args) {
 }
 
 }
-
-#endif

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ARENA_H_
+#pragma once
 #define FOLLY_ARENA_H_
 
 #include <cassert>
@@ -243,5 +243,3 @@ struct IsArenaAllocator<SysArena> : std::true_type { };
 }  // namespace folly
 
 #include <folly/Arena-inl.h>
-
-#endif /* FOLLY_ARENA_H_ */

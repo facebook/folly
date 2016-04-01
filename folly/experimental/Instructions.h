@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
-#define FOLLY_EXPERIMENTAL_INSTRUCTIONS_H
+#pragma once
 
 #include <glog/logging.h>
 
@@ -75,5 +74,3 @@ struct Haswell : public Nehalem {
 };
 
 }}}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_INSTRUCTIONS_H

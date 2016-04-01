@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_CACHELOCALITY_H_
-#define FOLLY_DETAIL_CACHELOCALITY_H_
+#pragma once
 
 #include <sched.h>
 #include <algorithm>
@@ -346,5 +345,3 @@ Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc();
 
 } // namespace detail
 } // namespace folly
-
-#endif /* FOLLY_DETAIL_CacheLocality_H_ */

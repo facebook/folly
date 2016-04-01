@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_BENCH_H_
-#define FOLLY_GEN_BENCH_H_
+#pragma once
 
 #include <folly/Benchmark.h>
 
@@ -31,5 +30,3 @@ static bool FB_ANONYMOUS_VARIABLE(benchGen) = (             \
     }), true)
 #define BENCH_GEN(gen) BENCH_GEN_IMPL(gen, "")
 #define BENCH_GEN_REL(gen) BENCH_GEN_IMPL(gen, "%")
-
-#endif

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_CORE_H
-#define FOLLY_GEN_CORE_H
+#pragma once
+#define FOLLY_GEN_CORE_H_
 
 namespace folly { namespace gen {
 
@@ -41,5 +41,3 @@ class Chain;
 }} // folly::gen
 
 #include <folly/gen/Core-inl.h>
-
-#endif // FOLLY_GEN_CORE_H

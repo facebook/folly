@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_PARALLELMAP_H
-#define FOLLY_GEN_PARALLELMAP_H
+#pragma once
+#define FOLLY_GEN_PARALLELMAP_H_
 
 #include <folly/gen/Core.h>
 
@@ -46,5 +46,3 @@ template<class Predicate,
 }}  // namespaces
 
 #include <folly/gen/ParallelMap-inl.h>
-
-#endif  // FOLLY_GEN_PARALLELMAP_H

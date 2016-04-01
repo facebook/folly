@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SMALLLOCKS_H_
-#define FOLLY_SMALLLOCKS_H_
+#pragma once
 
 /*
  * This header defines a few very small mutex types.  These are useful
@@ -40,6 +39,4 @@
 #include <folly/Portability.h>
 #if FOLLY_X64 || FOLLY_A64 || FOLLY_PPC64
 #include <folly/PicoSpinLock.h>
-#endif
-
 #endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TESTUTILS_H
-#define FOLLY_TESTUTILS_H
+#pragma once
 
 #include <gtest/gtest.h>
 
@@ -25,5 +24,3 @@
 // a normal test failure; there is only an effect if the test framework
 // interprets the message.
 #define SKIP() GTEST_FATAL_FAILURE_("Test skipped by client")
-
-#endif // FOLLY_TESTUTILS_H

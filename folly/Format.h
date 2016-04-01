@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FORMAT_H_
+#pragma once
 #define FOLLY_FORMAT_H_
 
 #include <cstdio>
@@ -433,5 +433,3 @@ vformatChecked(Str* out, StringPiece fmt, Container&& container) {
 #include <folly/Format-inl.h>
 
 #pragma GCC diagnostic pop
-
-#endif /* FOLLY_FORMAT_H_ */

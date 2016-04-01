@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SAFEASSERT_H_
-#define FOLLY_SAFEASSERT_H_
+#pragma once
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
@@ -50,5 +49,3 @@ namespace folly { namespace detail {
     unsigned int line,
     const char* function);
 }}  // namespace folly
-
-#endif /* FOLLY_SAFEASSERT_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_SLOWFINGERPRINT_H_
-#define FOLLY_DETAIL_SLOWFINGERPRINT_H_
+#pragma once
 
 #include <folly/Fingerprint.h>
 #include <folly/detail/FingerprintPolynomial.h>
@@ -88,5 +87,3 @@ class SlowFingerprint {
 
 }  // namespace detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_SLOWFINGERPRINT_H_ */

@@ -21,8 +21,7 @@
  * @author: Andrei Alexandrescu (andrei.alexandrescu@fb.com)
  */
 
-#ifndef SYNCHRONIZED_H_
-#define SYNCHRONIZED_H_
+#pragma once
 
 #include <type_traits>
 #include <mutex>
@@ -762,5 +761,3 @@ void lockInOrder(P1& p1, P2& p2) {
             else
 
 } /* namespace folly */
-
-#endif // SYNCHRONIZED_H_

@@ -16,8 +16,7 @@
 
 // Some utility routines relating to unicode.
 
-#ifndef FOLLY_UNICODE_H_
-#define FOLLY_UNICODE_H_
+#pragma once
 
 #include <folly/FBString.h>
 
@@ -35,5 +34,3 @@ fbstring codePointToUtf8(char32_t cp);
 //////////////////////////////////////////////////////////////////////
 
 }
-
-#endif

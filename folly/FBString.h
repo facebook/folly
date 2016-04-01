@@ -17,8 +17,7 @@
 // @author: Andrei Alexandrescu (aalexandre)
 // String type.
 
-#ifndef FOLLY_BASE_FBSTRING_H_
-#define FOLLY_BASE_FBSTRING_H_
+#pragma once
 
 #include <atomic>
 #include <limits>
@@ -2492,5 +2491,3 @@ FOLLY_FBSTRING_HASH
 #undef NDEBUG
 #undef FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
 #endif // FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
-
-#endif // FOLLY_BASE_FBSTRING_H_

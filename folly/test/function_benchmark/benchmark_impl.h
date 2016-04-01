@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef BENCHMARK_IMPL_H_
-#define BENCHMARK_IMPL_H_
+
+#pragma once
 
 #include <functional>
 
@@ -49,5 +49,3 @@ void BM_invoke_fn_template_impl(int iters, const T& fn) {
     fn();
   }
 }
-
-#endif // BENCHMARK_IMPL_H_

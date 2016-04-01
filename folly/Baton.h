@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BATON_H
-#define FOLLY_BATON_H
+#pragma once
 
 #include <stdint.h>
 #include <atomic>
@@ -297,5 +296,3 @@ struct Baton {
 };
 
 } // namespace folly
-
-#endif

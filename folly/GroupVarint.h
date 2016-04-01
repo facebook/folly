@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GROUPVARINT_H_
-#define FOLLY_GROUPVARINT_H_
+#pragma once
 
 #if !defined(__GNUC__) && !defined(_MSC_VER)
 #error GroupVarint.h requires GCC or MSVC
@@ -618,4 +617,3 @@ typedef GroupVarintDecoder<uint64_t> GroupVarint64Decoder;
 }  // namespace folly
 
 #endif /* FOLLY_X64 || defined(__i386__) || FOLLY_PPC64 */
-#endif /* FOLLY_GROUPVARINT_H_ */

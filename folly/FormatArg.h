@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FORMATARG_H_
-#define FOLLY_FORMATARG_H_
+#pragma once
 
 #include <stdexcept>
 #include <folly/Conv.h>
@@ -275,5 +274,3 @@ inline int FormatArg::splitIntKey() {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_FORMATARG_H_ */

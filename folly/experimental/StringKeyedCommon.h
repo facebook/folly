@@ -16,8 +16,7 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDCOMMON_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDCOMMON_H_
+#pragma once
 
 #include <memory>
 #include <folly/Range.h>
@@ -40,5 +39,3 @@ void stringPieceDel(StringPiece piece, const Alloc& alloc) {
 }
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDCOMMON_H_ */

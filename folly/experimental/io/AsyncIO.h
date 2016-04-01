@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_ASYNCIO_H_
-#define FOLLY_IO_ASYNCIO_H_
+#pragma once
 
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -251,5 +250,3 @@ class AsyncIOQueue {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_IO_ASYNCIO_H_ */

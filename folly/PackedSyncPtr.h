@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_PACKEDSYNCPTR_H_
-#define FOLLY_PACKEDSYNCPTR_H_
+#pragma once
 
 #include <folly/Portability.h>
 
@@ -147,5 +146,3 @@ static_assert(sizeof(PackedSyncPtr<void>) == 8,
               "messed up");
 
 }
-
-#endif

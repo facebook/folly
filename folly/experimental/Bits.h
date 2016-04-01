@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_BITS_H_
-#define FOLLY_EXPERIMENTAL_BITS_H_
+#pragma once
 
 #include <cstddef>
 #include <type_traits>
@@ -304,5 +303,3 @@ inline size_t Bits<T, Traits>::count(const T* begin, const T* end) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_BITS_H_ */

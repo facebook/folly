@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FORMAT_TRAITS_H_
-#define FOLLY_FORMAT_TRAITS_H_
+#pragma once
 
 #include <type_traits>
 
@@ -62,5 +61,3 @@ struct IndexableTraitsAssoc : public FormatTraitsBase {
 };
 
 }}  // namespaces
-
-#endif /* FOLLY_FORMAT_TRAITS_H_ */

@@ -22,8 +22,7 @@
  * optimizations for use with relocatable types and jemalloc.
  */
 
-#ifndef FOLLY_FBVECTOR_H
-#define FOLLY_FBVECTOR_H
+#pragma once
 
 //=============================================================================
 // headers
@@ -1659,5 +1658,3 @@ void attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
 }
 
 } // namespace folly
-
-#endif // FOLLY_FBVECTOR_H

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TEST_SYNCHRONIZEDTESTLIB_INL_H
-#define FOLLY_TEST_SYNCHRONIZEDTESTLIB_INL_H
+#pragma once
 
 #include <gtest/gtest.h>
 
@@ -353,6 +352,3 @@ template <class Mutex> void testInPlaceConstruction() {
     folly::construct_in_place, 5, "a"
   );
 }
-
-
-#endif  /* FOLLY_TEST_SYNCHRONIZEDTESTLIB_INL_H */

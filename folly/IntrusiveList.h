@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_INTRUSIVELIST_H_
-#define FOLLY_INTRUSIVELIST_H_
+#pragma once
 
 /*
  * This file contains convenience aliases that make boost::intrusive::list
@@ -117,5 +116,3 @@ using CountedIntrusiveList = boost::intrusive::list<
     boost::intrusive::constant_time_size<true>>;
 
 } // folly
-
-#endif // FOLLY_INTRUSIVELIST_H_

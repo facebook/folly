@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CHECKSUM_H_
-#define FOLLY_CHECKSUM_H_
+#pragma once
 
 #include <stdint.h>
 #include <cstddef>
@@ -39,5 +38,3 @@ uint32_t crc32c(const uint8_t* data, size_t nbytes,
     uint32_t startingChecksum = ~0U);
 
 } // folly
-
-#endif /* FOLLY_CHECKSUM_H_ */

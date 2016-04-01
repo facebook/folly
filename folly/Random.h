@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_RANDOM_H_
+#pragma once
 #define FOLLY_RANDOM_H_
 
 #include <type_traits>
@@ -245,5 +245,3 @@ inline uint32_t randomNumberSeed() {
 }
 
 #include <folly/Random-inl.h>
-
-#endif

@@ -29,7 +29,7 @@
  *  @author Jordan DeLong <delong.j@fb.com>
  */
 
-#ifndef FOLLY_ATOMICHASHARRAY_H_
+#pragma once
 #define FOLLY_ATOMICHASHARRAY_H_
 
 #include <atomic>
@@ -429,5 +429,3 @@ friend class AtomicHashMap<KeyT,
 } // namespace folly
 
 #include <folly/AtomicHashArray-inl.h>
-
-#endif // FOLLY_ATOMICHASHARRAY_H_

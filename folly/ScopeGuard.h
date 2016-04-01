@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SCOPEGUARD_H_
-#define FOLLY_SCOPEGUARD_H_
+#pragma once
 
 #include <cstddef>
 #include <functional>
@@ -276,5 +275,3 @@ operator+(detail::ScopeGuardOnExit, FunctionType&& fn) {
   auto FB_ANONYMOUS_VARIABLE(SCOPE_SUCCESS_STATE) \
   = ::folly::detail::ScopeGuardOnSuccess() + [&]()
 #endif // native uncaught_exception() supported
-
-#endif // FOLLY_SCOPEGUARD_H_

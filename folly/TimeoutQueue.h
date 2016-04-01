@@ -25,8 +25,7 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_TIMEOUTQUEUE_H_
-#define FOLLY_TIMEOUTQUEUE_H_
+#pragma once
 
 #include <stdint.h>
 #include <functional>
@@ -127,5 +126,3 @@ class TimeoutQueue {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_TIMEOUTQUEUE_H_ */

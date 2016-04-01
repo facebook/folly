@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_LIFOSEM_H
-#define FOLLY_LIFOSEM_H
+#pragma once
 
 #include <string.h>
 #include <stdint.h>
@@ -605,5 +604,3 @@ struct LifoSemImpl : public detail::LifoSemBase<BatonType, Atom> {
 };
 
 } // namespace folly
-
-#endif

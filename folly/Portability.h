@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_PORTABILITY_H_
-#define FOLLY_PORTABILITY_H_
+#pragma once
 
 #include <string.h>
 
@@ -365,5 +364,3 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 // we will take the next one.
 #define FOLLY_STATIC_CTOR_PRIORITY_MAX __attribute__((__init_priority__(102)))
 #endif
-
-#endif // FOLLY_PORTABILITY_H_

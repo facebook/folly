@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_COMBINE_H
-#define FOLLY_GEN_COMBINE_H
+#pragma once
+#define FOLLY_GEN_COMBINE_H_
 
 #include <folly/gen/Base.h>
 
@@ -42,5 +42,3 @@ Interleave interleave(Source2&& source2) {
 }  // namespace folly
 
 #include <folly/gen/Combine-inl.h>
-
-#endif // FOLLY_GEN_COMBINE_H

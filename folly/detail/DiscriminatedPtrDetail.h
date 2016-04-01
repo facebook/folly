@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
-#define FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_
+#pragma once
 
 #include <utility>
 #include <type_traits>
@@ -161,5 +160,3 @@ struct ApplyConstVisitor
 
 }  // namespace dptr_detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_DISCRIMINATEDPTRDETAIL_H_ */

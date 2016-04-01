@@ -21,8 +21,7 @@
  * "Quasi-succinct indices" (arxiv:1206.4300).
  */
 
-#ifndef FOLLY_EXPERIMENTAL_ELIAS_FANO_CODING_H
-#define FOLLY_EXPERIMENTAL_ELIAS_FANO_CODING_H
+#pragma once
 
 #include <cstdlib>
 #include <limits>
@@ -684,5 +683,3 @@ class EliasFanoReader {
 };
 
 }}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_ELIAS_FANO_CODING_H

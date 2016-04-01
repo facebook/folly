@@ -79,7 +79,7 @@
  *
  */
 
-#ifndef FOLLY_ATOMICHASHMAP_H_
+#pragma once
 #define FOLLY_ATOMICHASHMAP_H_
 
 #include <boost/iterator/iterator_facade.hpp>
@@ -472,5 +472,3 @@ using QuadraticProbingAtomicHashMap =
 } // namespace folly
 
 #include <folly/AtomicHashMap-inl.h>
-
-#endif // FOLLY_ATOMICHASHMAP_H_

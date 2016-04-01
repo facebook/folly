@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_FILEUTILDETAIL_H_
-#define FOLLY_DETAIL_FILEUTILDETAIL_H_
+#pragma once
 
 #include <cerrno>
 #include <unistd.h>
@@ -107,5 +106,3 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
 }
 
 }}  // namespaces
-
-#endif /* FOLLY_DETAIL_FILEUTILDETAIL_H_ */

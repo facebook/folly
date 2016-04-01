@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_STRING_H_
-#define FOLLY_BASE_STRING_H_
+#pragma once
+#define FOLLY_STRING_H_
 
 #include <exception>
 #include <stdarg.h>
@@ -628,5 +628,3 @@ struct has_nothrow_constructor<folly::basic_fbstring<T> > : true_type {
 } // namespace boost
 
 #include <folly/String-inl.h>
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYMBOLIZER_LINEREADER_H_
-#define FOLLY_SYMBOLIZER_LINEREADER_H_
+#pragma once
 
 #include <cstddef>
 
@@ -86,5 +85,3 @@ class LineReader : private boost::noncopyable {
 };
 
 }}  // namespaces
-
-#endif /* FOLLY_SYMBOLIZER_LINEREADER_H_ */

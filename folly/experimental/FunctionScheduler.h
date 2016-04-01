@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_FUNCTION_SCHEDULER_H_
-#define FOLLY_EXPERIMENTAL_FUNCTION_SCHEDULER_H_
+#pragma once
 
 #include <folly/Range.h>
 #include <chrono>
@@ -263,5 +262,3 @@ class FunctionScheduler {
 };
 
 }
-
-#endif

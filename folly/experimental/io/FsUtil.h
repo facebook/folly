@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_FSUTIL_H_
-#define FOLLY_IO_FSUTIL_H_
+#pragma once
 
 #include <boost/filesystem.hpp>
 
@@ -68,5 +67,3 @@ path executable_path();
 
 }  // namespace fs
 }  // namespace folly
-
-#endif /* FOLLY_IO_FSUTIL_H_ */

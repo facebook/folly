@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STATS_MULTILEVELTIMESERIES_DEFS_H_
-#define FOLLY_STATS_MULTILEVELTIMESERIES_DEFS_H_
+#pragma once
 
 #include <glog/logging.h>
 
@@ -100,5 +99,3 @@ void MultiLevelTimeSeries<VT, TT>::clear() {
 }
 
 }  // folly
-
-#endif // FOLLY_STATS_MULTILEVELTIMESERIES_DEFS_H_

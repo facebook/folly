@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_PADDED_H_
-#define FOLLY_PADDED_H_
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -512,5 +511,3 @@ class Adaptor {
 
 }  // namespace padded
 }  // namespace folly
-
-#endif /* FOLLY_PADDED_H_ */

@@ -60,8 +60,7 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
-#ifndef FOLLY_DYNAMIC_H_
-#define FOLLY_DYNAMIC_H_
+#pragma once
 
 #include <cstdint>
 #include <initializer_list>
@@ -588,5 +587,3 @@ private:
 }
 
 #include <folly/dynamic-inl.h>
-
-#endif

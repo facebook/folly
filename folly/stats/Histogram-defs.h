@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_HISTOGRAM_DEFS_H_
-#define FOLLY_HISTOGRAM_DEFS_H_
+#pragma once
 
 #include <folly/Conv.h>
 
@@ -278,5 +277,3 @@ void Histogram<T>::toTSV(std::ostream& out, bool skipEmptyBuckets) const {
 }
 
 } // folly
-
-#endif // FOLLY_HISTOGRAM_DEFS_H_

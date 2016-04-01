@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_STRING_H
-#define FOLLY_GEN_STRING_H
+#pragma once
+#define FOLLY_GEN_STRING_H_
 
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
@@ -246,5 +246,3 @@ StreamSplitter<Callback> streamSplitter(char delimiter,
 }  // namespace folly
 
 #include <folly/gen/String-inl.h>
-
-#endif // FOLLY_GEN_STRING_H

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_EXCEPTIONWRAPPER_H
-#define FOLLY_DETAIL_EXCEPTIONWRAPPER_H
+#pragma once
 
 namespace folly { namespace detail {
 
@@ -28,5 +27,3 @@ class Thrower {
 };
 
 }}
-
-#endif

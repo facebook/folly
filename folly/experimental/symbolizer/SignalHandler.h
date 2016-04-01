@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYMBOLIZER_SIGNALHANDLER_H_
-#define FOLLY_SYMBOLIZER_SIGNALHANDLER_H_
+#pragma once
 
 #include <functional>
 
@@ -51,5 +50,3 @@ void installFatalSignalCallbacks();
 
 
 }}  // namespaces
-
-#endif /* FOLLY_SYMBOLIZER_SIGNALHANDLER_H_ */

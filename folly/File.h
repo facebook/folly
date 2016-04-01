@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FILE_H_
-#define FOLLY_FILE_H_
+#pragma once
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -136,5 +135,3 @@ void swap(File& a, File& b);
 
 
 }  // namespace folly
-
-#endif /* FOLLY_FILE_H_ */

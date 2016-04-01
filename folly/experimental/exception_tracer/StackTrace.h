@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-
-#ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_
-#define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_
+#pragma once
 
 #include <cassert>
 #include <cstddef>
@@ -98,5 +96,3 @@ class StackTraceStack {
 };
 
 }}  // namespaces
-
-#endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_STACKTRACE_H_ */

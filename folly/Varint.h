@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_VARINT_H_
-#define FOLLY_VARINT_H_
+#pragma once
 
 #include <type_traits>
 #include <folly/Conv.h>
@@ -138,5 +137,3 @@ inline uint64_t decodeVarint(Range<T*>& data) {
 }
 
 }  // namespaces
-
-#endif /* FOLLY_VARINT_H_ */

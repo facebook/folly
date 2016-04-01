@@ -16,8 +16,7 @@
 
 // DWARF record parser
 
-#ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_
-#define FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_
+#pragma once
 
 #include <boost/variant.hpp>
 
@@ -276,5 +275,3 @@ inline std::ostream& operator<<(std::ostream& out, const Dwarf::Path& path) {
 
 }  // namespace symbolizer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_DWARF_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
-#define FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_
+#pragma once
 
 #include <algorithm>
 #include <glog/logging.h>
@@ -461,5 +460,3 @@ void BucketedTimeSeries<VT, TT>::forEachBucket(TimeType start, TimeType end,
 }
 
 } // folly
-
-#endif // FOLLY_STATS_BUCKETEDTIMESERIES_INL_H_

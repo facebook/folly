@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_UNCAUGHTEXCEPTIONCOUNTER_H_
-#define FOLLY_DETAIL_UNCAUGHTEXCEPTIONCOUNTER_H_
+#pragma once
 
 #include <exception>
 
@@ -93,5 +92,3 @@ inline int UncaughtExceptionCounter::getUncaughtExceptionCount() noexcept {
 }
 
 }} // namespaces
-
-#endif /* FOLLY_DETAIL_UNCAUGHTEXCEPTIONCOUNTER_H_ */

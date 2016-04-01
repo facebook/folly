@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_GROUPVARINTDETAIL_H_
-#define FOLLY_DETAIL_GROUPVARINTDETAIL_H_
+#pragma once
 
 #include <stddef.h>
 
@@ -99,5 +98,3 @@ class GroupVarintBase {
 
 }  // namespace detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_GROUPVARINTDETAIL_H_ */

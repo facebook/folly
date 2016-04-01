@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYSUIO_H_
-#define FOLLY_SYSUIO_H_
+#pragma once
 
 #include <sys/uio.h>
 
@@ -27,5 +26,3 @@ constexpr size_t kIovMax = IOV_MAX;
 constexpr size_t kIovMax = UIO_MAXIOV;
 #endif
 }
-
-#endif

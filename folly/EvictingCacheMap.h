@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EVICTINGHASHMAP_H_
-#define FOLLY_EVICTINGHASHMAP_H_
+#pragma once
 
 #include <algorithm>
 #include <exception>
@@ -492,5 +491,3 @@ class EvictingCacheMap : private boost::noncopyable {
 };
 
 } // folly
-
-#endif /* FOLLY_EVICTINGHASHMAP_H_ */

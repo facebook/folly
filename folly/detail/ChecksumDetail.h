@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_CHECKSUMDETAIL_H_
-#define FOLLY_DETAIL_CHECKSUMDETAIL_H_
+#pragma once
 
 namespace folly { namespace detail {
 
@@ -54,5 +53,3 @@ uint32_t crc32c_sw(const uint8_t* data, size_t nbytes,
 
 
 }} // folly::detail
-
-#endif /* FOLLY_DETAIL_CHECKSUMDETAIL_H_ */

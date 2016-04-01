@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DYNAMIC_INL_H_
-#define FOLLY_DYNAMIC_INL_H_
+#pragma once
 
 #include <functional>
 #include <boost/iterator/iterator_adaptor.hpp>
@@ -874,5 +873,3 @@ class FormatValue<detail::DefaultValueWrapper<dynamic, V>> {
 }  // namespaces
 
 #undef FB_DYNAMIC_APPLY
-
-#endif

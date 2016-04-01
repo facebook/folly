@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_FOREACH_H_
-#define FOLLY_BASE_FOREACH_H_
+#pragma once
 
 /*
  * Iterim macros (until we have C++0x range-based for) that simplify
@@ -227,5 +226,3 @@ downTo(T& iter, const U& begin) {
  */
 #define FOR_EACH_RANGE_R(i, begin, end) \
   for (auto i = (false ? (begin) : (end)); ::folly::detail::downTo(i, (begin));)
-
-#endif

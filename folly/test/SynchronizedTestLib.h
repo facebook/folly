@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TEST_SYNCHRONIZEDTESTLIB_H
-#define FOLLY_TEST_SYNCHRONIZEDTESTLIB_H
+#pragma once
 
 // We have mutex types outside of folly that we want to test with Synchronized.
 // Make it easy for mutex implementators to test their classes with
@@ -47,5 +46,3 @@ template <class Mutex> void testConstCopy();
 template <class Mutex> void testInPlaceConstruction();
 
 #include <folly/test/SynchronizedTestLib-inl.h>
-
-#endif /* FOLLY_TEST_SYNCHRONIZEDTESTLIB_H */

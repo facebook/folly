@@ -16,8 +16,7 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDSET_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDSET_H_
+#pragma once
 
 #include <initializer_list>
 #include <memory>
@@ -221,5 +220,3 @@ public:
 typedef BasicStringKeyedUnorderedSet<> StringKeyedUnorderedSet;
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDUNORDEREDSET_H_ */

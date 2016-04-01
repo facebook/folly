@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_
-#define FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_
+#pragma once
 
 #include <cstdint>
 
@@ -141,5 +140,3 @@ class FingerprintPolynomial {
 
 }  // namespace detail
 }  // namespace folly
-
-#endif /* FOLLY_BUILD_FINGERPRINTPOLYNOMIAL_H_ */

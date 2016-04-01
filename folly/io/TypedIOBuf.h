@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_TYPEDIOBUF_H_
-#define FOLLY_IO_TYPEDIOBUF_H_
+#pragma once
 
 #include <algorithm>
 #include <iterator>
@@ -214,5 +213,3 @@ class TypedIOBuf {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_IO_TYPEDIOBUF_H_ */

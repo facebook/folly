@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYMBOLIZER_ELFCACHE_H_
-#define FOLLY_SYMBOLIZER_ELFCACHE_H_
+#pragma once
 
 #include <cstring>
 #include <limits.h>  // for PATH_MAX
@@ -130,5 +129,3 @@ class ElfCache : public ElfCacheBase {
 };
 
 }}  // namespaces
-
-#endif /* FOLLY_SYMBOLIZER_ELFCACHE_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CONSTEXPR_H_
-#define FOLLY_CONSTEXPR_H_
+#pragma once
 
 #include <cstdint>
 #include <cstring>
@@ -50,5 +49,3 @@ constexpr size_t constexpr_strlen(const char* s) {
 #endif
 }
 }
-
-#endif

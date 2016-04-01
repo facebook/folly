@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYMBOLIZER_TEST_SIGNALHANDLERTEST_H_
-#define FOLLY_SYMBOLIZER_TEST_SIGNALHANDLERTEST_H_
+#pragma once
 
 namespace folly { namespace symbolizer { namespace test {
 
@@ -24,5 +23,3 @@ inline void failHard() {
 }
 
 }}}  // namespaces
-
-#endif /* FOLLY_SYMBOLIZER_TEST_SIGNALHANDLERTEST_H_ */

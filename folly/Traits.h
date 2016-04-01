@@ -16,8 +16,7 @@
 
 // @author: Andrei Alexandrescu
 
-#ifndef FOLLY_BASE_TRAITS_H_
-#define FOLLY_BASE_TRAITS_H_
+#pragma once
 
 #include <memory>
 #include <limits>
@@ -481,5 +480,3 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
       classname, func_name, /* nolint */ volatile); \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL( \
       classname, func_name, /* nolint */ volatile const)
-
-#endif //FOLLY_BASE_TRAITS_H_

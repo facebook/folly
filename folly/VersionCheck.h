@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_VERSIONCHECK_H_
-#define FOLLY_VERSIONCHECK_H_
+#pragma once
 
 #include <cstdio>
 #include <cstdlib>
@@ -107,5 +106,3 @@
     } \
   } \
   }
-
-#endif /* FOLLY_VERSIONCHECK_H_ */

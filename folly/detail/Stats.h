@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_STATS_H_
-#define FOLLY_DETAIL_STATS_H_
+#pragma once
 
 #include <chrono>
 #include <cstdint>
@@ -123,5 +122,3 @@ struct Bucket {
 };
 
 }} // folly::detail
-
-#endif // FOLLY_DETAIL_STATS_H_

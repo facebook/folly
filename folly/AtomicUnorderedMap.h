@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FOLLY_ATOMICUNORDEREDMAP_H
-#define FOLLY_ATOMICUNORDEREDMAP_H
+
+#pragma once
 
 #include <atomic>
 #include <functional>
@@ -519,4 +519,3 @@ struct MutableData {
 
 
 }
-#endif

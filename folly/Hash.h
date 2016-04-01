@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_HASH_H_
-#define FOLLY_BASE_HASH_H_
+#pragma once
 
 #include <cstdint>
 #include <cstring>
@@ -460,5 +459,3 @@ namespace std {
     }
   };
 } // namespace std
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TESTUTIL_H_
-#define FOLLY_TESTUTIL_H_
+#pragma once
 
 #include <map>
 #include <string>
@@ -213,5 +212,3 @@ private:
 
 }  // namespace test
 }  // namespace folly
-
-#endif /* FOLLY_TESTUTIL_H_ */

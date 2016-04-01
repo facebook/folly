@@ -17,7 +17,7 @@
 // Functions to provide smarter use of jemalloc, if jemalloc is being used.
 // http://www.canonware.com/download/jemalloc/jemalloc-latest/doc/jemalloc.html
 
-#ifndef FOLLY_MALLOC_H_
+#pragma once
 #define FOLLY_MALLOC_H_
 
 /**
@@ -279,5 +279,3 @@ _GLIBCXX_END_NAMESPACE_VERSION
 } // folly
 
 #endif // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)
-
-#endif // FOLLY_MALLOC_H_

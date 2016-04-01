@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H
-#define FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H
+#pragma once
 
 #include <cstdlib>
 #include <limits>
@@ -448,5 +447,3 @@ class BitVectorReader {
 };
 
 }}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_BIT_VECTOR_CODING_H

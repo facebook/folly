@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_INDEXEDMEMPOOL_H
-#define FOLLY_INDEXEDMEMPOOL_H
+#pragma once
 
 #include <type_traits>
 #include <stdint.h>
@@ -466,4 +465,3 @@ struct IndexedMemPoolRecycler {
 } // namespace folly
 
 # pragma GCC diagnostic pop
-#endif

@@ -20,8 +20,7 @@
  * @author Spencer Ahrens (sahrens)
  */
 
-#ifndef FOLLY_THREADCACHEDINT_H
-#define FOLLY_THREADCACHEDINT_H
+#pragma once
 
 #include <atomic>
 
@@ -175,5 +174,3 @@ class ThreadCachedInt : boost::noncopyable {
 };
 
 }
-
-#endif

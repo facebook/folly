@@ -38,8 +38,7 @@
  * @author Jordan DeLong <delong.j@fb.com>
  */
 
-#ifndef FOLLY_JSON_H_
-#define FOLLY_JSON_H_
+#pragma once
 
 #include <iosfwd>
 
@@ -168,5 +167,3 @@ void PrintTo(const dynamic&, std::ostream*);
 //////////////////////////////////////////////////////////////////////
 
 }
-
-#endif

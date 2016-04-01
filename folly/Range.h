@@ -17,8 +17,7 @@
 // @author Mark Rabkin (mrabkin@fb.com)
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
-#ifndef FOLLY_RANGE_H_
-#define FOLLY_RANGE_H_
+#pragma once
 
 #include <folly/FBString.h>
 #include <folly/Portability.h>
@@ -1147,5 +1146,3 @@ struct hasher<folly::Range<T*>,
 #pragma GCC diagnostic pop
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range);
-
-#endif // FOLLY_RANGE_H_

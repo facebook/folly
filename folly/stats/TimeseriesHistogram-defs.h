@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
-#define FOLLY_TIMESERIES_HISTOGRAM_DEF_H_
+#pragma once
 
 #include <folly/Conv.h>
 #include <folly/stats/Histogram-defs.h>
@@ -227,5 +226,3 @@ std::string TimeseriesHistogram<T, TT, C>::getString(TimeType start,
 }
 
 }  // namespace folly
-
-#endif

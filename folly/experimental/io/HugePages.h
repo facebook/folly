@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_HUGEPAGES_H_
-#define FOLLY_IO_HUGEPAGES_H_
+#pragma once
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -79,5 +78,3 @@ const HugePageSize* getHugePageSize(size_t size = 0);
 const HugePageSize* getHugePageSizeForDevice(dev_t device);
 
 }  // namespace folly
-
-#endif /* FOLLY_IO_HUGEPAGES_H_ */

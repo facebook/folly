@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_MEMORY_H_
-#define FOLLY_MEMORY_H_
+#pragma once
 
 #include <folly/Traits.h>
 #include <folly/portability/Memory.h>
@@ -418,5 +417,3 @@ std::shared_ptr<T> allocate_shared(Allocator&& allocator, Args&&... args) {
 template <class T> struct IsArenaAllocator : std::false_type { };
 
 }  // namespace folly
-
-#endif /* FOLLY_MEMORY_H_ */

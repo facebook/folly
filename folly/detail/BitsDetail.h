@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_BITSDETAIL_H_
-#define FOLLY_DETAIL_BITSDETAIL_H_
+#pragma once
 
 namespace folly {
 namespace detail {
@@ -49,5 +48,3 @@ int popcountll(unsigned long long x);
 
 }  // namespace detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_BITSDETAIL_H_ */

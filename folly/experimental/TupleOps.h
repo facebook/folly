@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TUPLEOPS_H_
-#define FOLLY_TUPLEOPS_H_
+#pragma once
 
 #include <limits>
 #include <tuple>
@@ -123,5 +122,3 @@ auto tuplePrepend(T&& car, U&& cdr)
 }
 
 }  // namespaces
-
-#endif /* FOLLY_TUPLEOPS_H_ */

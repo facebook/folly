@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_IOBUF_QUEUE_H
-#define FOLLY_IO_IOBUF_QUEUE_H
+#pragma once
 
 #include <folly/io/IOBuf.h>
 
@@ -295,5 +294,3 @@ class IOBufQueue {
 };
 
 } // folly
-
-#endif // FOLLY_IO_IOBUF_QUEUE_H

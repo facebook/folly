@@ -24,8 +24,7 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_DISCRIMINATEDPTR_H_
-#define FOLLY_DISCRIMINATEDPTR_H_
+#pragma once
 
 #include <limits>
 #include <stdexcept>
@@ -217,5 +216,3 @@ class DiscriminatedPtr {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_DISCRIMINATEDPTR_H_ */

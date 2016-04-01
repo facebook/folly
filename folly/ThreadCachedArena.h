@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_THREADCACHEDARENA_H_
-#define FOLLY_THREADCACHEDARENA_H_
+#pragma once
 
 #include <type_traits>
 
@@ -86,5 +85,3 @@ template <>
 struct IsArenaAllocator<ThreadCachedArena> : std::true_type { };
 
 }  // namespace folly
-
-#endif /* FOLLY_THREADCACHEDARENA_H_ */

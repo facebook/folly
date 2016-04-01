@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_RANGE_COMMON_H_
-#define FOLLY_DETAIL_RANGE_COMMON_H_
+#pragma once
 
 #include <algorithm>
 #include <string>
@@ -86,5 +85,3 @@ inline size_t qfind_first_byte_of_nosse(const StringPieceLite haystack,
 }
 
 }
-
-#endif

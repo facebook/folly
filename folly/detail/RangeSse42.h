@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_RANGE_SSE42_H_
-#define FOLLY_DETAIL_RANGE_SSE42_H_
+#pragma once
 
 #include <cstddef>
 #include <folly/detail/RangeCommon.h>
@@ -30,5 +29,3 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
 }
 
 }
-
-#endif

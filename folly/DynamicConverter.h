@@ -16,8 +16,7 @@
 
 // @author Nicholas Ormrod <njormrod@fb.com>
 
-#ifndef DYNAMIC_CONVERTER_H
-#define DYNAMIC_CONVERTER_H
+#pragma once
 
 #include <folly/dynamic.h>
 namespace folly {
@@ -354,5 +353,3 @@ dynamic toDynamic(const T& x) {
 }
 
 } // namespace folly
-
-#endif // DYNAMIC_CONVERTER_H

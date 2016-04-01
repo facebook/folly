@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_OPTIONAL_H_
-#define FOLLY_OPTIONAL_H_
+#pragma once
 
 /*
  * Optional - For conditional initialization of values, like boost::optional,
@@ -406,5 +405,3 @@ template<class V> bool operator> (const V& other, const Optional<V>&) = delete;
 ///////////////////////////////////////////////////////////////////////////////
 
 } // namespace folly
-
-#endif // FOLLY_OPTIONAL_H_

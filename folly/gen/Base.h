@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GEN_BASE_H
-#define FOLLY_GEN_BASE_H
+#pragma once
+#define FOLLY_GEN_BASE_H_
 
 #include <algorithm>
 #include <functional>
@@ -826,5 +826,3 @@ UnwrapOr unwrapOr(Fallback&& fallback) {
 }} // folly::gen
 
 #include <folly/gen/Base-inl.h>
-
-#endif // FOLLY_GEN_BASE_H

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_GFLAGS_H_
-#define FOLLY_GFLAGS_H_
+#pragma once
 
 #include <folly/Portability.h>
 
@@ -23,6 +22,4 @@
 #include <gflags/gflags.h>
 #else
 #define DEFINE_int32(_name, _default, _description) int FLAGS_##_name = _default
-#endif
-
 #endif

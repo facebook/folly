@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BENCHMARK_H_
-#define FOLLY_BENCHMARK_H_
+#pragma once
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
@@ -536,5 +535,3 @@ void doNotOptimizeAway(T&& datum) {
   if (auto FB_ANONYMOUS_VARIABLE(BENCHMARK_SUSPEND) =   \
       ::folly::BenchmarkSuspender()) {}                 \
   else
-
-#endif // FOLLY_BENCHMARK_H_

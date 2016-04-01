@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_FUNCTIONAL_EXCEPT_H
-#define FOLLY_DETAIL_FUNCTIONAL_EXCEPT_H
+#pragma once
 
 #include <folly/Portability.h>
 
@@ -35,6 +34,4 @@ FOLLY_NAMESPACE_STD_END
 
 #else
 #error This file should never be included if FOLLY_HAVE_BITS_FUNCTEXCEPT_H is set
-#endif
-
 #endif

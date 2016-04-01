@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CPUID_H_
-#define FOLLY_CPUID_H_
+#pragma once
 
 #include <cstdint>
 #include <folly/Portability.h>
@@ -196,5 +195,3 @@ class CpuId {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_CPUID_H_ */

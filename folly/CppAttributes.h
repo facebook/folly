@@ -20,8 +20,7 @@
  * @author Dominik Gabi
  */
 
-#ifndef FOLLY_BASE_ATTRIBUTES_H_
-#define FOLLY_BASE_ATTRIBUTES_H_
+#pragma once
 
 #ifndef __has_cpp_attribute
 #define FOLLY_HAS_CPP_ATTRIBUTE(x) 0
@@ -76,5 +75,3 @@
 #else
 #define FOLLY_NULLABLE
 #endif
-
-#endif /* FOLLY_BASE_ATTRIBUTES_H_ */

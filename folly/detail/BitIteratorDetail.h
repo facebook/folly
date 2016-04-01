@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_BITITERATORDETAIL_H_
-#define FOLLY_DETAIL_BITITERATORDETAIL_H_
+#pragma once
 
 #include <iterator>
 #include <type_traits>
@@ -88,5 +87,3 @@ struct BitIteratorBase {
 
 }  // namespace bititerator_detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_BITITERATORDETAIL_H_ */

@@ -36,8 +36,7 @@
  * from a.
  */
 
-#ifndef FOLLY_MERGE_H_
-#define FOLLY_MERGE_H_
+#pragma once
 
 #include <algorithm>
 
@@ -82,5 +81,3 @@ OutputIt merge(InputIt1 first1, InputIt1 last1,
 }
 
 }
-
-#endif

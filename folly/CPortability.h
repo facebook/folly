@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef CPORTABILITY_H
-#define CPORTABILITY_H
+#pragma once
 
 /* These definitions are in a separate file so that they
  * may be included from C- as well as C++-based projects. */
@@ -72,5 +71,3 @@
 #else
 # define UBSAN_DISABLE(x)
 #endif // UNDEFINED_SANITIZER
-
-#endif // CPORTABILITY_H

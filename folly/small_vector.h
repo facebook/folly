@@ -20,8 +20,8 @@
  *
  * @author Jordan DeLong <delong.j@fb.com>
  */
-#ifndef FOLLY_SMALL_VECTOR_H_
-#define FOLLY_SMALL_VECTOR_H_
+
+#pragma once
 
 #include <stdexcept>
 #include <cstdlib>
@@ -1159,6 +1159,4 @@ struct IndexableTraits<small_vector<T, M, A, B, C>>
 # undef FB_PACK_ATTR
 # undef FB_PACK_PUSH
 # undef FB_PACK_POP
-#endif
-
 #endif

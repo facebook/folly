@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ATOMIC_LINKED_LIST_H_
-#define FOLLY_ATOMIC_LINKED_LIST_H_
+#pragma once
 
 #include <atomic>
 #include <cassert>
@@ -134,5 +133,3 @@ class AtomicLinkedList {
 };
 
 } // namespace folly
-
-#endif

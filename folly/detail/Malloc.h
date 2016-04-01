@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_MALLOC_H
-#define FOLLY_DETAIL_MALLOC_H
+#pragma once
 
 #include <stdlib.h>
 
@@ -84,5 +83,3 @@ extern int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*,
 #endif
 
 }
-
-#endif

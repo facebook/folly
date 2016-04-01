@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_SELECT64_H
-#define FOLLY_EXPERIMENTAL_SELECT64_H
+#pragma once
 
 #include <glog/logging.h>
 
@@ -77,5 +76,3 @@ inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
 }
 
 } // namespace folly
-
-#endif

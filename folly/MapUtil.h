@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_MAPUTIL_H_
-#define FOLLY_MAPUTIL_H_
+#pragma once
 
 #include <folly/Conv.h>
 #include <folly/Optional.h>
@@ -100,5 +99,3 @@ typename Map::mapped_type* get_ptr(
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_MAPUTIL_H_ */

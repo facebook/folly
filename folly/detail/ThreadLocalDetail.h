@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_THREADLOCALDETAIL_H_
-#define FOLLY_DETAIL_THREADLOCALDETAIL_H_
+#pragma once
 
 #include <limits.h>
 #include <pthread.h>
@@ -359,5 +358,3 @@ struct StaticMeta : StaticMetaBase {
 
 }  // namespace threadlocal_detail
 }  // namespace folly
-
-#endif /* FOLLY_DETAIL_THREADLOCALDETAIL_H_ */

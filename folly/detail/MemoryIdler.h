@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_DETAIL_MEMORYIDLER_H
-#define FOLLY_DETAIL_MEMORYIDLER_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -149,5 +148,3 @@ struct MemoryIdler {
 };
 
 }} // namespace folly::detail
-
-#endif

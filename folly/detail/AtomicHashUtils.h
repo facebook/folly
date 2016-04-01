@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef incl_FOLLY_ATOMIC_HASH_UTILS_H
-#define incl_FOLLY_ATOMIC_HASH_UTILS_H
+#pragma once
 
 #include <thread>
 #include <folly/portability/Asm.h>
@@ -38,5 +37,3 @@ void atomic_hash_spin_wait(Cond condition) {
 }
 
 }} // namespace folly::detail
-
-#endif

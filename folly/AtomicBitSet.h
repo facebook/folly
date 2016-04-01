@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ATOMICBITSET_H_
-#define FOLLY_ATOMICBITSET_H_
+#pragma once
 
 #include <array>
 #include <atomic>
@@ -158,5 +157,3 @@ inline bool AtomicBitSet<N>::operator[](size_t idx) const {
 }
 
 }  // namespaces
-
-#endif /* FOLLY_ATOMICBITSET_H_ */

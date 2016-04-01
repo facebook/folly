@@ -90,8 +90,8 @@
  * make sure to serialize your signals (i.e. kill()) with the waits --
  * either wait & signal from the same thread, or use a mutex.
  */
-#ifndef FOLLY_SUBPROCESS_H_
-#define FOLLY_SUBPROCESS_H_
+
+#pragma once
 
 #include <sys/types.h>
 #include <signal.h>
@@ -869,5 +869,3 @@ inline Subprocess::Options& Subprocess::Options::operator|=(
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_SUBPROCESS_H_ */

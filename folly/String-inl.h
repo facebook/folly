@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STRING_INL_H_
-#define FOLLY_STRING_INL_H_
+#pragma once
 
 #include <stdexcept>
 #include <iterator>
 
-#ifndef FOLLY_BASE_STRING_H_
+#ifndef FOLLY_STRING_H_
 #error This file may only be included from String.h
 #endif
 
@@ -669,5 +668,3 @@ void hexDump(const void* ptr, size_t size, OutIt out) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_STRING_INL_H_ */

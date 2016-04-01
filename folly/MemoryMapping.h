@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_MEMORYMAPPING_H_
-#define FOLLY_MEMORYMAPPING_H_
+#pragma once
 
 #include <folly/FBString.h>
 #include <folly/File.h>
@@ -250,5 +249,3 @@ void alignedForwardMemcpy(void* dest, const void* src, size_t size);
 void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
 
 }  // namespace folly
-
-#endif /* FOLLY_MEMORYMAPPING_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_IOBUF_H_
-#define FOLLY_IO_IOBUF_H_
+#pragma once
 
 #include <glog/logging.h>
 #include <atomic>
@@ -1467,5 +1466,3 @@ inline IOBuf::Iterator IOBuf::end() const { return cend(); }
 } // folly
 
 #pragma GCC diagnostic pop
-
-#endif // FOLLY_IO_IOBUF_H_

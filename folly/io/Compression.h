@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_IO_COMPRESSION_H_
-#define FOLLY_IO_COMPRESSION_H_
+#pragma once
 
 #include <cstdint>
 #include <limits>
@@ -180,5 +179,3 @@ std::unique_ptr<Codec> getCodec(CodecType type,
                                 int level = COMPRESSION_LEVEL_DEFAULT);
 
 }}  // namespaces
-
-#endif /* FOLLY_IO_COMPRESSION_H_ */

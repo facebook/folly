@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef FOLLY_LAZY_H_
-#define FOLLY_LAZY_H_
+
+#pragma once
 
 #include <utility>
 #include <type_traits>
@@ -131,5 +131,3 @@ lazy(Func&& fun) {
 //////////////////////////////////////////////////////////////////////
 
 }
-
-#endif

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
-#define FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -295,5 +294,3 @@ class StringSymbolizePrinter : public SymbolizePrinter {
 
 }  // namespace symbolizer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_SYMBOLIZER_SYMBOLIZER_H_ */

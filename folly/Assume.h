@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_BASE_ASSUME_H_
-#define FOLLY_BASE_ASSUME_H_
+#pragma once
 
 #include <folly/Portability.h>
 #include <glog/logging.h>
@@ -45,5 +44,3 @@ FOLLY_ALWAYS_INLINE void assume(bool cond) {
 }
 
 }  // namespace folly
-
-#endif

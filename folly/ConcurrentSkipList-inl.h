@@ -16,8 +16,7 @@
 
 // @author: Xin Liu <xliux@fb.com>
 
-#ifndef FOLLY_CONCURRENTSKIPLIST_INL_H_
-#define FOLLY_CONCURRENTSKIPLIST_INL_H_
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -333,5 +332,3 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
 };
 
 }}  // namespaces
-
-#endif  // FOLLY_CONCURRENTSKIPLIST_INL_H_

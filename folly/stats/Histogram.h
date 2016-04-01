@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_HISTOGRAM_H_
-#define FOLLY_HISTOGRAM_H_
+#pragma once
 
 #include <cstddef>
 #include <limits>
@@ -466,5 +465,3 @@ class Histogram {
 };
 
 } // folly
-
-#endif // FOLLY_HISTOGRAM_H_

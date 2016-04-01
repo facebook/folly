@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_SYMBOLIZER_STACKTRACE_H_
-#define FOLLY_SYMBOLIZER_STACKTRACE_H_
+#pragma once
 
 #include <cstdint>
 #include <cstdlib>
@@ -45,5 +44,3 @@ ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses);
 ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
 
 }}  // namespaces
-
-#endif /* FOLLY_SYMBOLIZER_STACKTRACE_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef TEST_FUNCTIONS_H_
-#define TEST_FUNCTIONS_H_
+#pragma once
 
 #include <exception>
 #include <functional>
@@ -54,5 +53,3 @@ class LargeClass {
   // Avoid small object optimization.
   char data[1024];
 };
-
-#endif // TEST_FUNCTIONS_H_

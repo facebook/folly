@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_TIMESERIES_HISTOGRAM_H_
-#define FOLLY_TIMESERIES_HISTOGRAM_H_
+#pragma once
 
 #include <string>
 #include <boost/static_assert.hpp>
@@ -331,5 +330,3 @@ class TimeseriesHistogram {
 };
 
 }  // folly
-
-#endif  // FOLLY_TIMESERIES_HISTOGRAM_H_

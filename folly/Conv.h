@@ -21,8 +21,7 @@
  * @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
  */
 
-#ifndef FOLLY_BASE_CONV_H_
-#define FOLLY_BASE_CONV_H_
+#pragma once
 
 #include <folly/FBString.h>
 #include <folly/Likely.h>
@@ -1287,5 +1286,3 @@ to(const Src & value) {
 #undef FOLLY_RANGE_CHECK_STRINGIZE
 #undef FOLLY_RANGE_CHECK_STRINGIZE2
 #endif
-
-#endif /* FOLLY_BASE_CONV_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FAST_BYTE_SET_H_
-#define FOLLY_FAST_BYTE_SET_H_
+#pragma once
 
 #include <cstdint>
 #include <glog/logging.h>
@@ -86,5 +85,3 @@ class SparseByteSet {
 };
 
 }
-
-#endif

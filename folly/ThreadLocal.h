@@ -34,8 +34,7 @@
  * @author Spencer Ahrens (sahrens)
  */
 
-#ifndef FOLLY_THREADLOCAL_H_
-#define FOLLY_THREADLOCAL_H_
+#pragma once
 
 #include <folly/Portability.h>
 #include <boost/iterator/iterator_facade.hpp>
@@ -353,5 +352,3 @@ class ThreadLocalPtr {
 };
 
 }  // namespace folly
-
-#endif /* FOLLY_THREADLOCAL_H_ */

@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_FILEUTIL_H_
-#define FOLLY_FILEUTIL_H_
+#pragma once
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
@@ -193,5 +192,3 @@ bool writeFile(const Container& data, const char* filename,
 }
 
 }  // namespaces
-
-#endif /* FOLLY_FILEUTIL_H_ */

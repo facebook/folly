@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_PROGRAMOPTIONS_H_
-#define FOLLY_PROGRAMOPTIONS_H_
+#pragma once
 
 #include <boost/program_options.hpp>
 #include <folly/Optional.h>
@@ -83,5 +82,3 @@ NestedCommandLineParseResult parseNestedCommandLine(
     const boost::program_options::options_description& desc);
 
 }  // namespaces
-
-#endif /* FOLLY_PROGRAMOPTIONS_H_ */

@@ -17,8 +17,7 @@
 //
 // Exception tracer library.
 
-#ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
-#define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_
+#pragma once
 
 #include <cstdint>
 #include <iosfwd>
@@ -51,5 +50,3 @@ void installHandlers();
 
 }  // namespace exception_tracer
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACER_H_ */

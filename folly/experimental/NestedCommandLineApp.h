@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_NESTEDCOMMANDLINEAPP_H_
-#define FOLLY_NESTEDCOMMANDLINEAPP_H_
+#pragma once
 
 #include <functional>
 #include <stdexcept>
@@ -151,5 +150,3 @@ class NestedCommandLineApp {
 };
 
 }  // namespaces
-
-#endif /* FOLLY_NESTEDCOMMANDLINEAPP_H_ */

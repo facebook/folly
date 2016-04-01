@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXCEPTIONWRAPPER_H
-#define FOLLY_EXCEPTIONWRAPPER_H
+#pragma once
 
 #include <cassert>
 #include <exception>
@@ -468,4 +467,3 @@ class try_and_catch<> : public exception_wrapper {
   }
 };
 }
-#endif

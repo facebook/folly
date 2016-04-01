@@ -81,8 +81,7 @@
  * @author Xin Liu <xliux@fb.com>
  */
 
-#ifndef FOLLY_RWSPINLOCK_H_
-#define FOLLY_RWSPINLOCK_H_
+#pragma once
 
 /*
 ========================================================================
@@ -787,5 +786,3 @@ typedef RWTicketSpinLockT<64> RWTicketSpinLock64;
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
 #undef RW_SPINLOCK_USE_X86_INTRINSIC_
 #endif
-
-#endif  // FOLLY_RWSPINLOCK_H_

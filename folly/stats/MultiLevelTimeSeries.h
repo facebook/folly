@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STATS_MULTILEVELTIMESERIES_H_
-#define FOLLY_STATS_MULTILEVELTIMESERIES_H_
+#pragma once
 
 #include <chrono>
 #include <string>
@@ -311,5 +310,3 @@ class MultiLevelTimeSeries {
 };
 
 } // folly
-
-#endif // FOLLY_STATS_MULTILEVELTIMESERIES_H_

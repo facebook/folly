@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACERLIB_H_
-#define FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACERLIB_H_
+#pragma once
 
 #include <typeinfo>
 #include <exception>
@@ -50,5 +49,3 @@ void registerCxaEndCatchCallback(CxaEndCatchType callback);
 void registerRethrowExceptionCallback(RethrowExceptionType callback);
 }
 }
-
-#endif /* FOLLY_EXPERIMENTAL_EXCEPTION_TRACER_EXCEPTIONTRACERLIB_H_ */

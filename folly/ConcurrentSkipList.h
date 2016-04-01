@@ -117,8 +117,7 @@ Sample usage:
      }
 */
 
-#ifndef FOLLY_CONCURRENT_SKIP_LIST_H_
-#define FOLLY_CONCURRENT_SKIP_LIST_H_
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -800,5 +799,3 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
 };
 
 } // namespace folly
-
-#endif  // FOLLY_CONCURRENT_SKIP_LIST_H_

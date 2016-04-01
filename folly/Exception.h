@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXCEPTION_H_
-#define FOLLY_EXCEPTION_H_
+#pragma once
 
 #include <errno.h>
 
@@ -119,5 +118,3 @@ void throwOnFail(V&& value, Args&&... args) {
   ::folly::throwOnFail<E>((cond), "Check failed: " #cond)
 
 }  // namespace folly
-
-#endif /* FOLLY_EXCEPTION_H_ */

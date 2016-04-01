@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_EVENTCOUNT_H_
-#define FOLLY_EXPERIMENTAL_EVENTCOUNT_H_
+#pragma once
 
 #include <unistd.h>
 #include <syscall.h>
@@ -210,5 +209,3 @@ void EventCount::await(Condition condition) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_EXPERIMENTAL_EVENTCOUNT_H_ */

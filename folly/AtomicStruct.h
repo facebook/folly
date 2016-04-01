@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_ATOMIC_STRUCT_H_
-#define FOLLY_ATOMIC_STRUCT_H_
+#pragma once
 
 #include <atomic>
 #include <type_traits>
@@ -135,5 +134,3 @@ template <> struct AtomicStructIntPick<8> { typedef uint64_t type; };
 } // namespace detail
 
 } // namespace folly
-
-#endif

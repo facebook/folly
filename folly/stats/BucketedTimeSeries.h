@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_STATS_BUCKETEDTIMESERIES_H_
-#define FOLLY_STATS_BUCKETEDTIMESERIES_H_
+#pragma once
 
 #include <chrono>
 #include <vector>
@@ -406,5 +405,3 @@ class BucketedTimeSeries {
 };
 
 } // folly
-
-#endif // FOLLY_STATS_BUCKETEDTIMESERIES_H_

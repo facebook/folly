@@ -16,8 +16,7 @@
 // Copyright 2013-present Facebook. All Rights Reserved.
 // @author: Pavlo Kushnir (pavlo)
 
-#ifndef FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_
-#define FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_
+#pragma once
 
 #include <initializer_list>
 #include <memory>
@@ -200,5 +199,3 @@ public:
 };
 
 } // folly
-
-#endif /* FOLLY_EXPERIMENTAL_STRINGKEYEDMAP_H_ */

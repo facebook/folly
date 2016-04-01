@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_CURSOR_H
-#define FOLLY_CURSOR_H
+#pragma once
 
 #include <assert.h>
 #include <cstdarg>
@@ -922,5 +921,3 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 };
 
 }}  // folly::io
-
-#endif // FOLLY_CURSOR_H

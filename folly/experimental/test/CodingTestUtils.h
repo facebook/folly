@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef FOLLY_EXPERIMENTAL_CODING_TEST_UTILS_H
-#define FOLLY_EXPERIMENTAL_CODING_TEST_UTILS_H
+#pragma once
 
 #include <algorithm>
 #include <fstream>
@@ -371,5 +370,3 @@ void bmJumpTo(const List& list, const std::vector<uint32_t>& data,
 }
 
 }}  // namespaces
-
-#endif  // FOLLY_EXPERIMENTAL_CODING_TEST_UTILS_H

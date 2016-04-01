@@ -42,8 +42,7 @@
  * @author Tudor Bosman (tudorb@facebook.com)
  */
 
-#ifndef FOLLY_FINGERPRINT_H_
-#define FOLLY_FINGERPRINT_H_
+#pragma once
 
 #include <cstdint>
 
@@ -261,5 +260,3 @@ inline uint64_t Fingerprint<128>::shlor64(uint64_t v) {
 }
 
 }  // namespace folly
-
-#endif /* FOLLY_FINGERPRINT_H_ */

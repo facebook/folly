@@ -21,8 +21,7 @@
  * @author Tudor Bosman (tudorb@fb.com)
  */
 
-#ifndef FOLLY_BASE_LIKELY_H_
-#define FOLLY_BASE_LIKELY_H_
+#pragma once
 
 #undef LIKELY
 #undef UNLIKELY
@@ -34,5 +33,3 @@
 #define LIKELY(x)   (x)
 #define UNLIKELY(x) (x)
 #endif
-
-#endif /* FOLLY_BASE_LIKELY_H_ */
