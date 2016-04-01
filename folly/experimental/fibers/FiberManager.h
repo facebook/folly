@@ -341,6 +341,8 @@ class FiberManager : public ::folly::Executor {
   intptr_t deactivateFiber(Fiber* fiber);
 
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
+  typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>
+      GlobalFiberTailQueue;
 
   Fiber* activeFiber_{nullptr}; /**< active fiber, nullptr on main context */
   /**
@@ -353,6 +355,8 @@ class FiberManager : public ::folly::Executor {
   FiberTailQueue yieldedFibers_;  /**< queue of fibers which have yielded
                                        execution */
   FiberTailQueue fibersPool_;   /**< pool of unitialized Fiber objects */
+
+  GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
 
   size_t fibersAllocated_{0};   /**< total number of fibers allocated */
   size_t fibersPoolSize_{0};    /**< total number of fibers in the free pool */

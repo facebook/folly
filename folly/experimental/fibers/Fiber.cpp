@@ -85,6 +85,8 @@ Fiber::Fiber(FiberManager& fiberManager) :
   auto limit = fiberManager_.stackAllocator_.allocate(size);
 
   fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
+
+  fiberManager_.allFibers_.push_back(*this);
 }
 
 void Fiber::init(bool recordStackUsed) {
