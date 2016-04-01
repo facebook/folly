@@ -240,11 +240,11 @@ class NotificationQueue {
 #else
                              FdType fdType = FdType::PIPE)
 #endif
-    : eventfd_(-1),
-      pipeFds_{-1, -1},
-      advisoryMaxQueueSize_(maxSize),
-      pid_(getpid()),
-      queue_() {
+      : eventfd_(-1),
+        pipeFds_{-1, -1},
+        advisoryMaxQueueSize_(maxSize),
+        pid_(pid_t(getpid())),
+        queue_() {
 
     RequestContext::saveContext();
 
@@ -438,9 +438,7 @@ class NotificationQueue {
    * check ensures that we catch the problem in the misbehaving child process
    * code, and crash before signalling the parent process.
    */
-  void checkPid() const {
-    CHECK_EQ(pid_, getpid());
-  }
+  void checkPid() const { CHECK_EQ(pid_, pid_t(getpid())); }
 
  private:
   // Forbidden copy constructor and assignment operator

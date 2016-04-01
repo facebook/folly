@@ -275,6 +275,7 @@ nobase_follyinclude_HEADERS = \
 	portability/IOVec.h \
 	portability/Malloc.h \
 	portability/Memory.h \
+	portability/PThread.h \
 	portability/String.h \
 	portability/Strings.h \
 	portability/SysFile.h \

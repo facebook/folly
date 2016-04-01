@@ -792,6 +792,17 @@ toAppend(const Ts&... vs) {
   ::folly::detail::toAppendStrImpl(vs...);
 }
 
+#ifdef _MSC_VER
+// Special case pid_t on MSVC, because it's a void* rather than an
+// integral type. We can't do a global special case because this is already
+// dangerous enough (as most pointers will implicitly convert to a void*)
+// just doing it for MSVC.
+template <class Tgt>
+void toAppend(const pid_t a, Tgt* res) {
+  toAppend(uint64_t(a), res);
+}
+#endif
+
 /**
  * Special version of the call that preallocates exaclty as much memory
  * as need for arguments to be stored in target. This means we are
