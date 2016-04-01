@@ -270,6 +270,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Asm.h \
 	portability/Config.h \
 	portability/Constexpr.h \
+	portability/Dirent.h \
 	portability/Environment.h \
 	portability/GFlags.h \
 	portability/IOVec.h \
@@ -416,6 +417,7 @@ libfolly_la_SOURCES = \
 	detail/MemoryIdler.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
+	portability/Dirent.cpp \
 	portability/Environment.cpp \
 	portability/Malloc.cpp \
 	portability/String.cpp \
