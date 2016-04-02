@@ -85,8 +85,9 @@ struct ElementWrapper {
 
     if (p) {
       ptr = p;
-      deleter1 =
-          +[](void* pt, TLPDestructionMode) { delete static_cast<Ptr>(pt); };
+      deleter1 = [](void* pt, TLPDestructionMode) {
+        delete static_cast<Ptr>(pt);
+      };
       ownsDeleter = false;
     }
   }
