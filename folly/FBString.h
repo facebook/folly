@@ -122,7 +122,9 @@ namespace folly {
 // that would break ABI-compatibility and wouldn't allow linking code
 // compiled with this flag with code compiled without.
 #ifdef FBSTRING_SANITIZE_ADDRESS
-# define FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+# define FBSTRING_DISABLE_SSO true
+#else
+# define FBSTRING_DISABLE_SSO false
 #endif
 
 namespace fbstring_detail {
@@ -353,7 +355,9 @@ public:
     goner.reset();
   }
 
-  fbstring_core(const Char *const data, const size_t size) {
+  fbstring_core(const Char *const data,
+                const size_t size,
+                bool disableSSO = FBSTRING_DISABLE_SSO) {
 #ifndef NDEBUG
 #ifndef _LIBSTDCXX_FBSTRING
     SCOPE_EXIT {
@@ -363,9 +367,8 @@ public:
 #endif
 #endif
 
-#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
     // Simplest case first: small strings are bitblitted
-    if (size <= maxSmallSize) {
+    if (!disableSSO && size <= maxSmallSize) {
       // Layout is: Char* data_, size_t size_, size_t capacity_
       static_assert(sizeof(*this) == sizeof(Char*) + 2 * sizeof(size_t),
           "fbstring has unexpected size");
@@ -377,14 +380,11 @@ public:
 
       // If data is aligned, use fast word-wise copying. Otherwise,
       // use conservative memcpy.
-      if (reinterpret_cast<size_t>(data) & (sizeof(size_t) - 1)) {
-        fbstring_detail::pod_copy(data, data + size, small_);
-      } else {
-        // Copy one word at a time.
-        // NOTE: This reads bytes which are outside the range of the
-        // string, and makes ASan unhappy, but the small case is
-        // disabled under ASan.
-
+      // The word-wise path reads bytes which are outside the range of
+      // the string, and makes ASan unhappy, so we disable it when
+      // compiling with ASan.
+#ifndef FBSTRING_SANITIZE_ADDRESS
+      if ((reinterpret_cast<size_t>(data) & (sizeof(size_t) - 1)) == 0) {
         const size_t byteSize = size * sizeof(Char);
         constexpr size_t wordWidth = sizeof(size_t);
         switch ((byteSize + wordWidth - 1) / wordWidth) { // Number of words.
@@ -397,11 +397,13 @@ public:
         case 0:
           break;
         }
+      } else
+#endif
+      {
+        fbstring_detail::pod_copy(data, data + size, small_);
       }
       setSmallSize(size);
-    } else
-#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
-    {
+    } else {
       if (size <= maxMediumSize) {
         // Medium strings are allocated normally. Don't forget to
         // allocate one extra Char for the terminating null.
@@ -532,7 +534,7 @@ public:
     }
   }
 
-  void reserve(size_t minCapacity) {
+  void reserve(size_t minCapacity, bool disableSSO = FBSTRING_DISABLE_SSO) {
     if (category() == Category::isLarge) {
       // Ensure unique
       if (RefCounted::refs(ml_.data_) > 1) {
@@ -593,13 +595,10 @@ public:
       }
     } else {
       assert(category() == Category::isSmall);
-#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
-      if (minCapacity <= maxSmallSize) {
+      if (!disableSSO && minCapacity <= maxSmallSize) {
         // small
         // Nothing to do, everything stays put
-      } else
-#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
-      if (minCapacity <= maxMediumSize) {
+      } else if (minCapacity <= maxMediumSize) {
         // medium
         // Don't forget to allocate one extra Char for the terminating null
         auto const allocSizeBytes =
@@ -626,19 +625,19 @@ public:
     assert(capacity() >= minCapacity);
   }
 
-  Char * expand_noinit(const size_t delta, bool expGrowth = false) {
+  Char * expand_noinit(const size_t delta,
+                       bool expGrowth = false,
+                       bool disableSSO = FBSTRING_DISABLE_SSO) {
     // Strategy is simple: make room, then change size
     assert(capacity() >= size());
     size_t sz, newSz;
     if (category() == Category::isSmall) {
       sz = smallSize();
       newSz = sz + delta;
-#ifndef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
-      if (FBSTRING_LIKELY(newSz <= maxSmallSize)) {
+      if (!disableSSO && FBSTRING_LIKELY(newSz <= maxSmallSize)) {
         setSmallSize(newSz);
         return small_ + sz;
       }
-#endif // FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
       reserve(expGrowth ? std::max(newSz, 2 * maxSmallSize) : newSz);
     } else {
       sz = ml_.size_;
@@ -1482,29 +1481,20 @@ public:
 private:
   template <int i> class Selector {};
 
-  iterator insertImplDiscr(const_iterator p,
+  iterator insertImplDiscr(const_iterator i,
                            size_type n, value_type c, Selector<1>) {
     Invariant checker(*this);
 
-    auto const pos = p - begin();
-    assert(p >= begin() && p <= end());
-    if (capacity() - size() < n) {
-      const size_type sz = p - begin();
-      reserve(size() + n);
-      p = begin() + sz;
-    }
-    const iterator oldEnd = end();
-    if (n < size_type(oldEnd - p)) {
-      append(oldEnd - n, oldEnd);
-      // Also copies terminator.
-      fbstring_detail::pod_move(&*p, &*oldEnd - n + 1, begin() + pos + n);
-      std::fill(begin() + pos, begin() + pos + n, c);
-    } else {
-      append(n - (end() - p), c);
-      append(iterator(p), oldEnd);
-      std::fill(iterator(p), oldEnd, c);
-    }
-    return begin() + pos;
+    assert(i >= begin() && i <= end());
+    const size_type pos = i - begin();
+
+    auto oldSize = size();
+    store_.expand_noinit(n, /* expGrowth = */ true);
+    auto b = begin();
+    fbstring_detail::pod_move(b + pos, b + oldSize, b + pos + n);
+    fbstring_detail::pod_fill(b + pos, b + pos + n, c);
+
+    return b + pos;
   }
 
   template<class InputIter>
@@ -1521,10 +1511,10 @@ private:
                       std::forward_iterator_tag) {
     Invariant checker(*this);
 
+    assert(i >= begin() && i <= end());
     const size_type pos = i - begin();
     auto n = std::distance(s1, s2);
     assert(n >= 0);
-    assert(pos <= size());
 
     auto oldSize = size();
     store_.expand_noinit(n, /* expGrowth = */ true);
@@ -2481,7 +2471,7 @@ FOLLY_FBSTRING_HASH
 
 #pragma GCC diagnostic pop
 
-#undef FBSTRING_DISABLE_SMALL_STRING_OPTIMIZATION
+#undef FBSTRING_DISABLE_SSO
 #undef FBSTRING_SANITIZE_ADDRESS
 #undef throw
 #undef FBSTRING_LIKELY
