@@ -266,7 +266,7 @@ TEST(Function, Types) {
 // TEST =====================================================================
 // Swap
 
-template <FunctionMoveCtor NEM1, FunctionMoveCtor NEM2>
+template <FunctionMoveCtor NEM1, FunctionMoveCtor NEM2, bool UseSwapMethod>
 void swap_test() {
   Function<int(int), NEM1> mf1(func_int_int_add_25);
   Function<int(int), NEM2> mf2(func_int_int_add_111);
@@ -274,7 +274,11 @@ void swap_test() {
   EXPECT_EQ(mf1(100), 125);
   EXPECT_EQ(mf2(100), 211);
 
-  mf1.swap(mf2);
+  if (UseSwapMethod) {
+    mf1.swap(mf2);
+  } else {
+    swap(mf1, mf2);
+  }
 
   EXPECT_EQ(mf2(100), 125);
   EXPECT_EQ(mf1(100), 211);
@@ -282,7 +286,11 @@ void swap_test() {
   Function<int(int)> mf3(nullptr);
   EXPECT_EQ(mf3, nullptr);
 
-  mf1.swap(mf3);
+  if (UseSwapMethod) {
+    mf1.swap(mf3);
+  } else {
+    swap(mf1, mf3);
+  }
 
   EXPECT_EQ(mf3(100), 211);
   EXPECT_EQ(mf1, nullptr);
@@ -290,25 +298,45 @@ void swap_test() {
   Function<int(int)> mf4([](int x) { return x + 222; });
   EXPECT_EQ(mf4(100), 322);
 
-  mf4.swap(mf3);
+  if (UseSwapMethod) {
+    mf4.swap(mf3);
+  } else {
+    swap(mf4, mf3);
+  }
   EXPECT_EQ(mf4(100), 211);
   EXPECT_EQ(mf3(100), 322);
 
-  mf3.swap(mf1);
+  if (UseSwapMethod) {
+    mf3.swap(mf1);
+  } else {
+    swap(mf3, mf1);
+  }
   EXPECT_EQ(mf3, nullptr);
   EXPECT_EQ(mf1(100), 322);
 }
-TEST(Function, Swap_TT) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW>();
+TEST(Function, SwapMethod_TT) {
+  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW, true>();
 }
-TEST(Function, Swap_TN) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::NO_THROW>();
+TEST(Function, SwapMethod_TN) {
+  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::NO_THROW, true>();
 }
-TEST(Function, Swap_NT) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::MAY_THROW>();
+TEST(Function, SwapMethod_NT) {
+  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::MAY_THROW, true>();
 }
-TEST(Function, Swap_NN) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::NO_THROW>();
+TEST(Function, SwapMethod_NN) {
+  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::NO_THROW, true>();
+}
+TEST(Function, SwapFunction_TT) {
+  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW, false>();
+}
+TEST(Function, SwapFunction_TN) {
+  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::NO_THROW, false>();
+}
+TEST(Function, SwapFunction_NT) {
+  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::MAY_THROW, false>();
+}
+TEST(Function, SwapFunction_NN) {
+  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::NO_THROW, false>();
 }
 
 // TEST =====================================================================

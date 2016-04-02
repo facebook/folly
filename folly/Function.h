@@ -532,15 +532,25 @@ constCastFunction(Function<FunctionType, NTM, EmbedFunctorSize>&&
   return std::move(from).castToConstFunction();
 }
 
-} // folly
-
-namespace std {
-template <typename FunctionType, bool NOM1, bool NOM2, size_t S1, size_t S2>
+template <typename FunctionType, FunctionMoveCtor NOM, size_t S>
 void swap(
-    ::folly::Function<FunctionType, NOM1, S1>& lhs,
-    ::folly::Function<FunctionType, NOM2, S2>& rhs) {
+    Function<FunctionType, NOM, S>& lhs,
+    Function<FunctionType, NOM, S>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
   lhs.swap(rhs);
 }
-} // std
+
+template <
+    typename FunctionType,
+    FunctionMoveCtor NOM1,
+    FunctionMoveCtor NOM2,
+    size_t S1,
+    size_t S2>
+void swap(
+    Function<FunctionType, NOM1, S1>& lhs,
+    Function<FunctionType, NOM2, S2>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+  lhs.swap(rhs);
+}
+
+} // namespace folly
 
 #include "Function-inl.h"
