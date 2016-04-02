@@ -280,6 +280,7 @@ nobase_follyinclude_HEADERS = \
 	portability/PThread.h \
 	portability/String.h \
 	portability/Strings.h \
+	portability/Syslog.h \
 	portability/SysFile.h \
 	portability/SysMman.h \
 	portability/SysResource.h \
