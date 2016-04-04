@@ -92,46 +92,44 @@ FunctionScheduler::~FunctionScheduler() {
   shutdown();
 }
 
-void FunctionScheduler::addFunction(const std::function<void()>& cb,
+void FunctionScheduler::addFunction(Function<void()>&& cb,
                                     milliseconds interval,
                                     StringPiece nameID,
                                     milliseconds startDelay) {
   addFunctionGenericDistribution(
-      cb,
-      IntervalDistributionFunc(ConstIntervalFunctor(interval)),
+      std::move(cb),
+      ConstIntervalFunctor(interval),
       nameID.str(),
       to<std::string>(interval.count(), "ms"),
       startDelay);
 }
 
-void FunctionScheduler::addFunction(const std::function<void()>& cb,
+void FunctionScheduler::addFunction(Function<void()>&& cb,
                                     milliseconds interval,
                                     const LatencyDistribution& latencyDistr,
                                     StringPiece nameID,
                                     milliseconds startDelay) {
   if (latencyDistr.isPoisson) {
     addFunctionGenericDistribution(
-        cb,
-        IntervalDistributionFunc(
-            PoissonDistributionFunctor(latencyDistr.poissonMean)),
+        std::move(cb),
+        PoissonDistributionFunctor(latencyDistr.poissonMean),
         nameID.str(),
         to<std::string>(latencyDistr.poissonMean, "ms (Poisson mean)"),
         startDelay);
   } else {
-    addFunction(cb, interval, nameID, startDelay);
+    addFunction(std::move(cb), interval, nameID, startDelay);
   }
 }
 
 void FunctionScheduler::addFunctionUniformDistribution(
-    const std::function<void()>& cb,
+    Function<void()>&& cb,
     milliseconds minInterval,
     milliseconds maxInterval,
     StringPiece nameID,
     milliseconds startDelay) {
   addFunctionGenericDistribution(
-      cb,
-      IntervalDistributionFunc(
-          UniformDistributionFunctor(minInterval, maxInterval)),
+      std::move(cb),
+      UniformDistributionFunctor(minInterval, maxInterval),
       nameID.str(),
       to<std::string>(
           "[", minInterval.count(), " , ", maxInterval.count(), "] ms"),
@@ -139,8 +137,8 @@ void FunctionScheduler::addFunctionUniformDistribution(
 }
 
 void FunctionScheduler::addFunctionGenericDistribution(
-    const std::function<void()>& cb,
-    const IntervalDistributionFunc& intervalFunc,
+    Function<void()>&& cb,
+    IntervalDistributionFunc&& intervalFunc,
     const std::string& nameID,
     const std::string& intervalDescr,
     milliseconds startDelay) {
@@ -173,7 +171,13 @@ void FunctionScheduler::addFunctionGenericDistribution(
   }
 
   addFunctionToHeap(
-      l, RepeatFunc(cb, intervalFunc, nameID, intervalDescr, startDelay));
+      l,
+      RepeatFunc(
+          std::move(cb),
+          std::move(intervalFunc),
+          nameID,
+          intervalDescr,
+          startDelay));
 }
 
 bool FunctionScheduler::cancelFunction(StringPiece nameID) {

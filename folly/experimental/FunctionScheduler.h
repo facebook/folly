@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Function.h>
 #include <folly/Range.h>
 #include <chrono>
 #include <condition_variable>
@@ -92,7 +93,7 @@ class FunctionScheduler {
    * Throws an exception on error.  In particular, each function must have a
    * unique name--two functions cannot be added with the same name.
    */
-  void addFunction(const std::function<void()>& cb,
+  void addFunction(Function<void()>&& cb,
                    std::chrono::milliseconds interval,
                    StringPiece nameID = StringPiece(),
                    std::chrono::milliseconds startDelay =
@@ -103,7 +104,7 @@ class FunctionScheduler {
    * LatencyDistribution
    */
   void addFunction(
-      const std::function<void()>& cb,
+      Function<void()>&& cb,
       std::chrono::milliseconds interval,
       const LatencyDistribution& latencyDistr,
       StringPiece nameID = StringPiece(),
@@ -114,7 +115,7 @@ class FunctionScheduler {
     * interval being distributed uniformly within the given interval
     * [minInterval, maxInterval].
     */
-  void addFunctionUniformDistribution(const std::function<void()>& cb,
+  void addFunctionUniformDistribution(Function<void()>&& cb,
                                       std::chrono::milliseconds minInterval,
                                       std::chrono::milliseconds maxInterval,
                                       StringPiece nameID,
@@ -124,7 +125,7 @@ class FunctionScheduler {
    * A type alias for function that is called to determine the time
    * interval for the next scheduled run.
    */
-  using IntervalDistributionFunc = std::function<std::chrono::milliseconds()>;
+  using IntervalDistributionFunc = Function<std::chrono::milliseconds()>;
 
   /**
    * Add a new function to the FunctionScheduler. The scheduling interval
@@ -136,8 +137,8 @@ class FunctionScheduler {
    * @see FunctionScheduler::addFunctionJitterInterval).
    */
   void addFunctionGenericDistribution(
-      const std::function<void()>& cb,
-      const IntervalDistributionFunc& intervalFunc,
+      Function<void()>&& cb,
+      IntervalDistributionFunc&& intervalFunc,
       const std::string& nameID,
       const std::string& intervalDescr,
       std::chrono::milliseconds startDelay);
@@ -186,20 +187,20 @@ class FunctionScheduler {
 
  private:
   struct RepeatFunc {
-    std::function<void()> cb;
+    Function<void()> cb;
     IntervalDistributionFunc intervalFunc;
     std::chrono::steady_clock::time_point nextRunTime;
     std::string name;
     std::chrono::milliseconds startDelay;
     std::string intervalDescr;
 
-    RepeatFunc(const std::function<void()>& cback,
-               const IntervalDistributionFunc& intervalFn,
+    RepeatFunc(Function<void()>&& cback,
+               IntervalDistributionFunc&& intervalFn,
                const std::string& nameID,
                const std::string& intervalDistDescription,
                std::chrono::milliseconds delay)
-        : cb(cback),
-          intervalFunc(intervalFn),
+        : cb(std::move(cback)),
+          intervalFunc(std::move(intervalFn)),
           nextRunTime(),
           name(nameID),
           startDelay(delay),
@@ -217,7 +218,7 @@ class FunctionScheduler {
     }
     void cancel() {
       // Simply reset cb to an empty function.
-      cb = std::function<void()>();
+      cb = {};
     }
     bool isValid() const { return bool(cb); }
   };
