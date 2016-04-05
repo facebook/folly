@@ -119,8 +119,26 @@ struct Extract<R(Class::*)(Args...)> {
   typedef typename ArgType<Args...>::FirstArg FirstArg;
 };
 
-} // detail
+// gcc-4.8 refuses to capture a function reference in a lambda. This can be
+// mitigated by casting them to function pointer types first. The following
+// helper is used in Future.h to achieve that where necessary.
+// When compiling with gcc versions 4.9 and up, as well as clang, we do not
+// need to apply FunctionReferenceToPointer (i.e. T can be used instead of
+// FunctionReferenceToPointer<T>).
+// Applying FunctionReferenceToPointer first, the code works on all tested
+// compiler versions: gcc 4.8 and above, cland 3.5 and above.
 
+template <typename T>
+struct FunctionReferenceToPointer {
+  using type = T;
+};
+
+template <typename R, typename... Args>
+struct FunctionReferenceToPointer<R (&)(Args...)> {
+  using type = R (*)(Args...);
+};
+
+} // detail
 
 class Timekeeper;
 

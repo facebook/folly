@@ -367,7 +367,7 @@ retryingPolicyCappedJitteredExponentialBackoff(
     Duration backoff_min,
     Duration backoff_max,
     double jitter_param,
-    URNG rng,
+    URNG&& rng,
     Policy&& p);
 
 inline

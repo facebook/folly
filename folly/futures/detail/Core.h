@@ -149,11 +149,11 @@ class Core {
 
   /// Call only from Future thread.
   template <typename F>
-  void setCallback(F func) {
+  void setCallback(F&& func) {
     bool transitionToArmed = false;
     auto setCallback_ = [&]{
       context_ = RequestContext::saveContext();
-      callback_ = std::move(func);
+      callback_ = std::forward<F>(func);
     };
 
     FSM_START(fsm_)

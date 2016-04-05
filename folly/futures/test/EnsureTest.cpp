@@ -19,7 +19,6 @@
 
 #include <gtest/gtest.h>
 
-#include <folly/MoveWrapper.h>
 #include <folly/futures/Future.h>
 
 using namespace folly;

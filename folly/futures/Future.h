@@ -25,7 +25,6 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
-#include <folly/MoveWrapper.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
@@ -177,10 +176,19 @@ class Future {
     value(), which may rethrow if this has captured an exception. If func
     throws, the exception will be captured in the Future that is returned.
     */
-  template <typename F, typename R = detail::callableResult<T, F>>
-  typename R::Return then(F func) {
+  // gcc 4.8 requires that we cast function reference types to function pointer
+  // types. Fore more details see the comment on FunctionReferenceToPointer
+  // in Future-pre.h.
+  // gcc versions 4.9 and above (as well as clang) do not require this hack.
+  // For those, the FF tenplate parameter can be removed and occurences of FF
+  // replaced with F.
+  template <
+      typename F,
+      typename FF = typename detail::FunctionReferenceToPointer<F>::type,
+      typename R = detail::callableResult<T, FF>>
+  typename R::Return then(F&& func) {
     typedef typename R::Arg Arguments;
-    return thenImplementation<F, R>(std::move(func), Arguments());
+    return thenImplementation<FF, R>(std::forward<FF>(func), Arguments());
   }
 
   /// Variant where func is an member function
@@ -268,7 +276,7 @@ class Future {
   /// func shouldn't throw, but if it does it will be captured and propagated,
   /// and discard any value/exception that this Future has obtained.
   template <class F>
-  Future<T> ensure(F func);
+  Future<T> ensure(F&& func);
 
   /// Like onError, but for timeouts. example:
   ///
@@ -386,7 +394,7 @@ class Future {
   /// If the predicate does not obtain with the value, the result
   /// is a folly::PredicateDoesNotObtain exception
   template <class F>
-  Future<T> filter(F predicate);
+  Future<T> filter(F&& predicate);
 
   /// Like reduce, but works on a Future<std::vector<T / Try<T>>>, for example
   /// the result of collect or collectAll
@@ -458,14 +466,14 @@ class Future {
   ///
   /// thunk behaves like std::function<Future<T2>(void)>
   template <class F>
-  friend Future<Unit> times(const int n, F thunk);
+  friend Future<Unit> times(int n, F&& thunk);
 
   /// Carry out the computation contained in the given future if
   /// the predicate holds.
   ///
   /// thunk behaves like std::function<Future<T2>(void)>
   template <class F>
-  friend Future<Unit> when(bool p, F thunk);
+  friend Future<Unit> when(bool p, F&& thunk);
 
   /// Carry out the computation contained in the given future if
   /// while the predicate continues to hold.
@@ -474,19 +482,19 @@ class Future {
   ///
   /// predicate behaves like std::function<bool(void)>
   template <class P, class F>
-  friend Future<Unit> whileDo(P predicate, F thunk);
+  friend Future<Unit> whileDo(P&& predicate, F&& thunk);
 
   // Variant: returns a value
   // e.g. f.then([](Try<T> t){ return t.value(); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F func, detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, detail::argResult<isTry, F, Args...>);
 
   // Variant: returns a Future
   // e.g. f.then([](Try<T> t){ return makeFuture<T>(t); });
   template <typename F, typename R, bool isTry, typename... Args>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F func, detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, detail::argResult<isTry, F, Args...>);
 
   Executor* getExecutor() { return core_->getExecutor(); }
   void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
