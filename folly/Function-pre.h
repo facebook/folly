@@ -313,6 +313,20 @@ class FunctionTypeTraits<R(Args...) const>::ExecutorMixin {
   InvokeFunctionPtr const invokePtr;
 };
 
+template <class Function>
+struct InvokeFromSharedPtr final {
+  std::shared_ptr<Function> ptr_;
+
+  explicit InvokeFromSharedPtr(std::shared_ptr<Function> ptr)
+      : ptr_(std::move(ptr)) {}
+
+  template <typename... Args>
+  auto operator()(Args&&... args)
+      -> decltype((*ptr_)(std::forward<Args>(args)...)) {
+    return (*ptr_)(std::forward<Args>(args)...);
+  }
+};
+
 } // namespace function
 } // namespace detail
 } // namespace folly

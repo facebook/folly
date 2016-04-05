@@ -1230,3 +1230,75 @@ TEST(Function, ConvertReturnType) {
   Function<CBase()> cf9 = std::move(f9);
   EXPECT_EQ(cf9().x, 66);
 }
+
+TEST(Function, asStdFunction_void) {
+  int i = 0;
+  folly::Function<void()> f = [&] { ++i; };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<void()>>::value,
+      "std::function has wrong type");
+  sf();
+  EXPECT_EQ(1, i);
+}
+
+TEST(Function, asStdFunction_void_const) {
+  int i = 0;
+  folly::Function<void() const> f = [&] { ++i; };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<void()>>::value,
+      "std::function has wrong type");
+  sf();
+  EXPECT_EQ(1, i);
+}
+
+TEST(Function, asStdFunction_return) {
+  int i = 0;
+  folly::Function<int()> f = [&] {
+    ++i;
+    return 42;
+  };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<int()>>::value,
+      "std::function has wrong type");
+  EXPECT_EQ(42, sf());
+  EXPECT_EQ(1, i);
+}
+
+TEST(Function, asStdFunction_return_const) {
+  int i = 0;
+  folly::Function<int() const> f = [&] {
+    ++i;
+    return 42;
+  };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<int()>>::value,
+      "std::function has wrong type");
+  EXPECT_EQ(42, sf());
+  EXPECT_EQ(1, i);
+}
+
+TEST(Function, asStdFunction_args) {
+  int i = 0;
+  folly::Function<void(int, int)> f = [&](int x, int y) {
+    ++i;
+    return x + y;
+  };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<void(int, int)>>::value,
+      "std::function has wrong type");
+  sf(42, 42);
+  EXPECT_EQ(1, i);
+}
+
+TEST(Function, asStdFunction_args_const) {
+  int i = 0;
+  folly::Function<void(int, int) const> f = [&](int x, int y) {
+    ++i;
+    return x + y;
+  };
+  auto sf = std::move(f).asStdFunction();
+  static_assert(std::is_same<decltype(sf), std::function<void(int, int)>>::value,
+      "std::function has wrong type");
+  sf(42, 42);
+  EXPECT_EQ(1, i);
+}

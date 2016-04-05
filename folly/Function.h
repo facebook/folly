@@ -304,6 +304,16 @@ class Function final
   Function& operator=(Function&& rhs) noexcept(hasNoExceptMoveCtor());
 
   /**
+   * Construct a std::function by moving in the contents of this `Function`.
+   * Note that the returned std::function will share its state (i.e. captured
+   * data) across all copies you make of it, so be very careful when copying.
+   */
+  std::function<typename Traits::NonConstFunctionType> asStdFunction() && {
+    return detail::function::InvokeFromSharedPtr<Function>(
+        std::make_shared<Function>(std::move(*this)));
+  }
+
+  /**
    * Constructs a `Function` by moving from one with different template
    * parameters with regards to const-ness, no-except-movability and internal
    * storage size.
