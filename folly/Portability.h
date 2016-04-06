@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-// Break caches 20160401 (#8764509) @nocommit
 #pragma once
 
 #include <string.h>
