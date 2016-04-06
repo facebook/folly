@@ -203,6 +203,9 @@ class SymbolizePrinter {
 
     // Colorize output only if output is printed to a TTY (ANSI escape code)
     COLOR_IF_TTY = 1 << 3,
+
+    // Skip frame address information
+    NO_FRAME_ADDRESS = 1 << 4,
   };
 
   // NOTE: enum values used as indexes in kColorMap.

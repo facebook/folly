@@ -35,6 +35,10 @@ struct ExceptionInfo {
   std::vector<uintptr_t> frames;  // front() is top of stack
 };
 
+void printExceptionInfo(
+    std::ostream& out,
+    const ExceptionInfo& info,
+    int options);
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info);
 
 /**

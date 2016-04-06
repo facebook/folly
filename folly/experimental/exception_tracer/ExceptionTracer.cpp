@@ -44,6 +44,14 @@ namespace folly {
 namespace exception_tracer {
 
 std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
+  printExceptionInfo(out, info, SymbolizePrinter::COLOR_IF_TTY);
+  return out;
+}
+
+void printExceptionInfo(
+    std::ostream& out,
+    const ExceptionInfo& info,
+    int options) {
   out << "Exception type: ";
   if (info.type) {
     out << folly::demangle(*info.type);
@@ -68,7 +76,7 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
       Symbolizer symbolizer;
       symbolizer.symbolize(addresses, frames.data(), frameCount);
 
-      OStreamSymbolizePrinter osp(out, SymbolizePrinter::COLOR_IF_TTY);
+      OStreamSymbolizePrinter osp(out, options);
       osp.println(addresses, frames.data(), frameCount);
     }
   } catch (const std::exception& e) {
@@ -76,7 +84,6 @@ std::ostream& operator<<(std::ostream& out, const ExceptionInfo& info) {
   } catch (...) {
     out << "\n !!! caught unexpected exception\n";
   }
-  return out;
 }
 
 namespace {

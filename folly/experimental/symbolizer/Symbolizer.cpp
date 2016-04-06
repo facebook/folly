@@ -345,10 +345,12 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
 
   SCOPE_EXIT { color(Color::DEFAULT); };
 
-  color(kAddressColor);
+  if (!(options_ & NO_FRAME_ADDRESS)) {
+    color(kAddressColor);
 
-  AddressFormatter formatter;
-  doPrint(formatter.format(address));
+    AddressFormatter formatter;
+    doPrint(formatter.format(address));
+  }
 
   const char padBuf[] = "                       ";
   folly::StringPiece pad(padBuf,
