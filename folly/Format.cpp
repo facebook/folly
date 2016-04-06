@@ -214,11 +214,11 @@ void FormatArg::initSlow() {
     }
 
     auto readInt = [&] {
-      auto const b = p;
+      auto const c = p;
       do {
         ++p;
       } while (p != end && *p >= '0' && *p <= '9');
-      return to<int>(StringPiece(b, p));
+      return to<int>(StringPiece(c, p));
     };
 
     if (*p == '*') {
@@ -242,12 +242,12 @@ void FormatArg::initSlow() {
     }
 
     if (*p == '.') {
-      auto b = ++p;
+      auto d = ++p;
       while (p != end && *p >= '0' && *p <= '9') {
         ++p;
       }
-      if (p != b) {
-        precision = to<int>(StringPiece(b, p));
+      if (p != d) {
+        precision = to<int>(StringPiece(d, p));
         if (p != end && *p == '.') {
           trailingDot = true;
           ++p;

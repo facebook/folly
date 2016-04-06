@@ -115,11 +115,9 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   // Now, we can do aligned loads hereafter...
   size_t i = nextAlignedIndex(haystack.data());
   for (; i < haystack.size(); i+= 16) {
-    auto arr1 = _mm_load_si128(
-        reinterpret_cast<const __m128i*>(haystack.data() + i));
-    auto index = _mm_cmpestri(
-        arr2, needles.size(),
-        arr1, haystack.size() - i, 0);
+    arr1 =
+        _mm_load_si128(reinterpret_cast<const __m128i*>(haystack.data() + i));
+    index = _mm_cmpestri(arr2, needles.size(), arr1, haystack.size() - i, 0);
     if (index < 16) {
       return i + index;
     }
@@ -211,7 +209,7 @@ size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
 
   size_t i = nextAlignedIndex(haystack.data());
   for (; i < haystack.size(); i += 16) {
-    auto ret = scanHaystackBlock<true>(haystack, needles, i);
+    ret = scanHaystackBlock<true>(haystack, needles, i);
     if (ret != std::string::npos) {
       return ret;
     }

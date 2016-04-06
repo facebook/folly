@@ -36,7 +36,7 @@ namespace {
  * A structure to free a struct addrinfo when it goes out of scope.
  */
 struct ScopedAddrInfo {
-  explicit ScopedAddrInfo(struct addrinfo* info) : info(info) {}
+  explicit ScopedAddrInfo(struct addrinfo* addrinfo) : info(addrinfo) {}
   ~ScopedAddrInfo() {
     freeaddrinfo(info);
   }
