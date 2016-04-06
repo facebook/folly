@@ -16,7 +16,9 @@
 
 #pragma once
 
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 
 #include <folly/portability/Config.h>
 
