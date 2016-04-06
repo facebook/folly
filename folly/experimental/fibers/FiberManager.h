@@ -61,7 +61,7 @@ class InlineFunctionRunner {
   /**
    * func must be executed inline and only once.
    */
-  virtual void run(std::function<void()> func) = 0;
+  virtual void run(folly::Function<void()> func) = 0;
 };
 
 /**
@@ -116,8 +116,8 @@ class FiberManager : public ::folly::Executor {
     constexpr Options() {}
   };
 
-  typedef std::function<void(std::exception_ptr, std::string)>
-  ExceptionCallback;
+  using ExceptionCallback =
+      folly::Function<void(std::exception_ptr, std::string)>;
 
   FiberManager(const FiberManager&) = delete;
   FiberManager& operator=(const FiberManager&) = delete;
@@ -213,7 +213,7 @@ class FiberManager : public ::folly::Executor {
       -> folly::Future<typename std::result_of<F()>::type>;
 
   // Executor interface calls addTaskRemote
-  void add(std::function<void()> f) {
+  void add(folly::Func f) override {
     addTaskRemote(std::move(f));
   }
 
@@ -331,7 +331,7 @@ class FiberManager : public ::folly::Executor {
         func(std::forward<F>(f)),
         localData(folly::make_unique<Fiber::LocalData>(localData_)),
         rcontext(RequestContext::saveContext()) {}
-    std::function<void()> func;
+    folly::Function<void()> func;
     std::unique_ptr<Fiber::LocalData> localData;
     std::shared_ptr<RequestContext> rcontext;
     AtomicLinkedListHook<RemoteTask> nextRemoteTask;
@@ -411,12 +411,12 @@ class FiberManager : public ::folly::Executor {
   /**
    * Function passed to the await call.
    */
-  std::function<void(Fiber&)> awaitFunc_;
+  folly::Function<void(Fiber&)> awaitFunc_;
 
   /**
    * Function passed to the runInMainContext call.
    */
-  std::function<void()> immediateFunc_;
+  folly::Function<void()> immediateFunc_;
 
   /**
    * Preempt runner.

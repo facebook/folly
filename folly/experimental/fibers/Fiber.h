@@ -22,6 +22,7 @@
 #include <boost/version.hpp>
 #include <folly/AtomicLinkedList.h>
 #include <folly/CPortability.h>
+#include <folly/Function.h>
 #include <folly/IntrusiveList.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
@@ -119,7 +120,7 @@ class Fiber {
   FContext fcontext_;           /**< current task execution context */
   intptr_t data_;               /**< Used to keep some data with the Fiber */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
-  std::function<void()> func_;  /**< task function */
+  folly::Function<void()> func_;  /**< task function */
   bool recordStackUsed_{false};
   bool stackFilledWithMagic_{false};
 
@@ -133,8 +134,8 @@ class Fiber {
 
   void* getUserBuffer();
 
-  std::function<void()> resultFunc_;
-  std::function<void()> finallyFunc_;
+  folly::Function<void()> resultFunc_;
+  folly::Function<void()> finallyFunc_;
 
   class LocalData {
    public:

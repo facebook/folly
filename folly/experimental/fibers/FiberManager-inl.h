@@ -299,23 +299,15 @@ auto FiberManager::addTaskFuture(F&& func)
 
 template <typename F>
 void FiberManager::addTaskRemote(F&& func) {
-  // addTaskRemote indirectly requires wrapping the function in a
-  // std::function, which must be copyable. As move-only lambdas may be
-  // passed in we wrap it first in a move wrapper and then capture the wrapped
-  // version.
-  auto functionWrapper = [f = folly::makeMoveWrapper(
-                              std::forward<F>(func))]() mutable {
-    return (*f)();
-  };
   auto task = [&]() {
     auto currentFm = getFiberManagerUnsafe();
     if (currentFm &&
         currentFm->currentFiber_ &&
         currentFm->localType_ == localType_) {
       return folly::make_unique<RemoteTask>(
-          std::move(functionWrapper), currentFm->currentFiber_->localData_);
+          std::forward<F>(func), currentFm->currentFiber_->localData_);
     }
-    return folly::make_unique<RemoteTask>(std::move(functionWrapper));
+    return folly::make_unique<RemoteTask>(std::forward<F>(func));
   }();
   auto insertHead =
       [&]() { return remoteTaskQueue_.insertHead(task.release()); };
