@@ -906,8 +906,36 @@ TEST(Split, fixed_convert) {
   EXPECT_EQ(13, b);
   EXPECT_EQ("14.7:b", d);
 
-  EXPECT_THROW(folly::split<false>(':', "a:13:14.7:b", a, b, c),
-               std::range_error);
+
+  // Enable verifying that a line only contains one field
+  EXPECT_TRUE(folly::split(' ', "hello", a));
+  EXPECT_FALSE(folly::split(' ', "hello world", a));
+}
+
+namespace my {
+
+enum class Color {
+  Red,
+  Blue,
+};
+
+void parseTo(folly::StringPiece in, Color& out) {
+  if (in == "R") {
+    out = Color::Red;
+  } else if (in == "B") {
+    out = Color::Blue;
+  } else {
+    throw runtime_error("");
+  }
+}
+}
+
+TEST(Split, fixed_convert_custom) {
+  my::Color c1, c2;
+
+  EXPECT_TRUE(folly::split(',', "R,B", c1, c2));
+  EXPECT_EQ(c1, my::Color::Red);
+  EXPECT_EQ(c2, my::Color::Blue);
 }
 
 TEST(String, join) {

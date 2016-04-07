@@ -266,6 +266,110 @@ bool str_to_bool(StringPiece* src) {
   return result;
 }
 
+namespace {
+/**
+ * StringPiece to double, with progress information. Alters the
+ * StringPiece parameter to munch the already-parsed characters.
+ */
+template <class Tgt>
+Tgt str_to_floating(StringPiece* src) {
+  using namespace double_conversion;
+  static StringToDoubleConverter
+    conv(StringToDoubleConverter::ALLOW_TRAILING_JUNK
+         | StringToDoubleConverter::ALLOW_LEADING_SPACES,
+         0.0,
+         // return this for junk input string
+         std::numeric_limits<double>::quiet_NaN(),
+         nullptr, nullptr);
+
+  FOLLY_RANGE_CHECK_STRINGPIECE(!src->empty(),
+                                "No digits found in input string", *src);
+
+  int length;
+  auto result = conv.StringToDouble(src->data(),
+                                    static_cast<int>(src->size()),
+                                    &length); // processed char count
+
+  if (!std::isnan(result)) {
+    src->advance(length);
+    return result;
+  }
+
+  for (;; src->advance(1)) {
+    if (src->empty()) {
+      throw std::range_error("Unable to convert an empty string"
+                             " to a floating point value.");
+    }
+    if (!isspace(src->front())) {
+      break;
+    }
+  }
+
+  // Was that "inf[inity]"?
+  if (src->size() >= 3 && toupper((*src)[0]) == 'I'
+        && toupper((*src)[1]) == 'N' && toupper((*src)[2]) == 'F') {
+    if (src->size() >= 8 &&
+        toupper((*src)[3]) == 'I' &&
+        toupper((*src)[4]) == 'N' &&
+        toupper((*src)[5]) == 'I' &&
+        toupper((*src)[6]) == 'T' &&
+        toupper((*src)[7]) == 'Y') {
+      src->advance(8);
+    } else {
+      src->advance(3);
+    }
+    return std::numeric_limits<Tgt>::infinity();
+  }
+
+  // Was that "-inf[inity]"?
+  if (src->size() >= 4 && toupper((*src)[0]) == '-'
+      && toupper((*src)[1]) == 'I' && toupper((*src)[2]) == 'N'
+      && toupper((*src)[3]) == 'F') {
+    if (src->size() >= 9 &&
+        toupper((*src)[4]) == 'I' &&
+        toupper((*src)[5]) == 'N' &&
+        toupper((*src)[6]) == 'I' &&
+        toupper((*src)[7]) == 'T' &&
+        toupper((*src)[8]) == 'Y') {
+      src->advance(9);
+    } else {
+      src->advance(4);
+    }
+    return -std::numeric_limits<Tgt>::infinity();
+  }
+
+  // "nan"?
+  if (src->size() >= 3 && toupper((*src)[0]) == 'N'
+        && toupper((*src)[1]) == 'A' && toupper((*src)[2]) == 'N') {
+    src->advance(3);
+    return std::numeric_limits<Tgt>::quiet_NaN();
+  }
+
+  // "-nan"?
+  if (src->size() >= 4 &&
+      toupper((*src)[0]) == '-' &&
+      toupper((*src)[1]) == 'N' &&
+      toupper((*src)[2]) == 'A' &&
+      toupper((*src)[3]) == 'N') {
+    src->advance(4);
+    return -std::numeric_limits<Tgt>::quiet_NaN();
+  }
+
+  // All bets are off
+  throw std::range_error("Unable to convert \"" + src->toString()
+                         + "\" to a floating point value.");
+}
+
+}
+
+float str_to_float(StringPiece* src) {
+  return str_to_floating<float>(src);
+}
+
+double str_to_double(StringPiece* src) {
+  return str_to_floating<double>(src);
+}
+
 /**
  * String represented as a pair of pointers to char to unsigned
  * integrals. Assumes NO whitespace before or after, and also that the

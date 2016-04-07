@@ -432,28 +432,28 @@ template<class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            std::vector<OutputType>& out,
-           bool ignoreEmpty = false);
+           const bool ignoreEmpty = false);
 
 template<class Delim, class String, class OutputType>
 void split(const Delim& delimiter,
            const String& input,
            folly::fbvector<OutputType>& out,
-           bool ignoreEmpty = false);
+           const bool ignoreEmpty = false);
 
 template<class OutputValueType, class Delim, class String,
          class OutputIterator>
 void splitTo(const Delim& delimiter,
              const String& input,
              OutputIterator out,
-             bool ignoreEmpty = false);
+             const bool ignoreEmpty = false);
 
 /*
  * Split a string into a fixed number of string pieces and/or numeric types
- * by delimiter. Any numeric type that folly::to<> can convert to from a
- * string piece is supported as a target. Returns 'true' if the fields were
- * all successfully populated.  Returns 'false' if there were too few fields
- * in the input, or too many fields if exact=true.  Casting exceptions will
- * not be caught.
+ * by delimiter. Conversions are supported for any type which folly:to<> can
+ * target, including all overloads of parseTo(). Returns 'true' if the fields
+ * were all successfully populated.  Returns 'false' if there were too few
+ * fields in the input, or too many fields if exact=true.  Casting exceptions
+ * will not be caught.
  *
  * Examples:
  *
@@ -481,21 +481,57 @@ void splitTo(const Delim& delimiter,
  * Note that this will likely not work if the last field's target is of numeric
  * type, in which case folly::to<> will throw an exception.
  */
-template <class T>
-using IsSplitTargetType = std::integral_constant<bool,
-  std::is_arithmetic<T>::value ||
-  std::is_same<T, StringPiece>::value ||
-  IsSomeString<T>::value>;
+template <class T, class Enable = void>
+struct IsSomeVector {
+  enum { value = false };
+};
 
-template<bool exact = true,
-         class Delim,
-         class OutputType,
-         class... OutputTypes>
-typename std::enable_if<IsSplitTargetType<OutputType>::value, bool>::type
-split(const Delim& delimiter,
-      StringPiece input,
-      OutputType& outHead,
-      OutputTypes&... outTail);
+template <class T>
+struct IsSomeVector<std::vector<T>, void> {
+  enum { value = true };
+};
+
+template <class T>
+struct IsSomeVector<fbvector<T>, void> {
+  enum { value = true };
+};
+
+template <class T, class Enable = void>
+struct IsConvertible {
+  enum { value = false };
+};
+
+template <class T>
+struct IsConvertible<
+    T,
+    decltype(parseTo(std::declval<folly::StringPiece>(), std::declval<T&>()))> {
+  enum { value = true };
+};
+
+template <class... Types>
+struct AllConvertible;
+
+template <class Head, class... Tail>
+struct AllConvertible<Head, Tail...> {
+  enum { value = IsConvertible<Head>::value && AllConvertible<Tail...>::value };
+};
+
+template <>
+struct AllConvertible<> {
+  enum { value = true };
+};
+
+static_assert(AllConvertible<float>::value, "");
+static_assert(AllConvertible<int>::value, "");
+static_assert(AllConvertible<bool>::value, "");
+static_assert(AllConvertible<int>::value, "");
+static_assert(!AllConvertible<std::vector<int>>::value, "");
+
+template <bool exact = true, class Delim, class... OutputTypes>
+typename std::enable_if<
+    AllConvertible<OutputTypes...>::value && sizeof...(OutputTypes) >= 1,
+    bool>::type
+split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
 /*
  * Join list of tokens.

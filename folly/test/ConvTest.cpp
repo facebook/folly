@@ -699,16 +699,13 @@ TEST(Conv, UnsignedEnumClass) {
   auto u = to<uint32_t>(E::x);
   EXPECT_GT(u, 0);
   EXPECT_EQ(u, 3000000000U);
-  auto s = to<string>(E::x);
-  EXPECT_EQ("3000000000", s);
-  auto e = to<E>(3000000000U);
-  EXPECT_EQ(e, E::x);
-  try {
-    auto i = to<int32_t>(E::x);
-    LOG(ERROR) << "to<int32_t> returned " << i << " instead of throwing";
-    EXPECT_TRUE(false);
-  } catch (std::range_error& e) {
-  }
+  EXPECT_EQ("3000000000", to<string>(E::x));
+  EXPECT_EQ(E::x, to<E>(3000000000U));
+  EXPECT_EQ(E::x, to<E>("3000000000"));
+  E e;
+  parseTo("3000000000", e);
+  EXPECT_EQ(E::x, e);
+  EXPECT_THROW(to<int32_t>(E::x), std::range_error);
 }
 
 // Multi-argument to<string> uses toAppend, a different code path than
@@ -847,4 +844,42 @@ TEST(Conv, allocate_size) {
   std::string res3;
   toAppendDelimFit(",", str1, str2, &res3);
   EXPECT_EQ(res3, str1 + "," + str2);
+}
+
+namespace my {
+struct Dimensions {
+  int w, h;
+  std::tuple<const int&, const int&> tuple_view() const {
+    return tie(w, h);
+  }
+  bool operator==(const Dimensions& other) const {
+    return this->tuple_view() == other.tuple_view();
+  }
+};
+
+void parseTo(folly::StringPiece in, Dimensions& out) {
+  out.w = folly::to<int>(&in);
+  in.removePrefix("x");
+  out.h = folly::to<int>(&in);
+}
+
+template <class String>
+void toAppend(const Dimensions& in, String* result) {
+  folly::toAppend(in.w, 'x', in.h, result);
+}
+
+size_t estimateSpaceNeeded(const Dimensions&in) {
+  return 2000 + folly::estimateSpaceNeeded(in.w) +
+      folly::estimateSpaceNeeded(in.h);
+}
+}
+
+TEST(Conv, custom_kkproviders) {
+  my::Dimensions expected{7, 8};
+  EXPECT_EQ(expected, folly::to<my::Dimensions>("7x8"));
+  auto str = folly::to<std::string>(expected);
+  EXPECT_EQ("7x8", str);
+  // make sure above implementation of estimateSpaceNeeded() is used.
+  EXPECT_GT(str.capacity(), 2000);
+  EXPECT_LT(str.capacity(), 2500);
 }

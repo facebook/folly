@@ -306,8 +306,7 @@ double prettyToDouble(folly::StringPiece *const prettyString,
 
 double prettyToDouble(folly::StringPiece prettyString, const PrettyType type){
   double result = prettyToDouble(&prettyString, type);
-  detail::enforceWhitespace(prettyString.data(),
-                            prettyString.data() + prettyString.size());
+  detail::enforceWhitespace(prettyString);
   return result;
 }
 

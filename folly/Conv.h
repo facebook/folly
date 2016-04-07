@@ -253,10 +253,26 @@ inline uint32_t digits10(uint64_t v) {
   // This is 20 * 8 == 160 bytes, which fits neatly into 5 cache lines
   // (assuming a cache line size of 64).
   static const uint64_t powersOf10[20] FOLLY_ALIGNED(64) = {
-    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000,
-    10000000000, 100000000000, 1000000000000, 10000000000000, 100000000000000,
-    1000000000000000, 10000000000000000, 100000000000000000,
-    1000000000000000000, 10000000000000000000UL
+      1,
+      10,
+      100,
+      1000,
+      10000,
+      100000,
+      1000000,
+      10000000,
+      100000000,
+      1000000000,
+      10000000000,
+      100000000000,
+      1000000000000,
+      10000000000000,
+      100000000000000,
+      1000000000000000,
+      10000000000000000,
+      100000000000000000,
+      1000000000000000000,
+      10000000000000000000UL,
   };
 
   // "count leading zeroes" operation not valid; for 0; special case this.
@@ -781,6 +797,20 @@ toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
  * the space for them and will depend on strings exponential growth.
  * If you just append once consider using toAppendFit which reserves
  * the space needed (but does not have exponential as a result).
+ *
+ * Custom implementations of toAppend() can be provided in the same namespace as
+ * the type to customize printing. estimateSpaceNeed() may also be provided to
+ * avoid reallocations in toAppendFit():
+ *
+ * namespace other_namespace {
+ *
+ * template <class String>
+ * void toAppend(const OtherType&, String* out);
+ *
+ * // optional
+ * size_t estimateSpaceNeeded(const OtherType&);
+ *
+ * }
  */
 template <class... Ts>
 typename std::enable_if<sizeof...(Ts) >= 3
@@ -957,23 +987,25 @@ namespace detail {
   };
 
   bool str_to_bool(StringPiece* src);
+  float str_to_float(StringPiece* src);
+  double str_to_double(StringPiece* src);
 
   template <class Tgt>
   Tgt digits_to(const char* b, const char* e);
 
   extern template unsigned char digits_to<unsigned char>(const char* b,
-                                                         const char* e);
+      const char* e);
   extern template unsigned short digits_to<unsigned short>(const char* b,
-                                                           const char* e);
+      const char* e);
   extern template unsigned int digits_to<unsigned int>(const char* b,
-                                                       const char* e);
+      const char* e);
   extern template unsigned long digits_to<unsigned long>(const char* b,
-                                                         const char* e);
+      const char* e);
   extern template unsigned long long digits_to<unsigned long long>(
       const char* b, const char* e);
 #if FOLLY_HAVE_INT128_T
   extern template unsigned __int128 digits_to<unsigned __int128>(const char* b,
-                                                                 const char* e);
+      const char* e);
 #endif
 
 }                                 // namespace detail
@@ -1017,23 +1049,13 @@ to(const char * b, const char * e) {
   return result;
 }
 
-/**
- * Parsing strings to integrals. These routines differ from
- * to<integral>(string) in that they take a POINTER TO a StringPiece
- * and alter that StringPiece to reflect progress information.
- */
-
+namespace detail {
 /**
  * StringPiece to integrals, with progress information. Alters the
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-typename std::enable_if<
-  std::is_integral<Tgt>::value
-  && !std::is_same<typename std::remove_cv<Tgt>::type, bool>::value,
-  Tgt>::type
-to(StringPiece * src) {
-
+Tgt str_to_integral(StringPiece* src) {
   auto b = src->data(), past = src->data() + src->size();
   for (;; ++b) {
     FOLLY_RANGE_CHECK_STRINGPIECE(b < past,
@@ -1081,157 +1103,57 @@ to(StringPiece * src) {
 }
 
 /**
- * StringPiece to bool, with progress information. Alters the
- * StringPiece parameter to munch the already-parsed characters.
- */
-template <class Tgt>
-typename std::enable_if<
-  std::is_same<typename std::remove_cv<Tgt>::type, bool>::value,
-  Tgt>::type
-to(StringPiece * src) {
-  return detail::str_to_bool(src);
-}
-
-namespace detail {
-
-/**
  * Enforce that the suffix following a number is made up only of whitespace.
  */
-inline void enforceWhitespace(const char* b, const char* e) {
-  for (; b != e; ++b) {
-    FOLLY_RANGE_CHECK_BEGIN_END(isspace(*b),
-                                to<std::string>("Non-whitespace: ", *b),
-                                b, e);
+inline void enforceWhitespace(StringPiece sp) {
+  for (char ch : sp) {
+    FOLLY_RANGE_CHECK_STRINGPIECE(
+        isspace(ch), to<std::string>("Non-whitespace: ", ch), sp);
   }
-}
-
-}  // namespace detail
-
-/**
- * String or StringPiece to integrals. Accepts leading and trailing
- * whitespace, but no non-space trailing characters.
- */
-template <class Tgt>
-typename std::enable_if<
-  std::is_integral<Tgt>::value,
-  Tgt>::type
-to(StringPiece src) {
-  Tgt result = to<Tgt>(&src);
-  detail::enforceWhitespace(src.data(), src.data() + src.size());
-  return result;
 }
 
 /*******************************************************************************
  * Conversions from string types to floating-point types.
  ******************************************************************************/
 
+
+} // namespace detail
+
 /**
- * StringPiece to double, with progress information. Alters the
+ * StringPiece to bool, with progress information. Alters the
  * StringPiece parameter to munch the already-parsed characters.
  */
-template <class Tgt>
-inline typename std::enable_if<
-  std::is_floating_point<Tgt>::value,
-  Tgt>::type
-to(StringPiece *const src) {
-  using namespace double_conversion;
-  static StringToDoubleConverter
-    conv(StringToDoubleConverter::ALLOW_TRAILING_JUNK
-         | StringToDoubleConverter::ALLOW_LEADING_SPACES,
-         0.0,
-         // return this for junk input string
-         std::numeric_limits<double>::quiet_NaN(),
-         nullptr, nullptr);
-
-  FOLLY_RANGE_CHECK_STRINGPIECE(!src->empty(),
-                                "No digits found in input string", *src);
-
-  int length;
-  auto result = conv.StringToDouble(src->data(),
-                                    static_cast<int>(src->size()),
-                                    &length); // processed char count
-
-  if (!std::isnan(result)) {
-    src->advance(length);
-    return result;
-  }
-
-  for (;; src->advance(1)) {
-    if (src->empty()) {
-      throw std::range_error("Unable to convert an empty string"
-                             " to a floating point value.");
-    }
-    if (!isspace(src->front())) {
-      break;
-    }
-  }
-
-  // Was that "inf[inity]"?
-  if (src->size() >= 3 && toupper((*src)[0]) == 'I'
-        && toupper((*src)[1]) == 'N' && toupper((*src)[2]) == 'F') {
-    if (src->size() >= 8 &&
-        toupper((*src)[3]) == 'I' &&
-        toupper((*src)[4]) == 'N' &&
-        toupper((*src)[5]) == 'I' &&
-        toupper((*src)[6]) == 'T' &&
-        toupper((*src)[7]) == 'Y') {
-      src->advance(8);
-    } else {
-      src->advance(3);
-    }
-    return std::numeric_limits<Tgt>::infinity();
-  }
-
-  // Was that "-inf[inity]"?
-  if (src->size() >= 4 && toupper((*src)[0]) == '-'
-      && toupper((*src)[1]) == 'I' && toupper((*src)[2]) == 'N'
-      && toupper((*src)[3]) == 'F') {
-    if (src->size() >= 9 &&
-        toupper((*src)[4]) == 'I' &&
-        toupper((*src)[5]) == 'N' &&
-        toupper((*src)[6]) == 'I' &&
-        toupper((*src)[7]) == 'T' &&
-        toupper((*src)[8]) == 'Y') {
-      src->advance(9);
-    } else {
-      src->advance(4);
-    }
-    return -std::numeric_limits<Tgt>::infinity();
-  }
-
-  // "nan"?
-  if (src->size() >= 3 && toupper((*src)[0]) == 'N'
-        && toupper((*src)[1]) == 'A' && toupper((*src)[2]) == 'N') {
-    src->advance(3);
-    return std::numeric_limits<Tgt>::quiet_NaN();
-  }
-
-  // "-nan"?
-  if (src->size() >= 4 &&
-      toupper((*src)[0]) == '-' &&
-      toupper((*src)[1]) == 'N' &&
-      toupper((*src)[2]) == 'A' &&
-      toupper((*src)[3]) == 'N') {
-    src->advance(4);
-    return -std::numeric_limits<Tgt>::quiet_NaN();
-  }
-
-  // All bets are off
-  throw std::range_error("Unable to convert \"" + src->toString()
-                         + "\" to a floating point value.");
+inline void parseTo(StringPiece* src, bool& out) {
+  out = detail::str_to_bool(src);
 }
 
 /**
- * Any string, const char*, or StringPiece to double.
+ * Parsing strings to numeric types. These routines differ from
+ * parseTo(str, numeric) routines in that they take a POINTER TO a StringPiece
+ * and alter that StringPiece to reflect progress information.
  */
 template <class Tgt>
 typename std::enable_if<
-  std::is_floating_point<Tgt>::value,
-  Tgt>::type
-to(StringPiece src) {
-  Tgt result = Tgt(to<double>(&src));
-  detail::enforceWhitespace(src.data(), src.data() + src.size());
-  return result;
+    std::is_integral<typename std::remove_cv<Tgt>::type>::value>::type
+parseTo(StringPiece* src, Tgt& out) {
+  out = detail::str_to_integral<Tgt>(src);
+}
+
+inline void parseTo(StringPiece* src, float& out) {
+  out = detail::str_to_float(src);
+}
+
+inline void parseTo(StringPiece* src, double& out) {
+  out = detail::str_to_double(src);
+}
+
+template <class Tgt>
+typename std::enable_if<
+    std::is_floating_point<Tgt>::value ||
+    std::is_integral<typename std::remove_cv<Tgt>::type>::value>::type
+parseTo(StringPiece src, Tgt& out) {
+  parseTo(&src, out);
+  detail::enforceWhitespace(src);
 }
 
 /*******************************************************************************
@@ -1264,6 +1186,59 @@ to(const Src & value) {
 #endif
                       ).c_str());
   }
+  return result;
+}
+
+/*******************************************************************************
+ * Custom Conversions
+ *
+ * Any type can be used with folly::to by implementing parseTo. The
+ * implementation should be provided in the namespace of the type to facilitate
+ * argument-dependent lookup:
+ *
+ * namespace other_namespace {
+ * void parseTo(::folly::StringPiece, OtherType&);
+ * }
+ ******************************************************************************/
+template <class T>
+typename std::enable_if<std::is_enum<T>::value>::type
+parseTo(StringPiece in, T& out) {
+  typename std::underlying_type<T>::type tmp;
+  parseTo(in, tmp);
+  out = static_cast<T>(tmp);
+}
+
+inline void parseTo(StringPiece in, StringPiece& out) {
+  out = in;
+}
+
+inline void parseTo(StringPiece in, std::string& out) {
+  out.clear();
+  out.append(in.data(), in.size());
+}
+
+inline void parseTo(StringPiece in, fbstring& out) {
+  out.clear();
+  out.append(in.data(), in.size());
+}
+
+/**
+ * String or StringPiece to target conversion. Accepts leading and trailing
+ * whitespace, but no non-space trailing characters.
+ */
+
+template <class Tgt>
+typename std::enable_if<!std::is_same<StringPiece, Tgt>::value, Tgt>::type
+to(StringPiece src) {
+  Tgt result;
+  parseTo(src, result);
+  return result;
+}
+
+template <class Tgt>
+Tgt to(StringPiece* src) {
+  Tgt result;
+  parseTo(src, result);
   return result;
 }
 
