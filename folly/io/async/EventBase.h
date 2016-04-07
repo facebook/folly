@@ -33,7 +33,9 @@
 
 #include <boost/intrusive/list.hpp>
 #include <boost/utility.hpp>
+
 #include <folly/Executor.h>
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/futures/DrivableExecutor.h>
@@ -119,6 +121,8 @@ class EventBase : private boost::noncopyable,
                   public TimeoutManager,
                   public DrivableExecutor {
  public:
+  using Func = folly::Function<void()>;
+
   /**
    * A callback interface to use with runInLoop()
    *
@@ -304,9 +308,7 @@ class EventBase : private boost::noncopyable,
    *
    * Use runInEventBaseThread() to schedule functions from another thread.
    */
-  void runInLoop(const Cob& c, bool thisIteration = false);
-
-  void runInLoop(Cob&& c, bool thisIteration = false);
+  void runInLoop(Func c, bool thisIteration = false);
 
   /**
    * Adds the given callback to a queue of things run before destruction
@@ -327,7 +329,7 @@ class EventBase : private boost::noncopyable,
    * Note: will be called from the thread that invoked EventBase destructor,
    *       after the final run of loop callbacks.
    */
-  void runAfterDrain(Cob&& cob);
+  void runAfterDrain(Func cob);
 
   /**
    * Adds a callback that will run immediately *before* the event loop.
@@ -379,7 +381,7 @@ class EventBase : private boost::noncopyable,
    *
    * The function must not throw any exceptions.
    */
-  bool runInEventBaseThread(const Cob& fn);
+  bool runInEventBaseThread(Func fn);
 
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
@@ -392,7 +394,7 @@ class EventBase : private boost::noncopyable,
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
-  bool runInEventBaseThreadAndWait(const Cob& fn);
+  bool runInEventBaseThreadAndWait(Func fn);
 
   /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
@@ -405,7 +407,7 @@ class EventBase : private boost::noncopyable,
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
-  bool runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn);
+  bool runImmediatelyOrRunInEventBaseThreadAndWait(Func fn);
 
   /**
    * Runs the given Cob at some time after the specified number of
@@ -414,7 +416,7 @@ class EventBase : private boost::noncopyable,
    * Throws a std::system_error if an error occurs.
    */
   void runAfterDelay(
-      const Cob& c,
+      Func c,
       uint32_t milliseconds,
       TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
 
@@ -425,7 +427,7 @@ class EventBase : private boost::noncopyable,
    *
    * */
   bool tryRunAfterDelay(
-      const Cob& cob,
+      Func cob,
       uint32_t milliseconds,
       TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
 
@@ -434,10 +436,10 @@ class EventBase : private boost::noncopyable,
    * called when that latency is exceeded.
    * OBS: This functionality depends on time-measurement.
    */
-  void setMaxLatency(int64_t maxLatency, const Cob& maxLatencyCob) {
+  void setMaxLatency(int64_t maxLatency, Func maxLatencyCob) {
     assert(enableTimeMeasurement_);
     maxLatency_ = maxLatency;
-    maxLatencyCob_ = maxLatencyCob;
+    maxLatencyCob_ = std::move(maxLatencyCob);
   }
 
 
@@ -576,7 +578,7 @@ class EventBase : private boost::noncopyable,
   void add(Cob fn) override {
     // runInEventBaseThread() takes a const&,
     // so no point in doing std::move here.
-    runInEventBaseThread(fn);
+    runInEventBaseThread(std::move(fn));
   }
 
   /// Implements the DrivableExecutor interface
@@ -614,13 +616,13 @@ class EventBase : private boost::noncopyable,
   // appropriate client-provided Cob
   class CobTimeout : public AsyncTimeout {
    public:
-    CobTimeout(EventBase* b, const Cob& c, TimeoutManager::InternalEnum in)
-        : AsyncTimeout(b, in), cob_(c) {}
+    CobTimeout(EventBase* b, Func c, TimeoutManager::InternalEnum in)
+        : AsyncTimeout(b, in), cob_(std::move(c)) {}
 
     virtual void timeoutExpired() noexcept;
 
    private:
-    Cob cob_;
+    Func cob_;
 
    public:
     typedef boost::intrusive::list_member_hook<
@@ -673,7 +675,7 @@ class EventBase : private boost::noncopyable,
 
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
-  std::unique_ptr<NotificationQueue<Cob>> queue_;
+  std::unique_ptr<NotificationQueue<Func>> queue_;
   std::unique_ptr<FunctionRunner> fnRunner_;
 
   // limit for latency in microseconds (0 disables)
@@ -688,7 +690,7 @@ class EventBase : private boost::noncopyable,
   SmoothLoopTime maxLatencyLoopTime_;
 
   // callback called when latency limit is exceeded
-  Cob maxLatencyCob_;
+  Func maxLatencyCob_;
 
   // Enables/disables time measurements in loopBody(). if disabled, the
   // following functionality that relies on time-measurement, will not

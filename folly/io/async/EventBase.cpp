@@ -32,16 +32,12 @@
 
 namespace {
 
-using folly::Cob;
 using folly::EventBase;
 
-template <typename Callback>
 class FunctionLoopCallback : public EventBase::LoopCallback {
  public:
-  explicit FunctionLoopCallback(Cob&& function)
+  explicit FunctionLoopCallback(EventBase::Func&& function)
       : function_(std::move(function)) {}
-
-  explicit FunctionLoopCallback(const Cob& function) : function_(function) {}
 
   void runLoopCallback() noexcept override {
     function_();
@@ -49,7 +45,7 @@ class FunctionLoopCallback : public EventBase::LoopCallback {
   }
 
  private:
-  Callback function_;
+  EventBase::Func function_;
 };
 }
 
@@ -59,10 +55,10 @@ namespace folly {
  * EventBase::FunctionRunner
  */
 
-class EventBase::FunctionRunner : public NotificationQueue<Cob>::Consumer {
+class EventBase::FunctionRunner
+    : public NotificationQueue<EventBase::Func>::Consumer {
  public:
-  void messageAvailable(Cob&& msg) override {
-
+  void messageAvailable(Func&& msg) override {
     // In libevent2, internal events do not break the loop.
     // Most users would expect loop(), followed by runInEventBaseThread(),
     // to break the loop and check if it should exit or not.
@@ -508,9 +504,9 @@ void EventBase::runInLoop(LoopCallback* callback, bool thisIteration) {
   }
 }
 
-void EventBase::runInLoop(const Cob& cob, bool thisIteration) {
+void EventBase::runInLoop(Func cob, bool thisIteration) {
   DCHECK(isInEventBaseThread());
-  auto wrapper = new FunctionLoopCallback<Cob>(cob);
+  auto wrapper = new FunctionLoopCallback(std::move(cob));
   wrapper->context_ = RequestContext::saveContext();
   if (runOnceCallbacks_ != nullptr && thisIteration) {
     runOnceCallbacks_->push_back(*wrapper);
@@ -519,19 +515,8 @@ void EventBase::runInLoop(const Cob& cob, bool thisIteration) {
   }
 }
 
-void EventBase::runInLoop(Cob&& cob, bool thisIteration) {
-  DCHECK(isInEventBaseThread());
-  auto wrapper = new FunctionLoopCallback<Cob>(std::move(cob));
-  wrapper->context_ = RequestContext::saveContext();
-  if (runOnceCallbacks_ != nullptr && thisIteration) {
-    runOnceCallbacks_->push_back(*wrapper);
-  } else {
-    loopCallbacks_.push_back(*wrapper);
-  }
-}
-
-void EventBase::runAfterDrain(Cob&& cob) {
-  auto callback = new FunctionLoopCallback<Cob>(std::move(cob));
+void EventBase::runAfterDrain(Func cob) {
+  auto callback = new FunctionLoopCallback(std::move(cob));
   std::lock_guard<std::mutex> lg(runAfterDrainCallbacksMutex_);
   callback->cancelLoopCallback();
   runAfterDrainCallbacks_.push_back(*callback);
@@ -549,7 +534,7 @@ void EventBase::runBeforeLoop(LoopCallback* callback) {
   runBeforeLoopCallbacks_.push_back(*callback);
 }
 
-bool EventBase::runInEventBaseThread(const Cob& fn) {
+bool EventBase::runInEventBaseThread(Func fn) {
   // Send the message.
   // It will be received by the FunctionRunner in the EventBase's thread.
 
@@ -562,13 +547,13 @@ bool EventBase::runInEventBaseThread(const Cob& fn) {
 
   // Short-circuit if we are already in our event base
   if (inRunningEventBaseThread()) {
-    runInLoop(fn);
+    runInLoop(std::move(fn));
     return true;
 
   }
 
   try {
-    queue_->putMessage(fn);
+    queue_->putMessage(std::move(fn));
   } catch (const std::exception& ex) {
     LOG(ERROR) << "EventBase " << this << ": failed to schedule function "
                << "for EventBase thread: " << ex.what();
@@ -578,7 +563,7 @@ bool EventBase::runInEventBaseThread(const Cob& fn) {
   return true;
 }
 
-bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
+bool EventBase::runInEventBaseThreadAndWait(Func fn) {
   if (inRunningEventBaseThread()) {
     LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
                << "allowed";
@@ -605,28 +590,30 @@ bool EventBase::runInEventBaseThreadAndWait(const Cob& fn) {
   return true;
 }
 
-bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(const Cob& fn) {
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) {
   if (isInEventBaseThread()) {
     fn();
     return true;
   } else {
-    return runInEventBaseThreadAndWait(fn);
+    return runInEventBaseThreadAndWait(std::move(fn));
   }
 }
 
-void EventBase::runAfterDelay(const Cob& cob,
-                              uint32_t milliseconds,
-                              TimeoutManager::InternalEnum in) {
-  if (!tryRunAfterDelay(cob, milliseconds, in)) {
+void EventBase::runAfterDelay(
+    Func cob,
+    uint32_t milliseconds,
+    TimeoutManager::InternalEnum in) {
+  if (!tryRunAfterDelay(std::move(cob), milliseconds, in)) {
     folly::throwSystemError(
       "error in EventBase::runAfterDelay(), failed to schedule timeout");
   }
 }
 
-bool EventBase::tryRunAfterDelay(const Cob& cob,
-                                 uint32_t milliseconds,
-                                 TimeoutManager::InternalEnum in) {
-  CobTimeout* timeout = new CobTimeout(this, cob, in);
+bool EventBase::tryRunAfterDelay(
+    Func cob,
+    uint32_t milliseconds,
+    TimeoutManager::InternalEnum in) {
+  CobTimeout* timeout = new CobTimeout(this, std::move(cob), in);
   if (!timeout->scheduleTimeout(milliseconds)) {
     delete timeout;
     return false;
@@ -667,7 +654,7 @@ bool EventBase::runLoopCallbacks(bool setContext) {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_.reset(new NotificationQueue<Cob>());
+  queue_.reset(new NotificationQueue<Func>());
 
   // We allocate fnRunner_ separately, rather than declaring it directly
   // as a member of EventBase solely so that we don't need to include
