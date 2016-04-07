@@ -86,6 +86,8 @@ nobase_follyinclude_HEADERS = \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \
+	experimental/DynamicParser.h \
+	experimental/DynamicParser-inl.h \
 	experimental/ExecutionObserver.h \
 	experimental/EliasFanoCoding.h \
 	experimental/EventCount.h \
@@ -448,6 +450,7 @@ libfolly_la_SOURCES = \
 	Version.cpp \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
+	experimental/DynamicParser.cpp \
 	experimental/fibers/Baton.cpp \
 	experimental/fibers/Fiber.cpp \
 	experimental/fibers/FiberManager.cpp \
