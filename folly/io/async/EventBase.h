@@ -294,13 +294,12 @@ class EventBase : private boost::noncopyable,
   void runInLoop(LoopCallback* callback, bool thisIteration = false);
 
   /**
-   * Convenience function to call runInLoop() with a std::function.
+   * Convenience function to call runInLoop() with a folly::Function.
    *
-   * This creates a LoopCallback object to wrap the std::function, and invoke
-   * the std::function when the loop callback fires.  This is slightly more
+   * This creates a LoopCallback object to wrap the folly::Function, and invoke
+   * the folly::Function when the loop callback fires.  This is slightly more
    * expensive than defining your own LoopCallback, but more convenient in
-   * areas that aren't performance sensitive where you just want to use
-   * std::bind.  (std::bind is fairly slow on even by itself.)
+   * areas that aren't too performance sensitive.
    *
    * This method may only be called from the EventBase's thread.  This
    * essentially allows an event handler to schedule an additional callback to
@@ -370,10 +369,11 @@ class EventBase : private boost::noncopyable,
   /**
    * Run the specified function in the EventBase's thread
    *
-   * This version of runInEventBaseThread() takes a std::function object.
-   * Note that this is less efficient than the version that takes a plain
-   * function pointer and void* argument, as it has to allocate memory to copy
-   * the std::function object.
+   * This version of runInEventBaseThread() takes a folly::Function object.
+   * Note that this may be less efficient than the version that takes a plain
+   * function pointer and void* argument, if moving the function is expensive
+   * (e.g., if it wraps a lambda which captures some values with expensive move
+   * constructors).
    *
    * If the loop is terminated (and never later restarted) before it has a
    * chance to run the requested function, the function will be run upon the
@@ -608,10 +608,6 @@ class EventBase : private boost::noncopyable,
    */
   bool nothingHandledYet();
 
-  // --------- libevent callbacks (not for client use) ------------
-
-  static void runFunctionPtr(Cob* fn);
-
   // small object used as a callback arg with enough info to execute the
   // appropriate client-provided Cob
   class CobTimeout : public AsyncTimeout {
@@ -730,80 +726,21 @@ class EventBase : private boost::noncopyable,
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 };
 
-namespace detail {
-
-/**
- * Define a small functor (2 pointers) and specialize
- * std::__is_location_invariant so that std::function does not require
- * memory allocation.
- *
- *   std::function<void()> func = SmallFunctor{f, p};
- *
- * TODO(lucian): remove this hack once GCC <= 4.9 are deprecated.
- * In GCC >= 5.0 just use a lambda like:
- *
- *   std::function<void()> func = [=] { f(p); };
- *
- * See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61909
- */
-template <class T>
-struct SmallFunctor {
-  void (*fn)(T*);
-  T* p;
-  void operator()() { fn(p); }
-};
-
-} // detail
-
 template <typename T>
 bool EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) {
-  return runInEventBaseThread(detail::SmallFunctor<T>{fn, arg});
+  return runInEventBaseThread([=] { fn(arg); });
 }
 
 template <typename T>
 bool EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
-  return runInEventBaseThreadAndWait(detail::SmallFunctor<T>{fn, arg});
+  return runInEventBaseThreadAndWait([=] { fn(arg); });
 }
 
 template <typename T>
-bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*),
-                                                            T* arg) {
-  return runImmediatelyOrRunInEventBaseThreadAndWait(
-      detail::SmallFunctor<T>{fn, arg});
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
+    void (*fn)(T*),
+    T* arg) {
+  return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
 }
 
 } // folly
-
-FOLLY_NAMESPACE_STD_BEGIN
-
-/**
- * GCC's libstdc++ uses __is_location_invariant to decide wether to
- * use small object optimization and embed the functor's contents in
- * the std::function object.
- *
- * (gcc 4.9) $ libstdc++-v3/include/std/functional
- * template<typename _Tp>
- *   struct __is_location_invariant
- *   : integral_constant<bool, (is_pointer<_Tp>::value
- *                              || is_member_pointer<_Tp>::value)>
- *   { };
- *
- * (gcc 5.0) $ libstdc++-v3/include/std/functional
- *
- * template<typename _Tp>
- *      struct __is_location_invariant
- *      : is_trivially_copyable<_Tp>::type
- *      { };
- *
- *
- *  NOTE: Forward declare so this doesn't break when using other
- *  standard libraries: it just wont have any effect.
- */
-template <typename T>
-struct __is_location_invariant;
-
-template <typename T>
-struct __is_location_invariant<folly::detail::SmallFunctor<T>>
-    : public std::true_type {};
-
-FOLLY_NAMESPACE_STD_END

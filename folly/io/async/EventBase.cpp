@@ -712,28 +712,6 @@ bool EventBase::nothingHandledYet() {
   return (nextLoopCnt_ != latestLoopCnt_);
 }
 
-/* static */
-void EventBase::runFunctionPtr(Cob* fn) {
-  // The function should never throw an exception, because we have no
-  // way of knowing what sort of error handling to perform.
-  //
-  // If it does throw, log a message and abort the program.
-  try {
-    (*fn)();
-  } catch (const std::exception &ex) {
-    LOG(ERROR) << "runInEventBaseThread() std::function threw a "
-               << typeid(ex).name() << " exception: " << ex.what();
-    abort();
-  } catch (...) {
-    LOG(ERROR) << "runInEventBaseThread() std::function threw an exception";
-    abort();
-  }
-
-  // The function object was allocated by runInEventBaseThread().
-  // Delete it once it has been run.
-  delete fn;
-}
-
 void EventBase::attachTimeoutManager(AsyncTimeout* obj,
                                       InternalEnum internal) {
 
