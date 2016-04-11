@@ -91,7 +91,7 @@ TEST(Function, NoExceptMovable) {
 
   // callable_noexcept can be stored in the Function object
   Function<int(int), FunctionMoveCtor::NO_THROW> func(callable_noexcept);
-  EXPECT_EQ(func(42), 43);
+  EXPECT_EQ(43, func(42));
   EXPECT_FALSE(func.hasAllocatedMemory());
   EXPECT_TRUE(std::is_nothrow_move_constructible<decltype(func)>::value);
 
@@ -99,7 +99,7 @@ TEST(Function, NoExceptMovable) {
   // because Function guarantees noexcept-movability, but
   // callable_throw may throw when moved
   Function<int(int), FunctionMoveCtor::NO_THROW> func_safe_move(callable_throw);
-  EXPECT_EQ(func_safe_move(42), 52);
+  EXPECT_EQ(52, func_safe_move(42));
   EXPECT_TRUE(func_safe_move.hasAllocatedMemory());
   EXPECT_TRUE(
       std::is_nothrow_move_constructible<decltype(func_safe_move)>::value);
@@ -108,7 +108,7 @@ TEST(Function, NoExceptMovable) {
   // the NoExceptMovable template parameter is set to NO
   Function<int(int), FunctionMoveCtor::MAY_THROW> func_movethrows(
       callable_throw);
-  EXPECT_EQ(func_movethrows(42), 52);
+  EXPECT_EQ(52, func_movethrows(42));
   EXPECT_FALSE(func_movethrows.hasAllocatedMemory());
   EXPECT_FALSE(
       std::is_nothrow_move_constructible<decltype(func_movethrows)>::value);
@@ -137,7 +137,7 @@ void invoke_functor_test() {
   // sizeof(func).
   EXPECT_EQ(getter.hasAllocatedMemory(), S < 2);
 
-  EXPECT_EQ(getter(5), 123);
+  EXPECT_EQ(123, getter(5));
 }
 TEST(Function, InvokeFunctor_T0) {
   invoke_functor_test<FunctionMoveCtor::MAY_THROW, 0>();
@@ -174,10 +174,10 @@ void invoke_reference_test() {
   Function<int(size_t) const, NEM, 0> getter = std::ref(func);
   Function<int(size_t, int), NEM, 0> setter = std::ref(func);
 
-  EXPECT_EQ(getter(5), 123);
-  EXPECT_EQ(setter(5, 456), 123);
-  EXPECT_EQ(setter(5, 567), 456);
-  EXPECT_EQ(getter(5), 567);
+  EXPECT_EQ(123, getter(5));
+  EXPECT_EQ(123, setter(5, 456));
+  EXPECT_EQ(456, setter(5, 567));
+  EXPECT_EQ(567, getter(5));
 }
 TEST(Function, InvokeReference_T) {
   invoke_reference_test<FunctionMoveCtor::MAY_THROW>();
@@ -201,13 +201,13 @@ void emptiness_test() {
   EXPECT_NE(g, nullptr);
   EXPECT_NE(nullptr, g);
   EXPECT_TRUE(g);
-  EXPECT_EQ(g(99), 100);
+  EXPECT_EQ(100, g(99));
 
   Function<int(int), NEM> h(&func_int_int_add_25);
   EXPECT_NE(h, nullptr);
   EXPECT_NE(nullptr, h);
   EXPECT_TRUE(h);
-  EXPECT_EQ(h(100), 125);
+  EXPECT_EQ(125, h(100));
 
   h = {};
   EXPECT_EQ(h, nullptr);
@@ -271,8 +271,8 @@ void swap_test() {
   Function<int(int), NEM1> mf1(func_int_int_add_25);
   Function<int(int), NEM2> mf2(func_int_int_add_111);
 
-  EXPECT_EQ(mf1(100), 125);
-  EXPECT_EQ(mf2(100), 211);
+  EXPECT_EQ(125, mf1(100));
+  EXPECT_EQ(211, mf2(100));
 
   if (UseSwapMethod) {
     mf1.swap(mf2);
@@ -280,8 +280,8 @@ void swap_test() {
     swap(mf1, mf2);
   }
 
-  EXPECT_EQ(mf2(100), 125);
-  EXPECT_EQ(mf1(100), 211);
+  EXPECT_EQ(125, mf2(100));
+  EXPECT_EQ(211, mf1(100));
 
   Function<int(int)> mf3(nullptr);
   EXPECT_EQ(mf3, nullptr);
@@ -292,27 +292,27 @@ void swap_test() {
     swap(mf1, mf3);
   }
 
-  EXPECT_EQ(mf3(100), 211);
-  EXPECT_EQ(mf1, nullptr);
+  EXPECT_EQ(211, mf3(100));
+  EXPECT_EQ(nullptr, mf1);
 
   Function<int(int)> mf4([](int x) { return x + 222; });
-  EXPECT_EQ(mf4(100), 322);
+  EXPECT_EQ(322, mf4(100));
 
   if (UseSwapMethod) {
     mf4.swap(mf3);
   } else {
     swap(mf4, mf3);
   }
-  EXPECT_EQ(mf4(100), 211);
-  EXPECT_EQ(mf3(100), 322);
+  EXPECT_EQ(211, mf4(100));
+  EXPECT_EQ(322, mf3(100));
 
   if (UseSwapMethod) {
     mf3.swap(mf1);
   } else {
     swap(mf3, mf1);
   }
-  EXPECT_EQ(mf3, nullptr);
-  EXPECT_EQ(mf1(100), 322);
+  EXPECT_EQ(nullptr, mf3);
+  EXPECT_EQ(322, mf1(100));
 }
 TEST(Function, SwapMethod_TT) {
   swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW, true>();
@@ -347,10 +347,10 @@ void bind_test() {
   Function<float(float, float), NEM> fnc = floatMult;
   auto task = std::bind(std::move(fnc), 2.f, 4.f);
   EXPECT_THROW(fnc(0, 0), std::bad_function_call);
-  EXPECT_EQ(task(), 8);
+  EXPECT_EQ(8, task());
   auto task2(std::move(task));
   EXPECT_THROW(task(), std::bad_function_call);
-  EXPECT_EQ(task2(), 8);
+  EXPECT_EQ(8, task2());
 }
 TEST(Function, Bind_T) {
   bind_test<FunctionMoveCtor::MAY_THROW>();
@@ -365,16 +365,16 @@ TEST(Function, Bind_N) {
 template <FunctionMoveCtor NEM, size_t S>
 void non_copyable_lambda_test() {
   auto unique_ptr_int = folly::make_unique<int>(900);
-  EXPECT_EQ(*unique_ptr_int, 900);
+  EXPECT_EQ(900, *unique_ptr_int);
 
   char fooData[64] = {0};
-  EXPECT_EQ(fooData[0], 0); // suppress gcc warning about fooData not being used
+  EXPECT_EQ(0, fooData[0]); // suppress gcc warning about fooData not being used
 
   auto functor = std::bind(
       [fooData](std::unique_ptr<int>& up) mutable { return ++*up; },
       std::move(unique_ptr_int));
 
-  EXPECT_EQ(functor(), 901);
+  EXPECT_EQ(901, functor());
 
   Function<int(void), NEM, sizeof(functor)* S / 2> func = std::move(functor);
   EXPECT_EQ(
@@ -382,7 +382,7 @@ void non_copyable_lambda_test() {
       S < 2 || (NEM == FunctionMoveCtor::NO_THROW &&
                 !std::is_nothrow_move_constructible<decltype(functor)>::value));
 
-  EXPECT_EQ(func(), 902);
+  EXPECT_EQ(902, func());
 }
 TEST(Function, NonCopyableLambda_T0) {
   non_copyable_lambda_test<FunctionMoveCtor::MAY_THROW, 0>();
@@ -418,15 +418,15 @@ void downsize_test() {
 
   // set element 3
   functor(3, 123);
-  EXPECT_EQ(functor(3), 123);
+  EXPECT_EQ(123, functor(3));
 
   // Function with large callable storage area (twice the size of
   // the functor)
   Function<int(size_t, int), NEM, sizeof(functor)* 2> func2x =
       std::move(functor);
   EXPECT_FALSE(func2x.hasAllocatedMemory());
-  EXPECT_EQ(func2x(3, 200), 123);
-  EXPECT_EQ(func2x(3, 201), 200);
+  EXPECT_EQ(123, func2x(3, 200));
+  EXPECT_EQ(200, func2x(3, 201));
 
   // Function with sufficient callable storage area (equal to
   // size of the functor)
@@ -434,8 +434,8 @@ void downsize_test() {
   EXPECT_THROW(func2x(0, 0), std::bad_function_call);
   EXPECT_FALSE(func2x);
   EXPECT_FALSE(func1x.hasAllocatedMemory());
-  EXPECT_EQ(func1x(3, 202), 201);
-  EXPECT_EQ(func1x(3, 203), 202);
+  EXPECT_EQ(201, func1x(3, 202));
+  EXPECT_EQ(202, func1x(3, 203));
 
   // Function with minimal callable storage area (functor does
   // not fit and will be moved to memory on the heap)
@@ -443,8 +443,8 @@ void downsize_test() {
   EXPECT_THROW(func1x(0, 0), std::bad_function_call);
   EXPECT_FALSE(func1x);
   EXPECT_TRUE(func0x.hasAllocatedMemory());
-  EXPECT_EQ(func0x(3, 204), 203);
-  EXPECT_EQ(func0x(3, 205), 204);
+  EXPECT_EQ(203, func0x(3, 204));
+  EXPECT_EQ(204, func0x(3, 205));
 
   // bonus test: move to Function with opposite NoExceptMovable
   // setting
@@ -457,8 +457,8 @@ void downsize_test() {
   EXPECT_THROW(func0x(0, 0), std::bad_function_call);
   EXPECT_FALSE(func0x);
   EXPECT_TRUE(funcnot.hasAllocatedMemory());
-  EXPECT_EQ(funcnot(3, 206), 205);
-  EXPECT_EQ(funcnot(3, 207), 206);
+  EXPECT_EQ(205, funcnot(3, 206));
+  EXPECT_EQ(206, funcnot(3, 207));
 }
 TEST(Function, Downsize_T) {
   downsize_test<FunctionMoveCtor::MAY_THROW>();
@@ -476,47 +476,47 @@ void refcount_test() {
   functor(3, 999);
   auto shared_int = std::make_shared<int>(100);
 
-  EXPECT_EQ(*shared_int, 100);
-  EXPECT_EQ(shared_int.use_count(), 1);
+  EXPECT_EQ(100, *shared_int);
+  EXPECT_EQ(1, shared_int.use_count());
 
   Function<int(void), NEM> func1 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(shared_int.use_count(), 2);
-  EXPECT_EQ(func1(), 101);
-  EXPECT_EQ(*shared_int, 101);
+  EXPECT_EQ(2, shared_int.use_count());
+  EXPECT_EQ(101, func1());
+  EXPECT_EQ(101, *shared_int);
 
   // func2: made to not fit functor.
   Function<int(void), NEM, sizeof(functor) / 2> func2 = std::move(func1);
   EXPECT_THROW(func1(), std::bad_function_call);
-  EXPECT_EQ(shared_int.use_count(), 2);
+  EXPECT_EQ(2, shared_int.use_count());
   EXPECT_FALSE(func1);
-  EXPECT_EQ(func2(), 102);
-  EXPECT_EQ(*shared_int, 102);
+  EXPECT_EQ(102, func2());
+  EXPECT_EQ(102, *shared_int);
 
   func2 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(shared_int.use_count(), 2);
-  EXPECT_EQ(func2(), 103);
-  EXPECT_EQ(*shared_int, 103);
+  EXPECT_EQ(2, shared_int.use_count());
+  EXPECT_EQ(103, func2());
+  EXPECT_EQ(103, *shared_int);
 
   // We set func2 to a lambda that captures 'functor', which forces it on
   // the heap
   func2 = [functor]() { return functor(3); };
   EXPECT_TRUE(func2.hasAllocatedMemory());
-  EXPECT_EQ(func2(), 999);
-  EXPECT_EQ(shared_int.use_count(), 1);
-  EXPECT_EQ(*shared_int, 103);
+  EXPECT_EQ(999, func2());
+  EXPECT_EQ(1, shared_int.use_count());
+  EXPECT_EQ(103, *shared_int);
 
   func2 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(shared_int.use_count(), 2);
-  EXPECT_EQ(func2(), 104);
-  EXPECT_EQ(*shared_int, 104);
+  EXPECT_EQ(2, shared_int.use_count());
+  EXPECT_EQ(104, func2());
+  EXPECT_EQ(104, *shared_int);
 
   // We set func2 to function pointer, which always fits into the
   // Function object and is no-except-movable
   func2 = &func_int_return_987;
   EXPECT_FALSE(func2.hasAllocatedMemory());
-  EXPECT_EQ(func2(), 987);
-  EXPECT_EQ(shared_int.use_count(), 1);
-  EXPECT_EQ(*shared_int, 104);
+  EXPECT_EQ(987, func2());
+  EXPECT_EQ(1, shared_int.use_count());
+  EXPECT_EQ(104, *shared_int);
 }
 TEST(Function, Refcount_T) {
   refcount_test<FunctionMoveCtor::MAY_THROW>();
@@ -531,13 +531,13 @@ TEST(Function, Refcount_N) {
 template <FunctionMoveCtor NEM>
 void target_test() {
   std::function<int(int)> func = [](int x) { return x + 25; };
-  EXPECT_EQ(func(100), 125);
+  EXPECT_EQ(125, func(100));
 
   Function<int(int), NEM> ufunc = std::move(func);
   EXPECT_THROW(func(0), std::bad_function_call);
-  EXPECT_EQ(ufunc(200), 225);
+  EXPECT_EQ(225, ufunc(200));
 
-  EXPECT_EQ(ufunc.target_type(), typeid(std::function<int(int)>));
+  EXPECT_EQ(typeid(std::function<int(int)>), ufunc.target_type());
 
   EXPECT_FALSE(ufunc.template target<int>());
   EXPECT_FALSE(ufunc.template target<std::function<void(void)>>());
@@ -545,7 +545,7 @@ void target_test() {
   std::function<int(int)>& ufunc_target =
       *ufunc.template target<std::function<int(int)>>();
 
-  EXPECT_EQ(ufunc_target(300), 325);
+  EXPECT_EQ(325, ufunc_target(300));
 }
 
 TEST(Function, Target_T) {
@@ -593,26 +593,26 @@ TEST(Function, OverloadedFunctor) {
   OverloadedFunctor of;
 
   Function<int(int)> variant1 = of;
-  EXPECT_EQ(variant1(15), 100 + 1 * 15);
+  EXPECT_EQ(100 + 1 * 15, variant1(15));
 
   Function<int(int) const> variant2 = of;
-  EXPECT_EQ(variant2(16), 100 + 2 * 16);
+  EXPECT_EQ(100 + 2 * 16, variant2(16));
 
   Function<int(int, int)> variant3 = of;
-  EXPECT_EQ(variant3(17, 0), 100 + 3 * 17);
+  EXPECT_EQ(100 + 3 * 17, variant3(17, 0));
 
   Function<int(int, int) const> variant4 = of;
-  EXPECT_EQ(variant4(18, 0), 100 + 4 * 18);
+  EXPECT_EQ(100 + 4 * 18, variant4(18, 0));
 
   Function<int(int, char const*)> variant5 = of;
-  EXPECT_EQ(variant5(19, "foo"), 100 + 5 * 19);
+  EXPECT_EQ(100 + 5 * 19, variant5(19, "foo"));
 
   Function<int(int, std::vector<int> const&)> variant6 = of;
-  EXPECT_EQ(variant6(20, {}), 100 + 6 * 20);
-  EXPECT_EQ(variant6(20, {1, 2, 3}), 100 + 6 * 20);
+  EXPECT_EQ(100 + 6 * 20, variant6(20, {}));
+  EXPECT_EQ(100 + 6 * 20, variant6(20, {1, 2, 3}));
 
   Function<int(int, std::vector<int> const&) const> variant6const = of;
-  EXPECT_EQ(variant6const(21, {}), 100 + 6 * 21);
+  EXPECT_EQ(100 + 6 * 21, variant6const(21, {}));
 
   // Cast const-functions to non-const and the other way around: if the functor
   // has both const and non-const operator()s for a given parameter signature,
@@ -626,32 +626,32 @@ TEST(Function, OverloadedFunctor) {
 
   auto variant1_const = folly::constCastFunction(std::move(variant1));
   EXPECT_THROW(variant1(0), std::bad_function_call);
-  EXPECT_EQ(variant1_const(22), 100 + 1 * 22);
+  EXPECT_EQ(100 + 1 * 22, variant1_const(22));
 
   Function<int(int)> variant2_nonconst = std::move(variant2);
   EXPECT_THROW(variant2(0), std::bad_function_call);
-  EXPECT_EQ(variant2_nonconst(23), 100 + 2 * 23);
+  EXPECT_EQ(100 + 2 * 23, variant2_nonconst(23));
 
   auto variant3_const = folly::constCastFunction(std::move(variant3));
   EXPECT_THROW(variant3(0, 0), std::bad_function_call);
-  EXPECT_EQ(variant3_const(24, 0), 100 + 3 * 24);
+  EXPECT_EQ(100 + 3 * 24, variant3_const(24, 0));
 
   Function<int(int, int)> variant4_nonconst = std::move(variant4);
   EXPECT_THROW(variant4(0, 0), std::bad_function_call);
-  EXPECT_EQ(variant4_nonconst(25, 0), 100 + 4 * 25);
+  EXPECT_EQ(100 + 4 * 25, variant4_nonconst(25, 0));
 
   auto variant5_const = folly::constCastFunction(std::move(variant5));
   EXPECT_THROW(variant5(0, ""), std::bad_function_call);
-  EXPECT_EQ(variant5_const(26, "foo"), 100 + 5 * 26);
+  EXPECT_EQ(100 + 5 * 26, variant5_const(26, "foo"));
 
   auto variant6_const = folly::constCastFunction(std::move(variant6));
   EXPECT_THROW(variant6(0, {}), std::bad_function_call);
-  EXPECT_EQ(variant6_const(27, {}), 100 + 6 * 27);
+  EXPECT_EQ(100 + 6 * 27, variant6_const(27, {}));
 
   Function<int(int, std::vector<int> const&)> variant6const_nonconst =
       std::move(variant6const);
   EXPECT_THROW(variant6const(0, {}), std::bad_function_call);
-  EXPECT_EQ(variant6const_nonconst(28, {}), 100 + 6 * 28);
+  EXPECT_EQ(100 + 6 * 28, variant6const_nonconst(28, {}));
 }
 
 // TEST =====================================================================
@@ -660,33 +660,33 @@ TEST(Function, OverloadedFunctor) {
 TEST(Function, Lambda) {
   // Non-mutable lambdas: can be stored in a non-const...
   Function<int(int)> func = [](int x) { return 1000 + x; };
-  EXPECT_EQ(func(1), 1001);
+  EXPECT_EQ(1001, func(1));
 
   // ...as well as in a const Function
   Function<int(int) const> func_const = [](int x) { return 2000 + x; };
-  EXPECT_EQ(func_const(1), 2001);
+  EXPECT_EQ(2001, func_const(1));
 
   // Mutable lambda: can only be stored in a const Function:
   int number = 3000;
   Function<int()> func_mutable = [number]() mutable { return ++number; };
-  EXPECT_EQ(func_mutable(), 3001);
-  EXPECT_EQ(func_mutable(), 3002);
+  EXPECT_EQ(3001, func_mutable());
+  EXPECT_EQ(3002, func_mutable());
 
   // test after const-casting
 
   Function<int(int) const> func_made_const =
       folly::constCastFunction(std::move(func));
-  EXPECT_EQ(func_made_const(2), 1002);
+  EXPECT_EQ(1002, func_made_const(2));
   EXPECT_THROW(func(0), std::bad_function_call);
 
   Function<int(int)> func_const_made_nonconst = std::move(func_const);
-  EXPECT_EQ(func_const_made_nonconst(2), 2002);
+  EXPECT_EQ(2002, func_const_made_nonconst(2));
   EXPECT_THROW(func_const(0), std::bad_function_call);
 
   Function<int() const> func_mutable_made_const =
       folly::constCastFunction(std::move(func_mutable));
-  EXPECT_EQ(func_mutable_made_const(), 3003);
-  EXPECT_EQ(func_mutable_made_const(), 3004);
+  EXPECT_EQ(3003, func_mutable_made_const());
+  EXPECT_EQ(3004, func_mutable_made_const());
   EXPECT_THROW(func_mutable(), std::bad_function_call);
 }
 
@@ -709,13 +709,13 @@ TEST(Function, DataMember) {
   mf.x = 123;
 
   Function<int(MemberFunc const*)> data_getter1 = &MemberFunc::x;
-  EXPECT_EQ(data_getter1(&cmf), 123);
+  EXPECT_EQ(123, data_getter1(&cmf));
   Function<int(MemberFunc*)> data_getter2 = &MemberFunc::x;
-  EXPECT_EQ(data_getter2(&mf), 123);
+  EXPECT_EQ(123, data_getter2(&mf));
   Function<int(MemberFunc const&)> data_getter3 = &MemberFunc::x;
-  EXPECT_EQ(data_getter3(cmf), 123);
+  EXPECT_EQ(123, data_getter3(cmf));
   Function<int(MemberFunc&)> data_getter4 = &MemberFunc::x;
-  EXPECT_EQ(data_getter4(mf), 123);
+  EXPECT_EQ(123, data_getter4(mf));
 }
 
 TEST(Function, MemberFunction) {
@@ -724,21 +724,21 @@ TEST(Function, MemberFunction) {
   mf.x = 123;
 
   Function<int(MemberFunc const*)> getter1 = &MemberFunc::getX;
-  EXPECT_EQ(getter1(&cmf), 123);
+  EXPECT_EQ(123, getter1(&cmf));
   Function<int(MemberFunc*)> getter2 = &MemberFunc::getX;
-  EXPECT_EQ(getter2(&mf), 123);
+  EXPECT_EQ(123, getter2(&mf));
   Function<int(MemberFunc const&)> getter3 = &MemberFunc::getX;
-  EXPECT_EQ(getter3(cmf), 123);
+  EXPECT_EQ(123, getter3(cmf));
   Function<int(MemberFunc&)> getter4 = &MemberFunc::getX;
-  EXPECT_EQ(getter4(mf), 123);
+  EXPECT_EQ(123, getter4(mf));
 
   Function<void(MemberFunc*, int)> setter1 = &MemberFunc::setX;
   setter1(&mf, 234);
-  EXPECT_EQ(mf.x, 234);
+  EXPECT_EQ(234, mf.x);
 
   Function<void(MemberFunc&, int)> setter2 = &MemberFunc::setX;
   setter2(mf, 345);
-  EXPECT_EQ(mf.x, 345);
+  EXPECT_EQ(345, mf.x);
 }
 
 // TEST =====================================================================
@@ -792,9 +792,9 @@ TEST(Function, CaptureCopyMoveCount) {
   // This test checks that no unnecessary copies/moves are made.
 
   CopyMoveTracker cmt(CopyMoveTracker::ConstructorTag{});
-  EXPECT_EQ(cmt.copyCount(), 0);
-  EXPECT_EQ(cmt.moveCount(), 0);
-  EXPECT_EQ(cmt.refCount(), 1);
+  EXPECT_EQ(0, cmt.copyCount());
+  EXPECT_EQ(0, cmt.moveCount());
+  EXPECT_EQ(1, cmt.refCount());
 
   // Move into lambda, move lambda into Function
   auto lambda1 = [cmt = std::move(cmt)]() {
@@ -822,17 +822,17 @@ TEST(Function, CaptureCopyMoveCount) {
   cmt.resetCounters();
   uf1();
   uf2();
-  EXPECT_EQ(cmt.copyCount(), 0);
-  EXPECT_EQ(cmt.moveCount(), 0);
+  EXPECT_EQ(0, cmt.copyCount());
+  EXPECT_EQ(0, cmt.moveCount());
 }
 
 TEST(Function, ParameterCopyMoveCount) {
   // This test checks that no unnecessary copies/moves are made.
 
   CopyMoveTracker cmt(CopyMoveTracker::ConstructorTag{});
-  EXPECT_EQ(cmt.copyCount(), 0);
-  EXPECT_EQ(cmt.moveCount(), 0);
-  EXPECT_EQ(cmt.refCount(), 1);
+  EXPECT_EQ(0, cmt.copyCount());
+  EXPECT_EQ(0, cmt.moveCount());
+  EXPECT_EQ(1, cmt.refCount());
 
   // pass by value
   Function<size_t(CopyMoveTracker)> uf1 = [](CopyMoveTracker c) {
@@ -1046,9 +1046,9 @@ TEST(Function, VariadicTemplate) {
   Function<int(int, int)> uf2 = VariadicTemplateSum();
   Function<int(int, int, int)> uf3 = VariadicTemplateSum();
 
-  EXPECT_EQ(uf1(66), 66);
-  EXPECT_EQ(uf2(55, 44), 99);
-  EXPECT_EQ(uf3(33, 22, 11), 66);
+  EXPECT_EQ(66, uf1(66));
+  EXPECT_EQ(99, uf2(55, 44));
+  EXPECT_EQ(66, uf3(33, 22, 11));
 }
 
 struct VariadicArgumentsSum {
@@ -1069,9 +1069,9 @@ TEST(Function, VariadicArguments) {
   Function<int(int, int)> uf2 = VariadicArgumentsSum();
   Function<int(int, int, int)> uf3 = VariadicArgumentsSum();
 
-  EXPECT_EQ(uf1(0), 0);
-  EXPECT_EQ(uf2(1, 66), 66);
-  EXPECT_EQ(uf3(2, 55, 44), 99);
+  EXPECT_EQ(0, uf1(0));
+  EXPECT_EQ(66, uf2(1, 66));
+  EXPECT_EQ(99, uf3(2, 55, 44));
 }
 
 // TEST =====================================================================
@@ -1107,7 +1107,7 @@ TEST(Function, SafeCaptureByReference) {
   // to for_each. Modern compiler versions can compile the following line:
   //   for_each(vec, [&sum](int x) { sum += x; });
 
-  EXPECT_EQ(sum, 999);
+  EXPECT_EQ(999, sum);
 }
 
 // TEST =====================================================================
@@ -1119,16 +1119,16 @@ TEST(Function, IgnoreReturnValue) {
   // Assign a lambda that return int to a folly::Function that returns void.
   Function<void()> f = [&]() -> int { return ++x; };
 
-  EXPECT_EQ(x, 95);
+  EXPECT_EQ(95, x);
   f();
-  EXPECT_EQ(x, 96);
+  EXPECT_EQ(96, x);
 
   Function<int()> g = [&]() -> int { return ++x; };
   Function<void()> cg = std::move(g);
 
-  EXPECT_EQ(x, 96);
+  EXPECT_EQ(96, x);
   cg();
-  EXPECT_EQ(x, 97);
+  EXPECT_EQ(97, x);
 }
 
 // TEST =====================================================================
@@ -1141,38 +1141,38 @@ TEST(Function, ReturnConvertible) {
   struct CDerived : CBase {};
 
   Function<double()> f1 = []() -> int { return 5; };
-  EXPECT_EQ(f1(), 5.0);
+  EXPECT_EQ(5.0, f1());
 
   Function<int()> f2 = []() -> double { return 5.2; };
-  EXPECT_EQ(f2(), 5);
+  EXPECT_EQ(5, f2());
 
   CDerived derived;
   derived.x = 55;
 
   Function<CBase const&()> f3 = [&]() -> CDerived const& { return derived; };
-  EXPECT_EQ(f3().x, 55);
+  EXPECT_EQ(55, f3().x);
 
   Function<CBase const&()> f4 = [&]() -> CDerived& { return derived; };
-  EXPECT_EQ(f4().x, 55);
+  EXPECT_EQ(55, f4().x);
 
   Function<CBase&()> f5 = [&]() -> CDerived& { return derived; };
-  EXPECT_EQ(f5().x, 55);
+  EXPECT_EQ(55, f5().x);
 
   Function<CBase const*()> f6 = [&]() -> CDerived const* { return &derived; };
   EXPECT_EQ(f6()->x, 55);
 
   Function<CBase const*()> f7 = [&]() -> CDerived* { return &derived; };
-  EXPECT_EQ(f7()->x, 55);
+  EXPECT_EQ(55, f7()->x);
 
   Function<CBase*()> f8 = [&]() -> CDerived* { return &derived; };
-  EXPECT_EQ(f8()->x, 55);
+  EXPECT_EQ(55, f8()->x);
 
   Function<CBase()> f9 = [&]() -> CDerived {
     auto d = derived;
     d.x = 66;
     return d;
   };
-  EXPECT_EQ(f9().x, 66);
+  EXPECT_EQ(66, f9().x);
 }
 
 TEST(Function, ConvertReturnType) {
@@ -1183,44 +1183,44 @@ TEST(Function, ConvertReturnType) {
 
   Function<int()> f1 = []() -> int { return 5; };
   Function<double()> cf1 = std::move(f1);
-  EXPECT_EQ(cf1(), 5.0);
+  EXPECT_EQ(5.0, cf1());
   Function<int()> ccf1 = std::move(cf1);
-  EXPECT_EQ(ccf1(), 5);
+  EXPECT_EQ(5, ccf1());
 
   Function<double()> f2 = []() -> double { return 5.2; };
   Function<int()> cf2 = std::move(f2);
-  EXPECT_EQ(cf2(), 5);
+  EXPECT_EQ(5, cf2());
   Function<double()> ccf2 = std::move(cf2);
-  EXPECT_EQ(ccf2(), 5.0);
+  EXPECT_EQ(5.0, ccf2());
 
   CDerived derived;
   derived.x = 55;
 
   Function<CDerived const&()> f3 = [&]() -> CDerived const& { return derived; };
   Function<CBase const&()> cf3 = std::move(f3);
-  EXPECT_EQ(cf3().x, 55);
+  EXPECT_EQ(55, cf3().x);
 
   Function<CDerived&()> f4 = [&]() -> CDerived& { return derived; };
   Function<CBase const&()> cf4 = std::move(f4);
-  EXPECT_EQ(cf4().x, 55);
+  EXPECT_EQ(55, cf4().x);
 
   Function<CDerived&()> f5 = [&]() -> CDerived& { return derived; };
   Function<CBase&()> cf5 = std::move(f5);
-  EXPECT_EQ(cf5().x, 55);
+  EXPECT_EQ(55, cf5().x);
 
   Function<CDerived const*()> f6 = [&]() -> CDerived const* {
     return &derived;
   };
   Function<CBase const*()> cf6 = std::move(f6);
-  EXPECT_EQ(cf6()->x, 55);
+  EXPECT_EQ(55, cf6()->x);
 
   Function<CDerived const*()> f7 = [&]() -> CDerived* { return &derived; };
   Function<CBase const*()> cf7 = std::move(f7);
-  EXPECT_EQ(cf7()->x, 55);
+  EXPECT_EQ(55, cf7()->x);
 
   Function<CDerived*()> f8 = [&]() -> CDerived* { return &derived; };
   Function<CBase*()> cf8 = std::move(f8);
-  EXPECT_EQ(cf8()->x, 55);
+  EXPECT_EQ(55, cf8()->x);
 
   Function<CDerived()> f9 = [&]() -> CDerived {
     auto d = derived;
@@ -1228,7 +1228,7 @@ TEST(Function, ConvertReturnType) {
     return d;
   };
   Function<CBase()> cf9 = std::move(f9);
-  EXPECT_EQ(cf9().x, 66);
+  EXPECT_EQ(66, cf9().x);
 }
 
 TEST(Function, asStdFunction_void) {
