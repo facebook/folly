@@ -426,6 +426,7 @@ libfolly_la_SOURCES = \
 	portability/Environment.cpp \
 	portability/Libgen.cpp \
 	portability/Malloc.cpp \
+	portability/Memory.cpp \
 	portability/String.cpp \
 	portability/Strings.cpp \
 	portability/SysFile.cpp \
