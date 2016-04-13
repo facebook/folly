@@ -257,15 +257,19 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    *                  does not succeed within this period,
    *                  callback->connectError() will be invoked.
    */
-  virtual void connect(ConnectCallback* callback,
-               const folly::SocketAddress& address,
-               int timeout = 0,
-               const OptionMap &options = emptyOptionMap,
-               const folly::SocketAddress& bindAddr = anyAddress()
-               ) noexcept;
-  void connect(ConnectCallback* callback, const std::string& ip, uint16_t port,
-               int timeout = 00,
-               const OptionMap &options = emptyOptionMap) noexcept;
+  virtual void connect(
+      ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      int timeout = 0,
+      const OptionMap& options = emptyOptionMap,
+      const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
+
+  void connect(
+      ConnectCallback* callback,
+      const std::string& ip,
+      uint16_t port,
+      int timeout = 0,
+      const OptionMap& options = emptyOptionMap) noexcept;
 
   /**
    * If a connect request is in-flight, cancels it and closes the socket
@@ -404,6 +408,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   std::chrono::nanoseconds getConnectTime() const {
     return connectEndTime_ - connectStartTime_;
+  }
+
+  std::chrono::milliseconds getConnectTimeout() const {
+    return connectTimeout_;
   }
 
   // Methods controlling socket options
@@ -801,6 +809,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;
+
+  std::chrono::milliseconds connectTimeout_{0};
 
   BufferCallback* bufferCallback_{nullptr};
 };

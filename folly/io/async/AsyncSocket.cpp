@@ -321,6 +321,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     return invalidState(callback);
   }
 
+  connectTimeout_ = std::chrono::milliseconds(timeout);
   connectStartTime_ = std::chrono::steady_clock::now();
   // Make connect end time at least >= connectStartTime.
   connectEndTime_ = connectStartTime_;

@@ -98,6 +98,7 @@ TEST(AsyncSocketTest, Connect) {
 
   CHECK_EQ(cb.state, STATE_SUCCEEDED);
   EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
 }
 
 /**
@@ -118,6 +119,7 @@ TEST(AsyncSocketTest, ConnectRefused) {
   CHECK_EQ(cb.state, STATE_FAILED);
   CHECK_EQ(cb.exception.getType(), AsyncSocketException::NOT_OPEN);
   EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
 }
 
 /**
@@ -156,6 +158,7 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   socket->getPeerAddress(&peer);
   CHECK_EQ(peer, addr);
   EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(1));
 }
 
 /**
@@ -190,6 +193,7 @@ TEST(AsyncSocketTest, ConnectAndWrite) {
 
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
 }
 
 /**
