@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdlib.h>
+
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
