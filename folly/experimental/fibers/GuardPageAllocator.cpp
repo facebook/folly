@@ -64,8 +64,7 @@ class StackCache {
     /* Protect the bottommost page of every stack allocation */
     for (size_t i = 0; i < kNumGuarded; ++i) {
       auto allocBegin = storage_ + allocSize_ * i;
-      freeList_.push_back(allocBegin);
-      PCHECK(0 == ::mprotect(allocBegin, pagesize(), PROT_NONE));
+      freeList_.emplace_back(allocBegin, /* protected= */ false);
     }
   }
 
@@ -79,7 +78,10 @@ class StackCache {
       return nullptr;
     }
 
-    auto p = freeList_.back();
+    auto p = freeList_.back().first;
+    if (!freeList_.back().second) {
+      PCHECK(0 == ::mprotect(p, pagesize(), PROT_NONE));
+    }
     freeList_.pop_back();
 
     /* We allocate minimum number of pages required, plus a guard page.
@@ -112,7 +114,7 @@ class StackCache {
 
     assert(as == allocSize_);
     assert((p - storage_) % allocSize_ == 0);
-    freeList_.push_back(p);
+    freeList_.emplace_back(p, /* protected= */ true);
     return true;
   }
 
@@ -127,9 +129,9 @@ class StackCache {
   size_t allocSize_{0};
 
   /**
-   * LIFO free list
+   * LIFO free list. Each pair contains stack pointer and protected flag.
    */
-  std::vector<unsigned char*> freeList_;
+  std::vector<std::pair<unsigned char*, bool>> freeList_;
 
   static size_t pagesize() {
     static const size_t pagesize = sysconf(_SC_PAGESIZE);

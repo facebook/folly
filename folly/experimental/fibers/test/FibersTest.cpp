@@ -1628,6 +1628,15 @@ BENCHMARK(FiberManagerBasicFiveAwaits, iters) {
   runBenchmark(5, iters);
 }
 
+BENCHMARK(FiberManagerCreateDestroy, iters) {
+  for (size_t i = 0; i < iters; ++i) {
+    folly::EventBase evb;
+    auto& fm = folly::fibers::getFiberManager(evb);
+    fm.addTask([]() {});
+    evb.loop();
+  }
+}
+
 BENCHMARK(FiberManagerAllocateDeallocatePattern, iters) {
   static const size_t kNumAllocations = 10000;
 
