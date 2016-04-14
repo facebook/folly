@@ -289,7 +289,7 @@ struct StaticMetaBase {
 // StaticMeta; you can specify multiple Tag types to break that lock.
 template <class Tag>
 struct StaticMeta : StaticMetaBase {
-  StaticMeta() : StaticMetaBase(&StaticMeta::getThreadEntry) {
+  StaticMeta() : StaticMetaBase(&StaticMeta::getThreadEntrySlow) {
 #if FOLLY_HAVE_PTHREAD_ATFORK
     int ret = pthread_atfork(
         /*prepare*/ &StaticMeta::preFork,
@@ -313,13 +313,31 @@ struct StaticMeta : StaticMetaBase {
     return *instance;
   }
 
+  ElementWrapper& get(EntryID* ent) {
+    ThreadEntry* threadEntry = getThreadEntry();
+    uint32_t id = ent->getOrInvalid();
+    // if id is invalid, it is equal to uint32_t's max value.
+    // x <= max value is always true
+    if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
+      reserve(ent);
+      id = ent->getOrInvalid();
+      assert(threadEntry->elementsCapacity > id);
+    }
+    return threadEntry->elements[id];
+  }
+
   static ThreadEntry* getThreadEntrySlow() {
     auto& meta = instance();
     auto key = meta.pthreadKey_;
     ThreadEntry* threadEntry =
       static_cast<ThreadEntry*>(pthread_getspecific(key));
     if (!threadEntry) {
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
+      static FOLLY_TLS ThreadEntry threadEntrySingleton;
+      threadEntry = &threadEntrySingleton;
+#else
       threadEntry = new ThreadEntry();
+#endif
       threadEntry->meta = &meta;
       int ret = pthread_setspecific(key, threadEntry);
       checkPosixError(ret, "pthread_setspecific failed");
@@ -327,15 +345,15 @@ struct StaticMeta : StaticMetaBase {
     return threadEntry;
   }
 
-  static ThreadEntry* getThreadEntry() {
+  inline static ThreadEntry* getThreadEntry() {
 #ifdef FOLLY_TLD_USE_FOLLY_TLS
     static FOLLY_TLS ThreadEntry* threadEntryCache{nullptr};
     if (UNLIKELY(threadEntryCache == nullptr)) {
-      threadEntryCache = getThreadEntrySlow();
+      threadEntryCache = instance().threadEntry_();
     }
     return threadEntryCache;
 #else
-    return getThreadEntrySlow();
+    return instance().threadEntry_();
 #endif
   }
 

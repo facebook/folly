@@ -26,12 +26,24 @@ StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)())
 }
 
 void StaticMetaBase::onThreadExit(void* ptr) {
+#ifdef FOLLY_TLD_USE_FOLLY_TLS
+  auto threadEntry = static_cast<ThreadEntry*>(ptr);
+#else
   std::unique_ptr<ThreadEntry> threadEntry(static_cast<ThreadEntry*>(ptr));
+#endif
   DCHECK_GT(threadEntry->elementsCapacity, 0);
   auto& meta = *threadEntry->meta;
+
+  // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
+  // ThreadLocal B destructor.
+  pthread_setspecific(meta.pthreadKey_, threadEntry);
+  SCOPE_EXIT {
+    pthread_setspecific(meta.pthreadKey_, nullptr);
+  };
+
   {
     std::lock_guard<std::mutex> g(meta.lock_);
-    meta.erase(threadEntry.get());
+    meta.erase(&(*threadEntry));
     // No need to hold the lock any longer; the ThreadEntry is private to this
     // thread now that it's been removed from meta.
   }
@@ -208,19 +220,6 @@ void StaticMetaBase::reserve(EntryID* id) {
   }
 
   free(reallocated);
-}
-
-ElementWrapper& StaticMetaBase::get(EntryID* ent) {
-  ThreadEntry* threadEntry = (*threadEntry_)();
-  uint32_t id = ent->getOrInvalid();
-  // if id is invalid, it is equal to uint32_t's max value.
-  // x <= max value is always true
-  if (UNLIKELY(threadEntry->elementsCapacity <= id)) {
-    reserve(ent);
-    id = ent->getOrInvalid();
-    assert(threadEntry->elementsCapacity > id);
-  }
-  return threadEntry->elements[id];
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
