@@ -44,7 +44,21 @@ extern "C" char* strndup(const char* a, size_t len) {
 #endif
 
 #ifdef _WIN32
-extern "C" char* strtok_r(char* str, char const* delim, char** ctx) {
+extern "C" {
+void bzero(void* s, size_t n) {
+  memset(s, 0, n);
+}
+
+int strcasecmp(const char* a, const char* b) {
+  return _stricmp(a, b);
+}
+
+int strncasecmp(const char* a, const char* b, size_t c) {
+  return _strnicmp(a, b, c);
+}
+
+char* strtok_r(char* str, char const* delim, char** ctx) {
   return strtok_s(str, delim, ctx);
+}
 }
 #endif

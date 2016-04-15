@@ -282,7 +282,6 @@ nobase_follyinclude_HEADERS = \
 	portability/Memory.h \
 	portability/PThread.h \
 	portability/String.h \
-	portability/Strings.h \
 	portability/Syslog.h \
 	portability/SysFile.h \
 	portability/SysMman.h \
@@ -428,7 +427,6 @@ libfolly_la_SOURCES = \
 	portability/Malloc.cpp \
 	portability/Memory.cpp \
 	portability/String.cpp \
-	portability/Strings.cpp \
 	portability/SysFile.cpp \
 	portability/SysMman.cpp \
 	portability/SysResource.cpp \
