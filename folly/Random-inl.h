@@ -118,15 +118,15 @@ struct SeedData {
 
 }  // namespace detail
 
-template <class RNG>
-void Random::seed(ValidRNG<RNG>& rng) {
+template <class RNG, class /* EnableIf */>
+void Random::seed(RNG& rng) {
   detail::SeedData<RNG> sd;
   std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   rng.seed(s);
 }
 
-template <class RNG>
-auto Random::create() -> ValidRNG<RNG> {
+template <class RNG, class /* EnableIf */>
+auto Random::create() -> RNG {
   detail::SeedData<RNG> sd;
   std::seed_seq s(std::begin(sd.seedData), std::end(sd.seedData));
   return RNG(s);
