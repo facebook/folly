@@ -36,7 +36,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
 
   // Make sure this ThreadEntry is available if ThreadLocal A is accessed in
   // ThreadLocal B destructor.
-  pthread_setspecific(meta.pthreadKey_, threadEntry);
+  pthread_setspecific(meta.pthreadKey_, &(*threadEntry));
   SCOPE_EXIT {
     pthread_setspecific(meta.pthreadKey_, nullptr);
   };
