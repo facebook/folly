@@ -24,12 +24,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include <folly/AtomicLinkedList.h>
+#include <folly/AtomicIntrusiveLinkedList.h>
 #include <folly/Executor.h>
-#include <folly/Likely.h>
 #include <folly/IntrusiveList.h>
-#include <folly/io/async/Request.h>
+#include <folly/Likely.h>
 #include <folly/futures/Try.h>
+#include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/experimental/fibers/BoostContextCompatibility.h>
@@ -334,7 +334,7 @@ class FiberManager : public ::folly::Executor {
     folly::Function<void()> func;
     std::unique_ptr<Fiber::LocalData> localData;
     std::shared_ptr<RequestContext> rcontext;
-    AtomicLinkedListHook<RemoteTask> nextRemoteTask;
+    AtomicIntrusiveLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
   intptr_t activateFiber(Fiber* fiber);
@@ -430,9 +430,10 @@ class FiberManager : public ::folly::Executor {
 
   ExceptionCallback exceptionCallback_; /**< task exception callback */
 
-  folly::AtomicLinkedList<Fiber, &Fiber::nextRemoteReady_> remoteReadyQueue_;
+  folly::AtomicIntrusiveLinkedList<Fiber, &Fiber::nextRemoteReady_>
+      remoteReadyQueue_;
 
-  folly::AtomicLinkedList<RemoteTask, &RemoteTask::nextRemoteTask>
+  folly::AtomicIntrusiveLinkedList<RemoteTask, &RemoteTask::nextRemoteTask>
       remoteTaskQueue_;
 
   std::shared_ptr<TimeoutController> timeoutManager_;

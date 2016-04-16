@@ -18,7 +18,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include <folly/AtomicLinkedList.h>
 #include <folly/ThreadLocal.h>
 #include <folly/Synchronized.h>
 
