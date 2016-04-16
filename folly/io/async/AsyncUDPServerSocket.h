@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/MoveWrapper.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/Memory.h>
 #include <folly/io/async/AsyncUDPSocket.h>
@@ -165,18 +164,21 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback
 
     auto client = clientAddress;
     auto callback = listeners_[nextListener_].second;
-    auto mvp =
-        folly::MoveWrapper<
-            std::unique_ptr<folly::IOBuf>>(std::move(data));
     auto socket = socket_;
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    std::function<void()> f = [socket, client, callback, mvp, truncated] () mutable {
-      callback->onDataAvailable(socket, client, std::move(*mvp), truncated);
+    auto f = [
+      socket,
+      client,
+      callback,
+      data = std::move(data),
+      truncated
+    ]() mutable {
+      callback->onDataAvailable(socket, client, std::move(data), truncated);
     };
 
-    listeners_[nextListener_].first->runInEventBaseThread(f);
+    listeners_[nextListener_].first->runInEventBaseThread(std::move(f));
     ++nextListener_;
   }
 
