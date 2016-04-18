@@ -19,7 +19,6 @@
 
 #include <folly/CPortability.h>
 #include <folly/Memory.h>
-#include <folly/MoveWrapper.h>
 #include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
