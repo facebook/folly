@@ -1430,7 +1430,7 @@ public:
   }
 
   iterator insert(const_iterator p, const value_type c) {
-    const size_type pos = p - begin();
+    const size_type pos = p - cbegin();
     insert(p, 1, c);
     return begin() + pos;
   }
@@ -1484,9 +1484,9 @@ private:
   iterator insertImplDiscr(const_iterator i,
                            size_type n, value_type c, Selector<1>) {
     Invariant checker(*this);
-
-    assert(i >= begin() && i <= end());
-    const size_type pos = i - begin();
+    
+    assert(i >= cbegin() && i <= cend());
+    const size_type pos = i - cbegin();
 
     auto oldSize = size();
     store_.expand_noinit(n, /* expGrowth = */ true);
