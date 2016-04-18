@@ -420,7 +420,7 @@ class NotificationQueue {
     return true;
   }
 
-  size_t size() {
+  size_t size() const {
     folly::SpinLockGuard g(spinlock_);
     return queue_.size();
   }
@@ -464,6 +464,12 @@ class NotificationQueue {
     return draining_;
   }
 
+#ifdef __ANDROID__
+  // TODO 10860938 Remove after figuring out crash
+  mutable std::atomic<int> eventBytes_{0};
+  mutable std::atomic<int> maxEventBytes_{0};
+#endif
+
   inline void signalEvent(size_t numAdded = 1) const {
     static const uint8_t kPipeMessage[] = {
       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
@@ -491,7 +497,17 @@ class NotificationQueue {
         bytes_written += rc;
       } while (numAdded > 0);
     }
+#ifdef __ANDROID__
+    eventBytes_ += bytes_written;
+    maxEventBytes_ = std::max((int)maxEventBytes_, (int)eventBytes_);
+#endif
+
     if (bytes_written != bytes_expected) {
+#ifdef __ANDROID__
+      LOG(ERROR) << "NotificationQueue Write Error=" << errno
+                 << " bytesInPipe=" << eventBytes_
+                 << " maxInPipe=" << maxEventBytes_ << " queue=" << size();
+#endif
       folly::throwSystemError("failed to signal NotificationQueue after "
                               "write", errno);
     }
@@ -506,6 +522,9 @@ class NotificationQueue {
       uint8_t value8;
       rc = readNoInt(pipeFds_[0], &value8, sizeof(value8));
       value = value8;
+#ifdef __ANDROID__
+      eventBytes_ -= 1;
+#endif
     }
     if (rc < 0) {
       // EAGAIN should pretty much be the only error we can ever get.
