@@ -1104,7 +1104,7 @@ public:
     // No need of this anymore
     this->~basic_fbstring();
     // Move the goner into this
-    new(&store_) fbstring_core<E>(std::move(goner.store_));
+    new(&store_) Storage(std::move(goner.store_));
     return *this;
   }
 
