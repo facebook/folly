@@ -1381,7 +1381,9 @@ public:
       assert(size() == n);
     } else {
       const value_type *const s2 = s + size();
-      fbstring_detail::pod_move(s, s2, store_.mutable_data());
+      // size() < n!so [s,s + n) and [data(),data() + size()] can not overlap
+      // so we can use pod_copy instead of pod_move.
+      fbstring_detail::pod_copy(s, s2, store_.mutable_data());
       append(s2, n - size());
       assert(size() == n);
     }
