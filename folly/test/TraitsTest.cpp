@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include <folly/ScopeGuard.h>
@@ -82,6 +83,25 @@ TEST(Traits, bitAndInit) {
   EXPECT_FALSE(IsTriviallyCopyable<vector<int>>::value);
   EXPECT_TRUE (IsZeroInitializable<int>::value);
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
+}
+
+TEST(Trait, logicOperators) {
+  static_assert(Conjunction<true_type>::value, "");
+  static_assert(!Conjunction<false_type>::value, "");
+  static_assert(is_same<Conjunction<true_type>::type, true_type>::value, "");
+  static_assert(is_same<Conjunction<false_type>::type, false_type>::value, "");
+  static_assert(Conjunction<true_type, true_type>::value, "");
+  static_assert(!Conjunction<true_type, false_type>::value, "");
+
+  static_assert(Disjunction<true_type>::value, "");
+  static_assert(!Disjunction<false_type>::value, "");
+  static_assert(is_same<Disjunction<true_type>::type, true_type>::value, "");
+  static_assert(is_same<Disjunction<false_type>::type, false_type>::value, "");
+  static_assert(Disjunction<true_type, true_type>::value, "");
+  static_assert(Disjunction<true_type, false_type>::value, "");
+
+  static_assert(!Negation<true_type>::value, "");
+  static_assert(Negation<false_type>::value, "");
 }
 
 TEST(Traits, is_negative) {

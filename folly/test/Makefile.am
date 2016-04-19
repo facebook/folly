@@ -37,6 +37,10 @@ spin_lock_test_SOURCES = SpinLockTest.cpp
 spin_lock_test_LDADD = libfollytestmain.la
 TESTS += spin_lock_test
 
+array_test_SOURCES = ArrayTest.cpp
+array_test_LDADD = libfollytestmain.la
+TESTS += array_test
+
 if RUN_ARCH_SPECIFIC_TESTS
 small_locks_test_SOURCES = SmallLocksTest.cpp
 small_locks_test_LDADD = libfollytestmain.la
