@@ -258,6 +258,7 @@ size_t HHWheelTimer::cancelAll() {
     }
   }
 
+  count_ = 0;
   return count;
 }
 
