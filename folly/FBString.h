@@ -1430,7 +1430,7 @@ public:
   }
 
   iterator insert(const_iterator p, const value_type c) {
-    const size_type pos = p - begin();
+    const size_type pos = p - cbegin();
     insert(p, 1, c);
     return begin() + pos;
   }
@@ -1485,8 +1485,8 @@ private:
                            size_type n, value_type c, Selector<1>) {
     Invariant checker(*this);
 
-    assert(i >= begin() && i <= end());
-    const size_type pos = i - begin();
+    assert(i >= cbegin() && i <= cend());
+    const size_type pos = i - cbegin();
 
     auto oldSize = size();
     store_.expand_noinit(n, /* expGrowth = */ true);
@@ -1511,8 +1511,8 @@ private:
                       std::forward_iterator_tag) {
     Invariant checker(*this);
 
-    assert(i >= begin() && i <= end());
-    const size_type pos = i - begin();
+    assert(i >= cbegin() && i <= cend());
+    const size_type pos = i - cbegin();
     auto n = std::distance(s1, s2);
     assert(n >= 0);
 
@@ -1529,8 +1529,8 @@ private:
   iterator insertImpl(const_iterator i,
                       InputIterator b, InputIterator e,
                       std::input_iterator_tag) {
-    const auto pos = i - begin();
-    basic_fbstring temp(begin(), i);
+    const auto pos = i - cbegin();
+    basic_fbstring temp(cbegin(), i);
     for (; b != e; ++b) {
       temp.push_back(*b);
     }
