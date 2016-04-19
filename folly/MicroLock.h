@@ -22,6 +22,12 @@
 #include <folly/detail/Futex.h>
 #include <folly/Portability.h>
 
+#if defined(__clang__)
+#define NO_SANITIZE_ADDRESS __attribute__((__no_sanitize__("address")))
+#else
+#define NO_SANITIZE_ADDRESS
+#endif
+
 namespace folly {
 
 /**
@@ -88,7 +94,12 @@ namespace folly {
 
 class MicroLockCore {
  protected:
+#if defined(__SANITIZE_ADDRESS__) && !defined(__clang__) && \
+    (defined(__GNUC__) || defined(__GNUG__))
+  uint32_t lock_;
+#else
   uint8_t lock_;
+#endif
   inline detail::Futex<>* word() const;
   inline uint32_t baseShift(unsigned slot) const;
   inline uint32_t heldBit(unsigned slot) const;
@@ -100,7 +111,7 @@ class MicroLockCore {
                            unsigned maxYields);
 
  public:
-  inline void unlock(unsigned slot);
+  inline void unlock(unsigned slot) NO_SANITIZE_ADDRESS;
   inline void unlock() { unlock(0); }
   // Initializes all the slots.
   inline void init() { lock_ = 0; }
@@ -151,9 +162,9 @@ void MicroLockCore::unlock(unsigned slot) {
 template <unsigned MaxSpins = 1000, unsigned MaxYields = 0>
 class MicroLockBase : public MicroLockCore {
  public:
-  inline void lock(unsigned slot);
+  inline void lock(unsigned slot) NO_SANITIZE_ADDRESS;
   inline void lock() { lock(0); }
-  inline bool try_lock(unsigned slot);
+  inline bool try_lock(unsigned slot) NO_SANITIZE_ADDRESS;
   inline bool try_lock() { return try_lock(0); }
 };
 

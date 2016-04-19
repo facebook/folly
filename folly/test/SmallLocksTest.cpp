@@ -181,7 +181,12 @@ TEST(SmallLocks, RegClobber) {
 }
 
 FOLLY_PACK_PUSH
+#if defined(__SANITIZE_ADDRESS__) && !defined(__clang__) && \
+    (defined(__GNUC__) || defined(__GNUG__))
+static_assert(sizeof(MicroLock) == 4, "Size check failed");
+#else
 static_assert(sizeof(MicroLock) == 1, "Size check failed");
+#endif
 FOLLY_PACK_POP
 
 namespace {
