@@ -68,6 +68,6 @@ std::unique_ptr<Validator> makeValidator(const dynamic& schema);
  * Makes a validator for schemas. You should probably check your schema with
  * this before you use makeValidator().
  */
-Validator* makeSchemaValidator();
+std::shared_ptr<Validator> makeSchemaValidator();
 }
 }

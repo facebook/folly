@@ -1020,6 +1020,8 @@ std::unique_ptr<Validator> makeValidator(const dynamic& schema) {
   return std::move(v);
 }
 
-Validator* makeSchemaValidator() { return schemaValidator.get(); }
+std::shared_ptr<Validator> makeSchemaValidator() {
+  return schemaValidator.try_get();
+}
 }
 }
