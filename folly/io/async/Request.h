@@ -111,15 +111,12 @@ class RequestContext {
   }
 
   // The following API is used to pass the context through queues / threads.
-  // saveContext is called to get a shared_ptr to the context, and
+  // saveContext is called to geta shared_ptr to the context, and
   // setContext is used to reset it on the other side of the queue.
-  //
-  // Whenever possible, use RequestContextScopeGuard instead of setContext
-  // to make sure that RequestContext is reset to the original value when
-  // we exit the scope.
   //
   // A shared_ptr is used, because many request may fan out across
   // multiple threads, or do post-send processing, etc.
+
   static std::shared_ptr<RequestContext>
   setContext(std::shared_ptr<RequestContext> ctx) {
     using std::swap;
@@ -138,24 +135,4 @@ class RequestContext {
   std::map<std::string, std::unique_ptr<RequestData>> data_;
 };
 
-class RequestContextScopeGuard {
- private:
-  std::shared_ptr<RequestContext> prev_;
-
- public:
-  // Create a new RequestContext and reset to the original value when
-  // this goes out of scope.
-  RequestContextScopeGuard() : prev_(RequestContext::saveContext()) {
-    RequestContext::create();
-  }
-
-  // Set a RequestContext that was previously captured by saveContext(). It will
-  // be automatically reset to the original value when this goes out of scope.
-  explicit RequestContextScopeGuard(std::shared_ptr<RequestContext> ctx)
-      : prev_(RequestContext::setContext(std::move(ctx))) {}
-
-  ~RequestContextScopeGuard() {
-    RequestContext::setContext(std::move(prev_));
-  }
-};
 }
