@@ -23,7 +23,7 @@
 #include <folly/Portability.h>
 
 #if defined(__clang__)
-#define NO_SANITIZE_ADDRESS __attribute__((__no_sanitize__("address")))
+#define NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
 #else
 #define NO_SANITIZE_ADDRESS
 #endif
