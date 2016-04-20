@@ -73,6 +73,16 @@
 #define FB_SINGLE_ARG(...) __VA_ARGS__
 
 /**
+ * Helper macro that just ignores its parameters.
+ */
+#define FOLLY_IGNORE(...)
+
+/**
+ * Helper macro that just ignores its parameters and inserts a semicolon.
+ */
+#define FOLLY_SEMICOLON(...) ;
+
+/**
  * FB_ANONYMOUS_VARIABLE(str) introduces an identifier starting with
  * str and ending with a number that varies with the line.
  */
