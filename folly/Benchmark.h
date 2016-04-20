@@ -19,6 +19,7 @@
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
 #include <folly/ScopeGuard.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/Time.h>
 
 #include <cassert>
@@ -26,7 +27,6 @@
 #include <boost/function_types/function_arity.hpp>
 #include <functional>
 #include <glog/logging.h>
-#include <gflags/gflags.h>
 #include <limits>
 #include <type_traits>
 

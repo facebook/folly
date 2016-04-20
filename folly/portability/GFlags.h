@@ -21,5 +21,25 @@
 #if FOLLY_HAVE_LIBGFLAGS
 #include <gflags/gflags.h>
 #else
-#define DEFINE_int32(_name, _default, _description) int FLAGS_##_name = _default
+#define FOLLY_DECLARE_FLAG(_type, _name) extern _type FLAGS_##_name
+#define DECLARE_bool(_name) FOLLY_DECLARE_FLAG(bool, _name)
+#define DECLARE_double(_name) FOLLY_DECLARE_FLAG(double, _name)
+#define DECLARE_int32(_name) FOLLY_DECLARE_FLAG(int, _name)
+#define DECLARE_int64(_name) FOLLY_DECLARE_FLAG(long long, _name)
+#define DECLARE_uint64(_name) FOLLY_DECLARE_FLAG(unsigned long long, _name)
+#define DECLARE_string(_name) FOLLY_DECLARE_FLAG(std::string, _name)
+
+#define FOLLY_DEFINE_FLAG(_type, _name, _default) _type FLAGS_##_name = _default
+#define DEFINE_bool(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(bool, _name, _default)
+#define DEFINE_double(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(double, _name, _default)
+#define DEFINE_int32(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(int, _name, _default)
+#define DEFINE_int64(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(long long, _name, _default)
+#define DEFINE_uint64(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(unsigned long long, _name, _default)
+#define DEFINE_string(_name, _default, _description) \
+  FOLLY_DEFINE_FLAG(std::string, _name, _default)
 #endif

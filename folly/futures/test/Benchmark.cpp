@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-
-#include <folly/Baton.h>
 #include <folly/Benchmark.h>
+#include <folly/Baton.h>
 #include <folly/futures/Future.h>
-#include <folly/futures/Promise.h>
 #include <folly/futures/InlineExecutor.h>
+#include <folly/futures/Promise.h>
+#include <folly/portability/GFlags.h>
 
 #include <semaphore.h>
 #include <vector>
