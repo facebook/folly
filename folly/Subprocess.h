@@ -108,6 +108,7 @@
 #include <boost/container/flat_map.hpp>
 #include <boost/operators.hpp>
 
+#include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/gen/String.h>
@@ -683,6 +684,7 @@ class Subprocess {
         if (ret == -1 && errno == EAGAIN) {  // No more data for now
           return false;
         }
+        checkUnixError(ret, "read");
         if (ret == 0) {  // Reached end-of-file
           splitter.flush();  // Ignore return since the file is over anyway
           return true;
