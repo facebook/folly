@@ -157,56 +157,59 @@ TEST(JSONSchemaTest, TestStringPattern) {
 
 TEST(JSONSchemaTest, TestMinimumArrayItems) {
   dynamic schema = dynamic::object("minItems", 3);
-  ASSERT_TRUE(check(schema, {1, 2, 3, 4, 5}));
-  ASSERT_TRUE(check(schema, {1, 2, 3}));
-  ASSERT_FALSE(check(schema, {1}));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3, 4, 5)));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3)));
+  ASSERT_FALSE(check(schema, dynamic::array(1)));
 }
 
 TEST(JSONSchemaTest, TestMaximumArrayItems) {
   dynamic schema = dynamic::object("maxItems", 3);
-  ASSERT_FALSE(check(schema, {1, 2, 3, 4, 5}));
-  ASSERT_TRUE(check(schema, {1, 2, 3}));
-  ASSERT_TRUE(check(schema, {1}));
+  ASSERT_FALSE(check(schema, dynamic::array(1, 2, 3, 4, 5)));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3)));
+  ASSERT_TRUE(check(schema, dynamic::array(1)));
   ASSERT_TRUE(check(schema, "foobar"));
 }
 
 TEST(JSONSchemaTest, TestArrayUniqueItems) {
   dynamic schema = dynamic::object("uniqueItems", true);
-  ASSERT_TRUE(check(schema, {1, 2, 3}));
-  ASSERT_FALSE(check(schema, {1, 2, 3, 1}));
-  ASSERT_FALSE(check(schema, {"cat", "dog", 1, 2, "cat"}));
-  ASSERT_TRUE(check(schema, {
-    dynamic::object("foo", "bar"),
-    dynamic::object("foo", "baz")
-  }));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3)));
+  ASSERT_FALSE(check(schema, dynamic::array(1, 2, 3, 1)));
+  ASSERT_FALSE(check(schema, dynamic::array("cat", "dog", 1, 2, "cat")));
+  ASSERT_TRUE(check(
+      schema,
+      dynamic::array(
+          dynamic::object("foo", "bar"), dynamic::object("foo", "baz"))));
 
   schema = dynamic::object("uniqueItems", false);
-  ASSERT_TRUE(check(schema, {1, 2, 3, 1}));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3, 1)));
 }
 
 TEST(JSONSchemaTest, TestArrayItems) {
   dynamic schema = dynamic::object("items", dynamic::object("minimum", 2));
-  ASSERT_TRUE(check(schema, {2, 3, 4}));
-  ASSERT_FALSE(check(schema, {3, 4, 1}));
+  ASSERT_TRUE(check(schema, dynamic::array(2, 3, 4)));
+  ASSERT_FALSE(check(schema, dynamic::array(3, 4, 1)));
 }
 
 TEST(JSONSchemaTest, TestArrayAdditionalItems) {
   dynamic schema = dynamic::object(
-      "items", {dynamic::object("minimum", 2), dynamic::object("minimum", 1)})(
+      "items",
+      dynamic::array(
+          dynamic::object("minimum", 2), dynamic::object("minimum", 1)))(
       "additionalItems", dynamic::object("minimum", 3));
-  ASSERT_TRUE(check(schema, {2, 1, 3, 3, 3, 3, 4}));
-  ASSERT_FALSE(check(schema, {2, 1, 3, 3, 3, 3, 1}));
+  ASSERT_TRUE(check(schema, dynamic::array(2, 1, 3, 3, 3, 3, 4)));
+  ASSERT_FALSE(check(schema, dynamic::array(2, 1, 3, 3, 3, 3, 1)));
 }
 
 TEST(JSONSchemaTest, TestArrayNoAdditionalItems) {
-  dynamic schema = dynamic::object("items", {dynamic::object("minimum", 2)})(
-      "additionalItems", false);
-  ASSERT_FALSE(check(schema, {3, 3, 3}));
+  dynamic schema =
+      dynamic::object("items", dynamic::array(dynamic::object("minimum", 2)))(
+          "additionalItems", false);
+  ASSERT_FALSE(check(schema, dynamic::array(3, 3, 3)));
 }
 
 TEST(JSONSchemaTest, TestArrayItemsNotPresent) {
   dynamic schema = dynamic::object("additionalItems", false);
-  ASSERT_TRUE(check(schema, {3, 3, 3}));
+  ASSERT_TRUE(check(schema, dynamic::array(3, 3, 3)));
 }
 
 TEST(JSONSchemaTest, TestRef) {
@@ -215,8 +218,8 @@ TEST(JSONSchemaTest, TestRef) {
       dynamic::object("positiveInteger",
                       dynamic::object("minimum", 1)("type", "integer")))(
       "items", dynamic::object("$ref", "#/definitions/positiveInteger"));
-  ASSERT_TRUE(check(schema, {1, 2, 3, 4}));
-  ASSERT_FALSE(check(schema, {4, -5}));
+  ASSERT_TRUE(check(schema, dynamic::array(1, 2, 3, 4)));
+  ASSERT_FALSE(check(schema, dynamic::array(4, -5)));
 }
 
 TEST(JSONSchemaTest, TestRecursiveRef) {
@@ -250,11 +253,11 @@ TEST(JSONSchemaTest, TestDoubleRecursiveRef) {
 TEST(JSONSchemaTest, TestInfinitelyRecursiveRef) {
   dynamic schema = dynamic::object("not", dynamic::object("$ref", "#"));
   auto validator = makeValidator(schema);
-  ASSERT_THROW(validator->validate({1, 2}), std::runtime_error);
+  ASSERT_THROW(validator->validate(dynamic::array(1, 2)), std::runtime_error);
 }
 
 TEST(JSONSchemaTest, TestRequired) {
-  dynamic schema = dynamic::object("required", {"foo", "bar"});
+  dynamic schema = dynamic::object("required", dynamic::array("foo", "bar"));
   ASSERT_FALSE(check(schema, dynamic::object("foo", 123)));
   ASSERT_FALSE(check(schema, dynamic::object("bar", 123)));
   ASSERT_TRUE(check(schema, dynamic::object("bar", 123)("foo", 456)));
@@ -296,8 +299,8 @@ TEST(JSONSchemaTest, TestPropertyAndPattern) {
 }
 
 TEST(JSONSchemaTest, TestPropertyDependency) {
-  dynamic schema =
-      dynamic::object("dependencies", dynamic::object("p1", {"p2"}));
+  dynamic schema = dynamic::object(
+      "dependencies", dynamic::object("p1", dynamic::array("p2")));
   ASSERT_TRUE(check(schema, dynamic::object));
   ASSERT_TRUE(check(schema, dynamic::object("p1", 1)("p2", 1)));
   ASSERT_FALSE(check(schema, dynamic::object("p1", 1)));
@@ -306,14 +309,14 @@ TEST(JSONSchemaTest, TestPropertyDependency) {
 TEST(JSONSchemaTest, TestSchemaDependency) {
   dynamic schema = dynamic::object(
       "dependencies",
-      dynamic::object("p1", dynamic::object("required", {"p2"})));
+      dynamic::object("p1", dynamic::object("required", dynamic::array("p2"))));
   ASSERT_TRUE(check(schema, dynamic::object));
   ASSERT_TRUE(check(schema, dynamic::object("p1", 1)("p2", 1)));
   ASSERT_FALSE(check(schema, dynamic::object("p1", 1)));
 }
 
 TEST(JSONSchemaTest, TestEnum) {
-  dynamic schema = dynamic::object("enum", {"a", 1});
+  dynamic schema = dynamic::object("enum", dynamic::array("a", 1));
   ASSERT_TRUE(check(schema, "a"));
   ASSERT_TRUE(check(schema, 1));
   ASSERT_FALSE(check(schema, "b"));
@@ -326,7 +329,7 @@ TEST(JSONSchemaTest, TestType) {
 }
 
 TEST(JSONSchemaTest, TestTypeArray) {
-  dynamic schema = dynamic::object("type", {"array", "number"});
+  dynamic schema = dynamic::object("type", dynamic::array("array", "number"));
   ASSERT_TRUE(check(schema, dynamic(5)));
   ASSERT_TRUE(check(schema, dynamic(1.1)));
   ASSERT_FALSE(check(schema, dynamic::object));
@@ -335,7 +338,8 @@ TEST(JSONSchemaTest, TestTypeArray) {
 TEST(JSONSchemaTest, TestAllOf) {
   dynamic schema = dynamic::object(
       "allOf",
-      {dynamic::object("minimum", 1), dynamic::object("type", "integer")});
+      dynamic::array(
+          dynamic::object("minimum", 1), dynamic::object("type", "integer")));
   ASSERT_TRUE(check(schema, 2));
   ASSERT_FALSE(check(schema, 0));
   ASSERT_FALSE(check(schema, 1.1));
@@ -344,7 +348,8 @@ TEST(JSONSchemaTest, TestAllOf) {
 TEST(JSONSchemaTest, TestAnyOf) {
   dynamic schema = dynamic::object(
       "anyOf",
-      {dynamic::object("minimum", 1), dynamic::object("type", "integer")});
+      dynamic::array(
+          dynamic::object("minimum", 1), dynamic::object("type", "integer")));
   ASSERT_TRUE(check(schema, 2)); // matches both
   ASSERT_FALSE(check(schema, 0.1)); // matches neither
   ASSERT_TRUE(check(schema, 1.1)); // matches first one
@@ -354,7 +359,8 @@ TEST(JSONSchemaTest, TestAnyOf) {
 TEST(JSONSchemaTest, TestOneOf) {
   dynamic schema = dynamic::object(
       "oneOf",
-      {dynamic::object("minimum", 1), dynamic::object("type", "integer")});
+      dynamic::array(
+          dynamic::object("minimum", 1), dynamic::object("type", "integer")));
   ASSERT_FALSE(check(schema, 2)); // matches both
   ASSERT_FALSE(check(schema, 0.1)); // matches neither
   ASSERT_TRUE(check(schema, 1.1)); // matches first one
