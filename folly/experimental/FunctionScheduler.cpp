@@ -223,6 +223,7 @@ void FunctionScheduler::cancelFunction(const std::unique_lock<std::mutex>& l,
 void FunctionScheduler::cancelAllFunctions() {
   std::unique_lock<std::mutex> l(mutex_);
   functions_.clear();
+  currentFunction_ = nullptr;
 }
 
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
