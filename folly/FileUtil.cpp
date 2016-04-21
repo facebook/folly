@@ -97,7 +97,7 @@ ssize_t preadNoInt(int fd, void* buf, size_t count, off_t offset) {
 }
 
 ssize_t readvNoInt(int fd, const iovec* iov, int count) {
-  return wrapNoInt(writev, fd, iov, count);
+  return wrapNoInt(readv, fd, iov, count);
 }
 
 ssize_t writeNoInt(int fd, const void* buf, size_t count) {
