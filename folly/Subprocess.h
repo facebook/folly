@@ -111,6 +111,7 @@
 #include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include <folly/Function.h>
 #include <folly/gen/String.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/MapUtil.h>
@@ -613,7 +614,7 @@ class Subprocess {
    * expensive implementation choice, in order to make closeParentFd()
    * thread-safe.
    */
-  typedef std::function<bool(int, int)> FdCallback;
+  using FdCallback = folly::Function<bool(int, int)>;
   void communicate(FdCallback readCallback, FdCallback writeCallback);
 
   /**
@@ -622,17 +623,13 @@ class Subprocess {
    * descriptors.  Use the readLinesCallback() helper to get template
    * deduction.  For example:
    *
-   *   auto read_cb = Subprocess::readLinesCallback(
-   *     [](int fd, folly::StringPiece s) {
-   *       std::cout << fd << " said: " << s;
-   *       return false;  // Keep reading from the child
-   *     }
-   *   );
    *   subprocess.communicate(
-   *     // ReadLinesCallback contains StreamSplitter contains IOBuf, making
-   *     // it noncopyable, whereas std::function must be copyable.  So, we
-   *     // keep the callback in a local, and instead pass a reference.
-   *     std::ref(read_cb),
+   *     Subprocess::readLinesCallback(
+   *       [](int fd, folly::StringPiece s) {
+   *         std::cout << fd << " said: " << s;
+   *         return false;  // Keep reading from the child
+   *       }
+   *     ),
    *     [](int pdf, int cfd){ return true; }  // Don't write to the child
    *   );
    *
@@ -706,14 +703,14 @@ class Subprocess {
 
   // Helper to enable template deduction
   template <class Callback>
-  static ReadLinesCallback<Callback> readLinesCallback(
+  static auto readLinesCallback(
       Callback&& fdLineCb,
-      uint64_t maxLineLength = 0,  // No line length limit by default
+      uint64_t maxLineLength = 0, // No line length limit by default
       char delimiter = '\n',
-      uint64_t bufSize = 1024) {
-    return ReadLinesCallback<Callback>(
-      std::move(fdLineCb), maxLineLength, delimiter, bufSize
-    );
+      uint64_t bufSize = 1024)
+      -> ReadLinesCallback<typename std::decay<Callback>::type> {
+    return ReadLinesCallback<typename std::decay<Callback>::type>(
+        std::forward<Callback>(fdLineCb), maxLineLength, delimiter, bufSize);
   }
 
   /**
