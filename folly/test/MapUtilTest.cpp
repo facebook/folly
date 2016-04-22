@@ -29,6 +29,14 @@ TEST(MapUtil, get_default) {
   EXPECT_EQ(0, get_default(m, 3));
 }
 
+TEST(MapUtil, get_default_function) {
+  std::map<int, int> m;
+  m[1] = 2;
+  EXPECT_EQ(2, get_default(m, 1, [] { return 42; }));
+  EXPECT_EQ(42, get_default(m, 2, [] { return 42; }));
+  EXPECT_EQ(0, get_default(m, 3));
+}
+
 TEST(MapUtil, get_or_throw) {
   std::map<int, int> m;
   m[1] = 2;
@@ -57,6 +65,19 @@ TEST(MapUtil, get_ref_default) {
   const int i = 42;
   EXPECT_EQ(2, get_ref_default(m, 1, i));
   EXPECT_EQ(42, get_ref_default(m, 2, i));
+  EXPECT_EQ(std::addressof(i), std::addressof(get_ref_default(m, 2, i)));
+}
+
+TEST(MapUtil, get_ref_default_function) {
+  std::map<int, int> m;
+  m[1] = 2;
+  const int i = 42;
+  EXPECT_EQ(2, get_ref_default(m, 1, [&i]() -> const int& { return i; }));
+  EXPECT_EQ(42, get_ref_default(m, 2, [&i]() -> const int& { return i; }));
+  EXPECT_EQ(
+      std::addressof(i),
+      std::addressof(
+          get_ref_default(m, 2, [&i]() -> const int& { return i; })));
 }
 
 TEST(MapUtil, get_ptr) {

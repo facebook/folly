@@ -35,6 +35,22 @@ typename Map::mapped_type get_default(
 }
 
 /**
+ * Give a map and a key, return the value corresponding to the key in the map,
+ * or a given default value if the key doesn't exist in the map.
+ */
+template <
+    class Map,
+    typename Func,
+    typename = typename std::enable_if<std::is_convertible<
+        typename std::result_of<Func()>::type,
+        typename Map::mapped_type>::value>::type>
+typename Map::mapped_type
+get_default(const Map& map, const typename Map::key_type& key, Func&& dflt) {
+  auto pos = map.find(key);
+  return pos != map.end() ? pos->second : dflt();
+}
+
+/**
  * Given a map and a key, return the value corresponding to the key in the map,
  * or throw an exception of the specified type.
  */
@@ -75,6 +91,25 @@ const typename Map::mapped_type& get_ref_default(
     const typename Map::mapped_type& dflt) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt);
+}
+
+/**
+ * Given a map and a key, return a reference to the value corresponding to the
+ * key in the map, or the given default reference if the key doesn't exist in
+ * the map.
+ */
+template <
+    class Map,
+    typename Func,
+    typename = typename std::enable_if<std::is_convertible<
+        typename std::result_of<Func()>::type,
+        const typename Map::mapped_type&>::value>::type>
+const typename Map::mapped_type& get_ref_default(
+    const Map& map,
+    const typename Map::key_type& key,
+    Func&& dflt) {
+  auto pos = map.find(key);
+  return (pos != map.end() ? pos->second : dflt());
 }
 
 /**
