@@ -109,7 +109,7 @@ sudo apt-get install \
     libssl-dev
 ```
 
-If advanced dubugging functionality for tests are required
+If advanced debugging functionality for tests are required
 
 ```
 sudo apt-get install \
