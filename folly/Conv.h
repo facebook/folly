@@ -78,7 +78,7 @@ to(const Src & value) {
 template <class Tgt, class Src>
 typename std::enable_if<std::is_same<Tgt, Src>::value, Tgt>::type
 to(Src && value) {
-  return std::move(value);
+  return std::forward<Src>(value);
 }
 
 /*******************************************************************************

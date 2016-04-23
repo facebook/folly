@@ -84,8 +84,8 @@ typedef GuardObjBase const& Guard;
 template<class F, class Tuple>
 struct GuardObj : GuardObjBase {
   explicit GuardObj(F&& f, Tuple&& args)
-    : f_(std::move(f))
-    , args_(std::move(args))
+    : f_(std::forward<F>(f))
+    , args_(std::forward<Tuple>(args))
   {}
   GuardObj(GuardObj&& g) noexcept
     : GuardObjBase(std::move(g))

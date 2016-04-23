@@ -331,7 +331,7 @@ class Future {
   template <class E>
   void raise(E&& exception) {
     raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
-        std::move(exception)));
+        std::forward<E>(exception)));
   }
 
   /// Raise an interrupt. If the promise holder has an interrupt

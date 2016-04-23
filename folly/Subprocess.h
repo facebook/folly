@@ -662,7 +662,7 @@ class Subprocess {
       uint64_t maxLineLength = 0,  // No line length limit by default
       char delimiter = '\n',
       uint64_t bufSize = 1024
-    ) : fdLineCb_(std::move(fdLineCb)),
+    ) : fdLineCb_(std::forward<Callback>(fdLineCb)),
         maxLineLength_(maxLineLength),
         delimiter_(delimiter),
         bufSize_(bufSize) {}

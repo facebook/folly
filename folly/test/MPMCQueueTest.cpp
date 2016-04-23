@@ -104,7 +104,7 @@ TEST(MPMCQueue, sequencer_deterministic) {
 template <typename T>
 void runElementTypeTest(T&& src) {
   MPMCQueue<T> cq(10);
-  cq.blockingWrite(std::move(src));
+  cq.blockingWrite(std::forward<T>(src));
   T dest;
   cq.blockingRead(dest);
   EXPECT_TRUE(cq.write(std::move(dest)));
