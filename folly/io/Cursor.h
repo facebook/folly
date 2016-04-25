@@ -324,8 +324,6 @@ class CursorBase {
   }
 
   size_t cloneAtMost(folly::IOBuf& buf, size_t len) {
-    buf = folly::IOBuf();
-
     std::unique_ptr<folly::IOBuf> tmp;
     size_t copied = 0;
     for (int loopCount = 0; true; ++loopCount) {

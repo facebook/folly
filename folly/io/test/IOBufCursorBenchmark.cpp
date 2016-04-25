@@ -76,6 +76,16 @@ BENCHMARK(skipBenchmark, iters) {
   }
 }
 
+BENCHMARK(cloneBenchmark, iters) {
+  folly::IOBuf out;
+  while (iters--) {
+    Cursor c(iobuf_read_benchmark.get());
+    for (int i = 0; i < benchmark_size; ++i) {
+      c.clone(out, 1);
+    }
+  }
+}
+
 // fbmake opt
 // _bin/folly/experimental/io/test/iobuf_cursor_test -benchmark
 //
