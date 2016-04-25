@@ -96,7 +96,7 @@ class UndelayedDestruction : public TDD {
    * Override our parent's destroy() method to make it protected.
    * Callers should use the normal destructor instead of destroy
    */
-  virtual void destroy() {
+  void destroy() override {
     this->TDD::destroy();
   }
 
