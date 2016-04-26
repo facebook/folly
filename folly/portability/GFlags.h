@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <folly/Portability.h>
-
 #if FOLLY_HAVE_LIBGFLAGS
 #include <gflags/gflags.h>
 #else
