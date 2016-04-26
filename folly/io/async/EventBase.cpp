@@ -23,7 +23,6 @@
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 
-#include <boost/static_assert.hpp>
 #include <condition_variable>
 #include <fcntl.h>
 #include <mutex>

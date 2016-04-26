@@ -17,7 +17,6 @@
 #pragma once
 
 #include <string>
-#include <boost/static_assert.hpp>
 #include <folly/stats/Histogram.h>
 #include <folly/stats/MultiLevelTimeSeries.h>
 
@@ -53,7 +52,7 @@ template <class T, class TT=std::chrono::seconds,
 class TimeseriesHistogram {
  private:
    // NOTE: T must be equivalent to _signed_ numeric type for our math.
-   BOOST_STATIC_ASSERT(std::numeric_limits<T>::is_signed);
+   static_assert(std::numeric_limits<T>::is_signed, "");
 
  public:
   // values to be inserted into container

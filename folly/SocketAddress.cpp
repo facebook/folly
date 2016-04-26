@@ -23,7 +23,6 @@
 #include <folly/Hash.h>
 
 #include <boost/functional/hash.hpp>
-#include <boost/static_assert.hpp>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>

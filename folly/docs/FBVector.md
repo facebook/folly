@@ -202,7 +202,7 @@ after `Widget`'s definition and write this:
     }
 
 If you don't do this, `fbvector<Widget>` will fail to compile
-with a `BOOST_STATIC_ASSERT`.
+with a `static_assert`.
 
 #### Additional Constraints
 
@@ -215,9 +215,11 @@ already present in the C++ standard (well, currently in Boost).
 To summarize, in order to work with `fbvector`, a type `Widget`
 must pass:
 
-    BOOST_STATIC_ASSERT(
+    static_assert(
       IsRelocatable<Widget>::value &&
-      (boost::has_trivial_assign<T>::value || boost::has_nothrow_constructor<T>::value));
+      (boost::has_trivial_assign<T>::value ||
+       boost::has_nothrow_constructor<T>::value),
+      "");
 
 These traits go hand in hand; for example, it would be very
 difficult to design a class that satisfies one branch of the
