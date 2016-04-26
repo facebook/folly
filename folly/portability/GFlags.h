@@ -19,6 +19,14 @@
 #if FOLLY_HAVE_LIBGFLAGS
 #include <gflags/gflags.h>
 #else
+// glog/logging.h is dependent on this implementation detail
+// being defined otherwise it undefines all of this -_-....
+//
+// Also, this is deliberately expanded such that places using
+// it directly break loudly. (C will break louder than C++, but oh well)
+#define DECLARE_VARIABLE() \
+  static_assert(false, "You shouldn't be using GFlags internals.");
+
 #define FOLLY_DECLARE_FLAG(_type, _name) extern _type FLAGS_##_name
 #define DECLARE_bool(_name) FOLLY_DECLARE_FLAG(bool, _name)
 #define DECLARE_double(_name) FOLLY_DECLARE_FLAG(double, _name)
