@@ -49,9 +49,9 @@ static int64_t decodeInt(Cursor& curs) {
   }
 }
 
-static fbstring decodeString(Cursor& curs) {
+static std::string decodeString(Cursor& curs) {
   auto len = decodeInt(curs);
-  folly::fbstring str;
+  std::string str;
 
   if (len < 0) {
     throw std::range_error("string length must not be negative");

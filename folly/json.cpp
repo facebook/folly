@@ -118,13 +118,11 @@ char32_t decodeUtf8(
 }
 
 struct Printer {
-  explicit Printer(fbstring& out,
-                   unsigned* indentLevel,
-                   serialization_opts const* opts)
-    : out_(out)
-    , indentLevel_(indentLevel)
-    , opts_(*opts)
-  {}
+  explicit Printer(
+      std::string& out,
+      unsigned* indentLevel,
+      serialization_opts const* opts)
+      : out_(out), indentLevel_(indentLevel), opts_(*opts) {}
 
   void operator()(dynamic const& v) const {
     switch (v.type()) {
@@ -244,7 +242,7 @@ private:
 
   void newline() const {
     if (indentLevel_) {
-      out_ += to<fbstring>('\n', fbstring(*indentLevel_ * 2, ' '));
+      out_ += to<std::string>('\n', std::string(*indentLevel_ * 2, ' '));
     }
   }
 
@@ -253,9 +251,9 @@ private:
   }
 
 private:
-  fbstring& out_;
-  unsigned* const indentLevel_;
-  serialization_opts const& opts_;
+ std::string& out_;
+ unsigned* const indentLevel_;
+ serialization_opts const& opts_;
 };
 
   //////////////////////////////////////////////////////////////////////
@@ -394,7 +392,7 @@ private:
 };
 
 dynamic parseValue(Input& in);
-fbstring parseString(Input& in);
+std::string parseString(Input& in);
 dynamic parseNumber(Input& in);
 
 dynamic parseObject(Input& in) {
@@ -527,7 +525,7 @@ dynamic parseNumber(Input& in) {
   return val;
 }
 
-fbstring decodeUnicodeEscape(Input& in) {
+std::string decodeUnicodeEscape(Input& in) {
   auto hexVal = [&] (char c) -> unsigned {
     return c >= '0' && c <= '9' ? c - '0' :
            c >= 'a' && c <= 'f' ? c - 'a' + 10 :
@@ -575,11 +573,11 @@ fbstring decodeUnicodeEscape(Input& in) {
   return codePointToUtf8(codePoint);
 }
 
-fbstring parseString(Input& in) {
+std::string parseString(Input& in) {
   assert(*in == '\"');
   ++in;
 
-  fbstring ret;
+  std::string ret;
   for (;;) {
     auto range = in.skipWhile(
       [] (char c) { return c != '\"' && c != '\\'; }
@@ -602,8 +600,8 @@ fbstring parseString(Input& in) {
       case 'r':     ret.push_back('\r'); ++in; break;
       case 't':     ret.push_back('\t'); ++in; break;
       case 'u':     ++in; ret += decodeUnicodeEscape(in); break;
-      default:      in.error(to<fbstring>("unknown escape ", *in,
-                                          " in string").c_str());
+      default:
+        in.error(to<std::string>("unknown escape ", *in, " in string").c_str());
       }
       continue;
     }
@@ -650,8 +648,8 @@ dynamic parseValue(Input& in) {
 
 //////////////////////////////////////////////////////////////////////
 
-fbstring serialize(dynamic const& dyn, serialization_opts const& opts) {
-  fbstring ret;
+std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
+  std::string ret;
   unsigned indentLevel = 0;
   Printer p(ret, opts.pretty_formatting ? &indentLevel : nullptr, &opts);
   p(dyn);
@@ -659,9 +657,10 @@ fbstring serialize(dynamic const& dyn, serialization_opts const& opts) {
 }
 
 // Escape a string so that it is legal to print it in JSON text.
-void escapeString(StringPiece input,
-                  fbstring& out,
-                  const serialization_opts& opts) {
+void escapeString(
+    StringPiece input,
+    std::string& out,
+    const serialization_opts& opts) {
   auto hexDigit = [] (int c) -> char {
     return c < 10 ? c + '0' : c - 10 + 'a';
   };
@@ -732,8 +731,8 @@ void escapeString(StringPiece input,
   out.push_back('\"');
 }
 
-fbstring stripComments(StringPiece jsonC) {
-  fbstring result;
+std::string stripComments(StringPiece jsonC) {
+  std::string result;
   enum class State {
     None,
     InString,
@@ -813,11 +812,11 @@ dynamic parseJson(
   return ret;
 }
 
-fbstring toJson(dynamic const& dyn) {
+std::string toJson(dynamic const& dyn) {
   return json::serialize(dyn, json::serialization_opts());
 }
 
-fbstring toPrettyJson(dynamic const& dyn) {
+std::string toPrettyJson(dynamic const& dyn) {
   json::serialization_opts opts;
   opts.pretty_formatting = true;
   return json::serialize(dyn, opts);

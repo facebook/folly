@@ -95,7 +95,7 @@ struct SchemaValidatorContext final {
   explicit SchemaValidatorContext(const dynamic& s) : schema(s) {}
 
   const dynamic& schema;
-  std::unordered_map<fbstring, IValidator*> refs;
+  std::unordered_map<std::string, IValidator*> refs;
 };
 
 /**
@@ -231,7 +231,7 @@ struct SizeValidator final : IValidator {
 struct StringPatternValidator final : IValidator {
   explicit StringPatternValidator(const dynamic& schema) {
     if (schema.isString()) {
-      regex_ = boost::regex(schema.getString().toStdString());
+      regex_ = boost::regex(schema.getString());
     }
   }
 
@@ -240,7 +240,7 @@ struct StringPatternValidator final : IValidator {
     if (!value.isString() || regex_.empty()) {
       return none;
     }
-    if (!boost::regex_search(value.getString().toStdString(), regex_)) {
+    if (!boost::regex_search(value.getString(), regex_)) {
       return makeError("string matching regex", value);
     }
     return none;
@@ -360,7 +360,7 @@ struct RequiredValidator final : IValidator {
   }
 
  private:
-  std::vector<fbstring> properties_;
+  std::vector<std::string> properties_;
 };
 
 struct PropertiesValidator final : IValidator {
@@ -381,7 +381,7 @@ struct PropertiesValidator final : IValidator {
       for (const auto& pair : patternProperties->items()) {
         if (pair.first.isString()) {
           patternPropertyValidators_.emplace_back(
-              boost::regex(pair.first.getString().toStdString()),
+              boost::regex(pair.first.getString()),
               SchemaValidator::make(context, pair.second));
         }
       }
@@ -405,7 +405,7 @@ struct PropertiesValidator final : IValidator {
       if (!pair.first.isString()) {
         continue;
       }
-      const fbstring& key = pair.first.getString();
+      const std::string& key = pair.first.getString();
       auto it = propertyValidators_.find(key);
       bool matched = false;
       if (it != propertyValidators_.end()) {
@@ -415,7 +415,7 @@ struct PropertiesValidator final : IValidator {
         matched = true;
       }
 
-      const std::string& strkey = key.toStdString();
+      const std::string& strkey = key;
       for (const auto& ppv : patternPropertyValidators_) {
         if (boost::regex_search(strkey, ppv.first)) {
           if (auto se = vc.validate(ppv.second.get(), pair.second)) {
@@ -440,7 +440,8 @@ struct PropertiesValidator final : IValidator {
     return none;
   }
 
-  std::unordered_map<fbstring, std::unique_ptr<IValidator>> propertyValidators_;
+  std::unordered_map<std::string, std::unique_ptr<IValidator>>
+      propertyValidators_;
   std::vector<std::pair<boost::regex, std::unique_ptr<IValidator>>>
       patternPropertyValidators_;
   std::unique_ptr<IValidator> additionalPropertyValidator_;
@@ -457,7 +458,7 @@ struct DependencyValidator final : IValidator {
         continue;
       }
       if (pair.second.isArray()) {
-        auto p = make_pair(pair.first.getString(), std::vector<fbstring>());
+        auto p = make_pair(pair.first.getString(), std::vector<std::string>());
         for (const auto& item : pair.second) {
           if (item.isString()) {
             p.second.push_back(item.getString());
@@ -496,8 +497,8 @@ struct DependencyValidator final : IValidator {
     return none;
   }
 
-  std::vector<std::pair<fbstring, std::vector<fbstring>>> propertyDep_;
-  std::vector<std::pair<fbstring, std::unique_ptr<IValidator>>> schemaDep_;
+  std::vector<std::pair<std::string, std::vector<std::string>>> propertyDep_;
+  std::vector<std::pair<std::string, std::unique_ptr<IValidator>>> schemaDep_;
 };
 
 struct EnumValidator final : IValidator {

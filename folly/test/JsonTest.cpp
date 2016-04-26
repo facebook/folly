@@ -155,14 +155,14 @@ TEST(Json, BoolConversion) {
 TEST(Json, JavascriptSafe) {
   auto badDouble = (1ll << 63ll) + 1;
   dynamic badDyn = badDouble;
-  EXPECT_EQ(folly::toJson(badDouble), folly::to<folly::fbstring>(badDouble));
+  EXPECT_EQ(folly::toJson(badDouble), folly::to<std::string>(badDouble));
   folly::json::serialization_opts opts;
   opts.javascript_safe = true;
   EXPECT_ANY_THROW(folly::json::serialize(badDouble, opts));
 
   auto okDouble = 1ll << 63ll;
   dynamic okDyn = okDouble;
-  EXPECT_EQ(folly::toJson(okDouble), folly::to<folly::fbstring>(okDouble));
+  EXPECT_EQ(folly::toJson(okDouble), folly::to<std::string>(okDouble));
 }
 
 TEST(Json, Produce) {
@@ -178,10 +178,8 @@ TEST(Json, Produce) {
   // Check Infinity/Nan
   folly::json::serialization_opts opts;
   opts.allow_nan_inf = true;
-  EXPECT_EQ("Infinity",
-            folly::json::serialize(parseJson("Infinity"), opts).toStdString());
-  EXPECT_EQ("NaN",
-            folly::json::serialize(parseJson("NaN"), opts).toStdString());
+  EXPECT_EQ("Infinity", folly::json::serialize(parseJson("Infinity"), opts));
+  EXPECT_EQ("NaN", folly::json::serialize(parseJson("NaN"), opts));
 }
 
 TEST(Json, JsonEscape) {
@@ -260,10 +258,10 @@ TEST(Json, JsonNonAsciiEncoding) {
 TEST(Json, UTF8Retention) {
 
   // test retention with valid utf8 strings
-  folly::fbstring input = "\u2665";
-  folly::fbstring jsonInput = folly::toJson(input);
-  folly::fbstring output = folly::parseJson(jsonInput).asString();
-  folly::fbstring jsonOutput = folly::toJson(output);
+  std::string input = "\u2665";
+  std::string jsonInput = folly::toJson(input);
+  std::string output = folly::parseJson(jsonInput).asString();
+  std::string jsonOutput = folly::toJson(output);
 
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
@@ -282,10 +280,10 @@ TEST(Json, UTF8EncodeNonAsciiRetention) {
   opts.encode_non_ascii = true;
 
   // test encode_non_ascii valid utf8 strings
-  folly::fbstring input = "\u2665";
-  folly::fbstring jsonInput = folly::json::serialize(input, opts);
-  folly::fbstring output = folly::parseJson(jsonInput).asString();
-  folly::fbstring jsonOutput = folly::json::serialize(output, opts);
+  std::string input = "\u2665";
+  std::string jsonInput = folly::json::serialize(input, opts);
+  std::string output = folly::parseJson(jsonInput).asString();
+  std::string jsonOutput = folly::json::serialize(output, opts);
 
   EXPECT_EQ(input, output);
   EXPECT_EQ(jsonInput, jsonOutput);
@@ -402,7 +400,7 @@ TEST(Json, ParseDoubleFallback) {
 TEST(Json, ParseNumbersAsStrings) {
   folly::json::serialization_opts opts;
   opts.parse_numbers_as_strings = true;
-  auto parse = [&](folly::fbstring number) {
+  auto parse = [&](std::string number) {
     return parseJson(number, opts).asString();
   };
 

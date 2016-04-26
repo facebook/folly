@@ -74,7 +74,6 @@
 
 #include <boost/operators.hpp>
 
-#include <folly/FBString.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
 
@@ -157,8 +156,7 @@ public:
   /* implicit */ dynamic(StringPiece val);
   /* implicit */ dynamic(char const* val);
   /* implicit */ dynamic(std::string const& val);
-  /* implicit */ dynamic(fbstring const& val);
-  /* implicit */ dynamic(fbstring&& val);
+  /* implicit */ dynamic(std::string&& val);
 
   /*
    * This is part of the plumbing for array() and object(), above.
@@ -291,7 +289,7 @@ public:
    * since arrays and objects are generally best dealt with as a
    * dynamic.
    */
-  fbstring asString() const;
+  std::string asString() const;
   double   asDouble() const;
   int64_t  asInt() const;
   bool     asBool() const;
@@ -301,15 +299,15 @@ public:
    *
    * These will throw a TypeError if the dynamic has a different type.
    */
-  const fbstring& getString() const&;
+  const std::string& getString() const&;
   double          getDouble() const&;
   int64_t         getInt() const&;
   bool            getBool() const&;
-  fbstring& getString() &;
+  std::string& getString() &;
   double&   getDouble() &;
   int64_t&  getInt() &;
   bool&     getBool() &;
-  fbstring getString() &&;
+  std::string getString() &&;
   double   getDouble() &&;
   int64_t  getInt() &&;
   bool     getBool() &&;
@@ -566,7 +564,7 @@ private:
     bool boolean;
     double doubl;
     int64_t integer;
-    fbstring string;
+    std::string string;
 
     /*
      * Objects are placement new'd here.  We have to use a char buffer

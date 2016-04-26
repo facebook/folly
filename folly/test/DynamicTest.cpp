@@ -50,7 +50,7 @@ TEST(Dynamic, ObjectBasics) {
 
   EXPECT_EQ(*newObject.keys().begin(), newObject.items().begin()->first);
   EXPECT_EQ(*newObject.values().begin(), newObject.items().begin()->second);
-  std::vector<std::pair<folly::fbstring, dynamic>> found;
+  std::vector<std::pair<std::string, dynamic>> found;
   found.emplace_back(newObject.keys().begin()->asString(),
                      *newObject.values().begin());
 
@@ -353,8 +353,8 @@ TEST(Dynamic, Assignment) {
   }
 }
 
-folly::fbstring make_long_string() {
-  return folly::fbstring(100, 'a');
+std::string make_long_string() {
+  return std::string(100, 'a');
 }
 
 TEST(Dynamic, GetDefault) {

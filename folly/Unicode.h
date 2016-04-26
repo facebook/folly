@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <folly/FBString.h>
+#include <string>
 
 namespace folly {
 
@@ -29,7 +29,7 @@ namespace folly {
  *
  * Return value is undefined if `cp' is an invalid code point.
  */
-fbstring codePointToUtf8(char32_t cp);
+std::string codePointToUtf8(char32_t cp);
 
 //////////////////////////////////////////////////////////////////////
 

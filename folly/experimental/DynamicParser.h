@@ -97,7 +97,7 @@ namespace folly {
  * NB: The key alone should be rarely needed, but these callback styles
  *     provide it with no conversion overhead, and only minimal verbosity:
  *       [&](const std::string& k, const folly::dynamic&) {}
- *       [&]() { auto k = p.key().asString().toStdString(); }
+ *       [&]() { auto k = p.key().asString(); }
  *
  * == How `releaseErrors()` can make your parse lossless ==
  *

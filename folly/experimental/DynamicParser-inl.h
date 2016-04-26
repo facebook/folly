@@ -125,7 +125,7 @@ invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
 // std::string
 template <typename Fn> EnableForArgTypes<Fn, std::string>
 invokeForKeyValue(Fn fn, const folly::dynamic&, const folly::dynamic& v) {
-  fn(v.asString().toStdString());
+  fn(v.asString());
 }
 
 //
@@ -157,7 +157,7 @@ invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
 // folly::dynamic, std::string
 template <typename Fn> EnableForArgTypes<Fn, folly::dynamic, std::string>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k, v.asString().toStdString());
+  fn(k, v.asString());
 }
 
 // Convert the key to std::string.
@@ -165,27 +165,27 @@ invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
 // std::string, folly::dynamic (no conversion of value)
 template <typename Fn> EnableForArgTypes<Fn, std::string, folly::dynamic>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asString().toStdString(), v);
+  fn(k.asString(), v);
 }
 // std::string, int64_t
 template <typename Fn> EnableForArgTypes<Fn, std::string, int64_t>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asString().toStdString(), v.asInt());
+  fn(k.asString(), v.asInt());
 }
 // std::string, bool
 template <typename Fn> EnableForArgTypes<Fn, std::string, bool>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asString().toStdString(), v.asBool());
+  fn(k.asString(), v.asBool());
 }
 // std::string, double
 template <typename Fn> EnableForArgTypes<Fn, std::string, double>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asString().toStdString(), v.asDouble());
+  fn(k.asString(), v.asDouble());
 }
 // std::string, std::string
 template <typename Fn> EnableForArgTypes<Fn, std::string, std::string>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asString().toStdString(), v.asString().toStdString());
+  fn(k.asString(), v.asString());
 }
 
 // Convert the key to int64_t (good for arrays).
@@ -213,7 +213,7 @@ invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
 // int64_t, std::string
 template <typename Fn> EnableForArgTypes<Fn, int64_t, std::string>
 invokeForKeyValue(Fn fn, const folly::dynamic& k, const folly::dynamic& v) {
-  fn(k.asInt(), v.asString().toStdString());
+  fn(k.asInt(), v.asString());
 }
 }  // namespace detail
 

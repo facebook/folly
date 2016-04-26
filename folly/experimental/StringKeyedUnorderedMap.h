@@ -164,6 +164,7 @@ public:
 
   using Base::at;
   using Base::find;
+  using Base::count;
 
   template <class... Args>
   std::pair<iterator, bool> emplace(StringPiece key, Args&&... args) {

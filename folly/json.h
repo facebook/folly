@@ -41,9 +41,9 @@
 #pragma once
 
 #include <iosfwd>
+#include <string>
 
 #include <folly/dynamic.h>
-#include <folly/FBString.h>
 #include <folly/Range.h>
 
 namespace folly {
@@ -122,21 +122,22 @@ namespace json {
    * For the most common use cases there are simpler functions in the
    * main folly namespace below.
    */
-  fbstring serialize(dynamic const&, serialization_opts const&);
+  std::string serialize(dynamic const&, serialization_opts const&);
 
   /*
    * Escape a string so that it is legal to print it in JSON text and
    * append the result to out.
    */
 
-  void escapeString(StringPiece input,
-                    fbstring& out,
-                    const serialization_opts& opts);
+  void escapeString(
+      StringPiece input,
+      std::string& out,
+      const serialization_opts& opts);
 
   /*
    * Strip all C99-like comments (i.e. // and / * ... * /)
    */
-  fbstring stripComments(StringPiece jsonC);
+  std::string stripComments(StringPiece jsonC);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -151,13 +152,13 @@ dynamic parseJson(StringPiece);
 /*
  * Serialize a dynamic into a json string.
  */
-fbstring toJson(dynamic const&);
+std::string toJson(dynamic const&);
 
 /*
  * Same as the above, except format the json with some minimal
  * indentation.
  */
-fbstring toPrettyJson(dynamic const&);
+std::string toPrettyJson(dynamic const&);
 
 /*
  * Printer for GTest.

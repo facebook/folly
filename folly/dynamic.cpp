@@ -15,6 +15,7 @@
  */
 
 #include <folly/dynamic.h>
+#include <folly/Hash.h>
 
 namespace folly {
 
@@ -27,7 +28,7 @@ namespace folly {
 
 FOLLY_DYNAMIC_DEF_TYPEINFO(void*)
 FOLLY_DYNAMIC_DEF_TYPEINFO(bool)
-FOLLY_DYNAMIC_DEF_TYPEINFO(fbstring)
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::string)
 FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array)
 FOLLY_DYNAMIC_DEF_TYPEINFO(double)
 FOLLY_DYNAMIC_DEF_TYPEINFO(int64_t)
@@ -57,18 +58,35 @@ TypeError::~TypeError() = default;
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
-#define FB_DYNAMIC_APPLY(type, apply) do {         \
-  switch ((type)) {                             \
-  case NULLT:   apply(void*);          break;   \
-  case ARRAY:   apply(Array);          break;   \
-  case BOOL:    apply(bool);           break;   \
-  case DOUBLE:  apply(double);         break;   \
-  case INT64:   apply(int64_t);        break;   \
-  case OBJECT:  apply(ObjectImpl);     break;   \
-  case STRING:  apply(fbstring);       break;   \
-  default:      CHECK(0); abort();              \
-  }                                             \
-} while (0)
+#define FB_DYNAMIC_APPLY(type, apply) \
+  do {                                \
+    switch ((type)) {                 \
+      case NULLT:                     \
+        apply(void*);                 \
+        break;                        \
+      case ARRAY:                     \
+        apply(Array);                 \
+        break;                        \
+      case BOOL:                      \
+        apply(bool);                  \
+        break;                        \
+      case DOUBLE:                    \
+        apply(double);                \
+        break;                        \
+      case INT64:                     \
+        apply(int64_t);               \
+        break;                        \
+      case OBJECT:                    \
+        apply(ObjectImpl);            \
+        break;                        \
+      case STRING:                    \
+        apply(std::string);           \
+        break;                        \
+      default:                        \
+        CHECK(0);                     \
+        abort();                      \
+    }                                 \
+  } while (0)
 
 bool dynamic::operator<(dynamic const& o) const {
   if (UNLIKELY(type_ == OBJECT || o.type_ == OBJECT)) {
@@ -227,7 +245,7 @@ std::size_t dynamic::size() const {
   if (auto* obj = get_nothrow<ObjectImpl>()) {
     return obj->size();
   }
-  if (auto* str = get_nothrow<fbstring>()) {
+  if (auto* str = get_nothrow<std::string>()) {
     return str->size();
   }
   throw TypeError("array/object", type());
@@ -248,13 +266,16 @@ std::size_t dynamic::hash() const {
   case NULLT:
     throw TypeError("not null/object/array", type());
   case INT64:
-    return std::hash<int64_t>()(asInt());
+    return std::hash<int64_t>()(getInt());
   case DOUBLE:
-    return std::hash<double>()(asDouble());
+    return std::hash<double>()(getDouble());
   case BOOL:
-    return std::hash<bool>()(asBool());
-  case STRING:
-    return std::hash<fbstring>()(asString());
+    return std::hash<bool>()(getBool());
+  case STRING: {
+    // keep it compatible with FBString
+    const auto& str = getString();
+    return ::folly::hash::fnv32_buf(str.data(), str.size());
+  }
   default:
     CHECK(0); abort();
   }

@@ -40,18 +40,35 @@ struct hash< ::folly::dynamic> {
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.
-#define FB_DYNAMIC_APPLY(type, apply) do {         \
-  switch ((type)) {                             \
-  case NULLT:   apply(void*);          break;   \
-  case ARRAY:   apply(Array);          break;   \
-  case BOOL:    apply(bool);           break;   \
-  case DOUBLE:  apply(double);         break;   \
-  case INT64:   apply(int64_t);        break;   \
-  case OBJECT:  apply(ObjectImpl);     break;   \
-  case STRING:  apply(fbstring);       break;   \
-  default:      CHECK(0); abort();              \
-  }                                             \
-} while (0)
+#define FB_DYNAMIC_APPLY(type, apply) \
+  do {                                \
+    switch ((type)) {                 \
+      case NULLT:                     \
+        apply(void*);                 \
+        break;                        \
+      case ARRAY:                     \
+        apply(Array);                 \
+        break;                        \
+      case BOOL:                      \
+        apply(bool);                  \
+        break;                        \
+      case DOUBLE:                    \
+        apply(double);                \
+        break;                        \
+      case INT64:                     \
+        apply(int64_t);               \
+        break;                        \
+      case OBJECT:                    \
+        apply(ObjectImpl);            \
+        break;                        \
+      case STRING:                    \
+        apply(std::string);           \
+        break;                        \
+      default:                        \
+        CHECK(0);                     \
+        abort();                      \
+    }                                 \
+  } while (0)
 
 //////////////////////////////////////////////////////////////////////
 
@@ -271,31 +288,23 @@ inline dynamic::dynamic(ObjectMaker (*)())
 inline dynamic::dynamic(StringPiece s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s.data(), s.size());
+  new (&u_.string) std::string(s.data(), s.size());
 }
 
 inline dynamic::dynamic(char const* s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s);
+  new (&u_.string) std::string(s);
 }
 
 inline dynamic::dynamic(std::string const& s)
   : type_(STRING)
 {
-  new (&u_.string) fbstring(s);
+  new (&u_.string) std::string(s);
 }
 
-inline dynamic::dynamic(fbstring const& s)
-  : type_(STRING)
-{
-  new (&u_.string) fbstring(s);
-}
-
-inline dynamic::dynamic(fbstring&& s)
-  : type_(STRING)
-{
-  new (&u_.string) fbstring(std::move(s));
+inline dynamic::dynamic(std::string&& s) : type_(STRING) {
+  new (&u_.string) std::string(std::move(s));
 }
 
 inline dynamic::dynamic(std::initializer_list<dynamic> il)
@@ -391,7 +400,9 @@ inline dynamic::IterableProxy<dynamic::const_item_iterator> dynamic::items()
   return &(get<ObjectImpl>());
 }
 
-inline bool dynamic::isString() const { return get_nothrow<fbstring>(); }
+inline bool dynamic::isString() const {
+  return get_nothrow<std::string>();
+}
 inline bool dynamic::isObject() const { return get_nothrow<ObjectImpl>(); }
 inline bool dynamic::isBool()   const { return get_nothrow<bool>(); }
 inline bool dynamic::isArray()  const { return get_nothrow<Array>(); }
@@ -404,29 +415,49 @@ inline dynamic::Type dynamic::type() const {
   return type_;
 }
 
-inline fbstring dynamic::asString() const { return asImpl<fbstring>(); }
-inline double   dynamic::asDouble() const { return asImpl<double>(); }
-inline int64_t  dynamic::asInt()    const { return asImpl<int64_t>(); }
-inline bool     dynamic::asBool()   const { return asImpl<bool>(); }
+inline std::string dynamic::asString() const {
+  return asImpl<std::string>();
+}
+inline double dynamic::asDouble() const {
+  return asImpl<double>();
+}
+inline int64_t dynamic::asInt() const {
+  return asImpl<int64_t>();
+}
+inline bool dynamic::asBool() const {
+  return asImpl<bool>();
+}
 
-inline const fbstring& dynamic::getString() const& { return get<fbstring>(); }
+inline const std::string& dynamic::getString() const& {
+  return get<std::string>();
+}
 inline double          dynamic::getDouble() const& { return get<double>(); }
 inline int64_t         dynamic::getInt()    const& { return get<int64_t>(); }
 inline bool            dynamic::getBool()   const& { return get<bool>(); }
 
-inline fbstring& dynamic::getString() & { return get<fbstring>(); }
+inline std::string& dynamic::getString()& {
+  return get<std::string>();
+}
 inline double&   dynamic::getDouble() & { return get<double>(); }
 inline int64_t&  dynamic::getInt()    & { return get<int64_t>(); }
 inline bool&     dynamic::getBool()   & { return get<bool>(); }
 
-inline fbstring dynamic::getString() && { return std::move(get<fbstring>()); }
+inline std::string dynamic::getString()&& {
+  return std::move(get<std::string>());
+}
 inline double   dynamic::getDouble() && { return get<double>(); }
 inline int64_t  dynamic::getInt()    && { return get<int64_t>(); }
 inline bool     dynamic::getBool()   && { return get<bool>(); }
 
-inline const char* dynamic::data()  const& { return get<fbstring>().data();  }
-inline const char* dynamic::c_str() const& { return get<fbstring>().c_str(); }
-inline StringPiece dynamic::stringPiece() const { return get<fbstring>(); }
+inline const char* dynamic::data() const& {
+  return get<std::string>().data();
+}
+inline const char* dynamic::c_str() const& {
+  return get<std::string>().c_str();
+}
+inline StringPiece dynamic::stringPiece() const {
+  return get<std::string>();
+}
 
 template<class T>
 struct dynamic::CompareOp {
@@ -442,7 +473,7 @@ struct dynamic::CompareOp<dynamic::ObjectImpl> {
 
 inline dynamic& dynamic::operator+=(dynamic const& o) {
   if (type() == STRING && o.type() == STRING) {
-    *getAddress<fbstring>() += *o.getAddress<fbstring>();
+    *getAddress<std::string>() += *o.getAddress<std::string>();
     return *this;
   }
   *this = detail::numericOp<std::plus>(*this, o);
@@ -646,7 +677,7 @@ inline void dynamic::pop_back() {
 
 FOLLY_DYNAMIC_DEC_TYPEINFO(void*,               "null",    dynamic::NULLT)
 FOLLY_DYNAMIC_DEC_TYPEINFO(bool,                "boolean", dynamic::BOOL)
-FOLLY_DYNAMIC_DEC_TYPEINFO(fbstring,            "string",  dynamic::STRING)
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::string, "string", dynamic::STRING)
 FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::Array,      "array",   dynamic::ARRAY)
 FOLLY_DYNAMIC_DEC_TYPEINFO(double,              "double",  dynamic::DOUBLE)
 FOLLY_DYNAMIC_DEC_TYPEINFO(int64_t,             "int64",   dynamic::INT64)
@@ -660,7 +691,8 @@ T dynamic::asImpl() const {
   case INT64:    return to<T>(*get_nothrow<int64_t>());
   case DOUBLE:   return to<T>(*get_nothrow<double>());
   case BOOL:     return to<T>(*get_nothrow<bool>());
-  case STRING:   return to<T>(*get_nothrow<fbstring>());
+  case STRING:
+    return to<T>(*get_nothrow<std::string>());
   default:
     throw TypeError("int/double/bool/string", type());
   }
@@ -708,8 +740,11 @@ template<> struct dynamic::GetAddrImpl<int64_t> {
 template<> struct dynamic::GetAddrImpl<double> {
   static double* get(Data& d) noexcept { return &d.doubl; }
 };
-template<> struct dynamic::GetAddrImpl<fbstring> {
-  static fbstring* get(Data& d) noexcept { return &d.string; }
+template <>
+struct dynamic::GetAddrImpl<std::string> {
+  static std::string* get(Data& d) noexcept {
+    return &d.string;
+  }
 };
 template<> struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
   static_assert(sizeof(ObjectImpl) <= sizeof(Data::objectBuffer),
@@ -807,7 +842,7 @@ class FormatValue<dynamic> {
       FormatValue<int64_t>(val_.asInt()).format(arg, cb);
       break;
     case dynamic::STRING:
-      FormatValue<fbstring>(val_.asString()).format(arg, cb);
+      FormatValue<std::string>(val_.asString()).format(arg, cb);
       break;
     case dynamic::DOUBLE:
       FormatValue<double>(val_.asDouble()).format(arg, cb);
@@ -816,7 +851,7 @@ class FormatValue<dynamic> {
       FormatValue(val_.at(arg.splitIntKey())).format(arg, cb);
       break;
     case dynamic::OBJECT:
-      FormatValue(val_.at(arg.splitKey().toFbstring())).format(arg, cb);
+      FormatValue(val_.at(arg.splitKey().toString())).format(arg, cb);
       break;
     }
   }

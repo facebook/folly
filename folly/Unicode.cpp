@@ -20,8 +20,8 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-fbstring codePointToUtf8(char32_t cp) {
-  fbstring result;
+std::string codePointToUtf8(char32_t cp) {
+  std::string result;
 
   // Based on description from http://en.wikipedia.org/wiki/UTF-8.
 

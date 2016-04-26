@@ -243,7 +243,7 @@ struct DynamicConverter<folly::fbstring> {
 template <>
 struct DynamicConverter<std::string> {
   static std::string convert(const dynamic& d) {
-    return d.asString().toStdString();
+    return d.asString();
   }
 };
 
