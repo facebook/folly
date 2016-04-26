@@ -1345,3 +1345,11 @@ TEST(UTF8StringPiece, empty_mid_codepoint) {
 TEST(UTF8StringPiece, invalid_mid_codepoint) {
   EXPECT_THROW(UTF8StringPiece(kTestUTF8.subpiece(9, 1)), std::out_of_range);
 }
+
+TEST(UTF8StringPiece, valid_implicit_conversion) {
+  std::string input = "\U0001F602\U0001F602\U0001F602";
+  auto checkImplicitCtor = [](UTF8StringPiece implicitCtor) {
+    return implicitCtor.walk_size();
+  };
+  EXPECT_EQ(3, checkImplicitCtor(input));
+}
