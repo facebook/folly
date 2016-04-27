@@ -1392,15 +1392,6 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
   bool cork = isSet(flags, WriteFlags::CORK);
   CorkGuard guard(fd_, count > 1, cork, &corked_);
 
-#if 0
-//#ifdef SSL_MODE_WRITE_IOVEC
-  if (ssl_->expand == nullptr &&
-      ssl_->compress == nullptr &&
-      (ssl_->mode & SSL_MODE_WRITE_IOVEC)) {
-    return performWriteIovec(vec, count, flags, countWritten, partialWritten);
-  }
-#endif
-
   // Declare a buffer used to hold small write requests.  It could point to a
   // memory block either on stack or on heap. If it is on heap, we release it
   // manually when scope exits
@@ -1515,44 +1506,6 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
 
   return totalWritten;
 }
-
-#if 0
-//#ifdef SSL_MODE_WRITE_IOVEC
-ssize_t AsyncSSLSocket::performWriteIovec(const iovec* vec,
-                                          uint32_t count,
-                                          WriteFlags flags,
-                                          uint32_t* countWritten,
-                                          uint32_t* partialWritten) {
-  size_t tot = 0;
-  for (uint32_t j = 0; j < count; j++) {
-    tot += vec[j].iov_len;
-  }
-
-  ssize_t totalWritten = SSL_write_iovec(ssl_, vec, count);
-
-  *countWritten = 0;
-  *partialWritten = 0;
-  if (totalWritten <= 0) {
-    return interpretSSLError(totalWritten, SSL_get_error(ssl_, totalWritten));
-  } else {
-    ssize_t bytes = totalWritten, i = 0;
-    while (i < count && bytes >= (ssize_t)vec[i].iov_len) {
-      // we managed to write all of this buf
-      bytes -= vec[i].iov_len;
-      (*countWritten)++;
-      i++;
-    }
-    *partialWritten = bytes;
-
-    VLOG(4) << "SSL_write_iovec() writes " << tot
-            << ", returns " << totalWritten << " bytes"
-            << ", max_send_fragment=" << ssl_->max_send_fragment
-            << ", count=" << count << ", countWritten=" << *countWritten;
-
-    return totalWritten;
-  }
-}
-#endif
 
 int AsyncSSLSocket::eorAwareSSLWrite(SSL *ssl, const void *buf, int n,
                                       bool eor) {
