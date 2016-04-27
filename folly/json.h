@@ -54,20 +54,20 @@ namespace json {
 
   struct serialization_opts {
     explicit serialization_opts()
-      : allow_non_string_keys(false)
-      , javascript_safe(false)
-      , pretty_formatting(false)
-      , encode_non_ascii(false)
-      , validate_utf8(false)
-      , allow_trailing_comma(false)
-      , sort_keys(false)
-      , skip_invalid_utf8(false)
-      , allow_nan_inf(false)
-      , double_mode(double_conversion::DoubleToStringConverter::SHORTEST)
-      , double_num_digits(0) // ignored when mode is SHORTEST
-      , double_fallback(false)
-      , parse_numbers_as_strings(false)
-    {}
+        : allow_non_string_keys(false),
+          javascript_safe(false),
+          pretty_formatting(false),
+          encode_non_ascii(false),
+          validate_utf8(false),
+          allow_trailing_comma(false),
+          sort_keys(false),
+          skip_invalid_utf8(false),
+          allow_nan_inf(false),
+          double_mode(double_conversion::DoubleToStringConverter::SHORTEST),
+          double_num_digits(0), // ignored when mode is SHORTEST
+          double_fallback(false),
+          parse_numbers_as_strings(false),
+          recursion_limit(100) {}
 
     // If true, keys in an object can be non-strings.  (In strict
     // JSON, object keys must be strings.)  This is used by dynamic's
@@ -115,6 +115,9 @@ namespace json {
     // Do not parse numbers. Instead, store them as strings and leave the
     // conversion up to the user.
     bool parse_numbers_as_strings;
+
+    // Recursion limit when parsing.
+    unsigned int recursion_limit;
   };
 
   /*

@@ -379,7 +379,18 @@ struct Input {
     return opts_;
   }
 
-private:
+  void incrementRecursionLevel() {
+    if (currentRecursionLevel_ > opts_.recursion_limit) {
+      error("recursion limit exceeded");
+    }
+    currentRecursionLevel_++;
+  }
+
+  void decrementRecursionLevel() {
+    currentRecursionLevel_--;
+  }
+
+ private:
   void storeCurrent() {
     current_ = range_.empty() ? EOF : range_.front();
   }
@@ -389,6 +400,21 @@ private:
   json::serialization_opts const& opts_;
   unsigned lineNum_;
   int current_;
+  unsigned int currentRecursionLevel_{0};
+};
+
+class RecursionGuard {
+ public:
+  explicit RecursionGuard(Input& in) : in_(in) {
+    in_.incrementRecursionLevel();
+  }
+
+  ~RecursionGuard() {
+    in_.decrementRecursionLevel();
+  }
+
+ private:
+  Input& in_;
 };
 
 dynamic parseValue(Input& in);
@@ -627,6 +653,8 @@ std::string parseString(Input& in) {
 }
 
 dynamic parseValue(Input& in) {
+  RecursionGuard guard(in);
+
   in.skipWhitespace();
   return *in == '[' ? parseArray(in) :
          *in == '{' ? parseObject(in) :

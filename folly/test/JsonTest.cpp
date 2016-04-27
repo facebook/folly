@@ -517,3 +517,19 @@ TEST(Json, PrintTo) {
   PrintTo(value, &oss);
   EXPECT_EQ(expected, oss.str());
 }
+
+TEST(Json, RecursionLimit) {
+  std::string in;
+  for (int i = 0; i < 1000; i++) {
+    in.append("{\"x\":");
+  }
+  in.append("\"hi\"");
+  for (int i = 0; i < 1000; i++) {
+    in.append("}");
+  }
+  EXPECT_ANY_THROW(parseJson(in));
+
+  folly::json::serialization_opts opts_high_recursion_limit;
+  opts_high_recursion_limit.recursion_limit = 10000;
+  parseJson(in, opts_high_recursion_limit);
+}
