@@ -913,6 +913,10 @@ class QueueAppender : public detail::Writable<QueueAppender> {
     }
   }
 
+  void insert(const folly::IOBuf& buf) {
+    insert(buf.clone());
+  }
+
  private:
   folly::IOBufQueue* queue_;
   size_t growth_;
