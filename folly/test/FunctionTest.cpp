@@ -21,7 +21,6 @@
 #include <folly/Memory.h>
 #include <gtest/gtest.h>
 
-using folly::FunctionMoveCtor;
 using folly::Function;
 
 namespace {
@@ -30,9 +29,6 @@ int func_int_int_add_25(int x) {
 }
 int func_int_int_add_111(int x) {
   return x + 111;
-}
-int func_int_return_987() {
-  return 987;
 }
 float floatMult(float a, float b) {
   return a * b;
@@ -53,157 +49,57 @@ struct Functor {
     return oldvalue;
   }
 };
-
-// TEST =====================================================================
-// NoExceptMovable
-
-struct MoveMayThrow {
-  bool doThrow{false};
-
-  MoveMayThrow() = default;
-  MoveMayThrow(MoveMayThrow const&) = default;
-  MoveMayThrow& operator=(MoveMayThrow const&) = default;
-  MoveMayThrow(MoveMayThrow&&) noexcept(false) {
-    if (doThrow) {
-      throw std::runtime_error("MoveMayThrow(MoveMayThrow&&)");
-    }
-  }
-  MoveMayThrow& operator=(MoveMayThrow&&) noexcept(false) {
-    if (doThrow) {
-      throw std::runtime_error("MoveMayThrow::operator=(MoveMayThrow&&)");
-    }
-    return *this;
-  }
-};
-}
-
-TEST(Function, NoExceptMovable) {
-  // callable_noexcept is noexcept-movable
-  auto callable_noexcept = [](int x) { return x + 1; };
-  EXPECT_TRUE(
-      std::is_nothrow_move_constructible<decltype(callable_noexcept)>::value);
-
-  // callable_throw may throw when moved
-  MoveMayThrow mmt;
-  auto callable_throw = [mmt](int x) { return x + 10; };
-  EXPECT_FALSE(
-      std::is_nothrow_move_constructible<decltype(callable_throw)>::value);
-
-  // callable_noexcept can be stored in the Function object
-  Function<int(int), FunctionMoveCtor::NO_THROW> func(callable_noexcept);
-  EXPECT_EQ(43, func(42));
-  EXPECT_FALSE(func.hasAllocatedMemory());
-  EXPECT_TRUE(std::is_nothrow_move_constructible<decltype(func)>::value);
-
-  // callable_throw cannot be stored in the Function object,
-  // because Function guarantees noexcept-movability, but
-  // callable_throw may throw when moved
-  Function<int(int), FunctionMoveCtor::NO_THROW> func_safe_move(callable_throw);
-  EXPECT_EQ(52, func_safe_move(42));
-  EXPECT_TRUE(func_safe_move.hasAllocatedMemory());
-  EXPECT_TRUE(
-      std::is_nothrow_move_constructible<decltype(func_safe_move)>::value);
-
-  // callable_throw can be stored in the Function object when
-  // the NoExceptMovable template parameter is set to NO
-  Function<int(int), FunctionMoveCtor::MAY_THROW> func_movethrows(
-      callable_throw);
-  EXPECT_EQ(52, func_movethrows(42));
-  EXPECT_FALSE(func_movethrows.hasAllocatedMemory());
-  EXPECT_FALSE(
-      std::is_nothrow_move_constructible<decltype(func_movethrows)>::value);
-}
+} // namespace
 
 // TEST =====================================================================
 // InvokeFunctor & InvokeReference
 
-template <FunctionMoveCtor NEM, size_t S>
-void invoke_functor_test() {
+TEST(Function, InvokeFunctor) {
   Functor<int, 100> func;
+  static_assert(
+      sizeof(func) > sizeof(Function<int(size_t)>),
+      "sizeof(Function) is much larger than expected");
   func(5, 123);
 
-  // Try Functions with differently sized storage areas
-  // S=0: request storage for functors of size 0. The storage size
-  // will be actually larger, because there is a lower limit which
-  // still allows to store at least pointers to functors on the heap.
-  // S=1: request minimum storage size of 0.5x the sizeof(func)
-  // S=2: request sizeof(func)
-  // S=3: request 1.5*sizeof(func)
-  Function<int(size_t) const, NEM, sizeof(func)* S / 2> getter =
-      std::move(func);
+  Function<int(size_t) const> getter = std::move(func);
 
-  // Function will allocate memory on the heap to store
-  // the functor object if the internal storage area is smaller than
-  // sizeof(func).
-  EXPECT_EQ(getter.hasAllocatedMemory(), S < 2);
+  // Function will allocate memory on the heap to store the functor object
+  EXPECT_TRUE(getter.hasAllocatedMemory());
 
   EXPECT_EQ(123, getter(5));
 }
-TEST(Function, InvokeFunctor_T0) {
-  invoke_functor_test<FunctionMoveCtor::MAY_THROW, 0>();
-}
-TEST(Function, InvokeFunctor_N0) {
-  invoke_functor_test<FunctionMoveCtor::NO_THROW, 0>();
-}
-TEST(Function, InvokeFunctor_T1) {
-  invoke_functor_test<FunctionMoveCtor::MAY_THROW, 1>();
-}
-TEST(Function, InvokeFunctor_N1) {
-  invoke_functor_test<FunctionMoveCtor::NO_THROW, 1>();
-}
-TEST(Function, InvokeFunctor_T2) {
-  invoke_functor_test<FunctionMoveCtor::MAY_THROW, 2>();
-}
-TEST(Function, InvokeFunctor_N2) {
-  invoke_functor_test<FunctionMoveCtor::NO_THROW, 2>();
-}
-TEST(Function, InvokeFunctor_T3) {
-  invoke_functor_test<FunctionMoveCtor::MAY_THROW, 3>();
-}
-TEST(Function, InvokeFunctor_N3) {
-  invoke_functor_test<FunctionMoveCtor::NO_THROW, 3>();
-}
 
-template <FunctionMoveCtor NEM>
-void invoke_reference_test() {
+TEST(Function, InvokeReference) {
   Functor<int, 10> func;
   func(5, 123);
 
-  // Have Functions for getter and setter, both referencing the
-  // same funtor
-  Function<int(size_t) const, NEM, 0> getter = std::ref(func);
-  Function<int(size_t, int), NEM, 0> setter = std::ref(func);
+  // Have Functions for getter and setter, both referencing the same funtor
+  Function<int(size_t) const> getter = std::ref(func);
+  Function<int(size_t, int)> setter = std::ref(func);
 
   EXPECT_EQ(123, getter(5));
   EXPECT_EQ(123, setter(5, 456));
   EXPECT_EQ(456, setter(5, 567));
   EXPECT_EQ(567, getter(5));
 }
-TEST(Function, InvokeReference_T) {
-  invoke_reference_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, InvokeReference_N) {
-  invoke_reference_test<FunctionMoveCtor::NO_THROW>();
-}
 
 // TEST =====================================================================
 // Emptiness
 
-template <FunctionMoveCtor NEM>
-void emptiness_test() {
-  Function<int(int), NEM> f;
+TEST(Function, Emptiness_T) {
+  Function<int(int)> f;
   EXPECT_EQ(f, nullptr);
   EXPECT_EQ(nullptr, f);
   EXPECT_FALSE(f);
   EXPECT_THROW(f(98), std::bad_function_call);
 
-  Function<int(int), NEM> g([](int x) { return x + 1; });
+  Function<int(int)> g([](int x) { return x + 1; });
   EXPECT_NE(g, nullptr);
   EXPECT_NE(nullptr, g);
   EXPECT_TRUE(g);
   EXPECT_EQ(100, g(99));
 
-  Function<int(int), NEM> h(&func_int_int_add_25);
+  Function<int(int)> h(&func_int_int_add_25);
   EXPECT_NE(h, nullptr);
   EXPECT_NE(nullptr, h);
   EXPECT_TRUE(h);
@@ -216,60 +112,13 @@ void emptiness_test() {
   EXPECT_THROW(h(101), std::bad_function_call);
 }
 
-TEST(Function, Emptiness_T) {
-  emptiness_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, Emptiness_N) {
-  emptiness_test<FunctionMoveCtor::NO_THROW>();
-}
-
-// TEST =====================================================================
-// Types
-
-TEST(Function, Types) {
-  EXPECT_TRUE((
-      !std::is_base_of<std::unary_function<int, int>, Function<int()>>::value));
-  EXPECT_TRUE(
-      (!std::is_base_of<std::binary_function<int, int, int>, Function<int()>>::
-           value));
-  EXPECT_TRUE((std::is_same<Function<int()>::ResultType, int>::value));
-
-  EXPECT_TRUE((
-      std::is_base_of<std::unary_function<int, double>, Function<double(int)>>::
-          value));
-  EXPECT_TRUE((!std::is_base_of<
-               std::binary_function<int, int, double>,
-               Function<double(int)>>::value));
-  EXPECT_TRUE((std::is_same<Function<double(int)>::ResultType, double>::value));
-  EXPECT_TRUE(
-      (std::is_same<Function<double(int)>::result_type, double>::value));
-  EXPECT_TRUE((std::is_same<Function<double(int)>::argument_type, int>::value));
-
-  EXPECT_TRUE((!std::is_base_of<
-               std::unary_function<int, double>,
-               Function<double(int, char)>>::value));
-  EXPECT_TRUE((std::is_base_of<
-               std::binary_function<int, char, double>,
-               Function<double(int, char)>>::value));
-  EXPECT_TRUE(
-      (std::is_same<Function<double(int, char)>::ResultType, double>::value));
-  EXPECT_TRUE(
-      (std::is_same<Function<double(int, char)>::result_type, double>::value));
-  EXPECT_TRUE(
-      (std::is_same<Function<double(int, char)>::first_argument_type, int>::
-           value));
-  EXPECT_TRUE(
-      (std::is_same<Function<double(int, char)>::second_argument_type, char>::
-           value));
-}
-
 // TEST =====================================================================
 // Swap
 
-template <FunctionMoveCtor NEM1, FunctionMoveCtor NEM2, bool UseSwapMethod>
+template <bool UseSwapMethod>
 void swap_test() {
-  Function<int(int), NEM1> mf1(func_int_int_add_25);
-  Function<int(int), NEM2> mf2(func_int_int_add_111);
+  Function<int(int)> mf1(func_int_int_add_25);
+  Function<int(int)> mf2(func_int_int_add_111);
 
   EXPECT_EQ(125, mf1(100));
   EXPECT_EQ(211, mf2(100));
@@ -314,37 +163,18 @@ void swap_test() {
   EXPECT_EQ(nullptr, mf3);
   EXPECT_EQ(322, mf1(100));
 }
-TEST(Function, SwapMethod_TT) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW, true>();
+TEST(Function, SwapMethod) {
+  swap_test<true>();
 }
-TEST(Function, SwapMethod_TN) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::NO_THROW, true>();
-}
-TEST(Function, SwapMethod_NT) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::MAY_THROW, true>();
-}
-TEST(Function, SwapMethod_NN) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::NO_THROW, true>();
-}
-TEST(Function, SwapFunction_TT) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::MAY_THROW, false>();
-}
-TEST(Function, SwapFunction_TN) {
-  swap_test<FunctionMoveCtor::MAY_THROW, FunctionMoveCtor::NO_THROW, false>();
-}
-TEST(Function, SwapFunction_NT) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::MAY_THROW, false>();
-}
-TEST(Function, SwapFunction_NN) {
-  swap_test<FunctionMoveCtor::NO_THROW, FunctionMoveCtor::NO_THROW, false>();
+TEST(Function, SwapFunction) {
+  swap_test<false>();
 }
 
 // TEST =====================================================================
 // Bind
 
-template <FunctionMoveCtor NEM>
-void bind_test() {
-  Function<float(float, float), NEM> fnc = floatMult;
+TEST(Function, Bind) {
+  Function<float(float, float)> fnc = floatMult;
   auto task = std::bind(std::move(fnc), 2.f, 4.f);
   EXPECT_THROW(fnc(0, 0), std::bad_function_call);
   EXPECT_EQ(8, task());
@@ -352,18 +182,11 @@ void bind_test() {
   EXPECT_THROW(task(), std::bad_function_call);
   EXPECT_EQ(8, task2());
 }
-TEST(Function, Bind_T) {
-  bind_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, Bind_N) {
-  bind_test<FunctionMoveCtor::NO_THROW>();
-}
 
 // TEST =====================================================================
 // NonCopyableLambda
 
-template <FunctionMoveCtor NEM, size_t S>
-void non_copyable_lambda_test() {
+TEST(Function, NonCopyableLambda) {
   auto unique_ptr_int = folly::make_unique<int>(900);
   EXPECT_EQ(900, *unique_ptr_int);
 
@@ -376,183 +199,10 @@ void non_copyable_lambda_test() {
 
   EXPECT_EQ(901, functor());
 
-  Function<int(void), NEM, sizeof(functor)* S / 2> func = std::move(functor);
-  EXPECT_EQ(
-      func.hasAllocatedMemory(),
-      S < 2 || (NEM == FunctionMoveCtor::NO_THROW &&
-                !std::is_nothrow_move_constructible<decltype(functor)>::value));
+  Function<int(void)> func = std::move(functor);
+  EXPECT_TRUE(func.hasAllocatedMemory());
 
   EXPECT_EQ(902, func());
-}
-TEST(Function, NonCopyableLambda_T0) {
-  non_copyable_lambda_test<FunctionMoveCtor::MAY_THROW, 0>();
-}
-TEST(Function, NonCopyableLambda_N0) {
-  non_copyable_lambda_test<FunctionMoveCtor::NO_THROW, 0>();
-}
-TEST(Function, NonCopyableLambda_T1) {
-  non_copyable_lambda_test<FunctionMoveCtor::MAY_THROW, 1>();
-}
-TEST(Function, NonCopyableLambda_N1) {
-  non_copyable_lambda_test<FunctionMoveCtor::NO_THROW, 1>();
-}
-TEST(Function, NonCopyableLambda_T2) {
-  non_copyable_lambda_test<FunctionMoveCtor::MAY_THROW, 2>();
-}
-TEST(Function, NonCopyableLambda_N2) {
-  non_copyable_lambda_test<FunctionMoveCtor::NO_THROW, 2>();
-}
-TEST(Function, NonCopyableLambda_T3) {
-  non_copyable_lambda_test<FunctionMoveCtor::MAY_THROW, 3>();
-}
-TEST(Function, NonCopyableLambda_N3) {
-  non_copyable_lambda_test<FunctionMoveCtor::NO_THROW, 3>();
-}
-
-// TEST =====================================================================
-// Downsize
-
-template <FunctionMoveCtor NEM>
-void downsize_test() {
-  Functor<int, 10> functor;
-
-  // set element 3
-  functor(3, 123);
-  EXPECT_EQ(123, functor(3));
-
-  // Function with large callable storage area (twice the size of
-  // the functor)
-  Function<int(size_t, int), NEM, sizeof(functor)* 2> func2x =
-      std::move(functor);
-  EXPECT_FALSE(func2x.hasAllocatedMemory());
-  EXPECT_EQ(123, func2x(3, 200));
-  EXPECT_EQ(200, func2x(3, 201));
-
-  // Function with sufficient callable storage area (equal to
-  // size of the functor)
-  Function<int(size_t, int), NEM, sizeof(functor)> func1x = std::move(func2x);
-  EXPECT_THROW(func2x(0, 0), std::bad_function_call);
-  EXPECT_FALSE(func2x);
-  EXPECT_FALSE(func1x.hasAllocatedMemory());
-  EXPECT_EQ(201, func1x(3, 202));
-  EXPECT_EQ(202, func1x(3, 203));
-
-  // Function with minimal callable storage area (functor does
-  // not fit and will be moved to memory on the heap)
-  Function<int(size_t, int), NEM, 0> func0x = std::move(func1x);
-  EXPECT_THROW(func1x(0, 0), std::bad_function_call);
-  EXPECT_FALSE(func1x);
-  EXPECT_TRUE(func0x.hasAllocatedMemory());
-  EXPECT_EQ(203, func0x(3, 204));
-  EXPECT_EQ(204, func0x(3, 205));
-
-  // bonus test: move to Function with opposite NoExceptMovable
-  // setting
-  Function<
-      int(size_t, int),
-      NEM == FunctionMoveCtor::NO_THROW ? FunctionMoveCtor::MAY_THROW
-                                        : FunctionMoveCtor::NO_THROW,
-      0>
-      funcnot = std::move(func0x);
-  EXPECT_THROW(func0x(0, 0), std::bad_function_call);
-  EXPECT_FALSE(func0x);
-  EXPECT_TRUE(funcnot.hasAllocatedMemory());
-  EXPECT_EQ(205, funcnot(3, 206));
-  EXPECT_EQ(206, funcnot(3, 207));
-}
-TEST(Function, Downsize_T) {
-  downsize_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, Downsize_N) {
-  downsize_test<FunctionMoveCtor::NO_THROW>();
-}
-
-// TEST =====================================================================
-// Refcount
-
-template <FunctionMoveCtor NEM>
-void refcount_test() {
-  Functor<int, 100> functor;
-  functor(3, 999);
-  auto shared_int = std::make_shared<int>(100);
-
-  EXPECT_EQ(100, *shared_int);
-  EXPECT_EQ(1, shared_int.use_count());
-
-  Function<int(void), NEM> func1 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(2, shared_int.use_count());
-  EXPECT_EQ(101, func1());
-  EXPECT_EQ(101, *shared_int);
-
-  // func2: made to not fit functor.
-  Function<int(void), NEM, sizeof(functor) / 2> func2 = std::move(func1);
-  EXPECT_THROW(func1(), std::bad_function_call);
-  EXPECT_EQ(2, shared_int.use_count());
-  EXPECT_FALSE(func1);
-  EXPECT_EQ(102, func2());
-  EXPECT_EQ(102, *shared_int);
-
-  func2 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(2, shared_int.use_count());
-  EXPECT_EQ(103, func2());
-  EXPECT_EQ(103, *shared_int);
-
-  // We set func2 to a lambda that captures 'functor', which forces it on
-  // the heap
-  func2 = [functor]() { return functor(3); };
-  EXPECT_TRUE(func2.hasAllocatedMemory());
-  EXPECT_EQ(999, func2());
-  EXPECT_EQ(1, shared_int.use_count());
-  EXPECT_EQ(103, *shared_int);
-
-  func2 = [shared_int]() { return ++*shared_int; };
-  EXPECT_EQ(2, shared_int.use_count());
-  EXPECT_EQ(104, func2());
-  EXPECT_EQ(104, *shared_int);
-
-  // We set func2 to function pointer, which always fits into the
-  // Function object and is no-except-movable
-  func2 = &func_int_return_987;
-  EXPECT_FALSE(func2.hasAllocatedMemory());
-  EXPECT_EQ(987, func2());
-  EXPECT_EQ(1, shared_int.use_count());
-  EXPECT_EQ(104, *shared_int);
-}
-TEST(Function, Refcount_T) {
-  refcount_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, Refcount_N) {
-  refcount_test<FunctionMoveCtor::NO_THROW>();
-}
-
-// TEST =====================================================================
-// Target
-
-template <FunctionMoveCtor NEM>
-void target_test() {
-  std::function<int(int)> func = [](int x) { return x + 25; };
-  EXPECT_EQ(125, func(100));
-
-  Function<int(int), NEM> ufunc = std::move(func);
-  EXPECT_THROW(func(0), std::bad_function_call);
-  EXPECT_EQ(225, ufunc(200));
-
-  EXPECT_EQ(typeid(std::function<int(int)>), ufunc.target_type());
-
-  EXPECT_FALSE(ufunc.template target<int>());
-  EXPECT_FALSE(ufunc.template target<std::function<void(void)>>());
-
-  std::function<int(int)>& ufunc_target =
-      *ufunc.template target<std::function<int(int)>>();
-
-  EXPECT_EQ(325, ufunc_target(300));
-}
-
-TEST(Function, Target_T) {
-  target_test<FunctionMoveCtor::MAY_THROW>();
-}
-TEST(Function, Target_N) {
-  target_test<FunctionMoveCtor::NO_THROW>();
 }
 
 // TEST =====================================================================
@@ -886,149 +536,6 @@ TEST(Function, ParameterCopyMoveCount) {
 }
 
 // TEST =====================================================================
-// CopyMoveThrows
-
-enum ExceptionType { COPY, MOVE };
-
-template <ExceptionType ET>
-class CopyMoveException : public std::runtime_error {
- public:
-  using std::runtime_error::runtime_error;
-};
-
-template <bool CopyThrows, bool MoveThrows>
-struct CopyMoveThrowsCallable {
-  int allowCopyOperations{0};
-  int allowMoveOperations{0};
-
-  CopyMoveThrowsCallable() = default;
-  CopyMoveThrowsCallable(CopyMoveThrowsCallable const& o) noexcept(
-      !CopyThrows) {
-    *this = o;
-  }
-  CopyMoveThrowsCallable& operator=(CopyMoveThrowsCallable const& o) noexcept(
-      !CopyThrows) {
-    allowCopyOperations = o.allowCopyOperations;
-    allowMoveOperations = o.allowMoveOperations;
-
-    if (allowCopyOperations > 0) {
-      --allowCopyOperations;
-    } else if (CopyThrows) {
-      throw CopyMoveException<COPY>("CopyMoveThrowsCallable copy");
-    }
-    return *this;
-  }
-  CopyMoveThrowsCallable(CopyMoveThrowsCallable&& o) noexcept(!MoveThrows) {
-    *this = std::move(o);
-  }
-  CopyMoveThrowsCallable& operator=(CopyMoveThrowsCallable&& o) noexcept(
-      !MoveThrows) {
-    allowCopyOperations = o.allowCopyOperations;
-    allowMoveOperations = o.allowMoveOperations;
-
-    if (o.allowMoveOperations > 0) {
-      --allowMoveOperations;
-    } else if (MoveThrows) {
-      throw CopyMoveException<MOVE>("CopyMoveThrowsCallable move");
-    }
-    return *this;
-  }
-
-  void operator()() const {}
-};
-
-TEST(Function, CopyMoveThrowsCallable) {
-  EXPECT_TRUE((std::is_nothrow_move_constructible<
-               CopyMoveThrowsCallable<false, false>>::value));
-  EXPECT_TRUE((std::is_nothrow_move_constructible<
-               CopyMoveThrowsCallable<true, false>>::value));
-  EXPECT_FALSE((std::is_nothrow_move_constructible<
-                CopyMoveThrowsCallable<false, true>>::value));
-  EXPECT_FALSE((std::is_nothrow_move_constructible<
-                CopyMoveThrowsCallable<true, true>>::value));
-
-  EXPECT_TRUE((std::is_nothrow_copy_constructible<
-               CopyMoveThrowsCallable<false, false>>::value));
-  EXPECT_FALSE((std::is_nothrow_copy_constructible<
-                CopyMoveThrowsCallable<true, false>>::value));
-  EXPECT_TRUE((std::is_nothrow_copy_constructible<
-               CopyMoveThrowsCallable<false, true>>::value));
-  EXPECT_FALSE((std::is_nothrow_copy_constructible<
-                CopyMoveThrowsCallable<true, true>>::value));
-}
-
-template <FunctionMoveCtor NEM, bool CopyThrows, bool MoveThrows>
-void copy_and_move_throws_test() {
-  CopyMoveThrowsCallable<CopyThrows, MoveThrows> c;
-  Function<void(void), NEM> uf;
-
-  if (CopyThrows) {
-    EXPECT_THROW((uf = c), CopyMoveException<COPY>);
-  } else {
-    EXPECT_NO_THROW((uf = c));
-  }
-
-  if (MoveThrows) {
-    EXPECT_THROW((uf = std::move(c)), CopyMoveException<MOVE>);
-  } else {
-    EXPECT_NO_THROW((uf = std::move(c)));
-  }
-
-  c.allowMoveOperations = 1;
-  uf = std::move(c);
-  if (NEM == FunctionMoveCtor::MAY_THROW && MoveThrows) {
-    Function<void(void), NEM> uf2;
-    EXPECT_THROW((uf2 = std::move(uf)), CopyMoveException<MOVE>);
-  } else {
-    Function<void(void), NEM> uf2;
-    EXPECT_NO_THROW((uf2 = std::move(uf)));
-  }
-
-  c.allowMoveOperations = 0;
-  c.allowCopyOperations = 1;
-  uf = c;
-  if (NEM == FunctionMoveCtor::MAY_THROW && MoveThrows) {
-    Function<void(void), NEM> uf2;
-    EXPECT_THROW((uf2 = std::move(uf)), CopyMoveException<MOVE>);
-  } else {
-    Function<void(void), NEM> uf2;
-    EXPECT_NO_THROW((uf2 = std::move(uf)));
-  }
-}
-
-TEST(Function, CopyAndMoveThrows_TNN) {
-  copy_and_move_throws_test<FunctionMoveCtor::MAY_THROW, false, false>();
-}
-
-TEST(Function, CopyAndMoveThrows_NNN) {
-  copy_and_move_throws_test<FunctionMoveCtor::NO_THROW, false, false>();
-}
-
-TEST(Function, CopyAndMoveThrows_TTN) {
-  copy_and_move_throws_test<FunctionMoveCtor::MAY_THROW, true, false>();
-}
-
-TEST(Function, CopyAndMoveThrows_NTN) {
-  copy_and_move_throws_test<FunctionMoveCtor::NO_THROW, true, false>();
-}
-
-TEST(Function, CopyAndMoveThrows_TNT) {
-  copy_and_move_throws_test<FunctionMoveCtor::MAY_THROW, false, true>();
-}
-
-TEST(Function, CopyAndMoveThrows_NNT) {
-  copy_and_move_throws_test<FunctionMoveCtor::NO_THROW, false, true>();
-}
-
-TEST(Function, CopyAndMoveThrows_TTT) {
-  copy_and_move_throws_test<FunctionMoveCtor::MAY_THROW, true, true>();
-}
-
-TEST(Function, CopyAndMoveThrows_NTT) {
-  copy_and_move_throws_test<FunctionMoveCtor::NO_THROW, true, true>();
-}
-
-// TEST =====================================================================
 // VariadicTemplate & VariadicArguments
 
 struct VariadicTemplateSum {
@@ -1231,6 +738,9 @@ TEST(Function, ConvertReturnType) {
   EXPECT_EQ(66, cf9().x);
 }
 
+// TEST =====================================================================
+// asStdFunction_*
+
 TEST(Function, asStdFunction_void) {
   int i = 0;
   folly::Function<void()> f = [&] { ++i; };
@@ -1301,4 +811,41 @@ TEST(Function, asStdFunction_args_const) {
       "std::function has wrong type");
   sf(42, 42);
   EXPECT_EQ(1, i);
+}
+
+TEST(Function, NoAllocatedMemoryAfterMove) {
+  Functor<int, 100> foo;
+
+  Function<int(size_t)> func = foo;
+  EXPECT_TRUE(func.hasAllocatedMemory());
+
+  Function<int(size_t)> func2 = std::move(func);
+  EXPECT_TRUE(func2.hasAllocatedMemory());
+  EXPECT_FALSE(func.hasAllocatedMemory());
+}
+
+TEST(Function, ConstCastEmbedded) {
+  int x = 0;
+  auto functor = [&x]() { ++x; };
+
+  Function<void() const> func(functor);
+  EXPECT_FALSE(func.hasAllocatedMemory());
+
+  Function<void()> func2(std::move(func));
+  EXPECT_FALSE(func2.hasAllocatedMemory());
+}
+
+TEST(Function, EmptyAfterConstCast) {
+  Function<int(size_t)> func;
+  EXPECT_FALSE(func);
+
+  Function<int(size_t) const> func2 = constCastFunction(std::move(func));
+  EXPECT_FALSE(func2);
+}
+
+TEST(Function, SelfMoveAssign) {
+  Function<int()> f = [] { return 0; };
+  Function<int()>& g = f;
+  f = std::move(g);
+  EXPECT_TRUE(f);
 }

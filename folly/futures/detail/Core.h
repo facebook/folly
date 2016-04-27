@@ -374,11 +374,7 @@ class Core {
   // sizeof(Core<T>) == size(Core<U>).
   // See Core::convert for details.
 
-  folly::Function<
-      void(Try<T>&&),
-      folly::FunctionMoveCtor::MAY_THROW,
-      8 * sizeof(void*)>
-      callback_;
+  folly::Function<void(Try<T>&&)> callback_;
   // place result_ next to increase the likelihood that the value will be
   // contained entirely in one cache line
   folly::Optional<Try<T>> result_;

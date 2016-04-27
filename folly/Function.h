@@ -1,6 +1,8 @@
 /*
  * Copyright 2016 Facebook, Inc.
  *
+ * @author Eric Niebler (eniebler@fb.com), Sven Over (over@fb.com)
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,6 +14,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Acknowledgements: Giuseppe Ottaviano (ott@fb.com)
  */
 
 /**
@@ -73,10 +77,9 @@
  * wrapped function in a const context, you can wrap any functor that
  * implements either or both of const and non-const `operator()`.
  *
- * The first (and usually only specified) template parameter of
- * `folly::Function`, the `FunctionType`, can be const-qualified. Be aware
- * that the const is part of the function signature. It does not mean that
- * the function type is a const type.
+ * The template parameter of `folly::Function`, the `FunctionType`, can be
+ * const-qualified. Be aware that the const is part of the function signature.
+ * It does not mean that the function type is a const type.
  *
  *   using FunctionType = R(Args...);
  *   using ConstFunctionType = R(Args...) const;
@@ -210,152 +213,197 @@
  * However, in that case what you do is potentially dangerous and requires
  * the equivalent of a `const_cast`, hence you need to call
  * `constCastFunction`.
- *
- * `folly::Function` also has two additional template paremeters:
- *   * `NTM`: if set to `folly::FunctionMoveCtor::NO_THROW`, the
- *     `folly::Function` object is guaranteed to be nothrow move constructible.
- *     The downside is that any function object that itself is
- *     not nothrow move constructible cannot be stored in-place in the
- *     `folly::Function` object and will be stored on the heap instead.
- *   * `EmbedFunctorSize`: a number of bytes that will be reserved in the
- *     `folly::Function` object to store callable objects in-place. If you
- *     wrap a callable object bigger than this in a `folly::Function` object,
- *     it will be stored on the heap and the `folly::Function` object will keep
- *     a `std::unique_ptr` to it.
  */
 
 #pragma once
 
 #include <functional>
+#include <memory>
+#include <new>
 #include <type_traits>
-#include <typeinfo>
 #include <utility>
 
-#include <folly/ScopeGuard.h>
-#include <folly/portability/Constexpr.h>
+#include <folly/CppAttributes.h>
 
 namespace folly {
 
-enum class FunctionMoveCtor { NO_THROW, MAY_THROW };
-
-template <
-    typename FunctionType,
-    FunctionMoveCtor NTM = FunctionMoveCtor::NO_THROW,
-    size_t EmbedFunctorSize = (NTM == FunctionMoveCtor::NO_THROW)
-        ? sizeof(void (*)(void))
-        : sizeof(std::function<void(void)>)>
+namespace impl {
+template <typename FunctionType, bool Const = false>
 class Function;
 
-} // folly
+template <typename ReturnType, typename... Args>
+Function<ReturnType(Args...), true> constCastFunction(
+    Function<ReturnType(Args...), false>&&) noexcept;
+}
 
-// boring predeclarations and details
-#include "Function-pre.h"
+namespace detail {
+namespace function {
 
-namespace folly {
+enum class Op { MOVE, NUKE, FULL, HEAP };
 
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-class Function final
-    : public detail::function::FunctionTypeTraits<FunctionType>::
-          template InvokeOperator<
-              Function<FunctionType, NTM, EmbedFunctorSize>>,
-      public detail::function::MaybeUnaryOrBinaryFunction<FunctionType> {
- private:
-  using Traits = detail::function::FunctionTypeTraits<FunctionType>;
-  static_assert(
-      Traits::SuitableForFunction::value,
-      "Function<FunctionType>: FunctionType must be of the "
-      "form 'R(Args...)' or 'R(Args...) const'");
+union Data {
+  void* big;
+  typename std::aligned_storage<6 * sizeof(void*)>::type small;
+};
 
-  using ThisType = Function<FunctionType, NTM, EmbedFunctorSize>;
-  using InvokeOperator = typename Traits::template InvokeOperator<ThisType>;
+struct Tag {};
 
-  static constexpr bool hasNoExceptMoveCtor() noexcept {
-    return NTM == FunctionMoveCtor::NO_THROW;
-  };
+template <bool If, typename T>
+using ConstIf = typename std::conditional<If, const T, T>::type;
+
+template <typename Fun, typename FunT = typename std::decay<Fun>::type>
+using IsSmall = std::integral_constant<
+    bool,
+    (sizeof(FunT) <= sizeof(Data::small) &&
+#if defined(__GNUC__) && !defined(__clang__)
+     // GCC has a name mangling bug that causes hard errors if we use noexcept
+     // directly here. Last tested at gcc 5.3.0.
+     // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70790
+     std::is_nothrow_move_constructible<FunT>::value
+#else
+     // Same as is_nothrow_move_constructible, but w/ no template instantiation.
+     noexcept(FunT(std::declval<FunT&&>()))
+#endif
+     )>;
+
+template <typename T>
+bool isNullPtrFn(T* p) {
+  return p == nullptr;
+}
+template <typename T>
+std::false_type isNullPtrFn(T&&) {
+  return {};
+}
+
+template <typename ReturnType, typename... Args>
+ReturnType uninitCall(Data&, Args&&...) {
+  throw std::bad_function_call();
+}
+inline bool uninitNoop(Op, Data*, Data*) {
+  return false;
+}
+} // namespace function
+} // namespace detail
+
+namespace impl {
+
+template <typename ReturnType, typename... Args, bool Const>
+class Function<ReturnType(Args...), Const> final {
+  using Data = detail::function::Data;
+  using Op = detail::function::Op;
+  using Tag = detail::function::Tag;
+  using Call = ReturnType (*)(Data&, Args&&...);
+  using Exec = bool (*)(Op, Data*, Data*);
+
+  template <typename T>
+  using ConstIf = detail::function::ConstIf<Const, T>;
+  template <typename Fun>
+  using IsSmall = detail::function::IsSmall<Fun>;
+
+  Data data_;
+  Call call_;
+  Exec exec_;
+
+  friend Function<ReturnType(Args...), true> constCastFunction<>(
+      Function<ReturnType(Args...), false>&&) noexcept;
+  friend class Function<ReturnType(Args...), !Const>;
+
+  template <typename Fun, typename FunT = typename std::decay<Fun>::type>
+  Function(
+      Fun&& fun,
+      typename std::enable_if<IsSmall<Fun>::value, Tag>::
+          type) noexcept(noexcept(FunT(std::declval<Fun>())))
+      : Function() {
+    struct Ops {
+      static ReturnType call(Data& p, Args&&... args) {
+        return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(
+            (void*)&p.small))(static_cast<Args&&>(args)...));
+      }
+      static bool exec(Op o, Data* src, Data* dst) {
+        switch (o) {
+          case Op::MOVE:
+            ::new ((void*)&dst->small)
+                FunT(std::move(*static_cast<FunT*>((void*)&src->small)));
+            FOLLY_FALLTHROUGH;
+          case Op::NUKE:
+            static_cast<FunT*>((void*)&src->small)->~FunT();
+            break;
+          case Op::FULL:
+            return true;
+          case Op::HEAP:
+            break;
+        }
+        return false;
+      }
+    };
+    if (!detail::function::isNullPtrFn(fun)) {
+      ::new (&data_.small) FunT(static_cast<Fun&&>(fun));
+      exec_ = &Ops::exec;
+      call_ = &Ops::call;
+    }
+  }
+
+  template <typename Fun, typename FunT = typename std::decay<Fun>::type>
+  Function(Fun&& fun, typename std::enable_if<!IsSmall<Fun>::value, Tag>::type)
+      : Function() {
+    struct Ops {
+      static ReturnType call(Data& p, Args&&... args) {
+        return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(p.big))(
+            static_cast<Args&&>(args)...));
+      }
+      static bool exec(Op o, Data* src, Data* dst) {
+        switch (o) {
+          case Op::MOVE:
+            dst->big = src->big;
+            src->big = nullptr;
+            break;
+          case Op::NUKE:
+            delete static_cast<FunT*>(src->big);
+            break;
+          case Op::FULL:
+          case Op::HEAP:
+            break;
+        }
+        return true;
+      }
+    };
+    data_.big = new FunT(static_cast<Fun&&>(fun));
+    call_ = &Ops::call;
+    exec_ = &Ops::exec;
+  }
+  template <typename F, typename G = typename std::decay<F>::type>
+  using ResultOf = decltype(static_cast<ReturnType>(
+      std::declval<ConstIf<G>&>()(std::declval<Args>()...)));
 
  public:
-  // not copyable
-  Function(Function const&) = delete;
-  Function& operator=(Function const&) = delete;
-
   /**
    * Default constructor. Constructs an empty Function.
    */
-  Function() noexcept {
-    initializeEmptyExecutor();
-  }
+  Function() noexcept
+      : call_(&detail::function::uninitCall<ReturnType, Args...>),
+        exec_(&detail::function::uninitNoop) {}
 
-  ~Function() {
-    destroyExecutor();
+  // not copyable
+  // NOTE: Deleting the non-const copy constructor is unusual but necessary to
+  // prevent copies from non-const `Function` object from selecting the
+  // perfect forwarding implicit converting constructor below
+  // (i.e., `template <typename Fun> Function(Fun&&)`).
+  Function(Function&) = delete;
+  Function(const Function&) = delete;
 
-    static_assert(
-        kStorageSize == sizeof(*this),
-        "There is something wrong with the size of Function");
-  }
-
-  // construct/assign from Function
   /**
    * Move constructor
    */
-  Function(Function&& other) noexcept(hasNoExceptMoveCtor());
-  /**
-   * Move assignment operator
-   */
-  Function& operator=(Function&& rhs) noexcept(hasNoExceptMoveCtor());
-
-  /**
-   * Construct a std::function by moving in the contents of this `Function`.
-   * Note that the returned std::function will share its state (i.e. captured
-   * data) across all copies you make of it, so be very careful when copying.
-   */
-  std::function<typename Traits::NonConstFunctionType> asStdFunction() && {
-    return detail::function::InvokeFromSharedPtr<Function>(
-        std::make_shared<Function>(std::move(*this)));
+  Function(Function&& that) noexcept : Function() {
+    that.exec_(Op::MOVE, &that.data_, &data_);
+    std::swap(call_, that.call_);
+    std::swap(exec_, that.exec_);
   }
-
-  /**
-   * Constructs a `Function` by moving from one with different template
-   * parameters with regards to const-ness, no-except-movability and internal
-   * storage size.
-   */
-  template <
-      typename OtherFunctionType,
-      FunctionMoveCtor OtherNTM,
-      size_t OtherEmbedFunctorSize>
-  Function(
-      Function<OtherFunctionType, OtherNTM, OtherEmbedFunctorSize>&& other,
-      typename std::enable_if<std::is_same<
-          typename Traits::NonConstFunctionType,
-          typename detail::function::FunctionTypeTraits<
-              OtherFunctionType>::NonConstFunctionType>::value>::type* =
-          0) noexcept(OtherNTM == FunctionMoveCtor::NO_THROW &&
-          EmbedFunctorSize >= OtherEmbedFunctorSize);
-
-  /**
-   * Moves a `Function` with different template parameters with regards
-   * to const-ness, no-except-movability and internal storage size into this
-   * one.
-   */
-  template <
-      typename RhsFunctionType,
-      FunctionMoveCtor RhsNTM,
-      size_t RhsEmbedFunctorSize>
-  Function& operator=(Function<RhsFunctionType, RhsNTM, RhsEmbedFunctorSize>&&
-                          rhs) noexcept(RhsNTM == FunctionMoveCtor::NO_THROW);
 
   /**
    * Constructs an empty `Function`.
    */
   /* implicit */ Function(std::nullptr_t) noexcept : Function() {}
-
-  /**
-   * Clears this `Function`.
-   */
-  Function& operator=(std::nullptr_t) noexcept {
-    destroyExecutor();
-    initializeEmptyExecutor();
-    return *this;
-  }
 
   /**
    * Constructs a new `Function` from any callable object. This
@@ -368,51 +416,152 @@ class Function final
    * For a `Function` with a non-const function type, the object will
    * be called from a non-const reference, which means that it will execute
    * a non-const `operator()` if it is defined, and falls back to
-   * `operator() const` otherwise
+   * `operator() const` otherwise.
+   *
+   * \note `typename = ResultOf<Fun>` prevents this overload from being
+   * selected by overload resolution when `fun` is not a compatible function.
    */
-  template <typename F>
-  /* implicit */ Function(
-      F&& f,
-      typename std::enable_if<
-          detail::function::IsCallable<F, FunctionType>::value>::type* =
-          0) noexcept(noexcept(typename std::decay<F>::
-                                   type(std::forward<F>(f)))) {
-    createExecutor(std::forward<F>(f));
+  template <class Fun, typename = ResultOf<Fun>>
+  /* implicit */ Function(Fun&& fun) noexcept(
+      noexcept(Function(std::declval<Fun>(), Tag{})))
+      : Function(static_cast<Fun&&>(fun), Tag{}) {}
+
+  /**
+   * For moving a `Function<X(Ys..) const>` into a `Function<X(Ys...)>`.
+   */
+  template <
+      bool OtherConst,
+      typename std::enable_if<!Const && OtherConst, int>::type = 0>
+  Function(Function<ReturnType(Args...), OtherConst>&& that) noexcept
+      : Function() {
+    that.exec_(Op::MOVE, &that.data_, &data_);
+    std::swap(call_, that.call_);
+    std::swap(exec_, that.exec_);
   }
 
   /**
-   * Assigns a callable object to this `Function`.
+   * If `ptr` is null, constructs an empty `Function`. Otherwise,
+   * this constructor is equivalent to `Function(std::mem_fn(ptr))`.
    */
-  template <typename F>
-  typename std::enable_if<
-      detail::function::IsCallable<F, FunctionType>::value,
-      Function&>::type
-  operator=(F&& f) noexcept(
-      noexcept(typename std::decay<F>::type(std::forward<F>(f)))) {
-    destroyExecutor();
-    SCOPE_FAIL {
-      initializeEmptyExecutor();
-    };
-    createExecutor(std::forward<F>(f));
+  template <
+      typename Member,
+      typename Class,
+      // Prevent this overload from being selected when `ptr` is not a
+      // compatible member function pointer.
+      typename = decltype(Function(std::mem_fn((Member Class::*)0)))>
+  /* implicit */ Function(Member Class::*ptr) noexcept : Function() {
+    if (ptr) {
+      *this = std::mem_fn(ptr);
+    }
+  }
+
+  ~Function() {
+    exec_(Op::NUKE, &data_, nullptr);
+  }
+
+  Function& operator=(Function&) = delete;
+  Function& operator=(const Function&) = delete;
+
+  /**
+   * Move assignment operator
+   */
+  Function& operator=(Function&& that) noexcept {
+    if (&that != this) {
+      // Q: Why is is safe to destroy and reconstruct this object in place?
+      // A: Two reasons: First, `Function` is a final class, so in doing this
+      //    we aren't slicing off any derived parts. And second, the move
+      //    operation is guaranteed not to throw so we always leave the object
+      //    in a valid state.
+      this->~Function();
+      ::new (this) Function(std::move(that));
+    }
     return *this;
   }
 
   /**
-   * Exchanges the callable objects of `*this` and `other`. `other` can be
-   * a Function with different settings with regard to
-   * no-except-movability and internal storage size, but must match
-   * `*this` with regards to return type and argument types.
+   * Assigns a callable object to this `Function`. If the operation fails,
+   * `*this` is left unmodified.
+   *
+   * \note `typename = ResultOf<Fun>` prevents this overload from being
+   * selected by overload resolution when `fun` is not a compatible function.
    */
-  template <FunctionMoveCtor OtherNTM, size_t OtherEmbedFunctorSize>
-  void
-  swap(Function<FunctionType, OtherNTM, OtherEmbedFunctorSize>& o) noexcept(
-      hasNoExceptMoveCtor() && OtherNTM == FunctionMoveCtor::NO_THROW);
+  template <class Fun, typename = ResultOf<Fun>>
+  Function& operator=(Fun&& fun) noexcept(
+      noexcept(/* implicit */ Function(std::declval<Fun>()))) {
+    // Doing this in place is more efficient when we can do so safely.
+    if (noexcept(/* implicit */ Function(std::declval<Fun>()))) {
+      // Q: Why is is safe to destroy and reconstruct this object in place?
+      // A: See the explanation in the move assignment operator.
+      this->~Function();
+      ::new (this) Function(static_cast<Fun&&>(fun));
+    } else {
+      // Construct a temporary and (nothrow) swap.
+      Function(static_cast<Fun&&>(fun)).swap(*this);
+    }
+    return *this;
+  }
+
+  /**
+   * Clears this `Function`.
+   */
+  Function& operator=(std::nullptr_t) noexcept {
+    return (*this = Function());
+  }
+
+  /**
+   * If `ptr` is null, clears this `Function`. Otherwise, this assignment
+   * operator is equivalent to `*this = std::mem_fn(ptr)`.
+   */
+  template <typename Member, typename Class>
+  auto operator=(Member Class::*ptr) noexcept
+      // Prevent this overload from being selected when `ptr` is not a
+      // compatible member function pointer.
+      -> decltype(operator=(std::mem_fn(ptr))) {
+    return ptr ? (*this = std::mem_fn(ptr)) : (*this = Function());
+  }
+
+  /**
+   * Call the wrapped callable object with the specified arguments.
+   * If this `Function` object is a const `folly::Function` object,
+   * this overload shall not participate in overload resolution.
+   */
+  template <
+      // `True` makes `operator()` a template so we can SFINAE on `Const`,
+      // which is non-deduced here.
+      bool True = true,
+      typename std::enable_if<True && !Const, int>::type = 0>
+  ReturnType operator()(Args... args) {
+    return call_(data_, static_cast<Args&&>(args)...);
+  }
+
+  /**
+   * Call the wrapped callable object with the specified arguments.
+   * If this `Function` object is not a const `folly::Function` object,
+   * this overload shall not participate in overload resolution.
+   */
+  template <
+      // `True` makes `operator()` a template so we can SFINAE on `Const`,
+      // which is non-deduced here.
+      bool True = true,
+      typename std::enable_if<True && Const, int>::type = 0>
+  ReturnType operator()(Args... args) const {
+    return call_(const_cast<Data&>(data_), static_cast<Args&&>(args)...);
+  }
+
+  /**
+   * Exchanges the callable objects of `*this` and `that`.
+   */
+  void swap(Function& that) noexcept {
+    std::swap(*this, that);
+  }
 
   /**
    * Returns `true` if this `Function` contains a callable, i.e. is
    * non-empty.
    */
-  explicit operator bool() const noexcept;
+  explicit operator bool() const noexcept {
+    return exec_(Op::FULL, nullptr, nullptr);
+  }
 
   /**
    * Returns `true` if this `Function` stores the callable on the
@@ -420,147 +569,85 @@ class Function final
    * allocation and the callable is stored inside the `Function`
    * object itself.
    */
-  bool hasAllocatedMemory() const noexcept;
+  bool hasAllocatedMemory() const noexcept {
+    return exec_(Op::HEAP, nullptr, nullptr);
+  }
 
   /**
-   * Returns the `type_info` (as returned by `typeid`) of the callable stored
-   * in this `Function`. Returns `typeid(void)` if empty.
+   * Construct a `std::function` by moving in the contents of this `Function`.
+   * Note that the returned `std::function` will share its state (i.e. captured
+   * data) across all copies you make of it, so be very careful when copying.
    */
-  std::type_info const& target_type() const noexcept;
-
-  /**
-   * Returns a pointer to the stored callable if its type matches `T`, and
-   * `nullptr` otherwise.
-   */
-  template <typename T>
-  T* target() noexcept;
-
-  /**
-   * Returns a const-pointer to the stored callable if its type matches `T`,
-   * and `nullptr` otherwise.
-   */
-  template <typename T>
-  const T* target() const noexcept;
-
-  /**
-   * Move out this `Function` into one with a const function type.
-   *
-   * This is a potentially dangerous operation, equivalent to a `const_cast`.
-   * This converts a `Function` with a non-const function type, i.e.
-   * one that can only be called when in the form of a non-const reference,
-   * into one that can be called in a const context. Use at your own risk!
-   */
-  Function<typename Traits::ConstFunctionType, NTM, EmbedFunctorSize>
-      castToConstFunction() && noexcept(hasNoExceptMoveCtor());
-
-  using SignatureType = FunctionType;
-  using ResultType = typename Traits::ResultType;
-  using ArgsTuple = typename Traits::ArgsTuple;
-
- private:
-  template <class, FunctionMoveCtor, size_t>
-  friend class Function;
-
-  friend struct detail::function::FunctionTypeTraits<FunctionType>;
-
-  using ExecutorIf =
-      typename detail::function::Executors<FunctionType>::ExecutorIf;
-  using EmptyExecutor =
-      typename detail::function::Executors<FunctionType>::EmptyExecutor;
-  template <typename F, typename SelectFunctionTag>
-  using FunctorPtrExecutor = typename detail::function::Executors<
-      FunctionType>::template FunctorPtrExecutor<F, SelectFunctionTag>;
-  template <typename F, typename SelectFunctionTag>
-  using FunctorExecutor = typename detail::function::Executors<
-      FunctionType>::template FunctorExecutor<F, SelectFunctionTag>;
-
-  template <typename T>
-  T const* access() const;
-
-  template <typename T>
-  T* access();
-
-  void initializeEmptyExecutor() noexcept;
-
-  template <typename F>
-  void createExecutor(F&& f) noexcept(
-      noexcept(typename std::decay<F>::type(std::forward<F>(f))));
-
-  void destroyExecutor() noexcept;
-
-  struct MinStorageSize;
-
-  typename std::aligned_storage<MinStorageSize::value>::type data_;
-  static constexpr size_t kStorageSize = sizeof(data_);
+  std::function<ReturnType(Args...)> asStdFunction() && {
+    struct Impl {
+      std::shared_ptr<Function> sp_;
+      ReturnType operator()(Args&&... args) const {
+        return (*sp_)(static_cast<Args&&>(args)...);
+      }
+    };
+    return Impl{std::make_shared<Function>(std::move(*this))};
+  }
 };
 
-// operator==
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-inline bool operator==(
-    Function<FunctionType, NTM, EmbedFunctorSize> const& f,
-    std::nullptr_t) noexcept {
-  return !f;
-}
-
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-inline bool operator==(
-    std::nullptr_t,
-    Function<FunctionType, NTM, EmbedFunctorSize> const& f) noexcept {
-  return !f;
-}
-
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-inline bool operator!=(
-    Function<FunctionType, NTM, EmbedFunctorSize> const& f,
-    std::nullptr_t) noexcept {
-  return !!f;
-}
-
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-inline bool operator!=(
-    std::nullptr_t,
-    Function<FunctionType, NTM, EmbedFunctorSize> const& f) noexcept {
-  return !!f;
-}
-
-/**
- * Cast a `Function` into one with a const function type.
- *
- * This is a potentially dangerous operation, equivalent to a `const_cast`.
- * This converts a `Function` with a non-const function type, i.e.
- * one that can only be called when in the form of a non-const reference,
- * into one that can be called in a const context. Use at your own risk!
- */
-template <typename FunctionType, FunctionMoveCtor NTM, size_t EmbedFunctorSize>
-Function<
-    typename detail::function::FunctionTypeTraits<
-        FunctionType>::ConstFunctionType,
-    NTM,
-    EmbedFunctorSize>
-constCastFunction(Function<FunctionType, NTM, EmbedFunctorSize>&&
-                      from) noexcept(NTM == FunctionMoveCtor::NO_THROW) {
-  return std::move(from).castToConstFunction();
-}
-
-template <typename FunctionType, FunctionMoveCtor NOM, size_t S>
+template <typename FunctionType, bool Const>
 void swap(
-    Function<FunctionType, NOM, S>& lhs,
-    Function<FunctionType, NOM, S>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
+    Function<FunctionType, Const>& lhs,
+    Function<FunctionType, Const>& rhs) noexcept {
   lhs.swap(rhs);
 }
 
-template <
-    typename FunctionType,
-    FunctionMoveCtor NOM1,
-    FunctionMoveCtor NOM2,
-    size_t S1,
-    size_t S2>
-void swap(
-    Function<FunctionType, NOM1, S1>& lhs,
-    Function<FunctionType, NOM2, S2>& rhs) noexcept(noexcept(lhs.swap(rhs))) {
-  lhs.swap(rhs);
+template <typename FunctionType, bool Const>
+bool operator==(const Function<FunctionType, Const>& fn, std::nullptr_t) {
+  return !fn;
 }
 
-} // namespace folly
+template <typename FunctionType, bool Const>
+bool operator==(std::nullptr_t, const Function<FunctionType, Const>& fn) {
+  return !fn;
+}
 
-#include "Function-inl.h"
+template <typename FunctionType, bool Const>
+bool operator!=(const Function<FunctionType, Const>& fn, std::nullptr_t) {
+  return !(fn == nullptr);
+}
+
+template <typename FunctionType, bool Const>
+bool operator!=(std::nullptr_t, const Function<FunctionType, Const>& fn) {
+  return !(nullptr == fn);
+}
+
+template <typename ReturnType, typename... Args>
+Function<ReturnType(Args...), true> constCastFunction(
+    Function<ReturnType(Args...), false>&& that) noexcept {
+  Function<ReturnType(Args...), true> fn{};
+  that.exec_(detail::function::Op::MOVE, &that.data_, &fn.data_);
+  std::swap(fn.call_, that.call_);
+  std::swap(fn.exec_, that.exec_);
+  return fn;
+}
+
+template <typename FunctionType>
+Function<FunctionType, true> constCastFunction(
+    Function<FunctionType, true>&& that) noexcept {
+  return std::move(that);
+}
+
+template <typename FunctionType>
+struct MakeFunction {};
+
+template <typename ReturnType, typename... Args>
+struct MakeFunction<ReturnType(Args...)> {
+  using type = Function<ReturnType(Args...), false>;
+};
+
+template <typename ReturnType, typename... Args>
+struct MakeFunction<ReturnType(Args...) const> {
+  using type = Function<ReturnType(Args...), true>;
+};
+} // namespace impl
+
+/* using override */ using impl::constCastFunction;
+
+template <typename FunctionType>
+using Function = typename impl::MakeFunction<FunctionType>::type;
+}
