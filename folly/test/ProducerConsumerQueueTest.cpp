@@ -160,11 +160,11 @@ struct CorrectnessTest {
         } else {
           goto again;
         }
+        EXPECT_EQ(*data, expect);
       } else {
+        EXPECT_EQ(*data, expect);
         queue_.popFront();
       }
-
-      EXPECT_EQ(*data, expect);
     }
   }
 
