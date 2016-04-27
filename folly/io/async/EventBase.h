@@ -508,7 +508,7 @@ class EventBase : private boost::noncopyable,
    * first handler fired within that cycle.
    *
    */
-  bool bumpHandlingTime() override;
+  void bumpHandlingTime() override final;
 
   class SmoothLoopTime {
    public:
@@ -598,7 +598,7 @@ class EventBase : private boost::noncopyable,
 
   void cancelTimeout(AsyncTimeout* obj) override;
 
-  bool isInTimeoutManagerThread() override {
+  bool isInTimeoutManagerThread() override final {
     return isInEventBaseThread();
   }
 
@@ -606,7 +606,7 @@ class EventBase : private boost::noncopyable,
    * Helper function that tells us whether we have already handled
    * some event/timeout/callback in this loop iteration.
    */
-  bool nothingHandledYet();
+  bool nothingHandledYet() const noexcept;
 
   // small object used as a callback arg with enough info to execute the
   // appropriate client-provided Cob

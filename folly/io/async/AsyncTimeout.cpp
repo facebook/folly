@@ -150,7 +150,7 @@ void AsyncTimeout::libeventCallback(int fd, short events, void* arg) {
   assert((event_ref_flags(&timeout->event_) & ~EVLIST_INTERNAL) == EVLIST_INIT);
 
   // this can't possibly fire if timeout->eventBase_ is nullptr
-  (void) timeout->timeoutManager_->bumpHandlingTime();
+  timeout->timeoutManager_->bumpHandlingTime();
 
   auto old_ctx =
     RequestContext::setContext(timeout->context_);

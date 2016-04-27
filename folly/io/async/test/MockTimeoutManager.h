@@ -37,7 +37,7 @@ class MockTimeoutManager : public folly::TimeoutManager {
 
   MOCK_METHOD1(cancelTimeout, void(folly::AsyncTimeout*));
 
-  MOCK_METHOD0(bumpHandlingTime, bool());
+  MOCK_METHOD0(bumpHandlingTime, void());
   MOCK_METHOD0(isInTimeoutManagerThread, bool());
 };
 }

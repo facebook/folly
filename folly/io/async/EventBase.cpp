@@ -380,9 +380,7 @@ bool EventBase::loopBody(int flags) {
       idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
     } else {
-      VLOG(11) << "EventBase "  << this << " did not timeout "
-        " time measurement is disabled "
-        " nothingHandledYet(): "<< nothingHandledYet();
+      VLOG(11) << "EventBase " << this << " did not timeout";
     }
 
     // If the event loop indicate that there were no more events, and
@@ -445,22 +443,23 @@ void EventBase::loopForever() {
   }
 }
 
-bool EventBase::bumpHandlingTime() {
+void EventBase::bumpHandlingTime() {
+  if (!enableTimeMeasurement_) {
+    return;
+  }
+
   VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__ <<
     " (loop) latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
-  if(nothingHandledYet()) {
+  if (nothingHandledYet()) {
     latestLoopCnt_ = nextLoopCnt_;
-    if (enableTimeMeasurement_) {
-      // set the time
-      startWork_ = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+    // set the time
+    startWork_ = std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now().time_since_epoch())
+                     .count();
 
-      VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__ <<
-        " (loop) startWork_ " << startWork_;
-    }
-    return true;
+    VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
+             << " (loop) startWork_ " << startWork_;
   }
-  return false;
 }
 
 void EventBase::terminateLoopSoon() {
@@ -706,7 +705,7 @@ void EventBase::SmoothLoopTime::addSample(int64_t idle, int64_t busy) {
   value_ += (1.0 - coeff) * busy;
 }
 
-bool EventBase::nothingHandledYet() {
+bool EventBase::nothingHandledYet() const noexcept {
   VLOG(11) << "latest " << latestLoopCnt_ << " next " << nextLoopCnt_;
   return (nextLoopCnt_ != latestLoopCnt_);
 }

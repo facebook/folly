@@ -155,7 +155,7 @@ void EventHandler::libeventCallback(int fd, short events, void* arg) {
   }
 
   // this can't possibly fire if handler->eventBase_ is nullptr
-  (void) handler->eventBase_->bumpHandlingTime();
+  handler->eventBase_->bumpHandlingTime();
 
   handler->handlerReady(events);
 
