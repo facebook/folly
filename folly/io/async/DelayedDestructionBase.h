@@ -37,7 +37,7 @@ namespace folly {
  *
  * Classes needing this functionality should:
  * - derive from DelayedDestructionBase directly
- * - pass a callback to onDestroy_ which'll be called before the object is
+ * - implement onDelayedDestroy which'll be called before the object is
  *   going to be destructed
  * - create a DestructorGuard object on the stack in each public method that
  *   may invoke a callback
@@ -93,7 +93,7 @@ class DelayedDestructionBase : private boost::noncopyable {
         assert(dd_->guardCount_ > 0);
         --dd_->guardCount_;
         if (dd_->guardCount_ == 0) {
-          dd_->onDestroy_(true);
+          dd_->onDelayedDestroy(true);
         }
       }
     }
@@ -213,14 +213,15 @@ class DelayedDestructionBase : private boost::noncopyable {
   }
 
   /**
-   * Implement onDestroy_ in subclasses.
-   * onDestroy_() is invoked when the object is potentially being destroyed.
+   * Implement onDelayedDestroy in subclasses.
+   * onDelayedDestroy() is invoked when the object is potentially being
+   * destroyed.
    *
    * @param delayed  This parameter is true if destruction was delayed because
-   *                 of a DestructorGuard object, or false if onDestroy_() is
-   *                 being called directly from the destructor.
+   *                 of a DestructorGuard object, or false if onDelayedDestroy()
+   *                 is being called directly from the destructor.
    */
-  std::function<void(bool)> onDestroy_;
+  virtual void onDelayedDestroy(bool delayed) = 0;
 
  private:
   /**

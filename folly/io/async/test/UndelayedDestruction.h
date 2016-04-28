@@ -58,16 +58,6 @@ class UndelayedDestruction : public TDD {
   template<typename ...Args>
   explicit UndelayedDestruction(Args&& ...args)
     : TDD(std::forward<Args>(args)...) {
-      this->TDD::onDestroy_ = [&, this] (bool delayed) {
-        if (delayed && !this->TDD::getDestroyPending()) {
-          return;
-        }
-        // Do nothing.  This will always be invoked from the call to destroy
-        // inside our destructor.
-        assert(!delayed);
-        // prevent unused variable warnings when asserts are compiled out.
-        (void)delayed;
-      };
   }
 
   /**
@@ -89,6 +79,17 @@ class UndelayedDestruction : public TDD {
     // Invoke destroy.  This is necessary since our base class may have
     // implemented custom behavior in destroy().
     this->destroy();
+  }
+
+  void onDelayedDestroy(bool delayed) override {
+    if (delayed && !this->TDD::getDestroyPending()) {
+      return;
+    }
+    // Do nothing.  This will always be invoked from the call to destroy
+    // inside our destructor.
+    assert(!delayed);
+    // prevent unused variable warnings when asserts are compiled out.
+    (void)delayed;
   }
 
  protected:
