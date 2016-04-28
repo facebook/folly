@@ -43,7 +43,7 @@ TEST(File, Locks) {
   static constexpr size_t pathLength = 2048;
   char buf[pathLength + 1];
   int r = readlink("/proc/self/exe", buf, pathLength);
-  CHECK_ERR(r);
+  CHECK(r != -1);
   buf[r] = '\0';
 
   fs::path me(buf);
