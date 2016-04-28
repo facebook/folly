@@ -37,6 +37,10 @@ using X509StoreCtxDeleter =
     folly::static_function_deleter<X509_STORE_CTX, &X509_STORE_CTX_free>;
 using X509StoreCtxUniquePtr =
     std::unique_ptr<X509_STORE_CTX, X509StoreCtxDeleter>;
+using X509VerifyParamDeleter =
+    folly::static_function_deleter<X509_VERIFY_PARAM, &X509_VERIFY_PARAM_free>;
+using X509VerifyParam =
+    std::unique_ptr<X509_VERIFY_PARAM, X509VerifyParamDeleter>;
 
 // EVP
 using EvpPkeyDel = folly::static_function_deleter<EVP_PKEY, &EVP_PKEY_free>;
