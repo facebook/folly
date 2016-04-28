@@ -47,6 +47,7 @@
 #include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
+#include <folly/portability/Malloc.h>
 
 #if defined(__GNUC__) && (FOLLY_X64 || FOLLY_PPC64)
 # include <folly/SmallLocks.h>
@@ -57,16 +58,6 @@
 # define FB_PACK_ATTR
 # define FB_PACK_PUSH
 # define FB_PACK_POP
-#endif
-
-#if FOLLY_HAVE_MALLOC_SIZE
-  extern "C" std::size_t malloc_size(const void*);
-# if !FOLLY_HAVE_MALLOC_USABLE_SIZE
-#  define malloc_usable_size malloc_size
-# endif
-# ifndef malloc_usable_size
-#  define malloc_usable_size malloc_size
-# endif
 #endif
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
