@@ -83,6 +83,40 @@ void basicTest() {
   EXPECT_EQ(0, ++count);
 }
 
+template <typename RefCount>
+void stressTest() {
+  constexpr size_t kItersCount = 10000;
+
+  for (size_t i = 0; i < kItersCount; ++i) {
+    RefCount count;
+    std::mutex mutex;
+    int a{1};
+
+    std::thread t1([&]() {
+      if (++count) {
+        {
+          std::lock_guard<std::mutex> lg(mutex);
+          EXPECT_EQ(1, a);
+        }
+        --count;
+      }
+    });
+
+    std::thread t2([&]() {
+      count.useGlobal();
+      if (--count == 0) {
+        std::lock_guard<std::mutex> lg(mutex);
+        a = 0;
+      }
+    });
+
+    t1.join();
+    t2.join();
+
+    EXPECT_EQ(0, ++count);
+  }
+}
+
 TEST(RCURefCount, Basic) {
   basicTest<RCURefCount>();
 }
@@ -91,4 +125,11 @@ TEST(TLRefCount, Basic) {
   basicTest<TLRefCount>();
 }
 
+TEST(RCURefCount, Stress) {
+  stressTest<TLRefCount>();
+}
+
+TEST(TLRefCount, Stress) {
+  stressTest<TLRefCount>();
+}
 }
