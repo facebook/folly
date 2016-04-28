@@ -234,7 +234,7 @@ class Function;
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...), true> constCastFunction(
     Function<ReturnType(Args...), false>&&) noexcept;
-}
+} // impl
 
 namespace detail {
 namespace function {
@@ -298,9 +298,14 @@ class Function<ReturnType(Args...), Const> final {
   template <typename Fun>
   using IsSmall = detail::function::IsSmall<Fun>;
 
-  Data data_;
-  Call call_;
-  Exec exec_;
+  /**
+   * @Function is const-safe:
+   * - @call_ takes @Data as non-const param to avoid code/data duplication.
+   * - @data_ can only be mutated if @constCastFunction is used.
+   */
+  mutable Data data_;
+  Call call_{&detail::function::uninitCall<ReturnType, Args...>};
+  Exec exec_{&detail::function::uninitNoop};
 
   friend Function<ReturnType(Args...), true> constCastFunction<>(
       Function<ReturnType(Args...), false>&&) noexcept;
@@ -311,16 +316,16 @@ class Function<ReturnType(Args...), Const> final {
     using FunT = typename std::decay<Fun>::type;
     static ReturnType call(Data& p, Args&&... args) {
       return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(
-          (void*)&p.small))(static_cast<Args&&>(args)...));
+          static_cast<void*>(&p.small)))(static_cast<Args&&>(args)...));
     }
     static bool exec(Op o, Data* src, Data* dst) {
       switch (o) {
         case Op::MOVE:
-          ::new ((void*)&dst->small)
-              FunT(std::move(*static_cast<FunT*>((void*)&src->small)));
+          ::new (static_cast<void*>(&dst->small)) FunT(
+              std::move(*static_cast<FunT*>(static_cast<void*>(&src->small))));
           FOLLY_FALLTHROUGH;
         case Op::NUKE:
-          static_cast<FunT*>((void*)&src->small)->~FunT();
+          static_cast<FunT*>(static_cast<void*>(&src->small))->~FunT();
           break;
         case Op::FULL:
           return true;
@@ -332,10 +337,11 @@ class Function<ReturnType(Args...), Const> final {
   };
 
   template <typename Fun>
-  Function(Fun&& fun, SmallTag) noexcept : Function() {
+  Function(Fun&& fun, SmallTag) noexcept {
     using Ops = OpsSmall<Fun>;
     if (!detail::function::isNullPtrFn(fun)) {
-      ::new (&data_.small) typename Ops::FunT(static_cast<Fun&&>(fun));
+      ::new (static_cast<void*>(&data_.small))
+          typename Ops::FunT(static_cast<Fun&&>(fun));
       exec_ = &Ops::exec;
       call_ = &Ops::call;
     }
@@ -366,7 +372,7 @@ class Function<ReturnType(Args...), Const> final {
   };
 
   template <typename Fun>
-  Function(Fun&& fun, HeapTag) : Function() {
+  Function(Fun&& fun, HeapTag) {
     using Ops = OpsHeap<Fun>;
     data_.big = new typename Ops::FunT(static_cast<Fun&&>(fun));
     call_ = &Ops::call;
@@ -381,9 +387,7 @@ class Function<ReturnType(Args...), Const> final {
   /**
    * Default constructor. Constructs an empty Function.
    */
-  Function() noexcept
-      : call_(&detail::function::uninitCall<ReturnType, Args...>),
-        exec_(&detail::function::uninitNoop) {}
+  Function() = default;
 
   // not copyable
   // NOTE: Deleting the non-const copy constructor is unusual but necessary to
@@ -396,7 +400,7 @@ class Function<ReturnType(Args...), Const> final {
   /**
    * Move constructor
    */
-  Function(Function&& that) noexcept : Function() {
+  Function(Function&& that) noexcept {
     that.exec_(Op::MOVE, &that.data_, &data_);
     std::swap(call_, that.call_);
     std::swap(exec_, that.exec_);
@@ -405,7 +409,7 @@ class Function<ReturnType(Args...), Const> final {
   /**
    * Constructs an empty `Function`.
    */
-  /* implicit */ Function(std::nullptr_t) noexcept : Function() {}
+  /* implicit */ Function(std::nullptr_t) noexcept {}
 
   /**
    * Constructs a new `Function` from any callable object. This
@@ -433,8 +437,7 @@ class Function<ReturnType(Args...), Const> final {
   template <
       bool OtherConst,
       typename std::enable_if<!Const && OtherConst, int>::type = 0>
-  Function(Function<ReturnType(Args...), OtherConst>&& that) noexcept
-      : Function() {
+  Function(Function<ReturnType(Args...), OtherConst>&& that) noexcept {
     that.exec_(Op::MOVE, &that.data_, &data_);
     std::swap(call_, that.call_);
     std::swap(exec_, that.exec_);
@@ -450,7 +453,7 @@ class Function<ReturnType(Args...), Const> final {
       // Prevent this overload from being selected when `ptr` is not a
       // compatible member function pointer.
       typename = decltype(Function(std::mem_fn((Member Class::*)0)))>
-  /* implicit */ Function(Member Class::*ptr) noexcept : Function() {
+  /* implicit */ Function(Member Class::*ptr) noexcept {
     if (ptr) {
       *this = std::mem_fn(ptr);
     }
@@ -546,7 +549,7 @@ class Function<ReturnType(Args...), Const> final {
       bool True = true,
       typename std::enable_if<True && Const, int>::type = 0>
   ReturnType operator()(Args... args) const {
-    return call_(const_cast<Data&>(data_), static_cast<Args&&>(args)...);
+    return call_(data_, static_cast<Args&&>(args)...);
   }
 
   /**
@@ -617,6 +620,10 @@ bool operator!=(std::nullptr_t, const Function<FunctionType, Const>& fn) {
   return !(nullptr == fn);
 }
 
+/**
+ * NOTE: See detailed note about @constCastFunction at the top of the file.
+ * This is potentially dangerous and requires the equivalent of a `const_cast`.
+ */
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...), true> constCastFunction(
     Function<ReturnType(Args...), false>&& that) noexcept {
