@@ -336,20 +336,13 @@ struct IsRvalueRefTry<folly::Try<T>&&> { static const bool value = true; };
 template <typename F, typename G>
 struct FiberManager::AddTaskFinallyHelper {
   class Func;
-  class Finally;
 
   typedef typename std::result_of<F()>::type Result;
 
-  static constexpr bool allocateInBuffer =
-    sizeof(Func) + sizeof(Finally) <= Fiber::kUserBufferSize;
-
   class Finally {
    public:
-    Finally(G&& finally,
-            FiberManager& fm) :
-        finally_(std::forward<G>(finally)),
-        fm_(fm) {
-    }
+    Finally(G finally, FiberManager& fm)
+        : finally_(std::move(finally)), fm_(fm) {}
 
     void operator()() {
       try {
@@ -376,8 +369,8 @@ struct FiberManager::AddTaskFinallyHelper {
 
   class Func {
    public:
-    Func(F&& func, Finally& finally) :
-        func_(std::move(func)), result_(finally.result_) {}
+    Func(F func, Finally& finally)
+        : func_(std::move(func)), result_(finally.result_) {}
 
     void operator()() {
       result_ = folly::makeTryWith(std::move(func_));
@@ -393,6 +386,9 @@ struct FiberManager::AddTaskFinallyHelper {
     F func_;
     folly::Optional<folly::Try<Result>>& result_;
   };
+
+  static constexpr bool allocateInBuffer =
+      sizeof(Func) + sizeof(Finally) <= Fiber::kUserBufferSize;
 };
 
 template <typename F, typename G>
@@ -414,7 +410,10 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
   auto fiber = getFiber();
   initLocalData(*fiber);
 
-  typedef AddTaskFinallyHelper<F,G> Helper;
+  typedef AddTaskFinallyHelper<
+      typename std::decay<F>::type,
+      typename std::decay<G>::type>
+      Helper;
 
   if (Helper::allocateInBuffer) {
     auto funcLoc = static_cast<typename Helper::Func*>(
@@ -423,13 +422,14 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
       static_cast<void*>(funcLoc + 1));
 
     new (finallyLoc) typename Helper::Finally(std::forward<G>(finally), *this);
-    new (funcLoc) typename Helper::Func(std::move(func), *finallyLoc);
+    new (funcLoc) typename Helper::Func(std::forward<F>(func), *finallyLoc);
 
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));
   } else {
     auto finallyLoc =
         new typename Helper::Finally(std::forward<G>(finally), *this);
-    auto funcLoc = new typename Helper::Func(std::move(func), *finallyLoc);
+    auto funcLoc =
+        new typename Helper::Func(std::forward<F>(func), *finallyLoc);
 
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));
   }
