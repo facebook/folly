@@ -202,12 +202,88 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 }
 
 /**
+ * Test reading after server close.
+ */
+TEST(AsyncSSLSocketTest, ReadAfterClose) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadEOFCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  auto server = folly::make_unique<TestSSLServer>(&acceptCallback);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  auto socket =
+      std::make_shared<BlockingSocket>(server->getAddress(), sslContext);
+  socket->open();
+
+  // This should trigger an EOF on the client.
+  auto evb = handshakeCallback.getSocket()->getEventBase();
+  evb->runInEventBaseThreadAndWait([&]() { handshakeCallback.closeSocket(); });
+  std::array<uint8_t, 128> readbuf;
+  auto bytesRead = socket->read(readbuf.data(), readbuf.size());
+  EXPECT_EQ(0, bytesRead);
+}
+
+/**
+ * Test bad renegotiation
+ */
+TEST(AsyncSSLSocketTest, Renegotiate) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto dfServerCtx = std::make_shared<SSLContext>();
+  std::array<int, 2> fds;
+  getfds(fds.data());
+  getctx(clientCtx, dfServerCtx);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  RenegotiatingServer server(std::move(serverSock));
+
+  while (!client.handshakeSuccess_ && !client.handshakeError_) {
+    eventBase.loopOnce();
+  }
+
+  ASSERT_TRUE(client.handshakeSuccess_);
+
+  auto sslSock = std::move(client).moveSocket();
+  sslSock->detachEventBase();
+  // This is nasty, however we don't want to add support for
+  // renegotiation in AsyncSSLSocket.
+  SSL_renegotiate(const_cast<SSL*>(sslSock->getSSL()));
+
+  auto socket = std::make_shared<BlockingSocket>(std::move(sslSock));
+
+  std::thread t([&]() { eventBase.loopForever(); });
+
+  // Trigger the renegotiation.
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  try {
+    socket->write(buf.data(), buf.size());
+  } catch (AsyncSocketException& e) {
+    LOG(INFO) << "client got error " << e.what();
+  }
+  eventBase.terminateLoopSoon();
+  t.join();
+
+  eventBase.loop();
+  ASSERT_TRUE(server.renegotiationError_);
+}
+
+/**
  * Negative test for handshakeError().
  */
 TEST(AsyncSSLSocketTest, HandshakeError) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
-  ReadCallback readCallback(&writeCallback);
+  WriteErrorCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
   HandshakeErrorCallback acceptCallback(&handshakeCallback);
   TestSSLServer server(&acceptCallback);

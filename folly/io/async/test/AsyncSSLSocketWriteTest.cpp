@@ -58,8 +58,12 @@ class MockAsyncSSLSocket : public AsyncSSLSocket{
   MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
 
   // public wrapper for protected interface
-  ssize_t testPerformWrite(const iovec* vec, uint32_t count, WriteFlags flags,
-                           uint32_t* countWritten, uint32_t* partialWritten) {
+  WriteResult testPerformWrite(
+      const iovec* vec,
+      uint32_t count,
+      WriteFlags flags,
+      uint32_t* countWritten,
+      uint32_t* partialWritten) {
     return performWrite(vec, count, flags, countWritten, partialWritten);
   }
 

@@ -27,6 +27,7 @@
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
+#include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/async/ssl/TLSDefinitions.h>
 
 #include <folly/Bits.h>
@@ -34,14 +35,6 @@
 #include <folly/io/Cursor.h>
 
 namespace folly {
-
-class SSLException: public folly::AsyncSocketException {
- public:
-  SSLException(int sslError,
-               unsigned long errError,
-               int sslOperationReturnValue,
-               int errno_copy);
-};
 
 /**
  * A class for performing asynchronous I/O on an SSL connection.
@@ -141,18 +134,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
    private:
     AsyncSSLSocket* sslSocket_;
-  };
-
-
-  /**
-   * These are passed to the application via errno, packed in an SSL err which
-   * are outside the valid errno range.  The values are chosen to be unique
-   * against values in ssl.h
-   */
-  enum SSLError {
-    SSL_CLIENT_RENEGOTIATION_ATTEMPT = 900,
-    SSL_INVALID_RENEGOTIATION = 901,
-    SSL_EARLY_WRITE = 902
   };
 
   /**
@@ -364,6 +345,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * refcount and must be deallocated by the caller.
    */
   SSL_SESSION *getSSLSession();
+
+  /**
+   * Get a handle to the SSL struct.
+   */
+  const SSL* getSSL() const;
 
   /**
    * Set the SSL session to be used during sslConn.  AsyncSSLSocket will
@@ -760,11 +746,14 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // AsyncSocket calls this at the wrong time for SSL
   void handleInitialReadWrite() noexcept override {}
 
-  int interpretSSLError(int rc, int error);
-  ssize_t performRead(void** buf, size_t* buflen, size_t* offset) override;
-  ssize_t performWrite(const iovec* vec, uint32_t count, WriteFlags flags,
-                       uint32_t* countWritten, uint32_t* partialWritten)
-    override;
+  WriteResult interpretSSLError(int rc, int error);
+  ReadResult performRead(void** buf, size_t* buflen, size_t* offset) override;
+  WriteResult performWrite(
+      const iovec* vec,
+      uint32_t count,
+      WriteFlags flags,
+      uint32_t* countWritten,
+      uint32_t* partialWritten) override;
 
   ssize_t performWriteIovec(const iovec* vec, uint32_t count,
                             WriteFlags flags, uint32_t* countWritten,

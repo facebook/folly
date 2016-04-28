@@ -62,10 +62,6 @@ using folly::SSLContext;
 static SSLContext *dummyCtx = nullptr;
 static SpinLock dummyCtxLock;
 
-// Numbers chosen as to not collide with functions in ssl.h
-const uint8_t TASYNCSSLSOCKET_F_PERFORM_READ = 90;
-const uint8_t TASYNCSSLSOCKET_F_PERFORM_WRITE = 91;
-
 // If given min write size is less than this, buffer will be allocated on
 // stack, otherwise it is allocated on heap
 const size_t MAX_STACK_BUF_SIZE = 2048;
@@ -246,38 +242,9 @@ void* initEorBioMethod(void) {
   return nullptr;
 }
 
-std::string decodeOpenSSLError(int sslError,
-                               unsigned long errError,
-                               int sslOperationReturnValue) {
-  if (sslError == SSL_ERROR_SYSCALL && errError == 0) {
-    if (sslOperationReturnValue == 0) {
-      return "SSL_ERROR_SYSCALL: EOF";
-    } else {
-      // In this case errno is set, AsyncSocketException will add it.
-      return "SSL_ERROR_SYSCALL";
-    }
-  } else if (sslError == SSL_ERROR_ZERO_RETURN) {
-    // This signifies a TLS closure alert.
-    return "SSL_ERROR_ZERO_RETURN";
-  } else {
-    char buf[256];
-    std::string msg(ERR_error_string(errError, buf));
-    return msg;
-  }
-}
-
 } // anonymous namespace
 
 namespace folly {
-
-SSLException::SSLException(int sslError,
-                           unsigned long errError,
-                           int sslOperationReturnValue,
-                           int errno_copy)
-    : AsyncSocketException(
-          AsyncSocketException::SSL_ERROR,
-          decodeOpenSSLError(sslError, errError, sslOperationReturnValue),
-          sslError == SSL_ERROR_SYSCALL ? errno_copy : 0) {}
 
 /**
  * Create a client AsyncSSLSocket
@@ -807,6 +774,10 @@ SSL_SESSION *AsyncSSLSocket::getSSLSession() {
   return sslSession_;
 }
 
+const SSL* AsyncSSLSocket::getSSL() const {
+  return ssl_;
+}
+
 void AsyncSSLSocket::setSSLSession(SSL_SESSION *session, bool takeOwnership) {
   sslSession_ = session;
   if (!takeOwnership && session != nullptr) {
@@ -967,8 +938,6 @@ bool AsyncSSLSocket::willBlock(int ret,
     // The timeout (if set) keeps running here
     return true;
   } else {
-    // SSL_ERROR_ZERO_RETURN is processed here so we can get some detail
-    // in the log
     unsigned long lastError = *errErrorOut = ERR_get_error();
     VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
             << "state=" << state_ << ", "
@@ -981,7 +950,6 @@ bool AsyncSSLSocket::willBlock(int ret,
             << "written: " << BIO_number_written(SSL_get_wbio(ssl_)) << ", "
             << "func: " << ERR_func_error_string(lastError) << ", "
             << "reason: " << ERR_reason_error_string(lastError);
-    ERR_clear_error();
     return false;
   }
 }
@@ -1055,7 +1023,6 @@ AsyncSSLSocket::handleAccept() noexcept {
     SSL_set_msg_callback_arg(ssl_, this);
   }
 
-  errno = 0;
   int ret = SSL_accept(ssl_);
   if (ret <= 0) {
     int sslError;
@@ -1119,7 +1086,6 @@ AsyncSSLSocket::handleConnect() noexcept {
          sslState_ == STATE_CONNECTING);
   assert(ssl_);
 
-  errno = 0;
   int ret = SSL_connect(ssl_);
   if (ret <= 0) {
     int sslError;
@@ -1223,16 +1189,15 @@ AsyncSSLSocket::handleRead() noexcept {
   AsyncSocket::handleRead();
 }
 
-ssize_t
+AsyncSocket::ReadResult
 AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
-  VLOG(4) << "AsyncSSLSocket::performRead() this=" << this
-          << ", buf=" << *buf << ", buflen=" << *buflen;
+  VLOG(4) << "AsyncSSLSocket::performRead() this=" << this << ", buf=" << *buf
+          << ", buflen=" << *buflen;
 
   if (sslState_ == STATE_UNENCRYPTED) {
     return AsyncSocket::performRead(buf, buflen, offset);
   }
 
-  errno = 0;
   ssize_t bytes = 0;
   if (!isBufferMovable_) {
     bytes = SSL_read(ssl_, *buf, *buflen);
@@ -1247,20 +1212,18 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
                << ", sslstate=" << sslState_ << ", events=" << eventFlags_
                << "): client intitiated SSL renegotiation not permitted";
-    // We pack our own SSLerr here with a dummy function
-    errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_READ,
-                     SSL_CLIENT_RENEGOTIATION_ATTEMPT);
-    ERR_clear_error();
-    return READ_ERROR;
+    return ReadResult(
+        READ_ERROR,
+        folly::make_unique<SSLException>(SSLError::CLIENT_RENEGOTIATION));
   }
   if (bytes <= 0) {
     int error = SSL_get_error(ssl_, bytes);
     if (error == SSL_ERROR_WANT_READ) {
       // The caller will register for read event if not already.
       if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        return READ_BLOCKING;
+        return ReadResult(READ_BLOCKING);
       } else {
-        return READ_ERROR;
+        return ReadResult(READ_ERROR);
       }
     } else if (error == SSL_ERROR_WANT_WRITE) {
       // TODO: Even though we are attempting to read data, SSL_read() may
@@ -1268,17 +1231,15 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
       // don't support this and just fail the read.
       LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
                  << ", sslState=" << sslState_ << ", events=" << eventFlags_
-                 << "): unsupported SSL renegotiation during read",
-      errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_READ,
-                       SSL_INVALID_RENEGOTIATION);
-      ERR_clear_error();
-      return READ_ERROR;
+                 << "): unsupported SSL renegotiation during read";
+      return ReadResult(
+          READ_ERROR,
+          folly::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
     } else {
-      // TODO: Fix this code so that it can return a proper error message
-      // to the callback, rather than relying on AsyncSocket code which
-      // can't handle SSL errors.
-      long lastError = ERR_get_error();
-
+      if (zero_return(error, bytes)) {
+        return ReadResult(bytes);
+      }
+      long errError = ERR_get_error();
       VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
               << "state=" << state_ << ", "
               << "sslState=" << sslState_ << ", "
@@ -1286,24 +1247,15 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
               << "bytes: " << bytes << ", "
               << "error: " << error << ", "
               << "errno: " << errno << ", "
-              << "func: " << ERR_func_error_string(lastError) << ", "
-              << "reason: " << ERR_reason_error_string(lastError);
-      ERR_clear_error();
-      if (zero_return(error, bytes)) {
-        return bytes;
-      }
-      if (error != SSL_ERROR_SYSCALL) {
-        if ((unsigned long)lastError < 0x8000) {
-          errno = ENOSYS;
-        } else {
-          errno = lastError;
-        }
-      }
-      return READ_ERROR;
+              << "func: " << ERR_func_error_string(errError) << ", "
+              << "reason: " << ERR_reason_error_string(errError);
+      return ReadResult(
+          READ_ERROR,
+          folly::make_unique<SSLException>(error, errError, bytes, errno));
     }
   } else {
     appBytesReceived_ += bytes;
-    return bytes;
+    return ReadResult(bytes);
   }
 }
 
@@ -1331,49 +1283,40 @@ void AsyncSSLSocket::handleWrite() noexcept {
   AsyncSocket::handleWrite();
 }
 
-int AsyncSSLSocket::interpretSSLError(int rc, int error) {
+AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
   if (error == SSL_ERROR_WANT_READ) {
-    // TODO: Even though we are attempting to write data, SSL_write() may
+    // Even though we are attempting to write data, SSL_write() may
     // need to read data if renegotiation is being performed.  We currently
     // don't support this and just fail the write.
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
                << ", sslState=" << sslState_ << ", events=" << eventFlags_
-               << "): " << "unsupported SSL renegotiation during write",
-      errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_WRITE,
-                       SSL_INVALID_RENEGOTIATION);
-    ERR_clear_error();
-    return -1;
+               << "): "
+               << "unsupported SSL renegotiation during write";
+    return WriteResult(
+        WRITE_ERROR,
+        folly::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
-    // TODO: Fix this code so that it can return a proper error message
-    // to the callback, rather than relying on AsyncSocket code which
-    // can't handle SSL errors.
-    long lastError = ERR_get_error();
+    if (zero_return(error, rc)) {
+      return WriteResult(0);
+    }
+    auto errError = ERR_get_error();
     VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
             << "SSL error: " << error << ", errno: " << errno
-            << ", func: " << ERR_func_error_string(lastError)
-            << ", reason: " << ERR_reason_error_string(lastError);
-    if (error != SSL_ERROR_SYSCALL) {
-      if ((unsigned long)lastError < 0x8000) {
-        errno = ENOSYS;
-      } else {
-        errno = lastError;
-      }
-    }
-    ERR_clear_error();
-    if (!zero_return(error, rc)) {
-      return -1;
-    } else {
-      return 0;
-    }
+            << ", func: " << ERR_func_error_string(errError)
+            << ", reason: " << ERR_reason_error_string(errError);
+    return WriteResult(
+        WRITE_ERROR,
+        folly::make_unique<SSLException>(error, errError, rc, errno));
   }
 }
 
-ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
-                                      uint32_t count,
-                                      WriteFlags flags,
-                                      uint32_t* countWritten,
-                                      uint32_t* partialWritten) {
+AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
+    const iovec* vec,
+    uint32_t count,
+    WriteFlags flags,
+    uint32_t* countWritten,
+    uint32_t* partialWritten) {
   if (sslState_ == STATE_UNENCRYPTED) {
     return AsyncSocket::performWrite(
       vec, count, flags, countWritten, partialWritten);
@@ -1384,9 +1327,8 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
                << ", events=" << eventFlags_ << "): "
                << "TODO: AsyncSSLSocket currently does not support calling "
                << "write() before the handshake has fully completed";
-      errno = ERR_PACK(ERR_LIB_USER, TASYNCSSLSOCKET_F_PERFORM_WRITE,
-                       SSL_EARLY_WRITE);
-      return -1;
+    return WriteResult(
+        WRITE_ERROR, folly::make_unique<SSLException>(SSLError::EARLY_WRITE));
   }
 
   bool cork = isSet(flags, WriteFlags::CORK);
@@ -1420,7 +1362,6 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
     buf = ((const char*)v->iov_base) + offset;
 
     ssize_t bytes;
-    errno = 0;
     uint32_t buffersStolen = 0;
     if ((len < minWriteSize_) && ((i + 1) < count)) {
       // Combine this buffer with part or all of the next buffers in
@@ -1474,11 +1415,11 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
       if (error == SSL_ERROR_WANT_WRITE) {
         // The caller will register for write event if not already.
         *partialWritten = offset;
-        return totalWritten;
+        return WriteResult(totalWritten);
       }
-      int rc = interpretSSLError(bytes, error);
-      if (rc < 0) {
-        return rc;
+      auto writeResult = interpretSSLError(bytes, error);
+      if (writeResult.writeReturn < 0) {
+        return writeResult;
       } // else fall through to below to correctly record totalWritten
     }
 
@@ -1500,11 +1441,11 @@ ssize_t AsyncSSLSocket::performWrite(const iovec* vec,
         v = &(vec[++i]);
       }
       *partialWritten = bytes;
-      return totalWritten;
+      return WriteResult(totalWritten);
     }
   }
 
-  return totalWritten;
+  return WriteResult(totalWritten);
 }
 
 int AsyncSSLSocket::eorAwareSSLWrite(SSL *ssl, const void *buf, int n,
@@ -1575,7 +1516,6 @@ int AsyncSSLSocket::eorAwareBioWrite(BIO *b, const char *in, int inl) {
     flags = MSG_EOR;
   }
 
-  errno = 0;
   ret = sendmsg(b->num, &msg, flags);
   BIO_clear_retry_flags(b);
   if (ret <= 0) {

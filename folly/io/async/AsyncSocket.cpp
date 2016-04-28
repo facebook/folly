@@ -91,14 +91,13 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     free(this);
   }
 
-  bool performWrite() override {
+  WriteResult performWrite() override {
     WriteFlags writeFlags = flags_;
     if (getNext() != nullptr) {
       writeFlags = writeFlags | WriteFlags::CORK;
     }
-    bytesWritten_ = socket_->performWrite(getOps(), getOpCount(), writeFlags,
-                                          &opsWritten_, &partialBytes_);
-    return bytesWritten_ >= 0;
+    return socket_->performWrite(
+        getOps(), getOpCount(), writeFlags, &opsWritten_, &partialBytes_);
   }
 
   bool isComplete() override {
@@ -694,10 +693,14 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
       assert(writeReqTail_ == nullptr);
       assert((eventFlags_ & EventHandler::WRITE) == 0);
 
-      bytesWritten = performWrite(vec, count, flags,
-                                  &countWritten, &partialWritten);
+      auto writeResult =
+          performWrite(vec, count, flags, &countWritten, &partialWritten);
+      bytesWritten = writeResult.writeReturn;
       if (bytesWritten < 0) {
         auto errnoCopy = errno;
+        if (writeResult.exception) {
+          return failWrite(__func__, callback, 0, *writeResult.exception);
+        }
         AsyncSocketException ex(
             AsyncSocketException::INTERNAL_ERROR,
             withAddr("writev failed"),
@@ -1259,11 +1262,10 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   }
 }
 
-ssize_t AsyncSocket::performRead(void** buf,
-                                 size_t* buflen,
-                                 size_t* /* offset */) {
-  VLOG(5) << "AsyncSocket::performRead() this=" << this
-          << ", buf=" << *buf << ", buflen=" << *buflen;
+AsyncSocket::ReadResult
+AsyncSocket::performRead(void** buf, size_t* buflen, size_t* /* offset */) {
+  VLOG(5) << "AsyncSocket::performRead() this=" << this << ", buf=" << *buf
+          << ", buflen=" << *buflen;
 
   int recvFlags = 0;
   if (peek_) {
@@ -1274,13 +1276,13 @@ ssize_t AsyncSocket::performRead(void** buf,
   if (bytes < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // No more data to read right now.
-      return READ_BLOCKING;
+      return ReadResult(READ_BLOCKING);
     } else {
-      return READ_ERROR;
+      return ReadResult(READ_ERROR);
     }
   } else {
     appBytesReceived_ += bytes;
-    return bytes;
+    return ReadResult(bytes);
   }
 }
 
@@ -1347,7 +1349,8 @@ void AsyncSocket::handleRead() noexcept {
     }
 
     // Perform the read
-    ssize_t bytesRead = performRead(&buf, &buflen, &offset);
+    auto readResult = performRead(&buf, &buflen, &offset);
+    auto bytesRead = readResult.readReturn;
     VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got "
             << bytesRead << " bytes";
     if (bytesRead > 0) {
@@ -1376,6 +1379,9 @@ void AsyncSocket::handleRead() noexcept {
         return;
     } else if (bytesRead == READ_ERROR) {
       readErr_ = READ_ERROR;
+      if (readResult.exception) {
+        return failRead(__func__, *readResult.exception);
+      }
       auto errnoCopy = errno;
       AsyncSocketException ex(
           AsyncSocketException::INTERNAL_ERROR,
@@ -1439,7 +1445,11 @@ void AsyncSocket::handleWrite() noexcept {
   // (See the comment in handleRead() explaining how this can happen.)
   EventBase* originalEventBase = eventBase_;
   while (writeReqHead_ != nullptr && eventBase_ == originalEventBase) {
-    if (!writeReqHead_->performWrite()) {
+    auto writeResult = writeReqHead_->performWrite();
+    if (writeResult.writeReturn < 0) {
+      if (writeResult.exception) {
+        return failWrite(__func__, *writeResult.exception);
+      }
       auto errnoCopy = errno;
       AsyncSocketException ex(
           AsyncSocketException::INTERNAL_ERROR,
@@ -1697,11 +1707,12 @@ void AsyncSocket::timeoutExpired() noexcept {
   }
 }
 
-ssize_t AsyncSocket::performWrite(const iovec* vec,
-                                   uint32_t count,
-                                   WriteFlags flags,
-                                   uint32_t* countWritten,
-                                   uint32_t* partialWritten) {
+AsyncSocket::WriteResult AsyncSocket::performWrite(
+    const iovec* vec,
+    uint32_t count,
+    WriteFlags flags,
+    uint32_t* countWritten,
+    uint32_t* partialWritten) {
   // We use sendmsg() instead of writev() so that we can pass in MSG_NOSIGNAL
   // We correctly handle EPIPE errors, so we never want to receive SIGPIPE
   // (since it may terminate the program if the main program doesn't explicitly
@@ -1736,12 +1747,12 @@ ssize_t AsyncSocket::performWrite(const iovec* vec,
       // TCP buffer is full; we can't write any more data right now.
       *countWritten = 0;
       *partialWritten = 0;
-      return 0;
+      return WriteResult(0);
     }
     // error
     *countWritten = 0;
     *partialWritten = 0;
-    return -1;
+    return WriteResult(WRITE_ERROR);
   }
 
   appBytesWritten_ += totalWritten;
@@ -1754,7 +1765,7 @@ ssize_t AsyncSocket::performWrite(const iovec* vec,
       // Partial write finished in the middle of this iovec
       *countWritten = n;
       *partialWritten = bytesWritten;
-      return totalWritten;
+      return WriteResult(totalWritten);
     }
 
     bytesWritten -= v->iov_len;
@@ -1763,7 +1774,7 @@ ssize_t AsyncSocket::performWrite(const iovec* vec,
   assert(bytesWritten == 0);
   *countWritten = n;
   *partialWritten = 0;
-  return totalWritten;
+  return WriteResult(totalWritten);
 }
 
 /**

@@ -35,6 +35,11 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
             new folly::AsyncSocket(&eventBase_)),
     address_(address) {}
 
+  explicit BlockingSocket(folly::AsyncSocket::UniquePtr socket)
+      : sock_(std::move(socket)) {
+    sock_->attachEventBase(&eventBase_);
+  }
+
   void open() {
     sock_->connect(this, address_);
     eventBase_.loop();
