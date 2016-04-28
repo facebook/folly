@@ -1283,8 +1283,13 @@ class SharedMutexImpl {
     ReadHolder& operator=(const ReadHolder& rhs) = delete;
 
     ~ReadHolder() {
+      unlock();
+    }
+
+    void unlock() {
       if (lock_) {
         lock_->unlock_shared(token_);
+        lock_ = nullptr;
       }
     }
 
@@ -1325,8 +1330,13 @@ class SharedMutexImpl {
     UpgradeHolder& operator=(const UpgradeHolder& rhs) = delete;
 
     ~UpgradeHolder() {
+      unlock();
+    }
+
+    void unlock() {
       if (lock_) {
         lock_->unlock_upgrade();
+        lock_ = nullptr;
       }
     }
 
@@ -1353,6 +1363,30 @@ class SharedMutexImpl {
       lock_->unlock_upgrade_and_lock();
     }
 
+    // README:
+    //
+    // It is intended that WriteHolder(ReadHolder&& rhs) do not exist.
+    //
+    // Shared locks (read) can not safely upgrade to unique locks (write).
+    // That upgrade path is a well-known recipe for deadlock, so we explicitly
+    // disallow it.
+    //
+    // If you need to do a conditional mutation, you have a few options:
+    // 1. Check the condition under a shared lock and release it.
+    //    Then maybe check the condition again under a unique lock and maybe do
+    //    the mutation.
+    // 2. Check the condition once under an upgradeable lock.
+    //    Then maybe upgrade the lock to a unique lock and do the mutation.
+    // 3. Check the condition and maybe perform the mutation under a unique
+    //    lock.
+    //
+    // Relevant upgradeable lock notes:
+    // * At most one upgradeable lock can be held at a time for a given shared
+    //   mutex, just like a unique lock.
+    // * An upgradeable lock may be held concurrently with any number of shared
+    //   locks.
+    // * An upgradeable lock may be upgraded atomically to a unique lock.
+
     WriteHolder(WriteHolder&& rhs) noexcept : lock_(rhs.lock_) {
       rhs.lock_ = nullptr;
     }
@@ -1366,8 +1400,13 @@ class SharedMutexImpl {
     WriteHolder& operator=(const WriteHolder& rhs) = delete;
 
     ~WriteHolder() {
+      unlock();
+    }
+
+    void unlock() {
       if (lock_) {
         lock_->unlock();
+        lock_ = nullptr;
       }
     }
 

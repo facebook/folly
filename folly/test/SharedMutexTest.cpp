@@ -92,19 +92,39 @@ void runBasicHoldersTest() {
   SharedMutexToken token;
 
   {
+    // create an exclusive write lock via holder
     typename Lock::WriteHolder holder(lock);
     EXPECT_FALSE(lock.try_lock());
     EXPECT_FALSE(lock.try_lock_shared(token));
 
+    // move ownership to another write holder via move constructor
     typename Lock::WriteHolder holder2(std::move(holder));
+    EXPECT_FALSE(lock.try_lock());
+    EXPECT_FALSE(lock.try_lock_shared(token));
+
+    // move ownership to another write holder via assign operator
     typename Lock::WriteHolder holder3;
     holder3 = std::move(holder2);
+    EXPECT_FALSE(lock.try_lock());
+    EXPECT_FALSE(lock.try_lock_shared(token));
 
+    // downgrade from exclusive to upgrade lock via move constructor
     typename Lock::UpgradeHolder holder4(std::move(holder3));
-    typename Lock::WriteHolder holder5(std::move(holder4));
 
+    // ensure we can lock from a shared source
+    EXPECT_FALSE(lock.try_lock());
+    EXPECT_TRUE(lock.try_lock_shared(token));
+    lock.unlock_shared(token);
+
+    // promote from upgrade to exclusive lock via move constructor
+    typename Lock::WriteHolder holder5(std::move(holder4));
+    EXPECT_FALSE(lock.try_lock());
+    EXPECT_FALSE(lock.try_lock_shared(token));
+
+    // downgrade exclusive to shared lock via move constructor
     typename Lock::ReadHolder holder6(std::move(holder5));
 
+    // ensure we can lock from another shared source
     EXPECT_FALSE(lock.try_lock());
     EXPECT_TRUE(lock.try_lock_shared(token));
     lock.unlock_shared(token);
