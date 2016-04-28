@@ -246,8 +246,6 @@ union Data {
   typename std::aligned_storage<6 * sizeof(void*)>::type small;
 };
 
-struct Tag {};
-
 template <bool If, typename T>
 using ConstIf = typename std::conditional<If, const T, T>::type;
 
@@ -255,16 +253,11 @@ template <typename Fun, typename FunT = typename std::decay<Fun>::type>
 using IsSmall = std::integral_constant<
     bool,
     (sizeof(FunT) <= sizeof(Data::small) &&
-#if defined(__GNUC__) && !defined(__clang__)
-     // GCC has a name mangling bug that causes hard errors if we use noexcept
-     // directly here. Last tested at gcc 5.3.0.
-     // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70790
-     std::is_nothrow_move_constructible<FunT>::value
-#else
      // Same as is_nothrow_move_constructible, but w/ no template instantiation.
      noexcept(FunT(std::declval<FunT&&>()))
-#endif
      )>;
+using SmallTag = std::true_type;
+using HeapTag = std::false_type;
 
 template <typename T>
 bool isNullPtrFn(T* p) {
@@ -282,6 +275,7 @@ ReturnType uninitCall(Data&, Args&&...) {
 inline bool uninitNoop(Op, Data*, Data*) {
   return false;
 }
+
 } // namespace function
 } // namespace detail
 
@@ -289,9 +283,13 @@ namespace impl {
 
 template <typename ReturnType, typename... Args, bool Const>
 class Function<ReturnType(Args...), Const> final {
+  // These utility types are defined outside of the template to reduce
+  // the number of instantiations, and then imported in the class
+  // namespace for convenience.
   using Data = detail::function::Data;
   using Op = detail::function::Op;
-  using Tag = detail::function::Tag;
+  using SmallTag = detail::function::SmallTag;
+  using HeapTag = detail::function::HeapTag;
   using Call = ReturnType (*)(Data&, Args&&...);
   using Exec = bool (*)(Op, Data*, Data*);
 
@@ -308,69 +306,73 @@ class Function<ReturnType(Args...), Const> final {
       Function<ReturnType(Args...), false>&&) noexcept;
   friend class Function<ReturnType(Args...), !Const>;
 
-  template <typename Fun, typename FunT = typename std::decay<Fun>::type>
-  Function(
-      Fun&& fun,
-      typename std::enable_if<IsSmall<Fun>::value, Tag>::
-          type) noexcept(noexcept(FunT(std::declval<Fun>())))
-      : Function() {
-    struct Ops {
-      static ReturnType call(Data& p, Args&&... args) {
-        return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(
-            (void*)&p.small))(static_cast<Args&&>(args)...));
+  template <typename Fun>
+  struct OpsSmall {
+    using FunT = typename std::decay<Fun>::type;
+    static ReturnType call(Data& p, Args&&... args) {
+      return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(
+          (void*)&p.small))(static_cast<Args&&>(args)...));
+    }
+    static bool exec(Op o, Data* src, Data* dst) {
+      switch (o) {
+        case Op::MOVE:
+          ::new ((void*)&dst->small)
+              FunT(std::move(*static_cast<FunT*>((void*)&src->small)));
+          FOLLY_FALLTHROUGH;
+        case Op::NUKE:
+          static_cast<FunT*>((void*)&src->small)->~FunT();
+          break;
+        case Op::FULL:
+          return true;
+        case Op::HEAP:
+          break;
       }
-      static bool exec(Op o, Data* src, Data* dst) {
-        switch (o) {
-          case Op::MOVE:
-            ::new ((void*)&dst->small)
-                FunT(std::move(*static_cast<FunT*>((void*)&src->small)));
-            FOLLY_FALLTHROUGH;
-          case Op::NUKE:
-            static_cast<FunT*>((void*)&src->small)->~FunT();
-            break;
-          case Op::FULL:
-            return true;
-          case Op::HEAP:
-            break;
-        }
-        return false;
-      }
-    };
+      return false;
+    }
+  };
+
+  template <typename Fun>
+  Function(Fun&& fun, SmallTag) noexcept : Function() {
+    using Ops = OpsSmall<Fun>;
     if (!detail::function::isNullPtrFn(fun)) {
-      ::new (&data_.small) FunT(static_cast<Fun&&>(fun));
+      ::new (&data_.small) typename Ops::FunT(static_cast<Fun&&>(fun));
       exec_ = &Ops::exec;
       call_ = &Ops::call;
     }
   }
 
-  template <typename Fun, typename FunT = typename std::decay<Fun>::type>
-  Function(Fun&& fun, typename std::enable_if<!IsSmall<Fun>::value, Tag>::type)
-      : Function() {
-    struct Ops {
-      static ReturnType call(Data& p, Args&&... args) {
-        return static_cast<ReturnType>((*static_cast<ConstIf<FunT>*>(p.big))(
-            static_cast<Args&&>(args)...));
+  template <typename Fun>
+  struct OpsHeap {
+    using FunT = typename std::decay<Fun>::type;
+    static ReturnType call(Data& p, Args&&... args) {
+      return static_cast<ReturnType>(
+          (*static_cast<ConstIf<FunT>*>(p.big))(static_cast<Args&&>(args)...));
+    }
+    static bool exec(Op o, Data* src, Data* dst) {
+      switch (o) {
+        case Op::MOVE:
+          dst->big = src->big;
+          src->big = nullptr;
+          break;
+        case Op::NUKE:
+          delete static_cast<FunT*>(src->big);
+          break;
+        case Op::FULL:
+        case Op::HEAP:
+          break;
       }
-      static bool exec(Op o, Data* src, Data* dst) {
-        switch (o) {
-          case Op::MOVE:
-            dst->big = src->big;
-            src->big = nullptr;
-            break;
-          case Op::NUKE:
-            delete static_cast<FunT*>(src->big);
-            break;
-          case Op::FULL:
-          case Op::HEAP:
-            break;
-        }
-        return true;
-      }
-    };
-    data_.big = new FunT(static_cast<Fun&&>(fun));
+      return true;
+    }
+  };
+
+  template <typename Fun>
+  Function(Fun&& fun, HeapTag) : Function() {
+    using Ops = OpsHeap<Fun>;
+    data_.big = new typename Ops::FunT(static_cast<Fun&&>(fun));
     call_ = &Ops::call;
     exec_ = &Ops::exec;
   }
+
   template <typename F, typename G = typename std::decay<F>::type>
   using ResultOf = decltype(static_cast<ReturnType>(
       std::declval<ConstIf<G>&>()(std::declval<Args>()...)));
@@ -422,9 +424,8 @@ class Function<ReturnType(Args...), Const> final {
    * selected by overload resolution when `fun` is not a compatible function.
    */
   template <class Fun, typename = ResultOf<Fun>>
-  /* implicit */ Function(Fun&& fun) noexcept(
-      noexcept(Function(std::declval<Fun>(), Tag{})))
-      : Function(static_cast<Fun&&>(fun), Tag{}) {}
+  /* implicit */ Function(Fun&& fun) noexcept(IsSmall<Fun>::value)
+      : Function(static_cast<Fun&&>(fun), IsSmall<Fun>{}) {}
 
   /**
    * For moving a `Function<X(Ys..) const>` into a `Function<X(Ys...)>`.
