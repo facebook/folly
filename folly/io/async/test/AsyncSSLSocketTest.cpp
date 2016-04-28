@@ -1609,8 +1609,8 @@ TEST(AsyncSSLSocketTest, ConnResetErrorString) {
   socket->closeWithReset();
 
   handshakeCallback.waitForHandshake();
-  EXPECT_NE(handshakeCallback.errorString_.find("SSL_ERROR_SYSCALL"),
-            std::string::npos);
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("Network error"), std::string::npos);
   EXPECT_NE(handshakeCallback.errorString_.find("104"), std::string::npos);
 }
 
@@ -1630,8 +1630,8 @@ TEST(AsyncSSLSocketTest, ConnEOFErrorString) {
   socket->close();
 
   handshakeCallback.waitForHandshake();
-  EXPECT_NE(handshakeCallback.errorString_.find("SSL_ERROR_SYSCALL"),
-            std::string::npos);
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("Connection EOF"), std::string::npos);
   EXPECT_NE(handshakeCallback.errorString_.find("EOF"), std::string::npos);
 }
 

@@ -29,14 +29,14 @@ std::string decodeOpenSSLError(
     int sslOperationReturnValue) {
   if (sslError == SSL_ERROR_SYSCALL && errError == 0) {
     if (sslOperationReturnValue == 0) {
-      return "SSL_ERROR_SYSCALL: EOF";
+      return "Connection EOF";
     } else {
       // In this case errno is set, AsyncSocketException will add it.
-      return "SSL_ERROR_SYSCALL";
+      return "Network error";
     }
   } else if (sslError == SSL_ERROR_ZERO_RETURN) {
     // This signifies a TLS closure alert.
-    return "SSL_ERROR_ZERO_RETURN";
+    return "SSL connection closed normally";
   } else {
     std::array<char, 256> buf;
     std::string msg(ERR_error_string(errError, buf.data()));
@@ -56,9 +56,14 @@ const StringPiece getSSLErrorString(SSLError error) {
     case SSLError::EARLY_WRITE:
       ret = "Attempt to write before SSL connection established";
       break;
-    case SSLError::OPENSSL_ERR:
-      // decodeOpenSSLError should be used for this type.
-      ret = "OPENSSL error";
+    case SSLError::SSL_ERROR:
+      ret = "SSL error";
+      break;
+    case SSLError::NETWORK_ERROR:
+      ret = "Network error";
+      break;
+    case SSLError::EOF_ERROR:
+      ret = "SSL connection closed normally";
       break;
   }
   return ret;
@@ -68,17 +73,23 @@ const StringPiece getSSLErrorString(SSLError error) {
 namespace folly {
 
 SSLException::SSLException(
-    int sslError,
+    int sslErr,
     unsigned long errError,
     int sslOperationReturnValue,
     int errno_copy)
     : AsyncSocketException(
           AsyncSocketException::SSL_ERROR,
-          decodeOpenSSLError(sslError, errError, sslOperationReturnValue),
-          sslError == SSL_ERROR_SYSCALL ? errno_copy : 0),
-      sslError(SSLError::OPENSSL_ERR),
-      opensslSSLError(sslError),
-      opensslErr(errError) {}
+          decodeOpenSSLError(sslErr, errError, sslOperationReturnValue),
+          sslErr == SSL_ERROR_SYSCALL ? errno_copy : 0) {
+  if (sslErr == SSL_ERROR_ZERO_RETURN) {
+    sslError = SSLError::EOF_ERROR;
+  } else if (sslErr == SSL_ERROR_SYSCALL) {
+    sslError = SSLError::NETWORK_ERROR;
+  } else {
+    // Conservatively assume that this is an SSL error
+    sslError = SSLError::SSL_ERROR;
+  }
+}
 
 SSLException::SSLException(SSLError error)
     : AsyncSocketException(

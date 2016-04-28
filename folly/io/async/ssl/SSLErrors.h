@@ -24,11 +24,9 @@ enum class SSLError {
   CLIENT_RENEGOTIATION, // A client tried to renegotiate with this server
   INVALID_RENEGOTIATION, // We attempted to start a renegotiation.
   EARLY_WRITE, // Wrote before SSL connection established.
-  // An openssl error type. The openssl specific methods should be used
-  // to find the real error type.
-  // This exists for compatibility until all error types can be move to proper
-  // errors.
-  OPENSSL_ERR,
+  SSL_ERROR, // An error related to SSL
+  NETWORK_ERROR, // An error related to the network.
+  EOF_ERROR, // The peer terminated the connection correctly.
 };
 
 class SSLException : public folly::AsyncSocketException {
@@ -45,19 +43,7 @@ class SSLException : public folly::AsyncSocketException {
     return sslError;
   }
 
-  // These methods exist for compatibility until there are proper exceptions
-  // for all ssl error types.
-  int getOpensslSSLError() const {
-    return opensslSSLError;
-  }
-
-  unsigned long getOpensslErr() const {
-    return opensslErr;
-  }
-
  private:
   SSLError sslError;
-  int opensslSSLError;
-  unsigned long opensslErr;
 };
 }
