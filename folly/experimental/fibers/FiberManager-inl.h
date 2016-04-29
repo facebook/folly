@@ -281,9 +281,10 @@ void FiberManager::addTask(F&& func) {
 }
 
 template <typename F>
-auto FiberManager::addTaskFuture(F&& func)
-    -> folly::Future<typename std::result_of<F()>::type> {
-  using T = typename std::result_of<F()>::type;
+auto FiberManager::addTaskFuture(F&& func) -> folly::Future<
+    typename folly::Unit::Lift<typename std::result_of<F()>::type>::type> {
+  using T =
+      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type;
   folly::Promise<T> p;
   auto f = p.getFuture();
   addTaskFinally(
@@ -312,9 +313,11 @@ void FiberManager::addTaskRemote(F&& func) {
 }
 
 template <typename F>
-auto FiberManager::addTaskRemoteFuture(F&& func)
-    -> folly::Future<typename std::result_of<F()>::type> {
-  folly::Promise<typename std::result_of<F()>::type> p;
+auto FiberManager::addTaskRemoteFuture(F&& func) -> folly::Future<
+    typename folly::Unit::Lift<typename std::result_of<F()>::type>::type> {
+  folly::Promise<
+      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>
+      p;
   auto f = p.getFuture();
   addTaskRemote(
       [ p = std::move(p), func = std::forward<F>(func), this ]() mutable {
@@ -395,7 +398,8 @@ struct FiberManager::AddTaskFinallyHelper {
 
 template <typename F, typename G>
 void FiberManager::addTaskFinally(F&& func, G&& finally) {
-  typedef typename std::result_of<F()>::type Result;
+  typedef typename folly::Unit::Lift<typename std::result_of<F()>::type>::type
+      Result;
 
   static_assert(
       IsRvalueRefTry<typename FirstArgOf<G>::type>::value,

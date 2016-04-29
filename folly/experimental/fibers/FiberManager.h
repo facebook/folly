@@ -190,8 +190,8 @@ class FiberManager : public ::folly::Executor {
    *             The object will be destroyed once task execution is complete.
    */
   template <typename F>
-  auto addTaskFuture(F&& func)
-      -> folly::Future<typename std::result_of<F()>::type>;
+  auto addTaskFuture(F&& func) -> folly::Future<
+      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>;
   /**
    * Add a new task to be executed. Safe to call from other threads.
    *
@@ -209,8 +209,8 @@ class FiberManager : public ::folly::Executor {
    *             The object will be destroyed once task execution is complete.
    */
   template <typename F>
-  auto addTaskRemoteFuture(F&& func)
-      -> folly::Future<typename std::result_of<F()>::type>;
+  auto addTaskRemoteFuture(F&& func) -> folly::Future<
+      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type>;
 
   // Executor interface calls addTaskRemote
   void add(folly::Func f) override {

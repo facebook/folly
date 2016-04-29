@@ -1406,6 +1406,29 @@ TEST(FiberManager, remoteFutureTest) {
   EXPECT_EQ(v2, testValue2);
 }
 
+// Test that a void function produes a Future<Unit>.
+TEST(FiberManager, remoteFutureVoidUnitTest) {
+  FiberManager fiberManager(folly::make_unique<SimpleLoopController>());
+  auto& loopController =
+      dynamic_cast<SimpleLoopController&>(fiberManager.loopController());
+
+  bool ranLocal = false;
+  folly::Future<folly::Unit> futureLocal =
+      fiberManager.addTaskFuture([&]() { ranLocal = true; });
+
+  bool ranRemote = false;
+  folly::Future<folly::Unit> futureRemote =
+      fiberManager.addTaskRemoteFuture([&]() { ranRemote = true; });
+
+  loopController.loop([&]() { loopController.stop(); });
+
+  futureLocal.wait();
+  ASSERT_TRUE(ranLocal);
+
+  futureRemote.wait();
+  ASSERT_TRUE(ranRemote);
+}
+
 TEST(FiberManager, nestedFiberManagers) {
   folly::EventBase outerEvb;
   folly::EventBase innerEvb;
