@@ -15,13 +15,14 @@
  */
 #pragma once
 
-#include <folly/experimental/fibers/FiberManager.h>
 #include <folly/experimental/fibers/EventBaseLoopController.h>
+#include <folly/experimental/fibers/FiberManager.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 FiberManager& getFiberManager(
     folly::EventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options());
-
-}}
+}
+}

@@ -19,8 +19,9 @@
 
 #include <folly/experimental/fibers/Baton.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 typedef Baton GenericBaton;
-
-}}
+}
+}

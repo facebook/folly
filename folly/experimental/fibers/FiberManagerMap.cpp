@@ -18,10 +18,11 @@
 #include <memory>
 #include <unordered_map>
 
-#include <folly/ThreadLocal.h>
 #include <folly/Synchronized.h>
+#include <folly/ThreadLocal.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 namespace {
 
@@ -109,12 +110,14 @@ class ThreadLocalCache {
   ThreadLocalCache() {}
 
   struct ThreadLocalCacheTag {};
-  using ThreadThreadLocalCache = ThreadLocal<ThreadLocalCache, ThreadLocalCacheTag>;
+  using ThreadThreadLocalCache =
+      ThreadLocal<ThreadLocalCache, ThreadLocalCacheTag>;
 
   // Leak this intentionally. During shutdown, we may call getFiberManager,
   // and want access to the fiber managers during that time.
   static ThreadThreadLocalCache& instance() {
-    static auto ret = new ThreadThreadLocalCache([]() { return new ThreadLocalCache(); });
+    static auto ret =
+        new ThreadThreadLocalCache([]() { return new ThreadLocalCache(); });
     return *ret;
   }
 
@@ -177,9 +180,10 @@ void EventBaseOnDestructionCallback::runLoopCallback() noexcept {
 
 } // namespace
 
-FiberManager& getFiberManager(EventBase& evb,
-                              const FiberManager::Options& opts) {
+FiberManager& getFiberManager(
+    EventBase& evb,
+    const FiberManager::Options& opts) {
   return ThreadLocalCache::get(evb, opts);
 }
-
-}}
+}
+}

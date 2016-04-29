@@ -26,10 +26,11 @@
 
 #include <folly/experimental/fibers/LoopController.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
-class TimeoutController :
-      public std::enable_shared_from_this<TimeoutController> {
+class TimeoutController
+    : public std::enable_shared_from_this<TimeoutController> {
  public:
   typedef std::chrono::steady_clock Clock;
   typedef std::chrono::time_point<Clock> TimePoint;
@@ -50,10 +51,11 @@ class TimeoutController :
   typedef std::unique_ptr<TimeoutHandleList> TimeoutHandleListPtr;
 
   struct TimeoutHandle {
-    TimeoutHandle(std::function<void()> func_,
-                  TimePoint timeout_,
-                  TimeoutHandleList& list_) :
-        func(std::move(func_)), timeout(timeout_), list(list_) {}
+    TimeoutHandle(
+        std::function<void()> func_,
+        TimePoint timeout_,
+        TimeoutHandleList& list_)
+        : func(std::move(func_)), timeout(timeout_), list(list_) {}
 
     std::function<void()> func;
     bool canceled{false};
@@ -65,5 +67,5 @@ class TimeoutController :
   TimePoint nextTimeout_;
   LoopController& loopController_;
 };
-
-}}
+}
+}

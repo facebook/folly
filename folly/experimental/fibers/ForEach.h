@@ -15,7 +15,8 @@
  */
 #pragma once
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 /**
  * Schedules several tasks and blocks until all of them are completed.
@@ -37,7 +38,7 @@ namespace folly { namespace fibers {
  */
 template <class InputIterator, class F>
 inline void forEach(InputIterator first, InputIterator last, F&& f);
-
-}}  // folly::fibers
+}
+} // folly::fibers
 
 #include <folly/experimental/fibers/ForEach-inl.h>

@@ -16,14 +16,16 @@
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/FiberManager.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 inline Baton::Baton() : Baton(NO_WAITER) {
   assert(Baton(NO_WAITER).futex_.futex == static_cast<uint32_t>(NO_WAITER));
   assert(Baton(POSTED).futex_.futex == static_cast<uint32_t>(POSTED));
   assert(Baton(TIMEOUT).futex_.futex == static_cast<uint32_t>(TIMEOUT));
-  assert(Baton(THREAD_WAITING).futex_.futex ==
-         static_cast<uint32_t>(THREAD_WAITING));
+  assert(
+      Baton(THREAD_WAITING).futex_.futex ==
+      static_cast<uint32_t>(THREAD_WAITING));
 
   assert(futex_.futex.is_lock_free());
   assert(waitingFiber_.is_lock_free());
@@ -54,9 +56,8 @@ void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
       } else {
         throw std::logic_error("Some Fiber is already waiting on this Baton.");
       }
-    } while(!waitingFiber.compare_exchange_weak(
-              baton_fiber,
-              reinterpret_cast<intptr_t>(&fiber)));
+    } while (!waitingFiber.compare_exchange_weak(
+        baton_fiber, reinterpret_cast<intptr_t>(&fiber)));
 
     mainContextFunc();
   };
@@ -66,8 +67,9 @@ void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
 }
 
 template <typename F>
-bool Baton::timed_wait(TimeoutController::Duration timeout,
-                       F&& mainContextFunc) {
+bool Baton::timed_wait(
+    TimeoutController::Duration timeout,
+    F&& mainContextFunc) {
   auto fm = FiberManager::getFiberManagerUnsafe();
 
   if (!fm || !fm->activeFiber_) {
@@ -82,8 +84,8 @@ bool Baton::timed_wait(TimeoutController::Duration timeout,
     canceled = true;
   };
 
-  auto id = fm->timeoutManager_->registerTimeout(
-    std::ref(timeoutFunc), timeout);
+  auto id =
+      fm->timeoutManager_->registerTimeout(std::ref(timeoutFunc), timeout);
 
   waitFiber(*fm, std::move(mainContextFunc));
 
@@ -96,8 +98,8 @@ bool Baton::timed_wait(TimeoutController::Duration timeout,
   return posted;
 }
 
-template<typename C, typename D>
-bool Baton::timed_wait(const std::chrono::time_point<C,D>& timeout) {
+template <typename C, typename D>
+bool Baton::timed_wait(const std::chrono::time_point<C, D>& timeout) {
   auto now = C::now();
 
   if (LIKELY(now <= timeout)) {
@@ -107,6 +109,5 @@ bool Baton::timed_wait(const std::chrono::time_point<C,D>& timeout) {
     return timed_wait(TimeoutController::Duration(0));
   }
 }
-
-
-}}
+}
+}

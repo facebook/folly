@@ -17,7 +17,8 @@
 #include <folly/experimental/fibers/EventBaseLoopController.h>
 #include <folly/experimental/fibers/FiberManager.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 inline EventBaseLoopController::EventBaseLoopController()
     : callback_(*this), aliveWeak_(destructionCallback_.getWeak()) {}
@@ -27,8 +28,7 @@ inline EventBaseLoopController::~EventBaseLoopController() {
 }
 
 inline void EventBaseLoopController::attachEventBase(
-  folly::EventBase& eventBase) {
-
+    folly::EventBase& eventBase) {
   if (eventBase_ != nullptr) {
     LOG(ERROR) << "Attempt to reattach EventBase to LoopController";
   }
@@ -87,16 +87,19 @@ inline void EventBaseLoopController::scheduleThreadSafe(
   }
 }
 
-inline void EventBaseLoopController::timedSchedule(std::function<void()> func,
-                                                   TimePoint time) {
+inline void EventBaseLoopController::timedSchedule(
+    std::function<void()> func,
+    TimePoint time) {
   assert(eventBaseAttached_);
 
   // We want upper bound for the cast, thus we just add 1
-  auto delay_ms = std::chrono::duration_cast<
-    std::chrono::milliseconds>(time - Clock::now()).count() + 1;
+  auto delay_ms =
+      std::chrono::duration_cast<std::chrono::milliseconds>(time - Clock::now())
+          .count() +
+      1;
   // If clock is not monotonic
   delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0L);
   eventBase_->tryRunAfterDelay(func, delay_ms);
 }
-
-}}  // folly::fibers
+}
+} // folly::fibers

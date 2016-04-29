@@ -18,18 +18,16 @@
 
 #include <folly/experimental/fibers/FiberManager.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 template <typename T>
 TaskIterator<T>::TaskIterator(TaskIterator&& other) noexcept
-    : context_(std::move(other.context_)),
-      id_(other.id_) {
-}
+    : context_(std::move(other.context_)), id_(other.id_) {}
 
 template <typename T>
 TaskIterator<T>::TaskIterator(std::shared_ptr<Context> context)
-    : context_(std::move(context)),
-      id_(-1) {
+    : context_(std::move(context)), id_(-1) {
   assert(context_);
 }
 
@@ -82,11 +80,10 @@ inline void TaskIterator<T>::reserve(size_t n) {
   size_t tasksLeft = context_->totalTasks - context_->results.size();
   n = std::min(n, tasksLeft);
 
-  await(
-    [this, n](Promise<void> promise) {
-      context_->tasksToFulfillPromise = n;
-      context_->promise.assign(std::move(promise));
-    });
+  await([this, n](Promise<void> promise) {
+    context_->tasksToFulfillPromise = n;
+    context_->promise.assign(std::move(promise));
+  });
 }
 
 template <typename T>
@@ -97,10 +94,10 @@ inline size_t TaskIterator<T>::getTaskID() const {
 
 template <class InputIterator>
 TaskIterator<typename std::result_of<
-  typename std::iterator_traits<InputIterator>::value_type()>::type>
+    typename std::iterator_traits<InputIterator>::value_type()>::type>
 addTasks(InputIterator first, InputIterator last) {
   typedef typename std::result_of<
-    typename std::iterator_traits<InputIterator>::value_type()>::type
+      typename std::iterator_traits<InputIterator>::value_type()>::type
       ResultType;
   typedef TaskIterator<ResultType> IteratorType;
 
@@ -113,19 +110,17 @@ addTasks(InputIterator first, InputIterator last) {
 #pragma clang diagnostic push // ignore generalized lambda capture warning
 #pragma clang diagnostic ignored "-Wc++1y-extensions"
 #endif
-    addTask(
-      [i, context, f = std::move(*first)]() {
-        context->results.emplace_back(i, folly::makeTryWith(std::move(f)));
+    addTask([ i, context, f = std::move(*first) ]() {
+      context->results.emplace_back(i, folly::makeTryWith(std::move(f)));
 
-        // Check for awaiting iterator.
-        if (context->promise.hasValue()) {
-          if (--context->tasksToFulfillPromise == 0) {
-            context->promise->setValue();
-            context->promise.clear();
-          }
+      // Check for awaiting iterator.
+      if (context->promise.hasValue()) {
+        if (--context->tasksToFulfillPromise == 0) {
+          context->promise->setValue();
+          context->promise.clear();
         }
       }
-    );
+    });
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
@@ -133,5 +128,5 @@ addTasks(InputIterator first, InputIterator last) {
 
   return IteratorType(std::move(context));
 }
-
-}}
+}
+}

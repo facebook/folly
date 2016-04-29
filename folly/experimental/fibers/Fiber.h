@@ -28,7 +28,8 @@
 #include <boost/context/all.hpp>
 #include <boost/version.hpp>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class Baton;
 class FiberManager;
@@ -63,26 +64,26 @@ class Fiber {
    */
   std::pair<void*, size_t> getStack() const {
     void* const stack =
-      std::min<void*>(fcontext_.stackLimit(), fcontext_.stackBase());
+        std::min<void*>(fcontext_.stackLimit(), fcontext_.stackBase());
     const size_t size = std::abs<intptr_t>(
         reinterpret_cast<intptr_t>(fcontext_.stackBase()) -
         reinterpret_cast<intptr_t>(fcontext_.stackLimit()));
-    return { stack, size };
+    return {stack, size};
   }
 
  private:
   enum State {
-    INVALID,                    /**< Does't have task function */
-    NOT_STARTED,                /**< Has task function, not started */
-    READY_TO_RUN,               /**< Was started, blocked, then unblocked */
-    RUNNING,                    /**< Is running right now */
-    AWAITING,                   /**< Is currently blocked */
-    AWAITING_IMMEDIATE,         /**< Was preempted to run an immediate function,
-                                     and will be resumed right away */
-    YIELDED,                    /**< The fiber yielded execution voluntarily */
+    INVALID, /**< Does't have task function */
+    NOT_STARTED, /**< Has task function, not started */
+    READY_TO_RUN, /**< Was started, blocked, then unblocked */
+    RUNNING, /**< Is running right now */
+    AWAITING, /**< Is currently blocked */
+    AWAITING_IMMEDIATE, /**< Was preempted to run an immediate function,
+                             and will be resumed right away */
+    YIELDED, /**< The fiber yielded execution voluntarily */
   };
 
-  State state_{INVALID};        /**< current Fiber state */
+  State state_{INVALID}; /**< current Fiber state */
 
   friend class Baton;
   friend class FiberManager;
@@ -116,11 +117,11 @@ class Fiber {
    */
   void recordStackPosition();
 
-  FiberManager& fiberManager_;  /**< Associated FiberManager */
-  FContext fcontext_;           /**< current task execution context */
-  intptr_t data_;               /**< Used to keep some data with the Fiber */
+  FiberManager& fiberManager_; /**< Associated FiberManager */
+  FContext fcontext_; /**< current task execution context */
+  intptr_t data_; /**< Used to keep some data with the Fiber */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
-  folly::Function<void()> func_;  /**< task function */
+  folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};
   bool stackFilledWithMagic_{false};
 
@@ -154,7 +155,7 @@ class Fiber {
 
     void reset();
 
-    //private:
+    // private:
     template <typename T>
     FOLLY_NOINLINE T& getSlow();
 
@@ -185,7 +186,7 @@ class Fiber {
   folly::IntrusiveListHook globalListHook_; /**< list hook for global list */
   pid_t threadId_{0};
 };
-
-}}
+}
+}
 
 #include <folly/experimental/fibers/Fiber-inl.h>

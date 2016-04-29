@@ -40,24 +40,28 @@ static void __asan_exit_fiber_weak()
 typedef void (*AsanEnterFiberFuncPtr)(void const*, size_t);
 typedef void (*AsanExitFiberFuncPtr)();
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 static AsanEnterFiberFuncPtr getEnterFiberFunc();
 static AsanExitFiberFuncPtr getExitFiberFunc();
-
-}}
+}
+}
 
 #endif
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 FOLLY_TLS FiberManager* FiberManager::currentFiberManager_ = nullptr;
 
-FiberManager::FiberManager(std::unique_ptr<LoopController> loopController,
-                           Options options) :
-    FiberManager(LocalType<void>(),
-                 std::move(loopController),
-                 std::move(options)) {}
+FiberManager::FiberManager(
+    std::unique_ptr<LoopController> loopController,
+    Options options)
+    : FiberManager(
+          LocalType<void>(),
+          std::move(loopController),
+          std::move(options)) {}
 
 FiberManager::~FiberManager() {
   if (isLoopScheduled_) {
@@ -65,9 +69,7 @@ FiberManager::~FiberManager() {
   }
 
   while (!fibersPool_.empty()) {
-    fibersPool_.pop_front_and_dispose([] (Fiber* fiber) {
-      delete fiber;
-    });
+    fibersPool_.pop_front_and_dispose([](Fiber* fiber) { delete fiber; });
   }
   assert(readyFibers_.empty());
   assert(fibersActive_ == 0);
@@ -82,9 +84,8 @@ const LoopController& FiberManager::loopController() const {
 }
 
 bool FiberManager::hasTasks() const {
-  return fibersActive_ > 0 ||
-         !remoteReadyQueue_.empty() ||
-         !remoteTaskQueue_.empty();
+  return fibersActive_ > 0 || !remoteReadyQueue_.empty() ||
+      !remoteTaskQueue_.empty();
 }
 
 Fiber* FiberManager::getFiber() {
@@ -110,7 +111,7 @@ Fiber* FiberManager::getFiber() {
   }
   ++fiberId_;
   bool recordStack = (options_.recordStackEvery != 0) &&
-                     (fiberId_ % options_.recordStackEvery == 0);
+      (fiberId_ % options_.recordStackEvery == 0);
   return fiber;
 }
 
@@ -166,7 +167,7 @@ void FiberManager::FibersPoolResizer::operator()() {
   fiberManager_.timeoutManager_->registerTimeout(
       *this,
       std::chrono::milliseconds(
-        fiberManager_.options_.fibersPoolResizePeriodMs));
+          fiberManager_.options_.fibersPoolResizePeriodMs));
 }
 
 #ifdef FOLLY_SANITIZE_ADDRESS
@@ -235,4 +236,5 @@ static AsanExitFiberFuncPtr getExitFiberFunc() {
 }
 
 #endif // FOLLY_SANITIZE_ADDRESS
-}}
+}
+}

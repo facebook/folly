@@ -16,14 +16,15 @@
 #include "TimeoutController.h"
 #include <folly/Memory.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
-TimeoutController::TimeoutController(LoopController& loopController) :
-    nextTimeout_(TimePoint::max()),
-    loopController_(loopController) {}
+TimeoutController::TimeoutController(LoopController& loopController)
+    : nextTimeout_(TimePoint::max()), loopController_(loopController) {}
 
-intptr_t TimeoutController::registerTimeout(std::function<void()> f,
-                                            Duration duration) {
+intptr_t TimeoutController::registerTimeout(
+    std::function<void()> f,
+    Duration duration) {
   auto& list = [&]() -> TimeoutHandleList& {
     for (auto& bucket : timeoutHandleBuckets_) {
       if (bucket.first == duration) {
@@ -31,8 +32,8 @@ intptr_t TimeoutController::registerTimeout(std::function<void()> f,
       }
     }
 
-    timeoutHandleBuckets_.emplace_back(duration,
-                                       folly::make_unique<TimeoutHandleList>());
+    timeoutHandleBuckets_.emplace_back(
+        duration, folly::make_unique<TimeoutHandleList>());
     return *timeoutHandleBuckets_.back().second;
   }();
 
@@ -84,11 +85,13 @@ void TimeoutController::scheduleRun() {
   auto time = nextTimeout_;
   std::weak_ptr<TimeoutController> timeoutControllerWeak = shared_from_this();
 
-  loopController_.timedSchedule([timeoutControllerWeak, time]() {
-      if (auto timeoutController = timeoutControllerWeak.lock()) {
-        timeoutController->runTimeouts(time);
-      }
-    }, time);
+  loopController_.timedSchedule(
+      [timeoutControllerWeak, time]() {
+        if (auto timeoutController = timeoutControllerWeak.lock()) {
+          timeoutController->runTimeouts(time);
+        }
+      },
+      time);
 }
 
 void TimeoutController::cancel(intptr_t p) {
@@ -101,5 +104,5 @@ void TimeoutController::cancel(intptr_t p) {
     list.pop();
   }
 }
-
-}}
+}
+}

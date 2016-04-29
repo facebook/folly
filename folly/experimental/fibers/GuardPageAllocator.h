@@ -17,7 +17,8 @@
 
 #include <memory>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class StackCacheEntry;
 
@@ -51,5 +52,5 @@ class GuardPageAllocator {
   std::allocator<unsigned char> fallbackAllocator_;
   bool useGuardPages_{true};
 };
-
-}}  // folly::fibers
+}
+} // folly::fibers

@@ -15,16 +15,17 @@
  */
 #pragma once
 
-#include <memory>
-#include <atomic>
 #include <folly/experimental/fibers/LoopController.h>
 #include <folly/io/async/EventBase.h>
+#include <atomic>
+#include <memory>
 
 namespace folly {
 class EventBase;
 }
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class FiberManager;
 
@@ -48,7 +49,9 @@ class EventBaseLoopController : public LoopController {
     explicit ControllerCallback(EventBaseLoopController& controller)
         : controller_(controller) {}
 
-    void runLoopCallback() noexcept override { controller_.runLoop(); }
+    void runLoopCallback() noexcept override {
+      controller_.runLoop();
+    }
 
    private:
     EventBaseLoopController& controller_;
@@ -57,11 +60,17 @@ class EventBaseLoopController : public LoopController {
   class DestructionCallback : public folly::EventBase::LoopCallback {
    public:
     DestructionCallback() : alive_(new int(42)) {}
-    ~DestructionCallback() { reset(); }
+    ~DestructionCallback() {
+      reset();
+    }
 
-    void runLoopCallback() noexcept override { reset(); }
+    void runLoopCallback() noexcept override {
+      reset();
+    }
 
-    std::weak_ptr<void> getWeak() { return {alive_}; }
+    std::weak_ptr<void> getWeak() {
+      return {alive_};
+    }
 
    private:
     void reset() {
@@ -96,7 +105,7 @@ class EventBaseLoopController : public LoopController {
 
   friend class FiberManager;
 };
-
-}}  // folly::fibers
+}
+} // folly::fibers
 
 #include "EventBaseLoopController-inl.h"

@@ -19,16 +19,14 @@
 
 #include <folly/experimental/fibers/LoopController.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class FiberManager;
 
 class SimpleLoopController : public LoopController {
  public:
-  SimpleLoopController()
-      : fm_(nullptr),
-        stopRequested_(false) {
-  }
+  SimpleLoopController() : fm_(nullptr), stopRequested_(false) {}
 
   /**
    * Run FiberManager loop; if no ready task are present,
@@ -45,7 +43,7 @@ class SimpleLoopController : public LoopController {
 
       auto time = Clock::now();
 
-      for (size_t i=0; i<scheduledFuncs_.size(); ++i) {
+      for (size_t i = 0; i < scheduledFuncs_.size(); ++i) {
         if (scheduledFuncs_[i].first <= time) {
           scheduledFuncs_[i].second();
           swap(scheduledFuncs_[i], scheduledFuncs_.back());
@@ -106,5 +104,5 @@ class SimpleLoopController : public LoopController {
 
   friend class FiberManager;
 };
-
-}}  // folly::fibers
+}
+} // folly::fibers

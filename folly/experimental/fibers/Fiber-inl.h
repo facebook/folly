@@ -17,7 +17,8 @@
 
 #include <cassert>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 template <typename F>
 void Fiber::setFunction(F&& func) {
@@ -27,8 +28,7 @@ void Fiber::setFunction(F&& func) {
 }
 
 template <typename F, typename G>
-void Fiber::setFunctionFinally(F&& resultFunc,
-                               G&& finallyFunc) {
+void Fiber::setFunctionFinally(F&& resultFunc, G&& finallyFunc) {
   assert(state_ == INVALID);
   resultFunc_ = std::forward<F>(resultFunc);
   finallyFunc_ = std::forward<G>(finallyFunc);
@@ -68,9 +68,9 @@ void Fiber::LocalData::dataBufferDestructor(void* ptr) {
 }
 
 template <typename T>
-void Fiber::LocalData::dataHeapDestructor(void *ptr) {
+void Fiber::LocalData::dataHeapDestructor(void* ptr) {
   reinterpret_cast<T*>(ptr)->~T();
   freeHeapBuffer(ptr);
 }
-
-}}  // folly::fibers
+}
+} // folly::fibers

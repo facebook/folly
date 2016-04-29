@@ -19,8 +19,8 @@
 #include <memory>
 #include <queue>
 #include <thread>
-#include <typeindex>
 #include <type_traits>
+#include <typeindex>
 #include <unordered_set>
 #include <vector>
 
@@ -51,8 +51,7 @@ class LoopController;
 class TimeoutController;
 
 template <typename T>
-class LocalType {
-};
+class LocalType {};
 
 class InlineFunctionRunner {
  public:
@@ -128,8 +127,9 @@ class FiberManager : public ::folly::Executor {
    * @param loopController
    * @param options FiberManager options
    */
-  explicit FiberManager(std::unique_ptr<LoopController> loopController,
-                        Options options = Options());
+  explicit FiberManager(
+      std::unique_ptr<LoopController> loopController,
+      Options options = Options());
 
   /**
    * Initializes, but doesn't start FiberManager loop
@@ -140,10 +140,10 @@ class FiberManager : public ::folly::Executor {
    *                Locals of other types will be considered thread-locals.
    */
   template <typename LocalT>
-  FiberManager(LocalType<LocalT>,
-               std::unique_ptr<LoopController> loopController,
-               Options options = Options());
-
+  FiberManager(
+      LocalType<LocalT>,
+      std::unique_ptr<LoopController> loopController,
+      Options options = Options());
 
   ~FiberManager();
 
@@ -237,8 +237,7 @@ class FiberManager : public ::folly::Executor {
    * @return value returned by func().
    */
   template <typename F>
-  typename std::result_of<F()>::type
-  runInMainContext(F&& func);
+  typename std::result_of<F()>::type runInMainContext(F&& func);
 
   /**
    * Returns a refference to a fiber-local context for given Fiber. Should be
@@ -323,14 +322,13 @@ class FiberManager : public ::folly::Executor {
 
   struct RemoteTask {
     template <typename F>
-    explicit RemoteTask(F&& f) :
-        func(std::forward<F>(f)),
-        rcontext(RequestContext::saveContext()) {}
+    explicit RemoteTask(F&& f)
+        : func(std::forward<F>(f)), rcontext(RequestContext::saveContext()) {}
     template <typename F>
-    RemoteTask(F&& f, const Fiber::LocalData& localData_) :
-        func(std::forward<F>(f)),
-        localData(folly::make_unique<Fiber::LocalData>(localData_)),
-        rcontext(RequestContext::saveContext()) {}
+    RemoteTask(F&& f, const Fiber::LocalData& localData_)
+        : func(std::forward<F>(f)),
+          localData(folly::make_unique<Fiber::LocalData>(localData_)),
+          rcontext(RequestContext::saveContext()) {}
     folly::Function<void()> func;
     std::unique_ptr<Fiber::LocalData> localData;
     std::shared_ptr<RequestContext> rcontext;
@@ -351,17 +349,17 @@ class FiberManager : public ::folly::Executor {
    */
   Fiber* currentFiber_{nullptr};
 
-  FiberTailQueue readyFibers_;  /**< queue of fibers ready to be executed */
-  FiberTailQueue yieldedFibers_;  /**< queue of fibers which have yielded
-                                       execution */
-  FiberTailQueue fibersPool_;   /**< pool of unitialized Fiber objects */
+  FiberTailQueue readyFibers_; /**< queue of fibers ready to be executed */
+  FiberTailQueue yieldedFibers_; /**< queue of fibers which have yielded
+                                      execution */
+  FiberTailQueue fibersPool_; /**< pool of unitialized Fiber objects */
 
   GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
 
-  size_t fibersAllocated_{0};   /**< total number of fibers allocated */
-  size_t fibersPoolSize_{0};    /**< total number of fibers in the free pool */
-  size_t fibersActive_{0};      /**< number of running or blocked fibers */
-  size_t fiberId_{0};           /**< id of last fiber used */
+  size_t fibersAllocated_{0}; /**< total number of fibers allocated */
+  size_t fibersPoolSize_{0}; /**< total number of fibers in the free pool */
+  size_t fibersActive_{0}; /**< number of running or blocked fibers */
+  size_t fiberId_{0}; /**< id of last fiber used */
 
   /**
    * Maximum number of active fibers in the last period lasting
@@ -369,7 +367,7 @@ class FiberManager : public ::folly::Executor {
    */
   size_t maxFibersActiveLastPeriod_{0};
 
-  FContext::ContextStruct mainContext_;  /**< stores loop function context */
+  FContext::ContextStruct mainContext_; /**< stores loop function context */
 
   std::unique_ptr<LoopController> loopController_;
   bool isLoopScheduled_{false}; /**< was the ready loop scheduled to run? */
@@ -386,7 +384,7 @@ class FiberManager : public ::folly::Executor {
    */
   GuardPageAllocator stackAllocator_;
 
-  const Options options_;       /**< FiberManager options */
+  const Options options_; /**< FiberManager options */
 
   /**
    * Largest observed individual Fiber stack usage in bytes.
@@ -439,9 +437,9 @@ class FiberManager : public ::folly::Executor {
   std::shared_ptr<TimeoutController> timeoutManager_;
 
   struct FibersPoolResizer {
-    explicit FibersPoolResizer(FiberManager& fm) :
-      fiberManager_(fm) {}
+    explicit FibersPoolResizer(FiberManager& fm) : fiberManager_(fm) {}
     void operator()();
+
    private:
     FiberManager& fiberManager_;
   };
@@ -503,7 +501,7 @@ inline void addTask(F&& func) {
 template <typename F, typename G>
 inline void addTaskFinally(F&& func, G&& finally) {
   return FiberManager::getFiberManager().addTaskFinally(
-    std::forward<F>(func), std::forward<G>(finally));
+      std::forward<F>(func), std::forward<G>(finally));
 }
 
 /**
@@ -514,8 +512,7 @@ inline void addTaskFinally(F&& func, G&& finally) {
  * @return data which was used to fulfill the promise.
  */
 template <typename F>
-typename FirstArgOf<F>::type::value_type
-inline await(F&& func);
+typename FirstArgOf<F>::type::value_type inline await(F&& func);
 
 /**
  * If called from a fiber, immediately switches to the FiberManager's context
@@ -525,8 +522,7 @@ inline await(F&& func);
  * @return value returned by func().
  */
 template <typename F>
-typename std::result_of<F()>::type
-inline runInMainContext(F&& func) {
+typename std::result_of<F()>::type inline runInMainContext(F&& func) {
   auto fm = FiberManager::getFiberManagerUnsafe();
   if (UNLIKELY(fm == nullptr)) {
     return func();
@@ -558,7 +554,7 @@ inline void yield() {
     std::this_thread::yield();
   }
 }
-
-}}
+}
+}
 
 #include "FiberManager-inl.h"

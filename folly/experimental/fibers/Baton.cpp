@@ -21,10 +21,11 @@
 #include <folly/experimental/fibers/FiberManager.h>
 #include <folly/portability/Asm.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 void Baton::wait() {
-  wait([](){});
+  wait([]() {});
 }
 
 void Baton::wait(TimeoutHandler& timeoutHandler) {
@@ -41,7 +42,7 @@ void Baton::wait(TimeoutHandler& timeoutHandler) {
 }
 
 bool Baton::timed_wait(TimeoutController::Duration timeout) {
-  return timed_wait(timeout, [](){});
+  return timed_wait(timeout, []() {});
 }
 
 void Baton::waitThread() {
@@ -52,8 +53,9 @@ void Baton::waitThread() {
 
   auto fiber = waitingFiber_.load();
 
-  if (LIKELY(fiber == NO_WAITER &&
-             waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
+  if (LIKELY(
+          fiber == NO_WAITER &&
+          waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
     do {
       folly::detail::MemoryIdler::futexWait(futex_.futex, THREAD_WAITING);
       fiber = waitingFiber_.load(std::memory_order_relaxed);
@@ -75,7 +77,8 @@ void Baton::waitThread() {
 }
 
 bool Baton::spinWaitForEarlyPost() {
-  static_assert(PreBlockAttempts > 0,
+  static_assert(
+      PreBlockAttempts > 0,
       "isn't this assert clearer than an uninitialized variable warning?");
   for (int i = 0; i < PreBlockAttempts; ++i) {
     if (try_wait()) {
@@ -100,12 +103,13 @@ bool Baton::timedWaitThread(TimeoutController::Duration timeout) {
 
   auto fiber = waitingFiber_.load();
 
-  if (LIKELY(fiber == NO_WAITER &&
-             waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
+  if (LIKELY(
+          fiber == NO_WAITER &&
+          waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
     auto deadline = TimeoutController::Clock::now() + timeout;
     do {
       const auto wait_rv =
-        futex_.futex.futexWaitUntil(THREAD_WAITING, deadline);
+          futex_.futex.futexWaitUntil(THREAD_WAITING, deadline);
       if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
         return false;
       }
@@ -167,7 +171,8 @@ void Baton::postThread() {
 }
 
 void Baton::reset() {
-  waitingFiber_.store(NO_WAITER, std::memory_order_relaxed);;
+  waitingFiber_.store(NO_WAITER, std::memory_order_relaxed);
+  ;
 }
 
 void Baton::TimeoutHandler::scheduleTimeout(
@@ -177,8 +182,8 @@ void Baton::TimeoutHandler::scheduleTimeout(
   assert(timeoutPtr_ == 0);
 
   if (timeout.count() > 0) {
-    timeoutPtr_ = fiberManager_->timeoutManager_->registerTimeout(
-        timeoutFunc_, timeout);
+    timeoutPtr_ =
+        fiberManager_->timeoutManager_->registerTimeout(timeoutFunc_, timeout);
   }
 }
 
@@ -187,5 +192,5 @@ void Baton::TimeoutHandler::cancelTimeout() {
     fiberManager_->timeoutManager_->cancel(timeoutPtr_);
   }
 }
-
-}}
+}
+}

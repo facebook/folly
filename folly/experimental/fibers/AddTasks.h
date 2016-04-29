@@ -22,7 +22,8 @@
 #include <folly/experimental/fibers/Promise.h>
 #include <folly/futures/Try.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 template <typename T>
 class TaskIterator;
@@ -39,10 +40,9 @@ class TaskIterator;
  * @return movable, non-copyable iterator
  */
 template <class InputIterator>
-TaskIterator<
-  typename std::result_of<
-    typename std::iterator_traits<InputIterator>::value_type()>::type>
-inline addTasks(InputIterator first, InputIterator last);
+TaskIterator<typename std::result_of<
+    typename std::iterator_traits<InputIterator>::value_type()>::
+                 type> inline addTasks(InputIterator first, InputIterator last);
 
 template <typename T>
 class TaskIterator {
@@ -99,9 +99,8 @@ class TaskIterator {
 
  private:
   template <class InputIterator>
-  friend TaskIterator<
-   typename std::result_of<
-     typename std::iterator_traits<InputIterator>::value_type()>::type>
+  friend TaskIterator<typename std::result_of<
+      typename std::iterator_traits<InputIterator>::value_type()>::type>
   addTasks(InputIterator first, InputIterator last);
 
   struct Context {
@@ -119,7 +118,7 @@ class TaskIterator {
 
   folly::Try<T> awaitNextResult();
 };
-
-}}
+}
+}
 
 #include <folly/experimental/fibers/AddTasks-inl.h>

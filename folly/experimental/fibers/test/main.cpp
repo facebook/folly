@@ -18,8 +18,10 @@
 #include <folly/Benchmark.h>
 
 // for backward compatibility with gflags
-namespace gflags { }
-namespace google { using namespace gflags; }
+namespace gflags {}
+namespace google {
+using namespace gflags;
+}
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

@@ -15,16 +15,16 @@
  */
 #include <folly/experimental/fibers/Baton.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 template <class T>
-Promise<T>::Promise(folly::Try<T>& value, Baton& baton) :
-    value_(&value), baton_(&baton)
-{}
+Promise<T>::Promise(folly::Try<T>& value, Baton& baton)
+    : value_(&value), baton_(&baton) {}
 
 template <class T>
-Promise<T>::Promise(Promise&& other) noexcept :
-value_(other.value_), baton_(other.baton_) {
+Promise<T>::Promise(Promise&& other) noexcept
+    : value_(other.value_), baton_(other.baton_) {
   other.value_ = nullptr;
   other.baton_ = nullptr;
 }
@@ -70,16 +70,14 @@ void Promise<T>::setTry(folly::Try<T>&& t) {
 template <class T>
 template <class M>
 void Promise<T>::setValue(M&& v) {
-  static_assert(!std::is_same<T, void>::value,
-                "Use setValue() instead");
+  static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
 
   setTry(folly::Try<T>(std::forward<M>(v)));
 }
 
 template <class T>
 void Promise<T>::setValue() {
-  static_assert(std::is_same<T, void>::value,
-                "Use setValue(value) instead");
+  static_assert(std::is_same<T, void>::value, "Use setValue(value) instead");
 
   setTry(folly::Try<void>());
 }
@@ -89,5 +87,5 @@ template <class F>
 void Promise<T>::setWith(F&& func) {
   setTry(makeTryWith(std::forward<F>(func)));
 }
-
-}}
+}
+}

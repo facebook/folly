@@ -15,7 +15,8 @@
  */
 #pragma once
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 /**
  * Schedules several tasks and blocks until n of these tasks are completed.
@@ -31,18 +32,16 @@ namespace folly { namespace fibers {
  */
 template <class InputIterator>
 typename std::vector<
-  typename std::enable_if<
-    !std::is_same<
-      typename std::result_of<
-        typename std::iterator_traits<InputIterator>::value_type()>::type,
-      void>::value,
-    typename std::pair<
-      size_t,
-      typename std::result_of<
-        typename std::iterator_traits<InputIterator>::value_type()>::type>
-    >::type
-  >
-inline collectN(InputIterator first, InputIterator last, size_t n);
+    typename std::enable_if<
+        !std::is_same<
+            typename std::result_of<typename std::iterator_traits<
+                InputIterator>::value_type()>::type,
+            void>::value,
+        typename std::pair<
+            size_t,
+            typename std::result_of<typename std::iterator_traits<
+                InputIterator>::value_type()>::type>>::
+        type> inline collectN(InputIterator first, InputIterator last, size_t n);
 
 /**
  * collectN specialization for functions returning void
@@ -55,11 +54,12 @@ inline collectN(InputIterator first, InputIterator last, size_t n);
  */
 template <class InputIterator>
 typename std::enable_if<
-  std::is_same<
-    typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type, void
-    >::value, std::vector<size_t>>::type
-inline collectN(InputIterator first, InputIterator last, size_t n);
+    std::is_same<
+        typename std::result_of<
+            typename std::iterator_traits<InputIterator>::value_type()>::type,
+        void>::value,
+    std::vector<size_t>>::
+    type inline collectN(InputIterator first, InputIterator last, size_t n);
 
 /**
  * Schedules several tasks and blocks until all of these tasks are completed.
@@ -73,16 +73,14 @@ inline collectN(InputIterator first, InputIterator last, size_t n);
  * @return vector of values returned by tasks
  */
 template <class InputIterator>
-typename std::vector<
-  typename std::enable_if<
+typename std::vector<typename std::enable_if<
     !std::is_same<
-      typename std::result_of<
-        typename std::iterator_traits<InputIterator>::value_type()>::type,
-      void>::value,
+        typename std::result_of<
+            typename std::iterator_traits<InputIterator>::value_type()>::type,
+        void>::value,
     typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type>::type
-  >
-inline collectAll(InputIterator first, InputIterator last);
+        typename std::iterator_traits<InputIterator>::value_type()>::
+        type>::type> inline collectAll(InputIterator first, InputIterator last);
 
 /**
  * collectAll specialization for functions returning void
@@ -92,11 +90,11 @@ inline collectAll(InputIterator first, InputIterator last);
  */
 template <class InputIterator>
 typename std::enable_if<
-  std::is_same<
-    typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type, void
-    >::value, void>::type
-inline collectAll(InputIterator first, InputIterator last);
+    std::is_same<
+        typename std::result_of<
+            typename std::iterator_traits<InputIterator>::value_type()>::type,
+        void>::value,
+    void>::type inline collectAll(InputIterator first, InputIterator last);
 
 /**
  * Schedules several tasks and blocks until one of them is completed.
@@ -110,16 +108,15 @@ inline collectAll(InputIterator first, InputIterator last);
  */
 template <class InputIterator>
 typename std::enable_if<
-  !std::is_same<
-    typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type, void
-    >::value,
-  typename std::pair<
-    size_t,
-    typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type>
-  >::type
-inline collectAny(InputIterator first, InputIterator last);
+    !std::is_same<
+        typename std::result_of<
+            typename std::iterator_traits<InputIterator>::value_type()>::type,
+        void>::value,
+    typename std::pair<
+        size_t,
+        typename std::result_of<typename std::iterator_traits<
+            InputIterator>::value_type()>::type>>::
+    type inline collectAny(InputIterator first, InputIterator last);
 
 /**
  * WhenAny specialization for functions returning void.
@@ -131,12 +128,12 @@ inline collectAny(InputIterator first, InputIterator last);
  */
 template <class InputIterator>
 typename std::enable_if<
-  std::is_same<
-    typename std::result_of<
-      typename std::iterator_traits<InputIterator>::value_type()>::type, void
-    >::value, size_t>::type
-inline collectAny(InputIterator first, InputIterator last);
-
-}}
+    std::is_same<
+        typename std::result_of<
+            typename std::iterator_traits<InputIterator>::value_type()>::type,
+        void>::value,
+    size_t>::type inline collectAny(InputIterator first, InputIterator last);
+}
+}
 
 #include <folly/experimental/fibers/WhenN-inl.h>

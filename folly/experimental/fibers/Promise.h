@@ -18,13 +18,13 @@
 #include <folly/experimental/fibers/traits.h>
 #include <folly/futures/Try.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class Baton;
 
 template <typename F>
-typename FirstArgOf<F>::type::value_type
-inline await(F&& func);
+typename FirstArgOf<F>::type::value_type inline await(F&& func);
 
 template <typename T>
 class Promise {
@@ -84,17 +84,17 @@ class Promise {
 
   template <class F>
   typename std::enable_if<
-    std::is_convertible<typename std::result_of<F()>::type, T>::value &&
-    !std::is_same<T, void>::value>::type
+      std::is_convertible<typename std::result_of<F()>::type, T>::value &&
+      !std::is_same<T, void>::value>::type
   fulfilHelper(F&& func);
 
   template <class F>
   typename std::enable_if<
-    std::is_same<typename std::result_of<F()>::type, void>::value &&
-    std::is_same<T, void>::value>::type
+      std::is_same<typename std::result_of<F()>::type, void>::value &&
+      std::is_same<T, void>::value>::type
   fulfilHelper(F&& func);
 };
-
-}}
+}
+}
 
 #include <folly/experimental/fibers/Promise-inl.h>

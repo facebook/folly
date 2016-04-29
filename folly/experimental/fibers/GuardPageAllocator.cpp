@@ -25,7 +25,8 @@
 
 #include <glog/logging.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 /**
  * Each stack with a guard page creates two memory mappings.
@@ -52,12 +53,14 @@ constexpr size_t kMaxInUse = 100;
  */
 class StackCache {
  public:
-  explicit StackCache(size_t stackSize)
-      : allocSize_(allocSize(stackSize)) {
-    auto p = ::mmap(nullptr, allocSize_ * kNumGuarded,
-                    PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS,
-                    -1, 0);
+  explicit StackCache(size_t stackSize) : allocSize_(allocSize(stackSize)) {
+    auto p = ::mmap(
+        nullptr,
+        allocSize_ * kNumGuarded,
+        PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS,
+        -1,
+        0);
     PCHECK(p != (void*)(-1));
     storage_ = reinterpret_cast<unsigned char*>(p);
 
@@ -140,7 +143,7 @@ class StackCache {
 
   /* Returns a multiple of pagesize() enough to store size + one guard page */
   static size_t allocSize(size_t size) {
-    return pagesize() * ((size + pagesize() - 1)/pagesize() + 1);
+    return pagesize() * ((size + pagesize() - 1) / pagesize() + 1);
   }
 };
 
@@ -187,8 +190,7 @@ class CacheManager {
 class StackCacheEntry {
  public:
   explicit StackCacheEntry(size_t stackSize)
-      : stackCache_(folly::make_unique<StackCache>(stackSize)) {
-  }
+      : stackCache_(folly::make_unique<StackCache>(stackSize)) {}
 
   StackCache& cache() const noexcept {
     return *stackCache_;
@@ -203,8 +205,7 @@ class StackCacheEntry {
 };
 
 GuardPageAllocator::GuardPageAllocator(bool useGuardPages)
-  : useGuardPages_(useGuardPages) {
-}
+    : useGuardPages_(useGuardPages) {}
 
 GuardPageAllocator::~GuardPageAllocator() = default;
 
@@ -227,5 +228,5 @@ void GuardPageAllocator::deallocate(unsigned char* limit, size_t size) {
     fallbackAllocator_.deallocate(limit, size);
   }
 }
-
-}}  // folly::fibers
+}
+} // folly::fibers

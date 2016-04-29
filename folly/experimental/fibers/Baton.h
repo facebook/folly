@@ -20,7 +20,8 @@
 #include <folly/detail/Futex.h>
 #include <folly/experimental/fibers/TimeoutController.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class Fiber;
 class FiberManager;
@@ -66,8 +67,8 @@ class Baton {
    * This is here only not break tao/locks. Please don't use it, because it is
    * inefficient when used on Fibers.
    */
-  template<typename C, typename D = typename C::duration>
-  bool timed_wait(const std::chrono::time_point<C,D>& timeout);
+  template <typename C, typename D = typename C::duration>
+  bool timed_wait(const std::chrono::time_point<C, D>& timeout);
 
   /**
    * Puts active fiber to sleep. Returns when post is called.
@@ -153,7 +154,7 @@ class Baton {
     PreBlockAttempts = 300,
   };
 
-  explicit Baton(intptr_t state) : waitingFiber_(state) {};
+  explicit Baton(intptr_t state) : waitingFiber_(state){};
 
   void postHelper(intptr_t new_value);
   void postThread();
@@ -184,7 +185,7 @@ class Baton {
     } futex_;
   };
 };
-
-}}
+}
+}
 
 #include <folly/experimental/fibers/Baton-inl.h>

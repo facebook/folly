@@ -18,10 +18,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
-#include <glog/logging.h>
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
@@ -29,7 +29,8 @@
 #include <folly/experimental/fibers/FiberManager.h>
 #include <folly/portability/SysSyscall.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 namespace {
 static const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
@@ -50,16 +51,12 @@ static size_t nonMagicInBytes(const FContext& context) {
   uint64_t* end = static_cast<uint64_t*>(context.stackBase());
 
   auto firstNonMagic = std::find_if(
-    begin, end,
-    [](uint64_t val) {
-      return val != kMagic8Bytes;
-    }
-  );
+      begin, end, [](uint64_t val) { return val != kMagic8Bytes; });
 
   return (end - firstNonMagic) * sizeof(uint64_t);
 }
 
-}  // anonymous namespace
+} // anonymous namespace
 
 void Fiber::setData(intptr_t data) {
   DCHECK_EQ(state_, AWAITING);
@@ -78,9 +75,7 @@ void Fiber::setData(intptr_t data) {
   }
 }
 
-Fiber::Fiber(FiberManager& fiberManager) :
-    fiberManager_(fiberManager) {
-
+Fiber::Fiber(FiberManager& fiberManager) : fiberManager_(fiberManager) {
   auto size = fiberManager_.options_.stackSize;
   auto limit = fiberManager_.stackAllocator_.allocate(size);
 
@@ -98,9 +93,10 @@ void Fiber::init(bool recordStackUsed) {
     auto limit = fcontext_.stackLimit();
     auto base = fcontext_.stackBase();
 
-    std::fill(static_cast<uint64_t*>(limit),
-              static_cast<uint64_t*>(base),
-              kMagic8Bytes);
+    std::fill(
+        static_cast<uint64_t*>(limit),
+        static_cast<uint64_t*>(base),
+        kMagic8Bytes);
 
     // newer versions of boost allocate context on fiber stack,
     // need to create a new one
@@ -116,17 +112,17 @@ void Fiber::init(bool recordStackUsed) {
 
 Fiber::~Fiber() {
   fiberManager_.stackAllocator_.deallocate(
-    static_cast<unsigned char*>(fcontext_.stackLimit()),
-    fiberManager_.options_.stackSize);
+      static_cast<unsigned char*>(fcontext_.stackLimit()),
+      fiberManager_.options_.stackSize);
 }
 
 void Fiber::recordStackPosition() {
   int stackDummy;
   auto currentPosition = static_cast<size_t>(
-     static_cast<unsigned char*>(fcontext_.stackBase()) -
-     static_cast<unsigned char*>(static_cast<void*>(&stackDummy)));
+      static_cast<unsigned char*>(fcontext_.stackBase()) -
+      static_cast<unsigned char*>(static_cast<void*>(&stackDummy)));
   fiberManager_.stackHighWatermark_ =
-    std::max(fiberManager_.stackHighWatermark_, currentPosition);
+      std::max(fiberManager_.stackHighWatermark_, currentPosition);
   VLOG(4) << "Stack usage: " << currentPosition;
 }
 
@@ -152,17 +148,18 @@ void Fiber::fiberFunc() {
         func_();
       }
     } catch (...) {
-      fiberManager_.exceptionCallback_(std::current_exception(),
-                                       "running Fiber func_/resultFunc_");
+      fiberManager_.exceptionCallback_(
+          std::current_exception(), "running Fiber func_/resultFunc_");
     }
 
     if (UNLIKELY(recordStackUsed_)) {
-      fiberManager_.stackHighWatermark_ =
-        std::max(fiberManager_.stackHighWatermark_,
-                 nonMagicInBytes(fcontext_));
+      fiberManager_.stackHighWatermark_ = std::max(
+          fiberManager_.stackHighWatermark_, nonMagicInBytes(fcontext_));
       VLOG(3) << "Max stack usage: " << fiberManager_.stackHighWatermark_;
-      CHECK(fiberManager_.stackHighWatermark_ <
-              fiberManager_.options_.stackSize - 64) << "Fiber stack overflow";
+      CHECK(
+          fiberManager_.stackHighWatermark_ <
+          fiberManager_.options_.stackSize - 64)
+          << "Fiber stack overflow";
     }
 
     state_ = INVALID;
@@ -243,5 +240,5 @@ void* Fiber::LocalData::allocateHeapBuffer(size_t size) {
 void Fiber::LocalData::freeHeapBuffer(void* buffer) {
   delete[] reinterpret_cast<char*>(buffer);
 }
-
-}}
+}
+}

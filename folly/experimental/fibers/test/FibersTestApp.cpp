@@ -25,18 +25,17 @@ using namespace folly::fibers;
 
 struct Application {
  public:
-  Application ()
+  Application()
       : fiberManager(folly::make_unique<SimpleLoopController>()),
         toSend(20),
-        maxOutstanding(5) {
-  }
+        maxOutstanding(5) {}
 
   void loop() {
     if (pendingRequests.size() == maxOutstanding || toSend == 0) {
       if (pendingRequests.empty()) {
         return;
       }
-      intptr_t value = rand()%1000;
+      intptr_t value = rand() % 1000;
       std::cout << "Completing request with data = " << value << std::endl;
 
       pendingRequests.front().setValue(value);
@@ -47,27 +46,25 @@ struct Application {
       std::cout << "Adding new request with id = " << id << std::endl;
 
       fiberManager.addTask([this, id]() {
-          std::cout << "Executing fiber with id = " << id << std::endl;
+        std::cout << "Executing fiber with id = " << id << std::endl;
 
-          auto result1 = await(
-            [this](Promise<int> fiber) {
-              pendingRequests.push(std::move(fiber));
-            });
+        auto result1 = await([this](Promise<int> fiber) {
+          pendingRequests.push(std::move(fiber));
+        });
 
-          std::cout << "Fiber id = " << id
-                    << " got result1 = " << result1 << std::endl;
+        std::cout << "Fiber id = " << id << " got result1 = " << result1
+                  << std::endl;
 
-          auto result2 = await
-            ([this](Promise<int> fiber) {
-              pendingRequests.push(std::move(fiber));
-            });
-          std::cout << "Fiber id = " << id
-                    << " got result2 = " << result2 << std::endl;
-         });
+        auto result2 = await([this](Promise<int> fiber) {
+          pendingRequests.push(std::move(fiber));
+        });
+        std::cout << "Fiber id = " << id << " got result2 = " << result2
+                  << std::endl;
+      });
 
       if (--toSend == 0) {
         auto& loopController =
-          dynamic_cast<SimpleLoopController&>(fiberManager.loopController());
+            dynamic_cast<SimpleLoopController&>(fiberManager.loopController());
         loopController.stop();
       }
     }
@@ -83,12 +80,10 @@ struct Application {
 int main() {
   Application app;
 
-  auto loop = [&app]() {
-    app.loop();
-  };
+  auto loop = [&app]() { app.loop(); };
 
   auto& loopController =
-    dynamic_cast<SimpleLoopController&>(app.fiberManager.loopController());
+      dynamic_cast<SimpleLoopController&>(app.fiberManager.loopController());
 
   loopController.loop(std::move(loop));
 

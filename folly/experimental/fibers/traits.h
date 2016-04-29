@@ -17,7 +17,8 @@
 
 #include <boost/type_traits.hpp>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 /**
  * For any functor F taking >= 1 argument,
@@ -38,7 +39,7 @@ namespace detail {
  * If F is a pointer-to-member, will contain a typedef type
  * with the type of F's first parameter
  */
-template<typename>
+template <typename>
 struct ExtractFirstMemfn;
 
 template <typename Ret, typename T, typename First, typename... Args>
@@ -51,20 +52,20 @@ struct ExtractFirstMemfn<Ret (T::*)(First, Args...) const> {
   typedef First type;
 };
 
-}  // detail
+} // detail
 
 /** Default - use boost */
 template <typename F, typename Enable = void>
 struct FirstArgOf {
   typedef typename boost::function_traits<
-    typename std::remove_pointer<F>::type>::arg1_type type;
+      typename std::remove_pointer<F>::type>::arg1_type type;
 };
 
 /** Specialization for function objects */
 template <typename F>
 struct FirstArgOf<F, typename std::enable_if<std::is_class<F>::value>::type> {
-  typedef typename detail::ExtractFirstMemfn<
-    decltype(&F::operator())>::type type;
+  typedef
+      typename detail::ExtractFirstMemfn<decltype(&F::operator())>::type type;
 };
-
-}}  // folly::fibers
+}
+} // folly::fibers

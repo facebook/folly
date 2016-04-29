@@ -15,8 +15,8 @@
  */
 #pragma once
 
-
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 //
 // TimedMutex implementation
@@ -113,8 +113,9 @@ void TimedRWMutex<BatonType>::read_lock() {
     assert(state_ == State::READ_LOCKED);
     return;
   }
-  assert((state_ == State::UNLOCKED && readers_ == 0) ||
-         (state_ == State::READ_LOCKED && readers_ > 0));
+  assert(
+      (state_ == State::UNLOCKED && readers_ == 0) ||
+      (state_ == State::READ_LOCKED && readers_ > 0));
   assert(read_waiters_.empty());
   state_ = State::READ_LOCKED;
   readers_ += 1;
@@ -147,8 +148,9 @@ bool TimedRWMutex<BatonType>::timed_read_lock(
     }
     return true;
   }
-  assert((state_ == State::UNLOCKED && readers_ == 0) ||
-         (state_ == State::READ_LOCKED && readers_ > 0));
+  assert(
+      (state_ == State::UNLOCKED && readers_ == 0) ||
+      (state_ == State::READ_LOCKED && readers_ > 0));
   assert(read_waiters_.empty());
   state_ = State::READ_LOCKED;
   readers_ += 1;
@@ -160,8 +162,9 @@ template <typename BatonType>
 bool TimedRWMutex<BatonType>::try_read_lock() {
   pthread_spin_lock(&lock_);
   if (state_ != State::WRITE_LOCKED) {
-    assert((state_ == State::UNLOCKED && readers_ == 0) ||
-           (state_ == State::READ_LOCKED && readers_ > 0));
+    assert(
+        (state_ == State::UNLOCKED && readers_ == 0) ||
+        (state_ == State::READ_LOCKED && readers_ > 0));
     assert(read_waiters_.empty());
     state_ = State::READ_LOCKED;
     readers_ += 1;
@@ -237,15 +240,17 @@ template <typename BatonType>
 void TimedRWMutex<BatonType>::unlock() {
   pthread_spin_lock(&lock_);
   assert(state_ != State::UNLOCKED);
-  assert((state_ == State::READ_LOCKED && readers_ > 0) ||
-         (state_ == State::WRITE_LOCKED && readers_ == 0));
+  assert(
+      (state_ == State::READ_LOCKED && readers_ > 0) ||
+      (state_ == State::WRITE_LOCKED && readers_ == 0));
   if (state_ == State::READ_LOCKED) {
     readers_ -= 1;
   }
 
   if (!read_waiters_.empty()) {
-    assert(state_ == State::WRITE_LOCKED && readers_ == 0 &&
-           "read waiters can only accumulate while write locked");
+    assert(
+        state_ == State::WRITE_LOCKED && readers_ == 0 &&
+        "read waiters can only accumulate while write locked");
     state_ = State::READ_LOCKED;
     readers_ = read_waiters_.size();
 
@@ -291,5 +296,5 @@ void TimedRWMutex<BatonType>::downgrade() {
   }
   pthread_spin_unlock(&lock_);
 }
-
-}}
+}
+}

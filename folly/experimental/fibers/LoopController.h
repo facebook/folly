@@ -18,7 +18,8 @@
 #include <chrono>
 #include <functional>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 class FiberManager;
 
@@ -57,5 +58,5 @@ class LoopController {
    */
   virtual void timedSchedule(std::function<void()> func, TimePoint time) = 0;
 };
-
-}}  // folly::fibers
+}
+} // folly::fibers

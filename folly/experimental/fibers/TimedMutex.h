@@ -19,7 +19,8 @@
 
 #include <folly/experimental/fibers/GenericBaton.h>
 
-namespace folly { namespace fibers {
+namespace folly {
+namespace fibers {
 
 /**
  * @class TimedMutex
@@ -49,8 +50,7 @@ class TimedMutex {
   //
   // @return        true if the mutex was locked, false otherwise
   template <typename Rep, typename Period>
-  bool timed_lock(
-      const std::chrono::duration<Rep, Period>& duration);
+  bool timed_lock(const std::chrono::duration<Rep, Period>& duration);
 
   // Try to obtain lock without blocking the thread or fiber
   bool try_lock();
@@ -68,18 +68,19 @@ class TimedMutex {
     MutexWaiterHookType hook;
   };
 
-  typedef boost::intrusive::member_hook<MutexWaiter,
-                                        MutexWaiterHookType,
-                                        &MutexWaiter::hook> MutexWaiterHook;
+  typedef boost::intrusive::
+      member_hook<MutexWaiter, MutexWaiterHookType, &MutexWaiter::hook>
+          MutexWaiterHook;
 
-  typedef boost::intrusive::list<MutexWaiter,
-                                 MutexWaiterHook,
-                                 boost::intrusive::constant_time_size<true>>
-  MutexWaiterList;
+  typedef boost::intrusive::list<
+      MutexWaiter,
+      MutexWaiterHook,
+      boost::intrusive::constant_time_size<true>>
+      MutexWaiterList;
 
-  pthread_spinlock_t lock_;         //< lock to protect waiter list
-  bool locked_ = false;             //< is this locked by some thread?
-  MutexWaiterList waiters_;         //< list of waiters
+  pthread_spinlock_t lock_; //< lock to protect waiter list
+  bool locked_ = false; //< is this locked by some thread?
+  MutexWaiterList waiters_; //< list of waiters
 };
 
 /**
@@ -136,7 +137,9 @@ class TimedRWMutex {
   bool try_write_lock();
 
   // Wrapper for write_lock() for compatibility with Mutex
-  void lock() { write_lock(); }
+  void lock() {
+    write_lock();
+  }
 
   // Realease the lock. The thread / fiber will wake up all readers if there are
   // any. If there are waiting writers then only one of them will be woken up.
@@ -149,8 +152,7 @@ class TimedRWMutex {
 
   class ReadHolder {
    public:
-    explicit ReadHolder(TimedRWMutex& lock)
-        : lock_(&lock) {
+    explicit ReadHolder(TimedRWMutex& lock) : lock_(&lock) {
       lock_->read_lock();
     }
 
@@ -213,28 +215,29 @@ class TimedRWMutex {
     MutexWaiterHookType hook;
   };
 
-  typedef boost::intrusive::member_hook<MutexWaiter,
-                                        MutexWaiterHookType,
-                                        &MutexWaiter::hook> MutexWaiterHook;
+  typedef boost::intrusive::
+      member_hook<MutexWaiter, MutexWaiterHookType, &MutexWaiter::hook>
+          MutexWaiterHook;
 
-  typedef boost::intrusive::list<MutexWaiter,
-                                 MutexWaiterHook,
-                                 boost::intrusive::constant_time_size<true>>
-  MutexWaiterList;
+  typedef boost::intrusive::list<
+      MutexWaiter,
+      MutexWaiterHook,
+      boost::intrusive::constant_time_size<true>>
+      MutexWaiterList;
 
-  pthread_spinlock_t  lock_;            //< lock protecting the internal state
-                                        // (state_, read_waiters_, etc.)
+  pthread_spinlock_t lock_; //< lock protecting the internal state
+  // (state_, read_waiters_, etc.)
   State state_ = State::UNLOCKED;
 
-  uint32_t readers_ = 0;                //< Number of readers who have the lock
+  uint32_t readers_ = 0; //< Number of readers who have the lock
 
-  MutexWaiterList write_waiters_;       //< List of thread / fibers waiting for
-                                        //  exclusive access
+  MutexWaiterList write_waiters_; //< List of thread / fibers waiting for
+  //  exclusive access
 
-  MutexWaiterList read_waiters_;        //< List of thread / fibers waiting for
-                                        //  shared access
+  MutexWaiterList read_waiters_; //< List of thread / fibers waiting for
+  //  shared access
 };
-
-}}
+}
+}
 
 #include "TimedMutex-inl.h"
