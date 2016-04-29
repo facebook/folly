@@ -171,8 +171,8 @@ bool parseProcMapsLine(StringPiece line,
 
 ElfCache* defaultElfCache() {
   static constexpr size_t defaultCapacity = 500;
-  static ElfCache cache(defaultCapacity);
-  return &cache;
+  static auto cache = new ElfCache(defaultCapacity);
+  return cache;
 }
 
 }  // namespace
