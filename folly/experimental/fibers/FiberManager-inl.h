@@ -283,9 +283,10 @@ void FiberManager::addTask(F&& func) {
 template <typename F>
 auto FiberManager::addTaskFuture(F&& func) -> folly::Future<
     typename folly::Unit::Lift<typename std::result_of<F()>::type>::type> {
-  using T =
-      typename folly::Unit::Lift<typename std::result_of<F()>::type>::type;
-  folly::Promise<T> p;
+  using T = typename std::result_of<F()>::type;
+  using FutureT = typename folly::Unit::Lift<T>::type;
+
+  folly::Promise<FutureT> p;
   auto f = p.getFuture();
   addTaskFinally(
       [func = std::forward<F>(func)]() mutable { return func(); },
@@ -398,8 +399,7 @@ struct FiberManager::AddTaskFinallyHelper {
 
 template <typename F, typename G>
 void FiberManager::addTaskFinally(F&& func, G&& finally) {
-  typedef typename folly::Unit::Lift<typename std::result_of<F()>::type>::type
-      Result;
+  typedef typename std::result_of<F()>::type Result;
 
   static_assert(
       IsRvalueRefTry<typename FirstArgOf<G>::type>::value,

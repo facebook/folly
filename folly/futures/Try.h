@@ -244,6 +244,11 @@ class Try {
 template <>
 class Try<void> {
  public:
+  /*
+   * The value type for the Try
+   */
+  typedef void element_type;
+
   // Construct a Try holding a successful and void result
   Try() : hasValue_(true) {}
 
