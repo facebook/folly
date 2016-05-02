@@ -17,8 +17,12 @@
 #include <folly/Singleton.h>
 
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <sstream>
 #include <string>
 
+#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 
 namespace folly {
@@ -27,6 +31,17 @@ namespace detail {
 
 constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
 
+[[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
+    const TypeDescriptor& type) {
+  // Not using LOG(FATAL) or std::cerr because they may not be initialized yet.
+  std::ostringstream o;
+  o << "Double registration of singletons of the same "
+    << "underlying type; check for multiple definitions "
+    << "of type folly::Singleton<" << type.name() << ">" << std::endl;
+  auto s = o.str();
+  writeFull(STDERR_FILENO, s.data(), s.size());
+  std::abort();
+}
 }
 
 namespace {

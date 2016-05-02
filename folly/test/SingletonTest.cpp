@@ -17,10 +17,13 @@
 #include <thread>
 
 #include <folly/Singleton.h>
+#include <folly/Subprocess.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/test/SingletonTestStructs.h>
 
 #include <glog/logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <boost/thread/barrier.hpp>
 
@@ -579,4 +582,21 @@ TEST(Singleton, MockTest) {
 
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock);
+}
+
+TEST(Singleton, DoubleRegistrationLogging) {
+  const auto basename = "singleton_double_registration";
+  const auto sub = fs::executable_path().remove_filename() / basename;
+  auto p = Subprocess(
+      std::vector<std::string>{sub.string()},
+      Subprocess::Options()
+          .stdin(Subprocess::CLOSE)
+          .stdout(Subprocess::CLOSE)
+          .pipeStderr()
+          .closeOtherFds());
+  auto err = p.communicate("").second;
+  auto res = p.wait();
+  EXPECT_EQ(ProcessReturnCode::KILLED, res.state());
+  EXPECT_EQ(SIGABRT, res.killSignal());
+  EXPECT_THAT(err, testing::StartsWith("Double registration of singletons"));
 }

@@ -29,6 +29,9 @@ SingletonHolder<T>& SingletonHolder<T>::singleton() {
   return *entry;
 }
 
+[[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
+    const TypeDescriptor& type);
+
 template <typename T>
 void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
   std::lock_guard<std::mutex> entry_lock(mutex_);
@@ -51,9 +54,7 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
      * Singleton<int> b([] { return new int(4); });
      *
      */
-    LOG(FATAL) << "Double registration of singletons of the same "
-               << "underlying type; check for multiple definitions "
-               << "of type folly::Singleton<" + type_.name() + ">";
+    singletonWarnDoubleRegistrationAndAbort(type_);
   }
 
   create_ = std::move(c);
