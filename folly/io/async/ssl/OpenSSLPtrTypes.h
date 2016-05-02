@@ -17,6 +17,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/ssl.h>
@@ -75,6 +76,10 @@ using RsaUniquePtr = std::unique_ptr<RSA, RsaDeleter>;
 using EcKeyDeleter = folly::static_function_deleter<EC_KEY, &EC_KEY_free>;
 using EcKeyUniquePtr = std::unique_ptr<EC_KEY, EcKeyDeleter>;
 #endif
+
+// BIGNUMs
+using BIGNUMDeleter = folly::static_function_deleter<BIGNUM, &BN_clear_free>;
+using BIGNUMUniquePtr = std::unique_ptr<BIGNUM, BIGNUMDeleter>;
 
 // SSL and SSL_CTX
 using SSLDeleter = folly::static_function_deleter<SSL, &SSL_free>;
