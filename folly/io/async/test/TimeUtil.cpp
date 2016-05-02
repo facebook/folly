@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef __STDC_FORMAT_MACROS
 #define __STDC_FORMAT_MACROS
+#endif
 
 #include <folly/io/async/test/TimeUtil.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/SysSyscall.h>
 
 #include <chrono>
 #include <sys/types.h>
@@ -40,7 +43,7 @@ namespace folly {
  * glibc doesn't provide gettid(), so define it ourselves.
  */
 static pid_t gettid() {
-  return syscall(SYS_gettid);
+  return syscall(FOLLY_SYS_gettid);
 }
 
 /**
