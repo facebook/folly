@@ -16,6 +16,7 @@
 
 #include <folly/portability/Malloc.h>
 
+#ifndef USE_JEMALLOC
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
 #include <malloc/malloc.h>
 
@@ -26,4 +27,5 @@ extern "C" size_t malloc_usable_size(void* ptr) {
 extern "C" size_t malloc_usable_size(void* addr) {
   return _msize(addr);
 }
+#endif
 #endif

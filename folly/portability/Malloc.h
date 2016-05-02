@@ -18,6 +18,11 @@
 
 #include <stdlib.h>
 
+#ifdef USE_JEMALLOC
+// JEMalloc provides it's own implementation of
+// malloc_usable_size, and that's what we should be using.
+#include <jemalloc/jemalloc.h>
+#else
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
@@ -29,4 +34,5 @@
 extern "C" size_t malloc_usable_size(void* ptr);
 #elif defined(_WIN32)
 extern "C" size_t malloc_usable_size(void* ptr);
+#endif
 #endif
