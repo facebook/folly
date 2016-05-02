@@ -68,6 +68,36 @@ const StringPiece getSSLErrorString(SSLError error) {
   }
   return ret;
 }
+
+AsyncSocketException::AsyncSocketExceptionType exTypefromSSLErrInfo(
+    int sslErr,
+    unsigned long errError,
+    int sslOperationReturnValue) {
+  if (sslErr == SSL_ERROR_ZERO_RETURN) {
+    return AsyncSocketException::END_OF_FILE;
+  } else if (sslErr == SSL_ERROR_SYSCALL) {
+    if (errError == 0 && sslOperationReturnValue == 0) {
+      return AsyncSocketException::END_OF_FILE;
+    } else {
+      return AsyncSocketException::NETWORK_ERROR;
+    }
+  } else {
+    // Assume an actual SSL error
+    return AsyncSocketException::SSL_ERROR;
+  }
+}
+
+AsyncSocketException::AsyncSocketExceptionType exTypefromSSLErr(SSLError err) {
+  switch (err) {
+    case SSLError::EOF_ERROR:
+      return AsyncSocketException::END_OF_FILE;
+    case SSLError::NETWORK_ERROR:
+      return AsyncSocketException::NETWORK_ERROR;
+    default:
+      // everything else is a SSL_ERROR
+      return AsyncSocketException::SSL_ERROR;
+  }
+}
 }
 
 namespace folly {
@@ -78,7 +108,7 @@ SSLException::SSLException(
     int sslOperationReturnValue,
     int errno_copy)
     : AsyncSocketException(
-          AsyncSocketException::SSL_ERROR,
+          exTypefromSSLErrInfo(sslErr, errError, sslOperationReturnValue),
           decodeOpenSSLError(sslErr, errError, sslOperationReturnValue),
           sslErr == SSL_ERROR_SYSCALL ? errno_copy : 0) {
   if (sslErr == SSL_ERROR_ZERO_RETURN) {
@@ -93,7 +123,7 @@ SSLException::SSLException(
 
 SSLException::SSLException(SSLError error)
     : AsyncSocketException(
-          AsyncSocketException::SSL_ERROR,
+          exTypefromSSLErr(error),
           getSSLErrorString(error).str(),
           0),
       sslError(error) {}
