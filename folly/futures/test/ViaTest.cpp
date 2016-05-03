@@ -495,3 +495,10 @@ TEST(ViaFunc, isSticky) {
   x.run();
   EXPECT_EQ(2, count);
 }
+
+TEST(ViaFunc, moveOnly) {
+  ManualExecutor x;
+  auto intp = folly::make_unique<int>(42);
+
+  EXPECT_EQ(42, via(&x, [intp = std::move(intp)] { return *intp; }).getVia(&x));
+}

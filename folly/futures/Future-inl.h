@@ -448,7 +448,7 @@ auto via(Executor* x, Func func)
   -> Future<typename isFuture<decltype(func())>::Inner>
 {
   // TODO make this actually more performant. :-P #7260175
-  return via(x).then(func);
+  return via(x).then(std::move(func));
 }
 
 template <class T>
