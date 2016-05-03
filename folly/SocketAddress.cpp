@@ -179,6 +179,39 @@ void SocketAddress::setFromHostPort(const char* hostAndPort) {
   setFromAddrInfo(results.info);
 }
 
+int SocketAddress::getPortFrom(const struct sockaddr* address) {
+  switch (address->sa_family) {
+    case AF_INET:
+      return ntohs(((sockaddr_in*)address)->sin_port);
+
+    case AF_INET6:
+      return ntohs(((sockaddr_in6*)address)->sin6_port);
+
+    default:
+      return -1;
+  }
+}
+
+const char* SocketAddress::getFamilyNameFrom(
+    const struct sockaddr* address,
+    const char* defaultResult) {
+#define GETFAMILYNAMEFROM_IMPL(Family) \
+  case Family:                         \
+    return #Family
+
+  switch (address->sa_family) {
+    GETFAMILYNAMEFROM_IMPL(AF_INET);
+    GETFAMILYNAMEFROM_IMPL(AF_INET6);
+    GETFAMILYNAMEFROM_IMPL(AF_UNIX);
+    GETFAMILYNAMEFROM_IMPL(AF_UNSPEC);
+
+    default:
+      return defaultResult;
+  }
+
+#undef GETFAMILYNAMEFROM_IMPL
+}
+
 void SocketAddress::setFromPath(StringPiece path) {
   // Before we touch storage_, check to see if the length is too big.
   // Note that "storage_.un.addr->sun_path" may not be safe to evaluate here,

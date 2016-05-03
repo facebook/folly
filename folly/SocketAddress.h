@@ -275,6 +275,25 @@ class SocketAddress {
   }
 
   /**
+   * Returns the port number from the given socketaddr structure.
+   *
+   * Currently only IPv4 and IPv6 are supported.
+   *
+   * Returns -1 for unsupported socket families.
+   */
+  static int getPortFrom(const struct sockaddr* address);
+
+  /**
+   * Returns the family name from the given socketaddr structure (e.g.: AF_INET6
+   * for IPv6).
+   *
+   * Returns `defaultResult` for unsupported socket families.
+   */
+  static const char* getFamilyNameFrom(
+      const struct sockaddr* address,
+      const char* defaultResult = nullptr);
+
+  /**
    * Initialize this SocketAddress from a local unix path.
    *
    * Raises std::invalid_argument on error.

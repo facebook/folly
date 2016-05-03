@@ -76,4 +76,17 @@ TEST(AsyncSocketTest, v4v6samePort) {
   }
 }
 
+TEST(AsyncSocketTest, duplicateBind) {
+  EventBase base;
+  auto server1 = AsyncServerSocket::newSocket(&base);
+  server1->bind(0);
+  server1->listen(10);
+
+  SocketAddress address;
+  server1->getAddress(std::addressof(address));
+
+  auto server2 = AsyncServerSocket::newSocket(&base);
+  EXPECT_THROW(server2->bind(address.getPort()), std::exception);
+}
+
 } // namespace

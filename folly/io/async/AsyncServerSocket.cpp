@@ -397,8 +397,11 @@ void AsyncServerSocket::bind(uint16_t port) {
     // Bind to the socket
     if (::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
       folly::throwSystemError(
-        errno,
-        "failed to bind to async server socket for port");
+          errno,
+          "failed to bind to async server socket for port ",
+          SocketAddress::getPortFrom(res->ai_addr),
+          " family ",
+          SocketAddress::getFamilyNameFrom(res->ai_addr, "<unknown>"));
     }
   };
 
