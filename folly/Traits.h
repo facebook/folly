@@ -37,9 +37,7 @@
 #endif
 
 #include <boost/type_traits.hpp>
-#include <boost/mpl/and.hpp>
 #include <boost/mpl/has_xxx.hpp>
-#include <boost/mpl/not.hpp>
 
 namespace folly {
 
@@ -289,8 +287,9 @@ template <class T> class shared_ptr;
 
 template <class T, class U>
 struct has_nothrow_constructor< std::pair<T, U> >
-    : ::boost::mpl::and_< has_nothrow_constructor<T>,
-                          has_nothrow_constructor<U> > {};
+    : std::integral_constant<bool,
+        has_nothrow_constructor<T>::value &&
+        has_nothrow_constructor<U>::value> {};
 
 } // namespace boost
 
@@ -298,8 +297,10 @@ namespace folly {
 
 // STL commonly-used types
 template <class T, class U>
-struct IsRelocatable<  std::pair<T, U> >
-    : ::boost::mpl::and_< IsRelocatable<T>, IsRelocatable<U> > {};
+struct IsRelocatable< std::pair<T, U> >
+    : std::integral_constant<bool,
+        IsRelocatable<T>::value &&
+        IsRelocatable<U>::value> {};
 
 // Is T one of T1, T2, ..., Tn?
 template <class T, class... Ts>

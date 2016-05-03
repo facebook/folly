@@ -42,11 +42,11 @@
 #include <boost/mpl/empty.hpp>
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/count.hpp>
-#include <boost/mpl/max.hpp>
 
 #include <folly/FormatTraits.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
+#include <folly/portability/Constexpr.h>
 #include <folly/portability/Malloc.h>
 
 #if defined(__GNUC__) && (FOLLY_X64 || FOLLY_PPC64)
@@ -355,10 +355,8 @@ class small_vector
    * into our value_type*, we will inline more than they asked.)
    */
   enum {
-    MaxInline = boost::mpl::max<
-                  boost::mpl::int_<sizeof(Value*) / sizeof(Value)>,
-                  boost::mpl::int_<RequestedMaxInline>
-                >::type::value
+    MaxInline =
+        constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline),
   };
 
 public:
