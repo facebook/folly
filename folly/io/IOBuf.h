@@ -1066,6 +1066,12 @@ class IOBuf {
   std::unique_ptr<IOBuf> clone() const;
 
   /**
+   * Similar to clone(). But returns IOBuf by value rather than heap-allocating
+   * it.
+   */
+  IOBuf cloneAsValue() const;
+
+  /**
    * Return a new IOBuf with the same data as this IOBuf.
    *
    * The new IOBuf returned will not be part of a chain (even if this IOBuf is
@@ -1074,16 +1080,26 @@ class IOBuf {
   std::unique_ptr<IOBuf> cloneOne() const;
 
   /**
+   * Similar to cloneOne(). But returns IOBuf by value rather than
+   * heap-allocating it.
+   */
+  IOBuf cloneOneAsValue() const;
+
+  /**
    * Similar to Clone(). But use other as the head node. Other nodes in the
    * chain (if any) will be allocted on heap.
    */
-  void cloneInto(IOBuf& other) const;
+  void cloneInto(IOBuf& other) const {
+    other = cloneAsValue();
+  }
 
   /**
    * Similar to CloneOne(). But to fill an existing IOBuf instead of a new
    * IOBuf.
    */
-  void cloneOneInto(IOBuf& other) const;
+  void cloneOneInto(IOBuf& other) const {
+    other = cloneOneAsValue();
+  }
 
   /**
    * Return an iovector suitable for e.g. writev()

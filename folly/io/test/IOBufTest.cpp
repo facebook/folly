@@ -1149,6 +1149,53 @@ TEST(IOBuf, CopyConstructorAndAssignmentOperator) {
   EXPECT_FALSE(buf->isShared());
 }
 
+TEST(IOBuf, CloneAsValue) {
+  auto buf = IOBuf::create(4096);
+  append(buf, "hello world");
+  {
+    auto buf2 = IOBuf::create(4096);
+    append(buf2, " goodbye");
+    buf->prependChain(std::move(buf2));
+    EXPECT_FALSE(buf->isShared());
+  }
+
+  {
+    auto copy = buf->cloneOneAsValue();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_EQ((void*)buf->data(), (void*)copy.data());
+    EXPECT_TRUE(buf->isChained());
+    EXPECT_FALSE(copy.isChained());
+
+    auto copy2 = buf->cloneAsValue();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_TRUE(copy.isShared());
+    EXPECT_TRUE(copy2.isShared());
+    EXPECT_TRUE(buf->isChained());
+    EXPECT_TRUE(copy2.isChained());
+
+    copy.unshareOne();
+    EXPECT_TRUE(buf->isShared());
+    EXPECT_FALSE(copy.isShared());
+    EXPECT_NE((void*)buf->data(), (void*)copy.data());
+    EXPECT_TRUE(copy2.isShared());
+
+    auto p = reinterpret_cast<const char*>(copy.data());
+    EXPECT_EQ("hello world", std::string(p, copy.length()));
+
+    copy2.coalesce();
+    EXPECT_FALSE(buf->isShared());
+    EXPECT_FALSE(copy.isShared());
+    EXPECT_FALSE(copy2.isShared());
+    EXPECT_FALSE(copy2.isChained());
+
+    auto p2 = reinterpret_cast<const char*>(copy2.data());
+    EXPECT_EQ("hello world goodbye", std::string(p2, copy2.length()));
+  }
+
+  EXPECT_FALSE(buf->isShared());
+}
+
 namespace {
 // Use with string literals only
 std::unique_ptr<IOBuf> wrap(const char* str) {

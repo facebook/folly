@@ -335,12 +335,38 @@ unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
 IOBuf::IOBuf() noexcept {
 }
 
-IOBuf::IOBuf(IOBuf&& other) noexcept {
-  *this = std::move(other);
+IOBuf::IOBuf(IOBuf&& other) noexcept
+    : data_(other.data_),
+      buf_(other.buf_),
+      length_(other.length_),
+      capacity_(other.capacity_),
+      flagsAndSharedInfo_(other.flagsAndSharedInfo_) {
+  // Reset other so it is a clean state to be destroyed.
+  other.data_ = nullptr;
+  other.buf_ = nullptr;
+  other.length_ = 0;
+  other.capacity_ = 0;
+  other.flagsAndSharedInfo_ = 0;
+
+  // If other was part of the chain, assume ownership of the rest of its chain.
+  // (It's only valid to perform move assignment on the head of a chain.)
+  if (other.next_ != &other) {
+    next_ = other.next_;
+    next_->prev_ = this;
+    other.next_ = &other;
+
+    prev_ = other.prev_;
+    prev_->next_ = this;
+    other.prev_ = &other;
+  }
+
+  // Sanity check to make sure that other is in a valid state to be destroyed.
+  DCHECK_EQ(other.prev_, &other);
+  DCHECK_EQ(other.next_, &other);
 }
 
 IOBuf::IOBuf(const IOBuf& other) {
-  other.cloneInto(*this);
+  *this = other.cloneAsValue();
 }
 
 IOBuf::IOBuf(InternalConstructor,
@@ -473,39 +499,35 @@ void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
 }
 
 unique_ptr<IOBuf> IOBuf::clone() const {
-  unique_ptr<IOBuf> ret = make_unique<IOBuf>();
-  cloneInto(*ret);
-  return ret;
+  return make_unique<IOBuf>(cloneAsValue());
 }
 
 unique_ptr<IOBuf> IOBuf::cloneOne() const {
-  unique_ptr<IOBuf> ret = make_unique<IOBuf>();
-  cloneOneInto(*ret);
-  return ret;
+  return make_unique<IOBuf>(cloneOneAsValue());
 }
 
-void IOBuf::cloneInto(IOBuf& other) const {
-  IOBuf tmp;
-  cloneOneInto(tmp);
+IOBuf IOBuf::cloneAsValue() const {
+  auto tmp = cloneOneAsValue();
 
   for (IOBuf* current = next_; current != this; current = current->next_) {
     tmp.prependChain(current->cloneOne());
   }
 
-  other = std::move(tmp);
+  return tmp;
 }
 
-void IOBuf::cloneOneInto(IOBuf& other) const {
-  SharedInfo* info = sharedInfo();
-  if (info) {
+IOBuf IOBuf::cloneOneAsValue() const {
+  if (SharedInfo* info = sharedInfo()) {
     setFlags(kFlagMaybeShared);
-  }
-  other = IOBuf(InternalConstructor(),
-                flagsAndSharedInfo_, buf_, capacity_,
-                data_, length_);
-  if (info) {
     info->refcount.fetch_add(1, std::memory_order_acq_rel);
   }
+  return IOBuf(
+      InternalConstructor(),
+      flagsAndSharedInfo_,
+      buf_,
+      capacity_,
+      data_,
+      length_);
 }
 
 void IOBuf::unshareOneSlow() {
