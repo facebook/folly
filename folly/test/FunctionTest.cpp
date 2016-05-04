@@ -49,6 +49,10 @@ struct Functor {
     return oldvalue;
   }
 };
+
+template <typename Ret, typename... Args>
+void deduceArgs(Function<Ret(Args...)>) {}
+
 } // namespace
 
 // TEST =====================================================================
@@ -848,4 +852,10 @@ TEST(Function, SelfMoveAssign) {
   Function<int()>& g = f;
   f = std::move(g);
   EXPECT_TRUE(f);
+}
+
+TEST(Function, DeducableArguments) {
+  deduceArgs(Function<void()>{[] {}});
+  deduceArgs(Function<void(int, float)>{[](int, float) {}});
+  deduceArgs(Function<int(int, float)>{[](int i, float) { return i; }});
 }
