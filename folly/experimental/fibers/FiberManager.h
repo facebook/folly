@@ -464,6 +464,7 @@ class FiberManager : public ::folly::Executor {
 
   void registerFiberActivationWithAsan(Fiber* fiber);
   void registerFiberDeactivationWithAsan(Fiber* fiber);
+  void unpoisonFiberStack(const Fiber* fiber);
 
 #endif // FOLLY_SANITIZE_ADDRESS
 };

@@ -111,6 +111,9 @@ void Fiber::init(bool recordStackUsed) {
 }
 
 Fiber::~Fiber() {
+#ifdef FOLLY_SANITIZE_ADDRESS
+  fiberManager_.unpoisonFiberStack(this);
+#endif
   fiberManager_.stackAllocator_.deallocate(
       static_cast<unsigned char*>(fcontext_.stackLimit()),
       fiberManager_.options_.stackSize);

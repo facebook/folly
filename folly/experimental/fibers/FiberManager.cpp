@@ -36,15 +36,22 @@ static void __asan_enter_fiber_weak(
     __attribute__((__weakref__("__asan_enter_fiber")));
 static void __asan_exit_fiber_weak()
     __attribute__((__weakref__("__asan_exit_fiber")));
+static void __asan_unpoison_memory_region_weak(
+    void const /* nolint */ volatile* addr,
+    size_t size) __attribute__((__weakref__("__asan_unpoison_memory_region")));
 
 typedef void (*AsanEnterFiberFuncPtr)(void const*, size_t);
 typedef void (*AsanExitFiberFuncPtr)();
+typedef void (*AsanUnpoisonMemoryRegionFuncPtr)(
+    void const /* nolint */ volatile*,
+    size_t);
 
 namespace folly {
 namespace fibers {
 
 static AsanEnterFiberFuncPtr getEnterFiberFunc();
 static AsanExitFiberFuncPtr getExitFiberFunc();
+static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc();
 }
 }
 
@@ -199,6 +206,18 @@ void FiberManager::registerFiberDeactivationWithAsan(Fiber* fiber) {
   }
 }
 
+void FiberManager::unpoisonFiberStack(const Fiber* fiber) {
+  auto stack = fiber->getStack();
+
+  // Check if we can find a fiber enter function and call it if we find one
+  static AsanUnpoisonMemoryRegionFuncPtr fn = getUnpoisonMemoryRegionFunc();
+  if (fn == nullptr) {
+    LOG(FATAL) << "This version of ASAN doesn't support memory unpoisoning";
+  } else {
+    fn(stack.first, stack.second);
+  }
+}
+
 static AsanEnterFiberFuncPtr getEnterFiberFunc() {
   AsanEnterFiberFuncPtr fn{nullptr};
 
@@ -225,9 +244,27 @@ static AsanExitFiberFuncPtr getExitFiberFunc() {
     return fn;
   }
 
-  // Check whether we can find a dynamically linked enter function
+  // Check whether we can find a dynamically linked exit function
   if (nullptr !=
       (fn = (AsanExitFiberFuncPtr)dlsym(RTLD_DEFAULT, "__asan_exit_fiber"))) {
+    return fn;
+  }
+
+  // Couldn't find the function at all
+  return nullptr;
+}
+
+static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
+  AsanUnpoisonMemoryRegionFuncPtr fn{nullptr};
+
+  // Check whether weak reference points to statically linked unpoison function
+  if (nullptr != (fn = &::__asan_unpoison_memory_region_weak)) {
+    return fn;
+  }
+
+  // Check whether we can find a dynamically linked unpoison function
+  if (nullptr != (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
+                      RTLD_DEFAULT, "__asan_unpoison_memory_region"))) {
     return fn;
   }
 
