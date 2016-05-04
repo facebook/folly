@@ -213,6 +213,24 @@ class NotificationQueue {
     bool active_{false};
   };
 
+  class SimpleConsumer {
+   public:
+    explicit SimpleConsumer(NotificationQueue& queue) : queue_(queue) {
+      ++queue_.numConsumers_;
+    }
+
+    ~SimpleConsumer() {
+      --queue_.numConsumers_;
+    }
+
+    int getFd() const {
+      return queue_.eventfd_ >= 0 ? queue_.eventfd_ : queue_.pipeFds_[0];
+    }
+
+   private:
+    NotificationQueue& queue_;
+  };
+
   enum class FdType {
     PIPE,
 #ifdef FOLLY_HAVE_EVENTFD
