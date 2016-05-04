@@ -35,39 +35,6 @@ int mallctl(const char*, void*, size_t*, void*, size_t)
 int mallctlnametomib(const char*, size_t*, size_t*) __attribute__((__weak__));
 int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
       __attribute__((__weak__));
-#elif defined(_MSC_VER)
-// MSVC doesn't have weak symbols, so do some linker magic
-// to emulate them.
-extern void* (*mallocx)(size_t, int);
-extern const char* mallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallocx=_mallocxWeak")
-extern void* (*rallocx)(void*, size_t, int);
-extern const char* rallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_rallocx=_rallocxWeak")
-extern size_t(*xallocx)(void*, size_t, size_t, int);
-extern const char* xallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_xallocx=_xallocxWeak")
-extern size_t(*sallocx)(const void*, int);
-extern const char* sallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_sallocx=_sallocxWeak")
-extern void(*dallocx)(void*, int);
-extern const char* dallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_dallocx=_dallocxWeak")
-extern void(*sdallocx)(void*, size_t, int);
-extern const char* sdallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_sdallocx=_sdallocxWeak")
-extern size_t(*nallocx)(size_t, int);
-extern const char* nallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_nallocx=_nallocxWeak")
-extern int(*mallctl)(const char*, void*, size_t*, void*, size_t);
-extern const char* mallctlWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctl=_mallctlWeak")
-extern int(*mallctlnametomib)(const char*, size_t*, size_t*);
-extern const char* mallctlnametomibWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctlnametomib=_mallctlnametomibWeak")
-extern int(*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t);
-extern const char* mallctlbymibWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctlbymib=_mallctlbymibWeak")
 #else
 extern void* (*mallocx)(size_t, int);
 extern void* (*rallocx)(void*, size_t, int);
