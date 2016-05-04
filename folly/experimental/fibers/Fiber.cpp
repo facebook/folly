@@ -35,14 +35,8 @@ namespace fibers {
 namespace {
 static const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
 
-pid_t localThreadId() {
-  // __thread doesn't allow non-const initialization.
-  // OSX doesn't support thread_local.
-  static FOLLY_TLS pid_t threadId = 0;
-  if (UNLIKELY(threadId == 0)) {
-    threadId = syscall(FOLLY_SYS_gettid);
-  }
-  return threadId;
+std::thread::id localThreadId() {
+  return std::this_thread::get_id();
 }
 
 /* Size of the region from p + nBytes down to the last non-magic value */

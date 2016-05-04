@@ -184,7 +184,7 @@ class Fiber {
   folly::IntrusiveListHook listHook_; /**< list hook for different FiberManager
                                            queues */
   folly::IntrusiveListHook globalListHook_; /**< list hook for global list */
-  pid_t threadId_{0};
+  std::thread::id threadId_{};
 };
 }
 }
