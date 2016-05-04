@@ -140,6 +140,7 @@ void SingletonHolder<T>::destroyInstance() {
   state_ = SingletonHolderState::Dead;
   instance_.reset();
   if (destroy_baton_) {
+    constexpr std::chrono::seconds kDestroyWaitTime{5};
     auto wait_result = destroy_baton_->timed_wait(
       std::chrono::steady_clock::now() + kDestroyWaitTime);
     if (!wait_result) {

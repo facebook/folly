@@ -29,8 +29,6 @@ namespace folly {
 
 namespace detail {
 
-constexpr std::chrono::seconds SingletonHolderBase::kDestroyWaitTime;
-
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
   // Not using LOG(FATAL) or std::cerr because they may not be initialized yet.
