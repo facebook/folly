@@ -35,6 +35,11 @@ FOLLY_ALWAYS_INLINE int __builtin_clzll(unsigned long long x) {
   return (int)(_BitScanReverse64(&index, x) ? 63 - index : 64);
 }
 
+FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
+  unsigned long index;
+  return (int)(_BitScanForward64(&index, x) ? index : 64);
+}
+
 FOLLY_ALWAYS_INLINE int __builtin_ffs(int x) {
   unsigned long index;
   return (int)(_BitScanForward(&index, (unsigned long)x) ? index : 0);
