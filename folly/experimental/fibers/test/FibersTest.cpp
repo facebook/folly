@@ -463,7 +463,7 @@ TEST(FiberManager, addTasksVoidThrow) {
   loopController.loop(std::move(loopFunc));
 }
 
-TEST(FiberManager, reserve) {
+TEST(FiberManager, addTasksReserve) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
 
@@ -515,6 +515,42 @@ TEST(FiberManager, reserve) {
   };
 
   loopController.loop(std::move(loopFunc));
+}
+
+TEST(FiberManager, addTaskDynamic) {
+  folly::EventBase evb;
+
+  Baton batons[3];
+
+  auto makeTask = [&](size_t taskId) {
+    return [&, taskId]() -> size_t {
+      batons[taskId].wait();
+      return taskId;
+    };
+  };
+
+  getFiberManager(evb)
+      .addTaskFuture([&]() {
+        TaskIterator<size_t> iterator;
+
+        iterator.addTask(makeTask(0));
+        iterator.addTask(makeTask(1));
+
+        batons[1].post();
+
+        EXPECT_EQ(1, iterator.awaitNext());
+
+        iterator.addTask(makeTask(2));
+
+        batons[2].post();
+
+        EXPECT_EQ(2, iterator.awaitNext());
+
+        batons[0].post();
+
+        EXPECT_EQ(0, iterator.awaitNext());
+      })
+      .waitVia(&evb);
 }
 
 TEST(FiberManager, forEach) {

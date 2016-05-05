@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <folly/Optional.h>
+#include <folly/experimental/fibers/FiberManager.h>
 #include <folly/experimental/fibers/Promise.h>
 #include <folly/futures/Try.h>
 
@@ -49,6 +50,8 @@ class TaskIterator {
  public:
   typedef T value_type;
 
+  TaskIterator() : fm_(FiberManager::getFiberManager()) {}
+
   // not copyable
   TaskIterator(const TaskIterator& other) = delete;
   TaskIterator& operator=(const TaskIterator& other) = delete;
@@ -56,6 +59,14 @@ class TaskIterator {
   // movable
   TaskIterator(TaskIterator&& other) noexcept;
   TaskIterator& operator=(TaskIterator&& other) = delete;
+
+  /**
+   * Add one more task to the TaskIterator.
+   *
+   * @param func task to be added, will be scheduled on current FiberManager
+   */
+  template <typename F>
+  void addTask(F&& func);
 
   /**
    * @return True if there are tasks immediately available to be consumed (no
@@ -111,10 +122,9 @@ class TaskIterator {
     size_t tasksToFulfillPromise{0};
   };
 
-  std::shared_ptr<Context> context_;
-  size_t id_;
-
-  explicit TaskIterator(std::shared_ptr<Context> context);
+  std::shared_ptr<Context> context_{std::make_shared<Context>()};
+  size_t id_{std::numeric_limits<size_t>::max()};
+  FiberManager& fm_;
 
   folly::Try<T> awaitNextResult();
 };

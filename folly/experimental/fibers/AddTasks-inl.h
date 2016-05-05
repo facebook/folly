@@ -16,20 +16,12 @@
 #include <memory>
 #include <vector>
 
-#include <folly/experimental/fibers/FiberManager.h>
-
 namespace folly {
 namespace fibers {
 
 template <typename T>
 TaskIterator<T>::TaskIterator(TaskIterator&& other) noexcept
-    : context_(std::move(other.context_)), id_(other.id_) {}
-
-template <typename T>
-TaskIterator<T>::TaskIterator(std::shared_ptr<Context> context)
-    : context_(std::move(context)), id_(-1) {
-  assert(context_);
-}
+    : context_(std::move(other.context_)), id_(other.id_), fm_(other.fm_) {}
 
 template <typename T>
 inline bool TaskIterator<T>::hasCompleted() const {
@@ -92,6 +84,30 @@ inline size_t TaskIterator<T>::getTaskID() const {
   return id_;
 }
 
+template <typename T>
+template <typename F>
+void TaskIterator<T>::addTask(F&& func) {
+  static_assert(
+      std::is_convertible<typename std::result_of<F()>::type, T>::value,
+      "TaskIterator<T>: T must be convertible from func()'s return type");
+
+  auto taskId = context_->totalTasks++;
+
+  fm_.addTask(
+      [ taskId, context = context_, func = std::forward<F>(func) ]() mutable {
+        context->results.emplace_back(
+            taskId, folly::makeTryWith(std::move(func)));
+
+        // Check for awaiting iterator.
+        if (context->promise.hasValue()) {
+          if (--context->tasksToFulfillPromise == 0) {
+            context->promise->setValue();
+            context->promise.clear();
+          }
+        }
+      });
+}
+
 template <class InputIterator>
 TaskIterator<typename std::result_of<
     typename std::iterator_traits<InputIterator>::value_type()>::type>
@@ -101,32 +117,15 @@ addTasks(InputIterator first, InputIterator last) {
       ResultType;
   typedef TaskIterator<ResultType> IteratorType;
 
-  auto context = std::make_shared<typename IteratorType::Context>();
-  context->totalTasks = std::distance(first, last);
-  context->results.reserve(context->totalTasks);
+  IteratorType iterator;
 
-  for (size_t i = 0; first != last; ++i, ++first) {
-#ifdef __clang__
-#pragma clang diagnostic push // ignore generalized lambda capture warning
-#pragma clang diagnostic ignored "-Wc++1y-extensions"
-#endif
-    addTask([ i, context, f = std::move(*first) ]() {
-      context->results.emplace_back(i, folly::makeTryWith(std::move(f)));
-
-      // Check for awaiting iterator.
-      if (context->promise.hasValue()) {
-        if (--context->tasksToFulfillPromise == 0) {
-          context->promise->setValue();
-          context->promise.clear();
-        }
-      }
-    });
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+  for (; first != last; ++first) {
+    iterator.addTask(std::move(*first));
   }
 
-  return IteratorType(std::move(context));
+  iterator.context_->results.reserve(iterator.context_->totalTasks);
+
+  return std::move(iterator);
 }
 }
 }
