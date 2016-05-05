@@ -1728,3 +1728,41 @@ TEST(EventBaseTest, RunCallbacksOnDestruction) {
 
   ASSERT_TRUE(ran);
 }
+
+TEST(EventBaseTest, LoopKeepAlive) {
+  EventBase evb;
+
+  bool done = false;
+  std::thread t([&, loopKeepAlive = evb.loopKeepAlive() ] {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(100));
+    evb.runInEventBaseThread([&] { done = true; });
+  });
+
+  evb.loop();
+
+  ASSERT_TRUE(done);
+
+  t.join();
+}
+
+TEST(EventBaseTest, LoopKeepAliveInLoop) {
+  EventBase evb;
+
+  bool done = false;
+  std::thread t;
+
+  evb.runInEventBaseThread([&] {
+    t = std::thread([&, loopKeepAlive = evb.loopKeepAlive() ] {
+      /* sleep override */ std::this_thread::sleep_for(
+          std::chrono::milliseconds(100));
+      evb.runInEventBaseThread([&] { done = true; });
+    });
+  });
+
+  evb.loop();
+
+  ASSERT_TRUE(done);
+
+  t.join();
+}

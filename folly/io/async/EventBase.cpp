@@ -319,6 +319,7 @@ bool EventBase::loopBody(int flags) {
   }
 
   while (!stop_.load(std::memory_order_acquire)) {
+    applyLoopKeepAlive();
     ++nextLoopCnt_;
 
     // Run the before loop callbacks
@@ -425,18 +426,34 @@ bool EventBase::loopBody(int flags) {
   return true;
 }
 
+void EventBase::applyLoopKeepAlive() {
+  if (loopKeepAliveActive_ && loopKeepAlive_.unique()) {
+    // Restore the notification queue internal flag
+    fnRunner_->stopConsuming();
+    fnRunner_->startConsumingInternal(this, queue_.get());
+    loopKeepAliveActive_ = false;
+  } else if (!loopKeepAliveActive_ && !loopKeepAlive_.unique()) {
+    // Update the notification queue event to treat it as a normal
+    // (non-internal) event.  The notification queue event always remains
+    // installed, and the main loop won't exit with it installed.
+    fnRunner_->stopConsuming();
+    fnRunner_->startConsuming(this, queue_.get());
+    loopKeepAliveActive_ = true;
+  }
+}
+
 void EventBase::loopForever() {
-  // Update the notification queue event to treat it as a normal (non-internal)
-  // event.  The notification queue event always remains installed, and the main
-  // loop won't exit with it installed.
-  fnRunner_->stopConsuming();
-  fnRunner_->startConsuming(this, queue_.get());
-
-  bool ret = loop();
-
-  // Restore the notification queue internal flag
-  fnRunner_->stopConsuming();
-  fnRunner_->startConsumingInternal(this, queue_.get());
+  bool ret;
+  {
+    SCOPE_EXIT {
+      applyLoopKeepAlive();
+      loopForeverActive_ = false;
+    };
+    loopForeverActive_ = true;
+    // Make sure notification queue events are treated as normal events.
+    auto loopKeepAlive = loopKeepAlive_;
+    ret = loop();
+  }
 
   if (!ret) {
     folly::throwSystemError("error in EventBase::loopForever()");

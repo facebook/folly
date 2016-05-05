@@ -586,6 +586,22 @@ class EventBase : private boost::noncopyable,
     loopOnce();
   }
 
+  using LoopKeepAlive = std::shared_ptr<void>;
+
+  /// Returns you a handle which make loop() behave like loopForever() until
+  /// destroyed. loop() will return to its original behavior only when all
+  /// loop keep-alives are released. Loop holder is safe to release only from
+  /// EventBase thread.
+  ///
+  /// May return no op LoopKeepAlive if loopForever() is already running.
+  LoopKeepAlive loopKeepAlive() {
+    if (loopForeverActive_) {
+      return nullptr;
+    } else {
+      return loopKeepAlive_;
+    }
+  }
+
  private:
   // TimeoutManager
   void attachTimeoutManager(AsyncTimeout* obj,
@@ -601,6 +617,8 @@ class EventBase : private boost::noncopyable,
   bool isInTimeoutManagerThread() override final {
     return isInEventBaseThread();
   }
+
+  void applyLoopKeepAlive();
 
   /*
    * Helper function that tells us whether we have already handled
@@ -673,6 +691,9 @@ class EventBase : private boost::noncopyable,
   // to send function requests to the EventBase thread.
   std::unique_ptr<NotificationQueue<Func>> queue_;
   std::unique_ptr<FunctionRunner> fnRunner_;
+  LoopKeepAlive loopKeepAlive_{std::make_shared<int>(42)};
+  bool loopKeepAliveActive_{false};
+  std::atomic<bool> loopForeverActive_{false};
 
   // limit for latency in microseconds (0 disables)
   int64_t maxLatency_;
