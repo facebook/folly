@@ -29,6 +29,7 @@
 
 #include <folly/Exception.h>
 #include <folly/Foreach.h>
+#include <folly/Function.h>
 #include <folly/Malloc.h>
 #include <folly/MicroSpinLock.h>
 #include <folly/Portability.h>
@@ -272,6 +273,12 @@ struct StaticMetaBase {
 
   ElementWrapper& get(EntryID* ent);
 
+  static void initAtFork();
+  static void registerAtFork(
+      folly::Function<void()> prepare,
+      folly::Function<void()> parent,
+      folly::Function<void()> child);
+
   uint32_t nextId_;
   std::vector<uint32_t> freeIds_;
   std::mutex lock_;
@@ -290,20 +297,10 @@ struct StaticMetaBase {
 template <class Tag>
 struct StaticMeta : StaticMetaBase {
   StaticMeta() : StaticMetaBase(&StaticMeta::getThreadEntrySlow) {
-#if FOLLY_HAVE_PTHREAD_ATFORK
-    int ret = pthread_atfork(
+    registerAtFork(
         /*prepare*/ &StaticMeta::preFork,
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);
-    checkPosixError(ret, "pthread_atfork failed");
-#elif !__ANDROID__ && !defined(_MSC_VER)
-    // pthread_atfork is not part of the Android NDK at least as of n9d. If
-    // something is trying to call native fork() directly at all with Android's
-    // process management model, this is probably the least of the problems.
-    //
-    // But otherwise, this is a problem.
-    #warning pthread_atfork unavailable
-#endif
   }
 
   static StaticMeta<Tag>& instance() {

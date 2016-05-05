@@ -15,6 +15,9 @@
  */
 #include <folly/ThreadLocal.h>
 
+#include <list>
+#include <mutex>
+
 namespace folly { namespace threadlocal_detail {
 
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)())
@@ -220,6 +223,79 @@ void StaticMetaBase::reserve(EntryID* id) {
   }
 
   free(reallocated);
+}
+
+namespace {
+
+struct AtForkTask {
+  folly::Function<void()> prepare;
+  folly::Function<void()> parent;
+  folly::Function<void()> child;
+};
+
+class AtForkList {
+ public:
+  static AtForkList& instance() {
+    static auto instance = new AtForkList();
+    return *instance;
+  }
+
+  static void prepare() noexcept {
+    instance().tasksLock.lock();
+    auto& tasks = instance().tasks;
+    for (auto task = tasks.rbegin(); task != tasks.rend(); ++task) {
+      task->prepare();
+    }
+  }
+
+  static void parent() noexcept {
+    auto& tasks = instance().tasks;
+    for (auto& task : tasks) {
+      task.parent();
+    }
+    instance().tasksLock.unlock();
+  }
+
+  static void child() noexcept {
+    auto& tasks = instance().tasks;
+    for (auto& task : tasks) {
+      task.child();
+    }
+    instance().tasksLock.unlock();
+  }
+
+  std::mutex tasksLock;
+  std::list<AtForkTask> tasks;
+
+ private:
+  AtForkList() {
+#if FOLLY_HAVE_PTHREAD_ATFORK
+    int ret = pthread_atfork(
+        &AtForkList::prepare, &AtForkList::parent, &AtForkList::child);
+    checkPosixError(ret, "pthread_atfork failed");
+#elif !__ANDROID__ && !defined(_MSC_VER)
+// pthread_atfork is not part of the Android NDK at least as of n9d. If
+// something is trying to call native fork() directly at all with Android's
+// process management model, this is probably the least of the problems.
+//
+// But otherwise, this is a problem.
+#warning pthread_atfork unavailable
+#endif
+  }
+};
+}
+
+void StaticMetaBase::initAtFork() {
+  AtForkList::instance();
+}
+
+void StaticMetaBase::registerAtFork(
+    folly::Function<void()> prepare,
+    folly::Function<void()> parent,
+    folly::Function<void()> child) {
+  std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
+  AtForkList::instance().tasks.push_back(
+      {std::move(prepare), std::move(parent), std::move(child)});
 }
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX
