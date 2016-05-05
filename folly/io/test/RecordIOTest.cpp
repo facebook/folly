@@ -18,10 +18,8 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <random>
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -30,6 +28,7 @@
 #include <folly/Random.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_int32(random_seed, folly::randomNumberSeed(), "random seed");
 

@@ -18,21 +18,19 @@
 // @author xliu (xliux@fb.com)
 //
 
+#include <folly/RWSpinLock.h>
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <vector>
 #include <thread>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
-#include <folly/RWSpinLock.h>
+#include <gtest/gtest.h>
 
-#if FOLLY_HAVE_LIBGFLAGS
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
+
 DEFINE_int32(num_threads, 8, "num threads");
-#else
-constexpr int FLAGS_num_threads = 8;
-#endif
 
 namespace {
 

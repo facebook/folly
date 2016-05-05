@@ -15,10 +15,9 @@
  */
 #include <folly/stats/Histogram.h>
 
-#include <gflags/gflags.h>
-
 #include <folly/Benchmark.h>
 #include <folly/Foreach.h>
+#include <folly/portability/GFlags.h>
 
 using folly::Histogram;
 

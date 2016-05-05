@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <folly/File.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_bool(s, false, "get shared lock");
 DEFINE_bool(x, false, "get exclusive lock");

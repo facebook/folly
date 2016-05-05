@@ -16,8 +16,9 @@
 
 #include <folly/test/DeterministicSchedule.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+
+#include <folly/portability/GFlags.h>
 
 using namespace folly::test;
 

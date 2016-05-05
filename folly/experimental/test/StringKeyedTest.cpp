@@ -15,18 +15,19 @@
  */
 // Copyright 2013-present Facebook. All Rights Reserved.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
-
-#include <string>
-#include <list>
-
-#include <folly/Range.h>
 #include <folly/experimental/StringKeyedMap.h>
 #include <folly/experimental/StringKeyedSet.h>
 #include <folly/experimental/StringKeyedUnorderedMap.h>
 #include <folly/experimental/StringKeyedUnorderedSet.h>
+
+#include <list>
+#include <string>
+
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
+#include <folly/Range.h>
+#include <folly/portability/GFlags.h>
 
 using folly::StringKeyedMap;
 using folly::StringKeyedSetBase;

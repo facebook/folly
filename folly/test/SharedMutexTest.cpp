@@ -19,16 +19,17 @@
 #include <stdlib.h>
 #include <thread>
 #include <vector>
+
+#include <gtest/gtest.h>
 #include <boost/optional.hpp>
+#include <boost/thread/shared_mutex.hpp>
+
 #include <folly/Benchmark.h>
 #include <folly/MPMCQueue.h>
-#include <folly/Random.h>
-#include <folly/test/DeterministicSchedule.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-
-#include <boost/thread/shared_mutex.hpp>
 #include <folly/RWSpinLock.h>
+#include <folly/Random.h>
+#include <folly/portability/GFlags.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;

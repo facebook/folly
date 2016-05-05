@@ -16,8 +16,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/io/async/EventBase.h>
-
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 

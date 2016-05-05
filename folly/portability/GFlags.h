@@ -16,9 +16,9 @@
 
 #pragma once
 
-#if FOLLY_HAVE_LIBGFLAGS
-#include <gflags/gflags.h>
-#else
+#include <folly/portability/Config.h>
+
+#if defined(FOLLY_HAVE_LIBGFLAGS) && (FOLLY_HAVE_LIBGFLAGS == 0)
 // glog/logging.h is dependent on this implementation detail
 // being defined otherwise it undefines all of this -_-....
 //
@@ -58,4 +58,6 @@
   FOLLY_DEFINE_FLAG(unsigned long long, U64, _name, _default)
 #define DEFINE_string(_name, _default, _description) \
   FOLLY_DEFINE_FLAG(std::string, S, _name, _default)
+#else
+#include <gflags/gflags.h>
 #endif

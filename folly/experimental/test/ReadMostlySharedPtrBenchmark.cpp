@@ -15,14 +15,15 @@
  */
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2; indent-tabs-mode: nil -*- */
 
-#include <thread>
+#include <folly/experimental/ReadMostlySharedPtr.h>
+
 #include <iostream>
+#include <thread>
+
 #include <folly/Benchmark.h>
 #include <folly/Memory.h>
-#include <gflags/gflags.h>
-
 #include <folly/experimental/RCURefCount.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/portability/GFlags.h>
 
 template <template<typename> class MainPtr,
           template<typename> class WeakPtr,

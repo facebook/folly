@@ -15,14 +15,14 @@
  */
 #include <folly/ExceptionWrapper.h>
 
-#include <gflags/gflags.h>
 #include <atomic>
 #include <exception>
-#include <vector>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 #include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_int32(num_threads, 32, "Number of threads to run concurrency "
                               "benchmarks");

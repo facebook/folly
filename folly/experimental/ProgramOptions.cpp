@@ -20,10 +20,11 @@
 #include <unordered_set>
 
 #include <boost/version.hpp>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/Portability.h>
+#include <folly/portability/GFlags.h>
 
 namespace po = ::boost::program_options;
 

@@ -33,11 +33,11 @@
 #include <unordered_map>
 
 #include <boost/thread/tss.hpp>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 

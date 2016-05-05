@@ -16,7 +16,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 
 void dummy() {}
 

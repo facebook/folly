@@ -20,18 +20,17 @@
 #include <folly/FBString.h>
 
 #include <cstdlib>
-
 #include <list>
 #include <fstream>
 #include <sstream>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
 
-#include <gflags/gflags.h>
-
+#include <folly/Benchmark.h>
 #include <folly/Foreach.h>
 #include <folly/Random.h>
-#include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
 
 using namespace std;
 using namespace folly;

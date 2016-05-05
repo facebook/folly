@@ -16,7 +16,7 @@
 
 #include <folly/Range.h>
 
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 #include <gtest/gtest.h>
 #include <algorithm>
 

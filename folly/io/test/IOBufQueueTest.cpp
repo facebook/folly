@@ -15,14 +15,14 @@
  */
 
 #include <folly/io/IOBufQueue.h>
-#include <folly/Range.h>
-
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 
 #include <iostream>
 #include <stdexcept>
 #include <string.h>
+
+#include <gtest/gtest.h>
+
+#include <folly/Range.h>
 
 using folly::IOBuf;
 using folly::IOBufQueue;

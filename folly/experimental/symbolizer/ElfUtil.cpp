@@ -19,8 +19,9 @@
 
 #include <stdio.h>
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 using namespace folly::symbolizer;

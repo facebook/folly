@@ -24,9 +24,9 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
 
 #include <folly/Format.h>
+#include <folly/portability/GFlags.h>
 
 #include <folly/detail/FingerprintPolynomial.h>
 

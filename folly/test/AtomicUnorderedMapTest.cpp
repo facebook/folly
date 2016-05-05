@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/AtomicUnorderedMap.h>
-#include <folly/test/DeterministicSchedule.h>
-#include <thread>
+
 #include <semaphore.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include <folly/Benchmark.h>
+#include <thread>
 #include <unordered_map>
+
+#include <gtest/gtest.h>
+
+#include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;

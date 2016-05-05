@@ -15,15 +15,16 @@
  */
 
 #include <folly/LifoSem.h>
-#include <folly/test/DeterministicSchedule.h>
 
-#include <thread>
 #include <semaphore.h>
-#include <gflags/gflags.h>
+#include <thread>
+
 #include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
+#include <folly/portability/GFlags.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;
 using namespace folly::test;

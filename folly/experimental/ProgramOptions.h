@@ -17,8 +17,9 @@
 #pragma once
 
 #include <boost/program_options.hpp>
+
 #include <folly/Optional.h>
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 
 namespace folly {
 

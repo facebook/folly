@@ -18,8 +18,8 @@
 
 #include <folly/gen/Base.h>
 #include <folly/json.h>
+#include <folly/portability/GFlags.h>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <iostream>

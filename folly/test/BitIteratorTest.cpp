@@ -15,15 +15,16 @@
  */
 
 #include <folly/Bits.h>
-#include <folly/Benchmark.h>
 
 #include <algorithm>
 #include <type_traits>
 #include <limits>
 #include <vector>
+
 #include <gtest/gtest.h>
 
-#include <gflags/gflags.h>
+#include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 using namespace folly::bititerator_detail;

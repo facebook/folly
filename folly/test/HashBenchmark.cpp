@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
+#include <folly/Hash.h>
 
+#include <stdint.h>
 #include <deque>
 #include <random>
 #include <string>
 #include <vector>
 
+#include <glog/logging.h>
+
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
-#include <folly/Hash.h>
 #include <folly/Preprocessor.h>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include <folly/portability/GFlags.h>
 
 namespace detail {
 

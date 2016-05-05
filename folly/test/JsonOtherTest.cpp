@@ -18,9 +18,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/FileUtil.h>
+#include <folly/portability/GFlags.h>
 
 #include <gtest/gtest.h>
-#include <gflags/gflags.h>
 
 using folly::dynamic;
 using folly::parseJson;

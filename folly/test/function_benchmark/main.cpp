@@ -17,10 +17,11 @@
 #include <folly/test/function_benchmark/benchmark_impl.h>
 #include <folly/test/function_benchmark/test_functions.h>
 
+#include <glog/logging.h>
+
 #include <folly/Benchmark.h>
 #include <folly/ScopeGuard.h>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include <folly/portability/GFlags.h>
 
 using folly::ScopeGuard;
 using folly::makeGuard;

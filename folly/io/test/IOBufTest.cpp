@@ -17,14 +17,13 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/TypedIOBuf.h>
 
-#include <gflags/gflags.h>
+#include <cstddef>
+
 #include <boost/random.hpp>
 #include <gtest/gtest.h>
 
 #include <folly/Malloc.h>
 #include <folly/Range.h>
-
-#include <cstddef>
 
 using folly::fbstring;
 using folly::fbvector;

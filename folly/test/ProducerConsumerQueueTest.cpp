@@ -16,13 +16,14 @@
 
 #include <folly/ProducerConsumerQueue.h>
 
-#include <gtest/gtest.h>
-#include <vector>
 #include <atomic>
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <vector>
+
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 
 //////////////////////////////////////////////////////////////////////
 

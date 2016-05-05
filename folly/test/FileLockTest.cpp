@@ -16,18 +16,17 @@
 
 #include <folly/File.h>
 
+#include <mutex>
+
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <boost/thread/locks.hpp>
 
 #include <folly/String.h>
 #include <folly/Subprocess.h>
-#include <folly/experimental/io/FsUtil.h>
 #include <folly/experimental/TestUtil.h>
-
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-#include <gtest/gtest.h>
-
-#include <mutex>
+#include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 using namespace folly::test;

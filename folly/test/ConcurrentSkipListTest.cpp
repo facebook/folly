@@ -16,6 +16,8 @@
 
 // @author: Xin Liu <xliux@fb.com>
 
+#include <folly/ConcurrentSkipList.h>
+
 #include <atomic>
 #include <memory>
 #include <set>
@@ -24,15 +26,13 @@
 #include <system_error>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 #include <folly/Arena.h>
-#include <folly/ConcurrentSkipList.h>
 #include <folly/Foreach.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
 

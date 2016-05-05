@@ -16,15 +16,14 @@
 
 #include <folly/Format.h>
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+
 #include <folly/FBVector.h>
 #include <folly/FileUtil.h>
 #include <folly/dynamic.h>
 #include <folly/json.h>
 #include <folly/small_vector.h>
-
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 

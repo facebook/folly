@@ -15,7 +15,7 @@
  */
 
 #include <folly/experimental/NestedCommandLineApp.h>
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 
 DEFINE_int32(global_foo, 42, "Global foo");
 

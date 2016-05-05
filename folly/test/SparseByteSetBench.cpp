@@ -18,13 +18,13 @@
  *  A benchmark comparing SparseByteSet to bitset<256> and bool[256].
  */
 
-#include <bitset>
-#include <random>
-#include <vector>
-#include <gflags/gflags.h>
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
 #include <folly/SparseByteSet.h>
+#include <folly/portability/GFlags.h>
+#include <bitset>
+#include <random>
+#include <vector>
 
 using namespace std;
 using namespace folly;

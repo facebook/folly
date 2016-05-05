@@ -15,14 +15,16 @@
  */
 
 #include <folly/ThreadCachedInt.h>
-#include <folly/Hash.h>
 
 #include <atomic>
 #include <thread>
-#include <gtest/gtest.h>
-#include <gflags/gflags.h>
+
 #include <glog/logging.h>
+#include <gtest/gtest.h>
+
 #include <folly/Benchmark.h>
+#include <folly/Hash.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 

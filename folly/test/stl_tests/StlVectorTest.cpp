@@ -184,12 +184,13 @@ THOUGHTS:
 #include <cstddef>
 #include <iomanip>
 
-#include <folly/ScopeGuard.h>
-#include <folly/Conv.h>
-#include <boost/preprocessor.hpp>
-#include <boost/iterator/iterator_adaptor.hpp>
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+#include <boost/iterator/iterator_adaptor.hpp>
+#include <boost/preprocessor.hpp>
+
+#include <folly/Conv.h>
+#include <folly/ScopeGuard.h>
+#include <folly/portability/GFlags.h>
 
 using namespace std;
 using namespace folly;

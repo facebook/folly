@@ -28,11 +28,11 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/Subprocess.h>
+#include <folly/portability/GFlags.h>
 
 using folly::Subprocess;
 

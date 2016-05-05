@@ -15,13 +15,16 @@
  */
 
 #include <folly/Baton.h>
+
+#include <semaphore.h>
+#include <thread>
+
+#include <gtest/gtest.h>
+
 #include <folly/Benchmark.h>
+#include <folly/portability/GFlags.h>
 #include <folly/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
-#include <thread>
-#include <semaphore.h>
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 using namespace folly::test;

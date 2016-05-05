@@ -21,6 +21,7 @@
 #include <utility>
 
 #include <folly/Format.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 
 #ifdef __linux__
@@ -30,7 +31,6 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <system_error>
-#include <gflags/gflags.h>
 
 DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
              "Maximum bytes to mlock/munlock/munmap at once "

@@ -15,13 +15,14 @@
  */
 /* -*- Mode: C++; tab-width: 2; c-basic-offset: 2; indent-tabs-mode: nil -*- */
 
-#include <thread>
+#include <folly/Singleton.h>
+
 #include <iostream>
+#include <thread>
+
 #include <folly/Benchmark.h>
 #include <folly/Memory.h>
-#include <gflags/gflags.h>
-
-#include <folly/Singleton.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 

@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
+#include <folly/SparseByteSet.h>
+
 #include <cstdint>
 #include <limits>
 #include <random>
 #include <set>
-#include <folly/SparseByteSet.h>
+
 #include <gtest/gtest.h>
 
 using namespace std;

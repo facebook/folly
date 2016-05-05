@@ -18,11 +18,11 @@
 #include <thread>
 #include <vector>
 
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
+#include <folly/portability/GFlags.h>
 
 void recurse(int level) {
   if (level == 0) {

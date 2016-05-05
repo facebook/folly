@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/init/Init.h>
-#include <folly/Singleton.h>
-#include <folly/experimental/symbolizer/SignalHandler.h>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
+
+#include <folly/Singleton.h>
+#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/portability/GFlags.h>
 
 namespace folly {
 
