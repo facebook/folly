@@ -19,6 +19,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/RWSpinLock.h>
 #include <folly/SocketAddress.h>
+#include <folly/Random.h>
 
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
@@ -2122,7 +2123,7 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
   std::shared_ptr<AsyncServerSocket> serverSocket(
       AsyncServerSocket::newSocket(&eventBase));
   string path(1, 0);
-  path.append("/anonymous");
+  path.append(folly::to<string>("/anonymous", folly::Random::rand64()));
   folly::SocketAddress serverAddress;
   serverAddress.setFromPath(path);
   serverSocket->bind(serverAddress);
