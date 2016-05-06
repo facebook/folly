@@ -78,8 +78,7 @@ void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   stateCheck(SingletonVaultState::Running);
 
   if (UNLIKELY(registrationComplete_)) {
-    throw std::logic_error(
-      "Registering singleton after registrationComplete().");
+    LOG(ERROR) << "Registering singleton after registrationComplete().";
   }
 
   RWSpinLock::ReadHolder rhMutex(&mutex_);
@@ -96,8 +95,7 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   stateCheck(SingletonVaultState::Running);
 
   if (UNLIKELY(registrationComplete_)) {
-    throw std::logic_error(
-        "Registering for eager-load after registrationComplete().");
+    LOG(ERROR) << "Registering for eager-load after registrationComplete().";
   }
 
   RWSpinLock::ReadHolder rhMutex(&mutex_);
