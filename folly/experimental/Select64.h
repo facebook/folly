@@ -63,8 +63,14 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
 }
 
 template <>
+uint64_t select64<compression::instructions::Haswell>(uint64_t x, uint64_t k)
+  FOLLY_TARGET_ATTRIBUTE("bmi,bmi2");
+
+template <>
 inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
                                                              uint64_t k) {
+#if defined(__GNUC__) && !__GNUC_PREREQ(4, 9)
+  // GCC 4.8 doesn't support the intrinsics.
   uint64_t result = uint64_t(1) << k;
 
   asm("pdep %1, %0, %0\n\t"
@@ -73,6 +79,9 @@ inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
       : "r"(x));
 
   return result;
+#else
+  return _tzcnt_u64(_pdep_u64(x, 1ULL << k));
+#endif
 }
 
 } // namespace folly
