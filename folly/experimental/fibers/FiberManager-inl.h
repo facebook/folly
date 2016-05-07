@@ -527,11 +527,9 @@ FiberManager::FiberManager(
           LOG(DFATAL) << "Exception " << typeid(e).name() << " with message '"
                       << e.what() << "' was thrown in "
                       << "FiberManager with context '" << context << "'";
-          throw;
         } catch (...) {
           LOG(DFATAL) << "Unknown exception was thrown in FiberManager with "
                       << "context '" << context << "'";
-          throw;
         }
       }),
       timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
