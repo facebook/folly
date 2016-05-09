@@ -30,10 +30,11 @@
 #include <folly/detail/GroupVarintDetail.h>
 #include <folly/Bits.h>
 #include <folly/Range.h>
+#include <folly/portability/Builtins.h>
 #include <glog/logging.h>
 
 #if FOLLY_SSE >= 3
-#include <x86intrin.h>
+#include <nmmintrin.h>
 namespace folly {
 namespace detail {
 extern const __m128i groupVarintSSEMasks[];
