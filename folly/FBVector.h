@@ -636,7 +636,9 @@ private:
   }
 
   void relocate_move_or_memcpy(T* dest, T* first, T* last, std::true_type) {
-    std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+    if (first != nullptr) {
+      std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+    }
   }
 
   void relocate_move_or_memcpy(T* dest, T* first, T* last, std::false_type) {
