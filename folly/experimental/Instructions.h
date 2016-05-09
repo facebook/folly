@@ -17,10 +17,8 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <immintrin.h>
 
 #include <folly/CpuId.h>
-#include <folly/portability/Builtins.h>
 
 namespace folly { namespace compression { namespace instructions {
 
@@ -54,17 +52,11 @@ struct Nehalem : public Default {
   static bool supported(const folly::CpuId& cpuId = {}) {
     return cpuId.popcnt();
   }
-  static inline uint64_t popcount(uint64_t value)
-      FOLLY_TARGET_ATTRIBUTE("popcnt") {
+  static inline uint64_t popcount(uint64_t value) {
     // POPCNT is supported starting with Intel Nehalem, AMD K10.
-#if defined(__GNUC__) && !__GNUC_PREREQ(4, 9)
-    // GCC 4.8 doesn't support the intrinsics.
     uint64_t result;
     asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
     return result;
-#else
-    return _mm_popcnt_u64(value);
-#endif
   }
 };
 
@@ -72,17 +64,12 @@ struct Haswell : public Nehalem {
   static bool supported(const folly::CpuId& cpuId = {}) {
     return Nehalem::supported(cpuId) && cpuId.bmi1();
   }
-  static inline uint64_t blsr(uint64_t value) FOLLY_TARGET_ATTRIBUTE("bmi") {
+  static inline uint64_t blsr(uint64_t value) {
     // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
     // BLSR combines two instuctions into one and reduces register pressure.
-#if defined(__GNUC__) && !__GNUC_PREREQ(4, 9)
-    // GCC 4.8 doesn't support the intrinsics.
     uint64_t result;
     asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
     return result;
-#else
-    return _blsr_u64(value);
-#endif
   }
 };
 

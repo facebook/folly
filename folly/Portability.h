@@ -92,13 +92,6 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_ALWAYS_INLINE inline
 #endif
 
-// target
-#ifdef _MSC_VER
-# define FOLLY_TARGET_ATTRIBUTE(target)
-#else
-# define FOLLY_TARGET_ATTRIBUTE(target) __attribute__((__target__(target)))
-#endif
-
 // detection for 64 bit
 #if defined(__x86_64__) || defined(_M_X64)
 # define FOLLY_X64 1
