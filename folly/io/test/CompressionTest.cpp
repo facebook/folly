@@ -92,7 +92,7 @@ RandomDataHolder::RandomDataHolder(size_t sizeLog2)
     threads.emplace_back(
         [this, seed, t, numThreadsLog2, sizeLog2] () {
           std::mt19937 rng(seed + t);
-          size_t countLog2 = size_t(1) << (sizeLog2 - numThreadsLog2);
+          size_t countLog2 = sizeLog2 - numThreadsLog2;
           size_t start = size_t(t) << countLog2;
           for (size_t i = 0; i < countLog2; ++i) {
             this->data_[start + i] = rng();
