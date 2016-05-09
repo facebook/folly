@@ -58,6 +58,7 @@ int clock_getres(clockid_t clk_id, struct timespec* ts) {
 }
 #elif defined(_WIN32)
 #include <errno.h>
+#include <locale.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -212,7 +213,7 @@ char* asctime_r(const tm* tm, char* buf) {
 
 char* ctime_r(const time_t* t, char* buf) {
   char tmpBuf[64];
-  if (ctime_s(tmpBuf, t)) {
+  if (ctime_s(tmpBuf, 64, t)) {
     return nullptr;
   }
   // Nothing we can do if the buff is to small :(
@@ -234,7 +235,7 @@ tm* localtime_r(const time_t* t, tm* o) {
 }
 
 int nanosleep(const struct timespec* request, struct timespec* remain) {
-  Sleep((DWORD)((request->tv_sec * 1000) + (request->tv_nsec / 1000000));
+  Sleep((DWORD)((request->tv_sec * 1000) + (request->tv_nsec / 1000000)));
   remain->tv_nsec = 0;
   remain->tv_sec = 0;
   return 0;

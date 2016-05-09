@@ -87,7 +87,8 @@ namespace std {
 template <>
 struct hash<pthread_t> {
   std::size_t operator()(const pthread_t& k) const {
-    return 0 ^ std::hash<decltype(k.p)>(k.p) ^ std::hash<decltype(k.x)>(k.x);
+    return 0 ^ std::hash<decltype(k.p)>()(k.p) ^
+        std::hash<decltype(k.x)>()(k.x);
   }
 };
 }

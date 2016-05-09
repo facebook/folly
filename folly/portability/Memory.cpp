@@ -44,7 +44,7 @@ void aligned_free(void* aligned_ptr) {
 #include <malloc.h> // nolint
 
 void* aligned_malloc(size_t size, size_t align) {
-  return _aligned_malloc(size, alignment);
+  return _aligned_malloc(size, align);
 }
 
 void aligned_free(void* aligned_ptr) {

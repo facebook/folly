@@ -206,7 +206,7 @@ ssize_t recvmsg(int s, struct msghdr* message, int fl) {
 
   DWORD bytesReceived;
   int res = WSARecvMsg(h, &msg, &bytesReceived, nullptr, nullptr);
-  return res == o ? (ssize_t)bytesReceived : -1;
+  return res == 0 ? (ssize_t)bytesReceived : -1;
 }
 
 ssize_t send(int s, const void* buf, size_t len, int flags) {
