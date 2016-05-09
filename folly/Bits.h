@@ -281,7 +281,7 @@ FB_GEN(uint16_t, our_bswap16)
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 template <class T>
-struct EndianInt : public detail::EndianIntBase<T> {
+struct EndianInt : public EndianIntBase<T> {
  public:
   static T big(T x) { return EndianInt::swap(x); }
   static T little(T x) { return x; }
@@ -290,7 +290,7 @@ struct EndianInt : public detail::EndianIntBase<T> {
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 
 template <class T>
-struct EndianInt : public detail::EndianIntBase<T> {
+struct EndianInt : public EndianIntBase<T> {
  public:
   static T big(T x) { return x; }
   static T little(T x) { return EndianInt::swap(x); }
@@ -337,13 +337,13 @@ class Endian {
 #endif  /* __BYTE_ORDER__ */
 
   template <class T> static T swap(T x) {
-    return detail::EndianInt<T>::swap(x);
+    return folly::detail::EndianInt<T>::swap(x);
   }
   template <class T> static T big(T x) {
-    return detail::EndianInt<T>::big(x);
+    return folly::detail::EndianInt<T>::big(x);
   }
   template <class T> static T little(T x) {
-    return detail::EndianInt<T>::little(x);
+    return folly::detail::EndianInt<T>::little(x);
   }
 
 #if !defined(__ANDROID__)
