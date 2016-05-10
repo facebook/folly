@@ -574,10 +574,10 @@ template <class String> void clause11_21_4_6_6(String & test) {
 template <class String> void clause11_21_4_6_7(String & test) {
   std::vector<typename String::value_type>
     vec(random(0, maxString));
-  test.copy(
-    &vec[0],
-    vec.size(),
-    random(0, test.size()));
+  if (vec.empty()) {
+    return;
+  }
+  test.copy(vec.data(), vec.size(), random(0, test.size()));
 }
 
 template <class String> void clause11_21_4_6_8(String & test) {
