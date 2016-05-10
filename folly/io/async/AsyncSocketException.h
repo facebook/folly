@@ -96,6 +96,8 @@ class AsyncSocketException : public std::runtime_error {
         return "Could not bind";
       case SASL_HANDSHAKE_TIMEOUT:
         return "SASL handshake timeout";
+      case NETWORK_ERROR:
+        return "Network error";
       default:
         return "(Invalid exception type)";
     }
