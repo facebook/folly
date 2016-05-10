@@ -522,15 +522,26 @@ TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
       {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
 }
 
-TEST_P(NextProtocolNPNOnlyTest, NpnTestNoOverlap) {
+// Note: the behavior changed in the ANY/ANY case in OpenSSL 1.0.2h, this test
+// will fail on 1.0.2 before that.
+TEST_P(NextProtocolTest, NpnTestNoOverlap) {
   clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
   serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"},
                                         GetParam().second);
 
   connect();
 
-  expectProtocol("blub");
-  expectProtocolType();
+  if (GetParam().first == SSLContext::NextProtocolType::ALPN ||
+      GetParam().second == SSLContext::NextProtocolType::ALPN) {
+    // This is arguably incorrect behavior since RFC7301 states an ALPN protocol
+    // mismatch should result in a fatal alert, but this is OpenSSL's current
+    // behavior and we want to know if it changes.
+    expectNoProtocol();
+  } else {
+    expectProtocol("blub");
+    expectProtocolType(
+        {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
+  }
 }
 
 TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
@@ -586,20 +597,27 @@ TEST_P(NextProtocolTest, RandomizedNpnTest) {
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
     NextProtocolTest,
-    ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
-                                           SSLContext::NextProtocolType::NPN),
+    ::testing::Values(
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::NPN,
+            SSLContext::NextProtocolType::NPN),
 #if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
-                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
-                                           SSLContext::NextProtocolType::ALPN),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ALPN,
+            SSLContext::NextProtocolType::ALPN),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ALPN,
+            SSLContext::NextProtocolType::ANY),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ANY,
+            SSLContext::NextProtocolType::ALPN),
 #endif
-                      NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
-                                           SSLContext::NextProtocolType::ANY),
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
-                      NextProtocolTypePair(SSLContext::NextProtocolType::ALPN,
-                                           SSLContext::NextProtocolType::ANY),
-#endif
-                      NextProtocolTypePair(SSLContext::NextProtocolType::ANY,
-                                           SSLContext::NextProtocolType::ANY)));
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::NPN,
+            SSLContext::NextProtocolType::ANY),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ANY,
+            SSLContext::NextProtocolType::ANY)));
 
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
