@@ -71,7 +71,8 @@ uint64_t decodeVarint(Range<T*>& data);
 inline uint64_t encodeZigZag(int64_t val) {
   // Bit-twiddling magic stolen from the Google protocol buffer document;
   // val >> 63 is an arithmetic shift because val is signed
-  return static_cast<uint64_t>((val << 1) ^ (val >> 63));
+  auto uval = static_cast<uint64_t>(val);
+  return static_cast<uint64_t>((uval << 1) ^ (val >> 63));
 }
 
 inline int64_t decodeZigZag(uint64_t val) {
