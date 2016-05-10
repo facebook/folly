@@ -66,7 +66,7 @@ class UndelayedDestruction : public TDD {
    * The caller is responsible for ensuring that the object is only destroyed
    * where it is safe to do so.  (i.e., when the destructor guard count is 0).
    *
-   * The exact conditions for meeting this may be dependant upon your class
+   * The exact conditions for meeting this may be dependent upon your class
    * semantics.  Typically you are only guaranteed that it is safe to destroy
    * the object directly from the event loop (e.g., directly from a
    * EventBase::LoopCallback), or when the event loop is stopped.

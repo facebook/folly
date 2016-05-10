@@ -31,8 +31,8 @@ class TaskIterator;
 
 /**
  * Schedules several tasks and immediately returns an iterator, that
- * allow to traverse tasks in the order of their completion. All results and
- * exptions thrown are stored alongside with the task id and are
+ * allow one to traverse tasks in the order of their completion. All results
+ * and exceptions thrown are stored alongside with the task id and are
  * accessible via iterator.
  *
  * @param first Range of tasks to be scheduled
