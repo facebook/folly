@@ -1049,6 +1049,19 @@ TEST(NonConstTest, StringPiece) {
   }
 }
 
+// Similar to the begin() template functions, but instread of returing
+// an iterator, return a pointer to data.
+template <class Container>
+typename Container::value_type* dataPtr(Container& cont) {
+  // NOTE: &cont[0] is undefined if cont is empty (it creates a
+  // reference to nullptr - which is not dereferenced, but still UBSAN).
+  return cont.data();
+}
+template <class T, size_t N>
+constexpr T* dataPtr(T (&arr)[N]) noexcept {
+  return &arr[0];
+}
+
 template<class C>
 void testRangeFunc(C&& x, size_t n) {
   const auto& cx = x;
@@ -1057,8 +1070,8 @@ void testRangeFunc(C&& x, size_t n) {
   Range<const int*> r2 = range(std::forward<C>(x));
   Range<const int*> r3 = range(cx);
   Range<const int*> r5 = range(std::move(cx));
-  EXPECT_EQ(r1.begin(), &x[0]);
-  EXPECT_EQ(r1.end(), &x[n]);
+  EXPECT_EQ(r1.begin(), dataPtr(x));
+  EXPECT_EQ(r1.end(), dataPtr(x) + n);
   EXPECT_EQ(n, r1.size());
   EXPECT_EQ(n, r2.size());
   EXPECT_EQ(n, r3.size());
