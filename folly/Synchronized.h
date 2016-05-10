@@ -680,40 +680,49 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  * Refer to folly/docs/Synchronized.md for a detailed explanation and more
  * examples.
  */
-#define SYNCHRONIZED(...)                                       \
-  FOLLY_PUSH_WARNING                                            \
-  FOLLY_GCC_DISABLE_WARNING(shadow)                             \
-  if (bool SYNCHRONIZED_state = false) {} else                  \
-    for (auto SYNCHRONIZED_lockedPtr =                          \
-           (FB_ARG_2_OR_1(__VA_ARGS__)).operator->();           \
-         !SYNCHRONIZED_state; SYNCHRONIZED_state = true)        \
-      for (auto& FB_ARG_1(__VA_ARGS__) =                        \
-             *SYNCHRONIZED_lockedPtr.operator->();              \
-           !SYNCHRONIZED_state; SYNCHRONIZED_state = true)      \
+#define SYNCHRONIZED(...)                                             \
+  FOLLY_PUSH_WARNING                                                  \
+  FOLLY_GCC_DISABLE_WARNING(shadow)                                   \
+  if (bool SYNCHRONIZED_state = false) {                              \
+  } else                                                              \
+    for (auto SYNCHRONIZED_lockedPtr =                                \
+             (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).operator->(); \
+         !SYNCHRONIZED_state;                                         \
+         SYNCHRONIZED_state = true)                                   \
+      for (auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                \
+               *SYNCHRONIZED_lockedPtr.operator->();                  \
+           !SYNCHRONIZED_state;                                       \
+           SYNCHRONIZED_state = true)                                 \
   FOLLY_POP_WARNING
 
-#define TIMED_SYNCHRONIZED(timeout, ...)                           \
-  if (bool SYNCHRONIZED_state = false) {} else                     \
-    for (auto SYNCHRONIZED_lockedPtr =                             \
-           (FB_ARG_2_OR_1(__VA_ARGS__)).timedAcquire(timeout);     \
-         !SYNCHRONIZED_state; SYNCHRONIZED_state = true)           \
-      for (auto FB_ARG_1(__VA_ARGS__) =                            \
-             SYNCHRONIZED_lockedPtr.operator->();                  \
-           !SYNCHRONIZED_state; SYNCHRONIZED_state = true)
+#define TIMED_SYNCHRONIZED(timeout, ...)                                       \
+  if (bool SYNCHRONIZED_state = false) {                                       \
+  } else                                                                       \
+    for (auto SYNCHRONIZED_lockedPtr =                                         \
+             (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).timedAcquire(timeout); \
+         !SYNCHRONIZED_state;                                                  \
+         SYNCHRONIZED_state = true)                                            \
+      for (auto FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                          \
+               SYNCHRONIZED_lockedPtr.operator->();                            \
+           !SYNCHRONIZED_state;                                                \
+           SYNCHRONIZED_state = true)
 
 /**
  * Similar to SYNCHRONIZED, but only uses a read lock.
  */
-#define SYNCHRONIZED_CONST(...)                         \
-  SYNCHRONIZED(FB_ARG_1(__VA_ARGS__),                   \
-               (FB_ARG_2_OR_1(__VA_ARGS__)).asConst())
+#define SYNCHRONIZED_CONST(...)            \
+  SYNCHRONIZED(                            \
+      FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)), \
+      (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).asConst())
 
 /**
  * Similar to TIMED_SYNCHRONIZED, but only uses a read lock.
  */
-#define TIMED_SYNCHRONIZED_CONST(timeout, ...)                  \
-  TIMED_SYNCHRONIZED(timeout, FB_ARG_1(__VA_ARGS__),            \
-                     (FB_ARG_2_OR_1(__VA_ARGS__)).asConst())
+#define TIMED_SYNCHRONIZED_CONST(timeout, ...) \
+  TIMED_SYNCHRONIZED(                          \
+      timeout,                                 \
+      FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)),     \
+      (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).asConst())
 
 /**
  * Temporarily disables synchronization inside a SYNCHRONIZED block.

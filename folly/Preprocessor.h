@@ -46,6 +46,10 @@
 #define FB_THIRD(a, b, ...) __VA_ARGS__
 #endif
 
+// MSVC's preprocessor is a pain, so we have to
+// forcefully expand the VA args in some places.
+#define FB_VA_GLUE(a, b) a b
+
 /**
  * Helper macro that extracts the first argument out of a list of any
  * number of arguments.
@@ -57,7 +61,14 @@
  * number of arguments. If only one argument is given, it returns
  * that.
  */
+#ifdef _MSC_VER
+// GCC refuses to expand this correctly if this macro itself was
+// called with FB_VA_GLUE :(
+#define FB_ARG_2_OR_1(...) \
+  FB_VA_GLUE(FB_ARG_2_OR_1_IMPL, (__VA_ARGS__, __VA_ARGS__))
+#else
 #define FB_ARG_2_OR_1(...) FB_ARG_2_OR_1_IMPL(__VA_ARGS__, __VA_ARGS__)
+#endif
 // Support macro for the above
 #define FB_ARG_2_OR_1_IMPL(a, b, ...) b
 
