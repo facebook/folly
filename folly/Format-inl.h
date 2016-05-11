@@ -443,7 +443,7 @@ class FormatValue<
     char sign;
     if (std::is_signed<T>::value) {
       if (folly::is_negative(val_)) {
-        uval = static_cast<UT>(-val_);
+        uval = -static_cast<UT>(val_);
         sign = '-';
       } else {
         uval = static_cast<UT>(val_);
