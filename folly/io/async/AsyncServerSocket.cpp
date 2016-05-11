@@ -22,6 +22,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/SocketAddress.h>
+#include <folly/detail/SocketFastOpen.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 
@@ -698,6 +699,14 @@ void AsyncServerSocket::setupSocket(int fd, int family) {
       LOG(ERROR) << "failed to set TCP_NODELAY on async server socket: " <<
               strerror(errno);
     }
+  }
+#endif
+
+#if FOLLY_ALLOW_TFO
+  if (tfo_ && detail::tfo_enable(fd, tfoMaxQueueSize_) != 0) {
+    // This isn't a fatal error; just log an error message and continue
+    LOG(WARNING) << "failed to set TCP_FASTOPEN on async server socket: "
+                 << folly::errnoStr(errno);
   }
 #endif
 

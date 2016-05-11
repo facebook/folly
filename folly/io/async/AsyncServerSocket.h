@@ -16,21 +16,20 @@
 
 #pragma once
 
-#include <folly/io/async/DelayedDestruction.h>
-#include <folly/io/async/EventHandler.h>
-#include <folly/io/async/EventBase.h>
-#include <folly/io/async/NotificationQueue.h>
-#include <folly/io/async/AsyncTimeout.h>
-#include <folly/io/async/AsyncSocketBase.h>
-#include <folly/io/ShutdownSocketSet.h>
 #include <folly/SocketAddress.h>
-#include <memory>
-#include <exception>
-#include <vector>
+#include <folly/io/ShutdownSocketSet.h>
+#include <folly/io/async/AsyncSocketBase.h>
+#include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/DelayedDestruction.h>
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventHandler.h>
+#include <folly/io/async/NotificationQueue.h>
 #include <limits.h>
 #include <stddef.h>
 #include <sys/socket.h>
-
+#include <exception>
+#include <memory>
+#include <vector>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.
@@ -660,6 +659,14 @@ class AsyncServerSocket : public DelayedDestruction
   }
 
   /**
+   * Tries to enable TFO if the machine supports it.
+   */
+  void setTFOEnabled(bool enabled, uint32_t maxTFOQueueSize) {
+    tfo_ = enabled;
+    tfoMaxQueueSize_ = maxTFOQueueSize;
+  }
+
+  /**
    * Get whether or not the socket is accepting new connections
    */
   bool getAccepting() const {
@@ -837,6 +844,8 @@ class AsyncServerSocket : public DelayedDestruction
   bool keepAliveEnabled_;
   bool reusePortEnabled_{false};
   bool closeOnExec_;
+  bool tfo_{false};
+  uint32_t tfoMaxQueueSize_{0};
   ShutdownSocketSet* shutdownSocketSet_;
   ConnectionEventCallback* connectionEventCallback_{nullptr};
 };

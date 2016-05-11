@@ -70,6 +70,7 @@ nobase_follyinclude_HEADERS = \
 	detail/RangeSse42.h \
 	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
+	detail/SocketFastOpen.h \
 	detail/SpinLockImpl.h \
 	detail/StaticSingletonManager.h \
 	detail/Stats.h \
@@ -427,6 +428,7 @@ libfolly_la_SOURCES = \
 	io/async/ssl/SSLErrors.cpp \
 	json.cpp \
 	detail/MemoryIdler.cpp \
+	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
 	portability/Dirent.cpp \
