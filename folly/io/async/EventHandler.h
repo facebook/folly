@@ -22,6 +22,7 @@
 
 #include <glog/logging.h>
 #include <folly/io/async/EventUtil.h>
+#include <folly/portability/Event.h>
 #include <boost/noncopyable.hpp>
 #include <stddef.h>
 
@@ -177,7 +178,7 @@ class EventHandler : private boost::noncopyable {
 
   void setEventBase(EventBase* eventBase);
 
-  static void libeventCallback(int fd, short events, void* arg);
+  static void libeventCallback(libevent_fd_t fd, short events, void* arg);
 
   struct event event_;
   EventBase* eventBase_;

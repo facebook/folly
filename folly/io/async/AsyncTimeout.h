@@ -22,6 +22,8 @@
 
 #include <folly/io/async/TimeoutManager.h>
 
+#include <folly/portability/Event.h>
+
 #include <boost/noncopyable.hpp>
 #include <event.h>
 #include <memory>
@@ -219,7 +221,7 @@ class AsyncTimeout : private boost::noncopyable {
   );
 
  private:
-  static void libeventCallback(int fd, short events, void* arg);
+  static void libeventCallback(libevent_fd_t fd, short events, void* arg);
 
   struct event event_;
 

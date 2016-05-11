@@ -80,7 +80,7 @@ void AsyncSignalHandler::unregisterSignalHandler(int signum) {
   signalEvents_.erase(it);
 }
 
-void AsyncSignalHandler::libeventCallback(int signum,
+void AsyncSignalHandler::libeventCallback(libevent_fd_t signum,
                                           short /* events */,
                                           void* arg) {
   AsyncSignalHandler* handler = static_cast<AsyncSignalHandler*>(arg);

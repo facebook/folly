@@ -83,7 +83,7 @@ class AsyncSignalHandler {
   AsyncSignalHandler(AsyncSignalHandler const &);
   AsyncSignalHandler& operator=(AsyncSignalHandler const &);
 
-  static void libeventCallback(int signum, short events, void* arg);
+  static void libeventCallback(libevent_fd_t signum, short events, void* arg);
 
   EventBase* eventBase_;
   SignalEventMap signalEvents_;
