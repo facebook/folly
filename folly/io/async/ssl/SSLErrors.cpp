@@ -39,8 +39,8 @@ std::string decodeOpenSSLError(
     return "SSL connection closed normally";
   } else {
     std::array<char, 256> buf;
-    std::string msg(ERR_error_string(errError, buf.data()));
-    return msg;
+    ERR_error_string_n(errError, buf.data(), buf.size());
+    return std::string(buf.data(), buf.size());
   }
 }
 
