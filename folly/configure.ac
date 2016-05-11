@@ -478,7 +478,10 @@ AC_CHECK_FUNCS([getdelim \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \
-                pipe2])
+                pipe2 \
+                preadv \
+                pwritev \
+              ])
 
 AC_CHECK_HEADER([lz4.h], AC_CHECK_LIB([lz4], [LZ4_decompress_safe]))
 AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))

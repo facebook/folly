@@ -446,6 +446,7 @@ libfolly_la_SOURCES = \
 	portability/SysResource.cpp \
 	portability/SysStat.cpp \
 	portability/SysTime.cpp \
+	portability/SysUio.cpp \
 	portability/Time.cpp \
 	portability/Unistd.cpp \
 	Random.cpp \

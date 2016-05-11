@@ -16,10 +16,23 @@
 
 #pragma once
 
-#include <sys/uio.h>
+#include <folly/portability/Config.h>
+#include <folly/portability/IOVec.h>
+#include <folly/portability/SysTypes.h>
+
+#if defined(FOLLY_HAVE_PREADV) && !FOLLY_HAVE_PREADV
+extern "C" ssize_t preadv(int fd, const iovec* iov, int count, off_t offset);
+#endif
+#if defined(FOLLY_HAVE_PWRITEV) && !FOLLY_HAVE_PWRITEV
+extern "C" ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset);
+#endif
+
+#ifdef _WIN32
+extern "C" ssize_t readv(int fd, const iovec* iov, int count);
+extern "C" ssize_t writev(int fd, const iovec* iov, int count);
+#endif
 
 namespace folly {
-
 #ifdef IOV_MAX // not defined on Android
 constexpr size_t kIovMax = IOV_MAX;
 #else

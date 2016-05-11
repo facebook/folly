@@ -132,20 +132,16 @@ ssize_t readvFull(int fd, iovec* iov, int count) {
   return wrapvFull(readv, fd, iov, count);
 }
 
-#if FOLLY_HAVE_PREADV
 ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset) {
   return wrapvFull(preadv, fd, iov, count, offset);
 }
-#endif
 
 ssize_t writevFull(int fd, iovec* iov, int count) {
   return wrapvFull(writev, fd, iov, count);
 }
 
-#if FOLLY_HAVE_PWRITEV
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
   return wrapvFull(pwritev, fd, iov, count, offset);
 }
-#endif
 
 }  // namespaces

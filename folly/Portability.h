@@ -200,16 +200,6 @@ namespace std { typedef ::max_align_t max_align_t; }
 #undef FOLLY_TLS
 #endif
 
-// Define to 1 if you have the `preadv' and `pwritev' functions, respectively
-#if !defined(FOLLY_HAVE_PREADV) && !defined(FOLLY_HAVE_PWRITEV)
-# if defined(__GLIBC_PREREQ)
-#  if __GLIBC_PREREQ(2, 10)
-#   define FOLLY_HAVE_PREADV 1
-#   define FOLLY_HAVE_PWRITEV 1
-#  endif
-# endif
-#endif
-
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.

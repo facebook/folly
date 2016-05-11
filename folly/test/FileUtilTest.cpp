@@ -250,7 +250,6 @@ TEST(FileUtilTest2, wrapv) {
   EXPECT_EQ(sum, wrapvFull(writev, tempFile.fd(), iov.data(), iov.size()));
 }
 
-#if FOLLY_HAVE_PREADV
 TEST_F(FileUtilTest, preadv) {
   for (auto& p : readers_) {
     IovecBuffers buf({12, 19, 31});
@@ -264,7 +263,6 @@ TEST_F(FileUtilTest, preadv) {
     }
   }
 }
-#endif
 
 TEST(String, readFile) {
   srand(time(nullptr));
