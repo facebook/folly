@@ -194,6 +194,34 @@ class ThreadLocalPtr {
   }
 
   /**
+   * reset() that transfers ownership from a smart pointer
+   */
+  template <
+      typename SourceT,
+      typename Deleter,
+      typename = typename std::enable_if<
+          std::is_convertible<SourceT*, T*>::value>::type>
+  void reset(std::unique_ptr<SourceT, Deleter> source) {
+    auto deleter = [delegate = source.get_deleter()](
+        T * ptr, TLPDestructionMode) {
+      delegate(ptr);
+    };
+    reset(source.release(), deleter);
+  }
+
+  /**
+   * reset() that transfers ownership from a smart pointer with the default
+   * deleter
+   */
+  template <
+      typename SourceT,
+      typename = typename std::enable_if<
+          std::is_convertible<SourceT*, T*>::value>::type>
+  void reset(std::unique_ptr<SourceT> source) {
+    reset(source.release());
+  }
+
+  /**
    * reset() with a custom deleter:
    * deleter(T* ptr, TLPDestructionMode mode)
    * "mode" is ALL_THREADS if we're destructing this ThreadLocalPtr (and thus

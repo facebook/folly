@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/Baton.h>
+#include <folly/Memory.h>
 #include <folly/experimental/io/FsUtil.h>
 
 using namespace folly;
@@ -48,7 +49,7 @@ struct Widget {
   }
 
   static void customDeleter(Widget* w, TLPDestructionMode mode) {
-    totalVal_ += (mode == TLPDestructionMode::ALL_THREADS) * 1000;
+    totalVal_ += (mode == TLPDestructionMode::ALL_THREADS) ? 1000 : 1;
     delete w;
   }
 };
@@ -72,6 +73,37 @@ TEST(ThreadLocalPtr, CustomDeleter1) {
         w.reset(new Widget(), Widget::customDeleter);
         w.get()->val_ += 10;
       }).join();
+    EXPECT_EQ(11, Widget::totalVal_);
+  }
+  EXPECT_EQ(11, Widget::totalVal_);
+}
+
+TEST(ThreadLocalPtr, CustomDeleterOwnershipTransfer) {
+  Widget::totalVal_ = 0;
+  {
+    ThreadLocalPtr<Widget> w;
+    auto deleter = [](Widget* ptr) {
+      Widget::customDeleter(ptr, TLPDestructionMode::THIS_THREAD);
+    };
+    std::unique_ptr<Widget, typeof(deleter)> source(new Widget(), deleter);
+    std::thread([&w, &source]() {
+      w.reset(std::move(source));
+      w.get()->val_ += 10;
+    }).join();
+    EXPECT_EQ(11, Widget::totalVal_);
+  }
+  EXPECT_EQ(11, Widget::totalVal_);
+}
+
+TEST(ThreadLocalPtr, DefaultDeleterOwnershipTransfer) {
+  Widget::totalVal_ = 0;
+  {
+    ThreadLocalPtr<Widget> w;
+    auto source = folly::make_unique<Widget>();
+    std::thread([&w, &source]() {
+      w.reset(std::move(source));
+      w.get()->val_ += 10;
+    }).join();
     EXPECT_EQ(10, Widget::totalVal_);
   }
   EXPECT_EQ(10, Widget::totalVal_);
