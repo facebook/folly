@@ -33,6 +33,7 @@
 #include <folly/Malloc.h>
 #include <folly/MicroSpinLock.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 
 #include <folly/detail/StaticSingletonManager.h>
 
@@ -81,6 +82,7 @@ struct ElementWrapper {
 
   template <class Ptr>
   void set(Ptr p) {
+    auto guard = makeGuard([&] { delete p; });
     DCHECK(ptr == nullptr);
     DCHECK(deleter1 == nullptr);
 
@@ -90,20 +92,27 @@ struct ElementWrapper {
         delete static_cast<Ptr>(pt);
       };
       ownsDeleter = false;
+      guard.dismiss();
     }
   }
 
   template <class Ptr, class Deleter>
-  void set(Ptr p, Deleter d) {
+  void set(Ptr p, const Deleter& d) {
+    auto guard = makeGuard([&] {
+      if (p) {
+        d(p, TLPDestructionMode::THIS_THREAD);
+      }
+    });
     DCHECK(ptr == nullptr);
     DCHECK(deleter2 == nullptr);
     if (p) {
       ptr = p;
-      deleter2 = new std::function<DeleterFunType>(
-          [d](void* pt, TLPDestructionMode mode) {
-            d(static_cast<Ptr>(pt), mode);
-          });
+      deleter2 = new std::function<DeleterFunType>([d = d](
+          void* pt, TLPDestructionMode mode) {
+        d(static_cast<Ptr>(pt), mode);
+      });
       ownsDeleter = true;
+      guard.dismiss();
     }
   }
 

@@ -36,11 +36,12 @@
 
 #pragma once
 
-#include <folly/Portability.h>
-#include <boost/iterator/iterator_facade.hpp>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
+#include <boost/iterator/iterator_facade.hpp>
 #include <type_traits>
-
+#include <utility>
 
 namespace folly {
 enum class TLPDestructionMode {
@@ -180,12 +181,12 @@ class ThreadLocalPtr {
   }
 
   void reset(T* newPtr = nullptr) {
+    auto guard = makeGuard([&] { delete newPtr; });
     threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
 
-    if (w.ptr != newPtr) {
-      w.dispose(TLPDestructionMode::THIS_THREAD);
-      w.set(newPtr);
-    }
+    w.dispose(TLPDestructionMode::THIS_THREAD);
+    guard.dismiss();
+    w.set(newPtr);
   }
 
   explicit operator bool() const {
@@ -197,15 +198,20 @@ class ThreadLocalPtr {
    * deleter(T* ptr, TLPDestructionMode mode)
    * "mode" is ALL_THREADS if we're destructing this ThreadLocalPtr (and thus
    * deleting pointers for all threads), and THIS_THREAD if we're only deleting
-   * the member for one thread (because of thread exit or reset())
+   * the member for one thread (because of thread exit or reset()).
+   * Invoking the deleter must not throw.
    */
   template <class Deleter>
-  void reset(T* newPtr, Deleter deleter) {
+  void reset(T* newPtr, const Deleter& deleter) {
+    auto guard = makeGuard([&] {
+      if (newPtr) {
+        deleter(newPtr, TLPDestructionMode::THIS_THREAD);
+      }
+    });
     threadlocal_detail::ElementWrapper& w = StaticMeta::instance().get(&id_);
-    if (w.ptr != newPtr) {
-      w.dispose(TLPDestructionMode::THIS_THREAD);
-      w.set(newPtr, deleter);
-    }
+    w.dispose(TLPDestructionMode::THIS_THREAD);
+    guard.dismiss();
+    w.set(newPtr, deleter);
   }
 
   // Holds a global lock for iteration through all thread local child objects.
