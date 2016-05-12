@@ -19,6 +19,7 @@
 // This file only exists because without it there would be
 // a circular dependency between SysUio.h, Sockets.h, and Unistd.h
 #ifndef _WIN32
+#include <limits.h>
 #include <sys/uio.h>
 #else
 #include <stdlib.h>
