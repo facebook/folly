@@ -15,6 +15,7 @@
  */
 #include "FiberManager.h"
 
+#include <signal.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -25,6 +26,8 @@
 
 #include <folly/experimental/fibers/Fiber.h>
 #include <folly/experimental/fibers/LoopController.h>
+
+#include <folly/SingletonThreadLocal.h>
 
 #ifdef FOLLY_SANITIZE_ADDRESS
 
@@ -273,5 +276,62 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
 }
 
 #endif // FOLLY_SANITIZE_ADDRESS
+
+namespace {
+
+// SIGSTKSZ (8 kB on our architectures) isn't always enough for
+// folly::symbolizer, so allocate 32 kB.
+constexpr size_t kAltStackSize = folly::constexpr_max(SIGSTKSZ, 32 * 1024);
+
+bool hasAlternateStack() {
+  stack_t ss;
+  sigaltstack(nullptr, &ss);
+  return !(ss.ss_flags & SS_DISABLE);
+}
+
+int setAlternateStack(char* sp, size_t size) {
+  CHECK(sp);
+  stack_t ss{};
+  ss.ss_sp = sp;
+  ss.ss_size = size;
+  return sigaltstack(&ss, nullptr);
+}
+
+int unsetAlternateStack() {
+  stack_t ss{};
+  ss.ss_flags = SS_DISABLE;
+  return sigaltstack(&ss, nullptr);
+}
+
+class ScopedAlternateSignalStack {
+ public:
+  ScopedAlternateSignalStack() {
+    if (hasAlternateStack()) {
+      return;
+    }
+
+    stack_ = folly::make_unique<AltStackBuffer>();
+
+    setAlternateStack(stack_->data(), stack_->size());
+  }
+
+  ~ScopedAlternateSignalStack() {
+    if (stack_) {
+      unsetAlternateStack();
+    }
+  }
+
+ private:
+  using AltStackBuffer = std::array<char, kAltStackSize>;
+  std::unique_ptr<AltStackBuffer> stack_;
+};
+}
+
+void FiberManager::registerAlternateSignalStack() {
+  static folly::SingletonThreadLocal<ScopedAlternateSignalStack> singleton;
+  singleton.get();
+
+  alternateSignalStackRegistered_ = true;
+}
 }
 }

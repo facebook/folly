@@ -467,6 +467,10 @@ class FiberManager : public ::folly::Executor {
   void unpoisonFiberStack(const Fiber* fiber);
 
 #endif // FOLLY_SANITIZE_ADDRESS
+
+  bool alternateSignalStackRegistered_{false};
+
+  void registerAlternateSignalStack();
 };
 
 /**

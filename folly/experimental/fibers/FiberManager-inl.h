@@ -164,6 +164,10 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 }
 
 inline bool FiberManager::loopUntilNoReady() {
+  if (UNLIKELY(!alternateSignalStackRegistered_)) {
+    registerAlternateSignalStack();
+  }
+
   // Support nested FiberManagers
   auto originalFiberManager = this;
   std::swap(currentFiberManager_, originalFiberManager);
