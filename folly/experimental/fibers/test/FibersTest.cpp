@@ -1236,10 +1236,11 @@ TEST(FiberManager, RequestContext) {
   bool checkRun1 = false;
   bool checkRun2 = false;
   bool checkRun3 = false;
-
+  bool checkRun4 = false;
   folly::fibers::Baton baton1;
   folly::fibers::Baton baton2;
   folly::fibers::Baton baton3;
+  folly::fibers::Baton baton4;
 
   folly::RequestContext::create();
   auto rcontext1 = folly::RequestContext::get();
@@ -1276,6 +1277,15 @@ TEST(FiberManager, RequestContext) {
         checkRun3 = true;
       });
 
+  folly::RequestContext::setContext(nullptr);
+  fm.addTask([&]() {
+    folly::RequestContext::create();
+    auto rcontext4 = folly::RequestContext::get();
+    baton4.wait();
+    EXPECT_EQ(rcontext4, folly::RequestContext::get());
+    checkRun4 = true;
+  });
+
   folly::RequestContext::create();
   auto rcontext = folly::RequestContext::get();
 
@@ -1298,6 +1308,12 @@ TEST(FiberManager, RequestContext) {
   EXPECT_EQ(rcontext, folly::RequestContext::get());
   fm.loopUntilNoReady();
   EXPECT_TRUE(checkRun3);
+  EXPECT_EQ(rcontext, folly::RequestContext::get());
+
+  baton4.post();
+  EXPECT_EQ(rcontext, folly::RequestContext::get());
+  fm.loopUntilNoReady();
+  EXPECT_TRUE(checkRun4);
   EXPECT_EQ(rcontext, folly::RequestContext::get());
 }
 
