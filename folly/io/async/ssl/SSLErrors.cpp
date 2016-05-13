@@ -40,7 +40,8 @@ std::string decodeOpenSSLError(
   } else {
     std::array<char, 256> buf;
     ERR_error_string_n(errError, buf.data(), buf.size());
-    return std::string(buf.data(), buf.size());
+    // OpenSSL will null terminate the string.
+    return std::string(buf.data());
   }
 }
 
