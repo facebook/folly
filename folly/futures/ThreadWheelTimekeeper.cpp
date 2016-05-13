@@ -84,11 +84,10 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
 
 } // namespace
 
-
-ThreadWheelTimekeeper::ThreadWheelTimekeeper() :
-  thread_([this]{ eventBase_.loopForever(); }),
-  wheelTimer_(new HHWheelTimer(&eventBase_, std::chrono::milliseconds(1)))
-{
+ThreadWheelTimekeeper::ThreadWheelTimekeeper()
+    : thread_([this] { eventBase_.loopForever(); }),
+      wheelTimer_(
+          HHWheelTimer::newTimer(&eventBase_, std::chrono::milliseconds(1))) {
   eventBase_.waitUntilRunning();
   eventBase_.runInEventBaseThread([this]{
     // 15 characters max

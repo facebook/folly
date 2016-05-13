@@ -216,9 +216,8 @@ TEST_F(HHWheelTimerTest, CancelTimeout) {
  */
 
 TEST_F(HHWheelTimerTest, DestroyTimeoutSet) {
-
   HHWheelTimer::UniquePtr t(
-    new HHWheelTimer(&eventBase, milliseconds(1)));
+      HHWheelTimer::newTimer(&eventBase, milliseconds(1)));
 
   TestTimeout t5_1(t.get(), milliseconds(5));
   TestTimeout t5_2(t.get(), milliseconds(5));
@@ -455,7 +454,8 @@ TEST_F(HHWheelTimerTest, cancelAll) {
 }
 
 TEST_F(HHWheelTimerTest, SharedPtr) {
-  HHWheelTimer::UniquePtr t(new HHWheelTimer(&eventBase, milliseconds(1)));
+  HHWheelTimer::UniquePtr t(
+      HHWheelTimer::newTimer(&eventBase, milliseconds(1)));
 
   TestTimeout t1;
   TestTimeout t2;
