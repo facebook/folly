@@ -337,10 +337,13 @@ struct is_negative_impl<T, false> {
 
 // folly::to integral specializations can end up generating code
 // inside what are really static ifs (not executed because of the templated
-// types) that violate -Wsign-compare so suppress them in order to not prevent
-// all calling code from using it.
+// types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
+// in order to not prevent all calling code from using it.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
+#if __GNUC_PREREQ(5, 0)
+#pragma GCC diagnostic ignored "-Wbool-compare"
+#endif
 
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(LHS const lhs) {
@@ -350,8 +353,6 @@ bool less_than_impl(LHS const lhs) {
     lhs < rhs;
 }
 
-#pragma GCC diagnostic pop
-
 template <typename RHS, RHS rhs, typename LHS>
 bool greater_than_impl(LHS const lhs) {
   return
@@ -359,6 +360,8 @@ bool greater_than_impl(LHS const lhs) {
     rhs < std::numeric_limits<LHS>::min() ? true :
     lhs > rhs;
 }
+
+#pragma GCC diagnostic pop
 
 } // namespace detail {
 
