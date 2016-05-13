@@ -705,8 +705,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       auto& data = queue_->queue_.front();
 
       MessageT msg(std::move(data.first));
-      auto old_ctx =
-        RequestContext::setContext(data.second);
+      RequestContextScopeGuard rctx(std::move(data.second));
       queue_->queue_.pop_front();
 
       // Check to see if the queue is empty now.
@@ -727,8 +726,6 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       destroyedFlagPtr_ = &callbackDestroyed;
       messageAvailable(std::move(msg));
       destroyedFlagPtr_ = nullptr;
-
-      RequestContext::setContext(old_ctx);
 
       // If the callback was destroyed before it returned, we are done
       if (callbackDestroyed) {

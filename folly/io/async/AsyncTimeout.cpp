@@ -157,12 +157,9 @@ void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   // this can't possibly fire if timeout->eventBase_ is nullptr
   timeout->timeoutManager_->bumpHandlingTime();
 
-  auto old_ctx =
-    RequestContext::setContext(timeout->context_);
+  RequestContextScopeGuard rctx(timeout->context_);
 
   timeout->timeoutExpired();
-
-  RequestContext::setContext(old_ctx);
 }
 
 } // folly

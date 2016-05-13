@@ -334,28 +334,28 @@ class Core {
         if (LIKELY(x->getNumPriorities() == 1)) {
           x->add([this]() mutable {
             SCOPE_EXIT { detachOne(); };
-            RequestContext::setContext(context_);
+            RequestContextScopeGuard rctx(context_);
             SCOPE_EXIT { callback_ = {}; };
             callback_(std::move(*result_));
           });
         } else {
           x->addWithPriority([this]() mutable {
             SCOPE_EXIT { detachOne(); };
-            RequestContext::setContext(context_);
+            RequestContextScopeGuard rctx(context_);
             SCOPE_EXIT { callback_ = {}; };
             callback_(std::move(*result_));
           }, priority);
         }
       } catch (...) {
         --attached_; // Account for extra ++attached_ before try
-        RequestContext::setContext(context_);
+        RequestContextScopeGuard rctx(context_);
         result_ = Try<T>(exception_wrapper(std::current_exception()));
         SCOPE_EXIT { callback_ = {}; };
         callback_(std::move(*result_));
       }
     } else {
       SCOPE_EXIT { detachOne(); };
-      RequestContext::setContext(context_);
+      RequestContextScopeGuard rctx(context_);
       SCOPE_EXIT { callback_ = {}; };
       callback_(std::move(*result_));
     }

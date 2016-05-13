@@ -214,10 +214,8 @@ void HHWheelTimer::timeoutExpired() noexcept {
       count_--;
       cb->wheel_ = nullptr;
       cb->expiration_ = milliseconds(0);
-      auto old_ctx =
-        RequestContext::setContext(cb->context_);
+      RequestContextScopeGuard rctx(cb->context_);
       cb->timeoutExpired();
-      RequestContext::setContext(old_ctx);
     }
   }
   if (count_ > 0) {
