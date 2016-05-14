@@ -250,34 +250,61 @@ T testValue(int bits) {
   CHECK_LE(value, std::numeric_limits<T>::max());
   return static_cast<T>(value);
 }
+} // anonymous namespace
+
+template <size_t N>
+void accSize(size_t& w) {
+  for (size_t s = 0; s <= N; ++s) {
+    w += s;
+  }
+}
+
+template <size_t N, typename T, bool NEG, bool aligned>
+void testSetLoop(size_t& w, size_t bufSize, uint8_t* buf) {
+  for (size_t s = 0; s <= N; ++s) {
+    CHECK_LE(s + w, 8 * bufSize) << s << ' ' << w << ' ' << bufSize;
+    testSet<aligned>(buf, w, s, testValue<T, NEG>(s));
+    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, w, s))) << s;
+    w += s;
+  }
+}
+
+template <size_t N, typename T, bool NEG, bool aligned>
+void testGetLoop(size_t& r, size_t bufSize, uint8_t* buf) {
+  for (size_t s = 0; s <= N; ++s) {
+    CHECK_LE(s + r, 8 * bufSize);
+    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, r, s))) << s;
+    r += s;
+  }
 }
 
 template <bool aligned>
 void testConcatenation() {
   // concatenate fields of length 1, 2, 3, ... 64, all unsigned, storing 2/3s
   // the maximum value in each.
-#define EACH_UNSIGNED_SIZE(MACRO, ARG) \
-  MACRO(8, uint8_t, ARG)               \
-  MACRO(16, uint16_t, ARG)             \
-  MACRO(32, uint32_t, ARG)             \
-  MACRO(64, uint64_t, ARG)
-#define EACH_SIGNED_SIZE(MACRO, ARG) \
-  MACRO(7, int8_t, ARG)              \
-  MACRO(15, int16_t, ARG)            \
-  MACRO(31, int32_t, ARG)            \
-  MACRO(63, int64_t, ARG)
+
   // calculate how much buffer size we need
   size_t bufSize = 0;
   {
     size_t w = 0;
-#define SIZE_TEST(N, T, NEG)        \
-  for (size_t s = 0; s <= N; ++s) { \
-    w += s;                         \
-  }
-    EACH_UNSIGNED_SIZE(SIZE_TEST, false)
-    EACH_SIGNED_SIZE(SIZE_TEST, false)
-    EACH_SIGNED_SIZE(SIZE_TEST, true)
-#undef SIZE_TEST
+    // Unsigned
+    accSize<8>(w);
+    accSize<16>(w);
+    accSize<32>(w);
+    accSize<64>(w);
+
+    // Signed NEG=false
+    accSize<7>(w);
+    accSize<15>(w);
+    accSize<31>(w);
+    accSize<63>(w);
+
+    // Signed NEG=true
+    accSize<7>(w);
+    accSize<15>(w);
+    accSize<31>(w);
+    accSize<63>(w);
+
     bufSize = w;
   }
   // bits->bytes, rounding up
@@ -288,32 +315,45 @@ void testConcatenation() {
   uint8_t *buf = buffer.data();
   {
     size_t w = 0;
-#define WRITE_TEST(N, T, NEG)                                                 \
-  for (size_t s = 0; s <= N; ++s) {                                           \
-    CHECK_LE(s + w, 8 * bufSize);                                             \
-    testSet<aligned>(buf, w, s, testValue<T, NEG>(s));                        \
-    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, w, s))) << s; \
-    w += s;                                                                   \
+    // Unsigned
+    testSetLoop<8, uint8_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<16, uint16_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<32, uint32_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<64, uint64_t, false, aligned>(w, bufSize, buf);
+
+    // Signed NEG=false
+    testSetLoop<7, int8_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<15, int16_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<31, int32_t, false, aligned>(w, bufSize, buf);
+    testSetLoop<63, int64_t, false, aligned>(w, bufSize, buf);
+
+    // Signed NEG=true
+    testSetLoop<7, int8_t, true, aligned>(w, bufSize, buf);
+    testSetLoop<15, int16_t, true, aligned>(w, bufSize, buf);
+    testSetLoop<31, int32_t, true, aligned>(w, bufSize, buf);
+    testSetLoop<63, int64_t, true, aligned>(w, bufSize, buf);
   }
-    EACH_UNSIGNED_SIZE(WRITE_TEST, false)
-    EACH_SIGNED_SIZE(WRITE_TEST, false)
-    EACH_SIGNED_SIZE(WRITE_TEST, true)
-#undef WRITE_TEST
-  }
+
   {
     size_t r = 0;
-#define READ_TEST(N, T, NEG)                                                  \
-  for (size_t s = 0; s <= N; ++s) {                                           \
-    CHECK_LE(s + r, 8 * bufSize);                                             \
-    EXPECT_EQ((testValue<T, NEG>(s)), (testGet<aligned, T>(buf, r, s))) << s; \
-    r += s;                                                                   \
+    // Unsigned
+    testGetLoop<8, uint8_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<16, uint16_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<32, uint32_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<64, uint64_t, false, aligned>(r, bufSize, buf);
+
+    // Signed NEG=false
+    testGetLoop<7, int8_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<15, int16_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<31, int32_t, false, aligned>(r, bufSize, buf);
+    testGetLoop<63, int64_t, false, aligned>(r, bufSize, buf);
+
+    // Signed NEG=true
+    testGetLoop<7, int8_t, true, aligned>(r, bufSize, buf);
+    testGetLoop<15, int16_t, true, aligned>(r, bufSize, buf);
+    testGetLoop<31, int32_t, true, aligned>(r, bufSize, buf);
+    testGetLoop<63, int64_t, true, aligned>(r, bufSize, buf);
   }
-    EACH_UNSIGNED_SIZE(READ_TEST, false)
-    EACH_SIGNED_SIZE(READ_TEST, false)
-    EACH_SIGNED_SIZE(READ_TEST, true)
-#undef READ_TEST
-  }
-#undef EACH_UNSIGNED_SIZE
 }
 
 TEST(Bits, ConcatenationUnalignedUnsigned) { testConcatenation<false>(); }

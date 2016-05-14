@@ -193,8 +193,11 @@ struct Bits {
   static constexpr UnderlyingType zero = UnderlyingType(0);
   static constexpr UnderlyingType one = UnderlyingType(1);
 
+  using UnsignedType = typename std::make_unsigned<UnderlyingType>::type;
   static constexpr UnderlyingType ones(size_t count) {
-    return count < bitsPerBlock ? (one << count) - 1 : ~zero;
+    return (count < bitsPerBlock)
+        ? static_cast<UnderlyingType>((UnsignedType{1} << count) - 1)
+        : ~zero;
   }
 };
 
@@ -224,7 +227,10 @@ inline void Bits<T, Traits>::set(T* p, size_t bitStart, size_t count,
                                  UnderlyingType value) {
   DCHECK_LE(count, sizeof(UnderlyingType) * 8);
   size_t cut = bitsPerBlock - count;
-  DCHECK_EQ(value, value << cut >> cut);
+  if (cut != 8 * sizeof(UnderlyingType)) {
+    using U = typename std::make_unsigned<UnderlyingType>::type;
+    DCHECK_EQ(value, UnderlyingType(U(value) << cut) >> cut);
+  }
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
   if (std::is_signed<UnderlyingType>::value) {
@@ -266,6 +272,10 @@ inline bool Bits<T, Traits>::test(const T* p, size_t bit) {
 template <class T, class Traits>
 inline auto Bits<T, Traits>::get(const T* p, size_t bitStart, size_t count)
   -> UnderlyingType {
+  if (count == 0) {
+    return UnderlyingType{};
+  }
+
   DCHECK_LE(count, sizeof(UnderlyingType) * 8);
   size_t idx = blockIndex(bitStart);
   size_t offset = bitOffset(bitStart);
