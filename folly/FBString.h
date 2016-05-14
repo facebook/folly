@@ -400,7 +400,9 @@ public:
       } else
 #endif
       {
-        fbstring_detail::pod_copy(data, data + size, small_);
+        if (size != 0) {
+          fbstring_detail::pod_copy(data, data + size, small_);
+        }
       }
       setSmallSize(size);
     } else {
@@ -1375,7 +1377,9 @@ public:
     Invariant checker(*this);
 
     // s can alias this, we need to use pod_move.
-    if (size() >= n) {
+    if (n == 0) {
+      resize(0);
+    } else if (size() >= n) {
       fbstring_detail::pod_move(s, s + n, store_.mutable_data());
       resize(n);
       assert(size() == n);
@@ -1736,10 +1740,9 @@ public:
     enforce(pos <= size(), std::__throw_out_of_range, "");
     procrustes(n, size() - pos);
 
-    fbstring_detail::pod_copy(
-      data() + pos,
-      data() + pos + n,
-      s);
+    if (n != 0) {
+      fbstring_detail::pod_copy(data() + pos, data() + pos + n, s);
+    }
     return n;
   }
 
