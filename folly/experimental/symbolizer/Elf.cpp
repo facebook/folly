@@ -164,18 +164,12 @@ bool ElfFile::init(const char** msg) {
 #undef EXPECTED_CLASS
 
   // Validate ELF data encoding (LSB/MSB)
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-# define EXPECTED_ENCODING ELFDATA2LSB
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-# define EXPECTED_ENCODING ELFDATA2MSB
-#else
-# error Unsupported byte order
-#endif
-  if (elfHeader.e_ident[EI_DATA] != EXPECTED_ENCODING) {
+  static constexpr auto kExpectedEncoding =
+      kIsLittleEndian ? ELFDATA2LSB : ELFDATA2MSB;
+  if (elfHeader.e_ident[EI_DATA] != kExpectedEncoding) {
     if (msg) *msg = "invalid ELF encoding";
     return false;
   }
-#undef EXPECTED_ENCODING
 
   // Validate ELF version (1)
   if (elfHeader.e_ident[EI_VERSION] != EV_CURRENT ||

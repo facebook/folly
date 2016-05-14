@@ -278,27 +278,16 @@ FB_GEN(uint16_t, our_bswap16)
 
 #undef FB_GEN
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-
 template <class T>
 struct EndianInt : public EndianIntBase<T> {
  public:
-  static T big(T x) { return EndianInt::swap(x); }
-  static T little(T x) { return x; }
+  static T big(T x) {
+    return kIsLittleEndian ? EndianInt::swap(x) : x;
+  }
+  static T little(T x) {
+    return kIsBigEndian ? EndianInt::swap(x) : x;
+  }
 };
-
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-
-template <class T>
-struct EndianInt : public EndianIntBase<T> {
- public:
-  static T big(T x) { return x; }
-  static T little(T x) { return EndianInt::swap(x); }
-};
-
-#else
-# error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER__ */
 
 }  // namespace detail
 
@@ -327,14 +316,7 @@ class Endian {
     BIG
   };
 
-  static constexpr Order order =
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    Order::LITTLE;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    Order::BIG;
-#else
-# error Your machine uses a weird endianness!
-#endif  /* __BYTE_ORDER__ */
+  static constexpr Order order = kIsLittleEndian ? Order::LITTLE : Order::BIG;
 
   template <class T> static T swap(T x) {
     return folly::detail::EndianInt<T>::swap(x);

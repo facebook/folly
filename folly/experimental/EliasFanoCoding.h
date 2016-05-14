@@ -44,11 +44,9 @@
 #error EliasFanoCoding.h requires x86_64
 #endif
 
-#if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
-#error EliasFanoCoding.h requires little endianness
-#endif
-
 namespace folly { namespace compression {
+
+static_assert(kIsLittleEndian, "EliasFanoCoding.h requires little endianness");
 
 template <class Pointer>
 struct EliasFanoCompressedListBase {

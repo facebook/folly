@@ -126,13 +126,7 @@ class EventCount {
   static_assert(sizeof(uint32_t) == 4, "bad platform");
   static_assert(sizeof(uint64_t) == 8, "bad platform");
 
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-  static constexpr size_t kEpochOffset = 1;
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-  static constexpr size_t kEpochOffset = 0;  // in units of sizeof(int)
-#else
-# error Your machine uses a weird endianness!
-#endif
+  static constexpr size_t kEpochOffset = kIsLittleEndian ? 1 : 0;
 
   // val_ stores the epoch in the most significant 32 bits and the
   // waiter count in the least significant 32 bits.
