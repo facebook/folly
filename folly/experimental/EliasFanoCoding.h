@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdlib>
 #include <limits>
 #include <type_traits>
@@ -140,7 +141,7 @@ struct EliasFanoEncoderV2 {
         forwardPointers_(reinterpret_cast<SkipValueType*>(
               result.forwardPointers)),
         result_(result) {
-    memset(result.data.data(), 0, result.data.size());
+    std::fill(result.data.begin(), result.data.end(), 0);
   }
 
   EliasFanoEncoderV2(size_t size, ValueType upperBound)
