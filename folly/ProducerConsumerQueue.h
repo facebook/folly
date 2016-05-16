@@ -134,16 +134,16 @@ struct ProducerConsumerQueue {
   }
 
   bool isEmpty() const {
-   return readIndex_.load(std::memory_order_consume) ==
-         writeIndex_.load(std::memory_order_consume);
+   return readIndex_.load(std::memory_order_acquire) ==
+         writeIndex_.load(std::memory_order_acquire);
   }
 
   bool isFull() const {
-    auto nextRecord = writeIndex_.load(std::memory_order_consume) + 1;
+    auto nextRecord = writeIndex_.load(std::memory_order_acquire) + 1;
     if (nextRecord == size_) {
       nextRecord = 0;
     }
-    if (nextRecord != readIndex_.load(std::memory_order_consume)) {
+    if (nextRecord != readIndex_.load(std::memory_order_acquire)) {
       return false;
     }
     // queue is full
@@ -156,8 +156,8 @@ struct ProducerConsumerQueue {
   //   be removing items concurrently).
   // * It is undefined to call this from any other thread.
   size_t sizeGuess() const {
-    int ret = writeIndex_.load(std::memory_order_consume) -
-              readIndex_.load(std::memory_order_consume);
+    int ret = writeIndex_.load(std::memory_order_acquire) -
+              readIndex_.load(std::memory_order_acquire);
     if (ret < 0) {
       ret += size_;
     }
