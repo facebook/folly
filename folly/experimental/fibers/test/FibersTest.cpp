@@ -319,6 +319,31 @@ TEST(FiberManager, addTasksNoncopyable) {
   loopController.loop(std::move(loopFunc));
 }
 
+TEST(FiberManager, awaitThrow) {
+  folly::EventBase evb;
+  struct ExpectedException {};
+  getFiberManager(evb)
+      .addTaskFuture([&] {
+        EXPECT_THROW(
+          await([](Promise<int> p) {
+              p.setValue(42);
+              throw ExpectedException();
+            }),
+          ExpectedException
+        );
+
+        EXPECT_THROW(
+          await([&](Promise<int> p) {
+              evb.runInEventBaseThread([p = std::move(p)]() mutable {
+                  p.setValue(42);
+                });
+              throw ExpectedException();
+            }),
+          ExpectedException);
+      })
+      .waitVia(&evb);
+}
+
 TEST(FiberManager, addTasksThrow) {
   std::vector<Promise<int>> pendingFibers;
   bool taskAdded = false;
