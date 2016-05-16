@@ -61,9 +61,10 @@ void Promise<T>::setTry(folly::Try<T>&& t) {
   throwIfFulfilled();
 
   *value_ = std::move(t);
+  value_ = nullptr;
+
   baton_->post();
 
-  value_ = nullptr;
   baton_ = nullptr;
 }
 
