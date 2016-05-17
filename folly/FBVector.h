@@ -522,7 +522,9 @@ private:
 
   static void
   S_uninitialized_copy_bits(T* dest, const T* first, const T* last) {
-    std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+    if (last != first) {
+      std::memcpy((void*)dest, (void*)first, (last - first) * sizeof(T));
+    }
   }
 
   static void
@@ -530,7 +532,9 @@ private:
                        std::move_iterator<T*> last) {
     T* bFirst = first.base();
     T* bLast = last.base();
-    std::memcpy((void*)dest, (void*)bFirst, (bLast - bFirst) * sizeof(T));
+    if (bLast != bFirst) {
+      std::memcpy((void*)dest, (void*)bFirst, (bLast - bFirst) * sizeof(T));
+    }
   }
 
   template <typename It>
