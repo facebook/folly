@@ -44,6 +44,10 @@ void toAppend(IPAddress addr, fbstring* result) {
   result->append(addr.str());
 }
 
+bool IPAddress::validate(StringPiece ip) {
+  return IPAddressV4::validate(ip) || IPAddressV6::validate(ip);
+}
+
 // public static
 IPAddressV4 IPAddress::createIPv4(const IPAddress& addr) {
   if (addr.isV4()) {

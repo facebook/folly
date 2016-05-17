@@ -235,6 +235,12 @@ TEST(IPAddressV6, validate) {
       IPAddressV6::validate("2620:0000:1cfe:face:b00c:0000:127.127.127.127"));
 }
 
+TEST(IPAddress, validate) {
+  EXPECT_TRUE(IPAddress::validate("0.0.0.0"));
+  EXPECT_TRUE(IPAddress::validate("::"));
+  EXPECT_FALSE(IPAddress::validate("asdf"));
+}
+
 // Test addresses constructed using a in[6]_addr value
 TEST_P(IPAddressTest, CtorAddress) {
   AddressData param = GetParam();

@@ -53,6 +53,7 @@ typedef std::array<uint8_t, 4> ByteArray4;
  */
 class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
  public:
+  // returns true iff the input string can be parsed as an ipv4-address
   static bool validate(StringPiece ip);
 
   // create an IPAddressV4 instance from a uint32_t (network byte order)

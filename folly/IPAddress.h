@@ -70,6 +70,9 @@ typedef std::pair<IPAddress, uint8_t> CIDRNetwork;
  */
 class IPAddress : boost::totally_ordered<IPAddress> {
  public:
+  // returns true iff the input string can be parsed as an ip-address
+  static bool validate(StringPiece ip);
+
   // return the V4 representation of the address, converting it from V6 to V4 if
   // needed. Note that this will throw an IPAddressFormatException if the V6
   // address is not IPv4Mapped.

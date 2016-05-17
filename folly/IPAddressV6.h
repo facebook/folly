@@ -86,6 +86,7 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   static constexpr size_t kToFullyQualifiedSize =
     8 /*words*/ * 4 /*hex chars per word*/ + 7 /*separators*/;
 
+  // returns true iff the input string can be parsed as an ipv6-address
   static bool validate(StringPiece ip);
 
   /**
