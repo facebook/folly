@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
+
+#include <type_traits>
+
 namespace folly {
 
 /// In functional programming, the degenerate case is often called "unit". In
@@ -23,44 +27,14 @@ namespace folly {
 /// You can ignore the actual value, and we port some of the syntactic
 /// niceties like setValue() instead of setValue(Unit{}).
 struct Unit {
-  /// Lift type T into Unit. This is the definition for all non-void types.
-  template <class T> struct Lift : public std::false_type {
-    using type = T;
-  };
-  template <class T> struct Drop : public std::false_type {
-    using type = T;
-  };
+  template <typename T>
+  using Lift = std::conditional<std::is_same<T, void>::value, Unit, T>;
+  template <typename T>
+  using Drop = std::conditional<std::is_same<T, Unit>::value, void, T>;
+
   bool operator==(const Unit& /*other*/) const { return true; }
   bool operator!=(const Unit& /*other*/) const { return false; }
 };
-
-// Lift void into Unit.
-template <>
-struct Unit::Lift<void> : public std::true_type {
-  using type = Unit;
-};
-
-// Lift Unit into Unit (identity).
-template <>
-struct Unit::Lift<Unit> : public std::true_type {
-  using type = Unit;
-};
-
-// Drop Unit into void.
-template <>
-struct Unit::Drop<Unit> : public std::true_type {
-  using type = void;
-};
-
-// Drop void into void (identity).
-template <>
-struct Unit::Drop<void> : public std::true_type {
-  using type = void;
-};
-
-template <class T>
-struct is_void_or_unit : public Unit::Lift<T>
-{};
 
 constexpr Unit unit {};
 

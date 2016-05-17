@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/futures/Future.h>
+#include <folly/futures/Unit.h>
 
 using namespace folly;
 
@@ -34,47 +35,45 @@ TEST(Unit, operatorNe) {
   EXPECT_FALSE(Unit{} != Unit{});
 }
 
-TEST(Unit, voidOrUnit) {
-  EXPECT_TRUE(is_void_or_unit<Unit>::value);
-  EXPECT_TRUE(is_void_or_unit<Unit>::value);
-  EXPECT_FALSE(is_void_or_unit<int>::value);
-}
-
 TEST(Unit, promiseSetValue) {
   Promise<Unit> p;
   p.setValue();
 }
 
 TEST(Unit, liftInt) {
-  using Lifted = Unit::Lift<int>;
-  EXPECT_FALSE(Lifted::value);
-  auto v = std::is_same<int, Lifted::type>::value;
-  EXPECT_TRUE(v);
+  using lifted = Unit::Lift<int>;
+  using actual = std::is_same<int, lifted::type>;
+  EXPECT_TRUE(actual::value);
+}
+
+TEST(Unit, liftUnit) {
+  using lifted = Unit::Lift<Unit>;
+  using actual = std::is_same<Unit, lifted::type>;
+  EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, liftVoid) {
-  using Lifted = Unit::Lift<Unit>;
-  EXPECT_TRUE(Lifted::value);
-  auto v = std::is_same<Unit, Lifted::type>::value;
-  EXPECT_TRUE(v);
+  using lifted = Unit::Lift<void>;
+  using actual = std::is_same<Unit, lifted::type>;
+  EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropInt) {
-  using dropped = typename Unit::Drop<int>;
-  EXPECT_FALSE(dropped::value);
-  EXPECT_TRUE((std::is_same<int, dropped::type>::value));
+  using dropped = Unit::Drop<int>;
+  using actual = std::is_same<int, dropped::type>;
+  EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropUnit) {
-  using dropped = typename Unit::Drop<Unit>;
-  EXPECT_TRUE(dropped::value);
-  EXPECT_TRUE((std::is_void<dropped::type>::value));
+  using dropped = Unit::Drop<Unit>;
+  using actual = std::is_same<void, dropped::type>;
+  EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, dropVoid) {
-  using dropped = typename Unit::Drop<void>;
-  EXPECT_TRUE(dropped::value);
-  EXPECT_TRUE((std::is_void<dropped::type>::value));
+  using dropped = Unit::Drop<void>;
+  using actual = std::is_same<void, dropped::type>;
+  EXPECT_TRUE(actual::value);
 }
 
 TEST(Unit, futureToUnit) {
