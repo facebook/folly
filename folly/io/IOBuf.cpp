@@ -332,6 +332,10 @@ unique_ptr<IOBuf> IOBuf::wrapBuffer(const void* buf, uint64_t capacity) {
   return make_unique<IOBuf>(WRAP_BUFFER, buf, capacity);
 }
 
+IOBuf IOBuf::wrapBufferAsValue(const void* buf, uint64_t capacity) {
+  return IOBuf(WrapBufferOp::WRAP_BUFFER, buf, capacity);
+}
+
 IOBuf::IOBuf() noexcept {
 }
 

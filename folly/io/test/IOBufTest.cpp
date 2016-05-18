@@ -186,6 +186,14 @@ TEST(IOBuf, WrapBuffer) {
   EXPECT_EQ(size3, iobuf3.length());
   EXPECT_EQ(buf3.get(), iobuf3.buffer());
   EXPECT_EQ(size3, iobuf3.capacity());
+
+  const uint32_t size4 = 2345;
+  unique_ptr<uint8_t[]> buf4(new uint8_t[size4]);
+  IOBuf iobuf4 = IOBuf::wrapBufferAsValue(buf4.get(), size4);
+  EXPECT_EQ(buf4.get(), iobuf4.data());
+  EXPECT_EQ(size4, iobuf4.length());
+  EXPECT_EQ(buf4.get(), iobuf4.buffer());
+  EXPECT_EQ(size4, iobuf4.capacity());
 }
 
 TEST(IOBuf, CreateCombined) {

@@ -371,6 +371,16 @@ class IOBuf {
   static std::unique_ptr<IOBuf> wrapBuffer(ByteRange br) {
     return wrapBuffer(br.data(), br.size());
   }
+
+  /**
+   * Similar to wrapBuffer(), but returns IOBuf by value rather than
+   * heap-allocating it.
+   */
+  static IOBuf wrapBufferAsValue(const void* buf, uint64_t capacity);
+  static IOBuf wrapBufferAsValue(ByteRange br) {
+    return wrapBufferAsValue(br.data(), br.size());
+  }
+
   IOBuf(WrapBufferOp op, const void* buf, uint64_t capacity);
   IOBuf(WrapBufferOp op, ByteRange br);
 
