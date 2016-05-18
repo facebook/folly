@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/futures/Future.h>
+#include <folly/futures/Unit.h>
 #include <folly/Memory.h>
 #include <folly/Executor.h>
 #include <folly/dynamic.h>
@@ -40,6 +41,42 @@ typedef FutureException eggs_t;
 static eggs_t eggs("eggs");
 
 // Future
+
+TEST(Future, futureDefaultCtor) {
+  Future<Unit>();
+}
+
+TEST(Future, futureToUnit) {
+  Future<Unit> fu = makeFuture(42).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<int>(eggs).unit().hasException());
+}
+
+TEST(Future, voidFutureToUnit) {
+  Future<Unit> fu = makeFuture().unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
+}
+
+TEST(Future, unitFutureToUnitIdentity) {
+  Future<Unit> fu = makeFuture(Unit{}).unit();
+  fu.value();
+  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
+}
+
+TEST(Future, toUnitWhileInProgress) {
+  Promise<int> p;
+  Future<Unit> fu = p.getFuture().unit();
+  EXPECT_FALSE(fu.isReady());
+  p.setValue(42);
+  EXPECT_TRUE(fu.isReady());
+}
+
+TEST(Future, makeFutureWithUnit) {
+  int count = 0;
+  Future<Unit> fu = makeFutureWith([&] { count++; });
+  EXPECT_EQ(1, count);
+}
 
 TEST(Future, onError) {
   bool theFlag = false;

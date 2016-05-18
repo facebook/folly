@@ -38,6 +38,11 @@ TEST(Promise, getFuture) {
   EXPECT_FALSE(f.isReady());
 }
 
+TEST(Promise, setValueUnit) {
+  Promise<Unit> p;
+  p.setValue();
+}
+
 TEST(Promise, setValue) {
   Promise<int> fund;
   auto ffund = fund.getFuture();

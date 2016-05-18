@@ -16,16 +16,9 @@
 
 #include <gtest/gtest.h>
 
-#include <folly/futures/Future.h>
 #include <folly/futures/Unit.h>
 
 using namespace folly;
-
-std::runtime_error eggs("eggs");
-
-TEST(Unit, futureDefaultCtor) {
-  Future<Unit>();
-}
 
 TEST(Unit, operatorEq) {
   EXPECT_TRUE(Unit{} == Unit{});
@@ -33,11 +26,6 @@ TEST(Unit, operatorEq) {
 
 TEST(Unit, operatorNe) {
   EXPECT_FALSE(Unit{} != Unit{});
-}
-
-TEST(Unit, promiseSetValue) {
-  Promise<Unit> p;
-  p.setValue();
 }
 
 TEST(Unit, liftInt) {
@@ -74,36 +62,4 @@ TEST(Unit, dropVoid) {
   using dropped = Unit::Drop<void>;
   using actual = std::is_same<void, dropped::type>;
   EXPECT_TRUE(actual::value);
-}
-
-TEST(Unit, futureToUnit) {
-  Future<Unit> fu = makeFuture(42).unit();
-  fu.value();
-  EXPECT_TRUE(makeFuture<int>(eggs).unit().hasException());
-}
-
-TEST(Unit, voidFutureToUnit) {
-  Future<Unit> fu = makeFuture().unit();
-  fu.value();
-  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
-}
-
-TEST(Unit, unitFutureToUnitIdentity) {
-  Future<Unit> fu = makeFuture(Unit{}).unit();
-  fu.value();
-  EXPECT_TRUE(makeFuture<Unit>(eggs).unit().hasException());
-}
-
-TEST(Unit, toUnitWhileInProgress) {
-  Promise<int> p;
-  Future<Unit> fu = p.getFuture().unit();
-  EXPECT_FALSE(fu.isReady());
-  p.setValue(42);
-  EXPECT_TRUE(fu.isReady());
-}
-
-TEST(Unit, makeFutureWith) {
-  int count = 0;
-  Future<Unit> fu = makeFutureWith([&]{ count++; });
-  EXPECT_EQ(1, count);
 }
