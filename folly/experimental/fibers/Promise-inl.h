@@ -63,9 +63,9 @@ void Promise<T>::setTry(folly::Try<T>&& t) {
   *value_ = std::move(t);
   value_ = nullptr;
 
+  // Baton::post has to be the last step here, since if Promise is not owned by
+  // the posting thread, it may be destroyed right after Baton::post is called.
   baton_->post();
-
-  baton_ = nullptr;
 }
 
 template <class T>
