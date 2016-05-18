@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/futures/detail/Types.h>
-#include <folly/futures/Unit.h>
+#include <folly/Unit.h>
 
 namespace folly {
 

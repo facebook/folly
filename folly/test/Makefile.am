@@ -215,6 +215,9 @@ indestructible_test_SOURCES = IndestructibleTest.cpp
 indestructible_test_LDADD = libfollytestmain.la
 TESTS += indestructible_test
 
+unit_test_SOURCES = UnitTest.cpp
+unit_test_LDADD = libfollytestmain.la
+TESTS += unit_test
 
 futures_test_SOURCES = \
     ../futures/test/CollectTest.cpp \
@@ -242,7 +245,6 @@ futures_test_SOURCES = \
     ../futures/test/TimekeeperTest.cpp \
     ../futures/test/TimesTest.cpp \
     ../futures/test/TryTest.cpp \
-    ../futures/test/UnitTest.cpp \
     ../futures/test/UnwrapTest.cpp \
     ../futures/test/ViaTest.cpp \
     ../futures/test/WaitTest.cpp \

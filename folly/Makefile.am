@@ -175,7 +175,6 @@ nobase_follyinclude_HEADERS = \
 	futures/Timekeeper.h \
 	futures/Try-inl.h \
 	futures/Try.h \
-	futures/Unit.h \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
 	futures/detail/Types.h \
@@ -348,6 +347,7 @@ nobase_follyinclude_HEADERS = \
 	Traits.h \
 	Unicode.h \
 	Function.h \
+	Unit.h \
 	Uri.h \
 	Uri-inl.h \
 	Varint.h \

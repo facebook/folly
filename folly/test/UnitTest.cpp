@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include <folly/futures/Unit.h>
+#include <folly/Unit.h>
 
 using namespace folly;
 

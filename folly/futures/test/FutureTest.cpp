@@ -17,7 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/futures/Future.h>
-#include <folly/futures/Unit.h>
+#include <folly/Unit.h>
 #include <folly/Memory.h>
 #include <folly/Executor.h>
 #include <folly/dynamic.h>
