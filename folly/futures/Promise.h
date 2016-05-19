@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Portability.h>
-#include <folly/futures/Try.h>
+#include <folly/Try.h>
 #include <functional>
 
 namespace folly {

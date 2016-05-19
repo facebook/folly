@@ -21,7 +21,7 @@
 #include <folly/Optional.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/Promise.h>
-#include <folly/futures/Try.h>
+#include <folly/Try.h>
 
 namespace folly {
 namespace fibers {

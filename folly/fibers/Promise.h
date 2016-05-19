@@ -16,7 +16,7 @@
 #pragma once
 
 #include <folly/fibers/traits.h>
-#include <folly/futures/Try.h>
+#include <folly/Try.h>
 
 namespace folly {
 namespace fibers {

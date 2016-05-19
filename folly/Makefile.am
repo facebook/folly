@@ -173,8 +173,6 @@ nobase_follyinclude_HEADERS = \
 	futures/SharedPromise-inl.h \
 	futures/ThreadWheelTimekeeper.h \
 	futures/Timekeeper.h \
-	futures/Try-inl.h \
-	futures/Try.h \
 	futures/detail/Core.h \
 	futures/detail/FSM.h \
 	futures/detail/Types.h \
@@ -345,6 +343,8 @@ nobase_follyinclude_HEADERS = \
 	ThreadName.h \
 	TimeoutQueue.h \
 	Traits.h \
+	Try-inl.h \
+	Try.h \
 	Unicode.h \
 	Function.h \
 	Unit.h \

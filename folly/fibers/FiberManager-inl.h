@@ -30,7 +30,7 @@
 #include <folly/fibers/LoopController.h>
 #include <folly/fibers/Promise.h>
 #include <folly/futures/Promise.h>
-#include <folly/futures/Try.h>
+#include <folly/Try.h>
 
 namespace folly {
 namespace fibers {

@@ -28,7 +28,7 @@
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
 #include <folly/Likely.h>
-#include <folly/futures/Try.h>
+#include <folly/Try.h>
 #include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
