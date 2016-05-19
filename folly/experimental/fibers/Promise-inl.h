@@ -88,5 +88,29 @@ template <class F>
 void Promise<T>::setWith(F&& func) {
   setTry(makeTryWith(std::forward<F>(func)));
 }
+
+template <class T>
+template <class F>
+typename Promise<T>::value_type Promise<T>::await(F&& func) {
+  folly::Try<value_type> result;
+  std::exception_ptr funcException;
+
+  Baton baton;
+  baton.wait([&func, &result, &baton, &funcException]() mutable {
+    try {
+      func(Promise<value_type>(result, baton));
+    } catch (...) {
+      // Save the exception, but still wait for baton to be posted by user code
+      // or promise destructor.
+      funcException = std::current_exception();
+    }
+  });
+
+  if (UNLIKELY(funcException != nullptr)) {
+    std::rethrow_exception(funcException);
+  }
+
+  return folly::moveFromTry(result);
+}
 }
 }

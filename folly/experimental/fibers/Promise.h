@@ -23,9 +23,6 @@ namespace fibers {
 
 class Baton;
 
-template <typename F>
-typename FirstArgOf<F>::type::value_type inline await(F&& func);
-
 template <typename T>
 class Promise {
  public:
@@ -72,10 +69,17 @@ class Promise {
     */
   void setException(folly::exception_wrapper);
 
- private:
-  template <typename F>
-  friend typename FirstArgOf<F>::type::value_type await(F&&);
+  /**
+   * Blocks task execution until given promise is fulfilled.
+   *
+   * Calls function passing in a Promise<T>, which has to be fulfilled.
+   *
+   * @return data which was used to fulfill the promise.
+   */
+  template <class F>
+  static value_type await(F&& func);
 
+ private:
   Promise(folly::Try<T>& value, Baton& baton);
   folly::Try<T>* value_;
   Baton* baton_;

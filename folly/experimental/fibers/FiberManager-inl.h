@@ -546,25 +546,7 @@ template <typename F>
 typename FirstArgOf<F>::type::value_type inline await(F&& func) {
   typedef typename FirstArgOf<F>::type::value_type Result;
 
-  folly::Try<Result> result;
-  std::exception_ptr funcException;
-
-  Baton baton;
-  baton.wait([&func, &result, &baton, &funcException]() mutable {
-    try {
-      func(Promise<Result>(result, baton));
-    } catch (...) {
-      // Save the exception, but still wait for baton to be posted by user code
-      // or promise destructor.
-      funcException = std::current_exception();
-    }
-  });
-
-  if (UNLIKELY(funcException != nullptr)) {
-    std::rethrow_exception(funcException);
-  }
-
-  return folly::moveFromTry(result);
+  return Promise<Result>::await(std::forward<F>(func));
 }
 }
 }
