@@ -23,19 +23,42 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
-#include <folly/futures/FutureException.h>
 #include <folly/Unit.h>
 
 namespace folly {
 
+class TryException : public std::exception {
+ public:
+  explicit TryException(std::string message_arg) noexcept
+      : message(std::move(message_arg)) {}
+
+  const char* what() const noexcept override {
+    return message.c_str();
+  }
+
+  bool operator==(const TryException& other) const noexcept {
+    return other.message == this->message;
+  }
+
+  bool operator!=(const TryException& other) const noexcept {
+    return !(*this == other);
+  }
+
+ protected:
+  std::string message;
+};
+
+class UsingUninitializedTry : public TryException {
+ public:
+  UsingUninitializedTry() noexcept : TryException("Using unitialized try") {}
+};
+
 /*
  * Try<T> is a wrapper that contains either an instance of T, an exception, or
- * nothing. Its primary use case is as a representation of a Promise or Future's
- * result and so it provides a number of methods that are useful in that
- * context. Exceptions are stored as exception_wrappers so that the user can
+ * nothing. Exceptions are stored as exception_wrappers so that the user can
  * minimize rethrows if so desired.
  *
- * To represent success or a captured exception, use Try<Unit>
+ * To represent success or a captured exception, use Try<Unit>.
  */
 template <class T>
 class Try {
@@ -192,14 +215,14 @@ class Try {
 
   exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw FutureException("exception(): Try does not contain an exception");
+      throw TryException("exception(): Try does not contain an exception");
     }
     return *e_;
   }
 
   const exception_wrapper& exception() const {
     if (UNLIKELY(!hasException())) {
-      throw FutureException("exception(): Try does not contain an exception");
+      throw TryException("exception(): Try does not contain an exception");
     }
     return *e_;
   }
@@ -311,20 +334,20 @@ class Try<void> {
   }
 
   /*
-   * @throws FutureException if the Try doesn't contain an exception
+   * @throws TryException if the Try doesn't contain an exception
    *
    * @returns mutable reference to the exception contained by this Try
    */
   exception_wrapper& exception() {
     if (UNLIKELY(!hasException())) {
-      throw FutureException("exception(): Try does not contain an exception");
+      throw TryException("exception(): Try does not contain an exception");
     }
     return *e_;
   }
 
   const exception_wrapper& exception() const {
     if (UNLIKELY(!hasException())) {
-      throw FutureException("exception(): Try does not contain an exception");
+      throw TryException("exception(): Try does not contain an exception");
     }
     return *e_;
   }

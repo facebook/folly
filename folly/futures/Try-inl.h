@@ -18,8 +18,6 @@
 
 #include <stdexcept>
 
-#include <folly/futures/FutureException.h>
-
 namespace folly {
 
 template <class T>

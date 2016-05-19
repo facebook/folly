@@ -76,12 +76,6 @@ class FutureAlreadyRetrieved : public FutureException {
       FutureException("Future already retrieved") { }
 };
 
-class UsingUninitializedTry : public FutureException {
-  public:
-    explicit UsingUninitializedTry() :
-      FutureException("Using unitialized try") { }
-};
-
 class FutureCancellation : public FutureException {
  public:
   FutureCancellation() : FutureException("Future was cancelled") {}
