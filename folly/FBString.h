@@ -362,7 +362,7 @@ public:
 #ifndef _LIBSTDCXX_FBSTRING
     SCOPE_EXIT {
       assert(this->size() == size);
-      assert(memcmp(this->data(), data, size * sizeof(Char)) == 0);
+      assert(size == 0 || memcmp(this->data(), data, size * sizeof(Char)) == 0);
     };
 #endif
 #endif
