@@ -41,4 +41,4 @@ inline void forEach(InputIterator first, InputIterator last, F&& f);
 }
 } // folly::fibers
 
-#include <folly/experimental/fibers/ForEach-inl.h>
+#include <folly/fibers/ForEach-inl.h>

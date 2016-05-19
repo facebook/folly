@@ -15,8 +15,8 @@
  */
 #include <folly/Optional.h>
 
-#include <folly/experimental/fibers/FiberManager.h>
-#include <folly/experimental/fibers/ForEach.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/ForEach.h>
 
 namespace folly {
 namespace fibers {

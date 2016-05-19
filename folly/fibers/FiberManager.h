@@ -32,11 +32,11 @@
 #include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
-#include <folly/experimental/fibers/BoostContextCompatibility.h>
-#include <folly/experimental/fibers/Fiber.h>
-#include <folly/experimental/fibers/GuardPageAllocator.h>
-#include <folly/experimental/fibers/TimeoutController.h>
-#include <folly/experimental/fibers/traits.h>
+#include <folly/fibers/BoostContextCompatibility.h>
+#include <folly/fibers/Fiber.h>
+#include <folly/fibers/GuardPageAllocator.h>
+#include <folly/fibers/TimeoutController.h>
+#include <folly/fibers/traits.h>
 
 namespace folly {
 

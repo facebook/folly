@@ -23,13 +23,13 @@
 #include <folly/Memory.h>
 #include <folly/futures/Future.h>
 
-#include <folly/experimental/fibers/AddTasks.h>
-#include <folly/experimental/fibers/EventBaseLoopController.h>
-#include <folly/experimental/fibers/FiberManager.h>
-#include <folly/experimental/fibers/FiberManagerMap.h>
-#include <folly/experimental/fibers/GenericBaton.h>
-#include <folly/experimental/fibers/SimpleLoopController.h>
-#include <folly/experimental/fibers/WhenN.h>
+#include <folly/fibers/AddTasks.h>
+#include <folly/fibers/EventBaseLoopController.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerMap.h>
+#include <folly/fibers/GenericBaton.h>
+#include <folly/fibers/SimpleLoopController.h>
+#include <folly/fibers/WhenN.h>
 
 using namespace folly::fibers;
 

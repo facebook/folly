@@ -15,13 +15,14 @@
  */
 #pragma once
 
-#include <folly/Baton.h>
-
-#include <folly/experimental/fibers/Baton.h>
+#include <folly/fibers/EventBaseLoopController.h>
+#include <folly/fibers/FiberManager.h>
 
 namespace folly {
 namespace fibers {
 
-typedef Baton GenericBaton;
+FiberManager& getFiberManager(
+    folly::EventBase& evb,
+    const FiberManager::Options& opts = FiberManager::Options());
 }
 }

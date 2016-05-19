@@ -96,32 +96,32 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
 	experimental/bser/Bser.h \
-	experimental/fibers/AddTasks.h \
-	experimental/fibers/AddTasks-inl.h \
-	experimental/fibers/Baton.h \
-	experimental/fibers/Baton-inl.h \
-	experimental/fibers/BoostContextCompatibility.h \
-	experimental/fibers/EventBaseLoopController.h \
-	experimental/fibers/EventBaseLoopController-inl.h \
-	experimental/fibers/Fiber.h \
-	experimental/fibers/Fiber-inl.h \
-	experimental/fibers/FiberManager.h \
-	experimental/fibers/FiberManager-inl.h \
-	experimental/fibers/FiberManagerMap.h \
-	experimental/fibers/ForEach.h \
-	experimental/fibers/ForEach-inl.h \
-	experimental/fibers/GenericBaton.h \
-	experimental/fibers/GuardPageAllocator.h \
-	experimental/fibers/LoopController.h \
-	experimental/fibers/Promise.h \
-	experimental/fibers/Promise-inl.h \
-	experimental/fibers/SimpleLoopController.h \
-	experimental/fibers/TimedMutex.h \
-	experimental/fibers/TimedMutex-inl.h \
-	experimental/fibers/TimeoutController.h \
-	experimental/fibers/traits.h \
-	experimental/fibers/WhenN.h \
-	experimental/fibers/WhenN-inl.h \
+	fibers/AddTasks.h \
+	fibers/AddTasks-inl.h \
+	fibers/Baton.h \
+	fibers/Baton-inl.h \
+	fibers/BoostContextCompatibility.h \
+	fibers/EventBaseLoopController.h \
+	fibers/EventBaseLoopController-inl.h \
+	fibers/Fiber.h \
+	fibers/Fiber-inl.h \
+	fibers/FiberManager.h \
+	fibers/FiberManager-inl.h \
+	fibers/FiberManagerMap.h \
+	fibers/ForEach.h \
+	fibers/ForEach-inl.h \
+	fibers/GenericBaton.h \
+	fibers/GuardPageAllocator.h \
+	fibers/LoopController.h \
+	fibers/Promise.h \
+	fibers/Promise-inl.h \
+	fibers/SimpleLoopController.h \
+	fibers/TimedMutex.h \
+	fibers/TimedMutex-inl.h \
+	fibers/TimeoutController.h \
+	fibers/traits.h \
+	fibers/WhenN.h \
+	fibers/WhenN-inl.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
@@ -464,12 +464,12 @@ libfolly_la_SOURCES = \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
-	experimental/fibers/Baton.cpp \
-	experimental/fibers/Fiber.cpp \
-	experimental/fibers/FiberManager.cpp \
-	experimental/fibers/FiberManagerMap.cpp \
-	experimental/fibers/GuardPageAllocator.cpp \
-	experimental/fibers/TimeoutController.cpp \
+	fibers/Baton.cpp \
+	fibers/Fiber.cpp \
+	fibers/FiberManager.cpp \
+	fibers/FiberManagerMap.cpp \
+	fibers/GuardPageAllocator.cpp \
+	fibers/TimeoutController.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \

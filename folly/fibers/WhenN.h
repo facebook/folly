@@ -136,4 +136,4 @@ typename std::enable_if<
 }
 }
 
-#include <folly/experimental/fibers/WhenN-inl.h>
+#include <folly/fibers/WhenN-inl.h>

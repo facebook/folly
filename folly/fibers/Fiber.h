@@ -18,15 +18,15 @@
 #include <functional>
 #include <typeinfo>
 
+#include <boost/context/all.hpp>
+#include <boost/version.hpp>
 #include <folly/AtomicIntrusiveLinkedList.h>
 #include <folly/CPortability.h>
 #include <folly/Function.h>
 #include <folly/IntrusiveList.h>
 #include <folly/Portability.h>
-#include <folly/experimental/fibers/BoostContextCompatibility.h>
+#include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/io/async/Request.h>
-#include <boost/context/all.hpp>
-#include <boost/version.hpp>
 
 namespace folly {
 namespace fibers {
@@ -189,4 +189,4 @@ class Fiber {
 }
 }
 
-#include <folly/experimental/fibers/Fiber-inl.h>
+#include <folly/fibers/Fiber-inl.h>

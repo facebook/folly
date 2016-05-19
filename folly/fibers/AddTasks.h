@@ -19,8 +19,8 @@
 #include <vector>
 
 #include <folly/Optional.h>
-#include <folly/experimental/fibers/FiberManager.h>
-#include <folly/experimental/fibers/Promise.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/Promise.h>
 #include <folly/futures/Try.h>
 
 namespace folly {
@@ -131,4 +131,4 @@ class TaskIterator {
 }
 }
 
-#include <folly/experimental/fibers/AddTasks-inl.h>
+#include <folly/fibers/AddTasks-inl.h>

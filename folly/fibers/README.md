@@ -15,13 +15,13 @@
 <span class="no">fiberManager</span><span class="o">.</span><span class="nf" data-symbol-name="addTask">addTask</span><span class="o">([&amp;]()</span> <span class="o">&#123;</span>
   <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 1: start&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
   <span class="no">baton</span><span class="o">.</span><span class="nf" data-symbol-name="wait">wait</span><span class="o">();</span>
-  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 1: after baton.wait()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span> 
+  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 1: after baton.wait()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
 <span class="o">&#125;);</span>
 
 <span class="no">fiberManager</span><span class="o">.</span><span class="nf" data-symbol-name="addTask">addTask</span><span class="o">([&amp;]()</span> <span class="o">&#123;</span>
   <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 2: start&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
   <span class="no">baton</span><span class="o">.</span><span class="nf" data-symbol-name="post">post</span><span class="o">();</span>
-  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 2: after baton.post()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span> 
+  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task 2: after baton.post()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
 <span class="o">&#125;);</span>
 
 <span class="no">evb</span><span class="o">.</span><span class="nf" data-symbol-name="loop">loop</span><span class="o">();</span>
@@ -76,7 +76,7 @@
 <span class="no">fiberManager</span><span class="o">.</span><span class="nf" data-symbol-name="addTask">addTask</span><span class="o">([&amp;]()</span> <span class="o">&#123;</span>
   <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task: start&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
   <span class="no">baton</span><span class="o">.</span><span class="nf" data-symbol-name="wait">wait</span><span class="o">();</span>
-  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task: after baton.wait()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span> 
+  <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="cout">cout</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;Task: after baton.wait()&quot;</span> <span class="o">&lt;&lt;</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="na" data-symbol-context="std" data-symbol-name="endl">endl</span><span class="o">;</span>
 <span class="o">&#125;);</span>
 
 <span class="no">evb</span><span class="o">.</span><span class="nf" data-symbol-name="loop">loop</span><span class="o">();</span>
@@ -100,7 +100,7 @@
 
 <p><tt>fibers::Baton</tt> is the core synchronization primitive which is used to suspend a fiber-task and notify when the task may be resumed. <tt>fibers::Baton</tt> supports two basic operations: <tt>wait()</tt> and <tt>post()</tt>. Calling <tt>wait()</tt> on a Baton will suspend current fiber-task until <tt>post()</tt> is called on the same Baton.</p>
 
-<p>Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/Baton.h" target="_blank">Baton</a> for more detailed documentation.</p>
+<p>Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/fibers/Baton.h" target="_blank">Baton</a> for more detailed documentation.</p>
 
 <div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> <tt>fibers::Baton</tt> is the only native synchronization primitive of folly::fibers library. All other synchronization primitives provided by folly::fibers are built on top of <tt>fibers::Baton</tt>.</div>
 
@@ -116,7 +116,7 @@
   <span class="o">...</span>
   <span class="no">Response</span> <span class="no">response</span><span class="o">;</span>
   <span class="nc" data-symbol-name="fibers">fibers</span><span class="o">::</span><span class="na" data-symbol-context="fibers" data-symbol-name="Baton">Baton</span> <span class="no">baton</span><span class="o">;</span>
-  
+
   <span class="nf" data-symbol-name="asyncCall">asyncCall</span><span class="o">(</span><span class="no">request</span><span class="o">,</span> <span class="o">[&amp;](</span><span class="no">Response</span> <span class="no">r</span><span class="o">)</span> <span class="no">mutable</span> <span class="o">&#123;</span>
      <span class="no">response</span> <span class="o">=</span> <span class="nc" data-symbol-name="std">std</span><span class="o">::</span><span class="nf" data-symbol-context="std" data-symbol-name="move">move</span><span class="o">(</span><span class="no">r</span><span class="o">);</span>
      <span class="no">baton</span><span class="o">.</span><span class="nf" data-symbol-name="post">post</span><span class="o">();</span>
@@ -175,7 +175,7 @@
   <span class="o">...</span>
 <span class="o">&#125;</span></pre></div>
 
-<p>Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/Promise.h" target="_blank">await</a> for more detailed documentation.</p>
+<p>Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/fibers/Promise.h" target="_blank">await</a> for more detailed documentation.</p>
 
 <div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> most of your code written with folly::fibers, won&#039;t be using <tt>fibers::Baton</tt> or <tt>fibers::await</tt>. These primitives should only be used to integrate with other asynchronous API which are not fibers-compatible.</div>
 
@@ -190,7 +190,7 @@
 <div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="no">fiberManager</span><span class="o">.</span><span class="nf" data-symbol-name="addTask">addTask</span><span class="o">([]()</span> <span class="o">&#123;</span>
   <span class="o">...</span>
   <span class="no">auto</span> <span class="no">response</span> <span class="o">=</span> <span class="nf" data-symbol-name="asyncCallFuture">asyncCallFuture</span><span class="o">(</span><span class="no">request</span><span class="o">).</span><span class="nf" data-symbol-name="get">get</span><span class="o">();</span>
-  
+
   <span class="c">// Now response holds response returned by the async call</span>
   <span class="o">...</span>
 <span class="o">&#125;</span></pre></div>
@@ -229,7 +229,7 @@
 
 <div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="o">...</span>
 <span class="no">Context</span> <span class="no">context</span><span class="o">;</span>
- 
+
 <span class="nf" data-symbol-name="asyncCall">asyncCall</span><span class="o">(</span><span class="no">request</span><span class="o">,</span> <span class="o">[</span><span class="no">request</span><span class="o">,</span> <span class="no">context</span><span class="o">](</span><span class="no">Response</span> <span class="no">response</span><span class="o">)</span> <span class="no">mutable</span> <span class="o">&#123;</span>
   <span class="nf" data-symbol-name="doSomething">doSomething</span><span class="o">(</span><span class="no">request</span><span class="o">,</span> <span class="no">response</span><span class="o">,</span> <span class="no">context</span><span class="o">);</span>
 <span class="o">&#125;);</span>
@@ -242,7 +242,7 @@
   <span class="no">Context</span> <span class="no">context</span><span class="o">;</span>
 
   <span class="no">auto</span> <span class="no">response</span> <span class="o">=</span> <span class="nf" data-symbol-name="fiberCall">fiberCall</span><span class="o">(</span><span class="no">request</span><span class="o">);</span>
- 
+
   <span class="nf" data-symbol-name="doSomething">doSomething</span><span class="o">(</span><span class="no">request</span><span class="o">,</span> <span class="no">response</span><span class="o">,</span> <span class="no">context</span><span class="o">);</span>
   <span class="o">...</span>
 <span class="o">&#125;);</span></pre></div>
@@ -308,10 +308,10 @@
 
 <p>First fiber-task will grab a lock and then suspend waiting on a <tt>fibers::Baton</tt>. Then second fiber-task will be run and it will try to grab a lock. Unlike system threads, fiber-task can be only suspended explicitly, so the whole system thread will be blocked waiting on the lock, and we end up with a dead-lock.</p>
 
-<p>There&#039;re generally two ways we can solve this problem. Ideally we would re-design the program to never not hold any locks when fiber-task is suspended. However if we are absolutely sure we need that lock - folly::fibers library provides some fiber-task-aware lock implementations (e.g. 
-<a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/TimedMutex.h" target="_blank">TimedMutex</a>).</p></section><section class="dex_document"><h1>APIs</h1><p class="dex_introduction"></p><h2 id="fibers-baton">fibers::Baton <a href="#fibers-baton" class="headerLink">#</a></h2>
+<p>There&#039;re generally two ways we can solve this problem. Ideally we would re-design the program to never not hold any locks when fiber-task is suspended. However if we are absolutely sure we need that lock - folly::fibers library provides some fiber-task-aware lock implementations (e.g.
+<a href="https://github.com/facebook/folly/blob/master/folly/fibers/TimedMutex.h" target="_blank">TimedMutex</a>).</p></section><section class="dex_document"><h1>APIs</h1><p class="dex_introduction"></p><h2 id="fibers-baton">fibers::Baton <a href="#fibers-baton" class="headerLink">#</a></h2>
 
-<p>All of the features of folly::fibers library are actually built on top a single synchronization primitive called Baton. <tt>fibers::Baton</tt> is a fiber-specific version of <tt>folly::Baton</tt>. It only  supports two basic operations: <tt>wait()</tt> and <tt>post()</tt>. Whenever <tt>wait()</tt> is called on the Baton, the current thread or fiber-task is suspended, until <tt>post()</tt> is called on the same Baton. <tt>wait()</tt> does not suspend the thread or fiber-task if <tt>post()</tt> was already called on the Baton. Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/Baton.h" target="_blank">Baton</a> for more detailed documentation.</p>
+<p>All of the features of folly::fibers library are actually built on top a single synchronization primitive called Baton. <tt>fibers::Baton</tt> is a fiber-specific version of <tt>folly::Baton</tt>. It only  supports two basic operations: <tt>wait()</tt> and <tt>post()</tt>. Whenever <tt>wait()</tt> is called on the Baton, the current thread or fiber-task is suspended, until <tt>post()</tt> is called on the same Baton. <tt>wait()</tt> does not suspend the thread or fiber-task if <tt>post()</tt> was already called on the Baton. Please refer to <a href="https://github.com/facebook/folly/blob/master/folly/fibers/Baton.h" target="_blank">Baton</a> for more detailed documentation.</p>
 
 <p>Baton is thread-safe, so <tt>wait()</tt> and <tt>post()</tt> can be (and should be :) ) called from different threads or fiber-tasks.</p>
 
@@ -410,7 +410,7 @@
   <span class="o">&#125;);</span>
   <span class="no">auto</span> <span class="no">future2</span> <span class="o">=</span> <span class="no">fiberManager</span><span class="o">.</span><span class="nf" data-symbol-name="addTaskRemoteFuture">addTaskRemoteFuture</span><span class="o">([]()</span> <span class="o">&#123;</span>
     <span class="o">...</span>
-  <span class="o">&#125;);</span> 
+  <span class="o">&#125;);</span>
 
   <span class="no">auto</span> <span class="no">result1</span> <span class="o">=</span> <span class="no">future1</span><span class="o">.</span><span class="nf" data-symbol-name="get">get</span><span class="o">();</span>
   <span class="no">auto</span> <span class="no">result2</span> <span class="o">=</span> <span class="no">future2</span><span class="o">.</span><span class="nf" data-symbol-name="get">get</span><span class="o">();</span>
@@ -423,21 +423,21 @@
 
 <p>All the listed synchronization primitives are built using <tt>fiber::Baton</tt>. Please check their source code for detailed documentation.</p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/Promise.h" target="_blank">await</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/Promise.h" target="_blank">await</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/WhenN.h" target="_blank">collectN</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/WhenN.h" target="_blank">collectN</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/WhenN.h" target="_blank">collectAny</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/WhenN.h" target="_blank">collectAny</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/WhenN.h" target="_blank">collectN</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/WhenN.h" target="_blank">collectN</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/ForEach.h" target="_blank">forEach</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/ForEach.h" target="_blank">forEach</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/AddTasks.h" target="_blank">addTasks</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/AddTasks.h" target="_blank">addTasks</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/TimedMutex.h" target="_blank">TimedMutex</a></p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/TimedMutex.h" target="_blank">TimedMutex</a></p>
 
-<p><a href="https://github.com/facebook/folly/blob/master/folly/experimental/fibers/TimedMutex.h" target="_blank">TimedRWMutex</a></p></section><section class="dex_document"><h1>Fiber stacks</h1><p class="dex_introduction"></p><p>Similarly to system threads, every fiber-task has some stack space assigned to it. Stack usage goes up with the number of nested function calls and objects allocated on the stack. folly::fibers implementation only supports fiber-tasks with fixed stack size. If you want to have many fiber-tasks running concurrently - you need to reduce the amount of stack assigned to each fiber-task, otherwise you may run out of memory.</p>
+<p><a href="https://github.com/facebook/folly/blob/master/folly/fibers/TimedMutex.h" target="_blank">TimedRWMutex</a></p></section><section class="dex_document"><h1>Fiber stacks</h1><p class="dex_introduction"></p><p>Similarly to system threads, every fiber-task has some stack space assigned to it. Stack usage goes up with the number of nested function calls and objects allocated on the stack. folly::fibers implementation only supports fiber-tasks with fixed stack size. If you want to have many fiber-tasks running concurrently - you need to reduce the amount of stack assigned to each fiber-task, otherwise you may run out of memory.</p>
 
 <h3 id="selecting-stack-size">Selecting stack size <a href="#selecting-stack-size" class="headerLink">#</a></h3>
 
@@ -470,7 +470,7 @@
 
 <div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> folly::fibers doesn&#039;t support killing fiber-tasks in-flight (for similar reasons you can&#039;t kill a thread). If <tt>fibers::FiberManager</tt> has any outstanding fiber-tasks, when <tt>folly::EventBase</tt> is being destroyed, it will keep running the event loop until all those tasks are finished.</div></section><section class="dex_document"><h1>GDB integration</h1><p class="dex_introduction"></p><p>folly::fibers provide some GDB extensions which can be very useful for debugging. To load them simply the following in dbg console:</p>
 
-<div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="no">source</span> <span class="s1">&#039;folly/experimental/fibers/scripts/utils.gdb&#039;</span></pre></div>
+<div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="no">source</span> <span class="s1">&#039;folly/fibers/scripts/utils.gdb&#039;</span></pre></div>
 
 <h3 id="show-all-fibermanagers">Show all FiberManagers <a href="#show-all-fibermanagers" class="headerLink">#</a></h3>
 
@@ -541,7 +541,7 @@
     <span class="c">#6 at 0x415e9a in FiberManager_collectAll_Test::TestBody()::&#123;lambda()#1&#125;::operator()() const::&#123;lambda()#1&#125;::operator()() const::&#123;lambda()#1&#125;::operator()(</span>
 <span class="o">)</span> <span class="k">const</span> <span class="o">+</span> <span class="mi">36</span> <span class="no">in</span> <span class="no">section</span> <span class="o">.</span><span class="no">text</span> <span class="no">of</span> <span class="o">/</span><span class="no">mnt</span><span class="o">/</span><span class="no">fio0</span><span class="o">/</span><span class="no">andrii</span><span class="o">/</span><span class="no">fbsource</span><span class="o">/</span><span class="no">fbcode</span><span class="o">/</span><span class="no">buck</span><span class="o">-</span><span class="no">out</span><span class="o">/</span><span class="no">gen</span><span class="o">/</span><span class="no">folly</span><span class="o">/</span><span class="no">experimental</span><span class="o">/</span><span class="no">fibers</span><span class="o">/</span><span class="no">fibers</span><span class="o">-</span><span class="no">test</span>
     <span class="c">#7 at 0x42faf9 in std::_Function_handler&lt;int (), FiberManager_collectAll_Test::TestBody()::&#123;lambda()#1&#125;::operator()() const::&#123;lambda()#1&#125;::operator()() c</span>
-<span class="nc" data-symbol-name="onst">onst</span><span class="o">::&#123;</span><span class="nf" data-symbol-name="lambda">lambda</span><span class="o">()</span><span class="c">#1&#125;&gt;::_M_invoke(std::_Any_data const&amp;) + 32 in section .text of /mnt/fio0/andrii/fbsource/fbcode/buck-out/gen/folly/experimental/fibers/fibers</span>
+<span class="nc" data-symbol-name="onst">onst</span><span class="o">::&#123;</span><span class="nf" data-symbol-name="lambda">lambda</span><span class="o">()</span><span class="c">#1&#125;&gt;::_M_invoke(std::_Any_data const&amp;) + 32 in section .text of /mnt/fio0/andrii/fbsource/fbcode/buck-out/gen/folly/fibers/fibers</span>
 <span class="o">-</span><span class="no">test</span>
     <span class="c">#8 at 0x479d5c in std::function&lt;int ()&gt;::operator()() const + 50 in section .text of /mnt/fio0/andrii/fbsource/fbcode/buck-out/gen/folly/experimental/fib</span>
 <span class="no">ers</span><span class="o">/</span><span class="no">fibers</span><span class="o">-</span><span class="no">test</span>

@@ -17,7 +17,7 @@
 
 #include <pthread.h>
 
-#include <folly/experimental/fibers/GenericBaton.h>
+#include <folly/fibers/GenericBaton.h>
 
 namespace folly {
 namespace fibers {

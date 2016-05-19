@@ -32,7 +32,7 @@
 #define FOLLY_FUTURE_USING_FIBER 0
 #else
 #define FOLLY_FUTURE_USING_FIBER 1
-#include <folly/experimental/fibers/Baton.h>
+#include <folly/fibers/Baton.h>
 #endif
 
 namespace folly {

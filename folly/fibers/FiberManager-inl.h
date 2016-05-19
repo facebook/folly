@@ -25,10 +25,10 @@
 #ifdef __APPLE__
 #include <folly/ThreadLocal.h>
 #endif
-#include <folly/experimental/fibers/Baton.h>
-#include <folly/experimental/fibers/Fiber.h>
-#include <folly/experimental/fibers/LoopController.h>
-#include <folly/experimental/fibers/Promise.h>
+#include <folly/fibers/Baton.h>
+#include <folly/fibers/Fiber.h>
+#include <folly/fibers/LoopController.h>
+#include <folly/fibers/Promise.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/Try.h>
 

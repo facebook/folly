@@ -18,8 +18,8 @@
 
 #include <folly/Memory.h>
 
-#include <folly/experimental/fibers/FiberManager.h>
-#include <folly/experimental/fibers/SimpleLoopController.h>
+#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/SimpleLoopController.h>
 
 using namespace folly::fibers;
 

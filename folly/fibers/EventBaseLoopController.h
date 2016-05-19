@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/experimental/fibers/LoopController.h>
+#include <folly/fibers/LoopController.h>
 #include <folly/io/async/EventBase.h>
 #include <atomic>
 #include <memory>

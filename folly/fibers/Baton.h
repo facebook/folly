@@ -18,7 +18,7 @@
 #include <atomic>
 
 #include <folly/detail/Futex.h>
-#include <folly/experimental/fibers/TimeoutController.h>
+#include <folly/fibers/TimeoutController.h>
 
 namespace folly {
 namespace fibers {
@@ -188,4 +188,4 @@ class Baton {
 }
 }
 
-#include <folly/experimental/fibers/Baton-inl.h>
+#include <folly/fibers/Baton-inl.h>

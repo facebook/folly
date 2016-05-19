@@ -24,8 +24,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/experimental/fibers/Fiber.h>
-#include <folly/experimental/fibers/LoopController.h>
+#include <folly/fibers/Fiber.h>
+#include <folly/fibers/LoopController.h>
 
 #include <folly/SingletonThreadLocal.h>
 

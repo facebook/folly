@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/experimental/fibers/traits.h>
+#include <folly/fibers/traits.h>
 #include <folly/futures/Try.h>
 
 namespace folly {
@@ -101,4 +101,4 @@ class Promise {
 }
 }
 
-#include <folly/experimental/fibers/Promise-inl.h>
+#include <folly/fibers/Promise-inl.h>

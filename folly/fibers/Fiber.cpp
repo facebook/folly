@@ -25,8 +25,8 @@
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
-#include <folly/experimental/fibers/BoostContextCompatibility.h>
-#include <folly/experimental/fibers/FiberManager.h>
+#include <folly/fibers/BoostContextCompatibility.h>
+#include <folly/fibers/FiberManager.h>
 #include <folly/portability/SysSyscall.h>
 
 namespace folly {

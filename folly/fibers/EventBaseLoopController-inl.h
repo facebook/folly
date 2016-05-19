@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 #include <folly/Memory.h>
-#include <folly/experimental/fibers/EventBaseLoopController.h>
-#include <folly/experimental/fibers/FiberManager.h>
+#include <folly/fibers/EventBaseLoopController.h>
+#include <folly/fibers/FiberManager.h>
 
 namespace folly {
 namespace fibers {

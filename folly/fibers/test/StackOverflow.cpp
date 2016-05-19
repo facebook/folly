@@ -13,16 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#include <folly/experimental/symbolizer/SignalHandler.h>
+#include <folly/fibers/FiberManagerMap.h>
+#include <folly/init/Init.h>
 
-#include <folly/experimental/fibers/EventBaseLoopController.h>
-#include <folly/experimental/fibers/FiberManager.h>
-
-namespace folly {
-namespace fibers {
-
-FiberManager& getFiberManager(
-    folly::EventBase& evb,
-    const FiberManager::Options& opts = FiberManager::Options());
+void f(int* p) {
+  // Make sure recursion is not optimized out
+  int a[100];
+  for (size_t i = 0; i < 100; ++i) {
+    a[i] = i;
+    ++(a[i]);
+    if (p) {
+      a[i] += p[i];
+    }
+  }
+  f(a);
 }
+
+int main(int argc, char* argv[]) {
+  folly::init(&argc, &argv);
+
+  folly::EventBase evb;
+  folly::fibers::getFiberManager(evb).addTask([&]() { f(nullptr); });
+  evb.loop();
 }

@@ -17,7 +17,7 @@
 
 #include <folly/Likely.h>
 
-#include <folly/experimental/fibers/LoopController.h>
+#include <folly/fibers/LoopController.h>
 
 namespace folly {
 namespace fibers {
