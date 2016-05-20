@@ -195,6 +195,14 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 }
 
 EventBase::~EventBase() {
+  // Keep looping until all keep-alive handles are released. Each keep-alive
+  // handle signals that some external code will still schedule some work on
+  // this EventBase (so it's not safe to destroy it).
+  while (!loopKeepAlive_.unique()) {
+    applyLoopKeepAlive();
+    loopOnce();
+  }
+
   // Call all destruction callbacks, before we start cleaning up our state.
   while (!onDestructionCallbacks_.empty()) {
     LoopCallback* callback = &onDestructionCallbacks_.front();

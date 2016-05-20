@@ -1736,7 +1736,8 @@ TEST(EventBaseTest, LoopKeepAlive) {
   std::thread t([&, loopKeepAlive = evb.loopKeepAlive() ] {
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
-    evb.runInEventBaseThread([&] { done = true; });
+    evb.runInEventBaseThread(
+        [&done, loopKeepAlive = std::move(loopKeepAlive) ] { done = true; });
   });
 
   evb.loop();
@@ -1756,11 +1757,34 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
     t = std::thread([&, loopKeepAlive = evb.loopKeepAlive() ] {
       /* sleep override */ std::this_thread::sleep_for(
           std::chrono::milliseconds(100));
-      evb.runInEventBaseThread([&] { done = true; });
+      evb.runInEventBaseThread(
+          [&done, loopKeepAlive = std::move(loopKeepAlive) ] { done = true; });
     });
   });
 
   evb.loop();
+
+  ASSERT_TRUE(done);
+
+  t.join();
+}
+
+TEST(EventBaseTest, LoopKeepAliveShutdown) {
+  auto evb = folly::make_unique<EventBase>();
+
+  bool done = false;
+
+  std::thread t(
+      [&done, loopKeepAlive = evb->loopKeepAlive(), evbPtr = evb.get() ] {
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::milliseconds(100));
+        evbPtr->runInEventBaseThread(
+            [&done, loopKeepAlive = std::move(loopKeepAlive) ] {
+              done = true;
+            });
+      });
+
+  evb.reset();
 
   ASSERT_TRUE(done);
 
