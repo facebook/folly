@@ -23,10 +23,11 @@ namespace fibers {
 
 class Baton;
 
-template <typename T>
+template <typename T, typename BatonT = Baton>
 class Promise {
  public:
   typedef T value_type;
+  typedef BatonT baton_type;
 
   ~Promise();
 
@@ -80,9 +81,9 @@ class Promise {
   static value_type await(F&& func);
 
  private:
-  Promise(folly::Try<T>& value, Baton& baton);
+  Promise(folly::Try<T>& value, BatonT& baton);
   folly::Try<T>* value_;
-  Baton* baton_;
+  BatonT* baton_;
 
   void throwIfFulfilled() const;
 

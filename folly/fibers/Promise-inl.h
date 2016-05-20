@@ -18,46 +18,46 @@
 namespace folly {
 namespace fibers {
 
-template <class T>
-Promise<T>::Promise(folly::Try<T>& value, Baton& baton)
+template <class T, class BatonT>
+Promise<T, BatonT>::Promise(folly::Try<T>& value, BatonT& baton)
     : value_(&value), baton_(&baton) {}
 
-template <class T>
-Promise<T>::Promise(Promise&& other) noexcept
+template <class T, class BatonT>
+Promise<T, BatonT>::Promise(Promise&& other) noexcept
     : value_(other.value_), baton_(other.baton_) {
   other.value_ = nullptr;
   other.baton_ = nullptr;
 }
 
-template <class T>
-Promise<T>& Promise<T>::operator=(Promise&& other) {
+template <class T, class BatonT>
+Promise<T, BatonT>& Promise<T, BatonT>::operator=(Promise&& other) {
   std::swap(value_, other.value_);
   std::swap(baton_, other.baton_);
   return *this;
 }
 
-template <class T>
-void Promise<T>::throwIfFulfilled() const {
+template <class T, class BatonT>
+void Promise<T, BatonT>::throwIfFulfilled() const {
   if (!value_) {
     throw std::logic_error("promise already fulfilled");
   }
 }
 
-template <class T>
-Promise<T>::~Promise() {
+template <class T, class BatonT>
+Promise<T, BatonT>::~Promise() {
   if (value_) {
     setException(folly::make_exception_wrapper<std::logic_error>(
         "promise not fulfilled"));
   }
 }
 
-template <class T>
-void Promise<T>::setException(folly::exception_wrapper e) {
+template <class T, class BatonT>
+void Promise<T, BatonT>::setException(folly::exception_wrapper e) {
   setTry(folly::Try<T>(e));
 }
 
-template <class T>
-void Promise<T>::setTry(folly::Try<T>&& t) {
+template <class T, class BatonT>
+void Promise<T, BatonT>::setTry(folly::Try<T>&& t) {
   throwIfFulfilled();
 
   *value_ = std::move(t);
@@ -68,37 +68,37 @@ void Promise<T>::setTry(folly::Try<T>&& t) {
   baton_->post();
 }
 
-template <class T>
+template <class T, class BatonT>
 template <class M>
-void Promise<T>::setValue(M&& v) {
+void Promise<T, BatonT>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
 
   setTry(folly::Try<T>(std::forward<M>(v)));
 }
 
-template <class T>
-void Promise<T>::setValue() {
+template <class T, class BatonT>
+void Promise<T, BatonT>::setValue() {
   static_assert(std::is_same<T, void>::value, "Use setValue(value) instead");
 
   setTry(folly::Try<void>());
 }
 
-template <class T>
+template <class T, class BatonT>
 template <class F>
-void Promise<T>::setWith(F&& func) {
+void Promise<T, BatonT>::setWith(F&& func) {
   setTry(makeTryWith(std::forward<F>(func)));
 }
 
-template <class T>
+template <class T, class BatonT>
 template <class F>
-typename Promise<T>::value_type Promise<T>::await(F&& func) {
+typename Promise<T, BatonT>::value_type Promise<T, BatonT>::await(F&& func) {
   folly::Try<value_type> result;
   std::exception_ptr funcException;
 
-  Baton baton;
+  BatonT baton;
   baton.wait([&func, &result, &baton, &funcException]() mutable {
     try {
-      func(Promise<value_type>(result, baton));
+      func(Promise<value_type, BatonT>(result, baton));
     } catch (...) {
       // Save the exception, but still wait for baton to be posted by user code
       // or promise destructor.

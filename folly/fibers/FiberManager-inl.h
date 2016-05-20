@@ -545,8 +545,9 @@ FiberManager::FiberManager(
 template <typename F>
 typename FirstArgOf<F>::type::value_type inline await(F&& func) {
   typedef typename FirstArgOf<F>::type::value_type Result;
+  typedef typename FirstArgOf<F>::type::baton_type BatonT;
 
-  return Promise<Result>::await(std::forward<F>(func));
+  return Promise<Result, BatonT>::await(std::forward<F>(func));
 }
 }
 }
