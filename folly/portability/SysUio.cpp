@@ -47,13 +47,13 @@ static int wrapPositional(F f, int fd, off_t offset, Args... args) {
   return res;
 }
 
-#if defined(FOLLY_HAVE_PREADV) && !FOLLY_HAVE_PREADV
+#if !FOLLY_HAVE_PREADV
 extern "C" ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
   return wrapPositional(readv, fd, offset, iov, count);
 }
 #endif
 
-#if defined(FOLLY_HAVE_PWRITEV) && !FOLLY_HAVE_PWRITEV
+#if !FOLLY_HAVE_PWRITEV
 extern "C" ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
   return wrapPositional(writev, fd, offset, iov, count);
 }

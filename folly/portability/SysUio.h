@@ -20,10 +20,10 @@
 #include <folly/portability/IOVec.h>
 #include <folly/portability/SysTypes.h>
 
-#if defined(FOLLY_HAVE_PREADV) && !FOLLY_HAVE_PREADV
+#if !FOLLY_HAVE_PREADV
 extern "C" ssize_t preadv(int fd, const iovec* iov, int count, off_t offset);
 #endif
-#if defined(FOLLY_HAVE_PWRITEV) && !FOLLY_HAVE_PWRITEV
+#if !FOLLY_HAVE_PWRITEV
 extern "C" ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset);
 #endif
 
