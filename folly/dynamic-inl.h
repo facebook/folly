@@ -209,8 +209,7 @@ inline void dynamic::array(EmptyArrayTag) {}
 
 template <class... Args>
 inline dynamic dynamic::array(Args&& ...args) {
-  return dynamic(std::initializer_list<dynamic>{std::forward<Args>(args)...},
-                 PrivateTag());
+  return dynamic(Array{std::forward<Args>(args)...}, PrivateTag());
 }
 
 // This looks like a case for perfect forwarding, but our use of
@@ -308,17 +307,10 @@ inline dynamic::dynamic(std::string&& s) : type_(STRING) {
 }
 
 inline dynamic::dynamic(std::initializer_list<dynamic> il)
-  : dynamic(std::move(il), PrivateTag()) {
-}
-
-inline dynamic::dynamic(std::initializer_list<dynamic> il, PrivateTag)
-  : type_(ARRAY)
-{
-  new (&u_.array) Array(il.begin(), il.end());
-}
+    : dynamic(Array(std::move(il)), PrivateTag()) {}
 
 inline dynamic& dynamic::operator=(std::initializer_list<dynamic> il) {
-  (*this) = dynamic(il, PrivateTag());
+  (*this) = dynamic(Array(std::move(il)), PrivateTag());
   return *this;
 }
 
@@ -667,6 +659,10 @@ inline void dynamic::pop_back() {
 }
 
 //////////////////////////////////////////////////////////////////////
+
+inline dynamic::dynamic(Array&& r, PrivateTag) : type_(ARRAY) {
+  new (&u_.array) Array(std::move(r));
+}
 
 #define FOLLY_DYNAMIC_DEC_TYPEINFO(T, str, val) \
   template <> struct dynamic::TypeInfo<T> { \

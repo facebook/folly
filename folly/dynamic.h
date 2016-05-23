@@ -179,7 +179,6 @@ public:
   FOLLY_DEPRECATED(
       "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
   /* implicit */ dynamic(std::initializer_list<dynamic> il);
-  dynamic(std::initializer_list<dynamic> il, PrivateTag);
   FOLLY_DEPRECATED(
       "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
   dynamic& operator=(std::initializer_list<dynamic> il);
@@ -535,6 +534,8 @@ private:
   template<class T> struct CompareOp;
   template<class T> struct GetAddrImpl;
   template<class T> struct PrintImpl;
+
+  dynamic(Array&& array, PrivateTag);
 
   template<class T> T const& get() const;
   template<class T> T&       get();
