@@ -101,6 +101,30 @@ TEST(TemporaryDirectory, DeleteOnDestruction) {
   testTemporaryDirectory(TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION);
 }
 
+void expectTempdirExists(const TemporaryDirectory& d) {
+  EXPECT_FALSE(d.path().empty());
+  EXPECT_TRUE(fs::exists(d.path()));
+  EXPECT_TRUE(fs::is_directory(d.path()));
+}
+
+TEST(TemporaryDirectory, SafelyMove) {
+  std::unique_ptr<TemporaryDirectory> dir;
+  TemporaryDirectory dir2;
+  {
+    auto scope = TemporaryDirectory::Scope::DELETE_ON_DESTRUCTION;
+    TemporaryDirectory d("", "", scope);
+    TemporaryDirectory d2("", "", scope);
+    expectTempdirExists(d);
+    expectTempdirExists(d2);
+
+    dir = std::make_unique<TemporaryDirectory>(std::move(d));
+    dir2 = std::move(d2);
+  }
+
+  expectTempdirExists(*dir);
+  expectTempdirExists(dir2);
+}
+
 TEST(ChangeToTempDir, ChangeDir) {
   auto pwd1 = fs::current_path();
   {

@@ -95,18 +95,20 @@ TemporaryFile::~TemporaryFile() {
   }
 }
 
-TemporaryDirectory::TemporaryDirectory(StringPiece namePrefix,
-                                       fs::path dir,
-                                       Scope scope)
-  : scope_(scope),
-    path_(generateUniquePath(std::move(dir), namePrefix)) {
-  fs::create_directory(path_);
+TemporaryDirectory::TemporaryDirectory(
+    StringPiece namePrefix,
+    fs::path dir,
+    Scope scope)
+    : scope_(scope),
+      path_(std::make_unique<fs::path>(
+          generateUniquePath(std::move(dir), namePrefix))) {
+  fs::create_directory(path());
 }
 
 TemporaryDirectory::~TemporaryDirectory() {
-  if (scope_ == Scope::DELETE_ON_DESTRUCTION) {
+  if (scope_ == Scope::DELETE_ON_DESTRUCTION && path_ != nullptr) {
     boost::system::error_code ec;
-    fs::remove_all(path_, ec);
+    fs::remove_all(path(), ec);
     if (ec) {
       LOG(WARNING) << "recursive delete on destruction failed: " << ec;
     }

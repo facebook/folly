@@ -89,11 +89,13 @@ class TemporaryDirectory {
   TemporaryDirectory(TemporaryDirectory&&) = default;
   TemporaryDirectory& operator=(TemporaryDirectory&&) = default;
 
-  const fs::path& path() const { return path_; }
+  const fs::path& path() const {
+    return *path_;
+  }
 
  private:
   Scope scope_;
-  fs::path path_;
+  std::unique_ptr<fs::path> path_;
 };
 
 /**
