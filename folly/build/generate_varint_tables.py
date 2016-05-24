@@ -56,15 +56,11 @@ def generate(f):
 
 #include <stdint.h>
 
-#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
-#include <x86intrin.h>
-#endif
-
 namespace folly {
 namespace detail {
 
 #if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)
-extern const __m128i groupVarintSSEMasks[] = {
+alignas(16) extern const uint64_t groupVarintSSEMasks[512] = {
 """)
 
     # Compute SSE masks
@@ -81,8 +77,8 @@ extern const __m128i groupVarintSSEMasks[] = {
             # 0xff: set corresponding byte in result to 0
             for k in range(d, 4):
                 vals[j] |= 0xff << (8 * k)
-        f.write("  {{static_cast<int64_t>(0x{1:08x}{0:08x}), "
-            "static_cast<int64_t>(0x{3:08x}{2:08x})}},\n".format(*vals))
+        f.write("  0x{1:08x}{0:08x}ULL, "
+            "0x{3:08x}{2:08x}ULL,\n".format(*vals))
 
     f.write("};\n"
         "#endif /*#if (FOLLY_X64 || defined(__i386__)) && (FOLLY_SSE >= 2)*/\n"
