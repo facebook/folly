@@ -26,6 +26,7 @@
 #include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/portability/Environment.h>
 
@@ -100,7 +101,7 @@ TemporaryDirectory::TemporaryDirectory(
     fs::path dir,
     Scope scope)
     : scope_(scope),
-      path_(std::make_unique<fs::path>(
+      path_(folly::make_unique<fs::path>(
           generateUniquePath(std::move(dir), namePrefix))) {
   fs::create_directory(path());
 }

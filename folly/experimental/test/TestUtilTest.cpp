@@ -117,7 +117,7 @@ TEST(TemporaryDirectory, SafelyMove) {
     expectTempdirExists(d);
     expectTempdirExists(d2);
 
-    dir = std::make_unique<TemporaryDirectory>(std::move(d));
+    dir = folly::make_unique<TemporaryDirectory>(std::move(d));
     dir2 = std::move(d2);
   }
 
