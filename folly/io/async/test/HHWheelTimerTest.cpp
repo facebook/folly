@@ -453,7 +453,7 @@ TEST_F(HHWheelTimerTest, cancelAll) {
   EXPECT_EQ(1, tt.canceledTimestamps.size());
 }
 
-TEST_F(HHWheelTimerTest, SharedPtr) {
+TEST_F(HHWheelTimerTest, IntrusivePtr) {
   HHWheelTimer::UniquePtr t(
       HHWheelTimer::newTimer(&eventBase, milliseconds(1)));
 
@@ -466,7 +466,7 @@ TEST_F(HHWheelTimerTest, SharedPtr) {
   t->scheduleTimeout(&t1, milliseconds(5));
   t->scheduleTimeout(&t2, milliseconds(5));
 
-  HHWheelTimer::SharedPtr s(t);
+  DelayedDestruction::IntrusivePtr<HHWheelTimer> s(t);
 
   s->scheduleTimeout(&t3, milliseconds(10));
 

@@ -61,7 +61,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
  public:
   // This type has always been a misnomer, because it is not a unique pointer.
   using UniquePtr = std::unique_ptr<HHWheelTimer, Destructor>;
-  using SharedPtr = IntrusivePtr<HHWheelTimer>;
+  using SharedPtr = std::shared_ptr<HHWheelTimer>;
 
   template <typename... Args>
   static UniquePtr newTimer(Args&&... args) {
