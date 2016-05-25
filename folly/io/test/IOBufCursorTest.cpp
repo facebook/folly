@@ -182,10 +182,10 @@ void append(Appender& appender, StringPiece data) {
 std::string toString(const IOBuf& buf) {
   std::string str;
   Cursor cursor(&buf);
-  std::pair<const uint8_t*, size_t> p;
-  while ((p = cursor.peek()).second) {
-    str.append(reinterpret_cast<const char*>(p.first), p.second);
-    cursor.skip(p.second);
+  ByteRange b;
+  while (!(b = cursor.peekBytes()).empty()) {
+    str.append(reinterpret_cast<const char*>(b.data()), b.size());
+    cursor.skip(b.size());
   }
   return str;
 }
@@ -218,18 +218,15 @@ TEST(IOBuf, PullAndPeek) {
 
   {
     RWPrivateCursor cursor(iobuf1.get());
-    auto p = cursor.peek();
-    EXPECT_EQ("he", std::string(reinterpret_cast<const char*>(p.first),
-                                p.second));
-    cursor.skip(p.second);
-    p = cursor.peek();
-    EXPECT_EQ("llo ", std::string(reinterpret_cast<const char*>(p.first),
-                                  p.second));
-    cursor.skip(p.second);
-    p = cursor.peek();
-    EXPECT_EQ("world", std::string(reinterpret_cast<const char*>(p.first),
-                                   p.second));
-    cursor.skip(p.second);
+    auto b = cursor.peekBytes();
+    EXPECT_EQ("he", StringPiece(b));
+    cursor.skip(b.size());
+    b = cursor.peekBytes();
+    EXPECT_EQ("llo ", StringPiece(b));
+    cursor.skip(b.size());
+    b = cursor.peekBytes();
+    EXPECT_EQ("world", StringPiece(b));
+    cursor.skip(b.size());
     EXPECT_EQ(3, iobuf1->countChainElements());
     EXPECT_EQ(11, iobuf1->computeChainDataLength());
   }
@@ -237,9 +234,8 @@ TEST(IOBuf, PullAndPeek) {
   {
     RWPrivateCursor cursor(iobuf1.get());
     cursor.gather(11);
-    auto p = cursor.peek();
-    EXPECT_EQ("hello world", std::string(reinterpret_cast<const
-                                         char*>(p.first), p.second));
+    auto b = cursor.peekBytes();
+    EXPECT_EQ("hello world", StringPiece(b));
     EXPECT_EQ(1, iobuf1->countChainElements());
     EXPECT_EQ(11, iobuf1->computeChainDataLength());
   }
@@ -377,7 +373,7 @@ TEST(IOBuf, cloneAndInsert) {
     EXPECT_EQ(7, iobuf1->countChainElements());
     EXPECT_EQ(14, iobuf1->computeChainDataLength());
     // Check that nextBuf got set correctly to the buffer with 1 byte left
-    EXPECT_EQ(1, cursor.peek().second);
+    EXPECT_EQ(1, cursor.peekBytes().size());
     cursor.read<uint8_t>();
   }
 

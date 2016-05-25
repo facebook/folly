@@ -70,7 +70,7 @@ BENCHMARK(skipBenchmark, iters) {
   while (iters--) {
     Cursor c(iobuf_read_benchmark.get());
     for (int i = 0; i < benchmark_size; i++) {
-      c.peek();
+      c.peekBytes();
       c.skip(1);
     }
   }

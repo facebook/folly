@@ -303,12 +303,13 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
     }
   }
 
-  auto p = cursor.peek();
+  auto sp = StringPiece{cursor.peekBytes()};
   auto out = IOBuf::create(actualUncompressedLength);
-  int n = LZ4_decompress_safe(reinterpret_cast<const char*>(p.first),
-                              reinterpret_cast<char*>(out->writableTail()),
-                              p.second,
-                              actualUncompressedLength);
+  int n = LZ4_decompress_safe(
+      sp.data(),
+      reinterpret_cast<char*>(out->writableTail()),
+      sp.size(),
+      actualUncompressedLength);
 
   if (n < 0 || uint64_t(n) != actualUncompressedLength) {
     throw std::runtime_error(to<std::string>(
@@ -350,9 +351,9 @@ size_t IOBufSnappySource::Available() const {
 }
 
 const char* IOBufSnappySource::Peek(size_t* len) {
-  auto p = cursor_.peek();
-  *len = p.second;
-  return reinterpret_cast<const char*>(p.first);
+  auto sp = StringPiece{cursor_.peekBytes()};
+  *len = sp.size();
+  return sp.data();
 }
 
 void IOBufSnappySource::Skip(size_t n) {
@@ -908,10 +909,10 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
        defaultBufferLength));
 
   bool streamEnd = false;
-  auto buf = cursor.peek();
-  while (buf.second != 0) {
-    stream.next_in = const_cast<uint8_t*>(buf.first);
-    stream.avail_in = buf.second;
+  auto buf = cursor.peekBytes();
+  while (!buf.empty()) {
+    stream.next_in = const_cast<uint8_t*>(buf.data());
+    stream.avail_in = buf.size();
 
     while (stream.avail_in != 0) {
       if (streamEnd) {
@@ -922,8 +923,8 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
       streamEnd = doInflate(&stream, out.get(), defaultBufferLength);
     }
 
-    cursor.skip(buf.second);
-    buf = cursor.peek();
+    cursor.skip(buf.size());
+    buf = cursor.peekBytes();
   }
 
   while (!streamEnd) {

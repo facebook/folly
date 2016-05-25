@@ -116,8 +116,8 @@ static dynamic decodeTemplate(Cursor& curs) {
     dynamic obj = dynamic::object;
 
     for (auto& name : names) {
-      auto pair = curs.peek();
-      if ((BserType)pair.first[0] == BserType::Skip) {
+      auto bytes = curs.peekBytes();
+      if ((BserType)bytes.at(0) == BserType::Skip) {
         obj[name.getString()] = nullptr;
         curs.skipAtMost(1);
         continue;
@@ -176,7 +176,7 @@ static size_t decodeHeader(Cursor& curs) {
     throw std::runtime_error("invalid BSER magic header");
   }
 
-  auto enc = (BserType)curs.peek().first[0];
+  auto enc = (BserType)curs.peekBytes().at(0);
   size_t int_size;
   switch (enc) {
     case BserType::Int8:

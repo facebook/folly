@@ -86,10 +86,10 @@ class CursorBase {
   /**
    * Return the remaining space available in the current IOBuf.
    *
-   * May return 0 if the cursor is at the end of an IOBuf.  Use peek() instead
-   * if you want to avoid this.  peek() will advance to the next non-empty
-   * IOBuf (up to the end of the chain) if the cursor is currently pointing at
-   * the end of a buffer.
+   * May return 0 if the cursor is at the end of an IOBuf.  Use peekBytes()
+   * instead if you want to avoid this.  peekBytes() will advance to the next
+   * non-empty IOBuf (up to the end of the chain) if the cursor is currently
+   * pointing at the end of a buffer.
    */
   size_t length() const {
     return crtBuf_->length() - offset_;
@@ -300,15 +300,26 @@ class CursorBase {
   /**
    * Return the available data in the current buffer.
    * If you want to gather more data from the chain into a contiguous region
-   * (for hopefully zero-copy access), use gather() before peek().
+   * (for hopefully zero-copy access), use gather() before peekBytes().
    */
-  std::pair<const uint8_t*, size_t> peek() {
+  ByteRange peekBytes() {
     // Ensure that we're pointing to valid data
     size_t available = length();
     while (UNLIKELY(available == 0 && tryAdvanceBuffer())) {
       available = length();
     }
-    return std::make_pair(data(), available);
+    return ByteRange{data(), available};
+  }
+
+  /**
+   * Alternate version of peekBytes() that returns a std::pair
+   * instead of a ByteRange.  (This method pre-dates ByteRange.)
+   *
+   * This function will eventually be deprecated.
+   */
+  std::pair<const uint8_t*, size_t> peek() {
+    auto bytes = peekBytes();
+    return std::make_pair(bytes.data(), bytes.size());
   }
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
@@ -583,9 +594,9 @@ class Writable {
   size_t pushAtMost(Cursor cursor, size_t len) {
     size_t written = 0;
     for(;;) {
-      auto currentBuffer = cursor.peek();
-      const uint8_t* crtData = currentBuffer.first;
-      size_t available = currentBuffer.second;
+      auto currentBuffer = cursor.peekBytes();
+      const uint8_t* crtData = currentBuffer.data();
+      size_t available = currentBuffer.size();
       if (available == 0) {
         // end of buffer chain
         return written;

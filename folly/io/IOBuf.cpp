@@ -962,12 +962,12 @@ size_t IOBufHash::operator()(const IOBuf& buf) const {
   hasher.Init(0, 0);
   io::Cursor cursor(&buf);
   for (;;) {
-    auto p = cursor.peek();
-    if (p.second == 0) {
+    auto b = cursor.peekBytes();
+    if (b.empty()) {
       break;
     }
-    hasher.Update(p.first, p.second);
-    cursor.skip(p.second);
+    hasher.Update(b.data(), b.size());
+    cursor.skip(b.size());
   }
   uint64_t h1;
   uint64_t h2;
@@ -979,16 +979,16 @@ bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
   io::Cursor ca(&a);
   io::Cursor cb(&b);
   for (;;) {
-    auto pa = ca.peek();
-    auto pb = cb.peek();
-    if (pa.second == 0 && pb.second == 0) {
+    auto ba = ca.peekBytes();
+    auto bb = cb.peekBytes();
+    if (ba.empty() && bb.empty()) {
       return true;
-    } else if (pa.second == 0 || pb.second == 0) {
+    } else if (ba.empty() || bb.empty()) {
       return false;
     }
-    size_t n = std::min(pa.second, pb.second);
+    size_t n = std::min(ba.size(), bb.size());
     DCHECK_GT(n, 0);
-    if (memcmp(pa.first, pb.first, n)) {
+    if (memcmp(ba.data(), bb.data(), n)) {
       return false;
     }
     ca.skip(n);
