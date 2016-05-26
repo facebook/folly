@@ -401,6 +401,7 @@ libfolly_la_SOURCES = \
 	IPAddressV6.cpp \
 	LifoSem.cpp \
 	io/Compression.cpp \
+	io/Cursor.cpp \
 	io/IOBuf.cpp \
 	io/IOBufQueue.cpp \
 	io/RecordIO.cpp \

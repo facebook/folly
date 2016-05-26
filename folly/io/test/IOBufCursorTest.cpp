@@ -19,7 +19,6 @@
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
-#include <folly/io/Cursor-defs.h>
 
 #include <gtest/gtest.h>
 
