@@ -164,9 +164,11 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
 }
 
 inline bool FiberManager::loopUntilNoReady() {
+#ifndef _WIN32
   if (UNLIKELY(!alternateSignalStackRegistered_)) {
     registerAlternateSignalStack();
   }
+#endif
 
   // Support nested FiberManagers
   auto originalFiberManager = this;

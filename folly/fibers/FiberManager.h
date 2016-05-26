@@ -468,9 +468,11 @@ class FiberManager : public ::folly::Executor {
 
 #endif // FOLLY_SANITIZE_ADDRESS
 
+#ifndef _WIN32
   bool alternateSignalStackRegistered_{false};
 
   void registerAlternateSignalStack();
+#endif
 };
 
 /**

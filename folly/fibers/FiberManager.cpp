@@ -277,6 +277,7 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
 
 #endif // FOLLY_SANITIZE_ADDRESS
 
+#ifndef _WIN32
 namespace {
 
 // SIGSTKSZ (8 kB on our architectures) isn't always enough for
@@ -333,5 +334,6 @@ void FiberManager::registerAlternateSignalStack() {
 
   alternateSignalStackRegistered_ = true;
 }
+#endif
 }
 }
