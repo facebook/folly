@@ -162,13 +162,13 @@ Subprocess::Options& Subprocess::Options::fd(int fd, int action) {
   return *this;
 }
 
+Subprocess::Subprocess() {}
+
 Subprocess::Subprocess(
     const std::vector<std::string>& argv,
     const Options& options,
     const char* executable,
-    const std::vector<std::string>* env)
-  : pid_(-1),
-    returnCode_(RV_NOT_STARTED) {
+    const std::vector<std::string>* env) {
   if (argv.empty()) {
     throw std::invalid_argument("argv must not be empty");
   }
@@ -179,9 +179,7 @@ Subprocess::Subprocess(
 Subprocess::Subprocess(
     const std::string& cmd,
     const Options& options,
-    const std::vector<std::string>* env)
-  : pid_(-1),
-    returnCode_(RV_NOT_STARTED) {
+    const std::vector<std::string>* env) {
   if (options.usePath_) {
     throw std::invalid_argument("usePath() not allowed when running in shell");
   }

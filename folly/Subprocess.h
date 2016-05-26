@@ -427,6 +427,14 @@ class Subprocess {
   Subprocess& operator=(Subprocess&&) = default;
 
   /**
+   * Create an uninitialized subprocess.
+   *
+   * In this state it can only be destroyed, or assigned to using the move
+   * assignment operator.
+   */
+  Subprocess();
+
+  /**
    * Create a subprocess from the given arguments.  argv[0] must be listed.
    * If not-null, executable must be the actual executable
    * being used (otherwise it's the same as argv[0]).
@@ -821,9 +829,8 @@ class Subprocess {
   // Returns an index into pipes_. Throws std::invalid_argument if not found.
   size_t findByChildFd(const int childFd) const;
 
-
-  pid_t pid_;
-  ProcessReturnCode returnCode_;
+  pid_t pid_{-1};
+  ProcessReturnCode returnCode_{RV_NOT_STARTED};
 
   /**
    * Represents a pipe between this process, and the child process (or its

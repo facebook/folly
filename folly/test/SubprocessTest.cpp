@@ -71,6 +71,19 @@ TEST(SimpleSubprocessTest, MoveSubprocess) {
   // Now old_proc is destroyed, but we don't crash.
 }
 
+TEST(SimpleSubprocessTest, DefaultConstructor) {
+  Subprocess proc;
+  EXPECT_TRUE(proc.returnCode().notStarted());
+
+  {
+    auto p1 = Subprocess(std::vector<std::string>{"/bin/true"});
+    proc = std::move(p1);
+  }
+
+  EXPECT_TRUE(proc.returnCode().running());
+  EXPECT_EQ(0, proc.wait().exitStatus());
+}
+
 #define EXPECT_SPAWN_ERROR(err, errMsg, cmd, ...) \
   do { \
     try { \
