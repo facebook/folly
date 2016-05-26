@@ -28,6 +28,7 @@
 #include <folly/Exception.h>
 #include <folly/FormatTraits.h>
 #include <folly/Traits.h>
+#include <folly/portability/Windows.h>
 
 // Ignore -Wformat-nonliteral warnings within this file
 #pragma GCC diagnostic push
