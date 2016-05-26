@@ -102,7 +102,7 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
         curLen = iov[curIov].iov_len;
       }
     } else {
-      curBase += (void*)((char*)curBase + res);
+      curBase = (void*)((char*)curBase + res);
       curLen -= res;
     }
 
