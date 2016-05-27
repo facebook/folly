@@ -228,7 +228,6 @@ futures_test_SOURCES = \
     ../futures/test/ContextTest.cpp \
     ../futures/test/ConversionTest.cpp \
     ../futures/test/CoreTest.cpp \
-    ../futures/test/ThreadedExecutorTest.cpp \
     ../futures/test/EnsureTest.cpp \
     ../futures/test/ExecutorTest.cpp \
     ../futures/test/FSMTest.cpp \
