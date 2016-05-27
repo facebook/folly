@@ -1430,6 +1430,8 @@ void AsyncSocket::handleRead() noexcept {
 void AsyncSocket::handleWrite() noexcept {
   VLOG(5) << "AsyncSocket::handleWrite() this=" << this << ", fd=" << fd_
           << ", state=" << state_;
+  DestructorGuard dg(this);
+
   if (state_ == StateEnum::CONNECTING) {
     handleConnect();
     return;

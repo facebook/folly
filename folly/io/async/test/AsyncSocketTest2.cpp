@@ -2280,3 +2280,34 @@ TEST(AsyncSocketTest, BufferTest) {
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
 }
+
+TEST(AsyncSocketTest, BufferCallbackKill) {
+  TestServer server;
+  EventBase evb;
+  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30, option);
+  evb.loopOnce();
+
+  char buf[100 * 1024];
+  memset(buf, 'c', sizeof(buf));
+  BufferCallback* bcb = new BufferCallback;
+  socket->setBufferCallback(bcb);
+  WriteCallback wcb;
+  wcb.successCallback = [&] {
+    ASSERT_TRUE(socket.unique());
+    socket.reset();
+  };
+
+  // This will trigger AsyncSocket::handleWrite,
+  // which calls WriteCallback::writeSuccess,
+  // which calls wcb.successCallback above,
+  // which tries to delete socket
+  // Then, the socket will also try to use this BufferCallback
+  // And that should crash us, if there is no DestructorGuard on the stack
+  socket->write(&wcb, buf, sizeof(buf), WriteFlags::NONE);
+
+  evb.loop();
+  CHECK_EQ(ccb.state, STATE_SUCCEEDED);
+}
