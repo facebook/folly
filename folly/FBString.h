@@ -1338,7 +1338,9 @@ public:
   }
 
   basic_fbstring& append(size_type n, value_type c) {
-    resize(size() + n, c);
+    Invariant checker(*this);
+    auto pData = store_.expand_noinit(n, /* expGrowth = */ true);
+    fbstring_detail::pod_fill(pData, pData + n, c);
     return *this;
   }
 
