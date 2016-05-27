@@ -1155,7 +1155,7 @@ TEST(AsyncSocketTest, WriteIOBufCorked) {
   write2.scheduleTimeout(100);
   WriteCallback wcb3;
   DelayedWrite write3(socket, std::move(buf3), &wcb3, false, true);
-  write3.scheduleTimeout(200);
+  write3.scheduleTimeout(140);
 
   evb.loop();
   CHECK_EQ(ccb.state, STATE_SUCCEEDED);
