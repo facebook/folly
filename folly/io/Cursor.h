@@ -229,34 +229,36 @@ class CursorBase {
    */
   std::string readTerminatedString(
       char termChar = '\0',
-      size_t maxLength = std::numeric_limits<size_t>::max()) {
-    std::string str;
+      size_t maxLength = std::numeric_limits<size_t>::max());
 
-    while (!isAtEnd()) {
-      const uint8_t* buf = data();
-      size_t buflen = length();
+  /*
+   * Read all bytes until the specified predicate returns true.
+   *
+   * The predicate will be called on each byte in turn, until it returns false
+   * or until the end of the IOBuf chain is reached.
+   *
+   * Returns the result as a string.
+   */
+  template <typename Predicate>
+  std::string readWhile(const Predicate& predicate);
 
-      size_t i = 0;
-      while (i < buflen && buf[i] != termChar) {
-        ++i;
+  /*
+   * Read all bytes until the specified predicate returns true.
+   *
+   * This is a more generic version of readWhile() takes an arbitrary Output
+   * object, and calls Output::append() with each chunk of matching data.
+   */
+  template <typename Predicate, typename Output>
+  void readWhile(const Predicate& predicate, Output& out);
 
-        // Do this check after incrementing 'i', as even though we start at the
-        // 0 byte, it still represents a single character
-        if (str.length() + i >= maxLength) {
-          throw std::length_error("string overflow");
-        }
-      }
-
-      str.append(reinterpret_cast<const char*>(buf), i);
-      if (i < buflen) {
-        skip(i + 1);
-        return str;
-      }
-
-      skip(i);
-    }
-    throw std::out_of_range("terminator not found");
-  }
+  /*
+   * Skip all bytes until the specified predicate returns true.
+   *
+   * The predicate will be called on each byte in turn, until it returns false
+   * or until the end of the IOBuf chain is reached.
+   */
+  template <typename Predicate>
+  void skipWhile(const Predicate& predicate);
 
   size_t skipAtMost(size_t len) {
     if (LIKELY(length() >= len)) {
@@ -419,7 +421,7 @@ class CursorBase {
   size_t operator-(const BufType* buf) const {
     size_t len = 0;
 
-    BufType *curBuf = buf;
+    const BufType* curBuf = buf;
     while (curBuf != crtBuf_) {
       len += curBuf->length();
       curBuf = curBuf->next();
@@ -934,3 +936,5 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 };
 
 }}  // folly::io
+
+#include <folly/io/Cursor-inl.h>

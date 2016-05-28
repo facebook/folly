@@ -202,6 +202,7 @@ nobase_follyinclude_HEADERS = \
 	IntrusiveList.h \
 	io/Compression.h \
 	io/Cursor.h \
+	io/Cursor-inl.h \
 	io/IOBuf.h \
 	io/IOBufQueue.h \
 	io/RecordIO.h \
