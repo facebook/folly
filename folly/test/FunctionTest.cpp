@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <cstdarg>
 
 #include <folly/Function.h>
@@ -100,13 +101,15 @@ TEST(Function, Emptiness_T) {
   Function<int(int)> g([](int x) { return x + 1; });
   EXPECT_NE(g, nullptr);
   EXPECT_NE(nullptr, g);
-  EXPECT_TRUE(g);
+  // Explicitly convert to bool to work around
+  // https://github.com/google/googletest/issues/429
+  EXPECT_TRUE(bool(g));
   EXPECT_EQ(100, g(99));
 
   Function<int(int)> h(&func_int_int_add_25);
   EXPECT_NE(h, nullptr);
   EXPECT_NE(nullptr, h);
-  EXPECT_TRUE(h);
+  EXPECT_TRUE(bool(h));
   EXPECT_EQ(125, h(100));
 
   h = {};
@@ -851,7 +854,7 @@ TEST(Function, SelfMoveAssign) {
   Function<int()> f = [] { return 0; };
   Function<int()>& g = f;
   f = std::move(g);
-  EXPECT_TRUE(f);
+  EXPECT_TRUE(bool(f));
 }
 
 TEST(Function, DeducableArguments) {
