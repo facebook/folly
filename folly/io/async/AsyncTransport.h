@@ -17,13 +17,13 @@
 #pragma once
 
 #include <memory>
-#include <sys/uio.h>
 
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/portability/SysUio.h>
 
 #include <openssl/ssl.h>
 

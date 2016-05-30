@@ -17,7 +17,6 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/uio.h>
 #include <libaio.h>
 
 #include <atomic>
@@ -33,6 +32,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/portability/SysUio.h>
 
 namespace folly {
 
