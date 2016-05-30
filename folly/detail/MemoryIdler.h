@@ -22,6 +22,7 @@
 #include <folly/Hash.h>
 #include <folly/Traits.h>
 #include <folly/detail/Futex.h>
+#include <folly/portability/PThread.h>
 
 namespace folly {
 
