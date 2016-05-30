@@ -25,9 +25,9 @@
 #include <folly/detail/SocketFastOpen.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/portability/Fcntl.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <netinet/tcp.h>
 #include <string.h>
 #include <sys/socket.h>

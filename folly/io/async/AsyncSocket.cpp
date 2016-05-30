@@ -20,6 +20,7 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/SysUio.h>
 
 #include <poll.h>
@@ -27,7 +28,6 @@
 #include <limits.h>
 #include <unistd.h>
 #include <thread>
-#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>

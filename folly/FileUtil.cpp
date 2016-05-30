@@ -17,12 +17,10 @@
 #include <folly/FileUtil.h>
 
 #include <cerrno>
-#ifdef __APPLE__
-#include <fcntl.h>
-#endif
 #include <sys/socket.h>
 
 #include <folly/detail/FileUtilDetail.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/SysFile.h>
 
 namespace folly {

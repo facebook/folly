@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <fcntl.h>
 #include <poll.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -36,6 +35,7 @@
 #include <folly/Likely.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SpinLock.h>
+#include <folly/portability/Fcntl.h>
 
 #include <glog/logging.h>
 
