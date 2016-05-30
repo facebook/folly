@@ -26,13 +26,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <unistd.h>
 
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/Subprocess.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/Unistd.h>
 
 using folly::Subprocess;
 

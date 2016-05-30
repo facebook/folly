@@ -22,11 +22,11 @@
 #include <folly/io/IOBuf.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/SysUio.h>
+#include <folly/portability/Unistd.h>
 
 #include <poll.h>
 #include <errno.h>
 #include <limits.h>
-#include <unistd.h>
 #include <thread>
 #include <sys/types.h>
 #include <sys/socket.h>

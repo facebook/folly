@@ -23,10 +23,10 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/test/SocketPair.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/portability/Unistd.h>
 
 #include <atomic>
 #include <iostream>
-#include <unistd.h>
 #include <memory>
 #include <thread>
 

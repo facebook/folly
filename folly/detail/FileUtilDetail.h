@@ -17,9 +17,9 @@
 #pragma once
 
 #include <cerrno>
-#include <unistd.h>
 
 #include <folly/portability/SysUio.h>
+#include <folly/portability/Unistd.h>
 
 /**
  * Helper functions and templates for FileUtil.cpp.  Declared here so

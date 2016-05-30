@@ -26,13 +26,13 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Unistd.h>
 
 #include <errno.h>
 #include <netinet/tcp.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 namespace folly {
 

@@ -28,7 +28,6 @@
 #include <openssl/ssl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <unistd.h>
 #include <chrono>
 
 #include <folly/Bits.h>
@@ -36,6 +35,7 @@
 #include <folly/SpinLock.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/Cursor.h>
+#include <folly/portability/Unistd.h>
 
 using folly::SocketAddress;
 using folly::SSLContext;

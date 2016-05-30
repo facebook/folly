@@ -23,11 +23,11 @@
 #include <limits>
 #include <string.h>
 #include <type_traits>
-#include <unistd.h>
 
 #include <folly/Traits.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/TurnSequencer.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 

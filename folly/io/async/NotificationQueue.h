@@ -18,7 +18,6 @@
 
 #include <poll.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <deque>
@@ -36,6 +35,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/SpinLock.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Unistd.h>
 
 #include <glog/logging.h>
 

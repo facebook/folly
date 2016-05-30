@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -33,6 +32,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/io/HugePages.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/Unistd.h>
 
 DEFINE_bool(cp, false, "Copy file");
 

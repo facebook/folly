@@ -19,12 +19,12 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <string>
 
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 

@@ -15,8 +15,6 @@
  */
 #include "Fiber.h"
 
-#include <unistd.h>
-
 #include <glog/logging.h>
 #include <algorithm>
 #include <cstring>
@@ -27,6 +25,7 @@
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/portability/SysSyscall.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace fibers {

@@ -19,7 +19,6 @@
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #include <array>
 #include <atomic>
@@ -38,6 +37,7 @@
 #include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 

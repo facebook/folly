@@ -22,12 +22,12 @@
 
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/portability/Unistd.h>
 
 #include <condition_variable>
 #include <fcntl.h>
 #include <mutex>
 #include <pthread.h>
-#include <unistd.h>
 
 namespace {
 

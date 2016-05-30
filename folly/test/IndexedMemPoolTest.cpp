@@ -16,9 +16,9 @@
 
 #include <folly/IndexedMemPool.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/Unistd.h>
 #include <string>
 #include <thread>
-#include <unistd.h>
 #include <semaphore.h>
 #include <gtest/gtest.h>
 

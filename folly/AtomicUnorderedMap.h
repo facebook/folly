@@ -22,7 +22,6 @@
 #include <system_error>
 #include <type_traits>
 #include <stdint.h>
-#include <unistd.h>
 
 #include <folly/Bits.h>
 #include <folly/Conv.h>
@@ -30,6 +29,7 @@
 #include <folly/Random.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <limits>

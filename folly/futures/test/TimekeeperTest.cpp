@@ -17,8 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/futures/Timekeeper.h>
-
-#include <unistd.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 using std::chrono::milliseconds;

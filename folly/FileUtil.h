@@ -20,13 +20,13 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/SysUio.h>
+#include <folly/portability/Unistd.h>
 
 #include <cassert>
 #include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 namespace folly {
 

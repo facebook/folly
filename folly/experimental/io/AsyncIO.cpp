@@ -17,7 +17,6 @@
 #include <folly/experimental/io/AsyncIO.h>
 
 #include <sys/eventfd.h>
-#include <unistd.h>
 #include <cerrno>
 #include <ostream>
 #include <stdexcept>
@@ -30,6 +29,7 @@
 #include <folly/Format.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 

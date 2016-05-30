@@ -20,7 +20,6 @@
 #include <sys/types.h>
 #include <cstddef>
 #include <string>
-#include <unistd.h>
 #include <utility>
 #include <vector>
 
@@ -28,6 +27,7 @@
 
 #include <folly/Range.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 

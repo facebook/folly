@@ -19,11 +19,11 @@
 #include <type_traits>
 #include <stdint.h>
 #include <assert.h>
-#include <unistd.h>
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/Unistd.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push

@@ -16,7 +16,6 @@
 
 #include <folly/Subprocess.h>
 
-#include <unistd.h>
 #include <sys/types.h>
 
 #include <boost/container/flat_set.hpp>
@@ -33,6 +32,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/Dirent.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly;
 

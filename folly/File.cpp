@@ -16,7 +16,6 @@
 
 #include <folly/File.h>
 
-#include <unistd.h>
 
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
@@ -24,6 +23,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/SysFile.h>
+#include <folly/portability/Unistd.h>
 
 #include <system_error>
 

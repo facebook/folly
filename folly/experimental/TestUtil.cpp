@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 #include <boost/regex.hpp>
 #include <folly/Conv.h>
@@ -29,6 +28,7 @@
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/portability/Environment.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace test {

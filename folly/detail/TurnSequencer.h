@@ -19,10 +19,10 @@
 #include <algorithm>
 #include <assert.h>
 #include <limits>
-#include <unistd.h>
 
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 

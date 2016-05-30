@@ -22,6 +22,7 @@
 #include <folly/Executor.h>
 #include <folly/dynamic.h>
 #include <folly/Baton.h>
+#include <folly/portability/Unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -30,7 +31,6 @@
 #include <string>
 #include <thread>
 #include <type_traits>
-#include <unistd.h>
 
 using namespace folly;
 

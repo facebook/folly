@@ -19,8 +19,8 @@
 #include <folly/io/async/test/SocketPair.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/Unistd.h>
 
-#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>

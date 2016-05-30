@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <unistd.h>
 #include <atomic>
 #include <algorithm>
 #include <thread>
@@ -23,6 +22,7 @@
 #include <folly/Benchmark.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/ParallelMap.h>
+#include <folly/portability/Unistd.h>
 
 using namespace folly::gen;
 

@@ -17,7 +17,7 @@
 #include <folly/io/RecordIO.h>
 
 #include <sys/types.h>
-#include <unistd.h>
+
 #include <random>
 
 #include <glog/logging.h>
@@ -29,6 +29,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBufQueue.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/Unistd.h>
 
 DEFINE_int32(random_seed, folly::randomNumberSeed(), "random seed");
 

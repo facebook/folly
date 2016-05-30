@@ -19,9 +19,9 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/Likely.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Unistd.h>
 
 #include <errno.h>
-#include <unistd.h>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.

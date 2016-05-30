@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <unistd.h>
 #include <syscall.h>
 #include <linux/futex.h>
 #include <climits>
@@ -27,6 +26,7 @@
 #include <folly/Bits.h>
 #include <folly/Likely.h>
 #include <folly/portability/SysTime.h>
+#include <folly/portability/Unistd.h>
 
 
 namespace folly {

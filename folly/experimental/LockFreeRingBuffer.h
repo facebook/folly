@@ -23,10 +23,10 @@
 #include <memory>
 #include <string.h>
 #include <type_traits>
-#include <unistd.h>
 
 #include <folly/detail/TurnSequencer.h>
 #include <folly/Portability.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace detail {
