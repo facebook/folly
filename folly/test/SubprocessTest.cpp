@@ -18,7 +18,6 @@
 
 #include <unistd.h>
 #include <sys/types.h>
-#include <dirent.h>
 
 #include <boost/container/flat_set.hpp>
 #include <glog/logging.h>
@@ -33,6 +32,7 @@
 #include <folly/gen/String.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/Dirent.h>
 
 using namespace folly;
 
