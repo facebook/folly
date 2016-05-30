@@ -24,9 +24,10 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/portability/Sockets.h>
+
 #include <limits.h>
 #include <stddef.h>
-#include <sys/socket.h>
 #include <exception>
 #include <memory>
 #include <vector>

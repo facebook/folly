@@ -25,7 +25,8 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
-#include <sys/socket.h>
+#include <folly/portability/Sockets.h>
+
 #include <sys/types.h>
 
 #include <chrono>

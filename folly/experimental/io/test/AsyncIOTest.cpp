@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <poll.h>
 
 #include <cstdlib>
 #include <cstdio>
@@ -34,6 +33,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/portability/Sockets.h>
 
 namespace fs = folly::fs;
 using folly::AsyncIO;

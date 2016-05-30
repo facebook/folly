@@ -20,13 +20,10 @@
 
 #include <gtest/gtest.h>
 
-extern "C" {
 #include <sys/types.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-}
 
 #include <folly/IPAddress.h>
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 

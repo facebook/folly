@@ -24,6 +24,7 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
@@ -31,10 +32,7 @@
 #include <boost/scoped_array.hpp>
 #include <iostream>
 #include <fcntl.h>
-#include <poll.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/tcp.h>
 #include <thread>
 
 using namespace boost;

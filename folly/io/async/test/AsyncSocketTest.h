@@ -17,9 +17,9 @@
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/test/BlockingSocket.h>
+#include <folly/portability/Sockets.h>
 
 #include <boost/scoped_array.hpp>
-#include <poll.h>
 
 enum StateEnum {
   STATE_WAITING,

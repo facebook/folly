@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <arpa/inet.h>
 #include <iomanip>
 
 #include <folly/Optional.h>
@@ -33,6 +32,7 @@
 #include <folly/Bits.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/Cursor.h>
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 

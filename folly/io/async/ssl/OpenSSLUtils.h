@@ -15,10 +15,9 @@
  */
 #pragma once
 
-#include <openssl/x509v3.h>
+#include <folly/portability/Sockets.h>
 
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <openssl/x509v3.h>
 
 namespace folly {
 namespace ssl {

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <sys/socket.h>
+#include <folly/portability/Sockets.h>
 #include <sys/types.h>
 
 #if !defined(FOLLY_ALLOW_TFO) && defined(TCP_FASTOPEN) && defined(MSG_FASTOPEN)

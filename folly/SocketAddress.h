@@ -17,10 +17,6 @@
 #pragma once
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <cstddef>
 #include <iostream>
 #include <string>
@@ -28,6 +24,7 @@
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 

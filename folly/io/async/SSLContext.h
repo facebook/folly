@@ -24,11 +24,11 @@
 #include <string>
 #include <random>
 
+// This has to come before SSL.
+#include <folly/portability/Sockets.h>
+
 #include <openssl/ssl.h>
 #include <openssl/tls1.h>
-
-#include <sys/socket.h>
-#include <netinet/in.h>
 
 #include <glog/logging.h>
 

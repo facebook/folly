@@ -19,12 +19,10 @@
 #include <chrono>
 #include <thread>
 
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include <folly/portability/Sockets.h>
 
 using folly::ShutdownSocketSet;
 

@@ -24,7 +24,6 @@
 #include <sys/prctl.h>
 #endif
 #include <fcntl.h>
-#include <poll.h>
 
 #include <array>
 #include <algorithm>
@@ -41,6 +40,7 @@
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/Environment.h>
+#include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
 constexpr int kExecFailure = 127;

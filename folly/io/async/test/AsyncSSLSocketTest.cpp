@@ -21,6 +21,7 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/SocketAddress.h>
+#include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
 #include <folly/io/async/test/BlockingSocket.h>
@@ -32,10 +33,7 @@
 #include <set>
 #include <fcntl.h>
 #include <openssl/bio.h>
-#include <poll.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/tcp.h>
 #include <folly/io/Cursor.h>
 
 using std::string;

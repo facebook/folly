@@ -17,17 +17,15 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 
 #include <folly/io/async/EventBase.h>
+#include <folly/portability/Sockets.h>
 
 #include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <fcntl.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <openssl/err.h>
 #include <openssl/asn1.h>
 #include <openssl/ssl.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <chrono>
 
 #include <folly/Bits.h>

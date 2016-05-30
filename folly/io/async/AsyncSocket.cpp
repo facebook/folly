@@ -21,17 +21,14 @@
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Sockets.h>
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
 
-#include <poll.h>
 #include <errno.h>
 #include <limits.h>
 #include <thread>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <boost/preprocessor/control/if.hpp>
 
 using std::string;
