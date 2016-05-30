@@ -16,7 +16,6 @@
 #include "FiberManager.h"
 
 #include <signal.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <cassert>
@@ -28,6 +27,7 @@
 #include <folly/fibers/LoopController.h>
 
 #include <folly/SingletonThreadLocal.h>
+#include <folly/portability/SysSyscall.h>
 
 #ifdef FOLLY_SANITIZE_ADDRESS
 

@@ -25,7 +25,6 @@
 #include <chrono>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <errno.h>
 #include <glog/logging.h>

@@ -15,7 +15,6 @@
  */
 #include "Fiber.h"
 
-#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <glog/logging.h>

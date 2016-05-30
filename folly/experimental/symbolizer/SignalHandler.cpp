@@ -19,7 +19,6 @@
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
 #include <sys/types.h>
-#include <sys/syscall.h>
 #include <atomic>
 #include <ctime>
 #include <mutex>
@@ -35,6 +34,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/portability/SysSyscall.h>
 
 namespace folly { namespace symbolizer {
 
