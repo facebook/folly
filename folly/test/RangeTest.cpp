@@ -20,8 +20,8 @@
 #include <folly/Range.h>
 
 #include <folly/portability/Memory.h>
+#include <folly/portability/SysMman.h>
 
-#include <sys/mman.h>
 #include <array>
 #include <iterator>
 #include <limits>

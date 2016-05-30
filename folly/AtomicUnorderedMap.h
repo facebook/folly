@@ -23,12 +23,14 @@
 #include <type_traits>
 #include <stdint.h>
 #include <unistd.h>
-#include <sys/mman.h>
-#include <folly/Likely.h>
+
 #include <folly/Bits.h>
 #include <folly/Conv.h>
+#include <folly/Likely.h>
 #include <folly/Random.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
+#include <folly/portability/SysMman.h>
+
 #include <boost/type_traits/has_trivial_destructor.hpp>
 #include <limits>
 

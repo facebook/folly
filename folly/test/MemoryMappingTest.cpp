@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-#include <sys/mman.h>
 #include <cstdlib>
+
 #include <folly/FileUtil.h>
 #include <folly/MemoryMapping.h>
+#include <folly/portability/SysMman.h>
+
 #include <gtest/gtest.h>
 
 namespace folly {
