@@ -18,12 +18,12 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <sys/time.h>
 #include <thread>
 #include <atomic>
 #include <memory>
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
+#include <folly/portability/SysTime.h>
 
 using std::vector;
 using std::string;

@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <unistd.h>
-#include <sys/time.h>
 #include <mutex>
 #include <random>
 #include <array>
@@ -28,6 +27,7 @@
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/ThreadLocal.h>
+#include <folly/portability/SysTime.h>
 
 #ifdef _MSC_VER
 # include <wincrypt.h>
