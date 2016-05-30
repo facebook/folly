@@ -22,9 +22,9 @@
  */
 
 #include <cinttypes>
-#include <ctime>
 
 #include <folly/portability/Asm.h>
+#include <folly/portability/Time.h>
 
 namespace folly {
 
