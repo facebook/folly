@@ -26,7 +26,7 @@
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
-#include <sys/resource.h>
+#include <folly/portability/SysResource.h>
 
 // SharedMutex is a reader-writer lock.  It is small, very fast, scalable
 // on multi-core, and suitable for use when readers or writers may block.
