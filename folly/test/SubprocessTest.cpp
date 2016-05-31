@@ -31,7 +31,6 @@
 #include <folly/gen/String.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
-#include <folly/portability/Dirent.h>
 #include <folly/portability/Unistd.h>
 
 using namespace folly;
