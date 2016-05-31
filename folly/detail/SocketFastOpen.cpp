@@ -16,6 +16,8 @@
 
 #include <folly/detail/SocketFastOpen.h>
 
+#include <cerrno>
+
 namespace folly {
 namespace detail {
 
