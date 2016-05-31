@@ -18,6 +18,7 @@
 
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
+#include <folly/detail/SocketFastOpen.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketException.h>
@@ -416,6 +417,20 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return connectTimeout_;
   }
 
+  bool getTFOAttempted() const {
+    return tfoAttempted_;
+  }
+
+  /**
+   * Returns whether or not the attempt to use TFO
+   * finished successfully. This does not necessarily
+   * mean TFO worked, just that trying to use TFO
+   * succeeded.
+   */
+  bool getTFOFinished() const {
+    return tfoFinished_;
+  }
+
   // Methods controlling socket options
 
   /**
@@ -509,12 +524,24 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     peek_ = peek;
   }
 
+  /**
+   * Enables TFO behavior on the AsyncSocket if FOLLY_ALLOW_TFO
+   * is set.
+   */
+  void enableTFO() {
+    // No-op if folly does not allow tfo
+#if FOLLY_ALLOW_TFO
+    tfoEnabled_ = true;
+#endif
+  }
+
   enum class StateEnum : uint8_t {
     UNINIT,
     CONNECTING,
     ESTABLISHED,
     CLOSED,
-    ERROR
+    ERROR,
+    FAST_OPEN,
   };
 
   void setBufferCallback(BufferCallback* cb);
@@ -784,6 +811,20 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       uint32_t* countWritten,
       uint32_t* partialWritten);
 
+  /**
+   * Sends the message over the socket using sendmsg
+   *
+   * @param msg       Message to send
+   * @param msg_flags Flags to pass to sendmsg
+   */
+  AsyncSocket::WriteResult sendSocketMessage(struct msghdr* msg, int msg_flags);
+
+  virtual ssize_t tfoSendMsg(int fd, struct msghdr* msg, int msg_flags);
+
+  int socketConnect(const struct sockaddr* addr, socklen_t len);
+
+  void scheduleConnectTimeoutAndRegisterForEvents();
+
   bool updateEventRegistration();
 
   /**
@@ -854,6 +895,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   std::chrono::milliseconds connectTimeout_{0};
 
   BufferCallback* bufferCallback_{nullptr};
+  bool tfoEnabled_{false};
+  bool tfoAttempted_{false};
+  bool tfoFinished_{false};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)

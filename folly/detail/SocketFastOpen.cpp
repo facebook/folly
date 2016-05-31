@@ -20,21 +20,42 @@ namespace folly {
 namespace detail {
 
 #if FOLLY_ALLOW_TFO
-ssize_t tfo_sendto(
-    int sockfd,
-    const void* buf,
-    size_t len,
-    int flags,
-    const struct sockaddr* dest_addr,
-    socklen_t addrlen) {
+
+#include <netinet/tcp.h>
+#include <stdio.h>
+
+// Sometimes these flags are not present in the headers,
+// so define them if not present.
+#if !defined(MSG_FASTOPEN)
+#define MSG_FASTOPEN 0x20000000
+#endif
+
+#if !defined(TCP_FASTOPEN)
+#define TCP_FASTOPEN 23
+#endif
+
+ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
   flags |= MSG_FASTOPEN;
-  return sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+  return sendmsg(sockfd, msg, flags);
 }
 
 int tfo_enable(int sockfd, size_t max_queue_size) {
   return setsockopt(
       sockfd, SOL_TCP, TCP_FASTOPEN, &max_queue_size, sizeof(max_queue_size));
 }
+
+#else
+
+ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
+  errno = EOPNOTSUPP;
+  return -1;
+}
+
+int tfo_enable(int sockfd, size_t max_queue_size) {
+  errno = ENOPROTOOPT;
+  return -1;
+}
+
 #endif
 }
 }

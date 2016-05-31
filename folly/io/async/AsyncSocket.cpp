@@ -16,8 +16,7 @@
 
 #include <folly/io/async/AsyncSocket.h>
 
-#include <folly/io/async/EventBase.h>
-#include <folly/io/async/EventHandler.h>
+#include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
 #include <folly/portability/Fcntl.h>
@@ -429,34 +428,12 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // Perform the connect()
     address.getAddress(&addrStorage);
 
-    rv = ::connect(fd_, saddr, address.getActualSize());
-    if (rv < 0) {
-      auto errnoCopy = errno;
-      if (errnoCopy == EINPROGRESS) {
-        // Connection in progress.
-        if (timeout > 0) {
-          // Start a timer in case the connection takes too long.
-          if (!writeTimeout_.scheduleTimeout(timeout)) {
-            throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-                withAddr("failed to schedule AsyncSocket connect timeout"));
-          }
-        }
-
-        // Register for write events, so we'll
-        // be notified when the connection finishes/fails.
-        // Note that we don't register for a persistent event here.
-        assert(eventFlags_ == EventHandler::NONE);
-        eventFlags_ = EventHandler::WRITE;
-        if (!ioHandler_.registerHandler(eventFlags_)) {
-          throw AsyncSocketException(AsyncSocketException::INTERNAL_ERROR,
-              withAddr("failed to register AsyncSocket connect handler"));
-        }
+    if (tfoEnabled_) {
+      state_ = StateEnum::FAST_OPEN;
+      tfoAttempted_ = true;
+    } else {
+      if (socketConnect(saddr, addr_.getActualSize()) < 0) {
         return;
-      } else {
-        throw AsyncSocketException(
-            AsyncSocketException::NOT_OPEN,
-            "connect failed (immediately)",
-            errnoCopy);
       }
     }
 
@@ -481,8 +458,50 @@ void AsyncSocket::connect(ConnectCallback* callback,
   VLOG(8) << "AsyncSocket::connect succeeded immediately; this=" << this;
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
-  state_ = StateEnum::ESTABLISHED;
+  if (state_ != StateEnum::FAST_OPEN) {
+    state_ = StateEnum::ESTABLISHED;
+  }
   invokeConnectSuccess();
+}
+
+int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
+  int rv = ::connect(fd_, saddr, len);
+  if (rv < 0) {
+    auto errnoCopy = errno;
+    if (errnoCopy == EINPROGRESS) {
+      scheduleConnectTimeoutAndRegisterForEvents();
+    } else {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "connect failed (immediately)",
+          errnoCopy);
+    }
+  }
+  return rv;
+}
+
+void AsyncSocket::scheduleConnectTimeoutAndRegisterForEvents() {
+  // Connection in progress.
+  int timeout = connectTimeout_.count();
+  if (timeout > 0) {
+    // Start a timer in case the connection takes too long.
+    if (!writeTimeout_.scheduleTimeout(timeout)) {
+      throw AsyncSocketException(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("failed to schedule AsyncSocket connect timeout"));
+    }
+  }
+
+  // Register for write events, so we'll
+  // be notified when the connection finishes/fails.
+  // Note that we don't register for a persistent event here.
+  assert(eventFlags_ == EventHandler::NONE);
+  eventFlags_ = EventHandler::WRITE;
+  if (!ioHandler_.registerHandler(eventFlags_)) {
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("failed to register AsyncSocket connect handler"));
+  }
 }
 
 void AsyncSocket::connect(ConnectCallback* callback,
@@ -502,7 +521,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
 
 void AsyncSocket::cancelConnect() {
   connectCallback_ = nullptr;
-  if (state_ == StateEnum::CONNECTING) {
+  if (state_ == StateEnum::CONNECTING || state_ == StateEnum::FAST_OPEN) {
     closeNow();
   }
 }
@@ -514,7 +533,7 @@ void AsyncSocket::setSendTimeout(uint32_t milliseconds) {
   // If we are currently pending on write requests, immediately update
   // writeTimeout_ with the new value.
   if ((eventFlags_ & EventHandler::WRITE) &&
-      (state_ != StateEnum::CONNECTING)) {
+      (state_ != StateEnum::CONNECTING && state_ != StateEnum::FAST_OPEN)) {
     assert(state_ == StateEnum::ESTABLISHED);
     assert((shutdownFlags_ & SHUT_WRITE) == 0);
     if (sendTimeout_ > 0) {
@@ -573,6 +592,7 @@ void AsyncSocket::setReadCB(ReadCallback *callback) {
 
   switch ((StateEnum)state_) {
     case StateEnum::CONNECTING:
+    case StateEnum::FAST_OPEN:
       // For convenience, we allow the read callback to be set while we are
       // still connecting.  We just store the callback for now.  Once the
       // connection completes we'll register for read events.
@@ -683,7 +703,8 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
   uint32_t partialWritten = 0;
   int bytesWritten = 0;
   bool mustRegister = false;
-  if (state_ == StateEnum::ESTABLISHED && !connecting()) {
+  if ((state_ == StateEnum::ESTABLISHED || state_ == StateEnum::FAST_OPEN) &&
+      !connecting()) {
     if (writeReqHead_ == nullptr) {
       // If we are established and there are no other writes pending,
       // we can attempt to perform the write immediately.
@@ -715,7 +736,13 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
           bufferCallback_->onEgressBuffered();
         }
       }
-      mustRegister = true;
+      if (!connecting()) {
+        // Writes might put the socket back into connecting state
+        // if TFO is enabled, and using TFO fails.
+        // This means that write timeouts would not be active, however
+        // connect timeouts would affect this stage.
+        mustRegister = true;
+      }
     }
   } else if (!connecting()) {
     // Invalid state for writing
@@ -839,7 +866,7 @@ void AsyncSocket::closeNow() {
   switch (state_) {
     case StateEnum::ESTABLISHED:
     case StateEnum::CONNECTING:
-    {
+    case StateEnum::FAST_OPEN: {
       shutdownFlags_ |= (SHUT_READ | SHUT_WRITE);
       state_ = StateEnum::CLOSED;
 
@@ -995,6 +1022,13 @@ void AsyncSocket::shutdownWriteNow() {
       // immediately shut down the write side of the socket.
       shutdownFlags_ |= SHUT_WRITE_PENDING;
       return;
+    case StateEnum::FAST_OPEN:
+      // In fast open state we haven't call connected yet, and if we shutdown
+      // the writes, we will never try to call connect, so shut everything down
+      shutdownFlags_ |= SHUT_WRITE;
+      // Immediately fail all write requests
+      failAllWrites(socketShutdownForWritesEx);
+      return;
     case StateEnum::CLOSED:
     case StateEnum::ERROR:
       // We should never get here.  SHUT_WRITE should always be set
@@ -1046,9 +1080,10 @@ bool AsyncSocket::hangup() const {
 }
 
 bool AsyncSocket::good() const {
-  return ((state_ == StateEnum::CONNECTING ||
-          state_ == StateEnum::ESTABLISHED) &&
-          (shutdownFlags_ == 0) && (eventBase_ != nullptr));
+  return (
+      (state_ == StateEnum::CONNECTING || state_ == StateEnum::FAST_OPEN ||
+       state_ == StateEnum::ESTABLISHED) &&
+      (shutdownFlags_ == 0) && (eventBase_ != nullptr));
 }
 
 bool AsyncSocket::error() const {
@@ -1695,15 +1730,95 @@ void AsyncSocket::timeoutExpired() noexcept {
   if (state_ == StateEnum::CONNECTING) {
     // connect() timed out
     // Unregister for I/O events.
-    AsyncSocketException ex(AsyncSocketException::TIMED_OUT,
-                           "connect timed out");
-    failConnect(__func__, ex);
+    if (connectCallback_) {
+      AsyncSocketException ex(
+          AsyncSocketException::TIMED_OUT, "connect timed out");
+      failConnect(__func__, ex);
+    } else {
+      // we faced a connect error without a connect callback, which could
+      // happen due to TFO.
+      AsyncSocketException ex(
+          AsyncSocketException::TIMED_OUT, "write timed out during connection");
+      failWrite(__func__, ex);
+    }
   } else {
     // a normal write operation timed out
-    assert(state_ == StateEnum::ESTABLISHED);
     AsyncSocketException ex(AsyncSocketException::TIMED_OUT, "write timed out");
     failWrite(__func__, ex);
   }
+}
+
+ssize_t AsyncSocket::tfoSendMsg(int fd, struct msghdr* msg, int msg_flags) {
+  return detail::tfo_sendmsg(fd, msg, msg_flags);
+}
+
+AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
+    struct msghdr* msg,
+    int msg_flags) {
+  ssize_t totalWritten = 0;
+  if (state_ == StateEnum::FAST_OPEN) {
+    sockaddr_storage addr;
+    auto len = addr_.getAddress(&addr);
+    msg->msg_name = &addr;
+    msg->msg_namelen = len;
+    totalWritten = tfoSendMsg(fd_, msg, msg_flags);
+    if (totalWritten >= 0) {
+      tfoFinished_ = true;
+      state_ = StateEnum::ESTABLISHED;
+      handleInitialReadWrite();
+    } else if (errno == EINPROGRESS) {
+      VLOG(4) << "TFO falling back to connecting";
+      // A normal sendmsg doesn't return EINPROGRESS, however
+      // TFO might fallback to connecting if there is no
+      // cookie.
+      state_ = StateEnum::CONNECTING;
+      try {
+        scheduleConnectTimeoutAndRegisterForEvents();
+      } catch (const AsyncSocketException& ex) {
+        return WriteResult(
+            WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
+      }
+      // Let's fake it that no bytes were written.
+      // Some clients check errno even if return code is 0, so we
+      // set it just in case.
+      errno = EAGAIN;
+      totalWritten = 0;
+    } else if (errno == EOPNOTSUPP) {
+      VLOG(4) << "TFO not supported";
+      // Try falling back to connecting.
+      state_ = StateEnum::CONNECTING;
+      try {
+        int ret = socketConnect((const sockaddr*)&addr, len);
+        if (ret == 0) {
+          // connect succeeded immediately
+          // Treat this like no data was written.
+          state_ = StateEnum::ESTABLISHED;
+          handleInitialReadWrite();
+        }
+        // If there was no exception during connections,
+        // we would return that no bytes were written.
+        // Some clients check errno even if return code is 0, so we
+        // set it just in case.
+        errno = EAGAIN;
+        totalWritten = 0;
+      } catch (const AsyncSocketException& ex) {
+        return WriteResult(
+            WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
+      }
+    } else if (errno == EAGAIN) {
+      // Normally sendmsg would indicate that the write would block.
+      // However in the fast open case, it would indicate that sendmsg
+      // fell back to a connect. This is a return code from connect()
+      // instead, and is an error condition indicating no fds available.
+      return WriteResult(
+          WRITE_ERROR,
+          folly::make_unique<AsyncSocketException>(
+              AsyncSocketException::UNKNOWN, "No more free local ports"));
+    }
+  } else {
+    totalWritten = ::sendmsg(fd_, msg, msg_flags);
+  }
+  return WriteResult(totalWritten);
 }
 
 AsyncSocket::WriteResult AsyncSocket::performWrite(
@@ -1740,9 +1855,10 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // marks that this is the last byte of a record (response)
     msg_flags |= MSG_EOR;
   }
-  ssize_t totalWritten = ::sendmsg(fd_, &msg, msg_flags);
+  auto writeResult = sendSocketMessage(&msg, msg_flags);
+  auto totalWritten = writeResult.writeReturn;
   if (totalWritten < 0) {
-    if (errno == EAGAIN) {
+    if (!writeResult.exception && errno == EAGAIN) {
       // TCP buffer is full; we can't write any more data right now.
       *countWritten = 0;
       *partialWritten = 0;
@@ -1751,7 +1867,7 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // error
     *countWritten = 0;
     *partialWritten = 0;
-    return WriteResult(WRITE_ERROR);
+    return writeResult;
   }
 
   appBytesWritten_ += totalWritten;

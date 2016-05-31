@@ -72,6 +72,7 @@ class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
 
   void writeErr(size_t bytesWritten,
                 const folly::AsyncSocketException& ex) noexcept override {
+    LOG(ERROR) << ex.what();
     state = STATE_FAILED;
     this->bytesWritten = bytesWritten;
     exception = ex;
@@ -205,8 +206,7 @@ class TestServer {
  public:
   // Create a TestServer.
   // This immediately starts listening on an ephemeral port.
-  TestServer()
-    : fd_(-1) {
+  explicit TestServer(bool enableTFO = false) : fd_(-1) {
     fd_ = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fd_ < 0) {
       throw folly::AsyncSocketException(
@@ -220,6 +220,11 @@ class TestServer {
           "failed to put test server socket in "
           "non-blocking mode",
           errno);
+    }
+    if (enableTFO) {
+#if FOLLY_ALLOW_TFO
+      folly::detail::tfo_enable(fd_, 100);
+#endif
     }
     if (listen(fd_, 10) != 0) {
       throw folly::AsyncSocketException(

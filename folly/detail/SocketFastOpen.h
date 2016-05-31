@@ -19,31 +19,23 @@
 #include <folly/portability/Sockets.h>
 #include <sys/types.h>
 
-#if !defined(FOLLY_ALLOW_TFO) && defined(TCP_FASTOPEN) && defined(MSG_FASTOPEN)
+#if !defined(FOLLY_ALLOW_TFO) && defined(__linux__) && !defined(__ANDROID__)
+// only allow for linux right now
 #define FOLLY_ALLOW_TFO 1
 #endif
 
 namespace folly {
 namespace detail {
 
-#if FOLLY_ALLOW_TFO
-
 /**
- * tfo_sendto has the same semantics as sendto, but is used to
+ * tfo_sendto has the same semantics as sendmsg, but is used to
  * send with TFO data.
  */
-ssize_t tfo_sendto(
-    int sockfd,
-    const void* buf,
-    size_t len,
-    int flags,
-    const struct sockaddr* dest_addr,
-    socklen_t addlen);
+ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags);
 
 /**
  * Enable TFO on a listening socket.
  */
 int tfo_enable(int sockfd, size_t max_queue_size);
-#endif
 }
 }

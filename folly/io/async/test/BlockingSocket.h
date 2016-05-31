@@ -40,6 +40,10 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     sock_->attachEventBase(&eventBase_);
   }
 
+  void setAddress(folly::SocketAddress address) {
+    address_ = address;
+  }
+
   void open() {
     sock_->connect(this, address_);
     eventBase_.loop();
@@ -110,11 +114,15 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
   }
 
   int32_t readHelper(uint8_t *buf, size_t len, bool all) {
+    if (!sock_->good()) {
+      return 0;
+    }
+
     readBuf_ = buf;
     readLen_ = len;
     sock_->setReadCB(this);
     while (!err_ && sock_->good() && readLen_ > 0) {
-      eventBase_.loop();
+      eventBase_.loopOnce();
       if (!all) {
         break;
       }
