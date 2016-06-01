@@ -17,9 +17,7 @@
 #include <folly/SingletonVault_c.h>
 #include <folly/Singleton.h>
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 SingletonVault_t *SingletonVault_singleton() {
   return folly::SingletonVault::singleton();
@@ -37,6 +35,4 @@ void SingletonVault_reenableInstances(SingletonVault_t *vault) {
   ((folly::SingletonVault*) vault)->reenableInstances();
 }
 
-#ifdef __cplusplus
 } // extern "C"
-#endif
