@@ -18,6 +18,7 @@
 
 // Test bed for folly/Synchronized.h
 
+#include <folly/Portability.h>
 #include <folly/Synchronized.h>
 #include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>
@@ -34,13 +35,13 @@ using SynchronizedTestTypes = testing::Types
   , folly::SharedMutexWritePriority
   , std::mutex
   , std::recursive_mutex
-#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
   , std::timed_mutex
   , std::recursive_timed_mutex
 #endif
   , boost::mutex
   , boost::recursive_mutex
-#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
   , boost::timed_mutex
   , boost::recursive_timed_mutex
 #endif
@@ -78,7 +79,7 @@ class SynchronizedTimedTest : public testing::Test {};
 using SynchronizedTimedTestTypes = testing::Types
   < folly::SharedMutexReadPriority
   , folly::SharedMutexWritePriority
-#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
   , std::timed_mutex
   , std::recursive_timed_mutex
   , boost::timed_mutex
@@ -102,7 +103,7 @@ class SynchronizedTimedWithConstTest : public testing::Test {};
 using SynchronizedTimedWithConstTestTypes = testing::Types
   < folly::SharedMutexReadPriority
   , folly::SharedMutexWritePriority
-#ifdef FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
   , boost::shared_mutex
 #endif
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
@@ -147,15 +148,15 @@ class FakeMutex {
   // Keep these two static for test access
   // Keep them thread_local in case of tests are run in parallel within one
   // process
-  static thread_local int lockCount_;
-  static thread_local int unlockCount_;
+  static FOLLY_TLS int lockCount_;
+  static FOLLY_TLS int unlockCount_;
 
   // Adapters for Synchronized<>
   friend void acquireReadWrite(FakeMutex& lock) { lock.lock(); }
   friend void releaseReadWrite(FakeMutex& lock) { lock.unlock(); }
 };
-thread_local int FakeMutex::lockCount_{0};
-thread_local int FakeMutex::unlockCount_{0};
+FOLLY_TLS int FakeMutex::lockCount_{0};
+FOLLY_TLS int FakeMutex::unlockCount_{0};
 
 // SynchronizedLockTest is used to verify the correct lock unlock behavior
 // happens per design
