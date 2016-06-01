@@ -105,6 +105,9 @@ struct MicroSpinLock {
                                                         std::memory_order_relaxed);
   }
 };
+static_assert(
+    std::is_pod<MicroSpinLock>::value,
+    "MicroSpinLock must be kept a POD type.");
 
 //////////////////////////////////////////////////////////////////////
 
