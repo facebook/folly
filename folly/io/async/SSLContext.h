@@ -134,10 +134,37 @@ class SSLContext {
   virtual void ciphers(const std::string& ciphers);
 
   /**
+   * Set default ciphers to be used in SSL handshake process.
+   *
+   * @param ciphers A list of ciphers to use for TLS.
+   */
+  virtual void setCipherList(const std::vector<std::string>& ciphers);
+
+  /**
    * Low-level method that attempts to set the provided ciphers on the
    * SSL_CTX object, and throws if something goes wrong.
    */
   virtual void setCiphersOrThrow(const std::string& ciphers);
+
+  /**
+   * Sets the signature algorithms to be used during SSL negotiation
+   * for TLS1.2+
+   *
+   * @param sigalgs A list of signature algorithms, eg. RSA+SHA512
+   */
+  void setSignatureAlgorithms(const std::vector<std::string>& sigalgs);
+
+  /**
+   * Sets the list of EC curves supported by the client.
+   *
+   * @param ecCurves A list of ec curves, eg: P-256
+   */
+  void setClientECCurvesList(const std::vector<std::string>& ecCurves);
+
+  /**
+   * Sets an x509 verification param on the context.
+   */
+  void setX509VerifyParam(const ssl::X509VerifyParam& x509VerifyParam);
 
   /**
    * Method to set verification option in the context object.

@@ -82,6 +82,8 @@ SSLContext::SSLContext(SSLVersion version) {
 
   checkPeerName_ = false;
 
+  SSL_CTX_set_options(ctx_, SSL_OP_NO_COMPRESSION);
+
 #if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);
@@ -104,13 +106,59 @@ void SSLContext::ciphers(const std::string& ciphers) {
   setCiphersOrThrow(ciphers);
 }
 
+void SSLContext::setCipherList(const std::vector<std::string>& ciphers) {
+  if (ciphers.size() == 0) {
+    return;
+  }
+  std::string opensslCipherList;
+  join(":", ciphers, opensslCipherList);
+  setCiphersOrThrow(opensslCipherList);
+}
+
+void SSLContext::setSignatureAlgorithms(
+    const std::vector<std::string>& sigalgs) {
+  if (sigalgs.size() == 0) {
+    return;
+  }
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
+  std::string opensslSigAlgsList;
+  join(":", sigalgs, opensslSigAlgsList);
+  int rc = SSL_CTX_set1_sigalgs_list(ctx_, opensslSigAlgsList.c_str());
+  if (rc == 0) {
+    throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
+  }
+#endif
+}
+
+void SSLContext::setClientECCurvesList(
+    const std::vector<std::string>& ecCurves) {
+  if (ecCurves.size() == 0) {
+    return;
+  }
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
+  std::string ecCurvesList;
+  join(":", ecCurves, ecCurvesList);
+  int rc = SSL_CTX_set1_curves_list(ctx_, ecCurvesList.c_str());
+  if (rc == 0) {
+    throw std::runtime_error("SSL_CTX_set1_curves_list " + getErrors());
+  }
+#endif
+}
+
+void SSLContext::setX509VerifyParam(
+    const ssl::X509VerifyParam& x509VerifyParam) {
+  if (!x509VerifyParam) {
+    return;
+  }
+  if (SSL_CTX_set1_param(ctx_, x509VerifyParam.get()) != 1) {
+    throw std::runtime_error("SSL_CTX_set1_param " + getErrors());
+  }
+}
+
 void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
   int rc = SSL_CTX_set_cipher_list(ctx_, ciphers.c_str());
-  if (ERR_peek_error() != 0) {
-    throw std::runtime_error("SSL_CTX_set_cipher_list: " + getErrors());
-  }
   if (rc == 0) {
-    throw std::runtime_error("None of specified ciphers are supported");
+    throw std::runtime_error("SSL_CTX_set_cipher_list: " + getErrors());
   }
 }
 
