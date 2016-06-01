@@ -133,14 +133,13 @@ public:
     data_.setData((uintptr_t(extra) << 48) | ptr);
   }
 
-  // Logically private, but we can't have private data members and
-  // still be considered a POD.  (In C++11 we are still a standard
-  // layout struct if this is private, but it doesn't matter, since
-  // gcc (4.6) won't let us use this with attribute packed still in
-  // that case.)
+ private:
   PicoSpinLock<uintptr_t> data_;
 };
 
+static_assert(
+    std::is_pod<PackedSyncPtr<void>>::value,
+    "PackedSyncPtr must be kept a POD type.");
 static_assert(sizeof(PackedSyncPtr<void>) == 8,
               "PackedSyncPtr should be only 8 bytes---something is "
               "messed up");
