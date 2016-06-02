@@ -36,18 +36,19 @@ AC_LANG([C++])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-AC_CXX_COMPILE_STDCXX_0X
+
+AC_CXX_COMPILE_STDCXX_1Y
 
 # Be sure to add any -std option to CXXFLAGS before we invoke any
 # AC_COMPILE_IFELSE() or similar macros. Any such macros that are invoked
 # before we update CXXFLAGS will not be run with the same options that we use
 # during the real build.
 STD=""
-if test "x$ac_cv_cxx_compile_cxx0x_cxx" = xyes; then
-   STD="-std=c++0x"
+if test "x$ac_cv_cxx_compile_cxx1y_cxx" = xyes; then
+   STD="-std=c++1y"
 fi
-if test "x$ac_cv_cxx_compile_cxx0x_gxx" = xyes; then
-   STD="-std=gnu++0x"
+if test "x$ac_cv_cxx_compile_cxx1y_gxx" = xyes; then
+   STD="-std=gnu++1y"
 fi
 
 CXXFLAGS="$STD $CXXFLAGS"
