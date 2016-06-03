@@ -652,7 +652,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   static int getSSLExDataIndex();
   static AsyncSSLSocket* getFromSSL(const SSL *ssl);
-  static int eorAwareBioWrite(BIO *b, const char *in, int inl);
+  static int bioWrite(BIO* b, const char* in, int inl);
   void resetClientHelloParsing(SSL *ssl);
   static void clientHelloParsingCallback(int write_p, int version,
       int content_type, const void *buf, size_t len, SSL *ssl, void *arg);
@@ -775,6 +775,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void applyVerificationOptions(SSL * ssl);
 
   /**
+   * Sets up SSL with a custom write bio which intercepts all writes.
+   *
+   * @return true, if succeeds and false if there is an error creating the bio.
+   */
+  bool setupSSLBio();
+
+  /**
    * A SSL_write wrapper that understand EOR
    *
    * @param ssl: SSL* object
@@ -814,6 +821,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   HandshakeTimeout handshakeTimeout_;
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
+
+  // Whether to track EOR or not.
+  bool trackEor_{false};
 
   // The app byte num that we are tracking for the MSG_EOR
   // Only one app EOR byte can be tracked.
