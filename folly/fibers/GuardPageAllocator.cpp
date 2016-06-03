@@ -15,10 +15,13 @@
  */
 #include "GuardPageAllocator.h"
 
+#include <signal.h>
+
 #include <mutex>
 
 #include <folly/Singleton.h>
 #include <folly/SpinLock.h>
+#include <folly/Synchronized.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
@@ -83,6 +86,9 @@ class StackCache {
     auto p = freeList_.back().first;
     if (!freeList_.back().second) {
       PCHECK(0 == ::mprotect(p, pagesize(), PROT_NONE));
+      SYNCHRONIZED(pages, protectedPages()) {
+        pages.insert(reinterpret_cast<intptr_t>(p));
+      }
     }
     freeList_.pop_back();
 
@@ -122,7 +128,25 @@ class StackCache {
 
   ~StackCache() {
     assert(storage_);
+    SYNCHRONIZED(pages, protectedPages()) {
+      for (const auto& item : freeList_) {
+        pages.erase(reinterpret_cast<intptr_t>(item.first));
+      }
+    }
     PCHECK(0 == ::munmap(storage_, allocSize_ * kNumGuarded));
+  }
+
+  static bool isProtected(intptr_t addr) {
+    // Use a read lock for reading.
+    SYNCHRONIZED_CONST(pages, protectedPages()) {
+      for (const auto& page : pages) {
+        intptr_t pageEnd = page + pagesize();
+        if (page <= addr && addr < pageEnd) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
  private:
@@ -144,7 +168,56 @@ class StackCache {
   static size_t allocSize(size_t size) {
     return pagesize() * ((size + pagesize() - 1) / pagesize() + 1);
   }
+
+  static folly::Synchronized<std::unordered_set<intptr_t>>& protectedPages() {
+    static auto instance =
+        new folly::Synchronized<std::unordered_set<intptr_t>>();
+    return *instance;
+  }
 };
+
+#ifndef _WIN32
+
+namespace {
+
+struct sigaction oldSigsegvAction;
+
+void sigsegvSignalHandler(int signum, siginfo_t* info, void*) {
+  if (signum != SIGSEGV) {
+    std::cerr << "GuardPageAllocator signal handler called for signal: "
+              << signum;
+    return;
+  }
+
+  if (info &&
+      StackCache::isProtected(reinterpret_cast<intptr_t>(info->si_addr))) {
+    std::cerr << "folly::fibers Fiber stack overflow detected." << std::endl;
+  }
+
+  // Restore old signal handler and let it handle the signal.
+  sigaction(signum, &oldSigsegvAction, nullptr);
+  raise(signum);
+}
+
+void installSignalHandler() {
+  static std::once_flag onceFlag;
+  std::call_once(onceFlag, []() {
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sigemptyset(&sa.sa_mask);
+    // By default signal handlers are run on the signaled thread's stack.
+    // In case of stack overflow running the SIGSEGV signal handler on
+    // the same stack leads to another SIGSEGV and crashes the program.
+    // Use SA_ONSTACK, so alternate stack is used (only if configured via
+    // sigaltstack).
+    sa.sa_flags |= SA_SIGINFO | SA_ONSTACK;
+    sa.sa_sigaction = &sigsegvSignalHandler;
+    sigaction(SIGSEGV, &sa, &oldSigsegvAction);
+  });
+}
+}
+
+#endif
 
 class CacheManager {
  public:
@@ -204,7 +277,11 @@ class StackCacheEntry {
 };
 
 GuardPageAllocator::GuardPageAllocator(bool useGuardPages)
-    : useGuardPages_(useGuardPages) {}
+    : useGuardPages_(useGuardPages) {
+#ifndef _WIN32
+  installSignalHandler();
+#endif
+}
 
 GuardPageAllocator::~GuardPageAllocator() = default;
 
