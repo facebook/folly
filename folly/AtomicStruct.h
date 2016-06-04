@@ -43,7 +43,10 @@ class AtomicStruct {
                 folly::IsTriviallyCopyable<T>::value,
       "target type must be trivially copyable");
 
-  Atom<Raw> data;
+  union {
+    Atom<Raw> data;
+    T typedData;
+  };
 
   static Raw encode(T v) noexcept {
     // we expect the compiler to optimize away the memcpy, but without
@@ -65,7 +68,7 @@ class AtomicStruct {
   AtomicStruct(AtomicStruct<T> const &) = delete;
   AtomicStruct<T>& operator= (AtomicStruct<T> const &) = delete;
 
-  constexpr /* implicit */ AtomicStruct(T v) noexcept : data(encode(v)) {}
+  constexpr /* implicit */ AtomicStruct(T v) noexcept : typedData(v) {}
 
   bool is_lock_free() const noexcept {
     return data.is_lock_free();
