@@ -79,7 +79,7 @@ static std::string decodeString(Cursor& curs) {
 }
 
 static dynamic decodeArray(Cursor& curs) {
-  dynamic arr{};
+  dynamic arr = dynamic::array();
   auto size = decodeInt(curs);
   while (size-- > 0) {
     arr.push_back(parseBser(curs));

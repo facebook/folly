@@ -591,8 +591,8 @@ int SSLContext::selectNextProtocolCallback(SSL* ssl,
             << "client should be deterministic in selecting protocols.";
   }
 
-  unsigned char *client;
-  unsigned int client_len;
+  unsigned char* client = nullptr;
+  unsigned int client_len = 0;
   bool filtered = false;
   auto cpf = ctx->getClientProtocolFilterCallback();
   if (cpf) {
