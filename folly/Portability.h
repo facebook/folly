@@ -256,13 +256,6 @@ namespace std { typedef ::max_align_t max_align_t; }
 #ifdef _MSC_VER
 #include <folly/portability/SysTypes.h>
 
-// sprintf semantics are not exactly identical
-// but current usage is not a problem
-# define snprintf _snprintf
-
-// semantics here are identical
-# define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
-
 // compiler specific to compiler specific
 // nolint
 # define __PRETTY_FUNCTION__ __FUNCSIG__
