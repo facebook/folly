@@ -55,6 +55,15 @@
 # define FOLLY_DISABLE_ADDRESS_SANITIZER
 #endif
 
+/* Define a convenience macro to test when thread sanitizer is being used
+ * across the different compilers (e.g. clang, gcc) */
+#if defined(__clang__)
+# if __has_feature(thread_sanitizer)
+#  define FOLLY_SANITIZE_THREAD 1
+# endif
+#elif defined(__GNUC__) && __SANITIZE_THREAD__
+# define FOLLY_SANITIZE_THREAD 1
+#endif
 
 /**
  * ASAN/MSAN/TSAN define pre-processor symbols:
