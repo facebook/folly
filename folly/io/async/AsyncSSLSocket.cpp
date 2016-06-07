@@ -1084,8 +1084,9 @@ AsyncSSLSocket::handleConnect() noexcept {
     return AsyncSocket::handleConnect();
   }
 
-  assert(state_ == StateEnum::ESTABLISHED &&
-         sslState_ == STATE_CONNECTING);
+  assert(
+      (state_ == StateEnum::FAST_OPEN || state_ == StateEnum::ESTABLISHED) &&
+      sslState_ == STATE_CONNECTING);
   assert(ssl_);
 
   int ret = SSL_connect(ssl_);
@@ -1136,6 +1137,16 @@ AsyncSSLSocket::handleConnect() noexcept {
   }
 
   AsyncSocket::handleInitialReadWrite();
+}
+
+void AsyncSSLSocket::invokeConnectSuccess() {
+  if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
+    // If we failed TFO, we'd fall back to trying to connect the socket,
+    // when we succeed we should handle the writes that caused us to start
+    // TFO.
+    handleWrite();
+  }
+  AsyncSocket::invokeConnectSuccess();
 }
 
 void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
@@ -1498,7 +1509,6 @@ void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int ret) {
 }
 
 int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
-  int ret;
   struct msghdr msg;
   struct iovec iov;
   int flags = 0;
@@ -1521,17 +1531,20 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     flags = MSG_EOR;
   }
 
-  ret = sendmsg(BIO_get_fd(b, nullptr), &msg, flags);
+  auto result =
+      tsslSock->sendSocketMessage(BIO_get_fd(b, nullptr), &msg, flags);
   BIO_clear_retry_flags(b);
-  if (ret <= 0) {
-    if (BIO_sock_should_retry(ret))
+  if (!result.exception && result.writeReturn <= 0) {
+    if (BIO_sock_should_retry(result.writeReturn)) {
       BIO_set_retry_write(b);
+    }
   }
-  return ret;
+  return result.writeReturn;
 }
 
-int AsyncSSLSocket::sslVerifyCallback(int preverifyOk,
-                                       X509_STORE_CTX* x509Ctx) {
+int AsyncSSLSocket::sslVerifyCallback(
+    int preverifyOk,
+    X509_STORE_CTX* x509Ctx) {
   SSL* ssl = (SSL*) X509_STORE_CTX_get_ex_data(
     x509Ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
   AsyncSSLSocket* self = AsyncSSLSocket::getFromSSL(ssl);

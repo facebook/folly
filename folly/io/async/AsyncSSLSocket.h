@@ -798,6 +798,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void invokeHandshakeErr(const AsyncSocketException& ex);
   void invokeHandshakeCB();
 
+  void invokeConnectSuccess() override;
+
   void cacheLocalPeerAddr();
 
   static void sslInfoCallback(const SSL *ssl, int type, int val);

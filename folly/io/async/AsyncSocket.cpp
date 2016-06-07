@@ -1752,9 +1752,8 @@ ssize_t AsyncSocket::tfoSendMsg(int fd, struct msghdr* msg, int msg_flags) {
   return detail::tfo_sendmsg(fd, msg, msg_flags);
 }
 
-AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
-    struct msghdr* msg,
-    int msg_flags) {
+AsyncSocket::WriteResult
+AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
   ssize_t totalWritten = 0;
   if (state_ == StateEnum::FAST_OPEN) {
     sockaddr_storage addr;
@@ -1778,11 +1777,9 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
         return WriteResult(
             WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
       }
-      // Let's fake it that no bytes were written.
-      // Some clients check errno even if return code is 0, so we
-      // set it just in case.
+      // Let's fake it that no bytes were written and return an errno.
       errno = EAGAIN;
-      totalWritten = 0;
+      totalWritten = -1;
     } else if (errno == EOPNOTSUPP) {
       VLOG(4) << "TFO not supported";
       // Try falling back to connecting.
@@ -1797,10 +1794,8 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
         }
         // If there was no exception during connections,
         // we would return that no bytes were written.
-        // Some clients check errno even if return code is 0, so we
-        // set it just in case.
         errno = EAGAIN;
-        totalWritten = 0;
+        totalWritten = -1;
       } catch (const AsyncSocketException& ex) {
         return WriteResult(
             WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
@@ -1816,7 +1811,7 @@ AsyncSocket::WriteResult AsyncSocket::sendSocketMessage(
               AsyncSocketException::UNKNOWN, "No more free local ports"));
     }
   } else {
-    totalWritten = ::sendmsg(fd_, msg, msg_flags);
+    totalWritten = ::sendmsg(fd, msg, msg_flags);
   }
   return WriteResult(totalWritten);
 }
@@ -1855,7 +1850,7 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // marks that this is the last byte of a record (response)
     msg_flags |= MSG_EOR;
   }
-  auto writeResult = sendSocketMessage(&msg, msg_flags);
+  auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
   auto totalWritten = writeResult.writeReturn;
   if (totalWritten < 0) {
     if (!writeResult.exception && errno == EAGAIN) {

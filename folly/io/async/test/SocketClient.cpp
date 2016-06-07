@@ -24,6 +24,7 @@ DEFINE_string(host, "localhost", "Host");
 DEFINE_int32(port, 0, "port");
 DEFINE_bool(tfo, false, "enable tfo");
 DEFINE_string(msg, "", "Message to send");
+DEFINE_bool(ssl, false, "use ssl");
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -35,7 +36,13 @@ int main(int argc, char** argv) {
 
   // Prep the socket
   EventBase evb;
-  AsyncSocket::UniquePtr socket(new AsyncSocket(&evb));
+  AsyncSocket::UniquePtr socket;
+  if (FLAGS_ssl) {
+    auto sslContext = std::make_shared<SSLContext>();
+    socket = AsyncSocket::UniquePtr(new AsyncSSLSocket(sslContext, &evb));
+  } else {
+    socket = AsyncSocket::UniquePtr(new AsyncSocket(&evb));
+  }
   socket->detachEventBase();
 
   if (FLAGS_tfo) {

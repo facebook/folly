@@ -607,7 +607,9 @@ class TestSSLServer {
  public:
   // Create a TestSSLServer.
   // This immediately starts listening on the given port.
-  explicit TestSSLServer(SSLServerAcceptCallbackBase *acb);
+  explicit TestSSLServer(
+      SSLServerAcceptCallbackBase* acb,
+      bool enableTFO = false);
 
   // Kill the thread.
   ~TestSSLServer() {

@@ -817,7 +817,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param msg       Message to send
    * @param msg_flags Flags to pass to sendmsg
    */
-  AsyncSocket::WriteResult sendSocketMessage(struct msghdr* msg, int msg_flags);
+  AsyncSocket::WriteResult
+  sendSocketMessage(int fd, struct msghdr* msg, int msg_flags);
 
   virtual ssize_t tfoSendMsg(int fd, struct msghdr* msg, int msg_flags);
 
@@ -855,7 +856,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void failWrite(const char* fn, const AsyncSocketException& ex);
   void failAllWrites(const AsyncSocketException& ex);
   void invokeConnectErr(const AsyncSocketException& ex);
-  void invokeConnectSuccess();
+  virtual void invokeConnectSuccess();
   void invalidState(ConnectCallback* callback);
   void invalidState(ReadCallback* callback);
   void invalidState(WriteCallback* callback);

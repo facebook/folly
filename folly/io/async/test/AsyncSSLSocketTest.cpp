@@ -15,26 +15,28 @@
  */
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <signal.h>
 #include <pthread.h>
+#include <signal.h>
 
+#include <folly/SocketAddress.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
-#include <folly/SocketAddress.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
 #include <folly/io/async/test/BlockingSocket.h>
 
-#include <fstream>
+#include <fcntl.h>
+#include <folly/io/Cursor.h>
 #include <gtest/gtest.h>
+#include <openssl/bio.h>
+#include <sys/types.h>
+#include <fstream>
 #include <iostream>
 #include <list>
 #include <set>
-#include <fcntl.h>
-#include <openssl/bio.h>
-#include <sys/types.h>
-#include <folly/io/Cursor.h>
+
+#include <gmock/gmock.h>
 
 using std::string;
 using std::vector;
@@ -42,6 +44,8 @@ using std::min;
 using std::cerr;
 using std::endl;
 using std::list;
+
+using namespace testing;
 
 namespace folly {
 uint32_t TestSSLAsyncCacheServer::asyncCallbacks_ = 0;
@@ -55,7 +59,7 @@ const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
 constexpr size_t SSLClient::kMaxReadBufferSz;
 constexpr size_t SSLClient::kMaxReadsPerEvent;
 
-TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb)
+TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
     : ctx_(new folly::SSLContext),
       acb_(acb),
       socket_(folly::AsyncServerSocket::newSocket(&evb_)) {
@@ -67,7 +71,13 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb)
   acb_->ctx_ = ctx_;
   acb_->base_ = &evb_;
 
-  //set up the listening socket
+  // Enable TFO
+  if (enableTFO) {
+    LOG(INFO) << "server TFO enabled";
+    socket_->setTFOEnabled(true, 1000);
+  }
+
+  // set up the listening socket
   socket_->bind(0);
   socket_->getAddress(&address_);
   socket_->listen(100);
@@ -1673,6 +1683,203 @@ TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
   EXPECT_NE(handshakeCallback.errorString_.find("unknown protocol"),
             std::string::npos);
 }
+
+#if FOLLY_ALLOW_TFO
+
+class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
+ public:
+  using UniquePtr = std::unique_ptr<MockAsyncTFOSSLSocket, Destructor>;
+
+  explicit MockAsyncTFOSSLSocket(
+      std::shared_ptr<folly::SSLContext> sslCtx,
+      EventBase* evb)
+      : AsyncSocket(evb), AsyncSSLSocket(sslCtx, evb) {}
+
+  MOCK_METHOD3(tfoSendMsg, ssize_t(int fd, struct msghdr* msg, int msg_flags));
+};
+
+/**
+ * Test connecting to, writing to, reading from, and closing the
+ * connection to the SSL server with TFO.
+ */
+TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFO) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->enableTFO();
+  socket->open();
+
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(buf.data(), buf.size());
+
+  // read()
+  std::array<uint8_t, 128> readbuf;
+  uint32_t bytesRead = socket->readAll(readbuf.data(), readbuf.size());
+  EXPECT_EQ(bytesRead, 128);
+  EXPECT_EQ(memcmp(buf.data(), readbuf.data(), bytesRead), 0);
+
+  // close()
+  socket->close();
+}
+
+/**
+ * Test connecting to, writing to, reading from, and closing the
+ * connection to the SSL server with TFO.
+ */
+TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOWithTFOServerDisabled) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, false);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->enableTFO();
+  socket->open();
+
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(buf.data(), buf.size());
+
+  // read()
+  std::array<uint8_t, 128> readbuf;
+  uint32_t bytesRead = socket->readAll(readbuf.data(), readbuf.size());
+  EXPECT_EQ(bytesRead, 128);
+  EXPECT_EQ(memcmp(buf.data(), readbuf.data(), bytesRead), 0);
+
+  // close()
+  socket->close();
+}
+
+class ConnCallback : public AsyncSocket::ConnectCallback {
+ public:
+  virtual void connectSuccess() noexcept override {
+    state = State::SUCCESS;
+  }
+
+  virtual void connectErr(const AsyncSocketException&) noexcept override {
+    state = State::ERROR;
+  }
+
+  enum class State { WAITING, SUCCESS, ERROR };
+
+  State state{State::WAITING};
+};
+
+MockAsyncTFOSSLSocket::UniquePtr setupSocketWithFallback(
+    EventBase* evb,
+    const SocketAddress& address) {
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket = MockAsyncTFOSSLSocket::UniquePtr(
+      new MockAsyncTFOSSLSocket(sslContext, evb));
+  socket->enableTFO();
+
+  EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
+      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+        sockaddr_storage addr;
+        auto len = address.getAddress(&addr);
+        return connect(fd, (const struct sockaddr*)&addr, len);
+      }));
+  return socket;
+}
+
+TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOFallback) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  EventBase evb;
+
+  auto socket = setupSocketWithFallback(&evb, server.getAddress());
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+
+  evb.loop();
+  EXPECT_EQ(ConnCallback::State::SUCCESS, ccb.state);
+
+  evb.runInEventBaseThread([&] { socket->detachEventBase(); });
+  evb.loop();
+
+  BlockingSocket sock(std::move(socket));
+  // write()
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  sock.write(buf.data(), buf.size());
+
+  // read()
+  std::array<uint8_t, 128> readbuf;
+  uint32_t bytesRead = sock.readAll(readbuf.data(), readbuf.size());
+  EXPECT_EQ(bytesRead, 128);
+  EXPECT_EQ(memcmp(buf.data(), readbuf.data(), bytesRead), 0);
+
+  // close()
+  sock.close();
+}
+
+TEST(AsyncSSLSocketTest, ConnectTFOTimeout) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadErrorCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  // Set up SSL context.
+  auto sslContext = std::make_shared<SSLContext>();
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->enableTFO();
+  EXPECT_THROW(
+      socket->open(std::chrono::milliseconds(1)), AsyncSocketException);
+}
+
+TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadErrorCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  EventBase evb;
+
+  auto socket = setupSocketWithFallback(&evb, server.getAddress());
+  ConnCallback ccb;
+  // Set a short timeout
+  socket->connect(&ccb, server.getAddress(), 1);
+
+  evb.loop();
+  EXPECT_EQ(ConnCallback::State::ERROR, ccb.state);
+}
+
+#endif
 
 } // namespace
 
