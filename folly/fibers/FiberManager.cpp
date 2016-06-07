@@ -154,6 +154,10 @@ void FiberManager::setObserver(ExecutionObserver* observer) {
   observer_ = observer;
 }
 
+ExecutionObserver* FiberManager::getObserver() {
+  return observer_;
+}
+
 void FiberManager::setPreemptRunner(InlineFunctionRunner* preemptRunner) {
   preemptRunner_ = preemptRunner;
 }

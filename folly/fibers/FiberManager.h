@@ -297,6 +297,12 @@ class FiberManager : public ::folly::Executor {
   void setObserver(ExecutionObserver* observer);
 
   /**
+   * @return Current observer for this FiberManager. Returns nullptr
+   * if no observer has been set.
+   */
+  ExecutionObserver* getObserver();
+
+  /**
    * Setup fibers preempt runner.
    */
   void setPreemptRunner(InlineFunctionRunner* preemptRunner);
