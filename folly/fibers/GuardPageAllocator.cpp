@@ -15,6 +15,9 @@
  */
 #include "GuardPageAllocator.h"
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
 #include <signal.h>
 
 #include <mutex>
@@ -199,9 +202,20 @@ void sigsegvSignalHandler(int signum, siginfo_t* info, void*) {
   raise(signum);
 }
 
+bool isInJVM() {
+  auto getCreated = dlsym(RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
+  return getCreated;
+}
+
 void installSignalHandler() {
   static std::once_flag onceFlag;
   std::call_once(onceFlag, []() {
+    if (isInJVM()) {
+      // Don't install signal handler, since JVM internal signal handler doesn't
+      // work with SA_ONSTACK
+      return;
+    }
+
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sigemptyset(&sa.sa_mask);
