@@ -135,7 +135,7 @@ public:
 
  private:
   PicoSpinLock<uintptr_t> data_;
-};
+} FOLLY_PACK_ATTR;
 
 static_assert(
     std::is_pod<PackedSyncPtr<void>>::value,
