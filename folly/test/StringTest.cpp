@@ -19,6 +19,8 @@
 #include <boost/regex.hpp>
 #include <gtest/gtest.h>
 
+#include <folly/Array.h>
+
 using namespace folly;
 using namespace std;
 
@@ -972,7 +974,7 @@ TEST(String, hexlify) {
   string input1 = "0123";
   string output1;
   EXPECT_TRUE(hexlify(input1, output1));
-  EXPECT_EQ(output1, "30313233");
+  EXPECT_EQ("30313233", output1);
 
   fbstring input2 = "abcdefg";
   input2[1] = 0;
@@ -980,7 +982,11 @@ TEST(String, hexlify) {
   input2[5] = 0xb6;
   fbstring output2;
   EXPECT_TRUE(hexlify(input2, output2));
-  EXPECT_EQ(output2, "610063ff65b667");
+  EXPECT_EQ("610063ff65b667", output2);
+
+  EXPECT_EQ("666f6f626172", hexlify("foobar"));
+  auto bytes = folly::make_array<uint8_t>(1, 2, 3, 4);
+  EXPECT_EQ("01020304", hexlify(ByteRange{bytes.data(), bytes.size()}));
 }
 
 TEST(String, unhexlify) {
@@ -1008,6 +1014,10 @@ TEST(String, unhexlify) {
   string input4 = "xy";
   string output4;
   EXPECT_FALSE(unhexlify(input4, output4));
+
+  EXPECT_EQ("foobar", unhexlify("666f6f626172"));
+  EXPECT_EQ(StringPiece("foo\0bar", 7), unhexlify("666f6f00626172"));
+  EXPECT_THROW(unhexlify("666f6fzz626172"), std::domain_error);
 }
 
 TEST(String, backslashify) {

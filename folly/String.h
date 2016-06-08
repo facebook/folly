@@ -259,12 +259,38 @@ template<class InputString, class OutputString>
 bool hexlify(const InputString& input, OutputString& output,
              bool append=false);
 
+template <class OutputString = std::string>
+OutputString hexlify(ByteRange input) {
+  OutputString output;
+  if (!hexlify(input, output)) {
+    // hexlify() currently always returns true, so this can't really happen
+    throw std::runtime_error("hexlify failed");
+  }
+  return output;
+}
+
+template <class OutputString = std::string>
+OutputString hexlify(StringPiece input) {
+  return hexlify<OutputString>(ByteRange{input});
+}
+
 /**
  * Same functionality as Python's binascii.unhexlify.  Returns true
  * on successful conversion.
  */
 template<class InputString, class OutputString>
 bool unhexlify(const InputString& input, OutputString& output);
+
+template <class OutputString = std::string>
+OutputString unhexlify(StringPiece input) {
+  OutputString output;
+  if (!unhexlify(input, output)) {
+    // unhexlify() fails if the input has non-hexidecimal characters,
+    // or if it doesn't consist of a whole number of bytes
+    throw std::domain_error("unhexlify() called with non-hex input");
+  }
+  return output;
+}
 
 /*
  * A pretty-printer for numbers that appends suffixes of units of the
