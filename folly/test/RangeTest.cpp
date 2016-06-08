@@ -298,9 +298,11 @@ constexpr char helloArray[] = "hello";
 TEST(StringPiece, Constexpr) {
   constexpr StringPiece hello1("hello");
   EXPECT_EQ("hello", hello1);
+  static_assert(hello1.size() == 5, "hello size should be 5 at compile time");
 
   constexpr StringPiece hello2(helloArray);
   EXPECT_EQ("hello", hello2);
+  static_assert(hello2.size() == 5, "hello size should be 5 at compile time");
 }
 
 TEST(StringPiece, Prefix) {

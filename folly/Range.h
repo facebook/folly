@@ -353,8 +353,13 @@ public:
     reset(str.data(), str.size());
   }
 
-  size_type size() const {
-    assert(b_ <= e_);
+  constexpr size_type size() const {
+    // It would be nice to assert(b_ <= e_) here.  This can be achieved even
+    // in a C++11 compatible constexpr function:
+    // http://ericniebler.com/2014/09/27/assert-and-constexpr-in-cxx11/
+    // Unfortunately current gcc versions have a bug causing it to reject
+    // this check in a constexpr function:
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71448
     return e_ - b_;
   }
   size_type walk_size() const {
