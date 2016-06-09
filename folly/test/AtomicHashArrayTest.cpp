@@ -333,3 +333,10 @@ TEST(Aha, LookupAny) {
     free(it.first);
   }
 }
+
+using AHAIntCInt = AtomicHashArray<int64_t, const int32_t>;
+
+TEST(Aha, ConstValue) {
+  auto aha = AHAIntCInt::create(10);
+  aha->emplace(1, 2);
+}

@@ -152,7 +152,11 @@ insertInternal(LookupKeyT key_in, ArgTs&&... vCtorArgs) {
               checkLegalKeyIfKey(key_new);
             }
             DCHECK(relaxedLoadKey(*cell) == kLockedKey_);
-            new (&cell->second) ValueT(std::forward<ArgTs>(vCtorArgs)...);
+            // A const mapped_type is only constant once constructed, so cast
+            // away any const for the placement new here.
+            using mapped = typename std::remove_const<mapped_type>::type;
+            new (const_cast<mapped*>(&cell->second))
+                ValueT(std::forward<ArgTs>(vCtorArgs)...);
             unlockCell(cell, key_new); // Sets the new key
           } catch (...) {
             // Transition back to empty key---requires handling
