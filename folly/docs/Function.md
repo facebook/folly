@@ -15,7 +15,7 @@ some_future.then(
     { foo_ptr->setX(x); }
 );
 ```
-This piece of code did not compile before `folly::Future` started using `folly::Function` insted of `std::function` to store the callback. Because the lambda captures something non-copyable (the `unique_ptr`), it is not copyable itself. And `std::function` can only store copyable callables.
+This piece of code did not compile before `folly::Future` started using `folly::Function` instead of `std::function` to store the callback. Because the lambda captures something non-copyable (the `unique_ptr`), it is not copyable itself. And `std::function` can only store copyable callables.
 
 The implementation of folly::Future did not make use of the copy-constructibility of `std::function` at any point. There was no benefit from the fact that the `std::function` is copy-constructible, but the fact that it can only wrap copy-constructible callables posed a restriction.
 
