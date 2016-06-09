@@ -120,6 +120,7 @@ BENCHMARK(ForEachRangeR, iters) {
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   auto r = RUN_ALL_TESTS();
   if (r) {
     return r;
