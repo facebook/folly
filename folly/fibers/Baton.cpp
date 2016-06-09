@@ -58,7 +58,7 @@ void Baton::waitThread() {
           waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
     do {
       folly::detail::MemoryIdler::futexWait(futex_.futex, THREAD_WAITING);
-      fiber = waitingFiber_.load(std::memory_order_relaxed);
+      fiber = waitingFiber_.load(std::memory_order_acquire);
     } while (fiber == THREAD_WAITING);
   }
 
