@@ -25,8 +25,8 @@
 
 #include <chrono>
 #include <cstddef>
-#include <memory>
 #include <list>
+#include <memory>
 
 namespace folly {
 
@@ -136,7 +136,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
     void cancelTimeoutImpl();
 
     HHWheelTimer* wheel_;
-    folly::Optional<DestructorGuard> wheelGuard_;
     std::chrono::milliseconds expiration_;
 
     typedef boost::intrusive::list_member_hook<
@@ -173,18 +172,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
       AsyncTimeout::InternalEnum internal = AsyncTimeout::InternalEnum::NORMAL,
       std::chrono::milliseconds defaultTimeoutMS =
           std::chrono::milliseconds(-1));
-
-  /**
-   * Destroy the HHWheelTimer.
-   *
-   * A HHWheelTimer should only be destroyed when there are no more
-   * callbacks pending in the set. (If it helps you may use cancelAll() to
-   * cancel all pending timeouts explicitly before calling this.)
-   *
-   * However, it is OK to invoke this function (or via UniquePtr dtor) while
-   * there are outstanding DestructorGuard's or HHWheelTimer::SharedPtr's.
-   */
-  virtual void destroy();
 
   /**
    * Cancel all outstanding timeouts
@@ -327,7 +314,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   uint32_t catchupEveryN_;
   uint32_t expirationsSinceCatchup_;
-  bool processingCallbacksGuard_;
+  bool* processingCallbacksGuard_;
 };
 
 } // folly
