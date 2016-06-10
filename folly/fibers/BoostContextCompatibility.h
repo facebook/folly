@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <boost/context/all.hpp>
+#include <boost/context/fcontext.hpp>
 #include <boost/version.hpp>
 
 /**

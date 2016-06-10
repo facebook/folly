@@ -69,7 +69,7 @@ AC_DEFUN([AX_BOOST_CONTEXT],
 			CXXFLAGS_SAVE=$CXXFLAGS
 
 			AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-				[[@%:@include <boost/context/all.hpp>
+				[[@%:@include <boost/context/fcontext.hpp>
 #include <boost/version.hpp>
 ]],
 				[[#if BOOST_VERSION >= 105600

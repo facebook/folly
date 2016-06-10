@@ -18,8 +18,6 @@
 #include <functional>
 #include <typeinfo>
 
-#include <boost/context/all.hpp>
-#include <boost/version.hpp>
 #include <folly/AtomicIntrusiveLinkedList.h>
 #include <folly/CPortability.h>
 #include <folly/Function.h>
