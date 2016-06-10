@@ -19,7 +19,7 @@
 #include <cassert>
 #include <exception>
 #include <memory>
-#include <folly/String.h>
+#include <folly/ExceptionString.h>
 #include <folly/detail/ExceptionWrapper.h>
 
 namespace folly {

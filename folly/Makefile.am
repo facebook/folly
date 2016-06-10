@@ -83,6 +83,7 @@ nobase_follyinclude_HEADERS = \
 	dynamic.h \
 	dynamic-inl.h \
 	Exception.h \
+	ExceptionString.h \
 	ExceptionWrapper.h \
 	Executor.h \
 	EvictingCacheMap.h \

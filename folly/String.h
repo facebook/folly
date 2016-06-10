@@ -34,7 +34,7 @@
 #include <unordered_map>
 
 #include <folly/Conv.h>
-#include <folly/Demangle.h>
+#include <folly/ExceptionString.h>
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
 #include <folly/Portability.h>
@@ -385,45 +385,6 @@ std::string hexDump(const void* ptr, size_t size);
  * errnoStr(errno) is valid.
  */
 fbstring errnoStr(int err);
-
-/**
- * Debug string for an exception: include type and what(), if
- * defined.
- */
-inline fbstring exceptionStr(const std::exception& e) {
-#ifdef FOLLY_HAS_RTTI
-  return folly::to<fbstring>(demangle(typeid(e)), ": ", e.what());
-#else
-  return folly::to<fbstring>("Exception (no RTTI available): ", e.what());
-#endif
-}
-
-// Empirically, this indicates if the runtime supports
-// std::exception_ptr, as not all (arm, for instance) do.
-#if defined(__GNUC__) && defined(__GCC_ATOMIC_INT_LOCK_FREE) && \
-  __GCC_ATOMIC_INT_LOCK_FREE > 1
-inline fbstring exceptionStr(std::exception_ptr ep) {
-  try {
-    std::rethrow_exception(ep);
-  } catch (const std::exception& e) {
-    return exceptionStr(e);
-  } catch (...) {
-    return "<unknown exception>";
-  }
-}
-#endif
-
-template<typename E>
-auto exceptionStr(const E& e)
-  -> typename std::enable_if<!std::is_base_of<std::exception, E>::value,
-                             fbstring>::type
-{
-#ifdef FOLLY_HAS_RTTI
-  return folly::to<fbstring>(demangle(typeid(e)));
-#else
-  return "Exception (no RTTI available)";
-#endif
-}
 
 /*
  * Split a string into a list of tokens by delimiter.
