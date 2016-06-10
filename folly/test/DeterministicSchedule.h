@@ -16,16 +16,17 @@
 
 #pragma once
 
+#include <assert.h>
+#include <boost/noncopyable.hpp>
+#include <errno.h>
+#include <glog/logging.h>
+#include <semaphore.h>
 #include <atomic>
 #include <functional>
+#include <mutex>
 #include <thread>
 #include <unordered_set>
 #include <vector>
-#include <boost/noncopyable.hpp>
-#include <semaphore.h>
-#include <errno.h>
-#include <assert.h>
-#include <glog/logging.h>
 
 #include <folly/ScopeGuard.h>
 #include <folly/detail/CacheLocality.h>
@@ -379,6 +380,42 @@ struct DeterministicAtomic {
                                 << std::hex << rv);
     DeterministicSchedule::afterSharedAccess();
     return rv;
+  }
+};
+
+/**
+ * DeterministicMutex is a drop-in replacement of std::mutex that
+ * cooperates with DeterministicSchedule.
+ */
+struct DeterministicMutex {
+  std::mutex m;
+
+  DeterministicMutex() = default;
+  ~DeterministicMutex() = default;
+  DeterministicMutex(DeterministicMutex const&) = delete;
+  DeterministicMutex& operator=(DeterministicMutex const&) = delete;
+
+  void lock() {
+    FOLLY_TEST_DSCHED_VLOG(this << ".lock()");
+    while (!try_lock()) {
+      // Not calling m.lock() in order to avoid deadlock when the
+      // mutex m is held by another thread. The deadlock would be
+      // between the call to m.lock() and the lock holder's wait on
+      // its own tls_sem scheduling semaphore.
+    }
+  }
+
+  bool try_lock() {
+    DeterministicSchedule::beforeSharedAccess();
+    bool rv = m.try_lock();
+    FOLLY_TEST_DSCHED_VLOG(this << ".try_lock() -> " << rv);
+    DeterministicSchedule::afterSharedAccess();
+    return rv;
+  }
+
+  void unlock() {
+    FOLLY_TEST_DSCHED_VLOG(this << ".unlock()");
+    m.unlock();
   }
 };
 }
