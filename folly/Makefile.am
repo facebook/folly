@@ -97,32 +97,6 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
 	experimental/bser/Bser.h \
-	fibers/AddTasks.h \
-	fibers/AddTasks-inl.h \
-	fibers/Baton.h \
-	fibers/Baton-inl.h \
-	fibers/BoostContextCompatibility.h \
-	fibers/EventBaseLoopController.h \
-	fibers/EventBaseLoopController-inl.h \
-	fibers/Fiber.h \
-	fibers/Fiber-inl.h \
-	fibers/FiberManager.h \
-	fibers/FiberManager-inl.h \
-	fibers/FiberManagerMap.h \
-	fibers/ForEach.h \
-	fibers/ForEach-inl.h \
-	fibers/GenericBaton.h \
-	fibers/GuardPageAllocator.h \
-	fibers/LoopController.h \
-	fibers/Promise.h \
-	fibers/Promise-inl.h \
-	fibers/SimpleLoopController.h \
-	fibers/TimedMutex.h \
-	fibers/TimedMutex-inl.h \
-	fibers/TimeoutController.h \
-	fibers/traits.h \
-	fibers/WhenN.h \
-	fibers/WhenN-inl.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
@@ -467,12 +441,6 @@ libfolly_la_SOURCES = \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
-	fibers/Baton.cpp \
-	fibers/Fiber.cpp \
-	fibers/FiberManager.cpp \
-	fibers/FiberManagerMap.cpp \
-	fibers/GuardPageAllocator.cpp \
-	fibers/TimeoutController.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \
@@ -494,6 +462,44 @@ endif
 
 if !HAVE_BITS_FUNCTEXCEPT_H
 libfollybase_la_SOURCES += detail/FunctionalExcept.cpp
+endif
+
+if HAVE_BOOST_CONTEXT
+nobase_follyinclude_HEADERS += \
+	fibers/AddTasks.h \
+	fibers/AddTasks-inl.h \
+	fibers/Baton.h \
+	fibers/Baton-inl.h \
+	fibers/BoostContextCompatibility.h \
+	fibers/EventBaseLoopController.h \
+	fibers/EventBaseLoopController-inl.h \
+	fibers/Fiber.h \
+	fibers/Fiber-inl.h \
+	fibers/FiberManager.h \
+	fibers/FiberManager-inl.h \
+	fibers/FiberManagerMap.h \
+	fibers/ForEach.h \
+	fibers/ForEach-inl.h \
+	fibers/GenericBaton.h \
+	fibers/GuardPageAllocator.h \
+	fibers/LoopController.h \
+	fibers/Promise.h \
+	fibers/Promise-inl.h \
+	fibers/SimpleLoopController.h \
+	fibers/TimedMutex.h \
+	fibers/TimedMutex-inl.h \
+	fibers/TimeoutController.h \
+	fibers/traits.h \
+	fibers/WhenN.h \
+	fibers/WhenN-inl.h
+
+libfolly_la_SOURCES += \
+	fibers/Baton.cpp \
+	fibers/Fiber.cpp \
+	fibers/FiberManager.cpp \
+	fibers/FiberManagerMap.cpp \
+	fibers/GuardPageAllocator.cpp \
+	fibers/TimeoutController.cpp
 endif
 
 libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
