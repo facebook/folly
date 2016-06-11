@@ -303,6 +303,19 @@ bool EventBase::loopOnce(int flags) {
 
 bool EventBase::loopBody(int flags) {
   VLOG(5) << "EventBase(): Starting loop.";
+
+  DCHECK(!invokingLoop_)
+      << "Your code just tried to loop over an event base from inside another "
+      << "event base loop. Since libevent is not reentrant, this leads to "
+      << "undefined behavior in opt builds. Please fix immediately. For the "
+      << "common case of an inner function that needs to do some synchronous "
+      << "computation on an event-base, replace getEventBase() by a new, "
+      << "stack-allocated EvenBase.";
+  invokingLoop_ = true;
+  SCOPE_EXIT {
+    invokingLoop_ = false;
+  };
+
   int res = 0;
   bool ranLoopCallbacks;
   bool blocking = !(flags & EVLOOP_NONBLOCK);

@@ -723,6 +723,11 @@ class EventBase : private boost::noncopyable,
   uint64_t nextLoopCnt_;
   uint64_t latestLoopCnt_;
   uint64_t startWork_;
+  // Prevent undefined behavior from invoking event_base_loop() reentrantly.
+  // This is needed since many projects use libevent-1.4, which lacks commit
+  // b557b175c00dc462c1fce25f6e7dd67121d2c001 from
+  // https://github.com/libevent/libevent/.
+  bool invokingLoop_{false};
 
   // Observer to export counters
   std::shared_ptr<EventBaseObserver> observer_;
