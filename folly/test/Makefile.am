@@ -151,6 +151,10 @@ concurrent_skiplist_benchmark_SOURCES = ConcurrentSkipListBenchmark.cpp
 concurrent_skiplist_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 check_PROGRAMS += concurrent_skiplist_benchmark
 
+conv_benchmark_SOURCES = ConvBenchmark.cpp
+conv_benchmark_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+check_PROGRAMS += conv_benchmark
+
 histogram_test_SOURCES = HistogramTest.cpp
 histogram_test_LDADD = libfollytestmain.la
 TESTS += histogram_test
