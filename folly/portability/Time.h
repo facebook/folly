@@ -21,11 +21,9 @@
 
 #include <folly/portability/Config.h>
 
-// These aren't generic implementations, so we can only declare them
-// on platforms we support.  Apple started defining clock_gettime in
-// iOS 10 / OSX 12 and is gated via __CLOCK_AVAILABILITY.
-#if !FOLLY_HAVE_CLOCK_GETTIME && \
-    (defined(_WIN32) || (defined(__MACH__) && !defined(__CLOCK_AVAILABILITY)))
+// These aren't generic implementations, so we can only declare them on
+// platforms we support.
+#if !FOLLY_HAVE_CLOCK_GETTIME && (defined(__MACH__) || defined(_WIN32))
 #define CLOCK_REALTIME 0
 // The Windows implementation supports a few other
 // clock types as well.
