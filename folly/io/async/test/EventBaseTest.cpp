@@ -1733,7 +1733,7 @@ TEST(EventBaseTest, LoopKeepAlive) {
   EventBase evb;
 
   bool done = false;
-  std::thread t([&, loopKeepAlive = evb.loopKeepAlive() ] {
+  std::thread t([&, loopKeepAlive = evb.loopKeepAlive() ]() mutable {
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
     evb.runInEventBaseThread(
@@ -1754,7 +1754,7 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
   std::thread t;
 
   evb.runInEventBaseThread([&] {
-    t = std::thread([&, loopKeepAlive = evb.loopKeepAlive() ] {
+    t = std::thread([&, loopKeepAlive = evb.loopKeepAlive() ]() mutable {
       /* sleep override */ std::this_thread::sleep_for(
           std::chrono::milliseconds(100));
       evb.runInEventBaseThread(
@@ -1769,20 +1769,49 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
   t.join();
 }
 
+TEST(EventBaseTest, LoopKeepAliveWithLoopForever) {
+  std::unique_ptr<EventBase> evb = folly::make_unique<EventBase>();
+
+  bool done = false;
+
+  std::thread evThread([&] {
+    evb->loopForever();
+    evb.reset();
+    done = true;
+  });
+
+  {
+    auto* ev = evb.get();
+    EventBase::LoopKeepAlive keepAlive;
+    ev->runInEventBaseThreadAndWait(
+        [&ev, &keepAlive] { keepAlive = ev->loopKeepAlive(); });
+    ASSERT_FALSE(done) << "Loop finished before we asked it to";
+    ev->terminateLoopSoon();
+    /* sleep override */
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    ASSERT_FALSE(done) << "Loop terminated early";
+    ev->runInEventBaseThread([&ev, keepAlive = std::move(keepAlive) ]{});
+  }
+
+  evThread.join();
+  ASSERT_TRUE(done);
+}
+
 TEST(EventBaseTest, LoopKeepAliveShutdown) {
   auto evb = folly::make_unique<EventBase>();
 
   bool done = false;
 
-  std::thread t(
-      [&done, loopKeepAlive = evb->loopKeepAlive(), evbPtr = evb.get() ] {
-        /* sleep override */ std::this_thread::sleep_for(
-            std::chrono::milliseconds(100));
-        evbPtr->runInEventBaseThread(
-            [&done, loopKeepAlive = std::move(loopKeepAlive) ] {
-              done = true;
-            });
-      });
+  std::thread t([
+    &done,
+    loopKeepAlive = evb->loopKeepAlive(),
+    evbPtr = evb.get()
+  ]() mutable {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(100));
+    evbPtr->runInEventBaseThread(
+        [&done, loopKeepAlive = std::move(loopKeepAlive) ] { done = true; });
+  });
 
   evb.reset();
 

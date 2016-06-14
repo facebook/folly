@@ -587,7 +587,13 @@ class EventBase : private boost::noncopyable,
     loopOnce();
   }
 
-  using LoopKeepAlive = std::shared_ptr<void>;
+  struct LoopKeepAliveDeleter {
+    void operator()(EventBase* evb) {
+      DCHECK(evb->isInEventBaseThread());
+      evb->loopKeepAliveCount_--;
+    }
+  };
+  using LoopKeepAlive = std::unique_ptr<EventBase, LoopKeepAliveDeleter>;
 
   /// Returns you a handle which make loop() behave like loopForever() until
   /// destroyed. loop() will return to its original behavior only when all
@@ -596,11 +602,9 @@ class EventBase : private boost::noncopyable,
   ///
   /// May return no op LoopKeepAlive if loopForever() is already running.
   LoopKeepAlive loopKeepAlive() {
-    if (loopForeverActive_) {
-      return nullptr;
-    } else {
-      return loopKeepAlive_;
-    }
+    DCHECK(isInEventBaseThread());
+    loopKeepAliveCount_++;
+    return LoopKeepAlive(this);
   }
 
  private:
@@ -692,9 +696,8 @@ class EventBase : private boost::noncopyable,
   // to send function requests to the EventBase thread.
   std::unique_ptr<NotificationQueue<Func>> queue_;
   std::unique_ptr<FunctionRunner> fnRunner_;
-  LoopKeepAlive loopKeepAlive_{std::make_shared<int>(42)};
+  size_t loopKeepAliveCount_{0};
   bool loopKeepAliveActive_{false};
-  std::atomic<bool> loopForeverActive_{false};
 
   // limit for latency in microseconds (0 disables)
   int64_t maxLatency_;
