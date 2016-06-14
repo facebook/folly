@@ -17,7 +17,7 @@
 #include <folly/portability/Time.h>
 
 #if !FOLLY_HAVE_CLOCK_GETTIME
-#if __MACH__
+#if __MACH__ && !defined(__CLOCK_AVAILABILITY)
 #include <errno.h>
 #include <mach/mach_time.h>
 
