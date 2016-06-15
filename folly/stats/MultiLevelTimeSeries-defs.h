@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/stats/MultiLevelTimeSeries.h>
 #include <glog/logging.h>
 
 namespace folly {
@@ -43,8 +44,31 @@ MultiLevelTimeSeries<VT, TT>::MultiLevelTimeSeries(
 }
 
 template <typename VT, typename TT>
-void MultiLevelTimeSeries<VT, TT>::addValue(TimeType now,
-                                            const ValueType& val) {
+MultiLevelTimeSeries<VT, TT>::MultiLevelTimeSeries(
+    size_t nBuckets,
+    std::initializer_list<TimeType> durations)
+    : cachedTime_(0), cachedSum_(0), cachedCount_(0) {
+  CHECK_GT(durations.size(), 0);
+
+  levels_.reserve(durations.size());
+  int i = 0;
+  TimeType prev;
+  for (auto dur : durations) {
+    if (dur == TT(0)) {
+      CHECK_EQ(i, durations.size() - 1);
+    } else if (i > 0) {
+      CHECK(prev < dur);
+    }
+    levels_.emplace_back(nBuckets, dur);
+    prev = dur;
+    i++;
+  }
+}
+
+template <typename VT, typename TT>
+void MultiLevelTimeSeries<VT, TT>::addValue(
+    TimeType now,
+    const ValueType& val) {
   addValueAggregated(now, val, 1);
 }
 
