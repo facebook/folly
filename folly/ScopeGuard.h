@@ -37,7 +37,7 @@ namespace folly {
  * a functor, or a void(*)() function pointer.
  *
  *
- * Usage example: Add a friend to memory iff it is also added to the db.
+ * Usage example: Add a friend to memory if it is also added to the db.
  *
  * void User::addFriend(User& newFriend) {
  *   // add the friend to memory
