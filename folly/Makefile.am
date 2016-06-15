@@ -86,6 +86,7 @@ nobase_follyinclude_HEADERS = \
 	ExceptionString.h \
 	ExceptionWrapper.h \
 	Executor.h \
+	EventPortability.h \
 	EvictingCacheMap.h \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
@@ -358,6 +359,7 @@ libfolly_la_SOURCES = \
 	Checksum.cpp \
 	detail/CacheLocality.cpp \
 	dynamic.cpp \
+	EventPortability.cpp \
 	File.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \
