@@ -1085,6 +1085,10 @@ size_t rfind(const Range<T>& haystack,
 // specialization for StringPiece
 template <>
 inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
+  // memchr expects a not-null pointer, early return if the range is empty.
+  if (haystack.empty()) {
+    return std::string::npos;
+  }
   auto pos = static_cast<const char*>(
     ::memchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
@@ -1092,6 +1096,10 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
 
 template <>
 inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
+  // memchr expects a not-null pointer, early return if the range is empty.
+  if (haystack.empty()) {
+    return std::string::npos;
+  }
   auto pos = static_cast<const char*>(
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
@@ -1101,6 +1109,10 @@ inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
 template <>
 inline size_t qfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
+  // memchr expects a not-null pointer, early return if the range is empty.
+  if (haystack.empty()) {
+    return std::string::npos;
+  }
   auto pos = static_cast<const unsigned char*>(
     ::memchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
@@ -1109,6 +1121,10 @@ inline size_t qfind(const Range<const unsigned char*>& haystack,
 template <>
 inline size_t rfind(const Range<const unsigned char*>& haystack,
                     const unsigned char& needle) {
+  // memchr expects a not-null pointer, early return if the range is empty.
+  if (haystack.empty()) {
+    return std::string::npos;
+  }
   auto pos = static_cast<const unsigned char*>(
     ::memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
