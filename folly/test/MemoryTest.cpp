@@ -33,6 +33,31 @@ TEST(make_unique, compatible_with_std_make_unique) {
   make_unique<string>("hello, world");
 }
 
+/**
+ * Auxiliary classes for use in the test of make_unique_inherit
+ */
+class shape {
+public:
+  virtual int area() const = 0;
+};
+
+class rectangle : public shape {
+  int x_, y_;
+
+public:
+  rectangle(int x, int y):x_(x), y_(y) {}
+
+  int area() const override {
+    return x_*y_;
+  }
+};
+
+TEST(make_unique_inherit, basic_test) {
+  int x = 2, y = 2;
+  std::unique_ptr<shape> fig = make_unique_inherit<shape, rectangle>(x, y);
+  EXPECT_EQ(x*y, fig->area());
+}
+
 template <std::size_t> struct T {};
 template <std::size_t> struct S {};
 template <std::size_t> struct P {};
