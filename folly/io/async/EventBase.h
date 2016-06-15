@@ -118,8 +118,7 @@ class RequestEventBase : public RequestData {
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase : private boost::noncopyable,
-                  public TimeoutManager,
+class EventBase : public TimeoutManager,
                   public DrivableExecutor {
  public:
   using Func = folly::Function<void()>;
@@ -135,6 +134,9 @@ class EventBase : private boost::noncopyable,
    * If a LoopCallback object is destroyed while it is scheduled to be run in
    * the next loop iteration, it will automatically be cancelled.
    */
+  // It disallows copy, move, and default ctor
+  EventBase(EventBase&&) = delete;
+  
   class LoopCallback {
    public:
     virtual ~LoopCallback() = default;
@@ -720,7 +722,7 @@ class EventBase : private boost::noncopyable,
 
   // we'll wait this long before running deferred callbacks if the event
   // loop is idle.
-  static const int kDEFAULT_IDLE_WAIT_USEC = 20000; // 20ms
+  static constexpr const int kDEFAULT_IDLE_WAIT_USEC = 20000; // 20ms
 
   // Wrap-around loop counter to detect beginning of each loop
   uint64_t nextLoopCnt_;
