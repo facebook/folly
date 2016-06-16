@@ -20,22 +20,18 @@
 #include <boost/crc.hpp>
 #include <folly/CpuId.h>
 
+#if FOLLY_X64 && (__SSE4_2__ || defined(__clang__) || __GNUC_PREREQ(4, 9))
+#include <nmmintrin.h>
+#endif
+
 namespace folly {
 
 namespace detail {
 
-#ifndef __has_builtin
-  /* nolint */
-  #define __has_builtin(x) 0
-#endif
-
-#if __SSE4_2__ && \
-    ((__has_builtin(__builtin_ia32_crc32qi) && \
-     __has_builtin(__builtin_ia32_crc32di)) || \
-    (FOLLY_X64 && defined(__GNUC__) && defined(__GNUC_MINOR__) && \
-     (((__GNUC__ * 100) + __GNUC_MINOR__) >= 407)))
+#if FOLLY_X64 && (__SSE4_2__ || defined(__clang__) || __GNUC_PREREQ(4, 9))
 
 // Fast SIMD implementation of CRC-32C for x86 with SSE 4.2
+FOLLY_TARGET_ATTRIBUTE("sse4.2")
 uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
     uint32_t startingChecksum) {
   uint32_t sum = startingChecksum;
@@ -48,7 +44,7 @@ uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
   if (mask != 0) {
     size_t limit = std::min(nbytes, sizeof(uint64_t) - mask);
     while (offset < limit) {
-      sum = (uint32_t)__builtin_ia32_crc32qi(sum, data[offset]);
+      sum = (uint32_t)_mm_crc32_u8(sum, data[offset]);
       offset++;
     }
   }
@@ -56,13 +52,13 @@ uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
   // Process 8 bytes at a time until we have fewer than 8 bytes left.
   while (offset + sizeof(uint64_t) <= nbytes) {
     const uint64_t* src = (const uint64_t*)(data + offset);
-    sum = __builtin_ia32_crc32di(sum, *src);
+    sum = _mm_crc32_u64(sum, *src);
     offset += sizeof(uint64_t);
   }
 
   // Process any bytes remaining after the last aligned 8-byte block.
   while (offset < nbytes) {
-    sum = (uint32_t)__builtin_ia32_crc32qi(sum, data[offset]);
+    sum = (uint32_t)_mm_crc32_u8(sum, data[offset]);
     offset++;
   }
   return sum;
