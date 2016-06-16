@@ -162,6 +162,13 @@ class SSLContext {
   void setClientECCurvesList(const std::vector<std::string>& ecCurves);
 
   /**
+   * Method to add support for a specific elliptic curve encryption algorithm.
+   *
+   * @param curveName: The name of the ec curve to support, eg: prime256v1.
+   */
+  void setServerECCurve(const std::string& curveName);
+
+  /**
    * Sets an x509 verification param on the context.
    */
   void setX509VerifyParam(const ssl::X509VerifyParam& x509VerifyParam);

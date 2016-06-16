@@ -145,6 +145,42 @@ void SSLContext::setClientECCurvesList(
 #endif
 }
 
+void SSLContext::setServerECCurve(const std::string& curveName) {
+  bool validCall = false;
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+  validCall = true;
+#endif
+#endif
+  if (!validCall) {
+    throw std::runtime_error("Elliptic curve encryption not allowed");
+  }
+
+  EC_KEY* ecdh = nullptr;
+  int nid;
+
+  /*
+   * Elliptic-Curve Diffie-Hellman parameters are either "named curves"
+   * from RFC 4492 section 5.1.1, or explicitly described curves over
+   * binary fields. OpenSSL only supports the "named curves", which provide
+   * maximum interoperability.
+   */
+
+  nid = OBJ_sn2nid(curveName.c_str());
+  if (nid == 0) {
+    LOG(FATAL) << "Unknown curve name:" << curveName.c_str();
+    return;
+  }
+  ecdh = EC_KEY_new_by_curve_name(nid);
+  if (ecdh == nullptr) {
+    LOG(FATAL) << "Unable to create curve:" << curveName.c_str();
+    return;
+  }
+
+  SSL_CTX_set_tmp_ecdh(ctx_, ecdh);
+  EC_KEY_free(ecdh);
+}
+
 void SSLContext::setX509VerifyParam(
     const ssl::X509VerifyParam& x509VerifyParam) {
   if (!x509VerifyParam) {
