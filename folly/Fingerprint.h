@@ -51,20 +51,12 @@
 namespace folly {
 
 namespace detail {
-
 template <int BITS>
 struct FingerprintTable {
-  static const uint64_t poly[1 + (BITS - 1) / 64];
-  static const uint64_t table[8][256][1 + (BITS - 1) / 64];
+  static const uint64_t poly[1 + (BITS-1)/64];
+  static const uint64_t table[8][256][1 + (BITS-1)/64];
 };
-
-template <int BITS>
-const uint64_t FingerprintTable<BITS>::poly[1 + (BITS - 1) / 64] = {};
-
-template <int BITS>
-const uint64_t FingerprintTable<BITS>::table[8][256][1 + (BITS - 1) / 64] = {};
-
-} // namespace detail
+}  // namespace detail
 
 /**
  * Compute the Rabin fingerprint.

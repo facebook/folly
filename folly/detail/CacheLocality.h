@@ -161,16 +161,6 @@ struct SequentialThreadId {
 
   static FOLLY_TLS size_t currentId;
 };
-
-template <template <typename> class Atom>
-Atom<size_t> SequentialThreadId<Atom>::prevId(0);
-
-template <template <typename> class Atom>
-FOLLY_TLS size_t SequentialThreadId<Atom>::currentId(0);
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
@@ -287,10 +277,7 @@ struct AccessSpreader {
   static bool initialized;
 
   /// Returns the best getcpu implementation for Atom
-  static Getcpu::Func pickGetcpuFunc() {
-    auto best = Getcpu::resolveVdsoFunc();
-    return best ? best : &FallbackGetcpuType::getcpu;
-  }
+  static Getcpu::Func pickGetcpuFunc();
 
   /// Always claims to be on CPU zero, node zero
   static int degenerateGetcpu(unsigned* cpu, unsigned* node, void*) {
@@ -339,20 +326,22 @@ struct AccessSpreader {
   }
 };
 
-template <template <typename> class Atom>
-Getcpu::Func AccessSpreader<Atom>::getcpuFunc =
-    AccessSpreader<Atom>::degenerateGetcpu;
+template <>
+Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc();
 
-template <template <typename> class Atom>
-typename AccessSpreader<Atom>::CompactStripe
-    AccessSpreader<Atom>::widthAndCpuToStripe[kMaxCpus + 1][kMaxCpus] = {};
-
-template <template <typename> class Atom>
-bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize();
-
-// Suppress this instantiation in other translation units. It is
-// instantiated in CacheLocality.cpp
-extern template struct AccessSpreader<std::atomic>;
+#define DECLARE_ACCESS_SPREADER_TYPE(Atom)                                     \
+  namespace folly {                                                            \
+  namespace detail {                                                           \
+  template <>                                                                  \
+  Getcpu::Func AccessSpreader<Atom>::getcpuFunc =                              \
+      AccessSpreader<Atom>::degenerateGetcpu;                                  \
+  template <>                                                                  \
+  typename AccessSpreader<Atom>::CompactStripe                                 \
+      AccessSpreader<Atom>::widthAndCpuToStripe[129][128] = {};                \
+  template <>                                                                  \
+  bool AccessSpreader<Atom>::initialized = AccessSpreader<Atom>::initialize(); \
+  }                                                                            \
+  }
 
 } // namespace detail
 } // namespace folly
