@@ -42,11 +42,6 @@ typedef SharedMutexImpl<true, void, DeterministicAtomic, true>
 typedef SharedMutexImpl<false, void, DeterministicAtomic, true>
     DSharedMutexWritePriority;
 
-COMMON_CONCURRENCY_SHARED_MUTEX_DECLARE_STATIC_STORAGE(
-    DSharedMutexReadPriority);
-COMMON_CONCURRENCY_SHARED_MUTEX_DECLARE_STATIC_STORAGE(
-    DSharedMutexWritePriority);
-
 template <typename Lock>
 void runBasicTest() {
   Lock lock;

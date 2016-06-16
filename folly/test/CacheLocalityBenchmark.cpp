@@ -31,7 +31,6 @@ using namespace folly::detail;
   template <typename dummy>                            \
   struct tag {};                                       \
   }                                                    \
-  DECLARE_ACCESS_SPREADER_TYPE(tag)                    \
   namespace folly {                                    \
   namespace detail {                                   \
   template <>                                          \

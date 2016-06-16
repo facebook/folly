@@ -16,7 +16,8 @@
 
 #include "SharedMutex.h"
 
-COMMON_CONCURRENCY_SHARED_MUTEX_DECLARE_STATIC_STORAGE(
-    folly::SharedMutexReadPriority);
-COMMON_CONCURRENCY_SHARED_MUTEX_DECLARE_STATIC_STORAGE(
-    folly::SharedMutexWritePriority);
+namespace folly {
+// Explicitly instantiate SharedMutex here:
+template class SharedMutexImpl<true>;
+template class SharedMutexImpl<false>;
+}

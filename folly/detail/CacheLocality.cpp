@@ -28,8 +28,6 @@
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
-DECLARE_ACCESS_SPREADER_TYPE(std::atomic)
-
 namespace folly {
 namespace detail {
 
@@ -233,21 +231,11 @@ Getcpu::Func Getcpu::resolveVdsoFunc() {
 
 #ifdef FOLLY_TLS
 /////////////// SequentialThreadId
-
-template <>
-std::atomic<size_t> SequentialThreadId<std::atomic>::prevId(0);
-
-template <>
-FOLLY_TLS size_t SequentialThreadId<std::atomic>::currentId(0);
+template struct SequentialThreadId<std::atomic>;
 #endif
 
 /////////////// AccessSpreader
-
-template <>
-Getcpu::Func AccessSpreader<std::atomic>::pickGetcpuFunc() {
-  auto best = Getcpu::resolveVdsoFunc();
-  return best ? best : &FallbackGetcpuType::getcpu;
-}
+template struct AccessSpreader<std::atomic>;
 
 } // namespace detail
 } // namespace folly
