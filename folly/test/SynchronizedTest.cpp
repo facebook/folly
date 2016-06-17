@@ -19,9 +19,10 @@
 // Test bed for folly/Synchronized.h
 
 #include <folly/Portability.h>
-#include <folly/Synchronized.h>
 #include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>
+#include <folly/SpinLock.h>
+#include <folly/Synchronized.h>
 #include <folly/test/SynchronizedTestLib.h>
 #include <gtest/gtest.h>
 
@@ -46,6 +47,7 @@ using SynchronizedTestTypes = testing::Types
   , boost::recursive_timed_mutex
 #endif
   , boost::shared_mutex
+  , folly::SpinLock
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
   , folly::RWTicketSpinLock32
   , folly::RWTicketSpinLock64
