@@ -294,6 +294,7 @@ nobase_follyinclude_HEADERS = \
 	SpinLock.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
+	ssl/OpenSSLHash.h \
 	stats/BucketedTimeSeries-defs.h \
 	stats/BucketedTimeSeries.h \
 	stats/Histogram-defs.h \
@@ -432,6 +433,7 @@ libfolly_la_SOURCES = \
 	SocketAddress.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
+	ssl/OpenSSLHash.cpp \
 	stats/Instantiations.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
