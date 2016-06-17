@@ -244,7 +244,7 @@ public:
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {
-    return insert(value_type(value));
+    return insert(std::move(value_type(value)));
   }
 
   std::pair<iterator,bool> insert(value_type&& value) {
@@ -257,7 +257,7 @@ public:
   }
 
   iterator insert(iterator hint, const value_type& value) {
-    return insert(hint, value_type(value));
+    return insert(hint, std::move(value_type(value)));
   }
 
   iterator insert(iterator hint, value_type&& value) {
@@ -488,7 +488,7 @@ public:
   size_type capacity() const    { return m_.cont_.capacity(); }
 
   std::pair<iterator,bool> insert(const value_type& value) {
-    return insert(value_type(value));
+    return insert(std::move(value_type(value)));
   }
 
   std::pair<iterator,bool> insert(value_type&& value) {
@@ -501,7 +501,7 @@ public:
   }
 
   iterator insert(iterator hint, const value_type& value) {
-    return insert(hint, value_type(value));
+    return insert(hint, std::move(value_type(value)));
   }
 
   iterator insert(iterator hint, value_type&& value) {
