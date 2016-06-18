@@ -90,7 +90,7 @@ namespace folly {
  * (using their own eviction criteria).
  */
 template <class TKey, class TValue, class THash = std::hash<TKey> >
-class EvictingCacheMap : private boost::noncopyable {
+class EvictingCacheMap {
 
  private:
   // typedefs for brevity
@@ -131,6 +131,10 @@ class EvictingCacheMap : private boost::noncopyable {
   typedef iterator_base<
     const TPair,
     typename NodeList::const_reverse_iterator> const_reverse_iterator;
+
+  // noncopyable
+  EvictingCacheMap(const EvictingCacheMap&) = delete;
+  EvictingCacheMap& operator = (const EvictingCacheMap&) = delete;
 
   /**
    * Construct a EvictingCacheMap

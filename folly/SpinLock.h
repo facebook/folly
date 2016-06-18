@@ -49,7 +49,7 @@ typedef SpinLockPthreadMutexImpl SpinLock;
 #endif
 
 template <typename LOCK>
-class SpinLockGuardImpl : private boost::noncopyable {
+class SpinLockGuardImpl {
  public:
   FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) :
     lock_(lock) {
@@ -58,6 +58,11 @@ class SpinLockGuardImpl : private boost::noncopyable {
   FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {
     lock_.unlock();
   }
+
+  // noncopyable
+  SpinLockGuardImpl(const SpinLockGuardImpl&) = delete;
+  SpinLockGuardImpl& operator = (const SpinLockGuardImpl&) = delete;
+
  private:
   LOCK& lock_;
 };

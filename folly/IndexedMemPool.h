@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <stdint.h>
 #include <assert.h>
-#include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/portability/SysMman.h>
@@ -89,7 +88,7 @@ template <typename T,
           template<typename> class Atom = std::atomic,
           bool EagerRecycleWhenTrivial = false,
           bool EagerRecycleWhenNotTrivial = true>
-struct IndexedMemPool : boost::noncopyable {
+struct IndexedMemPool {
   typedef T value_type;
 
   typedef std::unique_ptr<T, detail::IndexedMemPoolRecycler<IndexedMemPool>>
@@ -120,6 +119,9 @@ struct IndexedMemPool : boost::noncopyable {
     return maxIndex - (NumLocalLists - 1) * LocalListLimit;
   }
 
+  // noncopyable
+  IndexedMemPool(const IndexedMemPool&) = delete;
+  IndexedMemPool& operator = (const IndexedMemPool&) = delete;
 
   /// Constructs a pool that can allocate at least _capacity_ elements,
   /// even if all the local lists are full

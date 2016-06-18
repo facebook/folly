@@ -20,7 +20,6 @@
 #include <chrono>
 #include <limits>
 #include <assert.h>
-#include <boost/noncopyable.hpp>
 
 #include <folly/portability/Unistd.h>
 
@@ -43,7 +42,11 @@ enum class FutexResult {
  * (and benchmarks to back you up).
  */
 template <template <typename> class Atom = std::atomic>
-struct Futex : Atom<uint32_t>, boost::noncopyable {
+struct Futex : Atom<uint32_t> {
+
+  // noncopyable
+  Futex(const Futex&) = delete;
+  Futex& operator = (const Futex&) = delete;
 
   explicit Futex(uint32_t init = 0) : Atom<uint32_t>(init) {}
 
