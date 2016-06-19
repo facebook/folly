@@ -101,9 +101,7 @@ if test "$folly_cv_prog_cc_glog" != "yes"; then
   AC_MSG_ERROR(["libglog invalid, see config.log for details"])
 fi
 
-AC_CHECK_LIB(ssl,
-        SSL_ctrl,
-        [],
+AX_CHECK_OPENSSL([],
         [AC_MSG_ERROR(["Error: libssl required"])])
 
 # check for boost libs
@@ -521,6 +519,8 @@ AM_LDFLAGS="$AM_LDFLAGS $BOOST_CONTEXT_LIB $BOOST_PROGRAM_OPTIONS_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_CHRONO_LIB"
+
+AM_LDFLAGS="$AM_LDFLAGS $OPENSSL_LDFLAGS $OPENSSL_LIBS"
 
 AC_SUBST([AM_CPPFLAGS])
 AC_SUBST([AM_LDFLAGS])
