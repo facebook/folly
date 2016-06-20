@@ -82,9 +82,9 @@ Future<T>::Future(T2&& val)
     : core_(new detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}
 
 template <class T>
-template <typename, typename>
-Future<T>::Future()
-  : core_(new detail::Core<T>(Try<T>(T()))) {}
+template <typename T2>
+Future<T>::Future(typename std::enable_if<std::is_same<Unit, T2>::value>::type*)
+    : core_(new detail::Core<T>(Try<T>(T()))) {}
 
 template <class T>
 Future<T>::~Future() {

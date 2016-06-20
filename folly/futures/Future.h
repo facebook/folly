@@ -71,10 +71,9 @@ class Future {
               !isFuture<typename std::decay<T2>::type>::value>::type>
   /* implicit */ Future(T2&& val);
 
-  template <class T2 = T, typename =
-            typename std::enable_if<
-              std::is_same<Unit, T2>::value>::type>
-  Future();
+  template <class T2 = T>
+  /* implicit */ Future(
+      typename std::enable_if<std::is_same<Unit, T2>::value>::type* = nullptr);
 
   ~Future();
 
