@@ -218,13 +218,19 @@ class TypeDescriptorHasher {
 // SingletonHolders.
 class SingletonHolderBase {
  public:
+  explicit SingletonHolderBase(TypeDescriptor typeDesc) : type_(typeDesc) {}
   virtual ~SingletonHolderBase() = default;
 
-  virtual TypeDescriptor type() = 0;
+  TypeDescriptor type() const {
+    return type_;
+  }
   virtual bool hasLiveInstance() = 0;
   virtual void createInstance() = 0;
   virtual bool creationStarted() = 0;
   virtual void destroyInstance() = 0;
+
+ private:
+  TypeDescriptor type_;
 };
 
 // An actual instance of a singleton, tracking the instance itself,
@@ -246,7 +252,6 @@ struct SingletonHolder : public SingletonHolderBase {
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
   void registerSingletonMock(CreateFunc c, TeardownFunc t);
-  virtual TypeDescriptor type() override;
   virtual bool hasLiveInstance() override;
   virtual void createInstance() override;
   virtual bool creationStarted() override;
@@ -261,7 +266,6 @@ struct SingletonHolder : public SingletonHolderBase {
     Living,
   };
 
-  TypeDescriptor type_;
   SingletonVault& vault_;
 
   // mutex protects the entire entry during construction/destruction
