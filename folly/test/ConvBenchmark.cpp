@@ -21,6 +21,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Foreach.h>
 
+#include <array>
 #include <limits>
 #include <stdexcept>
 
@@ -381,6 +382,172 @@ DEFINE_BENCHMARK_GROUP(fbstring, 1024);
 DEFINE_BENCHMARK_GROUP(fbstring, 32768);
 
 #undef DEFINE_BENCHMARK_GROUP
+
+namespace {
+
+template <typename T>
+inline void stringToTypeClassic(const char* str, uint32_t n) {
+  for (uint32_t i = 0; i < n; ++i) {
+    try {
+      auto val = to<T>(str);
+      doNotOptimizeAway(val);
+    } catch (const std::exception& e) {
+      doNotOptimizeAway(e.what());
+    }
+    doNotOptimizeAway(i);
+  }
+}
+
+template <typename T>
+inline void ptrPairToIntClassic(StringPiece sp, uint32_t n) {
+  for (uint32_t i = 0; i < n; ++i) {
+    try {
+      auto val = to<T>(sp.begin(), sp.end());
+      doNotOptimizeAway(val);
+    } catch (const std::exception& e) {
+      doNotOptimizeAway(e.what());
+    }
+    doNotOptimizeAway(i);
+  }
+}
+
+constexpr uint32_t kArithNumIter = 10000;
+
+template <typename T, typename U>
+inline size_t arithToArithClassic(const U* in, uint32_t numItems) {
+  for (uint32_t i = 0; i < kArithNumIter; ++i) {
+    for (uint32_t j = 0; j < numItems; ++j) {
+      try {
+        auto val = to<T>(in[j]);
+        doNotOptimizeAway(val);
+      } catch (const std::exception& e) {
+        doNotOptimizeAway(e.what());
+      }
+      doNotOptimizeAway(j);
+    }
+    doNotOptimizeAway(i);
+  }
+
+  return kArithNumIter * numItems;
+}
+
+} // namespace
+
+namespace conv {
+
+std::array<int, 4> int2ScharGood{{-128, 127, 0, -50}};
+std::array<int, 4> int2ScharBad{{-129, 128, 255, 10000}};
+std::array<int, 4> int2UcharGood{{0, 1, 254, 255}};
+std::array<int, 4> int2UcharBad{{-128, -1000, 256, -1}};
+
+std::array<long long, 4> ll2SintOrFloatGood{{-2, -1, 0, 1}};
+std::array<long long, 4> ll2SintOrFloatBad{{
+    std::numeric_limits<long long>::min() / 5,
+    std::numeric_limits<long long>::min() / 2,
+    std::numeric_limits<long long>::max() / 2,
+    std::numeric_limits<long long>::max() / 5,
+}};
+std::array<long long, 4> ll2UintGood{{1, 2, 3, 4}};
+std::array<long long, 4> ll2UintBad{{-1, -2, -3, -4}};
+
+std::array<double, 4> double2FloatGood{{1.0, 1.25, 2.5, 1000.0}};
+std::array<double, 4> double2FloatBad{{1e100, 1e101, 1e102, 1e103}};
+std::array<double, 4> double2IntGood{{1.0, 10.0, 100.0, 1000.0}};
+std::array<double, 4> double2IntBad{{1e100, 1.25, 2.5, 100.00001}};
+}
+
+using namespace conv;
+
+#define STRING_TO_TYPE_BENCHMARK(type, name, pass, fail) \
+  BENCHMARK(stringTo##name##Classic, n) {                \
+    stringToTypeClassic<type>(pass, n);                  \
+  }                                                      \
+  BENCHMARK(stringTo##name##ClassicError, n) {           \
+    stringToTypeClassic<type>(fail, n);                  \
+  }
+
+#define PTR_PAIR_TO_INT_BENCHMARK(type, name, pass, fail) \
+  BENCHMARK(ptrPairTo##name##Classic, n) {                \
+    ptrPairToIntClassic<type>(pass, n);                   \
+  }                                                       \
+  BENCHMARK(ptrPairTo##name##ClassicError, n) {           \
+    ptrPairToIntClassic<type>(fail, n);                   \
+  }
+
+#define ARITH_TO_ARITH_BENCHMARK(type, name, pass, fail)        \
+  BENCHMARK_MULTI(name##Classic) {                              \
+    return arithToArithClassic<type>(pass.data(), pass.size()); \
+  }                                                             \
+  BENCHMARK_MULTI(name##ClassicError) {                         \
+    return arithToArithClassic<type>(fail.data(), fail.size()); \
+  }
+
+#define INT_TO_ARITH_BENCHMARK(type, name, pass, fail) \
+  ARITH_TO_ARITH_BENCHMARK(type, intTo##name, pass, fail)
+
+#define FLOAT_TO_ARITH_BENCHMARK(type, name, pass, fail) \
+  ARITH_TO_ARITH_BENCHMARK(type, floatTo##name, pass, fail)
+
+STRING_TO_TYPE_BENCHMARK(bool, BoolNum, " 1 ", "2")
+STRING_TO_TYPE_BENCHMARK(bool, BoolStr, "true", "xxxx")
+BENCHMARK_DRAW_LINE();
+STRING_TO_TYPE_BENCHMARK(float, FloatNum, " 3.14 ", "3e5000x")
+STRING_TO_TYPE_BENCHMARK(float, FloatStr, "-infinity", "xxxx")
+STRING_TO_TYPE_BENCHMARK(double, DoubleNum, " 3.14 ", "3e5000x")
+STRING_TO_TYPE_BENCHMARK(double, DoubleStr, "-infinity", "xxxx")
+BENCHMARK_DRAW_LINE();
+STRING_TO_TYPE_BENCHMARK(signed char, CharSigned, " -47 ", "1000")
+STRING_TO_TYPE_BENCHMARK(unsigned char, CharUnsigned, " 47 ", "-47")
+STRING_TO_TYPE_BENCHMARK(int, IntSigned, " -4711 ", "-10000000000000000000000")
+STRING_TO_TYPE_BENCHMARK(unsigned int, IntUnsigned, " 4711 ", "-4711")
+STRING_TO_TYPE_BENCHMARK(
+    long long,
+    LongLongSigned,
+    " -8123456789123456789 ",
+    "-10000000000000000000000")
+STRING_TO_TYPE_BENCHMARK(
+    unsigned long long,
+    LongLongUnsigned,
+    " 18123456789123456789 ",
+    "-4711")
+BENCHMARK_DRAW_LINE();
+
+PTR_PAIR_TO_INT_BENCHMARK(signed char, CharSigned, "-47", "1000")
+PTR_PAIR_TO_INT_BENCHMARK(unsigned char, CharUnsigned, "47", "1000")
+PTR_PAIR_TO_INT_BENCHMARK(int, IntSigned, "-4711", "-10000000000000000000000")
+PTR_PAIR_TO_INT_BENCHMARK(
+    unsigned int,
+    IntUnsigned,
+    "4711",
+    "10000000000000000000000")
+PTR_PAIR_TO_INT_BENCHMARK(
+    long long,
+    LongLongSigned,
+    "-8123456789123456789",
+    "-10000000000000000000000")
+PTR_PAIR_TO_INT_BENCHMARK(
+    unsigned long long,
+    LongLongUnsigned,
+    "18123456789123456789",
+    "20000000000000000000")
+BENCHMARK_DRAW_LINE();
+
+INT_TO_ARITH_BENCHMARK(signed char, CharSigned, int2ScharGood, int2ScharBad)
+INT_TO_ARITH_BENCHMARK(unsigned char, CharUnsigned, int2UcharGood, int2UcharBad)
+INT_TO_ARITH_BENCHMARK(int, IntSigned, ll2SintOrFloatGood, ll2SintOrFloatBad)
+INT_TO_ARITH_BENCHMARK(unsigned int, IntUnsigned, ll2UintGood, ll2UintBad)
+BENCHMARK_DRAW_LINE();
+INT_TO_ARITH_BENCHMARK(float, Float, ll2SintOrFloatGood, ll2SintOrFloatBad)
+BENCHMARK_DRAW_LINE();
+FLOAT_TO_ARITH_BENCHMARK(float, Float, double2FloatGood, double2FloatBad)
+BENCHMARK_DRAW_LINE();
+FLOAT_TO_ARITH_BENCHMARK(int, Int, double2IntGood, double2IntBad)
+
+#undef STRING_TO_TYPE_BENCHMARK
+#undef PTR_PAIR_TO_INT_BENCHMARK
+#undef ARITH_TO_ARITH_BENCHMARK
+#undef INT_TO_ARITH_BENCHMARK
+#undef FLOAT_TO_ARITH_BENCHMARK
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
