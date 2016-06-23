@@ -23,24 +23,24 @@
 
 #pragma once
 
+#include <algorithm>
+#include <climits>
+#include <cstddef>
+#include <limits>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <typeinfo>
+#include <utility>
+
+#include <boost/implicit_cast.hpp>
+#include <double-conversion/double-conversion.h> // V8 JavaScript implementation
+
 #include <folly/FBString.h>
 #include <folly/Likely.h>
 #include <folly/Preprocessor.h>
 #include <folly/Range.h>
-
-#include <boost/implicit_cast.hpp>
-#include <algorithm>
-#include <type_traits>
-#include <limits>
-#include <string>
-#include <tuple>
-#include <stdexcept>
-#include <typeinfo>
-
-#include <limits.h>
-
-// V8 JavaScript implementation
-#include <double-conversion/double-conversion.h>
 
 #define FOLLY_RANGE_CHECK_STRINGIZE(x) #x
 #define FOLLY_RANGE_CHECK_STRINGIZE2(x) FOLLY_RANGE_CHECK_STRINGIZE(x)
@@ -981,10 +981,6 @@ namespace detail {
     return b;
   }
 
-  // Maximum value of number when represented as a string
-  template <class T> struct MaxString {
-    static const char*const value;
-  };
 
   bool str_to_bool(StringPiece* src);
   float str_to_float(StringPiece* src);

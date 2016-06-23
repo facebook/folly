@@ -19,14 +19,14 @@
 namespace folly {
 namespace detail {
 
-extern const char digit1[101] =
-  "00000000001111111111222222222233333333334444444444"
-  "55555555556666666666777777777788888888889999999999";
-extern const char digit2[101] =
-  "01234567890123456789012345678901234567890123456789"
-  "01234567890123456789012345678901234567890123456789";
+namespace {
 
-template <> const char *const MaxString<bool>::value = "true";
+// Maximum value of number when represented as a string
+template <class T>
+struct MaxString {
+  static const char* const value;
+};
+
 template <> const char *const MaxString<uint8_t>::value = "255";
 template <> const char *const MaxString<uint16_t>::value = "65535";
 template <> const char *const MaxString<uint32_t>::value = "4294967295";
@@ -51,7 +51,6 @@ template <> const char *const MaxString<__uint128_t>::value =
   "340282366920938463463374607431768211455";
 #endif
 
-namespace {
 /*
  * Lookup tables that converts from a decimal character value to an integral
  * binary value, shifted by a decimal "shift" multiplier.
