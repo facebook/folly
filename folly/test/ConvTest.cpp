@@ -792,6 +792,37 @@ TEST(Conv, StringToBool) {
   EXPECT_EQ(buf5, sp5.begin());
 }
 
+TEST(Conv, FloatToInt) {
+  EXPECT_EQ(to<int>(42.0f), 42);
+  EXPECT_EQ(to<int8_t>(-128.0f), int8_t(-128));
+  EXPECT_THROW(to<int8_t>(-129.0), std::range_error);
+  EXPECT_THROW(to<int8_t>(127.001), std::range_error);
+  EXPECT_THROW(to<uint8_t>(-0.0001), std::range_error);
+  EXPECT_THROW(
+      to<uint64_t>(static_cast<float>(std::numeric_limits<uint64_t>::max())),
+      std::range_error);
+}
+
+TEST(Conv, IntToFloat) {
+  EXPECT_EQ(to<float>(42ULL), 42.0);
+  EXPECT_EQ(to<float>(int8_t(-128)), -128.0);
+  EXPECT_THROW(
+      to<float>(std::numeric_limits<uint64_t>::max()), std::range_error);
+  EXPECT_THROW(
+      to<float>(std::numeric_limits<int64_t>::max()), std::range_error);
+  EXPECT_THROW(
+      to<float>(std::numeric_limits<int64_t>::min() + 1), std::range_error);
+#if FOLLY_HAVE_INT128_T
+  EXPECT_THROW(
+      to<double>(std::numeric_limits<unsigned __int128>::max()),
+      std::range_error);
+  EXPECT_THROW(
+      to<double>(std::numeric_limits<__int128>::max()), std::range_error);
+  EXPECT_THROW(
+      to<double>(std::numeric_limits<__int128>::min() + 1), std::range_error);
+#endif
+}
+
 TEST(Conv, NewUint64ToString) {
   char buf[21];
 

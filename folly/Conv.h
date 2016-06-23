@@ -1160,6 +1160,52 @@ parseTo(StringPiece src, Tgt& out) {
  * Integral to floating point and back
  ******************************************************************************/
 
+namespace detail {
+
+/**
+ * Check if a floating point value can safely be converted to an
+ * integer value without triggering undefined behaviour.
+ */
+template <typename Tgt, typename Src>
+typename std::enable_if<
+    std::is_floating_point<Src>::value && std::is_integral<Tgt>::value,
+    bool>::type
+inline checkConversion(const Src& value) {
+  constexpr Src tgtMaxAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::max());
+  constexpr Src tgtMinAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::min());
+  if (value >= tgtMaxAsSrc) {
+    if (value > tgtMaxAsSrc) {
+      return false;
+    }
+    const Src mmax = std::nextafter(tgtMaxAsSrc, Src());
+    if (static_cast<Tgt>(value - mmax) >
+        std::numeric_limits<Tgt>::max() - static_cast<Tgt>(mmax)) {
+      return false;
+    }
+  } else if (std::is_signed<Tgt>::value && value <= tgtMinAsSrc) {
+    if (value < tgtMinAsSrc) {
+      return false;
+    }
+    const Src mmin = std::nextafter(tgtMinAsSrc, Src());
+    if (static_cast<Tgt>(value - mmin) <
+        std::numeric_limits<Tgt>::min() - static_cast<Tgt>(mmin)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Integers can always safely be converted to floating point values
+template <typename Tgt, typename Src>
+typename std::enable_if<
+    std::is_integral<Src>::value && std::is_floating_point<Tgt>::value,
+    bool>::type
+checkConversion(const Src&) {
+  return true;
+}
+
+}
+
 /**
  * Checked conversion from integral to floating point and back. The
  * result must be convertible back to the source type without loss of
@@ -1174,19 +1220,23 @@ typename std::enable_if<
   (std::is_floating_point<Src>::value && std::is_integral<Tgt>::value),
   Tgt>::type
 to(const Src & value) {
-  Tgt result = Tgt(value);
-  auto witness = static_cast<Src>(result);
-  if (value != witness) {
-    throw std::range_error(
-      to<std::string>("to<>: loss of precision when converting ", value,
-#ifdef FOLLY_HAS_RTTI
-                      " to type ", typeid(Tgt).name()
-#else
-                      " to other type"
-#endif
-                      ).c_str());
+  if (detail::checkConversion<Tgt>(value)) {
+    Tgt result = Tgt(value);
+    if (detail::checkConversion<Src>(result)) {
+      auto witness = static_cast<Src>(result);
+      if (value == witness) {
+        return result;
+      }
+    }
   }
-  return result;
+  throw std::range_error(
+    to<std::string>("to<>: loss of precision when converting ", value,
+#ifdef FOLLY_HAS_RTTI
+                    " to type ", typeid(Tgt).name()
+#else
+                    " to other type"
+#endif
+                    ).c_str());
 }
 
 /*******************************************************************************
