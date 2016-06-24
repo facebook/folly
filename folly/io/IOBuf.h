@@ -923,6 +923,10 @@ class IOBuf {
       return true;
     }
 
+    if (UNLIKELY(sharedInfo()->externallyShared)) {
+      return true;
+    }
+
     if (LIKELY(!(flags() & kFlagMaybeShared))) {
       return false;
     }
@@ -979,6 +983,30 @@ class IOBuf {
   void unshareOne() {
     if (isSharedOne()) {
       unshareOneSlow();
+    }
+  }
+
+  /**
+   * Mark the underlying buffers in this chain as shared with external memory
+   * management mechanism. This will make isShared() always returns true.
+   *
+   * This function is not thread-safe, and only safe to call immediately after
+   * creating an IOBuf, before it has been shared with other threads.
+   */
+  void markExternallyShared();
+
+  /**
+   * Mark the underlying buffer that this IOBuf refers to as shared with
+   * external memory management mechanism. This will make isSharedOne() always
+   * returns true.
+   *
+   * This function is not thread-safe, and only safe to call immediately after
+   * creating an IOBuf, before it has been shared with other threads.
+   */
+  void markExternallySharedOne() {
+    SharedInfo* info = sharedInfo();
+    if (info) {
+      info->externallyShared = true;
     }
   }
 
@@ -1223,6 +1251,7 @@ class IOBuf {
     FreeFunction freeFn;
     void* userData;
     std::atomic<uint32_t> refcount;
+    bool externallyShared{false};
   };
   // Helper structs for use by operator new and delete
   struct HeapPrefix;

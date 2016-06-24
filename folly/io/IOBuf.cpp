@@ -581,6 +581,14 @@ void IOBuf::unshareChained() {
   coalesceSlow();
 }
 
+void IOBuf::markExternallyShared() {
+  IOBuf* current = this;
+  do {
+    current->markExternallySharedOne();
+    current = current->next_;
+  } while (current != this);
+}
+
 void IOBuf::makeManagedChained() {
   assert(isChained());
 

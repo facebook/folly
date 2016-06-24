@@ -1229,6 +1229,45 @@ char* writableStr(folly::IOBuf& buf) {
 
 }  // namespace
 
+TEST(IOBuf, ExternallyShared) {
+  struct Item {
+    Item(const char* src, size_t len) : size(len) {
+      CHECK_LE(len, sizeof(buffer));
+      memcpy(buffer, src, len);
+    }
+    uint32_t refcount{0};
+    uint8_t size;
+    char buffer[256];
+  };
+
+  auto hello = "hello";
+  struct Item it(hello, strlen(hello));
+
+  {
+    auto freeFn = [](void* /* unused */, void* userData) {
+      auto it = static_cast<struct Item*>(userData);
+      it->refcount--;
+    };
+    it.refcount++;
+    auto buf1 = IOBuf::takeOwnership(it.buffer, it.size, freeFn, &it);
+    EXPECT_TRUE(buf1->isManagedOne());
+    EXPECT_FALSE(buf1->isSharedOne());
+
+    buf1->markExternallyShared();
+    EXPECT_TRUE(buf1->isSharedOne());
+
+    {
+      auto buf2 = buf1->clone();
+      EXPECT_TRUE(buf2->isManagedOne());
+      EXPECT_TRUE(buf2->isSharedOne());
+      EXPECT_EQ(buf1->data(), buf2->data());
+      EXPECT_EQ(it.refcount, 1);
+    }
+    EXPECT_EQ(it.refcount, 1);
+  }
+  EXPECT_EQ(it.refcount, 0);
+}
+
 TEST(IOBuf, Managed) {
   auto hello = "hello";
   auto buf1UP = wrap(hello);
