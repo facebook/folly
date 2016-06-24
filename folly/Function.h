@@ -242,7 +242,7 @@ enum class Op { MOVE, NUKE, FULL, HEAP };
 
 union Data {
   void* big;
-  typename std::aligned_storage<6 * sizeof(void*)>::type small;
+  std::aligned_storage<6 * sizeof(void*)>::type small;
 };
 
 template <typename Fun, typename FunT = typename std::decay<Fun>::type>
