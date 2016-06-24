@@ -546,7 +546,7 @@ typename std::enable_if<
   && IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
 toAppend(Src value, Tgt * result) {
   char buffer[20];
-  result->append(buffer, buffer + uint64ToBufferUnsafe(value, buffer));
+  result->append(buffer, uint64ToBufferUnsafe(value, buffer));
 }
 
 template <class Src>
