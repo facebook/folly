@@ -41,6 +41,7 @@
 #include <folly/Likely.h>
 #include <folly/Preprocessor.h>
 #include <folly/Range.h>
+#include <folly/portability/Math.h>
 
 #define FOLLY_RANGE_CHECK_STRINGIZE(x) #x
 #define FOLLY_RANGE_CHECK_STRINGIZE2(x) FOLLY_RANGE_CHECK_STRINGIZE(x)
@@ -1172,7 +1173,7 @@ checkConversion(const Src& value) {
     if (value > tgtMaxAsSrc) {
       return false;
     }
-    const Src mmax = std::nextafter(tgtMaxAsSrc, Src());
+    const Src mmax = folly::nextafter(tgtMaxAsSrc, Src());
     if (static_cast<Tgt>(value - mmax) >
         std::numeric_limits<Tgt>::max() - static_cast<Tgt>(mmax)) {
       return false;
@@ -1181,7 +1182,7 @@ checkConversion(const Src& value) {
     if (value < tgtMinAsSrc) {
       return false;
     }
-    const Src mmin = std::nextafter(tgtMinAsSrc, Src());
+    const Src mmin = folly::nextafter(tgtMinAsSrc, Src());
     if (static_cast<Tgt>(value - mmin) <
         std::numeric_limits<Tgt>::min() - static_cast<Tgt>(mmin)) {
       return false;
