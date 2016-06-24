@@ -719,18 +719,15 @@ estimateSpaceNeeded(const Src&) {
 
 namespace detail {
 
-inline size_t estimateSpaceToReserve(size_t sofar) {
+template <class Tgt>
+typename std::enable_if<IsSomeString<Tgt>::value, size_t>::type
+estimateSpaceToReserve(size_t sofar, Tgt*) {
   return sofar;
 }
 
 template <class T, class... Ts>
 size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
   return estimateSpaceToReserve(sofar + estimateSpaceNeeded(v), vs...);
-}
-
-template<class T>
-size_t estimateSpaceToReserve(size_t sofar, const T& v) {
-  return sofar + estimateSpaceNeeded(v);
 }
 
 template<class...Ts>
@@ -741,7 +738,8 @@ void reserveInTarget(const Ts&...vs) {
 template<class Delimiter, class...Ts>
 void reserveInTargetDelim(const Delimiter& d, const Ts&...vs) {
   static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
-  size_t fordelim = (sizeof...(vs) - 2) * estimateSpaceToReserve(0, d);
+  size_t fordelim = (sizeof...(vs) - 2) *
+      estimateSpaceToReserve(0, d, static_cast<std::string*>(nullptr));
   getLastElement(vs...)->reserve(estimateSpaceToReserve(fordelim, vs...));
 }
 
