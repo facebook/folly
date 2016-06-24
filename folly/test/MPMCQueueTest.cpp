@@ -118,7 +118,7 @@ void runElementTypeTest(T&& src) {
 }
 
 struct RefCounted {
-  static __thread int active_instances;
+  static FOLLY_TLS int active_instances;
 
   mutable std::atomic<int> rc;
 
@@ -130,8 +130,7 @@ struct RefCounted {
     --active_instances;
   }
 };
-__thread int RefCounted::active_instances;
-
+FOLLY_TLS int RefCounted::active_instances;
 
 void intrusive_ptr_add_ref(RefCounted const* p) {
   p->rc++;

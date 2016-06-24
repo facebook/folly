@@ -21,7 +21,7 @@
 
 #include <thread>
 
-__thread long instance_counter_instances = 0;
+FOLLY_TLS long instance_counter_instances = 0;
 
 class InstanceCounter {
  public:
