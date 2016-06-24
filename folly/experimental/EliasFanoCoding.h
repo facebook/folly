@@ -36,10 +36,6 @@
 #include <folly/experimental/Select64.h>
 #include <glog/logging.h>
 
-#ifndef __GNUC__
-#error EliasFanoCoding.h requires GCC
-#endif
-
 #if !FOLLY_X64
 #error EliasFanoCoding.h requires x86_64
 #endif
