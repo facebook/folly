@@ -461,7 +461,7 @@ toAppend(__int128 value, Tgt * result) {
   size_t p;
 
   if (value < 0) {
-    p = detail::unsafeTelescope128(buffer, sizeof(buffer), Usrc(-value));
+    p = detail::unsafeTelescope128(buffer, sizeof(buffer), -Usrc(value));
     buffer[--p] = '-';
   } else {
     p = detail::unsafeTelescope128(buffer, sizeof(buffer), value);

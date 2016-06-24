@@ -197,6 +197,15 @@ void test128Bit2String() {
   svalue = 0;
   EXPECT_EQ(to<String>(svalue), "0");
 
+  value = ~__int128(0);
+  EXPECT_EQ(to<String>(value), "340282366920938463463374607431768211455");
+
+  svalue = -(Uint(1) << 127);
+  EXPECT_EQ(to<String>(svalue), "-170141183460469231731687303715884105728");
+
+  svalue = (Uint(1) << 127) - 1;
+  EXPECT_EQ(to<String>(svalue), "170141183460469231731687303715884105727");
+
   // TODO: the following do not compile to<__int128> ...
 
 #if 0
