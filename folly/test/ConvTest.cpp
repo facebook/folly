@@ -823,6 +823,16 @@ TEST(Conv, IntToFloat) {
 #endif
 }
 
+TEST(Conv, BoolToFloat) {
+  EXPECT_EQ(to<double>(true), 1.0);
+  EXPECT_EQ(to<double>(false), 0.0);
+}
+
+TEST(Conv, FloatToBool) {
+  EXPECT_EQ(to<bool>(1.0), true);
+  EXPECT_EQ(to<bool>(0.0), false);
+}
+
 TEST(Conv, NewUint64ToString) {
   char buf[21];
 

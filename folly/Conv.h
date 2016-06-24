@@ -1163,10 +1163,11 @@ namespace detail {
  * integer value without triggering undefined behaviour.
  */
 template <typename Tgt, typename Src>
-typename std::enable_if<
-    std::is_floating_point<Src>::value && std::is_integral<Tgt>::value,
+inline typename std::enable_if<
+    std::is_floating_point<Src>::value && std::is_integral<Tgt>::value &&
+        !std::is_same<Tgt, bool>::value,
     bool>::type
-inline checkConversion(const Src& value) {
+checkConversion(const Src& value) {
   constexpr Src tgtMaxAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::max());
   constexpr Src tgtMinAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::min());
   if (value >= tgtMaxAsSrc) {
@@ -1193,13 +1194,22 @@ inline checkConversion(const Src& value) {
 
 // Integers can always safely be converted to floating point values
 template <typename Tgt, typename Src>
-typename std::enable_if<
+constexpr typename std::enable_if<
     std::is_integral<Src>::value && std::is_floating_point<Tgt>::value,
     bool>::type
 checkConversion(const Src&) {
   return true;
 }
 
+// Also, floating point values can always be safely converted to bool
+// Per the standard, any floating point value that is not zero will yield true
+template <typename Tgt, typename Src>
+constexpr typename std::enable_if<
+    std::is_floating_point<Src>::value && std::is_same<Tgt, bool>::value,
+    bool>::type
+checkConversion(const Src&) {
+  return true;
+}
 }
 
 /**
