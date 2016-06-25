@@ -413,7 +413,6 @@ TEST(AccessSpreader, Simple) {
   template <typename dummy>                            \
   struct tag {};                                       \
   }                                                    \
-  DECLARE_ACCESS_SPREADER_TYPE(tag)                    \
   namespace folly {                                    \
   namespace detail {                                   \
   template <>                                          \

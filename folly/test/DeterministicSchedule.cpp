@@ -15,15 +15,17 @@
  */
 
 #include <folly/test/DeterministicSchedule.h>
+
+#include <assert.h>
+
 #include <algorithm>
 #include <list>
 #include <mutex>
 #include <random>
-#include <utility>
 #include <unordered_map>
-#include <assert.h>
+#include <utility>
 
-DECLARE_ACCESS_SPREADER_TYPE(folly::test::DeterministicAtomic)
+#include <folly/Random.h>
 
 namespace folly {
 namespace test {
@@ -139,7 +141,7 @@ int DeterministicSchedule::getRandNumber(int n) {
   if (tls_sched) {
     return tls_sched->scheduler_(n);
   }
-  return std::rand() % n;
+  return Random::rand32() % n;
 }
 
 int DeterministicSchedule::getcpu(unsigned* cpu,

@@ -1429,16 +1429,33 @@ class SharedMutexImpl {
   }
 };
 
-#define COMMON_CONCURRENCY_SHARED_MUTEX_DECLARE_STATIC_STORAGE(type) \
-  template <>                                                        \
-  type::DeferredReaderSlot                                           \
-      type::deferredReaders[type::kMaxDeferredReaders *              \
-                            type::kDeferredSeparationFactor] = {};   \
-  template <>                                                        \
-  FOLLY_TLS uint32_t type::tls_lastTokenlessSlot = 0;
+template <
+    bool ReaderPriority,
+    typename Tag_,
+    template <typename> class Atom,
+    bool BlockImmediately>
+typename SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+    DeferredReaderSlot
+        SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+            deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor] =
+                {};
+
+template <
+    bool ReaderPriority,
+    typename Tag_,
+    template <typename> class Atom,
+    bool BlockImmediately>
+FOLLY_TLS uint32_t
+    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        tls_lastTokenlessSlot = 0;
 
 typedef SharedMutexImpl<true> SharedMutexReadPriority;
 typedef SharedMutexImpl<false> SharedMutexWritePriority;
 typedef SharedMutexWritePriority SharedMutex;
+
+// Prevent the compiler from instantiating these in other translation units.
+// They are instantiated once in SharedMutex.cpp
+extern template class SharedMutexImpl<true>;
+extern template class SharedMutexImpl<false>;
 
 } // namespace folly
