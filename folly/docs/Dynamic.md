@@ -120,7 +120,7 @@ which returns an iterator compatible with `items()`:
     // pos->first is "hello"
     // pos->second is "world"
 
-    auto pos = obj.find("no_such_key);
+    auto pos = obj.find("no_such_key");
     // pos == obj.items().end()
 ```
 
