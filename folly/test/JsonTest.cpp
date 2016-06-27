@@ -395,6 +395,9 @@ TEST(Json, ParseDoubleFallback) {
   EXPECT_EQ(847605071342477612345678900000.0,
       parseJson("{\"a\":847605071342477612345678912345}",
         opts).items().begin()->second.asDouble());
+  EXPECT_EQ(
+      toJson(parseJson(R"({"a":-9223372036854775808})", opts)),
+      R"({"a":-9223372036854775808})");
 }
 
 TEST(Json, ParseNumbersAsStrings) {
