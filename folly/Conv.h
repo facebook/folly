@@ -83,23 +83,26 @@ to(Src && value) {
 }
 
 /*******************************************************************************
- * Integral to integral
+ * Arithmetic to boolean
  ******************************************************************************/
 
 /**
- * Unchecked conversion from integral to boolean. This is different from the
- * other integral conversions because we use the C convention of treating any
+ * Unchecked conversion from arithmetic to boolean. This is different from the
+ * other arithmetic conversions because we use the C convention of treating any
  * non-zero value as true, instead of range checking.
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  std::is_integral<Src>::value
-  && !std::is_same<Tgt, Src>::value
-  && std::is_same<Tgt, bool>::value,
-  Tgt>::type
-to(const Src & value) {
-  return value != 0;
+    std::is_arithmetic<Src>::value && !std::is_same<Tgt, Src>::value &&
+        std::is_same<Tgt, bool>::value,
+    Tgt>::type
+to(const Src& value) {
+  return value != Src();
 }
+
+/*******************************************************************************
+ * Integral to integral
+ ******************************************************************************/
 
 /**
  * Checked conversion from integral to integral. The checks are only
@@ -1220,11 +1223,11 @@ checkConversion(const Src&) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-  (std::is_integral<Src>::value && std::is_floating_point<Tgt>::value)
-  ||
-  (std::is_floating_point<Src>::value && std::is_integral<Tgt>::value),
-  Tgt>::type
-to(const Src & value) {
+    (std::is_integral<Src>::value && std::is_floating_point<Tgt>::value) ||
+        (std::is_floating_point<Src>::value && std::is_integral<Tgt>::value &&
+         !std::is_same<Tgt, bool>::value),
+    Tgt>::type
+to(const Src& value) {
   if (detail::checkConversion<Tgt>(value)) {
     Tgt result = Tgt(value);
     if (detail::checkConversion<Src>(result)) {

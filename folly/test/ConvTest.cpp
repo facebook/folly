@@ -840,6 +840,13 @@ TEST(Conv, BoolToFloat) {
 TEST(Conv, FloatToBool) {
   EXPECT_EQ(to<bool>(1.0), true);
   EXPECT_EQ(to<bool>(0.0), false);
+  EXPECT_EQ(to<bool>(2.7), true);
+  EXPECT_EQ(to<bool>(std::numeric_limits<double>::max()), true);
+  EXPECT_EQ(to<bool>(std::numeric_limits<double>::min()), true);
+  EXPECT_EQ(to<bool>(std::numeric_limits<double>::lowest()), true);
+  EXPECT_EQ(to<bool>(std::numeric_limits<double>::quiet_NaN()), true);
+  EXPECT_EQ(to<bool>(std::numeric_limits<double>::infinity()), true);
+  EXPECT_EQ(to<bool>(-std::numeric_limits<double>::infinity()), true);
 }
 
 TEST(Conv, NewUint64ToString) {
