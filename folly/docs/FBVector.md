@@ -1,4 +1,4 @@
-`folly/FBvector.h`
+`folly/FBVector.h`
 ------------------
 
 Simply replacing `std::vector` with `folly::fbvector` (after
