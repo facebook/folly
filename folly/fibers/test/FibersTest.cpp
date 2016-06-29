@@ -1270,7 +1270,7 @@ TEST(FiberManager, RequestContext) {
   {
     folly::RequestContextScopeGuard rctx;
     auto rcontext1 = folly::RequestContext::get();
-    fm.addTask([&]() {
+    fm.addTask([&, rcontext1]() {
       EXPECT_EQ(rcontext1, folly::RequestContext::get());
       baton1.wait(
           [&]() { EXPECT_EQ(rcontext1, folly::RequestContext::get()); });
@@ -1283,7 +1283,7 @@ TEST(FiberManager, RequestContext) {
   {
     folly::RequestContextScopeGuard rctx;
     auto rcontext2 = folly::RequestContext::get();
-    fm.addTaskRemote([&]() {
+    fm.addTaskRemote([&, rcontext2]() {
       EXPECT_EQ(rcontext2, folly::RequestContext::get());
       baton2.wait();
       EXPECT_EQ(rcontext2, folly::RequestContext::get());
@@ -1294,14 +1294,14 @@ TEST(FiberManager, RequestContext) {
     folly::RequestContextScopeGuard rctx;
     auto rcontext3 = folly::RequestContext::get();
     fm.addTaskFinally(
-        [&]() {
+        [&, rcontext3]() {
           EXPECT_EQ(rcontext3, folly::RequestContext::get());
           baton3.wait();
           EXPECT_EQ(rcontext3, folly::RequestContext::get());
 
           return folly::Unit();
         },
-        [&](Try<folly::Unit>&& /* t */) {
+        [&, rcontext3](Try<folly::Unit>&& /* t */) {
           EXPECT_EQ(rcontext3, folly::RequestContext::get());
           checkRun3 = true;
         });
