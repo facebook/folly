@@ -30,7 +30,7 @@ class TestData : public RequestData {
 TEST(Context, basic) {
 
   // Start a new context
-  RequestContext::create();
+  folly::RequestContextScopeGuard rctx;
 
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
 

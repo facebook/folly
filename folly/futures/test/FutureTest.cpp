@@ -822,30 +822,32 @@ TEST(Future, RequestContext) {
     bool value;
   };
 
-  NewThreadExecutor e;
-  RequestContext::create();
-  RequestContext::get()->setContextData("key",
-      folly::make_unique<MyRequestData>(true));
-  auto checker = [](int lineno) {
-    return [lineno](Try<int>&& /* t */) {
-      auto d = static_cast<MyRequestData*>(
-        RequestContext::get()->getContextData("key"));
-      EXPECT_TRUE(d && d->value) << "on line " << lineno;
-    };
-  };
-
-  makeFuture(1).via(&e).then(checker(__LINE__));
-
-  e.setHandlesPriorities();
-  makeFuture(2).via(&e).then(checker(__LINE__));
-
   Promise<int> p1, p2;
-  p1.getFuture().then(checker(__LINE__));
+  {
+    NewThreadExecutor e;
+    folly::RequestContextScopeGuard rctx;
+    RequestContext::get()->setContextData(
+        "key", folly::make_unique<MyRequestData>(true));
+    auto checker = [](int lineno) {
+      return [lineno](Try<int>&& /* t */) {
+        auto d = static_cast<MyRequestData*>(
+            RequestContext::get()->getContextData("key"));
+        EXPECT_TRUE(d && d->value) << "on line " << lineno;
+      };
+    };
 
-  e.setThrowsOnAdd();
-  p2.getFuture().via(&e).then(checker(__LINE__));
+    makeFuture(1).via(&e).then(checker(__LINE__));
 
-  RequestContext::create();
+    e.setHandlesPriorities();
+    makeFuture(2).via(&e).then(checker(__LINE__));
+
+    p1.getFuture().then(checker(__LINE__));
+
+    e.setThrowsOnAdd();
+    p2.getFuture().via(&e).then(checker(__LINE__));
+  }
+  // Assert that no RequestContext is set
+  EXPECT_FALSE(RequestContext::saveContext());
   p1.setValue(3);
   p2.setValue(4);
 }

@@ -1267,79 +1267,86 @@ TEST(FiberManager, RequestContext) {
   folly::fibers::Baton baton3;
   folly::fibers::Baton baton4;
 
-  folly::RequestContext::create();
-  auto rcontext1 = folly::RequestContext::get();
-  fm.addTask([&]() {
-    EXPECT_EQ(rcontext1, folly::RequestContext::get());
-    baton1.wait([&]() { EXPECT_EQ(rcontext1, folly::RequestContext::get()); });
-    EXPECT_EQ(rcontext1, folly::RequestContext::get());
-    runInMainContext(
-        [&]() { EXPECT_EQ(rcontext1, folly::RequestContext::get()); });
-    checkRun1 = true;
-  });
+  {
+    folly::RequestContextScopeGuard rctx;
+    auto rcontext1 = folly::RequestContext::get();
+    fm.addTask([&]() {
+      EXPECT_EQ(rcontext1, folly::RequestContext::get());
+      baton1.wait(
+          [&]() { EXPECT_EQ(rcontext1, folly::RequestContext::get()); });
+      EXPECT_EQ(rcontext1, folly::RequestContext::get());
+      runInMainContext(
+          [&]() { EXPECT_EQ(rcontext1, folly::RequestContext::get()); });
+      checkRun1 = true;
+    });
+  }
+  {
+    folly::RequestContextScopeGuard rctx;
+    auto rcontext2 = folly::RequestContext::get();
+    fm.addTaskRemote([&]() {
+      EXPECT_EQ(rcontext2, folly::RequestContext::get());
+      baton2.wait();
+      EXPECT_EQ(rcontext2, folly::RequestContext::get());
+      checkRun2 = true;
+    });
+  }
+  {
+    folly::RequestContextScopeGuard rctx;
+    auto rcontext3 = folly::RequestContext::get();
+    fm.addTaskFinally(
+        [&]() {
+          EXPECT_EQ(rcontext3, folly::RequestContext::get());
+          baton3.wait();
+          EXPECT_EQ(rcontext3, folly::RequestContext::get());
 
-  folly::RequestContext::create();
-  auto rcontext2 = folly::RequestContext::get();
-  fm.addTaskRemote([&]() {
-    EXPECT_EQ(rcontext2, folly::RequestContext::get());
-    baton2.wait();
-    EXPECT_EQ(rcontext2, folly::RequestContext::get());
-    checkRun2 = true;
-  });
+          return folly::Unit();
+        },
+        [&](Try<folly::Unit>&& /* t */) {
+          EXPECT_EQ(rcontext3, folly::RequestContext::get());
+          checkRun3 = true;
+        });
+  }
+  {
+    folly::RequestContext::setContext(nullptr);
+    fm.addTask([&]() {
+      folly::RequestContextScopeGuard rctx;
+      auto rcontext4 = folly::RequestContext::get();
+      baton4.wait();
+      EXPECT_EQ(rcontext4, folly::RequestContext::get());
+      checkRun4 = true;
+    });
+  }
+  {
+    folly::RequestContextScopeGuard rctx;
+    auto rcontext = folly::RequestContext::get();
 
-  folly::RequestContext::create();
-  auto rcontext3 = folly::RequestContext::get();
-  fm.addTaskFinally(
-      [&]() {
-        EXPECT_EQ(rcontext3, folly::RequestContext::get());
-        baton3.wait();
-        EXPECT_EQ(rcontext3, folly::RequestContext::get());
+    fm.loopUntilNoReady();
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
 
-        return folly::Unit();
-      },
-      [&](Try<folly::Unit>&& /* t */) {
-        EXPECT_EQ(rcontext3, folly::RequestContext::get());
-        checkRun3 = true;
-      });
+    baton1.post();
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
+    fm.loopUntilNoReady();
+    EXPECT_TRUE(checkRun1);
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
 
-  folly::RequestContext::setContext(nullptr);
-  fm.addTask([&]() {
-    folly::RequestContext::create();
-    auto rcontext4 = folly::RequestContext::get();
-    baton4.wait();
-    EXPECT_EQ(rcontext4, folly::RequestContext::get());
-    checkRun4 = true;
-  });
+    baton2.post();
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
+    fm.loopUntilNoReady();
+    EXPECT_TRUE(checkRun2);
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
 
-  folly::RequestContext::create();
-  auto rcontext = folly::RequestContext::get();
+    baton3.post();
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
+    fm.loopUntilNoReady();
+    EXPECT_TRUE(checkRun3);
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
 
-  fm.loopUntilNoReady();
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-
-  baton1.post();
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-  fm.loopUntilNoReady();
-  EXPECT_TRUE(checkRun1);
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-
-  baton2.post();
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-  fm.loopUntilNoReady();
-  EXPECT_TRUE(checkRun2);
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-
-  baton3.post();
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-  fm.loopUntilNoReady();
-  EXPECT_TRUE(checkRun3);
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-
-  baton4.post();
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
-  fm.loopUntilNoReady();
-  EXPECT_TRUE(checkRun4);
-  EXPECT_EQ(rcontext, folly::RequestContext::get());
+    baton4.post();
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
+    fm.loopUntilNoReady();
+    EXPECT_TRUE(checkRun4);
+    EXPECT_EQ(rcontext, folly::RequestContext::get());
+  }
 }
 
 TEST(FiberManager, resizePeriodically) {
