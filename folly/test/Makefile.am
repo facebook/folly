@@ -267,8 +267,8 @@ function_test_LDADD = libfollytestmain.la
 TESTS += function_test
 
 ssl_test_SOURCES = \
-		../ssl/OpenSSLHashTest.cpp
-ssl_test_LDADD = libfollytestmain.la
+		../ssl/test/OpenSSLHashTest.cpp
+ssl_test_LDADD = libfollytestmain.la -lcrypto
 TESTS += ssl_test
 
 check_PROGRAMS += $(TESTS)
