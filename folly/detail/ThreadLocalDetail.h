@@ -107,10 +107,11 @@ struct ElementWrapper {
     DCHECK(deleter2 == nullptr);
     if (p) {
       ptr = p;
-      deleter2 = new std::function<DeleterFunType>([d = d](
-          void* pt, TLPDestructionMode mode) {
-        d(static_cast<Ptr>(pt), mode);
-      });
+      auto d2 = d; // gcc-4.8 doesn't decay types correctly in lambda captures
+      deleter2 = new std::function<DeleterFunType>(
+          [d2](void* pt, TLPDestructionMode mode) {
+            d2(static_cast<Ptr>(pt), mode);
+          });
       ownsDeleter = true;
       guard.dismiss();
     }
