@@ -23,12 +23,14 @@
 
 #pragma once
 
-#include <type_traits>
-#include <mutex>
 #include <boost/thread.hpp>
+#include <folly/LockTraits.h>
+#include <folly/LockTraitsBoost.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
+#include <mutex>
+#include <type_traits>
 
 namespace folly {
 
@@ -39,14 +41,6 @@ enum InternalDoNotUse {};
  * Free function adaptors for std:: and boost::
  */
 
-// Android, OSX, and Cygwin don't have timed mutexes
-#if defined(ANDROID) || defined(__ANDROID__) || \
-    defined(__APPLE__) || defined(__CYGWIN__)
-# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 0
-#else
-# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 1
-#endif
-
 /**
  * Yields true iff T has .lock() and .unlock() member functions. This
  * is done by simply enumerating the mutexes with this interface in
@@ -54,19 +48,21 @@ enum InternalDoNotUse {};
  */
 template <class T>
 struct HasLockUnlock {
-  enum { value = IsOneOf<T
-      , std::mutex
-      , std::recursive_mutex
-      , boost::mutex
-      , boost::recursive_mutex
-      , boost::shared_mutex
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-      , std::timed_mutex
-      , std::recursive_timed_mutex
-      , boost::timed_mutex
-      , boost::recursive_timed_mutex
+  enum {
+    value = IsOneOf<
+        T,
+        std::mutex,
+        std::recursive_mutex,
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+        std::timed_mutex,
+        std::recursive_timed_mutex,
+        boost::timed_mutex,
+        boost::recursive_timed_mutex,
 #endif
-      >::value };
+        boost::mutex,
+        boost::recursive_mutex,
+        boost::shared_mutex>::value
+  };
 };
 
 /**
@@ -112,7 +108,7 @@ acquireReadWrite(T& mutex) {
   mutex.lock();
 }
 
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 /**
  * Acquires a mutex for reading by calling .try_lock_shared_for(). This applies
  * to boost::shared_mutex.
@@ -165,7 +161,7 @@ acquireReadWrite(T& mutex,
                  unsigned int milliseconds) {
   return mutex.try_lock_for(boost::chrono::milliseconds(milliseconds));
 }
-#endif // FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
+#endif // FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 
 /**
  * Releases a mutex previously acquired for reading by calling
