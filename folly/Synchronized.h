@@ -197,6 +197,11 @@ releaseReadWrite(T& mutex) {
 } // namespace detail
 
 /**
+ * NOTE: Synchronized<T> is deprecated in favor of Locked<T>.
+ * See the documentation in folly/docs/Synchronized.md and folly/docs/Locked.md
+ * for details, and steps for how to convert your code from Synchronized to
+ * Locked.
+ *
  * Synchronized<T> encapsulates an object of type T (a "datum") paired
  * with a mutex. The only way to access the datum is while the mutex
  * is locked, and Synchronized makes it virtually impossible to do
