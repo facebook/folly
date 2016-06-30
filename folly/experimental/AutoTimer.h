@@ -16,11 +16,13 @@
 #pragma once
 
 #include <chrono>
+#include <string>
+#include <type_traits>
+
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/String.h>
 #include <glog/logging.h>
-#include <string>
 
 namespace folly {
 
@@ -57,36 +59,23 @@ template<
   class Clock = std::chrono::high_resolution_clock
 > class AutoTimer final {
 public:
-  explicit AutoTimer(StringPiece msg = "")
-    : destructionMessage_(msg.str()),
-      start_(Clock::now()),
-      minTimeToLog_(0.0) {
-  }
+ explicit AutoTimer(
+     std::string&& msg = "",
+     double minTimetoLog = 0.0,
+     Logger&& logger = Logger())
+     : destructionMessage_(std::move(msg)),
+       minTimeToLog_(minTimetoLog),
+       logger_(std::move(logger)) {}
 
-  // Automatically generate a log message using to<std::string>. Makes it
-  // easier to do the common case of things like:
-  // AutoTimer t("Processed ", n, " items");
-  template<typename... Args>
-  explicit AutoTimer(Args&&... args)
-    : destructionMessage_(to<std::string>(std::forward<Args>(args)...)),
-      start_(Clock::now()),
-      minTimeToLog_(0.0) {
-  }
+ // It doesn't really make sense to copy AutoTimer
+ // Movable to make sure the helper method for creating an AutoTimer works.
+ AutoTimer(const AutoTimer&) = delete;
+ AutoTimer(AutoTimer&&) = default;
+ AutoTimer& operator=(const AutoTimer&) = delete;
+ AutoTimer& operator=(AutoTimer&&) = default;
 
-  // We don't expose this in the constructor because it creates ambiguity with
-  // the variadic template constructor.
-  void setMinTimeToLog(double t) {
-    minTimeToLog_ = t;
-  }
-
-  // It doesn't really make sense to copy/move an AutoTimer
-  AutoTimer(const AutoTimer&) = delete;
-  AutoTimer(AutoTimer&&) = delete;
-  AutoTimer& operator=(const AutoTimer&) = delete;
-  AutoTimer& operator=(AutoTimer&&) = delete;
-
-  ~AutoTimer() {
-    log(destructionMessage_);
+ ~AutoTimer() {
+   log(destructionMessage_);
   }
 
   double log(StringPiece msg = "") {
@@ -113,16 +102,28 @@ private:
       now - start_
     ).count();
     if (duration >= minTimeToLog_) {
-      Logger()(msg, duration);
+      logger_(msg, duration);
     }
     start_ = Clock::now(); // Don't measure logging time
     return duration;
   }
 
   const std::string destructionMessage_;
-  std::chrono::time_point<Clock> start_;
+  std::chrono::time_point<Clock> start_ = Clock::now();
   double minTimeToLog_;
+  Logger logger_;
 };
+
+template <
+    class Logger = GoogleLogger<GoogleLoggerStyle::PRETTY>,
+    class Clock = std::chrono::high_resolution_clock>
+auto makeAutoTimer(
+    std::string&& msg = "",
+    double minTimeToLog = 0.0,
+    Logger&& logger = Logger()) {
+  return AutoTimer<Logger, Clock>(
+      std::move(msg), minTimeToLog, std::move(logger));
+}
 
 template<GoogleLoggerStyle Style>
 struct GoogleLogger final {

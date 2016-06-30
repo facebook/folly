@@ -43,6 +43,25 @@ struct StubClock {
 
 int StubClock::t = 0;
 
+TEST(TestAutoTimer, HandleBasicClosure) {
+  auto logger = [](StringPiece msg, double sec) {
+    return StubLogger()(msg, sec);
+  };
+  StubClock::t = 1;
+  // Here decltype is needed. But since most users are expected to use this
+  // method with the default clock, template specification won't be needed even
+  // when they use a closure. See test case HandleRealTimerClosure
+  auto timer =
+      makeAutoTimer<decltype(logger), StubClock>("", 0.0, std::move(logger));
+  StubClock::t = 3;
+  timer.log("foo");
+  ASSERT_EQ("foo", StubLogger::m);
+  ASSERT_EQ(2, StubLogger::t);
+  timer.logFormat("bar {}", 5e-2);
+  ASSERT_EQ("bar 0.05", StubLogger::m);
+  ASSERT_EQ(0, StubLogger::t);
+}
+
 TEST(TestAutoTimer, HandleBasic) {
   StubClock::t = 1;
   AutoTimer<StubLogger, StubClock> timer;
@@ -69,6 +88,15 @@ TEST(TestAutoTimer, HandleLogOnDestruct) {
   ASSERT_EQ(2, StubLogger::t);
 }
 
+TEST(TestAutoTimer, HandleRealTimerClosure) {
+  auto t = makeAutoTimer(
+      "Third message on destruction", 0.0, [](StringPiece msg, double sec) {
+        GoogleLogger<GoogleLoggerStyle::PRETTY>()(msg, sec);
+      });
+  t.log("First message");
+  t.log("Second message");
+}
+
 TEST(TestAutoTimer, HandleRealTimer) {
   AutoTimer<> t("Third message on destruction");
   t.log("First message");
@@ -77,8 +105,7 @@ TEST(TestAutoTimer, HandleRealTimer) {
 
 TEST(TestAutoTimer, HandleMinLogTime) {
   StubClock::t = 1;
-  AutoTimer<StubLogger, StubClock> timer;
-  timer.setMinTimeToLog(3);
+  AutoTimer<StubLogger, StubClock> timer("", 3);
   StubClock::t = 3;
   // only 2 "seconds" have passed, so this shouldn't log
   StubLogger::t = 0;
