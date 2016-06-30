@@ -245,7 +245,7 @@ namespace {
 
 template <typename T>
 void checkArrayIndex(const T& array, size_t index) {
-  assert(index < sizeof(array) / sizeof(array[0]));
+  DCHECK_LT(index, sizeof(array) / sizeof(array[0]));
 }
 }
 
