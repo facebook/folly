@@ -40,6 +40,7 @@
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/portability/PThread.h>
@@ -493,6 +494,13 @@ class EventBase : private boost::noncopyable,
       loopThread_.load(std::memory_order_relaxed), pthread_self());
   }
 
+  HHWheelTimer& timer() {
+    if (!wheelTimer_) {
+      wheelTimer_ = HHWheelTimer::newTimer(this, std::chrono::milliseconds(1));
+    }
+    return *wheelTimer_.get();
+  }
+
   // --------- interface to underlying libevent base ------------
   // Avoid using these functions if possible.  These functions are not
   // guaranteed to always be present if we ever provide alternative EventBase
@@ -664,6 +672,9 @@ class EventBase : private boost::noncopyable,
   bool runLoopCallbacks(bool setContext = true);
 
   void initNotificationQueue();
+
+  // should only be accessed through public getter
+  HHWheelTimer::UniquePtr wheelTimer_;
 
   CobTimeout::List pendingCobTimeouts_;
 
