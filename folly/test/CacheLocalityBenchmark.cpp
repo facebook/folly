@@ -160,7 +160,7 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
   std::vector<std::thread> threads;
   while (threads.size() < numThreads) {
     threads.push_back(std::thread([&, iters, stripes, work]() {
-      std::atomic<size_t>* counters[stripes];
+      auto counters = std::vector<std::atomic<size_t>*>(stripes);
       for (size_t i = 0; i < stripes; ++i) {
         counters[i] =
             new (raw.data() + counterAlignment * i) std::atomic<size_t>();
