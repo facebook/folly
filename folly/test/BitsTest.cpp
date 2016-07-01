@@ -107,7 +107,7 @@ TEST(Bits, FindLastSet) {
   EXPECT_EQ(1024, nextPowTwoFunc(513u));                          \
   EXPECT_EQ(1024, nextPowTwoFunc(777u));                          \
   EXPECT_EQ(1ul << 31, nextPowTwoFunc((1ul << 31) - 1));          \
-  EXPECT_EQ(1ul << 32, nextPowTwoFunc((1ul << 32) - 1));          \
+  EXPECT_EQ(1ull << 32, nextPowTwoFunc((1ull << 32) - 1));        \
   EXPECT_EQ(1ull << 63, nextPowTwoFunc((1ull << 62) + 1));        \
 }
 

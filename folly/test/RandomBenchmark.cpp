@@ -63,7 +63,7 @@ BENCHMARK(RandomDouble) { doNotOptimizeAway(Random::randDouble01()); }
 BENCHMARK(Random32) { doNotOptimizeAway(Random::rand32()); }
 BENCHMARK(Random32Num) { doNotOptimizeAway(Random::rand32(100)); }
 BENCHMARK(Random64) { doNotOptimizeAway(Random::rand64()); }
-BENCHMARK(Random64Num) { doNotOptimizeAway(Random::rand64(100ul << 32)); }
+BENCHMARK(Random64Num) { doNotOptimizeAway(Random::rand64(100ull << 32)); }
 BENCHMARK(Random64OneIn) { doNotOptimizeAway(Random::oneIn(100)); }
 
 int main(int argc, char** argv) {

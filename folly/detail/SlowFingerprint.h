@@ -76,7 +76,7 @@ class SlowFingerprint {
   void updateLSB(uint64_t val, int bits) {
     val <<= (64-bits);
     for (; bits != 0; --bits) {
-      updateBit(val & (1UL << 63));
+      updateBit(val & (1ULL << 63));
       val <<= 1;
     }
   }
