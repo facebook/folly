@@ -1333,7 +1333,7 @@ TEST(String, stripLeftMargin_no_post_whitespace) {
   EXPECT_EQ(expected, stripLeftMargin(input));
 }
 
-const folly::StringPiece kTestUTF8 = "This is \U0001F602 stuff!";
+const folly::StringPiece kTestUTF8 = u8"This is \U0001F602 stuff!";
 
 TEST(UTF8StringPiece, valid_utf8) {
   folly::StringPiece sp = kTestUTF8;
@@ -1357,7 +1357,7 @@ TEST(UTF8StringPiece, invalid_mid_codepoint) {
 }
 
 TEST(UTF8StringPiece, valid_implicit_conversion) {
-  std::string input = "\U0001F602\U0001F602\U0001F602";
+  std::string input = u8"\U0001F602\U0001F602\U0001F602";
   auto checkImplicitCtor = [](UTF8StringPiece implicitCtor) {
     return implicitCtor.walk_size();
   };
