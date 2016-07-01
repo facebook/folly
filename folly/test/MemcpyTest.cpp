@@ -20,12 +20,12 @@
 
 namespace {
 
-constexpr size_t SIZE = 4096 * 4;
-char src[SIZE];
-char dst[SIZE];
+constexpr size_t kSize = 4096 * 4;
+char src[kSize];
+char dst[kSize];
 
 void init() {
-  for (size_t i = 0; i < SIZE; ++i) {
+  for (size_t i = 0; i < kSize; ++i) {
     src[i] = static_cast<char>(i);
     dst[i] = static_cast<char>(255 - i);
   }
@@ -42,7 +42,7 @@ TEST(memcpy, zero_len) UBSAN_DISABLE("nonnull-attribute") {
 
 // Test copy `len' bytes and verify that exactly `len' bytes are copied.
 void testLen(size_t len) {
-  if (len > SIZE) {
+  if (len > kSize) {
     return;
   }
   init();
@@ -51,7 +51,7 @@ void testLen(size_t len) {
     EXPECT_EQ(src[i], static_cast<char>(i));
     EXPECT_EQ(src[i], dst[i]);
   }
-  if (len < SIZE) {
+  if (len < kSize) {
     EXPECT_EQ(src[len], static_cast<char>(len));
     EXPECT_EQ(dst[len], static_cast<char>(255 - len));
   }
@@ -68,11 +68,11 @@ TEST(memcpy, main) {
     testLen(len);
   }
 
-  for (size_t len = 128; len < SIZE; len += 128) {
+  for (size_t len = 128; len < kSize; len += 128) {
     testLen(len);
   }
 
-  for (size_t len = 128; len < SIZE; len += 73) {
+  for (size_t len = 128; len < kSize; len += 73) {
     testLen(len);
   }
 }
