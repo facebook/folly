@@ -141,19 +141,19 @@ TEST(PCREPatternMatch, Simple) {
 }
 
 TEST(CaptureFD, GlogPatterns) {
-  CaptureFD stderr(2);
+  CaptureFD err(fileno(stderr));
   LOG(INFO) << "All is well";
-  EXPECT_NO_PCRE_MATCH(glogErrOrWarnPattern(), stderr.readIncremental());
+  EXPECT_NO_PCRE_MATCH(glogErrOrWarnPattern(), err.readIncremental());
   {
     LOG(ERROR) << "Uh-oh";
-    auto s = stderr.readIncremental();
+    auto s = err.readIncremental();
     EXPECT_PCRE_MATCH(glogErrorPattern(), s);
     EXPECT_NO_PCRE_MATCH(glogWarningPattern(), s);
     EXPECT_PCRE_MATCH(glogErrOrWarnPattern(), s);
   }
   {
     LOG(WARNING) << "Oops";
-    auto s = stderr.readIncremental();
+    auto s = err.readIncremental();
     EXPECT_NO_PCRE_MATCH(glogErrorPattern(), s);
     EXPECT_PCRE_MATCH(glogWarningPattern(), s);
     EXPECT_PCRE_MATCH(glogErrOrWarnPattern(), s);
@@ -163,7 +163,7 @@ TEST(CaptureFD, GlogPatterns) {
 TEST(CaptureFD, ChunkCob) {
   std::vector<std::string> chunks;
   {
-    CaptureFD stderr(2, [&](StringPiece p) {
+    CaptureFD err(fileno(stderr), [&](StringPiece p) {
       chunks.emplace_back(p.str());
       switch (chunks.size()) {
         case 1:
@@ -178,11 +178,11 @@ TEST(CaptureFD, ChunkCob) {
     });
     LOG(INFO) << "foo";
     LOG(INFO) << "bar";
-    EXPECT_PCRE_MATCH(".*foo.*bar.*", stderr.read());
-    auto chunk = stderr.readIncremental();
+    EXPECT_PCRE_MATCH(".*foo.*bar.*", err.read());
+    auto chunk = err.readIncremental();
     EXPECT_EQ(chunks.at(0), chunk);
     LOG(INFO) << "baz";
-    EXPECT_PCRE_MATCH(".*foo.*bar.*baz.*", stderr.read());
+    EXPECT_PCRE_MATCH(".*foo.*bar.*baz.*", err.read());
   }
   EXPECT_EQ(2, chunks.size());
 }
