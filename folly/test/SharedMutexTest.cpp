@@ -531,56 +531,56 @@ static void runContendedReaders(size_t numOps,
   }
 }
 
-static void folly_rwspin_reads(uint numOps,
+static void folly_rwspin_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, RWSpinLock, Locker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void shmtx_wr_pri_reads(uint numOps,
+static void shmtx_wr_pri_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, SharedMutexWritePriority, TokenLocker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void shmtx_w_bare_reads(uint numOps,
+static void shmtx_w_bare_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, SharedMutexWritePriority, Locker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void shmtx_rd_pri_reads(uint numOps,
+static void shmtx_rd_pri_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, SharedMutexReadPriority, TokenLocker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void shmtx_r_bare_reads(uint numOps,
+static void shmtx_r_bare_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, SharedMutexReadPriority, Locker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void folly_ticket_reads(uint numOps,
+static void folly_ticket_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, RWTicketSpinLock64, Locker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void boost_shared_reads(uint numOps,
+static void boost_shared_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, boost::shared_mutex, Locker>(
       numOps, numThreads, useSeparateLocks);
 }
 
-static void pthrd_rwlock_reads(uint numOps,
+static void pthrd_rwlock_reads(uint32_t numOps,
                                size_t numThreads,
                                bool useSeparateLocks) {
   runContendedReaders<atomic, PosixRWLock, Locker>(
@@ -649,7 +649,7 @@ static void folly_rwspin(size_t numOps,
       numOps, numThreads, writeFraction, useSeparateLocks);
 }
 
-static void shmtx_wr_pri(uint numOps,
+static void shmtx_wr_pri(uint32_t numOps,
                          size_t numThreads,
                          double writeFraction,
                          bool useSeparateLocks) {
@@ -657,7 +657,7 @@ static void shmtx_wr_pri(uint numOps,
       numOps, numThreads, writeFraction, useSeparateLocks);
 }
 
-static void shmtx_w_bare(uint numOps,
+static void shmtx_w_bare(uint32_t numOps,
                          size_t numThreads,
                          double writeFraction,
                          bool useSeparateLocks) {
@@ -665,7 +665,7 @@ static void shmtx_w_bare(uint numOps,
       numOps, numThreads, writeFraction, useSeparateLocks);
 }
 
-static void shmtx_rd_pri(uint numOps,
+static void shmtx_rd_pri(uint32_t numOps,
                          size_t numThreads,
                          double writeFraction,
                          bool useSeparateLocks) {
@@ -673,7 +673,7 @@ static void shmtx_rd_pri(uint numOps,
       numOps, numThreads, writeFraction, useSeparateLocks);
 }
 
-static void shmtx_r_bare(uint numOps,
+static void shmtx_r_bare(uint32_t numOps,
                          size_t numThreads,
                          double writeFraction,
                          bool useSeparateLocks) {

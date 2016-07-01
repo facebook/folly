@@ -368,7 +368,7 @@ BENCHMARK(single_thread_posix_trywait, iters) {
   EXPECT_EQ(sem_destroy(&sem), 0);
 }
 
-static void contendedUse(uint n, int posters, int waiters) {
+static void contendedUse(uint32_t n, int posters, int waiters) {
   LifoSemImpl<std::atomic> sem;
 
   std::vector<std::thread> threads;
@@ -377,7 +377,7 @@ static void contendedUse(uint n, int posters, int waiters) {
   BENCHMARK_SUSPEND {
     for (int t = 0; t < waiters; ++t) {
       threads.emplace_back([=,&sem] {
-        for (uint i = t; i < n; i += waiters) {
+        for (uint32_t i = t; i < n; i += waiters) {
           sem.wait();
         }
       });
@@ -387,7 +387,7 @@ static void contendedUse(uint n, int posters, int waiters) {
         while (!go.load()) {
           std::this_thread::yield();
         }
-        for (uint i = t; i < n; i += posters) {
+        for (uint32_t i = t; i < n; i += posters) {
           sem.post();
         }
       });
