@@ -110,53 +110,59 @@ struct ConstVisitorResult {
     typename ConstVisitorResult1<V,Types>::type...>::type type;
 };
 
-template <typename V, typename R, typename... Types> struct ApplyVisitor1;
-
-template <typename V, typename R>
-struct ApplyVisitor1<V, R> {
-  R operator()(size_t /* index */, V&& /* visitor */, void* /* ptr */) const {
-    CHECK(false);  // NOTREACHED
-  }
-};
+template <size_t index, typename V, typename R, typename... Types>
+struct ApplyVisitor1;
 
 template <typename V, typename R, typename T, typename... Types>
-struct ApplyVisitor1<V, R, T, Types...> {
-  R operator()(size_t index, V&& visitor, void* ptr) const {
-    return (index == 1 ? visitor(static_cast<T*>(ptr)) :
-            ApplyVisitor1<V, R, Types...>()(
-              index - 1, std::forward<V>(visitor), ptr));
+struct ApplyVisitor1<1, V, R, T, Types...> {
+  R operator()(size_t, V&& visitor, void* ptr) const {
+    return visitor(static_cast<T*>(ptr));
   }
 };
 
-template <typename V, typename R, typename... Types> struct ApplyConstVisitor1;
-
-template <typename V, typename R>
-struct ApplyConstVisitor1<V, R> {
-  R operator()(size_t /* index */, V&& /* visitor */, void* /* ptr */) const {
-    CHECK(false);  // NOTREACHED
+template <size_t index, typename V, typename R, typename T, typename... Types>
+struct ApplyVisitor1<index, V, R, T, Types...> {
+  R operator()(size_t runtimeIndex, V&& visitor, void* ptr) const {
+    return runtimeIndex == 1
+        ? visitor(static_cast<T*>(ptr))
+        : ApplyVisitor1<index - 1, V, R, Types...>()(
+              runtimeIndex - 1, std::forward<V>(visitor), ptr);
   }
 };
+
+template <size_t index, typename V, typename R, typename... Types>
+struct ApplyConstVisitor1;
 
 template <typename V, typename R, typename T, typename... Types>
-struct ApplyConstVisitor1<V, R, T, Types...> {
-  R operator()(size_t index, V&& visitor, void* ptr) const {
-    return (index == 1 ? visitor(static_cast<const T*>(ptr)) :
-            ApplyConstVisitor1<V, R, Types...>()(
-              index - 1, std::forward<V>(visitor), ptr));
+struct ApplyConstVisitor1<1, V, R, T, Types...> {
+  R operator()(size_t, V&& visitor, void* ptr) const {
+    return visitor(static_cast<const T*>(ptr));
+  }
+};
+
+template <size_t index, typename V, typename R, typename T, typename... Types>
+struct ApplyConstVisitor1<index, V, R, T, Types...> {
+  R operator()(size_t runtimeIndex, V&& visitor, void* ptr) const {
+    return runtimeIndex == 1
+        ? visitor(static_cast<const T*>(ptr))
+        : ApplyConstVisitor1<index - 1, V, R, Types...>()(
+              runtimeIndex - 1, std::forward<V>(visitor), ptr);
   }
 };
 
 template <typename V, typename... Types>
-struct ApplyVisitor
-  : ApplyVisitor1<
-      V, typename VisitorResult<V, Types...>::type, Types...> {
-};
+using ApplyVisitor = ApplyVisitor1<
+    sizeof...(Types),
+    V,
+    typename VisitorResult<V, Types...>::type,
+    Types...>;
 
 template <typename V, typename... Types>
-struct ApplyConstVisitor
-  : ApplyConstVisitor1<
-      V, typename ConstVisitorResult<V, Types...>::type, Types...> {
-};
+using ApplyConstVisitor = ApplyConstVisitor1<
+    sizeof...(Types),
+    V,
+    typename ConstVisitorResult<V, Types...>::type,
+    Types...>;
 
 }  // namespace dptr_detail
 }  // namespace folly
