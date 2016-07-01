@@ -509,7 +509,7 @@ char someString[] = "this is some nice string";
 char otherString[] = "this is a long string, so it's not so nice";
 char reallyShort[] = "meh";
 std::string stdString = "std::strings are very nice";
-float fValue = 1.2355;
+float fValue = 1.2355f;
 double dValue = 345345345.435;
 }
 }

@@ -181,7 +181,7 @@ TEST(Ahm, grow) {
   VLOG(1) << "Overhead: " << sizeof(AHArrayT) << " (array) " <<
     sizeof(AHMapT) + sizeof(AHArrayT) << " (map/set) Bytes.";
   uint64_t numEntries = 10000;
-  float sizeFactor = 0.46;
+  float sizeFactor = 0.46f;
 
   std::unique_ptr<AHMapT> m(new AHMapT(int(numEntries * sizeFactor), config));
 
@@ -241,7 +241,7 @@ TEST(Ahm, grow) {
 
 TEST(Ahm, iterator) {
   int numEntries = 10000;
-  float sizeFactor = .46;
+  float sizeFactor = .46f;
   std::unique_ptr<AHMapT> m(new AHMapT(int(numEntries * sizeFactor), config));
 
   // load map - make sure we succeed and the index is accurate
@@ -347,7 +347,7 @@ TEST(Ahm, map_exception_safety) {
   typedef AtomicHashMap<KeyT,Integer> MyMapT;
 
   int numEntries = 10000;
-  float sizeFactor = 0.46;
+  float sizeFactor = 0.46f;
   std::unique_ptr<MyMapT> m(new MyMapT(int(numEntries * sizeFactor)));
 
   bool success = true;
@@ -470,7 +470,7 @@ TEST(Ahm, collision_test) {
   // Doing the same number on each thread so we collide.
   numOpsPerThread = numInserts;
 
-  float sizeFactor = 0.46;
+  float sizeFactor = 0.46f;
   int entrySize = sizeof(KeyT) + sizeof(ValueT);
   VLOG(1) << "Testing " << numInserts << " unique " << entrySize <<
     " Byte entries replicated in " << FLAGS_numThreads <<

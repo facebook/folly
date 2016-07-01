@@ -81,7 +81,7 @@ TEST(Conv, Type2Type) {
   int intV = 42;
   EXPECT_EQ(to<int>(intV), 42);
 
-  float floatV = 4.2;
+  float floatV = 4.2f;
   EXPECT_EQ(to<float>(floatV), 4.2f);
 
   double doubleV = 0.42;
@@ -117,7 +117,7 @@ TEST(Conv, Integral2Integral) {
 }
 
 TEST(Conv, Floating2Floating) {
-  float f1 = 1e3;
+  float f1 = 1e3f;
   double d1 = to<double>(f1);
   EXPECT_EQ(f1, d1);
 
