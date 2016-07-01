@@ -304,6 +304,7 @@ nobase_follyinclude_HEADERS = \
 	stats/MultiLevelTimeSeries.h \
 	stats/TimeseriesHistogram-defs.h \
 	stats/TimeseriesHistogram.h \
+	stop_watch.h \
 	String.h \
 	String-inl.h \
 	Subprocess.h \
