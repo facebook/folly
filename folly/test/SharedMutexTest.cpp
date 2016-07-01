@@ -1371,8 +1371,8 @@ BENCHMARK(single_thread_lock_unlock, iters) {
   }
 }
 
-#define BENCH_BASE(args...) BENCHMARK_NAMED_PARAM(args)
-#define BENCH_REL(args...) BENCHMARK_RELATIVE_NAMED_PARAM(args)
+#define BENCH_BASE(...) BENCHMARK_NAMED_PARAM(__VA_ARGS__)
+#define BENCH_REL(...) BENCHMARK_RELATIVE_NAMED_PARAM(__VA_ARGS__)
 
 // 100% reads.  Best-case scenario for deferred locks.  Lock is colocated
 // with read data, so inline lock takes cache miss every time but deferred

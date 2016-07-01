@@ -37,11 +37,12 @@ namespace test {
 
 // This is ugly, but better perf for DeterministicAtomic translates
 // directly to more states explored and tested
-#define FOLLY_TEST_DSCHED_VLOG(msg...)                                  \
-  do {                                                                  \
-    if (false) {                                                        \
-      VLOG(2) << std::hex << std::this_thread::get_id() << ": " << msg; \
-    }                                                                   \
+#define FOLLY_TEST_DSCHED_VLOG(...)                             \
+  do {                                                          \
+    if (false) {                                                \
+      VLOG(2) << std::hex << std::this_thread::get_id() << ": " \
+              << __VA_ARGS__;                                   \
+    }                                                           \
   } while (false)
 
 /**
