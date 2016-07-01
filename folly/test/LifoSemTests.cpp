@@ -23,6 +23,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
+#include <folly/portability/Asm.h>
 #include <folly/portability/GFlags.h>
 #include <folly/test/DeterministicSchedule.h>
 
@@ -319,7 +320,7 @@ BENCHMARK(single_thread_lifo_post, iters) {
   LifoSem sem;
   for (size_t n = 0; n < iters; ++n) {
     sem.post();
-    asm volatile ("":::"memory");
+    asm_volatile_memory();
   }
 }
 
@@ -327,7 +328,7 @@ BENCHMARK(single_thread_lifo_wait, iters) {
   LifoSem sem(iters);
   for (size_t n = 0; n < iters; ++n) {
     sem.wait();
-    asm volatile ("":::"memory");
+    asm_volatile_memory();
   }
 }
 
@@ -335,9 +336,9 @@ BENCHMARK(single_thread_lifo_postwait, iters) {
   LifoSem sem;
   for (size_t n = 0; n < iters; ++n) {
     sem.post();
-    asm volatile ("":::"memory");
+    asm_volatile_memory();
     sem.wait();
-    asm volatile ("":::"memory");
+    asm_volatile_memory();
   }
 }
 
@@ -345,7 +346,7 @@ BENCHMARK(single_thread_lifo_trywait, iters) {
   LifoSem sem;
   for (size_t n = 0; n < iters; ++n) {
     EXPECT_FALSE(sem.tryWait());
-    asm volatile ("":::"memory");
+    asm_volatile_memory();
   }
 }
 
