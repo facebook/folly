@@ -28,7 +28,8 @@ namespace folly {
 
 // Default logger
 enum class GoogleLoggerStyle { SECONDS, PRETTY };
-template<GoogleLoggerStyle> struct GoogleLogger;
+template <GoogleLoggerStyle>
+struct GoogleLogger;
 
 /**
  * Automatically times a block of code, printing a specified log message on
@@ -54,53 +55,53 @@ template<GoogleLoggerStyle> struct GoogleLogger;
  *   doWork()
  *   const auto how_long = t.log();
  */
-template<
-  class Logger = GoogleLogger<GoogleLoggerStyle::PRETTY>,
-  class Clock = std::chrono::high_resolution_clock
-> class AutoTimer final {
-public:
- explicit AutoTimer(
-     std::string&& msg = "",
-     double minTimetoLog = 0.0,
-     Logger&& logger = Logger())
-     : destructionMessage_(std::move(msg)),
-       minTimeToLog_(minTimetoLog),
-       logger_(std::move(logger)) {}
+template <
+    class Logger = GoogleLogger<GoogleLoggerStyle::PRETTY>,
+    class Clock = std::chrono::high_resolution_clock>
+class AutoTimer final {
+ public:
+  explicit AutoTimer(
+      std::string&& msg = "",
+      double minTimetoLog = 0.0,
+      Logger&& logger = Logger())
+      : destructionMessage_(std::move(msg)),
+        minTimeToLog_(minTimetoLog),
+        logger_(std::move(logger)) {}
 
- // It doesn't really make sense to copy AutoTimer
- // Movable to make sure the helper method for creating an AutoTimer works.
- AutoTimer(const AutoTimer&) = delete;
- AutoTimer(AutoTimer&&) = default;
- AutoTimer& operator=(const AutoTimer&) = delete;
- AutoTimer& operator=(AutoTimer&&) = default;
+  // It doesn't really make sense to copy AutoTimer
+  // Movable to make sure the helper method for creating an AutoTimer works.
+  AutoTimer(const AutoTimer&) = delete;
+  AutoTimer(AutoTimer&&) = default;
+  AutoTimer& operator=(const AutoTimer&) = delete;
+  AutoTimer& operator=(AutoTimer&&) = default;
 
- ~AutoTimer() {
-   log(destructionMessage_);
+  ~AutoTimer() {
+    log(destructionMessage_);
   }
 
   double log(StringPiece msg = "") {
     return logImpl(Clock::now(), msg);
   }
 
-  template<typename... Args>
+  template <typename... Args>
   double log(Args&&... args) {
     auto now = Clock::now();
     return logImpl(now, to<std::string>(std::forward<Args>(args)...));
   }
 
-  template<typename... Args>
+  template <typename... Args>
   double logFormat(Args&&... args) {
     auto now = Clock::now();
     return logImpl(now, format(std::forward<Args>(args)...).str());
   }
 
-private:
+ private:
   // We take in the current time so that we don't measure time to call
   // to<std::string> or format() in the duration.
   double logImpl(std::chrono::time_point<Clock> now, StringPiece msg) {
-    double duration = std::chrono::duration_cast<std::chrono::duration<double>>(
-      now - start_
-    ).count();
+    double duration =
+        std::chrono::duration_cast<std::chrono::duration<double>>(now - start_)
+            .count();
     if (duration >= minTimeToLog_) {
       logger_(msg, duration);
     }
@@ -125,7 +126,7 @@ auto makeAutoTimer(
       std::move(msg), minTimeToLog, std::move(logger));
 }
 
-template<GoogleLoggerStyle Style>
+template <GoogleLoggerStyle Style>
 struct GoogleLogger final {
   void operator()(StringPiece msg, double sec) const {
     if (msg.empty()) {
@@ -138,6 +139,4 @@ struct GoogleLogger final {
     }
   }
 };
-
-
 }
