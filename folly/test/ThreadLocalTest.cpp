@@ -85,7 +85,7 @@ TEST(ThreadLocalPtr, CustomDeleterOwnershipTransfer) {
     auto deleter = [](Widget* ptr) {
       Widget::customDeleter(ptr, TLPDestructionMode::THIS_THREAD);
     };
-    std::unique_ptr<Widget, typeof(deleter)> source(new Widget(), deleter);
+    std::unique_ptr<Widget, decltype(deleter)> source(new Widget(), deleter);
     std::thread([&w, &source]() {
       w.reset(std::move(source));
       w.get()->val_ += 10;
