@@ -45,8 +45,9 @@ struct GoogleLogger;
  *   "Foo() completed in 4.3 seconds"
  *
  * You can customize what you use as the logger and clock. The logger needs
- * to have an operator()(StringPiece, double) that gets a message and a duration
- * (in seconds). The clock needs to model Clock from std::chrono.
+ * to have an operator()(StringPiece, std::chrono::duration<double>) that
+ * gets a message and a duration. The clock needs to model Clock from
+ * std::chrono.
  *
  * The default logger logs usings glog. It only logs if the message is
  * non-empty, so you can also just use this class for timing, e.g.:
@@ -60,9 +61,11 @@ template <
     class Clock = std::chrono::high_resolution_clock>
 class AutoTimer final {
  public:
+  using DoubleSeconds = std::chrono::duration<double>;
+
   explicit AutoTimer(
       std::string&& msg = "",
-      double minTimetoLog = 0.0,
+      const DoubleSeconds& minTimetoLog = DoubleSeconds::zero(),
       Logger&& logger = Logger())
       : destructionMessage_(std::move(msg)),
         minTimeToLog_(minTimetoLog),
@@ -79,18 +82,18 @@ class AutoTimer final {
     log(destructionMessage_);
   }
 
-  double log(StringPiece msg = "") {
+  DoubleSeconds log(StringPiece msg = "") {
     return logImpl(Clock::now(), msg);
   }
 
   template <typename... Args>
-  double log(Args&&... args) {
+  DoubleSeconds log(Args&&... args) {
     auto now = Clock::now();
     return logImpl(now, to<std::string>(std::forward<Args>(args)...));
   }
 
   template <typename... Args>
-  double logFormat(Args&&... args) {
+  DoubleSeconds logFormat(Args&&... args) {
     auto now = Clock::now();
     return logImpl(now, format(std::forward<Args>(args)...).str());
   }
@@ -98,10 +101,8 @@ class AutoTimer final {
  private:
   // We take in the current time so that we don't measure time to call
   // to<std::string> or format() in the duration.
-  double logImpl(std::chrono::time_point<Clock> now, StringPiece msg) {
-    double duration =
-        std::chrono::duration_cast<std::chrono::duration<double>>(now - start_)
-            .count();
+  DoubleSeconds logImpl(std::chrono::time_point<Clock> now, StringPiece msg) {
+    auto duration = now - start_;
     if (duration >= minTimeToLog_) {
       logger_(msg, duration);
     }
@@ -111,7 +112,7 @@ class AutoTimer final {
 
   const std::string destructionMessage_;
   std::chrono::time_point<Clock> start_ = Clock::now();
-  double minTimeToLog_;
+  DoubleSeconds minTimeToLog_;
   Logger logger_;
 };
 
@@ -120,7 +121,8 @@ template <
     class Clock = std::chrono::high_resolution_clock>
 auto makeAutoTimer(
     std::string&& msg = "",
-    double minTimeToLog = 0.0,
+    const std::chrono::duration<double>& minTimeToLog =
+        std::chrono::duration<double>::zero(),
     Logger&& logger = Logger()) {
   return AutoTimer<Logger, Clock>(
       std::move(msg), minTimeToLog, std::move(logger));
@@ -128,14 +130,16 @@ auto makeAutoTimer(
 
 template <GoogleLoggerStyle Style>
 struct GoogleLogger final {
-  void operator()(StringPiece msg, double sec) const {
+  void operator()(StringPiece msg, const std::chrono::duration<double>& sec)
+      const {
     if (msg.empty()) {
       return;
     }
     if (Style == GoogleLoggerStyle::PRETTY) {
-      LOG(INFO) << msg << " in " << prettyPrint(sec, PrettyType::PRETTY_TIME);
+      LOG(INFO) << msg << " in "
+                << prettyPrint(sec.count(), PrettyType::PRETTY_TIME);
     } else {
-      LOG(INFO) << msg << " in " << sec << " seconds";
+      LOG(INFO) << msg << " in " << sec.count() << " seconds";
     }
   }
 };

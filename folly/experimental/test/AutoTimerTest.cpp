@@ -21,9 +21,9 @@ using namespace folly;
 using namespace std;
 
 struct StubLogger {
-  void operator()(StringPiece msg, double sec) {
+  void operator()(StringPiece msg, std::chrono::duration<double> sec) {
     m = msg.str();
-    t = sec;
+    t = sec.count();
   }
   static std::string m;
   static double t;
@@ -44,15 +44,15 @@ struct StubClock {
 int StubClock::t = 0;
 
 TEST(TestAutoTimer, HandleBasicClosure) {
-  auto logger = [](StringPiece msg, double sec) {
+  auto logger = [](StringPiece msg, auto sec) {
     return StubLogger()(msg, sec);
   };
   StubClock::t = 1;
   // Here decltype is needed. But since most users are expected to use this
   // method with the default clock, template specification won't be needed even
   // when they use a closure. See test case HandleRealTimerClosure
-  auto timer =
-      makeAutoTimer<decltype(logger), StubClock>("", 0.0, std::move(logger));
+  auto timer = makeAutoTimer<decltype(logger), StubClock>(
+      "", std::chrono::duration<double>::zero(), std::move(logger));
   StubClock::t = 3;
   timer.log("foo");
   ASSERT_EQ("foo", StubLogger::m);
@@ -90,7 +90,9 @@ TEST(TestAutoTimer, HandleLogOnDestruct) {
 
 TEST(TestAutoTimer, HandleRealTimerClosure) {
   auto t = makeAutoTimer(
-      "Third message on destruction", 0.0, [](StringPiece msg, double sec) {
+      "Third message on destruction",
+      std::chrono::duration<double>::zero(),
+      [](StringPiece msg, auto sec) {
         GoogleLogger<GoogleLoggerStyle::PRETTY>()(msg, sec);
       });
   t.log("First message");
@@ -105,10 +107,10 @@ TEST(TestAutoTimer, HandleRealTimer) {
 
 TEST(TestAutoTimer, HandleMinLogTime) {
   StubClock::t = 1;
-  AutoTimer<StubLogger, StubClock> timer("", 3);
+  AutoTimer<StubLogger, StubClock> timer("", std::chrono::duration<double>(3));
   StubClock::t = 3;
   // only 2 "seconds" have passed, so this shouldn't log
   StubLogger::t = 0;
-  ASSERT_EQ(2.0, timer.log("foo"));
-  ASSERT_EQ(0, StubLogger::t);
+  ASSERT_EQ(std::chrono::duration<double>(2), timer.log("foo"));
+  ASSERT_EQ(std::chrono::duration<double>::zero().count(), StubLogger::t);
 }
