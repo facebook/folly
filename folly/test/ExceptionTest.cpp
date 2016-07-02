@@ -76,7 +76,7 @@ TEST(ExceptionTest, Simple) {
 
   TemporaryDirectory tmpdir;
   auto exnpath = tmpdir.path() / "ExceptionTest";
-  auto fp = fopen(exnpath.c_str(), "w+b");
+  auto fp = fopen(exnpath.string().c_str(), "w+b");
   ASSERT_TRUE(fp != nullptr);
   SCOPE_EXIT { fclose(fp); };
 

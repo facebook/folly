@@ -50,7 +50,7 @@ TEST(FileGen, ByLine) {
     EXPECT_EQ(lines.size(), write(file.fd(), lines.data(), lines.size()));
 
     auto expected = from({lines}) | resplit('\n') | collect;
-    auto found = byLine(file.path().c_str()) | collect;
+    auto found = byLine(file.path().string().c_str()) | collect;
 
     EXPECT_EQ(expected, found) << "For Input: '" << lines << "'";
   }
@@ -74,7 +74,7 @@ TEST_P(FileGenBufferedTest, FileWriter) {
   auto expected = src | resplit('\n') | collect;
 
   src | eachAs<StringPiece>() | toFile(File(file.fd()), bufferSize);
-  auto found = byLine(file.path().c_str()) | collect;
+  auto found = byLine(file.path().string().c_str()) | collect;
 
   EXPECT_TRUE(expected == found);
 }
@@ -86,7 +86,7 @@ TEST(FileGenBufferedTest, FileWriterSimple) {
   auto squares = seq(1, 100) | map([](int x) { return x * x; });
   squares | map(toLine) | eachAs<StringPiece>() | toFile(File(file.fd()));
   EXPECT_EQ(squares | sum,
-            byLine(File(file.path().c_str())) | eachTo<int>() | sum);
+            byLine(File(file.path().string().c_str())) | eachTo<int>() | sum);
 }
 
 INSTANTIATE_TEST_CASE_P(
