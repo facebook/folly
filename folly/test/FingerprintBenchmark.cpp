@@ -43,7 +43,7 @@ void initialize() {
   // word length = uniformly distributed between 1 and 10
   // charset = 0x20 - 0x7f
   std::uniform_int_distribution<size_t> term_len(1, 10);
-  std::uniform_int_distribution<uint8_t> term_char(0x20, 0x7f);
+  std::uniform_int_distribution<uint16_t> term_char(0x20, 0x7f);
   for (int i = 0; i < kMaxTerms; i++) {
     std::string& term = terms[i];
     int len = term_len(rng);

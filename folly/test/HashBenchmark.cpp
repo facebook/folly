@@ -34,7 +34,7 @@ namespace detail {
 std::vector<uint8_t> randomBytes(size_t n) {
   std::vector<uint8_t> ret(n);
   std::default_random_engine rng(1729);  // Deterministic seed.
-  std::uniform_int_distribution<uint8_t> dist(0, 255);
+  std::uniform_int_distribution<uint16_t> dist(0, 255);
   std::generate(ret.begin(), ret.end(), [&] () { return dist(rng); });
   return ret;
 }
