@@ -572,6 +572,12 @@ TEST(ThreadLocal, Fork2) {
   }
 }
 
+// Elide this test when using any sanitizer. Otherwise, the dlopen'ed code
+// would end up running without e.g., ASAN-initialized data structures and
+// failing right away.
+#if !defined FOLLY_SANITIZE_ADDRESS && !defined UNDEFINED_SANITIZER && \
+    !defined FOLLY_SANITIZE_THREAD
+
 TEST(ThreadLocal, SharedLibrary) {
   auto exe = fs::executable_path();
   auto lib = exe.parent_path() / "lib_thread_local_test.so";
@@ -612,6 +618,8 @@ TEST(ThreadLocal, SharedLibrary) {
   t1.join();
   t2.join();
 }
+
+#endif
 
 namespace folly { namespace threadlocal_detail {
 struct PthreadKeyUnregisterTester {
