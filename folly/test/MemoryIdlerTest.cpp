@@ -17,6 +17,7 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <folly/Baton.h>
+#include <folly/portability/Windows.h>
 
 #include <memory>
 #include <thread>

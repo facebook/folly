@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <thread>
 
 #include <gtest/gtest.h>

@@ -16,9 +16,7 @@
 
 #include <folly/ThreadLocal.h>
 
-#include <dlfcn.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #include <array>
 #include <atomic>

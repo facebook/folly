@@ -24,7 +24,8 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <time.h>
+
+#include <folly/portability/Time.h>
 
 using namespace folly::detail;
 using namespace folly::test;

@@ -17,6 +17,8 @@
 #include <folly/stats/TimeseriesHistogram.h>
 #include <folly/stats/TimeseriesHistogram-defs.h>
 
+#include <random>
+
 #include <gtest/gtest.h>
 
 using namespace std;

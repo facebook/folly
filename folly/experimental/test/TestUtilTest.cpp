@@ -23,9 +23,11 @@
 #include <system_error>
 
 #include <boost/algorithm/string.hpp>
-#include <folly/Memory.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include <folly/Memory.h>
+#include <folly/portability/Environment.h>
 
 using namespace folly;
 using namespace folly::test;

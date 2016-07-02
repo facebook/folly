@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include <numeric>
+
 #include <boost/thread/barrier.hpp>
 
 #include <folly/futures/Future.h>

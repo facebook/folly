@@ -25,13 +25,13 @@
 #include <string>
 #include <vector>
 #include <pthread.h>
-#include <unistd.h>
 
 #include <thread>
 
 #include <gtest/gtest.h>
 
 #include <folly/portability/Asm.h>
+#include <folly/portability/Unistd.h>
 
 using folly::MSLGuard;
 using folly::MicroLock;

@@ -19,6 +19,8 @@
 #include <folly/stats/MultiLevelTimeSeries.h>
 #include <folly/stats/MultiLevelTimeSeries-defs.h>
 
+#include <array>
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
