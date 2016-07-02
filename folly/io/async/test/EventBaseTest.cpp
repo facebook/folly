@@ -53,9 +53,10 @@ enum { BUF_SIZE = 4096 };
 
 ssize_t writeToFD(int fd, size_t length) {
   // write an arbitrary amount of data to the fd
-  char buf[length];
-  memset(buf, 'a', sizeof(buf));
-  ssize_t rc = write(fd, buf, sizeof(buf));
+  auto bufv = vector<char>(length);
+  auto buf = bufv.data();
+  memset(buf, 'a', length);
+  ssize_t rc = write(fd, buf, length);
   CHECK_EQ(rc, length);
   return rc;
 }
@@ -79,8 +80,8 @@ size_t writeUntilFull(int fd) {
 
 ssize_t readFromFD(int fd, size_t length) {
   // write an arbitrary amount of data to the fd
-  char buf[length];
-  return read(fd, buf, sizeof(buf));
+  auto buf = vector<char>(length);
+  return read(fd, buf.data(), length);
 }
 
 size_t readUntilEmpty(int fd) {

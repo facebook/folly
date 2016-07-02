@@ -1018,8 +1018,9 @@ TEST(FBString, testAllClauses) {
       rng = RandomT(localSeed);
       f_wfbstring(wc);
       int wret = wcslen(wc.c_str());
-      char mb[wret+1];
-      int ret = wcstombs(mb, wc.c_str(), sizeof(mb));
+      auto mbv = std::vector<char>(wret + 1);
+      auto mb = mbv.data();
+      int ret = wcstombs(mb, wc.c_str(), wret + 1);
       if (ret == wret) mb[wret] = '\0';
       const char *mc = c.c_str();
       std::string one(mb);
