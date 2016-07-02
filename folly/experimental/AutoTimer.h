@@ -21,6 +21,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Format.h>
+#include <folly/Optional.h>
 #include <folly/String.h>
 #include <glog/logging.h>
 
@@ -79,7 +80,9 @@ class AutoTimer final {
   AutoTimer& operator=(AutoTimer&&) = default;
 
   ~AutoTimer() {
-    log(destructionMessage_);
+    if (destructionMessage_) {
+      log(destructionMessage_.value());
+    }
   }
 
   DoubleSeconds log(StringPiece msg = "") {
@@ -110,7 +113,7 @@ class AutoTimer final {
     return duration;
   }
 
-  const std::string destructionMessage_;
+  Optional<std::string> destructionMessage_;
   std::chrono::time_point<Clock> start_ = Clock::now();
   DoubleSeconds minTimeToLog_;
   Logger logger_;

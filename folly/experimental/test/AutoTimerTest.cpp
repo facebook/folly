@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
 
+#include <gtest/gtest.h>
 #include <folly/experimental/AutoTimer.h>
 
 using namespace folly;
@@ -113,4 +113,28 @@ TEST(TestAutoTimer, HandleMinLogTime) {
   StubLogger::t = 0;
   ASSERT_EQ(std::chrono::duration<double>(2), timer.log("foo"));
   ASSERT_EQ(std::chrono::duration<double>::zero().count(), StubLogger::t);
+}
+
+TEST(TestAutoTimer, MovedObjectDestructionDoesntLog) {
+  const std::vector<std::string> expectedMsgs = {
+      "BEFORE_MOVE", "AFTER_MOVE", "END"};
+  int32_t current = 0;
+  SCOPE_EXIT {
+    EXPECT_EQ(3, current);
+  };
+
+  auto timer = [&expectedMsgs, &current] {
+    auto oldTimer = folly::makeAutoTimer(
+        "END",
+        std::chrono::duration<double>::zero(),
+        [&expectedMsgs, &current](
+            StringPiece msg, const std::chrono::duration<double>&) {
+          EXPECT_EQ(expectedMsgs.at(current), msg);
+          current++;
+        });
+    oldTimer.log("BEFORE_MOVE");
+    auto newTimer = std::move(oldTimer); // force the move-ctor
+    return newTimer;
+  }();
+  timer.log("AFTER_MOVE");
 }
