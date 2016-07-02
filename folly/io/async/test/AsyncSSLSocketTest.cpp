@@ -485,6 +485,10 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
   std::unique_ptr<NpnServer> server;
 };
 
+class NextProtocolTLSExtTest : public NextProtocolTest {
+  // For extended TLS protos
+};
+
 class NextProtocolNPNOnlyTest : public NextProtocolTest {
   // For mismatching protos
 };
@@ -609,23 +613,28 @@ INSTANTIATE_TEST_CASE_P(
         NextProtocolTypePair(
             SSLContext::NextProtocolType::NPN,
             SSLContext::NextProtocolType::NPN),
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ALPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ANY),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ANY,
-            SSLContext::NextProtocolType::ALPN),
-#endif
         NextProtocolTypePair(
             SSLContext::NextProtocolType::NPN,
             SSLContext::NextProtocolType::ANY),
         NextProtocolTypePair(
             SSLContext::NextProtocolType::ANY,
             SSLContext::NextProtocolType::ANY)));
+
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+INSTANTIATE_TEST_CASE_P(
+    AsyncSSLSocketTest,
+    NextProtocolTLSExtTest,
+    ::testing::Values(
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ALPN,
+            SSLContext::NextProtocolType::ALPN),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ALPN,
+            SSLContext::NextProtocolType::ANY),
+        NextProtocolTypePair(
+            SSLContext::NextProtocolType::ANY,
+            SSLContext::NextProtocolType::ALPN)));
+#endif
 
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
