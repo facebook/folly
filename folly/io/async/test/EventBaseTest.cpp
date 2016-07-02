@@ -1112,8 +1112,8 @@ void runInThreadTestFunc(RunInThreadArg* arg) {
 }
 
 TEST(EventBaseTest, RunInThread) {
-  uint32_t numThreads = 50;
-  uint32_t opsPerThread = 100;
+  constexpr uint32_t numThreads = 50;
+  constexpr uint32_t opsPerThread = 100;
   RunInThreadData data(numThreads, opsPerThread);
 
   deque<std::thread> threads;

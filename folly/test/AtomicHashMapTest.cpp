@@ -681,13 +681,14 @@ void* atomicHashArrayInsertRaceThread(void* /* j */) {
 }
 TEST(Ahm, atomic_hash_array_insert_race) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
-  int numIterations = 5000, FLAGS_numThreads = 4;
-  void* statuses[FLAGS_numThreads];
+  int numIterations = 5000;
+  constexpr int numThreads = 4;
+  void* statuses[numThreads];
   for (int i = 0; i < numIterations; i++) {
     arr->clear();
-    runThreads(atomicHashArrayInsertRaceThread, FLAGS_numThreads, statuses);
+    runThreads(atomicHashArrayInsertRaceThread, numThreads, statuses);
     EXPECT_GE(arr->size(), 1);
-    for (int j = 0; j < FLAGS_numThreads; j++) {
+    for (int j = 0; j < numThreads; j++) {
       EXPECT_EQ(arr->size(), uintptr_t(statuses[j]));
     }
   }

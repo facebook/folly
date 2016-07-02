@@ -1105,7 +1105,7 @@ TEST(AsyncSocketTest, WriteIOBuf) {
   acceptedSocket->setReadCB(&rcb);
 
   // Write a simple buffer to the socket
-  size_t simpleBufLength = 5;
+  constexpr size_t simpleBufLength = 5;
   char simpleBuf[simpleBufLength];
   memset(simpleBuf, 'a', simpleBufLength);
   WriteCallback wcb;
@@ -1289,7 +1289,7 @@ TEST(AsyncSocketTest, ZeroLengthWritev) {
   memset(buf.get(), 'b', len2);
 
   WriteCallback wcb;
-  size_t iovCount = 4;
+  constexpr size_t iovCount = 4;
   struct iovec iov[iovCount];
   iov[0].iov_base = buf.get();
   iov[0].iov_len = len1;
