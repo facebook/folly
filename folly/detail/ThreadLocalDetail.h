@@ -172,10 +172,14 @@ class PthreadKeyUnregister {
   static constexpr size_t kMaxKeys = 1UL << 16;
 
   ~PthreadKeyUnregister() {
+    // If static constructor priorities are not supported then
+    // ~PthreadKeyUnregister logic is not safe.
+#if !defined(__APPLE__) && !defined(_MSC_VER)
     MSLGuard lg(lock_);
     while (size_) {
       pthread_key_delete(keys_[--size_]);
     }
+#endif
   }
 
   static void registerKey(pthread_key_t key) {
