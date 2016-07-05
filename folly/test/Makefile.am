@@ -149,6 +149,14 @@ synchronized_test_SOURCES = SynchronizedTest.cpp
 synchronized_test_LDADD = libfollytestmain.la
 TESTS += synchronized_test
 
+lock_traits_test_SOURCES = LockTraitsTest.cpp
+lock_traits_test_LDADD = libfollytestmain.la
+TESTS += lock_traits_test
+
+locked_test_SOURCES = LockedTest.cpp
+locked_test_LDADD = libfollytestmain.la
+TESTS += locked_test
+
 concurrent_skiplist_test_SOURCES = ConcurrentSkipListTest.cpp
 concurrent_skiplist_test_LDADD = libfollytestmain.la
 TESTS += concurrent_skiplist_test

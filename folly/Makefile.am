@@ -229,6 +229,9 @@ nobase_follyinclude_HEADERS = \
 	Lazy.h \
 	LifoSem.h \
 	Likely.h \
+	Locked.h \
+	LockTraits.h \
+	LockTraitsBoost.h \
 	Logging.h \
 	MacAddress.h \
 	Malloc.h \
@@ -313,6 +316,8 @@ nobase_follyinclude_HEADERS = \
 	test/FBVectorTestBenchmarks.cpp.h \
 	test/function_benchmark/benchmark_impl.h \
 	test/function_benchmark/test_functions.h \
+	test/LockedTestLib.h \
+	test/LockedTestLib-inl.h \
 	test/SynchronizedTestLib.h \
 	test/SynchronizedTestLib-inl.h \
 	test/TestUtils.h \
