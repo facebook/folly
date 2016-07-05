@@ -201,16 +201,23 @@ class IPAddress : boost::totally_ordered<IPAddress> {
     }
     memset(dest, 0, sizeof(sockaddr_storage));
     dest->ss_family = family();
+
     if (isV4()) {
       sockaddr_in *sin = reinterpret_cast<sockaddr_in*>(dest);
       sin->sin_addr = asV4().toAddr();
       sin->sin_port = port;
+#if defined(__APPLE__)
+      sin->sin_len = sizeof(*sin);
+#endif
       return sizeof(*sin);
     } else if (isV6()) {
       sockaddr_in6 *sin = reinterpret_cast<sockaddr_in6*>(dest);
       sin->sin6_addr = asV6().toAddr();
       sin->sin6_port = port;
       sin->sin6_scope_id = asV6().getScopeId();
+#if defined(__APPLE__)
+      sin->sin6_len = sizeof(*sin);
+#endif
       return sizeof(*sin);
     } else {
       throw InvalidAddressFamilyException(family());
