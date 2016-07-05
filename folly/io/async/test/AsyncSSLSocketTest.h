@@ -97,7 +97,7 @@ public AsyncTransportWrapper::ReadCallback {
       : wcb_(wcb), state(STATE_WAITING) {}
 
   ~ReadCallbackBase() {
-    EXPECT_EQ(state, STATE_SUCCEEDED);
+    EXPECT_EQ(STATE_SUCCEEDED, state);
   }
 
   void setSocket(
@@ -352,7 +352,7 @@ public:
   }
 
   ~HandshakeCallback() {
-    EXPECT_EQ(state, STATE_SUCCEEDED);
+    EXPECT_EQ(STATE_SUCCEEDED, state);
   }
 
   void closeSocket() {
@@ -380,7 +380,7 @@ public:
   state(STATE_WAITING), hcb_(hcb) {}
 
   ~SSLServerAcceptCallbackBase() {
-    EXPECT_EQ(state, STATE_SUCCEEDED);
+    EXPECT_EQ(STATE_SUCCEEDED, state);
   }
 
   void acceptError(const std::exception& ex) noexcept override {
@@ -587,6 +587,25 @@ public:
   }
 };
 
+class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
+ public:
+  ConnectTimeoutCallback() : SSLServerAcceptCallbackBase(nullptr) {
+    // We don't care if we get invoked or not.
+    // The client may time out and give up before connAccepted() is even
+    // called.
+    state = STATE_SUCCEEDED;
+  }
+
+  // Functions inherited from TAsyncSSLServerSocket::SSLAcceptCallback
+  void connAccepted(
+      const std::shared_ptr<folly::AsyncSSLSocket>& s) noexcept override {
+    std::cerr << "ConnectTimeoutCallback::connAccepted" << std::endl;
+
+    // Just wait a while before closing the socket, so the client
+    // will time out waiting for the handshake to complete.
+    s->getEventBase()->tryRunAfterDelay([=] { s->close(); }, 100);
+  }
+};
 
 class TestSSLServer {
  protected:
