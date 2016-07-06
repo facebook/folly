@@ -69,7 +69,7 @@ static_assert(sizeof(unsigned long long) >= 8,
               "Wrong value for MaxString<unsigned long long>::value"
               ", please update.");
 
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
 template <> const char *const MaxString<__uint128_t>::value =
   "340282366920938463463374607431768211455";
 #endif

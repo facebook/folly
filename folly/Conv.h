@@ -702,7 +702,7 @@ struct HasLengthEstimator : std::false_type {};
 template <class Src>
 constexpr typename std::enable_if<
   !std::is_fundamental<Src>::value
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   // On OSX 10.10, is_fundamental<__int128> is false :-O
   && !std::is_same<__int128, Src>::value
   && !std::is_same<unsigned __int128, Src>::value
