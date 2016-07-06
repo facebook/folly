@@ -413,8 +413,8 @@ TEST(PrettyToDouble, Basic) {
     double recoveredX = 0;
     try{
       recoveredX = prettyToDouble(testString, formatType);
-    } catch (std::range_error &ex){
-      EXPECT_TRUE(false);
+    } catch (const std::range_error& ex) {
+      EXPECT_TRUE(false) << testCase.prettyString << " -> " << ex.what();
     }
     double relativeError = fabs(x) < 1e-5 ? (x-recoveredX) :
                                             (x - recoveredX) / x;

@@ -13,13 +13,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define FOLLY_CONV_INTERNAL
 #include <folly/Conv.h>
+#include <array>
 
 namespace folly {
 namespace detail {
 
 namespace {
+
+/**
+ * Finds the first non-digit in a string. The number of digits
+ * searched depends on the precision of the Tgt integral. Assumes the
+ * string starts with NO whitespace and NO sign.
+ *
+ * The semantics of the routine is:
+ *   for (;; ++b) {
+ *     if (b >= e || !isdigit(*b)) return b;
+ *   }
+ *
+ *  Complete unrolling marks bottom-line (i.e. entire conversion)
+ *  improvements of 20%.
+ */
+inline const char* findFirstNonDigit(const char* b, const char* e) {
+  for (; b < e; ++b) {
+    auto const c = static_cast<unsigned>(*b) - '0';
+    if (c >= 10) {
+      break;
+    }
+  }
+  return b;
+}
 
 // Maximum value of number when represented as a string
 template <class T>
@@ -178,6 +201,39 @@ FOLLY_ALIGNED(16) constexpr uint16_t shift1000[] = {
   OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR, OOR,  // 240
   OOR, OOR, OOR, OOR, OOR, OOR                       // 250
 };
+
+struct ErrorString {
+  const char* string;
+  bool quote;
+};
+
+// Keep this in sync with ConversionError::Code in Conv.h
+constexpr const std::array<ErrorString, ConversionError::NUM_ERROR_CODES>
+    kErrorStrings{{
+        {"Success", true},
+        {"Empty input string", true},
+        {"No digits found in input string", true},
+        {"Integer overflow when parsing bool (must be 0 or 1)", true},
+        {"Invalid value for bool", true},
+        {"Non-digit character found", true},
+        {"Invalid leading character", true},
+        {"Overflow during conversion", true},
+        {"Negative overflow during conversion", true},
+        {"Unable to convert string to floating point value", true},
+        {"Non-whitespace character found after end of conversion", true},
+        {"Overflow during arithmetic conversion", false},
+        {"Negative overflow during arithmetic conversion", false},
+        {"Loss of precision during arithmetic conversion", false},
+    }};
+
+// Check if ASCII is really ASCII
+using IsAscii = std::
+    integral_constant<bool, 'A' == 65 && 'Z' == 90 && 'a' == 97 && 'z' == 122>;
+
+// The code in this file that uses tolower() really only cares about
+// 7-bit ASCII characters, so we can take a nice shortcut here.
+inline char tolower_ascii(char in) {
+  return IsAscii::value ? in | 0x20 : std::tolower(in);
 }
 
 inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
@@ -186,7 +242,7 @@ inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
   const char* e = *b + len;
   const char* v = value;
   while (*v != '\0') {
-    if (p == e || tolower(*p) != *v) { // value is already lowercase
+    if (p == e || tolower_ascii(*p) != *v) { // value is already lowercase
       return false;
     }
     ++p;
@@ -197,12 +253,40 @@ inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
   return true;
 }
 
-bool str_to_bool(StringPiece* src) {
+} // anonymous namespace
+
+ConversionError makeConversionError(
+    ConversionError::Code code,
+    const char* input,
+    size_t inputLen) {
+  assert(code >= 0 && code < kErrorStrings.size());
+  const ErrorString& err = kErrorStrings[code];
+  if (code == ConversionError::EMPTY_INPUT_STRING && inputLen == 0) {
+    return ConversionError(err.string, code);
+  }
+  std::string tmp(err.string);
+  tmp.append(": ");
+  if (err.quote) {
+    tmp.append(1, '"');
+  }
+  if (input && inputLen > 0) {
+    tmp.append(input, inputLen);
+  }
+  if (err.quote) {
+    tmp.append(1, '"');
+  }
+  return ConversionError(tmp, code);
+}
+
+ConversionResult<bool> str_to_bool(StringPiece* src) {
   auto b = src->begin(), e = src->end();
   for (;; ++b) {
-    FOLLY_RANGE_CHECK_STRINGPIECE(
-      b < e, "No non-whitespace characters found in input string", *src);
-    if (!isspace(*b)) break;
+    if (b >= e) {
+      return ConversionResult<bool>(ConversionError::EMPTY_INPUT_STRING);
+    }
+    if (!std::isspace(*b)) {
+      break;
+    }
   }
 
   bool result;
@@ -212,9 +296,9 @@ bool str_to_bool(StringPiece* src) {
     case '1': {
       result = false;
       for (; b < e && isdigit(*b); ++b) {
-        FOLLY_RANGE_CHECK_STRINGPIECE(
-          !result && (*b == '0' || *b == '1'),
-          "Integer overflow when parsing bool: must be 0 or 1", *src);
+        if (result || (*b != '0' && *b != '1')) {
+          return ConversionResult<bool>(ConversionError::BOOL_OVERFLOW);
+        }
         result = (*b == '1');
       }
       break;
@@ -254,24 +338,24 @@ bool str_to_bool(StringPiece* src) {
       } else if (bool_str_cmp(&b, len, "off")) {
         result = false;
       } else {
-        FOLLY_RANGE_CHECK_STRINGPIECE(false, "Invalid value for bool", *src);
+        return ConversionResult<bool>(ConversionError::BOOL_INVALID_VALUE);
       }
       break;
     default:
-      FOLLY_RANGE_CHECK_STRINGPIECE(false, "Invalid value for bool", *src);
+      return ConversionResult<bool>(ConversionError::BOOL_INVALID_VALUE);
   }
 
   src->assign(b, e);
-  return result;
+
+  return ConversionResult<bool>(result);
 }
 
-namespace {
 /**
  * StringPiece to double, with progress information. Alters the
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-Tgt str_to_floating(StringPiece* src) {
+ConversionResult<Tgt> str_to_floating(StringPiece* src) {
   using namespace double_conversion;
   static StringToDoubleConverter
     conv(StringToDoubleConverter::ALLOW_TRAILING_JUNK
@@ -281,8 +365,9 @@ Tgt str_to_floating(StringPiece* src) {
          std::numeric_limits<double>::quiet_NaN(),
          nullptr, nullptr);
 
-  FOLLY_RANGE_CHECK_STRINGPIECE(!src->empty(),
-                                "No digits found in input string", *src);
+  if (src->empty()) {
+    return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+  }
 
   int length;
   auto result = conv.StringToDouble(src->data(),
@@ -290,125 +375,195 @@ Tgt str_to_floating(StringPiece* src) {
                                     &length); // processed char count
 
   if (!std::isnan(result)) {
+    // If we get here with length = 0, the input string is empty.
+    // If we get here with result = 0.0, it's either because the string
+    // contained only whitespace, or because we had an actual zero value
+    // (with potential trailing junk). If it was only whitespace, we
+    // want to raise an error; length will point past the last character
+    // that was processed, so we need to check if that character was
+    // whitespace or not.
+    if (length == 0 || (result == 0.0 && std::isspace((*src)[length - 1]))) {
+      return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+    }
     src->advance(length);
-    return result;
+    return ConversionResult<Tgt>(result);
   }
 
-  for (;; src->advance(1)) {
-    if (src->empty()) {
-      throw std::range_error("Unable to convert an empty string"
-                             " to a floating point value.");
-    }
-    if (!isspace(src->front())) {
+  auto* e = src->end();
+  auto* b =
+      std::find_if_not(src->begin(), e, [](char c) { return std::isspace(c); });
+
+  // There must be non-whitespace, otherwise we would have caught this above
+  assert(b < e);
+  size_t size = e - b;
+
+  bool negative = false;
+  if (*b == '-') {
+    negative = true;
+    ++b;
+    --size;
+  }
+
+  result = 0.0;
+
+  switch (tolower_ascii(*b)) {
+    case 'i':
+      if (size >= 3 && tolower_ascii(b[1]) == 'n' &&
+          tolower_ascii(b[2]) == 'f') {
+        if (size >= 8 && tolower_ascii(b[3]) == 'i' &&
+            tolower_ascii(b[4]) == 'n' && tolower_ascii(b[5]) == 'i' &&
+            tolower_ascii(b[6]) == 't' && tolower_ascii(b[7]) == 'y') {
+          b += 8;
+        } else {
+          b += 3;
+        }
+        result = std::numeric_limits<Tgt>::infinity();
+      }
       break;
-    }
+
+    case 'n':
+      if (size >= 3 && tolower_ascii(b[1]) == 'a' &&
+          tolower_ascii(b[2]) == 'n') {
+        b += 3;
+        result = std::numeric_limits<Tgt>::quiet_NaN();
+      }
+      break;
+
+    default:
+      break;
   }
 
-  // Was that "inf[inity]"?
-  if (src->size() >= 3 && toupper((*src)[0]) == 'I'
-        && toupper((*src)[1]) == 'N' && toupper((*src)[2]) == 'F') {
-    if (src->size() >= 8 &&
-        toupper((*src)[3]) == 'I' &&
-        toupper((*src)[4]) == 'N' &&
-        toupper((*src)[5]) == 'I' &&
-        toupper((*src)[6]) == 'T' &&
-        toupper((*src)[7]) == 'Y') {
-      src->advance(8);
-    } else {
-      src->advance(3);
-    }
-    return std::numeric_limits<Tgt>::infinity();
+  if (result == 0.0) {
+    // All bets are off
+    return ConversionResult<Tgt>(ConversionError::STRING_TO_FLOAT_ERROR);
   }
 
-  // Was that "-inf[inity]"?
-  if (src->size() >= 4 && toupper((*src)[0]) == '-'
-      && toupper((*src)[1]) == 'I' && toupper((*src)[2]) == 'N'
-      && toupper((*src)[3]) == 'F') {
-    if (src->size() >= 9 &&
-        toupper((*src)[4]) == 'I' &&
-        toupper((*src)[5]) == 'N' &&
-        toupper((*src)[6]) == 'I' &&
-        toupper((*src)[7]) == 'T' &&
-        toupper((*src)[8]) == 'Y') {
-      src->advance(9);
-    } else {
-      src->advance(4);
-    }
-    return -std::numeric_limits<Tgt>::infinity();
+  if (negative) {
+    result = -result;
   }
 
-  // "nan"?
-  if (src->size() >= 3 && toupper((*src)[0]) == 'N'
-        && toupper((*src)[1]) == 'A' && toupper((*src)[2]) == 'N') {
-    src->advance(3);
-    return std::numeric_limits<Tgt>::quiet_NaN();
-  }
+  src->assign(b, e);
 
-  // "-nan"?
-  if (src->size() >= 4 &&
-      toupper((*src)[0]) == '-' &&
-      toupper((*src)[1]) == 'N' &&
-      toupper((*src)[2]) == 'A' &&
-      toupper((*src)[3]) == 'N') {
-    src->advance(4);
-    return -std::numeric_limits<Tgt>::quiet_NaN();
-  }
-
-  // All bets are off
-  throw std::range_error("Unable to convert \"" + src->toString()
-                         + "\" to a floating point value.");
+  return ConversionResult<Tgt>(result);
 }
 
-}
-
-float str_to_float(StringPiece* src) {
-  return str_to_floating<float>(src);
-}
-
-double str_to_double(StringPiece* src) {
-  return str_to_floating<double>(src);
-}
+template ConversionResult<float> str_to_floating<float>(StringPiece* src);
+template ConversionResult<double> str_to_floating<double>(StringPiece* src);
 
 /**
- * String represented as a pair of pointers to char to unsigned
+ * This class takes care of additional processing needed for signed values,
+ * like leading sign character and overflow checks.
+ */
+template <typename T, bool IsSigned = std::is_signed<T>::value>
+class SignedValueHandler;
+
+template <typename T>
+class SignedValueHandler<T, true> {
+ public:
+  ConversionError::Code init(const char*& b) {
+    negative_ = false;
+    if (!std::isdigit(*b)) {
+      if (*b == '-') {
+        negative_ = true;
+      } else if (UNLIKELY(*b != '+')) {
+        return ConversionError::INVALID_LEADING_CHAR;
+      }
+      ++b;
+    }
+    return ConversionError::SUCCESS;
+  }
+
+  ConversionError::Code overflow() {
+    return negative_ ? ConversionError::NEGATIVE_OVERFLOW
+                     : ConversionError::POSITIVE_OVERFLOW;
+  }
+
+  template <typename U>
+  ConversionResult<T> finalize(U value) {
+    T rv;
+    if (negative_) {
+      rv = -value;
+      if (UNLIKELY(rv > 0)) {
+        return ConversionResult<T>(ConversionError::NEGATIVE_OVERFLOW);
+      }
+    } else {
+      rv = value;
+      if (UNLIKELY(rv < 0)) {
+        return ConversionResult<T>(ConversionError::POSITIVE_OVERFLOW);
+      }
+    }
+    return ConversionResult<T>(rv);
+  }
+
+ private:
+  bool negative_;
+};
+
+// For unsigned types, we don't need any extra processing
+template <typename T>
+class SignedValueHandler<T, false> {
+ public:
+  ConversionError::Code init(const char*&) {
+    return ConversionError::SUCCESS;
+  }
+
+  ConversionError::Code overflow() {
+    return ConversionError::POSITIVE_OVERFLOW;
+  }
+
+  ConversionResult<T> finalize(T value) {
+    return ConversionResult<T>(value);
+  }
+};
+
+/**
+ * String represented as a pair of pointers to char to signed/unsigned
  * integrals. Assumes NO whitespace before or after, and also that the
- * string is composed entirely of digits. Tgt must be unsigned, and no
- * sign is allowed in the string (even it's '+'). String may be empty,
- * in which case digits_to throws.
+ * string is composed entirely of digits (and an optional sign only for
+ * signed types). String may be empty, in which case digits_to returns
+ * an appropriate error.
  */
 template <class Tgt>
-Tgt digits_to(const char* b, const char* e) {
-
-  static_assert(!std::is_signed<Tgt>::value, "Unsigned type expected");
+inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
+  using UT = typename std::make_unsigned<Tgt>::type;
   assert(b <= e);
 
-  const size_t size = e - b;
+  SignedValueHandler<Tgt> sgn;
+
+  auto err = sgn.init(b);
+  if (UNLIKELY(err != ConversionError::SUCCESS)) {
+    return ConversionResult<Tgt>(err);
+  }
+
+  size_t size = e - b;
 
   /* Although the string is entirely made of digits, we still need to
    * check for overflow.
    */
-  if (size >= std::numeric_limits<Tgt>::digits10 + 1) {
-    // Leading zeros? If so, recurse to keep things simple
+  if (size > std::numeric_limits<UT>::digits10) {
+    // Leading zeros?
     if (b < e && *b == '0') {
       for (++b;; ++b) {
-        if (b == e)
-          return 0; // just zeros, e.g. "0000"
-        if (*b != '0')
-          return digits_to<Tgt>(b, e);
+        if (b == e) {
+          return ConversionResult<Tgt>(Tgt(0)); // just zeros, e.g. "0000"
+        }
+        if (*b != '0') {
+          size = e - b;
+          break;
+        }
       }
     }
-    FOLLY_RANGE_CHECK_BEGIN_END(
-        size == std::numeric_limits<Tgt>::digits10 + 1 &&
-            strncmp(b, detail::MaxString<Tgt>::value, size) <= 0,
-        "Numeric overflow upon conversion",
-        b,
-        e);
+    if (size > std::numeric_limits<UT>::digits10 &&
+        (size != std::numeric_limits<UT>::digits10 + 1 ||
+         strncmp(b, MaxString<UT>::value, size) > 0)) {
+      return ConversionResult<Tgt>(sgn.overflow());
+    }
   }
 
   // Here we know that the number won't overflow when
   // converted. Proceed without checks.
 
-  Tgt result = 0;
+  UT result = 0;
 
   for (; e - b >= 4; b += 4) {
     result *= 10000;
@@ -417,7 +572,9 @@ Tgt digits_to(const char* b, const char* e) {
     const int32_t r2 = shift10[static_cast<size_t>(b[2])];
     const int32_t r3 = shift1[static_cast<size_t>(b[3])];
     const auto sum = r0 + r1 + r2 + r3;
-    assert(sum < OOR && "Assumption: string only has digits");
+    if (sum >= OOR) {
+      goto outOfRange;
+    }
     result += sum;
   }
 
@@ -427,38 +584,161 @@ Tgt digits_to(const char* b, const char* e) {
     const int32_t r1 = shift10[static_cast<size_t>(b[1])];
     const int32_t r2 = shift1[static_cast<size_t>(b[2])];
     const auto sum = r0 + r1 + r2;
-    assert(sum < OOR && "Assumption: string only has digits");
-    return result * 1000 + sum;
+    if (sum >= OOR) {
+      goto outOfRange;
+    }
+    result = 1000 * result + sum;
+    break;
   }
   case 2: {
     const int32_t r0 = shift10[static_cast<size_t>(b[0])];
     const int32_t r1 = shift1[static_cast<size_t>(b[1])];
     const auto sum = r0 + r1;
-    assert(sum < OOR && "Assumption: string only has digits");
-    return result * 100 + sum;
+    if (sum >= OOR) {
+      goto outOfRange;
+    }
+    result = 100 * result + sum;
+    break;
   }
   case 1: {
     const int32_t sum = shift1[static_cast<size_t>(b[0])];
-    assert(sum < OOR && "Assumption: string only has digits");
-    return result * 10 + sum;
+    if (sum >= OOR) {
+      goto outOfRange;
+    }
+    result = 10 * result + sum;
+    break;
   }
+  default:
+    assert(b == e);
+    if (size == 0) {
+      return ConversionResult<Tgt>(ConversionError::NO_DIGITS);
+    }
+    break;
   }
 
-  assert(b == e);
-  FOLLY_RANGE_CHECK_BEGIN_END(
-      size > 0, "Found no digits to convert in input", b, e);
-  return result;
+  return sgn.finalize(result);
+
+outOfRange:
+  return ConversionResult<Tgt>(ConversionError::NON_DIGIT_CHAR);
 }
 
-template unsigned char digits_to<unsigned char>(const char* b, const char* e);
-template unsigned short digits_to<unsigned short>(const char* b, const char* e);
-template unsigned int digits_to<unsigned int>(const char* b, const char* e);
-template unsigned long digits_to<unsigned long>(const char* b, const char* e);
-template unsigned long long digits_to<unsigned long long>(const char* b,
-                                                          const char* e);
+template ConversionResult<char> digits_to<char>(const char*, const char*);
+template ConversionResult<signed char> digits_to<signed char>(
+    const char*,
+    const char*);
+template ConversionResult<unsigned char> digits_to<unsigned char>(
+    const char*,
+    const char*);
+
+template ConversionResult<short> digits_to<short>(const char*, const char*);
+template ConversionResult<unsigned short> digits_to<unsigned short>(
+    const char*,
+    const char*);
+
+template ConversionResult<int> digits_to<int>(const char*, const char*);
+template ConversionResult<unsigned int> digits_to<unsigned int>(
+    const char*,
+    const char*);
+
+template ConversionResult<long> digits_to<long>(const char*, const char*);
+template ConversionResult<unsigned long> digits_to<unsigned long>(
+    const char*,
+    const char*);
+
+template ConversionResult<long long> digits_to<long long>(
+    const char*,
+    const char*);
+template ConversionResult<unsigned long long> digits_to<unsigned long long>(
+    const char*,
+    const char*);
+
 #if FOLLY_HAVE_INT128_T
-template unsigned __int128 digits_to<unsigned __int128>(const char* b,
-                                                        const char* e);
+template ConversionResult<__int128> digits_to<__int128>(
+    const char*,
+    const char*);
+template ConversionResult<unsigned __int128> digits_to<unsigned __int128>(
+    const char*,
+    const char*);
+#endif
+
+/**
+ * StringPiece to integrals, with progress information. Alters the
+ * StringPiece parameter to munch the already-parsed characters.
+ */
+template <class Tgt>
+ConversionResult<Tgt> str_to_integral(StringPiece* src) {
+  using UT = typename std::make_unsigned<Tgt>::type;
+
+  auto b = src->data(), past = src->data() + src->size();
+
+  for (;; ++b) {
+    if (UNLIKELY(b >= past)) {
+      return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+    }
+    if (!std::isspace(*b)) {
+      break;
+    }
+  }
+
+  SignedValueHandler<Tgt> sgn;
+  auto err = sgn.init(b);
+
+  if (UNLIKELY(err != ConversionError::SUCCESS)) {
+    return ConversionResult<Tgt>(err);
+  }
+  if (std::is_signed<Tgt>::value && UNLIKELY(b >= past)) {
+    return ConversionResult<Tgt>(ConversionError::NO_DIGITS);
+  }
+  if (UNLIKELY(!isdigit(*b))) {
+    return ConversionResult<Tgt>(ConversionError::NON_DIGIT_CHAR);
+  }
+
+  auto m = findFirstNonDigit(b + 1, past);
+
+  auto tmp = digits_to<UT>(b, m);
+
+  if (UNLIKELY(!tmp.success())) {
+    return ConversionResult<Tgt>(
+        tmp.error == ConversionError::POSITIVE_OVERFLOW ? sgn.overflow()
+                                                        : tmp.error);
+  }
+
+  auto res = sgn.finalize(tmp.value);
+
+  if (res.success()) {
+    src->advance(m - src->data());
+  }
+
+  return res;
+}
+
+template ConversionResult<char> str_to_integral<char>(StringPiece* src);
+template ConversionResult<signed char> str_to_integral<signed char>(
+    StringPiece* src);
+template ConversionResult<unsigned char> str_to_integral<unsigned char>(
+    StringPiece* src);
+
+template ConversionResult<short> str_to_integral<short>(StringPiece* src);
+template ConversionResult<unsigned short> str_to_integral<unsigned short>(
+    StringPiece* src);
+
+template ConversionResult<int> str_to_integral<int>(StringPiece* src);
+template ConversionResult<unsigned int> str_to_integral<unsigned int>(
+    StringPiece* src);
+
+template ConversionResult<long> str_to_integral<long>(StringPiece* src);
+template ConversionResult<unsigned long> str_to_integral<unsigned long>(
+    StringPiece* src);
+
+template ConversionResult<long long> str_to_integral<long long>(
+    StringPiece* src);
+template ConversionResult<unsigned long long>
+str_to_integral<unsigned long long>(StringPiece* src);
+
+#if FOLLY_HAVE_INT128_T
+template ConversionResult<__int128> str_to_integral<__int128>(StringPiece* src);
+template ConversionResult<unsigned __int128> str_to_integral<unsigned __int128>(
+    StringPiece* src);
 #endif
 
 } // namespace detail

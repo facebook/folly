@@ -452,8 +452,7 @@ TEST(Format, BogusFormatString) {
 
   // This one fails in detail::enforceWhitespace(), which throws
   // std::range_error
-  EXPECT_THROW_STR(sformat("{0[test}"), std::range_error,
-                   "Non-whitespace: [");
+  EXPECT_THROW_STR(sformat("{0[test}"), std::range_error, "Non-whitespace");
 }
 
 template <bool containerMode, class... Args>

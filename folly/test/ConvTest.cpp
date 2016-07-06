@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <boost/lexical_cast.hpp>
 #include <folly/Conv.h>
 #include <folly/Foreach.h>
-#include <boost/lexical_cast.hpp>
 #include <gtest/gtest.h>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <tuple>
 
 using namespace std;
 using namespace folly;
@@ -563,15 +565,32 @@ TEST(Conv, FBStringToString) {
 }
 
 TEST(Conv, StringPieceToDouble) {
-  string s = "2134123.125 zorro";
-  StringPiece pc(s);
-  EXPECT_EQ(to<double>(&pc), 2134123.125);
-  EXPECT_EQ(pc, " zorro");
+  vector<tuple<const char*, const char*, double>> strs{
+      make_tuple("2134123.125 zorro", " zorro", 2134123.125),
+      make_tuple("  2134123.125 zorro", " zorro", 2134123.125),
+      make_tuple(" 2134123.125  zorro", "  zorro", 2134123.125),
+      make_tuple(" 2134123.125  zorro ", "  zorro ", 2134123.125),
+      make_tuple("2134123.125zorro", "zorro", 2134123.125),
+      make_tuple("0 zorro", " zorro", 0.0),
+      make_tuple("  0 zorro", " zorro", 0.0),
+      make_tuple(" 0  zorro", "  zorro", 0.0),
+      make_tuple(" 0  zorro ", "  zorro ", 0.0),
+      make_tuple("0zorro", "zorro", 0.0),
+      make_tuple("0.0 zorro", " zorro", 0.0),
+      make_tuple("  0.0 zorro", " zorro", 0.0),
+      make_tuple(" 0.0  zorro", "  zorro", 0.0),
+      make_tuple(" 0.0  zorro ", "  zorro ", 0.0),
+      make_tuple("0.0zorro", "zorro", 0.0),
+  };
+  for (const auto& s : strs) {
+    StringPiece pc(get<0>(s));
+    EXPECT_EQ(get<2>(s), to<double>(&pc)) << "\"" << get<0>(s) << "\"";
+    EXPECT_EQ(get<1>(s), pc);
+    EXPECT_THROW(to<double>(StringPiece(get<0>(s))), std::range_error);
+    EXPECT_EQ(get<2>(s), to<double>(StringPiece(get<0>(s), pc.data())));
+  }
 
-  EXPECT_THROW(to<double>(StringPiece(s)), std::range_error);
-  EXPECT_EQ(to<double>(StringPiece(s.data(), pc.data())), 2134123.125);
-
-// Test NaN conversion
+  // Test NaN conversion
   try {
     to<double>("not a number");
     EXPECT_TRUE(false);
@@ -847,6 +866,164 @@ TEST(Conv, FloatToBool) {
   EXPECT_EQ(to<bool>(std::numeric_limits<double>::quiet_NaN()), true);
   EXPECT_EQ(to<bool>(std::numeric_limits<double>::infinity()), true);
   EXPECT_EQ(to<bool>(-std::numeric_limits<double>::infinity()), true);
+}
+
+namespace {
+
+template <typename F>
+void testConvError(
+    F&& expr,
+    const char* exprStr,
+    ConversionError::Code code,
+    const char* value,
+    bool quotedValue,
+    int line) {
+  std::string where = to<std::string>(__FILE__, "(", line, "): ");
+  try {
+    auto res = expr();
+    EXPECT_TRUE(false) << where << exprStr << " -> " << res;
+  } catch (const ConversionError& e) {
+    EXPECT_EQ(code, e.errorCode()) << where << exprStr;
+    std::string str(e.what());
+    EXPECT_FALSE(str.empty()) << where << exprStr << " -> " << str;
+    auto pos = str.find(':');
+    if (value) {
+      std::ostringstream exp;
+      exp << str.substr(0, pos) + ": ";
+      if (quotedValue) {
+        exp << "\"" << value << "\"";
+      } else {
+        exp << value;
+      }
+      EXPECT_EQ(exp.str(), str) << where << exprStr << " -> " << str;
+    } else {
+      EXPECT_EQ(pos, std::string::npos) << where << exprStr << " -> " << str;
+    }
+  }
+}
+}
+
+#define EXPECT_CONV_ERROR_QUOTE(expr, code, value, quoted) \
+  testConvError(                                           \
+      [&] { return expr; },                                \
+      #expr,                                               \
+      ConversionError::code,                               \
+      value,                                               \
+      quoted,                                              \
+      __LINE__)
+
+#define EXPECT_CONV_ERROR(expr, code, value) \
+  EXPECT_CONV_ERROR_QUOTE(expr, code, value, true)
+
+#define EXPECT_CONV_ERROR_STR(type, str, code) \
+  EXPECT_CONV_ERROR(to<type>(str), code, str)
+
+#define EXPECT_CONV_ERROR_STR_NOVAL(type, str, code) \
+  EXPECT_CONV_ERROR(to<type>(str), code, nullptr)
+
+TEST(Conv, ConversionErrorStrToBool) {
+  EXPECT_CONV_ERROR_STR_NOVAL(bool, StringPiece(), EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR_NOVAL(bool, "", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(bool, "  ", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(bool, " 11 ", BOOL_OVERFLOW);
+  EXPECT_CONV_ERROR_STR(bool, "other ", BOOL_INVALID_VALUE);
+  EXPECT_CONV_ERROR_STR(bool, " bla", BOOL_INVALID_VALUE);
+  EXPECT_CONV_ERROR(to<bool>("  offbla"), NON_WHITESPACE_AFTER_END, "bla");
+}
+
+TEST(Conv, ConversionErrorStrToFloat) {
+  EXPECT_CONV_ERROR_STR_NOVAL(float, StringPiece(), EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR_NOVAL(float, "", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(float, "  ", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(float, "  junk", STRING_TO_FLOAT_ERROR);
+  EXPECT_CONV_ERROR(to<float>("  1bla"), NON_WHITESPACE_AFTER_END, "bla");
+}
+
+TEST(Conv, ConversionErrorStrToInt) {
+  // empty string handling
+  EXPECT_CONV_ERROR_STR_NOVAL(int, StringPiece(), EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR_NOVAL(int, "", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(int, "  ", EMPTY_INPUT_STRING);
+
+  // signed integers
+  EXPECT_CONV_ERROR_STR(int, "  *", INVALID_LEADING_CHAR);
+  EXPECT_CONV_ERROR_STR(int, "  +", NO_DIGITS);
+  EXPECT_CONV_ERROR_STR(int, "  +*", NON_DIGIT_CHAR);
+  EXPECT_CONV_ERROR_STR(int8_t, "  128", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_STR(int8_t, " -129", NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_STR(int8_t, " 1000", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_STR(int8_t, "-1000", NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR(to<int>(" -13bla"), NON_WHITESPACE_AFTER_END, "bla");
+
+  // unsigned integers
+  EXPECT_CONV_ERROR_STR(unsigned, "  -", NON_DIGIT_CHAR);
+  EXPECT_CONV_ERROR_STR(uint8_t, " 256", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR(to<unsigned>("42bla"), NON_WHITESPACE_AFTER_END, "bla");
+}
+
+#define EXPECT_CONV_ERROR_PP_VAL(type, str, code, val)                  \
+  do {                                                                  \
+    StringPiece input(str);                                             \
+    EXPECT_CONV_ERROR(to<type>(input.begin(), input.end()), code, val); \
+  } while (0)
+
+#define EXPECT_CONV_ERROR_PP(type, str, code) \
+  EXPECT_CONV_ERROR_PP_VAL(type, str, code, str)
+
+TEST(Conv, ConversionErrorPtrPairToInt) {
+  // signed integers
+  EXPECT_CONV_ERROR_PP(int, "", INVALID_LEADING_CHAR);
+  EXPECT_CONV_ERROR_PP(int, " ", INVALID_LEADING_CHAR);
+  EXPECT_CONV_ERROR_PP(int, "*", INVALID_LEADING_CHAR);
+  EXPECT_CONV_ERROR_PP(int, "+", NO_DIGITS);
+  EXPECT_CONV_ERROR_PP(int8_t, "128", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_PP(int8_t, "-129", NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_PP(int8_t, "1000", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_PP(int8_t, "-1000", NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_PP(int, "-junk", NON_DIGIT_CHAR);
+
+  // unsigned integers
+  EXPECT_CONV_ERROR_PP(unsigned, "", NO_DIGITS);
+  EXPECT_CONV_ERROR_PP(uint8_t, "256", POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_PP(unsigned, "junk", NON_DIGIT_CHAR);
+}
+
+namespace {
+
+template <typename T, typename V>
+std::string prefixWithType(V value) {
+  std::ostringstream oss;
+#ifdef FOLLY_HAS_RTTI
+  oss << "(" << demangle(typeid(T)) << ") ";
+#endif
+  oss << to<std::string>(value);
+  return oss.str();
+}
+}
+
+#define EXPECT_CONV_ERROR_ARITH(type, val, code) \
+  EXPECT_CONV_ERROR_QUOTE(                       \
+      to<type>(val), code, prefixWithType<type>(val).c_str(), false)
+
+TEST(Conv, ConversionErrorIntToInt) {
+  EXPECT_CONV_ERROR_ARITH(signed char, 128, ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(unsigned char, -1, ARITH_NEGATIVE_OVERFLOW);
+}
+
+TEST(Conv, ConversionErrorFloatToFloat) {
+  EXPECT_CONV_ERROR_ARITH(
+      float, std::numeric_limits<double>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      float, std::numeric_limits<double>::lowest(), ARITH_NEGATIVE_OVERFLOW);
+}
+
+TEST(Conv, ConversionErrorIntToFloat) {
+  EXPECT_CONV_ERROR_ARITH(
+      float, std::numeric_limits<long long>::max(), ARITH_LOSS_OF_PRECISION);
+}
+
+TEST(Conv, ConversionErrorFloatToInt) {
+  EXPECT_CONV_ERROR_ARITH(int8_t, 65.5, ARITH_LOSS_OF_PRECISION);
 }
 
 TEST(Conv, NewUint64ToString) {

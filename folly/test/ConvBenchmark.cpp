@@ -28,6 +28,13 @@
 using namespace std;
 using namespace folly;
 
+// Android doesn't support std::to_string so just use a placeholder there.
+#ifdef __ANDROID__
+#define FOLLY_RANGE_CHECK_TO_STRING(x) std::string("N/A")
+#else
+#define FOLLY_RANGE_CHECK_TO_STRING(x) std::to_string(x)
+#endif
+
 namespace folly {
 namespace conv_bench_detail {
 

@@ -97,9 +97,9 @@ TEST(TestDynamicParser, OnErrorThrowError) {
     auto error = ex.error();
     const auto& message =
       error.at("nested").at("0").at("nested").at("int").at("error");
-    EXPECT_PCRE_MATCH(".* conversion to integral.*", message.getString());
+    EXPECT_PCRE_MATCH(".*Invalid leading.*", message.getString());
     EXPECT_PCRE_MATCH(
-      "DynamicParserParseError: .* conversion to integral.*", ex.what()
+      "DynamicParserParseError: .*Invalid leading.*", ex.what()
     );
     EXPECT_EQ(dynamic(dynamic::object
       ("nested", dynamic::object
@@ -282,7 +282,7 @@ TEST(TestDynamicParser, TestRequiredOptionalParseErrors) {
   };
   EXPECT_EQ(dynamic(dynamic::object("nested", dynamic::object
     ("x", get_expected_error_fn("x", "TypeError: .* but had type `array'"))
-    ("y", get_expected_error_fn("y", ".* Invalid leading character .*"))
+    ("y", get_expected_error_fn("y", ".*Invalid leading character.*"))
     ("z", get_expected_error_fn("z", "CUSTOM")))), errors);
 }
 
@@ -317,7 +317,7 @@ TEST(TestDynamicParser, TestItemParseErrors) {
     dynamic::array("this is not a bool"),
     [&](DynamicParser& p) { p.arrayItems([&](int64_t, bool) {}); },
     0, "0",
-    ".* Non-whitespace: .*"
+    ".*Non-whitespace.*"
   );
 }
 
