@@ -23,12 +23,20 @@
 
 #pragma once
 
-#include <type_traits>
-#include <mutex>
 #include <boost/thread.hpp>
+#include <folly/LockTraits.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
+#include <mutex>
+#include <type_traits>
+
+// Temporarily provide FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES under the legacy
+// FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES name.  This definition will be
+// removed shortly in an upcoming diff to make Synchronized fully utilize
+// LockTraits.
+#define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES \
+  FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 
 namespace folly {
 
@@ -38,14 +46,6 @@ enum InternalDoNotUse {};
 /**
  * Free function adaptors for std:: and boost::
  */
-
-// Android, OSX, and Cygwin don't have timed mutexes
-#if defined(ANDROID) || defined(__ANDROID__) || \
-    defined(__APPLE__) || defined(__CYGWIN__)
-# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 0
-#else
-# define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES 1
-#endif
 
 /**
  * Yields true iff T has .lock() and .unlock() member functions. This

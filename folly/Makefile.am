@@ -229,6 +229,8 @@ nobase_follyinclude_HEADERS = \
 	Lazy.h \
 	LifoSem.h \
 	Likely.h \
+	LockTraits.h \
+	LockTraitsBoost.h \
 	Logging.h \
 	MacAddress.h \
 	Malloc.h \
