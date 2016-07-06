@@ -54,6 +54,21 @@ class OpenSSLUtils {
   static bool getPeerAddressFromX509StoreCtx(X509_STORE_CTX* ctx,
                                              sockaddr_storage* addrStorage,
                                              socklen_t* addrLen);
+
+  /**
+  * Wrappers for BIO operations that may be different across different
+  * versions/flavors of OpenSSL (including forks like BoringSSL)
+  */
+  static bool setCustomBioReadMethod(
+      BIO_METHOD* bioMeth,
+      int (*meth)(BIO*, char*, int));
+  static bool setCustomBioWriteMethod(
+      BIO_METHOD* bioMeth,
+      int (*meth)(BIO*, const char*, int));
+  static int getBioShouldRetryWrite(int ret);
+  static void setBioAppData(BIO* b, void* ptr);
+  static void* getBioAppData(BIO* b);
+  static void setCustomBioMethod(BIO*, BIO_METHOD*);
 };
 
 } // ssl

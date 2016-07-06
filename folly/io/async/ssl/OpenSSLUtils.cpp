@@ -17,12 +17,28 @@
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>
 
+#include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
 #include <glog/logging.h>
+
+#define OPENSSL_IS_101 (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
+                         OPENSSL_VERSION_NUMBER < 0x1000200fL)
+#define OPENSSL_IS_102 (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
+                        OPENSSL_VERSION_NUMBER < 0x10100000L)
+#define OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+
+namespace {
+#if defined(OPENSSL_IS_BORINGSSL)
+// BoringSSL doesn't (as of May 2016) export the equivalent
+// of BIO_sock_should_retry, so this is one way around it :(
+static int boringssl_bio_fd_should_retry(int err);
+#endif
+
+}
 
 namespace folly {
 namespace ssl {
@@ -102,5 +118,131 @@ bool OpenSSLUtils::validatePeerCertNames(X509* cert,
   return false;
 }
 
+bool OpenSSLUtils::setCustomBioReadMethod(
+    BIO_METHOD* bioMeth,
+    int (*meth)(BIO*, char*, int)) {
+  bool ret = false;
+#if OPENSSL_IS_110
+  ret = (BIO_meth_set_read(bioMeth, meth) == 1);
+#elif (defined(OPENSSL_IS_BORINGSSL) || OPENSSL_IS_101 || OPENSSL_IS_102)
+  bioMeth->bread = meth;
+  ret = true;
+#endif
+
+  return ret;
+}
+
+bool OpenSSLUtils::setCustomBioWriteMethod(
+    BIO_METHOD* bioMeth,
+    int (*meth)(BIO*, const char*, int)) {
+  bool ret = false;
+#if OPENSSL_IS_110
+  ret = (BIO_meth_set_write(bioMeth, meth) == 1);
+#elif (defined(OPENSSL_IS_BORINGSSL) || OPENSSL_IS_101 || OPENSSL_IS_102)
+  bioMeth->bwrite = meth;
+  ret = true;
+#endif
+
+  return ret;
+}
+
+int OpenSSLUtils::getBioShouldRetryWrite(int r) {
+  int ret = 0;
+#if defined(OPENSSL_IS_BORINGSSL)
+  ret = boringssl_bio_fd_should_retry(r);
+#else
+  ret = BIO_sock_should_retry(r);
+#endif
+  return ret;
+}
+
+void OpenSSLUtils::setBioAppData(BIO* b, void* ptr) {
+#if defined(OPENSSL_IS_BORINGSSL)
+  BIO_set_callback_arg(b, static_cast<char*>(ptr));
+#else
+  BIO_set_app_data(b, ptr);
+#endif
+}
+
+void* OpenSSLUtils::getBioAppData(BIO* b) {
+#if defined(OPENSSL_IS_BORINGSSL)
+  return BIO_get_callback_arg(b);
+#else
+  return BIO_get_app_data(b);
+#endif
+}
+
+void OpenSSLUtils::setCustomBioMethod(BIO* b, BIO_METHOD* meth) {
+#if defined(OPENSSL_IS_BORINGSSL)
+  b->method = meth;
+#else
+  BIO_set(b, meth);
+#endif
+}
+
 } // ssl
 } // folly
+
+namespace {
+#if defined(OPENSSL_IS_BORINGSSL)
+
+static int boringssl_bio_fd_non_fatal_error(int err) {
+  if (
+#ifdef EWOULDBLOCK
+    err == EWOULDBLOCK ||
+#endif
+#ifdef WSAEWOULDBLOCK
+    err == WSAEWOULDBLOCK ||
+#endif
+#ifdef ENOTCONN
+    err == ENOTCONN ||
+#endif
+#ifdef EINTR
+    err == EINTR ||
+#endif
+#ifdef EAGAIN
+    err == EAGAIN ||
+#endif
+#ifdef EPROTO
+    err == EPROTO ||
+#endif
+#ifdef EINPROGRESS
+    err == EINPROGRESS ||
+#endif
+#ifdef EALREADY
+    err == EALREADY ||
+#endif
+    0) {
+    return 1;
+  }
+  return 0;
+}
+
+#if defined(OPENSSL_WINDOWS)
+
+#include <io.h>
+#pragma warning(push, 3)
+#include <windows.h>
+#pragma warning(pop)
+
+int boringssl_bio_fd_should_retry(int i) {
+  if (i == -1) {
+    return boringssl_bio_fd_non_fatal_error((int)GetLastError());
+  }
+  return 0;
+}
+
+#else // !OPENSSL_WINDOWS
+
+#include <unistd.h>
+int boringssl_bio_fd_should_retry(int i) {
+  if (i == -1) {
+    return boringssl_bio_fd_non_fatal_error(errno);
+  }
+  return 0;
+}
+#endif // OPENSSL_WINDOWS
+
+#endif // OEPNSSL_IS_BORINGSSL
+
+}

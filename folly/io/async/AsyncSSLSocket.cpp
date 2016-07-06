@@ -54,6 +54,7 @@ using folly::AsyncSocketException;
 using folly::AsyncSSLSocket;
 using folly::Optional;
 using folly::SSLContext;
+using folly::ssl::OpenSSLUtils;
 
 // We have one single dummy SSL context so that we can implement attach
 // and detach methods in a thread safe fashion without modifying opnessl.
@@ -228,7 +229,8 @@ BIO_METHOD sslWriteBioMethod;
 void* initsslWriteBioMethod(void) {
   memcpy(&sslWriteBioMethod, BIO_s_socket(), sizeof(sslWriteBioMethod));
   // override the bwrite method for MSG_EOR support
-  sslWriteBioMethod.bwrite = AsyncSSLSocket::bioWrite;
+  OpenSSLUtils::setCustomBioWriteMethod(
+      &sslWriteBioMethod, AsyncSSLSocket::bioWrite);
 
   // Note that the sslWriteBioMethod.type and sslWriteBioMethod.name are not
   // set here. openssl code seems to be checking ".type == BIO_TYPE_SOCKET" and
@@ -434,10 +436,10 @@ size_t AsyncSSLSocket::getRawBytesReceived() const {
 void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
   LOG(ERROR) << "AsyncSSLSocket(this=" << this << ", fd=" << fd_
              << ", state=" << int(state_) << ", sslState=" << sslState_ << ", "
-             << "events=" << eventFlags_ << ", server=" << short(server_) << "): "
-             << "sslAccept/Connect() called in invalid "
-             << "state, handshake callback " << handshakeCallback_ << ", new callback "
-             << callback;
+             << "events=" << eventFlags_ << ", server=" << short(server_)
+             << "): " << "sslAccept/Connect() called in invalid "
+             << "state, handshake callback " << handshakeCallback_
+             << ", new callback " << callback;
   assert(!handshakeTimeout_.isScheduled());
   sslState_ = STATE_ERROR;
 
@@ -688,7 +690,7 @@ bool AsyncSSLSocket::setupSSLBio() {
     return false;
   }
 
-  BIO_set_app_data(wb, this);
+  OpenSSLUtils::setBioAppData(wb, this);
   BIO_set_fd(wb, fd_, BIO_NOCLOSE);
   SSL_set_bio(ssl_, wb, wb);
   return true;
@@ -961,16 +963,15 @@ void AsyncSSLSocket::checkForImmediateRead() noexcept {
 void
 AsyncSSLSocket::restartSSLAccept()
 {
-  VLOG(3) << "AsyncSSLSocket::restartSSLAccept() this=" << this << ", fd=" << fd_
-          << ", state=" << int(state_) << ", "
+  VLOG(3) << "AsyncSSLSocket::restartSSLAccept() this=" << this
+          << ", fd=" << fd_ << ", state=" << int(state_) << ", "
           << "sslState=" << sslState_ << ", events=" << eventFlags_;
   DestructorGuard dg(this);
   assert(
     sslState_ == STATE_CACHE_LOOKUP ||
     sslState_ == STATE_ASYNC_PENDING ||
     sslState_ == STATE_ERROR ||
-    sslState_ == STATE_CLOSED
-  );
+    sslState_ == STATE_CLOSED);
   if (sslState_ == STATE_CLOSED) {
     // I sure hope whoever closed this socket didn't delete it already,
     // but this is not strictly speaking an error
@@ -1520,7 +1521,7 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;
 
-  auto appData = BIO_get_app_data(b);
+  auto appData = OpenSSLUtils::getBioAppData(b);
   CHECK(appData);
 
   tsslSock = reinterpret_cast<AsyncSSLSocket*>(appData);
@@ -1535,7 +1536,7 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
       tsslSock->sendSocketMessage(BIO_get_fd(b, nullptr), &msg, flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
-    if (BIO_sock_should_retry(result.writeReturn)) {
+    if (OpenSSLUtils::getBioShouldRetryWrite(result.writeReturn)) {
       BIO_set_retry_write(b);
     }
   }
