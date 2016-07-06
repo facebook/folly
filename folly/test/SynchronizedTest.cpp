@@ -27,7 +27,7 @@
 #include <folly/test/SynchronizedTestLib.h>
 #include <gtest/gtest.h>
 
-namespace {
+using namespace folly::sync_tests;
 
 template <class Mutex>
 class SynchronizedTest : public testing::Test {};
@@ -223,5 +223,4 @@ TEST_F(SynchronizedLockTest, NestedSyncUnSync2) {
     EXPECT_EQ((CountPair{4, 3}), FakeMutex::getLockUnlockCount());
   }
   EXPECT_EQ((CountPair{4, 4}), FakeMutex::getLockUnlockCount());
-}
 }
