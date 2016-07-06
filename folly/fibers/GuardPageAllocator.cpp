@@ -20,6 +20,7 @@
 #endif
 #include <signal.h>
 
+#include <iostream>
 #include <mutex>
 
 #include <folly/Singleton.h>

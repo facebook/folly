@@ -18,6 +18,7 @@
 
 // Test bed for folly/Synchronized.h
 
+#include <folly/LockTraitsBoost.h>
 #include <folly/Portability.h>
 #include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>

@@ -23,9 +23,7 @@
 
 #pragma once
 
-#include <boost/thread.hpp>
 #include <folly/LockTraits.h>
-#include <folly/LockTraitsBoost.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>

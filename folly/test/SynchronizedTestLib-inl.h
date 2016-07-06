@@ -18,16 +18,16 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <random>
-#include <functional>
-#include <thread>
-#include <vector>
-#include <glog/logging.h>
 #include <folly/Foreach.h>
 #include <folly/Random.h>
 #include <folly/Synchronized.h>
-
+#include <glog/logging.h>
+#include <algorithm>
+#include <functional>
+#include <map>
+#include <random>
+#include <thread>
+#include <vector>
 
 inline std::mt19937& getRNG() {
   static const auto seed = folly::randomNumberSeed();
