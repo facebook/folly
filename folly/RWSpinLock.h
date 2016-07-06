@@ -457,12 +457,6 @@ class RWSpinLock {
     RWSpinLock* lock_;
   };
 
-  // Synchronized<> adaptors
-  friend void acquireRead(RWSpinLock& l) { return l.lock_shared(); }
-  friend void acquireReadWrite(RWSpinLock& l) { return l.lock(); }
-  friend void releaseRead(RWSpinLock& l) { return l.unlock_shared(); }
-  friend void releaseReadWrite(RWSpinLock& l) { return l.unlock(); }
-
  private:
   std::atomic<int32_t> bits_;
 };
@@ -760,20 +754,6 @@ class RWTicketSpinLockT {
     friend class ReadHolder;
     RWSpinLock *lock_;
   };
-
-  // Synchronized<> adaptors.
-  friend void acquireRead(RWTicketSpinLockT& mutex) {
-    mutex.lock_shared();
-  }
-  friend void acquireReadWrite(RWTicketSpinLockT& mutex) {
-    mutex.lock();
-  }
-  friend void releaseRead(RWTicketSpinLockT& mutex) {
-    mutex.unlock_shared();
-  }
-  friend void releaseReadWrite(RWTicketSpinLockT& mutex) {
-    mutex.unlock();
-  }
 };
 
 typedef RWTicketSpinLockT<32> RWTicketSpinLock32;

@@ -64,11 +64,4 @@ class SpinLockGuardImpl : private boost::noncopyable {
 
 typedef SpinLockGuardImpl<SpinLock> SpinLockGuard;
 
-namespace detail {
-template <class T>
-struct HasLockUnlock;
-
-template <>
-struct HasLockUnlock<folly::SpinLock> : public std::true_type {};
-}
 }

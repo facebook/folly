@@ -25,179 +25,17 @@
 
 #include <boost/thread.hpp>
 #include <folly/LockTraits.h>
+#include <folly/LockTraitsBoost.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
 #include <folly/Traits.h>
 #include <mutex>
 #include <type_traits>
 
-// Temporarily provide FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES under the legacy
-// FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES name.  This definition will be
-// removed shortly in an upcoming diff to make Synchronized fully utilize
-// LockTraits.
-#define FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES \
-  FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
-
 namespace folly {
 
 namespace detail {
 enum InternalDoNotUse {};
-
-/**
- * Free function adaptors for std:: and boost::
- */
-
-/**
- * Yields true iff T has .lock() and .unlock() member functions. This
- * is done by simply enumerating the mutexes with this interface in
- * std and boost.
- */
-template <class T>
-struct HasLockUnlock {
-  enum { value = IsOneOf<T
-      , std::mutex
-      , std::recursive_mutex
-      , boost::mutex
-      , boost::recursive_mutex
-      , boost::shared_mutex
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-      , std::timed_mutex
-      , std::recursive_timed_mutex
-      , boost::timed_mutex
-      , boost::recursive_timed_mutex
-#endif
-      >::value };
-};
-
-/**
- * Yields true iff T has .lock_shared() and .unlock_shared() member functions.
- * This is done by simply enumerating the mutexes with this interface.
- */
-template <class T>
-struct HasLockSharedUnlockShared {
-  enum { value = IsOneOf<T
-      , boost::shared_mutex
-      >::value };
-};
-
-/**
- * Acquires a mutex for reading by calling .lock().
- *
- * This variant is not appropriate for shared mutexes.
- */
-template <class T>
-typename std::enable_if<
-  HasLockUnlock<T>::value && !HasLockSharedUnlockShared<T>::value>::type
-acquireRead(T& mutex) {
-  mutex.lock();
-}
-
-/**
- * Acquires a mutex for reading by calling .lock_shared().
- *
- * This variant is not appropriate for nonshared mutexes.
- */
-template <class T>
-typename std::enable_if<HasLockSharedUnlockShared<T>::value>::type
-acquireRead(T& mutex) {
-  mutex.lock_shared();
-}
-
-/**
- * Acquires a mutex for reading and writing by calling .lock().
- */
-template <class T>
-typename std::enable_if<HasLockUnlock<T>::value>::type
-acquireReadWrite(T& mutex) {
-  mutex.lock();
-}
-
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-/**
- * Acquires a mutex for reading by calling .try_lock_shared_for(). This applies
- * to boost::shared_mutex.
- */
-template <class T>
-typename std::enable_if<
-  IsOneOf<T
-      , boost::shared_mutex
-      >::value, bool>::type
-acquireRead(T& mutex,
-            unsigned int milliseconds) {
-  return mutex.try_lock_shared_for(boost::chrono::milliseconds(milliseconds));
-}
-
-/**
- * Acquires a mutex for reading and writing with timeout by calling
- * .try_lock_for(). This applies to two of the std mutex classes as
- * enumerated below.
- */
-template <class T>
-typename std::enable_if<
-  IsOneOf<T
-      , std::timed_mutex
-      , std::recursive_timed_mutex
-      >::value, bool>::type
-acquireReadWrite(T& mutex,
-                 unsigned int milliseconds) {
-  // work around try_lock_for bug in some gcc versions, see
-  // http://gcc.gnu.org/bugzilla/show_bug.cgi?id=54562
-  // TODO: Fixed in gcc-4.9.0.
-  return mutex.try_lock()
-      || (milliseconds > 0 &&
-          mutex.try_lock_until(std::chrono::system_clock::now() +
-                               std::chrono::milliseconds(milliseconds)));
-}
-
-/**
- * Acquires a mutex for reading and writing with timeout by calling
- * .try_lock_for(). This applies to three of the boost mutex classes as
- * enumerated below.
- */
-template <class T>
-typename std::enable_if<
-  IsOneOf<T
-      , boost::shared_mutex
-      , boost::timed_mutex
-      , boost::recursive_timed_mutex
-      >::value, bool>::type
-acquireReadWrite(T& mutex,
-                 unsigned int milliseconds) {
-  return mutex.try_lock_for(boost::chrono::milliseconds(milliseconds));
-}
-#endif // FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-
-/**
- * Releases a mutex previously acquired for reading by calling
- * .unlock(). The exception is boost::shared_mutex, which has a
- * special primitive called .unlock_shared().
- */
-template <class T>
-typename std::enable_if<
-  HasLockUnlock<T>::value && !HasLockSharedUnlockShared<T>::value>::type
-releaseRead(T& mutex) {
-  mutex.unlock();
-}
-
-/**
- * Special case for boost::shared_mutex.
- */
-template <class T>
-typename std::enable_if<HasLockSharedUnlockShared<T>::value>::type
-releaseRead(T& mutex) {
-  mutex.unlock_shared();
-}
-
-/**
- * Releases a mutex previously acquired for reading-writing by calling
- * .unlock().
- */
-template <class T>
-typename std::enable_if<HasLockUnlock<T>::value>::type
-releaseReadWrite(T& mutex) {
-  mutex.unlock();
-}
-
 } // namespace detail
 
 /**
@@ -209,20 +47,19 @@ releaseReadWrite(T& mutex) {
  * reviewer. In contrast, the code that uses Synchronized<T> correctly
  * looks simple and intuitive.
  *
- * The second parameter must be a mutex type. Supported mutexes are
- * std::mutex, std::recursive_mutex, std::timed_mutex,
- * std::recursive_timed_mutex, boost::mutex, boost::recursive_mutex,
- * boost::shared_mutex, boost::timed_mutex,
- * boost::recursive_timed_mutex, and the folly/RWSpinLock.h
- * classes.
+ * The second parameter must be a mutex type.  Any mutex type supported by
+ * LockTraits<Mutex> can be used.  By default any class with lock() and
+ * unlock() methods will work automatically.  LockTraits can be specialized to
+ * teach Locked how to use other custom mutex types.  See the documentation in
+ * LockTraits.h for additional details.
  *
- * You may define Synchronized support by defining 4-6 primitives in
- * the same namespace as the mutex class (found via ADL).  The
- * primitives are: acquireRead, acquireReadWrite, releaseRead, and
- * releaseReadWrite. Two optional primitives for timout operations are
- * overloads of acquireRead and acquireReadWrite. For signatures,
- * refer to the namespace detail below, which implements the
- * primitives for mutexes in std and boost.
+ * Supported mutexes that work by default include std::mutex,
+ * std::recursive_mutex, std::timed_mutex, std::recursive_timed_mutex,
+ * folly::SharedMutex, folly::RWSpinLock, and folly::SpinLock.
+ * Include LockTraitsBoost.h to get additional LockTraits specializations to
+ * support the following boost mutex types: boost::mutex,
+ * boost::recursive_mutex, boost::shared_mutex, boost::timed_mutex, and
+ * boost::recursive_timed_mutex.
  */
 template <class T, class Mutex = SharedMutex>
 struct Synchronized {
@@ -372,8 +209,8 @@ struct Synchronized {
      * milliseconds. If not, the LockedPtr will be subsequently null.
      */
     LockedPtr(Synchronized* parent, unsigned int milliseconds) {
-      using namespace detail;
-      if (acquireReadWrite(parent->mutex_, milliseconds)) {
+      std::chrono::milliseconds chronoMS(milliseconds);
+      if (LockTraits<Mutex>::try_lock_for(parent->mutex_, chronoMS)) {
         parent_ = parent;
         return;
       }
@@ -415,8 +252,9 @@ struct Synchronized {
      * Destructor releases.
      */
     ~LockedPtr() {
-      using namespace detail;
-      if (parent_) releaseReadWrite(parent_->mutex_);
+      if (parent_) {
+        LockTraits<Mutex>::unlock(parent_->mutex_);
+      }
     }
 
     /**
@@ -435,8 +273,7 @@ struct Synchronized {
      */
     struct Unsynchronizer {
       explicit Unsynchronizer(LockedPtr* p) : parent_(p) {
-        using namespace detail;
-        releaseReadWrite(parent_->parent_->mutex_);
+        LockTraits<Mutex>::unlock(parent_->parent_->mutex_);
       }
       Unsynchronizer(const Unsynchronizer&) = delete;
       Unsynchronizer& operator=(const Unsynchronizer&) = delete;
@@ -457,8 +294,9 @@ struct Synchronized {
 
   private:
     void acquire() {
-      using namespace detail;
-      if (parent_) acquireReadWrite(parent_->mutex_);
+      if (parent_) {
+        LockTraits<Mutex>::lock(parent_->mutex_);
+      }
     }
 
     // This is the entire state of LockedPtr.
@@ -490,10 +328,8 @@ struct Synchronized {
       acquire();
     }
     ConstLockedPtr(const Synchronized* parent, unsigned int milliseconds) {
-      using namespace detail;
-      if (acquireRead(
-            parent->mutex_,
-            milliseconds)) {
+      if (try_lock_shared_or_unique_for(
+              parent->mutex_, std::chrono::milliseconds(milliseconds))) {
         parent_ = parent;
         return;
       }
@@ -509,8 +345,9 @@ struct Synchronized {
       }
     }
     ~ConstLockedPtr() {
-      using namespace detail;
-      if (parent_) releaseRead(parent_->mutex_);
+      if (parent_) {
+        unlock_shared_or_unique(parent_->mutex_);
+      }
     }
 
     const T* operator->() const {
@@ -519,14 +356,12 @@ struct Synchronized {
 
     struct Unsynchronizer {
       explicit Unsynchronizer(ConstLockedPtr* p) : parent_(p) {
-        using namespace detail;
-        releaseRead(parent_->parent_->mutex_);
+        unlock_shared_or_unique(parent_->parent_->mutex_);
       }
       Unsynchronizer(const Unsynchronizer&) = delete;
       Unsynchronizer& operator=(const Unsynchronizer&) = delete;
       ~Unsynchronizer() {
-        using namespace detail;
-        acquireRead(parent_->parent_->mutex_);
+        lock_shared_or_unique(parent_->parent_->mutex_);
       }
       ConstLockedPtr* operator->() const {
         return parent_;
@@ -542,8 +377,9 @@ struct Synchronized {
 
   private:
     void acquire() {
-      using namespace detail;
-      if (parent_) acquireRead(parent_->mutex_);
+      if (parent_) {
+        lock_shared_or_unique(parent_->mutex_);
+      }
     }
 
     const Synchronized* parent_;

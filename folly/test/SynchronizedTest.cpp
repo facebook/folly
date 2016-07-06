@@ -31,28 +31,27 @@ namespace {
 template <class Mutex>
 class SynchronizedTest : public testing::Test {};
 
-using SynchronizedTestTypes = testing::Types
-  < folly::SharedMutexReadPriority
-  , folly::SharedMutexWritePriority
-  , std::mutex
-  , std::recursive_mutex
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-  , std::timed_mutex
-  , std::recursive_timed_mutex
+using SynchronizedTestTypes = testing::Types<
+    folly::SharedMutexReadPriority,
+    folly::SharedMutexWritePriority,
+    std::mutex,
+    std::recursive_mutex,
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+    std::timed_mutex,
+    std::recursive_timed_mutex,
 #endif
-  , boost::mutex
-  , boost::recursive_mutex
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-  , boost::timed_mutex
-  , boost::recursive_timed_mutex
+    boost::mutex,
+    boost::recursive_mutex,
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+    boost::timed_mutex,
+    boost::recursive_timed_mutex,
 #endif
-  , boost::shared_mutex
-  , folly::SpinLock
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  , folly::RWTicketSpinLock32
-  , folly::RWTicketSpinLock64
+    folly::RWTicketSpinLock32,
+    folly::RWTicketSpinLock64,
 #endif
-  >;
+    boost::shared_mutex,
+    folly::SpinLock>;
 TYPED_TEST_CASE(SynchronizedTest, SynchronizedTestTypes);
 
 TYPED_TEST(SynchronizedTest, Basic) {
@@ -78,21 +77,20 @@ TYPED_TEST(SynchronizedTest, ConstCopy) {
 template <class Mutex>
 class SynchronizedTimedTest : public testing::Test {};
 
-using SynchronizedTimedTestTypes = testing::Types
-  < folly::SharedMutexReadPriority
-  , folly::SharedMutexWritePriority
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-  , std::timed_mutex
-  , std::recursive_timed_mutex
-  , boost::timed_mutex
-  , boost::recursive_timed_mutex
-  , boost::shared_mutex
+using SynchronizedTimedTestTypes = testing::Types<
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+    std::timed_mutex,
+    std::recursive_timed_mutex,
+    boost::timed_mutex,
+    boost::recursive_timed_mutex,
+    boost::shared_mutex,
 #endif
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  , folly::RWTicketSpinLock32
-  , folly::RWTicketSpinLock64
+    folly::RWTicketSpinLock32,
+    folly::RWTicketSpinLock64,
 #endif
-  >;
+    folly::SharedMutexReadPriority,
+    folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
 
 TYPED_TEST(SynchronizedTimedTest, TimedSynchronized) {
@@ -102,17 +100,16 @@ TYPED_TEST(SynchronizedTimedTest, TimedSynchronized) {
 template <class Mutex>
 class SynchronizedTimedWithConstTest : public testing::Test {};
 
-using SynchronizedTimedWithConstTestTypes = testing::Types
-  < folly::SharedMutexReadPriority
-  , folly::SharedMutexWritePriority
-#if FOLLY_SYNCHRONIZED_HAVE_TIMED_MUTEXES
-  , boost::shared_mutex
+using SynchronizedTimedWithConstTestTypes = testing::Types<
+#if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+    boost::shared_mutex,
 #endif
 #ifdef RW_SPINLOCK_USE_X86_INTRINSIC_
-  , folly::RWTicketSpinLock32
-  , folly::RWTicketSpinLock64
+    folly::RWTicketSpinLock32,
+    folly::RWTicketSpinLock64,
 #endif
-  >;
+    folly::SharedMutexReadPriority,
+    folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(
     SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
 
@@ -152,10 +149,6 @@ class FakeMutex {
   // process
   static FOLLY_TLS int lockCount_;
   static FOLLY_TLS int unlockCount_;
-
-  // Adapters for Synchronized<>
-  friend void acquireReadWrite(FakeMutex& lock) { lock.lock(); }
-  friend void releaseReadWrite(FakeMutex& lock) { lock.unlock(); }
 };
 FOLLY_TLS int FakeMutex::lockCount_{0};
 FOLLY_TLS int FakeMutex::unlockCount_{0};
