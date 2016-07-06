@@ -82,6 +82,7 @@ nobase_follyinclude_HEADERS = \
 	DynamicConverter.h \
 	dynamic.h \
 	dynamic-inl.h \
+	Enumerate.h \
 	Exception.h \
 	ExceptionString.h \
 	ExceptionWrapper.h \
