@@ -90,16 +90,15 @@ namespace folly {
 
 namespace traits_detail {
 
-#define FOLLY_HAS_TRUE_XXX(name)                          \
-  BOOST_MPL_HAS_XXX_TRAIT_DEF(name);                      \
-  template <class T> struct name ## _is_true              \
-    : std::is_same<typename T::name, std::true_type> {};  \
-  template <class T> struct has_true_ ## name             \
-    : std::conditional<                                   \
-        has_ ## name <T>::value,                          \
-        name ## _is_true<T>,                              \
-        std::false_type                                   \
-      >:: type {};
+#define FOLLY_HAS_TRUE_XXX(name)                                             \
+  BOOST_MPL_HAS_XXX_TRAIT_DEF(name)                                          \
+  template <class T>                                                         \
+  struct name##_is_true : std::is_same<typename T::name, std::true_type> {}; \
+  template <class T>                                                         \
+  struct has_true_##name : std::conditional<                                 \
+                               has_##name<T>::value,                         \
+                               name##_is_true<T>,                            \
+                               std::false_type>::type {};
 
 FOLLY_HAS_TRUE_XXX(IsRelocatable)
 FOLLY_HAS_TRUE_XXX(IsZeroInitializable)
@@ -410,17 +409,17 @@ constexpr construct_in_place_t construct_in_place{};
 
 // gcc-5.0 changed string's implementation in libgcc to be non-relocatable
 #if __GNUC__ < 5
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string)
 #endif
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector);
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::list);
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque);
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr);
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr);
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::list)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function)
 
 // Boost
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr);
+FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr)
 
 #define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name) \
   template <typename T> \
