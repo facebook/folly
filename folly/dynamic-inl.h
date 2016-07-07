@@ -107,14 +107,17 @@ namespace detail {
   > {
     typedef int64_t type;
   };
-  template<class T>
+  template <>
+  struct ConversionHelper<float> {
+    typedef double type;
+  };
+  template <class T>
   struct ConversionHelper<
-    T,
-    typename std::enable_if<
-      (!std::is_integral<T>::value || std::is_same<T,bool>::value) &&
-      !std::is_same<T,std::nullptr_t>::value
-    >::type
-  > {
+      T,
+      typename std::enable_if<
+          (!std::is_integral<T>::value || std::is_same<T, bool>::value) &&
+          !std::is_same<T, float>::value &&
+          !std::is_same<T, std::nullptr_t>::value>::type> {
     typedef T type;
   };
   template<class T>

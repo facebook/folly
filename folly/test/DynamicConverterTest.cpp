@@ -344,6 +344,12 @@ TEST(DynamicConverter, construct) {
   }
 
   {
+    vector<float> c{1.0f, 2.0f, 4.0f};
+    dynamic d = dynamic::array(1.0, 2.0, 4.0);
+    EXPECT_EQ(d, toDynamic(c));
+  }
+
+  {
     map<int, int> c { { 2, 4 }, { 3, 9 } };
     dynamic d = dynamic::object(2, 4)(3, 9);
     EXPECT_EQ(d, toDynamic(c));
