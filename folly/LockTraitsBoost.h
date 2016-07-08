@@ -30,6 +30,15 @@
 
 namespace folly {
 
+namespace detail {
+/// Convert a std::chrono::duration argument to boost::chrono::duration
+template <class Rep, std::intmax_t Num, std::intmax_t Denom>
+boost::chrono::duration<Rep, boost::ratio<Num, Denom>> toBoostDuration(
+    const std::chrono::duration<Rep, std::ratio<Num, Denom>>& d) {
+  return boost::chrono::duration<Rep, boost::ratio<Num, Denom>>(d.count());
+}
+}
+
 /**
  * LockTraits specialization for boost::shared_mutex
  */
@@ -39,19 +48,18 @@ struct LockTraits<boost::shared_mutex>
   static constexpr bool is_shared = true;
   static constexpr bool is_timed = true;
 
+  template <class Rep, class Period>
   static bool try_lock_for(
       boost::shared_mutex& mutex,
-      std::chrono::milliseconds timeout) {
-    // Convert the std::chrono argument to boost::chrono
-    return mutex.try_lock_for(boost::chrono::milliseconds(timeout.count()));
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return mutex.try_lock_for(detail::toBoostDuration(timeout));
   }
 
+  template <class Rep, class Period>
   static bool try_lock_shared_for(
       boost::shared_mutex& mutex,
-      std::chrono::milliseconds timeout) {
-    // Convert the std::chrono argument to boost::chrono
-    return mutex.try_lock_shared_for(
-        boost::chrono::milliseconds(timeout.count()));
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return mutex.try_lock_shared_for(detail::toBoostDuration(timeout));
   }
 };
 
@@ -64,11 +72,11 @@ struct LockTraits<boost::timed_mutex>
   static constexpr bool is_shared = false;
   static constexpr bool is_timed = true;
 
+  template <class Rep, class Period>
   static bool try_lock_for(
       boost::timed_mutex& mutex,
-      std::chrono::milliseconds timeout) {
-    // Convert the std::chrono argument to boost::chrono
-    return mutex.try_lock_for(boost::chrono::milliseconds(timeout.count()));
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return mutex.try_lock_for(detail::toBoostDuration(timeout));
   }
 };
 
@@ -81,11 +89,11 @@ struct LockTraits<boost::recursive_timed_mutex>
   static constexpr bool is_shared = false;
   static constexpr bool is_timed = true;
 
+  template <class Rep, class Period>
   static bool try_lock_for(
       boost::recursive_timed_mutex& mutex,
-      std::chrono::milliseconds timeout) {
-    // Convert the std::chrono argument to boost::chrono
-    return mutex.try_lock_for(boost::chrono::milliseconds(timeout.count()));
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return mutex.try_lock_for(detail::toBoostDuration(timeout));
   }
 };
 } // folly
