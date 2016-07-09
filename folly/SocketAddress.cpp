@@ -20,6 +20,7 @@
 
 #include <folly/SocketAddress.h>
 
+#include <folly/Exception.h>
 #include <folly/Hash.h>
 
 #include <boost/functional/hash.hpp>
@@ -28,6 +29,7 @@
 #include <errno.h>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 namespace {
 

@@ -358,14 +358,6 @@ estimateSpaceNeeded(T) {
 }
 
 /**
- * Ubiquitous helper template for writing string appenders
- */
-template <class T> struct IsSomeString {
-  enum { value = std::is_same<T, std::string>::value
-         || std::is_same<T, fbstring>::value };
-};
-
-/**
  * Everything implicitly convertible to const char* gets appended.
  */
 template <class Tgt, class Src>

@@ -18,7 +18,7 @@
 
 #include <sys/types.h>
 #include <cstddef>
-#include <iostream>
+#include <iosfwd>
 #include <string>
 
 #include <folly/IPAddress.h>

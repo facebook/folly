@@ -15,6 +15,8 @@
  */
 #include <folly/io/async/test/BlockingSocket.h>
 
+#include <iostream>
+
 #include <folly/ExceptionWrapper.h>
 #include <gflags/gflags.h>
 

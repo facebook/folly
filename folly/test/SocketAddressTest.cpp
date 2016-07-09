@@ -19,6 +19,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
+#include <system_error>
+
 #include <folly/test/SocketAddressTestHelper.h>
 
 using namespace boost;

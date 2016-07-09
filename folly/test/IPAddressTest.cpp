@@ -20,8 +20,9 @@
 
 #include <folly/Bits.h>
 #include <folly/Format.h>
-#include <folly/String.h>
 #include <folly/MacAddress.h>
+#include <folly/String.h>
+#include <folly/detail/IPAddressSource.h>
 
 using namespace folly;
 using namespace std;

@@ -1162,6 +1162,14 @@ struct hasher<folly::Range<T*>,
   }
 };
 
+/**
+ * Ubiquitous helper template for knowing what's a string
+ */
+template <class T> struct IsSomeString {
+  enum { value = std::is_same<T, std::string>::value
+         || std::is_same<T, fbstring>::value };
+};
+
 }  // !namespace folly
 
 #pragma GCC diagnostic pop

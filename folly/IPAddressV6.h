@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <cstring>
+
+#include <array>
 #include <functional>
-#include <iostream>
+#include <iosfwd>
 #include <map>
 #include <stdexcept>
-
-#include <boost/operators.hpp>
 
 #include <folly/Hash.h>
 #include <folly/Range.h>
@@ -63,7 +64,7 @@ typedef std::array<uint8_t, 16> ByteArray16;
  * Serializing / Deserializing IPAddressB6's on different hosts
  * that use link-local scoping probably won't work.
  */
-class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
+class IPAddressV6 {
  public:
   // V6 Address Type
   enum Type {
@@ -227,7 +228,8 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
 
   // @see IPAddress#isZero
   bool isZero() const {
-    return detail::Bytes::isZero(bytes(), 16);
+    constexpr auto zero = ByteArray16{{}};
+    return 0 == std::memcmp(bytes(), zero.data(), zero.size());
   }
 
   bool isLinkLocalBroadcast() const;
@@ -283,13 +285,9 @@ class IPAddressV6 : boost::totally_ordered<IPAddressV6> {
   static const ByteArray16 fetchMask(size_t numBits);
   // Given 2 IPAddressV6,mask pairs extract the longest common IPAddress,
   // mask pair
-  static CIDRNetworkV6 longestCommonPrefix(const CIDRNetworkV6& one,
-                                           const CIDRNetworkV6& two) {
-    auto prefix = detail::Bytes::longestCommonPrefix(
-      one.first.addr_.bytes_, one.second,
-      two.first.addr_.bytes_, two.second);
-    return {IPAddressV6(prefix.first), prefix.second};
-  }
+  static CIDRNetworkV6 longestCommonPrefix(
+      const CIDRNetworkV6& one,
+      const CIDRNetworkV6& two);
   // Number of bytes in the address representation.
   static constexpr size_t byteCount() { return 16; }
 
@@ -366,6 +364,19 @@ inline bool operator<(const IPAddressV6& addr1, const IPAddressV6& addr2) {
   } else {
     return cmp;
   }
+}
+// Derived operators
+inline bool operator!=(const IPAddressV6& a, const IPAddressV6& b) {
+  return !(a == b);
+}
+inline bool operator>(const IPAddressV6& a, const IPAddressV6& b) {
+  return b < a;
+}
+inline bool operator<=(const IPAddressV6& a, const IPAddressV6& b) {
+  return !(a > b);
+}
+inline bool operator>=(const IPAddressV6& a, const IPAddressV6& b) {
+  return !(a < b);
 }
 
 }  // folly

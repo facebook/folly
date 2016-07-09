@@ -18,8 +18,8 @@
 
 #include <exception>
 #include <string>
+#include <utility>
 
-#include <folly/Conv.h>
 #include <folly/detail/IPAddress.h>
 
 namespace folly {
@@ -29,13 +29,13 @@ namespace folly {
  */
 class IPAddressFormatException : public std::exception {
  public:
-  explicit IPAddressFormatException(const std::string& msg)
-      : msg_(msg) {}
-  IPAddressFormatException(
-    const IPAddressFormatException&) = default;
-  template<typename... Args>
-  explicit IPAddressFormatException(Args&&... args)
-      : msg_(to<std::string>(std::forward<Args>(args)...)) {}
+  explicit IPAddressFormatException(std::string msg) noexcept
+      : msg_(std::move(msg)) {}
+  IPAddressFormatException(const IPAddressFormatException&) = default;
+  IPAddressFormatException(IPAddressFormatException&&) = default;
+  IPAddressFormatException& operator=(const IPAddressFormatException&) =
+      default;
+  IPAddressFormatException& operator=(IPAddressFormatException&&) = default;
 
   virtual ~IPAddressFormatException() noexcept {}
   virtual const char *what(void) const noexcept {
@@ -43,22 +43,23 @@ class IPAddressFormatException : public std::exception {
   }
 
  private:
-  const std::string msg_;
+  std::string msg_;
 };
 
 class InvalidAddressFamilyException : public IPAddressFormatException {
  public:
-  explicit InvalidAddressFamilyException(const std::string& msg)
-      : IPAddressFormatException(msg) {}
-  InvalidAddressFamilyException(
-    const InvalidAddressFamilyException&) = default;
-  explicit InvalidAddressFamilyException(sa_family_t family)
-      : IPAddressFormatException("Address family " +
-                                 detail::familyNameStr(family) +
-                                 " is not AF_INET or AF_INET6") {}
-  template<typename... Args>
-  explicit InvalidAddressFamilyException(Args&&... args)
-      : IPAddressFormatException(std::forward<Args>(args)...) {}
+  explicit InvalidAddressFamilyException(std::string msg) noexcept
+      : IPAddressFormatException(std::move(msg)) {}
+  explicit InvalidAddressFamilyException(sa_family_t family) noexcept
+      : InvalidAddressFamilyException(
+            "Address family " + detail::familyNameStr(family) +
+            " is not AF_INET or AF_INET6") {}
+  InvalidAddressFamilyException(const InvalidAddressFamilyException&) = default;
+  InvalidAddressFamilyException(InvalidAddressFamilyException&&) = default;
+  InvalidAddressFamilyException& operator=(
+      const InvalidAddressFamilyException&) = default;
+  InvalidAddressFamilyException& operator=(InvalidAddressFamilyException&&) =
+      default;
 };
 
 }  // folly

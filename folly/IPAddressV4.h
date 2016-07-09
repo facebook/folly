@@ -16,10 +16,11 @@
 
 #pragma once
 
-#include <functional>
-#include <iostream>
+#include <cstring>
 
-#include <boost/operators.hpp>
+#include <array>
+#include <functional>
+#include <iosfwd>
 
 #include <folly/Hash.h>
 #include <folly/Range.h>
@@ -51,7 +52,7 @@ typedef std::array<uint8_t, 4> ByteArray4;
  *
  * @see IPAddress
  */
-class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
+class IPAddressV4 {
  public:
   // returns true iff the input string can be parsed as an ipv4-address
   static bool validate(StringPiece ip);
@@ -168,7 +169,8 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
 
   // @see IPAddress#isZero
   bool isZero() const {
-    return detail::Bytes::isZero(bytes(), 4);
+    constexpr auto zero = ByteArray4{{}};
+    return 0 == std::memcmp(bytes(), zero.data(), zero.size());
   }
 
   bool isLinkLocalBroadcast() const {
@@ -214,15 +216,11 @@ class IPAddressV4 : boost::totally_ordered<IPAddressV4> {
    */
   static const ByteArray4 fetchMask(size_t numBits);
 
-  // Given 2 IPAddressV4,mask pairs extract the longest common IPAddress,
+  // Given 2 IPAddressV4, mask pairs extract the longest common IPAddress,
   // mask pair
   static CIDRNetworkV4 longestCommonPrefix(
-    const CIDRNetworkV4& one, const CIDRNetworkV4& two) {
-    auto prefix =
-      detail::Bytes::longestCommonPrefix(one.first.addr_.bytes_, one.second,
-                                         two.first.addr_.bytes_, two.second);
-    return {IPAddressV4(prefix.first), prefix.second};
-  }
+      const CIDRNetworkV4& one,
+      const CIDRNetworkV4& two);
   // Number of bytes in the address representation.
   static size_t byteCount() { return 4; }
   //get nth most significant bit - 0 indexed
@@ -281,6 +279,19 @@ inline bool operator==(const IPAddressV4& addr1, const IPAddressV4& addr2) {
 // Return true if addr1 < addr2
 inline bool operator<(const IPAddressV4& addr1, const IPAddressV4& addr2) {
   return (addr1.toLongHBO() < addr2.toLongHBO());
+}
+// Derived operators
+inline bool operator!=(const IPAddressV4& a, const IPAddressV4& b) {
+  return !(a == b);
+}
+inline bool operator>(const IPAddressV4& a, const IPAddressV4& b) {
+  return b < a;
+}
+inline bool operator<=(const IPAddressV4& a, const IPAddressV4& b) {
+  return !(a > b);
+}
+inline bool operator>=(const IPAddressV4& a, const IPAddressV4& b) {
+  return !(a < b);
 }
 
 }  // folly

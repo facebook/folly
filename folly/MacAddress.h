@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include <iostream>
-
-#include <boost/operators.hpp>
+#include <iosfwd>
 
 #include <folly/Bits.h>
-#include <folly/Conv.h>
+#include <folly/Range.h>
 
 namespace folly {
 
@@ -30,7 +28,7 @@ class IPAddressV6;
 /*
  * MacAddress represents an IEEE 802 MAC address.
  */
-class MacAddress : private boost::totally_ordered<MacAddress> {
+class MacAddress {
  public:
   static constexpr size_t SIZE = 6;
   static const MacAddress BROADCAST;
@@ -167,8 +165,7 @@ class MacAddress : private boost::totally_ordered<MacAddress> {
     return getByte(0) & 0x2;
   }
 
-  // Equality and less-than operators.
-  // boost::totally_ordered provides the other comparison operators.
+  // Comparison operators.
 
   bool operator==(const MacAddress& other) const {
     // All constructors and modifying methods make sure padding is 0,
@@ -178,6 +175,22 @@ class MacAddress : private boost::totally_ordered<MacAddress> {
 
   bool operator<(const MacAddress& other) const {
     return u64HBO() < other.u64HBO();
+  }
+
+  bool operator!=(const MacAddress& other) const {
+    return !(*this == other);
+  }
+
+  bool operator>(const MacAddress& other) const {
+    return other < *this;
+  }
+
+  bool operator>=(const MacAddress& other) const {
+    return !(*this < other);
+  }
+
+  bool operator<=(const MacAddress& other) const {
+    return !(*this > other);
   }
 
  private:

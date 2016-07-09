@@ -22,6 +22,7 @@
 #include <folly/Format.h>
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV6.h>
+#include <folly/detail/IPAddressSource.h>
 
 using std::ostream;
 using std::string;
@@ -72,8 +73,8 @@ uint32_t IPAddressV4::toLong(StringPiece ip) {
   auto str = ip.str();
   in_addr addr;
   if (inet_pton(AF_INET, str.c_str(), &addr) != 1) {
-    throw IPAddressFormatException("Can't convert invalid IP '", ip, "' ",
-                                   "to long");
+    throw IPAddressFormatException(
+        to<std::string>("Can't convert invalid IP '", ip, "' ", "to long"));
   }
   return addr.s_addr;
 }
@@ -99,7 +100,8 @@ IPAddressV4::IPAddressV4(StringPiece addr)
 {
   auto ip = addr.str();
   if (inet_pton(AF_INET, ip.c_str(), &addr_.inAddr_) != 1) {
-    throw IPAddressFormatException("Invalid IPv4 address '", addr, "'");
+    throw IPAddressFormatException(
+        to<std::string>("Invalid IPv4 address '", addr, "'"));
   }
 }
 
@@ -112,8 +114,10 @@ IPAddressV4::IPAddressV4(const in_addr src)
 // public
 void IPAddressV4::setFromBinary(ByteRange bytes) {
   if (bytes.size() != 4) {
-    throw IPAddressFormatException("Invalid IPv4 binary data: length must "
-                                   "be 4 bytes, got ", bytes.size());
+    throw IPAddressFormatException(to<std::string>(
+        "Invalid IPv4 binary data: length must ",
+        "be 4 bytes, got ",
+        bytes.size()));
   }
   memcpy(&addr_.inAddr_.s_addr, bytes.data(), sizeof(in_addr));
 }
@@ -147,8 +151,8 @@ bool IPAddressV4::inSubnet(StringPiece cidrNetwork) const {
   auto subnetInfo = IPAddress::createNetwork(cidrNetwork);
   auto addr = subnetInfo.first;
   if (!addr.isV4()) {
-    throw IPAddressFormatException("Address '", addr.toJson(), "' ",
-                                   "is not a V4 address");
+    throw IPAddressFormatException(to<std::string>(
+        "Address '", addr.toJson(), "' ", "is not a V4 address"));
   }
   return inSubnetWithMask(addr.asV4(), fetchMask(subnetInfo.second));
 }
@@ -207,8 +211,8 @@ bool IPAddressV4::isMulticast() const {
 IPAddressV4 IPAddressV4::mask(size_t numBits) const {
   static const auto bits = bitCount();
   if (numBits > bits) {
-    throw IPAddressFormatException("numBits(", numBits,
-                                   ") > bitsCount(", bits, ")");
+    throw IPAddressFormatException(
+        to<std::string>("numBits(", numBits, ") > bitsCount(", bits, ")"));
   }
 
   ByteArray4 ba = detail::Bytes::mask(fetchMask(numBits), addr_.bytes_);
@@ -234,10 +238,19 @@ uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
 const ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
   static const uint8_t bits = bitCount();
   if (numBits > bits) {
-    throw IPAddressFormatException("IPv4 addresses are 32 bits");
+    throw IPAddressFormatException(
+        to<std::string>("IPv4 addresses are 32 bits"));
   }
   // masks_ is backed by an array so is zero indexed
   return masks_[numBits];
+}
+// public static
+CIDRNetworkV4 IPAddressV4::longestCommonPrefix(
+    const CIDRNetworkV4& one,
+    const CIDRNetworkV4& two) {
+  auto prefix = detail::Bytes::longestCommonPrefix(
+      one.first.addr_.bytes_, one.second, two.first.addr_.bytes_, two.second);
+  return {IPAddressV4(prefix.first), prefix.second};
 }
 
 // static private

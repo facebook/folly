@@ -63,6 +63,7 @@ nobase_follyinclude_HEADERS = \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
 	detail/IPAddress.h \
+	detail/IPAddressSource.h \
 	detail/Malloc.h \
 	detail/MemoryIdler.h \
 	detail/MPMCPipelineDetail.h \
@@ -363,6 +364,7 @@ libfolly_la_SOURCES = \
 	Bits.cpp \
 	Checksum.cpp \
 	detail/CacheLocality.cpp \
+	detail/IPAddress.cpp \
 	dynamic.cpp \
 	File.cpp \
 	FileUtil.cpp \

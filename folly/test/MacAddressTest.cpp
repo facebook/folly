@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <folly/Conv.h>
 #include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
 

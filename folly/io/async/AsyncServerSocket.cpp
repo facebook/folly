@@ -22,6 +22,7 @@
 
 #include <folly/FileUtil.h>
 #include <folly/SocketAddress.h>
+#include <folly/String.h>
 #include <folly/detail/SocketFastOpen.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
