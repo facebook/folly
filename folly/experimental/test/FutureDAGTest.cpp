@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <boost/thread/barrier.hpp>
 #include <folly/experimental/FutureDAG.h>
 #include <gtest/gtest.h>
-#include <boost/thread/barrier.hpp>
 
 using namespace folly;
 
@@ -29,6 +29,39 @@ struct FutureDAGTest : public testing::Test {
     return handle;
   }
 
+  void reset() {
+    Handle source_node;
+    std::unordered_set<Handle> memo;
+    for (auto& node : nodes) {
+      for (Handle handle : node.second->dependencies) {
+        memo.insert(handle);
+      }
+    }
+    for (auto& node : nodes) {
+      if (memo.find(node.first) == memo.end()) {
+        source_node = node.first;
+      }
+    }
+    for (auto it = nodes.cbegin(); it != nodes.cend();) {
+      if (it->first != source_node) {
+        it = nodes.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    dag->reset();
+  }
+
+  void remove(Handle a) {
+    for (auto itr = nodes.begin(); itr != nodes.end(); itr++) {
+      auto& deps = itr->second->dependencies;
+      if (std::find(deps.begin(), deps.end(), a) != deps.end()) {
+        deps.erase(deps.begin() + a);
+      }
+    }
+    nodes.erase(a);
+    dag->remove(a);
+  }
   void dependency(Handle a, Handle b) {
     nodes.at(b)->dependencies.push_back(a);
     dag->dependency(a, b);
@@ -68,9 +101,40 @@ struct FutureDAGTest : public testing::Test {
   std::vector<Handle> order;
 };
 
-
 TEST_F(FutureDAGTest, SingleNode) {
   add();
+  ASSERT_NO_THROW(dag->go().get());
+  checkOrder();
+}
+
+TEST_F(FutureDAGTest, RemoveSingleNode) {
+  auto h1 = add();
+  auto h2 = add();
+  remove(h2);
+  ASSERT_NO_THROW(dag->go().get());
+  checkOrder();
+}
+
+TEST_F(FutureDAGTest, RemoveNodeComplex) {
+  auto h1 = add();
+  auto h2 = add();
+  auto h3 = add();
+  dependency(h1, h3);
+  dependency(h2, h1);
+  remove(h1);
+  remove(h2);
+  ASSERT_NO_THROW(dag->go().get());
+  checkOrder();
+}
+
+TEST_F(FutureDAGTest, ResetDAG) {
+  auto h1 = add();
+  auto h2 = add();
+  auto h3 = add();
+  dependency(h3, h1);
+  dependency(h2, h3);
+
+  reset();
   ASSERT_NO_THROW(dag->go().get());
   checkOrder();
 }
@@ -145,11 +209,9 @@ TEST_F(FutureDAGTest, Complex) {
   checkOrder();
 }
 
-FutureDAG::FutureFunc makeFutureFunc = []{
-  return makeFuture();
-};
+FutureDAG::FutureFunc makeFutureFunc = [] { return makeFuture(); };
 
-FutureDAG::FutureFunc throwFunc = []{
+FutureDAG::FutureFunc throwFunc = [] {
   return makeFuture<Unit>(std::runtime_error("oops"));
 };
 
@@ -198,7 +260,7 @@ TEST_F(FutureDAGTest, DestroyBeforeComplete) {
     auto dag = FutureDAG::create();
     auto h1 = dag->add([barrier] {
       auto p = std::make_shared<Promise<Unit>>();
-      std::thread t([p, barrier]{
+      std::thread t([p, barrier] {
         barrier->wait();
         p->setValue();
       });
