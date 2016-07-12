@@ -573,25 +573,33 @@ public:
 
   iterator lower_bound(const key_type& key) {
     auto c = key_comp();
-    auto f = [&](const auto& a, const auto& b) { return c(a.first, b); };
+    auto f = [&](const value_type& a, const key_type& b) {
+      return c(a.first, b);
+    };
     return std::lower_bound(begin(), end(), key, f);
   }
 
   const_iterator lower_bound(const key_type& key) const {
     auto c = key_comp();
-    auto f = [&](const auto& a, const auto& b) { return c(a.first, b); };
+    auto f = [&](const value_type& a, const key_type& b) {
+      return c(a.first, b);
+    };
     return std::lower_bound(begin(), end(), key, f);
   }
 
   iterator upper_bound(const key_type& key) {
     auto c = key_comp();
-    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    auto f = [&](const key_type& a, const value_type& b) {
+      return c(a, b.first);
+    };
     return std::upper_bound(begin(), end(), key, f);
   }
 
   const_iterator upper_bound(const key_type& key) const {
     auto c = key_comp();
-    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    auto f = [&](const key_type& a, const value_type& b) {
+      return c(a, b.first);
+    };
     return std::upper_bound(begin(), end(), key, f);
   }
 
@@ -601,7 +609,9 @@ public:
     // have to do this.
     iterator low = lower_bound(key);
     auto c = key_comp();
-    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    auto f = [&](const key_type& a, const value_type& b) {
+      return c(a, b.first);
+    };
     iterator high = std::upper_bound(low, end(), key, f);
     return std::make_pair(low, high);
   }
