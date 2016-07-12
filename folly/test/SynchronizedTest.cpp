@@ -59,8 +59,20 @@ TYPED_TEST(SynchronizedTest, Basic) {
   testBasic<TypeParam>();
 }
 
+TYPED_TEST(SynchronizedTest, Deprecated) {
+  testDeprecated<TypeParam>();
+}
+
 TYPED_TEST(SynchronizedTest, Concurrency) {
   testConcurrency<TypeParam>();
+}
+
+TYPED_TEST(SynchronizedTest, AcquireLocked) {
+  testAcquireLocked<TypeParam>();
+}
+
+TYPED_TEST(SynchronizedTest, AcquireLockedWithConst) {
+  testAcquireLockedWithConst<TypeParam>();
 }
 
 TYPED_TEST(SynchronizedTest, DualLocking) {
@@ -94,6 +106,10 @@ using SynchronizedTimedTestTypes = testing::Types<
     folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(SynchronizedTimedTest, SynchronizedTimedTestTypes);
 
+TYPED_TEST(SynchronizedTimedTest, Timed) {
+  testTimed<TypeParam>();
+}
+
 TYPED_TEST(SynchronizedTimedTest, TimedSynchronized) {
   testTimedSynchronized<TypeParam>();
 }
@@ -113,6 +129,10 @@ using SynchronizedTimedWithConstTestTypes = testing::Types<
     folly::SharedMutexWritePriority>;
 TYPED_TEST_CASE(
     SynchronizedTimedWithConstTest, SynchronizedTimedWithConstTestTypes);
+
+TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {
+  testTimedShared<TypeParam>();
+}
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedSynchronizeWithConst) {
   testTimedSynchronizedWithConst<TypeParam>();
@@ -179,7 +199,7 @@ TEST_F(SynchronizedLockTest, SyncUnSync) {
   EXPECT_EQ((CountPair{2, 2}), FakeMutex::getLockUnlockCount());
 }
 
-// Nested SYNCHRONIZED UNSYNCHRONIZED test, 2 levels for each are used here
+// Nested SYNCHRONIZED UNSYNCHRONIZED test, 2 levels of synchronization
 TEST_F(SynchronizedLockTest, NestedSyncUnSync) {
   folly::Synchronized<std::vector<int>, FakeMutex> obj;
   EXPECT_EQ((CountPair{0, 0}), FakeMutex::getLockUnlockCount());
@@ -187,12 +207,15 @@ TEST_F(SynchronizedLockTest, NestedSyncUnSync) {
     EXPECT_EQ((CountPair{1, 0}), FakeMutex::getLockUnlockCount());
     SYNCHRONIZED(obj) {
       EXPECT_EQ((CountPair{2, 0}), FakeMutex::getLockUnlockCount());
+      // Note: UNSYNCHRONIZED has always been kind of broken here.
+      // The input parameter is ignored (other than to overwrite what the input
+      // variable name refers to), and it unlocks the most object acquired in
+      // the most recent SYNCHRONIZED scope.
       UNSYNCHRONIZED(obj) {
         EXPECT_EQ((CountPair{2, 1}), FakeMutex::getLockUnlockCount());
-        UNSYNCHRONIZED(obj) {
-          EXPECT_EQ((CountPair{2, 2}),
-                    FakeMutex::getLockUnlockCount());
-        }
+      }
+      EXPECT_EQ((CountPair{3, 1}), FakeMutex::getLockUnlockCount());
+      UNSYNCHRONIZED(obj) {
         EXPECT_EQ((CountPair{3, 2}), FakeMutex::getLockUnlockCount());
       }
       EXPECT_EQ((CountPair{4, 2}), FakeMutex::getLockUnlockCount());
@@ -202,7 +225,7 @@ TEST_F(SynchronizedLockTest, NestedSyncUnSync) {
   EXPECT_EQ((CountPair{4, 4}), FakeMutex::getLockUnlockCount());
 }
 
-// Different nesting behavior, UNSYNCHRONIZED called on differen depth of
+// Different nesting behavior, UNSYNCHRONIZED called on different depth of
 // SYNCHRONIZED
 TEST_F(SynchronizedLockTest, NestedSyncUnSync2) {
   folly::Synchronized<std::vector<int>, FakeMutex> obj;

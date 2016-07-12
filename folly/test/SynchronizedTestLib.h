@@ -30,14 +30,34 @@
 
 namespace folly {
 namespace sync_tests {
-template <class Mutex> void testBasic();
-template <class Mutex> void testConcurrency();
-template <class Mutex> void testDualLocking();
-template <class Mutex> void testDualLockingWithConst();
-template <class Mutex> void testTimedSynchronized();
-template <class Mutex> void testTimedSynchronizedWithConst();
-template <class Mutex> void testConstCopy();
-template <class Mutex> void testInPlaceConstruction();
+template <class Mutex>
+void testBasic();
+template <class Mutex>
+void testDeprecated();
+template <class Mutex>
+void testConcurrency();
+template <class Mutex>
+void testAcquireLocked();
+template <class Mutex>
+void testAcquireLockedWithConst();
+template <class Mutex>
+void testDualLockingWithConst();
+template <class Mutex>
+void testDualLocking();
+template <class Mutex>
+void testDualLockingWithConst();
+template <class Mutex>
+void testTimed();
+template <class Mutex>
+void testTimedShared();
+template <class Mutex>
+void testTimedSynchronizedDeprecated();
+template <class Mutex>
+void testTimedSynchronizedWithConst();
+template <class Mutex>
+void testConstCopy();
+template <class Mutex>
+void testInPlaceConstruction();
 }
 }
 

@@ -249,4 +249,77 @@ typename std::enable_if<!LockTraits<Mutex>::is_shared>::type
 unlock_shared_or_unique(Mutex& mutex) {
   LockTraits<Mutex>::unlock(mutex);
 }
+
+/*
+ * Lock policy classes.
+ *
+ * These can be used as template parameters to provide compile-time
+ * selection over the type of lock operation to perform.
+ */
+
+/**
+ * A lock policy that performs exclusive lock operations.
+ */
+class LockPolicyExclusive {
+ public:
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::lock(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return LockTraits<Mutex>::try_lock_for(mutex, timeout);
+  }
+  template <class Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock(mutex);
+  }
+};
+
+/**
+ * A lock policy that performs shared lock operations.
+ * This policy only works with shared mutex types.
+ */
+class LockPolicyShared {
+ public:
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::lock_shared(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return LockTraits<Mutex>::try_lock_shared_for(mutex, timeout);
+  }
+  template <class Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_shared(mutex);
+  }
+};
+
+/**
+ * A lock policy that performs a shared lock operation if a shared mutex type
+ * is given, or a normal exclusive lock operation on non-shared mutex types.
+ */
+class LockPolicyShareable {
+ public:
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    lock_shared_or_unique(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return try_lock_shared_or_unique_for(mutex, timeout);
+  }
+  template <class Mutex>
+  static void unlock(Mutex& mutex) {
+    unlock_shared_or_unique(mutex);
+  }
+};
+
 } // folly
