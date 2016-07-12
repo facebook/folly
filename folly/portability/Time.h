@@ -25,13 +25,9 @@
 // platforms we support.
 #if !FOLLY_HAVE_CLOCK_GETTIME && (defined(__MACH__) || defined(_WIN32))
 #define CLOCK_REALTIME 0
-// The Windows implementation supports a few other
-// clock types as well.
-#ifdef _WIN32
-# define CLOCK_MONOTONIC 1
-# define CLOCK_PROCESS_CPUTIME_ID 2
-# define CLOCK_THREAD_CPUTIME_ID 3
-#endif
+#define CLOCK_MONOTONIC 1
+#define CLOCK_PROCESS_CPUTIME_ID 2
+#define CLOCK_THREAD_CPUTIME_ID 3
 
 typedef uint8_t clockid_t;
 extern "C" int clock_gettime(clockid_t clk_id, struct timespec* ts);

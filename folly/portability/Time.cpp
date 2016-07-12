@@ -15,44 +15,124 @@
  */
 
 #include <folly/portability/Time.h>
+#include <folly/Likely.h>
+
+#include <assert.h>
+
+#include <chrono>
+
+template <typename _Rep, typename _Period>
+static void duration_to_ts(
+    std::chrono::duration<_Rep, _Period> d,
+    struct timespec* ts) {
+  ts->tv_sec = std::chrono::duration_cast<std::chrono::seconds>(d).count();
+  ts->tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    d % std::chrono::seconds(1))
+                    .count();
+}
 
 #if !FOLLY_HAVE_CLOCK_GETTIME
 #if __MACH__
 #include <errno.h>
+#include <mach/mach_init.h>
+#include <mach/mach_port.h>
 #include <mach/mach_time.h>
+#include <mach/mach_types.h>
+#include <mach/task.h>
+#include <mach/thread_act.h>
+#include <mach/vm_map.h>
 
-static const mach_timebase_info_data_t* tbInfo() {
-  static auto info = [] {
-    static mach_timebase_info_data_t info;
-    return (mach_timebase_info(&info) == KERN_SUCCESS) ? &info : nullptr;
-  }();
-  return info;
+static std::chrono::nanoseconds time_value_to_ns(time_value_t t) {
+  return std::chrono::seconds(t.seconds) +
+      std::chrono::microseconds(t.microseconds);
 }
 
-int clock_gettime(clockid_t clk_id, struct timespec* ts) {
-  auto tb_info = tbInfo();
-  if (tb_info == nullptr) {
-    errno = EINVAL;
+static int clock_process_cputime(struct timespec* ts) {
+  // Get CPU usage for live threads.
+  task_thread_times_info thread_times_info;
+  mach_msg_type_number_t thread_times_info_count;
+  TASK_THREAD_TIMES_INFO_COUNT;
+  kern_return_t kern_result = task_info(
+      mach_task_self(),
+      TASK_THREAD_TIMES_INFO,
+      (thread_info_t)&thread_times_info,
+      &thread_times_info_count);
+  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
     return -1;
   }
 
-  uint64_t now_ticks = mach_absolute_time();
-  uint64_t now_ns = (now_ticks * tb_info->numer) / tb_info->denom;
-  ts->tv_sec = now_ns / 1000000000;
-  ts->tv_nsec = now_ns % 1000000000;
+  // Get CPU usage for terminated threads.
+  mach_task_basic_info task_basic_info;
+  mach_msg_type_number_t task_basic_info_count = MACH_TASK_BASIC_INFO_COUNT;
+  kern_result = task_info(
+      mach_task_self(),
+      MACH_TASK_BASIC_INFO,
+      (thread_info_t)&task_basic_info,
+      &task_basic_info_count);
+  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+    return -1;
+  }
 
+  auto cputime = time_value_to_ns(thread_times_info.user_time) +
+      time_value_to_ns(thread_times_info.system_time) +
+      time_value_to_ns(task_basic_info.user_time) +
+      time_value_to_ns(task_basic_info.system_time);
+  duration_to_ts(cputime, ts);
   return 0;
 }
 
+static int clock_thread_cputime(struct timespec* ts) {
+  mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
+  thread_basic_info_data_t thread_info_data;
+  thread_act_t thread = mach_thread_self();
+  kern_return_t kern_result = thread_info(
+      thread, THREAD_BASIC_INFO, (thread_info_t)&thread_info_data, &count);
+  mach_port_deallocate(mach_task_self(), thread);
+  if (UNLIKELY(kern_result != KERN_SUCCESS)) {
+    return -1;
+  }
+  auto cputime = time_value_to_ns(thread_info_data.system_time) +
+      time_value_to_ns(thread_info_data.user_time);
+  duration_to_ts(cputime, ts);
+  return 0;
+}
+
+int clock_gettime(clockid_t clk_id, struct timespec* ts) {
+  switch (clk_id) {
+    case CLOCK_REALTIME: {
+      auto now = std::chrono::system_clock::now().time_since_epoch();
+      duration_to_ts(now, ts);
+      return 0;
+    }
+    case CLOCK_MONOTONIC: {
+      auto now = std::chrono::steady_clock::now().time_since_epoch();
+      duration_to_ts(now, ts);
+      return 0;
+    }
+    case CLOCK_PROCESS_CPUTIME_ID:
+      return clock_process_cputime(ts);
+    case CLOCK_THREAD_CPUTIME_ID:
+      return clock_thread_cputime(ts);
+    default:
+      errno = EINVAL;
+      return -1;
+  }
+}
+
 int clock_getres(clockid_t clk_id, struct timespec* ts) {
-  auto tb_info = tbInfo();
-  if (tb_info == nullptr) {
-    errno = EINVAL;
+  if (clk_id != CLOCK_MONOTONIC) {
     return -1;
   }
 
+  static auto info = [] {
+    static mach_timebase_info_data_t info;
+    auto result = (mach_timebase_info(&info) == KERN_SUCCESS) ? &info : nullptr;
+    assert(result);
+    return result;
+  }();
+
   ts->tv_sec = 0;
-  ts->tv_nsec = tb_info->numer / tb_info->denom;
+  ts->tv_nsec = info->numer / info->denom;
 
   return 0;
 }
@@ -64,7 +144,27 @@ int clock_getres(clockid_t clk_id, struct timespec* ts) {
 
 #include <folly/portability/Windows.h>
 
-static constexpr size_t kNsPerSec = 1000000000;
+using unsigned_nanos = std::chrono::duration<uint64_t, std::nano>;
+
+static unsigned_nanos filetimeToUnsignedNanos(FILETIME ft) {
+  ULARGE_INTEGER i;
+  i.HighPart = ft.dwHighDateTime;
+  i.LowPart = ft.dwLowDateTime;
+
+  // FILETIMEs are in units of 100ns.
+  return unsigned_nanos(i.QuadPart * 100);
+};
+
+static LARGE_INTEGER performanceFrequency() {
+  static auto result = [] {
+    LARGE_INTEGER freq;
+    // On Windows XP or later, this will never fail.
+    BOOL res = QueryPerformanceFrequency(&freq);
+    assert(res);
+    return freq;
+  }();
+  return result;
+}
 
 extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
   if (!res) {
@@ -74,11 +174,13 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
 
   switch (clock_id) {
     case CLOCK_MONOTONIC: {
-      LARGE_INTEGER freq;
-      if (!QueryPerformanceFrequency(&freq)) {
+      LARGE_INTEGER freq = performanceFrequency();
+      if (freq.QuadPart == -1) {
         errno = EINVAL;
         return -1;
       }
+
+      static constexpr size_t kNsPerSec = 1000000000;
 
       res->tv_sec = 0;
       res->tv_nsec = (long)((kNsPerSec + (freq.QuadPart >> 1)) / freq.QuadPart);
@@ -116,29 +218,24 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
     return -1;
   }
 
-  const auto ftToUint = [](FILETIME ft) -> uint64_t {
-    ULARGE_INTEGER i;
-    i.HighPart = ft.dwHighDateTime;
-    i.LowPart = ft.dwLowDateTime;
-    return i.QuadPart;
-  };
-  const auto timeToTimespec = [](timespec* tp, uint64_t t) -> int {
-    constexpr size_t k100NsPerSec = kNsPerSec / 100;
-
-    // The filetimes t is based on are represented in
-    // 100ns's. (ie. a value of 4 is 400ns)
-    tp->tv_sec = t / k100NsPerSec;
-    tp->tv_nsec = ((long)(t % k100NsPerSec)) * 100;
+  const auto unanosToTimespec = [](timespec* tp, unsigned_nanos t) -> int {
+    static constexpr unsigned_nanos one_sec(std::chrono::seconds(1));
+    tp->tv_sec = std::chrono::duration_cast<std::chrono::seconds>(t).count();
+    tp->tv_nsec = (t % one_sec).count();
     return 0;
   };
 
   FILETIME createTime, exitTime, kernalTime, userTime;
   switch (clock_id) {
     case CLOCK_REALTIME: {
-      constexpr size_t kDeltaEpochIn100NS = 116444736000000000ULL;
-
-      GetSystemTimeAsFileTime(&createTime);
-      return timeToTimespec(tp, ftToUint(createTime) - kDeltaEpochIn100NS);
+      auto now = std::chrono::system_clock::now().time_since_epoch();
+      duration_to_ts(now, tp);
+      return 0;
+    }
+    case CLOCK_MONOTONIC: {
+      auto now = std::chrono::steady_clock::now().time_since_epoch();
+      duration_to_ts(now, tp);
+      return 0;
     }
     case CLOCK_PROCESS_CPUTIME_ID: {
       if (!GetProcessTimes(
@@ -151,7 +248,10 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
         return -1;
       }
 
-      return timeToTimespec(tp, ftToUint(kernalTime) + ftToUint(userTime));
+      return unanosToTimespec(
+          tp,
+          filetimeToUnsignedNanos(kernalTime) +
+              filetimeToUnsignedNanos(userTime));
     }
     case CLOCK_THREAD_CPUTIME_ID: {
       if (!GetThreadTimes(
@@ -164,25 +264,10 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
         return -1;
       }
 
-      return timeToTimespec(tp, ftToUint(kernalTime) + ftToUint(userTime));
-    }
-    case CLOCK_MONOTONIC: {
-      LARGE_INTEGER fl, cl;
-      if (!QueryPerformanceFrequency(&fl) || !QueryPerformanceCounter(&cl)) {
-        errno = EINVAL;
-        return -1;
-      }
-
-      int64_t freq = fl.QuadPart;
-      int64_t counter = cl.QuadPart;
-      tp->tv_sec = counter / freq;
-      tp->tv_nsec = (long)(((counter % freq) * kNsPerSec + (freq >> 1)) / freq);
-      if (tp->tv_nsec >= kNsPerSec) {
-        tp->tv_sec++;
-        tp->tv_nsec -= kNsPerSec;
-      }
-
-      return 0;
+      return unanosToTimespec(
+          tp,
+          filetimeToUnsignedNanos(kernalTime) +
+              filetimeToUnsignedNanos(userTime));
     }
 
     default:
