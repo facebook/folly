@@ -36,6 +36,10 @@ namespace detail {
 #define TCP_FASTOPEN 23
 #endif
 
+#if !defined(TCPI_OPT_SYN_DATA)
+#define TCPI_OPT_SYN_DATA 32
+#endif
+
 ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
   flags |= MSG_FASTOPEN;
   return sendmsg(sockfd, msg, flags);
