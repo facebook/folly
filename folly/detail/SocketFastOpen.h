@@ -37,5 +37,10 @@ ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags);
  * Enable TFO on a listening socket.
  */
 int tfo_enable(int sockfd, size_t max_queue_size);
+
+/**
+ * Check if TFO succeeded in being used.
+ */
+bool tfo_succeeded(int sockfd);
 }
 }

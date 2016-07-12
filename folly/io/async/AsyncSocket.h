@@ -431,6 +431,14 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return tfoFinished_;
   }
 
+  /**
+   * Returns whether or not TFO "worked", or, succeeded
+   * in actually being used.
+   */
+  bool getTFOSucceeded() const {
+    return tfoSucceeded_;
+  }
+
   // Methods controlling socket options
 
   /**
@@ -899,6 +907,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool tfoEnabled_{false};
   bool tfoAttempted_{false};
   bool tfoFinished_{false};
+  bool tfoSucceeded_{false};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)

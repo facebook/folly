@@ -2406,6 +2406,7 @@ TEST(AsyncSocketTest, ConnectTFO) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+  EXPECT_EQ(socket->getTFOSucceeded(), socket->getTFOFinished());
 }
 
 /**
@@ -2473,6 +2474,7 @@ TEST(AsyncSocketTest, ConnectWriteAndCloseNowTFO) {
   // Loop, although there shouldn't be anything to do.
   evb.loop();
 
+  EXPECT_EQ(socket->getTFOSucceeded(), socket->getTFOFinished());
   CHECK_EQ(ccb.state, STATE_SUCCEEDED);
 
   ASSERT_TRUE(socket->isClosedBySelf());
@@ -2500,6 +2502,7 @@ TEST(AsyncSocketTest, ConnectAndCloseTFO) {
 
   // Make sure the connection was aborted
   CHECK_EQ(ccb.state, STATE_SUCCEEDED);
+  EXPECT_EQ(socket->getTFOSucceeded(), socket->getTFOFinished());
 
   ASSERT_TRUE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
@@ -2760,6 +2763,7 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
 
   t.join();
 
+  EXPECT_EQ(socket->getTFOSucceeded(), socket->getTFOFinished());
   EXPECT_EQ(STATE_SUCCEEDED, write.state);
   EXPECT_EQ(0, memcmp(readBuf.data(), sendBuf->data(), readBuf.size()));
   EXPECT_EQ(STATE_SUCCEEDED, rcb.state);

@@ -46,6 +46,18 @@ int tfo_enable(int sockfd, size_t max_queue_size) {
       sockfd, SOL_TCP, TCP_FASTOPEN, &max_queue_size, sizeof(max_queue_size));
 }
 
+bool tfo_succeeded(int sockfd) {
+  // Call getsockopt to check if TFO was used.
+  struct tcp_info info;
+  socklen_t info_len = sizeof(info);
+  errno = 0;
+  if (getsockopt(sockfd, IPPROTO_TCP, TCP_INFO, &info, &info_len) != 0) {
+    // errno is set from getsockopt
+    return false;
+  }
+  return info.tcpi_options & TCPI_OPT_SYN_DATA;
+}
+
 #else
 
 ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
@@ -56,6 +68,11 @@ ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
 int tfo_enable(int sockfd, size_t max_queue_size) {
   errno = ENOPROTOOPT;
   return -1;
+}
+
+bool tfo_succeeded(int sockfd) {
+  errno = EOPNOTSUPP;
+  return false;
 }
 
 #endif
