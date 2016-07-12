@@ -572,23 +572,27 @@ public:
   }
 
   iterator lower_bound(const key_type& key) {
-    return std::lower_bound(begin(), end(), key,
-      boost::bind(key_comp(), boost::bind(&value_type::first, _1), _2));
+    auto c = key_comp();
+    auto f = [&](const auto& a, const auto& b) { return c(a.first, b); };
+    return std::lower_bound(begin(), end(), key, f);
   }
 
   const_iterator lower_bound(const key_type& key) const {
-    return std::lower_bound(begin(), end(), key,
-      boost::bind(key_comp(), boost::bind(&value_type::first, _1), _2));
+    auto c = key_comp();
+    auto f = [&](const auto& a, const auto& b) { return c(a.first, b); };
+    return std::lower_bound(begin(), end(), key, f);
   }
 
   iterator upper_bound(const key_type& key) {
-    return std::upper_bound(begin(), end(), key,
-      boost::bind(key_comp(), _1, boost::bind(&value_type::first, _2)));
+    auto c = key_comp();
+    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    return std::upper_bound(begin(), end(), key, f);
   }
 
   const_iterator upper_bound(const key_type& key) const {
-    return std::upper_bound(begin(), end(), key,
-      boost::bind(key_comp(), _1, boost::bind(&value_type::first, _2)));
+    auto c = key_comp();
+    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    return std::upper_bound(begin(), end(), key, f);
   }
 
   std::pair<iterator,iterator> equal_range(const key_type& key) {
@@ -596,8 +600,9 @@ public:
     // argument types different from the iterator value_type, so we
     // have to do this.
     iterator low = lower_bound(key);
-    iterator high = std::upper_bound(low, end(), key,
-      boost::bind(key_comp(), _1, boost::bind(&value_type::first, _2)));
+    auto c = key_comp();
+    auto f = [&](const auto& a, const auto& b) { return c(a, b.first); };
+    iterator high = std::upper_bound(low, end(), key, f);
     return std::make_pair(low, high);
   }
 
