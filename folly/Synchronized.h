@@ -39,6 +39,8 @@ template <class LockedType, class Mutex, class LockPolicy>
 class LockedPtrBase;
 template <class LockedType, class LockPolicy>
 class LockedPtr;
+template <class LockedType, class LockPolicy = LockPolicyExclusive>
+class LockedGuardPtr;
 
 /**
  * SynchronizedBase is a helper parent class for Synchronized<T>.
@@ -112,6 +114,75 @@ class SynchronizedBase<Subclass, true> {
       const std::chrono::duration<Rep, Period>& timeout) const {
     return ConstLockedPtr(static_cast<const Subclass*>(this), timeout);
   }
+
+  /*
+   * Note: C++ 17 adds guaranteed copy elision.  (http://wg21.link/P0135)
+   * Once compilers support this, it would be nice to add wguard() and rguard()
+   * methods that return LockedGuardPtr objects.
+   */
+
+  /**
+   * Invoke a function while holding the lock exclusively.
+   *
+   * A reference to the datum will be passed into the function as its only
+   * argument.
+   *
+   * This can be used with a lambda argument for easily defining small critical
+   * sections in the code.  For example:
+   *
+   *   auto value = obj.withWLock([](auto& data) {
+   *     data.doStuff();
+   *     return data.getValue();
+   *   });
+   */
+  template <class Function>
+  auto withWLock(Function&& function) {
+    LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
+        static_cast<Subclass*>(this));
+    return function(*guardPtr);
+  }
+  template <class Function>
+  auto withWLock(Function&& function) const {
+    LockedGuardPtr<const Subclass, LockPolicyExclusive> guardPtr(
+        static_cast<const Subclass*>(this));
+    return function(*guardPtr);
+  }
+
+  /**
+   * Invoke a function while holding the lock exclusively.
+   *
+   * This is similar to withWLock(), but the function will be passed a
+   * LockedPtr rather than a reference to the data itself.
+   *
+   * This allows scopedUnlock() to be called on the LockedPtr argument if
+   * desired.
+   */
+  template <class Function>
+  auto withWLockPtr(Function&& function) {
+    return function(wlock());
+  }
+  template <class Function>
+  auto withWLockPtr(Function&& function) const {
+    return function(wlock());
+  }
+
+  /**
+   * Invoke a function while holding an the lock in shared mode.
+   *
+   * A const reference to the datum will be passed into the function as its
+   * only argument.
+   */
+  template <class Function>
+  auto withRLock(Function&& function) const {
+    LockedGuardPtr<const Subclass, LockPolicyShared> guardPtr(
+        static_cast<const Subclass*>(this));
+    return function(*guardPtr);
+  }
+
+  template <class Function>
+  auto withRLockPtr(Function&& function) const {
+    return function(rlock());
+  }
 };
 
 /**
@@ -159,6 +230,57 @@ class SynchronizedBase<Subclass, false> {
   template <class Rep, class Period>
   ConstLockedPtr lock(const std::chrono::duration<Rep, Period>& timeout) const {
     return ConstLockedPtr(static_cast<const Subclass*>(this), timeout);
+  }
+
+  /*
+   * Note: C++ 17 adds guaranteed copy elision.  (http://wg21.link/P0135)
+   * Once compilers support this, it would be nice to add guard() methods that
+   * return LockedGuardPtr objects.
+   */
+
+  /**
+   * Invoke a function while holding the lock.
+   *
+   * A reference to the datum will be passed into the function as its only
+   * argument.
+   *
+   * This can be used with a lambda argument for easily defining small critical
+   * sections in the code.  For example:
+   *
+   *   auto value = obj.withLock([](auto& data) {
+   *     data.doStuff();
+   *     return data.getValue();
+   *   });
+   */
+  template <class Function>
+  auto withLock(Function&& function) {
+    LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
+        static_cast<Subclass*>(this));
+    return function(*guardPtr);
+  }
+  template <class Function>
+  auto withLock(Function&& function) const {
+    LockedGuardPtr<const Subclass, LockPolicyExclusive> guardPtr(
+        static_cast<const Subclass*>(this));
+    return function(*guardPtr);
+  }
+
+  /**
+   * Invoke a function while holding the lock exclusively.
+   *
+   * This is similar to withWLock(), but the function will be passed a
+   * LockedPtr rather than a reference to the data itself.
+   *
+   * This allows scopedUnlock() and getUniqueLock() to be called on the
+   * LockedPtr argument.
+   */
+  template <class Function>
+  auto withLockPtr(Function&& function) {
+    return function(lock());
+  }
+  template <class Function>
+  auto withLockPtr(Function&& function) const {
+    return function(lock());
   }
 };
 
@@ -457,6 +579,8 @@ struct Synchronized : public SynchronizedBase<
   friend class folly::LockedPtrBase;
   template <class LockedType, class LockPolicy>
   friend class folly::LockedPtr;
+  template <class LockedType, class LockPolicy>
+  friend class folly::LockedGuardPtr;
 
   /**
    * Helper constructors to enable Synchronized for
@@ -480,6 +604,27 @@ struct Synchronized : public SynchronizedBase<
 
 template <class SynchronizedType, class LockPolicy>
 class ScopedUnlocker;
+
+namespace detail {
+/*
+ * A helper alias that resolves to "const T" if the template parameter
+ * is a const Synchronized<T>, or "T" if the parameter is not const.
+ */
+template <class SynchronizedType>
+using SynchronizedDataType = typename std::conditional<
+    std::is_const<SynchronizedType>::value,
+    typename SynchronizedType::DataType const,
+    typename SynchronizedType::DataType>::type;
+/*
+ * A helper alias that resolves to a ConstLockedPtr if the template parameter
+ * is a const Synchronized<T>, or a LockedPtr if the parameter is not const.
+ */
+template <class SynchronizedType>
+using LockedPtrType = typename std::conditional<
+    std::is_const<SynchronizedType>::value,
+    typename SynchronizedType::ConstLockedPtr,
+    typename SynchronizedType::LockedPtr>::type;
+} // detail
 
 /**
  * A helper base class for implementing LockedPtr.
@@ -701,10 +846,7 @@ class LockedPtr : public LockedPtrBase<
       LockPolicy>;
   using UnlockerData = typename Base::UnlockerData;
   // CDataType is the DataType with the appropriate const-qualification
-  using CDataType = typename std::conditional<
-      std::is_const<SynchronizedType>::value,
-      typename SynchronizedType::DataType const,
-      typename SynchronizedType::DataType>::type;
+  using CDataType = detail::SynchronizedDataType<SynchronizedType>;
 
  public:
   using DataType = typename SynchronizedType::DataType;
@@ -812,17 +954,61 @@ class LockedPtr : public LockedPtrBase<
   }
 };
 
-namespace detail {
-/*
- * A helper alias to select a ConstLockedPtr if the template parameter is a
- * const Synchronized<T>, or a LockedPtr if the parameter is not const.
+/**
+ * LockedGuardPtr is a simplified version of LockedPtr.
+ *
+ * It is non-movable, and supports fewer features than LockedPtr.  However, it
+ * is ever-so-slightly more performant than LockedPtr.  (The destructor can
+ * unconditionally release the lock, without requiring a conditional branch.)
+ *
+ * The relationship between LockedGuardPtr and LockedPtr is similar to that
+ * between std::lock_guard and std::unique_lock.
  */
-template <class SynchronizedType>
-using LockedPtrType = typename std::conditional<
-    std::is_const<SynchronizedType>::value,
-    typename SynchronizedType::ConstLockedPtr,
-    typename SynchronizedType::LockedPtr>::type;
-} // detail
+template <class SynchronizedType, class LockPolicy>
+class LockedGuardPtr {
+ private:
+  // CDataType is the DataType with the appropriate const-qualification
+  using CDataType = detail::SynchronizedDataType<SynchronizedType>;
+
+ public:
+  using DataType = typename SynchronizedType::DataType;
+  using MutexType = typename SynchronizedType::MutexType;
+  using Synchronized = typename std::remove_const<SynchronizedType>::type;
+
+  LockedGuardPtr() = delete;
+
+  /**
+   * Takes a Synchronized<T> and locks it.
+   */
+  explicit LockedGuardPtr(SynchronizedType* parent) : parent_(parent) {
+    LockPolicy::lock(parent_->mutex_);
+  }
+
+  /**
+   * Destructor releases.
+   */
+  ~LockedGuardPtr() {
+    LockPolicy::unlock(parent_->mutex_);
+  }
+
+  /**
+   * Access the locked data.
+   */
+  CDataType* operator->() const {
+    return &parent_->datum_;
+  }
+
+  /**
+   * Access the locked data.
+   */
+  CDataType& operator*() const {
+    return parent_->datum_;
+  }
+
+ private:
+  // This is the entire state of LockedGuardPtr.
+  SynchronizedType* const parent_{nullptr};
+};
 
 /**
  * Acquire locks for multiple Synchronized<T> objects, in a deadlock-safe

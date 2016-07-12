@@ -59,6 +59,10 @@ TYPED_TEST(SynchronizedTest, Basic) {
   testBasic<TypeParam>();
 }
 
+TYPED_TEST(SynchronizedTest, WithLock) {
+  testWithLock<TypeParam>();
+}
+
 TYPED_TEST(SynchronizedTest, Deprecated) {
   testDeprecated<TypeParam>();
 }
