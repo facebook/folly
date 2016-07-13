@@ -197,6 +197,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/AsyncSocketBase.h \
 	io/async/AsyncSSLSocket.h \
 	io/async/AsyncSocketException.h \
+	io/async/DecoratedAsyncTransportWrapper.h \
 	io/async/DelayedDestructionBase.h \
 	io/async/DelayedDestruction.h \
 	io/async/EventBase.h \
@@ -215,6 +216,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/SSLContext.h \
 	io/async/ScopedEventBaseThread.h \
 	io/async/TimeoutManager.h \
+	io/async/WriteChainAsyncTransportWrapper.h \
 	io/async/test/AsyncSSLSocketTest.h \
 	io/async/test/BlockingSocket.h \
 	io/async/test/MockAsyncSocket.h \
