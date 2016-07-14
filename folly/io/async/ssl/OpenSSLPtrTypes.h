@@ -17,19 +17,27 @@
 #pragma once
 
 #include <glog/logging.h>
+
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
 #include <openssl/bn.h>
-#include <openssl/evp.h>
-#include <openssl/rsa.h>
-#include <openssl/ssl.h>
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif
-#include <folly/Memory.h>
-#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/rsa.h>
+#include <openssl/ssl.h>
 #include <openssl/x509.h>
+
+#include <folly/Memory.h>
 
 namespace folly {
 namespace ssl {
+
+// ASN1
+using ASN1TimeDeleter =
+    folly::static_function_deleter<ASN1_TIME, &ASN1_TIME_free>;
+using ASN1TimeUniquePtr = std::unique_ptr<ASN1_TIME, ASN1TimeDeleter>;
 
 // X509
 using X509Deleter = folly::static_function_deleter<X509, &X509_free>;
