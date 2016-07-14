@@ -1287,6 +1287,18 @@ TEST(FBString, testHash) {
   EXPECT_NE(hashfunc(a), hashfunc(b));
 }
 
+TEST(FBString, testHashChar16) {
+  using u16fbstring = basic_fbstring<char16_t>;
+  u16fbstring a;
+  u16fbstring b;
+  a.push_back(0);
+  a.push_back(1);
+  b.push_back(0);
+  b.push_back(2);
+  std::hash<u16fbstring> hashfunc;
+  EXPECT_NE(hashfunc(a), hashfunc(b));
+}
+
 TEST(FBString, testFrontBack) {
   fbstring str("hello");
   EXPECT_EQ(str.front(), 'h');
