@@ -62,11 +62,12 @@
 #include <algorithm>
 #include <initializer_list>
 #include <iterator>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
+
 #include <boost/operators.hpp>
-#include <boost/bind.hpp>
-#include <boost/type_traits/is_same.hpp>
 
 namespace folly {
 
@@ -105,7 +106,7 @@ namespace detail {
   template<class Iterator>
   int distance_if_multipass(Iterator first, Iterator last) {
     typedef typename std::iterator_traits<Iterator>::iterator_category categ;
-    if (boost::is_same<categ,std::input_iterator_tag>::value)
+    if (std::is_same<categ,std::input_iterator_tag>::value)
       return -1;
     return std::distance(first, last);
   }
@@ -419,10 +420,7 @@ public:
   typedef std::pair<key_type,mapped_type>           value_type;
   typedef Compare                                   key_compare;
 
-  struct value_compare
-    : std::binary_function<value_type,value_type,bool>
-    , private Compare
-  {
+  struct value_compare : private Compare {
     bool operator()(const value_type& a, const value_type& b) const {
       return Compare::operator()(a.first, b.first);
     }

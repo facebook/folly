@@ -17,6 +17,7 @@
 // @author: Xin Liu <xliux@fb.com>
 
 #include <map>
+#include <random>
 #include <set>
 #include <thread>
 
@@ -53,7 +54,7 @@ static void initData() {
   for (int i = 0; i < kMaxValue; ++i) {
     gData[i] = i;
   }
-  std::random_shuffle(gData.begin(), gData.end());
+  std::shuffle(gData.begin(), gData.end(), std::mt19937{});
 }
 
 // single thread benchmarks
@@ -374,9 +375,9 @@ class ConcurrentAccessData {
       // half new values and half already in the list
       writeValues_.push_back((rand() % 2) + 2 * i);
     }
-    std::random_shuffle(readValues_.begin(), readValues_.end());
-    std::random_shuffle(deleteValues_.begin(), deleteValues_.end());
-    std::random_shuffle(writeValues_.begin(), writeValues_.end());
+    std::shuffle(readValues_.begin(), readValues_.end(), std::mt19937{});
+    std::shuffle(deleteValues_.begin(), deleteValues_.end(), std::mt19937{});
+    std::shuffle(writeValues_.begin(), writeValues_.end(), std::mt19937{});
   }
 
   ~ConcurrentAccessData() {
