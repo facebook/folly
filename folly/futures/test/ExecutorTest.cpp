@@ -121,6 +121,19 @@ TEST(ManualExecutor, getViaDoesNotDeadlock) {
   t.join();
 }
 
+TEST(ManualExecutor, clear) {
+  ManualExecutor x;
+  size_t count = 0;
+  x.add([&] { ++count; });
+  x.scheduleAt([&] { ++count; }, x.now() + std::chrono::milliseconds(10));
+  EXPECT_EQ(0, count);
+
+  x.clear();
+  x.advance(std::chrono::milliseconds(10));
+  x.run();
+  EXPECT_EQ(0, count);
+}
+
 TEST(Executor, InlineExecutor) {
   InlineExecutor x;
   size_t counter = 0;
