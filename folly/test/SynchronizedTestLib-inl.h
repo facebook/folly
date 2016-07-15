@@ -598,7 +598,7 @@ void testTimed() {
   // Make sure we can lock with various timeout duration units
   {
     auto lv = v.contextualLock(std::chrono::milliseconds(5));
-    EXPECT_TRUE(lv);
+    EXPECT_TRUE(bool(lv));
     EXPECT_FALSE(lv.isNull());
     auto lv2 = v.contextualLock(std::chrono::microseconds(5));
     // We may or may not acquire lv2 successfully, depending on whether
@@ -606,7 +606,7 @@ void testTimed() {
   }
   {
     auto lv = v.contextualLock(std::chrono::seconds(1));
-    EXPECT_TRUE(lv);
+    EXPECT_TRUE(bool(lv));
   }
 }
 
