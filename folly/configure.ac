@@ -340,6 +340,27 @@ if test "$folly_cv_prog_cc_weak_symbols" = yes; then
             [Define to 1 if the linker supports weak symbols.])
 fi
 
+
+# Figure out if we support wchar well
+AC_CACHE_CHECK(
+  [for wchar support],
+  [folly_cv_prog_cc_wchar_support],
+  [AC_RUN_IFELSE(
+    [AC_LANG_SOURCE[
+      #include <cstddef>
+      #include <cwchar>
+
+      int main(int argc, char** argv) {
+        return wcstol(L"01", nullptr, 10) == 1 ? 0 : 1;
+      }
+    ]],
+    [folly_cv_prog_cc_wchar_support=yes],
+    [folly_cv_prog_cc_wchar_support=no])])
+
+if test "$folly_cv_prog_cc_wchar_support" = "yes"; then
+  AC_DEFINE([HAVE_WCHAR_SUPPORT], [1], [Define to 1 if the libc supports wchar well])
+fi
+
 # Figure out whether the architecture supports unaligned accesses
 AC_CACHE_CHECK(
   [for unaligned access support],
