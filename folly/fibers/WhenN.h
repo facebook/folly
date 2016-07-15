@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <memory>
+
 namespace folly {
 namespace fibers {
 
