@@ -18,7 +18,7 @@
 
 #include <folly/portability/Config.h>
 
-#if defined(FOLLY_HAVE_LIBGFLAGS) && (FOLLY_HAVE_LIBGFLAGS == 0)
+#if !FOLLY_HAVE_LIBGFLAGS
 // glog/logging.h is dependent on this implementation detail
 // being defined otherwise it undefines all of this -_-....
 //
