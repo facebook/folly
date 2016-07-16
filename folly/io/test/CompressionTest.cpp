@@ -213,7 +213,8 @@ void CompressionVarintTest::runSimpleTest(const DataHolder& dh) {
   auto compressed = codec_->compress(original.get());
   auto breakPoint =
       1UL +
-      Random::rand64(std::max(9UL, oneBasedMsbPos(uncompressedLength_)) / 9UL);
+      Random::rand64(
+          std::max(uint64_t(9), oneBasedMsbPos(uncompressedLength_)) / 9UL);
   auto tinyBuf = IOBuf::copyBuffer(compressed->data(),
                                    std::min(compressed->length(), breakPoint));
   compressed->trimStart(breakPoint);
