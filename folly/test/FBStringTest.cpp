@@ -1287,7 +1287,7 @@ TEST(FBString, testHash) {
 
 #if FOLLY_HAVE_WCHAR_SUPPORT
 TEST(FBString, testHashChar16) {
-  using u16fbstring = basic_fbstring<char16_t>;
+  using u16fbstring = folly::basic_fbstring<char16_t>;
   u16fbstring a;
   u16fbstring b;
   a.push_back(0);

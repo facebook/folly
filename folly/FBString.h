@@ -2438,12 +2438,12 @@ _GLIBCXX_END_NAMESPACE_VERSION
 // Handle interaction with different C++ standard libraries, which
 // expect these types to be in different namespaces.
 
-#define FOLLY_FBSTRING_HASH1(T) \
-  template <> \
-  struct hash< ::folly::basic_fbstring<T> > { \
-    size_t operator()(const ::folly::basic_fbstring<T>& s) const { \
-      return ::folly::hash::fnv32_buf(s.data(), s.size()); \
-    } \
+#define FOLLY_FBSTRING_HASH1(T)                                        \
+  template <>                                                          \
+  struct hash<::folly::basic_fbstring<T>> {                            \
+    size_t operator()(const ::folly::basic_fbstring<T>& s) const {     \
+      return ::folly::hash::fnv32_buf(s.data(), s.size() * sizeof(T)); \
+    }                                                                  \
   };
 
 // The C++11 standard says that these four are defined
