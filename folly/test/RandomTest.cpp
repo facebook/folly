@@ -55,10 +55,10 @@ TEST(Random, FixedSeed) {
       return 4; // chosen by fair dice roll.
                 // guaranteed to be random.
     }
-    static result_type min() {
+    static constexpr result_type min() {
       return std::numeric_limits<result_type>::min();
     }
-    static result_type max() {
+    static constexpr result_type max() {
       return std::numeric_limits<result_type>::max();
     }
   };
