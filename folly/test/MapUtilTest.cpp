@@ -42,6 +42,13 @@ TEST(MapUtil, get_or_throw) {
   m[1] = 2;
   EXPECT_EQ(2, get_or_throw(m, 1));
   EXPECT_THROW(get_or_throw(m, 2), std::out_of_range);
+  EXPECT_EQ(&m[1], &get_or_throw(m, 1));
+  get_or_throw(m, 1) = 3;
+  EXPECT_EQ(3, get_or_throw(m, 1));
+  const auto& cm = m;
+  EXPECT_EQ(&m[1], &get_or_throw(cm, 1));
+  EXPECT_EQ(3, get_or_throw(cm, 1));
+  EXPECT_THROW(get_or_throw(cm, 2), std::out_of_range);
 }
 
 TEST(MapUtil, get_or_throw_specified) {
