@@ -50,8 +50,7 @@ static std::chrono::nanoseconds time_value_to_ns(time_value_t t) {
 static int clock_process_cputime(struct timespec* ts) {
   // Get CPU usage for live threads.
   task_thread_times_info thread_times_info;
-  mach_msg_type_number_t thread_times_info_count;
-  TASK_THREAD_TIMES_INFO_COUNT;
+  mach_msg_type_number_t thread_times_info_count = TASK_THREAD_TIMES_INFO_COUNT;
   kern_return_t kern_result = task_info(
       mach_task_self(),
       TASK_THREAD_TIMES_INFO,
