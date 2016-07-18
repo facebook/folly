@@ -582,6 +582,18 @@ TEST(Singleton, MockTest) {
 
   // If serial_count value is the same, then singleton was not replaced.
   EXPECT_NE(serial_count_first, serial_count_mock);
+
+  // Override existing mock using make_mock one more time
+  SingletonMock<Watchdog>::make_mock();
+
+  EXPECT_EQ(vault.registeredSingletonCount(), 1);
+  int serial_count_mock2 = SingletonMock<Watchdog>::try_get()->serial_number;
+
+  // If serial_count value is the same, then singleton was not replaced.
+  EXPECT_NE(serial_count_first, serial_count_mock2);
+  EXPECT_NE(serial_count_mock, serial_count_mock2);
+
+  vault.destroyInstances();
 }
 
 TEST(Singleton, DoubleRegistrationLogging) {

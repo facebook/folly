@@ -71,6 +71,16 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   }
   destroyInstance();
 
+  {
+    RWSpinLock::WriteHolder wh(&vault_.mutex_);
+
+    auto it = std::find(
+        vault_.creation_order_.begin(), vault_.creation_order_.end(), type());
+    if (it != vault_.creation_order_.end()) {
+      vault_.creation_order_.erase(it);
+    }
+  }
+
   std::lock_guard<std::mutex> entry_lock(mutex_);
 
   create_ = std::move(c);
