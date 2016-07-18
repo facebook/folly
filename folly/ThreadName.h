@@ -26,7 +26,14 @@ namespace folly {
 // having an undefined compiler function called.
 #if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
 #if __GLIBC_PREREQ(2, 12)
-# define FOLLY_HAS_PTHREAD_SETNAME_NP
+// has pthread_setname_np(pthread_t, const char*) (2 params)
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
+#endif
+#endif
+#if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+// has pthread_setname_np(const char*) (1 param)
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 1
 #endif
 #endif
 
@@ -39,10 +46,22 @@ inline bool setThreadName(T /* id */, StringPiece /* name */) {
   return false;
 }
 
-#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP
+#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
 template <>
 inline bool setThreadName(pthread_t id, StringPiece name) {
   return 0 == pthread_setname_np(id, name.fbstr().substr(0, 15).c_str());
+}
+#endif
+
+#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
+template <>
+inline bool setThreadName(pthread_t id, StringPiece name) {
+  // Since OS X 10.6 it is possible for a thread to set its own name,
+  // but not that of some other thread.
+  if (pthread_equal(pthread_self(), id)) {
+    return 0 == pthread_setname_np(name.fbstr().c_str());
+  }
+  return false;
 }
 #endif
 

@@ -22,9 +22,26 @@
 using namespace std;
 using namespace folly;
 
+constexpr bool expectedSetOtherThreadNameResult =
+#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
+    true
+#else
+    false // This system has no known way to set the name of another thread
+#endif
+    ;
+
+constexpr bool expectedSetSelfThreadNameResult =
+#if defined(FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME) || \
+    defined(FOLLY_HAS_PTHREAD_SETNAME_NP_NAME)
+    true
+#else
+    false // This system has no known way to set its own thread name
+#endif
+    ;
+
 TEST(ThreadName, setThreadName_self) {
   thread th([] {
-      EXPECT_TRUE(setThreadName("rockin-thread"));
+    EXPECT_EQ(expectedSetSelfThreadNameResult, setThreadName("rockin-thread"));
   });
   SCOPE_EXIT { th.join(); };
 }
@@ -41,7 +58,8 @@ TEST(ThreadName, setThreadName_other_pthread) {
   SCOPE_EXIT { th.join(); };
   handle_set.wait();
   SCOPE_EXIT { let_thread_end.post(); };
-  EXPECT_TRUE(setThreadName(handle, "rockin-thread"));
+  EXPECT_EQ(
+      expectedSetOtherThreadNameResult, setThreadName(handle, "rockin-thread"));
 }
 
 TEST(ThreadName, setThreadName_other_native) {
@@ -51,5 +69,7 @@ TEST(ThreadName, setThreadName_other_native) {
   });
   SCOPE_EXIT { th.join(); };
   SCOPE_EXIT { let_thread_end.post(); };
-  EXPECT_TRUE(setThreadName(th.native_handle(), "rockin-thread"));
+  EXPECT_EQ(
+      expectedSetOtherThreadNameResult,
+      setThreadName(th.native_handle(), "rockin-thread"));
 }
