@@ -34,7 +34,7 @@ struct DIR {
   }
 
   DIR* open() {
-    wchar_t patternBuf[MAX_PATH + 2];
+    wchar_t patternBuf[MAX_PATH + 3];
     size_t len;
 
     if (mbstowcs_s(&len, patternBuf, MAX_PATH, pattern.c_str(), MAX_PATH - 2)) {
