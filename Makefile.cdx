@@ -1,0 +1,80 @@
+DIR=/vagrant/folly
+LABEL=cdx-folly
+
+default : package
+
+package : GIT_HASH := $(shell git rev-parse HEAD)
+package : build
+	mkdir -p build.cdx/install
+	DESTDIR=`pwd`/build.cdx/install make -C folly install
+	cd build.cdx; fpm -f -C install -n cdx-folly \
+		--deb-no-default-config-files \
+		--version 1.4.0 \
+		--description "Git Commit: $(GIT_HASH)" \
+		-s dir -t deb usr
+
+.PHONY: clean
+clean :
+	rm -rf build.cdx
+	make -C folly clean
+
+build : folly/Makefile gtest
+	cd folly; make -j4
+
+folly/Makefile: folly/VERSION
+	cd folly; autoreconf -ivf
+	cd folly; ./configure
+
+gtest : folly/test/gtest-1.7.0
+folly/test/gtest-1.7.0 :
+	mkdir -p build
+	cd /tmp; wget https://googletest.googlecode.com/files/gtest-1.7.0.zip
+	cd folly/test; unzip /tmp/gtest-1.7.0.zip
+	rm /tmp/gtest-1.7.0.zip
+
+# ================
+# Vagrant machinery
+
+vagrant-up : clean
+	vagrant up
+	vagrant ssh -c "cd $(DIR) && make docker-up"
+
+vagrant-bash:
+	vagrant ssh -c "cd $(DIR) && make docker-bash"
+
+vagrant-destroy:
+	vagrant destroy
+
+vagrant-build:
+	vagrant ssh -c "cd $(DIR) && sudo docker run -v /vagrant:/repo -w /repo $(LABEL) make"
+
+vagrant-package:
+	vagrant ssh -c "cd ($DIR) && sudo docker run -v /vagrant:/repo -w /repo $(LABEL) make package"
+
+# ================
+# Build directly in docker if we're running on a compatible host
+
+docker-up:
+	sudo docker build --no-cache --rm -t $(LABEL) .
+
+docker-build:
+	sudo docker run -v `pwd`/..:/repo -w /repo $(LABEL) make BAMBOO_BUILD_NUMBER=$(BAMBOO_BUILD_NUMBER)
+
+docker-package:
+	sudo docker run -v `pwd`/..:/repo -w /repo $(LABEL) make package BAMBOO_BUILD_NUMBER=$(BAMBOO_BUILD_NUMBER)
+
+docker-bash:
+	sudo docker run -i -t -v `pwd`/..:/repo -w /repo $(LABEL) /bin/bash
+
+# ================
+#
+
+.PHONY : clean $(CLEAN_MODULES)
+$(CLEAN_MODULES) : clean/% : %
+	cd $*; git clean -xdf
+	cd $*; git checkout -- .
+
+clean : $(CLEAN_MODULES)
+	@rm -rf build
+	@rm -f cdx*.deb
+
