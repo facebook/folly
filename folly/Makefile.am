@@ -530,3 +530,7 @@ CLEANFILES += FingerprintTables.cpp
 libfollybenchmark_la_SOURCES = Benchmark.cpp
 libfollybenchmark_la_LIBADD = libfolly.la
 libfollybenchmark_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+
+# install pkg-config metadata file
+pkgconfigdir = $(libdir)/pkgconfig
+nodist_pkgconfig_DATA = libfolly.pc

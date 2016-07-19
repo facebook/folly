@@ -12,6 +12,13 @@ AC_INIT([folly], m4_translit(folly_version_str, [:], [.]), [folly@fb.com])
 LT_VERSION=folly_version_str:0
 AC_SUBST([LT_VERSION])
 
+#declare pkg-config variables
+PKG_VERSION=m4_join([.], m4_reverse(m4_translit(folly_version_str, [:], [,])))
+AC_SUBST([PKG_VERSION])
+AC_SUBST([PKG_CXXFLAGS])
+AC_SUBST([PKG_DEPS])
+AC_SUBST([PKG_LIBS])
+
 AC_CONFIG_SRCDIR([Likely.h])
 AC_CONFIG_HEADERS([config.h])
 AX_PREFIX_CONFIG_H([folly-config.h], [folly], [config.h])
@@ -53,6 +60,9 @@ fi
 
 CXXFLAGS="$STD $CXXFLAGS"
 
+# expose required -std option via pkg-config
+PKG_CXXFLAGS=$STD
+
 # Checks for glog and gflags
 # There are no symbols with C linkage, so we do a try-run
 AC_HAVE_LIBRARY([gflags],[],[AC_MSG_ERROR(
@@ -77,6 +87,7 @@ AC_CACHE_CHECK(
 if test "$folly_cv_prog_cc_gflags" != "yes"; then
   AC_MSG_ERROR(["libgflags invalid, see config.log for details"])
 fi
+FB_CHECK_PKG_CONFIG([GFLAGS], [libgflags])
 
 AC_HAVE_LIBRARY([glog],[],[AC_MSG_ERROR(
                 [Please install google-glog library])])
@@ -100,11 +111,13 @@ AC_CACHE_CHECK(
 if test "$folly_cv_prog_cc_glog" != "yes"; then
   AC_MSG_ERROR(["libglog invalid, see config.log for details"])
 fi
+FB_CHECK_PKG_CONFIG([GLOG], [libglog])
 
 AC_CHECK_LIB(ssl,
         SSL_ctrl,
         [],
         [AC_MSG_ERROR(["Error: libssl required"])])
+FB_CHECK_PKG_CONFIG([OPENSSL], [openssl])
 
 # check for boost libs
 AX_BOOST_BASE([1.51.0], [], [AC_MSG_ERROR(
@@ -131,6 +144,7 @@ AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
              [Please install double-conversion library])])
 
 AC_CHECK_LIB([event], [event_set], [], [AC_MSG_ERROR([Unable to find libevent])])
+FB_CHECK_PKG_CONFIG([EVENT], [libevent])
 
 AC_CHECK_LIB([jemalloc], [xallocx])
 
@@ -559,8 +573,13 @@ AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
 AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
 AM_CONDITIONAL([HAVE_BOOST_CONTEXT], [test "x${ax_cv_boost_context}" = "xyes"])
 
+# remove pkg-config deps from dependent libraries
+# (at least for pkg-config file purposes)
+FB_FILTER_PKG_LIBS([$AM_LDFLAGS $LIBS])
+
 # Output
 AC_CONFIG_FILES([Makefile
+                 libfolly.pc
                  test/Makefile
                  test/function_benchmark/Makefile
                  experimental/Makefile
