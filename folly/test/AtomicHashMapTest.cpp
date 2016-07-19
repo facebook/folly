@@ -21,6 +21,8 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+
+#include <folly/Assume.h>
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/portability/Atomic.h>
@@ -679,6 +681,7 @@ void* atomicHashArrayInsertRaceThread(void* /* j */) {
     }
   }
   pthread_exit((void *) numInserted);
+  folly::assume(false);
 }
 TEST(Ahm, atomic_hash_array_insert_race) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
