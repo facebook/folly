@@ -41,6 +41,7 @@ nobase_follyinclude_HEADERS = \
 	Bits.h \
 	CallOnce.h \
 	Checksum.h \
+	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \
 	ConditionallyExistent.h \
@@ -368,6 +369,7 @@ libfollybase_la_SOURCES = \
 libfolly_la_SOURCES = \
 	Bits.cpp \
 	Checksum.cpp \
+	ClockGettimeWrappers.cpp \
 	detail/CacheLocality.cpp \
 	detail/IPAddress.cpp \
 	dynamic.cpp \

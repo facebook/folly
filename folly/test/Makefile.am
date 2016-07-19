@@ -229,6 +229,10 @@ indestructible_test_SOURCES = IndestructibleTest.cpp
 indestructible_test_LDADD = libfollytestmain.la
 TESTS += indestructible_test
 
+portability_clock_gettime_wrappers_test_SOURCES = ClockGettimeWrappersTest.cpp
+portability_clock_gettime_wrappers_test_LDADD = libfollytestmain.la
+TESTS += portability_clock_gettime_wrappers_test
+
 portability_time_test_SOURCES = ../portability/test/TimeTest.cpp
 portability_time_test_LDADD = libfollytestmain.la
 TESTS += portability_time_test
