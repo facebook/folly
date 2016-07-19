@@ -1038,13 +1038,19 @@ private:
   } FOLLY_PACK_ATTR;
 
 #if (FOLLY_X64 || FOLLY_PPC64)
-  typedef unsigned char InlineStorageType[sizeof(value_type) * MaxInline];
+  typedef unsigned char InlineStorageDataType[sizeof(value_type) * MaxInline];
 #else
   typedef typename std::aligned_storage<
     sizeof(value_type) * MaxInline,
     alignof(value_type)
-  >::type InlineStorageType;
+  >::type InlineStorageDataType;
 #endif
+
+  typedef typename std::conditional<
+    sizeof(value_type) * MaxInline != 0,
+    InlineStorageDataType,
+    void*
+  >::type InlineStorageType;
 
   static bool const kHasInlineCapacity =
     sizeof(HeapPtrWithCapacity) < sizeof(InlineStorageType);
