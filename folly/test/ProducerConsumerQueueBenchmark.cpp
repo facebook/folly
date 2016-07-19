@@ -98,15 +98,14 @@ struct LatencyTest {
     }
 
   void computeTimeCost() {
-    int iterations = 1000;
     timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
-    for (int i = 0; i < iterations; ++i) {
+    for (int i = 0; i < iters_; ++i) {
       timespec tv;
       clock_gettime(CLOCK_REALTIME, &tv);
     }
     clock_gettime(CLOCK_REALTIME, &end);
-    time_cost_ = 2 * detail::timespecDiff(end, start) / iterations;
+    time_cost_ = 2 * detail::timespecDiff(end, start) / iters_;
   }
 
   void producer() {
