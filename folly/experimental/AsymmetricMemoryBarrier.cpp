@@ -42,16 +42,18 @@ struct DummyPageCreator {
     auto ptr = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     checkUnixError(reinterpret_cast<uintptr_t>(ptr), "mmap");
 
-    // Lock the memory so it can't get paged out. If it gets paged out, changing
-    // its protection won't accomplish anything.
+    // Optimistically try to lock the page so it stays resident. Could make
+    // the heavy barrier faster.
     auto r = mlock(ptr, 1);
-    checkUnixError(r, "mlock");
+    if (r != 0) {
+      // Do nothing.
+    }
 
     return ptr;
   }
 };
 
-// Make sure dummy page is always initialized before shutdown
+// Make sure dummy page is always initialized before shutdown.
 DummyPageCreator dummyPageCreator;
 
 void mprotectMembarrier() {
@@ -63,9 +65,17 @@ void mprotectMembarrier() {
   std::lock_guard<std::mutex> lg(*mprotectMutex);
 
   int r = 0;
+
+  // We want to downgrade the page while it is resident. To do that, it must
+  // first be upgraded and forced to be resident.
   r = mprotect(dummyPage, 1, PROT_READ | PROT_WRITE);
   checkUnixError(r, "mprotect");
 
+  // Force the page to be resident. If it is already resident, almost no-op.
+  *static_cast<char*>(dummyPage) = 0;
+
+  // Downgrade the page. Forces a memory barrier in every core running any
+  // of the process's threads. On a sane platform.
   r = mprotect(dummyPage, 1, PROT_READ);
   checkUnixError(r, "mprotect");
 }
