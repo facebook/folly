@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/ThreadLocal.h>
+#include <folly/experimental/AsymmetricMemoryBarrier.h>
 
 namespace folly {
 
@@ -84,6 +85,8 @@ class TLRefCount {
 
     state_ = State::GLOBAL_TRANSITION;
 
+    asymmetricHeavyBarrier();
+
     std::weak_ptr<void> collectGuardWeak = collectGuard_;
 
     // Make sure we can't create new LocalRefCounts
@@ -147,7 +150,14 @@ class TLRefCount {
         return false;
       }
 
-      auto count = count_ += delta;
+      // This is equivalent to atomic fetch_add. We know that this operation
+      // is always performed from a single thread. asymmetricLightBarrier()
+      // makes things faster than atomic fetch_add on platforms with native
+      // support.
+      auto count = count_.load(std::memory_order_relaxed) + delta;
+      count_.store(count, std::memory_order_relaxed);
+
+      asymmetricLightBarrier();
 
       if (UNLIKELY(refCount_.state_.load() != State::LOCAL)) {
         std::lock_guard<std::mutex> lg(collectMutex_);

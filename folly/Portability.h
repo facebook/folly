@@ -354,3 +354,12 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 // we will take the next one.
 #define FOLLY_STATIC_CTOR_PRIORITY_MAX __attribute__((__init_priority__(102)))
 #endif
+
+namespace folly {
+
+#ifdef __linux__
+constexpr auto kIsLinux = true;
+#else
+constexpr auto kIsLinux = false;
+#endif
+}

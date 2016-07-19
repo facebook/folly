@@ -89,6 +89,7 @@ nobase_follyinclude_HEADERS = \
 	ExceptionWrapper.h \
 	Executor.h \
 	EvictingCacheMap.h \
+	experimental/AsymmetricMemoryBarrier.h \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \
@@ -273,6 +274,7 @@ nobase_follyinclude_HEADERS = \
 	portability/String.h \
 	portability/Syslog.h \
 	portability/SysFile.h \
+	portability/SysMembarrier.h \
 	portability/SysMman.h \
 	portability/SysResource.h \
 	portability/SysStat.h \
@@ -428,6 +430,7 @@ libfolly_la_SOURCES = \
 	portability/Stdlib.cpp \
 	portability/String.cpp \
 	portability/SysFile.cpp \
+	portability/SysMembarrier.cpp \
 	portability/SysMman.cpp \
 	portability/SysResource.cpp \
 	portability/SysStat.cpp \
@@ -450,6 +453,7 @@ libfolly_la_SOURCES = \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
+	experimental/AsymmetricMemoryBarrier.cpp \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
