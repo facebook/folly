@@ -22,11 +22,11 @@
  */
 #pragma once
 
+#include <boost/thread.hpp>
 #include <folly/LockTraits.h>
 
 #if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 
-#include <boost/thread.hpp>
 
 namespace folly {
 
