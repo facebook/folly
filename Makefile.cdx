@@ -17,6 +17,8 @@ package : build
 clean :
 	rm -rf build.cdx
 	make -C folly clean
+	rm -f folly/Makefile
+	@echo "Consider git -xn clean followed by git -xf clean"
 
 build : folly/Makefile gtest
 	cd folly; make -j4
@@ -68,13 +70,4 @@ docker-bash:
 
 # ================
 #
-
-.PHONY : clean $(CLEAN_MODULES)
-$(CLEAN_MODULES) : clean/% : %
-	cd $*; git clean -xdf
-	cd $*; git checkout -- .
-
-clean : $(CLEAN_MODULES)
-	@rm -rf build
-	@rm -f cdx*.deb
 
