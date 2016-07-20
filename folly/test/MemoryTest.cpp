@@ -33,6 +33,11 @@ TEST(make_unique, compatible_with_std_make_unique) {
   make_unique<string>("hello, world");
 }
 
+TEST(allocate_sys_buffer, compiles) {
+  auto buf = allocate_sys_buffer(256);
+  //  Freed at the end of the scope.
+}
+
 template <std::size_t> struct T {};
 template <std::size_t> struct S {};
 template <std::size_t> struct P {};

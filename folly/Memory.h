@@ -114,6 +114,12 @@ std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
   return std::shared_ptr<T>(std::move(ptr));
 }
 
+using SysBufferDeleter = static_function_deleter<void, ::free>;
+using SysBufferUniquePtr = std::unique_ptr<void, SysBufferDeleter>;
+inline SysBufferUniquePtr allocate_sys_buffer(size_t size) {
+  return SysBufferUniquePtr(::malloc(size));
+}
+
 /**
  * A SimpleAllocator must provide two methods:
  *
