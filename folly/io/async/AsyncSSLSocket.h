@@ -714,6 +714,14 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     serviceIdentity_ = std::move(serviceIdentity);
   }
 
+  void setCertCacheHit(bool hit) {
+    certCacheHit_ = hit;
+  }
+
+  bool getCertCacheHit() const {
+    return certCacheHit_;
+  }
+
  private:
 
   void init();
@@ -855,6 +863,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool parseClientHello_{false};
   bool cacheAddrOnFailure_{false};
   bool bufferMovableEnabled_{false};
+  bool certCacheHit_{false};
   std::unique_ptr<ssl::ClientHelloInfo> clientHelloInfo_;
   std::vector<std::pair<char, StringPiece>> alertsReceived_;
 
