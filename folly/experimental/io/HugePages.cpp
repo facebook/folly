@@ -74,6 +74,7 @@ HugePageSizeVec readRawHugePageSizes() {
   boost::smatch match;
   HugePageSizeVec vec;
   fs::path path("/sys/kernel/mm/hugepages");
+  if (fs::exists(path)) { // CDX
   for (fs::directory_iterator it(path); it != fs::directory_iterator(); ++it) {
     std::string filename(it->path().filename().string());
     if (boost::regex_match(filename, match, regex)) {
@@ -82,6 +83,7 @@ HugePageSizeVec readRawHugePageSizes() {
       vec.emplace_back(to<size_t>(numStr) * 1024);
     }
   }
+  } // CDX
   return vec;
 }
 
