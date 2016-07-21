@@ -351,8 +351,8 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor3) {
   int n = 1;
   auto vec = makeVec({1600});
   int pos = 0;
-  const size_t initAppBytesWritten = 500;
-  const size_t appEor = initAppBytesWritten + 1600;
+  static constexpr size_t initAppBytesWritten = 500;
+  static constexpr size_t appEor = initAppBytesWritten + 1600;
 
   sock_->setAppBytesWritten(initAppBytesWritten);
   sock_->setEorTracking(true);
