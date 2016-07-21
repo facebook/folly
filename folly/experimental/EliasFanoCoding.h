@@ -255,9 +255,7 @@ struct EliasFanoEncoderV2<Value,
       // more serialization-friendly way (upperSizeBits doesn't need
       // to be known by this function, unlike upper).
 
-      // '?: 1' is a workaround for false 'division by zero'
-      // compile-time error.
-      size_t numSkipPointers = (8 * upper - size) / (skipQuantum ?: 1);
+      size_t numSkipPointers = (8 * upper - size) / skipQuantum;
       layout.skipPointers = numSkipPointers * sizeof(SkipValueType);
     }
 
@@ -265,7 +263,7 @@ struct EliasFanoEncoderV2<Value,
     // Store (1-indexed) position of every forwardQuantum-th
     // 1-bit in upper bits sequence.
     /* static */ if (forwardQuantum != 0) {
-      size_t numForwardPointers = size / (forwardQuantum ?: 1);
+      size_t numForwardPointers = size / forwardQuantum;
       layout.forwardPointers = numForwardPointers * sizeof(SkipValueType);
     }
 
@@ -369,16 +367,13 @@ class UpperBitsReader {
 
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
-      // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::forwardQuantum ?: 1;
-
-      const size_t steps = position_ / q;
+      const size_t steps = position_ / Encoder::forwardQuantum;
       const size_t dest =
         folly::loadUnaligned<SkipValueType>(
             forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      reposition(dest + steps * q);
-      n = position_ + 1 - steps * q;  // n is > 0.
+      reposition(dest + steps * Encoder::forwardQuantum);
+      n = position_ + 1 - steps * Encoder::forwardQuantum; // n is > 0.
       // Correct inner_ will be set at the end.
     }
 
@@ -405,15 +400,12 @@ class UpperBitsReader {
 
     // Use skip pointer.
     if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
-      // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::skipQuantum ?: 1;
-
-      const size_t steps = v / q;
+      const size_t steps = v / Encoder::skipQuantum;
       const size_t dest =
         folly::loadUnaligned<SkipValueType>(
             skipPointers_ + (steps - 1) * sizeof(SkipValueType));
 
-      reposition(dest + q * steps);
+      reposition(dest + Encoder::skipQuantum * steps);
       position_ = dest - 1;
 
       // Correct inner_ and value_ will be set during the next()

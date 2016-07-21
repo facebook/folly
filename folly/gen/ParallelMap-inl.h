@@ -148,7 +148,7 @@ class PMap : public Operator<PMap<Predicate>> {
     Generator(Source source, const Predicate& pred, size_t nThreads)
       : source_(std::move(source)),
         pred_(pred),
-        nThreads_(nThreads ?: sysconf(_SC_NPROCESSORS_ONLN)) {
+        nThreads_(nThreads ? nThreads : sysconf(_SC_NPROCESSORS_ONLN)) {
     }
 
     template<class Body>

@@ -125,7 +125,7 @@ struct BitVectorEncoder {
         reinterpret_cast<folly::Unaligned<uint64_t>*>(block), inner);
 
     if (skipQuantum != 0) {
-      size_t nextSkipPointerSize = value / (skipQuantum ?: 1);
+      size_t nextSkipPointerSize = value / skipQuantum;
       while (skipPointersSize_ < nextSkipPointerSize) {
         auto pos = skipPointersSize_++;
         folly::storeUnaligned<SkipValueType>(
@@ -134,8 +134,8 @@ struct BitVectorEncoder {
     }
 
     if (forwardQuantum != 0) {
-      if (size_ != 0 && (size_ % (forwardQuantum ?: 1) == 0)) {
-        const auto pos = size_ / (forwardQuantum ?: 1) - 1;
+      if (size_ != 0 && (size_ % forwardQuantum == 0)) {
+        const auto pos = size_ / forwardQuantum - 1;
         folly::storeUnaligned<SkipValueType>(
             forwardPointers_ + pos * sizeof(SkipValueType), value);
       }
@@ -179,11 +179,11 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     layout.bits = bitVectorSizeInBytes;
 
     if (skipQuantum != 0) {
-      size_t numSkipPointers = upperBound / (skipQuantum ?: 1);
+      size_t numSkipPointers = upperBound / skipQuantum;
       layout.skipPointers = numSkipPointers * sizeof(SkipValueType);
     }
     if (forwardQuantum != 0) {
-      size_t numForwardPointers = size / (forwardQuantum ?: 1);
+      size_t numForwardPointers = size / forwardQuantum;
       layout.forwardPointers = numForwardPointers * sizeof(SkipValueType);
     }
 
@@ -300,15 +300,12 @@ class BitVectorReader {
 
     // Use forward pointer.
     if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
-      // Workaround to avoid 'division by zero' compile-time error.
-      constexpr size_t q = Encoder::forwardQuantum ?: 1;
-
-      const size_t steps = position_ / q;
+      const size_t steps = position_ / Encoder::forwardQuantum;
       const size_t dest = folly::loadUnaligned<SkipValueType>(
           forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
 
       reposition(dest);
-      n = position_ + 1 - steps * q;
+      n = position_ + 1 - steps * Encoder::forwardQuantum;
       // Correct inner_ will be set at the end.
     }
 

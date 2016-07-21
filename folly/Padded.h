@@ -345,8 +345,9 @@ class Adaptor {
       lastCount_(lastCount) {
   }
   explicit Adaptor(size_t n, const value_type& value = value_type())
-    : c_(Node::nodeCount(n), fullNode(value)),
-      lastCount_(n % Node::kElementCount ?: Node::kElementCount) {
+    : c_(Node::nodeCount(n), fullNode(value)) {
+    const auto count = n % Node::kElementCount;
+    lastCount_ = count != 0 ? count : Node::kElementCount;
   }
 
   Adaptor(const Adaptor&) = default;
