@@ -25,9 +25,6 @@ GCC 4.7 is required.
 
 */
 
-// only compile if GCC is at least 4.7
-#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 7
-
 #if 0
 #define USING_STD_VECTOR
 #endif
@@ -336,11 +333,11 @@ template <> struct D4<true> {
 };
 
 template <Flags f>
-struct Delete : D0<f & DC_DELETE>
-              , D1<f & CC_DELETE>
-              , D2<f & MC_DELETE>
-              , D3<f & CA_DELETE>
-              , D4<f & MA_DELETE> {
+struct Delete : D0<(f & DC_DELETE) != 0>
+              , D1<(f & CC_DELETE) != 0>
+              , D2<(f & MC_DELETE) != 0>
+              , D3<(f & CA_DELETE) != 0>
+              , D4<(f & MA_DELETE) != 0> {
   Delete() = default;
   Delete(const Delete&) = default;
   Delete(Delete&&) = default;
@@ -348,11 +345,11 @@ struct Delete : D0<f & DC_DELETE>
   Delete& operator=(Delete&&) = default;
 
   explicit Delete(std::nullptr_t)
-      : D0<f & DC_DELETE>(nullptr)
-      , D1<f & CC_DELETE>(nullptr)
-      , D2<f & MC_DELETE>(nullptr)
-      , D3<f & CA_DELETE>(nullptr)
-      , D4<f & MA_DELETE>(nullptr)
+      : D0<(f & DC_DELETE) != 0>(nullptr)
+      , D1<(f & CC_DELETE) != 0>(nullptr)
+      , D2<(f & MC_DELETE) != 0>(nullptr)
+      , D3<(f & CA_DELETE) != 0>(nullptr)
+      , D4<(f & MA_DELETE) != 0>(nullptr)
       {}
 };
 
@@ -382,20 +379,20 @@ struct DataTicker : Ticker {
   DataTicker() noexcept(f & DC_NOEXCEPT) {
     if (!(f & DC_NOEXCEPT)) Tick("Data()");
   }
-  DataTicker(const DataTicker&) noexcept(f & CC_NOEXCEPT) {
+  DataTicker(const DataTicker&) noexcept((f & CC_NOEXCEPT) != 0) {
     if (!(f & CC_NOEXCEPT)) Tick("Data(const Data&)");
   }
-  DataTicker(DataTicker&&) noexcept(f & MC_NOEXCEPT) {
+  DataTicker(DataTicker&&) noexcept((f & MC_NOEXCEPT) != 0) {
     if (!(f & MC_NOEXCEPT)) Tick("Data(Data&&)");
   }
-  explicit DataTicker(std::nullptr_t) noexcept(f & OC_NOEXCEPT) {
+  explicit DataTicker(std::nullptr_t) noexcept((f & OC_NOEXCEPT) != 0) {
     if (!(f & OC_NOEXCEPT)) Tick("Data(int)");
   }
   ~DataTicker() noexcept {}
-  void operator=(const DataTicker&) noexcept(f & CA_NOEXCEPT) {
+  void operator=(const DataTicker&) noexcept((f & CA_NOEXCEPT) != 0) {
     if (!(f & CA_NOEXCEPT)) Tick("op=(const Data&)");
   }
-  void operator=(DataTicker&&) noexcept(f & MA_NOEXCEPT) {
+  void operator=(DataTicker&&) noexcept((f & MA_NOEXCEPT) != 0) {
     if (!(f & MA_NOEXCEPT)) Tick("op=(Data&&)");
   }
 };
@@ -516,7 +513,7 @@ bool Tracker::Print = false;
 // Data
 
 template <Flags f = 0, size_t pad = 0>
-struct Data : DataTracker<f & IS_RELOCATABLE>,
+struct Data : DataTracker<(f & IS_RELOCATABLE) != 0>,
               Counter, DataTicker<f>, Delete<f> {
   static const Flags flags = f;
   char spacehog[pad ? pad : 1];
@@ -525,7 +522,7 @@ struct Data : DataTracker<f & IS_RELOCATABLE>,
   Data(const Data&) = default;
   Data(Data&&) = default;
   /* implicit */ Data(int i)
-    : DataTracker<f & IS_RELOCATABLE>(i), Counter()
+    : DataTracker<(f & IS_RELOCATABLE) != 0>(i), Counter()
     , DataTicker<f>(nullptr)
     , Delete<f>(nullptr)
   {}
@@ -541,7 +538,7 @@ namespace folly {
 template <Flags f, size_t pad>
 struct IsRelocatable<Data<f, pad>>
   : std::integral_constant<bool,
-      f & IS_RELOCATABLE
+      (f & IS_RELOCATABLE) != 0
     > {};
 };
 
@@ -553,19 +550,19 @@ template <typename T>
 struct isPropCopy : true_type {};
 template <Flags f, size_t pad>
 struct isPropCopy<Data<f, pad>> :
-  std::integral_constant<bool, f & PROP_COPY> {};
+  std::integral_constant<bool, (f & PROP_COPY) != 0> {};
 
 template <typename T>
 struct isPropMove : true_type {};
 template <Flags f, size_t pad>
 struct isPropMove<Data<f, pad>> :
-  std::integral_constant<bool, f & PROP_MOVE> {};
+  std::integral_constant<bool, (f & PROP_MOVE) != 0> {};
 
 template <typename T>
 struct isPropSwap : true_type {};
 template <Flags f, size_t pad>
 struct isPropSwap<Data<f, pad>> :
-  std::integral_constant<bool, f & PROP_SWAP> {};
+  std::integral_constant<bool, (f & PROP_SWAP) != 0> {};
 
 
 struct AllocTracker {
@@ -583,6 +580,7 @@ template <class T>
 struct Alloc : AllocTracker, Ticker {
   typedef typename std::allocator<T>::pointer pointer;
   typedef typename std::allocator<T>::const_pointer const_pointer;
+  typedef typename std::allocator<T>::difference_type difference_type;
   typedef typename std::allocator<T>::size_type size_type;
   typedef typename std::allocator<T>::value_type value_type;
 
@@ -767,6 +765,9 @@ struct special_move_assignable<Data<f, pad>>
 // Timing
 
 uint64_t ReadTSC() {
+#ifdef _MSC_VER
+   return __rdtsc();
+#else
    unsigned reslo, reshi;
 
     __asm__ __volatile__  (
@@ -780,6 +781,7 @@ uint64_t ReadTSC() {
      ::: "%eax", "%ebx", "%ecx", "%edx");
 
    return ((uint64_t)reshi << 32) | reslo;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -795,8 +797,8 @@ uint64_t ReadTSC() {
   e25, e26, e27, e28, e29, e30, e31, e32, e33, e34, e35, e36, e37, e38, e39,  \
   e40, e41, e42, e43, e44, e45, e46, e47, e48, e49, e50, e51, e52, e53, e54,  \
   e55, e56, e57, e58, e59, e60, e61, e62, e63, size, ...) size
-#define IBOOST_PP_VARIADIC_TO_SEQ(args...) \
-  BOOST_PP_TUPLE_TO_SEQ(IBOOST_PP_VARIADIC_SIZE(args), (args))
+#define IBOOST_PP_VARIADIC_TO_SEQ(...) \
+  BOOST_PP_TUPLE_TO_SEQ(IBOOST_PP_VARIADIC_SIZE(__VA_ARGS__), (__VA_ARGS__))
 
 //-----------------------------------------------------------------------------
 // STL_TEST
@@ -823,7 +825,7 @@ uint64_t ReadTSC() {
 #define TYPIFY(r, d, name) BOOST_PP_CAT(TYPIFY_, name)
 #define ARGIFY(r, d, name) TYPIFY(r, d, name) name
 
-#define MAKE_TEST(ref, name, types, restriction, argseq, rawargs...)     \
+#define MAKE_TEST(ref, name, types, restriction, argseq, ...)            \
   template <class Vector> void test_ ## name ## 2 (std::false_type) {}   \
   template <class Vector> void test_ ## name ## 2 (std::true_type) {     \
     BOOST_PP_SEQ_FOR_EACH(GEN_LOOPER, _, argseq)                         \
@@ -831,7 +833,7 @@ uint64_t ReadTSC() {
     BOOST_PP_SEQ_FOR_EACH(GEN_VMAKER, _, argseq)                         \
     {                                                                    \
     test_ ## name <Vector, typename Vector::value_type,                  \
-      typename Vector::allocator_type> ( rawargs );                      \
+      typename Vector::allocator_type> ( __VA_ARGS__ );                  \
     if (::testing::Test::HasFatalFailure()) return;                      \
     }                                                                    \
     BOOST_PP_SEQ_FOR_EACH(GEN_UMAKER, _, BOOST_PP_SEQ_REVERSE(argseq))   \
@@ -868,19 +870,19 @@ uint64_t ReadTSC() {
     if (!one) FAIL() << "No tests qualified to run";                     \
   }
 
-#define DECL(name, args...)                                                   \
+#define DECL(name, ...)                                                       \
   template <class Vector, typename T, typename Allocator>                     \
   void test_ ## name (BOOST_PP_SEQ_ENUM(BOOST_PP_SEQ_TRANSFORM(               \
-    ARGIFY, _, IBOOST_PP_VARIADIC_TO_SEQ(args))))
+    ARGIFY, _, IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__))))
 
-#define STL_TEST_I(ref, name, restriction, args...)                           \
-  DECL(name, args);                                                           \
+#define STL_TEST_I(ref, name, restriction, ...)                               \
+  DECL(name, __VA_ARGS__);                                                    \
   MAKE_TEST(ref, name, TEST_TYPES, restriction,                               \
-    IBOOST_PP_VARIADIC_TO_SEQ(args), args)                                    \
-  DECL(name, args)
+    IBOOST_PP_VARIADIC_TO_SEQ(__VA_ARGS__), __VA_ARGS__)                      \
+  DECL(name, __VA_ARGS__)
 
-#define STL_TEST(ref, name, restriction, args...) \
-  STL_TEST_I(ref, name, restriction, z, ## args, ticks)
+#define STL_TEST(ref, name, restriction, ...) \
+  STL_TEST_I(ref, name, restriction, z, ## __VA_ARGS__, ticks)
 
 //-----------------------------------------------------------------------------
 // Test Types
@@ -2727,17 +2729,3 @@ int main(int argc, char** argv) {
 
   return RUN_ALL_TESTS();
 }
-
-#else // GCC 4.7 guard
-
-// do nothing
-TEST(placeholder, gccversion) {}
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-
-  return RUN_ALL_TESTS();
-}
-
-#endif // GCC 4.7 guard
