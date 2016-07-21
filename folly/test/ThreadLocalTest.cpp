@@ -16,9 +16,12 @@
 
 #include <folly/ThreadLocal.h>
 
+#ifndef _WIN32
 #include <dlfcn.h>
-#include <sys/types.h>
 #include <sys/wait.h>
+#endif
+
+#include <sys/types.h>
 
 #include <array>
 #include <atomic>
@@ -543,6 +546,7 @@ TEST(ThreadLocal, Fork) {
 }
 #endif
 
+#ifndef _WIN32
 struct HoldsOneTag2 {};
 
 TEST(ThreadLocal, Fork2) {
@@ -571,6 +575,7 @@ TEST(ThreadLocal, Fork2) {
     EXPECT_TRUE(false) << "fork failed";
   }
 }
+#endif
 
 // Elide this test when using any sanitizer. Otherwise, the dlopen'ed code
 // would end up running without e.g., ASAN-initialized data structures and
