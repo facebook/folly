@@ -36,7 +36,7 @@ using namespace ::folly::hash;
 
 static bool failed = false;
 
-static uint64_t GetTickCount() {
+static uint64_t GetClockTickCount() {
   timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
   return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;  // milliseconds
@@ -263,41 +263,41 @@ void DoTimingBig(int seed)
         memset(buf[i], (char)seed, BUFSIZE);
     }
 
-    uint64_t a = GetTickCount();
+    uint64_t a = GetClockTickCount();
     uint64_t hash1 = seed;
     uint64_t hash2 = seed;
     for (uint64_t i=0; i<NUMBUF; ++i)
     {
         SpookyHashV2::Hash128(buf[i], BUFSIZE, &hash1, &hash2);
     }
-    uint64_t z = GetTickCount();
+    uint64_t z = GetClockTickCount();
     printf("SpookyHashV2::Hash128, uncached: time is "
            "%4" PRId64 " milliseconds\n", z-a);
 
-    a = GetTickCount();
+    a = GetClockTickCount();
     for (uint64_t i=0; i<NUMBUF; ++i)
     {
         Add(buf[i], BUFSIZE, &hash1, &hash2);
     }
-    z = GetTickCount();
+    z = GetClockTickCount();
     printf("Addition           , uncached: time is %4" PRId64 " milliseconds\n",
            z-a);
 
-    a = GetTickCount();
+    a = GetClockTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
     {
         SpookyHashV2::Hash128(buf[0], 1024, &hash1, &hash2);
     }
-    z = GetTickCount();
+    z = GetClockTickCount();
     printf("SpookyHashV2::Hash128,   cached: time is "
            "%4" PRId64 " milliseconds\n", z-a);
 
-    a = GetTickCount();
+    a = GetClockTickCount();
     for (uint64_t i=0; i<NUMBUF*BUFSIZE/1024; ++i)
     {
         Add(buf[0], 1024, &hash1, &hash2);
     }
-    z = GetTickCount();
+    z = GetClockTickCount();
     printf("Addition           ,   cached: time is %4" PRId64 " milliseconds\n",
            z-a);
 
@@ -326,14 +326,14 @@ void DoTimingSmall(int seed)
 
     for (int i=1; i <= BUFSIZE; i <<= 1)
     {
-        uint64_t a = GetTickCount();
+        uint64_t a = GetClockTickCount();
         uint64_t hash1 = seed;
         uint64_t hash2 = seed+i;
         for (int j=0; j<NUMITER; ++j)
         {
             SpookyHashV2::Hash128((char *)buf, i, &hash1, &hash2);
         }
-        uint64_t z = GetTickCount();
+        uint64_t z = GetClockTickCount();
         printf("%d bytes: hash is %.16" PRIx64 " %.16" PRIx64 ", "
                "time is %" PRId64 "\n", i, hash1, hash2, z-a);
     }
