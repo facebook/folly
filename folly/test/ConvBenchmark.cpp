@@ -317,17 +317,7 @@ void follyAtoiMeasure(unsigned int n, unsigned int digits) {
 void clibAtoiMeasure(unsigned int n, unsigned int digits) {
   auto p = pc1.subpiece(pc1.size() - digits, digits);
   assert(*p.end() == 0);
-  static_assert(sizeof(long) == 8, "64-bit long assumed");
-  FOR_EACH_RANGE(i, 0, n) { doNotOptimizeAway(atol(p.begin())); }
-}
-
-void clibStrtoulMeasure(unsigned int n, unsigned int digits) {
-  auto p = pc1.subpiece(pc1.size() - digits, digits);
-  assert(*p.end() == 0);
-  char* endptr;
-  FOR_EACH_RANGE(i, 0, n) {
-    doNotOptimizeAway(strtoul(p.begin(), &endptr, 10));
-  }
+  FOR_EACH_RANGE(i, 0, n) { doNotOptimizeAway(atoll(p.begin())); }
 }
 
 void lexicalCastMeasure(unsigned int n, unsigned int digits) {
