@@ -39,8 +39,6 @@ class StringAppender {
 
 typedef GroupVarintEncoder<uint32_t, StringAppender> GroupVarint32Encoder;
 typedef GroupVarintEncoder<uint64_t, StringAppender> GroupVarint64Encoder;
-typedef GroupVarintDecoder<uint32_t> GroupVarint32Decoder;
-typedef GroupVarintDecoder<uint32_t> GroupVarint64Decoder;
 
 // Expected bytes follow, terminate with -1
 void testGroupVarint32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, ...) {

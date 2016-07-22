@@ -25,8 +25,6 @@ using namespace folly;
 using namespace folly::test;
 using folly::detail::EmulatedFutexAtomic;
 
-typedef DeterministicSchedule DSched;
-
 TEST(Baton, basic) {
   Baton<> b;
   b.post();
