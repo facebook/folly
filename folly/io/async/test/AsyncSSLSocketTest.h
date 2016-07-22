@@ -1085,8 +1085,9 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   // socket, even if the maxReadsPerEvent_ is hit during
   // a event loop iteration.
   static constexpr size_t kMaxReadsPerEvent = 2;
+  // 2 event loop iterations
   static constexpr size_t kMaxReadBufferSz =
-    sizeof(readbuf_) / kMaxReadsPerEvent / 2;  // 2 event loop iterations
+    sizeof(decltype(readbuf_)) / kMaxReadsPerEvent / 2;
 
  public:
   SSLClient(EventBase *eventBase,
