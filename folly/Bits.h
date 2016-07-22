@@ -63,6 +63,7 @@
 #endif
 
 #include <folly/Portability.h>
+#include <folly/portability/Builtins.h>
 
 #include <folly/detail/BitsDetail.h>
 #include <folly/detail/BitIteratorDetail.h>
