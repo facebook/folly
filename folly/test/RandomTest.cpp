@@ -65,12 +65,14 @@ TEST(Random, FixedSeed) {
   // clang-format on
 
   ConstantRNG gen;
+
+  // Pick a constant random number...
+  auto value = Random::rand32(10, gen);
+
   // Loop to make sure it really is constant.
   for (int i = 0; i < 1024; ++i) {
     auto result = Random::rand32(10, gen);
-    // TODO: This is a little bit brittle; standard library changes could break
-    // it, if it starts implementing distribution types differently.
-    EXPECT_EQ(0, result);
+    EXPECT_EQ(value, result);
   }
 }
 
