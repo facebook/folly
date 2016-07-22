@@ -34,6 +34,8 @@ namespace folly {
 class RequestData {
  public:
   virtual ~RequestData() = default;
+  virtual void onSet(){};
+  virtual void onUnset(){};
 };
 
 class RequestContext;
@@ -43,7 +45,7 @@ class RequestContext;
 // copied between threads.
 class RequestContext {
  public:
-  // Create a unique requext context for this request.
+  // Create a unique request context for this request.
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
   static void create() {
@@ -105,6 +107,24 @@ class RequestContext {
     }
   }
 
+  void onSet() {
+    folly::RWSpinLock::ReadHolder guard(lock);
+    for (auto const& ent : data_) {
+      if (RequestData* data = ent.second.get()) {
+        data->onSet();
+      }
+    }
+  }
+
+  void onUnset() {
+    folly::RWSpinLock::ReadHolder guard(lock);
+    for (auto const& ent : data_) {
+      if (RequestData* data = ent.second.get()) {
+        data->onUnset();
+      }
+    }
+  }
+
   void clearContextData(const std::string& val) {
     folly::RWSpinLock::WriteHolder guard(lock);
     data_.erase(val);
@@ -122,8 +142,17 @@ class RequestContext {
   // multiple threads, or do post-send processing, etc.
   static std::shared_ptr<RequestContext>
   setContext(std::shared_ptr<RequestContext> ctx) {
-    using std::swap;
-    swap(ctx, getStaticContext());
+    auto& prev = getStaticContext();
+    if (ctx != prev) {
+      using std::swap;
+      if (ctx) {
+        ctx->onSet();
+      }
+      if (prev) {
+        prev->onUnset();
+      }
+      swap(ctx, prev);
+    }
     return ctx;
   }
 
