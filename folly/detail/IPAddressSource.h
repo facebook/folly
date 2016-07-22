@@ -133,7 +133,7 @@ struct Bytes {
     for (std::size_t i = 0; i < len; i++) {
       const unsigned char c = src[i];
       out[i * 2 + 0] = lut[c >> 4];
-      out[i + 2 + 1] = lut[c & 15];
+      out[i * 2 + 1] = lut[c & 15];
     }
     return out;
   }

@@ -421,6 +421,14 @@ TEST_P(IPAddressCtorBinaryTest, InvalidBinary) {
                IPAddressFormatException);
 }
 
+TEST(IPAddressSource, ToHex) {
+  vector<std::uint8_t> data = {{0xff, 0x20, 0x45}};
+  EXPECT_EQ(detail::Bytes::toHex(data.data(), 0), "");
+  EXPECT_EQ(detail::Bytes::toHex(data.data(), 1), "ff");
+  EXPECT_EQ(detail::Bytes::toHex(data.data(), 2), "ff20");
+  EXPECT_EQ(detail::Bytes::toHex(data.data(), 3), "ff2045");
+}
+
 // Test toFullyQualified()
 TEST(IPAddress, ToFullyQualifiedFb) {
   IPAddress ip("2620:0:1cfe:face:b00c::3");
