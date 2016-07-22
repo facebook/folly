@@ -16,6 +16,12 @@
 
 #pragma once
 
+// This needs to be above semaphore.h due to the windows
+// libevent implementation needing mode_t to be defined,
+// but defining it differently than our portability
+// headers do.
+#include <folly/portability/SysTypes.h>
+
 #include <assert.h>
 #include <boost/noncopyable.hpp>
 #include <errno.h>
