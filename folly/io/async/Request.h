@@ -22,9 +22,7 @@
 
 #include <map>
 #include <memory>
-#include <glog/logging.h>
 #include <folly/RWSpinLock.h>
-#include <folly/SingletonThreadLocal.h>
 
 namespace folly {
 
@@ -34,8 +32,8 @@ namespace folly {
 class RequestData {
  public:
   virtual ~RequestData() = default;
-  virtual void onSet(){};
-  virtual void onUnset(){};
+  virtual void onSet() {}
+  virtual void onUnset() {}
 };
 
 class RequestContext;
@@ -66,69 +64,24 @@ class RequestContext {
   // This access is still performance sensitive, so please ask if you need help
   // profiling any use of these functions.
   void setContextData(
-    const std::string& val, std::unique_ptr<RequestData> data) {
-    folly::RWSpinLock::WriteHolder guard(lock);
-    if (data_.find(val) != data_.end()) {
-      LOG_FIRST_N(WARNING, 1) <<
-        "Called RequestContext::setContextData with data already set";
-
-      data_[val] = nullptr;
-    } else {
-      data_[val] = std::move(data);
-    }
-  }
+      const std::string& val,
+      std::unique_ptr<RequestData> data);
 
   // Unlike setContextData, this method does not panic if the key is already
   // present. Returns true iff the new value has been inserted.
-  bool setContextDataIfAbsent(const std::string& val,
-                              std::unique_ptr<RequestData> data) {
-    folly::RWSpinLock::UpgradedHolder guard(lock);
-    if (data_.find(val) != data_.end()) {
-      return false;
-    }
+  bool setContextDataIfAbsent(
+      const std::string& val,
+      std::unique_ptr<RequestData> data);
 
-    folly::RWSpinLock::WriteHolder writeGuard(std::move(guard));
-    data_[val] = std::move(data);
-    return true;
-  }
+  bool hasContextData(const std::string& val) const;
 
-  bool hasContextData(const std::string& val) {
-    folly::RWSpinLock::ReadHolder guard(lock);
-    return data_.find(val) != data_.end();
-  }
+  RequestData* getContextData(const std::string& val);
+  const RequestData* getContextData(const std::string& val) const;
 
-  RequestData* getContextData(const std::string& val) {
-    folly::RWSpinLock::ReadHolder guard(lock);
-    auto r = data_.find(val);
-    if (r == data_.end()) {
-      return nullptr;
-    } else {
-      return r->second.get();
-    }
-  }
+  void onSet();
+  void onUnset();
 
-  void onSet() {
-    folly::RWSpinLock::ReadHolder guard(lock);
-    for (auto const& ent : data_) {
-      if (RequestData* data = ent.second.get()) {
-        data->onSet();
-      }
-    }
-  }
-
-  void onUnset() {
-    folly::RWSpinLock::ReadHolder guard(lock);
-    for (auto const& ent : data_) {
-      if (RequestData* data = ent.second.get()) {
-        data->onUnset();
-      }
-    }
-  }
-
-  void clearContextData(const std::string& val) {
-    folly::RWSpinLock::WriteHolder guard(lock);
-    data_.erase(val);
-  }
+  void clearContextData(const std::string& val);
 
   // The following API is used to pass the context through queues / threads.
   // saveContext is called to get a shared_ptr to the context, and
@@ -140,21 +93,8 @@ class RequestContext {
   //
   // A shared_ptr is used, because many request may fan out across
   // multiple threads, or do post-send processing, etc.
-  static std::shared_ptr<RequestContext>
-  setContext(std::shared_ptr<RequestContext> ctx) {
-    auto& prev = getStaticContext();
-    if (ctx != prev) {
-      using std::swap;
-      if (ctx) {
-        ctx->onSet();
-      }
-      if (prev) {
-        prev->onUnset();
-      }
-      swap(ctx, prev);
-    }
-    return ctx;
-  }
+  static std::shared_ptr<RequestContext> setContext(
+      std::shared_ptr<RequestContext> ctx);
 
   static std::shared_ptr<RequestContext> saveContext() {
     return getStaticContext();
@@ -163,7 +103,7 @@ class RequestContext {
  private:
   static std::shared_ptr<RequestContext>& getStaticContext();
 
-  folly::RWSpinLock lock;
+  mutable folly::RWSpinLock lock;
   std::map<std::string, std::unique_ptr<RequestData>> data_;
 };
 

@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 #include <folly/Memory.h>
+#include <folly/ScopeGuard.h>
 
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>

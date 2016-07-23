@@ -18,9 +18,106 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 #include <folly/io/async/Request.h>
 
+#include <glog/logging.h>
+
+#include <folly/SingletonThreadLocal.h>
+
 namespace folly {
+
+void RequestContext::setContextData(
+    const std::string& val,
+    std::unique_ptr<RequestData> data) {
+  folly::RWSpinLock::WriteHolder guard(lock);
+  if (data_.find(val) != data_.end()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "Called RequestContext::setContextData with data already set";
+
+    data_[val] = nullptr;
+  } else {
+    data_[val] = std::move(data);
+  }
+}
+
+bool RequestContext::setContextDataIfAbsent(
+    const std::string& val,
+    std::unique_ptr<RequestData> data) {
+  folly::RWSpinLock::UpgradedHolder guard(lock);
+  if (data_.find(val) != data_.end()) {
+    return false;
+  }
+
+  folly::RWSpinLock::WriteHolder writeGuard(std::move(guard));
+  data_[val] = std::move(data);
+  return true;
+}
+
+bool RequestContext::hasContextData(const std::string& val) const {
+  folly::RWSpinLock::ReadHolder guard(lock);
+  return data_.find(val) != data_.end();
+}
+
+RequestData* RequestContext::getContextData(const std::string& val) {
+  folly::RWSpinLock::ReadHolder guard(lock);
+  auto r = data_.find(val);
+  if (r == data_.end()) {
+    return nullptr;
+  } else {
+    return r->second.get();
+  }
+}
+
+const RequestData* RequestContext::getContextData(
+    const std::string& val) const {
+  folly::RWSpinLock::ReadHolder guard(lock);
+  auto r = data_.find(val);
+  if (r == data_.end()) {
+    return nullptr;
+  } else {
+    return r->second.get();
+  }
+}
+
+void RequestContext::onSet() {
+  folly::RWSpinLock::ReadHolder guard(lock);
+  for (auto const& ent : data_) {
+    if (RequestData* data = ent.second.get()) {
+      data->onSet();
+    }
+  }
+}
+
+void RequestContext::onUnset() {
+  folly::RWSpinLock::ReadHolder guard(lock);
+  for (auto const& ent : data_) {
+    if (RequestData* data = ent.second.get()) {
+      data->onUnset();
+    }
+  }
+}
+
+void RequestContext::clearContextData(const std::string& val) {
+  folly::RWSpinLock::WriteHolder guard(lock);
+  data_.erase(val);
+}
+
+std::shared_ptr<RequestContext> RequestContext::setContext(
+    std::shared_ptr<RequestContext> ctx) {
+  auto& prev = getStaticContext();
+  if (ctx != prev) {
+    using std::swap;
+    if (ctx) {
+      ctx->onSet();
+    }
+    if (prev) {
+      prev->onUnset();
+    }
+    swap(ctx, prev);
+  }
+  return ctx;
+}
 
 std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
   using SingletonT = SingletonThreadLocal<std::shared_ptr<RequestContext>>;

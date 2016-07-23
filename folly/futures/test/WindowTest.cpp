@@ -18,6 +18,7 @@
 
 #include <boost/thread/barrier.hpp>
 
+#include <folly/Conv.h>
 #include <folly/futures/Future.h>
 
 #include <vector>
