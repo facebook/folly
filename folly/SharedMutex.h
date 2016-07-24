@@ -183,7 +183,7 @@
 // the shared slots.  If you can conveniently pass state from lock
 // acquisition to release then the fastest mechanism is to std::move
 // the SharedMutex::ReadHolder instance or an SharedMutex::Token (using
-// lock_shared(Token&) and unlock_sahred(Token&)).  The guard or token
+// lock_shared(Token&) and unlock_shared(Token&)).  The guard or token
 // will tell unlock_shared where in deferredReaders[] to look for the
 // deferred lock.  The Token-less version of unlock_shared() works in all
 // cases, but is optimized for the common (no inter-thread handoff) case.
