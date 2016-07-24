@@ -239,6 +239,7 @@ nobase_follyinclude_HEADERS = \
 	LockTraitsBoost.h \
 	Logging.h \
 	MacAddress.h \
+	MallctlHelper.h \
 	Malloc.h \
 	MapUtil.h \
 	Memory.h \
@@ -362,6 +363,7 @@ libfollybase_la_SOURCES = \
 	EscapeTables.cpp \
 	Format.cpp \
 	FormatTables.cpp \
+	MallctlHelper.cpp \
 	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp

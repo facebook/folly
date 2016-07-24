@@ -289,4 +289,7 @@ ssl_test_SOURCES = \
 ssl_test_LDADD = libfollytestmain.la -lcrypto
 TESTS += ssl_test
 
+mallctl_helper_test_SOURCES = MallctlHelperTest.cpp
+TESTS += mallctl_helper_test
+
 check_PROGRAMS += $(TESTS)

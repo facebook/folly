@@ -17,6 +17,7 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <folly/Logging.h>
+#include <folly/MallctlHelper.h>
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -35,35 +36,16 @@ namespace folly { namespace detail {
 AtomicStruct<std::chrono::steady_clock::duration>
 MemoryIdler::defaultIdleTimeout(std::chrono::seconds(5));
 
-
-// Calls mallctl, optionally reading a value of type <T> if out is
-// non-null.  Logs on error.
-template <typename T>
-static int mallctlRead(const char* cmd, T* out) {
-  size_t outLen = sizeof(T);
-  int err = mallctl(cmd,
-                    out, out ? &outLen : nullptr,
-                    nullptr, 0);
-  if (err != 0) {
-    FB_LOG_EVERY_MS(WARNING, 10000)
-      << "mallctl " << cmd << ": " << strerror(err) << " (" << err << ")";
-  }
-  return err;
-}
-
-static int mallctlCall(const char* cmd) {
-  // Use <unsigned> rather than <void> to avoid sizeof(void).
-  return mallctlRead<unsigned>(cmd, nullptr);
-}
-
 void MemoryIdler::flushLocalMallocCaches() {
-  if (usingJEMalloc()) {
-    if (!mallctl || !mallctlnametomib || !mallctlbymib) {
-      FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
-      return;
-    }
+  if (!usingJEMalloc()) {
+    return;
+  }
+  if (!mallctl || !mallctlnametomib || !mallctlbymib) {
+    FB_LOG_EVERY_MS(ERROR, 10000) << "mallctl* weak link failed";
+    return;
+  }
 
-    // "tcache.flush" was renamed to "thread.tcache.flush" in jemalloc 3
+  try {
     mallctlCall("thread.tcache.flush");
 
     // By default jemalloc has 4 arenas per cpu, and then assigns each
@@ -80,13 +62,16 @@ void MemoryIdler::flushLocalMallocCaches() {
     unsigned arenaForCurrent;
     size_t mib[3];
     size_t miblen = 3;
-    if (mallctlRead<unsigned>("opt.narenas", &narenas) == 0 &&
-        narenas > 2 * CacheLocality::system().numCpus &&
-        mallctlRead<unsigned>("thread.arena", &arenaForCurrent) == 0 &&
+
+    mallctlRead("opt.narenas", &narenas);
+    mallctlRead("thread.arena", &arenaForCurrent);
+    if (narenas > 2 * CacheLocality::system().numCpus &&
         mallctlnametomib("arena.0.purge", mib, &miblen) == 0) {
       mib[1] = size_t(arenaForCurrent);
       mallctlbymib(mib, miblen, nullptr, nullptr, nullptr, 0);
     }
+  } catch (const std::runtime_error& ex) {
+    FB_LOG_EVERY_MS(WARNING, 10000) << ex.what();
   }
 }
 
