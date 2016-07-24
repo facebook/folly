@@ -53,6 +53,8 @@ TEST(Enumerate, Temporary) {
   EXPECT_EQ(i, v.size());
 };
 
+namespace {
+
 template <class T>
 struct IsConstReference {
   constexpr static bool value = false;
@@ -61,6 +63,8 @@ template <class T>
 struct IsConstReference<const T&> {
   constexpr static bool value = true;
 };
+
+} // namespace
 
 TEST(Enumerate, BasicConstArg) {
   const std::vector<std::string> v = {"abc", "a", "ab"};
