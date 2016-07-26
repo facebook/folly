@@ -575,7 +575,6 @@ TEST(ThreadLocal, Fork2) {
     EXPECT_TRUE(false) << "fork failed";
   }
 }
-#endif
 
 // Elide this test when using any sanitizer. Otherwise, the dlopen'ed code
 // would end up running without e.g., ASAN-initialized data structures and
@@ -624,6 +623,7 @@ TEST(ThreadLocal, SharedLibrary) {
   t2.join();
 }
 
+#endif
 #endif
 
 namespace folly { namespace threadlocal_detail {
