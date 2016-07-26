@@ -124,16 +124,17 @@ class Enumerator {
 template <class Range>
 class RangeEnumerator {
   Range r_;
-  using Iterator = decltype(r_.begin());
+  using BeginIteratorType = decltype(std::declval<Range>().begin());
+  using EndIteratorType = decltype(std::declval<Range>().end());
 
  public:
   explicit RangeEnumerator(Range&& r) : r_(std::forward<Range>(r)) {}
 
-  Enumerator<Iterator> begin() {
-    return Enumerator<Iterator>(r_.begin());
+  Enumerator<BeginIteratorType> begin() {
+    return Enumerator<BeginIteratorType>(r_.begin());
   }
-  Enumerator<Iterator> end() {
-    return Enumerator<Iterator>(r_.end());
+  Enumerator<EndIteratorType> end() {
+    return Enumerator<EndIteratorType>(r_.end());
   }
 };
 
