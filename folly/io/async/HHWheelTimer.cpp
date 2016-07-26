@@ -237,9 +237,7 @@ size_t HHWheelTimer::cancelAll() {
         if (bucket.empty()) {
           continue;
         }
-        for (auto& cb : bucket) {
-          count++;
-        }
+        count += bucket.size();
         std::swap(bucket, buckets[countBuckets++]);
         if (count >= count_) {
           break;
