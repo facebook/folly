@@ -62,7 +62,7 @@ class Indestructible final {
  public:
   template <typename... Args>
   explicit constexpr Indestructible(Args&&... args) noexcept(
-      std::is_nothrow_constructible<T, decltype(args)...>::value)
+      std::is_nothrow_constructible<T, Args&&...>::value)
       : storage_(std::forward<Args>(args)...), inited_(true) {}
 
   ~Indestructible() = default;
