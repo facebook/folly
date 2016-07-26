@@ -681,7 +681,7 @@ void* atomicHashArrayInsertRaceThread(void* /* j */) {
     }
   }
   pthread_exit((void *) numInserted);
-  folly::assume(false);
+  folly::assume_unreachable();
 }
 TEST(Ahm, atomic_hash_array_insert_race) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
