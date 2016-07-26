@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/fibers/FiberManager.h>
 #include <folly/fibers/LoopController.h>
 #include <folly/io/async/EventBase.h>
 #include <atomic>
@@ -26,8 +27,6 @@ class EventBase;
 
 namespace folly {
 namespace fibers {
-
-class FiberManager;
 
 class EventBaseLoopController : public LoopController {
  public:
@@ -41,6 +40,10 @@ class EventBaseLoopController : public LoopController {
 
   folly::EventBase* getEventBase() {
     return eventBase_;
+  }
+
+  void setLoopRunner(InlineFunctionRunner* loopRunner) {
+    loopRunner_ = loopRunner;
   }
 
  private:
@@ -93,6 +96,7 @@ class EventBaseLoopController : public LoopController {
   FiberManager* fm_{nullptr};
   std::atomic<bool> eventBaseAttached_{false};
   std::weak_ptr<void> aliveWeak_;
+  InlineFunctionRunner* loopRunner_{nullptr};
 
   /* LoopController interface */
 

@@ -15,7 +15,6 @@
  */
 #include <folly/Memory.h>
 #include <folly/fibers/EventBaseLoopController.h>
-#include <folly/fibers/FiberManager.h>
 
 namespace folly {
 namespace fibers {
@@ -63,7 +62,11 @@ inline void EventBaseLoopController::cancel() {
 }
 
 inline void EventBaseLoopController::runLoop() {
-  fm_->loopUntilNoReady();
+  if (loopRunner_) {
+    loopRunner_->run([&] { fm_->loopUntilNoReady(); });
+  } else {
+    fm_->loopUntilNoReady();
+  }
 }
 
 inline void EventBaseLoopController::scheduleThreadSafe(
