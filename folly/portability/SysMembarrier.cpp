@@ -21,7 +21,8 @@
 #include <folly/Portability.h>
 #include <folly/portability/Unistd.h>
 
-#if !defined(__NR_membarrier) && FOLLY_X64 && !FOLLY_MOBILE
+#if !defined(__NR_membarrier) && FOLLY_X64 && !FOLLY_MOBILE && \
+    defined(__linux__)
 #define __NR_membarrier 324
 #define MEMBARRIER_CMD_QUERY 0
 #define MEMBARRIER_CMD_SHARED 1
