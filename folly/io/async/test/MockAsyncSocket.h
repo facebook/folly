@@ -46,6 +46,8 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_CONST_METHOD0(good, bool());
   MOCK_CONST_METHOD0(readable, bool());
   MOCK_CONST_METHOD0(hangup, bool());
+  MOCK_METHOD1(setPeek, void(bool));
+  MOCK_METHOD1(setReadCB, void(ReadCallback*));
 };
 
 }}
