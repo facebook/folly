@@ -152,7 +152,7 @@ struct ThreadEntry {
 
 constexpr uint32_t kEntryIDInvalid = std::numeric_limits<uint32_t>::max();
 
-class PthreadKeyUnregisterTester;
+struct PthreadKeyUnregisterTester;
 
 /**
  * We want to disable onThreadExit call at the end of shutdown, we don't care
@@ -193,7 +193,7 @@ class PthreadKeyUnregister {
    * usage.
    */
   constexpr PthreadKeyUnregister() : lock_(), size_(0), keys_() { }
-  friend class folly::threadlocal_detail::PthreadKeyUnregisterTester;
+  friend struct folly::threadlocal_detail::PthreadKeyUnregisterTester;
 
   void registerKeyImpl(pthread_key_t key) {
     MSLGuard lg(lock_);
