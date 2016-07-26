@@ -2338,8 +2338,8 @@ TEST(AsyncSocketTest, BufferCallbackKill) {
 
   char buf[100 * 1024];
   memset(buf, 'c', sizeof(buf));
-  BufferCallback* bcb = new BufferCallback;
-  socket->setBufferCallback(bcb);
+  BufferCallback bcb;
+  socket->setBufferCallback(&bcb);
   WriteCallback wcb;
   wcb.successCallback = [&] {
     ASSERT_TRUE(socket.unique());
