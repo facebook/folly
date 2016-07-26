@@ -128,7 +128,20 @@ struct PicoSpinLock {
   bool try_lock() const {
     bool ret = false;
 
-#if FOLLY_X64
+#ifdef _MSC_VER
+    switch (sizeof(IntType)) {
+      case 2:
+        // There is no _interlockedbittestandset16 for some reason :(
+        ret = _InterlockedOr16((volatile short*)&lock, 1 << Bit) & (1 << Bit);
+        break;
+      case 4:
+        ret = _interlockedbittestandset((volatile long*)&lock_, Bit);
+        break;
+      case 8:
+        ret = _interlockedbittestandset64((volatile long long*)&lock_, Bit);
+        break;
+    }
+#elif FOLLY_X64
 #define FB_DOBTS(size)                                  \
   asm volatile("lock; bts" #size " %1, (%2); setnc %0"  \
                : "=r" (ret)                             \
@@ -193,7 +206,20 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
-#if FOLLY_X64
+#ifdef _MSC_VER
+    switch (sizeof(IntType)) {
+      case 2:
+        // There is no _interlockedbittestandreset16 for some reason :(
+        _InterlockedAnd16((volatile short*)&lock, ~(1 << Bit));
+        break;
+      case 4:
+        _interlockedbittestandreset((volatile long*)&lock_, Bit);
+        break;
+      case 8:
+        _interlockedbittestandreset64((volatile long long*)&lock_, Bit);
+        break;
+    }
+#elif FOLLY_X64
 #define FB_DOBTR(size)                          \
   asm volatile("lock; btr" #size " %0, (%1)"    \
                :                                \
