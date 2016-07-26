@@ -496,7 +496,7 @@ class EventBase : private boost::noncopyable,
 
   HHWheelTimer& timer() {
     if (!wheelTimer_) {
-      wheelTimer_ = HHWheelTimer::newTimer(this, std::chrono::milliseconds(1));
+      wheelTimer_ = HHWheelTimer::newTimer(this);
     }
     return *wheelTimer_.get();
   }

@@ -135,7 +135,7 @@ TEST_F(HHWheelTimerTest, TestSchedulingWithinCallback) {
  */
 
 TEST_F(HHWheelTimerTest, CancelTimeout) {
-  HHWheelTimer& t = eventBase.timer();
+  StackWheelTimer t(&eventBase, milliseconds(1));
 
   // Create several timeouts that will all fire in 5ms.
   TestTimeout t5_1(&t, milliseconds(5));
@@ -350,7 +350,7 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
  */
 
 TEST_F(HHWheelTimerTest, SlowLoop) {
-  HHWheelTimer& t = eventBase.timer();
+  StackWheelTimer t(&eventBase, milliseconds(1));
 
   TestTimeout t1;
   TestTimeout t2;
@@ -429,7 +429,7 @@ TEST_F(HHWheelTimerTest, DefaultTimeout) {
 }
 
 TEST_F(HHWheelTimerTest, lambda) {
-  HHWheelTimer& t = eventBase.timer();
+  StackWheelTimer t(&eventBase, milliseconds(1));
   size_t count = 0;
   t.scheduleTimeoutFn([&]{ count++; }, milliseconds(1));
   eventBase.loop();
@@ -439,14 +439,14 @@ TEST_F(HHWheelTimerTest, lambda) {
 // shouldn't crash because we swallow and log the error (you'll have to look
 // at the console to confirm logging)
 TEST_F(HHWheelTimerTest, lambdaThrows) {
-  HHWheelTimer& t = eventBase.timer();
+  StackWheelTimer t(&eventBase, milliseconds(1));
   t.scheduleTimeoutFn([&]{ throw std::runtime_error("expected"); },
                       milliseconds(1));
   eventBase.loop();
 }
 
 TEST_F(HHWheelTimerTest, cancelAll) {
-  HHWheelTimer& t = eventBase.timer();
+  StackWheelTimer t(&eventBase, milliseconds(1));
   TestTimeout tt;
   t.scheduleTimeout(&tt, std::chrono::minutes(1));
   EXPECT_EQ(1, t.cancelAll());
