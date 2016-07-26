@@ -58,6 +58,11 @@
   FOLLY_DEFINE_FLAG(unsigned long long, U64, _name, _default)
 #define DEFINE_string(_name, _default, _description) \
   FOLLY_DEFINE_FLAG(std::string, S, _name, _default)
+
+namespace google {
+class FlagSaver {};
+}
+
 #else
 #include <gflags/gflags.h>
 #endif
