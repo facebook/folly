@@ -20,27 +20,17 @@ extern "C" {
 
 #ifdef _MSC_VER
 // MSVC doesn't have weak symbols, so do some linker magic
-// to emulate them.
+// to emulate them. (the magic is in the header)
 const char* mallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallocx=_mallocxWeak")
 const char* rallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_rallocx=_rallocxWeak")
 const char* xallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_xallocx=_xallocxWeak")
 const char* sallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_sallocx=_sallocxWeak")
 const char* dallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_dallocx=_dallocxWeak")
 const char* sdallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_sdallocx=_sdallocxWeak")
 const char* nallocxWeak = nullptr;
-#pragma comment(linker, "/alternatename:_nallocx=_nallocxWeak")
 const char* mallctlWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctl=_mallctlWeak")
 const char* mallctlnametomibWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctlnametomib=_mallctlnametomibWeak")
 const char* mallctlbymibWeak = nullptr;
-#pragma comment(linker, "/alternatename:_mallctlbymib=_mallctlbymibWeak")
 #elif !FOLLY_HAVE_WEAK_SYMBOLS
 void* (*mallocx)(size_t, int) = nullptr;
 void* (*rallocx)(void*, size_t, int) = nullptr;
