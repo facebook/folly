@@ -42,6 +42,7 @@ inline std::mt19937& getRNG() {
 void randomSleep(std::chrono::milliseconds min, std::chrono::milliseconds max) {
   std::uniform_int_distribution<> range(min.count(), max.count());
   std::chrono::milliseconds duration(range(getRNG()));
+  /* sleep override */
   std::this_thread::sleep_for(duration);
 }
 
@@ -352,6 +353,104 @@ testWithLock() {
     EXPECT_EQ(1006, lockedObj->size());
     EXPECT_EQ(16, lockedObj->back());
   });
+}
+
+template <class Mutex>
+void testUnlockCommon() {
+  folly::Synchronized<int, Mutex> value{7};
+  const auto& cv = value;
+
+  {
+    auto lv = value.contextualLock();
+    EXPECT_EQ(7, *lv);
+    *lv = 5;
+    lv.unlock();
+    EXPECT_TRUE(lv.isNull());
+    EXPECT_FALSE(lv);
+
+    auto rlv = cv.contextualLock();
+    EXPECT_EQ(5, *rlv);
+    rlv.unlock();
+    EXPECT_TRUE(rlv.isNull());
+    EXPECT_FALSE(rlv);
+
+    auto rlv2 = cv.contextualRLock();
+    EXPECT_EQ(5, *rlv2);
+    rlv2.unlock();
+
+    lv = value.contextualLock();
+    EXPECT_EQ(5, *lv);
+    *lv = 9;
+  }
+
+  EXPECT_EQ(9, *value.contextualRLock());
+}
+
+// testUnlock() version for shared lock types
+template <class Mutex>
+typename std::enable_if<folly::LockTraits<Mutex>::is_shared>::type
+testUnlock() {
+  folly::Synchronized<int, Mutex> value{10};
+  {
+    auto lv = value.wlock();
+    EXPECT_EQ(10, *lv);
+    *lv = 5;
+    lv.unlock();
+    EXPECT_FALSE(lv);
+    EXPECT_TRUE(lv.isNull());
+
+    auto rlv = value.rlock();
+    EXPECT_EQ(5, *rlv);
+    rlv.unlock();
+    EXPECT_FALSE(rlv);
+    EXPECT_TRUE(rlv.isNull());
+
+    auto lv2 = value.wlock();
+    EXPECT_EQ(5, *lv2);
+    *lv2 = 7;
+
+    lv = std::move(lv2);
+    EXPECT_FALSE(lv2);
+    EXPECT_TRUE(lv2.isNull());
+    EXPECT_FALSE(lv.isNull());
+    EXPECT_EQ(7, *lv);
+  }
+
+  testUnlockCommon<Mutex>();
+}
+
+// testUnlock() version for non-shared lock types
+template <class Mutex>
+typename std::enable_if<!folly::LockTraits<Mutex>::is_shared>::type
+testUnlock() {
+  folly::Synchronized<int, Mutex> value{10};
+  {
+    auto lv = value.lock();
+    EXPECT_EQ(10, *lv);
+    *lv = 5;
+    lv.unlock();
+    EXPECT_TRUE(lv.isNull());
+    EXPECT_FALSE(lv);
+
+    auto lv2 = value.lock();
+    EXPECT_EQ(5, *lv2);
+    *lv2 = 6;
+    lv2.unlock();
+    EXPECT_TRUE(lv2.isNull());
+    EXPECT_FALSE(lv2);
+
+    lv = value.lock();
+    EXPECT_EQ(6, *lv);
+    *lv = 7;
+
+    lv2 = std::move(lv);
+    EXPECT_TRUE(lv.isNull());
+    EXPECT_FALSE(lv);
+    EXPECT_FALSE(lv2.isNull());
+    EXPECT_EQ(7, *lv2);
+  }
+
+  testUnlockCommon<Mutex>();
 }
 
 // Testing the deprecated SYNCHRONIZED and SYNCHRONIZED_CONST APIs

@@ -659,6 +659,20 @@ class LockedPtrBase {
     }
   }
 
+  /**
+   * Unlock the synchronized data.
+   *
+   * The LockedPtr can no longer be dereferenced after unlock() has been
+   * called.  isValid() will return false on an unlocked LockedPtr.
+   *
+   * unlock() can only be called on a LockedPtr that is valid.
+   */
+  void unlock() {
+    DCHECK(parent_ != nullptr);
+    LockPolicy::unlock(parent_->mutex_);
+    parent_ = nullptr;
+  }
+
  protected:
   LockedPtrBase() {}
   explicit LockedPtrBase(SynchronizedType* parent) : parent_(parent) {
@@ -699,6 +713,7 @@ class LockedPtrBase {
   }
 
   UnlockerData releaseLock() {
+    DCHECK(parent_ != nullptr);
     auto current = parent_;
     parent_ = nullptr;
     LockPolicy::unlock(current->mutex_);
@@ -759,6 +774,20 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
     return lock_;
   }
 
+  /**
+   * Unlock the synchronized data.
+   *
+   * The LockedPtr can no longer be dereferenced after unlock() has been
+   * called.  isValid() will return false on an unlocked LockedPtr.
+   *
+   * unlock() can only be called on a LockedPtr that is valid.
+   */
+  void unlock() {
+    DCHECK(parent_ != nullptr);
+    lock_.unlock();
+    parent_ = nullptr;
+  }
+
  protected:
   LockedPtrBase() {}
   explicit LockedPtrBase(SynchronizedType* parent)
@@ -772,6 +801,7 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   }
 
   UnlockerData releaseLock() {
+    DCHECK(parent_ != nullptr);
     UnlockerData data(std::move(lock_), parent_);
     parent_ = nullptr;
     data.first.unlock();
