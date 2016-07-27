@@ -55,7 +55,7 @@ void addHashBenchmark(const std::string& name) {
   static std::deque<std::string> names;
 
   for (size_t i = 0; i < 16; ++i) {
-    size_t k = 1 << i;
+    auto k = size_t(1) << i;
     names.emplace_back(folly::sformat("{}: k=2^{}",name, i));
     folly::addBenchmark(__FILE__, names.back().c_str(),
                         [=] (unsigned iters) {
