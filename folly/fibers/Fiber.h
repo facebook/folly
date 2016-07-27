@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdlib>
 #include <functional>
 #include <thread>
 #include <typeinfo>
@@ -64,7 +65,7 @@ class Fiber {
   std::pair<void*, size_t> getStack() const {
     void* const stack =
         std::min<void*>(fcontext_.stackLimit(), fcontext_.stackBase());
-    const size_t size = std::abs<intptr_t>(
+    const size_t size = std::abs(
         reinterpret_cast<intptr_t>(fcontext_.stackBase()) -
         reinterpret_cast<intptr_t>(fcontext_.stackLimit()));
     return {stack, size};
