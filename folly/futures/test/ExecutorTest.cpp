@@ -210,3 +210,30 @@ TEST(Executor, CrappyExecutor) {
   });
   EXPECT_TRUE(flag);
 }
+
+class DoNothingExecutor : public Executor {
+ public:
+  void add(Func f) override {
+    storedFunc_ = std::move(f);
+  }
+
+ private:
+  Func storedFunc_;
+};
+
+TEST(Executor, DoNothingExecutor) {
+  DoNothingExecutor x;
+
+  // Submit future callback to DoNothingExecutor
+  auto f = folly::via(&x).then([] { return 42; });
+
+  // Callback function is stored in DoNothingExecutor, but not executed.
+  EXPECT_FALSE(f.isReady());
+
+  // Destroy the function stored in DoNothingExecutor. The future callback
+  // will never get executed.
+  x.add({});
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_THROW(f.get(), folly::BrokenPromise);
+}
