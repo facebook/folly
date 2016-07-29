@@ -832,7 +832,8 @@ std::vector<Subprocess::ChildPipe> Subprocess::takeOwnershipOfPipes() {
   for (auto& p : pipes_) {
     pipes.emplace_back(p.childFd, std::move(p.pipe));
   }
-  pipes_.clear();
+  // release memory
+  std::vector<Pipe>().swap(pipes_);
   return pipes;
 }
 
