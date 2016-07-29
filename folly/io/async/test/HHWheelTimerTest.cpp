@@ -391,6 +391,36 @@ TEST_F(HHWheelTimerTest, SlowLoop) {
 }
 
 /*
+ * Test an event scheduled before the last event fires on time
+ */
+
+TEST_F(HHWheelTimerTest, SlowFast) {
+  HHWheelTimer& t = eventBase.timer();
+
+  TestTimeout t1;
+  TestTimeout t2;
+
+  ASSERT_EQ(t.count(), 0);
+
+  t.scheduleTimeout(&t1, milliseconds(10));
+  t.scheduleTimeout(&t2, milliseconds(5));
+
+  ASSERT_EQ(t.count(), 2);
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 1);
+  ASSERT_EQ(t.count(), 0);
+
+  // Check that the timeout was delayed by sleep
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(10), milliseconds(1));
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5), milliseconds(1));
+}
+
+/*
  * Test scheduling a mix of timers with default timeout and variable timeout.
  */
 TEST_F(HHWheelTimerTest, DefaultTimeout) {
