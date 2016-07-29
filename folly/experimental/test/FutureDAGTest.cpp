@@ -123,6 +123,7 @@ TEST_F(FutureDAGTest, RemoveNodeComplex) {
   dependency(h2, h1);
   remove(h1);
   remove(h2);
+  remove(h3);
   ASSERT_NO_THROW(dag->go().get());
   checkOrder();
 }
