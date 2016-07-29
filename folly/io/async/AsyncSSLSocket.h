@@ -457,6 +457,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   int getSSLCertSize() const;
 
+  /**
+   * Get the certificate used for this SSL connection. May be null
+   */
+  virtual const X509* getSelfCert() const override;
+
   virtual void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);

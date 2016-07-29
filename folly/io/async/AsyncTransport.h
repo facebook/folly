@@ -327,6 +327,13 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual ssl::X509UniquePtr getPeerCert() const { return nullptr; }
 
   /**
+   * The local certificate used for this connection. May be null
+   */
+  virtual const X509* getSelfCert() const {
+    return nullptr;
+  }
+
+  /**
    * @return True iff end of record tracking is enabled
    */
   virtual bool isEorTrackingEnabled() const = 0;

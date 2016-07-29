@@ -880,6 +880,10 @@ int AsyncSSLSocket::getSSLCertSize() const {
   return certSize;
 }
 
+const X509* AsyncSSLSocket::getSelfCert() const {
+  return (ssl_ != nullptr) ? SSL_get_certificate(ssl_) : nullptr;
+}
+
 bool AsyncSSLSocket::willBlock(int ret,
                                int* sslErrorOut,
                                unsigned long* errErrorOut) noexcept {
