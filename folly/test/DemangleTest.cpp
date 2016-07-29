@@ -45,7 +45,43 @@ TEST(Demangle, demangle) {
     EXPECT_STREQ("folly_test", buf);
   }
 }
-#endif
+
+#if defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
+namespace {
+
+template <int I, class T1, class T2>
+struct Node {};
+
+template <int N, int I = 1>
+struct LongSymbol {
+  using arg1 = typename LongSymbol<N / 2, 2 * I>::type;
+  using arg2 = typename LongSymbol<N / 2, 2 * I + 1>::type;
+  using type = Node<I, arg1, arg2>;
+};
+
+template <int I>
+struct LongSymbol<0, I> {
+  using type = void;
+};
+
+} // namespace
+
+TEST(Demangle, LongSymbolFallback) {
+  // The symbol must be at least FOLLY_DEMANGLE_MAX_SYMBOL_SIZE long.
+  using Symbol = LongSymbol<FOLLY_DEMANGLE_MAX_SYMBOL_SIZE>::type;
+  auto name = typeid(Symbol).name();
+
+  EXPECT_STREQ(name, demangle(name).c_str());
+
+  char buf[16];
+  char expected[16];
+  folly::demangle(name, buf, 16);
+  folly::strlcpy(expected, name, 16);
+  EXPECT_STREQ(expected, buf);
+}
+#endif // defined(FOLLY_DEMANGLE_MAX_SYMBOL_SIZE)
+
+#endif // FOLLY_HAVE_CPLUS_DEMANGLE_V3_CALLBACK
 
 TEST(Demangle, strlcpy) {
   char buf[6];
