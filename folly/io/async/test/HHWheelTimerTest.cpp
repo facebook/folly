@@ -259,8 +259,8 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
 
   // Create a timeout set with a 10ms interval, to fire no more than once
   // every 3ms.
-  milliseconds interval(25);
-  milliseconds atMostEveryN(6);
+  milliseconds interval(10);
+  milliseconds atMostEveryN(3);
   StackWheelTimer t(&eventBase, atMostEveryN);
   t.setCatchupEveryN(70);
 
@@ -294,14 +294,11 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
     ++index;
   };
 
-  // Go ahead and schedule the first timeout now.
-  //scheduler.fn();
-
   TimePoint start;
   eventBase.loop();
   TimePoint end;
 
-  // This should take roughly 2*60 + 25 ms to finish. If it takes more than
+  // This should take roughly 60 + 10 ms to finish. If it takes more than
   // 250 ms to finish the system is probably heavily loaded, so skip.
   if (std::chrono::duration_cast<std::chrono::milliseconds>(
         end.getTime() - start.getTime()).count() > 250) {
