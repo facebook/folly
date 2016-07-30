@@ -405,6 +405,51 @@ bool greater_than(LHS const lhs) {
 struct construct_in_place_t {};
 constexpr construct_in_place_t construct_in_place{};
 
+/**
+ * Initializer lists are a powerful compile time syntax introduced in C++11
+ * but due to their often conflicting syntax they are not used by APIs for
+ * construction.
+ *
+ * Further standard conforming compilers *strongly* favor an
+ * std::initalizer_list overload for construction if one exists.  The
+ * following is a simple tag used to disambiguate construction with
+ * initializer lists and regular uniform initialization.
+ *
+ * For example consider the following case
+ *
+ *  class Something {
+ *  public:
+ *    explicit Something(int);
+ *    Something(std::intiializer_list<int>);
+ *
+ *    operator int();
+ *  };
+ *
+ *  ...
+ *  Something something{1}; // SURPRISE!!
+ *
+ * The last call to instantiate the Something object will go to the
+ * initializer_list overload.  Which may be surprising to users.
+ *
+ * If however this tag was used to disambiguate such construction it would be
+ * easy for users to see which construction overload their code was referring
+ * to.  For example
+ *
+ *  class Something {
+ *  public:
+ *    explicit Something(int);
+ *    Something(folly::initlist_construct_t, std::initializer_list<int>);
+ *
+ *    operator int();
+ *  };
+ *
+ *  ...
+ *  Something something_one{1}; // not the initializer_list overload
+ *  Something something_two{folly::initlist_construct, {1}}; // correct
+ */
+struct initlist_construct_t {};
+constexpr initlist_construct_t initlist_construct{};
+
 } // namespace folly
 
 // gcc-5.0 changed string's implementation in libgcc to be non-relocatable
