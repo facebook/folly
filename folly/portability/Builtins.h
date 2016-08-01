@@ -42,14 +42,14 @@ FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
 
 FOLLY_ALWAYS_INLINE int __builtin_ffs(int x) {
   unsigned long index;
-  return (int)(_BitScanForward(&index, (unsigned long)x) ? index : 0);
+  return (int)(_BitScanForward(&index, (unsigned long)x) ? index + 1 : 0);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_ffsl(long x) { return __builtin_ffs((int)x); }
 
 FOLLY_ALWAYS_INLINE int __builtin_ffsll(long long x) {
   unsigned long index;
-  return (int)(_BitScanForward64(&index, (unsigned long long)x) ? index : 0);
+  return (int)(_BitScanForward64(&index, (unsigned long long)x) ? index + 1 : 0);
 }
 
 FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
