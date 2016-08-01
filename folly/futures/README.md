@@ -881,7 +881,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class=""></span></pre></div>
 
-<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="#testing">Timeouts</a> section for more information.</p>
+<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="#timeouts-and-related-features">Timeouts</a> section for more information.</p>
 
 <h3 id="wait">wait() <a href="#wait" class="headerLink">#</a></h3>
 
@@ -892,7 +892,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 </span><span class=""></span><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class=""></span></pre></div>
 
-<p>Like <tt>get()</tt>, <tt>wait()</tt> optionally takes a timeout. Again, see the <a href="#timeouts-and-cancellations">Timeouts</a> section.</p>
+<p>Like <tt>get()</tt>, <tt>wait()</tt> optionally takes a timeout. Again, see the <a href="#timeouts-and-related-features">Timeouts</a> section.</p>
 
 <h3 id="getvia-and-waitvia">getVia() and waitVia() <a href="#getvia-and-waitvia" class="headerLink">#</a></h3>
 
