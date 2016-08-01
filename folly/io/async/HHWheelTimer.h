@@ -212,7 +212,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   /**
    * Schedule the specified Callback to be invoked after the
-   * fefault timeout interval.
+   * default timeout interval.
    *
    * If the callback is already scheduled, this cancels the existing timeout
    * before scheduling the new timeout.
