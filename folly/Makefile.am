@@ -369,6 +369,7 @@ libfollybase_la_SOURCES = \
 	Unicode.cpp
 
 libfolly_la_SOURCES = \
+	Assume.cpp \
 	Bits.cpp \
 	Checksum.cpp \
 	ClockGettimeWrappers.cpp \
