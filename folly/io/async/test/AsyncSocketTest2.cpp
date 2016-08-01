@@ -1949,18 +1949,18 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
 
   // Add several accept callbacks
   TestAcceptCallback cb1;
-  auto thread_id = pthread_self();
+  auto thread_id = std::this_thread::get_id();
   cb1.setAcceptStartedFn([&](){
-    CHECK_NE(thread_id, pthread_self());
-    thread_id = pthread_self();
+    CHECK_NE(thread_id, std::this_thread::get_id());
+    thread_id = std::this_thread::get_id();
   });
   cb1.setConnectionAcceptedFn(
       [&](int /* fd */, const folly::SocketAddress& /* addr */) {
-        CHECK_EQ(thread_id, pthread_self());
+        CHECK_EQ(thread_id, std::this_thread::get_id());
         serverSocket->removeAcceptCallback(&cb1, nullptr);
       });
   cb1.setAcceptStoppedFn([&](){
-    CHECK_EQ(thread_id, pthread_self());
+    CHECK_EQ(thread_id, std::this_thread::get_id());
   });
 
   // Test having callbacks remove other callbacks before them on the list,
