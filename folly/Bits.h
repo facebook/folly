@@ -185,7 +185,7 @@ typename std::enable_if<
   std::is_integral<T>::value && std::is_unsigned<T>::value,
   T>::type
 nextPowTwo(T v) {
-  return v ? (1ul << findLastSet(v - 1)) : 1;
+  return v ? (T(1) << findLastSet(v - 1)) : 1;
 }
 
 template <class T>
