@@ -23,6 +23,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/String.h>
 
@@ -265,16 +266,9 @@ TEST_F(FileUtilTest, preadv) {
 }
 
 TEST(String, readFile) {
-  srand(time(nullptr));
-  const string tmpPrefix = to<string>("/tmp/folly-file-util-test-",
-                                      getpid(), "-", rand(), "-");
-  const string afile = tmpPrefix + "myfile";
-  const string emptyFile = tmpPrefix + "myfile2";
-
-  SCOPE_EXIT {
-    unlink(afile.c_str());
-    unlink(emptyFile.c_str());
-  };
+  const TemporaryFile afileTemp, emptyFileTemp;
+  auto afile = afileTemp.path();
+  auto emptyFile = emptyFileTemp.path();
 
   EXPECT_TRUE(writeFile(string(), emptyFile.c_str()));
   EXPECT_TRUE(writeFile(StringPiece("bar"), afile.c_str()));
@@ -303,4 +297,45 @@ TEST(String, readFile) {
   }
 }
 
+class ReadFileFd : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    ASSERT_TRUE(writeFile(StringPiece("bar"), aFile.path().c_str()));
+  }
+
+  TemporaryFile aFile;
+};
+
+TEST_F(ReadFileFd, ReadZeroBytes) {
+  std::string contents;
+  EXPECT_TRUE(readFile(aFile.fd(), contents, 0));
+  EXPECT_EQ("", contents);
+}
+
+TEST_F(ReadFileFd, ReadPartial) {
+  std::string contents;
+  EXPECT_TRUE(readFile(aFile.fd(), contents, 2));
+  EXPECT_EQ("ba", contents);
+}
+
+TEST_F(ReadFileFd, ReadFull) {
+  std::string contents;
+  EXPECT_TRUE(readFile(aFile.fd(), contents));
+  EXPECT_EQ("bar", contents);
+}
+
+TEST_F(ReadFileFd, WriteOnlyFd) {
+  File f(aFile.path().string(), O_WRONLY);
+  std::string contents;
+  EXPECT_FALSE(readFile(f.fd(), contents));
+  PLOG(INFO);
+}
+
+TEST_F(ReadFileFd, InvalidFd) {
+  File f(aFile.path().string());
+  f.close();
+  std::string contents;
+  EXPECT_FALSE(readFile(f.fd(), contents));
+  PLOG(INFO);
+}
 }}  // namespaces

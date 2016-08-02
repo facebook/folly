@@ -112,21 +112,17 @@ ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
  * errno will be set appropriately by the failing system primitive.
  */
 template <class Container>
-bool readFile(const char* file_name, Container& out,
-              size_t num_bytes = std::numeric_limits<size_t>::max()) {
+bool readFile(
+    int fd,
+    Container& out,
+    size_t num_bytes = std::numeric_limits<size_t>::max()) {
   static_assert(sizeof(out[0]) == 1,
                 "readFile: only containers with byte-sized elements accepted");
-  assert(file_name);
-
-  const auto fd = openNoInt(file_name, O_RDONLY);
-  if (fd == -1) return false;
 
   size_t soFar = 0; // amount of bytes successfully read
   SCOPE_EXIT {
-    assert(out.size() >= soFar); // resize better doesn't throw
+    DCHECK(out.size() >= soFar); // resize better doesn't throw
     out.resize(soFar);
-    // Ignore errors when closing the file
-    closeNoInt(fd);
   };
 
   // Obtain file size:
@@ -159,6 +155,29 @@ bool readFile(const char* file_name, Container& out,
   }
 
   return true;
+}
+
+/**
+ * Same as above, but takes in a file name instead of fd
+ */
+template <class Container>
+bool readFile(
+    const char* file_name,
+    Container& out,
+    size_t num_bytes = std::numeric_limits<size_t>::max()) {
+  DCHECK(file_name);
+
+  const auto fd = openNoInt(file_name, O_RDONLY);
+  if (fd == -1) {
+    return false;
+  }
+
+  SCOPE_EXIT {
+    // Ignore errors when closing the file
+    closeNoInt(fd);
+  };
+
+  return readFile(fd, out, num_bytes);
 }
 
 /**
