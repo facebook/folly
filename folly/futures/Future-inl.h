@@ -987,7 +987,7 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   // always have a callback to satisfy it
   if (f.isReady())
     return;
-  f = f.then([](T&& t) { return std::move(t); });
+  f = f.via(e).then([](T&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();
   }

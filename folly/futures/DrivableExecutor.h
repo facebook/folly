@@ -36,11 +36,19 @@ namespace folly {
  * These will be most helpful in tests, for instance if you need to pump a mock
  * EventBase until Futures complete.
  */
+
 class DrivableExecutor : public virtual Executor {
  public:
   virtual ~DrivableExecutor() = default;
 
   // Make progress on this Executor's work.
+  //
+  // Drive *must not* busy wait if there is no work to do.  Instead,
+  // sleep (using a semaphore or similar) until at least one event is
+  // processed.
+  // I.e. make_future().via(foo).then(...).getVia(DrivableExecutor)
+  // must not spin, even though nothing happens on the drivable
+  // executor.
   virtual void drive() = 0;
 };
 

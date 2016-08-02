@@ -592,6 +592,7 @@ class EventBase : private boost::noncopyable,
 
   /// Implements the DrivableExecutor interface
   void drive() override {
+    auto keepAlive = loopKeepAlive();
     loopOnce();
   }
 

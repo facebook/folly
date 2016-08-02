@@ -27,6 +27,8 @@
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/Unistd.h>
 
+#include <folly/futures/Promise.h>
+
 #include <atomic>
 #include <iostream>
 #include <memory>
@@ -1819,6 +1821,35 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
   evb.reset();
 
   ASSERT_TRUE(done);
+
+  t.join();
+}
+
+TEST(EventBaseTest, DrivableExecutorTest) {
+  folly::Promise<bool> p;
+  auto f = p.getFuture();
+  EventBase base;
+  bool finished = false;
+
+  std::thread t([&] {
+    /* sleep override */
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    finished = true;
+    base.runInEventBaseThread([&]() { p.setValue(true); });
+  });
+
+  // Ensure drive does not busy wait
+  base.drive(); // TODO: fix notification queue init() extra wakeup
+  base.drive();
+  EXPECT_TRUE(finished);
+
+  folly::Promise<bool> p2;
+  auto f2 = p2.getFuture();
+  // Ensure waitVia gets woken up properly, even from
+  // a separate thread.
+  base.runAfterDelay([&]() { p2.setValue(true); }, 10);
+  f2.waitVia(&base);
+  EXPECT_TRUE(f2.isReady());
 
   t.join();
 }
