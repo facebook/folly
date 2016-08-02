@@ -266,7 +266,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 </span><span class=""></span><span class="p">&#125;</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class=""></span></pre></div>
 
-<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> Do not use Try unless you are actually going to do exception handling in your callback. It is much cleaner and often more performant to take the value directly when you can. If you want to do exception handling, there still might be better options than Try. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14604">Error Handling</a>.</div>
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> Do not use Try unless you are actually going to do exception handling in your callback. It is much cleaner and often more performant to take the value directly when you can. If you want to do exception handling, there still might be better options than Try. See <a href="#error-handling">Error Handling</a>.</div>
 
 <div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> When passing a callback to <tt>then</tt>, the future stores a copy of it until the callback has been executed. If, for example, you pass a lambda function that captures a shared pointer, the future will keep the referenced object alive only until the callback has been executed.</div>
 
@@ -307,13 +307,13 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p>Synchronously entering and exiting the futures paradigm can be useful, especially in tests, so the following utilities are available:</p>
 
 <ul>
-<li>Create already-completed futures with <tt>makeFuture&lt;T&gt;()</tt>, which takes a <tt>T&amp;&amp;</tt> (or an exception, more info <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14604">here</a>). If you pass <tt>T&amp;&amp;</tt> the type is inferred and you don&#039;t have to specify it.</li>
-<li>Extract a future&#039;s <tt>T</tt> value with <tt>Future&lt;T&gt;::get()</tt>. This method is blocking, so make sure that either your future is already completed or that another thread will complete the future while the calling thread blocks. <tt>get()</tt> can also take a timeout&#x2014;see <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>.</li>
-<li>Perform a blocking wait on a Future with <tt>Future&lt;T&gt;::wait()</tt>. This is just like <tt>get()</tt> but it instead of extracting the value or throwing the exception, <tt>wait()</tt> returns a new Future with the result of the input Future. Like <tt>get()</tt>, <tt>wait()</tt> can also take a timeout&#x2014;see <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>.</li>
-<li><tt>getVia()</tt> and <tt>waitVia()</tt>, which are like <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor (say, an <tt>EventBase</tt>) until the Future is complete. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> for more.</li>
+<li>Create already-completed futures with <tt>makeFuture&lt;T&gt;()</tt>, which takes a <tt>T&amp;&amp;</tt> (or an exception, more info <a href="#error-handling">here</a>). If you pass <tt>T&amp;&amp;</tt> the type is inferred and you don&#039;t have to specify it.</li>
+<li>Extract a future&#039;s <tt>T</tt> value with <tt>Future&lt;T&gt;::get()</tt>. This method is blocking, so make sure that either your future is already completed or that another thread will complete the future while the calling thread blocks. <tt>get()</tt> can also take a timeout&#x2014;see <a href="#timeouts-and-related-features">Timeouts</a>.</li>
+<li>Perform a blocking wait on a Future with <tt>Future&lt;T&gt;::wait()</tt>. This is just like <tt>get()</tt> but it instead of extracting the value or throwing the exception, <tt>wait()</tt> returns a new Future with the result of the input Future. Like <tt>get()</tt>, <tt>wait()</tt> can also take a timeout&#x2014;see <a href="#timeouts-and-related-features">Timeouts</a>.</li>
+<li><tt>getVia()</tt> and <tt>waitVia()</tt>, which are like <tt>get()</tt> and <tt>wait()</tt> except that they drive some Executor (say, an <tt>EventBase</tt>) until the Future is complete. See <a href="#testing">Testing</a> for more.</li>
 </ul>
 
-<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> <tt>makeFuture()</tt>, <tt>get()</tt>, <tt>wait()</tt>, and friends are especially handy in tests and are documented further in the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> article.</div>
+<div class="remarkup-note"><span class="remarkup-note-word">NOTE:</span> <tt>makeFuture()</tt>, <tt>get()</tt>, <tt>wait()</tt>, and friends are especially handy in tests and are documented further in the <a href="#testing">Testing</a> section.</div>
 
 <h2 id="overloads-of-then">Overloads of then() <a href="#overloads-of-then" class="headerLink">#</a></h2>
 
@@ -365,7 +365,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <ul>
 <li>an opportunity for a cleaner futures-based version</li>
-<li>a missing abstraction in our library. See <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14607">Compositional Building Blocks</a>, <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a>, <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14616">Interrupts</a>, etc. Let us know if you think this is the case.</li>
+<li>a missing abstraction in our library. See <a href="#compositional-building-blocks">Compositional Building Blocks</a>, <a href="#timeouts-and-related-features">Timeouts</a>, <a href="#interrupts-and-cancellations">Interrupts</a>, etc. Let us know if you think this is the case.</li>
 </ul>
 
 <h2 id="sharedpromise">SharedPromise <a href="#sharedpromise" class="headerLink">#</a></h2>
@@ -787,7 +787,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="get-and-wait-with-timeou">get() and wait() with timeouts <a href="#get-and-wait-with-timeou" class="headerLink">#</a></h2>
 
-<p><tt>get()</tt> and <tt>wait()</tt>, which are detailed in the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14606">Testing</a> article, optionally take timeouts:</p>
+<p><tt>get()</tt> and <tt>wait()</tt>, which are detailed in the <a href="#testing">Testing</a> section, optionally take timeouts:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="c1">// Will throw TimedOut if the Future doesn&#039;t complete within one second of
@@ -881,7 +881,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">isPrime</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class=""></span></pre></div>
 
-<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a> article for more information.</p>
+<p>Keep in mind that some other thread had better complete the Future, because the thread that calls <tt>get()</tt> will block. Also, <tt>get()</tt> optionally takes a timeout after which its throws a TimedOut exception. See the <a href="#timeouts-and-related-features">Timeouts</a> section for more information.</p>
 
 <h3 id="wait">wait() <a href="#wait" class="headerLink">#</a></h3>
 
@@ -892,7 +892,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 </span><span class=""></span><span class="n">EXPECT_TRUE</span><span class="p">(</span><span class="n">f</span><span class="p">.</span><span class="n">value</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class=""></span></pre></div>
 
-<p>Like <tt>get()</tt>, <tt>wait()</tt> optionally takes a timeout. Again, see the <a href="https://our.intern.facebook.com/intern/dex/document/?doc_id=14677">Timeouts</a> article.</p>
+<p>Like <tt>get()</tt>, <tt>wait()</tt> optionally takes a timeout. Again, see the <a href="#timeouts-and-related-features">Timeouts</a> section.</p>
 
 <h3 id="getvia-and-waitvia">getVia() and waitVia() <a href="#getvia-and-waitvia" class="headerLink">#</a></h3>
 
