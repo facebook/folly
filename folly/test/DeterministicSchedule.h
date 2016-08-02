@@ -111,6 +111,12 @@ class DeterministicSchedule : boost::noncopyable {
    *  communication. */
   static void afterSharedAccess();
 
+  /** Calls a user-defined auxiliary function if any, and releases
+   *  permission for the current thread to perform inter-thread
+   *  communication. The bool parameter indicates the success of the
+   *  shared access (if conditional, true otherwise). */
+  static void afterSharedAccess(bool success);
+
   /** Launches a thread that will participate in the same deterministic
    *  schedule as the current thread. */
   template <typename Func, typename... Args>
@@ -161,19 +167,37 @@ class DeterministicSchedule : boost::noncopyable {
   /** Deterministic implemencation of getcpu */
   static int getcpu(unsigned* cpu, unsigned* node, void* unused);
 
+  /** Sets up a thread-specific function for call immediately after
+   *  the next shared access for managing auxiliary data and checking
+   *  global invariants. The parameters of the function are: a
+   *  uint64_t that indicates the step number (i.e., the number of
+   *  shared accesses so far), and a bool that indicates the success
+   *  of the shared access (if it is conditional, true otherwise). */
+  static void setAux(std::function<void(uint64_t, bool)>& aux);
+
  private:
   static FOLLY_TLS sem_t* tls_sem;
   static FOLLY_TLS DeterministicSchedule* tls_sched;
   static FOLLY_TLS unsigned tls_threadId;
+  static FOLLY_TLS std::function<void(uint64_t, bool)>* tls_aux;
 
   std::function<int(int)> scheduler_;
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
   unsigned nextThreadId_;
+  /* step_ keeps count of shared accesses that correspond to user
+   * synchronization steps (atomic accesses for now).
+   * The reason for keeping track of this here and not just with
+   * auxiliary data is to provide users with warning signs (e.g.,
+   * skipped steps) if they inadvertently forget to set up aux
+   * functions for some shared accesses. */
+  uint64_t step_;
 
   sem_t* beforeThreadCreate();
   void afterThreadCreate(sem_t*);
   void beforeThreadExit();
+  /** Calls user-defined auxiliary function (if any) */
+  void callAux(bool);
 };
 
 /**
@@ -201,7 +225,7 @@ struct DeterministicAtomic {
     FOLLY_TEST_DSCHED_VLOG(this << ".compare_exchange_strong(" << std::hex
                                 << orig << ", " << std::hex << v1 << ") -> "
                                 << rv << "," << std::hex << v0);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(rv);
     return rv;
   }
 
@@ -213,7 +237,7 @@ struct DeterministicAtomic {
     FOLLY_TEST_DSCHED_VLOG(this << ".compare_exchange_weak(" << std::hex << orig
                                 << ", " << std::hex << v1 << ") -> " << rv
                                 << "," << std::hex << v0);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(rv);
     return rv;
   }
 
@@ -222,7 +246,7 @@ struct DeterministicAtomic {
     T rv = data.exchange(v, mo);
     FOLLY_TEST_DSCHED_VLOG(this << ".exchange(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -230,7 +254,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data;
     FOLLY_TEST_DSCHED_VLOG(this << "() -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -238,7 +262,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data.load(mo);
     FOLLY_TEST_DSCHED_VLOG(this << ".load() -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -246,7 +270,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = (data = v);
     FOLLY_TEST_DSCHED_VLOG(this << " = " << std::hex << v);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -254,14 +278,14 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     data.store(v, mo);
     FOLLY_TEST_DSCHED_VLOG(this << ".store(" << std::hex << v << ")");
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
   }
 
   T operator++() noexcept {
     DeterministicSchedule::beforeSharedAccess();
     T rv = ++data;
     FOLLY_TEST_DSCHED_VLOG(this << " pre++ -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -269,7 +293,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data++;
     FOLLY_TEST_DSCHED_VLOG(this << " post++ -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -277,7 +301,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = --data;
     FOLLY_TEST_DSCHED_VLOG(this << " pre-- -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -285,7 +309,7 @@ struct DeterministicAtomic {
     DeterministicSchedule::beforeSharedAccess();
     T rv = data--;
     FOLLY_TEST_DSCHED_VLOG(this << " post-- -> " << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -294,7 +318,7 @@ struct DeterministicAtomic {
     T rv = (data += v);
     FOLLY_TEST_DSCHED_VLOG(this << " += " << std::hex << v << " -> " << std::hex
                                 << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -305,7 +329,7 @@ struct DeterministicAtomic {
     data += v;
     FOLLY_TEST_DSCHED_VLOG(this << ".fetch_add(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -314,7 +338,7 @@ struct DeterministicAtomic {
     T rv = (data -= v);
     FOLLY_TEST_DSCHED_VLOG(this << " -= " << std::hex << v << " -> " << std::hex
                                 << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -325,7 +349,7 @@ struct DeterministicAtomic {
     data -= v;
     FOLLY_TEST_DSCHED_VLOG(this << ".fetch_sub(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -334,7 +358,7 @@ struct DeterministicAtomic {
     T rv = (data &= v);
     FOLLY_TEST_DSCHED_VLOG(this << " &= " << std::hex << v << " -> " << std::hex
                                 << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -345,7 +369,7 @@ struct DeterministicAtomic {
     data &= v;
     FOLLY_TEST_DSCHED_VLOG(this << ".fetch_and(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -354,7 +378,7 @@ struct DeterministicAtomic {
     T rv = (data |= v);
     FOLLY_TEST_DSCHED_VLOG(this << " |= " << std::hex << v << " -> " << std::hex
                                 << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -365,7 +389,7 @@ struct DeterministicAtomic {
     data |= v;
     FOLLY_TEST_DSCHED_VLOG(this << ".fetch_or(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -374,7 +398,7 @@ struct DeterministicAtomic {
     T rv = (data ^= v);
     FOLLY_TEST_DSCHED_VLOG(this << " ^= " << std::hex << v << " -> " << std::hex
                                 << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
   }
 
@@ -385,8 +409,13 @@ struct DeterministicAtomic {
     data ^= v;
     FOLLY_TEST_DSCHED_VLOG(this << ".fetch_xor(" << std::hex << v << ") -> "
                                 << std::hex << rv);
-    DeterministicSchedule::afterSharedAccess();
+    DeterministicSchedule::afterSharedAccess(true);
     return rv;
+  }
+
+  /** Read the value of the atomic variable without context switching */
+  T load_direct() const noexcept {
+    return data.load(std::memory_order_relaxed);
   }
 };
 
