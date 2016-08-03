@@ -18,6 +18,7 @@
 
 #ifdef _WIN32
 #include <folly/portability/Sockets.h>
+#include <folly/portability/SysStat.h>
 #include <folly/portability/Windows.h>
 
 namespace folly {
@@ -80,7 +81,17 @@ int fcntl(int fd, int cmd, ...) {
 
 int open(char const* fn, int of, int pm) {
   int fh;
-  errno_t res = _sopen_s(&fh, fn, of, _SH_DENYNO, pm);
+  int realMode = _S_IREAD;
+  if ((of & _O_RDWR) == _O_RDWR) {
+    realMode = _S_IREAD | _S_IWRITE;
+  } else if ((of & _O_WRONLY) == _O_WRONLY) {
+    realMode = _S_IWRITE;
+  } else if ((of & _O_RDONLY) != _O_RDONLY) {
+    // One of these needs to be present, just fail if
+    // none are.
+    return -1;
+  }
+  errno_t res = _sopen_s(&fh, fn, of, _SH_DENYNO, realMode);
   return res ? -1 : fh;
 }
 
