@@ -1853,3 +1853,19 @@ TEST(EventBaseTest, DrivableExecutorTest) {
 
   t.join();
 }
+
+TEST(EventBaseTest, RequestContextTest) {
+  EventBase evb;
+  auto defaultCtx = RequestContext::get();
+
+  {
+    RequestContextScopeGuard rctx;
+    auto context = RequestContext::get();
+    EXPECT_NE(defaultCtx, context);
+    evb.runInLoop([context] { EXPECT_EQ(context, RequestContext::get()); });
+  }
+
+  EXPECT_EQ(defaultCtx, RequestContext::get());
+  evb.loop();
+  EXPECT_EQ(defaultCtx, RequestContext::get());
+}

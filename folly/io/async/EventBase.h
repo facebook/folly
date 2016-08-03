@@ -670,7 +670,7 @@ class EventBase : private boost::noncopyable,
   bool loopBody(int flags = 0);
 
   // executes any callbacks queued by runInLoop(); returns false if none found
-  bool runLoopCallbacks(bool setContext = true);
+  bool runLoopCallbacks();
 
   void initNotificationQueue();
 

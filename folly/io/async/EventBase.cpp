@@ -223,7 +223,7 @@ EventBase::~EventBase() {
     delete &runBeforeLoopCallbacks_.front();
   }
 
-  (void) runLoopCallbacks(false);
+  (void)runLoopCallbacks();
 
   if (!fnRunner_->consumeUntilDrained()) {
     LOG(ERROR) << "~EventBase(): Unable to drain notification queue";
@@ -656,7 +656,7 @@ bool EventBase::tryRunAfterDelay(
   return true;
 }
 
-bool EventBase::runLoopCallbacks(bool setContext) {
+bool EventBase::runLoopCallbacks() {
   if (!loopCallbacks_.empty()) {
     bumpHandlingTime();
     // Swap the loopCallbacks_ list with a temporary list on our stack.
@@ -674,9 +674,7 @@ bool EventBase::runLoopCallbacks(bool setContext) {
     while (!currentCallbacks.empty()) {
       LoopCallback* callback = &currentCallbacks.front();
       currentCallbacks.pop_front();
-      if (setContext) {
-        RequestContext::setContext(callback->context_);
-      }
+      folly::RequestContextScopeGuard rctx(callback->context_);
       callback->runLoopCallback();
     }
 
