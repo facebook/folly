@@ -346,8 +346,8 @@ class BitVectorReader {
 
     if (Encoder::skipQuantum > 0 && v - value_ > Encoder::skipQuantum) {
       size_t q = v / Encoder::skipQuantum;
-      position_ = folly::loadUnaligned<SkipValueType>(
-                      skipPointers_ + (q - 1) * sizeof(SkipValueType)) - 1;
+      position_ = size_t(folly::loadUnaligned<SkipValueType>(
+                      skipPointers_ + (q - 1) * sizeof(SkipValueType))) - 1;
 
       reposition(q * Encoder::skipQuantum);
     }
