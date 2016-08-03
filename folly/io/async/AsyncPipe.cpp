@@ -62,36 +62,57 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
   assert(readCallback_ != nullptr);
 
   while (readCallback_) {
+    // - What API does callback support?
+    const auto movable = readCallback_->isBufferMovable(); // noexcept
+
     // Get the buffer to read into.
     void* buf = nullptr;
     size_t buflen = 0;
-    try {
-      readCallback_->getReadBuffer(&buf, &buflen);
-    } catch (const std::exception& ex) {
-      AsyncSocketException aex(AsyncSocketException::BAD_ARGS,
-                               string("ReadCallback::getReadBuffer() "
-                                      "threw exception: ") + ex.what());
-      failRead(aex);
-      return;
-    } catch (...) {
-      AsyncSocketException ex(AsyncSocketException::BAD_ARGS,
-                              string("ReadCallback::getReadBuffer() "
-                                     "threw non-exception type"));
-      failRead(ex);
-      return;
-    }
-    if (buf == nullptr || buflen == 0) {
-      AsyncSocketException ex(AsyncSocketException::INVALID_STATE,
-                              string("ReadCallback::getReadBuffer() "
-                                     "returned empty buffer"));
-      failRead(ex);
-      return;
+    std::unique_ptr<IOBuf> ioBuf;
+
+    if (movable) {
+      ioBuf = IOBuf::create(readCallback_->maxBufferSize());
+      buf = ioBuf->writableBuffer();
+      buflen = ioBuf->capacity();
+    } else {
+      try {
+        readCallback_->getReadBuffer(&buf, &buflen);
+      } catch (const std::exception& ex) {
+        AsyncSocketException aex(
+            AsyncSocketException::BAD_ARGS,
+            string("ReadCallback::getReadBuffer() "
+                   "threw exception: ") +
+                ex.what());
+        failRead(aex);
+        return;
+      } catch (...) {
+        AsyncSocketException aex(
+            AsyncSocketException::BAD_ARGS,
+            string("ReadCallback::getReadBuffer() "
+                   "threw non-exception type"));
+        failRead(aex);
+        return;
+      }
+      if (buf == nullptr || buflen == 0) {
+        AsyncSocketException aex(
+            AsyncSocketException::INVALID_STATE,
+            string("ReadCallback::getReadBuffer() "
+                   "returned empty buffer"));
+        failRead(aex);
+        return;
+      }
     }
 
     // Perform the read
     ssize_t bytesRead = folly::readNoInt(fd_, buf, buflen);
+
     if (bytesRead > 0) {
-      readCallback_->readDataAvailable(bytesRead);
+      if (movable) {
+        ioBuf->append(bytesRead);
+        readCallback_->readBufferAvailable(std::move(ioBuf));
+      } else {
+        readCallback_->readDataAvailable(bytesRead);
+      }
       // Fall through and continue around the loop if the read
       // completely filled the available buffer.
       // Note that readCallback_ may have been uninstalled or changed inside

@@ -472,6 +472,15 @@ class AsyncReader {
     }
 
     /**
+     * Suggested buffer size, allocated for read operations,
+     * if callback is movable and supports folly::IOBuf
+     */
+
+    virtual size_t maxBufferSize() const {
+      return 64 * 1024; // 64K
+    }
+
+    /**
      * readBufferAvailable() will be invoked when data has been successfully
      * read.
      *
