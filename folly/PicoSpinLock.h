@@ -132,7 +132,8 @@ struct PicoSpinLock {
     switch (sizeof(IntType)) {
       case 2:
         // There is no _interlockedbittestandset16 for some reason :(
-        ret = _InterlockedOr16((volatile short*)&lock, 1 << Bit) & (1 << Bit);
+        ret = _InterlockedOr16(
+            (volatile short*)&lock_, (short)kLockBitMask_) & kLockBitMask_;
         break;
       case 4:
         ret = _interlockedbittestandset((volatile long*)&lock_, Bit);
@@ -210,7 +211,7 @@ struct PicoSpinLock {
     switch (sizeof(IntType)) {
       case 2:
         // There is no _interlockedbittestandreset16 for some reason :(
-        _InterlockedAnd16((volatile short*)&lock, ~(1 << Bit));
+        _InterlockedAnd16((volatile short*)&lock_, (short)~kLockBitMask_);
         break;
       case 4:
         _interlockedbittestandreset((volatile long*)&lock_, Bit);
