@@ -107,6 +107,95 @@ TEST(DeterministicSchedule, buggyAdd) {
   } // for bug
 } // TEST
 
+/// Testing support for auxiliary variables and global invariants
+
+/** auxiliary variables for atomic counter test */
+struct AtomicCounterAux {
+  std::vector<int> local_;
+
+  explicit AtomicCounterAux(int nthr) {
+    local_.resize(nthr, 0);
+  }
+};
+
+/** auxiliary function for checking global invariants and logging
+ *  steps of atomic counter test */
+void checkAtomicCounter(
+    int tid,
+    uint64_t step,
+    DeterministicAtomic<int>& shared,
+    AtomicCounterAux& aux) {
+  /* read shared data */
+  int val = shared.load_direct();
+  /* read auxiliary variables */
+  int sum = 0;
+  for (int v : aux.local_) {
+    sum += v;
+  }
+  /* log state */
+  VLOG(2) << "Step " << step << " -- tid " << tid << " -- shared counter "
+          << val << " -- sum increments " << sum;
+  /* check invariant */
+  if (val != sum) {
+    LOG(ERROR) << "Failed after step " << step;
+    LOG(ERROR) << "counter=(" << val << ") expected(" << sum << ")";
+    CHECK(false);
+  }
+}
+
+std::function<void(uint64_t, bool)> auxAtomicCounter(
+    DeterministicAtomic<int>& shared,
+    AtomicCounterAux& aux,
+    int tid) {
+  return [&shared, &aux, tid](uint64_t step, bool success) {
+    // update auxiliary data
+    if (success) {
+      aux.local_[tid]++;
+    }
+    // check invariants
+    checkAtomicCounter(tid, step, shared, aux);
+  };
+}
+
+DEFINE_bool(bug, false, "Introduce bug");
+DEFINE_int64(seed, 0, "Seed for random number generator");
+DEFINE_int32(num_threads, 2, "Number of threads");
+DEFINE_int32(num_iterations, 10, "Number of iterations");
+
+TEST(DSchedCustom, atomic_add) {
+  bool bug = FLAGS_bug;
+  long seed = FLAGS_seed;
+  int nthr = FLAGS_num_threads;
+  int niter = FLAGS_num_iterations;
+
+  CHECK_GT(nthr, 0);
+
+  DeterministicAtomic<int> counter{0};
+  AtomicCounterAux auxData(nthr);
+  DeterministicSchedule sched(DeterministicSchedule::uniform(seed));
+
+  std::vector<std::thread> threads(nthr);
+  for (int tid = 0; tid < nthr; ++tid) {
+    threads[tid] = DeterministicSchedule::thread([&, tid]() {
+      auto auxFn = auxAtomicCounter(counter, auxData, tid);
+      for (int i = 0; i < niter; ++i) {
+        if (bug && (tid == 0) && (i % 10 == 0)) {
+          int newval = counter.load() + 1;
+          DeterministicSchedule::setAux(auxFn);
+          counter.store(newval);
+        } else {
+          DeterministicSchedule::setAux(auxFn);
+          counter.fetch_add(1);
+        }
+      }
+    });
+  }
+  for (auto& t : threads) {
+    DeterministicSchedule::join(t);
+  }
+  EXPECT_EQ(counter.load_direct(), nthr * niter);
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
