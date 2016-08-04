@@ -108,15 +108,20 @@ class Enumerator {
     return *this;
   }
 
-  bool operator==(const Enumerator& rhs) {
+  template <typename OtherIterator>
+  bool operator==(const Enumerator<OtherIterator>& rhs) {
     return it_ == rhs.it_;
   }
 
-  bool operator!=(const Enumerator& rhs) {
+  template <typename OtherIterator>
+  bool operator!=(const Enumerator<OtherIterator>& rhs) {
     return !(*this == rhs);
   }
 
  private:
+  template <typename OtherIterator>
+  friend class Enumerator;
+
   Iterator it_;
   size_t idx_ = 0;
 };
