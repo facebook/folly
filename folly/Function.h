@@ -242,13 +242,13 @@ enum class Op { MOVE, NUKE, FULL, HEAP };
 
 union Data {
   void* big;
-  std::aligned_storage<6 * sizeof(void*)>::type small;
+  std::aligned_storage<6 * sizeof(void*)>::type tiny;
 };
 
 template <typename Fun, typename FunT = typename std::decay<Fun>::type>
 using IsSmall = std::integral_constant<
     bool,
-    (sizeof(FunT) <= sizeof(Data::small) &&
+    (sizeof(FunT) <= sizeof(Data::tiny) &&
      // Same as is_nothrow_move_constructible, but w/ no template instantiation.
      noexcept(FunT(std::declval<FunT&&>()))
      )>;
@@ -288,7 +288,7 @@ struct FunctionTraits<ReturnType(Args...)> {
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) {
     return static_cast<ReturnType>((*static_cast<Fun*>(
-        static_cast<void*>(&p.small)))(static_cast<Args&&>(args)...));
+        static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
@@ -329,7 +329,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) {
     return static_cast<ReturnType>((*static_cast<const Fun*>(
-        static_cast<void*>(&p.small)))(static_cast<Args&&>(args)...));
+        static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
@@ -359,11 +359,11 @@ template <typename Fun>
 bool execSmall(Op o, Data* src, Data* dst) {
   switch (o) {
     case Op::MOVE:
-      ::new (static_cast<void*>(&dst->small))
-          Fun(std::move(*static_cast<Fun*>(static_cast<void*>(&src->small))));
+      ::new (static_cast<void*>(&dst->tiny))
+          Fun(std::move(*static_cast<Fun*>(static_cast<void*>(&src->tiny))));
       FOLLY_FALLTHROUGH;
     case Op::NUKE:
-      static_cast<Fun*>(static_cast<void*>(&src->small))->~Fun();
+      static_cast<Fun*>(static_cast<void*>(&src->tiny))->~Fun();
       break;
     case Op::FULL:
       return true;
@@ -433,7 +433,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   Function(Fun&& fun, SmallTag) noexcept {
     using FunT = typename std::decay<Fun>::type;
     if (!detail::function::isNullPtrFn(fun)) {
-      ::new (static_cast<void*>(&data_.small)) FunT(static_cast<Fun&&>(fun));
+      ::new (static_cast<void*>(&data_.tiny)) FunT(static_cast<Fun&&>(fun));
       call_ = &Traits::template callSmall<FunT>;
       exec_ = &detail::function::execSmall<FunT>;
     }
