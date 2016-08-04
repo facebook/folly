@@ -441,28 +441,28 @@ void* insertThreadArr(void* jj) {
 }
 
 std::atomic<bool> runThreadsCreatedAllThreads;
-void runThreads(void *(*thread)(void*), int numThreads, void **statuses) {
+void runThreads(void *(*mainFunc)(void*), int numThreads, void **statuses) {
   folly::BenchmarkSuspender susp;
   runThreadsCreatedAllThreads.store(false);
-  vector<pthread_t> threadIds;
+  vector<std::thread> threads;
   for (int64_t j = 0; j < numThreads; j++) {
-    pthread_t tid;
-    if (pthread_create(&tid, nullptr, thread, (void*) j) != 0) {
-       LOG(ERROR) << "Could not start thread";
-    } else {
-      threadIds.push_back(tid);
-    }
+    threads.emplace_back([statuses, mainFunc, j]() {
+      auto ret = mainFunc((void*)j);
+      if (statuses != nullptr) {
+        statuses[j] = ret;
+      }
+    });
   }
   susp.dismiss();
 
   runThreadsCreatedAllThreads.store(true);
-  for (size_t i = 0; i < threadIds.size(); ++i) {
-    pthread_join(threadIds[i], statuses == nullptr ? nullptr : &statuses[i]);
+  for (size_t i = 0; i < threads.size(); ++i) {
+    threads[i].join();
   }
 }
 
-void runThreads(void *(*thread)(void*)) {
-  runThreads(thread, FLAGS_numThreads, nullptr);
+void runThreads(void *(*mainFunc)(void*)) {
+  runThreads(mainFunc, FLAGS_numThreads, nullptr);
 }
 
 }
@@ -680,8 +680,7 @@ void* atomicHashArrayInsertRaceThread(void* /* j */) {
       numInserted++;
     }
   }
-  pthread_exit((void *) numInserted);
-  folly::assume_unreachable();
+  return (void*)numInserted;
 }
 TEST(Ahm, atomic_hash_array_insert_race) {
   AHA* arr = atomicHashArrayInsertRaceArray.get();
