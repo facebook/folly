@@ -108,11 +108,11 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
   auto& prev = getStaticContext();
   if (ctx != prev) {
     using std::swap;
-    if (ctx) {
-      ctx->onSet();
-    }
     if (prev) {
       prev->onUnset();
+    }
+    if (ctx) {
+      ctx->onSet();
     }
     swap(ctx, prev);
   }

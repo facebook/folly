@@ -47,7 +47,7 @@ class RequestContext {
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
   static void create() {
-    getStaticContext() = std::make_shared<RequestContext>();
+    setContext(std::make_shared<RequestContext>());
   }
 
   // Get the current context.

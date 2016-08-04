@@ -28,6 +28,13 @@ class TestData : public RequestData {
  public:
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
+  void onSet() override {
+    set_++;
+  }
+  void onUnset() override {
+    unset_++;
+  }
+  int set_ = 0, unset_ = 0;
   int data_;
 };
 
@@ -92,6 +99,35 @@ TEST(RequestContext, setIfAbsentTest) {
 
   RequestContext::setContext(std::shared_ptr<RequestContext>());
   EXPECT_TRUE(nullptr != RequestContext::get());
+}
+
+TEST(RequestContext, testSetUnset) {
+  RequestContext::create();
+  auto ctx1 = RequestContext::saveContext();
+  ctx1->setContextData("test", std::unique_ptr<TestData>(new TestData(10)));
+  auto testData1 = dynamic_cast<TestData*>(ctx1->getContextData("test"));
+
+  // Override RequestContext
+  RequestContext::create();
+  auto ctx2 = RequestContext::saveContext();
+  ctx2->setContextData("test", std::unique_ptr<TestData>(new TestData(20)));
+  auto testData2 = dynamic_cast<TestData*>(ctx2->getContextData("test"));
+
+  // Check ctx1->onUnset was called
+  EXPECT_EQ(0, testData1->set_);
+  EXPECT_EQ(1, testData1->unset_);
+
+  RequestContext::setContext(ctx1);
+  EXPECT_EQ(1, testData1->set_);
+  EXPECT_EQ(1, testData1->unset_);
+  EXPECT_EQ(0, testData2->set_);
+  EXPECT_EQ(1, testData2->unset_);
+
+  RequestContext::setContext(ctx2);
+  EXPECT_EQ(1, testData1->set_);
+  EXPECT_EQ(2, testData1->unset_);
+  EXPECT_EQ(1, testData2->set_);
+  EXPECT_EQ(1, testData2->unset_);
 }
 
 int main(int argc, char** argv) {
