@@ -30,6 +30,7 @@
 
 #include <folly/Range.h>
 #include <folly/Benchmark.h>
+#include <folly/Portability.h>
 
 using namespace folly;
 
@@ -94,8 +95,7 @@ void ArenaTester::merge(ArenaTester&& other) {
 }  // namespace
 
 TEST(ThreadCachedArena, BlockSize) {
-  struct Align { char c; } __attribute__((__aligned__));
-  static const size_t alignment = alignof(Align);
+  static const size_t alignment = alignof(std::max_align_t);
   static const size_t requestedBlockSize = 64;
 
   ThreadCachedArena arena(requestedBlockSize);
