@@ -88,32 +88,27 @@ TEST(Bits, FindLastSet) {
   testFLS<unsigned long long>();
 }
 
-#define testPowTwo(nextPowTwoFunc) {                              \
-  EXPECT_EQ(1, nextPowTwoFunc(0u));                               \
-  EXPECT_EQ(1, nextPowTwoFunc(1u));                               \
-  EXPECT_EQ(2, nextPowTwoFunc(2u));                               \
-  EXPECT_EQ(4, nextPowTwoFunc(3u));                               \
-  EXPECT_EQ(4, nextPowTwoFunc(4u));                               \
-  EXPECT_EQ(8, nextPowTwoFunc(5u));                               \
-  EXPECT_EQ(8, nextPowTwoFunc(6u));                               \
-  EXPECT_EQ(8, nextPowTwoFunc(7u));                               \
-  EXPECT_EQ(8, nextPowTwoFunc(8u));                               \
-  EXPECT_EQ(16, nextPowTwoFunc(9u));                              \
-  EXPECT_EQ(16, nextPowTwoFunc(13u));                             \
-  EXPECT_EQ(16, nextPowTwoFunc(16u));                             \
-  EXPECT_EQ(512, nextPowTwoFunc(510u));                           \
-  EXPECT_EQ(512, nextPowTwoFunc(511u));                           \
-  EXPECT_EQ(512, nextPowTwoFunc(512u));                           \
-  EXPECT_EQ(1024, nextPowTwoFunc(513u));                          \
-  EXPECT_EQ(1024, nextPowTwoFunc(777u));                          \
-  EXPECT_EQ(1ul << 31, nextPowTwoFunc((1ul << 31) - 1));          \
-  EXPECT_EQ(1ull << 32, nextPowTwoFunc((1ull << 32) - 1));        \
-  EXPECT_EQ(1ull << 63, nextPowTwoFunc((1ull << 62) + 1));        \
-}
-
-
 TEST(Bits, nextPowTwoClz) {
-  testPowTwo(nextPowTwo);
+  EXPECT_EQ(1, nextPowTwo(0u));
+  EXPECT_EQ(1, nextPowTwo(1u));
+  EXPECT_EQ(2, nextPowTwo(2u));
+  EXPECT_EQ(4, nextPowTwo(3u));
+  EXPECT_EQ(4, nextPowTwo(4u));
+  EXPECT_EQ(8, nextPowTwo(5u));
+  EXPECT_EQ(8, nextPowTwo(6u));
+  EXPECT_EQ(8, nextPowTwo(7u));
+  EXPECT_EQ(8, nextPowTwo(8u));
+  EXPECT_EQ(16, nextPowTwo(9u));
+  EXPECT_EQ(16, nextPowTwo(13u));
+  EXPECT_EQ(16, nextPowTwo(16u));
+  EXPECT_EQ(512, nextPowTwo(510u));
+  EXPECT_EQ(512, nextPowTwo(511u));
+  EXPECT_EQ(512, nextPowTwo(512u));
+  EXPECT_EQ(1024, nextPowTwo(513u));
+  EXPECT_EQ(1024, nextPowTwo(777u));
+  EXPECT_EQ(1ul << 31, nextPowTwo((1ul << 31) - 1));
+  EXPECT_EQ(1ull << 32, nextPowTwo((1ull << 32) - 1));
+  EXPECT_EQ(1ull << 63, nextPowTwo((1ull << 62) + 1));
 }
 
 TEST(Bits, isPowTwo) {
