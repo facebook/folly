@@ -105,16 +105,16 @@ void RequestContext::clearContextData(const std::string& val) {
 
 std::shared_ptr<RequestContext> RequestContext::setContext(
     std::shared_ptr<RequestContext> ctx) {
-  auto& prev = getStaticContext();
-  if (ctx != prev) {
+  auto& curCtx = getStaticContext();
+  if (ctx != curCtx) {
     using std::swap;
-    if (prev) {
-      prev->onUnset();
+    if (curCtx) {
+      curCtx->onUnset();
     }
-    if (ctx) {
-      ctx->onSet();
+    swap(ctx, curCtx);
+    if (curCtx) {
+      curCtx->onSet();
     }
-    swap(ctx, prev);
   }
   return ctx;
 }
