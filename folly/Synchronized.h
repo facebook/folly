@@ -153,6 +153,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    *     return data.getValue();
    *   });
    */
+#if __cplusplus > 201103L
   template <class Function>
   auto withWLock(Function&& function) {
     LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
@@ -165,6 +166,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
         static_cast<const Subclass*>(this));
     return function(*guardPtr);
   }
+#endif
 
   /**
    * Invoke a function while holding the lock exclusively.
@@ -175,6 +177,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * This allows scopedUnlock() to be called on the LockedPtr argument if
    * desired.
    */
+#if __cplusplus > 201103L
   template <class Function>
   auto withWLockPtr(Function&& function) {
     return function(wlock());
@@ -183,6 +186,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   auto withWLockPtr(Function&& function) const {
     return function(wlock());
   }
+#endif
 
   /**
    * Invoke a function while holding an the lock in shared mode.
@@ -190,6 +194,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * A const reference to the datum will be passed into the function as its
    * only argument.
    */
+#if __cplusplus > 201103L
   template <class Function>
   auto withRLock(Function&& function) const {
     LockedGuardPtr<const Subclass, LockPolicyShared> guardPtr(
@@ -201,6 +206,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   auto withRLockPtr(Function&& function) const {
     return function(rlock());
   }
+#endif
 };
 
 /**
@@ -366,6 +372,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    *     return data.getValue();
    *   });
    */
+#if __cplusplus > 201103L
   template <class Function>
   auto withLock(Function&& function) {
     LockedGuardPtr<Subclass, LockPolicyExclusive> guardPtr(
@@ -378,6 +385,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
         static_cast<const Subclass*>(this));
     return function(*guardPtr);
   }
+#endif 
 
   /**
    * Invoke a function while holding the lock exclusively.
@@ -388,6 +396,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    * This allows scopedUnlock() and getUniqueLock() to be called on the
    * LockedPtr argument.
    */
+#if __cplusplus > 201103L
   template <class Function>
   auto withLockPtr(Function&& function) {
     return function(lock());
@@ -396,6 +405,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
   auto withLockPtr(Function&& function) const {
     return function(lock());
   }
+#endif
 };
 
 /**
