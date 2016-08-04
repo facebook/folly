@@ -17,25 +17,42 @@
 #include <folly/portability/SysMman.h>
 
 #ifdef _WIN32
+#include <cassert>
+#include <folly/Portability.h>
 #include <folly/portability/Windows.h>
 
-static bool mmap_to_page_protection(int prot, DWORD& ret) {
+static bool mmap_to_page_protection(int prot, DWORD& ret, DWORD& acc) {
   if (prot == PROT_NONE) {
     ret = PAGE_NOACCESS;
+    acc = 0;
   } else if (prot == PROT_READ) {
     ret = PAGE_READONLY;
+    acc = FILE_MAP_READ;
   } else if (prot == PROT_EXEC) {
     ret = PAGE_EXECUTE;
+    acc = FILE_MAP_EXECUTE;
   } else if (prot == (PROT_READ | PROT_EXEC)) {
     ret = PAGE_EXECUTE_READ;
+    acc = FILE_MAP_READ | FILE_MAP_EXECUTE;
   } else if (prot == (PROT_READ | PROT_WRITE)) {
     ret = PAGE_READWRITE;
+    acc = FILE_MAP_READ | FILE_MAP_WRITE;
   } else if (prot == (PROT_READ | PROT_WRITE | PROT_EXEC)) {
     ret = PAGE_EXECUTE_READWRITE;
+    acc = FILE_MAP_READ | FILE_MAP_WRITE | FILE_MAP_EXECUTE;
   } else {
     return false;
   }
   return true;
+}
+
+static size_t alignToAllocationGranularity(size_t s) {
+  static size_t granularity = [] {
+    static SYSTEM_INFO inf;
+    GetSystemInfo(&inf);
+    return inf.dwAllocationGranularity;
+  }();
+  return (s + granularity - 1) / granularity * granularity;
 }
 
 extern "C" {
@@ -70,7 +87,8 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
   }
 
   DWORD newProt;
-  if (!mmap_to_page_protection(prot, newProt)) {
+  DWORD accessFlags;
+  if (!mmap_to_page_protection(prot, newProt, accessFlags)) {
     return MAP_FAILED;
   }
 
@@ -84,13 +102,13 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
     HANDLE fmh = CreateFileMapping(
         h,
         nullptr,
-        newProt | SEC_COMMIT | SEC_RESERVE,
+        newProt,
         (DWORD)((length >> 32) & 0xFFFFFFFF),
         (DWORD)(length & 0xFFFFFFFF),
         nullptr);
     ret = MapViewOfFileEx(
         fmh,
-        FILE_MAP_ALL_ACCESS,
+        accessFlags,
         (DWORD)((off >> 32) & 0xFFFFFFFF),
         (DWORD)(off & 0xFFFFFFFF),
         0,
@@ -100,6 +118,9 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
     }
     CloseHandle(fmh);
   } else {
+    // VirtualAlloc rounds size down to a multiple
+    // of the system allocation granularity :(
+    length = alignToAllocationGranularity(length);
     ret = VirtualAlloc(addr, length, MEM_COMMIT | MEM_RESERVE, newProt);
     if (ret == nullptr) {
       return MAP_FAILED;
@@ -113,7 +134,8 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
 
 int mprotect(void* addr, size_t size, int prot) {
   DWORD newProt;
-  if (!mmap_to_page_protection(prot, newProt)) {
+  DWORD access;
+  if (!mmap_to_page_protection(prot, newProt, access)) {
     return -1;
   }
 
@@ -135,7 +157,16 @@ int munlock(const void* addr, size_t length) {
 int munmap(void* addr, size_t length) {
   // Try to unmap it as a file, otherwise VirtualFree.
   if (!UnmapViewOfFile(addr)) {
-    if (!VirtualFree(addr, length, MEM_RELEASE)) {
+    if (folly::kIsDebug) {
+      // We can't do partial unmapping with Windows, so
+      // assert that we aren't trying to do that if we're
+      // in debug mode.
+      MEMORY_BASIC_INFORMATION inf;
+      VirtualQuery(addr, &inf, sizeof(inf));
+      assert(inf.BaseAddress == addr);
+      assert(inf.RegionSize == alignToAllocationGranularity(length));
+    }
+    if (!VirtualFree(addr, 0, MEM_RELEASE)) {
       return -1;
     }
     return 0;
