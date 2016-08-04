@@ -131,7 +131,9 @@ TEST(AsyncSSLSocketTest2, AttachDetachSSLContext) {
 }  // folly
 
 int main(int argc, char *argv[]) {
+#ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+#endif
   folly::SSLContext::setSSLLockTypes({
       {CRYPTO_LOCK_EVP_PKEY, folly::SSLContext::LOCK_NONE},
       {CRYPTO_LOCK_SSL_SESSION, folly::SSLContext::LOCK_SPINLOCK},

@@ -1890,6 +1890,7 @@ TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
 
 } // namespace
 
+#ifdef SIGPIPE
 ///////////////////////////////////////////////////////////////////////////
 // init_unit_test_suite
 ///////////////////////////////////////////////////////////////////////////
@@ -1901,3 +1902,4 @@ struct Initializer {
 };
 Initializer initializer;
 } // anonymous
+#endif
