@@ -20,7 +20,7 @@
 #include <sys/time.h>
 #else
 // Someone decided this was a good place to define timeval.....
-#include <WinSock2.h>
+#include <folly/portability/Windows.h>
 struct timezone {
   int tz_minuteswest;
   int tz_dsttime;
