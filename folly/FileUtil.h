@@ -19,6 +19,7 @@
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Fcntl.h>
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
 
@@ -26,7 +27,6 @@
 #include <limits>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
 namespace folly {
 

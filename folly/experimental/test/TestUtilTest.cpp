@@ -18,7 +18,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
 #include <system_error>
 
@@ -28,6 +27,7 @@
 
 #include <folly/Memory.h>
 #include <folly/portability/Environment.h>
+#include <folly/portability/Fcntl.h>
 
 using namespace folly;
 using namespace folly::test;

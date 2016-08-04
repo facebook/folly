@@ -17,6 +17,7 @@
 #include <folly/File.h>
 
 #include <folly/String.h>
+#include <folly/portability/Fcntl.h>
 
 #include <gtest/gtest.h>
 
