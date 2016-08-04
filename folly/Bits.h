@@ -65,6 +65,7 @@
 #include <folly/Portability.h>
 #include <folly/portability/Builtins.h>
 
+#include <folly/Assume.h>
 #include <folly/detail/BitsDetail.h>
 #include <folly/detail/BitIteratorDetail.h>
 #include <folly/Likely.h>
@@ -546,6 +547,12 @@ inline void storeUnaligned(void* p, T value) {
   static_assert(sizeof(Unaligned<T>) == sizeof(T), "Invalid unaligned size");
   static_assert(alignof(Unaligned<T>) == 1, "Invalid alignment");
   if (kHasUnalignedAccess) {
+    // Prior to C++14, the spec says that a placement new like this
+    // is required to check that p is not nullptr, and to do nothing
+    // if p is a nullptr. By assuming it's not a nullptr, we get a
+    // nice loud segfault in optimized builds if p is nullptr, rather
+    // than just silently doing nothing.
+    folly::assume(p != nullptr);
     new (p) Unaligned<T>(value);
   } else {
     memcpy(p, &value, sizeof(T));
