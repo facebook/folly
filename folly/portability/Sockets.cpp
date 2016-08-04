@@ -307,6 +307,11 @@ int shutdown(int s, int how) {
 int socket(int af, int type, int protocol) {
   return socket_to_fd(::socket(af, type, protocol));
 }
+
+int socketpair(int domain, int type, int protocol, int sv[2]) {
+  // Stub this out for now, to get things compiling.
+  return -1;
+}
 }
 }
 }

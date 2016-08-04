@@ -16,12 +16,6 @@
 
 #pragma once
 
-#ifdef _WIN32
-#define FOLLY_HAVE_UNIX_SOCKETS 0
-#else
-#define FOLLY_HAVE_UNIX_SOCKETS 1
-#endif
-
 #ifndef _WIN32
 #include <netdb.h>
 #include <poll.h>
@@ -38,6 +32,9 @@
 
 #include <WS2tcpip.h>
 
+using nfds_t = int;
+using sa_family_t = ADDRESS_FAMILY;
+
 // We don't actually support either of these flags
 // currently.
 #define MSG_DONTWAIT 1
@@ -52,14 +49,19 @@ struct msghdr {
   int msg_flags;
 };
 
+struct sockaddr_un {
+  sa_family_t sun_family;
+  char sun_path[108];
+};
+
 #define SHUT_RD SD_RECEIVE
 #define SHUT_WR SD_SEND
 #define SHUT_RDWR SD_BOTH
 
-using nfds_t = int;
+// These are the same, but PF_LOCAL
+// isn't defined by WinSock.
+#define PF_LOCAL PF_UNIX
 
-// This is named differently in posix.
-#define sa_family_t ADDRESS_FAMILY
 // Someone thought it would be a good idea
 // to define a field via a macro...
 #undef s_host
@@ -96,6 +98,7 @@ int socket_to_fd(SOCKET s);
 // implement.
 int accept(int s, struct sockaddr* addr, socklen_t* addrlen);
 int inet_aton(const char* cp, struct in_addr* inp);
+int socketpair(int domain, int type, int protocol, int sv[2]);
 
 // Unless you have a case where you would normally have
 // to reference the function as being explicitly in the
