@@ -18,14 +18,14 @@
 
 #ifdef _WIN32
 
+#include <intrin.h>
 #include <stdint.h>
 
 #include <folly/Portability.h>
-// The intrinsics we need are in Windows.h :(
-#include <folly/portability/Windows.h>
 
-FOLLY_ALWAYS_INLINE int64_t __sync_fetch_and_add(int64_t* ptr, int64_t value) {
-  return InterlockedExchangeAdd64(ptr, value);
+FOLLY_ALWAYS_INLINE
+int64_t __sync_fetch_and_add(volatile int64_t* ptr, int64_t value) {
+  return _InterlockedExchangeAdd64(ptr, value);
 }
 
 #endif
