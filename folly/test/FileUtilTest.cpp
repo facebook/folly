@@ -267,8 +267,8 @@ TEST_F(FileUtilTest, preadv) {
 
 TEST(String, readFile) {
   const TemporaryFile afileTemp, emptyFileTemp;
-  auto afile = afileTemp.path();
-  auto emptyFile = emptyFileTemp.path();
+  auto afile = afileTemp.path().string();
+  auto emptyFile = emptyFileTemp.path().string();
 
   EXPECT_TRUE(writeFile(string(), emptyFile.c_str()));
   EXPECT_TRUE(writeFile(StringPiece("bar"), afile.c_str()));
@@ -300,7 +300,7 @@ TEST(String, readFile) {
 class ReadFileFd : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(writeFile(StringPiece("bar"), aFile.path().c_str()));
+    ASSERT_TRUE(writeFile(StringPiece("bar"), aFile.path().string().c_str()));
   }
 
   TemporaryFile aFile;
