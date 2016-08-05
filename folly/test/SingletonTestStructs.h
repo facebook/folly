@@ -39,7 +39,7 @@ struct Watchdog {
 
   ~Watchdog() {
     if (creation_order().back() != this) {
-      throw std::out_of_range("Watchdog destruction order mismatch");
+      LOG(FATAL) << "Watchdog destruction order mismatch";
     }
     creation_order().pop_back();
   }
