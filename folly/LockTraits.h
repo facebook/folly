@@ -462,8 +462,7 @@ unlock_shared_or_unique(Mutex& mutex) {
 /**
  * A lock policy that performs exclusive lock operations.
  */
-class LockPolicyExclusive {
- public:
+struct LockPolicyExclusive {
   template <class Mutex>
   static void lock(Mutex& mutex) {
     LockTraits<Mutex>::lock(mutex);
@@ -484,8 +483,7 @@ class LockPolicyExclusive {
  * A lock policy that performs shared lock operations.
  * This policy only works with shared mutex types.
  */
-class LockPolicyShared {
- public:
+struct LockPolicyShared {
   template <class Mutex>
   static void lock(Mutex& mutex) {
     LockTraits<Mutex>::lock_shared(mutex);
@@ -506,8 +504,7 @@ class LockPolicyShared {
  * A lock policy that performs a shared lock operation if a shared mutex type
  * is given, or a normal exclusive lock operation on non-shared mutex types.
  */
-class LockPolicyShareable {
- public:
+struct LockPolicyShareable {
   template <class Mutex>
   static void lock(Mutex& mutex) {
     lock_shared_or_unique(mutex);
@@ -521,6 +518,122 @@ class LockPolicyShareable {
   template <class Mutex>
   static void unlock(Mutex& mutex) {
     unlock_shared_or_unique(mutex);
+  }
+};
+
+/**
+ * A lock policy with the following mapping
+ *
+ *  lock() -> lock_upgrade()
+ *  unlock() -> unlock_upgrade()
+ *  try_lock_for -> try_lock_upgrade_for()
+ */
+struct LockPolicyUpgrade {
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::lock_upgrade(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return LockTraits<Mutex>::try_lock_upgrade_for(mutex, timeout);
+  }
+  template <class Mutex>
+  static void unlock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_upgrade(mutex);
+  }
+};
+
+/*****************************************************************************
+ * Policies for all the transitions from possible mutex levels
+ ****************************************************************************/
+/**
+ * A lock policy with the following mapping
+ *
+ *  lock() -> unlock_upgrade_and_lock()
+ *  unlock() -> unlock()
+ *  try_lock_for -> try_unlock_upgrade_and_lock_for()
+ */
+struct LockPolicyFromUpgradeToExclusive : public LockPolicyExclusive {
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_upgrade_and_lock(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>& timeout) {
+    return LockTraits<Mutex>::try_unlock_upgrade_and_lock_for(mutex, timeout);
+  }
+};
+
+/**
+ * A lock policy with the following mapping
+ *
+ *  lock() -> unlock_and_lock_upgrade()
+ *  unlock() -> unlock_upgrade()
+ *  try_lock_for -> unlock_and_lock_upgrade()
+ */
+struct LockPolicyFromExclusiveToUpgrade : public LockPolicyUpgrade {
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_and_lock_upgrade(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>&) {
+    LockTraits<Mutex>::unlock_and_lock_upgrade(mutex);
+
+    // downgrade should be non blocking and should succeed
+    return true;
+  }
+};
+
+/**
+ * A lock policy with the following mapping
+ *
+ *  lock() -> unlock_upgrade_and_lock_shared()
+ *  unlock() -> unlock_shared()
+ *  try_lock_for -> unlock_upgrade_and_lock_shared()
+ */
+struct LockPolicyFromUpgradeToShared : public LockPolicyShared {
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_upgrade_and_lock_shared(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>&) {
+    LockTraits<Mutex>::unlock_upgrade_and_lock_shared(mutex);
+
+    // downgrade should be non blocking and should succeed
+    return true;
+  }
+};
+
+/**
+ * A lock policy with the following mapping
+ *
+ *  lock() -> unlock_and_lock_shared()
+ *  unlock() -> unlock_shared()
+ *  try_lock_for() -> unlock_and_lock_shared()
+ */
+struct LockPolicyFromExclusiveToShared : public LockPolicyShared {
+  template <class Mutex>
+  static void lock(Mutex& mutex) {
+    LockTraits<Mutex>::unlock_and_lock_shared(mutex);
+  }
+  template <class Mutex, class Rep, class Period>
+  static bool try_lock_for(
+      Mutex& mutex,
+      const std::chrono::duration<Rep, Period>&) {
+    LockTraits<Mutex>::unlock_and_lock_shared(mutex);
+
+    // downgrade should be non blocking and should succeed
+    return true;
   }
 };
 

@@ -27,6 +27,83 @@ using namespace folly;
 
 static constexpr auto one_ms = std::chrono::milliseconds(1);
 
+/**
+ * Test mutex to help to automate assertions
+ */
+class FakeAllPowerfulAssertingMutex {
+ public:
+  enum class CurrentLockState { UNLOCKED, SHARED, UPGRADE, UNIQUE };
+
+  void lock() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNLOCKED);
+    this->lock_state = CurrentLockState::UNIQUE;
+  }
+  void unlock() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNIQUE);
+    this->lock_state = CurrentLockState::UNLOCKED;
+  }
+  void lock_shared() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNLOCKED);
+    this->lock_state = CurrentLockState::SHARED;
+  }
+  void unlock_shared() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::SHARED);
+    this->lock_state = CurrentLockState::UNLOCKED;
+  }
+  void lock_upgrade() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNLOCKED);
+    this->lock_state = CurrentLockState::UPGRADE;
+  }
+  void unlock_upgrade() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UPGRADE);
+    this->lock_state = CurrentLockState::UNLOCKED;
+  }
+
+  void unlock_upgrade_and_lock() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UPGRADE);
+    this->lock_state = CurrentLockState::UNIQUE;
+  }
+  void unlock_and_lock_upgrade() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNIQUE);
+    this->lock_state = CurrentLockState::UPGRADE;
+  }
+  void unlock_and_lock_shared() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNIQUE);
+    this->lock_state = CurrentLockState::SHARED;
+  }
+  void unlock_upgrade_and_lock_shared() {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UPGRADE);
+    this->lock_state = CurrentLockState::SHARED;
+  }
+
+  template <class Rep, class Period>
+  bool try_lock_for(const std::chrono::duration<Rep, Period>&) {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNLOCKED);
+    this->lock_state = CurrentLockState::UNIQUE;
+    return true;
+  }
+
+  template <class Rep, class Period>
+  bool try_lock_upgrade_for(const std::chrono::duration<Rep, Period>&) {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UNLOCKED);
+    this->lock_state = CurrentLockState::UPGRADE;
+    return true;
+  }
+
+  template <class Rep, class Period>
+  bool try_unlock_upgrade_and_lock_for(
+      const std::chrono::duration<Rep, Period>&) {
+    EXPECT_EQ(this->lock_state, CurrentLockState::UPGRADE);
+    this->lock_state = CurrentLockState::UNIQUE;
+    return true;
+  }
+
+  /*
+   * Initialize the FakeMutex with an unlocked state
+   */
+  CurrentLockState lock_state{CurrentLockState::UNLOCKED};
+};
+
 TEST(LockTraits, std_mutex) {
   using traits = LockTraits<std::mutex>;
   static_assert(!traits::is_timed, "std:mutex is not a timed lock");
@@ -266,3 +343,80 @@ TEST(LockTraits, boost_shared_mutex) {
   unlock_shared_or_unique(mutex);
 }
 #endif // FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
+
+/**
+ * Chain the asserts from the previous test to the next lock, unlock or
+ * upgrade method calls.  Each making sure that the previous was correct.
+ */
+TEST(LockTraits, LockPolicy) {
+  using Mutex = FakeAllPowerfulAssertingMutex;
+  Mutex mutex;
+
+  // test the lock and unlock functions
+  LockPolicyUpgrade::lock(mutex);
+  mutex.unlock_upgrade();
+  mutex.lock_upgrade();
+  LockPolicyUpgrade::unlock(mutex);
+
+  mutex.lock_upgrade();
+  LockPolicyFromUpgradeToExclusive::lock(mutex);
+  mutex.unlock();
+  mutex.lock();
+  LockPolicyFromUpgradeToExclusive::unlock(mutex);
+
+  mutex.lock();
+  LockPolicyFromExclusiveToUpgrade::lock(mutex);
+  mutex.unlock_upgrade();
+  mutex.lock_upgrade();
+  LockPolicyFromExclusiveToUpgrade::unlock(mutex);
+
+  mutex.lock_upgrade();
+  LockPolicyFromUpgradeToShared::lock(mutex);
+  mutex.unlock_shared();
+  mutex.lock_shared();
+  LockPolicyFromUpgradeToShared::unlock(mutex);
+
+  mutex.lock();
+  LockPolicyFromExclusiveToShared::lock(mutex);
+  mutex.unlock_shared();
+  mutex.lock_shared();
+  LockPolicyFromExclusiveToShared::unlock(mutex);
+
+  EXPECT_EQ(mutex.lock_state, Mutex::CurrentLockState::UNLOCKED);
+}
+
+/**
+ * Similar to the test above but tests the timed version of the updates
+ */
+TEST(LockTraits, LockPolicyTimed) {
+  using Mutex = FakeAllPowerfulAssertingMutex;
+  Mutex mutex;
+
+  bool gotLock = LockPolicyUpgrade::try_lock_for(mutex, one_ms);
+  EXPECT_TRUE(gotLock) << "Should have been able to acquire the fake mutex";
+  LockPolicyUpgrade::unlock(mutex);
+
+  mutex.lock_upgrade();
+  gotLock = LockPolicyFromUpgradeToExclusive::try_lock_for(mutex, one_ms);
+  EXPECT_TRUE(gotLock)
+      << "Should have been able to upgrade from upgrade to unique";
+  mutex.unlock();
+
+  mutex.lock();
+  gotLock = LockPolicyFromExclusiveToUpgrade::try_lock_for(mutex, one_ms);
+  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from exclusive "
+                          "to upgrade";
+  mutex.unlock_upgrade();
+
+  mutex.lock_upgrade();
+  gotLock = LockPolicyFromUpgradeToShared::try_lock_for(mutex, one_ms);
+  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from upgrade to "
+                          "shared";
+  mutex.unlock_shared();
+
+  mutex.lock();
+  gotLock = LockPolicyFromExclusiveToShared::try_lock_for(mutex, one_ms);
+  EXPECT_TRUE(gotLock) << "Should have been able to downgrade from exclusive "
+                          "to shared";
+  mutex.unlock_shared();
+}
