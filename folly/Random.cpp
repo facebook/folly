@@ -42,8 +42,16 @@ void readRandomDevice(void* data, size_t size) {
   static folly::once_flag flag;
   static HCRYPTPROV cryptoProv;
   folly::call_once(flag, [&] {
-    PCHECK(CryptAcquireContext(&cryptoProv, nullptr, nullptr,
-                               PROV_RSA_FULL, 0));
+    if (!CryptAcquireContext(&cryptoProv, nullptr, nullptr, PROV_RSA_FULL, 0)) {
+      if (GetLastError() == NTE_BAD_KEYSET) {
+        // Mostly likely cause of this is that no key container
+        // exists yet, so try to create one.
+        PCHECK(CryptAcquireContext(
+            &cryptoProv, nullptr, nullptr, PROV_RSA_FULL, CRYPT_NEWKEYSET));
+      } else {
+        LOG(FATAL) << "Failed to acquire the default crypto context.";
+      }
+    }
   });
   CHECK(size <= std::numeric_limits<DWORD>::max());
   PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
