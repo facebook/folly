@@ -250,20 +250,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
     return count_;
   }
 
-  /**
-   * This turns on more exact timing.  By default the wheel timer
-   * increments its cached time only once everyN (default) ticks.
-   *
-   * With catchupEveryN at 1, timeouts will only be delayed until the
-   * next tick, at which point all overdue timeouts are called.  The
-   * wheel timer is approximately 2x slower with this set to 1.
-   *
-   * Load testing in opt mode showed skew was about 1% with no catchup.
-   */
-  void setCatchupEveryN(uint32_t everyN) {
-    catchupEveryN_ = everyN;
-  }
-
   bool isDetachable() const {
     return !folly::AsyncTimeout::isScheduled();
   }
@@ -310,10 +296,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
   uint64_t count_;
   std::chrono::milliseconds now_;
 
-  static constexpr uint32_t DEFAULT_CATCHUP_EVERY_N = 10;
-
-  uint32_t catchupEveryN_;
-  uint32_t expirationsSinceCatchup_;
   bool* processingCallbacksGuard_;
 };
 

@@ -262,7 +262,6 @@ TEST_F(HHWheelTimerTest, AtMostEveryN) {
   milliseconds interval(10);
   milliseconds atMostEveryN(3);
   StackWheelTimer t(&eventBase, atMostEveryN);
-  t.setCatchupEveryN(70);
 
   // Create 60 timeouts to be added to ts1 at 1ms intervals.
   uint32_t numTimeouts = 60;
@@ -367,11 +366,8 @@ TEST_F(HHWheelTimerTest, SlowLoop) {
   ASSERT_EQ(t.count(), 0);
 
   // Check that the timeout was delayed by sleep
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(15), milliseconds(1));
-  T_CHECK_TIMEOUT(start, end, milliseconds(15), milliseconds(1));
-
-  // Try it again, this time with catchup timing every loop
-  t.setCatchupEveryN(1);
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(10), milliseconds(1));
+  T_CHECK_TIMEOUT(start, end, milliseconds(10), milliseconds(1));
 
   eventBase.runInLoop([](){usleep(10000);});
   t.scheduleTimeout(&t2, milliseconds(5));

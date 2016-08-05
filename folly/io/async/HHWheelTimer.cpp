@@ -87,8 +87,6 @@ HHWheelTimer::HHWheelTimer(
       defaultTimeout_(defaultTimeoutMS),
       nextTick_(1),
       count_(0),
-      catchupEveryN_(DEFAULT_CATCHUP_EVERY_N),
-      expirationsSinceCatchup_(0),
       processingCallbacksGuard_(nullptr) {}
 
 HHWheelTimer::~HHWheelTimer() {
@@ -181,14 +179,8 @@ void HHWheelTimer::timeoutExpired() noexcept {
   // timeoutExpired() can only be invoked directly from the event base loop.
   // It should never be invoked recursively.
   //
-  milliseconds catchup = now_ + interval_;
-  // If catchup is enabled, we may have missed multiple intervals, use
-  // currentTime() to check exactly.
-  if (++expirationsSinceCatchup_ >= catchupEveryN_) {
-    catchup = std::chrono::duration_cast<milliseconds>(
+  milliseconds catchup = std::chrono::duration_cast<milliseconds>(
       std::chrono::steady_clock::now().time_since_epoch());
-    expirationsSinceCatchup_ = 0;
-  }
   while (now_ < catchup) {
     now_ += interval_;
 
