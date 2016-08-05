@@ -154,14 +154,12 @@ using CountPair = std::pair<int, int>;
 // This class is specialized only to be uesed in SynchronizedLockTest
 class FakeMutex {
  public:
-  bool lock() {
+  void lock() {
     ++lockCount_;
-    return true;
   }
 
-  bool unlock() {
+  void unlock() {
     ++unlockCount_;
-    return true;
   }
 
   static CountPair getLockUnlockCount() {

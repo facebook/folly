@@ -44,7 +44,7 @@ boost::chrono::duration<Rep, boost::ratio<Num, Denom>> toBoostDuration(
  */
 template <>
 struct LockTraits<boost::shared_mutex>
-    : public folly::detail::LockTraitsSharedBase<boost::shared_mutex> {
+    : public LockTraitsBase<boost::shared_mutex> {
   static constexpr bool is_shared = true;
   static constexpr bool is_timed = true;
 
@@ -68,7 +68,7 @@ struct LockTraits<boost::shared_mutex>
  */
 template <>
 struct LockTraits<boost::timed_mutex>
-    : public folly::detail::LockTraitsUniqueBase<boost::timed_mutex> {
+    : public LockTraitsBase<boost::timed_mutex> {
   static constexpr bool is_shared = false;
   static constexpr bool is_timed = true;
 
@@ -85,7 +85,7 @@ struct LockTraits<boost::timed_mutex>
  */
 template <>
 struct LockTraits<boost::recursive_timed_mutex>
-    : public folly::detail::LockTraitsUniqueBase<boost::recursive_timed_mutex> {
+    : public LockTraitsBase<boost::recursive_timed_mutex> {
   static constexpr bool is_shared = false;
   static constexpr bool is_timed = true;
 
