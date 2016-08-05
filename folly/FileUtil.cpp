@@ -83,7 +83,7 @@ int flockNoInt(int fd, int operation) {
 }
 
 int shutdownNoInt(int fd, int how) {
-  return wrapNoInt(shutdown, fd, how);
+  return wrapNoInt(portability::sockets::shutdown, fd, how);
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {

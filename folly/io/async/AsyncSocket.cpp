@@ -34,6 +34,8 @@
 using std::string;
 using std::unique_ptr;
 
+namespace fsp = folly::portability::sockets;
+
 namespace folly {
 
 // static members initializers
@@ -335,7 +337,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // constant (PF_xxx) rather than an address family (AF_xxx), but the
     // distinction is mainly just historical.  In pretty much all
     // implementations the PF_foo and AF_foo constants are identical.
-    fd_ = socket(address.getFamily(), SOCK_STREAM, 0);
+    fd_ = fsp::socket(address.getFamily(), SOCK_STREAM, 0);
     if (fd_ < 0) {
       auto errnoCopy = errno;
       throw AsyncSocketException(
@@ -393,7 +395,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
     // bind the socket
     if (bindAddr != anyAddress()) {
       int one = 1;
-      if (::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
+      if (setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))) {
         auto errnoCopy = errno;
         doClose();
         throw AsyncSocketException(
@@ -404,7 +406,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
 
       bindAddr.getAddress(&addrStorage);
 
-      if (::bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
+      if (bind(fd_, saddr, bindAddr.getActualSize()) != 0) {
         auto errnoCopy = errno;
         doClose();
         throw AsyncSocketException(
@@ -1004,7 +1006,7 @@ void AsyncSocket::shutdownWriteNow() {
       }
 
       // Shutdown writes on the file descriptor
-      ::shutdown(fd_, SHUT_WR);
+      shutdown(fd_, SHUT_WR);
 
       // Immediately fail all write requests
       failAllWrites(socketShutdownForWritesEx);
@@ -1547,7 +1549,7 @@ void AsyncSocket::handleWrite() noexcept {
             }
           } else {
             // Reads are still enabled, so we are only doing a half-shutdown
-            ::shutdown(fd_, SHUT_WR);
+            shutdown(fd_, SHUT_WR);
           }
         }
       }
@@ -1698,7 +1700,7 @@ void AsyncSocket::handleConnect() noexcept {
     // are still connecting we just abort the connect rather than waiting for
     // it to complete.
     assert((shutdownFlags_ & SHUT_READ) == 0);
-    ::shutdown(fd_, SHUT_WR);
+    shutdown(fd_, SHUT_WR);
     shutdownFlags_ |= SHUT_WRITE;
   }
 

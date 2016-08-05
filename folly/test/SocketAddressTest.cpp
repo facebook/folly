@@ -21,6 +21,8 @@
 #include <sstream>
 #include <system_error>
 
+#include <folly/portability/Sockets.h>
+#include <folly/portability/Stdlib.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
 using namespace boost;
@@ -29,6 +31,8 @@ using std::cerr;
 using std::endl;
 using folly::SocketAddress;
 using folly::SocketAddressTestHelper;
+
+namespace fsp = folly::portability::sockets;
 
 TEST(SocketAddress, Size) {
   SocketAddress addr;
@@ -663,7 +667,7 @@ void testSetFromSocket(const SocketAddress *serverBindAddr,
                        SocketAddress *serverPeerAddrRet,
                        SocketAddress *clientAddrRet,
                        SocketAddress *clientPeerAddrRet) {
-  int listenSock = socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  int listenSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
   REQUIRE_ERRNO(listenSock > 0, "failed to create listen socket");
   sockaddr_storage laddr;
   serverBindAddr->getAddress(&laddr);
@@ -681,7 +685,7 @@ void testSetFromSocket(const SocketAddress *serverBindAddr,
 
   // Note that we use the family from serverBindAddr here, since we allow
   // clientBindAddr to be nullptr.
-  int clientSock = socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  int clientSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
   REQUIRE_ERRNO(clientSock > 0, "failed to create client socket");
   if (clientBindAddr != nullptr) {
     sockaddr_storage clientAddr;

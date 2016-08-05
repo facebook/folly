@@ -240,11 +240,11 @@ void SocketAddress::setFromPath(StringPiece path) {
   }
 }
 
-void SocketAddress::setFromPeerAddress(SocketDesc socket) {
+void SocketAddress::setFromPeerAddress(int socket) {
   setFromSocket(socket, getpeername);
 }
 
-void SocketAddress::setFromLocalAddress(SocketDesc socket) {
+void SocketAddress::setFromLocalAddress(int socket) {
   setFromSocket(socket, getsockname);
 }
 
@@ -644,7 +644,9 @@ void SocketAddress::setFromLocalAddr(const struct addrinfo* info) {
   setFromSockaddr(info->ai_addr, info->ai_addrlen);
 }
 
-void SocketAddress::setFromSocket(SocketDesc socket, GetPeerNameFunc fn) {
+void SocketAddress::setFromSocket(
+    int socket,
+    int (*fn)(int, struct sockaddr*, socklen_t*)) {
   // Try to put the address into a local storage buffer.
   sockaddr_storage tmp_sock;
   socklen_t addrLen = sizeof(tmp_sock);

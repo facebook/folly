@@ -30,6 +30,8 @@
 #define SO_REUSEPORT 15
 #endif
 
+namespace fsp = folly::portability::sockets;
+
 namespace folly {
 
 AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
@@ -47,7 +49,7 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  int socket = ::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
+  int socket = fsp::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
   if (socket == -1) {
     throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                               "error creating async udp socket",
@@ -97,8 +99,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (address.getFamily() == AF_INET6) {
     int flag = 1;
-    if (::setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY,
-                     &flag, sizeof(flag))) {
+    if (setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "Failed to set IPV6_V6ONLY",
@@ -110,7 +111,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (::bind(socket, saddr, address.getActualSize()) != 0) {
+  if (fsp::bind(socket, saddr, address.getActualSize()) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "failed to bind the async udp socket for:" + address.describe(),
@@ -252,7 +253,7 @@ void AsyncUDPSocket::handleRead() noexcept {
   struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
-  ssize_t bytesRead = ::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  ssize_t bytesRead = recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 

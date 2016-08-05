@@ -51,6 +51,8 @@ using boost::scoped_array;
 using namespace folly;
 using namespace testing;
 
+namespace fsp = folly::portability::sockets;
+
 class DelayedWrite: public AsyncTimeout {
  public:
   DelayedWrite(const std::shared_ptr<AsyncSocket>& socket,
@@ -2079,7 +2081,7 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // Test creating a socket, and letting AsyncServerSocket bind and listen
   {
     // Manually create a socket
-    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     ASSERT_GE(fd, 0);
 
     // Create a server socket
@@ -2100,7 +2102,7 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // then letting AsyncServerSocket listen
   {
     // Manually create a socket
-    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     ASSERT_GE(fd, 0);
     // bind
     struct sockaddr_in addr;
@@ -2132,7 +2134,7 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // then giving it to AsyncServerSocket
   {
     // Manually create a socket
-    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     ASSERT_GE(fd, 0);
     // bind
     struct sockaddr_in addr;

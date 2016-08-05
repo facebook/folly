@@ -26,6 +26,8 @@
 
 using folly::ShutdownSocketSet;
 
+namespace fsp = folly::portability::sockets;
+
 namespace folly { namespace test {
 
 ShutdownSocketSet shutdownSocketSet;
@@ -56,7 +58,7 @@ Server::Server()
   : acceptSocket_(-1),
     port_(0),
     stop_(NO_STOP) {
-  acceptSocket_ = socket(PF_INET, SOCK_STREAM, 0);
+  acceptSocket_ = fsp::socket(PF_INET, SOCK_STREAM, 0);
   CHECK_ERR(acceptSocket_);
   shutdownSocketSet.add(acceptSocket_);
 
@@ -130,7 +132,7 @@ void Server::join() {
 }
 
 int createConnectedSocket(int port) {
-  int sock = socket(PF_INET, SOCK_STREAM, 0);
+  int sock = fsp::socket(PF_INET, SOCK_STREAM, 0);
   CHECK_ERR(sock);
   sockaddr_in addr;
   addr.sin_family = AF_INET;

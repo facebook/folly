@@ -207,7 +207,8 @@ class TestServer {
   // Create a TestServer.
   // This immediately starts listening on an ephemeral port.
   explicit TestServer(bool enableTFO = false) : fd_(-1) {
-    fd_ = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    namespace fsp = folly::portability::sockets;
+    fd_ = fsp::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fd_ < 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
