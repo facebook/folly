@@ -107,34 +107,115 @@ TEST(DeterministicSchedule, buggyAdd) {
   } // for bug
 } // TEST
 
-/// Testing support for auxiliary variables and global invariants
+/// Test support for auxiliary data and global invariants
+///
 
-/** auxiliary variables for atomic counter test */
-struct AtomicCounterAux {
-  std::vector<int> local_;
+/// How to use DSched support for auxiliary data and global invariants:
+///   1. Forward declare an annotated shared class
+///   2. Add the annotated shared class as a friend of the original class(es)
+///      to be tested
+///   3. Define auxiliary data
+///   4. Define function(s) for updating auxiliary data to match shared updates
+///   5. Define the annotated shared class
+///      It supports an interface to the original class along with auxiliary
+///        functions for updating aux data, checking invariants, and/or logging
+///      It may have to duplicate the steps of multi-step operations in the
+////       original code in order to manage aux data and check invariants after
+///        shared accesses other than the first access in an opeeration
+///   6. Define function for checking global invariants and/or logging global
+///      state
+///   7. Define function generator(s) for function object(s) that update aux
+///      data, check invariants, and/or log state
+///   8. Define TEST using anotated shared data, aux data, and aux functions
 
-  explicit AtomicCounterAux(int nthr) {
-    local_.resize(nthr, 0);
+using DSched = DeterministicSchedule;
+using AuxFn = std::function<void(uint64_t, bool)>;
+
+/** forward declaration of annotated shared class */
+class AnnotatedAtomicCounter;
+
+/** original shared class to be tested */
+template <typename T, template <typename> class Atom = std::atomic>
+class AtomicCounter {
+  friend AnnotatedAtomicCounter;
+
+ public:
+  explicit AtomicCounter(T val) : counter_(val) {}
+
+  void inc() {
+    counter_.fetch_add(1);
   }
+
+  void inc_bug() {
+    int newval = counter_.load() + 1;
+    counter_.store(newval);
+  }
+
+  T load() {
+    return counter_.load();
+  }
+
+ private:
+  Atom<T> counter_ = {0};
 };
 
-/** auxiliary function for checking global invariants and logging
- *  steps of atomic counter test */
-void checkAtomicCounter(
-    int tid,
-    uint64_t step,
-    DeterministicAtomic<int>& shared,
-    AtomicCounterAux& aux) {
+/** auxiliary data */
+struct AuxData {
+  explicit AuxData(int nthr) {
+    local_.resize(nthr, 0);
+  }
+
+  std::vector<int> local_;
+};
+
+/** aux update function(s) */
+void auxUpdateAfterInc(int tid, AuxData& auxdata, bool success) {
+  if (success) {
+    auxdata.local_[tid]++;
+  }
+}
+
+/** annotated shared class */
+class AnnotatedAtomicCounter {
+ public:
+  explicit AnnotatedAtomicCounter(int val) : shared_(val) {}
+
+  void inc(AuxFn& auxfn) {
+    DSched::setAux(auxfn);
+    /* calls the fine-grained original */
+    shared_.inc();
+  }
+
+  void inc_bug(AuxFn auxfn) {
+    /* duplicates the steps of the multi-access original in order to
+     * annotate the second access */
+    int newval = shared_.counter_.load() + 1;
+    DSched::setAux(auxfn);
+    shared_.counter_.store(newval);
+  }
+
+  int load_direct() {
+    return shared_.counter_.load_direct();
+  }
+
+ private:
+  AtomicCounter<int, DeterministicAtomic> shared_;
+};
+
+using Annotated = AnnotatedAtomicCounter;
+
+/** aux log & check function */
+void auxCheck(int tid, uint64_t step, Annotated& annotated, AuxData& auxdata) {
   /* read shared data */
-  int val = shared.load_direct();
-  /* read auxiliary variables */
+  int val = annotated.load_direct();
+  /* read auxiliary data */
   int sum = 0;
-  for (int v : aux.local_) {
+  for (int v : auxdata.local_) {
     sum += v;
   }
   /* log state */
-  VLOG(2) << "Step " << step << " -- tid " << tid << " -- shared counter "
-          << val << " -- sum increments " << sum;
+  VLOG(2) << "Step " << step << " -- tid " << tid
+          << " -- shared counter= " << val << " -- sum increments= " << sum;
   /* check invariant */
   if (val != sum) {
     LOG(ERROR) << "Failed after step " << step;
@@ -143,17 +224,11 @@ void checkAtomicCounter(
   }
 }
 
-std::function<void(uint64_t, bool)> auxAtomicCounter(
-    DeterministicAtomic<int>& shared,
-    AtomicCounterAux& aux,
-    int tid) {
-  return [&shared, &aux, tid](uint64_t step, bool success) {
-    // update auxiliary data
-    if (success) {
-      aux.local_[tid]++;
-    }
-    // check invariants
-    checkAtomicCounter(tid, step, shared, aux);
+/** function generator(s) */
+AuxFn auxAfterInc(int tid, Annotated& annotated, AuxData& auxdata) {
+  return [&annotated, &auxdata, tid](uint64_t step, bool success) {
+    auxUpdateAfterInc(tid, auxdata, success);
+    auxCheck(tid, step, annotated, auxdata);
   };
 }
 
@@ -170,30 +245,27 @@ TEST(DSchedCustom, atomic_add) {
 
   CHECK_GT(nthr, 0);
 
-  DeterministicAtomic<int> counter{0};
-  AtomicCounterAux auxData(nthr);
-  DeterministicSchedule sched(DeterministicSchedule::uniform(seed));
+  Annotated annotated(0);
+  AuxData auxdata(nthr);
+  DSched sched(DSched::uniform(seed));
 
   std::vector<std::thread> threads(nthr);
   for (int tid = 0; tid < nthr; ++tid) {
-    threads[tid] = DeterministicSchedule::thread([&, tid]() {
-      auto auxFn = auxAtomicCounter(counter, auxData, tid);
+    threads[tid] = DSched::thread([&, tid]() {
+      AuxFn auxfn = auxAfterInc(tid, annotated, auxdata);
       for (int i = 0; i < niter; ++i) {
         if (bug && (tid == 0) && (i % 10 == 0)) {
-          int newval = counter.load() + 1;
-          DeterministicSchedule::setAux(auxFn);
-          counter.store(newval);
+          annotated.inc_bug(auxfn);
         } else {
-          DeterministicSchedule::setAux(auxFn);
-          counter.fetch_add(1);
+          annotated.inc(auxfn);
         }
       }
     });
   }
   for (auto& t : threads) {
-    DeterministicSchedule::join(t);
+    DSched::join(t);
   }
-  EXPECT_EQ(counter.load_direct(), nthr * niter);
+  EXPECT_EQ(annotated.load_direct(), nthr * niter);
 }
 
 int main(int argc, char** argv) {
