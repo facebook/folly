@@ -19,6 +19,7 @@
 #include <mutex>
 
 #include <folly/Portability.h>
+#include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 
 #if !defined(__NR_membarrier) && FOLLY_X64 && !FOLLY_MOBILE && \
