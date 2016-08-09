@@ -1536,6 +1536,10 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     flags = MSG_EOR;
   }
 
+#ifdef MSG_NOSIGNAL
+  flags |= MSG_NOSIGNAL;
+#endif
+
   auto result =
       tsslSock->sendSocketMessage(BIO_get_fd(b, nullptr), &msg, flags);
   BIO_clear_retry_flags(b);
