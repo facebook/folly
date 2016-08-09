@@ -204,7 +204,7 @@ TEST_F(EnvVarSaverTest, ExampleNew) {
 }
 
 TEST_F(EnvVarSaverTest, ExampleExisting) {
-  auto key = "USER";
+  auto key = "PATH";
   EXPECT_NE(nullptr, getenv(key));
   auto value = std::string{getenv(key)};
 
@@ -216,7 +216,7 @@ TEST_F(EnvVarSaverTest, ExampleExisting) {
 }
 
 TEST_F(EnvVarSaverTest, ExampleDeleting) {
-  auto key = "USER";
+  auto key = "PATH";
   EXPECT_NE(nullptr, getenv(key));
   auto value = std::string{getenv(key)};
 
