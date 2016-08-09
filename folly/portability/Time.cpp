@@ -320,8 +320,10 @@ tm* localtime_r(const time_t* t, tm* o) {
 
 int nanosleep(const struct timespec* request, struct timespec* remain) {
   Sleep((DWORD)((request->tv_sec * 1000) + (request->tv_nsec / 1000000)));
-  remain->tv_nsec = 0;
-  remain->tv_sec = 0;
+  if (remain != nullptr) {
+    remain->tv_nsec = 0;
+    remain->tv_sec = 0;
+  }
   return 0;
 }
 
