@@ -60,8 +60,7 @@ int fcntl(int fd, int cmd, ...) {
     case F_SETFL: {
       int flags = va_arg(args, int);
       if (flags & O_NONBLOCK) {
-        // If it's not a socket, it's probably a pipe, and
-        // those are non-blocking by default with Windows.
+        // If it's not a socket, it's probably a pipe.
         if (folly::portability::sockets::is_fh_socket(fd)) {
           SOCKET s = (SOCKET)_get_osfhandle(fd);
           if (s != INVALID_SOCKET) {
@@ -69,7 +68,13 @@ int fcntl(int fd, int cmd, ...) {
             res = ioctlsocket(s, FIONBIO, &nonBlockingEnabled);
           }
         } else {
-          res = 0;
+          HANDLE p = (HANDLE)_get_osfhandle(fd);
+          if (GetFileType(p) == FILE_TYPE_PIPE) {
+            DWORD newMode = PIPE_READMODE_BYTE | PIPE_NOWAIT;
+            if (SetNamedPipeHandleState(p, &newMode, nullptr, nullptr)) {
+              res = 0;
+            }
+          }
         }
       }
       break;
