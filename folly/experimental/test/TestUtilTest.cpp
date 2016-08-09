@@ -196,6 +196,11 @@ TEST_F(EnvVarSaverTest, ExampleNew) {
   auto key = "hahahahaha";
   EXPECT_EQ(nullptr, getenv(key));
 
+  PCHECK(0 == setenv(key, "", true));
+  EXPECT_STREQ("", getenv(key));
+  PCHECK(0 == unsetenv(key));
+  EXPECT_EQ(nullptr, getenv(key));
+
   auto saver = make_unique<EnvVarSaver>();
   PCHECK(0 == setenv(key, "blah", true));
   EXPECT_EQ("blah", std::string{getenv(key)});
