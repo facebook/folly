@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 
 namespace folly {
 
@@ -29,6 +30,49 @@ constexpr T constexpr_max(T a, T b) {
 template <typename T>
 constexpr T constexpr_min(T a, T b) {
   return a < b ? a : b;
+}
+
+namespace detail {
+
+template <typename T, typename = void>
+struct constexpr_abs_helper {};
+
+template <typename T>
+struct constexpr_abs_helper<
+    T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  static constexpr T go(T t) {
+    return t < static_cast<T>(0) ? -t : t;
+  }
+};
+
+template <typename T>
+struct constexpr_abs_helper<
+    T,
+    typename std::enable_if<
+        std::is_integral<T>::value && !std::is_same<T, bool>::value &&
+        std::is_unsigned<T>::value>::type> {
+  static constexpr T go(T t) {
+    return t;
+  }
+};
+
+template <typename T>
+struct constexpr_abs_helper<
+    T,
+    typename std::enable_if<
+        std::is_integral<T>::value && !std::is_same<T, bool>::value &&
+        std::is_signed<T>::value>::type> {
+  static constexpr typename std::make_unsigned<T>::type go(T t) {
+    return t < static_cast<T>(0) ? -t : t;
+  }
+};
+}
+
+template <typename T>
+constexpr auto constexpr_abs(T t)
+    -> decltype(detail::constexpr_abs_helper<T>::go(t)) {
+  return detail::constexpr_abs_helper<T>::go(t);
 }
 
 #ifdef _MSC_VER

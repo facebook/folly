@@ -237,6 +237,10 @@ portability_time_test_SOURCES = ../portability/test/TimeTest.cpp
 portability_time_test_LDADD = libfollytestmain.la
 TESTS += portability_time_test
 
+portability_constexpr_test_SOURCES = ../portability/test/ConstexprTest.cpp
+portability_constexpr_test_LDADD = libfollytestmain.la
+TESTS += portability_constexpr_test
+
 try_test_SOURCES = TryTest.cpp
 try_test_LDADD = libfollytestmain.la
 TESTS += try_test
