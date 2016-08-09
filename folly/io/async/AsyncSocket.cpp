@@ -1770,18 +1770,6 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
     msg->msg_namelen = len;
     totalWritten = tfoSendMsg(fd_, msg, msg_flags);
     if (totalWritten >= 0) {
-      // Call tfo_succeeded to check if TFO was used.
-      tfoSucceeded_ = detail::tfo_succeeded(fd_);
-      if (errno != 0) {
-        auto errnoCopy = errno;
-        AsyncSocketException ex(
-            AsyncSocketException::INTERNAL_ERROR,
-            withAddr("error calling tfo_succeeded"),
-            errnoCopy);
-        return WriteResult(
-            WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));
-      }
-
       tfoFinished_ = true;
       state_ = StateEnum::ESTABLISHED;
       handleInitialReadWrite();
