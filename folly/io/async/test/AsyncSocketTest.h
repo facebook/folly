@@ -246,6 +246,7 @@ class TestServer {
   }
 
   int acceptFD(int timeout=50) {
+    namespace fsp = folly::portability::sockets;
     struct pollfd pfd;
     pfd.fd = fd_;
     pfd.events = POLLIN;
@@ -261,7 +262,7 @@ class TestServer {
           errno);
     }
 
-    int acceptedFd = ::accept(fd_, nullptr, nullptr);
+    int acceptedFd = fsp::accept(fd_, nullptr, nullptr);
     if (acceptedFd < 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,

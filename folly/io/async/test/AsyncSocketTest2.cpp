@@ -698,7 +698,7 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
   acceptedSocket->flush();
   // Shutdown writes to the accepted socket.  This will cause it to see EOF
   // and uninstall the read callback.
-  ::shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
+  shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
 
   // Loop
   evb.loop();
@@ -791,7 +791,7 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
   acceptedSocket->flush();
   // Shutdown writes to the accepted socket.  This will cause it to see EOF
   // and uninstall the read callback.
-  ::shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
+  shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
 
   // Loop
   evb.loop();

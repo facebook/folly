@@ -21,6 +21,8 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#include <event2/util.h>
+
 #include <MSWSock.h>
 
 #include <folly/ScopeGuard.h>
@@ -48,6 +50,9 @@ bool is_fh_socket(int fh) {
 }
 
 SOCKET fd_to_socket(int fd) {
+  if (fd == -1) {
+    return INVALID_SOCKET;
+  }
   // We do this in a roundabout way to allow us to compile even if
   // we're doing a bit of trickery to ensure that things aren't
   // being implicitly converted to a SOCKET by temporarily
@@ -59,6 +64,9 @@ SOCKET fd_to_socket(int fd) {
 }
 
 int socket_to_fd(SOCKET s) {
+  if (s == INVALID_SOCKET) {
+    return -1;
+  }
   return _open_osfhandle((intptr_t)s, O_RDWR | O_BINARY);
 }
 
@@ -79,7 +87,11 @@ int bind(int s, const struct sockaddr* name, socklen_t namelen) {
 }
 
 int connect(int s, const struct sockaddr* name, socklen_t namelen) {
-  return wrapSocketFunction<int>(::connect, s, name, namelen);
+  auto r = wrapSocketFunction<int>(::connect, s, name, namelen);
+  if (r == -1 && errno == WSAEWOULDBLOCK) {
+    errno = EINPROGRESS;
+  }
+  return r;
 }
 
 int getpeername(int s, struct sockaddr* name, socklen_t* namelen) {
@@ -228,23 +240,23 @@ ssize_t sendmsg(int s, const struct msghdr* message, int fl) {
   if (message->msg_name != nullptr || message->msg_namelen != 0) {
     return (ssize_t)-1;
   }
-  WSAMSG msg;
-  msg.name = nullptr;
-  msg.namelen = 0;
-  msg.Control.buf = (CHAR*)message->msg_control;
-  msg.Control.len = (ULONG)message->msg_controllen;
-  msg.dwFlags = 0;
-  msg.dwBufferCount = (DWORD)message->msg_iovlen;
-  msg.lpBuffers = new WSABUF[message->msg_iovlen];
-  SCOPE_EXIT { delete[] msg.lpBuffers; };
-  for (size_t i = 0; i < message->msg_iovlen; i++) {
-    msg.lpBuffers[i].buf = (CHAR*)message->msg_iov[i].iov_base;
-    msg.lpBuffers[i].len = (ULONG)message->msg_iov[i].iov_len;
-  }
 
-  DWORD bytesSent;
-  int res = WSASendMsg(h, &msg, 0, &bytesSent, nullptr, nullptr);
-  return res == 0 ? (ssize_t)bytesSent : -1;
+  // Unfortunately, WSASendMsg requires the socket to have been opened
+  // as either SOCK_DGRAM or SOCK_RAW, but sendmsg has no such requirement,
+  // so we have to implement it based on send instead :(
+  ssize_t bytesSent = 0;
+  for (size_t i = 0; i < message->msg_iovlen; i++) {
+    auto r = ::send(
+        h,
+        (const char*)message->msg_iov[i].iov_base,
+        message->msg_iov[i].iov_len,
+        message->msg_flags);
+    if (r == -1) {
+      return -1;
+    }
+    bytesSent += r;
+  }
+  return bytesSent;
 }
 
 ssize_t sendto(
@@ -309,8 +321,17 @@ int socket(int af, int type, int protocol) {
 }
 
 int socketpair(int domain, int type, int protocol, int sv[2]) {
-  // Stub this out for now, to get things compiling.
-  return -1;
+  if (domain != PF_UNIX || type != SOCK_STREAM || protocol != 0) {
+    return -1;
+  }
+  intptr_t pair[2];
+  auto r = evutil_socketpair(AF_INET, type, protocol, pair);
+  if (r == -1) {
+    return r;
+  }
+  sv[0] = _open_osfhandle(pair[0], O_RDWR | O_BINARY);
+  sv[1] = _open_osfhandle(pair[1], O_RDWR | O_BINARY);
+  return 0;
 }
 }
 }

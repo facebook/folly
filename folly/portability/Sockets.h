@@ -37,7 +37,7 @@ using sa_family_t = ADDRESS_FAMILY;
 
 // We don't actually support either of these flags
 // currently.
-#define MSG_DONTWAIT 1
+#define MSG_DONTWAIT 0
 #define MSG_EOR 0
 struct msghdr {
   void* msg_name;
@@ -61,6 +61,7 @@ struct sockaddr_un {
 // These are the same, but PF_LOCAL
 // isn't defined by WinSock.
 #define PF_LOCAL PF_UNIX
+#define SO_REUSEPORT SO_REUSEADDR
 
 // Someone thought it would be a good idea
 // to define a field via a macro...
@@ -71,6 +72,7 @@ namespace folly {
 namespace portability {
 namespace sockets {
 #ifndef _WIN32
+using ::accept;
 using ::bind;
 using ::connect;
 using ::getpeername;
