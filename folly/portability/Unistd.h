@@ -71,7 +71,7 @@ int lockf(int fd, int cmd, off_t len);
 long lseek(int fh, long off, int orig);
 int read(int fh, void* buf, unsigned int mcc);
 int rmdir(const char* path);
-int pipe(int* pth);
+int pipe(int pth[2]);
 int pread(int fd, void* buf, size_t count, off_t offset);
 int pwrite(int fd, const void* buf, size_t count, off_t offset);
 ssize_t readlink(const char* path, char* buf, size_t buflen);
