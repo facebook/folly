@@ -335,15 +335,24 @@ struct Synchronized : public SynchronizedBase<
    * Copy constructor copies the data (with locking the source and
    * all) but does NOT copy the mutex. Doing so would result in
    * deadlocks.
+   *
+   * Note that the copy constructor may throw because it acquires a lock in
+   * the contextualRLock() method
    */
-  Synchronized(const Synchronized& rhs) noexcept(nxCopyCtor)
+  Synchronized(const Synchronized& rhs) /* may throw */
       : Synchronized(rhs, rhs.contextualRLock()) {}
 
   /**
    * Move constructor moves the data (with locking the source and all)
    * but does not move the mutex.
+   *
+   * Note that the move constructor may throw because it acquires a lock.
+   * Since the move constructor is not declared noexcept, when objects of this
+   * class are used as elements in a vector or a similar container.  The
+   * elements might not be moved around when resizing.  They might be copied
+   * instead.  You have been warned.
    */
-  Synchronized(Synchronized&& rhs) noexcept(nxMoveCtor)
+  Synchronized(Synchronized&& rhs) /* may throw */
       : Synchronized(std::move(rhs), rhs.contextualLock()) {}
 
   /**
