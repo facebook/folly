@@ -1768,11 +1768,12 @@ public:
 
   size_type find(const value_type* needle, const size_type pos,
                  const size_type nsize) const {
-    if (!nsize) return pos;
     auto const size = this->size();
     // nsize + pos can overflow (eg pos == npos), guard against that by checking
     // that nsize + pos does not wrap around.
     if (nsize + pos > size || nsize + pos < pos) return npos;
+
+    if (nsize == 0) return pos;
     // Don't use std::search, use a Boyer-Moore-like trick by comparing
     // the last characters first
     auto const haystack = data();

@@ -1267,6 +1267,9 @@ TEST(FBString, testFixedBugs) {
     auto test2 = "a" + std::move(s2);
     EXPECT_EQ(2, test2.size());
   }
+  { // D3698862
+    EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
+  }
 }
 
 TEST(FBString, findWithNpos) {
