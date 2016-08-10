@@ -1121,6 +1121,13 @@ TEST(EventBaseTest, RunInThread) {
   RunInThreadData data(numThreads, opsPerThread);
 
   deque<std::thread> threads;
+  SCOPE_EXIT {
+    // Wait on all of the threads.
+    for (auto& thread : threads) {
+      thread.join();
+    }
+  };
+
   for (uint32_t i = 0; i < numThreads; ++i) {
     threads.emplace_back([i, &data] {
         for (int n = 0; n < data.opsPerThread; ++n) {
@@ -1186,24 +1193,23 @@ TEST(EventBaseTest, RunInEventBaseThreadAndWait) {
     auto& atom = atoms.at(i);
     atom = make_unique<atomic<size_t>>(0);
   }
-  vector<thread> threads(c);
+  vector<thread> threads;
   for (size_t i = 0; i < c; ++i) {
-    auto& atom = *atoms.at(i);
-    auto& th = threads.at(i);
-    th = thread([&atom] {
-        EventBase eb;
-        auto ebth = thread([&]{ eb.loopForever(); });
-        eb.waitUntilRunning();
-        eb.runInEventBaseThreadAndWait([&] {
-          size_t x = 0;
-          atom.compare_exchange_weak(
-              x, 1, std::memory_order_release, std::memory_order_relaxed);
-        });
+    threads.emplace_back([&atoms, i] {
+      EventBase eb;
+      auto& atom = *atoms.at(i);
+      auto ebth = thread([&] { eb.loopForever(); });
+      eb.waitUntilRunning();
+      eb.runInEventBaseThreadAndWait([&] {
         size_t x = 0;
         atom.compare_exchange_weak(
-            x, 2, std::memory_order_release, std::memory_order_relaxed);
-        eb.terminateLoopSoon();
-        ebth.join();
+            x, 1, std::memory_order_release, std::memory_order_relaxed);
+      });
+      size_t x = 0;
+      atom.compare_exchange_weak(
+          x, 2, std::memory_order_release, std::memory_order_relaxed);
+      eb.terminateLoopSoon();
+      ebth.join();
     });
   }
   for (size_t i = 0; i < c; ++i) {
