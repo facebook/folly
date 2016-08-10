@@ -282,6 +282,63 @@ TEST_F(HHWheelTimerTest, SlowFast) {
   T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5), milliseconds(1));
 }
 
+TEST_F(HHWheelTimerTest, ReschedTest) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+
+  TestTimeout t1;
+  TestTimeout t2;
+
+  ASSERT_EQ(t.count(), 0);
+
+  t.scheduleTimeout(&t1, milliseconds(128));
+  TimePoint start2;
+  t1.fn = [&]() {
+    t.scheduleTimeout(&t2, milliseconds(255)); // WHEEL_SIZE - 1
+    start2.reset();
+    ASSERT_EQ(t.count(), 1);
+  };
+
+  ASSERT_EQ(t.count(), 1);
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 1);
+  ASSERT_EQ(t.count(), 0);
+
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128), milliseconds(1));
+  T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(255), milliseconds(1));
+}
+
+TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
+  auto t = HHWheelTimer::newTimer(&eventBase, milliseconds(1));
+
+  TestTimeout t1;
+  TestTimeout t2;
+  TestTimeout t3;
+
+  ASSERT_EQ(t->count(), 0);
+
+  t->scheduleTimeout(&t1, milliseconds(128));
+  t->scheduleTimeout(&t2, milliseconds(128));
+  t->scheduleTimeout(&t3, milliseconds(128));
+  t1.fn = [&]() { t2.cancelTimeout(); };
+  t3.fn = [&]() { t.reset(); };
+
+  ASSERT_EQ(t->count(), 3);
+
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+
+  ASSERT_EQ(t1.timestamps.size(), 1);
+  ASSERT_EQ(t2.timestamps.size(), 0);
+
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128), milliseconds(1));
+}
+
 /*
  * Test scheduling a mix of timers with default timeout and variable timeout.
  */

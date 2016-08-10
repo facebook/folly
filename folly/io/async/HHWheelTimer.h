@@ -297,6 +297,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   std::chrono::milliseconds now_;
 
   bool* processingCallbacksGuard_;
+  CallbackList timeouts; // Timeouts queued to run
 };
 
 } // folly

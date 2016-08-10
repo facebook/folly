@@ -97,6 +97,12 @@ HHWheelTimer::~HHWheelTimer() {
       *processingCallbacksGuard_ = true;
     }
   });
+  while (!timeouts.empty()) {
+    auto* cb = &timeouts.front();
+    timeouts.pop_front();
+    cb->cancelTimeout();
+    cb->callbackCanceled();
+  }
   cancelAll();
 }
 
@@ -198,17 +204,23 @@ void HHWheelTimer::timeoutExpired() noexcept {
     while (!cbs->empty()) {
       auto* cb = &cbs->front();
       cbs->pop_front();
-      count_--;
-      cb->wheel_ = nullptr;
-      cb->expiration_ = milliseconds(0);
-      RequestContextScopeGuard rctx(cb->context_);
-      cb->timeoutExpired();
-      if (isDestroyed) {
-        // The HHWheelTimer itself has been destroyed. The other callbacks
-        // will have been cancelled from the destructor. Bail before causing
-        // damage.
-        return;
-      }
+      timeouts.push_back(*cb);
+    }
+  }
+
+  while (!timeouts.empty()) {
+    auto* cb = &timeouts.front();
+    timeouts.pop_front();
+    count_--;
+    cb->wheel_ = nullptr;
+    cb->expiration_ = milliseconds(0);
+    RequestContextScopeGuard rctx(cb->context_);
+    cb->timeoutExpired();
+    if (isDestroyed) {
+      // The HHWheelTimer itself has been destroyed. The other callbacks
+      // will have been cancelled from the destructor. Bail before causing
+      // damage.
+      return;
     }
   }
   if (count_ > 0) {
