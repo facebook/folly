@@ -96,6 +96,11 @@ int open(char const* fn, int of, int pm) {
     // none are.
     return -1;
   }
+  if (!strcmp(fn, "/dev/null")) {
+    // Windows doesn't have a /dev/null, but it does have
+    // NUL, which achieves the same result.
+    fn = "NUL";
+  }
   errno_t res = _sopen_s(&fh, fn, of, _SH_DENYNO, realMode);
   return res ? -1 : fh;
 }
