@@ -392,11 +392,6 @@ void AsyncServerSocket::bind(uint16_t port) {
                             &v6only, sizeof(v6only)));
     }
 
-    SocketAddress address;
-    address.setFromLocalAddress(s);
-
-    sockets_.emplace_back(eventBase_, s, this, address.getFamily());
-
     // Bind to the socket
     if (fsp::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
       folly::throwSystemError(
@@ -406,6 +401,11 @@ void AsyncServerSocket::bind(uint16_t port) {
           " family ",
           SocketAddress::getFamilyNameFrom(res->ai_addr, "<unknown>"));
     }
+
+    SocketAddress address;
+    address.setFromLocalAddress(s);
+
+    sockets_.emplace_back(eventBase_, s, this, address.getFamily());
   };
 
   const int kNumTries = 25;
