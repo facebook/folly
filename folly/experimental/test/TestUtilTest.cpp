@@ -45,13 +45,15 @@ TEST(TemporaryFile, Simple) {
     EXPECT_EQ(1, r);
   }
 
-  // The file must have been closed.  This assumes that no other thread
-  // has opened another file in the meanwhile, which is a sane assumption
-  // to make in this test.
-  ssize_t r = write(fd, &c, 1);
-  int savedErrno = errno;
-  EXPECT_EQ(-1, r);
-  EXPECT_EQ(EBADF, savedErrno);
+  msvcSuppressAbortOnInvalidParams([&] {
+    // The file must have been closed.  This assumes that no other thread
+    // has opened another file in the meanwhile, which is a sane assumption
+    // to make in this test.
+    ssize_t r = write(fd, &c, 1);
+    int savedErrno = errno;
+    EXPECT_EQ(-1, r);
+    EXPECT_EQ(EBADF, savedErrno);
+  });
 }
 
 TEST(TemporaryFile, Prefix) {

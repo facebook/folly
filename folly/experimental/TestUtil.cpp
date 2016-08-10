@@ -30,6 +30,10 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Unistd.h>
 
+#ifdef _WIN32
+#include <crtdbg.h>
+#endif
+
 namespace folly {
 namespace test {
 
@@ -127,6 +131,32 @@ ChangeToTempDir::~ChangeToTempDir() {
 }
 
 namespace detail {
+
+SavedState disableInvalidParameters() {
+#ifdef _WIN32
+  SavedState ret;
+  ret.previousThreadLocalHandler = _set_thread_local_invalid_parameter_handler(
+      [](const wchar_t*,
+         const wchar_t*,
+         const wchar_t*,
+         unsigned int,
+         uintptr_t) {});
+  ret.previousCrtReportMode = _CrtSetReportMode(_CRT_ASSERT, 0);
+  return ret;
+#else
+  return SavedState();
+#endif
+}
+
+#ifdef _WIN32
+void enableInvalidParameters(SavedState state) {
+  _set_thread_local_invalid_parameter_handler(
+      (_invalid_parameter_handler)state.previousThreadLocalHandler);
+  _CrtSetReportMode(_CRT_ASSERT, state.previousCrtReportMode);
+}
+#else
+void enableInvalidParameters(SavedState) {}
+#endif
 
 bool hasPCREPatternMatch(StringPiece pattern, StringPiece target) {
   return boost::regex_match(

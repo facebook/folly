@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <folly/experimental/io/FsUtil.h>
 
 namespace folly {
@@ -117,6 +118,33 @@ private:
   fs::path initialPath_;
   TemporaryDirectory dir_;
 };
+
+namespace detail {
+struct SavedState {
+  void* previousThreadLocalHandler;
+  int previousCrtReportMode;
+};
+SavedState disableInvalidParameters();
+void enableInvalidParameters(SavedState state);
+}
+
+// Ok, so fun fact: The CRT on windows will actually abort
+// on certain failed parameter validation checks in debug
+// mode rather than simply returning -1 as it does in release
+// mode. We can however, ensure consistent behavior by
+// registering our own thread-local invalid parameter handler
+// for the duration of the call, and just have that handler
+// immediately return. We also have to disable CRT asertion
+// alerts for the duration of the call, otherwise we get
+// the abort-retry-ignore window.
+template <typename Func>
+auto msvcSuppressAbortOnInvalidParams(Func func) -> decltype(func()) {
+  auto savedState = detail::disableInvalidParameters();
+  SCOPE_EXIT {
+    detail::enableInvalidParameters(savedState);
+  };
+  return func();
+}
 
 /**
  * Easy PCRE regex matching. Note that pattern must match the ENTIRE target,
