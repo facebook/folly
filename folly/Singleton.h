@@ -227,6 +227,7 @@ class SingletonHolderBase {
   virtual bool hasLiveInstance() = 0;
   virtual void createInstance() = 0;
   virtual bool creationStarted() = 0;
+  virtual void preDestroyInstance(ReadMostlyMainPtrDeleter<>&) = 0;
   virtual void destroyInstance() = 0;
 
  private:
@@ -255,6 +256,7 @@ struct SingletonHolder : public SingletonHolderBase {
   virtual bool hasLiveInstance() override;
   virtual void createInstance() override;
   virtual bool creationStarted() override;
+  virtual void preDestroyInstance(ReadMostlyMainPtrDeleter<>&) override;
   virtual void destroyInstance() override;
 
  private:
@@ -283,6 +285,8 @@ struct SingletonHolder : public SingletonHolderBase {
   // holds a ReadMostlyMainPtr to singleton instance, set when state is changed
   // from Dead to Living. Reset when state is changed from Living to Dead.
   folly::ReadMostlyMainPtr<T> instance_;
+  // used to release all ReadMostlyMainPtrs at once
+  folly::ReadMostlySharedPtr<T> instance_copy_;
   // weak_ptr to the singleton instance, set when state is changed from Dead
   // to Living. We never write to this object after initialization, so it is
   // safe to read it from different threads w/o synchronization if we know

@@ -141,9 +141,17 @@ bool SingletonHolder<T>::hasLiveInstance() {
 }
 
 template <typename T>
+void SingletonHolder<T>::preDestroyInstance(
+    ReadMostlyMainPtrDeleter<>& deleter) {
+  instance_copy_ = instance_;
+  deleter.add(std::move(instance_));
+}
+
+template <typename T>
 void SingletonHolder<T>::destroyInstance() {
   state_ = SingletonHolderState::Dead;
   instance_.reset();
+  instance_copy_.reset();
   if (destroy_baton_) {
     constexpr std::chrono::seconds kDestroyWaitTime{5};
     auto wait_result = destroy_baton_->timed_wait(

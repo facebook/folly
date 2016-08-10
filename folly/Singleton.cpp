@@ -193,6 +193,14 @@ void SingletonVault::destroyInstances() {
 
     CHECK_GE(singletons_.size(), creation_order_.size());
 
+    // Release all ReadMostlyMainPtrs at once
+    {
+      ReadMostlyMainPtrDeleter<> deleter;
+      for (auto& singleton_type : creation_order_) {
+        singletons_[singleton_type]->preDestroyInstance(deleter);
+      }
+    }
+
     for (auto type_iter = creation_order_.rbegin();
          type_iter != creation_order_.rend();
          ++type_iter) {
