@@ -22,11 +22,13 @@
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 
-#if !defined(__NR_membarrier) && FOLLY_X64 && !FOLLY_MOBILE && \
-    defined(__linux__)
+#if FOLLY_X64 && !FOLLY_MOBILE && defined(__linux__)
+#define FOLLY_USE_SYS_MEMBARRIER 1
+#if !defined(__NR_membarrier)
 #define __NR_membarrier 324
 #define MEMBARRIER_CMD_QUERY 0
 #define MEMBARRIER_CMD_SHARED 1
+#endif
 #endif
 
 namespace folly {
@@ -37,7 +39,7 @@ bool sysMembarrierAvailable() {
     return false;
   }
 
-#ifdef __NR_membarrier
+#if FOLLY_USE_SYS_MEMBARRIER
   auto r = syscall(__NR_membarrier, MEMBARRIER_CMD_QUERY, /* flags = */ 0);
   if (r == -1) {
     return false;
@@ -50,7 +52,7 @@ bool sysMembarrierAvailable() {
 }
 
 int sysMembarrier() {
-#ifdef __NR_membarrier
+#if FOLLY_USE_SYS_MEMBARRIER
   return syscall(__NR_membarrier, MEMBARRIER_CMD_SHARED, /* flags = */ 0);
 #else
   return -1;

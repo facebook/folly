@@ -357,7 +357,7 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 
 namespace folly {
 
-#ifdef __linux__
+#if defined(__linux__) && !FOLLY_MOBILE
 constexpr auto kIsLinux = true;
 #else
 constexpr auto kIsLinux = false;
