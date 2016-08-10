@@ -211,7 +211,7 @@ inline std::string FormatArg::errorStr(Args&&... args) const {
 }
 
 template <typename... Args>
-inline void FormatArg::error(Args&&... args) const {
+[[noreturn]] inline void FormatArg::error(Args&&... args) const {
   throw BadFormatArg(errorStr(std::forward<Args>(args)...));
 }
 
