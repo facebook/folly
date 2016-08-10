@@ -81,25 +81,36 @@ class TLRefCount {
   }
 
   void useGlobal() noexcept {
-    std::lock_guard<std::mutex> lg(globalMutex_);
+    std::array<TLRefCount*, 1> ptrs{{this}};
+    useGlobal(ptrs);
+  }
 
-    state_ = State::GLOBAL_TRANSITION;
+  template <typename Container>
+  static void useGlobal(const Container& refCountPtrs) {
+    std::vector<std::unique_lock<std::mutex>> lgs_;
+    for (auto refCountPtr : refCountPtrs) {
+      lgs_.emplace_back(refCountPtr->globalMutex_);
+
+      refCountPtr->state_ = State::GLOBAL_TRANSITION;
+    }
 
     asymmetricHeavyBarrier();
 
-    std::weak_ptr<void> collectGuardWeak = collectGuard_;
+    for (auto refCountPtr : refCountPtrs) {
+      std::weak_ptr<void> collectGuardWeak = refCountPtr->collectGuard_;
 
-    // Make sure we can't create new LocalRefCounts
-    collectGuard_.reset();
+      // Make sure we can't create new LocalRefCounts
+      refCountPtr->collectGuard_.reset();
 
-    while (!collectGuardWeak.expired()) {
-      auto accessor = localCount_.accessAllThreads();
-      for (auto& count : accessor) {
-        count.collect();
+      while (!collectGuardWeak.expired()) {
+        auto accessor = refCountPtr->localCount_.accessAllThreads();
+        for (auto& count : accessor) {
+          count.collect();
+        }
       }
-    }
 
-    state_ = State::GLOBAL;
+      refCountPtr->state_ = State::GLOBAL;
+    }
   }
 
  private:

@@ -29,6 +29,7 @@
 using folly::ReadMostlyMainPtr;
 using folly::ReadMostlyWeakPtr;
 using folly::ReadMostlySharedPtr;
+using folly::ReadMostlyMainPtrDeleter;
 
 // send SIGALRM to test process after this many seconds
 const unsigned int TEST_TIMEOUT = 10;
@@ -236,4 +237,63 @@ TEST_F(ReadMostlySharedPtrTest, ClearingCache) {
   // Unblock thread.
   c.completed();
   t.join();
+}
+
+size_t useGlobalCalls = 0;
+
+class TestRefCount {
+ public:
+  ~TestRefCount() noexcept {
+    DCHECK_EQ(count_.load(), 0);
+  }
+
+  int64_t operator++() noexcept {
+    auto ret = ++count_;
+    DCHECK_GT(ret, 0);
+    return ret;
+  }
+
+  int64_t operator--() noexcept {
+    auto ret = --count_;
+    DCHECK_GE(ret, 0);
+    return ret;
+  }
+
+  int64_t operator*() noexcept {
+    return count_.load();
+  }
+
+  void useGlobal() {
+    ++useGlobalCalls;
+  }
+
+  template <typename Container>
+  static void useGlobal(const Container&) {
+    ++useGlobalCalls;
+  }
+
+ private:
+  std::atomic<int64_t> count_{1};
+};
+
+TEST_F(ReadMostlySharedPtrTest, ReadMostlyMainPtrDeleter) {
+  EXPECT_EQ(0, useGlobalCalls);
+  {
+    ReadMostlyMainPtr<int, TestRefCount> ptr1(std::make_shared<int>(42));
+    ReadMostlyMainPtr<int, TestRefCount> ptr2(std::make_shared<int>(42));
+  }
+
+  EXPECT_EQ(4, useGlobalCalls);
+
+  useGlobalCalls = 0;
+  {
+    ReadMostlyMainPtr<int, TestRefCount> ptr1(std::make_shared<int>(42));
+    ReadMostlyMainPtr<int, TestRefCount> ptr2(std::make_shared<int>(42));
+
+    ReadMostlyMainPtrDeleter<TestRefCount> deleter;
+    deleter.add(std::move(ptr1));
+    deleter.add(std::move(ptr2));
+  }
+
+  EXPECT_EQ(1, useGlobalCalls);
 }
