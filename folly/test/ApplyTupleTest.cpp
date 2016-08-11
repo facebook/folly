@@ -287,3 +287,30 @@ TEST(ApplyTuple, Pair) {
 
   EXPECT_EQ(folly::applyTuple(add, std::pair<int, int>{1200, 34}), 1234);
 }
+
+TEST(ApplyTuple, MultipleTuples) {
+  auto add = [](int x, int y, int z) { return x * 100 + y * 10 + z; };
+
+  EXPECT_EQ(123, folly::applyTuple(add, std::make_tuple(1, 2, 3)));
+  EXPECT_EQ(
+      123, folly::applyTuple(add, std::make_tuple(1, 2, 3), std::make_tuple()));
+  EXPECT_EQ(
+      123, folly::applyTuple(add, std::make_tuple(1, 2), std::make_tuple(3)));
+  EXPECT_EQ(
+      123, folly::applyTuple(add, std::make_tuple(1), std::make_tuple(2, 3)));
+  EXPECT_EQ(
+      123, folly::applyTuple(add, std::make_tuple(), std::make_tuple(1, 2, 3)));
+
+  EXPECT_EQ(
+      123,
+      folly::applyTuple(
+          add, std::make_tuple(1, 2, 3), std::make_tuple(), std::make_tuple()));
+  EXPECT_EQ(
+      123,
+      folly::applyTuple(
+          add, std::make_tuple(1), std::make_tuple(2), std::make_tuple(3)));
+  EXPECT_EQ(
+      123,
+      folly::applyTuple(
+          add, std::make_tuple(1), std::make_tuple(), std::make_tuple(2, 3)));
+}
