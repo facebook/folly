@@ -2441,7 +2441,7 @@ _GLIBCXX_END_NAMESPACE_VERSION
 
 #define FOLLY_FBSTRING_HASH1(T)                                        \
   template <>                                                          \
-  struct hash<::folly::basic_fbstring<T>> {                            \
+  struct hash< ::folly::basic_fbstring<T>> {                            \
     size_t operator()(const ::folly::basic_fbstring<T>& s) const {     \
       return ::folly::hash::fnv32_buf(s.data(), s.size() * sizeof(T)); \
     }                                                                  \
