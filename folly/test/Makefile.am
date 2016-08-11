@@ -181,10 +181,6 @@ string_test_SOURCES = StringTest.cpp
 string_test_LDADD = libfollytestmain.la
 TESTS += string_test
 
-conditionally_existent_test_SOURCES = ConditionallyExistentTest.cpp
-conditionally_existent_test_LDADD = libfollytestmain.la
-TESTS += conditionally_existent_test
-
 producer_consumer_queue_test_SOURCES = ProducerConsumerQueueTest.cpp
 producer_consumer_queue_test_LDADD = libfollytestmain.la
 TESTS += producer_consumer_queue_test
