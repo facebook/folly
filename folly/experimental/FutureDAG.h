@@ -65,7 +65,6 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
       }
     }
 
-    // Faster to just create a new vector with the element in it?
     nodes.erase(nodes.begin(), nodes.begin() + source_node);
     nodes.erase(nodes.begin() + 1, nodes.end());
     nodes[0].hasDependents = false;
@@ -195,6 +194,30 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   };
 
   std::vector<Node> nodes;
+};
+
+// Polymorphic functor implementation
+template <typename T>
+class FutureDAGFunctor {
+ public:
+  std::shared_ptr<FutureDAG> dag = FutureDAG::create();
+  T state;
+  std::vector<T> dep_states;
+  T result() {
+    return state;
+  };
+  // execReset() runs DAG & clears all nodes except for source
+  void execReset() {
+    this->dag->go().get();
+    this->dag->reset();
+  };
+  void exec() {
+    this->dag->go().get();
+  };
+  virtual void operator()(){};
+  explicit FutureDAGFunctor(T init_val) : state(init_val) {}
+  FutureDAGFunctor() : state() {}
+  virtual ~FutureDAGFunctor(){};
 };
 
 } // folly
