@@ -227,6 +227,32 @@ class TestServer {
       folly::detail::tfo_enable(fd_, 100);
 #endif
     }
+
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    if (getaddrinfo(nullptr, "0", &hints, &res)) {
+      throw folly::AsyncSocketException(
+          folly::AsyncSocketException::INTERNAL_ERROR,
+          "Attempted to bind address to socket with "
+          "bad getaddrinfo",
+          errno);
+    }
+
+    SCOPE_EXIT {
+      freeaddrinfo(res);
+    };
+
+    if (bind(fd_, res->ai_addr, res->ai_addrlen)) {
+      throw folly::AsyncSocketException(
+          folly::AsyncSocketException::INTERNAL_ERROR,
+          "failed to bind to async server socket for port 10",
+          errno);
+    }
+
     if (listen(fd_, 10) != 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
@@ -238,6 +264,12 @@ class TestServer {
     // The local address will contain 0.0.0.0.
     // Change it to 127.0.0.1, so it can be used to connect to the server
     address_.setFromIpPort("127.0.0.1", address_.getPort());
+  }
+
+  ~TestServer() {
+    if (fd_ != -1) {
+      close(fd_);
+    }
   }
 
   // Get the address for connecting to the server
