@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits.h>
+#include <link.h>
 #include <unistd.h>
 
 #ifdef __GNUC__
@@ -37,137 +38,18 @@
 #include <folly/experimental/symbolizer/LineReader.h>
 
 
+/*
+ * This is declared in `link.h' on Linux platforms, but apparently not on the
+ * Mac version of the file.  It's harmless to declare again, in any case.
+ *
+ * Note that declaring it with `extern "C"` results in linkage conflicts.
+ */
+extern struct r_debug _r_debug;
+
 namespace folly {
 namespace symbolizer {
 
 namespace {
-
-/**
- * Read a hex value.
- */
-uintptr_t readHex(StringPiece& sp) {
-  uintptr_t val = 0;
-  const char* p = sp.begin();
-  for (; p != sp.end(); ++p) {
-    unsigned int v;
-    if (*p >= '0' && *p <= '9') {
-      v = (*p - '0');
-    } else if (*p >= 'a' && *p <= 'f') {
-      v = (*p - 'a') + 10;
-    } else if (*p >= 'A' && *p <= 'F') {
-      v = (*p - 'A') + 10;
-    } else {
-      break;
-    }
-    val = (val << 4) + v;
-  }
-  sp.assign(p, sp.end());
-  return val;
-}
-
-/**
- * Skip over non-space characters.
- */
-void skipNS(StringPiece& sp) {
-  const char* p = sp.begin();
-  for (; p != sp.end() && (*p != ' ' && *p != '\t'); ++p) { }
-  sp.assign(p, sp.end());
-}
-
-/**
- * Skip over space and tab characters.
- */
-void skipWS(StringPiece& sp) {
-  const char* p = sp.begin();
-  for (; p != sp.end() && (*p == ' ' || *p == '\t'); ++p) { }
-  sp.assign(p, sp.end());
-}
-
-/**
- * Parse a line from /proc/self/maps
- */
-bool parseProcMapsLine(StringPiece line,
-                       uintptr_t& from,
-                       uintptr_t& to,
-                       uintptr_t& fileOff,
-                       bool& isSelf,
-                       StringPiece& fileName) {
-  isSelf = false;
-  // from     to       perm offset   dev   inode             path
-  // 00400000-00405000 r-xp 00000000 08:03 35291182          /bin/cat
-  if (line.empty()) {
-    return false;
-  }
-
-  // Remove trailing newline, if any
-  if (line.back() == '\n') {
-    line.pop_back();
-  }
-
-  // from
-  from = readHex(line);
-  if (line.empty() || line.front() != '-') {
-    return false;
-  }
-  line.pop_front();
-
-  // to
-  to = readHex(line);
-  if (line.empty() || line.front() != ' ') {
-    return false;
-  }
-  line.pop_front();
-
-  // perms
-  skipNS(line);
-  if (line.empty() || line.front() != ' ') {
-    return false;
-  }
-  line.pop_front();
-
-  uintptr_t fileOffset = readHex(line);
-  if (line.empty() || line.front() != ' ') {
-    return false;
-  }
-  line.pop_front();
-  // main mapping starts at 0 but there can be multi-segment binary
-  // such as
-  // from     to       perm offset   dev   inode             path
-  // 00400000-00405000 r-xp 00000000 08:03 54011424          /bin/foo
-  // 00600000-00605000 r-xp 00020000 08:03 54011424          /bin/foo
-  // 00800000-00805000 r-xp 00040000 08:03 54011424          /bin/foo
-  // if the offset > 0, this indicates to the caller that the baseAddress
-  // need to be used for undo relocation step.
-  fileOff = fileOffset;
-
-  // dev
-  skipNS(line);
-  if (line.empty() || line.front() != ' ') {
-    return false;
-  }
-  line.pop_front();
-
-  // inode
-  skipNS(line);
-  if (line.empty() || line.front() != ' ') {
-    return false;
-  }
-
-  // if inode is 0, such as in case of ANON pages, there should be atleast
-  // one white space before EOL
-  skipWS(line);
-  if (line.empty()) {
-    // There will be no fileName for ANON text pages
-    // if the parsing came this far without a fileName, then from/to address
-    // may contain text in ANON pages.
-    isSelf = true;
-    fileName.clear();
-    return true;
-  }
-
-  fileName = line;
-  return true;
-}
 
 ElfCache* defaultElfCache() {
   static constexpr size_t defaultCapacity = 500;
@@ -201,9 +83,9 @@ Symbolizer::Symbolizer(ElfCacheBase* cache)
 
 void Symbolizer::symbolize(const uintptr_t* addresses,
                            SymbolizedFrame* frames,
-                           size_t addressCount) {
+                           size_t addrCount) {
   size_t remaining = 0;
-  for (size_t i = 0; i < addressCount; ++i) {
+  for (size_t i = 0; i < addrCount; ++i) {
     auto& frame = frames[i];
     if (!frame.found) {
       ++remaining;
@@ -215,97 +97,57 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
     return;
   }
 
-  int fd = openNoInt("/proc/self/maps", O_RDONLY);
-  if (fd == -1) {
+  if (_r_debug.r_version != 1) {
     return;
   }
 
-  char selfFile[PATH_MAX + 8];
+  char selfPath[PATH_MAX + 8];
   ssize_t selfSize;
-  if ((selfSize = readlink("/proc/self/exe", selfFile, PATH_MAX + 1)) == -1) {
-    // something terribly wrong
+  if ((selfSize = readlink("/proc/self/exe", selfPath, PATH_MAX + 1)) == -1) {
+    // Something has gone terribly wrong.
     return;
   }
-  selfFile[selfSize] = '\0';
+  selfPath[selfSize] = '\0';
 
-  char buf[PATH_MAX + 100];  // Long enough for any line
-  LineReader reader(fd, buf, sizeof(buf));
+  for (auto lmap = _r_debug.r_map;
+       lmap != nullptr && remaining != 0;
+       lmap = lmap->l_next) {
+    // The empty string is used in place of the filename for the link_map
+    // corresponding to the running executable.  Additionally, the `l_addr' is
+    // 0 and the link_map appears to be first in the list---but none of this
+    // behavior appears to be documented, so checking for the empty string is
+    // as good as anything.
+    auto const objPath = lmap->l_name[0] != '\0' ? lmap->l_name : selfPath;
 
-  while (remaining != 0) {
-    StringPiece line;
-    if (reader.readLine(line) != LineReader::kReading) {
-      break;
-    }
-
-    // Parse line
-    uintptr_t from;
-    uintptr_t to;
-    uintptr_t fileOff;
-    uintptr_t base;
-    bool isSelf = false; // fileName can potentially be '/proc/self/exe'
-    StringPiece fileName;
-    if (!parseProcMapsLine(line, from, to, fileOff, isSelf, fileName)) {
+    auto const elfFile = cache_->getFile(objPath);
+    if (!elfFile) {
       continue;
     }
 
-    base = from;
-    bool first = true;
-    std::shared_ptr<ElfFile> elfFile;
+    // Get the address at which the object is loaded.  We have to use the ELF
+    // header for the running executable, since its `l_addr' is zero, but we
+    // should use `l_addr' for everything else---in particular, if the object
+    // is position-independent, getBaseAddress() (which is p_vaddr) will be 0.
+    auto const base = lmap->l_addr != 0
+      ? lmap->l_addr
+      : elfFile->getBaseAddress();
 
-    // case of text on ANON?
-    // Recompute from/to/base from the executable
-    if (isSelf && fileName.empty()) {
-      elfFile = cache_->getFile(selfFile);
-
-      if (elfFile != nullptr) {
-        auto textSection = elfFile->getSectionByName(".text");
-        base = elfFile->getBaseAddress();
-        from = textSection->sh_addr;
-        to = from + textSection->sh_size;
-        fileName = selfFile;
-        first = false; // no need to get this file again from the cache
-      }
-    }
-
-    // See if any addresses are here
-    for (size_t i = 0; i < addressCount; ++i) {
+    for (size_t i = 0; i < addrCount && remaining != 0; ++i) {
       auto& frame = frames[i];
       if (frame.found) {
         continue;
       }
 
-      uintptr_t address = addresses[i];
+      auto const addr = addresses[i];
+      // Get the unrelocated, ELF-relative address.
+      auto const adjusted = addr - base;
 
-      if (from > address || address >= to) {
-        continue;
+      if (elfFile->getSectionContainingAddress(adjusted)) {
+        frame.set(elfFile, adjusted);
+        --remaining;
       }
-
-      // Found
-      frame.found = true;
-      --remaining;
-
-      // Open the file on first use
-      if (first) {
-        first = false;
-        elfFile = cache_->getFile(fileName);
-
-        // Need to get the correct base address as from
-        // when fileOff > 0
-        if (fileOff && elfFile != nullptr) {
-          base = elfFile->getBaseAddress();
-        }
-      }
-
-      if (!elfFile) {
-        continue;
-      }
-
-      // Undo relocation
-      frame.set(elfFile, address - base);
     }
   }
-
-  closeNoInt(fd);
 }
 
 namespace {
