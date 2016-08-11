@@ -153,7 +153,8 @@ TEST(AtomicIntrusiveLinkedList, Stress) {
 
 class TestObject {
  public:
-  TestObject(size_t id__, std::shared_ptr<void> ptr) : id_(id__), ptr_(ptr) {}
+  TestObject(size_t id__, const std::shared_ptr<void>& ptr)
+      : id_(id__), ptr_(ptr) {}
 
   size_t id() {
     return id_;
