@@ -226,8 +226,8 @@ void test128Bit2String() {
 #endif
 
 TEST(Conv, Integral2String) {
-  testIntegral2String<std::string, char, short, int, long>();
-  testIntegral2String<fbstring, char, short, int, long>();
+  testIntegral2String<std::string, int8_t, int16_t, int32_t, int64_t>();
+  testIntegral2String<fbstring, int8_t, int16_t, int32_t, int64_t>();
 
 #if FOLLY_HAVE_INT128_T
   test128Bit2String<std::string>();
@@ -423,9 +423,9 @@ void testString2Integral() {
 }
 
 TEST(Conv, String2Integral) {
-  testString2Integral<const char*, signed char, short, int, long, long long>();
-  testString2Integral<std::string, signed char, short, int, long, long long>();
-  testString2Integral<fbstring, signed char, short, int, long, long long>();
+  testString2Integral<const char*, int8_t, int16_t, int32_t, int64_t>();
+  testString2Integral<std::string, int8_t, int16_t, int32_t, int64_t>();
+  testString2Integral<fbstring, int8_t, int16_t, int32_t, int64_t>();
 
   // Testing the behavior of the StringPiece* API
   // StringPiece* normally parses as much valid data as it can,
