@@ -127,7 +127,7 @@ void setup_rand_bench() {
         });
     addBenchmark(
         __FILE__,
-        sformat("\%bool_array_set_rand_bench({}, {})",
+        sformat("%bool_array_set_rand_bench({}, {})",
                 size_add, size_contains).c_str(),
         [=](int iters) {
           rand_bench<BoolArraySet>(iters, size_add, size_contains);
@@ -135,7 +135,7 @@ void setup_rand_bench() {
         });
     addBenchmark(
         __FILE__,
-        sformat("\%sparse_byte_set_rand_bench({}, {})",
+        sformat("%sparse_byte_set_rand_bench({}, {})",
                 size_add, size_contains).c_str(),
         [=](int iters) {
           rand_bench<SparseByteSet>(iters, size_add, size_contains);
