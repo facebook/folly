@@ -19,6 +19,10 @@
 #include <cstdint>
 #include <folly/Portability.h>
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 namespace folly {
 
 /**
