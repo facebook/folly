@@ -53,17 +53,15 @@ struct FutureDAGTest : public testing::Test {
   }
 
   void remove(Handle a) {
-    for (auto itr = nodes.begin(); itr != nodes.end(); itr++) {
-      auto& deps = itr->second->dependencies;
-      if (std::find(deps.begin(), deps.end(), a) != deps.end()) {
-        deps.erase(deps.begin() + a);
-      }
+    for (auto& node : nodes) {
+      node.second->dependencies.erase(a);
     }
     nodes.erase(a);
     dag->remove(a);
   }
+
   void dependency(Handle a, Handle b) {
-    nodes.at(b)->dependencies.push_back(a);
+    nodes.at(b)->dependencies.insert(a);
     dag->dependency(a, b);
   }
 
@@ -83,20 +81,19 @@ struct FutureDAGTest : public testing::Test {
   }
 
   struct TestNode {
-    explicit TestNode(FutureDAGTest* test) {
-      func = [this, test] {
-        test->order.push_back(handle);
-        return Future<Unit>();
-      };
-      handle = test->dag->add(func);
-    }
+    explicit TestNode(FutureDAGTest* test)
+        : func([this, test] {
+            test->order.push_back(handle);
+            return Future<Unit>();
+          }),
+          handle(test->dag->add(func)) {}
 
-    FutureDAG::FutureFunc func;
-    Handle handle;
-    std::vector<Handle> dependencies;
+    const FutureDAG::FutureFunc func;
+    const Handle handle;
+    std::set<Handle> dependencies;
   };
 
-  std::shared_ptr<FutureDAG> dag = FutureDAG::create();
+  const std::shared_ptr<FutureDAG> dag = FutureDAG::create();
   std::map<Handle, std::unique_ptr<TestNode>> nodes;
   std::vector<Handle> order;
 };
@@ -121,9 +118,9 @@ TEST_F(FutureDAGTest, RemoveNodeComplex) {
   auto h3 = add();
   dependency(h1, h3);
   dependency(h2, h1);
-  remove(h1);
-  remove(h2);
   remove(h3);
+  remove(h2);
+  remove(h1);
   ASSERT_NO_THROW(dag->go().get());
   checkOrder();
 }

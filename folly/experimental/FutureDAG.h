@@ -35,7 +35,11 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   }
 
   void remove(Handle a) {
-    if (nodes.size() > a && nodes[a].hasDependents) {
+    if (a >= nodes.size()) {
+      return;
+    }
+
+    if (nodes[a].hasDependents) {
       for (auto& node : nodes) {
         auto& deps = node.dependencies;
         deps.erase(
@@ -47,6 +51,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
         }
       }
     }
+
     nodes.erase(nodes.begin() + a);
   }
 
