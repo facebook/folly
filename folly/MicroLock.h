@@ -54,10 +54,10 @@ namespace folly {
  * aliasing rules, character types may alias anything.)
  *
  * MicroLock uses a dirty trick: it actually operates on the full
- * word-size, word-aligned bit of memory into which it is embedded.
+ * 32-bit, four-byte-aligned bit of memory into which it is embedded.
  * It never modifies bits outside the ones it's defined to modify, but
- * it _accesses_ all the bits in the word for purposes of
- * futex management.
+ * it _accesses_ all the bits in the 32-bit memory location for
+ * purposes of futex management.
  *
  * The MaxSpins template parameter controls the number of times we
  * spin trying to acquire the lock.  MaxYields controls the number of
@@ -86,9 +86,12 @@ namespace folly {
  *
  * (The virtual dispatch benchmark is provided for scale.)
  *
- * The contended case for MicroLock is likely to be worse compared to
- * std::mutex than the contended case is.  Make sure to benchmark your
- * particular workload.
+ * While the uncontended case for MicroLock is competitive with the
+ * glibc 2.2.0 implementation of std::mutex, std::mutex is likely to be
+ * faster in the contended case, because we need to wake up all waiters
+ * when we release.
+ *
+ * Make sure to benchmark your particular workload.
  *
  */
 
@@ -100,7 +103,7 @@ class MicroLockCore {
 #else
   uint8_t lock_;
 #endif
-  inline detail::Futex<>* word() const;
+  inline detail::Futex<>* word() const; // Well, halfword on 64-bit systems
   inline uint32_t baseShift(unsigned slot) const;
   inline uint32_t heldBit(unsigned slot) const;
   inline uint32_t waitBit(unsigned slot) const;
@@ -128,9 +131,8 @@ inline unsigned MicroLockCore::baseShift(unsigned slot) const {
 
   unsigned offset_bytes = (unsigned)((uintptr_t)&lock_ - (uintptr_t)word());
 
-  return kIsLittleEndian
-             ? offset_bytes * CHAR_BIT + slot * 2
-             : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) + slot * 2;
+  return (
+      unsigned)(kIsLittleEndian ? offset_bytes * CHAR_BIT + slot * 2 : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) + slot * 2);
 }
 
 inline uint32_t MicroLockCore::heldBit(unsigned slot) const {

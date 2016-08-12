@@ -26,7 +26,7 @@ void MicroLockCore::lockSlowPath(uint32_t oldWord,
                                  uint32_t slotHeldBit,
                                  unsigned maxSpins,
                                  unsigned maxYields) {
-  unsigned newWord;
+  uint32_t newWord;
   unsigned spins = 0;
   uint32_t slotWaitBit = slotHeldBit << 1;
 
