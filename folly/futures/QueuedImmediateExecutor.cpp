@@ -30,7 +30,7 @@ void QueuedImmediateExecutor::addStatic(Func callback) {
       q_->pop();
     }
   } else {
-    q_->push(callback);
+    q_->push(std::move(callback));
   }
 }
 

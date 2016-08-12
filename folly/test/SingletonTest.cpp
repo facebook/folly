@@ -495,7 +495,7 @@ class TestEagerInitParallelExecutor : public folly::Executor {
 
   virtual void add(folly::Func func) override {
     const auto index = (counter_ ++) % eventBases_.size();
-    eventBases_[index]->add(func);
+    eventBases_[index]->add(std::move(func));
   }
 
  private:

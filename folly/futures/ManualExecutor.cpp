@@ -26,7 +26,7 @@ namespace folly {
 
 void ManualExecutor::add(Func callback) {
   std::lock_guard<std::mutex> lock(lock_);
-  funcs_.push(std::move(callback));
+  funcs_.emplace(std::move(callback));
   sem_.post();
 }
 
@@ -42,7 +42,7 @@ size_t ManualExecutor::run() {
       auto& sf = scheduledFuncs_.top();
       if (sf.time > now_)
         break;
-      funcs_.push(sf.func);
+      funcs_.emplace(sf.moveOutFunc());
       scheduledFuncs_.pop();
     }
 

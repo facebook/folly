@@ -118,7 +118,7 @@ namespace folly {
     struct ScheduledFunc {
       TimePoint time;
       size_t ordinal;
-      Func func;
+      Func mutable func;
 
       ScheduledFunc(TimePoint const& t, Func&& f)
         : time(t), func(std::move(f))
@@ -131,6 +131,10 @@ namespace folly {
         if (time == b.time)
           return ordinal < b.ordinal;
         return time < b.time;
+      }
+
+      Func&& moveOutFunc() const {
+        return std::move(func);
       }
     };
     std::priority_queue<ScheduledFunc> scheduledFuncs_;

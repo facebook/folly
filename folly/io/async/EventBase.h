@@ -50,7 +50,7 @@
 
 namespace folly {
 
-typedef std::function<void()> Cob;
+using Cob = Func; // defined in folly/Executor.h
 template <typename MessageT>
 class NotificationQueue;
 
