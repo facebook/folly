@@ -422,9 +422,9 @@ class NotificationQueue {
       return false;
     }
 
-    auto data = std::move(queue_.front());
-    result = data.first;
-    RequestContext::setContext(data.second);
+    auto& data = queue_.front();
+    result = std::move(data.first);
+    RequestContext::setContext(std::move(data.second));
 
     queue_.pop_front();
 
