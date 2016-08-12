@@ -19,6 +19,7 @@
 #ifdef _WIN32
 #include <cstring>
 #include <errno.h>
+
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/SysStat.h>
 #include <folly/portability/Windows.h>
@@ -31,7 +32,7 @@ char* mktemp(char* tn) { return _mktemp(tn); }
 // still working just fine.
 char* mkdtemp(char* tn) {
   char* ptr = nullptr;
-  auto len = strlen(ptr);
+  auto len = strlen(tn);
   int ret = 0;
   do {
     strcpy(tn + len - 6, "XXXXXX");
@@ -49,7 +50,7 @@ char* mkdtemp(char* tn) {
 
 int mkstemp(char* tn) {
   char* ptr = nullptr;
-  auto len = strlen(ptr);
+  auto len = strlen(tn);
   int ret = 0;
   do {
     strcpy(tn + len - 6, "XXXXXX");
