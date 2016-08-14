@@ -26,6 +26,8 @@
 #define FOLLY_USE_SYS_MEMBARRIER 1
 #if !defined(__NR_membarrier)
 #define __NR_membarrier 324
+#endif
+#if !defined(MEMBARRIER_CMD_QUERY)
 #define MEMBARRIER_CMD_QUERY 0
 #define MEMBARRIER_CMD_SHARED 1
 #endif
