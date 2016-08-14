@@ -293,4 +293,8 @@ mallctl_helper_test_SOURCES = MallctlHelperTest.cpp
 mallctl_helper_test_LDADD = libfollytestmain.la
 TESTS += mallctl_helper_test
 
+apply_tuple_test_SOURCES = ApplyTupleTest.cpp
+apply_tuple_test_LDADD = libfollytestmain.la
+TESTS += apply_tuple_test
+
 check_PROGRAMS += $(TESTS)
