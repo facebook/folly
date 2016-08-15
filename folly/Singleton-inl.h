@@ -233,17 +233,16 @@ void SingletonHolder<T>::createInstance() {
   auto print_destructor_stack_trace =
     std::make_shared<std::atomic<bool>>(false);
   auto teardown = teardown_;
-  auto type_name = type().name();
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
   std::shared_ptr<T> instance(
     create_(),
-    [destroy_baton, print_destructor_stack_trace, teardown, type_name]
+    [destroy_baton, print_destructor_stack_trace, teardown, type = type()]
     (T* instance_ptr) mutable {
       teardown(instance_ptr);
       destroy_baton->post();
       if (print_destructor_stack_trace->load()) {
-        std::string output = "Singleton " + type_name + " was destroyed.\n";
+        std::string output = "Singleton " + type.name() + " was destroyed.\n";
 
         auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
         auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
