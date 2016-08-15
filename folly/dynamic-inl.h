@@ -530,6 +530,17 @@ template<class K, class V> inline dynamic& dynamic::setDefault(K&& k, V&& v) {
                                    std::forward<V>(v))).first->second;
 }
 
+template<class K> inline dynamic& dynamic::setDefault(K&& k, dynamic&& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.insert(std::make_pair(std::forward<K>(k),
+                                   std::move(v))).first->second;
+}
+
+template<class K> inline dynamic& dynamic::setDefault(K&& k, const dynamic& v) {
+  auto& obj = get<ObjectImpl>();
+  return obj.insert(std::make_pair(std::forward<K>(k), v)).first->second;
+}
+
 inline dynamic* dynamic::get_ptr(dynamic const& idx) & {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
