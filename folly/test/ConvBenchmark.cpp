@@ -912,16 +912,6 @@ inline void stringToTypeClassic(const char* str, uint32_t n) {
 }
 
 template <typename T>
-inline void stringToTypeOptional(const char* str, uint32_t n) {
-  for (uint32_t i = 0; i < n; ++i) {
-    auto val = tryTo<T>(str);
-    if (val.hasValue()) {
-      doNotOptimizeAway(val.value());
-    }
-  }
-}
-
-template <typename T>
 inline void ptrPairToIntClassic(StringPiece sp, uint32_t n) {
   for (uint32_t i = 0; i < n; ++i) {
     try {
@@ -931,16 +921,6 @@ inline void ptrPairToIntClassic(StringPiece sp, uint32_t n) {
       doNotOptimizeAway(e.what());
     }
     doNotOptimizeAway(i);
-  }
-}
-
-template <typename T>
-inline void ptrPairToIntOptional(StringPiece sp, uint32_t n) {
-  for (uint32_t i = 0; i < n; ++i) {
-    auto val = tryTo<T>(sp.begin(), sp.end());
-    if (val.hasValue()) {
-      doNotOptimizeAway(val.value());
-    }
   }
 }
 
@@ -955,24 +935,6 @@ inline size_t arithToArithClassic(const U* in, uint32_t numItems) {
         doNotOptimizeAway(val);
       } catch (const std::exception& e) {
         doNotOptimizeAway(e.what());
-      }
-      doNotOptimizeAway(j);
-    }
-    doNotOptimizeAway(i);
-  }
-
-  return kArithNumIter * numItems;
-}
-
-template <typename T, typename U>
-inline size_t arithToArithOptional(const U* in, uint32_t numItems) {
-  for (uint32_t i = 0; i < kArithNumIter; ++i) {
-    for (uint32_t j = 0; j < numItems; ++j) {
-      auto val = tryTo<T>(*in);
-      doNotOptimizeAway(val.hasValue());
-      if (val.hasValue()) {
-        auto v2 = val.value();
-        doNotOptimizeAway(v2);
       }
       doNotOptimizeAway(j);
     }
@@ -1018,12 +980,6 @@ std::array<double, 4> double2IntBad{{1e100, 1.25, 2.5, 100.00001}};
   }                                                      \
   BENCHMARK(stringTo##name##ClassicError, n) {           \
     stringToTypeClassic<type>(fail, n);                  \
-  }                                                      \
-  BENCHMARK(stringTo##name##Optional, n) {               \
-    stringToTypeOptional<type>(pass, n);                 \
-  }                                                      \
-  BENCHMARK(stringTo##name##OptionalError, n) {          \
-    stringToTypeOptional<type>(fail, n);                 \
   }
 
 #define PTR_PAIR_TO_INT_BENCHMARK(type, name, pass, fail) \
@@ -1032,26 +988,14 @@ std::array<double, 4> double2IntBad{{1e100, 1.25, 2.5, 100.00001}};
   }                                                       \
   BENCHMARK(ptrPairTo##name##ClassicError, n) {           \
     ptrPairToIntClassic<type>(fail, n);                   \
-  }                                                       \
-  BENCHMARK(ptrPairTo##name##Optional, n) {               \
-    ptrPairToIntOptional<type>(pass, n);                  \
-  }                                                       \
-  BENCHMARK(ptrPairTo##name##OptionalError, n) {          \
-    ptrPairToIntOptional<type>(fail, n);                  \
   }
 
-#define ARITH_TO_ARITH_BENCHMARK(type, name, pass, fail)         \
-  BENCHMARK_MULTI(name##Classic) {                               \
-    return arithToArithClassic<type>(pass.data(), pass.size());  \
-  }                                                              \
-  BENCHMARK_MULTI(name##ClassicError) {                          \
-    return arithToArithClassic<type>(fail.data(), fail.size());  \
-  }                                                              \
-  BENCHMARK_MULTI(name##Optional) {                              \
-    return arithToArithOptional<type>(pass.data(), pass.size()); \
-  }                                                              \
-  BENCHMARK_MULTI(name##OptionalError) {                         \
-    return arithToArithOptional<type>(fail.data(), fail.size()); \
+#define ARITH_TO_ARITH_BENCHMARK(type, name, pass, fail)        \
+  BENCHMARK_MULTI(name##Classic) {                              \
+    return arithToArithClassic<type>(pass.data(), pass.size()); \
+  }                                                             \
+  BENCHMARK_MULTI(name##ClassicError) {                         \
+    return arithToArithClassic<type>(fail.data(), fail.size()); \
   }
 
 #define INT_TO_ARITH_BENCHMARK(type, name, pass, fail) \

@@ -921,27 +921,14 @@ enum class Color {
   Blue,
 };
 
-enum class ColorErrorCode { INVALID_COLOR };
-
-struct ColorError : std::runtime_error {
-  using std::runtime_error::runtime_error;
-};
-
-ColorError makeConversionError(ColorErrorCode, StringPiece sp) {
-  return ColorError("Invalid my::Color representation : " + sp.str());
-}
-
-Expected<StringPiece, ColorErrorCode> parseTo(
-    StringPiece in,
-    Color& out) noexcept {
+void parseTo(folly::StringPiece in, Color& out) {
   if (in == "R") {
     out = Color::Red;
   } else if (in == "B") {
     out = Color::Blue;
   } else {
-    return makeUnexpected(ColorErrorCode::INVALID_COLOR);
+    throw runtime_error("");
   }
-  return StringPiece(in.end(), in.end());
 }
 }
 
@@ -951,8 +938,6 @@ TEST(Split, fixed_convert_custom) {
   EXPECT_TRUE(folly::split(',', "R,B", c1, c2));
   EXPECT_EQ(c1, my::Color::Red);
   EXPECT_EQ(c2, my::Color::Blue);
-
-  EXPECT_THROW(folly::split(',', "B,G", c1, c2), my::ColorError);
 }
 
 TEST(String, join) {

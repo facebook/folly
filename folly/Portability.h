@@ -92,15 +92,6 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_ALWAYS_INLINE inline
 #endif
 
-// warn unused result
-#if defined(_MSC_VER) && (_MSC_VER >= 1700)
-#define FOLLY_WARN_UNUSED_RESULT _Check_return_
-#elif defined(__clang__) || defined(__GNUC__)
-#define FOLLY_WARN_UNUSED_RESULT __attribute__((__warn_unused_result__))
-#else
-#define FOLLY_WARN_UNUSED_RESULT
-#endif
-
 // target
 #ifdef _MSC_VER
 # define FOLLY_TARGET_ATTRIBUTE(target)

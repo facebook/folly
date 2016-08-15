@@ -328,7 +328,7 @@ bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
   if (exact && UNLIKELY(std::string::npos != input.find(delimiter))) {
     return false;
   }
-  output = folly::to<OutputType>(input);
+  parseTo(input, output);
   return true;
 }
 
@@ -346,7 +346,7 @@ bool splitFixed(
   StringPiece tail(input.begin() + cut + detail::delimSize(delimiter),
                    input.end());
   if (LIKELY(splitFixed<exact>(delimiter, tail, outTail...))) {
-    outHead = folly::to<OutputType>(head);
+    parseTo(head, outHead);
     return true;
   }
   return false;
