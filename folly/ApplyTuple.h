@@ -55,9 +55,14 @@ inline constexpr std::size_t sum(std::size_t v1, Args... vs) {
   return v1 + sum(vs...);
 }
 
-template <class... Tuple>
-using MakeIndexSequenceFromTuple = MakeIndexSequence<sum(
-    std::tuple_size<typename std::decay<Tuple>::type>::value...)>;
+template <typename... Tuples>
+struct TupleSizeSum {
+  static constexpr auto value = sum(std::tuple_size<Tuples>::value...);
+};
+
+template <typename... Tuples>
+using MakeIndexSequenceFromTuple = MakeIndexSequence<
+    TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
 
 // This is to allow using this with pointers to member functions,
 // where the first argument in the tuple will be the this pointer.
