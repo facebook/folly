@@ -10,6 +10,7 @@ TESTS= \
 	hash_test \
 	timeout_queue_test \
 	conv_test \
+	expected_test \
 	range_test \
 	bits_test \
 	bit_iterator_test
@@ -127,6 +128,9 @@ timeout_queue_test_LDADD = libfollytestmain.la
 
 conv_test_SOURCES = ConvTest.cpp
 conv_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
+
+expected_test_SOURCES = ExpectedTest.cpp
+expected_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 
 range_test_SOURCES = RangeTest.cpp
 range_test_LDADD = libfollytestmain.la

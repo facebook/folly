@@ -105,29 +105,94 @@ FOLLY_HAS_TRUE_XXX(IsZeroInitializable)
 FOLLY_HAS_TRUE_XXX(IsTriviallyCopyable)
 
 #undef FOLLY_HAS_TRUE_XXX
+
+// Older versions of libstdc++ do not provide std::is_trivially_copyable
+#if defined(__clang__) && !defined(_LIBCPP_VERSION)
+template <class T>
+struct is_trivially_copyable
+    : std::integral_constant<bool, __is_trivially_copyable(T)> {};
+#elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
+template <class T>
+struct is_trivially_copyable : std::is_trivial<T> {};
+#else
+template <class T>
+using is_trivially_copyable = std::is_trivially_copyable<T>;
+#endif
 }
 
+struct Ignore {
+  template <class T>
+  /* implicit */ Ignore(const T&) {}
+  template <class T>
+  const Ignore& operator=(T const&) const { return *this; }
+};
+
+template <class...>
+using Ignored = Ignore;
+
+namespace traits_detail_IsEqualityComparable {
+Ignore operator==(Ignore, Ignore);
+
+template <class T, class U = T>
+struct IsEqualityComparable
+    : std::is_convertible<
+          decltype(std::declval<T>() == std::declval<U>()),
+          bool
+      > {};
+}
+
+/* using override */ using traits_detail_IsEqualityComparable::
+    IsEqualityComparable;
+
+namespace traits_detail_IsLessThanComparable {
+Ignore operator<(Ignore, Ignore);
+
+template <class T, class U = T>
+struct IsLessThanComparable
+    : std::is_convertible<
+          decltype(std::declval<T>() < std::declval<U>()),
+          bool
+      > {};
+}
+
+/* using override */ using traits_detail_IsLessThanComparable::
+    IsLessThanComparable;
+
+namespace traits_detail_IsNothrowSwappable {
+/* using override */ using std::swap;
+
+template <class T>
+struct IsNothrowSwappable
+    : std::integral_constant<bool,
+        std::is_nothrow_move_constructible<T>::value &&
+        noexcept(swap(std::declval<T&>(), std::declval<T&>()))
+      > {};
+}
+
+/* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
+
 template <class T> struct IsTriviallyCopyable
-  : std::integral_constant<bool,
-      !std::is_class<T>::value ||
-      // TODO: add alternate clause is_trivially_copyable, when available
-      traits_detail::has_true_IsTriviallyCopyable<T>::value
-    > {};
+  : std::conditional<
+      traits_detail::has_IsTriviallyCopyable<T>::value,
+      traits_detail::has_true_IsTriviallyCopyable<T>,
+      traits_detail::is_trivially_copyable<T>
+    >::type {};
 
 template <class T> struct IsRelocatable
-  : std::integral_constant<bool,
-      !std::is_class<T>::value ||
+  : std::conditional<
+      traits_detail::has_IsRelocatable<T>::value,
+      traits_detail::has_true_IsRelocatable<T>,
       // TODO add this line (and some tests for it) when we upgrade to gcc 4.7
       //std::is_trivially_move_constructible<T>::value ||
-      IsTriviallyCopyable<T>::value ||
-      traits_detail::has_true_IsRelocatable<T>::value
-    > {};
+      IsTriviallyCopyable<T>
+    >::type {};
 
 template <class T> struct IsZeroInitializable
-  : std::integral_constant<bool,
-      !std::is_class<T>::value ||
-      traits_detail::has_true_IsZeroInitializable<T>::value
-    > {};
+  : std::conditional<
+      traits_detail::has_IsZeroInitializable<T>::value,
+      traits_detail::has_true_IsZeroInitializable<T>,
+      std::integral_constant<bool, !std::is_class<T>::value>
+    >::type {};
 
 template <typename...>
 struct Conjunction : std::true_type {};
@@ -147,6 +212,19 @@ struct Disjunction<T, TList...>
 
 template <typename T>
 struct Negation : std::integral_constant<bool, !T::value> {};
+
+template <bool... Bs>
+struct Bools {
+  using valid_type = bool;
+  static constexpr std::size_t size() {
+    return sizeof...(Bs);
+  }
+};
+
+// Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
+template <class... Ts>
+using StrictConjunction =
+    std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>>;
 
 } // namespace folly
 
@@ -398,12 +476,53 @@ bool greater_than(LHS const lhs) {
   >(lhs);
 }
 
+namespace traits_detail {
+struct InPlaceTag {};
+template <class>
+struct InPlaceTypeTag {};
+template <std::size_t>
+struct InPlaceIndexTag {};
+}
+
 /**
  * Like std::piecewise_construct, a tag type & instance used for in-place
  * construction of non-movable contained types, e.g. by Synchronized.
+ * Follows the naming and design of std::in_place suggested in
+ * http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0032r2.pdf
  */
-struct construct_in_place_t {};
-constexpr construct_in_place_t construct_in_place{};
+using in_place_t = traits_detail::InPlaceTag (&)(traits_detail::InPlaceTag);
+
+template <class T>
+using in_place_type_t =
+    traits_detail::InPlaceTypeTag<T> (&)(traits_detail::InPlaceTypeTag<T>);
+
+template <std::size_t I>
+using in_place_index_t =
+    traits_detail::InPlaceIndexTag<I> (&)(traits_detail::InPlaceIndexTag<I>);
+
+inline traits_detail::InPlaceTag in_place(traits_detail::InPlaceTag = {}) {
+  return {};
+}
+
+template <class T>
+inline traits_detail::InPlaceTypeTag<T> in_place(
+    traits_detail::InPlaceTypeTag<T> = {}) {
+  return {};
+}
+
+template <std::size_t I>
+inline traits_detail::InPlaceIndexTag<I> in_place(
+    traits_detail::InPlaceIndexTag<I> = {}) {
+  return {};
+}
+
+// For backwards compatibility:
+using construct_in_place_t = in_place_t;
+
+inline traits_detail::InPlaceTag construct_in_place(
+    traits_detail::InPlaceTag = {}) {
+  return {};
+}
 
 /**
  * Initializer lists are a powerful compile time syntax introduced in C++11

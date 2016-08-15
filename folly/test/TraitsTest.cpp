@@ -52,7 +52,7 @@ TEST(Traits, scalars) {
 
 TEST(Traits, containers) {
   EXPECT_TRUE  (IsRelocatable<vector<F1>>::value);
-  EXPECT_FALSE((IsRelocatable<pair<F1, F1>>::value));
+  EXPECT_TRUE ((IsRelocatable<pair<F1, F1>>::value));
   EXPECT_TRUE ((IsRelocatable<pair<T1, T2>>::value));
 }
 
@@ -69,8 +69,8 @@ TEST(Traits, typedefd) {
 }
 
 TEST(Traits, unset) {
-  EXPECT_FALSE(IsRelocatable<F1>::value);
-  EXPECT_FALSE(IsRelocatable<F4>::value);
+  EXPECT_TRUE(IsRelocatable<F1>::value);
+  EXPECT_TRUE(IsRelocatable<F4>::value);
 }
 
 TEST(Traits, bitprop) {
