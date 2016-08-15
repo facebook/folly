@@ -24,7 +24,7 @@
 using namespace folly;
 
 void fail() {
-  FOLLY_SAFE_CHECK(0, "hello");
+  FOLLY_SAFE_CHECK(0 + 0, "hello");
 }
 
 void succeed() {
@@ -33,5 +33,6 @@ void succeed() {
 
 TEST(SafeAssert, AssertionFailure) {
   succeed();
-  EXPECT_DEATH(fail(), ".*Assertion failure:.*hello.*");
+  EXPECT_DEATH(fail(), "Assertion failure: 0 \\+ 0");
+  EXPECT_DEATH(fail(), "Message: hello");
 }

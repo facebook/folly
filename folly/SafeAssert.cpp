@@ -22,15 +22,18 @@
 namespace folly { namespace detail {
 
 namespace {
+void writeStderr(const char* s, size_t len) {
+  writeFull(STDERR_FILENO, s, len);
+}
 void writeStderr(const char* s) {
-  writeFull(STDERR_FILENO, s, strlen(s));
+  writeStderr(s, strlen(s));
 }
 }  // namespace
 
 void assertionFailure(const char* expr, const char* msg, const char* file,
                       unsigned int line, const char* function) {
   writeStderr("\n\nAssertion failure: ");
-  writeStderr(expr);
+  writeStderr(expr + 1, strlen(expr) - 2);
   writeStderr("\nMessage: ");
   writeStderr(msg);
   writeStderr("\nFile: ");
