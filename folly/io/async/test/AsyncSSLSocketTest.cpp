@@ -878,7 +878,8 @@ TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
   cerr << "SSLClientTimeoutTest test completed" << endl;
 }
 
-
+// This is a FB-only extension, and the tests will fail without it
+#ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
 /**
  * Test SSL server async cache
  */
@@ -998,6 +999,7 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
 
   cerr << "SSLServerCacheCloseTest test completed" << endl;
 }
+#endif
 
 /**
  * Verify Client Ciphers obtained using SSL MSG Callback.
