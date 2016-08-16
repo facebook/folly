@@ -1651,6 +1651,7 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
         extensionsLength -= 2;
         uint16_t extensionDataLength = cursor.readBE<uint16_t>();
         extensionsLength -= 2;
+        extensionsLength -= extensionDataLength;
 
         if (extensionType == ssl::TLSExtension::SIGNATURE_ALGORITHMS) {
           cursor.skip(2);
@@ -1666,7 +1667,6 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
           }
         } else {
           cursor.skip(extensionDataLength);
-          extensionsLength -= extensionDataLength;
         }
       }
     }
