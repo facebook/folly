@@ -159,6 +159,12 @@ struct IsLessThanComparable
     IsLessThanComparable;
 
 namespace traits_detail_IsNothrowSwappable {
+#if defined(_MSC_VER) || defined(__cpp_lib_is_swappable)
+// MSVC already implements the C++17 P0185R1 proposal which
+// adds std::is_nothrow_swappable, so use it instead.
+template <typename T>
+using IsNothrowSwappable = std::is_nothrow_swappable<T>;
+#else
 /* using override */ using std::swap;
 
 template <class T>
@@ -167,6 +173,7 @@ struct IsNothrowSwappable
         std::is_nothrow_move_constructible<T>::value &&
         noexcept(swap(std::declval<T&>(), std::declval<T&>()))
       > {};
+#endif
 }
 
 /* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
