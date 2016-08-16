@@ -491,7 +491,8 @@ struct IsConvertible {
 template <class T>
 struct IsConvertible<
     T,
-    decltype(parseTo(std::declval<folly::StringPiece>(), std::declval<T&>()))> {
+    decltype(static_cast<void>(
+        parseTo(std::declval<folly::StringPiece>(), std::declval<T&>())))> {
   enum { value = true };
 };
 

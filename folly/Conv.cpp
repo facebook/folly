@@ -207,8 +207,10 @@ struct ErrorString {
   bool quote;
 };
 
-// Keep this in sync with ConversionError::Code in Conv.h
-constexpr const std::array<ErrorString, ConversionError::NUM_ERROR_CODES>
+// Keep this in sync with ConversionCode in Conv.h
+constexpr const std::array<
+    ErrorString,
+    static_cast<std::size_t>(ConversionCode::NUM_ERROR_CODES)>
     kErrorStrings{{
         {"Success", true},
         {"Empty input string", true},
@@ -255,34 +257,11 @@ inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
 
 } // anonymous namespace
 
-ConversionError makeConversionError(
-    ConversionError::Code code,
-    const char* input,
-    size_t inputLen) {
-  assert(code >= 0 && code < kErrorStrings.size());
-  const ErrorString& err = kErrorStrings[code];
-  if (code == ConversionError::EMPTY_INPUT_STRING && inputLen == 0) {
-    return ConversionError(err.string, code);
-  }
-  std::string tmp(err.string);
-  tmp.append(": ");
-  if (err.quote) {
-    tmp.append(1, '"');
-  }
-  if (input && inputLen > 0) {
-    tmp.append(input, inputLen);
-  }
-  if (err.quote) {
-    tmp.append(1, '"');
-  }
-  return ConversionError(tmp, code);
-}
-
-ConversionResult<bool> str_to_bool(StringPiece* src) {
+Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   auto b = src->begin(), e = src->end();
   for (;; ++b) {
     if (b >= e) {
-      return ConversionResult<bool>(ConversionError::EMPTY_INPUT_STRING);
+      return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
     if (!std::isspace(*b)) {
       break;
@@ -297,7 +276,7 @@ ConversionResult<bool> str_to_bool(StringPiece* src) {
       result = false;
       for (; b < e && isdigit(*b); ++b) {
         if (result || (*b != '0' && *b != '1')) {
-          return ConversionResult<bool>(ConversionError::BOOL_OVERFLOW);
+          return makeUnexpected(ConversionCode::BOOL_OVERFLOW);
         }
         result = (*b == '1');
       }
@@ -338,16 +317,16 @@ ConversionResult<bool> str_to_bool(StringPiece* src) {
       } else if (bool_str_cmp(&b, len, "off")) {
         result = false;
       } else {
-        return ConversionResult<bool>(ConversionError::BOOL_INVALID_VALUE);
+        return makeUnexpected(ConversionCode::BOOL_INVALID_VALUE);
       }
       break;
     default:
-      return ConversionResult<bool>(ConversionError::BOOL_INVALID_VALUE);
+      return makeUnexpected(ConversionCode::BOOL_INVALID_VALUE);
   }
 
   src->assign(b, e);
 
-  return ConversionResult<bool>(result);
+  return result;
 }
 
 /**
@@ -355,7 +334,7 @@ ConversionResult<bool> str_to_bool(StringPiece* src) {
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-ConversionResult<Tgt> str_to_floating(StringPiece* src) {
+Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   using namespace double_conversion;
   static StringToDoubleConverter
     conv(StringToDoubleConverter::ALLOW_TRAILING_JUNK
@@ -366,7 +345,7 @@ ConversionResult<Tgt> str_to_floating(StringPiece* src) {
          nullptr, nullptr);
 
   if (src->empty()) {
-    return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
 
   int length;
@@ -383,10 +362,10 @@ ConversionResult<Tgt> str_to_floating(StringPiece* src) {
     // that was processed, so we need to check if that character was
     // whitespace or not.
     if (length == 0 || (result == 0.0 && std::isspace((*src)[length - 1]))) {
-      return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+      return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
     src->advance(length);
-    return ConversionResult<Tgt>(result);
+    return result;
   }
 
   auto* e = src->end();
@@ -435,7 +414,7 @@ ConversionResult<Tgt> str_to_floating(StringPiece* src) {
 
   if (result == 0.0) {
     // All bets are off
-    return ConversionResult<Tgt>(ConversionError::STRING_TO_FLOAT_ERROR);
+    return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
   }
 
   if (negative) {
@@ -444,11 +423,13 @@ ConversionResult<Tgt> str_to_floating(StringPiece* src) {
 
   src->assign(b, e);
 
-  return ConversionResult<Tgt>(result);
+  return result;
 }
 
-template ConversionResult<float> str_to_floating<float>(StringPiece* src);
-template ConversionResult<double> str_to_floating<double>(StringPiece* src);
+template Expected<float, ConversionCode> str_to_floating<float>(
+    StringPiece* src) noexcept;
+template Expected<double, ConversionCode> str_to_floating<double>(
+    StringPiece* src) noexcept;
 
 /**
  * This class takes care of additional processing needed for signed values,
@@ -460,39 +441,39 @@ class SignedValueHandler;
 template <typename T>
 class SignedValueHandler<T, true> {
  public:
-  ConversionError::Code init(const char*& b) {
+  ConversionCode init(const char*& b) {
     negative_ = false;
     if (!std::isdigit(*b)) {
       if (*b == '-') {
         negative_ = true;
       } else if (UNLIKELY(*b != '+')) {
-        return ConversionError::INVALID_LEADING_CHAR;
+        return ConversionCode::INVALID_LEADING_CHAR;
       }
       ++b;
     }
-    return ConversionError::SUCCESS;
+    return ConversionCode::SUCCESS;
   }
 
-  ConversionError::Code overflow() {
-    return negative_ ? ConversionError::NEGATIVE_OVERFLOW
-                     : ConversionError::POSITIVE_OVERFLOW;
+  ConversionCode overflow() {
+    return negative_ ? ConversionCode::NEGATIVE_OVERFLOW
+                     : ConversionCode::POSITIVE_OVERFLOW;
   }
 
   template <typename U>
-  ConversionResult<T> finalize(U value) {
+  Expected<T, ConversionCode> finalize(U value) {
     T rv;
     if (negative_) {
       rv = -value;
       if (UNLIKELY(rv > 0)) {
-        return ConversionResult<T>(ConversionError::NEGATIVE_OVERFLOW);
+        return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
       }
     } else {
       rv = value;
       if (UNLIKELY(rv < 0)) {
-        return ConversionResult<T>(ConversionError::POSITIVE_OVERFLOW);
+        return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
       }
     }
-    return ConversionResult<T>(rv);
+    return rv;
   }
 
  private:
@@ -503,16 +484,16 @@ class SignedValueHandler<T, true> {
 template <typename T>
 class SignedValueHandler<T, false> {
  public:
-  ConversionError::Code init(const char*&) {
-    return ConversionError::SUCCESS;
+  ConversionCode init(const char*&) {
+    return ConversionCode::SUCCESS;
   }
 
-  ConversionError::Code overflow() {
-    return ConversionError::POSITIVE_OVERFLOW;
+  ConversionCode overflow() {
+    return ConversionCode::POSITIVE_OVERFLOW;
   }
 
-  ConversionResult<T> finalize(T value) {
-    return ConversionResult<T>(value);
+  Expected<T, ConversionCode> finalize(T value) {
+    return value;
   }
 };
 
@@ -524,15 +505,17 @@ class SignedValueHandler<T, false> {
  * an appropriate error.
  */
 template <class Tgt>
-inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
+inline Expected<Tgt, ConversionCode> digits_to(
+    const char* b,
+    const char* const e) noexcept {
   using UT = typename std::make_unsigned<Tgt>::type;
   assert(b <= e);
 
   SignedValueHandler<Tgt> sgn;
 
   auto err = sgn.init(b);
-  if (UNLIKELY(err != ConversionError::SUCCESS)) {
-    return ConversionResult<Tgt>(err);
+  if (UNLIKELY(err != ConversionCode::SUCCESS)) {
+    return makeUnexpected(err);
   }
 
   size_t size = e - b;
@@ -545,7 +528,7 @@ inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
     if (b < e && *b == '0') {
       for (++b;; ++b) {
         if (b == e) {
-          return ConversionResult<Tgt>(Tgt(0)); // just zeros, e.g. "0000"
+          return Tgt(0); // just zeros, e.g. "0000"
         }
         if (*b != '0') {
           size = e - b;
@@ -556,7 +539,7 @@ inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
     if (size > std::numeric_limits<UT>::digits10 &&
         (size != std::numeric_limits<UT>::digits10 + 1 ||
          strncmp(b, MaxString<UT>::value, size) > 0)) {
-      return ConversionResult<Tgt>(sgn.overflow());
+      return makeUnexpected(sgn.overflow());
     }
   }
 
@@ -611,7 +594,7 @@ inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
   default:
     assert(b == e);
     if (size == 0) {
-      return ConversionResult<Tgt>(ConversionError::NO_DIGITS);
+      return makeUnexpected(ConversionCode::NO_DIGITS);
     }
     break;
   }
@@ -619,46 +602,52 @@ inline ConversionResult<Tgt> digits_to(const char* b, const char* const e) {
   return sgn.finalize(result);
 
 outOfRange:
-  return ConversionResult<Tgt>(ConversionError::NON_DIGIT_CHAR);
+  return makeUnexpected(ConversionCode::NON_DIGIT_CHAR);
 }
 
-template ConversionResult<char> digits_to<char>(const char*, const char*);
-template ConversionResult<signed char> digits_to<signed char>(
+template Expected<char, ConversionCode> digits_to<char>(
     const char*,
-    const char*);
-template ConversionResult<unsigned char> digits_to<unsigned char>(
+    const char*) noexcept;
+template Expected<signed char, ConversionCode> digits_to<signed char>(
     const char*,
-    const char*);
+    const char*) noexcept;
+template Expected<unsigned char, ConversionCode> digits_to<unsigned char>(
+    const char*,
+    const char*) noexcept;
 
-template ConversionResult<short> digits_to<short>(const char*, const char*);
-template ConversionResult<unsigned short> digits_to<unsigned short>(
+template Expected<short, ConversionCode> digits_to<short>(
     const char*,
-    const char*);
+    const char*) noexcept;
+template Expected<unsigned short, ConversionCode> digits_to<unsigned short>(
+    const char*,
+    const char*) noexcept;
 
-template ConversionResult<int> digits_to<int>(const char*, const char*);
-template ConversionResult<unsigned int> digits_to<unsigned int>(
+template Expected<int, ConversionCode> digits_to<int>(
     const char*,
-    const char*);
+    const char*) noexcept;
+template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
+    const char*,
+    const char*) noexcept;
 
-template ConversionResult<long> digits_to<long>(const char*, const char*);
-template ConversionResult<unsigned long> digits_to<unsigned long>(
+template Expected<long, ConversionCode> digits_to<long>(
     const char*,
     const char*);
+template Expected<unsigned long, ConversionCode> digits_to<unsigned long>(
+    const char*,
+    const char*) noexcept;
 
-template ConversionResult<long long> digits_to<long long>(
+template Expected<long long, ConversionCode> digits_to<long long>(
     const char*,
-    const char*);
-template ConversionResult<unsigned long long> digits_to<unsigned long long>(
-    const char*,
-    const char*);
+    const char*) noexcept;
+template Expected<unsigned long long, ConversionCode>
+digits_to<unsigned long long>(const char*, const char*) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-template ConversionResult<__int128> digits_to<__int128>(
+template Expected<__int128, ConversionCode> digits_to<__int128>(
     const char*,
-    const char*);
-template ConversionResult<unsigned __int128> digits_to<unsigned __int128>(
-    const char*,
-    const char*);
+    const char*) noexcept;
+template Expected<unsigned __int128, ConversionCode>
+digits_to<unsigned __int128>(const char*, const char*) noexcept;
 #endif
 
 /**
@@ -666,14 +655,14 @@ template ConversionResult<unsigned __int128> digits_to<unsigned __int128>(
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-ConversionResult<Tgt> str_to_integral(StringPiece* src) {
+Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
   using UT = typename std::make_unsigned<Tgt>::type;
 
   auto b = src->data(), past = src->data() + src->size();
 
   for (;; ++b) {
     if (UNLIKELY(b >= past)) {
-      return ConversionResult<Tgt>(ConversionError::EMPTY_INPUT_STRING);
+      return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
     if (!std::isspace(*b)) {
       break;
@@ -683,63 +672,93 @@ ConversionResult<Tgt> str_to_integral(StringPiece* src) {
   SignedValueHandler<Tgt> sgn;
   auto err = sgn.init(b);
 
-  if (UNLIKELY(err != ConversionError::SUCCESS)) {
-    return ConversionResult<Tgt>(err);
+  if (UNLIKELY(err != ConversionCode::SUCCESS)) {
+    return makeUnexpected(err);
   }
   if (std::is_signed<Tgt>::value && UNLIKELY(b >= past)) {
-    return ConversionResult<Tgt>(ConversionError::NO_DIGITS);
+    return makeUnexpected(ConversionCode::NO_DIGITS);
   }
   if (UNLIKELY(!isdigit(*b))) {
-    return ConversionResult<Tgt>(ConversionError::NON_DIGIT_CHAR);
+    return makeUnexpected(ConversionCode::NON_DIGIT_CHAR);
   }
 
   auto m = findFirstNonDigit(b + 1, past);
 
   auto tmp = digits_to<UT>(b, m);
 
-  if (UNLIKELY(!tmp.success())) {
-    return ConversionResult<Tgt>(
-        tmp.error == ConversionError::POSITIVE_OVERFLOW ? sgn.overflow()
-                                                        : tmp.error);
+  if (UNLIKELY(!tmp.hasValue())) {
+    return makeUnexpected(
+        tmp.error() == ConversionCode::POSITIVE_OVERFLOW ? sgn.overflow()
+                                                         : tmp.error());
   }
 
-  auto res = sgn.finalize(tmp.value);
+  auto res = sgn.finalize(tmp.value());
 
-  if (res.success()) {
+  if (res.hasValue()) {
     src->advance(m - src->data());
   }
 
   return res;
 }
 
-template ConversionResult<char> str_to_integral<char>(StringPiece* src);
-template ConversionResult<signed char> str_to_integral<signed char>(
-    StringPiece* src);
-template ConversionResult<unsigned char> str_to_integral<unsigned char>(
-    StringPiece* src);
+template Expected<char, ConversionCode> str_to_integral<char>(
+    StringPiece* src) noexcept;
+template Expected<signed char, ConversionCode> str_to_integral<signed char>(
+    StringPiece* src) noexcept;
+template Expected<unsigned char, ConversionCode> str_to_integral<unsigned char>(
+    StringPiece* src) noexcept;
 
-template ConversionResult<short> str_to_integral<short>(StringPiece* src);
-template ConversionResult<unsigned short> str_to_integral<unsigned short>(
-    StringPiece* src);
+template Expected<short, ConversionCode> str_to_integral<short>(
+    StringPiece* src) noexcept;
+template Expected<unsigned short, ConversionCode>
+str_to_integral<unsigned short>(StringPiece* src) noexcept;
 
-template ConversionResult<int> str_to_integral<int>(StringPiece* src);
-template ConversionResult<unsigned int> str_to_integral<unsigned int>(
-    StringPiece* src);
+template Expected<int, ConversionCode> str_to_integral<int>(
+    StringPiece* src) noexcept;
+template Expected<unsigned int, ConversionCode> str_to_integral<unsigned int>(
+    StringPiece* src) noexcept;
 
-template ConversionResult<long> str_to_integral<long>(StringPiece* src);
-template ConversionResult<unsigned long> str_to_integral<unsigned long>(
-    StringPiece* src);
+template Expected<long, ConversionCode> str_to_integral<long>(
+    StringPiece* src) noexcept;
+template Expected<unsigned long, ConversionCode> str_to_integral<unsigned long>(
+    StringPiece* src) noexcept;
 
-template ConversionResult<long long> str_to_integral<long long>(
-    StringPiece* src);
-template ConversionResult<unsigned long long>
-str_to_integral<unsigned long long>(StringPiece* src);
+template Expected<long long, ConversionCode> str_to_integral<long long>(
+    StringPiece* src) noexcept;
+template Expected<unsigned long long, ConversionCode>
+str_to_integral<unsigned long long>(StringPiece* src) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-template ConversionResult<__int128> str_to_integral<__int128>(StringPiece* src);
-template ConversionResult<unsigned __int128> str_to_integral<unsigned __int128>(
-    StringPiece* src);
+template Expected<__int128, ConversionCode> str_to_integral<__int128>(
+    StringPiece* src) noexcept;
+template Expected<unsigned __int128, ConversionCode>
+str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
 
 } // namespace detail
+
+ConversionError makeConversionError(ConversionCode code, StringPiece input) {
+  using namespace detail;
+  static_assert(
+      std::is_unsigned<std::underlying_type<ConversionCode>::type>::value,
+      "ConversionCode should be unsigned");
+  assert((std::size_t)code < kErrorStrings.size());
+  const ErrorString& err = kErrorStrings[(std::size_t)code];
+  if (code == ConversionCode::EMPTY_INPUT_STRING && input.empty()) {
+    return {err.string, code};
+  }
+  std::string tmp(err.string);
+  tmp.append(": ");
+  if (err.quote) {
+    tmp.append(1, '"');
+  }
+  if (input.size() > 0) {
+    tmp.append(input.data(), input.size());
+  }
+  if (err.quote) {
+    tmp.append(1, '"');
+  }
+  return {tmp, code};
+}
+
 } // namespace folly
