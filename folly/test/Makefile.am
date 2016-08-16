@@ -301,4 +301,8 @@ apply_tuple_test_SOURCES = ApplyTupleTest.cpp
 apply_tuple_test_LDADD = libfollytestmain.la
 TESTS += apply_tuple_test
 
+partial_test_SOURCES = PartialTest.cpp
+partial_test_LDADD = libfollytestmain.la
+TESTS += partial_test
+
 check_PROGRAMS += $(TESTS)
