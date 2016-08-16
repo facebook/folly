@@ -136,29 +136,24 @@ class EventBase : private boost::noncopyable,
    * If a LoopCallback object is destroyed while it is scheduled to be run in
    * the next loop iteration, it will automatically be cancelled.
    */
-  class LoopCallback {
+  class LoopCallback
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
    public:
     virtual ~LoopCallback() = default;
 
     virtual void runLoopCallback() noexcept = 0;
     void cancelLoopCallback() {
-      hook_.unlink();
+      unlink();
     }
 
     bool isLoopCallbackScheduled() const {
-      return hook_.is_linked();
+      return is_linked();
     }
 
    private:
-    typedef boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink> > ListHook;
-
-    ListHook hook_;
-
     typedef boost::intrusive::list<
       LoopCallback,
-      boost::intrusive::member_hook<LoopCallback, ListHook,
-                                    &LoopCallback::hook_>,
       boost::intrusive::constant_time_size<false> > List;
 
     // EventBase needs access to LoopCallbackList (and therefore to hook_)
