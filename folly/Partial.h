@@ -32,8 +32,14 @@ class Partial {
       : f_(std::forward<Callable>(callable)),
         stored_args_(std::forward<Args>(args)...) {}
 
+  // full auto doesn't work here due to
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=70983 :(
+
   template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) & {
+  auto operator()(CArgs&&... cargs) & -> decltype(applyTuple(
+      static_cast<F&>(f_),
+      static_cast<Tuple&>(stored_args_),
+      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
     return applyTuple(
         static_cast<F&>(f_),
         static_cast<Tuple&>(stored_args_),
@@ -41,7 +47,10 @@ class Partial {
   }
 
   template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) const& {
+  auto operator()(CArgs&&... cargs) const& -> decltype(applyTuple(
+      static_cast<F const&>(f_),
+      static_cast<Tuple const&>(stored_args_),
+      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
     return applyTuple(
         static_cast<F const&>(f_),
         static_cast<Tuple const&>(stored_args_),
@@ -49,7 +58,10 @@ class Partial {
   }
 
   template <typename... CArgs>
-  auto operator()(CArgs&&... cargs) && {
+  auto operator()(CArgs&&... cargs) && -> decltype(applyTuple(
+      static_cast<F&&>(f_),
+      static_cast<Tuple&&>(stored_args_),
+      std::forward_as_tuple(std::forward<CArgs>(cargs)...))) {
     return applyTuple(
         static_cast<F&&>(f_),
         static_cast<Tuple&&>(stored_args_),
