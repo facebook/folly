@@ -352,6 +352,17 @@ class AsyncServerSocket : public DelayedDestruction
   void getAddress(SocketAddress* addressReturn) const;
 
   /**
+   * Get the local address to which the socket is bound.
+   *
+   * Throws TTransportException on error.
+   */
+  SocketAddress getAddress() const {
+    SocketAddress ret;
+    getAddress(&ret);
+    return ret;
+  }
+
+  /**
    * Get all the local addresses to which the socket is bound.
    *
    * Throws TTransportException on error.
