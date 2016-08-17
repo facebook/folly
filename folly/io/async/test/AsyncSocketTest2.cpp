@@ -2410,6 +2410,55 @@ TEST(AsyncSocketTest, ConnectTFO) {
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
 }
 
+TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
+  // Start listening on a local port
+  TestServer server(true);
+
+  // Connect using a AsyncSocket
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->enableTFO();
+  ConnCallback cb;
+  socket->connect(&cb, server.getAddress(), 30);
+  ReadCallback rcb;
+  socket->setReadCB(&rcb);
+
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+
+  std::array<uint8_t, 3> readBuf;
+  auto sendBuf = IOBuf::copyBuffer("hey");
+
+  std::thread t([&] {
+    auto acceptedSocket = server.accept();
+    acceptedSocket->write(buf.data(), buf.size());
+    acceptedSocket->flush();
+    acceptedSocket->readAll(readBuf.data(), readBuf.size());
+    acceptedSocket->close();
+  });
+
+  evb.loop();
+
+  CHECK_EQ(cb.state, STATE_SUCCEEDED);
+  EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(socket->getConnectTimeout(), std::chrono::milliseconds(30));
+  EXPECT_TRUE(socket->getTFOAttempted());
+
+  // Should trigger the connect
+  WriteCallback write;
+  socket->writeChain(&write, sendBuf->clone());
+  evb.loop();
+
+  t.join();
+
+  EXPECT_EQ(STATE_SUCCEEDED, write.state);
+  EXPECT_EQ(0, memcmp(readBuf.data(), sendBuf->data(), readBuf.size()));
+  EXPECT_EQ(STATE_SUCCEEDED, rcb.state);
+  ASSERT_EQ(1, rcb.buffers.size());
+  ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
+  EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+}
+
 /**
  * Test connecting to a server that isn't listening
  */

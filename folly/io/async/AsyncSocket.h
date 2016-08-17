@@ -735,6 +735,20 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     }
   }
 
+  /**
+   * Schedule handleInitalReadWrite to run in the next iteration.
+   */
+  void scheduleInitialReadWrite() noexcept {
+    if (good()) {
+      DestructorGuard dg(this);
+      eventBase_->runInLoop([this, dg] {
+        if (good()) {
+          handleInitialReadWrite();
+        }
+      });
+    }
+  }
+
   // event notification methods
   void ioReady(uint16_t events) noexcept;
   virtual void checkForImmediateRead() noexcept;

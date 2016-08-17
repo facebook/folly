@@ -174,19 +174,19 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
 };
 
 AsyncSocket::AsyncSocket()
-  : eventBase_(nullptr)
-  , writeTimeout_(this, nullptr)
-  , ioHandler_(this, nullptr)
-  , immediateReadHandler_(this) {
+    : eventBase_(nullptr),
+      writeTimeout_(this, nullptr),
+      ioHandler_(this, nullptr),
+      immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket()";
   init();
 }
 
 AsyncSocket::AsyncSocket(EventBase* evb)
-  : eventBase_(evb)
-  , writeTimeout_(this, evb)
-  , ioHandler_(this, evb)
-  , immediateReadHandler_(this) {
+    : eventBase_(evb),
+      writeTimeout_(this, evb),
+      ioHandler_(this, evb),
+      immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ")";
   init();
 }
@@ -207,10 +207,10 @@ AsyncSocket::AsyncSocket(EventBase* evb,
 }
 
 AsyncSocket::AsyncSocket(EventBase* evb, int fd)
-  : eventBase_(evb)
-  , writeTimeout_(this, evb)
-  , ioHandler_(this, evb, fd)
-  , immediateReadHandler_(this) {
+    : eventBase_(evb),
+      writeTimeout_(this, evb),
+      ioHandler_(this, evb, fd),
+      immediateReadHandler_(this) {
   VLOG(5) << "new AsyncSocket(" << this << ", evb=" << evb << ", fd="
           << fd << ")";
   init();
@@ -1615,7 +1615,6 @@ void AsyncSocket::handleInitialReadWrite() noexcept {
   // one here just to make sure, in case one of our calling code paths ever
   // changes.
   DestructorGuard dg(this);
-
   // If we have a readCallback_, make sure we enable read events.  We
   // may already be registered for reads if connectSuccess() set
   // the read calback.
@@ -1772,7 +1771,9 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
     if (totalWritten >= 0) {
       tfoFinished_ = true;
       state_ = StateEnum::ESTABLISHED;
-      handleInitialReadWrite();
+      // We schedule this asynchrously so that we don't end up
+      // invoking initial read or write while a write is in progress.
+      scheduleInitialReadWrite();
     } else if (errno == EINPROGRESS) {
       VLOG(4) << "TFO falling back to connecting";
       // A normal sendmsg doesn't return EINPROGRESS, however
@@ -1798,7 +1799,7 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
           // connect succeeded immediately
           // Treat this like no data was written.
           state_ = StateEnum::ESTABLISHED;
-          handleInitialReadWrite();
+          scheduleInitialReadWrite();
         }
         // If there was no exception during connections,
         // we would return that no bytes were written.
