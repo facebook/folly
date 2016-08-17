@@ -716,10 +716,6 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
     return invalidState(callback);
   }
 
-  handshakeStartTime_ = std::chrono::steady_clock::now();
-  // Make end time at least >= start time.
-  handshakeEndTime_ = handshakeStartTime_;
-
   sslState_ = STATE_CONNECTING;
   handshakeCallback_ = callback;
 
@@ -756,10 +752,19 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
 
   SSL_set_ex_data(ssl_, getSSLExDataIndex(), this);
 
-  if (timeout > 0) {
-    handshakeTimeout_.scheduleTimeout(timeout);
-  }
+  handshakeConnectTimeout_ = timeout;
+  startSSLConnect();
+}
 
+// This could be called multiple times, during normal ssl connections
+// and after TFO fallback.
+void AsyncSSLSocket::startSSLConnect() {
+  handshakeStartTime_ = std::chrono::steady_clock::now();
+  // Make end time at least >= start time.
+  handshakeEndTime_ = handshakeStartTime_;
+  if (handshakeConnectTimeout_ > 0) {
+    handshakeTimeout_.scheduleTimeout(handshakeConnectTimeout_);
+  }
   handleConnect();
 }
 
@@ -1094,12 +1099,20 @@ AsyncSSLSocket::handleConnect() noexcept {
       sslState_ == STATE_CONNECTING);
   assert(ssl_);
 
+  auto originalState = state_;
   int ret = SSL_connect(ssl_);
   if (ret <= 0) {
     int sslError;
     unsigned long errError;
     int errnoCopy = errno;
     if (willBlock(ret, &sslError, &errError)) {
+      // We fell back to connecting state due to TFO
+      if (state_ == StateEnum::CONNECTING) {
+        DCHECK_EQ(StateEnum::FAST_OPEN, originalState);
+        if (handshakeTimeout_.isScheduled()) {
+          handshakeTimeout_.cancelTimeout();
+        }
+      }
       return;
     } else {
       sslState_ = STATE_ERROR;
@@ -1147,9 +1160,8 @@ AsyncSSLSocket::handleConnect() noexcept {
 void AsyncSSLSocket::invokeConnectSuccess() {
   if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
     // If we failed TFO, we'd fall back to trying to connect the socket,
-    // when we succeed we should handle the writes that caused us to start
-    // TFO.
-    handleWrite();
+    // to setup things like timeouts.
+    startSSLConnect();
   }
   AsyncSocket::invokeConnectSuccess();
 }

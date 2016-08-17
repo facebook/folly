@@ -815,6 +815,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   void cacheLocalPeerAddr();
 
+  void startSSLConnect();
+
   static void sslInfoCallback(const SSL *ssl, int type, int val);
 
   // Whether we've applied the TCP_CORK option to the socket
@@ -875,6 +877,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // Time taken to complete the ssl handshake.
   std::chrono::steady_clock::time_point handshakeStartTime_;
   std::chrono::steady_clock::time_point handshakeEndTime_;
+  uint64_t handshakeConnectTimeout_{0};
 };
 
 } // namespace
