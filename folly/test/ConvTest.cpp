@@ -732,7 +732,7 @@ TEST(Conv, UnsignedEnumClass) {
   EXPECT_EQ(E::x, to<E>(3000000000U));
   EXPECT_EQ(E::x, to<E>("3000000000"));
   E e;
-  parseTo("3000000000", e);
+  EXPECT_TRUE(parseTo("3000000000", e).hasValue());
   EXPECT_EQ(E::x, e);
   EXPECT_THROW(to<int32_t>(E::x), std::range_error);
 }
