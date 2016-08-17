@@ -125,7 +125,7 @@ class AsyncServerSocket::BackoffTimeout : public AsyncTimeout {
  public:
   // Disallow copy, move, and default constructors.
   BackoffTimeout(BackoffTimeout&&) = delete;
-  BackoffTimeout(AsyncServerSocket* socket)
+  explicit BackoffTimeout(AsyncServerSocket* socket)
       : AsyncTimeout(socket->getEventBase()), socket_(socket) {}
 
   void timeoutExpired() noexcept override { socket_->backoffTimeoutExpired(); }
@@ -219,7 +219,14 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   for (std::vector<CallbackInfo>::iterator it = callbacksCopy.begin();
        it != callbacksCopy.end();
        ++it) {
-    it->consumer->stop(it->eventBase, it->callback);
+    // consumer may not be set if we are running in primary event base
+    if (it->consumer) {
+      DCHECK(it->eventBase);
+      it->consumer->stop(it->eventBase, it->callback);
+    } else {
+      DCHECK(it->callback);
+      it->callback->acceptStopped();
+    }
   }
 
   return result;
@@ -513,11 +520,22 @@ void AsyncServerSocket::addAcceptCallback(AcceptCallback *callback,
   // start accepting once the callback is installed.
   bool runStartAccepting = accepting_ && callbacks_.empty();
 
-  if (!eventBase) {
-    eventBase = eventBase_; // Run in AsyncServerSocket's eventbase
-  }
-
   callbacks_.emplace_back(callback, eventBase);
+
+  SCOPE_SUCCESS {
+    // If this is the first accept callback and we are supposed to be accepting,
+    // start accepting.
+    if (runStartAccepting) {
+      startAccepting();
+    }
+  };
+
+  if (!eventBase) {
+    // Run in AsyncServerSocket's eventbase; notify that we are
+    // starting to accept connections
+    callback->acceptStarted();
+    return;
+  }
 
   // Start the remote acceptor.
   //
@@ -538,12 +556,6 @@ void AsyncServerSocket::addAcceptCallback(AcceptCallback *callback,
     throw;
   }
   callbacks_.back().consumer = acceptor;
-
-  // If this is the first accept callback and we are supposed to be accepting,
-  // start accepting.
-  if (runStartAccepting) {
-    startAccepting();
-  }
 }
 
 void AsyncServerSocket::removeAcceptCallback(AcceptCallback *callback,
@@ -590,7 +602,16 @@ void AsyncServerSocket::removeAcceptCallback(AcceptCallback *callback,
     }
   }
 
-  info.consumer->stop(info.eventBase, info.callback);
+  if (info.consumer) {
+    // consumer could be nullptr is we run callbacks in primary event
+    // base
+    DCHECK(info.eventBase);
+    info.consumer->stop(info.eventBase, info.callback);
+  } else {
+    // callback invoked in the primary event base, just call directly
+    DCHECK(info.callback);
+    callback->acceptStopped();
+  }
 
   // If we are supposed to be accepting but the last accept callback
   // was removed, unregister for events until a callback is added.
