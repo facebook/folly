@@ -28,6 +28,7 @@
 #include <gtest/gtest.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/TypeTraits.h>
 
 using folly::small_vector;
 using namespace folly::small_vector_policy;

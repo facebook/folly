@@ -24,8 +24,9 @@
 #include <string.h>
 #include <type_traits>
 
-#include <folly/detail/TurnSequencer.h>
 #include <folly/Portability.h>
+#include <folly/detail/TurnSequencer.h>
+#include <folly/portability/TypeTraits.h>
 #include <folly/portability/Unistd.h>
 
 namespace folly {

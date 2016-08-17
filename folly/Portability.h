@@ -245,28 +245,6 @@ namespace std { typedef ::max_align_t max_align_t; }
 #include <folly/detail/FunctionalExcept.h>
 #endif
 
-#if defined(__cplusplus)
-// Unfortunately, boost::has_trivial_copy<T> is broken in libc++ due to its
-// usage of __has_trivial_copy(), so we can't use it as a
-// least-common-denominator for C++11 implementations that don't support
-// std::is_trivially_copyable<T>.
-//
-//      http://stackoverflow.com/questions/12754886/has-trivial-copy-behaves-differently-in-clang-and-gcc-whos-right
-//
-// As a result, use std::is_trivially_copyable() where it exists, and fall back
-// to Boost otherwise.
-#if FOLLY_HAVE_STD__IS_TRIVIALLY_COPYABLE
-#include <type_traits>
-#define FOLLY_IS_TRIVIALLY_COPYABLE(T)                   \
-  (std::is_trivially_copyable<T>::value)
-#else
-#include <boost/type_traits.hpp>
-#define FOLLY_IS_TRIVIALLY_COPYABLE(T)                   \
-  (boost::has_trivial_copy<T>::value &&                  \
-   boost::has_trivial_destructor<T>::value)
-#endif
-#endif // __cplusplus
-
 // MSVC specific defines
 // mainly for posix compat
 #ifdef _MSC_VER

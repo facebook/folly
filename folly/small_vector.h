@@ -49,6 +49,7 @@
 #include <folly/SmallLocks.h>
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/Malloc.h>
+#include <folly/portability/TypeTraits.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 #pragma GCC diagnostic push
