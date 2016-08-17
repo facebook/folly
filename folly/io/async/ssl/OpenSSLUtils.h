@@ -69,6 +69,8 @@ class OpenSSLUtils {
   static void setBioAppData(BIO* b, void* ptr);
   static void* getBioAppData(BIO* b);
   static void setCustomBioMethod(BIO*, BIO_METHOD*);
+  static int getBioFd(BIO* b, int* fd);
+  static void setBioFd(BIO* b, int fd, int flags);
 };
 
 } // ssl

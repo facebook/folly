@@ -180,6 +180,27 @@ void OpenSSLUtils::setCustomBioMethod(BIO* b, BIO_METHOD* meth) {
 #endif
 }
 
+int OpenSSLUtils::getBioFd(BIO* b, int* fd) {
+#ifdef _WIN32
+  int ret = portability::sockets::socket_to_fd((SOCKET)BIO_get_fd(b, fd));
+  if (fd != nullptr) {
+    *fd = ret;
+  }
+  return ret;
+#else
+  return BIO_get_fd(b, fd);
+#endif
+}
+
+void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
+#ifdef _WIN32
+  SOCKET sock = portability::sockets::fd_to_socket(fd);
+#else
+  int sock = fd;
+#endif
+  BIO_set_fd(b, sock, flags);
+}
+
 } // ssl
 } // folly
 

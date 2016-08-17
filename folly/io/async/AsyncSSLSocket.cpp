@@ -699,7 +699,7 @@ bool AsyncSSLSocket::setupSSLBio() {
   }
 
   OpenSSLUtils::setBioAppData(wb, this);
-  BIO_set_fd(wb, fd_, BIO_NOCLOSE);
+  OpenSSLUtils::setBioFd(wb, fd_, BIO_NOCLOSE);
   SSL_set_bio(ssl_, wb, wb);
   return true;
 }
@@ -1590,8 +1590,8 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   flags |= MSG_NOSIGNAL;
 #endif
 
-  auto result =
-      tsslSock->sendSocketMessage(BIO_get_fd(b, nullptr), &msg, flags);
+  auto result = tsslSock->sendSocketMessage(
+      OpenSSLUtils::getBioFd(b, nullptr), &msg, flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(result.writeReturn)) {
