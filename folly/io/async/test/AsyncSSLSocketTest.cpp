@@ -1788,13 +1788,15 @@ class ConnCallback : public AsyncSocket::ConnectCallback {
     state = State::SUCCESS;
   }
 
-  virtual void connectErr(const AsyncSocketException&) noexcept override {
+  virtual void connectErr(const AsyncSocketException& ex) noexcept override {
     state = State::ERROR;
+    error = ex.what();
   }
 
   enum class State { WAITING, SUCCESS, ERROR };
 
   State state{State::WAITING};
+  std::string error;
 };
 
 template <class Cardinality>
@@ -1869,7 +1871,7 @@ TEST(AsyncSSLSocketTest, ConnectTFOTimeout) {
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->enableTFO();
   EXPECT_THROW(
-      socket->open(std::chrono::milliseconds(1)), AsyncSocketException);
+      socket->open(std::chrono::milliseconds(20)), AsyncSocketException);
 }
 
 TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
@@ -1886,6 +1888,25 @@ TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
 
   evb.loop();
   EXPECT_EQ(ConnCallback::State::ERROR, ccb.state);
+}
+
+TEST(AsyncSSLSocketTest, HandshakeTFOFallbackTimeout) {
+  // Start listening on a local port
+  EmptyReadCallback readCallback;
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::EXPECT_ERROR);
+  HandshakeTimeoutCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, true);
+
+  EventBase evb;
+
+  auto socket = setupSocketWithFallback(&evb, server.getAddress(), AtMost(1));
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 100);
+
+  evb.loop();
+  EXPECT_EQ(ConnCallback::State::ERROR, ccb.state);
+  EXPECT_THAT(ccb.error, testing::HasSubstr("SSL connect timed out"));
 }
 
 #endif

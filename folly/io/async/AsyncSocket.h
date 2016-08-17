@@ -838,7 +838,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   int socketConnect(const struct sockaddr* addr, socklen_t len);
 
-  void scheduleConnectTimeoutAndRegisterForEvents();
+  virtual void scheduleConnectTimeout();
+  void registerForConnectEvents();
 
   bool updateEventRegistration();
 
@@ -869,7 +870,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
                  const AsyncSocketException& ex);
   void failWrite(const char* fn, const AsyncSocketException& ex);
   void failAllWrites(const AsyncSocketException& ex);
-  void invokeConnectErr(const AsyncSocketException& ex);
+  virtual void invokeConnectErr(const AsyncSocketException& ex);
   virtual void invokeConnectSuccess();
   void invalidState(ConnectCallback* callback);
   void invalidState(ReadCallback* callback);

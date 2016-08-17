@@ -472,7 +472,8 @@ int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
   if (rv < 0) {
     auto errnoCopy = errno;
     if (errnoCopy == EINPROGRESS) {
-      scheduleConnectTimeoutAndRegisterForEvents();
+      scheduleConnectTimeout();
+      registerForConnectEvents();
     } else {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
@@ -483,7 +484,7 @@ int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
   return rv;
 }
 
-void AsyncSocket::scheduleConnectTimeoutAndRegisterForEvents() {
+void AsyncSocket::scheduleConnectTimeout() {
   // Connection in progress.
   int timeout = connectTimeout_.count();
   if (timeout > 0) {
@@ -494,7 +495,9 @@ void AsyncSocket::scheduleConnectTimeoutAndRegisterForEvents() {
           withAddr("failed to schedule AsyncSocket connect timeout"));
     }
   }
+}
 
+void AsyncSocket::registerForConnectEvents() {
   // Register for write events, so we'll
   // be notified when the connection finishes/fails.
   // Note that we don't register for a persistent event here.
@@ -1781,7 +1784,8 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
       // cookie.
       state_ = StateEnum::CONNECTING;
       try {
-        scheduleConnectTimeoutAndRegisterForEvents();
+        scheduleConnectTimeout();
+        registerForConnectEvents();
       } catch (const AsyncSocketException& ex) {
         return WriteResult(
             WRITE_ERROR, folly::make_unique<AsyncSocketException>(ex));

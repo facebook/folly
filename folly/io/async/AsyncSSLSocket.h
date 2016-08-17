@@ -136,6 +136,20 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     AsyncSSLSocket* sslSocket_;
   };
 
+  // Timer for if we fallback from SSL connects to TCP connects
+  class ConnectionTimeout : public AsyncTimeout {
+   public:
+    ConnectionTimeout(AsyncSSLSocket* sslSocket, EventBase* eventBase)
+        : AsyncTimeout(eventBase), sslSocket_(sslSocket) {}
+
+    virtual void timeoutExpired() noexcept override {
+      sslSocket_->timeoutExpired();
+    }
+
+   private:
+    AsyncSSLSocket* sslSocket_;
+  };
+
   /**
    * Create a client AsyncSSLSocket
    */
@@ -811,7 +825,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void invokeHandshakeErr(const AsyncSocketException& ex);
   void invokeHandshakeCB();
 
+  void invokeConnectErr(const AsyncSocketException& ex) override;
   void invokeConnectSuccess() override;
+  void scheduleConnectTimeout() override;
 
   void cacheLocalPeerAddr();
 
@@ -836,6 +852,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   SSL* ssl_{nullptr};
   SSL_SESSION *sslSession_{nullptr};
   HandshakeTimeout handshakeTimeout_;
+  ConnectionTimeout connectionTimeout_;
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
 

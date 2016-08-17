@@ -253,7 +253,8 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
                                EventBase* evb, bool deferSecurityNegotiation) :
     AsyncSocket(evb),
     ctx_(ctx),
-    handshakeTimeout_(this, evb) {
+    handshakeTimeout_(this, evb),
+    connectionTimeout_(this, evb) {
   init();
   if (deferSecurityNegotiation) {
     sslState_ = STATE_UNENCRYPTED;
@@ -269,7 +270,8 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
     AsyncSocket(evb, fd),
     server_(server),
     ctx_(ctx),
-    handshakeTimeout_(this, evb) {
+    handshakeTimeout_(this, evb),
+    connectionTimeout_(this, evb) {
   init();
   if (server) {
     SSL_CTX_set_info_callback(ctx_->getSSLCtx(),
@@ -587,6 +589,12 @@ void AsyncSSLSocket::timeoutExpired() noexcept {
     // We are expecting a callback in restartSSLAccept.  The cache lookup
     // and rsa-call necessarily have pointers to this ssl socket, so delay
     // the cleanup until he calls us back.
+  } else if (state_ == StateEnum::CONNECTING) {
+    assert(sslState_ == STATE_CONNECTING);
+    DestructorGuard dg(this);
+    AsyncSocketException ex(AsyncSocketException::TIMED_OUT,
+                           "Fallback connect timed out during TFO");
+    failHandshake(__func__, ex);
   } else {
     assert(state_ == StateEnum::ESTABLISHED &&
            (sslState_ == STATE_CONNECTING || sslState_ == STATE_ACCEPTING));
@@ -1157,13 +1165,43 @@ AsyncSSLSocket::handleConnect() noexcept {
   AsyncSocket::handleInitialReadWrite();
 }
 
+void AsyncSSLSocket::invokeConnectErr(const AsyncSocketException& ex) {
+  connectionTimeout_.cancelTimeout();
+  AsyncSocket::invokeConnectErr(ex);
+}
+
 void AsyncSSLSocket::invokeConnectSuccess() {
+  connectionTimeout_.cancelTimeout();
   if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
     // If we failed TFO, we'd fall back to trying to connect the socket,
     // to setup things like timeouts.
     startSSLConnect();
   }
+  // still invoke the base class since it re-sets the connect time.
   AsyncSocket::invokeConnectSuccess();
+}
+
+void AsyncSSLSocket::scheduleConnectTimeout() {
+  if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
+    // We fell back from TFO, and need to set the timeouts.
+    // We will not have a connect callback in this case, thus if the timer
+    // expires we would have no-one to notify.
+    // Thus we should reset even the connect timers to point to the handshake
+    // timeouts.
+    assert(connectCallback_ == nullptr);
+    // We use a different connect timeout here than the handshake timeout, so
+    // that we can disambiguate the 2 timers.
+    int timeout = connectTimeout_.count();
+    if (timeout > 0) {
+      if (!connectionTimeout_.scheduleTimeout(timeout)) {
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to schedule AsyncSSLSocket connect timeout"));
+      }
+    }
+    return;
+  }
+  AsyncSocket::scheduleConnectTimeout();
 }
 
 void AsyncSSLSocket::setReadCB(ReadCallback *callback) {
