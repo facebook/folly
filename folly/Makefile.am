@@ -107,6 +107,15 @@ nobase_follyinclude_HEADERS = \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
 	experimental/NestedCommandLineApp.h \
+	experimental/observer/detail/Core.h \
+	experimental/observer/detail/ObserverManager.h \
+	experimental/observer/detail/Observer-pre.h \
+	experimental/observer/Observable.h \
+	experimental/observer/Observable-inl.h \
+	experimental/observer/Observer.h \
+	experimental/observer/Observer-inl.h \
+	experimental/observer/SimpleObservable.h \
+	experimental/observer/SimpleObservable-inl.h \
 	experimental/ProgramOptions.h \
 	experimental/ReadMostlySharedPtr.h \
 	experimental/symbolizer/Elf.h \
@@ -469,6 +478,8 @@ libfolly_la_SOURCES = \
 	experimental/io/FsUtil.cpp \
 	experimental/JSONSchema.cpp \
 	experimental/NestedCommandLineApp.cpp \
+	experimental/observer/detail/Core.cpp \
+	experimental/observer/detail/ObserverManager.cpp \
 	experimental/ProgramOptions.cpp \
 	experimental/Select64.cpp \
 	experimental/TestUtil.cpp
