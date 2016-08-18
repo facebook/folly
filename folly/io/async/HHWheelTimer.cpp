@@ -25,6 +25,8 @@
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 
+#include <folly/Bits.h>
+
 #include <cassert>
 
 using std::chrono::milliseconds;
@@ -67,6 +69,10 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
     wheel_->AsyncTimeout::cancelTimeout();
   }
   hook_.unlink();
+  if ((-1 != bucket_) && (wheel_->buckets_[0][bucket_].empty())) {
+    auto bi = makeBitIterator(wheel_->bitmap_.begin());
+    *(bi + bucket_) = false;
+  }
 
   wheel_ = nullptr;
   expiration_ = milliseconds(0);
@@ -84,7 +90,9 @@ HHWheelTimer::HHWheelTimer(
       expireTick_(1),
       count_(0),
       startTime_(getCurTime()),
-      processingCallbacksGuard_(nullptr) {}
+      processingCallbacksGuard_(nullptr) {
+  bitmap_.resize((WHEEL_SIZE / sizeof(uint64_t)) / 8, 0);
+}
 
 HHWheelTimer::~HHWheelTimer() {
   // Ensure this gets done, but right before destruction finishes.
@@ -110,10 +118,16 @@ void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
   int64_t diff = due - nextTick;
   CallbackList* list;
 
+  auto bi = makeBitIterator(bitmap_.begin());
+
   if (diff < 0) {
     list = &buckets_[0][nextTick & WHEEL_MASK];
+    *(bi + (nextTick & WHEEL_MASK)) = true;
+    callback->bucket_ = nextTick & WHEEL_MASK;
   } else if (diff < WHEEL_SIZE) {
     list = &buckets_[0][due & WHEEL_MASK];
+    *(bi + (due & WHEEL_MASK)) = true;
+    callback->bucket_ = due & WHEEL_MASK;
   } else if (diff < 1 << (2 * WHEEL_BITS)) {
     list = &buckets_[1][(due >> WHEEL_BITS) & WHEEL_MASK];
   } else if (diff < 1 << (3 * WHEEL_BITS)) {
@@ -194,13 +208,8 @@ void HHWheelTimer::timeoutExpired() noexcept {
   while (lastTick_ < nextTick) {
     int idx = lastTick_ & WHEEL_MASK;
 
-    if (idx == 0) {
-      // Cascade timers
-      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
-          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
-        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
-      }
-    }
+    auto bi = makeBitIterator(bitmap_.begin());
+    *(bi + idx) = false;
 
     lastTick_++;
     CallbackList* cbs = &buckets_[0][idx];
@@ -208,6 +217,14 @@ void HHWheelTimer::timeoutExpired() noexcept {
       auto* cb = &cbs->front();
       cbs->pop_front();
       timeouts.push_back(*cb);
+    }
+
+    if (idx == 0) {
+      // Cascade timers
+      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
+          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
+        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
+      }
     }
   }
 
@@ -266,13 +283,16 @@ size_t HHWheelTimer::cancelAll() {
 void HHWheelTimer::scheduleNextTimeout() {
   auto nextTick = calcNextTick();
   long tick = 1;
+
   if (nextTick & WHEEL_MASK) {
-    for (tick = nextTick & WHEEL_MASK; tick < WHEEL_SIZE; tick++) {
-      if (!buckets_[0][tick].empty()) {
-        break;
-      }
+    auto bi = makeBitIterator(bitmap_.begin());
+    auto bi_end = makeBitIterator(bitmap_.end());
+    auto it = folly::findFirstSet(bi + (nextTick & WHEEL_MASK), bi_end);
+    if (it == bi_end) {
+      tick = WHEEL_SIZE - ((nextTick - 1) & WHEEL_MASK);
+    } else {
+      tick = std::distance(bi + (nextTick & WHEEL_MASK), it) + 1;
     }
-    tick -= (nextTick - 1) & WHEEL_MASK;
   }
 
   if (count_ > 0) {

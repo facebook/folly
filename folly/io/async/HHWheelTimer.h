@@ -132,6 +132,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
     HHWheelTimer* wheel_;
     std::chrono::milliseconds expiration_;
+    int bucket_{-1};
 
     typedef boost::intrusive::list_member_hook<
       boost::intrusive::link_mode<boost::intrusive::auto_unlink> > ListHook;
@@ -281,6 +282,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   typedef Callback::List CallbackList;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
+  std::vector<uint64_t> bitmap_;
 
   int64_t timeToWheelTicks(std::chrono::milliseconds t) {
     return t.count() / interval_.count();
