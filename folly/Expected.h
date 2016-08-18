@@ -92,8 +92,15 @@ using ExpectedErrorType =
 
 // Details...
 namespace expected_detail {
+#ifdef _MSC_VER
+// MSVC 2015 can't handle the StrictConjunction, so we have
+// to use std::conjunction instead.
+template <template <class...> class Trait, class... Ts>
+using StrictAllOf = std::conjunction<Trait<Ts>...>;
+#else
 template <template <class...> class Trait, class... Ts>
 using StrictAllOf = StrictConjunction<Trait<Ts>...>;
+#endif
 
 template <class T>
 using IsCopyable = StrictConjunction<
@@ -287,28 +294,28 @@ struct ExpectedUnion {
 
 template <class Derived, bool, bool Noexcept>
 struct CopyConstructible {
-  CopyConstructible() = default;
+  constexpr CopyConstructible() = default;
   CopyConstructible(const CopyConstructible& that) noexcept(Noexcept) {
     static_cast<Derived*>(this)->assign(static_cast<const Derived&>(that));
   }
-  CopyConstructible(CopyConstructible&&) = default;
+  constexpr CopyConstructible(CopyConstructible&&) = default;
   CopyConstructible& operator=(const CopyConstructible&) = default;
   CopyConstructible& operator=(CopyConstructible&&) = default;
 };
 
 template <class Derived, bool Noexcept>
 struct CopyConstructible<Derived, false, Noexcept> {
-  CopyConstructible() = default;
+  constexpr CopyConstructible() = default;
   CopyConstructible(const CopyConstructible&) = delete;
-  CopyConstructible(CopyConstructible&&) = default;
+  constexpr CopyConstructible(CopyConstructible&&) = default;
   CopyConstructible& operator=(const CopyConstructible&) = default;
   CopyConstructible& operator=(CopyConstructible&&) = default;
 };
 
 template <class Derived, bool, bool Noexcept>
 struct MoveConstructible {
-  MoveConstructible() = default;
-  MoveConstructible(const MoveConstructible&) = default;
+  constexpr MoveConstructible() = default;
+  constexpr MoveConstructible(const MoveConstructible&) = default;
   MoveConstructible(MoveConstructible&& that) noexcept(Noexcept) {
     static_cast<Derived*>(this)->assign(std::move(static_cast<Derived&>(that)));
   }
@@ -318,8 +325,8 @@ struct MoveConstructible {
 
 template <class Derived, bool Noexcept>
 struct MoveConstructible<Derived, false, Noexcept> {
-  MoveConstructible() = default;
-  MoveConstructible(const MoveConstructible&) = default;
+  constexpr MoveConstructible() = default;
+  constexpr MoveConstructible(const MoveConstructible&) = default;
   MoveConstructible(MoveConstructible&&) = delete;
   MoveConstructible& operator=(const MoveConstructible&) = default;
   MoveConstructible& operator=(MoveConstructible&&) = default;
@@ -327,9 +334,9 @@ struct MoveConstructible<Derived, false, Noexcept> {
 
 template <class Derived, bool, bool Noexcept>
 struct CopyAssignable {
-  CopyAssignable() = default;
-  CopyAssignable(const CopyAssignable&) = default;
-  CopyAssignable(CopyAssignable&&) = default;
+  constexpr CopyAssignable() = default;
+  constexpr CopyAssignable(const CopyAssignable&) = default;
+  constexpr CopyAssignable(CopyAssignable&&) = default;
   CopyAssignable& operator=(const CopyAssignable& that) noexcept(Noexcept) {
     static_cast<Derived*>(this)->assign(static_cast<const Derived&>(that));
     return *this;
@@ -339,18 +346,18 @@ struct CopyAssignable {
 
 template <class Derived, bool Noexcept>
 struct CopyAssignable<Derived, false, Noexcept> {
-  CopyAssignable() = default;
-  CopyAssignable(const CopyAssignable&) = default;
-  CopyAssignable(CopyAssignable&&) = default;
+  constexpr CopyAssignable() = default;
+  constexpr CopyAssignable(const CopyAssignable&) = default;
+  constexpr CopyAssignable(CopyAssignable&&) = default;
   CopyAssignable& operator=(const CopyAssignable&) = delete;
   CopyAssignable& operator=(CopyAssignable&&) = default;
 };
 
 template <class Derived, bool, bool Noexcept>
 struct MoveAssignable {
-  MoveAssignable() = default;
-  MoveAssignable(const MoveAssignable&) = default;
-  MoveAssignable(MoveAssignable&&) = default;
+  constexpr MoveAssignable() = default;
+  constexpr MoveAssignable(const MoveAssignable&) = default;
+  constexpr MoveAssignable(MoveAssignable&&) = default;
   MoveAssignable& operator=(const MoveAssignable&) = default;
   MoveAssignable& operator=(MoveAssignable&& that) noexcept(Noexcept) {
     static_cast<Derived*>(this)->assign(std::move(static_cast<Derived&>(that)));
@@ -360,9 +367,9 @@ struct MoveAssignable {
 
 template <class Derived, bool Noexcept>
 struct MoveAssignable<Derived, false, Noexcept> {
-  MoveAssignable() = default;
-  MoveAssignable(const MoveAssignable&) = default;
-  MoveAssignable(MoveAssignable&&) = default;
+  constexpr MoveAssignable() = default;
+  constexpr MoveAssignable(const MoveAssignable&) = default;
+  constexpr MoveAssignable(MoveAssignable&&) = default;
   MoveAssignable& operator=(const MoveAssignable&) = default;
   MoveAssignable& operator=(MoveAssignable&& that) = delete;
 };
@@ -558,6 +565,9 @@ struct ExpectedHelper {
     return static_cast<This&&>(ex);
   }
 
+  FOLLY_PUSH_WARNING
+  // Don't warn about not using the overloaded comma operator.
+  FOLLY_MSVC_DISABLE_WARNING(4913)
   template <
       class This,
       class Fn,
@@ -605,6 +615,7 @@ struct ExpectedHelper {
     throw typename Unexpected<ExpectedErrorType<This>>::MakeBadExpectedAccess()(
         static_cast<This&&>(ex).error());
   }
+  FOLLY_POP_WARNING
 };
 }
 /* using override */ using expected_detail_ExpectedHelper::ExpectedHelper;
@@ -701,18 +712,6 @@ class Unexpected final {
     return std::move(error_);
   }
 
-  /**
-   * Relational operators
-   */
-  FOLLY_REQUIRES(IsEqualityComparable<Error>::value)
-  friend bool operator==(const Unexpected& lhs, const Unexpected& rhs) {
-    return lhs.error() == rhs.error();
-  }
-  FOLLY_REQUIRES(IsEqualityComparable<Error>::value)
-  friend bool operator!=(const Unexpected& lhs, const Unexpected& rhs) {
-    return !(lhs == rhs);
-  }
-
  private:
   struct MakeBadExpectedAccess {
     template <class E>
@@ -723,6 +722,22 @@ class Unexpected final {
 
   Error error_;
 };
+
+template <
+    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
+inline bool operator==(
+    const Unexpected<Error>& lhs,
+    const Unexpected<Error>& rhs) {
+  return lhs.error() == rhs.error();
+}
+
+template <
+    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Error>::value)>
+inline bool operator!=(
+    const Unexpected<Error>& lhs,
+    const Unexpected<Error>& rhs) {
+  return !(lhs == rhs);
+}
 
 /**
  * For constructing an Unexpected object from an error code. Unexpected objects
@@ -1044,50 +1059,12 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   /**
    * Relational Operators
    */
-  FOLLY_REQUIRES(IsEqualityComparable<Value>::value)
-  friend bool operator==(const Expected& lhs, const Expected& rhs) {
-    if (UNLIKELY(lhs.which_ != rhs.which_))
-      return UNLIKELY(lhs.uninitializedByException())
-          ? false
-          : throw BadExpectedAccess();
-    if (UNLIKELY(lhs.uninitializedByException()))
-      throw BadExpectedAccess();
-    if (UNLIKELY(lhs.hasError()))
-      return true; // All error states are considered equal
-    return lhs.value_ == rhs.value_;
-  }
-
-  FOLLY_REQUIRES(IsEqualityComparable<Value>::value)
-  friend bool operator!=(const Expected& lhs, const Expected& rhs) {
-    return !(lhs == rhs);
-  }
-
-  FOLLY_REQUIRES(IsLessThanComparable<Value>::value)
-  friend bool operator<(const Expected& lhs, const Expected& rhs) {
-    if (UNLIKELY(
-            lhs.uninitializedByException() || rhs.uninitializedByException()))
-      throw BadExpectedAccess();
-    if (UNLIKELY(lhs.hasError()))
-      return !rhs.hasError();
-    if (UNLIKELY(rhs.hasError()))
-      return false;
-    return lhs.value_ < rhs.value_;
-  }
-
-  FOLLY_REQUIRES(IsLessThanComparable<Value>::value)
-  friend bool operator<=(const Expected& lhs, const Expected& rhs) {
-    return !(rhs < lhs);
-  }
-
-  FOLLY_REQUIRES(IsLessThanComparable<Value>::value)
-  friend bool operator>(const Expected& lhs, const Expected& rhs) {
-    return rhs < lhs;
-  }
-
-  FOLLY_REQUIRES(IsLessThanComparable<Value>::value)
-  friend bool operator>=(const Expected& lhs, const Expected& rhs) {
-    return !(lhs < rhs);
-  }
+  template <class Val, class Err>
+  friend typename std::enable_if<IsEqualityComparable<Val>::value, bool>::type
+  operator==(const Expected<Val, Err>& lhs, const Expected<Val, Err>& rhs);
+  template <class Val, class Err>
+  friend typename std::enable_if<IsLessThanComparable<Val>::value, bool>::type
+  operator<(const Expected<Val, Err>& lhs, const Expected<Val, Err>& rhs);
 
   /*
    * Accessors
@@ -1269,6 +1246,72 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return this->which_;
   }
 };
+
+template <class Value, class Error>
+inline typename std::enable_if<IsEqualityComparable<Value>::value, bool>::type
+operator==(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  if (UNLIKELY(lhs.which_ != rhs.which_))
+    return UNLIKELY(lhs.uninitializedByException()) ? false
+                                                    : throw BadExpectedAccess();
+  if (UNLIKELY(lhs.uninitializedByException()))
+    throw BadExpectedAccess();
+  if (UNLIKELY(lhs.hasError()))
+    return true; // All error states are considered equal
+  return lhs.value_ == rhs.value_;
+}
+
+template <
+    class Value,
+    class Error FOLLY_REQUIRES_TRAILING(IsEqualityComparable<Value>::value)>
+inline bool operator!=(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  return !(rhs == lhs);
+}
+
+template <class Value, class Error>
+inline typename std::enable_if<IsLessThanComparable<Value>::value, bool>::type
+operator<(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  if (UNLIKELY(
+          lhs.uninitializedByException() || rhs.uninitializedByException()))
+    throw BadExpectedAccess();
+  if (UNLIKELY(lhs.hasError()))
+    return !rhs.hasError();
+  if (UNLIKELY(rhs.hasError()))
+    return false;
+  return lhs.value_ < rhs.value_;
+}
+
+template <
+    class Value,
+    class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
+inline bool operator<=(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  return !(rhs < lhs);
+}
+
+template <
+    class Value,
+    class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
+inline bool operator>(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  return rhs < lhs;
+}
+
+template <
+    class Value,
+    class Error FOLLY_REQUIRES_TRAILING(IsLessThanComparable<Value>::value)>
+inline bool operator>=(
+    const Expected<Value, Error>& lhs,
+    const Expected<Value, Error>& rhs) {
+  return !(lhs < rhs);
+}
 
 /**
  * swap Expected values
