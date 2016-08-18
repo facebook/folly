@@ -44,7 +44,11 @@ class EventHandler : private boost::noncopyable {
     READ = EV_READ,
     WRITE = EV_WRITE,
     READ_WRITE = (READ | WRITE),
-    PERSIST = EV_PERSIST
+    PERSIST = EV_PERSIST,
+// Temporary flag until EPOLLPRI is upstream on libevent.
+#ifdef EV_PRI
+    PRI = EV_PRI,
+#endif
   };
 
   /**
