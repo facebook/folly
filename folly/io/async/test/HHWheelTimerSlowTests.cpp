@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/Random.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
@@ -271,4 +272,53 @@ TEST_F(HHWheelTimerTest, Level1) {
       start, t1.timestamps[0], milliseconds(605), milliseconds(256));
   T_CHECK_TIMEOUT(
       start, t2.timestamps[0], milliseconds(300), milliseconds(256));
+}
+
+TEST_F(HHWheelTimerTest, Stress) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+
+  long timeoutcount = 10000;
+  TestTimeout timeouts[10000];
+  long runtimeouts = 0;
+  for (long i = 0; i < timeoutcount; i++) {
+    long newtimeout = Random::rand32(1, 10000);
+    if (Random::rand32(3)) {
+      // NOTE: hhwheel timer runs before eventbase runAfterDelay,
+      // so runAfterDelay cancelTimeout() must run  at least one timerwheel
+      // before scheduleTimeout, to ensure it runs first.
+      newtimeout += 256;
+      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(newtimeout));
+      eventBase.runAfterDelay(
+          [&, i]() {
+            timeouts[i].fn = nullptr;
+            timeouts[i].cancelTimeout();
+            runtimeouts++;
+            LOG(INFO) << "Ran " << runtimeouts << " timeouts, cancelled";
+          },
+          newtimeout - 256);
+      timeouts[i].fn = [&, i, newtimeout]() {
+        LOG(INFO) << "FAIL:timer " << i << " still fired in " << newtimeout;
+        EXPECT_FALSE(true);
+      };
+    } else {
+      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(newtimeout));
+      timeouts[i].fn = [&, i]() {
+        timeoutcount++;
+        long newtimeout = Random::rand32(1, 10000);
+        t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(newtimeout));
+        runtimeouts++;
+        /* sleep override */ usleep(1000);
+        LOG(INFO) << "Ran " << runtimeouts << " timeouts of " << timeoutcount;
+        timeouts[i].fn = [&, i]() {
+          runtimeouts++;
+          LOG(INFO) << "Ran " << runtimeouts << " timeouts of " << timeoutcount;
+        };
+      };
+    }
+  }
+
+  LOG(INFO) << "RUNNING TEST";
+  eventBase.loop();
+
+  EXPECT_EQ(runtimeouts, timeoutcount);
 }

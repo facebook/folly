@@ -33,14 +33,6 @@ namespace folly {
 /**
  * Hashed Hierarchical Wheel Timer
  *
- * Comparison:
- * AsyncTimeout - a single timeout.
- * HHWheelTimer - a set of efficient timeouts with different interval,
- *    but timeouts are not exact.
- *
- * All of the above are O(1) in insertion, tick update and cancel
-
- * This implementation ticks once every 10ms.
  * We model timers as the number of ticks until the next
  * due event.  We allow 32-bits of space to track this
  * due interval, and break that into 4 regions of 8 bits.
@@ -53,8 +45,11 @@ namespace folly {
  * into a different bucket.
  *
  * This technique results in a very cheap mechanism for
- * maintaining time and timers, provided that we can maintain
- * a consistent rate of ticks.
+ * maintaining time and timers.
+ *
+ * Unlike the original timer wheel paper, this implementation does
+ * *not* tick constantly, and instead calculates the exact next wakeup
+ * time.
  */
 class HHWheelTimer : private folly::AsyncTimeout,
                      public folly::DelayedDestruction {
@@ -292,12 +287,22 @@ class HHWheelTimer : private folly::AsyncTimeout,
   }
 
   bool cascadeTimers(int bucket, int tick);
-  int64_t nextTick_;
+  int64_t lastTick_;
+  int64_t expireTick_;
   uint64_t count_;
-  std::chrono::milliseconds now_;
+  std::chrono::milliseconds startTime_;
+
+  int64_t calcNextTick();
+
+  void scheduleNextTimeout();
 
   bool* processingCallbacksGuard_;
   CallbackList timeouts; // Timeouts queued to run
+
+  std::chrono::milliseconds getCurTime() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch());
+  }
 };
 
 } // folly

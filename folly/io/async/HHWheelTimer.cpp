@@ -58,12 +58,7 @@ void HHWheelTimer::Callback::setScheduled(HHWheelTimer* wheel,
 
   wheel_ = wheel;
 
-  // Only update the now_ time if we're not in a timeout expired callback
-  if (wheel_->count_  == 0 && !wheel_->processingCallbacksGuard_) {
-    wheel_->now_ = getCurTime();
-  }
-
-  expiration_ = wheel_->now_ + timeout;
+  expiration_ = getCurTime() + timeout;
 }
 
 void HHWheelTimer::Callback::cancelTimeoutImpl() {
@@ -85,8 +80,10 @@ HHWheelTimer::HHWheelTimer(
     : AsyncTimeout(timeoutMananger, internal),
       interval_(intervalMS),
       defaultTimeout_(defaultTimeoutMS),
-      nextTick_(1),
+      lastTick_(1),
+      expireTick_(1),
       count_(0),
+      startTime_(getCurTime()),
       processingCallbacksGuard_(nullptr) {}
 
 HHWheelTimer::~HHWheelTimer() {
@@ -108,12 +105,13 @@ HHWheelTimer::~HHWheelTimer() {
 
 void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
                                        std::chrono::milliseconds timeout) {
-  int64_t due = timeToWheelTicks(timeout) + nextTick_;
-  int64_t diff = due - nextTick_;
+  auto nextTick = calcNextTick();
+  int64_t due = timeToWheelTicks(timeout) + nextTick;
+  int64_t diff = due - nextTick;
   CallbackList* list;
 
   if (diff < 0) {
-    list = &buckets_[0][nextTick_ & WHEEL_MASK];
+    list = &buckets_[0][nextTick & WHEEL_MASK];
   } else if (diff < WHEEL_SIZE) {
     list = &buckets_[0][due & WHEEL_MASK];
   } else if (diff < 1 << (2 * WHEEL_BITS)) {
@@ -124,7 +122,7 @@ void HHWheelTimer::scheduleTimeoutImpl(Callback* callback,
     /* in largest slot */
     if (diff > LARGEST_SLOT) {
       diff = LARGEST_SLOT;
-      due = diff + nextTick_;
+      due = diff + nextTick;
     }
     list = &buckets_[3][(due >> 3 * WHEEL_BITS) & WHEEL_MASK];
   }
@@ -138,13 +136,18 @@ void HHWheelTimer::scheduleTimeout(Callback* callback,
 
   callback->context_ = RequestContext::saveContext();
 
-  if (count_ == 0 && !processingCallbacksGuard_) {
-    this->AsyncTimeout::scheduleTimeout(interval_.count());
-  }
+  uint64_t prev = count_;
+  count_++;
 
   callback->setScheduled(this, timeout);
   scheduleTimeoutImpl(callback, timeout);
-  count_++;
+
+  /* If we're calling callbacks, timer will be reset after all
+   * callbacks are called.
+   */
+  if (!processingCallbacksGuard_) {
+    scheduleNextTimeout();
+  }
 }
 
 void HHWheelTimer::scheduleTimeout(Callback* callback) {
@@ -159,7 +162,7 @@ bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
   while (!cbs.empty()) {
     auto* cb = &cbs.front();
     cbs.pop_front();
-    scheduleTimeoutImpl(cb, cb->getTimeRemaining(now_));
+    scheduleTimeoutImpl(cb, cb->getTimeRemaining(getCurTime()));
   }
 
   // If tick is zero, timeoutExpired will cascade the next bucket.
@@ -167,6 +170,8 @@ bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
 }
 
 void HHWheelTimer::timeoutExpired() noexcept {
+  auto nextTick = calcNextTick();
+
   // If the last smart pointer for "this" is reset inside the callback's
   // timeoutExpired(), then the guard will detect that it is time to bail from
   // this method.
@@ -185,21 +190,19 @@ void HHWheelTimer::timeoutExpired() noexcept {
   // timeoutExpired() can only be invoked directly from the event base loop.
   // It should never be invoked recursively.
   //
-  milliseconds catchup = std::chrono::duration_cast<milliseconds>(
-      std::chrono::steady_clock::now().time_since_epoch());
-  while (now_ < catchup) {
-    now_ += interval_;
+  lastTick_ = expireTick_;
+  while (lastTick_ < nextTick) {
+    int idx = lastTick_ & WHEEL_MASK;
 
-    int idx = nextTick_ & WHEEL_MASK;
-    if (0 == idx) {
+    if (idx == 0) {
       // Cascade timers
-      if (cascadeTimers(1, (nextTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
-          cascadeTimers(2, (nextTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
-        cascadeTimers(3, (nextTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
+      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
+          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
+        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
       }
     }
 
-    nextTick_++;
+    lastTick_++;
     CallbackList* cbs = &buckets_[0][idx];
     while (!cbs->empty()) {
       auto* cb = &cbs->front();
@@ -223,9 +226,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
       return;
     }
   }
-  if (count_ > 0) {
-    this->AsyncTimeout::scheduleTimeout(interval_.count());
-  }
+  scheduleNextTimeout();
 }
 
 size_t HHWheelTimer::cancelAll() {
@@ -260,6 +261,43 @@ size_t HHWheelTimer::cancelAll() {
   }
 
   return count;
+}
+
+void HHWheelTimer::scheduleNextTimeout() {
+  auto nextTick = calcNextTick();
+  long tick = 1;
+  if (nextTick & WHEEL_MASK) {
+    for (tick = nextTick & WHEEL_MASK; tick < WHEEL_SIZE; tick++) {
+      if (!buckets_[0][tick].empty()) {
+        break;
+      }
+    }
+    tick -= (nextTick - 1) & WHEEL_MASK;
+  }
+
+  if (count_ > 0) {
+    if (!this->AsyncTimeout::isScheduled() ||
+        (expireTick_ > tick + nextTick - 1)) {
+      this->AsyncTimeout::scheduleTimeout(interval_ * tick);
+      expireTick_ = tick + nextTick - 1;
+    }
+  } else {
+    this->AsyncTimeout::cancelTimeout();
+  }
+}
+
+int64_t HHWheelTimer::calcNextTick() {
+  auto intervals =
+      (getCurTime().count() - startTime_.count()) / interval_.count();
+  // Slow eventbases will have skew between the actual time and the
+  // callback time.  To avoid racing the next scheduleNextTimeout()
+  // call, always schedule new timeouts against the actual
+  // timeoutExpired() time.
+  if (!processingCallbacksGuard_) {
+    return intervals;
+  } else {
+    return lastTick_;
+  }
 }
 
 } // folly
