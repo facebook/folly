@@ -631,7 +631,7 @@ template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
 
 template Expected<long, ConversionCode> digits_to<long>(
     const char*,
-    const char*);
+    const char*) noexcept;
 template Expected<unsigned long, ConversionCode> digits_to<unsigned long>(
     const char*,
     const char*) noexcept;
