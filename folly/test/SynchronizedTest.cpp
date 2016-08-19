@@ -190,11 +190,6 @@ class SynchronizedLockTest : public testing::Test {
 };
 
 /**
- * To avoid typing
- */
-// static constexpr auto one_ms = std::chrono::milliseconds(1);
-
-/**
  * Test mutex to help to automate assertions, taken from LockTraitsTest.cpp
  */
 class FakeAllPowerfulAssertingMutexInternal {
