@@ -59,7 +59,6 @@ nobase_follyinclude_HEADERS = \
 	detail/ExceptionWrapper.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
-	detail/FunctionalExcept.h \
 	detail/Futex.h \
 	detail/GroupVarintDetail.h \
 	detail/IPAddress.h \
@@ -267,6 +266,7 @@ nobase_follyinclude_HEADERS = \
 	Portability.h \
 	portability/Asm.h \
 	portability/Atomic.h \
+	portability/BitsFunctexcept.h \
 	portability/Builtins.h \
 	portability/Config.h \
 	portability/Constexpr.h \
@@ -437,6 +437,7 @@ libfolly_la_SOURCES = \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
+	portability/BitsFunctexcept.cpp \
 	portability/Dirent.cpp \
 	portability/Environment.cpp \
 	portability/Fcntl.cpp \

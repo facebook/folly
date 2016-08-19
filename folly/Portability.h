@@ -238,13 +238,6 @@ namespace std { typedef ::max_align_t max_align_t; }
 # define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
 #endif
 
-// Provide our own std::__throw_* wrappers for platforms that don't have them
-#if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
-#include <bits/functexcept.h>
-#else
-#include <folly/detail/FunctionalExcept.h>
-#endif
-
 // MSVC specific defines
 // mainly for posix compat
 #ifdef _MSC_VER

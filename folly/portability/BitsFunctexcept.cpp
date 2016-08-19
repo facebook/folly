@@ -14,15 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
-
-// If FOLLY_HAVE_BITS_FUNCTEXCEPT_H is set, this file compiles to
-// nothing.
+#include <folly/portability/BitsFunctexcept.h>
 
 #if !FOLLY_HAVE_BITS_FUNCTEXCEPT_H
-
-#include <folly/detail/FunctionalExcept.h>
-
 #include <stdexcept>
 
 FOLLY_NAMESPACE_STD_BEGIN
@@ -39,12 +33,9 @@ void __throw_out_of_range(const char* msg) {
   throw std::out_of_range(msg);
 }
 
-#if defined(_MSC_VER)
 void __throw_bad_alloc() {
   throw std::bad_alloc();
 }
-#endif
 
 FOLLY_NAMESPACE_STD_END
-
 #endif
