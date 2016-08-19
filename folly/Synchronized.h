@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <folly/Likely.h>
 #include <folly/LockTraits.h>
 #include <folly/Preprocessor.h>
 #include <folly/SharedMutex.h>
@@ -43,12 +44,29 @@ template <class LockedType, class LockPolicy = LockPolicyExclusive>
 class LockedGuardPtr;
 
 /**
+ * Public version of LockInterfaceDispatcher that contains the MutexLevel enum
+ * for the passed in mutex type
+ *
+ * This is decoupled from MutexLevelValueImpl in LockTraits.h because this
+ * ensures that a heterogenous mutex with a different API can be used.  For
+ * example - if a mutex does not have a lock_shared() method but the
+ * LockTraits specialization for it supports a static non member
+ * lock_shared(Mutex&) it can be used as a shared mutex and will provide
+ * rlock() and wlock() functions.
+ */
+template <class Mutex>
+using MutexLevelValue = detail::MutexLevelValueImpl<
+    true,
+    LockTraits<Mutex>::is_shared,
+    LockTraits<Mutex>::is_upgrade>;
+
+/**
  * SynchronizedBase is a helper parent class for Synchronized<T>.
  *
  * It provides wlock() and rlock() methods for shared mutex types,
  * or lock() methods for purely exclusive mutex types.
  */
-template <class Subclass, bool is_shared>
+template <class Subclass, detail::MutexLevel level>
 class SynchronizedBase;
 
 /**
@@ -58,7 +76,7 @@ class SynchronizedBase;
  * accessing the data.
  */
 template <class Subclass>
-class SynchronizedBase<Subclass, true> {
+class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
  public:
   using LockedPtr = ::folly::LockedPtr<Subclass, LockPolicyExclusive>;
   using ConstWLockedPtr =
@@ -186,13 +204,109 @@ class SynchronizedBase<Subclass, true> {
 };
 
 /**
+ * SynchronizedBase specialization for upgrade mutex types.
+ *
+ * This class provides all the functionality provided by the SynchronizedBase
+ * specialization for shared mutexes and a ulock() method that returns an
+ * upgradable lock RAII proxy
+ */
+template <class Subclass>
+class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
+    : public SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
+ public:
+  using UpgradeLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyUpgrade>;
+  using ConstUpgradeLockedPtr =
+      ::folly::LockedPtr<const Subclass, LockPolicyUpgrade>;
+  using UpgradeLockedGuardPtr =
+      ::folly::LockedGuardPtr<Subclass, LockPolicyUpgrade>;
+  using ConstUpgradeLockedGuardPtr =
+      ::folly::LockedGuardPtr<const Subclass, LockPolicyUpgrade>;
+
+  /**
+   * Acquire an upgrade lock and return a LockedPtr that can be used to safely
+   * access the datum
+   *
+   * And the const version
+   */
+  UpgradeLockedPtr ulock() {
+    return UpgradeLockedPtr(static_cast<Subclass*>(this));
+  }
+  ConstUpgradeLockedPtr ulock() const {
+    return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this));
+  }
+
+  /**
+   * Acquire an upgrade lock and return a LockedPtr that can be used to safely
+   * access the datum
+   *
+   * And the const version
+   */
+  template <class Rep, class Period>
+  UpgradeLockedPtr ulock(const std::chrono::duration<Rep, Period>& timeout) {
+    return UpgradeLockedPtr(static_cast<Subclass*>(this), timeout);
+  }
+  template <class Rep, class Period>
+  UpgradeLockedPtr ulock(
+      const std::chrono::duration<Rep, Period>& timeout) const {
+    return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this), timeout);
+  }
+
+  /**
+   * Invoke a function while holding the lock.
+   *
+   * A reference to the datum will be passed into the function as its only
+   * argument.
+   *
+   * This can be used with a lambda argument for easily defining small critical
+   * sections in the code.  For example:
+   *
+   *   auto value = obj.withULock([](auto& data) {
+   *     data.doStuff();
+   *     return data.getValue();
+   *   });
+   *
+   * This is probably not the function you want.  If the intent is to read the
+   * data object and determine whether you should upgrade to a write lock then
+   * the withULockPtr() method should be called instead, since it gives access
+   * to the LockedPtr proxy (which can be upgraded via the
+   * moveFromUpgradeToWrite() method)
+   */
+  template <class Function>
+  auto withULock(Function&& function) const {
+    ConstUpgradeLockedGuardPtr guardPtr(static_cast<const Subclass*>(this));
+    return function(*guardPtr);
+  }
+
+  /**
+   * Invoke a function while holding the lock exclusively.
+   *
+   * This is similar to withULock(), but the function will be passed a
+   * LockedPtr rather than a reference to the data itself.
+   *
+   * This allows scopedUnlock() and getUniqueLock() to be called on the
+   * LockedPtr argument.
+   *
+   * This also allows you to upgrade the LockedPtr proxy to a write state so
+   * that changes can be made to the underlying data
+   */
+  template <class Function>
+  auto withULockPtr(Function&& function) {
+    return function(ulock());
+  }
+  template <class Function>
+  auto withULockPtr(Function&& function) const {
+    return function(ulock());
+  }
+};
+
+/**
  * SynchronizedBase specialization for non-shared mutex types.
  *
  * This class provides lock() methods for acquiring the lock and accessing the
  * data.
  */
 template <class Subclass>
-class SynchronizedBase<Subclass, false> {
+class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
  public:
   using LockedPtr = ::folly::LockedPtr<Subclass, LockPolicyExclusive>;
   using ConstLockedPtr =
@@ -310,10 +424,10 @@ class SynchronizedBase<Subclass, false> {
 template <class T, class Mutex = SharedMutex>
 struct Synchronized : public SynchronizedBase<
                           Synchronized<T, Mutex>,
-                          LockTraits<Mutex>::is_shared> {
+                          MutexLevelValue<Mutex>::value> {
  private:
   using Base =
-      SynchronizedBase<Synchronized<T, Mutex>, LockTraits<Mutex>::is_shared>;
+      SynchronizedBase<Synchronized<T, Mutex>, MutexLevelValue<Mutex>::value>;
   static constexpr bool nxCopyCtor{
       std::is_nothrow_copy_constructible<T>::value};
   static constexpr bool nxMoveCtor{
@@ -990,6 +1104,74 @@ class LockedPtr : public LockedPtrBase<
    */
   ScopedUnlocker<SynchronizedType, LockPolicy> scopedUnlock() {
     return ScopedUnlocker<SynchronizedType, LockPolicy>(this);
+  }
+
+  /***************************************************************************
+   * Upgradable lock methods.
+   * These are disabled via SFINAE when the mutex is not upgradable
+   **************************************************************************/
+  /**
+   * Move the locked ptr from an upgrade state to an exclusive state.  The
+   * current lock is left in a null state.
+   */
+  template <
+      typename SyncType = SynchronizedType,
+      typename = typename std::enable_if<
+          LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
+  LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>
+  moveFromUpgradeToWrite() {
+    auto* parent_to_pass_on = this->parent_;
+    this->parent_ = nullptr;
+    return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>(
+        parent_to_pass_on);
+  }
+
+  /**
+   * Move the locked ptr from an exclusive state to an upgrade state.  The
+   * current lock is left in a null state.
+   */
+  template <
+      typename SyncType = SynchronizedType,
+      typename = typename std::enable_if<
+          LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
+  LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>
+  moveFromWriteToUpgrade() {
+    auto* parent_to_pass_on = this->parent_;
+    this->parent_ = nullptr;
+    return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>(
+        parent_to_pass_on);
+  }
+
+  /**
+   * Move the locked ptr from an upgrade state to a shared state.  The
+   * current lock is left in a null state.
+   */
+  template <
+      typename SyncType = SynchronizedType,
+      typename = typename std::enable_if<
+          LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
+  LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>
+  moveFromUpgradeToShared() {
+    auto* parent_to_pass_on = this->parent_;
+    this->parent_ = nullptr;
+    return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>(
+        parent_to_pass_on);
+  }
+
+  /**
+   * Move the locked ptr from an exclusive state to a shared state.  The
+   * current lock is left in a null state.
+   */
+  template <
+      typename SyncType = SynchronizedType,
+      typename = typename std::enable_if<
+          LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
+  LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>
+  moveFromWriteToShared() {
+    auto* parent_to_pass_on = this->parent_;
+    this->parent_ = nullptr;
+    return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(
+        parent_to_pass_on);
   }
 };
 
