@@ -158,15 +158,16 @@ types that it does not know about out of the box.  See
 types.
 
 `Synchronized` provides slightly different APIs when instantiated with a
-shared mutex type than with a plain exclusive mutex type.  When used with
-a shared mutex type, it has separate `wlock()` and `rlock()` methods,
-rather than a single `lock()` method.  Similarly, it has `withWLock()`
-and `withRLock()` rather than `withLock()`.  When using a shared mutex
-type, these APIs ensure that callers make an explicit choice to acquire
-the a shared or an exclusive lock, and that callers do not
-unintentionally lock the mutex in the incorrect mode.  The `rlock()`
-APIs only provide `const` access to the underlying data type, ensuring
-that it cannot be modified when only holding a shared lock.
+shared mutex type or an upgrade mutex type then with a plain exclusive mutex.
+If instantiated with either of the two mutex types above (either through
+having a member called lock_shared() or specializing `LockTraits` as in
+`folly/LockTraitsBoost.h`) the `Synchronized` object has corresponding
+`wlock`, `rlock` or `ulock` methods to acquire different lock types.  When
+using a shared or upgrade mutex type, these APIs ensure that callers make an
+explicit choice to acquire a shared, exclusive or upgrade lock and that
+callers do not unintentionally lock the mutex in the incorrect mode.  The
+`rlock()` APIs only provide `const` access to the underlying data type,
+ensuring that it cannot be modified when only holding a shared lock.
 
 #### Constructors
 
@@ -364,6 +365,84 @@ This code does not have the same problem as the counter-example with
 
 When using `Synchronized` with a shared mutex type, it provides separate
 `withWLock()` and `withRLock()` methods instead of `withLock()`.
+
+#### `ulock()` and `withULockPtr()` 
+
+`Synchronized` also supports upgrading and downgrading mutex lock levels as
+long as the mutex type used to instantiate the `Synchronized` type has the
+same interface as the mutex types in the C++ standard library, or if
+`LockTraits` is specialized for the mutex type and the specialization is
+visible.
+
+An upgrade lock can be acquired as usual either with the `ulock()` method or
+the `withULockPtr()` method as so
+
+``` Cpp
+    {
+      // only const access allowed to the underlying object when an upgrade lock
+      // is acquired
+      auto ulock = vec.ulock();
+      auto newSize = ulock->size();
+    }
+
+    auto newSize = vec.withULockPtr([](auto ulock) {
+      // only const access allowed to the underlying object when an upgrade lock
+      // is acquired
+      return ulock->size();
+    });
+```
+
+An upgrade lock acquired via `ulock()` or `withULockPtr()` can be upgraded or
+downgraded by calling any of the following methods on the `LockedPtr` proxy
+
+* `moveFromUpgradeToWrite()`
+* `moveFromWriteToUpgrade()`
+* `moveFromWriteToShared()`
+* `moveFromUpgradeToShared()`
+
+Calling these leaves the `LockedPtr` object on which the method was called in
+an invalid `null` state and returns another LockedPtr proxy holding the
+specified lock.  The upgrade or downgrade is done atomically - the
+`Synchronized` object is never in an unlocked state during the lock state
+transition.  For example
+
+``` Cpp
+    auto ulock = obj.ulock();
+    if (ulock->needsUpdate()) {
+      auto wlock = ulock.moveFromUpgradeToWrite();
+
+      // ulock is now null
+
+      wlock->updateObj();
+    }
+```
+
+This "move" can also occur in the context of a `withULockPtr()`
+(`withWLockPtr()` or `withRLockPtr()` work as well!) function as so
+
+``` Cpp
+    auto newSize = obj.withULockPtr([](auto ulock) {
+      if (ulock->needsUpdate()) {
+
+        // release upgrade lock get write lock atomically
+        auto wlock = ulock.moveFromUpgradeToWrite();
+        // ulock is now null
+        wlock->updateObj();
+
+        // release write lock and acquire shared lock atomically
+        auto rlock = wlock.moveFromWriteToShared();
+        // wlock is now null
+        return rlock->newSize();
+
+      } else {
+
+        // release upgrade lock and acquire shared lock atomically
+        auto rlock = ulock.moveFromUpgradeToShared();
+        // ulock is now null
+        return rlock->newSize();
+      }
+    });
+```
 
 #### Timed Locking
 
