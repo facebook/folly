@@ -190,10 +190,9 @@ TEST_F(EventHandlerTest, many_concurrent_consumers) {
 
 #ifdef EV_PRI
 TEST(EventHandlerSocketTest, EPOLLPRI) {
-  std::promise<void> serverReady;
-  std::thread t([serverReadyFuture = serverReady.get_future()] {
+  std::promise<decltype(sockaddr_in::sin_port)> serverReady;
+  std::thread t([serverReadyFuture = serverReady.get_future()]() mutable {
     // client
-    serverReadyFuture.wait();
     LOG(INFO) << "Server is ready";
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     SCOPE_EXIT {
@@ -208,7 +207,7 @@ TEST(EventHandlerSocketTest, EPOLLPRI) {
 
     memcpy(&server.sin_addr, he->h_addr_list[0], he->h_length);
     server.sin_family = AF_INET;
-    server.sin_port = htons(12345);
+    server.sin_port = serverReadyFuture.get();
 
     PCHECK(::connect(sockfd, (struct sockaddr*)&server, sizeof(server)) == 0);
     LOG(INFO) << "Server connection available";
@@ -228,14 +227,18 @@ TEST(EventHandlerSocketTest, EPOLLPRI) {
   PCHECK(sockfd != -1) << "unable to open socket";
 
   struct sockaddr_in sin;
-  sin.sin_port = htons(12345);
+  sin.sin_port = htons(0);
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_family = AF_INET;
 
-  PCHECK(::bind(sockfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
+  PCHECK(bind(sockfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
       << "Can't bind to port";
   listen(sockfd, 5);
-  serverReady.set_value();
+
+  struct sockaddr_in findSockName;
+  socklen_t sz = sizeof(findSockName);
+  getsockname(sockfd, (struct sockaddr*)&findSockName, &sz);
+  serverReady.set_value(findSockName.sin_port);
 
   socklen_t clilen;
   struct sockaddr_in cli_addr;
