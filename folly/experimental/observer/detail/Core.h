@@ -15,9 +15,16 @@
  */
 #pragma once
 
+#include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
-#include <set>
+
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace folly {
 namespace observer_detail {
