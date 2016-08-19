@@ -448,6 +448,10 @@ class SingletonVault {
     return *stackTraceGetterPtr;
   }
 
+  void setType(Type type) {
+    type_ = type;
+  }
+
  private:
   template <typename T>
   friend struct detail::SingletonHolder;

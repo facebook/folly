@@ -226,6 +226,9 @@ void SingletonHolder<T>::createInstance() {
 
   RWSpinLock::ReadHolder rh(&vault_.stateMutex_);
   if (vault_.state_ == SingletonVault::SingletonVaultState::Quiescing) {
+    if (vault_.type_ != SingletonVault::Type::Relaxed) {
+      LOG(FATAL) << "Requesting singleton after vault was destroyed.";
+    }
     return;
   }
 
