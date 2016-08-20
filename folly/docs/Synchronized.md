@@ -372,7 +372,7 @@ When using `Synchronized` with a shared mutex type, it provides separate
 long as the mutex type used to instantiate the `Synchronized` type has the
 same interface as the mutex types in the C++ standard library, or if
 `LockTraits` is specialized for the mutex type and the specialization is
-visible.
+visible. See below for an intro to upgrade mutexes.
 
 An upgrade lock can be acquired as usual either with the `ulock()` method or
 the `withULockPtr()` method as so
@@ -443,6 +443,125 @@ This "move" can also occur in the context of a `withULockPtr()`
       }
     });
 ```
+
+#### Intro to upgrade mutexes:
+
+An upgrade mutex is a shared mutex with an extra state called `upgrade` and an
+atomic state transition from `upgrade` to `unique`. The `upgrade` state is more
+powerful than the `shared` state but less powerful than the `unique` state.
+
+An upgrade lock permits only const access to shared state for doing reads. It
+does not permit mutable access to shared state for doing writes. Only a unique
+lock permits mutable access for doing writes.
+
+An upgrade lock may be held concurrently with any number of shared locks on the
+same mutex. An upgrade lock is exclusive with other upgrade locks and unique
+locks on the same mutex - only one upgrade lock or unique lock may be held at a
+time.
+
+The upgrade mutex solves the problem of doing a read of shared state and then
+optionally doing a write to shared state efficiently under contention. Consider
+this scenario with a shared mutex:
+
+``` Cpp
+    struct MyObect {
+      bool isUpdateRequired() const;
+      void doUpdate();
+    };
+
+    struct MyContainingObject {
+      folly::Synchronized<MyObject> sync;
+
+      void mightHappenConcurrently() {
+        // first check
+        if (!sync.rlock()->isUpdateRequired()) {
+          return;
+        }
+        sync.withWLock([&](auto& state) {
+          // second check
+          if (!state.isUpdateRequired()) {
+            return;
+          }
+          state.doUpdate();
+        });
+      }
+    };
+```
+
+Here, the second `isUpdateRequired` check happens under a unique lock. This
+means that the second check cannot be done concurrently with other threads doing
+first `isUpdateRequired` checks under the shared lock, even though the second
+check, like the first check, is read-only and requires only const access to the
+shared state.
+
+This may even introduce unnecessary blocking under contention. Since the default
+mutex type, `folly::SharedMutex`, has write priority, the unique lock protecting
+the second check may introduce unnecessary blocking to all the other threads
+that are attempting to acquire a shared lock to protect the first check. This
+problem is called reader starvation.
+
+One solution is to use a shared mutex type with read priority, such as
+`folly::SharedMutexReadPriority`. That can introduce less blocking under
+contention to the other threads attemping to acquire a shared lock to do the
+first check. However, that may backfire and cause threads which are attempting
+to acquire a unique lock (for the second check) to stall, waiting for a moment
+in time when there are no shared locks held on the mutex, a moment in time that
+may never even happen. This problem is called writer starvation.
+
+Starvation is a tricky problem to solve in general. But we can partially side-
+step it in our case.
+
+An alternative solution is to use an upgrade lock for the second check. Threads
+attempting to acquire an upgrade lock for the second check do not introduce
+unnecessary blocking to all other threads that are attempting to acquire a
+shared lock for the first check. Only after the second check passes, and the
+upgrade lock transitions atomically from an upgrade lock to a unique lock, does
+the unique lock introduce *necessary* blocking to the other threads attempting
+to acquire a shared lock. With this solution, unlike the solution without the
+upgrade lock, the second check may be done concurrently with all other first
+checks rather than blocking or being blocked by them.
+
+The example would then look like:
+
+``` Cpp
+    struct MyObect {
+      bool isUpdateRequired() const;
+      void doUpdate();
+    };
+
+    struct MyContainingObject {
+      folly::Synchronized<MyObject> sync;
+
+      void mightHappenConcurrently() {
+        // first check
+        if (!sync.rlock()->isUpdateRequired()) {
+          return;
+        }
+        sync.withULockPtr([&](auto ulock) {
+          // second check
+          if (!ulock->isUpdateRequired()) {
+            return;
+          }
+          auto wlock = ulock.moveFromUpgradeToWrite();
+          wlock->doUpdate();
+        });
+      }
+    };
+```
+
+Note: Some shared mutex implementations offer an atomic state transition from
+`shared` to `unique` and some upgrade mutex implementations offer an atomic
+state transition from `shared` to `upgrade`. These atomic state transitions are
+dangerous, however, and can deadlock when done concurrently on the same mutex.
+For example, if threads A and B both hold shared locks on a mutex and are both
+attempting to transition atomically from shared to upgrade locks, the threads
+are deadlocked. Likewise if they are both attempting to transition atomically
+from shared to unique locks, or one is attempting to transition atomically from
+shared to upgrade while the other is attempting to transition atomically from
+shared to unique. Therefore, `LockTraits` does not expose either of these
+dangerous atomic state transitions even when the underlying mutex type supports
+them. Likewise, `Synchronized`'s `LockedPtr` proxies do not expose these
+dangerous atomic state transitions either.
 
 #### Timed Locking
 
