@@ -929,6 +929,27 @@ to(const Ts&... vs) {
 }
 
 /**
+ * Special version of to<SomeString> for floating point. When calling
+ * folly::to<SomeString>(double), generic implementation above will
+ * firstly reserve 24 (or 25 when negative value) bytes. This will
+ * introduce a malloc call for most mainstream string implementations.
+ *
+ * But for most cases, a floating point doesn't need 24 (or 25) bytes to
+ * be converted as a string.
+ *
+ * This special version will not do string reserve.
+ */
+template <class Tgt, class Src>
+typename std::enable_if<
+    IsSomeString<Tgt>::value && std::is_floating_point<Src>::value,
+    Tgt>::type
+to(Src value) {
+  Tgt result;
+  toAppend(value, &result);
+  return result;
+}
+
+/**
  * toDelim<SomeString>(SomeString str) returns itself.
  */
 template <class Tgt, class Delim, class Src>
