@@ -187,6 +187,33 @@ to(const Src& value) {
 
 namespace detail {
 
+#ifdef _MSC_VER
+// MSVC can't quite figure out the LastElementImpl::call() stuff
+// in the base implementation, so we have to use tuples instead,
+// which result in significantly more templates being compiled,
+// though the runtime performance is the same.
+
+template <typename... Ts>
+auto getLastElement(Ts&&... ts) -> decltype(
+    std::get<sizeof...(Ts)-1>(std::forward_as_tuple(std::forward<Ts>(ts)...))) {
+  return std::get<sizeof...(Ts)-1>(
+      std::forward_as_tuple(std::forward<Ts>(ts)...));
+}
+
+inline void getLastElement() {}
+
+template <size_t size, typename... Ts>
+struct LastElementType : std::tuple_element<size - 1, std::tuple<Ts...>> {};
+
+template <>
+struct LastElementType<0> {
+  using type = void;
+};
+
+template <class... Ts>
+struct LastElement
+    : std::decay<typename LastElementType<sizeof...(Ts), Ts...>::type> {};
+#else
 template <typename... Ts>
 struct LastElementImpl {
   static void call(Ignored<Ts>...) {}
@@ -210,6 +237,7 @@ template <class... Ts>
 struct LastElement : std::decay<decltype(
                          LastElementImpl<Ts...>::call(std::declval<Ts>()...))> {
 };
+#endif
 
 } // namespace detail
 
