@@ -161,11 +161,16 @@ void ObserverManager::scheduleNext(Core::Ptr core) {
 
 struct ObserverManager::Singleton {
   static folly::Singleton<ObserverManager> instance;
+  // MSVC 2015 doesn't let us access ObserverManager's constructor if we
+  // try to use a lambda to initialize instance, so we have to create
+  // an actual function instead.
+  static ObserverManager* createManager() {
+    return new ObserverManager();
+  }
 };
 
-folly::Singleton<ObserverManager> ObserverManager::Singleton::instance([] {
-  return new ObserverManager();
-});
+folly::Singleton<ObserverManager> ObserverManager::Singleton::instance(
+    createManager);
 
 std::shared_ptr<ObserverManager> ObserverManager::getInstance() {
   return Singleton::instance.try_get();
