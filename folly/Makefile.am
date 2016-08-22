@@ -497,10 +497,6 @@ if !HAVE_WEAK_SYMBOLS
 libfollybase_la_SOURCES += detail/MallocImpl.cpp
 endif
 
-if !HAVE_BITS_FUNCTEXCEPT_H
-libfollybase_la_SOURCES += detail/FunctionalExcept.cpp
-endif
-
 if HAVE_BOOST_CONTEXT
 nobase_follyinclude_HEADERS += \
 	fibers/AddTasks.h \
