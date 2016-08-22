@@ -38,28 +38,26 @@ constant factor) in order to avoid quadratic growth performance.
 The trick is choosing a good factor. Any factor greater than 1
 ensures O(1) amortized append complexity towards infinity. But a
 factor that's too small (say, 1.1) causes frequent vector reallocation, and
-one that's too large (say, 3 or 4) forces the vector to consume much more memory
-than needed.
+one that's too large (say, 3 or 4) forces the vector to consume much more
+memory than needed.
 
 The initial HP implementation by Stepanov used a
 growth factor of 2; i.e., whenever you'd `push_back` into a vector
 without there being room, it would double the current capacity. This
-was not a good choice: it can be
-mathematically proven that a growth factor of 2 is rigorously the
-<i>worst</i> possible because it never allows the vector to reuse
-any of its previously-allocated memory. Despite other compilers reducing the growth factor to 1.5, gcc has staunchly 
-maintained its factor of 2. This makes `std::vector` cache-
-unfriendly and memory manager unfriendly.
+was not a good choice: it can be mathematically proven that a growth factor of
+2 is rigorously the <i>worst</i> possible because it never allows the vector 
+to reuse any of its previously-allocated memory. Despite other compilers
+reducing the growth factor to 1.5, gcc has staunchly maintained its factor of
+2. This makes `std::vector` cache- unfriendly and memory manager unfriendly.
 
 To see why that's the case, consider a large vector of capacity C.
 When there's a request to grow the vector, the vector
 (assuming no in-place resizing, see the appropriate section in
 this document) will allocate a chunk of memory next to its current chunk,
-copy its existing data to the new chunk, and then deallocate the old chunk. So now
-we have a chunk of size C followed by a chunk of size k * C.
-Continuing this process we'll then have a chunk of size k * k * C
-to the right and so on. That leads to a series of the form (using
-^^ for power):
+copy its existing data to the new chunk, and then deallocate the old chunk.
+So now we have a chunk of size C followed by a chunk of size k * C. Continuing
+this process we'll then have a chunk of size k * k * C to the right and so on.
+That leads to a series of the form (using ^^ for power):
 
     C, C*k,  C*k^^2, C*k^^3, ...
 
@@ -73,10 +71,9 @@ This means that any new chunk requested will be larger
 than all previously used chunks combined, so the vector must
 crawl forward in memory; it can't move back to its deallocated chunks.
 But any number smaller than 2 guarantees that you'll at some point be 
-able to reuse the previous chunks. For instance, choosing 1.5 as the factor allows memory reuse after 4
-reallocations; 1.45 allows memory reuse
-after 3 reallocations; and 1.3 allows
-reuse after only 2 reallocations.
+able to reuse the previous chunks. For instance, choosing 1.5 as the factor
+allows memory reuse after 4 reallocations; 1.45 allows memory reuse after 3
+reallocations; and 1.3 allows reuse after only 2 reallocations.
 
 Of course, the above makes a number of simplifying assumptions
 about how the memory allocator works, but definitely you don't
@@ -228,4 +225,3 @@ directions may be in improving raw memory copying (`memcpy` is
 not an intrinsic in gcc and does not work terribly well for
 large chunks) and in furthering the collaboration with
 jemalloc. Have fun!
-
