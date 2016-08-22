@@ -35,27 +35,27 @@ folly/test/FBVectorTest.cpp for a few benchmarks.
 
 It is well known that `std::vector` grows exponentially (at a
 constant factor) in order to avoid quadratic growth performance.
-The trick is choosing a good factor (any factor greater than 1
-ensures O(1) amortized append complexity towards infinity). A
-factor that's too small causes frequent vector reallocation; one
-that's too large forces the vector to consume much more memory
-than needed. The initial HP implementation by Stepanov used a
-growth factor of 2, i.e. whenever you'd `push_back` into a vector
-without there being room, it would double the current capacity.
+The trick is choosing a good factor. Any factor greater than 1
+ensures O(1) amortized append complexity towards infinity. But a
+factor that's too small (say, 1.1) causes frequent vector reallocation, and
+one that's too large (say, 3 or 4) forces the vector to consume much more memory
+than needed.
 
-With time, other compilers reduced the growth factor to 1.5, but
-gcc has staunchly used a growth factor of 2. In fact it can be
+The initial HP implementation by Stepanov used a
+growth factor of 2; i.e., whenever you'd `push_back` into a vector
+without there being room, it would double the current capacity. This
+was not a good choice: it can be
 mathematically proven that a growth factor of 2 is rigorously the
 <i>worst</i> possible because it never allows the vector to reuse
-any of its previously-allocated memory. That makes the vector cache-
+any of its previously-allocated memory. Despite other compilers reducing the growth factor to 1.5, gcc has staunchly 
+maintained its factor of 2. This makes `std::vector` cache-
 unfriendly and memory manager unfriendly.
 
-To see why that's the case, consider a large vector of capacity C
-residing somewhere at the beginning of an initially unoccupied
-chunk. When the request for growth comes about, the vector
+To see why that's the case, consider a large vector of capacity C.
+When there's a request to grow the vector, the vector
 (assuming no in-place resizing, see the appropriate section in
-this document) will allocate a chunk next to its current chunk,
-copy its existing data, and then deallocate the old chunk. So now
+this document) will allocate a chunk of memory next to its current chunk,
+copy its existing data to the new chunk, and then deallocate the old chunk. So now
 we have a chunk of size C followed by a chunk of size k * C.
 Continuing this process we'll then have a chunk of size k * k * C
 to the right and so on. That leads to a series of the form (using
@@ -69,26 +69,14 @@ the remarkable equality:
 
     1 + 2^^1 + 2^^2 + 2^^3... + 2^^n = 2^^(n+1) - 1
 
-What that really means is that the new request for a chunk will
-be never satisfiable by coalescing all previously-used chunks.
-This is not quite what you'd want.
-
-We would of course want the vector to not crawl forward in
-memory, but instead to move back to its previously-allocated
-chunks. Any number smaller than 2 guarantees that you'll be able
-at some point to reuse the previous chunks. Going through the
-math reveals the equation:
-
-    k^^n <= 1 + k + k^^2 + ... + k^^(n-2)
-
-If some number n satisfies that equation, it means you can reuse
-memory after n reallocations. The graphical solver below reveals
-that choosing k = 1.5 (blue line) allows memory reuse after 4
-reallocations, choosing k = 1.45 (red line) allows memory reuse
-after 3 reallocations, and choosing k = 1.3 (black line) allows
+This means that any new chunk requested will be larger
+than all previously used chunks combined, so the vector must
+crawl forward in memory; it can't move back to its deallocated chunks.
+But any number smaller than 2 guarantees that you'll at some point be 
+able to reuse the previous chunks. For instance, choosing 1.5 as the factor allows memory reuse after 4
+reallocations; 1.45 allows memory reuse
+after 3 reallocations; and 1.3 allows
 reuse after only 2 reallocations.
-
-![graphical solutions](./Fbvector--graphical_solutions.png)
 
 Of course, the above makes a number of simplifying assumptions
 about how the memory allocator works, but definitely you don't
