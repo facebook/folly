@@ -33,9 +33,11 @@ void __throw_out_of_range(const char* msg) {
   throw std::out_of_range(msg);
 }
 
+#ifdef _MSC_VER
 void __throw_bad_alloc() {
   throw std::bad_alloc();
 }
+#endif
 
 FOLLY_NAMESPACE_STD_END
 #endif

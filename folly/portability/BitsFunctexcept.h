@@ -21,13 +21,17 @@
 #if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
 #include <bits/functexcept.h>
 #else
+#include <new> // Some platforms define __throw_bad_alloc() here.
 #include <folly/Portability.h>
 FOLLY_NAMESPACE_STD_BEGIN
 
 [[noreturn]] void __throw_length_error(const char* msg);
 [[noreturn]] void __throw_logic_error(const char* msg);
 [[noreturn]] void __throw_out_of_range(const char* msg);
+
+#ifdef _MSC_VER
 [[noreturn]] void __throw_bad_alloc();
+#endif
 
 FOLLY_NAMESPACE_STD_END
 #endif
