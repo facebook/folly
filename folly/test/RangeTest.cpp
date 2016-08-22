@@ -293,7 +293,7 @@ TEST(StringPiece, InvalidRange) {
   EXPECT_THROW(a.subpiece(6), std::out_of_range);
 }
 
-constexpr char helloArray[] = "hello";
+constexpr const char* helloArray = "hello";
 
 TEST(StringPiece, Constexpr) {
   constexpr StringPiece hello1("hello");
