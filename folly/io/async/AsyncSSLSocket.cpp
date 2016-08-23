@@ -417,9 +417,18 @@ void AsyncSSLSocket::setEorTracking(bool track) {
 }
 
 size_t AsyncSSLSocket::getRawBytesWritten() const {
+  // The bio(s) in the write path are in a chain
+  // each bio flushes to the next and finally written into the socket
+  // to get the rawBytesWritten on the socket,
+  // get the write bytes of the last bio
   BIO *b;
   if (!ssl_ || !(b = SSL_get_wbio(ssl_))) {
     return 0;
+  }
+  BIO* next = BIO_next(b);
+  while (next != NULL) {
+    b = next;
+    next = BIO_next(b);
   }
 
   return BIO_number_written(b);
