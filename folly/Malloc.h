@@ -20,8 +20,6 @@
 #pragma once
 #define FOLLY_MALLOC_H_
 
-#include <folly/portability/BitsFunctexcept.h>
-
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
  * them so that we don't have to include jemalloc.h, in case the program is
@@ -42,6 +40,7 @@
 #if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
 
 #include <folly/detail/Malloc.h>
+#include <folly/portability/BitsFunctexcept.h>
 
 #include <string>
 
@@ -87,13 +86,19 @@ extern "C" int mallctlbymib(const size_t*, size_t, void*, size_t*, void*,
                             size_t)
 __attribute__((__weak__));
 
+#include <bits/functexcept.h>
+
 #define FOLLY_HAVE_MALLOC_H 1
-#else
+
+#else // !defined(_LIBSTDCXX_FBSTRING)
+
 #include <folly/detail/Malloc.h> /* nolint */
+#include <folly/portability/BitsFunctexcept.h> /* nolint */
+
 #endif
 
 // for malloc_usable_size
-// NOTE: FreeBSD 9 doesn't have malloc.h.  It's defitions
+// NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
 // are found in stdlib.h.
 #if FOLLY_HAVE_MALLOC_H
 #include <malloc.h>
