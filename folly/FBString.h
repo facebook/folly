@@ -1076,24 +1076,8 @@ public:
     if (FBSTRING_UNLIKELY(&lhs == this)) {
       return *this;
     }
-    auto const oldSize = size();
-    auto const srcSize = lhs.size();
-    if (capacity() >= srcSize && !store_.isShared()) {
-      // great, just copy the contents
-      if (oldSize < srcSize) {
-        store_.expand_noinit(srcSize - oldSize);
-      } else {
-        store_.shrink(oldSize - srcSize);
-      }
-      assert(size() == srcSize);
-      auto srcData = lhs.data();
-      fbstring_detail::pod_copy(
-          srcData, srcData + srcSize, store_.mutable_data());
-    } else {
-      // need to reallocate, so we may as well create a brand new string
-      basic_fbstring(lhs).swap(*this);
-    }
-    return *this;
+
+    return assign(lhs.data(), lhs.size());
   }
 
   // Move assignment
@@ -1312,6 +1296,8 @@ public:
     }
     auto const oldSize = size();
     auto const oldData = data();
+    auto pData = store_.expand_noinit(n, /* expGrowth = */ true);
+
     // Check for aliasing (rare). We could use "<=" here but in theory
     // those do not work for pointers unless the pointers point to
     // elements in the same array. For that reason we use
@@ -1321,14 +1307,13 @@ public:
     std::less_equal<const value_type*> le;
     if (FBSTRING_UNLIKELY(le(oldData, s) && !le(oldData + oldSize, s))) {
       assert(le(s + n, oldData + oldSize));
-      const size_type offset = s - oldData;
-      store_.reserve(oldSize + n);
-      // Restore the source
-      s = data() + offset;
+      // expand_noinit() could have moved the storage, restore the source.
+      s = data() + (s - oldData);
+      fbstring_detail::pod_move(s, s + n, pData);
+    } else {
+      fbstring_detail::pod_copy(s, s + n, pData);
     }
 
-    fbstring_detail::pod_copy(
-        s, s + n, store_.expand_noinit(n, /* expGrowth = */ true));
     assert(size() == oldSize + n);
     return *this;
   }
@@ -1378,21 +1363,22 @@ public:
   basic_fbstring& assign(const value_type* s, const size_type n) {
     Invariant checker(*this);
 
-    // s can alias this, we need to use pod_move.
     if (n == 0) {
       resize(0);
     } else if (size() >= n) {
+      // s can alias this, we need to use pod_move.
       fbstring_detail::pod_move(s, s + n, store_.mutable_data());
-      resize(n);
+      store_.shrink(size() - n);
       assert(size() == n);
     } else {
-      const value_type *const s2 = s + size();
-      // size() < n!so [s,s + n) and [data(),data() + size()] can not overlap
-      // so we can use pod_copy instead of pod_move.
-      fbstring_detail::pod_copy(s, s2, store_.mutable_data());
-      append(s2, n - size());
-      assert(size() == n);
+      // If n is larger than size(), s cannot alias this string's
+      // storage.
+      resize(0);
+      // Do not use exponential growth here: assign() should be tight,
+      // to mirror the behavior of the equivalent constructor.
+      fbstring_detail::pod_copy(s, s + n, store_.expand_noinit(n));
     }
+
     assert(size() == n);
     return *this;
   }
