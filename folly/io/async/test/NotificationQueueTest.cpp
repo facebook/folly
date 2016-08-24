@@ -22,7 +22,10 @@
 #include <iostream>
 #include <thread>
 #include <sys/types.h>
+
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 
 #include <gtest/gtest.h>
 
@@ -48,11 +51,8 @@ class QueueConsumer : public IntQueue::Consumer {
 
 class QueueTest {
  public:
-  explicit QueueTest(uint32_t maxSize = 0,
-                     IntQueue::FdType type = IntQueue::FdType::EVENTFD) :
-      queue(maxSize, type),
-      terminationQueue(maxSize, type)
-    {}
+  explicit QueueTest(uint32_t maxSize, IntQueue::FdType type)
+      : queue(maxSize, type), terminationQueue(maxSize, type) {}
 
   void sendOne();
   void putMessages();
@@ -507,35 +507,37 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
   }
 }
 
-TEST(NotificationQueueTest, SendOne) {
-  QueueTest qt;
+#ifdef FOLLY_HAVE_EVENTFD
+TEST(NotificationQueueTest, SendOneEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.sendOne();
 }
 
-TEST(NotificationQueueTest, PutMessages) {
-  QueueTest qt;
+TEST(NotificationQueueTest, PutMessagesEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.sendOne();
 }
 
-TEST(NotificationQueueTest, MultiConsumer) {
-  QueueTest qt;
+TEST(NotificationQueueTest, MultiConsumerEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.multiConsumer();
 }
 
-TEST(NotificationQueueTest, MaxQueueSize) {
-  QueueTest qt(5);
+TEST(NotificationQueueTest, MaxQueueSizeEventFD) {
+  QueueTest qt(5, IntQueue::FdType::EVENTFD);
   qt.maxQueueSize();
 }
 
-TEST(NotificationQueueTest, MaxReadAtOnce) {
-  QueueTest qt;
+TEST(NotificationQueueTest, MaxReadAtOnceEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.maxReadAtOnce();
 }
 
-TEST(NotificationQueueTest, DestroyCallback) {
-  QueueTest qt;
+TEST(NotificationQueueTest, DestroyCallbackEventFD) {
+  QueueTest qt(0, IntQueue::FdType::EVENTFD);
   qt.destroyCallback();
 }
+#endif
 
 TEST(NotificationQueueTest, SendOnePipe) {
   QueueTest qt(0, IntQueue::FdType::PIPE);
@@ -567,6 +569,7 @@ TEST(NotificationQueueTest, DestroyCallbackPipe) {
   qt.destroyCallback();
 }
 
+#ifndef _WIN32
 /*
  * Test code that creates a NotificationQueue, then forks, and incorrectly
  * tries to send a message to the queue from the child process.
@@ -640,6 +643,7 @@ TEST(NotificationQueueTest, UseAfterFork) {
   EXPECT_EQ(5678, consumer.messages.front());
   consumer.messages.pop_front();
 }
+#endif
 
 TEST(NotificationQueueConsumer, make) {
   int value = 0;
