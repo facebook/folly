@@ -436,7 +436,7 @@ class small_vector
   }
 
   static constexpr size_type max_size() {
-    return !BaseType::kShouldUseHeap ? MaxInline
+    return !BaseType::kShouldUseHeap ? static_cast<size_type>(MaxInline)
                                      : BaseType::policyMaxSize();
   }
 
