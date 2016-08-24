@@ -345,12 +345,10 @@ class small_vector
    * the user asks for less inlined elements than we can fit unioned
    * into our value_type*, we will inline more than they asked.)
    */
-  enum {
-    MaxInline =
-        constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline),
-  };
+  static constexpr std::size_t MaxInline{
+      constexpr_max(sizeof(Value*) / sizeof(Value), RequestedMaxInline)};
 
-public:
+ public:
   typedef std::size_t        size_type;
   typedef Value              value_type;
   typedef value_type&        reference;
