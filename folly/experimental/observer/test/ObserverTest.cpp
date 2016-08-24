@@ -148,6 +148,64 @@ TEST(Observer, NullValue) {
   EXPECT_EQ(46, **oddObserver);
 }
 
+TEST(Observer, Cycle) {
+  SimpleObservable<int> observable(0);
+  auto observer = observable.getObserver();
+  folly::Optional<Observer<int>> observerB;
+
+  auto observerA = makeObserver([observer, &observerB]() {
+    auto value = **observer;
+    if (value == 1) {
+      **observerB;
+    }
+    return value;
+  });
+
+  observerB = makeObserver([observerA]() { return **observerA; });
+
+  auto collectObserver = makeObserver([observer, observerA, &observerB]() {
+    auto value = **observer;
+    auto valueA = **observerA;
+    auto valueB = ***observerB;
+
+    if (value == 1) {
+      if (valueA == 0) {
+        EXPECT_EQ(0, valueB);
+      } else {
+        EXPECT_EQ(1, valueA);
+        EXPECT_EQ(0, valueB);
+      }
+    } else if (value == 2) {
+      EXPECT_EQ(value, valueA);
+      EXPECT_TRUE(valueB == 0 || valueB == 2);
+    } else {
+      EXPECT_EQ(value, valueA);
+      EXPECT_EQ(value, valueB);
+    }
+
+    return value;
+  });
+
+  folly::Baton<> baton;
+  auto waitingObserver = makeObserver([collectObserver, &baton]() {
+    *collectObserver;
+    baton.post();
+    return folly::Unit();
+  });
+
+  baton.reset();
+  EXPECT_EQ(0, **collectObserver);
+
+  for (size_t i = 1; i <= 3; ++i) {
+    observable.setValue(i);
+
+    EXPECT_TRUE(baton.timed_wait(std::chrono::seconds{1}));
+    baton.reset();
+
+    EXPECT_EQ(i, **collectObserver);
+  }
+}
+
 TEST(Observer, Stress) {
   SimpleObservable<int> observable(0);
 

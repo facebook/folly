@@ -41,11 +41,14 @@ Core::VersionedData Core::getData() {
 size_t Core::refresh(size_t version, bool force) {
   CHECK(ObserverManager::inManagerThread());
 
+  ObserverManager::DependencyRecorder::markRefreshDependency(*this);
+  SCOPE_EXIT {
+    ObserverManager::DependencyRecorder::unmarkRefreshDependency(*this);
+  };
+
   if (version_ >= version) {
     return versionLastChange_;
   }
-
-  bool refreshDependents = false;
 
   {
     std::lock_guard<std::mutex> lgRefresh(refreshMutex_);
@@ -57,11 +60,21 @@ size_t Core::refresh(size_t version, bool force) {
 
     bool needRefresh = force || version_ == 0;
 
+    ObserverManager::DependencyRecorder dependencyRecorder(*this);
+
     // This can be run in parallel, but we expect most updates to propagate
     // bottom to top.
     dependencies_.withRLock([&](const Dependencies& dependencies) {
       for (const auto& dependency : dependencies) {
-        if (dependency->refresh(version) > version_) {
+        try {
+          if (dependency->refresh(version) > version_) {
+            needRefresh = true;
+            break;
+          }
+        } catch (...) {
+          LOG(ERROR) << "Exception while checking dependencies for updates: "
+                     << exceptionStr(std::current_exception());
+
           needRefresh = true;
           break;
         }
@@ -73,8 +86,6 @@ size_t Core::refresh(size_t version, bool force) {
       return versionLastChange_;
     }
 
-    ObserverManager::DependencyRecorder dependencyRecorder;
-
     try {
       {
         VersionedData newData{creator_(), version};
@@ -85,7 +96,6 @@ size_t Core::refresh(size_t version, bool force) {
       }
 
       versionLastChange_ = version;
-      refreshDependents = true;
     } catch (...) {
       LOG(ERROR) << "Exception while refreshing Observer: "
                  << exceptionStr(std::current_exception());
@@ -97,6 +107,10 @@ size_t Core::refresh(size_t version, bool force) {
     }
 
     version_ = version;
+
+    if (versionLastChange_ != version) {
+      return versionLastChange_;
+    }
 
     auto newDependencies = dependencyRecorder.release();
     dependencies_.withWLock([&](Dependencies& dependencies) {
@@ -116,13 +130,11 @@ size_t Core::refresh(size_t version, bool force) {
     });
   }
 
-  if (refreshDependents) {
-    auto dependents = dependents_.copy();
+  auto dependents = dependents_.copy();
 
-    for (const auto& dependentWeak : dependents) {
-      if (auto dependent = dependentWeak.lock()) {
-        ObserverManager::scheduleRefresh(std::move(dependent), version);
-      }
+  for (const auto& dependentWeak : dependents) {
+    if (auto dependent = dependentWeak.lock()) {
+      ObserverManager::scheduleRefresh(std::move(dependent), version);
     }
   }
 

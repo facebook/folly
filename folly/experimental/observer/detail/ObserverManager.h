@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/experimental/observer/detail/Core.h>
+#include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -109,9 +110,15 @@ class ObserverManager {
 
   class DependencyRecorder {
    public:
-    using Dependencies = std::unordered_set<Core::Ptr>;
+    using DependencySet = std::unordered_set<Core::Ptr>;
+    struct Dependencies {
+      explicit Dependencies(const Core& core_) : core(core_) {}
 
-    DependencyRecorder() {
+      DependencySet dependencies;
+      const Core& core;
+    };
+
+    explicit DependencyRecorder(const Core& core) : dependencies_(core) {
       DCHECK(inManagerThread());
 
       previousDepedencies_ = currentDependencies_;
@@ -122,19 +129,47 @@ class ObserverManager {
       DCHECK(inManagerThread());
       DCHECK(currentDependencies_);
 
-      currentDependencies_->insert(std::move(dependency));
+      currentDependencies_->dependencies.insert(std::move(dependency));
     }
 
-    Dependencies release() {
+    static void markRefreshDependency(const Core& core) {
+      if (!currentDependencies_) {
+        return;
+      }
+
+      if (auto instance = getInstance()) {
+        instance->cycleDetector_.withLock([&](CycleDetector& cycleDetector) {
+          bool hasCycle =
+              !cycleDetector.addEdge(&currentDependencies_->core, &core);
+          if (hasCycle) {
+            throw std::logic_error("Observer cycle detected.");
+          }
+        });
+      }
+    }
+
+    static void unmarkRefreshDependency(const Core& core) {
+      if (!currentDependencies_) {
+        return;
+      }
+
+      if (auto instance = getInstance()) {
+        instance->cycleDetector_.withLock([&](CycleDetector& cycleDetector) {
+          cycleDetector.removeEdge(&currentDependencies_->core, &core);
+        });
+      }
+    }
+
+    DependencySet release() {
       DCHECK(currentDependencies_ == &dependencies_);
       std::swap(currentDependencies_, previousDepedencies_);
       previousDepedencies_ = nullptr;
 
-      return std::move(dependencies_);
+      return std::move(dependencies_.dependencies);
     }
 
     ~DependencyRecorder() {
-      if (previousDepedencies_) {
+      if (currentDependencies_ == &dependencies_) {
         release();
       }
     }
@@ -176,6 +211,9 @@ class ObserverManager {
    */
   SharedMutexReadPriority versionMutex_;
   std::atomic<size_t> version_{1};
+
+  using CycleDetector = GraphCycleDetector<const Core*>;
+  folly::Synchronized<CycleDetector, std::mutex> cycleDetector_;
 };
 }
 }

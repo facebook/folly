@@ -107,6 +107,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/LockFreeRingBuffer.h \
 	experimental/NestedCommandLineApp.h \
 	experimental/observer/detail/Core.h \
+	experimental/observer/detail/GraphCycleDetector.h \
 	experimental/observer/detail/ObserverManager.h \
 	experimental/observer/detail/Observer-pre.h \
 	experimental/observer/Observable.h \
