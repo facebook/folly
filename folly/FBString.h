@@ -812,7 +812,7 @@ private:
     maxMediumSize = 254 / sizeof(Char),            // coincides with the small
                                                    // bin size in dlmalloc
     categoryExtractMask = kIsLittleEndian
-      ? sizeof(size_t) == 4 ? 0xC0000000 : 0xC000000000000000
+      ? sizeof(size_t) == 4 ? 0xC0000000 : size_t(0xC000000000000000)
       : 0x3,
     capacityExtractMask = kIsLittleEndian
       ? ~categoryExtractMask
