@@ -229,7 +229,9 @@ public:
 
   iterator begin()                      { return m_.cont_.begin();  }
   iterator end()                        { return m_.cont_.end();    }
+  const_iterator cbegin() const         { return m_.cont_.cbegin(); }
   const_iterator begin() const          { return m_.cont_.begin();  }
+  const_iterator cend() const           { return m_.cont_.cend();   }
   const_iterator end() const            { return m_.cont_.end();    }
   reverse_iterator rbegin()             { return m_.cont_.rbegin(); }
   reverse_iterator rend()               { return m_.cont_.rend();   }
@@ -470,7 +472,9 @@ public:
 
   iterator begin()                      { return m_.cont_.begin();  }
   iterator end()                        { return m_.cont_.end();    }
+  const_iterator cbegin() const         { return m_.cont_.cbegin(); }
   const_iterator begin() const          { return m_.cont_.begin();  }
+  const_iterator cend() const           { return m_.cont_.cend();   }
   const_iterator end() const            { return m_.cont_.end();    }
   reverse_iterator rbegin()             { return m_.cont_.rbegin(); }
   reverse_iterator rend()               { return m_.cont_.rend();   }
