@@ -634,7 +634,7 @@ TEST(small_vector, Basic) {
 }
 
 TEST(small_vector, Capacity) {
-  folly::small_vector<unsigned long, 1> vec;
+  folly::small_vector<uint64_t, 1> vec;
   EXPECT_EQ(vec.size(), 0);
   EXPECT_EQ(vec.capacity(), 1);
 
@@ -646,8 +646,7 @@ TEST(small_vector, Capacity) {
   EXPECT_EQ(vec.size(), 2);
   EXPECT_GT(vec.capacity(), 1);
 
-
-  folly::small_vector<unsigned long, 2> vec2;
+  folly::small_vector<uint64_t, 2> vec2;
   EXPECT_EQ(vec2.size(), 0);
   EXPECT_EQ(vec2.capacity(), 2);
 
