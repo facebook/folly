@@ -335,7 +335,9 @@ TEST_F(ReadFileFd, InvalidFd) {
   File f(aFile.path().string());
   f.close();
   std::string contents;
-  EXPECT_FALSE(readFile(f.fd(), contents));
+  msvcSuppressAbortOnInvalidParams([&] {
+    EXPECT_FALSE(readFile(f.fd(), contents));
+  });
   PLOG(INFO);
 }
 }}  // namespaces
