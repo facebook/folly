@@ -64,6 +64,13 @@ int madvise(const void* addr, size_t len, int advise) {
 }
 
 int mlock(const void* addr, size_t len) {
+  // For some strange reason, it's allowed to
+  // lock a nullptr as long as length is zero.
+  // VirtualLock doesn't allow it, so handle
+  // it specially.
+  if (addr == nullptr && len == 0) {
+    return 0;
+  }
   if (!VirtualLock((void*)addr, len)) {
     return -1;
   }
@@ -106,6 +113,9 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
         (DWORD)((length >> 32) & 0xFFFFFFFF),
         (DWORD)(length & 0xFFFFFFFF),
         nullptr);
+    if (fmh == nullptr) {
+      return MAP_FAILED;
+    }
     ret = MapViewOfFileEx(
         fmh,
         accessFlags,
@@ -148,6 +158,10 @@ int mprotect(void* addr, size_t size, int prot) {
 }
 
 int munlock(const void* addr, size_t length) {
+  // See comment in mlock
+  if (addr == nullptr && length == 0) {
+    return 0;
+  }
   if (!VirtualUnlock((void*)addr, length)) {
     return -1;
   }

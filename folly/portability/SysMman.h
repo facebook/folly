@@ -44,6 +44,7 @@
 #define PROT_WRITE 2
 #define PROT_EXEC 4
 
+#define MADV_NORMAL 0
 #define MADV_DONTNEED 0
 #define MADV_SEQUENTIAL 0
 
