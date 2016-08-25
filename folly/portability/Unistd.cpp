@@ -92,7 +92,7 @@ int fsync(int fd) {
 }
 
 int ftruncate(int fd, off_t len) {
-  if (_lseek(fd, len, SEEK_SET)) {
+  if (_lseek(fd, len, SEEK_SET) == -1) {
     return -1;
   }
 
