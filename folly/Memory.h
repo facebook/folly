@@ -88,7 +88,9 @@ make_unique(Args&&...) = delete;
 
 template <typename T, void(*f)(T*)>
 struct static_function_deleter {
-  void operator()(T* t) { f(t); }
+  void operator()(T* t) const {
+    f(t);
+  }
 };
 
 /**
