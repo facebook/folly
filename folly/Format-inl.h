@@ -492,23 +492,12 @@ class FormatValue<
                   "' specifier");
 
       valBufBegin = valBuf + 3;  // room for sign and base prefix
-#ifdef _MSC_VER
-      char valBuf2[valBufSize];
-      snprintf(valBuf2, valBufSize, "%ju", static_cast<uintmax_t>(uval));
-      int len = GetNumberFormat(
-        LOCALE_USER_DEFAULT,
-        0,
-        valBuf2,
-        nullptr,
-        valBufBegin,
-        (int)((valBuf + valBufSize) - valBufBegin)
-      );
-#elif defined(__ANDROID__)
+#if defined(__ANDROID__)
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
                          "%" PRIuMAX, static_cast<uintmax_t>(uval));
 #else
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
-                         "%'ju", static_cast<uintmax_t>(uval));
+                         "%ju", static_cast<uintmax_t>(uval));
 #endif
       // valBufSize should always be big enough, so this should never
       // happen.
