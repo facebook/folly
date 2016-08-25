@@ -49,30 +49,31 @@ void SimpleObservable<T>::setValue(std::shared_ptr<const T> value) {
 }
 
 template <typename T>
+struct SimpleObservable<T>::Wrapper {
+  using element_type = T;
+
+  std::shared_ptr<Context> context;
+
+  std::shared_ptr<const T> get() {
+    return context->value_.copy();
+  }
+
+  void subscribe(folly::Function<void()> callback) {
+    context->callback_.swap(callback);
+  }
+
+  void unsubscribe() {
+    folly::Function<void()> empty;
+    context->callback_.swap(empty);
+  }
+};
+
+template <typename T>
 Observer<T> SimpleObservable<T>::getObserver() {
-  struct SimpleObservableWrapper {
-    using element_type = T;
-
-    std::shared_ptr<Context> context;
-
-    std::shared_ptr<const T> get() {
-      return context->value_.copy();
-    }
-
-    void subscribe(folly::Function<void()> callback) {
-      context->callback_.swap(callback);
-    }
-
-    void unsubscribe() {
-      folly::Function<void()> empty;
-      context->callback_.swap(empty);
-    }
-  };
-
   std::call_once(observerInit_, [&]() {
-    SimpleObservableWrapper wrapper;
+    SimpleObservable<T>::Wrapper wrapper;
     wrapper.context = context_;
-    ObserverCreator<SimpleObservableWrapper> creator(std::move(wrapper));
+    ObserverCreator<SimpleObservable<T>::Wrapper> creator(std::move(wrapper));
     observer_ = std::move(creator).getObserver();
   });
   return *observer_;

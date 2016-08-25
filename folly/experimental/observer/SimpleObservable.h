@@ -38,6 +38,7 @@ class SimpleObservable {
     folly::Synchronized<std::shared_ptr<const T>> value_;
     folly::Synchronized<folly::Function<void()>> callback_;
   };
+  struct Wrapper;
   std::shared_ptr<Context> context_;
 
   std::once_flag observerInit_;
