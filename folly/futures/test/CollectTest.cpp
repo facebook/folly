@@ -333,6 +333,73 @@ TEST(Collect, collectAny) {
   }
 }
 
+TEST(Collect, collectAnyWithoutException) {
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    /* futures were moved in, so these are invalid now */
+    EXPECT_FALSE(onef.isReady());
+
+    promises[7].setValue(42);
+    EXPECT_TRUE(onef.isReady());
+    auto& idx_fut = onef.value();
+    EXPECT_EQ(7, idx_fut.first);
+    EXPECT_EQ(42, idx_fut.second);
+  }
+
+  // some exception before ready
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    EXPECT_FALSE(onef.isReady());
+
+    promises[3].setException(eggs);
+    EXPECT_FALSE(onef.isReady());
+    promises[4].setException(eggs);
+    EXPECT_FALSE(onef.isReady());
+    promises[0].setValue(99);
+    EXPECT_TRUE(onef.isReady());
+    auto& idx_fut = onef.value();
+    EXPECT_EQ(0, idx_fut.first);
+    EXPECT_EQ(99, idx_fut.second);
+  }
+
+  // all exceptions
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<Future<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getFuture());
+    }
+
+    auto onef = collectAnyWithoutException(futures);
+
+    EXPECT_FALSE(onef.isReady());
+    for (int i = 0; i < 9; ++i) {
+      promises[i].setException(eggs);
+    }
+    EXPECT_FALSE(onef.isReady());
+
+    promises[9].setException(eggs);
+    EXPECT_TRUE(onef.isReady());
+    EXPECT_TRUE(onef.hasException());
+  }
+}
 
 TEST(Collect, alreadyCompleted) {
   {

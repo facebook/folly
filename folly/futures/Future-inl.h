@@ -695,6 +695,37 @@ collectAny(InputIterator first, InputIterator last) {
   return ctx->p.getFuture();
 }
 
+// collectAnyWithoutException (iterator)
+
+template <class InputIterator>
+Future<std::pair<
+    size_t,
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectAnyWithoutException(InputIterator first, InputIterator last) {
+  typedef
+      typename std::iterator_traits<InputIterator>::value_type::value_type T;
+
+  struct CollectAnyWithoutExceptionContext {
+    CollectAnyWithoutExceptionContext(){};
+    Promise<std::pair<size_t, T>> p;
+    std::atomic<bool> done{false};
+    std::atomic<size_t> nFulfilled{0};
+    size_t nTotal;
+  };
+
+  auto ctx = std::make_shared<CollectAnyWithoutExceptionContext>();
+  ctx->nTotal = std::distance(first, last);
+
+  mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
+    if (!t.hasException() && !ctx->done.exchange(true)) {
+      ctx->p.setValue(std::make_pair(i, std::move(t.value())));
+    } else if (++ctx->nFulfilled == ctx->nTotal) {
+      ctx->p.setException(t.exception());
+    }
+  });
+  return ctx->p.getFuture();
+}
+
 // collectN (iterator)
 
 template <class InputIterator>
