@@ -18,9 +18,12 @@
 
 #include <folly/FileUtil.h>
 #include <folly/MemoryMapping.h>
+#include <folly/Random.h>
 #include <folly/portability/SysMman.h>
 
 #include <gtest/gtest.h>
+
+static constexpr double kSomeDouble = 3.14;
 
 namespace folly {
 
@@ -29,7 +32,7 @@ TEST(MemoryMapping, Basic) {
   {
     MemoryMapping m(File(f.fd()), 0, sizeof(double), MemoryMapping::writable());
     double* d = m.asWritableRange<double>().data();
-    *d = 37 * M_PI;
+    *d = 37 * kSomeDouble;
   }
   {
     MemoryMapping m(File(f.fd()), 0, 3);
@@ -38,7 +41,7 @@ TEST(MemoryMapping, Basic) {
   {
     MemoryMapping m(File(f.fd()), 0, sizeof(double));
     const double* d = m.asRange<double>().data();
-    EXPECT_EQ(*d, 37 * M_PI);
+    EXPECT_EQ(*d, 37 * kSomeDouble);
   }
 }
 
@@ -48,18 +51,18 @@ TEST(MemoryMapping, Move) {
     MemoryMapping m(
         File(f.fd()), 0, sizeof(double) * 2, MemoryMapping::writable());
     double* d = m.asWritableRange<double>().data();
-    d[0] = 37 * M_PI;
+    d[0] = 37 * kSomeDouble;
     MemoryMapping m2(std::move(m));
     double* d2 = m2.asWritableRange<double>().data();
-    d2[1] = 39 * M_PI;
+    d2[1] = 39 * kSomeDouble;
   }
   {
     MemoryMapping m(File(f.fd()), 0, sizeof(double));
     const double* d = m.asRange<double>().data();
-    EXPECT_EQ(d[0], 37 * M_PI);
+    EXPECT_EQ(d[0], 37 * kSomeDouble);
     MemoryMapping m2(std::move(m));
     const double* d2 = m2.asRange<double>().data();
-    EXPECT_EQ(d2[1], 39 * M_PI);
+    EXPECT_EQ(d2[1], 39 * kSomeDouble);
   }
 }
 
@@ -74,10 +77,10 @@ TEST(MemoryMapping, DoublyMapped) {
 
   // Show that it's truly the same value, even though the pointers differ
   EXPECT_NE(dw, dr);
-  *dw = 42 * M_PI;
-  EXPECT_EQ(*dr, 42 * M_PI);
-  *dw = 43 * M_PI;
-  EXPECT_EQ(*dr, 43 * M_PI);
+  *dw = 42 * kSomeDouble;
+  EXPECT_EQ(*dr, 42 * kSomeDouble);
+  *dw = 43 * kSomeDouble;
+  EXPECT_EQ(*dr, 43 * kSomeDouble);
 }
 
 namespace {
@@ -123,7 +126,7 @@ TEST(MemoryMapping, LargeFile) {
   size_t fileSize = sysconf(_SC_PAGESIZE) * 3 + 10;
   fileData.reserve(fileSize);
   for (size_t i = 0; i < fileSize; i++) {
-    fileData.push_back(0xff & random());
+    fileData.push_back(0xff & Random::rand32());
   }
 
   File f = File::temporary();
