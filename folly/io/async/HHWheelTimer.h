@@ -66,7 +66,9 @@ class HHWheelTimer : private folly::AsyncTimeout,
   /**
    * A callback to be notified when a timeout has expired.
    */
-  class Callback {
+  class Callback
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
    public:
     Callback()
       : wheel_(nullptr)
@@ -134,14 +136,8 @@ class HHWheelTimer : private folly::AsyncTimeout,
     std::chrono::milliseconds expiration_;
     int bucket_{-1};
 
-    typedef boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink> > ListHook;
-
-    ListHook hook_;
-
     typedef boost::intrusive::list<
       Callback,
-      boost::intrusive::member_hook<Callback, ListHook, &Callback::hook_>,
       boost::intrusive::constant_time_size<false> > List;
 
     std::shared_ptr<RequestContext> context_;
