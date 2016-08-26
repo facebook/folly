@@ -27,6 +27,7 @@
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/fibers/GenericBaton.h>
+#include <folly/fibers/Semaphore.h>
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/WhenN.h>
 
@@ -1538,4 +1539,59 @@ TEST(FiberManager, nestedFiberManagers) {
   });
 
   outerEvb.loopForever();
+}
+
+TEST(FiberManager, semaphore) {
+  constexpr size_t kTasks = 10;
+  constexpr size_t kIterations = 10000;
+  constexpr size_t kNumTokens = 10;
+
+  Semaphore sem(kNumTokens);
+  int counterA = 0;
+  int counterB = 0;
+
+  auto task = [&sem, kTasks, kIterations, kNumTokens](
+      int& counter, folly::fibers::Baton& baton) {
+    FiberManager manager(folly::make_unique<EventBaseLoopController>());
+    folly::EventBase evb;
+    dynamic_cast<EventBaseLoopController&>(manager.loopController())
+        .attachEventBase(evb);
+
+    {
+      std::shared_ptr<folly::EventBase> completionCounter(
+          &evb, [](folly::EventBase* evb) { evb->terminateLoopSoon(); });
+
+      for (size_t i = 0; i < kTasks; ++i) {
+        manager.addTask([&, completionCounter]() {
+          for (size_t i = 0; i < kIterations; ++i) {
+            sem.wait();
+            ++counter;
+            sem.signal();
+            --counter;
+
+            EXPECT_LT(counter, kNumTokens);
+            EXPECT_GE(counter, 0);
+          }
+        });
+      }
+
+      baton.wait();
+    }
+    evb.loopForever();
+  };
+
+  folly::fibers::Baton batonA;
+  folly::fibers::Baton batonB;
+  std::thread threadA([&] { task(counterA, batonA); });
+  std::thread threadB([&] { task(counterB, batonB); });
+
+  batonA.post();
+  batonB.post();
+  threadA.join();
+  threadB.join();
+
+  EXPECT_LT(counterA, kNumTokens);
+  EXPECT_LT(counterB, kNumTokens);
+  EXPECT_GE(counterA, 0);
+  EXPECT_GE(counterB, 0);
 }

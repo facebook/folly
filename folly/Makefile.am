@@ -521,6 +521,7 @@ nobase_follyinclude_HEADERS += \
 	fibers/LoopController.h \
 	fibers/Promise.h \
 	fibers/Promise-inl.h \
+	fibers/Semaphore.h \
 	fibers/SimpleLoopController.h \
 	fibers/TimedMutex.h \
 	fibers/TimedMutex-inl.h \
@@ -535,6 +536,7 @@ libfolly_la_SOURCES += \
 	fibers/FiberManager.cpp \
 	fibers/FiberManagerMap.cpp \
 	fibers/GuardPageAllocator.cpp \
+	fibers/Semaphore.cpp \
 	fibers/TimeoutController.cpp
 endif
 
