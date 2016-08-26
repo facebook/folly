@@ -37,15 +37,7 @@
 #define FOLLY_DEFINED_NDEBUG_FOR_FBSTRING
 #endif // NDEBUG
 
-// Handle the cases where the fbcode version (folly/Malloc.h) is included
-// either before or after this inclusion.
-#ifdef FOLLY_MALLOC_H_
-#undef FOLLY_MALLOC_H_
-#include "basic_fbstring_malloc.h" // nolint
-#else
-#include "basic_fbstring_malloc.h" // nolint
-#undef FOLLY_MALLOC_H_
-#endif
+#include "basic_fbstring_malloc.h"
 
 #else // !_LIBSTDCXX_FBSTRING
 

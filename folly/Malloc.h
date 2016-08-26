@@ -18,7 +18,6 @@
 // http://www.canonware.com/download/jemalloc/jemalloc-latest/doc/jemalloc.html
 
 #pragma once
-#define FOLLY_MALLOC_H_
 
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
