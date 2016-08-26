@@ -39,6 +39,7 @@ nobase_follyinclude_HEADERS = \
 	Baton.h \
 	Benchmark.h \
 	Bits.h \
+	CachelinePadded.h \
 	CallOnce.h \
 	Checksum.h \
 	ClockGettimeWrappers.h \
@@ -54,6 +55,7 @@ nobase_follyinclude_HEADERS = \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
+	detail/CachelinePaddedImpl.h \
 	detail/ChecksumDetail.h \
 	detail/DiscriminatedPtrDetail.h \
 	detail/ExceptionWrapper.h \
