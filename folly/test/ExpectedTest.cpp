@@ -64,17 +64,17 @@ TEST(Expected, NoDefault) {
   static_assert(
       std::is_default_constructible<Expected<NoDefault, int>>::value, "");
   Expected<NoDefault, int> x{in_place, 42, 42};
-  EXPECT_TRUE(x);
+  EXPECT_TRUE(bool(x));
   x.emplace(4, 5);
   EXPECT_TRUE(bool(x));
   x = makeUnexpected(42);
-  EXPECT_FALSE(x);
+  EXPECT_FALSE(bool(x));
   EXPECT_EQ(42, x.error());
 }
 
 TEST(Expected, String) {
   Expected<std::string, int> maybeString;
-  EXPECT_FALSE(maybeString);
+  EXPECT_FALSE(bool(maybeString));
   EXPECT_EQ(0, maybeString.error());
   maybeString = "hello";
   EXPECT_TRUE(bool(maybeString));
