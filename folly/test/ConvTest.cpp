@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
 #include <boost/lexical_cast.hpp>
 #include <folly/Conv.h>
 #include <folly/Foreach.h>
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cinttypes>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
