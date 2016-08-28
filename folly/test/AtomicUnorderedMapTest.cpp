@@ -397,7 +397,7 @@ BENCHMARK(fast_map_64) {
 
 int main(int argc, char ** argv) {
   testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   int rv = RUN_ALL_TESTS();
   folly::runBenchmarksOnFlag();
   return rv;

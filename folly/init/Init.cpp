@@ -39,7 +39,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
   google::InstallFailureSignalHandler();
 #endif
 
-  google::ParseCommandLineFlags(argc, argv, removeFlags);
+  gflags::ParseCommandLineFlags(argc, argv, removeFlags);
 
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
   google::InitGoogleLogging(programName);
