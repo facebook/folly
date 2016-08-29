@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 #include <folly/fibers/LoopController.h>
 #include <folly/io/async/EventBase.h>
 #include <atomic>

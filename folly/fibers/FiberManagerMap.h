@@ -16,7 +16,7 @@
 #pragma once
 
 #include <folly/fibers/EventBaseLoopController.h>
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 
 namespace folly {
 namespace fibers {

@@ -514,6 +514,8 @@ nobase_follyinclude_HEADERS += \
 	fibers/Fiber-inl.h \
 	fibers/FiberManager.h \
 	fibers/FiberManager-inl.h \
+	fibers/FiberManagerInternal.h \
+	fibers/FiberManagerInternal-inl.h \
 	fibers/FiberManagerMap.h \
 	fibers/ForEach.h \
 	fibers/ForEach-inl.h \

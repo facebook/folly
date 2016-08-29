@@ -23,7 +23,7 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/fibers/BoostContextCompatibility.h>
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 

@@ -19,7 +19,7 @@
 #include <vector>
 
 #include <folly/Optional.h>
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 #include <folly/fibers/Promise.h>
 #include <folly/Try.h>
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <folly/fibers/Fiber.h>
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 
 namespace folly {
 namespace fibers {

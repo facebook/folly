@@ -18,7 +18,7 @@
 #include <chrono>
 
 #include <folly/detail/MemoryIdler.h>
-#include <folly/fibers/FiberManager.h>
+#include <folly/fibers/FiberManagerInternal.h>
 #include <folly/portability/Asm.h>
 
 namespace folly {
