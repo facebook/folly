@@ -36,10 +36,11 @@
 
 #pragma once
 
+#include <boost/iterator/iterator_facade.hpp>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
-#include <boost/iterator/iterator_facade.hpp>
+#include <folly/SharedMutex.h>
 #include <type_traits>
 #include <utility>
 
@@ -249,6 +250,7 @@ class ThreadLocalPtr {
     friend class ThreadLocalPtr<T,Tag>;
 
     threadlocal_detail::StaticMetaBase& meta_;
+    SharedMutex* accessAllThreadsLock_;
     std::mutex* lock_;
     uint32_t id_;
 
@@ -321,10 +323,12 @@ class ThreadLocalPtr {
     Accessor& operator=(const Accessor&) = delete;
 
     Accessor(Accessor&& other) noexcept
-      : meta_(other.meta_),
-        lock_(other.lock_),
-        id_(other.id_) {
+        : meta_(other.meta_),
+          accessAllThreadsLock_(other.accessAllThreadsLock_),
+          lock_(other.lock_),
+          id_(other.id_) {
       other.id_ = 0;
+      other.accessAllThreadsLock_ = nullptr;
       other.lock_ = nullptr;
     }
 
@@ -338,20 +342,23 @@ class ThreadLocalPtr {
       assert(&meta_ == &other.meta_);
       assert(lock_ == nullptr);
       using std::swap;
+      swap(accessAllThreadsLock_, other.accessAllThreadsLock_);
       swap(lock_, other.lock_);
       swap(id_, other.id_);
     }
 
     Accessor()
-      : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
-        lock_(nullptr),
-        id_(0) {
-    }
+        : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
+          accessAllThreadsLock_(nullptr),
+          lock_(nullptr),
+          id_(0) {}
 
    private:
     explicit Accessor(uint32_t id)
-      : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
-        lock_(&meta_.lock_) {
+        : meta_(threadlocal_detail::StaticMeta<Tag>::instance()),
+          accessAllThreadsLock_(&meta_.accessAllThreadsLock_),
+          lock_(&meta_.lock_) {
+      accessAllThreadsLock_->lock();
       lock_->lock();
       id_ = id;
     }
@@ -359,8 +366,11 @@ class ThreadLocalPtr {
     void release() {
       if (lock_) {
         lock_->unlock();
+        DCHECK(accessAllThreadsLock_ != nullptr);
+        accessAllThreadsLock_->unlock();
         id_ = 0;
         lock_ = nullptr;
+        accessAllThreadsLock_ = nullptr;
       }
     }
   };
