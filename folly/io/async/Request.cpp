@@ -23,6 +23,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
 
 namespace folly {
@@ -30,77 +31,63 @@ namespace folly {
 void RequestContext::setContextData(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  folly::RWSpinLock::WriteHolder guard(lock);
-  if (data_.find(val) != data_.end()) {
+  auto wlock = data_.wlock();
+  if (wlock->count(val)) {
     LOG_FIRST_N(WARNING, 1)
         << "Called RequestContext::setContextData with data already set";
 
-    data_[val] = nullptr;
+    (*wlock)[val] = nullptr;
   } else {
-    data_[val] = std::move(data);
+    (*wlock)[val] = std::move(data);
   }
 }
 
 bool RequestContext::setContextDataIfAbsent(
     const std::string& val,
     std::unique_ptr<RequestData> data) {
-  folly::RWSpinLock::UpgradedHolder guard(lock);
-  if (data_.find(val) != data_.end()) {
+  auto ulock = data_.ulock();
+  if (ulock->count(val)) {
     return false;
   }
 
-  folly::RWSpinLock::WriteHolder writeGuard(std::move(guard));
-  data_[val] = std::move(data);
+  auto wlock = ulock.moveFromUpgradeToWrite();
+  (*wlock)[val] = std::move(data);
   return true;
 }
 
 bool RequestContext::hasContextData(const std::string& val) const {
-  folly::RWSpinLock::ReadHolder guard(lock);
-  return data_.find(val) != data_.end();
+  return data_.rlock()->count(val);
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
-  folly::RWSpinLock::ReadHolder guard(lock);
-  auto r = data_.find(val);
-  if (r == data_.end()) {
-    return nullptr;
-  } else {
-    return r->second.get();
-  }
+  return get_ref_default(*data_.rlock(), val, nullptr).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
-  folly::RWSpinLock::ReadHolder guard(lock);
-  auto r = data_.find(val);
-  if (r == data_.end()) {
-    return nullptr;
-  } else {
-    return r->second.get();
-  }
+  return get_ref_default(*data_.rlock(), val, nullptr).get();
 }
 
 void RequestContext::onSet() {
-  folly::RWSpinLock::ReadHolder guard(lock);
-  for (auto const& ent : data_) {
-    if (RequestData* data = ent.second.get()) {
+  auto rlock = data_.rlock();
+  for (auto const& ent : *rlock) {
+    if (auto& data = ent.second) {
       data->onSet();
     }
   }
 }
 
 void RequestContext::onUnset() {
-  folly::RWSpinLock::ReadHolder guard(lock);
-  for (auto const& ent : data_) {
-    if (RequestData* data = ent.second.get()) {
+  auto rlock = data_.rlock();
+  for (auto const& ent : *rlock) {
+    if (auto& data = ent.second) {
       data->onUnset();
     }
   }
 }
 
 void RequestContext::clearContextData(const std::string& val) {
-  folly::RWSpinLock::WriteHolder guard(lock);
-  data_.erase(val);
+  data_.wlock()->erase(val);
 }
 
 std::shared_ptr<RequestContext> RequestContext::setContext(

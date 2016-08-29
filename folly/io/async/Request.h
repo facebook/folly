@@ -22,7 +22,9 @@
 
 #include <map>
 #include <memory>
+
 #include <folly/RWSpinLock.h>
+#include <folly/Synchronized.h>
 
 namespace folly {
 
@@ -103,8 +105,8 @@ class RequestContext {
  private:
   static std::shared_ptr<RequestContext>& getStaticContext();
 
-  mutable folly::RWSpinLock lock;
-  std::map<std::string, std::unique_ptr<RequestData>> data_;
+  using Data = std::map<std::string, std::unique_ptr<RequestData>>;
+  folly::Synchronized<Data, folly::RWSpinLock> data_;
 };
 
 class RequestContextScopeGuard {
