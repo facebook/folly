@@ -1480,6 +1480,8 @@ class IOBuf::Iterator : public boost::iterator_facade<
     }
   }
 
+  Iterator() {}
+
  private:
   void setVal() {
     val_ = ByteRange(pos_->data(), pos_->tail());
@@ -1510,8 +1512,8 @@ class IOBuf::Iterator : public boost::iterator_facade<
     adjustForEnd();
   }
 
-  const IOBuf* pos_;
-  const IOBuf* end_;
+  const IOBuf* pos_{nullptr};
+  const IOBuf* end_{nullptr};
   ByteRange val_;
 };
 
