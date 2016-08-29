@@ -1567,7 +1567,7 @@ class Dereference : public Operator<Dereference> {
     void foreach(Body&& body) const {
       source_.foreach([&](Value value) {
         if (value) {
-          return body(*value);
+          return body(*std::forward<Value>(value));
         }
       });
     }
@@ -1576,7 +1576,7 @@ class Dereference : public Operator<Dereference> {
     bool apply(Handler&& handler) const {
       return source_.apply([&](Value value) -> bool {
         if (value) {
-          return handler(*value);
+          return handler(*std::forward<Value>(value));
         }
         return true;
       });
@@ -1627,14 +1627,14 @@ class Indirect : public Operator<Indirect> {
     template <class Body>
     void foreach(Body&& body) const {
       source_.foreach([&](Value value) {
-        return body(&value);
+        return body(&std::forward<Value>(value));
       });
     }
 
     template <class Handler>
     bool apply(Handler&& handler) const {
       return source_.apply([&](Value value) -> bool {
-        return handler(&value);
+        return handler(&std::forward<Value>(value));
       });
     }
 
@@ -1964,6 +1964,11 @@ class Min : public Operator<Min<Selector, Comparer>> {
   Selector selector_;
   Comparer comparer_;
 
+  template <typename T>
+  const T& asConst(const T& t) const {
+    return t;
+  }
+
  public:
   Min() = default;
 
@@ -1984,9 +1989,9 @@ class Min : public Operator<Min<Selector, Comparer>> {
     Optional<StorageType> min;
     Optional<Key> minKey;
     source | [&](Value v) {
-      Key key = selector_(std::forward<Value>(v));
+      Key key = selector_(asConst(v)); // so that selector_ cannot mutate v
       if (!minKey.hasValue() || comparer_(key, minKey.value())) {
-        minKey = key;
+        minKey = std::move(key);
         min = std::forward<Value>(v);
       }
     };

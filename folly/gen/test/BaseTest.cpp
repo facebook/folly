@@ -24,9 +24,10 @@
 #include <folly/FBVector.h>
 #include <folly/MapUtil.h>
 #include <folly/Memory.h>
+#include <folly/String.h>
 #include <folly/dynamic.h>
-#include <folly/gen/Base.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/gen/Base.h>
 
 using namespace folly::gen;
 using namespace folly;
@@ -1111,6 +1112,45 @@ TEST(Gen, Dereference) {
     EXPECT_EQ(10, from(ups) | dereference | sum);
     EXPECT_EQ(10, from(ups) | move | dereference | sum);
   }
+}
+
+namespace {
+struct DereferenceWrapper {
+  string data;
+  string& operator*() & {
+    return data;
+  }
+  string&& operator*() && {
+    return std::move(data);
+  }
+  explicit operator bool() {
+    return true;
+  }
+};
+bool operator==(const DereferenceWrapper& a, const DereferenceWrapper& b) {
+  return a.data == b.data;
+}
+void PrintTo(const DereferenceWrapper& a, std::ostream* o) {
+  *o << "Wrapper{\"" << cEscape<string>(a.data) << "\"}";
+}
+}
+
+TEST(Gen, DereferenceWithLValueRef) {
+  auto original = vector<DereferenceWrapper>{{"foo"}, {"bar"}};
+  auto copy = original;
+  auto expected = vector<string>{"foo", "bar"};
+  auto actual = from(original) | dereference | as<vector>();
+  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(copy, original);
+}
+
+TEST(Gen, DereferenceWithRValueRef) {
+  auto original = vector<DereferenceWrapper>{{"foo"}, {"bar"}};
+  auto empty = vector<DereferenceWrapper>{{}, {}};
+  auto expected = vector<string>{"foo", "bar"};
+  auto actual = from(original) | move | dereference | as<vector>();
+  EXPECT_EQ(expected, actual);
+  EXPECT_EQ(empty, original);
 }
 
 TEST(Gen, Indirect) {
