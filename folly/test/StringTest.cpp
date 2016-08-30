@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
 #include <folly/String.h>
+
+#include <cinttypes>
 
 #include <boost/regex.hpp>
 #include <gtest/gtest.h>
