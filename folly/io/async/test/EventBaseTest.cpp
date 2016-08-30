@@ -1176,11 +1176,6 @@ TEST(EventBaseTest, RunInThread) {
   for (uint32_t n = 0; n < numThreads; ++n) {
     ASSERT_EQ(expectedValues[n], opsPerThread);
   }
-
-  // Wait on all of the threads.
-  for (auto& thread: threads) {
-    thread.join();
-  }
 }
 
 //  This test simulates some calls, and verifies that the waiting happens by
