@@ -206,10 +206,12 @@ class Optional {
     return storage_.value;
   }
 
-  // TODO: This should return Value&& instead of Value. Like with
-  // std::move, the calling code should decide whether it wants the move
-  // to happen or not. See std::optional.
-  Value value() && {
+  Value&& value() && {
+    require_value();
+    return std::move(storage_.value);
+  }
+
+  const Value&& value() const&& {
     require_value();
     return std::move(storage_.value);
   }
@@ -228,12 +230,10 @@ class Optional {
     return hasValue();
   }
 
-  const Value& operator*() const&  { return value(); }
-        Value& operator*()      &  { return value(); }
-        // TODO: This should return Value&& instead of Value. Like with
-        // std::move, the calling code should decide whether it wants the move
-        // to happen or not. See std::optional.
-        Value  operator*()      && { return std::move(value()); }
+  const Value& operator*()  const&  { return value(); }
+        Value& operator*()       &  { return value(); }
+  const Value&& operator*() const&& { return std::move(value()); }
+        Value&& operator*()      && { return std::move(value()); }
 
   const Value* operator->() const { return &value(); }
         Value* operator->()       { return &value(); }
