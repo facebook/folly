@@ -15,8 +15,10 @@
  */
 #pragma once
 
+#include <folly/Range.h>
 #include <folly/portability/Sockets.h>
 
+#include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
 namespace folly {
@@ -24,6 +26,30 @@ namespace ssl {
 
 class OpenSSLUtils {
  public:
+  /*
+   * Get the TLS Session Master Key used to generate the TLS key material
+   *
+   * @param session ssl session
+   * @param keyOut destination for the master key, the buffer must be at least
+   * 48 bytes
+   * @return true if the master key is available (>= TLS1) and the output buffer
+   * large enough
+   */
+  static bool getTLSMasterKey(
+      const SSL_SESSION* session,
+      MutableByteRange keyOut);
+
+  /*
+   * Get the TLS Client Random used to generate the TLS key material
+   *
+   * @param ssl
+   * @param randomOut destination for the client random, the buffer must be at
+   * least 32 bytes
+   * @return true if the client random is available (>= TLS1) and the output
+   * buffer large enough
+   */
+  static bool getTLSClientRandom(const SSL* ssl, MutableByteRange randomOut);
+
   /**
    * Validate that the peer certificate's common name or subject alt names
    * match what we expect.  Currently this only checks for IPs within
