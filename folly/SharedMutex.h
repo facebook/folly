@@ -210,6 +210,17 @@
 // in all but the most extreme cases.  Make sure to check that the
 // increased icache and dcache footprint of the tagged result is worth it.
 
+// SharedMutex's use of thread local storage is as an optimization, so
+// for the case where thread local storage is not supported, define it
+// away.
+#ifndef FOLLY_SHAREDMUTEX_TLS
+#if !FOLLY_MOBILE
+#define FOLLY_SHAREDMUTEX_TLS FOLLY_TLS
+#else
+#define FOLLY_SHAREDMUTEX_TLS
+#endif
+#endif
+
 namespace folly {
 
 struct SharedMutexToken {
@@ -710,7 +721,7 @@ class SharedMutexImpl {
   static constexpr uintptr_t kTokenless = 0x1;
 
   // This is the starting location for Token-less unlock_shared().
-  static FOLLY_TLS uint32_t tls_lastTokenlessSlot;
+  static FOLLY_SHAREDMUTEX_TLS uint32_t tls_lastTokenlessSlot;
 
   // Only indexes divisible by kDeferredSeparationFactor are used.
   // If any of those elements points to a SharedMutexImpl, then it
@@ -1328,7 +1339,7 @@ template <
     typename Tag_,
     template <typename> class Atom,
     bool BlockImmediately>
-FOLLY_TLS uint32_t
+FOLLY_SHAREDMUTEX_TLS uint32_t
     SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
         tls_lastTokenlessSlot = 0;
 
