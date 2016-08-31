@@ -42,7 +42,9 @@ class ObserverCreator<Observable, Traits>::Context {
   void update() {
     {
       auto newValue = Traits::get(observable_);
-      DCHECK(newValue);
+      if (!newValue) {
+        throw std::logic_error("Observable returned nullptr.");
+      }
       value_.swap(newValue);
     }
 
