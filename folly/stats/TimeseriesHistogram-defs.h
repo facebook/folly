@@ -23,48 +23,6 @@
 
 namespace folly {
 
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::avg(int level) const {
-  ValueType total = ValueType();
-  int64_t nsamples = 0;
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
-    total += levelObj.sum();
-    nsamples += levelObj.count();
-  }
-  return folly::detail::avgHelper<ReturnType>(total, nsamples);
-}
-
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::avg(TimeType start,
-                                              TimeType end) const {
-  ValueType total = ValueType();
-  int64_t nsamples = 0;
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(start, end);
-    total += levelObj.sum(start, end);
-    nsamples += levelObj.count(start, end);
-  }
-  return folly::detail::avgHelper<ReturnType>(total, nsamples);
-}
-
-template <class T, class TT, class C>
-template <typename ReturnType>
-ReturnType TimeseriesHistogram<T, TT, C>::rate(TimeType start,
-                                               TimeType end) const {
-  ValueType total = ValueType();
-  TimeType elapsed(0);
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& level = buckets_.getByIndex(b).getLevel(start);
-    total += level.sum(start, end);
-    elapsed = std::max(elapsed, level.elapsed(start, end));
-  }
-  return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
-      total, elapsed);
-}
-
 template <typename T, typename TT, typename C>
 TimeseriesHistogram<T, TT, C>::TimeseriesHistogram(ValueType bucketSize,
                                             ValueType min,
@@ -165,18 +123,6 @@ int TimeseriesHistogram<T, TT, C>::getPercentileBucketIdx(double pct,
 }
 
 template <typename T, typename TT, typename C>
-T TimeseriesHistogram<T, TT, C>::rate(int level) const {
-  ValueType total = ValueType();
-  TimeType elapsed(0);
-  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
-    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
-    total += levelObj.sum();
-    elapsed = std::max(elapsed, levelObj.elapsed());
-  }
-  return elapsed == TimeType(0) ? 0 : (total / elapsed.count());
-}
-
-template <typename T, typename TT, typename C>
 void TimeseriesHistogram<T, TT, C>::clear() {
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).clear();
@@ -223,6 +169,56 @@ std::string TimeseriesHistogram<T, TT, C>::getString(TimeType start,
   }
 
   return result;
+}
+
+template <class T, class TT, class C>
+void TimeseriesHistogram<T, TT, C>::computeAvgData(
+    ValueType* total,
+    int64_t* nsamples,
+    int level) const {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
+    *total += levelObj.sum();
+    *nsamples += levelObj.count();
+  }
+}
+
+template <class T, class TT, class C>
+void TimeseriesHistogram<T, TT, C>::computeAvgData(
+    ValueType* total,
+    int64_t* nsamples,
+    TimeType start,
+    TimeType end) const {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(start);
+    *total += levelObj.sum(start, end);
+    *nsamples += levelObj.count(start, end);
+  }
+}
+
+template <typename T, typename TT, typename C>
+void TimeseriesHistogram<T, TT, C>::computeRateData(
+    ValueType* total,
+    TimeType* elapsed,
+    int level) const {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
+    *total += levelObj.sum();
+    *elapsed = std::max(*elapsed, levelObj.elapsed());
+  }
+}
+
+template <class T, class TT, class C>
+void TimeseriesHistogram<T, TT, C>::computeRateData(
+    ValueType* total,
+    TimeType* elapsed,
+    TimeType start,
+    TimeType end) const {
+  for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    const auto& level = buckets_.getByIndex(b).getLevel(start);
+    *total += level.sum(start, end);
+    *elapsed = std::max(*elapsed, level.elapsed(start, end));
+  }
 }
 
 }  // namespace folly

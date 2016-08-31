@@ -220,6 +220,50 @@ TEST(TimeseriesHistogram, Basic) {
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::MINUTE));
     EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
                 IntMTMHTS::MINUTE));
+
+    EXPECT_EQ(6000, hist.count(IntMTMHTS::MINUTE));
+    EXPECT_EQ(60000, hist.count(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(360000, hist.count(IntMTMHTS::HOUR));
+    EXPECT_EQ(360000, hist.count(IntMTMHTS::ALLTIME));
+
+    // Each second we added 4950 total over 100 data points
+    EXPECT_EQ(297000, hist.sum(IntMTMHTS::MINUTE));
+    EXPECT_EQ(2970000, hist.sum(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(17820000, hist.sum(IntMTMHTS::HOUR));
+    EXPECT_EQ(17820000, hist.sum(IntMTMHTS::ALLTIME));
+
+    EXPECT_EQ(49, hist.avg<int>(IntMTMHTS::MINUTE));
+    EXPECT_EQ(49, hist.avg<int>(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(49, hist.avg<int>(IntMTMHTS::HOUR));
+    EXPECT_EQ(49, hist.avg<int>(IntMTMHTS::ALLTIME));
+    EXPECT_EQ(49.5, hist.avg<double>(IntMTMHTS::MINUTE));
+    EXPECT_EQ(49.5, hist.avg<double>(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(49.5, hist.avg<double>(IntMTMHTS::HOUR));
+    EXPECT_EQ(49.5, hist.avg<double>(IntMTMHTS::ALLTIME));
+
+    EXPECT_EQ(4950, hist.rate<int>(IntMTMHTS::MINUTE));
+    EXPECT_EQ(4950, hist.rate<int>(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(4950, hist.rate<int>(IntMTMHTS::HOUR));
+    EXPECT_EQ(4950, hist.rate<int>(IntMTMHTS::ALLTIME));
+    EXPECT_EQ(4950, hist.rate<double>(IntMTMHTS::MINUTE));
+    EXPECT_EQ(4950, hist.rate<double>(IntMTMHTS::TEN_MINUTE));
+    EXPECT_EQ(4950, hist.rate<double>(IntMTMHTS::HOUR));
+    EXPECT_EQ(4950, hist.rate<double>(IntMTMHTS::ALLTIME));
+
+    EXPECT_EQ(1000, hist.count(seconds(10), seconds(20)));
+    EXPECT_EQ(49500, hist.sum(seconds(10), seconds(20)));
+    EXPECT_EQ(4950, hist.rate(seconds(10), seconds(20)));
+    EXPECT_EQ(49.5, hist.avg<double>(seconds(10), seconds(20)));
+
+    EXPECT_EQ(200, hist.count(seconds(3550), seconds(3552)));
+    EXPECT_EQ(9900, hist.sum(seconds(3550), seconds(3552)));
+    EXPECT_EQ(4950, hist.rate(seconds(3550), seconds(3552)));
+    EXPECT_EQ(49.5, hist.avg<double>(seconds(3550), seconds(3552)));
+
+    EXPECT_EQ(0, hist.count(seconds(4550), seconds(4552)));
+    EXPECT_EQ(0, hist.sum(seconds(4550), seconds(4552)));
+    EXPECT_EQ(0, hist.rate(seconds(4550), seconds(4552)));
+    EXPECT_EQ(0, hist.avg<double>(seconds(4550), seconds(4552)));
   }
 
   // -----------------

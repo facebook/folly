@@ -147,25 +147,48 @@ class TimeseriesHistogram {
   }
 
   /* Average of values at the given timeseries level (all buckets). */
-  template <typename ReturnType=double>
-  ReturnType avg(int level) const;
+  template <typename ReturnType = double>
+  ReturnType avg(int level) const {
+    auto total = ValueType();
+    int64_t nsamples = 0;
+    computeAvgData(&total, &nsamples, level);
+    return folly::detail::avgHelper<ReturnType>(total, nsamples);
+  }
 
   /* Average of values added during the given interval (all buckets). */
-  template <typename ReturnType=double>
-  ReturnType avg(TimeType start, TimeType end) const;
+  template <typename ReturnType = double>
+  ReturnType avg(TimeType start, TimeType end) const {
+    auto total = ValueType();
+    int64_t nsamples = 0;
+    computeAvgData(&total, &nsamples, start, end);
+    return folly::detail::avgHelper<ReturnType>(total, nsamples);
+  }
 
   /*
    * Rate at the given timeseries level (all buckets).
    * This is the sum of all values divided by the time interval (in seconds).
    */
-  ValueType rate(int level) const;
+  template <typename ReturnType = double>
+  ReturnType rate(int level) const {
+    auto total = ValueType();
+    TimeType elapsed(0);
+    computeRateData(&total, &elapsed, level);
+    return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
+        total, elapsed);
+  }
 
   /*
    * Rate for the given interval (all buckets).
    * This is the sum of all values divided by the time interval (in seconds).
    */
-  template <typename ReturnType=double>
-  ReturnType rate(TimeType start, TimeType end) const;
+  template <typename ReturnType = double>
+  ReturnType rate(TimeType start, TimeType end) const {
+    auto total = ValueType();
+    TimeType elapsed(0);
+    computeRateData(&total, &elapsed, start, end);
+    return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
+        total, elapsed);
+  }
 
   /*
    * Update every underlying timeseries object with the given timestamp. You
@@ -319,10 +342,22 @@ class TimeseriesHistogram {
    */
   void maybeHandleSingleUniqueValue(const ValueType& value);
 
+  void computeAvgData(ValueType* total, int64_t* nsamples, int level) const;
+  void computeAvgData(
+      ValueType* total,
+      int64_t* nsamples,
+      TimeType start,
+      TimeType end) const;
+  void computeRateData(ValueType* total, TimeType* elapsed, int level) const;
+  void computeRateData(
+      ValueType* total,
+      TimeType* elapsed,
+      TimeType start,
+      TimeType end) const;
+
   folly::detail::HistogramBuckets<ValueType, ContainerType> buckets_;
   bool haveNotSeenValue_;
   bool singleUniqueValue_;
   ValueType firstValue_;
 };
-
 }  // folly
