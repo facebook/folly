@@ -45,23 +45,20 @@ void StaticMetaBase::onThreadExit(void* ptr) {
   };
 
   {
-    SharedMutex::ReadHolder rlock(meta.accessAllThreadsLock_);
-    {
-      std::lock_guard<std::mutex> g(meta.lock_);
-      meta.erase(&(*threadEntry));
-      // No need to hold the lock any longer; the ThreadEntry is private to this
-      // thread now that it's been removed from meta.
-    }
-    // NOTE: User-provided deleter / object dtor itself may be using ThreadLocal
-    // with the same Tag, so dispose() calls below may (re)create some of the
-    // elements or even increase elementsCapacity, thus multiple cleanup rounds
-    // may be required.
-    for (bool shouldRun = true; shouldRun;) {
-      shouldRun = false;
-      FOR_EACH_RANGE (i, 0, threadEntry->elementsCapacity) {
-        if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
-          shouldRun = true;
-        }
+    std::lock_guard<std::mutex> g(meta.lock_);
+    meta.erase(&(*threadEntry));
+    // No need to hold the lock any longer; the ThreadEntry is private to this
+    // thread now that it's been removed from meta.
+  }
+  // NOTE: User-provided deleter / object dtor itself may be using ThreadLocal
+  // with the same Tag, so dispose() calls below may (re)create some of the
+  // elements or even increase elementsCapacity, thus multiple cleanup rounds
+  // may be required.
+  for (bool shouldRun = true; shouldRun;) {
+    shouldRun = false;
+    FOR_EACH_RANGE (i, 0, threadEntry->elementsCapacity) {
+      if (threadEntry->elements[i].dispose(TLPDestructionMode::THIS_THREAD)) {
+        shouldRun = true;
       }
     }
   }
