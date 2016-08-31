@@ -151,7 +151,7 @@ void setup_rand_bench() {
 }
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   setup_rand_bench();
   runBenchmarks();
   return 0;
