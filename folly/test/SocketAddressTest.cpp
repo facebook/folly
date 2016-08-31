@@ -897,3 +897,18 @@ TEST(SocketAddress, ResetUnixAddress) {
   addy.reset();
   EXPECT_EQ(addy.getFamily(), AF_UNSPEC);
 }
+
+TEST(SocketAddress, ResetIPAddress) {
+  SocketAddress addr;
+  addr.setFromIpPort("127.0.0.1", 80);
+  addr.reset();
+  EXPECT_EQ(addr.getFamily(), AF_UNSPEC);
+  EXPECT_FALSE(addr.isInitialized());
+  EXPECT_TRUE(addr.empty());
+
+  addr.setFromIpPort("2620:0:1cfe:face:b00c::3:65535");
+  addr.reset();
+  EXPECT_EQ(addr.getFamily(), AF_UNSPEC);
+  EXPECT_FALSE(addr.isInitialized());
+  EXPECT_TRUE(addr.empty());
+}

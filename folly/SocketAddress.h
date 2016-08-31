@@ -151,7 +151,11 @@ class SocketAddress {
   bool isLoopbackAddress() const;
 
   void reset() {
-    prepFamilyChange(AF_UNSPEC);
+    if (external_) {
+      storage_.un.free();
+    }
+    storage_.addr = folly::IPAddress();
+    external_ = false;
   }
 
   /**
@@ -578,21 +582,6 @@ class SocketAddress {
   void getIpString(char *buf, size_t buflen, int flags) const;
 
   void updateUnixAddressLength(socklen_t addrlen);
-
-  void prepFamilyChange(sa_family_t newFamily) {
-    if (newFamily != AF_UNIX) {
-      if (external_) {
-        storage_.un.free();
-        storage_.addr = folly::IPAddress();
-      }
-      external_ = false;
-    } else {
-      if (!external_) {
-        storage_.un.init();
-      }
-      external_ = true;
-    }
-  }
 
   /*
    * storage_ contains room for a full IPv4 or IPv6 address, so they can be

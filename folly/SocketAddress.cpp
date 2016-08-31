@@ -325,7 +325,10 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_un* address,
       "with length too long for a sockaddr_un");
   }
 
-  prepFamilyChange(AF_UNIX);
+  if (!external_) {
+    storage_.un.init();
+  }
+  external_ = true;
   memcpy(storage_.un.addr, address, addrlen);
   updateUnixAddressLength(addrlen);
 
