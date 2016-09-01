@@ -43,6 +43,7 @@
 #include <folly/FBString.h>
 #include <folly/Likely.h>
 #include <folly/Range.h>
+#include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/portability/Math.h>
 

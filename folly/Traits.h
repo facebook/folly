@@ -673,3 +673,45 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr)
       classname, func_name, /* nolint */ volatile); \
   FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL( \
       classname, func_name, /* nolint */ volatile const)
+
+/* Some combinations of compilers and C++ libraries make __int128 and
+ * unsigned __int128 available but do not correctly define their standard type
+ * traits.
+ *
+ * If FOLLY_SUPPLY_MISSING_INT128_TRAITS is defined, we define these traits
+ * here.
+ *
+ * @author: Phil Willoughby <philwill@fb.com>
+ */
+#if FOLLY_SUPPLY_MISSING_INT128_TRAITS
+FOLLY_NAMESPACE_STD_BEGIN
+template <>
+struct is_arithmetic<__int128> : ::std::true_type {};
+template <>
+struct is_arithmetic<unsigned __int128> : ::std::true_type {};
+template <>
+struct is_integral<__int128> : ::std::true_type {};
+template <>
+struct is_integral<unsigned __int128> : ::std::true_type {};
+template <>
+struct make_unsigned<__int128> {
+  typedef unsigned __int128 type;
+};
+template <>
+struct make_signed<__int128> {
+  typedef __int128 type;
+};
+template <>
+struct make_unsigned<unsigned __int128> {
+  typedef unsigned __int128 type;
+};
+template <>
+struct make_signed<unsigned __int128> {
+  typedef __int128 type;
+};
+template <>
+struct is_signed<__int128> : ::std::true_type {};
+template <>
+struct is_unsigned<unsigned __int128> : ::std::true_type {};
+FOLLY_NAMESPACE_STD_END
+#endif // FOLLY_SUPPLY_MISSING_INT128_TRAITS

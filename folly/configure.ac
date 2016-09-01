@@ -153,7 +153,28 @@ AC_C_INLINE
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_C_VOLATILE
-AC_CHECK_TYPE([__int128], AC_DEFINE([HAVE_INT128_T], [1], [Define if we have __int128]))
+AC_CHECK_TYPE([__int128], [folly_cv_prog_cc_int128=yes],
+    [folly_cv_prog_cc_int128=no])
+if test "$folly_cv_prog_cc_int128" = "yes"; then
+  AC_DEFINE([HAVE_INT128_T], [1], [Define if we have __int128])
+  AC_CACHE_CHECK(
+    [for __int128 type traits],
+    [folly_cv_prog_cc_int128traits],
+    [AC_COMPILE_IFELSE(
+      [AC_LANG_SOURCE([[
+#include <type_traits>
+static_assert(
+  ::std::is_same<::std::make_signed<unsigned __int128>::type, __int128>::value,
+  "signed form of `unsigned __uint128` must be `__int128`.");
+      ]])],
+      [folly_cv_prog_cc_int128traits=yes],
+      [folly_cv_prog_cc_int128traits=no])
+    ])
+  if test "$folly_cv_prog_cc_int128traits" = "no"; then
+    AC_DEFINE([FOLLY_SUPPLY_MISSING_INT128_TRAITS], [1], [Define if we need the standard integer traits defined for the type `__int128'.])
+  fi
+fi
+
 AC_CHECK_TYPES([ptrdiff_t, pthread_spinlock_t])
 
 AC_CACHE_CHECK(
@@ -523,7 +544,7 @@ AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 AC_CHECK_HEADER([zstd.h], AC_CHECK_LIB([zstd], [main]))
 AC_CHECK_HEADER([linux/membarrier.h], AC_DEFINE([HAVE_LINUX_MEMBARRIER_H], [1], [Define to 1 if membarrier.h is available]))
- 
+
 AC_ARG_ENABLE([follytestmain],
    AS_HELP_STRING([--enable-follytestmain], [enables using main function from folly for tests]),
    [follytestmain=${enableval}], [follytestmain=no])

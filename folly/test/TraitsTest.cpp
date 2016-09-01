@@ -133,6 +133,36 @@ TEST(Traits, relational) {
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
 }
 
+#if FOLLY_HAVE_INT128_T
+
+TEST(Traits, int128) {
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_unsigned<__int128_t>::type, __uint128_t>::
+           value));
+  EXPECT_TRUE((
+      ::std::is_same<::std::make_signed<__int128_t>::type, __int128_t>::value));
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_unsigned<__uint128_t>::type, __uint128_t>::
+           value));
+  EXPECT_TRUE(
+      (::std::is_same<::std::make_signed<__uint128_t>::type, __int128_t>::
+           value));
+  EXPECT_TRUE((::std::is_arithmetic<__int128_t>::value));
+  EXPECT_TRUE((::std::is_arithmetic<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_integral<__int128_t>::value));
+  EXPECT_TRUE((::std::is_integral<__uint128_t>::value));
+  EXPECT_FALSE((::std::is_unsigned<__int128_t>::value));
+  EXPECT_TRUE((::std::is_signed<__int128_t>::value));
+  EXPECT_TRUE((::std::is_unsigned<__uint128_t>::value));
+  EXPECT_FALSE((::std::is_signed<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_fundamental<__int128_t>::value));
+  EXPECT_TRUE((::std::is_fundamental<__uint128_t>::value));
+  EXPECT_TRUE((::std::is_scalar<__int128_t>::value));
+  EXPECT_TRUE((::std::is_scalar<__uint128_t>::value));
+}
+
+#endif // FOLLY_HAVE_INT128_T
+
 template <typename T, typename... Args>
 void testIsRelocatable(Args&&... args) {
   if (!IsRelocatable<T>::value) return;
