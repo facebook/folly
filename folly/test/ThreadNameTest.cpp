@@ -16,6 +16,7 @@
 
 #include <thread>
 #include <folly/Baton.h>
+#include <folly/ScopeGuard.h>
 #include <folly/ThreadName.h>
 #include <gtest/gtest.h>
 
