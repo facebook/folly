@@ -73,11 +73,9 @@ enum class CodecType {
   LZMA2_VARINT_SIZE = 7,
 
   /**
-   * Use ZSTD_BETA compression.
-   * This format is not yet final; please do not rely on it for anything other
-   * than testing purposes yet.
+   * Use ZSTD compression.
    */
-  ZSTD_BETA = 8,
+  ZSTD = 8,
 
   /**
    * Use gzip compression.  This is the same compression algorithm as ZLIB but

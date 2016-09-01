@@ -946,7 +946,7 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 #ifdef FOLLY_HAVE_LIBZSTD
 
 /**
- * ZSTD_BETA compression
+ * ZSTD compression
  */
 class ZSTDCodec final : public Codec {
  public:
@@ -968,7 +968,7 @@ std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
 }
 
 ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
-  DCHECK(type == CodecType::ZSTD_BETA);
+  DCHECK(type == CodecType::ZSTD);
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
       level_ = 1;
