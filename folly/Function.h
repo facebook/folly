@@ -466,6 +466,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   // (i.e., `template <typename Fun> Function(Fun&&)`).
   Function(Function&) = delete;
   Function(const Function&) = delete;
+  Function(const Function&&) = delete;
 
   /**
    * Move constructor
