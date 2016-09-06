@@ -37,7 +37,7 @@ using sa_family_t = ADDRESS_FAMILY;
 
 // We don't actually support either of these flags
 // currently.
-#define MSG_DONTWAIT 0
+#define MSG_DONTWAIT 0x1000
 #define MSG_EOR 0
 struct msghdr {
   void* msg_name;
@@ -61,7 +61,10 @@ struct sockaddr_un {
 // These are the same, but PF_LOCAL
 // isn't defined by WinSock.
 #define PF_LOCAL PF_UNIX
-#define SO_REUSEPORT SO_REUSEADDR
+
+// This isn't defined by Windows, and we need to
+// distinguish it from SO_REUSEADDR
+#define SO_REUSEPORT 0x7001
 
 // Someone thought it would be a good idea
 // to define a field via a macro...
@@ -94,6 +97,7 @@ using ::socket;
 bool is_fh_socket(int fh);
 SOCKET fd_to_socket(int fd);
 int socket_to_fd(SOCKET s);
+int translate_wsa_error(int wsaErr);
 
 // These aren't additional overloads, but rather other functions that
 // are referenced that we need to wrap, or, in the case of inet_aton,
