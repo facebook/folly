@@ -373,18 +373,16 @@ std::string SocketAddress::getFullyQualified() const {
 }
 
 std::string SocketAddress::getAddressStr() const {
-  char buf[INET6_ADDRSTRLEN];
-  getAddressStr(buf, sizeof(buf));
-  return buf;
-}
-
-void SocketAddress::getAddressStr(char* buf, size_t buflen) const {
   auto family = getFamily();
   if (family != AF_INET && family != AF_INET6) {
     throw std::invalid_argument("Can't get address str for non ip address");
   }
-  std::string ret = storage_.addr.str();
-  size_t len = std::min(buflen, ret.size());
+  return storage_.addr.str();
+}
+
+void SocketAddress::getAddressStr(char* buf, size_t buflen) const {
+  auto ret = getAddressStr();
+  size_t len = std::min(buflen - 1, ret.size());
   memcpy(buf, ret.data(), len);
   buf[len] = '\0';
 }

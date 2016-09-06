@@ -51,6 +51,15 @@ TEST(SocketAddress, ConstructFromIpv4) {
   EXPECT_EQ(inaddr->sin_port, htons(4321));
 }
 
+TEST(SocketAddress, StringConversion) {
+  SocketAddress addr("1.2.3.4", 4321);
+  EXPECT_EQ(addr.getFamily(), AF_INET);
+  EXPECT_EQ(addr.getAddressStr(), "1.2.3.4");
+  char buf[30];
+  addr.getAddressStr(buf, 2);
+  EXPECT_STREQ(buf, "1");
+}
+
 TEST(SocketAddress, IPv4ToStringConversion) {
   // testing addresses *.5.5.5, 5.*.5.5, 5.5.*.5, 5.5.5.*
   SocketAddress addr;
