@@ -254,6 +254,7 @@ nobase_follyinclude_HEADERS = \
 	MallctlHelper.h \
 	Malloc.h \
 	MapUtil.h \
+	Math.h \
 	Memory.h \
 	MemoryMapping.h \
 	MicroSpinLock.h \
