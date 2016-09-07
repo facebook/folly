@@ -33,7 +33,8 @@ namespace test {
 FOLLY_TLS sem_t* DeterministicSchedule::tls_sem;
 FOLLY_TLS DeterministicSchedule* DeterministicSchedule::tls_sched;
 FOLLY_TLS unsigned DeterministicSchedule::tls_threadId;
-FOLLY_TLS std::function<void(uint64_t, bool)>* DeterministicSchedule::tls_aux;
+thread_local AuxAct DeterministicSchedule::tls_aux_act;
+AuxChk DeterministicSchedule::aux_chk;
 
 // access is protected by futexLock
 static std::unordered_map<detail::Futex<DeterministicAtomic>*,
@@ -46,7 +47,7 @@ DeterministicSchedule::DeterministicSchedule(
     : scheduler_(scheduler), nextThreadId_(1), step_(0) {
   assert(tls_sem == nullptr);
   assert(tls_sched == nullptr);
-  assert(tls_aux == nullptr);
+  assert(tls_aux_act == nullptr);
 
   tls_sem = new sem_t;
   sem_init(tls_sem, 0, 1);
@@ -171,8 +172,16 @@ int DeterministicSchedule::getcpu(unsigned* cpu,
   return 0;
 }
 
-void DeterministicSchedule::setAux(std::function<void(uint64_t, bool)>& aux) {
-  tls_aux = &aux;
+void DeterministicSchedule::setAuxAct(AuxAct& aux) {
+  tls_aux_act = aux;
+}
+
+void DeterministicSchedule::setAuxChk(AuxChk& aux) {
+  aux_chk = aux;
+}
+
+void DeterministicSchedule::clearAuxChk() {
+  aux_chk = nullptr;
 }
 
 sem_t* DeterministicSchedule::beforeThreadCreate() {
@@ -212,6 +221,7 @@ void DeterministicSchedule::beforeThreadExit() {
   delete tls_sem;
   tls_sem = nullptr;
   tls_sched = nullptr;
+  tls_aux_act = nullptr;
 }
 
 void DeterministicSchedule::join(std::thread& child) {
@@ -232,12 +242,13 @@ void DeterministicSchedule::join(std::thread& child) {
 
 void DeterministicSchedule::callAux(bool success) {
   ++step_;
-  auto aux = tls_aux;
-  if (!aux) {
-    return;
+  if (tls_aux_act) {
+    tls_aux_act(success);
+    tls_aux_act = nullptr;
   }
-  (*aux)(step_, success);
-  tls_aux = nullptr;
+  if (aux_chk) {
+    aux_chk(step_);
+  }
 }
 
 void DeterministicSchedule::post(sem_t* sem) {

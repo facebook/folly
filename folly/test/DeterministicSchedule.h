@@ -51,6 +51,10 @@ namespace test {
     }                                                           \
   } while (false)
 
+/* signatures of user-defined auxiliary functions */
+using AuxAct = std::function<void(bool)>;
+using AuxChk = std::function<void(uint64_t)>;
+
 /**
  * DeterministicSchedule coordinates the inter-thread communication of a
  * set of threads under test, so that despite concurrency the execution is
@@ -168,18 +172,27 @@ class DeterministicSchedule : boost::noncopyable {
   static int getcpu(unsigned* cpu, unsigned* node, void* unused);
 
   /** Sets up a thread-specific function for call immediately after
-   *  the next shared access for managing auxiliary data and checking
-   *  global invariants. The parameters of the function are: a
-   *  uint64_t that indicates the step number (i.e., the number of
-   *  shared accesses so far), and a bool that indicates the success
-   *  of the shared access (if it is conditional, true otherwise). */
-  static void setAux(std::function<void(uint64_t, bool)>& aux);
+   *  the next shared access by the thread for managing auxiliary
+   *  data. The function takes a bool parameter that indicates the
+   *  success of the shared access (if it is conditional, true
+   *  otherwise). The function is cleared after one use. */
+  static void setAuxAct(AuxAct& aux);
+
+  /** Sets up a function to be called after every subsequent shared
+   *  access (until clearAuxChk() is called) for checking global
+   *  invariants and logging. The function takes a uint64_t parameter
+   *  that indicates the number of shared accesses so far. */
+  static void setAuxChk(AuxChk& aux);
+
+  /** Clears the function set by setAuxChk */
+  static void clearAuxChk();
 
  private:
   static FOLLY_TLS sem_t* tls_sem;
   static FOLLY_TLS DeterministicSchedule* tls_sched;
   static FOLLY_TLS unsigned tls_threadId;
-  static FOLLY_TLS std::function<void(uint64_t, bool)>* tls_aux;
+  static thread_local AuxAct tls_aux_act;
+  static AuxChk aux_chk;
 
   std::function<int(int)> scheduler_;
   std::vector<sem_t*> sems_;

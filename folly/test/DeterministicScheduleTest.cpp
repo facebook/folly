@@ -129,7 +129,6 @@ TEST(DeterministicSchedule, buggyAdd) {
 ///   8. Define TEST using anotated shared data, aux data, and aux functions
 
 using DSched = DeterministicSchedule;
-using AuxFn = std::function<void(uint64_t, bool)>;
 
 /** forward declaration of annotated shared class */
 class AnnotatedAtomicCounter;
@@ -180,17 +179,17 @@ class AnnotatedAtomicCounter {
  public:
   explicit AnnotatedAtomicCounter(int val) : shared_(val) {}
 
-  void inc(AuxFn& auxfn) {
-    DSched::setAux(auxfn);
+  void inc(AuxAct& auxfn) {
+    DSched::setAuxAct(auxfn);
     /* calls the fine-grained original */
     shared_.inc();
   }
 
-  void inc_bug(AuxFn auxfn) {
+  void inc_bug(AuxAct auxfn) {
     /* duplicates the steps of the multi-access original in order to
      * annotate the second access */
     int newval = shared_.counter_.load() + 1;
-    DSched::setAux(auxfn);
+    DSched::setAuxAct(auxfn);
     shared_.counter_.store(newval);
   }
 
@@ -205,7 +204,7 @@ class AnnotatedAtomicCounter {
 using Annotated = AnnotatedAtomicCounter;
 
 /** aux log & check function */
-void auxCheck(int tid, uint64_t step, Annotated& annotated, AuxData& auxdata) {
+void auxCheck(int tid, Annotated& annotated, AuxData& auxdata) {
   /* read shared data */
   int val = annotated.load_direct();
   /* read auxiliary data */
@@ -214,21 +213,20 @@ void auxCheck(int tid, uint64_t step, Annotated& annotated, AuxData& auxdata) {
     sum += v;
   }
   /* log state */
-  VLOG(2) << "Step " << step << " -- tid " << tid
-          << " -- shared counter= " << val << " -- sum increments= " << sum;
+  VLOG(2) << "tid " << tid << " -- shared counter= " << val
+          << " -- sum increments= " << sum;
   /* check invariant */
   if (val != sum) {
-    LOG(ERROR) << "Failed after step " << step;
     LOG(ERROR) << "counter=(" << val << ") expected(" << sum << ")";
     CHECK(false);
   }
 }
 
 /** function generator(s) */
-AuxFn auxAfterInc(int tid, Annotated& annotated, AuxData& auxdata) {
-  return [&annotated, &auxdata, tid](uint64_t step, bool success) {
+AuxAct auxAfterInc(int tid, Annotated& annotated, AuxData& auxdata) {
+  return [&annotated, &auxdata, tid](bool success) {
     auxUpdateAfterInc(tid, auxdata, success);
-    auxCheck(tid, step, annotated, auxdata);
+    auxCheck(tid, annotated, auxdata);
   };
 }
 
@@ -252,7 +250,7 @@ TEST(DSchedCustom, atomic_add) {
   std::vector<std::thread> threads(nthr);
   for (int tid = 0; tid < nthr; ++tid) {
     threads[tid] = DSched::thread([&, tid]() {
-      AuxFn auxfn = auxAfterInc(tid, annotated, auxdata);
+      AuxAct auxfn = auxAfterInc(tid, annotated, auxdata);
       for (int i = 0; i < niter; ++i) {
         if (bug && (tid == 0) && (i % 10 == 0)) {
           annotated.inc_bug(auxfn);
