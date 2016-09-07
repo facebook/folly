@@ -26,7 +26,6 @@
  * platform.
  */
 
-#include <boost/noncopyable.hpp>
 #include <folly/Portability.h>
 
 #if __x86_64__

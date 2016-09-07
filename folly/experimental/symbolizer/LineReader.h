@@ -18,8 +18,6 @@
 
 #include <cstddef>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Range.h>
 
 namespace folly { namespace symbolizer {
@@ -27,13 +25,17 @@ namespace folly { namespace symbolizer {
 /**
  * Async-signal-safe line reader.
  */
-class LineReader : private boost::noncopyable {
+class LineReader {
  public:
   /**
    * Create a line reader that reads into a user-provided buffer (of size
    * bufSize).
    */
   LineReader(int fd, char* buf, size_t bufSize);
+
+  // noncopyable
+  LineReader(const LineReader&) = delete;
+  LineReader& operator = (const LineReader&) = delete;
 
   enum State {
     kReading,

@@ -19,7 +19,6 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Sockets.h>
 
-#include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <fcntl.h>
 #include <openssl/err.h>
@@ -157,7 +156,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
  * Utility class that corks a TCP socket upon construction or uncorks
  * the socket upon destruction
  */
-class CorkGuard : private boost::noncopyable {
+class CorkGuard {
  public:
   CorkGuard(int fd, bool multipleWrites, bool haveMore, bool* corked):
     fd_(fd), haveMore_(haveMore), corked_(corked) {
@@ -174,6 +173,10 @@ class CorkGuard : private boost::noncopyable {
       *corked_ = true;
     }
   }
+
+  // noncopyable
+  CorkGuard(const CorkGuard&) = delete;
+  CorkGuard& operator = (const CorkGuard&) = delete;
 
   ~CorkGuard() {
     if (haveMore_) {
@@ -196,9 +199,13 @@ class CorkGuard : private boost::noncopyable {
   bool* corked_;
 };
 #else
-class CorkGuard : private boost::noncopyable {
+class CorkGuard {
  public:
   CorkGuard(int, bool, bool, bool*) {}
+
+  // noncopyable
+  CorkGuard(const CorkGuard&) = delete;
+  CorkGuard& operator = (const CorkGuard&) = delete;
 };
 #endif
 

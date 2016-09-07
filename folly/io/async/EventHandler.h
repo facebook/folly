@@ -23,7 +23,6 @@
 #include <glog/logging.h>
 #include <folly/io/async/EventUtil.h>
 #include <folly/portability/Event.h>
-#include <boost/noncopyable.hpp>
 #include <stddef.h>
 
 namespace folly {
@@ -37,7 +36,7 @@ class EventBase;
  * Users that wish to wait on I/O events should derive from EventHandler and
  * implement the handlerReady() method.
  */
-class EventHandler : private boost::noncopyable {
+class EventHandler {
  public:
   enum EventFlags {
     NONE = 0,
@@ -50,6 +49,10 @@ class EventHandler : private boost::noncopyable {
     PRI = EV_PRI,
 #endif
   };
+
+  // noncopyable
+  EventHandler(const EventHandler&) = delete;
+  EventHandler& operator = (const EventHandler&) = delete;
 
   /**
    * Create a new EventHandler object.

@@ -27,7 +27,6 @@
 #include <stdexcept>
 #include <system_error>
 
-#include <boost/noncopyable.hpp>
 #include <boost/regex.hpp>
 
 #include <glog/logging.h>

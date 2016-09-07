@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <atomic>
 #include <assert.h>
-#include <boost/noncopyable.hpp>
 #include <limits>
 #include <string.h>
 #include <type_traits>
@@ -95,7 +94,7 @@ template <typename T> class MPMCPipelineStageImpl;
 /// complete in O(log P) time instead of O(P)).
 template<typename T,
          template<typename> class Atom = std::atomic>
-class MPMCQueue : boost::noncopyable {
+class MPMCQueue {
 
   static_assert(std::is_nothrow_constructible<T,T&&>::value ||
                 folly::IsRelocatable<T>::value,
@@ -104,6 +103,10 @@ class MPMCQueue : boost::noncopyable {
   friend class detail::MPMCPipelineStageImpl<T>;
  public:
   typedef T value_type;
+
+  // noncopyable
+  MPMCQueue(const MPMCQueue&) = delete;
+  MPMCQueue& operator = (const MPMCQueue&) = delete;
 
   explicit MPMCQueue(size_t queueCapacity)
     : capacity_(queueCapacity)

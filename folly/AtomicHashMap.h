@@ -83,7 +83,6 @@
 #define FOLLY_ATOMICHASHMAP_H_
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/type_traits/is_convertible.hpp>
 
 #include <stdexcept>
@@ -157,7 +156,7 @@ struct AtomicHashMapFullError : std::runtime_error {
 
 template<class KeyT, class ValueT, class HashFcn, class EqualFcn,
          class Allocator, class ProbeFcn, class KeyConvertFcn>
-class AtomicHashMap : boost::noncopyable {
+class AtomicHashMap {
 typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
                         Allocator, ProbeFcn, KeyConvertFcn>
     SubMap;
@@ -190,6 +189,10 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
 
  public:
   const float kGrowthFrac_;  // How much to grow when we run out of capacity.
+
+  // noncopyable
+  AtomicHashMap(const AtomicHashMap&) = delete;
+  AtomicHashMap& operator = (const AtomicHashMap&) = delete;
 
   // The constructor takes a finalSizeEst which is the optimal
   // number of elements to maximize space utilization and performance,

@@ -35,7 +35,6 @@
 #include <atomic>
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/noncopyable.hpp>
 
 #include <folly/Hash.h>
 #include <folly/ThreadCachedInt.h>
@@ -105,7 +104,7 @@ template <class KeyT, class ValueT,
           class Allocator = std::allocator<char>,
           class ProbeFcn = AtomicHashArrayLinearProbeFcn,
           class KeyConvertFcn = detail::AHAIdentity>
-class AtomicHashArray : boost::noncopyable {
+class AtomicHashArray {
   static_assert((std::is_convertible<KeyT,int32_t>::value ||
                  std::is_convertible<KeyT,int64_t>::value ||
                  std::is_convertible<KeyT,const void*>::value),
@@ -398,6 +397,10 @@ friend class AtomicHashMap<KeyT,
   std::atomic<int64_t> numErases_;   // Successful key erases
 
   value_type cells_[0];  // This must be the last field of this class
+
+  // noncopyable
+  AtomicHashArray(const AtomicHashArray&) = delete;
+  AtomicHashArray& operator = (const AtomicHashArray&) = delete;
 
   // Force constructor/destructor private since create/destroy should be
   // used externally instead

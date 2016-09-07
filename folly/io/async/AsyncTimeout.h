@@ -24,7 +24,6 @@
 
 #include <folly/portability/Event.h>
 
-#include <boost/noncopyable.hpp>
 #include <event.h>
 #include <memory>
 #include <utility>
@@ -38,9 +37,13 @@ class TimeoutManager;
 /**
  * AsyncTimeout is used to asynchronously wait for a timeout to occur.
  */
-class AsyncTimeout : private boost::noncopyable {
+class AsyncTimeout {
  public:
   typedef TimeoutManager::InternalEnum InternalEnum;
+
+  // noncopyable
+  AsyncTimeout(const AsyncTimeout&) = delete;
+  AsyncTimeout& operator = (const AsyncTimeout&) = delete;
 
   /**
    * Create a new AsyncTimeout object, driven by the specified TimeoutManager.

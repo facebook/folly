@@ -119,8 +119,7 @@ class RequestEventBase : public RequestData {
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase : private boost::noncopyable,
-                  public TimeoutManager,
+class EventBase : public TimeoutManager,
                   public DrivableExecutor {
  public:
   using Func = folly::Function<void()>;
@@ -160,6 +159,10 @@ class EventBase : private boost::noncopyable,
     friend class EventBase;
     std::shared_ptr<RequestContext> context_;
   };
+
+  // noncopyable
+  EventBase(const EventBase&) = delete;
+  EventBase& operator = (const EventBase&) = delete;
 
   /**
    * Create a new EventBase object.

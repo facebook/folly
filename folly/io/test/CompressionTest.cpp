@@ -20,7 +20,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -32,8 +31,12 @@
 
 namespace folly { namespace io { namespace test {
 
-class DataHolder : private boost::noncopyable {
+class DataHolder {
  public:
+  // noncopyable
+  DataHolder(const DataHolder&) = delete;
+  DataHolder& operator = (const DataHolder&) = delete;
+
   uint64_t hash(size_t size) const;
   ByteRange data(size_t size) const;
 

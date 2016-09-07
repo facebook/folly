@@ -17,7 +17,6 @@
 #pragma once
 
 #include <atomic>
-#include <boost/noncopyable.hpp>
 #include <iostream>
 #include <cmath>
 #include <memory>
@@ -57,7 +56,7 @@ class RingBufferSlot;
 ///
 
 template<typename T, template<typename> class Atom = std::atomic>
-class LockFreeRingBuffer: boost::noncopyable {
+class LockFreeRingBuffer {
 
    static_assert(std::is_nothrow_default_constructible<T>::value,
        "Element type must be nothrow default constructible");
@@ -95,6 +94,10 @@ public:
     uint64_t ticket;
     friend class LockFreeRingBuffer;
   };
+  
+  // noncopyable
+  LockFreeRingBuffer(const LockFreeRingBuffer&) = delete;
+  LockFreeRingBuffer& operator = (const LockFreeRingBuffer&) = delete;
 
   explicit LockFreeRingBuffer(uint32_t capacity) noexcept
     : capacity_(capacity)
