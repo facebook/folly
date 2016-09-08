@@ -15,7 +15,7 @@
  */
 
 /**
- * Like folly::Optional, but can store a value *or* and error.
+ * Like folly::Optional, but can store a value *or* an error.
  *
  * @author Eric Niebler (eniebler@fb.com)
  */
