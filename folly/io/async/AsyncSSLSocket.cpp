@@ -114,7 +114,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
   }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {
-    LOG(ERROR) << "TCP connect failed: " <<  ex.what();
+    VLOG(1) << "TCP connect failed: " << ex.what();
     fail(ex);
     delete this;
   }
@@ -129,7 +129,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
 
   void handshakeErr(AsyncSSLSocket* /* socket */,
                     const AsyncSocketException& ex) noexcept override {
-    LOG(ERROR) << "client handshakeErr: " << ex.what();
+    VLOG(1) << "client handshakeErr: " << ex.what();
     fail(ex);
     delete this;
   }
