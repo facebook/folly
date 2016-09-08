@@ -221,7 +221,7 @@ class ParameterizedDynamicTokenBucket {
     return true;
   }
 
-  std::atomic<double> zeroTime_ FOLLY_ALIGN_TO_AVOID_FALSE_SHARING;
+  FOLLY_ALIGN_TO_AVOID_FALSE_SHARING std::atomic<double> zeroTime_;
 };
 
 /**
