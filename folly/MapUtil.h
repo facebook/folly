@@ -116,7 +116,9 @@ template <
     typename Func,
     typename = typename std::enable_if<std::is_convertible<
         typename std::result_of<Func()>::type,
-        const typename Map::mapped_type&>::value>::type>
+        const typename Map::mapped_type&>::value>::type,
+    typename = typename std::enable_if<
+        std::is_reference<typename std::result_of<Func()>::type>::value>::type>
 const typename Map::mapped_type& get_ref_default(
     const Map& map,
     const typename Map::key_type& key,

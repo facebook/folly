@@ -85,6 +85,8 @@ TEST(MapUtil, get_ref_default_function) {
       std::addressof(i),
       std::addressof(
           get_ref_default(m, 2, [&i]() -> const int& { return i; })));
+  // statically disallowed:
+  // get_ref_default(m, 2, [] { return 7; });
 }
 
 TEST(MapUtil, get_ptr) {
