@@ -17,6 +17,7 @@
 #include <folly/Math.h>
 
 #include <algorithm>
+#include <random>
 
 #include <folly/Benchmark.h>
 
