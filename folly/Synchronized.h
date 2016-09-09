@@ -1151,7 +1151,7 @@ class LockedPtr : public LockedPtrBase<
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>
-  moveFromUpgradeToShared() {
+  moveFromUpgradeToRead() {
     auto* parent_to_pass_on = this->parent_;
     this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>(
@@ -1167,7 +1167,7 @@ class LockedPtr : public LockedPtrBase<
       typename = typename std::enable_if<
           LockTraits<typename SyncType::MutexType>::is_upgrade>::type>
   LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>
-  moveFromWriteToShared() {
+  moveFromWriteToRead() {
     auto* parent_to_pass_on = this->parent_;
     this->parent_ = nullptr;
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(

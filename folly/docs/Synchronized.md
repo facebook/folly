@@ -397,8 +397,8 @@ downgraded by calling any of the following methods on the `LockedPtr` proxy
 
 * `moveFromUpgradeToWrite()`
 * `moveFromWriteToUpgrade()`
-* `moveFromWriteToShared()`
-* `moveFromUpgradeToShared()`
+* `moveFromWriteToRead()`
+* `moveFromUpgradeToRead()`
 
 Calling these leaves the `LockedPtr` object on which the method was called in
 an invalid `null` state and returns another LockedPtr proxy holding the
@@ -429,15 +429,15 @@ This "move" can also occur in the context of a `withULockPtr()`
         // ulock is now null
         wlock->updateObj();
 
-        // release write lock and acquire shared lock atomically
-        auto rlock = wlock.moveFromWriteToShared();
+        // release write lock and acquire read lock atomically
+        auto rlock = wlock.moveFromWriteToRead();
         // wlock is now null
         return rlock->newSize();
 
       } else {
 
-        // release upgrade lock and acquire shared lock atomically
-        auto rlock = ulock.moveFromUpgradeToShared();
+        // release upgrade lock and acquire read lock atomically
+        auto rlock = ulock.moveFromUpgradeToRead();
         // ulock is now null
         return rlock->newSize();
       }

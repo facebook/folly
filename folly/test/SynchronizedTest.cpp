@@ -433,7 +433,7 @@ TEST_F(SynchronizedLockTest, UpgradableLocking) {
   // test going from upgrade to shared
   {
     auto ulock = sync.ulock();
-    auto slock = ulock.moveFromUpgradeToShared();
+    auto slock = ulock.moveFromUpgradeToRead();
     EXPECT_EQ(static_cast<bool>(ulock), false);
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
@@ -463,7 +463,7 @@ TEST_F(SynchronizedLockTest, UpgradableLocking) {
   // test going from exclusive to shared
   {
     auto wlock = sync.wlock();
-    auto slock = wlock.moveFromWriteToShared();
+    auto slock = wlock.moveFromWriteToRead();
     EXPECT_EQ(static_cast<bool>(wlock), false);
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
@@ -529,7 +529,7 @@ TEST_F(SynchronizedLockTest, UpgradableLockingWithULock) {
         globalAllPowerfulAssertingMutex.lock_state,
         FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UPGRADE);
 
-    auto slock = ulock.moveFromUpgradeToShared();
+    auto slock = ulock.moveFromUpgradeToRead();
     EXPECT_EQ(static_cast<bool>(ulock), false);
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
@@ -548,7 +548,7 @@ TEST_F(SynchronizedLockTest, UpgradableLockingWithULock) {
         globalAllPowerfulAssertingMutex.lock_state,
         FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UNIQUE);
 
-    auto slock = wlock.moveFromWriteToShared();
+    auto slock = wlock.moveFromWriteToRead();
     EXPECT_EQ(static_cast<bool>(wlock), false);
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
