@@ -58,7 +58,7 @@ class PasswordCollector {
    * @param password Pass collected password back to OpenSSL
    * @param size     Maximum length of password including nullptr character
    */
-  virtual void getPassword(std::string& password, int size) = 0;
+  virtual void getPassword(std::string& password, int size) const = 0;
 
   /**
    * Return a description of this collector for logging purposes
