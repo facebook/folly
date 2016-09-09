@@ -155,7 +155,7 @@ TEST(Bits, divTestInt8) {
   runDivTests<int8_t, uint16_t, int64_t>();
   runDivTests<int8_t, int32_t, int64_t>();
   runDivTests<int8_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<int8_t, int64_t, __int128>();
   runDivTests<int8_t, uint64_t, __int128>();
 #endif
@@ -167,7 +167,7 @@ TEST(Bits, divTestInt16) {
   runDivTests<int16_t, uint16_t, int64_t>();
   runDivTests<int16_t, int32_t, int64_t>();
   runDivTests<int16_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<int16_t, int64_t, __int128>();
   runDivTests<int16_t, uint64_t, __int128>();
 #endif
@@ -179,12 +179,12 @@ TEST(Bits, divTestInt32) {
   runDivTests<int32_t, uint16_t, int64_t>();
   runDivTests<int32_t, int32_t, int64_t>();
   runDivTests<int32_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<int32_t, int64_t, __int128>();
   runDivTests<int32_t, uint64_t, __int128>();
 #endif
 }
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
 TEST(Bits, divTestInt64) {
   runDivTests<int64_t, int8_t, __int128>();
   runDivTests<int64_t, uint8_t, __int128>();
@@ -203,7 +203,7 @@ TEST(Bits, divTestUint8) {
   runDivTests<uint8_t, uint16_t, int64_t>();
   runDivTests<uint8_t, int32_t, int64_t>();
   runDivTests<uint8_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<uint8_t, int64_t, __int128>();
   runDivTests<uint8_t, uint64_t, __int128>();
 #endif
@@ -215,7 +215,7 @@ TEST(Bits, divTestUint16) {
   runDivTests<uint16_t, uint16_t, int64_t>();
   runDivTests<uint16_t, int32_t, int64_t>();
   runDivTests<uint16_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<uint16_t, int64_t, __int128>();
   runDivTests<uint16_t, uint64_t, __int128>();
 #endif
@@ -227,12 +227,12 @@ TEST(Bits, divTestUint32) {
   runDivTests<uint32_t, uint16_t, int64_t>();
   runDivTests<uint32_t, int32_t, int64_t>();
   runDivTests<uint32_t, uint32_t, int64_t>();
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
   runDivTests<uint32_t, int64_t, __int128>();
   runDivTests<uint32_t, uint64_t, __int128>();
 #endif
 }
-#ifdef FOLLY_HAVE_INT128_T
+#if FOLLY_HAVE_INT128_T
 TEST(Bits, divTestUint64) {
   runDivTests<uint64_t, int8_t, __int128>();
   runDivTests<uint64_t, uint8_t, __int128>();
