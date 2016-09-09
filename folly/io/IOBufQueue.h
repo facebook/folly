@@ -265,6 +265,11 @@ class IOBufQueue {
    */
   void appendToString(std::string& out) const;
 
+  /**
+   * Calls IOBuf::gather() on the head of the queue, if it exists.
+   */
+  void gather(uint64_t maxLength);
+
   /** Movable */
   IOBufQueue(IOBufQueue&&) noexcept;
   IOBufQueue& operator=(IOBufQueue&&);

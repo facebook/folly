@@ -286,4 +286,10 @@ void IOBufQueue::appendToString(std::string& out) const {
   }
 }
 
+void IOBufQueue::gather(uint64_t maxLength) {
+  if (head_ != nullptr) {
+    head_->gather(maxLength);
+  }
+}
+
 } // folly

@@ -385,3 +385,19 @@ TEST(IOBufQueue, AppendToString) {
   queue.appendToString(s);
   EXPECT_EQ("hello world", s);
 }
+
+TEST(IOBufQueue, Gather) {
+  IOBufQueue queue;
+
+  queue.append(stringToIOBuf(SCL("hello ")));
+  queue.append(stringToIOBuf(SCL("world")));
+
+  EXPECT_EQ(queue.front()->length(), 6);
+  queue.gather(11);
+  EXPECT_EQ(queue.front()->length(), 11);
+
+  StringPiece s(
+      reinterpret_cast<const char*>(queue.front()->data()),
+      queue.front()->length());
+  EXPECT_EQ("hello world", s);
+}
