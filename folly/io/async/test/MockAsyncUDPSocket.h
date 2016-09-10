@@ -15,9 +15,8 @@
  */
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include <folly/io/async/AsyncUDPSocket.h>
+#include <folly/portability/GMock.h>
 
 namespace folly { namespace test {
 

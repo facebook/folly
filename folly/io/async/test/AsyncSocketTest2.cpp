@@ -25,13 +25,13 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
 #include <boost/scoped_array.hpp>
 #include <fcntl.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <sys/types.h>
 #include <iostream>

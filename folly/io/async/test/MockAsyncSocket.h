@@ -15,10 +15,9 @@
  */
 #pragma once
 
-#include <gmock/gmock.h>
-
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/portability/GMock.h>
 
 namespace folly {
 

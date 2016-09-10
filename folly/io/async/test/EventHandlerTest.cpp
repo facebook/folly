@@ -22,8 +22,8 @@
 #include <folly/ScopeGuard.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/Sockets.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <sys/eventfd.h>
 

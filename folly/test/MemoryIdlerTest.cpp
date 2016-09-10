@@ -17,6 +17,7 @@
 #include <folly/detail/MemoryIdler.h>
 
 #include <folly/Baton.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/Windows.h>
 
 #include <memory>
@@ -24,7 +25,6 @@
 #include <assert.h>
 #include <semaphore.h>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using namespace folly;

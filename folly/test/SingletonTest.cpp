@@ -20,10 +20,10 @@
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/portability/GMock.h>
 #include <folly/test/SingletonTestStructs.h>
 
 #include <glog/logging.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <boost/thread/barrier.hpp>
 

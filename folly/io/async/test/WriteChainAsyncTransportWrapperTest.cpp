@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/WriteChainAsyncTransportWrapper.h>
+#include <folly/portability/GMock.h>
 
 using namespace testing;
 using testing::_;

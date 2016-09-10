@@ -16,8 +16,9 @@
 #pragma once
 
 #include <folly/io/async/TimeoutManager.h>
+#include <folly/portability/GMock.h>
+
 #include <chrono>
-#include <gmock/gmock.h>
 
 namespace folly {
 namespace test {

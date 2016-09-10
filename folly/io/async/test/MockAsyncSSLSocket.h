@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #pragma once
-#include <gmock/gmock.h>
 
 #include <folly/io/async/AsyncSSLSocket.h>
+#include <folly/portability/GMock.h>
 
 namespace folly { namespace test {
 

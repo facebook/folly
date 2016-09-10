@@ -21,6 +21,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
@@ -36,8 +37,6 @@
 #include <list>
 #include <set>
 #include <thread>
-
-#include <gmock/gmock.h>
 
 using std::string;
 using std::vector;
