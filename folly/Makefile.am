@@ -279,6 +279,8 @@ nobase_follyinclude_HEADERS = \
 	portability/Event.h \
 	portability/Fcntl.h \
 	portability/GFlags.h \
+	portability/GMock.h \
+	portability/GTest.h \
 	portability/IOVec.h \
 	portability/Libgen.h \
 	portability/Malloc.h \
