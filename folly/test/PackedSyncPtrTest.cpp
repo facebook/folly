@@ -17,10 +17,11 @@
 #include <folly/PackedSyncPtr.h>
 
 #include <cinttypes>
-#include <gtest/gtest.h>
 #include <thread>
 #include <unordered_map>
 #include <utility>
+
+#include <folly/portability/GTest.h>
 
 using folly::PackedSyncPtr;
 

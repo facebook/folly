@@ -19,10 +19,9 @@
 #include <semaphore.h>
 #include <thread>
 
-#include <gtest/gtest.h>
-
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 #include <folly/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
 

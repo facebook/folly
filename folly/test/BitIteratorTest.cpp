@@ -21,10 +21,9 @@
 #include <limits>
 #include <vector>
 
-#include <gtest/gtest.h>
-
 #include <folly/Benchmark.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::bititerator_detail;

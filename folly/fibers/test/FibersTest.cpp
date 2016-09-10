@@ -17,8 +17,6 @@
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
-
 #include <folly/Memory.h>
 #include <folly/futures/Future.h>
 
@@ -30,6 +28,7 @@
 #include <folly/fibers/Semaphore.h>
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/WhenN.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::fibers;
 

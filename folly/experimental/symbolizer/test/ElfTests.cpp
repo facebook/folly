@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/portability/GTest.h>
 
 using folly::symbolizer::ElfFile;
 

@@ -27,12 +27,12 @@
 #include <sstream>
 #include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
-#include <gtest/gtest.h>
 
 #include <folly/Foreach.h>
 #include <folly/Portability.h>
 #include <folly/Random.h>
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

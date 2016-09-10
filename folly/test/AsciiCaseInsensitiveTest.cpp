@@ -17,7 +17,7 @@
 #include <folly/Range.h>
 
 #include <folly/portability/GFlags.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <algorithm>
 
 using namespace std;

@@ -19,12 +19,11 @@
 #include <semaphore.h>
 #include <thread>
 
-#include <gtest/gtest.h>
-
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;

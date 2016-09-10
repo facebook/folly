@@ -17,7 +17,8 @@
 #include <folly/experimental/Bits.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

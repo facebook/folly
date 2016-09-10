@@ -16,7 +16,7 @@
 
 #include <folly/init/Init.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 /*
  * This is the recommended main function for all tests.

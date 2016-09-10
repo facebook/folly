@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
 #include <folly/futures/InlineExecutor.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

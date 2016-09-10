@@ -19,7 +19,6 @@
 #include <mutex>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <boost/thread/locks.hpp>
 
 #include <folly/String.h>
@@ -27,6 +26,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::test;

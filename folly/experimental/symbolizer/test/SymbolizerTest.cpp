@@ -18,10 +18,9 @@
 
 #include <cstdlib>
 
-#include <gtest/gtest.h>
-
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace symbolizer { namespace test {
 

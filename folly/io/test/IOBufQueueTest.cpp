@@ -20,9 +20,8 @@
 #include <stdexcept>
 #include <string.h>
 
-#include <gtest/gtest.h>
-
 #include <folly/Range.h>
+#include <folly/portability/GTest.h>
 
 using folly::IOBuf;
 using folly::IOBufQueue;

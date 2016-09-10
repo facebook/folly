@@ -16,7 +16,7 @@
 
 #include <folly/Bits.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

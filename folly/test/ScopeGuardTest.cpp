@@ -17,11 +17,12 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Portability.h>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
 
 #include <functional>
 #include <stdexcept>
+
+#include <folly/portability/GTest.h>
 
 using folly::ScopeGuard;
 using folly::makeGuard;

@@ -18,8 +18,7 @@
 
 #include <folly/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 namespace test {

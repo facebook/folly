@@ -20,7 +20,8 @@
 
 #include <folly/Traits.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
+
 #include <glog/logging.h>
 
 #include <string>

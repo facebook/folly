@@ -25,9 +25,9 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <gtest/gtest.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/TypeTraits.h>
 
 using folly::small_vector;

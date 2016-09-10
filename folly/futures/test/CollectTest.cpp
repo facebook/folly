@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <numeric>
 
 #include <boost/thread/barrier.hpp>
@@ -23,6 +21,7 @@
 #include <folly/futures/Future.h>
 #include <folly/Random.h>
 #include <folly/small_vector.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

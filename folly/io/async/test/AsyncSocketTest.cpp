@@ -18,8 +18,7 @@
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/EventBase.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

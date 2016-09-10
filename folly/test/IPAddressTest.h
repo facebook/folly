@@ -18,11 +18,10 @@
 
 #include <string>
 
-#include <gtest/gtest.h>
-
 #include <sys/types.h>
 
 #include <folly/IPAddress.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {

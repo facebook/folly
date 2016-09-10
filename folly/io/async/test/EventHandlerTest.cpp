@@ -23,8 +23,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
-#include <gtest/gtest.h>
 #include <sys/eventfd.h>
 
 using namespace std;

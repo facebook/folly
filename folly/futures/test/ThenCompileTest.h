@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
 
 #include <memory>
 

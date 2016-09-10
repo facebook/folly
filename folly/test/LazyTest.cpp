@@ -19,7 +19,7 @@
 #include <functional>
 #include <iostream>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

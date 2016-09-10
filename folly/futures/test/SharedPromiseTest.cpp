@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/SharedPromise.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

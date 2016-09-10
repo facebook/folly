@@ -15,12 +15,13 @@
  */
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
 #include <iosfwd>
 #include <map>
 #include <vector>
 
 #include <folly/gen/String.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::gen;
 using namespace folly;

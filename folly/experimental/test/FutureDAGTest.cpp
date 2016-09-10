@@ -15,7 +15,7 @@
  */
 #include <boost/thread/barrier.hpp>
 #include <folly/experimental/FutureDAG.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <folly/Foreach.h>
 #include <folly/Random.h>
 #include <folly/Synchronized.h>
+#include <folly/portability/GTest.h>
 #include <glog/logging.h>
 #include <algorithm>
 #include <condition_variable>

@@ -19,9 +19,11 @@
 #endif
 
 #include <boost/lexical_cast.hpp>
+
 #include <folly/Conv.h>
 #include <folly/Foreach.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
+
 #include <algorithm>
 #include <cinttypes>
 #include <limits>

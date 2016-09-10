@@ -28,9 +28,8 @@
 
 #include <thread>
 
-#include <gtest/gtest.h>
-
 #include <folly/portability/Asm.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
 using folly::MSLGuard;

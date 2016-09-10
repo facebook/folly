@@ -17,12 +17,12 @@
 #include <folly/Exception.h>
 
 #include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
 
 #include <cstdio>
 #include <memory>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace test {
 

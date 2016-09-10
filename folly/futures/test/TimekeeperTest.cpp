@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Timekeeper.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
 using namespace folly;

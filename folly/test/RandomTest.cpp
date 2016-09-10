@@ -17,12 +17,13 @@
 #include <folly/Random.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <thread>
 #include <vector>
 #include <random>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

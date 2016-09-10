@@ -17,8 +17,7 @@
 #include <folly/io/async/AsyncSocket.h>
 
 #include <folly/io/async/test/MockAsyncTransport.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace testing;
 

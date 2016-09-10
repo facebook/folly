@@ -25,7 +25,7 @@
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
 #include <folly/test/SynchronizedTestLib.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::sync_tests;
 

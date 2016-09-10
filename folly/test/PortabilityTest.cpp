@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 class Base {
  public:

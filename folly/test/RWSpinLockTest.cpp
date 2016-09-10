@@ -25,9 +25,9 @@
 #include <thread>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
 DEFINE_int32(num_threads, 8, "num threads");

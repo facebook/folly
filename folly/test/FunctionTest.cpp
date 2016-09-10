@@ -20,7 +20,7 @@
 #include <folly/Function.h>
 
 #include <folly/Memory.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using folly::Function;
 

@@ -16,12 +16,12 @@
 #include <folly/LockTraits.h>
 #include <folly/LockTraitsBoost.h>
 
-#include <gtest/gtest.h>
 #include <mutex>
 
 #include <folly/RWSpinLock.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

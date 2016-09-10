@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <folly/TokenBucket.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

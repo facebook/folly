@@ -16,7 +16,7 @@
 
 #include <folly/Demangle.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using folly::demangle;
 

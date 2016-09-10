@@ -20,11 +20,11 @@
 #include <thread>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

@@ -19,8 +19,8 @@
 #include <folly/FileUtil.h>
 #include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GTest.h>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace test {
 

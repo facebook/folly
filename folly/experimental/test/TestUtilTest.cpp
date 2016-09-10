@@ -23,11 +23,11 @@
 
 #include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Memory.h>
 #include <folly/portability/Environment.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::test;

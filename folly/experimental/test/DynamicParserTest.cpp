@@ -25,7 +25,7 @@
 #include <folly/Optional.h>
 #include <folly/experimental/DynamicParser.h>
 #include <folly/experimental/TestUtil.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using dynamic = folly::dynamic;

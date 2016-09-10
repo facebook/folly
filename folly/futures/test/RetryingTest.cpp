@@ -18,9 +18,10 @@
 #include <atomic>
 #include <exception>
 #include <vector>
-#include <folly/futures/Future.h>
 
-#include <gtest/gtest.h>
+#include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
+
 
 using namespace std;
 using namespace std::chrono;

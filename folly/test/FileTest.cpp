@@ -18,8 +18,7 @@
 
 #include <folly/String.h>
 #include <folly/portability/Fcntl.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

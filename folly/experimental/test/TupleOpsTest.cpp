@@ -17,8 +17,9 @@
 #include <folly/experimental/TupleOps.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
+
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace test {
 

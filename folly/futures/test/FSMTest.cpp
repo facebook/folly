@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/detail/FSM.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::detail;
 

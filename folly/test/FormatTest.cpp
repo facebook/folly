@@ -16,7 +16,7 @@
 
 #include <folly/Format.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 #include <string>
 

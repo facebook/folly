@@ -16,11 +16,10 @@
 
 #include <queue>
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using std::vector;

@@ -23,10 +23,9 @@
 #include <boost/thread/barrier.hpp>
 
 #include <folly/io/IOBuf.h>
+#include <folly/portability/GTest.h>
 
 #include <thread>
-
-#include <gtest/gtest.h>
 
 using folly::AsyncUDPSocket;
 using folly::AsyncUDPServerSocket;

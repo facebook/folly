@@ -17,10 +17,10 @@
 #include <folly/experimental/symbolizer/LineReader.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/FileUtil.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace symbolizer { namespace test {
 

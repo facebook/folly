@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 #include <atomic>
-#include <gtest/gtest.h>
 
 #include <folly/experimental/FunctionScheduler.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

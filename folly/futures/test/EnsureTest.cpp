@@ -17,9 +17,8 @@
 #include <memory>
 #include <unordered_set>
 
-#include <gtest/gtest.h>
-
 #include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

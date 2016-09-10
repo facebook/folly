@@ -16,11 +16,11 @@
 
 #include <folly/SocketAddress.h>
 
-#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <system_error>
 
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/test/SocketAddressTestHelper.h>

@@ -20,7 +20,6 @@
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <boost/optional.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
@@ -29,6 +28,7 @@
 #include <folly/RWSpinLock.h>
 #include <folly/Random.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 
 using namespace folly;

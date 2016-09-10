@@ -16,12 +16,12 @@
 
 #include <folly/Arena.h>
 #include <folly/Memory.h>
+#include <folly/portability/GTest.h>
 
 #include <set>
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 

@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <boost/thread/barrier.hpp>
 
 #include <folly/Conv.h>
 #include <folly/futures/Future.h>
+#include <folly/portability/GTest.h>
 
 #include <vector>
 

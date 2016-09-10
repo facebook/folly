@@ -18,14 +18,13 @@
 
 #include <folly/Baton.h>
 #include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Windows.h>
 
 #include <memory>
 #include <thread>
 #include <assert.h>
 #include <semaphore.h>
-
-#include <gtest/gtest.h>
 
 using namespace folly;
 using namespace folly::detail;

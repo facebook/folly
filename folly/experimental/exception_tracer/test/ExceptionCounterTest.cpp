@@ -21,9 +21,8 @@
 #include <condition_variable>
 #include <sstream>
 
-#include <gtest/gtest.h>
-
 #include <folly/experimental/exception_tracer/ExceptionCounterLib.h>
+#include <folly/portability/GTest.h>
 
 struct MyException {};
 

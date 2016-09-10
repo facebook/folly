@@ -17,10 +17,10 @@
 
 #include <folly/Random.h>
 
-#include <gtest/gtest.h>
 #include <thread>
 
 #include <folly/portability/Asm.h>
+#include <folly/portability/GTest.h>
 
 using folly::SpinLockGuardImpl;
 

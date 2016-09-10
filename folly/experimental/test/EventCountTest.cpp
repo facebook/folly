@@ -22,9 +22,9 @@
 #include <thread>
 #include <vector>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Random.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

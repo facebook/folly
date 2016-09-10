@@ -20,9 +20,9 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace test {
 

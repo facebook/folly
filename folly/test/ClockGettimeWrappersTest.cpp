@@ -17,10 +17,9 @@
 #include <folly/ClockGettimeWrappers.h>
 
 #include <folly/test/TestUtils.h>
+#include <folly/portability/GTest.h>
 
 #include <chrono>
-
-#include <gtest/gtest.h>
 
 static constexpr auto kAcceptableDeltaSecs = std::chrono::seconds(120);
 

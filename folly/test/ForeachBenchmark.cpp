@@ -17,8 +17,8 @@
 #include <folly/Foreach.h>
 
 #include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
-#include <gtest/gtest.h>
 #include <map>
 
 using namespace folly;

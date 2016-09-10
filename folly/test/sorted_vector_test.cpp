@@ -15,9 +15,11 @@
  */
 
 #include <folly/sorted_vector_types.h>
-#include <gtest/gtest.h>
+
 #include <list>
 #include <memory>
+
+#include <folly/portability/GTest.h>
 
 using folly::sorted_vector_set;
 using folly::sorted_vector_map;

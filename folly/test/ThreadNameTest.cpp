@@ -18,7 +18,7 @@
 #include <folly/Baton.h>
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadName.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

@@ -20,8 +20,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
 #include <folly/io/async/test/Util.h>
+#include <folly/portability/GTest.h>
 
-#include <gtest/gtest.h>
 #include <vector>
 
 using namespace folly;

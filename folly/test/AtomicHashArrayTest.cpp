@@ -23,7 +23,7 @@
 #include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/portability/SysMman.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

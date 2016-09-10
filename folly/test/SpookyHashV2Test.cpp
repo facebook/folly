@@ -22,6 +22,7 @@
 
 #include <folly/SpookyHashV2.h>
 #include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
 #include <cinttypes>
 #include <cstdio>
@@ -29,8 +30,6 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
-
-#include <gtest/gtest.h>
 
 using namespace ::folly::hash;
 

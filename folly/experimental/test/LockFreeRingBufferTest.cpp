@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
 #include <iostream>
 #include <thread>
 
 #include <folly/detail/Futex.h>
 #include <folly/experimental/LockFreeRingBuffer.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

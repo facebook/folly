@@ -21,11 +21,11 @@
 #include <deque>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace test {
 

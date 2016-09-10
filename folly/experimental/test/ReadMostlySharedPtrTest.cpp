@@ -20,11 +20,11 @@
 #include <mutex>
 #include <folly/Memory.h>
 #include <condition_variable>
-#include <gtest/gtest.h>
 
 #include <folly/Baton.h>
 #include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/portability/GTest.h>
 
 using folly::ReadMostlyMainPtr;
 using folly::ReadMostlyWeakPtr;

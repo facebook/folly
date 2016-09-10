@@ -27,11 +27,11 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/SSLErrors.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
 #include <fcntl.h>
-#include <gtest/gtest.h>
 #include <sys/types.h>
 #include <condition_variable>
 #include <iostream>

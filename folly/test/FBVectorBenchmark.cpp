@@ -24,8 +24,8 @@
 #include <folly/Random.h>
 #include <folly/Traits.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
-#include <gtest/gtest.h>
 #include <list>
 #include <memory>
 #include <boost/random.hpp>

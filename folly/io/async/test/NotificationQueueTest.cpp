@@ -18,6 +18,8 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <folly/Baton.h>
+#include <folly/portability/GTest.h>
+
 #include <list>
 #include <iostream>
 #include <thread>
@@ -26,8 +28,6 @@
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif
-
-#include <gtest/gtest.h>
 
 using namespace std;
 using namespace folly;

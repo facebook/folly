@@ -19,8 +19,8 @@
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 
-#include <gtest/gtest.h>
 #include <string>
 #include <vector>
 

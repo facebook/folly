@@ -16,8 +16,7 @@
 
 #include <string>
 
-#include <gtest/gtest.h>
-
+#include <folly/portability/GTest.h>
 #include <folly/portability/Libgen.h>
 
 TEST(Libgen, dirname) {

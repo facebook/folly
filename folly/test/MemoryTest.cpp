@@ -17,9 +17,9 @@
 #include <folly/Memory.h>
 #include <folly/Arena.h>
 #include <folly/String.h>
+#include <folly/portability/GTest.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <type_traits>
 

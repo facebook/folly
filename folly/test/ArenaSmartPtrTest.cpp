@@ -20,8 +20,7 @@
 
 #include <folly/Memory.h>
 #include <folly/Arena.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

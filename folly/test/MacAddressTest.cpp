@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <folly/Conv.h>
 #include <folly/IPAddressV6.h>
 #include <folly/MacAddress.h>
+#include <folly/portability/GTest.h>
 
 using folly::MacAddress;
 using folly::IPAddressV6;

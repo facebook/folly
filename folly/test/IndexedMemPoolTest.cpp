@@ -16,11 +16,12 @@
 
 #include <folly/IndexedMemPool.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
+
 #include <string>
 #include <thread>
 #include <semaphore.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 using namespace folly::test;

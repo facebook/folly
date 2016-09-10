@@ -20,8 +20,8 @@
 #include <thread>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 
 using folly::ShutdownSocketSet;

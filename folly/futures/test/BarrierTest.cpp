@@ -21,8 +21,9 @@
 #include <mutex>
 
 #include <folly/Random.h>
+#include <folly/portability/GTest.h>
+
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 namespace folly { namespace futures { namespace test {
 

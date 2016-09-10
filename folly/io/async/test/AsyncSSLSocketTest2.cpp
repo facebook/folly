@@ -15,12 +15,12 @@
  */
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <gtest/gtest.h>
 #include <pthread.h>
 
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/SSLContext.h>
+#include <folly/portability/GTest.h>
 
 using std::string;
 using std::vector;

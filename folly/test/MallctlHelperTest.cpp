@@ -17,7 +17,7 @@
 #include <folly/MallctlHelper.h>
 #include <folly/Malloc.h>
 #include <folly/init/Init.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

@@ -16,8 +16,9 @@
 #include <limits>
 
 #include <boost/next_prior.hpp>
+
 #include <folly/json.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using folly::dynamic;
 using folly::parseJson;

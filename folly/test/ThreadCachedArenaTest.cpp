@@ -26,11 +26,11 @@
 #include <unordered_map>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Range.h>
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

@@ -20,10 +20,10 @@
 #include <cstddef>
 
 #include <boost/random.hpp>
-#include <gtest/gtest.h>
 
 #include <folly/Malloc.h>
 #include <folly/Range.h>
+#include <folly/portability/GTest.h>
 
 using folly::fbstring;
 using folly::fbvector;

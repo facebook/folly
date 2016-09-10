@@ -17,9 +17,8 @@
 #include <algorithm>
 #include <thread>
 
-#include <gtest/gtest.h>
-
 #include <folly/AtomicLinkedList.h>
+#include <folly/portability/GTest.h>
 
 class TestIntrusiveObject {
  public:

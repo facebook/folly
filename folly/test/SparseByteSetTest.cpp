@@ -21,7 +21,7 @@
 #include <random>
 #include <set>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

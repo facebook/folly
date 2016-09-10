@@ -18,8 +18,7 @@
 
 #include <chrono>
 #include <folly/Baton.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace std::chrono;

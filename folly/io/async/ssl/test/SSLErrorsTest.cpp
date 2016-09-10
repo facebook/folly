@@ -16,7 +16,8 @@
 
 #include <folly/io/async/ssl/SSLErrors.h>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
+
 #include <openssl/err.h>
 #include <openssl/x509.h>
 

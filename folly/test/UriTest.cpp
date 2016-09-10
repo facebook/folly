@@ -16,10 +16,10 @@
 
 #include <folly/Uri.h>
 #include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
 #include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <map>
 
 using namespace folly;

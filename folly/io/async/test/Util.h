@@ -20,7 +20,7 @@
 
 #include <folly/io/async/test/TimeUtil.h>
 #include <folly/test/TestUtils.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 /**
  * Check how long a timeout took to fire.

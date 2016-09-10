@@ -20,7 +20,7 @@
 
 #include <folly/Enumerate.h>
 #include <folly/Range.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 TEST(Enumerate, Basic) {
   std::vector<std::string> v = {"abc", "a", "ab"};

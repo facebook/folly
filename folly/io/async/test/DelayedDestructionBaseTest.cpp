@@ -34,9 +34,10 @@
 #include <folly/io/async/DelayedDestructionBase.h>
 
 #include <functional>
-#include <gtest/gtest.h>
 #include <list>
 #include <vector>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

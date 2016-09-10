@@ -22,6 +22,7 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
@@ -29,7 +30,6 @@
 
 #include <fcntl.h>
 #include <folly/io/Cursor.h>
-#include <gtest/gtest.h>
 #include <openssl/bio.h>
 #include <sys/types.h>
 #include <fstream>

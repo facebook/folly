@@ -23,9 +23,9 @@
 #include <cinttypes>
 
 #include <boost/regex.hpp>
-#include <gtest/gtest.h>
 
 #include <folly/Array.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std;

@@ -16,7 +16,7 @@
 
 #include <folly/Hash.h>
 #include <folly/MapUtil.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <stdint.h>
 #include <unordered_map>
 #include <utility>

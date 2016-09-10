@@ -19,8 +19,7 @@
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using folly::ByteRange;
 using folly::format;

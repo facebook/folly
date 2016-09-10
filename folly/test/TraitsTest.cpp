@@ -22,7 +22,7 @@
 #include <utility>
 
 #include <folly/ScopeGuard.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std;

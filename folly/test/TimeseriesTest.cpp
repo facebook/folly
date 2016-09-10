@@ -22,9 +22,9 @@
 #include <array>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Foreach.h>
+#include <folly/portability/GTest.h>
 
 using std::chrono::seconds;
 using std::string;

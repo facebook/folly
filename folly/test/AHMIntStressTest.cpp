@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <thread>
 #include <memory>
 #include <mutex>
@@ -23,6 +21,7 @@
 #include <folly/AtomicHashMap.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Memory.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 

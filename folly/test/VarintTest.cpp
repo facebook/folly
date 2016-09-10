@@ -22,10 +22,10 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
+#include <folly/portability/GTest.h>
 
 DEFINE_int32(random_seed, folly::randomNumberSeed(), "random seed");
 

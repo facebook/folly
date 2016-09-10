@@ -35,11 +35,11 @@
 #include <unordered_map>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Baton.h>
 #include <folly/Memory.h>
 #include <folly/experimental/io/FsUtil.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
 using namespace folly;

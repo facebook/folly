@@ -34,7 +34,7 @@
 
 #include <folly/io/async/EventBaseLocal.h>
 #include <folly/io/async/test/Util.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 struct Foo {
   Foo(int n, std::function<void()> dtorFn):

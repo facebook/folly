@@ -20,7 +20,8 @@
 #include <vector>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
+
+#include <folly/portability/GTest.h>
 
 // A simple class that tracks how often instances of the class and
 // subclasses are created, and the ordering.  Also tracks a global

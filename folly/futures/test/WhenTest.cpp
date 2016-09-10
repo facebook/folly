@@ -17,11 +17,11 @@
 #include <memory>
 #include <mutex>
 
-#include <gtest/gtest.h>
 #include <glog/logging.h>
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

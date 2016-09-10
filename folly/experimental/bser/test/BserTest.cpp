@@ -15,7 +15,7 @@
  */
 #include <folly/experimental/bser/Bser.h>
 #include <folly/String.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using folly::dynamic;
 

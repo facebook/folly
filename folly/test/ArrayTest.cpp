@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <folly/Array.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 #include <string>
 
 using namespace std;

@@ -17,6 +17,7 @@
 #include <folly/MPMCQueue.h>
 #include <folly/Format.h>
 #include <folly/Memory.h>
+#include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
 #include <folly/portability/SysTime.h>
 #include <folly/portability/Unistd.h>
@@ -27,8 +28,6 @@
 #include <functional>
 #include <thread>
 #include <utility>
-
-#include <gtest/gtest.h>
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr);
 

@@ -17,7 +17,8 @@
 
 #include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/ssl/SSLErrors.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
+
 #include <openssl/ssl.h>
 
 using namespace testing;

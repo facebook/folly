@@ -16,8 +16,9 @@
 
 #include <folly/dynamic.h>
 
+#include <folly/portability/GTest.h>
+
 #include <boost/next_prior.hpp>
-#include <gtest/gtest.h>
 
 using folly::dynamic;
 

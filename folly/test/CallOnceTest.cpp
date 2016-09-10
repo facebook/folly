@@ -20,9 +20,9 @@
 
 #include <folly/CallOnce.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 DEFINE_int32(threads, 16, "benchmark concurrency");
 

@@ -17,9 +17,10 @@
 #include <folly/Baton.h>
 #include <folly/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/portability/GTest.h>
+
 #include <thread>
 #include <semaphore.h>
-#include <gtest/gtest.h>
 
 using namespace folly;
 using namespace folly::test;

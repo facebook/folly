@@ -17,10 +17,10 @@
 #include <folly/Fingerprint.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/detail/SlowFingerprint.h>
 #include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::detail;

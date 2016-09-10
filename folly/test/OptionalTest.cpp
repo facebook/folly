@@ -16,6 +16,7 @@
 
 #include <folly/Optional.h>
 #include <folly/Portability.h>
+#include <folly/portability/GTest.h>
 
 #include <memory>
 #include <vector>
@@ -25,7 +26,6 @@
 #include <type_traits>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <boost/optional.hpp>
 
 using std::unique_ptr;

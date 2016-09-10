@@ -17,7 +17,7 @@
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/Memory.h>
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 #include <fcntl.h>
 

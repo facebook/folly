@@ -22,13 +22,13 @@
 
 #include <boost/noncopyable.hpp>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
 #include <folly/Random.h>
 #include <folly/Varint.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/portability/GTest.h>
 
 namespace folly { namespace io { namespace test {
 

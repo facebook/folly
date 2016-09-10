@@ -16,13 +16,14 @@
 
 #include <folly/detail/CacheLocality.h>
 
+#include <folly/portability/GTest.h>
+
 #include <sched.h>
 #include <memory>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 using namespace folly::detail;
 

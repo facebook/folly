@@ -24,10 +24,10 @@
 #include <string>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Range.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 using folly::StringKeyedMap;
 using folly::StringKeyedSetBase;

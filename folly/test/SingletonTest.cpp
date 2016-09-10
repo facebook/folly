@@ -21,10 +21,10 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
 #include <folly/test/SingletonTestStructs.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 #include <boost/thread/barrier.hpp>
 
 using namespace folly;

@@ -20,9 +20,9 @@
 #include <folly/Singleton.h>
 #include <folly/Benchmark.h>
 #include <folly/test/SingletonTestStructs.h>
+#include <folly/portability/GTest.h>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 /*
  * This test needs to be in its own file, as a standalone program.

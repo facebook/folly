@@ -22,8 +22,8 @@
 #include <folly/Random.h>
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
+#include <folly/portability/GTest.h>
 
-#include <gtest/gtest.h>
 #include <list>
 #include <map>
 #include <memory>

@@ -18,8 +18,9 @@
 
 #include <folly/DynamicConverter.h>
 
+#include <folly/portability/GTest.h>
+
 #include <algorithm>
-#include <gtest/gtest.h>
 #include <map>
 #include <vector>
 

@@ -18,7 +18,7 @@
 
 #include <chrono>
 
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 // We use this to indicate that tests have failed because of timing
 // or dependencies that may be flakey. Internally this is used by

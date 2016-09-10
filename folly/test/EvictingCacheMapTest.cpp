@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-
 #include <set>
 
 #include <folly/EvictingCacheMap.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

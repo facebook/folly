@@ -16,13 +16,12 @@
 
 #include <folly/test/IPAddressTest.h>
 
-#include <gtest/gtest.h>
-
 #include <folly/Bits.h>
 #include <folly/Format.h>
 #include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std;

@@ -26,13 +26,13 @@
 #include <system_error>
 
 #include <glog/logging.h>
-#include <gtest/gtest.h>
 
 #include <folly/Arena.h>
 #include <folly/Foreach.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 DEFINE_int32(num_threads, 12, "num concurrent threads to test");
 

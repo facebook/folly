@@ -20,8 +20,9 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <gtest/gtest.h>
+
 #include <folly/Memory.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;

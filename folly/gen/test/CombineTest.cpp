@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
 #include <string>
 #include <vector>
 #include <tuple>
@@ -23,6 +22,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/Combine.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly::gen;
 using namespace folly;

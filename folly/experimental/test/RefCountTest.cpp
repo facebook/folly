@@ -18,8 +18,7 @@
 #include <folly/Baton.h>
 #include <folly/experimental/RCURefCount.h>
 #include <folly/experimental/TLRefCount.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 

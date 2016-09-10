@@ -20,7 +20,8 @@
 #include <cassert>
 #include <random>
 #include <folly/Random.h>
-#include <gtest/gtest.h>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using std::chrono::milliseconds;
