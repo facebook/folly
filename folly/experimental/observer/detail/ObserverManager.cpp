@@ -147,8 +147,8 @@ ObserverManager::ObserverManager() {
 ObserverManager::~ObserverManager() {
   // Destroy NextQueue, before the rest of this object, since it expects
   // ObserverManager to be alive.
-  nextQueue_.release();
-  currentQueue_.release();
+  nextQueue_.reset();
+  currentQueue_.reset();
 }
 
 void ObserverManager::scheduleCurrent(Function<void()> task) {
