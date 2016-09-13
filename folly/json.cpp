@@ -693,7 +693,6 @@ void escapeString(
     return c < 10 ? c + '0' : c - 10 + 'a';
   };
 
-  out.reserve(out.size() + input.size() + 2);
   out.push_back('\"');
 
   auto* p = reinterpret_cast<const unsigned char*>(input.begin());
