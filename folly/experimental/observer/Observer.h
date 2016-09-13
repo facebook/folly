@@ -158,6 +158,7 @@ template <typename T>
 class TLObserver {
  public:
   explicit TLObserver(Observer<T> observer);
+  TLObserver(const TLObserver<T>& other);
 
   const Snapshot<T>& getSnapshotRef() const;
   const Snapshot<T>& operator*() const {

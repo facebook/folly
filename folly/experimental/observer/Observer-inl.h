@@ -59,6 +59,10 @@ TLObserver<T>::TLObserver(Observer<T> observer)
       snapshot_([&] { return new Snapshot<T>(observer_.getSnapshot()); }) {}
 
 template <typename T>
+TLObserver<T>::TLObserver(const TLObserver<T>& other)
+    : TLObserver(other.observer_) {}
+
+template <typename T>
 const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
   auto& snapshot = *snapshot_;
   if (observer_.needRefresh(snapshot) ||

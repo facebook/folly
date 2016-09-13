@@ -248,3 +248,15 @@ TEST(Observer, Stress) {
     }
   });
 }
+
+TEST(Observer, TLObserver) {
+  auto createTLObserver = [](int value) {
+    return folly::observer::makeTLObserver([=] { return value; });
+  };
+
+  auto k =
+      std::make_unique<folly::observer::TLObserver<int>>(createTLObserver(42));
+  EXPECT_EQ(42, ***k);
+  k = std::make_unique<folly::observer::TLObserver<int>>(createTLObserver(41));
+  EXPECT_EQ(41, ***k);
+}
