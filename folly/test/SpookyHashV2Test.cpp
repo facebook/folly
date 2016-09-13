@@ -21,7 +21,6 @@
 #endif
 
 #include <folly/SpookyHashV2.h>
-#include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 
 #include <cinttypes>
@@ -30,6 +29,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+
+#include <glog/logging.h>
 
 using namespace ::folly::hash;
 
