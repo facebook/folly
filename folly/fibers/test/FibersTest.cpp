@@ -1594,3 +1594,41 @@ TEST(FiberManager, semaphore) {
   EXPECT_GE(counterA, 0);
   EXPECT_GE(counterB, 0);
 }
+
+/**
+ * Test that we can properly track fiber stack usage.
+ *
+ * This functionality can only be enabled when ASAN is disabled, so avoid
+ * running this test with ASAN.
+ */
+#ifndef FOLLY_SANITIZE_ADDRESS
+TEST(FiberManager, recordStack) {
+  std::thread([] {
+    folly::fibers::FiberManager::Options opts;
+    opts.recordStackEvery = 1;
+
+    FiberManager fm(folly::make_unique<SimpleLoopController>(), opts);
+    auto& loopController =
+        dynamic_cast<SimpleLoopController&>(fm.loopController());
+
+    constexpr size_t n = 1000;
+    int s = 0;
+    fm.addTask([&]() {
+      int b[n] = {0};
+      for (size_t i = 0; i < n; ++i) {
+        b[i] = i;
+      }
+      for (size_t i = 0; i + 1 < n; ++i) {
+        s += b[i] * b[i + 1];
+      }
+    });
+
+    (void)s;
+
+    loopController.loop([&]() { loopController.stop(); });
+
+    // Check that we properly accounted fiber stack usage.
+    EXPECT_LT(n * sizeof(int), fm.stackHighWatermark());
+  }).join();
+}
+#endif
