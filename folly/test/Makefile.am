@@ -309,4 +309,8 @@ partial_test_SOURCES = PartialTest.cpp
 partial_test_LDADD = libfollytestmain.la
 TESTS += partial_test
 
+singleton_thread_local_test_SOURCES = SingletonThreadLocalTest.cpp
+singleton_thread_local_test_LDADD = libfollytestmain.la
+TESTS += singleton_thread_local_test
+
 check_PROGRAMS += $(TESTS)
