@@ -20,8 +20,7 @@
 
 #include <folly/SingletonThreadLocal.h>
 #include <folly/Synchronized.h>
-
-#include <gtest/gtest.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
