@@ -58,8 +58,13 @@ class ElfFile {
     kSystemError = -1,
     kInvalidElfFile = -2,
   };
+  // Open the ELF file. Does not throw on error.
   int openNoThrow(const char* name, bool readOnly=true,
                   const char** msg=nullptr) noexcept;
+
+  // Like openNoThrow, but follow .gnu_debuglink if present
+  int openAndFollow(const char* name, bool readOnly=true,
+                    const char** msg=nullptr) noexcept;
 
   // Open the ELF file. Throws on error.
   void open(const char* name, bool readOnly=true);
