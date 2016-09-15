@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/Traits.h>
-#include <folly/portability/Memory.h>
 
 #include <cstddef>
 #include <cstdlib>
