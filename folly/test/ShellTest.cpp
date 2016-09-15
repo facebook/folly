@@ -29,6 +29,7 @@ TEST(Shell, ShellQuote) {
 
 TEST(Shell, Shellify) {
   auto command = shellify("rm -rf /");
+  EXPECT_EQ(command[0], "/bin/sh");
   EXPECT_EQ(command[1], "-c");
   EXPECT_EQ(command[2], "rm -rf /");
 

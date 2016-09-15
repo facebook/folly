@@ -51,8 +51,7 @@ std::string shellQuote(StringPiece argument) {
   * Create argument array for `Subprocess()` for a process running in a
   * shell.
   *
-  * The shell to use is taken from the environment variable $SHELL,
-  * or /bin/sh if $SHELL is unset.
+  * The shell to use is always going to be `/bin/sh`.
   *
   * The format string should always be a string literal to protect against
   * shell injections. Arguments will automatically be escaped with `'`.
@@ -63,14 +62,10 @@ template <typename... Arguments>
 std::vector<std::string> shellify(
     const StringPiece format,
     Arguments&&... arguments) {
-  const char* shell = getenv("SHELL");
-  if (!shell) {
-    shell = "/bin/sh";
-  }
   auto command = sformat(
       format,
       shellQuote(to<std::string>(std::forward<Arguments>(arguments)))...);
-  return {shell, "-c", command};
+  return {"/bin/sh", "-c", command};
 }
 
 } // folly
