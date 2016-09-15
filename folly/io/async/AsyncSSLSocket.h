@@ -741,6 +741,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return certCacheHit_;
   }
 
+  bool sessionResumptionAttempted() const {
+    return sessionResumptionAttempted_;
+  }
+
  private:
 
   void init();
@@ -895,6 +899,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::steady_clock::time_point handshakeStartTime_;
   std::chrono::steady_clock::time_point handshakeEndTime_;
   uint64_t handshakeConnectTimeout_{0};
+  bool sessionResumptionAttempted_{false};
 };
 
 } // namespace

@@ -757,6 +757,7 @@ void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
   applyVerificationOptions(ssl_);
 
   if (sslSession_ != nullptr) {
+    sessionResumptionAttempted_ = true;
     SSL_set_session(ssl_, sslSession_);
     SSL_SESSION_free(sslSession_);
     sslSession_ = nullptr;
