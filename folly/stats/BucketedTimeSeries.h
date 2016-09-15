@@ -24,6 +24,22 @@
 namespace folly {
 
 /*
+ * A helper clock type to helper older code using BucketedTimeSeries with
+ * std::chrono::seconds transition to properly using clock types and time_point
+ * objects.
+ */
+template <typename TT = std::chrono::seconds>
+class LegacyStatsClock {
+ public:
+  using duration = TT;
+  using time_point = std::chrono::time_point<LegacyStatsClock, TT>;
+
+  // This clock does not actually implement now(), since the older API
+  // did not really specify what clock should be used.  (In practice most
+  // callers unfortuantely used wall clock time rather than a monotonic clock.)
+};
+
+/*
  * This class represents a bucketed time series which keeps track of values
  * added in the recent past, and merges these values together into a fixed
  * number of buckets to keep a lid on memory use if the number of values
@@ -44,12 +60,18 @@ namespace folly {
  *
  * This class is not thread-safe -- use your own synchronization!
  */
-template <typename VT, typename TT=std::chrono::seconds>
+template <typename VT, typename CT = LegacyStatsClock<std::chrono::seconds>>
 class BucketedTimeSeries {
  public:
-  typedef VT ValueType;
-  typedef TT TimeType;
-  typedef detail::Bucket<ValueType> Bucket;
+  using ValueType = VT;
+  using Clock = CT;
+  using Duration = typename Clock::duration;
+  using TimePoint = typename Clock::time_point;
+  // The legacy TimeType.  The older code used this instead of Duration and
+  // TimePoint.  This will eventually be removed as the code is transitioned to
+  // Duration and TimePoint.
+  using TimeType = typename Clock::duration;
+  using Bucket = detail::Bucket<ValueType>;
 
   /*
    * Create a new BucketedTimeSeries.
@@ -61,7 +83,7 @@ class BucketedTimeSeries {
    * and does not need the rolling buckets.  The numBuckets parameter is
    * ignored when duration is 0.
    */
-  BucketedTimeSeries(size_t numBuckets, TimeType duration);
+  BucketedTimeSeries(size_t numBuckets, Duration duration);
 
   /*
    * Adds the value 'val' at time 'now'

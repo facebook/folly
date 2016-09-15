@@ -49,12 +49,18 @@ namespace folly {
  *
  * The class is not thread-safe -- use your own synchronization!
  */
-template <typename VT, typename TT=std::chrono::seconds>
+template <typename VT, typename CT = LegacyStatsClock<std::chrono::seconds>>
 class MultiLevelTimeSeries {
  public:
-  typedef VT ValueType;
-  typedef TT TimeType;
-  typedef folly::BucketedTimeSeries<ValueType, TimeType> Level;
+  using ValueType = VT;
+  using Clock = CT;
+  using Duration = typename Clock::duration;
+  using TimePoint = typename Clock::time_point;
+  // The legacy TimeType.  The older code used this instead of Duration and
+  // TimePoint.  This will eventually be removed as the code is transitioned to
+  // Duration and TimePoint.
+  using TimeType = typename Clock::duration;
+  using Level = folly::BucketedTimeSeries<ValueType, Clock>;
 
   /*
    * Create a new MultiLevelTimeSeries.

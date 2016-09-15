@@ -22,12 +22,11 @@
 
 namespace folly {
 
-template <typename VT, typename TT>
-BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t nBuckets,
-                                               TimeType maxDuration)
-  : firstTime_(1),
-    latestTime_(0),
-    duration_(maxDuration) {
+template <typename VT, typename CT>
+BucketedTimeSeries<VT, CT>::BucketedTimeSeries(
+    size_t nBuckets,
+    TimeType maxDuration)
+    : firstTime_(1), latestTime_(0), duration_(maxDuration) {
   // For tracking all-time data we only use total_, and don't need to bother
   // with buckets_
   if (!isAllTime()) {
@@ -43,22 +42,24 @@ BucketedTimeSeries<VT, TT>::BucketedTimeSeries(size_t nBuckets,
   }
 }
 
-template <typename VT, typename TT>
-bool BucketedTimeSeries<VT, TT>::addValue(TimeType now, const ValueType& val) {
+template <typename VT, typename CT>
+bool BucketedTimeSeries<VT, CT>::addValue(TimeType now, const ValueType& val) {
   return addValueAggregated(now, val, 1);
 }
 
-template <typename VT, typename TT>
-bool BucketedTimeSeries<VT, TT>::addValue(TimeType now,
-                                          const ValueType& val,
-                                          int64_t times) {
+template <typename VT, typename CT>
+bool BucketedTimeSeries<VT, CT>::addValue(
+    TimeType now,
+    const ValueType& val,
+    int64_t times) {
   return addValueAggregated(now, val * times, times);
 }
 
-template <typename VT, typename TT>
-bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
-                                                    const ValueType& total,
-                                                    int64_t nsamples) {
+template <typename VT, typename CT>
+bool BucketedTimeSeries<VT, CT>::addValueAggregated(
+    TimeType now,
+    const ValueType& total,
+    int64_t nsamples) {
   if (isAllTime()) {
     if (UNLIKELY(empty())) {
       firstTime_ = now;
@@ -98,8 +99,8 @@ bool BucketedTimeSeries<VT, TT>::addValueAggregated(TimeType now,
   return true;
 }
 
-template <typename VT, typename TT>
-size_t BucketedTimeSeries<VT, TT>::update(TimeType now) {
+template <typename VT, typename CT>
+size_t BucketedTimeSeries<VT, CT>::update(TimeType now) {
   if (empty()) {
     // This is the first data point.
     firstTime_ = now;
@@ -121,8 +122,8 @@ size_t BucketedTimeSeries<VT, TT>::update(TimeType now) {
   return updateBuckets(now);
 }
 
-template <typename VT, typename TT>
-size_t BucketedTimeSeries<VT, TT>::updateBuckets(TimeType now) {
+template <typename VT, typename CT>
+size_t BucketedTimeSeries<VT, CT>::updateBuckets(TimeType now) {
   // We could cache nextBucketStart as a member variable, so we don't have to
   // recompute it each time update() is called with a new timestamp value.
   // This makes things faster when update() (or addValue()) is called once
@@ -172,8 +173,8 @@ size_t BucketedTimeSeries<VT, TT>::updateBuckets(TimeType now) {
   }
 }
 
-template <typename VT, typename TT>
-void BucketedTimeSeries<VT, TT>::clear() {
+template <typename VT, typename CT>
+void BucketedTimeSeries<VT, CT>::clear() {
   for (Bucket& bucket : buckets_) {
     bucket.clear();
   }
@@ -184,9 +185,8 @@ void BucketedTimeSeries<VT, TT>::clear() {
   latestTime_ = TimeType(0);
 }
 
-
-template <typename VT, typename TT>
-TT BucketedTimeSeries<VT, TT>::getEarliestTime() const {
+template <typename VT, typename CT>
+typename CT::duration BucketedTimeSeries<VT, CT>::getEarliestTime() const {
   if (empty()) {
     return TimeType(0);
   }
@@ -203,8 +203,9 @@ TT BucketedTimeSeries<VT, TT>::getEarliestTime() const {
   return earliestTime;
 }
 
-template <typename VT, typename TT>
-TT BucketedTimeSeries<VT, TT>::getEarliestTimeNonEmpty() const {
+template <typename VT, typename CT>
+typename CT::duration BucketedTimeSeries<VT, CT>::getEarliestTimeNonEmpty()
+    const {
   size_t currentBucket;
   TimeType currentBucketStart;
   TimeType nextBucketStart;
@@ -216,8 +217,8 @@ TT BucketedTimeSeries<VT, TT>::getEarliestTimeNonEmpty() const {
   return nextBucketStart - duration_;
 }
 
-template <typename VT, typename TT>
-TT BucketedTimeSeries<VT, TT>::elapsed() const {
+template <typename VT, typename CT>
+typename CT::duration BucketedTimeSeries<VT, CT>::elapsed() const {
   if (empty()) {
     return TimeType(0);
   }
@@ -226,8 +227,10 @@ TT BucketedTimeSeries<VT, TT>::elapsed() const {
   return latestTime_ - getEarliestTime() + TimeType(1);
 }
 
-template <typename VT, typename TT>
-TT BucketedTimeSeries<VT, TT>::elapsed(TimeType start, TimeType end) const {
+template <typename VT, typename CT>
+typename CT::duration BucketedTimeSeries<VT, CT>::elapsed(
+    TimeType start,
+    TimeType end) const {
   if (empty()) {
     return TimeType(0);
   }
@@ -237,8 +240,8 @@ TT BucketedTimeSeries<VT, TT>::elapsed(TimeType start, TimeType end) const {
   return end - start;
 }
 
-template <typename VT, typename TT>
-VT BucketedTimeSeries<VT, TT>::sum(TimeType start, TimeType end) const {
+template <typename VT, typename CT>
+VT BucketedTimeSeries<VT, CT>::sum(TimeType start, TimeType end) const {
   ValueType total = ValueType();
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
@@ -251,8 +254,8 @@ VT BucketedTimeSeries<VT, TT>::sum(TimeType start, TimeType end) const {
   return total;
 }
 
-template <typename VT, typename TT>
-uint64_t BucketedTimeSeries<VT, TT>::count(TimeType start, TimeType end) const {
+template <typename VT, typename CT>
+uint64_t BucketedTimeSeries<VT, CT>::count(TimeType start, TimeType end) const {
   uint64_t sample_count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
                                 TimeType bucketStart,
@@ -265,9 +268,9 @@ uint64_t BucketedTimeSeries<VT, TT>::count(TimeType start, TimeType end) const {
   return sample_count;
 }
 
-template <typename VT, typename TT>
+template <typename VT, typename CT>
 template <typename ReturnType>
-ReturnType BucketedTimeSeries<VT, TT>::avg(TimeType start, TimeType end) const {
+ReturnType BucketedTimeSeries<VT, CT>::avg(TimeType start, TimeType end) const {
   ValueType total = ValueType();
   uint64_t sample_count = 0;
   forEachBucket(start, end, [&](const Bucket& bucket,
@@ -304,8 +307,8 @@ ReturnType BucketedTimeSeries<VT, TT>::avg(TimeType start, TimeType end) const {
  * into, we then divide by duration_.
  */
 
-template <typename VT, typename TT>
-size_t BucketedTimeSeries<VT, TT>::getBucketIdx(TimeType time) const {
+template <typename VT, typename CT>
+size_t BucketedTimeSeries<VT, CT>::getBucketIdx(TimeType time) const {
   // For all-time data we don't use buckets_.  Everything is tracked in total_.
   DCHECK(!isAllTime());
 
@@ -317,10 +320,12 @@ size_t BucketedTimeSeries<VT, TT>::getBucketIdx(TimeType time) const {
  * Compute the bucket index for the specified time, as well as the earliest
  * time that falls into this bucket.
  */
-template <typename VT, typename TT>
-void BucketedTimeSeries<VT, TT>::getBucketInfo(
-    TimeType time, size_t *bucketIdx,
-    TimeType* bucketStart, TimeType* nextBucketStart) const {
+template <typename VT, typename CT>
+void BucketedTimeSeries<VT, CT>::getBucketInfo(
+    TimeType time,
+    size_t* bucketIdx,
+    TimeType* bucketStart,
+    TimeType* nextBucketStart) const {
   typedef typename TimeType::rep TimeInt;
   DCHECK(!isAllTime());
 
@@ -349,9 +354,9 @@ void BucketedTimeSeries<VT, TT>::getBucketInfo(
   *nextBucketStart = nextBucketStartMod + durationStart;
 }
 
-template <typename VT, typename TT>
+template <typename VT, typename CT>
 template <typename Function>
-void BucketedTimeSeries<VT, TT>::forEachBucket(Function fn) const {
+void BucketedTimeSeries<VT, CT>::forEachBucket(Function fn) const {
   if (isAllTime()) {
     fn(total_, firstTime_, latestTime_ + TimeType(1));
     return;
@@ -417,10 +422,13 @@ void BucketedTimeSeries<VT, TT>::forEachBucket(Function fn) const {
  * For example, if the bucket spans time [10, 20), but we only care about the
  * range [10, 16), this will return 60% of the input value.
  */
-template<typename VT, typename TT>
-VT BucketedTimeSeries<VT, TT>::rangeAdjust(
-    TimeType bucketStart, TimeType nextBucketStart,
-    TimeType start, TimeType end, ValueType input) const {
+template <typename VT, typename CT>
+VT BucketedTimeSeries<VT, CT>::rangeAdjust(
+    TimeType bucketStart,
+    TimeType nextBucketStart,
+    TimeType start,
+    TimeType end,
+    ValueType input) const {
   // If nextBucketStart is greater than latestTime_, treat nextBucketStart as
   // if it were latestTime_.  This makes us more accurate when someone is
   // querying for all of the data up to latestTime_.  Even though latestTime_
@@ -442,10 +450,12 @@ VT BucketedTimeSeries<VT, TT>::rangeAdjust(
     (nextBucketStart - bucketStart);
 }
 
-template <typename VT, typename TT>
+template <typename VT, typename CT>
 template <typename Function>
-void BucketedTimeSeries<VT, TT>::forEachBucket(TimeType start, TimeType end,
-                                               Function fn) const {
+void BucketedTimeSeries<VT, CT>::forEachBucket(
+    TimeType start,
+    TimeType end,
+    Function fn) const {
   forEachBucket([&start, &end, &fn] (const Bucket& bucket, TimeType bucketStart,
                                      TimeType nextBucketStart) -> bool {
     if (start >= nextBucketStart) {

@@ -47,20 +47,28 @@ namespace folly {
  * The memory usage for a typical histogram is roughly 3k * (# of buckets).  All
  * insertion operations are amortized O(1), and all queries are O(# of buckets).
  */
-template <class T, class TT=std::chrono::seconds,
-          class C=folly::MultiLevelTimeSeries<T, TT>>
+template <
+    class T,
+    class CT = LegacyStatsClock<std::chrono::seconds>,
+    class C = folly::MultiLevelTimeSeries<T, CT>>
 class TimeseriesHistogram {
  private:
    // NOTE: T must be equivalent to _signed_ numeric type for our math.
    static_assert(std::numeric_limits<T>::is_signed, "");
 
  public:
-  // values to be inserted into container
-  typedef T ValueType;
-  // the container type we use internally for each bucket
-  typedef C ContainerType;
-  // The time type.
-  typedef TT TimeType;
+  // Values to be inserted into container
+  using ValueType = T;
+  // The container type we use internally for each bucket
+  using ContainerType = C;
+  // Clock, duration, and time point types
+  using Clock = CT;
+  using Duration = typename Clock::duration;
+  using TimePoint = typename Clock::time_point;
+  // The legacy TimeType.  The older code used this instead of Duration and
+  // TimePoint.  This will eventually be removed as the code is transitioned to
+  // Duration and TimePoint.
+  using TimeType = typename Clock::duration;
 
   /*
    * Create a TimeSeries histogram and initialize the bucketing and levels.
