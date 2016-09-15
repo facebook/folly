@@ -456,10 +456,13 @@ class Subprocess {
    * The shell to use is taken from the environment variable $SHELL,
    * or /bin/sh if $SHELL is unset.
    */
+  FOLLY_DEPRECATED("Prefer not running in a shell or use `shellify`.")
   explicit Subprocess(
       const std::string& cmd,
       const Options& options = Options(),
       const std::vector<std::string>* env = nullptr);
+
+  static std::vector<std::string> shellify(const std::string& cmd);
 
   ////
   //// The methods below only manipulate the process state, and do not

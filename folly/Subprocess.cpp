@@ -182,17 +182,25 @@ Subprocess::Subprocess(
   if (options.usePath_) {
     throw std::invalid_argument("usePath() not allowed when running in shell");
   }
+
+  auto argv = Subprocess::shellify(cmd);
+  spawn(cloneStrings(argv), argv[0].c_str(), options, env);
+}
+
+/* static */ std::vector<std::string> Subprocess::shellify(
+    const std::string& cmd) {
+  std::vector<std::string> argv;
+
   const char* shell = getenv("SHELL");
   if (!shell) {
     shell = "/bin/sh";
   }
 
-  std::unique_ptr<const char*[]> argv(new const char*[4]);
-  argv[0] = shell;
-  argv[1] = "-c";
-  argv[2] = cmd.c_str();
-  argv[3] = nullptr;
-  spawn(std::move(argv), shell, options, env);
+  argv.push_back(shell);
+  argv.push_back("-c");
+  argv.push_back(cmd);
+
+  return argv;
 }
 
 Subprocess::~Subprocess() {
