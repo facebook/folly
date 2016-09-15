@@ -20,6 +20,7 @@
 
 #include <vector>
 
+#include <folly/Indestructible.h>
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
@@ -69,13 +70,13 @@ class CallbackHolder {
 namespace folly {
 namespace exception_tracer {
 
-#define DECLARE_CALLBACK(NAME)                         \
-  CallbackHolder<NAME##Type>& get##NAME##Callbacks() { \
-    static CallbackHolder<NAME##Type> Callbacks;       \
-    return Callbacks;                                  \
-  }                                                    \
-  void register##NAME##Callback(NAME##Type callback) { \
-    get##NAME##Callbacks().registerCallback(callback); \
+#define DECLARE_CALLBACK(NAME)                                   \
+  CallbackHolder<NAME##Type>& get##NAME##Callbacks() {           \
+    static Indestructible<CallbackHolder<NAME##Type>> Callbacks; \
+    return *Callbacks;                                           \
+  }                                                              \
+  void register##NAME##Callback(NAME##Type callback) {           \
+    get##NAME##Callbacks().registerCallback(callback);           \
   }
 
 DECLARE_CALLBACK(CxaThrow);
