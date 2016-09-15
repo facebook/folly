@@ -37,6 +37,7 @@
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Shell.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/Environment.h>
@@ -183,24 +184,8 @@ Subprocess::Subprocess(
     throw std::invalid_argument("usePath() not allowed when running in shell");
   }
 
-  auto argv = Subprocess::shellify(cmd);
+  auto argv = shellify(cmd);
   spawn(cloneStrings(argv), argv[0].c_str(), options, env);
-}
-
-/* static */ std::vector<std::string> Subprocess::shellify(
-    const std::string& cmd) {
-  std::vector<std::string> argv;
-
-  const char* shell = getenv("SHELL");
-  if (!shell) {
-    shell = "/bin/sh";
-  }
-
-  argv.push_back(shell);
-  argv.push_back("-c");
-  argv.push_back(cmd);
-
-  return argv;
 }
 
 Subprocess::~Subprocess() {

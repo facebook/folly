@@ -313,6 +313,7 @@ nobase_follyinclude_HEADERS = \
 	RWSpinLock.h \
 	ScopeGuard.h \
 	SharedMutex.h \
+	Shell.h \
 	Singleton.h \
 	Singleton-inl.h \
 	SingletonThreadLocal.h \

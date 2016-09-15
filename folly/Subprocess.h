@@ -462,8 +462,6 @@ class Subprocess {
       const Options& options = Options(),
       const std::vector<std::string>* env = nullptr);
 
-  static std::vector<std::string> shellify(const std::string& cmd);
-
   ////
   //// The methods below only manipulate the process state, and do not
   //// affect its communication pipes.

@@ -531,9 +531,3 @@ TEST(CommunicateSubprocessTest, TakeOwnershipOfPipes) {
   buf[2] = 0;
   EXPECT_EQ("3\n", std::string(buf));
 }
-
-TEST(Subprocess, Shellify) {
-  auto argv = Subprocess::shellify("rm -rf /");
-  EXPECT_EQ(argv[1], "-c");
-  EXPECT_EQ(argv[2], "rm -rf /");
-}
