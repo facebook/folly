@@ -184,7 +184,7 @@ Subprocess::Subprocess(
     throw std::invalid_argument("usePath() not allowed when running in shell");
   }
 
-  auto argv = shellify(cmd);
+  std::vector<std::string> argv = {"/bin/sh", "-c", cmd};
   spawn(cloneStrings(argv), argv[0].c_str(), options, env);
 }
 
