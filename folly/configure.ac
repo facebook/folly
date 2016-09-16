@@ -540,11 +540,11 @@ AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_libdwa
 AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
 if test "x${follytestmain}" = "xyes"; then
    AS_IF([test "x${have_libdwarf}" = xno], [AC_MSG_ERROR([Please install libdwarf development library and headers])])
-   AC_CHECK_HEADERS([libelf.h elf.h],, AC_MSG_ERROR([Please install libelf development package]))
+   AC_CHECK_HEADERS([elf.h],, AC_MSG_ERROR([Please install libelf development package]))
    AC_CHECK_HEADERS([libunwind.h],, AC_MSG_ERROR([Please install libunwind development package]))
 else
    AS_IF([test "x${have_libdwarf}" = xno],, [use_follytestmain=no])
-   AC_CHECK_HEADERS([libelf.h elf.h],, [use_follytestmain=no])
+   AC_CHECK_HEADERS([elf.h],, [use_follytestmain=no])
    AC_CHECK_HEADERS([libunwind.h],, [use_follytestmain=no])
 fi
 
