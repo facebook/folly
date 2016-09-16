@@ -25,8 +25,12 @@ FOLLY_TLS bool ObserverManager::inManagerThread_{false};
 FOLLY_TLS ObserverManager::DependencyRecorder::Dependencies*
     ObserverManager::DependencyRecorder::currentDependencies_{nullptr};
 
+DEFINE_int32(
+    observer_manager_pool_size,
+    4,
+    "How many internal threads ObserverManager should use");
+
 namespace {
-constexpr size_t kCurrentThreadPoolSize{4};
 constexpr size_t kCurrentQueueSize{10 * 1024};
 constexpr size_t kNextQueueSize{10 * 1024};
 }
@@ -34,7 +38,11 @@ constexpr size_t kNextQueueSize{10 * 1024};
 class ObserverManager::CurrentQueue {
  public:
   CurrentQueue() : queue_(kCurrentQueueSize) {
-    for (size_t i = 0; i < kCurrentThreadPoolSize; ++i) {
+    if (FLAGS_observer_manager_pool_size < 1) {
+      LOG(ERROR) << "--observer_manager_pool_size should be >= 1";
+      FLAGS_observer_manager_pool_size = 1;
+    }
+    for (int32_t i = 0; i < FLAGS_observer_manager_pool_size; ++i) {
       threads_.emplace_back([&]() {
         ObserverManager::inManagerThread_ = true;
 
