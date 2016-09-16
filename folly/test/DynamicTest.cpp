@@ -408,6 +408,9 @@ TEST(Dynamic, GetString) {
   EXPECT_EQ(s + " hello", d.getString());
 
   EXPECT_EQ(s, std::move(m).getString());
+  EXPECT_EQ(s, m.getString());
+  auto moved = std::move(m).getString();
+  EXPECT_EQ(s, moved);
   EXPECT_NE(dynamic(s), m);
 }
 
@@ -451,7 +454,10 @@ TEST(Dynamic, At) {
   EXPECT_EQ(dynamic(make_long_string() + " hello"), dd.at("key1"));
   EXPECT_EQ(dynamic(make_long_string() + " hello"), dd.at("key1"));
 
-  EXPECT_EQ(ds, std::move(md).at("key1"));
+  EXPECT_EQ(ds, std::move(md).at("key1")); // move available, but not performed
+  EXPECT_EQ(ds, md.at("key1"));
+  dynamic moved = std::move(md).at("key1"); // move performed
+  EXPECT_EQ(ds, moved);
   EXPECT_NE(ds, md.at("key1"));
 }
 
@@ -468,7 +474,10 @@ TEST(Dynamic, Brackets) {
   EXPECT_EQ(dynamic(make_long_string() + " hello"), dd["key1"]);
   EXPECT_EQ(dynamic(make_long_string() + " hello"), dd["key1"]);
 
-  EXPECT_EQ(ds, std::move(md)["key1"]);
+  EXPECT_EQ(ds, std::move(md)["key1"]); // move available, but not performed
+  EXPECT_EQ(ds, md["key1"]);
+  dynamic moved = std::move(md)["key1"]; // move performed
+  EXPECT_EQ(ds, moved);
   EXPECT_NE(ds, md["key1"]);
 }
 

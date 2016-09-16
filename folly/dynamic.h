@@ -306,7 +306,7 @@ public:
   double&   getDouble() &;
   int64_t&  getInt() &;
   bool&     getBool() &;
-  std::string getString() &&;
+  std::string&& getString() &&;
   double   getDouble() &&;
   int64_t  getInt() &&;
   bool     getBool() &&;
@@ -383,7 +383,7 @@ public:
    */
   dynamic const& at(dynamic const&) const&;
   dynamic&       at(dynamic const&) &;
-  dynamic        at(dynamic const&) &&;
+  dynamic&&      at(dynamic const&) &&;
 
   /*
    * Like 'at', above, except it returns either a pointer to the contained
@@ -414,7 +414,7 @@ public:
    */
   dynamic&       operator[](dynamic const&) &;
   dynamic const& operator[](dynamic const&) const&;
-  dynamic        operator[](dynamic const&) &&;
+  dynamic&&      operator[](dynamic const&) &&;
 
   /*
    * Only defined for objects, throws TypeError otherwise.

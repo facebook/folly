@@ -437,7 +437,7 @@ inline double&   dynamic::getDouble() & { return get<double>(); }
 inline int64_t&  dynamic::getInt()    & { return get<int64_t>(); }
 inline bool&     dynamic::getBool()   & { return get<bool>(); }
 
-inline std::string dynamic::getString()&& {
+inline std::string&& dynamic::getString()&& {
   return std::move(get<std::string>());
 }
 inline double   dynamic::getDouble() && { return get<double>(); }
@@ -520,7 +520,7 @@ inline dynamic const& dynamic::operator[](dynamic const& idx) const& {
   return at(idx);
 }
 
-inline dynamic dynamic::operator[](dynamic const& idx) && {
+inline dynamic&& dynamic::operator[](dynamic const& idx) && {
   return std::move((*this)[idx]);
 }
 
@@ -549,7 +549,7 @@ inline dynamic& dynamic::at(dynamic const& idx) & {
   return const_cast<dynamic&>(const_cast<dynamic const*>(this)->at(idx));
 }
 
-inline dynamic dynamic::at(dynamic const& idx) && {
+inline dynamic&& dynamic::at(dynamic const& idx) && {
   return std::move(at(idx));
 }
 
