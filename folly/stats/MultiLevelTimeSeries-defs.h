@@ -25,8 +25,8 @@ template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     size_t nBuckets,
     size_t nLevels,
-    const TimeType levelDurations[])
-    : cachedTime_(0), cachedSum_(0), cachedCount_(0) {
+    const Duration levelDurations[])
+    : cachedTime_(), cachedSum_(0), cachedCount_(0) {
   CHECK_GT(nLevels, 0);
   CHECK(levelDurations);
 
@@ -44,13 +44,13 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
 template <typename VT, typename CT>
 MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     size_t nBuckets,
-    std::initializer_list<TimeType> durations)
-    : cachedTime_(0), cachedSum_(0), cachedCount_(0) {
+    std::initializer_list<Duration> durations)
+    : cachedTime_(), cachedSum_(0), cachedCount_(0) {
   CHECK_GT(durations.size(), 0);
 
   levels_.reserve(durations.size());
   int i = 0;
-  TimeType prev;
+  Duration prev;
   for (auto dur : durations) {
     if (dur == Duration(0)) {
       CHECK_EQ(i, durations.size() - 1);
@@ -65,14 +65,14 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValue(
-    TimeType now,
+    TimePoint now,
     const ValueType& val) {
   addValueAggregated(now, val, 1);
 }
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValue(
-    TimeType now,
+    TimePoint now,
     const ValueType& val,
     int64_t times) {
   addValueAggregated(now, val * times, times);
@@ -80,7 +80,7 @@ void MultiLevelTimeSeries<VT, CT>::addValue(
 
 template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
-    TimeType now,
+    TimePoint now,
     const ValueType& total,
     int64_t nsamples) {
   if (cachedTime_ != now) {
@@ -92,7 +92,7 @@ void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
 }
 
 template <typename VT, typename CT>
-void MultiLevelTimeSeries<VT, CT>::update(TimeType now) {
+void MultiLevelTimeSeries<VT, CT>::update(TimePoint now) {
   flush();
   for (size_t i = 0; i < levels_.size(); ++i) {
     levels_[i].update(now);
@@ -117,7 +117,7 @@ void MultiLevelTimeSeries<VT, CT>::clear() {
     level.clear();
   }
 
-  cachedTime_ = TimeType(0);
+  cachedTime_ = TimePoint();
   cachedSum_ = 0;
   cachedCount_ = 0;
 }

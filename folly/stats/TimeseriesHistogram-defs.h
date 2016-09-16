@@ -35,7 +35,7 @@ TimeseriesHistogram<T, CT, C>::TimeseriesHistogram(
 
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValue(
-    TimeType now,
+    TimePoint now,
     const ValueType& value) {
   buckets_.getByValue(value).addValue(now, value);
   maybeHandleSingleUniqueValue(value);
@@ -43,7 +43,7 @@ void TimeseriesHistogram<T, CT, C>::addValue(
 
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValue(
-    TimeType now,
+    TimePoint now,
     const ValueType& value,
     int64_t times) {
   buckets_.getByValue(value).addValue(now, value, times);
@@ -52,7 +52,7 @@ void TimeseriesHistogram<T, CT, C>::addValue(
 
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::addValues(
-    TimeType now,
+    TimePoint now,
     const folly::Histogram<ValueType>& hist) {
   CHECK_EQ(hist.getMin(), getMin());
   CHECK_EQ(hist.getMax(), getMax());
@@ -99,8 +99,8 @@ T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(double pct, int level)
 template <typename T, typename CT, typename C>
 T TimeseriesHistogram<T, CT, C>::getPercentileEstimate(
     double pct,
-    TimeType start,
-    TimeType end) const {
+    TimePoint start,
+    TimePoint end) const {
   if (singleUniqueValue_) {
     return firstValue_;
   }
@@ -119,8 +119,8 @@ int TimeseriesHistogram<T, CT, C>::getPercentileBucketIdx(double pct, int level)
 template <typename T, typename CT, typename C>
 int TimeseriesHistogram<T, CT, C>::getPercentileBucketIdx(
     double pct,
-    TimeType start,
-    TimeType end) const {
+    TimePoint start,
+    TimePoint end) const {
   return buckets_.getPercentileBucketIdx(pct / 100.0,
                                          CountFromInterval(start, end));
 }
@@ -133,7 +133,7 @@ void TimeseriesHistogram<T, CT, C>::clear() {
 }
 
 template <typename T, typename CT, typename C>
-void TimeseriesHistogram<T, CT, C>::update(TimeType now) {
+void TimeseriesHistogram<T, CT, C>::update(TimePoint now) {
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
     buckets_.getByIndex(i).update(now);
   }
@@ -158,8 +158,8 @@ std::string TimeseriesHistogram<T, CT, C>::getString(int level) const {
 
 template <typename T, typename CT, typename C>
 std::string TimeseriesHistogram<T, CT, C>::getString(
-    TimeType start,
-    TimeType end) const {
+    TimePoint start,
+    TimePoint end) const {
   std::string result;
 
   for (size_t i = 0; i < buckets_.getNumBuckets(); i++) {
@@ -191,8 +191,8 @@ template <class T, class CT, class C>
 void TimeseriesHistogram<T, CT, C>::computeAvgData(
     ValueType* total,
     int64_t* nsamples,
-    TimeType start,
-    TimeType end) const {
+    TimePoint start,
+    TimePoint end) const {
   for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(start);
     *total += levelObj.sum(start, end);
@@ -203,7 +203,7 @@ void TimeseriesHistogram<T, CT, C>::computeAvgData(
 template <typename T, typename CT, typename C>
 void TimeseriesHistogram<T, CT, C>::computeRateData(
     ValueType* total,
-    TimeType* elapsed,
+    Duration* elapsed,
     int level) const {
   for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& levelObj = buckets_.getByIndex(b).getLevel(level);
@@ -215,9 +215,9 @@ void TimeseriesHistogram<T, CT, C>::computeRateData(
 template <class T, class CT, class C>
 void TimeseriesHistogram<T, CT, C>::computeRateData(
     ValueType* total,
-    TimeType* elapsed,
-    TimeType start,
-    TimeType end) const {
+    Duration* elapsed,
+    TimePoint start,
+    TimePoint end) const {
   for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
     const auto& level = buckets_.getByIndex(b).getLevel(start);
     *total += level.sum(start, end);

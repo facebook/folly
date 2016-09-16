@@ -65,10 +65,6 @@ class TimeseriesHistogram {
   using Clock = CT;
   using Duration = typename Clock::duration;
   using TimePoint = typename Clock::time_point;
-  // The legacy TimeType.  The older code used this instead of Duration and
-  // TimePoint.  This will eventually be removed as the code is transitioned to
-  // Duration and TimePoint.
-  using TimeType = typename Clock::duration;
 
   /*
    * Create a TimeSeries histogram and initialize the bucketing and levels.
@@ -128,7 +124,7 @@ class TimeseriesHistogram {
   }
 
   /* Total count of values added during the given interval (all buckets). */
-  int64_t count(TimeType start, TimeType end) const {
+  int64_t count(TimePoint start, TimePoint end) const {
     int64_t total = 0;
     for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).count(start, end);
@@ -146,7 +142,7 @@ class TimeseriesHistogram {
   }
 
   /* Total sum of values added during the given interval (all buckets). */
-  ValueType sum(TimeType start, TimeType end) const {
+  ValueType sum(TimePoint start, TimePoint end) const {
     ValueType total = ValueType();
     for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).sum(start, end);
@@ -165,7 +161,7 @@ class TimeseriesHistogram {
 
   /* Average of values added during the given interval (all buckets). */
   template <typename ReturnType = double>
-  ReturnType avg(TimeType start, TimeType end) const {
+  ReturnType avg(TimePoint start, TimePoint end) const {
     auto total = ValueType();
     int64_t nsamples = 0;
     computeAvgData(&total, &nsamples, start, end);
@@ -179,9 +175,9 @@ class TimeseriesHistogram {
   template <typename ReturnType = double>
   ReturnType rate(int level) const {
     auto total = ValueType();
-    TimeType elapsed(0);
+    Duration elapsed(0);
     computeRateData(&total, &elapsed, level);
-    return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
+    return folly::detail::rateHelper<ReturnType, Duration, Duration>(
         total, elapsed);
   }
 
@@ -190,11 +186,11 @@ class TimeseriesHistogram {
    * This is the sum of all values divided by the time interval (in seconds).
    */
   template <typename ReturnType = double>
-  ReturnType rate(TimeType start, TimeType end) const {
+  ReturnType rate(TimePoint start, TimePoint end) const {
     auto total = ValueType();
-    TimeType elapsed(0);
+    Duration elapsed(0);
     computeRateData(&total, &elapsed, start, end);
-    return folly::detail::rateHelper<ReturnType, TimeType, TimeType>(
+    return folly::detail::rateHelper<ReturnType, Duration, Duration>(
         total, elapsed);
   }
 
@@ -203,15 +199,15 @@ class TimeseriesHistogram {
    * must call this directly before querying to ensure that the data in all
    * buckets is decayed properly.
    */
-  void update(TimeType now);
+  void update(TimePoint now);
 
   /* clear all the data from the histogram. */
   void clear();
 
   /* Add a value into the histogram with timestamp 'now' */
-  void addValue(TimeType now, const ValueType& value);
+  void addValue(TimePoint now, const ValueType& value);
   /* Add a value the given number of times with timestamp 'now' */
-  void addValue(TimeType now, const ValueType& value, int64_t times);
+  void addValue(TimePoint now, const ValueType& value, int64_t times);
 
   /*
    * Add all of the values from the specified histogram.
@@ -223,7 +219,7 @@ class TimeseriesHistogram {
    * Histogram that is updated frequently, and only add it to the global
    * TimeseriesHistogram once a second.
    */
-  void addValues(TimeType now, const folly::Histogram<ValueType>& values);
+  void addValues(TimePoint now, const folly::Histogram<ValueType>& values);
 
   /*
    * Return an estimate of the value at the given percentile in the histogram
@@ -252,8 +248,8 @@ class TimeseriesHistogram {
    * getPercentileEstimate(int pct, int level) for the explanation of the
    * estimation algorithm.
    */
-  ValueType getPercentileEstimate(double pct, TimeType start, TimeType end)
-    const;
+  ValueType getPercentileEstimate(double pct, TimePoint start, TimePoint end)
+      const;
 
   /*
    * Return the bucket index that the given percentile falls into (in the
@@ -266,14 +262,14 @@ class TimeseriesHistogram {
    * given historical interval).  This index can then be used to retrieve either
    * the bucket threshold, or other data from inside the bucket.
    */
-  int getPercentileBucketIdx(double pct, TimeType start, TimeType end) const;
+  int getPercentileBucketIdx(double pct, TimePoint start, TimePoint end) const;
 
   /* Get the bucket threshold for the bucket containing the given pct. */
   int getPercentileBucketMin(double pct, int level) const {
     return getBucketMin(getPercentileBucketIdx(pct, level));
   }
   /* Get the bucket threshold for the bucket containing the given pct. */
-  int getPercentileBucketMin(double pct, TimeType start, TimeType end) const {
+  int getPercentileBucketMin(double pct, TimePoint start, TimePoint end) const {
     return getBucketMin(getPercentileBucketIdx(pct, start, end));
   }
 
@@ -288,7 +284,27 @@ class TimeseriesHistogram {
    * Print out serialized data for all buckets in the historical interval.
    * For format, please see getString(int level).
    */
-  std::string getString(TimeType start, TimeType end) const;
+  std::string getString(TimePoint start, TimePoint end) const;
+
+  /*
+   * Legacy APIs that accept a Duration parameters rather than TimePoint.
+   *
+   * These treat the Duration as relative to the clock epoch.
+   * Prefer using the correct TimePoint-based APIs instead.  These APIs will
+   * eventually be deprecated and removed.
+   */
+  void update(Duration now) {
+    update(TimePoint(now));
+  }
+  void addValue(Duration now, const ValueType& value) {
+    addValue(TimePoint(now), value);
+  }
+  void addValue(Duration now, const ValueType& value, int64_t times) {
+    addValue(TimePoint(now), value, times);
+  }
+  void addValues(Duration now, const folly::Histogram<ValueType>& values) {
+    addValues(TimePoint(now), values);
+  }
 
  private:
   typedef ContainerType Bucket;
@@ -303,17 +319,16 @@ class TimeseriesHistogram {
     int level_;
   };
   struct CountFromInterval {
-    explicit CountFromInterval(TimeType start, TimeType end)
-      : start_(start),
-        end_(end) {}
+    explicit CountFromInterval(TimePoint start, TimePoint end)
+        : start_(start), end_(end) {}
 
     uint64_t operator()(const ContainerType& bucket) const {
       return bucket.count(start_, end_);
     }
 
    private:
-    TimeType start_;
-    TimeType end_;
+    TimePoint start_;
+    TimePoint end_;
   };
 
   struct AvgFromLevel {
@@ -329,17 +344,16 @@ class TimeseriesHistogram {
 
   template <typename ReturnType>
   struct AvgFromInterval {
-    explicit AvgFromInterval(TimeType start, TimeType end)
-      : start_(start),
-        end_(end) {}
+    explicit AvgFromInterval(TimePoint start, TimePoint end)
+        : start_(start), end_(end) {}
 
     ReturnType operator()(const ContainerType& bucket) const {
       return bucket.template avg<ReturnType>(start_, end_);
     }
 
    private:
-    TimeType start_;
-    TimeType end_;
+    TimePoint start_;
+    TimePoint end_;
   };
 
   /*
@@ -354,14 +368,14 @@ class TimeseriesHistogram {
   void computeAvgData(
       ValueType* total,
       int64_t* nsamples,
-      TimeType start,
-      TimeType end) const;
-  void computeRateData(ValueType* total, TimeType* elapsed, int level) const;
+      TimePoint start,
+      TimePoint end) const;
+  void computeRateData(ValueType* total, Duration* elapsed, int level) const;
   void computeRateData(
       ValueType* total,
-      TimeType* elapsed,
-      TimeType start,
-      TimeType end) const;
+      Duration* elapsed,
+      TimePoint start,
+      TimePoint end) const;
 
   folly::detail::HistogramBuckets<ValueType, ContainerType> buckets_;
   bool haveNotSeenValue_;

@@ -53,11 +53,12 @@ avgHelper(ValueType sum, uint64_t count) {
  * Helper function to compute the rate per Interval,
  * given the specified count recorded over the elapsed time period.
  */
-template <typename ReturnType=double,
-          typename TimeType=std::chrono::seconds,
-          typename Interval=TimeType>
-ReturnType rateHelper(ReturnType count, TimeType elapsed) {
-  if (elapsed == TimeType(0)) {
+template <
+    typename ReturnType = double,
+    typename Duration = std::chrono::seconds,
+    typename Interval = Duration>
+ReturnType rateHelper(ReturnType count, Duration elapsed) {
+  if (elapsed == Duration(0)) {
     return 0;
   }
 
@@ -68,8 +69,9 @@ ReturnType rateHelper(ReturnType count, TimeType elapsed) {
   // is less than the desired interval, which will incorrectly result in
   // an infinite rate.
   typedef std::chrono::duration<
-      ReturnType, std::ratio<TimeType::period::den,
-                             TimeType::period::num>> NativeRate;
+      ReturnType,
+      std::ratio<Duration::period::den, Duration::period::num>>
+      NativeRate;
   typedef std::chrono::duration<
       ReturnType, std::ratio<Interval::period::den,
                              Interval::period::num>> DesiredRate;

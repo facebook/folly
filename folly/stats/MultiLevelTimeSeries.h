@@ -56,10 +56,6 @@ class MultiLevelTimeSeries {
   using Clock = CT;
   using Duration = typename Clock::duration;
   using TimePoint = typename Clock::time_point;
-  // The legacy TimeType.  The older code used this instead of Duration and
-  // TimePoint.  This will eventually be removed as the code is transitioned to
-  // Duration and TimePoint.
-  using TimeType = typename Clock::duration;
   using Level = folly::BucketedTimeSeries<ValueType, Clock>;
 
   /*
@@ -73,13 +69,14 @@ class MultiLevelTimeSeries {
    * be provided with a duration of '0' -- this will be an "all-time" level. If
    * an all-time level is provided, it MUST be the last level present.
    */
-  MultiLevelTimeSeries(size_t numBuckets,
-                       size_t numLevels,
-                       const TimeType levelDurations[]);
+  MultiLevelTimeSeries(
+      size_t numBuckets,
+      size_t numLevels,
+      const Duration levelDurations[]);
 
   MultiLevelTimeSeries(
       size_t numBuckets,
-      std::initializer_list<TimeType> durations);
+      std::initializer_list<Duration> durations);
 
   /*
    * Return the number of buckets used to track time series at each level.
@@ -115,7 +112,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  const Level& getLevel(TimeType start) const {
+  const Level& getLevel(TimePoint start) const {
     for (const auto& level : levels_) {
       if (level.isAllTime()) {
         return level;
@@ -130,7 +127,7 @@ class MultiLevelTimeSeries {
     }
     // We should always have an all-time level, so this is never reached.
     LOG(FATAL) << "No level of timeseries covers internval"
-               << " from " << start.count() << " to now";
+               << " from " << start.time_since_epoch().count() << " to now";
     return levels_.back();
   }
 
@@ -141,7 +138,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  const Level& getLevelByDuration(TimeType duration) const {
+  const Level& getLevelByDuration(Duration duration) const {
     // since the number of levels is expected to be small (less than 5 in most
     // cases), a simple linear scan would be efficient and is intentionally
     // chosen here over other alternatives for lookup.
@@ -189,7 +186,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
+  template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rate(int level) const {
     return getLevel(level).template rate<ReturnType, Interval>();
   }
@@ -212,7 +209,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType=double, typename Interval=TimeType>
+  template <typename ReturnType = double, typename Interval = Duration>
   ReturnType countRate(int level) const {
     return getLevel(level).template countRate<ReturnType, Interval>();
   }
@@ -227,7 +224,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  ValueType sum(TimeType duration) const {
+  ValueType sum(Duration duration) const {
     return getLevelByDuration(duration).sum();
   }
 
@@ -243,7 +240,7 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   template <typename ReturnType = double>
-  ReturnType avg(TimeType duration) const {
+  ReturnType avg(Duration duration) const {
     return getLevelByDuration(duration).template avg<ReturnType>();
   }
 
@@ -258,8 +255,8 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType = double, typename Interval = TimeType>
-  ReturnType rate(TimeType duration) const {
+  template <typename ReturnType = double, typename Interval = Duration>
+  ReturnType rate(Duration duration) const {
     return getLevelByDuration(duration).template rate<ReturnType, Interval>();
   }
 
@@ -273,7 +270,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  int64_t count(TimeType duration) const {
+  int64_t count(Duration duration) const {
     return getLevelByDuration(duration).count();
   }
 
@@ -287,8 +284,8 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType = double, typename Interval = TimeType>
-  ReturnType countRate(TimeType duration) const {
+  template <typename ReturnType = double, typename Interval = Duration>
+  ReturnType countRate(Duration duration) const {
     return getLevelByDuration(duration)
         .template countRate<ReturnType, Interval>();
   }
@@ -311,51 +308,51 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  ValueType sum(TimeType start, TimeType end) const {
+  ValueType sum(TimePoint start, TimePoint end) const {
     return getLevel(start).sum(start, end);
   }
 
   /*
    * Estimate the average value during the specified time period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    *
    * Note: you should generally call update() or flush() before accessing the
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType=double>
-  ReturnType avg(TimeType start, TimeType end) const {
+  template <typename ReturnType = double>
+  ReturnType avg(TimePoint start, TimePoint end) const {
     return getLevel(start).template avg<ReturnType>(start, end);
   }
 
   /*
    * Estimate the rate during the specified time period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    *
    * Note: you should generally call update() or flush() before accessing the
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType=double>
-  ReturnType rate(TimeType start, TimeType end) const {
+  template <typename ReturnType = double>
+  ReturnType rate(TimePoint start, TimePoint end) const {
     return getLevel(start).template rate<ReturnType>(start, end);
   }
 
   /*
    * Estimate the count during the specified time period.
    *
-   * The same caveats documented in the sum(TimeType start, TimeType end)
+   * The same caveats documented in the sum(TimePoint start, TimePoint end)
    * comments apply here as well.
    *
    * Note: you should generally call update() or flush() before accessing the
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  int64_t count(TimeType start, TimeType end) const {
+  int64_t count(TimePoint start, TimePoint end) const {
     return getLevel(start).count(start, end);
   }
 
@@ -372,18 +369,19 @@ class MultiLevelTimeSeries {
    * addValue() or update(), now will be ignored and the latest timestamp will
    * be used.
    */
-  void addValue(TimeType now, const ValueType& val);
+  void addValue(TimePoint now, const ValueType& val);
 
   /*
    * Adds the value 'val' at time 'now' to all levels.
    */
-  void addValue(TimeType now, const ValueType& val, int64_t times);
+  void addValue(TimePoint now, const ValueType& val, int64_t times);
 
   /*
-   * Adds the value 'val' at time 'now' to all levels as the sum of 'nsamples'
-   * samples.
+   * Adds the value 'total' at time 'now' to all levels as the sum of
+   * 'nsamples' samples.
    */
-  void addValueAggregated(TimeType now, const ValueType& sum, int64_t nsamples);
+  void
+  addValueAggregated(TimePoint now, const ValueType& total, int64_t nsamples);
 
   /*
    * Update all the levels to the specified time, doing all the necessary
@@ -393,7 +391,7 @@ class MultiLevelTimeSeries {
    * call update() before accessing the data. Otherwise you may be reading
    * stale data if update() has not been called recently.
    */
-  void update(TimeType now);
+  void update(TimePoint now);
 
   /*
    * Reset all the timeseries to an empty state as if no data points have ever
@@ -406,13 +404,34 @@ class MultiLevelTimeSeries {
    */
   void flush();
 
+  /*
+   * Legacy APIs that accept a Duration parameters rather than TimePoint.
+   *
+   * These treat the Duration as relative to the clock epoch.
+   * Prefer using the correct TimePoint-based APIs instead.  These APIs will
+   * eventually be deprecated and removed.
+   */
+  void update(Duration now) {
+    update(TimePoint(now));
+  }
+  void addValue(Duration now, const ValueType& value) {
+    addValue(TimePoint(now), value);
+  }
+  void addValue(Duration now, const ValueType& value, int64_t times) {
+    addValue(TimePoint(now), value, times);
+  }
+  void
+  addValueAggregated(Duration now, const ValueType& total, int64_t nsamples) {
+    addValueAggregated(TimePoint(now), total, nsamples);
+  }
+
  private:
   std::vector<Level> levels_;
 
   // Updates within the same time interval are cached
   // They are flushed out when updates from a different time comes,
   // or flush() is called.
-  TimeType cachedTime_;
+  TimePoint cachedTime_;
   ValueType cachedSum_;
   int cachedCount_;
 };
