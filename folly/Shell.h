@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 
@@ -35,17 +36,7 @@ namespace folly {
 /**
  * Quotes an argument to make it suitable for use as shell command arguments.
  */
-std::string shellQuote(StringPiece argument) {
-  std::string quoted = "'";
-  for (auto c : argument) {
-    if (c == '\'') {
-      quoted += "'\\''";
-    } else {
-      quoted += c;
-    }
-  }
-  return quoted + "'";
-}
+std::string shellQuote(StringPiece argument);
 
 /**
   * Create argument array for `Subprocess()` for a process running in a

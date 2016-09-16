@@ -468,6 +468,7 @@ libfolly_la_SOURCES = \
 	Random.cpp \
 	SafeAssert.cpp \
 	SharedMutex.cpp \
+	Shell.cpp \
 	MicroLock.cpp \
 	Singleton.cpp \
 	SocketAddress.cpp \
