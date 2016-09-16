@@ -181,11 +181,11 @@ struct ExpectedStorage {
   };
   Which which_;
 
-  template <class E = Error, class = decltype(E())>
-  constexpr ExpectedStorage() noexcept(noexcept(E()))
-      : error_(), which_(Which::eError) {}
+  template <class E = Error, class = decltype(E{})>
+  constexpr ExpectedStorage() noexcept(noexcept(E{}))
+      : error_{}, which_(Which::eError) {}
   explicit constexpr ExpectedStorage(EmptyTag) noexcept
-      : ch_(), which_(Which::eEmpty) {}
+      : ch_{}, which_(Which::eEmpty) {}
   template <class... Vs>
   explicit constexpr ExpectedStorage(ValueTag, Vs&&... vs) noexcept(
       noexcept(Value(static_cast<Vs&&>(vs)...)))
@@ -253,8 +253,8 @@ struct ExpectedUnion {
   };
   Which which_;
 
-  explicit constexpr ExpectedUnion(EmptyTag = {}) noexcept
-      : ch_(), which_(Which::eEmpty) {}
+  explicit constexpr ExpectedUnion(EmptyTag) noexcept
+      : ch_{}, which_(Which::eEmpty) {}
   template <class... Vs>
   explicit constexpr ExpectedUnion(ValueTag, Vs&&... vs) noexcept(
       noexcept(Value(static_cast<Vs&&>(vs)...)))
@@ -396,8 +396,8 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
   using value_type = Value;
   using error_type = Error;
   using Base = ExpectedUnion<Value, Error>;
-  template <class E = Error, class = decltype(E())>
-  constexpr ExpectedStorage() noexcept(noexcept(E())) : Base{ErrorTag{}} {}
+  template <class E = Error, class = decltype(E{})>
+  constexpr ExpectedStorage() noexcept(noexcept(E{})) : Base{ErrorTag{}} {}
   ExpectedStorage(const ExpectedStorage&) = default;
   ExpectedStorage(ExpectedStorage&&) = default;
   ExpectedStorage& operator=(const ExpectedStorage&) = default;
@@ -480,17 +480,17 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
   Value value_;
 
   constexpr ExpectedStorage() noexcept
-      : which_(Which::eError), error_(), value_() {}
+      : which_(Which::eError), error_{}, value_{} {}
   explicit constexpr ExpectedStorage(EmptyTag) noexcept
-      : which_(Which::eEmpty), error_(), value_() {}
+      : which_(Which::eEmpty), error_{}, value_{} {}
   template <class... Vs>
   explicit constexpr ExpectedStorage(ValueTag, Vs&&... vs) noexcept(
       noexcept(Value(static_cast<Vs&&>(vs)...)))
-      : which_(Which::eValue), error_(), value_(static_cast<Vs&&>(vs)...) {}
+      : which_(Which::eValue), error_{}, value_(static_cast<Vs&&>(vs)...) {}
   template <class... Es>
   explicit constexpr ExpectedStorage(ErrorTag, Es&&... es) noexcept(
       noexcept(Error(static_cast<Es&&>(es)...)))
-      : which_(Which::eError), error_(static_cast<Es&&>(es)...), value_() {}
+      : which_(Which::eError), error_(static_cast<Es&&>(es)...), value_{} {}
   void clear() noexcept {}
   constexpr static bool uninitializedByException() noexcept {
     return false;
@@ -661,7 +661,7 @@ class Unexpected final {
   class BadExpectedAccess : public folly::BadExpectedAccess {
    public:
     explicit BadExpectedAccess(Error err)
-        : folly::BadExpectedAccess(), error_(std::move(err)) {}
+        : folly::BadExpectedAccess{}, error_(std::move(err)) {}
     /**
      * The error code that was held by the Expected object when the user
      * erroneously requested the value.
@@ -892,7 +892,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * Constructors
    */
   template <class B = Base, class = decltype(B{})>
-  Expected() noexcept(noexcept(B{})) : Base() {}
+  Expected() noexcept(noexcept(B{})) : Base{} {}
   Expected(const Expected& that) = default;
   Expected(Expected&& that) = default;
 
@@ -1198,7 +1198,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * thenOrThrow
    */
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No()) const& -> decltype(
+  auto thenOrThrow(Yes&& yes, No&& no = No{}) const& -> decltype(
       std::declval<Yes>()(std::declval<const Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<const Value&>()));
     if (this->uninitializedByException())
@@ -1208,7 +1208,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No()) & -> decltype(
+  auto thenOrThrow(Yes&& yes, No&& no = No{}) & -> decltype(
       std::declval<Yes>()(std::declval<Value&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&>()));
     if (this->uninitializedByException())
@@ -1218,7 +1218,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   }
 
   template <class Yes, class No = MakeBadExpectedAccess>
-  auto thenOrThrow(Yes&& yes, No&& no = No()) && -> decltype(
+  auto thenOrThrow(Yes&& yes, No&& no = No{}) && -> decltype(
       std::declval<Yes>()(std::declval<Value&&>())) {
     using Ret = decltype(std::declval<Yes>()(std::declval<Value&&>()));
     if (this->uninitializedByException())
