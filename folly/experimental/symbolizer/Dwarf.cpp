@@ -21,7 +21,7 @@
 
 #if FOLLY_HAVE_LIBDWARF_DWARF_H
 # include <libdwarf/dwarf.h>
-#elif FOLLY_HAVE_DWARF_H
+#else
 # include <dwarf.h>
 #endif
 
