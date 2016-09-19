@@ -723,6 +723,10 @@ class SharedMutexImpl {
   // This is the starting location for Token-less unlock_shared().
   static FOLLY_SHAREDMUTEX_TLS uint32_t tls_lastTokenlessSlot;
 
+  // Last deferred reader slot used.
+  static FOLLY_SHAREDMUTEX_TLS uint32_t tls_lastDeferredReaderSlot;
+
+
   // Only indexes divisible by kDeferredSeparationFactor are used.
   // If any of those elements points to a SharedMutexImpl, then it
   // should be considered that there is a shared lock on that instance.
@@ -1348,6 +1352,15 @@ template <
     typename Tag_,
     template <typename> class Atom,
     bool BlockImmediately>
+FOLLY_SHAREDMUTEX_TLS uint32_t
+    SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
+        tls_lastDeferredReaderSlot = 0;
+
+template <
+    bool ReaderPriority,
+    typename Tag_,
+    template <typename> class Atom,
+    bool BlockImmediately>
 bool SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
     tryUnlockTokenlessSharedDeferred() {
   auto bestSlot = tls_lastTokenlessSlot;
@@ -1385,21 +1398,27 @@ bool SharedMutexImpl<ReaderPriority, Tag_, Atom, BlockImmediately>::
         (state & kHasS) >= (kNumSharedToStartDeferring - 1) * kIncrHasS;
     bool drainInProgress = ReaderPriority && (state & kBegunE) != 0;
     if (canAlreadyDefer || (aboveDeferThreshold && !drainInProgress)) {
-      // starting point for our empty-slot search, can change after
-      // calling waitForZeroBits
-      uint32_t bestSlot =
-          (uint32_t)folly::detail::AccessSpreader<Atom>::current(
-              kMaxDeferredReaders);
+      /* Try using the most recent slot first. */
+      slot = tls_lastDeferredReaderSlot;
+      slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
+      if (slotValue != 0) {
+        // starting point for our empty-slot search, can change after
+        // calling waitForZeroBits
+        uint32_t bestSlot =
+            (uint32_t)folly::detail::AccessSpreader<Atom>::current(
+                kMaxDeferredReaders);
 
-      // deferred readers are already enabled, or it is time to
-      // enable them if we can find a slot
-      for (uint32_t i = 0; i < kDeferredSearchDistance; ++i) {
-        slot = bestSlot ^ i;
-        assert(slot < kMaxDeferredReaders);
-        slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
-        if (slotValue == 0) {
-          // found empty slot
-          break;
+        // deferred readers are already enabled, or it is time to
+        // enable them if we can find a slot
+        for (uint32_t i = 0; i < kDeferredSearchDistance; ++i) {
+          slot = bestSlot ^ i;
+          assert(slot < kMaxDeferredReaders);
+          slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
+          if (slotValue == 0) {
+            // found empty slot
+            tls_lastDeferredReaderSlot = slot;
+            break;
+          }
         }
       }
     }
