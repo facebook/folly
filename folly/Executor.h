@@ -21,9 +21,11 @@
 #include <functional>
 #include <stdexcept>
 
+#include <folly/Function.h>
+
 namespace folly {
 
-typedef std::function<void()> Func;
+using Func = Function<void()>;
 
 /// An Executor accepts units of work with add(), which should be
 /// threadsafe.
