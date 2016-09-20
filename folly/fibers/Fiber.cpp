@@ -126,6 +126,11 @@ void Fiber::fiberFuncHelper(intptr_t fiber) {
 }
 
 void Fiber::fiberFunc() {
+#ifdef FOLLY_SANITIZE_ADDRESS
+  fiberManager_.registerFinishSwitchStackWithAsan(
+      nullptr, &asanMainStackBase_, &asanMainStackSize_);
+#endif
+
   while (true) {
     DCHECK_EQ(state_, NOT_STARTED);
 

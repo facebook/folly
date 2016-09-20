@@ -468,8 +468,14 @@ class FiberManager : public ::folly::Executor {
   // These methods notify ASAN when a fiber is entered/exited so that ASAN can
   // find the right stack extents when it needs to poison/unpoison the stack.
 
-  void registerFiberActivationWithAsan(Fiber* fiber);
-  void registerFiberDeactivationWithAsan(Fiber* fiber);
+  void registerStartSwitchStackWithAsan(
+      void** saveFakeStack,
+      const void* stackBase,
+      size_t stackSize);
+  void registerFinishSwitchStackWithAsan(
+      void* fakeStack,
+      const void** saveStackBase,
+      size_t* saveStackSize);
   void unpoisonFiberStack(const Fiber* fiber);
 
 #endif // FOLLY_SANITIZE_ADDRESS

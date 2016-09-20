@@ -33,18 +33,22 @@
 
 #include <dlfcn.h>
 
-static void __asan_enter_fiber_weak(
+static void __sanitizer_start_switch_fiber_weak(
+    void** fake_stack_save,
     void const* fiber_stack_base,
     size_t fiber_stack_extent)
-    __attribute__((__weakref__("__asan_enter_fiber")));
-static void __asan_exit_fiber_weak()
-    __attribute__((__weakref__("__asan_exit_fiber")));
+    __attribute__((__weakref__("__sanitizer_start_switch_fiber")));
+static void __sanitizer_finish_switch_fiber_weak(
+    void* fake_stack_save,
+    void const** old_stack_base,
+    size_t* old_stack_extent)
+    __attribute__((__weakref__("__sanitizer_finish_switch_fiber")));
 static void __asan_unpoison_memory_region_weak(
     void const /* nolint */ volatile* addr,
     size_t size) __attribute__((__weakref__("__asan_unpoison_memory_region")));
 
-typedef void (*AsanEnterFiberFuncPtr)(void const*, size_t);
-typedef void (*AsanExitFiberFuncPtr)();
+typedef void (*AsanStartSwitchStackFuncPtr)(void**, void const*, size_t);
+typedef void (*AsanFinishSwitchStackFuncPtr)(void*, void const**, size_t*);
 typedef void (*AsanUnpoisonMemoryRegionFuncPtr)(
     void const /* nolint */ volatile*,
     size_t);
@@ -52,8 +56,8 @@ typedef void (*AsanUnpoisonMemoryRegionFuncPtr)(
 namespace folly {
 namespace fibers {
 
-static AsanEnterFiberFuncPtr getEnterFiberFunc();
-static AsanExitFiberFuncPtr getExitFiberFunc();
+static AsanStartSwitchStackFuncPtr getStartSwitchStackFunc();
+static AsanFinishSwitchStackFuncPtr getFinishSwitchStackFunc();
 static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc();
 }
 }
@@ -187,30 +191,29 @@ void FiberManager::FibersPoolResizer::operator()() {
 
 #ifdef FOLLY_SANITIZE_ADDRESS
 
-void FiberManager::registerFiberActivationWithAsan(Fiber* fiber) {
-  auto context = &fiber->fcontext_;
-  void* top = context->stackBase();
-  void* bottom = context->stackLimit();
-  size_t extent = static_cast<char*>(top) - static_cast<char*>(bottom);
-
+void FiberManager::registerStartSwitchStackWithAsan(
+    void** saveFakeStack,
+    const void* stackBottom,
+    size_t stackSize) {
   // Check if we can find a fiber enter function and call it if we find one
-  static AsanEnterFiberFuncPtr fn = getEnterFiberFunc();
+  static AsanStartSwitchStackFuncPtr fn = getStartSwitchStackFunc();
   if (fn == nullptr) {
     LOG(FATAL) << "The version of ASAN in use doesn't support fibers";
   } else {
-    fn(bottom, extent);
+    fn(saveFakeStack, stackBottom, stackSize);
   }
 }
 
-void FiberManager::registerFiberDeactivationWithAsan(Fiber* fiber) {
-  (void)fiber; // currently unused
-
+void FiberManager::registerFinishSwitchStackWithAsan(
+    void* saveFakeStack,
+    const void** saveStackBottom,
+    size_t* saveStackSize) {
   // Check if we can find a fiber exit function and call it if we find one
-  static AsanExitFiberFuncPtr fn = getExitFiberFunc();
+  static AsanFinishSwitchStackFuncPtr fn = getFinishSwitchStackFunc();
   if (fn == nullptr) {
     LOG(FATAL) << "The version of ASAN in use doesn't support fibers";
   } else {
-    fn();
+    fn(saveFakeStack, saveStackBottom, saveStackSize);
   }
 }
 
@@ -226,17 +229,17 @@ void FiberManager::unpoisonFiberStack(const Fiber* fiber) {
   }
 }
 
-static AsanEnterFiberFuncPtr getEnterFiberFunc() {
-  AsanEnterFiberFuncPtr fn{nullptr};
+static AsanStartSwitchStackFuncPtr getStartSwitchStackFunc() {
+  AsanStartSwitchStackFuncPtr fn{nullptr};
 
   // Check whether weak reference points to statically linked enter function
-  if (nullptr != (fn = &::__asan_enter_fiber_weak)) {
+  if (nullptr != (fn = &::__sanitizer_start_switch_fiber_weak)) {
     return fn;
   }
 
   // Check whether we can find a dynamically linked enter function
-  if (nullptr !=
-      (fn = (AsanEnterFiberFuncPtr)dlsym(RTLD_DEFAULT, "__asan_enter_fiber"))) {
+  if (nullptr != (fn = (AsanStartSwitchStackFuncPtr)dlsym(
+                      RTLD_DEFAULT, "__sanitizer_start_switch_fiber"))) {
     return fn;
   }
 
@@ -244,17 +247,17 @@ static AsanEnterFiberFuncPtr getEnterFiberFunc() {
   return nullptr;
 }
 
-static AsanExitFiberFuncPtr getExitFiberFunc() {
-  AsanExitFiberFuncPtr fn{nullptr};
+static AsanFinishSwitchStackFuncPtr getFinishSwitchStackFunc() {
+  AsanFinishSwitchStackFuncPtr fn{nullptr};
 
   // Check whether weak reference points to statically linked exit function
-  if (nullptr != (fn = &::__asan_exit_fiber_weak)) {
+  if (nullptr != (fn = &::__sanitizer_finish_switch_fiber_weak)) {
     return fn;
   }
 
   // Check whether we can find a dynamically linked exit function
-  if (nullptr !=
-      (fn = (AsanExitFiberFuncPtr)dlsym(RTLD_DEFAULT, "__asan_exit_fiber"))) {
+  if (nullptr != (fn = (AsanFinishSwitchStackFuncPtr)dlsym(
+                      RTLD_DEFAULT, "__sanitizer_finish_switch_fiber"))) {
     return fn;
   }
 

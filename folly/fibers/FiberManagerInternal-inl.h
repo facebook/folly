@@ -62,7 +62,16 @@ inline intptr_t FiberManager::activateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, (Fiber*)nullptr);
 
 #ifdef FOLLY_SANITIZE_ADDRESS
-  registerFiberActivationWithAsan(fiber);
+  DCHECK(!fiber->asanMainStackBase_);
+  DCHECK(!fiber->asanMainStackSize_);
+  auto stack = fiber->getStack();
+  void* asanFakeStack;
+  registerStartSwitchStackWithAsan(&asanFakeStack, stack.first, stack.second);
+  SCOPE_EXIT {
+    registerFinishSwitchStackWithAsan(asanFakeStack, nullptr, nullptr);
+    fiber->asanMainStackBase_ = nullptr;
+    fiber->asanMainStackSize_ = 0;
+  };
 #endif
 
   activeFiber_ = fiber;
@@ -73,7 +82,21 @@ inline intptr_t FiberManager::deactivateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, fiber);
 
 #ifdef FOLLY_SANITIZE_ADDRESS
-  registerFiberDeactivationWithAsan(fiber);
+  DCHECK(fiber->asanMainStackBase_);
+  DCHECK(fiber->asanMainStackSize_);
+
+  // Release fake stack if fiber is completed
+  auto saveFakeStackPtr =
+      fiber->state_ == Fiber::INVALID ? nullptr : &fiber->asanFakeStack_;
+  registerStartSwitchStackWithAsan(
+      saveFakeStackPtr, fiber->asanMainStackBase_, fiber->asanMainStackSize_);
+  SCOPE_EXIT {
+    registerFinishSwitchStackWithAsan(
+        fiber->asanFakeStack_,
+        &fiber->asanMainStackBase_,
+        &fiber->asanMainStackSize_);
+    fiber->asanFakeStack_ = nullptr;
+  };
 #endif
 
   activeFiber_ = nullptr;
