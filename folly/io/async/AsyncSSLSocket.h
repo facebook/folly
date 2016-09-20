@@ -479,11 +479,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);
+    connectionTimeout_.attachEventBase(eventBase);
   }
 
   virtual void detachEventBase() override {
     AsyncSocket::detachEventBase();
     handshakeTimeout_.detachEventBase();
+    connectionTimeout_.detachEventBase();
   }
 
   virtual bool isDetachable() const override {
