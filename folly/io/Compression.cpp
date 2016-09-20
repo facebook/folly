@@ -983,55 +983,137 @@ ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
 }
 
 bool ZSTDCodec::doNeedsUncompressedLength() const {
-  return true;
+  return false;
+}
+
+void zstdThrowIfError(size_t rc) {
+  if (!ZSTD_isError(rc)) {
+    return;
+  }
+  throw std::runtime_error(
+      to<std::string>("ZSTD returned an error: ", ZSTD_getErrorName(rc)));
 }
 
 std::unique_ptr<IOBuf> ZSTDCodec::doCompress(const IOBuf* data) {
-  size_t rc;
-  size_t maxCompressedLength = ZSTD_compressBound(data->length());
-  auto out = IOBuf::createCombined(maxCompressedLength);
-
-  CHECK_EQ(out->length(), 0);
-
-  rc = ZSTD_compress(out->writableTail(),
-                     out->capacity(),
-                     data->data(),
-                     data->length(),
-                     level_);
-
-  if (ZSTD_isError(rc)) {
-    throw std::runtime_error(to<std::string>(
-          "ZSTD compression returned an error: ",
-          ZSTD_getErrorName(rc)));
+  // Support earlier versions of the codec (working with a single IOBuf,
+  // and using ZSTD_decompress which requires ZSTD frame to contain size,
+  // which isn't populated by streaming API).
+  if (!data->isChained()) {
+    auto out = IOBuf::createCombined(ZSTD_compressBound(data->length()));
+    const auto rc = ZSTD_compress(
+        out->writableData(),
+        out->capacity(),
+        data->data(),
+        data->length(),
+        level_);
+    zstdThrowIfError(rc);
+    out->append(rc);
+    return out;
   }
 
-  out->append(rc);
-  CHECK_EQ(out->length(), rc);
+  auto zcs = ZSTD_createCStream();
+  SCOPE_EXIT {
+    ZSTD_freeCStream(zcs);
+  };
 
-  return out;
+  auto rc = ZSTD_initCStream(zcs, level_);
+  zstdThrowIfError(rc);
+
+  Cursor cursor(data);
+  auto result = IOBuf::createCombined(ZSTD_compressBound(cursor.totalLength()));
+
+  ZSTD_outBuffer out;
+  out.dst = result->writableTail();
+  out.size = result->capacity();
+  out.pos = 0;
+
+  for (auto buffer = cursor.peekBytes(); !buffer.empty();) {
+    ZSTD_inBuffer in;
+    in.src = buffer.data();
+    in.size = buffer.size();
+    for (in.pos = 0; in.pos != in.size;) {
+      rc = ZSTD_compressStream(zcs, &out, &in);
+      zstdThrowIfError(rc);
+    }
+    cursor.skip(in.size);
+    buffer = cursor.peekBytes();
+  }
+
+  rc = ZSTD_endStream(zcs, &out);
+  zstdThrowIfError(rc);
+  CHECK_EQ(rc, 0);
+
+  result->append(out.pos);
+  return result;
 }
 
-std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(const IOBuf* data,
-                                               uint64_t uncompressedLength) {
-  size_t rc;
-  auto out = IOBuf::createCombined(uncompressedLength);
+std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(
+    const IOBuf* data,
+    uint64_t uncompressedLength) {
+  auto zds = ZSTD_createDStream();
+  SCOPE_EXIT {
+    ZSTD_freeDStream(zds);
+  };
 
-  CHECK_GE(out->capacity(), uncompressedLength);
-  CHECK_EQ(out->length(), 0);
+  auto rc = ZSTD_initDStream(zds);
+  zstdThrowIfError(rc);
 
-  rc = ZSTD_decompress(
-      out->writableTail(), out->capacity(), data->data(), data->length());
+  ZSTD_outBuffer out{};
+  ZSTD_inBuffer in{};
 
-  if (ZSTD_isError(rc)) {
-    throw std::runtime_error(to<std::string>(
-          "ZSTD decompression returned an error: ",
-          ZSTD_getErrorName(rc)));
+  auto outputSize = ZSTD_DStreamOutSize();
+  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH) {
+    outputSize = uncompressedLength;
+  } else {
+    auto decompressedSize =
+        ZSTD_getDecompressedSize(data->data(), data->length());
+    if (decompressedSize != 0 && decompressedSize < outputSize) {
+      outputSize = decompressedSize;
+    }
   }
 
-  out->append(rc);
-  CHECK_EQ(out->length(), rc);
+  IOBufQueue queue(IOBufQueue::cacheChainLength());
 
-  return out;
+  Cursor cursor(data);
+  for (rc = 0;;) {
+    if (in.pos == in.size) {
+      auto buffer = cursor.peekBytes();
+      in.src = buffer.data();
+      in.size = buffer.size();
+      in.pos = 0;
+      cursor.skip(in.size);
+      if (rc > 1 && in.size == 0) {
+        throw std::runtime_error(to<std::string>("ZSTD: incomplete input"));
+      }
+    }
+    if (out.pos == out.size) {
+      if (out.pos != 0) {
+        queue.postallocate(out.pos);
+      }
+      auto buffer = queue.preallocate(outputSize, outputSize);
+      out.dst = buffer.first;
+      out.size = buffer.second;
+      out.pos = 0;
+      outputSize = ZSTD_DStreamOutSize();
+    }
+    rc = ZSTD_decompressStream(zds, &out, &in);
+    zstdThrowIfError(rc);
+    if (rc == 0) {
+      break;
+    }
+  }
+  if (out.pos != 0) {
+    queue.postallocate(out.pos);
+  }
+  if (in.pos != in.size || !cursor.isAtEnd()) {
+    throw std::runtime_error("ZSTD: junk after end of data");
+  }
+  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
+      queue.chainLength() != uncompressedLength) {
+    throw std::runtime_error("ZSTD: invalid uncompressed length");
+  }
+
+  return queue.move();
 }
 
 #endif  // FOLLY_HAVE_LIBZSTD
