@@ -21,6 +21,7 @@
 
 FOLLY_NAMESPACE_STD_BEGIN
 
+#if !defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 3900
 void __throw_length_error(const char* msg) {
   throw std::length_error(msg);
 }
@@ -32,6 +33,7 @@ void __throw_logic_error(const char* msg) {
 void __throw_out_of_range(const char* msg) {
   throw std::out_of_range(msg);
 }
+#endif
 
 #ifdef _MSC_VER
 void __throw_bad_alloc() {
