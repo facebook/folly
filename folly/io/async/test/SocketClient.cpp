@@ -65,8 +65,9 @@ int main(int argc, char** argv) {
 
   sock.write((const uint8_t*)FLAGS_msg.data(), FLAGS_msg.size());
 
-  LOG(ERROR) << "TFO attempted: " << sockAddr->getTFOAttempted();
-  LOG(ERROR) << "TFO finished: " << sockAddr->getTFOFinished();
+  LOG(INFO) << "TFO attempted: " << sockAddr->getTFOAttempted();
+  LOG(INFO) << "TFO finished: " << sockAddr->getTFOFinished();
+  LOG(INFO) << "TFO success: " << sockAddr->getTFOSucceded();
 
   std::array<char, 1024> buf;
   int32_t bytesRead = 0;

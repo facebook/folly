@@ -431,6 +431,20 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return tfoFinished_;
   }
 
+  /**
+   * Returns whether or not TFO attempt succeded on this
+   * connection.
+   * For servers this is pretty straightforward API and can
+   * be invoked right after the connection is accepted. This API
+   * will perform one syscall.
+   * This API is a bit tricky to use for clients, since clients
+   * only know this for sure after the SYN-ACK is returned. So it's
+   * appropriate to call this only after the first application
+   * data is read from the socket when the caller knows that
+   * the SYN has been ACKed by the server.
+   */
+  bool getTFOSucceded() const;
+
   // Methods controlling socket options
 
   /**

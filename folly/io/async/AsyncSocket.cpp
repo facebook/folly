@@ -1147,6 +1147,10 @@ void AsyncSocket::getPeerAddress(folly::SocketAddress* address) const {
   *address = addr_;
 }
 
+bool AsyncSocket::getTFOSucceded() const {
+  return detail::tfo_succeeded(fd_);
+}
+
 int AsyncSocket::setNoDelay(bool noDelay) {
   if (fd_ < 0) {
     VLOG(4) << "AsyncSocket::setNoDelay() called on non-open socket "

@@ -2465,6 +2465,7 @@ TEST(AsyncSocketTest, ConnectTFO) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
 }
 
 TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
@@ -2514,6 +2515,7 @@ TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
 }
 
 /**
@@ -2543,10 +2545,9 @@ TEST(AsyncSocketTest, ConnectRefusedTFO) {
 
   if (!socket->getTFOFinished()) {
     EXPECT_EQ(STATE_FAILED, write1.state);
-    EXPECT_FALSE(socket->getTFOFinished());
   } else {
     EXPECT_EQ(STATE_SUCCEEDED, write1.state);
-    EXPECT_TRUE(socket->getTFOFinished());
+    EXPECT_FALSE(socket->getTFOSucceded());
   }
 
   EXPECT_EQ(STATE_FAILED, write2.state);
@@ -2668,6 +2669,7 @@ TEST(AsyncSocketTest, TestTFOUnsupported) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
 }
 
 TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {
@@ -2874,6 +2876,7 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
   ASSERT_EQ(1, rcb.buffers.size());
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
+  EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
 }
 
 #endif
