@@ -17,7 +17,7 @@
 /*
  * AtomicHashMap --
  *
- * A high performance concurrent hash map with int32 or int64 keys. Supports
+ * A high-performance concurrent hash map with int32 or int64 keys. Supports
  * insert, find(key), findAt(index), erase(key), size, and more.  Memory cannot
  * be freed or reclaimed by erase.  Can grow to a maximum of about 18 times the
  * initial capacity, but performance degrades linearly with growth. Can also be
@@ -25,7 +25,7 @@
  * internal storage (retrieved with iterator::getIndex()).
  *
  * Advantages:
- *    - High performance (~2-4x tbb::concurrent_hash_map in heavily
+ *    - High-performance (~2-4x tbb::concurrent_hash_map in heavily
  *      multi-threaded environments).
  *    - Efficient memory usage if initial capacity is not over estimated
  *      (especially for small keys and values).
@@ -56,7 +56,7 @@
  *   faster because of reduced data indirection.
  *
  *   AHMap is a wrapper around AHArray sub-maps that allows growth and provides
- *   an interface closer to the stl UnorderedAssociativeContainer concept. These
+ *   an interface closer to the STL UnorderedAssociativeContainer concept. These
  *   sub-maps are allocated on the fly and are processed in series, so the more
  *   there are (from growing past initial capacity), the worse the performance.
  *

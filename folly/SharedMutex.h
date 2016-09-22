@@ -204,11 +204,11 @@
 //
 // If you have observed by profiling that your SharedMutex-s are getting
 // cache misses on deferredReaders[] due to another SharedMutex user, then
-// you can use the tag type plus the RWDEFERREDLOCK_DECLARE_STATIC_STORAGE
-// macro to create your own instantiation of the type.  The contention
-// threshold (see kNumSharedToStartDeferring) should make this unnecessary
-// in all but the most extreme cases.  Make sure to check that the
-// increased icache and dcache footprint of the tagged result is worth it.
+// you can use the tag type to create your own instantiation of the type.
+// The contention threshold (see kNumSharedToStartDeferring) should make
+// this unnecessary in all but the most extreme cases.  Make sure to check
+// that the increased icache and dcache footprint of the tagged result is
+// worth it.
 
 // SharedMutex's use of thread local storage is as an optimization, so
 // for the case where thread local storage is not supported, define it
