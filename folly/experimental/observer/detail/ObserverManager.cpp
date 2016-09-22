@@ -17,6 +17,7 @@
 
 #include <folly/MPMCQueue.h>
 #include <folly/Singleton.h>
+#include <folly/portability/GFlags.h>
 
 namespace folly {
 namespace observer_detail {
