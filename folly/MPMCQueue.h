@@ -696,9 +696,15 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     delete[] slots_;
   }
 
-  /// Returns the number of successful reads minus the number of successful
-  /// writes.  Waiting blockingRead and blockingWrite calls are included,
-  /// so this value can be negative.
+  /// Returns the number of writes (including threads that are blocked waiting
+  /// to write) minus the number of reads (including threads that are blocked
+  /// waiting to read). So effectively, it becomes:
+  /// elements in queue + pending(calls to write) - pending(calls to read).
+  /// If nothing is pending, then the method returns the actual number of
+  /// elements in the queue.
+  /// The returned value can be negative if there are no writers and the queue
+  /// is empty, but there is one reader that is blocked waiting to read (in
+  /// which case, the returned size will be -1).
   ssize_t size() const noexcept {
     // since both pushes and pops increase monotonically, we can get a
     // consistent snapshot either by bracketing a read of popTicket_ with
@@ -737,7 +743,11 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   }
 
   /// Returns is a guess at size() for contexts that don't need a precise
-  /// value, such as stats.
+  /// value, such as stats. More specifically, it returns the number of writes
+  /// minus the number of reads, but after reading the number of writes, more
+  /// writers could have came before the number of reads was sampled,
+  /// and this method doesn't protect against such case.
+  /// The returned value can be negative.
   ssize_t sizeGuess() const noexcept {
     return writeCount() - readCount();
   }
