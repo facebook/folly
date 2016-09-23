@@ -32,7 +32,13 @@ namespace folly {
  */
 class CpuId {
  public:
-  CpuId() {
+  // Always inline in order for this to be usable from a __ifunc__.
+  // In shared library mde, a __ifunc__ runs at relocation time, while the
+  // PLT hasn't been fully populated yet; thus, ifuncs cannot use symbols
+  // with potentially external linkage. (This issue is less likely in opt
+  // mode since inlining happens more likely, and it doesn't happen for
+  // statically linked binaries which don't depend on the PLT)
+  FOLLY_ALWAYS_INLINE CpuId() {
 #ifdef _MSC_VER
     int reg[4];
     __cpuid(static_cast<int*>(reg), 0);
@@ -91,9 +97,12 @@ class CpuId {
 #endif
   }
 
-#define X(name, r, bit) bool name() const { return (r) & (1U << bit); }
+#define X(name, r, bit)                   \
+  FOLLY_ALWAYS_INLINE bool name() const { \
+    return (r) & (1U << bit);             \
+  }
 
-  // cpuid(1): Processor Info and Feature Bits.
+// cpuid(1): Processor Info and Feature Bits.
 #define C(name, bit) X(name, f1c_, bit)
   C(sse3, 0)
   C(pclmuldq, 1)
