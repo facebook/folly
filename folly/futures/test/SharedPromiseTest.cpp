@@ -125,3 +125,33 @@ TEST(SharedPromise, interruptHandler) {
   f.cancel();
   EXPECT_TRUE(flag);
 }
+
+TEST(SharedPromise, splitFutureSuccess) {
+  Promise<int> p;
+  SharedPromise<int> sp(p.getFuture());
+  auto f1 = sp.getFuture();
+  EXPECT_FALSE(f1.isReady());
+  p.setValue(1);
+  EXPECT_TRUE(f1.isReady());
+  EXPECT_TRUE(f1.hasValue());
+  auto f2 = sp.getFuture();
+  EXPECT_TRUE(f2.isReady());
+  EXPECT_TRUE(f2.hasValue());
+}
+
+TEST(SharedPromise, splitFutureFailure) {
+  Promise<int> p;
+  SharedPromise<int> sp(p.getFuture());
+  auto f1 = sp.getFuture();
+  EXPECT_FALSE(f1.isReady());
+  try {
+    throw std::runtime_error("Oops");
+  } catch (...) {
+    p.setException(exception_wrapper(std::current_exception()));
+  }
+  EXPECT_TRUE(f1.isReady());
+  EXPECT_TRUE(f1.hasException());
+  auto f2 = sp.getFuture();
+  EXPECT_TRUE(f2.isReady());
+  EXPECT_TRUE(f2.hasException());
+}

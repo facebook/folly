@@ -47,6 +47,13 @@ public:
   SharedPromise& operator=(SharedPromise<T>&&) noexcept;
 
   /**
+   * Provide a way to split a Future<T>. Note that while the Futures from
+   * `getFuture()' depend on the completion of the parameter Future they do not
+   * inherit any other properties such as Executor's passed to `via' etc.
+   */
+  explicit SharedPromise(Future<T>);
+
+  /**
    * Return a Future tied to the shared core state. Unlike Promise::getFuture,
    * this can be called an unlimited number of times per SharedPromise.
    */
