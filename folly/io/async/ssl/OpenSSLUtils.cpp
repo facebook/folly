@@ -16,14 +16,13 @@
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>
-
+#include <glog/logging.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
-
-#include <glog/logging.h>
+#include <unordered_map>
 
 #define OPENSSL_IS_101 (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
                          OPENSSL_VERSION_NUMBER < 0x1000200fL)
@@ -145,6 +144,57 @@ bool OpenSSLUtils::validatePeerCertNames(X509* cert,
 
   LOG(WARNING) << "Unable to match client cert against alt name ip";
   return false;
+}
+
+static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
+  std::unordered_map<uint16_t, std::string> ret;
+  SSL_CTX* ctx = nullptr;
+  SSL* ssl = nullptr;
+
+  const SSL_METHOD* meth = SSLv23_server_method();
+  OpenSSL_add_ssl_algorithms();
+
+  if ((ctx = SSL_CTX_new(meth)) == nullptr) {
+    return ret;
+  }
+  SCOPE_EXIT {
+    SSL_CTX_free(ctx);
+  };
+
+  if ((ssl = SSL_new(ctx)) == nullptr) {
+    return ret;
+  }
+  SCOPE_EXIT {
+    SSL_free(ssl);
+  };
+
+  STACK_OF(SSL_CIPHER)* sk = SSL_get_ciphers(ssl);
+  for (size_t i = 0; i < (size_t)sk_SSL_CIPHER_num(sk); i++) {
+    SSL_CIPHER* c;
+
+    c = sk_SSL_CIPHER_value(sk, i);
+    unsigned long id = SSL_CIPHER_get_id(c);
+    // OpenSSL 1.0.2 and prior does weird things such as stuff the SSL/TLS
+    // version into the top 16 bits. Let's ignore those for now. This is
+    // BoringSSL compatible (their id can be cast as uint16_t)
+    uint16_t cipherCode = id & 0xffffL;
+    ret[cipherCode] = SSL_CIPHER_get_name(c);
+  }
+  return ret;
+}
+
+const std::string& OpenSSLUtils::getCipherName(uint16_t cipherCode) {
+  // Having this in a hash map saves the binary search inside OpenSSL
+  static std::unordered_map<uint16_t, std::string> cipherCodeToName(
+      getOpenSSLCipherNames());
+
+  const auto& iter = cipherCodeToName.find(cipherCode);
+  if (iter != cipherCodeToName.end()) {
+    return iter->second;
+  } else {
+    static std::string empty("");
+    return empty;
+  }
 }
 
 bool OpenSSLUtils::setCustomBioReadMethod(

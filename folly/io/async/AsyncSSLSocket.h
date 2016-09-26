@@ -547,129 +547,33 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   void getSSLClientCiphers(
       std::string& clientCiphers,
-      bool convertToString = true) const {
-    std::stringstream ciphersStream;
-    std::string cipherName;
-
-    if (parseClientHello_ == false
-        || clientHelloInfo_->clientHelloCipherSuites_.empty()) {
-      clientCiphers = "";
-      return;
-    }
-
-    for (auto originalCipherCode : clientHelloInfo_->clientHelloCipherSuites_)
-    {
-      const SSL_CIPHER* cipher = nullptr;
-      if (convertToString) {
-        // OpenSSL expects code as a big endian char array
-        auto cipherCode = htons(originalCipherCode);
-
-#if defined(SSL_OP_NO_TLSv1_2)
-        cipher =
-            TLSv1_2_method()->get_cipher_by_char((unsigned char*)&cipherCode);
-#elif defined(SSL_OP_NO_TLSv1_1)
-        cipher =
-            TLSv1_1_method()->get_cipher_by_char((unsigned char*)&cipherCode);
-#elif defined(SSL_OP_NO_TLSv1)
-        cipher =
-            TLSv1_method()->get_cipher_by_char((unsigned char*)&cipherCode);
-#else
-        cipher =
-            SSLv3_method()->get_cipher_by_char((unsigned char*)&cipherCode);
-#endif
-      }
-
-      if (cipher == nullptr) {
-        ciphersStream << std::setfill('0') << std::setw(4) << std::hex
-                      << originalCipherCode << ":";
-      } else {
-        ciphersStream << SSL_CIPHER_get_name(cipher) << ":";
-      }
-    }
-
-    clientCiphers = ciphersStream.str();
-    clientCiphers.erase(clientCiphers.end() - 1);
-  }
+      bool convertToString = true) const;
 
   /**
    * Get the list of compression methods sent by the client in TLS Hello.
    */
-  std::string getSSLClientComprMethods() const {
-    if (!parseClientHello_) {
-      return "";
-    }
-    return folly::join(":", clientHelloInfo_->clientHelloCompressionMethods_);
-  }
+  std::string getSSLClientComprMethods() const;
 
   /**
    * Get the list of TLS extensions sent by the client in the TLS Hello.
    */
-  std::string getSSLClientExts() const {
-    if (!parseClientHello_) {
-      return "";
-    }
-    return folly::join(":", clientHelloInfo_->clientHelloExtensions_);
-  }
+  std::string getSSLClientExts() const;
 
-  std::string getSSLClientSigAlgs() const {
-    if (!parseClientHello_) {
-      return "";
-    }
+  std::string getSSLClientSigAlgs() const;
 
-    std::string sigAlgs;
-    sigAlgs.reserve(clientHelloInfo_->clientHelloSigAlgs_.size() * 4);
-    for (size_t i = 0; i < clientHelloInfo_->clientHelloSigAlgs_.size(); i++) {
-      if (i) {
-        sigAlgs.push_back(':');
-      }
-      sigAlgs.append(folly::to<std::string>(
-          clientHelloInfo_->clientHelloSigAlgs_[i].first));
-      sigAlgs.push_back(',');
-      sigAlgs.append(folly::to<std::string>(
-          clientHelloInfo_->clientHelloSigAlgs_[i].second));
-    }
-
-    return sigAlgs;
-  }
-
-  std::string getSSLAlertsReceived() const {
-    std::string ret;
-
-    for (const auto& alert : alertsReceived_) {
-      if (!ret.empty()) {
-        ret.append(",");
-      }
-      ret.append(folly::to<std::string>(alert.first, ": ", alert.second));
-    }
-
-    return ret;
-  }
+  std::string getSSLAlertsReceived() const;
 
   /**
    * Get the list of shared ciphers between the server and the client.
    * Works well for only SSLv2, not so good for SSLv3 or TLSv1.
    */
-  void getSSLSharedCiphers(std::string& sharedCiphers) const {
-    char ciphersBuffer[1024];
-    ciphersBuffer[0] = '\0';
-    SSL_get_shared_ciphers(ssl_, ciphersBuffer, sizeof(ciphersBuffer) - 1);
-    sharedCiphers = ciphersBuffer;
-  }
+  void getSSLSharedCiphers(std::string& sharedCiphers) const;
 
   /**
    * Get the list of ciphers supported by the server in the server's
    * preference order.
    */
-  void getSSLServerCiphers(std::string& serverCiphers) const {
-    serverCiphers = SSL_get_cipher_list(ssl_, 0);
-    int i = 1;
-    const char *cipher;
-    while ((cipher = SSL_get_cipher_list(ssl_, i)) != nullptr) {
-      serverCiphers.append(":");
-      serverCiphers.append(cipher);
-      i++;
-    }
-  }
+  void getSSLServerCiphers(std::string& serverCiphers) const;
 
   static int getSSLExDataIndex();
   static AsyncSSLSocket* getFromSSL(const SSL *ssl);

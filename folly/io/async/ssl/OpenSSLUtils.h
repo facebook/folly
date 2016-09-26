@@ -82,6 +82,16 @@ class OpenSSLUtils {
                                              socklen_t* addrLen);
 
   /**
+   * Get a stringified cipher name (e.g., ECDHE-ECDSA-CHACHA20-POLY1305) given
+   * the 2-byte code (e.g., 0xcca9) for the cipher. The name conversion only
+   * works for the ciphers built into the linked OpenSSL library
+   *
+   * @param cipherCode      A 16-bit IANA cipher code (machine endianness)
+   * @return Cipher name, or empty if the code is not found
+   */
+  static const std::string& getCipherName(uint16_t cipherCode);
+
+  /**
   * Wrappers for BIO operations that may be different across different
   * versions/flavors of OpenSSL (including forks like BoringSSL)
   */

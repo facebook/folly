@@ -1008,14 +1008,14 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  serverCtx->ciphers("RSA:!SHA:!NULL:!SHA256@STRENGTH");
+  serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
   serverCtx->loadPrivateKey(testKey);
   serverCtx->loadCertificate(testCert);
   serverCtx->loadTrustedCertificates(testCA);
   serverCtx->loadClientCAList(testCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  clientCtx->ciphers("RC4-SHA:AES128-SHA:AES256-SHA:RC4-MD5");
+  clientCtx->ciphers("AES256-SHA:RC4-MD5");
   clientCtx->loadPrivateKey(testKey);
   clientCtx->loadCertificate(testCert);
   clientCtx->loadTrustedCertificates(testCA);
@@ -1033,8 +1033,8 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
 
   eventBase.loop();
 
-  EXPECT_EQ(server.clientCiphers_,
-            "RC4-SHA:AES128-SHA:AES256-SHA:RC4-MD5:00ff");
+  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:RC4-MD5:00ff");
+  EXPECT_EQ(server.chosenCipher_, "AES256-SHA");
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
   EXPECT_TRUE(!client.handshakeError_);
@@ -1693,6 +1693,16 @@ TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
             std::string::npos);
   EXPECT_NE(handshakeCallback.errorString_.find("unknown protocol"),
             std::string::npos);
+}
+
+TEST(AsyncSSLSocketTest, TestSSLCipherCodeToNameMap) {
+  using folly::ssl::OpenSSLUtils;
+  EXPECT_EQ(
+      OpenSSLUtils::getCipherName(0xc02c), "ECDHE-ECDSA-AES256-GCM-SHA384");
+  // TLS_DHE_RSA_WITH_DES_CBC_SHA - We shouldn't be building with this
+  EXPECT_EQ(OpenSSLUtils::getCipherName(0x0015), "");
+  // This indicates TLS_EMPTY_RENEGOTIATION_INFO_SCSV, no name expected
+  EXPECT_EQ(OpenSSLUtils::getCipherName(0x00ff), "");
 }
 
 #if FOLLY_ALLOW_TFO

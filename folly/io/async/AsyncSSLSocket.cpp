@@ -1739,4 +1739,114 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
   sock->resetClientHelloParsing(ssl);
 }
 
+void AsyncSSLSocket::getSSLClientCiphers(
+    std::string& clientCiphers,
+    bool convertToString) const {
+  std::string ciphers;
+
+  if (parseClientHello_ == false
+      || clientHelloInfo_->clientHelloCipherSuites_.empty()) {
+    clientCiphers = "";
+    return;
+  }
+
+  bool first = true;
+  for (auto originalCipherCode : clientHelloInfo_->clientHelloCipherSuites_)
+  {
+    if (first) {
+      first = false;
+    } else {
+      ciphers +=  ":";
+    }
+
+    bool nameFound = convertToString;
+
+    if (convertToString) {
+      const auto& name = OpenSSLUtils::getCipherName(originalCipherCode);
+      if (name.empty()) {
+        nameFound = false;
+      } else {
+        ciphers += name;
+      }
+    }
+
+    if (!nameFound) {
+      folly::hexlify(
+          std::array<uint8_t, 2>{{
+              static_cast<uint8_t>((originalCipherCode >> 8) & 0xffL),
+              static_cast<uint8_t>(originalCipherCode & 0x00ffL) }},
+          ciphers,
+          /* append to ciphers = */ true);
+    }
+  }
+
+  clientCiphers = std::move(ciphers);
+}
+
+std::string AsyncSSLSocket::getSSLClientComprMethods() const {
+  if (!parseClientHello_) {
+    return "";
+  }
+  return folly::join(":", clientHelloInfo_->clientHelloCompressionMethods_);
+}
+
+std::string AsyncSSLSocket::getSSLClientExts() const {
+  if (!parseClientHello_) {
+    return "";
+  }
+  return folly::join(":", clientHelloInfo_->clientHelloExtensions_);
+}
+
+std::string AsyncSSLSocket::getSSLClientSigAlgs() const {
+  if (!parseClientHello_) {
+    return "";
+  }
+
+  std::string sigAlgs;
+  sigAlgs.reserve(clientHelloInfo_->clientHelloSigAlgs_.size() * 4);
+  for (size_t i = 0; i < clientHelloInfo_->clientHelloSigAlgs_.size(); i++) {
+    if (i) {
+      sigAlgs.push_back(':');
+    }
+    sigAlgs.append(folly::to<std::string>(
+        clientHelloInfo_->clientHelloSigAlgs_[i].first));
+    sigAlgs.push_back(',');
+    sigAlgs.append(folly::to<std::string>(
+        clientHelloInfo_->clientHelloSigAlgs_[i].second));
+  }
+
+  return sigAlgs;
+}
+
+std::string AsyncSSLSocket::getSSLAlertsReceived() const {
+  std::string ret;
+
+  for (const auto& alert : alertsReceived_) {
+    if (!ret.empty()) {
+      ret.append(",");
+    }
+    ret.append(folly::to<std::string>(alert.first, ": ", alert.second));
+  }
+
+  return ret;
+}
+
+void AsyncSSLSocket::getSSLSharedCiphers(std::string& sharedCiphers) const {
+  char ciphersBuffer[1024];
+  ciphersBuffer[0] = '\0';
+  SSL_get_shared_ciphers(ssl_, ciphersBuffer, sizeof(ciphersBuffer) - 1);
+  sharedCiphers = ciphersBuffer;
+}
+
+void AsyncSSLSocket::getSSLServerCiphers(std::string& serverCiphers) const {
+  serverCiphers = SSL_get_cipher_list(ssl_, 0);
+  int i = 1;
+  const char *cipher;
+  while ((cipher = SSL_get_cipher_list(ssl_, i)) != nullptr) {
+    serverCiphers.append(":");
+    serverCiphers.append(cipher);
+    i++;
+  }
+}
+
 } // namespace
