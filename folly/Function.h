@@ -250,8 +250,7 @@ using IsSmall = std::integral_constant<
     bool,
     (sizeof(FunT) <= sizeof(Data::tiny) &&
      // Same as is_nothrow_move_constructible, but w/ no template instantiation.
-     noexcept(FunT(std::declval<FunT&&>()))
-     )>;
+     noexcept(FunT(std::declval<FunT&&>())))>;
 using SmallTag = std::true_type;
 using HeapTag = std::false_type;
 
@@ -388,6 +387,19 @@ bool execBig(Op o, Data* src, Data* dst) {
       break;
   }
   return true;
+}
+
+// Invoke helper
+template <typename F, typename... Args>
+inline auto invoke(F&& f, Args&&... args)
+    -> decltype(std::forward<F>(f)(std::forward<Args>(args)...)) {
+  return std::forward<F>(f)(std::forward<Args>(args)...);
+}
+
+template <typename M, typename C, typename... Args>
+inline auto invoke(M(C::*d), Args&&... args)
+    -> decltype(std::mem_fn(d)(std::forward<Args>(args)...)) {
+  return std::mem_fn(d)(std::forward<Args>(args)...);
 }
 
 } // namespace function
@@ -675,4 +687,80 @@ Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...) const>&& that) noexcept {
   return std::move(that);
 }
+
+/**
+ * @class FunctionRef
+ *
+ * @brief A reference wrapper for callable objects
+ *
+ * FunctionRef is similar to std::reference_wrapper, but the template parameter
+ * is the function signature type rather than the type of the referenced object.
+ * A folly::FunctionRef is cheap to construct as it contains only a pointer to
+ * the referenced callable and a pointer to a function which invokes the
+ * callable.
+ *
+ * The user of FunctionRef must be aware of the reference semantics: storing a
+ * copy of a FunctionRef is potentially dangerous and should be avoided unless
+ * the referenced object definitely outlives the FunctionRef object. Thus any
+ * function that accepts a FunctionRef parameter should only use it to invoke
+ * the referenced function and not store a copy of it. Knowing that FunctionRef
+ * itself has reference semantics, it is generally okay to use it to reference
+ * lambdas that capture by reference.
+ */
+
+template <typename FunctionType>
+class FunctionRef;
+
+template <typename ReturnType, typename... Args>
+class FunctionRef<ReturnType(Args...)> final {
+  using Call = ReturnType (*)(void*, Args&&...);
+
+  void* object_{nullptr};
+  Call call_{&FunctionRef::uninitCall};
+
+  static ReturnType uninitCall(void*, Args&&...) {
+    throw std::bad_function_call();
+  }
+
+  template <typename Fun>
+  static ReturnType call(void* object, Args&&... args) {
+    return static_cast<ReturnType>(detail::function::invoke(
+        *static_cast<Fun*>(object), static_cast<Args&&>(args)...));
+  }
+
+ public:
+  /**
+   * Default constructor. Constructs an empty FunctionRef.
+   *
+   * Invoking it will throw std::bad_function_call.
+   */
+  FunctionRef() = default;
+
+  /**
+   * Construct a FunctionRef from a reference to a callable object.
+   */
+  template <typename Fun>
+  /* implicit */ FunctionRef(Fun&& fun) noexcept {
+    using ReferencedType = typename std::remove_reference<Fun>::type;
+
+    static_assert(
+        std::is_convertible<
+            typename std::result_of<ReferencedType&(Args && ...)>::type,
+            ReturnType>::value,
+        "FunctionRef cannot be constructed from object with "
+        "incompatible function signature");
+
+    // `Fun` may be a const type, in which case we have to do a const_cast
+    // to store the address in a `void*`. This is safe because the `void*`
+    // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
+    // is a const type) inside `FunctionRef::call`
+    object_ = const_cast<void*>(static_cast<void const*>(std::addressof(fun)));
+    call_ = &FunctionRef::call<ReferencedType>;
+  }
+
+  ReturnType operator()(Args... args) const {
+    return call_(object_, static_cast<Args&&>(args)...);
+  }
+};
+
 } // namespace folly

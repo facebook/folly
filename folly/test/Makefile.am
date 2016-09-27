@@ -288,7 +288,9 @@ futures_test_SOURCES = \
 futures_test_LDADD = libfollytestmain.la
 TESTS += futures_test
 
-function_test_SOURCES = FunctionTest.cpp
+function_test_SOURCES = \
+		FunctionRefTest.cpp \
+		FunctionTest.cpp
 function_test_LDADD = libfollytestmain.la
 TESTS += function_test
 
