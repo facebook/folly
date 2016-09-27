@@ -171,7 +171,7 @@ static_assert(
       [folly_cv_prog_cc_int128traits=no])
     ])
   if test "$folly_cv_prog_cc_int128traits" = "no"; then
-    AC_DEFINE([FOLLY_SUPPLY_MISSING_INT128_TRAITS], [1], [Define if we need the standard integer traits defined for the type `__int128'.])
+    AC_DEFINE([SUPPLY_MISSING_INT128_TRAITS], [1], [Define if we need the standard integer traits defined for the type `__int128'.])
   fi
 fi
 
