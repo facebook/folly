@@ -15,15 +15,16 @@
  */
 #pragma once
 
-namespace folly {
-namespace hazptr {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// Disclaimer: This is intended only as a partial stand-in for
 /// std::pmr::memory_resource (C++17) as needed for developing a
 /// hazptr prototype.
 ////////////////////////////////////////////////////////////////////////////////
+#include <cstddef>
 #include <memory>
+
+namespace folly {
+namespace hazptr {
 
 class memory_resource {
  public:
