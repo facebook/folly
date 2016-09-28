@@ -465,6 +465,30 @@ public:
     e_ -= n;
   }
 
+  Range subpiece(size_type first, size_type length = npos) const {
+    if (UNLIKELY(first > size())) {
+      throw std::out_of_range("index out of range");
+    }
+
+    return Range(b_ + first, std::min(length, size() - first));
+  }
+
+  // unchecked versions
+  void uncheckedAdvance(size_type n) {
+    DCHECK_LE(n, size());
+    b_ += n;
+  }
+
+  void uncheckedSubtract(size_type n) {
+    DCHECK_LE(n, size());
+    e_ -= n;
+  }
+
+  Range uncheckedSubpiece(size_type first, size_type length = npos) const {
+    DCHECK_LE(first, size());
+    return Range(b_ + first, std::min(length, size() - first));
+  }
+
   void pop_front() {
     assert(b_ < e_);
     ++b_;
@@ -473,14 +497,6 @@ public:
   void pop_back() {
     assert(b_ < e_);
     --e_;
-  }
-
-  Range subpiece(size_type first, size_type length = npos) const {
-    if (UNLIKELY(first > size())) {
-      throw std::out_of_range("index out of range");
-    }
-
-    return Range(b_ + first, std::min(length, size() - first));
   }
 
   // string work-alike functions
