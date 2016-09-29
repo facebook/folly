@@ -22,6 +22,7 @@
 #include <folly/FBString.h>
 #include <folly/Portability.h>
 #include <folly/SpookyHashV2.h>
+#include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
 
@@ -145,11 +146,6 @@ struct IsCharPointer<const char*> {
   typedef int type;
 };
 
-// Prevent it from being inlined to reduce instruction bloat.
-FOLLY_NOINLINE inline void throwOutOfRange() {
-  throw std::out_of_range("index out of range");
-}
-
 } // namespace detail
 
 /**
@@ -222,7 +218,7 @@ public:
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const std::string& str, std::string::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
@@ -233,7 +229,7 @@ public:
         std::string::size_type startFrom,
         std::string::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     b_ = str.data() + startFrom;
     if (str.size() - startFrom < size) {
@@ -256,7 +252,7 @@ public:
   template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
   Range(const fbstring& str, fbstring::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     b_ = str.data() + startFrom;
     e_ = str.data() + str.size();
@@ -266,7 +262,7 @@ public:
   Range(const fbstring& str, fbstring::size_type startFrom,
         fbstring::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     b_ = str.data() + startFrom;
     if (str.size() - startFrom < size) {
@@ -431,12 +427,12 @@ public:
   }
 
   value_type& at(size_t i) {
-    if (i >= size()) detail::throwOutOfRange();
+    if (i >= size()) std::__throw_out_of_range("index out of range");
     return b_[i];
   }
 
   const value_type& at(size_t i) const {
-    if (i >= size()) detail::throwOutOfRange();
+    if (i >= size()) std::__throw_out_of_range("index out of range");
     return b_[i];
   }
 
@@ -458,21 +454,21 @@ public:
 
   void advance(size_type n) {
     if (UNLIKELY(n > size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     b_ += n;
   }
 
   void subtract(size_type n) {
     if (UNLIKELY(n > size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
     e_ -= n;
   }
 
   Range subpiece(size_type first, size_type length = npos) const {
     if (UNLIKELY(first > size())) {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
 
     return Range(b_ + first, std::min(length, size() - first));
@@ -633,7 +629,7 @@ public:
     } else if (e == e_) {
       e_ = b;
     } else {
-      detail::throwOutOfRange();
+      std::__throw_out_of_range("index out of range");
     }
   }
 
