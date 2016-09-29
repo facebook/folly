@@ -1870,7 +1870,15 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
   auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
   auto totalWritten = writeResult.writeReturn;
   if (totalWritten < 0) {
-    if (!writeResult.exception && errno == EAGAIN) {
+    bool tryAgain = (errno == EAGAIN);
+#ifdef __APPLE__
+    // Apple has a bug where doing a second write on a socket which we
+    // have opened with TFO causes an ENOTCONN to be thrown. However the
+    // socket is really connected, so treat ENOTCONN as a EAGAIN until
+    // this bug is fixed.
+    tryAgain |= (errno == ENOTCONN);
+#endif
+    if (!writeResult.exception && tryAgain) {
       // TCP buffer is full; we can't write any more data right now.
       *countWritten = 0;
       *partialWritten = 0;
