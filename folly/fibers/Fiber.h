@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <cstdlib>
 #include <functional>
 #include <thread>
 #include <typeinfo>
