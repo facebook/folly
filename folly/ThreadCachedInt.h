@@ -137,8 +137,8 @@ class ThreadCachedInt : boost::noncopyable {
     mutable uint32_t numUpdates_;
     std::atomic<bool> reset_;
 
-    explicit IntCache(ThreadCachedInt& parent)
-        : parent_(&parent), val_(0), numUpdates_(0), reset_(false) {}
+    constexpr explicit IntCache(ThreadCachedInt& parent) noexcept
+        : parent_{&parent}, val_{0}, numUpdates_{0}, reset_{false} {}
 
     void increment(IntT inc) {
       if (LIKELY(!reset_.load(std::memory_order_acquire))) {
