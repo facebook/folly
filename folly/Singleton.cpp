@@ -234,7 +234,7 @@ void SingletonVault::reenableInstances() {
 void SingletonVault::scheduleDestroyInstances() {
   // Add a dependency on folly::ThreadLocal to make sure all its static
   // singletons are initalized first.
-  threadlocal_detail::StaticMeta<void>::instance();
+  threadlocal_detail::StaticMeta<void, void>::instance();
 
   class SingletonVaultDestructor {
    public:
