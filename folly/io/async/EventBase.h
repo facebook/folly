@@ -507,10 +507,13 @@ class EventBase : private boost::noncopyable,
 
   class SmoothLoopTime {
    public:
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
     explicit SmoothLoopTime(uint64_t timeInterval)
-      : expCoeff_(-1.0/timeInterval)
-      , value_(0.0)
-      , oldBusyLeftover_(0) {
+      : expCoeff_{-1.0/timeInterval}
+      , value_{0.0}
+      , oldBusyLeftover_{0} {
       VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
     }
 
