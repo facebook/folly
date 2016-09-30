@@ -550,13 +550,20 @@ AC_ARG_ENABLE([follytestmain],
    [follytestmain=${enableval}], [follytestmain=no])
 
 use_follytestmain=yes
+# libdwarf used to install in /usr/include, now installs in /usr/include/libdwarf.
+AC_SEARCH_LIBS([dwarf_init], [dwarf])
+AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
+# Check whether we have both the library and the header
+have_libdwarf=no
+AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_libdwarf_dwarf_h}" = xyes], [have_libdwarf=yes])
+AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
 if test "x${follytestmain}" = "xyes"; then
-   AC_CHECK_HEADERS([libdwarf.h dwarf.h],, AC_MSG_ERROR([Please install libdwarf development package]))
-   AC_CHECK_HEADERS([libelf.h elf.h],, AC_MSG_ERROR([Please install libelf development package]))
-   AC_CHECK_HEADERS([libunwind.h],, AC_MSG_ERROR([Please install libinwind development package]))
+   AS_IF([test "x${have_libdwarf}" = xno], [AC_MSG_ERROR([Please install libdwarf development library and headers])])
+   AC_CHECK_HEADERS([elf.h],, AC_MSG_ERROR([Please install libelf development package]))
+   AC_CHECK_HEADERS([libunwind.h],, AC_MSG_ERROR([Please install libunwind development package]))
 else
-   AC_CHECK_HEADERS([libdwarf.h dwarf.h],, [use_follytestmain=no])
-   AC_CHECK_HEADERS([libelf.h elf.h],, [use_follytestmain=no])
+   AS_IF([test "x${have_libdwarf}" = xno],, [use_follytestmain=no])
+   AC_CHECK_HEADERS([elf.h],, [use_follytestmain=no])
    AC_CHECK_HEADERS([libunwind.h],, [use_follytestmain=no])
 fi
 

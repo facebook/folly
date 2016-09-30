@@ -19,7 +19,11 @@
 
 #include <type_traits>
 
+#if FOLLY_HAVE_LIBDWARF_DWARF_H
+#include <libdwarf/dwarf.h>
+#else
 #include <dwarf.h>
+#endif
 
 namespace folly {
 namespace symbolizer {
