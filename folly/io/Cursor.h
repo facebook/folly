@@ -24,12 +24,13 @@
 #include <memory>
 
 #include <folly/Bits.h>
-#include <folly/io/IOBuf.h>
-#include <folly/io/IOBufQueue.h>
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/io/IOBuf.h>
+#include <folly/io/IOBufQueue.h>
+#include <folly/portability/BitsFunctexcept.h>
 
 /**
  * Cursor class for fast iteration over IOBuf chains.
@@ -326,13 +327,13 @@ class CursorBase {
 
   void clone(std::unique_ptr<folly::IOBuf>& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
   void clone(folly::IOBuf& buf, size_t len) {
     if (UNLIKELY(cloneAtMost(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
@@ -400,13 +401,13 @@ class CursorBase {
       }
 
       if (otherBuf == other.buffer_) {
-        throw std::out_of_range("wrap-around");
+        std::__throw_out_of_range("wrap-around");
       }
 
       len += offset_;
     } else {
       if (offset_ < other.offset_) {
-        throw std::out_of_range("underflow");
+        std::__throw_out_of_range("underflow");
       }
 
       len += offset_ - other.offset_;
@@ -426,7 +427,7 @@ class CursorBase {
       len += curBuf->length();
       curBuf = curBuf->next();
       if (curBuf == buf || curBuf == buffer_) {
-        throw std::out_of_range("wrap-around");
+        std::__throw_out_of_range("wrap-around");
       }
     }
 
@@ -468,7 +469,7 @@ class CursorBase {
     for (size_t available; (available = length()) < len; ) {
       str->append(reinterpret_cast<const char*>(data()), available);
       if (UNLIKELY(!tryAdvanceBuffer())) {
-        throw std::out_of_range("string underflow");
+        std::__throw_out_of_range("string underflow");
       }
       len -= available;
     }
@@ -497,7 +498,7 @@ class CursorBase {
 
   void pullSlow(void* buf, size_t len) {
     if (UNLIKELY(pullAtMostSlow(buf, len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
@@ -517,7 +518,7 @@ class CursorBase {
 
   void skipSlow(size_t len) {
     if (UNLIKELY(skipAtMostSlow(len) != len)) {
-      throw std::out_of_range("underflow");
+      std::__throw_out_of_range("underflow");
     }
   }
 
@@ -567,13 +568,13 @@ class Writable {
   void push(const uint8_t* buf, size_t len) {
     Derived* d = static_cast<Derived*>(this);
     if (d->pushAtMost(buf, len) != len) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
   void push(ByteRange buf) {
     if (this->pushAtMost(buf) != buf.size()) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
@@ -589,7 +590,7 @@ class Writable {
    */
   void push(Cursor cursor, size_t len) {
     if (this->pushAtMost(cursor, len) != len) {
-      throw std::out_of_range("overflow");
+      std::__throw_out_of_range("overflow");
     }
   }
 
@@ -783,7 +784,7 @@ class Appender : public detail::Writable<Appender> {
     // Waste the rest of the current buffer and allocate a new one.
     // Don't make it too small, either.
     if (growth_ == 0) {
-      throw std::out_of_range("can't grow buffer chain");
+      std::__throw_out_of_range("can't grow buffer chain");
     }
 
     n = std::max(n, growth_);

@@ -60,7 +60,7 @@ std::string CursorBase<Derived, BufType>::readTerminatedString(
   auto result = readWhile(keepReading);
   // skip over the terminator character
   if (isAtEnd()) {
-    throw std::out_of_range("terminator not found");
+    std::__throw_out_of_range("terminator not found");
   }
   skip(1);
 
