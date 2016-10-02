@@ -57,7 +57,8 @@ namespace detail {
  * resolution of this clock will be very coarse, which will cause the
  * benchmarks to fail.
  */
-enum Clock { DEFAULT_CLOCK_ID = CLOCK_REALTIME };
+using Clock = clockid_t;
+static constexpr Clock DEFAULT_CLOCK_ID = CLOCK_REALTIME;
 
 typedef std::pair<uint64_t, unsigned int> TimeIterPair;
 
