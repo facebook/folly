@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include <folly/Function.h>
 #include <folly/Partial.h>
 
 #include <folly/portability/GTest.h>
@@ -131,4 +132,16 @@ TEST(Partial, MoveOnly) {
   EXPECT_FALSE(six);
 
   EXPECT_EQ(560, *result);
+}
+
+TEST(Partial, WrapInStdFunction) {
+  auto p1 = partial(&add3, 2);
+  std::function<int(int, int)> func = p1;
+  EXPECT_EQ(234, func(3, 4));
+}
+
+TEST(Partial, WrapInFollyFunction) {
+  auto p1 = partial(&add3, 2);
+  folly::Function<int(int, int)> func = p1;
+  EXPECT_EQ(234, func(3, 4));
 }
