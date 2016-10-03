@@ -428,13 +428,12 @@ public:
 
   const Char * c_str() const {
     auto const c = category();
-    if (c == Category::isSmall) {
-      FBSTRING_ASSERT(small_[smallSize()] == '\0');
-      return small_;
-    }
-    FBSTRING_ASSERT(c == Category::isMedium || c == Category::isLarge);
-    FBSTRING_ASSERT(ml_.data_[ml_.size_] == '\0');
-    return ml_.data_;
+    FBSTRING_ASSERT(
+      (c == Category::isSmall && small_[smallSize()] == '\0') ||
+      ((c == Category::isMedium || c == Category::isLarge) && ml_.data_[ml_.size_] == '\0')
+    );
+    Char const *const ptrs[] = {small_, ml_.data_};
+    return ptrs[c != Category::isSmall];
   }
 
   void shrink(const size_t delta) {
@@ -475,7 +474,12 @@ public:
   }
 
   size_t size() const {
-    return category() == Category::isSmall ? smallSize() : ml_.size_;
+    auto const c = category();
+    constexpr auto shift = kIsLittleEndian ? 0 : 2;
+    auto smallShifted = static_cast<size_t>(small_[maxSmallSize]) >> shift;
+    FBSTRING_ASSERT(c != Category::isSmall || static_cast<size_t>(maxSmallSize) >= smallShifted);
+    size_t const sizes[] = {static_cast<size_t>(maxSmallSize) - smallShifted, ml_.size_};
+    return sizes[c != Category::isSmall];
   }
 
   size_t capacity() const {
