@@ -516,6 +516,7 @@ nobase_follyinclude_HEADERS += \
 	fibers/AddTasks-inl.h \
 	fibers/Baton.h \
 	fibers/Baton-inl.h \
+	fibers/BatchDispatcher.h \
 	fibers/BoostContextCompatibility.h \
 	fibers/EventBaseLoopController.h \
 	fibers/EventBaseLoopController-inl.h \

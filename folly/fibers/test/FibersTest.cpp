@@ -20,7 +20,9 @@
 #include <folly/Memory.h>
 #include <folly/futures/Future.h>
 
+#include <folly/Conv.h>
 #include <folly/fibers/AddTasks.h>
+#include <folly/fibers/BatchDispatcher.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
@@ -1593,6 +1595,137 @@ TEST(FiberManager, semaphore) {
   EXPECT_LT(counterB, kNumTokens);
   EXPECT_GE(counterA, 0);
   EXPECT_GE(counterB, 0);
+}
+
+template <typename ExecutorT>
+void singleBatchDispatch(ExecutorT& executor, int batchSize, int index) {
+  thread_local BatchDispatcher<int, std::string, ExecutorT> batchDispatcher(
+      executor, [=](std::vector<int>&& batch) {
+        EXPECT_EQ(batchSize, batch.size());
+        std::vector<std::string> results;
+        for (auto& it : batch) {
+          results.push_back(folly::to<std::string>(it));
+        }
+        return results;
+      });
+
+  auto indexCopy = index;
+  auto result = batchDispatcher.add(std::move(indexCopy));
+  EXPECT_EQ(folly::to<std::string>(index), result.get());
+}
+
+TEST(FiberManager, batchDispatchTest) {
+  folly::EventBase evb;
+  auto& executor = getFiberManager(evb);
+
+  // Launch multiple fibers with a single id.
+  executor.add([&]() {
+    int batchSize = 10;
+    for (int i = 0; i < batchSize; i++) {
+      executor.add(
+          [=, &executor]() { singleBatchDispatch(executor, batchSize, i); });
+    }
+  });
+  evb.loop();
+
+  // Reuse the same BatchDispatcher to batch once again.
+  executor.add([&]() {
+    int batchSize = 10;
+    for (int i = 0; i < batchSize; i++) {
+      executor.add(
+          [=, &executor]() { singleBatchDispatch(executor, batchSize, i); });
+    }
+  });
+  evb.loop();
+}
+
+template <typename ExecutorT>
+folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
+    ExecutorT& executor,
+    int totalNumberOfElements,
+    std::vector<int> input) {
+  thread_local BatchDispatcher<
+      std::vector<int>,
+      std::vector<std::string>,
+      ExecutorT>
+  batchDispatcher(executor, [=](std::vector<std::vector<int>>&& batch) {
+    std::vector<std::vector<std::string>> results;
+    int numberOfElements = 0;
+    for (auto& unit : batch) {
+      numberOfElements += unit.size();
+      std::vector<std::string> result;
+      for (auto& element : unit) {
+        result.push_back(folly::to<std::string>(element));
+      }
+      results.push_back(std::move(result));
+    }
+    EXPECT_EQ(totalNumberOfElements, numberOfElements);
+    return results;
+  });
+
+  return batchDispatcher.add(std::move(input));
+}
+
+/**
+ * Batch values in groups of 5, and then call inner dispatch.
+ */
+template <typename ExecutorT>
+void doubleBatchOuterDispatch(
+    ExecutorT& executor,
+    int totalNumberOfElements,
+    int index) {
+  thread_local BatchDispatcher<int, std::string, ExecutorT>
+  batchDispatcher(executor, [=, &executor](std::vector<int>&& batch) {
+    EXPECT_EQ(totalNumberOfElements, batch.size());
+    std::vector<std::string> results;
+    std::vector<folly::Future<std::vector<std::string>>>
+        innerDispatchResultFutures;
+
+    std::vector<int> group;
+    for (auto unit : batch) {
+      group.push_back(unit);
+      if (group.size() == 5) {
+        auto localGroup = group;
+        group.clear();
+
+        innerDispatchResultFutures.push_back(doubleBatchInnerDispatch(
+            executor, totalNumberOfElements, localGroup));
+      }
+    }
+
+    folly::collectAll(
+        innerDispatchResultFutures.begin(), innerDispatchResultFutures.end())
+        .then([&](
+            std::vector<Try<std::vector<std::string>>> innerDispatchResults) {
+          for (auto& unit : innerDispatchResults) {
+            for (auto& element : unit.value()) {
+              results.push_back(element);
+            }
+          }
+        })
+        .get();
+    return results;
+  });
+
+  auto indexCopy = index;
+  auto result = batchDispatcher.add(std::move(indexCopy));
+  EXPECT_EQ(folly::to<std::string>(index), result.get());
+}
+
+TEST(FiberManager, doubleBatchDispatchTest) {
+  folly::EventBase evb;
+  auto& executor = getFiberManager(evb);
+
+  // Launch multiple fibers with a single id.
+  executor.add([&]() {
+    int totalNumberOfElements = 20;
+    for (int i = 0; i < totalNumberOfElements; i++) {
+      executor.add([=, &executor]() {
+        doubleBatchOuterDispatch(executor, totalNumberOfElements, i);
+      });
+    }
+  });
+  evb.loop();
 }
 
 /**
