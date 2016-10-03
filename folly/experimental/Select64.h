@@ -18,13 +18,14 @@
 
 #include <glog/logging.h>
 
+#include <folly/Portability.h>
 #include <folly/experimental/Instructions.h>
 
 namespace folly {
 
 namespace detail {
 extern const uint8_t kSelectInByte[2048];
-}
+} // namespace detail
 
 /**
  * Returns the position of the k-th 1 in the 64-bit word x.
@@ -62,12 +63,11 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   return place + detail::kSelectInByte[((x >> place) & 0xFF) | (byteRank << 8)];
 }
 
+#if FOLLY_INSTRUCTIONS_SUPPORTED
+
 template <>
-FOLLY_TARGET_ATTRIBUTE("bmi,bmi2")
-inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
-                                                             uint64_t k) {
-#if defined(__GNUC__) && !defined(__clang__) && !__GNUC_PREREQ(4, 9)
-  // GCC 4.8 doesn't support the intrinsics.
+FOLLY_ALWAYS_INLINE uint64_t
+select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
   uint64_t result = uint64_t(1) << k;
 
   asm("pdep %1, %0, %0\n\t"
@@ -76,9 +76,8 @@ inline uint64_t select64<compression::instructions::Haswell>(uint64_t x,
       : "r"(x));
 
   return result;
-#else
-  return _tzcnt_u64(_pdep_u64(1ULL << k, x));
-#endif
 }
+
+#endif // FOLLY_INSTRUCTIONS_SUPPORTED
 
 } // namespace folly
