@@ -426,15 +426,11 @@ public:
     fbstring_detail::assume_unreachable();
   }
 
-  const Char * c_str() const {
-    auto const c = category();
-    if (c == Category::isSmall) {
-      FBSTRING_ASSERT(small_[smallSize()] == '\0');
-      return small_;
-    }
-    FBSTRING_ASSERT(c == Category::isMedium || c == Category::isLarge);
-    FBSTRING_ASSERT(ml_.data_[ml_.size_] == '\0');
-    return ml_.data_;
+  const Char* c_str() const {
+    const Char* ptr = ml_.data_;
+    // With this syntax, GCC and Clang generate a CMOV instead of a branch.
+    ptr = (category() == Category::isSmall) ? small_ : ptr;
+    return ptr;
   }
 
   void shrink(const size_t delta) {
@@ -475,7 +471,19 @@ public:
   }
 
   size_t size() const {
-    return category() == Category::isSmall ? smallSize() : ml_.size_;
+    size_t ret = ml_.size_;
+    /* static */ if (kIsLittleEndian) {
+      // We can save a couple instructions, because the category is
+      // small iff the last char, as unsigned, is <= maxSmallSize.
+      typedef typename std::make_unsigned<Char>::type UChar;
+      auto maybeSmallSize = size_t(maxSmallSize) -
+          size_t(static_cast<UChar>(small_[maxSmallSize]));
+      // With this syntax, GCC and Clang generate a CMOV instead of a branch.
+      ret = (static_cast<ssize_t>(maybeSmallSize) >= 0) ? maybeSmallSize : ret;
+    } else {
+      ret = (category() == Category::isSmall) ? smallSize() : ret;
+    }
+    return ret;
   }
 
   size_t capacity() const {
@@ -502,14 +510,8 @@ private:
   // Disabled
   fbstring_core & operator=(const fbstring_core & rhs);
 
-  // Equivalent to setSmallSize(0) but a few ns faster in
-  // microbenchmarks.
   void reset() {
-    ml_.capacity_ = kIsLittleEndian
-      ? maxSmallSize << (8 * (sizeof(size_t) - sizeof(Char)))
-      : maxSmallSize << 2;
-    small_[0] = '\0';
-    FBSTRING_ASSERT(category() == Category::isSmall && size() == 0);
+    setSmallSize(0);
   }
 
   struct RefCounted {
@@ -579,22 +581,17 @@ private:
     }
   };
 
-  typedef std::conditional<sizeof(size_t) == 4, uint32_t, uint64_t>::type
-          category_type;
+  typedef uint8_t category_type;
 
   enum class Category : category_type {
     isSmall = 0,
-    isMedium = kIsLittleEndian
-      ? sizeof(size_t) == 4 ? 0x80000000 : 0x8000000000000000
-      : 0x2,
-    isLarge =  kIsLittleEndian
-      ? sizeof(size_t) == 4 ? 0x40000000 : 0x4000000000000000
-      : 0x1,
+    isMedium = kIsLittleEndian ? 0x80 : 0x2,
+    isLarge = kIsLittleEndian ? 0x40 : 0x1,
   };
 
   Category category() const {
     // works for both big-endian and little-endian
-    return static_cast<Category>(ml_.capacity_ & categoryExtractMask);
+    return static_cast<Category>(bytes_[lastChar] & categoryExtractMask);
   }
 
   struct MediumLarge {
@@ -609,29 +606,27 @@ private:
     }
 
     void setCapacity(size_t cap, Category cat) {
-        capacity_ = kIsLittleEndian
-          ? cap | static_cast<category_type>(cat)
-          : (cap << 2) | static_cast<category_type>(cat);
+      capacity_ = kIsLittleEndian
+          ? cap | (static_cast<size_t>(cat) << kCategoryShift)
+          : (cap << 2) | static_cast<size_t>(cat);
     }
   };
 
   union {
+    uint8_t bytes_[sizeof(MediumLarge)]; // For accessing the last byte.
     Char small_[sizeof(MediumLarge) / sizeof(Char)];
     MediumLarge ml_;
   };
 
-  enum : size_t {
-    lastChar = sizeof(MediumLarge) - 1,
-    maxSmallSize = lastChar / sizeof(Char),
-    maxMediumSize = 254 / sizeof(Char),            // coincides with the small
-                                                   // bin size in dlmalloc
-    categoryExtractMask = kIsLittleEndian
-      ? sizeof(size_t) == 4 ? 0xC0000000 : size_t(0xC000000000000000)
-      : 0x3,
-    capacityExtractMask = kIsLittleEndian
-      ? ~categoryExtractMask
-      : 0x0 /*unused*/,
-  };
+  constexpr static size_t lastChar = sizeof(MediumLarge) - 1;
+  constexpr static size_t maxSmallSize = lastChar / sizeof(Char);
+  constexpr static size_t maxMediumSize = 254 / sizeof(Char);
+  constexpr static uint8_t categoryExtractMask = kIsLittleEndian ? 0xC0 : 0x3;
+  constexpr static size_t kCategoryShift = (sizeof(size_t) - 1) * 8;
+  constexpr static size_t capacityExtractMask = kIsLittleEndian
+      ? ~(size_t(categoryExtractMask) << kCategoryShift)
+      : 0x0 /* unused */;
+
   static_assert(!(sizeof(MediumLarge) % sizeof(Char)),
                 "Corrupt memory layout for fbstring.");
 
