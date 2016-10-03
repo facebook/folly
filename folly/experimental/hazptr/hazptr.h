@@ -146,8 +146,9 @@ template <typename T> class hazptr_owner {
   /* Clear the hazard pointer */
   void clear() const noexcept;
 
+  void swap(hazptr_owner&) noexcept;
+
  private:
-  friend void swap<T>(hazptr_owner&, hazptr_owner&) noexcept;
 
   hazptr_domain* domain_;
   hazptr_rec* hazptr_;

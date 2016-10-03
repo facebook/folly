@@ -123,12 +123,17 @@ inline void hazptr_owner<T>::clear() const noexcept {
 }
 
 template <typename T>
-inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
+inline void hazptr_owner<T>::swap(hazptr_owner<T>& rhs) noexcept {
   DEBUG_PRINT(
-    &lhs << " " <<  lhs.hazptr_ << " " << lhs.domain_ << " -- "
+    this << " " <<  this->hazptr_ << " " << this->domain_ << " -- "
     << &rhs << " " << rhs.hazptr_ << " " << rhs.domain_);
-  std::swap(lhs.domain_, rhs.domain_);
-  std::swap(lhs.hazptr_, rhs.hazptr_);
+  std::swap(this->domain_, rhs.domain_);
+  std::swap(this->hazptr_, rhs.hazptr_);
+}
+
+template <typename T>
+inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
+  lhs.swap(rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
