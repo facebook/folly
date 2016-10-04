@@ -134,7 +134,7 @@ class Symbolizer {
 };
 
 /**
- * Format one address in the way it's usually printer by SymbolizePrinter.
+ * Format one address in the way it's usually printed by SymbolizePrinter.
  * Async-signal-safe.
  */
 class AddressFormatter {
