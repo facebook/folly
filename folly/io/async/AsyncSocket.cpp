@@ -418,7 +418,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
 
     // Apply the additional options if any.
     for (const auto& opt: options) {
-      int rv = opt.first.apply(fd_, opt.second);
+      rv = opt.first.apply(fd_, opt.second);
       if (rv != 0) {
         auto errnoCopy = errno;
         throw AsyncSocketException(
