@@ -563,7 +563,7 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   bool success = false;
 
   SCOPE_EXIT {
-    int rc = deflateEnd(&stream);
+    rc = deflateEnd(&stream);
     // If we're here because of an exception, it's okay if some data
     // got dropped.
     CHECK(rc == Z_OK || (!success && rc == Z_DATA_ERROR))
@@ -647,7 +647,7 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
   bool success = false;
 
   SCOPE_EXIT {
-    int rc = inflateEnd(&stream);
+    rc = inflateEnd(&stream);
     // If we're here because of an exception, it's okay if some data
     // got dropped.
     CHECK(rc == Z_OK || (!success && rc == Z_DATA_ERROR))
