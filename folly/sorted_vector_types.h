@@ -216,7 +216,7 @@ public:
     insert(first, last);
   }
 
-  explicit sorted_vector_set(
+  /* implicit */ sorted_vector_set(
       std::initializer_list<value_type> list,
       const Compare& comp = Compare(),
       const Allocator& alloc = Allocator())
