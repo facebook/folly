@@ -124,10 +124,14 @@ namespace folly {
 // Cannot depend on Portability.h when _LIBSTDCXX_FBSTRING.
 #if defined(__GNUC__)
 #define FOLLY_MALLOC_NOINLINE __attribute__((__noinline__))
+#if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL) >= 40900
 // This is for checked malloc-like functions (returns non-null pointer
 // which cannot alias any outstanding pointer).
 #define FOLLY_MALLOC_CHECKED_MALLOC                     \
   __attribute__((__returns_nonnull__, __malloc__))
+#else
+#define FOLLY_MALLOC_CHECKED_MALLOC __attribute__((__malloc__))
+#endif
 #else
 #define FOLLY_MALLOC_NOINLINE
 #define FOLLY_MALLOC_CHECKED_MALLOC
