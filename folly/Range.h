@@ -972,13 +972,6 @@ operator>=(const T& lhs, const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
 
-// Do NOT use this, use SpookyHashV2 instead, see commment on hash() above.
-struct StringPieceHash {
-  std::size_t operator()(const StringPiece str) const {
-    return static_cast<std::size_t>(str.hash());
-  }
-};
-
 /**
  * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */

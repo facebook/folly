@@ -312,12 +312,7 @@ TEST(Hash, Strings) {
               a4 = "10050525", b4 = "51107040";
   Range<const wchar_t*> w1 = range(L"10050517"), w2 = range(L"51107032"),
                         w3 = range(L"10050518"), w4 = range(L"51107033");
-  StringPieceHash h1;
   Hash h2;
-  EXPECT_EQ(h1(a1), h1(b1));
-  EXPECT_EQ(h1(a2), h1(b2));
-  EXPECT_EQ(h1(a3), h1(b3));
-  EXPECT_EQ(h1(a4), h1(b4));
   EXPECT_NE(h2(a1), h2(b1));
   EXPECT_NE(h2(a1), h2(b1));
   EXPECT_NE(h2(a2), h2(b2));
