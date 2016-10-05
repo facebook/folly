@@ -29,6 +29,8 @@
 #include <boost/intrusive/list.hpp>
 #include <glog/logging.h>
 
+#include <folly/Hash.h>
+#include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 
 namespace folly { namespace symbolizer {
@@ -116,10 +118,7 @@ class ElfCache : public ElfCacheBase {
   static std::shared_ptr<ElfFile> filePtr(const std::shared_ptr<Entry>& e);
 
   size_t capacity_;
-  std::unordered_map<
-    StringPiece,
-    std::shared_ptr<Entry>,
-    StringPieceHash> files_;
+  std::unordered_map<StringPiece, std::shared_ptr<Entry>, Hash> files_;
 
   typedef boost::intrusive::list<
       Entry,
