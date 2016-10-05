@@ -18,9 +18,13 @@
 
 #pragma once
 
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <unordered_set>
+#include <utility>
+
+#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/experimental/StringKeyedCommon.h>
 
@@ -33,9 +37,10 @@ namespace folly {
  * It uses kind of hack: string pointed by StringPiece is copied when
  * StringPiece is inserted into set
  */
-template <class Hasher = StringPieceHash,
-          class Eq = std::equal_to<StringPiece>,
-          class Alloc = std::allocator<folly::StringPiece>>
+template <
+    class Hasher = Hash,
+    class Eq = std::equal_to<StringPiece>,
+    class Alloc = std::allocator<folly::StringPiece>>
 class BasicStringKeyedUnorderedSet
     : private std::unordered_set<StringPiece, Hasher, Eq, Alloc> {
   using Base = std::unordered_set<StringPiece, Hasher, Eq, Alloc>;

@@ -25,6 +25,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -113,19 +114,23 @@ typedef MemoryLeakCheckerAllocator<std::allocator<char>> KeyLeakChecker;
 typedef MemoryLeakCheckerAllocator<
   std::allocator<std::pair<const StringPiece, int>>> ValueLeakChecker;
 
-typedef StringKeyedUnorderedMap<int, folly::StringPieceHash,
-                                std::equal_to<StringPiece>, ValueLeakChecker>
-  LeakCheckedUnorderedMap;
+typedef StringKeyedUnorderedMap<
+    int,
+    folly::Hash,
+    std::equal_to<StringPiece>,
+    ValueLeakChecker>
+    LeakCheckedUnorderedMap;
 
-typedef StringKeyedSetBase<std::less<StringPiece>, ValueLeakChecker> LeakCheckedSet;
+typedef StringKeyedSetBase<std::less<StringPiece>, ValueLeakChecker>
+    LeakCheckedSet;
 
-typedef StringKeyedMap<int, std::less<StringPiece>,
-                       ValueLeakChecker> LeakCheckedMap;
+typedef StringKeyedMap<int, std::less<StringPiece>, ValueLeakChecker>
+    LeakCheckedMap;
 
 using LeakCheckedUnorderedSet = BasicStringKeyedUnorderedSet<
-  folly::StringPieceHash,
-  std::equal_to<folly::StringPiece>,
-  ValueLeakChecker>;
+    folly::Hash,
+    std::equal_to<folly::StringPiece>,
+    ValueLeakChecker>;
 
 TEST(StringKeyedUnorderedMapTest, sanity) {
   LeakCheckedUnorderedMap map;

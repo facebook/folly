@@ -18,9 +18,13 @@
 
 #pragma once
 
+#include <functional>
 #include <initializer_list>
 #include <memory>
 #include <unordered_map>
+#include <utility>
+
+#include <folly/Hash.h>
 #include <folly/Range.h>
 #include <folly/experimental/StringKeyedCommon.h>
 
@@ -33,13 +37,14 @@ namespace folly {
  * It uses kind of hack: string pointed by StringPiece is copied when
  * StringPiece is inserted into map
  */
-template <class Value,
-          class Hash = StringPieceHash,
-          class Eq = std::equal_to<StringPiece>,
-          class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
+template <
+    class Value,
+    class Hash = Hash,
+    class Eq = std::equal_to<StringPiece>,
+    class Alloc = std::allocator<std::pair<const StringPiece, Value>>>
 class StringKeyedUnorderedMap
     : private std::unordered_map<StringPiece, Value, Hash, Eq, Alloc> {
-private:
+ private:
   using Base = std::unordered_map<StringPiece, Value, Hash, Eq, Alloc>;
 
 public:
