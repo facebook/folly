@@ -466,10 +466,10 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
     EventBase eventBase;
     IntQueue queue;
     QueueConsumer consumer;
-    consumer.fn = [&](int i) {
-      EXPECT_THROW(queue.tryPutMessage(i), std::runtime_error);
-      EXPECT_FALSE(queue.tryPutMessageNoThrow(i));
-      EXPECT_THROW(queue.putMessage(i), std::runtime_error);
+    consumer.fn = [&](int j) {
+      EXPECT_THROW(queue.tryPutMessage(j), std::runtime_error);
+      EXPECT_FALSE(queue.tryPutMessageNoThrow(j));
+      EXPECT_THROW(queue.putMessage(j), std::runtime_error);
       std::vector<int> ints{1, 2, 3};
       EXPECT_THROW(
           queue.putMessages(ints.begin(), ints.end()),
@@ -477,8 +477,8 @@ TEST(NotificationQueueTest, ConsumeUntilDrainedStress) {
     };
     consumer.setMaxReadAtOnce(10); // We should ignore this
     consumer.startConsuming(&eventBase, &queue);
-    for (int i = 0; i < 20; i++) {
-      queue.putMessage(i);
+    for (int j = 0; j < 20; j++) {
+      queue.putMessage(j);
     }
     EXPECT_TRUE(consumer.consumeUntilDrained());
     EXPECT_EQ(20, consumer.messages.size());

@@ -281,13 +281,13 @@ TEST_F(HHWheelTimerTest, Stress) {
   TestTimeout timeouts[10000];
   long runtimeouts = 0;
   for (long i = 0; i < timeoutcount; i++) {
-    long newtimeout = Random::rand32(1, 10000);
+    long timeout = Random::rand32(1, 10000);
     if (Random::rand32(3)) {
       // NOTE: hhwheel timer runs before eventbase runAfterDelay,
       // so runAfterDelay cancelTimeout() must run  at least one timerwheel
       // before scheduleTimeout, to ensure it runs first.
-      newtimeout += 256;
-      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(newtimeout));
+      timeout += 256;
+      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(timeout));
       eventBase.runAfterDelay(
           [&, i]() {
             timeouts[i].fn = nullptr;
@@ -295,13 +295,13 @@ TEST_F(HHWheelTimerTest, Stress) {
             runtimeouts++;
             LOG(INFO) << "Ran " << runtimeouts << " timeouts, cancelled";
           },
-          newtimeout - 256);
-      timeouts[i].fn = [&, i, newtimeout]() {
-        LOG(INFO) << "FAIL:timer " << i << " still fired in " << newtimeout;
+          timeout - 256);
+      timeouts[i].fn = [&, i, timeout]() {
+        LOG(INFO) << "FAIL:timer " << i << " still fired in " << timeout;
         EXPECT_FALSE(true);
       };
     } else {
-      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(newtimeout));
+      t.scheduleTimeout(&timeouts[i], std::chrono::milliseconds(timeout));
       timeouts[i].fn = [&, i]() {
         timeoutcount++;
         long newtimeout = Random::rand32(1, 10000);

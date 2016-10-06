@@ -361,7 +361,7 @@ void AsyncServerSocket::bind(
 }
 
 void AsyncServerSocket::bind(uint16_t port) {
-  struct addrinfo hints, *res, *res0;
+  struct addrinfo hints, *res0;
   char sport[sizeof("65536")];
 
   memset(&hints, 0, sizeof(hints));
@@ -423,7 +423,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     // - 0.0.0.0 (IPv4-only)
     // - :: (IPv6+IPv4) in this order
     // See: https://sourceware.org/bugzilla/show_bug.cgi?id=9981
-    for (res = res0; res; res = res->ai_next) {
+    for (struct addrinfo* res = res0; res; res = res->ai_next) {
       if (res->ai_family == AF_INET6) {
         setupAddress(res);
       }
@@ -440,7 +440,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     }
 
     try {
-      for (res = res0; res; res = res->ai_next) {
+      for (struct addrinfo* res = res0; res; res = res->ai_next) {
         if (res->ai_family != AF_INET6) {
           setupAddress(res);
         }
