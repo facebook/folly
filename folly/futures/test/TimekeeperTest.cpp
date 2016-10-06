@@ -168,20 +168,36 @@ TEST(Timekeeper, chainedInterruptTest) {
   EXPECT_FALSE(test);
 }
 
-TEST(Timekeeper, executor) {
-  class ExecutorTester : public Executor {
-   public:
-    void add(Func f) override {
-      count++;
-      f();
-    }
-    std::atomic<int> count{0};
+namespace {
+class ExecutorTester : public Executor {
+ public:
+  void add(Func f) override {
+    count++;
+    f();
+  }
+  std::atomic<int> count{0};
   };
+  }
 
-  auto f = makeFuture();
-  ExecutorTester tester;
-  f.via(&tester).within(one_ms).then([&](){}).wait();
-  EXPECT_EQ(2, tester.count);
+  TEST(Timekeeper, executor) {
+    auto f = makeFuture();
+    ExecutorTester tester;
+    f.via(&tester).within(one_ms).then([&]() {}).wait();
+    EXPECT_EQ(2, tester.count);
+  }
+
+  TEST(Timekeeper, executorSameAfterDelayed) {
+    ExecutorTester tester;
+    // make sure we're using the same Executor (tester) after delayed returns
+    // by comparing the executor count between invocations
+    makeFuture()
+        .via(&tester)
+        .delayed(one_ms)
+        .then([&]() { return tester.count.load(); })
+        .then([&](int countBefore) {
+          EXPECT_EQ(1, tester.count.load() - countBefore);
+        })
+        .wait();
 }
 
 // TODO(5921764)
