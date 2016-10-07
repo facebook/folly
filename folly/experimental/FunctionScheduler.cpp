@@ -277,17 +277,18 @@ bool FunctionScheduler::start() {
   return true;
 }
 
-void FunctionScheduler::shutdown() {
+bool FunctionScheduler::shutdown() {
   {
     std::lock_guard<std::mutex> g(mutex_);
     if (!running_) {
-      return;
+      return false;
     }
 
     running_ = false;
     runningCondvar_.notify_one();
   }
   thread_.join();
+  return true;
 }
 
 void FunctionScheduler::run() {

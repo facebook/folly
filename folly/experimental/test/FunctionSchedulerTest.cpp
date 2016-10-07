@@ -50,6 +50,19 @@ void delay(int n) {
 
 } // unnamed namespace
 
+TEST(FunctionScheduler, StartAndShutdown) {
+  FunctionScheduler fs;
+  EXPECT_TRUE(fs.start());
+  EXPECT_FALSE(fs.start());
+  EXPECT_TRUE(fs.shutdown());
+  EXPECT_FALSE(fs.shutdown());
+  // start again
+  EXPECT_TRUE(fs.start());
+  EXPECT_FALSE(fs.start());
+  EXPECT_TRUE(fs.shutdown());
+  EXPECT_FALSE(fs.shutdown());
+}
+
 TEST(FunctionScheduler, SimpleAdd) {
   int total = 0;
   FunctionScheduler fs;
@@ -76,7 +89,6 @@ TEST(FunctionScheduler, AddCancel) {
   delay(2);
   EXPECT_EQ(4, total);
   fs.addFunction([&] { total += 1; }, testInterval(2), "add2");
-  EXPECT_FALSE(fs.start()); // already running
   delay(1);
   EXPECT_EQ(5, total);
   delay(2);

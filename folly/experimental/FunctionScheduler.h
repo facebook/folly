@@ -177,8 +177,9 @@ class FunctionScheduler {
    * Stops the FunctionScheduler.
    *
    * It may be restarted later by calling start() again.
+   * Returns false if the scheduler was not running.
    */
-  void shutdown();
+  bool shutdown();
 
   /**
    * Set the name of the worker thread.
