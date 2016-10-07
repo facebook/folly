@@ -286,12 +286,13 @@ private:
  * The storage is selected as follows (assuming we store one-byte
  * characters on a 64-bit machine): (a) "small" strings between 0 and
  * 23 chars are stored in-situ without allocation (the rightmost byte
- * stores the size); (b) "medium" strings from 24 through 254 chars
- * are stored in malloc-allocated memory that is copied eagerly; (c)
- * "large" strings of 255 chars and above are stored in a similar
- * structure as medium arrays, except that the string is
- * reference-counted and copied lazily. the reference count is
- * allocated right before the character array.
+ * stores the size); (b) "medium" strings (> 23 chars) are stored in
+ * malloc-allocated memory that is copied eagerly.
+ * There exists a third storage category: (c) "large", which has the
+ * copy-on-write optimization. COW was disallowed in C++11, so large is
+ * now deprecated in fbstring_core. fbstring_core no longer creates large
+ * strings, though still works with them. Later, large strings will be
+ * completely removed.
  *
  * The discriminator between these three strategies sits in two
  * bits of the rightmost char of the storage. If neither is set, then the
@@ -322,18 +323,10 @@ public:
 
   fbstring_core(const fbstring_core & rhs) {
     FBSTRING_ASSERT(&rhs != this);
-    switch (rhs.category()) {
-      case Category::isSmall:
-        copySmall(rhs);
-        break;
-      case Category::isMedium:
-        copyMedium(rhs);
-        break;
-      case Category::isLarge:
-        copyLarge(rhs);
-        break;
-      default:
-        fbstring_detail::assume_unreachable();
+    if (rhs.category() == Category::isSmall) {
+      makeSmall(rhs);
+    } else {
+      makeMedium(rhs);
     }
     FBSTRING_ASSERT(size() == rhs.size());
     FBSTRING_ASSERT(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
@@ -351,10 +344,8 @@ public:
                 bool disableSSO = FBSTRING_DISABLE_SSO) {
     if (!disableSSO && size <= maxSmallSize) {
       initSmall(data, size);
-    } else if (size <= maxMediumSize) {
-      initMedium(data, size);
     } else {
-      initLarge(data, size);
+      initMedium(data, size);
     }
     FBSTRING_ASSERT(this->size() == size);
     FBSTRING_ASSERT(
@@ -612,6 +603,7 @@ private:
     }
 
     void setCapacity(size_t cap, Category cat) {
+      FBSTRING_ASSERT(cat != Category::isLarge);
       capacity_ = kIsLittleEndian
           ? cap | (static_cast<size_t>(cat) << kCategoryShift)
           : (cap << 2) | static_cast<size_t>(cat);
@@ -655,9 +647,9 @@ private:
     FBSTRING_ASSERT(category() == Category::isSmall && size() == s);
   }
 
-  void copySmall(const fbstring_core&);
-  void copyMedium(const fbstring_core&);
-  void copyLarge(const fbstring_core&);
+  void makeSmall(const fbstring_core&);
+  void makeMedium(const fbstring_core&);
+  void makeLarge(const fbstring_core&);
 
   void initSmall(const Char* data, size_t size);
   void initMedium(const Char* data, size_t size);
@@ -676,7 +668,7 @@ private:
 };
 
 template <class Char>
-inline void fbstring_core<Char>::copySmall(const fbstring_core& rhs) {
+inline void fbstring_core<Char>::makeSmall(const fbstring_core& rhs) {
   static_assert(offsetof(MediumLarge, data_) == 0, "fbstring layout failure");
   static_assert(
       offsetof(MediumLarge, size_) == sizeof(ml_.data_),
@@ -695,7 +687,7 @@ inline void fbstring_core<Char>::copySmall(const fbstring_core& rhs) {
 }
 
 template <class Char>
-FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::copyMedium(
+FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::makeMedium(
     const fbstring_core& rhs) {
   // Medium strings are copied eagerly. Don't forget to allocate
   // one extra Char for the null terminator.
@@ -710,7 +702,7 @@ FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::copyMedium(
 }
 
 template <class Char>
-FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::copyLarge(
+FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::makeLarge(
     const fbstring_core& rhs) {
   // Large strings are just refcounted
   ml_ = rhs.ml_;
@@ -845,29 +837,16 @@ FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::reserveMedium(
   if (minCapacity <= ml_.capacity()) {
     return; // nothing to do, there's enough room
   }
-  if (minCapacity <= maxMediumSize) {
-    // Keep the string at medium size. Don't forget to allocate
-    // one extra Char for the terminating null.
-    size_t capacityBytes = goodMallocSize((1 + minCapacity) * sizeof(Char));
-    // Also copies terminator.
-    ml_.data_ = static_cast<Char*>(smartRealloc(
-        ml_.data_,
-        (ml_.size_ + 1) * sizeof(Char),
-        (ml_.capacity() + 1) * sizeof(Char),
-        capacityBytes));
-    ml_.setCapacity(capacityBytes / sizeof(Char) - 1, Category::isMedium);
-  } else {
-    // Conversion from medium to large string
-    fbstring_core nascent;
-    // Will recurse to another branch of this function
-    nascent.reserve(minCapacity);
-    nascent.ml_.size_ = ml_.size_;
-    // Also copies terminator.
-    fbstring_detail::podCopy(
-        ml_.data_, ml_.data_ + ml_.size_ + 1, nascent.ml_.data_);
-    nascent.swap(*this);
-    FBSTRING_ASSERT(capacity() >= minCapacity);
-  }
+  // Keep the string at medium size. Don't forget to allocate
+  // one extra Char for the terminating null.
+  size_t capacityBytes = goodMallocSize((1 + minCapacity) * sizeof(Char));
+  // Also copies terminator.
+  ml_.data_ = static_cast<Char*>(smartRealloc(
+      ml_.data_,
+      (ml_.size_ + 1) * sizeof(Char),
+      (ml_.capacity() + 1) * sizeof(Char),
+      capacityBytes));
+  ml_.setCapacity(capacityBytes / sizeof(Char) - 1, Category::isMedium);
 }
 
 template <class Char>
@@ -877,29 +856,17 @@ FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::reserveSmall(
   if (!disableSSO && minCapacity <= maxSmallSize) {
     // small
     // Nothing to do, everything stays put
-  } else if (minCapacity <= maxMediumSize) {
-    // medium
-    // Don't forget to allocate one extra Char for the terminating null
-    auto const allocSizeBytes =
-        goodMallocSize((1 + minCapacity) * sizeof(Char));
-    auto const pData = static_cast<Char*>(checkedMalloc(allocSizeBytes));
-    auto const size = smallSize();
-    // Also copies terminator.
-    fbstring_detail::podCopy(small_, small_ + size + 1, pData);
-    ml_.data_ = pData;
-    ml_.size_ = size;
-    ml_.setCapacity(allocSizeBytes / sizeof(Char) - 1, Category::isMedium);
-  } else {
-    // large
-    auto const newRC = RefCounted::create(&minCapacity);
-    auto const size = smallSize();
-    // Also copies terminator.
-    fbstring_detail::podCopy(small_, small_ + size + 1, newRC->data_);
-    ml_.data_ = newRC->data_;
-    ml_.size_ = size;
-    ml_.setCapacity(minCapacity, Category::isLarge);
-    FBSTRING_ASSERT(capacity() >= minCapacity);
+    return;
   }
+  // Don't forget to allocate one extra Char for the terminating null
+  auto const allocSizeBytes = goodMallocSize((1 + minCapacity) * sizeof(Char));
+  auto const pData = static_cast<Char*>(checkedMalloc(allocSizeBytes));
+  auto const size = smallSize();
+  // Also copies terminator.
+  fbstring_detail::podCopy(small_, small_ + size + 1, pData);
+  ml_.data_ = pData;
+  ml_.size_ = size;
+  ml_.setCapacity(allocSizeBytes / sizeof(Char) - 1, Category::isMedium);
 }
 
 template <class Char>
