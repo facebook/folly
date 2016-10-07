@@ -124,13 +124,11 @@ void callPreviousSignalHandler(int signum) {
   raise(signum);
 }
 
-constexpr size_t kDefaultCapacity = 500;
-
 // Note: not thread-safe, but that's okay, as we only let one thread
 // in our signal handler at a time.
 //
 // Leak it so we don't have to worry about destruction order
-auto gSignalSafeElfCache = new SignalSafeElfCache(kDefaultCapacity);
+auto gSignalSafeElfCache = new SignalSafeElfCache(kFatalSignalHandlerCacheSize);
 
 // Buffered writer (using a fixed-size buffer). We try to write only once
 // to prevent interleaving with messages written from other threads.
