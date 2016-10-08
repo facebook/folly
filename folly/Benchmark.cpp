@@ -50,6 +50,11 @@ DEFINE_int64(
     1,
     "Minimum # of iterations we'll try for each benchmark.");
 
+DEFINE_int64(
+    bm_max_iters,
+    1L << 30L,
+    "Maximum # of iterations we'll try for each benchmark.");
+
 DEFINE_int32(
     bm_max_secs,
     1,
@@ -262,7 +267,8 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   size_t actualEpochs = 0;
 
   for (; actualEpochs < epochs; ++actualEpochs) {
-    for (unsigned int n = FLAGS_bm_min_iters; n < (1UL << 30); n *= 2) {
+    const auto maxIters = FLAGS_bm_max_iters;
+    for (unsigned int n = FLAGS_bm_min_iters; n < maxIters; n *= 2) {
       auto const nsecsAndIter = fun(n);
       if (nsecsAndIter.first < minNanoseconds) {
         continue;
