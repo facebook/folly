@@ -35,18 +35,25 @@ using namespace std;
 DEFINE_bool(benchmark, false, "Run benchmarks.");
 DEFINE_bool(json, false, "Output in JSON format.");
 
-DEFINE_string(bm_regex, "",
-              "Only benchmarks whose names match this regex will be run.");
+DEFINE_string(
+    bm_regex,
+    "",
+    "Only benchmarks whose names match this regex will be run.");
 
-DEFINE_int64(bm_min_usec, 100,
-             "Minimum # of microseconds we'll accept for each benchmark.");
+DEFINE_int64(
+    bm_min_usec,
+    100,
+    "Minimum # of microseconds we'll accept for each benchmark.");
 
-DEFINE_int64(bm_min_iters, 1,
-             "Minimum # of iterations we'll try for each benchmark.");
+DEFINE_int64(
+    bm_min_iters,
+    1,
+    "Minimum # of iterations we'll try for each benchmark.");
 
-DEFINE_int32(bm_max_secs, 1,
-             "Maximum # of seconds we'll spend on each benchmark.");
-
+DEFINE_int32(
+    bm_max_secs,
+    1,
+    "Maximum # of seconds we'll spend on each benchmark.");
 
 namespace folly {
 
