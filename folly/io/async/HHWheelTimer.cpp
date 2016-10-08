@@ -150,7 +150,6 @@ void HHWheelTimer::scheduleTimeout(Callback* callback,
 
   callback->context_ = RequestContext::saveContext();
 
-  uint64_t prev = count_;
   count_++;
 
   callback->setScheduled(this, timeout);
