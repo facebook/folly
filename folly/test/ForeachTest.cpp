@@ -40,6 +40,18 @@ TEST(Foreach, ForEachRvalue) {
   EXPECT_EQ(0, n);
 }
 
+TEST(Foreach, ForEachNested) {
+  const std::string hello = "hello";
+  size_t n = 0;
+  FOR_EACH(i, hello) {
+    FOR_EACH(j, hello) {
+      ++n;
+    }
+  }
+  auto len = hello.size();
+  EXPECT_EQ(len * len, n);
+}
+
 TEST(Foreach, ForEachKV) {
   std::map<std::string, int> testMap;
   testMap["abc"] = 1;
