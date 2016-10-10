@@ -1419,3 +1419,10 @@ TEST(FBStringCtorTest, DefaultInitStructAlloc) {
   EXPECT_TRUE(t2.stringMember.empty());
   EXPECT_EQ(allocatorConstructedCount.load(), 1);
 }
+
+TEST(FBStringCtorTest, NullZeroConstruction) {
+  char* p = nullptr;
+  int n = 0;
+  folly::fbstring f(p, n);
+  EXPECT_EQ(f.size(), 0);
+}

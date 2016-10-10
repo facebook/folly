@@ -166,6 +166,9 @@ inline void podFill(Pod* b, Pod* e, T c) {
  */
 template <class Pod>
 inline void podCopy(const Pod* b, const Pod* e, Pod* d) {
+  FBSTRING_ASSERT(b != nullptr);
+  FBSTRING_ASSERT(e != nullptr);
+  FBSTRING_ASSERT(d != nullptr);
   FBSTRING_ASSERT(e >= b);
   FBSTRING_ASSERT(d >= e || d + (e - b) <= b);
   memcpy(d, b, (e - b) * sizeof(Pod));
@@ -554,7 +557,9 @@ private:
     static RefCounted * create(const Char * data, size_t * size) {
       const size_t effectiveSize = *size;
       auto result = create(size);
-      fbstring_detail::podCopy(data, data + effectiveSize, result->data_);
+      if (FBSTRING_LIKELY(effectiveSize > 0)) {
+        fbstring_detail::podCopy(data, data + effectiveSize, result->data_);
+      }
       return result;
     }
 
@@ -761,7 +766,9 @@ FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::initMedium(
   // allocate one extra Char for the terminating null.
   auto const allocSize = goodMallocSize((1 + size) * sizeof(Char));
   ml_.data_ = static_cast<Char*>(checkedMalloc(allocSize));
-  fbstring_detail::podCopy(data, data + size, ml_.data_);
+  if (FBSTRING_LIKELY(size > 0)) {
+    fbstring_detail::podCopy(data, data + size, ml_.data_);
+  }
   ml_.size_ = size;
   ml_.setCapacity(allocSize / sizeof(Char) - 1, Category::isMedium);
   ml_.data_[size] = '\0';
