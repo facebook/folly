@@ -170,9 +170,8 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_TRUE(bool(ew));
   EXPECT_EQ(ew.what(), kIntExceptionClassName + ": int == 23");
   EXPECT_EQ(ew.class_name(), kIntExceptionClassName);
-  ew.with_exception([&](const IntException& ie) {
-      EXPECT_EQ(ie.getInt(), expected);
-    });
+  EXPECT_TRUE(ew.with_exception(
+      [&](const IntException& ie) { EXPECT_EQ(ie.getInt(), expected); }));
 
   // I can try_and_catch a non-copyable base class.  This will use
   // std::exception_ptr internally.
@@ -183,15 +182,21 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_TRUE(bool(ew2));
   EXPECT_EQ(ew2.what(), kIntExceptionClassName + ": int == 23");
   EXPECT_EQ(ew2.class_name(), kIntExceptionClassName);
-  ew2.with_exception([&](AbstractIntException& ie) {
-      EXPECT_EQ(ie.getInt(), expected);
-      EXPECT_TRUE(dynamic_cast<IntException*>(&ie));
-    });
+  EXPECT_TRUE(ew2.with_exception([&](AbstractIntException& ie) {
+    EXPECT_EQ(ie.getInt(), expected);
+    EXPECT_TRUE(dynamic_cast<IntException*>(&ie));
+  }));
 
   // Test with const this.  If this compiles and does not crash due to
   // infinite loop when it runs, it succeeds.
   const exception_wrapper& cew = ew;
-  cew.with_exception([&](const IntException& /* ie */) { SUCCEED(); });
+  EXPECT_TRUE(
+      cew.with_exception([&](const IntException& /* ie */) { SUCCEED(); }));
+
+  // Test with empty ew.
+  exception_wrapper empty_ew;
+  EXPECT_FALSE(
+      empty_ew.with_exception([&](const std::exception& /* ie */) { FAIL(); }));
 
   // This won't even compile.  You can't use a function which takes a
   // non-const reference with a const exception_wrapper.
@@ -200,6 +205,33 @@ TEST(ExceptionWrapper, with_exception_test) {
       SUCCEED();
     });
 */
+}
+
+TEST(ExceptionWrapper, getExceptionPtr_test) {
+  int expected = 23;
+
+  // This works, and doesn't slice.
+  exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
+      [=]() { throw IntException(expected); });
+  std::exception_ptr eptr = ew.getExceptionPtr();
+  EXPECT_THROW(std::rethrow_exception(eptr), IntException);
+
+  // I can try_and_catch a non-copyable base class.  This will use
+  // std::exception_ptr internally.
+  exception_wrapper ew2 = try_and_catch<AbstractIntException>(
+      [=]() { throw IntException(expected); });
+  eptr = ew2.getExceptionPtr();
+  EXPECT_THROW(std::rethrow_exception(eptr), IntException);
+
+  // Test with const this.
+  const exception_wrapper& cew = ew;
+  eptr = cew.getExceptionPtr();
+  EXPECT_THROW(std::rethrow_exception(eptr), IntException);
+
+  // Test with empty ew.
+  exception_wrapper empty_ew;
+  eptr = empty_ew.getExceptionPtr();
+  EXPECT_DEATH(std::rethrow_exception(eptr), "exception");
 }
 
 TEST(ExceptionWrapper, with_exception_deduction) {
@@ -266,6 +298,11 @@ TEST(ExceptionWrapper, non_std_exception_test) {
 TEST(ExceptionWrapper, exceptionStr) {
   auto ew = make_exception_wrapper<std::runtime_error>("argh");
   EXPECT_EQ(kRuntimeErrorClassName + ": argh", exceptionStr(ew));
+}
+
+TEST(ExceptionWrapper, throwException_noException) {
+  exception_wrapper ew;
+  ASSERT_DEATH(ew.throwException(), "exception");
 }
 
 namespace {
