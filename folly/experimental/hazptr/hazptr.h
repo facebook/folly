@@ -29,11 +29,12 @@ namespace hazptr {
 /** hazptr_rec: Private class that contains hazard pointers. */
 class hazptr_rec;
 
-/** hazptr_obj_base: Base template for objects protected by hazard pointers. */
-template <typename T> class hazptr_obj_base;
+/** hazptr_obj: Private class for objects protected by hazard pointers. */
+class hazptr_obj;
 
-/** Alias for object reclamation function template */
-template <typename T> using hazptr_obj_reclaim = std::function<void(T*)>;
+/** hazptr_obj_base: Base template for objects protected by hazard pointers. */
+template <typename T, typename Deleter>
+class hazptr_obj_base;
 
 /** hazptr_domain: Class of hazard pointer domains. Each domain manages a set
  *  of hazard pointers and a set of retired objects. */
@@ -48,17 +49,12 @@ class hazptr_domain {
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
 
-  /* Reclaim all retired objects with a specific reclamation
-   * function currently stored by this domain */
-  template <typename T> void flush(const hazptr_obj_reclaim<T>* reclaim);
-  /* Reclaim all retired objects currently stored by this domain  */
-  void flush();
+  void try_reclaim();
 
  private:
-  template <typename> friend class hazptr_obj_base;
+  template <typename, typename>
+  friend class hazptr_obj_base;
   template <typename> friend class hazptr_owner;
-
-  using hazptr_obj = hazptr_obj_base<void>;
 
   /** Constant -- May be changed to parameter in the future */
   enum { kScanThreshold = 3 };
@@ -69,23 +65,31 @@ class hazptr_domain {
   std::atomic<int> hcount_ = {0};
   std::atomic<int> rcount_ = {0};
 
-  template <typename T> void objRetire(hazptr_obj_base<T>*);
-  hazptr_rec* hazptrAcquire();
-  void hazptrRelease(hazptr_rec*) const noexcept;
   void objRetire(hazptr_obj*);
+  hazptr_rec* hazptrAcquire();
+  void hazptrRelease(hazptr_rec*) noexcept;
   int pushRetired(hazptr_obj* head, hazptr_obj* tail, int count);
+  void tryBulkReclaim();
   void bulkReclaim();
-  void flush(const hazptr_obj_reclaim<void>* reclaim);
 };
 
 /** Get the default hazptr_domain */
-hazptr_domain* default_hazptr_domain();
+hazptr_domain& default_hazptr_domain();
 
-/** Declaration of default reclamation function template */
-template <typename T> hazptr_obj_reclaim<T>* default_hazptr_obj_reclaim();
+/** Definition of hazptr_obj */
+class hazptr_obj {
+  friend class hazptr_domain;
+  template <typename, typename>
+  friend class hazptr_obj_base;
+
+  void (*reclaim_)(hazptr_obj*);
+  hazptr_obj* next_;
+  const void* getObjPtr() const;
+};
 
 /** Definition of hazptr_obj_base */
-template <typename T> class hazptr_obj_base {
+template <typename T, typename Deleter = std::default_delete<T>>
+class hazptr_obj_base : private hazptr_obj {
  public:
   /* Policy for storing retired objects */
   enum class storage_policy { priv, shared };
@@ -93,29 +97,16 @@ template <typename T> class hazptr_obj_base {
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */
   void retire(
-      hazptr_domain* domain = default_hazptr_domain(),
-      const hazptr_obj_reclaim<T>* reclaim = default_hazptr_obj_reclaim<T>(),
+      hazptr_domain& domain = default_hazptr_domain(),
+      Deleter reclaim = {},
       const storage_policy policy = storage_policy::shared);
 
  private:
-  friend class hazptr_domain;
-  template <typename> friend class hazptr_owner;
-
-  const hazptr_obj_reclaim<T>* reclaim_;
-  hazptr_obj_base* next_;
+  Deleter deleter_;
 };
 
 /** hazptr_owner: Template for automatic acquisition and release of
  *  hazard pointers, and interface for hazard pointer operations. */
-template <typename T> class hazptr_owner;
-
-/* Swap ownership of hazard ponters between hazptr_owner-s. */
-/* Note: The owned hazard pointers remain unmodified during the swap
- * and continue to protect the respective objects that they were
- * protecting before the swap, if any. */
-template <typename T>
-void swap(hazptr_owner<T>&, hazptr_owner<T>&) noexcept;
-
 template <typename T> class hazptr_owner {
  public:
   /* Policy for caching hazard pointers */
@@ -123,11 +114,11 @@ template <typename T> class hazptr_owner {
 
   /* Constructor automatically acquires a hazard pointer. */
   explicit hazptr_owner(
-      hazptr_domain* domain = default_hazptr_domain(),
+      hazptr_domain& domain = default_hazptr_domain(),
       const cache_policy policy = cache_policy::nocache);
 
   /* Destructor automatically clears and releases the owned hazard pointer. */
-  ~hazptr_owner() noexcept;
+  ~hazptr_owner();
 
   /* Copy and move constructors and assignment operators are
    * disallowed because:
@@ -139,20 +130,29 @@ template <typename T> class hazptr_owner {
   hazptr_owner& operator=(hazptr_owner&&) = delete;
 
   /** Hazard pointer operations */
-  /* Return true if successful in protecting the object */
-  bool protect(const T* ptr, const std::atomic<T*>& src) const noexcept;
+  /* Returns a protected pointer from the source */
+  T* get_protected(const std::atomic<T*>& src) noexcept;
+  /* Return true if successful in protecting ptr if src == ptr after
+   * setting the hazard pointer.  Otherwise sets ptr to src. */
+  bool try_protect(T*& ptr, const std::atomic<T*>& src) noexcept;
   /* Set the hazard pointer to ptr */
-  void set(const T* ptr) const noexcept;
+  void set(const T* ptr) noexcept;
   /* Clear the hazard pointer */
-  void clear() const noexcept;
+  void clear() noexcept;
 
+  /* Swap ownership of hazard ponters between hazptr_owner-s. */
+  /* Note: The owned hazard pointers remain unmodified during the swap
+   * and continue to protect the respective objects that they were
+   * protecting before the swap, if any. */
   void swap(hazptr_owner&) noexcept;
 
  private:
-
   hazptr_domain* domain_;
   hazptr_rec* hazptr_;
 };
+
+template <typename T>
+void swap(hazptr_owner<T>&, hazptr_owner<T>&) noexcept;
 
 /** hazptr_user: Thread-specific interface for users of hazard
  *  pointers (i.e., threads that own hazard pointers by using

@@ -26,20 +26,16 @@
 
 #include <thread>
 
+DEFINE_int32(num_threads, 1, "Number of threads");
+DEFINE_int64(num_reps, 1, "Number of test reps");
+DEFINE_int64(num_ops, 10, "Number of ops or pairs of ops per rep");
+
 using namespace folly::hazptr;
-
-static hazptr_obj_reclaim<Node1> myReclaim_ = [](Node1* p) {
-  myReclaimFn(p);
-};
-
-static hazptr_obj_reclaim<Node2> mineReclaim_ = [](Node2* p) {
-  mineReclaimFn(p);
-};
 
 TEST(Hazptr, Test1) {
   DEBUG_PRINT("========== start of scope");
   DEBUG_PRINT("");
-  Node1* node0 = new Node1;
+  Node1* node0 = (Node1*)malloc(sizeof(Node1));
   DEBUG_PRINT("=== new    node0 " << node0 << " " << sizeof(*node0));
   Node1* node1 = (Node1*)malloc(sizeof(Node1));
   DEBUG_PRINT("=== malloc node1 " << node1 << " " << sizeof(*node1));
@@ -67,9 +63,9 @@ TEST(Hazptr, Test1) {
   DEBUG_PRINT("=== hptr0");
   hazptr_owner<Node1> hptr0;
   DEBUG_PRINT("=== hptr1");
-  hazptr_owner<Node1> hptr1(&myDomain0);
+  hazptr_owner<Node1> hptr1(myDomain0);
   DEBUG_PRINT("=== hptr2");
-  hazptr_owner<Node1> hptr2(&myDomain1);
+  hazptr_owner<Node1> hptr2(myDomain1);
   DEBUG_PRINT("=== hptr3");
   hazptr_owner<Node1> hptr3;
 
@@ -80,11 +76,11 @@ TEST(Hazptr, Test1) {
   Node1* n2 = shared2.load();
   Node1* n3 = shared3.load();
 
-  if (hptr0.protect(n0, shared0)) {}
-  if (hptr1.protect(n1, shared1)) {}
+  if (hptr0.try_protect(n0, shared0)) {}
+  if (hptr1.try_protect(n1, shared1)) {}
   hptr1.clear();
   hptr1.set(n2);
-  if (hptr2.protect(n3, shared3)) {}
+  if (hptr2.try_protect(n3, shared3)) {}
   swap(hptr1, hptr2);
   hptr3.clear();
 
@@ -93,12 +89,11 @@ TEST(Hazptr, Test1) {
   DEBUG_PRINT("=== retire n0 " << n0);
   n0->retire();
   DEBUG_PRINT("=== retire n1 " << n1);
-
-  n1->retire(default_hazptr_domain(), &myReclaim_);
+  n1->retire(default_hazptr_domain());
   DEBUG_PRINT("=== retire n2 " << n2);
-  n2->retire(&myDomain0, &myReclaim_);
+  n2->retire(myDomain0);
   DEBUG_PRINT("=== retire n3 " << n3);
-  n3->retire(&myDomain1, &myReclaim_);
+  n3->retire(myDomain1);
 
   DEBUG_PRINT("========== end of scope");
 }
@@ -133,9 +128,9 @@ TEST(Hazptr, Test2) {
   DEBUG_PRINT("=== hptr0");
   hazptr_owner<Node2> hptr0;
   DEBUG_PRINT("=== hptr1");
-  hazptr_owner<Node2> hptr1(&mineDomain0);
+  hazptr_owner<Node2> hptr1(mineDomain0);
   DEBUG_PRINT("=== hptr2");
-  hazptr_owner<Node2> hptr2(&mineDomain1);
+  hazptr_owner<Node2> hptr2(mineDomain1);
   DEBUG_PRINT("=== hptr3");
   hazptr_owner<Node2> hptr3;
 
@@ -146,32 +141,27 @@ TEST(Hazptr, Test2) {
   Node2* n2 = shared2.load();
   Node2* n3 = shared3.load();
 
-  if (hptr0.protect(n0, shared0)) {}
-  if (hptr1.protect(n1, shared1)) {}
+  if (hptr0.try_protect(n0, shared0)) {}
+  if (hptr1.try_protect(n1, shared1)) {}
   hptr1.clear();
   hptr1.set(n2);
-  if (hptr2.protect(n3, shared3)) {}
+  if (hptr2.try_protect(n3, shared3)) {}
   swap(hptr1, hptr2);
   hptr3.clear();
 
   DEBUG_PRINT("");
 
   DEBUG_PRINT("=== retire n0 " << n0);
-  n0->retire();
+  n0->retire(default_hazptr_domain(), &mineReclaimFnDelete);
   DEBUG_PRINT("=== retire n1 " << n1);
-
-  n1->retire(default_hazptr_domain(), &mineReclaim_);
+  n1->retire(default_hazptr_domain(), &mineReclaimFnFree);
   DEBUG_PRINT("=== retire n2 " << n2);
-  n2->retire(&mineDomain0, &mineReclaim_);
+  n2->retire(mineDomain0, &mineReclaimFnFree);
   DEBUG_PRINT("=== retire n3 " << n3);
-  n3->retire(&mineDomain1, &mineReclaim_);
+  n3->retire(mineDomain1, &mineReclaimFnFree);
 
   DEBUG_PRINT("========== end of scope");
 }
-
-DEFINE_int32(num_threads, 1, "Number of threads");
-DEFINE_int64(num_reps, 1, "Number of test reps");
-DEFINE_int64(num_ops, 10, "Number of ops or pairs of ops per rep");
 
 TEST(Hazptr, LIFO) {
   using T = uint32_t;
@@ -206,7 +196,7 @@ TEST(Hazptr, SWMRLIST) {
   CHECK_GT(FLAGS_num_threads, 0);
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     DEBUG_PRINT("========== start of rep scope");
-    SWMRListSet<T> s(&custom_domain);
+    SWMRListSet<T> s(custom_domain);
     std::vector<std::thread> threads(FLAGS_num_threads);
     for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
       threads[tid] = std::thread([&s, tid]() {
@@ -254,11 +244,12 @@ TEST(Hazptr, WIDECAS) {
 }
 
 int main(int argc, char** argv) {
-  DEBUG_PRINT("=================================================== start main");
+  DEBUG_PRINT("================================================= start main");
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();
-  default_hazptr_domain()->flush();
-  DEBUG_PRINT("===================================================== end main");
+  DEBUG_PRINT("================================================= after tests");
+  default_hazptr_domain().try_reclaim();
+  DEBUG_PRINT("================================================= end main");
   return ret;
 }

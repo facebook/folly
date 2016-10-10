@@ -31,40 +31,21 @@ namespace hazptr {
 constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
     : mr_(mr) {}
 
-template <typename T>
-void hazptr_domain::flush(const hazptr_obj_reclaim<T>* reclaim) {
-  DEBUG_PRINT(this << " " << reclaim);
-  flush(reinterpret_cast<const hazptr_obj_reclaim<void>*>(reclaim));
-}
-
-template <typename T>
-inline void hazptr_domain::objRetire(hazptr_obj_base<T>* p) {
-  DEBUG_PRINT(this << " " << p);
-  objRetire(reinterpret_cast<hazptr_obj_base<void>*>(p));
-}
-
 /** hazptr_obj_base */
 
-template <typename T>
-inline void hazptr_obj_base<T>::retire(
-    hazptr_domain* domain,
-    const hazptr_obj_reclaim<T>* reclaim,
+template <typename T, typename D>
+inline void hazptr_obj_base<T, D>::retire(
+    hazptr_domain& domain,
+    D deleter,
     const storage_policy /* policy */) {
-  DEBUG_PRINT(this << " " << reclaim << " " << &domain);
-  reclaim_ = reclaim;
-  domain->objRetire<T>(this);
-}
-
-/* Definition of default_hazptr_obj_reclaim */
-
-template <typename T>
-inline hazptr_obj_reclaim<T>* default_hazptr_obj_reclaim() {
-  static hazptr_obj_reclaim<T> fn = [](T* p) {
-    DEBUG_PRINT("default_hazptr_obj_reclaim " << p << " " << sizeof(T));
-    delete p;
+  DEBUG_PRINT(this << " " << &domain);
+  deleter_ = std::move(deleter);
+  reclaim_ = [](hazptr_obj* p) {
+    auto hobp = static_cast<hazptr_obj_base*>(p);
+    auto obj = static_cast<T*>(hobp);
+    hobp->deleter_(obj);
   };
-  DEBUG_PRINT(&fn);
-  return &fn;
+  domain.objRetire(this);
 }
 
 /** hazptr_rec */
@@ -87,37 +68,51 @@ class hazptr_rec {
 
 template <typename T>
 inline hazptr_owner<T>::hazptr_owner(
-    hazptr_domain* domain,
+    hazptr_domain& domain,
     const cache_policy /* policy */) {
-  domain_ = domain;
+  domain_ = &domain;
   hazptr_ = domain_->hazptrAcquire();
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
   if (hazptr_ == nullptr) { std::bad_alloc e; throw e; }
 }
 
 template <typename T>
-hazptr_owner<T>::~hazptr_owner() noexcept {
+hazptr_owner<T>::~hazptr_owner() {
   DEBUG_PRINT(this);
   domain_->hazptrRelease(hazptr_);
 }
 
 template <typename T>
-inline bool hazptr_owner<T>::protect(const T* ptr, const std::atomic<T*>& src)
-    const noexcept {
+inline bool hazptr_owner<T>::try_protect(
+    T*& ptr,
+    const std::atomic<T*>& src) noexcept {
   DEBUG_PRINT(this << " " << ptr << " " << &src);
-  hazptr_->set(ptr);
-  // ORDER: store-load
-  return (src.load() == ptr);
+  set(ptr);
+  T* p = src.load();
+  if (p != ptr) {
+    ptr = p;
+    clear();
+    return false;
+  }
+  return true;
 }
 
 template <typename T>
-inline void hazptr_owner<T>::set(const T* ptr) const noexcept {
+inline T* hazptr_owner<T>::get_protected(const std::atomic<T*>& src) noexcept {
+  T* p = src.load();
+  while (!try_protect(p, src)) {}
+  DEBUG_PRINT(this << " " << p << " " << &src);
+  return p;
+}
+
+template <typename T>
+inline void hazptr_owner<T>::set(const T* ptr) noexcept {
   DEBUG_PRINT(this << " " << ptr);
   hazptr_->set(ptr);
 }
 
 template <typename T>
-inline void hazptr_owner<T>::clear() const noexcept {
+inline void hazptr_owner<T>::clear() noexcept {
   DEBUG_PRINT(this);
   hazptr_->clear();
 }
@@ -145,9 +140,9 @@ inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
 // - Optimized memory order
 
 /** Definition of default_hazptr_domain() */
-inline hazptr_domain* default_hazptr_domain() {
+inline hazptr_domain& default_hazptr_domain() {
   static hazptr_domain d;
-  return &d;
+  return d;
 }
 
 /** hazptr_rec */
@@ -164,15 +159,19 @@ inline const void* hazptr_rec::get() const noexcept {
 
 inline void hazptr_rec::clear() noexcept {
   DEBUG_PRINT(this);
-  // ORDER: release
   hazptr_.store(nullptr);
 }
 
 inline void hazptr_rec::release() noexcept {
   DEBUG_PRINT(this);
   clear();
-  // ORDER: release
   active_.store(false);
+}
+
+/** hazptr_obj */
+
+inline const void* hazptr_obj::getObjPtr() const {
+  return this;
 }
 
 /** hazptr_domain */
@@ -195,17 +194,10 @@ inline hazptr_domain::~hazptr_domain() {
   }
 }
 
-inline void hazptr_domain::flush() {
+inline void hazptr_domain::try_reclaim() {
   DEBUG_PRINT(this);
-  auto rcount = rcount_.exchange(0);
-  auto p = retired_.exchange(nullptr);
-  hazptr_obj* next;
-  for (; p; p = next) {
-    next = p->next_;
-    (*(p->reclaim_))(p);
-    --rcount;
-  }
-  rcount_.fetch_add(rcount);
+  rcount_.exchange(0);
+  bulkReclaim();
 }
 
 inline hazptr_rec* hazptr_domain::hazptrAcquire() {
@@ -237,7 +229,7 @@ inline hazptr_rec* hazptr_domain::hazptrAcquire() {
   return p;
 }
 
-inline void hazptr_domain::hazptrRelease(hazptr_rec* p) const noexcept {
+inline void hazptr_domain::hazptrRelease(hazptr_rec* p) noexcept {
   DEBUG_PRINT(this << " " << p);
   p->release();
 }
@@ -245,7 +237,6 @@ inline void hazptr_domain::hazptrRelease(hazptr_rec* p) const noexcept {
 inline int
 hazptr_domain::pushRetired(hazptr_obj* head, hazptr_obj* tail, int count) {
   tail->next_ = retired_.load();
-  // ORDER: store-store order
   while (!retired_.compare_exchange_weak(tail->next_, head)) {}
   return rcount_.fetch_add(count);
 }
@@ -253,16 +244,15 @@ hazptr_domain::pushRetired(hazptr_obj* head, hazptr_obj* tail, int count) {
 inline void hazptr_domain::objRetire(hazptr_obj* p) {
   auto rcount = pushRetired(p, p, 1) + 1;
   if (rcount >= kScanThreshold * hcount_.load()) {
-    bulkReclaim();
+    tryBulkReclaim();
   }
 }
 
-inline void hazptr_domain::bulkReclaim() {
+inline void hazptr_domain::tryBulkReclaim() {
   DEBUG_PRINT(this);
-  auto h = hazptrs_.load();
-  auto hcount = hcount_.load();
-  auto rcount = rcount_.load();
   do {
+    auto hcount = hcount_.load();
+    auto rcount = rcount_.load();
     if (rcount < kScanThreshold * hcount) {
       return;
     }
@@ -270,46 +260,26 @@ inline void hazptr_domain::bulkReclaim() {
       break;
     }
   } while (true);
-  /* ORDER: store-load order between removing each object and scanning
-   * the hazard pointers -- can be combined in one fence */
+  bulkReclaim();
+}
+
+inline void hazptr_domain::bulkReclaim() {
+  DEBUG_PRINT(this);
+  auto p = retired_.exchange(nullptr);
+  auto h = hazptrs_.load();
   std::unordered_set<const void*> hs;
   for (; h; h = h->next_) {
     hs.insert(h->hazptr_.load());
   }
-  rcount = 0;
+  int rcount = 0;
   hazptr_obj* retired = nullptr;
   hazptr_obj* tail = nullptr;
-  auto p = retired_.exchange(nullptr);
   hazptr_obj* next;
   for (; p; p = next) {
     next = p->next_;
-    if (hs.count(p) == 0) {
+    if (hs.count(p->getObjPtr()) == 0) {
+      DEBUG_PRINT(this << " " << p << " " << p->reclaim_);
       (*(p->reclaim_))(p);
-    } else {
-      p->next_ = retired;
-      retired = p;
-      if (tail == nullptr) {
-        tail = p;
-      }
-      ++rcount;
-    }
-  }
-  if (tail) {
-    pushRetired(retired, tail, rcount);
-  }
-}
-
-inline void hazptr_domain::flush(const hazptr_obj_reclaim<void>* reclaim) {
-  DEBUG_PRINT(this << " " << reclaim);
-  auto rcount = rcount_.exchange(0);
-  auto p = retired_.exchange(nullptr);
-  hazptr_obj* retired = nullptr;
-  hazptr_obj* tail = nullptr;
-  hazptr_obj* next;
-  for (; p; p = next) {
-    next = p->next_;
-    if (p->reclaim_ == reclaim) {
-      (*reclaim)(p);
     } else {
       p->next_ = retired;
       retired = p;

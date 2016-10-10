@@ -35,13 +35,18 @@ class MineMemoryResource : public memory_resource {
   }
 };
 
-class Node2 : public hazptr_obj_base<Node2> {
+class Node2 : public hazptr_obj_base<Node2, void (*)(Node2*)> {
   char a[200];
 };
 
-inline void mineReclaimFn(Node2* p) {
+inline void mineReclaimFnFree(Node2* p) {
   DEBUG_PRINT(p << " " << sizeof(Node2));
   free(p);
+}
+
+inline void mineReclaimFnDelete(Node2* p) {
+  DEBUG_PRINT(p << " " << sizeof(Node2));
+  delete p;
 }
 
 } // namespace folly {

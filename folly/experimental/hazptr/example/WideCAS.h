@@ -49,9 +49,9 @@ class WideCAS {
     DEBUG_PRINT(this << " " << u << " " << v);
     Node* n = new Node(v);
     hazptr_owner<Node> hptr;
-    Node* p = p_.load();
+    Node* p;
     do {
-      if (!hptr.protect(p, p_)) continue;
+      p = hptr.get_protected(p_);
       if (p->val_ != u) { delete n; return false; }
       if (p_.compare_exchange_weak(p, n)) break;
     } while (true);

@@ -29,7 +29,15 @@ namespace hazptr {
  */
 template <typename T>
 class SWMRListSet {
-  class Node : public hazptr_obj_base<Node> {
+  template <typename Node>
+  struct Reclaimer {
+    void operator()(Node* p) {
+      DEBUG_PRINT(p << " " << sizeof(Node));
+      delete p;
+    }
+  };
+
+  class Node : public hazptr_obj_base<Node, Reclaimer<Node>> {
     friend SWMRListSet;
     T elem_;
     std::atomic<Node*> next_;
@@ -45,16 +53,10 @@ class SWMRListSet {
   };
 
   std::atomic<Node*> head_ = {nullptr};
-  hazptr_domain* domain_;
-  hazptr_obj_reclaim<Node> reclaim_ = [](Node* p) { reclaim(p); };
-
-  static void reclaim(Node* p) {
-    DEBUG_PRINT(p << " " << sizeof(Node));
-    delete p;
-  };
+  hazptr_domain& domain_;
 
   /* Used by the single writer */
-  void locate_lower_bound(T v, std::atomic<Node*>*& prev) {
+  void locate_lower_bound(const T v, std::atomic<Node*>*& prev) const {
     auto curr = prev->load();
     while (curr) {
       if (curr->elem_ >= v) break;
@@ -65,7 +67,7 @@ class SWMRListSet {
   }
 
  public:
-  explicit SWMRListSet(hazptr_domain* domain = default_hazptr_domain())
+  explicit SWMRListSet(hazptr_domain& domain = default_hazptr_domain())
       : domain_(domain) {}
 
   ~SWMRListSet() {
@@ -74,10 +76,9 @@ class SWMRListSet {
       next = p->next_.load();
       delete p;
     }
-    domain_->flush(&reclaim_); /* avoid destruction order fiasco */
   }
 
-  bool add(T v) {
+  bool add(const T v) {
     auto prev = &head_;
     locate_lower_bound(v, prev);
     auto curr = prev->load();
@@ -86,17 +87,17 @@ class SWMRListSet {
     return true;
   }
 
-  bool remove(T v) {
+  bool remove(const T v) {
     auto prev = &head_;
     locate_lower_bound(v, prev);
     auto curr = prev->load();
     if (!curr || curr->elem_ != v) return false;
     prev->store(curr->next_.load());
-    curr->retire(domain_, &reclaim_);
+    curr->retire(domain_);
     return true;
   }
   /* Used by readers */
-  bool contains(T val) {
+  bool contains(const T val) const {
     /* Acquire two hazard pointers for hand-over-hand traversal. */
     hazptr_owner<Node> hptr_prev(domain_);
     hazptr_owner<Node> hptr_curr(domain_);
@@ -107,11 +108,10 @@ class SWMRListSet {
       auto curr = prev->load();
       while (true) {
         if (!curr) { done = true; break; }
-        if (!hptr_curr.protect(curr, *prev)) break;
+        if (!hptr_curr.try_protect(curr, *prev))
+          break;
         auto next = curr->next_.load();
         elem = curr->elem_;
-        // Load-load order
-        std::atomic_thread_fence(std::memory_order_acquire);
         if (prev->load() != curr) break;
         if (elem >= val) { done = true; break; }
         prev = &(curr->next_);

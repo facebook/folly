@@ -35,14 +35,17 @@ class MyMemoryResource : public memory_resource {
   }
 };
 
-class Node1 : public hazptr_obj_base<Node1> {
-  char a[100];
+template <typename Node1>
+struct MyReclaimerFree {
+  inline void operator()(Node1* p) {
+    DEBUG_PRINT(p << " " << sizeof(Node1));
+    free(p);
+  }
 };
 
-inline void myReclaimFn(Node1* p) {
-  DEBUG_PRINT(p << " " << sizeof(Node1));
-  free(p);
-}
+class Node1 : public hazptr_obj_base<Node1, MyReclaimerFree<Node1>> {
+  char a[100];
+};
 
 } // namespace folly {
 } // namespace hazptr {
