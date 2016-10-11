@@ -75,7 +75,7 @@ class BatchDispatcher {
       : executor_(executor),
         state_(new DispatchState(std::move(dispatchFunc))) {}
 
-  Future<ResultT> add(ValueT&& value) {
+  Future<ResultT> add(ValueT value) {
     if (state_->values.empty()) {
       executor_.add([state = state_]() { dispatchFunctionWrapper(*state); });
     }
