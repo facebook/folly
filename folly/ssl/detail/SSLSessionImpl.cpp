@@ -99,7 +99,7 @@ void SSLSessionImpl::upRef() {
 #if defined(OPENSSL_IS_102) || defined(OPENSSL_IS_101)
     CRYPTO_add(&session_->references, 1, CRYPTO_LOCK_SSL_SESSION);
 #elif defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_110)
-    SSL_SESSION_up_ref(&session_);
+    SSL_SESSION_up_ref(session_);
 #endif
   }
 }
