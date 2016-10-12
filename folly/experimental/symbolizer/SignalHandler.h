@@ -30,14 +30,6 @@ namespace folly { namespace symbolizer {
 void installFatalSignalHandler();
 
 /**
- * NOTE: The signal handler cache has a fixed size. ELF files for the
- * binary and DSOs are added to the cache but never removed.
- *
- * Addresses from ELF files not in the cache will (silently) NOT be symbolized.
- */
-constexpr size_t kFatalSignalHandlerCacheSize = 10000;
-
-/**
  * Add a callback to be run when receiving a fatal signal. They will also
  * be called by LOG(FATAL) and abort() (as those raise SIGABRT internally).
  *

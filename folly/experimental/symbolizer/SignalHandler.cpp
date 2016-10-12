@@ -18,13 +18,15 @@
 
 #include <folly/experimental/symbolizer/SignalHandler.h>
 
+#include <pthread.h>
+#include <signal.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#include <algorithm>
 #include <atomic>
 #include <ctime>
 #include <mutex>
-#include <pthread.h>
-#include <signal.h>
-#include <unistd.h>
 #include <vector>
 
 #include <glog/logging.h>
@@ -33,6 +35,7 @@
 #include <folly/FileUtil.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/portability/SysSyscall.h>
 
@@ -128,7 +131,9 @@ void callPreviousSignalHandler(int signum) {
 // in our signal handler at a time.
 //
 // Leak it so we don't have to worry about destruction order
-auto gSignalSafeElfCache = new SignalSafeElfCache(kFatalSignalHandlerCacheSize);
+constexpr size_t kMinSignalSafeElfCacheSize = 500;
+auto gSignalSafeElfCache = new SignalSafeElfCache(
+    std::max(countLoadedElfFiles(), kMinSignalSafeElfCacheSize));
 
 // Buffered writer (using a fixed-size buffer). We try to write only once
 // to prevent interleaving with messages written from other threads.
