@@ -170,9 +170,7 @@ static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
 
   STACK_OF(SSL_CIPHER)* sk = SSL_get_ciphers(ssl);
   for (size_t i = 0; i < (size_t)sk_SSL_CIPHER_num(sk); i++) {
-    SSL_CIPHER* c;
-
-    c = sk_SSL_CIPHER_value(sk, i);
+    const SSL_CIPHER* c = sk_SSL_CIPHER_value(sk, i);
     unsigned long id = SSL_CIPHER_get_id(c);
     // OpenSSL 1.0.2 and prior does weird things such as stuff the SSL/TLS
     // version into the top 16 bits. Let's ignore those for now. This is
