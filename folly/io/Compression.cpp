@@ -960,7 +960,7 @@ class ZSTDCodec final : public Codec {
       const IOBuf* data,
       uint64_t uncompressedLength) override;
 
-  int level_{1};
+  int level_;
 };
 
 std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
@@ -971,15 +971,20 @@ ZSTDCodec::ZSTDCodec(int level, CodecType type) : Codec(type) {
   DCHECK(type == CodecType::ZSTD);
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
-      level_ = 1;
+      level = 1;
       break;
     case COMPRESSION_LEVEL_DEFAULT:
-      level_ = 1;
+      level = 1;
       break;
     case COMPRESSION_LEVEL_BEST:
-      level_ = 19;
+      level = 19;
       break;
   }
+  if (level < 1 || level > ZSTD_maxCLevel()) {
+    throw std::invalid_argument(
+        to<std::string>("ZSTD: invalid level: ", level));
+  }
+  level_ = level;
 }
 
 bool ZSTDCodec::doNeedsUncompressedLength() const {
