@@ -241,7 +241,7 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   static uint64_t resolutionInNs = 0;
   if (!resolutionInNs) {
     timespec ts;
-    CHECK_EQ(0, clock_getres(detail::DEFAULT_CLOCK_ID, &ts));
+    CHECK_EQ(0, clock_getres(CLOCK_REALTIME, &ts));
     CHECK_EQ(0, ts.tv_sec) << "Clock sucks.";
     CHECK_LT(0, ts.tv_nsec) << "Clock too fast for its own good.";
     CHECK_EQ(1, ts.tv_nsec) << "Clock too coarse, upgrade your kernel.";

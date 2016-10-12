@@ -52,13 +52,6 @@ inline bool runBenchmarksOnFlag() {
 
 namespace detail {
 
-/**
- * This is the clock ID used for measuring time. On older kernels, the
- * resolution of this clock will be very coarse, which will cause the
- * benchmarks to fail.
- */
-enum Clock { DEFAULT_CLOCK_ID = CLOCK_REALTIME };
-
 typedef std::pair<uint64_t, unsigned int> TimeIterPair;
 
 /**
@@ -116,7 +109,7 @@ inline uint64_t timespecDiff(timespec end, timespec start,
  */
 struct BenchmarkSuspender {
   BenchmarkSuspender() {
-    CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &start));
+    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &start));
   }
 
   BenchmarkSuspender(const BenchmarkSuspender &) = delete;
@@ -149,7 +142,7 @@ struct BenchmarkSuspender {
 
   void rehire() {
     assert(start.tv_nsec == 0 || start.tv_sec == 0);
-    CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &start));
+    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &start));
   }
 
   template <class F>
@@ -176,7 +169,7 @@ struct BenchmarkSuspender {
 private:
   void tally() {
     timespec end;
-    CHECK_EQ(0, clock_gettime(detail::DEFAULT_CLOCK_ID, &end));
+    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &end));
     nsSpent += detail::timespecDiff(end, start);
     start = end;
   }
@@ -203,9 +196,9 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
     unsigned int niter;
 
     // CORE MEASUREMENT STARTS
-    auto const r1 = clock_gettime(detail::DEFAULT_CLOCK_ID, &start);
+    auto const r1 = clock_gettime(CLOCK_REALTIME, &start);
     niter = lambda(times);
-    auto const r2 = clock_gettime(detail::DEFAULT_CLOCK_ID, &end);
+    auto const r2 = clock_gettime(CLOCK_REALTIME, &end);
     // CORE MEASUREMENT ENDS
 
     CHECK_EQ(0, r1);

@@ -387,6 +387,7 @@ libfollybase_la_SOURCES = \
 	Format.cpp \
 	FormatTables.cpp \
 	MallctlHelper.cpp \
+	portability/BitsFunctexcept.cpp \
 	StringBase.cpp \
 	String.cpp \
 	Unicode.cpp
@@ -448,7 +449,6 @@ libfolly_la_SOURCES = \
 	detail/SocketFastOpen.cpp \
 	MacAddress.cpp \
 	MemoryMapping.cpp \
-	portability/BitsFunctexcept.cpp \
 	portability/Dirent.cpp \
 	portability/Environment.cpp \
 	portability/Fcntl.cpp \
