@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <exception>
+#include <iostream>
 #include <memory>
 #include <folly/ExceptionString.h>
 #include <folly/detail/ExceptionWrapper.h>
@@ -156,6 +157,9 @@ class exception_wrapper {
     } else if (eptr_) {
       std::rethrow_exception(eptr_);
     }
+    std::cerr
+        << "Cannot use `throwException` with an empty folly::exception_wrapper"
+        << std::endl;
     std::terminate();
   }
 

@@ -306,7 +306,7 @@ TEST(ExceptionWrapper, exceptionStr) {
 
 TEST(ExceptionWrapper, throwException_noException) {
   exception_wrapper ew;
-  ASSERT_DEATH(ew.throwException(), "exception");
+  ASSERT_DEATH(ew.throwException(), "empty folly::exception_wrapper");
 }
 
 namespace {
