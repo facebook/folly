@@ -40,6 +40,14 @@ class ObserverCreator<Observable, Traits>::Context {
   }
 
   void update() {
+    // This mutex ensures there's no race condition between initial update()
+    // call and update() calls from the subsciption callback.
+    //
+    // Additionally it helps avoid races between two different subscription
+    // callbacks (getting new value from observable and storing it into value_
+    // is not atomic).
+    std::lock_guard<std::mutex> lg(updateMutex_);
+
     {
       auto newValue = Traits::get(observable_);
       if (!newValue) {
@@ -69,6 +77,8 @@ class ObserverCreator<Observable, Traits>::Context {
   observer_detail::Core::WeakPtr coreWeak_;
 
   Observable observable_;
+
+  std::mutex updateMutex_;
 };
 
 template <typename Observable, typename Traits>
