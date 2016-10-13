@@ -20,13 +20,18 @@
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 
-#define OPENSSL_IS_101                      \
-  (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
-   OPENSSL_VERSION_NUMBER < 0x1000200fL)
-#define OPENSSL_IS_102                      \
-  (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
-   OPENSSL_VERSION_NUMBER < 0x10100000L)
-#define OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+// BoringSSL doesn't have notion of versioning although it defines
+// OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
+// intended to be specific to OpenSSL.
+#if !defined(OPENSSL_IS_BORINGSSL)
+# define OPENSSL_IS_101                       \
+    (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
+     OPENSSL_VERSION_NUMBER < 0x1000200fL)
+# define OPENSSL_IS_102                       \
+    (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
+     OPENSSL_VERSION_NUMBER < 0x10100000L)
+# define OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#endif  // !defined(OPENSSL_IS_BORINGSSL)
 
 // This is used to find the OpenSSL version at runtime. Just returning
 // OPENSSL_VERSION_NUMBER is insufficient as runtime version may be different
