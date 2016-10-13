@@ -457,7 +457,7 @@ bool Dwarf::findDebugInfoOffset(uintptr_t address,
       auto start = read<uintptr_t>(chunk);
       auto length = read<uintptr_t>(chunk);
 
-      if (start == 0) {
+      if (start == 0 && length == 0) {
         break;
       }
 
