@@ -77,6 +77,7 @@ nobase_follyinclude_HEADERS = \
 	detail/StaticSingletonManager.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
+  detail/TryDetail.h \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	Demangle.h \

@@ -468,32 +468,13 @@ struct CollectVariadicContext {
   }
   ~CollectVariadicContext() {
     if (!threw.exchange(true)) {
-      p.setValue(unwrap(std::move(results)));
+      p.setValue(unwrapTryTuple(std::move(results)));
     }
   }
   Promise<std::tuple<Ts...>> p;
   std::tuple<folly::Try<Ts>...> results;
   std::atomic<bool> threw {false};
   typedef Future<std::tuple<Ts...>> type;
-
- private:
-  template <typename... Ts2>
-  static std::tuple<Ts...> unwrap(std::tuple<folly::Try<Ts>...>&& o,
-                                  Ts2&&... ts2) {
-    static_assert(sizeof...(ts2) <
-                  std::tuple_size<std::tuple<folly::Try<Ts>...>>::value,
-                  "Non-templated unwrap should be used instead");
-    assert(std::get<sizeof...(ts2)>(o).hasValue());
-
-    return unwrap(std::move(o),
-                  std::forward<Ts2>(ts2)...,
-                  std::move(*std::get<sizeof...(ts2)>(o)));
-  }
-
-  static std::tuple<Ts...> unwrap(std::tuple<folly::Try<Ts>...>&& /* o */,
-                                  Ts&&... ts) {
-    return std::tuple<Ts...>(std::forward<Ts>(ts)...);
-  }
 };
 
 template <template <typename...> class T, typename... Ts>
