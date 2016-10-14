@@ -466,7 +466,7 @@ struct CollectVariadicContext {
        std::get<I>(results) = std::move(t);
      }
   }
-  ~CollectVariadicContext() {
+  ~CollectVariadicContext() noexcept {
     if (!threw.exchange(true)) {
       p.setValue(unwrapTryTuple(std::move(results)));
     }
