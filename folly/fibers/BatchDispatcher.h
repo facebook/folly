@@ -105,13 +105,25 @@ class BatchDispatcher {
     state.values.swap(values);
     state.promises.swap(promises);
 
-    auto results = state.dispatchFunc(std::move(values));
-    if (results.size() != promises.size()) {
-      throw std::logic_error(
-          "Unexpected number of results returned from dispatch function");
-    }
-    for (size_t i = 0; i < promises.size(); i++) {
-      promises[i].setValue(std::move(results[i]));
+    try {
+      auto results = state.dispatchFunc(std::move(values));
+      if (results.size() != promises.size()) {
+        throw std::logic_error(
+            "Unexpected number of results returned from dispatch function");
+      }
+
+      for (size_t i = 0; i < promises.size(); i++) {
+        promises[i].setValue(std::move(results[i]));
+      }
+    } catch (const std::exception& ex) {
+      for (size_t i = 0; i < promises.size(); i++) {
+        promises[i].setException(
+            exception_wrapper(std::current_exception(), ex));
+      }
+    } catch (...) {
+      for (size_t i = 0; i < promises.size(); i++) {
+        promises[i].setException(exception_wrapper(std::current_exception()));
+      }
     }
   }
 

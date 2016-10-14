@@ -1728,6 +1728,31 @@ TEST(FiberManager, doubleBatchDispatchTest) {
   evb.loop();
 }
 
+template <typename ExecutorT>
+void batchDispatchExceptionHandling(ExecutorT& executor, int i) {
+  thread_local BatchDispatcher<int, int, ExecutorT> batchDispatcher(
+      executor, [=, &executor](std::vector<int> &&) -> std::vector<int> {
+        throw std::runtime_error("Surprise!!");
+      });
+
+  EXPECT_THROW(batchDispatcher.add(i).get(), std::runtime_error);
+}
+
+TEST(FiberManager, batchDispatchExceptionHandlingTest) {
+  folly::EventBase evb;
+  auto& executor = getFiberManager(evb);
+
+  // Launch multiple fibers with a single id.
+  executor.add([&]() {
+    int totalNumberOfElements = 5;
+    for (int i = 0; i < totalNumberOfElements; i++) {
+      executor.add(
+          [=, &executor]() { batchDispatchExceptionHandling(executor, i); });
+    }
+  });
+  evb.loop();
+}
+
 /**
  * Test that we can properly track fiber stack usage.
  *
