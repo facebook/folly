@@ -20,9 +20,12 @@
 
 void dummy() {}
 
-BENCHMARK(DwarfFindAddress, n) {
+namespace {
+
+using namespace folly::symbolizer;
+
+void run(Dwarf::LocationInfoMode mode, size_t n) {
   folly::BenchmarkSuspender suspender;
-  using namespace folly::symbolizer;
   // NOTE: Using '/proc/self/exe' only works if the code for @dummy is
   // statically linked into the binary.
   ElfFile elf("/proc/self/exe");
@@ -30,8 +33,18 @@ BENCHMARK(DwarfFindAddress, n) {
   suspender.dismiss();
   for (size_t i = 0; i < n; i++) {
     Dwarf::LocationInfo info;
-    dwarf.findAddress(uintptr_t(&dummy), info);
+    dwarf.findAddress(uintptr_t(&dummy), info, mode);
   }
+}
+
+} // namespace
+
+BENCHMARK(DwarfFindAddressFast, n) {
+  run(folly::symbolizer::Dwarf::LocationInfoMode::FAST, n);
+}
+
+BENCHMARK(DwarfFindAddressFull, n) {
+  run(folly::symbolizer::Dwarf::LocationInfoMode::FULL, n);
 }
 
 int main(int argc, char* argv[]) {

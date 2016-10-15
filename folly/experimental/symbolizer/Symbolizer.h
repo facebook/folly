@@ -41,7 +41,10 @@ class Symbolizer;
 struct SymbolizedFrame {
   SymbolizedFrame() { }
 
-  void set(const std::shared_ptr<ElfFile>& file, uintptr_t address);
+  void set(const std::shared_ptr<ElfFile>& file,
+           uintptr_t address,
+           Dwarf::LocationInfoMode mode);
+
   void clear() { *this = SymbolizedFrame(); }
 
   bool found = false;
@@ -54,6 +57,7 @@ struct SymbolizedFrame {
   fbstring demangledName() const {
     return name ? demangle(name) : fbstring();
   }
+
  private:
   std::shared_ptr<ElfFile> file_;
 };
@@ -107,7 +111,14 @@ inline bool getStackTraceSafe(FrameArray<N>& fa) {
 
 class Symbolizer {
  public:
-  explicit Symbolizer(ElfCacheBase* cache = nullptr);
+  static constexpr Dwarf::LocationInfoMode kDefaultLocationInfoMode =
+      Dwarf::LocationInfoMode::FAST;
+
+  explicit Symbolizer(Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode)
+    : Symbolizer(nullptr, mode) {}
+
+  explicit Symbolizer(ElfCacheBase* cache,
+                      Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode);
 
   /**
    * Symbolize given addresses.
@@ -130,7 +141,8 @@ class Symbolizer {
   }
 
  private:
-  ElfCacheBase* const cache_ = nullptr;
+  ElfCacheBase* const cache_;
+  const Dwarf::LocationInfoMode mode_;
 };
 
 /**

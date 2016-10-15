@@ -396,7 +396,9 @@ void dumpStackTrace(bool symbolize) {
   if (!getStackTraceSafe(addresses)) {
     print("(error retrieving stack trace)\n");
   } else if (symbolize) {
-    Symbolizer symbolizer(gSignalSafeElfCache);
+    // Do our best to populate location info, process is going to terminate,
+    // so performance isn't critical.
+    Symbolizer symbolizer(gSignalSafeElfCache, Dwarf::LocationInfoMode::FULL);
     symbolizer.symbolize(addresses);
 
     // Skip the top 2 frames:

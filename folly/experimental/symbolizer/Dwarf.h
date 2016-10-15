@@ -100,25 +100,37 @@ class Dwarf {
     folly::StringPiece file_;
   };
 
-  struct LocationInfo {
-    LocationInfo() : hasMainFile(false), hasFileAndLine(false), line(0) { }
-
-    bool hasMainFile;
-    Path mainFile;
-
-    bool hasFileAndLine;
-    Path file;
-    uint64_t line;
+  enum class LocationInfoMode {
+    // Don't resolve location info.
+    DISABLED,
+    // Perform CU lookup using .debug_aranges (might be incomplete).
+    FAST,
+    // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
+    FULL,
   };
 
-  /** Find the file and line number information corresponding to address */
-  bool findAddress(uintptr_t address, LocationInfo& info) const;
+  struct LocationInfo {
+    bool hasMainFile = false;
+    Path mainFile;
+
+    bool hasFileAndLine = false;
+    Path file;
+    uint64_t line = 0;
+  };
+
+  /**
+   * Find the file and line number information corresponding to address.
+   */
+  bool findAddress(uintptr_t address,
+                   LocationInfo& info,
+                   LocationInfoMode mode) const;
 
  private:
-  void init();
   static bool findDebugInfoOffset(uintptr_t address,
                                   StringPiece aranges,
                                   uint64_t& offset);
+
+  void init();
   bool findLocation(uintptr_t address,
                     StringPiece& infoEntry,
                     LocationInfo& info) const;

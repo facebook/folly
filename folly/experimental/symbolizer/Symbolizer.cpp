@@ -60,7 +60,8 @@ ElfCache* defaultElfCache() {
 }  // namespace
 
 void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
-                          uintptr_t address) {
+                          uintptr_t address,
+                          Dwarf::LocationInfoMode mode) {
   clear();
   found = true;
 
@@ -73,12 +74,11 @@ void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
   file_ = file;
   name = file->getSymbolName(sym);
 
-  Dwarf(file.get()).findAddress(address, location);
+  Dwarf(file.get()).findAddress(address, location, mode);
 }
 
-
-Symbolizer::Symbolizer(ElfCacheBase* cache)
-  : cache_(cache ?: defaultElfCache()) {
+Symbolizer::Symbolizer(ElfCacheBase* cache, Dwarf::LocationInfoMode mode)
+  : cache_(cache ?: defaultElfCache()), mode_(mode) {
 }
 
 void Symbolizer::symbolize(const uintptr_t* addresses,
@@ -143,7 +143,7 @@ void Symbolizer::symbolize(const uintptr_t* addresses,
       auto const adjusted = addr - base;
 
       if (elfFile->getSectionContainingAddress(adjusted)) {
-        frame.set(elfFile, adjusted);
+        frame.set(elfFile, adjusted, mode_);
         --remaining;
       }
     }
