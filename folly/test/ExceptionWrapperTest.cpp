@@ -229,13 +229,9 @@ TEST(ExceptionWrapper, getExceptionPtr_test) {
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
   // Test with empty ew.
-
-  // Disabling pending fix for fbandroid: t13822116
-  /*
   exception_wrapper empty_ew;
   eptr = empty_ew.getExceptionPtr();
-  EXPECT_DEATH(std::rethrow_exception(eptr), "exception");
-  */
+  EXPECT_FALSE(eptr);
 }
 
 TEST(ExceptionWrapper, with_exception_deduction) {
