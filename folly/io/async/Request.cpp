@@ -112,4 +112,13 @@ std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
 
   return singleton.get();
 }
+
+RequestContext* RequestContext::get() {
+  auto context = getStaticContext();
+  if (!context) {
+    static RequestContext defaultContext;
+    return std::addressof(defaultContext);
+  }
+  return context.get();
+}
 }

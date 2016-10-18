@@ -179,7 +179,7 @@ FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
     // Static because otherwise clever compilers will find out that
     // the ptr is not used and does not escape the scope, so they will
     // just optimize away the malloc.
-    static void* ptr = malloc(1);
+    static const void* ptr = malloc(1);
     if (!ptr) {
       // wtf, failing to allocate 1 byte
       return false;

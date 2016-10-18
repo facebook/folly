@@ -167,18 +167,6 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
 #endif
 
-// portable version check
-#ifndef __GNUC_PREREQ
-# if defined __GNUC__ && defined __GNUC_MINOR__
-/* nolint */
-#  define __GNUC_PREREQ(maj, min) ((__GNUC__ << 16) + __GNUC_MINOR__ >= \
-                                   ((maj) << 16) + (min))
-# else
-/* nolint */
-#  define __GNUC_PREREQ(maj, min) 0
-# endif
-#endif
-
 #if defined(__GNUC__) && !defined(__APPLE__) && !__GNUC_PREREQ(4,9)
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
 // gcc 4.8.x incorrectly placed max_align_t in the root namespace

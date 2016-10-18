@@ -325,7 +325,7 @@ struct StaticMeta : StaticMetaBase {
   static StaticMeta<Tag, AccessMode>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
-    static auto instance =
+    /* library-local */ static auto instance =
         detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
     return *instance;
   }

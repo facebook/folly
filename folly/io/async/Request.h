@@ -53,14 +53,7 @@ class RequestContext {
   }
 
   // Get the current context.
-  static RequestContext* get() {
-    auto context = getStaticContext();
-    if (!context) {
-      static RequestContext defaultContext;
-      return std::addressof(defaultContext);
-    }
-    return context.get();
-  }
+  static RequestContext* get();
 
   // The following API may be used to set per-request data in a thread-safe way.
   // This access is still performance sensitive, so please ask if you need help
