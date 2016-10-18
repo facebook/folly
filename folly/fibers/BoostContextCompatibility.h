@@ -15,8 +15,13 @@
  */
 #pragma once
 
-#include <boost/context/fcontext.hpp>
 #include <boost/version.hpp>
+
+#if BOOST_VERSION >= 106100
+#include <boost/context/detail/fcontext.hpp>
+#else
+#include <boost/context/fcontext.hpp>
+#endif
 
 /**
  * Wrappers for different versions of boost::context library
@@ -34,10 +39,26 @@ namespace fibers {
 
 struct FContext {
  public:
-#if BOOST_VERSION >= 105200
+#if BOOST_VERSION >= 106100
+  using ContextStruct = boost::context::detail::fcontext_t;
+#elif BOOST_VERSION >= 105200
   using ContextStruct = boost::context::fcontext_t;
 #else
   using ContextStruct = boost::ctx::fcontext_t;
+#endif
+
+#if BOOST_VERSION >= 106100
+  using FiberArg = boost::context::detail::transfer_t;
+  using FiberData = void*;
+  static void* getFiber(FiberArg arg) {
+    return arg.fctx;
+  }
+#else
+  using FiberArg = intptr_t;
+  using FiberData = intptr_t;
+  static FiberArg getFiber(FiberArg arg) {
+    return arg;
+  }
 #endif
 
   void* stackLimit() const {
@@ -60,17 +81,24 @@ struct FContext {
   ContextStruct context_;
 #endif
 
-  friend intptr_t
-  jumpContext(FContext* oldC, FContext::ContextStruct* newC, intptr_t p);
-  friend intptr_t
-  jumpContext(FContext::ContextStruct* oldC, FContext* newC, intptr_t p);
+  friend FiberData
+  jumpContext(FContext* oldC, FContext::ContextStruct* newC, FiberData p);
+  friend FiberData
+  jumpContext(FContext::ContextStruct* oldC, FContext* newC, FiberData p);
   friend FContext
-  makeContext(void* stackLimit, size_t stackSize, void (*fn)(intptr_t));
+  makeContext(void* stackLimit, size_t stackSize, void (*fn)(FiberArg));
 };
 
-inline intptr_t
-jumpContext(FContext* oldC, FContext::ContextStruct* newC, intptr_t p) {
-#if BOOST_VERSION >= 105600
+inline FContext::FiberData jumpContext(
+    FContext* oldC,
+    FContext::ContextStruct* newC,
+    FContext::FiberData p) {
+#if BOOST_VERSION >= 106100
+  boost::context::detail::transfer_t result =
+      boost::context::detail::jump_fcontext(*newC, p);
+  oldC->context_ = result.fctx;
+  return result.data;
+#elif BOOST_VERSION >= 105600
   return boost::context::jump_fcontext(&oldC->context_, *newC, p);
 #elif BOOST_VERSION >= 105200
   return boost::context::jump_fcontext(oldC->context_, newC, p);
@@ -79,22 +107,34 @@ jumpContext(FContext* oldC, FContext::ContextStruct* newC, intptr_t p) {
 #endif
 }
 
-inline intptr_t
-jumpContext(FContext::ContextStruct* oldC, FContext* newC, intptr_t p) {
-#if BOOST_VERSION >= 105200
+inline FContext::FiberData jumpContext(
+    FContext::ContextStruct* oldC,
+    FContext* newC,
+    FContext::FiberData p) {
+#if BOOST_VERSION >= 106100
+  boost::context::detail::transfer_t result =
+      boost::context::detail::jump_fcontext(newC->context_, p);
+  *oldC = result.fctx;
+  return result.data;
+#elif BOOST_VERSION >= 105200
   return boost::context::jump_fcontext(oldC, newC->context_, p);
 #else
   return jump_fcontext(oldC, &newC->context_, p);
 #endif
 }
 
-inline FContext
-makeContext(void* stackLimit, size_t stackSize, void (*fn)(intptr_t)) {
+inline FContext makeContext(
+    void* stackLimit,
+    size_t stackSize,
+    void (*fn)(FContext::FiberArg)) {
   FContext res;
   res.stackLimit_ = stackLimit;
   res.stackBase_ = static_cast<unsigned char*>(stackLimit) + stackSize;
 
-#if BOOST_VERSION >= 105200
+#if BOOST_VERSION >= 106100
+  res.context_ =
+      boost::context::detail::make_fcontext(res.stackBase_, stackSize, fn);
+#elif BOOST_VERSION >= 105200
   res.context_ = boost::context::make_fcontext(res.stackBase_, stackSize, fn);
 #else
   res.context_.fc_stack.limit = stackLimit;

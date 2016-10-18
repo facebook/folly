@@ -49,7 +49,7 @@ class Fiber {
    *
    * @param data this data will be returned by await() when task is resumed.
    */
-  void setData(intptr_t data);
+  void setData(FContext::FiberData data);
 
   Fiber(const Fiber&) = delete;
   Fiber& operator=(const Fiber&) = delete;
@@ -97,7 +97,7 @@ class Fiber {
   template <typename F, typename G>
   void setFunctionFinally(F&& func, G&& finally);
 
-  static void fiberFuncHelper(intptr_t fiber);
+  static void fiberFuncHelper(FContext::FiberArg fiber);
   void fiberFunc();
 
   /**
@@ -108,7 +108,7 @@ class Fiber {
    *
    * @return The value passed back from the main context.
    */
-  intptr_t preempt(State state);
+  FContext::FiberData preempt(State state);
 
   /**
    * Examines how much of the stack we used at this moment and
@@ -118,7 +118,7 @@ class Fiber {
 
   FiberManager& fiberManager_; /**< Associated FiberManager */
   FContext fcontext_; /**< current task execution context */
-  intptr_t data_; /**< Used to keep some data with the Fiber */
+  FContext::FiberData data_; /**< Used to keep some data with the Fiber */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
   folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};

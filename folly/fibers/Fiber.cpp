@@ -50,7 +50,7 @@ static size_t nonMagicInBytes(const FContext& context) {
 
 } // anonymous namespace
 
-void Fiber::setData(intptr_t data) {
+void Fiber::setData(FContext::FiberData data) {
   DCHECK_EQ(state_, AWAITING);
   data_ = data;
   state_ = READY_TO_RUN;
@@ -121,8 +121,8 @@ void Fiber::recordStackPosition() {
   VLOG(4) << "Stack usage: " << currentPosition;
 }
 
-void Fiber::fiberFuncHelper(intptr_t fiber) {
-  reinterpret_cast<Fiber*>(fiber)->fiberFunc();
+void Fiber::fiberFuncHelper(FContext::FiberArg fiber) {
+  reinterpret_cast<Fiber*>(FContext::getFiber(fiber))->fiberFunc();
 }
 
 void Fiber::fiberFunc() {
@@ -170,8 +170,8 @@ void Fiber::fiberFunc() {
   }
 }
 
-intptr_t Fiber::preempt(State state) {
-  intptr_t ret;
+FContext::FiberData Fiber::preempt(State state) {
+  FContext::FiberData ret;
 
   auto preemptImpl = [&]() mutable {
     DCHECK_EQ(fiberManager_.activeFiber_, this);
