@@ -425,7 +425,7 @@ TEST(ThreadLocal, Stress) {
   std::vector<std::thread> threads;
   threads.reserve(numThreads);
 
-  for (size_t i = 0; i < numThreads; ++i) {
+  for (size_t k = 0; k < numThreads; ++k) {
     threads.emplace_back([&objects] {
       for (size_t rep = 0; rep < numReps; ++rep) {
         for (size_t i = 0; i < objects.size(); ++i) {
