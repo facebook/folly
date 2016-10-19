@@ -24,7 +24,7 @@ TEST(NonCopyableLambda, basic) {
   Future<int> future = promise.getFuture();
 
   Future<Unit>().then(std::bind(
-      [](Promise<int>& promise) mutable { promise.setValue(123); },
+      [](Promise<int>& p2) mutable { p2.setValue(123); },
       std::move(promise)));
 
   // The previous statement can be simplified in C++14:
@@ -43,9 +43,9 @@ TEST(NonCopyableLambda, unique_ptr) {
   EXPECT_EQ(*int_ptr, 1);
 
   auto future = promise.getFuture().then(std::bind(
-      [](std::unique_ptr<int>& int_ptr) mutable {
-        ++*int_ptr;
-        return std::move(int_ptr);
+      [](std::unique_ptr<int>& p) mutable {
+        ++*p;
+        return std::move(p);
       },
       std::move(int_ptr)));
 
