@@ -171,13 +171,11 @@ TEST(Singleton, NaughtyUsage) {
   SingletonNaughtyUsage2<Watchdog> watchdog_singleton;
 
   // double registration
-  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> watchdog_singleton; }(),
-               "");
+  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> w2; }(), "");
   vault2.destroyInstances();
 
   // double registration after destroy
-  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> watchdog_singleton; }(),
-               "");
+  EXPECT_DEATH([]() { SingletonNaughtyUsage2<Watchdog> w3; }(), "");
 }
 
 struct SharedPtrUsageTag {};
