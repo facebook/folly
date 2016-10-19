@@ -27,7 +27,8 @@ namespace fibers {
  */
 class Semaphore {
  public:
-  explicit Semaphore(size_t tokenCount) : tokens_(tokenCount) {}
+  explicit Semaphore(size_t tokenCount)
+      : capacity_(tokenCount), tokens_(capacity_) {}
 
   Semaphore(const Semaphore&) = delete;
   Semaphore(Semaphore&&) = delete;
@@ -44,10 +45,13 @@ class Semaphore {
    */
   void wait();
 
+  size_t getCapacity() const;
+
  private:
   bool waitSlow();
   bool signalSlow();
 
+  size_t capacity_;
   // Atomic counter
   std::atomic<int64_t> tokens_;
   folly::Synchronized<std::queue<folly::fibers::Baton*>> waitList_;

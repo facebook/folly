@@ -90,5 +90,9 @@ void Semaphore::wait() {
       std::memory_order_acquire));
 }
 
+size_t Semaphore::getCapacity() const {
+  return capacity_;
+}
+
 } // namespace fibers
 } // namespace folly
