@@ -45,7 +45,9 @@ void throwAndCatch(F f) {
 
 TEST(ExceptionCounter, oneThread) {
   throwAndCatch(foo);
-  for (int i = 0; i < 10; ++i) {
+
+  // Use volatile to prevent loop unrolling (it screws up stack frame grouping).
+  for (volatile int i = 0; i < 10; ++i) {
     throwAndCatch(bar);
   }
 
