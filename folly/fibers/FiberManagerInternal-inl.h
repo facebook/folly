@@ -58,7 +58,7 @@ inline void FiberManager::ensureLoopScheduled() {
   loopController_->schedule();
 }
 
-inline FContext::FiberData FiberManager::activateFiber(Fiber* fiber) {
+inline intptr_t FiberManager::activateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, (Fiber*)nullptr);
 
 #ifdef FOLLY_SANITIZE_ADDRESS
@@ -78,7 +78,7 @@ inline FContext::FiberData FiberManager::activateFiber(Fiber* fiber) {
   return jumpContext(&mainContext_, &fiber->fcontext_, fiber->data_);
 }
 
-inline FContext::FiberData FiberManager::deactivateFiber(Fiber* fiber) {
+inline intptr_t FiberManager::deactivateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, fiber);
 
 #ifdef FOLLY_SANITIZE_ADDRESS
@@ -229,7 +229,7 @@ inline bool FiberManager::loopUntilNoReady() {
       fiber->rcontext_ = std::move(task->rcontext);
 
       fiber->setFunction(std::move(task->func));
-      fiber->data_ = reinterpret_cast<FContext::FiberData>(fiber);
+      fiber->data_ = reinterpret_cast<intptr_t>(fiber);
       if (observer_) {
         observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
       }
@@ -299,7 +299,7 @@ void FiberManager::addTask(F&& func) {
     fiber->setFunction(std::ref(*funcLoc));
   }
 
-  fiber->data_ = reinterpret_cast<FContext::FiberData>(fiber);
+  fiber->data_ = reinterpret_cast<intptr_t>(fiber);
   readyFibers_.push_back(*fiber);
   if (observer_) {
     observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
@@ -434,7 +434,7 @@ void FiberManager::addTaskFinally(F&& func, G&& finally) {
     fiber->setFunctionFinally(std::ref(*funcLoc), std::ref(*finallyLoc));
   }
 
-  fiber->data_ = reinterpret_cast<FContext::FiberData>(fiber);
+  fiber->data_ = reinterpret_cast<intptr_t>(fiber);
   readyFibers_.push_back(*fiber);
   if (observer_) {
     observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
