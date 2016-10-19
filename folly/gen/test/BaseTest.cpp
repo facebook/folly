@@ -1002,9 +1002,13 @@ TEST(Gen, CopyCount) {
 TEST(Gen, Dynamic) {
   dynamic array1 = dynamic::array(1, 2);
   EXPECT_EQ(dynamic(3), from(array1) | sum);
-  dynamic array2 = {{1}, {1, 2}};
+  dynamic array2 = folly::dynamic::array(
+      folly::dynamic::array(1), folly::dynamic::array(1, 2));
   EXPECT_EQ(dynamic(4), from(array2) | rconcat | sum);
-  dynamic array3 = {{{1}}, {{1}, {1, 2}}};
+  dynamic array3 = folly::dynamic::array(
+      folly::dynamic::array(folly::dynamic::array(1)),
+      folly::dynamic::array(
+          folly::dynamic::array(1), folly::dynamic::array(1, 2)));
   EXPECT_EQ(dynamic(5), from(array3) | rconcat | rconcat | sum);
 }
 

@@ -34,7 +34,7 @@ static const dynamic roundtrips[] = {
     nullptr,
     1.5,
     "hello",
-    {1, 2, 3},
+    folly::dynamic::array(1, 2, 3),
     dynamic::object("key", "value")("otherkey", "otherval"),
 };
 
@@ -47,11 +47,10 @@ const uint8_t template_blob[] =
     "\x1e\x0c\x03\x19";
 
 // and here's what it represents
-static const dynamic template_dynamic = {
+static const dynamic template_dynamic = folly::dynamic::array(
     dynamic::object("name", "fred")("age", 20),
     dynamic::object("name", "pete")("age", 30),
-    dynamic::object("name", nullptr)("age", 25),
-};
+    dynamic::object("name", nullptr)("age", 25));
 
 TEST(Bser, RoundTrip) {
   dynamic decoded(nullptr);
@@ -86,8 +85,8 @@ TEST(Bser, Template) {
 
   // Now check that we can generate this same data representation
   folly::bser::serialization_opts opts;
-  folly::bser::serialization_opts::TemplateMap templates = {
-      std::make_pair(&decoded, folly::dynamic{"name", "age"})};
+  folly::bser::serialization_opts::TemplateMap templates = {std::make_pair(
+      &decoded, folly::dynamic(folly::dynamic::array("name", "age")))};
   opts.templates = templates;
 
   str = folly::bser::toBser(decoded, opts);
