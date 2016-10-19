@@ -143,9 +143,9 @@ TEST_F(ViaFixture, chainVias) {
     return 1;
   }).then([=](int val) {
     return makeFuture(val).via(westExecutor.get())
-      .then([=](int val) mutable {
+      .then([=](int v) mutable {
         EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-        return val + 1;
+        return v + 1;
       });
   }).then([=](int val) {
     // even though ultimately the future that triggers this one executed in
