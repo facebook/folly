@@ -287,9 +287,9 @@ void AsyncIOQueue::maybeDequeue() {
 
     // Interpose our completion callback
     auto& nextCb = op->notificationCallback();
-    op->setNotificationCallback([this, nextCb](AsyncIOOp* op) {
-      this->onCompleted(op);
-      if (nextCb) nextCb(op);
+    op->setNotificationCallback([this, nextCb](AsyncIOOp* op2) {
+      this->onCompleted(op2);
+      if (nextCb) nextCb(op2);
     });
 
     asyncIO_->submit(op);

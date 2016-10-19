@@ -192,15 +192,15 @@ TEST(TestDynamicParser, AllParserFeaturesSuccess) {
   p.required(4, [&](const dynamic& v) {
     EXPECT_EQ(4, p.key().getInt());
     EXPECT_EQ(v, p.value());
-    p.optional("bools", [&](const std::string& k, const dynamic& v) {
+    p.optional("bools", [&](const std::string& k, const dynamic& v2) {
       EXPECT_EQ(std::string("bools"), k);
       EXPECT_EQ(k, p.key().getString());
-      EXPECT_EQ(v, p.value());
-      p.arrayItems([&](int64_t k, bool v) {
+      EXPECT_EQ(v2, p.value());
+      p.arrayItems([&](int64_t k, bool v3) {
         EXPECT_EQ(bools.size(), k);
         EXPECT_EQ(k, p.key().getInt());
-        EXPECT_EQ(v, p.value().asBool());
-        bools.push_back(v);
+        EXPECT_EQ(v3, p.value().asBool());
+        bools.push_back(v3);
       });
     });
   });

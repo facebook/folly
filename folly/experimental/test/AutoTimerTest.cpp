@@ -45,8 +45,8 @@ struct StubClock {
 int StubClock::t = 0;
 
 TEST(TestAutoTimer, HandleBasicClosure) {
-  auto logger = [](StringPiece msg, auto sec) {
-    return StubLogger()(msg, sec);
+  auto logger = [](StringPiece mesg, auto sec) {
+    return StubLogger()(mesg, sec);
   };
   StubClock::t = 1;
   // Here decltype is needed. But since most users are expected to use this
@@ -93,8 +93,8 @@ TEST(TestAutoTimer, HandleRealTimerClosure) {
   auto t = makeAutoTimer(
       "Third message on destruction",
       std::chrono::duration<double>::zero(),
-      [](StringPiece msg, auto sec) {
-        GoogleLogger<GoogleLoggerStyle::PRETTY>()(msg, sec);
+      [](StringPiece mesg, auto sec) {
+        GoogleLogger<GoogleLoggerStyle::PRETTY>()(mesg, sec);
       });
   t.log("First message");
   t.log("Second message");

@@ -167,9 +167,9 @@ struct EliasFanoEncoderV2 {
 
     /* static */ if (forwardQuantum != 0) {
       if ((size_ + 1) % forwardQuantum == 0) {
-        const auto pos = size_ / forwardQuantum;
+        const auto k = size_ / forwardQuantum;
         // Store the number of preceding 0-bits.
-        forwardPointers_[pos] = upperBits;
+        forwardPointers_[k] = upperBits;
       }
     }
 
