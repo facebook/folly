@@ -274,7 +274,7 @@ MAKE_MT_CACHE_SIZE_BM(32);
     std::vector<std::thread> threads;                           \
     for (int i = 0; i < FLAGS_numThreads; ++i) {                \
       threads.push_back(std::thread([&]() {                     \
-            for (int i = 0; i < iterPerThread; ++i) {           \
+            for (int j = 0; j < iterPerThread; ++j) {           \
               inc_stmt;                                         \
             }                                                   \
           }));                                                  \
