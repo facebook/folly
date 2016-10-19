@@ -75,8 +75,8 @@ void splock_test() {
     MSLGuard g(v.lock);
 
     int first = v.ar[0];
-    for (size_t i = 1; i < sizeof v.ar / sizeof i; ++i) {
-      EXPECT_EQ(first, v.ar[i]);
+    for (size_t j = 1; j < sizeof v.ar / sizeof j; ++j) {
+      EXPECT_EQ(first, v.ar[j]);
     }
 
     int byte = folly::Random::rand32(rng);
