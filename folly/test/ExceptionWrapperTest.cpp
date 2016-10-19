@@ -61,9 +61,9 @@ TEST(ExceptionWrapper, throw_test) {
 
   try {
     container[0].throwException();
-  } catch (std::runtime_error& e) {
+  } catch (std::runtime_error& err) {
     std::string expected = "payload";
-    std::string actual = e.what();
+    std::string actual = err.what();
     EXPECT_EQ(expected, actual);
   }
 }
