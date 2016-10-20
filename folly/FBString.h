@@ -1176,16 +1176,29 @@ public:
       InIt begin,
       InIt end,
       typename std::enable_if<
-          !std::is_same<InIt, value_type*>::value,
+          !std::is_convertible<InIt, const value_type*>::value,
           const A>::type& /*a*/ = A()) {
     assign(begin, end);
   }
 
   // Specialization for const char*, const char*
+  // Note: it's a template to keep it from being preferred when called as
+  //       basic_fbstring("hello", "world!").
+  //       See the constructor immediately below.
+  template <class = void>
   FOLLY_MALLOC_NOINLINE
   basic_fbstring(const value_type* b, const value_type* e, const A& /*a*/ = A())
       : store_(b, e - b) {
   }
+
+  // Nonstandard constructor. To make the following code fail to compile
+  // instead of silently selecting the {Iter,Iter} constructor and crashing
+  // at runtime:
+  //     std::vector<fbtring> const foo{{"this", "that"}};
+  template <std::size_t N, std::size_t M>
+  basic_fbstring(const value_type (&/*x*/)[N],
+                 const value_type (&/*y*/)[M],
+                 const A& /*a*/ = A()) = delete;
 
   // Nonstandard constructor
   basic_fbstring(value_type *s, size_type n, size_type c,
