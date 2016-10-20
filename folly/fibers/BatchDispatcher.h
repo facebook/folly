@@ -15,8 +15,13 @@
  */
 #pragma once
 
+#include <folly/Function.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <exception>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 
 namespace folly {
 namespace fibers {

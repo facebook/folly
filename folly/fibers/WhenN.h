@@ -15,7 +15,11 @@
  */
 #pragma once
 
+#include <iterator>
 #include <memory>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace folly {
 namespace fibers {
