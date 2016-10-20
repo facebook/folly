@@ -1426,9 +1426,3 @@ TEST(FBStringCtorTest, NullZeroConstruction) {
   folly::fbstring f(p, n);
   EXPECT_EQ(f.size(), 0);
 }
-
-// TEST(FBStringCtorTest, BadIteratorPair) {
-//   // Should fail to compile
-//   std::vector<fbstring> vs{{"hello", "world!"}};
-//   EXPECT_EQ(vs.size(), 2u);
-// }
