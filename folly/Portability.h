@@ -167,6 +167,14 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
 #endif
 
+#ifdef HAVE_SHADOW_LOCAL_WARNINGS
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS        \
+  FOLLY_GCC_DISABLE_WARNING(shadow-compatible-local) \
+  FOLLY_GCC_DISABLE_WARNING(shadow-local)
+#else
+#define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
+#endif
+
 #if defined(__GNUC__) && !defined(__APPLE__) && !__GNUC_PREREQ(4,9)
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56019
 // gcc 4.8.x incorrectly placed max_align_t in the root namespace

@@ -63,6 +63,23 @@ CXXFLAGS="$STD $CXXFLAGS"
 # expose required -std option via pkg-config
 PKG_CXXFLAGS=$STD
 
+# See if -Wshadow-local and -Wshadow-compatible-local are supported
+AC_MSG_CHECKING(
+  [whether -Wshadow-local and -Wshadow-compatible-local are supported])
+AC_CACHE_VAL([folly_cv_cxx_shadow_local_support], [
+  folly_save_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -Wshadow-local -Wshadow-compatible-local"
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([[]], [[]])],
+    [folly_cv_cxx_shadow_local_support=yes],
+    [folly_cv_cxx_shadow_local_support=no])
+  CXXFLAGS="$folly_save_CXXFLAGS"])
+AC_MSG_RESULT([$folly_cv_cxx_shadow_local_support])
+if test "$folly_cv_cxx_shadow_local_support" = yes; then
+  AC_DEFINE([HAVE_SHADOW_LOCAL_WARNINGS], [1],
+  [Define if both -Wshadow-local and -Wshadow-compatible-local are supported.])
+fi
+
 # Checks for glog and gflags
 # There are no symbols with C linkage, so we do a try-run
 AC_HAVE_LIBRARY([gflags],[],[AC_MSG_ERROR(
