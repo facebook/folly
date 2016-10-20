@@ -610,3 +610,25 @@ TEST(Singleton, DoubleRegistrationLogging) {
   EXPECT_EQ(SIGABRT, res.killSignal());
   EXPECT_THAT(err, testing::StartsWith("Double registration of singletons"));
 }
+
+// Singleton using a non default constructor test/example:
+struct X {
+  X() : X(-1, "unset") {}
+  X(int a1, std::string a2) : a1(a1), a2(a2) {
+    LOG(INFO) << "X(" << a1 << "," << a2 << ")";
+  }
+  const int a1;
+  const std::string a2;
+};
+
+folly::Singleton<X> singleton_x([]() { return new X(42, "foo"); });
+
+TEST(Singleton, CustomCreator) {
+  X x1;
+  std::shared_ptr<X> x2p = singleton_x.try_get();
+  EXPECT_NE(nullptr, x2p);
+  EXPECT_NE(x1.a1, x2p->a1);
+  EXPECT_NE(x1.a2, x2p->a2);
+  EXPECT_EQ(42, x2p->a1);
+  EXPECT_EQ(std::string("foo"), x2p->a2);
+}
