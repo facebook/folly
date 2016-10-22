@@ -212,7 +212,7 @@ inline void dynamic::array(EmptyArrayTag) {}
 
 template <class... Args>
 inline dynamic dynamic::array(Args&& ...args) {
-  return dynamic(Array{std::forward<Args>(args)...}, PrivateTag());
+  return dynamic(Array{std::forward<Args>(args)...});
 }
 
 // This looks like a case for perfect forwarding, but our use of
@@ -307,14 +307,6 @@ inline dynamic::dynamic(std::string const& s)
 
 inline dynamic::dynamic(std::string&& s) : type_(STRING) {
   new (&u_.string) std::string(std::move(s));
-}
-
-inline dynamic::dynamic(std::initializer_list<dynamic> il)
-    : dynamic(Array(std::move(il)), PrivateTag()) {}
-
-inline dynamic& dynamic::operator=(std::initializer_list<dynamic> il) {
-  (*this) = dynamic(Array(std::move(il)), PrivateTag());
-  return *this;
 }
 
 inline dynamic::dynamic(ObjectMaker&& maker)
@@ -674,7 +666,7 @@ inline void dynamic::pop_back() {
 
 //////////////////////////////////////////////////////////////////////
 
-inline dynamic::dynamic(Array&& r, PrivateTag) : type_(ARRAY) {
+inline dynamic::dynamic(Array&& r) : type_(ARRAY) {
   new (&u_.array) Array(std::move(r));
 }
 

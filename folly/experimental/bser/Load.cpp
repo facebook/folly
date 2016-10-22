@@ -101,7 +101,7 @@ static dynamic decodeObject(Cursor& curs) {
 }
 
 static dynamic decodeTemplate(Cursor& curs) {
-  std::vector<dynamic> arr;
+  dynamic arr = folly::dynamic::array;
 
   // List of property names
   if ((BserType)curs.read<int8_t>() != BserType::Array) {
@@ -110,7 +110,6 @@ static dynamic decodeTemplate(Cursor& curs) {
   auto names = decodeArray(curs);
 
   auto size = decodeInt(curs);
-  arr.reserve(size);
 
   while (size-- > 0) {
     dynamic obj = dynamic::object;
@@ -126,10 +125,10 @@ static dynamic decodeTemplate(Cursor& curs) {
       obj[name.getString()] = parseBser(curs);
     }
 
-    arr.emplace_back(std::move(obj));
+    arr.push_back(std::move(obj));
   }
 
-  return dynamic(std::move(arr));
+  return arr;
 }
 
 static dynamic parseBser(Cursor& curs) {

@@ -63,7 +63,6 @@
 #pragma once
 
 #include <cstdint>
-#include <initializer_list>
 #include <memory>
 #include <ostream>
 #include <string>
@@ -135,7 +134,6 @@ public:
    *   d["something_else"] = dynamic::array(1, 2, 3, nullptr);
    */
 private:
-  struct PrivateTag {};
   struct EmptyArrayTag {};
   struct ObjectMaker;
 
@@ -166,22 +164,6 @@ public:
   /* implicit */ dynamic(ObjectMaker (*)());
   /* implicit */ dynamic(ObjectMaker const&) = delete;
   /* implicit */ dynamic(ObjectMaker&&);
-
-  /*
-   * Create a new array from an initializer list.
-   *
-   * For example:
-   *
-   *   dynamic v = { 1, 2, 3, "foo" };
-   */
-  // TODO(ott, 10300209): Remove once all uses have been eradicated.
-
-  FOLLY_DEPRECATED(
-      "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
-  /* implicit */ dynamic(std::initializer_list<dynamic> il);
-  FOLLY_DEPRECATED(
-      "Initializer list syntax is deprecated (#10300209). Use dynamic::array.")
-  dynamic& operator=(std::initializer_list<dynamic> il);
 
   /*
    * Conversion constructors from most of the other types.
@@ -543,7 +525,7 @@ private:
   template<class T> struct GetAddrImpl;
   template<class T> struct PrintImpl;
 
-  dynamic(Array&& array, PrivateTag);
+  explicit dynamic(Array&& array);
 
   template<class T> T const& get() const;
   template<class T> T&       get();
