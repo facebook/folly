@@ -568,12 +568,11 @@ AC_ARG_ENABLE([follytestmain],
 
 use_follytestmain=yes
 # libdwarf used to install in /usr/include, now installs in /usr/include/libdwarf.
-AC_SEARCH_LIBS([dwarf_init], [dwarf])
 AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
 # Check whether we have both the library and the header
 have_libdwarf=no
-AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_libdwarf_dwarf_h}" = xyes], [have_libdwarf=yes])
-AS_IF([test "x${ac_cv_search_dwarf_init}" != xno && test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
+AS_IF([test "x${ac_cv_header_libdwarf_dwarf_h}" = xyes], [have_libdwarf=yes])
+AS_IF([test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
 if test "x${follytestmain}" = "xyes"; then
    AS_IF([test "x${have_libdwarf}" = xno], [AC_MSG_ERROR([Please install libdwarf development library and headers])])
    AC_CHECK_HEADERS([elf.h],, AC_MSG_ERROR([Please install libelf development package]))
