@@ -8,29 +8,29 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <h2 id="brief-synopsis">Brief Synopsis <a href="#brief-synopsis" class="headerLink">#</a></h2>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="cp">#</span><span class="cp">include &lt;folly</span><span class="cp">/</span><span class="cp">futures</span><span class="cp">/</span><span class="cp">Future.h&gt;</span><span class="cp">
-</span><span class=""></span><span class="k">using</span><span class=""> </span><span class="k">namespace</span><span class=""> </span><span class="n">folly</span><span class="p">;</span><span class="">
-</span><span class=""></span><span class="k">using</span><span class=""> </span><span class="k">namespace</span><span class=""> </span><span class="n">std</span><span class="p">;</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="cp">#</span><span class="cp">include</span><span class=""> </span><span class="cpf">&lt;folly/futures/Future.h&gt;</span><span class="cp">
+</span><span class="k">using</span><span class=""> </span><span class="k">namespace</span><span class=""> </span><span class="n">folly</span><span class="p">;</span><span class="">
+</span><span class="k">using</span><span class=""> </span><span class="k">namespace</span><span class=""> </span><span class="n">std</span><span class="p">;</span><span class="">
 </span><span class="">
-</span><span class=""></span><span class="kt">void</span><span class=""> </span><span class="nf">foo</span><span class=""></span><span class="p">(</span><span class="kt">int</span><span class=""> </span><span class="n">x</span><span class="p">)</span><span class=""> </span><span class=""></span><span class="p">&#123;</span><span class="">
+</span><span class="kt">void</span><span class=""> </span><span class="nf">foo</span><span class="p">(</span><span class="kt">int</span><span class=""> </span><span class="n">x</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
 </span><span class="">  </span><span class="c1">// do something with x
 </span><span class="">  </span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">foo(</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">x</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">)</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
 </span><span class="p">&#125;</span><span class="">
 </span><span class="">
 </span><span class="c1">// ...
 </span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">making Promise</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">p</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">foo</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">Future chain made</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">making Promise</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">p</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">p</span><span class="p">.</span><span class="n">getFuture</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">f</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="n">foo</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">Future chain made</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="c1">// ... now perhaps in another event callback
 </span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">fulfilling Promise</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">Promise fulfilled</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span><span class="">  </span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">fulfilling Promise</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">cout</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="s">&quot;</span><span class="s">Promise fulfilled</span><span class="s">&quot;</span><span class=""> </span><span class="o">&lt;</span><span class="o">&lt;</span><span class=""> </span><span class="n">endl</span><span class="p">;</span><span class="">
+</span></pre></div>
 
 <p>This would print:</p>
 
@@ -445,7 +445,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <div class="remarkup-warning"><span class="remarkup-note-word">WARNING:</span> Chaining together multiple calls to onError will NOT necessarily behave in the same way as multiple catch &#123;&#125; blocks after a try. Namely, if you throw an exception in one call to onError, the next onError will catch it.</div>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">intGeneratorThatMaybeThrows</span><span class="p">(</span><span class="p">)</span><span class=""> </span><span class="c1">// returns Future&lt;int&gt;
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">intGenerator</span><span class="p">(</span><span class="p">)</span><span class=""> </span><span class="c1">// returns a Future&lt;int&gt;, which might contain an exception
 </span><span class="">  </span><span class="c1">// This is a good opportunity to use the plain value (no Try)
 </span><span class="">  </span><span class="c1">// variant of then()
 </span><span class="">  </span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">(</span><span class="kt">int</span><span class=""> </span><span class="n">i</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class=""> 
@@ -749,103 +749,103 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 
 <p><tt>Future&lt;T&gt;::within()</tt> returns a new Future that will complete with the provided exception (by default, a TimedOut exception) if it does not complete within the specified duration. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="k">using</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">chrono</span><span class="o">:</span><span class="o">:</span><span class="n">milliseconds</span><span class="p">;</span><span class="">
-</span><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">using</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">chrono</span><span class="o">:</span><span class="o">:</span><span class="n">milliseconds</span><span class="p">;</span><span class="">
+</span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="c1">// f will complete with a TimedOut exception if the Future returned by foo()
 </span><span class="c1">// does not complete within 500 ms
-</span><span class=""></span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="c1">// Same deal, but a timeout will trigger the provided exception instead
-</span><span class=""></span><span class="n">f2</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">,</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;</span><span class="s">you took too long!</span><span class="s">&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span><span class="n">f2</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">,</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;</span><span class="s">you took too long!</span><span class="s">&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
+</span></pre></div>
 
 <h2 id="ontimeout">onTimeout() <a href="#ontimeout" class="headerLink">#</a></h2>
 
 <p><tt>Future&lt;T&gt;::onTimeout()</tt> lets you simultaneously set up a timeout and a timeout handler. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">onTimeout</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">,</span><span class=""> </span><span class="p">[</span><span class="p">]</span><span class="p">&#123;</span><span class="">
 </span><span class="">    </span><span class="c1">// You must maintain the resultant future&#039;s type
 </span><span class="">    </span><span class="c1">// ... handle timeout ...
 </span><span class="">    </span><span class="k">return</span><span class=""> </span><span class="o">-</span><span class="mi">1</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="p">&#125;</span><span class="p">)</span><span class="">
+</span><span class="">  </span><span class="p">&#125;</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">.</span><span class="p">.</span><span class="p">.</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span></pre></div>
 
 <p>The astute reader might notice that this is effectively syntactic sugar for</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">within</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">onError</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">TimedOut</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
 </span><span class="">    </span><span class="c1">// handle timeout
 </span><span class="">    </span><span class="k">return</span><span class=""> </span><span class="o">-</span><span class="mi">1</span><span class="p">;</span><span class="">
-</span><span class="">  </span><span class=""></span><span class="p">&#125;</span><span class="p">)</span><span class="">
+</span><span class="">  </span><span class="p">&#125;</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">.</span><span class="p">.</span><span class="p">.</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span></pre></div>
 
 <h2 id="get-and-wait-with-timeou">get() and wait() with timeouts <a href="#get-and-wait-with-timeou" class="headerLink">#</a></h2>
 
 <p><tt>get()</tt> and <tt>wait()</tt>, which are detailed in the <a href="#testing">Testing</a> article, optionally take timeouts:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="c1">// Will throw TimedOut if the Future doesn&#039;t complete within one second of
 </span><span class="c1">// the get() call
-</span><span class=""></span><span class="kt">int</span><span class=""> </span><span class="n">result</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="kt">int</span><span class=""> </span><span class="n">result</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="c1">// If the Future doesn&#039;t complete within one second, f will remain
 </span><span class="c1">// incomplete. That is, if a timeout occurs, it&#039;s as if wait() was
 </span><span class="c1">// never called.
-</span><span class=""></span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span><span class="n">Future</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">foo</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
+</span></pre></div>
 
 <h2 id="delayed">delayed() <a href="#delayed" class="headerLink">#</a></h2>
 
 <p><tt>Future&lt;T&gt;::delayed()</tt> returns a new Future whose completion is delayed for at least the specified duration. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">makeFuture</span><span class="p">(</span><span class="p">)</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">makeFuture</span><span class="p">(</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="">
 </span><span class="">  </span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">&#123;</span><span class="">
 </span><span class="">    </span><span class="c1">// This will be executed when the original Future has completed or when
 </span><span class="">    </span><span class="c1">// 1000ms has elapsed, whichever comes last.
 </span><span class="">  </span><span class="p">&#125;</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span></pre></div>
 
 <h2 id="futures-sleep">futures::sleep() <a href="#futures-sleep" class="headerLink">#</a></h2>
 
 <p><tt>sleep()</tt> returns a <tt>Future&lt;Unit&gt;</tt> that will complete after the specified duration. For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="n">futures</span><span class="o">:</span><span class="o">:</span><span class="n">sleep</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">&#123;</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="n">futures</span><span class="o">:</span><span class="o">:</span><span class="n">sleep</span><span class="p">(</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="p">)</span><span class="p">.</span><span class="n">then</span><span class="p">(</span><span class="p">[</span><span class="p">]</span><span class="p">&#123;</span><span class="">
 </span><span class="">  </span><span class="c1">// This will be executed after 1000ms
 </span><span class="p">&#125;</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div></section><section class="dex_document"><h1>Interrupts and Cancellations</h1><p class="dex_introduction">Interrupts are a mechanism for Future holders to send a signal to Promise holders. Here's how to use them.</p><p>Let&#039;s say that your Futures code kicks off some long, expensive operation in another thread. A short while later, something comes up that obviates the need for the result of that operation. Are those resources gone forever? Not necessarily. Enter interrupts.</p>
+</span></pre></div></section><section class="dex_document"><h1>Interrupts and Cancellations</h1><p class="dex_introduction">Interrupts are a mechanism for Future holders to send a signal to Promise holders. Here's how to use them.</p><p>Let&#039;s say that your Futures code kicks off some long, expensive operation in another thread. A short while later, something comes up that obviates the need for the result of that operation. Are those resources gone forever? Not necessarily. Enter interrupts.</p>
 
 <p>Interrupts allow Future holders to send signals in the form of exceptions to Promise holders, who are free to handle the interrupt as they please (or not at all). For example:</p>
 
-<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class=""></span><span class="k">auto</span><span class=""> </span><span class="n">p</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="o">&gt;</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setInterruptHandler</span><span class="p">(</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">exception_wrapper</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class="p">&#123;</span><span class="">
+<div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span><span class=""> </span><span class="n">p</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="o">&gt;</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setInterruptHandler</span><span class="p">(</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">exception_wrapper</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class="p">&#123;</span><span class="">
 </span><span class="">  </span><span class="c1">// Handle the interrupt. For instance, we could just fulfill the Promise
 </span><span class="">  </span><span class="c1">// with the given exception:
 </span><span class="">  </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">  
   </span><span class="c1">// Or maybe we want the Future to complete with some special value
-</span><span class="">  </span><span class=""></span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="">  </span><span class="c1">// Or maybe we don&#039;t want to do anything at all! Including not setting
 </span><span class="">  </span><span class="c1">// this handler in the first place.
-</span><span class=""></span><span class="p">&#125;</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="p">&#125;</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
-</span><span class=""></span><span class="k">auto</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">getFuture</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="k">auto</span><span class=""> </span><span class="n">f</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">getFuture</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="c1">// The Future holder can now send an interrupt whenever it wants via raise().
 </span><span class="c1">// If the interrupt beats out the fulfillment of the Promise *and* there is
 </span><span class="c1">// an interrupt handler set on the Promise, that handler will be called with
 </span><span class="c1">// the provided exception
-</span><span class=""></span><span class="n">f</span><span class="p">.</span><span class="n">raise</span><span class="p">(</span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;</span><span class="s">Something went awry! Abort!</span><span class="s">&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="n">f</span><span class="p">.</span><span class="n">raise</span><span class="p">(</span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&quot;</span><span class="s">Something went awry! Abort!</span><span class="s">&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">
 </span><span class="c1">// cancel() is syntactic sugar for raise(FutureCancellation())
-</span><span class=""></span><span class="n">f</span><span class="p">.</span><span class="n">cancel</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class=""></span></pre></div>
+</span><span class="n">f</span><span class="p">.</span><span class="n">cancel</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
+</span></pre></div>
 
 <p>Going forward, we&#039;d like to integrate interrupts with major Future interface provides as a way to cancel RPCs and the like, but that&#039;s not in place yet. This is a bleeding edge feature&#x2014;please let us know your use cases so that we can iterate!</p></section><section class="dex_document"><h1>Testing</h1><p class="dex_introduction">Testing futures-based code does not have to be a pain. Here are some tips and idiomatic approaches.</p><h2 id="extracting-values-synchr">Extracting values synchronously <a href="#extracting-values-synchr" class="headerLink">#</a></h2>
 
