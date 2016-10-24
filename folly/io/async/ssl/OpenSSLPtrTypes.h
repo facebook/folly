@@ -83,6 +83,10 @@ using RsaUniquePtr = std::unique_ptr<RSA, RsaDeleter>;
 #ifndef OPENSSL_NO_EC
 using EcKeyDeleter = folly::static_function_deleter<EC_KEY, &EC_KEY_free>;
 using EcKeyUniquePtr = std::unique_ptr<EC_KEY, EcKeyDeleter>;
+using EcGroupDeleter = folly::static_function_deleter<EC_GROUP, &EC_GROUP_free>;
+using EcGroupUniquePtr = std::unique_ptr<EC_GROUP, EcGroupDeleter>;
+using EcPointDeleter = folly::static_function_deleter<EC_POINT, &EC_POINT_free>;
+using EcPointUniquePtr = std::unique_ptr<EC_POINT, EcPointDeleter>;
 #endif
 
 // BIGNUMs
