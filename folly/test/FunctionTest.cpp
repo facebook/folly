@@ -820,6 +820,80 @@ TEST(Function, asStdFunction_args_const) {
   EXPECT_EQ(1, i);
 }
 
+// TEST =====================================================================
+// asSharedProxy_*
+
+TEST(Function, asSharedProxy_void) {
+  int i = 0;
+  folly::Function<void()> f = [&i] { ++i; };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  sp();
+  EXPECT_EQ(1, i);
+  spcopy();
+  EXPECT_EQ(2, i);
+}
+
+TEST(Function, asSharedProxy_void_const) {
+  int i = 0;
+  folly::Function<void() const> f = [&i] { ++i; };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  sp();
+  EXPECT_EQ(1, i);
+  spcopy();
+  EXPECT_EQ(2, i);
+}
+
+TEST(Function, asSharedProxy_return) {
+  folly::Function<int()> f = [i = 0]() mutable {
+    ++i;
+    return i;
+  };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  EXPECT_EQ(1, sp());
+  EXPECT_EQ(2, spcopy());
+}
+
+TEST(Function, asSharedProxy_return_const) {
+  int i = 0;
+  folly::Function<int() const> f = [&i] {
+    ++i;
+    return i;
+  };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  EXPECT_EQ(1, sp());
+  EXPECT_EQ(2, spcopy());
+}
+
+TEST(Function, asSharedProxy_args) {
+  int i = 0;
+  folly::Function<int(int, int)> f = [&](int x, int y) mutable {
+    ++i;
+    return x + y * 2;
+  };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  EXPECT_EQ(120, sp(100, 10));
+  EXPECT_EQ(1, i);
+  EXPECT_EQ(120, spcopy(100, 10));
+  EXPECT_EQ(2, i);
+}
+
+TEST(Function, asSharedProxy_args_const) {
+  int i = 0;
+  folly::Function<int(int, int) const> f = [&i](int x, int y) {
+    ++i;
+    return x * 100 + y * 10 + i;
+  };
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  EXPECT_EQ(561, sp(5, 6));
+  EXPECT_EQ(562, spcopy(5, 6));
+}
+
 TEST(Function, NoAllocatedMemoryAfterMove) {
   Functor<int, 100> foo;
 

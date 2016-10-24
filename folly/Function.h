@@ -305,8 +305,13 @@ struct FunctionTraits<ReturnType(Args...)> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  struct SharedFunctionImpl {
+  class SharedProxy {
     std::shared_ptr<Function<ReturnType(Args...)>> sp_;
+
+   public:
+    explicit SharedProxy(Function<ReturnType(Args...)>&& func)
+        : sp_(std::make_shared<Function<ReturnType(Args...)>>(
+              std::move(func))) {}
     ReturnType operator()(Args&&... args) const {
       return (*sp_)(static_cast<Args&&>(args)...);
     }
@@ -346,8 +351,13 @@ struct FunctionTraits<ReturnType(Args...) const> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  struct SharedFunctionImpl {
+  struct SharedProxy {
     std::shared_ptr<Function<ReturnType(Args...) const>> sp_;
+
+   public:
+    explicit SharedProxy(Function<ReturnType(Args...) const>&& func)
+        : sp_(std::make_shared<Function<ReturnType(Args...) const>>(
+              std::move(func))) {}
     ReturnType operator()(Args&&... args) const {
       return (*sp_)(static_cast<Args&&>(args)...);
     }
@@ -634,14 +644,23 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     return exec_(Op::HEAP, nullptr, nullptr);
   }
 
+  using typename Traits::SharedProxy;
+
+  /**
+   * Move this `Function` into a copyable callable object, of which all copies
+   * share the state.
+   */
+  SharedProxy asSharedProxy() && {
+    return SharedProxy{std::move(*this)};
+  }
+
   /**
    * Construct a `std::function` by moving in the contents of this `Function`.
    * Note that the returned `std::function` will share its state (i.e. captured
    * data) across all copies you make of it, so be very careful when copying.
    */
   std::function<typename Traits::NonConstSignature> asStdFunction() && {
-    using Impl = typename Traits::SharedFunctionImpl;
-    return Impl{std::make_shared<Function>(std::move(*this))};
+    return std::move(*this).asSharedProxy();
   }
 };
 FOLLY_POP_WARNING
