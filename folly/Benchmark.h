@@ -423,7 +423,7 @@ void doNotOptimizeAway(T&& datum) {
 /**
  * Just like BENCHMARK, but prints the time relative to a
  * baseline. The baseline is the most recent BENCHMARK() seen in
- * lexical order. Example:
+ * the current scope. Example:
  *
  * // This is the baseline
  * BENCHMARK(insertVectorBegin, n) {
