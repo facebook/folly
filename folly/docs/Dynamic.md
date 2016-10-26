@@ -25,7 +25,7 @@ folly::dynamic;` was used):
     dynamic nul = nullptr;
     dynamic boolean = false;
 
-    // Arrays can be initialized with brackets.
+    // Arrays can be initialized with dynamic::array.
     dynamic array = dynamic::array("array ", "of ", 4, " elements");
     assert(array.size() == 4);
     dynamic emptyArray = dynamic::array;
@@ -172,19 +172,6 @@ static types, etc).
 
 ### Some Design Rationale
 ***
-
-**Q. Why is there no default constructor?**
-
-This is a bit of a limitation of `std::initializer_list<>` for
-this use case. The expression `dynamic d = {}` is required by the
-standard to call the default constructor if one exists (the
-reasoning for this makes sense, since `{}` is part of the concept
-of "uniform initialization", and is intended for use with things
-like `std::vector`). It would be surprising if this expression
-didn't leave `d.isArray()` true, but on the other hand it would
-also be surprising if `dynamic d` left `d.isArray()` as true. The
-solution was just to disallow uninitialized dynamics: every
-dynamic must start out being assigned to some value (or nullptr).
 
 **Q. Why doesn't a dynamic string support begin(), end(), and operator[]?**
 
