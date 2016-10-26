@@ -49,4 +49,10 @@ bool RCURegisterThread() {
   return ret;
 }
 
+RCUReadLock& RCUReadLock::instance() {
+  // Both lock and unlock are static, so no need to worry about destruction
+  // order
+  static RCUReadLock instance;
+  return instance;
+}
 }

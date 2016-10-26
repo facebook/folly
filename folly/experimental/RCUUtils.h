@@ -30,12 +30,7 @@ bool RCURegisterThread();
 
 class RCUReadLock {
  public:
-  static RCUReadLock& instance() {
-    // Both lock and unlock are static, so no need to worry about destruction
-    // order
-    static RCUReadLock instance;
-    return instance;
-  }
+  static RCUReadLock& instance();
 
   static void lock() {
     assert(RCURegisterThread() == false);
