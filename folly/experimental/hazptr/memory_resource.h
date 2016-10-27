@@ -48,7 +48,8 @@ memory_resource* new_delete_resource();
 #include <folly/experimental/hazptr/debug.h>
 
 inline memory_resource** default_mr_ptr() {
-  static memory_resource* default_mr = new_delete_resource();
+  /* library-local */ static memory_resource* default_mr =
+      new_delete_resource();
   DEBUG_PRINT(&default_mr << " " << default_mr);
   return &default_mr;
 }
