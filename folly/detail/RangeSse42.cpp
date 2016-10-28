@@ -29,7 +29,7 @@ namespace folly {
 namespace detail {
 size_t qfind_first_byte_of_sse42(const StringPieceLite haystack,
                                  const StringPieceLite needles) {
-  CHECK(false) << "Function " << __func__ << " only works with SSE42!";
+  DCHECK(false) << "Function " << __func__ << " only works with SSE42!";
   return qfind_first_byte_of_nosse(haystack, needles);
 }
 }
