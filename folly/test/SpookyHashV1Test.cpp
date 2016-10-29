@@ -22,13 +22,13 @@
 
 #include <folly/SpookyHashV1.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Time.h>
 
 #include <cinttypes>
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
 #include <cstdlib>
-#include <ctime>
 
 #include <glog/logging.h>
 
