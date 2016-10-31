@@ -46,6 +46,202 @@ BENCHMARK(gun) {
 
 BENCHMARK_DRAW_LINE()
 
+BENCHMARK(optimizerCanDiscardTrivial, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < 10000; ++j) {
+      x += j;
+    }
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner1Trivial, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+    }
+    doNotOptimizeAway(x);
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner2Trivial, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    makeUnpredictable(i);
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(x);
+}
+
+BENCHMARK(optimizerDisabled1Trivial, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+      doNotOptimizeAway(x);
+    }
+  }
+}
+
+BENCHMARK(optimizerDisabled2Trivial, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    makeUnpredictable(i);
+    for (long j = 0; j < 10000; ++j) {
+      makeUnpredictable(j);
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(x);
+}
+
+BENCHMARK(optimizerCanPowerReduceInner1TrivialPtr, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+    }
+    doNotOptimizeAway(&x);
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner2TrivialPtr, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    makeUnpredictable(i);
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(&x);
+}
+
+BENCHMARK(optimizerDisabled1TrivialPtr, n) {
+  long x = 0;
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < 10000; ++j) {
+      x += i + j;
+      doNotOptimizeAway(&x);
+    }
+  }
+}
+
+namespace {
+class NonTrivialLong {
+ public:
+  explicit NonTrivialLong(long v) : value_(v) {}
+  virtual ~NonTrivialLong() {}
+
+  void operator++() {
+    ++value_;
+  }
+  void operator+=(long rhs) {
+    value_ += rhs;
+  }
+  void operator+=(const NonTrivialLong& rhs) {
+    value_ += rhs.value_;
+  }
+  bool operator<(long rhs) {
+    return value_ < rhs;
+  }
+  NonTrivialLong operator+(const NonTrivialLong& rhs) {
+    return NonTrivialLong(value_ + rhs.value_);
+  }
+
+ private:
+  long value_;
+  long otherStuff_[3];
+};
+}
+
+BENCHMARK(optimizerCanDiscardNonTrivial, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += j;
+    }
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner1NonTrivial, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+    }
+    doNotOptimizeAway(x);
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner2NonTrivial, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    makeUnpredictable(i);
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(x);
+}
+
+BENCHMARK(optimizerDisabled1NonTrivial, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+      doNotOptimizeAway(x);
+    }
+  }
+}
+
+BENCHMARK(optimizerDisabled2NonTrivial, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    makeUnpredictable(i);
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      makeUnpredictable(j);
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(x);
+}
+
+BENCHMARK(optimizerCanPowerReduceInner1NonTrivialPtr, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+    }
+    doNotOptimizeAway(&x);
+  }
+}
+
+BENCHMARK(optimizerCanPowerReduceInner2NonTrivialPtr, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    makeUnpredictable(i);
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+    }
+  }
+  doNotOptimizeAway(&x);
+}
+
+BENCHMARK(optimizerDisabled1NonTrivialPtr, n) {
+  NonTrivialLong x(0);
+  for (NonTrivialLong i(0); i < n; ++i) {
+    for (NonTrivialLong j(0); j < 10000; ++j) {
+      x += i + j;
+      doNotOptimizeAway(&x);
+    }
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
 BENCHMARK(baselinevector) {
   vector<int> v;
 
