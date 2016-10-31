@@ -515,6 +515,8 @@ if HAVE_BOOST_CONTEXT
 nobase_follyinclude_HEADERS += \
 	fibers/AddTasks.h \
 	fibers/AddTasks-inl.h \
+	fibers/AtomicBatchDispatcher.h \
+	fibers/AtomicBatchDispatcher-inl.h \
 	fibers/Baton.h \
 	fibers/Baton-inl.h \
 	fibers/BatchDispatcher.h \
