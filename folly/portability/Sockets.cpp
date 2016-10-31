@@ -338,6 +338,10 @@ ssize_t sendmsg(int s, const struct msghdr* message, int fl) {
           message->msg_flags);
     }
     if (r == -1 || r != message->msg_iov[i].iov_len) {
+      errno = translate_wsa_error(WSAGetLastError());
+      if (WSAGetLastError() == WSAEWOULDBLOCK && bytesSent > 0) {
+        return bytesSent;
+      }
       return -1;
     }
     bytesSent += r;
