@@ -20,7 +20,7 @@
 #include <functional>
 #include <memory>
 
-/* Stand-in for std::pmr::memory_resource */
+/* Stand-in for C++17 std::pmr::memory_resource */
 #include <folly/experimental/hazptr/memory_resource.h>
 
 namespace folly {
@@ -49,8 +49,6 @@ class hazptr_domain {
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
 
-  void try_reclaim();
-
  private:
   template <typename, typename>
   friend class hazptr_obj_base;
@@ -71,6 +69,7 @@ class hazptr_domain {
   int pushRetired(hazptr_obj* head, hazptr_obj* tail, int count);
   void tryBulkReclaim();
   void bulkReclaim();
+  void try_reclaim();
 };
 
 /** Get the default hazptr_domain */
@@ -91,15 +90,11 @@ class hazptr_obj {
 template <typename T, typename Deleter = std::default_delete<T>>
 class hazptr_obj_base : private hazptr_obj {
  public:
-  /* Policy for storing retired objects */
-  enum class storage_policy { priv, shared };
-
   /* Retire a removed object and pass the responsibility for
    * reclaiming it to the hazptr library */
   void retire(
       hazptr_domain& domain = default_hazptr_domain(),
-      Deleter reclaim = {},
-      const storage_policy policy = storage_policy::shared);
+      Deleter reclaim = {});
 
  private:
   Deleter deleter_;
@@ -109,14 +104,8 @@ class hazptr_obj_base : private hazptr_obj {
  *  hazard pointers, and interface for hazard pointer operations. */
 template <typename T> class hazptr_owner {
  public:
-  /* Policy for caching hazard pointers */
-  enum class cache_policy { cache, nocache };
-
   /* Constructor automatically acquires a hazard pointer. */
-  explicit hazptr_owner(
-      hazptr_domain& domain = default_hazptr_domain(),
-      const cache_policy policy = cache_policy::nocache);
-
+  explicit hazptr_owner(hazptr_domain& domain = default_hazptr_domain());
   /* Destructor automatically clears and releases the owned hazard pointer. */
   ~hazptr_owner();
 
@@ -140,7 +129,7 @@ template <typename T> class hazptr_owner {
   /* Clear the hazard pointer */
   void clear() noexcept;
 
-  /* Swap ownership of hazard ponters between hazptr_owner-s. */
+  /* Swap ownership of hazard pointers between hazptr_owner-s. */
   /* Note: The owned hazard pointers remain unmodified during the swap
    * and continue to protect the respective objects that they were
    * protecting before the swap, if any. */
@@ -153,26 +142,6 @@ template <typename T> class hazptr_owner {
 
 template <typename T>
 void swap(hazptr_owner<T>&, hazptr_owner<T>&) noexcept;
-
-/** hazptr_user: Thread-specific interface for users of hazard
- *  pointers (i.e., threads that own hazard pointers by using
- *  hazptr_owner. */
-class hazptr_user {
- public:
-  /* Release all hazptr_rec-s cached by this thread */
-  static void flush();
-};
-
-/** hazptr_remover: Thread-specific interface for removers of objects
- *  protected by hazard pointersd, i.e., threads that call the retire
- *  member function of hazptr_obj_base. */
-class hazptr_remover {
- public:
-  /* Pass responsibility of reclaiming any retired objects stored
-   * privately by this thread to the hazptr_domain to which they
-   * belong. */
-  static void flush();
-};
 
 } // namespace hazptr
 } // namespace folly

@@ -248,8 +248,6 @@ int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
   auto ret = RUN_ALL_TESTS();
-  DEBUG_PRINT("================================================= after tests");
-  default_hazptr_domain().try_reclaim();
   DEBUG_PRINT("================================================= end main");
   return ret;
 }

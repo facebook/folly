@@ -34,10 +34,7 @@ constexpr hazptr_domain::hazptr_domain(memory_resource* mr) noexcept
 /** hazptr_obj_base */
 
 template <typename T, typename D>
-inline void hazptr_obj_base<T, D>::retire(
-    hazptr_domain& domain,
-    D deleter,
-    const storage_policy /* policy */) {
+inline void hazptr_obj_base<T, D>::retire(hazptr_domain& domain, D deleter) {
   DEBUG_PRINT(this << " " << &domain);
   deleter_ = std::move(deleter);
   reclaim_ = [](hazptr_obj* p) {
@@ -67,9 +64,7 @@ class hazptr_rec {
 /** hazptr_owner */
 
 template <typename T>
-inline hazptr_owner<T>::hazptr_owner(
-    hazptr_domain& domain,
-    const cache_policy /* policy */) {
+inline hazptr_owner<T>::hazptr_owner(hazptr_domain& domain) {
   domain_ = &domain;
   hazptr_ = domain_->hazptrAcquire();
   DEBUG_PRINT(this << " " << domain_ << " " << hazptr_);
@@ -137,11 +132,13 @@ inline void swap(hazptr_owner<T>& lhs, hazptr_owner<T>& rhs) noexcept {
 // [TODO]:
 // - Thread caching of hazptr_rec-s
 // - Private storage of retired objects
+// - Control of reclamation (when and by whom)
 // - Optimized memory order
 
 /** Definition of default_hazptr_domain() */
 inline hazptr_domain& default_hazptr_domain() {
   static hazptr_domain d;
+  DEBUG_PRINT(&d);
   return d;
 }
 
@@ -171,6 +168,7 @@ inline void hazptr_rec::release() noexcept {
 /** hazptr_obj */
 
 inline const void* hazptr_obj::getObjPtr() const {
+  DEBUG_PRINT(this);
   return this;
 }
 
@@ -292,18 +290,6 @@ inline void hazptr_domain::bulkReclaim() {
   if (tail) {
     pushRetired(retired, tail, rcount);
   }
-}
-
-/** hazptr_user */
-
-inline void hazptr_user::flush() {
-  DEBUG_PRINT("");
-}
-
-/** hazptr_remover */
-
-inline void hazptr_remover::flush() {
-  DEBUG_PRINT("");
 }
 
 } // namespace folly
