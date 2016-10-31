@@ -151,57 +151,6 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
   }
 };
 
-// XXX: implement an equivalent to corking for platforms with TCP_NOPUSH?
-#ifdef TCP_CORK // Linux-only
-/**
- * Utility class that corks a TCP socket upon construction or uncorks
- * the socket upon destruction
- */
-class CorkGuard : private boost::noncopyable {
- public:
-  CorkGuard(int fd, bool multipleWrites, bool haveMore, bool* corked):
-    fd_(fd), haveMore_(haveMore), corked_(corked) {
-    if (*corked_) {
-      // socket is already corked; nothing to do
-      return;
-    }
-    if (multipleWrites || haveMore) {
-      // We are performing multiple writes in this performWrite() call,
-      // and/or there are more calls to performWrite() that will be invoked
-      // later, so enable corking
-      int flag = 1;
-      setsockopt(fd_, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag));
-      *corked_ = true;
-    }
-  }
-
-  ~CorkGuard() {
-    if (haveMore_) {
-      // more data to come; don't uncork yet
-      return;
-    }
-    if (!*corked_) {
-      // socket isn't corked; nothing to do
-      return;
-    }
-
-    int flag = 0;
-    setsockopt(fd_, IPPROTO_TCP, TCP_CORK, &flag, sizeof(flag));
-    *corked_ = false;
-  }
-
- private:
-  int fd_;
-  bool haveMore_;
-  bool* corked_;
-};
-#else
-class CorkGuard : private boost::noncopyable {
- public:
-  CorkGuard(int, bool, bool, bool*) {}
-};
-#endif
-
 void setup_SSL_CTX(SSL_CTX *ctx) {
 #ifdef SSL_MODE_RELEASE_BUFFERS
   SSL_CTX_set_mode(ctx,
@@ -1409,9 +1358,6 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         WRITE_ERROR, folly::make_unique<SSLException>(SSLError::EARLY_WRITE));
   }
 
-  bool cork = isSet(flags, WriteFlags::CORK);
-  CorkGuard guard(fd_, count > 1, cork, &corked_);
-
   // Declare a buffer used to hold small write requests.  It could point to a
   // memory block either on stack or on heap. If it is on heap, we release it
   // manually when scope exits
@@ -1441,6 +1387,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
 
     ssize_t bytes;
     uint32_t buffersStolen = 0;
+    auto sslWriteBuf = buf;
     if ((len < minWriteSize_) && ((i + 1) < count)) {
       // Combine this buffer with part or all of the next buffers in
       // order to avoid really small-grained calls to SSL_write().
@@ -1461,6 +1408,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         }
       }
       assert(combinedBuf != nullptr);
+      sslWriteBuf = combinedBuf;
 
       memcpy(combinedBuf, buf, len);
       do {
@@ -1479,14 +1427,23 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
           buffersStolen++;
         }
       } while ((i + buffersStolen + 1) < count && (len < minWriteSize_));
-      bytes = eorAwareSSLWrite(
-        ssl_, combinedBuf, len,
-        (isSet(flags, WriteFlags::EOR) && i + buffersStolen + 1 == count));
-
-    } else {
-      bytes = eorAwareSSLWrite(ssl_, buf, len,
-                           (isSet(flags, WriteFlags::EOR) && i + 1 == count));
     }
+
+    // Advance any empty buffers immediately after.
+    if (bytesStolenFromNextBuffer == 0) {
+      while ((i + buffersStolen + 1) < count &&
+             vec[i + buffersStolen + 1].iov_len == 0) {
+        buffersStolen++;
+      }
+    }
+
+    corkCurrentWrite_ =
+        isSet(flags, WriteFlags::CORK) || (i + buffersStolen + 1 < count);
+    bytes = eorAwareSSLWrite(
+        ssl_,
+        sslWriteBuf,
+        len,
+        (isSet(flags, WriteFlags::EOR) && i + buffersStolen + 1 == count));
 
     if (bytes <= 0) {
       int error = SSL_get_error(ssl_, bytes);
@@ -1598,6 +1555,12 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
 
 #ifdef MSG_NOSIGNAL
   flags |= MSG_NOSIGNAL;
+#endif
+
+#ifdef MSG_MORE
+  if (tsslSock->corkCurrentWrite_) {
+    flags |= MSG_MORE;
+  }
 #endif
 
   auto result = tsslSock->sendSocketMessage(

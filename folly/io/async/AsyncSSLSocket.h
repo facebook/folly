@@ -745,8 +745,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   static void sslInfoCallback(const SSL *ssl, int type, int val);
 
-  // Whether we've applied the TCP_CORK option to the socket
-  bool corked_{false};
+  // Whether the current write to the socket should use MSG_MORE.
+  bool corkCurrentWrite_{false};
   // SSL related members.
   bool server_{false};
   // Used to prevent client-initiated renegotiation.  Note that AsyncSSLSocket
