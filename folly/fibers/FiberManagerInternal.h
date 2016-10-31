@@ -341,8 +341,8 @@ class FiberManager : public ::folly::Executor {
     AtomicIntrusiveLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
-  intptr_t activateFiber(Fiber* fiber);
-  intptr_t deactivateFiber(Fiber* fiber);
+  void activateFiber(Fiber* fiber);
+  void deactivateFiber(Fiber* fiber);
 
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
   typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>

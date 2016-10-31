@@ -51,7 +51,7 @@ void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
       if (LIKELY(baton_fiber == NO_WAITER)) {
         continue;
       } else if (baton_fiber == POSTED || baton_fiber == TIMEOUT) {
-        fiber.setData(0);
+        fiber.resume();
         break;
       } else {
         throw std::logic_error("Some Fiber is already waiting on this Baton.");

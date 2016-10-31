@@ -151,7 +151,7 @@ void Baton::postHelper(intptr_t new_value) {
   } while (!waitingFiber_.compare_exchange_weak(fiber, new_value));
 
   if (fiber != NO_WAITER) {
-    reinterpret_cast<Fiber*>(fiber)->setData(0);
+    reinterpret_cast<Fiber*>(fiber)->resume();
   }
 }
 

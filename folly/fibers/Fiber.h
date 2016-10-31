@@ -45,11 +45,9 @@ class FiberManager;
 class Fiber {
  public:
   /**
-   * Sets data for the blocked task
-   *
-   * @param data this data will be returned by await() when task is resumed.
+   * Resume the blocked task
    */
-  void setData(intptr_t data);
+  void resume();
 
   Fiber(const Fiber&) = delete;
   Fiber& operator=(const Fiber&) = delete;
@@ -105,10 +103,8 @@ class Fiber {
    * performing necessary housekeeping for the new state.
    *
    * @param state New state, must not be RUNNING.
-   *
-   * @return The value passed back from the main context.
    */
-  intptr_t preempt(State state);
+  void preempt(State state);
 
   /**
    * Examines how much of the stack we used at this moment and
@@ -118,7 +114,6 @@ class Fiber {
 
   FiberManager& fiberManager_; /**< Associated FiberManager */
   FContext fcontext_; /**< current task execution context */
-  intptr_t data_; /**< Used to keep some data with the Fiber */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
   folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};

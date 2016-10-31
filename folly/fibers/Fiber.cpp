@@ -50,9 +50,8 @@ static size_t nonMagicInBytes(const FContext& context) {
 
 } // anonymous namespace
 
-void Fiber::setData(intptr_t data) {
+void Fiber::resume() {
   DCHECK_EQ(state_, AWAITING);
-  data_ = data;
   state_ = READY_TO_RUN;
 
   if (fiberManager_.observer_) {
@@ -164,15 +163,11 @@ void Fiber::fiberFunc() {
 
     state_ = INVALID;
 
-    auto context = fiberManager_.deactivateFiber(this);
-
-    DCHECK_EQ(reinterpret_cast<Fiber*>(context), this);
+    fiberManager_.deactivateFiber(this);
   }
 }
 
-intptr_t Fiber::preempt(State state) {
-  intptr_t ret;
-
+void Fiber::preempt(State state) {
   auto preemptImpl = [&]() mutable {
     DCHECK_EQ(fiberManager_.activeFiber_, this);
     DCHECK_EQ(state_, RUNNING);
@@ -182,7 +177,7 @@ intptr_t Fiber::preempt(State state) {
 
     recordStackPosition();
 
-    ret = fiberManager_.deactivateFiber(this);
+    fiberManager_.deactivateFiber(this);
 
     DCHECK_EQ(fiberManager_.activeFiber_, this);
     DCHECK_EQ(state_, READY_TO_RUN);
@@ -194,8 +189,6 @@ intptr_t Fiber::preempt(State state) {
   } else {
     preemptImpl();
   }
-
-  return ret;
 }
 
 Fiber::LocalData::LocalData(const LocalData& other) : data_(nullptr) {
