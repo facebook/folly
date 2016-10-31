@@ -891,7 +891,12 @@ TEST(IPAddress, InvalidBBitAccess) {
 TEST(IPAddress, StringFormat) {
   in6_addr a6;
   for (int i = 0; i < 8; ++i) {
-    a6.s6_addr16[i] = htons(0x0123 + ((i%4) * 0x4444));
+    auto t = htons(0x0123 + ((i % 4) * 0x4444));
+#ifdef _WIN32
+    a6.u.Word[i] = t;
+#else
+    a6.s6_addr16[i] = t;
+#endif
   }
   EXPECT_EQ("0123:4567:89ab:cdef:0123:4567:89ab:cdef",
             detail::fastIpv6ToString(a6));
