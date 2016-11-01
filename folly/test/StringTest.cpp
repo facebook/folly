@@ -1103,11 +1103,12 @@ char* copyWithSameAlignment(char* dst, const char* src, size_t length) {
 void testToLowerAscii(Range<const char*> src) {
   // Allocate extra space so we can make copies that start at the
   // same alignment (byte, word, quadword, etc) as the source buffer.
-  char controlBuf[src.size() + 7];
-  char* control = copyWithSameAlignment(controlBuf, src.begin(), src.size());
+  auto controlBuf = std::vector<char>(src.size() + 7);
+  char* control =
+      copyWithSameAlignment(controlBuf.data(), src.begin(), src.size());
 
-  char testBuf[src.size() + 7];
-  char* test = copyWithSameAlignment(testBuf, src.begin(), src.size());
+  auto testBuf = std::vector<char>(src.size() + 7);
+  char* test = copyWithSameAlignment(testBuf.data(), src.begin(), src.size());
 
   for (size_t i = 0; i < src.size(); i++) {
     control[i] = tolower(control[i]);

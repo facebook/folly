@@ -2057,7 +2057,7 @@ TEST(FiberManager, recordStack) {
     auto& loopController =
         dynamic_cast<SimpleLoopController&>(fm.loopController());
 
-    constexpr size_t n = 1000;
+    static constexpr size_t n = 1000;
     int s = 0;
     fm.addTask([&]() {
       int b[n] = {0};
