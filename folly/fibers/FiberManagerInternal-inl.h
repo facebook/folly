@@ -75,8 +75,7 @@ inline void FiberManager::activateFiber(Fiber* fiber) {
 #endif
 
   activeFiber_ = fiber;
-  jumpContext(
-      &mainContext_, &fiber->fcontext_, reinterpret_cast<intptr_t>(fiber));
+  fiber->fiberImpl_.activate();
 }
 
 inline void FiberManager::deactivateFiber(Fiber* fiber) {
@@ -101,8 +100,7 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
 #endif
 
   activeFiber_ = nullptr;
-  auto context = jumpContext(&fiber->fcontext_, &mainContext_, 0);
-  DCHECK_EQ(fiber, reinterpret_cast<Fiber*>(context));
+  fiber->fiberImpl_.deactivate();
 }
 
 inline void FiberManager::runReadyFiber(Fiber* fiber) {

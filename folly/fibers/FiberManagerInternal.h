@@ -373,8 +373,6 @@ class FiberManager : public ::folly::Executor {
    */
   size_t maxFibersActiveLastPeriod_{0};
 
-  FContext::ContextStruct mainContext_; /**< stores loop function context */
-
   std::unique_ptr<LoopController> loopController_;
   bool isLoopScheduled_{false}; /**< was the ready loop scheduled to run? */
 

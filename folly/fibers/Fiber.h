@@ -60,12 +60,7 @@ class Fiber {
    * @return This fiber's stack pointer and stack size.
    */
   std::pair<void*, size_t> getStack() const {
-    void* const stack =
-        std::min<void*>(fcontext_.stackLimit(), fcontext_.stackBase());
-    const size_t size = std::abs(
-        reinterpret_cast<intptr_t>(fcontext_.stackBase()) -
-        reinterpret_cast<intptr_t>(fcontext_.stackLimit()));
-    return {stack, size};
+    return {fiberStackLimit_, fiberStackSize_};
   }
 
  private:
@@ -95,7 +90,6 @@ class Fiber {
   template <typename F, typename G>
   void setFunctionFinally(F&& func, G&& finally);
 
-  static void fiberFuncHelper(intptr_t fiber);
   void fiberFunc();
 
   /**
@@ -113,7 +107,9 @@ class Fiber {
   void recordStackPosition();
 
   FiberManager& fiberManager_; /**< Associated FiberManager */
-  FContext fcontext_; /**< current task execution context */
+  size_t fiberStackSize_;
+  unsigned char* fiberStackLimit_;
+  FiberImpl fiberImpl_; /**< underlying fiber implementation */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
   folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};

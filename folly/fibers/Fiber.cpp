@@ -22,7 +22,6 @@
 
 #include <folly/Likely.h>
 #include <folly/Portability.h>
-#include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
@@ -38,9 +37,11 @@ std::thread::id localThreadId() {
 }
 
 /* Size of the region from p + nBytes down to the last non-magic value */
-static size_t nonMagicInBytes(const FContext& context) {
-  uint64_t* begin = static_cast<uint64_t*>(context.stackLimit());
-  uint64_t* end = static_cast<uint64_t*>(context.stackBase());
+static size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
+  CHECK_EQ(0, reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t));
+  CHECK_EQ(0, stackSize % sizeof(uint64_t));
+  uint64_t* begin = reinterpret_cast<uint64_t*>(stackLimit);
+  uint64_t* end = reinterpret_cast<uint64_t*>(stackLimit + stackSize);
 
   auto firstNonMagic = std::find_if(
       begin, end, [](uint64_t val) { return val != kMagic8Bytes; });
@@ -66,12 +67,11 @@ void Fiber::resume() {
   }
 }
 
-Fiber::Fiber(FiberManager& fiberManager) : fiberManager_(fiberManager) {
-  auto size = fiberManager_.options_.stackSize;
-  auto limit = fiberManager_.stackAllocator_.allocate(size);
-
-  fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
-
+Fiber::Fiber(FiberManager& fiberManager)
+    : fiberManager_(fiberManager),
+      fiberStackSize_(fiberManager_.options_.stackSize),
+      fiberStackLimit_(fiberManager_.stackAllocator_.allocate(fiberStackSize_)),
+      fiberImpl_([this] { fiberFunc(); }, fiberStackLimit_, fiberStackSize_) {
   fiberManager_.allFibers_.push_back(*this);
 }
 
@@ -81,20 +81,20 @@ void Fiber::init(bool recordStackUsed) {
 #ifndef FOLLY_SANITIZE_ADDRESS
   recordStackUsed_ = recordStackUsed;
   if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
-    auto limit = fcontext_.stackLimit();
-    auto base = fcontext_.stackBase();
-
+    CHECK_EQ(
+        0, reinterpret_cast<intptr_t>(fiberStackLimit_) % sizeof(uint64_t));
+    CHECK_EQ(0, fiberStackSize_ % sizeof(uint64_t));
     std::fill(
-        static_cast<uint64_t*>(limit),
-        static_cast<uint64_t*>(base),
+        reinterpret_cast<uint64_t*>(fiberStackLimit_),
+        reinterpret_cast<uint64_t*>(fiberStackLimit_ + fiberStackSize_),
         kMagic8Bytes);
+
+    stackFilledWithMagic_ = true;
 
     // newer versions of boost allocate context on fiber stack,
     // need to create a new one
-    auto size = fiberManager_.options_.stackSize;
-    fcontext_ = makeContext(limit, size, &Fiber::fiberFuncHelper);
-
-    stackFilledWithMagic_ = true;
+    fiberImpl_ =
+        FiberImpl([this] { fiberFunc(); }, fiberStackLimit_, fiberStackSize_);
   }
 #else
   (void)recordStackUsed;
@@ -105,23 +105,17 @@ Fiber::~Fiber() {
 #ifdef FOLLY_SANITIZE_ADDRESS
   fiberManager_.unpoisonFiberStack(this);
 #endif
-  fiberManager_.stackAllocator_.deallocate(
-      static_cast<unsigned char*>(fcontext_.stackLimit()),
-      fiberManager_.options_.stackSize);
+  fiberManager_.stackAllocator_.deallocate(fiberStackLimit_, fiberStackSize_);
 }
 
 void Fiber::recordStackPosition() {
   int stackDummy;
   auto currentPosition = static_cast<size_t>(
-      static_cast<unsigned char*>(fcontext_.stackBase()) -
+      fiberStackLimit_ + fiberStackSize_ -
       static_cast<unsigned char*>(static_cast<void*>(&stackDummy)));
   fiberManager_.stackHighWatermark_ =
       std::max(fiberManager_.stackHighWatermark_, currentPosition);
   VLOG(4) << "Stack usage: " << currentPosition;
-}
-
-void Fiber::fiberFuncHelper(intptr_t fiber) {
-  reinterpret_cast<Fiber*>(fiber)->fiberFunc();
 }
 
 void Fiber::fiberFunc() {
@@ -153,7 +147,8 @@ void Fiber::fiberFunc() {
 
     if (UNLIKELY(recordStackUsed_)) {
       fiberManager_.stackHighWatermark_ = std::max(
-          fiberManager_.stackHighWatermark_, nonMagicInBytes(fcontext_));
+          fiberManager_.stackHighWatermark_,
+          nonMagicInBytes(fiberStackLimit_, fiberStackSize_));
       VLOG(3) << "Max stack usage: " << fiberManager_.stackHighWatermark_;
       CHECK(
           fiberManager_.stackHighWatermark_ <

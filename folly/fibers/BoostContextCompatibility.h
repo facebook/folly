@@ -17,6 +17,7 @@
 
 #include <boost/context/fcontext.hpp>
 #include <boost/version.hpp>
+#include <glog/logging.h>
 
 /**
  * Wrappers for different versions of boost::context library
@@ -32,77 +33,74 @@
 namespace folly {
 namespace fibers {
 
-struct FContext {
- public:
-#if BOOST_VERSION >= 105200
-  using ContextStruct = boost::context::fcontext_t;
+class FiberImpl {
+#if BOOST_VERSION >= 105600
+  using FiberContext = boost::context::fcontext_t;
+#elif BOOST_VERSION >= 105200
+  using FiberContext = boost::context::fcontext_t*;
 #else
-  using ContextStruct = boost::ctx::fcontext_t;
+  using FiberContext = boost::ctx::fcontext_t;
 #endif
 
-  void* stackLimit() const {
-    return stackLimit_;
+#if BOOST_VERSION >= 105600
+  using MainContext = boost::context::fcontext_t;
+#elif BOOST_VERSION >= 105200
+  using MainContext = boost::context::fcontext_t;
+#else
+  using MainContext = boost::ctx::fcontext_t;
+#endif
+
+ public:
+  FiberImpl(
+      folly::Function<void()> func,
+      unsigned char* stackLimit,
+      size_t stackSize)
+      : func_(std::move(func)) {
+    auto stackBase = stackLimit + stackSize;
+
+#if BOOST_VERSION >= 105200
+    fiberContext_ =
+        boost::context::make_fcontext(stackBase, stackSize, &fiberFunc);
+#else
+    fiberContext_.fc_stack.limit = stackLimit;
+    fiberContext_.fc_stack.base = stackBase;
+    make_fcontext(&fiberContext_, &fiberFunc);
+#endif
   }
 
-  void* stackBase() const {
-    return stackBase_;
+  void activate() {
+#if BOOST_VERSION >= 105200
+    auto context = boost::context::jump_fcontext(
+        &mainContext_, fiberContext_, reinterpret_cast<intptr_t>(this));
+#else
+    auto context = jump_fcontext(
+        &mainContext_, &fiberContext_, reinterpret_cast<intptr_t>(this));
+#endif
+    DCHECK_EQ(0, context);
+  }
+
+  void deactivate() {
+#if BOOST_VERSION >= 105600
+    auto context =
+        boost::context::jump_fcontext(&fiberContext_, mainContext_, 0);
+#elif BOOST_VERSION >= 105200
+    auto context =
+        boost::context::jump_fcontext(fiberContext_, &mainContext_, 0);
+#else
+    auto context = jump_fcontext(&fiberContext_, &mainContext_, 0);
+#endif
+    DCHECK_EQ(this, reinterpret_cast<FiberImpl*>(context));
   }
 
  private:
-  void* stackLimit_;
-  void* stackBase_;
+  static void fiberFunc(intptr_t arg) {
+    auto fiberImpl = reinterpret_cast<FiberImpl*>(arg);
+    fiberImpl->func_();
+  }
 
-#if BOOST_VERSION >= 105600
-  ContextStruct context_;
-#elif BOOST_VERSION >= 105200
-  ContextStruct* context_;
-#else
-  ContextStruct context_;
-#endif
-
-  friend intptr_t
-  jumpContext(FContext* oldC, FContext::ContextStruct* newC, intptr_t p);
-  friend intptr_t
-  jumpContext(FContext::ContextStruct* oldC, FContext* newC, intptr_t p);
-  friend FContext
-  makeContext(void* stackLimit, size_t stackSize, void (*fn)(intptr_t));
+  folly::Function<void()> func_;
+  FiberContext fiberContext_;
+  MainContext mainContext_;
 };
-
-inline intptr_t
-jumpContext(FContext* oldC, FContext::ContextStruct* newC, intptr_t p) {
-#if BOOST_VERSION >= 105600
-  return boost::context::jump_fcontext(&oldC->context_, *newC, p);
-#elif BOOST_VERSION >= 105200
-  return boost::context::jump_fcontext(oldC->context_, newC, p);
-#else
-  return jump_fcontext(&oldC->context_, newC, p);
-#endif
-}
-
-inline intptr_t
-jumpContext(FContext::ContextStruct* oldC, FContext* newC, intptr_t p) {
-#if BOOST_VERSION >= 105200
-  return boost::context::jump_fcontext(oldC, newC->context_, p);
-#else
-  return jump_fcontext(oldC, &newC->context_, p);
-#endif
-}
-
-inline FContext
-makeContext(void* stackLimit, size_t stackSize, void (*fn)(intptr_t)) {
-  FContext res;
-  res.stackLimit_ = stackLimit;
-  res.stackBase_ = static_cast<unsigned char*>(stackLimit) + stackSize;
-
-#if BOOST_VERSION >= 105200
-  res.context_ = boost::context::make_fcontext(res.stackBase_, stackSize, fn);
-#else
-  res.context_.fc_stack.limit = stackLimit;
-  res.context_.fc_stack.base = res.stackBase_;
-  make_fcontext(&res.context_, fn);
-#endif
-
-  return res;
-}
 }
 } // folly::fibers
