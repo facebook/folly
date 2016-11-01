@@ -105,6 +105,15 @@ class ParameterizedDynamicTokenBucket {
   }
 
   /**
+   * Returns the current time in seconds since Epoch.
+   */
+  static double defaultClockNow() noexcept(noexcept(ClockT::timeSinceEpoch())) {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(
+               ClockT::timeSinceEpoch())
+        .count();
+  }
+
+  /**
    * Attempts to consume some number of tokens. Tokens are first added to the
    * bucket based on the time elapsed since the last attempt to consume tokens.
    * Note: Attempts to consume more tokens than the burst size will always
@@ -191,15 +200,6 @@ class ParameterizedDynamicTokenBucket {
     return std::min((nowInSeconds - this->zeroTime_) * rate, burstSize);
   }
 
-  /**
-   * Returns the current time in seconds since Epoch.
-   */
-  static double defaultClockNow() noexcept(noexcept(ClockT::timeSinceEpoch())) {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(
-               ClockT::timeSinceEpoch())
-        .count();
-  }
-
  private:
   template <typename TCallback>
   bool consumeImpl(
@@ -267,6 +267,13 @@ class ParameterizedTokenBucket {
    */
   ParameterizedTokenBucket& operator=(
       const ParameterizedTokenBucket& other) noexcept = default;
+
+  /**
+   * Returns the current time in seconds since Epoch.
+   */
+  static double defaultClockNow() noexcept(noexcept(Impl::defaultClockNow())) {
+    return Impl::defaultClockNow();
+  }
 
   /**
    * Change rate and burst size.
@@ -368,13 +375,6 @@ class ParameterizedTokenBucket {
    */
   double burst() const noexcept {
     return burstSize_;
-  }
-
-  /**
-   * Returns the current time in seconds since Epoch.
-   */
-  static double defaultClockNow() noexcept(noexcept(Impl::defaultClockNow())) {
-    return Impl::defaultClockNow();
   }
 
  private:
