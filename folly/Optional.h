@@ -59,6 +59,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 namespace detail { struct NoneHelper {}; }
@@ -292,10 +294,16 @@ class Optional {
       };
     };
 
+    FOLLY_PUSH_WARNING
+    // These are both informational warnings, but they trigger rare enough
+    // that we've left them enabled.
+    FOLLY_MSVC_DISABLE_WARNING(4587) // constructor of .value is not called
+    FOLLY_MSVC_DISABLE_WARNING(4588) // destructor of .value is not called
     StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() {
       clear();
     }
+    FOLLY_POP_WARNING
 
     void clear() {
       if (hasValue) {
