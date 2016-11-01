@@ -55,10 +55,10 @@ TEST_F(SparseByteSetTest, each) {
 
 TEST_F(SparseByteSetTest, each_random) {
   mt19937 rng;
-  uniform_int_distribution<uint8_t> dist;
+  uniform_int_distribution<uint16_t> dist{lims::min(), lims::max()};
   set<uint8_t> added;
   while (added.size() <= lims::max()) {
-    auto c = dist(rng);
+    auto c = uint8_t(dist(rng));
     EXPECT_EQ(added.count(c), s.contains(c));
     EXPECT_EQ(!added.count(c), s.add(c));
     added.insert(c);
