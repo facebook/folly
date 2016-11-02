@@ -153,7 +153,7 @@ class AtomicBatchDispatcher {
     Token& operator=(const Token&) = delete;
 
     std::shared_ptr<DispatchBaton> baton_;
-    const size_t SEQUENCE_NUMBER;
+    size_t sequenceNumber_;
   };
 
   explicit AtomicBatchDispatcher(DispatchFunctionT&& dispatchFunc);

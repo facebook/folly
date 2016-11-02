@@ -146,7 +146,7 @@ template <typename InputT, typename ResultT>
 AtomicBatchDispatcher<InputT, ResultT>::Token::Token(
     std::shared_ptr<DispatchBaton> baton,
     size_t sequenceNumber)
-    : baton_(std::move(baton)), SEQUENCE_NUMBER(sequenceNumber) {}
+    : baton_(std::move(baton)), sequenceNumber_(sequenceNumber) {}
 
 template <typename InputT, typename ResultT>
 Future<ResultT> AtomicBatchDispatcher<InputT, ResultT>::Token::dispatch(
@@ -156,7 +156,7 @@ Future<ResultT> AtomicBatchDispatcher<InputT, ResultT>::Token::dispatch(
     throw std::logic_error(
         "Dispatch called more than once on the same Token object");
   }
-  return baton->getFutureResult(std::move(input), SEQUENCE_NUMBER);
+  return baton->getFutureResult(std::move(input), sequenceNumber_);
 }
 
 template <typename InputT, typename ResultT>
