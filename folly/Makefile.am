@@ -13,6 +13,7 @@ generate_fingerprint_tables_SOURCES = build/GenerateFingerprintTables.cpp
 generate_fingerprint_tables_LDADD = libfollybase.la
 
 noinst_LTLIBRARIES = \
+	libfollybasesse42.la \
 	libfollybase.la
 
 lib_LTLIBRARIES = \
@@ -379,11 +380,13 @@ GroupVarintTables.cpp: build/generate_varint_tables.py
 	$(PYTHON) build/generate_varint_tables.py
 CLEANFILES += GroupVarintTables.cpp
 
+libfollybasesse42_la_SOURCES = \
+	detail/RangeSse42.cpp
+
 libfollybase_la_SOURCES = \
 	Conv.cpp \
 	Demangle.cpp \
 	detail/RangeCommon.cpp \
-	detail/RangeSse42.cpp \
 	EscapeTables.cpp \
 	Format.cpp \
 	FormatTables.cpp \
@@ -556,6 +559,10 @@ libfolly_la_SOURCES += \
 	fibers/TimeoutController.cpp
 endif
 
+libfollybasesse42_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
+libfollybasesse42_la_CXXFLAGS = -msse4.2
+
+libfollybase_la_LIBADD = libfollybasesse42.la
 libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 
 libfolly_la_LIBADD = libfollybase.la
