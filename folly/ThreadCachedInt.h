@@ -47,7 +47,7 @@ class ThreadCachedInt : boost::noncopyable {
 
   void increment(IntT inc) {
     auto cache = cache_.get();
-    if (UNLIKELY(cache == nullptr || cache->parent_ == nullptr)) {
+    if (UNLIKELY(cache == nullptr)) {
       cache = new IntCache(*this);
       cache_.reset(cache);
     }
@@ -122,15 +122,6 @@ class ThreadCachedInt : boost::noncopyable {
     target_.store(newVal, std::memory_order_release);
   }
 
-  // This is a little tricky - it's possible that our IntCaches are still alive
-  // in another thread and will get destroyed after this destructor runs, so we
-  // need to make sure we signal that this parent is dead.
-  ~ThreadCachedInt() {
-    for (auto& cache : cache_.accessAllThreads()) {
-      cache.parent_ = nullptr;
-    }
-  }
-
  private:
   std::atomic<IntT> target_;
   std::atomic<uint32_t> cacheSize_;
@@ -173,9 +164,7 @@ class ThreadCachedInt : boost::noncopyable {
     }
 
     ~IntCache() {
-      if (parent_) {
-        flush();
-      }
+      flush();
     }
   };
 };

@@ -98,38 +98,54 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
 void StaticMetaBase::destroy(EntryID* ent) {
   try {
     auto& meta = *this;
+
     // Elements in other threads that use this id.
     std::vector<ElementWrapper> elements;
+
     {
-      std::lock_guard<std::mutex> g(meta.lock_);
-      uint32_t id = ent->value.exchange(kEntryIDInvalid);
-      if (id == kEntryIDInvalid) {
-        return;
+      SharedMutex::WriteHolder wlock;
+      if (meta.strict_) {
+        /*
+         * In strict mode, the logic guarantees per-thread instances are
+         * destroyed by the moment ThreadLocal<> dtor returns.
+         * In order to achieve that, we should wait until concurrent
+         * onThreadExit() calls (that might acquire ownership over per-thread
+         * instances in order to destroy them) are finished.
+         */
+        wlock = SharedMutex::WriteHolder(meta.accessAllThreadsLock_);
       }
 
-      for (ThreadEntry* e = meta.head_.next; e != &meta.head_; e = e->next) {
-        if (id < e->elementsCapacity && e->elements[id].ptr) {
-          elements.push_back(e->elements[id]);
-
-          /*
-           * Writing another thread's ThreadEntry from here is fine;
-           * the only other potential reader is the owning thread --
-           * from onThreadExit (which grabs the lock, so is properly
-           * synchronized with us) or from get(), which also grabs
-           * the lock if it needs to resize the elements vector.
-           *
-           * We can't conflict with reads for a get(id), because
-           * it's illegal to call get on a thread local that's
-           * destructing.
-           */
-          e->elements[id].ptr = nullptr;
-          e->elements[id].deleter1 = nullptr;
-          e->elements[id].ownsDeleter = false;
+      {
+        std::lock_guard<std::mutex> g(meta.lock_);
+        uint32_t id = ent->value.exchange(kEntryIDInvalid);
+        if (id == kEntryIDInvalid) {
+          return;
         }
+
+        for (ThreadEntry* e = meta.head_.next; e != &meta.head_; e = e->next) {
+          if (id < e->elementsCapacity && e->elements[id].ptr) {
+            elements.push_back(e->elements[id]);
+
+            /*
+             * Writing another thread's ThreadEntry from here is fine;
+             * the only other potential reader is the owning thread --
+             * from onThreadExit (which grabs the lock, so is properly
+             * synchronized with us) or from get(), which also grabs
+             * the lock if it needs to resize the elements vector.
+             *
+             * We can't conflict with reads for a get(id), because
+             * it's illegal to call get on a thread local that's
+             * destructing.
+             */
+            e->elements[id].ptr = nullptr;
+            e->elements[id].deleter1 = nullptr;
+            e->elements[id].ownsDeleter = false;
+          }
+        }
+        meta.freeIds_.push_back(id);
       }
-      meta.freeIds_.push_back(id);
     }
-    // Delete elements outside the lock
+    // Delete elements outside the locks.
     for (ElementWrapper& elem : elements) {
       elem.dispose(TLPDestructionMode::ALL_THREADS);
     }
