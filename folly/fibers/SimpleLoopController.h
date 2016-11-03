@@ -54,7 +54,8 @@ class SimpleLoopController : public LoopController {
 
       if (scheduled_) {
         scheduled_ = false;
-        waiting = fm_->loopUntilNoReady();
+        runLoop();
+        waiting = fm_->hasTasks();
       }
     }
   }
@@ -68,6 +69,10 @@ class SimpleLoopController : public LoopController {
 
   int remoteScheduleCalled() const {
     return remoteScheduleCalled_;
+  }
+
+  void runLoop() override {
+    fm_->loopUntilNoReadyImpl();
   }
 
   void schedule() override {

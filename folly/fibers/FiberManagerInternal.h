@@ -155,10 +155,13 @@ class FiberManager : public ::folly::Executor {
 
   /**
    * Keeps running ready tasks until the list of ready tasks is empty.
-   *
-   * @return True if there are any waiting tasks remaining.
    */
-  bool loopUntilNoReady();
+  void loopUntilNoReady();
+
+  /**
+   * This should only be called by a LoopController.
+   */
+  void loopUntilNoReadyImpl();
 
   /**
    * @return true if there are outstanding tasks.

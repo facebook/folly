@@ -185,7 +185,11 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   }
 }
 
-inline bool FiberManager::loopUntilNoReady() {
+inline void FiberManager::loopUntilNoReady() {
+  return loopController_->runLoop();
+}
+
+inline void FiberManager::loopUntilNoReadyImpl() {
 #ifndef _WIN32
   if (UNLIKELY(!alternateSignalStackRegistered_)) {
     registerAlternateSignalStack();
@@ -243,8 +247,6 @@ inline bool FiberManager::loopUntilNoReady() {
     }
   }
   readyFibers_.splice(readyFibers_.end(), yieldedFibers_);
-
-  return fibersActive_ > 0;
 }
 
 // We need this to be in a struct, not inlined in addTask, because clang crashes

@@ -24,6 +24,7 @@ inline EventBaseLoopController::EventBaseLoopController()
 
 inline EventBaseLoopController::~EventBaseLoopController() {
   callback_.cancelLoopCallback();
+  eventBaseKeepAlive_.reset();
 }
 
 inline void EventBaseLoopController::attachEventBase(
@@ -62,10 +63,16 @@ inline void EventBaseLoopController::cancel() {
 }
 
 inline void EventBaseLoopController::runLoop() {
+  if (!eventBaseKeepAlive_) {
+    eventBaseKeepAlive_ = eventBase_->loopKeepAlive();
+  }
   if (loopRunner_) {
-    loopRunner_->run([&] { fm_->loopUntilNoReady(); });
+    loopRunner_->run([&] { fm_->loopUntilNoReadyImpl(); });
   } else {
-    fm_->loopUntilNoReady();
+    fm_->loopUntilNoReadyImpl();
+  }
+  if (!fm_->hasTasks()) {
+    eventBaseKeepAlive_.reset();
   }
 }
 

@@ -42,6 +42,12 @@ class LoopController {
   virtual void schedule() = 0;
 
   /**
+   * Run FiberManager loopUntilNoReadyImpl(). May have additional logic specific
+   * to a LoopController.
+   */
+  virtual void runLoop() = 0;
+
+  /**
    * Same as schedule(), but safe to call from any thread.
    * Runs func and only schedules if func returned true.
    */

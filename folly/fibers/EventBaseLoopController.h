@@ -91,6 +91,7 @@ class EventBaseLoopController : public LoopController {
 
   bool awaitingScheduling_{false};
   folly::EventBase* eventBase_{nullptr};
+  folly::EventBase::LoopKeepAlive eventBaseKeepAlive_;
   ControllerCallback callback_;
   DestructionCallback destructionCallback_;
   FiberManager* fm_{nullptr};
@@ -103,7 +104,7 @@ class EventBaseLoopController : public LoopController {
   void setFiberManager(FiberManager* fm) override;
   void schedule() override;
   void cancel() override;
-  void runLoop();
+  void runLoop() override;
   void scheduleThreadSafe(std::function<bool()> func) override;
   void timedSchedule(std::function<void()> func, TimePoint time) override;
 
