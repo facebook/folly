@@ -147,6 +147,8 @@ class AtomicBatchDispatcher {
     Token(Token&&) = default;
     Token& operator=(Token&&) = default;
 
+    size_t sequenceNumber() const;
+
    private:
     // Disallow copying a Token object
     Token(const Token&) = delete;

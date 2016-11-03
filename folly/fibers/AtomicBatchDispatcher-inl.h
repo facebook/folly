@@ -149,6 +149,11 @@ AtomicBatchDispatcher<InputT, ResultT>::Token::Token(
     : baton_(std::move(baton)), sequenceNumber_(sequenceNumber) {}
 
 template <typename InputT, typename ResultT>
+size_t AtomicBatchDispatcher<InputT, ResultT>::Token::sequenceNumber() const {
+  return sequenceNumber_;
+}
+
+template <typename InputT, typename ResultT>
 Future<ResultT> AtomicBatchDispatcher<InputT, ResultT>::Token::dispatch(
     InputT input) {
   auto baton = std::move(baton_);
