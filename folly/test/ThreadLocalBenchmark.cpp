@@ -66,7 +66,7 @@ DEFINE_int32(numThreads, 8, "Number simultaneous threads for benchmarks.");
     for (int i = 0; i < FLAGS_numThreads; ++i) {         \
       threads.push_back(std::thread([&]() {              \
         var.reset(new int(0));                           \
-        for (int i = 0; i < itersPerThread; ++i) {       \
+        for (int j = 0; j < itersPerThread; ++j) {       \
           ++(*var.get());                                \
         }                                                \
       }));                                               \
