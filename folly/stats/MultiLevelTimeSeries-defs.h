@@ -50,7 +50,7 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
 
   levels_.reserve(durations.size());
   int i = 0;
-  Duration prev;
+  Duration prev{0};
   for (auto dur : durations) {
     if (dur == Duration(0)) {
       CHECK_EQ(i, durations.size() - 1);
