@@ -106,7 +106,7 @@ BENCHMARK(exception_ptr_create_and_throw, iters) {
     try {
       std::rethrow_exception(ep);
       assert(false);
-    } catch (std::runtime_error& e) {
+    } catch (std::runtime_error&) {
     }
   }
 }
@@ -118,7 +118,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_throw, iters) {
     try {
       ew.throwException();
       assert(false);
-    } catch (std::runtime_error& e) {
+    } catch (std::runtime_error&) {
     }
   }
 }
@@ -147,7 +147,7 @@ BENCHMARK(exception_ptr_create_and_throw_concurrent, iters) {
           try {
             std::rethrow_exception(ep);
             assert(false);
-          } catch (std::runtime_error& e) {
+          } catch (std::runtime_error&) {
           }
         }
       });
@@ -172,7 +172,7 @@ BENCHMARK_RELATIVE(exception_wrapper_create_and_throw_concurrent, iters) {
           try {
             ew.throwException();
             assert(false);
-          } catch (std::runtime_error& e) {
+          } catch (std::runtime_error&) {
           }
         }
       });
