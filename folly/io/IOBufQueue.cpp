@@ -187,13 +187,16 @@ IOBufQueue::preallocateSlow(uint64_t min, uint64_t newAllocationSize,
                    std::min(max, last->tailroom()));
 }
 
-unique_ptr<IOBuf>
-IOBufQueue::split(size_t n) {
+unique_ptr<IOBuf> IOBufQueue::split(size_t n, bool throwOnUnderflow) {
   unique_ptr<IOBuf> result;
   while (n != 0) {
     if (head_ == nullptr) {
-      throw std::underflow_error(
-          "Attempt to remove more bytes than are present in IOBufQueue");
+      if (throwOnUnderflow) {
+        throw std::underflow_error(
+            "Attempt to remove more bytes than are present in IOBufQueue");
+      } else {
+        break;
+      }
     } else if (head_->length() <= n) {
       n -= head_->length();
       chainLength_ -= head_->length();

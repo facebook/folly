@@ -195,7 +195,17 @@ class IOBufQueue {
    * @throws std::underflow_error if n exceeds the number of bytes
    *         in the queue.
    */
-  std::unique_ptr<folly::IOBuf> split(size_t n);
+  std::unique_ptr<folly::IOBuf> split(size_t n) {
+    return split(n, true);
+  }
+
+  /**
+   * Similar to split, but will return the entire queue instead of throwing
+   * if n exceeds the number of bytes in the queue.
+   */
+  std::unique_ptr<folly::IOBuf> splitAtMost(size_t n) {
+    return split(n, false);
+  }
 
   /**
    * Similar to IOBuf::trimStart, but works on the whole queue.  Will
@@ -282,6 +292,8 @@ class IOBufQueue {
   }
   std::pair<void*,uint64_t> preallocateSlow(
     uint64_t min, uint64_t newAllocationSize, uint64_t max);
+
+  std::unique_ptr<folly::IOBuf> split(size_t n, bool throwOnUnderflow);
 
   static const size_t kChainLengthNotCached = (size_t)-1;
   /** Not copyable */
