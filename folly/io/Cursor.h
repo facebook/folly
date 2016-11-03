@@ -153,6 +153,17 @@ class CursorBase {
     return true;
   }
 
+  /**
+   * Advances the cursor to the end of the entire IOBuf chain.
+   */
+  void advanceToEnd() {
+    offset_ = buffer_->prev()->length();
+    if (crtBuf_ != buffer_->prev()) {
+      crtBuf_ = buffer_->prev();
+      static_cast<Derived*>(this)->advanceDone();
+    }
+  }
+
   Derived& operator+=(size_t offset) {
     Derived* p = static_cast<Derived*>(this);
     p->skip(offset);
@@ -161,6 +172,17 @@ class CursorBase {
   Derived operator+(size_t offset) const {
     Derived other(*this);
     other.skip(offset);
+    return other;
+  }
+
+  Derived& operator-=(size_t offset) {
+    Derived* p = static_cast<Derived*>(this);
+    p->retreat(offset);
+    return *p;
+  }
+  Derived operator-(size_t offset) const {
+    Derived other(*this);
+    other.retreat(offset);
     return other;
   }
 
@@ -276,6 +298,22 @@ class CursorBase {
       advanceBufferIfEmpty();
     } else {
       skipSlow(len);
+    }
+  }
+
+  size_t retreatAtMost(size_t len) {
+    if (len <= offset_) {
+      offset_ -= len;
+      return len;
+    }
+    return retreatAtMostSlow(len);
+  }
+
+  void retreat(size_t len) {
+    if (len <= offset_) {
+      offset_ -= len;
+    } else {
+      retreatSlow(len);
     }
   }
 
@@ -455,6 +493,17 @@ class CursorBase {
     return true;
   }
 
+  bool tryRetreatBuffer() {
+    if (UNLIKELY(crtBuf_ == buffer_)) {
+      offset_ = 0;
+      return false;
+    }
+    crtBuf_ = crtBuf_->prev();
+    offset_ = crtBuf_->length();
+    static_cast<Derived*>(this)->advanceDone();
+    return true;
+  }
+
   void advanceBufferIfEmpty() {
     if (length() == 0) {
       tryAdvanceBuffer();
@@ -518,6 +567,25 @@ class CursorBase {
 
   void skipSlow(size_t len) {
     if (UNLIKELY(skipAtMostSlow(len) != len)) {
+      std::__throw_out_of_range("underflow");
+    }
+  }
+
+  size_t retreatAtMostSlow(size_t len) {
+    size_t retreated = 0;
+    for (size_t available; (available = offset_) < len;) {
+      retreated += available;
+      if (UNLIKELY(!tryRetreatBuffer())) {
+        return retreated;
+      }
+      len -= available;
+    }
+    offset_ -= len;
+    return retreated + len;
+  }
+
+  void retreatSlow(size_t len) {
+    if (UNLIKELY(retreatAtMostSlow(len) != len)) {
       std::__throw_out_of_range("underflow");
     }
   }

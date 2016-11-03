@@ -862,3 +862,118 @@ TEST(IOBuf, ReadWhileTrue) {
     EXPECT_TRUE(curs.isAtEnd());
   }
 }
+
+TEST(IOBuf, TestAdvanceToEndSingle) {
+  std::unique_ptr<IOBuf> chain(IOBuf::create(10));
+  chain->append(10);
+
+  Cursor curs(chain.get());
+  curs.advanceToEnd();
+  EXPECT_TRUE(curs.isAtEnd());
+  EXPECT_EQ(curs - chain.get(), 10);
+}
+
+TEST(IOBuf, TestAdvanceToEndMulti) {
+  std::unique_ptr<IOBuf> chain(IOBuf::create(10));
+  chain->append(10);
+
+  std::unique_ptr<IOBuf> buf(IOBuf::create(5));
+  buf->append(5);
+  chain->prependChain(std::move(buf));
+
+  buf = IOBuf::create(20);
+  buf->append(20);
+  chain->prependChain(std::move(buf));
+
+  Cursor curs(chain.get());
+  curs.advanceToEnd();
+  EXPECT_TRUE(curs.isAtEnd());
+  EXPECT_EQ(curs - chain.get(), 35);
+
+  curs.reset(chain.get());
+  curs.skip(12);
+  curs.advanceToEnd();
+  EXPECT_TRUE(curs.isAtEnd());
+}
+
+TEST(IOBuf, TestRetreatSingle) {
+  std::unique_ptr<IOBuf> chain(IOBuf::create(20));
+  chain->append(20);
+
+  Cursor curs(chain.get());
+  EXPECT_EQ(curs.retreatAtMost(0), 0);
+  EXPECT_EQ(curs.totalLength(), 20);
+  EXPECT_EQ(curs.retreatAtMost(5), 0);
+  EXPECT_EQ(curs.totalLength(), 20);
+  EXPECT_EQ(curs.retreatAtMost(25), 0);
+  EXPECT_EQ(curs.totalLength(), 20);
+
+  curs.retreat(0);
+  EXPECT_THROW(curs.retreat(5), std::out_of_range);
+  curs.reset(chain.get());
+  EXPECT_THROW(curs.retreat(25), std::out_of_range);
+  curs.reset(chain.get());
+
+  curs.advanceToEnd();
+  curs.retreat(5);
+  EXPECT_EQ(curs.totalLength(), 5);
+  curs.retreat(10);
+  EXPECT_EQ(curs.totalLength(), 15);
+  EXPECT_THROW(curs.retreat(10), std::out_of_range);
+
+  curs.reset(chain.get());
+  curs.advanceToEnd();
+  EXPECT_EQ(curs.retreatAtMost(5), 5);
+  EXPECT_EQ(curs.totalLength(), 5);
+  EXPECT_EQ(curs.retreatAtMost(10), 10);
+  EXPECT_EQ(curs.totalLength(), 15);
+  EXPECT_EQ(curs.retreatAtMost(10), 5);
+  EXPECT_EQ(curs.totalLength(), 20);
+}
+
+TEST(IOBuf, TestRetreatMulti) {
+  std::unique_ptr<IOBuf> chain(IOBuf::create(10));
+  chain->append(10);
+
+  std::unique_ptr<IOBuf> buf(IOBuf::create(5));
+  buf->append(5);
+  chain->prependChain(std::move(buf));
+
+  buf = IOBuf::create(20);
+  buf->append(20);
+  chain->prependChain(std::move(buf));
+
+  Cursor curs(chain.get());
+  EXPECT_EQ(curs.retreatAtMost(10), 0);
+  EXPECT_THROW(curs.retreat(10), std::out_of_range);
+  curs.reset(chain.get());
+
+  curs.advanceToEnd();
+  curs.retreat(20);
+  EXPECT_EQ(curs.totalLength(), 20);
+  EXPECT_EQ(curs.length(), 20);
+  curs.retreat(1);
+  EXPECT_EQ(curs.totalLength(), 21);
+  EXPECT_EQ(curs.length(), 1);
+  EXPECT_EQ(curs.retreatAtMost(50), 14);
+  EXPECT_EQ(curs.totalLength(), 35);
+
+  curs.advanceToEnd();
+  curs.retreat(30);
+  EXPECT_EQ(curs.totalLength(), 30);
+}
+
+TEST(IOBuf, TestRetreatOperators) {
+  std::unique_ptr<IOBuf> chain(IOBuf::create(20));
+  chain->append(20);
+
+  Cursor curs(chain.get());
+  curs.advanceToEnd();
+  curs -= 5;
+  EXPECT_EQ(curs.totalLength(), 5);
+
+  curs.advanceToEnd();
+  auto retreated = curs - 5;
+  EXPECT_EQ(retreated.totalLength(), 5);
+  EXPECT_EQ(curs.totalLength(), 0);
+}
