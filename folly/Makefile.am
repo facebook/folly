@@ -131,6 +131,8 @@ nobase_follyinclude_HEADERS = \
 	experimental/symbolizer/Symbolizer.h \
 	experimental/Select64.h \
 	experimental/StringKeyedCommon.h \
+	experimental/StringKeyedMap.h \
+	experimental/StringKeyedSet.h \
 	experimental/StringKeyedUnorderedMap.h \
 	experimental/StringKeyedUnorderedSet.h \
 	experimental/TestUtil.h \
