@@ -23,7 +23,7 @@
 #include <map>
 #include <memory>
 
-#include <folly/RWSpinLock.h>
+#include <folly/SharedMutex.h>
 #include <folly/Synchronized.h>
 
 namespace folly {
@@ -99,7 +99,7 @@ class RequestContext {
   static std::shared_ptr<RequestContext>& getStaticContext();
 
   using Data = std::map<std::string, std::unique_ptr<RequestData>>;
-  folly::Synchronized<Data, folly::RWSpinLock> data_;
+  folly::Synchronized<Data, folly::SharedMutex> data_;
 };
 
 class RequestContextScopeGuard {
