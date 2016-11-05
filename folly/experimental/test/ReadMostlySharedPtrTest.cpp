@@ -297,3 +297,40 @@ TEST_F(ReadMostlySharedPtrTest, ReadMostlyMainPtrDeleter) {
 
   EXPECT_EQ(1, useGlobalCalls);
 }
+
+TEST_F(ReadMostlySharedPtrTest, nullptr) {
+  {
+    ReadMostlyMainPtr<int, TestRefCount> nptr;
+    EXPECT_TRUE(nptr == nullptr);
+    EXPECT_TRUE(nullptr == nptr);
+    EXPECT_EQ(nptr, nullptr);
+    EXPECT_EQ(nullptr, nptr);
+    EXPECT_FALSE(nptr);
+    EXPECT_TRUE(!nptr);
+
+    ReadMostlyMainPtr<int, TestRefCount> ptr(std::make_shared<int>(42));
+    EXPECT_FALSE(ptr == nullptr);
+    EXPECT_FALSE(nullptr == ptr);
+    EXPECT_NE(ptr, nullptr);
+    EXPECT_NE(nullptr, ptr);
+    EXPECT_FALSE(!ptr);
+    EXPECT_TRUE(ptr);
+  }
+  {
+    ReadMostlySharedPtr<int, TestRefCount> nptr;
+    EXPECT_TRUE(nptr == nullptr);
+    EXPECT_TRUE(nullptr == nptr);
+    EXPECT_EQ(nptr, nullptr);
+    EXPECT_EQ(nullptr, nptr);
+    EXPECT_FALSE(nptr);
+    EXPECT_TRUE(!nptr);
+
+    ReadMostlyMainPtr<int, TestRefCount> ptr(std::make_shared<int>(42));
+    EXPECT_FALSE(ptr == nullptr);
+    EXPECT_FALSE(nullptr == ptr);
+    EXPECT_NE(ptr, nullptr);
+    EXPECT_NE(nullptr, ptr);
+    EXPECT_FALSE(!ptr);
+    EXPECT_TRUE(ptr);
+  }
+}
