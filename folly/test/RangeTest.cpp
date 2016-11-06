@@ -293,9 +293,9 @@ TEST(StringPiece, InvalidRange) {
   EXPECT_THROW(a.subpiece(6), std::out_of_range);
 }
 
-constexpr const char* helloArray = "hello";
-
 TEST(StringPiece, Constexpr) {
+  constexpr const char* helloArray = "hello";
+
   constexpr StringPiece hello1("hello");
   EXPECT_EQ("hello", hello1);
   static_assert(hello1.size() == 5, "hello size should be 5 at compile time");
@@ -1096,6 +1096,47 @@ TEST(RangeFunc, Array) {
 TEST(RangeFunc, CArray) {
   int x[] {1, 2, 3, 4};
   testRangeFunc(x, 4);
+}
+
+TEST(RangeFunc, ConstexprCArray) {
+  static constexpr const int numArray[4] = {3, 17, 1, 9};
+  constexpr const auto numArrayRange = range(numArray);
+  EXPECT_EQ(17, numArrayRange[1]);
+  constexpr const auto numArrayRangeSize = numArrayRange.size();
+  EXPECT_EQ(4, numArrayRangeSize);
+}
+
+TEST(RangeFunc, ConstexprIteratorPair) {
+  static constexpr const int numArray[4] = {3, 17, 1, 9};
+  constexpr const auto numPtr = static_cast<const int*>(numArray);
+  constexpr const auto numIterRange = range(numPtr + 1, numPtr + 3);
+  EXPECT_EQ(1, numIterRange[1]);
+  constexpr const auto numIterRangeSize = numIterRange.size();
+  EXPECT_EQ(2, numIterRangeSize);
+}
+
+TEST(RangeFunc, ConstexprCollection) {
+  class IntCollection {
+   public:
+    constexpr IntCollection(const int* d, size_t s) : data_(d), size_(s) {}
+    constexpr const int* data() const {
+      return data_;
+    }
+    constexpr size_t size() const {
+      return size_;
+    }
+
+   private:
+    const int* data_;
+    size_t size_;
+  };
+  static constexpr const int numArray[4] = {3, 17, 1, 9};
+  constexpr const auto numPtr = static_cast<const int*>(numArray);
+  constexpr const auto numColl = IntCollection(numPtr + 1, 2);
+  constexpr const auto numCollRange = range(numColl);
+  EXPECT_EQ(1, numCollRange[1]);
+  constexpr const auto numCollRangeSize = numCollRange.size();
+  EXPECT_EQ(2, numCollRangeSize);
 }
 
 std::string get_rand_str(size_t size,
