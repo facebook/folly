@@ -1333,7 +1333,7 @@ AsyncSocket::performRead(void** buf, size_t* buflen, size_t* /* offset */) {
   }
 }
 
-void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {
+void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   // no matter what, buffer should be preapared for non-ssl socket
   CHECK(readCallback_);
   readCallback_->getReadBuffer(buf, buflen);

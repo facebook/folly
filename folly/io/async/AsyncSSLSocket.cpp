@@ -1180,7 +1180,7 @@ void AsyncSSLSocket::setBufferMovableEnabled(bool enabled) {
   bufferMovableEnabled_ = enabled;
 }
 
-void AsyncSSLSocket::prepareReadBuffer(void** buf, size_t* buflen) noexcept {
+void AsyncSSLSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   CHECK(readCallback_);
   if (isBufferMovable_) {
     *buf = nullptr;

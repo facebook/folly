@@ -767,7 +767,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void ioReady(uint16_t events) noexcept;
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
-  virtual void prepareReadBuffer(void** buf, size_t* buflen) noexcept;
+  virtual void prepareReadBuffer(void** buf, size_t* buflen);
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
