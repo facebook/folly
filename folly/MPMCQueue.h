@@ -266,10 +266,8 @@ class MPMCQueue<T,Atom,true> :
       if (!trySeqlockReadSection(state, slots, cap, stride)) {
         continue;
       }
-      offset = getOffset(state);
-      if (ticket < offset) {
+      if (maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride)) {
         // There was an expansion after this ticket was issued.
-        updateFromClosed(state, ticket, offset, slots, cap, stride);
         break;
       }
       if (slots[this->idx((ticket-offset), cap, stride)]
@@ -305,12 +303,9 @@ class MPMCQueue<T,Atom,true> :
     uint64_t state;
     uint64_t offset;
     while (!trySeqlockReadSection(state, slots, cap, stride));
-    offset = getOffset(state);
-    if (ticket < offset) {
-      // There was an expansion after the corresponding push ticket
-      // was issued.
-      updateFromClosed(state, ticket, offset, slots, cap, stride);
-    }
+    // If there was an expansion after the corresponding push ticket
+    // was issued, adjust accordingly
+    maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
     this->dequeueWithTicketBase(ticket-offset, slots, cap, stride, elem);
   }
 
@@ -351,11 +346,12 @@ class MPMCQueue<T,Atom,true> :
       if (!trySeqlockReadSection(state, slots, cap, stride)) {
         continue;
       }
-      uint64_t offset = getOffset(state);
-      if (ticket < offset) {
-        // There was an expansion with offset greater than this ticket
-        updateFromClosed(state, ticket, offset, slots, cap, stride);
-      }
+
+      // If there was an expansion with offset greater than this ticket,
+      // adjust accordingly
+      uint64_t offset;
+      maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
+
       if (slots[this->idx((ticket-offset), cap, stride)]
           .mayEnqueue(this->turn(ticket-offset, cap))) {
         // A slot is ready.
@@ -394,25 +390,31 @@ class MPMCQueue<T,Atom,true> :
       if (!trySeqlockReadSection(state, slots, cap, stride)) {
         continue;
       }
+
+      const auto oldCap = cap;
+      // If there was an expansion with offset greater than this ticket,
+      // adjust accordingly
+      uint64_t offset;
+      maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
+
       int64_t n = ticket - numPops;
       if (n >= static_cast<ssize_t>(this->capacity_)) {
+        ticket -= offset;
         return false;
       }
-      if ((n >= static_cast<ssize_t>(cap))) {
-        if (tryExpand(state, cap)) {
+
+      if (n >= static_cast<ssize_t>(oldCap)) {
+        if (tryExpand(state, oldCap)) {
           // This or another thread started an expansion. Start over
           // with a new state.
           continue;
         } else {
           // Can't expand.
+          ticket -= offset;
           return false;
         }
       }
-      uint64_t offset = getOffset(state);
-      if (ticket < offset) {
-        // There was an expansion with offset greater than this ticket
-        updateFromClosed(state, ticket, offset, slots, cap, stride);
-      }
+
       if (this->pushTicket_.compare_exchange_strong(ticket, ticket + 1)) {
         // Adjust ticket
         ticket -= offset;
@@ -430,12 +432,12 @@ class MPMCQueue<T,Atom,true> :
       if (!trySeqlockReadSection(state, slots, cap, stride)) {
         continue;
       }
-      uint64_t offset = getOffset(state);
-      if (ticket < offset) {
-        // There was an expansion after the corresponding push ticket
-        // was issued.
-        updateFromClosed(state, ticket, offset, slots, cap, stride);
-      }
+
+      // If there was an expansion after the corresponding push ticket
+      // was issued, adjust accordingly
+      uint64_t offset;
+      maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
+
       if (slots[this->idx((ticket-offset), cap, stride)]
           .mayDequeue(this->turn(ticket-offset, cap))) {
         if (this->popTicket_.compare_exchange_strong(ticket, ticket + 1)) {
@@ -459,18 +461,17 @@ class MPMCQueue<T,Atom,true> :
       if (!trySeqlockReadSection(state, slots, cap, stride)) {
         continue;
       }
+
+      uint64_t offset;
+      // If there was an expansion after the corresponding push
+      // ticket was issued, adjust accordingly
+      maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
+
       if (ticket >= numPushes) {
+        ticket -= offset;
         return false;
       }
       if (this->popTicket_.compare_exchange_strong(ticket, ticket + 1)) {
-        // Adjust ticket
-        uint64_t offset = getOffset(state);
-        if (ticket < offset) {
-          // There was an expansion after the corresponding push
-          // ticket was issued.
-          updateFromClosed(state, ticket, offset, slots, cap, stride);
-        }
-        // Adjust ticket
         ticket -= offset;
         return true;
       }
@@ -485,12 +486,13 @@ class MPMCQueue<T,Atom,true> :
     int stride;
     uint64_t state;
     uint64_t offset;
+
     while (!trySeqlockReadSection(state, slots, cap, stride)) {}
-    offset = getOffset(state);
-    if (ticket < offset) {
-      // There was an expansion after this ticket was issued.
-      updateFromClosed(state, ticket, offset, slots, cap, stride);
-    }
+
+    // If there was an expansion after this ticket was issued, adjust
+    // accordingly
+    maybeUpdateFromClosed(state, ticket, offset, slots, cap, stride);
+
     this->enqueueWithTicketBase(ticket-offset, slots, cap, stride,
                                 std::forward<Args>(args)...);
   }
@@ -570,23 +572,32 @@ class MPMCQueue<T,Atom,true> :
     return (state == this->dstate_.load(std::memory_order_relaxed));
   }
 
-  /// Update local variables of a lagging operation using the
-  /// most recent closed array with offset <= ticket
-  void updateFromClosed(
-    const uint64_t state, const uint64_t ticket,
-    uint64_t& offset, Slot*& slots, size_t& cap, int& stride
-  ) noexcept {
+  /// If there was an expansion after ticket was issued, update local variables
+  /// of the lagging operation using the most recent closed array with
+  /// offset <= ticket and return true. Otherwise, return false;
+  bool maybeUpdateFromClosed(
+      const uint64_t state,
+      const uint64_t ticket,
+      uint64_t& offset,
+      Slot*& slots,
+      size_t& cap,
+      int& stride) noexcept {
+    offset = getOffset(state);
+    if (ticket >= offset) {
+      return false;
+    }
     for (int i = getNumClosed(state) - 1; i >= 0; --i) {
       offset = closed_[i].offset_;
       if (offset <= ticket) {
         slots = closed_[i].slots_;
         cap = closed_[i].capacity_;
         stride = closed_[i].stride_;
-        return;;
+        return true;
       }
     }
     // A closed array with offset <= ticket should have been found
     assert(false);
+    return false;
   }
 };
 
@@ -903,6 +914,25 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     }
   }
 
+  template <class Clock, typename... Args>
+  bool tryReadUntil(
+      const std::chrono::time_point<Clock>& when,
+      T& elem) noexcept {
+    uint64_t ticket;
+    Slot* slots;
+    size_t cap;
+    int stride;
+    if (tryObtainPromisedPopTicketUntil(ticket, slots, cap, stride, when)) {
+      // we have pre-validated that the ticket won't block, or rather that
+      // it won't block longer than it takes another thread to enqueue an
+      // element on the slot it identifies.
+      dequeueWithTicketBase(ticket, slots, cap, stride, elem);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   /// If the queue is not empty, dequeues and returns true, otherwise
   /// returns false.  If the matching write is still in progress then this
   /// method may block waiting for it.  If you don't rely on being able
@@ -1112,10 +1142,10 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     cap = capacity_;
     stride = stride_;
     while (true) {
-      auto numPops = popTicket_.load(std::memory_order_acquire); // B
-      // n will be negative if pops are pending
-      int64_t n = numPushes - numPops;
       ticket = numPushes;
+      const auto numPops = popTicket_.load(std::memory_order_acquire); // B
+      // n will be negative if pops are pending
+      const int64_t n = numPushes - numPops;
       if (n >= static_cast<ssize_t>(capacity_)) {
         // Full, linearize at B.  We don't need to recheck the read we
         // performed at A, because if numPushes was stale at B then the
@@ -1154,6 +1184,37 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     }
   }
 
+  /// Tries until when to obtain a pop ticket for which
+  /// SingleElementQueue::dequeue won't block.  Returns true on success, false
+  /// on failure.
+  /// ticket is filled on success AND failure.
+  template <class Clock>
+  bool tryObtainPromisedPopTicketUntil(
+      uint64_t& ticket,
+      Slot*& slots,
+      size_t& cap,
+      int& stride,
+      const std::chrono::time_point<Clock>& when) noexcept {
+    bool deadlineReached = false;
+    while (!deadlineReached) {
+      if (static_cast<Derived<T, Atom, Dynamic>*>(this)
+              ->tryObtainPromisedPopTicket(ticket, slots, cap, stride)) {
+        return true;
+      }
+      // ticket is a blocking ticket until the preceding ticket has been
+      // processed: wait until this ticket's turn arrives. We have not reserved
+      // this ticket so we will have to re-attempt to get a non-blocking ticket
+      // if we wake up before we time-out.
+      deadlineReached =
+          !slots[idx(ticket, cap, stride)].tryWaitForDequeueTurnUntil(
+              turn(ticket, cap),
+              pushSpinCutoff_,
+              (ticket % kAdaptationFreq) == 0,
+              when);
+    }
+    return false;
+  }
+
   /// Similar to tryObtainReadyPopTicket, but returns a pop ticket whose
   /// corresponding push ticket has already been handed out, rather than
   /// returning one whose corresponding push ticket has already been
@@ -1168,8 +1229,12 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     uint64_t& ticket, Slot*& slots, size_t& cap, int& stride
   ) noexcept {
     auto numPops = popTicket_.load(std::memory_order_acquire); // A
+    slots = slots_;
+    cap = capacity_;
+    stride = stride_;
     while (true) {
-      auto numPushes = pushTicket_.load(std::memory_order_acquire); // B
+      ticket = numPops;
+      const auto numPushes = pushTicket_.load(std::memory_order_acquire); // B
       if (numPops >= numPushes) {
         // Empty, or empty with pending pops.  Linearize at B.  We don't
         // need to recheck the read we performed at A, because if numPops
@@ -1177,10 +1242,6 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
         return false;
       }
       if (popTicket_.compare_exchange_strong(numPops, numPops + 1)) {
-        ticket = numPops;
-        slots = slots_;
-        cap = capacity_;
-        stride = stride_;
         return true;
       }
     }
@@ -1275,7 +1336,8 @@ struct SingleElementQueue {
       const bool updateSpinCutoff,
       const std::chrono::time_point<Clock>& when) noexcept {
     return sequencer_.tryWaitForTurn(
-        turn * 2, spinCutoff, updateSpinCutoff, &when);
+               turn * 2, spinCutoff, updateSpinCutoff, &when) !=
+        TurnSequencer<Atom>::TryWaitResult::TIMEDOUT;
   }
 
   bool mayEnqueue(const uint32_t turn) const noexcept {
@@ -1293,6 +1355,21 @@ struct SingleElementQueue {
                 typename std::conditional<folly::IsRelocatable<T>::value,
                                           ImplByRelocation,
                                           ImplByMove>::type());
+  }
+
+  /// Waits until either:
+  /// 1: the enqueue turn preceding the given dequeue turn has arrived
+  /// 2: the given deadline has arrived
+  /// Case 1 returns true, case 2 returns false.
+  template <class Clock>
+  bool tryWaitForDequeueTurnUntil(
+      const uint32_t turn,
+      Atom<uint32_t>& spinCutoff,
+      const bool updateSpinCutoff,
+      const std::chrono::time_point<Clock>& when) noexcept {
+    return sequencer_.tryWaitForTurn(
+               turn * 2 + 1, spinCutoff, updateSpinCutoff, &when) !=
+        TurnSequencer<Atom>::TryWaitResult::TIMEDOUT;
   }
 
   bool mayDequeue(const uint32_t turn) const noexcept {

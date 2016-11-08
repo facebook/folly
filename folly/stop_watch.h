@@ -271,6 +271,13 @@ struct custom_stop_watch {
     return true;
   }
 
+  /**
+   * Returns the current checkpoint
+   */
+  typename clock_type::time_point getCheckpoint() const {
+    return checkpoint_;
+  }
+
  private:
   typename clock_type::time_point checkpoint_;
 };

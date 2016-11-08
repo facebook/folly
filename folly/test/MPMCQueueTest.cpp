@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-#include <folly/MPMCQueue.h>
 #include <folly/Format.h>
+#include <folly/MPMCQueue.h>
 #include <folly/Memory.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysResource.h>
 #include <folly/portability/SysTime.h>
 #include <folly/portability/Unistd.h>
+#include <folly/stop_watch.h>
 #include <folly/test/DeterministicSchedule.h>
 
 #include <boost/intrusive_ptr.hpp>
-#include <memory>
+#include <boost/thread/barrier.hpp>
 #include <functional>
+#include <memory>
 #include <thread>
 #include <utility>
 
@@ -1157,4 +1159,93 @@ TEST(MPMCQueue, explicit_zero_capacity_fail) {
 
   using DynamicMPMCQueueInt = MPMCQueue<int, std::atomic, true>;
   ASSERT_THROW(DynamicMPMCQueueInt cq(0), std::invalid_argument);
+}
+
+template <bool Dynamic>
+void testTryReadUntil() {
+  MPMCQueue<int, std::atomic, Dynamic> q{1};
+
+  const auto wait = std::chrono::milliseconds(100);
+  stop_watch<> watch;
+  bool rets[2];
+  int vals[2];
+  std::vector<std::thread> threads;
+  boost::barrier b{3};
+  for (int i = 0; i < 2; i++) {
+    threads.emplace_back([&, i] {
+      b.wait();
+      rets[i] = q.tryReadUntil(watch.getCheckpoint() + wait, vals[i]);
+    });
+  }
+
+  b.wait();
+  EXPECT_TRUE(q.write(42));
+
+  for (int i = 0; i < 2; i++) {
+    threads[i].join();
+  }
+
+  for (int i = 0; i < 2; i++) {
+    int other = (i + 1) % 2;
+    if (rets[i]) {
+      EXPECT_EQ(42, vals[i]);
+      EXPECT_FALSE(rets[other]);
+    }
+  }
+
+  EXPECT_TRUE(watch.elapsed(wait));
+}
+
+template <bool Dynamic>
+void testTryWriteUntil() {
+  MPMCQueue<int, std::atomic, Dynamic> q{1};
+  EXPECT_TRUE(q.write(42));
+
+  const auto wait = std::chrono::milliseconds(100);
+  stop_watch<> watch;
+  bool rets[2];
+  std::vector<std::thread> threads;
+  boost::barrier b{3};
+  for (int i = 0; i < 2; i++) {
+    threads.emplace_back([&, i] {
+      b.wait();
+      rets[i] = q.tryWriteUntil(watch.getCheckpoint() + wait, i);
+    });
+  }
+
+  b.wait();
+  int x;
+  EXPECT_TRUE(q.read(x));
+  EXPECT_EQ(42, x);
+
+  for (int i = 0; i < 2; i++) {
+    threads[i].join();
+  }
+  EXPECT_TRUE(q.read(x));
+
+  for (int i = 0; i < 2; i++) {
+    int other = (i + 1) % 2;
+    if (rets[i]) {
+      EXPECT_EQ(i, x);
+      EXPECT_FALSE(rets[other]);
+    }
+  }
+
+  EXPECT_TRUE(watch.elapsed(wait));
+}
+
+TEST(MPMCQueue, try_read_until) {
+  testTryReadUntil<false>();
+}
+
+TEST(MPMCQueue, try_read_until_dynamic) {
+  testTryReadUntil<true>();
+}
+
+TEST(MPMCQueue, try_write_until) {
+  testTryWriteUntil<false>();
+}
+
+TEST(MPMCQueue, try_write_until_dynamic) {
+  testTryWriteUntil<true>();
 }
