@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <folly/AtomicIntrusiveLinkedList.h>
+#include <folly/CPortability.h>
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
 #include <folly/Likely.h>
@@ -253,7 +254,7 @@ class FiberManager : public ::folly::Executor {
   T& local();
 
   template <typename T>
-  static T& localThread();
+  FOLLY_EXPORT static T& localThread();
 
   /**
    * @return How many fiber objects (and stacks) has this manager allocated.
