@@ -946,17 +946,17 @@ TYPED_TEST(NeedleFinderTest, Needles256) {
   const auto maxValue = std::numeric_limits<StringPiece::value_type>::max();
   // make the size ~big to avoid any edge-case branches for tiny haystacks
   const int haystackSize = 50;
-  for (size_t i = minValue; i <= maxValue; i++) {  // <=
+  for (int i = minValue; i <= maxValue; i++) { // <=
     needles.push_back(i);
   }
   EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
-  for (size_t i = minValue; i <= maxValue; i++) {
+  for (int i = minValue; i <= maxValue; i++) {
     EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
   }
 
   needles.append("these are redundant characters");
   EXPECT_EQ(StringPiece::npos, this->find_first_byte_of("", needles));
-  for (size_t i = minValue; i <= maxValue; i++) {
+  for (int i = minValue; i <= maxValue; i++) {
     EXPECT_EQ(0, this->find_first_byte_of(string(haystackSize, i), needles));
   }
 }
