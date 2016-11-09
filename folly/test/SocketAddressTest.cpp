@@ -909,3 +909,15 @@ TEST(SocketAddress, ResetIPAddress) {
   EXPECT_FALSE(addr.isInitialized());
   EXPECT_TRUE(addr.empty());
 }
+
+TEST(SocketAddress, ValidFamilyInet) {
+  SocketAddress addr;
+  EXPECT_FALSE(addr.isFamilyInet());
+  folly::IPAddress ipAddr("123.234.0.23");
+  addr.setFromIpAddrPort(ipAddr, 8888);
+  EXPECT_TRUE(addr.isFamilyInet());
+
+  folly::IPAddress ip6Addr("2620:0:1cfe:face:b00c::3");
+  SocketAddress addr6(ip6Addr, 8888);
+  EXPECT_TRUE(addr6.isFamilyInet());
+}

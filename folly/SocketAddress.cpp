@@ -365,19 +365,22 @@ socklen_t SocketAddress::getActualSize() const {
 }
 
 std::string SocketAddress::getFullyQualified() const {
-  auto family = getFamily();
-  if (family != AF_INET && family != AF_INET6) {
+  if (!isFamilyInet()) {
     throw std::invalid_argument("Can't get address str for non ip address");
   }
   return storage_.addr.toFullyQualified();
 }
 
 std::string SocketAddress::getAddressStr() const {
-  auto family = getFamily();
-  if (family != AF_INET && family != AF_INET6) {
+  if (!isFamilyInet()) {
     throw std::invalid_argument("Can't get address str for non ip address");
   }
   return storage_.addr.str();
+}
+
+bool SocketAddress::isFamilyInet() const {
+  auto family = getFamily();
+  return family == AF_INET || family == AF_INET6;
 }
 
 void SocketAddress::getAddressStr(char* buf, size_t buflen) const {

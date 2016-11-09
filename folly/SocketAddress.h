@@ -416,6 +416,11 @@ class SocketAddress {
   void getAddressStr(char* buf, size_t buflen) const;
 
   /**
+   * Return true if it is a valid IPv4 or IPv6 address.
+   */
+  bool isFamilyInet() const;
+
+  /**
    * For v4 & v6 addresses, return the fully qualified address string
    */
   std::string getFullyQualified() const;
