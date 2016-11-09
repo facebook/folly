@@ -234,17 +234,17 @@ DEFINE_bool(bug, false, "Introduce bug");
 
 /** Macro for inline definition of auxiliary actions */
 #define AUX_ACT(act)                          \
-  {                                           \
+  do {                                        \
     AUX_THR(func_) = __func__;                \
     AUX_THR(line_) = __LINE__;                \
     AuxAct auxfn(                             \
       [&](bool success) {                     \
-        if (success);                         \
+        if (success) {}                       \
         if (true) {act}                       \
       }                                       \
     );                                        \
     DeterministicSchedule::setAuxAct(auxfn);  \
-  }
+  } while (0)
 
 /** Alias for original class */
 template <typename T>
