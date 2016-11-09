@@ -35,7 +35,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
   folly::symbolizer::installFatalSignalHandler();
-#else
+#elif !defined(_WIN32)
   google::InstallFailureSignalHandler();
 #endif
 
