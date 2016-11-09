@@ -171,26 +171,22 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
     return -1;
   }
 
+  static constexpr size_t kNsPerSec = 1000000000;
   switch (clock_id) {
-    case CLOCK_MONOTONIC: {
-      LARGE_INTEGER freq = performanceFrequency();
-      if (freq.QuadPart == -1) {
-        errno = EINVAL;
-        return -1;
-      }
-
-      static constexpr size_t kNsPerSec = 1000000000;
-
-      res->tv_sec = 0;
-      res->tv_nsec = (long)((kNsPerSec + (freq.QuadPart >> 1)) / freq.QuadPart);
-      if (res->tv_nsec < 1) {
-        res->tv_nsec = 1;
-      }
-
+    case CLOCK_REALTIME: {
+      constexpr auto perSec = double(std::chrono::system_clock::period::num) /
+          std::chrono::system_clock::period::den;
+      res->tv_sec = time_t(perSec);
+      res->tv_nsec = time_t(perSec * kNsPerSec);
       return 0;
     }
-
-    case CLOCK_REALTIME:
+    case CLOCK_MONOTONIC: {
+      constexpr auto perSec = double(std::chrono::steady_clock::period::num) /
+          std::chrono::steady_clock::period::den;
+      res->tv_sec = time_t(perSec);
+      res->tv_nsec = time_t(perSec * kNsPerSec);
+      return 0;
+    }
     case CLOCK_PROCESS_CPUTIME_ID:
     case CLOCK_THREAD_CPUTIME_ID: {
       DWORD adj, timeIncrement;
