@@ -63,11 +63,11 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
   return place + detail::kSelectInByte[((x >> place) & 0xFF) | (byteRank << 8)];
 }
 
-#if FOLLY_INSTRUCTIONS_SUPPORTED
-
 template <>
 FOLLY_ALWAYS_INLINE uint64_t
 select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
+#if defined(__GNUC__) || defined(__clang__)
+  // GCC and Clang won't inline the intrinsics.
   uint64_t result = uint64_t(1) << k;
 
   asm("pdep %1, %0, %0\n\t"
@@ -76,8 +76,9 @@ select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
       : "r"(x));
 
   return result;
+#else
+  return _tzcnt_u64(_pdep_u64(1ULL << k, x));
+#endif
 }
-
-#endif // FOLLY_INSTRUCTIONS_SUPPORTED
 
 } // namespace folly

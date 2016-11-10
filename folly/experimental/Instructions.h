@@ -18,16 +18,13 @@
 
 #include <glog/logging.h>
 
+#ifdef _MSC_VER
+#include <immintrin.h>
+#endif
+
 #include <folly/CpuId.h>
 #include <folly/Portability.h>
 #include <folly/portability/Builtins.h>
-
-#if defined(__GNUC__) || defined(__clang__)
-// For compilers supporting AT&T assembly syntax.
-#define FOLLY_INSTRUCTIONS_SUPPORTED 1
-#else
-#define FOLLY_INSTRUCTIONS_SUPPORTED 0
-#endif
 
 namespace folly { namespace compression { namespace instructions {
 
@@ -59,8 +56,6 @@ struct Default {
   }
 };
 
-#if FOLLY_INSTRUCTIONS_SUPPORTED
-
 struct Nehalem : public Default {
   static bool supported(const folly::CpuId& cpuId = {}) {
     return cpuId.popcnt();
@@ -68,9 +63,14 @@ struct Nehalem : public Default {
 
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
     // POPCNT is supported starting with Intel Nehalem, AMD K10.
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
     uint64_t result;
     asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
     return result;
+#else
+    return _mm_popcnt_u64(value);
+#endif
   }
 };
 
@@ -82,17 +82,15 @@ struct Haswell : public Nehalem {
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
     // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
     // BLSR combines two instuctions into one and reduces register pressure.
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
     uint64_t result;
     asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
     return result;
+#else
+    return _blsr_u64(value);
+#endif
   }
 };
-
-#else // FOLLY_INSTRUCTIONS_SUPPORTED
-
-struct Nehalem : public Default {};
-struct Haswell : public Nehalem {};
-
-#endif // FOLLY_INSTRUCTIONS_SUPPORTED
 
 }}} // namespaces
