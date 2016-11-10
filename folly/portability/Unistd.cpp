@@ -54,8 +54,10 @@ int access(char const* fn, int am) { return _access(fn, am); }
 
 int chdir(const char* path) { return _chdir(path); }
 
+#if defined(_MT) && !defined(_DLL)
 // We aren't hooking into the internals of the CRT, nope, not at all.
 extern "C" int __cdecl _free_osfhnd(int const fh);
+#endif
 int close(int fh) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
     SOCKET h = (SOCKET)_get_osfhandle(fh);
@@ -69,8 +71,17 @@ int close(int fh) {
     // Luckily though, there is a function in the internals of the
     // CRT that is used to free only the file descriptor, so we
     // can call that to avoid leaking the file descriptor itself.
+    //
+    // Unfortunately, we can only access the function when we're
+    // compiling against the static CRT, as it isn't an exported
+    // symbol. Leaking the file descriptor is less of a leak than
+    // leaking the socket's resources, so we close the socket and
+    // leave the descriptor itself alone.
     auto c = closesocket(h);
+#if defined(_MT) && !defined(_DLL)
+    // We're building for the static CRT. We can do things!
     _free_osfhnd(fh);
+#endif
     return c;
   }
   return _close(fh);
