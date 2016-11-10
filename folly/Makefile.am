@@ -123,11 +123,12 @@ nobase_follyinclude_HEADERS = \
 	experimental/ProgramOptions.h \
 	experimental/ReadMostlySharedPtr.h \
 	experimental/symbolizer/Elf.h \
+	experimental/symbolizer/Elf-inl.h \
 	experimental/symbolizer/ElfCache.h \
 	experimental/symbolizer/Dwarf.h \
 	experimental/symbolizer/LineReader.h \
 	experimental/symbolizer/SignalHandler.h \
-	experimental/symbolizer/StackTrace.cpp \
+	experimental/symbolizer/StackTrace.h \
 	experimental/symbolizer/Symbolizer.h \
 	experimental/Select64.h \
 	experimental/StringKeyedCommon.h \
@@ -315,6 +316,7 @@ nobase_follyinclude_HEADERS = \
 	Random-inl.h \
 	Range.h \
 	RWSpinLock.h \
+	SafeAssert.h \
 	ScopeGuard.h \
 	SharedMutex.h \
 	Shell.h \
