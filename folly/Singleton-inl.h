@@ -72,12 +72,11 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   destroyInstance();
 
   {
-    RWSpinLock::WriteHolder wh(&vault_.mutex_);
+    auto creationOrder = vault_.creationOrder_.wlock();
 
-    auto it = std::find(
-        vault_.creation_order_.begin(), vault_.creation_order_.end(), type());
-    if (it != vault_.creation_order_.end()) {
-      vault_.creation_order_.erase(it);
+    auto it = std::find(creationOrder->begin(), creationOrder->end(), type());
+    if (it != creationOrder->end()) {
+      creationOrder->erase(it);
     }
   }
 
@@ -224,8 +223,8 @@ void SingletonHolder<T>::createInstance() {
 
   creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
-  RWSpinLock::ReadHolder rh(&vault_.stateMutex_);
-  if (vault_.state_ == SingletonVault::SingletonVaultState::Quiescing) {
+  auto state = vault_.state_.rlock();
+  if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
     if (vault_.type_ != SingletonVault::Type::Relaxed) {
       LOG(FATAL) << "Requesting singleton after vault was destroyed.";
     }
@@ -278,10 +277,7 @@ void SingletonHolder<T>::createInstance() {
   // may access instance and instance_weak w/o synchronization.
   state_.store(SingletonHolderState::Living, std::memory_order_release);
 
-  {
-    RWSpinLock::WriteHolder wh(&vault_.mutex_);
-    vault_.creation_order_.push_back(type());
-  }
+  vault_.creationOrder_.wlock()->push_back(type());
 }
 
 }

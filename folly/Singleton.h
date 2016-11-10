@@ -112,14 +112,15 @@
 
 #pragma once
 #include <folly/Baton.h>
+#include <folly/Demangle.h>
 #include <folly/Exception.h>
+#include <folly/Executor.h>
 #include <folly/Hash.h>
 #include <folly/Memory.h>
 #include <folly/RWSpinLock.h>
-#include <folly/Demangle.h>
-#include <folly/Executor.h>
-#include <folly/experimental/ReadMostlySharedPtr.h>
+#include <folly/Synchronized.h>
 #include <folly/detail/StaticSingletonManager.h>
+#include <folly/experimental/ReadMostlySharedPtr.h>
 
 #include <algorithm>
 #include <atomic>
@@ -409,9 +410,7 @@ class SingletonVault {
 
   // For testing; how many registered and living singletons we have.
   size_t registeredSingletonCount() const {
-    RWSpinLock::ReadHolder rh(&mutex_);
-
-    return singletons_.size();
+    return singletons_.rlock()->size();
   }
 
   /**
@@ -421,10 +420,10 @@ class SingletonVault {
   bool eagerInitComplete() const;
 
   size_t livingSingletonCount() const {
-    RWSpinLock::ReadHolder rh(&mutex_);
+    auto singletons = singletons_.rlock();
 
     size_t ret = 0;
-    for (const auto& p : singletons_) {
+    for (const auto& p : *singletons) {
       if (p.second->hasLiveInstance()) {
         ++ret;
       }
@@ -470,13 +469,20 @@ class SingletonVault {
     Quiescing,
   };
 
+  struct State {
+    SingletonVaultState state{SingletonVaultState::Running};
+    bool registrationComplete{false};
+  };
+
   // Each singleton in the vault can be in two states: dead
   // (registered but never created), living (CreateFunc returned an instance).
 
-  void stateCheck(SingletonVaultState expected,
-                  const char* msg="Unexpected singleton state change") {
-    if (expected != state_) {
-        throw std::logic_error(msg);
+  static void stateCheck(
+      SingletonVaultState expected,
+      const State& state,
+      const char* msg = "Unexpected singleton state change") {
+    if (expected != state.state) {
+      throw std::logic_error(msg);
     }
   }
 
@@ -496,14 +502,13 @@ class SingletonVault {
   typedef std::unordered_map<detail::TypeDescriptor,
                              detail::SingletonHolderBase*,
                              detail::TypeDescriptorHasher> SingletonMap;
+  folly::Synchronized<SingletonMap> singletons_;
+  folly::Synchronized<std::unordered_set<detail::SingletonHolderBase*>>
+      eagerInitSingletons_;
+  folly::Synchronized<std::vector<detail::TypeDescriptor>> creationOrder_;
 
-  mutable folly::RWSpinLock mutex_;
-  SingletonMap singletons_;
-  std::unordered_set<detail::SingletonHolderBase*> eagerInitSingletons_;
-  std::vector<detail::TypeDescriptor> creation_order_;
-  SingletonVaultState state_{SingletonVaultState::Running};
-  bool registrationComplete_{false};
-  folly::RWSpinLock stateMutex_;
+  folly::Synchronized<State> state_;
+
   Type type_{Type::Relaxed};
 };
 

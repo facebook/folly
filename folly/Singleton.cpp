@@ -73,48 +73,41 @@ FatalHelper __attribute__ ((__init_priority__ (101))) fatalHelper;
 SingletonVault::~SingletonVault() { destroyInstances(); }
 
 void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
-  RWSpinLock::ReadHolder rh(&stateMutex_);
+  auto state = state_.rlock();
+  stateCheck(SingletonVaultState::Running, *state);
 
-  stateCheck(SingletonVaultState::Running);
-
-  if (UNLIKELY(registrationComplete_)) {
+  if (UNLIKELY(state->registrationComplete)) {
     LOG(ERROR) << "Registering singleton after registrationComplete().";
   }
 
-  RWSpinLock::ReadHolder rhMutex(&mutex_);
-  CHECK_THROW(singletons_.find(entry->type()) == singletons_.end(),
-              std::logic_error);
-
-  RWSpinLock::UpgradedHolder wh(&mutex_);
-  singletons_[entry->type()] = entry;
+  auto singletons = singletons_.wlock();
+  CHECK_THROW(
+      singletons->emplace(entry->type(), entry).second, std::logic_error);
 }
 
 void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
-  RWSpinLock::ReadHolder rh(&stateMutex_);
+  auto state = state_.rlock();
+  stateCheck(SingletonVaultState::Running, *state);
 
-  stateCheck(SingletonVaultState::Running);
-
-  if (UNLIKELY(registrationComplete_)) {
+  if (UNLIKELY(state->registrationComplete)) {
     LOG(ERROR) << "Registering for eager-load after registrationComplete().";
   }
 
-  RWSpinLock::ReadHolder rhMutex(&mutex_);
-  CHECK_THROW(singletons_.find(entry->type()) != singletons_.end(),
-              std::logic_error);
+  CHECK_THROW(singletons_.rlock()->count(entry->type()), std::logic_error);
 
-  RWSpinLock::UpgradedHolder wh(&mutex_);
-  eagerInitSingletons_.insert(entry);
+  auto eagerInitSingletons = eagerInitSingletons_.wlock();
+  eagerInitSingletons->insert(entry);
 }
 
 void SingletonVault::registrationComplete() {
   std::atexit([](){ SingletonVault::singleton()->destroyInstances(); });
 
-  RWSpinLock::WriteHolder wh(&stateMutex_);
+  auto state = state_.wlock();
+  stateCheck(SingletonVaultState::Running, *state);
 
-  stateCheck(SingletonVaultState::Running);
-
+  auto singletons = singletons_.rlock();
   if (type_ == Type::Strict) {
-    for (const auto& p : singletons_) {
+    for (const auto& p : *singletons) {
       if (p.second->hasLiveInstance()) {
         throw std::runtime_error(
             "Singleton created before registration was complete.");
@@ -122,38 +115,37 @@ void SingletonVault::registrationComplete() {
     }
   }
 
-  registrationComplete_ = true;
+  state->registrationComplete = true;
 }
 
 void SingletonVault::doEagerInit() {
-  std::unordered_set<detail::SingletonHolderBase*> singletonSet;
   {
-    RWSpinLock::ReadHolder rh(&stateMutex_);
-    stateCheck(SingletonVaultState::Running);
-    if (UNLIKELY(!registrationComplete_)) {
+    auto state = state_.rlock();
+    stateCheck(SingletonVaultState::Running, *state);
+    if (UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
-    singletonSet = eagerInitSingletons_; // copy set of pointers
   }
 
-  for (auto *single : singletonSet) {
+  auto eagerInitSingletons = eagerInitSingletons_.rlock();
+  for (auto* single : *eagerInitSingletons) {
     single->createInstance();
   }
 }
 
 void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
-  std::unordered_set<detail::SingletonHolderBase*> singletonSet;
   {
-    RWSpinLock::ReadHolder rh(&stateMutex_);
-    stateCheck(SingletonVaultState::Running);
-    if (UNLIKELY(!registrationComplete_)) {
+    auto state = state_.rlock();
+    stateCheck(SingletonVaultState::Running, *state);
+    if (UNLIKELY(!state->registrationComplete)) {
       throw std::logic_error("registrationComplete() not yet called");
     }
-    singletonSet = eagerInitSingletons_; // copy set of pointers
   }
 
-  auto countdown = std::make_shared<std::atomic<size_t>>(singletonSet.size());
-  for (auto* single : singletonSet) {
+  auto eagerInitSingletons = eagerInitSingletons_.rlock();
+  auto countdown =
+      std::make_shared<std::atomic<size_t>>(eagerInitSingletons->size());
+  for (auto* single : *eagerInitSingletons) {
     // countdown is retained by shared_ptr, and will be alive until last lambda
     // is done.  notifyBaton is provided by the caller, and expected to remain
     // present (if it's non-nullptr).  singletonSet can go out of scope but
@@ -179,36 +171,35 @@ void SingletonVault::doEagerInitVia(Executor& exe, folly::Baton<>* done) {
 }
 
 void SingletonVault::destroyInstances() {
-  RWSpinLock::WriteHolder state_wh(&stateMutex_);
-
-  if (state_ == SingletonVaultState::Quiescing) {
+  auto stateW = state_.wlock();
+  if (stateW->state == SingletonVaultState::Quiescing) {
     return;
   }
-  state_ = SingletonVaultState::Quiescing;
+  stateW->state = SingletonVaultState::Quiescing;
 
-  RWSpinLock::ReadHolder state_rh(std::move(state_wh));
-
+  auto stateR = stateW.moveFromWriteToRead();
   {
-    RWSpinLock::ReadHolder rh(&mutex_);
+    auto singletons = singletons_.rlock();
+    auto creationOrder = creationOrder_.rlock();
 
-    CHECK_GE(singletons_.size(), creation_order_.size());
+    CHECK_GE(singletons->size(), creationOrder->size());
 
     // Release all ReadMostlyMainPtrs at once
     {
       ReadMostlyMainPtrDeleter<> deleter;
-      for (auto& singleton_type : creation_order_) {
-        singletons_[singleton_type]->preDestroyInstance(deleter);
+      for (auto& singleton_type : *creationOrder) {
+        singletons->at(singleton_type)->preDestroyInstance(deleter);
       }
     }
 
-    for (auto type_iter = creation_order_.rbegin();
-         type_iter != creation_order_.rend();
+    for (auto type_iter = creationOrder->rbegin();
+         type_iter != creationOrder->rend();
          ++type_iter) {
-      singletons_[*type_iter]->destroyInstance();
+      singletons->at(*type_iter)->destroyInstance();
     }
 
-    for (auto& singleton_type: creation_order_) {
-      auto singleton = singletons_[singleton_type];
+    for (auto& singleton_type : *creationOrder) {
+      auto singleton = singletons->at(singleton_type);
       if (!singleton->hasLiveInstance()) {
         continue;
       }
@@ -218,17 +209,17 @@ void SingletonVault::destroyInstances() {
   }
 
   {
-    RWSpinLock::WriteHolder wh(&mutex_);
-    creation_order_.clear();
+    auto creationOrder = creationOrder_.wlock();
+    creationOrder->clear();
   }
 }
 
 void SingletonVault::reenableInstances() {
-  RWSpinLock::WriteHolder state_wh(&stateMutex_);
+  auto state = state_.wlock();
 
-  stateCheck(SingletonVaultState::Quiescing);
+  stateCheck(SingletonVaultState::Quiescing, *state);
 
-  state_ = SingletonVaultState::Running;
+  state->state = SingletonVaultState::Running;
 }
 
 void SingletonVault::scheduleDestroyInstances() {
