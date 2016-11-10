@@ -19,10 +19,9 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
-#include <sstream>
+#include <iostream>
 #include <string>
 
-#include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 
 namespace folly {
@@ -31,13 +30,12 @@ namespace detail {
 
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(
     const TypeDescriptor& type) {
-  // Not using LOG(FATAL) or std::cerr because they may not be initialized yet.
-  std::ostringstream o;
-  o << "Double registration of singletons of the same "
-    << "underlying type; check for multiple definitions "
-    << "of type folly::Singleton<" << type.name() << ">" << std::endl;
-  auto s = o.str();
-  writeFull(STDERR_FILENO, s.data(), s.size());
+  // Ensure the availability of std::cerr
+  std::ios_base::Init ioInit;
+  std::cerr << "Double registration of singletons of the same "
+               "underlying type; check for multiple definitions "
+               "of type folly::Singleton<"
+            << type.name() << ">\n";
   std::abort();
 }
 }
