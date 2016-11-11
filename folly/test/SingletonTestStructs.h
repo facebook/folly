@@ -23,20 +23,10 @@
 
 #include <folly/portability/GTest.h>
 
-// A simple class that tracks how often instances of the class and
-// subclasses are created, and the ordering.  Also tracks a global
-// unique counter for each object.
-std::atomic<size_t> global_counter(19770326);
-
 struct Watchdog {
-  static std::vector<Watchdog*>& creation_order() {
-    static std::vector<Watchdog*> ret;
-    return ret;
-  }
+  static std::vector<Watchdog*>& creation_order();
 
-  Watchdog() : serial_number(++global_counter) {
-    creation_order().push_back(this);
-  }
+  Watchdog();
 
   ~Watchdog() {
     if (creation_order().back() != this) {
