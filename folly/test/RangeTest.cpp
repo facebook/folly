@@ -1106,6 +1106,21 @@ TEST(RangeFunc, ConstexprCArray) {
   EXPECT_EQ(4, numArrayRangeSize);
 }
 
+TEST(RangeFunc, ConstexprStdArray) {
+  static constexpr const std::array<int, 4> numArray = {3, 17, 1, 9};
+  constexpr const auto numArrayRange = range(numArray);
+  EXPECT_EQ(17, numArrayRange[1]);
+  constexpr const auto numArrayRangeSize = numArrayRange.size();
+  EXPECT_EQ(4, numArrayRangeSize);
+}
+
+TEST(RangeFunc, ConstexprStdArrayZero) {
+  static constexpr const std::array<int, 0> numArray = {};
+  constexpr const auto numArrayRange = range(numArray);
+  constexpr const auto numArrayRangeSize = numArrayRange.size();
+  EXPECT_EQ(0, numArrayRangeSize);
+}
+
 TEST(RangeFunc, ConstexprIteratorPair) {
   static constexpr const int numArray[4] = {3, 17, 1, 9};
   constexpr const auto numPtr = static_cast<const int*>(numArray);

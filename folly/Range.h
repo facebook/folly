@@ -885,6 +885,12 @@ constexpr Range<T*> range(T (&array)[n]) {
   return Range<T*>(array, array + n);
 }
 
+template <class T, size_t n>
+constexpr Range<const T*> range(const std::array<T, n>& array) {
+  using r = Range<const T*>;
+  return array.empty() ? r{} : r(&array.at(0), &array.at(0) + n);
+}
+
 typedef Range<const char*> StringPiece;
 typedef Range<char*> MutableStringPiece;
 typedef Range<const unsigned char*> ByteRange;
