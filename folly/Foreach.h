@@ -72,11 +72,11 @@
  * using rbegin() and rend().
  */
 #define FOR_EACH_R(i, c)                                \
-  if (bool FOR_EACH_R_state1 = false) {} else           \
-    for (auto && FOR_EACH_R_state2 = (c);               \
-         !FOR_EACH_R_state1; FOR_EACH_R_state1 = true)  \
-      for (auto i = FOR_EACH_R_state2.rbegin();         \
-           i != FOR_EACH_R_state2.rend(); ++i)
+  if (bool _FE_ANON(s1_) = false) {} else               \
+    for (auto && _FE_ANON(s2_) = (c);                   \
+         !_FE_ANON(s1_); _FE_ANON(s1_) = true)          \
+      for (auto i = _FE_ANON(s2_).rbegin();             \
+           i != _FE_ANON(s2_).rend(); ++i)
 
 /*
  * Similar to FOR_EACH but also allows client to specify a 'count' variable
@@ -104,19 +104,19 @@
  *      cout << key << " " << value;
  *   }
  */
-#define FOR_EACH_KV(k, v, c)                                    \
-  if (unsigned int FOR_EACH_state1 = 0) {} else                 \
-    for (auto && FOR_EACH_state2 = (c);                         \
-         !FOR_EACH_state1; FOR_EACH_state1 = 1)                 \
-      for (auto FOR_EACH_state3 = FOR_EACH_state2.begin();      \
-           FOR_EACH_state3 != FOR_EACH_state2.end();            \
-           FOR_EACH_state1 == 2                                 \
-             ? ((FOR_EACH_state1 = 0), ++FOR_EACH_state3)       \
-             : (FOR_EACH_state3 = FOR_EACH_state2.end()))       \
-        for (auto &k = FOR_EACH_state3->first;                  \
-             !FOR_EACH_state1; ++FOR_EACH_state1)               \
-          for (auto &v = FOR_EACH_state3->second;               \
-               !FOR_EACH_state1; ++FOR_EACH_state1)
+#define FOR_EACH_KV(k, v, c)                                  \
+  if (unsigned int _FE_ANON(s1_) = 0) {} else                 \
+    for (auto && _FE_ANON(s2_) = (c);                         \
+         !_FE_ANON(s1_); _FE_ANON(s1_) = 1)                   \
+      for (auto _FE_ANON(s3_) = _FE_ANON(s2_).begin();        \
+           _FE_ANON(s3_) != _FE_ANON(s2_).end();              \
+           _FE_ANON(s1_) == 2                                 \
+             ? ((_FE_ANON(s1_) = 0), ++_FE_ANON(s3_))         \
+             : (_FE_ANON(s3_) = _FE_ANON(s2_).end()))         \
+        for (auto &k = _FE_ANON(s3_)->first;                  \
+             !_FE_ANON(s1_); ++_FE_ANON(s1_))                 \
+          for (auto &v = _FE_ANON(s3_)->second;               \
+               !_FE_ANON(s1_); ++_FE_ANON(s1_))
 
 namespace folly { namespace detail {
 
