@@ -237,7 +237,9 @@ TEST(Observer, Stress) {
   values.withRLock([numIters = numIters](const std::vector<int>& values) {
     EXPECT_EQ(numIters * 10, values.back());
     EXPECT_LT(values.size(), numIters / 2);
-    EXPECT_GT(values.size(), 10);
+
+    EXPECT_EQ(0, values[0]);
+    EXPECT_EQ(numIters * 10, values.back());
 
     for (auto value : values) {
       EXPECT_EQ(0, value % 10);
