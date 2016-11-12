@@ -1067,7 +1067,7 @@ TEST(AsyncSocketTest, WritePipeError) {
 
   // accept and immediately close the socket
   std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
-  acceptedSocket.reset();
+  acceptedSocket->close();
 
   // write() a large chunk of data
   size_t writeLength = 8*1024*1024;
