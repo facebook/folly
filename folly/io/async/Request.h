@@ -115,8 +115,6 @@ class RequestContextScopeGuard {
   // Create a new RequestContext and reset to the original value when
   // this goes out of scope.
   RequestContextScopeGuard() : prev_(RequestContext::saveContext()) {
-    DLOG_IF(INFO, prev_ != nullptr)
-        << "Overriding folly::RequestContext - did you mean to unset it first?";
     RequestContext::create();
   }
 
@@ -124,8 +122,6 @@ class RequestContextScopeGuard {
   // be automatically reset to the original value when this goes out of scope.
   explicit RequestContextScopeGuard(std::shared_ptr<RequestContext> ctx)
       : prev_(RequestContext::setContext(std::move(ctx))) {
-    DLOG_IF(INFO, prev_ != nullptr && prev_.get() != RequestContext::get())
-        << "Overriding folly::RequestContext - did you mean to unset it first?";
   }
 
   ~RequestContextScopeGuard() {
