@@ -888,6 +888,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
 
   /// Same as blockingRead() but also records the ticket nunmer
   void blockingReadWithTicket(uint64_t& ticket, T& elem) noexcept {
+    assert(capacity_ != 0);
     ticket = popTicket_++;
     dequeueWithTicketBase(ticket, slots_, capacity_, stride_, elem);
   }
@@ -1065,6 +1066,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   /// Maps an enqueue or dequeue ticket to the turn should be used at the
   /// corresponding SingleElementQueue
   uint32_t turn(uint64_t ticket, size_t cap) noexcept {
+    assert(cap != 0);
     return ticket / cap;
   }
 
@@ -1270,6 +1272,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   void dequeueWithTicketBase(
     uint64_t ticket, Slot* slots, size_t cap, int stride, T& elem
   ) noexcept {
+    assert(cap != 0);
     slots[idx(ticket, cap, stride)]
       .dequeue(turn(ticket, cap),
                popSpinCutoff_,
