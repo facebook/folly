@@ -159,7 +159,7 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 </span><span class="n">p</span><span class="p">.</span><span class="n">setValue</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span></pre></div>
 
-<p>This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread <tt>x</tt>, <tt>y</tt>, and/or <tt>z</tt> will execute. Maybe they will execute in Thread A when <tt>p.setValue()</tt> is called. Or, maybe they will execute in Thread B when <tt>f.then</tt> is called. Or, maybe <tt>x</tt> will execute in Thread B, but <tt>y</tt> and/or <tt>z</tt> will execute in Thread A. There&#039;s a race between <tt>setValue</tt> and <tt>then</tt>&#x2014;whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.</p>
+<p>This is legal and technically threadsafe. However, it is important to realize that you do not know in which thread <tt>x</tt>, <tt>y</tt>, and/or <tt>z</tt> will execute. Maybe they will execute in Thread A when <tt>p.setValue()</tt> is called. Or, maybe they will execute in Thread B when <tt>f.then</tt> is called. Or, maybe <tt>x</tt> will execute in Thread A, but <tt>y</tt> and/or <tt>z</tt> will execute in Thread B. There&#039;s a race between <tt>setValue</tt> and <tt>then</tt>&#x2014;whichever runs last will execute the callback. The only guarantee is that one of them will run the callback.</p>
 
 <p>Naturally, you will want some control over which thread executes callbacks. We have a few mechanisms to help.</p>
 
