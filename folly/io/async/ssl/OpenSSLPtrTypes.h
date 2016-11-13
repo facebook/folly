@@ -23,6 +23,7 @@
 #include <openssl/bn.h>
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
+#include <openssl/ecdsa.h>
 #endif
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -87,6 +88,9 @@ using EcGroupDeleter = folly::static_function_deleter<EC_GROUP, &EC_GROUP_free>;
 using EcGroupUniquePtr = std::unique_ptr<EC_GROUP, EcGroupDeleter>;
 using EcPointDeleter = folly::static_function_deleter<EC_POINT, &EC_POINT_free>;
 using EcPointUniquePtr = std::unique_ptr<EC_POINT, EcPointDeleter>;
+using EcdsaSignDeleter =
+    folly::static_function_deleter<ECDSA_SIG, &ECDSA_SIG_free>;
+using EcdsaSigUniquePtr = std::unique_ptr<ECDSA_SIG, EcdsaSignDeleter>;
 #endif
 
 // BIGNUMs
