@@ -447,7 +447,6 @@ libfolly_la_SOURCES = \
 	io/async/SSLContext.cpp \
 	io/async/ScopedEventBaseThread.cpp \
 	io/async/HHWheelTimer.cpp \
-	io/async/TimeoutManager.cpp \
 	io/async/test/ScopedBoundPort.cpp \
 	io/async/test/SocketPair.cpp \
 	io/async/test/TimeUtil.cpp \

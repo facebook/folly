@@ -89,6 +89,28 @@ class EventBase::FunctionRunner
   }
 };
 
+/*
+ * EventBase::CobTimeout methods
+ */
+
+void EventBase::CobTimeout::timeoutExpired() noexcept {
+  // For now, we just swallow any exceptions that the callback threw.
+  try {
+    cob_();
+  } catch (const std::exception& ex) {
+    LOG(ERROR) << "EventBase::runAfterDelay() callback threw "
+               << typeid(ex).name() << " exception: " << ex.what();
+  } catch (...) {
+    LOG(ERROR) << "EventBase::runAfterDelay() callback threw non-exception "
+               << "type";
+  }
+
+  // The CobTimeout object was allocated on the heap by runAfterDelay(),
+  // so delete it now that the it has fired.
+  delete this;
+}
+
+
 // The interface used to libevent is not thread-safe.  Calls to
 // event_init() and event_base_free() directly modify an internal
 // global 'current_base', so a mutex is required to protect this.
@@ -188,7 +210,14 @@ EventBase::~EventBase() {
     callback->runLoopCallback();
   }
 
-  clearCobTimeouts();
+  // Delete any unfired callback objects, so that we don't leak memory
+  // (Note that we don't fire them.  The caller is responsible for cleaning up
+  // its own data structures if it destroys the EventBase with unfired events
+  // remaining.)
+  while (!pendingCobTimeouts_.empty()) {
+    CobTimeout* timeout = &pendingCobTimeouts_.front();
+    delete timeout;
+  }
 
   while (!runBeforeLoopCallbacks_.empty()) {
     delete &runBeforeLoopCallbacks_.front();
@@ -589,6 +618,29 @@ bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) {
   } else {
     return runInEventBaseThreadAndWait(std::move(fn));
   }
+}
+
+void EventBase::runAfterDelay(
+    Func cob,
+    uint32_t milliseconds,
+    TimeoutManager::InternalEnum in) {
+  if (!tryRunAfterDelay(std::move(cob), milliseconds, in)) {
+    folly::throwSystemError(
+      "error in EventBase::runAfterDelay(), failed to schedule timeout");
+  }
+}
+
+bool EventBase::tryRunAfterDelay(
+    Func cob,
+    uint32_t milliseconds,
+    TimeoutManager::InternalEnum in) {
+  CobTimeout* timeout = new CobTimeout(this, std::move(cob), in);
+  if (!timeout->scheduleTimeout(milliseconds)) {
+    delete timeout;
+    return false;
+  }
+  pendingCobTimeouts_.push_back(*timeout);
+  return true;
 }
 
 bool EventBase::runLoopCallbacks() {
