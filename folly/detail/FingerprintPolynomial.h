@@ -125,7 +125,7 @@ class FingerprintPolynomial {
     }
   }
 
-  static int size() {
+  static constexpr int size() {
     return 1 + DEG/64;
   }
  private:
