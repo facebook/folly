@@ -209,17 +209,17 @@ TEST(Observer, Cycle) {
 TEST(Observer, Stress) {
   SimpleObservable<int> observable(0);
 
-  folly::Synchronized<std::vector<int>> values;
+  auto values = std::make_shared<folly::Synchronized<std::vector<int>>>();
 
-  auto observer = makeObserver([ child = observable.getObserver(), &values ]() {
+  auto observer = makeObserver([ child = observable.getObserver(), values ]() {
     auto value = **child * 10;
-    values.withWLock(
+    values->withWLock(
         [&](std::vector<int>& values) { values.push_back(value); });
     return value;
   });
 
   EXPECT_EQ(0, **observer);
-  values.withRLock([](const std::vector<int>& values) {
+  values->withRLock([](const std::vector<int>& values) {
     EXPECT_EQ(1, values.size());
     EXPECT_EQ(0, values.back());
   });
@@ -234,7 +234,7 @@ TEST(Observer, Stress) {
     std::this_thread::yield();
   }
 
-  values.withRLock([numIters = numIters](const std::vector<int>& values) {
+  values->withRLock([numIters = numIters](const std::vector<int>& values) {
     EXPECT_EQ(numIters * 10, values.back());
     EXPECT_LT(values.size(), numIters / 2);
 
