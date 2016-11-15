@@ -1826,6 +1826,51 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
   t.join();
 }
 
+TEST(EventBaseTest, LoopKeepAliveAtomic) {
+  auto evb = folly::make_unique<EventBase>();
+
+  constexpr size_t kNumThreads = 100;
+  constexpr size_t kNumTasks = 100;
+
+  std::vector<std::thread> ts;
+  std::vector<std::unique_ptr<Baton<>>> batons;
+  size_t done{0};
+
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    batons.emplace_back(std::make_unique<Baton<>>());
+  }
+
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    ts.emplace_back([ evbPtr = evb.get(), batonPtr = batons[i].get(), &done ] {
+      std::vector<EventBase::LoopKeepAlive> keepAlives;
+      for (size_t i = 0; i < kNumTasks; ++i) {
+        keepAlives.emplace_back(evbPtr->loopKeepAliveAtomic());
+      }
+
+      batonPtr->post();
+
+      /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(1));
+
+      for (auto& keepAlive : keepAlives) {
+        evbPtr->runInEventBaseThread(
+            [&done, keepAlive = std::move(keepAlive) ]() { ++done; });
+      }
+    });
+  }
+
+  for (auto& baton : batons) {
+    baton->wait();
+  }
+
+  evb.reset();
+
+  EXPECT_EQ(kNumThreads * kNumTasks, done);
+
+  for (auto& t : ts) {
+    t.join();
+  }
+}
+
 TEST(EventBaseTest, DrivableExecutorTest) {
   folly::Promise<bool> p;
   auto f = p.getFuture();

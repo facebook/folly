@@ -176,7 +176,7 @@ EventBase::~EventBase() {
   // Keep looping until all keep-alive handles are released. Each keep-alive
   // handle signals that some external code will still schedule some work on
   // this EventBase (so it's not safe to destroy it).
-  while (loopKeepAliveCount_ > 0) {
+  while (loopKeepAliveCount() > 0) {
     applyLoopKeepAlive();
     loopOnce();
   }
@@ -412,13 +412,22 @@ bool EventBase::loopBody(int flags) {
   return true;
 }
 
+ssize_t EventBase::loopKeepAliveCount() {
+  if (loopKeepAliveCountAtomic_.load(std::memory_order_relaxed)) {
+    loopKeepAliveCount_ +=
+        loopKeepAliveCountAtomic_.exchange(0, std::memory_order_relaxed);
+  }
+  DCHECK_GE(loopKeepAliveCount_, 0);
+  return loopKeepAliveCount_;
+}
+
 void EventBase::applyLoopKeepAlive() {
-  if (loopKeepAliveActive_ && loopKeepAliveCount_ == 0) {
+  if (loopKeepAliveActive_ && loopKeepAliveCount() == 0) {
     // Restore the notification queue internal flag
     fnRunner_->stopConsuming();
     fnRunner_->startConsumingInternal(this, queue_.get());
     loopKeepAliveActive_ = false;
-  } else if (!loopKeepAliveActive_ && loopKeepAliveCount_ > 0) {
+  } else if (!loopKeepAliveActive_ && loopKeepAliveCount() > 0) {
     // Update the notification queue event to treat it as a normal
     // (non-internal) event.  The notification queue event always remains
     // installed, and the main loop won't exit with it installed.
@@ -435,7 +444,12 @@ void EventBase::loopForever() {
       applyLoopKeepAlive();
     };
     // Make sure notification queue events are treated as normal events.
-    auto keepAlive = loopKeepAlive();
+    // We can't use loopKeepAlive() here since LoopKeepAlive token can only be
+    // released inside a loop.
+    ++loopKeepAliveCount_;
+    SCOPE_EXIT {
+      --loopKeepAliveCount_;
+    };
     ret = loop();
   }
 

@@ -37,6 +37,7 @@
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/futures/DrivableExecutor.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -555,7 +556,12 @@ class EventBase : private boost::noncopyable,
 
   /// Implements the DrivableExecutor interface
   void drive() override {
-    auto keepAlive = loopKeepAlive();
+    // We can't use loopKeepAlive() here since LoopKeepAlive token can only be
+    // released inside a loop.
+    ++loopKeepAliveCount_;
+    SCOPE_EXIT {
+      --loopKeepAliveCount_;
+    };
     loopOnce();
   }
 
@@ -579,6 +585,15 @@ class EventBase : private boost::noncopyable,
     return LoopKeepAlive(this);
   }
 
+  // Thread-safe version of loopKeepAlive()
+  LoopKeepAlive loopKeepAliveAtomic() {
+    if (inRunningEventBaseThread()) {
+      return loopKeepAlive();
+    }
+    loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
+    return LoopKeepAlive(this);
+  }
+
   // TimeoutManager
   void attachTimeoutManager(
       AsyncTimeout* obj,
@@ -597,6 +612,8 @@ class EventBase : private boost::noncopyable,
 
  private:
   void applyLoopKeepAlive();
+
+  ssize_t loopKeepAliveCount();
 
   /*
    * Helper function that tells us whether we have already handled
@@ -645,7 +662,8 @@ class EventBase : private boost::noncopyable,
   // to send function requests to the EventBase thread.
   std::unique_ptr<NotificationQueue<Func>> queue_;
   std::unique_ptr<FunctionRunner> fnRunner_;
-  size_t loopKeepAliveCount_{0};
+  ssize_t loopKeepAliveCount_{0};
+  std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
   bool loopKeepAliveActive_{false};
 
   // limit for latency in microseconds (0 disables)
