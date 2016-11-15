@@ -32,9 +32,22 @@
 #include <sys/types.h>
 #include <system_error>
 
-DEFINE_int64(mlock_chunk_size, 1 << 20,  // 1MB
+static constexpr ssize_t kDefaultMlockChunkSize =
+#ifndef _MSC_VER
+    // Linux implementations of unmap/mlock/munlock take a kernel
+    // semaphore and block other threads from doing other memory
+    // operations. Split the operations in chunks.
+    (1 << 20) // 1MB
+#else // _MSC_VER
+    // MSVC doesn't have this problem, and calling munmap many times
+    // with the same address is a bad idea with the windows implementation.
+    (-1)
+#endif // _MSC_VER
+    ;
+
+DEFINE_int64(mlock_chunk_size, kDefaultMlockChunkSize,
              "Maximum bytes to mlock/munlock/munmap at once "
-             "(will be rounded up to PAGESIZE)");
+             "(will be rounded up to PAGESIZE). Ignored if negative.");
 
 #ifndef MAP_POPULATE
 #define MAP_POPULATE 0
@@ -211,17 +224,8 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
 bool memOpInChunks(std::function<int(void*, size_t)> op,
                    void* mem, size_t bufSize, off_t pageSize,
                    size_t& amountSucceeded) {
-#ifdef _MSC_VER
-  // MSVC doesn't have this problem, and calling munmap many times
-  // with the same address is a bad idea with the windows implementation.
-  int ret = op(mem, bufSize);
-  if (ret == 0) {
-    amountSucceeded = bufSize;
-  }
-  return ret == 0;
-#else
-  // unmap/mlock/munlock take a kernel semaphore and block other threads from
-  // doing other memory operations. If the size of the buffer is big the
+  // Linux' unmap/mlock/munlock take a kernel semaphore and block other threads
+  // from doing other memory operations. If the size of the buffer is big the
   // semaphore can be down for seconds (for benchmarks see
   // http://kostja-osipov.livejournal.com/42963.html).  Doing the operations in
   // chunks breaks the locking into intervals and lets other threads do memory
@@ -241,7 +245,6 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   }
 
   return true;
-#endif
 }
 
 }  // anonymous namespace
@@ -263,13 +266,11 @@ bool MemoryMapping::mlock(LockMode lock) {
     PLOG(FATAL) << msg;
   }
 
-#ifndef _MSC_VER
   // only part of the buffer was mlocked, unlock it back
   if (!memOpInChunks(::munlock, mapStart_, amountSucceeded, options_.pageSize,
                      amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
-#endif
 
   return false;
 }
