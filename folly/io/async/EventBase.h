@@ -398,28 +398,6 @@ class EventBase : private boost::noncopyable,
   bool runImmediatelyOrRunInEventBaseThreadAndWait(Func fn);
 
   /**
-   * Runs the given Cob at some time after the specified number of
-   * milliseconds.  (No guarantees exactly when.)
-   *
-   * Throws a std::system_error if an error occurs.
-   */
-  void runAfterDelay(
-      Func c,
-      uint32_t milliseconds,
-      TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
-
-  /**
-   * @see tryRunAfterDelay for more details
-   *
-   * @return  true iff the cob was successfully registered.
-   *
-   * */
-  bool tryRunAfterDelay(
-      Func cob,
-      uint32_t milliseconds,
-      TimeoutManager::InternalEnum in = TimeoutManager::InternalEnum::NORMAL);
-
-  /**
    * Set the maximum desired latency in us and provide a callback which will be
    * called when that latency is exceeded.
    * OBS: This functionality depends on time-measurement.
@@ -429,7 +407,6 @@ class EventBase : private boost::noncopyable,
     maxLatency_ = maxLatency;
     maxLatencyCob_ = std::move(maxLatencyCob);
   }
-
 
   /**
    * Set smoothing coefficient for loop load average; # of milliseconds
@@ -602,22 +579,23 @@ class EventBase : private boost::noncopyable,
     return LoopKeepAlive(this);
   }
 
- private:
   // TimeoutManager
-  void attachTimeoutManager(AsyncTimeout* obj,
-                            TimeoutManager::InternalEnum internal) override;
+  void attachTimeoutManager(
+      AsyncTimeout* obj,
+      TimeoutManager::InternalEnum internal) override final;
 
-  void detachTimeoutManager(AsyncTimeout* obj) override;
+  void detachTimeoutManager(AsyncTimeout* obj) override final;
 
   bool scheduleTimeout(AsyncTimeout* obj, TimeoutManager::timeout_type timeout)
-    override;
+      override final;
 
-  void cancelTimeout(AsyncTimeout* obj) override;
+  void cancelTimeout(AsyncTimeout* obj) override final;
 
   bool isInTimeoutManagerThread() override final {
     return isInEventBaseThread();
   }
 
+ private:
   void applyLoopKeepAlive();
 
   /*
@@ -625,30 +603,6 @@ class EventBase : private boost::noncopyable,
    * some event/timeout/callback in this loop iteration.
    */
   bool nothingHandledYet() const noexcept;
-
-  // small object used as a callback arg with enough info to execute the
-  // appropriate client-provided Cob
-  class CobTimeout : public AsyncTimeout {
-   public:
-    CobTimeout(EventBase* b, Func c, TimeoutManager::InternalEnum in)
-        : AsyncTimeout(b, in), cob_(std::move(c)) {}
-
-    virtual void timeoutExpired() noexcept;
-
-   private:
-    Func cob_;
-
-   public:
-    typedef boost::intrusive::list_member_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink> > ListHook;
-
-    ListHook hook;
-
-    typedef boost::intrusive::list<
-      CobTimeout,
-      boost::intrusive::member_hook<CobTimeout, ListHook, &CobTimeout::hook>,
-      boost::intrusive::constant_time_size<false> > List;
-  };
 
   typedef LoopCallback::List LoopCallbackList;
   class FunctionRunner;
@@ -662,8 +616,6 @@ class EventBase : private boost::noncopyable,
 
   // should only be accessed through public getter
   HHWheelTimer::UniquePtr wheelTimer_;
-
-  CobTimeout::List pendingCobTimeouts_;
 
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;

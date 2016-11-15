@@ -23,6 +23,8 @@
 #include <chrono>
 #include <stdint.h>
 
+#include <folly/Function.h>
+
 namespace folly {
 
 class AsyncTimeout;
@@ -35,13 +37,16 @@ class AsyncTimeout;
 class TimeoutManager {
  public:
   typedef std::chrono::milliseconds timeout_type;
+  using Func = folly::Function<void()>;
 
   enum class InternalEnum {
     INTERNAL,
     NORMAL
   };
 
-  virtual ~TimeoutManager() = default;
+  TimeoutManager();
+
+  virtual ~TimeoutManager();
 
   /**
    * Attaches/detaches TimeoutManager to AsyncTimeout
@@ -72,6 +77,34 @@ class TimeoutManager {
    * thread
    */
   virtual bool isInTimeoutManagerThread() = 0;
+
+  /**
+   * Runs the given Cob at some time after the specified number of
+   * milliseconds.  (No guarantees exactly when.)
+   *
+   * Throws a std::system_error if an error occurs.
+   */
+  void runAfterDelay(
+      Func cob,
+      uint32_t milliseconds,
+      InternalEnum internal = InternalEnum::NORMAL);
+
+  /**
+   * @see tryRunAfterDelay for more details
+   *
+   * @return  true iff the cob was successfully registered.
+   */
+  bool tryRunAfterDelay(
+      Func cob,
+      uint32_t milliseconds,
+      InternalEnum internal = InternalEnum::NORMAL);
+
+ protected:
+  void clearCobTimeouts();
+
+ private:
+  struct CobTimeouts;
+  std::unique_ptr<CobTimeouts> cobTimeouts_;
 };
 
 } // folly
