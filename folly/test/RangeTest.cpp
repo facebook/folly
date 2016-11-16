@@ -1093,10 +1093,14 @@ TEST(RangeFunc, Array) {
   testRangeFunc(x, 3);
 }
 
+// MSVC doesn't like it when you try to std::move C arrays:
+// https://developercommunity.visualstudio.com/content/problem/2441/
+#ifndef _MSC_VER
 TEST(RangeFunc, CArray) {
   int x[] {1, 2, 3, 4};
   testRangeFunc(x, 4);
 }
+#endif
 
 TEST(RangeFunc, ConstexprCArray) {
   static constexpr const int numArray[4] = {3, 17, 1, 9};
