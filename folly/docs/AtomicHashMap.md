@@ -74,7 +74,7 @@ string.
 
      void increment(int64_t obj_id) {
        auto ret = ahm.insert(make_pair(obj_id, 1));
-       if (!ret.first) {
+       if (!ret.second) {
          // obj_id already exists, increment
          NoBarrier_AtomicIncrement(&ret.first->second, 1);
        }
