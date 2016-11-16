@@ -81,7 +81,7 @@ void QueueTest::sendOne() {
   // Start a new EventBase thread to put a message on our queue
   ScopedEventBaseThread t1;
   t1.getEventBase()->runInEventBaseThread([&] {
-    queue.putMessage(5);
+    this->queue.putMessage(5);
   });
 
   // Loop until we receive the message
