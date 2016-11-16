@@ -416,11 +416,11 @@ class FillObject {
 
 #if FOLLY_HAVE_STD_THIS_THREAD_SLEEP_FOR
 TEST(ThreadLocal, Stress) {
-  constexpr size_t numFillObjects = 250;
+  static constexpr size_t numFillObjects = 250;
   std::array<ThreadLocalPtr<FillObject>, numFillObjects> objects;
 
-  constexpr size_t numThreads = 32;
-  constexpr size_t numReps = 20;
+  static constexpr size_t numThreads = 32;
+  static constexpr size_t numReps = 20;
 
   std::vector<std::thread> threads;
   threads.reserve(numThreads);
