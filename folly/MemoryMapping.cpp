@@ -258,10 +258,11 @@ bool MemoryMapping::mlock(LockMode lock) {
   }
 
   auto msg =
-    folly::sformat("mlock({}) failed at {}", mapLength_, amountSucceeded);
-
-  if (lock == LockMode::TRY_LOCK && (errno == EPERM || errno == ENOMEM)) {
+      folly::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
+  if (lock == LockMode::TRY_LOCK && errno == EPERM) {
     PLOG(WARNING) << msg;
+  } else if (lock == LockMode::TRY_LOCK && errno == ENOMEM) {
+    VLOG(1) << msg;
   } else {
     PLOG(FATAL) << msg;
   }
