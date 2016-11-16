@@ -578,6 +578,8 @@ constexpr initlist_construct_t initlist_construct{};
 
 } // namespace folly
 
+// Assume nothing when compiling with MSVC.
+#ifndef _MSC_VER
 // gcc-5.0 changed string's implementation in libgcc to be non-relocatable
 #if __GNUC__ < 5
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string)
@@ -591,6 +593,7 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function)
 
 // Boost
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr)
+#endif
 
 #define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name) \
   template <typename T> \
