@@ -268,3 +268,17 @@ TEST(FBVector, shrink_to_fit_after_clear) {
   EXPECT_EQ(fb1.size(), 0);
   EXPECT_EQ(fb1.capacity(), 0);
 }
+
+TEST(FBVector, zero_len) {
+  fbvector<int> fb1(0);
+  fbvector<int> fb2(0, 10);
+  fbvector<int> fb3(std::move(fb1));
+  fbvector<int> fb4;
+  fb4 = std::move(fb2);
+  fbvector<int> fb5 = fb3;
+  fbvector<int> fb6;
+  fb6 = fb4;
+  std::initializer_list<int> il = {};
+  fb6 = il;
+  fbvector<int> fb7(fb6.begin(), fb6.end());
+}

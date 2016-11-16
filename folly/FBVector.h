@@ -430,7 +430,9 @@ private:
   // optimized
   static void S_uninitialized_fill_n(T* dest, size_type n) {
     if (folly::IsZeroInitializable<T>::value) {
-      std::memset(dest, 0, sizeof(T) * n);
+      if (LIKELY(n != 0)) {
+        std::memset(dest, 0, sizeof(T) * n);
+      }
     } else {
       auto b = dest;
       auto e = dest + n;
