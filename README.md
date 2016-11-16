@@ -73,7 +73,7 @@ Folly is published on Github at https://github.com/facebook/folly
 folly requires gcc 4.8+ and a version of boost compiled with C++11 support.
 
 Please download googletest from
-https://googletest.googlecode.com/files/gtest-1.7.0.zip and unzip it in the
+https://github.com/google/googletest/archive/release-1.7.0.zip and unzip it in the
 folly/test subdirectory.
 
 #### Ubuntu 12.04
