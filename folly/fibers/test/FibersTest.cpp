@@ -32,6 +32,7 @@
 #include <folly/fibers/Semaphore.h>
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/WhenN.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::fibers;
@@ -2039,6 +2040,38 @@ TEST(FiberManager, ABD_UserProvidedBatchDispatchThrowsTest) {
   atomicBatchDispatcher.commit();
   evb.loop();
   validateResults<std::runtime_error>(results, COUNT);
+}
+
+TEST(FiberManager, VirtualEventBase) {
+  folly::ScopedEventBaseThread thread;
+
+  auto evb1 =
+      folly::make_unique<folly::VirtualEventBase>(*thread.getEventBase());
+  auto evb2 =
+      folly::make_unique<folly::VirtualEventBase>(*thread.getEventBase());
+
+  bool done1{false};
+  bool done2{false};
+
+  getFiberManager(*evb1).addTaskRemote([&] {
+    Baton baton;
+    baton.timed_wait(std::chrono::milliseconds{100});
+
+    done1 = true;
+  });
+
+  getFiberManager(*evb2).addTaskRemote([&] {
+    Baton baton;
+    baton.timed_wait(std::chrono::milliseconds{200});
+
+    done2 = true;
+  });
+
+  evb1.reset();
+  EXPECT_TRUE(done1);
+
+  evb2.reset();
+  EXPECT_TRUE(done2);
 }
 
 /**

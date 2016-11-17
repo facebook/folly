@@ -19,16 +19,19 @@
 namespace folly {
 namespace fibers {
 
-inline EventBaseLoopController::EventBaseLoopController()
+template <typename EventBaseT>
+inline EventBaseLoopControllerT<EventBaseT>::EventBaseLoopControllerT()
     : callback_(*this), aliveWeak_(destructionCallback_.getWeak()) {}
 
-inline EventBaseLoopController::~EventBaseLoopController() {
+template <typename EventBaseT>
+inline EventBaseLoopControllerT<EventBaseT>::~EventBaseLoopControllerT() {
   callback_.cancelLoopCallback();
   eventBaseKeepAlive_.reset();
 }
 
-inline void EventBaseLoopController::attachEventBase(
-    folly::EventBase& eventBase) {
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::attachEventBase(
+    EventBaseT& eventBase) {
   if (eventBase_ != nullptr) {
     LOG(ERROR) << "Attempt to reattach EventBase to LoopController";
   }
@@ -43,11 +46,14 @@ inline void EventBaseLoopController::attachEventBase(
   }
 }
 
-inline void EventBaseLoopController::setFiberManager(FiberManager* fm) {
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::setFiberManager(
+    FiberManager* fm) {
   fm_ = fm;
 }
 
-inline void EventBaseLoopController::schedule() {
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::schedule() {
   if (eventBase_ == nullptr) {
     // In this case we need to postpone scheduling.
     awaitingScheduling_ = true;
@@ -58,11 +64,13 @@ inline void EventBaseLoopController::schedule() {
   }
 }
 
-inline void EventBaseLoopController::cancel() {
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::cancel() {
   callback_.cancelLoopCallback();
 }
 
-inline void EventBaseLoopController::runLoop() {
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::runLoop() {
   if (!eventBaseKeepAlive_) {
     eventBaseKeepAlive_ = eventBase_->loopKeepAlive();
   }
@@ -76,7 +84,8 @@ inline void EventBaseLoopController::runLoop() {
   }
 }
 
-inline void EventBaseLoopController::scheduleThreadSafe(
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::scheduleThreadSafe(
     std::function<bool()> func) {
   /* The only way we could end up here is if
      1) Fiber thread creates a fiber that awaits (which means we must
@@ -97,7 +106,8 @@ inline void EventBaseLoopController::scheduleThreadSafe(
   }
 }
 
-inline void EventBaseLoopController::timedSchedule(
+template <typename EventBaseT>
+inline void EventBaseLoopControllerT<EventBaseT>::timedSchedule(
     std::function<void()> func,
     TimePoint time) {
   assert(eventBaseAttached_);

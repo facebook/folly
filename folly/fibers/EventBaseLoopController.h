@@ -18,6 +18,7 @@
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/fibers/LoopController.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/VirtualEventBase.h>
 #include <atomic>
 #include <memory>
 
@@ -28,17 +29,18 @@ class EventBase;
 namespace folly {
 namespace fibers {
 
-class EventBaseLoopController : public LoopController {
+template <typename EventBaseT>
+class EventBaseLoopControllerT : public LoopController {
  public:
-  explicit EventBaseLoopController();
-  ~EventBaseLoopController();
+  explicit EventBaseLoopControllerT();
+  ~EventBaseLoopControllerT();
 
   /**
    * Attach EventBase after LoopController was created.
    */
-  void attachEventBase(folly::EventBase& eventBase);
+  void attachEventBase(EventBaseT& eventBase);
 
-  folly::EventBase* getEventBase() {
+  EventBaseT* getEventBase() {
     return eventBase_;
   }
 
@@ -49,7 +51,7 @@ class EventBaseLoopController : public LoopController {
  private:
   class ControllerCallback : public folly::EventBase::LoopCallback {
    public:
-    explicit ControllerCallback(EventBaseLoopController& controller)
+    explicit ControllerCallback(EventBaseLoopControllerT& controller)
         : controller_(controller) {}
 
     void runLoopCallback() noexcept override {
@@ -57,7 +59,7 @@ class EventBaseLoopController : public LoopController {
     }
 
    private:
-    EventBaseLoopController& controller_;
+    EventBaseLoopControllerT& controller_;
   };
 
   class DestructionCallback : public folly::EventBase::LoopCallback {
@@ -90,8 +92,8 @@ class EventBaseLoopController : public LoopController {
   };
 
   bool awaitingScheduling_{false};
-  folly::EventBase* eventBase_{nullptr};
-  folly::EventBase::LoopKeepAlive eventBaseKeepAlive_;
+  EventBaseT* eventBase_{nullptr};
+  typename EventBaseT::LoopKeepAlive eventBaseKeepAlive_;
   ControllerCallback callback_;
   DestructionCallback destructionCallback_;
   FiberManager* fm_{nullptr};
@@ -110,6 +112,8 @@ class EventBaseLoopController : public LoopController {
 
   friend class FiberManager;
 };
+
+using EventBaseLoopController = EventBaseLoopControllerT<folly::EventBase>;
 }
 } // folly::fibers
 

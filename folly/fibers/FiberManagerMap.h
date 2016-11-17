@@ -17,12 +17,17 @@
 
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
+#include <folly/io/async/VirtualEventBase.h>
 
 namespace folly {
 namespace fibers {
 
 FiberManager& getFiberManager(
     folly::EventBase& evb,
+    const FiberManager::Options& opts = FiberManager::Options());
+
+FiberManager& getFiberManager(
+    folly::VirtualEventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options());
 }
 }

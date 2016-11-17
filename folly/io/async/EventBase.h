@@ -102,6 +102,8 @@ class RequestEventBase : public RequestData {
   static constexpr const char* kContextDataName{"EventBase"};
 };
 
+class VirtualEventBase;
+
 /**
  * This class is a wrapper for all asynchronous I/O processing functionality
  *
@@ -159,6 +161,7 @@ class EventBase : private boost::noncopyable,
 
     // EventBase needs access to LoopCallbackList (and therefore to hook_)
     friend class EventBase;
+    friend class VirtualEventBase;
     std::shared_ptr<RequestContext> context_;
   };
 

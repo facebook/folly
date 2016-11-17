@@ -234,6 +234,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/SSLContext.h \
 	io/async/ScopedEventBaseThread.h \
 	io/async/TimeoutManager.h \
+	io/async/VirtualEventBase.h \
 	io/async/WriteChainAsyncTransportWrapper.h \
 	io/async/test/AsyncSSLSocketTest.h \
 	io/async/test/BlockingSocket.h \
@@ -448,6 +449,7 @@ libfolly_la_SOURCES = \
 	io/async/Request.cpp \
 	io/async/SSLContext.cpp \
 	io/async/ScopedEventBaseThread.cpp \
+	io/async/VirtualEventBase.cpp \
 	io/async/HHWheelTimer.cpp \
 	io/async/TimeoutManager.cpp \
 	io/async/test/ScopedBoundPort.cpp \
