@@ -197,8 +197,10 @@ TEST(Function, NonCopyableLambda) {
   auto unique_ptr_int = folly::make_unique<int>(900);
   EXPECT_EQ(900, *unique_ptr_int);
 
-  char fooData[64] = {0};
-  EXPECT_EQ(0, fooData[0]); // suppress gcc warning about fooData not being used
+  struct {
+    char data[64];
+  } fooData = {{0}};
+  (void)fooData; // suppress gcc warning about fooData not being used
 
   auto functor = std::bind(
       [fooData](std::unique_ptr<int>& up) mutable { return ++*up; },
