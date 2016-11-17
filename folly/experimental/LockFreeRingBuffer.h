@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <boost/noncopyable.hpp>
-#include <iostream>
 #include <cmath>
 #include <memory>
 #include <string.h>
