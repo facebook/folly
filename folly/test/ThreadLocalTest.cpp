@@ -38,6 +38,7 @@
 
 #include <folly/Baton.h>
 #include <folly/Memory.h>
+#include <folly/ThreadId.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
@@ -405,7 +406,7 @@ class FillObject {
 
  private:
   uint64_t val() const {
-    return (idx_ << 40) | uint64_t(pthread_self());
+    return (idx_ << 40) | folly::getCurrentThreadID();
   }
 
   uint64_t idx_;
@@ -584,7 +585,7 @@ TEST(ThreadLocal, Fork2) {
 
 TEST(ThreadLocal, SharedLibrary) {
   auto exe = fs::executable_path();
-  auto lib = exe.parent_path() / "lib_thread_local_test.so";
+  auto lib = exe.parent_path() / "thread_local_test_lib.so";
   auto handle = dlopen(lib.string().c_str(), RTLD_LAZY);
   EXPECT_NE(nullptr, handle);
 

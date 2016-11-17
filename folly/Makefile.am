@@ -357,6 +357,7 @@ nobase_follyinclude_HEADERS = \
 	test/TestUtils.h \
 	ThreadCachedArena.h \
 	ThreadCachedInt.h \
+	ThreadId.h \
 	ThreadLocal.h \
 	ThreadName.h \
 	TimeoutQueue.h \

@@ -24,6 +24,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Hash.h>
+#include <folly/ThreadId.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
@@ -298,9 +299,8 @@ struct ShardedAtomicInt {
   std::atomic<int64_t> ints_[kBuckets_];
 
   inline void inc(int64_t val = 1) {
-    int bucket = hash::twang_mix64(
-      uint64_t(pthread_self())) & (kBuckets_ - 1);
-    std::atomic_fetch_add(&ints_[bucket], val);
+    int buck = hash::twang_mix64(folly::getCurrentThreadID()) & (kBuckets_ - 1);
+    std::atomic_fetch_add(&ints_[buck], val);
   }
 
   // read the first few and extrapolate
