@@ -284,12 +284,27 @@ struct DoNotOptimizeAwayNeedsIndirect {
 template <typename T>
 auto doNotOptimizeAway(const T& datum) -> typename std::enable_if<
     !detail::DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
-  asm volatile("" ::"X"(datum));
+  // The "r" constraint forces the compiler to make datum available
+  // in a register to the asm block, which means that it must have
+  // computed/loaded it.  We use this path for things that are <=
+  // sizeof(long) (they have to fit), trivial (otherwise the compiler
+  // doesn't want to put them in a register), and not a pointer (because
+  // doNotOptimizeAway(&foo) would otherwise be a foot gun that didn't
+  // necessarily compute foo).
+  //
+  // An earlier version of this method had a more permissive input operand
+  // constraint, but that caused unnecessary variation between clang and
+  // gcc benchmarks.
+  asm volatile("" ::"r"(datum));
 }
 
 template <typename T>
 auto doNotOptimizeAway(const T& datum) -> typename std::enable_if<
     detail::DoNotOptimizeAwayNeedsIndirect<T>::value>::type {
+  // This version of doNotOptimizeAway tells the compiler that the asm
+  // block will read datum from memory, and that in addition it might read
+  // or write from any memory location.  If the memory clobber could be
+  // separated into input and output that would be preferrable.
   asm volatile("" ::"m"(datum) : "memory");
 }
 
