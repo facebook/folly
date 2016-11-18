@@ -131,28 +131,12 @@ void callPreviousSignalHandler(int signum) {
 // in our signal handler at a time.
 //
 // Leak it so we don't have to worry about destruction order
-constexpr size_t kMinSignalSafeElfCacheSize = 500;
-auto gSignalSafeElfCache = new SignalSafeElfCache(
-    std::max(countLoadedElfFiles(), kMinSignalSafeElfCacheSize));
-
-// Buffered writer (using a fixed-size buffer). We try to write only once
-// to prevent interleaving with messages written from other threads.
-//
-// Leak it so we don't have to worry about destruction order.
-auto gPrinter = new FDSymbolizePrinter(STDERR_FILENO,
-                                       SymbolizePrinter::COLOR_IF_TTY,
-                                       size_t(64) << 10);  // 64KiB
-
-// Flush gPrinter, also fsync, in case we're about to crash again...
-void flush() {
-  gPrinter->flush();
-  fsyncNoInt(STDERR_FILENO);
-}
+StackTracePrinter* gStackTracePrinter = new StackTracePrinter();
 
 void printDec(uint64_t val) {
   char buf[20];
   uint32_t n = uint64ToBufferUnsafe(val, buf);
-  gPrinter->print(StringPiece(buf, n));
+  gStackTracePrinter->print(StringPiece(buf, n));
 }
 
 const char kHexChars[] = "0123456789abcdef";
@@ -169,11 +153,15 @@ void printHex(uint64_t val) {
   *--p = 'x';
   *--p = '0';
 
-  gPrinter->print(StringPiece(p, end));
+  gStackTracePrinter->print(StringPiece(p, end));
 }
 
 void print(StringPiece sp) {
-  gPrinter->print(sp);
+  gStackTracePrinter->print(sp);
+}
+
+void flush() {
+  gStackTracePrinter->flush();
 }
 
 void dumpTimeInfo() {
@@ -384,39 +372,6 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   print("), stack trace: ***\n");
 }
 
-FOLLY_NOINLINE void dumpStackTrace(bool symbolize);
-
-void dumpStackTrace(bool symbolize) {
-  SCOPE_EXIT { flush(); };
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
-
-  // Skip the getStackTrace frame
-  if (!getStackTraceSafe(addresses)) {
-    print("(error retrieving stack trace)\n");
-  } else if (symbolize) {
-    // Do our best to populate location info, process is going to terminate,
-    // so performance isn't critical.
-    Symbolizer symbolizer(gSignalSafeElfCache, Dwarf::LocationInfoMode::FULL);
-    symbolizer.symbolize(addresses);
-
-    // Skip the top 2 frames:
-    // getStackTraceSafe
-    // dumpStackTrace (here)
-    //
-    // Leaving signalHandler on the stack for clarity, I think.
-    gPrinter->println(addresses, 2);
-  } else {
-    print("(safe mode, symbolizer not available)\n");
-    AddressFormatter formatter;
-    for (size_t i = 0; i < addresses.frameCount; ++i) {
-      print(formatter.format(addresses.addresses[i]));
-      print("\n");
-    }
-  }
-}
-
 // On Linux, pthread_t is a pointer, so 0 is an invalid value, which we
 // take to indicate "no thread in the signal handler".
 //
@@ -439,7 +394,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
       // next time around.
       if (!gInRecursiveSignalHandler.exchange(true)) {
         print("Entered fatal signal handler recursively. We're in trouble.\n");
-        dumpStackTrace(false);  // no symbolization
+        gStackTracePrinter->printStackTrace(false); // no symbolization
       }
       return;
     }
@@ -455,7 +410,7 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
 
   dumpTimeInfo();
   dumpSignalInfo(signum, info);
-  dumpStackTrace(true);  // with symbolization
+  gStackTracePrinter->printStackTrace(true); // with symbolization
 
   // Run user callbacks
   gFatalSignalCallbackRegistry->run();

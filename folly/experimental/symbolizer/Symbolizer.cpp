@@ -377,5 +377,51 @@ void StringSymbolizePrinter::doPrint(StringPiece sp) {
   buf_.append(sp.data(), sp.size());
 }
 
-}  // namespace symbolizer
+StackTracePrinter::StackTracePrinter(size_t minSignalSafeElfCacheSize, int fd)
+    : fd_(fd),
+      elfCache_(std::max(countLoadedElfFiles(), minSignalSafeElfCacheSize)),
+      printer_(
+          fd,
+          SymbolizePrinter::COLOR_IF_TTY,
+          size_t(64) << 10) // 64KiB
+{}
+
+void StackTracePrinter::flush() {
+  printer_.flush();
+  fsyncNoInt(fd_);
+}
+
+void StackTracePrinter::printStackTrace(bool symbolize) {
+  SCOPE_EXIT {
+    flush();
+  };
+  // Get and symbolize stack trace
+  constexpr size_t kMaxStackTraceDepth = 100;
+  FrameArray<kMaxStackTraceDepth> addresses;
+
+  // Skip the getStackTrace frame
+  if (!getStackTraceSafe(addresses)) {
+    print("(error retrieving stack trace)\n");
+  } else if (symbolize) {
+    // Do our best to populate location info, process is going to terminate,
+    // so performance isn't critical.
+    Symbolizer symbolizer(&elfCache_, Dwarf::LocationInfoMode::FULL);
+    symbolizer.symbolize(addresses);
+
+    // Skip the top 2 frames:
+    // getStackTraceSafe
+    // StackTracePrinter::printStackTrace (here)
+    //
+    // Leaving signalHandler on the stack for clarity, I think.
+    printer_.println(addresses, 2);
+  } else {
+    print("(safe mode, symbolizer not available)\n");
+    AddressFormatter formatter;
+    for (size_t i = 0; i < addresses.frameCount; ++i) {
+      print(formatter.format(addresses.addresses[i]));
+      print("\n");
+    }
+  }
+}
+} // namespace symbolizer
 }  // namespace folly

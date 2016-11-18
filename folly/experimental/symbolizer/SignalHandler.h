@@ -48,5 +48,4 @@ void addFatalSignalCallback(SignalCallback callback);
  */
 void installFatalSignalCallbacks();
 
-
 }}  // namespaces

@@ -30,7 +30,7 @@ namespace folly { namespace symbolizer {
 
 size_t countLoadedElfFiles() {
   // _r_debug synchronization is... lacking to say the least. It's
-  // meant as an aid for debuggers and synchrnization is done by
+  // meant as an aid for debuggers and synchronization is done by
   // calling dl_debug_state() which debuggers are supposed to
   // intercept by setting a breakpoint on.
 
