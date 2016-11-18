@@ -302,7 +302,7 @@ FutexResult Futex<DeterministicAtomic>::futexWaitImpl(
                               << ", .., " << std::hex << waitMask
                               << ") beginning..");
   futexLock.lock();
-  if (data == expected) {
+  if (this->data == expected) {
     auto& queue = futexQueues[this];
     queue.emplace_back(waitMask, &awoken);
     auto ours = queue.end();
