@@ -620,7 +620,7 @@ TEST(Future, finishBigLambda) {
   // bulk_data, to be captured in the lambda passed to Future::then.
   // This is meant to force that the lambda can't be stored inside
   // the Future object.
-  std::array<char, sizeof(detail::Core<int>)> bulk_data = {0};
+  std::array<char, sizeof(detail::Core<int>)> bulk_data = {{0}};
 
   // suppress gcc warning about bulk_data not being used
   EXPECT_EQ(bulk_data[0], 0);

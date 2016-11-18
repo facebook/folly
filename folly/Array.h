@@ -53,7 +53,7 @@ template <typename D = void, typename... TList>
 constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
   using value_type =
       typename array_detail::return_type_helper<D, TList...>::type;
-  return {static_cast<value_type>(std::forward<TList>(t))...};
+  return {{static_cast<value_type>(std::forward<TList>(t))...}};
 }
 
 } // !folly

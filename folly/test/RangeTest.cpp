@@ -1111,7 +1111,7 @@ TEST(RangeFunc, ConstexprCArray) {
 }
 
 TEST(RangeFunc, ConstexprStdArray) {
-  static constexpr const std::array<int, 4> numArray = {3, 17, 1, 9};
+  static constexpr const std::array<int, 4> numArray = {{3, 17, 1, 9}};
   constexpr const auto numArrayRange = range(numArray);
   EXPECT_EQ(17, numArrayRange[1]);
   constexpr const auto numArrayRangeSize = numArrayRange.size();
