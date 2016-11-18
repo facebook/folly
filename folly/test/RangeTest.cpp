@@ -1114,8 +1114,15 @@ TEST(RangeFunc, ConstexprStdArray) {
   static constexpr const std::array<int, 4> numArray = {{3, 17, 1, 9}};
   constexpr const auto numArrayRange = range(numArray);
   EXPECT_EQ(17, numArrayRange[1]);
+  // MSVC 2017 RC and earlier have an issue that causes the beginning and
+  // end of numArrayRange to point to different copies of numArray, causing
+  // this attempt to calculate the size to error at compile time because
+  // they don't point to parts of the same array :(
+  // https://developercommunity.visualstudio.com/content/problem/3216/
+#if !defined(_MSC_VER) || _MSC_VER > 191024629
   constexpr const auto numArrayRangeSize = numArrayRange.size();
   EXPECT_EQ(4, numArrayRangeSize);
+#endif
 }
 
 TEST(RangeFunc, ConstexprStdArrayZero) {
