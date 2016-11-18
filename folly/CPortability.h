@@ -107,3 +107,21 @@
 #else
 # define FOLLY_EXPORT
 #endif
+
+// noinline
+#ifdef _MSC_VER
+# define FOLLY_NOINLINE __declspec(noinline)
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_NOINLINE __attribute__((__noinline__))
+#else
+# define FOLLY_NOINLINE
+#endif
+
+// always inline
+#ifdef _MSC_VER
+# define FOLLY_ALWAYS_INLINE __forceinline
+#elif defined(__clang__) || defined(__GNUC__)
+# define FOLLY_ALWAYS_INLINE inline __attribute__((__always_inline__))
+#else
+# define FOLLY_ALWAYS_INLINE inline
+#endif
