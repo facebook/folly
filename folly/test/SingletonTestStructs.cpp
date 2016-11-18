@@ -16,6 +16,8 @@
 
 #include <folly/test/SingletonTestStructs.h>
 
+#include <atomic>
+
 namespace {
 // A simple class that tracks how often instances of the class and
 // subclasses are created, and the ordering.  Also tracks a global
