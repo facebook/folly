@@ -1829,8 +1829,8 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
 TEST(EventBaseTest, LoopKeepAliveAtomic) {
   auto evb = folly::make_unique<EventBase>();
 
-  constexpr size_t kNumThreads = 100;
-  constexpr size_t kNumTasks = 100;
+  static constexpr size_t kNumThreads = 100;
+  static constexpr size_t kNumTasks = 100;
 
   std::vector<std::thread> ts;
   std::vector<std::unique_ptr<Baton<>>> batons;
