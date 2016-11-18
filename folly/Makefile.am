@@ -483,6 +483,7 @@ libfolly_la_SOURCES = \
 	portability/Unistd.cpp \
 	Random.cpp \
 	SafeAssert.cpp \
+	ScopeGuard.cpp \
 	SharedMutex.cpp \
 	Shell.cpp \
 	MicroLock.cpp \

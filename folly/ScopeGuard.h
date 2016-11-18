@@ -22,6 +22,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/detail/UncaughtExceptionCounter.h>
 
@@ -75,6 +76,17 @@ class ScopeGuardImplBase {
     dismissed_ = true;
   }
 
+  template <typename T>
+  FOLLY_ALWAYS_INLINE static void runAndWarnAboutToCrashOnException(
+      T& function) {
+    try {
+      function();
+    } catch (...) {
+      warnAboutToCrash();
+      throw;
+    }
+  }
+
  protected:
   ScopeGuardImplBase() noexcept : dismissed_(false) {}
 
@@ -88,6 +100,9 @@ class ScopeGuardImplBase {
   }
 
   bool dismissed_;
+
+ private:
+  static void warnAboutToCrash() noexcept;
 };
 
 template <typename FunctionType>
@@ -151,7 +166,9 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 
   void* operator new(std::size_t) = delete;
 
-  void execute() noexcept { function_(); }
+  void execute() noexcept {
+    runAndWarnAboutToCrashOnException(function_);
+  }
 
   FunctionType function_;
 };
@@ -185,7 +202,7 @@ namespace detail {
  * If the parameter is false, then the function is executed if no new uncaught
  * exceptions are present at the end of the scope.
  *
- * Used to implement SCOPE_FAIL and SCOPE_SUCCES below.
+ * Used to implement SCOPE_FAIL and SCOPE_SUCCESS below.
  */
 template <typename FunctionType, bool executeOnException>
 class ScopeGuardForNewException {
@@ -205,7 +222,11 @@ class ScopeGuardForNewException {
 
   ~ScopeGuardForNewException() noexcept(executeOnException) {
     if (executeOnException == exceptionCounter_.isNewUncaughtException()) {
-      function_();
+      if (executeOnException) {
+        ScopeGuardImplBase::runAndWarnAboutToCrashOnException(function_);
+      } else {
+        function_();
+      }
     }
   }
 
