@@ -321,4 +321,10 @@ constexpr auto kIsLinux = true;
 #else
 constexpr auto kIsLinux = false;
 #endif
+
+#if defined(_WIN32)
+constexpr auto kIsWindows = true;
+#else
+constexpr auto kIsWindows = false;
+#endif
 }
