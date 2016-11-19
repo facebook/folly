@@ -28,7 +28,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-using dynamic = folly::dynamic;
 
 // NB Auto-conversions are exercised by all the tests, there's not a great
 // reason to test all of them explicitly, since any uncaught bugs will fail
