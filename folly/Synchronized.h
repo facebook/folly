@@ -433,6 +433,9 @@ struct Synchronized : public SynchronizedBase<
   static constexpr bool nxMoveCtor{
       std::is_nothrow_move_constructible<T>::value};
 
+  // used to disable copy construction and assignment
+  class NonImplementedType;
+
  public:
   using LockedPtr = typename Base::LockedPtr;
   using ConstLockedPtr = typename Base::ConstLockedPtr;
@@ -453,7 +456,11 @@ struct Synchronized : public SynchronizedBase<
    * Note that the copy constructor may throw because it acquires a lock in
    * the contextualRLock() method
    */
-  Synchronized(const Synchronized& rhs) /* may throw */
+ public:
+  /* implicit */ Synchronized(typename std::conditional<
+                              std::is_copy_constructible<T>::value,
+                              const Synchronized&,
+                              NonImplementedType>::type rhs) /* may throw */
       : Synchronized(rhs, rhs.contextualRLock()) {}
 
   /**
@@ -495,7 +502,10 @@ struct Synchronized : public SynchronizedBase<
    * mutex. It locks the two objects in ascending order of their
    * addresses.
    */
-  Synchronized& operator=(const Synchronized& rhs) {
+  Synchronized& operator=(typename std::conditional<
+                          std::is_copy_assignable<T>::value,
+                          const Synchronized&,
+                          NonImplementedType>::type rhs) {
     if (this == &rhs) {
       // Self-assignment, pass.
     } else if (this < &rhs) {

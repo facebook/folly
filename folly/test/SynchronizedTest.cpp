@@ -395,6 +395,22 @@ TEST_F(SynchronizedLockTest, NestedSyncUnSync2) {
   EXPECT_EQ((CountPair{4, 4}), FakeMutex::getLockUnlockCount());
 }
 
+TEST_F(SynchronizedLockTest, TestCopyConstructibleValues) {
+  struct NonCopyConstructible {
+    NonCopyConstructible(const NonCopyConstructible&) = delete;
+    NonCopyConstructible& operator=(const NonCopyConstructible&) = delete;
+  };
+  struct CopyConstructible {};
+  EXPECT_FALSE(std::is_copy_constructible<
+               folly::Synchronized<NonCopyConstructible>>::value);
+  EXPECT_FALSE(std::is_copy_assignable<
+               folly::Synchronized<NonCopyConstructible>>::value);
+  EXPECT_TRUE(std::is_copy_constructible<
+              folly::Synchronized<CopyConstructible>>::value);
+  EXPECT_TRUE(
+      std::is_copy_assignable<folly::Synchronized<CopyConstructible>>::value);
+}
+
 TEST_F(SynchronizedLockTest, UpgradableLocking) {
   folly::Synchronized<int, FakeAllPowerfulAssertingMutex> sync;
 
