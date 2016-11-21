@@ -17,12 +17,15 @@
 #include <thread>
 
 #include <folly/Singleton.h>
-#include <folly/Subprocess.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/SingletonTestStructs.h>
+
+#ifndef _MSC_VER
+#include <folly/Subprocess.h>
+#endif
 
 #include <glog/logging.h>
 #include <boost/thread/barrier.hpp>
@@ -594,6 +597,8 @@ TEST(Singleton, MockTest) {
   vault.destroyInstances();
 }
 
+#ifndef _MSC_VER
+// Subprocess isn't currently supported under MSVC.
 TEST(Singleton, DoubleRegistrationLogging) {
   const auto basename = "singleton_double_registration";
   const auto sub = fs::executable_path().remove_filename() / basename;
@@ -610,6 +615,7 @@ TEST(Singleton, DoubleRegistrationLogging) {
   EXPECT_EQ(SIGABRT, res.killSignal());
   EXPECT_THAT(err, testing::StartsWith("Double registration of singletons"));
 }
+#endif
 
 // Singleton using a non default constructor test/example:
 struct X {
