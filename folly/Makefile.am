@@ -429,6 +429,7 @@ libfolly_la_SOURCES = \
 	IPAddressV4.cpp \
 	IPAddressV6.cpp \
 	LifoSem.cpp \
+	init/Init.cpp \
 	io/Compression.cpp \
 	io/Cursor.cpp \
 	io/IOBuf.cpp \
