@@ -77,22 +77,18 @@ using ArgumentTypes =
 // extended.  The comparison deliberately strips cv-qualifieers and
 // reference, leaving that choice up to the caller.
 template <typename Fn, typename... Args>
-constexpr bool hasArgumentTypes() {
-  using HasArgumentTypes = typename boost::mpl::template equal<
-    typename boost::mpl::template transform<
-      typename boost::mpl::template transform<
-        ArgumentTypes<Fn>,
-        typename std::template remove_reference<boost::mpl::_1>
-      >::type,
-      typename std::template remove_cv<boost::mpl::_1>
-    >::type,
-    boost::mpl::vector<Args...>
-  >::type;
-  return HasArgumentTypes::value;
-}
+struct HasArgumentTypes
+    : boost::mpl::template equal<
+          typename boost::mpl::template transform<
+              typename boost::mpl::template transform<
+                  ArgumentTypes<Fn>,
+                  typename std::template remove_reference<boost::mpl::_1>>::
+                  type,
+              typename std::template remove_cv<boost::mpl::_1>>::type,
+          boost::mpl::vector<Args...>>::type {};
 template <typename... Args>
 using EnableForArgTypes =
-  typename std::enable_if<hasArgumentTypes<Args...>(), void>::type;
+    typename std::enable_if<HasArgumentTypes<Args...>::value, void>::type;
 
 // No arguments
 template <typename Fn> EnableForArgTypes<Fn>
