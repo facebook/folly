@@ -39,7 +39,7 @@ define print_folly_fiber
      $fiber->state_ != folly::fibers::Fiber::NOT_STARTED && \
      $fiber->state_ != folly::fibers::Fiber::RUNNING
     printf "  Backtrace:\n"
-    set $frameptr = ((uint64_t*)$fiber->fcontext_.context_)[6]
+    set $frameptr = ((uint64_t*)$fiber->fiberImpl_.fiberContext_)[6]
     set $k = 0
     while $frameptr != 0
       printf "    #%d at %p in ", $k, *((void**)($frameptr+8))
