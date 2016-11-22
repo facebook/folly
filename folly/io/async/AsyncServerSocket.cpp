@@ -21,6 +21,7 @@
 #include <folly/io/async/AsyncServerSocket.h>
 
 #include <folly/FileUtil.h>
+#include <folly/Portability.h>
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/detail/SocketFastOpen.h>
@@ -370,7 +371,10 @@ void AsyncServerSocket::bind(uint16_t port) {
   hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV;
   snprintf(sport, sizeof(sport), "%u", port);
 
-  if (getaddrinfo(nullptr, sport, &hints, &res0)) {
+  // On Windows the value we need to pass to bind to all available
+  // addresses is an empty string. Everywhere else, it's nullptr.
+  constexpr const char* kWildcardNode = kIsWindows ? "" : nullptr;
+  if (getaddrinfo(kWildcardNode, sport, &hints, &res0)) {
     throw std::invalid_argument(
                               "Attempted to bind address to socket with "
                               "bad getaddrinfo");
