@@ -20,6 +20,7 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -259,7 +260,9 @@ public:
     wcb_->setSocket(socket_);
 
     // Write back the same data.
-    socket_->write(wcb_, currentBuffer.buffer, len);
+    folly::test::msvcSuppressAbortOnInvalidParams([&] {
+      socket_->write(wcb_, currentBuffer.buffer, len);
+    });
 
     if (wcb_->state == STATE_FAILED) {
       setState(STATE_SUCCEEDED);

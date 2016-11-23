@@ -22,6 +22,7 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
 
+#include <folly/experimental/TestUtil.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/test/AsyncSocketTest.h>
 #include <folly/io/async/test/Util.h>
@@ -2068,9 +2069,11 @@ TEST(AsyncSocketTest, DestroyCloseTest) {
   acceptedSocket.reset();
 
   // Test that server socket was closed
-  ssize_t sz = read(fd, simpleBuf, simpleBufLength);
-  ASSERT_EQ(sz, -1);
-  ASSERT_EQ(errno, 9);
+  folly::test::msvcSuppressAbortOnInvalidParams([&] {
+    ssize_t sz = read(fd, simpleBuf, simpleBufLength);
+    ASSERT_EQ(sz, -1);
+    ASSERT_EQ(errno, EBADF);
+  });
   delete[] simpleBuf;
 }
 
