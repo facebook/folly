@@ -33,7 +33,7 @@ std::string getHelperPath() {
   if (!fs::exists(path)) {
     path = path.parent_path().parent_path() / basename / basename;
   }
-  return path.native();
+  return path.string();
 }
 
 std::string callHelper(ProgramOptionsStyle style,
