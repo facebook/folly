@@ -182,7 +182,7 @@ if test "$folly_cv_prog_cc_int128" = "yes"; then
 #include <type_traits>
 static_assert(
   ::std::is_same<::std::make_signed<unsigned __int128>::type, __int128>::value,
-  "signed form of `unsigned __uint128` must be `__int128`.");
+  "signed form of \`unsigned __uint128\` must be \`__int128\`.");
       ]])],
       [folly_cv_prog_cc_int128traits=yes],
       [folly_cv_prog_cc_int128traits=no])
