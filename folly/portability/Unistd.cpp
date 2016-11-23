@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+// We need to prevent winnt.h from defining the core STATUS codes,
+// otherwise they will conflict with what we're getting from ntstatus.h
+#define UMDF_USING_NTSTATUS
+
 #include <folly/portability/Unistd.h>
 
 #ifdef _WIN32
@@ -21,6 +25,12 @@
 #include <fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Windows.h>
+
+// Including ntdef.h requires building as a driver, but all we want
+// is a status code, but we need NTSTATUS defined for that. Luckily
+// bcrypt.h also defines NTSTATUS, so we'll use that one instead.
+#include <bcrypt.h>
+#include <ntstatus.h>
 
 // Generic wrapper for the p* family of functions.
 template <class F, class... Args>
@@ -54,10 +64,6 @@ int access(char const* fn, int am) { return _access(fn, am); }
 
 int chdir(const char* path) { return _chdir(path); }
 
-#if defined(_MT) && !defined(_DLL)
-// We aren't hooking into the internals of the CRT, nope, not at all.
-extern "C" int __cdecl _free_osfhnd(int const fh);
-#endif
 int close(int fh) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
     SOCKET h = (SOCKET)_get_osfhandle(fh);
@@ -68,21 +74,39 @@ int close(int fh) {
     // calling closesocket, because closesocket has already closed
     // the HANDLE, and _close would attempt to close the HANDLE
     // again, resulting in a double free.
-    // Luckily though, there is a function in the internals of the
-    // CRT that is used to free only the file descriptor, so we
-    // can call that to avoid leaking the file descriptor itself.
-    //
-    // Unfortunately, we can only access the function when we're
-    // compiling against the static CRT, as it isn't an exported
-    // symbol. Leaking the file descriptor is less of a leak than
-    // leaking the socket's resources, so we close the socket and
-    // leave the descriptor itself alone.
-    auto c = closesocket(h);
-#if defined(_MT) && !defined(_DLL)
-    // We're building for the static CRT. We can do things!
-    _free_osfhnd(fh);
-#endif
-    return c;
+    // We can however protect the HANDLE from actually being closed
+    // long enough to close the file descriptor, then close the
+    // socket itself.
+    constexpr DWORD protectFlag = HANDLE_FLAG_PROTECT_FROM_CLOSE;
+    DWORD handleFlags = 0;
+    if (!GetHandleInformation((HANDLE)h, &handleFlags)) {
+      return -1;
+    }
+    if (!SetHandleInformation((HANDLE)h, protectFlag, protectFlag)) {
+      return -1;
+    }
+    int c = 0;
+    __try {
+      // We expect this to fail. It still closes the file descriptor though.
+      c = _close(fh);
+      // We just have to catch the SEH exception that gets thrown when we do
+      // this with a debugger attached -_-....
+    } __except (
+        GetExceptionCode() == STATUS_HANDLE_NOT_CLOSABLE
+            ? EXCEPTION_CONTINUE_EXECUTION
+            : EXCEPTION_CONTINUE_SEARCH) {
+      // We told it to continue execution, so there's nothing here would
+      // be run anyways.
+    }
+    // We're at the core, we don't get the luxery of SCOPE_EXIT because
+    // of circular dependencies.
+    if (!SetHandleInformation((HANDLE)h, protectFlag, handleFlags)) {
+      return -1;
+    }
+    if (c != -1) {
+      return -1;
+    }
+    return closesocket(h);
   }
   return _close(fh);
 }
