@@ -33,6 +33,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
+FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+
 using namespace folly;
 
 TEST(SimpleSubprocessTest, ExitsSuccessfully) {

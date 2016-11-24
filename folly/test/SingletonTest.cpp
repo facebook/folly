@@ -30,6 +30,8 @@
 #include <glog/logging.h>
 #include <boost/thread/barrier.hpp>
 
+FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+
 using namespace folly;
 
 TEST(Singleton, MissingSingleton) {

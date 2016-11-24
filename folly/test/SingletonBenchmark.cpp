@@ -24,6 +24,8 @@
 #include <folly/Memory.h>
 #include <folly/portability/GFlags.h>
 
+FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+
 using namespace folly;
 
 // Benchmarking a normal singleton vs a Meyers singleton vs a Folly
