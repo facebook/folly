@@ -2524,7 +2524,7 @@ TEST(AsyncSocketTest, ConnectTFOSupplyEarlyReadCB) {
 /**
  * Test connecting to a server that isn't listening
  */
-TEST(AsyncSocketTest, ConnectRefusedTFO) {
+TEST(AsyncSocketTest, ConnectRefusedImmediatelyTFO) {
   EventBase evb;
 
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
@@ -2541,7 +2541,6 @@ TEST(AsyncSocketTest, ConnectRefusedTFO) {
   WriteCallback write1;
   // Trigger the connect if TFO attempt is supported.
   socket->writeChain(&write1, IOBuf::copyBuffer("hey"));
-  evb.loop();
   WriteCallback write2;
   socket->writeChain(&write2, IOBuf::copyBuffer("hey"));
   evb.loop();
@@ -2673,6 +2672,51 @@ TEST(AsyncSocketTest, TestTFOUnsupported) {
   ASSERT_EQ(sizeof(buf), rcb.buffers[0].length);
   EXPECT_EQ(0, memcmp(rcb.buffers[0].buffer, buf.data(), buf.size()));
   EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
+}
+
+TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
+  EventBase evb;
+
+  auto socket = MockAsyncTFOSocket::UniquePtr(new MockAsyncTFOSocket(&evb));
+  socket->enableTFO();
+
+  // Hopefully this fails
+  folly::SocketAddress fakeAddr("127.0.0.1", 65535);
+  EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
+      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+        sockaddr_storage addr;
+        auto len = fakeAddr.getAddress(&addr);
+        int ret = connect(fd, (const struct sockaddr*)&addr, len);
+        LOG(INFO) << "connecting the socket " << fd << " : " << ret << " : "
+                  << errno;
+        return ret;
+      }));
+
+  // Hopefully nothing is actually listening on this address
+  ConnCallback cb;
+  socket->connect(&cb, fakeAddr, 30);
+
+  WriteCallback write1;
+  // Trigger the connect if TFO attempt is supported.
+  socket->writeChain(&write1, IOBuf::copyBuffer("hey"));
+
+  if (socket->getTFOFinished()) {
+    // This test is useless now.
+    return;
+  }
+  WriteCallback write2;
+  // Trigger the connect if TFO attempt is supported.
+  socket->writeChain(&write2, IOBuf::copyBuffer("hey"));
+  evb.loop();
+
+  EXPECT_EQ(STATE_FAILED, write1.state);
+  EXPECT_EQ(STATE_FAILED, write2.state);
+  EXPECT_FALSE(socket->getTFOSucceded());
+
+  EXPECT_EQ(STATE_SUCCEEDED, cb.state);
+  EXPECT_LE(0, socket->getConnectTime().count());
+  EXPECT_EQ(std::chrono::milliseconds(30), socket->getConnectTimeout());
+  EXPECT_TRUE(socket->getTFOAttempted());
 }
 
 TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {

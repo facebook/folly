@@ -1918,6 +1918,21 @@ TEST(AsyncSSLSocketTest, HandshakeTFOFallbackTimeout) {
   EXPECT_THAT(ccb.error, testing::HasSubstr("SSL connect timed out"));
 }
 
+TEST(AsyncSSLSocketTest, HandshakeTFORefused) {
+  // Start listening on a local port
+  EventBase evb;
+
+  // Hopefully nothing is listening on this address
+  SocketAddress addr("127.0.0.1", 65535);
+  auto socket = setupSocketWithFallback(&evb, addr, AtMost(1));
+  ConnCallback ccb;
+  socket->connect(&ccb, addr, 100);
+
+  evb.loop();
+  EXPECT_EQ(ConnCallback::State::ERROR, ccb.state);
+  EXPECT_THAT(ccb.error, testing::HasSubstr("refused"));
+}
+
 #endif
 
 } // namespace

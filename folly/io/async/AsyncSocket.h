@@ -877,6 +877,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   // error handling methods
   void startFail();
   void finishFail();
+  void finishFail(const AsyncSocketException& ex);
+  void invokeAllErrors(const AsyncSocketException& ex);
   void fail(const char* fn, const AsyncSocketException& ex);
   void failConnect(const char* fn, const AsyncSocketException& ex);
   void failRead(const char* fn, const AsyncSocketException& ex);

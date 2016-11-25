@@ -1798,8 +1798,8 @@ AsyncSocket::sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
       errno = EAGAIN;
       totalWritten = -1;
     } else if (errno == EOPNOTSUPP) {
-      VLOG(4) << "TFO not supported";
       // Try falling back to connecting.
+      VLOG(4) << "TFO not supported";
       state_ = StateEnum::CONNECTING;
       try {
         int ret = socketConnect((const sockaddr*)&addr, len);
@@ -1977,12 +1977,7 @@ void AsyncSocket::startFail() {
   }
 }
 
-void AsyncSocket::finishFail() {
-  assert(state_ == StateEnum::ERROR);
-  assert(getDestructorGuardCount() > 0);
-
-  AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
-                         withAddr("socket closing after error"));
+void AsyncSocket::invokeAllErrors(const AsyncSocketException& ex) {
   invokeConnectErr(ex);
   failAllWrites(ex);
 
@@ -1991,6 +1986,22 @@ void AsyncSocket::finishFail() {
     readCallback_ = nullptr;
     callback->readErr(ex);
   }
+}
+
+void AsyncSocket::finishFail() {
+  assert(state_ == StateEnum::ERROR);
+  assert(getDestructorGuardCount() > 0);
+
+  AsyncSocketException ex(
+      AsyncSocketException::INTERNAL_ERROR,
+      withAddr("socket closing after error"));
+  invokeAllErrors(ex);
+}
+
+void AsyncSocket::finishFail(const AsyncSocketException& ex) {
+  assert(state_ == StateEnum::ERROR);
+  assert(getDestructorGuardCount() > 0);
+  invokeAllErrors(ex);
 }
 
 void AsyncSocket::fail(const char* fn, const AsyncSocketException& ex) {
@@ -2010,7 +2021,7 @@ void AsyncSocket::failConnect(const char* fn, const AsyncSocketException& ex) {
   startFail();
 
   invokeConnectErr(ex);
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {

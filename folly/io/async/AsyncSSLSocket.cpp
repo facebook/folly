@@ -1127,11 +1127,21 @@ AsyncSSLSocket::handleConnect() noexcept {
 void AsyncSSLSocket::invokeConnectErr(const AsyncSocketException& ex) {
   connectionTimeout_.cancelTimeout();
   AsyncSocket::invokeConnectErr(ex);
+  if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
+    assert(tfoAttempted_);
+    if (handshakeTimeout_.isScheduled()) {
+      handshakeTimeout_.cancelTimeout();
+    }
+    // If we fell back to connecting state during TFO and the connection
+    // failed, it would be an SSL failure as well.
+    invokeHandshakeErr(ex);
+  }
 }
 
 void AsyncSSLSocket::invokeConnectSuccess() {
   connectionTimeout_.cancelTimeout();
   if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
+    assert(tfoAttempted_);
     // If we failed TFO, we'd fall back to trying to connect the socket,
     // to setup things like timeouts.
     startSSLConnect();

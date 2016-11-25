@@ -27,6 +27,9 @@ DEFINE_int32(port, 0, "port");
 DEFINE_bool(tfo, false, "enable tfo");
 DEFINE_string(msg, "", "Message to send");
 DEFINE_bool(ssl, false, "use ssl");
+DEFINE_int32(timeout_ms, 0, "timeout");
+DEFINE_int32(sendtimeout_ms, 0, "send timeout");
+DEFINE_int32(num_writes, 1, "number of writes");
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -53,6 +56,10 @@ int main(int argc, char** argv) {
 #endif
   }
 
+  if (FLAGS_sendtimeout_ms != 0) {
+    socket->setSendTimeout(FLAGS_sendtimeout_ms);
+  }
+
   // Keep this around
   auto sockAddr = socket.get();
 
@@ -60,10 +67,13 @@ int main(int argc, char** argv) {
   SocketAddress addr;
   addr.setFromHostPort(FLAGS_host, FLAGS_port);
   sock.setAddress(addr);
-  sock.open();
+  std::chrono::milliseconds timeout(FLAGS_timeout_ms);
+  sock.open(timeout);
   LOG(INFO) << "connected to " << addr.getAddressStr();
 
-  sock.write((const uint8_t*)FLAGS_msg.data(), FLAGS_msg.size());
+  for (int32_t i = 0; i < FLAGS_num_writes; ++i) {
+    sock.write((const uint8_t*)FLAGS_msg.data(), FLAGS_msg.size());
+  }
 
   LOG(INFO) << "TFO attempted: " << sockAddr->getTFOAttempted();
   LOG(INFO) << "TFO finished: " << sockAddr->getTFOFinished();
