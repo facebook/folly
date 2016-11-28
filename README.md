@@ -147,8 +147,6 @@ You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `maste
 ```
   cd folly
   ./build/bootstrap-osx-homebrew.sh
-  make
-  make check
 ```
 
 #### OS X (MacPorts)
