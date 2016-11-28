@@ -32,8 +32,17 @@ DEFINE_int64(num_ops, 10, "Number of ops or pairs of ops per rep");
 
 using namespace folly::hazptr;
 
-TEST(Hazptr, Test1) {
-  DEBUG_PRINT("========== start of scope");
+class HazptrTest : public testing::Test {
+ public:
+  HazptrTest() : Test() {
+    DEBUG_PRINT("========== start of test scope");
+  }
+  ~HazptrTest() override {
+    DEBUG_PRINT("========== end of test scope");
+  }
+};
+
+TEST_F(HazptrTest, Test1) {
   DEBUG_PRINT("");
   Node1* node0 = (Node1*)malloc(sizeof(Node1));
   DEBUG_PRINT("=== new    node0 " << node0 << " " << sizeof(*node0));
@@ -94,12 +103,9 @@ TEST(Hazptr, Test1) {
   n2->retire(myDomain0);
   DEBUG_PRINT("=== retire n3 " << n3);
   n3->retire(myDomain1);
-
-  DEBUG_PRINT("========== end of scope");
 }
 
-TEST(Hazptr, Test2) {
-  DEBUG_PRINT("========== start of scope");
+TEST_F(HazptrTest, Test2) {
   Node2* node0 = new Node2;
   DEBUG_PRINT("=== new    node0 " << node0 << " " << sizeof(*node0));
   Node2* node1 = (Node2*)malloc(sizeof(Node2));
@@ -159,13 +165,10 @@ TEST(Hazptr, Test2) {
   n2->retire(mineDomain0, &mineReclaimFnFree);
   DEBUG_PRINT("=== retire n3 " << n3);
   n3->retire(mineDomain1, &mineReclaimFnFree);
-
-  DEBUG_PRINT("========== end of scope");
 }
 
-TEST(Hazptr, LIFO) {
+TEST_F(HazptrTest, LIFO) {
   using T = uint32_t;
-  DEBUG_PRINT("========== start of test scope");
   CHECK_GT(FLAGS_num_threads, 0);
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     DEBUG_PRINT("========== start of rep scope");
@@ -185,12 +188,10 @@ TEST(Hazptr, LIFO) {
     }
     DEBUG_PRINT("========== end of rep scope");
   }
-  DEBUG_PRINT("========== end of test scope");
 }
 
-TEST(Hazptr, SWMRLIST) {
+TEST_F(HazptrTest, SWMRLIST) {
   using T = uint64_t;
-  DEBUG_PRINT("========== start of test scope");
   hazptr_domain custom_domain;
 
   CHECK_GT(FLAGS_num_threads, 0);
@@ -216,12 +217,9 @@ TEST(Hazptr, SWMRLIST) {
     }
     DEBUG_PRINT("========== end of rep scope");
   }
-  DEBUG_PRINT("========== end of test scope");
 }
 
-TEST(Hazptr, WIDECAS) {
-  DEBUG_PRINT("========== start of test scope");
-
+TEST_F(HazptrTest, WIDECAS) {
   WideCAS s;
   std::string u = "";
   std::string v = "11112222";
@@ -239,15 +237,4 @@ TEST(Hazptr, WIDECAS) {
   v = "333344445555";
   ret = s.cas(u, v);
   CHECK(ret);
-
-  DEBUG_PRINT("========== end of test scope");
-}
-
-int main(int argc, char** argv) {
-  DEBUG_PRINT("================================================= start main");
-  testing::InitGoogleTest(&argc, argv);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  auto ret = RUN_ALL_TESTS();
-  DEBUG_PRINT("================================================= end main");
-  return ret;
 }
