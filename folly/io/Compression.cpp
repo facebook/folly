@@ -259,20 +259,22 @@ std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
   }
 
   int n;
+  auto input = reinterpret_cast<const char*>(data->data());
+  auto output = reinterpret_cast<char*>(out->writableTail());
+  const auto inputLength = data->length();
+#if LZ4_VERSION_NUMBER >= 10700
   if (highCompression_) {
-    n = LZ4_compress_HC(
-        reinterpret_cast<const char*>(data->data()),
-        reinterpret_cast<char*>(out->writableTail()),
-        data->length(),
-        out->tailroom(),
-        0);
+    n = LZ4_compress_HC(input, output, inputLength, out->tailroom(), 0);
   } else {
-    n = LZ4_compress_default(
-        reinterpret_cast<const char*>(data->data()),
-        reinterpret_cast<char*>(out->writableTail()),
-        data->length(),
-        out->tailroom());
+    n = LZ4_compress_default(input, output, inputLength, out->tailroom());
   }
+#else
+  if (highCompression_) {
+    n = LZ4_compressHC(input, output, inputLength);
+  } else {
+    n = LZ4_compress(input, output, inputLength);
+  }
+#endif
 
   CHECK_GE(n, 0);
   CHECK_LE(n, out->capacity());
