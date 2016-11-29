@@ -206,7 +206,7 @@ class TestServer {
  public:
   // Create a TestServer.
   // This immediately starts listening on an ephemeral port.
-  explicit TestServer(bool enableTFO = false) : fd_(-1) {
+  explicit TestServer(bool enableTFO = false, int bufSize = -1) : fd_(-1) {
     namespace fsp = folly::portability::sockets;
     fd_ = fsp::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fd_ < 0) {
@@ -245,6 +245,11 @@ class TestServer {
     SCOPE_EXIT {
       freeaddrinfo(res);
     };
+
+    if (bufSize > 0) {
+      setsockopt(fd_, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
+      setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
+    }
 
     if (bind(fd_, res->ai_addr, res->ai_addrlen)) {
       throw folly::AsyncSocketException(

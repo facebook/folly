@@ -1091,6 +1091,72 @@ TEST(AsyncSocketTest, WritePipeError) {
 }
 
 /**
+ * Test that bytes written is correctly computed in case of write failure
+ */
+TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
+  // Send and receive buffer sizes for the sockets.
+  const int sockBufSize = 8 * 1024;
+
+  TestServer server(false, sockBufSize);
+
+  AsyncSocket::OptionMap options{
+      {{SOL_SOCKET, SO_SNDBUF}, sockBufSize},
+      {{SOL_SOCKET, SO_RCVBUF}, sockBufSize},
+      {{IPPROTO_TCP, TCP_NODELAY}, 1},
+  };
+
+  // The current thread will be used by the receiver - use a separate thread
+  // for the sender.
+  EventBase senderEvb;
+  std::thread senderThread([&]() { senderEvb.loopForever(); });
+
+  ConnCallback ccb;
+  std::shared_ptr<AsyncSocket> socket;
+
+  senderEvb.runInEventBaseThreadAndWait([&]() {
+    socket = AsyncSocket::newSocket(&senderEvb);
+    socket->connect(&ccb, server.getAddress(), 30, options);
+  });
+
+  // accept the socket on the server side
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+
+  // Send a big (45KB) write so that it is partially written. The first write
+  // is 16KB (8KB on both sides) and subsequent writes are 8KB each. Reading
+  // just under 24KB would cause 3-4 writes for the total of 32-40KB in the
+  // following sequence: 16KB + 8KB + 8KB (+ 8KB). This ensures that not all
+  // bytes are written when the socket is reset. Having at least 3 writes
+  // ensures that the total size (45KB) would be exceeed in case of overcounting
+  // based on the initial write size of 16KB.
+  constexpr size_t sendSize = 45 * 1024;
+  auto const sendBuf = std::vector<char>(sendSize, 'a');
+
+  WriteCallback wcb;
+
+  senderEvb.runInEventBaseThreadAndWait(
+      [&]() { socket->write(&wcb, sendBuf.data(), sendSize); });
+
+  // Reading 20KB would cause three additional writes of 8KB, but less
+  // than 45KB total, so the socket is reset before all bytes are written.
+  constexpr size_t recvSize = 20 * 1024;
+  uint8_t recvBuf[recvSize];
+  int bytesRead = acceptedSocket->readAll(recvBuf, sizeof(recvBuf));
+
+  acceptedSocket->closeWithReset();
+
+  senderEvb.terminateLoopSoon();
+  senderThread.join();
+
+  LOG(INFO) << "Bytes written: " << wcb.bytesWritten;
+
+  ASSERT_EQ(STATE_FAILED, wcb.state);
+  ASSERT_GE(wcb.bytesWritten, bytesRead);
+  ASSERT_LE(wcb.bytesWritten, sendSize);
+  ASSERT_EQ(recvSize, bytesRead);
+  ASSERT(32 * 1024 == wcb.bytesWritten || 40 * 1024 == wcb.bytesWritten);
+}
+
+/**
  * Test writing a mix of simple buffers and IOBufs
  */
 TEST(AsyncSocketTest, WriteIOBuf) {
