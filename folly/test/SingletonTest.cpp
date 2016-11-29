@@ -393,8 +393,8 @@ template <typename T, typename Tag = detail::DefaultTag>
 using SingletonCreationError = Singleton<T, Tag, CreationErrorTag>;
 
 TEST(Singleton, SingletonCreationError) {
-  SingletonVault::singleton<CreationErrorTag>();
   SingletonCreationError<ErrorConstructor> error_once_singleton;
+  SingletonVault::singleton<CreationErrorTag>()->registrationComplete();
 
   // first time should error out
   EXPECT_THROW(error_once_singleton.try_get(), std::runtime_error);
@@ -411,6 +411,7 @@ using SingletonConcurrencyStress = Singleton <T, Tag, ConcurrencyStressTag>;
 TEST(Singleton, SingletonConcurrencyStress) {
   auto& vault = *SingletonVault::singleton<ConcurrencyStressTag>();
   SingletonConcurrencyStress<Slowpoke> slowpoke_singleton;
+  vault.registrationComplete();
 
   std::vector<std::thread> ts;
   for (size_t i = 0; i < 100; ++i) {

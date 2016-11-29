@@ -103,12 +103,17 @@ void SingletonVault::registrationComplete() {
   auto state = state_.wlock();
   stateCheck(SingletonVaultState::Running, *state);
 
+  if (state->registrationComplete) {
+    return;
+  }
+
   auto singletons = singletons_.rlock();
   if (type_ == Type::Strict) {
     for (const auto& p : *singletons) {
       if (p.second->hasLiveInstance()) {
         throw std::runtime_error(
-            "Singleton created before registration was complete.");
+            "Singleton " + p.first.name() +
+            " created before registration was complete.");
       }
     }
   }

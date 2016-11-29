@@ -348,7 +348,7 @@ class SingletonVault {
     }
   };
 
-  explicit SingletonVault(Type type = Type::Relaxed) : type_(type) {}
+  explicit SingletonVault(Type type = Type::Strict) : type_(type) {}
 
   // Destructor is only called by unit tests to check destroyInstances.
   ~SingletonVault();
@@ -509,7 +509,7 @@ class SingletonVault {
 
   folly::Synchronized<State> state_;
 
-  Type type_{Type::Relaxed};
+  Type type_;
 };
 
 // This is the wrapper class that most users actually interact with.

@@ -225,9 +225,6 @@ void SingletonHolder<T>::createInstance() {
 
   auto state = vault_.state_.rlock();
   if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
-    if (vault_.type_ != SingletonVault::Type::Relaxed) {
-      LOG(FATAL) << "Requesting singleton after vault was destroyed.";
-    }
     return;
   }
 
