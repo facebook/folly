@@ -83,7 +83,7 @@ class ScopeGuardImplBase {
       function();
     } catch (...) {
       warnAboutToCrash();
-      throw;
+      std::terminate();
     }
   }
 
