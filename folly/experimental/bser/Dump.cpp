@@ -198,7 +198,7 @@ std::unique_ptr<folly::IOBuf> toBserIOBuf(folly::dynamic const& dyn,
 
   // compute the length
   auto len = q.chainLength();
-  if (len > std::numeric_limits<int64_t>::max()) {
+  if (len > uint64_t(std::numeric_limits<int64_t>::max())) {
     throw std::range_error(folly::to<std::string>(
         "serialized data size ", len, " is too large to represent as BSER"));
   }

@@ -419,7 +419,7 @@ IPAddress::longestCommonPrefix(const CIDRNetwork& one, const CIDRNetwork& two) {
   } else {
     throw std::invalid_argument("Unknown address family");
   }
-  return {IPAddress(0), 0};
+  return {IPAddress(0), uint8_t(0)};
 }
 
 [[noreturn]] void IPAddress::asV4Throw() const {

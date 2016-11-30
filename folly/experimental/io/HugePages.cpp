@@ -96,7 +96,7 @@ size_t parsePageSizeValue(StringPiece value) {
   }
   char c = '\0';
   if (match.length(2) != 0) {
-    c = tolower(value[match.position(2)]);
+    c = char(tolower(value[match.position(2)]));
   }
   StringPiece numStr(value.data() + match.position(1), match.length(1));
   size_t size = to<size_t>(numStr);

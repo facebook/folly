@@ -31,7 +31,7 @@ fbstring submatch(const boost::cmatch& m, size_t idx) {
 template <class String>
 void toLower(String& s) {
   for (auto& c : s) {
-    c = tolower(c);
+    c = char(tolower(c));
   }
 }
 

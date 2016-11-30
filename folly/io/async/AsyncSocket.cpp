@@ -126,7 +126,8 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     currentOp->iov_len -= partialBytes_;
 
     // Increment the totalBytesWritten_ count by bytesWritten_;
-    totalBytesWritten_ += bytesWritten_;
+    assert(bytesWritten_ >= 0);
+    totalBytesWritten_ += uint32_t(bytesWritten_);
   }
 
  private:

@@ -548,7 +548,7 @@ bool SocketAddress::prefixMatch(const SocketAddress& other,
   if (other.getFamily() != getFamily()) {
     return false;
   }
-  int mask_length = 128;
+  uint8_t mask_length = 128;
   switch (getFamily()) {
     case AF_INET:
       mask_length = 32;

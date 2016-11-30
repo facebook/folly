@@ -28,7 +28,7 @@ inline int popcount(unsigned int x) {
   return __popcnt(x);
 }
 inline int popcountll(unsigned long long x) {
-  return __popcnt64(x);
+  return int(__popcnt64(x));
 }
 #elif defined(__POPCNT__)
 

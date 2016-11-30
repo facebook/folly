@@ -552,7 +552,7 @@ dynamic parseNumber(Input& in) {
 }
 
 std::string decodeUnicodeEscape(Input& in) {
-  auto hexVal = [&] (char c) -> unsigned {
+  auto hexVal = [&] (int c) -> uint16_t {
     return c >= '0' && c <= '9' ? c - '0' :
            c >= 'a' && c <= 'f' ? c - 'a' + 10 :
            c >= 'A' && c <= 'F' ? c - 'A' + 10 :
@@ -645,7 +645,7 @@ std::string parseString(Input& in) {
       in.error("null byte in string");
     }
 
-    ret.push_back(*in);
+    ret.push_back(char(*in));
     ++in;
   }
 
