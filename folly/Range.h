@@ -363,16 +363,30 @@ public:
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71448
     return e_ - b_;
   }
-  size_type walk_size() const {
+  constexpr size_type walk_size() const {
     return std::distance(b_, e_);
   }
-  bool empty() const { return b_ == e_; }
-  Iter data() const { return b_; }
-  Iter start() const { return b_; }
-  Iter begin() const { return b_; }
-  Iter end() const { return e_; }
-  Iter cbegin() const { return b_; }
-  Iter cend() const { return e_; }
+  constexpr bool empty() const {
+    return b_ == e_;
+  }
+  constexpr Iter data() const {
+    return b_;
+  }
+  constexpr Iter start() const {
+    return b_;
+  }
+  constexpr Iter begin() const {
+    return b_;
+  }
+  constexpr Iter end() const {
+    return e_;
+  }
+  constexpr Iter cbegin() const {
+    return b_;
+  }
+  constexpr Iter cend() const {
+    return e_;
+  }
   value_type& front() {
     assert(b_ < e_);
     return *b_;

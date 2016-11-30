@@ -1297,3 +1297,15 @@ TEST(Range, Constructors) {
   EXPECT_EQ(subpiece1.begin(), subpiece2.begin());
   EXPECT_EQ(subpiece1.end(), subpiece2.end());
 }
+
+TEST(Range, ConstexprAccessors) {
+  constexpr StringPiece piece = range("hello");
+  static_assert(piece.size() == 6u, "");
+  static_assert(piece.end() - piece.begin() == 6u, "");
+  static_assert(piece.data() == piece.begin(), "");
+  static_assert(piece.start() == piece.begin(), "");
+  static_assert(piece.cbegin() == piece.begin(), "");
+  static_assert(piece.cend() == piece.end(), "");
+  static_assert(*piece.begin() == 'h', "");
+  static_assert(*(piece.end() - 1) == '\0', "");
+}
