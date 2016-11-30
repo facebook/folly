@@ -20,6 +20,7 @@
  */
 
 #include <folly/io/async/Request.h>
+#include <folly/tracing/StaticTracepoint.h>
 
 #include <glog/logging.h>
 
@@ -94,6 +95,7 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
     std::shared_ptr<RequestContext> ctx) {
   auto& curCtx = getStaticContext();
   if (ctx != curCtx) {
+    FOLLY_SDT(folly, request_context_switch_before, curCtx.get(), ctx.get());
     using std::swap;
     if (curCtx) {
       curCtx->onUnset();

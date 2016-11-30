@@ -363,6 +363,7 @@ nobase_follyinclude_HEADERS = \
 	ThreadName.h \
 	TimeoutQueue.h \
 	TokenBucket.h \
+	tracing/StaticTracepoint.h \
 	Traits.h \
 	Try-inl.h \
 	Try.h \
