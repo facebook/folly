@@ -155,6 +155,10 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     return LoopKeepAlive(this);
   }
 
+  bool inRunningEventBaseThread() const {
+    return evb_.inRunningEventBaseThread();
+  }
+
  private:
   using LoopCallbackList = EventBase::LoopCallback::List;
 
