@@ -1128,7 +1128,6 @@ void AsyncSSLSocket::invokeConnectErr(const AsyncSocketException& ex) {
   connectionTimeout_.cancelTimeout();
   AsyncSocket::invokeConnectErr(ex);
   if (sslState_ == SSLStateEnum::STATE_CONNECTING) {
-    assert(tfoAttempted_);
     if (handshakeTimeout_.isScheduled()) {
       handshakeTimeout_.cancelTimeout();
     }
