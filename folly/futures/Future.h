@@ -129,6 +129,11 @@ class Future {
   /** A reference to the Try of the value */
   Try<T>& getTry();
 
+  /// Call e->drive() repeatedly until the future is fulfilled. Examples
+  /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
+  /// reference to the Try of the value.
+  Try<T>& getTryVia(DrivableExecutor* e);
+
   /// If the promise has been fulfilled, return an Optional with the Try<T>.
   /// Otherwise return an empty Optional.
   /// Note that this moves the Try<T> out.

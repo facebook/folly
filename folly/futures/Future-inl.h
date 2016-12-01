@@ -416,6 +416,11 @@ Try<T>& Future<T>::getTry() {
 }
 
 template <class T>
+Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
+  return waitVia(e).getTry();
+}
+
+template <class T>
 Optional<Try<T>> Future<T>::poll() {
   Optional<Try<T>> o;
   if (core_->ready()) {

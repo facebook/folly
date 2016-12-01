@@ -400,6 +400,32 @@ TEST(Via, getVia) {
   }
 }
 
+TEST(Via, getTryVia) {
+  {
+    // non-void
+    ManualExecutor x;
+    auto f = via(&x).then([] { return 23; });
+    EXPECT_FALSE(f.isReady());
+    EXPECT_EQ(23, f.getTryVia(&x).value());
+  }
+
+  {
+    // void
+    ManualExecutor x;
+    auto f = via(&x).then();
+    EXPECT_FALSE(f.isReady());
+    auto t = f.getTryVia(&x);
+    EXPECT_TRUE(t.hasValue());
+  }
+
+  {
+    DummyDrivableExecutor x;
+    auto f = makeFuture(23);
+    EXPECT_EQ(23, f.getTryVia(&x).value());
+    EXPECT_FALSE(x.ran);
+  }
+}
+
 TEST(Via, waitVia) {
   {
     ManualExecutor x;
