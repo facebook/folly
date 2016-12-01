@@ -65,9 +65,9 @@ class ThreadLocalPRNG {
 
   ThreadLocalPRNG();
 
- private:
   class LocalInstancePRNG;
 
+ private:
   static result_type getImpl(LocalInstancePRNG* local);
   LocalInstancePRNG* local_;
 };
