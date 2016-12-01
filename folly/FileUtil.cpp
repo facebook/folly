@@ -18,6 +18,7 @@
 
 #include <cerrno>
 
+#include <folly/Exception.h>
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
@@ -140,6 +141,96 @@ ssize_t writevFull(int fd, iovec* iov, int count) {
 
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
   return wrapvFull(pwritev, fd, iov, count, offset);
+}
+
+int writeFileAtomicNoThrow(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions) {
+  // We write the data to a temporary file name first, then atomically rename
+  // it into place.  This ensures that the file contents will always be valid,
+  // even if we crash or are killed partway through writing out data.
+  //
+  // Create a buffer that will contain two things:
+  // - A nul-terminated version of the filename
+  // - The temporary file name
+  std::vector<char> pathBuffer;
+  // Note that we have to explicitly pass in the size here to make
+  // sure the nul byte gets included in the data.
+  constexpr folly::StringPiece suffix(".XXXXXX\0", 8);
+  pathBuffer.resize((2 * filename.size()) + 1 + suffix.size());
+  // Copy in the filename and then a nul terminator
+  memcpy(pathBuffer.data(), filename.data(), filename.size());
+  pathBuffer[filename.size()] = '\0';
+  const char* const filenameCStr = pathBuffer.data();
+  // Now prepare the temporary path template
+  char* const tempPath = pathBuffer.data() + filename.size() + 1;
+  memcpy(tempPath, filename.data(), filename.size());
+  memcpy(tempPath + filename.size(), suffix.data(), suffix.size());
+
+  auto tmpFD = mkstemp(tempPath);
+  if (tmpFD == -1) {
+    return errno;
+  }
+  bool success = false;
+  SCOPE_EXIT {
+    if (tmpFD != -1) {
+      close(tmpFD);
+    }
+    if (!success) {
+      unlink(tempPath);
+    }
+  };
+
+  auto rc = writevFull(tmpFD, iov, count);
+  if (rc == -1) {
+    return errno;
+  }
+
+  rc = fchmod(tmpFD, permissions);
+  if (rc == -1) {
+    return errno;
+  }
+
+  // Close the file before renaming to make sure all data has
+  // been successfully written.
+  rc = close(tmpFD);
+  tmpFD = -1;
+  if (rc == -1) {
+    return errno;
+  }
+
+  rc = rename(tempPath, filenameCStr);
+  if (rc == -1) {
+    return errno;
+  }
+  success = true;
+  return 0;
+}
+
+void writeFileAtomic(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions) {
+  auto rc = writeFileAtomicNoThrow(filename, iov, count, permissions);
+  checkPosixError(rc, "writeFileAtomic() failed to update ", filename);
+}
+
+void writeFileAtomic(StringPiece filename, ByteRange data, mode_t permissions) {
+  iovec iov;
+  iov.iov_base = const_cast<unsigned char*>(data.data());
+  iov.iov_len = data.size();
+  auto rc = writeFileAtomicNoThrow(filename, &iov, 1, permissions);
+  checkPosixError(rc, "writeFileAtomic() failed to update ", filename);
+}
+
+void writeFileAtomic(
+    StringPiece filename,
+    StringPiece data,
+    mode_t permissions) {
+  writeFileAtomic(filename, ByteRange(data), permissions);
 }
 
 }  // namespaces

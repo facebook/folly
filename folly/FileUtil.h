@@ -95,6 +95,9 @@ ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
  * Note that writevFull and pwritevFull require iov to be non-const, unlike
  * writev and pwritev.  The contents of iov after these functions return
  * is unspecified.
+ *
+ * These functions return -1 on error, or the total number of bytes written
+ * (which is always the same as the number of requested bytes) on success.
  */
 ssize_t writeFull(int fd, const void* buf, size_t n);
 ssize_t pwriteFull(int fd, const void* buf, size_t n, off_t offset);
@@ -191,6 +194,10 @@ bool readFile(
  *
  * Returns: true on success or false on failure. In the latter case
  * errno will be set appropriately by the failing system primitive.
+ *
+ * Note that this function may leave the file in a partially written state on
+ * failure.  Use writeFileAtomic() if you want to ensure that the existing file
+ * state will be unchanged on error.
  */
 template <class Container>
 bool writeFile(const Container& data, const char* filename,
@@ -205,5 +212,42 @@ bool writeFile(const Container& data, const char* filename,
     writeFull(fd, &data[0], data.size()) == static_cast<ssize_t>(data.size());
   return closeNoInt(fd) == 0 && ok;
 }
+
+/**
+ * Write file contents "atomically".
+ *
+ * This writes the data to a temporary file in the destination directory, and
+ * then renames it to the specified path.  This guarantees that the specified
+ * file will be replaced the the specified contents on success, or will not be
+ * modified on failure.
+ *
+ * Note that on platforms that do not provide atomic filesystem rename
+ * functionality (e.g., Windows) this behavior may not be truly atomic.
+ */
+void writeFileAtomic(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions = 0644);
+void writeFileAtomic(
+    StringPiece filename,
+    ByteRange data,
+    mode_t permissions = 0644);
+void writeFileAtomic(
+    StringPiece filename,
+    StringPiece data,
+    mode_t permissions = 0644);
+
+/**
+ * A version of writeFileAtomic() that returns an errno value instead of
+ * throwing on error.
+ *
+ * Returns 0 on success or an errno value on error.
+ */
+int writeFileAtomicNoThrow(
+    StringPiece filename,
+    iovec* iov,
+    int count,
+    mode_t permissions = 0644);
 
 }  // namespaces

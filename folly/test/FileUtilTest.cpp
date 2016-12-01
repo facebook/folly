@@ -19,9 +19,13 @@
 #include <folly/experimental/TestUtil.h>
 
 #include <deque>
+#if defined(__linux__)
+#include <dlfcn.h>
+#endif
 
 #include <glog/logging.h>
 
+#include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/String.h>
@@ -340,4 +344,232 @@ TEST_F(ReadFileFd, InvalidFd) {
   });
   PLOG(INFO);
 }
+
+class WriteFileAtomic : public ::testing::Test {
+ protected:
+  WriteFileAtomic() {}
+
+  std::set<std::string> listTmpDir() const {
+    std::set<std::string> entries;
+    for (auto& entry : fs::directory_iterator(tmpDir_.path())) {
+      entries.insert(entry.path().filename().string());
+    }
+    return entries;
+  }
+
+  std::string readData(const string& path) const {
+    string data;
+    if (!readFile(path.c_str(), data)) {
+      throwSystemError("failed to read ", path);
+    }
+    return data;
+  }
+
+  struct stat statFile(const string& path) const {
+    struct stat s;
+    auto rc = stat(path.c_str(), &s);
+    checkUnixError(rc, "failed to stat() ", path);
+    return s;
+  }
+
+  mode_t getPerms(const string& path) {
+    return (statFile(path).st_mode & 0777);
+  }
+
+  string tmpPath(StringPiece name) {
+    return tmpDir_.path().string() + "/" + name.str();
+  }
+
+  void setDirPerms(mode_t mode) {
+    auto rc = chmod(tmpDir_.path().string().c_str(), mode);
+    checkUnixError(rc, "failed to set permissions on tmp dir");
+  }
+
+  TemporaryDirectory tmpDir_{"folly_file_test"};
+};
+
+TEST_F(WriteFileAtomic, writeNew) {
+  // Call writeFileAtomic() to create a new file
+  auto path = tmpPath("foo");
+  auto contents = StringPiece{"contents\n"};
+  writeFileAtomic(path, contents);
+
+  // The directory should contain exactly 1 file now, with the correct contents
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents, readData(path));
+  EXPECT_EQ(0644, getPerms(path));
+}
+
+TEST_F(WriteFileAtomic, overwrite) {
+  // Call writeFileAtomic() to create a new file
+  auto path = tmpPath("foo");
+  auto contents1 = StringPiece{"contents\n"};
+  writeFileAtomic(path, contents1);
+
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents1, readData(path));
+  EXPECT_EQ(0644, getPerms(path));
+
+  // Now overwrite the file with different contents
+  auto contents2 = StringPiece{"testing"};
+  writeFileAtomic(path, contents2);
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents2, readData(path));
+  EXPECT_EQ(0644, getPerms(path));
+
+  // Test overwriting with relatively large contents, and different permissions
+  auto contents3 =
+      "asdf" + string(10240, '\n') + "foobar\n" + string(10240, 'b') + "\n";
+  writeFileAtomic(path, contents3, 0444);
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents3, readData(path));
+  EXPECT_EQ(0444, getPerms(path));
+
+  // Test overwriting with empty contents
+  //
+  // Note that the file's permissions are 0444 at this point (read-only),
+  // but we writeFileAtomic() should still replace it successfully.  Since we
+  // update it with a rename we need write permissions on the parent directory,
+  // but not the destination file.
+  auto contents4 = StringPiece("");
+  writeFileAtomic(path, contents4, 0400);
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents4, readData(path));
+  EXPECT_EQ(0400, getPerms(path));
+}
+
+TEST_F(WriteFileAtomic, directoryPermissions) {
+  // Test writeFileAtomic() when we do not have write permission in the target
+  // directory.
+  //
+  // Make the test directory read-only
+  setDirPerms(0555);
+  SCOPE_EXIT {
+    // Restore directory permissions before we exit, just to ensure the code
+    // will be able to clean up the directory.
+    try {
+      setDirPerms(0755);
+    } catch (const std::exception&) {
+      // Intentionally ignore errors here, in case an exception is already
+      // being thrown.
+    }
+  };
+
+  // writeFileAtomic() should fail, and the directory should still be empty
+  auto path1 = tmpPath("foo");
+  auto contents = StringPiece("testing");
+  EXPECT_THROW(writeFileAtomic(path1, contents), std::system_error);
+  EXPECT_EQ(set<string>{}, listTmpDir());
+
+  // Make the directory writable again, then create the file
+  setDirPerms(0755);
+  writeFileAtomic(path1, contents, 0400);
+  EXPECT_EQ(contents, readData(path1));
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+
+  // Make the directory read-only again
+  // Creating another file now should fail and we should still have only the
+  // first file.
+  setDirPerms(0555);
+  EXPECT_THROW(
+      writeFileAtomic(tmpPath("another_file.txt"), "x\n"), std::system_error);
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+}
+
+TEST_F(WriteFileAtomic, multipleFiles) {
+  // Test creating multiple files in the same directory
+  writeFileAtomic(tmpPath("foo.txt"), "foo");
+  writeFileAtomic(tmpPath("bar.txt"), "bar", 0400);
+  writeFileAtomic(tmpPath("foo_txt"), "underscore", 0440);
+  writeFileAtomic(tmpPath("foo.txt2"), "foo2", 0444);
+
+  auto expectedPaths = set<string>{"foo.txt", "bar.txt", "foo_txt", "foo.txt2"};
+  EXPECT_EQ(expectedPaths, listTmpDir());
+  EXPECT_EQ("foo", readData(tmpPath("foo.txt")));
+  EXPECT_EQ("bar", readData(tmpPath("bar.txt")));
+  EXPECT_EQ("underscore", readData(tmpPath("foo_txt")));
+  EXPECT_EQ("foo2", readData(tmpPath("foo.txt2")));
+  EXPECT_EQ(0644, getPerms(tmpPath("foo.txt")));
+  EXPECT_EQ(0400, getPerms(tmpPath("bar.txt")));
+  EXPECT_EQ(0440, getPerms(tmpPath("foo_txt")));
+  EXPECT_EQ(0444, getPerms(tmpPath("foo.txt2")));
+}
 }}  // namespaces
+
+#if defined(__linux__)
+namespace {
+/**
+ * A helper class that forces our fchmod() wrapper to fail when
+ * an FChmodFailure object exists.
+ */
+class FChmodFailure {
+ public:
+  FChmodFailure() {
+    ++forceFailure_;
+  }
+  ~FChmodFailure() {
+    --forceFailure_;
+  }
+
+  static bool shouldFail() {
+    return forceFailure_.load() > 0;
+  }
+
+ private:
+  static std::atomic<int> forceFailure_;
+};
+
+std::atomic<int> FChmodFailure::forceFailure_{0};
+}
+
+// Replace the system fchmod() function with our own stub, so we can
+// trigger failures in the writeFileAtomic() tests.
+int fchmod(int fd, mode_t mode) {
+  static const auto realFunction =
+      reinterpret_cast<int (*)(int, mode_t)>(dlsym(RTLD_NEXT, "fchmod"));
+  // For sanity, make sure we didn't find ourself,
+  // since that would cause infinite recursion.
+  CHECK_NE(realFunction, fchmod);
+
+  if (FChmodFailure::shouldFail()) {
+    errno = EINVAL;
+    return -1;
+  }
+  return realFunction(fd, mode);
+}
+
+namespace folly {
+namespace test {
+TEST_F(WriteFileAtomic, chmodFailure) {
+  auto path = tmpPath("foo");
+
+  // Use our stubbed out fchmod() function to force a failure when setting up
+  // the temporary file.
+  //
+  // First try when creating the file for the first time.
+  {
+    FChmodFailure fail;
+    EXPECT_THROW(writeFileAtomic(path, "foobar"), std::system_error);
+  }
+  EXPECT_EQ(set<string>{}, listTmpDir());
+
+  // Now create a file normally so we can overwrite it
+  auto contents = StringPiece("regular perms");
+  writeFileAtomic(path, contents, 0600);
+  EXPECT_EQ(contents, readData(path));
+  EXPECT_EQ(0600, getPerms(path));
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+
+  // Now try overwriting the file when forcing fchmod to fail
+  {
+    FChmodFailure fail;
+    EXPECT_THROW(writeFileAtomic(path, "overwrite"), std::system_error);
+  }
+  // The file should be unchanged
+  EXPECT_EQ(contents, readData(path));
+  EXPECT_EQ(0600, getPerms(path));
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+}
+}
+}
+#endif
