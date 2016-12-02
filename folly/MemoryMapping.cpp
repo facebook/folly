@@ -309,7 +309,7 @@ MemoryMapping::~MemoryMapping() {
 void MemoryMapping::advise(int advice) const { advise(advice, 0, mapLength_); }
 
 void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
-  CHECK_LE(offset + length, mapLength_)
+  CHECK_LE(offset + length, size_t(mapLength_))
     << " offset: " << offset
     << " length: " << length
     << " mapLength_: " << mapLength_;

@@ -1331,8 +1331,8 @@ class IOBuf {
   static inline uintptr_t packFlagsAndSharedInfo(uintptr_t flags,
                                                  SharedInfo* info) {
     uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
-    DCHECK_EQ(flags & ~kFlagMask, 0);
-    DCHECK_EQ(uinfo & kFlagMask, 0);
+    DCHECK_EQ(flags & ~kFlagMask, 0u);
+    DCHECK_EQ(uinfo & kFlagMask, 0u);
     return flags | uinfo;
   }
 
@@ -1342,7 +1342,7 @@ class IOBuf {
 
   inline void setSharedInfo(SharedInfo* info) {
     uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
-    DCHECK_EQ(uinfo & kFlagMask, 0);
+    DCHECK_EQ(uinfo & kFlagMask, 0u);
     flagsAndSharedInfo_ = (flagsAndSharedInfo_ & kFlagMask) | uinfo;
   }
 
@@ -1352,12 +1352,12 @@ class IOBuf {
 
   // flags_ are changed from const methods
   inline void setFlags(uintptr_t flags) const {
-    DCHECK_EQ(flags & ~kFlagMask, 0);
+    DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ |= flags;
   }
 
   inline void clearFlags(uintptr_t flags) const {
-    DCHECK_EQ(flags & ~kFlagMask, 0);
+    DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ &= ~flags;
   }
 

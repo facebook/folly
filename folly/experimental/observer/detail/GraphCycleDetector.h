@@ -40,7 +40,7 @@ class GraphCycleDetector {
     }
 
     auto& nodes = edges_[from];
-    DCHECK_EQ(0, nodes.count(to));
+    DCHECK_EQ(nodes.count(to), 0u);
     nodes.insert(to);
 
     return true;

@@ -211,15 +211,15 @@ std::unique_ptr<folly::IOBuf> toBserIOBuf(folly::dynamic const& dyn,
   auto magicptr = hdrbuf + sizeof(kMagic);
   auto lenptr = hdrbuf + hdrlen;
 
-  if (len > std::numeric_limits<int32_t>::max()) {
+  if (len > uint64_t(std::numeric_limits<int32_t>::max())) {
     *magicptr = (int8_t)BserType::Int64;
     *(int64_t*)lenptr = (int64_t)len;
     hdrlen += sizeof(int64_t);
-  } else if (len > std::numeric_limits<int16_t>::max()) {
+  } else if (len > uint64_t(std::numeric_limits<int16_t>::max())) {
     *magicptr = (int8_t)BserType::Int32;
     *(int32_t*)lenptr = (int32_t)len;
     hdrlen += sizeof(int32_t);
-  } else if (len > std::numeric_limits<int8_t>::max()) {
+  } else if (len > uint64_t(std::numeric_limits<int8_t>::max())) {
     *magicptr = (int8_t)BserType::Int16;
     *(int16_t*)lenptr = (int16_t)len;
     hdrlen += sizeof(int16_t);

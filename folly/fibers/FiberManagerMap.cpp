@@ -76,7 +76,7 @@ class GlobalCache {
   std::unique_ptr<FiberManager> eraseImpl(EventBaseT& evb) {
     std::lock_guard<std::mutex> lg(mutex_);
 
-    DCHECK_EQ(1, map_.count(&evb));
+    DCHECK_EQ(map_.count(&evb), 1u);
 
     auto ret = std::move(map_[&evb]);
     map_.erase(&evb);

@@ -27,7 +27,7 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     size_t nLevels,
     const Duration levelDurations[])
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
-  CHECK_GT(nLevels, 0);
+  CHECK_GT(nLevels, 0u);
   CHECK(levelDurations);
 
   levels_.reserve(nLevels);
@@ -46,10 +46,10 @@ MultiLevelTimeSeries<VT, CT>::MultiLevelTimeSeries(
     size_t nBuckets,
     std::initializer_list<Duration> durations)
     : cachedTime_(), cachedSum_(0), cachedCount_(0) {
-  CHECK_GT(durations.size(), 0);
+  CHECK_GT(durations.size(), 0u);
 
   levels_.reserve(durations.size());
-  int i = 0;
+  size_t i = 0;
   Duration prev{0};
   for (auto dur : durations) {
     if (dur == Duration(0)) {

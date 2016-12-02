@@ -44,11 +44,11 @@ struct Default {
     return __builtin_popcountll(value);
   }
   static FOLLY_ALWAYS_INLINE int ctz(uint64_t value) {
-    DCHECK_GT(value, 0);
+    DCHECK_GT(value, 0u);
     return __builtin_ctzll(value);
   }
   static FOLLY_ALWAYS_INLINE int clz(uint64_t value) {
-    DCHECK_GT(value, 0);
+    DCHECK_GT(value, 0u);
     return __builtin_clzll(value);
   }
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {

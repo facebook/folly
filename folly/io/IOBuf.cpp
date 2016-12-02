@@ -995,7 +995,7 @@ bool IOBufEqual::operator()(const IOBuf& a, const IOBuf& b) const {
       return false;
     }
     size_t n = std::min(ba.size(), bb.size());
-    DCHECK_GT(n, 0);
+    DCHECK_GT(n, 0u);
     if (memcmp(ba.data(), bb.data(), n)) {
       return false;
     }

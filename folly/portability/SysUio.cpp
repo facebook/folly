@@ -95,7 +95,7 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
       return -1;
     }
 
-    if (res == curLen) {
+    if (size_t(res) == curLen) {
       curIov++;
       if (curIov < count) {
         curBase = iov[curIov].iov_base;

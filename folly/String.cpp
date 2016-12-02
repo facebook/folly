@@ -540,7 +540,7 @@ size_t hexDumpLine(const void* ptr, size_t offset, size_t size,
   }
   line.append(16 - n, ' ');
   line.push_back('|');
-  DCHECK_EQ(line.size(), 78);
+  DCHECK_EQ(line.size(), 78u);
 
   return n;
 }

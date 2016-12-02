@@ -100,7 +100,7 @@ class MultiLevelTimeSeries {
    */
   const Level& getLevel(int level) const {
     CHECK(level >= 0);
-    CHECK_LT(level, levels_.size());
+    CHECK_LT(size_t(level), levels_.size());
     return levels_[level];
   }
 

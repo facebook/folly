@@ -34,7 +34,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
 #else
   std::unique_ptr<ThreadEntry> threadEntry(static_cast<ThreadEntry*>(ptr));
 #endif
-  DCHECK_GT(threadEntry->elementsCapacity, 0);
+  DCHECK_GT(threadEntry->elementsCapacity, 0u);
   auto& meta = *threadEntry->meta;
 
   // Make sure this ThreadEntry is available if ThreadLocal A is accessed in

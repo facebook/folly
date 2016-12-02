@@ -1176,6 +1176,19 @@ parseTo(StringPiece src, Tgt& out) {
 namespace detail {
 
 /**
+ * Bool to integral doesn't need any special checks, and this
+ * overload means we aren't trying to see if a bool is less than
+ * an integer.
+ */
+template <class Tgt>
+typename std::enable_if<
+    !std::is_same<Tgt, bool>::value && std::is_integral<Tgt>::value,
+    Expected<Tgt, ConversionCode>>::type
+convertTo(const bool& value) noexcept {
+  return static_cast<Tgt>(value ? 1 : 0);
+}
+
+/**
  * Checked conversion from integral to integral. The checks are only
  * performed when meaningful, e.g. conversion from int to long goes
  * unchecked.

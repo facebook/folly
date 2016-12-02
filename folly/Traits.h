@@ -423,11 +423,13 @@ struct is_negative_impl<T, false> {
 // inside what are really static ifs (not executed because of the templated
 // types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
 // in order to not prevent all calling code from using it.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
+FOLLY_PUSH_WARNING
+FOLLY_GCC_DISABLE_WARNING(sign-compare)
 #if __GNUC_PREREQ(5, 0)
-#pragma GCC diagnostic ignored "-Wbool-compare"
+FOLLY_GCC_DISABLE_WARNING(bool-compare)
 #endif
+FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
+FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
 
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than_impl(LHS const lhs) {
@@ -445,7 +447,7 @@ bool greater_than_impl(LHS const lhs) {
     lhs > rhs;
 }
 
-#pragma GCC diagnostic pop
+FOLLY_POP_WARNING
 
 } // namespace detail {
 
