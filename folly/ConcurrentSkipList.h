@@ -195,7 +195,7 @@ class ConcurrentSkipList {
   //===================================================================
 
   ~ConcurrentSkipList() {
-    /* static */ if (NodeType::template destroyIsNoOp<NodeAlloc>()) {
+    /* static */ if (NodeType::template DestroyIsNoOp<NodeAlloc>::value) {
       // Avoid traversing the list if using arena allocator.
       return;
     }

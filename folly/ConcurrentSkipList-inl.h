@@ -70,10 +70,9 @@ class SkipListNode : private boost::noncopyable {
   }
 
   template<typename NodeAlloc>
-  static constexpr bool destroyIsNoOp() {
-    return IsArenaAllocator<NodeAlloc>::value &&
-           boost::has_trivial_destructor<SkipListNode>::value;
-  }
+  struct DestroyIsNoOp : std::integral_constant<bool,
+    IsArenaAllocator<NodeAlloc>::value &&
+    boost::has_trivial_destructor<SkipListNode>::value> { };
 
   // copy the head node to a new head node assuming lock acquired
   SkipListNode* copyHead(SkipListNode* node) {
@@ -230,7 +229,7 @@ class NodeRecycler;
 
 template<typename NodeType, typename NodeAlloc>
 class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
-  !NodeType::template destroyIsNoOp<NodeAlloc>()>::type> {
+  !NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:
   explicit NodeRecycler(const NodeAlloc& alloc)
     : refs_(0), dirty_(false), alloc_(alloc) { lock_.init(); }
@@ -316,7 +315,7 @@ class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
 // to save on ConcurrentSkipList size.
 template<typename NodeType, typename NodeAlloc>
 class NodeRecycler<NodeType, NodeAlloc, typename std::enable_if<
-  NodeType::template destroyIsNoOp<NodeAlloc>()>::type> {
+  NodeType::template DestroyIsNoOp<NodeAlloc>::value>::type> {
  public:
   explicit NodeRecycler(const NodeAlloc& alloc) : alloc_(alloc) { }
 
