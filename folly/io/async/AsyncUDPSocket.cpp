@@ -88,7 +88,6 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
                    SO_REUSEPORT,
                    &value,
                    sizeof(value)) != 0) {
-      ::close(socket);
       throw AsyncSocketException(AsyncSocketException::NOT_OPEN,
                                 "failed to put socket in reuse_port mode",
                                 errno);
