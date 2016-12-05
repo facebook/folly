@@ -22,14 +22,20 @@
 
 namespace folly {
 
+// TLDR: Prefer using operator< for ordering. And when
+// a and b are equivalent objects, we return b to make
+// sorting stable.
+// See http://stepanovpapers.com/notes.pdf for details.
 template <typename T>
 constexpr T constexpr_max(T a, T b) {
-  return a > b ? a : b;
+  return b < a ? a : b;
 }
 
+// When a and b are equivalent objects, we return a to
+// make sorting stable.
 template <typename T>
 constexpr T constexpr_min(T a, T b) {
-  return a < b ? a : b;
+  return b < a ? b : a;
 }
 
 namespace detail {
@@ -67,7 +73,7 @@ struct constexpr_abs_helper<
     return t < static_cast<T>(0) ? -t : t;
   }
 };
-}
+} // namespace detail
 
 template <typename T>
 constexpr auto constexpr_abs(T t)
