@@ -82,8 +82,8 @@ end
 
 # Print global FiberManager map
 define print_folly_fiber_manager_map
-  set $global_cache=*(('folly::fibers::(anonymous namespace)::GlobalCache'**) \
-      &'folly::fibers::(anonymous namespace)::GlobalCache::instance()::ret')
+  set $global_cache=*(('folly::fibers::(anonymous namespace)::GlobalCache<folly::EventBase>'**) \
+      &'folly::fibers::(anonymous namespace)::GlobalCache<folly::EventBase>::instance()::ret')
   printf "  Global FiberManager map has %d entries.\n", \
          $global_cache->map_->_M_h->_M_element_count
 
