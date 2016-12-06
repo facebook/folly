@@ -26,7 +26,8 @@
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
-
+ 
+#include <stddef.h>
 #include <folly/portability/Config.h>
 
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
