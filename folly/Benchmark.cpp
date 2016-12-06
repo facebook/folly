@@ -45,7 +45,7 @@ DEFINE_int64(
     100,
     "Minimum # of microseconds we'll accept for each benchmark.");
 
-DEFINE_int64(
+DEFINE_int32(
     bm_min_iters,
     1,
     "Minimum # of iterations we'll try for each benchmark.");
