@@ -16,7 +16,7 @@
 #pragma once
 
 #include <chrono>
-#include <iostream>
+#include <iosfwd>
 
 #include <folly/portability/SysTypes.h>
 

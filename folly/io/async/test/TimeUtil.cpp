@@ -19,23 +19,24 @@
 
 #include <folly/io/async/test/TimeUtil.h>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#ifndef _MSC_VER
+#include <sys/utsname.h>
+#endif
+
+#include <chrono>
+#include <ostream>
+#include <stdexcept>
+
 #include <folly/Conv.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
-#include <chrono>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <glog/logging.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdexcept>
-
-#ifndef _MSC_VER
-#include <sys/utsname.h>
-#endif
 
 using std::string;
 using namespace std::chrono;
