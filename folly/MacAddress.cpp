@@ -16,7 +16,7 @@
 
 #include <folly/MacAddress.h>
 
-#include <iostream>
+#include <ostream>
 
 #include <folly/Exception.h>
 #include <folly/IPAddressV6.h>
