@@ -90,9 +90,8 @@ namespace folly {
  * unless evictions of LRU items are triggered by calling prune() by clients
  * (using their own eviction criteria).
  */
-template <class TKey, class TValue, class THash = std::hash<TKey> >
-class EvictingCacheMap : private boost::noncopyable {
-
+template <class TKey, class TValue, class THash = std::hash<TKey>>
+class EvictingCacheMap {
  private:
   // typedefs for brevity
   struct Node;
@@ -148,6 +147,10 @@ class EvictingCacheMap : private boost::noncopyable {
         maxSize_(maxSize),
         clearSize_(clearSize) { }
 
+  EvictingCacheMap(const EvictingCacheMap&) = delete;
+  EvictingCacheMap& operator=(const EvictingCacheMap&) = delete;
+  EvictingCacheMap(EvictingCacheMap&&) = default;
+  EvictingCacheMap& operator=(EvictingCacheMap&&) = default;
 
   ~EvictingCacheMap() {
     setPruneHook(nullptr);

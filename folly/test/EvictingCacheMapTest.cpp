@@ -616,3 +616,20 @@ TEST(EvictingCacheMap, IteratorOrderingTest) {
     EXPECT_EQ(-1, expected);
   }
 }
+
+TEST(EvictingCacheMap, MoveTest) {
+  const int nItems = 1000;
+  EvictingCacheMap<int, int> map(nItems);
+  for (int i = 0; i < nItems; i++) {
+    map.set(i, i);
+    EXPECT_TRUE(map.exists(i));
+    EXPECT_EQ(i, map.get(i));
+  }
+
+  EvictingCacheMap<int, int> map2 = std::move(map);
+  EXPECT_TRUE(map.empty());
+  for (int i = 0; i < nItems; i++) {
+    EXPECT_TRUE(map2.exists(i));
+    EXPECT_EQ(i, map2.get(i));
+  }
+}
