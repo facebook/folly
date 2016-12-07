@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <folly/portability/Config.h>
 #include <stdlib.h>
 
-#ifdef USE_JEMALLOC
+#if defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)
 // JEMalloc provides it's own implementation of
 // malloc_usable_size, and that's what we should be using.
 #include <jemalloc/jemalloc.h>
@@ -26,8 +27,6 @@
 #ifndef __APPLE__
 #include <malloc.h>
 #endif
-
-#include <folly/portability/Config.h>
 
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
 // MacOS doesn't have malloc_usable_size()

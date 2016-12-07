@@ -161,7 +161,15 @@ AC_CHECK_LIB([double-conversion],[ceil],[],[AC_MSG_ERROR(
 AC_CHECK_LIB([event], [event_set], [], [AC_MSG_ERROR([Unable to find libevent])])
 FB_CHECK_PKG_CONFIG([EVENT], [libevent])
 
-AC_CHECK_LIB([jemalloc], [xallocx])
+AC_ARG_WITH([jemalloc], [
+  --with-jemalloc     Whether to make folly jemalloc aware
+],[
+  AC_CHECK_LIB([jemalloc], [xallocx],[
+    AC_DEFINE([USE_JEMALLOC], [1], [Enable jemalloc])
+  ],[
+    AC_MSG_ERROR([--with-jemalloc requested, but jemalloc not found])
+  ])
+])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

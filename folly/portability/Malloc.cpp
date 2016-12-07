@@ -16,7 +16,7 @@
 
 #include <folly/portability/Malloc.h>
 
-#ifndef USE_JEMALLOC
+#if !defined(USE_JEMALLOC) && !defined(FOLLY_USE_JEMALLOC)
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
 #include <malloc/malloc.h>
 
