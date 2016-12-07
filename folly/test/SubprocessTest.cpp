@@ -199,7 +199,7 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   checkFdLeak([] {
     try {
       Subprocess proc(std::vector<std::string>({"/no/such/file"}),
-                      Subprocess::pipeStdout().stderr(Subprocess::PIPE));
+                      Subprocess::pipeStdout().stderrFd(Subprocess::PIPE));
       ADD_FAILURE() << "expected an error when running /no/such/file";
     } catch (const SubprocessSpawnError& ex) {
       EXPECT_EQ(ENOENT, ex.errnoValue());
@@ -236,7 +236,7 @@ TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
 TEST(PopenSubprocessTest, PopenRead) {
   Subprocess proc("ls /", Subprocess::pipeStdout());
   int found = 0;
-  gen::byLine(File(proc.stdout())) |
+  gen::byLine(File(proc.stdoutFd())) |
     [&] (StringPiece line) {
       if (line == "etc" || line == "bin" || line == "usr") {
         ++found;

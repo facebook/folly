@@ -34,12 +34,12 @@
  *
  * A thread-safe [1] version of popen() (type="r", to read from the child):
  *    Subprocess proc(cmd, Subprocess::pipeStdout());
- *    // read from proc.stdout()
+ *    // read from proc.stdoutFd()
  *    proc.wait();
  *
  * A thread-safe [1] version of popen() (type="w", to write to the child):
  *    Subprocess proc(cmd, Subprocess::pipeStdin());
- *    // write to proc.stdin()
+ *    // write to proc.stdinFd()
  *    proc.wait();
  *
  * If you want to redirect both stdin and stdout to pipes, you can, but note
@@ -298,19 +298,19 @@ class Subprocess {
     /**
      * Shortcut to change the action for standard input.
      */
-    Options& stdin(int action) { return fd(STDIN_FILENO, action); }
+    Options& stdinFd(int action) { return fd(STDIN_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard output.
      */
-    Options& stdout(int action) { return fd(STDOUT_FILENO, action); }
+    Options& stdoutFd(int action) { return fd(STDOUT_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard error.
      * Note that stderr(1) will redirect the standard error to the same
      * file descriptor as standard output; the equivalent of bash's "2>&1"
      */
-    Options& stderr(int action) { return fd(STDERR_FILENO, action); }
+    Options& stderrFd(int action) { return fd(STDERR_FILENO, action); }
 
     Options& pipeStdin() { return fd(STDIN_FILENO, PIPE_IN); }
     Options& pipeStdout() { return fd(STDOUT_FILENO, PIPE_OUT); }
@@ -416,9 +416,9 @@ class Subprocess {
       dangerousPostForkPreExecCallback_{nullptr};
   };
 
-  static Options pipeStdin() { return Options().stdin(PIPE); }
-  static Options pipeStdout() { return Options().stdout(PIPE); }
-  static Options pipeStderr() { return Options().stderr(PIPE); }
+  static Options pipeStdin() { return Options().stdinFd(PIPE); }
+  static Options pipeStdout() { return Options().stdoutFd(PIPE); }
+  static Options pipeStderr() { return Options().stderrFd(PIPE); }
 
   // Non-copiable, but movable
   Subprocess(const Subprocess&) = delete;
@@ -768,9 +768,9 @@ class Subprocess {
   int parentFd(int childFd) const {
     return pipes_[findByChildFd(childFd)].pipe.fd();
   }
-  int stdin() const { return parentFd(0); }
-  int stdout() const { return parentFd(1); }
-  int stderr() const { return parentFd(2); }
+  int stdinFd() const { return parentFd(0); }
+  int stdoutFd() const { return parentFd(1); }
+  int stderrFd() const { return parentFd(2); }
 
   /**
    * The child's pipes are logically separate from the process metadata

@@ -47,7 +47,7 @@ std::string callHelper(std::initializer_list<std::string> args,
 
   Subprocess::Options options;
   if (stdoutFd != -1) {
-    options.stdout(stdoutFd);
+    options.stdoutFd(stdoutFd);
   } else {
     options.pipeStdout();
   }

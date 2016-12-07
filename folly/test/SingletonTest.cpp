@@ -608,8 +608,8 @@ TEST(Singleton, DoubleRegistrationLogging) {
   auto p = Subprocess(
       std::vector<std::string>{sub.string()},
       Subprocess::Options()
-          .stdin(Subprocess::CLOSE)
-          .stdout(Subprocess::CLOSE)
+          .stdinFd(Subprocess::CLOSE)
+          .stdoutFd(Subprocess::CLOSE)
           .pipeStderr()
           .closeOtherFds());
   auto err = p.communicate("").second;
