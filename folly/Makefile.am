@@ -144,6 +144,7 @@ nobase_follyinclude_HEADERS = \
 	File.h \
 	FileUtil.h \
 	Fingerprint.h \
+	FixedString.h \
 	folly-config.h \
 	Foreach.h \
 	FormatArg.h \
