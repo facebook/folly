@@ -944,7 +944,7 @@ TEST(AsyncSocketTest, ConnectCallbackWrite) {
   testConnectOptWrite(100, 200);
 
   // Test using a large buffer in the connect callback, that should block
-  const size_t largeSize = 8*1024*1024;
+  const size_t largeSize = 32 * 1024 * 1024;
   testConnectOptWrite(100, largeSize);
 
   // Test using a large initial write
@@ -1013,8 +1013,12 @@ TEST(AsyncSocketTest, WriteTimeout) {
     AsyncSocket::newSocket(&evb, server.getAddress(), 30);
   evb.loop(); // loop until the socket is connected
 
-  // write() a large chunk of data, with no-one on the other end reading
-  size_t writeLength = 8*1024*1024;
+  // write() a large chunk of data, with no-one on the other end reading.
+  // Tricky: the kernel caches the connection metrics for recently-used
+  // routes (see tcp_no_metrics_save) so a freshly opened connection can
+  // have a send buffer size bigger than wmem_default.  This makes the test
+  // flaky on contbuild if writeLength is < wmem_max (20M on our systems).
+  size_t writeLength = 32 * 1024 * 1024;
   uint32_t timeout = 200;
   socket->setSendTimeout(timeout);
   scoped_array<char> buf(new char[writeLength]);
@@ -1071,7 +1075,7 @@ TEST(AsyncSocketTest, WritePipeError) {
   acceptedSocket->close();
 
   // write() a large chunk of data
-  size_t writeLength = 8*1024*1024;
+  size_t writeLength = 32 * 1024 * 1024;
   scoped_array<char> buf(new char[writeLength]);
   memset(buf.get(), 'a', writeLength);
   WriteCallback wcb;
