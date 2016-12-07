@@ -822,8 +822,8 @@ TEST(Future, RequestContext) {
   };
 
   Promise<int> p1, p2;
+  NewThreadExecutor e;
   {
-    NewThreadExecutor e;
     folly::RequestContextScopeGuard rctx;
     RequestContext::get()->setContextData(
         "key", folly::make_unique<MyRequestData>(true));
