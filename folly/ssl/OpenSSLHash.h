@@ -106,7 +106,7 @@ class OpenSSLHash {
     void hash_init(const EVP_MD* md, ByteRange key) {
       md_ = md;
       check_libssl_result(
-          1, HMAC_Init_ex(&ctx_, key.data(), key.size(), md_, nullptr));
+          1, HMAC_Init_ex(&ctx_, key.data(), int(key.size()), md_, nullptr));
     }
     void hash_update(ByteRange data) {
       check_libssl_result(1, HMAC_Update(&ctx_, data.data(), data.size()));
@@ -121,7 +121,7 @@ class OpenSSLHash {
       check_out_size(size, out);
       unsigned int len = 0;
       check_libssl_result(1, HMAC_Final(&ctx_, out.data(), &len));
-      check_libssl_result(size, len);
+      check_libssl_result(size, int(len));
       md_ = nullptr;
     }
    private:

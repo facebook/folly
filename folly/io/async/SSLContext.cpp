@@ -278,7 +278,7 @@ void SSLContext::loadCertificateFromBufferPEM(folly::StringPiece cert) {
     throw std::runtime_error("BIO_new: " + getErrors());
   }
 
-  int written = BIO_write(bio.get(), cert.data(), cert.size());
+  int written = BIO_write(bio.get(), cert.data(), int(cert.size()));
   if (written <= 0 || static_cast<unsigned>(written) != cert.size()) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
@@ -318,7 +318,7 @@ void SSLContext::loadPrivateKeyFromBufferPEM(folly::StringPiece pkey) {
     throw std::runtime_error("BIO_new: " + getErrors());
   }
 
-  int written = BIO_write(bio.get(), pkey.data(), pkey.size());
+  int written = BIO_write(bio.get(), pkey.data(), int(pkey.size()));
   if (written <= 0 || static_cast<unsigned>(written) != pkey.size()) {
     throw std::runtime_error("BIO_write: " + getErrors());
   }
@@ -517,12 +517,12 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
     advertised_item.length = 0;
     for (const auto& proto : item.protocols) {
       ++advertised_item.length;
-      unsigned protoLength = proto.length();
+      auto protoLength = proto.length();
       if (protoLength >= 256) {
         deleteNextProtocolsStrings();
         return false;
       }
-      advertised_item.length += protoLength;
+      advertised_item.length += unsigned(protoLength);
     }
     advertised_item.protocols = new unsigned char[advertised_item.length];
     if (!advertised_item.protocols) {
@@ -530,7 +530,7 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
     }
     unsigned char* dst = advertised_item.protocols;
     for (auto& proto : item.protocols) {
-      unsigned protoLength = proto.length();
+      uint8_t protoLength = uint8_t(proto.length());
       *dst++ = (unsigned char)protoLength;
       memcpy(dst, proto.data(), protoLength);
       dst += protoLength;
@@ -715,7 +715,7 @@ int SSLContext::passwordCallback(char* password,
   std::string userPassword;
   // call user defined password collector to get password
   context->passwordCollector()->getPassword(userPassword, size);
-  int length = userPassword.size();
+  auto length = int(userPassword.size());
   if (length > size) {
     length = size;
   }

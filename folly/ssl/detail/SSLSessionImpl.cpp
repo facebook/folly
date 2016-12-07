@@ -40,8 +40,8 @@ SSLSessionImpl::SSLSessionImpl(SSL_SESSION* session, bool takeOwnership)
 SSLSessionImpl::SSLSessionImpl(const std::string& serializedSession) {
   auto sessionData =
       reinterpret_cast<const unsigned char*>(serializedSession.data());
-  if ((session_ = d2i_SSL_SESSION(
-           nullptr, &sessionData, serializedSession.length())) == nullptr) {
+  auto longLen = long(serializedSession.length());
+  if ((session_ = d2i_SSL_SESSION(nullptr, &sessionData, longLen)) == nullptr) {
     throw std::runtime_error("Cannot deserialize SSLSession string");
   }
 }
