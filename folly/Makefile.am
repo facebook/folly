@@ -413,6 +413,7 @@ libfolly_la_SOURCES = \
 	detail/IPAddress.cpp \
 	dynamic.cpp \
 	ExceptionWrapper.cpp \
+	Executor.cpp \
 	File.cpp \
 	FileUtil.cpp \
 	FingerprintTables.cpp \

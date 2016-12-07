@@ -16,10 +16,7 @@
 
 #pragma once
 
-#include <atomic>
 #include <climits>
-#include <functional>
-#include <stdexcept>
 
 #include <folly/Function.h>
 
@@ -39,10 +36,7 @@ class Executor {
 
   /// Enqueue a function with a given priority, where 0 is the medium priority
   /// This is up to the implementation to enforce
-  virtual void addWithPriority(Func, int8_t /*priority*/) {
-    throw std::runtime_error(
-        "addWithPriority() is not implemented for this Executor");
-  }
+  virtual void addWithPriority(Func, int8_t priority);
 
   virtual uint8_t getNumPriorities() const {
     return 1;
