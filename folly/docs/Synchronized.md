@@ -366,7 +366,7 @@ This code does not have the same problem as the counter-example with
 When using `Synchronized` with a shared mutex type, it provides separate
 `withWLock()` and `withRLock()` methods instead of `withLock()`.
 
-#### `ulock()` and `withULockPtr()` 
+#### `ulock()` and `withULockPtr()`
 
 `Synchronized` also supports upgrading and downgrading mutex lock levels as
 long as the mutex type used to instantiate the `Synchronized` type has the
@@ -669,8 +669,8 @@ The `LockedPtr` returned by `Synchronized<T, std::mutex>::lock()` has a
     // Assuming some other thread will put data on vec and signal
     // emptySignal, we can then wait on it as follows:
     auto locked = vec.lock();
-    emptySignal.wait_for(locked.getUniqueLock(),
-                         [&] { return !locked->empty(); });
+    emptySignal.wait(locked.getUniqueLock(),
+                     [&] { return !locked->empty(); });
 ```
 
 ### `acquireLocked()`
@@ -728,7 +728,7 @@ which will make the returned tuple more convenient to use:
 An `acquireLockedPair()` function is also available, which returns a
 `std::pair` instead of a `std::tuple`.  This is more convenient to use
 in many situations, until compiler support for structured bindings is
-more widely available. 
+more widely available.
 
 ### Synchronizing several data items with one mutex
 
