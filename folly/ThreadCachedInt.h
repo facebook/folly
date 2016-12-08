@@ -138,7 +138,7 @@ class ThreadCachedInt : boost::noncopyable {
     explicit IntCache(ThreadCachedInt& parent)
         : parent_(&parent), val_(0), numUpdates_(0), reset_(false) {}
 
-    void increment(IntT inc) {
+    void increment(IntT inc) noexcept {
       if (LIKELY(!reset_.load(std::memory_order_acquire))) {
         // This thread is the only writer to val_, so it's fine do do
         // a relaxed load and do the addition non-atomically.
@@ -157,7 +157,7 @@ class ThreadCachedInt : boost::noncopyable {
       }
     }
 
-    void flush() const {
+    void flush() const noexcept {
       parent_->target_.fetch_add(val_, std::memory_order_release);
       val_.store(0, std::memory_order_release);
       numUpdates_ = 0;
