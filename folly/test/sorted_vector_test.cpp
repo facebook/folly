@@ -339,3 +339,11 @@ TEST(SortedVectorTest, ShrinkTest) {
   // vector::shrink_to_fit respects the caller.
   EXPECT_EQ(s.capacity(), s.size());
 }
+
+TEST(SortedVectorTypes, EraseTest) {
+  sorted_vector_set<int> s1;
+  s1.insert(1);
+  sorted_vector_set<int> s2(s1);
+  EXPECT_EQ(0, s1.erase(0));
+  EXPECT_EQ(s2, s1);
+}

@@ -281,7 +281,7 @@ public:
   }
 
   size_type erase(const key_type& key) {
-    iterator it = lower_bound(key);
+    iterator it = find(key);
     if (it == end()) {
       return 0;
     }
