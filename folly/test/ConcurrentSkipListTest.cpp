@@ -218,8 +218,8 @@ TEST(ConcurrentSkipList, SequentialAccess) {
     skipList.add(3);
     CHECK(skipList.contains(3));
     int pos = 0;
-    FOR_EACH(it, skipList) {
-      LOG(INFO) << "pos= " << pos++ << " value= " << *it;
+    for (auto entry : skipList) {
+      LOG(INFO) << "pos= " << pos++ << " value= " << entry;
     }
   }
 
@@ -468,11 +468,11 @@ void TestNonTrivialDeallocation(SkipListPtrType& list) {
 template <typename ParentAlloc>
 void NonTrivialDeallocationWithParanoid() {
   using Alloc = ParanoidArenaAlloc<ParentAlloc>;
-  using SkipListType =
+  using ParanoidSkipListType =
       ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, Alloc>;
   ParentAlloc parentAlloc;
   Alloc paranoidAlloc(&parentAlloc);
-  auto list = SkipListType::createInstance(10, paranoidAlloc);
+  auto list = ParanoidSkipListType::createInstance(10, paranoidAlloc);
   TestNonTrivialDeallocation(list);
   EXPECT_TRUE(paranoidAlloc.isEmpty());
 }
@@ -486,9 +486,9 @@ TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysArena) {
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithSysArena) {
-  using SkipListType =
+  using SysArenaSkipListType =
       ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, SysArena>;
-  auto list = SkipListType::createInstance(10);
+  auto list = SysArenaSkipListType::createInstance(10);
   TestNonTrivialDeallocation(list);
 }
 

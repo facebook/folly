@@ -255,8 +255,8 @@ TEST_F(FutureDAGTest, DestroyBeforeComplete) {
   auto barrier = std::make_shared<boost::barrier>(2);
   Future<Unit> f;
   {
-    auto dag = FutureDAG::create();
-    auto h1 = dag->add([barrier] {
+    auto localDag = FutureDAG::create();
+    auto h1 = localDag->add([barrier] {
       auto p = std::make_shared<Promise<Unit>>();
       std::thread t([p, barrier] {
         barrier->wait();
@@ -265,9 +265,9 @@ TEST_F(FutureDAGTest, DestroyBeforeComplete) {
       t.detach();
       return p->getFuture();
     });
-    auto h2 = dag->add(makeFutureFunc);
-    dag->dependency(h1, h2);
-    f = dag->go();
+    auto h2 = localDag->add(makeFutureFunc);
+    localDag->dependency(h1, h2);
+    f = localDag->go();
   }
   barrier->wait();
   ASSERT_NO_THROW(f.get());

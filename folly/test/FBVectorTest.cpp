@@ -101,11 +101,11 @@ TEST(fbvector, clause_23_3_6_2_6) {
 
 TEST(fbvector, clause_23_3_6_4_ambiguity) {
   fbvector<int> v;
-  fbvector<int>::const_iterator i = v.end();
-  v.insert(i, 10, 20);
+  fbvector<int>::const_iterator it = v.end();
+  v.insert(it, 10, 20);
   EXPECT_EQ(v.size(), 10);
-  FOR_EACH (i, v) {
-    EXPECT_EQ(*i, 20);
+  for (auto i : v) {
+    EXPECT_EQ(i, 20);
   }
 }
 

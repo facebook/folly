@@ -244,8 +244,8 @@ TEST(StringKeyedSetTest, sanity) {
 
   EXPECT_EQ(set.size(), 1);
 
-  for (auto it : set) {
-    EXPECT_EQ(it, "lo");
+  for (auto entry : set) {
+    EXPECT_EQ(entry, "lo");
   }
 }
 
@@ -324,8 +324,8 @@ TEST(StringKeyedUnorderedSetTest, sanity) {
 
   EXPECT_EQ(set.size(), 1);
 
-  for (auto it : set) {
-    EXPECT_EQ(it, "lo");
+  for (auto entry : set) {
+    EXPECT_EQ(entry, "lo");
   }
 }
 
@@ -379,8 +379,8 @@ TEST(StringKeyedUnorderedSetTest, constructors) {
   EXPECT_EQ(set2.size(), 2);
 
   set2.erase("lo");
-  for (auto it : set2) {
-    EXPECT_EQ(it, "hello");
+  for (auto entry : set2) {
+    EXPECT_EQ(entry, "hello");
   }
 
   set2.clear();
@@ -451,8 +451,8 @@ TEST(StringKeyedMapTest, sanity) {
 
   EXPECT_EQ(map.size(), 1);
 
-  for (auto& it : map) {
-    EXPECT_EQ(it.first, "lo");
+  for (auto& entry : map) {
+    EXPECT_EQ(entry.first, "lo");
   }
 }
 
@@ -466,8 +466,8 @@ TEST(StringKeyedMapTest, constructors) {
   EXPECT_EQ(map2.size(), 2);
 
   map2.erase("lo");
-  for (auto& it : map2) {
-    EXPECT_EQ(it.first, "hello");
+  for (auto& entry : map2) {
+    EXPECT_EQ(entry.first, "hello");
   }
 
   map2.clear();

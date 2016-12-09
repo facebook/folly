@@ -70,11 +70,11 @@ class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
     }
   }
 
-  void writeErr(size_t bytesWritten,
+  void writeErr(size_t nBytesWritten,
                 const folly::AsyncSocketException& ex) noexcept override {
     LOG(ERROR) << ex.what();
     state = STATE_FAILED;
-    this->bytesWritten = bytesWritten;
+    this->bytesWritten = nBytesWritten;
     exception = ex;
     if (errorCallback) {
       errorCallback();
@@ -160,10 +160,10 @@ class ReadCallback : public folly::AsyncTransportWrapper::ReadCallback {
       buffer = nullptr;
       length = 0;
     }
-    void allocate(size_t length) {
+    void allocate(size_t len) {
       assert(buffer == nullptr);
-      this->buffer = static_cast<char*>(malloc(length));
-      this->length = length;
+      this->buffer = static_cast<char*>(malloc(len));
+      this->length = len;
     }
     void free() {
       ::free(buffer);

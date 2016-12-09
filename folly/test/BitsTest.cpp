@@ -49,14 +49,14 @@ void testFFS() {
 
 template <class INT>
 void testFLS() {
-  typedef typename std::make_unsigned<INT>::type UINT;
+  typedef typename std::make_unsigned<INT>::type UINT_T;
   EXPECT_EQ(0, findLastSet(static_cast<INT>(0)));
-  size_t bits = std::numeric_limits<UINT>::digits;
+  size_t bits = std::numeric_limits<UINT_T>::digits;
   for (size_t i = 0; i < bits; i++) {
-    INT v1 = static_cast<UINT>(1) << i;
+    INT v1 = static_cast<UINT_T>(1) << i;
     EXPECT_EQ(i + 1, findLastSet(v1));
 
-    INT v2 = (static_cast<UINT>(1) << i) - 1;
+    INT v2 = (static_cast<UINT_T>(1) << i) - 1;
     EXPECT_EQ(i, findLastSet(v2));
   }
 }

@@ -74,13 +74,13 @@ public:
   }
 
   void writeErr(
-    size_t bytesWritten,
+    size_t nBytesWritten,
     const AsyncSocketException& ex) noexcept override {
-    std::cerr << "writeError: bytesWritten " << bytesWritten
+    std::cerr << "writeError: bytesWritten " << nBytesWritten
          << ", exception " << ex.what() << std::endl;
 
     state = STATE_FAILED;
-    this->bytesWritten = bytesWritten;
+    this->bytesWritten = nBytesWritten;
     exception = ex;
     socket_->close();
     socket_->detachEventBase();
@@ -181,10 +181,10 @@ public:
       buffer = nullptr;
       length = 0;
     }
-    void allocate(size_t length) {
+    void allocate(size_t len) {
       assert(buffer == nullptr);
-      this->buffer = static_cast<char*>(malloc(length));
-      this->length = length;
+      this->buffer = static_cast<char*>(malloc(len));
+      this->length = len;
     }
     void free() {
       ::free(buffer);

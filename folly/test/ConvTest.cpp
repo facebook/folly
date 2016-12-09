@@ -664,8 +664,8 @@ TEST(Conv, DoubleToInt) {
   auto i = to<int>(42.0);
   EXPECT_EQ(i, 42);
   try {
-    auto i = to<int>(42.1);
-    LOG(ERROR) << "to<int> returned " << i << " instead of throwing";
+    auto i2 = to<int>(42.1);
+    LOG(ERROR) << "to<int> returned " << i2 << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
     //LOG(INFO) << e.what();
@@ -679,9 +679,9 @@ TEST(Conv, EnumToInt) {
   auto j = to<char>(x);
   EXPECT_EQ(j, 42);
   try {
-    auto i = to<char>(y);
+    auto i2 = to<char>(y);
     LOG(ERROR) << "to<char> returned "
-               << static_cast<unsigned int>(i)
+               << static_cast<unsigned int>(i2)
                << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {
@@ -704,9 +704,9 @@ TEST(Conv, IntToEnum) {
   auto j = to<A>(100);
   EXPECT_EQ(j, 100);
   try {
-    auto i = to<A>(5000000000L);
+    auto i2 = to<A>(5000000000L);
     LOG(ERROR) << "to<A> returned "
-               << static_cast<unsigned int>(i)
+               << static_cast<unsigned int>(i2)
                << " instead of throwing";
     EXPECT_TRUE(false);
   } catch (std::range_error& e) {

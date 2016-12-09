@@ -1312,6 +1312,11 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
 #define SYNCHRONIZED(...)                                             \
   FOLLY_PUSH_WARNING                                                  \
   FOLLY_GCC_DISABLE_WARNING(shadow)                                   \
+  FOLLY_MSVC_DISABLE_WARNING(4189) /* initialized but unreferenced */ \
+  FOLLY_MSVC_DISABLE_WARNING(4456) /* declaration hides local */      \
+  FOLLY_MSVC_DISABLE_WARNING(4457) /* declaration hides parameter */  \
+  FOLLY_MSVC_DISABLE_WARNING(4458) /* declaration hides member */     \
+  FOLLY_MSVC_DISABLE_WARNING(4459) /* declaration hides global */     \
   FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS                               \
   if (bool SYNCHRONIZED_state = false) {                              \
   } else                                                              \
