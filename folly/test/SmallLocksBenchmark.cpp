@@ -51,7 +51,7 @@ struct SimpleBarrier {
     if (++num_ == count_) {
       cv_.notify_all();
     } else {
-      cv_.wait(lockHeld);
+      cv_.wait(lockHeld, [&]() { return num_ >= count_; });
     }
   }
 
