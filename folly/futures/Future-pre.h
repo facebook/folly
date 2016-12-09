@@ -71,11 +71,11 @@ struct callableWith {
     template<typename T,
              typename = detail::resultOf<T, Args...>>
     static constexpr std::true_type
-    check(std::nullptr_t) { return std::true_type{}; };
+    check(std::nullptr_t) { return std::true_type{}; }
 
     template<typename>
     static constexpr std::false_type
-    check(...) { return std::false_type{}; };
+    check(...) { return std::false_type{}; }
 
     typedef decltype(check<F>(nullptr)) type;
     static constexpr bool value = type::value;

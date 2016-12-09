@@ -68,7 +68,7 @@ class Dwarf {
     Path(folly::StringPiece baseDir, folly::StringPiece subDir,
          folly::StringPiece file);
 
-    folly::StringPiece baseDir() const { return baseDir_; };
+    folly::StringPiece baseDir() const { return baseDir_; }
     folly::StringPiece subDir() const { return subDir_; }
     folly::StringPiece file() const { return file_; }
 

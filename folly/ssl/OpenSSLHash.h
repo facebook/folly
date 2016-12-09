@@ -138,7 +138,7 @@ class OpenSSLHash {
     hmac.hash_init(md, key);
     hmac.hash_update(data);
     hmac.hash_final(out);
-  };
+  }
   static void hmac(
       MutableByteRange out,
       const EVP_MD* md,

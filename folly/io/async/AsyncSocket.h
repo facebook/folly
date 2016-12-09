@@ -603,7 +603,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     WriteRequest(AsyncSocket* socket, WriteCallback* callback) :
       socket_(socket), callback_(callback) {}
 
-    virtual void start() {};
+    virtual void start() {}
 
     virtual void destroy() = 0;
 

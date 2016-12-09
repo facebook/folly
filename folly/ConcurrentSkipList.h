@@ -679,7 +679,7 @@ class detail::csl_iterator :
   friend class boost::iterator_core_access;
   template<class,class> friend class csl_iterator;
 
-  void increment() { node_ = node_->next(); };
+  void increment() { node_ = node_->next(); }
   bool equal(const csl_iterator& other) const { return node_ == other.node_; }
   value_type& dereference() const { return node_->data(); }
 

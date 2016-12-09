@@ -23,7 +23,7 @@ using namespace folly;
 
 struct Node {
   size_t copies = 0;
-  Node() noexcept {};
+  Node() noexcept {}
   Node(const Node& n) noexcept { copies = n.copies; ++copies; }
   Node(Node&& n) noexcept { swap(copies, n.copies); ++copies; }
 };

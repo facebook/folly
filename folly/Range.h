@@ -412,7 +412,7 @@ public:
 
   const_range_type castToConst() const {
     return const_range_type(*this);
-  };
+  }
 
   // Works only for Range<const char*> and Range<char*>
   int compare(const const_range_type& o) const {

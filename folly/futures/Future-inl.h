@@ -686,7 +686,7 @@ collectAny(InputIterator first, InputIterator last) {
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   struct CollectAnyContext {
-    CollectAnyContext() {};
+    CollectAnyContext() {}
     Promise<std::pair<size_t, Try<T>>> p;
     std::atomic<bool> done {false};
   };
@@ -711,7 +711,7 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
       typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   struct CollectAnyWithoutExceptionContext {
-    CollectAnyWithoutExceptionContext(){};
+    CollectAnyWithoutExceptionContext(){}
     Promise<std::pair<size_t, T>> p;
     std::atomic<bool> done{false};
     std::atomic<size_t> nFulfilled{0};
@@ -884,7 +884,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
     UnorderedReduceContext(T&& memo, F&& fn, size_t n)
         : lock_(), memo_(makeFuture<T>(std::move(memo))),
           func_(std::move(fn)), numThens_(0), numFutures_(n), promise_()
-      {};
+      {}
     folly::MicroSpinLock lock_; // protects memo_ and numThens_
     Future<T> memo_;
     F func_;

@@ -228,7 +228,7 @@ class Parallel : public Operator<Parallel<Ops>> {
 
       void work() {
         puller_ | *ops_ | pusher_;
-      };
+      }
 
      public:
       Executor(size_t threads, const Ops* ops)
