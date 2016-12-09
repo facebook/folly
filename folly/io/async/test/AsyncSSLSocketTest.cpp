@@ -915,7 +915,6 @@ TEST(AsyncSSLSocketTest, SSLServerTimeoutTest) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
   ReadCallback readCallback(&writeCallback);
-  EmptyReadCallback clientReadCallback;
   HandshakeCallback handshakeCallback(&readCallback);
   SSLServerAcceptCallback acceptCallback(&handshakeCallback, 50);
   TestSSLAsyncCacheServer server(&acceptCallback);
@@ -925,6 +924,8 @@ TEST(AsyncSSLSocketTest, SSLServerTimeoutTest) {
   // only do a TCP connect
   std::shared_ptr<AsyncSocket> sock = AsyncSocket::newSocket(&eventBase);
   sock->connect(nullptr, server.getAddress());
+
+  EmptyReadCallback clientReadCallback;
   clientReadCallback.tcpSocket_ = sock;
   sock->setReadCB(&clientReadCallback);
 

@@ -83,7 +83,6 @@ public:
     this->bytesWritten = nBytesWritten;
     exception = ex;
     socket_->close();
-    socket_->detachEventBase();
   }
 
   std::shared_ptr<AsyncSSLSocket> socket_;
@@ -119,14 +118,12 @@ public AsyncTransportWrapper::ReadCallback {
     std::cerr << "readError " << ex.what() << std::endl;
     state = STATE_FAILED;
     socket_->close();
-    socket_->detachEventBase();
   }
 
   void readEOF() noexcept override {
     std::cerr << "readEOF" << std::endl;
 
     socket_->close();
-    socket_->detachEventBase();
   }
 
   std::shared_ptr<AsyncSSLSocket> socket_;
@@ -288,15 +285,16 @@ public:
   void readErr(const AsyncSocketException& ex) noexcept override {
     std::cerr << "readError " << ex.what() << std::endl;
     state = STATE_FAILED;
-    tcpSocket_->close();
-    tcpSocket_->detachEventBase();
+    if (tcpSocket_) {
+      tcpSocket_->close();
+    }
   }
 
   void readEOF() noexcept override {
     std::cerr << "readEOF" << std::endl;
-
-    tcpSocket_->close();
-    tcpSocket_->detachEventBase();
+    if (tcpSocket_) {
+      tcpSocket_->close();
+    }
     state = STATE_SUCCEEDED;
   }
 
@@ -395,12 +393,14 @@ public:
 
   void connectionAccepted(
       int fd, const folly::SocketAddress& /* clientAddr */) noexcept override {
+    if (socket_) {
+      socket_->detachEventBase();
+    }
     printf("Connection accepted\n");
-    std::shared_ptr<AsyncSSLSocket> sslSock;
     try {
       // Create a AsyncSSLSocket object with the fd. The socket should be
       // added to the event base and in the state of accepting SSL connection.
-      sslSock = AsyncSSLSocket::newSocket(ctx_, base_, fd);
+      socket_ = AsyncSSLSocket::newSocket(ctx_, base_, fd);
     } catch (const std::exception &e) {
       LOG(ERROR) << "Exception %s caught while creating a AsyncSSLSocket "
         "object with socket " << e.what() << fd;
@@ -409,15 +409,20 @@ public:
       return;
     }
 
-    connAccepted(sslSock);
+    connAccepted(socket_);
   }
 
   virtual void connAccepted(
     const std::shared_ptr<folly::AsyncSSLSocket> &s) = 0;
 
+  void detach() {
+    socket_->detachEventBase();
+  }
+
   StateEnum state;
   HandshakeCallback *hcb_;
   std::shared_ptr<folly::SSLContext> ctx_;
+  std::shared_ptr<AsyncSSLSocket> socket_;
   folly::EventBase* base_;
 };
 
@@ -551,8 +556,6 @@ public:
     EXPECT_EQ(hcb_->state, STATE_FAILED);
     EXPECT_EQ(callback2.state, STATE_FAILED);
 
-    sock->detachEventBase();
-
     state = STATE_SUCCEEDED;
     hcb_->setState(STATE_SUCCEEDED);
     callback2.setState(STATE_SUCCEEDED);
@@ -623,6 +626,7 @@ class TestSSLServer {
   static void *Main(void *ctx) {
     TestSSLServer *self = static_cast<TestSSLServer*>(ctx);
     self->evb_.loop();
+    self->acb_->detach();
     std::cerr << "Server thread exited event loop" << std::endl;
     return nullptr;
   }
