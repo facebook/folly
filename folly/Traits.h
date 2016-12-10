@@ -335,6 +335,8 @@ using StrictConjunction =
  * although that is not guaranteed by the standard.
  */
 
+#ifndef _LIBCPP_VERSION
+
 FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
@@ -364,6 +366,23 @@ template <class T>
   class shared_ptr;
 
 FOLLY_NAMESPACE_STD_END
+
+#else
+
+/**
+ * libc++ doesn't like the std::* classes being (re)defined (in an
+ * incompatible way), so use the official ones instead.
+ */
+#include <utility>
+#include <string>
+#include <vector>
+#include <deque>
+#include <list>
+#include <set>
+#include <map>
+#include <memory>
+
+#endif
 
 namespace boost {
 
