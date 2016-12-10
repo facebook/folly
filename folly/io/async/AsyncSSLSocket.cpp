@@ -1697,6 +1697,14 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
             sock->clientHelloInfo_->
               clientHelloSigAlgs_.emplace_back(hashAlg, sigAlg);
           }
+        } else if (extensionType == ssl::TLSExtension::SUPPORTED_VERSIONS) {
+          cursor.skip(1);
+          extensionDataLength -= 1;
+          while (extensionDataLength) {
+            sock->clientHelloInfo_->clientHelloSupportedVersions_.push_back(
+                cursor.readBE<uint16_t>());
+            extensionDataLength -= 2;
+          }
         } else {
           cursor.skip(extensionDataLength);
         }
@@ -1788,6 +1796,13 @@ std::string AsyncSSLSocket::getSSLClientSigAlgs() const {
   }
 
   return sigAlgs;
+}
+
+std::string AsyncSSLSocket::getSSLClientSupportedVersions() const {
+  if (!parseClientHello_) {
+    return "";
+  }
+  return folly::join(":", clientHelloInfo_->clientHelloSupportedVersions_);
 }
 
 std::string AsyncSSLSocket::getSSLAlertsReceived() const {

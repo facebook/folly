@@ -561,6 +561,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   std::string getSSLClientSigAlgs() const;
 
+  /**
+   * Get the list of versions in the supported versions extension (used to
+   * negotiate TLS 1.3).
+   */
+  std::string getSSLClientSupportedVersions() const;
+
   std::string getSSLAlertsReceived() const;
 
   /**
