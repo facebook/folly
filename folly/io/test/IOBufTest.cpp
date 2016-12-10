@@ -883,7 +883,6 @@ class MoveToFbStringTest
       }
       default:
         throw std::invalid_argument("unexpected buffer type parameter");
-        break;
     }
     memset(buf->writableData(), 'x', elementSize_);
     return buf;

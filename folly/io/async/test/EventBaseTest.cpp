@@ -1578,28 +1578,23 @@ TEST(EventBaseTest, IdleTime) {
   int latencyCallbacks = 0;
   eventBase.setMaxLatency(6000, [&]() {
     ++latencyCallbacks;
-
-    switch (latencyCallbacks) {
-    case 1:
-      if (tos0.getTimeouts() < 6) {
-        // This could only happen if the host this test is running
-        // on is heavily loaded.
-        int64_t maxLatencyReached = duration_cast<microseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count();
-        ASSERT_LE(43800, maxLatencyReached - testStart);
-        hostOverloaded = true;
-        break;
-      }
-      ASSERT_EQ(6, tos0.getTimeouts());
-      ASSERT_GE(6100, eventBase.getAvgLoopTime() - 1200);
-      ASSERT_LE(6100, eventBase.getAvgLoopTime() + 1200);
-      tos.reset(new IdleTimeTimeoutSeries(&eventBase, timeouts));
-      break;
-
-    default:
+    if (latencyCallbacks != 1) {
       FAIL() << "Unexpected latency callback";
-      break;
     }
+
+    if (tos0.getTimeouts() < 6) {
+      // This could only happen if the host this test is running
+      // on is heavily loaded.
+      int64_t maxLatencyReached = duration_cast<microseconds>(
+          std::chrono::steady_clock::now().time_since_epoch()).count();
+      ASSERT_LE(43800, maxLatencyReached - testStart);
+      hostOverloaded = true;
+      return;
+    }
+    ASSERT_EQ(6, tos0.getTimeouts());
+    ASSERT_GE(6100, eventBase.getAvgLoopTime() - 1200);
+    ASSERT_LE(6100, eventBase.getAvgLoopTime() + 1200);
+    tos.reset(new IdleTimeTimeoutSeries(&eventBase, timeouts));
   });
 
   // Kick things off with an "immedite" timeout
