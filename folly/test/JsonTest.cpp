@@ -154,14 +154,14 @@ TEST(Json, BoolConversion) {
 }
 
 TEST(Json, JavascriptSafe) {
-  auto badDouble = (1ll << 63ll) + 1;
+  auto badDouble = int64_t((1ULL << 63ULL) + 1);
   dynamic badDyn = badDouble;
   EXPECT_EQ(folly::toJson(badDouble), folly::to<std::string>(badDouble));
   folly::json::serialization_opts opts;
   opts.javascript_safe = true;
   EXPECT_ANY_THROW(folly::json::serialize(badDouble, opts));
 
-  auto okDouble = 1ll << 63ll;
+  auto okDouble = int64_t(1ULL << 63ULL);
   dynamic okDyn = okDouble;
   EXPECT_EQ(folly::toJson(okDouble), folly::to<std::string>(okDouble));
 }

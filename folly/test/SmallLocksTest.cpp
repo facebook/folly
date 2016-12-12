@@ -91,7 +91,8 @@ template<class T> struct PslTest {
   PslTest() { lock.init(); }
 
   void doTest() {
-    T ourVal = rand() % (T(1) << (sizeof(T) * 8 - 1));
+    using UT = typename std::make_unsigned<T>::type;
+    T ourVal = rand() % T(UT(1) << (sizeof(UT) * 8 - 1));
     for (int i = 0; i < 10000; ++i) {
       std::lock_guard<PicoSpinLock<T>> guard(lock);
       lock.setData(ourVal);
