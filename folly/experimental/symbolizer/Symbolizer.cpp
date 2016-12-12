@@ -78,7 +78,7 @@ void SymbolizedFrame::set(const std::shared_ptr<ElfFile>& file,
 }
 
 Symbolizer::Symbolizer(ElfCacheBase* cache, Dwarf::LocationInfoMode mode)
-  : cache_(cache ?: defaultElfCache()), mode_(mode) {
+  : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
 }
 
 void Symbolizer::symbolize(const uintptr_t* addresses,
