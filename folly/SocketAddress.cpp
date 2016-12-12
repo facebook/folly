@@ -229,7 +229,7 @@ void SocketAddress::setFromPath(StringPiece path) {
   }
 
   size_t len = path.size();
-  storage_.un.len = offsetof(struct sockaddr_un, sun_path) + len;
+  storage_.un.len = socklen_t(offsetof(struct sockaddr_un, sun_path) + len);
   memcpy(storage_.un.addr->sun_path, path.data(), len);
   // If there is room, put a terminating NUL byte in sun_path.  In general the
   // path should be NUL terminated, although getsockname() and getpeername()
@@ -631,7 +631,7 @@ struct addrinfo* SocketAddress::getAddrInfo(const char* host,
 }
 
 void SocketAddress::setFromAddrInfo(const struct addrinfo* info) {
-  setFromSockaddr(info->ai_addr, info->ai_addrlen);
+  setFromSockaddr(info->ai_addr, socklen_t(info->ai_addrlen));
 }
 
 void SocketAddress::setFromLocalAddr(const struct addrinfo* info) {
@@ -639,13 +639,13 @@ void SocketAddress::setFromLocalAddr(const struct addrinfo* info) {
   // can be mapped into IPv6 space.
   for (const struct addrinfo* ai = info; ai != nullptr; ai = ai->ai_next) {
     if (ai->ai_family == AF_INET6) {
-      setFromSockaddr(ai->ai_addr, ai->ai_addrlen);
+      setFromSockaddr(ai->ai_addr, socklen_t(ai->ai_addrlen));
       return;
     }
   }
 
   // Otherwise, just use the first address in the list.
-  setFromSockaddr(info->ai_addr, info->ai_addrlen);
+  setFromSockaddr(info->ai_addr, socklen_t(info->ai_addrlen));
 }
 
 void SocketAddress::setFromSocket(
@@ -707,7 +707,8 @@ void SocketAddress::updateUnixAddressLength(socklen_t addrlen) {
     // Call strnlen(), just in case the length was overspecified.
     socklen_t maxLength = addrlen - offsetof(struct sockaddr_un, sun_path);
     size_t pathLength = strnlen(storage_.un.addr->sun_path, maxLength);
-    storage_.un.len = offsetof(struct sockaddr_un, sun_path) + pathLength;
+    storage_.un.len =
+        socklen_t(offsetof(struct sockaddr_un, sun_path) + pathLength);
   }
 }
 

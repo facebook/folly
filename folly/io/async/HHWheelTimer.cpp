@@ -281,7 +281,7 @@ size_t HHWheelTimer::cancelAll() {
 
 void HHWheelTimer::scheduleNextTimeout() {
   auto nextTick = calcNextTick();
-  long tick = 1;
+  int64_t tick = 1;
 
   if (nextTick & WHEEL_MASK) {
     auto bi = makeBitIterator(bitmap_.begin());

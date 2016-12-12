@@ -152,8 +152,7 @@ class EventHandler : private boost::noncopyable {
    * Return the set of events that we're currently registered for.
    */
   uint16_t getRegisteredEvents() const {
-    return (isHandlerRegistered()) ?
-      event_.ev_events : 0;
+    return (isHandlerRegistered()) ? uint16_t(event_.ev_events) : 0u;
   }
 
   /**

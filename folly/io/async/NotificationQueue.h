@@ -488,17 +488,17 @@ class NotificationQueue {
     }
 
     ssize_t bytes_written = 0;
-    ssize_t bytes_expected = 0;
+    size_t bytes_expected = 0;
 
     do {
       if (eventfd_ >= 0) {
         // eventfd(2) dictates that we must write a 64-bit integer
         uint64_t signal = 1;
-        bytes_expected = static_cast<ssize_t>(sizeof(signal));
+        bytes_expected = sizeof(signal);
         bytes_written = ::write(eventfd_, &signal, bytes_expected);
       } else {
         uint8_t signal = 1;
-        bytes_expected = static_cast<ssize_t>(sizeof(signal));
+        bytes_expected = sizeof(signal);
         bytes_written = ::write(pipeFds_[1], &signal, bytes_expected);
       }
     } while (bytes_written == -1 && errno == EINTR);
@@ -510,7 +510,7 @@ class NotificationQueue {
     }
 #endif
 
-    if (bytes_written == bytes_expected) {
+    if (bytes_written == ssize_t(bytes_expected)) {
       signal_ = true;
     } else {
 #ifdef __ANDROID__

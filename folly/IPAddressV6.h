@@ -267,7 +267,7 @@ class IPAddressV6 {
   std::string str() const;
 
   // @see IPAddress#version
-  size_t version() const { return 6; }
+  uint8_t version() const { return 6; }
 
   /**
    * Return the solicited-node multicast address for this address.

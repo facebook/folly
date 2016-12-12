@@ -204,7 +204,7 @@ class IPAddressV4 {
   std::string toFullyQualified() const { return str(); }
 
   // @see IPAddress#version
-  size_t version() const { return 4; }
+  uint8_t version() const { return 4; }
 
   /**
    * Return the mask associated with the given number of bits.

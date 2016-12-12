@@ -730,7 +730,8 @@ void AsyncSSLSocket::startSSLConnect() {
   // Make end time at least >= start time.
   handshakeEndTime_ = handshakeStartTime_;
   if (handshakeConnectTimeout_ > 0) {
-    handshakeTimeout_.scheduleTimeout(handshakeConnectTimeout_);
+    handshakeTimeout_.scheduleTimeout(
+        std::chrono::milliseconds(handshakeConnectTimeout_));
   }
   handleConnect();
 }
@@ -1159,9 +1160,8 @@ void AsyncSSLSocket::scheduleConnectTimeout() {
     assert(connectCallback_ == nullptr);
     // We use a different connect timeout here than the handshake timeout, so
     // that we can disambiguate the 2 timers.
-    int timeout = connectTimeout_.count();
-    if (timeout > 0) {
-      if (!connectionTimeout_.scheduleTimeout(timeout)) {
+    if (connectTimeout_.count() > 0) {
+      if (!connectionTimeout_.scheduleTimeout(connectTimeout_)) {
         throw AsyncSocketException(
             AsyncSocketException::INTERNAL_ERROR,
             withAddr("failed to schedule AsyncSSLSocket connect timeout"));
@@ -1234,9 +1234,9 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
     return AsyncSocket::performRead(buf, buflen, offset);
   }
 
-  ssize_t bytes = 0;
+  int bytes = 0;
   if (!isBufferMovable_) {
-    bytes = SSL_read(ssl_, *buf, *buflen);
+    bytes = SSL_read(ssl_, *buf, int(*buflen));
   }
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
   else {
@@ -1451,17 +1451,17 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
     bytes = eorAwareSSLWrite(
         ssl_,
         sslWriteBuf,
-        len,
+        int(len),
         (isSet(flags, WriteFlags::EOR) && i + buffersStolen + 1 == count));
 
     if (bytes <= 0) {
-      int error = SSL_get_error(ssl_, bytes);
+      int error = SSL_get_error(ssl_, int(bytes));
       if (error == SSL_ERROR_WANT_WRITE) {
         // The caller will register for write event if not already.
-        *partialWritten = offset;
+        *partialWritten = uint32_t(offset);
         return WriteResult(totalWritten);
       }
-      auto writeResult = interpretSSLError(bytes, error);
+      auto writeResult = interpretSSLError(int(bytes), error);
       if (writeResult.writeReturn < 0) {
         return writeResult;
       } // else fall through to below to correctly record totalWritten
@@ -1484,7 +1484,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         (*countWritten)++;
         v = &(vec[++i]);
       }
-      *partialWritten = bytes;
+      *partialWritten = uint32_t(bytes);
       return WriteResult(totalWritten);
     }
   }
@@ -1576,11 +1576,11 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
       OpenSSLUtils::getBioFd(b, nullptr), &msg, flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
-    if (OpenSSLUtils::getBioShouldRetryWrite(result.writeReturn)) {
+    if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {
       BIO_set_retry_write(b);
     }
   }
-  return result.writeReturn;
+  return int(result.writeReturn);
 }
 
 int AsyncSSLSocket::sslVerifyCallback(

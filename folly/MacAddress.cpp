@@ -128,7 +128,7 @@ void MacAddress::parse(StringPiece str) {
     }
 
     // Update parsed with the newly parsed byte
-    parsed[byteIndex] = ((upper << 4) | lower);
+    parsed[byteIndex] = uint8_t((upper << 4) | lower);
   }
 
   if (p != str.end()) {

@@ -236,7 +236,7 @@ uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
 }
 // protected
 const ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
-  static const uint8_t bits = bitCount();
+  static const size_t bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException(
         to<std::string>("IPv4 addresses are 32 bits"));

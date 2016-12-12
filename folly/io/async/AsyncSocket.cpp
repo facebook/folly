@@ -489,10 +489,10 @@ int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
 
 void AsyncSocket::scheduleConnectTimeout() {
   // Connection in progress.
-  int timeout = connectTimeout_.count();
+  auto timeout = connectTimeout_.count();
   if (timeout > 0) {
     // Start a timer in case the connection takes too long.
-    if (!writeTimeout_.scheduleTimeout(timeout)) {
+    if (!writeTimeout_.scheduleTimeout(uint32_t(timeout))) {
       throw AsyncSocketException(
           AsyncSocketException::INTERNAL_ERROR,
           withAddr("failed to schedule AsyncSocket connect timeout"));
@@ -715,7 +715,7 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
 
   uint32_t countWritten = 0;
   uint32_t partialWritten = 0;
-  int bytesWritten = 0;
+  ssize_t bytesWritten = 0;
   bool mustRegister = false;
   if ((state_ == StateEnum::ESTABLISHED || state_ == StateEnum::FAST_OPEN) &&
       !connecting()) {
@@ -725,8 +725,8 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
       assert(writeReqTail_ == nullptr);
       assert((eventFlags_ & EventHandler::WRITE) == 0);
 
-      auto writeResult =
-          performWrite(vec, count, flags, &countWritten, &partialWritten);
+      auto writeResult = performWrite(
+          vec, uint32_t(count), flags, &countWritten, &partialWritten);
       bytesWritten = writeResult.writeReturn;
       if (bytesWritten < 0) {
         auto errnoCopy = errno;
@@ -766,14 +766,20 @@ void AsyncSocket::writeImpl(WriteCallback* callback, const iovec* vec,
   // Create a new WriteRequest to add to the queue
   WriteRequest* req;
   try {
-    req = BytesWriteRequest::newRequest(this, callback, vec + countWritten,
-                                        count - countWritten, partialWritten,
-                                        bytesWritten, std::move(ioBuf), flags);
+    req = BytesWriteRequest::newRequest(
+        this,
+        callback,
+        vec + countWritten,
+        uint32_t(count - countWritten),
+        partialWritten,
+        uint32_t(bytesWritten),
+        std::move(ioBuf),
+        flags);
   } catch (const std::exception& ex) {
     // we mainly expect to catch std::bad_alloc here
     AsyncSocketException tex(AsyncSocketException::INTERNAL_ERROR,
         withAddr(string("failed to append new WriteRequest: ") + ex.what()));
-    return failWrite(__func__, callback, bytesWritten, tex);
+    return failWrite(__func__, callback, size_t(bytesWritten), tex);
   }
   req->consume();
   if (writeReqTail_ == nullptr) {
@@ -1187,8 +1193,12 @@ int AsyncSocket::setCongestionFlavor(const std::string &cname) {
 
   }
 
-  if (setsockopt(fd_, IPPROTO_TCP, TCP_CONGESTION, cname.c_str(),
-        cname.length() + 1) != 0) {
+  if (setsockopt(
+          fd_,
+          IPPROTO_TCP,
+          TCP_CONGESTION,
+          cname.c_str(),
+          socklen_t(cname.length() + 1)) != 0) {
     int errnoCopy = errno;
     VLOG(2) << "failed to update TCP_CONGESTION option on AsyncSocket "
             << this << "(fd=" << fd_ << ", state=" << state_ << "): "
@@ -1897,7 +1907,7 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
 
   uint32_t bytesWritten;
   uint32_t n;
-  for (bytesWritten = totalWritten, n = 0; n < count; ++n) {
+  for (bytesWritten = uint32_t(totalWritten), n = 0; n < count; ++n) {
     const iovec* v = vec + n;
     if (v->iov_len > bytesWritten) {
       // Partial write finished in the middle of this iovec
@@ -1906,7 +1916,7 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
       return WriteResult(totalWritten);
     }
 
-    bytesWritten -= v->iov_len;
+    bytesWritten -= uint32_t(v->iov_len);
   }
 
   assert(bytesWritten == 0);

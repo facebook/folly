@@ -112,7 +112,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
   , avgLoopTime_(2000000)
   , maxLatencyLoopTime_(avgLoopTime_)
   , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
+  , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
   , observer_(nullptr)
@@ -158,7 +158,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
   , avgLoopTime_(2000000)
   , maxLatencyLoopTime_(avgLoopTime_)
   , enableTimeMeasurement_(enableTimeMeasurement)
-  , nextLoopCnt_(-40)       // Early wrap-around so bugs will manifest soon
+  , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
   , startWork_(0)
   , observer_(nullptr)
@@ -216,7 +216,7 @@ EventBase::~EventBase() {
   VLOG(5) << "EventBase(): Destroyed.";
 }
 
-int EventBase::getNotificationQueueSize() const {
+size_t EventBase::getNotificationQueueSize() const {
   return queue_->size();
 }
 
@@ -717,8 +717,8 @@ bool EventBase::scheduleTimeout(AsyncTimeout* obj,
   assert(isInEventBaseThread());
   // Set up the timeval and add the event
   struct timeval tv;
-  tv.tv_sec = timeout.count() / 1000LL;
-  tv.tv_usec = (timeout.count() % 1000LL) * 1000LL;
+  tv.tv_sec = long(timeout.count() / 1000LL);
+  tv.tv_usec = long((timeout.count() % 1000LL) * 1000LL);
 
   struct event* ev = obj->getEvent();
   if (event_add(ev, &tv) < 0) {

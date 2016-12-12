@@ -89,7 +89,7 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
   if (!getaddrinfo(ip.c_str(), nullptr, &hints, &result)) {
     struct sockaddr_in6* ipAddr = (struct sockaddr_in6*)result->ai_addr;
     addr_.in6Addr_ = ipAddr->sin6_addr;
-    scope_ = ipAddr->sin6_scope_id;
+    scope_ = uint16_t(ipAddr->sin6_scope_id);
     freeaddrinfo(result);
   } else {
     throw IPAddressFormatException(
@@ -106,7 +106,7 @@ IPAddressV6::IPAddressV6(const in6_addr& src)
 // sockaddr_in6 constructor
 IPAddressV6::IPAddressV6(const sockaddr_in6& src)
   : addr_(src.sin6_addr)
-  , scope_(src.sin6_scope_id)
+  , scope_(uint16_t(src.sin6_scope_id))
 {
 }
 
@@ -384,7 +384,7 @@ uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
 
 // protected
 const ByteArray16 IPAddressV6::fetchMask(size_t numBits) {
-  static const uint8_t bits = bitCount();
+  static const size_t bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException("IPv6 addresses are 128 bits.");
   }

@@ -89,7 +89,8 @@ CIDRNetwork IPAddress::createNetwork(StringPiece ipSlashCidr,
         "'"));
   }
   IPAddress subnet(vec.at(0));
-  uint8_t cidr = (defaultCidr > -1) ? defaultCidr : (subnet.isV4() ? 32 : 128);
+  uint8_t cidr =
+      (defaultCidr > -1) ? uint8_t(defaultCidr) : (subnet.isV4() ? 32 : 128);
 
   if (elemCount == 2) {
     try {

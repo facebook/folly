@@ -203,7 +203,7 @@ inline void writeIntegerString(IntegralType val, char** buffer) {
       } else {
         value += ('a' - 10);
       }
-      *(buf++) = value;
+      *(buf++) = char(value);
       val %= powerToPrint;
       found = true;
     }
@@ -227,7 +227,7 @@ inline std::string fastIpv4ToString(const in_addr& inAddr) {
   *(buf++) = '.';
   writeIntegerString<uint8_t, 3>(octets[3], &buf);
 
-  return std::string(str, buf - str);
+  return std::string(str, size_t(buf - str));
 }
 
 inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
@@ -251,7 +251,7 @@ inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
     }
   }
 
-  return std::string(str, buf - str);
+  return std::string(str, size_t(buf - str));
 }
 }
 }

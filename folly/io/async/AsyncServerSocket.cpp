@@ -404,7 +404,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     }
 
     // Bind to the socket
-    if (fsp::bind(s, res->ai_addr, res->ai_addrlen) != 0) {
+    if (fsp::bind(s, res->ai_addr, socklen_t(res->ai_addrlen)) != 0) {
       folly::throwSystemError(
           errno,
           "failed to bind to async server socket for port ",

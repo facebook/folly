@@ -84,7 +84,7 @@ void AsyncSignalHandler::libeventCallback(libevent_fd_t signum,
                                           short /* events */,
                                           void* arg) {
   AsyncSignalHandler* handler = static_cast<AsyncSignalHandler*>(arg);
-  handler->signalReceived(signum);
+  handler->signalReceived(int(signum));
 }
 
 } // folly

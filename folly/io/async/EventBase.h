@@ -443,7 +443,7 @@ class EventBase : private boost::noncopyable,
    */
   void waitUntilRunning();
 
-  int getNotificationQueueSize() const;
+  size_t getNotificationQueueSize() const;
 
   void setMaxReadAtOnce(uint32_t maxAtOnce);
 

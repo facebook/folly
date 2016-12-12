@@ -635,7 +635,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     }
 
     void bytesWritten(size_t count) {
-      totalBytesWritten_ += count;
+      totalBytesWritten_ += uint32_t(count);
       socket_->appBytesWritten_ += count;
     }
 

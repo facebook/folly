@@ -43,7 +43,7 @@ inline std::string familyNameStr(sa_family_t family) {
 
 template <typename IPAddrType>
 inline bool
-getNthMSBitImpl(const IPAddrType& ip, uint8_t bitIndex, sa_family_t family) {
+getNthMSBitImpl(const IPAddrType& ip, size_t bitIndex, sa_family_t family) {
   if (bitIndex >= ip.bitCount()) {
     getNthMSBitImplThrow(ip.bitCount(), family);
   }
