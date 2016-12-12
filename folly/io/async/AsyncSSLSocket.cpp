@@ -1710,7 +1710,7 @@ void AsyncSSLSocket::clientHelloParsingCallback(int written,
         }
       }
     }
-  } catch (std::out_of_range& e) {
+  } catch (std::out_of_range&) {
     // we'll use what we found and cleanup below.
     VLOG(4) << "AsyncSSLSocket::clientHelloParsingCallback(): "
       << "buffer finished unexpectedly." << " AsyncSSLSocket socket=" << sock;

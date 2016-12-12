@@ -691,7 +691,7 @@ void SchemaValidator::loadSchema(SchemaValidatorContext& context,
               s = s->get_ptr(pos);
               continue;
             }
-          } catch (const std::range_error& e) {
+          } catch (const std::range_error&) {
             // ignore
           }
         }

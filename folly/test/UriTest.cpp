@@ -347,7 +347,7 @@ TEST(Uri, Simple) {
     try {
       Uri u(s);
       CHECK(false) << "Control should not have reached here";
-    } catch (const std::invalid_argument& ex) {
+    } catch (const std::invalid_argument&) {
       // success
     }
   }
@@ -358,7 +358,7 @@ TEST(Uri, Simple) {
     try {
       Uri u(s);
       CHECK(false) << "Control should not have reached here";
-    } catch (const std::invalid_argument& ex) {
+    } catch (const std::invalid_argument&) {
       // success
     }
   }
@@ -369,7 +369,7 @@ TEST(Uri, Simple) {
     try {
       Uri u(s);
       CHECK(false) << "Control should not have reached here";
-    } catch (const std::invalid_argument& ex) {
+    } catch (const std::invalid_argument&) {
       // success
     }
   }
@@ -380,7 +380,7 @@ TEST(Uri, Simple) {
     try {
       Uri u(s);
       CHECK(false) << "Control should not have reached here";
-    } catch (const std::invalid_argument& ex) {
+    } catch (const std::invalid_argument&) {
       // success
     }
   }

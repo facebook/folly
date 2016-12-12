@@ -256,7 +256,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
 
         try {
           argIndex = to<int>(piece);
-        } catch (const std::out_of_range& e) {
+        } catch (const std::out_of_range&) {
           arg.error("argument index must be integer");
         }
         arg.enforce(argIndex >= 0, "argument index must be non-negative");

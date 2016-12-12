@@ -196,7 +196,7 @@ TEST(LifoSem, shutdown_race) {
           a.wait();
           ++waitCount;
         }
-      } catch (ShutdownSemError& x) {
+      } catch (ShutdownSemError&) {
         // expected
         EXPECT_TRUE(a.isShutdown());
       }
@@ -228,7 +228,7 @@ TEST(LifoSem, shutdown_multi) {
         try {
           a.wait();
           EXPECT_TRUE(false);
-        } catch (ShutdownSemError& x) {
+        } catch (ShutdownSemError&) {
           // expected
           EXPECT_TRUE(a.isShutdown());
         }

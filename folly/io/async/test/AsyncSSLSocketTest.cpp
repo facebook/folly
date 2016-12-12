@@ -311,7 +311,7 @@ TEST(AsyncSSLSocketTest, HandshakeError) {
     uint8_t readbuf[128];
     uint32_t bytesRead = socket->readAll(readbuf, sizeof(readbuf));
     LOG(ERROR) << "readAll returned " << bytesRead << " instead of throwing";
-  } catch (AsyncSocketException &e) {
+  } catch (AsyncSocketException&) {
     ex = true;
   }
   EXPECT_TRUE(ex);

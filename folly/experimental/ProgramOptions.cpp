@@ -119,7 +119,7 @@ void GFlagValueSemanticBase<T>::parse(boost::any& valueStore,
   try {
     val = this->parseValue(tokens);
     this->transform(val);
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     throw po::invalid_option_value(
         tokens.empty() ? std::string() : tokens.front());
   }

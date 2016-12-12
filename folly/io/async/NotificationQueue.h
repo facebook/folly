@@ -753,7 +753,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       if (wasEmpty) {
         return;
       }
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
       // This catch block is really just to handle the case where the MessageT
       // constructor throws.  The messageAvailable() callback itself is
       // declared as noexcept and should never throw.

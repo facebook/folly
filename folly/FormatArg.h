@@ -267,7 +267,7 @@ inline int FormatArg::splitIntKey() {
   }
   try {
     return to<int>(doSplitKey<true>());
-  } catch (const std::out_of_range& e) {
+  } catch (const std::out_of_range&) {
     error("integer key required");
     return 0;  // unreached
   }

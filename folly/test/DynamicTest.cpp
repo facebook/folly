@@ -252,7 +252,7 @@ TEST(Dynamic, Operator) {
     LOG(ERROR) << "operator < returned "
                << static_cast<int>(foo)
                << " instead of throwing";
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     caught = true;
   }
   EXPECT_TRUE(caught);

@@ -449,7 +449,7 @@ void AsyncServerSocket::bind(uint16_t port) {
           setupAddress(res);
         }
       }
-    } catch (const std::system_error& e) {
+    } catch (const std::system_error&) {
       // If we can't bind to the same port on ipv4 as ipv6 when using
       // port=0 then we will retry again before giving up after
       // kNumTries attempts.  We do this by closing the sockets that
@@ -953,7 +953,7 @@ void AsyncServerSocket::enterBackoff() {
   if (backoffTimeout_ == nullptr) {
     try {
       backoffTimeout_ = new BackoffTimeout(this);
-    } catch (const std::bad_alloc& ex) {
+    } catch (const std::bad_alloc&) {
       // Man, we couldn't even allocate the timer to re-enable accepts.
       // We must be in pretty bad shape.  Don't pause accepting for now,
       // since we won't be able to re-enable ourselves later.

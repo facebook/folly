@@ -275,7 +275,7 @@ void contendedRW(size_t itersPerThread,
               if (!pr.second) {
                 pr.first->second.data++;
               }
-            } catch (std::bad_alloc& x) {
+            } catch (std::bad_alloc&) {
               LOG(INFO) << "bad alloc";
             }
           }

@@ -437,7 +437,7 @@ TEST(PrettyToDouble, Basic) {
         try{
           recoveredX = prettyToDouble(prettyPrint(x, formatType, addSpace),
                                              formatType);
-        } catch (std::range_error &ex){
+        } catch (std::range_error&) {
           EXPECT_TRUE(false);
         }
         double relativeError = (x - recoveredX) / x;

@@ -667,7 +667,7 @@ TEST(Conv, DoubleToInt) {
     auto i2 = to<int>(42.1);
     LOG(ERROR) << "to<int> returned " << i2 << " instead of throwing";
     EXPECT_TRUE(false);
-  } catch (std::range_error& e) {
+  } catch (std::range_error&) {
     //LOG(INFO) << e.what();
   }
 }
@@ -684,7 +684,7 @@ TEST(Conv, EnumToInt) {
                << static_cast<unsigned int>(i2)
                << " instead of throwing";
     EXPECT_TRUE(false);
-  } catch (std::range_error& e) {
+  } catch (std::range_error&) {
     //LOG(INFO) << e.what();
   }
 }
@@ -709,7 +709,7 @@ TEST(Conv, IntToEnum) {
                << static_cast<unsigned int>(i2)
                << " instead of throwing";
     EXPECT_TRUE(false);
-  } catch (std::range_error& e) {
+  } catch (std::range_error&) {
     //LOG(INFO) << e.what();
   }
 }
@@ -726,7 +726,7 @@ TEST(Conv, UnsignedEnum) {
     auto i = to<int32_t>(x);
     LOG(ERROR) << "to<int32_t> returned " << i << " instead of throwing";
     EXPECT_TRUE(false);
-  } catch (std::range_error& e) {
+  } catch (std::range_error&) {
   }
 }
 

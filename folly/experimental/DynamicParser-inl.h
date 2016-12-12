@@ -263,11 +263,11 @@ template <typename Fn>
 void DynamicParser::wrapError(const folly::dynamic* lookup_k, Fn fn) {
   try {
     fn();
-  } catch (DynamicParserLogicError& ex) {
+  } catch (DynamicParserLogicError&) {
     // When the parser is misused, we throw all the way up to the user,
     // instead of reporting it as if the input is invalid.
     throw;
-  } catch (DynamicParserParseError& ex) {
+  } catch (DynamicParserParseError&) {
     // We are just bubbling up a parse error for OnError::THROW.
     throw;
   } catch (const std::exception& ex) {
