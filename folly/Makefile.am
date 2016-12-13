@@ -107,6 +107,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \
+	experimental/JemallocNodumpAllocator.h \
 	experimental/JSONSchema.h \
 	experimental/LockFreeRingBuffer.h \
 	experimental/NestedCommandLineApp.h \
@@ -508,6 +509,7 @@ libfolly_la_SOURCES = \
 	experimental/DynamicParser.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
+	experimental/JemallocNodumpAllocator.cpp \
 	experimental/JSONSchema.cpp \
 	experimental/NestedCommandLineApp.cpp \
 	experimental/observer/detail/Core.cpp \
