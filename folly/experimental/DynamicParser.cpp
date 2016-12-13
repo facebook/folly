@@ -23,7 +23,6 @@
  *
  */
 #include <folly/experimental/DynamicParser.h>
-#include <folly/CppAttributes.h>
 
 #include <folly/Optional.h>
 

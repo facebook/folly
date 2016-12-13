@@ -33,7 +33,6 @@
  */
 
 #include <folly/io/async/EventBaseLocal.h>
-#include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
 
 struct Foo {
