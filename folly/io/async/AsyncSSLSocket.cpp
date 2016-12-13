@@ -464,18 +464,36 @@ void AsyncSSLSocket::attachSSLContext(
   DCHECK(ctx->getSSLCtx());
   ctx_ = ctx;
 
+  // It's possible this could be attached before ssl_ is set up
+  if (!ssl_) {
+    return;
+  }
+
   // In order to call attachSSLContext, detachSSLContext must have been
-  // previously called which sets the socket's context to the dummy
-  // context. Thus we must acquire this lock.
+  // previously called.
+  // We need to update the initial_ctx if necessary
+  auto sslCtx = ctx->getSSLCtx();
+#ifndef OPENSSL_NO_TLSEXT
+  CRYPTO_add(&sslCtx->references, 1, CRYPTO_LOCK_SSL_CTX);
+  // note that detachSSLContext has already freed ssl_->initial_ctx
+  ssl_->initial_ctx = sslCtx;
+#endif
+  // Detach sets the socket's context to the dummy context. Thus we must acquire
+  // this lock.
   SpinLockGuard guard(dummyCtxLock);
-  SSL_set_SSL_CTX(ssl_, ctx->getSSLCtx());
+  SSL_set_SSL_CTX(ssl_, sslCtx);
 }
 
 void AsyncSSLSocket::detachSSLContext() {
   DCHECK(ctx_);
   ctx_.reset();
-  // We aren't using the initial_ctx for now, and it can introduce race
-  // conditions in the destructor of the SSL object.
+  // It's possible for this to be called before ssl_ has been
+  // set up
+  if (!ssl_) {
+    return;
+  }
+// Detach the initial_ctx as well.  Internally w/ OPENSSL_NO_TLSEXT
+// it is used for session info.  It will be reattached in attachSSLContext
 #ifndef OPENSSL_NO_TLSEXT
   if (ssl_->initial_ctx) {
     SSL_CTX_free(ssl_->initial_ctx);

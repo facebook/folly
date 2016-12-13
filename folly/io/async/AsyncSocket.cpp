@@ -1121,6 +1121,9 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
   eventBase_ = eventBase;
   ioHandler_.attachEventBase(eventBase);
   writeTimeout_.attachEventBase(eventBase);
+  if (evbChangeCb_) {
+    evbChangeCb_->evbAttached(this);
+  }
 }
 
 void AsyncSocket::detachEventBase() {
@@ -1133,6 +1136,9 @@ void AsyncSocket::detachEventBase() {
   eventBase_ = nullptr;
   ioHandler_.detachEventBase();
   writeTimeout_.detachEventBase();
+  if (evbChangeCb_) {
+    evbChangeCb_->evbDetached(this);
+  }
 }
 
 bool AsyncSocket::isDetachable() const {
