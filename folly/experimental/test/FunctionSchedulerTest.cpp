@@ -446,3 +446,15 @@ TEST(FunctionScheduler, GammaIntervalDistribution) {
   delay(2);
   EXPECT_EQ(6, total);
 }
+
+TEST(FunctionScheduler, AddWithRunOnce) {
+  int total = 0;
+  FunctionScheduler fs;
+  fs.addFunctionOnce([&] { total += 2; }, "add2");
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+  delay(2);
+  EXPECT_EQ(2, total);
+  fs.shutdown();
+}

@@ -111,6 +111,14 @@ class FunctionScheduler {
       std::chrono::milliseconds startDelay = std::chrono::milliseconds(0));
 
   /**
+   * Adds a new function to the FunctionScheduler to run only once.
+   */
+  void addFunctionOnce(
+      Function<void()>&& cb,
+      StringPiece nameID = StringPiece(),
+      std::chrono::milliseconds startDelay = std::chrono::milliseconds(0));
+
+  /**
     * Add a new function to the FunctionScheduler with the time
     * interval being distributed uniformly within the given interval
     * [minInterval, maxInterval].
@@ -194,18 +202,22 @@ class FunctionScheduler {
     std::string name;
     std::chrono::milliseconds startDelay;
     std::string intervalDescr;
+    bool runOnce;
 
-    RepeatFunc(Function<void()>&& cback,
-               IntervalDistributionFunc&& intervalFn,
-               const std::string& nameID,
-               const std::string& intervalDistDescription,
-               std::chrono::milliseconds delay)
+    RepeatFunc(
+        Function<void()>&& cback,
+        IntervalDistributionFunc&& intervalFn,
+        const std::string& nameID,
+        const std::string& intervalDistDescription,
+        std::chrono::milliseconds delay,
+        bool once)
         : cb(std::move(cback)),
           intervalFunc(std::move(intervalFn)),
           nextRunTime(),
           name(nameID),
           startDelay(delay),
-          intervalDescr(intervalDistDescription) {}
+          intervalDescr(intervalDistDescription),
+          runOnce(once) {}
 
     std::chrono::steady_clock::time_point getNextRunTime() const {
       return nextRunTime;
@@ -239,6 +251,14 @@ class FunctionScheduler {
                       FunctionHeap::iterator it);
   void addFunctionToHeap(const std::unique_lock<std::mutex>& lock,
                          RepeatFunc&& func);
+
+  void addFunctionInternal(
+      Function<void()>&& cb,
+      IntervalDistributionFunc&& intervalFunc,
+      const std::string& nameID,
+      const std::string& intervalDescr,
+      std::chrono::milliseconds startDelay,
+      bool runOnce);
 
   std::thread thread_;
 
