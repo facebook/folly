@@ -128,9 +128,7 @@ void AsyncTimeout::detachTimeoutManager() {
   // currently installed.
   if (isScheduled()) {
     // Programmer bug.  Abort the program.
-    LOG(ERROR) << "detachEventBase() called on scheduled timeout; aborting";
-    abort();
-    return;
+    LOG(FATAL) << "detachEventBase() called on scheduled timeout; aborting";
   }
 
   if (timeoutManager_) {

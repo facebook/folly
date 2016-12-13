@@ -678,12 +678,11 @@ TEST(FiberManager, collectNThrow) {
       manager.addTask([&]() {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
-          funcs.push_back([i, &pendingFibers]() {
+          funcs.push_back([i, &pendingFibers]() -> size_t {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             throw std::runtime_error("Runtime");
-            return i * 2 + 1;
           });
         }
 
@@ -2029,9 +2028,8 @@ TEST(FiberManager, ABD_UserProvidedBatchDispatchThrowsTest) {
   // Testing that exception is set if user provided batch dispatch throws
   //
   dispatchFunc = [](std::vector<ValueT>&& inputs) -> std::vector<ResultT> {
-    auto results = userDispatchFunc(std::move(inputs));
+    (void)userDispatchFunc(std::move(inputs));
     throw std::runtime_error("Unexpected exception in user dispatch function");
-    return results;
   };
   auto atomicBatchDispatcher =
       createAtomicBatchDispatcher(std::move(dispatchFunc));

@@ -237,18 +237,16 @@ TEST(Future, onError) {
 
   // Returned value propagates
   {
-    auto f = makeFuture().then([] {
+    auto f = makeFuture().then([]() -> int {
       throw eggs;
-      return 0;
     }).onError([&](eggs_t& /* e */) { return 42; });
     EXPECT_EQ(42, f.value());
   }
 
   // Returned future propagates
   {
-    auto f = makeFuture().then([] {
+    auto f = makeFuture().then([]() -> int {
       throw eggs;
-      return 0;
     }).onError([&](eggs_t& /* e */) { return makeFuture<int>(42); });
     EXPECT_EQ(42, f.value());
   }
@@ -256,15 +254,15 @@ TEST(Future, onError) {
   // Throw in callback
   {
     auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { throw e; return -1; });
+      .then([]() -> int { throw eggs; })
+      .onError([&] (eggs_t& e) -> int { throw e; });
     EXPECT_THROW(f.value(), eggs_t);
   }
 
   {
     auto f = makeFuture()
-      .then([] { throw eggs; return 0; })
-      .onError([&] (eggs_t& e) { throw e; return makeFuture<int>(-1); });
+      .then([]() -> int { throw eggs; })
+      .onError([&] (eggs_t& e) -> Future<int> { throw e; });
     EXPECT_THROW(f.value(), eggs_t);
   }
 
@@ -283,14 +281,12 @@ TEST(Future, onError) {
   // exception_wrapper, return Future<T> but throw
   {
     auto f = makeFuture()
-                 .then([] {
+                 .then([]() -> int {
                    throw eggs;
-                   return 0;
                  })
-                 .onError([&](exception_wrapper /* e */) {
+                 .onError([&](exception_wrapper /* e */) -> Future<int> {
                    flag();
                    throw eggs;
-                   return makeFuture<int>(-1);
                  });
     EXPECT_FLAG();
     EXPECT_THROW(f.value(), eggs_t);
@@ -299,9 +295,8 @@ TEST(Future, onError) {
   // exception_wrapper, return T
   {
     auto f = makeFuture()
-                 .then([] {
+                 .then([]() -> int {
                    throw eggs;
-                   return 0;
                  })
                  .onError([&](exception_wrapper /* e */) {
                    flag();
@@ -314,14 +309,12 @@ TEST(Future, onError) {
   // exception_wrapper, return T but throw
   {
     auto f = makeFuture()
-                 .then([] {
+                 .then([]() -> int {
                    throw eggs;
-                   return 0;
                  })
-                 .onError([&](exception_wrapper /* e */) {
+                 .onError([&](exception_wrapper /* e */) -> int {
                    flag();
                    throw eggs;
-                   return -1;
                  });
     EXPECT_FLAG();
     EXPECT_THROW(f.value(), eggs_t);

@@ -34,6 +34,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Assume.h>
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
@@ -106,8 +107,7 @@ std::string ProcessReturnCode::str() const {
     return to<std::string>("killed by signal ", killSignal(),
                            (coreDumped() ? " (core dumped)" : ""));
   }
-  CHECK(false);  // unreached
-  return "";  // silence GCC warning
+  assume_unreachable();
 }
 
 CalledProcessError::CalledProcessError(ProcessReturnCode rc)
