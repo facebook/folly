@@ -102,19 +102,11 @@ constexpr std::size_t checkOverflowOrNpos(std::size_t i, std::size_t max) {
 }
 
 // Intentionally NOT constexpr. See note above for assertOutOfBounds
-inline void assertOutOfBoundsNothrow() {
-  assert(false && "Array index out of bounds in BasicFixedString");
-}
-
-constexpr std::size_t checkOverflowNothrow(std::size_t i, std::size_t max) {
-  return i <= max ? i : (assertOutOfBoundsNothrow(), i);
-}
-
-// Intentionally NOT constexpr. See note above for assertOutOfBounds
-inline void assertNotNullTerminated() noexcept {
+[[noreturn]] inline void assertNotNullTerminated() noexcept {
   assert(
       false &&
       "Non-null terminated string used to initialize a BasicFixedString");
+  std::terminate(); // Fail hard, fail fast.
 }
 
 // Parsing help for human readers: the following is a constexpr noexcept
@@ -1153,7 +1145,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
 #ifdef NDEBUG
     return data_[i];
 #else
-    return data_[detail::fixedstring::checkOverflowNothrow(i, size_)];
+    return data_[detail::fixedstring::checkOverflow(i, size_)];
 #endif
   }
 
@@ -1164,21 +1156,21 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
 #ifdef NDEBUG
     return data_[i];
 #else
-    return data_[detail::fixedstring::checkOverflowNothrow(i, size_)];
+    return data_[detail::fixedstring::checkOverflow(i, size_)];
 #endif
   }
 
   /**
    * \note Equivalent to `(*this)[0]`
    */
-  FOLLY_CPP14_CONSTEXPR Char& front() noexcept(false) {
+  FOLLY_CPP14_CONSTEXPR Char& front() noexcept {
     return (*this)[0u];
   }
 
   /**
    * \overload
    */
-  constexpr const Char& front() const noexcept(false) {
+  constexpr const Char& front() const noexcept {
     return (*this)[0u];
   }
 
@@ -1186,22 +1178,22 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `at(size()-1)`
    * \pre `!empty()`
    */
-  FOLLY_CPP14_CONSTEXPR Char& back() noexcept(false) {
+  FOLLY_CPP14_CONSTEXPR Char& back() noexcept {
 #ifdef NDEBUG
     return data_[size_ - 1u];
 #else
-    return data_[size_ - detail::fixedstring::checkOverflowNothrow(1u, size_)];
+    return data_[size_ - detail::fixedstring::checkOverflow(1u, size_)];
 #endif
   }
 
   /**
    * \overload
    */
-  constexpr const Char& back() const noexcept(false) {
+  constexpr const Char& back() const noexcept {
 #ifdef NDEBUG
     return data_[size_ - 1u];
 #else
-    return data_[size_ - detail::fixedstring::checkOverflowNothrow(1u, size_)];
+    return data_[size_ - detail::fixedstring::checkOverflow(1u, size_)];
 #endif
   }
 

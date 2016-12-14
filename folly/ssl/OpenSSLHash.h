@@ -173,7 +173,9 @@ class OpenSSLHash {
     }
     check_out_size_throw(size, out);
   }
-  static void check_out_size_throw(size_t size, MutableByteRange out);
+  [[noreturn]] static void check_out_size_throw(
+      size_t size,
+      MutableByteRange out);
 
   static inline void check_libssl_result(int expected, int result) {
     if (LIKELY(result == expected)) {
@@ -181,8 +183,7 @@ class OpenSSLHash {
     }
     check_libssl_result_throw();
   }
-  static void check_libssl_result_throw();
-
+  [[noreturn]] static void check_libssl_result_throw();
 };
 
 }

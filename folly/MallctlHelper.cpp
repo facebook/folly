@@ -24,7 +24,7 @@ namespace folly {
 
 namespace detail {
 
-void handleMallctlError(const char* cmd, int err) {
+[[noreturn]] void handleMallctlError(const char* cmd, int err) {
   assert(err != 0);
   throw std::runtime_error(
       sformat("mallctl {}: {} ({})", cmd, errnoStr(err), err));

@@ -26,11 +26,17 @@
 
 struct MyException {};
 
-void bar() { throw std::runtime_error("hello"); }
+[[noreturn]] void bar() {
+  throw std::runtime_error("hello");
+}
 
-void foo() { throw MyException(); }
+[[noreturn]] void foo() {
+  throw MyException();
+}
 
-void baz() { foo(); }
+[[noreturn]] void baz() {
+  foo();
+}
 
 using namespace folly::exception_tracer;
 

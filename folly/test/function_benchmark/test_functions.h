@@ -24,7 +24,7 @@
 
 void doNothing();
 
-void throwException();
+[[noreturn]] void throwException();
 std::exception_ptr returnExceptionPtr();
 void exceptionPtrReturnParam(std::exception_ptr* excReturn);
 std::string returnString();

@@ -36,6 +36,7 @@ class Exception : public std::exception {
 void doNothing() {
 }
 
+[[noreturn]]
 void throwException() {
   throw Exception("this is a test");
 }

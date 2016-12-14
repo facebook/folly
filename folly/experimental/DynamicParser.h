@@ -357,9 +357,9 @@ private:
     folly::dynamic releaseErrors();
 
     // Invoked on error when using OnError::THROW.
-    void throwErrors();
+    [[noreturn]] void throwErrors();
 
-  private:
+   private:
     friend struct Pop;
 
     folly::dynamic releaseErrorsImpl();  // for releaseErrors() & throwErrors()

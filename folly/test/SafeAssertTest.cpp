@@ -23,7 +23,7 @@
 
 using namespace folly;
 
-void fail() {
+[[noreturn]] void fail() {
   FOLLY_SAFE_CHECK(0 + 0, "hello");
 }
 

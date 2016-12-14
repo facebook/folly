@@ -118,7 +118,7 @@ void Fiber::recordStackPosition() {
   VLOG(4) << "Stack usage: " << currentPosition;
 }
 
-void Fiber::fiberFunc() {
+[[noreturn]] void Fiber::fiberFunc() {
 #ifdef FOLLY_SANITIZE_ADDRESS
   fiberManager_.registerFinishSwitchStackWithAsan(
       nullptr, &asanMainStackBase_, &asanMainStackSize_);

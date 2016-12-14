@@ -295,6 +295,7 @@ TEST(ScopeGuard, TEST_THROWING_CLEANUP_ACTION) {
   struct ThrowingCleanupAction {
     explicit ThrowingCleanupAction(int& scopeExitExecuted)
         : scopeExitExecuted_(scopeExitExecuted) {}
+    [[noreturn]]
     ThrowingCleanupAction(const ThrowingCleanupAction& other)
         : scopeExitExecuted_(other.scopeExitExecuted_) {
       throw std::runtime_error("whoa");

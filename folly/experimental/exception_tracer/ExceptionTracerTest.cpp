@@ -20,7 +20,7 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
-void bar() {
+[[noreturn]] void bar() {
   throw std::runtime_error("hello");
 }
 
@@ -45,7 +45,7 @@ void foo() {
   }
 }
 
-void baz() {
+[[noreturn]] void baz() {
   try {
     try {
       bar();

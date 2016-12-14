@@ -60,7 +60,7 @@ void runChild(const char* file) {
   CHECK_ERR(creat(file, 0600));
 }
 
-void runParent(const char* file) {
+[[noreturn]] void runParent(const char* file) {
   std::vector<std::string> args {"/proc/self/exe", "--child", file};
   Subprocess proc(
       args,

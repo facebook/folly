@@ -168,7 +168,7 @@ folly::dynamic DynamicParser::ParserStack::releaseErrors() {
   return releaseErrorsImpl();
 }
 
-void DynamicParser::ParserStack::throwErrors() {
+[[noreturn]] void DynamicParser::ParserStack::throwErrors() {
   throw DynamicParserParseError(releaseErrorsImpl());
 }
 

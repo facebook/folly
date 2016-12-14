@@ -90,7 +90,7 @@ class Fiber {
   template <typename F, typename G>
   void setFunctionFinally(F&& func, G&& finally);
 
-  void fiberFunc();
+  [[noreturn]] void fiberFunc();
 
   /**
    * Switch out of fiber context into the main context,

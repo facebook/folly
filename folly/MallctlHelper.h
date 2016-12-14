@@ -27,7 +27,7 @@ namespace folly {
 
 namespace detail {
 
-void handleMallctlError(const char* cmd, int err);
+[[noreturn]] void handleMallctlError(const char* cmd, int err);
 
 template <typename T>
 void mallctlHelper(const char* cmd, T* out, T* in) {

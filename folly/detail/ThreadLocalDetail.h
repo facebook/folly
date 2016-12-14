@@ -256,7 +256,7 @@ struct StaticMetaBase {
 
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
-  ~StaticMetaBase() {
+  [[noreturn]] ~StaticMetaBase() {
     LOG(FATAL) << "StaticMeta lives forever!";
   }
 

@@ -21,12 +21,14 @@
 namespace folly {
 namespace ssl {
 
-void OpenSSLHash::check_out_size_throw(size_t size, MutableByteRange out) {
+[[noreturn]] void OpenSSLHash::check_out_size_throw(
+    size_t size,
+    MutableByteRange out) {
   throw std::invalid_argument(folly::sformat(
       "expected out of size {} but was of size {}", size, out.size()));
 }
 
-void OpenSSLHash::check_libssl_result_throw() {
+[[noreturn]] void OpenSSLHash::check_libssl_result_throw() {
   throw std::runtime_error("openssl crypto function failed");
 }
 
