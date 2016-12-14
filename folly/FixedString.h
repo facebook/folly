@@ -72,16 +72,6 @@ constexpr std::size_t FixedStringBase_<Void>::npos;
 
 using FixedStringBase = FixedStringBase_<>;
 
-template <class Char, std::size_t N>
-constexpr std::size_t size(const Char (&)[N]) noexcept {
-  return N - 1u;
-}
-
-template <class Char, std::size_t N>
-constexpr std::size_t size(const BasicFixedString<Char, N>& s) noexcept {
-  return s.size();
-}
-
 // Intentionally NOT constexpr. By making this not constexpr, we make
 // checkOverflow below ill-formed in a constexpr context when the condition
 // it's testing for fails. In this way, precondition violations are reported
@@ -126,6 +116,13 @@ constexpr const Char (&checkNullTerminated(const Char (&a)[N]) noexcept)[N] {
 
 enum class Cmp : int { LT = -1, EQ = 0, GT = 1 };
 
+// Rather annoyingly, GCC's -Warray-bounds warning issues false positives for
+// this code. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
+#if defined(__GNUC__) && !defined(__CLANG__) && __GNUC__ <= 4
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
 template <class Left, class Right>
 constexpr Cmp compare_(
     const Left& left,
@@ -161,18 +158,21 @@ constexpr bool equal_(
 }
 
 template <class Char, class Left, class Right>
-constexpr Char
-char_at_(const Left& left, const Right& right, std::size_t i) noexcept {
-  return i < fixedstring::size(left)
+constexpr Char char_at_(
+    const Left& left,
+    std::size_t left_count,
+    const Right& right,
+    std::size_t right_count,
+    std::size_t i) noexcept {
+  return i < left_count
       ? left[i]
-      : i < (fixedstring::size(left) + fixedstring::size(right))
-          ? right[i - fixedstring::size(left)]
-          : Char(0);
+      : i < (left_count + right_count) ? right[i - left_count] : Char(0);
 }
 
 template <class Char, class Left, class Right>
 constexpr Char char_at_(
     const Left& left,
+    std::size_t left_size,
     std::size_t left_pos,
     std::size_t left_count,
     const Right& right,
@@ -181,11 +181,10 @@ constexpr Char char_at_(
     std::size_t i) noexcept {
   return i < left_pos
       ? left[i]
-      : (i < right_count + left_pos
-             ? right[i - left_pos + right_pos]
-             : (i < fixedstring::size(left) - left_count + right_count
-                    ? left[i - right_count + left_count]
-                    : Char(0)));
+      : (i < right_count + left_pos ? right[i - left_pos + right_pos]
+                                    : (i < left_size - left_count + right_count
+                                           ? left[i - right_count + left_count]
+                                           : Char(0)));
 }
 
 template <class Left, class Right>
@@ -208,14 +207,14 @@ find_one_of_at_(Char ch, const Right& right, std::size_t pos) noexcept {
 template <class Left, class Right>
 constexpr std::size_t find_(
     const Left& left,
+    std::size_t left_size,
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return find_at_(left, right, pos, count)
-      ? pos
-      : fixedstring::size(left) <= pos + count
+  return find_at_(left, right, pos, count) ? pos
+                                           : left_size <= pos + count
           ? FixedStringBase::npos
-          : find_(left, right, pos + 1u, count);
+          : find_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
@@ -233,27 +232,27 @@ constexpr std::size_t rfind_(
 template <class Left, class Right>
 constexpr std::size_t find_first_of_(
     const Left& left,
+    std::size_t left_size,
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return find_one_of_at_(left[pos], right, count)
-      ? pos
-      : fixedstring::size(left) <= pos + 1u
+  return find_one_of_at_(left[pos], right, count) ? pos
+                                                  : left_size <= pos + 1u
           ? FixedStringBase::npos
-          : find_first_of_(left, right, pos + 1u, count);
+          : find_first_of_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
 constexpr std::size_t find_first_not_of_(
     const Left& left,
+    std::size_t left_size,
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return !find_one_of_at_(left[pos], right, count)
-      ? pos
-      : fixedstring::size(left) <= pos + 1u
+  return !find_one_of_at_(left[pos], right, count) ? pos
+                                                   : left_size <= pos + 1u
           ? FixedStringBase::npos
-          : find_first_not_of_(left, right, pos + 1u, count);
+          : find_first_not_of_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
@@ -284,23 +283,43 @@ struct Helper {
   template <class Char, class Left, class Right, std::size_t... Is>
   static constexpr BasicFixedString<Char, sizeof...(Is)> concat_(
       const Left& left,
+      std::size_t left_count,
       const Right& right,
+      std::size_t right_count,
       std::index_sequence<Is...> is) noexcept {
-    return {left, right, is};
+    return {left, left_count, right, right_count, is};
   }
 
   template <class Char, class Left, class Right, std::size_t... Is>
   static constexpr BasicFixedString<Char, sizeof...(Is)> replace_(
       const Left& left,
+      std::size_t left_size,
       std::size_t left_pos,
       std::size_t left_count,
       const Right& right,
       std::size_t right_pos,
       std::size_t right_count,
       std::index_sequence<Is...> is) noexcept {
-    return {left, left_pos, left_count, right, right_pos, right_count, is};
+    return {left,
+            left_size,
+            left_pos,
+            left_count,
+            right,
+            right_pos,
+            right_count,
+            is};
+  }
+
+  template <class Char, std::size_t N>
+  static constexpr const Char (
+      &data_(const BasicFixedString<Char, N>& that) noexcept)[N + 1u] {
+    return that.data_;
   }
 };
+
+#if defined(__GNUC__) && !defined(__CLANG__) && __GNUC__ <= 4
+#pragma GCC diagnostic pop
+#endif
 
 template <class T>
 FOLLY_CPP14_CONSTEXPR void constexpr_swap(T& a, T& b) noexcept(
@@ -555,16 +574,24 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   template <class Left, class Right, std::size_t... Is>
   constexpr BasicFixedString(
       const Left& left,
+      std::size_t left_size,
       const Right& right,
+      std::size_t right_size,
       std::index_sequence<Is...>) noexcept
-      : data_{detail::fixedstring::char_at_<Char>(left, right, Is)..., Char(0)},
-        size_{detail::fixedstring::size(left) +
-              detail::fixedstring::size(right)} {}
+      : data_{detail::fixedstring::char_at_<Char>(
+                  left,
+                  left_size,
+                  right,
+                  right_size,
+                  Is)...,
+              Char(0)},
+        size_{left_size + right_size} {}
 
   // Replace constructor
   template <class Left, class Right, std::size_t... Is>
   constexpr BasicFixedString(
       const Left& left,
+      std::size_t left_size,
       std::size_t left_pos,
       std::size_t left_count,
       const Right& right,
@@ -573,6 +600,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::index_sequence<Is...>) noexcept
       : data_{detail::fixedstring::char_at_<Char>(
                   left,
+                  left_size,
                   left_pos,
                   left_count,
                   right,
@@ -580,7 +608,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
                   right_count,
                   Is)...,
               Char(0)},
-        size_{detail::fixedstring::size(left) - left_count + right_count} {}
+        size_{left_size - left_count + right_count} {}
 
  public:
   using size_type = std::size_t;
@@ -1307,7 +1335,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     count = detail::fixedstring::checkOverflowOrNpos(count, that.size_ - pos);
     detail::fixedstring::checkOverflow(count, N - size_);
     for (std::size_t i = 0u; i < count; ++i)
-      data_[size_ + i] = that[pos + i];
+      data_[size_ + i] = that.data_[pos + i];
     size_ += count;
     data_[size_] = Char(0);
     return *this;
@@ -1559,11 +1587,11 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t that_pos,
       std::size_t that_count) const noexcept(false) {
     return static_cast<int>(detail::fixedstring::compare_(
-        *this,
+        data_,
         detail::fixedstring::checkOverflow(this_pos, size_),
         detail::fixedstring::checkOverflow(this_count, size_ - this_pos) +
             this_pos,
-        that,
+        that.data_,
         detail::fixedstring::checkOverflow(that_pos, that.size_),
         detail::fixedstring::checkOverflow(that_count, that.size_ - that_pos) +
             that_pos));
@@ -1610,7 +1638,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Char* that,
       std::size_t that_count) const noexcept(false) {
     return static_cast<int>(detail::fixedstring::compare_(
-        *this,
+        data_,
         detail::fixedstring::checkOverflow(this_pos, size_),
         detail::fixedstring::checkOverflowOrNpos(this_count, size_ - this_pos) +
             this_pos,
@@ -1739,7 +1767,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Char* that,
       std::size_t that_count) noexcept(false) {
     return *this = detail::fixedstring::Helper::replace_<Char>(
-               *this,
+               data_,
+               size_,
                detail::fixedstring::checkOverflow(this_pos, size_),
                detail::fixedstring::checkOverflowOrNpos(
                    this_count, size_ - this_pos),
@@ -1847,10 +1876,11 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t that_pos,
       std::size_t that_count) const noexcept(false) {
     return detail::fixedstring::Helper::replace_<Char>(
-        *this,
+        data_,
+        size_,
         detail::fixedstring::checkOverflow(this_pos, size_),
         detail::fixedstring::checkOverflowOrNpos(this_count, size_ - this_pos),
-        that,
+        that.data_,
         detail::fixedstring::checkOverflow(that_pos, that.size_),
         detail::fixedstring::checkOverflowOrNpos(
             that_count, that.size_ - that_pos),
@@ -1947,7 +1977,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t that_pos,
       std::size_t that_count) const noexcept(false) {
     return detail::fixedstring::Helper::replace_<Char>(
-        *this,
+        data_,
+        size_,
         detail::fixedstring::checkOverflow(this_pos, size_),
         detail::fixedstring::checkOverflowOrNpos(this_count, size_ - this_pos),
         detail::fixedstring::checkNullTerminated(that),
@@ -2067,7 +2098,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString<Char, M>& that,
       std::size_t pos) const noexcept(false) {
     return that.size_ <= size_ - detail::fixedstring::checkOverflow(pos, size_)
-        ? detail::fixedstring::find_(*this, that, pos, that.size_)
+        ? detail::fixedstring::find_(data_, size_, that.data_, pos, that.size_)
         : npos;
   }
 
@@ -2106,7 +2137,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t pos,
       std::size_t count) const noexcept(false) {
     return count <= size_ - detail::fixedstring::checkOverflow(pos, size_)
-        ? detail::fixedstring::find_(*this, that, pos, count)
+        ? detail::fixedstring::find_(data_, size_, that, pos, count)
         : npos;
   }
 
@@ -2128,7 +2159,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     using A = const Char[1u];
     return 0u == size_ - detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_(*this, A{ch}, pos, 1u);
+        : detail::fixedstring::find_(data_, size_, A{ch}, pos, 1u);
   }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
@@ -2153,8 +2184,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t pos) const noexcept(false) {
     return that.size_ <= size_
         ? detail::fixedstring::rfind_(
-              *this,
-              that,
+              data_,
+              that.data_,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_),
                   size_ - that.size_),
@@ -2198,7 +2229,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t count) const noexcept(false) {
     return count <= size_
         ? detail::fixedstring::rfind_(
-              *this,
+              data_,
               that,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_),
@@ -2226,7 +2257,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::rfind_(
-              *this,
+              data_,
               A{ch},
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
@@ -2254,7 +2285,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t pos) const noexcept(false) {
     return size_ == detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_first_of_(*this, that, pos, that.size_);
+        : detail::fixedstring::find_first_of_(
+              data_, size_, that.data_, pos, that.size_);
   }
 
   /**
@@ -2295,7 +2327,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t count) const noexcept(false) {
     return size_ == detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_first_of_(*this, that, pos, count);
+        : detail::fixedstring::find_first_of_(data_, size_, that, pos, count);
   }
 
   /**
@@ -2316,7 +2348,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     using A = const Char[1u];
     return size_ == detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_first_of_(*this, A{ch}, pos, 1u);
+        : detail::fixedstring::find_first_of_(data_, size_, A{ch}, pos, 1u);
   }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
@@ -2339,7 +2371,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t pos) const noexcept(false) {
     return size_ == detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_first_not_of_(*this, that, pos, that.size_);
+        : detail::fixedstring::find_first_not_of_(
+              data_, size_, that.data_, pos, that.size_);
   }
 
   /**
@@ -2380,7 +2413,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t count) const noexcept(false) {
     return size_ == detail::fixedstring::checkOverflow(pos, size_)
         ? npos
-        : detail::fixedstring::find_first_not_of_(*this, that, pos, count);
+        : detail::fixedstring::find_first_not_of_(
+              data_, size_, that, pos, count);
   }
 
   /**
@@ -2400,7 +2434,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       noexcept(false) {
     using A = const Char[1u];
     return 1u <= size_ - detail::fixedstring::checkOverflow(pos, size_)
-        ? detail::fixedstring::find_first_not_of_(*this, A{ch}, pos, 1u)
+        ? detail::fixedstring::find_first_not_of_(data_, size_, A{ch}, pos, 1u)
         : npos;
   }
 
@@ -2426,8 +2460,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_of_(
-              *this,
-              that,
+              data_,
+              that.data_,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
               that.size_);
@@ -2472,7 +2506,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_of_(
-              *this,
+              data_,
               that,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
@@ -2498,7 +2532,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_of_(
-              *this,
+              data_,
               A{ch},
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
@@ -2527,8 +2561,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_not_of_(
-              *this,
-              that,
+              data_,
+              that.data_,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
               that.size_);
@@ -2573,7 +2607,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_not_of_(
-              *this,
+              data_,
               that,
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
@@ -2599,7 +2633,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
     return 0u == size_
         ? npos
         : detail::fixedstring::find_last_not_of_(
-              *this,
+              data_,
               A{ch},
               folly::constexpr_min(
                   detail::fixedstring::checkOverflow(pos, size_), size_ - 1u),
@@ -2613,7 +2647,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Char* a,
       const BasicFixedString& b) noexcept {
     return detail::fixedstring::equal_(
-        a, folly::constexpr_strlen(a), b, b.size());
+        a, folly::constexpr_strlen(a), b.data_, b.size_);
   }
 
   /**
@@ -2645,7 +2679,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& b) noexcept {
     return detail::fixedstring::Cmp::LT ==
         detail::fixedstring::compare_(
-               a, 0u, folly::constexpr_strlen(a), b, 0u, b.size_);
+               a, 0u, folly::constexpr_strlen(a), b.data_, 0u, b.size_);
   }
 
   /**
@@ -2656,7 +2690,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Char* b) noexcept {
     return detail::fixedstring::Cmp::LT ==
         detail::fixedstring::compare_(
-               a, 0u, a.size_, b, 0u, folly::constexpr_strlen(b));
+               a.data_, 0u, a.size_, b, 0u, folly::constexpr_strlen(b));
   }
 
   friend constexpr bool operator>(
@@ -2713,7 +2747,9 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& b) noexcept {
     return detail::fixedstring::Helper::concat_<Char>(
         detail::fixedstring::checkNullTerminated(a),
-        b,
+        M - 1u,
+        b.data_,
+        b.size_,
         std::make_index_sequence<N + M - 1u>{});
   }
 
@@ -2725,8 +2761,10 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& a,
       const Char (&b)[M]) noexcept {
     return detail::fixedstring::Helper::concat_<Char>(
-        a,
+        a.data_,
+        a.size_,
         detail::fixedstring::checkNullTerminated(b),
+        M - 1u,
         std::make_index_sequence<N + M - 1u>{});
   }
 
@@ -2738,7 +2776,11 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const BasicFixedString& b) noexcept {
     using A = const Char[2u];
     return detail::fixedstring::Helper::concat_<Char>(
-        A{a, Char(0)}, b, std::make_index_sequence<N + 1u>{});
+        A{a, Char(0)},
+        1u,
+        b.data_,
+        b.size_,
+        std::make_index_sequence<N + 1u>{});
   }
 
   /**
@@ -2749,7 +2791,11 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       Char b) noexcept {
     using A = const Char[2u];
     return detail::fixedstring::Helper::concat_<Char>(
-        a, A{b, Char(0)}, std::make_index_sequence<N + 1u>{});
+        a.data_,
+        a.size_,
+        A{b, Char(0)},
+        1u,
+        std::make_index_sequence<N + 1u>{});
   }
 };
 
@@ -2760,7 +2806,11 @@ template <class Char, std::size_t A, std::size_t B>
 constexpr bool operator==(
     const BasicFixedString<Char, A>& a,
     const BasicFixedString<Char, B>& b) noexcept {
-  return detail::fixedstring::equal_(a, a.size(), b, b.size());
+  return detail::fixedstring::equal_(
+      detail::fixedstring::Helper::data_(a),
+      a.size(),
+      detail::fixedstring::Helper::data_(b),
+      b.size());
 }
 
 template <class Char, std::size_t A, std::size_t B>
@@ -2775,7 +2825,13 @@ constexpr bool operator<(
     const BasicFixedString<Char, A>& a,
     const BasicFixedString<Char, B>& b) noexcept {
   return detail::fixedstring::Cmp::LT ==
-      detail::fixedstring::compare_(a, 0u, a.size(), b, 0u, b.size());
+      detail::fixedstring::compare_(
+             detail::fixedstring::Helper::data_(a),
+             0u,
+             a.size(),
+             detail::fixedstring::Helper::data_(b),
+             0u,
+             b.size());
 }
 
 template <class Char, std::size_t A, std::size_t B>
@@ -2807,7 +2863,11 @@ constexpr BasicFixedString<Char, N + M> operator+(
     const BasicFixedString<Char, N>& a,
     const BasicFixedString<Char, M>& b) noexcept {
   return detail::fixedstring::Helper::concat_<Char>(
-      a, b, std::make_index_sequence<N + M>{});
+      detail::fixedstring::Helper::data_(a),
+      a.size(),
+      detail::fixedstring::Helper::data_(b),
+      b.size(),
+      std::make_index_sequence<N + M>{});
 }
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **

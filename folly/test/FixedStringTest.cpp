@@ -640,6 +640,30 @@ TEST(FixedStringReverseIteratorTest, ConstexprReverseIteration) {
   static_assert((alpha.rend() - 2) == (alpha.rbegin() + 24), "");
 }
 
+namespace GCC61971 {
+  // FixedString runs afoul of GCC #61971 (spurious -Warray-bounds)
+  // in optimized builds. The following test case triggers it for gcc-4.x.
+  // Test that FixedString suppresses the warning correctly.
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
+  constexpr auto xyz = folly::makeFixedString("xyz");
+  constexpr auto dot = folly::makeFixedString(".");
+
+  template <typename T1>
+  constexpr auto concatStuff(const T1& component) noexcept {
+    return xyz + dot + component;
+  }
+  constexpr auto co = folly::makeFixedString("co");
+
+  struct S {
+    std::string s{concatStuff(co)};
+  };
+} // namespace GCC61971
+
+TEST(FixedStringGCC61971, GCC61971) {
+  GCC61971::S s;
+  (void)s;
+}
+
 #include <folly/Range.h>
 
 TEST(FixedStringConversionTest, ConversionToFollyRange) {
