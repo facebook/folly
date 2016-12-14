@@ -94,5 +94,5 @@ int main(int /* argc */, char* /* argv */ []) {
   testExceptionPtr1();
   testExceptionPtr2();
   baz();
-  return 0;
+  // no return because baz() is [[noreturn]]
 }
