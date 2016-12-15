@@ -165,6 +165,20 @@ class EventBase : private boost::noncopyable,
     std::shared_ptr<RequestContext> context_;
   };
 
+  class FunctionLoopCallback : public LoopCallback {
+   public:
+    explicit FunctionLoopCallback(Func&& function)
+        : function_(std::move(function)) {}
+
+    void runLoopCallback() noexcept override {
+      function_();
+      delete this;
+    }
+
+   private:
+    Func function_;
+  };
+
   /**
    * Create a new EventBase object.
    *

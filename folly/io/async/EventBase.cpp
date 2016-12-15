@@ -29,25 +29,6 @@
 #include <mutex>
 #include <pthread.h>
 
-namespace {
-
-using folly::EventBase;
-
-class FunctionLoopCallback : public EventBase::LoopCallback {
- public:
-  explicit FunctionLoopCallback(EventBase::Func&& function)
-      : function_(std::move(function)) {}
-
-  void runLoopCallback() noexcept override {
-    function_();
-    delete this;
-  }
-
- private:
-  EventBase::Func function_;
-};
-}
-
 namespace folly {
 
 /*
