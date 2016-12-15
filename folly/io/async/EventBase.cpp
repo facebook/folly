@@ -171,9 +171,7 @@ EventBase::~EventBase() {
 
   clearCobTimeouts();
 
-  while (!runBeforeLoopCallbacks_.empty()) {
-    delete &runBeforeLoopCallbacks_.front();
-  }
+  DCHECK_EQ(0, runBeforeLoopCallbacks_.size());
 
   (void)runLoopCallbacks();
 
