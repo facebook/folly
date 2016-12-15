@@ -31,7 +31,7 @@ TEST_F(ScopedEventBaseThreadTest, example) {
 
   Baton<> done;
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
 TEST_F(ScopedEventBaseThreadTest, start_stop) {
@@ -44,7 +44,7 @@ TEST_F(ScopedEventBaseThreadTest, start_stop) {
 
     Baton<> done;
     sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-    done.timed_wait(steady_clock::now() + milliseconds(100));
+    ASSERT_TRUE(done.timed_wait(seconds(1)));
 
     EXPECT_NE(nullptr, sebt.getEventBase());
     sebt.stop();
@@ -63,7 +63,7 @@ TEST_F(ScopedEventBaseThreadTest, move) {
 
   Baton<> done;
   sebt2.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
 TEST_F(ScopedEventBaseThreadTest, self_move) {
@@ -74,7 +74,7 @@ TEST_F(ScopedEventBaseThreadTest, self_move) {
 
   Baton<> done;
   sebt.getEventBase()->runInEventBaseThread([&] { done.post(); });
-  done.timed_wait(steady_clock::now() + milliseconds(100));
+  ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
 TEST_F(ScopedEventBaseThreadTest, manager) {
