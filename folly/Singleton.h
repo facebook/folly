@@ -507,7 +507,10 @@ class SingletonVault {
       eagerInitSingletons_;
   folly::Synchronized<std::vector<detail::TypeDescriptor>> creationOrder_;
 
-  folly::Synchronized<State> state_;
+  // Using SharedMutexReadPriority is important here, because we want to make
+  // sure we don't block nested singleton creation happening concurrently with
+  // destroyInstances().
+  folly::Synchronized<State, folly::SharedMutexReadPriority> state_;
 
   Type type_;
 };

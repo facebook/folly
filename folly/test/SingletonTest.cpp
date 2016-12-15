@@ -641,3 +641,36 @@ TEST(Singleton, CustomCreator) {
   EXPECT_EQ(42, x2p->a1);
   EXPECT_EQ(std::string("foo"), x2p->a2);
 }
+
+struct ConcurrentCreationDestructionTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonConcurrentCreationDestruction =
+    Singleton<T, Tag, ConcurrentCreationDestructionTag>;
+
+folly::Baton<> slowpokeNeedySingletonBaton;
+
+struct SlowpokeNeedySingleton {
+  SlowpokeNeedySingleton() {
+    slowpokeNeedySingletonBaton.post();
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds(100));
+    auto unused =
+        SingletonConcurrentCreationDestruction<NeededSingleton>::try_get();
+    EXPECT_NE(unused, nullptr);
+  }
+};
+
+TEST(Singleton, ConcurrentCreationDestruction) {
+  auto& vault = *SingletonVault::singleton<ConcurrentCreationDestructionTag>();
+  SingletonConcurrentCreationDestruction<NeededSingleton> neededSingleton;
+  SingletonConcurrentCreationDestruction<SlowpokeNeedySingleton> needySingleton;
+  vault.registrationComplete();
+
+  std::thread needyThread([&] { needySingleton.try_get(); });
+
+  slowpokeNeedySingletonBaton.wait();
+
+  vault.destroyInstances();
+
+  needyThread.join();
+}
