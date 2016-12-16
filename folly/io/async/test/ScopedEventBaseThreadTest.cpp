@@ -77,13 +77,20 @@ TEST_F(ScopedEventBaseThreadTest, self_move) {
   ASSERT_TRUE(done.timed_wait(seconds(1)));
 }
 
-TEST_F(ScopedEventBaseThreadTest, manager) {
+TEST_F(ScopedEventBaseThreadTest, default_manager) {
+  auto ebm = EventBaseManager::get();
+  ScopedEventBaseThread sebt;
+  auto sebt_eb = sebt.getEventBase();
+  auto ebm_eb = static_cast<EventBase*>(nullptr);
+  sebt_eb->runInEventBaseThreadAndWait([&] { ebm_eb = ebm->getEventBase(); });
+  EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
+}
+
+TEST_F(ScopedEventBaseThreadTest, custom_manager) {
   EventBaseManager ebm;
   ScopedEventBaseThread sebt(&ebm);
   auto sebt_eb = sebt.getEventBase();
-  auto ebm_eb = (EventBase*)nullptr;
-  sebt_eb->runInEventBaseThreadAndWait([&] {
-      ebm_eb = ebm.getEventBase();
-  });
+  auto ebm_eb = static_cast<EventBase*>(nullptr);
+  sebt_eb->runInEventBaseThreadAndWait([&] { ebm_eb = ebm.getEventBase(); });
   EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
 }
