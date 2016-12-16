@@ -26,7 +26,9 @@
 #include <folly/Portability.h>
 #include <folly/portability/Builtins.h>
 
-namespace folly { namespace compression { namespace instructions {
+namespace folly {
+namespace compression {
+namespace instructions {
 
 // NOTE: It's recommended to compile EF coding with -msse4.2, starting
 // with Nehalem, Intel CPUs support POPCNT instruction and gcc will emit
@@ -54,6 +56,22 @@ struct Default {
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
     return value & (value - 1);
   }
+
+  // Extract `length` bits starting from `start` from value. Only bits [0:63]
+  // will be extracted. All higher order bits in the
+  // result will be zeroed. If no bits are extracted, return 0.
+  static FOLLY_ALWAYS_INLINE uint64_t
+  bextr(uint64_t value, uint32_t start, uint32_t length) {
+    if (start > 63) {
+      return 0ULL;
+    }
+    if (start + length > 64) {
+      length = 64 - start;
+    }
+
+    return (value >> start) &
+        ((length == 64) ? (~0ULL) : ((1ULL << length) - 1ULL));
+  }
 };
 
 struct Nehalem : public Default {
@@ -62,11 +80,11 @@ struct Nehalem : public Default {
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
-    // POPCNT is supported starting with Intel Nehalem, AMD K10.
+// POPCNT is supported starting with Intel Nehalem, AMD K10.
 #if defined(__GNUC__) || defined(__clang__)
     // GCC and Clang won't inline the intrinsics.
     uint64_t result;
-    asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
+    asm("popcntq %1, %0" : "=r"(result) : "r"(value));
     return result;
 #else
     return uint64_t(_mm_popcnt_u64(value));
@@ -80,17 +98,35 @@ struct Haswell : public Nehalem {
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
-    // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
-    // BLSR combines two instuctions into one and reduces register pressure.
+// BMI1 is supported starting with Intel Haswell, AMD Piledriver.
+// BLSR combines two instuctions into one and reduces register pressure.
 #if defined(__GNUC__) || defined(__clang__)
     // GCC and Clang won't inline the intrinsics.
     uint64_t result;
-    asm ("blsrq %1, %0" : "=r" (result) : "r" (value));
+    asm("blsrq %1, %0" : "=r"(result) : "r"(value));
     return result;
 #else
     return _blsr_u64(value);
 #endif
   }
-};
 
-}}} // namespaces
+  static FOLLY_ALWAYS_INLINE uint64_t
+  bextr(uint64_t value, uint32_t start, uint32_t length) {
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC and Clang won't inline the intrinsics.
+    // Encode parameters in `pattern` where `pattern[0:7]` is `start` and
+    // `pattern[8:15]` is `length`.
+    // Ref: Intel Advanced Vector Extensions Programming Reference
+    uint64_t pattern = start & 0xFF;
+    pattern = pattern | ((length & 0xFF) << 8);
+    uint64_t result;
+    asm("bextrq %2, %1, %0" : "=r"(result) : "r"(value), "r"(pattern));
+    return result;
+#else
+    return _bextr_u64(value, start, length);
+#endif
+  }
+};
+}
+}
+} // namespaces
