@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/Hash.h>
 #include <folly/dynamic.h>
+
+#include <folly/Assume.h>
+#include <folly/Hash.h>
 #include <folly/portability/BitsFunctexcept.h>
 
 namespace folly {
@@ -277,9 +279,8 @@ std::size_t dynamic::hash() const {
     const auto& str = getString();
     return ::folly::hash::fnv32_buf(str.data(), str.size());
   }
-  default:
-    CHECK(0); abort();
   }
+  assume_unreachable();
 }
 
 char const* dynamic::typeName(Type t) {
