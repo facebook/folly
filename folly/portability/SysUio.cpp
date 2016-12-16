@@ -80,7 +80,7 @@ static ssize_t doVecOperation(int fd, const iovec* iov, int count) {
   void* curBase = iov[0].iov_base;
   size_t curLen = iov[0].iov_len;
   while (curIov < count) {
-    int res = 0;
+    ssize_t res = 0;
     if (isRead) {
       res = read(fd, curBase, (unsigned int)curLen);
       if (res == 0 && curLen != 0) {

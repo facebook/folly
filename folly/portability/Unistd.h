@@ -69,7 +69,7 @@ int getuid();
 int isatty(int fh);
 int lockf(int fd, int cmd, off_t len);
 long lseek(int fh, long off, int orig);
-int read(int fh, void* buf, unsigned int mcc);
+ssize_t read(int fh, void* buf, size_t mcc);
 int rmdir(const char* path);
 int pipe(int pth[2]);
 int pread(int fd, void* buf, size_t count, off_t offset);
@@ -82,7 +82,7 @@ size_t sysconf(int tp);
 long tell(int fh);
 int truncate(const char* path, off_t len);
 int usleep(unsigned int ms);
-int write(int fh, void const* buf, unsigned int mcc);
+ssize_t write(int fh, void const* buf, size_t count);
 }
 }
 }

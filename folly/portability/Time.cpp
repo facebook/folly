@@ -25,10 +25,11 @@ template <typename _Rep, typename _Period>
 static void duration_to_ts(
     std::chrono::duration<_Rep, _Period> d,
     struct timespec* ts) {
-  ts->tv_sec = std::chrono::duration_cast<std::chrono::seconds>(d).count();
-  ts->tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    d % std::chrono::seconds(1))
-                    .count();
+  ts->tv_sec =
+      time_t(std::chrono::duration_cast<std::chrono::seconds>(d).count());
+  ts->tv_nsec = long(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         d % std::chrono::seconds(1))
+                         .count());
 }
 
 #if !FOLLY_HAVE_CLOCK_GETTIME
@@ -215,8 +216,9 @@ extern "C" int clock_gettime(clockid_t clock_id, struct timespec* tp) {
 
   const auto unanosToTimespec = [](timespec* tp, unsigned_nanos t) -> int {
     static constexpr unsigned_nanos one_sec(std::chrono::seconds(1));
-    tp->tv_sec = std::chrono::duration_cast<std::chrono::seconds>(t).count();
-    tp->tv_nsec = (t % one_sec).count();
+    tp->tv_sec =
+        time_t(std::chrono::duration_cast<std::chrono::seconds>(t).count());
+    tp->tv_nsec = long((t % one_sec).count());
     return 0;
   };
 

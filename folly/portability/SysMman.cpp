@@ -127,7 +127,7 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
     ret = MapViewOfFileEx(
         fmh,
         accessFlags,
-        (DWORD)((off >> 32) & 0xFFFFFFFF),
+        (DWORD)(0), // off_t is only 32-bit :(
         (DWORD)(off & 0xFFFFFFFF),
         0,
         addr);

@@ -147,7 +147,7 @@ int getdtablesize() { return _getmaxstdio(); }
 
 int getgid() { return 1; }
 
-pid_t getpid() { return pid_t(GetCurrentProcessId()); }
+pid_t getpid() { return (pid_t)uint64_t(GetCurrentProcessId()); }
 
 // No major need to implement this, and getting a non-potentially
 // stale ID on windows is a bit involved.
@@ -177,18 +177,18 @@ int pwrite(int fd, const void* buf, size_t count, off_t offset) {
   return wrapPositional(_write, fd, offset, buf, (unsigned int)count);
 }
 
-int read(int fh, void* buf, unsigned int mcc) {
+ssize_t read(int fh, void* buf, size_t count) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
     SOCKET s = (SOCKET)_get_osfhandle(fh);
     if (s != INVALID_SOCKET) {
-      auto r = folly::portability::sockets::recv(fh, buf, (size_t)mcc, 0);
+      auto r = folly::portability::sockets::recv(fh, buf, count, 0);
       if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
         errno = EAGAIN;
       }
       return r;
     }
   }
-  auto r = _read(fh, buf, mcc);
+  auto r = _read(fh, buf, unsigned int(count));
   if (r == -1 && GetLastError() == ERROR_NO_DATA) {
     // This only happens if the file was non-blocking and
     // no data was present. We have to translate the error
@@ -214,7 +214,8 @@ ssize_t readlink(const char* path, char* buf, size_t buflen) {
     return -1;
   }
 
-  DWORD ret = GetFinalPathNameByHandleA(h, buf, buflen - 1, VOLUME_NAME_DOS);
+  DWORD ret =
+      GetFinalPathNameByHandleA(h, buf, DWORD(buflen - 1), VOLUME_NAME_DOS);
   if (ret >= buflen || ret >= MAX_PATH || !ret) {
     CloseHandle(h);
     return -1;
@@ -270,7 +271,7 @@ int usleep(unsigned int ms) {
   return 0;
 }
 
-int write(int fh, void const* buf, unsigned int count) {
+ssize_t write(int fh, void const* buf, size_t count) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
     SOCKET s = (SOCKET)_get_osfhandle(fh);
     if (s != INVALID_SOCKET) {
@@ -281,7 +282,7 @@ int write(int fh, void const* buf, unsigned int count) {
       return r;
     }
   }
-  auto r = _write(fh, buf, count);
+  auto r = _write(fh, buf, unsigned int(count));
   if ((r > 0 && r != count) || (r == -1 && errno == ENOSPC)) {
     // Writing to a pipe with a full buffer doesn't generate
     // any error type, unless it caused us to write exactly 0

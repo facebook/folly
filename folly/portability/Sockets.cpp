@@ -144,7 +144,7 @@ int listen(int s, int backlog) {
 int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
   // TODO: Allow both file descriptors and SOCKETs in this.
   for (int i = 0; i < nfds; i++) {
-    fds[i].fd = fd_to_socket(fds[i].fd);
+    fds[i].fd = fd_to_socket((int)fds[i].fd);
   }
   return ::WSAPoll(fds, (ULONG)nfds, timeout);
 }
@@ -192,7 +192,7 @@ ssize_t recvfrom(
 
     WSABUF wBuf{};
     wBuf.buf = (CHAR*)buf;
-    wBuf.len = len;
+    wBuf.len = (ULONG)len;
     WSAMSG wMsg{};
     wMsg.dwBufferCount = 1;
     wMsg.lpBuffers = &wBuf;

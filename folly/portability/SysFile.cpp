@@ -33,7 +33,7 @@ extern "C" int flock(int fd, int operation) {
       return -1;
     }
   } else {
-    int flags = 0
+    DWORD flags = 0
         | (operation & LOCK_NB ? LOCKFILE_FAIL_IMMEDIATELY : 0)
         | (operation & LOCK_EX ? LOCKFILE_EXCLUSIVE_LOCK : 0)
         ;
