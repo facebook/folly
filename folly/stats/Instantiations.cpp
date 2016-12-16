@@ -46,13 +46,12 @@ template class TimeseriesHistogram<int64_t>;
 // are implemented using template methods.  Instantiate the default versions of
 // these methods too, so anyone using them won't also need to explicitly
 // include Histogram-defs.h
-template unsigned int detail::HistogramBuckets<
-  int64_t, Histogram<int64_t>::Bucket>::
-  getPercentileBucketIdx<Histogram<int64_t>::CountFromBucket>(
-      double pct,
-      Histogram<int64_t>::CountFromBucket countFromBucket,
-      double* lowPct,
-      double* highPct) const;
+template size_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>::
+    getPercentileBucketIdx<Histogram<int64_t>::CountFromBucket>(
+        double pct,
+        Histogram<int64_t>::CountFromBucket countFromBucket,
+        double* lowPct,
+        double* highPct) const;
 template int64_t detail::HistogramBuckets<int64_t, Histogram<int64_t>::Bucket>
   ::getPercentileEstimate<Histogram<int64_t>::CountFromBucket,
                           Histogram<int64_t>::AvgFromBucket>(

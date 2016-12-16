@@ -93,40 +93,42 @@ class TimeseriesHistogram {
   ValueType getMax() const { return buckets_.getMax(); }
 
   /* Return the number of levels of the Timeseries object in each bucket */
-  int getNumLevels() const {
+  size_t getNumLevels() const {
     return buckets_.getByIndex(0).numLevels();
   }
 
   /* Return the number of buckets */
-  int getNumBuckets() const { return buckets_.getNumBuckets(); }
+  size_t getNumBuckets() const {
+    return buckets_.getNumBuckets();
+  }
 
   /*
    * Return the threshold of the bucket for the given index in range
    * [0..numBuckets).  The bucket will have range [thresh, thresh + bucketSize)
    * or [thresh, max), whichever is shorter.
    */
-  ValueType getBucketMin(int bucketIdx) const {
+  ValueType getBucketMin(size_t bucketIdx) const {
     return buckets_.getBucketMin(bucketIdx);
   }
 
   /* Return the actual timeseries in the given bucket (for reading only!) */
-  const ContainerType& getBucket(int bucketIdx) const {
+  const ContainerType& getBucket(size_t bucketIdx) const {
     return buckets_.getByIndex(bucketIdx);
   }
 
   /* Total count of values at the given timeseries level (all buckets). */
-  int64_t count(int level) const {
-    int64_t total = 0;
-    for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  uint64_t count(size_t level) const {
+    uint64_t total = 0;
+    for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).count(level);
     }
     return total;
   }
 
   /* Total count of values added during the given interval (all buckets). */
-  int64_t count(TimePoint start, TimePoint end) const {
-    int64_t total = 0;
-    for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+  uint64_t count(TimePoint start, TimePoint end) const {
+    uint64_t total = 0;
+    for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).count(start, end);
     }
     return total;
@@ -135,7 +137,7 @@ class TimeseriesHistogram {
   /* Total sum of values at the given timeseries level (all buckets). */
   ValueType sum(int level) const {
     ValueType total = ValueType();
-    for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).sum(level);
     }
     return total;
@@ -144,7 +146,7 @@ class TimeseriesHistogram {
   /* Total sum of values added during the given interval (all buckets). */
   ValueType sum(TimePoint start, TimePoint end) const {
     ValueType total = ValueType();
-    for (unsigned int b = 0; b < buckets_.getNumBuckets(); ++b) {
+    for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).sum(start, end);
     }
     return total;
@@ -154,7 +156,7 @@ class TimeseriesHistogram {
   template <typename ReturnType = double>
   ReturnType avg(int level) const {
     auto total = ValueType();
-    int64_t nsamples = 0;
+    uint64_t nsamples = 0;
     computeAvgData(&total, &nsamples, level);
     return folly::detail::avgHelper<ReturnType>(total, nsamples);
   }
@@ -163,7 +165,7 @@ class TimeseriesHistogram {
   template <typename ReturnType = double>
   ReturnType avg(TimePoint start, TimePoint end) const {
     auto total = ValueType();
-    int64_t nsamples = 0;
+    uint64_t nsamples = 0;
     computeAvgData(&total, &nsamples, start, end);
     return folly::detail::avgHelper<ReturnType>(total, nsamples);
   }
@@ -173,7 +175,7 @@ class TimeseriesHistogram {
    * This is the sum of all values divided by the time interval (in seconds).
    */
   template <typename ReturnType = double>
-  ReturnType rate(int level) const {
+  ReturnType rate(size_t level) const {
     auto total = ValueType();
     Duration elapsed(0);
     computeRateData(&total, &elapsed, level);
@@ -207,7 +209,7 @@ class TimeseriesHistogram {
   /* Add a value into the histogram with timestamp 'now' */
   void addValue(TimePoint now, const ValueType& value);
   /* Add a value the given number of times with timestamp 'now' */
-  void addValue(TimePoint now, const ValueType& value, int64_t times);
+  void addValue(TimePoint now, const ValueType& value, uint64_t times);
 
   /*
    * Add all of the values from the specified histogram.
@@ -241,11 +243,11 @@ class TimeseriesHistogram {
    *   average and the known bound is equal to the distance between the average
    *   and the unknown bound.
    */
-  ValueType getPercentileEstimate(double pct, int level) const;
+  ValueType getPercentileEstimate(double pct, size_t level) const;
   /*
    * Return an estimate of the value at the given percentile in the histogram
    * in the given historical interval.  Please see the documentation for
-   * getPercentileEstimate(int pct, int level) for the explanation of the
+   * getPercentileEstimate(double pct, size_t level) for the explanation of the
    * estimation algorithm.
    */
   ValueType getPercentileEstimate(double pct, TimePoint start, TimePoint end)
@@ -256,20 +258,22 @@ class TimeseriesHistogram {
    * given timeseries level).  This index can then be used to retrieve either
    * the bucket threshold, or other data from inside the bucket.
    */
-  int getPercentileBucketIdx(double pct, int level) const;
+  size_t getPercentileBucketIdx(double pct, size_t level) const;
   /*
    * Return the bucket index that the given percentile falls into (in the
    * given historical interval).  This index can then be used to retrieve either
    * the bucket threshold, or other data from inside the bucket.
    */
-  int getPercentileBucketIdx(double pct, TimePoint start, TimePoint end) const;
+  size_t getPercentileBucketIdx(double pct, TimePoint start, TimePoint end)
+      const;
 
   /* Get the bucket threshold for the bucket containing the given pct. */
-  int getPercentileBucketMin(double pct, int level) const {
+  ValueType getPercentileBucketMin(double pct, size_t level) const {
     return getBucketMin(getPercentileBucketIdx(pct, level));
   }
   /* Get the bucket threshold for the bucket containing the given pct. */
-  int getPercentileBucketMin(double pct, TimePoint start, TimePoint end) const {
+  ValueType getPercentileBucketMin(double pct, TimePoint start, TimePoint end)
+      const {
     return getBucketMin(getPercentileBucketIdx(pct, start, end));
   }
 
@@ -278,11 +282,11 @@ class TimeseriesHistogram {
    * Format is: BUCKET [',' BUCKET ...]
    * Where: BUCKET == bucketMin ':' count ':' avg
    */
-  std::string getString(int level) const;
+  std::string getString(size_t level) const;
 
   /*
    * Print out serialized data for all buckets in the historical interval.
-   * For format, please see getString(int level).
+   * For format, please see getString(size_t level).
    */
   std::string getString(TimePoint start, TimePoint end) const;
 
@@ -299,7 +303,7 @@ class TimeseriesHistogram {
   void addValue(Duration now, const ValueType& value) {
     addValue(TimePoint(now), value);
   }
-  void addValue(Duration now, const ValueType& value, int64_t times) {
+  void addValue(Duration now, const ValueType& value, uint64_t times) {
     addValue(TimePoint(now), value, times);
   }
   void addValues(Duration now, const folly::Histogram<ValueType>& values) {
@@ -309,14 +313,14 @@ class TimeseriesHistogram {
  private:
   typedef ContainerType Bucket;
   struct CountFromLevel {
-    explicit CountFromLevel(int level) : level_(level) {}
+    explicit CountFromLevel(size_t level) : level_(level) {}
 
     uint64_t operator()(const ContainerType& bucket) const {
       return bucket.count(level_);
     }
 
    private:
-    int level_;
+    size_t level_;
   };
   struct CountFromInterval {
     explicit CountFromInterval(TimePoint start, TimePoint end)
@@ -332,14 +336,14 @@ class TimeseriesHistogram {
   };
 
   struct AvgFromLevel {
-    explicit AvgFromLevel(int level) : level_(level) {}
+    explicit AvgFromLevel(size_t level) : level_(level) {}
 
     ValueType operator()(const ContainerType& bucket) const {
       return bucket.template avg<ValueType>(level_);
     }
 
    private:
-    int level_;
+    size_t level_;
   };
 
   template <typename ReturnType>
@@ -364,13 +368,13 @@ class TimeseriesHistogram {
    */
   void maybeHandleSingleUniqueValue(const ValueType& value);
 
-  void computeAvgData(ValueType* total, int64_t* nsamples, int level) const;
+  void computeAvgData(ValueType* total, uint64_t* nsamples, size_t level) const;
   void computeAvgData(
       ValueType* total,
-      int64_t* nsamples,
+      uint64_t* nsamples,
       TimePoint start,
       TimePoint end) const;
-  void computeRateData(ValueType* total, Duration* elapsed, int level) const;
+  void computeRateData(ValueType* total, Duration* elapsed, size_t level) const;
   void computeRateData(
       ValueType* total,
       Duration* elapsed,

@@ -77,7 +77,7 @@ TEST(TimeseriesHistogram, Percentile) {
     EXPECT_EQ(10, h.getMin());
     EXPECT_EQ(110, h.getMax());
 
-    for (int i = 0; i < h.getNumBuckets(); ++i) {
+    for (size_t i = 0; i < h.getNumBuckets(); ++i) {
       EXPECT_EQ(4, h.getBucket(i).numLevels());
     }
 
@@ -133,7 +133,7 @@ TEST(TimeseriesHistogram, String) {
 
     CHECK_EQ(IntMTMHTS::NUM_LEVELS, hist.getNumLevels());
 
-    for (int level = 0; level < hist.getNumLevels(); ++level) {
+    for (size_t level = 0; level < hist.getNumLevels(); ++level) {
       EXPECT_EQ(kStringValues1[level], hist.getString(level));
     }
 
@@ -150,7 +150,7 @@ TEST(TimeseriesHistogram, String) {
 
     CHECK_EQ(IntMTMHTS::NUM_LEVELS, hist.getNumLevels());
 
-    for (int level = 0; level < hist.getNumLevels(); ++level) {
+    for (size_t level = 0; level < hist.getNumLevels(); ++level) {
       EXPECT_EQ(kStringValues2[level], hist.getString(level));
     }
   }
@@ -172,7 +172,7 @@ TEST(TimeseriesHistogram, Clear) {
     // check clearing
     hist.clear();
 
-    for (int b = 0; b < hist.getNumBuckets(); ++b) {
+    for (size_t b = 0; b < hist.getNumBuckets(); ++b) {
       EXPECT_EQ(0, hist.getBucket(b).count(IntMTMHTS::MINUTE));
       EXPECT_EQ(0, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(0, hist.getBucket(b).count(IntMTMHTS::HOUR));
@@ -217,7 +217,7 @@ TEST(TimeseriesHistogram, Basic) {
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::ALLTIME));
     }
 
-    for (int b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
+    for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
       EXPECT_EQ(600, hist.getBucket(b).count(IntMTMHTS::MINUTE));
       EXPECT_EQ(6000, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(36000, hist.getBucket(b).count(IntMTMHTS::HOUR));
@@ -296,11 +296,11 @@ TEST(TimeseriesHistogram, Basic) {
       EXPECT_EQ(expected, hist.getPercentileBucketMin(pct, IntMTMHTS::ALLTIME));
    }
 
-    for (int b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
-      EXPECT_EQ(600 * 2, hist.getBucket(b).count(IntMTMHTS::MINUTE));
-      EXPECT_EQ(6000 * 2, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
-      EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::HOUR));
-      EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::ALLTIME));
+   for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
+     EXPECT_EQ(600 * 2, hist.getBucket(b).count(IntMTMHTS::MINUTE));
+     EXPECT_EQ(6000 * 2, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
+     EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::HOUR));
+     EXPECT_EQ(36000 * 2, hist.getBucket(b).count(IntMTMHTS::ALLTIME));
     }
     EXPECT_EQ(0, hist.getBucket(0).count(IntMTMHTS::MINUTE));
     EXPECT_EQ(0, hist.getBucket(hist.getNumBuckets() - 1).count(
@@ -346,7 +346,7 @@ TEST(TimeseriesHistogram, Basic) {
               hist.getBucket(hist.getNumBuckets() - 1).count(
                 IntMTMHTS::ALLTIME));
 
-    for (int b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
+    for (size_t b = 1; (b + 1) < hist.getNumBuckets(); ++b) {
       EXPECT_EQ(600, hist.getBucket(b).count(IntMTMHTS::MINUTE));
       EXPECT_EQ(6000, hist.getBucket(b).count(IntMTMHTS::TEN_MINUTE));
       EXPECT_EQ(36000, hist.getBucket(b).count(IntMTMHTS::HOUR));

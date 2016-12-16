@@ -74,7 +74,7 @@ template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValue(
     TimePoint now,
     const ValueType& val,
-    int64_t times) {
+    uint64_t times) {
   addValueAggregated(now, val * times, times);
 }
 
@@ -82,7 +82,7 @@ template <typename VT, typename CT>
 void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
     TimePoint now,
     const ValueType& total,
-    int64_t nsamples) {
+    uint64_t nsamples) {
   if (cachedTime_ != now) {
     flush();
     cachedTime_ = now;

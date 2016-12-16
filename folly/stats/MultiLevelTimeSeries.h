@@ -98,9 +98,8 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  const Level& getLevel(int level) const {
-    CHECK(level >= 0);
-    CHECK_LT(size_t(level), levels_.size());
+  const Level& getLevel(size_t level) const {
+    CHECK_LT(level, levels_.size());
     return levels_[level];
   }
 
@@ -158,7 +157,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  ValueType sum(int level) const {
+  ValueType sum(size_t level) const {
     return getLevel(level).sum();
   }
 
@@ -173,8 +172,8 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  template <typename ReturnType=double>
-  ReturnType avg(int level) const {
+  template <typename ReturnType = double>
+  ReturnType avg(size_t level) const {
     return getLevel(level).template avg<ReturnType>();
   }
 
@@ -187,7 +186,7 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   template <typename ReturnType = double, typename Interval = Duration>
-  ReturnType rate(int level) const {
+  ReturnType rate(size_t level) const {
     return getLevel(level).template rate<ReturnType, Interval>();
   }
 
@@ -198,7 +197,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  int64_t count(int level) const {
+  uint64_t count(size_t level) const {
     return getLevel(level).count();
   }
 
@@ -210,14 +209,14 @@ class MultiLevelTimeSeries {
    * not been called recently.
    */
   template <typename ReturnType = double, typename Interval = Duration>
-  ReturnType countRate(int level) const {
+  ReturnType countRate(size_t level) const {
     return getLevel(level).template countRate<ReturnType, Interval>();
   }
 
   /*
    * Return the sum of all the data points currently tracked at this level.
    *
-   * This method is identical to sum(int level) above but takes in the
+   * This method is identical to sum(size_t level) above but takes in the
    * duration that the user is interested in querying as the parameter.
    *
    * Note: you should generally call update() or flush() before accessing the
@@ -232,7 +231,7 @@ class MultiLevelTimeSeries {
    * Return the average (sum / count) of all the data points currently tracked
    * at this level.
    *
-   * This method is identical to avg(int level) above but takes in the
+   * This method is identical to avg(size_t level) above but takes in the
    * duration that the user is interested in querying as the parameter.
    *
    * Note: you should generally call update() or flush() before accessing the
@@ -248,7 +247,7 @@ class MultiLevelTimeSeries {
    * Return the rate (sum divided by elaspsed time) of the all data points
    * currently tracked at this level.
    *
-   * This method is identical to rate(int level) above but takes in the
+   * This method is identical to rate(size_t level) above but takes in the
    * duration that the user is interested in querying as the parameter.
    *
    * Note: you should generally call update() or flush() before accessing the
@@ -263,21 +262,21 @@ class MultiLevelTimeSeries {
   /*
    * Return the number of data points currently tracked at this level.
    *
-   * This method is identical to count(int level) above but takes in the
+   * This method is identical to count(size_t level) above but takes in the
    * duration that the user is interested in querying as the parameter.
    *
    * Note: you should generally call update() or flush() before accessing the
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  int64_t count(Duration duration) const {
+  uint64_t count(Duration duration) const {
     return getLevelByDuration(duration).count();
   }
 
   /*
    * Return the count divided by the elapsed time tracked at this level.
    *
-   * This method is identical to countRate(int level) above but takes in the
+   * This method is identical to countRate(size_t level) above but takes in the
    * duration that the user is interested in querying as the parameter.
    *
    * Note: you should generally call update() or flush() before accessing the
@@ -352,7 +351,7 @@ class MultiLevelTimeSeries {
    * data. Otherwise you may be reading stale data if update() or flush() has
    * not been called recently.
    */
-  int64_t count(TimePoint start, TimePoint end) const {
+  uint64_t count(TimePoint start, TimePoint end) const {
     return getLevel(start).count(start, end);
   }
 
@@ -374,14 +373,14 @@ class MultiLevelTimeSeries {
   /*
    * Adds the value 'val' at time 'now' to all levels.
    */
-  void addValue(TimePoint now, const ValueType& val, int64_t times);
+  void addValue(TimePoint now, const ValueType& val, uint64_t times);
 
   /*
    * Adds the value 'total' at time 'now' to all levels as the sum of
    * 'nsamples' samples.
    */
   void
-  addValueAggregated(TimePoint now, const ValueType& total, int64_t nsamples);
+  addValueAggregated(TimePoint now, const ValueType& total, uint64_t nsamples);
 
   /*
    * Update all the levels to the specified time, doing all the necessary
@@ -417,11 +416,11 @@ class MultiLevelTimeSeries {
   void addValue(Duration now, const ValueType& value) {
     addValue(TimePoint(now), value);
   }
-  void addValue(Duration now, const ValueType& value, int64_t times) {
+  void addValue(Duration now, const ValueType& value, uint64_t times) {
     addValue(TimePoint(now), value, times);
   }
   void
-  addValueAggregated(Duration now, const ValueType& total, int64_t nsamples) {
+  addValueAggregated(Duration now, const ValueType& total, uint64_t nsamples) {
     addValueAggregated(TimePoint(now), total, nsamples);
   }
 
