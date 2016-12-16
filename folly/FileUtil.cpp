@@ -29,7 +29,7 @@ namespace folly {
 using namespace fileutil_detail;
 
 int openNoInt(const char* name, int flags, mode_t mode) {
-  return wrapNoInt(open, name, flags, mode);
+  return int(wrapNoInt(open, name, flags, mode));
 }
 
 int closeNoInt(int fd) {
@@ -50,41 +50,41 @@ int closeNoInt(int fd) {
 }
 
 int fsyncNoInt(int fd) {
-  return wrapNoInt(fsync, fd);
+  return int(wrapNoInt(fsync, fd));
 }
 
 int dupNoInt(int fd) {
-  return wrapNoInt(dup, fd);
+  return int(wrapNoInt(dup, fd));
 }
 
 int dup2NoInt(int oldfd, int newfd) {
-  return wrapNoInt(dup2, oldfd, newfd);
+  return int(wrapNoInt(dup2, oldfd, newfd));
 }
 
 int fdatasyncNoInt(int fd) {
 #if defined(__APPLE__)
-  return wrapNoInt(fcntl, fd, F_FULLFSYNC);
+  return int(wrapNoInt(fcntl, fd, F_FULLFSYNC));
 #elif defined(__FreeBSD__) || defined(_MSC_VER)
-  return wrapNoInt(fsync, fd);
+  return int(wrapNoInt(fsync, fd));
 #else
-  return wrapNoInt(fdatasync, fd);
+  return int(wrapNoInt(fdatasync, fd));
 #endif
 }
 
 int ftruncateNoInt(int fd, off_t len) {
-  return wrapNoInt(ftruncate, fd, len);
+  return int(wrapNoInt(ftruncate, fd, len));
 }
 
 int truncateNoInt(const char* path, off_t len) {
-  return wrapNoInt(truncate, path, len);
+  return int(wrapNoInt(truncate, path, len));
 }
 
 int flockNoInt(int fd, int operation) {
-  return wrapNoInt(flock, fd, operation);
+  return int(wrapNoInt(flock, fd, operation));
 }
 
 int shutdownNoInt(int fd, int how) {
-  return wrapNoInt(portability::sockets::shutdown, fd, how);
+  return int(wrapNoInt(portability::sockets::shutdown, fd, how));
 }
 
 ssize_t readNoInt(int fd, void* buf, size_t count) {

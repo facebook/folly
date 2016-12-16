@@ -44,8 +44,8 @@ typename std::enable_if<!std::is_same<typename std::remove_cv<ValueType>::type,
                         ReturnType>::type
 avgHelper(ValueType sum, uint64_t count) {
   if (count == 0) { return ReturnType(0); }
-  const double sumf = sum;
-  const double countf = count;
+  const double sumf = double(sum);
+  const double countf = double(count);
   return static_cast<ReturnType>(sumf / countf);
 }
 

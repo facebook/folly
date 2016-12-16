@@ -62,7 +62,7 @@ class SparseByteSet {
     if (r) {
       DCHECK_LT(size_, kCapacity);
       dense_[size_] = i;
-      sparse_[i] = size_;
+      sparse_[i] = uint8_t(size_);
       size_++;
     }
     return r;

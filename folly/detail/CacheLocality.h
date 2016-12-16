@@ -148,7 +148,7 @@ template <template <typename> class Atom>
 struct SequentialThreadId {
 
   /// Returns the thread id assigned to the current thread
-  static size_t get() {
+  static unsigned get() {
     auto rv = currentId;
     if (UNLIKELY(rv == 0)) {
       rv = currentId = ++prevId;
@@ -157,16 +157,16 @@ struct SequentialThreadId {
   }
 
  private:
-  static Atom<size_t> prevId;
+  static Atom<unsigned> prevId;
 
-  static FOLLY_TLS size_t currentId;
+  static FOLLY_TLS unsigned currentId;
 };
 
 template <template <typename> class Atom>
-Atom<size_t> SequentialThreadId<Atom>::prevId(0);
+Atom<unsigned> SequentialThreadId<Atom>::prevId(0);
 
 template <template <typename> class Atom>
-FOLLY_TLS size_t SequentialThreadId<Atom>::currentId(0);
+FOLLY_TLS unsigned SequentialThreadId<Atom>::currentId(0);
 
 // Suppress this instantiation in other translation units. It is
 // instantiated in CacheLocality.cpp
@@ -174,7 +174,7 @@ extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
-  static size_t get() {
+  static unsigned get() {
     pthread_t pid = pthread_self();
     uint64_t id = 0;
     memcpy(&id, &pid, std::min(sizeof(pid), sizeof(id)));
@@ -328,7 +328,8 @@ struct AccessSpreader {
         assert(index < n);
         // as index goes from 0..n, post-transform value goes from
         // 0..numStripes
-        widthAndCpuToStripe[width][cpu] = (index * numStripes) / n;
+        widthAndCpuToStripe[width][cpu] =
+            CompactStripe((index * numStripes) / n);
         assert(widthAndCpuToStripe[width][cpu] < numStripes);
       }
       for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {

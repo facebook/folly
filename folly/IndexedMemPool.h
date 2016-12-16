@@ -112,8 +112,9 @@ struct IndexedMemPool : boost::noncopyable {
 
   static constexpr uint32_t maxIndexForCapacity(uint32_t capacity) {
     // index of uint32_t(-1) == UINT32_MAX is reserved for isAllocated tracking
-    return std::min(uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
-                    uint64_t(uint32_t(-1) - 1));
+    return uint32_t(std::min(
+        uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
+        uint64_t(uint32_t(-1) - 1)));
   }
 
   static constexpr uint32_t capacityForMaxIndex(uint32_t maxIndex) {
@@ -217,7 +218,7 @@ struct IndexedMemPool : boost::noncopyable {
 
     auto slot = reinterpret_cast<const Slot*>(
         reinterpret_cast<const char*>(elem) - offsetof(Slot, elem));
-    auto rv = slot - slots_;
+    auto rv = uint32_t(slot - slots_);
 
     // this assert also tests that rv is in range
     assert(elem == &(*this)[rv]);

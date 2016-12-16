@@ -105,8 +105,8 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   // do an unaligned load for first block of haystack
   auto arr1 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(haystack.data()));
-  auto index = _mm_cmpestri(arr2, needles.size(),
-                            arr1, haystack.size(), 0);
+  auto index =
+      _mm_cmpestri(arr2, int(needles.size()), arr1, int(haystack.size()), 0);
   if (index < 16) {
     return index;
   }
@@ -116,7 +116,8 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   for (; i < haystack.size(); i+= 16) {
     arr1 =
         _mm_load_si128(reinterpret_cast<const __m128i*>(haystack.data() + i));
-    index = _mm_cmpestri(arr2, needles.size(), arr1, haystack.size() - i, 0);
+    index = _mm_cmpestri(
+        arr2, int(needles.size()), arr1, int(haystack.size() - i), 0);
     if (index < 16) {
       return i + index;
     }
@@ -159,8 +160,8 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
   // This load is safe because needles.size() >= 16
   auto arr2 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(needles.data()));
-  size_t b = _mm_cmpestri(
-      arr2, 16, arr1, haystack.size() - blockStartIdx, 0);
+  size_t b =
+      _mm_cmpestri(arr2, 16, arr1, int(haystack.size() - blockStartIdx), 0);
 
   size_t j = nextAlignedIndex(needles.data());
   for (; j < needles.size(); j += 16) {
@@ -168,8 +169,11 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
         reinterpret_cast<const __m128i*>(needles.data() + j));
 
     auto index = _mm_cmpestri(
-      arr2, needles.size() - j,
-      arr1, haystack.size() - blockStartIdx, 0);
+        arr2,
+        int(needles.size() - j),
+        arr1,
+        int(haystack.size() - blockStartIdx),
+        0);
     b = std::min<size_t>(index, b);
   }
 

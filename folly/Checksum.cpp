@@ -52,7 +52,7 @@ uint32_t crc32c_hw(const uint8_t *data, size_t nbytes,
   // Process 8 bytes at a time until we have fewer than 8 bytes left.
   while (offset + sizeof(uint64_t) <= nbytes) {
     const uint64_t* src = (const uint64_t*)(data + offset);
-    sum = _mm_crc32_u64(sum, *src);
+    sum = uint32_t(_mm_crc32_u64(sum, *src));
     offset += sizeof(uint64_t);
   }
 

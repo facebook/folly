@@ -118,8 +118,8 @@ inline void EventBaseLoopControllerT<EventBaseT>::timedSchedule(
           .count() +
       1;
   // If clock is not monotonic
-  delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0L);
-  eventBase_->tryRunAfterDelay(func, delay_ms);
+  delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0);
+  eventBase_->tryRunAfterDelay(func, uint32_t(delay_ms));
 }
 }
 } // folly::fibers

@@ -235,7 +235,7 @@ using IsAscii = std::
 // The code in this file that uses tolower() really only cares about
 // 7-bit ASCII characters, so we can take a nice shortcut here.
 inline char tolower_ascii(char in) {
-  return IsAscii::value ? in | 0x20 : std::tolower(in);
+  return IsAscii::value ? in | 0x20 : char(std::tolower(in));
 }
 
 inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
@@ -365,7 +365,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
     src->advance(length);
-    return result;
+    return Tgt(result);
   }
 
   auto* e = src->end();
@@ -423,7 +423,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
 
   src->assign(b, e);
 
-  return result;
+  return Tgt(result);
 }
 
 template Expected<float, ConversionCode> str_to_floating<float>(
@@ -570,7 +570,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
     if (sum >= OOR) {
       goto outOfRange;
     }
-    result = 1000 * result + sum;
+    result = UT(1000 * result + sum);
     break;
   }
   case 2: {
@@ -580,7 +580,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
     if (sum >= OOR) {
       goto outOfRange;
     }
-    result = 100 * result + sum;
+    result = UT(100 * result + sum);
     break;
   }
   case 1: {
@@ -588,7 +588,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
     if (sum >= OOR) {
       goto outOfRange;
     }
-    result = 10 * result + sum;
+    result = UT(10 * result + sum);
     break;
   }
   default:

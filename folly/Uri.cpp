@@ -23,7 +23,7 @@ namespace folly {
 
 namespace {
 
-fbstring submatch(const boost::cmatch& m, size_t idx) {
+fbstring submatch(const boost::cmatch& m, int idx) {
   auto& sub = m[idx];
   return fbstring(sub.first, sub.second);
 }

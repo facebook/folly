@@ -54,7 +54,7 @@ void RecordIOWriter::write(std::unique_ptr<IOBuf> buf) {
   DCHECK_EQ(buf->computeChainDataLength(), totalLength);
 
   // We're going to write.  Reserve space for ourselves.
-  off_t pos = filePos_.fetch_add(totalLength);
+  off_t pos = filePos_.fetch_add(off_t(totalLength));
 
 #if FOLLY_HAVE_PWRITEV
   auto iov = buf->getIov();
@@ -100,7 +100,7 @@ void RecordIOReader::Iterator::advanceToValid() {
     skipped -= headerSize();
     range_.advance(skipped);
     recordAndPos_.first = record;
-    recordAndPos_.second += skipped;
+    recordAndPos_.second += off_t(skipped);
   }
 }
 
@@ -165,7 +165,7 @@ size_t prependHeader(std::unique_ptr<IOBuf>& buf, uint32_t fileId) {
   memset(header, 0, sizeof(Header));
   header->magic = detail::Header::kMagic;
   header->fileId = fileId;
-  header->dataLength = lengthAndHash.first;
+  header->dataLength = uint32_t(lengthAndHash.first);
   header->dataHash = lengthAndHash.second;
   header->headerHash = headerHash(*header);
 

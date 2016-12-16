@@ -655,7 +655,7 @@ private:
     // small_[maxSmallSize].
     FBSTRING_ASSERT(s <= maxSmallSize);
     constexpr auto shift = kIsLittleEndian ? 0 : 2;
-    small_[maxSmallSize] = (maxSmallSize - s) << shift;
+    small_[maxSmallSize] = char((maxSmallSize - s) << shift);
     small_[s] = '\0';
     FBSTRING_ASSERT(category() == Category::isSmall && size() == s);
   }

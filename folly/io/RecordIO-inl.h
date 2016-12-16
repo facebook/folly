@@ -37,7 +37,7 @@ class RecordIOReader::Iterator : public boost::iterator_facade<
   bool equal(const Iterator& other) const { return range_ == other.range_; }
   void increment() {
     size_t skip = recordio_helpers::headerSize() + recordAndPos_.first.size();
-    recordAndPos_.second += skip;
+    recordAndPos_.second += off_t(skip);
     range_.advance(skip);
     advanceToValid();
   }

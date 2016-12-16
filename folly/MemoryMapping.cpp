@@ -129,7 +129,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   }
 
   if (pageSize == 0) {
-    pageSize = sysconf(_SC_PAGESIZE);
+    pageSize = off_t(sysconf(_SC_PAGESIZE));
   }
 
   CHECK_GT(pageSize, 0);
@@ -137,7 +137,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
   CHECK_GE(offset, 0);
 
   // Round down the start of the mapped region
-  size_t skipStart = offset % pageSize;
+  off_t skipStart = offset % pageSize;
   offset -= skipStart;
 
   mapLength_ = length;
@@ -206,7 +206,7 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
     return chunkSize;
   }
 
-  chunkSize = FLAGS_mlock_chunk_size;
+  chunkSize = off_t(FLAGS_mlock_chunk_size);
   off_t r = chunkSize % pageSize;
   if (r) {
     chunkSize += (pageSize - r);
@@ -231,7 +231,7 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  size_t chunkSize = memOpChunkSize(bufSize, pageSize);
+  size_t chunkSize = memOpChunkSize(off_t(bufSize), pageSize);
 
   char* addr = static_cast<char*>(mem);
   amountSucceeded = 0;
@@ -377,7 +377,7 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
   MemoryMapping destMap(
       File(dest, O_RDWR | O_CREAT | O_TRUNC, mode),
       0,
-      srcMap.range().size(),
+      off_t(srcMap.range().size()),
       MemoryMapping::writable());
 
   alignedForwardMemcpy(destMap.writableRange().data(),

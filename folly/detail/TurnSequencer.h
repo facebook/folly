@@ -215,7 +215,7 @@ struct TurnSequencer {
   /// Returns the least-most significant byte of the current uncompleted
   /// turn.  The full 32 bit turn cannot be recovered.
   uint8_t uncompletedTurnLSB() const noexcept {
-    return state_.load(std::memory_order_acquire) >> kTurnShift;
+    return uint8_t(state_.load(std::memory_order_acquire) >> kTurnShift);
   }
 
  private:

@@ -116,7 +116,7 @@ struct BenchmarkSuspender {
   BenchmarkSuspender(const BenchmarkSuspender &) = delete;
   BenchmarkSuspender(BenchmarkSuspender && rhs) noexcept {
     start = rhs.start;
-    rhs.start.tv_nsec = rhs.start.tv_sec = 0;
+    rhs.start = {0, 0};
   }
 
   BenchmarkSuspender& operator=(const BenchmarkSuspender &) = delete;
@@ -125,7 +125,7 @@ struct BenchmarkSuspender {
       tally();
     }
     start = rhs.start;
-    rhs.start.tv_nsec = rhs.start.tv_sec = 0;
+    rhs.start = {0, 0};
     return *this;
   }
 
@@ -138,7 +138,7 @@ struct BenchmarkSuspender {
   void dismiss() {
     assert(start.tv_nsec > 0 || start.tv_sec > 0);
     tally();
-    start.tv_nsec = start.tv_sec = 0;
+    start = {0, 0};
   }
 
   void rehire() {

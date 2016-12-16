@@ -63,7 +63,7 @@ struct PoissonDistributionFunctor {
 
 struct UniformDistributionFunctor {
   std::default_random_engine generator;
-  std::uniform_int_distribution<> dist;
+  std::uniform_int_distribution<milliseconds::rep> dist;
 
   UniformDistributionFunctor(milliseconds minInterval, milliseconds maxInterval)
       : generator(Random::rand32()),

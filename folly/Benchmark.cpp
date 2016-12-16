@@ -84,7 +84,7 @@ BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {
 #endif
 }
 
-int getGlobalBenchmarkBaselineIndex() {
+size_t getGlobalBenchmarkBaselineIndex() {
   const char *global = FB_STRINGIZE_X2(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE);
   auto it = std::find_if(
     benchmarks().begin(),
@@ -94,7 +94,7 @@ int getGlobalBenchmarkBaselineIndex() {
     }
   );
   CHECK(it != benchmarks().end());
-  return it - benchmarks().begin();
+  return size_t(std::distance(benchmarks().begin(), it));
 }
 
 #undef FB_STRINGIZE_X2
@@ -465,7 +465,7 @@ void runBenchmarks() {
 
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
-  unsigned int baselineIndex = getGlobalBenchmarkBaselineIndex();
+  size_t baselineIndex = getGlobalBenchmarkBaselineIndex();
 
   auto const globalBaseline =
       runBenchmarkGetNSPerIteration(get<2>(benchmarks()[baselineIndex]), 0);

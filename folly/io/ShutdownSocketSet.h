@@ -37,7 +37,7 @@ class ShutdownSocketSet : private boost::noncopyable {
    * applications, even if you increased the number of file descriptors
    * on your system.
    */
-  explicit ShutdownSocketSet(size_t maxFd = 1 << 18);
+  explicit ShutdownSocketSet(int maxFd = 1 << 18);
 
   /**
    * Add an already open socket to the list of sockets managed by
@@ -112,7 +112,7 @@ class ShutdownSocketSet : private boost::noncopyable {
     }
   };
 
-  const size_t maxFd_;
+  const int maxFd_;
   std::unique_ptr<std::atomic<uint8_t>[], Free> data_;
   folly::File nullFile_;
 };

@@ -616,7 +616,7 @@ struct AnyOfValidator final : IValidator {
         errors.emplace_back(*se);
       }
     }
-    const int success = validators_.size() - errors.size();
+    const auto success = validators_.size() - errors.size();
     if (success == 0) {
       return makeError("at least one valid schema", value);
     } else if (success > 1 && type_ == Type::EXACTLY_ONE) {

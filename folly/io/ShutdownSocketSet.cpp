@@ -29,7 +29,7 @@
 
 namespace folly {
 
-ShutdownSocketSet::ShutdownSocketSet(size_t maxFd)
+ShutdownSocketSet::ShutdownSocketSet(int maxFd)
   : maxFd_(maxFd),
     data_(static_cast<std::atomic<uint8_t>*>(
             folly::checkedCalloc(maxFd, sizeof(std::atomic<uint8_t>)))),
@@ -39,7 +39,7 @@ ShutdownSocketSet::ShutdownSocketSet(size_t maxFd)
 void ShutdownSocketSet::add(int fd) {
   // Silently ignore any fds >= maxFd_, very unlikely
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return;
   }
 
@@ -53,7 +53,7 @@ void ShutdownSocketSet::add(int fd) {
 
 void ShutdownSocketSet::remove(int fd) {
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return;
   }
 
@@ -81,7 +81,7 @@ retry:
 
 int ShutdownSocketSet::close(int fd) {
   DCHECK_GE(fd, 0);
-  if (size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     return folly::closeNoInt(fd);
   }
 
@@ -113,7 +113,7 @@ retry:
 
 void ShutdownSocketSet::shutdown(int fd, bool abortive) {
   DCHECK_GE(fd, 0);
-  if (fd >= 0 && size_t(fd) >= maxFd_) {
+  if (fd >= maxFd_) {
     doShutdown(fd, abortive);
     return;
   }
@@ -147,7 +147,7 @@ void ShutdownSocketSet::shutdown(int fd, bool abortive) {
 }
 
 void ShutdownSocketSet::shutdownAll(bool abortive) {
-  for (size_t i = 0; i < maxFd_; ++i) {
+  for (int i = 0; i < maxFd_; ++i) {
     auto& sref = data_[i];
     if (sref.load(std::memory_order_acquire) == IN_USE) {
       shutdown(i, abortive);

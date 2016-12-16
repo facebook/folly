@@ -383,12 +383,12 @@ inline uint32_t uint64ToBufferUnsafe(uint64_t v, char *const buffer) {
     // Keep these together so a peephole optimization "sees" them and
     // computes them in one shot.
     auto const q = v / 10;
-    auto const r = static_cast<uint32_t>(v % 10);
+    auto const r = static_cast<char>(v % 10);
     buffer[pos--] = '0' + r;
     v = q;
   }
   // Last digit is trivial to handle
-  buffer[pos] = static_cast<uint32_t>(v) + '0';
+  buffer[pos] = static_cast<char>(v) + '0';
   return result;
 }
 

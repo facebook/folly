@@ -1067,7 +1067,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
   /// corresponding SingleElementQueue
   uint32_t turn(uint64_t ticket, size_t cap) noexcept {
     assert(cap != 0);
-    return ticket / cap;
+    return uint32_t(ticket / cap);
   }
 
   /// Tries to obtain a push ticket for which SingleElementQueue::enqueue

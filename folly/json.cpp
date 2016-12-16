@@ -553,10 +553,11 @@ dynamic parseNumber(Input& in) {
 
 std::string decodeUnicodeEscape(Input& in) {
   auto hexVal = [&] (int c) -> uint16_t {
-    return c >= '0' && c <= '9' ? c - '0' :
+    return uint16_t(
+           c >= '0' && c <= '9' ? c - '0' :
            c >= 'a' && c <= 'f' ? c - 'a' + 10 :
            c >= 'A' && c <= 'F' ? c - 'A' + 10 :
-           (in.error("invalid hex digit"), 0);
+           (in.error("invalid hex digit"), 0));
   };
 
   auto readHex = [&]() -> uint16_t {
@@ -689,7 +690,7 @@ void escapeString(
     StringPiece input,
     std::string& out,
     const serialization_opts& opts) {
-  auto hexDigit = [] (int c) -> char {
+  auto hexDigit = [] (uint8_t c) -> char {
     return c < 10 ? c + '0' : c - 10 + 'a';
   };
 
@@ -728,7 +729,7 @@ void escapeString(
       // with value > 127, so size > 1 byte
       char32_t v = decodeUtf8(p, e, opts.skip_invalid_utf8);
       out.append("\\u");
-      out.push_back(hexDigit(v >> 12));
+      out.push_back(hexDigit(uint8_t(v >> 12)));
       out.push_back(hexDigit((v >> 8) & 0x0f));
       out.push_back(hexDigit((v >> 4) & 0x0f));
       out.push_back(hexDigit(v & 0x0f));
