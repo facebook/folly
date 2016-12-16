@@ -96,6 +96,7 @@ void DynamicParser::reportError(
       break;  // Continue parsing
     case OnError::THROW:
       stack_.throwErrors();  // Package releaseErrors() into an exception.
+      LOG(FATAL) << "Not reached";  // silence lint false positive
     default:
       LOG(FATAL) << "Bad onError_: " << static_cast<int>(onError_);
   }

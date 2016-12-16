@@ -140,6 +140,41 @@ meanVariance(const double * begin, const double *const end) {
 }
 
 /**
+ * Computes the mode of a sample set through brute force. Assumes
+ * input is sorted.
+ */
+static double mode(const double * begin, const double *const end) {
+  assert(begin < end);
+  // Lower bound and upper bound for result and their respective
+  // densities.
+  auto
+    result = 0.0,
+    bestDensity = 0.0;
+
+  // Get the variance so we pass it down to density()
+  auto const sigma = meanVariance(begin, end).second;
+  if (!sigma) {
+    // No variance means constant signal
+    return *begin;
+  }
+
+  FOR_EACH_RANGE (i, begin, end) {
+    assert(i == begin || *i >= i[-1]);
+    auto candidate = density(begin, end, *i, sigma * sqrt(2.0));
+    if (candidate > bestDensity) {
+      // Found a new best
+      bestDensity = candidate;
+      result = *i;
+    } else {
+      // Density is decreasing... we could break here if we definitely
+      // knew this is unimodal.
+    }
+  }
+
+  return result;
+}
+
+/**
  * Given a bunch of benchmark samples, estimate the actual run time.
  */
 static double estimateTime(double * begin, double * end) {
@@ -147,7 +182,55 @@ static double estimateTime(double * begin, double * end) {
 
   // Current state of the art: get the minimum. After some
   // experimentation, it seems taking the minimum is the best.
+
   return *min_element(begin, end);
+
+  // What follows after estimates the time as the mode of the
+  // distribution.
+
+  // Select the awesomest (i.e. most frequent) result. We do this by
+  // sorting and then computing the longest run length.
+  sort(begin, end);
+
+  // Eliminate outliers. A time much larger than the minimum time is
+  // considered an outlier.
+  while (end[-1] > 2.0 * *begin) {
+    --end;
+    if (begin == end) {
+      LOG(INFO) << *begin;
+    }
+    assert(begin < end);
+  }
+
+  double result = 0;
+
+  /* Code used just for comparison purposes */ {
+    unsigned bestFrequency = 0;
+    unsigned candidateFrequency = 1;
+    double candidateValue = *begin;
+    for (auto current = begin + 1; ; ++current) {
+      if (current == end || *current != candidateValue) {
+        // Done with the current run, see if it was best
+        if (candidateFrequency > bestFrequency) {
+          bestFrequency = candidateFrequency;
+          result = candidateValue;
+        }
+        if (current == end) {
+          break;
+        }
+        // Start a new run
+        candidateValue = *current;
+        candidateFrequency = 1;
+      } else {
+        // Cool, inside a run, increase the frequency
+        ++candidateFrequency;
+      }
+    }
+  }
+
+  result = mode(begin, end);
+
+  return result;
 }
 
 static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,

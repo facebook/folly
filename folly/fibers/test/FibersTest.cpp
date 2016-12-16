@@ -1963,7 +1963,7 @@ TEST(FiberManager, ABD_DispatcherDestroyedBeforeCallingCommit) {
     dispatchJobs(executor, jobs, results);
     throw std::runtime_error(
         "Unexpected exception in user code before commit called");
-    // atomicBatchDispatcher.commit();
+    atomicBatchDispatcher.commit();
   } catch (...) {
     /* User code handles the exception and does not exit process */
   }

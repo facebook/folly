@@ -28,12 +28,13 @@
 namespace __cxxabiv1 {
 
 extern "C" {
-[[noreturn]] void __cxa_throw(
+void __cxa_throw(
     void* thrownException,
     std::type_info* type,
-    void (*destructor)(void*));
+    void (*destructor)(void*)) __attribute__((__noreturn__));
 void* __cxa_begin_catch(void* excObj) throw();
-[[noreturn]] void __cxa_rethrow(void);
+void __cxa_rethrow(void) __attribute__((__noreturn__));
+void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }
 
@@ -89,17 +90,17 @@ DECLARE_CALLBACK(RethrowException);
 
 namespace __cxxabiv1 {
 
-[[noreturn]] void __cxa_throw(void* thrownException,
-                              std::type_info* type,
-                              void (*destructor)(void*)) {
+void __cxa_throw(void* thrownException,
+                 std::type_info* type,
+                 void (*destructor)(void*)) {
   static auto orig_cxa_throw =
       reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
   getCxaThrowCallbacks().invoke(thrownException, type, destructor);
   orig_cxa_throw(thrownException, type, destructor);
-  __builtin_unreachable();
+  __builtin_unreachable(); // orig_cxa_throw never returns
 }
 
-[[noreturn]] void __cxa_rethrow() {
+void __cxa_rethrow() {
   // __cxa_rethrow leaves the current exception on the caught stack,
   // and __cxa_begin_catch recognizes that case.  We could do the same, but
   // we'll implement something simpler (and slower): we pop the exception from
@@ -109,7 +110,7 @@ namespace __cxxabiv1 {
       dlsym(RTLD_NEXT, "__cxa_rethrow"));
   getCxaRethrowCallbacks().invoke();
   orig_cxa_rethrow();
-  __builtin_unreachable();
+  __builtin_unreachable(); // orig_cxa_rethrow never returns
 }
 
 void* __cxa_begin_catch(void* excObj) throw() {
@@ -142,10 +143,7 @@ void rethrow_exception(std::exception_ptr ep) {
                 "_ZSt17rethrow_exceptionNSt15__exception_ptr13exception_ptrE"));
   getRethrowExceptionCallbacks().invoke(ep);
   orig_rethrow_exception(ep);
-  // Clang knows this is unreachable, but GCC doesn't.
-#ifndef __clang__
-  __builtin_unreachable();
-#endif
+  __builtin_unreachable(); // orig_rethrow_exception never returns
 }
 
 } // namespace std
