@@ -232,6 +232,25 @@ bool FunctionScheduler::cancelFunction(StringPiece nameID) {
   return false;
 }
 
+bool FunctionScheduler::cancelFunctionAndWait(StringPiece nameID) {
+  std::unique_lock<std::mutex> l(mutex_);
+
+  auto* currentFunction = currentFunction_;
+  if (currentFunction && currentFunction->name == nameID) {
+    runningCondvar_.wait(l, [currentFunction, this]() {
+      return currentFunction != currentFunction_;
+    });
+  }
+
+  for (auto it = functions_.begin(); it != functions_.end(); ++it) {
+    if (it->isValid() && it->name == nameID) {
+      cancelFunction(l, it);
+      return true;
+    }
+  }
+  return false;
+}
+
 void FunctionScheduler::cancelFunction(const std::unique_lock<std::mutex>& l,
                                        FunctionHeap::iterator it) {
   // This function should only be called with mutex_ already locked.
@@ -257,6 +276,14 @@ void FunctionScheduler::cancelAllFunctions() {
   std::unique_lock<std::mutex> l(mutex_);
   functions_.clear();
   currentFunction_ = nullptr;
+}
+
+void FunctionScheduler::cancelAllFunctionsAndWait() {
+  std::unique_lock<std::mutex> l(mutex_);
+  if (currentFunction_) {
+    runningCondvar_.wait(l, [this]() { return currentFunction_ == nullptr; });
+  }
+  functions_.clear();
 }
 
 bool FunctionScheduler::resetFunctionTimer(StringPiece nameID) {
@@ -355,6 +382,7 @@ void FunctionScheduler::run() {
     if (sleepTime < milliseconds::zero()) {
       // We need to run this function now
       runOneFunction(lock, now);
+      runningCondvar_.notify_all();
     } else {
       // Re-add the function to the heap, and wait until we actually
       // need to run it.

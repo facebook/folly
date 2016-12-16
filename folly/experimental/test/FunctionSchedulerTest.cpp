@@ -458,3 +458,48 @@ TEST(FunctionScheduler, AddWithRunOnce) {
   EXPECT_EQ(2, total);
   fs.shutdown();
 }
+
+TEST(FunctionScheduler, cancelFunctionAndWait) {
+  int total = 0;
+  FunctionScheduler fs;
+  fs.addFunction(
+      [&] {
+        delay(5);
+        total += 2;
+      },
+      testInterval(100),
+      "add2");
+
+  fs.start();
+  delay(1);
+  EXPECT_EQ(0, total); // add2 is still sleeping
+
+  EXPECT_TRUE(fs.cancelFunctionAndWait("add2"));
+  EXPECT_EQ(2, total); // add2 should have completed
+
+  EXPECT_FALSE(fs.cancelFunction("add2")); // add2 has been canceled
+  fs.shutdown();
+}
+
+TEST(FunctionScheduler, cancelAllFunctionsAndWait) {
+  int total = 0;
+  FunctionScheduler fs;
+
+  fs.addFunction(
+      [&] {
+        delay(5);
+        total += 2;
+      },
+      testInterval(100),
+      "add2");
+
+  fs.start();
+  delay(1);
+  EXPECT_EQ(0, total); // add2 is still sleeping
+
+  fs.cancelAllFunctionsAndWait();
+  EXPECT_EQ(2, total);
+
+  EXPECT_FALSE(fs.cancelFunction("add2")); // add2 has been canceled
+  fs.shutdown();
+}

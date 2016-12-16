@@ -157,11 +157,13 @@ class FunctionScheduler {
    * Returns false if no function exists with the specified name.
    */
   bool cancelFunction(StringPiece nameID);
+  bool cancelFunctionAndWait(StringPiece nameID);
 
   /**
    * All functions registered will be canceled.
    */
   void cancelAllFunctions();
+  void cancelAllFunctionsAndWait();
 
   /**
    * Resets the specified function's timer.
