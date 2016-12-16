@@ -729,14 +729,14 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
       if (pushes == nextPushes) {
         // pushTicket_ didn't change from A (or the previous C) to C,
         // so we can linearize at B (or D)
-        return pushes - pops;
+        return ssize_t(pushes - pops);
       }
       pushes = nextPushes;
       uint64_t nextPops = popTicket_.load(std::memory_order_acquire); // D
       if (pops == nextPops) {
         // popTicket_ didn't chance from B (or the previous D), so we
         // can linearize at C
-        return pushes - pops;
+        return ssize_t(pushes - pops);
       }
       pops = nextPops;
     }

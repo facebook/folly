@@ -89,7 +89,7 @@ class BufferedRandomDevice {
   void getSlow(unsigned char* data, size_t size);
 
   inline size_t remaining() const {
-    return buffer_.get() + bufferSize_ - ptr_;
+    return size_t(buffer_.get() + bufferSize_ - ptr_);
   }
 
   const size_t bufferSize_;

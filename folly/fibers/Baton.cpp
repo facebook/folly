@@ -57,7 +57,8 @@ void Baton::waitThread() {
           fiber == NO_WAITER &&
           waitingFiber_.compare_exchange_strong(fiber, THREAD_WAITING))) {
     do {
-      folly::detail::MemoryIdler::futexWait(futex_.futex, THREAD_WAITING);
+      folly::detail::MemoryIdler::futexWait(
+          futex_.futex, uint32_t(THREAD_WAITING));
       fiber = waitingFiber_.load(std::memory_order_acquire);
     } while (fiber == THREAD_WAITING);
   }
@@ -109,7 +110,7 @@ bool Baton::timedWaitThread(TimeoutController::Duration timeout) {
     auto deadline = TimeoutController::Clock::now() + timeout;
     do {
       const auto wait_rv =
-          futex_.futex.futexWaitUntil(THREAD_WAITING, deadline);
+          futex_.futex.futexWaitUntil(uint32_t(THREAD_WAITING), deadline);
       if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
         return false;
       }

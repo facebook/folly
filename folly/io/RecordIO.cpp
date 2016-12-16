@@ -95,7 +95,7 @@ void RecordIOReader::Iterator::advanceToValid() {
     recordAndPos_ = std::make_pair(ByteRange(), off_t(-1));
     range_.clear();  // at end
   } else {
-    size_t skipped = record.begin() - range_.begin();
+    size_t skipped = size_t(record.begin() - range_.begin());
     DCHECK_GE(skipped, headerSize());
     skipped -= headerSize();
     range_.advance(skipped);

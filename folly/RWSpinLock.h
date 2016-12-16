@@ -479,13 +479,14 @@ struct RWTicketIntTrait<64> {
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint16_t v[4]) {
-    return _mm_set_epi16(0, 0, 0, 0, v[3], v[2], v[1], v[0]);
+    return _mm_set_epi16(0, 0, 0, 0,
+        short(v[3]), short(v[2]), short(v[1]), short(v[0]));
   }
   static inline __m128i fromInteger(uint64_t from) {
-    return _mm_cvtsi64_si128(from);
+    return _mm_cvtsi64_si128(int64_t(from));
   }
   static inline uint64_t toInteger(__m128i in) {
-    return _mm_cvtsi128_si64(in);
+    return uint64_t(_mm_cvtsi128_si64(in));
   }
   static inline uint64_t addParallel(__m128i in, __m128i kDelta) {
     return toInteger(_mm_add_epi16(in, kDelta));
@@ -501,14 +502,17 @@ struct RWTicketIntTrait<32> {
 
 #ifdef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
   static __m128i make128(const uint8_t v[4]) {
-    return _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, v[3], v[2], v[1], v[0]);
+    return _mm_set_epi8(
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        char(v[3]), char(v[2]), char(v[1]), char(v[0]));
   }
   static inline __m128i fromInteger(uint32_t from) {
-    return _mm_cvtsi32_si128(from);
+    return _mm_cvtsi32_si128(int32_t(from));
   }
   static inline uint32_t toInteger(__m128i in) {
-    return _mm_cvtsi128_si32(in);
+    return uint32_t(_mm_cvtsi128_si32(in));
   }
   static inline uint32_t addParallel(__m128i in, __m128i kDelta) {
     return toInteger(_mm_add_epi8(in, kDelta));

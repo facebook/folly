@@ -361,7 +361,7 @@ public:
     // Unfortunately current gcc versions have a bug causing it to reject
     // this check in a constexpr function:
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71448
-    return e_ - b_;
+    return size_type(e_ - b_);
   }
   constexpr size_type walk_size() const {
     return std::distance(b_, e_);
@@ -912,13 +912,13 @@ typedef Range<unsigned char*> MutableByteRange;
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const StringPiece piece) {
-  os.write(piece.start(), piece.size());
+  os.write(piece.start(), std::streamsize(piece.size()));
   return os;
 }
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const MutableStringPiece piece) {
-  os.write(piece.start(), piece.size());
+  os.write(piece.start(), std::streamsize(piece.size()));
   return os;
 }
 
@@ -1058,7 +1058,7 @@ size_t qfind(const Range<T>& haystack,
       // Check if done searching
       if (++j == nsize) {
         // Yay
-        return i - haystack.begin();
+        return size_t(i - haystack.begin());
       }
     }
   }

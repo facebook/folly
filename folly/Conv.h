@@ -557,9 +557,10 @@ toAppend(Src value, Tgt * result) {
   char buffer[20];
   if (value < 0) {
     result->push_back('-');
-    result->append(buffer, uint64ToBufferUnsafe(-uint64_t(value), buffer));
+    result->append(
+        buffer, uint64ToBufferUnsafe(uint64_t(-uint64_t(value)), buffer));
   } else {
-    result->append(buffer, uint64ToBufferUnsafe(value, buffer));
+    result->append(buffer, uint64ToBufferUnsafe(uint64_t(value), buffer));
   }
 }
 
@@ -681,14 +682,14 @@ toAppend(
       conv.ToShortest(value, &builder);
       break;
     case DoubleToStringConverter::FIXED:
-      conv.ToFixed(value, numDigits, &builder);
+      conv.ToFixed(value, int(numDigits), &builder);
       break;
     default:
       CHECK(mode == DoubleToStringConverter::PRECISION);
-      conv.ToPrecision(value, numDigits, &builder);
+      conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }
-  const size_t length = builder.position();
+  const size_t length = size_t(builder.position());
   builder.Finalize();
   result->append(buffer, length);
 }
@@ -730,7 +731,9 @@ estimateSpaceNeeded(Src value) {
       // so 21 is the longest non-exponential number > 1.
       detail::kConvMaxDecimalInShortestHigh
     });
-  return kMaxPositiveSpace + (value < 0);  // +1 for minus sign, if negative
+  return size_t(
+      kMaxPositiveSpace +
+      (value < 0 ? 1 : 0)); // +1 for minus sign, if negative
 }
 
 /**

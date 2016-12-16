@@ -25,7 +25,7 @@ namespace detail {
 // (see Bits.cpp)
 #ifdef _MSC_VER
 inline int popcount(unsigned int x) {
-  return __popcnt(x);
+  return int(__popcnt(x));
 }
 inline int popcountll(unsigned long long x) {
   return int(__popcnt64(x));

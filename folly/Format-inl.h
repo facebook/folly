@@ -174,7 +174,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
     auto p = s.begin();
     auto end = s.end();
     while (p != end) {
-      auto q = static_cast<const char*>(memchr(p, '}', end - p));
+      auto q = static_cast<const char*>(memchr(p, '}', size_t(end - p)));
       if (!q) {
         out(StringPiece(p, end));
         break;
@@ -197,7 +197,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
   bool hasDefaultArgIndex = false;
   bool hasExplicitArgIndex = false;
   while (p != end) {
-    auto q = static_cast<const char*>(memchr(p, '{', end - p));
+    auto q = static_cast<const char*>(memchr(p, '{', size_t(end - p)));
     if (!q) {
       outputString(StringPiece(p, end));
       break;
@@ -217,7 +217,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
     }
 
     // Format string
-    q = static_cast<const char*>(memchr(p, '}', end - p));
+    q = static_cast<const char*>(memchr(p, '}', size_t(end - p)));
     if (q == nullptr) {
       throw BadFormatArg("folly::format: missing ending '}'");
     }
@@ -242,7 +242,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
           arg.enforce(arg.widthIndex == FormatArg::kNoIndex,
                       "cannot provide width arg index without value arg index");
           int sizeArg = nextArg++;
-          arg.width = getSizeArg(sizeArg, arg);
+          arg.width = getSizeArg(size_t(sizeArg), arg);
         }
 
         argIndex = nextArg++;
@@ -251,7 +251,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
         if (arg.width == FormatArg::kDynamicWidth) {
           arg.enforce(arg.widthIndex != FormatArg::kNoIndex,
                       "cannot provide value arg index without width arg index");
-          arg.width = getSizeArg(arg.widthIndex, arg);
+          arg.width = getSizeArg(size_t(arg.widthIndex), arg);
         }
 
         try {
@@ -269,7 +269,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(Output& out)
           "folly::format: may not have both default and explicit arg indexes");
     }
 
-    doFormat(argIndex, arg, out);
+    doFormat(size_t(argIndex), arg, out);
   }
 }
 
@@ -302,7 +302,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
 
   if (arg.precision != FormatArg::kDefaultPrecision &&
       val.size() > static_cast<size_t>(arg.precision)) {
-    val.reset(val.data(), arg.precision);
+    val.reset(val.data(), size_t(arg.precision));
   }
 
   constexpr int padBufSize = 128;
@@ -312,7 +312,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
   auto pad = [&padBuf, &cb, padBufSize] (int chars) {
     while (chars) {
       int n = std::min(chars, padBufSize);
-      cb(StringPiece(padBuf, n));
+      cb(StringPiece(padBuf, size_t(n)));
       chars -= n;
     }
   };
@@ -322,7 +322,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
       val.size() < static_cast<size_t>(arg.width)) {
     char fill = arg.fill == FormatArg::kDefaultFill ? ' ' : arg.fill;
     int padChars = static_cast<int> (arg.width - val.size());
-    memset(padBuf, fill, std::min(padBufSize, padChars));
+    memset(padBuf, fill, size_t(std::min(padBufSize, padChars)));
 
     switch (arg.align) {
     case FormatArg::Align::DEFAULT:
@@ -359,8 +359,8 @@ void formatNumber(StringPiece val, int prefixLen, FormatArg& arg,
     arg.align = FormatArg::Align::RIGHT;
   } else if (prefixLen && arg.align == FormatArg::Align::PAD_AFTER_SIGN) {
     // Split off the prefix, then do any padding if necessary
-    cb(val.subpiece(0, prefixLen));
-    val.advance(prefixLen);
+    cb(val.subpiece(0, size_t(prefixLen)));
+    val.advance(size_t(prefixLen));
     arg.width = std::max(arg.width - prefixLen, 0);
   }
   format_value::formatString(val, arg, cb);
@@ -444,7 +444,7 @@ class FormatValue<
     char sign;
     if (std::is_signed<T>::value) {
       if (folly::is_negative(val_)) {
-        uval = -static_cast<UT>(val_);
+        uval = UT(-static_cast<UT>(val_));
         sign = '-';
       } else {
         uval = static_cast<UT>(val_);
@@ -461,7 +461,7 @@ class FormatValue<
         }
       }
     } else {
-      uval = val_;
+      uval = static_cast<UT>(val_);
       sign = '\0';
 
       arg.enforce(arg.sign == FormatArg::Sign::DEFAULT,
@@ -496,8 +496,11 @@ class FormatValue<
       int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
                          "%" PRIuMAX, static_cast<uintmax_t>(uval));
 #else
-      int len = snprintf(valBufBegin, (valBuf + valBufSize) - valBufBegin,
-                         "%ju", static_cast<uintmax_t>(uval));
+      int len = snprintf(
+          valBufBegin,
+          size_t((valBuf + valBufSize) - valBufBegin),
+          "%ju",
+          static_cast<uintmax_t>(uval));
 #endif
       // valBufSize should always be big enough, so this should never
       // happen.
@@ -673,7 +676,7 @@ class FormatValue<
                   "invalid specifier '", arg.presentation, "'");
       format_value::formatString(val_, arg, cb);
     } else {
-      FormatValue<char>(val_.at(arg.splitIntKey())).format(arg, cb);
+      FormatValue<char>(val_.at(size_t(arg.splitIntKey()))).format(arg, cb);
     }
   }
 

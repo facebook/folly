@@ -288,7 +288,7 @@ struct dynamic::NumericTypeHelper<double> {
 template<class T, class NumericType /* = typename NumericTypeHelper<T>::type */>
 dynamic::dynamic(T t) {
   type_ = TypeInfo<NumericType>::type;
-  new (getAddress<NumericType>()) NumericType(t);
+  new (getAddress<NumericType>()) NumericType(NumericType(t));
 }
 
 template <class Iterator>
@@ -507,7 +507,7 @@ inline bool dynamic::empty() const {
 }
 
 inline std::size_t dynamic::count(dynamic const& key) const {
-  return find(key) != items().end();
+  return find(key) != items().end() ? 1u : 0u;
 }
 
 inline dynamic::const_item_iterator dynamic::find(dynamic const& key) const {

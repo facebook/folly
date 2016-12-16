@@ -47,7 +47,7 @@ class FileReader : public GenImpl<ByteRange, FileReader> {
       if (n == 0) {
         return true;
       }
-      if (!body(ByteRange(buffer_->tail(), n))) {
+      if (!body(ByteRange(buffer_->tail(), size_t(n)))) {
         return false;
       }
     }
@@ -105,7 +105,7 @@ class FileWriter : public Operator<FileWriter> {
         throw std::system_error(errno, std::system_category(),
                                 "write() failed");
       }
-      v.advance(n);
+      v.advance(size_t(n));
     }
   }
 

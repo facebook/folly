@@ -149,7 +149,7 @@ private:
           S_destroy_range_a(*this, b_, e_);
         }
 
-        D_deallocate(b_, z_ - b_);
+        D_deallocate(b_, size_type(z_ - b_));
       }
     }
 
@@ -915,7 +915,7 @@ public:
 public:
 
   size_type size() const noexcept {
-    return impl_.e_ - impl_.b_;
+    return size_type(impl_.e_ - impl_.b_);
   }
 
   size_type max_size() const noexcept {
@@ -946,7 +946,7 @@ public:
   }
 
   size_type capacity() const noexcept {
-    return impl_.z_ - impl_.b_;
+    return size_type(impl_.z_ - impl_.b_);
   }
 
   bool empty() const noexcept {
@@ -966,7 +966,7 @@ public:
       throw;
     }
     if (impl_.b_)
-      M_deallocate(impl_.b_, impl_.z_ - impl_.b_);
+      M_deallocate(impl_.b_, size_type(impl_.z_ - impl_.b_));
     impl_.z_ = newB + newCap;
     impl_.e_ = newB + (impl_.e_ - impl_.b_);
     impl_.b_ = newB;

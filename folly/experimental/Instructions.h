@@ -69,7 +69,7 @@ struct Nehalem : public Default {
     asm ("popcntq %1, %0" : "=r" (result) : "r" (value));
     return result;
 #else
-    return _mm_popcnt_u64(value);
+    return uint64_t(_mm_popcnt_u64(value));
 #endif
   }
 };

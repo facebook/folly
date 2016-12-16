@@ -73,10 +73,10 @@ ssize_t wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
 template <class F, class... Offset>
 ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
-  size_t r;
+  ssize_t r;
   do {
     r = f(fd, iov, std::min<int>(count, kIovMax), offset...);
-    if (r == (size_t)-1) {
+    if (r == -1) {
       if (errno == EINTR) {
         continue;
       }
@@ -90,8 +90,8 @@ ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
     totalBytes += r;
     incr(r, offset...);
     while (r != 0 && count != 0) {
-      if (r >= iov->iov_len) {
-        r -= iov->iov_len;
+      if (r >= ssize_t(iov->iov_len)) {
+        r -= ssize_t(iov->iov_len);
         ++iov;
         --count;
       } else {

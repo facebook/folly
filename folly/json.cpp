@@ -735,7 +735,7 @@ void escapeString(
       out.push_back(hexDigit(v & 0x0f));
     } else if (*p == '\\' || *p == '\"') {
       out.push_back('\\');
-      out.push_back(*p++);
+      out.push_back(char(*p++));
     } else if (*p <= 0x1f) {
       switch (*p) {
         case '\b': out.append("\\b"); p++; break;

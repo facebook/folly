@@ -136,7 +136,7 @@ template <class Pod, class T>
 inline void podFill(Pod* b, Pod* e, T c) {
   FBSTRING_ASSERT(b && e && b <= e);
   /*static*/ if (sizeof(T) == 1) {
-    memset(b, c, e - b);
+    memset(b, c, size_t(e - b));
   } else {
     auto const ee = b + ((e - b) & ~7u);
     for (; b != ee; b += 8) {
@@ -1184,7 +1184,7 @@ public:
   // Specialization for const char*, const char*
   FOLLY_MALLOC_NOINLINE
   basic_fbstring(const value_type* b, const value_type* e, const A& /*a*/ = A())
-      : store_(b, e - b) {
+      : store_(b, size_type(e - b)) {
   }
 
   // Nonstandard constructor
@@ -2705,7 +2705,7 @@ operator<<(
   }
 #elif defined(_MSC_VER)
   // MSVC doesn't define __ostream_insert
-  os.write(str.data(), str.size());
+  os.write(str.data(), std::streamsize(str.size()));
 #else
   std::__ostream_insert(os, str.data(), str.size());
 #endif

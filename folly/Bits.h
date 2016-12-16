@@ -263,8 +263,11 @@ our_bswap16(Int16 x) {
 
 #endif
 
-#define FB_GEN(t, fn) \
-template<> inline t EndianIntBase<t>::swap(t x) { return fn(x); }
+#define FB_GEN(t, fn)                             \
+  template <>                                     \
+  inline t EndianIntBase<t>::swap(t x) {          \
+    return t(fn(std::make_unsigned<t>::type(x))); \
+  }
 
 // fn(x) expands to (x) if the second argument is empty, which is exactly
 // what we want for [u]int8_t. Also, gcc 4.7 on Intel doesn't have

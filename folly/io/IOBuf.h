@@ -507,7 +507,7 @@ class IOBuf {
    * Returns the number of bytes in the buffer before the start of the data.
    */
   uint64_t headroom() const {
-    return data_ - buffer();
+    return uint64_t(data_ - buffer());
   }
 
   /**
@@ -516,7 +516,7 @@ class IOBuf {
    * Returns the number of bytes in the buffer after the end of the data.
    */
   uint64_t tailroom() const {
-    return bufferEnd() - tail();
+    return uint64_t(bufferEnd() - tail());
   }
 
   /**

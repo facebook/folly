@@ -41,10 +41,10 @@ size_t qfind_first_byte_of_byteset(const StringPieceLite haystack,
                                    const StringPieceLite needles) {
   SparseByteSet s;
   for (auto needle: needles) {
-    s.add(needle);
+    s.add(uint8_t(needle));
   }
   for (size_t index = 0; index < haystack.size(); ++index) {
-    if (s.contains(haystack[index])) {
+    if (s.contains(uint8_t(haystack[index]))) {
       return index;
     }
   }

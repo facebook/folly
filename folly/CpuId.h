@@ -45,13 +45,13 @@ class CpuId {
     const int n = reg[0];
     if (n >= 1) {
       __cpuid(static_cast<int*>(reg), 1);
-      f1c_ = reg[2];
-      f1d_ = reg[3];
+      f1c_ = uint32_t(reg[2]);
+      f1d_ = uint32_t(reg[3]);
     }
     if (n >= 7) {
       __cpuidex(static_cast<int*>(reg), 7, 0);
-      f7b_ = reg[1];
-      f7c_ = reg[2];
+      f7b_ = uint32_t(reg[1]);
+      f7c_ = uint32_t(reg[2]);
     }
 #elif defined(__i386__) && defined(__PIC__) && !defined(__clang__) && \
     defined(__GNUC__)

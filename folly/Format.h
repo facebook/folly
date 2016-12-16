@@ -211,7 +211,9 @@ class Formatter : public BaseFormatter<Formatter<containerMode, Args...>,
 template<bool containerMode, class... Args>
 std::ostream& operator<<(std::ostream& out,
                          const Formatter<containerMode, Args...>& formatter) {
-  auto writer = [&out] (StringPiece sp) { out.write(sp.data(), sp.size()); };
+  auto writer = [&out](StringPiece sp) {
+    out.write(sp.data(), std::streamsize(sp.size()));
+  };
   formatter(writer);
   return out;
 }

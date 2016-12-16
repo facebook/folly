@@ -245,7 +245,9 @@ struct TurnSequencer {
 
   /// Returns the bitmask to pass futexWait or futexWake when communicating
   /// about the specified turn
-  int futexChannel(uint32_t turn) const noexcept { return 1 << (turn & 31); }
+  uint32_t futexChannel(uint32_t turn) const noexcept {
+    return 1u << (turn & 31);
+  }
 
   uint32_t decodeCurrentSturn(uint32_t state) const noexcept {
     return state & ~kWaitersMask;

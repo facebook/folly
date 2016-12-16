@@ -575,7 +575,7 @@ std::string stripLeftMargin(std::string s) {
                           piece->end(),
                           [](char c) { return c != ' ' && c != '\t'; });
     if (needle != piece->end()) {
-      indent = std::min<size_t>(indent, needle - piece->begin());
+      indent = std::min<size_t>(indent, size_t(needle - piece->begin()));
     } else {
       max_length = std::max<size_t>(piece->size(), max_length);
     }
