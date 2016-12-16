@@ -31,6 +31,7 @@
 #include <folly/fibers/GenericBaton.h>
 #include <folly/fibers/Semaphore.h>
 #include <folly/fibers/SimpleLoopController.h>
+#include <folly/fibers/TimedMutex.h>
 #include <folly/fibers/WhenN.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
@@ -2070,6 +2071,64 @@ TEST(FiberManager, VirtualEventBase) {
 
   evb2.reset();
   EXPECT_TRUE(done2);
+}
+
+TEST(TimedMutex, ThreadFiberDeadlockOrder) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+
+  mutex.lock();
+  std::thread unlockThread([&] {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds{100});
+    mutex.unlock();
+  });
+
+  fm.addTask([&] { std::lock_guard<TimedMutex> lg(mutex); });
+  fm.addTask([&] {
+    runInMainContext([&] {
+      auto locked = mutex.timed_lock(std::chrono::seconds{1});
+      EXPECT_TRUE(locked);
+      if (locked) {
+        mutex.unlock();
+      }
+    });
+  });
+
+  evb.loopOnce();
+  EXPECT_EQ(0, fm.hasTasks());
+
+  unlockThread.join();
+}
+
+TEST(TimedMutex, ThreadFiberDeadlockRace) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  TimedMutex mutex;
+
+  mutex.lock();
+
+  fm.addTask([&] {
+    auto locked = mutex.timed_lock(std::chrono::seconds{1});
+    EXPECT_TRUE(locked);
+    if (locked) {
+      mutex.unlock();
+    }
+  });
+  fm.addTask([&] {
+    mutex.unlock();
+    runInMainContext([&] {
+      auto locked = mutex.timed_lock(std::chrono::seconds{1});
+      EXPECT_TRUE(locked);
+      if (locked) {
+        mutex.unlock();
+      }
+    });
+  });
+
+  evb.loopOnce();
+  EXPECT_EQ(0, fm.hasTasks());
 }
 
 /**
