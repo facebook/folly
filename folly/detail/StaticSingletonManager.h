@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <mutex>
 #include <typeindex>
 #include <unordered_map>
