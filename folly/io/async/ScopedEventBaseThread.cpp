@@ -18,6 +18,7 @@
 
 #include <thread>
 
+#include <folly/Function.h>
 #include <folly/Memory.h>
 #include <folly/io/async/EventBaseManager.h>
 
@@ -28,7 +29,11 @@ namespace folly {
 static void run(EventBaseManager* ebm, EventBase* eb) {
   ebm->setEventBase(eb, false);
   eb->loopForever();
-  ebm->clearEventBase();
+
+  // must destruct in io thread for on-destruction callbacks
+  EventBase::StackFunctionLoopCallback cb([=] { ebm->clearEventBase(); });
+  eb->runOnDestruction(&cb);
+  eb->~EventBase();
 }
 
 ScopedEventBaseThread::ScopedEventBaseThread()
@@ -36,6 +41,7 @@ ScopedEventBaseThread::ScopedEventBaseThread()
 
 ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
     : ebm_(ebm ? ebm : EventBaseManager::get()) {
+  new (&eb_) EventBase();
   th_ = thread(run, ebm_, &eb_);
   eb_.waitUntilRunning();
 }

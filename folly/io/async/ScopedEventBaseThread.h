@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <thread>
+
 #include <folly/io/async/EventBase.h>
 
 namespace folly {
@@ -41,6 +42,10 @@ class ScopedEventBaseThread {
     return &eb_;
   }
 
+  std::thread::id getThreadId() const {
+    return th_.get_id();
+  }
+
  private:
   ScopedEventBaseThread(ScopedEventBaseThread&& other) = delete;
   ScopedEventBaseThread& operator=(ScopedEventBaseThread&& other) = delete;
@@ -49,7 +54,9 @@ class ScopedEventBaseThread {
   ScopedEventBaseThread& operator=(const ScopedEventBaseThread& other) = delete;
 
   EventBaseManager* ebm_;
-  mutable EventBase eb_;
+  union {
+    mutable EventBase eb_;
+  };
   std::thread th_;
 };
 

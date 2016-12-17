@@ -19,6 +19,7 @@
 #include <chrono>
 
 #include <folly/Baton.h>
+#include <folly/Optional.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/portability/GTest.h>
 
@@ -52,4 +53,18 @@ TEST_F(ScopedEventBaseThreadTest, custom_manager) {
   auto ebm_eb = static_cast<EventBase*>(nullptr);
   sebt_eb->runInEventBaseThreadAndWait([&] { ebm_eb = ebm.getEventBase(); });
   EXPECT_EQ(uintptr_t(sebt_eb), uintptr_t(ebm_eb));
+}
+
+TEST_F(ScopedEventBaseThreadTest, eb_dtor_in_io_thread) {
+  Optional<ScopedEventBaseThread> sebt;
+  sebt.emplace();
+  auto const io_thread_id = sebt->getThreadId();
+  EXPECT_NE(this_thread::get_id(), io_thread_id) << "sanity";
+
+  auto const eb = sebt->getEventBase();
+  thread::id eb_dtor_thread_id;
+  eb->runOnDestruction(new EventBase::FunctionLoopCallback(
+      [&] { eb_dtor_thread_id = this_thread::get_id(); }));
+  sebt.clear();
+  EXPECT_EQ(io_thread_id, eb_dtor_thread_id);
 }

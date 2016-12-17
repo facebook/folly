@@ -179,6 +179,22 @@ class EventBase : private boost::noncopyable,
     Func function_;
   };
 
+  // Like FunctionLoopCallback, but saves one allocation. Use with caution.
+  //
+  // The caller is responsible for maintaining the lifetime of this callback
+  // until after the point at which the contained function is called.
+  class StackFunctionLoopCallback : public LoopCallback {
+   public:
+    explicit StackFunctionLoopCallback(Func&& function)
+        : function_(std::move(function)) {}
+    void runLoopCallback() noexcept override {
+      Func(std::move(function_))();
+    }
+
+   private:
+    Func function_;
+  };
+
   /**
    * Create a new EventBase object.
    *
