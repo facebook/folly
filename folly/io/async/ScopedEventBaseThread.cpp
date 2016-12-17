@@ -17,7 +17,9 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 
 #include <thread>
+
 #include <folly/Memory.h>
+#include <folly/io/async/EventBaseManager.h>
 
 using namespace std;
 
@@ -25,55 +27,22 @@ namespace folly {
 
 static void run(EventBaseManager* ebm, EventBase* eb) {
   ebm->setEventBase(eb, false);
-  CHECK_NOTNULL(eb)->loopForever();
+  eb->loopForever();
   ebm->clearEventBase();
 }
 
-ScopedEventBaseThread::ScopedEventBaseThread(
-    bool autostart,
-    EventBaseManager* ebm)
-    : ebm_(ebm ? ebm : EventBaseManager::get()) {
-  if (autostart) {
-    start();
-  }
-}
+ScopedEventBaseThread::ScopedEventBaseThread()
+    : ScopedEventBaseThread(nullptr) {}
 
-ScopedEventBaseThread::ScopedEventBaseThread(
-    EventBaseManager* ebm) :
-  ScopedEventBaseThread(true, ebm) {}
+ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
+    : ebm_(ebm ? ebm : EventBaseManager::get()) {
+  th_ = thread(run, ebm_, &eb_);
+  eb_.waitUntilRunning();
+}
 
 ScopedEventBaseThread::~ScopedEventBaseThread() {
-  stop();
-}
-
-ScopedEventBaseThread::ScopedEventBaseThread(
-    ScopedEventBaseThread&& /* other */) noexcept = default;
-
-ScopedEventBaseThread& ScopedEventBaseThread::operator=(
-    ScopedEventBaseThread&& /* other */) noexcept = default;
-
-void ScopedEventBaseThread::start() {
-  if (running()) {
-    return;
-  }
-  eventBase_ = make_unique<EventBase>();
-  thread_ = make_unique<thread>(run, ebm_, eventBase_.get());
-  eventBase_->waitUntilRunning();
-}
-
-void ScopedEventBaseThread::stop() {
-  if (!running()) {
-    return;
-  }
-  eventBase_->terminateLoopSoon();
-  thread_->join();
-  eventBase_ = nullptr;
-  thread_ = nullptr;
-}
-
-bool ScopedEventBaseThread::running() {
-  CHECK(bool(eventBase_) == bool(thread_));
-  return eventBase_ && thread_;
+  eb_.terminateLoopSoon();
+  th_.join();
 }
 
 }
