@@ -15,7 +15,6 @@
  */
 
 #include <stdexcept>
-#include <typeinfo>
 #include <thread>
 #include <mutex>
 #include <condition_variable>

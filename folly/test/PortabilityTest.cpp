@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
-
 #include <memory>
 
 #include <folly/portability/GTest.h>

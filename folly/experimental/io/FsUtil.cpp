@@ -17,7 +17,6 @@
 #include <folly/experimental/io/FsUtil.h>
 
 #include <folly/Exception.h>
-#include <folly/portability/Unistd.h>
 
 namespace bsys = ::boost::system;
 

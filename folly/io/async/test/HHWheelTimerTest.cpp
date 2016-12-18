@@ -22,8 +22,6 @@
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
 
-#include <vector>
-
 using namespace folly;
 using std::chrono::milliseconds;
 

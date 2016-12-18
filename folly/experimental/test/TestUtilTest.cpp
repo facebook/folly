@@ -16,7 +16,6 @@
 
 #include <folly/experimental/TestUtil.h>
 
-#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <system_error>

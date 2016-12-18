@@ -15,9 +15,7 @@
  */
 #include <folly/experimental/RCUUtils.h>
 
-#include <folly/Portability.h>
 #include <folly/ThreadLocal.h>
-
 
 namespace folly {
 

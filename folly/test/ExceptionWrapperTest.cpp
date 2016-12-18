@@ -18,7 +18,6 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/Conv.h>
-#include <folly/Portability.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

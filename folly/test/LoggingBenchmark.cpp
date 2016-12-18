@@ -18,8 +18,6 @@
 
 #include <folly/Benchmark.h>
 
-#include <vector>
-
 BENCHMARK(skip_overhead, iter) {
   auto prev = FLAGS_minloglevel;
   FLAGS_minloglevel = 2;

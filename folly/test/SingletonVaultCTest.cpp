@@ -17,8 +17,6 @@
 #include <folly/Singleton.h>
 #include <folly/SingletonVault_c.h>
 
-#include <thread>
-
 #include <folly/portability/GTest.h>
 
 FOLLY_TLS long instance_counter_instances = 0;

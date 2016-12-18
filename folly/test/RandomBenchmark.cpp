@@ -22,9 +22,7 @@
 
 #include <glog/logging.h>
 
-#include <algorithm>
 #include <thread>
-#include <vector>
 #include <random>
 
 using namespace folly;

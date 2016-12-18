@@ -24,7 +24,6 @@
 #include <folly/portability/Unistd.h>
 
 #include <errno.h>
-#include <sys/types.h>
 #include <stdexcept>
 
 namespace folly {

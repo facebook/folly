@@ -20,7 +20,6 @@
 #include <folly/portability/GTest.h>
 
 #include <thread>
-#include <semaphore.h>
 
 using namespace folly;
 using namespace folly::test;

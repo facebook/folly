@@ -22,8 +22,6 @@
 #include <folly/test/SingletonTestStructs.h>
 #include <folly/portability/GTest.h>
 
-#include <glog/logging.h>
-
 /*
  * This test needs to be in its own file, as a standalone program.
  * We want to ensure no other singletons are registered, so we can

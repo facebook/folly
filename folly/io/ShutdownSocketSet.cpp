@@ -16,8 +16,6 @@
 
 #include <folly/io/ShutdownSocketSet.h>
 
-#include <sys/types.h>
-
 #include <chrono>
 #include <thread>
 

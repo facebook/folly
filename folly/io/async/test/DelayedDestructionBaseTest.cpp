@@ -34,8 +34,6 @@
 #include <folly/io/async/DelayedDestructionBase.h>
 
 #include <functional>
-#include <list>
-#include <vector>
 
 #include <folly/portability/GTest.h>
 

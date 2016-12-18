@@ -15,7 +15,6 @@
  */
 
 #include <folly/ScopeGuard.h>
-#include <folly/Portability.h>
 
 #include <glog/logging.h>
 

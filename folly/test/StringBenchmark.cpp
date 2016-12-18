@@ -19,7 +19,6 @@
 #include <boost/algorithm/string.hpp>
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
-#include <cstdarg>
 #include <random>
 
 using namespace folly;

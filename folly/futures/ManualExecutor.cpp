@@ -20,8 +20,6 @@
 #include <string>
 #include <tuple>
 
-#include <stdexcept>
-
 namespace folly {
 
 void ManualExecutor::add(Func callback) {
