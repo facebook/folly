@@ -560,6 +560,36 @@ TEST(Expected, NoThrowMoveAssignable) {
       (std::is_nothrow_move_assignable<Expected<ThrowingBadness, E>>::value));
 }
 
+struct NoSelfAssign {
+  NoSelfAssign() = default;
+  NoSelfAssign(NoSelfAssign&&) = default;
+  NoSelfAssign(const NoSelfAssign&) = default;
+  NoSelfAssign& operator=(NoSelfAssign&& that) {
+    EXPECT_NE(this, &that);
+    return *this;
+  }
+  NoSelfAssign& operator=(const NoSelfAssign& that) {
+    EXPECT_NE(this, &that);
+    return *this;
+  }
+};
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wself-move"
+#endif
+
+TEST(Expected, NoSelfAssign) {
+  folly::Expected<NoSelfAssign, int> e {NoSelfAssign{}};
+  e = e; // @nolint
+  e = std::move(e); // @nolint
+}
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 struct NoDestructor {};
 
 struct WithDestructor {

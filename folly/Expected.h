@@ -445,7 +445,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
       this->which_ = Which::eError;
     }
   }
-  bool isThis(const ExpectedStorage* that) const {
+  bool isSelfAssign(const ExpectedStorage* that) const {
     return this == that;
   }
   constexpr bool isSelfAssign(const void*) const {
