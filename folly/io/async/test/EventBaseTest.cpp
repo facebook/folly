@@ -1838,7 +1838,7 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   for (size_t i = 0; i < kNumThreads; ++i) {
     ts.emplace_back([ evbPtr = evb.get(), batonPtr = batons[i].get(), &done ] {
       std::vector<EventBase::LoopKeepAlive> keepAlives;
-      for (size_t i = 0; i < kNumTasks; ++i) {
+      for (size_t j = 0; j < kNumTasks; ++j) {
         keepAlives.emplace_back(evbPtr->loopKeepAliveAtomic());
       }
 
