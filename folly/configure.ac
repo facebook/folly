@@ -102,9 +102,9 @@ AC_CACHE_CHECK(
 )
 
 if test "$folly_cv_prog_cc_gflags" != "yes"; then
-  AC_MSG_ERROR(["libgflags invalid, see config.log for details"])
+  AC_MSG_ERROR(["gflags invalid, see config.log for details"])
 fi
-FB_CHECK_PKG_CONFIG([GFLAGS], [libgflags])
+FB_CHECK_PKG_CONFIG([GFLAGS], [gflags])
 
 AC_HAVE_LIBRARY([glog],[],[AC_MSG_ERROR(
                 [Please install google-glog library])])
