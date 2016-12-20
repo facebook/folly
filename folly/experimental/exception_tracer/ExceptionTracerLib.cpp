@@ -34,7 +34,6 @@ void __cxa_throw(
     void (*destructor)(void*)) __attribute__((__noreturn__));
 void* __cxa_begin_catch(void* excObj) throw();
 void __cxa_rethrow(void) __attribute__((__noreturn__));
-void __cxa_rethrow(void);
 void __cxa_end_catch(void);
 }
 
@@ -87,6 +86,15 @@ DECLARE_CALLBACK(RethrowException);
 
 } // exception_tracer
 } // folly
+
+// Clang is smart enough to understand that the symbols we're loading
+// are [[noreturn]], but GCC is not. In order to be able to build with
+// -Wunreachable-code enable for Clang, these __builtin_unreachable()
+// calls need to go away. Everything else is messy though, so just
+// #define it to an empty macro under Clang and be done with it.
+#ifdef __clang__
+# define __builtin_unreachable()
+#endif
 
 namespace __cxxabiv1 {
 

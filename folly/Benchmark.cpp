@@ -106,75 +106,6 @@ void detail::addBenchmarkImpl(const char* file, const char* name,
 }
 
 /**
- * Given a point, gives density at that point as a number 0.0 < x <=
- * 1.0. The result is 1.0 if all samples are equal to where, and
- * decreases near 0 if all points are far away from it. The density is
- * computed with the help of a radial basis function.
- */
-static double density(const double * begin, const double *const end,
-                      const double where, const double bandwidth) {
-  assert(begin < end);
-  assert(bandwidth > 0.0);
-  double sum = 0.0;
-  FOR_EACH_RANGE (i, begin, end) {
-    auto d = (*i - where) / bandwidth;
-    sum += exp(- d * d);
-  }
-  return sum / (end - begin);
-}
-
-/**
- * Computes mean and variance for a bunch of data points. Note that
- * mean is currently not being used.
- */
-static pair<double, double>
-meanVariance(const double * begin, const double *const end) {
-  assert(begin < end);
-  double sum = 0.0, sum2 = 0.0;
-  FOR_EACH_RANGE (i, begin, end) {
-    sum += *i;
-    sum2 += *i * *i;
-  }
-  auto const n = end - begin;
-  return make_pair(sum / n, sqrt((sum2 - sum * sum / n) / n));
-}
-
-/**
- * Computes the mode of a sample set through brute force. Assumes
- * input is sorted.
- */
-static double mode(const double * begin, const double *const end) {
-  assert(begin < end);
-  // Lower bound and upper bound for result and their respective
-  // densities.
-  auto
-    result = 0.0,
-    bestDensity = 0.0;
-
-  // Get the variance so we pass it down to density()
-  auto const sigma = meanVariance(begin, end).second;
-  if (!sigma) {
-    // No variance means constant signal
-    return *begin;
-  }
-
-  FOR_EACH_RANGE (i, begin, end) {
-    assert(i == begin || *i >= i[-1]);
-    auto candidate = density(begin, end, *i, sigma * sqrt(2.0));
-    if (candidate > bestDensity) {
-      // Found a new best
-      bestDensity = candidate;
-      result = *i;
-    } else {
-      // Density is decreasing... we could break here if we definitely
-      // knew this is unimodal.
-    }
-  }
-
-  return result;
-}
-
-/**
  * Given a bunch of benchmark samples, estimate the actual run time.
  */
 static double estimateTime(double * begin, double * end) {
@@ -182,55 +113,7 @@ static double estimateTime(double * begin, double * end) {
 
   // Current state of the art: get the minimum. After some
   // experimentation, it seems taking the minimum is the best.
-
   return *min_element(begin, end);
-
-  // What follows after estimates the time as the mode of the
-  // distribution.
-
-  // Select the awesomest (i.e. most frequent) result. We do this by
-  // sorting and then computing the longest run length.
-  sort(begin, end);
-
-  // Eliminate outliers. A time much larger than the minimum time is
-  // considered an outlier.
-  while (end[-1] > 2.0 * *begin) {
-    --end;
-    if (begin == end) {
-      LOG(INFO) << *begin;
-    }
-    assert(begin < end);
-  }
-
-  double result = 0;
-
-  /* Code used just for comparison purposes */ {
-    unsigned bestFrequency = 0;
-    unsigned candidateFrequency = 1;
-    double candidateValue = *begin;
-    for (auto current = begin + 1; ; ++current) {
-      if (current == end || *current != candidateValue) {
-        // Done with the current run, see if it was best
-        if (candidateFrequency > bestFrequency) {
-          bestFrequency = candidateFrequency;
-          result = candidateValue;
-        }
-        if (current == end) {
-          break;
-        }
-        // Start a new run
-        candidateValue = *current;
-        candidateFrequency = 1;
-      } else {
-        // Cool, inside a run, increase the frequency
-        ++candidateFrequency;
-      }
-    }
-  }
-
-  result = mode(begin, end);
-
-  return result;
 }
 
 static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
