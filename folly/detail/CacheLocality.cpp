@@ -43,7 +43,7 @@ static CacheLocality getSystemLocalityInfo() {
   }
 #endif
 
-  size_t numCpus = sysconf(_SC_NPROCESSORS_CONF);
+  long numCpus = sysconf(_SC_NPROCESSORS_CONF);
   if (numCpus <= 0) {
     // This shouldn't happen, but if it does we should try to keep
     // going.  We are probably not going to be able to parse /sys on
