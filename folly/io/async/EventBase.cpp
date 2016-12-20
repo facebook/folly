@@ -548,7 +548,7 @@ bool EventBase::runInEventBaseThread(Func fn) {
   return true;
 }
 
-bool EventBase::runInEventBaseThreadAndWait(Func fn) {
+bool EventBase::runInEventBaseThreadAndWait(FuncRef fn) {
   if (inRunningEventBaseThread()) {
     LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "
                << "allowed";
@@ -575,7 +575,7 @@ bool EventBase::runInEventBaseThreadAndWait(Func fn) {
   return true;
 }
 
-bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) {
+bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(FuncRef fn) {
   if (isInEventBaseThread()) {
     fn();
     return true;
