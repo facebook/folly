@@ -18,7 +18,7 @@ TESTS= \
 
 check_LTLIBRARIES = libfollytestmain.la libgtest.la
 check_PROGRAMS =
-noinst_LTLIBRARIES = lib_thread_local_test.la
+noinst_LTLIBRARIES = thread_local_test_lib.la
 
 libgtest_la_CPPFLAGS = -Igtest-1.7.0 -Igtest-1.7.0/src
 libgtest_la_SOURCES = gtest-1.7.0/src/gtest-all.cc
@@ -33,10 +33,10 @@ libfollytestmain_la_SOURCES = $(libgtest_la_SOURCES) gtest-1.7.0/src/gtest_main.
 libfollytestmain_la_LIBADD = $(top_builddir)/libfolly.la
 endif
 
-lib_thread_local_test_la_CPPFLAGS = $(AM_CPPFLAGS)
-lib_thread_local_test_la_SOURCES = ThreadLocalTestLib.cpp
-lib_thread_local_test_la_LDFLAGS = -rpath /force_shared
-lib_thread_local_test_la_LIBADD = $(top_builddir)/libfolly.la
+thread_local_test_lib_la_CPPFLAGS = $(AM_CPPFLAGS)
+thread_local_test_lib_la_SOURCES = ThreadLocalTestLib.cpp
+thread_local_test_lib_la_LDFLAGS = -module -rpath /force_shared
+thread_local_test_lib_la_LIBADD = $(top_builddir)/libfolly.la
 
 noinst_HEADERS = FBStringTestBenchmarks.cpp.h \
 	FBVectorTestBenchmarks.cpp.h
