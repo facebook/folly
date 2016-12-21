@@ -1270,6 +1270,17 @@ TEST(FBString, testFixedBugs) {
   { // D3698862
     EXPECT_EQ(fbstring().find(fbstring(), 4), fbstring::npos);
   }
+  if (usingJEMalloc()) { // D4355440
+    fbstring str(1337, 'f');
+    str.reserve(3840);
+    EXPECT_NE(str.capacity(), 3840);
+
+    struct {
+      std::atomic<size_t> refCount_;
+      char data_[1];
+    } dummyRefCounted;
+    EXPECT_EQ(str.capacity(), goodMallocSize(3840) - sizeof(dummyRefCounted));
+  }
 }
 
 TEST(FBString, findWithNpos) {

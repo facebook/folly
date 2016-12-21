@@ -575,8 +575,10 @@ private:
     static RefCounted * reallocate(Char *const data,
                                    const size_t currentSize,
                                    const size_t currentCapacity,
-                                   const size_t newCapacity) {
-      FBSTRING_ASSERT(newCapacity > 0 && newCapacity > currentSize);
+                                   size_t * newCapacity) {
+      FBSTRING_ASSERT(*newCapacity > 0 && *newCapacity > currentSize);
+      const size_t allocNewCapacity = goodMallocSize(
+        sizeof(RefCounted) + *newCapacity * sizeof(Char));
       auto const dis = fromData(data);
       FBSTRING_ASSERT(dis->refCount_.load(std::memory_order_acquire) == 1);
       // Don't forget to allocate one extra Char for the terminating
@@ -586,8 +588,9 @@ private:
              smartRealloc(dis,
                           sizeof(RefCounted) + currentSize * sizeof(Char),
                           sizeof(RefCounted) + currentCapacity * sizeof(Char),
-                          sizeof(RefCounted) + newCapacity * sizeof(Char)));
+                          allocNewCapacity));
       FBSTRING_ASSERT(result->refCount_.load(std::memory_order_acquire) == 1);
+      *newCapacity = (allocNewCapacity - sizeof(RefCounted)) / sizeof(Char);
       return result;
     }
   };
@@ -836,7 +839,7 @@ FOLLY_MALLOC_NOINLINE inline void fbstring_core<Char>::reserveLarge(
     if (minCapacity > ml_.capacity()) {
       // Asking for more memory
       auto const newRC = RefCounted::reallocate(
-          ml_.data_, ml_.size_, ml_.capacity(), minCapacity);
+          ml_.data_, ml_.size_, ml_.capacity(), &minCapacity);
       ml_.data_ = newRC->data_;
       ml_.setCapacity(minCapacity, Category::isLarge);
     }
