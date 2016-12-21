@@ -78,7 +78,7 @@ ssize_t readlink(const char* path, char* buf, size_t buflen);
 int setmode(int fh, int md);
 void* sbrk(intptr_t i);
 unsigned int sleep(unsigned int seconds);
-size_t sysconf(int tp);
+long sysconf(int tp);
 long tell(int fh);
 int truncate(const char* path, off_t len);
 int usleep(unsigned int ms);

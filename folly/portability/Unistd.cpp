@@ -235,20 +235,20 @@ unsigned int sleep(unsigned int seconds) {
   return 0;
 }
 
-size_t sysconf(int tp) {
+long sysconf(int tp) {
   switch (tp) {
     case _SC_PAGESIZE: {
       SYSTEM_INFO inf;
       GetSystemInfo(&inf);
-      return (size_t)inf.dwPageSize;
+      return (long)inf.dwPageSize;
     }
     case _SC_NPROCESSORS_ONLN: {
       SYSTEM_INFO inf;
       GetSystemInfo(&inf);
-      return (size_t)inf.dwNumberOfProcessors;
+      return (long)inf.dwNumberOfProcessors;
     }
     default:
-      return (size_t)-1;
+      return -1L;
   }
 }
 
