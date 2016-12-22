@@ -20,6 +20,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <limits>
 #include <type_traits>
 
@@ -527,11 +528,14 @@ private:
     std::atomic<size_t> refCount_;
     Char data_[1];
 
+    constexpr static size_t getDataOffset() {
+      return offsetof(RefCounted, data_);
+    }
+
     static RefCounted * fromData(Char * p) {
-      return static_cast<RefCounted*>(
-        static_cast<void*>(
-          static_cast<unsigned char*>(static_cast<void*>(p))
-          - sizeof(refCount_)));
+      return static_cast<RefCounted*>(static_cast<void*>(
+          static_cast<unsigned char*>(static_cast<void*>(p)) -
+          getDataOffset()));
     }
 
     static size_t refs(Char * p) {
@@ -552,14 +556,11 @@ private:
     }
 
     static RefCounted * create(size_t * size) {
-      // Don't forget to allocate one extra Char for the terminating
-      // null. In this case, however, one Char is already part of the
-      // struct.
-      const size_t allocSize = goodMallocSize(
-        sizeof(RefCounted) + *size * sizeof(Char));
+      const size_t allocSize =
+          goodMallocSize(getDataOffset() + (*size + 1) * sizeof(Char));
       auto result = static_cast<RefCounted*>(checkedMalloc(allocSize));
       result->refCount_.store(1, std::memory_order_release);
-      *size = (allocSize - sizeof(RefCounted)) / sizeof(Char);
+      *size = (allocSize - getDataOffset()) / sizeof(Char) - 1;
       return result;
     }
 
@@ -577,20 +578,17 @@ private:
                                    const size_t currentCapacity,
                                    size_t * newCapacity) {
       FBSTRING_ASSERT(*newCapacity > 0 && *newCapacity > currentSize);
-      const size_t allocNewCapacity = goodMallocSize(
-        sizeof(RefCounted) + *newCapacity * sizeof(Char));
+      const size_t allocNewCapacity =
+          goodMallocSize(getDataOffset() + (*newCapacity + 1) * sizeof(Char));
       auto const dis = fromData(data);
       FBSTRING_ASSERT(dis->refCount_.load(std::memory_order_acquire) == 1);
-      // Don't forget to allocate one extra Char for the terminating
-      // null. In this case, however, one Char is already part of the
-      // struct.
-      auto result = static_cast<RefCounted*>(
-             smartRealloc(dis,
-                          sizeof(RefCounted) + currentSize * sizeof(Char),
-                          sizeof(RefCounted) + currentCapacity * sizeof(Char),
-                          allocNewCapacity));
+      auto result = static_cast<RefCounted*>(smartRealloc(
+          dis,
+          getDataOffset() + (currentSize + 1) * sizeof(Char),
+          getDataOffset() + (currentCapacity + 1) * sizeof(Char),
+          allocNewCapacity));
       FBSTRING_ASSERT(result->refCount_.load(std::memory_order_acquire) == 1);
-      *newCapacity = (allocNewCapacity - sizeof(RefCounted)) / sizeof(Char);
+      *newCapacity = (allocNewCapacity - getDataOffset()) / sizeof(Char) - 1;
       return result;
     }
   };

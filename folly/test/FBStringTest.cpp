@@ -1277,9 +1277,10 @@ TEST(FBString, testFixedBugs) {
 
     struct {
       std::atomic<size_t> refCount_;
-      char data_[1];
     } dummyRefCounted;
-    EXPECT_EQ(str.capacity(), goodMallocSize(3840) - sizeof(dummyRefCounted));
+    EXPECT_EQ(
+        str.capacity(),
+        goodMallocSize(3840) - sizeof(dummyRefCounted) - sizeof(char));
   }
 }
 
