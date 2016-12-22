@@ -130,8 +130,18 @@ if test "$folly_cv_prog_cc_glog" != "yes"; then
 fi
 FB_CHECK_PKG_CONFIG([GLOG], [libglog])
 
-AX_CHECK_OPENSSL([],
-        [AC_MSG_ERROR(["Error: libssl required"])])
+AS_IF(
+  [test "x$OPENSSL_INCLUDES" = "x"],
+  [
+    AX_CHECK_OPENSSL([], [AC_MSG_ERROR(["Error: libssl required"])])
+  ],
+  [
+    # AX_CHECK_OPENSSL doesn't seem to play nice with builds started
+    # via build/bootstrap-osx-homebrew.sh
+    AC_MSG_WARN(["Using existing OpenSSL flags from environment."])
+    PKG_CXXFLAGS="$PKG_CXXFLAGS $OPENSSL_INCLUDES"
+  ]
+)
 FB_CHECK_PKG_CONFIG([OPENSSL], [openssl])
 
 # check for boost libs
@@ -602,7 +612,7 @@ AS_IF([test "x${mobile}" = "xyes"], [
 
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
-AM_CPPFLAGS="$AM_CPPFLAGS $BOOST_CPPFLAGS"
+AM_CPPFLAGS="$AM_CPPFLAGS $BOOST_CPPFLAGS $OPENSSL_INCLUDES"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_CONTEXT_LIB $BOOST_PROGRAM_OPTIONS_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_THREAD_LIB $BOOST_FILESYSTEM_LIB"
 AM_LDFLAGS="$AM_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_REGEX_LIB -lpthread"

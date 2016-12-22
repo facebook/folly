@@ -30,9 +30,9 @@ export_flags() {
 	OPT_GFLAGS=$(brew --prefix gflags)
 	OPT_OPENSSL=$(brew --prefix openssl)
 
-	# export LDFLAGS
+	# export flags
 	export LDFLAGS=-L${OPT_OPENSSL}/lib
-	export CPPFLAGS=-I${OPT_OPENSSL}/include
+	export OPENSSL_INCLUDES=-I${OPT_OPENSSL}/include
 	export GFLAGS_LIBS=-L${OPT_GFLAGS}/lib
 	export GFLAGS_CFLAGS=-I${OPT_GFLAGS}/include
 }

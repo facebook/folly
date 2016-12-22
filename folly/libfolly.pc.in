@@ -6,7 +6,7 @@ includedir=@includedir@
 Name: libfolly
 Description: Facebook (Folly) C++ library
 Version: @PKG_VERSION@
-Requires.private: @PKG_DEPS@
+Requires: @PKG_DEPS@
 Libs.private: @PKG_LIBS@
 Libs: -L${libdir} -lfolly
 Cflags: -I${includedir} @PKG_CXXFLAGS@
