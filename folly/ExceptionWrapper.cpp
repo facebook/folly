@@ -22,7 +22,7 @@ namespace folly {
 
 [[noreturn]] void exception_wrapper::throwException() const {
   if (throwfn_) {
-    throwfn_(item_.get());
+    throwfn_(*item_);
   } else if (eptr_) {
     std::rethrow_exception(eptr_);
   }

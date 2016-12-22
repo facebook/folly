@@ -24,7 +24,6 @@
 
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
-#include <folly/detail/ExceptionWrapper.h>
 
 namespace folly {
 
@@ -118,8 +117,7 @@ class exception_wrapper {
     ::type>
   /* implicit */ exception_wrapper(Ex&& exn) {
     typedef typename std::decay<Ex>::type DEx;
-    item_ = std::make_shared<DEx>(std::forward<Ex>(exn));
-    throwfn_ = folly::detail::Thrower<DEx>::doThrow;
+    assign_sptr(std::make_shared<DEx>(std::forward<Ex>(exn)));
   }
 
   // The following two constructors are meant to emulate the behavior of
@@ -269,7 +267,7 @@ class exception_wrapper {
     return std::exception_ptr();
   }
 
-protected:
+ protected:
   template <typename Ex>
   struct optimize {
     static const bool value =
@@ -277,6 +275,12 @@ protected:
       std::is_copy_assignable<Ex>::value &&
       !std::is_abstract<Ex>::value;
   };
+
+  template <typename Ex>
+  void assign_sptr(std::shared_ptr<Ex> sptr) {
+    this->item_ = std::move(sptr);
+    this->throwfn_ = Thrower<Ex>::doThrow;
+  }
 
   template <typename Ex>
   void assign_eptr(std::exception_ptr eptr, Ex& e) {
@@ -293,7 +297,7 @@ protected:
   // store a copy of the concrete type, and a helper function so we
   // can rethrow it.
   std::shared_ptr<std::exception> item_;
-  void (*throwfn_)(std::exception*){nullptr};
+  void (*throwfn_)(std::exception&){nullptr};
   // Fallback case: store the library wrapper, which is less efficient
   // but gets the job done.  Also store exceptionPtr() the name of the
   // exception type, so we can at least get those back out without
@@ -305,7 +309,7 @@ protected:
   template <class T, class... Args>
   friend exception_wrapper make_exception_wrapper(Args&&... args);
 
-private:
+ private:
   template <typename F>
   struct functor_traits {
     template <typename T>
@@ -318,6 +322,14 @@ private:
     using functor_op = decltype(&functor_decayed::operator());
     using arg_type = typename impl<functor_op>::arg_type;
     using arg_type_decayed = typename std::decay<arg_type>::type;
+  };
+
+  template <class T>
+  class Thrower {
+   public:
+    static void doThrow(std::exception& obj) {
+      throw static_cast<T&>(obj);
+    }
   };
 
   // What makes this useful is that T can be exception_wrapper* or
@@ -347,8 +359,7 @@ private:
 template <class T, class... Args>
 exception_wrapper make_exception_wrapper(Args&&... args) {
   exception_wrapper ew;
-  ew.item_ = std::make_shared<T>(std::forward<Args>(args)...);
-  ew.throwfn_ = folly::detail::Thrower<T>::doThrow;
+  ew.assign_sptr(std::make_shared<T>(std::forward<Args>(args)...));
   return ew;
 }
 
@@ -423,8 +434,7 @@ class try_and_catch<LastException, Exceptions...> :
   template <typename Ex>
   typename std::enable_if<exception_wrapper::optimize<Ex>::value>::type
   assign_exception(Ex& e, std::exception_ptr /*eptr*/) {
-    this->item_ = std::make_shared<Ex>(e);
-    this->throwfn_ = folly::detail::Thrower<Ex>::doThrow;
+    exception_wrapper::assign_sptr(std::make_shared<Ex>(e));
   }
 
   template <typename F>

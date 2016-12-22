@@ -60,7 +60,6 @@ nobase_follyinclude_HEADERS = \
 	detail/CachelinePaddedImpl.h \
 	detail/ChecksumDetail.h \
 	detail/DiscriminatedPtrDetail.h \
-	detail/ExceptionWrapper.h \
 	detail/FileUtilDetail.h \
 	detail/FingerprintPolynomial.h \
 	detail/Futex.h \
