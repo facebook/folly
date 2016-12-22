@@ -395,6 +395,8 @@ fbstring exceptionStr(const exception_wrapper& ew);
  * });
  */
 
+namespace detail {
+
 template <typename... Exceptions>
 class try_and_catch;
 
@@ -450,5 +452,11 @@ class try_and_catch<> : public exception_wrapper {
     fn();
   }
 };
+}
+
+template <typename... Exceptions, typename F>
+exception_wrapper try_and_catch(F&& fn) {
+  return detail::try_and_catch<Exceptions...>(std::forward<F>(fn));
+} // detail
 
 } // folly
