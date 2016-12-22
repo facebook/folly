@@ -824,13 +824,19 @@ Although inspired by the C++11 std::future interface, it is not a drop-in replac
 <p>Interrupts allow Future holders to send signals in the form of exceptions to Promise holders, who are free to handle the interrupt as they please (or not at all). For example:</p>
 
 <div class="remarkup-code-block" data-code-lang="cpp"><pre class="remarkup-code"><span class="k">auto</span><span class=""> </span><span class="n">p</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">std</span><span class="o">:</span><span class="o">:</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="o">&gt;</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setInterruptHandler</span><span class="p">(</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="p">(</span><span class="k">const</span><span class=""> </span><span class="n">exception_wrapper</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class="p">&#123;</span><span class="">
+</span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setInterruptHandler</span><span class="p">(</span><span class="p">[</span><span class="n">weakPromise</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">folly</span><span class="o">:</span><span class="o">:</span><span class="n">to_weak_ptr</span><span class="p">(</span><span class="n">p</span><span class="p">)</span><span class="p">]</span><span class="p">(</span><span class="">
+</span><span class="">    </span><span class="k">const</span><span class=""> </span><span class="n">exception_wrapper</span><span class="o">&amp;</span><span class=""> </span><span class="n">e</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
+</span><span class="">  </span><span class="k">auto</span><span class=""> </span><span class="n">promise</span><span class=""> </span><span class="o">=</span><span class=""> </span><span class="n">weakPromise</span><span class="p">.</span><span class="n">lock</span><span class="p">(</span><span class="p">)</span><span class="p">;</span><span class="">
 </span><span class="">  </span><span class="c1">// Handle the interrupt. For instance, we could just fulfill the Promise
 </span><span class="">  </span><span class="c1">// with the given exception:
-</span><span class="">  </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="p">;</span><span class="">
-</span><span class="">  
-  </span><span class="c1">// Or maybe we want the Future to complete with some special value
-</span><span class="">  </span><span class="n">p</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="k">if</span><span class=""> </span><span class="p">(</span><span class="n">promise</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
+</span><span class="">    </span><span class="n">promise</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setException</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="p">&#125;</span><span class="">
+</span><span class="">
+</span><span class="">  </span><span class="c1">// Or maybe we want the Future to complete with some special value
+</span><span class="">  </span><span class="k">if</span><span class=""> </span><span class="p">(</span><span class="n">promise</span><span class="p">)</span><span class=""> </span><span class="p">&#123;</span><span class="">
+</span><span class="">    </span><span class="n">promise</span><span class="o">-</span><span class="o">&gt;</span><span class="n">setValue</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span><span class="p">;</span><span class="">
+</span><span class="">  </span><span class="p">&#125;</span><span class="">
 </span><span class="">
 </span><span class="">  </span><span class="c1">// Or maybe we don&#039;t want to do anything at all! Including not setting
 </span><span class="">  </span><span class="c1">// this handler in the first place.
