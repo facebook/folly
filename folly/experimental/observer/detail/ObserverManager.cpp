@@ -15,6 +15,7 @@
  */
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
+#include <folly/ExceptionString.h>
 #include <folly/MPMCQueue.h>
 #include <folly/Singleton.h>
 #include <folly/portability/GFlags.h>

@@ -13,7 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/experimental/observer/detail/Core.h>
+
+#include <folly/ExceptionString.h>
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
 namespace folly {
