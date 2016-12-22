@@ -108,11 +108,34 @@ struct static_function_deleter {
  *
  *  Useful when `T` is long, such as:
  *
- *      using T = foobar::cpp2::FooBarServiceAsyncClient;
+ *      using T = foobar::FooBarAsyncClient;
  */
 template <typename T, typename D>
 std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
   return std::shared_ptr<T>(std::move(ptr));
+}
+
+/**
+ *  to_weak_ptr
+ *
+ *  Make a weak_ptr and return it from a shared_ptr without specifying the
+ *  template type parameter and letting the compiler deduce it.
+ *
+ *  So you can write this:
+ *
+ *      auto wptr = to_weak_ptr(getSomethingShared<T>());
+ *
+ *  Instead of this:
+ *
+ *      auto wptr = weak_ptr<T>(getSomethingShared<T>());
+ *
+ *  Useful when `T` is long, such as:
+ *
+ *      using T = foobar::FooBarAsyncClient;
+ */
+template <typename T>
+std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
+  return std::weak_ptr<T>(ptr);
 }
 
 using SysBufferDeleter = static_function_deleter<void, ::free>;

@@ -33,6 +33,13 @@ TEST(make_unique, compatible_with_std_make_unique) {
   make_unique<string>("hello, world");
 }
 
+TEST(to_weak_ptr, example) {
+  auto s = std::make_shared<int>(17);
+  EXPECT_EQ(1, s.use_count());
+  EXPECT_EQ(2, (to_weak_ptr(s).lock(), s.use_count())) << "lvalue";
+  EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
+}
+
 TEST(allocate_sys_buffer, compiles) {
   auto buf = allocate_sys_buffer(256);
   //  Freed at the end of the scope.
