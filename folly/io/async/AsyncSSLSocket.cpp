@@ -110,7 +110,7 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
         return;
       }
     }
-    sslSocket_->sslConn(this, timeoutLeft);
+    sslSocket_->sslConn(this, std::chrono::milliseconds(timeoutLeft));
   }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {
@@ -417,8 +417,10 @@ void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
   }
 }
 
-void AsyncSSLSocket::sslAccept(HandshakeCB* callback, uint32_t timeout,
-      const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
+void AsyncSSLSocket::sslAccept(
+    HandshakeCB* callback,
+    std::chrono::milliseconds timeout,
+    const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
   DestructorGuard dg(this);
   assert(eventBase_->isInEventBaseThread());
   verifyPeer_ = verifyPeer;
@@ -443,7 +445,7 @@ void AsyncSSLSocket::sslAccept(HandshakeCB* callback, uint32_t timeout,
   sslState_ = STATE_ACCEPTING;
   handshakeCallback_ = callback;
 
-  if (timeout > 0) {
+  if (timeout > std::chrono::milliseconds::zero()) {
     handshakeTimeout_.scheduleTimeout(timeout);
   }
 
@@ -680,8 +682,10 @@ bool AsyncSSLSocket::setupSSLBio() {
   return true;
 }
 
-void AsyncSSLSocket::sslConn(HandshakeCB* callback, uint64_t timeout,
-        const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
+void AsyncSSLSocket::sslConn(
+    HandshakeCB* callback,
+    std::chrono::milliseconds timeout,
+    const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
   DestructorGuard dg(this);
   assert(eventBase_->isInEventBaseThread());
 
@@ -747,9 +751,8 @@ void AsyncSSLSocket::startSSLConnect() {
   handshakeStartTime_ = std::chrono::steady_clock::now();
   // Make end time at least >= start time.
   handshakeEndTime_ = handshakeStartTime_;
-  if (handshakeConnectTimeout_ > 0) {
-    handshakeTimeout_.scheduleTimeout(
-        std::chrono::milliseconds(handshakeConnectTimeout_));
+  if (handshakeConnectTimeout_ > std::chrono::milliseconds::zero()) {
+    handshakeTimeout_.scheduleTimeout(handshakeConnectTimeout_);
   }
   handleConnect();
 }

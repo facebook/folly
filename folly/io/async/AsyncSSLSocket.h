@@ -292,9 +292,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    *                context by default, can be set explcitly to override the
    *                method in the context
    */
-  virtual void sslAccept(HandshakeCB* callback, uint32_t timeout = 0,
+  virtual void sslAccept(
+      HandshakeCB* callback,
+      std::chrono::milliseconds timeout = std::chrono::milliseconds::zero(),
       const folly::SSLContext::SSLVerifyPeerEnum& verifyPeer =
-            folly::SSLContext::SSLVerifyPeerEnum::USE_CTX);
+          folly::SSLContext::SSLVerifyPeerEnum::USE_CTX);
 
   /**
    * Invoke SSL accept following an asynchronous session cache lookup
@@ -332,9 +334,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    *                SSL_VERIFY_PEER and invokes
    *                HandshakeCB::handshakeVer().
    */
-  virtual void sslConn(HandshakeCB *callback, uint64_t timeout = 0,
-            const folly::SSLContext::SSLVerifyPeerEnum& verifyPeer =
-                  folly::SSLContext::SSLVerifyPeerEnum::USE_CTX);
+  virtual void sslConn(
+      HandshakeCB* callback,
+      std::chrono::milliseconds timeout = std::chrono::milliseconds::zero(),
+      const folly::SSLContext::SSLVerifyPeerEnum& verifyPeer =
+          folly::SSLContext::SSLVerifyPeerEnum::USE_CTX);
 
   enum SSLStateEnum {
     STATE_UNINIT,
@@ -810,7 +814,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // Time taken to complete the ssl handshake.
   std::chrono::steady_clock::time_point handshakeStartTime_;
   std::chrono::steady_clock::time_point handshakeEndTime_;
-  uint64_t handshakeConnectTimeout_{0};
+  std::chrono::milliseconds handshakeConnectTimeout_{0};
   bool sessionResumptionAttempted_{false};
 };
 

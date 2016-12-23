@@ -54,12 +54,11 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
 
   void sslConn(
-    AsyncSSLSocket::HandshakeCB* cb,
-    uint64_t timeout,
-    const SSLContext::SSLVerifyPeerEnum& verify)
-      override {
-    if (timeout > 0) {
-      handshakeTimeout_.scheduleTimeout((uint32_t)timeout);
+      AsyncSSLSocket::HandshakeCB* cb,
+      std::chrono::milliseconds timeout,
+      const SSLContext::SSLVerifyPeerEnum& verify) override {
+    if (timeout > std::chrono::milliseconds::zero()) {
+      handshakeTimeout_.scheduleTimeout(timeout);
     }
 
     state_ = StateEnum::ESTABLISHED;
@@ -70,11 +69,10 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   }
 
   void sslAccept(
-    AsyncSSLSocket::HandshakeCB* cb,
-    uint32_t timeout,
-    const SSLContext::SSLVerifyPeerEnum& verify)
-      override {
-    if (timeout > 0) {
+      AsyncSSLSocket::HandshakeCB* cb,
+      std::chrono::milliseconds timeout,
+      const SSLContext::SSLVerifyPeerEnum& verify) override {
+    if (timeout > std::chrono::milliseconds::zero()) {
       handshakeTimeout_.scheduleTimeout(timeout);
     }
 
@@ -86,14 +84,18 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   }
 
   MOCK_METHOD3(
-   sslConnectMockable,
-   void(AsyncSSLSocket::HandshakeCB*, uint64_t,
-     const SSLContext::SSLVerifyPeerEnum&));
+      sslConnectMockable,
+      void(
+          AsyncSSLSocket::HandshakeCB*,
+          std::chrono::milliseconds,
+          const SSLContext::SSLVerifyPeerEnum&));
 
   MOCK_METHOD3(
-   sslAcceptMockable,
-   void(AsyncSSLSocket::HandshakeCB*, uint32_t,
-     const SSLContext::SSLVerifyPeerEnum&));
+      sslAcceptMockable,
+      void(
+          AsyncSSLSocket::HandshakeCB*,
+          std::chrono::milliseconds,
+          const SSLContext::SSLVerifyPeerEnum&));
 };
 
 }}

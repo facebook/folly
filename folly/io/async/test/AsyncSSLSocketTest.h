@@ -451,7 +451,7 @@ public:
     std::cerr << "SSLServerAcceptCallback::connAccepted" << std::endl;
 
     hcb_->setSocket(sock);
-    sock->sslAccept(hcb_, timeout_);
+    sock->sslAccept(hcb_, std::chrono::milliseconds(timeout_));
     EXPECT_EQ(sock->getSSLState(),
                       AsyncSSLSocket::STATE_ACCEPTING);
 
@@ -515,7 +515,7 @@ public:
     std::cerr << "SSLServerAcceptCallback::connAccepted" << std::endl;
 
     hcb_->setSocket(sock);
-    sock->sslAccept(hcb_, timeout_);
+    sock->sslAccept(hcb_, std::chrono::milliseconds(timeout_));
     ASSERT_TRUE((sock->getSSLState() ==
                  AsyncSSLSocket::STATE_ACCEPTING) ||
                 (sock->getSSLState() ==
@@ -748,7 +748,7 @@ class BlockingWriteClient :
       }
     }
 
-    socket_->sslConn(this, 100);
+    socket_->sslConn(this, std::chrono::milliseconds(100));
   }
 
   struct iovec* getIovec() const {
@@ -794,7 +794,7 @@ class BlockingWriteServer :
       bufSize_(2500 * 2000),
       bytesRead_(0) {
     buf_.reset(new uint8_t[bufSize_]);
-    socket_->sslAccept(this, 100);
+    socket_->sslAccept(this, std::chrono::milliseconds(100));
   }
 
   void checkBuffer(struct iovec* iov, uint32_t count) const {
@@ -1293,7 +1293,7 @@ class SSLHandshakeClient : public SSLHandshakeBase {
    bool preverifyResult,
    bool verifyResult) :
     SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslConn(this, 0);
+    socket_->sslConn(this, std::chrono::milliseconds::zero());
   }
 };
 
@@ -1304,8 +1304,10 @@ class SSLHandshakeClientNoVerify : public SSLHandshakeBase {
    bool preverifyResult,
    bool verifyResult) :
     SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslConn(this, 0,
-      folly::SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+    socket_->sslConn(
+        this,
+        std::chrono::milliseconds::zero(),
+        folly::SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   }
 };
 
@@ -1316,8 +1318,10 @@ class SSLHandshakeClientDoVerify : public SSLHandshakeBase {
    bool preverifyResult,
    bool verifyResult) :
     SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslConn(this, 0,
-      folly::SSLContext::SSLVerifyPeerEnum::VERIFY);
+    socket_->sslConn(
+        this,
+        std::chrono::milliseconds::zero(),
+        folly::SSLContext::SSLVerifyPeerEnum::VERIFY);
   }
 };
 
@@ -1328,7 +1332,7 @@ class SSLHandshakeServer : public SSLHandshakeBase {
       bool preverifyResult,
       bool verifyResult)
     : SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslAccept(this, 0);
+    socket_->sslAccept(this, std::chrono::milliseconds::zero());
   }
 };
 
@@ -1340,7 +1344,7 @@ class SSLHandshakeServerParseClientHello : public SSLHandshakeBase {
       bool verifyResult)
       : SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
     socket_->enableClientHelloParsing();
-    socket_->sslAccept(this, 0);
+    socket_->sslAccept(this, std::chrono::milliseconds::zero());
   }
 
   std::string clientCiphers_, sharedCiphers_, serverCiphers_, chosenCipher_;
@@ -1363,8 +1367,10 @@ class SSLHandshakeServerNoVerify : public SSLHandshakeBase {
       bool preverifyResult,
       bool verifyResult)
     : SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslAccept(this, 0,
-      folly::SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+    socket_->sslAccept(
+        this,
+        std::chrono::milliseconds::zero(),
+        folly::SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   }
 };
 
@@ -1375,8 +1381,10 @@ class SSLHandshakeServerDoVerify : public SSLHandshakeBase {
       bool preverifyResult,
       bool verifyResult)
     : SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
-    socket_->sslAccept(this, 0,
-      folly::SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
+    socket_->sslAccept(
+        this,
+        std::chrono::milliseconds::zero(),
+        folly::SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   }
 };
 
