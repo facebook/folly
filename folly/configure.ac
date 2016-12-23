@@ -591,15 +591,7 @@ AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
 have_libdwarf=no
 AS_IF([test "x${ac_cv_header_libdwarf_dwarf_h}" = xyes], [have_libdwarf=yes])
 AS_IF([test "x${ac_cv_header_dwarf_h}" = xyes], [have_libdwarf=yes])
-if test "x${follytestmain}" = "xyes"; then
-   AS_IF([test "x${have_libdwarf}" = xno], [AC_MSG_ERROR([Please install libdwarf development library and headers])])
-   AC_CHECK_HEADERS([elf.h],, AC_MSG_ERROR([Please install libelf development package]))
-   AC_CHECK_HEADERS([libunwind.h],, AC_MSG_ERROR([Please install libunwind development package]))
-else
-   AS_IF([test "x${have_libdwarf}" = xno],, [use_follytestmain=no])
-   AC_CHECK_HEADERS([elf.h],, [use_follytestmain=no])
-   AC_CHECK_HEADERS([libunwind.h],, [use_follytestmain=no])
-fi
+
 
 AC_ARG_ENABLE([mobile],
    AS_HELP_STRING([--enable-mobile],
@@ -634,6 +626,7 @@ AM_CONDITIONAL([HAVE_BITS_FUNCTEXCEPT_H], [test "$ac_cv_header_bits_functexcept_
 AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
                [test "$folly_cv_prog_cc_have_extrandom_sfmt19937" = "yes"])
 AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
+AM_CONDITIONAL([HAVE_LIBDWARF], [test "x${have_libdwarf}" = "xyes"])
 AM_CONDITIONAL([HAVE_BOOST_CONTEXT], [test "x${ax_cv_boost_context}" = "xyes"])
 
 # remove pkg-config deps from dependent libraries
