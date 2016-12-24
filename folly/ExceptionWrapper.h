@@ -363,7 +363,7 @@ exception_wrapper make_exception_wrapper(Args&&... args) {
   return ew;
 }
 
-// For consistency with exceptionStr() functions in String.h
+// For consistency with exceptionStr() functions in ExceptionString.h
 fbstring exceptionStr(const exception_wrapper& ew);
 
 /*
