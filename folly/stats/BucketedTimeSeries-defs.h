@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <glog/logging.h>
 #include <folly/Likely.h>
+#include <folly/stats/BucketedTimeSeries.h>
 
 namespace folly {
 
