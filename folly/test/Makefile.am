@@ -249,6 +249,10 @@ try_test_SOURCES = TryTest.cpp
 try_test_LDADD = libfollytestmain.la
 TESTS += try_test
 
+uncaught_exceptions_test_SOURCES = UncaughtExceptionsTest.cpp
+uncaught_exceptions_test_LDADD = libfollytestmain.la
+TESTS += uncaught_exceptions_test
+
 unit_test_SOURCES = UnitTest.cpp
 unit_test_LDADD = libfollytestmain.la
 TESTS += unit_test
