@@ -61,8 +61,9 @@ namespace folly {
  * can test or extract a pointer to a specific exception type with very little
  * overhead.
  *
- * Example usage:
- *
+ * \par Example usage:
+ * \par
+ * \code
  * exception_wrapper globalExceptionWrapper;
  *
  * // Thread1
@@ -100,6 +101,7 @@ namespace folly {
  *       }) ||
  *   LOG(FATAL) << "Unrecognized exception";
  * }
+ * \endcode
  *
  */
 class exception_wrapper {
