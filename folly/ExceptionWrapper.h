@@ -19,6 +19,7 @@
 #include <exception>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -105,7 +106,7 @@ namespace folly {
  *
  */
 class exception_wrapper {
- protected:
+ private:
   template <typename Ex>
   struct optimize;
 
@@ -269,7 +270,7 @@ class exception_wrapper {
     return std::exception_ptr();
   }
 
- protected:
+ private:
   template <typename Ex>
   struct optimize {
     static const bool value =
@@ -408,67 +409,43 @@ fbstring exceptionStr(const exception_wrapper& ew);
  * });
  */
 
-namespace detail {
+namespace try_and_catch_detail {
 
-template <typename... Exceptions>
-class try_and_catch;
+template <bool V, typename T = void>
+using enable_if_t_ = typename std::enable_if<V, T>::type;
 
-template <typename LastException, typename... Exceptions>
-class try_and_catch<LastException, Exceptions...> :
-    public try_and_catch<Exceptions...> {
- public:
-  template <typename F>
-  explicit try_and_catch(F&& fn) : Base() {
-    call_fn(fn);
-  }
+template <typename... Args>
+using is_wrap_ctor = std::is_constructible<exception_wrapper, Args...>;
 
- protected:
-  typedef try_and_catch<Exceptions...> Base;
-
-  try_and_catch() : Base() {}
-
-  template <typename Ex>
-  typename std::enable_if<!exception_wrapper::optimize<Ex>::value>::type
-  assign_exception(Ex& e, std::exception_ptr eptr) {
-    exception_wrapper::assign_eptr(eptr, e);
-  }
-
-  template <typename Ex>
-  typename std::enable_if<exception_wrapper::optimize<Ex>::value>::type
-  assign_exception(Ex& e, std::exception_ptr /*eptr*/) {
-    exception_wrapper::assign_sptr(std::make_shared<Ex>(e));
-  }
-
-  template <typename F>
-  void call_fn(F&& fn) {
-    try {
-      Base::call_fn(std::move(fn));
-    } catch (LastException& e) {
-      if (typeid(e) == typeid(LastException&)) {
-        assign_exception(e, std::current_exception());
-      } else {
-        exception_wrapper::assign_eptr(std::current_exception(), e);
-      }
-    }
-  }
-};
-
-template<>
-class try_and_catch<> : public exception_wrapper {
- public:
-  try_and_catch() = default;
-
- protected:
-  template <typename F>
-  void call_fn(F&& fn) {
-    fn();
-  }
-};
+template <typename Ex>
+inline enable_if_t_<!is_wrap_ctor<Ex&>::value, exception_wrapper> make(Ex& ex) {
+  return exception_wrapper(std::current_exception(), ex);
 }
+
+template <typename Ex>
+inline enable_if_t_<is_wrap_ctor<Ex&>::value, exception_wrapper> make(Ex& ex) {
+  return typeid(Ex&) == typeid(ex)
+      ? exception_wrapper(ex)
+      : exception_wrapper(std::current_exception(), ex);
+}
+
+template <typename F>
+inline exception_wrapper impl(F&& f) {
+  return (f(), exception_wrapper());
+}
+
+template <typename F, typename Ex, typename... Exs>
+inline exception_wrapper impl(F&& f) {
+  try {
+    return impl<F, Exs...>(std::forward<F>(f));
+  } catch (Ex& ex) {
+    return make(ex);
+  }
+}
+} // try_and_catch_detail
 
 template <typename... Exceptions, typename F>
 exception_wrapper try_and_catch(F&& fn) {
-  return detail::try_and_catch<Exceptions...>(std::forward<F>(fn));
-} // detail
-
+  return try_and_catch_detail::impl<F, Exceptions...>(std::forward<F>(fn));
+}
 } // folly
