@@ -15,6 +15,7 @@
  */
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <glog/logging.h>
 #include <openssl/bio.h>
@@ -23,12 +24,6 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 #include <unordered_map>
-
-#define OPENSSL_IS_101 (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
-                         OPENSSL_VERSION_NUMBER < 0x1000200fL)
-#define OPENSSL_IS_102 (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
-                        OPENSSL_VERSION_NUMBER < 0x10100000L)
-#define OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 
 namespace {
 #if defined(OPENSSL_IS_BORINGSSL)
@@ -45,7 +40,7 @@ namespace ssl {
 bool OpenSSLUtils::getTLSMasterKey(
     const SSL_SESSION* session,
     MutableByteRange keyOut) {
-#if OPENSSL_IS_101 || OPENSSL_IS_102
+#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
   if (session &&
       session->master_key_length == static_cast<int>(keyOut.size())) {
     auto masterKey = session->master_key;
@@ -53,6 +48,9 @@ bool OpenSSLUtils::getTLSMasterKey(
         masterKey, masterKey + session->master_key_length, keyOut.begin());
     return true;
   }
+#else
+  (SSL_SESSION*)session;
+  (MutableByteRange) keyOut;
 #endif
   return false;
 }
@@ -60,13 +58,16 @@ bool OpenSSLUtils::getTLSMasterKey(
 bool OpenSSLUtils::getTLSClientRandom(
     const SSL* ssl,
     MutableByteRange randomOut) {
-#if OPENSSL_IS_101 || OPENSSL_IS_102
+#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
   if ((SSL_version(ssl) >> 8) == TLS1_VERSION_MAJOR && ssl->s3 &&
       randomOut.size() == SSL3_RANDOM_SIZE) {
     auto clientRandom = ssl->s3->client_random;
     std::copy(clientRandom, clientRandom + SSL3_RANDOM_SIZE, randomOut.begin());
     return true;
   }
+#else
+  (SSL*)ssl;
+  (MutableByteRange) randomOut;
 #endif
   return false;
 }
@@ -121,7 +122,7 @@ bool OpenSSLUtils::validatePeerCertNames(X509* cert,
     }
   }
 
-  for (int i = 0; i < sk_GENERAL_NAME_num(altNames); i++) {
+  for (size_t i = 0; i < (size_t)sk_GENERAL_NAME_num(altNames); i++) {
     auto name = sk_GENERAL_NAME_value(altNames, i);
     if ((addr4 != nullptr || addr6 != nullptr) && name->type == GEN_IPADD) {
       // Extra const-ness for paranoia
@@ -199,13 +200,7 @@ bool OpenSSLUtils::setCustomBioReadMethod(
     BIO_METHOD* bioMeth,
     int (*meth)(BIO*, char*, int)) {
   bool ret = false;
-#if OPENSSL_IS_110
   ret = (BIO_meth_set_read(bioMeth, meth) == 1);
-#elif (defined(OPENSSL_IS_BORINGSSL) || OPENSSL_IS_101 || OPENSSL_IS_102)
-  bioMeth->bread = meth;
-  ret = true;
-#endif
-
   return ret;
 }
 
@@ -213,13 +208,7 @@ bool OpenSSLUtils::setCustomBioWriteMethod(
     BIO_METHOD* bioMeth,
     int (*meth)(BIO*, const char*, int)) {
   bool ret = false;
-#if OPENSSL_IS_110
   ret = (BIO_meth_set_write(bioMeth, meth) == 1);
-#elif (defined(OPENSSL_IS_BORINGSSL) || OPENSSL_IS_101 || OPENSSL_IS_102)
-  bioMeth->bwrite = meth;
-  ret = true;
-#endif
-
   return ret;
 }
 

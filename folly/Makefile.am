@@ -295,6 +295,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Malloc.h \
 	portability/Math.h \
 	portability/Memory.h \
+	portability/OpenSSL.h \
 	portability/PThread.h \
 	portability/Sockets.h \
 	portability/Stdio.h \
@@ -336,8 +337,8 @@ nobase_follyinclude_HEADERS = \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
 	ssl/OpenSSLHash.h \
+	ssl/OpenSSLVersionFinder.h \
 	ssl/SSLSession.h \
-	ssl/detail/OpenSSLVersionFinder.h \
 	ssl/detail/SSLSessionImpl.h \
 	stats/BucketedTimeSeries-defs.h \
 	stats/BucketedTimeSeries.h \
@@ -477,6 +478,7 @@ libfolly_la_SOURCES = \
 	portability/Libgen.cpp \
 	portability/Malloc.cpp \
 	portability/Memory.cpp \
+	portability/OpenSSL.cpp \
 	portability/Sockets.cpp \
 	portability/Stdio.cpp \
 	portability/Stdlib.cpp \

@@ -25,6 +25,7 @@
 #include <random>
 
 // This has to come before SSL.
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 
 #include <openssl/ssl.h>

@@ -31,8 +31,9 @@
 #include <folly/Bits.h>
 #include <folly/SocketAddress.h>
 #include <folly/SpinLock.h>
-#include <folly/io/IOBuf.h>
 #include <folly/io/Cursor.h>
+#include <folly/io/IOBuf.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/Unistd.h>
 
 using folly::SocketAddress;
@@ -54,6 +55,8 @@ using folly::AsyncSocketException;
 using folly::AsyncSSLSocket;
 using folly::Optional;
 using folly::SSLContext;
+// For OpenSSL portability API
+using namespace folly::ssl;
 using folly::ssl::OpenSSLUtils;
 
 // We have one single dummy SSL context so that we can implement attach
@@ -475,8 +478,8 @@ void AsyncSSLSocket::attachSSLContext(
   // previously called.
   // We need to update the initial_ctx if necessary
   auto sslCtx = ctx->getSSLCtx();
+  SSL_CTX_up_ref(sslCtx);
 #ifndef OPENSSL_NO_TLSEXT
-  CRYPTO_add(&sslCtx->references, 1, CRYPTO_LOCK_SSL_CTX);
   // note that detachSSLContext has already freed ssl_->initial_ctx
   ssl_->initial_ctx = sslCtx;
 #endif
@@ -773,7 +776,8 @@ void AsyncSSLSocket::setSSLSession(SSL_SESSION *session, bool takeOwnership) {
   sslSession_ = session;
   if (!takeOwnership && session != nullptr) {
     // Increment the reference count
-    CRYPTO_add(&session->references, 1, CRYPTO_LOCK_SSL_SESSION);
+    // This API exists in BoringSSL and OpenSSL 1.1.0
+    SSL_SESSION_up_ref(session);
   }
 }
 

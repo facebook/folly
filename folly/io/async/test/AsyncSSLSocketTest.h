@@ -683,6 +683,7 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
                                          int* copyflag) {
     *copyflag = 0;
     asyncCallbacks_++;
+    (void)ssl;
 #ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
     if (!SSL_want_sess_cache_lookup(ssl)) {
       // libssl.so mismatch

@@ -35,6 +35,9 @@ struct CRYPTO_dynlock_value {
 };
 
 namespace folly {
+//
+// For OpenSSL portability API
+using namespace folly::ssl;
 
 bool SSLContext::initialized_ = false;
 

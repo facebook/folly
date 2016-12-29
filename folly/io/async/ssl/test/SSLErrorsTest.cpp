@@ -26,15 +26,29 @@ using namespace folly;
 
 TEST(SSLErrorsTest, TestMessage) {
   ERR_load_crypto_strings();
-  auto err = ERR_PACK(
+  unsigned long err;
+#ifdef OPENSSL_IS_BORINGSSL
+  err = ERR_PACK(ERR_LIB_X509, X509_R_CERT_ALREADY_IN_HASH_TABLE);
+#else
+  err = ERR_PACK(
       ERR_LIB_X509,
       X509_F_X509_STORE_ADD_CERT,
       X509_R_CERT_ALREADY_IN_HASH_TABLE);
+#endif
   SSLException ex(0, err, 0, 0);
+
+// This is flaky - we should not be testing error strings
+// which may change version to version
+#if defined(OPENSSL_IS_BORINGSSL)
+  std::string expectedMsg =
+      "AsyncSocketException: error:0b000069:X.509 certificate routines:"
+      "OPENSSL_internal:CERT_ALREADY_IN_HASH_TABLE, type = SSL error";
+#else
   std::string expectedMsg =
       "AsyncSocketException: error:0B07C065:"
       "x509 certificate routines:X509_STORE_add_cert:"
       "cert already in hash table, type = SSL error";
+#endif
   std::string actual = ex.what();
   EXPECT_EQ(expectedMsg, actual);
 }

@@ -239,6 +239,7 @@ TEST(AsyncSSLSocketTest, ReadAfterClose) {
 /**
  * Test bad renegotiation
  */
+#if !defined(OPENSSL_IS_BORINGSSL)
 TEST(AsyncSSLSocketTest, Renegotiate) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
@@ -284,6 +285,7 @@ TEST(AsyncSSLSocketTest, Renegotiate) {
   eventBase.loop();
   ASSERT_TRUE(server.renegotiationError_);
 }
+#endif
 
 /**
  * Negative test for handshakeError().
@@ -549,7 +551,18 @@ TEST_P(NextProtocolTest, NpnTestNoOverlap) {
     // mismatch should result in a fatal alert, but this is OpenSSL's current
     // behavior and we want to know if it changes.
     expectNoProtocol();
-  } else {
+  }
+#if defined(OPENSSL_IS_BORINGSSL)
+  // BoringSSL also doesn't fatal on mismatch but behaves slightly differently
+  // from OpenSSL 1.0.2h+ - it doesn't select a protocol if both ends support
+  // NPN *and* ALPN
+  else if (
+      GetParam().first == SSLContext::NextProtocolType::ANY &&
+      GetParam().second == SSLContext::NextProtocolType::ANY) {
+    expectNoProtocol();
+  }
+#endif
+  else {
     expectProtocol("blub");
     expectProtocolType(
         {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
@@ -877,7 +890,7 @@ TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
   cerr << "SSLClientTimeoutTest test completed" << endl;
 }
 
-// This is a FB-only extension, and the tests will fail without it
+// The next 3 tests need an FB-only extension, and will fail without it
 #ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
 /**
  * Test SSL server async cache
@@ -906,7 +919,6 @@ TEST(AsyncSSLSocketTest, SSLServerAsyncCacheTest) {
 
   cerr << "SSLServerAsyncCacheTest test completed" << endl;
 }
-
 
 /**
  * Test SSL server accept timeout with cache path
@@ -999,7 +1011,7 @@ TEST(AsyncSSLSocketTest, SSLServerCacheCloseTest) {
 
   cerr << "SSLServerCacheCloseTest test completed" << endl;
 }
-#endif
+#endif // !SSL_ERROR_WANT_SESS_CACHE_LOOKUP
 
 /**
  * Verify Client Ciphers obtained using SSL MSG Callback.
@@ -1016,7 +1028,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   serverCtx->loadClientCAList(testCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
-  clientCtx->ciphers("AES256-SHA:RC4-MD5");
+  clientCtx->ciphers("AES256-SHA:AES128-SHA");
   clientCtx->loadPrivateKey(testKey);
   clientCtx->loadCertificate(testCert);
   clientCtx->loadTrustedCertificates(testCA);
@@ -1034,7 +1046,11 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
 
   eventBase.loop();
 
-  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:RC4-MD5:00ff");
+#if defined(OPENSSL_IS_BORINGSSL)
+  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:AES128-SHA");
+#else
+  EXPECT_EQ(server.clientCiphers_, "AES256-SHA:AES128-SHA:00ff");
+#endif
   EXPECT_EQ(server.chosenCipher_, "AES256-SHA");
   EXPECT_TRUE(client.handshakeVerify_);
   EXPECT_TRUE(client.handshakeSuccess_);
@@ -1692,8 +1708,14 @@ TEST(AsyncSSLSocketTest, ConnOpenSSLErrorString) {
   handshakeCallback.waitForHandshake();
   EXPECT_NE(handshakeCallback.errorString_.find("SSL routines"),
             std::string::npos);
+#if defined(OPENSSL_IS_BORINGSSL)
+  EXPECT_NE(
+      handshakeCallback.errorString_.find("ENCRYPTED_LENGTH_TOO_LONG"),
+      std::string::npos);
+#else
   EXPECT_NE(handshakeCallback.errorString_.find("unknown protocol"),
             std::string::npos);
+#endif
 }
 
 TEST(AsyncSSLSocketTest, TestSSLCipherCodeToNameMap) {
@@ -1868,6 +1890,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOFallback) {
   sock.close();
 }
 
+#if !defined(OPENSSL_IS_BORINGSSL)
 TEST(AsyncSSLSocketTest, ConnectTFOTimeout) {
   // Start listening on a local port
   ConnectTimeoutCallback acceptCallback;
@@ -1883,7 +1906,9 @@ TEST(AsyncSSLSocketTest, ConnectTFOTimeout) {
   EXPECT_THROW(
       socket->open(std::chrono::milliseconds(20)), AsyncSocketException);
 }
+#endif
 
+#if !defined(OPENSSL_IS_BORINGSSL)
 TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
   // Start listening on a local port
   ConnectTimeoutCallback acceptCallback;
@@ -1899,6 +1924,7 @@ TEST(AsyncSSLSocketTest, ConnectTFOFallbackTimeout) {
   evb.loop();
   EXPECT_EQ(ConnCallback::State::ERROR, ccb.state);
 }
+#endif
 
 TEST(AsyncSSLSocketTest, HandshakeTFOFallbackTimeout) {
   // Start listening on a local port

@@ -17,7 +17,7 @@
 #pragma once
 
 #include <folly/Memory.h>
-#include <folly/ssl/detail/OpenSSLVersionFinder.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/ssl/detail/SSLSessionImpl.h>
 
 namespace folly {
