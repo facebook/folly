@@ -319,4 +319,8 @@ singleton_thread_local_test_SOURCES = SingletonThreadLocalTest.cpp
 singleton_thread_local_test_LDADD = libfollytestmain.la
 TESTS += singleton_thread_local_test
 
+utility_test_SOURCES = UtilityTest.cpp
+utility_test_LDADD = libfollytestmain.la
+TESTS += utility_test
+
 check_PROGRAMS += $(TESTS)

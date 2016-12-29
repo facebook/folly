@@ -376,6 +376,7 @@ nobase_follyinclude_HEADERS = \
 	Unit.h \
 	Uri.h \
 	Uri-inl.h \
+	Utility.h \
 	Varint.h \
 	VersionCheck.h
 
