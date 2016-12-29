@@ -16,64 +16,42 @@
 
 #pragma once
 
-#include <exception>
+#include <stdexcept>
 #include <string>
 
 namespace folly {
 
-class FutureException : public std::exception {
-
-public:
-
-  explicit FutureException(std::string message_arg)
-    : message(message_arg) {}
-
-  ~FutureException() throw(){}
-
-  virtual const char *what() const throw() {
-    return message.c_str();
-  }
-
-  bool operator==(const FutureException &other) const{
-    return other.message == this->message;
-  }
-
-  bool operator!=(const FutureException &other) const{
-    return !(*this == other);
-  }
-
-  protected:
-    std::string message;
+class FutureException : public std::logic_error {
+ public:
+  using std::logic_error::logic_error;
 };
 
 class BrokenPromise : public FutureException {
-  public:
-    explicit BrokenPromise(std::string type) :
-      FutureException(
-          (std::string("Broken promise for type name `") + type) + '`') { }
+ public:
+  explicit BrokenPromise(const std::string& type)
+      : FutureException("Broken promise for type name `" + type + '`') {}
+
+  explicit BrokenPromise(const char* type) : BrokenPromise(std::string(type)) {}
 };
 
 class NoState : public FutureException {
-  public:
-    explicit NoState() : FutureException("No state") { }
+ public:
+  NoState() : FutureException("No state") {}
 };
 
 class PromiseAlreadySatisfied : public FutureException {
-  public:
-    explicit PromiseAlreadySatisfied() :
-      FutureException("Promise already satisfied") { }
+ public:
+  PromiseAlreadySatisfied() : FutureException("Promise already satisfied") {}
 };
 
 class FutureNotReady : public FutureException {
-  public:
-    explicit FutureNotReady() :
-      FutureException("Future not ready") { }
+ public:
+  FutureNotReady() : FutureException("Future not ready") {}
 };
 
 class FutureAlreadyRetrieved : public FutureException {
-  public:
-    explicit FutureAlreadyRetrieved () :
-      FutureException("Future already retrieved") { }
+ public:
+  FutureAlreadyRetrieved() : FutureException("Future already retrieved") {}
 };
 
 class FutureCancellation : public FutureException {
