@@ -780,6 +780,10 @@ class FunctionRef<ReturnType(Args...)> final {
   ReturnType operator()(Args... args) const {
     return call_(object_, static_cast<Args&&>(args)...);
   }
+
+  explicit operator bool() const {
+    return object_;
+  }
 };
 
 } // namespace folly
