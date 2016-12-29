@@ -467,17 +467,10 @@ void testDeprecated() {
     EXPECT_EQ(1001, obj.size());
     EXPECT_EQ(10, obj.back());
     EXPECT_EQ(1000, obj2->size());
-
-    UNSYNCHRONIZED(o) {
-      EXPECT_EQ(1001, o->size());
-    }
   }
 
   SYNCHRONIZED_CONST (obj) {
     EXPECT_EQ(1001, obj.size());
-    UNSYNCHRONIZED(o) {
-      EXPECT_EQ(1001, o->size());
-    }
   }
 
   SYNCHRONIZED (lockedObj, *&obj) {
