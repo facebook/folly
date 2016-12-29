@@ -190,18 +190,7 @@ class exception_wrapper {
 
   template <class Ex>
   bool is_compatible_with() const {
-    if (item_) {
-      return dynamic_cast<const Ex*>(item_.get());
-    } else if (eptr_) {
-      try {
-        std::rethrow_exception(eptr_);
-      } catch (typename std::decay<Ex>::type&) {
-        return true;
-      } catch (...) {
-        // fall through
-      }
-    }
-    return false;
+    return with_exception<Ex>([](const Ex&) {});
   }
 
   template <class F>
@@ -213,46 +202,21 @@ class exception_wrapper {
   template <class F>
   bool with_exception(F&& f) const {
     using arg_type = typename functor_traits<F>::arg_type_decayed;
-    return with_exception<const arg_type>(std::forward<F>(f));
+    return with_exception<arg_type>(std::forward<F>(f));
   }
 
   // If this exception wrapper wraps an exception of type Ex, with_exception
   // will call f with the wrapped exception as an argument and return true, and
   // will otherwise return false.
   template <class Ex, class F>
-  typename std::enable_if<
-    std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
-    bool>::type
-  with_exception(F f) {
+  bool with_exception(F f) {
     return with_exception1<typename std::decay<Ex>::type>(f, this);
   }
 
   // Const overload
   template <class Ex, class F>
-  typename std::enable_if<
-    std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
-    bool>::type
-  with_exception(F f) const {
-    return with_exception1<const typename std::decay<Ex>::type>(f, this);
-  }
-
-  // Overload for non-exceptions. Always rethrows.
-  template <class Ex, class F>
-  typename std::enable_if<
-    !std::is_base_of<std::exception, typename std::decay<Ex>::type>::value,
-    bool>::type
-  with_exception(F f) const {
-    try {
-      if (*this) {
-        throwException();
-      }
-    } catch (typename std::decay<Ex>::type& e) {
-      f(e);
-      return true;
-    } catch (...) {
-      // fall through
-    }
-    return false;
+  bool with_exception(F f) const {
+    return with_exception1<typename std::decay<Ex>::type>(f, this);
   }
 
   std::exception_ptr getExceptionPtr() const {
@@ -335,20 +299,38 @@ class exception_wrapper {
     }
   };
 
+  template <typename T>
+  using is_exception_ = std::is_base_of<std::exception, T>;
+
+  template <bool V, typename T, typename F>
+  using conditional_t_ = typename std::conditional<V, T, F>::type;
+
+  template <typename T, typename F>
+  static typename std::enable_if<is_exception_<T>::value, T*>::type
+  try_dynamic_cast_exception(F* from) {
+    return dynamic_cast<T*>(from);
+  }
+  template <typename T, typename F>
+  static typename std::enable_if<!is_exception_<T>::value, T*>::type
+  try_dynamic_cast_exception(F*) {
+    return nullptr;
+  }
+
   // What makes this useful is that T can be exception_wrapper* or
   // const exception_wrapper*, and the compiler will use the
   // instantiation which works with F.
   template <class Ex, class F, class T>
   static bool with_exception1(F f, T* that) {
-    if (that->item_) {
-      if (auto ex = dynamic_cast<Ex*>(that->item_.get())) {
+    using CEx = conditional_t_<std::is_const<T>::value, const Ex, Ex>;
+    if (is_exception_<Ex>::value && that->item_) {
+      if (auto ex = try_dynamic_cast_exception<CEx>(that->item_.get())) {
         f(*ex);
         return true;
       }
     } else if (that->eptr_) {
       try {
         std::rethrow_exception(that->eptr_);
-      } catch (Ex& e) {
+      } catch (CEx& e) {
         f(e);
         return true;
       } catch (...) {

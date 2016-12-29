@@ -197,13 +197,15 @@ TEST(ExceptionWrapper, with_exception_test) {
   EXPECT_FALSE(
       empty_ew.with_exception([&](const std::exception& /* ie */) { FAIL(); }));
 
+  // Testing with const exception_wrapper; sanity check first:
+  EXPECT_FALSE(cew.with_exception([&](const std::runtime_error&) {}));
+  EXPECT_FALSE(cew.with_exception([&](const int&) {}));
   // This won't even compile.  You can't use a function which takes a
   // non-const reference with a const exception_wrapper.
-/*
-  cew.with_exception([&](IntException& ie) {
-      SUCCEED();
-    });
-*/
+  /*
+  EXPECT_FALSE(cew.with_exception([&](std::runtime_error&) {}));
+  EXPECT_FALSE(cew.with_exception([&](int&) {}));
+  */
 }
 
 TEST(ExceptionWrapper, getExceptionPtr_test) {
@@ -282,6 +284,7 @@ TEST(ExceptionWrapper, non_std_exception_test) {
     });
   EXPECT_TRUE(bool(ew));
   EXPECT_FALSE(ew.is_compatible_with<std::exception>());
+  EXPECT_TRUE(ew.is_compatible_with<int>());
   EXPECT_EQ(ew.what(), kIntClassName);
   EXPECT_EQ(ew.class_name(), kIntClassName);
   // non-std::exception types are supported, but the only way to
