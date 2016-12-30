@@ -205,20 +205,26 @@ Future<T>::thenImplementation(F&& func, detail::argResult<isTry, F, Args...>) {
 
   setCallback_([ funcm = std::forward<F>(func), pm = std::move(p) ](
       Try<T> && t) mutable {
-    if (!isTry && t.hasException()) {
-      pm.setException(std::move(t.exception()));
-    } else {
-      try {
-        auto f2 = funcm(t.template get<isTry, Args>()...);
-        // that didn't throw, now we can steal p
-        f2.setCallback_([p = std::move(pm)](Try<B> && b) mutable {
-          p.setTry(std::move(b));
-        });
-      } catch (const std::exception& e) {
-        pm.setException(exception_wrapper(std::current_exception(), e));
-      } catch (...) {
-        pm.setException(exception_wrapper(std::current_exception()));
+    auto ew = [&] {
+      if (!isTry && t.hasException()) {
+        return std::move(t.exception());
+      } else {
+        try {
+          auto f2 = funcm(t.template get<isTry, Args>()...);
+          // that didn't throw, now we can steal p
+          f2.setCallback_([p = std::move(pm)](Try<B> && b) mutable {
+            p.setTry(std::move(b));
+          });
+          return exception_wrapper();
+        } catch (const std::exception& e) {
+          return exception_wrapper(std::current_exception(), e);
+        } catch (...) {
+          return exception_wrapper(std::current_exception());
+        }
       }
+    }();
+    if (ew) {
+      pm.setException(std::move(ew));
     }
   });
 
@@ -301,15 +307,21 @@ Future<T>::onError(F&& func) {
   setCallback_([ pm = std::move(p), funcm = std::forward<F>(func) ](
       Try<T> && t) mutable {
     if (!t.template withException<Exn>([&](Exn& e) {
-          try {
-            auto f2 = funcm(e);
-            f2.setCallback_([pm = std::move(pm)](Try<T> && t2) mutable {
-              pm.setTry(std::move(t2));
-            });
-          } catch (const std::exception& e2) {
-            pm.setException(exception_wrapper(std::current_exception(), e2));
-          } catch (...) {
-            pm.setException(exception_wrapper(std::current_exception()));
+          auto ew = [&] {
+            try {
+              auto f2 = funcm(e);
+              f2.setCallback_([pm = std::move(pm)](Try<T> && t2) mutable {
+                pm.setTry(std::move(t2));
+              });
+              return exception_wrapper();
+            } catch (const std::exception& e2) {
+              return exception_wrapper(std::current_exception(), e2);
+            } catch (...) {
+              return exception_wrapper(std::current_exception());
+            }
+          }();
+          if (ew) {
+            pm.setException(std::move(ew));
           }
         })) {
       pm.setTry(std::move(t));
@@ -350,15 +362,21 @@ Future<T>::onError(F&& func) {
   setCallback_(
       [ pm = std::move(p), funcm = std::forward<F>(func) ](Try<T> t) mutable {
         if (t.hasException()) {
-          try {
-            auto f2 = funcm(std::move(t.exception()));
-            f2.setCallback_([pm = std::move(pm)](Try<T> t2) mutable {
-              pm.setTry(std::move(t2));
-            });
-          } catch (const std::exception& e2) {
-            pm.setException(exception_wrapper(std::current_exception(), e2));
-          } catch (...) {
-            pm.setException(exception_wrapper(std::current_exception()));
+          auto ew = [&] {
+            try {
+              auto f2 = funcm(std::move(t.exception()));
+              f2.setCallback_([pm = std::move(pm)](Try<T> t2) mutable {
+                pm.setTry(std::move(t2));
+              });
+              return exception_wrapper();
+            } catch (const std::exception& e2) {
+              return exception_wrapper(std::current_exception(), e2);
+            } catch (...) {
+              return exception_wrapper(std::current_exception());
+            }
+          }();
+          if (ew) {
+            pm.setException(std::move(ew));
           }
         } else {
           pm.setTry(std::move(t));
