@@ -31,6 +31,14 @@ namespace folly {
  */
 std::string codePointToUtf8(char32_t cp);
 
+/*
+ * Decode a single unicode code point from UTF-8 byte sequence.
+ */
+char32_t utf8ToCodePoint(
+    const unsigned char*& p,
+    const unsigned char* const e,
+    bool skipOnError);
+
 //////////////////////////////////////////////////////////////////////
 
 }
