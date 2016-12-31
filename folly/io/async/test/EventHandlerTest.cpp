@@ -189,82 +189,225 @@ TEST_F(EventHandlerTest, many_concurrent_consumers) {
 }
 
 #ifdef EV_PRI
-TEST(EventHandlerSocketTest, EPOLLPRI) {
-  std::promise<decltype(sockaddr_in::sin_port)> serverReady;
-  std::thread t([serverReadyFuture = serverReady.get_future()]() mutable {
-    // client
-    LOG(INFO) << "Server is ready";
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+//
+// See rfc6093 for extensive discussion on TCP URG semantics. Specificaly,
+// it points out that URG mechanism was never intended to be used
+// for out-of-band information delivery. However, pretty much every
+// implementation interprets the LAST octect or urgent data as the
+// OOB byte.
+//
+class EventHandlerOobTest : public ::testing::Test {
+ public:
+  //
+  // Wait for port number to connect to, then connect and invoke
+  // clientOps(fd) where fd is the connection file descriptor
+  //
+  void runClient(std::function<void(int fd)> clientOps) {
+    clientThread = std::thread(
+        [ serverPortFuture = serverReady.get_future(), clientOps ]() mutable {
+          int clientFd = socket(AF_INET, SOCK_STREAM, 0);
+          SCOPE_EXIT {
+            close(clientFd);
+          };
+          struct hostent* he{nullptr};
+          struct sockaddr_in server;
+
+          std::array<const char, 10> hostname = {"localhost"};
+          he = gethostbyname(hostname.data());
+          PCHECK(he);
+
+          memcpy(&server.sin_addr, he->h_addr_list[0], he->h_length);
+          server.sin_family = AF_INET;
+
+          // block here until port is known
+          server.sin_port = serverPortFuture.get();
+          LOG(INFO) << "Server is ready";
+
+          PCHECK(
+              ::connect(clientFd, (struct sockaddr*)&server, sizeof(server)) ==
+              0);
+          LOG(INFO) << "Server connection available";
+
+          clientOps(clientFd);
+        });
+  }
+
+  //
+  // Bind, get port number, pass it to client, listen/accept and store the
+  // accepted fd
+  //
+  void acceptConn() {
+    // make the server.
+    int listenfd = socket(AF_INET, SOCK_STREAM, 0);
     SCOPE_EXIT {
-      close(sockfd);
+      close(listenfd);
     };
-    struct hostent* he;
-    struct sockaddr_in server;
+    PCHECK(listenfd != -1) << "unable to open socket";
 
-    const char hostname[] = "localhost";
-    he = gethostbyname(hostname);
-    PCHECK(he);
+    struct sockaddr_in sin;
+    sin.sin_port = htons(0);
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_family = AF_INET;
 
-    memcpy(&server.sin_addr, he->h_addr_list[0], he->h_length);
-    server.sin_family = AF_INET;
-    server.sin_port = serverReadyFuture.get();
+    PCHECK(bind(listenfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
+        << "Can't bind to port";
+    listen(listenfd, 5);
 
-    PCHECK(::connect(sockfd, (struct sockaddr*)&server, sizeof(server)) == 0);
-    LOG(INFO) << "Server connection available";
+    struct sockaddr_in findSockName;
+    socklen_t sz = sizeof(findSockName);
+    getsockname(listenfd, (struct sockaddr*)&findSockName, &sz);
+    serverReady.set_value(findSockName.sin_port);
 
-    char buffer[] = "banana";
-    int n = send(sockfd, buffer, strlen(buffer) + 1, MSG_OOB);
-    PCHECK(n > 0);
-  });
-  SCOPE_EXIT {
-    t.join();
-  };
-  // make the server.
-  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  SCOPE_EXIT {
-    close(sockfd);
-  };
-  PCHECK(sockfd != -1) << "unable to open socket";
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+    serverFd = accept(listenfd, (struct sockaddr*)&cli_addr, &clilen);
+    PCHECK(serverFd >= 0) << "can't accept";
+  }
 
-  struct sockaddr_in sin;
-  sin.sin_port = htons(0);
-  sin.sin_addr.s_addr = INADDR_ANY;
-  sin.sin_family = AF_INET;
+  void SetUp() override {}
 
-  PCHECK(bind(sockfd, (struct sockaddr*)&sin, sizeof(sin)) >= 0)
-      << "Can't bind to port";
-  listen(sockfd, 5);
-
-  struct sockaddr_in findSockName;
-  socklen_t sz = sizeof(findSockName);
-  getsockname(sockfd, (struct sockaddr*)&findSockName, &sz);
-  serverReady.set_value(findSockName.sin_port);
-
-  socklen_t clilen;
-  struct sockaddr_in cli_addr;
-  clilen = sizeof(cli_addr);
-  int newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
-  PCHECK(newsockfd >= 0) << "can't accept";
-  SCOPE_EXIT {
-    close(newsockfd);
-  };
+  void TearDown() override {
+    clientThread.join();
+    close(serverFd);
+  }
 
   EventBase eb;
+  std::thread clientThread;
+  std::promise<decltype(sockaddr_in::sin_port)> serverReady;
+  int serverFd{-1};
+};
+
+//
+// Test that sending OOB data is detected by event handler
+//
+TEST_F(EventHandlerOobTest, EPOLLPRI) {
+  auto clientOps = [](int fd) {
+    char buffer[] = "banana";
+    int n = send(fd, buffer, strlen(buffer) + 1, MSG_OOB);
+    LOG(INFO) << "Client send finished";
+    PCHECK(n > 0);
+  };
+
+  runClient(clientOps);
+  acceptConn();
+
   struct SockEvent : public EventHandler {
     SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), fd_(fd) {}
 
     void handlerReady(uint16_t events) noexcept override {
       EXPECT_TRUE(EventHandler::EventFlags::PRI & events);
-      char buffer[256];
-      int n = read(fd_, buffer, 255);
+      std::array<char, 255> buffer;
+      int n = read(fd_, buffer.data(), buffer.size());
+      //
+      // NB: we sent 7 bytes, but only received 6. The last byte
+      // has been stored in the OOB buffer.
+      //
       EXPECT_EQ(6, n);
-      EXPECT_EQ("banana", std::string(buffer));
+      EXPECT_EQ("banana", std::string(buffer.data(), 6));
+      // now read the byte stored in OOB buffer
+      n = recv(fd_, buffer.data(), buffer.size(), MSG_OOB);
+      EXPECT_EQ(1, n);
     }
 
    private:
     int fd_;
-  } sockHandler(&eb, newsockfd);
+  } sockHandler(&eb, serverFd);
+
   sockHandler.registerHandler(EventHandler::EventFlags::PRI);
+  LOG(INFO) << "Registered Handler";
+  eb.loop();
+}
+
+//
+// Test if we can send an OOB byte and then normal data
+//
+TEST_F(EventHandlerOobTest, OOB_AND_NORMAL_DATA) {
+  auto clientOps = [](int sockfd) {
+    {
+      // OOB buffer can only hold one byte in most implementations
+      std::array<char, 2> buffer = {"X"};
+      int n = send(sockfd, buffer.data(), 1, MSG_OOB);
+      PCHECK(n > 0);
+    }
+
+    {
+      std::array<char, 7> buffer = {"banana"};
+      int n = send(sockfd, buffer.data(), buffer.size(), 0);
+      PCHECK(n > 0);
+    }
+  };
+
+  runClient(clientOps);
+  acceptConn();
+
+  struct SockEvent : public EventHandler {
+    SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), eb_(eb), fd_(fd) {}
+
+    void handlerReady(uint16_t events) noexcept override {
+      std::array<char, 255> buffer;
+      if (events & EventHandler::EventFlags::PRI) {
+        int n = recv(fd_, buffer.data(), buffer.size(), MSG_OOB);
+        EXPECT_EQ(1, n);
+        EXPECT_EQ("X", std::string(buffer.data(), 1));
+        registerHandler(EventHandler::EventFlags::READ);
+        return;
+      }
+
+      if (events & EventHandler::EventFlags::READ) {
+        int n = recv(fd_, buffer.data(), buffer.size(), 0);
+        EXPECT_EQ(7, n);
+        EXPECT_EQ("banana", std::string(buffer.data()));
+        eb_->terminateLoopSoon();
+        return;
+      }
+    }
+
+   private:
+    EventBase* eb_;
+    int fd_;
+  } sockHandler(&eb, serverFd);
+  sockHandler.registerHandler(
+      EventHandler::EventFlags::PRI | EventHandler::EventFlags::READ);
+  LOG(INFO) << "Registered Handler";
+  eb.loopForever();
+}
+
+//
+// Demonstrate that "regular" reads ignore the OOB byte sent to us
+//
+TEST_F(EventHandlerOobTest, SWALLOW_OOB) {
+  auto clientOps = [](int sockfd) {
+    {
+      std::array<char, 2> buffer = {"X"};
+      int n = send(sockfd, buffer.data(), 1, MSG_OOB);
+      PCHECK(n > 0);
+    }
+
+    {
+      std::array<char, 7> buffer = {"banana"};
+      int n = send(sockfd, buffer.data(), buffer.size(), 0);
+      PCHECK(n > 0);
+    }
+  };
+
+  runClient(clientOps);
+  acceptConn();
+
+  struct SockEvent : public EventHandler {
+    SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), fd_(fd) {}
+
+    void handlerReady(uint16_t events) noexcept override {
+      std::array<char, 255> buffer;
+      ASSERT_TRUE(events & EventHandler::EventFlags::READ);
+      int n = recv(fd_, buffer.data(), buffer.size(), 0);
+      EXPECT_EQ(7, n);
+      EXPECT_EQ("banana", std::string(buffer.data()));
+    }
+
+   private:
+    int fd_;
+  } sockHandler(&eb, serverFd);
+  sockHandler.registerHandler(EventHandler::EventFlags::READ);
   LOG(INFO) << "Registered Handler";
   eb.loop();
 }
