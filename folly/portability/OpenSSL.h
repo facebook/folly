@@ -35,6 +35,24 @@ namespace ssl {
 #define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
 #endif // !defined(OPENSSL_IS_BORINGSSL)
 
+// BoringSSL and OpenSSL 1.0.2 later with TLS extension support ALPN.
+#if defined(OPENSSL_IS_BORINGSSL) ||          \
+    (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
+     !defined(OPENSSL_NO_TLSEXT))
+#define FOLLY_OPENSSL_HAS_ALPN 1
+#else
+#define FOLLY_OPENSSL_HAS_ALPN 0
+#endif
+
+// BoringSSL and OpenSSL 0.9.8f later with TLS extension support SNI.
+#if defined(OPENSSL_IS_BORINGSSL) ||          \
+    (OPENSSL_VERSION_NUMBER >= 0x00908070L && \
+     !defined(OPENSSL_NO_TLSEXT))
+#define FOLLY_OPENSSL_HAS_SNI 1
+#else
+#define FOLLY_OPENSSL_HAS_SNI 0
+#endif
+
 // This class attempts to "unify" the OpenSSL libssl APIs between OpenSSL 1.0.2,
 // 1.1.0 and BoringSSL. The general idea is to provide wrapper methods for 1.0.2
 // which already exist in BoringSSL and 1.1.0, but there are few APIs such as

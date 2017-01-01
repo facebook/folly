@@ -87,7 +87,7 @@ SSLContext::SSLContext(SSLVersion version) {
 
   SSL_CTX_set_options(ctx_, SSL_OP_NO_COMPRESSION);
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_SNI
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
   SSL_CTX_set_tlsext_servername_arg(ctx_, this);
 #endif
@@ -371,7 +371,7 @@ void SSLContext::passwordCollector(std::shared_ptr<PasswordCollector> collector)
   SSL_CTX_set_default_passwd_cb_userdata(ctx_, this);
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_SNI
 
 void SSLContext::setServerNameCallback(const ServerNameCallback& cb) {
   serverNameCb_ = cb;
@@ -466,9 +466,9 @@ void SSLContext::switchCiphersIfTLS11(
     SSL_set_cipher_list(ssl, providedCiphersString_.c_str());
   }
 }
-#endif
+#endif // FOLLY_OPENSSL_HAS_SNI
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
 int SSLContext::alpnSelectCallback(SSL* /* ssl */,
                                    const unsigned char** out,
                                    unsigned char* outlen,
@@ -494,7 +494,7 @@ int SSLContext::alpnSelectCallback(SSL* /* ssl */,
   }
   return SSL_TLSEXT_ERR_OK;
 }
-#endif
+#endif // FOLLY_OPENSSL_HAS_ALPN
 
 #ifdef OPENSSL_NPN_NEGOTIATED
 
@@ -552,7 +552,7 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
         ctx_, advertisedNextProtocolCallback, this);
     SSL_CTX_set_next_proto_select_cb(ctx_, selectNextProtocolCallback, this);
   }
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
   if ((uint8_t)protocolType & (uint8_t)NextProtocolType::ALPN) {
     SSL_CTX_set_alpn_select_cb(ctx_, alpnSelectCallback, this);
     // Client cannot really use randomized alpn
@@ -576,7 +576,7 @@ void SSLContext::unsetNextProtocols() {
   deleteNextProtocolsStrings();
   SSL_CTX_set_next_protos_advertised_cb(ctx_, nullptr, nullptr);
   SSL_CTX_set_next_proto_select_cb(ctx_, nullptr, nullptr);
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
   SSL_CTX_set_alpn_select_cb(ctx_, nullptr, nullptr);
   SSL_CTX_set_alpn_protos(ctx_, nullptr, 0);
 #endif
