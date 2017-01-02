@@ -19,7 +19,6 @@
 #include <sched.h>
 #include <memory>
 #include <thread>
-#include <type_traits>
 #include <unordered_map>
 #include <glog/logging.h>
 #include <folly/Benchmark.h>

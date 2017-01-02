@@ -21,7 +21,6 @@
 #include <folly/dynamic.h>
 #include <folly/Baton.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Unistd.h>
 
 #include <algorithm>
 #include <atomic>

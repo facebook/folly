@@ -20,14 +20,11 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <condition_variable>
-#include <limits.h>
 #include <map>
 #include <mutex>
 #include <set>
 #include <thread>
-#include <unordered_map>
 
 #include <boost/thread/tss.hpp>
 #include <glog/logging.h>
@@ -35,7 +32,6 @@
 #include <folly/Benchmark.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GFlags.h>
-#include <folly/portability/Unistd.h>
 
 using namespace folly;
 
