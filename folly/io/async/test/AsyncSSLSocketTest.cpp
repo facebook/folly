@@ -23,6 +23,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
@@ -633,7 +634,7 @@ INSTANTIATE_TEST_CASE_P(
             SSLContext::NextProtocolType::ANY,
             SSLContext::NextProtocolType::ANY)));
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
     NextProtocolTLSExtTest,
@@ -655,7 +656,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(NextProtocolTypePair(SSLContext::NextProtocolType::NPN,
                                            SSLContext::NextProtocolType::NPN)));
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
 INSTANTIATE_TEST_CASE_P(
     AsyncSSLSocketTest,
     NextProtocolMismatchTest,

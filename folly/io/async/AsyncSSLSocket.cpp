@@ -234,7 +234,7 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
   }
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_SNI
 /**
  * Create a client AsyncSSLSocket and allow tlsext_hostname
  * to be sent in Client Hello.
@@ -258,7 +258,7 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
     AsyncSSLSocket(ctx, evb, fd, false, deferSecurityNegotiation) {
   tlsextHostname_ = serverName;
 }
-#endif
+#endif // FOLLY_OPENSSL_HAS_SNI
 
 AsyncSSLSocket::~AsyncSSLSocket() {
   VLOG(3) << "actual destruction of AsyncSSLSocket(this=" << this
@@ -519,7 +519,7 @@ void AsyncSSLSocket::detachSSLContext() {
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_SNI
 void AsyncSSLSocket::switchServerSSLContext(
   const std::shared_ptr<SSLContext>& handshakeCtx) {
   CHECK(server_);
@@ -560,7 +560,7 @@ void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
   tlsextHostname_ = std::move(serverName);
 }
 
-#endif
+#endif // FOLLY_OPENSSL_HAS_SNI
 
 void AsyncSSLSocket::timeoutExpired() noexcept {
   if (state_ == StateEnum::ESTABLISHED &&
@@ -736,7 +736,7 @@ void AsyncSSLSocket::sslConn(
     SSL_SESSION_free(sslSession_);
     sslSession_ = nullptr;
   }
-#if OPENSSL_VERSION_NUMBER >= 0x1000105fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_SNI
   if (tlsextHostname_.size()) {
     SSL_set_tlsext_host_name(ssl_, tlsextHostname_.c_str());
   }
@@ -797,7 +797,7 @@ bool AsyncSSLSocket::getSelectedNextProtocolNoThrow(
     SSLContext::NextProtocolType* protoType) const {
   *protoName = nullptr;
   *protoLen = 0;
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT)
+#if FOLLY_OPENSSL_HAS_ALPN
   SSL_get0_alpn_selected(ssl_, protoName, protoLen);
   if (*protoLen > 0) {
     if (protoType) {
