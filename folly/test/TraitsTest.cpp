@@ -27,6 +27,24 @@
 using namespace folly;
 using namespace std;
 
+namespace {
+
+FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
+}
+
+TEST(Traits, has_member_type) {
+  struct membership_no {};
+  struct membership_yes {
+    using x = void;
+  };
+
+  EXPECT_TRUE((is_same<false_type, has_member_type_x<membership_no>>::value));
+  EXPECT_TRUE((is_same<true_type, has_member_type_x<membership_yes>>::value));
+}
+
+//  Note: FOLLY_CREATE_HAS_MEMBER_FN_TRAITS tests are in
+//  folly/test/HasMemberFnTraitsTest.cpp.
+
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 { typedef std::true_type IsRelocatable; };
@@ -197,13 +215,4 @@ TEST(Traits, actuallyRelocatable) {
   testIsRelocatable<std::string>(sizeof(std::string) + 1, 'x');
 
   testIsRelocatable<std::vector<char>>(5, 'g');
-}
-
-struct membership_no {};
-struct membership_yes { using x = void; };
-FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
-
-TEST(Traits, has_member_type) {
-  EXPECT_FALSE(bool(has_member_type_x<membership_no>::value));
-  EXPECT_TRUE(bool(has_member_type_x<membership_yes>::value));
 }
