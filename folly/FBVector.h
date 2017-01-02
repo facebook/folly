@@ -41,8 +41,6 @@
 #include <folly/Traits.h>
 #include <folly/portability/BitsFunctexcept.h>
 
-#include <boost/operators.hpp>
-
 //=============================================================================
 // forward declaration
 
@@ -74,7 +72,7 @@ namespace folly {
 namespace folly {
 
 template <class T, class Allocator>
-class fbvector : private boost::totally_ordered<fbvector<T, Allocator>> {
+class fbvector {
 
   //===========================================================================
   //---------------------------------------------------------------------------
@@ -1502,16 +1500,32 @@ private:
 
   //===========================================================================
   //---------------------------------------------------------------------------
-  // lexicographical functions (others from boost::totally_ordered superclass)
+  // lexicographical functions
 public:
 
   bool operator==(const fbvector& other) const {
     return size() == other.size() && std::equal(begin(), end(), other.begin());
   }
 
+  bool operator!=(const fbvector& other) const {
+    return !(*this == other);
+  }
+
   bool operator<(const fbvector& other) const {
     return std::lexicographical_compare(
       begin(), end(), other.begin(), other.end());
+  }
+
+  bool operator>(const fbvector& other) const {
+    return other < *this;
+  }
+
+  bool operator<=(const fbvector& other) const {
+    return !(*this > other);
+  }
+
+  bool operator>=(const fbvector& other) const {
+    return !(*this < other);
   }
 
   //===========================================================================
