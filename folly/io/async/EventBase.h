@@ -719,10 +719,6 @@ class EventBase : private boost::noncopyable,
   // be supported: avg loop time, observer and max latency.
   const bool enableTimeMeasurement_;
 
-  // we'll wait this long before running deferred callbacks if the event
-  // loop is idle.
-  static const int kDEFAULT_IDLE_WAIT_USEC = 20000; // 20ms
-
   // Wrap-around loop counter to detect beginning of each loop
   uint64_t nextLoopCnt_;
   uint64_t latestLoopCnt_;
