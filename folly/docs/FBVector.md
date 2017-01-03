@@ -189,33 +189,6 @@ after `Widget`'s definition and write this:
 If you don't do this, `fbvector<Widget>` will fail to compile
 with a `static_assert`.
 
-#### Additional Constraints
-
-Similar improvements are possible in presence of a "simple" type
-- more specifically, one that has a trivial assignment (i.e.
-assignment is the same as bitblitting the bits over) or a nothrow
-default constructor. These traits are used gainfully by
-`fbvector` in a variety of places. Fortunately, these traits are
-already present in the C++ standard (well, currently in Boost).
-To summarize, in order to work with `fbvector`, a type `Widget`
-must pass:
-
-    static_assert(
-      IsRelocatable<Widget>::value &&
-      (boost::has_trivial_assign<T>::value ||
-       boost::has_nothrow_constructor<T>::value),
-      "");
-
-These traits go hand in hand; for example, it would be very
-difficult to design a class that satisfies one branch of the
-conjunction above but not the other. `fbvector` uses these simple
-constraints to minimize the number of copies made on many common
-operations such as `push_back`, `insert`, or `resize`.
-
-To make it easy for you to state assumptions about a given type
-or family of parameterized types, check Traits.h and in
-particular handy family of macros FOLLY_ASSUME_FBVECTOR_COMPATIBLE*.
-
 ### Miscellaneous
 ***
 

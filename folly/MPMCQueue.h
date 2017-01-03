@@ -86,7 +86,7 @@ template <typename> class MPMCQueueBase;
 /// use noexcept, you will have to wrap it in something that provides
 /// the guarantee.  We provide an alternate safe implementation for types
 /// that don't use noexcept but that are marked folly::IsRelocatable
-/// and boost::has_nothrow_constructor, which is common for folly types.
+/// and std::is_nothrow_constructible, which is common for folly types.
 /// In particular, if you can declare FOLLY_ASSUME_FBVECTOR_COMPATIBLE
 /// then your type can be put in MPMCQueue.
 ///
@@ -1310,15 +1310,17 @@ struct SingleElementQueue {
 
   /// enqueue using move construction, either real (if
   /// is_nothrow_move_constructible) or simulated using relocation and
-  /// default construction (if IsRelocatable and has_nothrow_constructor)
-  template <typename = typename std::enable_if<
-                (folly::IsRelocatable<T>::value &&
-                 boost::has_nothrow_constructor<T>::value) ||
-                std::is_nothrow_constructible<T, T&&>::value>::type>
-  void enqueue(const uint32_t turn,
-               Atom<uint32_t>& spinCutoff,
-               const bool updateSpinCutoff,
-               T&& goner) noexcept {
+  /// default construction (if IsRelocatable and is_nothrow_constructible)
+  template <
+      typename = typename std::enable_if<
+          (folly::IsRelocatable<T>::value &&
+           std::is_nothrow_constructible<T>::value) ||
+          std::is_nothrow_constructible<T, T&&>::value>::type>
+  void enqueue(
+      const uint32_t turn,
+      Atom<uint32_t>& spinCutoff,
+      const bool updateSpinCutoff,
+      T&& goner) noexcept {
     enqueueImpl(
         turn,
         spinCutoff,

@@ -646,12 +646,4 @@ using UTF8StringPiece = UTF8Range<const char*>;
 
 } // namespace folly
 
-// Hook into boost's type traits
-namespace boost {
-template <class T>
-struct has_nothrow_constructor<folly::basic_fbstring<T> > : true_type {
-  enum { value = true };
-};
-} // namespace boost
-
 #include <folly/String-inl.h>

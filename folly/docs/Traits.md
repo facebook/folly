@@ -1,7 +1,7 @@
 'folly/Traits.h'
 -----------------
 
-Implements traits complementary to those provided in <boost/type_traits.h>
+Implements traits complementary to those provided in <type_traits>
 
   * Implements `IsRelocatable` trait.
   * Implements `IsOneOf` trait
@@ -10,12 +10,11 @@ Implements traits complementary to those provided in <boost/type_traits.h>
 ### Motivation
 ***
 
-`<boost/type_traits.hpp>` is the Boost type-traits library defining a 
-variety of traits such as `is_integral` or `is_floating_point`. This helps 
-to gain more information about a given type.
-Many traits introduced by Boost have been standardized in C++11.
+`<type_traits>` is the Standard type-traits library defining a variety of traits
+such as `is_integral` or `is_floating_point`. This helps to gain more
+information about a given type.
 
-`folly/Traits.h` implements traits complementing those present in boost. 
+`folly/Traits.h` implements traits complementing those present in the Standard.
 
 
 ### IsRelocatable
@@ -88,11 +87,11 @@ a value of type T by using memcpy.
     namespace folly {
       // defining specialization of IsRelocatable for MySimpleType
       template <>
-      struct IsRelocatable<MySimpleType> : boost::true_type {};
+      struct IsRelocatable<MySimpleType> : std::true_type {};
       // defining specialization of IsRelocatable for MyParameterizedType
       template <class T1, class T2>
       struct IsRelocatable<MyParameterizedType<T1, T2>>
-          : ::boost::true_type {};
+          : ::std::true_type {};
     }
     ```
 
@@ -108,17 +107,6 @@ a value of type T by using memcpy.
       FOLLY_ASSUME_RELOCATABLE(MySimpleType);
       // For a Parameterized Type
       FOLLY_ASSUME_RELOCATABLE(MyParameterizedType<T1, T2>);
-    }
-    ```
-
-  * Stating that a type has no throw constructor using a macro
-
-    ```Cpp
-    namespace boost {
-      // For a Regular Type
-      FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(MySimpleType);
-      // For a Parameterized Type
-      FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(MyParameterizedType<T1, T2>);
     }
     ```
 
@@ -157,9 +145,9 @@ Similarly,
 
 Few common types, namely `std::basic_string`, `std::vector`, `std::list`,
 `std::map`, `std::deque`, `std::set`, `std::unique_ptr`, `std::shared_ptr`,
-`std::function`, `boost::shared_ptr` which are compatible with `fbvector` are
-already instantiated and declared compatible with `fbvector`. `fbvector` can be
-directly used with any of these C++ types.
+`std::function`, which are compatible with `fbvector` are already instantiated
+and declared compatible with `fbvector`. `fbvector` can be directly used with
+any of these C++ types.
 
 `std::pair` can be safely assumed to be compatible with `fbvector` if both of
 its components are.
@@ -167,7 +155,7 @@ its components are.
 ### IsOneOf
 ***
 
-`boost::is_same<T1, T2>::value` can be used to test if types of T1 and T2 are 
-same. `folly::IsOneOf<T, T1, Ts...>::value` can be used to test if type of T1 
+`std::is_same<T1, T2>::value` can be used to test if types of T1 and T2 are
+same. `folly::IsOneOf<T, T1, Ts...>::value` can be used to test if type of T1
 matches the type of one of the other template parameter, T1, T2, ...Tn.
 Recursion is used to implement this type trait.

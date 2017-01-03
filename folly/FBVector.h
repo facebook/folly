@@ -210,7 +210,7 @@ public:
 private:
 
   typedef std::integral_constant<bool,
-      boost::has_trivial_copy_constructor<T>::value &&
+      IsTriviallyCopyable<T>::value &&
       sizeof(T) <= 16 // don't force large structures to be passed by value
     > should_pass_by_value;
   typedef typename std::conditional<
@@ -322,7 +322,8 @@ private:
 
   void M_destroy(T* p) noexcept {
     if (usingStdAllocator::value) {
-      if (!boost::has_trivial_destructor<T>::value) p->~T();
+      if (!std::is_trivially_destructible<T>::value)
+        p->~T();
     } else {
       std::allocator_traits<Allocator>::destroy(impl_, p);
     }
@@ -360,7 +361,7 @@ private:
 
   // optimized
   static void S_destroy_range(T* first, T* last) noexcept {
-    if (!boost::has_trivial_destructor<T>::value) {
+    if (!std::is_trivially_destructible<T>::value) {
       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
       //  size 0).
       // The unrolled version seems to work faster for small to medium sized

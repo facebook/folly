@@ -36,8 +36,6 @@
 #include <bits/c++config.h>
 #endif
 
-#include <boost/type_traits.hpp>
-
 #define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name)              \
   template <typename TTheClass_>                                               \
   struct classname##__folly_traits_impl__ {                                    \
@@ -341,29 +339,12 @@ using StrictConjunction =
   struct IsRelocatable<  __VA_ARGS__ > : std::true_type {};
 
 /**
- * Use this macro ONLY inside namespace boost. When using it with a
- * regular type, use it like this:
- *
- * // Make sure you're at namespace ::boost scope
- * template<> FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(MyType)
- *
- * When using it with a template type, use it like this:
- *
- * // Make sure you're at namespace ::boost scope
- * template<class T1, class T2>
- * FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(MyType<T1, T2>)
- */
-#define FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(...) \
-  struct has_nothrow_constructor<  __VA_ARGS__ > : ::boost::true_type {};
-
-/**
- * The FOLLY_ASSUME_FBVECTOR_COMPATIBLE* macros below encode two
- * assumptions: first, that the type is relocatable per IsRelocatable
- * above, and that it has a nothrow constructor. Most types can be
- * assumed to satisfy both conditions, but it is the responsibility of
- * the user to state that assumption. User-defined classes will not
- * work with fbvector (see FBVector.h) unless they state this
- * combination of properties.
+ * The FOLLY_ASSUME_FBVECTOR_COMPATIBLE* macros below encode the
+ * assumption that the type is relocatable per IsRelocatable
+ * above. Many types can be assumed to satisfy this condition, but
+ * it is the responsibility of the user to state that assumption.
+ * User-defined classes will not be optimized for use with
+ * fbvector (see FBVector.h) unless they state that assumption.
  *
  * Use FOLLY_ASSUME_FBVECTOR_COMPATIBLE with regular types like this:
  *
@@ -382,40 +363,35 @@ using StrictConjunction =
  */
 
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE(...)                           \
-  namespace folly { template<> FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__) }   \
-  namespace boost { \
-  template<> FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(__VA_ARGS__) }
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE(...) \
+  namespace folly {                           \
+  template <>                                 \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__)       \
+  }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(...)                         \
-  namespace folly {                                                     \
-  template <class T1> FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1>) }       \
-    namespace boost {                                                   \
-    template <class T1> FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(__VA_ARGS__<T1>) }
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(...) \
+  namespace folly {                             \
+  template <class T1>                           \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1>)     \
+  }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(...)                 \
-  namespace folly {                                             \
-  template <class T1, class T2>                                 \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2>) }               \
-    namespace boost {                                           \
-    template <class T1, class T2>                               \
-    FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(__VA_ARGS__<T1, T2>) }
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(...) \
+  namespace folly {                             \
+  template <class T1, class T2>                 \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2>) \
+  }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(...)                         \
-  namespace folly {                                                     \
-  template <class T1, class T2, class T3>                               \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3>) }                   \
-    namespace boost {                                                   \
-    template <class T1, class T2, class T3>                             \
-    FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(__VA_ARGS__<T1, T2, T3>) }
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(...)     \
+  namespace folly {                                 \
+  template <class T1, class T2, class T3>           \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3>) \
+  }
 // Use this macro ONLY at global level (no namespace)
-#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(...)                         \
-  namespace folly {                                                     \
-  template <class T1, class T2, class T3, class T4>                     \
-  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3, T4>) }               \
-    namespace boost {                                                   \
-    template <class T1, class T2, class T3, class T4>                   \
-    FOLLY_ASSUME_HAS_NOTHROW_CONSTRUCTOR(__VA_ARGS__<T1, T2, T3, T4>) }
+#define FOLLY_ASSUME_FBVECTOR_COMPATIBLE_4(...)         \
+  namespace folly {                                     \
+  template <class T1, class T2, class T3, class T4>     \
+  FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3, T4>) \
+  }
 
 /**
  * Instantiate FOLLY_ASSUME_FBVECTOR_COMPATIBLE for a few types. It is
@@ -453,18 +429,6 @@ template <class T>
   class shared_ptr;
 
 FOLLY_NAMESPACE_STD_END
-
-namespace boost {
-
-template <class T> class shared_ptr;
-
-template <class T, class U>
-struct has_nothrow_constructor< std::pair<T, U> >
-    : std::integral_constant<bool,
-        has_nothrow_constructor<T>::value &&
-        has_nothrow_constructor<U>::value> {};
-
-} // namespace boost
 
 namespace folly {
 
@@ -681,9 +645,6 @@ FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function)
-
-// Boost
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::shared_ptr)
 #endif
 
 /* Some combinations of compilers and C++ libraries make __int128 and
