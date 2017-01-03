@@ -159,9 +159,9 @@ class ReadMostlyMainPtr {
     }
   }
 
-  std::shared_ptr<T> getStdShared() {
+  std::shared_ptr<T> getStdShared() const {
     if (impl_) {
-      return impl_->ptr_;
+      return impl_->getShared();
     } else {
       return {};
     }
@@ -320,7 +320,7 @@ class ReadMostlySharedPtr {
 
   std::shared_ptr<T> getStdShared() const {
     if (impl_) {
-      return impl_->ptr_;
+      return impl_->getShared();
     } else {
       return {};
     }
