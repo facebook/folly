@@ -108,6 +108,9 @@ namespace folly {
  */
 class exception_wrapper {
  private:
+  template <typename T>
+  using is_exception_ = std::is_base_of<std::exception, T>;
+
   template <typename Ex>
   struct optimize;
 
@@ -250,10 +253,19 @@ class exception_wrapper {
   }
 
   template <typename Ex>
-  void assign_eptr(std::exception_ptr eptr, Ex& e) {
+  _t<std::enable_if<is_exception_<Ex>::value>> assign_eptr(
+      std::exception_ptr eptr,
+      Ex& e) {
     this->eptr_ = eptr;
-    this->estr_ = exceptionStr(e).toStdString();
-    this->ename_ = demangle(typeid(e)).toStdString();
+    this->eobj_ = &const_cast<_t<std::remove_const<Ex>>&>(e);
+  }
+
+  template <typename Ex>
+  _t<std::enable_if<!is_exception_<Ex>::value>> assign_eptr(
+      std::exception_ptr eptr,
+      Ex& e) {
+    this->eptr_ = eptr;
+    this->etype_ = &typeid(e);
   }
 
   void assign_eptr(std::exception_ptr eptr) {
@@ -270,8 +282,8 @@ class exception_wrapper {
   // exception type, so we can at least get those back out without
   // having to rethrow.
   std::exception_ptr eptr_;
-  std::string estr_;
-  std::string ename_;
+  std::exception* eobj_{nullptr};
+  const std::type_info* etype_{nullptr};
 
   template <class T, class... Args>
   friend exception_wrapper make_exception_wrapper(Args&&... args);
@@ -297,9 +309,6 @@ class exception_wrapper {
     }
   };
 
-  template <typename T>
-  using is_exception_ = std::is_base_of<std::exception, T>;
-
   template <typename T, typename F>
   static _t<std::enable_if<is_exception_<T>::value, T*>>
   try_dynamic_cast_exception(F* from) {
@@ -317,8 +326,11 @@ class exception_wrapper {
   template <class Ex, class F, class T>
   static bool with_exception1(F f, T* that) {
     using CEx = _t<std::conditional<std::is_const<T>::value, const Ex, Ex>>;
-    if (is_exception_<Ex>::value && that->item_) {
-      if (auto ex = try_dynamic_cast_exception<CEx>(that->item_.get())) {
+    if (is_exception_<Ex>::value &&
+        (that->item_ || (that->eptr_ && that->eobj_))) {
+      auto raw =
+          that->item_ ? that->item_.get() : that->eptr_ ? that->eobj_ : nullptr;
+      if (auto ex = try_dynamic_cast_exception<CEx>(raw)) {
         f(*ex);
         return true;
       }

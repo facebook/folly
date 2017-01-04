@@ -36,8 +36,10 @@ fbstring exception_wrapper::class_name() const {
   if (item_) {
     auto& i = *item_;
     return demangle(typeid(i));
-  } else if (eptr_) {
-    return ename_;
+  } else if (eptr_ && eobj_) {
+    return demangle(typeid(*eobj_));
+  } else if (eptr_ && etype_) {
+    return demangle(*etype_);
   } else {
     return fbstring();
   }
@@ -46,10 +48,12 @@ fbstring exception_wrapper::class_name() const {
 fbstring exception_wrapper::what() const {
   if (item_) {
     return exceptionStr(*item_);
-  } else if (eptr_) {
-    return estr_;
+  } else if (eptr_ && eobj_) {
+    return class_name() + ": " + eobj_->what();
+  } else if (eptr_ && etype_) {
+    return class_name();
   } else {
-    return fbstring();
+    return class_name();
   }
 }
 
