@@ -21,7 +21,8 @@
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-#if !defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 3900
+#if (!defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 3900) && \
+    !defined(FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS)
 void __throw_length_error(const char* msg) {
   throw std::length_error(msg);
 }
