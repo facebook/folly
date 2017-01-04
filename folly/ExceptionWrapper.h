@@ -25,6 +25,7 @@
 
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -115,12 +116,11 @@ class exception_wrapper {
 
   // Implicitly construct an exception_wrapper from a qualifying exception.
   // See the optimize struct for details.
-  template <typename Ex, typename =
-    typename std::enable_if<optimize<typename std::decay<Ex>::type>::value>
-    ::type>
+  template <
+      typename Ex,
+      typename = _t<std::enable_if<optimize<_t<std::decay<Ex>>>::value>>>
   /* implicit */ exception_wrapper(Ex&& exn) {
-    typedef typename std::decay<Ex>::type DEx;
-    assign_sptr(std::make_shared<DEx>(std::forward<Ex>(exn)));
+    assign_sptr(std::make_shared<_t<std::decay<Ex>>>(std::forward<Ex>(exn)));
   }
 
   // The following two constructors are meant to emulate the behavior of
@@ -195,13 +195,13 @@ class exception_wrapper {
 
   template <class F>
   bool with_exception(F&& f) {
-    using arg_type = typename functor_traits<F>::arg_type_decayed;
+    using arg_type = _t<std::decay<typename functor_traits<F>::arg_type>>;
     return with_exception<arg_type>(std::forward<F>(f));
   }
 
   template <class F>
   bool with_exception(F&& f) const {
-    using arg_type = typename functor_traits<F>::arg_type_decayed;
+    using arg_type = _t<std::decay<typename functor_traits<F>::arg_type>>;
     return with_exception<arg_type>(std::forward<F>(f));
   }
 
@@ -210,13 +210,13 @@ class exception_wrapper {
   // will otherwise return false.
   template <class Ex, class F>
   bool with_exception(F f) {
-    return with_exception1<typename std::decay<Ex>::type>(f, this);
+    return with_exception1<_t<std::decay<Ex>>>(std::forward<F>(f), this);
   }
 
   // Const overload
   template <class Ex, class F>
   bool with_exception(F f) const {
-    return with_exception1<typename std::decay<Ex>::type>(f, this);
+    return with_exception1<_t<std::decay<Ex>>>(std::forward<F>(f), this);
   }
 
   std::exception_ptr getExceptionPtr() const {
@@ -285,10 +285,8 @@ class exception_wrapper {
     struct impl<R(C::*)(A)> { using arg_type = A; };
     template <typename C, typename R, typename A>
     struct impl<R(C::*)(A) const> { using arg_type = A; };
-    using functor_decayed = typename std::decay<F>::type;
-    using functor_op = decltype(&functor_decayed::operator());
+    using functor_op = decltype(&_t<std::decay<F>>::operator());
     using arg_type = typename impl<functor_op>::arg_type;
-    using arg_type_decayed = typename std::decay<arg_type>::type;
   };
 
   template <class T>
@@ -302,16 +300,13 @@ class exception_wrapper {
   template <typename T>
   using is_exception_ = std::is_base_of<std::exception, T>;
 
-  template <bool V, typename T, typename F>
-  using conditional_t_ = typename std::conditional<V, T, F>::type;
-
   template <typename T, typename F>
-  static typename std::enable_if<is_exception_<T>::value, T*>::type
+  static _t<std::enable_if<is_exception_<T>::value, T*>>
   try_dynamic_cast_exception(F* from) {
     return dynamic_cast<T*>(from);
   }
   template <typename T, typename F>
-  static typename std::enable_if<!is_exception_<T>::value, T*>::type
+  static _t<std::enable_if<!is_exception_<T>::value, T*>>
   try_dynamic_cast_exception(F*) {
     return nullptr;
   }
@@ -321,7 +316,7 @@ class exception_wrapper {
   // instantiation which works with F.
   template <class Ex, class F, class T>
   static bool with_exception1(F f, T* that) {
-    using CEx = conditional_t_<std::is_const<T>::value, const Ex, Ex>;
+    using CEx = _t<std::conditional<std::is_const<T>::value, const Ex, Ex>>;
     if (is_exception_<Ex>::value && that->item_) {
       if (auto ex = try_dynamic_cast_exception<CEx>(that->item_.get())) {
         f(*ex);
@@ -393,19 +388,18 @@ fbstring exceptionStr(const exception_wrapper& ew);
 
 namespace try_and_catch_detail {
 
-template <bool V, typename T = void>
-using enable_if_t_ = typename std::enable_if<V, T>::type;
-
 template <typename... Args>
 using is_wrap_ctor = std::is_constructible<exception_wrapper, Args...>;
 
 template <typename Ex>
-inline enable_if_t_<!is_wrap_ctor<Ex&>::value, exception_wrapper> make(Ex& ex) {
+inline _t<std::enable_if<!is_wrap_ctor<Ex&>::value, exception_wrapper>> make(
+    Ex& ex) {
   return exception_wrapper(std::current_exception(), ex);
 }
 
 template <typename Ex>
-inline enable_if_t_<is_wrap_ctor<Ex&>::value, exception_wrapper> make(Ex& ex) {
+inline _t<std::enable_if<is_wrap_ctor<Ex&>::value, exception_wrapper>> make(
+    Ex& ex) {
   return typeid(Ex&) == typeid(ex)
       ? exception_wrapper(ex)
       : exception_wrapper(std::current_exception(), ex);
