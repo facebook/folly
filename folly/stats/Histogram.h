@@ -245,8 +245,9 @@ class Histogram {
     : buckets_(bucketSize, min, max, Bucket()) {}
 
   /* Add a data point to the histogram */
-  void addValue(ValueType value) UBSAN_DISABLE("signed-integer-overflow")
-      UBSAN_DISABLE("unsigned-integer-overflow") {
+  void addValue(ValueType value)
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("signed-integer-overflow")
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
     // NOTE: Overflow is handled elsewhere and tests check this
     // behavior (see HistogramTest.cpp TestOverflow* tests).
@@ -257,8 +258,8 @@ class Histogram {
 
   /* Add multiple same data points to the histogram */
   void addRepeatedValue(ValueType value, uint64_t nSamples)
-      UBSAN_DISABLE("signed-integer-overflow")
-          UBSAN_DISABLE("unsigned-integer-overflow") {
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("signed-integer-overflow")
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
     // NOTE: Overflow is handled elsewhere and tests check this
     // behavior (see HistogramTest.cpp TestOverflow* tests).
@@ -274,8 +275,9 @@ class Histogram {
    * had previously been added to the histogram; it merely subtracts the
    * requested value from the appropriate bucket's sum.
    */
-  void removeValue(ValueType value) UBSAN_DISABLE("signed-integer-overflow")
-      UBSAN_DISABLE("unsigned-integer-overflow") {
+  void removeValue(ValueType value) FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(
+      "signed-integer-overflow")
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow") {
     Bucket& bucket = buckets_.getByValue(value);
     // NOTE: Overflow is handled elsewhere and tests check this
     // behavior (see HistogramTest.cpp TestOverflow* tests).

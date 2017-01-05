@@ -32,7 +32,8 @@ void init() {
 }
 }
 
-TEST(memcpy, zero_len) UBSAN_DISABLE("nonnull-attribute") {
+TEST(memcpy, zero_len)
+    FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("nonnull-attribute") {
   // If length is 0, we shouldn't touch any memory.  So this should
   // not crash.
   char* srcNull = nullptr;
