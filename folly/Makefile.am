@@ -43,6 +43,7 @@ nobase_follyinclude_HEADERS = \
 	CachelinePadded.h \
 	CallOnce.h \
 	Checksum.h \
+	Chrono.h \
 	ClockGettimeWrappers.h \
 	ConcurrentSkipList.h \
 	ConcurrentSkipList-inl.h \

@@ -201,6 +201,10 @@ atomic_hash_map_test_SOURCES = AtomicHashMapTest.cpp
 atomic_hash_map_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += atomic_hash_map_test
 
+chrono_test_SOURCES = ChronoTest.cpp
+chrono_test_LDADD = libfollytestmain.la
+TESTS += chrono_test
+
 format_test_SOURCES = FormatTest.cpp
 format_test_LDADD = libfollytestmain.la $(top_builddir)/libfollybenchmark.la
 TESTS += format_test
