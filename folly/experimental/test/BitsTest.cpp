@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <cmath>
+
 #include <folly/experimental/Bits.h>
 
 #include <glog/logging.h>
@@ -246,7 +248,7 @@ T testValue(int bits) {
   if (std::is_signed<T>::value) {
     --bits;
   }
-  auto value = pow(2, bits) * (negate ? -2.0 : 2.0) / 3.0;
+  auto value = std::pow(2, bits) * (negate ? -2.0 : 2.0) / 3.0;
   CHECK_GE(value, std::numeric_limits<T>::min());
   CHECK_LE(value, std::numeric_limits<T>::max());
   return static_cast<T>(value);
