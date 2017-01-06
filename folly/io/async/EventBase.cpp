@@ -90,7 +90,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
   , queue_(nullptr)
   , fnRunner_(nullptr)
   , maxLatency_(0)
-  , avgLoopTime_(2000000)
+  , avgLoopTime_(std::chrono::milliseconds(2000000))
   , maxLatencyLoopTime_(avgLoopTime_)
   , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
@@ -136,7 +136,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
   , queue_(nullptr)
   , fnRunner_(nullptr)
   , maxLatency_(0)
-  , avgLoopTime_(2000000)
+  , avgLoopTime_(std::chrono::milliseconds(2000000))
   , maxLatencyLoopTime_(avgLoopTime_)
   , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
@@ -207,7 +207,7 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
 // for exp(-1) decay.
 void EventBase::setLoadAvgMsec(uint32_t ms) {
   assert(enableTimeMeasurement_);
-  uint64_t us = 1000 * ms;
+  std::chrono::microseconds us = std::chrono::milliseconds(ms);
   if (ms > 0) {
     maxLatencyLoopTime_.setTimeInterval(us);
     avgLoopTime_.setTimeInterval(us);
@@ -313,8 +313,10 @@ bool EventBase::loopBody(int flags) {
         startWork_;
       idle = startWork_ - idleStart;
 
-      avgLoopTime_.addSample(idle, busy);
-      maxLatencyLoopTime_.addSample(idle, busy);
+      avgLoopTime_.addSample(std::chrono::microseconds(idle),
+        std::chrono::microseconds(busy));
+      maxLatencyLoopTime_.addSample(std::chrono::microseconds(idle),
+        std::chrono::microseconds(busy));
 
       if (observer_) {
         if (observerSampleCount_++ == observer_->getSampleRate()) {
@@ -633,8 +635,9 @@ void EventBase::initNotificationQueue() {
   fnRunner_->startConsumingInternal(this, queue_.get());
 }
 
-void EventBase::SmoothLoopTime::setTimeInterval(uint64_t timeInterval) {
-  expCoeff_ = -1.0/timeInterval;
+void EventBase::SmoothLoopTime::setTimeInterval(
+    std::chrono::microseconds timeInterval) {
+  expCoeff_ = -1.0 / timeInterval.count();
   VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
 }
 
@@ -642,29 +645,32 @@ void EventBase::SmoothLoopTime::reset(double value) {
   value_ = value;
 }
 
-void EventBase::SmoothLoopTime::addSample(int64_t idle, int64_t busy) {
-    /*
-     * Position at which the busy sample is considered to be taken.
-     * (Allows to quickly skew our average without editing much code)
-     */
-    enum BusySamplePosition {
-      RIGHT = 0,  // busy sample placed at the end of the iteration
-      CENTER = 1, // busy sample placed at the middle point of the iteration
-      LEFT = 2,   // busy sample placed at the beginning of the iteration
-    };
+void EventBase::SmoothLoopTime::addSample(
+    std::chrono::microseconds idle,
+    std::chrono::microseconds busy) {
+  /*
+   * Position at which the busy sample is considered to be taken.
+   * (Allows to quickly skew our average without editing much code)
+   */
+  enum BusySamplePosition {
+    RIGHT = 0, // busy sample placed at the end of the iteration
+    CENTER = 1, // busy sample placed at the middle point of the iteration
+    LEFT = 2, // busy sample placed at the beginning of the iteration
+  };
 
   // See http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average
   // and D676020 for more info on this calculation.
-  VLOG(11) << "idle " << idle << " oldBusyLeftover_ " << oldBusyLeftover_ <<
-              " idle + oldBusyLeftover_ " << idle + oldBusyLeftover_ <<
-              " busy " << busy << " " << __PRETTY_FUNCTION__;
+  VLOG(11) << "idle " << idle.count() << " oldBusyLeftover_ "
+           << oldBusyLeftover_.count() << " idle + oldBusyLeftover_ "
+           << (idle + oldBusyLeftover_).count() << " busy " << busy.count()
+           << " " << __PRETTY_FUNCTION__;
   idle += oldBusyLeftover_ + busy;
   oldBusyLeftover_ = (busy * BusySamplePosition::CENTER) / 2;
   idle -= oldBusyLeftover_;
 
-  double coeff = exp(idle * expCoeff_);
+  double coeff = exp(idle.count() * expCoeff_);
   value_ *= coeff;
-  value_ += (1.0 - coeff) * busy;
+  value_ += (1.0 - coeff) * busy.count();
 }
 
 bool EventBase::nothingHandledYet() const noexcept {

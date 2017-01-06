@@ -519,17 +519,19 @@ class EventBase : private boost::noncopyable,
 
   class SmoothLoopTime {
    public:
-    explicit SmoothLoopTime(uint64_t timeInterval)
-      : expCoeff_(-1.0/timeInterval)
-      , value_(0.0)
-      , oldBusyLeftover_(0) {
+    explicit SmoothLoopTime(std::chrono::microseconds timeInterval)
+        : expCoeff_(-1.0 / timeInterval.count()),
+          value_(0.0),
+          oldBusyLeftover_(0) {
       VLOG(11) << "expCoeff_ " << expCoeff_ << " " << __PRETTY_FUNCTION__;
     }
 
-    void setTimeInterval(uint64_t timeInterval);
+    void setTimeInterval(std::chrono::microseconds timeInterval);
     void reset(double value = 0.0);
 
-    void addSample(int64_t idle, int64_t busy);
+    void addSample(
+        std::chrono::microseconds idle,
+        std::chrono::microseconds busy);
 
     double get() const {
       return value_;
@@ -540,9 +542,9 @@ class EventBase : private boost::noncopyable,
     }
 
    private:
-    double  expCoeff_;
-    double  value_;
-    int64_t oldBusyLeftover_;
+    double expCoeff_;
+    double value_;
+    std::chrono::microseconds oldBusyLeftover_;
   };
 
   void setObserver(const std::shared_ptr<EventBaseObserver>& observer) {
