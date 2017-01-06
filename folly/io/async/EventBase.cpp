@@ -205,10 +205,10 @@ void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
 
 // Set smoothing coefficient for loop load average; input is # of milliseconds
 // for exp(-1) decay.
-void EventBase::setLoadAvgMsec(uint32_t ms) {
+void EventBase::setLoadAvgMsec(std::chrono::milliseconds ms) {
   assert(enableTimeMeasurement_);
   std::chrono::microseconds us = std::chrono::milliseconds(ms);
-  if (ms > 0) {
+  if (ms > std::chrono::milliseconds::zero()) {
     maxLatencyLoopTime_.setTimeInterval(us);
     avgLoopTime_.setTimeInterval(us);
   } else {

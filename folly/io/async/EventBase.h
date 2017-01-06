@@ -447,7 +447,7 @@ class EventBase : private boost::noncopyable,
    * Set smoothing coefficient for loop load average; # of milliseconds
    * for exp(-1) (1/2.71828...) decay.
    */
-  void setLoadAvgMsec(uint32_t ms);
+  void setLoadAvgMsec(std::chrono::milliseconds ms);
 
   /**
    * reset the load average to a desired value
