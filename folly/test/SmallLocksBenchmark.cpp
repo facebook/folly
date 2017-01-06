@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
-#include <folly/SmallLocks.h>
 #include <algorithm>
+#include <cmath>
 #include <condition_variable>
 #include <numeric>
 #include <thread>
 #include <vector>
+
+#include <folly/Benchmark.h>
+#include <folly/SmallLocks.h>
 
 /* "Work cycle" is just an additional nop loop iteration.
  * A smaller number of work cyles will result in more contention,
@@ -209,7 +211,7 @@ static void runFairness() {
   std::for_each(results.begin(), results.end(), [&](const double d) {
     accum += (d - m) * (d - m);
   });
-  double stdev = sqrt(accum / (results.size() - 1));
+  double stdev = std::sqrt(accum / (results.size() - 1));
   std::chrono::microseconds mx = *std::max_element(maxes.begin(), maxes.end());
   std::chrono::microseconds agAqTime = std::accumulate(
       aqTime.begin(), aqTime.end(), std::chrono::microseconds(0));
@@ -218,7 +220,7 @@ static void runFairness() {
   std::chrono::microseconds mean = agAqTime / sum;
   double variance = (sum * agAqTimeSq - (agAqTime.count() * agAqTime.count())) /
       sum / (sum - 1);
-  double stddev2 = sqrt(variance);
+  double stddev2 = std::sqrt(variance);
 
   printf("Sum: %li Mean: %.0f stddev: %.0f\n", sum, m, stdev);
   printf(
