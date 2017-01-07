@@ -95,7 +95,7 @@ EventBase::EventBase(bool enableTimeMeasurement)
   , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
-  , startWork_(0)
+  , startWork_()
   , observer_(nullptr)
   , observerSampleCount_(0)
   , executionObserver_(nullptr) {
@@ -141,7 +141,7 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
   , enableTimeMeasurement_(enableTimeMeasurement)
   , nextLoopCnt_(uint64_t(-40)) // Early wrap-around so bugs will manifest soon
   , latestLoopCnt_(nextLoopCnt_)
-  , startWork_(0)
+  , startWork_()
   , observer_(nullptr)
   , observerSampleCount_(0)
   , executionObserver_(nullptr) {
@@ -267,9 +267,9 @@ bool EventBase::loopBody(int flags) {
 
   // time-measurement variables.
   std::chrono::steady_clock::time_point prev;
-  int64_t idleStart = 0;
-  int64_t busy;
-  int64_t idle;
+  std::chrono::steady_clock::time_point idleStart = {};
+  std::chrono::microseconds busy;
+  std::chrono::microseconds idle;
 
   loopThread_.store(pthread_self(), std::memory_order_release);
 
@@ -279,8 +279,7 @@ bool EventBase::loopBody(int flags) {
 
   if (enableTimeMeasurement_) {
     prev = std::chrono::steady_clock::now();
-    idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now().time_since_epoch()).count();
+    idleStart = std::chrono::steady_clock::now();
   }
 
   while (!stop_.load(std::memory_order_acquire)) {
@@ -309,9 +308,9 @@ bool EventBase::loopBody(int flags) {
 
     if (enableTimeMeasurement_) {
       busy = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count() -
-        startWork_;
-      idle = startWork_ - idleStart;
+          std::chrono::steady_clock::now() - startWork_);
+      idle = std::chrono::duration_cast<std::chrono::microseconds>(
+          startWork_ - idleStart);
 
       avgLoopTime_.addSample(std::chrono::microseconds(idle),
         std::chrono::microseconds(busy));
@@ -321,19 +320,19 @@ bool EventBase::loopBody(int flags) {
       if (observer_) {
         if (observerSampleCount_++ == observer_->getSampleRate()) {
           observerSampleCount_ = 0;
-          observer_->loopSample(busy, idle);
+          observer_->loopSample(busy.count(), idle.count());
         }
       }
 
-      VLOG(11) << "EventBase "  << this         << " did not timeout "
-        " loop time guess: "    << busy + idle  <<
-        " idle time: "          << idle         <<
-        " busy time: "          << busy         <<
+      VLOG(11) << "EventBase "  << this         << " did not timeout " <<
+        " loop time guess: "    << (busy + idle).count()  <<
+        " idle time: "          << idle.count()         <<
+        " busy time: "          << busy.count()         <<
         " avgLoopTime: "        << avgLoopTime_.get() <<
         " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
         " maxLatency_: "        << maxLatency_.count() << "us" <<
         " notificationQueueSize: " << getNotificationQueueSize() <<
-        " nothingHandledYet(): "<< nothingHandledYet();
+        " nothingHandledYet(): " << nothingHandledYet();
 
       // see if our average loop time has exceeded our limit
       if ((maxLatency_ > std::chrono::microseconds::zero()) &&
@@ -345,8 +344,7 @@ bool EventBase::loopBody(int flags) {
       }
 
       // Our loop run did real work; reset the idle timer
-      idleStart = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
+      idleStart = std::chrono::steady_clock::now();
     } else {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
@@ -449,12 +447,10 @@ void EventBase::bumpHandlingTime() {
   if (nothingHandledYet()) {
     latestLoopCnt_ = nextLoopCnt_;
     // set the time
-    startWork_ = std::chrono::duration_cast<std::chrono::microseconds>(
-                     std::chrono::steady_clock::now().time_since_epoch())
-                     .count();
+    startWork_ = std::chrono::steady_clock::now();
 
     VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
-             << " (loop) startWork_ " << startWork_;
+             << " (loop) startWork_ " << startWork_.time_since_epoch().count();
   }
 }
 
