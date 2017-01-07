@@ -36,10 +36,8 @@ namespace folly {
  * @author Xu Ning (xning@fb.com)
  */
 
-#if __cplusplus >= 201402L ||                                              \
-    (defined __cpp_lib_make_unique && __cpp_lib_make_unique >= 201304L) || \
-    (defined __ANDROID__ && __cplusplus >= 201300L) ||                     \
-    (defined(_MSC_VER) && _MSC_VER >= 1900)
+#if __cplusplus >= 201402L || __cpp_lib_make_unique >= 201304L || \
+    (__ANDROID__ && __cplusplus >= 201300L) || _MSC_VER >= 1900
 
 /* using override */ using std::make_unique;
 
