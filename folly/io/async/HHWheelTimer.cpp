@@ -56,7 +56,7 @@ HHWheelTimer::Callback::~Callback() {
 void HHWheelTimer::Callback::setScheduled(HHWheelTimer* wheel,
                                           std::chrono::milliseconds timeout) {
   assert(wheel_ == nullptr);
-  assert(expiration_ == milliseconds(0));
+  assert(expiration_ == decltype(expiration_){});
 
   wheel_ = wheel;
 
@@ -75,7 +75,7 @@ void HHWheelTimer::Callback::cancelTimeoutImpl() {
   }
 
   wheel_ = nullptr;
-  expiration_ = milliseconds(0);
+  expiration_ = {};
 }
 
 HHWheelTimer::HHWheelTimer(
@@ -232,7 +232,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
     timeouts.pop_front();
     count_--;
     cb->wheel_ = nullptr;
-    cb->expiration_ = milliseconds(0);
+    cb->expiration_ = {};
     RequestContextScopeGuard rctx(cb->context_);
     cb->timeoutExpired();
     if (isDestroyed) {
@@ -306,8 +306,7 @@ void HHWheelTimer::scheduleNextTimeout() {
 }
 
 int64_t HHWheelTimer::calcNextTick() {
-  auto intervals =
-      (getCurTime().count() - startTime_.count()) / interval_.count();
+  auto intervals = (getCurTime() - startTime_) / interval_;
   // Slow eventbases will have skew between the actual time and the
   // callback time.  To avoid racing the next scheduleNextTimeout()
   // call, always schedule new timeouts against the actual
