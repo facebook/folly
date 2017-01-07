@@ -331,13 +331,13 @@ bool EventBase::loopBody(int flags) {
         " busy time: "          << busy         <<
         " avgLoopTime: "        << avgLoopTime_.get() <<
         " maxLatencyLoopTime: " << maxLatencyLoopTime_.get() <<
-        " maxLatency_: "        << maxLatency_ <<
+        " maxLatency_: "        << maxLatency_.count() << "us" <<
         " notificationQueueSize: " << getNotificationQueueSize() <<
         " nothingHandledYet(): "<< nothingHandledYet();
 
       // see if our average loop time has exceeded our limit
-      if ((maxLatency_ > 0) &&
-          (maxLatencyLoopTime_.get() > double(maxLatency_))) {
+      if ((maxLatency_ > std::chrono::microseconds::zero()) &&
+          (maxLatencyLoopTime_.get() > double(maxLatency_.count()))) {
         maxLatencyCob_();
         // back off temporarily -- don't keep spamming maxLatencyCob_
         // if we're only a bit over the limit

@@ -1578,7 +1578,7 @@ TEST(EventBaseTest, IdleTime) {
   bool hostOverloaded = false;
 
   int latencyCallbacks = 0;
-  eventBase.setMaxLatency(6000, [&]() {
+  eventBase.setMaxLatency(6000us, [&]() {
     ++latencyCallbacks;
     if (latencyCallbacks != 1) {
       FAIL() << "Unexpected latency callback";

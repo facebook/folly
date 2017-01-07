@@ -437,7 +437,7 @@ class EventBase : private boost::noncopyable,
    * called when that latency is exceeded.
    * OBS: This functionality depends on time-measurement.
    */
-  void setMaxLatency(int64_t maxLatency, Func maxLatencyCob) {
+  void setMaxLatency(std::chrono::microseconds maxLatency, Func maxLatencyCob) {
     assert(enableTimeMeasurement_);
     maxLatency_ = maxLatency;
     maxLatencyCob_ = std::move(maxLatencyCob);
@@ -703,7 +703,7 @@ class EventBase : private boost::noncopyable,
   bool loopKeepAliveActive_{false};
 
   // limit for latency in microseconds (0 disables)
-  int64_t maxLatency_;
+  std::chrono::microseconds maxLatency_;
 
   // exponentially-smoothed average loop time for latency-limiting
   SmoothLoopTime avgLoopTime_;
