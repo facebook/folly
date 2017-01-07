@@ -16,10 +16,9 @@
 
 #pragma once
 
+#include <cassert>
+#include <type_traits>
 #include <utility>
-#include <glog/logging.h>
-#include <folly/Likely.h>
-#include <folly/Portability.h>
 
 namespace folly {
 
@@ -60,10 +59,13 @@ template <typename T>
 class Indestructible final {
 
  public:
-  template <typename... Args>
+  template <typename S = T, typename = decltype(S())>
+  constexpr Indestructible() noexcept(noexcept(T())) {}
+
+  template <typename... Args, typename = decltype(T(std::declval<Args&&>()...))>
   explicit constexpr Indestructible(Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
-      : storage_(std::forward<Args>(args)...), inited_(true) {}
+      : storage_(std::forward<Args>(args)...) {}
 
   ~Indestructible() = default;
 
@@ -73,12 +75,12 @@ class Indestructible final {
   Indestructible(Indestructible&& other) noexcept(
       std::is_nothrow_move_constructible<T>::value)
       : storage_(std::move(other.storage_.value)) {
-    other.inited_ = false;
+    other.erased_ = true;
   }
   Indestructible& operator=(Indestructible&& other) noexcept(
       std::is_nothrow_move_assignable<T>::value) {
     storage_.value = std::move(other.storage_.value);
-    other.inited_ = false;
+    other.erased_ = true;
   }
 
   T* get() {
@@ -96,26 +98,25 @@ class Indestructible final {
 
  private:
   void check() const {
-    if (UNLIKELY(!inited_)) {
-      fail();
-    }
-  }
-
-  [[noreturn]] FOLLY_NOINLINE static void fail() {
-    LOG(FATAL) << "Indestructible is not initialized";
+    assert(!erased_);
   }
 
   union Storage {
     T value;
 
-    template <typename... Args>
+    template <typename S = T, typename = decltype(S())>
+    constexpr Storage() noexcept(noexcept(T())) : value() {}
+
+    template <
+        typename... Args,
+        typename = decltype(T(std::declval<Args&&>()...))>
     explicit constexpr Storage(Args&&... args)
         : value(std::forward<Args>(args)...) {}
 
     ~Storage() {}
   };
 
-  Storage storage_;
-  bool inited_{false};
+  Storage storage_{};
+  bool erased_{false};
 };
 }

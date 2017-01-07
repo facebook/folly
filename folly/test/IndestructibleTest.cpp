@@ -75,6 +75,12 @@ TEST_F(IndestructibleTest, no_destruction) {
   EXPECT_EQ(1, state);
 }
 
+TEST_F(IndestructibleTest, empty) {
+  static const Indestructible<map<string, int>> data;
+  auto& m = *data;
+  EXPECT_EQ(0, m.size());
+}
+
 TEST_F(IndestructibleTest, move) {
   int state = 0;
   int value = 0;
@@ -101,4 +107,15 @@ TEST_F(IndestructibleTest, move) {
   static Indestructible<Magic> move_assign = std::move(move_ctor);
   EXPECT_EQ(1, state);
   EXPECT_EQ(2, moves);
+}
+
+TEST_F(IndestructibleTest, disabled_default_ctor) {
+  EXPECT_TRUE((std::is_constructible<Indestructible<int>>::value)) << "sanity";
+
+  struct Foo {
+    Foo(int) {}
+  };
+  EXPECT_FALSE((std::is_constructible<Indestructible<Foo>>::value));
+  EXPECT_FALSE((std::is_constructible<Indestructible<Foo>, Magic>::value));
+  EXPECT_TRUE((std::is_constructible<Indestructible<Foo>, int>::value));
 }

@@ -8,6 +8,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 CLEANFILES =
 
+
 noinst_PROGRAMS = generate_fingerprint_tables
 generate_fingerprint_tables_SOURCES = build/GenerateFingerprintTables.cpp
 generate_fingerprint_tables_LDADD = libfollybase.la
