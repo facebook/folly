@@ -150,6 +150,41 @@ template <typename T>
 using _t = typename T::type;
 
 /**
+ *  void_t
+ *
+ *  A type alias for `void`. `void_t` is useful for controling class-template
+ *  partial specialization.
+ *
+ *  Example:
+ *
+ *    // has_value_type<T>::value is true if T has a nested type `value_type`
+ *    template <class T, class = void>
+ *    struct has_value_type
+ *        : std::false_type {};
+ *
+ *    template <class T>
+ *    struct has_value_type<T, folly::void_t<typename T::value_type>>
+ *        : std::true_type {};
+ */
+#if defined(__cpp_lib_void_t) || defined(_MSC_VER)
+
+/* using override */ using std::void_t;
+
+#else // defined(__cpp_lib_void_t) || defined(_MSC_VER)
+
+namespace traits_detail {
+template <class...>
+struct void_t_ {
+  using type = void;
+};
+} // namespace traits_detail
+
+template <class... Ts>
+using void_t = _t<traits_detail::void_t_<Ts...>>;
+
+#endif // defined(__cpp_lib_void_t) || defined(_MSC_VER)
+
+/**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
  * conservative approach of calling the copy constructor and then

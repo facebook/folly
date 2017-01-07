@@ -216,3 +216,23 @@ TEST(Traits, actuallyRelocatable) {
 
   testIsRelocatable<std::vector<char>>(5, 'g');
 }
+
+namespace {
+// has_value_type<T>::value is true if T has a nested type `value_type`
+template <class T, class = void>
+struct has_value_type : std::false_type {};
+
+template <class T>
+struct has_value_type<T, folly::void_t<typename T::value_type>>
+    : std::true_type {};
+}
+
+TEST(Traits, void_t) {
+  EXPECT_TRUE((::std::is_same<folly::void_t<>, void>::value));
+  EXPECT_TRUE((::std::is_same<folly::void_t<int>, void>::value));
+  EXPECT_TRUE((::std::is_same<folly::void_t<int, short>, void>::value));
+  EXPECT_TRUE(
+      (::std::is_same<folly::void_t<int, short, std::string>, void>::value));
+  EXPECT_TRUE((::has_value_type<std::string>::value));
+  EXPECT_FALSE((::has_value_type<int>::value));
+}
