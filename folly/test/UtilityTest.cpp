@@ -59,3 +59,19 @@ TEST_F(UtilityTest, copy_noexcept_spec) {
   EXPECT_FALSE(noexcept(folly::copy(thr)));
   EXPECT_TRUE(noexcept(folly::copy(std::move(thr)))); // note: does not copy
 }
+
+TEST_F(UtilityTest, as_const) {
+  struct S {
+    bool member() {
+      return false;
+    }
+    bool member() const {
+      return true;
+    }
+  };
+  S s;
+  EXPECT_FALSE(s.member());
+  EXPECT_TRUE(folly::as_const(s).member());
+  EXPECT_EQ(&s, &folly::as_const(s));
+  EXPECT_TRUE(noexcept(folly::as_const(s)));
+}
