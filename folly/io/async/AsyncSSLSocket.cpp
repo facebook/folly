@@ -414,10 +414,7 @@ void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
     callback->handshakeErr(this, ex);
   }
 
-  // Check the socket state not the ssl state here.
-  if (state_ != StateEnum::CLOSED || state_ != StateEnum::ERROR) {
-    failHandshake(__func__, ex);
-  }
+  failHandshake(__func__, ex);
 }
 
 void AsyncSSLSocket::sslAccept(
