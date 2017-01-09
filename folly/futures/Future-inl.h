@@ -63,20 +63,6 @@ Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-template <typename U, typename>
-Future<T>::Future(Future<U>&& other) noexcept
-    : core_(detail::Core<T>::convert(other.core_)) {
-  other.core_ = nullptr;
-}
-
-template <class T>
-template <typename U, typename>
-Future<T>& Future<T>::operator=(Future<U>&& other) noexcept {
-  std::swap(core_, detail::Core<T>::convert(other.core_));
-  return *this;
-}
-
-template <class T>
 template <class T2, typename>
 Future<T>::Future(T2&& val)
     : core_(new detail::Core<T>(Try<T>(std::forward<T2>(val)))) {}

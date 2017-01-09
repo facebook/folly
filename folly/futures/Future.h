@@ -53,18 +53,6 @@ class Future {
   Future(Future&&) noexcept;
   Future& operator=(Future&&) noexcept;
 
-  // conversion constructors
-  template <
-      class U,
-      typename = typename std::enable_if<std::is_convertible<U, T>::value &&
-                                         sizeof(U) == sizeof(T)>::type>
-  /* implicit */ Future(Future<U>&&) noexcept;
-  template <
-      class U,
-      typename = typename std::enable_if<std::is_convertible<U, T>::value &&
-                                         sizeof(U) == sizeof(T)>::type>
-  /* implicit */ Future& operator=(Future<U>&&) noexcept;
-
   /// Construct a Future from a value (perfect forwarding)
   template <class T2 = T, typename =
             typename std::enable_if<
