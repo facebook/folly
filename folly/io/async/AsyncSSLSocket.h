@@ -278,6 +278,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual size_t getRawBytesReceived() const override;
   void enableClientHelloParsing();
 
+  void setPreReceivedData(std::unique_ptr<IOBuf> data);
+
   /**
    * Accept an SSL connection on the socket.
    *
@@ -818,6 +820,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::steady_clock::time_point handshakeEndTime_;
   std::chrono::milliseconds handshakeConnectTimeout_{0};
   bool sessionResumptionAttempted_{false};
+
+  std::unique_ptr<IOBuf> preReceivedData_;
 };
 
 } // namespace

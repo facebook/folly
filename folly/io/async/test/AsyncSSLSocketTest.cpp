@@ -1961,6 +1961,41 @@ TEST(AsyncSSLSocketTest, HandshakeTFORefused) {
   EXPECT_THAT(ccb.error, testing::HasSubstr("refused"));
 }
 
+TEST(AsyncSSLSocketTest, TestPreReceivedData) {
+  EventBase clientEventBase;
+  EventBase serverEventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto dfServerCtx = std::make_shared<SSLContext>();
+  std::array<int, 2> fds;
+  getfds(fds.data());
+  getctx(clientCtx, dfServerCtx);
+
+  AsyncSSLSocket::UniquePtr clientSockPtr(
+      new AsyncSSLSocket(clientCtx, &clientEventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSockPtr(
+      new AsyncSSLSocket(dfServerCtx, &serverEventBase, fds[1], true));
+  auto clientSock = clientSockPtr.get();
+  auto serverSock = serverSockPtr.get();
+  SSLHandshakeClient client(std::move(clientSockPtr), true, true);
+
+  // Steal some data from the server.
+  clientEventBase.loopOnce();
+  std::array<uint8_t, 10> buf;
+  recv(fds[1], buf.data(), buf.size(), 0);
+
+  serverSock->setPreReceivedData(IOBuf::wrapBuffer(range(buf)));
+  SSLHandshakeServer server(std::move(serverSockPtr), true, true);
+  while (!client.handshakeSuccess_ && !client.handshakeError_) {
+    serverEventBase.loopOnce();
+    clientEventBase.loopOnce();
+  }
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_EQ(
+      serverSock->getRawBytesReceived(), clientSock->getRawBytesWritten());
+}
+
 #endif
 
 } // namespace

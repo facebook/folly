@@ -452,6 +452,10 @@ void AsyncSSLSocket::sslAccept(
 
   /* register for a read operation (waiting for CLIENT HELLO) */
   updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
+
+  if (preReceivedData_) {
+    handleRead();
+  }
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080bfL
@@ -1610,12 +1614,31 @@ int AsyncSSLSocket::bioRead(BIO* b, char* out, int outl) {
   if (!out) {
     return 0;
   }
-  auto result = recv(OpenSSLUtils::getBioFd(b, nullptr), out, outl, 0);
   BIO_clear_retry_flags(b);
-  if (result <= 0 && OpenSSLUtils::getBioShouldRetryWrite(result)) {
-    BIO_set_retry_read(b);
+
+  auto appData = OpenSSLUtils::getBioAppData(b);
+  CHECK(appData);
+  auto sslSock = reinterpret_cast<AsyncSSLSocket*>(appData);
+
+  if (sslSock->preReceivedData_ && !sslSock->preReceivedData_->empty()) {
+    VLOG(5) << "AsyncSSLSocket::bioRead() this=" << sslSock
+            << ", reading pre-received data";
+
+    Cursor cursor(sslSock->preReceivedData_.get());
+    auto len = cursor.pullAtMost(out, outl);
+
+    IOBufQueue queue;
+    queue.append(std::move(sslSock->preReceivedData_));
+    queue.trimStart(len);
+    sslSock->preReceivedData_ = queue.move();
+    return len;
+  } else {
+    auto result = recv(OpenSSLUtils::getBioFd(b, nullptr), out, outl, 0);
+    if (result <= 0 && OpenSSLUtils::getBioShouldRetryWrite(result)) {
+      BIO_set_retry_read(b);
+    }
+    return result;
   }
-  return result;
 }
 
 int AsyncSSLSocket::sslVerifyCallback(
@@ -1630,6 +1653,12 @@ int AsyncSSLSocket::sslVerifyCallback(
   return (self->handshakeCallback_) ?
     self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx) :
     preverifyOk;
+}
+
+void AsyncSSLSocket::setPreReceivedData(std::unique_ptr<IOBuf> data) {
+  CHECK(sslState_ == STATE_UNINIT || sslState_ == STATE_UNENCRYPTED);
+  CHECK(!preReceivedData_);
+  preReceivedData_ = std::move(data);
 }
 
 void AsyncSSLSocket::enableClientHelloParsing()  {
