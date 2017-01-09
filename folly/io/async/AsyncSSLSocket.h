@@ -589,6 +589,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static int getSSLExDataIndex();
   static AsyncSSLSocket* getFromSSL(const SSL *ssl);
   static int bioWrite(BIO* b, const char* in, int inl);
+  static int bioRead(BIO* b, char* out, int outl);
   void resetClientHelloParsing(SSL *ssl);
   static void clientHelloParsingCallback(int write_p, int version,
       int content_type, const void *buf, size_t len, SSL *ssl, void *arg);

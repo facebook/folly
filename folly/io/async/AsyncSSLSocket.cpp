@@ -176,15 +176,16 @@ void setup_SSL_CTX(SSL_CTX *ctx) {
 
 }
 
-BIO_METHOD sslWriteBioMethod;
+BIO_METHOD sslBioMethod;
 
-void* initsslWriteBioMethod(void) {
-  memcpy(&sslWriteBioMethod, BIO_s_socket(), sizeof(sslWriteBioMethod));
+void* initsslBioMethod(void) {
+  memcpy(&sslBioMethod, BIO_s_socket(), sizeof(sslBioMethod));
   // override the bwrite method for MSG_EOR support
   OpenSSLUtils::setCustomBioWriteMethod(
-      &sslWriteBioMethod, AsyncSSLSocket::bioWrite);
+      &sslBioMethod, AsyncSSLSocket::bioWrite);
+  OpenSSLUtils::setCustomBioReadMethod(&sslBioMethod, AsyncSSLSocket::bioRead);
 
-  // Note that the sslWriteBioMethod.type and sslWriteBioMethod.name are not
+  // Note that the sslBioMethod.type and sslBioMethod.name are not
   // set here. openssl code seems to be checking ".type == BIO_TYPE_SOCKET" and
   // then have specific handlings. The sslWriteBioWrite should be compatible
   // with the one in openssl.
@@ -270,8 +271,8 @@ AsyncSSLSocket::~AsyncSSLSocket() {
 void AsyncSSLSocket::init() {
   // Do this here to ensure we initialize this once before any use of
   // AsyncSSLSocket instances and not as part of library load.
-  static const auto sslWriteBioMethodInitializer = initsslWriteBioMethod();
-  (void)sslWriteBioMethodInitializer;
+  static const auto sslBioMethodInitializer = initsslBioMethod();
+  (void)sslBioMethodInitializer;
 
   setup_SSL_CTX(ctx_->getSSLCtx());
 }
@@ -670,15 +671,15 @@ void AsyncSSLSocket::applyVerificationOptions(SSL * ssl) {
 }
 
 bool AsyncSSLSocket::setupSSLBio() {
-  auto wb = BIO_new(&sslWriteBioMethod);
+  auto sslBio = BIO_new(&sslBioMethod);
 
-  if (!wb) {
+  if (!sslBio) {
     return false;
   }
 
-  OpenSSLUtils::setBioAppData(wb, this);
-  OpenSSLUtils::setBioFd(wb, fd_, BIO_NOCLOSE);
-  SSL_set_bio(ssl_, wb, wb);
+  OpenSSLUtils::setBioAppData(sslBio, this);
+  OpenSSLUtils::setBioFd(sslBio, fd_, BIO_NOCLOSE);
+  SSL_set_bio(ssl_, sslBio, sslBio);
   return true;
 }
 
@@ -1603,6 +1604,18 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     }
   }
   return int(result.writeReturn);
+}
+
+int AsyncSSLSocket::bioRead(BIO* b, char* out, int outl) {
+  if (!out) {
+    return 0;
+  }
+  auto result = recv(OpenSSLUtils::getBioFd(b, nullptr), out, outl, 0);
+  BIO_clear_retry_flags(b);
+  if (result <= 0 && OpenSSLUtils::getBioShouldRetryWrite(result)) {
+    BIO_set_retry_read(b);
+  }
+  return result;
 }
 
 int AsyncSSLSocket::sslVerifyCallback(
