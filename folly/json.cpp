@@ -113,7 +113,10 @@ private:
     if (opts_.sort_keys) {
       std::vector<std::pair<dynamic, dynamic>> items(
         o.items().begin(), o.items().end());
-      std::sort(items.begin(), items.end());
+      std::sort(items.begin(), items.end(), [](auto const& a, auto const& b) {
+        // Only compare keys.  No ordering among identical keys.
+        return a.first < b.first;
+      });
       printKVPairs(items.begin(), items.end());
     } else {
       printKVPairs(o.items().begin(), o.items().end());
