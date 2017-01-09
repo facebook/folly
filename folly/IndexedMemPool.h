@@ -17,8 +17,9 @@
 #pragma once
 
 #include <type_traits>
-#include <stdint.h>
 #include <assert.h>
+#include <errno.h>
+#include <stdint.h>
 #include <boost/noncopyable.hpp>
 #include <folly/AtomicStruct.h>
 #include <folly/detail/CacheLocality.h>
