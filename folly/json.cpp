@@ -15,7 +15,11 @@
  */
 
 #include <folly/json.h>
+
+#include <algorithm>
 #include <cassert>
+#include <functional>
+
 #include <boost/next_prior.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -111,13 +115,13 @@ private:
     indent();
     newline();
     if (opts_.sort_keys) {
-      std::vector<std::pair<dynamic, dynamic>> items(
-        o.items().begin(), o.items().end());
-      std::sort(items.begin(), items.end(), [](auto const& a, auto const& b) {
+      using ref = std::reference_wrapper<decltype(o.items())::value_type const>;
+      std::vector<ref> refs(o.items().begin(), o.items().end());
+      std::sort(refs.begin(), refs.end(), [](ref a, ref b) {
         // Only compare keys.  No ordering among identical keys.
-        return a.first < b.first;
+        return a.get().first < b.get().first;
       });
-      printKVPairs(items.begin(), items.end());
+      printKVPairs(refs.cbegin(), refs.cend());
     } else {
       printKVPairs(o.items().begin(), o.items().end());
     }
