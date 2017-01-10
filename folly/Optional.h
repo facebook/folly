@@ -265,7 +265,7 @@ class Optional {
 
   struct StorageTriviallyDestructible {
     // The union trick allows to initialize the Optional's memory,
-    // so that compiler/tools don't complain about unitialized memory,
+    // so that compiler/tools don't complain about uninitialized memory,
     // without actually calling Value's default constructor.
     // The rest of the implementation enforces that hasValue/value are
     // synchronized.
