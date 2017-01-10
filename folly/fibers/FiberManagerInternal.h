@@ -362,7 +362,7 @@ class FiberManager : public ::folly::Executor {
   FiberTailQueue readyFibers_; /**< queue of fibers ready to be executed */
   FiberTailQueue yieldedFibers_; /**< queue of fibers which have yielded
                                       execution */
-  FiberTailQueue fibersPool_; /**< pool of unitialized Fiber objects */
+  FiberTailQueue fibersPool_; /**< pool of uninitialized Fiber objects */
 
   GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
 

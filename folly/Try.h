@@ -35,7 +35,7 @@ class TryException : public std::logic_error {
 
 class UsingUninitializedTry : public TryException {
  public:
-  UsingUninitializedTry() : TryException("Using unitialized try") {}
+  UsingUninitializedTry() : TryException("Using uninitialized try") {}
 };
 
 /*
