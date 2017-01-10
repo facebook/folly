@@ -222,7 +222,7 @@ class exception_wrapper {
     return with_exception1<_t<std::decay<Ex>>>(std::forward<F>(f), this);
   }
 
-  std::exception_ptr getExceptionPtr() const {
+  std::exception_ptr to_exception_ptr() const {
     if (eptr_) {
       return eptr_;
     }

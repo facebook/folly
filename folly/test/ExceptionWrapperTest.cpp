@@ -208,30 +208,30 @@ TEST(ExceptionWrapper, with_exception_test) {
   */
 }
 
-TEST(ExceptionWrapper, getExceptionPtr_test) {
+TEST(ExceptionWrapper, get_or_make_exception_ptr_test) {
   int expected = 23;
 
   // This works, and doesn't slice.
   exception_wrapper ew = try_and_catch<std::exception, std::runtime_error>(
       [=]() { throw IntException(expected); });
-  std::exception_ptr eptr = ew.getExceptionPtr();
+  std::exception_ptr eptr = ew.to_exception_ptr();
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
   // I can try_and_catch a non-copyable base class.  This will use
   // std::exception_ptr internally.
   exception_wrapper ew2 = try_and_catch<AbstractIntException>(
       [=]() { throw IntException(expected); });
-  eptr = ew2.getExceptionPtr();
+  eptr = ew2.to_exception_ptr();
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
   // Test with const this.
   const exception_wrapper& cew = ew;
-  eptr = cew.getExceptionPtr();
+  eptr = cew.to_exception_ptr();
   EXPECT_THROW(std::rethrow_exception(eptr), IntException);
 
   // Test with empty ew.
   exception_wrapper empty_ew;
-  eptr = empty_ew.getExceptionPtr();
+  eptr = empty_ew.to_exception_ptr();
   EXPECT_FALSE(eptr);
 }
 
