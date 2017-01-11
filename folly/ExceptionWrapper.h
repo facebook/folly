@@ -111,19 +111,16 @@ class exception_wrapper {
   template <typename T>
   using is_exception_ = std::is_base_of<std::exception, T>;
 
-  template <typename Ex>
-  struct optimize;
-
  public:
   exception_wrapper() = default;
 
-  // Implicitly construct an exception_wrapper from a qualifying exception.
-  // See the optimize struct for details.
   template <
       typename Ex,
-      typename = _t<std::enable_if<optimize<_t<std::decay<Ex>>>::value>>>
+      typename DEx = _t<std::decay<Ex>>,
+      typename = _t<std::enable_if<is_exception_<DEx>::value>>,
+      typename = decltype(DEx(std::forward<Ex>(std::declval<Ex&&>())))>
   /* implicit */ exception_wrapper(Ex&& exn) {
-    assign_sptr(std::make_shared<_t<std::decay<Ex>>>(std::forward<Ex>(exn)));
+    assign_sptr<DEx>(std::forward<Ex>(exn));
   }
 
   // The following two constructors are meant to emulate the behavior of
@@ -238,17 +235,9 @@ class exception_wrapper {
   }
 
  private:
-  template <typename Ex>
-  struct optimize {
-    static const bool value =
-      std::is_base_of<std::exception, Ex>::value &&
-      std::is_copy_assignable<Ex>::value &&
-      !std::is_abstract<Ex>::value;
-  };
-
-  template <typename Ex>
-  void assign_sptr(std::shared_ptr<Ex> sptr) {
-    this->item_ = std::move(sptr);
+  template <typename Ex, typename... Args>
+  void assign_sptr(Args&&... args) {
+    this->item_ = std::make_shared<Ex>(std::forward<Args>(args)...);
     this->throwfn_ = Thrower<Ex>::doThrow;
   }
 
@@ -348,10 +337,10 @@ class exception_wrapper {
   }
 };
 
-template <class T, class... Args>
+template <class Ex, class... Args>
 exception_wrapper make_exception_wrapper(Args&&... args) {
   exception_wrapper ew;
-  ew.assign_sptr(std::make_shared<T>(std::forward<Args>(args)...));
+  ew.assign_sptr<Ex>(std::forward<Args>(args)...);
   return ew;
 }
 
