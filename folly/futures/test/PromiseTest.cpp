@@ -92,6 +92,8 @@ TEST(Promise, setException) {
     auto f = p.getFuture();
     try {
       throw eggs;
+    } catch (const std::exception& e) {
+      p.setException(exception_wrapper(std::current_exception(), e));
     } catch (...) {
       p.setException(exception_wrapper(std::current_exception()));
     }

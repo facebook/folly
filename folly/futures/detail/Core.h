@@ -356,6 +356,7 @@ class Core final {
     }
 
     if (x) {
+      exception_wrapper ew;
       try {
         if (LIKELY(x->getNumPriorities() == 1)) {
           x->add([core_ref = CountedReference(this)]() mutable {
@@ -374,10 +375,15 @@ class Core final {
             core->callback_(std::move(*core->result_));
           }, priority);
         }
+      } catch (const std::exception& e) {
+        ew = exception_wrapper(std::current_exception(), e);
       } catch (...) {
+        ew = exception_wrapper(std::current_exception());
+      }
+      if (ew) {
         CountedReference core_ref(this);
         RequestContextScopeGuard rctx(context_);
-        result_ = Try<T>(exception_wrapper(std::current_exception()));
+        result_ = Try<T>(std::move(ew));
         SCOPE_EXIT { callback_ = {}; };
         callback_(std::move(*result_));
       }
