@@ -1325,3 +1325,16 @@ TEST(IOBuf, Managed) {
   writableStr(*buf2)[0] = 'x';
   EXPECT_EQ("jelloxorldhelloxorld", toString(*buf1));
 }
+
+TEST(IOBuf, CoalesceEmptyBuffers) {
+  auto b1 = IOBuf::takeOwnership(nullptr, 0);
+  auto b2 = fromStr("hello");
+  auto b3 = IOBuf::takeOwnership(nullptr, 0);
+
+  b2->appendChain(std::move(b3));
+  b1->appendChain(std::move(b2));
+
+  auto br = b1->coalesce();
+
+  EXPECT_TRUE(ByteRange(StringPiece("hello")) == br);
+}

@@ -210,8 +210,11 @@ IOBuf::IOBuf(CopyBufferOp /* op */,
              uint64_t minTailroom)
     : IOBuf(CREATE, headroom + size + minTailroom) {
   advance(headroom);
-  memcpy(writableData(), buf, size);
-  append(size);
+  if (size > 0) {
+    assert(buf != nullptr);
+    memcpy(writableData(), buf, size);
+    append(size);
+  }
 }
 
 IOBuf::IOBuf(CopyBufferOp op, ByteRange br,
@@ -545,7 +548,10 @@ void IOBuf::unshareOneSlow() {
   // Maintain the same amount of headroom.  Since we maintained the same
   // minimum capacity we also maintain at least the same amount of tailroom.
   uint64_t headlen = headroom();
-  memcpy(buf + headlen, data_, length_);
+  if (length_ > 0) {
+    assert(data_ != nullptr);
+    memcpy(buf + headlen, data_, length_);
+  }
 
   // Release our reference on the old buffer
   decrementRefcount();
@@ -666,10 +672,13 @@ void IOBuf::coalesceAndReallocate(size_t newHeadroom,
   IOBuf* current = this;
   size_t remaining = newLength;
   do {
-    assert(current->length_ <= remaining);
-    remaining -= current->length_;
-    memcpy(p, current->data_, current->length_);
-    p += current->length_;
+    if (current->length_ > 0) {
+      assert(current->length_ <= remaining);
+      assert(current->data_ != nullptr);
+      remaining -= current->length_;
+      memcpy(p, current->data_, current->length_);
+      p += current->length_;
+    }
     current = current->next_;
   } while (current != end);
   assert(remaining == 0);
@@ -810,7 +819,10 @@ void IOBuf::reserveSlow(uint64_t minHeadroom, uint64_t minTailroom) {
       throw std::bad_alloc();
     }
     newBuffer = static_cast<uint8_t*>(p);
-    memcpy(newBuffer + minHeadroom, data_, length_);
+    if (length_ > 0) {
+      assert(data_ != nullptr);
+      memcpy(newBuffer + minHeadroom, data_, length_);
+    }
     if (sharedInfo()) {
       freeExtBuffer();
     }
