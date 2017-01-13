@@ -691,8 +691,8 @@ constexpr initlist_construct_t initlist_construct{};
 
 // Assume nothing when compiling with MSVC.
 #ifndef _MSC_VER
-// gcc-5.0 changed string's implementation in libgcc to be non-relocatable
-#if __GNUC__ < 5
+// gcc-5.0 changed string's implementation in libstdc++ to be non-relocatable
+#if !_GLIBCXX_USE_CXX11_ABI
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string)
 #endif
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector)
