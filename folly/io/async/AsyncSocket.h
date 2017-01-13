@@ -64,6 +64,10 @@ namespace folly {
  * responding and no further progress can be made sending the data.
  */
 
+#if defined __linux__ && !defined SO_NO_TRANSPARENT_TLS
+#define SO_NO_TRANSPARENT_TLS 200
+#endif
+
 #ifdef _MSC_VER
 // We do a dynamic_cast on this, in
 // AsyncTransportWrapper::getUnderlyingTransport so be safe and
@@ -562,6 +566,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 #endif
   }
 
+  void disableTransparentTls() {
+    noTransparentTls_ = true;
+  }
+
   enum class StateEnum : uint8_t {
     UNINIT,
     CONNECTING,
@@ -949,6 +957,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool tfoEnabled_{false};
   bool tfoAttempted_{false};
   bool tfoFinished_{false};
+  bool noTransparentTls_{false};
 
   std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 };

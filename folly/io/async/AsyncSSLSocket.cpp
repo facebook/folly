@@ -225,6 +225,7 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
     ctx_(ctx),
     handshakeTimeout_(this, evb),
     connectionTimeout_(this, evb) {
+  noTransparentTls_ = true;
   init();
   if (server) {
     SSL_CTX_set_info_callback(ctx_->getSSLCtx(),
@@ -653,6 +654,7 @@ void AsyncSSLSocket::connect(ConnectCallback* callback,
   assert(!server_);
   assert(state_ == StateEnum::UNINIT);
   assert(sslState_ == STATE_UNINIT);
+  noTransparentTls_ = true;
   AsyncSSLSocketConnector *connector =
     new AsyncSSLSocketConnector(this, callback, timeout);
   AsyncSocket::connect(connector, address, timeout, options, bindAddr);

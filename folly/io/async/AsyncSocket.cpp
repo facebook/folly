@@ -471,6 +471,12 @@ void AsyncSocket::connect(ConnectCallback* callback,
 }
 
 int AsyncSocket::socketConnect(const struct sockaddr* saddr, socklen_t len) {
+#if __linux__
+  if (noTransparentTls_) {
+    // Ignore return value, errors are ok
+    setsockopt(fd_, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
+  }
+#endif
   int rv = fsp::connect(fd_, saddr, len);
   if (rv < 0) {
     auto errnoCopy = errno;
