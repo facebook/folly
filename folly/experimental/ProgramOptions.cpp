@@ -83,7 +83,9 @@ class GFlagValueSemanticBase : public po::value_semantic {
 
   std::string name() const override { return "arg"; }
 #if BOOST_VERSION >= 105900
-  bool adjacent_tokens_only() const override { return false; }
+  bool adjacent_tokens_only() const {
+    return false;
+  }
 #endif
   bool is_composing() const override { return false; }
   bool is_required() const override { return false; }
