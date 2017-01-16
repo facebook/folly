@@ -15,6 +15,7 @@
  */
 
 #include <thread>
+
 #include <folly/Baton.h>
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadName.h>
@@ -23,7 +24,7 @@
 using namespace std;
 using namespace folly;
 
-constexpr bool expectedSetOtherThreadNameResult =
+static constexpr bool expectedSetOtherThreadNameResult =
 #ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
     true
 #else
@@ -31,7 +32,7 @@ constexpr bool expectedSetOtherThreadNameResult =
 #endif
     ;
 
-constexpr bool expectedSetSelfThreadNameResult =
+static constexpr bool expectedSetSelfThreadNameResult =
 #if defined(FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME) || \
     defined(FOLLY_HAS_PTHREAD_SETNAME_NP_NAME)
     true
@@ -73,4 +74,16 @@ TEST(ThreadName, setThreadName_other_native) {
   EXPECT_EQ(
       expectedSetOtherThreadNameResult,
       setThreadName(th.native_handle(), "rockin-thread"));
+}
+
+TEST(ThreadName, setThreadName_other_id) {
+  Baton<> let_thread_end;
+  thread th([&] {
+      let_thread_end.wait();
+  });
+  SCOPE_EXIT { th.join(); };
+  SCOPE_EXIT { let_thread_end.post(); };
+  EXPECT_EQ(
+      expectedSetOtherThreadNameResult,
+      setThreadName(th.get_id(), "rockin-thread"));
 }
