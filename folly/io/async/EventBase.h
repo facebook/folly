@@ -44,7 +44,6 @@
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 #include <folly/io/async/TimeoutManager.h>
-#include <folly/portability/PThread.h>
 #include <glog/logging.h>
 
 #include <event.h>  // libevent
