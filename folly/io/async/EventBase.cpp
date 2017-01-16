@@ -27,7 +27,6 @@
 #include <condition_variable>
 #include <fcntl.h>
 #include <mutex>
-#include <pthread.h>
 
 namespace folly {
 
@@ -271,7 +270,7 @@ bool EventBase::loopBody(int flags) {
   std::chrono::microseconds busy;
   std::chrono::microseconds idle;
 
-  loopThread_.store(pthread_self(), std::memory_order_release);
+  loopThread_.store(std::this_thread::get_id(), std::memory_order_release);
 
   if (!name_.empty()) {
     setThreadName(name_);
