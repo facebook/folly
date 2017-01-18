@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <folly/Optional.h>
 #include <folly/io/async/AsyncSocketException.h>
 
 namespace folly {

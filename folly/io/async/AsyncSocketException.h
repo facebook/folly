@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stdexcept>
+
 #include <folly/Format.h>
 #include <folly/io/async/DelayedDestruction.h>
 
