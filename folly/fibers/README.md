@@ -497,6 +497,11 @@ $<span class="mi">4</span> <span class="o">=</span> <span class="nc" data-symbol
   <span class="o">&#125;</span>
 <span class="o">&#125;</span></pre></div>
 
+<p><tt>fiber-print-limit</tt> command can be used to change the maximum number of fibers printed for a <tt>fibers::FiberManager</tt> (default value is 100).</p>
+
+<div class="remarkup-code-block" data-code-lang="php"><pre class="remarkup-code"><span class="o">(</span><span class="no">gdb</span><span class="o">)</span> <span class="no">fiber</span><span class="o">-</span><span class="no">print</span><span class="o">-</span><span class="no">limit</span> <span class="mi">10</span>
+<span class="k">New</span> <span class="nc" data-symbol-name="fiber">fiber</span> <span class="no">limit</span> <span class="k">for</span> <span class="no">FiberManager</span> <span class="no">printer</span> <span class="no">set</span> <span class="no">to</span> <span class="mi">10</span></pre></div>
+
 <h3 id="printing-a-fiber-task">Printing a fiber-task <a href="#printing-a-fiber-task" class="headerLink">#</a></h3>
 
 <p>Given a pointer to a <tt>fibers::Fiber</tt>, which is running some fiber-task, you can get its current state:</p>

@@ -58,6 +58,8 @@ class FiberPrinter:
 class FiberManagerPrinter:
     """Print a folly::fibers::Fiber"""
 
+    fiber_print_limit = 100
+
     def __init__(self, fm):
         self.fm = fm
 
@@ -68,7 +70,13 @@ class FiberManagerPrinter:
 
         active_fibers = collections.OrderedDict()
 
+        fiber_count = 0
+
         while fiber_hook != all_fibers.address:
+            if fiber_count == FiberManagerPrinter.fiber_print_limit:
+                active_fibers["..."] = "..."
+                break
+
             fiber = fiber_hook.cast(gdb.lookup_type("int64_t"))
             fiber = fiber - gdb.parse_and_eval(
                 "(int64_t)&folly::fibers::Fiber::globalListHook_")
@@ -80,6 +88,8 @@ class FiberManagerPrinter:
 
             fiber_hook = fiber_hook.dereference()['next_']
 
+            fiber_count = fiber_count + 1
+
         return active_fibers.items()
 
     def to_string(self):
@@ -87,6 +97,20 @@ class FiberManagerPrinter:
 
     def display_hint(self):
         return "folly::fibers::FiberManager"
+
+
+class FiberPrintLimitCommand(gdb.Command):
+    def __init__(self):
+        super(FiberPrintLimitCommand, self).__init__(
+            "fiber-print-limit", gdb.COMMAND_USER)
+
+    def invoke(self, arg, from_tty):
+        if not arg:
+            print("New limit has to be passed to 'fiber_print_limit' command")
+            return
+        FiberManagerPrinter.fiber_print_limit = int(arg)
+        print("New fiber limit for FiberManager printer set to " +
+              str(FiberManagerPrinter.fiber_print_limit))
 
 
 class FrameId(object):
@@ -281,6 +305,7 @@ def build_pretty_printer():
 def load():
     gdb.printing.register_pretty_printer(gdb, build_pretty_printer())
     gdb.xmethod.register_xmethod_matcher(gdb, FiberXMethodMatcher())
+    FiberPrintLimitCommand()
     FiberActivateCommand()
     FiberDeactivateCommand()
     Shortcut("get_fiber_manager_map_evb", get_fiber_manager_map_evb)
