@@ -342,6 +342,7 @@ void SSLContext::loadTrustedCertificates(const char* path) {
   if (SSL_CTX_load_verify_locations(ctx_, path, nullptr) == 0) {
     throw std::runtime_error("SSL_CTX_load_verify_locations: " + getErrors());
   }
+  ERR_clear_error();
 }
 
 void SSLContext::loadTrustedCertificates(X509_STORE* store) {
