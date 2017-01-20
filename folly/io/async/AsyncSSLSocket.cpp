@@ -22,8 +22,8 @@
 #include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <fcntl.h>
-#include <openssl/asn1.h>
 #include <openssl/err.h>
+#include <openssl/asn1.h>
 #include <openssl/ssl.h>
 #include <sys/types.h>
 #include <chrono>
@@ -1028,7 +1028,6 @@ AsyncSSLSocket::handleAccept() noexcept {
     SSL_set_msg_callback_arg(ssl_, this);
   }
 
-  clearOpenSSLErrors();
   int ret = SSL_accept(ssl_);
   if (ret <= 0) {
     int sslError;
@@ -1078,18 +1077,6 @@ AsyncSSLSocket::handleAccept() noexcept {
   AsyncSocket::handleInitialReadWrite();
 }
 
-void AsyncSSLSocket::clearOpenSSLErrors() {
-  // Normally clearing out the error before calling into an openssl method
-  // is a bad idea. However there might be other code that we don't control
-  // calling into openssl in the same thread, which doesn't use openssl
-  // correctly. We want to safe-guard ourselves from that code.
-  // However touching the ERR stack each and every time has a cost of taking
-  // a lock, so we only do this when we've opted in.
-  if (clearOpenSSLErrors_) {
-    ERR_clear_error();
-  }
-}
-
 void
 AsyncSSLSocket::handleConnect() noexcept {
   VLOG(3) <<  "AsyncSSLSocket::handleConnect() this=" << this
@@ -1105,7 +1092,6 @@ AsyncSSLSocket::handleConnect() noexcept {
       sslState_ == STATE_CONNECTING);
   assert(ssl_);
 
-  clearOpenSSLErrors();
   auto originalState = state_;
   int ret = SSL_connect(ssl_);
   if (ret <= 0) {
@@ -1273,7 +1259,6 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
     return AsyncSocket::performRead(buf, buflen, offset);
   }
 
-  clearOpenSSLErrors();
   int bytes = 0;
   if (!isBufferMovable_) {
     bytes = SSL_read(ssl_, *buf, int(*buflen));

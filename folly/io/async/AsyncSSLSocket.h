@@ -664,20 +664,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return sessionResumptionAttempted_;
   }
 
-  /**
-   * Clears the ERR stack before invoking SSL methods.
-   * This is useful if unrelated code that runs in the same thread
-   * does not properly handle SSL error conditions, in which case
-   * it could cause SSL_* methods to fail with incorrect error codes.
-   */
-  void setClearOpenSSLErrors(bool clearErr) {
-    clearOpenSSLErrors_ = clearErr;
-  }
-
  private:
 
   void init();
-  void clearOpenSSLErrors();
 
  protected:
 
@@ -722,7 +711,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   // This virtual wrapper around SSL_write exists solely for testing/mockability
   virtual int sslWriteImpl(SSL *ssl, const void *buf, int n) {
-    clearOpenSSLErrors();
     return SSL_write(ssl, buf, n);
   }
 
@@ -830,9 +818,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionResumptionAttempted_{false};
 
   std::unique_ptr<IOBuf> preReceivedData_;
-  // Whether or not to clear the err stack before invocation of another
-  // SSL method
-  bool clearOpenSSLErrors_{false};
 };
 
 } // namespace
