@@ -60,6 +60,7 @@ struct sockaddr_un {
 
 // These are the same, but PF_LOCAL
 // isn't defined by WinSock.
+#define AF_LOCAL PF_UNIX
 #define PF_LOCAL PF_UNIX
 
 // This isn't defined by Windows, and we need to
