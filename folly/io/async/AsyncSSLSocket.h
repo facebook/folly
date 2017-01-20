@@ -272,7 +272,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   virtual std::string getSecurityProtocol() const override { return "TLS"; }
 
-  bool isEorTrackingEnabled() const override;
   virtual void setEorTracking(bool track) override;
   virtual size_t getRawBytesWritten() const override;
   virtual size_t getRawBytesReceived() const override;
@@ -791,9 +790,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   ConnectionTimeout connectionTimeout_;
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
-
-  // Whether to track EOR or not.
-  bool trackEor_{false};
 
   // The app byte num that we are tracking for the MSG_EOR
   // Only one app EOR byte can be tracked.

@@ -392,9 +392,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void getPeerAddress(
     folly::SocketAddress* address) const override;
 
-  bool isEorTrackingEnabled() const override { return false; }
+  bool isEorTrackingEnabled() const override {
+    return trackEor_;
+  }
 
-  void setEorTracking(bool /*track*/) override {}
+  void setEorTracking(bool track) override {
+    trackEor_ = track;
+  }
 
   bool connecting() const override {
     return (state_ == StateEnum::CONNECTING);
@@ -958,6 +962,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool tfoAttempted_{false};
   bool tfoFinished_{false};
   bool noTransparentTls_{false};
+  // Whether to track EOR or not.
+  bool trackEor_{false};
 
   std::unique_ptr<EvbChangeCallback> evbChangeCb_{nullptr};
 };

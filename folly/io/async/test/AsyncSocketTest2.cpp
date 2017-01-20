@@ -1177,6 +1177,13 @@ TEST(AsyncSocketTest, WriteIOBuf) {
   ReadCallback rcb;
   acceptedSocket->setReadCB(&rcb);
 
+  // Check if EOR tracking flag can be set and reset.
+  EXPECT_FALSE(socket->isEorTrackingEnabled());
+  socket->setEorTracking(true);
+  EXPECT_TRUE(socket->isEorTrackingEnabled());
+  socket->setEorTracking(false);
+  EXPECT_FALSE(socket->isEorTrackingEnabled());
+
   // Write a simple buffer to the socket
   constexpr size_t simpleBufLength = 5;
   char simpleBuf[simpleBufLength];
