@@ -445,6 +445,7 @@ void FunctionScheduler::runOneFunction(std::unique_lock<std::mutex>& lock,
   }
   if (currentFunction_->runOnce) {
     // Don't reschedule if the function only needed to run once.
+    currentFunction_ = nullptr;
     return;
   }
   // Clear currentFunction_

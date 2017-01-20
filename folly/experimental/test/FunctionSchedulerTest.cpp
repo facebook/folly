@@ -456,6 +456,13 @@ TEST(FunctionScheduler, AddWithRunOnce) {
   EXPECT_EQ(2, total);
   delay(2);
   EXPECT_EQ(2, total);
+
+  fs.addFunctionOnce([&] { total += 2; }, "add2");
+  delay(1);
+  EXPECT_EQ(4, total);
+  delay(2);
+  EXPECT_EQ(4, total);
+
   fs.shutdown();
 }
 
