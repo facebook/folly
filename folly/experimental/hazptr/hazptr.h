@@ -19,6 +19,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <type_traits>
 
 /* Stand-in for C++17 std::pmr::memory_resource */
 #include <folly/experimental/hazptr/memory_resource.h>
@@ -120,10 +121,12 @@ template <typename T> class hazptr_owner {
 
   /** Hazard pointer operations */
   /* Returns a protected pointer from the source */
-  T* get_protected(const std::atomic<T*>& src) noexcept;
+  template <typename A = std::atomic<T*>>
+  T* get_protected(const A& src) noexcept;
   /* Return true if successful in protecting ptr if src == ptr after
    * setting the hazard pointer.  Otherwise sets ptr to src. */
-  bool try_protect(T*& ptr, const std::atomic<T*>& src) noexcept;
+  template <typename A = std::atomic<T*>>
+  bool try_protect(T*& ptr, const A& src) noexcept;
   /* Set the hazard pointer to ptr */
   void set(const T* ptr) noexcept;
   /* Clear the hazard pointer */
@@ -145,22 +148,5 @@ void swap(hazptr_owner<T>&, hazptr_owner<T>&) noexcept;
 
 } // namespace hazptr
 } // namespace folly
-
-////////////////////////////////////////////////////////////////////////////////
-/// Notes
-////////////////////////////////////////////////////////////////////////////////
-
-/* The hazptr_obj_base template uses a reclamation function as a
- * parameter for the retire() member function instead of taking an
- * allocator template as an extra template parameter because objects
- * of the same type may need different reclamation functions. */
-
-/* The hazptr interface supports reclamation by one domain at a
- * time. If an abject belongs to multiple domains simultaneously, a
- * workaround may be to design reclamation functions to form a series
- * of retirements from one domain to the next until it reaches the
- * final domain in the series that finally reclaims the object. */
-
-////////////////////////////////////////////////////////////////////////////////
 
 #include "hazptr-impl.h"

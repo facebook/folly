@@ -78,9 +78,11 @@ hazptr_owner<T>::~hazptr_owner() {
 }
 
 template <typename T>
-inline bool hazptr_owner<T>::try_protect(
-    T*& ptr,
-    const std::atomic<T*>& src) noexcept {
+template <typename A>
+inline bool hazptr_owner<T>::try_protect(T*& ptr, const A& src) noexcept {
+  static_assert(
+      std::is_same<decltype(std::declval<A>().load()), T*>::value,
+      "Return type of A::load() must be T*");
   DEBUG_PRINT(this << " " << ptr << " " << &src);
   set(ptr);
   T* p = src.load();
@@ -93,7 +95,11 @@ inline bool hazptr_owner<T>::try_protect(
 }
 
 template <typename T>
-inline T* hazptr_owner<T>::get_protected(const std::atomic<T*>& src) noexcept {
+template <typename A>
+inline T* hazptr_owner<T>::get_protected(const A& src) noexcept {
+  static_assert(
+      std::is_same<decltype(std::declval<A>().load()), T*>::value,
+      "Return type of A::load() must be T*");
   T* p = src.load();
   while (!try_protect(p, src)) {}
   DEBUG_PRINT(this << " " << p << " " << &src);
