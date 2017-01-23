@@ -76,11 +76,13 @@ HugePageSizeVec readRawHugePageSizes() {
   boost::smatch match;
   HugePageSizeVec vec;
   fs::path path("/sys/kernel/mm/hugepages");
-  for (fs::directory_iterator it(path); it != fs::directory_iterator(); ++it) {
-    std::string filename(it->path().filename().string());
-    if (boost::regex_match(filename, match, regex)) {
-      StringPiece numStr(filename.data() + match.position(1), match.length(1));
-      vec.emplace_back(to<size_t>(numStr) * 1024);
+  if (fs::exists(path)) {
+    for (fs::directory_iterator it(path); it != fs::directory_iterator(); ++it) {
+      std::string filename(it->path().filename().string());
+      if (boost::regex_match(filename, match, regex)) {
+        StringPiece numStr(filename.data() + match.position(1), match.length(1));
+        vec.emplace_back(to<size_t>(numStr) * 1024);
+      }
     }
   }
   return vec;
