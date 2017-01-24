@@ -22,8 +22,6 @@
 #include <cstdio>
 #include <memory>
 
-#include <glog/logging.h>
-
 namespace folly { namespace test {
 
 #define EXPECT_SYSTEM_ERROR(statement, err, msg) \

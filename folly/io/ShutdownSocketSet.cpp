@@ -22,7 +22,6 @@
 #include <glog/logging.h>
 
 #include <folly/FileUtil.h>
-#include <folly/Malloc.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {

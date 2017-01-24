@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
-
 #include <iosfwd>
 #include <map>
 #include <vector>

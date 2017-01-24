@@ -16,8 +16,6 @@
 
 #include <folly/experimental/TestUtil.h>
 
-#include <sys/types.h>
-
 #include <system_error>
 
 #include <boost/algorithm/string.hpp>

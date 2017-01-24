@@ -21,7 +21,6 @@
 #include <atomic>
 #include <memory>
 
-#include <folly/Assume.h>
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/portability/GTest.h>

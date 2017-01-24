@@ -24,7 +24,6 @@
 #include <fstream>
 #include <sstream>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/random.hpp>
 
 #include <folly/Benchmark.h>

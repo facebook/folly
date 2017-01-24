@@ -27,15 +27,11 @@
 #include <stdexcept>
 #include <system_error>
 
-#include <boost/noncopyable.hpp>
 #include <boost/regex.hpp>
-
-#include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
-#include <folly/ScopeGuard.h>
 #include <folly/String.h>
 
 #include <folly/gen/Base.h>

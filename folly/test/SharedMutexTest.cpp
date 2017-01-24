@@ -26,7 +26,6 @@
 #include <folly/Benchmark.h>
 #include <folly/MPMCQueue.h>
 #include <folly/RWSpinLock.h>
-#include <folly/Random.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>

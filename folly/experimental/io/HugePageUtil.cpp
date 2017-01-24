@@ -17,11 +17,9 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <folly/File.h>
 #include <folly/Format.h>
 #include <folly/MemoryMapping.h>
 #include <folly/Range.h>
-#include <folly/ScopeGuard.h>
 #include <folly/experimental/io/HugePages.h>
 #include <folly/portability/GFlags.h>
 

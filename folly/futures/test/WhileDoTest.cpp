@@ -18,8 +18,6 @@
 #include <mutex>
 #include <queue>
 
-#include <glog/logging.h>
-
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <folly/portability/GTest.h>

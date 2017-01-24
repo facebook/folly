@@ -17,7 +17,6 @@
 #include <iostream>
 #include <thread>
 
-#include <folly/detail/Futex.h>
 #include <folly/experimental/LockFreeRingBuffer.h>
 #include <folly/test/DeterministicSchedule.h>
 #include <folly/portability/GTest.h>

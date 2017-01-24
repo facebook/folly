@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/Foreach.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>

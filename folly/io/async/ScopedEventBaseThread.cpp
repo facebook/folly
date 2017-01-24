@@ -19,7 +19,6 @@
 #include <thread>
 
 #include <folly/Function.h>
-#include <folly/Memory.h>
 #include <folly/io/async/EventBaseManager.h>
 
 using namespace std;

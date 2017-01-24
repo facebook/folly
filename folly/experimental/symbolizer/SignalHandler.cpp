@@ -32,8 +32,6 @@
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
-#include <folly/FileUtil.h>
-#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>

@@ -21,8 +21,7 @@
 extern "C" {
 #ifndef _WIN32
 extern char** environ;
-#else
+#endif
 int setenv(const char* name, const char* value, int overwrite);
 int unsetenv(const char* name);
-#endif
 }

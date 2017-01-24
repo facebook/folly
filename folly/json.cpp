@@ -24,7 +24,6 @@
 #include <boost/algorithm/string.hpp>
 
 #include <folly/Conv.h>
-#include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/Unicode.h>
