@@ -656,6 +656,15 @@ void AsyncSSLSocket::connect(ConnectCallback* callback,
   AsyncSocket::connect(connector, address, timeout, options, bindAddr);
 }
 
+bool AsyncSSLSocket::needsPeerVerification() const {
+  if (verifyPeer_ == SSLContext::SSLVerifyPeerEnum::USE_CTX) {
+    return ctx_->needsPeerVerification();
+  }
+  return (
+      verifyPeer_ == SSLContext::SSLVerifyPeerEnum::VERIFY ||
+      verifyPeer_ == SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
+}
+
 void AsyncSSLSocket::applyVerificationOptions(SSL * ssl) {
   // apply the settings specified in verifyPeer_
   if (verifyPeer_ == SSLContext::SSLVerifyPeerEnum::USE_CTX) {

@@ -587,6 +587,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   void getSSLServerCiphers(std::string& serverCiphers) const;
 
+  /**
+   * Method to check if peer verfication is set.
+   *
+   * @return true if peer verification is required.
+   */
+  bool needsPeerVerification() const;
+
   static int getSSLExDataIndex();
   static AsyncSSLSocket* getFromSSL(const SSL *ssl);
   static int bioWrite(BIO* b, const char* in, int inl);
