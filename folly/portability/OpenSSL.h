@@ -16,6 +16,9 @@
 
 #pragma once
 
+// This must come before the OpenSSL includes.
+#include <folly/portability/Windows.h>
+
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 

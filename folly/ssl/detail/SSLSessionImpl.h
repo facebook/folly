@@ -17,7 +17,9 @@
 #pragma once
 
 #include <folly/Range.h>
-#include <openssl/ssl.h>
+
+#include <folly/portability/OpenSSL.h>
+
 #include <string>
 
 namespace folly {
