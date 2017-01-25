@@ -21,14 +21,35 @@ const char* kTestCert = "folly/io/async/test/certs/tests-cert.pem";
 const char* kTestKey = "folly/io/async/test/certs/tests-key.pem";
 const char* kTestCA = "folly/io/async/test/certs/ca-cert.pem";
 
+TestSSLServer::~TestSSLServer() {
+  if (thread_.joinable()) {
+    evb_.runInEventBaseThread([&]() { socket_->stopAccepting(); });
+    LOG(INFO) << "Waiting for server thread to exit";
+    thread_.join();
+  }
+}
+
 TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
-    : ctx_(new SSLContext),
-      acb_(acb),
-      socket_(AsyncServerSocket::newSocket(&evb_)) {
-  // Set up the SSL context
+    : acb_(acb) {
+  // Set up a default SSL context
+  ctx_ = std::make_shared<SSLContext>();
   ctx_->loadCertificate(kTestCert);
   ctx_->loadPrivateKey(kTestKey);
   ctx_->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  init(enableTFO);
+}
+
+TestSSLServer::TestSSLServer(
+    SSLServerAcceptCallbackBase* acb,
+    std::shared_ptr<SSLContext> ctx,
+    bool enableTFO)
+    : ctx_(ctx), acb_(acb) {
+  init(enableTFO);
+}
+
+void TestSSLServer::init(bool enableTFO) {
+  socket_ = AsyncServerSocket::newSocket(&evb_);
 
   acb_->ctx_ = ctx_;
   acb_->base_ = &evb_;
@@ -46,15 +67,11 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
   socket_->addAcceptCallback(acb_, &evb_);
   socket_->startAccepting();
 
-  thread_ = std::thread([&] { Main(); });
+  thread_ = std::thread([&] {
+    evb_.loop();
+    acb_->detach();
+    LOG(INFO) << "Server thread exited event loop";
+  });
   LOG(INFO) << "Accepting connections on " << address_;
-}
-
-TestSSLServer::~TestSSLServer() {
-  if (thread_.joinable()) {
-    evb_.runInEventBaseThread([&]() { socket_->stopAccepting(); });
-    LOG(INFO) << "Waiting for server thread to exit";
-    thread_.join();
-  }
 }
 }

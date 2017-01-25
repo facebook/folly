@@ -99,6 +99,10 @@ class TestSSLServer {
   explicit TestSSLServer(
       SSLServerAcceptCallbackBase* acb,
       bool enableTFO = false);
+  explicit TestSSLServer(
+      SSLServerAcceptCallbackBase* acb,
+      std::shared_ptr<SSLContext> ctx,
+      bool enableTFO = false);
 
   // Kills the thread.
   virtual ~TestSSLServer();
@@ -112,17 +116,14 @@ class TestSSLServer {
   }
 
  protected:
-  void Main() {
-    evb_.loop();
-    acb_->detach();
-    LOG(INFO) << "Server thread exited event loop";
-  }
-
   EventBase evb_;
   std::shared_ptr<SSLContext> ctx_;
   SSLServerAcceptCallbackBase* acb_;
   std::shared_ptr<AsyncServerSocket> socket_;
   SocketAddress address_;
   std::thread thread_;
+
+ private:
+  void init(bool);
 };
 }
