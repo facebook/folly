@@ -15,7 +15,6 @@
  */
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <pthread.h>
 #include <signal.h>
 
 #include <folly/SocketAddress.h>
@@ -53,44 +52,8 @@ uint32_t TestSSLAsyncCacheServer::asyncCallbacks_ = 0;
 uint32_t TestSSLAsyncCacheServer::asyncLookups_ = 0;
 uint32_t TestSSLAsyncCacheServer::lookupDelay_ = 0;
 
-const char* testCert = "folly/io/async/test/certs/tests-cert.pem";
-const char* testKey = "folly/io/async/test/certs/tests-key.pem";
-const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
-
 constexpr size_t SSLClient::kMaxReadBufferSz;
 constexpr size_t SSLClient::kMaxReadsPerEvent;
-
-TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
-    : ctx_(new folly::SSLContext),
-      acb_(acb),
-      socket_(folly::AsyncServerSocket::newSocket(&evb_)) {
-  // Set up the SSL context
-  ctx_->loadCertificate(testCert);
-  ctx_->loadPrivateKey(testKey);
-  ctx_->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-
-  acb_->ctx_ = ctx_;
-  acb_->base_ = &evb_;
-
-  // Enable TFO
-  if (enableTFO) {
-    LOG(INFO) << "server TFO enabled";
-    socket_->setTFOEnabled(true, 1000);
-  }
-
-  // set up the listening socket
-  socket_->bind(0);
-  socket_->getAddress(&address_);
-  socket_->listen(100);
-  socket_->addAcceptCallback(acb_, &evb_);
-  socket_->startAccepting();
-
-  int ret = pthread_create(&thread_, nullptr, Main, this);
-  assert(ret == 0);
-  (void)ret;
-
-  std::cerr << "Accepting connections on " << address_ << std::endl;
-}
 
 void getfds(int fds[2]) {
   if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
@@ -115,10 +78,8 @@ void getctx(
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(
-      testCert);
-  serverCtx->loadPrivateKey(
-      testKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(kTestKey);
 }
 
 void sslsocketpair(
@@ -1023,16 +984,16 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
-  serverCtx->loadPrivateKey(testKey);
-  serverCtx->loadCertificate(testCert);
-  serverCtx->loadTrustedCertificates(testCA);
-  serverCtx->loadClientCAList(testCA);
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("AES256-SHA:AES128-SHA");
-  clientCtx->loadPrivateKey(testKey);
-  clientCtx->loadCertificate(testCert);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadPrivateKey(kTestKey);
+  clientCtx->loadCertificate(kTestCert);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   int fds[2];
   getfds(fds);
@@ -1214,7 +1175,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
     new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, true);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   SSLHandshakeServer server(std::move(serverSock), true, true);
 
@@ -1252,7 +1213,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
     new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClient client(std::move(clientSock), true, false);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   SSLHandshakeServer server(std::move(serverSock), true, true);
 
@@ -1292,7 +1253,7 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxDisableVerify) {
     new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
 
   SSLHandshakeClientNoVerify client(std::move(clientSock), false, false);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   SSLHandshakeServerNoVerify server(std::move(serverSock), false, false);
 
@@ -1319,16 +1280,16 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxEnableVerify) {
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(testKey);
-  serverCtx->loadCertificate(testCert);
-  serverCtx->loadTrustedCertificates(testCA);
-  serverCtx->loadClientCAList(testCA);
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadPrivateKey(testKey);
-  clientCtx->loadCertificate(testCert);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadPrivateKey(kTestKey);
+  clientCtx->loadCertificate(kTestCert);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   int fds[2];
   getfds(fds);
@@ -1436,16 +1397,16 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   serverCtx->setVerificationOption(
       SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(testKey);
-  serverCtx->loadCertificate(testCert);
-  serverCtx->loadTrustedCertificates(testCA);
-  serverCtx->loadClientCAList(testCA);
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  clientCtx->loadPrivateKey(testKey);
-  clientCtx->loadCertificate(testCert);
-  clientCtx->loadTrustedCertificates(testCA);
+  clientCtx->loadPrivateKey(kTestKey);
+  clientCtx->loadCertificate(kTestCert);
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   int fds[2];
   getfds(fds);
@@ -1481,10 +1442,10 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   serverCtx->setVerificationOption(
       SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadPrivateKey(testKey);
-  serverCtx->loadCertificate(testCert);
-  serverCtx->loadTrustedCertificates(testCA);
-  serverCtx->loadClientCAList(testCA);
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
@@ -1509,8 +1470,8 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
 }
 
 TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
-  auto cert = getFileAsBuf(testCert);
-  auto key = getFileAsBuf(testKey);
+  auto cert = getFileAsBuf(kTestCert);
+  auto key = getFileAsBuf(kTestKey);
 
   ssl::BioUniquePtr certBio(BIO_new(BIO_s_mem()));
   BIO_write(certBio.get(), cert.data(), cert.size());
@@ -1533,7 +1494,7 @@ TEST(AsyncSSLSocketTest, LoadCertFromMemory) {
   auto ctx = std::make_shared<SSLContext>();
   ctx->loadPrivateKeyFromBufferPEM(key);
   ctx->loadCertificateFromBufferPEM(cert);
-  ctx->loadTrustedCertificates(testCA);
+  ctx->loadTrustedCertificates(kTestCA);
 
   ssl::SSLUniquePtr ssl(ctx->createSSL());
 

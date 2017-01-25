@@ -25,10 +25,6 @@ using folly::ssl::SSLSession;
 
 namespace folly {
 
-const char* testCert = "folly/io/async/test/certs/tests-cert.pem";
-const char* testKey = "folly/io/async/test/certs/tests-key.pem";
-const char* testCA = "folly/io/async/test/certs/ca-cert.pem";
-
 void getfds(int fds[2]) {
   if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
     LOG(ERROR) << "failed to create socketpair: " << strerror(errno);
@@ -52,8 +48,8 @@ void getctx(
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-  serverCtx->loadCertificate(testCert);
-  serverCtx->loadPrivateKey(testKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadPrivateKey(kTestKey);
 }
 
 class SSLSessionTest : public testing::Test {

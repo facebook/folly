@@ -250,6 +250,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/test/MockTimeoutManager.h \
 	io/async/test/ScopedBoundPort.h \
 	io/async/test/SocketPair.h \
+	io/async/test/TestSSLServer.h \
 	io/async/test/TimeUtil.h \
 	io/async/test/UndelayedDestruction.h \
 	io/async/test/Util.h \

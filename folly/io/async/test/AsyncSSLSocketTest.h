@@ -28,6 +28,7 @@
 #include <folly/io/async/AsyncTransport.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/SSLErrors.h>
+#include <folly/io/async/test/TestSSLServer.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
@@ -39,12 +40,6 @@
 #include <list>
 
 namespace folly {
-
-enum StateEnum {
-  STATE_WAITING,
-  STATE_SUCCEEDED,
-  STATE_FAILED
-};
 
 // The destructors of all callback classes assert that the state is
 // STATE_SUCCEEDED, for both possitive and negative tests. The tests
@@ -375,57 +370,6 @@ public:
   std::string errorString_;
 };
 
-class SSLServerAcceptCallbackBase:
-public folly::AsyncServerSocket::AcceptCallback {
-public:
-  explicit SSLServerAcceptCallbackBase(HandshakeCallback *hcb):
-  state(STATE_WAITING), hcb_(hcb) {}
-
-  ~SSLServerAcceptCallbackBase() {
-    EXPECT_EQ(STATE_SUCCEEDED, state);
-  }
-
-  void acceptError(const std::exception& ex) noexcept override {
-    std::cerr << "SSLServerAcceptCallbackBase::acceptError "
-              << ex.what() << std::endl;
-    state = STATE_FAILED;
-  }
-
-  void connectionAccepted(
-      int fd, const folly::SocketAddress& /* clientAddr */) noexcept override {
-    if (socket_) {
-      socket_->detachEventBase();
-    }
-    printf("Connection accepted\n");
-    try {
-      // Create a AsyncSSLSocket object with the fd. The socket should be
-      // added to the event base and in the state of accepting SSL connection.
-      socket_ = AsyncSSLSocket::newSocket(ctx_, base_, fd);
-    } catch (const std::exception &e) {
-      LOG(ERROR) << "Exception %s caught while creating a AsyncSSLSocket "
-        "object with socket " << e.what() << fd;
-      ::close(fd);
-      acceptError(e);
-      return;
-    }
-
-    connAccepted(socket_);
-  }
-
-  virtual void connAccepted(
-    const std::shared_ptr<folly::AsyncSSLSocket> &s) = 0;
-
-  void detach() {
-    socket_->detachEventBase();
-  }
-
-  StateEnum state;
-  HandshakeCallback *hcb_;
-  std::shared_ptr<folly::SSLContext> ctx_;
-  std::shared_ptr<AsyncSSLSocket> socket_;
-  folly::EventBase* base_;
-};
-
 class SSLServerAcceptCallback: public SSLServerAcceptCallbackBase {
 public:
   uint32_t timeout_;
@@ -611,46 +555,6 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
     // Just wait a while before closing the socket, so the client
     // will time out waiting for the handshake to complete.
     s->getEventBase()->tryRunAfterDelay([=] { s->close(); }, 100);
-  }
-};
-
-class TestSSLServer {
- protected:
-  EventBase evb_;
-  std::shared_ptr<folly::SSLContext> ctx_;
-  SSLServerAcceptCallbackBase *acb_;
-  std::shared_ptr<folly::AsyncServerSocket> socket_;
-  folly::SocketAddress address_;
-  pthread_t thread_;
-
-  static void *Main(void *ctx) {
-    TestSSLServer *self = static_cast<TestSSLServer*>(ctx);
-    self->evb_.loop();
-    self->acb_->detach();
-    std::cerr << "Server thread exited event loop" << std::endl;
-    return nullptr;
-  }
-
- public:
-  // Create a TestSSLServer.
-  // This immediately starts listening on the given port.
-  explicit TestSSLServer(
-      SSLServerAcceptCallbackBase* acb,
-      bool enableTFO = false);
-
-  // Kill the thread.
-  ~TestSSLServer() {
-    evb_.runInEventBaseThread([&](){
-      socket_->stopAccepting();
-    });
-    std::cerr << "Waiting for server thread to exit" << std::endl;
-    pthread_join(thread_, nullptr);
-  }
-
-  EventBase &getEventBase() { return evb_; }
-
-  const folly::SocketAddress& getAddress() const {
-    return address_;
   }
 };
 
