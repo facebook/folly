@@ -22,6 +22,7 @@
 #include <pthread.h>
 
 #include <folly/Range.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -70,11 +71,10 @@ inline bool setThreadName(pthread_t id, StringPiece name) {
 }
 #endif
 
-template <>
-inline typename std::enable_if<
-    std::is_same<pthread_t, std::thread::native_handle_type>::value,
-    bool>::type
-setThreadName(std::thread::id id, StringPiece name) {
+template <
+    typename = folly::_t<std::enable_if<
+        std::is_same<pthread_t, std::thread::native_handle_type>::value>>>
+inline bool setThreadName(std::thread::id id, StringPiece name) {
   static_assert(
       sizeof(std::thread::native_handle_type) == sizeof(decltype(id)),
       "This assumes std::thread::id is a thin wrapper around "
