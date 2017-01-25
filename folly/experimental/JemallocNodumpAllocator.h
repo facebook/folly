@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <folly/folly-config.h>
+#include <folly/portability/Config.h>
 
 #ifdef FOLLY_HAVE_LIBJEMALLOC
 
