@@ -109,6 +109,12 @@ constexpr bool kHasUnalignedAccess = false;
 # define FOLLY_PPC64 0
 #endif
 
+namespace folly {
+constexpr bool kIsArchAmd64 = FOLLY_X64 == 1;
+constexpr bool kIsArchAArch64 = FOLLY_A64 == 1;
+constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
+}
+
 // packing is very ugly in msvc
 #ifdef _MSC_VER
 # define FOLLY_PACK_ATTR /**/

@@ -18,8 +18,28 @@
 
 #ifdef _WIN32
 #include <assert.h>
-#include <intrin.h>
 #include <folly/Portability.h>
+#include <intrin.h>
+#include <stdint.h>
+
+namespace folly {
+namespace portability {
+namespace detail {
+void call_flush_instruction_cache_self_pid(void* begin, size_t size);
+}
+}
+}
+
+FOLLY_ALWAYS_INLINE void __builtin___clear_cache(char* begin, char* end) {
+  if (folly::kIsArchAmd64) {
+    // x86_64 doesn't require the instruction cache to be flushed after
+    // modification.
+  } else {
+    // Default to flushing it for everything else, such as ARM.
+    folly::portability::detail::call_flush_instruction_cache_self_pid(
+        static_cast<void*>(begin), static_cast<size_t>(end - begin));
+  }
+}
 
 FOLLY_ALWAYS_INLINE int __builtin_clz(unsigned int x) {
   unsigned long index;
