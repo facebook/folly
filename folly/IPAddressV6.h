@@ -25,6 +25,7 @@
 #include <stdexcept>
 
 #include <folly/Hash.h>
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/detail/IPAddress.h>
 
@@ -208,6 +209,16 @@ class IPAddressV6 {
    * link-scope and interface-scope multicast addresses.
    */
   bool isLinkLocal() const;
+
+  /**
+   * Return the mac address if this is a link-local IPv6 address.
+   *
+   * @return an Optional<MacAddress> union representing the mac address.
+   *
+   * If the address is not a link-local one it will return an empty Optional.
+   * You can use Optional::value() to check whether the mac address is not null.
+   */
+  Optional<MacAddress> getMacAddressFromLinkLocal() const;
 
   /**
    * Return true if this is a multicast address.

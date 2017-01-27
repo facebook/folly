@@ -136,6 +136,32 @@ IPAddressV6::AddressStorage::AddressStorage(MacAddress mac) {
   bytes_[15] = macBytes[5];
 }
 
+Optional<MacAddress> IPAddressV6::getMacAddressFromLinkLocal() const {
+  // Returned MacAddress must be constructed from a link-local IPv6 address.
+  if (!(addr_.bytes_[0] == 0xfe && addr_.bytes_[1] == 0x80 &&
+        addr_.bytes_[2] == 0x00 && addr_.bytes_[3] == 0x00 &&
+        addr_.bytes_[4] == 0x00 && addr_.bytes_[5] == 0x00 &&
+        addr_.bytes_[6] == 0x00 && addr_.bytes_[7] == 0x00 &&
+        addr_.bytes_[11] == 0xff && addr_.bytes_[12] == 0xfe)) {
+    return folly::none;
+  }
+  // The link-local address uses modified EUI-64 format,
+  // See RFC 4291 sections 2.5.1, 2.5.6, and Appendix A
+  std::array<uint8_t, MacAddress::SIZE> bytes;
+  // Step 1: first 8 bytes are fe:80:00:00:00:00:00:00, and can be stripped
+  // Step 2: invert the universal/local (U/L) flag (bit 7)
+  bytes[0] = addr_.bytes_[8] ^ 0x02;
+  // Step 3: copy thhese bytes are they are
+  bytes[1] = addr_.bytes_[9];
+  bytes[2] = addr_.bytes_[10];
+  // Step 4: strip bytes (0xfffe), which are bytes_[11] and bytes_[12]
+  // Step 5: copy the rest.
+  bytes[3] = addr_.bytes_[13];
+  bytes[4] = addr_.bytes_[14];
+  bytes[5] = addr_.bytes_[15];
+  return Optional<MacAddress>(MacAddress::fromBinary(range(bytes)));
+}
+
 void IPAddressV6::setFromBinary(ByteRange bytes) {
   if (bytes.size() != 16) {
     throw IPAddressFormatException(to<std::string>(

@@ -906,6 +906,23 @@ TEST(IPAddress, StringFormat) {
   EXPECT_EQ("1.2.3.4", detail::fastIpv4ToString(a4));
 }
 
+TEST(IPAddress, getMacAddressFromLinkLocal) {
+  IPAddressV6 ip6("fe80::f652:14ff:fec5:74d8");
+  EXPECT_TRUE(ip6.getMacAddressFromLinkLocal().hasValue());
+  EXPECT_EQ("f4:52:14:c5:74:d8", ip6.getMacAddressFromLinkLocal()->toString());
+}
+
+TEST(IPAddress, getMacAddressFromLinkLocal_Negative) {
+  IPAddressV6 no_link_local_ip6("2803:6082:a2:4447::1");
+  EXPECT_FALSE(no_link_local_ip6.getMacAddressFromLinkLocal().hasValue());
+  no_link_local_ip6 = IPAddressV6("fe80::f652:14ff:ccc5:74d8");
+  EXPECT_FALSE(no_link_local_ip6.getMacAddressFromLinkLocal().hasValue());
+  no_link_local_ip6 = IPAddressV6("fe80::f652:14ff:ffc5:74d8");
+  EXPECT_FALSE(no_link_local_ip6.getMacAddressFromLinkLocal().hasValue());
+  no_link_local_ip6 = IPAddressV6("fe81::f652:14ff:ffc5:74d8");
+  EXPECT_FALSE(no_link_local_ip6.getMacAddressFromLinkLocal().hasValue());
+}
+
 TEST(IPAddress, LongestCommonPrefix) {
   IPAddress ip10("10.0.0.0");
   IPAddress ip11("11.0.0.0");
