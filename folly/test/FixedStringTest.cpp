@@ -21,7 +21,7 @@
 #include <folly/portability/GTest.h>
 
 #define FS(x) ::folly::makeFixedString(x)
-using namespace folly::StringLiterals;
+using namespace folly::string_literals;
 
 TEST(FixedStringExamples, Examples) {
   // Example from the docs:
@@ -117,7 +117,7 @@ TEST(FixedStringCtorTest, FromInitializerList) {
 }
 
 TEST(FixedStringCtorTest, FromUDL) {
-  using namespace folly::Literals;
+  using namespace folly::literals;
 #if defined(__GNUC__)
   constexpr auto x = "hello"_fs;
   static_assert(

@@ -502,7 +502,7 @@ std::uint32_t hsieh_hash32_buf(const void* buf, std::size_t len);
  * of types `FixedString<4>`, `FixedString<8>`, etc. For example:
  * \par
  * \code
- * using namespace folly::StringLiterals;
+ * using namespace folly::string_literals;
  * constexpr auto hello = "hello"_fs8; // A FixedString<8> containing "hello"
  * \endcode
  * \par
@@ -514,7 +514,7 @@ std::uint32_t hsieh_hash32_buf(const void* buf, std::size_t len);
  * the right size. For example:
  * \par
  * \code
- * using namespace folly::StringLiterals;
+ * using namespace folly::string_literals;
  * // NOTE: Only works on compilers with GNU extensions enabled. Clang and
  * // gcc support this (-Wgnu-string-literal-operator-template):
  * constexpr auto hello = "hello"_fs; // A FixedString<5> containing "hello"
@@ -2894,8 +2894,8 @@ FOLLY_CPP14_CONSTEXPR void swap(
   a.swap(b);
 }
 
-inline namespace Literals {
-inline namespace StringLiterals {
+inline namespace literals {
+inline namespace string_literals {
 inline namespace {
 // "const std::size_t&" is so that folly::npos has the same address in every
 // translation unit. This is to avoid potential violations of the ODR.
@@ -2914,7 +2914,7 @@ constexpr const std::size_t& npos = detail::fixedstring::FixedStringBase::npos;
  * \par Example:
  * \par
  * \code
- * using namespace folly::StringLiterals;
+ * using namespace folly::string_literals;
  * constexpr auto hello = "hello world!"_fs;
  * \endcode
  *
