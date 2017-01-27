@@ -41,8 +41,8 @@
 #include <folly/Shell.h>
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
-#include <folly/portability/Environment.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
 
 constexpr int kExecFailure = 127;

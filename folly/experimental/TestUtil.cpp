@@ -26,8 +26,8 @@
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/portability/Environment.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
 
 #ifdef _WIN32

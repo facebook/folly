@@ -22,9 +22,9 @@
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
-#include <folly/portability/Environment.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/Stdlib.h>
 
 using namespace folly;
 using namespace folly::test;

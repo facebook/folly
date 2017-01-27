@@ -18,6 +18,7 @@
 
 #include <cstdlib>
 
+extern "C" {
 #ifdef _WIN32
 // These are technically supposed to be defined linux/limits.h and
 // sys/param.h respectively, but Windows defines _MAX_PATH in stdlib.h,
@@ -27,10 +28,13 @@
 #define PATH_MAX _MAX_PATH
 #define MAXPATHLEN _MAX_PATH
 
-extern "C" {
 char* mktemp(char* tn);
 char* mkdtemp(char* tn);
 int mkstemp(char* tn);
 char* realpath(const char* path, char* resolved_path);
-}
+int setenv(const char* name, const char* value, int overwrite);
+int unsetenv(const char* name);
+#else
+extern char** environ;
 #endif
+}
