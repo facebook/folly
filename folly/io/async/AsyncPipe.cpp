@@ -108,10 +108,10 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
 
     if (bytesRead > 0) {
       if (movable) {
-        ioBuf->append(bytesRead);
+        ioBuf->append(uint64_t(bytesRead));
         readCallback_->readBufferAvailable(std::move(ioBuf));
       } else {
-        readCallback_->readDataAvailable(bytesRead);
+        readCallback_->readDataAvailable(size_t(bytesRead));
       }
       // Fall through and continue around the loop if the read
       // completely filled the available buffer.
@@ -247,7 +247,7 @@ void AsyncPipeWriter::handleWrite() {
       registerHandler(EventHandler::WRITE);
       return;
     }
-    curQueue.trimStart(rc);
+    curQueue.trimStart(size_t(rc));
     if (curQueue.empty()) {
       auto cb = front.second;
       queue_.pop_front();

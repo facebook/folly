@@ -24,19 +24,26 @@ namespace folly {
 
 // AtomicHashMap constructor -- Atomic wrapper that allows growth
 // This class has a lot of overhead (184 Bytes) so only use for big maps
-template <typename KeyT,
-          typename ValueT,
-          typename HashFcn,
-          typename EqualFcn,
-          typename Allocator,
-          typename ProbeFcn,
-          typename KeyConvertFcn>
-AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
-              Allocator, ProbeFcn, KeyConvertFcn>::
-AtomicHashMap(size_t finalSizeEst, const Config& config)
-  : kGrowthFrac_(config.growthFactor < 0 ?
-                 1.0 - config.maxLoadFactor : config.growthFactor) {
-  CHECK(config.maxLoadFactor > 0.0 && config.maxLoadFactor < 1.0);
+template <
+    typename KeyT,
+    typename ValueT,
+    typename HashFcn,
+    typename EqualFcn,
+    typename Allocator,
+    typename ProbeFcn,
+    typename KeyConvertFcn>
+AtomicHashMap<
+    KeyT,
+    ValueT,
+    HashFcn,
+    EqualFcn,
+    Allocator,
+    ProbeFcn,
+    KeyConvertFcn>::AtomicHashMap(size_t finalSizeEst, const Config& config)
+    : kGrowthFrac_(
+          config.growthFactor < 0 ? 1.0f - config.maxLoadFactor
+                                  : config.growthFactor) {
+  CHECK(config.maxLoadFactor > 0.0f && config.maxLoadFactor < 1.0f);
   subMaps_[0].store(SubMap::create(finalSizeEst, config).release(),
     std::memory_order_relaxed);
   auto subMapCount = kNumSubMaps_;
@@ -128,7 +135,7 @@ insertInternal(LookupKeyT key, ArgTs&&... vCtorArgs) {
     size_t numCellsAllocated = (size_t)
       (primarySubMap->capacity_ *
        std::pow(1.0 + kGrowthFrac_, nextMapIdx - 1));
-    size_t newSize = (int) (numCellsAllocated * kGrowthFrac_);
+    size_t newSize = size_t(numCellsAllocated * kGrowthFrac_);
     DCHECK(subMaps_[nextMapIdx].load(std::memory_order_relaxed) ==
       (SubMap*)kLockedPtr_);
     // create a new map using the settings stored in the first map
@@ -232,7 +239,8 @@ AtomicHashMap<KeyT, ValueT, HashFcn, EqualFcn,
   if (LIKELY(ret.idx != primaryMap->capacity_)) {
     return SimpleRetT(0, ret.idx, ret.success);
   }
-  int const numMaps = numMapsAllocated_.load(std::memory_order_acquire);
+  const unsigned int numMaps =
+      numMapsAllocated_.load(std::memory_order_acquire);
   FOR_EACH_RANGE(i, 1, numMaps) {
     // Check each map successively.  If one succeeds, we're done!
     SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);

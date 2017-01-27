@@ -66,7 +66,7 @@ void RecordIOWriter::write(std::unique_ptr<IOBuf> buf) {
 #endif
 
   checkUnixError(bytes, "pwrite() failed");
-  DCHECK_EQ(bytes, totalLength);
+  DCHECK_EQ(size_t(bytes), totalLength);
 }
 
 RecordIOReader::RecordIOReader(File file, uint32_t fileId)
@@ -84,7 +84,7 @@ RecordIOReader::Iterator::Iterator(ByteRange range, uint32_t fileId, off_t pos)
     range_.clear();
   } else {
     recordAndPos_.second = pos;
-    range_.advance(pos);
+    range_.advance(size_t(pos));
     advanceToValid();
   }
 }

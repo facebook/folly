@@ -168,6 +168,7 @@ public:
   typedef typename std::remove_reference<
     typename std::iterator_traits<Iter>::reference>::type
   value_type;
+  using difference_type = typename std::iterator_traits<Iter>::difference_type;
   typedef typename std::iterator_traits<Iter>::reference reference;
 
   /**
@@ -364,7 +365,7 @@ public:
     return size_type(e_ - b_);
   }
   constexpr size_type walk_size() const {
-    return std::distance(b_, e_);
+    return size_type(std::distance(b_, e_));
   }
   constexpr bool empty() const {
     return b_ == e_;
@@ -785,7 +786,12 @@ public:
     auto i = find(delimiter);
     Range result(b_, i == std::string::npos ? size() : i);
 
-    b_ = result.end() == e_ ? e_ : std::next(result.end(), delimiter.size());
+    b_ = result.end() == e_
+        ? e_
+        : std::next(
+              result.end(),
+              typename std::iterator_traits<Iter>::difference_type(
+                  delimiter.size()));
 
     return result;
   }

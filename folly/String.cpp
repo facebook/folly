@@ -66,21 +66,21 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
   }
 
   if (static_cast<size_t>(bytes_used) < inline_buffer.size()) {
-    output.append(inline_buffer.data(), bytes_used);
+    output.append(inline_buffer.data(), size_t(bytes_used));
     return;
   }
 
   // Couldn't fit.  Heap allocate a buffer, oh well.
-  std::unique_ptr<char[]> heap_buffer(new char[bytes_used + 1]);
-  int final_bytes_used =
-      stringAppendfImplHelper(heap_buffer.get(), bytes_used + 1, format, args);
+  std::unique_ptr<char[]> heap_buffer(new char[size_t(bytes_used + 1)]);
+  int final_bytes_used = stringAppendfImplHelper(
+      heap_buffer.get(), size_t(bytes_used + 1), format, args);
   // The second call can take fewer bytes if, for example, we were printing a
   // string buffer with null-terminating char using a width specifier -
   // vsnprintf("%.*s", buf.size(), buf)
   CHECK(bytes_used >= final_bytes_used);
 
   // We don't keep the trailing '\0' in our output string
-  output.append(heap_buffer.get(), final_bytes_used);
+  output.append(heap_buffer.get(), size_t(final_bytes_used));
 }
 
 } // anon namespace
@@ -299,7 +299,7 @@ double prettyToDouble(folly::StringPiece *const prettyString,
             "Unable to parse suffix \"",
             prettyString->toString(), "\""));
   }
-  prettyString->advance(longestPrefixLen);
+  prettyString->advance(size_t(longestPrefixLen));
   return suffixes[bestPrefixId].val ? value * suffixes[bestPrefixId].val :
                                       value;
 }
@@ -373,7 +373,7 @@ void toLowerAscii8(char& c) {
   // by adding 0x20.
 
   // Step 1: Clear the high order bit. We'll deal with it in Step 5.
-  unsigned char rotated = c & 0x7f;
+  uint8_t rotated = uint8_t(c & 0x7f);
   // Currently, the value of rotated, as a function of the original c is:
   //   below 'A':   0- 64
   //   'A'-'Z':    65- 90
@@ -419,7 +419,7 @@ void toLowerAscii8(char& c) {
   // At this point, rotated is 0x20 if c is 'A'-'Z' and 0x00 otherwise
 
   // Step 7: Add rotated to c
-  c += rotated;
+  c += char(rotated);
 }
 
 void toLowerAscii32(uint32_t& c) {

@@ -594,7 +594,8 @@ collectAll(InputIterator first, InputIterator last) {
     std::vector<Try<T>> results;
   };
 
-  auto ctx = std::make_shared<CollectAllContext>(std::distance(first, last));
+  auto ctx =
+      std::make_shared<CollectAllContext>(size_t(std::distance(first, last)));
   mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
     ctx->results[i] = std::move(t);
   });
@@ -723,7 +724,7 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
   };
 
   auto ctx = std::make_shared<CollectAnyWithoutExceptionContext>();
-  ctx->nTotal = std::distance(first, last);
+  ctx->nTotal = size_t(std::distance(first, last));
 
   mapSetCallback<T>(first, last, [ctx](size_t i, Try<T>&& t) {
     if (!t.hasException() && !ctx->done.exchange(true)) {

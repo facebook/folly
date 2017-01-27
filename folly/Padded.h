@@ -385,7 +385,7 @@ class Adaptor {
   iterator end() {
     auto it = iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
-      it -= (Node::kElementCount - lastCount_);
+      it -= difference_type(Node::kElementCount - lastCount_);
     }
     return it;
   }

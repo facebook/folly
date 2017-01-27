@@ -134,7 +134,7 @@ int inet_aton(const char* cp, struct in_addr* inp) {
 }
 
 const char* inet_ntop(int af, const void* src, char* dst, socklen_t size) {
-  return ::inet_ntop(af, (char*)src, dst, size);
+  return ::inet_ntop(af, (char*)src, dst, size_t(size));
 }
 
 int listen(int s, int backlog) {

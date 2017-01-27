@@ -388,7 +388,7 @@ void formatFormatter(
       int sz = static_cast<int>(sp.size());
       if (arg.precision != FormatArg::kDefaultPrecision) {
         sz = std::min(arg.precision, sz);
-        sp.reset(sp.data(), sz);
+        sp.reset(sp.data(), size_t(sz));
         arg.precision -= sz;
       }
       if (!sp.empty()) {
@@ -1035,7 +1035,7 @@ class FormatValue<std::tuple<Args...>> {
   void format(FormatArg& arg, FormatCallback& cb) const {
     int key = arg.splitIntKey();
     arg.enforce(key >= 0, "tuple index must be non-negative");
-    doFormat(key, arg, cb);
+    doFormat(size_t(key), arg, cb);
   }
 
  private:

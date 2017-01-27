@@ -188,13 +188,13 @@ void MemoryMapping::init(off_t offset, off_t length) {
               (options_.writable ? PROT_WRITE : 0));
     }
 
-    unsigned char* start = static_cast<unsigned char*>(
-      mmap(options_.address, mapLength_, prot, flags, file_.fd(), offset));
+    unsigned char* start = static_cast<unsigned char*>(mmap(
+        options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
     PCHECK(start != MAP_FAILED)
       << " offset=" << offset
       << " length=" << mapLength_;
     mapStart_ = start;
-    data_.reset(start + skipStart, length);
+    data_.reset(start + skipStart, size_t(length));
   }
 }
 
@@ -231,7 +231,7 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  size_t chunkSize = memOpChunkSize(off_t(bufSize), pageSize);
+  size_t chunkSize = size_t(memOpChunkSize(off_t(bufSize), pageSize));
 
   char* addr = static_cast<char*>(mem);
   amountSucceeded = 0;
@@ -251,8 +251,12 @@ bool memOpInChunks(std::function<int(void*, size_t)> op,
 
 bool MemoryMapping::mlock(LockMode lock) {
   size_t amountSucceeded = 0;
-  locked_ = memOpInChunks(::mlock, mapStart_, mapLength_, options_.pageSize,
-                          amountSucceeded);
+  locked_ = memOpInChunks(
+      ::mlock,
+      mapStart_,
+      size_t(mapLength_),
+      options_.pageSize,
+      amountSucceeded);
   if (locked_) {
     return true;
   }
@@ -280,12 +284,16 @@ void MemoryMapping::munlock(bool dontneed) {
   if (!locked_) return;
 
   size_t amountSucceeded = 0;
-  if (!memOpInChunks(::munlock, mapStart_, mapLength_, options_.pageSize,
-                     amountSucceeded)) {
+  if (!memOpInChunks(
+          ::munlock,
+          mapStart_,
+          size_t(mapLength_),
+          options_.pageSize,
+          amountSucceeded)) {
     PLOG(WARNING) << "munlock()";
   }
   if (mapLength_ && dontneed &&
-      ::madvise(mapStart_, mapLength_, MADV_DONTNEED)) {
+      ::madvise(mapStart_, size_t(mapLength_), MADV_DONTNEED)) {
     PLOG(WARNING) << "madvise()";
   }
   locked_ = false;
@@ -298,15 +306,21 @@ void MemoryMapping::hintLinearScan() {
 MemoryMapping::~MemoryMapping() {
   if (mapLength_) {
     size_t amountSucceeded = 0;
-    if (!memOpInChunks(::munmap, mapStart_, mapLength_, options_.pageSize,
-                       amountSucceeded)) {
+    if (!memOpInChunks(
+            ::munmap,
+            mapStart_,
+            size_t(mapLength_),
+            options_.pageSize,
+            amountSucceeded)) {
       PLOG(FATAL) << folly::format("munmap({}) failed at {}",
                                    mapLength_, amountSucceeded);
     }
   }
 }
 
-void MemoryMapping::advise(int advice) const { advise(advice, 0, mapLength_); }
+void MemoryMapping::advise(int advice) const {
+  advise(advice, 0, size_t(mapLength_));
+}
 
 void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
   CHECK_LE(offset + length, size_t(mapLength_))

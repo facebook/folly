@@ -62,8 +62,12 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
   // Unfortunately, event_set() resets the event_base, so we have to remember
   // it before hand, then pass it back into event_base_set() afterwards
   struct event_base* evb = event_.ev_base;
-  event_set(&event_, event_.ev_fd, events,
-            &EventHandler::libeventCallback, this);
+  event_set(
+      &event_,
+      event_.ev_fd,
+      short(events),
+      &EventHandler::libeventCallback,
+      this);
   event_base_set(evb, &event_);
 
   // Set EVLIST_INTERNAL if this is an internal event
@@ -157,7 +161,7 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   // this can't possibly fire if handler->eventBase_ is nullptr
   handler->eventBase_->bumpHandlingTime();
 
-  handler->handlerReady(events);
+  handler->handlerReady(uint16_t(events));
 
   if (observer) {
     observer->stopped(reinterpret_cast<uintptr_t>(handler));

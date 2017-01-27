@@ -451,7 +451,7 @@ void SSLContext::switchCiphersIfTLS11(
                  << ", but tls11AltCipherlist is of length "
                  << tls11AltCipherlist.size();
     } else {
-      ciphers = &tls11AltCipherlist[index].first;
+      ciphers = &tls11AltCipherlist[size_t(index)].first;
     }
   }
 
@@ -586,7 +586,7 @@ void SSLContext::unsetNextProtocols() {
 size_t SSLContext::pickNextProtocols() {
   CHECK(!advertisedNextProtocols_.empty()) << "Failed to pickNextProtocols";
   auto rng = ThreadLocalPRNG();
-  return nextProtocolDistribution_(rng);
+  return size_t(nextProtocolDistribution_(rng));
 }
 
 int SSLContext::advertisedNextProtocolCallback(SSL* ssl,
@@ -669,8 +669,9 @@ void SSLContext::setSessionCacheContext(const std::string& context) {
   SSL_CTX_set_session_id_context(
       ctx_,
       reinterpret_cast<const unsigned char*>(context.data()),
-      std::min(
-          static_cast<int>(context.length()), SSL_MAX_SSL_SESSION_ID_LENGTH));
+      std::min<unsigned int>(
+          static_cast<unsigned int>(context.length()),
+          SSL_MAX_SSL_SESSION_ID_LENGTH));
 }
 
 /**
@@ -721,7 +722,7 @@ int SSLContext::passwordCallback(char* password,
   if (length > size) {
     length = size;
   }
-  strncpy(password, userPassword.c_str(), length);
+  strncpy(password, userPassword.c_str(), size_t(length));
   return length;
 }
 
@@ -772,9 +773,9 @@ static std::map<int, SSLContext::SSLLockType>& lockTypes() {
 
 static void callbackLocking(int mode, int n, const char*, int) {
   if (mode & CRYPTO_LOCK) {
-    locks()[n].lock();
+    locks()[size_t(n)].lock();
   } else {
-    locks()[n].unlock();
+    locks()[size_t(n)].unlock();
   }
 }
 
@@ -838,9 +839,9 @@ void SSLContext::initializeOpenSSLLocked() {
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   // static locking
-  locks().reset(new SSLLock[::CRYPTO_num_locks()]);
+  locks().reset(new SSLLock[size_t(::CRYPTO_num_locks())]);
   for (auto it: lockTypes()) {
-    locks()[it.first].lockType = it.second;
+    locks()[size_t(it.first)].lockType = it.second;
   }
   CRYPTO_set_id_callback(callbackThreadID);
   CRYPTO_set_locking_callback(callbackLocking);

@@ -88,7 +88,7 @@ inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
     val >>= 7;
   }
   *p++ = uint8_t(val);
-  return p - buf;
+  return size_t(p - buf);
 }
 
 template <class T>

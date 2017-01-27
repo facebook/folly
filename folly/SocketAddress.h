@@ -392,7 +392,7 @@ class SocketAddress {
 
   sa_family_t getFamily() const {
     DCHECK(external_ || AF_UNIX != storage_.addr.family());
-    return external_ ? AF_UNIX : storage_.addr.family();
+    return external_ ? sa_family_t(AF_UNIX) : storage_.addr.family();
   }
 
   bool empty() const {
@@ -548,7 +548,7 @@ class SocketAddress {
     static constexpr uint64_t kMagic = 0x1234faceb00c;
 
     socklen_t pathLength() const {
-      return len - offsetof(struct sockaddr_un, sun_path);
+      return socklen_t(len - offsetof(struct sockaddr_un, sun_path));
     }
 
     void init() {
@@ -561,7 +561,7 @@ class SocketAddress {
       addr = new sockaddr_un;
       magic = kMagic;
       len = other.len;
-      memcpy(addr, other.addr, len);
+      memcpy(addr, other.addr, size_t(len));
       // Fill the rest with 0s, just for safety
       memset(reinterpret_cast<char*>(addr) + len, 0,
              sizeof(struct sockaddr_un) - len);
@@ -569,7 +569,7 @@ class SocketAddress {
     void copy(const ExternalUnixAddr &other) {
       CHECK(magic == kMagic);
       len = other.len;
-      memcpy(addr, other.addr, len);
+      memcpy(addr, other.addr, size_t(len));
     }
     void free() {
       CHECK(magic == kMagic);

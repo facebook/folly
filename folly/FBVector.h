@@ -800,7 +800,7 @@ private:
   template <class ForwardIterator>
   fbvector(ForwardIterator first, ForwardIterator last,
            const Allocator& a, std::forward_iterator_tag)
-    : impl_(std::distance(first, last), a)
+    : impl_(size_type(std::distance(first, last)), a)
     { M_uninitialized_copy_e(first, last); }
 
   template <class InputIterator>
@@ -827,7 +827,7 @@ private:
   template <class ForwardIterator>
   void assign(ForwardIterator first, ForwardIterator last,
               std::forward_iterator_tag) {
-    const size_t newSize = std::distance(first, last);
+    const auto newSize = size_type(std::distance(first, last));
     if (newSize > capacity()) {
       impl_.reset(newSize);
       M_uninitialized_copy_e(first, last);
@@ -1004,7 +1004,7 @@ public:
         return;
       }
       if (impl_.b_)
-        M_deallocate(impl_.b_, impl_.z_ - impl_.b_);
+        M_deallocate(impl_.b_, size_type(impl_.z_ - impl_.b_));
       impl_.z_ = newB + newCap;
       impl_.e_ = newB + (impl_.e_ - impl_.b_);
       impl_.b_ = newB;
@@ -1276,7 +1276,7 @@ private: // we have the private section first because it defines some macros
 
   void make_window(iterator position, size_type n) {
     // The result is guaranteed to be non-negative, so use an unsigned type:
-    size_type tail = std::distance(position, impl_.e_);
+    size_type tail = size_type(std::distance(position, impl_.e_));
 
     if (tail <= n) {
       relocate_move(position + n, position, impl_.e_);
@@ -1357,7 +1357,7 @@ private: // we have the private section first because it defines some macros
       assert(isValid(cpos));                                                  \
     }                                                                         \
     T* position = const_cast<T*>(cpos);                                       \
-    size_type idx = std::distance(impl_.b_, position);                        \
+    size_type idx = size_type(std::distance(impl_.b_, position));             \
     T* b;                                                                     \
     size_type newCap; /* intentionally uninitialized */                       \
                                                                               \
@@ -1473,7 +1473,7 @@ private:
   template <class FIt>
   iterator insert(const_iterator cpos, FIt first, FIt last,
                   std::forward_iterator_tag) {
-    size_type n = std::distance(first, last);
+    size_type n = size_type(std::distance(first, last));
     FOLLY_FBVECTOR_INSERT_PRE(cpos, n)
     FOLLY_FBVECTOR_INSERT_START(cpos, n)
       D_uninitialized_copy_a(start, first, last);

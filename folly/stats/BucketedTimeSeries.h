@@ -271,7 +271,7 @@ class BucketedTimeSeries {
    */
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType rate() const {
-    return rateHelper<ReturnType, Interval>(total_.sum, elapsed());
+    return rateHelper<ReturnType, Interval>(ReturnType(total_.sum), elapsed());
   }
 
   /*
@@ -288,7 +288,8 @@ class BucketedTimeSeries {
    */
   template <typename ReturnType = double, typename Interval = Duration>
   ReturnType countRate() const {
-    return rateHelper<ReturnType, Interval>(total_.count, elapsed());
+    return rateHelper<ReturnType, Interval>(
+        ReturnType(total_.count), elapsed());
   }
 
   /*
@@ -349,7 +350,8 @@ class BucketedTimeSeries {
   ReturnType countRate(TimePoint start, TimePoint end) const {
     uint64_t intervalCount = count(start, end);
     Duration interval = elapsed(start, end);
-    return rateHelper<ReturnType, Interval>(intervalCount, interval);
+    return rateHelper<ReturnType, Interval>(
+        ReturnType(intervalCount), interval);
   }
 
   /*
@@ -412,7 +414,7 @@ class BucketedTimeSeries {
     return addValueAggregated(TimePoint(now), val, 1);
   }
   bool addValue(Duration now, const ValueType& val, int64_t times) {
-    return addValueAggregated(TimePoint(now), val * times, times);
+    return addValueAggregated(TimePoint(now), val * ValueType(times), times);
   }
   bool
   addValueAggregated(Duration now, const ValueType& total, int64_t nsamples) {

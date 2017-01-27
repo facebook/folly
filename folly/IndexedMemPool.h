@@ -112,10 +112,11 @@ struct IndexedMemPool : boost::noncopyable {
   // of bits required to hold indices from a pool, given its capacity
 
   static constexpr uint32_t maxIndexForCapacity(uint32_t capacity) {
-    // index of uint32_t(-1) == UINT32_MAX is reserved for isAllocated tracking
+    // index of std::numeric_limits<uint32_t>::max() is reserved for isAllocated
+    // tracking
     return uint32_t(std::min(
         uint64_t(capacity) + (NumLocalLists - 1) * LocalListLimit,
-        uint64_t(uint32_t(-1) - 1)));
+        uint64_t(std::numeric_limits<uint32_t>::max() - 1)));
   }
 
   static constexpr uint32_t capacityForMaxIndex(uint32_t maxIndex) {
@@ -131,7 +132,7 @@ struct IndexedMemPool : boost::noncopyable {
     , globalHead_(TaggedPtr{})
   {
     const size_t needed = sizeof(Slot) * (actualCapacity_ + 1);
-    size_t pagesize = sysconf(_SC_PAGESIZE);
+    size_t pagesize = size_t(sysconf(_SC_PAGESIZE));
     mmapLength_ = ((needed - 1) & ~(pagesize - 1)) + pagesize;
     assert(needed <= mmapLength_ && mmapLength_ < needed + pagesize);
     assert((mmapLength_ % pagesize) == 0);

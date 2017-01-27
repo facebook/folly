@@ -76,7 +76,7 @@ static void bserEncodeInt(int64_t ival, QueueAppender& appender) {
 
 static void bserEncodeString(folly::StringPiece str, QueueAppender& appender) {
   appender.write((int8_t)BserType::String);
-  bserEncodeInt(str.size(), appender);
+  bserEncodeInt(int64_t(str.size()), appender);
   appender.push((uint8_t*)str.data(), str.size());
 }
 
@@ -84,7 +84,7 @@ static void bserEncodeArraySimple(dynamic const& dyn,
                                   QueueAppender& appender,
                                   const serialization_opts& opts) {
   appender.write((int8_t)BserType::Array);
-  bserEncodeInt(dyn.size(), appender);
+  bserEncodeInt(int64_t(dyn.size()), appender);
   for (const auto& ele : dyn) {
     bserEncode(ele, appender, opts);
   }
@@ -102,7 +102,7 @@ static void bserEncodeArray(dynamic const& dyn,
     bserEncodeArraySimple(*templ, appender, opts);
 
     // The number of objects in the array
-    bserEncodeInt(dyn.size(), appender);
+    bserEncodeInt(int64_t(dyn.size()), appender);
 
     // For each object in the array
     for (const auto& ele : dyn) {
@@ -131,7 +131,7 @@ static void bserEncodeObject(dynamic const& dyn,
                              QueueAppender& appender,
                              const serialization_opts& opts) {
   appender.write((int8_t)BserType::Object);
-  bserEncodeInt(dyn.size(), appender);
+  bserEncodeInt(int64_t(dyn.size()), appender);
 
   if (opts.sort_keys) {
     std::vector<std::pair<dynamic, dynamic>> sorted(dyn.items().begin(),

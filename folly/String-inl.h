@@ -50,7 +50,7 @@ void cEscape(StringPiece str, String& out) {
     if (e == 'P') {  // printable
       ++p;
     } else if (e == 'O') {  // octal
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = '0' + ((v >> 6) & 7);
       esc[2] = '0' + ((v >> 3) & 7);
       esc[3] = '0' + (v & 7);
@@ -58,14 +58,14 @@ void cEscape(StringPiece str, String& out) {
       ++p;
       last = p;
     } else {  // special 1-character escape
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = e;
       out.append(esc, 2);
       ++p;
       last = p;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 namespace detail {
@@ -177,12 +177,12 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
     if (LIKELY(discriminator <= minEncode)) {
       ++p;
     } else if (mode == UriEscapeMode::QUERY && discriminator == 3) {
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       out.push_back('+');
       ++p;
       last = p;
     } else {
-      out.append(&*last, p - last);
+      out.append(&*last, size_t(p - last));
       esc[1] = hexValues[v >> 4];
       esc[2] = hexValues[v & 0x0f];
       out.append(esc, 3);
@@ -190,7 +190,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
       last = p;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 template <class String>
@@ -213,7 +213,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
         if (UNLIKELY(h1 == 16 || h2 == 16)) {
           throw std::invalid_argument("invalid percent encode sequence");
         }
-        out.append(&*last, p - last);
+        out.append(&*last, size_t(p - last));
         out.push_back((h1 << 4) | h2);
         p += 3;
         last = p;
@@ -221,7 +221,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
       }
     case '+':
       if (mode == UriEscapeMode::QUERY) {
-        out.append(&*last, p - last);
+        out.append(&*last, size_t(p - last));
         out.push_back(' ');
         ++p;
         last = p;
@@ -233,7 +233,7 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
       break;
     }
   }
-  out.append(&*last, p - last);
+  out.append(&*last, size_t(p - last));
 }
 
 namespace detail {

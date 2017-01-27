@@ -36,7 +36,7 @@ BucketedTimeSeries<VT, CT>::BucketedTimeSeries(
     // There is no point in having more buckets than our timestamp
     // granularity: otherwise we would have buckets that could never be used.
     if (nBuckets > size_t(duration_.count())) {
-      nBuckets = duration_.count();
+      nBuckets = size_t(duration_.count());
     }
 
     buckets_.resize(nBuckets, Bucket());
@@ -269,7 +269,7 @@ uint64_t BucketedTimeSeries<VT, CT>::count(TimePoint start, TimePoint end)
           TimePoint bucketStart,
           TimePoint nextBucketStart) -> bool {
         sample_count += this->rangeAdjust(
-            bucketStart, nextBucketStart, start, end, bucket.count);
+            bucketStart, nextBucketStart, start, end, ValueType(bucket.count));
         return true;
       });
 
@@ -291,7 +291,7 @@ ReturnType BucketedTimeSeries<VT, CT>::avg(TimePoint start, TimePoint end)
         total += this->rangeAdjust(
             bucketStart, nextBucketStart, start, end, bucket.sum);
         sample_count += this->rangeAdjust(
-            bucketStart, nextBucketStart, start, end, bucket.count);
+            bucketStart, nextBucketStart, start, end, ValueType(bucket.count));
         return true;
       });
 
@@ -346,11 +346,11 @@ void BucketedTimeSeries<VT, CT>::getBucketInfo(
   Duration timeMod = time.time_since_epoch() % duration_;
   TimeInt numFullDurations = time.time_since_epoch() / duration_;
 
-  TimeInt scaledTime = timeMod.count() * buckets_.size();
+  TimeInt scaledTime = timeMod.count() * TimeInt(buckets_.size());
 
   // Keep these two lines together.  The compiler should be able to compute
   // both the division and modulus with a single operation.
-  *bucketIdx = scaledTime / duration_.count();
+  *bucketIdx = size_t(scaledTime / duration_.count());
   TimeInt scaledOffsetInBucket = scaledTime % duration_.count();
 
   TimeInt scaledBucketStart = scaledTime - scaledOffsetInBucket;
@@ -381,8 +381,8 @@ void BucketedTimeSeries<VT, CT>::forEachBucket(Function fn) const {
   Duration timeMod = latestTime_.time_since_epoch() % duration_;
   TimeInt numFullDurations = latestTime_.time_since_epoch() / duration_;
   TimePoint durationStart(numFullDurations * duration_);
-  TimeInt scaledTime = timeMod.count() * buckets_.size();
-  size_t latestBucketIdx = scaledTime / duration_.count();
+  TimeInt scaledTime = timeMod.count() * TimeInt(buckets_.size());
+  size_t latestBucketIdx = size_t(scaledTime / duration_.count());
   TimeInt scaledOffsetInBucket = scaledTime % duration_.count();
   TimeInt scaledBucketStart = scaledTime - scaledOffsetInBucket;
   TimeInt scaledNextBucketStart = scaledBucketStart + duration_.count();

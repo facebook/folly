@@ -64,7 +64,9 @@ struct EliasFanoCompressedListBase {
     return ::free(data.data());
   }
 
-  size_t upperSize() const { return data.end() - upper; }
+  size_t upperSize() const {
+    return size_t(data.end() - upper);
+  }
 
   size_t size = 0;
   uint8_t numLowerBits = 0;
@@ -106,7 +108,7 @@ struct EliasFanoEncoderV2 {
       return 0;
     }
     // floor(log(upperBound / size));
-    return folly::findLastSet(upperBound / size) - 1;
+    return uint8_t(folly::findLastSet(upperBound / size) - 1);
   }
 
   // Requires: input range (begin, end) is sorted (encoding
@@ -120,7 +122,7 @@ struct EliasFanoEncoderV2 {
     if (begin == end) {
       return MutableCompressedList();
     }
-    EliasFanoEncoderV2 encoder(end - begin, *(end - 1));
+    EliasFanoEncoderV2 encoder(size_t(end - begin), *(end - 1));
     for (; begin != end; ++begin) {
       encoder.add(*begin);
     }
@@ -161,7 +163,7 @@ struct EliasFanoEncoderV2 {
     /* static */ if (skipQuantum != 0) {
       while ((skipPointersSize_ + 1) * skipQuantum <= upperBits) {
         // Store the number of preceding 1-bits.
-        skipPointers_[skipPointersSize_++] = size_;
+        skipPointers_[skipPointersSize_++] = SkipValue(size_);
       }
     }
 
@@ -338,8 +340,8 @@ class UpperBitsReader {
   void reset() {
     block_ = start_ != nullptr ? folly::loadUnaligned<block_t>(start_) : 0;
     outer_ = 0;
-    inner_ = -1;
-    position_ = -1;
+    inner_ = std::numeric_limits<size_t>::max();
+    position_ = std::numeric_limits<size_t>::max();
     value_ = 0;
   }
 
@@ -354,7 +356,7 @@ class UpperBitsReader {
     }
 
     ++position_;
-    inner_ = Instructions::ctz(block_);
+    inner_ = size_t(Instructions::ctz(block_));
     block_ = Instructions::blsr(block_);
 
     return setValue();
@@ -442,7 +444,7 @@ class UpperBitsReader {
     if (Encoder::forwardQuantum == 0 || n <= Encoder::forwardQuantum) {
       reset();
     } else {
-      position_ = -1;  // Avoid reading the head, skip() will reposition.
+      position_ = size_t(-1); // Avoid reading the head, skip() will reposition.
     }
     return skip(n);
   }
@@ -529,7 +531,7 @@ class EliasFanoReader {
       lastValue_ = 0;
       return;
     }
-    ValueType lastUpperValue = 8 * list.upperSize() - size_;
+    ValueType lastUpperValue = ValueType(8 * list.upperSize() - size_);
     auto it = list.upper + list.upperSize() - 1;
     DCHECK_NE(*it, 0);
     lastUpperValue -= 8 - folly::findLastSet(*it);

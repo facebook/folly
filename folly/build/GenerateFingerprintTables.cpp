@@ -73,7 +73,7 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
   // whose coefficients are the bits of q.
   for (int x = 0; x < 256; x++) {
     FingerprintPolynomial<DEG> t;
-    t.setHigh8Bits(x);
+    t.setHigh8Bits(uint8_t(x));
     for (int i = 0; i < 8; i++) {
       t.mulXkmod(8, poly);
       t.write(&(table[i][x][0]));

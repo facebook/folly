@@ -487,7 +487,7 @@ std::string decodeUnicodeEscape(Input& in) {
       in.error("expected 4 hex digits");
     }
 
-    uint16_t ret = hexVal(*in) * 4096;
+    uint16_t ret = uint16_t(hexVal(*in) * 4096);
     ++in;
     ret += hexVal(*in) * 256;
     ++in;
@@ -669,12 +669,12 @@ void escapeString(
           // note that this if condition captures non readable chars
           // with value < 32, so size = 1 byte (e.g control chars).
           out.append("\\u00");
-          out.push_back(hexDigit((*p & 0xf0) >> 4));
-          out.push_back(hexDigit(*p & 0xf));
+          out.push_back(hexDigit(uint8_t((*p & 0xf0) >> 4)));
+          out.push_back(hexDigit(uint8_t(*p & 0xf)));
           p++;
       }
     } else {
-      out.push_back(*p++);
+      out.push_back(char(*p++));
     }
   }
 

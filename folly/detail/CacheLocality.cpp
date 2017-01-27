@@ -55,7 +55,7 @@ static CacheLocality getSystemLocalityInfo() {
     // wiggle room
     numCpus = 32;
   }
-  return CacheLocality::uniform(numCpus);
+  return CacheLocality::uniform(size_t(numCpus));
 }
 
 template <>

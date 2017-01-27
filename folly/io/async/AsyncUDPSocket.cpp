@@ -248,7 +248,7 @@ void AsyncUDPSocket::handleRead() noexcept {
 
   struct sockaddr_storage addrStorage;
   socklen_t addrLen = sizeof(addrStorage);
-  memset(&addrStorage, 0, addrLen);
+  memset(&addrStorage, 0, size_t(addrLen));
   struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
@@ -260,10 +260,11 @@ void AsyncUDPSocket::handleRead() noexcept {
       bool truncated = false;
       if ((size_t)bytesRead > len) {
         truncated = true;
-        bytesRead = len;
+        bytesRead = ssize_t(len);
       }
 
-      readCallback_->onDataAvailable(clientAddress_, bytesRead, truncated);
+      readCallback_->onDataAvailable(
+          clientAddress_, size_t(bytesRead), truncated);
     }
   } else {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -293,7 +294,7 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
     flags |= READ;
   }
 
-  return registerHandler(flags | PERSIST);
+  return registerHandler(uint16_t(flags | PERSIST));
 }
 
 } // Namespace

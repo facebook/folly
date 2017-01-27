@@ -58,7 +58,7 @@ std::string SSLSessionImpl::serialize(void) const {
   auto len = i2d_SSL_SESSION(session_, nullptr);
 
   if (len > 0) {
-    std::unique_ptr<unsigned char[]> uptr(new unsigned char[len]);
+    std::unique_ptr<unsigned char[]> uptr(new unsigned char[size_t(len)]);
     auto p = uptr.get();
     auto written = i2d_SSL_SESSION(session_, &p);
     if (written <= 0) {

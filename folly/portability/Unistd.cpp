@@ -283,7 +283,7 @@ ssize_t write(int fh, void const* buf, size_t count) {
     }
   }
   auto r = _write(fh, buf, unsigned int(count));
-  if ((r > 0 && r != count) || (r == -1 && errno == ENOSPC)) {
+  if ((r > 0 && size_t(r) != count) || (r == -1 && errno == ENOSPC)) {
     // Writing to a pipe with a full buffer doesn't generate
     // any error type, unless it caused us to write exactly 0
     // bytes, so we have to see if we have a pipe first. We

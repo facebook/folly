@@ -1580,7 +1580,7 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   AsyncSSLSocket* tsslSock;
 
   iov.iov_base = const_cast<char*>(in);
-  iov.iov_len = inl;
+  iov.iov_len = size_t(inl);
   memset(&msg, 0, sizeof(msg));
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;

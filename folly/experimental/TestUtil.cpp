@@ -208,11 +208,11 @@ std::string CaptureFD::readIncremental() {
   std::string filename = file_.path().string();
   // Yes, I know that I could just keep the file open instead. So sue me.
   folly::File f(openNoInt(filename.c_str(), O_RDONLY), true);
-  auto size = lseek(f.fd(), 0, SEEK_END) - readOffset_;
+  auto size = size_t(lseek(f.fd(), 0, SEEK_END) - readOffset_);
   std::unique_ptr<char[]> buf(new char[size]);
   auto bytes_read = folly::preadFull(f.fd(), buf.get(), size, readOffset_);
-  PCHECK(size == bytes_read);
-  readOffset_ += size;
+  PCHECK(ssize_t(size) == bytes_read);
+  readOffset_ += off_t(size);
   chunkCob_(StringPiece(buf.get(), buf.get() + size));
   return std::string(buf.get(), size);
 }

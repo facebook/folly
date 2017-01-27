@@ -70,7 +70,7 @@ struct constexpr_abs_helper<
         std::is_integral<T>::value && !std::is_same<T, bool>::value &&
         std::is_signed<T>::value>::type> {
   static constexpr typename std::make_unsigned<T>::type go(T t) {
-    return t < static_cast<T>(0) ? -t : t;
+    return typename std::make_unsigned<T>::type(t < static_cast<T>(0) ? -t : t);
   }
 };
 } // namespace detail

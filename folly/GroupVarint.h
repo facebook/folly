@@ -549,7 +549,7 @@ class GroupVarintDecoder {
   bool next(type* val) {
     if (pos_ == count_) {
       // refill
-      size_t rem = end_ - p_;
+      size_t rem = size_t(end_ - p_);
       if (rem == 0 || remaining_ == 0) {
         return false;
       }
@@ -581,7 +581,7 @@ class GroupVarintDecoder {
         }
       } else {
         // Can't decode a full group
-        count_ = Base::partialCount(p_, end_ - p_);
+        count_ = Base::partialCount(p_, size_t(end_ - p_));
         if (remaining_ >= count_) {
           remaining_ -= count_;
           p_ = end_;
@@ -604,7 +604,7 @@ class GroupVarintDecoder {
     CHECK(pos_ == count_ && (p_ == end_ || remaining_ == 0));
     // p_ may point to the internal buffer (tmp_), but we want
     // to return subpiece of the original data
-    size_t size = end_ - p_;
+    size_t size = size_t(end_ - p_);
     return StringPiece(rrest_ - size, rrest_);
   }
 

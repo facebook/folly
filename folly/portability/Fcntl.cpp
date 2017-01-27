@@ -36,7 +36,7 @@ int fcntl(int fd, int cmd, ...) {
       if (h != INVALID_HANDLE_VALUE) {
         DWORD flags;
         if (GetHandleInformation(h, &flags)) {
-          res = flags & HANDLE_FLAG_INHERIT;
+          res = int(flags & HANDLE_FLAG_INHERIT);
         }
       }
       break;

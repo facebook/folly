@@ -212,7 +212,7 @@ struct AtomicUnorderedInsertMap {
       const Allocator& alloc = Allocator())
     : allocator_(alloc)
   {
-    size_t capacity = maxSize / std::min(1.0f, maxLoadFactor) + 128;
+    size_t capacity = size_t(maxSize / std::min(1.0f, maxLoadFactor) + 128);
     size_t avail = size_t{1} << (8 * sizeof(IndexType) - 2);
     if (capacity > avail && maxSize < avail) {
       // we'll do our best
@@ -454,13 +454,13 @@ struct AtomicUnorderedInsertMap {
   /// can specialize it differently during deterministic testing
   IndexType allocationAttempt(IndexType start, IndexType tries) const {
     if (LIKELY(tries < 8 && start + tries < numSlots_)) {
-      return start + tries;
+      return IndexType(start + tries);
     } else {
       IndexType rv;
       if (sizeof(IndexType) <= 4) {
-        rv = folly::Random::rand32(numSlots_);
+        rv = IndexType(folly::Random::rand32(numSlots_));
       } else {
-        rv = folly::Random::rand64(numSlots_);
+        rv = IndexType(folly::Random::rand64(numSlots_));
       }
       assert(rv < numSlots_);
       return rv;

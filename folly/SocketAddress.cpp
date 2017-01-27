@@ -329,7 +329,7 @@ void SocketAddress::setFromSockaddr(const struct sockaddr_un* address,
     storage_.un.init();
   }
   external_ = true;
-  memcpy(storage_.un.addr, address, addrlen);
+  memcpy(storage_.un.addr, address, size_t(addrlen));
   updateUnixAddressLength(addrlen);
 
   // Fill the rest with 0s, just for safety
@@ -458,12 +458,13 @@ std::string SocketAddress::getPath() const {
   }
   if (storage_.un.addr->sun_path[0] == '\0') {
     // abstract namespace
-    return std::string(storage_.un.addr->sun_path, storage_.un.pathLength());
+    return std::string(
+        storage_.un.addr->sun_path, size_t(storage_.un.pathLength()));
   }
 
-  return std::string(storage_.un.addr->sun_path,
-                     strnlen(storage_.un.addr->sun_path,
-                             storage_.un.pathLength()));
+  return std::string(
+      storage_.un.addr->sun_path,
+      strnlen(storage_.un.addr->sun_path, size_t(storage_.un.pathLength())));
 }
 
 std::string SocketAddress::describe() const {
@@ -477,9 +478,9 @@ std::string SocketAddress::describe() const {
       return "<abstract unix address>";
     }
 
-    return std::string(storage_.un.addr->sun_path,
-                       strnlen(storage_.un.addr->sun_path,
-                               storage_.un.pathLength()));
+    return std::string(
+        storage_.un.addr->sun_path,
+        strnlen(storage_.un.addr->sun_path, size_t(storage_.un.pathLength())));
   }
   switch (getFamily()) {
     case AF_UNSPEC:
@@ -525,9 +526,10 @@ bool SocketAddress::operator==(const SocketAddress& other) const {
     if (storage_.un.len != other.storage_.un.len) {
       return false;
     }
-    int cmp = memcmp(storage_.un.addr->sun_path,
-                     other.storage_.un.addr->sun_path,
-                     storage_.un.pathLength());
+    int cmp = memcmp(
+        storage_.un.addr->sun_path,
+        other.storage_.un.addr->sun_path,
+        size_t(storage_.un.pathLength()));
     return cmp == 0;
   }
 
@@ -736,9 +738,10 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
     if (thisPathLength != otherPathLength) {
       return thisPathLength < otherPathLength;
     }
-    int cmp = memcmp(storage_.un.addr->sun_path,
-                     other.storage_.un.addr->sun_path,
-                     thisPathLength);
+    int cmp = memcmp(
+        storage_.un.addr->sun_path,
+        other.storage_.un.addr->sun_path,
+        size_t(thisPathLength));
     return cmp < 0;
   }
   switch (getFamily()) {

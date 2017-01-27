@@ -272,12 +272,12 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor1) {
   EXPECT_TRUE(sock_->isEorTrackingEnabled());
 
   EXPECT_CALL(*(sock_.get()), getRawBytesWritten())
-    // rawBytesWritten after writting initAppBytesWritten + 1500
-    // + some random SSL overhead
-    .WillOnce(Return(3600))
-    // rawBytesWritten after writting last 6 bytes
-    // + some random SSL overhead
-    .WillOnce(Return(3728));
+      // rawBytesWritten after writting initAppBytesWritten + 1500
+      // + some random SSL overhead
+      .WillOnce(Return(3600u))
+      // rawBytesWritten after writting last 6 bytes
+      // + some random SSL overhead
+      .WillOnce(Return(3728u));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
     .WillOnce(Invoke([=, &pos] (SSL *, const void *buf, int m) {
           // the first 1500 does not have the EOR byte

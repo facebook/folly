@@ -163,7 +163,7 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) {
   DCHECK_EQ((flags & freeFlags), freeFlags);
 
   while (true) {
-    uint16_t newFlags = (flags & ~freeFlags);
+    uint16_t newFlags = uint16_t(flags & ~freeFlags);
     if (newFlags == 0) {
       // The storage space is now unused.  Free it.
       storage->prefix.HeapPrefix::~HeapPrefix();
@@ -250,7 +250,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(uint64_t capacity) {
 
   uint8_t* bufAddr = reinterpret_cast<uint8_t*>(&storage->align);
   uint8_t* storageEnd = reinterpret_cast<uint8_t*>(storage) + mallocSize;
-  size_t actualCapacity = storageEnd - bufAddr;
+  size_t actualCapacity = size_t(storageEnd - bufAddr);
   unique_ptr<IOBuf> ret(new (&storage->hs.buf) IOBuf(
         InternalConstructor(), packFlagsAndSharedInfo(0, &storage->shared),
         bufAddr, actualCapacity, bufAddr, 0));
@@ -898,7 +898,7 @@ void IOBuf::initExtBuffer(uint8_t* buf, size_t mallocSize,
   uint8_t* infoStart = (buf + mallocSize) - sizeof(SharedInfo);
   SharedInfo* sharedInfo = new(infoStart) SharedInfo;
 
-  *capacityReturn = infoStart - buf;
+  *capacityReturn = uint64_t(infoStart - buf);
   *infoReturn = sharedInfo;
 }
 

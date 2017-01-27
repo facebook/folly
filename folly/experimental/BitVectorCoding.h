@@ -94,7 +94,7 @@ struct BitVectorEncoder {
     if (begin == end) {
       return MutableCompressedList();
     }
-    BitVectorEncoder encoder(end - begin, *(end - 1));
+    BitVectorEncoder encoder(size_t(end - begin), *(end - 1));
     for (; begin != end; ++begin) {
       encoder.add(*begin);
     }

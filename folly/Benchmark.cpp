@@ -128,14 +128,14 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
     CHECK_EQ(0, ts.tv_sec) << "Clock sucks.";
     CHECK_LT(0, ts.tv_nsec) << "Clock too fast for its own good.";
     CHECK_EQ(1, ts.tv_nsec) << "Clock too coarse, upgrade your kernel.";
-    resolutionInNs = ts.tv_nsec;
+    resolutionInNs = uint64_t(ts.tv_nsec);
   }
   // We choose a minimum minimum (sic) of 100,000 nanoseconds, but if
   // the clock resolution is worse than that, it will be larger. In
   // essence we're aiming at making the quantization noise 0.01%.
-  static const auto minNanoseconds =
-    max<uint64_t>(FLAGS_bm_min_usec * 1000UL,
-        min<uint64_t>(resolutionInNs * 100000, 1000000000ULL));
+  static const auto minNanoseconds = max<uint64_t>(
+      uint64_t(FLAGS_bm_min_usec) * 1000ULL,
+      min<uint64_t>(resolutionInNs * 100000ULL, 1000000000ULL));
 
   // We do measurements in several epochs and take the minimum, to
   // account for jitter.
@@ -150,9 +150,9 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
   size_t actualEpochs = 0;
 
   for (; actualEpochs < epochs; ++actualEpochs) {
-    const auto maxIters = FLAGS_bm_max_iters;
-    for (unsigned int n = FLAGS_bm_min_iters; n < maxIters; n *= 2) {
-      auto const nsecsAndIter = fun(n);
+    const auto maxIters = uint32_t(FLAGS_bm_max_iters);
+    for (auto n = uint32_t(FLAGS_bm_min_iters); n < maxIters; n *= 2) {
+      auto const nsecsAndIter = fun(static_cast<unsigned int>(n));
       if (nsecsAndIter.first < minNanoseconds) {
         continue;
       }

@@ -46,15 +46,15 @@ TEST(IOBuf, RWCursor) {
   wcursor.writeLE((uint64_t)1);
   wcursor.write((uint8_t)1);
 
-  EXPECT_EQ(1, rcursor.readLE<uint64_t>());
+  EXPECT_EQ(1u, rcursor.readLE<uint64_t>());
   rcursor.skip(8);
-  EXPECT_EQ(1, rcursor.readLE<uint32_t>());
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
   rcursor.skip(0);
-  EXPECT_EQ(0, rcursor.read<uint8_t>());
-  EXPECT_EQ(0, rcursor.read<uint8_t>());
-  EXPECT_EQ(0, rcursor.read<uint8_t>());
-  EXPECT_EQ(0, rcursor.read<uint8_t>());
-  EXPECT_EQ(1, rcursor.read<uint8_t>());
+  EXPECT_EQ(0u, rcursor.read<uint8_t>());
+  EXPECT_EQ(0u, rcursor.read<uint8_t>());
+  EXPECT_EQ(0u, rcursor.read<uint8_t>());
+  EXPECT_EQ(0u, rcursor.read<uint8_t>());
+  EXPECT_EQ(1u, rcursor.read<uint8_t>());
 }
 
 TEST(IOBuf, skip) {
@@ -475,7 +475,7 @@ TEST(IOBuf, Printf) {
              "longer than our original allocation size,",
              "and will therefore require a new allocation", 0x12345678);
   // The tailroom should start with a nul byte now.
-  EXPECT_GE(head.prev()->tailroom(), 1);
+  EXPECT_GE(head.prev()->tailroom(), 1u);
   EXPECT_EQ(0, *head.prev()->tail());
 
   EXPECT_EQ("test32this string is longer than our original "
@@ -515,10 +515,10 @@ TEST(IOBuf, QueueAppender) {
   }
 
   // There must be a goodMallocSize between 100 and 1024...
-  EXPECT_LT(1, queue.front()->countChainElements());
+  EXPECT_LT(1u, queue.front()->countChainElements());
   const IOBuf* buf = queue.front();
   do {
-    EXPECT_LE(100, buf->capacity());
+    EXPECT_LE(100u, buf->capacity());
     buf = buf->next();
   } while (buf != queue.front());
 

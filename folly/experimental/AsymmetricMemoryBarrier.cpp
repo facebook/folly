@@ -40,7 +40,7 @@ struct DummyPageCreator {
  private:
   static void* create() {
     auto ptr = mmap(nullptr, 1, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    checkUnixError(reinterpret_cast<uintptr_t>(ptr), "mmap");
+    checkUnixError(reinterpret_cast<ssize_t>(ptr), "mmap");
 
     // Optimistically try to lock the page so it stays resident. Could make
     // the heavy barrier faster.

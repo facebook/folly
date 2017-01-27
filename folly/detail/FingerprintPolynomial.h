@@ -57,7 +57,7 @@ class FingerprintPolynomial {
 
   // Multiply by X.  The actual degree must be < DEG.
   void mulX() {
-    CHECK_EQ(0, val_[0] & (1ULL<<63));
+    CHECK_EQ(0u, val_[0] & (1ULL << 63));
     uint64_t b = 0;
     for (int i = size()-1; i >= 0; i--) {
       uint64_t nb = val_[i] >> 63;

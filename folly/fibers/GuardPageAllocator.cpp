@@ -144,7 +144,7 @@ class StackCache {
     // Use a read lock for reading.
     SYNCHRONIZED_CONST(pages, protectedPages()) {
       for (const auto& page : pages) {
-        intptr_t pageEnd = page + pagesize();
+        intptr_t pageEnd = intptr_t(page + pagesize());
         if (page <= addr && addr < pageEnd) {
           return true;
         }
@@ -164,7 +164,7 @@ class StackCache {
   std::vector<std::pair<unsigned char*, bool>> freeList_;
 
   static size_t pagesize() {
-    static const size_t pagesize = sysconf(_SC_PAGESIZE);
+    static const size_t pagesize = size_t(sysconf(_SC_PAGESIZE));
     return pagesize;
   }
 

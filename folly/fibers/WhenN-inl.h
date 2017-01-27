@@ -160,7 +160,7 @@ typename std::vector<
         type> inline collectAll(InputIterator first, InputIterator last) {
   typedef typename std::result_of<
       typename std::iterator_traits<InputIterator>::value_type()>::type Result;
-  size_t n = std::distance(first, last);
+  size_t n = size_t(std::distance(first, last));
   std::vector<Result> results;
   std::vector<size_t> order(n);
   results.reserve(n);

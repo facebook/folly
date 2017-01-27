@@ -53,10 +53,10 @@ class OpenSSLHash {
     }
     void hash_final(MutableByteRange out) {
       const auto size = EVP_MD_size(md_);
-      check_out_size(size, out);
+      check_out_size(size_t(size), out);
       unsigned int len = 0;
       check_libssl_result(1, EVP_DigestFinal_ex(&ctx_, out.data(), &len));
-      check_libssl_result(size, len);
+      check_libssl_result(size, int(len));
       md_ = nullptr;
     }
    private:
@@ -118,7 +118,7 @@ class OpenSSLHash {
     }
     void hash_final(MutableByteRange out) {
       const auto size = EVP_MD_size(md_);
-      check_out_size(size, out);
+      check_out_size(size_t(size), out);
       unsigned int len = 0;
       check_libssl_result(1, HMAC_Final(&ctx_, out.data(), &len));
       check_libssl_result(size, int(len));

@@ -75,7 +75,7 @@ void MultiLevelTimeSeries<VT, CT>::addValue(
     TimePoint now,
     const ValueType& val,
     uint64_t times) {
-  addValueAggregated(now, val * times, times);
+  addValueAggregated(now, val * ValueType(times), times);
 }
 
 template <typename VT, typename CT>

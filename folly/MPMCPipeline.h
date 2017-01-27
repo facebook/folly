@@ -275,8 +275,9 @@ template <class In, class... Stages> class MPMCPipeline {
    * in any queue) are also counted.
    */
   ssize_t sizeGuess() const noexcept {
-    return (std::get<0>(stages_).writeCount() * kAmplification -
-            std::get<sizeof...(Stages)>(stages_).readCount());
+    return ssize_t(
+        std::get<0>(stages_).writeCount() * kAmplification -
+        std::get<sizeof...(Stages)>(stages_).readCount());
   }
 
  private:

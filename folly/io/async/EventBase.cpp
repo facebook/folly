@@ -170,7 +170,7 @@ EventBase::~EventBase() {
 
   clearCobTimeouts();
 
-  DCHECK_EQ(0, runBeforeLoopCallbacks_.size());
+  DCHECK_EQ(0u, runBeforeLoopCallbacks_.size());
 
   (void)runLoopCallbacks();
 

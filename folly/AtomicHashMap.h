@@ -197,7 +197,8 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
   explicit AtomicHashMap(size_t finalSizeEst, const Config& c = Config());
 
   ~AtomicHashMap() {
-    const int numMaps = numMapsAllocated_.load(std::memory_order_relaxed);
+    const unsigned int numMaps =
+        numMapsAllocated_.load(std::memory_order_relaxed);
     FOR_EACH_RANGE (i, 0, numMaps) {
       SubMap* thisMap = subMaps_[i].load(std::memory_order_relaxed);
       DCHECK(thisMap);

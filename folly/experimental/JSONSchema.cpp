@@ -219,7 +219,7 @@ struct SizeValidator final : IValidator {
     if (value.type() != type_) {
       return none;
     }
-    if (!Comparison()(size_t(length_), value.size())) {
+    if (!Comparison()(length_, int64_t(value.size()))) {
       return makeError("different length string/array/object", value);
     }
     return none;

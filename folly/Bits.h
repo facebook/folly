@@ -94,7 +94,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   unsigned int>::type
   findFirstSet(T x) {
-  return __builtin_ffs(x);
+  return static_cast<unsigned int>(__builtin_ffs(static_cast<int>(x)));
 }
 
 template <class T>
@@ -106,7 +106,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long)),
   unsigned int>::type
   findFirstSet(T x) {
-  return __builtin_ffsl(x);
+  return static_cast<unsigned int>(__builtin_ffsl(static_cast<long>(x)));
 }
 
 template <class T>
@@ -118,7 +118,7 @@ typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   unsigned int>::type
   findFirstSet(T x) {
-  return __builtin_ffsll(x);
+  return static_cast<unsigned int>(__builtin_ffsll(static_cast<long long>(x)));
 }
 
 template <class T>
@@ -217,7 +217,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned int)),
   size_t>::type
   popcount(T x) {
-  return detail::popcount(x);
+  return size_t(detail::popcount(x));
 }
 
 template <class T>
@@ -228,7 +228,7 @@ inline typename std::enable_if<
    sizeof(T) <= sizeof(unsigned long long)),
   size_t>::type
   popcount(T x) {
-  return detail::popcountll(x);
+  return size_t(detail::popcountll(x));
 }
 
 /**
@@ -429,7 +429,7 @@ class BitIterator
 
   void advance(ssize_t n) {
     size_t bpb = bitsPerBlock();
-    ssize_t blocks = n / bpb;
+    ssize_t blocks = n / ssize_t(bpb);
     bitOffset_ += n % bpb;
     if (bitOffset_ >= bpb) {
       bitOffset_ -= bpb;
@@ -457,9 +457,9 @@ class BitIterator
   }
 
   ssize_t distance_to(const BitIterator& other) const {
-    return
-      (other.base_reference() - this->base_reference()) * bitsPerBlock() +
-      other.bitOffset_ - bitOffset_;
+    return ssize_t(
+        (other.base_reference() - this->base_reference()) * bitsPerBlock() +
+        other.bitOffset_ - bitOffset_);
   }
 
   size_t bitOffset_;

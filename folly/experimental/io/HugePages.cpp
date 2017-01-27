@@ -52,7 +52,8 @@ size_t getDefaultHugePageSize() {
   bool error = gen::byLine("/proc/meminfo") |
     [&] (StringPiece line) -> bool {
       if (boost::regex_match(line.begin(), line.end(), match, regex)) {
-        StringPiece numStr(line.begin() + match.position(1), match.length(1));
+        StringPiece numStr(
+            line.begin() + match.position(1), size_t(match.length(1)));
         pageSize = to<size_t>(numStr) * 1024;  // in KiB
         return false;  // stop
       }
@@ -75,7 +76,8 @@ HugePageSizeVec readRawHugePageSizes() {
   for (fs::directory_iterator it(path); it != fs::directory_iterator(); ++it) {
     std::string filename(it->path().filename().string());
     if (boost::regex_match(filename, match, regex)) {
-      StringPiece numStr(filename.data() + match.position(1), match.length(1));
+      StringPiece numStr(
+          filename.data() + match.position(1), size_t(match.length(1)));
       vec.emplace_back(to<size_t>(numStr) * 1024);
     }
   }
@@ -92,9 +94,9 @@ size_t parsePageSizeValue(StringPiece value) {
   }
   char c = '\0';
   if (match.length(2) != 0) {
-    c = char(tolower(value[match.position(2)]));
+    c = char(tolower(value[size_t(match.position(2))]));
   }
-  StringPiece numStr(value.data() + match.position(1), match.length(1));
+  StringPiece numStr(value.data() + match.position(1), size_t(match.length(1)));
   size_t size = to<size_t>(numStr);
   switch (c) {
   case 't': size *= 1024;

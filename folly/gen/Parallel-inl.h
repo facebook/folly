@@ -293,8 +293,9 @@ class Parallel : public Operator<Parallel<Ops>> {
         : source_(std::move(source)),
           ops_(std::move(ops)),
           threads_(
-              threads ? threads
-                      : std::max<size_t>(1, sysconf(_SC_NPROCESSORS_CONF))) {}
+              threads
+                  ? threads
+                  : size_t(std::max<long>(1, sysconf(_SC_NPROCESSORS_CONF)))) {}
 
     template <class Handler>
     bool apply(Handler&& handler) const {

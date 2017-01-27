@@ -269,7 +269,7 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   }
 
   bool result;
-  size_t len = e - b;
+  size_t len = size_t(e - b);
   switch (*b) {
     case '0':
     case '1': {
@@ -361,10 +361,11 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
     // want to raise an error; length will point past the last character
     // that was processed, so we need to check if that character was
     // whitespace or not.
-    if (length == 0 || (result == 0.0 && std::isspace((*src)[length - 1]))) {
+    if (length == 0 ||
+        (result == 0.0 && std::isspace((*src)[size_t(length) - 1]))) {
       return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
     }
-    src->advance(length);
+    src->advance(size_t(length));
     return Tgt(result);
   }
 
@@ -374,7 +375,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
 
   // There must be non-whitespace, otherwise we would have caught this above
   assert(b < e);
-  size_t size = e - b;
+  size_t size = size_t(e - b);
 
   bool negative = false;
   if (*b == '-') {
@@ -463,12 +464,12 @@ class SignedValueHandler<T, true> {
   Expected<T, ConversionCode> finalize(U value) {
     T rv;
     if (negative_) {
-      rv = -value;
+      rv = T(-value);
       if (UNLIKELY(rv > 0)) {
         return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
       }
     } else {
-      rv = value;
+      rv = T(value);
       if (UNLIKELY(rv < 0)) {
         return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
       }
@@ -518,7 +519,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
     return makeUnexpected(err);
   }
 
-  size_t size = e - b;
+  size_t size = size_t(e - b);
 
   /* Although the string is entirely made of digits, we still need to
    * check for overflow.
@@ -531,7 +532,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
           return Tgt(0); // just zeros, e.g. "0000"
         }
         if (*b != '0') {
-          size = e - b;
+          size = size_t(e - b);
           break;
         }
       }
@@ -695,7 +696,7 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
   auto res = sgn.finalize(tmp.value());
 
   if (res.hasValue()) {
-    src->advance(m - src->data());
+    src->advance(size_t(m - src->data()));
   }
 
   return res;

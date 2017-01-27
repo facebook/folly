@@ -51,7 +51,7 @@ struct Bytes {
     std::size_t asize = a.size();
     std::array<uint8_t, N> ba{{0}};
     for (std::size_t i = 0; i < asize; i++) {
-      ba[i] = a[i] & b[i];
+      ba[i] = uint8_t(a[i] & b[i]);
     }
     return ba;
   }
@@ -174,7 +174,7 @@ struct Bytes {
 template <
     class IntegralType,
     IntegralType DigitCount,
-    IntegralType Base = 10,
+    IntegralType Base = IntegralType(10),
     bool PrintAllDigits = false,
     class = typename std::enable_if<
         std::is_integral<IntegralType>::value &&
@@ -197,7 +197,7 @@ inline void writeIntegerString(IntegralType val, char** buffer) {
   bool found = PrintAllDigits;
   while (powerToPrint) {
     if (found || powerToPrint <= val) {
-      IntegralType value = val / powerToPrint;
+      IntegralType value = IntegralType(val / powerToPrint);
       if (Base == 10 || value < 10) {
         value += '0';
       } else {

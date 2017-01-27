@@ -33,10 +33,9 @@ extern "C" int flock(int fd, int operation) {
       return -1;
     }
   } else {
-    DWORD flags = 0
-        | (operation & LOCK_NB ? LOCKFILE_FAIL_IMMEDIATELY : 0)
-        | (operation & LOCK_EX ? LOCKFILE_EXCLUSIVE_LOCK : 0)
-        ;
+    DWORD flags = DWORD(
+        (operation & LOCK_NB ? LOCKFILE_FAIL_IMMEDIATELY : 0) |
+        (operation & LOCK_EX ? LOCKFILE_EXCLUSIVE_LOCK : 0));
     OVERLAPPED ov = {};
     if (!LockFileEx(h, flags, 0, kMaxDWORD, kMaxDWORD, &ov)) {
       return -1;

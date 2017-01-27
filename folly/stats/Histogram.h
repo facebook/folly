@@ -125,7 +125,7 @@ class HistogramBuckets {
       return max_;
     }
 
-    return min_ + ((idx - 1) * bucketSize_);
+    return ValueType(min_ + ((idx - 1) * bucketSize_));
   }
 
   /*
@@ -140,7 +140,7 @@ class HistogramBuckets {
       return std::numeric_limits<ValueType>::max();
     }
 
-    return min_ + (idx * bucketSize_);
+    return ValueType(min_ + (idx * bucketSize_));
   }
 
   /**

@@ -44,7 +44,7 @@ TEST(IndexedMemPool, unique_ptr) {
       break;
     }
     leak.emplace_back(std::move(ptr));
-    EXPECT_LT(leak.size(), 10000);
+    EXPECT_LT(leak.size(), 10000u);
   }
 }
 
@@ -75,7 +75,7 @@ TEST(IndexedMemPool, no_starvation) {
       for (auto i = 0; i < count; ++i) {
         Sched::wait(&allocSem);
         uint32_t idx = pool.allocIndex();
-        EXPECT_NE(idx, 0);
+        EXPECT_NE(idx, 0u);
         EXPECT_LE(idx,
             poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
         pool[idx] = i;
@@ -90,7 +90,7 @@ TEST(IndexedMemPool, no_starvation) {
         Sched::wait(&readSem);
         EXPECT_EQ(read(fd[0], &idx, sizeof(idx)), sizeof(idx));
         EXPECT_NE(idx, 0);
-        EXPECT_GE(idx, 1);
+        EXPECT_GE(idx, 1u);
         EXPECT_LE(idx,
             poolSize + (Pool::NumLocalLists - 1) * Pool::LocalListLimit);
         EXPECT_EQ(pool[idx], i);
@@ -111,12 +111,12 @@ TEST(IndexedMemPool, st_capacity) {
   typedef IndexedMemPool<int,1,32> Pool;
   Pool pool(10);
 
-  EXPECT_EQ(pool.capacity(), 10);
-  EXPECT_EQ(Pool::maxIndexForCapacity(10), 10);
+  EXPECT_EQ(pool.capacity(), 10u);
+  EXPECT_EQ(Pool::maxIndexForCapacity(10), 10u);
   for (auto i = 0; i < 10; ++i) {
-    EXPECT_NE(pool.allocIndex(), 0);
+    EXPECT_NE(pool.allocIndex(), 0u);
   }
-  EXPECT_EQ(pool.allocIndex(), 0);
+  EXPECT_EQ(pool.allocIndex(), 0u);
 }
 
 TEST(IndexedMemPool, mt_capacity) {
@@ -128,7 +128,7 @@ TEST(IndexedMemPool, mt_capacity) {
     threads[i] = std::thread([&]() {
       for (auto j = 0; j < 100; ++j) {
         uint32_t idx = pool.allocIndex();
-        EXPECT_NE(idx, 0);
+        EXPECT_NE(idx, 0u);
       }
     });
   }
@@ -140,7 +140,7 @@ TEST(IndexedMemPool, mt_capacity) {
   for (auto i = 0; i < 16 * 32; ++i) {
     pool.allocIndex();
   }
-  EXPECT_EQ(pool.allocIndex(), 0);
+  EXPECT_EQ(pool.allocIndex(), 0u);
 }
 
 TEST(IndexedMemPool, locate_elem) {

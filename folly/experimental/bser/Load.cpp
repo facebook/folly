@@ -56,7 +56,7 @@ static std::string decodeString(Cursor& curs) {
   if (len < 0) {
     throw std::range_error("string length must not be negative");
   }
-  str.reserve(len);
+  str.reserve(size_t(len));
 
   size_t available = curs.length();
   while (available < (size_t)len) {
@@ -73,8 +73,8 @@ static std::string decodeString(Cursor& curs) {
     available = curs.length();
   }
 
-  str.append(reinterpret_cast<const char*>(curs.data()), len);
-  curs.skipAtMost(len);
+  str.append(reinterpret_cast<const char*>(curs.data()), size_t(len));
+  curs.skipAtMost(size_t(len));
   return str;
 }
 

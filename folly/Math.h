@@ -132,9 +132,10 @@ constexpr auto kIntegerDivisionGivesRemainder = true;
 template <typename N, typename D>
 inline constexpr detail::IdivResultType<N, D> divFloor(N num, D denom) {
   using R = decltype(num / denom);
-  return kIntegerDivisionGivesRemainder && std::is_signed<R>::value
-      ? detail::divFloorBranchless<R>(num, denom)
-      : detail::divFloorBranchful<R>(num, denom);
+  return detail::IdivResultType<N, D>(
+      kIntegerDivisionGivesRemainder && std::is_signed<R>::value
+          ? detail::divFloorBranchless<R>(num, denom)
+          : detail::divFloorBranchful<R>(num, denom));
 }
 
 /**
@@ -151,9 +152,10 @@ inline constexpr detail::IdivResultType<N, D> divFloor(N num, D denom) {
 template <typename N, typename D>
 inline constexpr detail::IdivResultType<N, D> divCeil(N num, D denom) {
   using R = decltype(num / denom);
-  return kIntegerDivisionGivesRemainder && std::is_signed<R>::value
-      ? detail::divCeilBranchless<R>(num, denom)
-      : detail::divCeilBranchful<R>(num, denom);
+  return detail::IdivResultType<N, D>(
+      kIntegerDivisionGivesRemainder && std::is_signed<R>::value
+          ? detail::divCeilBranchless<R>(num, denom)
+          : detail::divCeilBranchful<R>(num, denom));
 }
 
 /**
@@ -175,7 +177,7 @@ inline constexpr detail::IdivResultType<N, D> divCeil(N num, D denom) {
  */
 template <typename N, typename D>
 inline constexpr detail::IdivResultType<N, D> divTrunc(N num, D denom) {
-  return num / denom;
+  return detail::IdivResultType<N, D>(num / denom);
 }
 
 /**
@@ -193,9 +195,10 @@ inline constexpr detail::IdivResultType<N, D> divTrunc(N num, D denom) {
 template <typename N, typename D>
 inline constexpr detail::IdivResultType<N, D> divRoundAway(N num, D denom) {
   using R = decltype(num / denom);
-  return kIntegerDivisionGivesRemainder && std::is_signed<R>::value
-      ? detail::divRoundAwayBranchless<R>(num, denom)
-      : detail::divRoundAwayBranchful<R>(num, denom);
+  return detail::IdivResultType<N, D>(
+      kIntegerDivisionGivesRemainder && std::is_signed<R>::value
+          ? detail::divRoundAwayBranchless<R>(num, denom)
+          : detail::divRoundAwayBranchful<R>(num, denom));
 }
 
 } // namespace folly

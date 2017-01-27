@@ -198,7 +198,7 @@ extern "C" int clock_getres(clockid_t clock_id, struct timespec* res) {
       }
 
       res->tv_sec = 0;
-      res->tv_nsec = timeIncrement * 100;
+      res->tv_nsec = long(timeIncrement * 100);
       return 0;
     }
 

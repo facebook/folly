@@ -168,7 +168,7 @@ void FormatArg::initSlow() {
   auto end = fullArgString.end();
 
   // Parse key
-  auto p = static_cast<const char*>(memchr(b, ':', end - b));
+  auto p = static_cast<const char*>(memchr(b, ':', size_t(end - b)));
   if (!p) {
     key_ = StringPiece(b, end);
     return;

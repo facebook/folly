@@ -1306,7 +1306,7 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   assert(events & EventHandler::READ_WRITE);
   assert(eventBase_->isInEventBaseThread());
 
-  uint16_t relevantEvents = events & EventHandler::READ_WRITE;
+  uint16_t relevantEvents = uint16_t(events & EventHandler::READ_WRITE);
   if (relevantEvents == EventHandler::READ) {
     handleRead();
   } else if (relevantEvents == EventHandler::WRITE) {
@@ -1427,7 +1427,7 @@ void AsyncSocket::handleRead() noexcept {
             << bytesRead << " bytes";
     if (bytesRead > 0) {
       if (!isBufferMovable_) {
-        readCallback_->readDataAvailable(bytesRead);
+        readCallback_->readDataAvailable(size_t(bytesRead));
       } else {
         CHECK(kOpenSslModeMoveBufferOwnership);
         VLOG(5) << "this=" << this << ", AsyncSocket::handleRead() got "
@@ -1958,7 +1958,8 @@ bool AsyncSocket::updateEventRegistration() {
 
   // Always register for persistent events, so we don't have to re-register
   // after being called back.
-  if (!ioHandler_.registerHandler(eventFlags_ | EventHandler::PERSIST)) {
+  if (!ioHandler_.registerHandler(
+          uint16_t(eventFlags_ | EventHandler::PERSIST))) {
     eventFlags_ = EventHandler::NONE; // we're not registered after error
     AsyncSocketException ex(AsyncSocketException::INTERNAL_ERROR,
         withAddr("failed to update AsyncSocket event registration"));

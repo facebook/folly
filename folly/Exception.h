@@ -66,7 +66,7 @@ void checkPosixError(int err, Args&&... args) {
 template <class... Args>
 void checkKernelError(ssize_t ret, Args&&... args) {
   if (UNLIKELY(ret < 0)) {
-    throwSystemErrorExplicit(-ret, std::forward<Args>(args)...);
+    throwSystemErrorExplicit(int(-ret), std::forward<Args>(args)...);
   }
 }
 

@@ -208,7 +208,7 @@ const dynamic* dynamic::get_ptr(dynamic const& idx) const& {
     if (idx < 0 || idx >= parray->size()) {
       return nullptr;
     }
-    return &(*parray)[idx.asInt()];
+    return &(*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {
@@ -228,7 +228,7 @@ dynamic const& dynamic::at(dynamic const& idx) const& {
     if (idx < 0 || idx >= parray->size()) {
       std::__throw_out_of_range("out of range in dynamic array");
     }
-    return (*parray)[idx.asInt()];
+    return (*parray)[size_t(idx.asInt())];
   } else if (auto* pobject = get_nothrow<ObjectImpl>()) {
     auto it = pobject->find(idx);
     if (it == pobject->end()) {

@@ -58,9 +58,12 @@ TEST_F(OpenSSLHashTest, hmac_sha256) {
   auto combined = ByteRange(StringPiece("foobar"));
   HMAC(
       EVP_sha256(),
-      key.data(), key.size(),
-      combined.data(), combined.size(),
-      expected.data(), nullptr);
+      key.data(),
+      int(key.size()),
+      combined.data(),
+      combined.size(),
+      expected.data(),
+      nullptr);
 
   auto out = vector<uint8_t>(32);
   OpenSSLHash::hmac_sha256(range(out), key, buf);

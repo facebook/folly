@@ -43,7 +43,7 @@ struct Default {
     return true;
   }
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
-    return __builtin_popcountll(value);
+    return uint64_t(__builtin_popcountll(value));
   }
   static FOLLY_ALWAYS_INLINE int ctz(uint64_t value) {
     DCHECK_GT(value, 0u);

@@ -1155,7 +1155,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
       ticket = numPushes;
       const auto numPops = popTicket_.load(std::memory_order_acquire); // B
       // n will be negative if pops are pending
-      const int64_t n = numPushes - numPops;
+      const int64_t n = int64_t(numPushes - numPops);
       if (n >= static_cast<ssize_t>(capacity_)) {
         // Full, linearize at B.  We don't need to recheck the read we
         // performed at A, because if numPushes was stale at B then the

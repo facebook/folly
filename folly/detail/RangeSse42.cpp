@@ -108,7 +108,7 @@ size_t qfind_first_byte_of_needles16(const StringPieceLite haystack,
   auto index =
       _mm_cmpestri(arr2, int(needles.size()), arr1, int(haystack.size()), 0);
   if (index < 16) {
-    return index;
+    return size_t(index);
   }
 
   // Now, we can do aligned loads hereafter...

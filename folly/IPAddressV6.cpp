@@ -126,7 +126,7 @@ IPAddressV6::AddressStorage::AddressStorage(MacAddress mac) {
   // See RFC 4291 sections 2.5.1, 2.5.6, and Appendix A
   const auto* macBytes = mac.bytes();
   memcpy(&bytes_.front(), "\xfe\x80\x00\x00\x00\x00\x00\x00", 8);
-  bytes_[8] = macBytes[0] ^ 0x02;
+  bytes_[8] = uint8_t(macBytes[0] ^ 0x02);
   bytes_[9] = macBytes[1];
   bytes_[10] = macBytes[2];
   bytes_[11] = 0xff;
@@ -158,7 +158,7 @@ IPAddressV4 IPAddressV6::createIPv4() const {
 
 // convert two uint8_t bytes into a uint16_t as hibyte.lobyte
 static inline uint16_t unpack(uint8_t lobyte, uint8_t hibyte) {
-  return ((uint16_t)hibyte << 8) | (uint16_t)lobyte;
+  return uint16_t((uint16_t(hibyte) << 8) | lobyte);
 }
 
 // given a src string, unpack count*2 bytes into dest
@@ -315,12 +315,12 @@ bool IPAddressV6::isMulticast() const {
 
 uint8_t IPAddressV6::getMulticastFlags() const {
   DCHECK(isMulticast());
-  return ((addr_.bytes_[1] >> 4) & 0xf);
+  return uint8_t((addr_.bytes_[1] >> 4) & 0xf);
 }
 
 uint8_t IPAddressV6::getMulticastScope() const {
   DCHECK(isMulticast());
-  return (addr_.bytes_[1] & 0xf);
+  return uint8_t(addr_.bytes_[1] & 0xf);
 }
 
 IPAddressV6 IPAddressV6::getSolicitedNodeAddress() const {
