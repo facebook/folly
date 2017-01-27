@@ -34,6 +34,10 @@
 #include <crtdbg.h>
 #endif
 
+#ifndef _MSC_VER
+extern char** environ;
+#endif
+
 namespace folly {
 namespace test {
 
