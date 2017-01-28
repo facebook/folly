@@ -83,10 +83,8 @@ void basicTest() {
 }
 
 template <typename RefCount>
-void stressTest() {
-  constexpr size_t kItersCount = 10000;
-
-  for (size_t i = 0; i < kItersCount; ++i) {
+void stressTest(size_t itersCount) {
+  for (size_t i = 0; i < itersCount; ++i) {
     RefCount count;
     std::mutex mutex;
     int a{1};
@@ -125,10 +123,12 @@ TEST(TLRefCount, Basic) {
 }
 
 TEST(RCURefCount, Stress) {
-  stressTest<TLRefCount>();
+  stressTest<RCURefCount>(100000);
 }
 
 TEST(TLRefCount, Stress) {
-  stressTest<TLRefCount>();
+  // This is absurdly slow, so we can't
+  // do it that many times.
+  stressTest<TLRefCount>(500);
 }
 }
