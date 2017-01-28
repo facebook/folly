@@ -1771,7 +1771,9 @@ void AsyncSocket::timeoutExpired() noexcept {
     // Unregister for I/O events.
     if (connectCallback_) {
       AsyncSocketException ex(
-          AsyncSocketException::TIMED_OUT, "connect timed out");
+          AsyncSocketException::TIMED_OUT,
+          folly::sformat(
+              "connect timed out after {}ms", connectTimeout_.count()));
       failConnect(__func__, ex);
     } else {
       // we faced a connect error without a connect callback, which could
@@ -1782,7 +1784,9 @@ void AsyncSocket::timeoutExpired() noexcept {
     }
   } else {
     // a normal write operation timed out
-    AsyncSocketException ex(AsyncSocketException::TIMED_OUT, "write timed out");
+    AsyncSocketException ex(
+        AsyncSocketException::TIMED_OUT,
+        folly::sformat("write timed out after {}ms", sendTimeout_));
     failWrite(__func__, ex);
   }
 }

@@ -123,32 +123,31 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       noexcept = 0;
   };
 
-  class HandshakeTimeout : public AsyncTimeout {
+  class Timeout : public AsyncTimeout {
    public:
-    HandshakeTimeout(AsyncSSLSocket* sslSocket, EventBase* eventBase)
-      : AsyncTimeout(eventBase)
-      , sslSocket_(sslSocket) {}
-
-    virtual void timeoutExpired() noexcept {
-      sslSocket_->timeoutExpired();
-    }
-
-   private:
-    AsyncSSLSocket* sslSocket_;
-  };
-
-  // Timer for if we fallback from SSL connects to TCP connects
-  class ConnectionTimeout : public AsyncTimeout {
-   public:
-    ConnectionTimeout(AsyncSSLSocket* sslSocket, EventBase* eventBase)
+    Timeout(AsyncSSLSocket* sslSocket, EventBase* eventBase)
         : AsyncTimeout(eventBase), sslSocket_(sslSocket) {}
 
+    bool scheduleTimeout(TimeoutManager::timeout_type timeout) {
+      timeout_ = timeout;
+      return AsyncTimeout::scheduleTimeout(timeout);
+    }
+
+    bool scheduleTimeout(uint32_t timeoutMs) {
+      return scheduleTimeout(std::chrono::milliseconds{timeoutMs});
+    }
+
+    TimeoutManager::timeout_type getTimeout() {
+      return timeout_;
+    }
+
     virtual void timeoutExpired() noexcept override {
-      sslSocket_->timeoutExpired();
+      sslSocket_->timeoutExpired(timeout_);
     }
 
    private:
     AsyncSSLSocket* sslSocket_;
+    TimeoutManager::timeout_type timeout_;
   };
 
   /**
@@ -545,7 +544,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void setServerName(std::string serverName) noexcept;
 #endif // FOLLY_OPENSSL_HAS_SNI
 
-  void timeoutExpired() noexcept;
+  void timeoutExpired(std::chrono::milliseconds timeout) noexcept;
 
   /**
    * Get the list of supported ciphers sent by the client in the client's
@@ -781,8 +780,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   HandshakeCB* handshakeCallback_{nullptr};
   SSL* ssl_{nullptr};
   SSL_SESSION *sslSession_{nullptr};
-  HandshakeTimeout handshakeTimeout_;
-  ConnectionTimeout connectionTimeout_;
+  Timeout handshakeTimeout_;
+  Timeout connectionTimeout_;
   // whether the SSL session was resumed using session ID or not
   bool sessionIDResumed_{false};
 

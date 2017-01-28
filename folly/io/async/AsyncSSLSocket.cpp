@@ -106,8 +106,9 @@ class AsyncSSLSocketConnector: public AsyncSocket::ConnectCallback,
 
       timeoutLeft = timeout_ - (curTime - startTime_);
       if (timeoutLeft <= 0) {
-        AsyncSocketException ex(AsyncSocketException::TIMED_OUT,
-                                "SSL connect timed out");
+        AsyncSocketException ex(
+            AsyncSocketException::TIMED_OUT,
+            folly::sformat("SSL connect timed out after {}ms", timeout_));
         fail(ex);
         delete this;
         return;
@@ -561,10 +562,10 @@ void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
 
 #endif // FOLLY_OPENSSL_HAS_SNI
 
-void AsyncSSLSocket::timeoutExpired() noexcept {
+void AsyncSSLSocket::timeoutExpired(
+    std::chrono::milliseconds timeout) noexcept {
   if (state_ == StateEnum::ESTABLISHED &&
-      (sslState_ == STATE_CACHE_LOOKUP ||
-       sslState_ == STATE_ASYNC_PENDING)) {
+      (sslState_ == STATE_CACHE_LOOKUP || sslState_ == STATE_ASYNC_PENDING)) {
     sslState_ = STATE_ERROR;
     // We are expecting a callback in restartSSLAccept.  The cache lookup
     // and rsa-call necessarily have pointers to this ssl socket, so delay
@@ -579,9 +580,12 @@ void AsyncSSLSocket::timeoutExpired() noexcept {
     assert(state_ == StateEnum::ESTABLISHED &&
            (sslState_ == STATE_CONNECTING || sslState_ == STATE_ACCEPTING));
     DestructorGuard dg(this);
-    AsyncSocketException ex(AsyncSocketException::TIMED_OUT,
-                           (sslState_ == STATE_CONNECTING) ?
-                           "SSL connect timed out" : "SSL accept timed out");
+    AsyncSocketException ex(
+        AsyncSocketException::TIMED_OUT,
+        folly::sformat(
+            "SSL {} timed out after {}ms",
+            (sslState_ == STATE_CONNECTING) ? "connect" : "accept",
+            timeout.count()));
     failHandshake(__func__, ex);
   }
 }
@@ -990,8 +994,8 @@ AsyncSSLSocket::restartSSLAccept()
   }
   if (sslState_ == STATE_ERROR) {
     // go straight to fail if timeout expired during lookup
-    AsyncSocketException ex(AsyncSocketException::TIMED_OUT,
-                           "SSL accept timed out");
+    AsyncSocketException ex(
+        AsyncSocketException::TIMED_OUT, "SSL accept timed out");
     failHandshake(__func__, ex);
     return;
   }
