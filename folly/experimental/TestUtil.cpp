@@ -20,15 +20,12 @@
 #include <sys/stat.h>
 
 #include <boost/regex.hpp>
-#include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
 #include <folly/portability/Fcntl.h>
-#include <folly/portability/Stdlib.h>
-#include <folly/portability/Unistd.h>
 
 #ifdef _WIN32
 #include <crtdbg.h>
@@ -215,36 +212,6 @@ std::string CaptureFD::readIncremental() {
   readOffset_ += off_t(size);
   chunkCob_(StringPiece(buf.get(), buf.get() + size));
   return std::string(buf.get(), size);
-}
-
-static std::map<std::string, std::string> getEnvVarMap() {
-  std::map<std::string, std::string> data;
-  for (auto it = environ; *it != nullptr; ++it) {
-    std::string key, value;
-    split("=", *it, key, value);
-    if (key.empty()) {
-      continue;
-    }
-    CHECK(!data.count(key)) << "already contains: " << key;
-    data.emplace(move(key), move(value));
-  }
-  return data;
-}
-
-EnvVarSaver::EnvVarSaver() {
-  saved_ = getEnvVarMap();
-}
-
-EnvVarSaver::~EnvVarSaver() {
-  for (const auto& kvp : getEnvVarMap()) {
-    if (saved_.count(kvp.first)) {
-      continue;
-    }
-    PCHECK(0 == unsetenv(kvp.first.c_str()));
-  }
-  for (const auto& kvp : saved_) {
-    PCHECK(0 == setenv(kvp.first.c_str(), kvp.second.c_str(), (int)true));
-  }
 }
 
 }  // namespace test

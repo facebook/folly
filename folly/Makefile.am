@@ -102,6 +102,7 @@ nobase_follyinclude_HEADERS = \
 	experimental/DynamicParser-inl.h \
 	experimental/ExecutionObserver.h \
 	experimental/EliasFanoCoding.h \
+	experimental/EnvUtil.h \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
 	experimental/bser/Bser.h \
@@ -514,6 +515,7 @@ libfolly_la_SOURCES = \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
+	experimental/EnvUtil.cpp
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JemallocNodumpAllocator.cpp \
