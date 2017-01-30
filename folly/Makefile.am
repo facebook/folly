@@ -515,7 +515,7 @@ libfolly_la_SOURCES = \
 	experimental/bser/Dump.cpp \
 	experimental/bser/Load.cpp \
 	experimental/DynamicParser.cpp \
-	experimental/EnvUtil.cpp
+	experimental/EnvUtil.cpp \
 	experimental/FunctionScheduler.cpp \
 	experimental/io/FsUtil.cpp \
 	experimental/JemallocNodumpAllocator.cpp \
