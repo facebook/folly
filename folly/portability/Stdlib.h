@@ -18,13 +18,6 @@
 
 #include <cstdlib>
 
-#if defined(__APPLE__)
-#include <TargetConditionals.h>
-#if (TARGET_OS_OSX || TARGET_OS_SIMULATOR)
-#include <crt_extern.h>
-#endif
-#endif
-
 extern "C" {
 #ifdef _WIN32
 // These are technically supposed to be defined linux/limits.h and
@@ -41,7 +34,7 @@ int mkstemp(char* tn);
 char* realpath(const char* path, char* resolved_path);
 int setenv(const char* name, const char* value, int overwrite);
 int unsetenv(const char* name);
-#elif defined(__APPLE__) && (TARGET_OS_OSX || TARGET_OS_SIMULATOR)
-#define environ (*_NSGetEnviron())
+#elif defined(__APPLE__)
+extern char** environ;
 #endif
 }
