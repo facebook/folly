@@ -318,8 +318,6 @@ bool FunctionScheduler::start() {
     return false;
   }
 
-  running_ = true;
-
   VLOG(1) << "Starting FunctionScheduler with " << functions_.size()
           << " functions.";
   auto now = steady_clock::now();
@@ -334,6 +332,8 @@ bool FunctionScheduler::start() {
   std::make_heap(functions_.begin(), functions_.end(), fnCmp_);
 
   thread_ = std::thread([&] { this->run(); });
+  running_ = true;
+
   return true;
 }
 

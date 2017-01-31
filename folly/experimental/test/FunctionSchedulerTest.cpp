@@ -13,15 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <folly/experimental/FunctionScheduler.h>
-
 #include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <random>
-#include <folly/Random.h>
 
+#include <folly/Random.h>
+#include <folly/experimental/FunctionScheduler.h>
 #include <folly/portability/GTest.h>
+
+#if defined(__linux__)
+#include <dlfcn.h>
+#endif
 
 using namespace folly;
 using std::chrono::milliseconds;
@@ -487,6 +490,60 @@ TEST(FunctionScheduler, cancelFunctionAndWait) {
   EXPECT_FALSE(fs.cancelFunction("add2")); // add2 has been canceled
   fs.shutdown();
 }
+
+#if defined(__linux__)
+namespace {
+/**
+ * A helper class that forces our pthread_create() wrapper to fail when
+ * an PThreadCreateFailure object exists.
+ */
+class PThreadCreateFailure {
+ public:
+  PThreadCreateFailure() {
+    ++forceFailure_;
+  }
+  ~PThreadCreateFailure() {
+    --forceFailure_;
+  }
+
+  static bool shouldFail() {
+    return forceFailure_ > 0;
+  }
+
+ private:
+  static std::atomic<int> forceFailure_;
+};
+
+std::atomic<int> PThreadCreateFailure::forceFailure_{0};
+} // unnamed namespce
+
+// Replace the system pthread_create() function with our own stub, so we can
+// trigger failures in the StartThrows() test.
+extern "C" int pthread_create(
+    pthread_t* thread,
+    const pthread_attr_t* attr,
+    void* (*start_routine)(void*),
+    void* arg) {
+  static const auto realFunction = reinterpret_cast<decltype(&pthread_create)>(
+      dlsym(RTLD_NEXT, "pthread_create"));
+  // For sanity, make sure we didn't find ourself,
+  // since that would cause infinite recursion.
+  CHECK_NE(realFunction, pthread_create);
+
+  if (PThreadCreateFailure::shouldFail()) {
+    errno = EINVAL;
+    return -1;
+  }
+  return realFunction(thread, attr, start_routine, arg);
+}
+
+TEST(FunctionScheduler, StartThrows) {
+  FunctionScheduler fs;
+  PThreadCreateFailure fail;
+  EXPECT_ANY_THROW(fs.start());
+  EXPECT_NO_THROW(fs.shutdown());
+}
+#endif
 
 TEST(FunctionScheduler, cancelAllFunctionsAndWait) {
   int total = 0;
