@@ -28,6 +28,22 @@ TEST(Shell, ShellQuote) {
 }
 
 TEST(Shell, Shellify) {
+  auto command = "rm -rf /"_shellify();
+  EXPECT_EQ(command[0], "/bin/sh");
+  EXPECT_EQ(command[1], "-c");
+  EXPECT_EQ(command[2], "rm -rf /");
+
+  command = "rm -rf {}"_shellify("someFile.txt");
+  EXPECT_EQ(command[2], "rm -rf 'someFile.txt'");
+
+  command = "rm -rf {}"_shellify(5);
+  EXPECT_EQ(command[2], "rm -rf '5'");
+
+  command = "ls {}"_shellify("blah'; rm -rf /");
+  EXPECT_EQ(command[2], "ls 'blah'\\''; rm -rf /'");
+}
+
+TEST(Shell, Shellify_deprecated) {
   auto command = shellify("rm -rf /");
   EXPECT_EQ(command[0], "/bin/sh");
   EXPECT_EQ(command[1], "-c");

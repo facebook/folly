@@ -38,25 +38,56 @@ namespace folly {
  */
 std::string shellQuote(StringPiece argument);
 
+namespace detail {
+template <typename... Arguments>
+std::vector<std::string> shellify(
+    StringPiece format,
+    Arguments&&... arguments) {
+  auto command = sformat(
+      format,
+      shellQuote(to<std::string>(std::forward<Arguments>(arguments)))...);
+  return {"/bin/sh", "-c", command};
+}
+
+struct ShellCmdFormat {
+  StringPiece format;
+  template <typename... Arguments>
+  std::vector<std::string> operator()(Arguments&&... arguments) const {
+    return ::folly::detail::shellify(
+        format, std::forward<Arguments>(arguments)...);
+  }
+};
+
+} // namespace detail
+
+inline namespace literals {
+inline namespace shell_literals {
+constexpr detail::ShellCmdFormat operator"" _shellify(
+    char const* name,
+    std::size_t length) {
+  return {folly::StringPiece(name, length)};
+}
+} // inline namespace shell_literals
+} // inline namespace literals
+
 /**
   * Create argument array for `Subprocess()` for a process running in a
   * shell.
   *
   * The shell to use is always going to be `/bin/sh`.
   *
-  * The format string should always be a string literal to protect against
-  * shell injections. Arguments will automatically be escaped with `'`.
-  *
-  * TODO(dominik): find a way to ensure statically determined format strings.
+  * This is deprecated in favour of the user-defined-literal `_shellify`
+  * from namespace `folly::shell_literals` because that requires that the format
+  * string is a compile-time constant which can be inspected during code reviews
   */
 template <typename... Arguments>
+FOLLY_DEPRECATED(
+    "Use `\"command {} {} ...\"_shellify(argument1, argument2 ...)` from "
+    "namespace `folly::literals::shell_literals`")
 std::vector<std::string> shellify(
-    const StringPiece format,
+    StringPiece format,
     Arguments&&... arguments) {
-  auto command = sformat(
-      format,
-      shellQuote(to<std::string>(std::forward<Arguments>(arguments)))...);
-  return {"/bin/sh", "-c", command};
+  return detail::shellify(format, std::forward<Arguments>(arguments)...);
 }
 
 } // folly
