@@ -21,15 +21,15 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/portability/GFlags.h>
-#include <folly/portability/Time.h>
 
 #include <cassert>
-#include <ctime>
-#include <boost/function_types/function_arity.hpp>
+#include <chrono>
 #include <functional>
-#include <glog/logging.h>
 #include <limits>
 #include <type_traits>
+
+#include <boost/function_types/function_arity.hpp>
+#include <glog/logging.h>
 
 DECLARE_bool(benchmark);
 
@@ -53,7 +53,8 @@ inline bool runBenchmarksOnFlag() {
 
 namespace detail {
 
-typedef std::pair<uint64_t, unsigned int> TimeIterPair;
+using TimeIterPair =
+    std::pair<std::chrono::high_resolution_clock::duration, unsigned int>;
 
 /**
  * Adds a benchmark wrapped in a std::function. Only used
@@ -63,85 +64,51 @@ void addBenchmarkImpl(const char* file,
                       const char* name,
                       std::function<TimeIterPair(unsigned int)>);
 
-/**
- * Takes the difference between two timespec values. end is assumed to
- * occur after start.
- */
-inline uint64_t timespecDiff(timespec end, timespec start) {
-  if (end.tv_sec == start.tv_sec) {
-    assert(end.tv_nsec >= start.tv_nsec);
-    return uint64_t(end.tv_nsec - start.tv_nsec);
-  }
-  assert(end.tv_sec > start.tv_sec);
-  auto diff = uint64_t(end.tv_sec - start.tv_sec);
-  assert(diff < std::numeric_limits<uint64_t>::max() / 1000000000ULL);
-  return diff * 1000000000ULL + end.tv_nsec - start.tv_nsec;
-}
-
-/**
- * Takes the difference between two sets of timespec values. The first
- * two come from a high-resolution clock whereas the other two come
- * from a low-resolution clock. The crux of the matter is that
- * high-res values may be bogus as documented in
- * http://linux.die.net/man/3/clock_gettime. The trouble is when the
- * running process migrates from one CPU to another, which is more
- * likely for long-running processes. Therefore we watch for high
- * differences between the two timings.
- *
- * This function is subject to further improvements.
- */
-inline uint64_t timespecDiff(timespec end, timespec start,
-                             timespec endCoarse, timespec startCoarse) {
-  auto fine = timespecDiff(end, start);
-  auto coarse = timespecDiff(endCoarse, startCoarse);
-  if (coarse - fine >= 1000000) {
-    // The fine time is in all likelihood bogus
-    return coarse;
-  }
-  return fine;
-}
-
 } // namespace detail
 
 /**
  * Supporting type for BENCHMARK_SUSPEND defined below.
  */
 struct BenchmarkSuspender {
+  using Clock = std::chrono::high_resolution_clock;
+  using TimePoint = Clock::time_point;
+  using Duration = Clock::duration;
+
   BenchmarkSuspender() {
-    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &start));
+    start = Clock::now();
   }
 
   BenchmarkSuspender(const BenchmarkSuspender &) = delete;
   BenchmarkSuspender(BenchmarkSuspender && rhs) noexcept {
     start = rhs.start;
-    rhs.start = {0, 0};
+    rhs.start = {};
   }
 
   BenchmarkSuspender& operator=(const BenchmarkSuspender &) = delete;
   BenchmarkSuspender& operator=(BenchmarkSuspender && rhs) {
-    if (start.tv_nsec > 0 || start.tv_sec > 0) {
+    if (start != TimePoint{}) {
       tally();
     }
     start = rhs.start;
-    rhs.start = {0, 0};
+    rhs.start = {};
     return *this;
   }
 
   ~BenchmarkSuspender() {
-    if (start.tv_nsec > 0 || start.tv_sec > 0) {
+    if (start != TimePoint{}) {
       tally();
     }
   }
 
   void dismiss() {
-    assert(start.tv_nsec > 0 || start.tv_sec > 0);
+    assert(start != TimePoint{});
     tally();
-    start = {0, 0};
+    start = {};
   }
 
   void rehire() {
-    assert(start.tv_nsec == 0 || start.tv_sec == 0);
-    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &start));
+    assert(start == TimePoint{});
+    start = Clock::now();
   }
 
   template <class F>
@@ -160,20 +127,18 @@ struct BenchmarkSuspender {
   }
 
   /**
-   * Accumulates nanoseconds spent outside benchmark.
+   * Accumulates time spent outside benchmark.
    */
-  typedef uint64_t NanosecondsSpent;
-  static NanosecondsSpent nsSpent;
+  static Duration timeSpent;
 
-private:
+ private:
   void tally() {
-    timespec end;
-    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &end));
-    nsSpent += detail::timespecDiff(end, start);
+    auto end = Clock::now();
+    timeSpent += end - start;
     start = end;
   }
 
-  timespec start;
+  TimePoint start;
 };
 
 /**
@@ -190,22 +155,17 @@ typename std::enable_if<
 >::type
 addBenchmark(const char* file, const char* name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
-    BenchmarkSuspender::nsSpent = 0;
-    timespec start, end;
+    BenchmarkSuspender::timeSpent = {};
     unsigned int niter;
 
     // CORE MEASUREMENT STARTS
-    auto const r1 = clock_gettime(CLOCK_REALTIME, &start);
+    auto start = std::chrono::high_resolution_clock::now();
     niter = lambda(times);
-    auto const r2 = clock_gettime(CLOCK_REALTIME, &end);
+    auto end = std::chrono::high_resolution_clock::now();
     // CORE MEASUREMENT ENDS
 
-    CHECK_EQ(0, r1);
-    CHECK_EQ(0, r2);
-
     return detail::TimeIterPair(
-      detail::timespecDiff(end, start) - BenchmarkSuspender::nsSpent,
-      niter);
+        (end - start) - BenchmarkSuspender::timeSpent, niter);
   };
 
   detail::addBenchmarkImpl(file, name,

@@ -97,6 +97,17 @@ struct LatencyTest {
       computeTimeCost();
     }
 
+  static uint64_t timespecDiff(timespec end, timespec start) {
+    if (end.tv_sec == start.tv_sec) {
+      assert(end.tv_nsec >= start.tv_nsec);
+      return uint64_t(end.tv_nsec - start.tv_nsec);
+    }
+    assert(end.tv_sec > start.tv_sec);
+    auto diff = uint64_t(end.tv_sec - start.tv_sec);
+    assert(diff < std::numeric_limits<uint64_t>::max() / 1000000000ULL);
+    return diff * 1000000000ULL + end.tv_nsec - start.tv_nsec;
+  }
+
   void computeTimeCost() {
     timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
@@ -105,7 +116,7 @@ struct LatencyTest {
       clock_gettime(CLOCK_REALTIME, &tv);
     }
     clock_gettime(CLOCK_REALTIME, &end);
-    time_cost_ = 2 * detail::timespecDiff(end, start) / iters_;
+    time_cost_ = 2 * timespecDiff(end, start) / iters_;
   }
 
   void producer() {
@@ -120,7 +131,7 @@ struct LatencyTest {
       clock_gettime(CLOCK_REALTIME, &sleepstart);
       do {
         clock_gettime(CLOCK_REALTIME, &sleeptime);
-      } while (detail::timespecDiff(sleeptime, sleepstart) < 1000000);
+      } while (timespecDiff(sleeptime, sleepstart) < 1000000);
 
       timespec tv;
       clock_gettime(CLOCK_REALTIME, &tv);

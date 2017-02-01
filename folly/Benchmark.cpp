@@ -62,7 +62,7 @@ DEFINE_int32(
 
 namespace folly {
 
-BenchmarkSuspender::NanosecondsSpent BenchmarkSuspender::nsSpent;
+std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
 
 typedef function<detail::TimeIterPair(unsigned int)> BenchmarkFun;
 
@@ -118,33 +118,31 @@ static double estimateTime(double * begin, double * end) {
 
 static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
                                             const double globalBaseline) {
+  using std::chrono::duration_cast;
+  using std::chrono::high_resolution_clock;
+  using std::chrono::microseconds;
+  using std::chrono::nanoseconds;
+  using std::chrono::seconds;
+
   // They key here is accuracy; too low numbers means the accuracy was
   // coarse. We up the ante until we get to at least minNanoseconds
   // timings.
-  static uint64_t resolutionInNs = 0;
-  if (!resolutionInNs) {
-    timespec ts;
-    CHECK_EQ(0, clock_getres(CLOCK_REALTIME, &ts));
-    CHECK_EQ(0, ts.tv_sec) << "Clock sucks.";
-    CHECK_LT(0, ts.tv_nsec) << "Clock too fast for its own good.";
-    CHECK_EQ(1, ts.tv_nsec) << "Clock too coarse, upgrade your kernel.";
-    resolutionInNs = uint64_t(ts.tv_nsec);
-  }
+  static_assert(
+      std::is_same<high_resolution_clock::duration, nanoseconds>::value,
+      "High resolution clock must be nanosecond resolution.");
   // We choose a minimum minimum (sic) of 100,000 nanoseconds, but if
   // the clock resolution is worse than that, it will be larger. In
   // essence we're aiming at making the quantization noise 0.01%.
-  static const auto minNanoseconds = max<uint64_t>(
-      uint64_t(FLAGS_bm_min_usec) * 1000ULL,
-      min<uint64_t>(resolutionInNs * 100000ULL, 1000000000ULL));
+  static const auto minNanoseconds = std::max<nanoseconds>(
+      nanoseconds(100000), microseconds(FLAGS_bm_min_usec));
 
   // We do measurements in several epochs and take the minimum, to
   // account for jitter.
   static const unsigned int epochs = 1000;
   // We establish a total time budget as we don't want a measurement
   // to take too long. This will curtail the number of actual epochs.
-  const uint64_t timeBudgetInNs = FLAGS_bm_max_secs * 1000000000ULL;
-  timespec global;
-  CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &global));
+  const auto timeBudget = seconds(FLAGS_bm_max_secs);
+  auto global = high_resolution_clock::now();
 
   double epochResults[epochs] = { 0 };
   size_t actualEpochs = 0;
@@ -158,14 +156,14 @@ static double runBenchmarkGetNSPerIteration(const BenchmarkFun& fun,
       }
       // We got an accurate enough timing, done. But only save if
       // smaller than the current result.
-      epochResults[actualEpochs] = max(0.0, double(nsecsAndIter.first) /
-                                       nsecsAndIter.second - globalBaseline);
+      auto nsecs = duration_cast<nanoseconds>(nsecsAndIter.first).count();
+      epochResults[actualEpochs] =
+          max(0.0, double(nsecs) / nsecsAndIter.second - globalBaseline);
       // Done with the current epoch, we got a meaningful timing.
       break;
     }
-    timespec now;
-    CHECK_EQ(0, clock_gettime(CLOCK_REALTIME, &now));
-    if (detail::timespecDiff(now, global) >= timeBudgetInNs) {
+    auto now = high_resolution_clock::now();
+    if (now - global >= timeBudget) {
       // No more time budget available.
       ++actualEpochs;
       break;
