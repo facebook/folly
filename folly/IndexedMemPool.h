@@ -84,12 +84,13 @@ struct IndexedMemPoolRecycler;
 /// constructed, but delays element construction.  This means that only
 /// elements that are actually returned to the caller get paged into the
 /// process's resident set (RSS).
-template <typename T,
-          int NumLocalLists_ = 32,
-          int LocalListLimit_ = 200,
-          template<typename> class Atom = std::atomic,
-          bool EagerRecycleWhenTrivial = false,
-          bool EagerRecycleWhenNotTrivial = true>
+template <
+    typename T,
+    uint32_t NumLocalLists_ = 32,
+    uint32_t LocalListLimit_ = 200,
+    template <typename> class Atom = std::atomic,
+    bool EagerRecycleWhenTrivial = false,
+    bool EagerRecycleWhenNotTrivial = true>
 struct IndexedMemPool : boost::noncopyable {
   typedef T value_type;
 
@@ -149,7 +150,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
     if (!eagerRecycle()) {
-      for (size_t i = size_; i > 0; --i) {
+      for (uint32_t i = size_; i > 0; --i) {
         slots_[i].~Slot();
       }
     }
@@ -160,7 +161,7 @@ struct IndexedMemPool : boost::noncopyable {
   /// simultaneously allocated and not yet recycled.  Because of the
   /// local lists it is possible that more elements than this are returned
   /// successfully
-  size_t capacity() {
+  uint32_t capacity() {
     return capacityForMaxIndex(actualCapacity_);
   }
 
@@ -294,15 +295,15 @@ struct IndexedMemPool : boost::noncopyable {
 
   ////////// fields
 
+  /// the number of bytes allocated from mmap, which is a multiple of
+  /// the page size of the machine
+  size_t mmapLength_;
+
   /// the actual number of slots that we will allocate, to guarantee
   /// that we will satisfy the capacity requested at construction time.
   /// They will be numbered 1..actualCapacity_ (note the 1-based counting),
   /// and occupy slots_[1..actualCapacity_].
-  size_t actualCapacity_;
-
-  /// the number of bytes allocated from mmap, which is a multiple of
-  /// the page size of the machine
-  size_t mmapLength_;
+  uint32_t actualCapacity_;
 
   /// this records the number of slots that have actually been constructed.
   /// To allow use of atomic ++ instead of CAS, we let this overflow.
@@ -325,7 +326,7 @@ struct IndexedMemPool : boost::noncopyable {
 
   ///////////// private methods
 
-  size_t slotIndex(uint32_t idx) const {
+  uint32_t slotIndex(uint32_t idx) const {
     assert(0 < idx &&
            idx <= actualCapacity_ &&
            idx <= size_.load(std::memory_order_acquire));

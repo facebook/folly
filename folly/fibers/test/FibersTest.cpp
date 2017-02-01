@@ -292,7 +292,7 @@ TEST(FiberManager, addTasksNoncopyable) {
     if (!taskAdded) {
       manager.addTask([&]() {
         std::vector<std::function<std::unique_ptr<int>()>> funcs;
-        for (size_t i = 0; i < 3; ++i) {
+        for (int i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
             await([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));

@@ -451,8 +451,8 @@ TEST(IOBuf, Appender) {
   append(head, "hello");
 
   Appender app(head.get(), 10);
-  uint32_t cap = head->capacity();
-  uint32_t len1 = app.length();
+  auto cap = head->capacity();
+  auto len1 = app.length();
   EXPECT_EQ(cap - 5, len1);
   app.ensure(len1);  // won't grow
   EXPECT_EQ(len1, app.length());

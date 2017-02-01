@@ -49,7 +49,7 @@ class ClosableMPMCQueue {
   void openConsumer() { ++consumers_; }
 
   void closeInputProducer() {
-    int64_t producers = producers_--;
+    size_t producers = producers_--;
     CHECK(producers);
     if (producers == 1) { // last producer
       wakeConsumer_.notifyAll();
@@ -57,7 +57,7 @@ class ClosableMPMCQueue {
   }
 
   void closeOutputConsumer() {
-    int64_t consumers = consumers_--;
+    size_t consumers = consumers_--;
     CHECK(consumers);
     if (consumers == 1) { // last consumer
       wakeProducer_.notifyAll();

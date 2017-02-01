@@ -104,13 +104,13 @@ class BucketedTimeSeries {
   /*
    * Adds the value 'val' the given number of 'times' at time 'now'
    */
-  bool addValue(TimePoint now, const ValueType& val, int64_t times);
+  bool addValue(TimePoint now, const ValueType& val, uint64_t times);
 
   /*
    * Adds the value 'total' as the sum of 'nsamples' samples
    */
   bool
-  addValueAggregated(TimePoint now, const ValueType& total, int64_t nsamples);
+  addValueAggregated(TimePoint now, const ValueType& total, uint64_t nsamples);
 
   /*
    * Updates the container to the specified time, doing all the necessary
@@ -413,11 +413,11 @@ class BucketedTimeSeries {
   bool addValue(Duration now, const ValueType& val) {
     return addValueAggregated(TimePoint(now), val, 1);
   }
-  bool addValue(Duration now, const ValueType& val, int64_t times) {
+  bool addValue(Duration now, const ValueType& val, uint64_t times) {
     return addValueAggregated(TimePoint(now), val * ValueType(times), times);
   }
   bool
-  addValueAggregated(Duration now, const ValueType& total, int64_t nsamples) {
+  addValueAggregated(Duration now, const ValueType& total, uint64_t nsamples) {
     return addValueAggregated(TimePoint(now), total, nsamples);
   }
   size_t update(Duration now) {

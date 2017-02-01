@@ -1313,7 +1313,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
       if (zero_return(error, bytes)) {
         return ReadResult(bytes);
       }
-      long errError = ERR_get_error();
+      auto errError = ERR_get_error();
       VLOG(6) << "AsyncSSLSocket(fd=" << fd_ << ", "
               << "state=" << state_ << ", "
               << "sslState=" << sslState_ << ", "

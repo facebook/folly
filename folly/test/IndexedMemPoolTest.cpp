@@ -50,7 +50,7 @@ TEST(IndexedMemPool, unique_ptr) {
 
 TEST(IndexedMemPool, no_starvation) {
   const int count = 1000;
-  const int poolSize = 100;
+  const uint32_t poolSize = 100;
 
   typedef DeterministicSchedule Sched;
   Sched sched(Sched::uniform(0));
@@ -157,16 +157,16 @@ TEST(IndexedMemPool, locate_elem) {
 }
 
 struct NonTrivialStruct {
-  static FOLLY_TLS int count;
+  static FOLLY_TLS size_t count;
 
-  int elem_;
+  size_t elem_;
 
   NonTrivialStruct() {
     elem_ = 0;
     ++count;
   }
 
-  NonTrivialStruct(std::unique_ptr<std::string>&& arg1, int arg2) {
+  NonTrivialStruct(std::unique_ptr<std::string>&& arg1, size_t arg2) {
     elem_ = arg1->length() + arg2;
     ++count;
   }
@@ -176,7 +176,7 @@ struct NonTrivialStruct {
   }
 };
 
-FOLLY_TLS int NonTrivialStruct::count;
+FOLLY_TLS size_t NonTrivialStruct::count;
 
 TEST(IndexedMemPool, eager_recycle) {
   typedef IndexedMemPool<NonTrivialStruct> Pool;

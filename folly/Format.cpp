@@ -50,14 +50,14 @@ void FormatValue<double>::formatHelper(
   }
 
   // 2+: for null terminator and optional sign shenanigans.
-  constexpr size_t bufLen =
+  constexpr int bufLen =
       2 + constexpr_max(
               2 + DoubleToStringConverter::kMaxFixedDigitsBeforePoint +
                   DoubleToStringConverter::kMaxFixedDigitsAfterPoint,
               constexpr_max(8 + DoubleToStringConverter::kMaxExponentialDigits,
                             7 + DoubleToStringConverter::kMaxPrecisionDigits));
   char buf[bufLen];
-  StringBuilder builder(buf + 1, static_cast<int> (sizeof(buf) - 1));
+  StringBuilder builder(buf + 1, bufLen - 1);
 
   char plusSign;
   switch (arg.sign) {
@@ -159,7 +159,7 @@ void FormatValue<double>::formatHelper(
     prefixLen = 1;
   }
 
-  piece = fbstring(p, len);
+  piece = fbstring(p, size_t(len));
 }
 
 

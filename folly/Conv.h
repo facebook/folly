@@ -1204,7 +1204,8 @@ typename std::enable_if<
     Expected<Tgt, ConversionCode>>::type
 convertTo(const Src& value) noexcept {
   /* static */ if (
-      std::numeric_limits<Tgt>::max() < std::numeric_limits<Src>::max()) {
+      folly::_t<std::make_unsigned<Tgt>>(std::numeric_limits<Tgt>::max()) <
+      folly::_t<std::make_unsigned<Src>>(std::numeric_limits<Src>::max())) {
     if (greater_than<Tgt, std::numeric_limits<Tgt>::max()>(value)) {
       return makeUnexpected(ConversionCode::ARITH_POSITIVE_OVERFLOW);
     }
@@ -1239,7 +1240,7 @@ convertTo(const Src& value) noexcept {
       return makeUnexpected(ConversionCode::ARITH_NEGATIVE_OVERFLOW);
     }
   }
-  return boost::implicit_cast<Tgt>(value);
+  return static_cast<Tgt>(value);
 }
 
 /**

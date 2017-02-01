@@ -432,7 +432,7 @@ class MultiLevelTimeSeries {
   // or flush() is called.
   TimePoint cachedTime_;
   ValueType cachedSum_;
-  int cachedCount_;
+  uint64_t cachedCount_;
 };
 
 } // folly

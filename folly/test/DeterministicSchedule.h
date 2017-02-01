@@ -83,7 +83,8 @@ class DeterministicSchedule : boost::noncopyable {
    * DeterministicSchedule::thread on a thread participating in this
    * schedule) to participate in a deterministic schedule.
    */
-  explicit DeterministicSchedule(const std::function<int(int)>& scheduler);
+  explicit DeterministicSchedule(
+      const std::function<size_t(size_t)>& scheduler);
 
   /** Completes the schedule. */
   ~DeterministicSchedule();
@@ -95,7 +96,7 @@ class DeterministicSchedule : boost::noncopyable {
    * inter-thread communication are random variables following a poisson
    * distribution.
    */
-  static std::function<int(int)> uniform(long seed);
+  static std::function<size_t(size_t)> uniform(uint64_t seed);
 
   /**
    * Returns a scheduling function that chooses a subset of the active
@@ -103,9 +104,8 @@ class DeterministicSchedule : boost::noncopyable {
    * runnable thread.  The subset is chosen with size n, and the choice
    * is made every m steps.
    */
-  static std::function<int(int)> uniformSubset(long seed,
-                                               int n = 2,
-                                               int m = 64);
+  static std::function<size_t(size_t)>
+  uniformSubset(uint64_t seed, size_t n = 2, size_t m = 64);
 
   /** Obtains permission for the current thread to perform inter-thread
    *  communication. */
@@ -166,7 +166,7 @@ class DeterministicSchedule : boost::noncopyable {
 
   /** Used scheduler_ to get a random number b/w [0, n). If tls_sched is
    *  not set-up it falls back to std::rand() */
-  static int getRandNumber(int n);
+  static size_t getRandNumber(size_t n);
 
   /** Deterministic implemencation of getcpu */
   static int getcpu(unsigned* cpu, unsigned* node, void* unused);
@@ -194,7 +194,7 @@ class DeterministicSchedule : boost::noncopyable {
   static thread_local AuxAct tls_aux_act;
   static AuxChk aux_chk;
 
-  std::function<int(int)> scheduler_;
+  std::function<size_t(size_t)> scheduler_;
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
   unsigned nextThreadId_;

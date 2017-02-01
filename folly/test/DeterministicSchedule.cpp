@@ -43,7 +43,7 @@ static std::unordered_map<detail::Futex<DeterministicAtomic>*,
 static std::mutex futexLock;
 
 DeterministicSchedule::DeterministicSchedule(
-    const std::function<int(int)>& scheduler)
+    const std::function<size_t(size_t)>& scheduler)
     : scheduler_(scheduler), nextThreadId_(1), step_(0) {
   assert(tls_sem == nullptr);
   assert(tls_sched == nullptr);
@@ -63,16 +63,16 @@ DeterministicSchedule::~DeterministicSchedule() {
   beforeThreadExit();
 }
 
-std::function<int(int)> DeterministicSchedule::uniform(long seed) {
+std::function<size_t(size_t)> DeterministicSchedule::uniform(uint64_t seed) {
   auto rand = std::make_shared<std::ranlux48>(seed);
   return [rand](size_t numActive) {
-    auto dist = std::uniform_int_distribution<int>(0, numActive - 1);
+    auto dist = std::uniform_int_distribution<size_t>(0, numActive - 1);
     return dist(*rand);
   };
 }
 
 struct UniformSubset {
-  UniformSubset(long seed, int subsetSize, int stepsBetweenSelect)
+  UniformSubset(uint64_t seed, size_t subsetSize, size_t stepsBetweenSelect)
       : uniform_(DeterministicSchedule::uniform(seed)),
         subsetSize_(subsetSize),
         stepsBetweenSelect_(stepsBetweenSelect),
@@ -88,13 +88,13 @@ struct UniformSubset {
   }
 
  private:
-  std::function<int(int)> uniform_;
+  std::function<size_t(size_t)> uniform_;
   const size_t subsetSize_;
-  const int stepsBetweenSelect_;
+  const size_t stepsBetweenSelect_;
 
-  int stepsLeft_;
+  size_t stepsLeft_;
   // only the first subsetSize_ is properly randomized
-  std::vector<int> perm_;
+  std::vector<size_t> perm_;
 
   void adjustPermSize(size_t numActive) {
     if (perm_.size() > numActive) {
@@ -112,15 +112,14 @@ struct UniformSubset {
 
   void shufflePrefix() {
     for (size_t i = 0; i < std::min(perm_.size() - 1, subsetSize_); ++i) {
-      int j = uniform_(perm_.size() - i) + i;
+      size_t j = uniform_(perm_.size() - i) + i;
       std::swap(perm_[i], perm_[j]);
     }
   }
 };
 
-std::function<int(int)> DeterministicSchedule::uniformSubset(long seed,
-                                                             int n,
-                                                             int m) {
+std::function<size_t(size_t)>
+DeterministicSchedule::uniformSubset(uint64_t seed, size_t n, size_t m) {
   auto gen = std::make_shared<UniformSubset>(seed, n, m);
   return [=](size_t numActive) { return (*gen)(numActive); };
 }
@@ -148,7 +147,7 @@ void DeterministicSchedule::afterSharedAccess(bool success) {
   sem_post(sched->sems_[sched->scheduler_(sched->sems_.size())]);
 }
 
-int DeterministicSchedule::getRandNumber(int n) {
+size_t DeterministicSchedule::getRandNumber(size_t n) {
   if (tls_sched) {
     return tls_sched->scheduler_(n);
   }

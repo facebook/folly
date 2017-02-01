@@ -127,7 +127,7 @@ bool OpenSSLUtils::validatePeerCertNames(X509* cert,
     if ((addr4 != nullptr || addr6 != nullptr) && name->type == GEN_IPADD) {
       // Extra const-ness for paranoia
       unsigned char const* const rawIpStr = name->d.iPAddress->data;
-      int const rawIpLen = name->d.iPAddress->length;
+      size_t const rawIpLen = size_t(name->d.iPAddress->length);
 
       if (rawIpLen == 4 && addr4 != nullptr) {
         if (::memcmp(rawIpStr, &addr4->sin_addr, rawIpLen) == 0) {
@@ -260,7 +260,11 @@ int OpenSSLUtils::getBioFd(BIO* b, int* fd) {
 
 void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
 #ifdef _WIN32
-  SOCKET sock = portability::sockets::fd_to_socket(fd);
+  SOCKET socket = portability::sockets::fd_to_socket(fd);
+  // Internally OpenSSL uses this as an int for reasons completely
+  // beyond any form of sanity, so we do the cast ourselves to avoid
+  // the warnings that would be generated.
+  int sock = int(socket);
 #else
   int sock = fd;
 #endif

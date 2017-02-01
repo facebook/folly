@@ -92,17 +92,21 @@ struct Bytes {
       ba[byteIndex] = one[byteIndex];
       ++byteIndex;
     }
-    auto bitIndex = std::min(mask, (uint8_t)(byteIndex * 8));
+    auto bitIndex = std::min(mask, uint8_t(byteIndex * 8));
+    uint8_t bI = uint8_t(bitIndex / 8);
+    uint8_t bM = uint8_t(bitIndex % 8);
     // Compute the bit up to which the two byte arrays match in the
     // unmatched byte.
     // Here the check is bitIndex < mask since the 0th mask entry in
     // kMasks array holds the mask for masking the MSb in this byte.
     // We could instead make it hold so that no 0th entry masks no
     // bits but thats a useless iteration.
-    while (bitIndex < mask && ((one[bitIndex / 8] & kMasks[bitIndex % 8]) ==
-                               (two[bitIndex / 8] & kMasks[bitIndex % 8]))) {
-      ba[bitIndex / 8] = one[bitIndex / 8] & kMasks[bitIndex % 8];
+    while (bitIndex < mask &&
+           ((one[bI] & kMasks[bM]) == (two[bI] & kMasks[bM]))) {
+      ba[bI] = uint8_t(one[bI] & kMasks[bM]);
       ++bitIndex;
+      bI = uint8_t(bitIndex / 8);
+      bM = uint8_t(bitIndex % 8);
     }
     return {ba, bitIndex};
   }
@@ -190,7 +194,7 @@ inline void writeIntegerString(IntegralType val, char** buffer) {
   }
 
   IntegralType powerToPrint = 1;
-  for (int i = 1; i < DigitCount; ++i) {
+  for (IntegralType i = 1; i < DigitCount; ++i) {
     powerToPrint *= Base;
   }
 

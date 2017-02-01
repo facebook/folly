@@ -43,8 +43,7 @@ struct Initializer {
 };
 Initializer initializer;
 
-unique_ptr<IOBuf>
-stringToIOBuf(const char* s, uint32_t len) {
+unique_ptr<IOBuf> stringToIOBuf(const char* s, size_t len) {
   unique_ptr<IOBuf> buf = IOBuf::create(len);
   memcpy(buf->writableTail(), s, len);
   buf->append(len);

@@ -52,15 +52,15 @@ template <typename VT, typename CT>
 bool BucketedTimeSeries<VT, CT>::addValue(
     TimePoint now,
     const ValueType& val,
-    int64_t times) {
-  return addValueAggregated(now, val * times, times);
+    uint64_t times) {
+  return addValueAggregated(now, val * ValueType(times), times);
 }
 
 template <typename VT, typename CT>
 bool BucketedTimeSeries<VT, CT>::addValueAggregated(
     TimePoint now,
     const ValueType& total,
-    int64_t nsamples) {
+    uint64_t nsamples) {
   if (isAllTime()) {
     if (UNLIKELY(empty())) {
       firstTime_ = now;

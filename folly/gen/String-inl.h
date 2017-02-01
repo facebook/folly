@@ -76,7 +76,7 @@ inline size_t splitPrefix(StringPiece& in,
   auto p = in.find_first_of(kCRLF);
   if (p != std::string::npos) {
     const auto in_start = in.data();
-    auto delim_len = 1;
+    size_t delim_len = 1;
     in.advance(p);
     // Either remove an MS-DOS CR-LF 2-byte newline, or eat 1 byte at a time.
     if (in.removePrefix(kCRLF)) {

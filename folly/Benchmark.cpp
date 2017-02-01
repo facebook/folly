@@ -52,7 +52,7 @@ DEFINE_int32(
 
 DEFINE_int64(
     bm_max_iters,
-    1L << 30L,
+    1 << 30,
     "Maximum # of iterations we'll try for each benchmark.");
 
 DEFINE_int32(

@@ -448,7 +448,7 @@ typedef AtomicHashArray<KeyT, ValueT, HashFcn, EqualFcn,
   std::atomic<SubMap*> subMaps_[kNumSubMaps_];
   std::atomic<uint32_t> numMapsAllocated_;
 
-  inline bool tryLockMap(int idx) {
+  inline bool tryLockMap(unsigned int idx) {
     SubMap* val = nullptr;
     return subMaps_[idx].compare_exchange_strong(val, (SubMap*)kLockedPtr_,
       std::memory_order_acquire);

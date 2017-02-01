@@ -156,11 +156,12 @@ CacheLocality CacheLocality::readFromSysfsTree(
               // a sub-optimal ordering, but it won't crash
               auto& lhsEquiv = equivClassesByCpu[lhs];
               auto& rhsEquiv = equivClassesByCpu[rhs];
-              for (int i = int(std::min(lhsEquiv.size(), rhsEquiv.size())) - 1;
+              for (ssize_t i = ssize_t(std::min(lhsEquiv.size(), rhsEquiv.size())) - 1;
                    i >= 0;
                    --i) {
-                if (lhsEquiv[i] != rhsEquiv[i]) {
-                  return lhsEquiv[i] < rhsEquiv[i];
+                auto idx = size_t(i);
+                if (lhsEquiv[idx] != rhsEquiv[idx]) {
+                  return lhsEquiv[idx] < rhsEquiv[idx];
                 }
               }
 

@@ -160,7 +160,7 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
   // This load is safe because needles.size() >= 16
   auto arr2 = _mm_loadu_si128(
       reinterpret_cast<const __m128i*>(needles.data()));
-  size_t b =
+  auto b =
       _mm_cmpestri(arr2, 16, arr1, int(haystack.size() - blockStartIdx), 0);
 
   size_t j = nextAlignedIndex(needles.data());
@@ -174,7 +174,7 @@ size_t scanHaystackBlock(const StringPieceLite haystack,
         arr1,
         int(haystack.size() - blockStartIdx),
         0);
-    b = std::min<size_t>(index, b);
+    b = std::min(index, b);
   }
 
   if (b < 16) {

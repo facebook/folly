@@ -574,10 +574,10 @@ size_t SocketAddress::hash() const {
   if (external_) {
     enum { kUnixPathMax = sizeof(storage_.un.addr->sun_path) };
     const char *path = storage_.un.addr->sun_path;
-    size_t pathLength = storage_.un.pathLength();
+    auto pathLength = storage_.un.pathLength();
     // TODO: this probably could be made more efficient
-    for (unsigned int n = 0; n < pathLength; ++n) {
-      boost::hash_combine(seed, folly::hash::twang_mix64(path[n]));
+    for (off_t n = 0; n < pathLength; ++n) {
+      boost::hash_combine(seed, folly::hash::twang_mix64(uint64_t(path[n])));
     }
   }
 
@@ -707,7 +707,7 @@ void SocketAddress::updateUnixAddressLength(socklen_t addrlen) {
     // abstract namespace.  honor the specified length
   } else {
     // Call strnlen(), just in case the length was overspecified.
-    socklen_t maxLength = addrlen - offsetof(struct sockaddr_un, sun_path);
+    size_t maxLength = addrlen - offsetof(struct sockaddr_un, sun_path);
     size_t pathLength = strnlen(storage_.un.addr->sun_path, maxLength);
     storage_.un.len =
         socklen_t(offsetof(struct sockaddr_un, sun_path) + pathLength);
@@ -725,11 +725,11 @@ bool SocketAddress::operator<(const SocketAddress& other) const {
     //
     // Note that this still meets the requirements for a strict weak
     // ordering, so we can use this operator<() with standard C++ containers.
-    size_t thisPathLength = storage_.un.pathLength();
+    auto thisPathLength = storage_.un.pathLength();
     if (thisPathLength == 0) {
       return false;
     }
-    size_t otherPathLength = other.storage_.un.pathLength();
+    auto otherPathLength = other.storage_.un.pathLength();
     if (otherPathLength == 0) {
       return true;
     }

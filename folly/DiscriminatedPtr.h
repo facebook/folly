@@ -190,8 +190,8 @@ class DiscriminatedPtr {
    * Get the 1-based type index of T in Types.
    */
   template <typename T>
-  size_t typeIndex() const {
-    return dptr_detail::GetTypeIndex<T, Types...>::value;
+  uint16_t typeIndex() const {
+    return uint16_t(dptr_detail::GetTypeIndex<T, Types...>::value);
   }
 
   uint16_t index() const { return data_ >> 48; }

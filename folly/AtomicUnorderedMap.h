@@ -338,8 +338,7 @@ struct AtomicUnorderedInsertMap {
   }
 
  private:
-
-  enum {
+  enum : IndexType {
     kMaxAllocationTries = 1000, // after this we throw
   };
 
@@ -437,7 +436,7 @@ struct AtomicUnorderedInsertMap {
   /// Allocates a slot and returns its index.  Tries to put it near
   /// slots_[start].
   IndexType allocateNear(IndexType start) {
-    for (auto tries = 0; tries < kMaxAllocationTries; ++tries) {
+    for (IndexType tries = 0; tries < kMaxAllocationTries; ++tries) {
       auto slot = allocationAttempt(start, tries);
       auto prev = slots_[slot].headAndState_.load(std::memory_order_acquire);
       if ((prev & 3) == EMPTY &&

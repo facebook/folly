@@ -71,7 +71,7 @@ void computeTables(FILE* file, const FingerprintPolynomial<DEG>& poly) {
   // where k is the number of bits in the fingerprint (and deg(P)) and
   // Q(X) = q7*X^7 + q6*X^6 + ... + q1*X + q0 is a degree-7 polyonomial
   // whose coefficients are the bits of q.
-  for (int x = 0; x < 256; x++) {
+  for (uint16_t x = 0; x < 256; x++) {
     FingerprintPolynomial<DEG> t;
     t.setHigh8Bits(uint8_t(x));
     for (int i = 0; i < 8; i++) {

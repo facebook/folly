@@ -580,8 +580,8 @@ class EliasFanoReader {
       return true;
     }
 
-    size_t upperValue = (value >> numLowerBits_);
-    size_t upperSkip = upperValue - upper_.value();
+    ValueType upperValue = (value >> numLowerBits_);
+    ValueType upperSkip = upperValue - upper_.value();
     // The average density of ones in upper bits is 1/2.
     // LIKELY here seems to make things worse, even for small skips.
     if (upperSkip < 2 * kLinearScanThreshold) {

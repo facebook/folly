@@ -135,7 +135,7 @@ class TimeseriesHistogram {
   }
 
   /* Total sum of values at the given timeseries level (all buckets). */
-  ValueType sum(int level) const {
+  ValueType sum(size_t level) const {
     ValueType total = ValueType();
     for (size_t b = 0; b < buckets_.getNumBuckets(); ++b) {
       total += buckets_.getByIndex(b).sum(level);
@@ -154,7 +154,7 @@ class TimeseriesHistogram {
 
   /* Average of values at the given timeseries level (all buckets). */
   template <typename ReturnType = double>
-  ReturnType avg(int level) const {
+  ReturnType avg(size_t level) const {
     auto total = ValueType();
     uint64_t nsamples = 0;
     computeAvgData(&total, &nsamples, level);

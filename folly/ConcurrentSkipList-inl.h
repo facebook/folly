@@ -41,11 +41,12 @@ template<typename ValT, typename NodeT> class csl_iterator;
 
 template<typename T>
 class SkipListNode : private boost::noncopyable {
-  enum {
+  enum : uint16_t {
     IS_HEAD_NODE = 1,
     MARKED_FOR_REMOVAL = (1 << 1),
     FULLY_LINKED = (1 << 2),
   };
+
  public:
   typedef T value_type;
 
@@ -78,7 +79,7 @@ class SkipListNode : private boost::noncopyable {
   SkipListNode* copyHead(SkipListNode* node) {
     DCHECK(node != nullptr && height_ > node->height_);
     setFlags(node->getFlags());
-    for (int i = 0; i < node->height_; ++i) {
+    for (uint8_t i = 0; i < node->height_; ++i) {
       setSkip(i, node->skip(i));
     }
     return this;

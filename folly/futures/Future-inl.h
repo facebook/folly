@@ -586,7 +586,7 @@ collectAll(InputIterator first, InputIterator last) {
     typename std::iterator_traits<InputIterator>::value_type::value_type T;
 
   struct CollectAllContext {
-    CollectAllContext(int n) : results(n) {}
+    CollectAllContext(size_t n) : results(n) {}
     ~CollectAllContext() {
       p.setValue(std::move(results));
     }
@@ -622,7 +622,7 @@ struct CollectContext {
     Nothing,
     std::vector<Optional<T>>>::type;
 
-  explicit CollectContext(int n) : result(n) {}
+  explicit CollectContext(size_t n) : result(n) {}
   ~CollectContext() {
     if (!threw.exchange(true)) {
       // map Optional<T> -> T

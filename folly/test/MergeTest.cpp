@@ -30,7 +30,7 @@ TEST(MergeTest, NonOverlapping) {
                b.begin(), b.end(),
                std::back_inserter(c));
   EXPECT_EQ(8, c.size());
-  for (int i = 0; i < 8; ++i) {
+  for (size_t i = 0; i < 8; ++i) {
     EXPECT_EQ(i, c[i]);
   }
 }
