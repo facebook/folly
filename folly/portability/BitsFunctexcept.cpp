@@ -16,31 +16,36 @@
 
 #include <folly/portability/BitsFunctexcept.h>
 
-#if !FOLLY_HAVE_BITS_FUNCTEXCEPT_H
 #include <stdexcept>
+
+#if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+
+// for symmetry with the header; this section intentionally left blank
+
+#else
 
 FOLLY_NAMESPACE_STD_BEGIN
 
-#if (!defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 4000) && \
-    !defined(FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS)
-void __throw_length_error(const char* msg) {
+#if _LIBCPP_VERSION < 4000 && !FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS
+void __throw_length_error(char const* msg) {
   throw std::length_error(msg);
 }
 
-void __throw_logic_error(const char* msg) {
+void __throw_logic_error(char const* msg) {
   throw std::logic_error(msg);
 }
 
-void __throw_out_of_range(const char* msg) {
+void __throw_out_of_range(char const* msg) {
   throw std::out_of_range(msg);
 }
 #endif
 
-#ifdef _MSC_VER
+#if _CPPLIB_VER // msvc c++ std lib
 void __throw_bad_alloc() {
   throw std::bad_alloc();
 }
 #endif
 
 FOLLY_NAMESPACE_STD_END
+
 #endif

@@ -16,25 +16,29 @@
 
 #pragma once
 
+#include <new>
+
+#include <folly/Portability.h>
 #include <folly/portability/Config.h>
 
 #if FOLLY_HAVE_BITS_FUNCTEXCEPT_H
+
 #include <bits/functexcept.h>
+
 #else
-#include <new> // Some platforms define __throw_bad_alloc() here.
-#include <folly/Portability.h>
+
 FOLLY_NAMESPACE_STD_BEGIN
 
-#if (!defined(_LIBCPP_VERSION) || _LIBCPP_VERSION < 4000) && \
-    !defined(FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS)
-[[noreturn]] void __throw_length_error(const char* msg);
-[[noreturn]] void __throw_logic_error(const char* msg);
-[[noreturn]] void __throw_out_of_range(const char* msg);
+#if _LIBCPP_VERSION < 4000 && !FOLLY_SKIP_LIBCPP_4000_THROW_BACKPORTS
+[[noreturn]] void __throw_length_error(char const* msg); // @nolint
+[[noreturn]] void __throw_logic_error(char const* msg);
+[[noreturn]] void __throw_out_of_range(char const* msg);
 #endif
 
-#ifdef _MSC_VER
+#if _CPPLIB_VER // msvc c++ std lib
 [[noreturn]] void __throw_bad_alloc();
 #endif
 
 FOLLY_NAMESPACE_STD_END
+
 #endif
