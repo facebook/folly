@@ -318,6 +318,7 @@ nobase_follyinclude_HEADERS = \
 	portability/Windows.h \
 	portability/Unistd.h \
 	Preprocessor.h \
+	PriorityMPMCQueue.h \
 	ProducerConsumerQueue.h \
 	Random.h \
 	Random-inl.h \
