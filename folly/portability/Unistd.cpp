@@ -159,7 +159,9 @@ int isatty(int fh) { return _isatty(fh); }
 
 int lockf(int fd, int cmd, off_t len) { return _locking(fd, cmd, len); }
 
-long lseek(int fh, long off, int orig) { return _lseek(fh, off, orig); }
+off_t lseek(int fh, off_t off, int orig) {
+  return _lseek(fh, off, orig);
+}
 
 int rmdir(const char* path) { return _rmdir(path); }
 
@@ -169,11 +171,11 @@ int pipe(int pth[2]) {
   return socketpair(PF_UNIX, SOCK_STREAM, 0, pth);
 }
 
-int pread(int fd, void* buf, size_t count, off_t offset) {
+ssize_t pread(int fd, void* buf, size_t count, off_t offset) {
   return wrapPositional(_read, fd, offset, buf, (unsigned int)count);
 }
 
-int pwrite(int fd, const void* buf, size_t count, off_t offset) {
+ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset) {
   return wrapPositional(_write, fd, offset, buf, (unsigned int)count);
 }
 
@@ -228,8 +230,6 @@ ssize_t readlink(const char* path, char* buf, size_t buflen) {
 
 void* sbrk(intptr_t i) { return (void*)-1; }
 
-int setmode(int fh, int md) { return _setmode(fh, md); }
-
 unsigned int sleep(unsigned int seconds) {
   Sleep((DWORD)(seconds * 1000));
   return 0;
@@ -251,8 +251,6 @@ long sysconf(int tp) {
       return -1L;
   }
 }
-
-long tell(int fh) { return _tell(fh); }
 
 int truncate(const char* path, off_t len) {
   int fd = _open(path, O_WRONLY);
