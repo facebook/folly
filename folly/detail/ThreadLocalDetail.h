@@ -257,7 +257,7 @@ struct StaticMetaBase {
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
 
   [[noreturn]] ~StaticMetaBase() {
-    LOG(FATAL) << "StaticMeta lives forever!";
+    folly::assume_unreachable();
   }
 
   void push_back(ThreadEntry* t) {
