@@ -174,12 +174,16 @@ void EventHandler::setEventBase(EventBase* eventBase) {
 }
 
 bool EventHandler::isPending() const {
+#ifdef _MSC_VER
+  return event_pending(&event_, EV_READ, nullptr) != 0;
+#else
   if (event_ref_flags(&event_) & EVLIST_ACTIVE) {
     if (event_.ev_res & EV_READ) {
       return true;
     }
   }
   return false;
+#endif
 }
 
 } // folly
