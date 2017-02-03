@@ -504,3 +504,22 @@ TEST(SortedVectorTypes, TestBulkInsertionMovableTypes) {
   vmap.insert(
       std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
 }
+
+TEST(SortedVectorTypes, TestSetCreationFromVector) {
+  std::vector<int> vec = {3, 1, -1, 5, 0};
+  sorted_vector_set<int> vset(std::move(vec));
+  check_invariant(vset);
+  EXPECT_THAT(vset, testing::ElementsAreArray({-1, 0, 1, 3, 5}));
+}
+
+TEST(SortedVectorTypes, TestMapCreationFromVector) {
+  std::vector<std::pair<int, int>> vec = {
+      {3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
+  sorted_vector_map<int, int> vmap(std::move(vec));
+  check_invariant(vmap);
+  auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
+  auto expected_contents = std::vector<std::pair<int, int>>({
+      {-1, 2}, {0, 3}, {1, 5}, {3, 1}, {5, 3},
+  });
+  EXPECT_EQ(contents, expected_contents);
+}

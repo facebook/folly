@@ -253,6 +253,22 @@ public:
     insert(list.begin(), list.end());
   }
 
+  // Construct a sorted_vector_set by stealing the storage of a prefilled
+  // container. The container need not be sorted already. This supports
+  // bulk construction of sorted_vector_set with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_set(const ContainerT& container)` is not provided,
+  // since the purpose of this constructor is to avoid an unnecessary copy.
+  explicit sorted_vector_set(
+      ContainerT&& container,
+      const Compare& comp = Compare())
+      : m_(comp, container.get_allocator()) {
+    std::sort(container.begin(), container.end(), value_comp());
+    m_.cont_.swap(container);
+  }
+
   key_compare key_comp() const { return m_; }
   value_compare value_comp() const { return m_; }
 
@@ -488,6 +504,22 @@ public:
     : m_(value_compare(comp), alloc)
   {
     insert(list.begin(), list.end());
+  }
+
+  // Construct a sorted_vector_map by stealing the storage of a prefilled
+  // container. The container need not be sorted already. This supports
+  // bulk construction of sorted_vector_map with zero allocations, not counting
+  // those performed by the caller. (The iterator range constructor performs at
+  // least one allocation).
+  //
+  // Note that `sorted_vector_map(const ContainerT& container)` is not provided,
+  // since the purpose of this constructor is to avoid an unnecessary copy.
+  explicit sorted_vector_map(
+      ContainerT&& container,
+      const Compare& comp = Compare())
+      : m_(value_compare(comp), container.get_allocator()) {
+    std::sort(container.begin(), container.end(), value_comp());
+    m_.cont_.swap(container);
   }
 
   key_compare key_comp() const { return m_; }
