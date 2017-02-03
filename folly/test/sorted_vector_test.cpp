@@ -16,9 +16,11 @@
 
 #include <folly/sorted_vector_types.h>
 
+#include <iterator>
 #include <list>
 #include <memory>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using folly::sorted_vector_set;
@@ -346,4 +348,159 @@ TEST(SortedVectorTypes, EraseTest) {
   sorted_vector_set<int> s2(s1);
   EXPECT_EQ(0, s1.erase(0));
   EXPECT_EQ(s2, s1);
+}
+
+std::vector<int> extractValues(sorted_vector_set<CountCopyCtor> const& in) {
+  std::vector<int> ret;
+  std::transform(
+      in.begin(),
+      in.end(),
+      std::back_inserter(ret),
+      [](const CountCopyCtor& c) { return c.val_; });
+  return ret;
+}
+
+template <typename T, typename S>
+std::vector<T> makeVectorOfWrappers(std::vector<S> ss) {
+  std::vector<T> ts;
+  ts.reserve(ss.size());
+  for (auto const& s : ss) {
+    ts.emplace_back(s);
+  }
+  return ts;
+}
+
+TEST(SortedVectorTypes, TestSetBulkInsertionSortMerge) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add an unsorted range that will have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({10, 7, 5, 1});
+
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 1);
+
+  EXPECT_THAT(
+      extractValues(vset),
+      testing::ElementsAreArray({1, 2, 4, 5, 6, 7, 8, 10}));
+}
+
+TEST(SortedVectorTypes, TestSetBulkInsertionSortNoMerge) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add an unsorted range that will not have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({20, 15, 16, 13});
+
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 1);
+  EXPECT_THAT(
+      extractValues(vset),
+      testing::ElementsAreArray({2, 4, 6, 8, 13, 15, 16, 20}));
+}
+
+TEST(SortedVectorTypes, TestSetBulkInsertionNoSortMerge) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add a sorted range that will have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({1, 3, 5, 9});
+
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 1);
+  EXPECT_THAT(
+      extractValues(vset), testing::ElementsAreArray({1, 2, 3, 4, 5, 6, 8, 9}));
+}
+
+TEST(SortedVectorTypes, TestSetBulkInsertionNoSortNoMerge) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add a sorted range that will not have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({21, 22, 23, 24});
+
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 1);
+  EXPECT_THAT(
+      extractValues(vset),
+      testing::ElementsAreArray({2, 4, 6, 8, 21, 22, 23, 24}));
+}
+
+TEST(SortedVectorTypes, TestSetBulkInsertionEmptyRange) {
+  std::vector<CountCopyCtor> s;
+  EXPECT_TRUE(s.empty());
+
+  // insertion of empty range into empty container.
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  vset.insert(s.begin(), s.end());
+
+  // insertion of empty range into non-empty container.
+  s.clear();
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+
+  EXPECT_THAT(extractValues(vset), testing::ElementsAreArray({2, 4, 6, 8}));
+}
+
+// This is a test of compilation - the behavior has already been tested
+// extensively above.
+TEST(SortedVectorTypes, TestBulkInsertionUncopyableTypes) {
+  std::vector<std::pair<int, std::unique_ptr<int>>> s;
+  s.emplace_back(1, std::make_unique<int>(0));
+
+  sorted_vector_map<int, std::unique_ptr<int>> vmap(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+
+  s.clear();
+  s.emplace_back(3, std::make_unique<int>(0));
+  vmap.insert(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+}
+
+// A moveable and copyable struct, which we use to make sure that no copy
+// operations are performed during bulk insertion if moving is an option.
+struct Movable {
+  int x_;
+  explicit Movable(int x) : x_(x) {}
+  Movable(const Movable&) {
+    ADD_FAILURE() << "Copy ctor should not be called";
+  }
+  Movable& operator=(const Movable&) {
+    ADD_FAILURE() << "Copy assignment should not be called";
+    return *this;
+  }
+
+  Movable(Movable&&) = default;
+  Movable& operator=(Movable&&) = default;
+};
+
+TEST(SortedVectorTypes, TestBulkInsertionMovableTypes) {
+  std::vector<std::pair<int, Movable>> s;
+  s.emplace_back(3, Movable(2));
+  s.emplace_back(1, Movable(0));
+
+  sorted_vector_map<int, Movable> vmap(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
+
+  s.clear();
+  s.emplace_back(4, Movable(3));
+  s.emplace_back(2, Movable(1));
+  vmap.insert(
+      std::make_move_iterator(s.begin()), std::make_move_iterator(s.end()));
 }

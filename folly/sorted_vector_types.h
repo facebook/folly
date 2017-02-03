@@ -145,6 +145,34 @@ namespace detail {
     return hint;
   }
 
+  template <class OurContainer, class Vector, class InputIterator>
+  void bulk_insert(
+      OurContainer& sorted,
+      Vector& cont,
+      InputIterator first,
+      InputIterator last) {
+    // prevent deref of middle where middle == cont.end()
+    if (first == last) {
+      return;
+    }
+
+    auto const& cmp(sorted.value_comp());
+
+    int const d = distance_if_multipass(first, last);
+    if (d != -1) {
+      cont.reserve(cont.size() + d);
+    }
+    auto const prev_size = cont.size();
+
+    std::copy(first, last, std::back_inserter(cont));
+    auto const middle = cont.begin() + prev_size;
+    if (!std::is_sorted(middle, cont.end(), cmp)) {
+      std::sort(middle, cont.end(), cmp);
+    }
+    if (middle != cont.begin() && cmp(*middle, *(middle - 1))) {
+      std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -271,13 +299,7 @@ public:
 
   template<class InputIterator>
   void insert(InputIterator first, InputIterator last) {
-    int d = detail::distance_if_multipass(first, last);
-    if (d != -1) {
-      m_.cont_.reserve(m_.cont_.size() + d);
-    }
-    for (; first != last; ++first) {
-      insert(end(), *first);
-    }
+    detail::bulk_insert(*this, m_.cont_, first, last);
   }
 
   size_type erase(const key_type& key) {
@@ -514,13 +536,7 @@ public:
 
   template<class InputIterator>
   void insert(InputIterator first, InputIterator last) {
-    int d = detail::distance_if_multipass(first, last);
-    if (d != -1) {
-      m_.cont_.reserve(m_.cont_.size() + d);
-    }
-    for (; first != last; ++first) {
-      insert(end(), *first);
-    }
+    detail::bulk_insert(*this, m_.cont_, first, last);
   }
 
   size_type erase(const key_type& key) {
