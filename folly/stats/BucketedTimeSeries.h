@@ -82,6 +82,18 @@ class BucketedTimeSeries {
   BucketedTimeSeries(size_t numBuckets, Duration duration);
 
   /*
+   * Create a new BucketedTimeSeries.
+   *
+   * This constructor is used to reconstruct a timeseries using
+   * previously saved data
+   */
+  BucketedTimeSeries(
+      TimePoint theFirstTime,
+      TimePoint theLatestTime,
+      Duration maxDuration,
+      const std::vector<Bucket>& bucketsList);
+
+  /*
    * Adds the value 'val' at time 'now'
    *
    * This function expects time to generally move forwards.  The window of time
@@ -190,6 +202,29 @@ class BucketedTimeSeries {
     // Once a data point has been added, latestTime_ will always be greater
     // than or equal to firstTime_.
     return firstTime_ > latestTime_;
+  }
+
+  /*
+   * Returns time of first update() since clear()/constructor.
+   * Note that the returned value is only meaningful when empty() is false.
+   */
+  TimePoint firstTime() const {
+    return firstTime_;
+  }
+
+  /*
+   * Returns time of last update().
+   * Note that the returned value is only meaningful when empty() is false.
+   */
+  TimePoint latestTime() const {
+    return latestTime_;
+  }
+
+  /*
+   * Returns actual buckets of values
+   */
+  const std::vector<Bucket>& buckets() const {
+    return buckets_;
   }
 
   /*

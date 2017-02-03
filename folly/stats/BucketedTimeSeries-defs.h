@@ -16,10 +16,11 @@
 
 #pragma once
 
-#include <algorithm>
-#include <glog/logging.h>
 #include <folly/Likely.h>
 #include <folly/stats/BucketedTimeSeries.h>
+#include <glog/logging.h>
+#include <algorithm>
+#include <stdexcept>
 
 namespace folly {
 
@@ -40,6 +41,41 @@ BucketedTimeSeries<VT, CT>::BucketedTimeSeries(
     }
 
     buckets_.resize(nBuckets, Bucket());
+  }
+}
+
+template <typename VT, typename CT>
+BucketedTimeSeries<VT, CT>::BucketedTimeSeries(
+    TimePoint theFirstTime,
+    TimePoint theLatestTime,
+    Duration maxDuration,
+    const std::vector<Bucket>& bucketsList)
+    : firstTime_(theFirstTime),
+      latestTime_(theLatestTime),
+      duration_(maxDuration),
+      buckets_(bucketsList) {
+  // Come up with the total_ from buckets_ being passed in
+  for (auto const& bucket : buckets_) {
+    total_.add(bucket.sum, bucket.count);
+  }
+
+  // Verify the integrity of the data
+
+  // If firstTime is greater than latestTime, the total count should be 0.
+  // (firstTime being greater than latestTime means that no data points have
+  // ever been added to the time series.)
+  if (firstTime_ > latestTime_ && (total_.sum != 0 || total_.count != 0)) {
+    throw std::invalid_argument(
+        "The total should have been 0 "
+        "if firstTime is greater than lastestTime");
+  }
+
+  // If firstTime is less than or equal to latestTime,
+  // latestTime - firstTime should be less than or equal to the duration.
+  if (firstTime_ <= latestTime_ && latestTime_ - firstTime_ > duration_) {
+    throw std::invalid_argument(
+        "The difference between firstTime and latestTime "
+        "should be less than or equal to the duration");
   }
 }
 

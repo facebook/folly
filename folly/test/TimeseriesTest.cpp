@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/stats/BucketedTimeSeries.h>
+#include <folly/detail/Stats.h>
 #include <folly/stats/BucketedTimeSeries-defs.h>
-#include <folly/stats/MultiLevelTimeSeries.h>
+#include <folly/stats/BucketedTimeSeries.h>
 #include <folly/stats/MultiLevelTimeSeries-defs.h>
+#include <folly/stats/MultiLevelTimeSeries.h>
 
 #include <array>
 
@@ -31,8 +32,10 @@ using std::string;
 using std::vector;
 using folly::BucketedTimeSeries;
 
+using Bucket = folly::detail::Bucket<int64_t>;
 using StatsClock = folly::LegacyStatsClock<std::chrono::seconds>;
 using TimePoint = StatsClock::time_point;
+using Duration = StatsClock::duration;
 
 /*
  * Helper functions to allow us to directly log time points and duration
@@ -793,6 +796,97 @@ TEST(BucketedTimeSeries, addHistorical) {
   EXPECT_EQ(10.0, b.avg());
   EXPECT_EQ(10.0, b.rate());
   EXPECT_EQ(10, b.count());
+}
+
+TEST(BucketedTimeSeries, reConstructEmptyTimeSeries) {
+  auto verify = [](auto ts) {
+    EXPECT_TRUE(ts.empty());
+    EXPECT_EQ(0, ts.sum());
+    EXPECT_EQ(0, ts.count());
+  };
+
+  // Create a 100 second timeseries with 10 buckets_
+  BucketedTimeSeries<int64_t> ts(10, seconds(100));
+
+  verify(ts);
+
+  auto firstTime = ts.firstTime();
+  auto latestTime = ts.latestTime();
+  auto duration = ts.duration();
+  auto buckets = ts.buckets();
+
+  // Reconstruct the timeseries
+  BucketedTimeSeries<int64_t> newTs(firstTime, latestTime, duration, buckets);
+
+  verify(newTs);
+}
+
+TEST(BucketedTimeSeries, reConstructWithValidData) {
+  // Create a 100 second timeseries with 10 buckets_
+  BucketedTimeSeries<int64_t> ts(10, seconds(100));
+
+  auto setup = [&] {
+    ts.clear();
+    // Add 1 value to each bucket
+    for (int n = 5; n <= 95; n += 10) {
+      ts.addValue(seconds(n), 6);
+    }
+
+    EXPECT_EQ(10, ts.count());
+    EXPECT_EQ(60, ts.sum());
+    EXPECT_EQ(6, ts.avg());
+  };
+
+  setup();
+
+  auto firstTime = ts.firstTime();
+  auto latestTime = ts.latestTime();
+  auto duration = ts.duration();
+  auto buckets = ts.buckets();
+
+  // Reconstruct the timeseries
+  BucketedTimeSeries<int64_t> newTs(firstTime, latestTime, duration, buckets);
+
+  auto compare = [&] {
+    EXPECT_EQ(ts.firstTime(), newTs.firstTime());
+    EXPECT_EQ(ts.latestTime(), newTs.latestTime());
+    EXPECT_EQ(ts.duration(), newTs.duration());
+    EXPECT_EQ(ts.buckets().size(), newTs.buckets().size());
+    EXPECT_EQ(ts.sum(), newTs.sum());
+    EXPECT_EQ(ts.count(), newTs.count());
+
+    for (auto it1 = ts.buckets().begin(), it2 = newTs.buckets().begin();
+         it1 != ts.buckets().end();
+         it1++, it2++) {
+      EXPECT_EQ(it1->sum, it2->sum);
+      EXPECT_EQ(it1->count, it2->count);
+    }
+  };
+
+  compare();
+}
+
+TEST(BucketedTimeSeries, reConstructWithCorruptedData) {
+  // The total should have been 0 as firstTime > latestTime
+  EXPECT_THROW(
+      {
+        std::vector<Bucket> buckets(10);
+        buckets[0].sum = 1;
+        buckets[0].count = 1;
+
+        BucketedTimeSeries<int64_t> ts(
+            mkTimePoint(1), mkTimePoint(0), Duration(10), buckets);
+      },
+      std::invalid_argument);
+
+  // The duration should be no less than latestTime - firstTime
+  EXPECT_THROW(
+      BucketedTimeSeries<int64_t>(
+          mkTimePoint(1),
+          mkTimePoint(100),
+          Duration(10),
+          std::vector<Bucket>(10)),
+      std::invalid_argument);
 }
 
 namespace IntMHTS {
