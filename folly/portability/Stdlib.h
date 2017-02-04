@@ -18,6 +18,12 @@
 
 #include <cstdlib>
 
+#if defined(__APPLE__)
+#if __has_include(<crt_externs.h>)
+#include <crt_externs.h>
+#endif
+#endif
+
 extern "C" {
 #ifdef _WIN32
 // These are technically supposed to be defined linux/limits.h and
@@ -35,6 +41,10 @@ char* realpath(const char* path, char* resolved_path);
 int setenv(const char* name, const char* value, int overwrite);
 int unsetenv(const char* name);
 #elif defined(__APPLE__)
-extern char** environ;
+// environ doesn't work well with dylibs, so use _NSGetEnviron instead.
+#if !__has_include(<crt_externs.h>)
+char*** _NSGetEnviron(void);
+#endif
+#define environ (*_NSGetEnviron())
 #endif
 }
