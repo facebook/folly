@@ -242,6 +242,7 @@ nobase_follyinclude_HEADERS = \
 	io/async/VirtualEventBase.h \
 	io/async/WriteChainAsyncTransportWrapper.h \
 	io/async/test/AsyncSSLSocketTest.h \
+	io/async/test/AsyncSocketTest2.h \
 	io/async/test/BlockingSocket.h \
 	io/async/test/MockAsyncSocket.h \
 	io/async/test/MockAsyncServerSocket.h \
