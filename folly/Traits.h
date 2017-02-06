@@ -302,11 +302,18 @@ struct IsLessThanComparable
     IsLessThanComparable;
 
 namespace traits_detail_IsNothrowSwappable {
-#if defined(_MSC_VER) || defined(__cpp_lib_is_swappable)
-// MSVC already implements the C++17 P0185R1 proposal which
-// adds std::is_nothrow_swappable, so use it instead.
+#if defined(__cpp_lib_is_swappable) || (_CPPLIB_VER && _HAS_CXX17)
+// MSVC 2015+ already implements the C++17 P0185R1 proposal which
+// adds std::is_nothrow_swappable, so use it instead if C++17 mode
+// is enabled.
 template <typename T>
 using IsNothrowSwappable = std::is_nothrow_swappable<T>;
+#elif _CPPLIB_VER
+// MSVC 2015+ defines the base even if C++17 is disabled, and
+// MSVC 2015 has issues with our fallback implementation due to
+// over-eager evaluation of noexcept.
+template <typename T>
+using IsNothrowSwappable = std::_Is_nothrow_swappable<T>;
 #else
 /* using override */ using std::swap;
 
