@@ -846,3 +846,49 @@ TEST(Future, RequestContext) {
 TEST(Future, makeFutureNoThrow) {
   makeFuture().value();
 }
+
+TEST(Future, invokeCallbackReturningValueAsRvalue) {
+  struct Foo {
+    int operator()(int x) & {
+      return x + 1;
+    }
+    int operator()(int x) const& {
+      return x + 2;
+    }
+    int operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The callback will be copied when given as lvalue or const ref, and moved
+  // if provided as rvalue. Either way, it should be executed as rvalue.
+  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+}
+
+TEST(Future, invokeCallbackReturningFutureAsRvalue) {
+  struct Foo {
+    Future<int> operator()(int x) & {
+      return x + 1;
+    }
+    Future<int> operator()(int x) const& {
+      return x + 2;
+    }
+    Future<int> operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The callback will be copied when given as lvalue or const ref, and moved
+  // if provided as rvalue. Either way, it should be executed as rvalue.
+  EXPECT_EQ(103, makeFuture<int>(100).then(foo).value());
+  EXPECT_EQ(203, makeFuture<int>(200).then(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+}

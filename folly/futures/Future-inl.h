@@ -159,14 +159,16 @@ Future<T>::thenImplementation(F&& func, detail::argResult<isTry, F, Args...>) {
      in some circumstances, but I think it should be explicit not implicit
      in the destruction of the Future used to create it.
      */
-  setCallback_([ funcm = std::forward<F>(func), pm = std::move(p) ](
-      Try<T> && t) mutable {
-    if (!isTry && t.hasException()) {
-      pm.setException(std::move(t.exception()));
-    } else {
-      pm.setWith([&]() { return funcm(t.template get<isTry, Args>()...); });
-    }
-  });
+  setCallback_(
+      [ func = std::forward<F>(func), pm = std::move(p) ](Try<T> && t) mutable {
+        if (!isTry && t.hasException()) {
+          pm.setException(std::move(t.exception()));
+        } else {
+          pm.setWith([&]() {
+            return std::move(func)(t.template get<isTry, Args>()...);
+          });
+        }
+      });
 
   return f;
 }
@@ -189,14 +191,14 @@ Future<T>::thenImplementation(F&& func, detail::argResult<isTry, F, Args...>) {
   auto f = p.getFuture();
   f.core_->setExecutorNoLock(getExecutor());
 
-  setCallback_([ funcm = std::forward<F>(func), pm = std::move(p) ](
+  setCallback_([ func = std::forward<F>(func), pm = std::move(p) ](
       Try<T> && t) mutable {
     auto ew = [&] {
       if (!isTry && t.hasException()) {
         return std::move(t.exception());
       } else {
         try {
-          auto f2 = funcm(t.template get<isTry, Args>()...);
+          auto f2 = std::move(func)(t.template get<isTry, Args>()...);
           // that didn't throw, now we can steal p
           f2.setCallback_([p = std::move(pm)](Try<B> && b) mutable {
             p.setTry(std::move(b));
@@ -263,13 +265,14 @@ Future<T>::onError(F&& func) {
   p.core_->setInterruptHandlerNoLock(core_->getInterruptHandler());
   auto f = p.getFuture();
 
-  setCallback_([ funcm = std::forward<F>(func), pm = std::move(p) ](
-      Try<T> && t) mutable {
-    if (!t.template withException<Exn>(
-            [&](Exn& e) { pm.setWith([&] { return funcm(e); }); })) {
-      pm.setTry(std::move(t));
-    }
-  });
+  setCallback_(
+      [ func = std::forward<F>(func), pm = std::move(p) ](Try<T> && t) mutable {
+        if (!t.template withException<Exn>([&](Exn& e) {
+              pm.setWith([&] { return std::move(func)(e); });
+            })) {
+          pm.setTry(std::move(t));
+        }
+      });
 
   return f;
 }
@@ -290,12 +293,12 @@ Future<T>::onError(F&& func) {
   Promise<T> p;
   auto f = p.getFuture();
 
-  setCallback_([ pm = std::move(p), funcm = std::forward<F>(func) ](
+  setCallback_([ pm = std::move(p), func = std::forward<F>(func) ](
       Try<T> && t) mutable {
     if (!t.template withException<Exn>([&](Exn& e) {
           auto ew = [&] {
             try {
-              auto f2 = funcm(e);
+              auto f2 = std::move(func)(e);
               f2.setCallback_([pm = std::move(pm)](Try<T> && t2) mutable {
                 pm.setTry(std::move(t2));
               });
@@ -346,11 +349,11 @@ Future<T>::onError(F&& func) {
   Promise<T> p;
   auto f = p.getFuture();
   setCallback_(
-      [ pm = std::move(p), funcm = std::forward<F>(func) ](Try<T> t) mutable {
+      [ pm = std::move(p), func = std::forward<F>(func) ](Try<T> t) mutable {
         if (t.hasException()) {
           auto ew = [&] {
             try {
-              auto f2 = funcm(std::move(t.exception()));
+              auto f2 = std::move(func)(std::move(t.exception()));
               f2.setCallback_([pm = std::move(pm)](Try<T> t2) mutable {
                 pm.setTry(std::move(t2));
               });
@@ -387,9 +390,9 @@ Future<T>::onError(F&& func) {
   Promise<T> p;
   auto f = p.getFuture();
   setCallback_(
-      [ pm = std::move(p), funcm = std::forward<F>(func) ](Try<T> t) mutable {
+      [ pm = std::move(p), func = std::forward<F>(func) ](Try<T> t) mutable {
         if (t.hasException()) {
-          pm.setWith([&] { return funcm(std::move(t.exception())); });
+          pm.setWith([&] { return std::move(func)(std::move(t.exception())); });
         } else {
           pm.setTry(std::move(t));
         }
