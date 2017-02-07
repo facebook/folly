@@ -56,9 +56,14 @@ class FormatterTag {};
  * this directly, you have to use format(...) below.
  */
 
-/* BaseFormatter class. Currently, the only behavior that can be
- * overridden is the actual formatting of positional parameters in
+/* BaseFormatter class.
+ * Overridable behaviours:
+ * You may override the actual formatting of positional parameters in
  * `doFormatArg`. The Formatter class provides the default implementation.
+ *
+ * You may also override `doFormat` and `getSizeArg`. These override points were
+ * added to permit static analysis of format strings, when it is inconvenient
+ * or impossible to instantiate a BaseFormatter with the correct storage
  */
 template <class Derived, bool containerMode, class... Args>
 class BaseFormatter {
@@ -108,6 +113,10 @@ class BaseFormatter {
       ValueTuple;
   static constexpr size_t valueCount = std::tuple_size<ValueTuple>::value;
 
+  Derived const& asDerived() const {
+    return *static_cast<const Derived*>(this);
+  }
+
   template <size_t K, class Callback>
   typename std::enable_if<K == valueCount>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& /*cb*/) const {
@@ -118,7 +127,7 @@ class BaseFormatter {
   typename std::enable_if<(K < valueCount)>::type
   doFormatFrom(size_t i, FormatArg& arg, Callback& cb) const {
     if (i == K) {
-      static_cast<const Derived*>(this)->template doFormatArg<K>(arg, cb);
+      asDerived().template doFormatArg<K>(arg, cb);
     } else {
       doFormatFrom<K + 1>(i, arg, cb);
     }
@@ -196,7 +205,11 @@ class Formatter : public BaseFormatter<
       : BaseFormatter<
             Formatter<containerMode, Args...>,
             containerMode,
-            Args...>(str, std::forward<Args>(args)...) {}
+            Args...>(str, std::forward<Args>(args)...) {
+    static_assert(
+        !containerMode || sizeof...(Args) == 1,
+        "Exactly one argument required in container mode");
+  }
 
   template <size_t K, class Callback>
   void doFormatArg(FormatArg& arg, Callback& cb) const {

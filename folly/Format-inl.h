@@ -159,11 +159,7 @@ BaseFormatter<Derived, containerMode, Args...>::BaseFormatter(
     Args&&... args)
     : str_(str),
       values_(FormatValue<typename std::decay<Args>::type>(
-          std::forward<Args>(args))...) {
-  static_assert(
-      !containerMode || sizeof...(Args) == 1,
-      "Exactly one argument required in container mode");
-}
+          std::forward<Args>(args))...) {}
 
 template <class Derived, bool containerMode, class... Args>
 template <class Output>
@@ -246,7 +242,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
               arg.widthIndex == FormatArg::kNoIndex,
               "cannot provide width arg index without value arg index");
           int sizeArg = nextArg++;
-          arg.width = getSizeArg(size_t(sizeArg), arg);
+          arg.width = asDerived().getSizeArg(size_t(sizeArg), arg);
         }
 
         argIndex = nextArg++;
@@ -256,7 +252,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
           arg.enforce(
               arg.widthIndex != FormatArg::kNoIndex,
               "cannot provide value arg index without width arg index");
-          arg.width = getSizeArg(size_t(arg.widthIndex), arg);
+          arg.width = asDerived().getSizeArg(size_t(arg.widthIndex), arg);
         }
 
         try {
@@ -274,7 +270,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
           "folly::format: may not have both default and explicit arg indexes");
     }
 
-    doFormat(size_t(argIndex), arg, out);
+    asDerived().template doFormat(size_t(argIndex), arg, out);
   }
 }
 
