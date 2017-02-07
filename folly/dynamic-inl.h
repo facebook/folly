@@ -342,15 +342,29 @@ inline dynamic::IterableProxy<dynamic::const_item_iterator> dynamic::items()
 }
 
 inline bool dynamic::isString() const {
-  return get_nothrow<std::string>();
+  return get_nothrow<std::string>() != nullptr;
 }
-inline bool dynamic::isObject() const { return get_nothrow<ObjectImpl>(); }
-inline bool dynamic::isBool()   const { return get_nothrow<bool>(); }
-inline bool dynamic::isArray()  const { return get_nothrow<Array>(); }
-inline bool dynamic::isDouble() const { return get_nothrow<double>(); }
-inline bool dynamic::isInt()    const { return get_nothrow<int64_t>(); }
-inline bool dynamic::isNull()   const { return get_nothrow<void*>(); }
-inline bool dynamic::isNumber() const { return isInt() || isDouble(); }
+inline bool dynamic::isObject() const {
+  return get_nothrow<ObjectImpl>() != nullptr;
+}
+inline bool dynamic::isBool() const {
+  return get_nothrow<bool>() != nullptr;
+}
+inline bool dynamic::isArray() const {
+  return get_nothrow<Array>() != nullptr;
+}
+inline bool dynamic::isDouble() const {
+  return get_nothrow<double>() != nullptr;
+}
+inline bool dynamic::isInt() const {
+  return get_nothrow<int64_t>() != nullptr;
+}
+inline bool dynamic::isNull() const {
+  return get_nothrow<void*>() != nullptr;
+}
+inline bool dynamic::isNumber() const {
+  return isInt() || isDouble();
+}
 
 inline dynamic::Type dynamic::type() const {
   return type_;

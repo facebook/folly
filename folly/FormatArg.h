@@ -244,7 +244,7 @@ inline StringPiece FormatArg::doSplitKey() {
   if (e[-1] == ']') {
     --e;
     p = static_cast<const char*>(memchr(b, '[', size_t(e - b)));
-    enforce(p, "unmatched ']'");
+    enforce(p != nullptr, "unmatched ']'");
   } else {
     p = static_cast<const char*>(memchr(b, '.', size_t(e - b)));
   }
