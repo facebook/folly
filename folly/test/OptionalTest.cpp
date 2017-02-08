@@ -18,14 +18,14 @@
 #include <folly/Portability.h>
 #include <folly/portability/GTest.h>
 
-#include <memory>
-#include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <memory>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <vector>
 
-#include <glog/logging.h>
 #include <boost/optional.hpp>
 
 using std::unique_ptr;
@@ -544,5 +544,13 @@ TEST(Optional, TriviallyDestructible) {
   EXPECT_TRUE(std::is_trivially_destructible<Optional<NoDestructor>>::value);
   EXPECT_TRUE(std::is_trivially_destructible<Optional<int>>::value);
   EXPECT_FALSE(std::is_trivially_destructible<Optional<WithDestructor>>::value);
+}
+
+TEST(Optional, Hash) {
+  // Test it's usable in std::unordered map (compile time check)
+  std::unordered_map<Optional<int>, Optional<int>> obj;
+  // Also check the std::hash template can be instantiated by the compiler
+  std::hash<Optional<int>>()(none);
+  std::hash<Optional<int>>()(3);
 }
 }

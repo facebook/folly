@@ -54,6 +54,7 @@
  *  }
  */
 #include <cstddef>
+#include <functional>
 #include <new>
 #include <stdexcept>
 #include <type_traits>
@@ -418,3 +419,16 @@ template<class V> bool operator> (const V& other, const Optional<V>&) = delete;
 ///////////////////////////////////////////////////////////////////////////////
 
 } // namespace folly
+
+// Allow usage of Optional<T> in std::unordered_map and std::unordered_set
+FOLLY_NAMESPACE_STD_BEGIN
+template <class T>
+struct hash<folly::Optional<T>> {
+  size_t operator()(folly::Optional<T> const& obj) const {
+    if (!obj.hasValue()) {
+      return 0;
+    }
+    return hash<typename remove_const<T>::type>()(*obj);
+  }
+};
+FOLLY_NAMESPACE_STD_END
