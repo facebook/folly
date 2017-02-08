@@ -1864,7 +1864,7 @@ void dispatchJobs(
 
             if (dispatchProblem == DispatchProblem::DuplicateDispatch) {
               if (i == problemIndex) {
-                EXPECT_THROW(job.token.dispatch(job.input), std::logic_error);
+                EXPECT_THROW(job.token.dispatch(job.input), ABDUsageException);
               }
             }
           } catch (...) {
@@ -1969,7 +1969,7 @@ TEST(FiberManager, ABD_DispatcherDestroyedBeforeCallingCommit) {
     /* User code handles the exception and does not exit process */
   }
   evb.loop();
-  validateResults<std::logic_error>(results, COUNT);
+  validateResults<ABDCommitNotCalledException>(results, COUNT);
 }
 
 TEST(FiberManager, ABD_PreprocessingFailureTest) {
@@ -1985,7 +1985,7 @@ TEST(FiberManager, ABD_PreprocessingFailureTest) {
   dispatchJobs(executor, jobs, results, DispatchProblem::PreprocessThrows, 8);
   atomicBatchDispatcher.commit();
   evb.loop();
-  validateResults<std::logic_error>(results, COUNT - 1);
+  validateResults<ABDTokenNotDispatchedException>(results, COUNT - 1);
 }
 
 TEST(FiberManager, ABD_MultipleDispatchOnSameTokenErrorTest) {
@@ -2014,12 +2014,12 @@ TEST(FiberManager, ABD_GetTokenCalledAfterCommitTest) {
       createAtomicBatchDispatcher(std::move(dispatchFunc));
   createJobs(atomicBatchDispatcher, jobs, COUNT);
   atomicBatchDispatcher.commit();
-  EXPECT_THROW(atomicBatchDispatcher.getToken(), std::logic_error);
+  EXPECT_THROW(atomicBatchDispatcher.getToken(), ABDUsageException);
   dispatchJobs(executor, jobs, results);
-  EXPECT_THROW(atomicBatchDispatcher.getToken(), std::logic_error);
+  EXPECT_THROW(atomicBatchDispatcher.getToken(), ABDUsageException);
   evb.loop();
   validateResults(results, COUNT);
-  EXPECT_THROW(atomicBatchDispatcher.getToken(), std::logic_error);
+  EXPECT_THROW(atomicBatchDispatcher.getToken(), ABDUsageException);
 }
 
 TEST(FiberManager, ABD_UserProvidedBatchDispatchThrowsTest) {

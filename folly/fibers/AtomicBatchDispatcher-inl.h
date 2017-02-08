@@ -29,12 +29,14 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
     optEntries_.reserve(numEntries);
   }
 
-  void setError(std::string message) {
-    optErrorMessage_ = std::move(message);
+  void setExceptionWrapper(folly::exception_wrapper&& exWrapper) {
+    exceptionWrapper_ = std::move(exWrapper);
   }
 
   void setExpectedCount(size_t expectedCount) {
+    assert(expectedCount_ == 0 || !"expectedCount_ being set more than once");
     expectedCount_ = expectedCount;
+    optEntries_.resize(expectedCount_);
   }
 
   Future<ResultT> getFutureResult(InputT&& input, size_t sequenceNumber) {
@@ -42,22 +44,23 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       optEntries_.resize(sequenceNumber + 1);
     }
     folly::Optional<Entry>& optEntry = optEntries_[sequenceNumber];
-    if (optEntry) {
-      throw std::logic_error(
-          "Cannot have multiple inputs with same token sequence number");
-    }
+    assert(!optEntry || !"Multiple inputs have the same token sequence number");
     optEntry = Entry(std::move(input));
     return optEntry->promise.getFuture();
   }
 
  private:
-  void setExceptionResults(std::exception_ptr eptr) {
-    auto exceptionWrapper = exception_wrapper(eptr);
+  void setExceptionResults(const folly::exception_wrapper& exceptionWrapper) {
     for (auto& optEntry : optEntries_) {
       if (optEntry) {
         optEntry->promise.setException(exceptionWrapper);
       }
     }
+  }
+
+  void setExceptionResults(std::exception_ptr eptr) {
+    auto exceptionWrapper = exception_wrapper(eptr);
+    return setExceptionResults(exceptionWrapper);
   }
 
   template <typename TException>
@@ -66,47 +69,45 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
       std::exception_ptr eptr = std::exception_ptr()) {
     auto exceptionWrapper =
         eptr ? exception_wrapper(eptr, ex) : exception_wrapper(ex);
-    for (auto& optEntry : optEntries_) {
-      if (optEntry) {
-        optEntry->promise.setException(exceptionWrapper);
-      }
-    }
+    return setExceptionResults(exceptionWrapper);
   }
 
   void fulfillPromises() {
     try {
       // If an error message is set, set all promises to exception with message
-      if (optErrorMessage_) {
-        auto ex = std::logic_error(*optErrorMessage_);
-        return setExceptionResults(std::move(ex));
+      if (exceptionWrapper_) {
+        return setExceptionResults(exceptionWrapper_);
       }
 
-      // Create inputs vector and validate entries count same as expectedCount_
-      std::vector<InputT> inputs;
-      inputs.reserve(expectedCount_);
-      bool allEntriesFound = (optEntries_.size() == expectedCount_);
-      if (allEntriesFound) {
-        for (auto& optEntry : optEntries_) {
-          if (!optEntry) {
-            allEntriesFound = false;
-            break;
-          }
-          inputs.emplace_back(std::move(optEntry->input));
+      // Validate entries count same as expectedCount_
+      assert(
+          optEntries_.size() == expectedCount_ ||
+          !"Entries vector did not have expected size");
+      std::vector<size_t> vecTokensNotDispatched;
+      for (size_t i = 0; i < expectedCount_; ++i) {
+        if (!optEntries_[i]) {
+          vecTokensNotDispatched.push_back(i);
         }
       }
-      if (!allEntriesFound) {
-        auto ex = std::logic_error(
-            "One or more input tokens destroyed before calling dispatch");
-        return setExceptionResults(std::move(ex));
+      if (!vecTokensNotDispatched.empty()) {
+        return setExceptionResults(ABDTokenNotDispatchedException(
+            detail::createABDTokenNotDispatchedExMsg(vecTokensNotDispatched)));
+      }
+
+      // Create the inputs vector
+      std::vector<InputT> inputs;
+      inputs.reserve(expectedCount_);
+      for (auto& optEntry : optEntries_) {
+        inputs.emplace_back(std::move(optEntry->input));
       }
 
       // Call the user provided batch dispatch function to get all results
       // and make sure that we have the expected number of results returned
       auto results = dispatchFunction_(std::move(inputs));
       if (results.size() != expectedCount_) {
-        auto ex = std::logic_error(
-            "Unexpected number of results returned from dispatch function");
-        return setExceptionResults(std::move(ex));
+        return setExceptionResults(
+            ABDUsageException(detail::createUnexpectedNumResultsABDUsageExMsg(
+                expectedCount_, results.size())));
       }
 
       // Fulfill the promises with the results from the batch dispatch
@@ -114,8 +115,10 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
         optEntries_[i]->promise.setValue(std::move(results[i]));
       }
     } catch (const std::exception& ex) {
+      // Set exceptions thrown when executing the user provided dispatch func
       return setExceptionResults(ex, std::current_exception());
     } catch (...) {
+      // Set exceptions thrown when executing the user provided dispatch func
       return setExceptionResults(std::current_exception());
     }
   }
@@ -139,7 +142,7 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
   size_t expectedCount_;
   DispatchFunctionT dispatchFunction_;
   std::vector<folly::Optional<Entry>> optEntries_;
-  folly::Optional<std::string> optErrorMessage_;
+  folly::exception_wrapper exceptionWrapper_;
 };
 
 template <typename InputT, typename ResultT>
@@ -158,7 +161,7 @@ Future<ResultT> AtomicBatchDispatcher<InputT, ResultT>::Token::dispatch(
     InputT input) {
   auto baton = std::move(baton_);
   if (!baton) {
-    throw std::logic_error(
+    throw ABDUsageException(
         "Dispatch called more than once on the same Token object");
   }
   return baton->getFutureResult(std::move(input), sequenceNumber_);
@@ -173,8 +176,10 @@ AtomicBatchDispatcher<InputT, ResultT>::AtomicBatchDispatcher(
 template <typename InputT, typename ResultT>
 AtomicBatchDispatcher<InputT, ResultT>::~AtomicBatchDispatcher() {
   if (baton_) {
-    baton_->setError(
-        "AtomicBatchDispatcher destroyed before commit() was called on it");
+    // Set error here rather than throw because we do not want to throw from
+    // the destructor of AtomicBatchDispatcher
+    baton_->setExceptionWrapper(
+        folly::make_exception_wrapper<ABDCommitNotCalledException>());
     commit();
   }
 }
@@ -182,7 +187,7 @@ AtomicBatchDispatcher<InputT, ResultT>::~AtomicBatchDispatcher() {
 template <typename InputT, typename ResultT>
 void AtomicBatchDispatcher<InputT, ResultT>::reserve(size_t numEntries) {
   if (!baton_) {
-    throw std::logic_error("Cannot call reserve(....) after calling commit()");
+    throw ABDUsageException("Cannot call reserve(....) after calling commit()");
   }
   baton_->reserve(numEntries);
 }
@@ -190,7 +195,7 @@ void AtomicBatchDispatcher<InputT, ResultT>::reserve(size_t numEntries) {
 template <typename InputT, typename ResultT>
 auto AtomicBatchDispatcher<InputT, ResultT>::getToken() -> Token {
   if (!baton_) {
-    throw std::logic_error("Cannot issue more tokens after calling commit()");
+    throw ABDUsageException("Cannot issue more tokens after calling commit()");
   }
   return Token(baton_, numTokensIssued_++);
 }
@@ -199,7 +204,7 @@ template <typename InputT, typename ResultT>
 void AtomicBatchDispatcher<InputT, ResultT>::commit() {
   auto baton = std::move(baton_);
   if (!baton) {
-    throw std::logic_error(
+    throw ABDUsageException(
         "Cannot call commit() more than once on the same dispatcher");
   }
   baton->setExpectedCount(numTokensIssued_);

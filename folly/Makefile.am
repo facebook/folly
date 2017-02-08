@@ -79,7 +79,7 @@ nobase_follyinclude_HEADERS = \
 	detail/StaticSingletonManager.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
-  detail/TryDetail.h \
+	detail/TryDetail.h \
 	detail/TurnSequencer.h \
 	detail/UncaughtExceptionCounter.h \
 	Demangle.h \
@@ -550,6 +550,7 @@ nobase_follyinclude_HEADERS += \
 	fibers/Baton-inl.h \
 	fibers/BatchDispatcher.h \
 	fibers/BoostContextCompatibility.h \
+	fibers/detail/AtomicBatchDispatcher.h \
 	fibers/EventBaseLoopController.h \
 	fibers/EventBaseLoopController-inl.h \
 	fibers/Fiber.h \
@@ -577,6 +578,7 @@ nobase_follyinclude_HEADERS += \
 
 libfolly_la_SOURCES += \
 	fibers/Baton.cpp \
+	fibers/detail/AtomicBatchDispatcher.cpp \
 	fibers/Fiber.cpp \
 	fibers/FiberManager.cpp \
 	fibers/FiberManagerMap.cpp \

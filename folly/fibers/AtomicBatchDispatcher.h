@@ -17,14 +17,49 @@
 
 #include <folly/Function.h>
 #include <folly/Optional.h>
+#include <folly/fibers/detail/AtomicBatchDispatcher.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
 namespace folly {
 namespace fibers {
+
+/**
+ * An exception class that gets thrown when the AtomicBatchDispatcher is used
+ * incorrectly. This is indicative of a bug in the user code.
+ * Examples are, multiple dispatch calls on the same token, trying to get more
+ * tokens from the dispatcher after commit has been called, etc.
+ */
+class ABDUsageException : public std::logic_error {
+  using std::logic_error::logic_error;
+};
+
+/**
+ * An exception class that gets set on the promise for dispatched tokens, when
+ * the AtomicBatchDispatcher was destroyed before commit was called on it.
+ */
+class ABDCommitNotCalledException : public std::runtime_error {
+ public:
+  ABDCommitNotCalledException()
+      : std::runtime_error(
+            "AtomicBatchDispatcher destroyed before commit() was called") {}
+};
+
+/**
+ * An exception class that gets set on the promise for dispatched tokens, when
+ * one or more other tokens in the batch were destroyed before dispatch was
+ * called on them.
+ * Only here so that the caller can distinguish the real failure cause
+ * rather than these subsequently thrown exceptions.
+ */
+class ABDTokenNotDispatchedException : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
 
 /**
  * AtomicBatchDispatcher should be used if you want to process fiber tasks in
@@ -72,21 +107,21 @@ namespace fibers {
  * 1) The dispatcher is destroyed before calling commit on it, for example
  *    because the user forgot to call commit OR an exception was thrown
  *    in user code before the call to commit:
- *    - The future ResultT has an exception of type std::logic_error set for all
- *      tokens that were issued by the dispatcher (once all tokens are either
- *      destroyed or have called dispatch)
+ *    - The future ResultT has an exception of type ABDCommitNotCalledException
+ *      set for all tokens that were issued by the dispatcher (once all tokens
+ *      are either destroyed or have called dispatch)
  * 2) Calling the dispatch function more than once on the same Token object
  *    (or a moved version of the same Token):
  *    - Subsequent calls to dispatch (after the first one) will throw an
- *      std::logic_error exception (the batch itself will not have any errors
+ *      ABDUsageException exception (the batch itself will not have any errors
  *      and will get processed)
  * 3) One/more of the Tokens issued are destroyed before calling dispatch on
  *    it/them:
- *    - The future ResultT has an exception of type std::logic_error set for all
+ *    - The future ResultT has an ABDTokenNotDispatchedException set for all
  *      tokens that were issued by the dispatcher (once all tokens are either
  *      destroyed or have called dispatch)
  * 4) dispatcher.getToken() is called after calling dispatcher.commit()
- *    - the call to getToken() will throw an std::logic_error exception
+ *    - the call to getToken() will throw an ABDUsageException exception
  *      (the batch itself will not have any errors and will get processed).
  * 5) All tokens were issued and called dispatch, the user provided batch
  *    dispatch function is called, but that function throws any exception.
