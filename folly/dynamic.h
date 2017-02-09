@@ -99,11 +99,16 @@ struct dynamic : private boost::operators<dynamic> {
 private:
   typedef std::vector<dynamic> Array;
 public:
+  typedef Array::iterator iterator;
   typedef Array::const_iterator const_iterator;
   typedef dynamic value_type;
+
   struct const_key_iterator;
   struct const_value_iterator;
   struct const_item_iterator;
+
+  struct value_iterator;
+  struct item_iterator;
 
   /*
    * Creation routines for making dynamic objects and arrays.  Objects
@@ -320,6 +325,8 @@ public:
    */
   const_iterator begin()  const;
   const_iterator end()    const;
+  iterator begin();
+  iterator end();
 
 private:
   /*
@@ -335,6 +342,8 @@ public:
   IterableProxy<const_key_iterator> keys() const;
   IterableProxy<const_value_iterator> values() const;
   IterableProxy<const_item_iterator> items() const;
+  IterableProxy<value_iterator> values();
+  IterableProxy<item_iterator> items();
 
   /*
    * AssociativeContainer-style find interface for objects.  Throws if
@@ -344,6 +353,7 @@ public:
    * const_item_iterator pointing to the item.
    */
   const_item_iterator find(dynamic const&) const;
+  item_iterator find(dynamic const&);
 
   /*
    * If this is an object, returns whether it contains a field with
@@ -475,19 +485,17 @@ public:
    * removed, or end() if there are none.  (The iteration order does
    * not change.)
    */
-  const_iterator erase(const_iterator it);
-  const_iterator erase(const_iterator first, const_iterator last);
+  iterator erase(const_iterator it);
+  iterator erase(const_iterator first, const_iterator last);
 
   const_key_iterator erase(const_key_iterator it);
   const_key_iterator erase(const_key_iterator first, const_key_iterator last);
 
-  const_value_iterator erase(const_value_iterator it);
-  const_value_iterator erase(const_value_iterator first,
-                             const_value_iterator last);
+  value_iterator erase(const_value_iterator it);
+  value_iterator erase(const_value_iterator first, const_value_iterator last);
 
-  const_item_iterator erase(const_item_iterator it);
-  const_item_iterator erase(const_item_iterator first,
-                            const_item_iterator last);
+  item_iterator erase(const_item_iterator it);
+  item_iterator erase(const_item_iterator first, const_item_iterator last);
   /*
    * Append elements to an array.  If this is not an array, throws
    * TypeError.

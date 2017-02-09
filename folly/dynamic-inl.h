@@ -174,10 +174,42 @@ inline dynamic::ObjectMaker dynamic::object(dynamic a, dynamic b) {
 
 //////////////////////////////////////////////////////////////////////
 
+struct dynamic::item_iterator : boost::iterator_adaptor<
+                                    dynamic::item_iterator,
+                                    dynamic::ObjectImpl::iterator> {
+  /* implicit */ item_iterator(base_type b) : iterator_adaptor_(b) {}
+
+  using object_type = dynamic::ObjectImpl;
+
+ private:
+  friend class boost::iterator_core_access;
+};
+
+struct dynamic::value_iterator : boost::iterator_adaptor<
+                                     dynamic::value_iterator,
+                                     dynamic::ObjectImpl::iterator,
+                                     dynamic> {
+  /* implicit */ value_iterator(base_type b) : iterator_adaptor_(b) {}
+
+  using object_type = dynamic::ObjectImpl;
+
+ private:
+  dynamic& dereference() const {
+    return base_reference()->second;
+  }
+  friend class boost::iterator_core_access;
+};
+
 struct dynamic::const_item_iterator
   : boost::iterator_adaptor<dynamic::const_item_iterator,
                             dynamic::ObjectImpl::const_iterator> {
   /* implicit */ const_item_iterator(base_type b) : iterator_adaptor_(b) { }
+  /* implicit */ const_item_iterator(item_iterator i)
+      : iterator_adaptor_(i.base()) {}
+  /* implicit */ const_item_iterator(dynamic::ObjectImpl::iterator i)
+      : iterator_adaptor_(i) {}
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   friend class boost::iterator_core_access;
@@ -188,6 +220,8 @@ struct dynamic::const_key_iterator
                             dynamic::ObjectImpl::const_iterator,
                             dynamic const> {
   /* implicit */ const_key_iterator(base_type b) : iterator_adaptor_(b) { }
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   dynamic const& dereference() const {
@@ -201,6 +235,12 @@ struct dynamic::const_value_iterator
                             dynamic::ObjectImpl::const_iterator,
                             dynamic const> {
   /* implicit */ const_value_iterator(base_type b) : iterator_adaptor_(b) { }
+  /* implicit */ const_value_iterator(value_iterator i)
+      : iterator_adaptor_(i.base()) {}
+  /* implicit */ const_value_iterator(dynamic::ObjectImpl::iterator i)
+      : iterator_adaptor_(i) {}
+
+  using object_type = dynamic::ObjectImpl const;
 
  private:
   dynamic const& dereference() const {
@@ -307,12 +347,20 @@ inline dynamic::const_iterator dynamic::end() const {
   return get<Array>().end();
 }
 
+inline dynamic::iterator dynamic::begin() {
+  return get<Array>().begin();
+}
+inline dynamic::iterator dynamic::end() {
+  return get<Array>().end();
+}
+
 template <class It>
 struct dynamic::IterableProxy {
-  typedef It const_iterator;
+  typedef It iterator;
   typedef typename It::value_type value_type;
+  typedef typename It::object_type object_type;
 
-  /* implicit */ IterableProxy(const dynamic::ObjectImpl* o) : o_(o) { }
+  /* implicit */ IterableProxy(object_type* o) : o_(o) {}
 
   It begin() const {
     return o_->begin();
@@ -323,7 +371,7 @@ struct dynamic::IterableProxy {
   }
 
  private:
-  const dynamic::ObjectImpl* o_;
+  object_type* o_;
 };
 
 inline dynamic::IterableProxy<dynamic::const_key_iterator> dynamic::keys()
@@ -338,6 +386,14 @@ inline dynamic::IterableProxy<dynamic::const_value_iterator> dynamic::values()
 
 inline dynamic::IterableProxy<dynamic::const_item_iterator> dynamic::items()
   const {
+  return &(get<ObjectImpl>());
+}
+
+inline dynamic::IterableProxy<dynamic::value_iterator> dynamic::values() {
+  return &(get<ObjectImpl>());
+}
+
+inline dynamic::IterableProxy<dynamic::item_iterator> dynamic::items() {
   return &(get<ObjectImpl>());
 }
 
@@ -527,6 +583,9 @@ inline std::size_t dynamic::count(dynamic const& key) const {
 inline dynamic::const_item_iterator dynamic::find(dynamic const& key) const {
   return get<ObjectImpl>().find(key);
 }
+inline dynamic::item_iterator dynamic::find(dynamic const& key) {
+  return get<ObjectImpl>().find(key);
+}
 
 template<class K, class V> inline void dynamic::insert(K&& key, V&& val) {
   auto& obj = get<ObjectImpl>();
@@ -574,7 +633,7 @@ inline std::size_t dynamic::erase(dynamic const& key) {
   return obj.erase(key);
 }
 
-inline dynamic::const_iterator dynamic::erase(const_iterator it) {
+inline dynamic::iterator dynamic::erase(const_iterator it) {
   auto& arr = get<Array>();
   // std::vector doesn't have an erase method that works on const iterators,
   // even though the standard says it should, so this hack converts to a
@@ -586,30 +645,31 @@ inline dynamic::const_key_iterator dynamic::erase(const_key_iterator it) {
   return const_key_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_key_iterator dynamic::erase(const_key_iterator first,
-                                                  const_key_iterator last) {
+inline dynamic::const_key_iterator dynamic::erase(
+    const_key_iterator first,
+    const_key_iterator last) {
   return const_key_iterator(get<ObjectImpl>().erase(first.base(),
                                                     last.base()));
 }
 
-inline dynamic::const_value_iterator dynamic::erase(const_value_iterator it) {
-  return const_value_iterator(get<ObjectImpl>().erase(it.base()));
+inline dynamic::value_iterator dynamic::erase(const_value_iterator it) {
+  return value_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_value_iterator dynamic::erase(const_value_iterator first,
-                                                    const_value_iterator last) {
-  return const_value_iterator(get<ObjectImpl>().erase(first.base(),
-                                                      last.base()));
+inline dynamic::value_iterator dynamic::erase(
+    const_value_iterator first,
+    const_value_iterator last) {
+  return value_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
-inline dynamic::const_item_iterator dynamic::erase(const_item_iterator it) {
-  return const_item_iterator(get<ObjectImpl>().erase(it.base()));
+inline dynamic::item_iterator dynamic::erase(const_item_iterator it) {
+  return item_iterator(get<ObjectImpl>().erase(it.base()));
 }
 
-inline dynamic::const_item_iterator dynamic::erase(const_item_iterator first,
-                                                   const_item_iterator last) {
-  return const_item_iterator(get<ObjectImpl>().erase(first.base(),
-                                                     last.base()));
+inline dynamic::item_iterator dynamic::erase(
+    const_item_iterator first,
+    const_item_iterator last) {
+  return item_iterator(get<ObjectImpl>().erase(first.base(), last.base()));
 }
 
 inline void dynamic::resize(std::size_t sz, dynamic const& c) {

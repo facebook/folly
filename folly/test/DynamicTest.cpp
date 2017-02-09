@@ -491,3 +491,135 @@ TEST(Dynamic, PrintNull) {
   ss << folly::dynamic(nullptr);
   EXPECT_EQ("null", ss.str());
 }
+
+TEST(Dynamic, WriteThroughArrayIterators) {
+  dynamic const cint(0);
+  dynamic d = dynamic::array(cint, cint, cint);
+  size_t size = d.size();
+
+  for (auto& val : d) {
+    EXPECT_EQ(val, cint);
+  }
+  EXPECT_EQ(d.size(), size);
+
+  dynamic ds(make_long_string());
+  for (auto& val : d) {
+    val = ds; // assign through reference
+  }
+
+  ds = "short string";
+  dynamic ds2(make_long_string());
+
+  for (auto& val : d) {
+    EXPECT_EQ(val, ds2);
+  }
+  EXPECT_EQ(d.size(), size);
+}
+
+TEST(Dynamic, MoveOutOfArrayIterators) {
+  dynamic ds(make_long_string());
+  dynamic d = dynamic::array(ds, ds, ds);
+  size_t size = d.size();
+
+  for (auto& val : d) {
+    EXPECT_EQ(val, ds);
+  }
+  EXPECT_EQ(d.size(), size);
+
+  for (auto& val : d) {
+    dynamic waste = std::move(val); // force moving out
+    EXPECT_EQ(waste, ds);
+  }
+
+  for (auto& val : d) {
+    EXPECT_NE(val, ds);
+  }
+  EXPECT_EQ(d.size(), size);
+}
+
+TEST(Dynamic, WriteThroughObjectIterators) {
+  dynamic const cint(0);
+  dynamic d = dynamic::object("key1", cint)("key2", cint);
+  size_t size = d.size();
+
+  for (auto& val : d.items()) {
+    EXPECT_EQ(val.second, cint);
+  }
+  EXPECT_EQ(d.size(), size);
+
+  dynamic ds(make_long_string());
+  for (auto& val : d.items()) {
+    val.second = ds; // assign through reference
+  }
+
+  ds = "short string";
+  dynamic ds2(make_long_string());
+  for (auto& val : d.items()) {
+    EXPECT_EQ(val.second, ds2);
+  }
+  EXPECT_EQ(d.size(), size);
+}
+
+TEST(Dynamic, MoveOutOfObjectIterators) {
+  dynamic ds(make_long_string());
+  dynamic d = dynamic::object("key1", ds)("key2", ds);
+  size_t size = d.size();
+
+  for (auto& val : d.items()) {
+    EXPECT_EQ(val.second, ds);
+  }
+  EXPECT_EQ(d.size(), size);
+
+  for (auto& val : d.items()) {
+    dynamic waste = std::move(val.second); // force moving out
+    EXPECT_EQ(waste, ds);
+  }
+
+  for (auto& val : d.items()) {
+    EXPECT_NE(val.second, ds);
+  }
+  EXPECT_EQ(d.size(), size);
+}
+
+TEST(Dynamic, ArrayIteratorInterop) {
+  dynamic d = dynamic::array(0, 1, 2);
+  dynamic const& cdref = d;
+
+  auto it = d.begin();
+  auto cit = cdref.begin();
+
+  EXPECT_EQ(it, cit);
+  EXPECT_EQ(cit, d.begin());
+  EXPECT_EQ(it, cdref.begin());
+
+  // Erase using non-const iterator
+  it = d.erase(it);
+  cit = cdref.begin();
+  EXPECT_EQ(*it, 1);
+  EXPECT_EQ(cit, it);
+
+  // Assign from non-const to const, preserve equality
+  decltype(cit) cit2 = it;
+  EXPECT_EQ(cit, cit2);
+}
+
+TEST(Dynamic, ObjectIteratorInterop) {
+  dynamic ds = make_long_string();
+  dynamic d = dynamic::object(0, ds)(1, ds)(2, ds);
+  dynamic const& cdref = d;
+
+  auto it = d.find(0);
+  auto cit = cdref.find(0);
+  EXPECT_NE(it, cdref.items().end());
+  EXPECT_NE(cit, cdref.items().end());
+  EXPECT_EQ(it, cit);
+
+  ++cit;
+  // Erase using non-const iterator
+  auto it2 = d.erase(it);
+  EXPECT_EQ(cit, it2);
+
+  // Assign from non-const to const, preserve equality
+  decltype(cit) cit2 = it2;
+  EXPECT_EQ(cit, cit2);
+}

@@ -254,8 +254,7 @@ std::size_t dynamic::size() const {
   throw TypeError("array/object", type());
 }
 
-dynamic::const_iterator
-dynamic::erase(const_iterator first, const_iterator last) {
+dynamic::iterator dynamic::erase(const_iterator first, const_iterator last) {
   auto& arr = get<Array>();
   return get<Array>().erase(
     arr.begin() + (first - arr.begin()),
