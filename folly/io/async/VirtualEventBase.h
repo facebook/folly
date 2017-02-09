@@ -27,7 +27,7 @@ namespace folly {
  *
  * Multiple VirtualEventBases can be backed by a single EventBase. Similarly
  * to EventBase, VirtualEventBase implements loopKeepAlive() functionality,
- * which allows callbacks holding LoopKeepAlive token to keep EventBase looping
+ * which allows callbacks holding KeepAlive token to keep EventBase looping
  * until they are complete.
  *
  * VirtualEventBase destructor blocks until all its KeepAliveTokens are released
@@ -75,11 +75,11 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
    */
   template <typename F>
   void runInEventBaseThread(F&& f) {
-    // LoopKeepAlive token has to be released in the EventBase thread. If
-    // runInEventBaseThread() fails, we can't extract the LoopKeepAlive token
+    // KeepAlive token has to be released in the EventBase thread. If
+    // runInEventBaseThread() fails, we can't extract the KeepAlive token
     // from the callback to properly release it.
     CHECK(evb_.runInEventBaseThread([
-      keepAlive = loopKeepAliveAtomic(),
+      keepAliveToken = getKeepAliveToken(),
       f = std::forward<F>(f)
     ]() mutable { f(); }));
   }
@@ -122,45 +122,33 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     runInEventBaseThread(std::move(f));
   }
 
-  struct LoopKeepAliveDeleter {
-    void operator()(VirtualEventBase* evb) {
-      DCHECK(evb->getEventBase().inRunningEventBaseThread());
-      if (evb->loopKeepAliveCountAtomic_.load()) {
-        evb->loopKeepAliveCount_ += evb->loopKeepAliveCountAtomic_.exchange(0);
-      }
-      DCHECK(evb->loopKeepAliveCount_ > 0);
-      if (--evb->loopKeepAliveCount_ == 0) {
-        evb->loopKeepAliveBaton_.post();
-      }
-    }
-  };
-  using LoopKeepAlive = std::unique_ptr<VirtualEventBase, LoopKeepAliveDeleter>;
-
   /**
    * Returns you a handle which prevents VirtualEventBase from being destroyed.
-   * LoopKeepAlive handle can be released from EventBase loop only.
-   *
-   * loopKeepAlive() can be called from EventBase thread only.
+   * KeepAlive handle can be released from EventBase loop only.
    */
-  LoopKeepAlive loopKeepAlive() {
-    DCHECK(evb_.isInEventBaseThread());
-    ++loopKeepAliveCount_;
-    return LoopKeepAlive(this);
-  }
-
-  /**
-   * Thread-safe version of loopKeepAlive()
-   */
-  LoopKeepAlive loopKeepAliveAtomic() {
+  KeepAlive getKeepAliveToken() override {
     if (evb_.inRunningEventBaseThread()) {
-      return loopKeepAlive();
+      ++loopKeepAliveCount_;
+    } else {
+      ++loopKeepAliveCountAtomic_;
     }
-    ++loopKeepAliveCountAtomic_;
-    return LoopKeepAlive(this);
+    return makeKeepAlive();
   }
 
   bool inRunningEventBaseThread() const {
     return evb_.inRunningEventBaseThread();
+  }
+
+ protected:
+  void keepAliveRelease() override {
+    DCHECK(getEventBase().inRunningEventBaseThread());
+    if (loopKeepAliveCountAtomic_.load()) {
+      loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
+    }
+    DCHECK(loopKeepAliveCount_ > 0);
+    if (--loopKeepAliveCount_ == 0) {
+      loopKeepAliveBaton_.post();
+    }
   }
 
  private:
@@ -171,9 +159,9 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
   ssize_t loopKeepAliveCount_{0};
   std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
   folly::Baton<> loopKeepAliveBaton_;
-  LoopKeepAlive loopKeepAlive_;
+  KeepAlive loopKeepAlive_;
 
-  EventBase::LoopKeepAlive evbLoopKeepAlive_;
+  KeepAlive evbLoopKeepAlive_;
 
   folly::Synchronized<LoopCallbackList> onDestructionCallbacks_;
 };

@@ -1,4 +1,6 @@
 /*
+ * Copyright 2017-present Facebook, Inc.
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -16,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 
@@ -1736,7 +1737,7 @@ TEST(EventBaseTest, LoopKeepAlive) {
   EventBase evb;
 
   bool done = false;
-  std::thread t([&, loopKeepAlive = evb.loopKeepAlive() ]() mutable {
+  std::thread t([&, loopKeepAlive = evb.getKeepAliveToken() ]() mutable {
     /* sleep override */ std::this_thread::sleep_for(
         std::chrono::milliseconds(100));
     evb.runInEventBaseThread(
@@ -1757,7 +1758,7 @@ TEST(EventBaseTest, LoopKeepAliveInLoop) {
   std::thread t;
 
   evb.runInEventBaseThread([&] {
-    t = std::thread([&, loopKeepAlive = evb.loopKeepAlive() ]() mutable {
+    t = std::thread([&, loopKeepAlive = evb.getKeepAliveToken() ]() mutable {
       /* sleep override */ std::this_thread::sleep_for(
           std::chrono::milliseconds(100));
       evb.runInEventBaseThread(
@@ -1785,9 +1786,9 @@ TEST(EventBaseTest, LoopKeepAliveWithLoopForever) {
 
   {
     auto* ev = evb.get();
-    EventBase::LoopKeepAlive keepAlive;
+    Executor::KeepAlive keepAlive;
     ev->runInEventBaseThreadAndWait(
-        [&ev, &keepAlive] { keepAlive = ev->loopKeepAlive(); });
+        [&ev, &keepAlive] { keepAlive = ev->getKeepAliveToken(); });
     ASSERT_FALSE(done) << "Loop finished before we asked it to";
     ev->terminateLoopSoon();
     /* sleep override */
@@ -1807,7 +1808,7 @@ TEST(EventBaseTest, LoopKeepAliveShutdown) {
 
   std::thread t([
     &done,
-    loopKeepAlive = evb->loopKeepAlive(),
+    loopKeepAlive = evb->getKeepAliveToken(),
     evbPtr = evb.get()
   ]() mutable {
     /* sleep override */ std::this_thread::sleep_for(
@@ -1839,9 +1840,9 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
 
   for (size_t i = 0; i < kNumThreads; ++i) {
     ts.emplace_back([ evbPtr = evb.get(), batonPtr = batons[i].get(), &done ] {
-      std::vector<EventBase::LoopKeepAlive> keepAlives;
+      std::vector<Executor::KeepAlive> keepAlives;
       for (size_t j = 0; j < kNumTasks; ++j) {
-        keepAlives.emplace_back(evbPtr->loopKeepAliveAtomic());
+        keepAlives.emplace_back(evbPtr->getKeepAliveToken());
       }
 
       batonPtr->post();

@@ -18,10 +18,17 @@
 
 #include <stdexcept>
 
+#include <glog/logging.h>
+
 namespace folly {
 
 void Executor::addWithPriority(Func, int8_t /* priority */) {
   throw std::runtime_error(
       "addWithPriority() is not implemented for this Executor");
+}
+
+void Executor::keepAliveRelease() {
+  LOG(FATAL) << "keepAliveRelease() should not be called for folly::Executors "
+             << "which do not implement getKeepAliveToken()";
 }
 }

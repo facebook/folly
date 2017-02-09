@@ -93,7 +93,7 @@ class EventBaseLoopControllerT : public LoopController {
 
   bool awaitingScheduling_{false};
   EventBaseT* eventBase_{nullptr};
-  typename EventBaseT::LoopKeepAlive eventBaseKeepAlive_;
+  Executor::KeepAlive eventBaseKeepAlive_;
   ControllerCallback callback_;
   DestructionCallback destructionCallback_;
   FiberManager* fm_{nullptr};

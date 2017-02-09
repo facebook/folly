@@ -55,6 +55,47 @@ class Executor {
   void addPtr(P fn) {
     this->add([fn]() mutable { (*fn)(); });
   }
+
+  class KeepAlive {
+   public:
+    KeepAlive() {}
+
+    void reset() {
+      executor_.reset();
+    }
+
+    explicit operator bool() const {
+      return executor_ != nullptr;
+    }
+
+   private:
+    friend class Executor;
+    explicit KeepAlive(folly::Executor* executor) : executor_(executor) {}
+
+    struct Deleter {
+      void operator()(folly::Executor* executor) {
+        executor->keepAliveRelease();
+      }
+    };
+    std::unique_ptr<folly::Executor, Deleter> executor_;
+  };
+
+  /// Returns a keep-alive token which guarantees that Executor will keep
+  /// processing tasks until the token is released. keep-alive token can only
+  /// be destroyed from within the task, scheduled to be run on an executor.
+  ///
+  /// If executor does not support keep-alive functionality - dummy token will
+  /// be returned.
+  virtual KeepAlive getKeepAliveToken() {
+    return {};
+  }
+
+ protected:
+  virtual void keepAliveRelease();
+
+  KeepAlive makeKeepAlive() {
+    return KeepAlive{this};
+  }
 };
 
 } // folly

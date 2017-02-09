@@ -72,7 +72,7 @@ inline void EventBaseLoopControllerT<EventBaseT>::cancel() {
 template <typename EventBaseT>
 inline void EventBaseLoopControllerT<EventBaseT>::runLoop() {
   if (!eventBaseKeepAlive_) {
-    eventBaseKeepAlive_ = eventBase_->loopKeepAlive();
+    eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
   }
   if (loopRunner_) {
     loopRunner_->run([&] { fm_->loopUntilNoReadyImpl(); });

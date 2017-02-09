@@ -600,33 +600,17 @@ class EventBase : private boost::noncopyable,
     loopOnce();
   }
 
-  struct LoopKeepAliveDeleter {
-    void operator()(EventBase* evb) {
-      DCHECK(evb->isInEventBaseThread());
-      evb->loopKeepAliveCount_--;
-    }
-  };
-  using LoopKeepAlive = std::unique_ptr<EventBase, LoopKeepAliveDeleter>;
-
   /// Returns you a handle which make loop() behave like loopForever() until
   /// destroyed. loop() will return to its original behavior only when all
   /// loop keep-alives are released. Loop holder is safe to release only from
   /// EventBase thread.
-  ///
-  /// May return no op LoopKeepAlive if loopForever() is already running.
-  LoopKeepAlive loopKeepAlive() {
-    DCHECK(isInEventBaseThread());
-    loopKeepAliveCount_++;
-    return LoopKeepAlive(this);
-  }
-
-  // Thread-safe version of loopKeepAlive()
-  LoopKeepAlive loopKeepAliveAtomic() {
+  KeepAlive getKeepAliveToken() override {
     if (inRunningEventBaseThread()) {
-      return loopKeepAlive();
+      loopKeepAliveCount_++;
+    } else {
+      loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
     }
-    loopKeepAliveCountAtomic_.fetch_add(1, std::memory_order_relaxed);
-    return LoopKeepAlive(this);
+    return makeKeepAlive();
   }
 
   // TimeoutManager
@@ -643,6 +627,12 @@ class EventBase : private boost::noncopyable,
 
   bool isInTimeoutManagerThread() override final {
     return isInEventBaseThread();
+  }
+
+ protected:
+  void keepAliveRelease() override {
+    DCHECK(isInEventBaseThread());
+    loopKeepAliveCount_--;
   }
 
  private:

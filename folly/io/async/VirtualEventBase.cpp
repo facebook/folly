@@ -18,8 +18,8 @@
 namespace folly {
 
 VirtualEventBase::VirtualEventBase(EventBase& evb) : evb_(evb) {
-  evbLoopKeepAlive_ = evb_.loopKeepAliveAtomic();
-  loopKeepAlive_ = loopKeepAliveAtomic();
+  evbLoopKeepAlive_ = evb_.getKeepAliveToken();
+  loopKeepAlive_ = getKeepAliveToken();
 }
 
 VirtualEventBase::~VirtualEventBase() {
