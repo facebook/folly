@@ -30,6 +30,14 @@ namespace {
 
 std::array<char, 300> bigBuf;
 
+std::string getShortString() {
+  return "ABCDEFGHIJ";
+}
+
+std::string getLongString() {
+  return std::string(256, 'A');
+}
+
 } // namespace
 
 BENCHMARK(octal_snprintf, iters) {
@@ -147,7 +155,7 @@ BENCHMARK(format_nested_strings, iters) {
   while (iters--) {
     for (int i = 0; i < 1000; ++i) {
       fbstring out;
-      suspender.dismissing([&]() {
+      suspender.dismissing([&] {
         format(
             &out,
             "{} {}",
@@ -190,6 +198,100 @@ BENCHMARK_RELATIVE(format_nested_direct, iters) {
   }
 }
 
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(copy_short_string, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { out = shortString; });
+  }
+}
+
+BENCHMARK_RELATIVE(format_short_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(format_short_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, "{}", shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_short_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat(shortString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_short_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& shortString = getShortString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat("{}", shortString); });
+  }
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(copy_long_string, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { out = longString; });
+  }
+}
+
+BENCHMARK_RELATIVE(format_long_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(format_long_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    fbstring out;
+    suspender.dismissing([&] { format(&out, "{}", longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_long_string_unsafe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat(longString); });
+  }
+}
+
+BENCHMARK_RELATIVE(sformat_long_string_safe, iters) {
+  BenchmarkSuspender suspender;
+  auto const& longString = getLongString();
+  while (iters--) {
+    std::string out;
+    suspender.dismissing([&] { out = sformat("{}", longString); });
+  }
+}
+
 // Benchmark results on my dev server (20-core Intel Xeon E5-2660 v2 @ 2.20GHz)
 //
 // ============================================================================
@@ -211,6 +313,18 @@ BENCHMARK_RELATIVE(format_nested_direct, iters) {
 // format_nested_strings                                      317.65us    3.15K
 // format_nested_fbstrings                           99.89%   318.01us    3.14K
 // format_nested_direct                             116.52%   272.62us    3.67K
+// ----------------------------------------------------------------------------
+// copy_short_string                                           28.33ns   35.30M
+// format_short_string_unsafe                        82.51%    34.33ns   29.13M
+// format_short_string_safe                          58.92%    48.08ns   20.80M
+// sformat_short_string_unsafe                       73.90%    38.33ns   26.09M
+// sformat_short_string_safe                         54.97%    51.53ns   19.41M
+// ----------------------------------------------------------------------------
+// copy_long_string                                            57.56ns   17.37M
+// format_long_string_unsafe                         68.79%    83.68ns   11.95M
+// format_long_string_safe                           69.44%    82.89ns   12.06M
+// sformat_long_string_unsafe                        65.58%    87.77ns   11.39M
+// sformat_long_string_safe                          68.14%    84.47ns   11.84M
 // ============================================================================
 
 int main(int argc, char* argv[]) {
