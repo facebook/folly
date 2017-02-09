@@ -229,6 +229,39 @@ TEST(Hash, hash_combine) {
   EXPECT_NE(hash_combine(1, 2), hash_combine(2, 1));
 }
 
+TEST(Hash, hash_bool) {
+  const auto hash = folly::Hash();
+  EXPECT_NE(hash(true), hash(false));
+}
+
+TEST(Hash, hash_bool10) {
+  const auto hash = folly::Hash();
+  std::set<size_t> values;
+  for (bool b1 : {false, true}) {
+    for (bool b2 : {false, true}) {
+      for (bool b3 : {false, true}) {
+        for (bool b4 : {false, true}) {
+          for (bool b5 : {false, true}) {
+            for (bool b6 : {false, true}) {
+              for (bool b7 : {false, true}) {
+                for (bool b8 : {false, true}) {
+                  for (bool b9 : {false, true}) {
+                    for (bool b10 : {false, true}) {
+                      values.insert(
+                          hash(b1, b2, b3, b4, b5, b6, b7, b8, b9, b10));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  EXPECT_EQ(values.size(), 1 << 10);
+}
+
 TEST(Hash, std_tuple) {
   typedef std::tuple<int64_t, std::string, int32_t> tuple3;
   tuple3 t(42, "foo", 1);

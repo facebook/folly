@@ -361,6 +361,14 @@ struct Hash {
   }
 };
 
+template <>
+struct hasher<bool> {
+  size_t operator()(bool key) const {
+    // Make sure that all the output bits depend on the input.
+    return -static_cast<size_t>(key);
+  }
+};
+
 template<> struct hasher<int32_t> {
   size_t operator()(int32_t key) const {
     return hash::jenkins_rev_mix32(uint32_t(key));
