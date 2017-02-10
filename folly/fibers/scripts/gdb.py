@@ -79,7 +79,7 @@ class FiberManagerPrinter:
 
             fiber = fiber_hook.cast(gdb.lookup_type("int64_t"))
             fiber = fiber - gdb.parse_and_eval(
-                "(int64_t)&folly::fibers::Fiber::globalListHook_")
+                "(int64_t)&'folly::fibers::Fiber'::globalListHook_")
             fiber = fiber.cast(
                 gdb.lookup_type('folly::fibers::Fiber').pointer()).dereference()
 
