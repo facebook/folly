@@ -396,3 +396,16 @@ TEST(DynamicConverter, errors) {
   dynamic d2 = floatOver;
   EXPECT_THROW(convertTo<float>(d2), std::range_error);
 }
+
+TEST(DynamicConverter, partial_dynamics) {
+  std::vector<dynamic> c{
+      dynamic::array(2, 3, 4), dynamic::array(3, 4, 5),
+  };
+  dynamic d = dynamic::array(dynamic::array(2, 3, 4), dynamic::array(3, 4, 5));
+  EXPECT_EQ(d, toDynamic(c));
+
+  std::unordered_map<std::string, dynamic> m{{"one", 1}, {"two", 2}};
+
+  dynamic md = dynamic::object("one", 1)("two", 2);
+  EXPECT_EQ(md, toDynamic(m));
+}

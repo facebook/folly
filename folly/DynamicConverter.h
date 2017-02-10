@@ -298,11 +298,23 @@ struct DynamicConstructor {
   }
 };
 
+// identity
+template <typename C>
+struct DynamicConstructor<
+    C,
+    typename std::enable_if<std::is_same<C, dynamic>::value>::type> {
+  static dynamic construct(const C& x) {
+    return x;
+  }
+};
+
 // maps
-template<typename C>
-struct DynamicConstructor<C,
+template <typename C>
+struct DynamicConstructor<
+    C,
     typename std::enable_if<
-      dynamicconverter_detail::is_map<C>::value>::type> {
+        !std::is_same<C, dynamic>::value &&
+        dynamicconverter_detail::is_map<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::object;
     for (auto& pair : x) {
@@ -313,12 +325,14 @@ struct DynamicConstructor<C,
 };
 
 // other ranges
-template<typename C>
-struct DynamicConstructor<C,
+template <typename C>
+struct DynamicConstructor<
+    C,
     typename std::enable_if<
-      !dynamicconverter_detail::is_map<C>::value &&
-      !std::is_constructible<StringPiece, const C&>::value &&
-      dynamicconverter_detail::is_range<C>::value>::type> {
+        !std::is_same<C, dynamic>::value &&
+        !dynamicconverter_detail::is_map<C>::value &&
+        !std::is_constructible<StringPiece, const C&>::value &&
+        dynamicconverter_detail::is_range<C>::value>::type> {
   static dynamic construct(const C& x) {
     dynamic d = dynamic::array;
     for (auto& item : x) {
