@@ -150,7 +150,7 @@ the lock as soon as possible.
 `Synchronized` is a template with two parameters, the data type and a
 mutex type: `Synchronized<T, Mutex>`.
 
-If not specified, the mutex type defaults to `std::mutex`.  However, any
+If not specified, the mutex type defaults to `folly::SharedMutex`.  However, any
 mutex type supported by `folly::LockTraits` can be used instead.
 `folly::LockTraits` can be specialized to support other custom mutex
 types that it does not know about out of the box.  See
