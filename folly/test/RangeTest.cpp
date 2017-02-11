@@ -1298,6 +1298,40 @@ TEST(Range, Constructors) {
   EXPECT_EQ(subpiece1.end(), subpiece2.end());
 }
 
+TEST(Range, ArrayConstructors) {
+  auto charArray = std::array<char, 4>{{'t', 'e', 's', 't'}};
+  auto constCharArray = std::array<char, 6>{{'f', 'o', 'o', 'b', 'a', 'r'}};
+  auto emptyArray = std::array<char, 0>{};
+
+  auto sp1 = StringPiece{charArray};
+  EXPECT_EQ(4, sp1.size());
+  EXPECT_EQ(charArray.data(), sp1.data());
+
+  auto sp2 = StringPiece(constCharArray);
+  EXPECT_EQ(6, sp2.size());
+  EXPECT_EQ(constCharArray.data(), sp2.data());
+
+  auto msp = MutableStringPiece(charArray);
+  EXPECT_EQ(4, msp.size());
+  EXPECT_EQ(charArray.data(), msp.data());
+
+  auto esp = StringPiece(emptyArray);
+  EXPECT_EQ(0, esp.size());
+  EXPECT_EQ(nullptr, esp.data());
+
+  auto emsp = MutableStringPiece(emptyArray);
+  EXPECT_EQ(0, emsp.size());
+  EXPECT_EQ(nullptr, emsp.data());
+
+  static constexpr std::array<int, 4> numArray = {{3, 17, 1, 9}};
+  constexpr auto numRange = Range<const int*>{numArray};
+  EXPECT_EQ(17, numRange[1]);
+
+  static constexpr std::array<int, 0> emptyNumArray{};
+  constexpr auto emptyNumRange = Range<const int*>{emptyNumArray};
+  EXPECT_EQ(0, emptyNumRange.size());
+}
+
 TEST(Range, ConstexprAccessors) {
   constexpr StringPiece piece = range("hello");
   static_assert(piece.size() == 6u, "");

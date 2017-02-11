@@ -26,12 +26,13 @@
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/String.h>
 
-#include <algorithm>
 #include <boost/operators.hpp>
+#include <glog/logging.h>
+#include <algorithm>
+#include <array>
 #include <climits>
 #include <cstddef>
 #include <cstring>
-#include <glog/logging.h>
 #include <iosfwd>
 #include <stdexcept>
 #include <string>
@@ -331,6 +332,30 @@ public:
     : b_(other.begin()),
       e_(other.end()) {
   }
+
+  /**
+   * Allow explicit construction of Range() from a std::array of a
+   * convertible type.
+   *
+   * For instance, this allows constructing StringPiece from a
+   * std::array<char, N> or a std::array<const char, N>
+   */
+  template <
+      class T,
+      size_t N,
+      typename = typename std::enable_if<
+          std::is_convertible<const T*, Iter>::value>::type>
+  constexpr explicit Range(const std::array<T, N>& array)
+      : b_{array.empty() ? nullptr : &array.at(0)},
+        e_{array.empty() ? nullptr : &array.at(0) + N} {}
+  template <
+      class T,
+      size_t N,
+      typename =
+          typename std::enable_if<std::is_convertible<T*, Iter>::value>::type>
+  constexpr explicit Range(std::array<T, N>& array)
+      : b_{array.empty() ? nullptr : &array.at(0)},
+        e_{array.empty() ? nullptr : &array.at(0) + N} {}
 
   Range& operator=(const Range& rhs) & = default;
   Range& operator=(Range&& rhs) & = default;
@@ -907,8 +932,7 @@ constexpr Range<T*> range(T (&array)[n]) {
 
 template <class T, size_t n>
 constexpr Range<const T*> range(const std::array<T, n>& array) {
-  using r = Range<const T*>;
-  return array.empty() ? r{} : r(&array.at(0), &array.at(0) + n);
+  return Range<const T*>{array};
 }
 
 typedef Range<const char*> StringPiece;
