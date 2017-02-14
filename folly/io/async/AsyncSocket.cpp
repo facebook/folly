@@ -25,11 +25,11 @@
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
 
+#include <boost/preprocessor/control/if.hpp>
 #include <errno.h>
 #include <limits.h>
-#include <thread>
 #include <sys/types.h>
-#include <boost/preprocessor/control/if.hpp>
+#include <thread>
 
 using std::string;
 using std::unique_ptr;
@@ -37,6 +37,13 @@ using std::unique_ptr;
 namespace fsp = folly::portability::sockets;
 
 namespace folly {
+
+static constexpr bool msgErrQueueSupported =
+#ifdef MSG_ERRQUEUE
+    true;
+#else
+    false;
+#endif // MSG_ERRQUEUE
 
 // static members initializers
 const AsyncSocket::OptionMap AsyncSocket::emptyOptionMap;
@@ -233,6 +240,7 @@ void AsyncSocket::init() {
   sendTimeout_ = 0;
   maxReadsPerEvent_ = 16;
   connectCallback_ = nullptr;
+  errMessageCallback_ = nullptr;
   readCallback_ = nullptr;
   writeReqHead_ = nullptr;
   writeReqTail_ = nullptr;
@@ -462,6 +470,7 @@ void AsyncSocket::connect(ConnectCallback* callback,
   // The read callback may not have been set yet, and no writes may be pending
   // yet, so we don't have to register for any events at the moment.
   VLOG(8) << "AsyncSocket::connect succeeded immediately; this=" << this;
+  assert(errMessageCallback_ == nullptr);
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
@@ -561,6 +570,52 @@ void AsyncSocket::setSendTimeout(uint32_t milliseconds) {
       writeTimeout_.cancelTimeout();
     }
   }
+}
+
+void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
+  VLOG(6) << "AsyncSocket::setErrMessageCB() this=" << this
+          << ", fd=" << fd_ << ", callback=" << callback
+          << ", state=" << state_;
+
+  // Short circuit if callback is the same as the existing timestampCallback_.
+  if (callback == errMessageCallback_) {
+    return;
+  }
+
+  if (!msgErrQueueSupported) {
+      // Per-socket error message queue is not supported on this platform.
+      return invalidState(callback);
+  }
+
+  DestructorGuard dg(this);
+  assert(eventBase_->isInEventBaseThread());
+
+  switch ((StateEnum)state_) {
+    case StateEnum::CONNECTING:
+    case StateEnum::FAST_OPEN:
+    case StateEnum::ESTABLISHED: {
+      errMessageCallback_ = callback;
+      return;
+    }
+    case StateEnum::CLOSED:
+    case StateEnum::ERROR:
+      // We should never reach here.  SHUT_READ should always be set
+      // if we are in STATE_CLOSED or STATE_ERROR.
+      assert(false);
+      return invalidState(callback);
+    case StateEnum::UNINIT:
+      // We do not allow setReadCallback() to be called before we start
+      // connecting.
+      return invalidState(callback);
+  }
+
+  // We don't put a default case in the switch statement, so that the compiler
+  // will warn us to update the switch statement if a new state is added.
+  return invalidState(callback);
+}
+
+AsyncSocket::ErrMessageCallback* AsyncSocket::getErrMessageCallback() const {
+  return errMessageCallback_;
 }
 
 void AsyncSocket::setReadCB(ReadCallback *callback) {
@@ -1307,12 +1362,23 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   assert(eventBase_->isInEventBaseThread());
 
   uint16_t relevantEvents = uint16_t(events & EventHandler::READ_WRITE);
+  EventBase* originalEventBase = eventBase_;
+  // If we got there it means that either EventHandler::READ or
+  // EventHandler::WRITE is set. Any of these flags can
+  // indicate that there are messages available in the socket
+  // error message queue.
+  handleErrMessages();
+
+  // Return now if handleErrMessages() detached us from our EventBase
+  if (eventBase_ != originalEventBase) {
+    return;
+  }
+
   if (relevantEvents == EventHandler::READ) {
     handleRead();
   } else if (relevantEvents == EventHandler::WRITE) {
     handleWrite();
   } else if (relevantEvents == EventHandler::READ_WRITE) {
-    EventBase* originalEventBase = eventBase_;
     // If both read and write events are ready, process writes first.
     handleWrite();
 
@@ -1362,6 +1428,61 @@ void AsyncSocket::prepareReadBuffer(void** buf, size_t* buflen) {
   // no matter what, buffer should be preapared for non-ssl socket
   CHECK(readCallback_);
   readCallback_->getReadBuffer(buf, buflen);
+}
+
+void AsyncSocket::handleErrMessages() noexcept {
+  // This method has non-empty implementation only for platforms
+  // supporting per-socket error queues.
+  VLOG(5) << "AsyncSocket::handleErrMessages() this=" << this << ", fd=" << fd_
+          << ", state=" << state_;
+  if (errMessageCallback_ == nullptr) {
+    VLOG(7) << "AsyncSocket::handleErrMessages(): "
+            << "no callback installed - exiting.";
+    return;
+  }
+
+#ifdef MSG_ERRQUEUE
+  uint8_t ctrl[1024];
+  unsigned char data;
+  struct msghdr msg;
+  iovec entry;
+
+  entry.iov_base = &data;
+  entry.iov_len = sizeof(data);
+  msg.msg_iov = &entry;
+  msg.msg_iovlen = 1;
+  msg.msg_name = nullptr;
+  msg.msg_namelen = 0;
+  msg.msg_control = ctrl;
+  msg.msg_controllen = sizeof(ctrl);
+  msg.msg_flags = 0;
+
+  int ret;
+  while (true) {
+    ret = recvmsg(fd_, &msg, MSG_ERRQUEUE);
+    VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
+
+    if (ret < 0) {
+      if (errno != EAGAIN) {
+        auto errnoCopy = errno;
+        LOG(ERROR) << "::recvmsg exited with code " << ret
+                   << ", errno: " << errnoCopy;
+        AsyncSocketException ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          withAddr("recvmsg() failed"),
+          errnoCopy);
+        failErrMessageRead(__func__, ex);
+      }
+      return;
+    }
+
+    for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
+         cmsg != nullptr && cmsg->cmsg_len != 0;
+         cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+      errMessageCallback_->errMessage(*cmsg);
+    }
+  }
+#endif //MSG_ERRQUEUE
 }
 
 void AsyncSocket::handleRead() noexcept {
@@ -2070,6 +2191,23 @@ void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {
   finishFail();
 }
 
+void AsyncSocket::failErrMessageRead(const char* fn,
+                                     const AsyncSocketException& ex) {
+  VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_ << ", state="
+               << state_ << " host=" << addr_.describe()
+               << "): failed while reading message in " << fn << "(): "
+               << ex.what();
+  startFail();
+
+  if (errMessageCallback_ != nullptr) {
+    ErrMessageCallback* callback = errMessageCallback_;
+    errMessageCallback_ = nullptr;
+    callback->errMessageError(ex);
+  }
+
+  finishFail();
+}
+
 void AsyncSocket::failWrite(const char* fn, const AsyncSocketException& ex) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_ << ", state="
                << state_ << " host=" << addr_.describe()
@@ -2129,7 +2267,7 @@ void AsyncSocket::failAllWrites(const AsyncSocketException& ex) {
 
 void AsyncSocket::invalidState(ConnectCallback* callback) {
   VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
-             << "): connect() called in invalid state " << state_;
+          << "): connect() called in invalid state " << state_;
 
   /*
    * The invalidState() methods don't use the normal failure mechanisms,
@@ -2152,6 +2290,29 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
     startFail();
     if (callback) {
       callback->connectErr(ex);
+    }
+    finishFail();
+  }
+}
+
+void AsyncSocket::invalidState(ErrMessageCallback* callback) {
+  VLOG(4) << "AsyncSocket(this=" << this << ", fd=" << fd_
+          << "): setErrMessageCB(" << callback
+          << ") called in invalid state " << state_;
+
+  AsyncSocketException ex(
+      AsyncSocketException::NOT_OPEN,
+      msgErrQueueSupported
+      ? "setErrMessageCB() called with socket in invalid state"
+      : "This platform does not support socket error message notifications");
+  if (state_ == StateEnum::CLOSED || state_ == StateEnum::ERROR) {
+    if (callback) {
+      callback->errMessageError(ex);
+    }
+  } else {
+    startFail();
+    if (callback) {
+      callback->errMessageError(ex);
     }
     finishFail();
   }

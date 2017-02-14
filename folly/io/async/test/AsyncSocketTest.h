@@ -202,6 +202,33 @@ class BufferCallback : public folly::AsyncTransport::BufferCallback {
 class ReadVerifier {
 };
 
+class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
+ public:
+  TestErrMessageCallback()
+    : exception_(folly::AsyncSocketException::UNKNOWN, "none")
+  {}
+
+  void errMessage(const cmsghdr& cmsg) noexcept override {
+    if (cmsg.cmsg_level == SOL_SOCKET &&
+      cmsg.cmsg_type == SCM_TIMESTAMPING) {
+      gotTimestamp_ = true;
+    } else if (
+      (cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
+      (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
+      gotByteSeq_ = true;
+    }
+  }
+
+  void errMessageError(
+      const folly::AsyncSocketException& ex) noexcept override {
+    exception_ = ex;
+  }
+
+  folly::AsyncSocketException exception_;
+  bool gotTimestamp_{false};
+  bool gotByteSeq_{false};
+};
+
 class TestServer {
  public:
   // Create a TestServer.

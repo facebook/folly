@@ -111,6 +111,34 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     virtual void evbDetached(AsyncSocket* socket) = 0;
   };
 
+  /**
+   * This interface is implemented only for platforms supporting
+   * per-socket error queues.
+   */
+  class ErrMessageCallback {
+   public:
+    virtual ~ErrMessageCallback() = default;
+
+    /**
+     * errMessage() will be invoked when kernel puts a message to
+     * the error queue associated with the socket.
+     *
+     * @param cmsg      Reference to cmsghdr structure describing
+     *                  a message read from error queue associated
+     *                  with the socket.
+     */
+    virtual void
+    errMessage(const cmsghdr& cmsg) noexcept = 0;
+
+    /**
+     * errMessageError() will be invoked if an error occurs reading a message
+     * from the socket error stream.
+     *
+     * @param ex        An exception describing the error that occurred.
+     */
+    virtual void errMessageError(const AsyncSocketException& ex) noexcept = 0;
+  };
+
   explicit AsyncSocket();
   /**
    * Create a new unconnected AsyncSocket.
@@ -352,6 +380,24 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   uint16_t getMaxReadsPerEvent() const {
     return maxReadsPerEvent_;
   }
+
+  /**
+   * Set a pointer to ErrMessageCallback implementation which will be
+   * receiving notifications for messages posted to the error queue
+   * associated with the socket.
+   * ErrMessageCallback is implemented only for platforms with
+   * per-socket error message queus support (recvmsg() system call must
+   * )
+   *
+   */
+  void setErrMessageCB(ErrMessageCallback* callback);
+
+  /**
+   * Get a pointer to ErrMessageCallback implementation currently
+   * registered with this socket.
+   *
+   */
+  ErrMessageCallback* getErrMessageCallback() const;
 
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
@@ -799,6 +845,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   virtual void checkForImmediateRead() noexcept;
   virtual void handleInitialReadWrite() noexcept;
   virtual void prepareReadBuffer(void** buf, size_t* buflen);
+  virtual void handleErrMessages() noexcept;
   virtual void handleRead() noexcept;
   virtual void handleWrite() noexcept;
   virtual void handleConnect() noexcept;
@@ -913,6 +960,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void fail(const char* fn, const AsyncSocketException& ex);
   void failConnect(const char* fn, const AsyncSocketException& ex);
   void failRead(const char* fn, const AsyncSocketException& ex);
+  void failErrMessageRead(const char* fn, const AsyncSocketException& ex);
   void failWrite(const char* fn, WriteCallback* callback, size_t bytesWritten,
                  const AsyncSocketException& ex);
   void failWrite(const char* fn, const AsyncSocketException& ex);
@@ -920,37 +968,39 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   virtual void invokeConnectErr(const AsyncSocketException& ex);
   virtual void invokeConnectSuccess();
   void invalidState(ConnectCallback* callback);
+  void invalidState(ErrMessageCallback* callback);
   void invalidState(ReadCallback* callback);
   void invalidState(WriteCallback* callback);
 
   std::string withAddr(const std::string& s);
 
-  StateEnum state_;                     ///< StateEnum describing current state
-  uint8_t shutdownFlags_;               ///< Shutdown state (ShutdownFlags)
-  uint16_t eventFlags_;                 ///< EventBase::HandlerFlags settings
-  int fd_;                              ///< The socket file descriptor
+  StateEnum state_;                      ///< StateEnum describing current state
+  uint8_t shutdownFlags_;                ///< Shutdown state (ShutdownFlags)
+  uint16_t eventFlags_;                  ///< EventBase::HandlerFlags settings
+  int fd_;                               ///< The socket file descriptor
   mutable folly::SocketAddress addr_;    ///< The address we tried to connect to
   mutable folly::SocketAddress localAddr_;
-                                        ///< The address we are connecting from
-  uint32_t sendTimeout_;                ///< The send timeout, in milliseconds
-  uint16_t maxReadsPerEvent_;           ///< Max reads per event loop iteration
-  EventBase* eventBase_;                ///< The EventBase
-  WriteTimeout writeTimeout_;           ///< A timeout for connect and write
-  IoHandler ioHandler_;                 ///< A EventHandler to monitor the fd
+                                         ///< The address we are connecting from
+  uint32_t sendTimeout_;                 ///< The send timeout, in milliseconds
+  uint16_t maxReadsPerEvent_;            ///< Max reads per event loop iteration
+  EventBase* eventBase_;                 ///< The EventBase
+  WriteTimeout writeTimeout_;            ///< A timeout for connect and write
+  IoHandler ioHandler_;                  ///< A EventHandler to monitor the fd
   ImmediateReadCB immediateReadHandler_; ///< LoopCallback for checking read
 
-  ConnectCallback* connectCallback_;    ///< ConnectCallback
-  ReadCallback* readCallback_;          ///< ReadCallback
-  WriteRequest* writeReqHead_;          ///< Chain of WriteRequests
-  WriteRequest* writeReqTail_;          ///< End of WriteRequest chain
+  ConnectCallback* connectCallback_;     ///< ConnectCallback
+  ErrMessageCallback* errMessageCallback_; ///< TimestampCallback
+  ReadCallback* readCallback_;           ///< ReadCallback
+  WriteRequest* writeReqHead_;           ///< Chain of WriteRequests
+  WriteRequest* writeReqTail_;           ///< End of WriteRequest chain
   ShutdownSocketSet* shutdownSocketSet_;
-  size_t appBytesReceived_;             ///< Num of bytes received from socket
-  size_t appBytesWritten_;              ///< Num of bytes written to socket
+  size_t appBytesReceived_;              ///< Num of bytes received from socket
+  size_t appBytesWritten_;               ///< Num of bytes written to socket
   bool isBufferMovable_{false};
 
   bool peek_{false}; // Peek bytes.
 
-  int8_t readErr_{READ_NO_ERROR};      ///< The read error encountered, if any.
+  int8_t readErr_{READ_NO_ERROR};       ///< The read error encountered, if any.
 
   std::chrono::steady_clock::time_point connectStartTime_;
   std::chrono::steady_clock::time_point connectEndTime_;

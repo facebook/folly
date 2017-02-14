@@ -2817,4 +2817,95 @@ TEST(AsyncSocketTest, EvbCallbacks) {
   socket->attachEventBase(&evb);
 }
 
+#ifdef MSG_ERRQUEUE
+/* copied from include/uapi/linux/net_tstamp.h */
+/* SO_TIMESTAMPING gets an integer bit field comprised of these values */
+enum SOF_TIMESTAMPING {
+  // SOF_TIMESTAMPING_TX_HARDWARE = (1 << 0),
+  // SOF_TIMESTAMPING_TX_SOFTWARE = (1 << 1),
+  // SOF_TIMESTAMPING_RX_HARDWARE = (1 << 2),
+  // SOF_TIMESTAMPING_RX_SOFTWARE = (1 << 3),
+  SOF_TIMESTAMPING_SOFTWARE = (1 << 4),
+  // SOF_TIMESTAMPING_SYS_HARDWARE = (1 << 5),
+  // SOF_TIMESTAMPING_RAW_HARDWARE = (1 << 6),
+  SOF_TIMESTAMPING_OPT_ID = (1 << 7),
+  SOF_TIMESTAMPING_TX_SCHED = (1 << 8),
+  // SOF_TIMESTAMPING_TX_ACK = (1 << 9),
+  SOF_TIMESTAMPING_OPT_CMSG = (1 << 10),
+  SOF_TIMESTAMPING_OPT_TSONLY = (1 << 11),
+
+  // SOF_TIMESTAMPING_LAST = SOF_TIMESTAMPING_OPT_TSONLY,
+  // SOF_TIMESTAMPING_MASK = (SOF_TIMESTAMPING_LAST - 1) | SOF_TIMESTAMPING_LAST,
+};
+TEST(AsyncSocketTest, ErrMessageCallback) {
+  TestServer server;
+
+  // connect()
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30);
+  LOG(INFO) << "Client socket fd=" << socket->getFd();
+
+  // Let the socket
+  evb.loop();
+
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  // Set read callback to keep the socket subscribed for event
+  // notifications. Though we're no planning to read anything from
+  // this side of the connection.
+  ReadCallback rcb(1);
+  socket->setReadCB(&rcb);
+
+  // Set up timestamp callbacks
+  TestErrMessageCallback errMsgCB;
+  socket->setErrMessageCB(&errMsgCB);
+  ASSERT_EQ(socket->getErrMessageCallback(),
+            static_cast<folly::AsyncSocket::ErrMessageCallback*>(&errMsgCB));
+
+  // Enable timestamp notifications
+  ASSERT_GT(socket->getFd(), 0);
+  int flags = SOF_TIMESTAMPING_OPT_ID
+              | SOF_TIMESTAMPING_OPT_TSONLY
+              | SOF_TIMESTAMPING_SOFTWARE
+              | SOF_TIMESTAMPING_OPT_CMSG
+              | SOF_TIMESTAMPING_TX_SCHED;
+  AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
+  EXPECT_EQ(tstampingOpt.apply(socket->getFd(), flags), 0);
+
+  // write()
+  std::vector<uint8_t> wbuf(128, 'a');
+  WriteCallback wcb;
+  socket->write(&wcb, wbuf.data(), wbuf.size());
+
+  // Accept the connection.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  LOG(INFO) << "Server socket fd=" << acceptedSocket->getSocketFD();
+
+  // Loop
+  evb.loopOnce();
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  // Check that we can read the data that was written to the socket
+  std::vector<uint8_t> rbuf(1 + wbuf.size(), 0);
+  uint32_t bytesRead = acceptedSocket->read(rbuf.data(), rbuf.size());
+  ASSERT_TRUE(std::equal(wbuf.begin(), wbuf.end(), rbuf.begin()));
+  ASSERT_EQ(bytesRead, wbuf.size());
+
+  // Close both sockets
+  acceptedSocket->close();
+  socket->close();
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+
+  // Check for the timestamp notifications.
+  ASSERT_EQ(errMsgCB.exception_.type_, folly::AsyncSocketException::UNKNOWN);
+  ASSERT_TRUE(errMsgCB.gotByteSeq_);
+  ASSERT_TRUE(errMsgCB.gotTimestamp_);
+}
+#endif // MSG_ERRQUEUE
+
 #endif
