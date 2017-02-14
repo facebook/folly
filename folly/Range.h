@@ -659,6 +659,16 @@ public:
     return !empty() && front() == c;
   }
 
+  template <class Comp>
+  bool startsWith(const const_range_type& other, Comp&& eq) const {
+    if (size() < other.size()) {
+      return false;
+    }
+    auto const trunc = subpiece(0, other.size());
+    return std::equal(
+        trunc.begin(), trunc.end(), other.begin(), std::forward<Comp>(eq));
+  }
+
   /**
    * Does this Range end with another range?
    */
@@ -668,6 +678,16 @@ public:
   }
   bool endsWith(value_type c) const {
     return !empty() && back() == c;
+  }
+
+  template <class Comp>
+  bool endsWith(const const_range_type& other, Comp&& eq) const {
+    if (size() < other.size()) {
+      return false;
+    }
+    auto const trunc = subpiece(size() - other.size());
+    return std::equal(
+        trunc.begin(), trunc.end(), other.begin(), std::forward<Comp>(eq));
   }
 
   /**

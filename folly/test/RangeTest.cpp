@@ -315,6 +315,15 @@ TEST(StringPiece, Prefix) {
   EXPECT_FALSE(a.startsWith('x'));
   EXPECT_FALSE(a.startsWith("x"));
 
+  EXPECT_TRUE(a.startsWith("", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.startsWith("hello", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.startsWith("hellO", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.startsWith("HELL", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.startsWith("H", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.startsWith("HELLOX", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.startsWith("x", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.startsWith("X", folly::AsciiCaseInsensitive()));
+
   {
     auto b = a;
     EXPECT_TRUE(b.removePrefix(""));
@@ -361,6 +370,16 @@ TEST(StringPiece, Suffix) {
   EXPECT_FALSE(a.endsWith("xhello"));
   EXPECT_FALSE(a.endsWith("x"));
   EXPECT_FALSE(a.endsWith('x'));
+
+  EXPECT_TRUE(a.endsWith("", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.endsWith("o", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.endsWith("O", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.endsWith("hello", folly::AsciiCaseInsensitive()));
+  EXPECT_TRUE(a.endsWith("hellO", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.endsWith("xhello", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.endsWith("Xhello", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.endsWith("x", folly::AsciiCaseInsensitive()));
+  EXPECT_FALSE(a.endsWith("X", folly::AsciiCaseInsensitive()));
 
   {
     auto b = a;
