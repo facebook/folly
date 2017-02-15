@@ -1463,8 +1463,13 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         uint32_t nextIndex = i + buffersStolen + 1;
         bytesStolenFromNextBuffer = std::min(vec[nextIndex].iov_len,
                                              minWriteSize_ - len);
-        memcpy(combinedBuf + len, vec[nextIndex].iov_base,
-               bytesStolenFromNextBuffer);
+        if (bytesStolenFromNextBuffer > 0) {
+          assert(vec[nextIndex].iov_base != nullptr);
+          ::memcpy(
+              combinedBuf + len,
+              vec[nextIndex].iov_base,
+              bytesStolenFromNextBuffer);
+        }
         len += bytesStolenFromNextBuffer;
         if (bytesStolenFromNextBuffer < vec[nextIndex].iov_len) {
           // couldn't steal the whole buffer
