@@ -48,11 +48,6 @@ SharedPromise<T>& SharedPromise<T>::operator=(
 }
 
 template <class T>
-SharedPromise<T>::SharedPromise(Future<T> future) {
-  future.then(&SharedPromise<T>::setTry, this);
-}
-
-template <class T>
 size_t SharedPromise<T>::size() {
   std::lock_guard<std::mutex> g(mutex_);
   return size_;

@@ -69,4 +69,7 @@ class PredicateDoesNotObtain : public FutureException {
   PredicateDoesNotObtain() : FutureException("Predicate does not obtain") {}
 };
 
+struct NoFutureInSplitter : FutureException {
+  NoFutureInSplitter() : FutureException("No Future in this FutureSplitter") {}
+};
 }
