@@ -104,11 +104,17 @@ struct EliasFanoEncoderV2 {
   static constexpr size_t forwardQuantum = kForwardQuantum;
 
   static uint8_t defaultNumLowerBits(size_t upperBound, size_t size) {
-    if (size == 0 || upperBound < size) {
+    if (UNLIKELY(size == 0 || upperBound < size)) {
       return 0;
     }
-    // floor(log(upperBound / size));
-    return uint8_t(folly::findLastSet(upperBound / size) - 1);
+    // Result that should be returned is "floor(log(upperBound / size))".
+    // In order to avoid expensive division, we rely on
+    // "floor(a) - floor(b) - 1 <= floor(a - b) <= floor(a) - floor(b)".
+    // Assuming "candidate = floor(log(upperBound)) - floor(log(upperBound))",
+    // then result is either "candidate - 1" or "candidate".
+    auto candidate = folly::findLastSet(upperBound) - folly::findLastSet(size);
+    // NOTE: As size != 0, "candidate" is always < 64.
+    return (size > (upperBound >> candidate)) ? candidate - 1 : candidate;
   }
 
   // Requires: input range (begin, end) is sorted (encoding

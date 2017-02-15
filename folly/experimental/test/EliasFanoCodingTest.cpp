@@ -15,6 +15,7 @@
  */
 
 #include <algorithm>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <vector>
@@ -29,6 +30,61 @@ using namespace folly::compression;
 #ifndef EF_TEST_ARCH
 #define EF_TEST_ARCH Default
 #endif  // EF_TEST_ARCH
+
+namespace {
+
+uint8_t slowDefaultNumLowerBits(size_t upperBound, size_t size) {
+  if (size == 0 || upperBound < size) {
+    return 0;
+  }
+  // floor(log(upperBound / size));
+  return uint8_t(folly::findLastSet(upperBound / size) - 1);
+}
+
+}  // namespace
+
+TEST(EliasFanoCoding, defaultNumLowerBits) {
+  // Verify that slowDefaultNumLowerBits and optimized
+  // Encoder::defaultNumLowerBits agree.
+  constexpr size_t kNumIterations = 2500;
+  auto compare = [](size_t upperBound, size_t size) {
+    using Encoder = EliasFanoEncoderV2<size_t>;
+    EXPECT_EQ(int(slowDefaultNumLowerBits(upperBound, size)),
+              int(Encoder::defaultNumLowerBits(upperBound, size)))
+        << upperBound << " " << size;
+  };
+  auto batch = [&compare](size_t initialUpperBound) {
+    for (size_t upperBound = initialUpperBound, i = 0;
+         i < kNumIterations;
+         ++i, --upperBound) {
+      // Test "size" values close to "upperBound".
+      for (size_t size = upperBound, j = 0; j < kNumIterations; ++j, --size) {
+        compare(upperBound, size);
+      }
+      // Sample "size" values between [0, upperBound].
+      for (size_t size = upperBound;
+           size > 1 + upperBound / kNumIterations;
+           size -= 1 + upperBound / kNumIterations) {
+        compare(upperBound, size);
+      }
+      // Test "size" values close to 0.
+      for (size_t size = 0; size < kNumIterations; ++size) {
+        compare(upperBound, size);
+      }
+    }
+  };
+  batch(std::numeric_limits<size_t>::max());
+  batch(kNumIterations + 1312213123);
+  batch(kNumIterations);
+
+  std::mt19937 gen;
+  std::uniform_int_distribution<size_t> distribution;
+  for (size_t i = 0; i < kNumIterations; ++i) {
+    const auto a = distribution(gen);
+    const auto b = distribution(gen);
+    compare(std::max(a, b), std::min(a, b));
+  }
+}
 
 class EliasFanoCodingTest : public ::testing::Test {
  public:
@@ -93,6 +149,8 @@ std::vector<size_t> order;
 std::vector<uint32_t> encodeSmallData;
 std::vector<uint32_t> encodeLargeData;
 
+std::vector<std::pair<size_t, size_t>> numLowerBitsInput;
+
 typename Encoder::MutableCompressedList list;
 
 void init() {
@@ -107,6 +165,13 @@ void init() {
 
   encodeSmallData = generateRandomList(10, 100 * 1000, gen);
   encodeLargeData = generateRandomList(1000 * 1000, 100 * 1000 * 1000, gen);
+
+  std::uniform_int_distribution<size_t> distribution;
+  for (size_t i = 0; i < 10000; ++i) {
+    const auto a = distribution(gen);
+    const auto b = distribution(gen);
+    numLowerBitsInput.emplace_back(std::max(a, b), std::min(a, b));
+  }
 }
 
 void free() {
@@ -169,33 +234,62 @@ BENCHMARK(Encode) {
   list.free();
 }
 
+BENCHMARK_DRAW_LINE();
+
+BENCHMARK(defaultNumLowerBits, iters) {
+  using Encoder = EliasFanoEncoderV2<size_t>;
+
+  size_t i = 0;
+  while (iters--) {
+    const auto& p = bm::numLowerBitsInput[i];
+    folly::doNotOptimizeAway(Encoder::defaultNumLowerBits(p.first, p.second));
+    if (++i == bm::numLowerBitsInput.size()) {
+      i = 0;
+    }
+  }
+}
+
+BENCHMARK(slowDefaultNumLowerBits, iters) {
+  size_t i = 0;
+  while (iters--) {
+    const auto& p = bm::numLowerBitsInput[i];
+    folly::doNotOptimizeAway(slowDefaultNumLowerBits(p.first, p.second));
+    if (++i == bm::numLowerBitsInput.size()) {
+      i = 0;
+    }
+  }
+}
+
 #if 0
-Intel(R) Xeon(R) CPU E5-2673 v3 @ 2.40GHz (turbo off),
-using instructions::Haswell and GCC 4.9 with --bm_min_usec 100000.
+Intel(R) Xeon(R) CPU E5-2678 v3 @ 2.50GHz (turbo on),
+using -DEF_TEST_ARCH Haswell and GCC 4.9 with --bm_min_usec 100000.
 ============================================================================
 folly/experimental/test/EliasFanoCodingTest.cpp relative  time/iter  iters/s
 ============================================================================
-Next                                                         2.59ns  386.60M
-Skip_ForwardQ128(1)                                          4.03ns  248.16M
-Skip_ForwardQ128(2)                                          5.28ns  189.39M
-Skip_ForwardQ128(4_pm_1)                                     7.48ns  133.75M
-Skip_ForwardQ128(16_pm_4)                                   20.28ns   49.32M
-Skip_ForwardQ128(64_pm_16)                                  28.19ns   35.47M
-Skip_ForwardQ128(256_pm_64)                                 31.99ns   31.26M
-Skip_ForwardQ128(1024_pm_256)                               32.51ns   30.76M
-Jump_ForwardQ128                                            33.77ns   29.61M
+Next                                                         2.31ns  433.77M
+Skip_ForwardQ128(1)                                          3.73ns  267.93M
+Skip_ForwardQ128(2)                                          4.89ns  204.34M
+Skip_ForwardQ128(4_pm_1)                                     6.86ns  145.79M
+Skip_ForwardQ128(16_pm_4)                                   18.92ns   52.85M
+Skip_ForwardQ128(64_pm_16)                                  26.56ns   37.66M
+Skip_ForwardQ128(256_pm_64)                                 30.12ns   33.20M
+Skip_ForwardQ128(1024_pm_256)                               30.74ns   32.53M
+Jump_ForwardQ128                                            30.49ns   32.80M
 ----------------------------------------------------------------------------
-SkipTo_SkipQ128(1)                                           4.34ns  230.66M
-SkipTo_SkipQ128(2)                                           8.90ns  112.38M
-SkipTo_SkipQ128(4_pm_1)                                     12.12ns   82.49M
-SkipTo_SkipQ128(16_pm_4)                                    32.52ns   30.75M
-SkipTo_SkipQ128(64_pm_16)                                   44.82ns   22.31M
-SkipTo_SkipQ128(256_pm_64)                                  49.52ns   20.19M
-SkipTo_SkipQ128(1024_pm_256)                                52.88ns   18.91M
-JumpTo_SkipQ128                                             54.65ns   18.30M
+SkipTo_SkipQ128(1)                                           3.86ns  258.96M
+SkipTo_SkipQ128(2)                                           7.73ns  129.36M
+SkipTo_SkipQ128(4_pm_1)                                     10.29ns   97.18M
+SkipTo_SkipQ128(16_pm_4)                                    28.69ns   34.86M
+SkipTo_SkipQ128(64_pm_16)                                   39.73ns   25.17M
+SkipTo_SkipQ128(256_pm_64)                                  43.45ns   23.01M
+SkipTo_SkipQ128(1024_pm_256)                                44.66ns   22.39M
+JumpTo_SkipQ128                                             47.98ns   20.84M
 ----------------------------------------------------------------------------
-Encode_10                                                   98.70ns   10.13M
-Encode                                                       5.48ms   182.33
+Encode_10                                                   77.92ns   12.83M
+Encode                                                       4.73ms   211.41
+----------------------------------------------------------------------------
+defaultNumLowerBits                                          2.20ns  455.01M
+slowDefaultNumLowerBits                                      7.90ns  126.59M
 ============================================================================
 #endif
 
