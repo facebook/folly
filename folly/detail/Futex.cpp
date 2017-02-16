@@ -226,21 +226,25 @@ int emulatedFutexWake(void* addr, int count, uint32_t waitMask) {
   return numAwoken;
 }
 
+template <typename F>
 FutexResult emulatedFutexWaitImpl(
-        void* addr,
-        uint32_t expected,
-        time_point<system_clock>* absSystemTime,
-        time_point<steady_clock>* absSteadyTime,
-        uint32_t waitMask) {
+    F* futex,
+    uint32_t expected,
+    time_point<system_clock>* absSystemTime,
+    time_point<steady_clock>* absSteadyTime,
+    uint32_t waitMask) {
+  static_assert(
+      std::is_same<F, Futex<std::atomic>>::value ||
+          std::is_same<F, Futex<EmulatedFutexAtomic>>::value,
+      "Type F must be either Futex<std::atomic> or Futex<EmulatedFutexAtomic>");
+  void* addr = static_cast<void*>(futex);
   auto& bucket = EmulatedFutexBucket::bucketFor(addr);
   EmulatedFutexWaitNode node(addr, waitMask);
 
   {
     std::unique_lock<std::mutex> bucketLock(bucket.mutex_);
 
-    uint32_t actual;
-    memcpy(&actual, addr, sizeof(uint32_t));
-    if (actual != expected) {
+    if (futex->load(std::memory_order_relaxed) != expected) {
       return FutexResult::VALUE_CHANGED;
     }
 
