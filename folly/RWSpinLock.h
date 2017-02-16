@@ -156,11 +156,11 @@ pthread_rwlock_t Read        728698     24us       101ns     7.28ms     194us
 #undef RW_SPINLOCK_USE_SSE_INSTRUCTIONS_
 #endif
 
+#include <algorithm>
 #include <atomic>
 #include <string>
-#include <algorithm>
+#include <thread>
 
-#include <sched.h>
 #include <glog/logging.h>
 
 #include <folly/Likely.h>
@@ -194,7 +194,7 @@ class RWSpinLock {
   void lock() {
     int count = 0;
     while (!LIKELY(try_lock())) {
-      if (++count > 1000) sched_yield();
+      if (++count > 1000) std::this_thread::yield();
     }
   }
 
@@ -208,7 +208,7 @@ class RWSpinLock {
   void lock_shared() {
     int count = 0;
     while (!LIKELY(try_lock_shared())) {
-      if (++count > 1000) sched_yield();
+      if (++count > 1000) std::this_thread::yield();
     }
   }
 
@@ -226,7 +226,7 @@ class RWSpinLock {
   void lock_upgrade() {
     int count = 0;
     while (!try_lock_upgrade()) {
-      if (++count > 1000) sched_yield();
+      if (++count > 1000) std::this_thread::yield();
     }
   }
 
@@ -238,7 +238,7 @@ class RWSpinLock {
   void unlock_upgrade_and_lock() {
     int64_t count = 0;
     while (!try_unlock_upgrade_and_lock()) {
-      if (++count > 1000) sched_yield();
+      if (++count > 1000) std::this_thread::yield();
     }
   }
 
@@ -601,7 +601,7 @@ class RWTicketSpinLockT {
    * turns.
    */
   void writeLockAggressive() {
-    // sched_yield() is needed here to avoid a pathology if the number
+    // std::this_thread::yield() is needed here to avoid a pathology if the number
     // of threads attempting concurrent writes is >= the number of real
     // cores allocated to this process. This is less likely than the
     // corresponding situation in lock_shared(), but we still want to
@@ -610,7 +610,7 @@ class RWTicketSpinLockT {
     QuarterInt val = __sync_fetch_and_add(&ticket.users, 1);
     while (val != load_acquire(&ticket.write)) {
       asm_volatile_pause();
-      if (UNLIKELY(++count > 1000)) sched_yield();
+      if (UNLIKELY(++count > 1000)) std::this_thread::yield();
     }
   }
 
@@ -623,7 +623,7 @@ class RWTicketSpinLockT {
     // there are a lot of competing readers.  The aggressive spinning
     // can help to avoid starving writers.
     //
-    // We don't worry about sched_yield() here because the caller
+    // We don't worry about std::this_thread::yield() here because the caller
     // has already explicitly abandoned fairness.
     while (!try_lock()) {}
   }
@@ -653,13 +653,13 @@ class RWTicketSpinLockT {
   }
 
   void lock_shared() {
-    // sched_yield() is important here because we can't grab the
+    // std::this_thread::yield() is important here because we can't grab the
     // shared lock if there is a pending writeLockAggressive, so we
     // need to let threads that already have a shared lock complete
     int count = 0;
     while (!LIKELY(try_lock_shared())) {
       asm_volatile_pause();
-      if (UNLIKELY((++count & 1023) == 0)) sched_yield();
+      if (UNLIKELY((++count & 1023) == 0)) std::this_thread::yield();
     }
   }
 

@@ -564,7 +564,6 @@ AC_CHECK_FUNCS([getdelim \
                 memset \
                 pow \
                 strerror \
-                sched_yield \
                 malloc_size \
                 malloc_usable_size \
                 memrchr \

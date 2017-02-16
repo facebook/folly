@@ -498,7 +498,7 @@ template <class Mutex> void testConcurrency() {
     // Test lock()
     for (size_t n = 0; n < itersPerThread; ++n) {
       v.contextualLock()->push_back((itersPerThread * threadIdx) + n);
-      sched_yield();
+      std::this_thread::yield();
     }
   };
   runParallel(numThreads, pushNumbers);

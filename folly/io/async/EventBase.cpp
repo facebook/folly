@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <fcntl.h>
 #include <mutex>
+#include <thread>
 
 namespace folly {
 
@@ -231,7 +232,7 @@ getTimeDelta(std::chrono::steady_clock::time_point* prev) {
 
 void EventBase::waitUntilRunning() {
   while (!isRunning()) {
-    sched_yield();
+    std::this_thread::yield();
   }
 }
 

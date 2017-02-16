@@ -16,11 +16,12 @@
 
 #include <folly/detail/CacheLocality.h>
 
-#include <sched.h>
 #include <memory>
 #include <thread>
 #include <unordered_map>
+
 #include <glog/logging.h>
+
 #include <folly/Benchmark.h>
 
 using namespace folly::detail;
@@ -167,7 +168,7 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
 
       ready++;
       while (!go.load()) {
-        sched_yield();
+        std::this_thread::yield();
       }
       std::atomic<int> localWork(0);
       for (size_t i = iters; i > 0; --i) {
@@ -187,7 +188,7 @@ static void contentionAtWidth(size_t iters, size_t stripes, size_t work) {
   }
 
   while (ready < numThreads) {
-    sched_yield();
+    std::this_thread::yield();
   }
   braces.dismiss();
   go = true;
@@ -208,7 +209,7 @@ static void atomicIncrBaseline(size_t iters,
   while (threads.size() < numThreads) {
     threads.push_back(std::thread([&]() {
       while (!go.load()) {
-        sched_yield();
+        std::this_thread::yield();
       }
       std::atomic<size_t> localCounter(0);
       std::atomic<int> localWork(0);
