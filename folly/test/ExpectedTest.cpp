@@ -15,7 +15,6 @@
  */
 
 #include <folly/Expected.h>
-#include <folly/Portability.h>
 #include <folly/portability/GTest.h>
 
 #include <algorithm>
@@ -453,7 +452,7 @@ TEST(Expected, MakeOptional) {
   EXPECT_EQ(**exIntPtr, 3);
 }
 
-#if __CLANG_PREREQ(3, 6)
+#if __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wself-move"
 #endif
@@ -468,7 +467,7 @@ TEST(Expected, SelfAssignment) {
   ASSERT_TRUE(b.hasValue() && b.value() == "23333333");
 }
 
-#if __CLANG_PREREQ(3, 6)
+#if __clang__
 #pragma clang diagnostic pop
 #endif
 
