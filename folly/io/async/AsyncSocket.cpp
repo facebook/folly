@@ -1277,6 +1277,7 @@ int AsyncSocket::setCongestionFlavor(const std::string &cname) {
 }
 
 int AsyncSocket::setQuickAck(bool quickack) {
+  (void)quickack;
   if (fd_ < 0) {
     VLOG(4) << "AsyncSocket::setQuickAck() called on non-open socket "
                << this << "(state=" << state_ << ")";

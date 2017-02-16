@@ -30,13 +30,13 @@ int getrlimit(int type, rlimit* dst) {
   return -1;
 }
 
-int getrusage(int who, rusage* usage) {
+int getrusage(int /* who */, rusage* usage) {
   // You get NOTHING! Good day to you sir.
   ZeroMemory(usage, sizeof(rusage));
   return 0;
 }
 
-int setrlimit(int type, rlimit* src) {
+int setrlimit(int /* type */, rlimit* /* src */) {
   // Do nothing for setting them for now.
   // We couldn't set the stack size at runtime even if we wanted to.
   return 0;

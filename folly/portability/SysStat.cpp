@@ -51,7 +51,9 @@ int fchmod(int fd, mode_t mode) {
 // Just return the result of a normal stat for now
 int lstat(const char* path, struct stat* st) { return stat(path, st); }
 
-int mkdir(const char* fn, int mode) { return _mkdir(fn); }
+int mkdir(const char* fn, int /* mode */) {
+  return _mkdir(fn);
+}
 
 int umask(int md) { return _umask(md); }
 }

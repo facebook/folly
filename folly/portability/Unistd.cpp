@@ -228,7 +228,9 @@ ssize_t readlink(const char* path, char* buf, size_t buflen) {
   return ret;
 }
 
-void* sbrk(intptr_t i) { return (void*)-1; }
+void* sbrk(intptr_t /* i */) {
+  return (void*)-1;
+}
 
 unsigned int sleep(unsigned int seconds) {
   Sleep((DWORD)(seconds * 1000));

@@ -107,17 +107,18 @@ bool tfo_succeeded(int sockfd) {
 
 #else
 
-ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
+ssize_t
+tfo_sendmsg(int /* sockfd */, const struct msghdr* /* msg */, int /* flags */) {
   errno = EOPNOTSUPP;
   return -1;
 }
 
-int tfo_enable(int sockfd, size_t max_queue_size) {
+int tfo_enable(int /* sockfd */, size_t /* max_queue_size */) {
   errno = ENOPROTOOPT;
   return -1;
 }
 
-bool tfo_succeeded(int sockfd) {
+bool tfo_succeeded(int /* sockfd */) {
   errno = EOPNOTSUPP;
   return false;
 }

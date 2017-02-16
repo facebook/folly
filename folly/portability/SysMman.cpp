@@ -56,7 +56,7 @@ static size_t alignToAllocationGranularity(size_t s) {
 }
 
 extern "C" {
-int madvise(const void* addr, size_t len, int advise) {
+int madvise(const void* /* addr */, size_t /* len */, int /* advise */) {
   // We do nothing at all.
   // Could probably implement dontneed via VirtualAlloc
   // with the MEM_RESET and MEM_RESET_UNDO flags.

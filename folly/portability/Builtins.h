@@ -78,6 +78,7 @@ FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
 
 FOLLY_ALWAYS_INLINE void* __builtin_return_address(unsigned int frame) {
   // I really hope frame is zero...
+  (void)frame;
   assert(frame == 0);
   return _ReturnAddress();
 }

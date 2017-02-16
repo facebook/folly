@@ -94,8 +94,7 @@ void getDeviceOptions(dev_t device, off_t& pageSize, bool& autoExtend) {
   }
 }
 #else
-inline void getDeviceOptions(dev_t device, off_t& pageSize,
-                             bool& autoExtend) { }
+inline void getDeviceOptions(dev_t, off_t&, bool&) {}
 #endif
 
 }  // namespace

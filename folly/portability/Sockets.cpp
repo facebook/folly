@@ -256,7 +256,7 @@ ssize_t recvfrom(
   return recvfrom(s, (void*)buf, (size_t)len, flags, from, fromlen);
 }
 
-ssize_t recvmsg(int s, struct msghdr* message, int fl) {
+ssize_t recvmsg(int s, struct msghdr* message, int /* flags */) {
   SOCKET h = fd_to_socket(s);
 
   // Don't currently support the name translation.
@@ -313,7 +313,7 @@ ssize_t send(int s, const void* buf, int len, int flags) {
   return send(s, (const void*)buf, (size_t)len, flags);
 }
 
-ssize_t sendmsg(int s, const struct msghdr* message, int fl) {
+ssize_t sendmsg(int s, const struct msghdr* message, int /* flags */) {
   SOCKET h = fd_to_socket(s);
 
   // Unfortunately, WSASendMsg requires the socket to have been opened

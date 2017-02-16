@@ -162,8 +162,7 @@ void MemoryIdler::unmapUnusedStack(size_t retain) {
 
 #else
 
-void MemoryIdler::unmapUnusedStack(size_t retain) {
-}
+void MemoryIdler::unmapUnusedStack(size_t /* retain */) {}
 
 #endif
 

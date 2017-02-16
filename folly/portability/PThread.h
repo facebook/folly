@@ -77,7 +77,9 @@ pthread_attr_setstack(pthread_attr_t* attr, void* stackaddr, size_t stacksize) {
   return 0;
 }
 
-inline int pthread_attr_getguardsize(pthread_attr_t* attr, size_t* guardsize) {
+inline int pthread_attr_getguardsize(
+    pthread_attr_t* /* attr */,
+    size_t* guardsize) {
   *guardsize = 0;
   return 0;
 }

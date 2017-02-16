@@ -765,7 +765,7 @@ class SharedMutexImpl {
       }
 
       uint32_t after = (state & kMayDefer) == 0 ? 0 : kPrevDefer;
-      if (!ReaderPriority || (state & (kMayDefer | kHasS)) == 0) {
+      if (!kReaderPriority || (state & (kMayDefer | kHasS)) == 0) {
         // Block readers immediately, either because we are in write
         // priority mode or because we can acquire the lock in one
         // step.  Note that if state has kHasU, then we are doing an
@@ -806,7 +806,7 @@ class SharedMutexImpl {
             return false;
           }
 
-          if (ReaderPriority && (state & kHasE) == 0) {
+          if (kReaderPriority && (state & kHasE) == 0) {
             assert((state & kBegunE) != 0);
             if (!state_.compare_exchange_strong(state,
                                                 (state & ~kBegunE) | kHasE)) {

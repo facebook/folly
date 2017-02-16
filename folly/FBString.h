@@ -137,7 +137,8 @@ inline std::pair<InIt, OutIt> copy_n(
 template <class Pod, class T>
 inline void podFill(Pod* b, Pod* e, T c) {
   FBSTRING_ASSERT(b && e && b <= e);
-  /*static*/ if (sizeof(T) == 1) {
+  constexpr auto kUseMemset = sizeof(T) == 1;
+  /* static */ if (kUseMemset) {
     memset(b, c, size_t(e - b));
   } else {
     auto const ee = b + ((e - b) & ~7u);
