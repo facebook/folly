@@ -40,14 +40,20 @@
   template <typename TTheClass_>                                               \
   struct classname##__folly_traits_impl__ {                                    \
     template <typename UTheClass_>                                             \
-    static std::true_type test(typename UTheClass_::type_name*);               \
+    static constexpr bool test(typename UTheClass_::type_name*) {              \
+      return true;                                                             \
+    }                                                                          \
     template <typename>                                                        \
-    static std::false_type test(...);                                          \
+    static constexpr bool test(...) {                                          \
+      return false;                                                            \
+    }                                                                          \
   };                                                                           \
   template <typename TTheClass_>                                               \
-  using classname = decltype(                                                  \
+  using classname = typename std::conditional<                                 \
       classname##__folly_traits_impl__<TTheClass_>::template test<TTheClass_>( \
-          nullptr))
+          nullptr),                                                            \
+      std::true_type,                                                          \
+      std::false_type>::type;
 
 #define FOLLY_CREATE_HAS_MEMBER_FN_TRAITS_IMPL(classname, func_name, cv_qual) \
   template <typename TTheClass_, typename RTheReturn_, typename... TTheArgs_> \
