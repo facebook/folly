@@ -74,6 +74,23 @@ TEST(AtomicIntrusiveLinkedList, Basic) {
   TestIntrusiveObject::List movedList = std::move(list);
 }
 
+TEST(AtomicIntrusiveLinkedList, ReverseSweep) {
+  TestIntrusiveObject a(1), b(2), c(3);
+  TestIntrusiveObject::List list;
+  list.insertHead(&a);
+  list.insertHead(&b);
+  list.insertHead(&c);
+  size_t next_expected_id = 3;
+  list.reverseSweep([&](TestIntrusiveObject* obj) {
+    EXPECT_EQ(next_expected_id--, obj->id());
+  });
+  EXPECT_TRUE(list.empty());
+  // Test that we can still insert
+  list.insertHead(&a);
+  EXPECT_FALSE(list.empty());
+  list.reverseSweep([](TestIntrusiveObject*) {});
+}
+
 TEST(AtomicIntrusiveLinkedList, Move) {
   TestIntrusiveObject a(1), b(2);
 

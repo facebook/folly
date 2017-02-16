@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <utility>
 
 namespace folly {
 
@@ -104,13 +105,29 @@ class AtomicIntrusiveLinkedList {
   void sweep(F&& func) {
     while (auto head = head_.exchange(nullptr)) {
       auto rhead = reverse(head);
-      while (rhead != nullptr) {
-        auto t = rhead;
-        rhead = next(t);
-        next(t) = nullptr;
-        func(t);
-      }
+      unlinkAll(rhead, std::forward<F>(func));
     }
+  }
+
+  /**
+   * Similar to sweep() but calls func() on elements in LIFO order.
+   *
+   * func() is called for all elements in the list at the moment
+   * reverseSweep() is called.  Unlike sweep() it does not loop to ensure the
+   * list is empty at some point after the last invocation.  This way callers
+   * can reason about the ordering: elements inserted since the last call to
+   * reverseSweep() will be provided in LIFO order.
+   *
+   * Example: if elements are inserted in the order 1-2-3, the callback is
+   * invoked 3-2-1.  If the callback moves elements onto a stack, popping off
+   * the stack will produce the original insertion order 1-2-3.
+   */
+  template <typename F>
+  void reverseSweep(F&& func) {
+    // We don't loop like sweep() does because the overall order of callbacks
+    // would be strand-wise LIFO which is meaningless to callers.
+    auto head = head_.exchange(nullptr);
+    unlinkAll(head, std::forward<F>(func));
   }
 
  private:
@@ -131,6 +148,18 @@ class AtomicIntrusiveLinkedList {
       rhead = t;
     }
     return rhead;
+  }
+
+  /* Unlinks all elements in the linked list fragment pointed to by `head',
+   * calling func() on every element */
+  template <typename F>
+  void unlinkAll(T* head, F&& func) {
+    while (head != nullptr) {
+      auto t = head;
+      head = next(t);
+      next(t) = nullptr;
+      func(t);
+    }
   }
 };
 
