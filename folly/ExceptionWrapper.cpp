@@ -26,6 +26,7 @@ namespace folly {
   } else if (eptr_) {
     std::rethrow_exception(eptr_);
   }
+  std::ios_base::Init ioinit_; // ensure std::cerr is alive
   std::cerr
       << "Cannot use `throwException` with an empty folly::exception_wrapper"
       << std::endl;
