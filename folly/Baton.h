@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <assert.h>
+#include <errno.h>
 #include <stdint.h>
 #include <atomic>
-#include <errno.h>
-#include <assert.h>
+#include <thread>
 
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
@@ -27,22 +28,37 @@
 
 namespace folly {
 
-/// A Baton allows a thread to block once and be awoken: it captures
-/// a single handoff.  During its lifecycle (from construction/reset to
-/// destruction/reset) a baton must either be post()ed and wait()ed exactly
-/// once each, or not at all.
+/// A Baton allows a thread to block once and be awoken. The single
+/// poster version (with SinglePoster == true) captures a single
+/// handoff, and during its lifecycle (from construction/reset to
+/// destruction/reset) a baton must either be post()ed and wait()ed
+/// exactly once each, or not at all.
+///
+/// The multi-poster version (SinglePoster == false) allows multiple
+/// concurrent handoff attempts, the first of which completes the
+/// handoff and the rest if any are idempotent.
 ///
 /// Baton includes no internal padding, and is only 4 bytes in size.
 /// Any alignment or padding to avoid false sharing is up to the user.
 ///
-/// This is basically a stripped-down semaphore that supports only a
-/// single call to sem_post and a single call to sem_wait.  The current
-/// posix semaphore sem_t isn't too bad, but this provides more a bit more
-/// speed, inlining, smaller size, a guarantee that the implementation
-/// won't change, and compatibility with DeterministicSchedule.  By having
-/// a much more restrictive lifecycle we can also add a bunch of assertions
-/// that can help to catch race conditions ahead of time.
-template <template<typename> class Atom = std::atomic>
+/// This is basically a stripped-down semaphore that supports (only a
+/// single call to sem_post, when SinglePoster == true) and a single
+/// call to sem_wait.
+///
+/// The non-blocking version (Blocking == false) provides more speed
+/// by using only load acquire and store release operations in the
+/// critical path, at the cost of disallowing blocking and timing out.
+///
+/// The current posix semaphore sem_t isn't too bad, but this provides
+/// more a bit more speed, inlining, smaller size, a guarantee that
+/// the implementation won't change, and compatibility with
+/// DeterministicSchedule.  By having a much more restrictive
+/// lifecycle we can also add a bunch of assertions that can help to
+/// catch race conditions ahead of time.
+template <
+    template <typename> class Atom = std::atomic,
+    bool SinglePoster = true, //  single vs multiple posters
+    bool Blocking = true> // blocking vs spinning
 struct Baton {
   constexpr Baton() : state_(INIT) {}
 
@@ -96,32 +112,82 @@ struct Baton {
   }
 
   /// Causes wait() to wake up.  For each lifetime of a Baton (where a
-  /// lifetime starts at construction or reset() and ends at destruction
-  /// or reset()) there can be at most one call to post().  Any thread
-  /// may call post().
-  ///
-  /// Although we could implement a more generic semaphore semantics
-  /// without any extra size or CPU overhead, the single-call limitation
-  /// allows us to have better assert-ions during debug builds.
+  /// lifetime starts at construction or reset() and ends at
+  /// destruction or reset()) there can be at most one call to post(),
+  /// in the single poster version.  Any thread may call post().
   void post() {
-    uint32_t before = state_.load(std::memory_order_acquire);
-
-    assert(before == INIT || before == WAITING || before == TIMED_OUT);
-
-    if (before == INIT &&
-        state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
+    if (!Blocking) {
+      /// Non-blocking version
+      ///
+      assert([&] {
+        auto state = state_.load(std::memory_order_relaxed);
+        return (state == INIT || state == EARLY_DELIVERY);
+      }());
+      state_.store(EARLY_DELIVERY, std::memory_order_release);
       return;
     }
 
-    assert(before == WAITING || before == TIMED_OUT);
+    /// Blocking versions
+    ///
+    if (SinglePoster) {
+      /// Single poster version
+      ///
+      uint32_t before = state_.load(std::memory_order_acquire);
 
-    if (before == TIMED_OUT) {
-      return;
+      assert(before == INIT || before == WAITING || before == TIMED_OUT);
+
+      if (before == INIT &&
+          state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
+        return;
+      }
+
+      assert(before == WAITING || before == TIMED_OUT);
+
+      if (before == TIMED_OUT) {
+        return;
+      }
+
+      assert(before == WAITING);
+      state_.store(LATE_DELIVERY, std::memory_order_release);
+      state_.futexWake(1);
+    } else {
+      /// Multi-poster version
+      ///
+      while (true) {
+        uint32_t before = state_.load(std::memory_order_acquire);
+
+        if (before == INIT &&
+            state_.compare_exchange_strong(before, EARLY_DELIVERY)) {
+          return;
+        }
+
+        if (before == TIMED_OUT) {
+          return;
+        }
+
+        if (before == EARLY_DELIVERY || before == LATE_DELIVERY) {
+          // The reason for not simply returning (without the following
+          // atomic operation) is to avoid the following case:
+          //
+          //  T1:             T2:             T3:
+          //  local1.post();  local2.post();  global.wait();
+          //  global.post();  global.post();  local1.try_wait() == true;
+          //                                  local2.try_wait() == false;
+          //
+          if (state_.fetch_add(0) != before) {
+            continue;
+          }
+          return;
+        }
+
+        assert(before == WAITING);
+        if (!state_.compare_exchange_weak(before, LATE_DELIVERY)) {
+          continue;
+        }
+        state_.futexWake(1);
+        return;
+      }
     }
-
-    assert(before == WAITING);
-    state_.store(LATE_DELIVERY, std::memory_order_release);
-    state_.futexWake(1);
   }
 
   /// Waits until post() has been called in the current Baton lifetime.
@@ -136,6 +202,13 @@ struct Baton {
   void wait() {
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
+      return;
+    }
+
+    if (!Blocking) {
+      while (!try_wait()) {
+        std::this_thread::yield();
+      }
       return;
     }
 
@@ -189,6 +262,8 @@ struct Baton {
   ///                       false otherwise
   template <typename Clock, typename Duration = typename Clock::duration>
   bool timed_wait(const std::chrono::time_point<Clock,Duration>& deadline) {
+    static_assert(Blocking, "Non-blocking Baton does not support timed wait.");
+
     if (spinWaitForEarlyDelivery()) {
       assert(state_.load(std::memory_order_acquire) == EARLY_DELIVERY);
       return true;
@@ -235,7 +310,7 @@ struct Baton {
   ///   call wait, try_wait or timed_wait on the same baton without resetting
   ///
   /// @return       true if baton has been posted, false othewise
-  bool try_wait() {
+  bool try_wait() const {
     auto s = state_.load(std::memory_order_acquire);
     assert(s == INIT || s == EARLY_DELIVERY);
     return s == EARLY_DELIVERY;

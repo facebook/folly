@@ -31,11 +31,41 @@ using folly::detail::EmulatedFutexAtomic;
 
 typedef DeterministicSchedule DSched;
 
-BENCHMARK(baton_pingpong, iters) { run_pingpong_test<std::atomic>(iters); }
-
-BENCHMARK(baton_pingpong_emulated_futex, iters) {
-  run_pingpong_test<EmulatedFutexAtomic>(iters);
+BENCHMARK(baton_pingpong_single_poster_blocking, iters) {
+  run_pingpong_test<std::atomic, true, true>(iters);
 }
+
+BENCHMARK(baton_pingpong_multi_poster_blocking, iters) {
+  run_pingpong_test<std::atomic, false, true>(iters);
+}
+
+BENCHMARK(baton_pingpong_single_poster_nonblocking, iters) {
+  run_pingpong_test<std::atomic, true, false>(iters);
+}
+
+BENCHMARK(baton_pingpong_multi_poster_nonblocking, iters) {
+  run_pingpong_test<std::atomic, false, false>(iters);
+}
+
+BENCHMARK_DRAW_LINE()
+
+BENCHMARK(baton_pingpong_emulated_futex_single_poster_blocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, true, true>(iters);
+}
+
+BENCHMARK(baton_pingpong_emulated_futex_multi_poster_blocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, false, true>(iters);
+}
+
+BENCHMARK(baton_pingpong_emulated_futex_single_poster_nonblocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, true, false>(iters);
+}
+
+BENCHMARK(baton_pingpong_emulated_futex_multi_poster_nonblocking, iters) {
+  run_pingpong_test<EmulatedFutexAtomic, false, false>(iters);
+}
+
+BENCHMARK_DRAW_LINE()
 
 BENCHMARK(posix_sem_pingpong, iters) {
   sem_t sems[3];

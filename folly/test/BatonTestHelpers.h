@@ -25,11 +25,19 @@ namespace test {
 
 typedef DeterministicSchedule DSched;
 
-template <template <typename> class Atom>
+template <template <typename> class Atom, bool SinglePoster, bool Blocking>
+void run_basic_test() {
+  Baton<Atom, SinglePoster, Blocking> b;
+  b.post();
+  b.wait();
+}
+
+template <template <typename> class Atom, bool SinglePoster, bool Blocking>
 void run_pingpong_test(int numRounds) {
-  Baton<Atom> batons[17];
-  Baton<Atom>& a = batons[0];
-  Baton<Atom>& b = batons[16]; // to get it on a different cache line
+  using B = Baton<Atom, SinglePoster, Blocking>;
+  B batons[17];
+  B& a = batons[0];
+  B& b = batons[16]; // to get it on a different cache line
   auto thr = DSched::thread([&] {
     for (int i = 0; i < numRounds; ++i) {
       a.wait();
@@ -45,17 +53,17 @@ void run_pingpong_test(int numRounds) {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom, typename Clock>
+template <template <typename> class Atom, typename Clock, bool SinglePoster>
 void run_basic_timed_wait_tests() {
-  Baton<Atom> b;
+  Baton<Atom, SinglePoster> b;
   b.post();
   // tests if early delivery works fine
   EXPECT_TRUE(b.timed_wait(Clock::now()));
 }
 
-template <template <typename> class Atom, typename Clock>
+template <template <typename> class Atom, typename Clock, bool SinglePoster>
 void run_timed_wait_tmo_tests() {
-  Baton<Atom> b;
+  Baton<Atom, SinglePoster> b;
 
   auto thr = DSched::thread([&] {
     bool rv = b.timed_wait(Clock::now() + std::chrono::milliseconds(1));
@@ -65,9 +73,9 @@ void run_timed_wait_tmo_tests() {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom, typename Clock>
+template <template <typename> class Atom, typename Clock, bool SinglePoster>
 void run_timed_wait_regular_test() {
-  Baton<Atom> b;
+  Baton<Atom, SinglePoster> b;
 
   auto thr = DSched::thread([&] {
     // To wait forever we'd like to use time_point<Clock>::max, but
@@ -96,12 +104,68 @@ void run_timed_wait_regular_test() {
   DSched::join(thr);
 }
 
-template <template <typename> class Atom>
+template <template <typename> class Atom, bool SinglePoster, bool Blocking>
 void run_try_wait_tests() {
-  Baton<Atom> b;
+  Baton<Atom, SinglePoster, Blocking> b;
   EXPECT_FALSE(b.try_wait());
   b.post();
   EXPECT_TRUE(b.try_wait());
 }
+
+template <template <typename> class Atom, bool SinglePoster, bool Blocking>
+void run_multi_producer_tests() {
+  constexpr int NPROD = 5;
+  Baton<Atom, SinglePoster, Blocking> local_ping[NPROD];
+  Baton<Atom, SinglePoster, Blocking> local_pong[NPROD];
+  Baton<Atom, /* SingleProducer = */ false, Blocking> global;
+  Baton<Atom, SinglePoster, Blocking> shutdown;
+
+  std::thread prod[NPROD];
+  for (int i = 0; i < NPROD; ++i) {
+    prod[i] = DSched::thread([&, i] {
+      if (!std::is_same<Atom<int>, DeterministicAtomic<int>>::value) {
+        // If we are using std::atomic (or EmulatedFutexAtomic) then
+        // a variable sleep here will make it more likely that
+        // global.post()-s will span more than one global.wait() by
+        // the consumer thread and for the latter to block (if the
+        // global baton is blocking). For DeterministicAtomic, we just
+        // rely on DeterministicSchedule to do the scheduling.  The
+        // test won't fail if we lose the race, we just don't get
+        // coverage.
+        for (int j = 0; j < i; ++j) {
+          std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+      }
+      local_ping[i].post();
+      global.post();
+      local_pong[i].wait();
+    });
+  }
+
+  auto cons = DSched::thread([&] {
+    while (true) {
+      global.wait();
+      global.reset();
+      if (shutdown.try_wait()) {
+        return;
+      }
+      for (int i = 0; i < NPROD; ++i) {
+        if (local_ping.try_wait()) {
+          local_ping.reset();
+          local_pong.post();
+        }
+      }
+    }
+  });
+
+  for (auto& t : prod) {
+    DSched::join(t);
+  }
+
+  global.post();
+  shutdown.post();
+  DSched::join(cons);
 }
-}
+
+} // namespace test {
+} // namespace folly {
