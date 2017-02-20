@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 
 #include <folly/experimental/symbolizer/Dwarf.h>
 
@@ -304,7 +303,11 @@ bool Dwarf::getSection(const char* name, folly::StringPiece* section) const {
   if (!elfSection) {
     return false;
   }
-
+#ifdef SHF_COMPRESSED
+  if (elfSection->sh_flags & SHF_COMPRESSED) {
+    return false;
+  }
+#endif
   *section = elf_->getSectionBody(*elfSection);
   return true;
 }
@@ -318,7 +321,6 @@ void Dwarf::init() {
     elf_ = nullptr;
     return;
   }
-  getSection(".debug_str", &strings_);
 
   // Optional: fast address range lookup. If missing .debug_info can
   // be used - but it's much slower (linear scan).
