@@ -341,6 +341,7 @@ nobase_follyinclude_HEADERS = \
 	SpinLock.h \
 	SpookyHashV1.h \
 	SpookyHashV2.h \
+	ssl/OpenSSLCertUtils.h \
 	ssl/OpenSSLHash.h \
 	ssl/OpenSSLVersionFinder.h \
 	ssl/SSLSession.h \
@@ -506,6 +507,7 @@ libfolly_la_SOURCES = \
 	SocketAddress.cpp \
 	SpookyHashV1.cpp \
 	SpookyHashV2.cpp \
+	ssl/OpenSSLCertUtils.cpp \
 	ssl/OpenSSLHash.cpp \
 	ssl/detail/SSLSessionImpl.cpp \
 	stats/Instantiations.cpp \
