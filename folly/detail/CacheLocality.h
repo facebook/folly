@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <pthread.h>
 #include <sched.h>
 #include <algorithm>
 #include <atomic>
