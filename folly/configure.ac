@@ -634,6 +634,7 @@ FB_FILTER_PKG_LIBS([$AM_LDFLAGS $LIBS])
 
 # Output
 AC_CONFIG_FILES([Makefile
+                 io/test/Makefile
                  libfolly.pc
                  test/Makefile
                  test/function_benchmark/Makefile
