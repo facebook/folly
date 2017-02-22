@@ -74,13 +74,14 @@ folly requires gcc 4.8+ and a version of boost compiled with C++11 support.
 
 Please download googletest from
 https://github.com/google/googletest/archive/release-1.8.0.zip and unzip it in the
-folly/test subdirectory as `gtest-1.8.0`.
+folly/test subdirectory as `gtest`:
 
     (cd folly/test && \
-     rm -rf gtest-1.8.0 && \
+     rm -rf gtest && \
      wget https://github.com/google/googletest/archive/release-1.8.0.zip && \
      unzip release-1.8.0.zip && \
-     mv googletest-release-1.8.0 gtest-1.8.0)
+     rm -f release-1.8.0.zip && \
+     mv googletest-release-1.8.0 gtest)
 
 #### Ubuntu 12.04
 
