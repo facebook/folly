@@ -122,15 +122,29 @@ ConstantDataHolder constantDataHolder(dataSizeLog2);
 
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
   EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
+#if FOLLY_HAVE_LIBLZ4
   EXPECT_TRUE(getCodec(CodecType::LZ4)->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBSNAPPY
   EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBZ
   EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBLZ4
   EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBLZMA
   EXPECT_TRUE(getCodec(CodecType::LZMA2)->needsUncompressedLength());
   EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
     ->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBZSTD
   EXPECT_FALSE(getCodec(CodecType::ZSTD)->needsUncompressedLength());
+#endif
+#if FOLLY_HAVE_LIBZ
   EXPECT_FALSE(getCodec(CodecType::GZIP)->needsUncompressedLength());
+#endif
 }
 
 class CompressionTest
@@ -237,15 +251,29 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
         testing::Values(
-            CodecType::NO_COMPRESSION,
+#if FOLLY_HAVE_LIBLZ4
             CodecType::LZ4,
+#endif
+#if FOLLY_HAVE_LIBSNAPPY
             CodecType::SNAPPY,
+#endif
+#if FOLLY_HAVE_LIBZ
             CodecType::ZLIB,
+#endif
+#if FOLLY_HAVE_LIBLZ4
             CodecType::LZ4_VARINT_SIZE,
+#endif
+#if FOLLY_HAVE_LIBLZMA
             CodecType::LZMA2,
             CodecType::LZMA2_VARINT_SIZE,
+#endif
+#if FOLLY_HAVE_LIBZSTD
             CodecType::ZSTD,
-            CodecType::GZIP)));
+#endif
+#if FOLLY_HAVE_LIBZ
+            CodecType::GZIP,
+#endif
+            CodecType::NO_COMPRESSION)));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
@@ -354,15 +382,21 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
   runSimpleTest(constantDataHolder);
 }
 
+static const CodecType corruptionTestCodecs[] = {
+  // NO_COMPRESSION can't detect corruption
+  // LZ4 can't detect corruption reliably
+#if FOLLY_HAVE_LIBSNAPPY
+  CodecType::SNAPPY,
+#endif
+#if FOLLY_HAVE_LIBZ
+  CodecType::ZLIB,
+#endif
+};
+
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
-    testing::Values(
-        // NO_COMPRESSION can't detect corruption
-        // LZ4 can't detect corruption reliably (sigh)
-        CodecType::SNAPPY,
-        CodecType::ZLIB));
-
+    testing::ValuesIn(corruptionTestCodecs));
 }}}  // namespaces
 
 int main(int argc, char *argv[]) {
