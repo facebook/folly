@@ -1,7 +1,7 @@
 if FOLLY_TESTMAIN
-SUBDIRS = . experimental init test
+SUBDIRS = . experimental init test io/test
 else
-SUBDIRS = . test
+SUBDIRS = . test io/test
 endif
 
 ACLOCAL_AMFLAGS = -I m4
