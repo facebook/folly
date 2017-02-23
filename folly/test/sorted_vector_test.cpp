@@ -388,6 +388,40 @@ TEST(SortedVectorTypes, TestSetBulkInsertionSortMerge) {
       testing::ElementsAreArray({1, 2, 4, 5, 6, 7, 8, 10}));
 }
 
+TEST(SortedVectorTypes, TestSetBulkInsertionSortMergeDups) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add an unsorted range that will have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({10, 6, 5, 2});
+
+  vset.insert(s.begin(), s.end());
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 1);
+  EXPECT_THAT(
+      extractValues(vset), testing::ElementsAreArray({2, 4, 5, 6, 8, 10}));
+}
+
+TEST(SortedVectorTypes, TestSetInsertionDupsOneByOne) {
+  auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
+
+  sorted_vector_set<CountCopyCtor> vset(s.begin(), s.end());
+  check_invariant(vset);
+
+  // Add an unsorted range that will have to be merged in.
+  s = makeVectorOfWrappers<CountCopyCtor, int>({10, 6, 5, 2});
+
+  for (const auto& elem : s) {
+    vset.insert(elem);
+  }
+  check_invariant(vset);
+  EXPECT_EQ(vset.rbegin()->count_, 3);
+  EXPECT_THAT(
+      extractValues(vset), testing::ElementsAreArray({2, 4, 5, 6, 8, 10}));
+}
+
 TEST(SortedVectorTypes, TestSetBulkInsertionSortNoMerge) {
   auto s = makeVectorOfWrappers<CountCopyCtor, int>({6, 4, 8, 2});
 

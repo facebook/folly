@@ -171,6 +171,14 @@ namespace detail {
     }
     if (middle != cont.begin() && cmp(*middle, *(middle - 1))) {
       std::inplace_merge(cont.begin(), middle, cont.end(), cmp);
+      auto last = std::unique(
+          cont.begin(),
+          cont.end(),
+          [&](typename OurContainer::value_type const& a,
+              typename OurContainer::value_type const& b) {
+            return !cmp(a, b) && !cmp(b, a);
+          });
+      cont.erase(last, cont.end());
     }
   }
 }
