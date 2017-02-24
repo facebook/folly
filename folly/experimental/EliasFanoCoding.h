@@ -473,8 +473,8 @@ class UpperBitsReader {
     block &= (block_t(1) << inner_) - 1;
 
     while (UNLIKELY(block == 0)) {
-      DCHECK_GE(outer, sizeof(block_t));
-      outer -= sizeof(block_t);
+      DCHECK_GT(outer, 0);
+      outer -= std::min(sizeof(block_t), outer);
       block = folly::loadUnaligned<block_t>(start_ + outer);
     }
 

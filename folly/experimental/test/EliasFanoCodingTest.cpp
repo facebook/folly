@@ -138,6 +138,28 @@ TEST_F(EliasFanoCodingTest, Select64) {
   }
 }
 
+TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
+  typedef EliasFanoEncoderV2<uint32_t, uint32_t, 2, 2> Encoder;
+  typedef EliasFanoReader<Encoder, instructions::EF_TEST_ARCH> Reader;
+  constexpr uint32_t kLargeValue = 127;
+
+  // Build a list where the upper bits have a large gap after the
+  // first element, so that we need to reposition in the upper bits
+  // using skips to position the iterator on the second element.
+  std::vector<uint32_t> data = {0, kLargeValue};
+  for (uint32_t i = 0; i < kLargeValue; ++i) {
+    data.push_back(data.back() + 1);
+  }
+  auto list = Encoder::encode(data.begin(), data.end());
+
+  {
+    Reader reader(list);
+    ASSERT_TRUE(reader.skipTo(kLargeValue - 1));
+    ASSERT_EQ(kLargeValue, reader.value());
+    ASSERT_EQ(0, reader.previousValue());
+  }
+}
+
 namespace bm {
 
 typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
