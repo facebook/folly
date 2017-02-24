@@ -70,10 +70,6 @@
 #include <folly/detail/BitIteratorDetail.h>
 #include <folly/Likely.h>
 
-#if FOLLY_HAVE_BYTESWAP_H
-# include <byteswap.h>
-#endif
-
 #include <cassert>
 #include <cinttypes>
 #include <iterator>
@@ -242,27 +238,6 @@ struct EndianIntBase {
   static T swap(T x);
 };
 
-#ifndef _MSC_VER
-
-/**
- * If we have the bswap_16 macro from byteswap.h, use it; otherwise, provide our
- * own definition.
- */
-#ifdef bswap_16
-# define our_bswap16 bswap_16
-#else
-
-template<class Int16>
-inline constexpr typename std::enable_if<
-  sizeof(Int16) == 2,
-  Int16>::type
-our_bswap16(Int16 x) {
-  return ((x >> 8) & 0xff) | ((x & 0xff) << 8);
-}
-#endif
-
-#endif
-
 #define FB_GEN(t, fn)                             \
   template <>                                     \
   inline t EndianIntBase<t>::swap(t x) {          \
@@ -270,8 +245,7 @@ our_bswap16(Int16 x) {
   }
 
 // fn(x) expands to (x) if the second argument is empty, which is exactly
-// what we want for [u]int8_t. Also, gcc 4.7 on Intel doesn't have
-// __builtin_bswap16 for some reason, so we have to provide our own.
+// what we want for [u]int8_t.
 FB_GEN( int8_t,)
 FB_GEN(uint8_t,)
 #ifdef _MSC_VER
@@ -286,8 +260,8 @@ FB_GEN( int64_t, __builtin_bswap64)
 FB_GEN(uint64_t, __builtin_bswap64)
 FB_GEN( int32_t, __builtin_bswap32)
 FB_GEN(uint32_t, __builtin_bswap32)
-FB_GEN( int16_t, our_bswap16)
-FB_GEN(uint16_t, our_bswap16)
+FB_GEN( int16_t, __builtin_bswap16)
+FB_GEN(uint16_t, __builtin_bswap16)
 #endif
 
 #undef FB_GEN
