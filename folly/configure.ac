@@ -253,22 +253,6 @@ AC_DEFINE_UNQUOTED(
   [Define to "override" if the compiler supports C++11 "override"])
 
 AC_CACHE_CHECK(
-  [for std::this_thread::sleep_for],
-  [folly_cv_func_this_thread_sleep_for],
-  [AC_COMPILE_IFELSE(
-    [AC_LANG_SOURCE[
-      #include <thread>
-      #include <chrono>
-      void func() { std::this_thread::sleep_for(std::chrono::seconds(1)); }]],
-    [folly_cv_func_this_thread_sleep_for=yes],
-    [folly_cv_func_this_thread_sleep_for=no])])
-
-if test "$folly_cv_func_this_thread_sleep_for" = yes; then
-    AC_DEFINE([HAVE_STD__THIS_THREAD__SLEEP_FOR], [1],
-              [Define to 1 if std::this_thread::sleep_for() is defined.])
-fi
-
-AC_CACHE_CHECK(
   [for constexpr strlen],
   [folly_cv_func_constexpr_strlen],
   [AC_COMPILE_IFELSE(
