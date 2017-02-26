@@ -64,8 +64,8 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
     return nullptr;
   }
 
-  Path path(p);
-  auto pos = map_.find(path);
+  scratchpad_.assign(p);
+  auto pos = map_.find(scratchpad_);
   if (pos != map_.end()) {
     return slots_[pos->second];
   }
@@ -79,12 +79,12 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   auto& f = slots_[n];
 
   const char* msg = "";
-  int r = f->openAndFollow(path.data(), true, &msg);
+  int r = f->openAndFollow(scratchpad_.data(), true, &msg);
   if (r != ElfFile::kSuccess) {
     return nullptr;
   }
 
-  map_[path] = n;
+  map_[scratchpad_] = n;
   return f;
 }
 

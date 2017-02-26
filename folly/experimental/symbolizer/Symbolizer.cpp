@@ -30,6 +30,7 @@
 
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
+#include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 
@@ -383,8 +384,8 @@ StackTracePrinter::StackTracePrinter(size_t minSignalSafeElfCacheSize, int fd)
       printer_(
           fd,
           SymbolizePrinter::COLOR_IF_TTY,
-          size_t(64) << 10) // 64KiB
-{}
+          size_t(64) << 10), // 64KiB
+      addresses_(make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
 
 void StackTracePrinter::flush() {
   printer_.flush();
@@ -395,33 +396,31 @@ void StackTracePrinter::printStackTrace(bool symbolize) {
   SCOPE_EXIT {
     flush();
   };
-  // Get and symbolize stack trace
-  constexpr size_t kMaxStackTraceDepth = 100;
-  FrameArray<kMaxStackTraceDepth> addresses;
 
   // Skip the getStackTrace frame
-  if (!getStackTraceSafe(addresses)) {
+  if (!getStackTraceSafe(*addresses_)) {
     print("(error retrieving stack trace)\n");
   } else if (symbolize) {
     // Do our best to populate location info, process is going to terminate,
     // so performance isn't critical.
     Symbolizer symbolizer(&elfCache_, Dwarf::LocationInfoMode::FULL);
-    symbolizer.symbolize(addresses);
+    symbolizer.symbolize(*addresses_);
 
     // Skip the top 2 frames:
     // getStackTraceSafe
     // StackTracePrinter::printStackTrace (here)
     //
     // Leaving signalHandler on the stack for clarity, I think.
-    printer_.println(addresses, 2);
+    printer_.println(*addresses_, 2);
   } else {
     print("(safe mode, symbolizer not available)\n");
     AddressFormatter formatter;
-    for (size_t i = 0; i < addresses.frameCount; ++i) {
-      print(formatter.format(addresses.addresses[i]));
+    for (size_t i = 0; i < addresses_->frameCount; ++i) {
+      print(formatter.format(addresses_->addresses[i]));
       print("\n");
     }
   }
 }
-} // namespace symbolizer
+
+}  // namespace symbolizer
 }  // namespace folly

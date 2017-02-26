@@ -70,9 +70,19 @@ class SignalSafeElfCache : public ElfCacheBase {
   // own wrapper around a fixed-size, null-terminated string.
   class Path : private boost::totally_ordered<Path> {
    public:
+    Path() {
+      assign(folly::StringPiece());
+    }
+
     explicit Path(StringPiece s) {
+      assign(s);
+    }
+
+    void assign(StringPiece s) {
       DCHECK_LE(s.size(), kMaxSize);
-      memcpy(data_, s.data(), s.size());
+      if (!s.empty()) {
+        memcpy(data_, s.data(), s.size());
+      }
       data_[s.size()] = '\0';
     }
 
@@ -94,6 +104,7 @@ class SignalSafeElfCache : public ElfCacheBase {
     char data_[kMaxSize + 1];
   };
 
+  Path scratchpad_; // Preallocated key for map_ lookups.
   boost::container::flat_map<Path, int> map_;
   std::vector<std::shared_ptr<ElfFile>> slots_;
 };
