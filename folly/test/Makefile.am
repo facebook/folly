@@ -2,7 +2,7 @@ SUBDIRS = . function_benchmark
 
 ACLOCAL_AMFLAGS = -I m4
 
-CPPFLAGS += -Igtest/googletest/include -Igtest/googlemock/include
+CPPFLAGS += -isystem gtest/googletest/include -isystem gtest/googlemock/include
 
 TESTS= \
 	sorted_vector_types_test \
@@ -20,7 +20,7 @@ check_LTLIBRARIES = libfollytestmain.la libgtest.la
 check_PROGRAMS =
 noinst_LTLIBRARIES = thread_local_test_lib.la
 
-libgtest_la_CPPFLAGS = -Igtest/googletest
+libgtest_la_CPPFLAGS = -isystem gtest/googletest
 libgtest_la_SOURCES = gtest/googletest/src/gtest-all.cc
 
 if FOLLY_TESTMAIN
