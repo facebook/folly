@@ -24,10 +24,6 @@
 
 #include <folly/CPortability.h>
 
-#if FOLLY_HAVE_SCHED_H
- #include <sched.h>
-#endif
-
 // Unaligned loads and stores
 namespace folly {
 #if FOLLY_HAVE_UNALIGNED_ACCESS

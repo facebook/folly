@@ -18,7 +18,6 @@
 
 #include <folly/portability/GTest.h>
 
-#include <sched.h>
 #include <memory>
 #include <thread>
 #include <type_traits>

@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <sched.h>
 #include <algorithm>
 #include <atomic>
 #include <cassert>
