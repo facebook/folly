@@ -18,13 +18,14 @@
 
 #include <assert.h>
 #include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <type_traits>
 #include <utility>
+
 #include <boost/noncopyable.hpp>
-#include <functional>
 #include <glog/logging.h>
-#include <inttypes.h>
 
 namespace folly {
 
