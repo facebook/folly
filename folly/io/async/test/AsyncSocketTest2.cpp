@@ -2797,6 +2797,8 @@ TEST(AsyncSocketTest, ConnectTFOWithBigData) {
   EXPECT_EQ(socket->getTFOFinished(), socket->getTFOSucceded());
 }
 
+#endif // FOLLY_ALLOW_TFO
+
 class MockEvbChangeCallback : public AsyncSocket::EvbChangeCallback {
  public:
   MOCK_METHOD1(evbAttached, void(AsyncSocket*));
@@ -2907,5 +2909,3 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   ASSERT_TRUE(errMsgCB.gotTimestamp_);
 }
 #endif // MSG_ERRQUEUE
-
-#endif
