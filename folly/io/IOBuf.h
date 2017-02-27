@@ -1439,7 +1439,9 @@ inline std::unique_ptr<IOBuf> IOBuf::copyBuffer(
   uint64_t capacity = headroom + size + minTailroom;
   std::unique_ptr<IOBuf> buf = create(capacity);
   buf->advance(headroom);
-  memcpy(buf->writableData(), data, size);
+  if (size != 0) {
+    memcpy(buf->writableData(), data, size);
+  }
   buf->append(size);
   return buf;
 }

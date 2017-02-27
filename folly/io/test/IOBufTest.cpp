@@ -717,6 +717,11 @@ TEST(IOBuf, maybeCopyBuffer) {
   EXPECT_EQ(nullptr, buf.get());
 }
 
+TEST(IOBuf, copyEmptyBuffer) {
+  auto buf = IOBuf::copyBuffer(nullptr, 0);
+  EXPECT_EQ(buf->length(), 0);
+}
+
 namespace {
 
 int customDeleterCount = 0;
