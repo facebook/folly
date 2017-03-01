@@ -85,11 +85,10 @@ inline void FiberManager::deactivateFiber(Fiber* fiber) {
   DCHECK(fiber->asanMainStackBase_);
   DCHECK(fiber->asanMainStackSize_);
 
-  // Release fake stack if fiber is completed
-  auto saveFakeStackPtr =
-      fiber->state_ == Fiber::INVALID ? nullptr : &fiber->asanFakeStack_;
   registerStartSwitchStackWithAsan(
-      saveFakeStackPtr, fiber->asanMainStackBase_, fiber->asanMainStackSize_);
+      &fiber->asanFakeStack_,
+      fiber->asanMainStackBase_,
+      fiber->asanMainStackSize_);
   SCOPE_EXIT {
     registerFinishSwitchStackWithAsan(
         fiber->asanFakeStack_,

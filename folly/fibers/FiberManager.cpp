@@ -217,6 +217,22 @@ void FiberManager::registerFinishSwitchStackWithAsan(
   }
 }
 
+void FiberManager::freeFakeStack(void* fakeStack) {
+  static AsanStartSwitchStackFuncPtr fnStart = getStartSwitchStackFunc();
+  static AsanFinishSwitchStackFuncPtr fnFinish = getFinishSwitchStackFunc();
+  if (fnStart == nullptr || fnFinish == nullptr) {
+    LOG(FATAL) << "The version of ASAN in use doesn't support fibers";
+  }
+
+  void* saveFakeStack;
+  const void* stackBottom;
+  size_t stackSize;
+  fnStart(&saveFakeStack, nullptr, 0);
+  fnFinish(fakeStack, &stackBottom, &stackSize);
+  fnStart(nullptr, stackBottom, stackSize);
+  fnFinish(saveFakeStack, nullptr, nullptr);
+}
+
 void FiberManager::unpoisonFiberStack(const Fiber* fiber) {
   auto stack = fiber->getStack();
 

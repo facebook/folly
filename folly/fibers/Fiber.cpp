@@ -103,6 +103,9 @@ void Fiber::init(bool recordStackUsed) {
 
 Fiber::~Fiber() {
 #ifdef FOLLY_SANITIZE_ADDRESS
+  if (asanFakeStack_ != nullptr) {
+    fiberManager_.freeFakeStack(asanFakeStack_);
+  }
   fiberManager_.unpoisonFiberStack(this);
 #endif
   fiberManager_.stackAllocator_.deallocate(fiberStackLimit_, fiberStackSize_);
