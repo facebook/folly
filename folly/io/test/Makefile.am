@@ -8,6 +8,7 @@ TESTS = \
 	iobuf-test \
 	iobuf-cursor-test \
 	iobuf-queue-test \
+	iostreambuf-test \
 	record-io-test \
 	shutdown-socket-set-test
 
@@ -27,6 +28,9 @@ compression_test_LDADD = $(top_builddir)/libfolly.la \
 
 iobuf_queue_test_SOURCES = IOBufQueueTest.cpp
 iobuf_queue_test_LDADD = $(ldadd)
+
+iostreambuf_test_SOURCES = IOStreamBufTest.cpp
+iostreambuf_test_LDADD = $(ldadd)
 
 record_io_test_SOURCES = RecordIOTest.cpp
 record_io_test_LDADD = $(ldadd)
