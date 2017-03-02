@@ -645,19 +645,31 @@ void AsyncSSLSocket::cacheLocalPeerAddr() {
   }
 }
 
-void AsyncSSLSocket::connect(ConnectCallback* callback,
-                              const folly::SocketAddress& address,
-                              int timeout,
-                              const OptionMap &options,
-                              const folly::SocketAddress& bindAddr)
-                              noexcept {
+void AsyncSSLSocket::connect(
+    ConnectCallback* callback,
+    const folly::SocketAddress& address,
+    int timeout,
+    const OptionMap& options,
+    const folly::SocketAddress& bindAddr) noexcept {
+  auto timeoutChrono = std::chrono::milliseconds(timeout);
+  connect(callback, address, timeoutChrono, timeoutChrono, options, bindAddr);
+}
+
+void AsyncSSLSocket::connect(
+    ConnectCallback* callback,
+    const folly::SocketAddress& address,
+    std::chrono::milliseconds connectTimeout,
+    std::chrono::milliseconds totalConnectTimeout,
+    const OptionMap& options,
+    const folly::SocketAddress& bindAddr) noexcept {
   assert(!server_);
   assert(state_ == StateEnum::UNINIT);
   assert(sslState_ == STATE_UNINIT);
   noTransparentTls_ = true;
-  AsyncSSLSocketConnector *connector =
-    new AsyncSSLSocketConnector(this, callback, timeout);
-  AsyncSocket::connect(connector, address, timeout, options, bindAddr);
+  AsyncSSLSocketConnector* connector =
+      new AsyncSSLSocketConnector(this, callback, totalConnectTimeout.count());
+  AsyncSocket::connect(
+      connector, address, connectTimeout.count(), options, bindAddr);
 }
 
 bool AsyncSSLSocket::needsPeerVerification() const {

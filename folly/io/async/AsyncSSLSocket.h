@@ -316,6 +316,29 @@ class AsyncSSLSocket : public virtual AsyncSocket {
                const folly::SocketAddress& bindAddr = anyAddress())
                noexcept override;
 
+  /**
+   * A variant of connect that allows the caller to specify
+   * the timeout for the regular connect and the ssl connect
+   * separately.
+   * connectTimeout is specified as the time to establish a TCP
+   * connection.
+   * totalConnectTimeout defines the
+   * time it takes from starting the TCP connection to the time
+   * the ssl connection is established. The reason the timeout is
+   * defined this way is because user's rarely need to specify the SSL
+   * timeout independently of the connect timeout. It allows us to
+   * bound the time for a connect and SSL connection in
+   * a finer grained manner than if timeout was just defined
+   * independently for SSL.
+   */
+  virtual void connect(
+      ConnectCallback* callback,
+      const folly::SocketAddress& address,
+      std::chrono::milliseconds connectTimeout,
+      std::chrono::milliseconds totalConnectTimeout,
+      const OptionMap& options = emptyOptionMap,
+      const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
+
   using AsyncSocket::connect;
 
   /**
