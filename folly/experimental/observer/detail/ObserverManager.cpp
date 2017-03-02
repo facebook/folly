@@ -16,11 +16,8 @@
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
 #include <folly/ExceptionString.h>
-#include <folly/FixedString.h>
-#include <folly/Format.h>
 #include <folly/MPMCQueue.h>
 #include <folly/Singleton.h>
-#include <folly/ThreadName.h>
 #include <folly/portability/GFlags.h>
 
 namespace folly {
@@ -35,9 +32,6 @@ DEFINE_int32(
     4,
     "How many internal threads ObserverManager should use");
 
-static constexpr auto kObserverManagerThreadNamePrefix =
-    folly::makeFixedString("ObserverMngr");
-
 namespace {
 constexpr size_t kCurrentQueueSize{10 * 1024};
 constexpr size_t kNextQueueSize{10 * 1024};
@@ -51,9 +45,7 @@ class ObserverManager::CurrentQueue {
       FLAGS_observer_manager_pool_size = 1;
     }
     for (int32_t i = 0; i < FLAGS_observer_manager_pool_size; ++i) {
-      threads_.emplace_back([this, i]() {
-        folly::setThreadName(
-            folly::sformat("{}{}", kObserverManagerThreadNamePrefix, i));
+      threads_.emplace_back([&]() {
         ObserverManager::inManagerThread_ = true;
 
         while (true) {
