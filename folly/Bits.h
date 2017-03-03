@@ -241,7 +241,7 @@ struct uint_types_by_size;
     return fn(v);                                           \
   }                                                         \
   template <>                                               \
-  struct uint_types_by_size<sz> {                           \
+  struct uint_types_by_size<sz / 8> {                       \
     using type = uint##sz##_t;                              \
   };
 
@@ -268,7 +268,7 @@ struct EndianInt {
     // we implement this with memcpy because that is defined behavior in C++
     // we rely on compilers to optimize away the memcpy calls
     constexpr auto s = sizeof(T);
-    using B = typename uint_types_by_size<8 * s>::type;
+    using B = typename uint_types_by_size<s>::type;
     B b;
     std::memcpy(&b, &x, s);
     b = byteswap_gen(b);
