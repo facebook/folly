@@ -88,13 +88,13 @@
  * }
  */
 #define FOR_EACH_ENUMERATE(count, i, c)                                \
-  if (bool FOR_EACH_state1 = false) {} else                            \
+  if (bool _FE_ANON(s1_) = false) {} else                            \
     for (auto && FOR_EACH_state2 = (c);                                \
-         !FOR_EACH_state1; FOR_EACH_state1 = true)                     \
-      if (size_t FOR_EACH_privateCount = 0) {} else                    \
-        if (const size_t& count = FOR_EACH_privateCount) {} else       \
+         !_FE_ANON(s1_); _FE_ANON(s1_) = true)                     \
+      if (size_t _FE_ANON(n1_) = 0) {} else                            \
+        if (const size_t& count = _FE_ANON(n1_)) {} else               \
           for (auto i = FOR_EACH_state2.begin();                       \
-               i != FOR_EACH_state2.end(); ++FOR_EACH_privateCount, ++i)
+               i != FOR_EACH_state2.end(); ++_FE_ANON(n1_), ++i)
 
 /**
  * Similar to FOR_EACH, but gives the user the key and value for each entry in
