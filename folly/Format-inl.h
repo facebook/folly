@@ -270,7 +270,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
           "folly::format: may not have both default and explicit arg indexes");
     }
 
-    asDerived().template doFormat(size_t(argIndex), arg, out);
+    asDerived().doFormat(size_t(argIndex), arg, out);
   }
 }
 
