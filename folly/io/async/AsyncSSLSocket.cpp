@@ -666,6 +666,7 @@ void AsyncSSLSocket::connect(
   assert(state_ == StateEnum::UNINIT);
   assert(sslState_ == STATE_UNINIT);
   noTransparentTls_ = true;
+  totalConnectTimeout_ = totalConnectTimeout;
   AsyncSSLSocketConnector* connector =
       new AsyncSSLSocketConnector(this, callback, totalConnectTimeout.count());
   AsyncSocket::connect(

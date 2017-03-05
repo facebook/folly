@@ -152,7 +152,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   // connect
   auto socket = std::make_shared<BlockingSocket>(server.getAddress(),
                                                  sslContext);
-  socket->open();
+  socket->open(std::chrono::milliseconds(10000));
 
   // write()
   uint8_t buf[128];
@@ -169,6 +169,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
   socket->close();
 
   cerr << "ConnectWriteReadClose test completed" << endl;
+  EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
 }
 
 /**

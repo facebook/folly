@@ -693,6 +693,16 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return sessionResumptionAttempted_;
   }
 
+  /**
+   * If the SSL socket was used to connect as well
+   * as establish an SSL connection, this gives the total
+   * timeout for the connect + SSL connection that was
+   * set.
+   */
+  std::chrono::milliseconds getTotalConnectTimeout() const {
+    return totalConnectTimeout_;
+  }
+
  private:
 
   void init();
@@ -845,6 +855,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::steady_clock::time_point handshakeEndTime_;
   std::chrono::milliseconds handshakeConnectTimeout_{0};
   bool sessionResumptionAttempted_{false};
+  std::chrono::milliseconds totalConnectTimeout_{0};
 
   std::unique_ptr<IOBuf> preReceivedData_;
 };

@@ -56,6 +56,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
       throw err_.value();
     }
   }
+
   void close() {
     sock_->close();
   }
@@ -84,6 +85,14 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
 
   int getSocketFD() const {
     return sock_->getFd();
+  }
+
+  folly::AsyncSocket* getSocket() {
+    return sock_.get();
+  }
+
+  folly::AsyncSSLSocket* getSSLSocket() {
+    return dynamic_cast<folly::AsyncSSLSocket*>(sock_.get());
   }
 
  private:
