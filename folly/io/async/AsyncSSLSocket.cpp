@@ -1911,6 +1911,14 @@ std::string AsyncSSLSocket::getSSLAlertsReceived() const {
   return ret;
 }
 
+void AsyncSSLSocket::setSSLCertVerificationAlert(std::string alert) {
+  sslVerificationAlert_ = std::move(alert);
+}
+
+std::string AsyncSSLSocket::getSSLCertVerificationAlert() const {
+  return sslVerificationAlert_;
+}
+
 void AsyncSSLSocket::getSSLSharedCiphers(std::string& sharedCiphers) const {
   char ciphersBuffer[1024];
   ciphersBuffer[0] = '\0';

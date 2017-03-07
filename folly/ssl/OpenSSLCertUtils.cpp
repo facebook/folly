@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include <folly/ssl/OpenSSLCertUtils.h>
+#include <folly/String.h>
+#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
@@ -80,5 +82,99 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
   }
   return ret;
 }
+
+Optional<std::string> OpenSSLCertUtils::getSubject(X509& x509) {
+  auto subject = X509_get_subject_name(&x509);
+  if (!subject) {
+    return none;
+  }
+
+  auto bio = BioUniquePtr(BIO_new(BIO_s_mem()));
+  if (bio == nullptr) {
+    throw std::runtime_error("Cannot allocate bio");
+  }
+  if (X509_NAME_print_ex(bio.get(), subject, 0, XN_FLAG_ONELINE) <= 0) {
+    return none;
+  }
+
+  char* bioData = nullptr;
+  size_t bioLen = BIO_get_mem_data(bio.get(), &bioData);
+  return std::string(bioData, bioLen);
 }
+
+Optional<std::string> OpenSSLCertUtils::getIssuer(X509& x509) {
+  auto issuer = X509_get_issuer_name(&x509);
+  if (!issuer) {
+    return none;
+  }
+
+  auto bio = BioUniquePtr(BIO_new(BIO_s_mem()));
+  if (bio == nullptr) {
+    throw std::runtime_error("Cannot allocate bio");
+  }
+
+  if (X509_NAME_print_ex(bio.get(), issuer, 0, XN_FLAG_ONELINE) <= 0) {
+    return none;
+  }
+
+  char* bioData = nullptr;
+  size_t bioLen = BIO_get_mem_data(bio.get(), &bioData);
+  return std::string(bioData, bioLen);
 }
+
+folly::Optional<std::string> OpenSSLCertUtils::toString(X509& x509) {
+  auto in = BioUniquePtr(BIO_new(BIO_s_mem()));
+  if (in == nullptr) {
+    throw std::runtime_error("Cannot allocate bio");
+  }
+
+  if (X509_print_ex(
+          in.get(),
+          &x509,
+          XN_FLAG_ONELINE,
+          X509_FLAG_NO_HEADER | /* A few bytes of cert and data */
+              X509_FLAG_NO_PUBKEY | /* Public key */
+              X509_FLAG_NO_IDS | /* Issuer/subject IDs */
+              X509_FLAG_NO_AUX | /* Auxiliary info? */
+              X509_FLAG_NO_SIGDUMP | /* Prints the signature */
+              X509_FLAG_NO_SIGNAME /* Signature algorithms */
+          ) > 0) {
+    char* bioData = nullptr;
+    size_t bioLen = BIO_get_mem_data(in.get(), &bioData);
+    return std::string(bioData, bioLen);
+  } else {
+    return none;
+  }
+}
+
+std::string OpenSSLCertUtils::getNotAfterTime(X509& x509) {
+  return getDateTimeStr(X509_get_notAfter(&x509));
+}
+
+std::string OpenSSLCertUtils::getNotBeforeTime(X509& x509) {
+  return getDateTimeStr(X509_get_notBefore(&x509));
+}
+
+std::string OpenSSLCertUtils::getDateTimeStr(const ASN1_TIME* time) {
+  if (!time) {
+    return "";
+  }
+
+  std::array<char, 32> buf;
+
+  auto bio = BioUniquePtr(BIO_new(BIO_s_mem()));
+  if (bio == nullptr) {
+    throw std::runtime_error("Cannot allocate bio");
+  }
+
+  if (ASN1_TIME_print(bio.get(), time) <= 0) {
+    throw std::runtime_error("Cannot print ASN1_TIME");
+  }
+
+  char* bioData = nullptr;
+  size_t bioLen = BIO_get_mem_data(bio.get(), &bioData);
+  return std::string(bioData, bioLen);
+}
+
+} // ssl
+} // folly

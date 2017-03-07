@@ -597,6 +597,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   std::string getSSLAlertsReceived() const;
 
+  /*
+   * Save an optional alert message generated during certificate verify
+   */
+  void setSSLCertVerificationAlert(std::string alert);
+
+  std::string getSSLCertVerificationAlert() const;
+
   /**
    * Get the list of shared ciphers between the server and the client.
    * Works well for only SSLv2, not so good for SSLv3 or TLSv1.
@@ -858,6 +865,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::chrono::milliseconds totalConnectTimeout_{0};
 
   std::unique_ptr<IOBuf> preReceivedData_;
+  std::string sslVerificationAlert_;
 };
 
 } // namespace

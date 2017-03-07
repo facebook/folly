@@ -105,3 +105,55 @@ TEST(OpenSSLCertUtilsTest, TestX509Sans) {
   EXPECT_EQ(altNames[0], "anotherexample.com");
   EXPECT_EQ(altNames[1], "*.thirdexample.com");
 }
+
+TEST(OpenSSLCertUtilsTest, TestX509IssuerAndSubject) {
+  OpenSSL_add_all_algorithms();
+
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  auto issuer = folly::ssl::OpenSSLCertUtils::getIssuer(*x509);
+  EXPECT_EQ(
+      issuer.value(),
+      "C = US, ST = CA, O = Asox, CN = Asox Certification Authority");
+  auto subj = folly::ssl::OpenSSLCertUtils::getSubject(*x509);
+  EXPECT_EQ(subj.value(), "C = US, O = Asox, CN = 127.0.0.1");
+}
+
+TEST(OpenSSLCertUtilsTest, TestX509Dates) {
+  OpenSSL_add_all_algorithms();
+
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  auto notBefore = folly::ssl::OpenSSLCertUtils::getNotBeforeTime(*x509);
+  EXPECT_EQ(notBefore, "Feb 13 23:21:03 2017 GMT");
+  auto notAfter = folly::ssl::OpenSSLCertUtils::getNotAfterTime(*x509);
+  EXPECT_EQ(notAfter, "Jul  1 23:21:03 2044 GMT");
+}
+
+TEST(OpenSSLCertUtilsTest, TestX509Summary) {
+  OpenSSL_add_all_algorithms();
+
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  auto summary = folly::ssl::OpenSSLCertUtils::toString(*x509);
+  EXPECT_EQ(
+      summary.value(),
+      "        Version: 3 (0x2)\n        Serial Number: 2 (0x2)\n"
+      "        Issuer: C = US, ST = CA, O = Asox, CN = Asox Certification Authority\n"
+      "        Validity\n            Not Before: Feb 13 23:21:03 2017 GMT\n"
+      "            Not After : Jul  1 23:21:03 2044 GMT\n"
+      "        Subject: C = US, O = Asox, CN = 127.0.0.1\n"
+      "        X509v3 extensions:\n"
+      "            X509v3 Basic Constraints: \n"
+      "                CA:FALSE\n"
+      "            Netscape Comment: \n"
+      "                OpenSSL Generated Certificate\n"
+      "            X509v3 Subject Key Identifier: \n"
+      "                71:D6:49:9D:64:47:D7:1E:65:8B:1E:94:83:23:42:E1:F2:19:9F:C3\n"
+      "            X509v3 Authority Key Identifier: \n"
+      "                keyid:17:DF:29:09:29:BF:7B:9F:1A:7F:E9:46:49:C8:3B:ED:B3:B9:E8:7B\n\n"
+      "            X509v3 Subject Alternative Name: \n"
+      "                DNS:anotherexample.com, DNS:*.thirdexample.com\n"
+      "            Authority Information Access: \n"
+      "                CA Issuers - URI:https://phabricator.fb.com/diffusion/FBCODE/browse/master/ti/test_certs/ca_cert.pem?view=raw\n\n");
+}
