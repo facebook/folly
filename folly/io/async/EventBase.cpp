@@ -364,7 +364,7 @@ bool EventBase::loopBody(int flags) {
     }
 
     if (enableTimeMeasurement_) {
-      VLOG(5) << "EventBase " << this << " loop time: " <<
+      VLOG(11) << "EventBase " << this << " loop time: " <<
         getTimeDelta(&prev).count();
     }
 
