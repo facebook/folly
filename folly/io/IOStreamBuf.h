@@ -64,4 +64,4 @@ class IOStreamBuf : public std::basic_streambuf<CharT, Traits> {
 
 }
 
-#include "IOStreamBuf.tcc"
+#include "IOStreamBuf-inl.h"
