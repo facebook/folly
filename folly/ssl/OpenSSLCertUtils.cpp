@@ -128,17 +128,19 @@ folly::Optional<std::string> OpenSSLCertUtils::toString(X509& x509) {
     throw std::runtime_error("Cannot allocate bio");
   }
 
-  if (X509_print_ex(
-          in.get(),
-          &x509,
-          XN_FLAG_ONELINE,
-          X509_FLAG_NO_HEADER | /* A few bytes of cert and data */
-              X509_FLAG_NO_PUBKEY | /* Public key */
-              X509_FLAG_NO_IDS | /* Issuer/subject IDs */
-              X509_FLAG_NO_AUX | /* Auxiliary info? */
-              X509_FLAG_NO_SIGDUMP | /* Prints the signature */
-              X509_FLAG_NO_SIGNAME /* Signature algorithms */
-          ) > 0) {
+  int flags = 0;
+
+  flags |= X509_FLAG_NO_HEADER | /* A few bytes of cert and data */
+      X509_FLAG_NO_PUBKEY | /* Public key */
+      X509_FLAG_NO_AUX | /* Auxiliary info? */
+      X509_FLAG_NO_SIGDUMP | /* Prints the signature */
+      X509_FLAG_NO_SIGNAME; /* Signature algorithms */
+
+#ifdef X509_FLAG_NO_IDS
+  flags |= X509_FLAG_NO_IDS; /* Issuer/subject IDs */
+#endif
+
+  if (X509_print_ex(in.get(), &x509, XN_FLAG_ONELINE, flags) > 0) {
     char* bioData = nullptr;
     size_t bioLen = BIO_get_mem_data(in.get(), &bioData);
     return std::string(bioData, bioLen);
