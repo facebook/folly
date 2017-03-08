@@ -1835,7 +1835,7 @@ TEST(EventBaseTest, LoopKeepAliveAtomic) {
   size_t done{0};
 
   for (size_t i = 0; i < kNumThreads; ++i) {
-    batons.emplace_back(std::make_unique<Baton<>>());
+    batons.emplace_back(folly::make_unique<Baton<>>());
   }
 
   for (size_t i = 0; i < kNumThreads; ++i) {

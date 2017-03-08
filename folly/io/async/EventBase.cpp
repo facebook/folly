@@ -21,6 +21,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/VirtualEventBase.h>
 
+#include <folly/Memory.h>
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/portability/Unistd.h>
@@ -748,7 +749,7 @@ const char* EventBase::getLibeventMethod() { return event_get_method(); }
 
 VirtualEventBase& EventBase::getVirtualEventBase() {
   folly::call_once(virtualEventBaseInitFlag_, [&] {
-    virtualEventBase_ = std::make_unique<VirtualEventBase>(*this);
+    virtualEventBase_ = folly::make_unique<VirtualEventBase>(*this);
   });
 
   return *virtualEventBase_;
