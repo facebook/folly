@@ -2042,34 +2042,36 @@ TEST(FiberManager, ABD_UserProvidedBatchDispatchThrowsTest) {
 }
 
 TEST(FiberManager, VirtualEventBase) {
-  folly::ScopedEventBaseThread thread;
-
-  auto evb1 =
-      folly::make_unique<folly::VirtualEventBase>(*thread.getEventBase());
-  auto evb2 =
-      folly::make_unique<folly::VirtualEventBase>(*thread.getEventBase());
-
   bool done1{false};
   bool done2{false};
+  {
+    folly::ScopedEventBaseThread thread;
 
-  getFiberManager(*evb1).addTaskRemote([&] {
-    Baton baton;
-    baton.timed_wait(std::chrono::milliseconds{100});
+    auto evb1 =
+        folly::make_unique<folly::VirtualEventBase>(*thread.getEventBase());
+    auto& evb2 = thread.getEventBase()->getVirtualEventBase();
 
-    done1 = true;
-  });
+    getFiberManager(*evb1).addTaskRemote([&] {
+      Baton baton;
+      baton.timed_wait(std::chrono::milliseconds{100});
 
-  getFiberManager(*evb2).addTaskRemote([&] {
-    Baton baton;
-    baton.timed_wait(std::chrono::milliseconds{200});
+      done1 = true;
+    });
 
-    done2 = true;
-  });
+    getFiberManager(evb2).addTaskRemote([&] {
+      Baton baton;
+      baton.timed_wait(std::chrono::milliseconds{200});
 
-  evb1.reset();
-  EXPECT_TRUE(done1);
+      done2 = true;
+    });
 
-  evb2.reset();
+    EXPECT_FALSE(done1);
+    EXPECT_FALSE(done2);
+
+    evb1.reset();
+    EXPECT_TRUE(done1);
+    EXPECT_FALSE(done2);
+  }
   EXPECT_TRUE(done2);
 }
 

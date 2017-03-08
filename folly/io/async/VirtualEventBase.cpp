@@ -22,13 +22,16 @@ VirtualEventBase::VirtualEventBase(EventBase& evb) : evb_(evb) {
   loopKeepAlive_ = getKeepAliveToken();
 }
 
-VirtualEventBase::~VirtualEventBase() {
-  CHECK(!evb_.inRunningEventBaseThread());
+std::future<void> VirtualEventBase::destroy() {
+  CHECK(evb_.runInEventBaseThread([this] { loopKeepAlive_.reset(); }));
 
-  CHECK(evb_.runInEventBaseThread([&] { loopKeepAlive_.reset(); }));
-  loopKeepAliveBaton_.wait();
+  return std::move(destroyFuture_);
+}
 
-  CHECK(evb_.runInEventBaseThreadAndWait([&] {
+void VirtualEventBase::destroyImpl() {
+  // Make sure we release EventBase KeepAlive token even if exception occurs
+  auto evbLoopKeepAlive = std::move(evbLoopKeepAlive_);
+  try {
     clearCobTimeouts();
 
     onDestructionCallbacks_.withWLock([&](LoopCallbackList& callbacks) {
@@ -39,8 +42,18 @@ VirtualEventBase::~VirtualEventBase() {
       }
     });
 
-    evbLoopKeepAlive_.reset();
-  }));
+    destroyPromise_.set_value();
+  } catch (...) {
+    destroyPromise_.set_exception(std::current_exception());
+  }
+}
+
+VirtualEventBase::~VirtualEventBase() {
+  if (!destroyFuture_.valid()) {
+    return;
+  }
+  CHECK(!evb_.inRunningEventBaseThread());
+  destroy().get();
 }
 
 void VirtualEventBase::runOnDestruction(EventBase::LoopCallback* callback) {

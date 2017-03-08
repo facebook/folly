@@ -19,6 +19,7 @@
 #endif
 
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/VirtualEventBase.h>
 
 #include <folly/ThreadName.h>
 #include <folly/io/async/NotificationQueue.h>
@@ -154,12 +155,21 @@ EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
 }
 
 EventBase::~EventBase() {
+  std::future<void> virtualEventBaseDestroyFuture;
+  if (virtualEventBase_) {
+    virtualEventBaseDestroyFuture = virtualEventBase_->destroy();
+  }
+
   // Keep looping until all keep-alive handles are released. Each keep-alive
   // handle signals that some external code will still schedule some work on
   // this EventBase (so it's not safe to destroy it).
   while (loopKeepAliveCount() > 0) {
     applyLoopKeepAlive();
     loopOnce();
+  }
+
+  if (virtualEventBaseDestroyFuture.valid()) {
+    virtualEventBaseDestroyFuture.get();
   }
 
   // Call all destruction callbacks, before we start cleaning up our state.
@@ -735,5 +745,13 @@ const std::string& EventBase::getName() {
 
 const char* EventBase::getLibeventVersion() { return event_get_version(); }
 const char* EventBase::getLibeventMethod() { return event_get_method(); }
+
+VirtualEventBase& EventBase::getVirtualEventBase() {
+  folly::call_once(virtualEventBaseInitFlag_, [&] {
+    virtualEventBase_ = std::make_unique<VirtualEventBase>(*this);
+  });
+
+  return *virtualEventBase_;
+}
 
 } // folly

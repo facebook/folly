@@ -34,6 +34,7 @@
 #include <boost/intrusive/list.hpp>
 #include <boost/utility.hpp>
 
+#include <folly/CallOnce.h>
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Portability.h>
@@ -629,6 +630,15 @@ class EventBase : private boost::noncopyable,
     return isInEventBaseThread();
   }
 
+  // Returns a VirtualEventBase attached to this EventBase. Can be used to
+  // pass to APIs which expect VirtualEventBase. This VirtualEventBase will be
+  // destroyed together with the EventBase.
+  //
+  // Any number of VirtualEventBases instances may be independently constructed,
+  // which are backed by this EventBase. This method should be only used if you
+  // don't need to manage the life time of the VirtualEventBase used.
+  folly::VirtualEventBase& getVirtualEventBase();
+
  protected:
   void keepAliveRelease() override {
     DCHECK(isInEventBaseThread());
@@ -736,6 +746,9 @@ class EventBase : private boost::noncopyable,
   std::mutex localStorageMutex_;
   std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
+
+  folly::once_flag virtualEventBaseInitFlag_;
+  std::unique_ptr<VirtualEventBase> virtualEventBase_;
 };
 
 template <typename T>

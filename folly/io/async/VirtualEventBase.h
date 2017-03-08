@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <future>
+
 #include <folly/Baton.h>
 #include <folly/Executor.h>
 #include <folly/io/async/EventBase.h>
@@ -147,18 +149,24 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
     }
     DCHECK(loopKeepAliveCount_ > 0);
     if (--loopKeepAliveCount_ == 0) {
-      loopKeepAliveBaton_.post();
+      destroyImpl();
     }
   }
 
  private:
+  friend class EventBase;
+
+  std::future<void> destroy();
+  void destroyImpl();
+
   using LoopCallbackList = EventBase::LoopCallback::List;
 
   EventBase& evb_;
 
   ssize_t loopKeepAliveCount_{0};
   std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
-  folly::Baton<> loopKeepAliveBaton_;
+  std::promise<void> destroyPromise_;
+  std::future<void> destroyFuture_{destroyPromise_.get_future()};
   KeepAlive loopKeepAlive_;
 
   KeepAlive evbLoopKeepAlive_;
