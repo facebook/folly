@@ -18,6 +18,7 @@
 #include <pthread.h>
 
 #include <folly/futures/Promise.h>
+#include <folly/init/Init.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/SSLContext.h>
@@ -208,6 +209,6 @@ int main(int argc, char *argv[]) {
 #endif
   });
   testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::init(&argc, &argv);
   return RUN_ALL_TESTS();
 }
