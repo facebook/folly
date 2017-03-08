@@ -46,7 +46,7 @@ uint8_t slowDefaultNumLowerBits(size_t upperBound, size_t size) {
 TEST(EliasFanoCoding, defaultNumLowerBits) {
   // Verify that slowDefaultNumLowerBits and optimized
   // Encoder::defaultNumLowerBits agree.
-  constexpr size_t kNumIterations = 2500;
+  static constexpr size_t kNumIterations = 2500;
   auto compare = [](size_t upperBound, size_t size) {
     using Encoder = EliasFanoEncoderV2<size_t>;
     EXPECT_EQ(int(slowDefaultNumLowerBits(upperBound, size)),
