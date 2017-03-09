@@ -216,3 +216,29 @@ TEST(IndexedMemPool, late_recycle) {
   }
   EXPECT_EQ(NonTrivialStruct::count, 0);
 }
+
+TEST(IndexedMemPool, no_data_races) {
+  const int count = 1000;
+  const uint32_t poolSize = 100;
+  const int nthreads = 10;
+
+  using Pool = IndexedMemPool<int, 8, 8>;
+  Pool pool(poolSize);
+
+  std::vector<std::thread> thr(nthreads);
+  for (auto i = 0; i < nthreads; ++i) {
+    thr[i] = std::thread([&]() {
+      for (auto j = 0; j < count; ++j) {
+        uint32_t idx = pool.allocIndex();
+        EXPECT_NE(idx, 0u);
+        EXPECT_LE(
+            idx, poolSize + (pool.NumLocalLists - 1) * pool.LocalListLimit);
+        pool[idx] = j;
+        pool.recycleIndex(idx);
+      }
+    });
+  }
+  for (auto& t : thr) {
+    t.join();
+  }
+}
