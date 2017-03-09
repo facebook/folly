@@ -173,10 +173,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * @param deferSecurityNegotiation
    *          unencrypted data can be sent before sslConn/Accept
    */
-  AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
-                 EventBase* evb, int fd,
-                 bool server = true, bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      bool server = true,
+      bool deferSecurityNegotiation = false);
 
+  /**
+   * Create a server/client AsyncSSLSocket from an already connected
+   * AsyncSocket.
+   */
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      AsyncSocket::UniquePtr oldAsyncSocket,
+      bool server = true,
+      bool deferSecurityNegotiation = false);
 
   /**
    * Helper function to create a server/client shared_ptr<AsyncSSLSocket>.
@@ -227,11 +239,12 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * @param fd   File descriptor to take over (should be a connected socket).
    * @param serverName tlsext_hostname that will be sent in ClientHello.
    */
-  AsyncSSLSocket(const std::shared_ptr<folly::SSLContext>& ctx,
-                  EventBase* evb,
-                  int fd,
-                 const std::string& serverName,
-                bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      const std::string& serverName,
+      bool deferSecurityNegotiation = false);
 
   static std::shared_ptr<AsyncSSLSocket> newSocket(
     const std::shared_ptr<folly::SSLContext>& ctx,
@@ -275,8 +288,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual size_t getRawBytesWritten() const override;
   virtual size_t getRawBytesReceived() const override;
   void enableClientHelloParsing();
-
-  void setPreReceivedData(std::unique_ptr<IOBuf> data);
 
   /**
    * Accept an SSL connection on the socket.
@@ -864,7 +875,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionResumptionAttempted_{false};
   std::chrono::milliseconds totalConnectTimeout_{0};
 
-  std::unique_ptr<IOBuf> preReceivedData_;
   std::string sslVerificationAlert_;
 };
 

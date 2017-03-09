@@ -2909,3 +2909,133 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   ASSERT_TRUE(errMsgCB.gotTimestamp_);
 }
 #endif // MSG_ERRQUEUE
+
+TEST(AsyncSocket, PreReceivedData) {
+  TestServer server;
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+
+  socket->writeChain(nullptr, IOBuf::copyBuffer("hello"));
+
+  auto acceptedSocket = server.acceptAsync(&evb);
+
+  ReadCallback peekCallback(2);
+  ReadCallback readCallback;
+  peekCallback.dataAvailableCallback = [&]() {
+    peekCallback.verifyData("he", 2);
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("h"));
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("e"));
+    acceptedSocket->setReadCB(nullptr);
+    acceptedSocket->setReadCB(&readCallback);
+  };
+  readCallback.dataAvailableCallback = [&]() {
+    if (readCallback.dataRead() == 5) {
+      readCallback.verifyData("hello", 5);
+      acceptedSocket->setReadCB(nullptr);
+    }
+  };
+
+  acceptedSocket->setReadCB(&peekCallback);
+
+  evb.loop();
+}
+
+TEST(AsyncSocket, PreReceivedDataOnly) {
+  TestServer server;
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+
+  socket->writeChain(nullptr, IOBuf::copyBuffer("hello"));
+
+  auto acceptedSocket = server.acceptAsync(&evb);
+
+  ReadCallback peekCallback;
+  ReadCallback readCallback;
+  peekCallback.dataAvailableCallback = [&]() {
+    peekCallback.verifyData("hello", 5);
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
+    acceptedSocket->setReadCB(&readCallback);
+  };
+  readCallback.dataAvailableCallback = [&]() {
+    readCallback.verifyData("hello", 5);
+    acceptedSocket->setReadCB(nullptr);
+  };
+
+  acceptedSocket->setReadCB(&peekCallback);
+
+  evb.loop();
+}
+
+TEST(AsyncSocket, PreReceivedDataPartial) {
+  TestServer server;
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+
+  socket->writeChain(nullptr, IOBuf::copyBuffer("hello"));
+
+  auto acceptedSocket = server.acceptAsync(&evb);
+
+  ReadCallback peekCallback;
+  ReadCallback smallReadCallback(3);
+  ReadCallback normalReadCallback;
+  peekCallback.dataAvailableCallback = [&]() {
+    peekCallback.verifyData("hello", 5);
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
+    acceptedSocket->setReadCB(&smallReadCallback);
+  };
+  smallReadCallback.dataAvailableCallback = [&]() {
+    smallReadCallback.verifyData("hel", 3);
+    acceptedSocket->setReadCB(&normalReadCallback);
+  };
+  normalReadCallback.dataAvailableCallback = [&]() {
+    normalReadCallback.verifyData("lo", 2);
+    acceptedSocket->setReadCB(nullptr);
+  };
+
+  acceptedSocket->setReadCB(&peekCallback);
+
+  evb.loop();
+}
+
+TEST(AsyncSocket, PreReceivedDataTakeover) {
+  TestServer server;
+
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  socket->connect(nullptr, server.getAddress(), 30);
+  evb.loop();
+
+  socket->writeChain(nullptr, IOBuf::copyBuffer("hello"));
+
+  auto acceptedSocket =
+      AsyncSocket::UniquePtr(new AsyncSocket(&evb, server.acceptFD()));
+  AsyncSocket::UniquePtr takeoverSocket;
+
+  ReadCallback peekCallback(3);
+  ReadCallback readCallback;
+  peekCallback.dataAvailableCallback = [&]() {
+    peekCallback.verifyData("hel", 3);
+    acceptedSocket->setPreReceivedData(IOBuf::copyBuffer("hello"));
+    acceptedSocket->setReadCB(nullptr);
+    takeoverSocket =
+        AsyncSocket::UniquePtr(new AsyncSocket(std::move(acceptedSocket)));
+    takeoverSocket->setReadCB(&readCallback);
+  };
+  readCallback.dataAvailableCallback = [&]() {
+    readCallback.verifyData("hello", 5);
+    takeoverSocket->setReadCB(nullptr);
+  };
+
+  acceptedSocket->setReadCB(&peekCallback);
+
+  evb.loop();
+}

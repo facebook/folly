@@ -190,6 +190,14 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   AsyncSocket(EventBase* evb, int fd);
 
   /**
+   * Create an AsyncSocket from a different, already connected AsyncSocket.
+   *
+   * Similar to AsyncSocket(evb, fd) when fd was previously owned by an
+   * AsyncSocket.
+   */
+  explicit AsyncSocket(AsyncSocket::UniquePtr);
+
+  /**
    * Helper function to create a shared_ptr<AsyncSocket>.
    *
    * This passes in the correct destructor object, since AsyncSocket's
@@ -263,6 +271,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * This will immediately cause any installed callbacks to be invoked with an
    * error.  The AsyncSocket may no longer be used after the file descriptor
    * has been extracted.
+   *
+   * This method should be used with care as the resulting fd is not guaranteed
+   * to perfectly reflect the state of the AsyncSocket (security state,
+   * pre-received data, etc.).
    *
    * Returns the file descriptor.  The caller assumes ownership of the
    * descriptor, and it will not be closed when the AsyncSocket is destroyed.
@@ -601,8 +613,16 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return setsockopt(fd_, level, optname, optval, sizeof(T));
   }
 
-  virtual void setPeek(bool peek) {
-    peek_ = peek;
+  /**
+   * Set pre-received data, to be returned to read callback before any data
+   * from the socket.
+   */
+  virtual void setPreReceivedData(std::unique_ptr<IOBuf> data) {
+    if (preReceivedData_) {
+      preReceivedData_->prependChain(std::move(data));
+    } else {
+      preReceivedData_ = std::move(data);
+    }
   }
 
   /**
@@ -998,7 +1018,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   size_t appBytesWritten_;               ///< Num of bytes written to socket
   bool isBufferMovable_{false};
 
-  bool peek_{false}; // Peek bytes.
+  // Pre-received data, to be returned to read callback before any data from the
+  // socket.
+  std::unique_ptr<IOBuf> preReceivedData_;
 
   int8_t readErr_{READ_NO_ERROR};       ///< The read error encountered, if any.
 

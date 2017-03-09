@@ -17,9 +17,11 @@
 #include <folly/io/async/AsyncSocket.h>
 
 #include <folly/ExceptionWrapper.h>
-#include <folly/SocketAddress.h>
-#include <folly/io/IOBuf.h>
 #include <folly/Portability.h>
+#include <folly/SocketAddress.h>
+#include <folly/io/Cursor.h>
+#include <folly/io/IOBuf.h>
+#include <folly/io/IOBufQueue.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/SysUio.h>
@@ -227,6 +229,11 @@ AsyncSocket::AsyncSocket(EventBase* evb, int fd)
   fd_ = fd;
   setCloseOnExec();
   state_ = StateEnum::ESTABLISHED;
+}
+
+AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
+    : AsyncSocket(oldAsyncSocket->getEventBase(), oldAsyncSocket->detachFd()) {
+  preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
 }
 
 // init() method, since constructor forwarding isn't supported in most
@@ -1406,12 +1413,23 @@ AsyncSocket::performRead(void** buf, size_t* buflen, size_t* /* offset */) {
   VLOG(5) << "AsyncSocket::performRead() this=" << this << ", buf=" << *buf
           << ", buflen=" << *buflen;
 
-  int recvFlags = 0;
-  if (peek_) {
-    recvFlags |= MSG_PEEK;
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    VLOG(5) << "AsyncSocket::performRead() this=" << this
+            << ", reading pre-received data";
+
+    io::Cursor cursor(preReceivedData_.get());
+    auto len = cursor.pullAtMost(*buf, *buflen);
+
+    IOBufQueue queue;
+    queue.append(std::move(preReceivedData_));
+    queue.trimStart(len);
+    preReceivedData_ = queue.move();
+
+    appBytesReceived_ += len;
+    return ReadResult(len);
   }
 
-  ssize_t bytes = recv(fd_, *buf, *buflen, MSG_DONTWAIT | recvFlags);
+  ssize_t bytes = recv(fd_, *buf, *buflen, MSG_DONTWAIT);
   if (bytes < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // No more data to read right now.
@@ -1762,6 +1780,12 @@ void AsyncSocket::checkForImmediateRead() noexcept {
   // be a pessimism.  In most cases it probably wouldn't be readable, and we
   // would just waste an extra system call.  Even if it is readable, waiting to
   // find out from libevent on the next event loop doesn't seem that bad.
+  //
+  // The exception to this is if we have pre-received data. In that case there
+  // is definitely data available immediately.
+  if (preReceivedData_ && !preReceivedData_->empty()) {
+    handleRead();
+  }
 }
 
 void AsyncSocket::handleInitialReadWrite() noexcept {

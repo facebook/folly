@@ -218,14 +218,38 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
 /**
  * Create a server/client AsyncSSLSocket
  */
-AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
-                               EventBase* evb, int fd, bool server,
-                               bool deferSecurityNegotiation) :
-    AsyncSocket(evb, fd),
-    server_(server),
-    ctx_(ctx),
-    handshakeTimeout_(this, evb),
-    connectionTimeout_(this, evb) {
+AsyncSSLSocket::AsyncSSLSocket(
+    const shared_ptr<SSLContext>& ctx,
+    EventBase* evb,
+    int fd,
+    bool server,
+    bool deferSecurityNegotiation)
+    : AsyncSocket(evb, fd),
+      server_(server),
+      ctx_(ctx),
+      handshakeTimeout_(this, evb),
+      connectionTimeout_(this, evb) {
+  noTransparentTls_ = true;
+  init();
+  if (server) {
+    SSL_CTX_set_info_callback(
+        ctx_->getSSLCtx(), AsyncSSLSocket::sslInfoCallback);
+  }
+  if (deferSecurityNegotiation) {
+    sslState_ = STATE_UNENCRYPTED;
+  }
+}
+
+AsyncSSLSocket::AsyncSSLSocket(
+    const shared_ptr<SSLContext>& ctx,
+    AsyncSocket::UniquePtr oldAsyncSocket,
+    bool server,
+    bool deferSecurityNegotiation)
+    : AsyncSocket(std::move(oldAsyncSocket)),
+      server_(server),
+      ctx_(ctx),
+      handshakeTimeout_(this, oldAsyncSocket->getEventBase()),
+      connectionTimeout_(this, oldAsyncSocket->getEventBase()) {
   noTransparentTls_ = true;
   init();
   if (server) {
@@ -254,11 +278,13 @@ AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext> &ctx,
  * Create a client AsyncSSLSocket from an already connected fd
  * and allow tlsext_hostname to be sent in Client Hello.
  */
-AsyncSSLSocket::AsyncSSLSocket(const shared_ptr<SSLContext>& ctx,
-                                 EventBase* evb, int fd,
-                               const std::string& serverName,
-                               bool deferSecurityNegotiation) :
-    AsyncSSLSocket(ctx, evb, fd, false, deferSecurityNegotiation) {
+AsyncSSLSocket::AsyncSSLSocket(
+    const shared_ptr<SSLContext>& ctx,
+    EventBase* evb,
+    int fd,
+    const std::string& serverName,
+    bool deferSecurityNegotiation)
+    : AsyncSSLSocket(ctx, evb, fd, false, deferSecurityNegotiation) {
   tlsextHostname_ = serverName;
 }
 #endif // FOLLY_OPENSSL_HAS_SNI
@@ -451,9 +477,7 @@ void AsyncSSLSocket::sslAccept(
   /* register for a read operation (waiting for CLIENT HELLO) */
   updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
 
-  if (preReceivedData_) {
-    handleRead();
-  }
+  checkForImmediateRead();
 }
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080bfL
@@ -985,6 +1009,8 @@ void AsyncSSLSocket::checkForImmediateRead() noexcept {
   // the socket to become readable again.
   if (ssl_ != nullptr && SSL_pending(ssl_) > 0) {
     AsyncSocket::handleRead();
+  } else {
+    AsyncSocket::checkForImmediateRead();
   }
 }
 
@@ -1682,12 +1708,6 @@ int AsyncSSLSocket::sslVerifyCallback(
   return (self->handshakeCallback_) ?
     self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx) :
     preverifyOk;
-}
-
-void AsyncSSLSocket::setPreReceivedData(std::unique_ptr<IOBuf> data) {
-  CHECK(sslState_ == STATE_UNINIT || sslState_ == STATE_UNENCRYPTED);
-  CHECK(!preReceivedData_);
-  preReceivedData_ = std::move(data);
 }
 
 void AsyncSSLSocket::enableClientHelloParsing()  {
