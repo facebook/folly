@@ -1959,6 +1959,43 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
       serverSock->getRawBytesReceived(), clientSock->getRawBytesWritten());
 }
 
+TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
+  EventBase clientEventBase;
+  EventBase serverEventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto dfServerCtx = std::make_shared<SSLContext>();
+  std::array<int, 2> fds;
+  getfds(fds.data());
+  getctx(clientCtx, dfServerCtx);
+
+  AsyncSSLSocket::UniquePtr clientSockPtr(
+      new AsyncSSLSocket(clientCtx, &clientEventBase, fds[0], false));
+  AsyncSocket::UniquePtr serverSockPtr(
+      new AsyncSocket(&serverEventBase, fds[1]));
+  auto clientSock = clientSockPtr.get();
+  auto serverSock = serverSockPtr.get();
+  SSLHandshakeClient client(std::move(clientSockPtr), true, true);
+
+  // Steal some data from the server.
+  clientEventBase.loopOnce();
+  std::array<uint8_t, 10> buf;
+  recv(fds[1], buf.data(), buf.size(), 0);
+  serverSock->setPreReceivedData(IOBuf::wrapBuffer(range(buf)));
+  AsyncSSLSocket::UniquePtr serverSSLSockPtr(
+      new AsyncSSLSocket(dfServerCtx, std::move(serverSockPtr), true));
+  auto serverSSLSock = serverSSLSockPtr.get();
+  SSLHandshakeServer server(std::move(serverSSLSockPtr), true, true);
+  while (!client.handshakeSuccess_ && !client.handshakeError_) {
+    serverEventBase.loopOnce();
+    clientEventBase.loopOnce();
+  }
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_EQ(
+      serverSSLSock->getRawBytesReceived(), clientSock->getRawBytesWritten());
+}
+
 /**
  * Test overriding the flags passed to "sendmsg()" system call,
  * and verifying that write requests fail properly.

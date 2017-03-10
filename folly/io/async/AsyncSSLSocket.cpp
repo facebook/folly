@@ -248,8 +248,8 @@ AsyncSSLSocket::AsyncSSLSocket(
     : AsyncSocket(std::move(oldAsyncSocket)),
       server_(server),
       ctx_(ctx),
-      handshakeTimeout_(this, oldAsyncSocket->getEventBase()),
-      connectionTimeout_(this, oldAsyncSocket->getEventBase()) {
+      handshakeTimeout_(this, AsyncSocket::getEventBase()),
+      connectionTimeout_(this, AsyncSocket::getEventBase()) {
   noTransparentTls_ = true;
   init();
   if (server) {
