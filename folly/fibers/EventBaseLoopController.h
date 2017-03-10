@@ -114,6 +114,8 @@ class EventBaseLoopControllerT : public LoopController {
 };
 
 using EventBaseLoopController = EventBaseLoopControllerT<folly::EventBase>;
+using VirtualEventBaseLoopController =
+    EventBaseLoopControllerT<folly::VirtualEventBase>;
 }
 } // folly::fibers
 
