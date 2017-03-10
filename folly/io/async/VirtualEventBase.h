@@ -62,14 +62,6 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
   void runOnDestruction(EventBase::LoopCallback* callback);
 
   /**
-   * @see EventBase::runInLoop
-   */
-  template <typename F>
-  void runInLoop(F&& f, bool thisIteration = false) {
-    evb_.runInLoop(std::forward<F>(f), thisIteration);
-  }
-
-  /**
    * VirtualEventBase destructor blocks until all tasks scheduled through its
    * runInEventBaseThread are complete.
    *
@@ -129,6 +121,8 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
    * KeepAlive handle can be released from EventBase loop only.
    */
   KeepAlive getKeepAliveToken() override {
+    DCHECK(loopKeepAliveCount_ + loopKeepAliveCountAtomic_.load() > 0);
+
     if (evb_.inRunningEventBaseThread()) {
       ++loopKeepAliveCount_;
     } else {
@@ -163,11 +157,11 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
   EventBase& evb_;
 
-  ssize_t loopKeepAliveCount_{0};
+  ssize_t loopKeepAliveCount_{1};
   std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
   std::promise<void> destroyPromise_;
   std::future<void> destroyFuture_{destroyPromise_.get_future()};
-  KeepAlive loopKeepAlive_;
+  KeepAlive loopKeepAlive_{makeKeepAlive()};
 
   KeepAlive evbLoopKeepAlive_;
 

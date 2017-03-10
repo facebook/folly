@@ -19,7 +19,6 @@ namespace folly {
 
 VirtualEventBase::VirtualEventBase(EventBase& evb) : evb_(evb) {
   evbLoopKeepAlive_ = evb_.getKeepAliveToken();
-  loopKeepAlive_ = getKeepAliveToken();
 }
 
 std::future<void> VirtualEventBase::destroy() {

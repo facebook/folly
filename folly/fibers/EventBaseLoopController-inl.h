@@ -52,14 +52,30 @@ inline void EventBaseLoopControllerT<EventBaseT>::setFiberManager(
   fm_ = fm;
 }
 
-template <typename EventBaseT>
-inline void EventBaseLoopControllerT<EventBaseT>::schedule() {
+template <>
+inline void EventBaseLoopControllerT<folly::EventBase>::schedule() {
   if (eventBase_ == nullptr) {
     // In this case we need to postpone scheduling.
     awaitingScheduling_ = true;
   } else {
     // Schedule it to run in current iteration.
     eventBase_->runInLoop(&callback_, true);
+    awaitingScheduling_ = false;
+  }
+}
+
+template <>
+inline void EventBaseLoopControllerT<folly::VirtualEventBase>::schedule() {
+  if (eventBase_ == nullptr) {
+    // In this case we need to postpone scheduling.
+    awaitingScheduling_ = true;
+  } else {
+    // Schedule it to run in current iteration.
+
+    if (!eventBaseKeepAlive_) {
+      eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
+    }
+    eventBase_->getEventBase().runInLoop(&callback_, true);
     awaitingScheduling_ = false;
   }
 }
@@ -72,6 +88,11 @@ inline void EventBaseLoopControllerT<EventBaseT>::cancel() {
 template <typename EventBaseT>
 inline void EventBaseLoopControllerT<EventBaseT>::runLoop() {
   if (!eventBaseKeepAlive_) {
+    // runLoop can be called twice if both schedule() and scheduleThreadSafe()
+    // were called.
+    if (!fm_->hasTasks()) {
+      return;
+    }
     eventBaseKeepAlive_ = eventBase_->getKeepAliveToken();
   }
   if (loopRunner_) {
