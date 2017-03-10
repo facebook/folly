@@ -18,6 +18,7 @@
 
 #include <chrono>
 
+#include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
 // We use this to indicate that tests have failed because of timing
@@ -44,5 +45,17 @@ AreWithinSecs(T1 val1, T2 val2, std::chrono::seconds acceptableDeltaSecs) {
         << acceptableDeltaSecs.count() << " secs of each other";
   }
 }
+}
+
+// Define a PrintTo() function for StringPiece, so that gtest checks
+// will print it as a string.  Without this gtest identifies StringPiece as a
+// container type, and therefore tries printing its elements individually,
+// despite the fact that there is an ostream operator<<() defined for
+// StringPiece.
+inline void PrintTo(StringPiece sp, ::std::ostream* os) {
+  // gtest's PrintToString() function will quote the string and escape internal
+  // quotes and non-printable characters, the same way gtest does for the
+  // standard string types.
+  *os << ::testing::PrintToString(sp.str());
 }
 }
