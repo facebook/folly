@@ -32,7 +32,7 @@ static void duration_to_ts(
                          .count());
 }
 
-#if !FOLLY_HAVE_CLOCK_GETTIME
+#if !FOLLY_HAVE_CLOCK_GETTIME || FOLLY_FORCE_CLOCK_GETTIME_DEFINITION
 #if __MACH__
 #include <errno.h>
 #include <mach/mach_init.h>
