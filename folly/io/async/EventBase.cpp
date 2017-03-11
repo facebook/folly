@@ -408,16 +408,23 @@ ssize_t EventBase::loopKeepAliveCount() {
         loopKeepAliveCountAtomic_.exchange(0, std::memory_order_relaxed);
   }
   DCHECK_GE(loopKeepAliveCount_, 0);
+
   return loopKeepAliveCount_;
 }
 
 void EventBase::applyLoopKeepAlive() {
-  if (loopKeepAliveActive_ && loopKeepAliveCount() == 0) {
+  auto keepAliveCount = loopKeepAliveCount();
+  // Make sure default VirtualEventBase won't hold EventBase::loop() forever.
+  if (virtualEventBase_ && virtualEventBase_->keepAliveCount() == 1) {
+    --keepAliveCount;
+  }
+
+  if (loopKeepAliveActive_ && keepAliveCount == 0) {
     // Restore the notification queue internal flag
     fnRunner_->stopConsuming();
     fnRunner_->startConsumingInternal(this, queue_.get());
     loopKeepAliveActive_ = false;
-  } else if (!loopKeepAliveActive_ && loopKeepAliveCount() > 0) {
+  } else if (!loopKeepAliveActive_ && keepAliveCount > 0) {
     // Update the notification queue event to treat it as a normal
     // (non-internal) event.  The notification queue event always remains
     // installed, and the main loop won't exit with it installed.

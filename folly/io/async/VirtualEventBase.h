@@ -137,7 +137,7 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
  protected:
   void keepAliveRelease() override {
-    DCHECK(getEventBase().inRunningEventBaseThread());
+    DCHECK(getEventBase().isInEventBaseThread());
     if (loopKeepAliveCountAtomic_.load()) {
       loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
     }
@@ -149,6 +149,13 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
 
  private:
   friend class EventBase;
+
+  ssize_t keepAliveCount() {
+    if (loopKeepAliveCountAtomic_.load()) {
+      loopKeepAliveCount_ += loopKeepAliveCountAtomic_.exchange(0);
+    }
+    return loopKeepAliveCount_;
+  }
 
   std::future<void> destroy();
   void destroyImpl();

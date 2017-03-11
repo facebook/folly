@@ -63,7 +63,7 @@ class GlobalCache {
     auto& fmPtrRef = map_[&evb];
 
     if (!fmPtrRef) {
-      auto loopController = make_unique<EventBaseLoopControllerT<EventBaseT>>();
+      auto loopController = make_unique<EventBaseLoopController>();
       loopController->attachEventBase(evb);
       evb.runOnDestruction(new EventBaseOnDestructionCallback<EventBaseT>(evb));
 
