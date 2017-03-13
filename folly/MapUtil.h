@@ -148,4 +148,41 @@ typename Map::mapped_type* get_ptr(
   return (pos != map.end() ? &pos->second : nullptr);
 }
 
+namespace detail {
+template <
+    class T,
+    size_t pathLength,
+    class = typename std::enable_if<(pathLength > 0)>::type>
+struct NestedMapType {
+  using type = typename NestedMapType<T, pathLength - 1>::type::mapped_type;
+};
+
+template <class T>
+struct NestedMapType<T, 1> {
+  using type = typename T::mapped_type;
+};
+}
+
+/**
+ * Given a map of maps and a path of keys, return a pointer to the nested value,
+ * or nullptr if the key doesn't exist in the map.
+ */
+template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(
+    const Map& map,
+    const Key1& key1,
+    const Key2& key2,
+    const Keys&... keys) ->
+    typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type const* {
+  auto pos = map.find(key1);
+  return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
+}
+
+template <class Map, class Key1, class Key2, class... Keys>
+auto get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
+    -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type* {
+  auto pos = map.find(key1);
+  return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
+}
+
 }  // namespace folly

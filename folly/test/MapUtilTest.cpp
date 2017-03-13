@@ -17,6 +17,7 @@
 #include <folly/MapUtil.h>
 
 #include <map>
+#include <unordered_map>
 
 #include <folly/portability/GTest.h>
 
@@ -97,4 +98,43 @@ TEST(MapUtil, get_ptr) {
   EXPECT_TRUE(get_ptr(m, 2) == nullptr);
   *get_ptr(m, 1) = 4;
   EXPECT_EQ(4, m.at(1));
+}
+
+TEST(MapUtil, get_ptr_path_simple) {
+  using std::map;
+  map<int, map<int, map<int, map<int, int>>>> m{{1, {{2, {{3, {{4, 5}}}}}}}};
+  EXPECT_EQ(5, *get_ptr(m, 1, 2, 3, 4));
+  EXPECT_TRUE(get_ptr(m, 1, 2, 3, 4));
+  EXPECT_FALSE(get_ptr(m, 1, 2, 3, 0));
+  EXPECT_TRUE(get_ptr(m, 1, 2, 3));
+  EXPECT_FALSE(get_ptr(m, 1, 2, 0));
+  EXPECT_TRUE(get_ptr(m, 1, 2));
+  EXPECT_FALSE(get_ptr(m, 1, 0));
+  EXPECT_TRUE(get_ptr(m, 1));
+  EXPECT_FALSE(get_ptr(m, 0));
+  const auto& cm = m;
+  ++*get_ptr(m, 1, 2, 3, 4);
+  EXPECT_EQ(6, *get_ptr(cm, 1, 2, 3, 4));
+  EXPECT_TRUE(get_ptr(cm, 1, 2, 3, 4));
+  EXPECT_FALSE(get_ptr(cm, 1, 2, 3, 0));
+}
+
+TEST(MapUtil, get_ptr_path_mixed) {
+  using std::map;
+  using std::unordered_map;
+  using std::string;
+  unordered_map<string, map<int, map<string, int>>> m{{"a", {{1, {{"b", 7}}}}}};
+  EXPECT_EQ(7, *get_ptr(m, "a", 1, "b"));
+  EXPECT_TRUE(get_ptr(m, "a", 1, "b"));
+  EXPECT_FALSE(get_ptr(m, "b", 1, "b"));
+  EXPECT_FALSE(get_ptr(m, "a", 2, "b"));
+  EXPECT_FALSE(get_ptr(m, "a", 1, "c"));
+  EXPECT_TRUE(get_ptr(m, "a", 1, "b"));
+  EXPECT_TRUE(get_ptr(m, "a", 1));
+  EXPECT_TRUE(get_ptr(m, "a"));
+  const auto& cm = m;
+  ++*get_ptr(m, "a", 1, "b");
+  EXPECT_EQ(8, *get_ptr(cm, "a", 1, "b"));
+  EXPECT_TRUE(get_ptr(cm, "a", 1, "b"));
+  EXPECT_FALSE(get_ptr(cm, "b", 1, "b"));
 }
