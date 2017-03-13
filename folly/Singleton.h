@@ -17,29 +17,36 @@
 // SingletonVault - a library to manage the creation and destruction
 // of interdependent singletons.
 //
-// Basic usage of this class is very simple; suppose you have a class
+// Recommended usage of this class: suppose you have a class
 // called MyExpensiveService, and you only want to construct one (ie,
 // it's a singleton), but you only want to construct it if it is used.
 //
 // In your .h file:
-// class MyExpensiveService { ... };
+// class MyExpensiveService {
+//   // Caution - may return a null ptr during startup and shutdown.
+//   static std::shared_ptr<MyExpensiveService> getInstance();
+//   ....
+// };
 //
 // In your .cpp file:
-// namespace { folly::Singleton<MyExpensiveService> the_singleton; }
+// namespace { struct PrivateTag {}; }
+// static folly::Singleton<MyExpensiveService, PrivateTag> the_singleton;
+// std::shared_ptr<MyExpensiveService> MyExpensiveService::getInstance() {
+//   return the_singleton.try_get();
+// }
 //
-// Code can access it via:
+// Code in other modules can access it via:
 //
-// MyExpensiveService* instance = Singleton<MyExpensiveService>::get();
-// or
-// std::weak_ptr<MyExpensiveService> instance =
-//     Singleton<MyExpensiveService>::get_weak();
+// auto instance = MyExpensiveService::getInstance();
 //
-// You also can directly access it by the variable defining the
-// singleton rather than via get(), and even treat that variable like
-// a smart pointer (dereferencing it or using the -> operator).
+// Advanced usage and notes:
 //
-// Please note, however, that all non-weak_ptr interfaces are
-// inherently subject to races with destruction.  Use responsibly.
+// You can also access a singleton instance with
+// `Singleton<ObjectType, TagType>::try_get()`. We recommend
+// that you prefer the form `the_singleton.try_get()` because it ensures that
+// `the_singleton` is used and cannot be garbage-collected during linking: this
+// is necessary because the constructor of `the_singleton` is what registers it
+// to the SingletonVault.
 //
 // The singleton will be created on demand.  If the constructor for
 // MyExpensiveService actually makes use of *another* Singleton, then
@@ -48,7 +55,10 @@
 // circular dependency, a runtime error will occur.
 //
 // You can have multiple singletons of the same underlying type, but
-// each must be given a unique tag. If no tag is specified - default tag is used
+// each must be given a unique tag. If no tag is specified a default tag is
+// used. We recommend that you use a tag from an anonymous namespace private to
+// your implementation file, as this ensures that the singleton is only
+// available via your interface and not also through Singleton<T>::try_get()
 //
 // namespace {
 // struct Tag1 {};
