@@ -975,7 +975,15 @@ class QueueAppender : public detail::Writable<QueueAppender> {
 
   using detail::Writable<QueueAppender>::pushAtMost;
   size_t pushAtMost(const uint8_t* buf, size_t len) {
-    size_t remaining = len;
+    // Fill the current buffer
+    const size_t copyLength = std::min(len, length());
+    if (copyLength != 0) {
+      memcpy(writableData(), buf, copyLength);
+      append(copyLength);
+      buf += copyLength;
+    }
+    // Allocate more buffers as necessary
+    size_t remaining = len - copyLength;
     while (remaining != 0) {
       auto p = queue_->preallocate(std::min(remaining, growth_),
                                    growth_,

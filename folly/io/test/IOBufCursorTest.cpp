@@ -20,6 +20,8 @@
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
 #include <folly/portability/GTest.h>
+#include <numeric>
+#include <vector>
 
 using folly::ByteRange;
 using folly::format;
@@ -528,6 +530,59 @@ TEST(IOBuf, QueueAppender) {
   }
 
   EXPECT_THROW({cursor.readBE<uint32_t>();}, std::out_of_range);
+}
+
+TEST(IOBuf, QueueAppenderPushAtMostFillBuffer) {
+  folly::IOBufQueue queue;
+  // There should be a goodMallocSize between 125 and 1000
+  QueueAppender appender{&queue, 125};
+  std::vector<uint8_t> data;
+  data.resize(1000);
+  std::iota(data.begin(), data.end(), 0);
+  // Add 100 byte
+  appender.pushAtMost(data.data(), 100);
+  // Add 900 bytes
+  appender.pushAtMost(data.data() + 100, data.size() - 100);
+  const auto buf = queue.front();
+  // Should fill the current buffer before adding another
+  EXPECT_LE(2, buf->countChainElements());
+  EXPECT_EQ(0, buf->tailroom());
+  EXPECT_LE(125, buf->length());
+  EXPECT_EQ(1000, buf->computeChainDataLength());
+  const StringPiece sp{(const char*)data.data(), data.size()};
+  EXPECT_EQ(sp, toString(*buf));
+}
+
+TEST(IOBuf, QueueAppenderInsertOwn) {
+  auto buf = IOBuf::create(10);
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 128};
+  appender.insert(std::move(buf));
+
+  std::vector<uint8_t> data;
+  data.resize(256);
+  std::iota(data.begin(), data.end(), 0);
+  appender.pushAtMost(folly::range(data));
+  // Buffer is owned, so we should write to it
+  EXPECT_LE(2, queue.front()->countChainElements());
+  EXPECT_EQ(0, queue.front()->tailroom());
+  const StringPiece sp{(const char*)data.data(), data.size()};
+  EXPECT_EQ(sp, toString(*queue.front()));
+}
+
+TEST(IOBuf, QueueAppenderInsertClone) {
+  IOBuf buf{IOBuf::CREATE, 100};
+  folly::IOBufQueue queue;
+  QueueAppender appender{&queue, 100};
+  // Buffer is shared, so we create a new buffer to write to
+  appender.insert(buf);
+  uint8_t x = 42;
+  appender.pushAtMost(&x, 1);
+  EXPECT_EQ(2, queue.front()->countChainElements());
+  EXPECT_EQ(0, queue.front()->length());
+  EXPECT_LT(0, queue.front()->tailroom());
+  EXPECT_EQ(1, queue.front()->next()->length());
+  EXPECT_EQ(x, queue.front()->next()->data()[0]);
 }
 
 TEST(IOBuf, CursorOperators) {
