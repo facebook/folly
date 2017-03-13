@@ -1132,63 +1132,71 @@ std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(
 
 }  // namespace
 
-std::unique_ptr<Codec> getCodec(CodecType type, int level) {
-  typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
-
-  static CodecFactory codecFactories[
-    static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
-    nullptr,  // USER_DEFINED
-    NoCompressionCodec::create,
+typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
+static CodecFactory
+    codecFactories[static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
+        nullptr, // USER_DEFINED
+        NoCompressionCodec::create,
 
 #if FOLLY_HAVE_LIBLZ4
-    LZ4Codec::create,
+        LZ4Codec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBSNAPPY
-    SnappyCodec::create,
+        SnappyCodec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBZ
-    ZlibCodec::create,
+        ZlibCodec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBLZ4
-    LZ4Codec::create,
+        LZ4Codec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBLZMA
-    LZMA2Codec::create,
-    LZMA2Codec::create,
+        LZMA2Codec::create,
+        LZMA2Codec::create,
 #else
-    nullptr,
-    nullptr,
+        nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBZSTD
-    ZSTDCodec::create,
+        ZSTDCodec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
 
 #if FOLLY_HAVE_LIBZ
-    ZlibCodec::create,
+        ZlibCodec::create,
 #else
-    nullptr,
+        nullptr,
 #endif
-  };
+};
 
+bool hasCodec(CodecType type) {
   size_t idx = static_cast<size_t>(type);
   if (idx >= static_cast<size_t>(CodecType::NUM_CODEC_TYPES)) {
-    throw std::invalid_argument(to<std::string>(
-        "Compression type ", idx, " not supported"));
+    throw std::invalid_argument(
+        to<std::string>("Compression type ", idx, " invalid"));
+  }
+  return codecFactories[idx] != nullptr;
+}
+
+std::unique_ptr<Codec> getCodec(CodecType type, int level) {
+  size_t idx = static_cast<size_t>(type);
+  if (idx >= static_cast<size_t>(CodecType::NUM_CODEC_TYPES)) {
+    throw std::invalid_argument(
+        to<std::string>("Compression type ", idx, " invalid"));
   }
   auto factory = codecFactories[idx];
   if (!factory) {

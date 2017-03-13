@@ -176,4 +176,9 @@ constexpr int COMPRESSION_LEVEL_BEST = -3;
 std::unique_ptr<Codec> getCodec(CodecType type,
                                 int level = COMPRESSION_LEVEL_DEFAULT);
 
+/**
+ * Check if a specified codec is supported.
+ */
+bool hasCodec(CodecType type);
+
 }}  // namespaces
