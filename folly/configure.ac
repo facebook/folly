@@ -558,9 +558,8 @@ AC_CHECK_HEADER([linux/membarrier.h], AC_DEFINE([HAVE_LINUX_MEMBARRIER_H], [1], 
 
 AC_ARG_ENABLE([follytestmain],
    AS_HELP_STRING([--enable-follytestmain], [enables using main function from folly for tests]),
-   [follytestmain=${enableval}], [follytestmain=no])
+   [use_follytestmain=${enableval}], [use_follytestmain=yes])
 
-use_follytestmain=yes
 # libdwarf used to install in /usr/include, now installs in /usr/include/libdwarf.
 AC_CHECK_HEADERS([libdwarf/dwarf.h dwarf.h], [break])
 # Check whether we have both the library and the header
