@@ -47,6 +47,7 @@
 #include <folly/Malloc.h>
 #include <folly/Portability.h>
 #include <folly/SmallLocks.h>
+#include <folly/Traits.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Constexpr.h>
 #include <folly/portability/Malloc.h>
@@ -393,8 +394,12 @@ class small_vector
     constructImpl(il.begin(), il.end(), std::false_type());
   }
 
-  explicit small_vector(size_type n, value_type const& t = value_type()) {
-    doConstruct(n, t);
+  explicit small_vector(size_type n) {
+    doConstruct(n, [&](void* p) { new (p) value_type(); });
+  }
+
+  small_vector(size_type n, value_type const& t) {
+    doConstruct(n, [&](void* p) { new (p) value_type(t); });
   }
 
   template<class Arg>
@@ -882,13 +887,12 @@ private:
     }
   }
 
-  void doConstruct(size_type n, value_type const& val) {
+  template <typename InitFunc>
+  void doConstruct(size_type n, InitFunc&& func) {
     makeSize(n);
     this->setSize(n);
     try {
-      detail::populateMemForward(data(), n,
-        [&] (void* p) { new (p) value_type(val); }
-      );
+      detail::populateMemForward(data(), n, std::forward<InitFunc>(func));
     } catch (...) {
       if (this->isExtern()) {
         u.freeHeap();
@@ -900,7 +904,7 @@ private:
   // The true_type means we should forward to the size_t,value_type
   // overload.
   void constructImpl(size_type n, value_type const& val, std::true_type) {
-    doConstruct(n, val);
+    doConstruct(n, [&](void* p) { new (p) value_type(val); });
   }
 
   void makeSize(size_type size, value_type* v = nullptr) {

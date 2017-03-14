@@ -832,3 +832,27 @@ TEST(small_vector, InputIterator) {
     ASSERT_EQ(smallV[i], expected[i]);
   }
 }
+
+TEST(small_vector, NoCopyCtor) {
+  struct Test {
+    Test() = default;
+    Test(const Test&) = delete;
+    Test(Test&&) = default;
+
+    int field = 42;
+  };
+
+  small_vector<Test> test(10);
+  ASSERT_EQ(test.size(), 10);
+  for (const auto& element : test) {
+    EXPECT_EQ(element.field, 42);
+  }
+}
+
+TEST(small_vector, ZeroInitializable) {
+  small_vector<int> test(10);
+  ASSERT_EQ(test.size(), 10);
+  for (const auto& element : test) {
+    EXPECT_EQ(element, 0);
+  }
+}
