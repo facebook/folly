@@ -20,6 +20,7 @@ folly/test/*_test
 folly/test/*_test_using_jemalloc
 folly/config.*
 folly/configure
+folly/libfolly.pc
 folly/m4/libtool.m4
 folly/m4/ltoptions.m4
 folly/m4/ltsugar.m4
