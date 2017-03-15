@@ -149,16 +149,7 @@ void SSLContext::setClientECCurvesList(
 }
 
 void SSLContext::setServerECCurve(const std::string& curveName) {
-  bool validCall = false;
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
-#ifndef OPENSSL_NO_ECDH
-  validCall = true;
-#endif
-#endif
-  if (!validCall) {
-    throw std::runtime_error("Elliptic curve encryption not allowed");
-  }
-
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL && !defined(OPENSSL_NO_ECDH)
   EC_KEY* ecdh = nullptr;
   int nid;
 
@@ -180,6 +171,9 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
 
   SSL_CTX_set_tmp_ecdh(ctx_, ecdh);
   EC_KEY_free(ecdh);
+#else
+  throw std::runtime_error("Elliptic curve encryption not allowed");
+#endif
 }
 
 void SSLContext::setX509VerifyParam(
