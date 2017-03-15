@@ -143,7 +143,9 @@ class CompressionTest
     codec_ = getCodec(std::tr1::get<2>(tup));
   }
 
-  void runSimpleTest(const DataHolder& dh);
+  void runSimpleIOBufTest(const DataHolder& dh);
+
+  void runSimpleStringTest(const DataHolder& dh);
 
  private:
   std::unique_ptr<IOBuf> split(std::unique_ptr<IOBuf> data) const;
@@ -153,7 +155,7 @@ class CompressionTest
   std::unique_ptr<Codec> codec_;
 };
 
-void CompressionTest::runSimpleTest(const DataHolder& dh) {
+void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
   const auto compressed = split(codec_->compress(original.get()));
   if (!codec_->needsUncompressedLength()) {
@@ -166,6 +168,23 @@ void CompressionTest::runSimpleTest(const DataHolder& dh) {
                                            uncompressedLength_);
     EXPECT_EQ(uncompressedLength_, uncompressed->computeChainDataLength());
     EXPECT_EQ(dh.hash(uncompressedLength_), hashIOBuf(uncompressed.get()));
+  }
+}
+
+void CompressionTest::runSimpleStringTest(const DataHolder& dh) {
+  const auto original = std::string(
+      reinterpret_cast<const char*>(dh.data(uncompressedLength_).data()),
+      uncompressedLength_);
+  const auto compressed = codec_->compress(original);
+  if (!codec_->needsUncompressedLength()) {
+    auto uncompressed = codec_->uncompress(compressed);
+    EXPECT_EQ(uncompressedLength_, uncompressed.length());
+    EXPECT_EQ(uncompressed, original);
+  }
+  {
+    auto uncompressed = codec_->uncompress(compressed, uncompressedLength_);
+    EXPECT_EQ(uncompressedLength_, uncompressed.length());
+    EXPECT_EQ(uncompressed, original);
   }
 }
 
@@ -196,11 +215,19 @@ std::unique_ptr<IOBuf> CompressionTest::split(
 }
 
 TEST_P(CompressionTest, RandomData) {
-  runSimpleTest(randomDataHolder);
+  runSimpleIOBufTest(randomDataHolder);
 }
 
 TEST_P(CompressionTest, ConstantData) {
-  runSimpleTest(constantDataHolder);
+  runSimpleIOBufTest(constantDataHolder);
+}
+
+TEST_P(CompressionTest, RandomDataString) {
+  runSimpleStringTest(randomDataHolder);
+}
+
+TEST_P(CompressionTest, ConstantDataString) {
+  runSimpleStringTest(constantDataHolder);
 }
 
 INSTANTIATE_TEST_CASE_P(

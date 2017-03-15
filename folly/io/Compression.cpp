@@ -56,11 +56,24 @@ std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
   uint64_t len = data->computeChainDataLength();
   if (len == 0) {
     return IOBuf::create(0);
-  } else if (len > maxUncompressedLength()) {
+  }
+  if (len > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
 
   return doCompress(data);
+}
+
+std::string Codec::compress(const StringPiece data) {
+  const uint64_t len = data.size();
+  if (len == 0) {
+    return "";
+  }
+  if (len > maxUncompressedLength()) {
+    throw std::runtime_error("Codec: uncompressed length too large");
+  }
+
+  return doCompressString(data);
 }
 
 std::unique_ptr<IOBuf> Codec::uncompress(const IOBuf* data,
@@ -84,6 +97,28 @@ std::unique_ptr<IOBuf> Codec::uncompress(const IOBuf* data,
   return doUncompress(data, uncompressedLength);
 }
 
+std::string Codec::uncompress(
+    const StringPiece data,
+    uint64_t uncompressedLength) {
+  if (uncompressedLength == UNKNOWN_UNCOMPRESSED_LENGTH) {
+    if (needsUncompressedLength()) {
+      throw std::invalid_argument("Codec: uncompressed length required");
+    }
+  } else if (uncompressedLength > maxUncompressedLength()) {
+    throw std::runtime_error("Codec: uncompressed length too large");
+  }
+
+  if (data.empty()) {
+    if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
+        uncompressedLength != 0) {
+      throw std::runtime_error("Codec: invalid uncompressed length");
+    }
+    return "";
+  }
+
+  return doUncompressString(data, uncompressedLength);
+}
+
 bool Codec::needsUncompressedLength() const {
   return doNeedsUncompressedLength();
 }
@@ -98,6 +133,30 @@ bool Codec::doNeedsUncompressedLength() const {
 
 uint64_t Codec::doMaxUncompressedLength() const {
   return UNLIMITED_UNCOMPRESSED_LENGTH;
+}
+
+std::string Codec::doCompressString(const StringPiece data) {
+  const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
+  auto outputBuffer = doCompress(&inputBuffer);
+  std::string output;
+  output.reserve(outputBuffer->computeChainDataLength());
+  for (auto range : *outputBuffer) {
+    output.append(reinterpret_cast<const char*>(range.data()), range.size());
+  }
+  return output;
+}
+
+std::string Codec::doUncompressString(
+    const StringPiece data,
+    uint64_t uncompressedLength) {
+  const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
+  auto outputBuffer = doUncompress(&inputBuffer, uncompressedLength);
+  std::string output;
+  output.reserve(outputBuffer->computeChainDataLength());
+  for (auto range : *outputBuffer) {
+    output.append(reinterpret_cast<const char*>(range.data()), range.size());
+  }
+  return output;
 }
 
 namespace {

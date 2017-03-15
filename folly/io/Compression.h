@@ -20,6 +20,7 @@
 #include <limits>
 #include <memory>
 
+#include <folly/Range.h>
 #include <folly/io/IOBuf.h>
 
 /**
@@ -120,6 +121,13 @@ class Codec {
   std::unique_ptr<IOBuf> compress(const folly::IOBuf* data);
 
   /**
+   * Compresses data. May involve additional copies compared to the overload
+   * that takes and returns IOBufs. Has the same error semantics as the IOBuf
+   * version.
+   */
+  std::string compress(StringPiece data);
+
+  /**
    * Uncompress data. Throws std::runtime_error on decompression error.
    *
    * Some codecs (LZ4) require the exact uncompressed length; this is indicated
@@ -138,6 +146,15 @@ class Codec {
       const IOBuf* data,
       uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH);
 
+  /**
+   * Uncompresses data. May involve additional copies compared to the overload
+   * that takes and returns IOBufs. Has the same error semantics as the IOBuf
+   * version.
+   */
+  std::string uncompress(
+      StringPiece data,
+      uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH);
+
  protected:
   explicit Codec(CodecType type);
 
@@ -149,6 +166,14 @@ class Codec {
   virtual std::unique_ptr<IOBuf> doCompress(const folly::IOBuf* data) = 0;
   virtual std::unique_ptr<IOBuf> doUncompress(const folly::IOBuf* data,
                                               uint64_t uncompressedLength) = 0;
+  // default: an implementation is provided by default to wrap the strings into
+  // IOBufs and delegate to the IOBuf methods. This incurs a copy of the output
+  // from IOBuf to string. Implementers, at their discretion, can override
+  // these methods to avoid the copy.
+  virtual std::string doCompressString(StringPiece data);
+  virtual std::string doUncompressString(
+      StringPiece data,
+      uint64_t uncompressedLength);
 
   CodecType type_;
 };
