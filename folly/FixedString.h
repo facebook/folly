@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Utility.h>
 #include <folly/portability/BitsFunctexcept.h>
 #include <folly/portability/Constexpr.h>
 
@@ -286,7 +287,7 @@ struct Helper {
       std::size_t left_count,
       const Right& right,
       std::size_t right_count,
-      std::index_sequence<Is...> is) noexcept {
+      folly::index_sequence<Is...> is) noexcept {
     return {left, left_count, right, right_count, is};
   }
 
@@ -299,7 +300,7 @@ struct Helper {
       const Right& right,
       std::size_t right_pos,
       std::size_t right_count,
-      std::index_sequence<Is...> is) noexcept {
+      folly::index_sequence<Is...> is) noexcept {
     return {left,
             left_size,
             left_pos,
@@ -550,13 +551,13 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   Char data_[N + 1u]; // +1 for the null terminator
   std::size_t size_; // Nbr of chars, not incl. null terminator. size_ <= N.
 
-  using Indices = std::make_index_sequence<N>;
+  using Indices = folly::make_index_sequence<N>;
 
   template <class That, std::size_t... Is>
   constexpr BasicFixedString(
       const That& that,
       std::size_t size,
-      std::index_sequence<Is...>,
+      folly::index_sequence<Is...>,
       std::size_t pos = 0,
       std::size_t count = npos) noexcept
       : data_{(Is < (size - pos) && Is < count ? that[Is + pos] : Char(0))...,
@@ -567,7 +568,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   constexpr BasicFixedString(
       std::size_t count,
       Char ch,
-      std::index_sequence<Is...>) noexcept
+      folly::index_sequence<Is...>) noexcept
       : data_{((Is < count) ? ch : Char(0))..., Char(0)}, size_{count} {}
 
   // Concatenation constructor
@@ -577,7 +578,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t left_size,
       const Right& right,
       std::size_t right_size,
-      std::index_sequence<Is...>) noexcept
+      folly::index_sequence<Is...>) noexcept
       : data_{detail::fixedstring::char_at_<Char>(
                   left,
                   left_size,
@@ -597,7 +598,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Right& right,
       std::size_t right_pos,
       std::size_t right_count,
-      std::index_sequence<Is...>) noexcept
+      folly::index_sequence<Is...>) noexcept
       : data_{detail::fixedstring::char_at_<Char>(
                   left,
                   left_size,
@@ -686,7 +687,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       : BasicFixedString{
             that.data_,
             that.size_,
-            std::make_index_sequence<(M < N ? M : N)>{},
+            folly::make_index_sequence<(M < N ? M : N)>{},
             pos,
             detail::fixedstring::checkOverflow(
                 detail::fixedstring::checkOverflowOrNpos(
@@ -707,7 +708,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   constexpr /* implicit */ BasicFixedString(const Char (&that)[M]) noexcept
       : BasicFixedString{detail::fixedstring::checkNullTerminated(that),
                          M - 1u,
-                         std::make_index_sequence<M - 1u>{}} {}
+                         folly::make_index_sequence<M - 1u>{}} {}
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Construct from a `const Char*` and count
@@ -1884,7 +1885,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         detail::fixedstring::checkOverflow(that_pos, that.size_),
         detail::fixedstring::checkOverflowOrNpos(
             that_count, that.size_ - that_pos),
-        std::make_index_sequence<N + M>{});
+        folly::make_index_sequence<N + M>{});
   }
 
   /**
@@ -1984,7 +1985,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         detail::fixedstring::checkNullTerminated(that),
         detail::fixedstring::checkOverflow(that_pos, M - 1u),
         detail::fixedstring::checkOverflowOrNpos(that_count, M - 1u - that_pos),
-        std::make_index_sequence<N + M - 1u>{});
+        folly::make_index_sequence<N + M - 1u>{});
   }
 
   /**
@@ -2750,7 +2751,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         M - 1u,
         b.data_,
         b.size_,
-        std::make_index_sequence<N + M - 1u>{});
+        folly::make_index_sequence<N + M - 1u>{});
   }
 
   /**
@@ -2765,7 +2766,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         a.size_,
         detail::fixedstring::checkNullTerminated(b),
         M - 1u,
-        std::make_index_sequence<N + M - 1u>{});
+        folly::make_index_sequence<N + M - 1u>{});
   }
 
   /**
@@ -2780,7 +2781,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         1u,
         b.data_,
         b.size_,
-        std::make_index_sequence<N + 1u>{});
+        folly::make_index_sequence<N + 1u>{});
   }
 
   /**
@@ -2795,7 +2796,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
         a.size_,
         A{b, Char(0)},
         1u,
-        std::make_index_sequence<N + 1u>{});
+        folly::make_index_sequence<N + 1u>{});
   }
 };
 
@@ -2867,7 +2868,7 @@ constexpr BasicFixedString<Char, N + M> operator+(
       a.size(),
       detail::fixedstring::Helper::data_(b),
       b.size(),
-      std::make_index_sequence<N + M>{});
+      folly::make_index_sequence<N + M>{});
 }
 
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **

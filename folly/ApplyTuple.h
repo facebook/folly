@@ -31,21 +31,14 @@
 #include <tuple>
 #include <utility>
 
+#include <folly/Utility.h>
+
 namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
 namespace apply_tuple {
-
-template <std::size_t...>
-struct IndexSequence {};
-
-template <std::size_t N, std::size_t... Is>
-struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, Is...> {};
-
-template <std::size_t... Is>
-struct MakeIndexSequence<0, Is...> : IndexSequence<Is...> {};
 
 inline constexpr std::size_t sum() {
   return 0;
@@ -61,7 +54,7 @@ struct TupleSizeSum {
 };
 
 template <typename... Tuples>
-using MakeIndexSequenceFromTuple = MakeIndexSequence<
+using MakeIndexSequenceFromTuple = folly::make_index_sequence<
     TupleSizeSum<typename std::decay<Tuples>::type...>::value>;
 
 // This is to allow using this with pointers to member functions,
@@ -76,14 +69,14 @@ inline constexpr auto makeCallable(M(C::*d)) -> decltype(std::mem_fn(d)) {
 }
 
 template <class F, class Tuple, std::size_t... Indexes>
-inline constexpr auto call(F&& f, Tuple&& t, IndexSequence<Indexes...>)
+inline constexpr auto call(F&& f, Tuple&& t, folly::index_sequence<Indexes...>)
     -> decltype(
         std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...)) {
   return std::forward<F>(f)(std::get<Indexes>(std::forward<Tuple>(t))...);
 }
 
 template <class Tuple, std::size_t... Indexes>
-inline constexpr auto forwardTuple(Tuple&& t, IndexSequence<Indexes...>)
+inline constexpr auto forwardTuple(Tuple&& t, folly::index_sequence<Indexes...>)
     -> decltype(
         std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...)) {
   return std::forward_as_tuple(std::get<Indexes>(std::forward<Tuple>(t))...);
