@@ -21,6 +21,7 @@
 
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
+#include <cstdint>
 
 namespace folly {
 namespace ssl {
@@ -29,6 +30,9 @@ namespace ssl {
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
+#define FOLLY_OPENSSL_IS_100                \
+  (OPENSSL_VERSION_NUMBER >= 0x10000003L && \
+   OPENSSL_VERSION_NUMBER < 0x1000105fL)
 #define FOLLY_OPENSSL_IS_101                \
   (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
    OPENSSL_VERSION_NUMBER < 0x1000200fL)
@@ -69,7 +73,14 @@ int TLS1_get_client_version(SSL* s);
 int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
 int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
 
-#elif FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_101
+#elif FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_100
+
+#if FOLLY_OPENSSL_IS_100
+
+uint32_t SSL_CIPHER_get_id(const SSL_CIPHER*);
+int TLS1_get_client_version(const SSL*);
+
+#endif
 
 int SSL_CTX_up_ref(SSL_CTX* session);
 int SSL_SESSION_up_ref(SSL_SESSION* session);
