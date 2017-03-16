@@ -121,30 +121,25 @@ RandomDataHolder randomDataHolder(dataSizeLog2);
 ConstantDataHolder constantDataHolder(dataSizeLog2);
 
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
-  EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
-#if FOLLY_HAVE_LIBLZ4
-  EXPECT_TRUE(getCodec(CodecType::LZ4)->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBSNAPPY
-  EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBZ
-  EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBLZ4
-  EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBLZMA
-  EXPECT_TRUE(getCodec(CodecType::LZMA2)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
-    ->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBZSTD
-  EXPECT_FALSE(getCodec(CodecType::ZSTD)->needsUncompressedLength());
-#endif
-#if FOLLY_HAVE_LIBZ
-  EXPECT_FALSE(getCodec(CodecType::GZIP)->needsUncompressedLength());
-#endif
+  static const struct { CodecType type; bool needsUncompressedLength; }
+    expectations[] = {
+      { CodecType::NO_COMPRESSION, false },
+      { CodecType::LZ4, true },
+      { CodecType::SNAPPY, false },
+      { CodecType::ZLIB, false },
+      { CodecType::LZ4_VARINT_SIZE, false },
+      { CodecType::LZMA2, true },
+      { CodecType::LZMA2_VARINT_SIZE, false },
+      { CodecType::ZSTD, false },
+      { CodecType::GZIP, false },
+    };
+
+  for (auto const& test : expectations) {
+    if (hasCodec(test.type)) {
+      EXPECT_EQ(getCodec(test.type)->needsUncompressedLength(),
+                test.needsUncompressedLength);
+    }
+  }
 }
 
 class CompressionTest
@@ -154,7 +149,11 @@ class CompressionTest
     auto tup = GetParam();
     uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
     chunks_ = std::tr1::get<1>(tup);
-    codec_ = getCodec(std::tr1::get<2>(tup));
+
+    auto codecType = std::tr1::get<2>(tup);
+    if (hasCodec(codecType)) {
+      codec_ = getCodec(codecType);
+    }
   }
 
   void runSimpleIOBufTest(const DataHolder& dh);
@@ -170,6 +169,10 @@ class CompressionTest
 };
 
 void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
+  if (!codec_) {
+    return;
+  }
+
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
   const auto compressed = split(codec_->compress(original.get()));
   if (!codec_->needsUncompressedLength()) {
@@ -186,6 +189,10 @@ void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
 }
 
 void CompressionTest::runSimpleStringTest(const DataHolder& dh) {
+  if (!codec_) {
+    return;
+  }
+
   const auto original = std::string(
       reinterpret_cast<const char*>(dh.data(uncompressedLength_).data()),
       uncompressedLength_);
@@ -251,29 +258,15 @@ INSTANTIATE_TEST_CASE_P(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
         testing::Values(
-#if FOLLY_HAVE_LIBLZ4
+            CodecType::NO_COMPRESSION,
             CodecType::LZ4,
-#endif
-#if FOLLY_HAVE_LIBSNAPPY
             CodecType::SNAPPY,
-#endif
-#if FOLLY_HAVE_LIBZ
             CodecType::ZLIB,
-#endif
-#if FOLLY_HAVE_LIBLZ4
             CodecType::LZ4_VARINT_SIZE,
-#endif
-#if FOLLY_HAVE_LIBLZMA
             CodecType::LZMA2,
             CodecType::LZMA2_VARINT_SIZE,
-#endif
-#if FOLLY_HAVE_LIBZSTD
             CodecType::ZSTD,
-#endif
-#if FOLLY_HAVE_LIBZ
-            CodecType::GZIP,
-#endif
-            CodecType::NO_COMPRESSION)));
+            CodecType::GZIP)));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
@@ -335,7 +328,12 @@ INSTANTIATE_TEST_CASE_P(
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
-  void SetUp() override { codec_ = getCodec(GetParam()); }
+  void SetUp() override {
+    auto codecType = GetParam();
+    if (hasCodec(codecType)) {
+      codec_ = getCodec(codecType);
+    }
+  }
 
   void runSimpleTest(const DataHolder& dh);
 
@@ -343,6 +341,10 @@ class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
 };
 
 void CompressionCorruptionTest::runSimpleTest(const DataHolder& dh) {
+  if (!codec_) {
+    return;
+  }
+
   constexpr uint64_t uncompressedLength = 42;
   auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength));
   auto compressed = codec_->compress(original.get());
@@ -382,21 +384,15 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
   runSimpleTest(constantDataHolder);
 }
 
-static const CodecType corruptionTestCodecs[] = {
-  // NO_COMPRESSION can't detect corruption
-  // LZ4 can't detect corruption reliably
-#if FOLLY_HAVE_LIBSNAPPY
-  CodecType::SNAPPY,
-#endif
-#if FOLLY_HAVE_LIBZ
-  CodecType::ZLIB,
-#endif
-};
-
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
-    testing::ValuesIn(corruptionTestCodecs));
+    testing::Values(
+        // NO_COMPRESSION can't detect corruption
+        // LZ4 can't detect corruption reliably (sigh)
+        CodecType::SNAPPY,
+        CodecType::ZLIB));
+
 }}}  // namespaces
 
 int main(int argc, char *argv[]) {
