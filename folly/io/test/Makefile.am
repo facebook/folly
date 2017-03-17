@@ -3,16 +3,16 @@ ACLOCAL_AMFLAGS = -I m4
 CPPFLAGS = -I$(top_srcdir)/test/gtest/googletest/include
 ldadd = $(top_builddir)/test/libfollytestmain.la
 
-# compression-test takes several minutes, so it's not run automatically.
+# compression_test takes several minutes, so it's not run automatically.
 TESTS = \
-	iobuf-test \
-	iobuf-cursor-test \
-	iobuf-queue-test \
-	record-io-test \
-	shutdown-socket-set-test
+	iobuf_test \
+	iobuf_cursor_test \
+	iobuf_queue_test \
+	record_io_test \
+	shutdown_socket_set_test
 
 check_PROGRAMS = $(TESTS) \
-		 compression-test
+		 compression_test
 
 iobuf_test_SOURCES = IOBufTest.cpp
 iobuf_test_LDADD = $(ldadd)
