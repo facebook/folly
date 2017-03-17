@@ -40,7 +40,7 @@ AsyncSignalHandler::~AsyncSignalHandler() {
 
 void AsyncSignalHandler::registerSignalHandler(int signum) {
   pair<SignalEventMap::iterator, bool> ret =
-    signalEvents_.insert(make_pair(signum, event()));
+    signalEvents_.emplace(signum, event());
   if (!ret.second) {
     // This signal has already been registered
     throw std::runtime_error(folly::to<string>(
