@@ -144,6 +144,9 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
 
 class CompressionTest
     : public testing::TestWithParam<std::tr1::tuple<int, int, CodecType>> {
+ public:
+  static std::vector<CodecType> const& availableCodecs();
+
  protected:
   void SetUp() override {
     auto tup = GetParam();
@@ -168,11 +171,23 @@ class CompressionTest
   std::unique_ptr<Codec> codec_;
 };
 
-void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
-  if (!codec_) {
-    return;
+std::vector<CodecType> const& CompressionTest::availableCodecs() {
+  static std::vector<CodecType> codecs;
+  codecs.reserve(static_cast<size_t>(CodecType::NUM_CODEC_TYPES));
+
+  for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
+    auto type = static_cast<CodecType>(i);
+    if (hasCodec(type)) {
+      codecs.push_back(type);
+    }
   }
 
+  codecs.shrink_to_fit();
+
+  return codecs;
+}
+
+void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
   const auto compressed = split(codec_->compress(original.get()));
   if (!codec_->needsUncompressedLength()) {
@@ -189,10 +204,6 @@ void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
 }
 
 void CompressionTest::runSimpleStringTest(const DataHolder& dh) {
-  if (!codec_) {
-    return;
-  }
-
   const auto original = std::string(
       reinterpret_cast<const char*>(dh.data(uncompressedLength_).data()),
       uncompressedLength_);
@@ -257,16 +268,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
-        testing::Values(
-            CodecType::NO_COMPRESSION,
-            CodecType::LZ4,
-            CodecType::SNAPPY,
-            CodecType::ZLIB,
-            CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2,
-            CodecType::LZMA2_VARINT_SIZE,
-            CodecType::ZSTD,
-            CodecType::GZIP)));
+        testing::ValuesIn(CompressionTest::availableCodecs())));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {

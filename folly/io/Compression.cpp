@@ -1192,7 +1192,7 @@ std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(
 }  // namespace
 
 typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
-static CodecFactory
+static constexpr CodecFactory
     codecFactories[static_cast<size_t>(CodecType::NUM_CODEC_TYPES)] = {
         nullptr, // USER_DEFINED
         NoCompressionCodec::create,
