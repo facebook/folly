@@ -143,14 +143,14 @@ void NestedCommandLineApp::displayHelp(
         info.argStr.empty() ? "" : " ",
         info.argStr.c_str());
 
+    printf("%s\n", info.fullHelp.c_str());
+
     std::cout << globalOptions_;
 
     if (!info.options.options().empty()) {
       printf("\n");
       std::cout << info.options;
     }
-
-    printf("\n%s\n", info.fullHelp.c_str());
   }
 }
 
