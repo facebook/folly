@@ -615,6 +615,7 @@ AC_CONFIG_FILES([Makefile
                  test/Makefile
                  test/function_benchmark/Makefile
                  experimental/Makefile
+                 experimental/io/test/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile])
 AC_OUTPUT

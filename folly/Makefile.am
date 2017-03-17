@@ -1,5 +1,5 @@
 if FOLLY_TESTMAIN
-SUBDIRS = . experimental init test io/test
+SUBDIRS = . experimental init test io/test experimental/io/test
 else
 SUBDIRS = . test io/test
 endif
