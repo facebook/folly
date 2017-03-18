@@ -21,8 +21,8 @@
 #include <folly/io/async/EventBase.h>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace folly {
 
@@ -84,21 +84,21 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     setVoid(evb, std::move(smartPtr));
   }
 
-  template<typename... Args>
-  void emplace(EventBase& evb, Args... args) {
-    auto smartPtr = std::make_shared<T>(args...);
+  template <typename... Args>
+  void emplace(EventBase& evb, Args&&... args) {
+    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
     setVoid(evb, smartPtr);
   }
 
-  template<typename... Args>
-  T& getOrCreate(EventBase& evb, Args... args) {
+  template <typename... Args>
+  T& getOrCreate(EventBase& evb, Args&&... args) {
     std::lock_guard<std::mutex> lg(evb.localStorageMutex_);
 
     auto it2 = evb.localStorage_.find(key_);
     if (LIKELY(it2 != evb.localStorage_.end())) {
       return *static_cast<T*>(it2->second.get());
     } else {
-      auto smartPtr = std::make_shared<T>(args...);
+      auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
       auto ptr = smartPtr.get();
       setVoidUnlocked(evb, std::move(smartPtr));
       return *ptr;

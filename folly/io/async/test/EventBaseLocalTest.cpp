@@ -87,3 +87,23 @@ TEST(EventBaseLocalTest, getOrCreate) {
   auto creator = []() { return new int(4); };
   EXPECT_EQ(ints.getOrCreateFn(evb2, creator), 4);
 }
+
+using IntPtr = std::unique_ptr<int>;
+
+TEST(EventBaseLocalTest, getOrCreateNoncopyable) {
+  folly::EventBase evb1;
+  folly::EventBaseLocal<IntPtr> ints;
+
+  EXPECT_EQ(ints.getOrCreate(evb1), IntPtr());
+  EXPECT_EQ(ints.getOrCreate(evb1, std::make_unique<int>(5)), IntPtr());
+
+  folly::EventBase evb2;
+  EXPECT_EQ(*ints.getOrCreate(evb2, std::make_unique<int>(5)), 5);
+}
+
+TEST(EventBaseLocalTest, emplaceNoncopyable) {
+  folly::EventBase evb;
+  folly::EventBaseLocal<IntPtr> ints;
+  ints.emplace(evb, std::make_unique<int>(42));
+  EXPECT_EQ(42, **ints.get(evb));
+}
