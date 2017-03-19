@@ -799,10 +799,10 @@ TEST(BucketedTimeSeries, addHistorical) {
 }
 
 TEST(BucketedTimeSeries, reConstructEmptyTimeSeries) {
-  auto verify = [](auto ts) {
-    EXPECT_TRUE(ts.empty());
-    EXPECT_EQ(0, ts.sum());
-    EXPECT_EQ(0, ts.count());
+  auto verify = [](auto timeSeries) {
+    EXPECT_TRUE(timeSeries.empty());
+    EXPECT_EQ(0, timeSeries.sum());
+    EXPECT_EQ(0, timeSeries.count());
   };
 
   // Create a 100 second timeseries with 10 buckets_
