@@ -152,11 +152,7 @@ class CompressionTest
     auto tup = GetParam();
     uncompressedLength_ = uint64_t(1) << std::tr1::get<0>(tup);
     chunks_ = std::tr1::get<1>(tup);
-
-    auto codecType = std::tr1::get<2>(tup);
-    if (hasCodec(codecType)) {
-      codec_ = getCodec(codecType);
-    }
+    codec_ = getCodec(std::tr1::get<2>(tup));
   }
 
   void runSimpleIOBufTest(const DataHolder& dh);
