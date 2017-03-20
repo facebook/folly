@@ -138,7 +138,7 @@ namespace folly {
       }
     };
     std::priority_queue<ScheduledFunc> scheduledFuncs_;
-    TimePoint now_ = now_.min();
+    TimePoint now_ = TimePoint::min();
   };
 
 }
