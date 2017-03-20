@@ -120,6 +120,38 @@ constexpr size_t dataSizeLog2 = 27;  // 128MiB
 RandomDataHolder randomDataHolder(dataSizeLog2);
 ConstantDataHolder constantDataHolder(dataSizeLog2);
 
+// The intersection of the provided codecs & those that are compiled in.
+static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
+  std::vector<CodecType> supported;
+  supported.reserve(v.size());
+
+  std::copy_if(
+      std::begin(v),
+      std::end(v),
+      std::back_inserter(supported),
+      hasCodec);
+
+  supported.shrink_to_fit();
+  return supported;
+}
+
+// All compiled-in compression codecs.
+static std::vector<CodecType> const& availableCodecs() {
+  static std::vector<CodecType> codecs;
+  codecs.reserve(static_cast<size_t>(CodecType::NUM_CODEC_TYPES));
+
+  for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
+    auto type = static_cast<CodecType>(i);
+    if (hasCodec(type)) {
+      codecs.push_back(type);
+    }
+  }
+
+  codecs.shrink_to_fit();
+
+  return codecs;
+}
+
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
   static const struct { CodecType type; bool needsUncompressedLength; }
     expectations[] = {
@@ -144,9 +176,6 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
 
 class CompressionTest
     : public testing::TestWithParam<std::tr1::tuple<int, int, CodecType>> {
- public:
-  static std::vector<CodecType> const& availableCodecs();
-
  protected:
   void SetUp() override {
     auto tup = GetParam();
@@ -166,22 +195,6 @@ class CompressionTest
   size_t chunks_;
   std::unique_ptr<Codec> codec_;
 };
-
-std::vector<CodecType> const& CompressionTest::availableCodecs() {
-  static std::vector<CodecType> codecs;
-  codecs.reserve(static_cast<size_t>(CodecType::NUM_CODEC_TYPES));
-
-  for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
-    auto type = static_cast<CodecType>(i);
-    if (hasCodec(type)) {
-      codecs.push_back(type);
-    }
-  }
-
-  codecs.shrink_to_fit();
-
-  return codecs;
-}
 
 void CompressionTest::runSimpleIOBufTest(const DataHolder& dh) {
   const auto original = split(IOBuf::wrapBuffer(dh.data(uncompressedLength_)));
@@ -264,7 +277,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
-        testing::ValuesIn(CompressionTest::availableCodecs())));
+        testing::ValuesIn(availableCodecs())));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
@@ -320,18 +333,14 @@ INSTANTIATE_TEST_CASE_P(
     CompressionVarintTest,
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
-        testing::Values(
+        testing::ValuesIn(supportedCodecs({
             CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2_VARINT_SIZE)));
+            CodecType::LZMA2_VARINT_SIZE,
+            }))));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
-  void SetUp() override {
-    auto codecType = GetParam();
-    if (hasCodec(codecType)) {
-      codec_ = getCodec(codecType);
-    }
-  }
+  void SetUp() override { codec_ = getCodec(GetParam()); }
 
   void runSimpleTest(const DataHolder& dh);
 
@@ -339,10 +348,6 @@ class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
 };
 
 void CompressionCorruptionTest::runSimpleTest(const DataHolder& dh) {
-  if (!codec_) {
-    return;
-  }
-
   constexpr uint64_t uncompressedLength = 42;
   auto original = IOBuf::wrapBuffer(dh.data(uncompressedLength));
   auto compressed = codec_->compress(original.get());
@@ -385,11 +390,13 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
-    testing::Values(
+    testing::ValuesIn(
         // NO_COMPRESSION can't detect corruption
         // LZ4 can't detect corruption reliably (sigh)
-        CodecType::SNAPPY,
-        CodecType::ZLIB));
+        supportedCodecs({
+            CodecType::SNAPPY,
+            CodecType::ZLIB,
+            })));
 
 }}}  // namespaces
 
