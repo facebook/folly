@@ -513,6 +513,10 @@ unique_ptr<IOBuf> IOBuf::cloneOne() const {
   return make_unique<IOBuf>(cloneOneAsValue());
 }
 
+unique_ptr<IOBuf> IOBuf::cloneCoalesced() const {
+  return make_unique<IOBuf>(cloneCoalescedAsValue());
+}
+
 IOBuf IOBuf::cloneAsValue() const {
   auto tmp = cloneOneAsValue();
 
@@ -535,6 +539,36 @@ IOBuf IOBuf::cloneOneAsValue() const {
       capacity_,
       data_,
       length_);
+}
+
+IOBuf IOBuf::cloneCoalescedAsValue() const {
+  if (!isChained()) {
+    return cloneOneAsValue();
+  }
+  // Coalesce into newBuf
+  const uint64_t newLength = computeChainDataLength();
+  const uint64_t newHeadroom = headroom();
+  const uint64_t newTailroom = prev()->tailroom();
+  const uint64_t newCapacity = newLength + newHeadroom + newTailroom;
+  IOBuf newBuf{CREATE, newCapacity};
+  newBuf.advance(newHeadroom);
+
+  auto current = this;
+  do {
+    if (current->length() > 0) {
+      DCHECK_NOTNULL(current->data());
+      DCHECK_LE(current->length(), newBuf.tailroom());
+      memcpy(newBuf.writableTail(), current->data(), current->length());
+      newBuf.append(current->length());
+    }
+    current = current->next();
+  } while (current != this);
+
+  DCHECK_EQ(newLength, newBuf.length());
+  DCHECK_EQ(newHeadroom, newBuf.headroom());
+  DCHECK_LE(newTailroom, newBuf.tailroom());
+
+  return newBuf;
 }
 
 void IOBuf::unshareOneSlow() {

@@ -1124,6 +1124,26 @@ class IOBuf {
   IOBuf cloneOneAsValue() const;
 
   /**
+   * Return a new unchained IOBuf that may share the same data as this chain.
+   *
+   * If the IOBuf chain is not chained then the new IOBuf will point to the same
+   * underlying data buffer as the original chain. Otherwise, it will clone and
+   * coalesce the IOBuf chain.
+   *
+   * The new IOBuf will have at least as much headroom as the first IOBuf in the
+   * chain, and at least as much tailroom as the last IOBuf in the chain.
+   *
+   * Throws std::bad_alloc on error.
+   */
+  std::unique_ptr<IOBuf> cloneCoalesced() const;
+
+  /**
+   * Similar to cloneCoalesced(). But returns IOBuf by value rather than
+   * heap-allocating it.
+   */
+  IOBuf cloneCoalescedAsValue() const;
+
+  /**
    * Similar to Clone(). But use other as the head node. Other nodes in the
    * chain (if any) will be allocted on heap.
    */

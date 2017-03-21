@@ -531,6 +531,15 @@ TEST(IOBuf, Chaining) {
   gen.seed(fillSeed);
   checkChain(chainClone.get(), gen);
 
+  // cloneCoalesced
+  {
+    auto chainCloneCoalesced = chainClone->cloneCoalesced();
+    EXPECT_EQ(1, chainCloneCoalesced->countChainElements());
+    EXPECT_EQ(fullLength, chainCloneCoalesced->computeChainDataLength());
+    gen.seed(fillSeed);
+    checkChain(chainCloneCoalesced.get(), gen);
+  }
+
   // Coalesce the entire chain
   chainClone->coalesce();
   EXPECT_EQ(1, chainClone->countChainElements());
@@ -1342,4 +1351,46 @@ TEST(IOBuf, CoalesceEmptyBuffers) {
   auto br = b1->coalesce();
 
   EXPECT_TRUE(ByteRange(StringPiece("hello")) == br);
+}
+
+TEST(IOBuf, CloneCoalescedChain) {
+  auto b = IOBuf::createChain(1000, 100);
+  b->advance(10);
+  const uint32_t fillSeed = 0x12345678;
+  boost::mt19937 gen(fillSeed);
+  {
+    auto c = b.get();
+    uint64_t length = c->tailroom();
+    do {
+      length = std::min(length, c->tailroom());
+      c->append(length--);
+      fillBuf(c, gen);
+      c = c->next();
+    } while (c != b.get());
+  }
+  auto c = b->cloneCoalescedAsValue();
+  EXPECT_FALSE(c.isChained()); // Not chained
+  EXPECT_FALSE(c.isSharedOne()); // Not shared
+  EXPECT_EQ(b->headroom(), c.headroom()); // Preserves headroom
+  EXPECT_LE(b->prev()->tailroom(), c.tailroom()); // Preserves minimum tailroom
+  EXPECT_EQ(b->computeChainDataLength(), c.length()); // Same length
+  gen.seed(fillSeed);
+  checkBuf(&c, gen); // Same contents
+}
+
+TEST(IOBuf, CloneCoalescedSingle) {
+  auto b = IOBuf::create(1000);
+  b->advance(10);
+  b->append(900);
+  const uint32_t fillSeed = 0x12345678;
+  boost::mt19937 gen(fillSeed);
+  fillBuf(b.get(), gen);
+
+  auto c = b->cloneCoalesced();
+  EXPECT_FALSE(c->isChained()); // Not chained
+  EXPECT_TRUE(c->isSharedOne()); // Shared
+  EXPECT_EQ(b->buffer(), c->buffer());
+  EXPECT_EQ(b->capacity(), c->capacity());
+  EXPECT_EQ(b->data(), c->data());
+  EXPECT_EQ(b->length(), c->length());
 }

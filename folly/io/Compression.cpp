@@ -303,12 +303,11 @@ uint64_t LZ4Codec::doMaxUncompressedLength() const {
 }
 
 std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
-  std::unique_ptr<IOBuf> clone;
+  IOBuf clone;
   if (data->isChained()) {
     // LZ4 doesn't support streaming, so we have to coalesce
-    clone = data->clone();
-    clone->coalesce();
-    data = clone.get();
+    clone = data->cloneCoalescedAsValue();
+    data = &clone;
   }
 
   uint32_t extraSize = encodeSize() ? kMaxVarintLength64 : 0;
@@ -345,12 +344,11 @@ std::unique_ptr<IOBuf> LZ4Codec::doCompress(const IOBuf* data) {
 std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
     const IOBuf* data,
     uint64_t uncompressedLength) {
-  std::unique_ptr<IOBuf> clone;
+  IOBuf clone;
   if (data->isChained()) {
     // LZ4 doesn't support streaming, so we have to coalesce
-    clone = data->clone();
-    clone->coalesce();
-    data = clone.get();
+    clone = data->cloneCoalescedAsValue();
+    data = &clone;
   }
 
   folly::io::Cursor cursor(data);
