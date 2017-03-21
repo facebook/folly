@@ -144,6 +144,21 @@ TEST(SortedVectorTypes, SimpleSetTest) {
   EXPECT_TRUE(cpy2 == cpy);
 }
 
+TEST(SortedVectorTypes, BadHints) {
+  for (int toInsert = -1; toInsert <= 7; ++toInsert) {
+    for (int hintPos = 0; hintPos <= 4; ++hintPos) {
+      sorted_vector_set<int> s;
+      for (int i = 0; i <= 3; ++i) {
+        s.insert(i * 2);
+      }
+      s.insert(s.begin() + hintPos, toInsert);
+      size_t expectedSize = (toInsert % 2) == 0 ? 4 : 5;
+      EXPECT_EQ(s.size(), expectedSize);
+      check_invariant(s);
+    }
+  }
+}
+
 TEST(SortedVectorTypes, SimpleMapTest) {
   sorted_vector_map<int,float> m;
   for (int i = 0; i < 1000; ++i) {

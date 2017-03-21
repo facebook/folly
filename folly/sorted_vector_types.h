@@ -122,22 +122,20 @@ namespace detail {
   {
     const typename OurContainer::value_compare& cmp(sorted.value_comp());
     if (hint == cont.end() || cmp(value, *hint)) {
-      if (hint == cont.begin()) {
-        po.increase_capacity(cont, cont.begin());
-        return cont.insert(cont.begin(), std::move(value));
-      }
-      if (cmp(*(hint - 1), value)) {
+      if (hint == cont.begin() || cmp(*(hint - 1), value)) {
         hint = po.increase_capacity(cont, hint);
         return cont.insert(hint, std::move(value));
+      } else {
+        return sorted.insert(std::move(value)).first;
       }
-      return sorted.insert(std::move(value)).first;
     }
 
     if (cmp(*hint, value)) {
       if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
-        typename OurContainer::iterator it =
-          po.increase_capacity(cont, hint + 1);
-        return cont.insert(it, std::move(value));
+        hint = po.increase_capacity(cont, hint + 1);
+        return cont.insert(hint, std::move(value));
+      } else {
+        return sorted.insert(std::move(value)).first;
       }
     }
 
