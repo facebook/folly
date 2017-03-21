@@ -3094,6 +3094,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // Set up listening socket
   int lfd = fsp::socket(AF_UNIX, SOCK_STREAM, 0);
   ASSERT_NE(lfd, -1);
+  SCOPE_EXIT { close(lfd); };
   ASSERT_NE(bind(lfd, (struct sockaddr*)&addr, sizeof(addr)), -1)
       << "Bind failed: " << errno;
 
@@ -3111,6 +3112,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // Accept the connection
   int sfd = accept(lfd, nullptr, nullptr);
   ASSERT_NE(sfd, -1);
+  SCOPE_EXIT { close(sfd); };
 
   // Instantiate AsyncSocket object for the connected socket
   EventBase evb;
@@ -3119,7 +3121,10 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   // Open a temporary file and write a magic string to it
   // We'll transfer the file handle to test the message parameters
   // callback logic.
-  int tmpfd = open("/var/tmp", O_RDWR | O_TMPFILE);
+  TemporaryFile file(StringPiece(),
+                     fs::path(),
+                     TemporaryFile::Scope::UNLINK_IMMEDIATELY);
+  int tmpfd = file.fd();
   ASSERT_NE(tmpfd, -1) << "Failed to open a temporary file";
   std::string magicString("Magic string");
   ASSERT_EQ(write(tmpfd, magicString.c_str(), magicString.length()),
@@ -3178,6 +3183,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   int fd = 0;
   memcpy(&fd, CMSG_DATA(&r_u.cmh), sizeof(int));
   ASSERT_NE(fd, 0);
+  SCOPE_EXIT { close(fd); };
 
   std::vector<uint8_t> transferredMagicString(magicString.length() + 1, 0);
 
