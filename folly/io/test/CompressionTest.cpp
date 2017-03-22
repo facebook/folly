@@ -123,7 +123,6 @@ ConstantDataHolder constantDataHolder(dataSizeLog2);
 // The intersection of the provided codecs & those that are compiled in.
 static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
   std::vector<CodecType> supported;
-  supported.reserve(v.size());
 
   std::copy_if(
       std::begin(v),
@@ -131,14 +130,12 @@ static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
       std::back_inserter(supported),
       hasCodec);
 
-  supported.shrink_to_fit();
   return supported;
 }
 
 // All compiled-in compression codecs.
 static std::vector<CodecType> const& availableCodecs() {
   static std::vector<CodecType> codecs;
-  codecs.reserve(static_cast<size_t>(CodecType::NUM_CODEC_TYPES));
 
   for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
     auto type = static_cast<CodecType>(i);
@@ -146,8 +143,6 @@ static std::vector<CodecType> const& availableCodecs() {
       codecs.push_back(type);
     }
   }
-
-  codecs.shrink_to_fit();
 
   return codecs;
 }
