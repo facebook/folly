@@ -41,7 +41,7 @@ void foo(const po::variables_map& options,
 }  // namespace
 
 int main(int argc, char *argv[]) {
-  folly::NestedCommandLineApp app("", "0.1", init);
+  folly::NestedCommandLineApp app("", "0.1", "", "", init);
   app.addGFlags();
   app.addCommand("foo", "[args...]", "Do some foo", "Does foo", foo)
     .add_options()
