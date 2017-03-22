@@ -101,19 +101,20 @@ class SWMRListSet {
     /* Acquire two hazard pointers for hand-over-hand traversal. */
     hazptr_owner<Node> hptr_prev(domain_);
     hazptr_owner<Node> hptr_curr(domain_);
-    T elem;
-    bool done = false;
-    while (!done) {
+    while (true) {
       auto prev = &head_;
       auto curr = prev->load();
       while (true) {
-        if (!curr) { done = true; break; }
+        if (!curr) { return false; }
         if (!hptr_curr.try_protect(curr, *prev))
           break;
         auto next = curr->next_.load();
-        elem = curr->elem_;
         if (prev->load() != curr) break;
-        if (elem >= val) { done = true; break; }
+        if (curr->elem_ == val) {
+            return true;
+        } else if (!(curr->elem_ < val)) {
+            return false;  // because the list is sorted
+        }
         prev = &(curr->next_);
         curr = next;
         /* Swap does not change the values of the owned hazard
@@ -129,7 +130,6 @@ class SWMRListSet {
         swap(hptr_curr, hptr_prev);
       }
     }
-    return elem == val;
     /* The hazard pointers are released automatically. */
   }
 };
