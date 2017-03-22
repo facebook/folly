@@ -134,8 +134,8 @@ static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
 }
 
 // All compiled-in compression codecs.
-static std::vector<CodecType> const& availableCodecs() {
-  static std::vector<CodecType> codecs;
+static std::vector<CodecType> availableCodecs() {
+  std::vector<CodecType> codecs;
 
   for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
     auto type = static_cast<CodecType>(i);
