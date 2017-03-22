@@ -67,6 +67,8 @@ class NestedCommandLineApp {
   explicit NestedCommandLineApp(
       std::string programName = std::string(),
       std::string version = std::string(),
+      std::string programHeading = std::string(),
+      std::string programHelpFooter = std::string(),
       InitFunction initFunction = InitFunction());
 
   /**
@@ -142,6 +144,8 @@ class NestedCommandLineApp {
       const std::vector<std::string>& args);
 
   std::string programName_;
+  std::string programHeading_;
+  std::string programHelpFooter_;
   std::string version_;
   InitFunction initFunction_;
   boost::program_options::options_description globalOptions_;
