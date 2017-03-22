@@ -38,11 +38,11 @@ namespace folly {
 SingletonVault::Type SingletonVault::defaultVaultType() {
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
   bool isPython = dlsym(RTLD_DEFAULT, "Py_Main");
-  bool isHaskel = &::hs_init_weak || dlsym(RTLD_DEFAULT, "hs_init");
+  bool isHaskell = &::hs_init_weak || dlsym(RTLD_DEFAULT, "hs_init");
   bool isJVM = dlsym(RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
   bool isD = dlsym(RTLD_DEFAULT, "_d_run_main");
 
-  return isPython || isHaskel || isJVM || isD ? Type::Relaxed : Type::Strict;
+  return (isPython || isHaskell || isJVM || isD) ? Type::Relaxed : Type::Strict;
 #else
   return Type::Relaxed;
 #endif
