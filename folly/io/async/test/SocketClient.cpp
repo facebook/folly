@@ -18,7 +18,7 @@
 #include <iostream>
 
 #include <folly/ExceptionWrapper.h>
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 
 using namespace folly;
 

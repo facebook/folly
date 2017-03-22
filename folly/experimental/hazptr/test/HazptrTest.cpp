@@ -21,7 +21,7 @@
 #include <folly/experimental/hazptr/debug.h>
 #include <folly/experimental/hazptr/hazptr.h>
 
-#include <gflags/gflags.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 #include <thread>
