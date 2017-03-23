@@ -142,7 +142,7 @@ TEST(IOBuf, Cursor) {
   c.write((uint8_t)40); // OK
   try {
     c.write((uint8_t)10); // Bad write, checked should except.
-    EXPECT_EQ(true, false);
+    EXPECT_TRUE(false);
   } catch (...) {
   }
 }

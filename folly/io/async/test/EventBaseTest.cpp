@@ -1651,7 +1651,7 @@ TEST(EventBaseTest, EventBaseThreadLoop) {
   });
   base.loop();
 
-  ASSERT_EQ(true, ran);
+  ASSERT_TRUE(ran);
 }
 
 TEST(EventBaseTest, EventBaseThreadName) {

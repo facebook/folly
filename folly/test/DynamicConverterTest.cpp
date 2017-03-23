@@ -296,11 +296,11 @@ TEST(DynamicConverter, consts) {
 
   dynamic d3 = true;
   auto i3 = convertTo<const bool>(d3);
-  EXPECT_EQ(true, i3);
+  EXPECT_TRUE(i3);
 
   dynamic d4 = "true";
   auto i4 = convertTo<const bool>(d4);
-  EXPECT_EQ(true, i4);
+  EXPECT_TRUE(i4);
 
   dynamic d5 = dynamic::array(1, 2);
   auto i5 = convertTo<const std::pair<const int, const int>>(d5);
