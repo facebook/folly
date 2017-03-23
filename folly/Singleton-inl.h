@@ -153,14 +153,18 @@ void SingletonHolder<T>::destroyInstance() {
   instance_copy_.reset();
   if (destroy_baton_) {
     constexpr std::chrono::seconds kDestroyWaitTime{5};
-    auto wait_result = destroy_baton_->timed_wait(
-      std::chrono::steady_clock::now() + kDestroyWaitTime);
-    if (!wait_result) {
+    auto last_reference_released = destroy_baton_->timed_wait(
+        std::chrono::steady_clock::now() + kDestroyWaitTime);
+    if (last_reference_released) {
+      teardown_(instance_ptr_);
+    } else {
       print_destructor_stack_trace_->store(true);
       LOG(ERROR) << "Singleton of type " << type().name() << " has a "
                  << "living reference at destroyInstances time; beware! Raw "
                  << "pointer is " << instance_ptr_ << ". It is very likely "
                  << "that some other singleton is holding a shared_ptr to it. "
+                 << "This singleton will be leaked (even if a shared_ptr to it "
+                 << "is eventually released)."
                  << "Make sure dependencies between these singletons are "
                  << "properly defined.";
     }
@@ -242,30 +246,28 @@ void SingletonHolder<T>::createInstance() {
   auto destroy_baton = std::make_shared<folly::Baton<>>();
   auto print_destructor_stack_trace =
     std::make_shared<std::atomic<bool>>(false);
-  auto teardown = teardown_;
 
   // Can't use make_shared -- no support for a custom deleter, sadly.
   std::shared_ptr<T> instance(
-    create_(),
-    [destroy_baton, print_destructor_stack_trace, teardown, type = type()]
-    (T* instance_ptr) mutable {
-      teardown(instance_ptr);
-      destroy_baton->post();
-      if (print_destructor_stack_trace->load()) {
-        std::string output = "Singleton " + type.name() + " was destroyed.\n";
+      create_(),
+      [ destroy_baton, print_destructor_stack_trace, type = type() ](
+          T*) mutable {
+        destroy_baton->post();
+        if (print_destructor_stack_trace->load()) {
+          std::string output = "Singleton " + type.name() + " was released.\n";
 
-        auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
-        auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
-        if (stack_trace.empty()) {
-          output += "Failed to get destructor stack trace.";
-        } else {
-          output += "Destructor stack trace:\n";
-          output += stack_trace;
+          auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+          auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+          if (stack_trace.empty()) {
+            output += "Failed to get release stack trace.";
+          } else {
+            output += "Release stack trace:\n";
+            output += stack_trace;
+          }
+
+          LOG(ERROR) << output;
         }
-
-        LOG(ERROR) << output;
-      }
-    });
+      });
 
   // We should schedule destroyInstances() only after the singleton was
   // created. This will ensure it will be destroyed before singletons,

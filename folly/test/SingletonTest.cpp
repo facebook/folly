@@ -674,3 +674,46 @@ TEST(Singleton, ConcurrentCreationDestruction) {
 
   needyThread.join();
 }
+
+struct MainThreadDestructorTag {};
+template <typename T, typename Tag = detail::DefaultTag>
+using SingletonMainThreadDestructor =
+    Singleton<T, Tag, MainThreadDestructorTag>;
+
+struct ThreadLoggingSingleton {
+  ThreadLoggingSingleton() {
+    initThread = std::this_thread::get_id();
+  }
+
+  ~ThreadLoggingSingleton() {
+    destroyThread = std::this_thread::get_id();
+  }
+
+  static std::thread::id initThread;
+  static std::thread::id destroyThread;
+};
+std::thread::id ThreadLoggingSingleton::initThread{};
+std::thread::id ThreadLoggingSingleton::destroyThread{};
+
+TEST(Singleton, MainThreadDestructor) {
+  auto& vault = *SingletonVault::singleton<MainThreadDestructorTag>();
+  SingletonMainThreadDestructor<ThreadLoggingSingleton> singleton;
+
+  vault.registrationComplete();
+  EXPECT_EQ(std::thread::id(), ThreadLoggingSingleton::initThread);
+
+  singleton.try_get();
+  EXPECT_EQ(std::this_thread::get_id(), ThreadLoggingSingleton::initThread);
+
+  std::thread t([instance = singleton.try_get()] {
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::milliseconds{100});
+  });
+
+  EXPECT_EQ(std::thread::id(), ThreadLoggingSingleton::destroyThread);
+
+  vault.destroyInstances();
+  EXPECT_EQ(std::this_thread::get_id(), ThreadLoggingSingleton::destroyThread);
+
+  t.join();
+}
