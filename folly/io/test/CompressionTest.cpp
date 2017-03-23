@@ -120,17 +120,53 @@ constexpr size_t dataSizeLog2 = 27;  // 128MiB
 RandomDataHolder randomDataHolder(dataSizeLog2);
 ConstantDataHolder constantDataHolder(dataSizeLog2);
 
+// The intersection of the provided codecs & those that are compiled in.
+static std::vector<CodecType> supportedCodecs(std::vector<CodecType> const& v) {
+  std::vector<CodecType> supported;
+
+  std::copy_if(
+      std::begin(v),
+      std::end(v),
+      std::back_inserter(supported),
+      hasCodec);
+
+  return supported;
+}
+
+// All compiled-in compression codecs.
+static std::vector<CodecType> availableCodecs() {
+  std::vector<CodecType> codecs;
+
+  for (size_t i = 0; i < static_cast<size_t>(CodecType::NUM_CODEC_TYPES); ++i) {
+    auto type = static_cast<CodecType>(i);
+    if (hasCodec(type)) {
+      codecs.push_back(type);
+    }
+  }
+
+  return codecs;
+}
+
 TEST(CompressionTestNeedsUncompressedLength, Simple) {
-  EXPECT_FALSE(getCodec(CodecType::NO_COMPRESSION)->needsUncompressedLength());
-  EXPECT_TRUE(getCodec(CodecType::LZ4)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::SNAPPY)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::ZLIB)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::LZ4_VARINT_SIZE)->needsUncompressedLength());
-  EXPECT_TRUE(getCodec(CodecType::LZMA2)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::LZMA2_VARINT_SIZE)
-    ->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::ZSTD)->needsUncompressedLength());
-  EXPECT_FALSE(getCodec(CodecType::GZIP)->needsUncompressedLength());
+  static const struct { CodecType type; bool needsUncompressedLength; }
+    expectations[] = {
+      { CodecType::NO_COMPRESSION, false },
+      { CodecType::LZ4, true },
+      { CodecType::SNAPPY, false },
+      { CodecType::ZLIB, false },
+      { CodecType::LZ4_VARINT_SIZE, false },
+      { CodecType::LZMA2, true },
+      { CodecType::LZMA2_VARINT_SIZE, false },
+      { CodecType::ZSTD, false },
+      { CodecType::GZIP, false },
+    };
+
+  for (auto const& test : expectations) {
+    if (hasCodec(test.type)) {
+      EXPECT_EQ(getCodec(test.type)->needsUncompressedLength(),
+                test.needsUncompressedLength);
+    }
+  }
 }
 
 class CompressionTest
@@ -236,16 +272,7 @@ INSTANTIATE_TEST_CASE_P(
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
         testing::Values(1, 2, 3, 8, 65),
-        testing::Values(
-            CodecType::NO_COMPRESSION,
-            CodecType::LZ4,
-            CodecType::SNAPPY,
-            CodecType::ZLIB,
-            CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2,
-            CodecType::LZMA2_VARINT_SIZE,
-            CodecType::ZSTD,
-            CodecType::GZIP)));
+        testing::ValuesIn(availableCodecs())));
 
 class CompressionVarintTest
     : public testing::TestWithParam<std::tr1::tuple<int, CodecType>> {
@@ -301,9 +328,10 @@ INSTANTIATE_TEST_CASE_P(
     CompressionVarintTest,
     testing::Combine(
         testing::Values(0, 1, 12, 22, 25, 27),
-        testing::Values(
+        testing::ValuesIn(supportedCodecs({
             CodecType::LZ4_VARINT_SIZE,
-            CodecType::LZMA2_VARINT_SIZE)));
+            CodecType::LZMA2_VARINT_SIZE,
+            }))));
 
 class CompressionCorruptionTest : public testing::TestWithParam<CodecType> {
  protected:
@@ -357,11 +385,13 @@ TEST_P(CompressionCorruptionTest, ConstantData) {
 INSTANTIATE_TEST_CASE_P(
     CompressionCorruptionTest,
     CompressionCorruptionTest,
-    testing::Values(
+    testing::ValuesIn(
         // NO_COMPRESSION can't detect corruption
         // LZ4 can't detect corruption reliably (sigh)
-        CodecType::SNAPPY,
-        CodecType::ZLIB));
+        supportedCodecs({
+            CodecType::SNAPPY,
+            CodecType::ZLIB,
+            })));
 
 }}}  // namespaces
 

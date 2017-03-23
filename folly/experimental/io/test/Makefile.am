@@ -1,12 +1,12 @@
 ACLOCAL_AMFLAGS = -I m4
 
-TESTS = iobuf_test \
-        iobuf_cursor_test
+CPPFLAGS = -I$(top_srcdir)/test/gtest/googletest/include
+ldadd = $(top_builddir)/test/libfollytestmain.la
 
-check_PROGRAMS = $(TESTS)
+check_PROGRAMS = \
+	fs_util_test
 
-iobuf_test_SOURCES = IOBufTest.cpp
-iobuf_test_LDADD = $(top_builddir)/libfollyio.la
+TESTS = $(check_PROGRAMS)
 
-iobuf_cursor_test_SOURCES = IOBufCursorTest.cpp
-iobuf_cursor_test_LDADD = $(top_builddir)/libfollyio.la $(top_builddir)/libfollybenchmark.la
+fs_util_test_SOURCES = FsUtilTest.cpp
+fs_util_test_LDADD = $(ldadd)
