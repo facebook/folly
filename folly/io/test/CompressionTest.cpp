@@ -392,6 +392,7 @@ INSTANTIATE_TEST_CASE_P(
         supportedCodecs({
             CodecType::SNAPPY,
             CodecType::ZLIB,
+            CodecType::ZSTD,
             CodecType::LZ4_FRAME,
         })));
 }}}  // namespaces
