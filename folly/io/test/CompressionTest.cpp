@@ -159,6 +159,7 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
       { CodecType::LZMA2_VARINT_SIZE, false },
       { CodecType::ZSTD, false },
       { CodecType::GZIP, false },
+      { CodecType::LZ4_FRAME, false },
     };
 
   for (auto const& test : expectations) {
@@ -391,8 +392,8 @@ INSTANTIATE_TEST_CASE_P(
         supportedCodecs({
             CodecType::SNAPPY,
             CodecType::ZLIB,
-            })));
-
+            CodecType::LZ4_FRAME,
+        })));
 }}}  // namespaces
 
 int main(int argc, char *argv[]) {

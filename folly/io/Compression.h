@@ -85,7 +85,13 @@ enum class CodecType {
    */
   GZIP = 9,
 
-  NUM_CODEC_TYPES = 10,
+  /**
+   * Use LZ4 frame compression.
+   * Levels supported: 0 = fast, 16 = best; default = 0
+   */
+  LZ4_FRAME = 10,
+
+  NUM_CODEC_TYPES = 11,
 };
 
 class Codec {
