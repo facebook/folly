@@ -61,12 +61,14 @@ bool RequestContext::hasContextData(const std::string& val) const {
 }
 
 RequestData* RequestContext::getContextData(const std::string& val) {
-  return get_ref_default(*data_.rlock(), val, nullptr).get();
+  const std::unique_ptr<RequestData> dflt{nullptr};
+  return get_ref_default(*data_.rlock(), val, dflt).get();
 }
 
 const RequestData* RequestContext::getContextData(
     const std::string& val) const {
-  return get_ref_default(*data_.rlock(), val, nullptr).get();
+  const std::unique_ptr<RequestData> dflt{nullptr};
+  return get_ref_default(*data_.rlock(), val, dflt).get();
 }
 
 void RequestContext::onSet() {
