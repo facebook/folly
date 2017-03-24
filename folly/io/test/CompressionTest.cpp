@@ -155,7 +155,7 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
       { CodecType::SNAPPY, false },
       { CodecType::ZLIB, false },
       { CodecType::LZ4_VARINT_SIZE, false },
-      { CodecType::LZMA2, true },
+      { CodecType::LZMA2, false },
       { CodecType::LZMA2_VARINT_SIZE, false },
       { CodecType::ZSTD, false },
       { CodecType::GZIP, false },
@@ -392,6 +392,7 @@ INSTANTIATE_TEST_CASE_P(
         supportedCodecs({
             CodecType::SNAPPY,
             CodecType::ZLIB,
+            CodecType::LZMA2,
             CodecType::ZSTD,
             CodecType::LZ4_FRAME,
         })));

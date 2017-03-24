@@ -973,7 +973,7 @@ LZMA2Codec::LZMA2Codec(int level, CodecType type) : Codec(type) {
 }
 
 bool LZMA2Codec::doNeedsUncompressedLength() const {
-  return !encodeSize();
+  return false;
 }
 
 uint64_t LZMA2Codec::doMaxUncompressedLength() const {
@@ -1104,27 +1104,25 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
   SCOPE_EXIT { lzma_end(&stream); };
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20; // 64MiB
+  constexpr uint32_t defaultBufferLength = uint32_t(256) << 10; // 256 KiB
 
   folly::io::Cursor cursor(data);
-  uint64_t actualUncompressedLength;
   if (encodeSize()) {
-    actualUncompressedLength = decodeVarintFromCursor(cursor);
+    const uint64_t actualUncompressedLength = decodeVarintFromCursor(cursor);
     if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
         uncompressedLength != actualUncompressedLength) {
       throw std::runtime_error("LZMA2Codec: invalid uncompressed length");
     }
-  } else {
-    actualUncompressedLength = uncompressedLength;
-    DCHECK_NE(actualUncompressedLength, UNKNOWN_UNCOMPRESSED_LENGTH);
+    uncompressedLength = actualUncompressedLength;
   }
 
   auto out = addOutputBuffer(
       &stream,
-      (actualUncompressedLength <= maxSingleStepLength ?
-       actualUncompressedLength :
-       defaultBufferLength));
+      ((uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
+        uncompressedLength <= maxSingleStepLength)
+           ? uncompressedLength
+           : defaultBufferLength));
 
   bool streamEnd = false;
   auto buf = cursor.peekBytes();
@@ -1151,9 +1149,10 @@ std::unique_ptr<IOBuf> LZMA2Codec::doUncompress(const IOBuf* data,
 
   out->prev()->trimEnd(stream.avail_out);
 
-  if (actualUncompressedLength != stream.total_out) {
-    throw std::runtime_error(to<std::string>(
-        "LZMA2Codec: invalid uncompressed length"));
+  if (uncompressedLength != UNKNOWN_UNCOMPRESSED_LENGTH &&
+      uncompressedLength != stream.total_out) {
+    throw std::runtime_error(
+        to<std::string>("LZMA2Codec: invalid uncompressed length"));
   }
 
   return out;
