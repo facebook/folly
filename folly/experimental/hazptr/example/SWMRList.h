@@ -92,7 +92,9 @@ class SWMRListSet {
     locate_lower_bound(v, prev);
     auto curr = prev->load();
     if (!curr || curr->elem_ != v) return false;
-    prev->store(curr->next_.load());
+    Node *curr_next = curr->next_.load();
+    prev->store(curr_next);  // Patch up the actual list...
+    curr->next_.store(nullptr);  // ...and only then null out the removed node.
     curr->retire(domain_);
     return true;
   }
