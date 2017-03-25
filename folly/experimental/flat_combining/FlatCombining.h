@@ -197,15 +197,16 @@ class FlatCombining {
 
     template <typename Func>
     void setFn(Func&& fn) {
+      static_assert(
+          std::is_nothrow_constructible<
+              folly::Function<void()>,
+              _t<std::decay<Func>>>::value,
+          "Try using a smaller function object that can fit in folly::Function "
+          "without allocation, or use the custom interface of requestFC() to "
+          "manage the requested function's arguments and results explicitly "
+          "in a custom request structure without allocation.");
       fn_ = std::forward<Func>(fn);
       assert(fn_);
-      // If the following assertion is triggered, the user should
-      // either change the provided function, i.e., fn, to fit in
-      // folly::Function without allocation or use the custom
-      // interface to request combining for fn and manage its
-      // arguments (and results, if any) explicitly in a custom
-      // request structure.
-      assert(!fn_.hasAllocatedMemory());
     }
 
     void clearFn() {
@@ -274,6 +275,13 @@ class FlatCombining {
   // Give the caller exclusive access.
   void acquireExclusive() {
     m_.lock();
+  }
+
+  // Give the caller exclusive access through a lock holder.
+  // No need for explicit release.
+  template <typename LockHolder>
+  void acquireExclusive(LockHolder& l) {
+    l = LockHolder(m_);
   }
 
   // Try to give the caller exclusive access. Returns true iff successful.

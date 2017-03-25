@@ -104,7 +104,21 @@ uint64_t fc_test(
       }
 
       if (excl) {
-        // test of unstructured exclusive access
+        // test of exclusive access through a lock holder
+        {
+          std::unique_lock<Mutex> l;
+          ex.acquireExclusive(l);
+          CHECK(!mutex);
+          mutex = true;
+          VLOG(2) << tid << " " << ex.getVal() << " ...........";
+          using namespace std::chrono_literals;
+          /* sleep override */ // for coverage
+          std::this_thread::sleep_for(10ms);
+          VLOG(2) << tid << " " << ex.getVal() << " ===========";
+          CHECK(mutex);
+          mutex = false;
+        }
+        // test of explicit acquisition and release of exclusive access
         ex.acquireExclusive();
         {
           CHECK(!mutex);
