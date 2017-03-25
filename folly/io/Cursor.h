@@ -200,14 +200,36 @@ class CursorBase {
   }
 
   template <class T>
-  typename std::enable_if<std::is_arithmetic<T>::value, T>::type read() {
-    T val;
+  typename std::enable_if<std::is_arithmetic<T>::value, bool>::type tryRead(
+      T& val) {
     if (LIKELY(length() >= sizeof(T))) {
       val = loadUnaligned<T>(data());
       offset_ += sizeof(T);
       advanceBufferIfEmpty();
-    } else {
-      pullSlow(&val, sizeof(T));
+      return true;
+    }
+    return pullAtMostSlow(&val, sizeof(T)) == sizeof(T);
+  }
+
+  template <class T>
+  bool tryReadBE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::big(val);
+    return result;
+  }
+
+  template <class T>
+  bool tryReadLE(T& val) {
+    const bool result = tryRead(val);
+    val = Endian::little(val);
+    return result;
+  }
+
+  template <class T>
+  T read() {
+    T val;
+    if (!tryRead(val)) {
+      std::__throw_out_of_range("underflow");
     }
     return val;
   }

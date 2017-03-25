@@ -1032,3 +1032,86 @@ TEST(IOBuf, TestRetreatOperators) {
   EXPECT_EQ(retreated.totalLength(), 5);
   EXPECT_EQ(curs.totalLength(), 0);
 }
+
+TEST(IOBuf, tryRead) {
+  unique_ptr<IOBuf> iobuf1(IOBuf::create(6));
+  iobuf1->append(6);
+  unique_ptr<IOBuf> iobuf2(IOBuf::create(24));
+  iobuf2->append(24);
+
+  iobuf1->prependChain(std::move(iobuf2));
+
+  EXPECT_TRUE(iobuf1->isChained());
+
+  RWPrivateCursor wcursor(iobuf1.get());
+  Cursor rcursor(iobuf1.get());
+  wcursor.writeLE((uint32_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint64_t)1);
+  wcursor.writeLE((uint16_t)1);
+  EXPECT_EQ(0, wcursor.totalLength());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+  EXPECT_EQ(0u, rcursor.readLE<uint32_t>());
+
+  EXPECT_EQ(1u, rcursor.readLE<uint32_t>());
+  rcursor.skip(4);
+
+  uint32_t val;
+  EXPECT_TRUE(rcursor.tryRead(val));
+  EXPECT_EQ(1, val);
+  EXPECT_TRUE(rcursor.tryRead(val));
+
+  EXPECT_EQ(0, val);
+  EXPECT_FALSE(rcursor.tryRead(val));
+}
+
+TEST(IOBuf, tryReadLE) {
+  IOBuf buf{IOBuf::CREATE, 4};
+  buf.append(4);
+
+  RWPrivateCursor wcursor(&buf);
+  Cursor rcursor(&buf);
+
+  const uint32_t expected = 0x01020304;
+  wcursor.writeLE(expected);
+  uint32_t actual;
+  EXPECT_TRUE(rcursor.tryReadLE(actual));
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(IOBuf, tryReadBE) {
+  IOBuf buf{IOBuf::CREATE, 4};
+  buf.append(4);
+
+  RWPrivateCursor wcursor(&buf);
+  Cursor rcursor(&buf);
+
+  const uint32_t expected = 0x01020304;
+  wcursor.writeBE(expected);
+  uint32_t actual;
+  EXPECT_TRUE(rcursor.tryReadBE(actual));
+  EXPECT_EQ(expected, actual);
+}
+
+TEST(IOBuf, tryReadConsumesAllInputOnFailure) {
+  IOBuf buf{IOBuf::CREATE, 2};
+  buf.append(2);
+
+  Cursor rcursor(&buf);
+  uint32_t val;
+  EXPECT_FALSE(rcursor.tryRead(val));
+  EXPECT_EQ(0, rcursor.totalLength());
+}
+
+TEST(IOBuf, readConsumesAllInputOnFailure) {
+  IOBuf buf{IOBuf::CREATE, 2};
+  buf.append(2);
+
+  Cursor rcursor(&buf);
+  EXPECT_THROW(rcursor.read<uint32_t>(), std::out_of_range);
+  EXPECT_EQ(0, rcursor.totalLength());
+}
