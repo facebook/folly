@@ -19,6 +19,7 @@
 #include <map>
 #include <unordered_map>
 
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -137,4 +138,24 @@ TEST(MapUtil, get_ptr_path_mixed) {
   EXPECT_EQ(8, *get_ptr(cm, "a", 1, "b"));
   EXPECT_TRUE(get_ptr(cm, "a", 1, "b"));
   EXPECT_FALSE(get_ptr(cm, "b", 1, "b"));
+}
+
+namespace {
+template <typename T, typename = void>
+struct Compiles : std::false_type {};
+
+template <typename T>
+struct Compiles<
+    T,
+    void_t<decltype(get_ref_default(
+        std::declval<std::map<int, typename std::decay<T>::type>>(),
+        std::declval<int>(),
+        std::declval<T>()))>> : std::true_type {};
+}
+
+TEST(MapUtil, get_default_temporary) {
+  EXPECT_TRUE(Compiles<const int&>::value);
+  EXPECT_TRUE(Compiles<int&>::value);
+  EXPECT_FALSE(Compiles<const int&&>::value);
+  EXPECT_FALSE(Compiles<int&&>::value);
 }

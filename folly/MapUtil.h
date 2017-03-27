@@ -107,6 +107,24 @@ const typename Map::mapped_type& get_ref_default(
 }
 
 /**
+ * Passing a temporary default value returns a dangling reference when it is
+ * returned. Lifetime extension is broken by the indirection.
+ * The caller must ensure that the default value outlives the reference returned
+ * by get_ref_default().
+ */
+template <class Map>
+const typename Map::mapped_type& get_ref_default(
+    const Map& map,
+    const typename Map::key_type& key,
+    typename Map::mapped_type&& dflt) = delete;
+
+template <class Map>
+const typename Map::mapped_type& get_ref_default(
+    const Map& map,
+    const typename Map::key_type& key,
+    const typename Map::mapped_type&& dflt) = delete;
+
+/**
  * Given a map and a key, return a reference to the value corresponding to the
  * key in the map, or the given default reference if the key doesn't exist in
  * the map.
