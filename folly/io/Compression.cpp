@@ -18,8 +18,10 @@
 
 #if FOLLY_HAVE_LIBLZ4
 #include <lz4.h>
-#include <lz4frame.h>
 #include <lz4hc.h>
+#if LZ4_VERSION_NUMBER >= 10301
+#include <lz4frame.h>
+#endif
 #endif
 
 #include <glog/logging.h>
@@ -384,6 +386,8 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
   return out;
 }
 
+#if LZ4_VERSION_NUMBER >= 10301
+
 class LZ4FrameCodec final : public Codec {
  public:
   static std::unique_ptr<Codec> create(int level, CodecType type);
@@ -400,7 +404,7 @@ class LZ4FrameCodec final : public Codec {
   void resetDCtx();
 
   int level_;
-  LZ4F_dctx* dctx_{nullptr};
+  LZ4F_decompressionContext_t dctx_{nullptr};
   bool dirty_{false};
 };
 
@@ -537,6 +541,7 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
   return queue.move();
 }
 
+#endif // LZ4_VERSION_NUMBER >= 10301
 #endif // FOLLY_HAVE_LIBLZ4
 
 #if FOLLY_HAVE_LIBSNAPPY
@@ -1430,7 +1435,7 @@ static constexpr CodecFactory
         nullptr,
 #endif
 
-#if FOLLY_HAVE_LIBLZ4
+#if (FOLLY_HAVE_LIBLZ4 && LZ4_VERSION_NUMBER >= 10301)
         LZ4FrameCodec::create,
 #else
         nullptr,
