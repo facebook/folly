@@ -113,12 +113,17 @@ private:
     out_ += '{';
     indent();
     newline();
-    if (opts_.sort_keys) {
+    if (opts_.sort_keys || opts_.sort_keys_by) {
       using ref = std::reference_wrapper<decltype(o.items())::value_type const>;
       std::vector<ref> refs(o.items().begin(), o.items().end());
-      std::sort(refs.begin(), refs.end(), [](ref a, ref b) {
+
+      using SortByRef = FunctionRef<bool(dynamic const&, dynamic const&)>;
+      auto const& sort_keys_by = opts_.sort_keys_by
+          ? SortByRef(opts_.sort_keys_by)
+          : SortByRef(std::less<dynamic>());
+      std::sort(refs.begin(), refs.end(), [&](ref a, ref b) {
         // Only compare keys.  No ordering among identical keys.
-        return a.get().first < b.get().first;
+        return sort_keys_by(a.get().first, b.get().first);
       });
       printKVPairs(refs.cbegin(), refs.cend());
     } else {

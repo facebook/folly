@@ -438,9 +438,16 @@ TEST(Json, ParseNumbersAsStrings) {
 }
 
 TEST(Json, SortKeys) {
-  folly::json::serialization_opts opts_on, opts_off;
+  folly::json::serialization_opts opts_on, opts_off, opts_custom_sort;
   opts_on.sort_keys = true;
   opts_off.sort_keys = false;
+
+  opts_custom_sort.sort_keys = false; // should not be required
+  opts_custom_sort.sort_keys_by = [](
+      folly::dynamic const& a, folly::dynamic const& b) {
+    // just an inverse sort
+    return b < a;
+  };
 
   dynamic value = dynamic::object
     ("foo", "bar")
@@ -462,10 +469,18 @@ TEST(Json, SortKeys) {
     R"({"a":[{"a":"b","c":"d"},12.5,"Yo Dawg",["heh"],null],)"
     R"("another":32.2,"foo":"bar","junk":12})";
 
+  std::string inverse_sorted_keys =
+      R"({"junk":12,"foo":"bar","another":32.2,)"
+      R"("a":[{"c":"d","a":"b"},12.5,"Yo Dawg",["heh"],null]})";
+
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_on)));
   EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_off)));
+  EXPECT_EQ(value, parseJson(folly::json::serialize(value, opts_custom_sort)));
 
   EXPECT_EQ(sorted_keys, folly::json::serialize(value, opts_on));
+  EXPECT_NE(sorted_keys, folly::json::serialize(value, opts_off));
+  EXPECT_EQ(
+      inverse_sorted_keys, folly::json::serialize(value, opts_custom_sort));
 }
 
 TEST(Json, PrintTo) {

@@ -43,8 +43,9 @@
 #include <iosfwd>
 #include <string>
 
-#include <folly/dynamic.h>
+#include <folly/Function.h>
 #include <folly/Range.h>
+#include <folly/dynamic.h>
 
 namespace folly {
 
@@ -95,7 +96,13 @@ namespace json {
     bool allow_trailing_comma;
 
     // Sort keys of all objects before printing out (potentially slow)
+    // using dynamic::operator<.
+    // Has no effect if sort_keys_by is set.
     bool sort_keys;
+
+    // Sort keys of all objects before printing out (potentially slow)
+    // using the provided less functor.
+    Function<bool(dynamic const&, dynamic const&) const> sort_keys_by;
 
     // Replace invalid utf8 characters with U+FFFD and continue
     bool skip_invalid_utf8;
