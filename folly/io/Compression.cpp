@@ -846,6 +846,13 @@ std::unique_ptr<IOBuf> ZlibCodec::doCompress(const IOBuf* data) {
   return out;
 }
 
+static uint64_t computeBufferLength(uint64_t const compressedLength) {
+  constexpr uint64_t kMaxBufferLength = uint64_t(4) << 20; // 4 MiB
+  constexpr uint64_t kBlockSize = uint64_t(32) << 10; // 32 KiB
+  const uint64_t goodBufferSize = 4 * std::max(kBlockSize, compressedLength);
+  return std::min(goodBufferSize, kMaxBufferLength);
+}
+
 std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
                                                uint64_t uncompressedLength) {
   z_stream stream;
@@ -878,8 +885,9 @@ std::unique_ptr<IOBuf> ZlibCodec::doUncompress(const IOBuf* data,
   };
 
   // Max 64MiB in one go
-  constexpr uint32_t maxSingleStepLength = uint32_t(64) << 20;    // 64MiB
-  constexpr uint32_t defaultBufferLength = uint32_t(4) << 20;     // 4MiB
+  constexpr uint64_t maxSingleStepLength = uint64_t(64) << 20; // 64MiB
+  const uint64_t defaultBufferLength =
+      computeBufferLength(data->computeChainDataLength());
 
   auto out = addOutputBuffer(
       &stream,
