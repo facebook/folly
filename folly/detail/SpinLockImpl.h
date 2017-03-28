@@ -45,7 +45,7 @@ class SpinLockMslImpl {
   FOLLY_ALWAYS_INLINE void unlock() const {
     lock_.unlock();
   }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
+  FOLLY_ALWAYS_INLINE bool try_lock() const {
     return lock_.try_lock();
   }
  private:
@@ -70,7 +70,7 @@ class SpinLockAppleImpl {
   FOLLY_ALWAYS_INLINE void unlock() const {
     OSSpinLockUnlock(&lock_);
   }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
+  FOLLY_ALWAYS_INLINE bool try_lock() const {
     return OSSpinLockTry(&lock_);
   }
  private:
@@ -107,7 +107,7 @@ class SpinLockPthreadImpl {
     int rc = pthread_spin_unlock(&lock_);
     checkPosixError(rc, "error unlocking spinlock");
   }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
+  FOLLY_ALWAYS_INLINE bool try_lock() const {
     int rc = pthread_spin_trylock(&lock_);
     if (rc == 0) {
       return true;
@@ -143,7 +143,7 @@ class SpinLockPthreadMutexImpl {
     int rc = pthread_mutex_unlock(&lock_);
     checkPosixError(rc, "error unlocking mutex");
   }
-  FOLLY_ALWAYS_INLINE bool trylock() const {
+  FOLLY_ALWAYS_INLINE bool try_lock() const {
     int rc = pthread_mutex_trylock(&lock_);
     if (rc == 0) {
       return true;
