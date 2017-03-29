@@ -43,12 +43,15 @@
 #include <zstd.h>
 #endif
 
+#include <folly/Bits.h>
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Varint.h>
 #include <folly/io/Cursor.h>
+#include <algorithm>
+#include <unordered_set>
 
 namespace folly { namespace io {
 
@@ -136,6 +139,14 @@ bool Codec::doNeedsUncompressedLength() const {
 
 uint64_t Codec::doMaxUncompressedLength() const {
   return UNLIMITED_UNCOMPRESSED_LENGTH;
+}
+
+std::vector<std::string> Codec::validPrefixes() const {
+  return {};
+}
+
+bool Codec::canUncompress(const IOBuf*, uint64_t) const {
+  return false;
 }
 
 std::string Codec::doCompressString(const StringPiece data) {
@@ -242,6 +253,39 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 }  // namespace
 
 #endif  // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
+
+namespace {
+/**
+ * Reads sizeof(T) bytes, and returns false if not enough bytes are available.
+ * Returns true if the first n bytes are equal to prefix when interpreted as
+ * a little endian T.
+ */
+template <typename T>
+typename std::enable_if<std::is_unsigned<T>::value, bool>::type
+dataStartsWithLE(const IOBuf* data, T prefix, uint64_t n = sizeof(T)) {
+  DCHECK_GT(n, 0);
+  DCHECK_LE(n, sizeof(T));
+  T value;
+  Cursor cursor{data};
+  if (!cursor.tryReadLE(value)) {
+    return false;
+  }
+  const T mask = n == sizeof(T) ? T(-1) : (T(1) << (8 * n)) - 1;
+  return prefix == (value & mask);
+}
+
+template <typename T>
+typename std::enable_if<std::is_arithmetic<T>::value, std::string>::type
+prefixToStringLE(T prefix, uint64_t n = sizeof(T)) {
+  DCHECK_GT(n, 0);
+  DCHECK_LE(n, sizeof(T));
+  prefix = Endian::little(prefix);
+  std::string result;
+  result.resize(n);
+  memcpy(&result[0], &prefix, n);
+  return result;
+}
+} // namespace
 
 #if FOLLY_HAVE_LIBLZ4
 
@@ -394,6 +438,10 @@ class LZ4FrameCodec final : public Codec {
   explicit LZ4FrameCodec(int level, CodecType type);
   ~LZ4FrameCodec();
 
+  std::vector<std::string> validPrefixes() const override;
+  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+      const override;
+
  private:
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
@@ -412,6 +460,16 @@ class LZ4FrameCodec final : public Codec {
     int level,
     CodecType type) {
   return make_unique<LZ4FrameCodec>(level, type);
+}
+
+static constexpr uint32_t kLZ4FrameMagicLE = 0x184D2204;
+
+std::vector<std::string> LZ4FrameCodec::validPrefixes() const {
+  return {prefixToStringLE(kLZ4FrameMagicLE)};
+}
+
+bool LZ4FrameCodec::canUncompress(const IOBuf* data, uint64_t) const {
+  return dataStartsWithLE(data, kLZ4FrameMagicLE);
 }
 
 static size_t lz4FrameThrowOnError(size_t code) {
@@ -676,6 +734,10 @@ class ZlibCodec final : public Codec {
   static std::unique_ptr<Codec> create(int level, CodecType type);
   explicit ZlibCodec(int level, CodecType type);
 
+  std::vector<std::string> validPrefixes() const override;
+  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+      const override;
+
  private:
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
@@ -687,6 +749,66 @@ class ZlibCodec final : public Codec {
 
   int level_;
 };
+
+static constexpr uint16_t kGZIPMagicLE = 0x8B1F;
+
+std::vector<std::string> ZlibCodec::validPrefixes() const {
+  if (type() == CodecType::ZLIB) {
+    // Zlib streams start with a 2 byte header.
+    //
+    //   0   1
+    // +---+---+
+    // |CMF|FLG|
+    // +---+---+
+    //
+    // We won't restrict the values of any sub-fields except as described below.
+    //
+    // The lowest 4 bits of CMF is the compression method (CM).
+    // CM == 0x8 is the deflate compression method, which is currently the only
+    // supported compression method, so any valid prefix must have CM == 0x8.
+    //
+    // The lowest 5 bits of FLG is FCHECK.
+    // FCHECK must be such that the two header bytes are a multiple of 31 when
+    // interpreted as a big endian 16-bit number.
+    std::vector<std::string> result;
+    // 16 values for the first byte, 8 values for the second byte.
+    // There are also 4 combinations where both 0x00 and 0x1F work as FCHECK.
+    result.reserve(132);
+    // Select all values for the CMF byte that use the deflate algorithm 0x8.
+    for (uint32_t first = 0x0800; first <= 0xF800; first += 0x1000) {
+      // Select all values for the FLG, but leave FCHECK as 0 since it's fixed.
+      for (uint32_t second = 0x00; second <= 0xE0; second += 0x20) {
+        uint16_t prefix = first | second;
+        // Compute FCHECK.
+        prefix += 31 - (prefix % 31);
+        result.push_back(prefixToStringLE(Endian::big(prefix)));
+        // zlib won't produce this, but it is a valid prefix.
+        if ((prefix & 0x1F) == 31) {
+          prefix -= 31;
+          result.push_back(prefixToStringLE(Endian::big(prefix)));
+        }
+      }
+    }
+    return result;
+  } else {
+    // The gzip frame starts with 2 magic bytes.
+    return {prefixToStringLE(kGZIPMagicLE)};
+  }
+}
+
+bool ZlibCodec::canUncompress(const IOBuf* data, uint64_t) const {
+  if (type() == CodecType::ZLIB) {
+    uint16_t value;
+    Cursor cursor{data};
+    if (!cursor.tryReadBE(value)) {
+      return false;
+    }
+    // zlib compressed if using deflate and is a multiple of 31.
+    return (value & 0x0F00) == 0x0800 && value % 31 == 0;
+  } else {
+    return dataStartsWithLE(data, kGZIPMagicLE);
+  }
+}
 
 std::unique_ptr<Codec> ZlibCodec::create(int level, CodecType type) {
   return make_unique<ZlibCodec>(level, type);
@@ -944,6 +1066,10 @@ class LZMA2Codec final : public Codec {
   static std::unique_ptr<Codec> create(int level, CodecType type);
   explicit LZMA2Codec(int level, CodecType type);
 
+  std::vector<std::string> validPrefixes() const override;
+  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+      const override;
+
  private:
   bool doNeedsUncompressedLength() const override;
   uint64_t doMaxUncompressedLength() const override;
@@ -960,6 +1086,25 @@ class LZMA2Codec final : public Codec {
 
   int level_;
 };
+
+static constexpr uint64_t kLZMA2MagicLE = 0x005A587A37FD;
+static constexpr unsigned kLZMA2MagicBytes = 6;
+
+std::vector<std::string> LZMA2Codec::validPrefixes() const {
+  if (type() == CodecType::LZMA2_VARINT_SIZE) {
+    return {};
+  }
+  return {prefixToStringLE(kLZMA2MagicLE, kLZMA2MagicBytes)};
+}
+
+bool LZMA2Codec::canUncompress(const IOBuf* data, uint64_t) const {
+  if (type() == CodecType::LZMA2_VARINT_SIZE) {
+    return false;
+  }
+  // Returns false for all inputs less than 8 bytes.
+  // This is okay, because no valid LZMA2 streams are less than 8 bytes.
+  return dataStartsWithLE(data, kLZMA2MagicLE, kLZMA2MagicBytes);
+}
 
 std::unique_ptr<Codec> LZMA2Codec::create(int level, CodecType type) {
   return make_unique<LZMA2Codec>(level, type);
@@ -1183,6 +1328,10 @@ class ZSTDCodec final : public Codec {
   static std::unique_ptr<Codec> create(int level, CodecType);
   explicit ZSTDCodec(int level, CodecType type);
 
+  std::vector<std::string> validPrefixes() const override;
+  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+      const override;
+
  private:
   bool doNeedsUncompressedLength() const override;
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
@@ -1192,6 +1341,16 @@ class ZSTDCodec final : public Codec {
 
   int level_;
 };
+
+static constexpr uint32_t kZSTDMagicLE = 0xFD2FB528;
+
+std::vector<std::string> ZSTDCodec::validPrefixes() const {
+  return {prefixToStringLE(kZSTDMagicLE)};
+}
+
+bool ZSTDCodec::canUncompress(const IOBuf* data, uint64_t) const {
+  return dataStartsWithLE(data, kZSTDMagicLE);
+}
 
 std::unique_ptr<Codec> ZSTDCodec::create(int level, CodecType type) {
   return make_unique<ZSTDCodec>(level, type);
@@ -1391,6 +1550,160 @@ std::unique_ptr<IOBuf> ZSTDCodec::doUncompress(
 
 #endif  // FOLLY_HAVE_LIBZSTD
 
+/**
+ * Automatic decompression
+ */
+class AutomaticCodec final : public Codec {
+ public:
+  static std::unique_ptr<Codec> create(
+      std::vector<std::unique_ptr<Codec>> customCodecs);
+  explicit AutomaticCodec(std::vector<std::unique_ptr<Codec>> customCodecs);
+
+  std::vector<std::string> validPrefixes() const override;
+  bool canUncompress(const IOBuf* data, uint64_t uncompressedLength)
+      const override;
+
+ private:
+  bool doNeedsUncompressedLength() const override;
+  uint64_t doMaxUncompressedLength() const override;
+
+  std::unique_ptr<IOBuf> doCompress(const IOBuf*) override {
+    throw std::runtime_error("AutomaticCodec error: compress() not supported.");
+  }
+  std::unique_ptr<IOBuf> doUncompress(
+      const IOBuf* data,
+      uint64_t uncompressedLength) override;
+
+  void addCodecIfSupported(CodecType type);
+
+  // Throws iff the codecs aren't compatible (very slow)
+  void checkCompatibleCodecs() const;
+
+  std::vector<std::unique_ptr<Codec>> codecs_;
+  bool needsUncompressedLength_;
+  uint64_t maxUncompressedLength_;
+};
+
+std::vector<std::string> AutomaticCodec::validPrefixes() const {
+  std::unordered_set<std::string> prefixes;
+  for (const auto& codec : codecs_) {
+    const auto codecPrefixes = codec->validPrefixes();
+    prefixes.insert(codecPrefixes.begin(), codecPrefixes.end());
+  }
+  return std::vector<std::string>{prefixes.begin(), prefixes.end()};
+}
+
+bool AutomaticCodec::canUncompress(
+    const IOBuf* data,
+    uint64_t uncompressedLength) const {
+  return std::any_of(
+      codecs_.begin(),
+      codecs_.end(),
+      [data, uncompressedLength](const auto& codec) {
+        return codec->canUncompress(data, uncompressedLength);
+      });
+}
+
+void AutomaticCodec::addCodecIfSupported(CodecType type) {
+  const bool present =
+      std::any_of(codecs_.begin(), codecs_.end(), [&type](const auto& codec) {
+        return codec->type() == type;
+      });
+  if (hasCodec(type) && !present) {
+    codecs_.push_back(getCodec(type));
+  }
+}
+
+/* static */ std::unique_ptr<Codec> AutomaticCodec::create(
+    std::vector<std::unique_ptr<Codec>> customCodecs) {
+  return make_unique<AutomaticCodec>(std::move(customCodecs));
+}
+
+AutomaticCodec::AutomaticCodec(std::vector<std::unique_ptr<Codec>> customCodecs)
+    : Codec(CodecType::USER_DEFINED), codecs_(std::move(customCodecs)) {
+  // Fastest -> slowest
+  addCodecIfSupported(CodecType::LZ4_FRAME);
+  addCodecIfSupported(CodecType::ZSTD);
+  addCodecIfSupported(CodecType::ZLIB);
+  addCodecIfSupported(CodecType::GZIP);
+  addCodecIfSupported(CodecType::LZMA2);
+  if (kIsDebug) {
+    checkCompatibleCodecs();
+  }
+  // Check that none of the codes are are null
+  DCHECK(std::none_of(codecs_.begin(), codecs_.end(), [](const auto& codec) {
+    return codec == nullptr;
+  }));
+
+  needsUncompressedLength_ =
+      std::any_of(codecs_.begin(), codecs_.end(), [](const auto& codec) {
+        return codec->needsUncompressedLength();
+      });
+
+  const auto it = std::max_element(
+      codecs_.begin(), codecs_.end(), [](const auto& lhs, const auto& rhs) {
+        return lhs->maxUncompressedLength() < rhs->maxUncompressedLength();
+      });
+  DCHECK(it != codecs_.end());
+  maxUncompressedLength_ = (*it)->maxUncompressedLength();
+}
+
+void AutomaticCodec::checkCompatibleCodecs() const {
+  // Keep track of all the possible headers.
+  std::unordered_set<std::string> headers;
+  // The empty header is not allowed.
+  headers.insert("");
+  // Step 1:
+  // Construct a set of headers and check that none of the headers occur twice.
+  // Eliminate edge cases.
+  for (auto&& codec : codecs_) {
+    const auto codecHeaders = codec->validPrefixes();
+    // Codecs without any valid headers are not allowed.
+    if (codecHeaders.empty()) {
+      throw std::invalid_argument{
+          "AutomaticCodec: validPrefixes() must not be empty."};
+    }
+    // Insert all the headers for the current codec.
+    const size_t beforeSize = headers.size();
+    headers.insert(codecHeaders.begin(), codecHeaders.end());
+    // Codecs are not compatible if any header occurred twice.
+    if (beforeSize + codecHeaders.size() != headers.size()) {
+      throw std::invalid_argument{
+          "AutomaticCodec: Two valid prefixes collide."};
+    }
+  }
+  // Step 2:
+  // Check if any strict non-empty prefix of any header is a header.
+  for (const auto& header : headers) {
+    for (size_t i = 1; i < header.size(); ++i) {
+      if (headers.count(header.substr(0, i))) {
+        throw std::invalid_argument{
+            "AutomaticCodec: One valid prefix is a prefix of another valid "
+            "prefix."};
+      }
+    }
+  }
+}
+
+bool AutomaticCodec::doNeedsUncompressedLength() const {
+  return needsUncompressedLength_;
+}
+
+uint64_t AutomaticCodec::doMaxUncompressedLength() const {
+  return maxUncompressedLength_;
+}
+
+std::unique_ptr<IOBuf> AutomaticCodec::doUncompress(
+    const IOBuf* data,
+    uint64_t uncompressedLength) {
+  for (auto&& codec : codecs_) {
+    if (codec->canUncompress(data, uncompressedLength)) {
+      return codec->uncompress(data, uncompressedLength);
+    }
+  }
+  throw std::runtime_error("AutomaticCodec error: Unknown compressed data");
+}
+
 }  // namespace
 
 typedef std::unique_ptr<Codec> (*CodecFactory)(int, CodecType);
@@ -1475,4 +1788,8 @@ std::unique_ptr<Codec> getCodec(CodecType type, int level) {
   return codec;
 }
 
+std::unique_ptr<Codec> getAutoUncompressionCodec(
+    std::vector<std::unique_ptr<Codec>> customCodecs) {
+  return AutomaticCodec::create(std::move(customCodecs));
+}
 }}  // namespaces

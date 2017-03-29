@@ -19,6 +19,8 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
@@ -164,6 +166,25 @@ class Codec {
  protected:
   explicit Codec(CodecType type);
 
+ public:
+  /**
+   * Returns a superset of the set of prefixes for which canUncompress() will
+   * return true. A superset is allowed for optimizations in canUncompress()
+   * based on other knowledge such as length. None of the prefixes may be empty.
+   * default: No prefixes.
+   */
+  virtual std::vector<std::string> validPrefixes() const;
+
+  /**
+   * Returns true if the codec thinks it can uncompress the data.
+   * If a codec doesn't have magic bytes at the beginning, like LZ4 and Snappy,
+   * it can always return false.
+   * default: Returns false.
+   */
+  virtual bool canUncompress(
+      const folly::IOBuf* data,
+      uint64_t uncompressedLength = UNKNOWN_UNCOMPRESSED_LENGTH) const;
+
  private:
   // default: no limits (save for special value UNKNOWN_UNCOMPRESSED_LENGTH)
   virtual uint64_t doMaxUncompressedLength() const;
@@ -206,6 +227,28 @@ constexpr int COMPRESSION_LEVEL_BEST = -3;
  */
 std::unique_ptr<Codec> getCodec(CodecType type,
                                 int level = COMPRESSION_LEVEL_DEFAULT);
+
+/**
+ * Returns a codec that can uncompress any of the given codec types as well as
+ * {LZ4_FRAME, ZSTD, ZLIB, GZIP, LZMA2}. Appends each default codec to
+ * customCodecs in order, so long as a codec with the same type() isn't already
+ * present. When uncompress() is called, each codec's canUncompress() is called
+ * in the order that they are given. Appended default codecs are checked last.
+ * uncompress() is called on the first codec whose canUncompress() returns true.
+ * An exception is thrown if no codec canUncompress() the data.
+ * An exception is thrown if the chosen codec's uncompress() throws on the data.
+ * An exception is thrown if compress() is called on the returned codec.
+ *
+ * Requirements are checked in debug mode and are as follows:
+ * Let headers be the concatenation of every codec's validPrefixes().
+ *  1. Each codec must override validPrefixes() and canUncompress().
+ *  2. No codec's validPrefixes() may be empty.
+ *  3. No header in headers may be empty.
+ *  4. headers must not contain any duplicate elements.
+ *  5. No strict non-empty prefix of any header in headers may be in headers.
+ */
+std::unique_ptr<Codec> getAutoUncompressionCodec(
+    std::vector<std::unique_ptr<Codec>> customCodecs = {});
 
 /**
  * Check if a specified codec is supported.
