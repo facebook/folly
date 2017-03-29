@@ -113,5 +113,52 @@ inline constexpr auto applyTuple(F&& f, Tuples&&... t)
       detail::apply_tuple::MakeIndexSequenceFromTuple<Tuples...>{});
 }
 
+namespace detail {
+namespace apply_tuple {
+
+template <class F>
+class Uncurry {
+ public:
+  explicit Uncurry(F&& func) : func_(std::move(func)) {}
+  explicit Uncurry(const F& func) : func_(func) {}
+
+  template <class Tuple>
+  auto operator()(Tuple&& tuple) const
+      -> decltype(applyTuple(std::declval<F>(), std::forward<Tuple>(tuple))) {
+    return applyTuple(func_, std::forward<Tuple>(tuple));
+  }
+
+ private:
+  F func_;
+};
+} // namespace apply_tuple
+} // namespace detail
+
+/**
+ * Wraps a function taking N arguments into a function which accepts a tuple of
+ * N arguments. Note: This function will also accept an std::pair if N == 2.
+ *
+ * For example, given the below code:
+ *
+ *    std::vector<std::tuple<int, int, int>> rows = ...;
+ *    auto test = [](std::tuple<int, int, int>& row) {
+ *      return std::get<0>(row) * std::get<1>(row) * std::get<2>(row) == 24;
+ *    };
+ *    auto found = std::find_if(rows.begin(), rows.end(), test);
+ *
+ *
+ * 'test' could be rewritten as:
+ *
+ *    auto test =
+ *        folly::uncurry([](int a, int b, int c) { return a * b * c == 24; });
+ *
+ */
+template <class F>
+auto uncurry(F&& f)
+    -> detail::apply_tuple::Uncurry<typename std::decay<F>::type> {
+  return detail::apply_tuple::Uncurry<typename std::decay<F>::type>(
+      std::forward<F>(f));
+}
+
 //////////////////////////////////////////////////////////////////////
 }
