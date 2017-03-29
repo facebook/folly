@@ -227,7 +227,7 @@ class CursorBase {
 
   template <class T>
   T read() {
-    T val;
+    T val{};
     if (!tryRead(val)) {
       std::__throw_out_of_range("underflow");
     }
