@@ -717,3 +717,51 @@ TEST(Singleton, MainThreadDestructor) {
 
   t.join();
 }
+
+TEST(Singleton, DoubleMakeMockAfterTryGet) {
+  // to keep track of calls to ctor and dtor below
+  struct Counts {
+    size_t ctor = 0;
+    size_t dtor = 0;
+  };
+
+  // a test type which keeps track of its ctor and dtor calls
+  struct VaultTag {};
+  struct PrivateTag {};
+  struct Object {
+    explicit Object(Counts& counts) : counts_(counts) {
+      ++counts_.ctor;
+    }
+    ~Object() {
+      ++counts_.dtor;
+    }
+    Counts& counts_;
+  };
+  using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
+
+  // register everything
+  Counts counts;
+  auto& vault = *SingletonVault::singleton<VaultTag>();
+  auto new_object = [&] { return new Object(counts); };
+  SingletonObject object_(new_object);
+  vault.registrationComplete();
+
+  // no eager inits, nada (sanity)
+  EXPECT_EQ(0, counts.ctor);
+  EXPECT_EQ(0, counts.dtor);
+
+  // explicit request, ctor
+  SingletonObject::try_get();
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(0, counts.dtor);
+
+  // first make_mock, dtor (ctor is lazy)
+  SingletonObject::make_mock(new_object);
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(1, counts.dtor);
+
+  // second make_mock, nada (dtor already ran, ctor is lazy)
+  SingletonObject::make_mock(new_object);
+  EXPECT_EQ(1, counts.ctor);
+  EXPECT_EQ(1, counts.dtor);
+}

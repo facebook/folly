@@ -69,7 +69,9 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
     LOG(FATAL) << "Registering mock before singleton was registered: "
                << type().name();
   }
-  destroyInstance();
+  if (state_ == SingletonHolderState::Living) {
+    destroyInstance();
+  }
 
   {
     auto creationOrder = vault_.creationOrder_.wlock();
