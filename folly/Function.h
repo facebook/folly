@@ -578,17 +578,23 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   /**
    * Move assignment operator
+   *
+   * \note Leaves `that` in a valid but unspecified state. If `&that == this`
+   * then `*this` is left in a valid but unspecified state.
    */
   Function& operator=(Function&& that) noexcept {
-    if (&that != this) {
-      // Q: Why is is safe to destroy and reconstruct this object in place?
-      // A: Two reasons: First, `Function` is a final class, so in doing this
-      //    we aren't slicing off any derived parts. And second, the move
-      //    operation is guaranteed not to throw so we always leave the object
-      //    in a valid state.
-      this->~Function();
-      ::new (this) Function(std::move(that));
-    }
+    // Q: Why is is safe to destroy and reconstruct this object in place?
+    // A: Two reasons: First, `Function` is a final class, so in doing this
+    //    we aren't slicing off any derived parts. And second, the move
+    //    operation is guaranteed not to throw so we always leave the object
+    //    in a valid state.
+    // In the case of self-move (this == &that), this leaves the object in
+    // a default-constructed state. First the object is destroyed, then we
+    // pass the destroyed object to the move constructor. The first thing the
+    // move constructor does is default-construct the object. That object is
+    // "moved" into itself, which is a no-op for a default-constructed Function.
+    this->~Function();
+    ::new (this) Function(std::move(that));
     return *this;
   }
 

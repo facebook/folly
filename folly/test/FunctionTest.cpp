@@ -1045,11 +1045,27 @@ TEST(Function, EmptyAfterConstCast) {
   EXPECT_FALSE(func2);
 }
 
-TEST(Function, SelfMoveAssign) {
-  Function<int()> f = [] { return 0; };
-  Function<int()>& g = f;
-  f = std::move(g);
+TEST(Function, SelfStdSwap) {
+  Function<int()> f = [] { return 42; };
+  f.swap(f);
   EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+  std::swap(f, f);
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+  folly::swap(f, f);
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(42, f());
+}
+
+TEST(Function, SelfMove) {
+  Function<int()> f = [] { return 42; };
+  Function<int()>& g = f;
+  f = std::move(g); // shouldn't crash!
+  (void)bool(f); // valid but unspecified state
+  f = [] { return 43; };
+  EXPECT_TRUE(bool(f));
+  EXPECT_EQ(43, f());
 }
 
 TEST(Function, DeducableArguments) {
