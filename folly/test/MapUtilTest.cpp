@@ -141,6 +141,19 @@ TEST(MapUtil, get_ptr_path_mixed) {
 }
 
 namespace {
+template <typename T>
+struct element_type {
+  using type = typename std::decay<T>::type;
+};
+
+template <typename T>
+struct element_type<T()> {
+  using type = T;
+};
+
+template <typename T>
+using element_type_t = typename element_type<T>::type;
+
 template <typename T, typename = void>
 struct Compiles : std::false_type {};
 
@@ -148,7 +161,7 @@ template <typename T>
 struct Compiles<
     T,
     void_t<decltype(get_ref_default(
-        std::declval<std::map<int, typename std::decay<T>::type>>(),
+        std::declval<std::map<int, element_type_t<T>>>(),
         std::declval<int>(),
         std::declval<T>()))>> : std::true_type {};
 }
@@ -158,4 +171,78 @@ TEST(MapUtil, get_default_temporary) {
   EXPECT_TRUE(Compiles<int&>::value);
   EXPECT_FALSE(Compiles<const int&&>::value);
   EXPECT_FALSE(Compiles<int&&>::value);
+
+  EXPECT_TRUE(Compiles<const int&()>::value);
+  EXPECT_TRUE(Compiles<int&()>::value);
+  EXPECT_FALSE(Compiles<int()>::value);
+}
+
+TEST(MapUtil, get_default_path) {
+  using std::map;
+  map<int, map<int, int>> m;
+  m[4][2] = 42;
+  EXPECT_EQ(42, get_default(m, 4, 2, 42));
+  EXPECT_EQ(42, get_default(m, 1, 3, 42));
+}
+
+TEST(MapUtil, get_default_path_mixed) {
+  using std::map;
+  using std::unordered_map;
+  using std::string;
+  map<int, unordered_map<string, StringPiece>> m;
+  int key1 = 42;
+  const string key2 = "hello";
+  constexpr StringPiece value = "world";
+  constexpr StringPiece dflt = "default";
+  m[key1][key2] = value;
+  EXPECT_EQ(value, get_default(m, 42, key2, dflt));
+  EXPECT_EQ(value, get_default(m, key1, "hello", dflt));
+  EXPECT_EQ(dflt, get_default(m, 0, key2, dflt));
+  EXPECT_EQ(dflt, get_default(m, key1, "bad", "default"));
+}
+
+TEST(MapUtil, get_ref_default_path) {
+  using std::map;
+  map<int, map<int, int>> m;
+  m[4][2] = 42;
+  const int dflt = 13;
+  EXPECT_EQ(42, get_ref_default(m, 4, 2, dflt));
+  EXPECT_EQ(dflt, get_ref_default(m, 1, 3, dflt));
+}
+
+TEST(MapUtil, get_ref_default_path_mixed) {
+  using std::map;
+  using std::unordered_map;
+  using std::string;
+  map<int, unordered_map<string, StringPiece>> m;
+  int key1 = 42;
+  const string key2 = "hello";
+  constexpr StringPiece value = "world";
+  constexpr StringPiece dflt = "default";
+  m[key1][key2] = value;
+  EXPECT_EQ(value, get_ref_default(m, 42, key2, dflt));
+  EXPECT_EQ(value, get_ref_default(m, key1, "hello", dflt));
+  EXPECT_EQ(dflt, get_ref_default(m, 0, key2, dflt));
+  EXPECT_EQ(dflt, get_ref_default(m, key1, "bad", dflt));
+}
+
+namespace {
+template <typename T, typename = void>
+struct GetRefDefaultPathCompiles : std::false_type {};
+
+template <typename T>
+struct GetRefDefaultPathCompiles<
+    T,
+    void_t<decltype(get_ref_default(
+        std::declval<std::map<int, std::map<int, element_type_t<T>>>>(),
+        std::declval<int>(),
+        std::declval<int>(),
+        std::declval<T>()))>> : std::true_type {};
+}
+
+TEST(MapUtil, get_ref_default_path_temporary) {
+  EXPECT_TRUE(GetRefDefaultPathCompiles<const int&>::value);
+  EXPECT_TRUE(GetRefDefaultPathCompiles<int&>::value);
+  EXPECT_FALSE(GetRefDefaultPathCompiles<const int&&>::value);
+  EXPECT_FALSE(GetRefDefaultPathCompiles<int&&>::value);
 }
