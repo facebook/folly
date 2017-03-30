@@ -358,9 +358,7 @@ class SingletonVault {
     }
   };
 
-  static Type defaultVaultType();
-
-  explicit SingletonVault(Type type = defaultVaultType()) : type_(type) {}
+  explicit SingletonVault(Type type = Type::Strict) : type_(type) {}
 
   // Destructor is only called by unit tests to check destroyInstances.
   ~SingletonVault();
