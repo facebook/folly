@@ -111,6 +111,21 @@ constexpr bool kIsArchAArch64 = FOLLY_A64 == 1;
 constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 }
 
+namespace folly {
+
+#if FOLLY_SANITIZE_ADDRESS
+constexpr bool kIsSanitizeAddress = true;
+#else
+constexpr bool kIsSanitizeAddress = false;
+#endif
+
+#if FOLLY_SANITIZE_THREAD
+constexpr bool kIsSanitizeThread = true;
+#else
+constexpr bool kIsSanitizeThread = false;
+#endif
+}
+
 // packing is very ugly in msvc
 #ifdef _MSC_VER
 # define FOLLY_PACK_ATTR /**/
