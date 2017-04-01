@@ -280,6 +280,7 @@ futures_test_SOURCES = \
     ../futures/test/RetryingTest.cpp \
     ../futures/test/SelfDestructTest.cpp \
     ../futures/test/SharedPromiseTest.cpp \
+    ../futures/test/TestExecutorTest.cpp \
     ../futures/test/ThenCompileTest.cpp \
     ../futures/test/ThenTest.cpp \
     ../futures/test/TimekeeperTest.cpp \

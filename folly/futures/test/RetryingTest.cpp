@@ -20,6 +20,8 @@
 
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysResource.h>
+#include "TestExecutor.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -135,6 +137,45 @@ TEST(RetryingTest, policy_sleep_defaults) {
     ).wait();
     EXPECT_EQ(2, r.value());
   });
+}
+
+TEST(RetryingTest, large_retries) {
+  rlimit oldMemLimit;
+  PCHECK(getrlimit(RLIMIT_AS, &oldMemLimit) == 0);
+
+  rlimit newMemLimit;
+  newMemLimit.rlim_cur = std::min(1UL << 30, oldMemLimit.rlim_max);
+  newMemLimit.rlim_max = oldMemLimit.rlim_max;
+  PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
+  SCOPE_EXIT {
+    PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0);
+  };
+
+  TestExecutor executor;
+  // size of implicit promise is at least the size of the return.
+  using LargeReturn = array<uint64_t, 16000>;
+  auto func = [&executor](size_t retryNum) -> Future<LargeReturn> {
+    return via(&executor).then([retryNum] {
+      return retryNum < 10000
+          ? makeFuture<LargeReturn>(
+                make_exception_wrapper<std::runtime_error>("keep trying"))
+          : makeFuture<LargeReturn>(LargeReturn());
+    });
+  };
+
+  vector<Future<LargeReturn>> futures;
+  for (auto idx = 0; idx < 40; ++idx) {
+    futures.emplace_back(futures::retrying(
+        [&executor](size_t, const exception_wrapper&) {
+          return via(&executor).then([] { return true; });
+        },
+        func));
+  }
+
+  for (auto& f : futures) {
+    f.wait();
+    EXPECT_TRUE(f.hasValue());
+  }
 }
 
 /*

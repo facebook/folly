@@ -363,6 +363,9 @@ namespace futures {
  *  indicating that the failure was transitory.
  *
  *  Cancellation is not supported.
+ *
+ *  If both FF and Policy inline executes, then it is possible to hit a stack
+ *  overflow due to the recursive nature of the retry implementation
  */
 template <class Policy, class FF>
 typename std::result_of<FF(size_t)>::type
