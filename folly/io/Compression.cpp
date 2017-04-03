@@ -1599,14 +1599,16 @@ bool AutomaticCodec::canUncompress(
   return std::any_of(
       codecs_.begin(),
       codecs_.end(),
-      [data, uncompressedLength](const auto& codec) {
+      [data, uncompressedLength](std::unique_ptr<Codec> const& codec) {
         return codec->canUncompress(data, uncompressedLength);
       });
 }
 
 void AutomaticCodec::addCodecIfSupported(CodecType type) {
-  const bool present =
-      std::any_of(codecs_.begin(), codecs_.end(), [&type](const auto& codec) {
+  const bool present = std::any_of(
+      codecs_.begin(),
+      codecs_.end(),
+      [&type](std::unique_ptr<Codec> const& codec) {
         return codec->type() == type;
       });
   if (hasCodec(type) && !present) {
@@ -1631,17 +1633,20 @@ AutomaticCodec::AutomaticCodec(std::vector<std::unique_ptr<Codec>> customCodecs)
     checkCompatibleCodecs();
   }
   // Check that none of the codes are are null
-  DCHECK(std::none_of(codecs_.begin(), codecs_.end(), [](const auto& codec) {
-    return codec == nullptr;
-  }));
+  DCHECK(std::none_of(
+      codecs_.begin(), codecs_.end(), [](std::unique_ptr<Codec> const& codec) {
+        return codec == nullptr;
+      }));
 
-  needsUncompressedLength_ =
-      std::any_of(codecs_.begin(), codecs_.end(), [](const auto& codec) {
+  needsUncompressedLength_ = std::any_of(
+      codecs_.begin(), codecs_.end(), [](std::unique_ptr<Codec> const& codec) {
         return codec->needsUncompressedLength();
       });
 
   const auto it = std::max_element(
-      codecs_.begin(), codecs_.end(), [](const auto& lhs, const auto& rhs) {
+      codecs_.begin(),
+      codecs_.end(),
+      [](std::unique_ptr<Codec> const& lhs, std::unique_ptr<Codec> const& rhs) {
         return lhs->maxUncompressedLength() < rhs->maxUncompressedLength();
       });
   DCHECK(it != codecs_.end());
