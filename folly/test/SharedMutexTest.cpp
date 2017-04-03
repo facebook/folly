@@ -98,7 +98,7 @@ void runBasicHoldersTest() {
     EXPECT_FALSE(lock.try_lock_shared(token));
 
     // move ownership to another write holder via assign operator
-    typename Lock::WriteHolder holder3;
+    typename Lock::WriteHolder holder3(nullptr);
     holder3 = std::move(holder2);
     EXPECT_FALSE(lock.try_lock());
     EXPECT_FALSE(lock.try_lock_shared(token));

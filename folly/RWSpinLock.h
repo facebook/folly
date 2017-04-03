@@ -307,7 +307,7 @@ class RWSpinLock {
 
   class ReadHolder {
    public:
-    explicit ReadHolder(RWSpinLock* lock = nullptr) : lock_(lock) {
+    explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) lock_->lock_shared();
     }
 
@@ -360,7 +360,7 @@ class RWSpinLock {
 
   class UpgradedHolder {
    public:
-    explicit UpgradedHolder(RWSpinLock* lock = nullptr) : lock_(lock) {
+    explicit UpgradedHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) lock_->lock_upgrade();
     }
 
@@ -409,7 +409,7 @@ class RWSpinLock {
 
   class WriteHolder {
    public:
-    explicit WriteHolder(RWSpinLock* lock = nullptr) : lock_(lock) {
+    explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) lock_->lock();
     }
 
@@ -692,8 +692,7 @@ class RWTicketSpinLockT {
     ReadHolder(ReadHolder const&) = delete;
     ReadHolder& operator=(ReadHolder const&) = delete;
 
-    explicit ReadHolder(RWSpinLock *lock = nullptr) :
-      lock_(lock) {
+    explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) lock_->lock_shared();
     }
 
@@ -732,7 +731,7 @@ class RWTicketSpinLockT {
     WriteHolder(WriteHolder const&) = delete;
     WriteHolder& operator=(WriteHolder const&) = delete;
 
-    explicit WriteHolder(RWSpinLock *lock = nullptr) : lock_(lock) {
+    explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) lock_->lock();
     }
     explicit WriteHolder(RWSpinLock &lock) : lock_ (&lock) {

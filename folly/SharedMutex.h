@@ -1133,10 +1133,15 @@ class SharedMutexImpl {
 
  public:
   class ReadHolder {
-   public:
     ReadHolder() : lock_(nullptr) {}
 
-    explicit ReadHolder(const SharedMutexImpl* lock) : ReadHolder(*lock) {}
+   public:
+    explicit ReadHolder(const SharedMutexImpl* lock)
+        : lock_(const_cast<SharedMutexImpl*>(lock)) {
+      if (lock_) {
+        lock_->lock_shared(token_);
+      }
+    }
 
     explicit ReadHolder(const SharedMutexImpl& lock)
         : lock_(const_cast<SharedMutexImpl*>(&lock)) {
@@ -1190,10 +1195,14 @@ class SharedMutexImpl {
   };
 
   class UpgradeHolder {
-   public:
     UpgradeHolder() : lock_(nullptr) {}
 
-    explicit UpgradeHolder(SharedMutexImpl* lock) : UpgradeHolder(*lock) {}
+   public:
+    explicit UpgradeHolder(SharedMutexImpl* lock) : lock_(lock) {
+      if (lock_) {
+        lock_->lock_upgrade();
+      }
+    }
 
     explicit UpgradeHolder(SharedMutexImpl& lock) : lock_(&lock) {
       lock_->lock_upgrade();
@@ -1236,10 +1245,14 @@ class SharedMutexImpl {
   };
 
   class WriteHolder {
-   public:
     WriteHolder() : lock_(nullptr) {}
 
-    explicit WriteHolder(SharedMutexImpl* lock) : WriteHolder(*lock) {}
+   public:
+    explicit WriteHolder(SharedMutexImpl* lock) : lock_(lock) {
+      if (lock_) {
+        lock_->lock();
+      }
+    }
 
     explicit WriteHolder(SharedMutexImpl& lock) : lock_(&lock) {
       lock_->lock();
