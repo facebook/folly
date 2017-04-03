@@ -55,6 +55,7 @@ nobase_follyinclude_HEADERS = \
 	CPortability.h \
 	detail/AtomicHashUtils.h \
 	detail/AtomicUnorderedMapUtils.h \
+	detail/AtomicUtils.h \
 	detail/BitIteratorDetail.h \
 	detail/BitsDetail.h \
 	detail/CacheLocality.h \
@@ -95,6 +96,8 @@ nobase_follyinclude_HEADERS = \
 	Executor.h \
 	Expected.h \
 	experimental/AsymmetricMemoryBarrier.h \
+	experimental/AtomicSharedPtr.h \
+	experimental/detail/AtomicSharedPtr-detail.h \
 	experimental/AutoTimer.h \
 	experimental/Bits.h \
 	experimental/BitVectorCoding.h \

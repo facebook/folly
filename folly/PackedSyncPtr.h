@@ -144,4 +144,9 @@ static_assert(sizeof(PackedSyncPtr<void>) == 8,
               "PackedSyncPtr should be only 8 bytes---something is "
               "messed up");
 
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const PackedSyncPtr<T>& ptr) {
+  os << "PackedSyncPtr(" << ptr.get() << ", " << ptr.extra() << ")";
+  return os;
+}
 }

@@ -35,6 +35,7 @@
 #include <vector>
 
 #include <folly/ScopeGuard.h>
+#include <folly/detail/AtomicUtils.h>
 #include <folly/detail/CacheLocality.h>
 #include <folly/detail/Futex.h>
 
@@ -231,10 +232,20 @@ struct DeterministicAtomic {
   bool is_lock_free() const noexcept { return data.is_lock_free(); }
 
   bool compare_exchange_strong(
-      T& v0, T v1, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_strong(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_strong(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     auto orig = v0;
-    bool rv = data.compare_exchange_strong(v0, v1, mo);
+    bool rv = data.compare_exchange_strong(v0, v1, success, failure);
     FOLLY_TEST_DSCHED_VLOG(this << ".compare_exchange_strong(" << std::hex
                                 << orig << ", " << std::hex << v1 << ") -> "
                                 << rv << "," << std::hex << v0);
@@ -243,10 +254,20 @@ struct DeterministicAtomic {
   }
 
   bool compare_exchange_weak(
-      T& v0, T v1, std::memory_order mo = std::memory_order_seq_cst) noexcept {
+      T& v0,
+      T v1,
+      std::memory_order mo = std::memory_order_seq_cst) noexcept {
+    return compare_exchange_weak(
+        v0, v1, mo, detail::default_failure_memory_order(mo));
+  }
+  bool compare_exchange_weak(
+      T& v0,
+      T v1,
+      std::memory_order success,
+      std::memory_order failure) noexcept {
     DeterministicSchedule::beforeSharedAccess();
     auto orig = v0;
-    bool rv = data.compare_exchange_weak(v0, v1, mo);
+    bool rv = data.compare_exchange_weak(v0, v1, success, failure);
     FOLLY_TEST_DSCHED_VLOG(this << ".compare_exchange_weak(" << std::hex << orig
                                 << ", " << std::hex << v1 << ") -> " << rv
                                 << "," << std::hex << v0);
