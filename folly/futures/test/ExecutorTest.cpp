@@ -46,6 +46,49 @@ TEST(ManualExecutor, scheduleDur) {
   EXPECT_EQ(count, 1);
 }
 
+TEST(ManualExecutor, laterThingsDontBlockEarlierOnes) {
+  ManualExecutor x;
+  auto first = false;
+  std::chrono::milliseconds dur{10};
+  x.schedule([&] { first = true; }, dur);
+  x.schedule([] {}, 2 * dur);
+  EXPECT_FALSE(first);
+  x.advance(dur);
+  EXPECT_TRUE(first);
+}
+
+TEST(ManualExecutor, orderWillNotBeQuestioned) {
+  ManualExecutor x;
+  auto first = false;
+  auto second = false;
+  std::chrono::milliseconds dur{10};
+  x.schedule([&] { first = true; }, dur);
+  x.schedule([&] { second = true; }, 2 * dur);
+  EXPECT_FALSE(first);
+  EXPECT_FALSE(second);
+  x.advance(dur);
+  EXPECT_TRUE(first);
+  EXPECT_FALSE(second);
+  x.advance(dur);
+  EXPECT_TRUE(first);
+  EXPECT_TRUE(second);
+}
+
+TEST(ManualExecutor, evenWhenYouSkipAheadEventsRunInProperOrder) {
+  ManualExecutor x;
+  auto counter = 0;
+  auto first = 0;
+  auto second = 0;
+  std::chrono::milliseconds dur{10};
+  x.schedule([&] { first = ++counter; }, dur);
+  x.schedule([&] { second = ++counter; }, 2 * dur);
+  EXPECT_EQ(first, 0);
+  EXPECT_EQ(second, 0);
+  x.advance(3 * dur);
+  EXPECT_EQ(first, 1);
+  EXPECT_EQ(second, 2);
+}
+
 TEST(ManualExecutor, clockStartsAt0) {
   ManualExecutor x;
   EXPECT_EQ(x.now(), x.now().min());
