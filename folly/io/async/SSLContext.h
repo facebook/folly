@@ -40,6 +40,7 @@
 #include <folly/Range.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 
