@@ -26,7 +26,7 @@ namespace ssl {
 
 #else
 ////////////////////////////////////////////////////////////////////////////////
-// APIs needed in BoringSSL and OpenSSL != 1.1.0 (1.0.2, 1.0.1, 1.0.0...)
+// APIs needed in BoringSSL and OpenSSL < 1.1.0 (i.e., 1.0.2, 1.0.1, 1.0.0, etc)
 ////////////////////////////////////////////////////////////////////////////////
 void BIO_meth_free(BIO_METHOD* biom) {
   OPENSSL_free((void*)biom);
@@ -72,6 +72,48 @@ void HMAC_CTX_free(HMAC_CTX* ctx) {
   if (ctx) {
     OPENSSL_free(ctx);
   }
+}
+
+int SSL_SESSION_has_ticket(const SSL_SESSION* s) {
+  return (s->tlsext_ticklen > 0) ? 1 : 0;
+}
+
+unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s) {
+  return s->tlsext_tick_lifetime_hint;
+}
+
+// This is taken from OpenSSL 1.1.0
+int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g) {
+  /* If the fields p and g in d are NULL, the corresponding input
+   * parameters MUST be non-NULL.  q may remain NULL.
+   */
+  if (dh == nullptr || (dh->p == nullptr && p == nullptr) ||
+      (dh->g == nullptr && g == nullptr)) {
+    return 0;
+  }
+
+  if (p != nullptr) {
+    BN_free(dh->p);
+    dh->p = p;
+  }
+  if (q != nullptr) {
+    BN_free(dh->q);
+    dh->q = q;
+  }
+  if (g != nullptr) {
+    BN_free(dh->g);
+    dh->g = g;
+  }
+
+  // In OpenSSL 1.1.0, DH_set0_pqg also sets
+  //   dh->length = BN_num_bits(q)
+  // With OpenSSL 1.0.2, the output of openssl dhparam -C 2048 doesn't set
+  // the length field. So as far as the compat lib is concerned, this wrapper
+  // mimics the functionality of OpenSSL 1.0.2
+  // Note: BoringSSL doesn't even have a length field anymore, just something
+  // called 'priv_length'. Let's not mess with that for now.
+
+  return 1;
 }
 
 #ifdef OPENSSL_IS_BORINGSSL

@@ -28,6 +28,7 @@
 // This must come before the OpenSSL includes.
 #include <folly/portability/Windows.h>
 
+#include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
@@ -90,6 +91,10 @@ void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
 
 HMAC_CTX* HMAC_CTX_new(void);
 void HMAC_CTX_free(HMAC_CTX* ctx);
+
+unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
+int SSL_SESSION_has_ticket(const SSL_SESSION*);
+int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 
 #ifdef OPENSSL_IS_BORINGSSL
 ////////////////////////////////////////////////////////////////////////////////
