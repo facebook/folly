@@ -424,9 +424,6 @@ inline auto invoke(M(C::*d), Args&&... args)
 } // namespace function
 } // namespace detail
 
-FOLLY_PUSH_WARNING
-FOLLY_MSVC_DISABLE_WARNING(4521) // Multiple copy constructors
-FOLLY_MSVC_DISABLE_WARNING(4522) // Multiple assignment operators
 template <typename FunctionType>
 class Function final : private detail::function::FunctionTraits<FunctionType> {
   // These utility types are defined outside of the template to reduce
@@ -700,7 +697,6 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     return std::move(*this).asSharedProxy();
   }
 };
-FOLLY_POP_WARNING
 
 template <typename FunctionType>
 void swap(Function<FunctionType>& lhs, Function<FunctionType>& rhs) noexcept {
