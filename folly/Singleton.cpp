@@ -28,7 +28,7 @@
 
 #include <folly/ScopeGuard.h>
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
 static void hs_init_weak(int* argc, char** argv[])
     __attribute__((__weakref__("hs_init")));
 #endif
@@ -36,7 +36,7 @@ static void hs_init_weak(int* argc, char** argv[])
 namespace folly {
 
 SingletonVault::Type SingletonVault::defaultVaultType() {
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
   bool isPython = dlsym(RTLD_DEFAULT, "Py_Main");
   bool isHaskel = &::hs_init_weak || dlsym(RTLD_DEFAULT, "hs_init");
   bool isJVM = dlsym(RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
