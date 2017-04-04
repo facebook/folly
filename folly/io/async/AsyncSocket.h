@@ -473,28 +473,28 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * )
    *
    */
-  void setErrMessageCB(ErrMessageCallback* callback);
+  virtual void setErrMessageCB(ErrMessageCallback* callback);
 
   /**
    * Get a pointer to ErrMessageCallback implementation currently
    * registered with this socket.
    *
    */
-  ErrMessageCallback* getErrMessageCallback() const;
+  virtual ErrMessageCallback* getErrMessageCallback() const;
 
   /**
    * Set a pointer to SendMsgParamsCallback implementation which
    * will be used to form ::sendmsg() system call parameters
    *
    */
-  void setSendMsgParamCB(SendMsgParamsCallback* callback);
+  virtual void setSendMsgParamCB(SendMsgParamsCallback* callback);
 
   /**
    * Get a pointer to SendMsgParamsCallback implementation currently
    * registered with this socket.
    *
    */
-  SendMsgParamsCallback* getSendMsgParamsCB() const;
+  virtual SendMsgParamsCallback* getSendMsgParamsCB() const;
 
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
@@ -696,6 +696,41 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   template <typename T>
   int setSockOpt(int  level,  int  optname,  const T *optval) {
     return setsockopt(fd_, level, optname, optval, sizeof(T));
+  }
+
+  /**
+   * Virtual method for reading a socket option returning integer
+   * value, which is the most typical case. Convenient for overriding
+   * and mocking.
+   *
+   * @param level     same as the "level" parameter in getsockopt().
+   * @param optname   same as the "optname" parameter in getsockopt().
+   * @param optval    same as "optval" parameter in getsockopt().
+   * @param optlen    same as "optlen" parameter in getsockopt().
+   * @return          same as the return value of getsockopt().
+   */
+  virtual int
+  getSockOptVirtual(int level, int optname, void* optval, socklen_t* optlen) {
+    return getsockopt(fd_, level, optname, optval, optlen);
+  }
+
+  /**
+   * Virtual method for setting a socket option accepting integer
+   * value, which is the most typical case. Convenient for overriding
+   * and mocking.
+   *
+   * @param level     same as the "level" parameter in setsockopt().
+   * @param optname   same as the "optname" parameter in setsockopt().
+   * @param optval    same as "optval" parameter in setsockopt().
+   * @param optlen    same as "optlen" parameter in setsockopt().
+   * @return          same as the return value of setsockopt().
+   */
+  virtual int setSockOptVirtual(
+      int level,
+      int optname,
+      void const* optval,
+      socklen_t optlen) {
+    return setsockopt(fd_, level, optname, optval, optlen);
   }
 
   /**

@@ -47,6 +47,10 @@ class MockAsyncSocket : public AsyncSocket {
   MOCK_CONST_METHOD0(hangup, bool());
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_METHOD1(_setPreReceivedData, void(std::unique_ptr<IOBuf>&));
+  MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
+  MOCK_METHOD4(setSockOptVirtual, int(int, int, void const*, socklen_t));
+  MOCK_METHOD1(setErrMessageCB, void(AsyncSocket::ErrMessageCallback*));
+  MOCK_METHOD1(setSendMsgParamCB, void(AsyncSocket::SendMsgParamsCallback*));
   void setPreReceivedData(std::unique_ptr<IOBuf> data) override {
     return _setPreReceivedData(data);
   }
