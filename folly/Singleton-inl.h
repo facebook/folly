@@ -230,6 +230,17 @@ void SingletonHolder<T>::createInstance() {
   creating_thread_.store(std::this_thread::get_id(), std::memory_order_release);
 
   auto state = vault_.state_.rlock();
+  if (vault_.type_ != SingletonVault::Type::Relaxed &&
+      !state->registrationComplete) {
+    auto stack_trace_getter = SingletonVault::stackTraceGetter().load();
+    auto stack_trace = stack_trace_getter ? stack_trace_getter() : "";
+    if (!stack_trace.empty()) {
+      stack_trace = "Stack trace:\n" + stack_trace;
+    }
+
+    LOG(DFATAL) << "Singleton " << type().name() << " requested before "
+                << "registrationComplete() call. " << stack_trace;
+  }
   if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
     return;
   }
