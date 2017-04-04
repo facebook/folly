@@ -833,7 +833,7 @@ void SSLContext::initializeOpenSSLLocked() {
   SSL_load_error_strings();
   ERR_load_crypto_strings();
   // static locking
-  locks().reset(new SSLLock[size_t(::CRYPTO_num_locks())]);
+  locks().reset(new SSLLock[size_t(CRYPTO_num_locks())]);
   for (auto it: lockTypes()) {
     locks()[size_t(it.first)].lockType = it.second;
   }
@@ -869,7 +869,7 @@ void SSLContext::cleanupOpenSSLLocked() {
   CRYPTO_cleanup_all_ex_data();
   ERR_free_strings();
   EVP_cleanup();
-  ERR_remove_state(0);
+  ERR_clear_error();
   locks().reset();
   initialized_ = false;
 }

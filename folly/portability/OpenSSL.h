@@ -14,11 +14,21 @@
  * limitations under the License.
  */
 
+//
+// This class attempts to "unify" the OpenSSL libcrypto/libssl APIs between
+// OpenSSL 1.0.2, 1.1.0 (and some earlier versions) and BoringSSL. The general
+// idea is to provide namespaced wrapper methods for versions which do not
+// which already exist in BoringSSL and 1.1.0, but there are few APIs such as
+// SSL_CTX_set1_sigalgs_list and so on which exist in 1.0.2 but were removed
+// in BoringSSL
+//
+
 #pragma once
 
 // This must come before the OpenSSL includes.
 #include <folly/portability/Windows.h>
 
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 #include <cstdint>
@@ -60,39 +70,68 @@ namespace ssl {
 #define FOLLY_OPENSSL_HAS_SNI 0
 #endif
 
-// This class attempts to "unify" the OpenSSL libssl APIs between OpenSSL 1.0.2,
-// 1.1.0 and BoringSSL. The general idea is to provide wrapper methods for 1.0.2
-// which already exist in BoringSSL and 1.1.0, but there are few APIs such as
-// SSL_CTX_set1_sigalgs_list and so on which exist in 1.0.2 but were removed
-// in BoringSSL
+#if FOLLY_OPENSSL_IS_110
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed in 1.1.0 only
+////////////////////////////////////////////////////////////////////////////////
+
+#else
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed in BoringSSL and OpenSSL != 1.1.0 (1.0.2, 1.0.1, 1.0.0...)
+////////////////////////////////////////////////////////////////////////////////
+void BIO_meth_free(BIO_METHOD* biom);
+int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
+int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
+void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
+const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
+
+EVP_MD_CTX* EVP_MD_CTX_new(void);
+void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
+
+HMAC_CTX* HMAC_CTX_new(void);
+void HMAC_CTX_free(HMAC_CTX* ctx);
 
 #ifdef OPENSSL_IS_BORINGSSL
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed in BoringSSL only
+////////////////////////////////////////////////////////////////////////////////
 
 int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
-int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
 
 #elif FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_100
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed in 1.0.2 and 1.0.1/1.0.0 (both deprecated)
+////////////////////////////////////////////////////////////////////////////////
+
+int SSL_CTX_up_ref(SSL_CTX* session);
+int SSL_SESSION_up_ref(SSL_SESSION* session);
+int X509_up_ref(X509* x);
+
+#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_100
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed in 1.0.1/1.0.0 (both deprecated)
+////////////////////////////////////////////////////////////////////////////////
+int X509_get_signature_nid(X509* cert);
+
+#endif
 
 #if FOLLY_OPENSSL_IS_100
+////////////////////////////////////////////////////////////////////////////////
+// APIs needed only in 1.0.0 only (deprecated)
+////////////////////////////////////////////////////////////////////////////////
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER*);
 int TLS1_get_client_version(const SSL*);
 
 #endif
-
-int SSL_CTX_up_ref(SSL_CTX* session);
-int SSL_SESSION_up_ref(SSL_SESSION* session);
-int X509_up_ref(X509* x);
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
-int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
-
-#elif FOLLY_OPENSSL_IS_110
-
 #else
 #warning Compiling with unsupported OpenSSL version
-#endif
+
+#endif // !(OPENSSL_IS_BORINGSSL || FOLLY_OPENSSL_IS_101 ||
+// FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_100)
+
+#endif // !FOLLY_OPENSSL_IS_110
 
 } // ssl
 } // folly

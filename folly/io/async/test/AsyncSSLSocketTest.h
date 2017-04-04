@@ -755,8 +755,10 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
         int lookupDelay = 100) :
       TestSSLServer(acb) {
     SSL_CTX *sslCtx = ctx_->getSSLCtx();
+#ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
     SSL_CTX_sess_set_get_cb(sslCtx,
                             TestSSLAsyncCacheServer::getSessionCallback);
+#endif
     SSL_CTX_set_session_cache_mode(
       sslCtx, SSL_SESS_CACHE_NO_INTERNAL | SSL_SESS_CACHE_SERVER);
     asyncCallbacks_ = 0;
