@@ -268,6 +268,76 @@ TEST(IOBufQueue, Trim) {
   checkConsistency(queue);
 }
 
+TEST(IOBufQueue, TrimStartAtMost) {
+  IOBufQueue queue(clOptions);
+  unique_ptr<IOBuf> a = IOBuf::create(4);
+  a->append(4);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(6);
+  a->append(6);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(8);
+  a->append(8);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(10);
+  a->append(10);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(28, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimStartAtMost(1);
+  checkConsistency(queue);
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(27, queue.front()->computeChainDataLength());
+  EXPECT_EQ(3, queue.front()->length());
+
+  queue.trimStartAtMost(50);
+  checkConsistency(queue);
+  EXPECT_EQ(nullptr, queue.front());
+  EXPECT_EQ(0, queue.chainLength());
+}
+
+TEST(IOBufQueue, TrimEndAtMost) {
+  IOBufQueue queue(clOptions);
+  unique_ptr<IOBuf> a = IOBuf::create(4);
+  a->append(4);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(6);
+  a->append(6);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(8);
+  a->append(8);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+  a = IOBuf::create(10);
+  a->append(10);
+  queue.append(std::move(a));
+  checkConsistency(queue);
+
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(28, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimEndAtMost(1);
+  checkConsistency(queue);
+  EXPECT_EQ(4, queue.front()->countChainElements());
+  EXPECT_EQ(27, queue.front()->computeChainDataLength());
+  EXPECT_EQ(4, queue.front()->length());
+
+  queue.trimEndAtMost(50);
+  checkConsistency(queue);
+  EXPECT_EQ(nullptr, queue.front());
+  EXPECT_EQ(0, queue.chainLength());
+}
+
 TEST(IOBufQueue, TrimPack) {
   IOBufQueue queue(clOptions);
   unique_ptr<IOBuf> a = IOBuf::create(64);
