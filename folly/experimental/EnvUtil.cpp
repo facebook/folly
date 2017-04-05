@@ -44,12 +44,14 @@ EnvironmentState EnvironmentState::fromCurrentEnvironment() {
   return EnvironmentState{std::move(data)};
 }
 
+#if __linux__ && !FOLLY_MOBILE
 void EnvironmentState::setAsCurrentEnvironment() {
   PCHECK(0 == clearenv());
   for (const auto& kvp : env_) {
     PCHECK(0 == setenv(kvp.first.c_str(), kvp.second.c_str(), (int)true));
   }
 }
+#endif
 
 std::vector<std::string> EnvironmentState::toVector() const {
   std::vector<std::string> result;
