@@ -40,7 +40,7 @@ namespace folly {
 class EventBase::FunctionRunner
     : public NotificationQueue<EventBase::Func>::Consumer {
  public:
-  void messageAvailable(Func&& msg) override {
+  void messageAvailable(Func&& msg) noexcept override {
     // In libevent2, internal events do not break the loop.
     // Most users would expect loop(), followed by runInEventBaseThread(),
     // to break the loop and check if it should exit or not.

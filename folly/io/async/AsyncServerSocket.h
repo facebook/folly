@@ -755,7 +755,7 @@ class AsyncServerSocket : public DelayedDestruction
     void start(EventBase *eventBase, uint32_t maxAtOnce, uint32_t maxInQueue);
     void stop(EventBase* eventBase, AcceptCallback* callback);
 
-    virtual void messageAvailable(QueueMessage&& message);
+    virtual void messageAvailable(QueueMessage&& message) noexcept override;
 
     NotificationQueue<QueueMessage>* getQueue() {
       return &queue_;

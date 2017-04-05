@@ -88,7 +88,7 @@ class NotificationQueue {
      * messageAvailable() will be invoked whenever a new
      * message is available from the pipe.
      */
-    virtual void messageAvailable(MessageT&& message) = 0;
+    virtual void messageAvailable(MessageT&& message) noexcept = 0;
 
     /**
      * Begin consuming messages from the specified queue.
@@ -855,7 +855,7 @@ struct notification_queue_consumer_wrapper
       : callback_(std::forward<UCallback>(callback)) {}
 
   // we are being stricter here and requiring noexcept for callback
-  void messageAvailable(MessageT&& message) override {
+  void messageAvailable(MessageT&& message) noexcept override {
     static_assert(
       noexcept(std::declval<TCallback>()(std::forward<MessageT>(message))),
       "callback must be declared noexcept, e.g.: `[]() noexcept {}`"
