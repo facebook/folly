@@ -238,8 +238,12 @@ void SingletonHolder<T>::createInstance() {
       stack_trace = "Stack trace:\n" + stack_trace;
     }
 
-    LOG(DFATAL) << "Singleton " << type().name() << " requested before "
-                << "registrationComplete() call. " << stack_trace;
+    LOG(FATAL) << "Singleton " << type().name() << " requested before "
+               << "registrationComplete() call.\n"
+               << "This usually means that either main() never called "
+               << "folly::init, or singleton was requested before main() "
+               << "(which is not allowed).\n"
+               << stack_trace;
   }
   if (state->state == SingletonVault::SingletonVaultState::Quiescing) {
     return;
