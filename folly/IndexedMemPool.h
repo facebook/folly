@@ -150,7 +150,11 @@ struct IndexedMemPool : boost::noncopyable {
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
     if (!eagerRecycle()) {
-      for (uint32_t i = size_; i > 0; --i) {
+      // Take the minimum since it is possible that size_ > actualCapacity_.
+      // This can happen if there are multiple concurrent requests
+      // when size_ == actualCapacity_ - 1.
+      uint32_t last = std::min(uint32_t(size_), uint32_t(actualCapacity_));
+      for (uint32_t i = last; i > 0; --i) {
         slots_[i].~Slot();
       }
     }

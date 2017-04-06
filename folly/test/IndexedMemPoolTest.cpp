@@ -242,3 +242,52 @@ TEST(IndexedMemPool, no_data_races) {
     t.join();
   }
 }
+
+std::atomic<int> cnum{0};
+std::atomic<int> dnum{0};
+
+TEST(IndexedMemPool, construction_destruction) {
+  struct Foo {
+    Foo() {
+      cnum.fetch_add(1);
+    }
+    ~Foo() {
+      dnum.fetch_add(1);
+    }
+  };
+
+  std::atomic<bool> start{false};
+  std::atomic<int> started{0};
+
+  using Pool = IndexedMemPool<Foo, 1, 1, std::atomic, false, false>;
+  int nthreads = 20;
+  int count = 1000;
+
+  {
+    Pool pool(2);
+    std::vector<std::thread> thr(nthreads);
+    for (auto i = 0; i < nthreads; ++i) {
+      thr[i] = std::thread([&]() {
+        started.fetch_add(1);
+        while (!start.load())
+          ;
+        for (auto j = 0; j < count; ++j) {
+          uint32_t idx = pool.allocIndex();
+          if (idx != 0) {
+            pool.recycleIndex(idx);
+          }
+        }
+      });
+    }
+
+    while (started.load() < nthreads)
+      ;
+    start.store(true);
+
+    for (auto& t : thr) {
+      t.join();
+    }
+  }
+
+  CHECK_EQ(cnum.load(), dnum.load());
+}
