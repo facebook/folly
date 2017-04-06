@@ -54,21 +54,7 @@ class EventBase::FunctionRunner
       // wake up the loop.  We can ignore these messages.
       return;
     }
-
-    // The function should never throw an exception, because we have no
-    // way of knowing what sort of error handling to perform.
-    //
-    // If it does throw, log a message and abort the program.
-    try {
-      msg();
-    } catch (const std::exception& ex) {
-      LOG(ERROR) << "runInEventBaseThread() function threw a "
-                 << typeid(ex).name() << " exception: " << ex.what();
-      abort();
-    } catch (...) {
-      LOG(ERROR) << "runInEventBaseThread() function threw an exception";
-      abort();
-    }
+    msg();
   }
 };
 
