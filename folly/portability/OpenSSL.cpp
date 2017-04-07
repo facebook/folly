@@ -70,6 +70,7 @@ HMAC_CTX* HMAC_CTX_new(void) {
 
 void HMAC_CTX_free(HMAC_CTX* ctx) {
   if (ctx) {
+    HMAC_CTX_cleanup(ctx);
     OPENSSL_free(ctx);
   }
 }
