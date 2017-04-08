@@ -28,7 +28,10 @@ namespace folly {
 /// not implement a blocking interface. For the purposes of this
 /// class, lower number is higher priority
 
-template <class T>
+template <
+    typename T,
+    template <typename> class Atom = std::atomic,
+    bool Dynamic = false>
 class PriorityMPMCQueue {
  public:
   PriorityMPMCQueue(size_t numPriorities, size_t capacity) {
@@ -91,7 +94,7 @@ class PriorityMPMCQueue {
   }
 
  private:
-  std::vector<folly::MPMCQueue<T>> queues_;
+  std::vector<folly::MPMCQueue<T, Atom, Dynamic>> queues_;
 };
 
 } // namespace folly
