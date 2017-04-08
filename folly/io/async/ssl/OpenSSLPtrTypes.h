@@ -18,6 +18,9 @@
 
 #include <glog/logging.h>
 
+// This needs to be before any OpenSSL includes.
+#include <folly/portability/OpenSSL.h>
+
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
 #include <openssl/bn.h>
@@ -32,7 +35,6 @@
 #include <openssl/x509.h>
 
 #include <folly/Memory.h>
-#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 namespace ssl {
