@@ -615,8 +615,8 @@ std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
 template <class T>
 size_t firstEscapableInWord(T s) {
   static_assert(std::is_unsigned<T>::value, "Unsigned integer required");
-  constexpr T kOnes = ~T() / 255; // 0x...0101
-  constexpr T kMsbs = kOnes * 0x80; // 0x...8080
+  static constexpr T kOnes = ~T() / 255; // 0x...0101
+  static constexpr T kMsbs = kOnes * 0x80; // 0x...8080
 
   // Sets the MSB of bytes < b. Precondition: b < 128.
   auto isLess = [](T w, uint8_t b) {
