@@ -158,6 +158,8 @@ TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
     ASSERT_EQ(kLargeValue, reader.value());
     ASSERT_EQ(0, reader.previousValue());
   }
+
+  list.free();
 }
 
 namespace bm {
