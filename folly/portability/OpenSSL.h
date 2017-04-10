@@ -117,7 +117,7 @@ int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
 
 FOLLY_PUSH_WARNING
 #if __CLANG_PREREQ(3, 0)
-FOLLY_GCC_DISABLE_WARNING(header-hygiene)
+FOLLY_GCC_DISABLE_WARNING("-Wheader-hygiene")
 #endif
 /* using override */ using namespace folly::portability::ssl;
 FOLLY_POP_WARNING
