@@ -14,129 +14,110 @@
  * limitations under the License.
  */
 
-//
-// This class attempts to "unify" the OpenSSL libcrypto/libssl APIs between
-// OpenSSL 1.0.2, 1.1.0 (and some earlier versions) and BoringSSL. The general
-// idea is to provide namespaced wrapper methods for versions which do not
-// which already exist in BoringSSL and 1.1.0, but there are few APIs such as
-// SSL_CTX_set1_sigalgs_list and so on which exist in 1.0.2 but were removed
-// in BoringSSL
-//
-
 #pragma once
 
 // This must come before the OpenSSL includes.
 #include <folly/portability/Windows.h>
 
+#include <folly/Portability.h>
+
 #include <openssl/dh.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
-#include <cstdint>
-
-namespace folly {
-namespace ssl {
 
 // BoringSSL doesn't have notion of versioning although it defines
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are
 // intended to be specific to OpenSSL.
 #if !defined(OPENSSL_IS_BORINGSSL)
-#define FOLLY_OPENSSL_IS_100                \
+# define FOLLY_OPENSSL_IS_100                \
   (OPENSSL_VERSION_NUMBER >= 0x10000003L && \
    OPENSSL_VERSION_NUMBER < 0x1000105fL)
-#define FOLLY_OPENSSL_IS_101                \
+# define FOLLY_OPENSSL_IS_101                \
   (OPENSSL_VERSION_NUMBER >= 0x1000105fL && \
    OPENSSL_VERSION_NUMBER < 0x1000200fL)
-#define FOLLY_OPENSSL_IS_102                \
+# define FOLLY_OPENSSL_IS_102                \
   (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
    OPENSSL_VERSION_NUMBER < 0x10100000L)
-#define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-#endif // !defined(OPENSSL_IS_BORINGSSL)
+# define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#endif
 
-// BoringSSL and OpenSSL 1.0.2 later with TLS extension support ALPN.
-#if defined(OPENSSL_IS_BORINGSSL) ||          \
-    (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
-     !defined(OPENSSL_NO_TLSEXT))
-#define FOLLY_OPENSSL_HAS_ALPN 1
-#else
-#define FOLLY_OPENSSL_HAS_ALPN 0
+#if !OPENSSL_IS_BORINGSSL && !FOLLY_OPENSSL_IS_100 && !FOLLY_OPENSSL_IS_101 \
+    && !FOLLY_OPENSSL_IS_102 && !FOLLY_OPENSSL_IS_110
+# warning Compiling with unsupported OpenSSL version
 #endif
 
 // BoringSSL and OpenSSL 0.9.8f later with TLS extension support SNI.
-#if defined(OPENSSL_IS_BORINGSSL) ||          \
-    (OPENSSL_VERSION_NUMBER >= 0x00908070L && \
-     !defined(OPENSSL_NO_TLSEXT))
-#define FOLLY_OPENSSL_HAS_SNI 1
+#if OPENSSL_IS_BORINGSSL ||          \
+    (OPENSSL_VERSION_NUMBER >= 0x00908070L && !defined(OPENSSL_NO_TLSEXT))
+# define FOLLY_OPENSSL_HAS_SNI 1
 #else
-#define FOLLY_OPENSSL_HAS_SNI 0
+# define FOLLY_OPENSSL_HAS_SNI 0
 #endif
 
-#if FOLLY_OPENSSL_IS_110
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed in 1.1.0 only
-////////////////////////////////////////////////////////////////////////////////
-
+// BoringSSL and OpenSSL 1.0.2 later with TLS extension support ALPN.
+#if OPENSSL_IS_BORINGSSL ||          \
+    (OPENSSL_VERSION_NUMBER >= 0x1000200fL && !defined(OPENSSL_NO_TLSEXT))
+# define FOLLY_OPENSSL_HAS_ALPN 1
 #else
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed in BoringSSL and OpenSSL != 1.1.0 (1.0.2, 1.0.1, 1.0.0...)
-////////////////////////////////////////////////////////////////////////////////
-void BIO_meth_free(BIO_METHOD* biom);
-int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
-int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
-void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
-const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
+# define FOLLY_OPENSSL_HAS_ALPN 0
+#endif
 
-EVP_MD_CTX* EVP_MD_CTX_new(void);
-void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
+// This attempts to "unify" the OpenSSL libcrypto/libssl APIs between
+// OpenSSL 1.0.2, 1.1.0 (and some earlier versions) and BoringSSL. The general
+// idea is to provide namespaced wrapper methods for versions which do not
+// which already exist in BoringSSL and 1.1.0, but there are few APIs such as
+// SSL_CTX_set1_sigalgs_list and so on which exist in 1.0.2 but were removed
+// in BoringSSL
+namespace folly {
+namespace portability {
+namespace ssl {
 
-HMAC_CTX* HMAC_CTX_new(void);
-void HMAC_CTX_free(HMAC_CTX* ctx);
-
-unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
-int SSL_SESSION_has_ticket(const SSL_SESSION*);
-int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
-
-#ifdef OPENSSL_IS_BORINGSSL
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed in BoringSSL only
-////////////////////////////////////////////////////////////////////////////////
-
+#if OPENSSL_IS_BORINGSSL
 int SSL_CTX_set1_sigalgs_list(SSL_CTX* ctx, const char* sigalgs_list);
 int TLS1_get_client_version(SSL* s);
-
-#elif FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_100
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed in 1.0.2 and 1.0.1/1.0.0 (both deprecated)
-////////////////////////////////////////////////////////////////////////////////
-
-int SSL_CTX_up_ref(SSL_CTX* session);
-int SSL_SESSION_up_ref(SSL_SESSION* session);
-int X509_up_ref(X509* x);
-
-#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_100
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed in 1.0.1/1.0.0 (both deprecated)
-////////////////////////////////////////////////////////////////////////////////
-int X509_get_signature_nid(X509* cert);
-
 #endif
 
 #if FOLLY_OPENSSL_IS_100
-////////////////////////////////////////////////////////////////////////////////
-// APIs needed only in 1.0.0 only (deprecated)
-////////////////////////////////////////////////////////////////////////////////
-
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER*);
 int TLS1_get_client_version(const SSL*);
-
 #endif
-#else
-#warning Compiling with unsupported OpenSSL version
 
-#endif // !(OPENSSL_IS_BORINGSSL || FOLLY_OPENSSL_IS_101 ||
-// FOLLY_OPENSSL_IS_102 || FOLLY_OPENSSL_IS_100)
+#if FOLLY_OPENSSL_IS_100 || FOLLY_OPENSSL_IS_101
+int X509_get_signature_nid(X509* cert);
+#endif
 
-#endif // !FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_IS_100 || FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
+int SSL_CTX_up_ref(SSL_CTX* session);
+int SSL_SESSION_up_ref(SSL_SESSION* session);
+int X509_up_ref(X509* x);
+#endif
 
-} // ssl
-} // folly
+#if !FOLLY_OPENSSL_IS_110
+void BIO_meth_free(BIO_METHOD* biom);
+int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
+int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
+
+const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
+
+EVP_MD_CTX* EVP_MD_CTX_new();
+void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
+
+HMAC_CTX* HMAC_CTX_new();
+void HMAC_CTX_free(HMAC_CTX* ctx);
+
+unsigned long SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION* s);
+int SSL_SESSION_has_ticket(const SSL_SESSION* s);
+int DH_set0_pqg(DH* dh, BIGNUM* p, BIGNUM* q, BIGNUM* g);
+#endif
+
+}
+}
+}
+
+FOLLY_PUSH_WARNING
+#if __CLANG_PREREQ(3, 0)
+FOLLY_GCC_DISABLE_WARNING(header-hygiene)
+#endif
+/* using override */ using namespace folly::portability::ssl;
+FOLLY_POP_WARNING
