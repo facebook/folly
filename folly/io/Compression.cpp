@@ -565,7 +565,8 @@ std::unique_ptr<IOBuf> LZ4FrameCodec::doUncompress(
     growthSize = std::min(uncompressedLength, growthSize);
   } else {
     // Reduce growthSize for small data
-    const auto guessUncompressedLen = 4 * std::max(blockSize, in.size());
+    const auto guessUncompressedLen =
+        4 * std::max<uint64_t>(blockSize, in.size());
     growthSize = std::min(guessUncompressedLen, growthSize);
   }
   // Once LZ4_decompress() is called, the dctx_ cannot be reused until it
