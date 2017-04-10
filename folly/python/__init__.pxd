@@ -6,7 +6,7 @@ cdef extern from "folly/ExceptionWrapper.h" namespace "folly":
 
 cdef extern from "folly/Try.h" namespace "folly" nogil:
     cdef cppclass cFollyTry "folly::Try"[T]:
-        T value() except+
+        T value()
         cbool hasException[T]()
         cbool hasException()
         cFollyExceptionWrapper exception()
