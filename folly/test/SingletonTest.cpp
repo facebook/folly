@@ -30,7 +30,7 @@
 #include <glog/logging.h>
 #include <boost/thread/barrier.hpp>
 
-FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 

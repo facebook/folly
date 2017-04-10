@@ -151,12 +151,10 @@ constexpr bool kIsSanitizeThread = false;
 #elif defined(__clang__) || defined(__GNUC__)
 # define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
 # define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
-#define FOLLY_GCC_DISABLE_WARNING_INTERNAL3(warningName) #warningName
-#define FOLLY_GCC_DISABLE_WARNING_INTERNAL2(warningName) \
-  FOLLY_GCC_DISABLE_WARNING_INTERNAL3(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)                       \
-  _Pragma(FOLLY_GCC_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored \
-          FOLLY_GCC_DISABLE_WARNING_INTERNAL3(-W##warningName)))
+# define FOLLY_GCC_DISABLE_WARNING_INTERNAL2(warningName) #warningName
+# define FOLLY_GCC_DISABLE_WARNING(warningName) \
+  _Pragma(                                      \
+  FOLLY_GCC_DISABLE_WARNING_INTERNAL2(GCC diagnostic ignored warningName))
 // Disable the MSVC warnings.
 # define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
 #else
@@ -168,8 +166,8 @@ constexpr bool kIsSanitizeThread = false;
 
 #ifdef HAVE_SHADOW_LOCAL_WARNINGS
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS        \
-  FOLLY_GCC_DISABLE_WARNING(shadow-compatible-local) \
-  FOLLY_GCC_DISABLE_WARNING(shadow-local)
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow-compatible-local") \
+  FOLLY_GCC_DISABLE_WARNING("-Wshadow-local")
 #else
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
 #endif

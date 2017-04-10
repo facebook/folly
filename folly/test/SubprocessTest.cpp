@@ -33,7 +33,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
-FOLLY_GCC_DISABLE_WARNING(deprecated-declarations)
+FOLLY_GCC_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
 
