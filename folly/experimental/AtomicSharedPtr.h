@@ -106,11 +106,9 @@ class atomic_shared_ptr {
   SharedPtr load(std::memory_order order = std::memory_order_seq_cst) const
       noexcept {
     auto local = takeOwnedBase(order);
-
-    auto res = get_shared_ptr(local, false);
-
-    return std::move(res);
+    return get_shared_ptr(local, false);
   }
+
   /* implicit */ operator SharedPtr() const {
     return load();
   }
@@ -332,7 +330,7 @@ class atomic_shared_ptr {
               p.get());
       res = *aliasedp;
     }
-    return std::move(res);
+    return res;
   }
 
   /* Get a reference to the pointer, either from the local batch or
