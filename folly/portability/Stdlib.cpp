@@ -136,3 +136,30 @@ int unsetenv(const char* name) {
 }
 }
 #endif
+
+#if !__linux__ && !FOLLY_MOBILE
+#include <string>
+#include <vector>
+
+extern "C" int clearenv() {
+  std::vector<std::string> data;
+  for (auto it = environ; it && *it; ++it) {
+    std::string entry(*it);
+    auto equalsPosition = entry.find('=');
+    if (equalsPosition == std::string::npos || equalsPosition == 0) {
+      // It's either a drive setting (if on Windows), or something clowny is
+      // going on in the environment.
+      continue;
+    } else {
+      data.emplace_back(entry.substr(0, equalsPosition));
+    }
+  }
+
+  for (auto s : data) {
+    if (unsetenv(s.c_str()) != 0)
+      return -1;
+  }
+
+  return 0;
+}
+#endif
