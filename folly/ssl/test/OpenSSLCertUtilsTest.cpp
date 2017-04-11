@@ -16,9 +16,6 @@
 
 #include <folly/ssl/OpenSSLCertUtils.h>
 
-#include <openssl/bio.h>
-#include <openssl/evp.h>
-
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>

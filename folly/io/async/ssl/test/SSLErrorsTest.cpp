@@ -17,9 +17,7 @@
 #include <folly/io/async/ssl/SSLErrors.h>
 
 #include <folly/portability/GTest.h>
-
-#include <openssl/err.h>
-#include <openssl/x509.h>
+#include <folly/portability/OpenSSL.h>
 
 using namespace testing;
 using namespace folly;

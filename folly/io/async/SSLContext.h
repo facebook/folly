@@ -24,13 +24,6 @@
 #include <string>
 #include <random>
 
-// This has to come before SSL.
-#include <folly/portability/OpenSSL.h>
-#include <folly/portability/Sockets.h>
-
-#include <openssl/ssl.h>
-#include <openssl/tls1.h>
-
 #include <glog/logging.h>
 
 #ifndef FOLLY_NO_CONFIG
@@ -40,6 +33,7 @@
 #include <folly/Range.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 

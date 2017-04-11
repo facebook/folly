@@ -16,14 +16,10 @@
 
 #pragma once
 
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
-#include <folly/portability/OpenSSL.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/sha.h>
-
 #include <folly/Range.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 namespace ssl {

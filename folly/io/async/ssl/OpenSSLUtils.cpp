@@ -13,17 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <folly/io/async/ssl/OpenSSLUtils.h>
-#include <folly/ScopeGuard.h>
-#include <folly/portability/OpenSSL.h>
-#include <folly/portability/Sockets.h>
+
 #include <glog/logging.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/ssl.h>
-#include <openssl/x509v3.h>
+
 #include <unordered_map>
+
+#include <folly/ScopeGuard.h>
+#include <folly/portability/Sockets.h>
 
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL

@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 #include <folly/ssl/OpenSSLCertUtils.h>
-#include <folly/String.h>
-#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
-
-#include <openssl/x509.h>
-#include <openssl/x509v3.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/String.h>
+#include <folly/io/async/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace ssl {

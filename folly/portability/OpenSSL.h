@@ -21,10 +21,27 @@
 
 #include <folly/Portability.h>
 
+#include <openssl/opensslv.h>
+
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
+#include <openssl/crypto.h>
 #include <openssl/dh.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+#include <openssl/sha.h>
 #include <openssl/ssl.h>
+#include <openssl/tls1.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
+
+#ifndef OPENSSL_NO_EC
+#include <openssl/ec.h>
+#include <openssl/ecdsa.h>
+#endif
 
 // BoringSSL doesn't have notion of versioning although it defines
 // OPENSSL_VERSION_NUMBER to maintain compatibility. The following variables are

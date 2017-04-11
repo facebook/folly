@@ -18,9 +18,8 @@
 #include <string>
 #include <vector>
 
-#include <openssl/x509.h>
-
 #include <folly/Optional.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 namespace ssl {

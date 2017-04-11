@@ -15,9 +15,8 @@
  */
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <signal.h>
-
 #include <folly/SocketAddress.h>
+#include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
@@ -29,10 +28,10 @@
 #include <folly/io/async/test/BlockingSocket.h>
 
 #include <fcntl.h>
-#include <folly/io/Cursor.h>
-#include <openssl/bio.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
+
 #include <fstream>
 #include <iostream>
 #include <list>

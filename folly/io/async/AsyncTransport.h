@@ -23,9 +23,8 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/OpenSSLPtrTypes.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/portability/SysUio.h>
-
-#include <openssl/ssl.h>
 
 constexpr bool kOpenSslModeMoveBufferOwnership =
 #ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
