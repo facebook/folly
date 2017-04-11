@@ -189,6 +189,10 @@ void Fiber::preempt(State state) {
   }
 }
 
+Fiber::LocalData::~LocalData() {
+  reset();
+}
+
 Fiber::LocalData::LocalData(const LocalData& other) : data_(nullptr) {
   *this = other;
 }
