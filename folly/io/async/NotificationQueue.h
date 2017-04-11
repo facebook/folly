@@ -140,7 +140,7 @@ class NotificationQueue {
      * messages from.  Returns nullptr if the consumer is not currently
      * consuming events from any queue.
      */
-    NotificationQueue* getCurrentQueue() const {
+    constexpr NotificationQueue* getCurrentQueue() const noexcept {
       return queue_;
     }
 
@@ -154,14 +154,20 @@ class NotificationQueue {
      * A limit of 0 means no limit will be enforced.  If unset, the limit
      * defaults to kDefaultMaxReadAtOnce (defined to 10 above).
      */
-    void setMaxReadAtOnce(uint32_t maxAtOnce) {
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
+    void setMaxReadAtOnce(uint32_t maxAtOnce) noexcept {
       maxReadAtOnce_ = maxAtOnce;
     }
-    uint32_t getMaxReadAtOnce() const {
+    constexpr uint32_t getMaxReadAtOnce() const noexcept {
       return maxReadAtOnce_;
     }
 
-    EventBase* getEventBase() {
+#if __cplusplus >= 201402L
+    constexpr
+#endif  // __cplusplus
+    EventBase* getEventBase() noexcept {
       return base_;
     }
 
