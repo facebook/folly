@@ -132,7 +132,6 @@ TEST(EnvironmentStateTest, Separation) {
   EXPECT_STREQ("foon", getenv("spork"));
 }
 
-#if __linux__ && !FOLLY_MOBILE
 TEST(EnvironmentStateTest, Update) {
   EnvVarSaver saver{};
   auto env = EnvironmentState::fromCurrentEnvironment();
@@ -142,7 +141,6 @@ TEST(EnvironmentStateTest, Update) {
   env.setAsCurrentEnvironment();
   EXPECT_STREQ("foon", getenv("spork"));
 }
-#endif
 
 TEST(EnvironmentStateTest, forSubprocess) {
   auto env = EnvironmentState::empty();

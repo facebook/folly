@@ -64,14 +64,12 @@ struct EnvironmentState {
     return &env_;
   }
 
-#if __linux__ && !FOLLY_MOBILE
   // Update the process environment with the one in the stored model.
   // Subsequent changes to the model do not alter the process environment. The
   // state of the process environment during execution of this method is not
   // defined. If the process environment is altered by another thread during the
   // execution of this method the results are not defined.
   void setAsCurrentEnvironment();
-#endif
 
   // Get a copy of the model environment in the form used by `folly::Subprocess`
   std::vector<std::string> toVector() const;
