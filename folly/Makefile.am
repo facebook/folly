@@ -604,8 +604,8 @@ libfollybase_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION)
 libfolly_la_LIBADD = libfollybase.la
 libfolly_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LT_VERSION) -lssl
 
-FingerprintTables.cpp: generate_fingerprint_tables
-	./generate_fingerprint_tables
+FingerprintTables.cpp: generate_fingerprint_tables$(EXEEXT)
+	./generate_fingerprint_tables$(EXEEXT)
 CLEANFILES += FingerprintTables.cpp
 
 libfollybenchmark_la_SOURCES = Benchmark.cpp

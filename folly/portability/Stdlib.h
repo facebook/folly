@@ -25,7 +25,7 @@
 #endif
 
 extern "C" {
-#ifdef _WIN32
+#if defined(_WIN32)
 // These are technically supposed to be defined linux/limits.h and
 // sys/param.h respectively, but Windows defines _MAX_PATH in stdlib.h,
 // so, instead of creating two headers for a single define each, we put
@@ -46,5 +46,9 @@ int unsetenv(const char* name);
 char*** _NSGetEnviron(void);
 #endif
 #define environ (*_NSGetEnviron())
+#endif
+
+#if defined(_WIN32) || defined (__CYGWIN__) || defined(__APPLE__)
+int clearenv(void);
 #endif
 }

@@ -136,3 +136,31 @@ int unsetenv(const char* name) {
 }
 }
 #endif
+
+#if defined(_WIN32) || defined (__CYGWIN__) || defined(__APPLE__)
+#include <string>
+extern char **environ;
+extern "C" {
+int clearenv(void) {
+  char **env = environ;
+  while (env[0] != nullptr) {
+    size_t len = 0;
+    while (env[0][len] != '=') ++len;
+    ++len;
+    {
+      try {
+        std::string name(env[0], len);
+        name[len - 1] = '\0';
+        int result = unsetenv(name.c_str());
+        if (result != 0) {
+          return result;
+        }
+      } catch (const std::bad_alloc&) {
+        return -1;
+      }
+    }
+  }
+  return 0;
+}
+}
+#endif
