@@ -126,3 +126,12 @@
 #else
 # define FOLLY_ALWAYS_INLINE inline
 #endif
+
+// attribute hidden
+#if _MSC_VER
+#define FOLLY_ATTR_VISIBILITY_HIDDEN
+#elif defined(__clang__) || defined(__GNUC__)
+#define FOLLY_ATTR_VISIBILITY_HIDDEN __attribute__((__visibility__("hidden")))
+#else
+#define FOLLY_ATTR_VISIBILITY_HIDDEN
+#endif

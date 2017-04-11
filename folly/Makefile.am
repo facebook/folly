@@ -93,6 +93,7 @@ nobase_follyinclude_HEADERS = \
 	Exception.h \
 	ExceptionString.h \
 	ExceptionWrapper.h \
+	ExceptionWrapper-inl.h \
 	Executor.h \
 	Expected.h \
 	experimental/AsymmetricMemoryBarrier.h \
