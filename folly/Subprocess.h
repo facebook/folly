@@ -33,12 +33,12 @@
  * to complete, returning the exit status.
  *
  * A thread-safe [1] version of popen() (type="r", to read from the child):
- *    Subprocess proc(cmd, Subprocess::pipeStdout());
+ *    Subprocess proc(cmd, Subprocess::Options().pipeStdout());
  *    // read from proc.stdoutFd()
  *    proc.wait();
  *
  * A thread-safe [1] version of popen() (type="w", to write to the child):
- *    Subprocess proc(cmd, Subprocess::pipeStdin());
+ *    Subprocess proc(cmd, Subprocess::Options().pipeStdin());
  *    // write to proc.stdinFd()
  *    proc.wait();
  *
@@ -438,10 +438,6 @@ class Subprocess {
     Optional<clone_flags_t> cloneFlags_;
 #endif
   };
-
-  static Options pipeStdin() { return Options().stdinFd(PIPE); }
-  static Options pipeStdout() { return Options().stdoutFd(PIPE); }
-  static Options pipeStderr() { return Options().stderrFd(PIPE); }
 
   // Non-copiable, but movable
   Subprocess(const Subprocess&) = delete;

@@ -222,8 +222,9 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   // Test where the exec call fails() with pipes
   checkFdLeak([] {
     try {
-      Subprocess proc(std::vector<std::string>({"/no/such/file"}),
-                      Subprocess::pipeStdout().stderrFd(Subprocess::PIPE));
+      Subprocess proc(
+          std::vector<std::string>({"/no/such/file"}),
+          Subprocess::Options().pipeStdout().stderrFd(Subprocess::PIPE));
       ADD_FAILURE() << "expected an error when running /no/such/file";
     } catch (const SubprocessSpawnError& ex) {
       EXPECT_EQ(ENOENT, ex.errnoValue());
@@ -258,7 +259,7 @@ TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
 }
 
 TEST(PopenSubprocessTest, PopenRead) {
-  Subprocess proc("ls /", Subprocess::pipeStdout());
+  Subprocess proc("ls /", Subprocess::Options().pipeStdout());
   int found = 0;
   gen::byLine(File(proc.stdoutFd())) |
     [&] (StringPiece line) {
@@ -317,8 +318,9 @@ TEST(AfterForkCallbackSubprocessTest, TestAfterForkCallbackError) {
 }
 
 TEST(CommunicateSubprocessTest, SimpleRead) {
-  Subprocess proc(std::vector<std::string>{ "/bin/echo", "-n", "foo", "bar"},
-                  Subprocess::pipeStdout());
+  Subprocess proc(
+      std::vector<std::string>{"/bin/echo", "-n", "foo", "bar"},
+      Subprocess::Options().pipeStdout());
   auto p = proc.communicate();
   EXPECT_EQ("foo bar", p.first);
   proc.waitChecked();
@@ -375,7 +377,8 @@ TEST(CommunicateSubprocessTest, Duplex2) {
       "-e", "s/a test/a successful test/",
       "-e", "/^another line/w/dev/stderr",
     });
-    auto options = Subprocess::pipeStdin().pipeStdout().pipeStderr().usePath();
+    auto options =
+        Subprocess::Options().pipeStdin().pipeStdout().pipeStderr().usePath();
     Subprocess proc(cmd, options);
     auto out = proc.communicateIOBuf(std::move(input));
     proc.waitChecked();
@@ -463,7 +466,8 @@ TEST(CommunicateSubprocessTest, Chatty) {
     int wcount = 0;
     int rcount = 0;
 
-    auto options = Subprocess::pipeStdin().pipeStdout().pipeStderr().usePath();
+    auto options =
+        Subprocess::Options().pipeStdin().pipeStdout().pipeStderr().usePath();
     std::vector<std::string> cmd {
       "sed",
       "-u",
