@@ -386,8 +386,8 @@ struct Bools {
 
 // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.
 template <class... Ts>
-using StrictConjunction =
-    std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>>;
+struct StrictConjunction
+    : std::is_same<Bools<Ts::value..., true>, Bools<true, Ts::value...>> {};
 
 } // namespace folly
 
