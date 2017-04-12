@@ -83,7 +83,11 @@ const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s) {
   return s->tlsext_hostname;
 }
 
-EVP_MD_CTX* EVP_MD_CTX_new() {
+unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x) {
+  return ASN1_STRING_data((ASN1_STRING*)x);
+}
+
+EVP_MD_CTX* EVP_MD_CTX_new(void) {
   EVP_MD_CTX* ctx = (EVP_MD_CTX*)OPENSSL_malloc(sizeof(EVP_MD_CTX));
   if (!ctx) {
     throw std::runtime_error("Cannot allocate EVP_MD_CTX");

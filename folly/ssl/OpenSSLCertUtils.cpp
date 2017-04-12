@@ -43,7 +43,7 @@ Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
     return none;
   }
 
-  auto cnData = reinterpret_cast<const char*>(ASN1_STRING_data(cnAsn));
+  auto cnData = reinterpret_cast<const char*>(ASN1_STRING_get0_data(cnAsn));
   auto cnLen = ASN1_STRING_length(cnAsn);
   if (!cnData || cnLen <= 0) {
     return none;
@@ -69,8 +69,8 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
     if (!genName || genName->type != GEN_DNS) {
       continue;
     }
-    auto nameData =
-        reinterpret_cast<const char*>(ASN1_STRING_data(genName->d.dNSName));
+    auto nameData = reinterpret_cast<const char*>(
+        ASN1_STRING_get0_data(genName->d.dNSName));
     auto nameLen = ASN1_STRING_length(genName->d.dNSName);
     if (!nameData || nameLen <= 0) {
       continue;

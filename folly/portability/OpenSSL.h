@@ -116,6 +116,7 @@ int BIO_meth_set_read(BIO_METHOD* biom, int (*read)(BIO*, char*, int));
 int BIO_meth_set_write(BIO_METHOD* biom, int (*write)(BIO*, const char*, int));
 
 const char* SSL_SESSION_get0_hostname(const SSL_SESSION* s);
+unsigned char* ASN1_STRING_get0_data(const ASN1_STRING* x);
 
 EVP_MD_CTX* EVP_MD_CTX_new();
 void EVP_MD_CTX_free(EVP_MD_CTX* ctx);
