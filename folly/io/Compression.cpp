@@ -840,7 +840,7 @@ std::unique_ptr<IOBuf> ZlibCodec::addOutputBuffer(z_stream* stream,
   CHECK_EQ(stream->avail_out, 0);
 
   auto buf = IOBuf::create(length);
-  buf->append(length);
+  buf->append(buf->capacity());
 
   stream->next_out = buf->writableData();
   stream->avail_out = buf->length();
@@ -1147,7 +1147,7 @@ std::unique_ptr<IOBuf> LZMA2Codec::addOutputBuffer(
   CHECK_EQ(stream->avail_out, 0);
 
   auto buf = IOBuf::create(length);
-  buf->append(length);
+  buf->append(buf->capacity());
 
   stream->next_out = buf->writableData();
   stream->avail_out = buf->length();
