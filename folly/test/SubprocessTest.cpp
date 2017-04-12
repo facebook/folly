@@ -22,14 +22,14 @@
 #include <glog/logging.h>
 
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/FileUtil.h>
+#include <folly/Format.h>
 #include <folly/String.h>
+#include <folly/experimental/TestUtil.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/File.h>
 #include <folly/gen/String.h>
-#include <folly/experimental/TestUtil.h>
-#include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 
@@ -45,6 +45,29 @@ TEST(SimpleSubprocessTest, ExitsSuccessfully) {
 TEST(SimpleSubprocessTest, ExitsSuccessfullyChecked) {
   Subprocess proc(std::vector<std::string>{ "/bin/true" });
   proc.waitChecked();
+}
+
+TEST(SimpleSubprocessTest, CloneFlagsWithVfork) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/true"},
+      Subprocess::Options().useCloneWithFlags(SIGCHLD | CLONE_VFORK));
+  EXPECT_EQ(0, proc.wait().exitStatus());
+}
+
+TEST(SimpleSubprocessTest, CloneFlagsWithFork) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/true"},
+      Subprocess::Options().useCloneWithFlags(SIGCHLD));
+  EXPECT_EQ(0, proc.wait().exitStatus());
+}
+
+TEST(SimpleSubprocessTest, CloneFlagsSubprocessCtorExitsAfterExec) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/sleep", "3600"},
+      Subprocess::Options().useCloneWithFlags(SIGCHLD));
+  checkUnixError(::kill(proc.pid(), SIGKILL), "kill");
+  auto retCode = proc.wait();
+  EXPECT_TRUE(retCode.killed());
 }
 
 TEST(SimpleSubprocessTest, ExitsWithError) {
