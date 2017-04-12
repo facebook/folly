@@ -33,6 +33,20 @@ class OpenSSLHash {
    public:
     Digest() : ctx_(EVP_MD_CTX_new()) {}
 
+    Digest(const Digest& other) {
+      ctx_ = EvpMdCtxUniquePtr(EVP_MD_CTX_new());
+      if (other.md_ != nullptr) {
+        hash_init(other.md_);
+        check_libssl_result(
+            1, EVP_MD_CTX_copy_ex(ctx_.get(), other.ctx_.get()));
+      }
+    }
+
+    Digest& operator=(const Digest& other) {
+      this->~Digest();
+      return *new (this) Digest(other);
+    }
+
     void hash_init(const EVP_MD* md) {
       md_ = md;
       check_libssl_result(1, EVP_DigestInit_ex(ctx_.get(), md, nullptr));
@@ -54,6 +68,7 @@ class OpenSSLHash {
       check_libssl_result(size, int(len));
       md_ = nullptr;
     }
+
    private:
     const EVP_MD* md_ = nullptr;
     EvpMdCtxUniquePtr ctx_{nullptr};
