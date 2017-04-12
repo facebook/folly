@@ -405,6 +405,17 @@ TEST(IPAddress, ToString) {
                               " - ", addr_1, " - ", addr_10_1_2_3));
 }
 
+TEST(IPaddress, toInverseArpaName) {
+  IPAddressV4 addr_ipv4("10.0.0.1");
+  EXPECT_EQ("1.0.0.10.in-addr.arpa", addr_ipv4.toInverseArpaName());
+  IPAddressV6 addr_ipv6("2620:0000:1cfe:face:b00c:0000:0000:0003");
+  EXPECT_EQ(
+      sformat(
+          "{}.ip6.arpa",
+          "3.0.0.0.0.0.0.0.0.0.0.0.c.0.0.b.e.c.a.f.e.f.c.1.0.0.0.0.0.2.6.2"),
+      addr_ipv6.toInverseArpaName());
+}
+
 // Test that invalid string values are killed
 TEST_P(IPAddressCtorTest, InvalidCreation) {
   string addr = GetParam();

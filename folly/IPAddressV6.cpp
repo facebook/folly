@@ -398,6 +398,19 @@ string IPAddressV6::toFullyQualified() const {
 }
 
 // public
+string IPAddressV6::toInverseArpaName() const {
+  constexpr folly::StringPiece lut = "0123456789abcdef";
+  std::array<char, 32> a;
+  int j = 0;
+  for (int i = 15; i >= 0; i--) {
+    a[j] = (lut[bytes()[i] & 0xf]);
+    a[j + 1] = (lut[bytes()[i] >> 4]);
+    j += 2;
+  }
+  return sformat("{}.ip6.arpa", join(".", a));
+}
+
+// public
 uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {

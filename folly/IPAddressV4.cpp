@@ -225,6 +225,16 @@ string IPAddressV4::str() const {
 }
 
 // public
+string IPAddressV4::toInverseArpaName() const {
+  return sformat(
+      "{}.{}.{}.{}.in-addr.arpa",
+      addr_.bytes_[3],
+      addr_.bytes_[2],
+      addr_.bytes_[1],
+      addr_.bytes_[0]);
+}
+
+// public
 uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {

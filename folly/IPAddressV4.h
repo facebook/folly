@@ -183,6 +183,8 @@ class IPAddressV4 {
   // @see IPAddress#str
   std::string str() const;
 
+  std::string toInverseArpaName() const;
+
   // return underlying in_addr structure
   in_addr toAddr() const { return addr_.inAddr_; }
 
