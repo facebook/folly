@@ -106,7 +106,6 @@
 #include <string>
 
 #include <boost/container/flat_map.hpp>
-#include <boost/operators.hpp>
 
 #include <folly/Exception.h>
 #include <folly/File.h>
@@ -275,7 +274,7 @@ class Subprocess {
    * the close-on-exec flag is set (fcntl FD_CLOEXEC) and inherited
    * otherwise.
    */
-  class Options : private boost::orable<Options> {
+  class Options {
     friend class Subprocess;
    public:
     Options() {}  // E.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58328
@@ -420,11 +419,6 @@ class Subprocess {
       return *this;
     }
 #endif
-
-    /**
-     * Helpful way to combine Options.
-     */
-    Options& operator|=(const Options& other);
 
    private:
     typedef boost::container::flat_map<int, int> FdMap;
@@ -890,18 +884,5 @@ class Subprocess {
   // so we're happy with a vector here, even if it means linear erase.
   std::vector<Pipe> pipes_;
 };
-
-inline Subprocess::Options& Subprocess::Options::operator|=(
-    const Subprocess::Options& other) {
-  if (this == &other) return *this;
-  // Replace
-  for (auto& p : other.fdActions_) {
-    fdActions_[p.first] = p.second;
-  }
-  closeOtherFds_ |= other.closeOtherFds_;
-  usePath_ |= other.usePath_;
-  processGroupLeader_ |= other.processGroupLeader_;
-  return *this;
-}
 
 }  // namespace folly

@@ -206,8 +206,9 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
   });
   // Normal execution with pipes
   checkFdLeak([] {
-    Subprocess proc("echo foo; echo bar >&2",
-                    Subprocess::pipeStdout() | Subprocess::pipeStderr());
+    Subprocess proc(
+        "echo foo; echo bar >&2",
+        Subprocess::Options().pipeStdout().pipeStderr());
     auto p = proc.communicate();
     EXPECT_EQ("foo\n", p.first);
     EXPECT_EQ("bar\n", p.second);
@@ -332,7 +333,7 @@ TEST(CommunicateSubprocessTest, BigWrite) {
     data.append(line);
   }
 
-  Subprocess proc("wc -l", Subprocess::pipeStdin() | Subprocess::pipeStdout());
+  Subprocess proc("wc -l", Subprocess::Options().pipeStdin().pipeStdout());
   auto p = proc.communicate(data);
   EXPECT_EQ(folly::format("{}\n", numLines).str(), p.first);
   proc.waitChecked();
@@ -344,8 +345,7 @@ TEST(CommunicateSubprocessTest, Duplex) {
   const int bytes = 10 << 20;
   std::string line(bytes, 'x');
 
-  Subprocess proc("tr a-z A-Z",
-                  Subprocess::pipeStdin() | Subprocess::pipeStdout());
+  Subprocess proc("tr a-z A-Z", Subprocess::Options().pipeStdin().pipeStdout());
   auto p = proc.communicate(line);
   EXPECT_EQ(bytes, p.first.size());
   EXPECT_EQ(std::string::npos, p.first.find_first_not_of('X'));
@@ -543,8 +543,7 @@ TEST(CommunicateSubprocessTest, TakeOwnershipOfPipes) {
   std::vector<Subprocess::ChildPipe> pipes;
   {
     Subprocess proc(
-      "echo $'oh\\nmy\\ncat' | wc -l &", Subprocess::pipeStdout()
-    );
+        "echo $'oh\\nmy\\ncat' | wc -l &", Subprocess::Options().pipeStdout());
     pipes = proc.takeOwnershipOfPipes();
     proc.waitChecked();
   }
