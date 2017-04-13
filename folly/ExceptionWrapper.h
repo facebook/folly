@@ -168,8 +168,6 @@ class exception_wrapper final {
   };
 
   template <class Fn>
-  struct arg_type2_;
-  template <class Fn, class = void>
   struct arg_type_;
   template <class Fn>
   using arg_type = _t<arg_type_<Fn>>;

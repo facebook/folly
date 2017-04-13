@@ -21,32 +21,36 @@
 namespace folly {
 
 template <class Fn>
-struct exception_wrapper::arg_type2_ {};
+struct exception_wrapper::arg_type_
+    : public arg_type_<decltype(&Fn::operator())> {
+};
 template <class Ret, class Class, class Arg>
-struct exception_wrapper::arg_type2_<Ret (Class::*)(Arg)> {
+struct exception_wrapper::arg_type_<Ret (Class::*)(Arg)> {
   using type = Arg;
 };
 template <class Ret, class Class, class Arg>
-struct exception_wrapper::arg_type2_<Ret (Class::*)(Arg) const> {
+struct exception_wrapper::arg_type_<Ret (Class::*)(Arg) const> {
   using type = Arg;
 };
-template <class Ret, class Class>
-struct exception_wrapper::arg_type2_<Ret (Class::*)(...)> {
-  using type = AnyException;
+template <class Ret, class Arg>
+struct exception_wrapper::arg_type_<Ret (Arg)> {
+  using type = Arg;
 };
-template <class Ret, class Class>
-struct exception_wrapper::arg_type2_<Ret (Class::*)(...) const> {
-  using type = AnyException;
-};
-
-template <class Fn, class>
-struct exception_wrapper::arg_type_ {};
-template <class Fn>
-struct exception_wrapper::arg_type_<Fn, void_t<decltype(&Fn::operator())>>
-    : public arg_type2_<decltype(&Fn::operator())> {};
 template <class Ret, class Arg>
 struct exception_wrapper::arg_type_<Ret (*)(Arg)> {
   using type = Arg;
+};
+template <class Ret, class Class>
+struct exception_wrapper::arg_type_<Ret (Class::*)(...)> {
+  using type = AnyException;
+};
+template <class Ret, class Class>
+struct exception_wrapper::arg_type_<Ret (Class::*)(...) const> {
+  using type = AnyException;
+};
+template <class Ret>
+struct exception_wrapper::arg_type_<Ret (...)> {
+  using type = AnyException;
 };
 template <class Ret>
 struct exception_wrapper::arg_type_<Ret (*)(...)> {
