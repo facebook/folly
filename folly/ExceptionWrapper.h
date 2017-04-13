@@ -203,14 +203,7 @@ class exception_wrapper final {
 
   static std::type_info const* uninit_type_(exception_wrapper const*);
 
-  static constexpr VTable const uninit_{
-      &noop_<void, exception_wrapper const*, exception_wrapper*>,
-      &noop_<void, exception_wrapper*, exception_wrapper*>,
-      &noop_<void, exception_wrapper*>,
-      &noop_<void, exception_wrapper const*>,
-      &uninit_type_,
-      &noop_<std::exception const*, exception_wrapper const*>,
-      &noop_<exception_wrapper, exception_wrapper const*>};
+  static VTable const uninit_;
 
   template <class Ex>
   using IsStdException = std::is_base_of<std::exception, _t<std::decay<Ex>>>;
@@ -277,13 +270,7 @@ class exception_wrapper final {
     static std::type_info const* type_(exception_wrapper const* that);
     static std::exception const* get_exception_(exception_wrapper const* that);
     static exception_wrapper get_exception_ptr_(exception_wrapper const* that);
-    static constexpr VTable const ops_{copy_,
-                                       move_,
-                                       delete_,
-                                       throw_,
-                                       type_,
-                                       get_exception_,
-                                       get_exception_ptr_};
+    static VTable const ops_;
   };
 
   template <class Ex>
@@ -334,13 +321,7 @@ class exception_wrapper final {
     static std::type_info const* type_(exception_wrapper const* that);
     static std::exception const* get_exception_(exception_wrapper const* that);
     static exception_wrapper get_exception_ptr_(exception_wrapper const* that);
-    static constexpr VTable ops_{copy_,
-                                 move_,
-                                 delete_,
-                                 throw_,
-                                 type_,
-                                 get_exception_,
-                                 get_exception_ptr_};
+    static VTable const ops_;
   };
 
   union {
