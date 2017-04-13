@@ -19,10 +19,9 @@
 #include <thread>
 #include <type_traits>
 
-#include <pthread.h>
-
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/portability/PThread.h>
 
 namespace folly {
 

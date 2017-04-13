@@ -18,7 +18,7 @@
 
 #include <cstdint>
 
-#include <pthread.h>
+#include <folly/portability/PThread.h>
 
 namespace folly {
 
