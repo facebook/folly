@@ -44,7 +44,6 @@
 #include <cstdlib>
 #include <folly/Portability.h>
 #include <mutex>
-#include <pthread.h>
 #include <type_traits>
 
 #include <glog/logging.h>
