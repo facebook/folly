@@ -804,6 +804,13 @@ void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
   lockTypes() = inLockTypes;
 }
 
+bool SSLContext::isSSLLockDisabled(int lockId) {
+  const auto& sslLocks = lockTypes();
+  const auto it = sslLocks.find(lockId);
+  return it != sslLocks.end() &&
+      it->second == SSLContext::SSLLockType::LOCK_NONE;
+}
+
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
 void SSLContext::enableFalseStart() {
   SSL_CTX_set_mode(ctx_, SSL_MODE_HANDSHAKE_CUTTHROUGH);

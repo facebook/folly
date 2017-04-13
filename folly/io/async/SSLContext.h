@@ -450,6 +450,16 @@ class SSLContext {
   static void setSSLLockTypes(std::map<int, SSLLockType> lockTypes);
 
   /**
+   * Determine if the SSL lock with the specified id (i.e.
+   * CRYPTO_LOCK_SSL_SESSION) is disabled.  This should be called after
+   * initializeOpenSSL.  This will only check if the specified lock has been
+   * explicitly set to LOCK_NONE.
+   *
+   * This is not safe to call while setSSLLockTypes is being called.
+   */
+  static bool isSSLLockDisabled(int lockId);
+
+  /**
    * Examine OpenSSL's error stack, and return a string description of the
    * errors.
    *
