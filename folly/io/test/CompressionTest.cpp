@@ -161,6 +161,7 @@ TEST(CompressionTestNeedsUncompressedLength, Simple) {
       { CodecType::ZSTD, false },
       { CodecType::GZIP, false },
       { CodecType::LZ4_FRAME, false },
+      { CodecType::BZIP2, false },
     };
 
   for (auto const& test : expectations) {
@@ -396,6 +397,7 @@ INSTANTIATE_TEST_CASE_P(
             CodecType::LZMA2,
             CodecType::ZSTD,
             CodecType::LZ4_FRAME,
+            CodecType::BZIP2,
         })));
 
 class AutomaticCodecTest : public testing::TestWithParam<CodecType> {
@@ -584,7 +586,8 @@ INSTANTIATE_TEST_CASE_P(
         CodecType::ZSTD,
         CodecType::ZLIB,
         CodecType::GZIP,
-        CodecType::LZMA2));
+        CodecType::LZMA2,
+        CodecType::BZIP2));
 
 TEST(ValidPrefixesTest, CustomCodec) {
   std::vector<std::unique_ptr<Codec>> codecs;

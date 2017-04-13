@@ -93,7 +93,13 @@ enum class CodecType {
    */
   LZ4_FRAME = 10,
 
-  NUM_CODEC_TYPES = 11,
+  /**
+   * Use bzip2 compression.
+   * Levels supported: 1 = fast, 9 = best; default = 9
+   */
+  BZIP2 = 11,
+
+  NUM_CODEC_TYPES = 12,
 };
 
 class Codec {
@@ -230,7 +236,7 @@ std::unique_ptr<Codec> getCodec(CodecType type,
 
 /**
  * Returns a codec that can uncompress any of the given codec types as well as
- * {LZ4_FRAME, ZSTD, ZLIB, GZIP, LZMA2}. Appends each default codec to
+ * {LZ4_FRAME, ZSTD, ZLIB, GZIP, LZMA2, BZIP2}. Appends each default codec to
  * customCodecs in order, so long as a codec with the same type() isn't already
  * present. When uncompress() is called, each codec's canUncompress() is called
  * in the order that they are given. Appended default codecs are checked last.

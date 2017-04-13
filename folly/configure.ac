@@ -554,6 +554,7 @@ AC_CHECK_HEADER([snappy.h], AC_CHECK_LIB([snappy], [main]))
 AC_CHECK_HEADER([zlib.h], AC_CHECK_LIB([z], [main]))
 AC_CHECK_HEADER([lzma.h], AC_CHECK_LIB([lzma], [main]))
 AC_CHECK_HEADER([zstd.h], AC_CHECK_LIB([zstd], [ZSTD_compressStream]))
+AC_CHECK_HEADER([bzlib.h], AC_CHECK_LIB([bz2], [main]))
 AC_CHECK_HEADER([linux/membarrier.h], AC_DEFINE([HAVE_LINUX_MEMBARRIER_H], [1], [Define to 1 if membarrier.h is available]))
 
 AC_ARG_ENABLE([follytestmain],
