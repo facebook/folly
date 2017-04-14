@@ -24,7 +24,9 @@
 namespace folly {
 
 inline uint64_t getCurrentThreadID() {
-#ifdef _WIN32
+#if __APPLE__
+  return uint64_t(pthread_mach_thread_np(pthread_self()));
+#elif _WIN32
   return uint64_t(GetCurrentThreadId());
 #else
   return uint64_t(pthread_self());
