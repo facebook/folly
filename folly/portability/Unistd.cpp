@@ -205,13 +205,14 @@ ssize_t readlink(const char* path, char* buf, size_t buflen) {
     return -1;
   }
 
-  HANDLE h = CreateFile(path,
-                        GENERIC_READ,
-                        FILE_SHARE_READ,
-                        nullptr,
-                        OPEN_EXISTING,
-                        FILE_FLAG_BACKUP_SEMANTICS,
-                        nullptr);
+  HANDLE h = CreateFileA(
+      path,
+      GENERIC_READ,
+      FILE_SHARE_READ,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS,
+      nullptr);
   if (h == INVALID_HANDLE_VALUE) {
     return -1;
   }
