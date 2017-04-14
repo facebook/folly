@@ -326,6 +326,8 @@ if test "$folly_cv_lib_liblinux_vdso" = yes; then
   AC_DEFINE([HAVE_LINUX_VDSO], [1], [Define to 1 if liblinux-vdso is available])
 fi
 
+AC_DEFINE([HAVE_PTHREAD], [1], [Define to 1 if pthread is avaliable])
+
 AC_CACHE_CHECK(
   [for usable std::is_trivially_copyable],
   [folly_cv_decl_std_is_trivially_copyable],

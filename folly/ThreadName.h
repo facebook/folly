@@ -21,6 +21,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/PThread.h>
 
 namespace folly {
@@ -43,9 +44,11 @@ namespace folly {
 template <typename T>
 inline bool setThreadName(T /* id */, StringPiece /* name */) {
   static_assert(
+#if FOLLY_HAVE_PTHREAD
       std::is_same<T, pthread_t>::value ||
-          std::is_same<T, std::thread::id>::value ||
-          std::is_same<T, std::thread::native_handle_type>::value,
+#endif
+      std::is_same<T, std::thread::id>::value ||
+      std::is_same<T, std::thread::native_handle_type>::value,
       "type must be pthread_t, std::thread::id or "
       "std::thread::native_handle_type");
   return false;
@@ -70,6 +73,7 @@ inline bool setThreadName(pthread_t id, StringPiece name) {
 }
 #endif
 
+#if FOLLY_HAVE_PTHREAD
 template <
     typename = folly::_t<std::enable_if<
         std::is_same<pthread_t, std::thread::native_handle_type>::value>>>
@@ -88,5 +92,10 @@ inline bool setThreadName(std::thread::id id, StringPiece name) {
 inline bool setThreadName(StringPiece name) {
   return setThreadName(pthread_self(), name);
 }
+#else 
+inline bool setThreadName(StringPiece name) {
+  return false;
+}
+#endif
 
 }
