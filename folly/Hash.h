@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -365,7 +366,7 @@ template <>
 struct hasher<bool> {
   size_t operator()(bool key) const {
     // Make sure that all the output bits depend on the input.
-    return -static_cast<size_t>(key);
+    return key ? std::numeric_limits<size_t>::max() : 0;
   }
 };
 
