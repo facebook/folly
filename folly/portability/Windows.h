@@ -44,11 +44,6 @@
 #undef CAL_GREGORIAN
 #endif
 
-// Defined in winnt.h
-#ifdef DELETE
-#undef DELETE
-#endif
-
 // Defined in the GDI interface.
 #ifdef ERROR
 #undef ERROR

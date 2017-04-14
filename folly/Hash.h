@@ -365,7 +365,8 @@ template <>
 struct hasher<bool> {
   size_t operator()(bool key) const {
     // Make sure that all the output bits depend on the input.
-    return -static_cast<size_t>(key);
+    using u = std::make_signed<size_t>::type;
+    return static_cast<size_t>(-static_cast<u>(key));
   }
 };
 
