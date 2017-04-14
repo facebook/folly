@@ -1,8 +1,13 @@
 if FOLLY_TESTMAIN
-SUBDIRS = . experimental init test io/test experimental/io/test
-else
-SUBDIRS = . experimental test io/test experimental/io/test
+MAYBE_INIT = init
 endif
+
+if EXCEPTION_TRACER
+MAYBE_EXCEPTION_TRACER = experimental/exception_tracer
+endif
+
+SUBDIRS = . experimental $(MAYBE_INIT) test io/test experimental/io/test \
+	  $(MAYBE_EXCEPTION_TRACER)
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -109,6 +114,11 @@ nobase_follyinclude_HEADERS = \
 	experimental/EventCount.h \
 	experimental/Instructions.h \
 	experimental/bser/Bser.h \
+	experimental/exception_tracer/ExceptionAbi.h \
+	experimental/exception_tracer/ExceptionCounterLib.h \
+	experimental/exception_tracer/ExceptionTracer.h \
+	experimental/exception_tracer/ExceptionTracerLib.h \
+	experimental/exception_tracer/StackTrace.h \
 	experimental/FunctionScheduler.h \
 	experimental/FutureDAG.h \
 	experimental/io/FsUtil.h \

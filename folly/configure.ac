@@ -580,6 +580,10 @@ AS_IF([test "x${mobile}" = "xyes"], [
               [Define to 1 for compiler guards for mobile targets.])
 ])
 
+AC_ARG_ENABLE([exception-tracer],
+    AS_HELP_STRING([--enable-exception-tracer], [enables building exception tracer]),
+    [build_exception_tracer=${enableval}], [build_exception_tracer=no])
+
 # Include directory that contains "folly" so #include <folly/Foo.h> works
 AM_CPPFLAGS='-I$(top_srcdir)/..'
 AM_CPPFLAGS="$AM_CPPFLAGS $BOOST_CPPFLAGS $OPENSSL_INCLUDES"
@@ -606,6 +610,7 @@ AM_CONDITIONAL([HAVE_EXTRANDOM_SFMT19937],
 AM_CONDITIONAL([FOLLY_TESTMAIN], [test "x${use_follytestmain}" = "xyes"])
 AM_CONDITIONAL([HAVE_LIBDWARF], [test "x${have_libdwarf}" = "xyes"])
 AM_CONDITIONAL([HAVE_BOOST_CONTEXT], [test "x${ax_cv_boost_context}" = "xyes"])
+AM_CONDITIONAL([EXCEPTION_TRACER], [test "x${build_exception_tracer}" = "xyes"])
 
 # remove pkg-config deps from dependent libraries
 # (at least for pkg-config file purposes)
@@ -621,4 +626,7 @@ AC_CONFIG_FILES([Makefile
                  experimental/io/test/Makefile
                  experimental/symbolizer/Makefile
                  init/Makefile])
+
+AM_COND_IF([EXCEPTION_TRACER],
+           [AC_CONFIG_FILES([experimental/exception_tracer/Makefile])])
 AC_OUTPUT
