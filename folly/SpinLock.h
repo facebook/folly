@@ -34,19 +34,29 @@
 
 #include <type_traits>
 
-#include <folly/detail/SpinLockImpl.h>
+#include <folly/Portability.h>
+#include <folly/SmallLocks.h>
 
 namespace folly {
 
-#if __x86_64__
-typedef SpinLockMslImpl SpinLock;
-#elif __APPLE__
-typedef SpinLockAppleImpl SpinLock;
-#elif FOLLY_HAVE_PTHREAD_SPINLOCK_T
-typedef SpinLockPthreadImpl SpinLock;
-#else
-typedef SpinLockPthreadMutexImpl SpinLock;
-#endif
+class SpinLock {
+ public:
+  FOLLY_ALWAYS_INLINE SpinLock() {
+    lock_.init();
+  }
+  FOLLY_ALWAYS_INLINE void lock() const {
+    lock_.lock();
+  }
+  FOLLY_ALWAYS_INLINE void unlock() const {
+    lock_.unlock();
+  }
+  FOLLY_ALWAYS_INLINE bool try_lock() const {
+    return lock_.try_lock();
+  }
+
+ private:
+  mutable folly::MicroSpinLock lock_;
+};
 
 template <typename LOCK>
 class SpinLockGuardImpl : private boost::noncopyable {

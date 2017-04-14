@@ -76,7 +76,6 @@ nobase_follyinclude_HEADERS = \
 	detail/Sleeper.h \
 	detail/SlowFingerprint.h \
 	detail/SocketFastOpen.h \
-	detail/SpinLockImpl.h \
 	detail/StaticSingletonManager.h \
 	detail/Stats.h \
 	detail/ThreadLocalDetail.h \
