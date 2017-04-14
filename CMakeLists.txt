@@ -62,6 +62,11 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/folly/build/
   COMMENT "Generating the group varint tables..." VERBATIM
 )
+
+include(folly-deps) # Find the required packages
+if (LIBPTHREAD_FOUND)
+  set(FOLLY_HAVE_PTHREAD ON)
+endif()
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
@@ -125,14 +130,12 @@ source_group("folly\\build" FILES
   ${CMAKE_CURRENT_BINARY_DIR}/folly/build/GroupVarintTables.cpp
 )
 
-include(folly-deps) # Find the required packages
 target_include_directories(folly_base
   PUBLIC
     ${DOUBLE_CONVERSION_INCLUDE_DIR}
     ${LIBGFLAGS_INCLUDE_DIR}
     ${LIBGLOG_INCLUDE_DIR}
     ${LIBEVENT_INCLUDE_DIR}
-    ${LIBPTHREAD_INCLUDE_DIRS}
 )
 target_link_libraries(folly_base
   PUBLIC
@@ -147,11 +150,14 @@ target_link_libraries(folly_base
     ${LIBEVENT_LIB}
     ${LIBGFLAGS_LIBRARY}
     ${LIBGLOG_LIBRARY}
-    ${LIBPTHREAD_LIBRARIES}
     OpenSSL::SSL
     OpenSSL::Crypto
     Ws2_32.lib
 )
+if (FOLLY_HAVE_PTHREAD)
+  target_include_directories(folly_base PUBLIC ${LIBPTHREAD_INCLUDE_DIRS})
+  target_link_libraries(folly_base PUBLIC ${LIBPTHREAD_LIBRARIES})
+endif()
 
 # Now to generate the fingerprint tables
 add_executable(GenerateFingerprintTables
