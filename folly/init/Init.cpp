@@ -36,6 +36,10 @@ void init(int* argc, char*** argv, bool removeFlags) {
   google::InstallFailureSignalHandler();
 #endif
 
+  // Move from the registration phase to the "you can actually instantiate
+  // things now" phase.
+  folly::SingletonVault::singleton()->registrationComplete();
+
   gflags::ParseCommandLineFlags(argc, argv, removeFlags);
 
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
@@ -44,13 +48,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
 #ifdef FOLLY_USE_SYMBOLIZER
   // Don't use glog's DumpStackTraceAndExit; rely on our signal handler.
   google::InstallFailureFunction(abort);
-#endif
 
-  // Move from the registration phase to the "you can actually instantiate
-  // things now" phase.
-  folly::SingletonVault::singleton()->registrationComplete();
-
-#ifdef FOLLY_USE_SYMBOLIZER
   // Actually install the callbacks into the handler.
   folly::symbolizer::installFatalSignalCallbacks();
 #endif
