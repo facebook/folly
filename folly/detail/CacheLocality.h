@@ -24,10 +24,11 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <pthread.h>
+
 #include <folly/Hash.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/ThreadId.h>
 
 namespace folly {
 namespace detail {
@@ -174,10 +175,7 @@ extern template struct SequentialThreadId<std::atomic>;
 
 struct HashingThreadId {
   static unsigned get() {
-    pthread_t pid = pthread_self();
-    uint64_t id = 0;
-    memcpy(&id, &pid, std::min(sizeof(pid), sizeof(id)));
-    return hash::twang_32from64(id);
+    return hash::twang_32from64(getCurrentThreadID());
   }
 };
 
