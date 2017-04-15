@@ -159,8 +159,6 @@ std::string OpenSSLCertUtils::getDateTimeStr(const ASN1_TIME* time) {
     return "";
   }
 
-  std::array<char, 32> buf;
-
   auto bio = BioUniquePtr(BIO_new(BIO_s_mem()));
   if (bio == nullptr) {
     throw std::runtime_error("Cannot allocate bio");
