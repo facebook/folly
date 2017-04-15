@@ -21,7 +21,7 @@
 
 #include <atomic>
 #include <cstddef>
-#include <ios>
+#include <iosfwd>
 #include <limits>
 #include <type_traits>
 
@@ -2643,13 +2643,13 @@ std::basic_istream<
     std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
     typename basic_fbstring<E, T, A, S>::traits_type>& is,
     basic_fbstring<E, T, A, S>& str) {
-  typename std::basic_istream<E, T>::sentry sentry(is);
-  typedef std::basic_istream<typename basic_fbstring<E, T, A, S>::value_type,
-                             typename basic_fbstring<E, T, A, S>::traits_type>
-                        __istream_type;
-  typedef typename __istream_type::ios_base __ios_base;
+  typedef std::basic_istream<
+      typename basic_fbstring<E, T, A, S>::value_type,
+      typename basic_fbstring<E, T, A, S>::traits_type>
+      _istream_type;
+  typename _istream_type::sentry sentry(is);
   size_t extracted = 0;
-  auto err = __ios_base::goodbit;
+  auto err = _istream_type::goodbit;
   if (sentry) {
     auto n = is.width();
     if (n <= 0) {
@@ -2658,7 +2658,7 @@ std::basic_istream<
     str.erase();
     for (auto got = is.rdbuf()->sgetc(); extracted != size_t(n); ++extracted) {
       if (got == T::eof()) {
-        err |= __ios_base::eofbit;
+        err |= _istream_type::eofbit;
         is.width(0);
         break;
       }
@@ -2670,7 +2670,7 @@ std::basic_istream<
     }
   }
   if (!extracted) {
-    err |= __ios_base::failbit;
+    err |= _istream_type::failbit;
   }
   if (err) {
     is.setstate(err);
@@ -2687,28 +2687,31 @@ operator<<(
   typename basic_fbstring<E, T, A, S>::traits_type>& os,
     const basic_fbstring<E, T, A, S>& str) {
 #if _LIBCPP_VERSION
-  typename std::basic_ostream<
-    typename basic_fbstring<E, T, A, S>::value_type,
-    typename basic_fbstring<E, T, A, S>::traits_type>::sentry __s(os);
-  if (__s) {
+  typedef std::basic_ostream<
+      typename basic_fbstring<E, T, A, S>::value_type,
+      typename basic_fbstring<E, T, A, S>::traits_type>
+      _ostream_type;
+  typename _ostream_type::sentry _s(os);
+  if (_s) {
     typedef std::ostreambuf_iterator<
       typename basic_fbstring<E, T, A, S>::value_type,
       typename basic_fbstring<E, T, A, S>::traits_type> _Ip;
     size_t __len = str.size();
     bool __left =
-      (os.flags() & std::ios_base::adjustfield) == std::ios_base::left;
+        (os.flags() & _ostream_type::adjustfield) == _ostream_type::left;
     if (__pad_and_output(_Ip(os),
                          str.data(),
                          __left ? str.data() + __len : str.data(),
                          str.data() + __len,
                          os,
                          os.fill()).failed()) {
-      os.setstate(std::ios_base::badbit | std::ios_base::failbit);
+      os.setstate(_ostream_type::badbit | _ostream_type::failbit);
     }
   }
 #elif defined(_MSC_VER)
+  typedef decltype(os.precision()) streamsize;
   // MSVC doesn't define __ostream_insert
-  os.write(str.data(), std::streamsize(str.size()));
+  os.write(str.data(), static_cast<streamsize>(str.size()));
 #else
   std::__ostream_insert(os, str.data(), str.size());
 #endif
