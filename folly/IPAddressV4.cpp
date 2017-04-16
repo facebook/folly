@@ -122,6 +122,23 @@ void IPAddressV4::setFromBinary(ByteRange bytes) {
   memcpy(&addr_.inAddr_.s_addr, bytes.data(), sizeof(in_addr));
 }
 
+// static
+IPAddressV4 IPAddressV4::fromInverseArpaName(const std::string& arpaname) {
+  auto piece = StringPiece(arpaname);
+  // input must be something like 1.0.168.192.in-addr.arpa
+  if (!piece.removeSuffix(".in-addr.arpa")) {
+    throw IPAddressFormatException(
+        sformat("input does not end with '.in-addr.arpa': '{}'", arpaname));
+  }
+  std::vector<StringPiece> pieces;
+  split(".", piece, pieces);
+  if (pieces.size() != 4) {
+    throw IPAddressFormatException(sformat("Invalid input. Got {}", piece));
+  }
+  // reverse 1.0.168.192 -> 192.168.0.1
+  return IPAddressV4(join(".", pieces.rbegin(), pieces.rend()));
+}
+
 // public
 IPAddressV6 IPAddressV4::createIPv6() const {
   ByteArray16 ba{};

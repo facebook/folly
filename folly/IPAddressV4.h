@@ -80,6 +80,13 @@ class IPAddressV4 {
   }
 
   /**
+   * Create a new IPAddress instance from the in-addr.arpa representation.
+   * @throws IPAddressFormatException if the input is not a valid in-addr.arpa
+   * representation
+   */
+  static IPAddressV4 fromInverseArpaName(const std::string& arpaname);
+
+  /**
    * Convert a IPv4 address string to a long in network byte order.
    * @param [in] ip the address to convert
    * @return the long representation of the address

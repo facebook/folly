@@ -173,6 +173,34 @@ void IPAddressV6::setFromBinary(ByteRange bytes) {
   scope_ = 0;
 }
 
+// static
+IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
+  auto piece = StringPiece(arpaname);
+  if (!piece.removeSuffix(".ip6.arpa")) {
+    throw IPAddressFormatException(sformat(
+        "Invalid input. Should end with 'ip6.arpa'. Got '{}'", arpaname));
+  }
+  std::vector<StringPiece> pieces;
+  split(".", piece, pieces);
+  if (pieces.size() != 32) {
+    throw IPAddressFormatException(sformat("Invalid input. Got '{}'", piece));
+  }
+  std::array<char, IPAddressV6::kToFullyQualifiedSize> ip;
+  int pos = 0;
+  int count = 0;
+  for (int p = pieces.size() - 1; p >= 0; p--) {
+    ip[pos] = pieces[p][0];
+    pos++;
+    count++;
+    // add ':' every 4 chars
+    if (count == 4) {
+      ip[pos++] = ':';
+      count = 0;
+    }
+  }
+  return IPAddressV6(folly::range(ip));
+}
+
 // public
 IPAddressV4 IPAddressV6::createIPv4() const {
   if (!isIPv4Mapped()) {
