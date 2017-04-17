@@ -612,7 +612,7 @@ void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
           << ", fd=" << fd_ << ", callback=" << callback
           << ", state=" << state_;
 
-  // Short circuit if callback is the same as the existing timestampCallback_.
+  // Short circuit if callback is the same as the existing errMessageCallback_.
   if (callback == errMessageCallback_) {
     return;
   }
@@ -624,6 +624,14 @@ void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
 
   DestructorGuard dg(this);
   assert(eventBase_->isInEventBaseThread());
+
+  if (callback == nullptr) {
+    // We should be able to reset the callback regardless of the
+    // socket state. It's important to have a reliable callback
+    // cancellation mechanism.
+    errMessageCallback_ = callback;
+    return;
+  }
 
   switch ((StateEnum)state_) {
     case StateEnum::CONNECTING:
