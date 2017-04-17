@@ -85,7 +85,8 @@ inline bool setThreadName(std::thread::id id, StringPiece name) {
   // In most implementations, std::thread::id is a thin wrapper around
   // std::thread::native_handle_type, which means we can do unsafe things to
   // extract it.
-  pthread_t ptid = *reinterpret_cast<pthread_t*>(&id);
+  pthread_t ptid;
+  std::memcpy(&ptid, &id, sizeof(pthread_t));
   return setThreadName(ptid, name);
 }
 
