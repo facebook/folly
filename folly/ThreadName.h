@@ -34,6 +34,7 @@ namespace folly {
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
 #endif
 #endif
+
 #if defined(__APPLE__) && defined(__MAC_OS_X_VERSION_MIN_REQUIRED)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 // has pthread_setname_np(const char*) (1 param)
@@ -54,49 +55,58 @@ inline bool setThreadName(T /* id */, StringPiece /* name */) {
   return false;
 }
 
-#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
 template <>
-inline bool setThreadName(pthread_t id, StringPiece name) {
+inline bool setThreadName(std::thread::id tid, StringPiece name) {
+#if !FOLLY_HAVE_PTHREAD
+  return false;
+#else
+  static_assert(
+      std::is_same<pthread_t, std::thread::native_handle_type>::value,
+      "This assumes that the native handle type is pthread_t");
+  static_assert(
+      sizeof(std::thread::native_handle_type) == sizeof(std::thread::id),
+      "This assumes std::thread::id is a thin wrapper around "
+      "std::thread::native_handle_type, but that doesn't appear to be true.");
+  // In most implementations, std::thread::id is a thin wrapper around
+  // std::thread::native_handle_type, which means we can do unsafe things to
+  // extract it.
+  pthread_t id;
+  std::memcpy(&id, &tid, sizeof(id));
+#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
   return 0 == pthread_setname_np(id, name.fbstr().substr(0, 15).c_str());
-}
-#endif
-
-#ifdef FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
-template <>
-inline bool setThreadName(pthread_t id, StringPiece name) {
+#elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   // Since OS X 10.6 it is possible for a thread to set its own name,
   // but not that of some other thread.
   if (pthread_equal(pthread_self(), id)) {
     return 0 == pthread_setname_np(name.fbstr().c_str());
   }
   return false;
-}
+#else
+  return false;
 #endif
+#endif
+}
 
 #if FOLLY_HAVE_PTHREAD
-template <
-    typename = folly::_t<std::enable_if<
-        std::is_same<pthread_t, std::thread::native_handle_type>::value>>>
-inline bool setThreadName(std::thread::id id, StringPiece name) {
+template <>
+inline bool setThreadName(pthread_t pid, StringPiece name) {
   static_assert(
-      sizeof(std::thread::native_handle_type) == sizeof(decltype(id)),
+      std::is_same<pthread_t, std::thread::native_handle_type>::value,
+      "This assumes that the native handle type is pthread_t");
+  static_assert(
+      sizeof(std::thread::native_handle_type) == sizeof(std::thread::id),
       "This assumes std::thread::id is a thin wrapper around "
       "std::thread::native_handle_type, but that doesn't appear to be true.");
   // In most implementations, std::thread::id is a thin wrapper around
   // std::thread::native_handle_type, which means we can do unsafe things to
   // extract it.
-  pthread_t ptid;
-  std::memcpy(&ptid, &id, sizeof(pthread_t));
-  return setThreadName(ptid, name);
-}
-
-inline bool setThreadName(StringPiece name) {
-  return setThreadName(pthread_self(), name);
-}
-#else 
-inline bool setThreadName(StringPiece name) {
-  return false;
+  std::thread::id id;
+  std::memcpy(&id, &pid, sizeof(id));
+  return setThreadName(id, name);
 }
 #endif
 
+inline bool setThreadName(StringPiece name) {
+  return setThreadName(std::this_thread::get_id(), name);
+}
 }
