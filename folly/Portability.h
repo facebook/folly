@@ -331,6 +331,12 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 
 namespace folly {
 
+#if __OBJC__
+constexpr auto kIsObjC = true;
+#else
+constexpr auto kIsObjC = false;
+#endif
+
 #if defined(__linux__) && !FOLLY_MOBILE
 constexpr auto kIsLinux = true;
 #else

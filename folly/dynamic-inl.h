@@ -310,6 +310,9 @@ inline dynamic::~dynamic() noexcept { destroy(); }
 template <class T>
 struct dynamic::NumericTypeHelper<
     T, typename std::enable_if<std::is_integral<T>::value>::type> {
+  static_assert(
+      !kIsObjC || sizeof(T) > sizeof(char),
+      "char-sized types are ambiguous in objc; cast to bool or wider type");
   using type = int64_t;
 };
 template <>
