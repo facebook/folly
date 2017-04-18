@@ -84,7 +84,7 @@ namespace folly {
 ///   class ConcurrentFoo : public FlatCombining<ConcurrentFoo> {
 ///     Foo foo_; // sequential data structure
 ///    public:
-///     T bar(V v) { // thread-safe execution of foo_.bar(v)
+///     T bar(V& v) { // thread-safe execution of foo_.bar(v)
 ///       T result;
 ///       // Note: fn must be copyable to folly::Function without dynamic
 ///       // allocation. Otherwise, it is recommended to use the custom
@@ -369,7 +369,6 @@ class FlatCombining {
   Rec* allocRec() {
     auto idx = recsPool_.allocIndex();
     if (idx == NULL_INDEX) {
-      outOfSpaceCount_.fetch_add(1);
       return nullptr;
     }
     Rec& rec = recsPool_[idx];
@@ -386,20 +385,24 @@ class FlatCombining {
     recsPool_.recycleIndex(idx);
   }
 
-  // Returns a count of the number of combined operations so far.
-  uint64_t getCombinedOpCount() {
-    std::lock_guard<Mutex> guard(m_);
+  // Returns the number of uncombined operations so far.
+  uint64_t getNumUncombined() const {
+    return uncombined_;
+  }
+
+  // Returns the number of combined operations so far.
+  uint64_t getNumCombined() const {
     return combined_;
   }
 
-  // Returns a count of the number of combining passes so far.
-  uint64_t getCombiningPasses() {
-    std::lock_guard<Mutex> guard(m_);
+  // Returns the number of combining passes so far.
+  uint64_t getNumPasses() const {
     return passes_;
   }
 
-  uint64_t getOutOfSpaceCount() {
-    return outOfSpaceCount_.load();
+  // Returns the number of combining sessions so far.
+  uint64_t getNumSessions() const {
+    return sessions_;
   }
 
  protected:
@@ -424,10 +427,10 @@ class FlatCombining {
   Pool recsPool_;
 
   FOLLY_ALIGN_TO_AVOID_FALSE_SHARING
+  uint64_t uncombined_ = 0;
   uint64_t combined_ = 0;
   uint64_t passes_ = 0;
   uint64_t sessions_ = 0;
-  Atom<uint64_t> outOfSpaceCount_{0};
 
   template <typename OpFunc, typename FillFunc, typename ResFn>
   void requestOp(
@@ -440,6 +443,7 @@ class FlatCombining {
     std::unique_lock<Mutex> l(this->m_, std::defer_lock);
     if (l.try_lock()) {
       // No contention
+      ++uncombined_;
       tryCombining();
       opFn();
       return;
@@ -456,6 +460,8 @@ class FlatCombining {
     if (rec == nullptr) {
       // Can't use FC - Must acquire lock
       l.lock();
+      ++uncombined_;
+      tryCombining();
       opFn();
       return;
     }
