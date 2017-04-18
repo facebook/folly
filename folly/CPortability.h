@@ -90,10 +90,10 @@
  * used as folly whitelists some functions.
  */
 #if UNDEFINED_SANITIZER
-# define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(x) \
-    __attribute__((no_sanitize(x)))
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
+  __attribute__((no_sanitize(__VA_ARGS__)))
 #else
-# define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(x)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
 #endif // UNDEFINED_SANITIZER
 
 /**
