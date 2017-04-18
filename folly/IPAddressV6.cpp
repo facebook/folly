@@ -186,14 +186,14 @@ IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
     throw IPAddressFormatException(sformat("Invalid input. Got '{}'", piece));
   }
   std::array<char, IPAddressV6::kToFullyQualifiedSize> ip;
-  int pos = 0;
+  size_t pos = 0;
   int count = 0;
   for (int p = pieces.size() - 1; p >= 0; p--) {
     ip[pos] = pieces[p][0];
     pos++;
     count++;
     // add ':' every 4 chars
-    if (count == 4) {
+    if (count == 4 && pos < ip.size()) {
       ip[pos++] = ':';
       count = 0;
     }
