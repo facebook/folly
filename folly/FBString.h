@@ -2725,32 +2725,88 @@ constexpr typename basic_fbstring<E1, T, A, S>::size_type
 #ifndef _LIBSTDCXX_FBSTRING
 // basic_string compatibility routines
 
-template <typename E, class T, class A, class S>
-inline
-bool operator==(const basic_fbstring<E, T, A, S>& lhs,
-                const std::string& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator==(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
   return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) == 0;
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator==(const std::string& lhs,
-                const basic_fbstring<E, T, A, S>& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator==(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
   return rhs == lhs;
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator!=(const basic_fbstring<E, T, A, S>& lhs,
-                const std::string& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator!=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
   return !(lhs == rhs);
 }
 
-template <typename E, class T, class A, class S>
-inline
-bool operator!=(const std::string& lhs,
-                const basic_fbstring<E, T, A, S>& rhs) {
+template <typename E, class T, class A, class S, class A2>
+inline bool operator!=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
   return !(lhs == rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) < 0;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return lhs.compare(0, lhs.size(), rhs.data(), rhs.size()) > 0;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return rhs > lhs;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return rhs < lhs;
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return !(lhs > rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>=(
+    const basic_fbstring<E, T, A, S>& lhs,
+    const std::basic_string<E, T, A2>& rhs) {
+  return !(lhs < rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator<=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return !(lhs > rhs);
+}
+
+template <typename E, class T, class A, class S, class A2>
+inline bool operator>=(
+    const std::basic_string<E, T, A2>& lhs,
+    const basic_fbstring<E, T, A, S>& rhs) {
+  return !(lhs < rhs);
 }
 
 #if !defined(_LIBSTDCXX_FBSTRING)
