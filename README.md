@@ -113,7 +113,8 @@ sudo apt-get install \
     zlib1g-dev \
     binutils-dev \
     libjemalloc-dev \
-    libssl-dev
+    libssl-dev \
+    pkg-config
 ```
 
 If advanced debugging functionality is required
