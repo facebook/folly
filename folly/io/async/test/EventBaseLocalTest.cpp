@@ -71,7 +71,9 @@ TEST(EventBaseLocalTest, Basic) {
     EXPECT_EQ(dtorCnt, 2); // should dtor a Foo when evb2 destructs
 
   }
-  EXPECT_EQ(dtorCnt, 3); // should dtor a Foo when foo destructs
+  EXPECT_EQ(dtorCnt, 2); // should schedule Foo destructor, when foo destructs
+  evb1.loop();
+  EXPECT_EQ(dtorCnt, 3); // Foo will be destroyed in EventBase loop
 }
 
 TEST(EventBaseLocalTest, getOrCreate) {

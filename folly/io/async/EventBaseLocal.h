@@ -37,7 +37,6 @@ class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
 
  protected:
   void setVoid(EventBase& evb, std::shared_ptr<void>&& ptr);
-  void setVoidUnlocked(EventBase& evb, std::shared_ptr<void>&& ptr);
   void* getVoid(EventBase& evb);
 
   folly::Synchronized<std::unordered_set<EventBase*>> eventBases_;
@@ -92,17 +91,13 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
 
   template <typename... Args>
   T& getOrCreate(EventBase& evb, Args&&... args) {
-    std::lock_guard<std::mutex> lg(evb.localStorageMutex_);
-
-    auto it2 = evb.localStorage_.find(key_);
-    if (LIKELY(it2 != evb.localStorage_.end())) {
-      return *static_cast<T*>(it2->second.get());
-    } else {
-      auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
-      auto ptr = smartPtr.get();
-      setVoidUnlocked(evb, std::move(smartPtr));
-      return *ptr;
+    if (auto ptr = getVoid(evb)) {
+      return *static_cast<T*>(ptr);
     }
+    auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
+    auto& ref = *smartPtr;
+    setVoid(evb, std::move(smartPtr));
+    return ref;
   }
 
   template <typename Func>
@@ -110,17 +105,13 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
     // If this looks like it's copy/pasted from above, that's because it is.
     // gcc has a bug (fixed in 4.9) that doesn't allow capturing variadic
     // params in a lambda.
-    std::lock_guard<std::mutex> lg(evb.localStorageMutex_);
-
-    auto it2 = evb.localStorage_.find(key_);
-    if (LIKELY(it2 != evb.localStorage_.end())) {
-      return *static_cast<T*>(it2->second.get());
-    } else {
-      std::shared_ptr<T> smartPtr(fn());
-      auto ptr = smartPtr.get();
-      setVoidUnlocked(evb, std::move(smartPtr));
-      return *ptr;
+    if (auto ptr = getVoid(evb)) {
+      return *static_cast<T*>(ptr);
     }
+    std::shared_ptr<T> smartPtr(fn());
+    auto& ref = *smartPtr;
+    setVoid(evb, std::move(smartPtr));
+    return ref;
   }
 };
 

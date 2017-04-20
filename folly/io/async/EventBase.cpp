@@ -183,12 +183,10 @@ EventBase::~EventBase() {
     event_base_free(evb_);
   }
 
-  {
-    std::lock_guard<std::mutex> lock(localStorageMutex_);
-    for (auto storage : localStorageToDtor_) {
-      storage->onEventBaseDestruction(*this);
-    }
+  for (auto storage : localStorageToDtor_) {
+    storage->onEventBaseDestruction(*this);
   }
+
   VLOG(5) << "EventBase(): Destroyed.";
 }
 

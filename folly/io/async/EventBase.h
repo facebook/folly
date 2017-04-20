@@ -743,7 +743,6 @@ class EventBase : private boost::noncopyable,
   // see EventBaseLocal
   friend class detail::EventBaseLocalBase;
   template <typename T> friend class EventBaseLocal;
-  std::mutex localStorageMutex_;
   std::unordered_map<uint64_t, std::shared_ptr<void>> localStorage_;
   std::unordered_set<detail::EventBaseLocalBaseBase*> localStorageToDtor_;
 
