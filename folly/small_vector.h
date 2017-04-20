@@ -487,7 +487,9 @@ class small_vector
       auto thisCapacity = this->capacity();
       auto oCapacity = o.capacity();
 
-      std::swap(unpackHack(&u.pdata_.heap_), unpackHack(&o.u.pdata_.heap_));
+      auto* tmp = u.pdata_.heap_;
+      u.pdata_.heap_ = o.u.pdata_.heap_;
+      o.u.pdata_.heap_ = tmp;
 
       this->setCapacity(oCapacity);
       o.setCapacity(thisCapacity);
@@ -620,7 +622,7 @@ class small_vector
   size_type capacity() const {
     if (this->isExtern()) {
       if (u.hasCapacity()) {
-        return *u.getCapacity();
+        return u.getCapacity();
       }
       return malloc_usable_size(u.pdata_.heap_) / sizeof(value_type);
     }
@@ -816,15 +818,6 @@ private:
     return const_cast<iterator>(it);
   }
 
-  /*
-   * g++ doesn't allow you to bind a non-const reference to a member
-   * of a packed structure, presumably because it would make it too
-   * easy to accidentally make an unaligned memory access?
-   */
-  template<class T> static T& unpackHack(T* p) {
-    return *p;
-  }
-
   // The std::false_type argument is part of disambiguating the
   // iterator insert functions from integral types (see insert().)
   template<class It>
@@ -1015,7 +1008,7 @@ private:
     assert(this->isExtern());
     if (u.hasCapacity()) {
       assert(newCapacity < std::numeric_limits<InternalSizeType>::max());
-      *u.getCapacity() = InternalSizeType(newCapacity);
+      u.setCapacity(newCapacity);
     }
   }
 
@@ -1024,8 +1017,11 @@ private:
     void* heap_;
     InternalSizeType capacity_;
 
-    InternalSizeType* getCapacity() {
-      return &capacity_;
+    InternalSizeType getCapacity() const {
+      return capacity_;
+    }
+    void setCapacity(InternalSizeType c) {
+      capacity_ = c;
     }
   } FOLLY_PACK_ATTR;
 
@@ -1034,10 +1030,12 @@ private:
     // stored at the front of the heap allocation.
     void* heap_;
 
-    InternalSizeType* getCapacity() {
+    InternalSizeType getCapacity() const {
       assert(detail::pointerFlagGet(heap_));
-      return static_cast<InternalSizeType*>(
-        detail::pointerFlagClear(heap_));
+      return *static_cast<InternalSizeType*>(detail::pointerFlagClear(heap_));
+    }
+    void setCapacity(InternalSizeType c) {
+      *static_cast<InternalSizeType*>(detail::pointerFlagClear(heap_)) = c;
     }
   } FOLLY_PACK_ATTR;
 
@@ -1103,11 +1101,11 @@ private:
     bool hasCapacity() const {
       return kHasInlineCapacity || detail::pointerFlagGet(pdata_.heap_);
     }
-    InternalSizeType* getCapacity() {
+    InternalSizeType getCapacity() const {
       return pdata_.getCapacity();
     }
-    InternalSizeType* getCapacity() const {
-      return const_cast<Data*>(this)->getCapacity();
+    void setCapacity(InternalSizeType c) {
+      pdata_.setCapacity(c);
     }
 
     void freeHeap() {
