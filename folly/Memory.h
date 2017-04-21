@@ -137,7 +137,18 @@ std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
   return std::weak_ptr<T>(ptr);
 }
 
-using SysBufferDeleter = static_function_deleter<void, ::free>;
+namespace detail {
+/**
+ * Not all STL implementations define ::free in a way that its address can be
+ * determined at compile time. So we must wrap ::free in a function whose
+ * address can be determined.
+ */
+inline void SysFree(void* p) {
+  ::free(p);
+}
+}
+
+using SysBufferDeleter = static_function_deleter<void, &detail::SysFree>;
 using SysBufferUniquePtr = std::unique_ptr<void, SysBufferDeleter>;
 inline SysBufferUniquePtr allocate_sys_buffer(size_t size) {
   return SysBufferUniquePtr(::malloc(size));
