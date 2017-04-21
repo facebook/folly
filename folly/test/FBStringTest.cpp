@@ -1596,6 +1596,7 @@ TEST(U16FBString, compareToStdU16StringLong) {
   EXPECT_TRUE(fbB >= stdB);
 }
 
+#ifndef __ANDROID__ // Android's handling of char32_t causes this test to fail
 TEST(U32FBString, compareToStdU32StringLong) {
   using folly::basic_fbstring;
   using namespace std::string_literals;
@@ -1620,6 +1621,7 @@ TEST(U32FBString, compareToStdU32StringLong) {
   EXPECT_TRUE(stdB >= fbB);
   EXPECT_TRUE(fbB >= stdB);
 }
+#endif
 
 TEST(WFBString, compareToStdWStringLong) {
   using folly::basic_fbstring;
