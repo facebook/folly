@@ -29,7 +29,7 @@ namespace folly {
   constexpr dynamic::Type dynamic::TypeInfo<T>::type; \
   //
 
-FOLLY_DYNAMIC_DEF_TYPEINFO(void*)
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::nullptr_t)
 FOLLY_DYNAMIC_DEF_TYPEINFO(bool)
 FOLLY_DYNAMIC_DEF_TYPEINFO(std::string)
 FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array)
@@ -65,7 +65,7 @@ TypeError::~TypeError() = default;
   do {                                \
     switch ((type)) {                 \
       case NULLT:                     \
-        apply(void*);                 \
+        apply(std::nullptr_t);        \
         break;                        \
       case ARRAY:                     \
         apply(Array);                 \

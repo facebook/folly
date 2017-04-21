@@ -552,9 +552,7 @@ private:
     explicit Data() : nul(nullptr) {}
     ~Data() {}
 
-    // XXX: gcc does an ICE if we use std::nullptr_t instead of void*
-    // here.  See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=50361
-    void* nul;
+    std::nullptr_t nul;
     Array array;
     bool boolean;
     double doubl;
