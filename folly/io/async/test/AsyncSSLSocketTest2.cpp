@@ -205,6 +205,14 @@ TEST(AsyncSSLSocketTest2, SSLContextLocks) {
 #endif
 }
 
+TEST(AsyncSSLSocketTest2, SSLContextLocksSetAfterInitIgnored) {
+  SSLContext::initializeOpenSSL();
+  SSLContext::setSSLLockTypes({});
+#ifdef CRYPTO_LOCK_EVP_PKEY
+  EXPECT_TRUE(SSLContext::isSSLLockDisabled(CRYPTO_LOCK_EVP_PKEY));
+#endif
+}
+
 }  // folly
 
 int main(int argc, char *argv[]) {

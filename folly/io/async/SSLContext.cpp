@@ -794,6 +794,13 @@ static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
 }
 
 void SSLContext::setSSLLockTypes(std::map<int, SSLLockType> inLockTypes) {
+  if (initialized_) {
+    // We set the locks on initialization, so if we are already initialized
+    // this would have no affect.
+    LOG(INFO) << "Ignoring setSSLLockTypes after initialization";
+    return;
+  }
+
   lockTypes() = inLockTypes;
 }
 
