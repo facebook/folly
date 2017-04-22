@@ -1621,7 +1621,6 @@ TEST(U32FBString, compareToStdU32StringLong) {
   EXPECT_TRUE(stdB >= fbB);
   EXPECT_TRUE(fbB >= stdB);
 }
-#endif
 
 TEST(WFBString, compareToStdWStringLong) {
   using folly::basic_fbstring;
@@ -1647,3 +1646,4 @@ TEST(WFBString, compareToStdWStringLong) {
   EXPECT_TRUE(stdB >= fbB);
   EXPECT_TRUE(fbB >= stdB);
 }
+#endif
