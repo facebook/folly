@@ -529,6 +529,7 @@ libfolly_la_SOURCES = \
 	stats/Instantiations.cpp \
 	Subprocess.cpp \
 	ThreadCachedArena.cpp \
+	ThreadName.cpp \
 	TimeoutQueue.cpp \
 	Uri.cpp \
 	Version.cpp \
